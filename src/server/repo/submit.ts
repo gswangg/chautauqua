@@ -10,11 +10,51 @@ import { chunkRowsForInsert } from "../../lib/chunk";
 import { submissionSeqSubquery } from "./submissions/seq";
 import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, AnswerMap } from "../../forms/types";
 import { lockedFieldName, projectFieldForAnswers } from "../../forms/types";
-import { DEC_258 } from "../../decisions";
+import { DEC_258, DEC_718 } from "../../decisions";
 
 // Compile-checked dependency marker: createParticipant below snapshots
 // DEC-258's title_at_time/org_at_time onto every new participant row.
 void DEC_258;
+// Referenced for compile-checked dependency per DEC-718: every accepted
+// answer must survive a JSON round trip before it is written.
+void DEC_718;
+
+// DEC-718: a validator (src/forms/validate.ts) admitting a value it cannot
+// actually persist would turn a required answer into a silent null in D1.
+// This is the write-time backstop — deep-equal the value against its own
+// JSON.parse(JSON.stringify(...)) round trip, and throw NAMING the field id
+// if they diverge (NaN/Infinity/undefined/functions/symbols all diverge:
+// JSON.stringify turns NaN/Infinity into "null" and undefined into the
+// `undefined` return value, neither of which round-trips back to the
+// original value).
+function jsonDeepEqual(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+    return a.every((v, i) => jsonDeepEqual(v, b[i]));
+  }
+  if (a !== null && b !== null && typeof a === "object" && typeof b === "object") {
+    const aKeys = Object.keys(a as Record<string, unknown>);
+    const bKeys = Object.keys(b as Record<string, unknown>);
+    if (aKeys.length !== bKeys.length) return false;
+    return aKeys.every((k) =>
+      Object.prototype.hasOwnProperty.call(b, k) &&
+      jsonDeepEqual((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]),
+    );
+  }
+  return false;
+}
+
+function assertJsonRoundTrips(fieldId: string, value: unknown): void {
+  const json = JSON.stringify(value);
+  if (json === undefined) {
+    throw new Error(`submission answer for field "${fieldId}" is not JSON-serializable`);
+  }
+  const roundTripped: unknown = JSON.parse(json);
+  if (!jsonDeepEqual(value, roundTripped)) {
+    throw new Error(`submission answer for field "${fieldId}" does not survive a JSON round trip`);
+  }
+}
 
 export interface EventRow {
   id: string;
@@ -280,14 +320,19 @@ export async function upsertSubmissionAnswers(
   const now = new Date();
   const rows = Object.entries(answers)
     .filter(([fieldId]) => lockedFieldName(fieldId) === null)
-    .map(([fieldId, value]) => ({
-      id: newId(),
-      submissionId,
-      formFieldId: fieldId,
-      valueJson: JSON.stringify(value),
-      createdAt: now,
-      updatedAt: now,
-    }));
+    .map(([fieldId, value]) => {
+      // DEC-718: fail loudly at the write rather than silently persisting
+      // a `null` for a value the validator should never have admitted.
+      assertJsonRoundTrips(fieldId, value);
+      return {
+        id: newId(),
+        submissionId,
+        formFieldId: fieldId,
+        valueJson: JSON.stringify(value),
+        createdAt: now,
+        updatedAt: now,
+      };
+    });
   if (rows.length === 0) return;
   // DEC-528: chunked by bound-parameter budget (columns-per-row derived).
   for (const chunk of chunkRowsForInsert(rows)) {

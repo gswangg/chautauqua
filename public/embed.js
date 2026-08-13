@@ -6,9 +6,18 @@
 //     page's origin) -- a foreign src is refused and rendered as a visible
 //     link, never a blank box.
 //   - the iframe is sandboxed (allow-scripts only, no allow-same-origin) and
-//     sent with referrerpolicy="strict-origin".
-//   - a resize message is honored only when event.origin, event.source AND
-//     a per-instance random `embed_id` all match this instance.
+//     sent with referrerpolicy="strict-origin"; per DEC-617 the sandbox is
+//     kept, which means the child document runs in an OPAQUE origin and
+//     every message it posts arrives with event.origin === "null" -- that
+//     is expected, not a spoof.
+//   - because event.origin can never be trusted to prove identity for a
+//     sandboxed child (it is always either our real origin or the literal
+//     string "null"), identity instead rests on the axes an attacker in a
+//     different window CANNOT forge: event.source must be exactly this
+//     instance's own iframe.contentWindow, AND the message payload's `id`
+//     must match this instance's per-instance random `embed_id`. Only once
+//     both of those match do we additionally require that event.origin be
+//     either SCRIPT_ORIGIN or "null" -- any other origin string is refused.
 //   - the applied height is always clamped to [MIN_HEIGHT, MAX_HEIGHT].
 //
 // test/embed-element.test.ts loads and executes THIS file (not a TS
@@ -110,13 +119,18 @@
     this._chqIframe = iframe;
 
     this._chqOnMessage = function (event) {
-      // All three axes must match: origin, source window, AND instance id.
-      if (event.origin !== self._chqExpectedOrigin) return;
+      // Identity rests on the unforgeable axes: the message must come from
+      // exactly this instance's own iframe window, carrying exactly this
+      // instance's id. Only then do we check origin, and a sandboxed child
+      // (no allow-same-origin, DEC-617) posts from an opaque origin --
+      // event.origin === "null" -- so that literal string is accepted
+      // alongside our real SCRIPT_ORIGIN; any other origin is refused.
       if (!self._chqIframe || event.source !== self._chqIframe.contentWindow) return;
       var data = event.data;
       if (!data || typeof data !== "object") return;
       if (data.type !== "chq-embed-height") return;
       if (data.id !== self._chqId) return;
+      if (event.origin !== self._chqExpectedOrigin && event.origin !== "null") return;
       self._chqIframe.style.height = clampHeight(data.height) + "px";
     };
     window.addEventListener("message", this._chqOnMessage);
