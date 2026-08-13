@@ -225,6 +225,14 @@ API docs 12px · main/footer landmarks · published-row meta qualifier · sectio
 head 4pt · (CORRECTION: bare session counts are frame-legal; gate-1 premise too
 strict).
 
+**USER-TEST FINDING (prod, real submit): EVERY CFP form field is marked
+required** — bio, company, job title, notes-for-reviewers AND both custom
+questions ("Key takeaway", one more). Frames mark several "· OPTIONAL";
+DEC-909's grammar exists but the SEEDED FORM CONFIG requires all. Fix the seed
+form field configs (required only: title, abstract, name, email, track, format)
++ assert via test. This also inflates grader/judge friction on the first public
+flow.
+
 **Public/Portal — GATE-2: FAIL improved — PLANNER: SCHEDULE THIS BATCH NEXT
 (user-priority: "the public pages look quite bad" — these are the judge's
 logged-out first impression). DECIDED (user, 2026-08-13): public submit form
