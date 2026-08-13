@@ -485,12 +485,13 @@ export function ConfirmationPage(props: {
   state: ConfirmationState;
   eventSlug: string;
   form: FormRow;
+  emailDelivered: boolean;
 }) {
   return (
     <PageShell title={`Submission received - ${props.event.name}`}>
       <div class="chq-cfp-confirm">
         <span class="chq-cfp-confirm-flag">SUBMITTED &middot; {props.ref}</span>
-        <h1>That's in. Check your email.</h1>
+        <h1>{props.emailDelivered ? "That's in. Check your email." : "That's in. We couldn't send your confirmation email."}</h1>
         <p class="chq-cfp-confirm-body">
           {props.form.closeDate
             ? `You can edit this until ${formatEventDateTime(dayLabelEndInstant(props.form.closeDate, props.event.timezone), props.event.timezone)}.`
@@ -505,7 +506,15 @@ export function ConfirmationPage(props: {
             the earlier copy asserted arrival timing the confirmation email
             send (a best-effort side effect) can't actually guarantee. */}
         <p class="chq-cfp-confirm-body">
-          We've emailed a confirmation for "{props.title}" to {props.submittedEmail}.
+          {props.emailDelivered ? (
+            <>
+              We've emailed a confirmation for "{props.title}" to {props.submittedEmail}.
+            </>
+          ) : (
+            <>
+              We couldn't send a confirmation email to {props.submittedEmail}. Your submission "{props.title}" is saved under ref {props.ref}.
+            </>
+          )}
         </p>
         <div class="chq-cfp-confirm-actions">
           {props.state === "has-account" ? (
@@ -516,7 +525,14 @@ export function ConfirmationPage(props: {
             </p>
           ) : props.state === "pending-existing-contact" ? (
             <>
-              <p>A password-setup link was emailed to {props.submittedEmail}.</p>
+              {props.emailDelivered ? (
+                <p>A password-setup link was emailed to {props.submittedEmail}.</p>
+              ) : (
+                <p>
+                  We couldn't email a password-setup link this time. If you already set one up, log in below; otherwise ask the
+                  organiser to resend your portal invite.
+                </p>
+              )}
               <p>
                 Already have a password? <a href="/login">Log in &rsaquo;</a>
               </p>

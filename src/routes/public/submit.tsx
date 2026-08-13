@@ -620,6 +620,7 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
   // that showed the speaker an error page while the row persisted, so every
   // retry created a duplicate. Log it (the send attempt is recorded in
   // email_log with status 'failed' by the mailer) and still show success.
+  let confirmationEmailSent = true;
   try {
     // DEC-547: construct the mailer inside this same guarded region — a
     // misconfigured environment throws here exactly like a rejected send,
@@ -635,6 +636,7 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
       contactId,
     });
   } catch (err) {
+    confirmationEmailSent = false;
     console.error("submission confirmation email failed (submission still saved):", err);
   }
 
@@ -659,6 +661,7 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
       state={confirmationState}
       eventSlug={event.slug}
       form={form}
+      emailDelivered={confirmationEmailSent}
     />,
   );
 });

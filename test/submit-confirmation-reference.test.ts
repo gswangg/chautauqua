@@ -44,6 +44,7 @@ function render(state: "fresh" | "pending-existing-contact" | "has-account", for
     state,
     eventSlug: EVENT_ROW.slug,
     form,
+    emailDelivered: true,
   });
   return el.toString();
 }
