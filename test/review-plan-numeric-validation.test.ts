@@ -112,6 +112,15 @@ vi.mock("../src/server/repo/review", async () => {
           .map((e) => e.submissionId),
       );
     }),
+    // DEC-831: this reviewer's own scores, keyed by submissionId -- the
+    // queue's myScore column.
+    listEvaluationScoresForReviewer: vi.fn(async (_db: unknown, planId: string, round: number, reviewerId: string) => {
+      return new Map(
+        store
+          .filter((e) => e.planId === planId && e.round === round && e.reviewerId === reviewerId)
+          .map((e) => [e.submissionId, e.scores]),
+      );
+    }),
     getEvaluation: vi.fn(
       async (_db: unknown, planId: string, submissionId: string, reviewerId: string, round: number) =>
         store.find(

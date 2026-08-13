@@ -313,8 +313,8 @@ describe('ReviewPage render smoke: reviewer', () => {
       [`GET /api/v1/review/plans/${PLAN_ID}`]: planWithNullDates(),
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
         ...listEnvelope([
-          { submissionId: 'sub-1', ref: 'S-001', title: 'A Talk About Testing', ratingsCount: 0, alreadyRatedByMe: false },
-          { submissionId: 'sub-2', ref: 'S-002', title: 'Another Talk', ratingsCount: 1, alreadyRatedByMe: true },
+          { submissionId: 'sub-1', ref: 'S-001', title: 'A Talk About Testing', ratingsCount: 0, alreadyRatedByMe: false, myScore: null },
+          { submissionId: 'sub-2', ref: 'S-002', title: 'Another Talk', ratingsCount: 1, alreadyRatedByMe: true, myScore: 4.5 },
         ]),
         open: true,
         recused: [],
@@ -327,16 +327,23 @@ describe('ReviewPage render smoke: reviewer', () => {
       </MemoryRouter>,
     );
 
-    // DEC-819: the plan-scoped route is headed by the plan's own name, not
-    // the landing page's generic "Your queue" -- that string is reserved
-    // for the unscoped /review landing.
+    // DEC-819/DEC-831: the plan-scoped route is headed by an eyebrow naming
+    // the plan (never the landing page's generic "Your queue"), and the h1
+    // itself now reads "N left to score" -- 1 of the 2 seeded items is
+    // still unrated.
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Keynote Track Review' })).toBeInTheDocument();
+      expect(screen.getByText('REVIEW · Keynote Track Review')).toBeInTheDocument();
     });
+    expect(await screen.findByRole('heading', { name: '1 left to score' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Your queue' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Your plans/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /A Talk About Testing/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Another Talk/ })).toBeInTheDocument();
+
+    // DEC-831: rows read SCORED/NOT SCORED, replacing the old bare
+    // "N ratings so far" count.
+    expect(screen.getByText('NOT SCORED')).toBeInTheDocument();
+    expect(screen.getByText('SCORED 4.5')).toBeInTheDocument();
 
     // DEC-561: completed items keep their spot in the delivered (never
     // re-sorted) order, rendered with a Complete pill.

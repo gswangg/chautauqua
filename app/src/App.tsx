@@ -45,7 +45,11 @@ const NotFoundPage = lazy(pageLoaders.notFound);
 // DEC-369: nav badge source. Each entry that can carry an exception names
 // which useNavExceptions() field drives its badge and the word that follows
 // the count ("3 LATE", "2 CLASH"). Sections with no badgeKey never show one.
-const NAV_SECTIONS = [
+// DEC-831: exported so App.render.test.tsx can enumerate every section
+// (rather than hand-listing paths, which desyncs the moment a section is
+// added/removed/reordered here) when asserting each nav link highlights at
+// its own route.
+export const NAV_SECTIONS = [
   { label: 'Overview', path: '/overview', element: <OverviewPage />, loader: pageLoaders.overview },
   { label: 'Submissions', path: '/submissions', element: <SubmissionsPage />, loader: pageLoaders.submissions },
   { label: 'Review', path: '/review/*', element: <ReviewPage />, loader: pageLoaders.review },
@@ -131,7 +135,11 @@ function NavLinks({
         return (
           <NavLink
             key={section.path}
-            to={section.path.replace(/\*$/, '')}
+            // DEC-831: strip the trailing "/*" wholesale (not just the "*"),
+            // so '/review/*' yields '/review', not '/review/' -- a trailing
+            // slash NavLink's isActive/aria-current match never resolves
+            // against the router's actual '/review' pathname.
+            to={section.path.replace(/\/\*$/, '')}
             className={({ isActive }) => `chq-nav-link${isActive ? ' is-active' : ''}`}
             onMouseEnter={() => prefetch(section.path)}
             onFocus={() => prefetch(section.path)}
@@ -198,7 +206,11 @@ function Header() {
           {primaryTabs.map((section) => (
             <NavLink
               key={section.path}
-              to={section.path.replace(/\*$/, '')}
+              // DEC-831: strip the trailing "/*" wholesale (not just the "*"),
+            // so '/review/*' yields '/review', not '/review/' -- a trailing
+            // slash NavLink's isActive/aria-current match never resolves
+            // against the router's actual '/review' pathname.
+            to={section.path.replace(/\/\*$/, '')}
               className={({ isActive }) => `chq-nav-link${isActive ? ' is-active' : ''}`}
             >
               {({ isActive }) => (

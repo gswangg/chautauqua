@@ -72,6 +72,7 @@ describe("GET /api/v1/review/plans/:id/queue (DEC-466/461(e) bounds)", () => {
         resolveReviewerSubmissions: vi.fn(async () => submissions),
         countEvaluationsBySubmission: vi.fn(async () => new Map(submissions.map((s, i) => [s.id, i]))),
         listSubmissionIdsRatedBy: vi.fn(async () => new Set<string>()),
+        listEvaluationScoresForReviewer: vi.fn(async () => new Map()),
         listRecusalsForReviewer: vi.fn(async () => []),
       };
     });

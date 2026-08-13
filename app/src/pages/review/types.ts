@@ -48,6 +48,10 @@ export interface EvaluationPlan {
   // by convention) uses `criteria` above. null/undefined = no overrides.
   roundCriteria?: Record<string, EvaluationCriterion[]> | null;
   maxEvaluations: number | null;
+  // DEC-522: the owning event's IANA timezone, joined in server-side so a
+  // plan's open/close window/relative "closes in N days" reads correctly
+  // regardless of the viewer's own timezone.
+  timezone: string;
   createdAt: number;
   // DEC-676: GET /api/v1/plans/:id only -- recorded-evaluation count per
   // round, keyed by round number as a string. Surfaces DEC-213's
@@ -179,6 +183,9 @@ export interface ReviewerQueueItem {
   title: string;
   ratingsCount: number;
   alreadyRatedByMe: boolean;
+  // DEC-831: this reviewer's own blended score for the plan's current round
+  // (computeWeightedScore over their recorded scores), null when unscored.
+  myScore: number | null;
 }
 
 // DEC-271: a submission this reviewer has recused themselves from (conflict

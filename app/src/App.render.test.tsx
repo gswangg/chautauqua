@@ -6,7 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { App } from './App';
+import { App, NAV_SECTIONS } from './App';
 import { mockApi } from './test-utils/mockApi';
 
 beforeEach(() => {
@@ -220,6 +220,35 @@ describe('Desktop header single row + identity (DEC-576)', () => {
     expect(screen.queryByText('organizer@example.com')).not.toBeInTheDocument();
     expect(screen.queryByText(/undefined/i)).not.toBeInTheDocument();
   });
+});
+
+// DEC-831: a hand-listed section/path pair desyncs the moment NAV_SECTIONS
+// changes -- enumerate the real array instead. Regression coverage for the
+// '/review/*'.replace(/\*$/, '') bug (yields '/review/', a trailing slash
+// NavLink's isActive/aria-current match never resolves against the
+// router's actual '/review' pathname), generalized to every section so a
+// future section with the same '/foo/*' shape is covered automatically.
+describe('Nav link active-state coverage (DEC-831)', () => {
+  it.each(NAV_SECTIONS.map((section) => [section.label, section.path] as const))(
+    'marks %s as active with aria-current="page" when the router is at its own path',
+    async (label, path) => {
+      const target = path.replace(/\/\*$/, '');
+      window.history.pushState({}, '', `/admin${target}`);
+      mockApi({
+        'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+        'GET /api/v1/events': { items: [], total: 0, page: 1, perPage: 50 },
+      });
+
+      render(<App />);
+
+      const primaryNav = await screen.findByRole('navigation', { name: 'Primary' });
+      const link = await within(primaryNav).findByRole('link', { name: label });
+      await waitFor(() => {
+        expect(link).toHaveClass('is-active');
+        expect(link).toHaveAttribute('aria-current', 'page');
+      });
+    },
+  );
 });
 
 describe('Phone tab bar (DEC-381)', () => {
