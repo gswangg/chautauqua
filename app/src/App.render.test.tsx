@@ -9,6 +9,7 @@ import '@testing-library/jest-dom/vitest';
 import { App, NAV_SECTIONS } from './App';
 import { mockApi } from './test-utils/mockApi';
 import { resetEventsCacheForTests } from './lib/useCurrentEvent';
+import { matchesAdminRoute } from './lib/admin-routes';
 
 beforeEach(() => {
   window.history.pushState({}, '', '/admin/this-page-does-not-exist');
@@ -46,6 +47,22 @@ describe('App catch-all route', () => {
     // around the 404 body.
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Overview ›' })).toHaveAttribute('href', '/admin/overview');
+  });
+
+  // DEC-154 (amendment, wave 53): the pushState path above
+  // ('/admin/this-page-does-not-exist') is itself proof the router's own
+  // catch-all still fires for a path ADMIN_ROUTE_PATTERNS does not
+  // declare, and this asserts the manifest agrees before the router is
+  // ever asked (Worker-side, this same predicate is what gates the 404 in
+  // src/routes/root.tsx).
+  it('the router-driving admin route manifest agrees the unmatched pushState path is not a declared route', () => {
+    expect(matchesAdminRoute('/this-page-does-not-exist')).toBe(false);
+  });
+
+  it('the manifest resolves a known path (proving RoutedContent, which renders FROM this same tuple, still resolves it)', () => {
+    expect(matchesAdminRoute('/overview')).toBe(true);
+    expect(matchesAdminRoute('/review/plans/xyz')).toBe(true);
+    expect(matchesAdminRoute('/submissions/abc123')).toBe(true);
   });
 });
 

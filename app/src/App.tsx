@@ -7,6 +7,7 @@ import { identityLabel } from './lib/identity';
 import { EventSwitcher } from './components/EventSwitcher';
 import { DelayedLoading } from './components/DelayedLoading';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
+import { ADMIN_ROUTE_PATTERNS } from './lib/admin-routes';
 
 // DEC-052: every route page is code-split via React.lazy. Page modules keep
 // their named exports; the thunk map below is reused both to build the lazy
@@ -65,6 +66,47 @@ export const NAV_SECTIONS = [
 ] as const;
 
 type NavSection = (typeof NAV_SECTIONS)[number];
+
+// DEC-154 (amendment, wave 53): RoutedContent renders its <Route> elements
+// FROM ADMIN_ROUTE_PATTERNS via this Record, not a hand-written list that
+// merely agrees with it -- a missing or extra element is then a TypeScript
+// error, so the SPA's route table and the Worker's admin-routes.ts manifest
+// (which gates the /admin/* 404) cannot desync.
+const ELEMENT_BY_PATTERN: Record<(typeof ADMIN_ROUTE_PATTERNS)[number], ReactNode> = {
+  '/': <Navigate to="/overview" replace />,
+  '/overview': <OverviewPage />,
+  '/submissions': <SubmissionsPage />,
+  '/review/*': <ReviewPage />,
+  '/speakers': <SpeakersPage />,
+  '/content': <ContentPage />,
+  '/agenda': <AgendaPage />,
+  '/comms': <CommsPage />,
+  '/contacts': <ContactsPage />,
+  '/settings': <SettingsPage />,
+  // DEC-684: contact merge lives under Contacts (route only — no new
+  // top-nav section, mirrors /submissions/forms below).
+  '/contacts/merge': <ContactsMergePage />,
+  // DEC-033: form builder lives under Submissions (route only — no new
+  // top-nav section).
+  '/submissions/forms': <FormsPage />,
+  // DEC-886: session delete confirmation page (route only — no new top-nav
+  // section, mirrors /submissions/forms above). React Router v6 ranks a
+  // static path above the dynamic :id segment below regardless of
+  // declaration order.
+  '/submissions/delete': <DeleteSubmissionsPage />,
+  // DEC-045: submission detail.
+  '/submissions/:id': <SubmissionDetailPage />,
+  // DEC-930: per-speaker detail page, mirrors the submission detail route
+  // above -- a static path (/speakers) is already claimed by NAV_SECTIONS,
+  // so declaration order here doesn't matter.
+  '/speakers/:contactId': <SpeakerDetailPage />,
+  // DEC-935: a session's content (deliverables, versions, notes) lives at
+  // its own URL, not behind ?submissionId= on the worklist route.
+  // ContentApp itself reads the id via useParams and renders the
+  // deliverable detail in place of the worklist -- same component as the
+  // /content route above, reused rather than split into a separate page.
+  '/content/:submissionId': <ContentPage />,
+};
 
 // Module-level map of path -> import thunk, used to prefetch a page's chunk
 // on nav-link hover/focus before the user actually navigates (SPEC §7).
@@ -271,38 +313,13 @@ function RoutedContent() {
     <RouteErrorBoundary key={location.pathname}>
       <Suspense fallback={<DelayedLoading />}>
         <Routes>
-          <Route path="/" element={<Navigate to="/overview" replace />} />
-          {NAV_SECTIONS.map((section) => (
-            <Route key={section.path} path={section.path} element={section.element} />
+          {/* DEC-154 (amendment, wave 53): rendered FROM ADMIN_ROUTE_PATTERNS
+              via ELEMENT_BY_PATTERN, so this list cannot desync from the
+              Worker's admin-routes.ts manifest -- a missing/extra element
+              is a TypeScript error, not a silent gap. */}
+          {ADMIN_ROUTE_PATTERNS.map((pattern) => (
+            <Route key={pattern} path={pattern} element={ELEMENT_BY_PATTERN[pattern]} />
           ))}
-          {/* DEC-684: contact merge lives under Contacts (route only — no
-              new top-nav section, mirrors /submissions/forms below). */}
-          <Route path="/contacts/merge" element={<ContactsMergePage />} />
-          {/* DEC-033: form builder lives under Submissions (route only — no new top-nav section). */}
-          <Route path="/submissions/forms" element={<FormsPage />} />
-          {/* DEC-886: session delete confirmation page (route only — no new
-              top-nav section, mirrors /submissions/forms above). React
-              Router v6 ranks this static path above the dynamic :id
-              segment below regardless of declaration order. */}
-          <Route path="/submissions/delete" element={<DeleteSubmissionsPage />} />
-          {/* DEC-045: submission detail. React Router v6 ranks the static
-              /submissions/forms route above this dynamic :id segment, so
-              declaration order here doesn't matter, but forms stays
-              first for readability. */}
-          <Route path="/submissions/:id" element={<SubmissionDetailPage />} />
-          {/* DEC-930: per-speaker detail page, mirrors the submission detail
-              route above -- a static path (/speakers) is already claimed by
-              NAV_SECTIONS, so declaration order here doesn't matter. */}
-          <Route path="/speakers/:contactId" element={<SpeakerDetailPage />} />
-          {/* DEC-935: a session's content (deliverables, versions, notes)
-              lives at its own URL, not behind ?submissionId= on the
-              worklist route. ContentApp itself reads the id via
-              useParams and renders the deliverable detail in place of the
-              worklist -- same component as the /content route above,
-              reused rather than split into a separate page (mirrors how
-              /submissions/:id above IS a distinct page, but content's
-              worklist/detail toggle is intentionally one component). */}
-          <Route path="/content/:submissionId" element={<ContentPage />} />
           {/* DEC-154: admin catch-all, must stay last so specific routes win. */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
