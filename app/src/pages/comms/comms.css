@@ -428,6 +428,22 @@
   display: flex;
   flex-direction: column;
   gap: 13px;
+  /* w40-g: the template editor is a reading-measure surface (v6), not the
+     wide .chq-measure-table (1440) Comms.tsx puts every tab on. width:100%
+     is mandatory alongside the auto side margins -- this is a flex-column
+     child, and auto margins alone on a flex item shrink-wrap it to its
+     content instead of clamping it (DEC-808). */
+  width: 100%;
+  max-width: var(--chq-measure);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* w40-g: the body textarea rendered 187x166 in a 671px column -- it never
+   filled the editor's own measure and never got a usable height. */
+.chq-comms-editor .chq-textarea {
+  width: 100%;
+  min-height: 220px;
 }
 
 .chq-comms-editor-label {
