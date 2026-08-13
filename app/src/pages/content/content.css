@@ -417,6 +417,16 @@
   flex-wrap: wrap;
 }
 
+/* w1-f (DEC-733/eval 60/37): Files library stat line + Download all,
+   mirrors the mock's header ('N files' + Download all). */
+.chq-content-files-stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .chq-content-files-pager {
   display: flex;
   align-items: center;

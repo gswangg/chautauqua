@@ -47,6 +47,7 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
         page={1}
         perPage={20}
         onPageChange={noop}
+        now={1700000200000}
       />,
     );
 
@@ -68,6 +69,7 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
         page={1}
         perPage={20}
         onPageChange={noop}
+        now={1700000200000}
       />,
     );
 
@@ -91,6 +93,7 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
         page={1}
         perPage={20}
         onPageChange={noop}
+        now={1700000200000}
       />,
     );
 
@@ -112,6 +115,7 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
         page={1}
         perPage={20}
         onPageChange={noop}
+        now={1700000200000}
       />,
     );
 
@@ -133,6 +137,7 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
         page={1}
         perPage={20}
         onPageChange={noop}
+        now={1700000200000}
       />,
     );
 
@@ -154,6 +159,7 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
         page={1}
         perPage={20}
         onPageChange={noop}
+        now={1700000200000}
       />,
     );
 
@@ -175,6 +181,7 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
         page={1}
         perPage={20}
         onPageChange={noop}
+        now={1700000200000}
       />,
     );
 
@@ -198,10 +205,129 @@ describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
         page={1}
         perPage={20}
         onPageChange={noop}
+        now={1700000200000}
       />,
     );
 
     screen.getByRole('button', { name: 'Open' }).click();
     expect(onSelect).toHaveBeenCalledWith('sub-1');
+  });
+});
+
+// w1-f (DEC-733/eval 60/37): item (1) — Approve is ABSENT (never disabled)
+// on an already-approved row.
+describe('SessionList: Approve is absent, not disabled, once a row is approved', () => {
+  it('renders no Approve button for an approved row', () => {
+    render(
+      <SessionList
+        items={[{ ...baseItem, contentStatus: 'approved' }]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={1}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open' })).toBeInTheDocument();
+  });
+
+  it('still renders Approve for a pending row', () => {
+    render(
+      <SessionList
+        items={[baseItem]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={1}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument();
+  });
+});
+
+// w1-f (DEC-733/eval 60/37): item (3) — LATEST FILE shows relative dates.
+describe('SessionList: Latest file column renders a relative date', () => {
+  const dayMs = 86_400_000;
+
+  it("renders 'today' when uploaded within the last day", () => {
+    const now = 1700000000000;
+    const { container } = render(
+      <SessionList
+        items={[{ ...baseItem, latestFile: { ...baseItem.latestFile!, uploadedAt: now } }]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={1}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={now}
+      />,
+    );
+
+    expect(container.querySelector('.chq-content-latest-file-date')).toHaveTextContent('today');
+  });
+
+  it("renders 'yesterday' one day out", () => {
+    const now = 1700000000000;
+    const { container } = render(
+      <SessionList
+        items={[{ ...baseItem, latestFile: { ...baseItem.latestFile!, uploadedAt: now - dayMs } }]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={1}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={now}
+      />,
+    );
+
+    expect(container.querySelector('.chq-content-latest-file-date')).toHaveTextContent('yesterday');
+  });
+
+  it("renders 'N days ago' beyond one day", () => {
+    const now = 1700000000000;
+    const { container } = render(
+      <SessionList
+        items={[{ ...baseItem, latestFile: { ...baseItem.latestFile!, uploadedAt: now - 2 * dayMs } }]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={1}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={now}
+      />,
+    );
+
+    expect(container.querySelector('.chq-content-latest-file-date')).toHaveTextContent('2 days ago');
   });
 });
