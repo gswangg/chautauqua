@@ -51,10 +51,19 @@ interface SubmissionRow {
   id: string;
   eventId: string;
   contentStatus: string;
+  /** DEC-041: the delete route's edit lock needs submission status + the
+   * owning form's close date in the same round trip as the org/content read. */
+  status: string;
+  formId: string | null;
 }
 interface EventRow {
   id: string;
   orgId: string;
+  timezone: string;
+}
+interface FormRow {
+  id: string;
+  closeDate: Date | null;
 }
 /** DEC-926: deleteFileVersion re-homes (never deletes) task_assignment rows
  * that point at the deleted file, so the fake has to model that table too. */
@@ -72,7 +81,9 @@ function makeFakeDb(state: {
   submissions: SubmissionRow[];
   events: EventRow[];
   assignments: AssignmentRow[];
+  forms?: FormRow[];
 }) {
+  const forms = state.forms ?? [];
   const calls: { op: "insert" | "update" | "delete"; table: string; detail: unknown }[] = [];
 
   const db = {
@@ -110,7 +121,9 @@ function makeFakeDb(state: {
           if (table === schema.submission) {
             return {
               innerJoin(_eventTable: unknown, _cond: unknown) {
-                return {
+                // submission INNER JOIN event LEFT JOIN form: the form side is
+                // optional, so a submission with no form still yields a row.
+                const joined = {
                   where(cond: unknown) {
                     const literals = collectLiteralValues(cond);
                     return {
@@ -119,11 +132,25 @@ function makeFakeDb(state: {
                         if (!sub) return [];
                         const ev = state.events.find((e) => e.id === sub.eventId);
                         if (!ev) return [];
-                        return [{ eventId: sub.eventId, orgId: ev.orgId, contentStatus: sub.contentStatus }];
+                        const form = sub.formId ? forms.find((f) => f.id === sub.formId) : undefined;
+                        return [
+                          {
+                            eventId: sub.eventId,
+                            orgId: ev.orgId,
+                            contentStatus: sub.contentStatus,
+                            status: sub.status,
+                            formCloseDate: form?.closeDate ?? null,
+                            timezone: ev.timezone,
+                          },
+                        ];
                       },
                     };
                   },
+                  leftJoin(_formTable: unknown, _formCond: unknown) {
+                    return joined;
+                  },
                 };
+                return joined;
               },
             };
           }
@@ -231,13 +258,16 @@ function chain() {
     { id: "cm1", fileId: "v2", authorUserId: "u1", authorContactId: null, body: "looks good", createdAt: new Date(1000) },
     { id: "cm2", fileId: "v2", authorUserId: "u1", authorContactId: null, body: "one more pass", createdAt: new Date(2000) },
   ];
-  const submissions: SubmissionRow[] = [{ id: "sub1", eventId: "ev1", contentStatus: "pending" }];
-  const events: EventRow[] = [{ id: "ev1", orgId: "org1" }];
+  const submissions: SubmissionRow[] = [
+    { id: "sub1", eventId: "ev1", contentStatus: "pending", status: "accepted", formId: "form1" },
+  ];
+  const events: EventRow[] = [{ id: "ev1", orgId: "org1", timezone: "America/New_York" }];
+  const forms: FormRow[] = [{ id: "form1", closeDate: new Date(90_000) }];
   // completed assignment linked to the middle version (v2)
   const assignments: AssignmentRow[] = [
     { id: "asg1", status: "complete", completedAt: new Date(5000), completedBy: "c1", fileId: "v2" },
   ];
-  return { files, comments, submissions, events, assignments };
+  return { files, comments, submissions, events, assignments, forms };
 }
 
 describe("deleteFileVersion (DEC-713)", () => {
@@ -367,6 +397,19 @@ describe("getFileDeleteScope (DEC-713)", () => {
 
     const latest = await getFileDeleteScope(db, "v3");
     expect(latest?.isLatestInChain).toBe(true);
+  });
+
+  // DEC-041 (wave-46): the DELETE route decides the edit lock from this one
+  // read, so the scope must carry submission status + form close date + tz.
+  it("carries the submission status, form close date and event timezone the edit lock needs", async () => {
+    const { db } = makeFakeDb(chain());
+
+    const scope = await getFileDeleteScope(db, "v3");
+    expect(scope).toMatchObject({
+      status: "accepted",
+      formCloseDate: 90_000,
+      timezone: "America/New_York",
+    });
   });
 
   it("returns null for an unknown file id", async () => {
