@@ -1,15 +1,22 @@
 // Public pages and embeds settings panel (w15-e, DEC-691; row set + pill
-// state w3-c, DEC-747): lists this event's public surfaces (docs/design/
-// Chautauqua Settings.dc.html lines 128-139) -- Sessions, Speakers, Agenda,
-// Schedule, Speaker gallery and the CFP submit page -- each row's
-// live/not-published state DERIVED from real data (the event's
-// accepted-submission count and the CFP form's open/close window), never a
-// hardcoded 'live'. The embed builder (EmbedsPanel, EMB-15 / DEC-289,
-// unmodified) is reachable from this section via each row's "Embed code"
-// control -- it is a second sub-section, not a replacement for the list.
+// state w3-c, DEC-747; per-surface counts w1-d, DEC-767): lists this
+// event's public surfaces (docs/design/Chautauqua Settings.dc.html lines
+// 128-139) -- Sessions, Speakers, Agenda, Schedule, Speaker gallery and the
+// CFP submit page -- each row's live/not-published state DERIVED from real
+// data. DEC-767: the accepted-submission total is NOT the right count for
+// every surface -- a session can be accepted but still content-pending, or
+// its only participant may not be publicly visible, so Sessions/Agenda/
+// Schedule and Speakers/Gallery can legitimately show DIFFERENT numbers.
+// GET /api/v1/events/:eventId/public-surfaces (src/routes/api/
+// public-surfaces.ts) composes the SAME predicates the SSR public surfaces
+// use (src/server/repo/public/counts.ts) so this panel's numbers can never
+// drift from what a visitor actually sees. The embed builder (EmbedsPanel,
+// EMB-15 / DEC-289, unmodified) is reachable from this section via each
+// row's "Embed code" control -- it is a second sub-section, not a
+// replacement for the list.
 import { useEffect, useState } from 'react';
 import { DelayedLoading } from '../../components/DelayedLoading';
-import { apiGet, apiList, ApiError } from '../../lib/api';
+import { apiGet, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { EmbedsPanel } from './EmbedsPanel';
 
@@ -21,6 +28,12 @@ interface EventSummary {
 interface CfpFormSummary {
   openDate?: number | null;
   closeDate?: number | null;
+}
+
+interface PublicSurfaceCounts {
+  sessions: number;
+  speakers: number;
+  scheduled: number;
 }
 
 interface PublicPageRow {
@@ -35,9 +48,9 @@ interface PublicPageRow {
 // settled there is no state to assert -- these return null (the row renders
 // the shared <DelayedLoading /> primitive) rather than a bare literal or,
 // worse, a premature "Not published yet".
-function surfaceState(acceptedCount: number | null): string | null {
-  if (acceptedCount === null) return null;
-  return acceptedCount > 0 ? `Live · ${acceptedCount} published` : 'Not published yet';
+function surfaceState(count: number | null): string | null {
+  if (count === null) return null;
+  return count > 0 ? `Live · ${count} published` : 'Not published yet';
 }
 
 function cfpState(form: CfpFormSummary | null, now: number): string | null {
@@ -57,7 +70,7 @@ function stateTone(state: string): 'live' | 'muted' {
 export function PublicPagesPanel() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
   const [event, setEvent] = useState<EventSummary | null>(null);
-  const [acceptedCount, setAcceptedCount] = useState<number | null>(null);
+  const [counts, setCounts] = useState<PublicSurfaceCounts | null>(null);
   const [form, setForm] = useState<CfpFormSummary | null>(null);
   const [error, setError] = useState<string | undefined>(undefined);
   const [embedOpen, setEmbedOpen] = useState(false);
@@ -67,21 +80,28 @@ export function PublicPagesPanel() {
     apiGet<EventSummary>(`/events/${eventId}`)
       .then(setEvent)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load event'));
-    apiList<unknown>(`/events/${eventId}/submissions?status=accepted&perPage=1`)
-      .then((res) => setAcceptedCount(res.total))
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load submissions'));
+    // DEC-767: one endpoint sourcing the SAME predicates the SSR public
+    // surfaces use, so Sessions/Agenda/Schedule and Speakers/Gallery can
+    // read different, both-true numbers instead of one shared (and often
+    // wrong) accepted-submission total.
+    apiGet<PublicSurfaceCounts>(`/events/${eventId}/public-surfaces`)
+      .then(setCounts)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load public surface counts'));
     apiGet<CfpFormSummary>(`/events/${eventId}/forms`)
       .then(setForm)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load the CFP form'));
   }, [eventId]);
 
+  const sessionCount = counts ? counts.sessions : null;
+  const speakerCount = counts ? counts.speakers : null;
+
   const rows: PublicPageRow[] = event
     ? [
-        { key: 'sessions', name: 'Sessions', path: `/e/${event.slug}/sessions`, state: surfaceState(acceptedCount) },
-        { key: 'speakers', name: 'Speakers', path: `/e/${event.slug}/speakers`, state: surfaceState(acceptedCount) },
-        { key: 'agenda', name: 'Agenda', path: `/e/${event.slug}/agenda`, state: surfaceState(acceptedCount) },
-        { key: 'schedule', name: 'Schedule', path: `/e/${event.slug}/schedule`, state: surfaceState(acceptedCount) },
-        { key: 'gallery', name: 'Speaker gallery', path: `/e/${event.slug}/gallery`, state: surfaceState(acceptedCount) },
+        { key: 'sessions', name: 'Sessions', path: `/e/${event.slug}/sessions`, state: surfaceState(sessionCount) },
+        { key: 'speakers', name: 'Speakers', path: `/e/${event.slug}/speakers`, state: surfaceState(speakerCount) },
+        { key: 'agenda', name: 'Agenda', path: `/e/${event.slug}/agenda`, state: surfaceState(sessionCount) },
+        { key: 'schedule', name: 'Schedule', path: `/e/${event.slug}/schedule`, state: surfaceState(sessionCount) },
+        { key: 'gallery', name: 'Speaker gallery', path: `/e/${event.slug}/gallery`, state: surfaceState(speakerCount) },
         { key: 'submit', name: 'CFP submit page', path: `/submit/${event.slug}`, state: cfpState(form, Date.now()) },
       ]
     : [];
