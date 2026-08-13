@@ -166,9 +166,9 @@ function LoginPage(props: {
     <html lang="en">
       <AuthHead title="Log in - Chautauqua" />
       <body>
-        <div className="chq-auth-card">
+        <main className="chq-auth-card">
           <div>
-            <span className="chq-auth-wordmark">chautauqua</span>
+            <h1 className="chq-auth-wordmark">chautauqua</h1>
             <div className="chq-auth-subtitle">{subtitle}</div>
           </div>
           {props.error ? (
@@ -185,7 +185,7 @@ function LoginPage(props: {
             <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
             <label>
               <span className="chq-auth-label">Email</span>
-              <input className="chq-input" type="email" name="email" required autofocus />
+              <input className="chq-input" type="email" name="email" placeholder="you@example.com" required autofocus />
             </label>
             <label>
               <span className="chq-auth-label">Password</span>
@@ -215,7 +215,7 @@ function LoginPage(props: {
                 {demoIdentities.map((identity) => (
                   <button
                     type="button"
-                    className="chq-btn-secondary chq-auth-demo-btn"
+                    className="chq-auth-demo-btn"
                     data-demo-email={identity.email}
                     data-demo-password={identity.password}
                   >
@@ -225,7 +225,7 @@ function LoginPage(props: {
               </div>
             </div>
           ) : null}
-        </div>
+        </main>
         {demoIdentities.length > 0 ? <script dangerouslySetInnerHTML={{ __html: DEMO_PREFILL_SCRIPT }} /> : null}
       </body>
     </html>
@@ -237,9 +237,9 @@ function ClaimPage(props: { csrfToken: string; error?: string }) {
     <html lang="en">
       <AuthHead title="Create your password - Chautauqua" />
       <body>
-        <div className="chq-auth-card">
+        <main className="chq-auth-card">
           <div>
-            <span className="chq-auth-wordmark">chautauqua</span>
+            <h1 className="chq-auth-wordmark">chautauqua</h1>
             <div className="chq-auth-subtitle">Create a password to track your submission</div>
           </div>
           {props.error ? (
@@ -257,7 +257,29 @@ function ClaimPage(props: { csrfToken: string; error?: string }) {
               Create password
             </button>
           </form>
-        </div>
+        </main>
+      </body>
+    </html>
+  );
+}
+
+function ExpiredClaimPage() {
+  return (
+    <html lang="en">
+      <AuthHead title="Link expired - Chautauqua" />
+      <body>
+        <main className="chq-auth-card chq-auth-card-narrow">
+          <div className="chq-auth-titlerow">
+            <span className="chq-auth-label">Link expired</span>
+            <h1 className="chq-auth-title">This link has expired</h1>
+          </div>
+          <p className="chq-auth-body">
+            Ask the organizer to send you a new portal invite. If you already set a password, you can sign in directly.
+          </p>
+          <div className="chq-auth-footer-links">
+            <a href="/login">Log in &rsaquo;</a>
+          </div>
+        </main>
       </body>
     </html>
   );
@@ -365,7 +387,7 @@ authRoutes.get("/claim/:token", async (c) => {
   const kv = c.env.KV as unknown as KVStore;
   const record = await readClaimToken(kv, token);
   if (!record) {
-    return c.text("This link is invalid or has expired.", 410);
+    return c.html(<ExpiredClaimPage />, 410);
   }
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);

@@ -67,12 +67,12 @@ function PasswordPage(props: { csrfToken: string; error?: string; success?: bool
         <style dangerouslySetInnerHTML={{ __html: AUTH_CSS }} />
       </head>
       <body>
-        <div className="chq-auth-card chq-auth-card-narrow">
-          <div>
+        <main className="chq-auth-card chq-auth-card-narrow">
+          <div className="chq-auth-titlerow">
             <a className="chq-auth-back" href="/admin">
               &lsaquo; Back
             </a>
-            <div className="chq-auth-title">Change your password</div>
+            <h1 className="chq-auth-title">Change your password</h1>
           </div>
           {props.error ? (
             <p className="chq-auth-error" role="alert">
@@ -102,7 +102,7 @@ function PasswordPage(props: { csrfToken: string; error?: string; success?: bool
               />
             </label>
             <label>
-              <span className="chq-auth-label">Confirm new password</span>
+              <span className="chq-auth-label">New password again</span>
               <input className="chq-input" type="password" name="confirm" minlength={MIN_PASSWORD_LENGTH} required />
             </label>
             <div className="chq-auth-actions">
@@ -112,7 +112,7 @@ function PasswordPage(props: { csrfToken: string; error?: string; success?: bool
               <span className="chq-auth-hint">You stay signed in on this device</span>
             </div>
           </form>
-        </div>
+        </main>
       </body>
     </html>
   );
