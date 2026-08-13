@@ -78,6 +78,11 @@ export function DuplicatesView({ onMerged, initialNotice, initialDismissPairIds 
       <h2 className="chq-section-label">
         <span>Possible duplicates</span> <span className="chq-contacts-pipeline-caption">· {visibleGroups.length}</span>
       </h2>
+      {/* DEC-143/DEC-748: the matching rule stated plainly so a same-name,
+          different-company non-match doesn't read as a bug. */}
+      <p className="chq-contacts-duplicates-rule">
+        Matched on the same email, or the same name at the same company.
+      </p>
       {error && <div className="chq-error">{error}</div>}
       {mergedNotice && (
         <div className="chq-error" role="status">

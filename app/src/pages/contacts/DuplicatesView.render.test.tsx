@@ -56,6 +56,22 @@ describe('DuplicatesView render (DEC-684: merge moved to its own page)', () => {
     expect(screen.queryByRole('dialog', { name: 'Merge duplicates' })).not.toBeInTheDocument();
   });
 
+  it('DEC-748: states the DEC-143 matching rule on the tab so a same-name-different-company non-match reads as intentional', async () => {
+    mockApi({
+      'GET /api/v1/contacts/duplicates': listEnvelope([GROUP]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <DuplicatesView onMerged={() => {}} />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByText('Matched on the same email, or the same name at the same company.'),
+    ).toBeInTheDocument();
+  });
+
   it('shows the one-shot merge notice passed in via initialNotice, without re-fetching a merge dialog', async () => {
     mockApi({
       'GET /api/v1/contacts/duplicates': listEnvelope([]),

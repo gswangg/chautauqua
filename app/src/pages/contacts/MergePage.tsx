@@ -16,6 +16,10 @@ import { apiList, apiGet, apiPost, ApiError } from '../../lib/api';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import type { DuplicateGroup } from './types';
+// DEC-738: Labels combine from every record's customFields, formatted by
+// the ONE server-importable formatter -- never a hand-copied "`key` value"
+// join here.
+import { contactLabels } from '../../../../src/domain/contact-labels';
 import './contacts-panels.css';
 
 // DEC-705: what the merge will actually write, computed server-side by the
@@ -58,6 +62,10 @@ export function MergePage() {
   const [mergeError, setMergeError] = useState<string | null>(null);
   const [preview, setPreview] = useState<MergeFieldPreview[] | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  // DEC-748: "N of M pairs" -- this pair's position among every duplicate
+  // group GET /contacts/duplicates currently reports, not a client-invented
+  // count.
+  const [pairPosition, setPairPosition] = useState<{ index: number; total: number } | null>(null);
 
   useEffect(() => {
     if (ids.length < 2) return;
@@ -66,15 +74,18 @@ export function MergePage() {
     const idSet = new Set(ids);
     apiList<DuplicateGroup>('/contacts/duplicates')
       .then((res) => {
-        const match = res.items.find(
+        const matchIndex = res.items.findIndex(
           (g) => g.contactIds.length === idSet.size && g.contactIds.every((id) => idSet.has(id)),
         );
+        const match = matchIndex === -1 ? undefined : res.items[matchIndex];
         if (!match) {
           setError('These records are no longer duplicates — they may already be merged.');
           setGroup(null);
+          setPairPosition(null);
           return;
         }
         setGroup(match);
+        setPairPosition({ index: matchIndex + 1, total: res.items.length });
         setKeepId(keepParam && match.contactIds.includes(keepParam) ? keepParam : (match.contactIds[0] ?? ''));
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load duplicate records'))
@@ -159,14 +170,23 @@ export function MergePage() {
             ))}
           </div>
 
+          {pairPosition && (
+            <p className="chq-contacts-merge-pair-count">
+              {pairPosition.index} of {pairPosition.total} {pairPosition.total === 1 ? 'pair' : 'pairs'}
+            </p>
+          )}
+
           <div className="chq-contacts-merge-compare-head">
             <span>Field</span>
-            <span>Keep this one</span>
+            <span>{keepContact.firstName} {keepContact.lastName}</span>
             <span>Discard</span>
           </div>
           {previewError && <div className="chq-error">{previewError}</div>}
           {!previewError && !preview && <DelayedLoading />}
-          {preview?.map((f) => {
+          {/* DEC-738: customFields.* preview rows are folded into the single
+              Labels row below (labels COMBINE, they are not chosen field by
+              field) instead of listing each raw custom-field key here. */}
+          {preview?.filter((f) => !f.key.startsWith('customFields.')).map((f) => {
             const note = outcomeNote(f.outcome);
             return (
               <div key={f.key} className="chq-contacts-merge-compare-row">
@@ -181,13 +201,33 @@ export function MergePage() {
                 >
                   {note
                     ? `${f.discarded.length > 0 ? f.discarded.join(' / ') + ' — ' : ''}${note}`
-                    : f.discarded.join(' / ') || '—'}
+                    : f.discarded.map((d) => (d === '' ? '—' : d)).join(' / ') || '—'}
                 </span>
               </div>
             );
           })}
+          {preview && (() => {
+            const combinedCustomFields: Record<string, string> = {};
+            for (const f of preview) {
+              if (f.key.startsWith('customFields.')) {
+                combinedCustomFields[f.key.slice('customFields.'.length)] = f.kept;
+              }
+            }
+            const labels = contactLabels(combinedCustomFields);
+            if (labels.length === 0) return null;
+            return (
+              <div className="chq-contacts-merge-compare-row">
+                <span className="chq-contacts-merge-compare-label">Labels</span>
+                <span className="chq-contacts-merge-compare-keep">{labels.join(', ')}</span>
+                <span className="chq-contacts-merge-compare-combine">combined from both records</span>
+              </div>
+            );
+          })()}
           {preview && preview.length === 0 && (
             <p className="chq-contacts-merge-compare-empty">Every field already matches — nothing else will change.</p>
+          )}
+          {preview && preview.some((f) => f.key.startsWith('customFields.')) && (
+            <p className="chq-contacts-merge-footnote">Labels always combine — they're never chosen one over the other.</p>
           )}
 
           <div className="chq-contacts-merge-footer">

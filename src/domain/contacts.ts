@@ -335,6 +335,12 @@ const MERGE_PREVIEW_STANDARD_FIELDS: { key: "firstName" | "lastName" | "email" |
  * value after every fold; `discarded` collects the distinct dropped values
  * (never populated for 'fill'/'append'/'combine' -- nothing is lost there,
  * it's incorporated into `kept`, not thrown away).
+ *
+ * DEC-748: a duplicate with a BLANK value against a non-blank primary field
+ * still emits a row -- outcome 'keep' with a discarded entry of "" (the
+ * caller renders that as a struck-through em dash) -- rather than being
+ * silently skipped. Only truly identical values (dupVal === beforeVal,
+ * including both blank) are suppressed as "nothing changed".
  */
 export function previewMerge(primary: ContactRecord, duplicates: ContactRecord[]): MergeFieldPreview[] {
   const outcomeByKey = new Map<string, MergeFieldPreview["outcome"]>();
@@ -350,10 +356,14 @@ export function previewMerge(primary: ContactRecord, duplicates: ContactRecord[]
       labelByKey.set(key, label);
       const beforeVal = (before[key] ?? "").trim();
       const dupVal = (duplicate[key] ?? "").trim();
-      if (dupVal === "" || dupVal === beforeVal) continue;
+      if (dupVal === beforeVal) continue;
       if (beforeVal === "") {
+        // dupVal is non-blank here (dupVal !== beforeVal === "")
         if (!outcomeByKey.has(key)) outcomeByKey.set(key, "fill");
       } else {
+        // beforeVal survives whether dupVal is blank or a differing value --
+        // either way the duplicate's side is discarded (DEC-748: a blank
+        // dupVal is discarded too, as "").
         outcomeByKey.set(key, "keep");
         const list = discardedByKey.get(key) ?? [];
         if (!list.includes(dupVal)) list.push(dupVal);
