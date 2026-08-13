@@ -135,11 +135,27 @@ export function PlanList() {
 
   return (
     <div className="chq-page chq-review-page">
-      <div className="chq-review-summary-row">
+      {/* DEC-706: title row -- h1 + summary, page-level actions
+         right-aligned beside it. No lone toolbar band above the list. */}
+      <div className="chq-review-title-row">
         <h1 className="chq-page-title">Review</h1>
         <span className="chq-summary">
           {plans.length} {plans.length === 1 ? 'plan' : 'plans'}
         </span>
+        <div className="chq-review-title-actions">
+          {selectedPlan && (
+            <a
+              href={buildResultsCsvHref(selectedPlan.id, selectedPlan.currentRound)}
+              download
+              className="chq-btn chq-btn-secondary"
+            >
+              Export results CSV
+            </a>
+          )}
+          <Link to="/review/plans/new" className="chq-btn chq-btn-primary">
+            New plan
+          </Link>
+        </div>
       </div>
       {error && (
         <div className="chq-error" role="alert">
@@ -147,72 +163,66 @@ export function PlanList() {
         </div>
       )}
 
-      <div className="chq-toolbar">
-        <Link to="/review/plans/new" className="chq-btn chq-btn-primary">
-          New plan
-        </Link>
-      </div>
-
       <section className="chq-section">
         <div className="chq-section-head">
           <h2 className="chq-section-label">Evaluation plans</h2>
         </div>
         {loading && <DelayedLoading />}
         {loaded && !loading && plans.length === 0 && <p className="chq-empty">No evaluation plans yet.</p>}
-        {plans.map((plan) => (
-          <div key={plan.id} className="chq-review-plan-row">
-            <label className="chq-review-plan-select">
-              <input
-                className="chq-check"
-                type="radio"
-                name="chq-review-plan-select"
-                aria-label={`Show ${plan.name} below`}
-                checked={selected === plan.id}
-                onChange={() => setSelected(plan.id)}
-              />
-            </label>
-            <div>
-              <Link to={`/review/plans/${plan.id}`} className="chq-review-plan-name">
-                {plan.name}
-              </Link>
+        {plans.map((plan) => {
+          const isSelected = selected === plan.id;
+          return (
+            // DEC-706: a plan row is chosen by clicking the row -- no radio
+            // input. A quiet active state + aria-current express selection;
+            // the row's own Progress/Results/Edit links stay real anchors
+            // (clicking one navigates, doesn't just re-select the row).
+            <div
+              key={plan.id}
+              className={`chq-review-plan-row${isSelected ? ' is-active' : ''}`}
+              role="button"
+              tabIndex={0}
+              aria-current={isSelected ? 'true' : undefined}
+              onClick={() => setSelected(plan.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setSelected(plan.id);
+                }
+              }}
+            >
+              <div>
+                <span className="chq-review-plan-name">{plan.name}</span>
+              </div>
+              <span className="chq-flag">{planState(plan, now)}</span>
+              <span className="chq-review-plan-meta">
+                {planWindow(plan)}
+                {plan.rounds > 1 && (
+                  <>
+                    {' '}
+                    · Round {plan.currentRound} of {plan.rounds}
+                  </>
+                )}
+              </span>
+              <PlanProgress rows={progressByPlan[plan.id]} />
+              <div className="chq-review-plan-actions">
+                <Link to={`/review/plans/${plan.id}/progress`} onClick={(e) => e.stopPropagation()}>
+                  Progress
+                </Link>
+                <Link to={`/review/plans/${plan.id}/results`} onClick={(e) => e.stopPropagation()}>
+                  Results
+                </Link>
+                <Link to={`/review/plans/${plan.id}`} onClick={(e) => e.stopPropagation()}>
+                  Edit
+                </Link>
+              </div>
             </div>
-            <span className="chq-flag">{planState(plan, now)}</span>
-            <span className="chq-review-plan-meta">
-              {planWindow(plan)}
-              {plan.rounds > 1 && (
-                <>
-                  {' '}
-                  · Round {plan.currentRound} of {plan.rounds}
-                </>
-              )}
-            </span>
-            <PlanProgress rows={progressByPlan[plan.id]} />
-            <div className="chq-review-plan-actions">
-              <Link to={`/review/plans/${plan.id}/progress`}>Progress</Link>
-              <Link to={`/review/plans/${plan.id}/results`}>Results</Link>
-              {/* DEC-674: reuses ResultsTable's own CSV mechanism
-                 (resultsCsv.ts's buildResultsCsvHref) -- not a second export
-                 implementation. */}
-              <a
-                href={buildResultsCsvHref(plan.id, plan.currentRound)}
-                download
-                className="chq-review-plan-export"
-              >
-                Export CSV
-              </a>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </section>
 
       {selectedPlan && (
         <>
-          <section className="chq-section chq-review-landing-progress">
-            <div className="chq-section-head">
-              <h2 className="chq-section-label">{selectedPlan.name} · reviewer progress</h2>
-            </div>
-            <ProgressPanel planId={selectedPlan.id} />
-          </section>
+          <ProgressPanel planId={selectedPlan.id} />
 
           <section className="chq-section chq-review-landing-results">
             <div className="chq-section-head">

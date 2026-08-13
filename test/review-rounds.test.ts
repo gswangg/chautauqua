@@ -92,6 +92,7 @@ vi.mock("../src/server/repo/review", async () => {
       { id: "pr-1", planId: plan.id, userId: "rev-1", trackId: null, submissionId: null },
     ]),
     getUsersByIds: vi.fn(async () => [{ userId: "rev-1", email: "rev1@org.test" }]),
+    batchUserDisplayNames: vi.fn(async () => new Map()),
     listPlanFilteredSubmissions: vi.fn(async () => [submission]),
     listSpeakerNamesForSubmissions: vi.fn(async () => new Map()),
     listTrackNamesForSubmissions: vi.fn(async () => new Map()),

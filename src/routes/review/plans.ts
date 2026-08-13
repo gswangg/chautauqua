@@ -17,6 +17,7 @@ import {
   criteriaForRound,
   assignedExcludingRecused,
   sortResultsRows,
+  selectRemindTargets,
   type ResultsSortKey,
 } from "../../domain/evaluation";
 import { toCsv } from "../../lib/csv";
@@ -24,7 +25,7 @@ import { clampPage, clampPerPage, listPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
-import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238, DEC_460, DEC_461, DEC_466, DEC_535, DEC_572, DEC_623, DEC_624, DEC_659, DEC_676 } from "../../decisions";
+import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238, DEC_460, DEC_461, DEC_466, DEC_535, DEC_572, DEC_623, DEC_624, DEC_659, DEC_676, DEC_707, DEC_708 } from "../../decisions";
 import { capById, MAX_REVIEWER_REMINDER_BATCH } from "../../domain/reminders";
 import {
   asRecord,
@@ -63,6 +64,8 @@ void DEC_623; // POST /plans/:id/reviewers: submissionId resolved through findSu
 void DEC_624; // PATCH /plans/:id: anonymity ratchet guard below
 void DEC_659; // GET /plans/:id/reviewers: trackName/submissionRef/submissionTitle labels below
 void DEC_676; // GET /plans/:id: evaluationCountsByRound surfaces DEC-213's freeze reason below
+void DEC_707; // GET /plans/:id/progress + POST /plans/:id/remind: scope selection via selectRemindTargets below
+void DEC_708; // GET /plans/:id/progress: item.name via batchUserDisplayNames below
 
 reviewPlansRoutes.get("/api/v1/events/:eventId/plans", requireOrganizer, async (c) => {
   const auth = currentAuth(c);
@@ -390,12 +393,17 @@ reviewPlansRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, async (c) 
     completedByReviewer.set(e.reviewerId, set);
   }
 
+  // DEC-708: one batched account->contact resolution for the whole page's
+  // reviewer set, never a query per row.
+  const nameByUserId = await repo.batchUserDisplayNames(c.var.db, users.map((u) => u.userId));
+
   const items = users.map((user) => {
     const assigned = assignedExcludingRecused(assignments.get(user.userId) ?? [], recusedByUser.get(user.userId) ?? new Set());
     const completed = completedByReviewer.get(user.userId)?.size ?? 0;
     return {
       userId: user.userId,
       email: user.email,
+      name: nameByUserId.get(user.userId) ?? null,
       assigned: assigned.length,
       completed,
       recused: recusedByUser.get(user.userId)?.size ?? 0,
@@ -465,6 +473,20 @@ reviewPlansRoutes.get("/api/v1/plans/:id/results", requireOrganizer, async (c) =
 
 reviewPlansRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csrfJson, async (c) => {
   const plan = await requireOwnedPlan(c, c.req.param("id"));
+  // DEC-707: optional scope body -- 'not_started' is the landing page's
+  // tertiary link, 'incomplete' (default) is the broader batch nudge. Body
+  // is optional (an empty/absent JSON body is valid: default scope).
+  let scope: "not_started" | "incomplete" = "incomplete";
+  const rawBody = await c.req.text();
+  if (rawBody.length > 0) {
+    const parsed: unknown = JSON.parse(rawBody);
+    const bodyRecord = asRecord(parsed);
+    if (bodyRecord.scope === "not_started" || bodyRecord.scope === "incomplete") {
+      scope = bodyRecord.scope;
+    } else if (bodyRecord.scope !== undefined) {
+      throw new ApiError("invalid", "Invalid remind request", { scope: "must be 'not_started' or 'incomplete'" });
+    }
+  }
   const reviewerRows = await repo.listReviewerRowsForPlan(c.var.db, plan.id);
   const userIds = [...new Set(reviewerRows.map((r) => r.userId))];
   const users = await repo.getUsersByIds(c.var.db, userIds);
@@ -499,13 +521,15 @@ reviewPlansRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csrfJson, a
     completedByReviewer.set(e.reviewerId, set);
   }
 
-  const laggards: { userId: string; email: string; assignedCount: number; completed: number }[] = [];
-  for (const user of users) {
+  // DEC-707: EVERY reviewer's row (not pre-filtered) so selectRemindTargets
+  // -- the SAME predicate the SPA's landing-page label counts through -- is
+  // the single place that decides who a given scope actually reaches.
+  const progressRows = users.map((user) => {
     const assigned = assignedExcludingRecused(assignments.get(user.userId) ?? [], recusedByUser.get(user.userId) ?? new Set());
     const completed = completedByReviewer.get(user.userId)?.size ?? 0;
-    if (completed >= assigned.length) continue;
-    laggards.push({ userId: user.userId, email: user.email, assignedCount: assigned.length, completed });
-  }
+    return { userId: user.userId, email: user.email, assignedCount: assigned.length, assigned: assigned.length, completed };
+  });
+  const laggards = selectRemindTargets(progressRows, scope);
 
   // DEC-535: bound the batch the same way DEC-319 bounds the J6 sibling.
   const { items: capped, remaining } = capById(laggards, (l) => l.userId, MAX_REVIEWER_REMINDER_BATCH);

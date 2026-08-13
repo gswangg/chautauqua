@@ -75,6 +75,7 @@ vi.mock("../src/server/repo/review", async () => {
     getPlanById: vi.fn(async (_db: unknown, planId: string) => (planId === plan.id ? plan : null)),
     listReviewerRowsForPlan: vi.fn(async () => REVIEWER_ROWS),
     getUsersByIds: vi.fn(async () => USERS),
+    batchUserDisplayNames: vi.fn(async () => new Map()),
     listPlanFilteredSubmissions: vi.fn(async () => SUBMISSIONS),
     resolveReviewerSubmissions: vi.fn(async () => SUBMISSIONS),
     listRecusalsForPlan: vi.fn(async (_db: unknown, planId: string) => (planId === plan.id ? RECUSALS : [])),
@@ -130,6 +131,7 @@ describe("DEC-351: /progress and /remind load-shedding is wire-identical", () =>
     expect(byUser.get("rev-1")).toEqual({
       userId: "rev-1",
       email: "rev1@org.test",
+      name: null,
       assigned: 2,
       completed: 0,
       recused: 1,
@@ -137,6 +139,7 @@ describe("DEC-351: /progress and /remind load-shedding is wire-identical", () =>
     expect(byUser.get("rev-2")).toEqual({
       userId: "rev-2",
       email: "rev2@org.test",
+      name: null,
       assigned: 3,
       completed: 2,
       recused: 0,

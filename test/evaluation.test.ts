@@ -8,6 +8,8 @@ import {
   buildResultsRows,
   anonymizeForReviewer,
   validateEvaluationScores,
+  reviewerProgressState,
+  selectRemindTargets,
   isPlanOpen,
   resolveAssignments,
   criteriaForRound,
@@ -549,5 +551,46 @@ describe("assignedExcludingRecused (DEC-271)", () => {
   it("returns an empty list when every assigned id is recused", () => {
     const assigned = [{ id: "s1" }, { id: "s2" }];
     expect(assignedExcludingRecused(assigned, new Set(["s1", "s2"]))).toEqual([]);
+  });
+});
+
+describe("reviewerProgressState (DEC-707)", () => {
+  it("is 'done' when completed >= assigned", () => {
+    expect(reviewerProgressState({ assigned: 4, completed: 4 })).toBe("done");
+    expect(reviewerProgressState({ assigned: 4, completed: 5 })).toBe("done");
+  });
+
+  it("is 'done' (vacuously) when nothing is assigned", () => {
+    expect(reviewerProgressState({ assigned: 0, completed: 0 })).toBe("done");
+  });
+
+  it("is 'not_started' when completed is 0 and something is assigned", () => {
+    expect(reviewerProgressState({ assigned: 4, completed: 0 })).toBe("not_started");
+  });
+
+  it("is 'in_progress' when 0 < completed < assigned", () => {
+    expect(reviewerProgressState({ assigned: 4, completed: 1 })).toBe("in_progress");
+    expect(reviewerProgressState({ assigned: 4, completed: 3 })).toBe("in_progress");
+  });
+});
+
+describe("selectRemindTargets (DEC-707)", () => {
+  const rows = [
+    { userId: "u-done", assigned: 4, completed: 4 },
+    { userId: "u-not-started", assigned: 4, completed: 0 },
+    { userId: "u-in-progress", assigned: 4, completed: 2 },
+    { userId: "u-nothing-assigned", assigned: 0, completed: 0 },
+  ];
+
+  it("'not_started' selects only reviewers with completed === 0 and something assigned", () => {
+    expect(selectRemindTargets(rows, "not_started").map((r) => r.userId)).toEqual(["u-not-started"]);
+  });
+
+  it("'incomplete' selects every non-done reviewer (not_started + in_progress)", () => {
+    expect(selectRemindTargets(rows, "incomplete").map((r) => r.userId)).toEqual(["u-not-started", "u-in-progress"]);
+  });
+
+  it("'incomplete' never selects a reviewer whose completed >= assigned", () => {
+    expect(selectRemindTargets(rows, "incomplete")).not.toContainEqual(expect.objectContaining({ userId: "u-done" }));
   });
 });
