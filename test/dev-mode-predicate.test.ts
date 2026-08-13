@@ -112,7 +112,9 @@ describe("makeMailer (DEC-547): never silently selects the dev sink", () => {
       }).not.toThrow();
       expect(mailer).toBeInstanceOf(UnconfiguredMailer);
 
-      const insertedDb = { insert: () => ({ values: async () => {} }) } as Parameters<typeof makeMailer>[0];
+      const insertedDb = { insert: () => ({ values: async () => {} }) } as unknown as Parameters<
+        typeof makeMailer
+      >[0];
       const guardedMailer = makeMailer(insertedDb, {
         RESEND_API_KEY: undefined,
         DEV_MODE: devMode,
