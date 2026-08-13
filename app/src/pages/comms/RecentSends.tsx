@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { apiGet, apiList, ApiError } from '../../lib/api';
 import { formatDateTime } from '../../lib/dates';
+import { countOf } from '../../lib/plural';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import type { EmailBatchRow, EmailLogDetail, EmailLogRow } from './types';
 
@@ -172,7 +173,7 @@ export function RecentSends({ eventId, batches, limit, onSeeAll, templatesById }
               <span className="chq-comms-history-when">{formatDateTime(batch.sentAt)}</span>
               <span className="chq-comms-history-subject">{batch.subject}</span>
               <span>
-                {batch.recipientCount} recipient{batch.recipientCount === 1 ? '' : 's'}
+                {countOf(batch.recipientCount, 'recipient')}
               </span>
               <span className="chq-meta">{statusTally(batch.statusCounts)}</span>
               {/* DEC-732 (eval-findings 59): an explicit bordered control,

@@ -6,6 +6,7 @@
 
 import { ModalFrame } from '../../components/ModalFrame';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { countOf } from '../../lib/plural';
 import type { ReminderDraft } from './types';
 
 interface RemindPreviewModalProps {
@@ -24,14 +25,14 @@ export function RemindPreviewModal({ loading, error, drafts, sending, onSend, on
   return (
     <ModalFrame
       title="Review reminders"
-      subtitle={loading ? 'Loading...' : `${count} recipient${count === 1 ? '' : 's'}`}
+      subtitle={loading ? 'Loading...' : countOf(count, 'recipient')}
       onClose={onCancel}
       closeDisabled={sending}
       modalClassName="chq-speakers-modal"
       actions={
         <>
           <button type="button" className="chq-btn chq-btn-primary" onClick={onSend} disabled={loading || sending || count === 0}>
-            {sending ? 'Sending...' : `Send ${count} reminder${count === 1 ? '' : 's'}`}
+            {sending ? 'Sending...' : `Send ${countOf(count, 'reminder')}`}
           </button>
           <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={sending}>
             Cancel

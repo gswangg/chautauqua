@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiGet, apiList, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
+import { countOf } from '../../lib/plural';
 import { BulkEmailModal } from './BulkEmailModal';
 import { ContactDrawer } from './ContactDrawer';
 import { ContactsTable } from './ContactsTable';
@@ -216,7 +217,7 @@ export function ContactsApp() {
   // dropped on render; this reads the same `stats` fetch, no new request
   // and no client-side re-derivation.
   const summary = stats
-    ? `${stats.total} people · ${stats.speakerCount} speakers · ${stats.returningSpeakers} returning · ${stats.eventCount} events · ${stats.duplicateCount} possible duplicates`
+    ? `${countOf(stats.total, 'person', 'people')} · ${countOf(stats.speakerCount, 'speaker')} · ${countOf(stats.returningSpeakers, 'returning speaker')} · ${countOf(stats.eventCount, 'event')} · ${countOf(stats.duplicateCount, 'possible duplicate')}`
     : null;
 
   return (

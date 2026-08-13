@@ -14,6 +14,8 @@
 // formatDate remains for true instants (createdAt, sentAt, etc.) where
 // local-timezone display is correct.
 
+import { countOf } from './plural';
+
 /** Convert an epoch-ms timestamp to a yyyy-mm-dd string for <input type="date">. */
 export function msToDateInput(ms: number | null | undefined): string {
   if (ms === null || ms === undefined || Number.isNaN(ms)) return '';
@@ -175,7 +177,7 @@ export function formatRelativeDays(ms: number, now: number): string {
   const days = Math.floor((now - ms) / dayMs);
   if (days <= 0) return 'today';
   if (days === 1) return 'yesterday';
-  return `${days} days ago`;
+  return `${countOf(days, 'day')} ago`;
 }
 
 /**
@@ -196,15 +198,15 @@ export function formatRelative(ms: number | null | undefined, now: number = Date
   if (diff < minuteMs) return 'just now';
   if (diff < hourMs) {
     const minutes = Math.floor(diff / minuteMs);
-    return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+    return `${countOf(minutes, 'minute')} ago`;
   }
   if (diff < dayMs) {
     const hours = Math.floor(diff / hourMs);
-    return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+    return `${countOf(hours, 'hour')} ago`;
   }
   const days = Math.floor(diff / dayMs);
   if (days < 7) {
-    return `${days} day${days === 1 ? '' : 's'} ago`;
+    return `${countOf(days, 'day')} ago`;
   }
   return formatDate(ms);
 }
