@@ -422,21 +422,24 @@ describe("AgendaContent / ScheduleContent day switcher (EMB-07)", () => {
     return app.request(`/e/conf/${surface}`, {}, TEST_ENV);
   }
 
-  it("agenda renders one day-switcher link per seeded event day, anchored to that day's section", async () => {
+  // DEC-835: the day a visitor is reading is in the URL — every pill emits
+  // a real `?day=<day>` href (never a bare `#chq-day-<day>` anchor), with
+  // the `#chq-day-<day>` section id still present for in-page anchoring.
+  it("agenda renders one day-switcher link per seeded event day, with a real ?day= href and anchored to that day's section", async () => {
     const res = await buildApp("agenda");
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain('href="#chq-day-2026-08-10"');
-    expect(html).toContain('href="#chq-day-2026-08-11"');
+    expect(html).toContain('href="/e/conf/agenda?day=2026-08-10#chq-day-2026-08-10"');
+    expect(html).toContain('href="/e/conf/agenda?day=2026-08-11#chq-day-2026-08-11"');
     expect(html).toContain('id="chq-day-2026-08-10"');
     expect(html).toContain('id="chq-day-2026-08-11"');
   });
 
-  it("schedule surface also renders the day switcher", async () => {
+  it("schedule surface also renders the day switcher with a real ?day= href", async () => {
     const res = await buildApp("schedule");
     const html = await res.text();
-    expect(html).toContain('href="#chq-day-2026-08-10"');
-    expect(html).toContain('href="#chq-day-2026-08-11"');
+    expect(html).toContain('href="/e/conf/schedule?day=2026-08-10#chq-day-2026-08-10"');
+    expect(html).toContain('href="/e/conf/schedule?day=2026-08-11#chq-day-2026-08-11"');
   });
 });
 

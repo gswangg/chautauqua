@@ -283,8 +283,13 @@ function DaySwitcher(props: {
   const { days, renderedDays, event, surface, base, activeDay, trackId, q } = props;
   if (days.length <= 1) return null;
   // DEC-783: a day jump must not silently drop the active q/trackId filter
-  // — every out-link (a day not already rendered on this filtered page)
-  // carries them forward alongside ?day=.
+  // — every out-link carries them forward alongside ?day=.
+  // DEC-835: the day a visitor is reading is in the URL — every pill (on
+  // the default unfiltered view AND a filtered one) emits a real
+  // `?day=<day>` href, never a bare `#chq-day-<day>` anchor, so the URL
+  // always reflects the day in view and a reload/share lands back on it.
+  // The `#chq-day-<day>` section id is still appended as a fragment so an
+  // already-rendered day's pill scrolls in place instead of a full reload.
   const extraParams =
     (trackId ? `&trackId=${encodeURIComponent(trackId)}` : "") + (q ? `&q=${encodeURIComponent(q)}` : "");
   return (
@@ -292,7 +297,7 @@ function DaySwitcher(props: {
       {days.map((day) => {
         const isActive = activeDay ? day === activeDay : false;
         const href = renderedDays.has(day)
-          ? `#chq-day-${day}`
+          ? `${surfacePath(event, surface, base)}?day=${day}${extraParams}#chq-day-${day}`
           : `${surfacePath(event, surface, base)}?day=${day}${extraParams}`;
         return (
           <a class="chq-pub-day-pill" href={href} aria-current={isActive ? "page" : undefined}>
