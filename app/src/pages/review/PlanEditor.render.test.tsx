@@ -83,6 +83,35 @@ describe('PlanEditor render smoke', () => {
     expect(option.value).toBe('user-42');
   });
 
+  // w35-e/DEC-757: the reviewer picker leads with the person's name (email
+  // as the quiet secondary), same fallback rule as the org directory.
+  it('labels a named reviewer option by name with email as the quiet secondary', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([
+        { id: 'user-42', email: 'reviewer@example.test', role: 'reviewer', name: 'Priya Chen', contactId: null, createdAt: 0 },
+      ]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await openAssignForm();
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'Priya Chen (reviewer@example.test)' })).toBeInTheDocument();
+    });
+    const option = screen.getByRole('option', { name: 'Priya Chen (reviewer@example.test)' }) as HTMLOptionElement;
+    expect(option.value).toBe('user-42');
+  });
+
   it('keeps a just-typed criterion label after switching the round tab', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),

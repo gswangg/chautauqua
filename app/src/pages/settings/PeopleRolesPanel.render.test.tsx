@@ -23,7 +23,9 @@ afterEach(() => {
   cleanup();
 });
 
-const SELF = { id: 'u-self', email: 'self@example.com', role: 'organizer' };
+const SELF = { id: 'u-self', email: 'self@example.com', role: 'organizer', name: 'Selma Fields' };
+// OTHER deliberately carries no `name` -- a pre-w35-c legacy row -- so tests
+// can assert the email fallback still reads correctly.
 const OTHER = { id: 'u-other', email: 'other@example.com', role: 'reviewer' };
 
 function mockPeople(extra: Record<string, unknown> = {}) {
@@ -192,6 +194,8 @@ describe('PeopleRolesPanel', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Nadia' } });
+    fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Okafor' } });
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@example.com' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send invite' }));
 
@@ -205,8 +209,58 @@ describe('PeopleRolesPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect(screen.queryByText('ab12-cd34-ef56')).not.toBeInTheDocument();
 
-    // The only POST /api/v1/users call was the invite itself.
+    // The only POST /api/v1/users call was the invite itself, and it carried
+    // firstName/lastName alongside email/role (w35-e wire contract).
     const postCalls = fetchMock.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method === 'POST');
     expect(postCalls.length).toBe(1);
+    const body = JSON.parse((postCalls[0]![1] as RequestInit).body as string);
+    expect(body).toEqual({ email: 'new@example.com', role: 'reviewer', firstName: 'Nadia', lastName: 'Okafor' });
+  });
+
+  // w35-e/DEC-757: a teammate account is a named person -- both name inputs
+  // are required, matching the panel's existing affordance grammar (submit
+  // stays disabled until every required field is non-blank).
+  it('requires both first and last name before Send invite is enabled', async () => {
+    mockPeople();
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Invite someone' }));
+    const sendButton = screen.getByRole('button', { name: 'Send invite' });
+    expect(sendButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@example.com' } });
+    expect(sendButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Nadia' } });
+    expect(sendButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'Okafor' } });
+    expect(sendButton).not.toBeDisabled();
+
+    // Blanking the last name back out disables submit again.
+    fireEvent.change(screen.getByLabelText('Last name'), { target: { value: '   ' } });
+    expect(sendButton).toBeDisabled();
+  });
+
+  it('leads each directory row with the person\'s name, dropping email to a secondary line', async () => {
+    mockPeople();
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.name)).toBeInTheDocument();
+    });
+
+    // SELF has a name -- the row's primary text is the name, not the bare
+    // address, while the email still renders as a quiet secondary line.
+    const selfRow = screen.getByText(SELF.name).closest('li')!;
+    expect(within(selfRow).getByText(SELF.email)).toBeInTheDocument();
+
+    // OTHER is a nameless legacy row (no `name` on the wire payload) -- it
+    // still reads correctly via the email fallback.
+    expect(screen.getByText(OTHER.email)).toBeInTheDocument();
   });
 });

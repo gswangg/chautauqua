@@ -31,6 +31,16 @@ interface OrgUser {
   id: string;
   email: string;
   role: string;
+  // w35-e/DEC-757: optional so a pre-w35-c payload (no name field) still
+  // reads correctly -- rows fall back to email when absent/blank.
+  name?: string;
+}
+
+// w35-e/DEC-757: a teammate account is a named person -- name leads, email
+// is the quiet secondary. A pre-w35-c row (no name, or a blank one) still
+// reads correctly via the email fallback.
+function personLabel(user: OrgUser): string {
+  return user.name && user.name.trim() ? user.name.trim() : user.email;
 }
 
 type Role = 'organizer' | 'reviewer';
@@ -47,6 +57,8 @@ export function PeopleRolesPanel() {
 
   const [inviting, setInviting] = useState(false);
   const [newEmail, setNewEmail] = useState('');
+  const [newFirstName, setNewFirstName] = useState('');
+  const [newLastName, setNewLastName] = useState('');
   const [newRole, setNewRole] = useState<Role>('reviewer');
   const [creating, setCreating] = useState(false);
   const [revealedPassword, setRevealedPassword] = useState<{ email: string; password: string } | null>(null);
@@ -78,7 +90,7 @@ export function PeopleRolesPanel() {
 
   async function handleInvite(e: FormEvent) {
     e.preventDefault();
-    if (newEmail.trim().length === 0) return;
+    if (newEmail.trim().length === 0 || newFirstName.trim().length === 0 || newLastName.trim().length === 0) return;
     setCreating(true);
     setError(null);
     setFieldErrors({});
@@ -86,9 +98,13 @@ export function PeopleRolesPanel() {
       const res = await apiPost<{ email: string; password: string }>('/users', {
         email: newEmail.trim(),
         role: newRole,
+        firstName: newFirstName.trim(),
+        lastName: newLastName.trim(),
       });
       setRevealedPassword({ email: res.email, password: res.password });
       setNewEmail('');
+      setNewFirstName('');
+      setNewLastName('');
       setNewRole('reviewer');
       setInviting(false);
       await load();
@@ -205,6 +221,30 @@ export function PeopleRolesPanel() {
 
       {inviting && (
         <form onSubmit={handleInvite} className="chq-settings-row">
+          <label htmlFor="people-invite-first-name">
+            First name
+            <input
+              id="people-invite-first-name"
+              className="chq-input"
+              type="text"
+              required
+              value={newFirstName}
+              onChange={(e) => setNewFirstName(e.target.value)}
+            />
+          </label>
+          {fieldErrors.firstName ? <span role="alert">{fieldErrors.firstName}</span> : null}
+          <label htmlFor="people-invite-last-name">
+            Last name
+            <input
+              id="people-invite-last-name"
+              className="chq-input"
+              type="text"
+              required
+              value={newLastName}
+              onChange={(e) => setNewLastName(e.target.value)}
+            />
+          </label>
+          {fieldErrors.lastName ? <span role="alert">{fieldErrors.lastName}</span> : null}
           <label htmlFor="people-invite-email">
             Email
             <input
@@ -229,7 +269,16 @@ export function PeopleRolesPanel() {
             </select>
           </label>
           {fieldErrors.role ? <span role="alert">{fieldErrors.role}</span> : null}
-          <button type="submit" className="chq-btn chq-btn-primary" disabled={creating || newEmail.trim().length === 0}>
+          <button
+            type="submit"
+            className="chq-btn chq-btn-primary"
+            disabled={
+              creating ||
+              newEmail.trim().length === 0 ||
+              newFirstName.trim().length === 0 ||
+              newLastName.trim().length === 0
+            }
+          >
             {creating ? 'Inviting…' : 'Send invite'}
           </button>
         </form>
@@ -244,10 +293,13 @@ export function PeopleRolesPanel() {
           <ul className="chq-settings-people-list">
             {users.map((user) => {
               const isSelf = me?.userId === user.id;
+              const label = personLabel(user);
+              const hasName = Boolean(user.name && user.name.trim());
               return (
                 <li key={user.id} className="chq-settings-people-row">
                   <div className="chq-settings-people-identity">
-                    <span>{user.email}</span>
+                    <span className="chq-settings-people-name">{label}</span>
+                    {hasName && <span className="chq-settings-people-email">{user.email}</span>}
                   </div>
                   <span className="chq-settings-people-role">{user.role}</span>
                   <span className="chq-settings-people-scope" data-testid="people-scope">
