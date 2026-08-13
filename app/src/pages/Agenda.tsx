@@ -226,12 +226,12 @@ export function AgendaPage() {
     <div className="chq-page chq-agenda-page">
       <div className="chq-agenda-head">
         <h1 className="chq-page-title">Agenda</h1>
+        <div className="chq-summary chq-agenda-summary">
+          {`${agenda?.summary.unplaced ?? 0} unplaced · `}
+          <strong>{`${agenda?.summary.conflicts ?? 0} ${agenda?.summary.conflicts === 1 ? 'conflict' : 'conflicts'}`}</strong>
+          {` · ${placedPercent(agenda)}% placed`}
+        </div>
         <div className="chq-agenda-head-actions">
-          <div className="chq-summary chq-agenda-summary">
-            {`${agenda?.summary.unplaced ?? 0} unplaced · `}
-            <strong>{`${agenda?.summary.conflicts ?? 0} ${agenda?.summary.conflicts === 1 ? 'conflict' : 'conflicts'}`}</strong>
-            {` · ${placedPercent(agenda)}% placed`}
-          </div>
           <button type="button" className="chq-btn chq-btn-secondary" onClick={handleAutoSchedule} disabled={autoScheduling || !agenda}>
             {autoScheduling ? 'Auto-scheduling...' : 'Auto-schedule'}
           </button>

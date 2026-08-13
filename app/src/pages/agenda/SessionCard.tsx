@@ -24,9 +24,6 @@ interface SessionCardProps {
    * target as an empty cell. */
   onDragOver?: (e: DragEvent<HTMLButtonElement>) => void;
   onDrop?: (e: DragEvent<HTMLButtonElement>) => void;
-  /** Shows the ⋮⋮ drag affordance in the card header (the unscheduled
-   * tray's list-of-cards presentation; placed day-grid cards omit it). */
-  dragHandle?: boolean;
   /** Keyboard/click placement path (DEC-570): clicking a card arms it
    * (nothing armed) or places the currently-armed session into this card's
    * slot (something armed). Optional so read-only presentations of a card
@@ -50,7 +47,7 @@ interface SessionCardProps {
  * track NAME rendered as text, never by a track color swatch). Draggable
  * via HTML5 DnD, carrying the submission id as plain text + a scoped MIME
  * type. */
-export function SessionCard({ session, tracks, conflicts, style, className, onDragOver, onDrop, dragHandle, onSelect, selected, placed }: SessionCardProps) {
+export function SessionCard({ session, tracks, conflicts, style, className, onDragOver, onDrop, onSelect, selected, placed }: SessionCardProps) {
   const conflicted = conflicts.some((c) => c.submissionIds.includes(session.submissionId));
   const trackNames = tracks.filter((t) => session.trackIds.includes(t.id)).map((t) => t.name);
   // The placement path is click-to-arm (DEC-570), but nothing in the a11y tree
@@ -89,11 +86,6 @@ export function SessionCard({ session, tracks, conflicts, style, className, onDr
     >
       <div className="chq-session-card-head">
         <div className="chq-session-card-ref">{session.ref}</div>
-        {dragHandle && (
-          <span className="chq-session-card-handle" aria-hidden="true">
-            ⋮⋮
-          </span>
-        )}
       </div>
       <div className="chq-session-card-title">{session.title}</div>
       {trackNames.length > 0 && (

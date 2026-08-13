@@ -46,18 +46,27 @@ export function UnscheduledTray({
 
   return (
     <div className="chq-unscheduled-tray" onDragOver={handleDragOver} onDrop={handleDrop}>
-      <div className="chq-unscheduled-tray-header">Unscheduled ({sessions.length})</div>
+      <div className="chq-unscheduled-tray-header">
+        <span>Unscheduled</span>
+        <span className="chq-unscheduled-tray-count">{` (${sessions.length})`}</span>
+      </div>
       <div className="chq-unscheduled-tray-list">
         {sessions.length === 0 && <p className="chq-unscheduled-tray-empty">All accepted sessions are placed.</p>}
         {sessions.map((session) => {
           const reason = reasonBySubmissionId.get(session.submissionId);
+          // DEC-615/DEC-900: the tray shows the duration a placement of this
+          // session would actually use — the reason the last auto-schedule
+          // run computed for it if there is one, otherwise the same
+          // UNSCHEDULED_DURATION_MIN fallback the click-to-arm path below
+          // uses, so the printed minutes always match what arming produces.
+          const durationMin = reason?.durationMin ?? UNSCHEDULED_DURATION_MIN;
           return (
             <div key={session.submissionId} className="chq-unscheduled-tray-item">
               <SessionCard
                 session={session}
                 tracks={tracks}
                 conflicts={conflicts}
-                dragHandle
+                className="chq-unscheduled-tray-card"
                 selected={armed?.submissionId === session.submissionId}
                 onSelect={
                   onArm
@@ -71,14 +80,14 @@ export function UnscheduledTray({
                     : undefined
                 }
               />
+              <p className="chq-unscheduled-tray-duration">{`· ${durationMin} min`}</p>
               {reason && <p className="chq-unscheduled-reason">{reason.detail}</p>}
             </div>
           );
         })}
       </div>
       <p className="chq-unscheduled-tray-hint">
-        Click a session, then click a time slot to place it &middot; dragging works too &middot; drag back here to
-        unschedule
+        Click a session, then click a time slot &middot; drag back to unschedule
       </p>
     </div>
   );

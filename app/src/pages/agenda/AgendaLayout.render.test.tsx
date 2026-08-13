@@ -92,3 +92,65 @@ describe('agenda layout does not evict the Unscheduled tray while armed', () => 
     expect(Array.from(layout.children)).not.toContain(noRoomBtn);
   });
 });
+
+// w41: tray polish -- no drag-handle affordance on tray cards (click-to-place
+// is the sanctioned path), and the tray footer hint collapses to one line.
+describe('unscheduled tray polish (w41)', () => {
+  const SESSION = {
+    submissionId: 'sub-1',
+    ref: 'SES-001',
+    title: 'Talk One',
+    trackIds: [],
+    speakers: [],
+  };
+
+  it('tray cards render no ⋮⋮ drag-handle element or class', () => {
+    const { container } = render(
+      <UnscheduledTray
+        sessions={[SESSION as never]}
+        tracks={[]}
+        conflicts={[]}
+        unplacedReasons={[]}
+        onDropUnschedule={() => {}}
+        armed={null}
+        onArm={() => {}}
+      />,
+    );
+    // No dedicated drag-handle affordance markup/class -- the whole card
+    // stays draggable (drag-back-to-unschedule still works, DEC-021), but
+    // there is no separate ⋮⋮ handle element inside it.
+    expect(container.querySelector('.chq-session-card-handle')).toBeNull();
+    expect(container.textContent).not.toContain('⋮⋮');
+  });
+
+  it('tray footer hint is a single line naming click-to-place and drag-to-unschedule', () => {
+    const { container } = render(
+      <UnscheduledTray
+        sessions={[SESSION as never]}
+        tracks={[]}
+        conflicts={[]}
+        unplacedReasons={[]}
+        onDropUnschedule={() => {}}
+        armed={null}
+        onArm={() => {}}
+      />,
+    );
+    const hint = container.querySelector('.chq-unscheduled-tray-hint');
+    expect(hint?.textContent).toBe('Click a session, then click a time slot · drag back to unschedule');
+  });
+
+  it('tray card states its duration as "· N min"', () => {
+    const { container } = render(
+      <UnscheduledTray
+        sessions={[SESSION as never]}
+        tracks={[]}
+        conflicts={[]}
+        unplacedReasons={[]}
+        onDropUnschedule={() => {}}
+        armed={null}
+        onArm={() => {}}
+      />,
+    );
+    expect(container.querySelector('.chq-unscheduled-tray-duration')?.textContent).toBe('· 30 min');
+  });
+});
