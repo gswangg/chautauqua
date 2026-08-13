@@ -496,6 +496,36 @@
   border-top: 1px solid var(--chq-hairline);
 }
 
+/* w31-d/DEC-982: the saved-embed row is a FIVE-cell surface row like
+   PublicPagesPanel's (name, path, recipe, state, actions), not the same
+   grid literal reused across a different cell count — cells six and up in
+   the old shared class wrapped onto an implicit row past five columns.
+   Its own class, same column rhythm, so the two lists keep one visual
+   rhythm without one grid template silently owning two different arities. */
+.chq-settings-saved-embed-row {
+  display: grid;
+  grid-template-columns: 170px 1fr 140px auto auto;
+  gap: 16px;
+  align-items: baseline;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-settings-saved-embed-row:last-child {
+  border-bottom: none;
+}
+
+.chq-settings-saved-embed-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+
+.chq-settings-saved-embed-snippet {
+  grid-column: 1 / -1;
+}
+
 /* w15-e/DEC-691: People and roles -- mock lines 190-204 4-column row
    (identity, role, scope, Change). */
 .chq-settings-people-row {
@@ -525,6 +555,13 @@
 
 @media (max-width: 700px) {
   .chq-settings-public-pages-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .chq-settings-saved-embed-row {
     display: flex;
     flex-direction: column;
     align-items: flex-start;

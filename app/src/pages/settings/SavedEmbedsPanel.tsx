@@ -128,7 +128,7 @@ export function SavedEmbedsPanel({ onBuild }: Props) {
               trackName: embed.options.trackId ? (trackNameById[embed.options.trackId] ?? null) : null,
             });
             return (
-              <li key={embed.id} className="chq-settings-public-pages-row">
+              <li key={embed.id} className="chq-settings-saved-embed-row">
                 <span className="chq-settings-public-pages-name">{embed.name}</span>
                 <span className="chq-settings-public-pages-path">{`/embed/e/${embed.id}`}</span>
                 <span className="chq-embeds-recipe">{recipe}</span>
@@ -139,23 +139,27 @@ export function SavedEmbedsPanel({ onBuild }: Props) {
                 >
                   {embed.enabled ? 'On' : 'Off'}
                 </span>
-                <Link className="chq-link-button" to={editHref(embed.id)}>
-                  Edit
-                </Link>
-                <button
-                  type="button"
-                  className="chq-link-button"
-                  onClick={() => setCodeOpenId((current) => (current === embed.id ? null : embed.id))}
-                >
-                  Get code
-                </button>
-                <button type="button" className="chq-link-button" onClick={() => void handleToggle(embed)}>
-                  {embed.enabled ? 'Turn off' : 'Turn on'}
-                </button>
-                <button type="button" className="chq-link-button" onClick={() => setPendingDelete(embed)}>
-                  Delete
-                </button>
-                {codeOpenId === embed.id ? <code>{snippet}</code> : null}
+                <span className="chq-settings-saved-embed-actions">
+                  <Link className="chq-link-button" to={editHref(embed.id)}>
+                    Edit
+                  </Link>
+                  <button
+                    type="button"
+                    className="chq-link-button"
+                    onClick={() => setCodeOpenId((current) => (current === embed.id ? null : embed.id))}
+                  >
+                    Get code
+                  </button>
+                  <button type="button" className="chq-link-button" onClick={() => void handleToggle(embed)}>
+                    {embed.enabled ? 'Turn off' : 'Turn on'}
+                  </button>
+                  <button type="button" className="chq-link-button" onClick={() => setPendingDelete(embed)}>
+                    Delete
+                  </button>
+                </span>
+                {codeOpenId === embed.id ? (
+                  <code className="chq-settings-saved-embed-snippet">{snippet}</code>
+                ) : null}
               </li>
             );
           })}
