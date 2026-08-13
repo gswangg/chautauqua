@@ -25,7 +25,7 @@ void DEC_377; // captions below only ever restate fields the portal repo already
 
 export const PORTAL_CSS = `
   /* --- verbatim starting point (moved from PortalLayout's inline <style>) --- */
-  main { max-width: 960px; margin: 0 auto; padding: 0 1rem; }
+  main { padding: 0 1rem; }
   /* DEC-393: the bare "nav a" rule that duplicated the old sub-floor
      min-height here is gone -- the portal nav markup
      (src/routes/portal/index.tsx) is nav.chq-nav > a, so THEME_CSS's
@@ -226,7 +226,7 @@ export const PORTAL_CSS = `
      page footer (DEC-590) — placement only, .chq-btn-tertiary is the
      existing frozen tertiary token (THEME_CSS), never a new button style. */
   .chq-portal-footer {
-    max-width: 960px;
+    max-width: var(--chq-measure);
     margin: 24px auto 0;
     padding: 16px 1rem 40px;
     border-top: 1px solid var(--chq-hairline);
