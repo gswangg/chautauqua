@@ -839,3 +839,7 @@ export const DEC_833 = "A send is auditable to its words: the organiser can read
 export const DEC_834 = "At an irreversible choice, a column is headed by the RECORD, not just by the person";
 export const DEC_835 = "A public day pill is a navigation, not a scroll — every public day view names its day in the URL";
 export const DEC_836 = "The seed demonstrates the reads a grader performs: two plans open at once, and a worklist with work in it";
+export const DEC_837 = "A link is the route it lands on: an in-app target is basename-relative, and a link into a URL-state page carries that page's state";
+export const DEC_838 = "A knob bound to nothing is a lie; the accent binds only where the default already renders that colour";
+export const DEC_839 = "The saved-embed wire contract: options are a parsed recipe validated by the live route's own parsers, and OFF is an empty 200";
+export const DEC_840 = "The distribute wire contract: the cap is a parameter of this run, echoed back, and the shortfall is part of the answer";
