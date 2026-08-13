@@ -53,6 +53,32 @@ function chunk<T>(items: T[], size: number): T[][] {
   return out;
 }
 
+// DEC-840: a non-empty shortfall renders as a sentence naming the
+// constraint AND the track -- grouped by (reason, track) so a run with
+// several stuck submissions in the same track reads as one honest count,
+// not a wall of per-submission lines.
+function shortfallSummaries(shortfall: DistributePreview['shortfall']): { key: string; text: string }[] {
+  const groups = new Map<string, { reason: 'cap_reached' | 'no_eligible_reviewer'; trackName: string | null; needed: number }>();
+  for (const s of shortfall) {
+    const key = `${s.reason}::${s.trackName ?? ''}`;
+    const existing = groups.get(key);
+    if (existing) existing.needed += s.needed;
+    else groups.set(key, { reason: s.reason, trackName: s.trackName, needed: s.needed });
+  }
+  return [...groups.entries()].map(([key, g]) => {
+    const noun = g.needed === 1 ? 'review stays' : 'reviews stay';
+    const constraint =
+      g.reason === 'cap_reached'
+        ? g.trackName
+          ? `the cap is reached and nobody else covers ${g.trackName}`
+          : 'the cap is reached'
+        : g.trackName
+          ? `no eligible reviewer covers ${g.trackName}`
+          : 'no eligible reviewer remains';
+    return { key, text: `${g.needed} ${noun} unassigned — ${constraint}.` };
+  });
+}
+
 export function PlanEditor() {
   const { planId } = useParams<{ planId: string }>();
   const isNew = !planId || planId === 'new';
@@ -378,7 +404,7 @@ export function PlanEditor() {
     setDistributeLoading(true);
     try {
       const cap = parsedCapPerReviewer();
-      const qs = cap !== undefined ? `?capPerReviewer=${cap}` : '';
+      const qs = cap !== undefined ? `?cap=${cap}` : '';
       const res = await apiGet<DistributePreview>(`/plans/${planId}/assignments/distribute/preview${qs}`);
       setDistributePreview(res);
       setDistributeConfirmOpen(true);
@@ -399,8 +425,10 @@ export function PlanEditor() {
     setError(null);
     setDistributing(true);
     try {
-      const cap = parsedCapPerReviewer();
-      await apiPost<{ created: number }>(`/plans/${planId}/assignments/distribute`, cap !== undefined ? { capPerReviewer: cap } : {});
+      // DEC-840: the apply call sends byte-identically the cap the preview
+      // just echoed back -- never a re-derivation from local state, so a
+      // preview the organizer saw is exactly what gets written.
+      await apiPost<{ created: number }>(`/plans/${planId}/assignments/distribute`, { cap: distributePreview.cap });
       cancelDistribute();
       const [reviewersRes] = await Promise.all([apiList<PlanReviewer>(`/plans/${planId}/reviewers`)]);
       setReviewers(reviewersRes.items);
@@ -1047,7 +1075,7 @@ export function PlanEditor() {
                 disabled={distributeLoading}
                 onClick={openDistributePreview}
               >
-                {distributeLoading ? 'Loading…' : 'Distribute evenly'}
+                {distributeLoading ? 'Loading…' : 'Distribute the unassigned'}
               </button>
             </div>
             {reviewers.map((r) => {
@@ -1091,41 +1119,41 @@ export function PlanEditor() {
                 the preview already ran (GET only) when the link was clicked. */}
             {distributeConfirmOpen && distributePreview && (
               <div className="chq-review-scope-confirm" role="alertdialog" aria-label="Confirm even distribution">
-                {distributePreview.total === 0 ? (
+                {distributePreview.totalAssigned === 0 ? (
                   <p>Every submission already has enough reviewers -- nothing to distribute.</p>
                 ) : (
-                  <p>This would assign {distributePreview.total} review{distributePreview.total === 1 ? '' : 's'}.</p>
+                  <p>
+                    This would assign {distributePreview.totalAssigned} review{distributePreview.totalAssigned === 1 ? '' : 's'}.
+                  </p>
                 )}
                 <ul className="chq-review-scope-preview-list">
                   {distributePreview.perReviewer.map((pr) => (
                     <li key={pr.userId}>
                       {pr.added > 0
-                        ? `${pr.name} — ${pr.total - pr.added} → ${pr.total} talks`
-                        : `${pr.name} — unchanged${pr.note ? ` (${pr.note})` : ' (no assignment this run)'}`}
+                        ? `${pr.name} — ${pr.before} → ${pr.after} talks`
+                        : `${pr.name} — unchanged${pr.reason ? ` · ${pr.reason === 'wrong_track' ? 'wrong track' : 'at cap'}` : ''}`}
                     </li>
                   ))}
                 </ul>
                 {distributePreview.shortfall.length > 0 && (
                   <div className="chq-review-distribute-shortfall">
-                    {distributePreview.shortfall.map((s) => (
-                      <p key={s.submissionId}>
-                        {s.submissionRef} {s.submissionTitle} is short {s.missing} review{s.missing === 1 ? '' : 's'}
-                        {s.trackName ? ` in ${s.trackName}` : ''} because{' '}
-                        {s.reason === 'cap_reached' ? 'every eligible reviewer is at the cap' : 'no eligible reviewer remains'}.
-                      </p>
+                    {shortfallSummaries(distributePreview.shortfall).map((s) => (
+                      <p key={s.key}>{s.text}</p>
                     ))}
                   </div>
                 )}
                 <p>Nothing is saved until you confirm.</p>
                 <div className="chq-review-scope-confirm-actions">
-                  {distributePreview.total > 0 && (
+                  {distributePreview.totalAssigned > 0 && (
                     <button
                       type="button"
                       className="chq-btn chq-btn-primary"
                       disabled={distributing}
                       onClick={confirmDistribute}
                     >
-                      {distributing ? 'Distributing…' : `Add ${distributePreview.total} assignment${distributePreview.total === 1 ? '' : 's'}`}
+                      {distributing
+                        ? 'Distributing…'
+                        : `Add ${distributePreview.totalAssigned} assignment${distributePreview.totalAssigned === 1 ? '' : 's'}`}
                     </button>
                   )}
                   <button type="button" className="chq-btn chq-btn-tertiary" onClick={cancelDistribute}>

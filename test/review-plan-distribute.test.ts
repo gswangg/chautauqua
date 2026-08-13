@@ -113,26 +113,37 @@ async function buildApp(auth: AuthInfo) {
 const organizer: AuthInfo = { userId: "org-user", role: "organizer", orgId: ORG_A };
 const reviewer: AuthInfo = { userId: "rev-1", role: "reviewer", orgId: ORG_A };
 
-describe("GET /api/v1/plans/:id/assignments/distribute/preview (DEC-786)", () => {
+describe("GET /api/v1/plans/:id/assignments/distribute/preview (DEC-786/DEC-840)", () => {
   it("returns the pairs a distribute call would add, with names resolved via batchUserDisplayNames, and writes nothing", async () => {
     const app = await buildApp(organizer);
     const res = await app.request(`/api/v1/plans/${plan.id}/assignments/distribute/preview`);
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      items: { userId: string; reviewerName: string; submissionId: string; submissionRef: string; submissionTitle: string }[];
-      perReviewer: { userId: string; name: string; added: number; total: number; note?: string }[];
-      total: number;
-      shortfall: { submissionId: string; missing: number; reason: string }[];
+      cap: number | null;
+      items: { submissionId: string; userId: string }[];
+      perReviewer: {
+        userId: string;
+        name: string;
+        trackName: string | null;
+        before: number;
+        after: number;
+        added: number;
+        eligible: boolean;
+        reason: string | null;
+      }[];
+      totalAssigned: number;
+      shortfall: { submissionId: string; needed: number; reason: string }[];
     };
+    expect(body.cap).toBeNull();
     expect(body.items).toEqual([
-      { userId: "rev-1", reviewerName: "Ada Lovelace", submissionId: "sub-1", submissionRef: "SES-001", submissionTitle: "Talk One" },
-      { userId: "rev-2", reviewerName: "Grace Hopper", submissionId: "sub-2", submissionRef: "SES-002", submissionTitle: "Talk Two" },
+      { submissionId: "sub-1", userId: "rev-1" },
+      { submissionId: "sub-2", userId: "rev-2" },
     ]);
     expect(body.perReviewer).toEqual([
-      { userId: "rev-1", name: "Ada Lovelace", added: 1, total: 1 },
-      { userId: "rev-2", name: "Grace Hopper", added: 1, total: 1 },
+      { userId: "rev-1", name: "Ada Lovelace", trackName: null, before: 0, after: 1, added: 1, eligible: true, reason: null },
+      { userId: "rev-2", name: "Grace Hopper", trackName: null, before: 0, after: 1, added: 1, eligible: true, reason: null },
     ]);
-    expect(body.total).toBe(2);
+    expect(body.totalAssigned).toBe(2);
     expect(body.shortfall).toEqual([]);
     // Nothing written.
     expect(reviewerRows.length).toBe(2);
@@ -145,32 +156,36 @@ describe("GET /api/v1/plans/:id/assignments/distribute/preview (DEC-786)", () =>
     expect(res.status).toBe(403);
   });
 
-  it("DEC-824: a capPerReviewer of 1 leaves the second submission a shortfall", async () => {
+  it("DEC-824/DEC-840: a cap of 1 leaves the second submission a shortfall, and the preview echoes the cap it used", async () => {
     // 2 reviews needed per submission, but only 2 reviewers total each
     // capped at 1 -- sub-1 consumes both reviewers' whole capacity, so
     // sub-2 is an honest shortfall rather than a silent under-fill.
     plan.maxEvaluations = 2;
     const app = await buildApp(organizer);
-    const res = await app.request(`/api/v1/plans/${plan.id}/assignments/distribute/preview?capPerReviewer=1`);
+    const res = await app.request(`/api/v1/plans/${plan.id}/assignments/distribute/preview?cap=1`);
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      total: number;
-      shortfall: { submissionId: string; missing: number; reason: string }[];
+      cap: number | null;
+      totalAssigned: number;
+      shortfall: { submissionId: string; ref: string; title: string; trackName: string | null; needed: number; reason: string }[];
     };
-    expect(body.total).toBe(2);
+    expect(body.cap).toBe(1);
+    expect(body.totalAssigned).toBe(2);
     expect(body.shortfall).toEqual([
-      { submissionId: "sub-2", submissionRef: "SES-002", submissionTitle: "Talk Two", trackName: "", missing: 2, reason: "cap_reached" },
+      { submissionId: "sub-2", ref: "SES-002", title: "Talk Two", trackName: null, needed: 2, reason: "cap_reached" },
     ]);
   });
 
-  it("DEC-824: rejects a non-positive-integer capPerReviewer loudly", async () => {
+  it("DEC-824/DEC-840: rejects a non-positive-integer cap loudly, naming the field", async () => {
     const app = await buildApp(organizer);
-    const res = await app.request(`/api/v1/plans/${plan.id}/assignments/distribute/preview?capPerReviewer=0`);
+    const res = await app.request(`/api/v1/plans/${plan.id}/assignments/distribute/preview?cap=0`);
     expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields).toHaveProperty("cap");
   });
 });
 
-describe("POST /api/v1/plans/:id/assignments/distribute (DEC-786)", () => {
+describe("POST /api/v1/plans/:id/assignments/distribute (DEC-786/DEC-840)", () => {
   it("applies exactly the pairs the preview computed", async () => {
     const app = await buildApp(organizer);
     const res = await app.request(`/api/v1/plans/${plan.id}/assignments/distribute`, {
@@ -183,6 +198,24 @@ describe("POST /api/v1/plans/:id/assignments/distribute (DEC-786)", () => {
     expect(addedRows).toEqual([
       { userId: "rev-1", submissionId: "sub-1" },
       { userId: "rev-2", submissionId: "sub-2" },
+    ]);
+  });
+
+  it("DEC-840: honours a JSON {cap} body identically to the preview's ?cap query", async () => {
+    plan.maxEvaluations = 2;
+    const app = await buildApp(organizer);
+    const res = await app.request(`/api/v1/plans/${plan.id}/assignments/distribute`, {
+      method: "POST",
+      headers: { "x-chq-csrf": "1", "content-type": "application/json" },
+      body: JSON.stringify({ cap: 1 }),
+    });
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { created: number };
+    // capped at 1 each: only sub-1 gets fully staffed (2 reviewers x 1 pair).
+    expect(body.created).toBe(2);
+    expect(addedRows).toEqual([
+      { userId: "rev-1", submissionId: "sub-1" },
+      { userId: "rev-2", submissionId: "sub-1" },
     ]);
   });
 

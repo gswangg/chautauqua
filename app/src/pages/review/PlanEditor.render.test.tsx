@@ -603,22 +603,23 @@ describe('PlanEditor render smoke', () => {
     expect(screen.getByText('Name is required.')).toBeInTheDocument();
   });
 
-  it('DEC-824: distribute confirm dialog states the total, each reviewer\'s change, the shortfall, and lists an unchanged reviewer with its reason', async () => {
+  it('DEC-840: distribute confirm dialog states the total, each reviewer\'s change, the shortfall sentence naming the constraint and track, and lists an unchanged reviewer with its reason', async () => {
     let distributePosted = false;
-    mockApi({
+    const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
       [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
       [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
       [`GET /api/v1/plans/${PLAN_ID}/assignments/distribute/preview`]: {
-        items: [{ userId: 'u1', reviewerName: 'Ada Lovelace', submissionId: 's1', submissionRef: 'SES-001', submissionTitle: 'Talk One' }],
+        cap: null,
+        items: [{ submissionId: 's1', userId: 'u1' }],
         perReviewer: [
-          { userId: 'u1', name: 'Ada Lovelace', added: 2, total: 8 },
-          { userId: 'u2', name: 'Grace Hopper', added: 0, total: 3, note: 'wrong track' },
+          { userId: 'u1', name: 'Ada Lovelace', trackName: null, before: 6, after: 8, added: 2, eligible: true, reason: null },
+          { userId: 'u2', name: 'Grace Hopper', trackName: 'AI Engineering', before: 3, after: 3, added: 0, eligible: false, reason: 'wrong_track' },
         ],
-        total: 22,
+        totalAssigned: 22,
         shortfall: [
-          { submissionId: 's9', submissionRef: 'SES-009', submissionTitle: 'Talk Nine', trackName: 'Data', missing: 1, reason: 'cap_reached' },
+          { submissionId: 's9', ref: 'SES-009', title: 'Talk Nine', trackName: 'AI Engineering', needed: 14, reason: 'cap_reached' },
         ],
       },
       'GET /api/v1/users': listEnvelope([]),
@@ -638,22 +639,33 @@ describe('PlanEditor render smoke', () => {
 
     await waitFor(() => expect(screen.getByText('Who reviews what')).toBeInTheDocument());
 
-    // Zero non-GET requests before confirm (DEC-786).
-    fireEvent.click(screen.getByRole('button', { name: 'Distribute evenly' }));
+    // Zero non-GET requests before confirm (DEC-786). The link is renamed
+    // (DEC-840): it fills the unassigned pool, it does not level load.
+    fireEvent.click(screen.getByRole('button', { name: 'Distribute the unassigned' }));
     await waitFor(() => expect(screen.getByText('This would assign 22 reviews.')).toBeInTheDocument());
     expect(distributePosted).toBe(false);
 
     // Each reviewer's change, unchanged reviewers listed with their reason
     // rather than hidden.
     expect(screen.getByText('Ada Lovelace — 6 → 8 talks')).toBeInTheDocument();
-    expect(screen.getByText('Grace Hopper — unchanged (wrong track)')).toBeInTheDocument();
+    expect(screen.getByText('Grace Hopper — unchanged · wrong track')).toBeInTheDocument();
 
     // The shortfall sentence names the constraint and the track.
-    expect(screen.getByText(/SES-009 Talk Nine is short 1 review in Data because every eligible reviewer is at the cap\./)).toBeInTheDocument();
+    expect(
+      screen.getByText('14 reviews stay unassigned — the cap is reached and nobody else covers AI Engineering.'),
+    ).toBeInTheDocument();
 
     expect(screen.getByText('Nothing is saved until you confirm.')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Add 22 assignments' }));
     await waitFor(() => expect(distributePosted).toBe(true));
+    // The apply call sends byte-identically the cap the preview echoed.
+    const applyCall = fetchMock.mock.calls.find(([input]) => {
+      const url = typeof input === 'string' ? input : (input as URL).toString();
+      return url.includes('/assignments/distribute') && !url.includes('/preview');
+    });
+    expect(applyCall).toBeDefined();
+    const applyInit = applyCall?.[1] as RequestInit | undefined;
+    expect(JSON.parse(applyInit?.body as string)).toEqual({ cap: null });
   });
 });
