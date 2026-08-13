@@ -170,6 +170,14 @@ BODY textarea (byte-identical 3rd look) · send confirm dialog · history: widen
 the identifying column, stop repeating subject/timestamp ×N · Recent-Sends
 Open/timestamps/template col · templates purpose-copy + editor polish batch.
 
+**USER (drawer action row): "Delete this contact" shows the BROWSER-DEFAULT
+blue-gray focus ring** — .chq-btn-tertiary has no focus-visible treatment, so
+the UA outline shows (off-palette). Give tertiary buttons the design-system
+focus ring (olive, like inputs/status cells); sweep other tertiary/link-button
+classes for the same gap. Also: the drawer action row mixes THREE button
+treatments side by side (primary/secondary/tertiary-with-ring) — check frame
+intent for the row.
+
 **Contacts — GATE-2: FAIL barely-moved — PLANNER: the modal/drawer BROKEN
 batch was never scheduled; schedule it FIRST with Account** (report same):
 UNCHANGED BROKEN ×4: new-contact modal form grammar · headshot raw file input
