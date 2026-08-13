@@ -24,6 +24,7 @@ import { DEFAULT_ONBOARDING_TASKS, FORM_TASK_FIELD_SPECS } from "../src/domain/a
 import type { FormTaskFieldKind } from "../src/domain/acceptance";
 import { SESSION_FORMAT_FIELD_ID } from "../src/forms/types";
 import { MAX_LONG_TEXT_LENGTH } from "../src/forms/validate";
+import { PIPELINE_STAGES } from "../src/server/repo/pipeline";
 import * as schema from "../src/db/schema";
 import {
   DEC_003,
@@ -2147,133 +2148,153 @@ async function main(): Promise<void> {
     }),
   );
 
-  // --- CRM sourcing pipeline (CRM-07/08, DEC-157, task w3-a): 3 synthetic
-  // contacts enrolled across different stages, with at least one note and a
-  // multi-step transition history. Deliberately NOT Marcus Okafor (speaker2)
-  // and NOT either Priya Raman contact (speakerContactId / priyaDupContactId)
-  // — CRM-S2 enrolls Marcus manually during the eval run, so the seed must
+  // --- CRM sourcing pipeline (CRM-07/08, DEC-157, task w3-a; expanded per
+  // DEC-739 amendment task w44-f): 20 synthetic contacts enrolled across
+  // EVERY pipeline stage (including 'contacted' and 'declined', which a
+  // 3-contact seed left permanently empty on the board), with varied fit
+  // scores, a distinct one-sentence rationale each, and activity timestamps
+  // spread across real staleness buckets (days / weeks / months ago) rather
+  // than the seed's monotonic minute-clock, which would cluster every card
+  // at "moments ago". Deliberately NOT Marcus Okafor (speaker2) and NOT
+  // either Priya Raman contact (speakerContactId / priyaDupContactId) —
+  // CRM-S2 enrolls Marcus manually during the eval run, so the seed must
   // leave that enrollment available rather than pre-empting it.
   {
-    const pipelineContactIds = [seedId("synth_contact", 1), seedId("synth_contact", 2), seedId("synth_contact", 3)];
+    const pipelineCount = 20;
+    const pipelineContactIds = Array.from({ length: pipelineCount }, (_, i) => seedId("synth_contact", i + 1));
     const pipelineEntryIds = pipelineContactIds.map((_, i) => seedId("pipeline_entry", i + 1));
     let activityCounter = 0;
     const nextActivityId = () => seedId("pipeline_activity", ++activityCounter);
 
-    // Entry 1: identified only, no history beyond enrollment. Carries a fit
-    // score/rationale (DEC-821, DEC-942) so the Fit pill has real data.
-    statements.push(
-      insertStmt("pipeline_entry", {
-        id: pipelineEntryIds[0],
-        org_id: orgId,
-        contact_id: pipelineContactIds[0],
-        stage: "identified",
-        fit_score: 4,
-        rationale: "Deep expertise in the track's core topic; hasn't spoken at this event before.",
-        created_at: nextTs(),
-        updated_at: ts,
-      }),
-    );
-    statements.push(
-      insertStmt("pipeline_activity", {
-        id: nextActivityId(),
-        entry_id: pipelineEntryIds[0],
-        kind: "move",
-        body: null,
-        from_stage: null,
-        to_stage: "identified",
-        author_user_id: organizerUserId,
-        author_name: organizer.name,
-        created_at: nextTs(),
-      }),
-    );
+    // Staleness buckets: offsets are days-ago from SEED_NOW (not the running
+    // seed clock), so the board shows a real spread. 1/3 land in "days ago"
+    // (<7d), 9/20 in "weeks ago" (7-29d), 45/75 in "months ago" (>=30d).
+    const STALENESS_OFFSETS_DAYS = [1, 3, 9, 20, 45, 75] as const;
 
-    // Entry 2: multi-step transition history (identified -> contacted ->
-    // interested) plus a note, landing in 'interested'.
-    statements.push(
-      insertStmt("pipeline_entry", {
-        id: pipelineEntryIds[1],
-        org_id: orgId,
-        contact_id: pipelineContactIds[1],
-        stage: "interested",
-        created_at: nextTs(),
-        updated_at: ts,
-      }),
-    );
-    const entry2Moves: { from: string | null; to: string }[] = [
-      { from: null, to: "identified" },
-      { from: "identified", to: "contacted" },
-      { from: "contacted", to: "interested" },
-    ];
-    for (const move of entry2Moves) {
+    /** `count` ascending timestamps (oldest first) ending at SEED_NOW minus
+     * `finalOffsetDays`, each earlier step pushed 2 days further back, so a
+     * multi-move history reads as a real timeline rather than simultaneous. */
+    function movesEndingAt(finalOffsetDays: number, count: number): number[] {
+      const out: number[] = [];
+      for (let k = count - 1; k >= 0; k--) out.push(SEED_NOW - (finalOffsetDays + k * 2) * DAY_MS);
+      return out;
+    }
+
+    /** The move-activity path (stage sequence, first entry always
+     * 'identified') that lands an entry on `stage`. 'declined' is reached
+     * via 'contacted' rather than the full ladder, matching how a real
+     * sourcing conversation ends early. */
+    function pathForStage(stage: (typeof PIPELINE_STAGES)[number]): (typeof PIPELINE_STAGES)[number][] {
+      if (stage === "declined") return ["identified", "contacted", "declined"];
+      const idx = PIPELINE_STAGES.indexOf(stage);
+      return PIPELINE_STAGES.slice(0, idx + 1) as (typeof PIPELINE_STAGES)[number][];
+    }
+
+    const RATIONALES = [
+      "Deep expertise in the track's core topic; hasn't spoken at this event before.",
+      "Confirmed fast, strong audience draw from a past talk elsewhere.",
+      "Recommended by two past speakers independently; worth a direct outreach.",
+      "Published a widely-shared piece on this exact subject last quarter.",
+      "Runs a well-attended meetup on the topic; likely to draw a local crowd.",
+      "Strong reviews from a sibling conference's program committee.",
+      "A first-time speaker candidate with a compelling personal case study.",
+      "Active in the community Slack, already fielding related questions daily.",
+      "Former colleague vouched for their delivery style and depth.",
+      "Company blog post on this topic got significant engagement.",
+      "Panel moderator experience suggests a strong stage presence.",
+      "Referral from the track chair, unprompted.",
+      "Keynoted a smaller regional event on an adjacent topic last year.",
+      "Built the open-source tool half the track already uses.",
+      "Wrote the internal postmortem this talk is clearly based on.",
+      "Long-time attendee, first time being considered as a speaker.",
+      "Co-authored the paper this year's CFP theme is drawing from.",
+      "Mentioned by name in three separate CFP reviewer comments.",
+      "Leads a working group on the exact standard this talk covers.",
+      "Gave a lightning-talk version of this at a local meetup to strong response.",
+    ] as const;
+
+    const NOTES = [
+      "Warm intro via a mutual contact; follow up after the CFP closes.",
+      "Confirmed via email; sending the speaker agreement next.",
+      "Left a voicemail; no callback yet, trying email next.",
+      "Asked for the speaker prospectus before committing to anything.",
+      "Wants to co-present with a colleague; confirming headcount.",
+      "Flagged a scheduling conflict with the first day; checking the agenda.",
+      "Requested reimbursement details before saying yes.",
+    ] as const;
+
+    const DECLINE_REASONS = [
+      "Scheduling conflict with another commitment during the event dates.",
+      "Company travel freeze this quarter ruled out in-person speaking.",
+      "Topic overlapped too closely with an already-accepted session.",
+      "Never responded after three follow-up attempts.",
+    ] as const;
+
+    // A minority stay deliberately unrated so the dashed "Unrated" fit pill
+    // still renders on the board (DEC-821/DEC-942), while the rest carry a
+    // varied 1-5 fit_score + distinct rationale.
+    const UNRATED_INDICES = new Set([1, 7, 14]);
+
+    for (let i = 0; i < pipelineCount; i++) {
+      const stage = PIPELINE_STAGES[i % PIPELINE_STAGES.length]!;
+      const contactId = pipelineContactIds[i]!;
+      const entryId = pipelineEntryIds[i]!;
+      const path = pathForStage(stage);
+      const finalOffsetDays = STALENESS_OFFSETS_DAYS[i % STALENESS_OFFSETS_DAYS.length]!;
+      const moveTimes = movesEndingAt(finalOffsetDays, path.length);
+
+      const rated = !UNRATED_INDICES.has(i);
+      const fitScore = rated ? (i % 5) + 1 : null;
+      const rationale = rated ? RATIONALES[i % RATIONALES.length]! : null;
+
       statements.push(
-        insertStmt("pipeline_activity", {
-          id: nextActivityId(),
-          entry_id: pipelineEntryIds[1],
-          kind: "move",
-          body: null,
-          from_stage: move.from,
-          to_stage: move.to,
-          author_user_id: organizerUserId,
-          author_name: organizer.name,
-          created_at: nextTs(),
+        insertStmt("pipeline_entry", {
+          id: entryId,
+          org_id: orgId,
+          contact_id: contactId,
+          stage,
+          fit_score: fitScore,
+          rationale,
+          created_at: moveTimes[0],
+          updated_at: moveTimes[moveTimes.length - 1],
         }),
       );
-    }
-    statements.push(
-      insertStmt("pipeline_activity", {
-        id: nextActivityId(),
-        entry_id: pipelineEntryIds[1],
-        kind: "note",
-        body: "Warm intro via a mutual contact; follow up after the CFP closes.",
-        from_stage: null,
-        to_stage: null,
-        author_user_id: organizerUserId,
-        author_name: organizer.name,
-        created_at: nextTs(),
-      }),
-    );
 
-    // Entry 3: enrolled straight into 'confirmed', with a note. Also rated
-    // (DEC-942), leaving entry 2 as the deliberately unrated row so the
-    // dashed "Unrated" state stays visible on the board.
-    statements.push(
-      insertStmt("pipeline_entry", {
-        id: pipelineEntryIds[2],
-        org_id: orgId,
-        contact_id: pipelineContactIds[2],
-        stage: "confirmed",
-        fit_score: 5,
-        rationale: "Confirmed fast, strong audience draw from a past talk elsewhere.",
-        created_at: nextTs(),
-        updated_at: ts,
-      }),
-    );
-    statements.push(
-      insertStmt("pipeline_activity", {
-        id: nextActivityId(),
-        entry_id: pipelineEntryIds[2],
-        kind: "move",
-        body: null,
-        from_stage: null,
-        to_stage: "confirmed",
-        author_user_id: organizerUserId,
-        author_name: organizer.name,
-        created_at: nextTs(),
-      }),
-    );
-    statements.push(
-      insertStmt("pipeline_activity", {
-        id: nextActivityId(),
-        entry_id: pipelineEntryIds[2],
-        kind: "note",
-        body: "Confirmed via email; sending the speaker agreement next.",
-        from_stage: null,
-        to_stage: null,
-        author_user_id: organizerUserId,
-        author_name: organizer.name,
-        created_at: nextTs(),
-      }),
-    );
+      for (let step = 0; step < path.length; step++) {
+        const fromStage = step === 0 ? null : path[step - 1]!;
+        const toStage = path[step]!;
+        statements.push(
+          insertStmt("pipeline_activity", {
+            id: nextActivityId(),
+            entry_id: entryId,
+            kind: "move",
+            body: toStage === "declined" ? DECLINE_REASONS[i % DECLINE_REASONS.length]! : null,
+            from_stage: fromStage,
+            to_stage: toStage,
+            author_user_id: organizerUserId,
+            author_name: organizer.name,
+            created_at: moveTimes[step],
+          }),
+        );
+      }
+
+      // Every third entry also carries a note, mirroring the original mix.
+      if (i % 3 === 1) {
+        statements.push(
+          insertStmt("pipeline_activity", {
+            id: nextActivityId(),
+            entry_id: entryId,
+            kind: "note",
+            body: NOTES[i % NOTES.length]!,
+            from_stage: null,
+            to_stage: null,
+            author_user_id: organizerUserId,
+            author_name: organizer.name,
+            created_at: moveTimes[moveTimes.length - 1]! + 5 * 60_000,
+          }),
+        );
+      }
+    }
   }
 
   // --- file pipeline (DEC-020): a presentation v1->v2 version chain plus a
