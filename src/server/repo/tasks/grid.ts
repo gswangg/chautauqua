@@ -8,7 +8,7 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
 import { likeContains } from "../like";
-import { acceptedSpeakerConditions, acceptedSpeakerExistsForContact, overdueAssignmentConditions } from "./crud";
+import { overdueAssignmentConditions, rosterParticipantConditions, rosterParticipantExistsForContact } from "./crud";
 import { ASSIGNED_LATE_GRACE_DAYS } from "../../../domain/task-due";
 
 // DEC-789 closed set (mirrors the participant.invite_status column comment
@@ -47,8 +47,9 @@ export interface GridRow {
     // DEC-789: the participant row backing this roster contact's invite
     // status control -- participantId/submissionId together name the PATCH
     // target (/submissions/:submissionId/participants/:participantId).
-    // Always populated: acceptedSpeakerExistsForContact (this row's base
-    // condition) guarantees at least one matching participant exists.
+    // Always populated: rosterParticipantExistsForContact (this row's base
+    // condition, DEC-829) guarantees at least one matching participant
+    // exists, whatever its invite status.
     participantId: string;
     submissionId: string;
     inviteStatus: GridInviteStatus;
@@ -93,10 +94,10 @@ export interface OnboardingGrid {
  * for a task in this event, that satisfies EVERY active filter
  * simultaneously (DEC-312: the WHERE is normative — this is the SQL form of
  * app/src/pages/speakers/rowFilters.ts's now-deleted "one cell matching all
- * filters" semantics, preserved exactly per DEC-340). Per DEC-754 this is
- * now an ADDITIONAL condition ANDed onto the base row condition
- * (acceptedSpeakerExistsForContact) rather than the base condition itself —
- * an unfiltered grid must list the accepted roster even for speakers with
+ * filters" semantics, preserved exactly per DEC-340). Per DEC-754/DEC-829
+ * this is now an ADDITIONAL condition ANDed onto the base row condition
+ * (rosterParticipantExistsForContact) rather than the base condition itself —
+ * an unfiltered grid must list the whole roster even for participants with
  * zero assignments, which no task_assignment-anchored EXISTS can express. */
 function onboardingMatchExists(
   eventId: string,
@@ -161,26 +162,32 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
     return { tasks: [], rows: [], total: 0, page: params.page, perPage: params.perPage, counts: emptyCounts };
   }
 
-  // DEC-754: the base row condition is the accepted-speaker predicate
-  // (contact-only EXISTS, no join to `contact`) — the SAME set createTask
-  // expands assignments over. A taskId/status/overdueOnly filter is an
-  // ADDITIONAL condition, active only when requested, so an unfiltered
-  // grid lists every accepted speaker (assignments or not) while a
-  // filtered grid narrows to those with a matching cell.
+  // DEC-829 (widens DEC-754): the base row condition is the roster
+  // predicate — accepted-submission participants regardless of invite
+  // status (contact-only EXISTS, no join to `contact`) — answering "who is
+  // a row on this roster", which is now a WIDER question than "who does
+  // createTask/assignToAllAccepted expand assignments over"
+  // (acceptedSpeakerExistsForContact, still exact for that narrower
+  // question). A taskId/status/overdueOnly filter is an ADDITIONAL
+  // condition, active only when requested, so an unfiltered grid lists
+  // every roster participant (assignments or not) while a filtered grid
+  // narrows to those with a matching cell.
   const filterActive = params.taskId !== null || params.status !== null || params.overdueOnly;
-  const conditions = [acceptedSpeakerExistsForContact(eventId)];
+  const conditions = [rosterParticipantExistsForContact(eventId)];
   if (filterActive) {
     conditions.push(onboardingMatchExists(eventId, params.taskId, params.status, params.overdueOnly, params.now));
   }
-  // DEC-789: the invite-status filter is a SEPARATE predicate from the base
-  // acceptedSpeakerExistsForContact condition above (which already requires
-  // ACTIVE_INVITE_STATUSES) -- ANDed here, on the same row query, so a
-  // filter value outside 'none'/'accepted' correctly yields zero rows
-  // rather than silently matching the whole roster.
+  // DEC-789/DEC-829: the invite-status filter is a SEPARATE predicate from
+  // the base rosterParticipantExistsForContact condition above (which now
+  // ranges over ALL four invite statuses, not just ACTIVE_INVITE_STATUSES)
+  // -- ANDed here, on the same row query and composing the same
+  // rosterParticipantConditions as the base condition, so a filter pill
+  // narrows the SAME set the unfiltered grid lists rather than a
+  // differently-defined one.
   if (params.inviteStatus) {
     const wantedStatus = params.inviteStatus;
     conditions.push(
-      sql`exists (select 1 from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.contact.id} and ${acceptedSpeakerConditions(eventId)} and ${schema.participant.inviteStatus} = ${wantedStatus})`,
+      sql`exists (select 1 from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.contact.id} and ${rosterParticipantConditions(eventId)} and ${schema.participant.inviteStatus} = ${wantedStatus})`,
     );
   }
   if (params.q) {
@@ -203,12 +210,12 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
   // contact can carry more than one accepted participant row across
   // submissions in the same event; these correlated scalar subqueries
   // (ordered by participant.id for a deterministic pick, same
-  // acceptedSpeakerConditions the base row predicate already requires)
+  // rosterParticipantConditions the base row predicate already requires)
   // pick exactly one, in the SAME select as the rest of the row -- no
   // separate query to drift from the row set.
-  const participantIdSubquery = sql<string>`(select ${schema.participant.id} from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.contact.id} and ${acceptedSpeakerConditions(eventId)} order by ${schema.participant.id} asc limit 1)`;
-  const submissionIdSubquery = sql<string>`(select ${schema.participant.submissionId} from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.contact.id} and ${acceptedSpeakerConditions(eventId)} order by ${schema.participant.id} asc limit 1)`;
-  const inviteStatusSubquery = sql<string>`(select ${schema.participant.inviteStatus} from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.contact.id} and ${acceptedSpeakerConditions(eventId)} order by ${schema.participant.id} asc limit 1)`;
+  const participantIdSubquery = sql<string>`(select ${schema.participant.id} from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.contact.id} and ${rosterParticipantConditions(eventId)} order by ${schema.participant.id} asc limit 1)`;
+  const submissionIdSubquery = sql<string>`(select ${schema.participant.submissionId} from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.contact.id} and ${rosterParticipantConditions(eventId)} order by ${schema.participant.id} asc limit 1)`;
+  const inviteStatusSubquery = sql<string>`(select ${schema.participant.inviteStatus} from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.contact.id} and ${rosterParticipantConditions(eventId)} order by ${schema.participant.id} asc limit 1)`;
 
   const contactRows = await db
     .select({
@@ -236,8 +243,8 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
   for (const c of contactRows) {
     let row = rowsByContact.get(c.id);
     if (!row) {
-      // acceptedSpeakerExistsForContact (this row set's base condition)
-      // guarantees at least one matching participant, so the scalar
+      // rosterParticipantExistsForContact (this row set's base condition,
+      // DEC-829) guarantees at least one matching participant, so the scalar
       // subqueries above can never come back null here — fail loudly
       // instead of silently defaulting if that invariant is ever violated.
       if (c.participantId == null || c.submissionId == null || c.inviteStatus == null) {
@@ -300,14 +307,16 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
   const rows = contactIdsInOrder.map((id) => rowsByContact.get(id)).filter((r): r is GridRow => r !== undefined);
 
   // Event-wide aggregate, filter- and page-independent (DEC-333/334): SQL
-  // COUNT forms, never materialized rows. DEC-754: `speakers` is the size
-  // of the accepted roster itself (the base row condition), NOT
-  // count(distinct taskAssignment.contactId) — an accepted speaker with
-  // zero assignments is still one of the `speakers` this grid counts.
+  // COUNT forms, never materialized rows. DEC-754/DEC-829: `speakers` is
+  // the size of the roster itself (the SAME rosterParticipantExistsForContact
+  // predicate the base row condition above composes — that surface's own
+  // predicate), NOT count(distinct taskAssignment.contactId) — a roster
+  // participant with zero assignments, or an 'invited'/'declined' one, is
+  // still one of the `speakers` this grid counts.
   const speakersCountRows = await db
     .select({ count: sql<number>`count(*)` })
     .from(schema.contact)
-    .where(acceptedSpeakerExistsForContact(eventId));
+    .where(rosterParticipantExistsForContact(eventId));
   const speakersCount = Number(speakersCountRows[0]?.count ?? 0);
 
   const countsRow = await db

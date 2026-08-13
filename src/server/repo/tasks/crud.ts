@@ -89,17 +89,43 @@ export function acceptedSpeakerConditions(eventId: string) {
  * pushed into the query itself (inArray against ACTIVE_INVITE_STATUSES)
  * rather than filtered in application code, so a test double's WHERE
  * evaluation can't drift from what production SQL actually does. */
-/** DEC-754: the ONE predicate for "is this contact an accepted speaker of
- * this event" as a correlated EXISTS against `schema.contact` — the
- * onboarding grid's base row condition (grid.ts) composes this directly so
- * the roster it lists and the set createTask/assignToAllAccepted expand
- * over (via listAcceptedContactIds, built from the same
- * acceptedSpeakerConditions) can never drift apart: a contact this returns
- * true for is a row in the grid whether or not it has any task_assignment
- * yet, and a contact this returns false for never appears no matter how
- * many stale/unrelated assignments it carries. */
+/** DEC-754 (narrowed by DEC-829): the ONE predicate for "is this contact an
+ * accepted AND invite-active speaker of this event" as a correlated EXISTS
+ * against `schema.contact` — composed by createTask/assignToAllAccepted's
+ * expansion target (via listAcceptedContactIds, built from the same
+ * acceptedSpeakerConditions), overdueAssignmentConditions, and other
+ * task-assignment/chasing/visibility consumers. The Speakers roster GRID
+ * (grid.ts) no longer composes this directly — it composes the wider
+ * rosterParticipantExistsForContact below, so an 'invited'/'declined'
+ * participant can still be a row even though this predicate (correctly)
+ * excludes them from task expansion. */
 export function acceptedSpeakerExistsForContact(eventId: string) {
   return sql`exists (select 1 from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.contact.id} and ${acceptedSpeakerConditions(eventId)})`;
+}
+
+/** DEC-829: the ONE roster-participant predicate — accepted submissions in
+ * `eventId`, with NO inviteStatus clause (unlike acceptedSpeakerConditions
+ * above, which restricts to ACTIVE_INVITE_STATUSES). This is the base set
+ * for the Speakers roster GRID (grid.ts): a participant whose invite status
+ * is 'invited' or 'declined' is still a row on that roster (with its status
+ * visible), even though it is NOT part of the task-expansion/chasing set
+ * acceptedSpeakerConditions defines. Every other consumer of "who gets a
+ * task assignment / chase / public-visible slot" (listAcceptedContactIds,
+ * overdueAssignmentConditions, files-library's headshot branch, comms
+ * audiences, public/portal access) keeps composing acceptedSpeakerConditions
+ * unchanged. */
+export function rosterParticipantConditions(eventId: string) {
+  return and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted"))!;
+}
+
+/** DEC-829: the correlated EXISTS twin of rosterParticipantConditions,
+ * against `schema.contact` — the onboarding/Speakers grid's base row
+ * condition (grid.ts) composes this (not acceptedSpeakerExistsForContact)
+ * so a row, its invite-status control, and the ?inviteStatus= filter pills
+ * all range over the same widened roster set: 'none', 'invited', 'accepted'
+ * and 'declined' participants of an accepted submission can all appear. */
+export function rosterParticipantExistsForContact(eventId: string) {
+  return sql`exists (select 1 from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.contact.id} and ${rosterParticipantConditions(eventId)})`;
 }
 
 /** DEC-776: the ONE overdue-assignment predicate — a task_assignment is
