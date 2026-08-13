@@ -92,8 +92,8 @@ describe("AgendaDayGrid (DEC-999): a block is a content-sized box in its own lan
     const block2 = html.match(/<div class="chq-pub-agenda-block" style="([^"]*)" id="chq-agenda-s2">/);
     expect(block1).toBeTruthy();
     expect(block2).toBeTruthy();
-    const style1 = block1![1];
-    const style2 = block2![1];
+    const style1 = block1![1]!;
+    const style2 = block2![1]!;
 
     expect(style1).toContain("--chq-lane-count:2");
     expect(style2).toContain("--chq-lane-count:2");

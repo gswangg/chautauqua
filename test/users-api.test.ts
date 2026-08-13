@@ -679,6 +679,15 @@ describe("DEC-199 email case normalization + login regression", () => {
               rateLimits.delete(extractEqValue(cond) as string);
               return Promise.resolve();
             }
+            // DEC-994: minting a session first revokes every existing
+            // auth_session row for that user (session rotation on login).
+            if (table === schema.authSession) {
+              const userId = extractEqValue(cond) as string;
+              for (let i = sessions.length - 1; i >= 0; i -= 1) {
+                if (sessions[i]!.userId === userId) sessions.splice(i, 1);
+              }
+              return Promise.resolve();
+            }
             throw new Error("unexpected delete table");
           },
         };
