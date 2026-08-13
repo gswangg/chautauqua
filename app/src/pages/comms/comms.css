@@ -516,6 +516,12 @@
   display: inline-block;
 }
 
+.chq-insert-field-menu-hint {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--chq-muted);
+}
+
 .chq-insert-field-menu-trigger {
   appearance: none;
   cursor: pointer;

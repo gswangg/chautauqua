@@ -103,7 +103,7 @@ describe("buildMergeVars", () => {
       portal_link: "https://example.com/portal",
       feedback: "Reviewer 1: Loved it",
       task_list: TASK_LIST,
-      due_date: DUE_DATE,
+      task_due_date: DUE_DATE,
     });
   });
 
@@ -136,7 +136,7 @@ describe("buildMergeVars", () => {
       event_name: "DevCon",
       portal_link: "/portal",
       task_list: TASK_LIST,
-      due_date: DUE_DATE,
+      task_due_date: DUE_DATE,
     });
     expect("feedback" in vars).toBe(false);
   });
@@ -225,7 +225,10 @@ describe("preflightRender", () => {
   // DEC-792: growing the COMPOSE_MERGE_FIELDS vocabulary to close the
   // seeded-template landmine — a Content-Reminder-shaped template ({task_list}
   // / {due_date}) must preflight clean for a recipient WITH outstanding tasks
-  // and for one with NONE (buildMergeVars always sets both keys).
+  // and for one with NONE (buildMergeVars always sets both keys). This
+  // template still spells the alias {due_date} (wave-45 amendment made
+  // task_due_date canonical) against vars keyed task_due_date, exercising
+  // the permanent-alias resolution end to end.
   describe("DEC-792: a Content-Reminder-shaped {task_list}/{due_date} template", () => {
     const reminderSubject = "Reminder: {task_list} due {due_date}";
     const reminderBody =

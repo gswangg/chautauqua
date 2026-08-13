@@ -318,11 +318,15 @@ export const ADDITIONAL_EMAIL_TEMPLATES: Array<{ name: string; subject: string; 
     // DEC-836/DEC-847: the subject must not interpolate {task_list} — it's a
     // multi-line block (one task per line), which renders a paragraph
     // subject and a stray double period when the list is empty. Keep
-    // {due_date} (a single value) and let the body carry the block.
-    subject: "Reminder: onboarding tasks due {due_date}",
+    // {task_due_date} (a single value) and let the body carry the block.
+    // DEC-792 amendment (wave 45): {task_due_date} is the canonical token —
+    // the seeded template demonstrates the name the UI now offers, rather
+    // than the {due_date} alias (which keeps resolving forever but is no
+    // longer offered anywhere).
+    subject: "Reminder: onboarding tasks due {task_due_date}",
     bodyText:
       "Hi {speaker_name}, this is a friendly reminder that the following onboarding tasks are due " +
-      "{due_date}: {task_list}. Please complete them via the speaker portal: {portal_link}. Thanks!",
+      "{task_due_date}: {task_list}. Please complete them via the speaker portal: {portal_link}. Thanks!",
   },
   {
     name: "Final Logistics",
