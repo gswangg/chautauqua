@@ -109,17 +109,19 @@ export function DraftSavedNotice() {
   );
 }
 
-// DEC-579: this STAYS a multi-select checkbox group posting a repeating
-// trackIds field -- submission_track is a join table, and swapping in
-// radios would silently truncate any submission that already holds more
-// than one track the next time its owner edited it. The fidelity report's
-// actual defect was the singular legend over a multi-select control, so
-// the fix is copy only: "Tracks *" plus an explicit "choose all that
-// apply" help line, never a change of input type or name.
+// DEC-579/DEC-951: this STAYS a multi-select checkbox group posting a
+// repeating trackIds field -- submission_track is a join table, and
+// swapping in radios would silently truncate any submission that already
+// holds more than one track the next time its owner edited it. DEC-951
+// refused the v5 frame's radio-group redraw with reason and instead
+// retired the last "Tracks *" asterisk: the product's one optionality
+// grammar (DEC-917) marks nothing on required rows and only ever appends
+// the shared ' · optional' suffix (src/domain/form-copy.ts) on skippable
+// ones, so this required, multi-select fieldset carries no marker at all.
 export function TrackChoices(props: { tracks: TrackRow[]; selected: string[] }) {
   return (
     <fieldset class="chq-cfp-fieldset">
-      <legend>Tracks *</legend>
+      <legend>Tracks</legend>
       <p class="help">Choose all that apply.</p>
       {props.tracks.map((track) => (
         <label class="chq-cfp-option">
@@ -165,7 +167,10 @@ export function SubmitPage(props: {
         <header class="chq-cfp-header">
           {logoUrl ? <img src={logoUrl} alt={`${event.name} logo`} height={32} /> : null}
           <span class="chq-cfp-meta">{event.name}</span>
-          <span class="chq-cfp-title">{form.title}</span>
+          {/* DEC-951: the page names itself ONCE -- this is the page's
+              single <h1>; the intro below keeps its identity/lede
+              paragraph but drops the second "Submit a talk" heading. */}
+          <h1 class="chq-cfp-title">{form.title}</h1>
           {form.closeDate ? (
             <span class="chq-cfp-sub">
               Call for papers · closes {formatEventDateTime(dayLabelEndInstant(form.closeDate, event.timezone), event.timezone)}
@@ -174,7 +179,6 @@ export function SubmitPage(props: {
         </header>
         <div class="chq-cfp-body">
           <div class="chq-cfp-intro">
-            <h1>Submit a talk</h1>
             <p class="chq-cfp-identity-note">
               Already have an account? <a href="/login">Sign in to the speaker portal</a>. First time
               submitting? Submitting this form creates your speaker portal account.
