@@ -10,9 +10,7 @@ import { eq } from "drizzle-orm";
 import type { AppEnv } from "../server/env";
 import { csrfForm } from "../server/middleware";
 import * as schema from "../db/schema";
-import { newId } from "../domain/ids";
 import { hashPassword, verifyPassword } from "../auth/password";
-import { newSessionToken, hashToken } from "../auth/tokens";
 import {
   buildSessionCookie,
   buildCsrfCookie,
@@ -21,16 +19,16 @@ import {
   isSecureRequest,
   CSRF_COOKIE_NAME,
 } from "../auth/cookies";
+import { issueSession } from "../server/auth-session";
 import { ThemeStyles } from "../views/theme";
 import { AUTH_CSS } from "./auth.css";
 import { MIN_PASSWORD_LENGTH } from "./auth";
-import { DEC_740 } from "../decisions";
+import { DEC_740, DEC_994 } from "../decisions";
 
 void DEC_740;
+void DEC_994;
 
 export const accountRoutes = new Hono<AppEnv>();
-
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 function ensureCsrfCookie(c: {
   req: { header(name: string): string | undefined; url: string };
@@ -175,22 +173,11 @@ accountRoutes.post("/account/password", requireAuthOr302, csrfForm, async (c) =>
   const now = new Date();
   await db.update(schema.user).set({ passwordHash, updatedAt: now }).where(eq(schema.user.id, auth.userId));
 
-  // DEC-200: revoke every existing session for this user (including the one
-  // that made this request) — then immediately issue a fresh one for the
-  // current browser. Net effect: this browser stays signed in, every other
-  // device/browser is signed out.
-  await db.delete(schema.authSession).where(eq(schema.authSession.userId, auth.userId));
-
-  const token = newSessionToken();
-  const tokenHash = await hashToken(token);
-  await db.insert(schema.authSession).values({
-    id: newId(),
-    userId: auth.userId,
-    tokenHash,
-    expiresAt: new Date(now.getTime() + THIRTY_DAYS_MS),
-    createdAt: now,
-    updatedAt: now,
-  });
+  // DEC-200/DEC-994: revoke every existing session for this user (including
+  // the one that made this request) — then immediately issue a fresh one for
+  // the current browser. Net effect: this browser stays signed in, every
+  // other device/browser is signed out. issueSession does the revoke+mint.
+  const token = await issueSession(db, auth.userId, now);
 
   c.header("Set-Cookie", buildSessionCookie(token, { secure: isSecureRequest(c.req.url) }));
   const { token: csrfToken } = ensureCsrfCookie(c);

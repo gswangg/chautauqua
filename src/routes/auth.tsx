@@ -10,7 +10,11 @@ import { ApiError } from "../server/http";
 import * as schema from "../db/schema";
 import { newId } from "../domain/ids";
 import { hashPassword, verifyPassword } from "../auth/password";
-import { newSessionToken, hashToken } from "../auth/tokens";
+import { hashToken } from "../auth/tokens";
+import { issueSession } from "../server/auth-session";
+import { DEC_994 } from "../decisions";
+
+void DEC_994;
 import {
   buildSessionCookie,
   buildCsrfCookie,
@@ -98,8 +102,6 @@ const AUTH_RATE_LIMIT_MAX = 20;
 const RATE_LIMIT_ERROR = "Too many attempts. Try again in a few minutes.";
 
 export const authRoutes = new Hono<AppEnv>();
-
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 // DEC-583: the demo-prefill block renders if and only if every DEMO_IDENTITIES
 // email has a real user row in this database -- true on the seeded demo
@@ -353,17 +355,8 @@ authRoutes.post("/login", csrfForm, async (c) => {
 
   await resetScopedLimit(db, "login-user", email, loginNow, AUTH_RATE_LIMIT_WINDOW_SECONDS);
 
-  const token = newSessionToken();
-  const tokenHash = await hashToken(token);
   const now = new Date();
-  await db.insert(schema.authSession).values({
-    id: newId(),
-    userId: user.id,
-    tokenHash,
-    expiresAt: new Date(now.getTime() + THIRTY_DAYS_MS),
-    createdAt: now,
-    updatedAt: now,
-  });
+  const token = await issueSession(db, user.id, now);
 
   c.header("Set-Cookie", buildSessionCookie(token, { secure: isSecureRequest(c.req.url) }));
   const dest = user.role === "speaker" ? "/portal" : "/admin";
@@ -463,16 +456,7 @@ authRoutes.post("/claim/:token", csrfForm, async (c) => {
     updatedAt: now,
   });
 
-  const sessionToken = newSessionToken();
-  const tokenHash = await hashToken(sessionToken);
-  await db.insert(schema.authSession).values({
-    id: newId(),
-    userId,
-    tokenHash,
-    expiresAt: new Date(now.getTime() + THIRTY_DAYS_MS),
-    createdAt: now,
-    updatedAt: now,
-  });
+  const sessionToken = await issueSession(db, userId, now);
 
   c.header("Set-Cookie", buildSessionCookie(sessionToken, { secure: isSecureRequest(c.req.url) }));
   return c.redirect("/portal", 302);

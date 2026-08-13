@@ -13,6 +13,7 @@ import { sessionLoader, requireOrganizer } from "../src/server/middleware";
 import { authRoutes } from "../src/routes/auth";
 import { accountRoutes } from "../src/routes/account";
 import { hashPassword } from "../src/auth/password";
+import { newSessionToken, hashToken } from "../src/auth/tokens";
 import * as schema from "../src/db/schema";
 import { CSRF_COOKIE_NAME } from "../src/auth/cookies";
 import type { AppEnv } from "../src/server/env";
@@ -390,14 +391,26 @@ describe("POST /account/password — successful change", () => {
 
   it("revokes every other session while the response's new cookie keeps this browser signed in", async () => {
     const { db, state } = makeFakeDb();
-    await seedUser(state);
+    const user = await seedUser(state);
     const { app, env } = buildApp(db);
 
     const login1 = await login(app, env, OLD_PASSWORD);
     const session1 = sessionCookieFrom(login1);
-    const login2 = await login(app, env, OLD_PASSWORD);
-    const session2 = sessionCookieFrom(login2);
-    expect(session1).not.toBe(session2);
+
+    // DEC-994: session minting now rotates on login, so a second /login for
+    // the same user would revoke session1 itself. To exercise "some other
+    // live session besides the caller's" we seed session2 directly into the
+    // fake db's session table, as if it were a second already-live browser.
+    const session2Token = newSessionToken();
+    state.sessions.push({
+      id: "sess_2",
+      userId: user.id,
+      tokenHash: await hashToken(session2Token),
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const session2 = `chq_session=${session2Token}`;
 
     // Both sessions currently authenticate against the protected stand-in route.
     const preCheck1 = await app.request("/api/v1/events", { headers: { cookie: session1 } }, env);
