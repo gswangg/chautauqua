@@ -707,3 +707,12 @@ AND audit noStoreByDefault + any other header-stamping middleware for the same t
     "No room yet" instead of the cryptic "TBD" (copy rule: plain names from the app's
     vocabulary). Keep the semantics (time-first placement is a feature). Phone room
     chips: same conditional rule.
+
+57. r3-Account: SPA NotFound FIXED correctly (incl. its test) — but **the server
+    not-found.tsx sibling was never touched and test/not-found-handler.test.ts still
+    locks the OLD copy** — finish item 29: unify server 404 to design copy + fix that
+    test; add the missing "Submissions ›" link to SPA NotFound. Login: the NO ACCOUNT
+    block's CSS (.chq-auth-footer*) already exists UNUSED — write the JSX
+    (Submit-a-talk + Browse-sessions links) and the event-named subheading. Password:
+    build the phone fixed two-button footer (Change it + Cancel); placeholder "At
+    least 12 characters" AND raise minlength 8→12 to match (real validation gap).
