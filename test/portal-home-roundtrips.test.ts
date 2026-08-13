@@ -52,7 +52,7 @@ function makeCountingDb(): { db: Db; queryCount: () => number } {
 async function runDeliverablesPath(n: number): Promise<number> {
   const { db, queryCount } = makeCountingDb();
   const submissionIds = Array.from({ length: n }, (_, i) => `sub-${i}`);
-  await listLatestDeliverables(db, submissionIds);
+  await listLatestDeliverables(db, "contact-1", "org-1", submissionIds);
   return queryCount();
 }
 

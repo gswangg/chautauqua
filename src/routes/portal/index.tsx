@@ -501,6 +501,8 @@ portalRoutes.get("/", async (c) => {
   ]);
   const deliverables = await listLatestDeliverables(
     c.var.db,
+    contactId,
+    auth.orgId,
     sessions.map((s) => s.submissionId),
   );
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
@@ -557,7 +559,7 @@ portalRoutes.get("/submissions/:id", async (c) => {
   const editable = editData
     ? canEditSubmission(editData.submission.status, editData.form.closeDate, Date.now(), editData.form.timezone)
     : false;
-  const deliverable = await getLatestDeliverable(c.var.db, id);
+  const deliverable = await getLatestDeliverable(c.var.db, contactId, auth.orgId, id);
   const deliverableVersion = deliverable ? await getFileVersionNumber(c.var.db, deliverable.id) : null;
   // DEC-777: the Slides card only ever links to an upload page that exists
   // — resolve the speaker's own file_request task assignments (any event)

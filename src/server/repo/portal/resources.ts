@@ -54,6 +54,9 @@ export async function getMyResources(db: Db, contactId: string, orgId: string): 
 
   // DEC-432: scope pushed into WHERE via inArray/chunkIds rather than
   // fetching every org resource and filtering in JS.
+  // DEC-962 audit: the inner batch below already carries orgId inside the
+  // SAME query's WHERE (eq(schema.event.orgId, orgId)) — a foreign eventId
+  // in the batch contributes no row, by construction. No change needed.
   const rows: {
     id: string;
     eventId: string;
