@@ -7,7 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { ContentApp } from './ContentApp';
 import { errorEnvelope, listEnvelope, mockApi } from '../../test-utils/mockApi';
 
@@ -425,5 +425,52 @@ describe('ContentApp worklist chips (DEC-825): count query matches the tab list 
     expect(listContentStatuses.length).toBeGreaterThan(0);
     expect(listContentStatuses.every((v) => v === 'changes_requested,pending')).toBe(true);
     expect(chipCountContentStatuses).toContain('changes_requested,pending');
+  });
+});
+
+// DEC-825: ?tab= is the URL state for the new (three-tab) vocabulary — a
+// direct link into a tab lands on that tab, and clicking a chip writes its
+// name back into the URL, so the two never drift apart.
+function LocationProbe() {
+  const location = useLocation();
+  return <div data-testid="location-search">{location.search}</div>;
+}
+
+describe('ContentApp worklist tab (DEC-825): ?tab= round-trips through the new vocabulary', () => {
+  it('reads an explicit ?tab=approved from the URL and marks that chip active', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/?tab=approved']}>
+        <ContentApp />
+        <LocationProbe />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /^Approved/ })).toHaveClass('is-active');
+    });
+    expect(screen.getByRole('tab', { name: /^Needs a decision/ })).not.toHaveClass('is-active');
+  });
+
+  it('writes the clicked chip name back into ?tab= (URL state)', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <ContentApp />
+        <LocationProbe />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('tab', { name: /^Approved/ }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('location-search').textContent).toContain('tab=approved');
+    });
   });
 });
