@@ -127,6 +127,26 @@ describe('OnboardingGrid: DEC-730 one status-control family', () => {
   });
 });
 
+// DEC-827: the toolbar carries a quiet link into the Contacts importer,
+// event preselected -- Import is Contacts' job, this is just the door.
+describe('OnboardingGrid: DEC-827 import link', () => {
+  it('renders a quiet link into the Contacts importer with the event preselected', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    const link = screen.getByRole('link', { name: 'Import speakers from a CSV' });
+    expect(link).toHaveAttribute('href', '/admin/contacts?import=1');
+    // Not a button, not a second importer -- a real <a>, quiet toolbar link.
+    expect(link.tagName).toBe('A');
+  });
+});
+
 describe('OnboardingGrid: DEC-291/DEC-662 Response control', () => {
   it('shows the control only on a complete form cell (never on a pending one), and opens the modal with fetched fields', async () => {
     mockApi({

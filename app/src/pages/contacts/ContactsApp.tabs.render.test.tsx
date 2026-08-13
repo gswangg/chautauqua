@@ -260,6 +260,41 @@ describe('ContactsApp render smoke: ImportWizard', () => {
   });
 });
 
+// DEC-827: Speakers links into the importer via ?import=1 -- the wizard
+// mounts with the current event preselected, and closing it clears the
+// param so a later navigation (e.g. browser back) never replays it. The
+// existing 'Import CSV' toolbar button shares this same opener/URL-state
+// path (one opener, not two).
+describe('ContactsApp: DEC-827 ?import=1 opens the wizard with the current event', () => {
+  it('mounts ImportWizard with the current eventId when ?import=1 is present, and clears the param on close', async () => {
+    mockApi(baseRoutes());
+
+    render(
+      <MemoryRouter initialEntries={[`/contacts?import=1&eventId=${EVENT_ID}`]}>
+        <ContactsApp />
+      </MemoryRouter>,
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: 'Import contacts' });
+    // DEC-827: the wizard opens with the event preselected -- it renders
+    // the event-scoped session-title field, which only appears when
+    // eventId is set (ImportWizard's own contract, unchanged here).
+    expect(within(dialog).getByText('Import contacts from CSV')).toBeInTheDocument();
+    expect(within(dialog).getByLabelText(/session title for this batch/i)).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Import contacts' })).not.toBeInTheDocument();
+    });
+
+    // Reopening via the toolbar button still works through the same
+    // opener/URL-state path (one opener, not two).
+    fireEvent.click(screen.getByRole('button', { name: 'Import CSV' }));
+    expect(await screen.findByRole('dialog', { name: 'Import contacts' })).toBeInTheDocument();
+  });
+});
+
 describe('ContactsApp render smoke: BulkEmailModal over a selection', () => {
   it('opens over a selected contact', async () => {
     mockApi({

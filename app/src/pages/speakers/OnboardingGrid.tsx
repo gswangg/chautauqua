@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiGet, apiPatch, apiPost, ApiError } from '../../lib/api';
+import { DEC_827 } from '../../../../src/decisions';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { GridFilters } from './GridFilters';
@@ -22,6 +23,10 @@ import {
   type OnboardingGridResponse,
   type ReminderDraft,
 } from './types';
+
+// Compile-checked dependency marker: DEC-827 (import lives in Contacts;
+// Speakers links to it with the event already chosen).
+void DEC_827;
 
 function nextStatus(status: AssignmentStatus): AssignmentStatus {
   return status === 'complete' ? 'pending' : 'complete';
@@ -102,7 +107,8 @@ function nextInviteStatus(status: InviteStatus): InviteStatus {
 // DEC-662/DEC-746: the roster's Add-speaker trigger lives here now (see
 // RosterPanel), beside New task/Remind all outstanding, so the page renders
 // exactly one title action row -- Import CSV is the Contacts page's job, not
-// this row's.
+// this row's. DEC-827: the toolbar below carries a quiet link into that
+// importer (/admin/contacts?import=1) instead.
 interface OnboardingGridProps {
   onAddSpeaker: () => void;
 }
@@ -431,6 +437,9 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
 
       <div className="chq-speakers-toolbar">
         {grid && <GridFilters tasks={grid.tasks} filters={filters} onChange={handleFiltersChange} />}
+        <a href="/admin/contacts?import=1" className="chq-link-button chq-speakers-import-link">
+          Import speakers from a CSV
+        </a>
         <span className="chq-speakers-toolbar-caption">Skips anyone reminded in the last hour</span>
       </div>
 
