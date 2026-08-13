@@ -765,3 +765,13 @@ AND audit noStoreByDefault + any other header-stamping middleware for the same t
     call: scrollable-button hides speaker+caption by default — size conflict cells to
     content or add a reveal, and decide lane-split vs mock's full-width card in a DEC;
     (e) focus to Cancel/first cell on placing entry.
+
+63. r3-Public/Portal: itinerary/rail/gutter/portal-home/sign-out/underlines/Track-
+    fieldset/Format-chips/abstracts ALL VERIFIED FIXED — keep. REMAINING: portal
+    session detail rebuild (mock: Accepted badge, code·format·track line, date-room,
+    Abstract, Slides card); **restore multi-submission navigation — portal home links
+    only the headline session and /portal/submissions 404s; add each submission as a
+    linked row (or an "All your submissions" list) within the worklist page**; header
+    subtitle = event + identity per README (drop the welcome sentence); phone CFP
+    2-step wizard; headshot stripe texture. DESIGN-PACK NOTE: v4's Track radio art is
+    stale vs DEC-579 (checkboxes correct) — update the mock, not the code.
