@@ -427,6 +427,61 @@ describe('AgendaPage render smoke', () => {
     expect(captions.length).toBe(3);
   });
 
+  // DEC-759: a same-room 3+-way pile-up renders each session as its own
+  // lane (1/N width) rather than merging (that's the DEC-742 exactly-2
+  // path, covered above) — every lane must render BOTH its own title and
+  // its own conflict caption at rest, not hidden behind the inner
+  // scrollbar DEC-620 used to put on the card (removed by DEC-759; see
+  // agenda-card-geometry.test.ts for the CSS-level regression guard).
+  it('renders each lane of a same-room clash with its own title and conflict caption, sized to its lane', async () => {
+    const payload = agendaPayload();
+    payload.placed.push({
+      submissionId: 'sub-4',
+      ref: 'S-004',
+      title: 'Overlapping Talk C',
+      trackIds: [],
+      speakers: [],
+      roomId: 'room-1',
+      day: '2026-06-01',
+      startMin: 645,
+      endMin: 705,
+    });
+    payload.conflicts = [
+      { kind: 'room_overlap', submissionIds: ['sub-1', 'sub-2'], detail: 'A and B overlap in Main Hall.' },
+      { kind: 'room_overlap', submissionIds: ['sub-1', 'sub-4'], detail: 'A and C overlap in Main Hall.' },
+      { kind: 'room_overlap', submissionIds: ['sub-2', 'sub-4'], detail: 'B and C overlap in Main Hall.' },
+    ];
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: payload,
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    for (const [submissionId, title] of [
+      ['sub-1', 'Overlapping Talk A'],
+      ['sub-2', 'Overlapping Talk B'],
+      ['sub-4', 'Overlapping Talk C'],
+    ] as const) {
+      const card = document.querySelector(`[data-submission-id="${submissionId}"].chq-day-grid-placed-card`);
+      expect(card).not.toBeNull();
+      // Each card renders its own title...
+      expect(card?.textContent).toContain(title);
+      // ...and its own caption, both present in the same card at once (not
+      // one obscuring the other behind a scroll region).
+      const caption = card?.querySelector('.chq-conflict-caption');
+      expect(caption).not.toBeNull();
+      expect(caption?.textContent).toBe('Three sessions in one room');
+      // Lane sizing: three concurrent lanes each claim 1/3 of the cell
+      // width via the inline style DayGrid computes from assignLanes
+      // (jsdom normalizes the `calc(100% / 3)` source to a percentage).
+      expect((card as HTMLElement).style.width).toBe('calc(33.3333%)');
+    }
+  });
+
   it('never renders the literal text "undefined" anywhere in the tree', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
