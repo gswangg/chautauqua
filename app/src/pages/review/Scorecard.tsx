@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPost, apiPut, ApiError } from '../../lib/api';
 import './review.css';
+import './scorecard.css';
 import { formatAnswerValue } from './answerText';
 import { isEvaluationComplete, ratingScaleValues, scorecardKeyAction } from './scorecardLogic';
 import { DelayedLoading } from '../../components/DelayedLoading';
@@ -19,6 +20,19 @@ import type {
   ReviewerSubmissionDetail,
   Track,
 } from './types';
+
+// DEC-889: the abstract clamps to its first ~60 words so the scorecard
+// doesn't reprint the whole submission detail above the ratings; the
+// remainder (and the answer lists) live behind a single disclosure.
+const ABSTRACT_WORD_LIMIT = 60;
+
+function clampAbstract(text: string, wordLimit: number = ABSTRACT_WORD_LIMIT): { clamped: string; remainder: string; isClamped: boolean } {
+  const words = text.trim().length === 0 ? [] : text.trim().split(/\s+/);
+  if (words.length <= wordLimit) {
+    return { clamped: text, remainder: '', isClamped: false };
+  }
+  return { clamped: `${words.slice(0, wordLimit).join(' ')}…`, remainder: words.slice(wordLimit).join(' '), isClamped: true };
+}
 
 export function Scorecard() {
   const { planId, submissionId } = useParams<{ planId: string; submissionId: string }>();
@@ -41,6 +55,10 @@ export function Scorecard() {
   const [recusalReason, setRecusalReason] = useState('');
   const [recusing, setRecusing] = useState(false);
   const [undoingRecusal, setUndoingRecusal] = useState(false);
+
+  // DEC-889: collapsed by default -- reveals the abstract's remainder and
+  // both answer lists together, in place, when the reviewer opts in.
+  const [abstractExpanded, setAbstractExpanded] = useState(false);
 
   // DEC-831: the scorecard's eyebrow names plan · track · round -- the
   // track clause reuses the plan's own filter-scope resolution
@@ -219,6 +237,18 @@ export function Scorecard() {
   // "Weight N · NN%" caption -- never re-derived here.
   const weightShares = criterionWeightShares(criteria);
 
+  // DEC-889: one clamp, one disclosure -- the disclosure owns both the
+  // abstract's remainder and the two answer lists, so the default view
+  // never shows either. Server-side anonymization (anonymizeForReviewer)
+  // remains the only thing deciding whether speakerAnswers is present at
+  // all; this component never re-derives visibility from role.
+  const { clamped: abstractClamped, remainder: abstractRemainder, isClamped: abstractIsClamped } = clampAbstract(
+    submission.description ?? '',
+  );
+  const hasAnswers =
+    submission.sessionAnswers.length > 0 || (!!submission.speakerAnswers && submission.speakerAnswers.length > 0);
+  const showAbstractDisclosure = abstractIsClamped || hasAnswers;
+
   // DEC-873: computeWeightedScore throws on a missing score, so only call
   // it once every rating criterion (weight > 0) has a numeric entry;
   // otherwise the Overall block renders an em dash.
@@ -260,35 +290,51 @@ export function Scorecard() {
         {submission.speakers && (
           <span className="chq-summary">Speakers: {submission.speakers.map((s) => s.name).join(', ')}</span>
         )}
-        {submission.description && <p className="chq-review-scorecard-abstract">{submission.description}</p>}
+        {submission.description && <p className="chq-review-scorecard-abstract">{abstractClamped}</p>}
+        {showAbstractDisclosure && (
+          <button
+            type="button"
+            className="chq-review-abstract-disclosure"
+            aria-expanded={abstractExpanded}
+            onClick={() => setAbstractExpanded((v) => !v)}
+          >
+            {abstractExpanded ? 'Hide the full submission ‹' : 'Read the full submission ›'}
+          </button>
+        )}
       </div>
 
-      {submission.sessionAnswers.length > 0 && (
-        <section className="chq-review-answers">
-          <h2 className="chq-section-label">Submission answers</h2>
-          <dl className="chq-review-answer-list">
-            {submission.sessionAnswers.map((a) => (
-              <div key={a.fieldId} className="chq-review-answer-row">
-                <dt>{a.label}</dt>
-                <dd>{formatAnswerValue(a.value)}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-      )}
+      {abstractExpanded && (
+        <>
+          {abstractIsClamped && <p className="chq-review-scorecard-abstract-remainder">{abstractRemainder}</p>}
 
-      {submission.speakerAnswers && submission.speakerAnswers.length > 0 && (
-        <section className="chq-review-answers">
-          <h2 className="chq-section-label">Speaker answers</h2>
-          <dl className="chq-review-answer-list">
-            {submission.speakerAnswers.map((a) => (
-              <div key={a.fieldId} className="chq-review-answer-row">
-                <dt>{a.label}</dt>
-                <dd>{formatAnswerValue(a.value)}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
+          {submission.sessionAnswers.length > 0 && (
+            <section className="chq-review-answers">
+              <h2 className="chq-section-label">Submission answers</h2>
+              <dl className="chq-review-answer-list">
+                {submission.sessionAnswers.map((a) => (
+                  <div key={a.fieldId} className="chq-review-answer-row">
+                    <dt>{a.label}</dt>
+                    <dd>{formatAnswerValue(a.value)}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          )}
+
+          {submission.speakerAnswers && submission.speakerAnswers.length > 0 && (
+            <section className="chq-review-answers">
+              <h2 className="chq-section-label">Speaker answers</h2>
+              <dl className="chq-review-answer-list">
+                {submission.speakerAnswers.map((a) => (
+                  <div key={a.fieldId} className="chq-review-answer-row">
+                    <dt>{a.label}</dt>
+                    <dd>{formatAnswerValue(a.value)}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          )}
+        </>
       )}
 
       {submission.myEvaluation && (
