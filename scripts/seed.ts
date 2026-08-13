@@ -1372,6 +1372,72 @@ async function main(): Promise<void> {
     }),
   );
 
+  // --- evaluation plan 4 (DEC-848): a SECOND plan simultaneously open
+  // alongside plan 1 (distinct from plan 3, which shares plan 1's track 0
+  // scope) so the scoped review queue is exercised: reviewerUserId here is
+  // scoped to trackIds[1] instead of plan 1's trackIds[0], so their two
+  // live queues differ in both name and track scope, not just plan name.
+  // Only a minority (2) of this plan's in-track submissions are scored,
+  // mirroring plan 1's own partial (7-of-10) progress, so the new queue
+  // reads genuinely incomplete rather than trivially empty or complete.
+  const evalPlan4Id = seedId("evaluation_plan", 4);
+  const evalPlan4Criteria = [
+    {
+      id: "content_quality",
+      label: "Content quality & depth",
+      kind: "rating",
+      weight: 3,
+      guidance: "Original insight, not a rehash of the docs.",
+    },
+    {
+      id: "speaker_delivery",
+      label: "Speaker delivery & clarity",
+      kind: "rating",
+      weight: 5,
+      guidance: "Clear structure and a confident, well-paced delivery.",
+    },
+    { id: "recommendation", label: "Recommendation", kind: "dropdown", options: ["Approve", "Maybe", "Deny"] },
+  ] as const;
+  statements.push(
+    insertStmt("evaluation_plan", {
+      id: evalPlan4Id,
+      event_id: eventId,
+      name: "Workshops Second Look",
+      instructions: "Focused re-review of the workshop track ahead of scheduling.",
+      // DEC-591/DEC-848: bounds straddle SEED_NOW, distinct from plan 1's
+      // -30/+25 and plan 3's -10/+40 windows, so this plan too reads as
+      // open regardless of when the seed is run.
+      open_date: SEED_NOW - 5 * DAY_MS,
+      close_date: SEED_NOW + 35 * DAY_MS,
+      filters_json: null,
+      anonymized: false,
+      scale_json: JSON.stringify({ min: 1, max: 5 }),
+      criteria_json: JSON.stringify(evalPlan4Criteria),
+      rounds: 1,
+      max_evaluations: null,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  statements.push(
+    insertStmt("plan_reviewer", {
+      id: seedId("plan_reviewer", 4 + plan2ReviewerAssignments.length + 2),
+      plan_id: evalPlan4Id,
+      user_id: reviewerUserId,
+      track_id: trackIds[1]!,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  if (track1Subs.length < 3) {
+    throw new Error(
+      `seed: expected track 1 to have at least 3 submissions to demonstrate a partially scored plan-4 queue, got ${track1Subs.length}`,
+    );
+  }
+  for (const submissionId of track1Subs.slice(0, 2)) {
+    insertEvaluation(reviewerUserId, submissionId, evalPlan4Id);
+  }
+
   // --- onboarding tasks (DEC-009/DEC-023): the 5 canonical default tasks,
   // staggered due dates before the event start, assigned to every accepted
   // speaker's contact in mixed pending/complete states.
