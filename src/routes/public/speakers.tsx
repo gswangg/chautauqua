@@ -117,7 +117,9 @@ export function SpeakersContent(props: {
       )}
       {hasMore ? (
         <p>
-          <a href={`${basePath}?${q ? `q=${encodeURIComponent(q)}&` : ""}${carryQs}page=${page + 1}`}>Show more</a>
+          <a class="chq-pub-accent-link" href={`${basePath}?${q ? `q=${encodeURIComponent(q)}&` : ""}${carryQs}page=${page + 1}`}>
+            Show more
+          </a>
         </p>
       ) : null}
     </>
@@ -155,7 +157,9 @@ export function GalleryContent(props: {
       </div>
       {hasMore ? (
         <p>
-          <a href={`${basePath}?${q ? `q=${encodeURIComponent(q)}&` : ""}${carryQs}page=${page + 1}`}>Show more</a>
+          <a class="chq-pub-accent-link" href={`${basePath}?${q ? `q=${encodeURIComponent(q)}&` : ""}${carryQs}page=${page + 1}`}>
+            Show more
+          </a>
         </p>
       ) : null}
     </>

@@ -11,7 +11,9 @@ export function BackLink(props: { event: PublicEvent; from: Surface; base?: Surf
   const { event, from, base = "/e" } = props;
   return (
     <p>
-      <a href={surfacePath(event, from, base)}>&larr; Back to {SURFACE_LABELS[from]}</a>
+      <a class="chq-pub-accent-link" href={surfacePath(event, from, base)}>
+        &larr; Back to {SURFACE_LABELS[from]}
+      </a>
     </p>
   );
 }
