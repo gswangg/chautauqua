@@ -115,8 +115,10 @@ describe("GET /api/v1/contacts/duplicates wire contract (DEC-239)", () => {
     expect(group.contactIds.sort()).toEqual(["contact-keep", "contact-merge"].sort());
     for (const c of group.contacts as Record<string, unknown>[]) {
       // DEC-734: company + title ride along so the merge page's identity
-      // columns never fall back to a second by-ids fetch.
-      expect(Object.keys(c).sort()).toEqual(["company", "email", "firstName", "id", "lastName", "title"]);
+      // columns never fall back to a second by-ids fetch. DEC-992: createdAt
+      // rides along too, so the merge compare table's "added <date>" column
+      // head never needs a second fetch either.
+      expect(Object.keys(c).sort()).toEqual(["company", "createdAt", "email", "firstName", "id", "lastName", "title"]);
     }
   });
 });

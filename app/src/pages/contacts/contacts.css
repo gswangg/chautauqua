@@ -621,3 +621,16 @@
 .chq-contacts-delete-trigger {
   white-space: nowrap;
 }
+
+/* DEC-992: the merge page's combine-rules block, grouped as ONE unit
+   directly above the action row (rather than trailing footnotes after the
+   preview rows) -- MergePage.tsx, not restyled in lane 2's
+   contacts-panels.css since that file is owned by another in-flight task
+   this wave. */
+.chq-contacts-merge-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 0;
+  border-top: 1px solid var(--chq-hairline);
+}

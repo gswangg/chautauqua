@@ -105,6 +105,8 @@ export interface DuplicateGroup {
     // '—' for a field the directory already shows -- never a second by-ids
     // fetch.
     title?: string | null;
+    // DEC-992: the merge compare table's "added <date>" column-head vintage.
+    createdAt: number;
   }[];
 }
 

@@ -14,10 +14,11 @@ import { findContactById } from "./crud";
 import { toContactRecord, type ContactRow, MAX_CONTACT_DIRECTORY_SCAN } from "./rows";
 import { buildMergeRepointOps, mergedPipelineStage, type PipelineStageLike } from "./query";
 import { newId } from "../../../domain/ids";
-import { DEC_479, DEC_770 } from "../../../decisions";
+import { DEC_479, DEC_770, DEC_992 } from "../../../decisions";
 
 void DEC_479;
 void DEC_770;
+void DEC_992;
 
 /** DEC-770: dismissal pairs are always keyed by (org, min(id), max(id)) so
  * the caller's argument order never matters and the unique index below is
@@ -74,6 +75,10 @@ export interface DuplicateGroup {
     email: string;
     company?: string | null;
     title?: string | null;
+    // DEC-992: the merge compare table's "added <date>" column-head vintage
+    // -- one more column on the scan already running, never a second
+    // by-ids fetch (same reasoning DEC-734 used for title/company).
+    createdAt: number;
   }[];
 }
 
@@ -84,6 +89,7 @@ type ScannedContactRow = {
   lastName: string;
   company: string | null;
   title: string | null;
+  createdAt: Date;
 };
 
 /** DEC-554/DEC-734/DEC-788: the one org-contact scan both
@@ -102,6 +108,7 @@ async function scanContactsForOrg(db: Db, orgId: string): Promise<ScannedContact
       lastName: schema.contact.lastName,
       company: schema.contact.company,
       title: schema.contact.title,
+      createdAt: schema.contact.createdAt,
     })
     .from(schema.contact)
     .where(eq(schema.contact.orgId, orgId))
@@ -151,6 +158,7 @@ export async function findDuplicateGroupsForOrg(db: Db, orgId: string): Promise<
         email: r.email,
         company: r.company,
         title: r.title,
+        createdAt: r.createdAt.getTime(),
       };
     }),
   }));

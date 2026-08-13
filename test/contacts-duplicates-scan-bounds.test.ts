@@ -17,6 +17,7 @@ interface FakeRow {
   lastName?: string;
   company?: string | null;
   title?: string | null;
+  createdAt?: Date;
   [key: string]: unknown;
 }
 
@@ -56,7 +57,11 @@ function makeFakeDb(rows: FakeRow[]) {
                       const projected = rows.slice(0, n).map((r) => {
                         const out: Record<string, unknown> = {};
                         for (const k of keys) {
-                          out[k] = r[k] ?? (k === "company" || k === "title" ? null : "");
+                          if (k === "createdAt") {
+                            out[k] = r[k] ?? new Date(0);
+                          } else {
+                            out[k] = r[k] ?? (k === "company" || k === "title" ? null : "");
+                          }
                         }
                         return out;
                       });
@@ -86,7 +91,15 @@ describe("findDuplicateGroupsForOrg scan bounds (DEC-554)", () => {
     await findDuplicateGroupsForOrg(db, "org1");
     const projection = getProjection();
     expect(projection).toBeDefined();
-    expect(Object.keys(projection!).sort()).toEqual(["company", "email", "firstName", "id", "lastName", "title"]);
+    expect(Object.keys(projection!).sort()).toEqual([
+      "company",
+      "createdAt",
+      "email",
+      "firstName",
+      "id",
+      "lastName",
+      "title",
+    ]);
   });
 
   it("that column set is a superset of every field findDuplicateGroups reads: grouping still works with each other column missing", async () => {

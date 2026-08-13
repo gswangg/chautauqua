@@ -23,7 +23,11 @@ import { contactLabels } from '../../../../src/domain/contact-labels';
 // DEC-858: names that differ only by case are the same name at a merge --
 // share the ONE name-identity rule the duplicate detector already uses.
 import { normalizedContactName } from '../../../../src/domain/contacts';
+// DEC-992: "added <date>" renders through the app's ONE date grammar --
+// never a hand-rolled Intl call.
+import { formatDate } from '../../lib/dates';
 import './contacts-panels.css';
+import './contacts.css';
 
 // DEC-705: what the merge will actually write, computed server-side by the
 // SAME pure-core merge fold POST /contacts/merge uses (never re-derived
@@ -134,16 +138,17 @@ export function MergePage() {
     !!soleDiscard &&
     normalizedContactName(keepContact.firstName, keepContact.lastName) ===
       normalizedContactName(soleDiscard.firstName, soleDiscard.lastName);
+  // DEC-992: the column heads name BOTH the record and its vintage --
+  // "Keeping · <name>[ (disambiguator)] · added <date>" / "Discarding ·
+  // ...". A 3+ group has no single discarded record to name (DEC-802), so
+  // it keeps the 'N other records' fallback with no vintage -- there is no
+  // one createdAt to show.
   const keepHeadLabel = keepContact
-    ? namesCollide
-      ? `${keepContact.firstName} ${keepContact.lastName} (${disambiguator(keepContact)})`
-      : `${keepContact.firstName} ${keepContact.lastName}`
+    ? `Keeping · ${namesCollide ? `${keepContact.firstName} ${keepContact.lastName} (${disambiguator(keepContact)})` : `${keepContact.firstName} ${keepContact.lastName}`} · added ${formatDate(keepContact.createdAt)}`
     : '';
   const discardHeadLabel = soleDiscard
-    ? namesCollide
-      ? `${soleDiscard.firstName} ${soleDiscard.lastName} (${disambiguator(soleDiscard)})`
-      : `${soleDiscard.firstName} ${soleDiscard.lastName}`
-    : `${discardedContacts.length} other records`;
+    ? `Discarding · ${namesCollide ? `${soleDiscard.firstName} ${soleDiscard.lastName} (${disambiguator(soleDiscard)})` : `${soleDiscard.firstName} ${soleDiscard.lastName}`} · added ${formatDate(soleDiscard.createdAt)}`
+    : `Discarding · ${discardedContacts.length} other records`;
 
   // DEC-770: 'Not a duplicate' persists the dismissal (POST
   // /contacts/duplicates/dismiss) BEFORE navigating back -- a fact about
@@ -295,16 +300,6 @@ export function MergePage() {
           {preview && preview.length === 0 && (
             <p className="chq-contacts-merge-compare-empty">Every field already matches — nothing else will change.</p>
           )}
-          {preview && preview.some((f) => f.key.startsWith('customFields.')) && (
-            <p className="chq-contacts-merge-footnote">Labels always combine — they're never chosen one over the other.</p>
-          )}
-          {/* DEC-834: the second rule that is NOT 'pick a side' -- notes are
-              appended (DEC-266/DEC-705), not chosen -- must be visible
-              beside the labels footnote before committing an irreversible
-              merge. */}
-          {preview && (
-            <p className="chq-contacts-merge-footnote">Labels combine, notes are appended</p>
-          )}
 
           {impact && keepContact && (
             <p className="chq-contacts-merge-impact">
@@ -313,10 +308,40 @@ export function MergePage() {
             </p>
           )}
 
+          {/* DEC-992: the combine-rules explanation moves into ONE block
+              ABOVE the action row, rather than trailing it -- what will
+              happen (labels combine, notes are appended) is read BEFORE the
+              irreversible button, not after. */}
+          {preview && (
+            <div className="chq-contacts-merge-rules">
+              {preview.some((f) => f.key.startsWith('customFields.')) && (
+                <p className="chq-contacts-merge-footnote">Labels always combine — they're never chosen one over the other.</p>
+              )}
+              {/* DEC-834: the second rule that is NOT 'pick a side' -- notes
+                  are appended (DEC-266/DEC-705), not chosen -- must be
+                  visible beside the labels footnote before committing an
+                  irreversible merge. */}
+              <p className="chq-contacts-merge-footnote">Labels combine, notes are appended</p>
+            </div>
+          )}
+
           <div className="chq-contacts-merge-footer">
             <button type="button" className="chq-btn chq-btn-primary" onClick={() => setConfirmOpen(true)}>
-              Merge
+              {keepContact ? `Merge into ${keepContact.firstName} ${keepContact.lastName}` : 'Merge'}
             </button>
+            {/* DEC-992: 'Swap which is kept' sits beside the primary as a
+                control, rather than being buried back in the pick list
+                above -- only renders for a two-record pair, which is the
+                only shape with a single other record to swap onto. */}
+            {soleDiscard && (
+              <button
+                type="button"
+                className="chq-btn chq-btn-secondary"
+                onClick={() => setKeepId(soleDiscard.id)}
+              >
+                Swap which is kept
+              </button>
+            )}
             <button
               type="button"
               className="chq-btn chq-btn-secondary"

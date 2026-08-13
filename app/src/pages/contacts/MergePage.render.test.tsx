@@ -13,11 +13,18 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { MergePage } from './MergePage';
 import { mockApi, listEnvelope } from '../../test-utils/mockApi';
 
+// DEC-992: createdAt (epoch ms) rides along on every contact -- 1 Jan 2024
+// and 15 Jun 2024, both in the past so formatDate always appends the year.
+// Noon UTC (not midnight) so formatDate's local-timezone getDate() never
+// rolls the calendar day backward/forward in a non-UTC test runner.
+const CREATED_A = Date.UTC(2024, 0, 1, 12);
+const CREATED_B = Date.UTC(2024, 5, 15, 12);
+
 const GROUP = {
   contactIds: ['ct-keep', 'ct-merge'],
   contacts: [
-    { id: 'ct-keep', firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com', company: 'Acme', title: 'Principal Engineer' },
-    { id: 'ct-merge', firstName: 'Jane', lastName: 'Doe', email: 'jane.merge@example.com', company: 'Acme Corp', title: 'Developer Advocate' },
+    { id: 'ct-keep', firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com', company: 'Acme', title: 'Principal Engineer', createdAt: CREATED_A },
+    { id: 'ct-merge', firstName: 'Jane', lastName: 'Doe', email: 'jane.merge@example.com', company: 'Acme Corp', title: 'Developer Advocate', createdAt: CREATED_B },
   ],
 };
 
@@ -56,8 +63,8 @@ describe('MergePage render (DEC-748: struck-empty discards, Labels row, keep-col
       'GET /api/v1/contacts/duplicates': listEnvelope([GROUP, {
         contactIds: ['ct-a', 'ct-b'],
         contacts: [
-          { id: 'ct-a', firstName: 'Sam', lastName: 'Ng', email: 'sam@example.com' },
-          { id: 'ct-b', firstName: 'Sam', lastName: 'Ng', email: 'sam2@example.com' },
+          { id: 'ct-a', firstName: 'Sam', lastName: 'Ng', email: 'sam@example.com', createdAt: CREATED_A },
+          { id: 'ct-b', firstName: 'Sam', lastName: 'Ng', email: 'sam2@example.com', createdAt: CREATED_B },
         ],
       }]),
       'GET /api/v1/contacts/merge/preview': {
@@ -79,13 +86,15 @@ describe('MergePage render (DEC-748: struck-empty discards, Labels row, keep-col
       expect(screen.getByText('1 of 2 pairs')).toBeInTheDocument();
     });
 
-    // Column head names the kept record instead of a generic label. DEC-802:
-    // the third column also now names the discarded record (also "Jane
-    // Doe" in this fixture). DEC-834: since the names collide, both heads
-    // carry the pick list's disambiguator (email) so they read distinctly.
+    // DEC-992: column heads name both the record AND its vintage --
+    // "Keeping · <name> · added <date>" / "Discarding · <name> · added
+    // <date>". DEC-802: the third column also now names the discarded
+    // record (also "Jane Doe" in this fixture). DEC-834: since the names
+    // collide, both heads carry the pick list's disambiguator (email) so
+    // they read distinctly.
     const headRow = document.querySelector('.chq-contacts-merge-compare-head') as HTMLElement;
-    expect(within(headRow).getByText('Jane Doe (jane@example.com)')).toBeInTheDocument();
-    expect(within(headRow).getByText('Jane Doe (jane.merge@example.com)')).toBeInTheDocument();
+    expect(within(headRow).getByText('Keeping · Jane Doe (jane@example.com) · added 1 Jan 2024')).toBeInTheDocument();
+    expect(within(headRow).getByText('Discarding · Jane Doe (jane.merge@example.com) · added 15 Jun 2024')).toBeInTheDocument();
 
     // A blank duplicate side still renders a row, but DEC-802: nothing was
     // actually dropped (the duplicate's side was already blank), so it
@@ -115,8 +124,8 @@ describe('MergePage render (DEC-834: same-name pair disambiguates compare heads,
   const SAME_NAME_GROUP = {
     contactIds: ['ct-keep', 'ct-merge'],
     contacts: [
-      { id: 'ct-keep', firstName: 'Sam', lastName: 'Ng', email: 'sam@lattice.com', company: 'Lattice' },
-      { id: 'ct-merge', firstName: 'Sam', lastName: 'Ng', email: 'sam@other.com', company: 'Other Co' },
+      { id: 'ct-keep', firstName: 'Sam', lastName: 'Ng', email: 'sam@lattice.com', company: 'Lattice', createdAt: CREATED_A },
+      { id: 'ct-merge', firstName: 'Sam', lastName: 'Ng', email: 'sam@other.com', company: 'Other Co', createdAt: CREATED_B },
     ],
   };
 
@@ -135,9 +144,10 @@ describe('MergePage render (DEC-834: same-name pair disambiguates compare heads,
     const headRow = document.querySelector('.chq-contacts-merge-compare-head') as HTMLElement;
     // Both heads read "Sam Ng" alone before DEC-834 -- indistinguishable at
     // the moment of an irreversible choice. Each must now carry the pick
-    // list's own disambiguator (email) so the two heads read differently.
-    const keepHead = within(headRow).getByText('Sam Ng (sam@lattice.com)');
-    const discardHead = within(headRow).getByText('Sam Ng (sam@other.com)');
+    // list's own disambiguator (email) so the two heads read differently,
+    // plus DEC-992's Keeping/Discarding prefix and added-date vintage.
+    const keepHead = within(headRow).getByText('Keeping · Sam Ng (sam@lattice.com) · added 1 Jan 2024');
+    const discardHead = within(headRow).getByText('Discarding · Sam Ng (sam@other.com) · added 15 Jun 2024');
     expect(keepHead).toBeInTheDocument();
     expect(discardHead).toBeInTheDocument();
     expect(keepHead.textContent).not.toEqual(discardHead.textContent);
@@ -153,8 +163,8 @@ describe('MergePage render (DEC-834: same-name pair disambiguates compare heads,
   const CASE_COLLIDE_GROUP = {
     contactIds: ['ct-keep', 'ct-merge'],
     contacts: [
-      { id: 'ct-keep', firstName: 'PARKER', lastName: 'anders', email: 'parker@upper.com', company: 'Upper Co' },
-      { id: 'ct-merge', firstName: 'Parker', lastName: 'Anders', email: 'parker@lower.com', company: 'Lower Co' },
+      { id: 'ct-keep', firstName: 'PARKER', lastName: 'anders', email: 'parker@upper.com', company: 'Upper Co', createdAt: CREATED_A },
+      { id: 'ct-merge', firstName: 'Parker', lastName: 'Anders', email: 'parker@lower.com', company: 'Lower Co', createdAt: CREATED_B },
     ],
   };
 
@@ -171,8 +181,8 @@ describe('MergePage render (DEC-834: same-name pair disambiguates compare heads,
     });
 
     const headRow = document.querySelector('.chq-contacts-merge-compare-head') as HTMLElement;
-    const keepHead = within(headRow).getByText('PARKER anders (parker@upper.com)');
-    const discardHead = within(headRow).getByText('Parker Anders (parker@lower.com)');
+    const keepHead = within(headRow).getByText('Keeping · PARKER anders (parker@upper.com) · added 1 Jan 2024');
+    const discardHead = within(headRow).getByText('Discarding · Parker Anders (parker@lower.com) · added 15 Jun 2024');
     expect(keepHead).toBeInTheDocument();
     expect(discardHead).toBeInTheDocument();
     expect(keepHead.textContent).not.toEqual(discardHead.textContent);
@@ -183,8 +193,8 @@ describe('MergePage render (DEC-802: honest discard column head and impact line)
   const DISTINCT_GROUP = {
     contactIds: ['ct-keep', 'ct-merge'],
     contacts: [
-      { id: 'ct-keep', firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com', company: 'Acme' },
-      { id: 'ct-merge', firstName: 'Janie', lastName: 'Doerson', email: 'janie@example.com', company: 'Acme Corp' },
+      { id: 'ct-keep', firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com', company: 'Acme', createdAt: CREATED_A },
+      { id: 'ct-merge', firstName: 'Janie', lastName: 'Doerson', email: 'janie@example.com', company: 'Acme Corp', createdAt: CREATED_B },
     ],
   };
 
@@ -204,10 +214,10 @@ describe('MergePage render (DEC-802: honest discard column head and impact line)
     });
 
     // Column head names the record that would be discarded, not the
-    // literal "Discard".
+    // literal "Discard", and carries DEC-992's vintage.
     await waitFor(() => {
       const head = document.querySelector('.chq-contacts-merge-compare-head') as HTMLElement;
-      expect(within(head).getByText('Janie Doerson')).toBeInTheDocument();
+      expect(within(head).getByText('Discarding · Janie Doerson · added 15 Jun 2024')).toBeInTheDocument();
     });
     expect(screen.queryByText('Discard')).not.toBeInTheDocument();
 
@@ -264,7 +274,8 @@ describe('MergePage render (DEC-684)', () => {
     // fetch.
     expect(screen.getByText(/Developer Advocate/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
+    // DEC-992: the primary button names its target instead of a bare "Merge".
+    fireEvent.click(screen.getByRole('button', { name: 'Merge into Jane Doe' }));
 
     const dialog = await screen.findByRole('dialog', { name: 'Merge these records?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Merge' }));
@@ -315,5 +326,71 @@ describe('MergePage render (DEC-684)', () => {
     expect(dismissCall).toBeDefined();
     const body = JSON.parse((dismissCall![1] as RequestInit).body as string);
     expect(body).toEqual({ contactIds: ['ct-keep', 'ct-merge'] });
+  });
+});
+
+describe('MergePage render (DEC-992: vintage heads, swap control, 3+ group fallback)', () => {
+  it('"Swap which is kept" flips keepId, re-heads the columns, and re-issues the preview GET with the other keep id', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/contacts/duplicates': listEnvelope([GROUP]),
+      'GET /api/v1/contacts/merge/preview': { fields: PREVIEW_FIELDS },
+    });
+
+    renderAt('/contacts/merge?ids=ct-keep,ct-merge&keep=ct-keep');
+
+    await waitFor(() => {
+      expect(screen.getByText('Merge two records')).toBeInTheDocument();
+    });
+
+    const headRow = document.querySelector('.chq-contacts-merge-compare-head') as HTMLElement;
+    expect(within(headRow).getByText('Keeping · Jane Doe (jane@example.com) · added 1 Jan 2024')).toBeInTheDocument();
+    expect(within(headRow).getByText('Discarding · Jane Doe (jane.merge@example.com) · added 15 Jun 2024')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Swap which is kept' }));
+
+    await waitFor(() => {
+      expect(within(headRow).getByText('Keeping · Jane Doe (jane.merge@example.com) · added 15 Jun 2024')).toBeInTheDocument();
+      expect(within(headRow).getByText('Discarding · Jane Doe (jane@example.com) · added 1 Jan 2024')).toBeInTheDocument();
+    });
+
+    // The primary button re-names its new target too.
+    expect(screen.getByRole('button', { name: 'Merge into Jane Doe' })).toBeInTheDocument();
+
+    const previewCalls = fetchMock.mock.calls.filter(([input]) =>
+      (typeof input === 'string' ? input : input.toString()).includes('/contacts/merge/preview'),
+    );
+    const lastPreviewUrl = (previewCalls[previewCalls.length - 1]![0] as string).toString();
+    expect(lastPreviewUrl).toContain('keep=ct-merge');
+  });
+
+  it('DEC-802/DEC-992: a 3+ group still renders "N other records" with no date', async () => {
+    const GROUP_OF_THREE = {
+      contactIds: ['ct-keep', 'ct-b', 'ct-c'],
+      contacts: [
+        { id: 'ct-keep', firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com', createdAt: CREATED_A },
+        { id: 'ct-b', firstName: 'Jan', lastName: 'Doerson', email: 'jan@example.com', createdAt: CREATED_B },
+        { id: 'ct-c', firstName: 'J', lastName: 'D', email: 'jd@example.com', createdAt: CREATED_B },
+      ],
+    };
+    mockApi({
+      'GET /api/v1/contacts/duplicates': listEnvelope([GROUP_OF_THREE]),
+      'GET /api/v1/contacts/merge/preview': { fields: PREVIEW_FIELDS },
+    });
+
+    renderAt('/contacts/merge?ids=ct-keep,ct-b,ct-c&keep=ct-keep');
+
+    await waitFor(() => {
+      expect(screen.getByText('Merge two records')).toBeInTheDocument();
+    });
+
+    const headRow = document.querySelector('.chq-contacts-merge-compare-head') as HTMLElement;
+    // No single discarded record to name, so no vintage for it either --
+    // the keep head (a real, single, named record) legitimately still
+    // shows its own "added <date>".
+    const discardHead = within(headRow).getByText('Discarding · 2 other records');
+    expect(discardHead).toBeInTheDocument();
+    expect(discardHead.textContent).not.toMatch(/added/);
+    // A 3+ group has no single record to swap onto.
+    expect(screen.queryByRole('button', { name: 'Swap which is kept' })).not.toBeInTheDocument();
   });
 });
