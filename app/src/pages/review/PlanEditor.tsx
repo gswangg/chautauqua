@@ -1481,10 +1481,18 @@ export function PlanEditor() {
                 the preview already ran (GET only) when the link was clicked. */}
             {distributeConfirmOpen && distributePreview && (
               <div className="chq-review-scope-confirm" role="alertdialog" aria-label="Confirm even distribution">
-                {distributePreview.totalAssigned === 0 ? (
+                {distributePreview.totalAssigned === 0 && distributePreview.shortfall.length === 0 ? (
                   <p>Every submission already has enough reviewers -- nothing to distribute.</p>
                 ) : (
                   <>
+                    {/* DEC-840 wave-52: totalAssigned === 0 with a non-empty
+                        shortfall is a run blocked entirely (cap or track
+                        coverage) -- say so plainly instead of reusing the
+                        "already has enough" sentence, which would contradict
+                        the shortfall list rendered below. */}
+                    {distributePreview.totalAssigned === 0 && (
+                      <p>This run can't assign any talks.</p>
+                    )}
                     {/* frame 03: the cap row -- CAP PER REVIEWER [n] talks each,
                         echoing distributePreview.cap (DEC-840 byte-identical
                         value), never a re-derivation from the live input. */}
