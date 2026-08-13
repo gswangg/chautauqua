@@ -91,10 +91,7 @@ export function submissionListConditions(eventId: string, params: ParsedListQuer
 
   if (params.trackId) {
     conditions.push(
-      or(
-        eq(schema.submission.trackId, params.trackId),
-        sql`exists (select 1 from ${schema.submissionTrack} where ${schema.submissionTrack.submissionId} = ${schema.submission.id} and ${schema.submissionTrack.trackId} = ${params.trackId})`,
-      )!,
+      sql`exists (select 1 from ${schema.submissionTrack} where ${schema.submissionTrack.submissionId} = ${schema.submission.id} and ${schema.submissionTrack.trackId} = ${params.trackId})`,
     );
   }
 

@@ -7,6 +7,7 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
+import { loadTrackNamesBySubmission } from "../submission-tracks";
 
 export interface PortalSession {
   submissionId: string;
@@ -33,7 +34,6 @@ export async function getMySessions(db: Db, contactId: string, orgId: string): P
       startMin: schema.scheduleSlot.startMin,
       endMin: schema.scheduleSlot.endMin,
       roomName: schema.room.name,
-      trackName: schema.track.name,
       acceptedAt: schema.submission.acceptedAt,
       eventName: schema.event.name,
       timezone: schema.event.timezone,
@@ -41,7 +41,6 @@ export async function getMySessions(db: Db, contactId: string, orgId: string): P
     .from(schema.participant)
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
     .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
-    .leftJoin(schema.track, eq(schema.submission.trackId, schema.track.id))
     // DEC-318/DEC-536: a schedule_slot dated outside the event's
     // [startDate, endDate] must never render as a placement. The range
     // predicate lives in the LEFT JOIN's ON clause (not the WHERE) so an
@@ -65,6 +64,11 @@ export async function getMySessions(db: Db, contactId: string, orgId: string): P
       ),
     );
 
+  const trackNames = await loadTrackNamesBySubmission(
+    db,
+    rows.map((row) => row.submissionId),
+  );
+
   return rows.map((row) => ({
     submissionId: row.submissionId,
     ref: formatRef(row.recordPrefix, row.seq),
@@ -73,7 +77,7 @@ export async function getMySessions(db: Db, contactId: string, orgId: string): P
     startMin: row.startMin,
     endMin: row.endMin,
     roomName: row.roomName,
-    trackName: row.trackName,
+    trackName: trackNames.get(row.submissionId)?.[0] ?? null,
     acceptedAt: row.acceptedAt ? row.acceptedAt.getTime() : null,
     eventName: row.eventName,
     timezone: row.timezone,

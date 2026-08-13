@@ -11,7 +11,7 @@ import { newId } from "../../../domain/ids";
 import { chunkIds } from "../../../lib/chunk";
 import { isValidEmail } from "../../../domain/email";
 import { submissionSeqSubquery } from "../submissions/seq";
-import { findContactByEmail } from "../submit";
+import { findContactByEmail, replaceSubmissionTracks } from "../submit";
 import { SESSIONBOARD_SOURCE, externalRef, type SbEntity, type SbRowPlan } from "../../../domain/sessionboard";
 
 // DEC-675: the planner (src/domain/sessionboard.ts) is the ONE place that
@@ -358,6 +358,8 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
           continue;
         }
         const id = newId();
+        // DEC-855: submission_track is the only source of a submission's
+        // tracks -- the submission row itself never carries a trackId.
         const trackId = plan.values.trackName ? trackNameMap?.get(plan.values.trackName.trim().toLowerCase()) ?? null : null;
         if (!dryRun) {
           const ts = now();
@@ -368,7 +370,6 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
             seq: submissionSeqSubquery(eventId),
             title,
             description: plan.values.description ?? null,
-            trackId,
             // DEC-675: the planner already dropped any status outside
             // SUBMISSION_STATUSES, so `values.status` here is either absent
             // (writer default: pending) or already a validated
@@ -379,6 +380,9 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
             createdAt: ts,
             updatedAt: ts,
           });
+          if (trackId) {
+            await db.insert(schema.submissionTrack).values({ submissionId: id, trackId, createdAt: ts });
+          }
         }
         refMap.set(plan.externalRef, id);
         created++;
@@ -430,17 +434,23 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
           .where(eq(schema.contact.id, existingId));
       } else if (entity === "submissions") {
         const v = plan.values;
-        const trackId = v.trackName ? trackNameMap?.get(v.trackName.trim().toLowerCase()) : undefined;
         await db
           .update(schema.submission)
           .set({
             ...(v.title !== undefined ? { title: v.title } : {}),
             ...(v.description !== undefined ? { description: v.description } : {}),
-            ...(trackId !== undefined ? { trackId } : {}),
             ...(v.status !== undefined ? { status: v.status } : {}),
             updatedAt: ts,
           })
           .where(eq(schema.submission.id, existingId));
+        // DEC-855: an update that does not mention a track leaves the
+        // existing submission_track rows alone -- only a row where
+        // v.trackName is present (even if unresolved/blank) replaces the
+        // full set via the one full-set-replace writer (DEC-598).
+        if (v.trackName !== undefined) {
+          const trackId = v.trackName ? trackNameMap?.get(v.trackName.trim().toLowerCase()) : undefined;
+          await replaceSubmissionTracks(db, existingId, trackId ? [trackId] : []);
+        }
       } else {
         const v = plan.values;
         await db

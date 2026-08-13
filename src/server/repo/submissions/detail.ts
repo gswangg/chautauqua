@@ -35,7 +35,6 @@ export interface SubmissionDetail {
   description: string | null;
   status: string;
   contentStatus: string;
-  trackId: string | null;
   trackIds: string[];
   formId: string | null;
   acceptedAt: number | null;
@@ -112,7 +111,6 @@ export async function getSubmissionDetail(db: Db, submissionId: string): Promise
       seq: schema.submission.seq,
       title: schema.submission.title,
       description: schema.submission.description,
-      trackId: schema.submission.trackId,
       status: schema.submission.status,
       contentStatus: schema.submission.contentStatus,
       acceptedAt: schema.submission.acceptedAt,
@@ -166,8 +164,7 @@ export async function getSubmissionDetail(db: Db, submissionId: string): Promise
   const answers: Record<string, unknown> = {};
   for (const a of answerRows) answers[a.formFieldId] = JSON.parse(a.valueJson);
 
-  const joinedTracks = trackRows.map((t) => t.trackId);
-  const trackIds = row.trackId ? [...new Set([row.trackId, ...joinedTracks])] : [...new Set(joinedTracks)];
+  const trackIds = [...new Set(trackRows.map((t) => t.trackId))];
 
   return {
     id: row.id,
@@ -177,7 +174,6 @@ export async function getSubmissionDetail(db: Db, submissionId: string): Promise
     description: row.description,
     status: row.status,
     contentStatus: row.contentStatus,
-    trackId: row.trackId,
     trackIds,
     formId: row.formId,
     acceptedAt: row.acceptedAt ? row.acceptedAt.getTime() : null,

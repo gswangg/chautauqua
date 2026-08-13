@@ -320,14 +320,15 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
   // Call order inside getOverviewPayload: event lookup, triage status rows,
   // plan count, evaluations-submitted count, plan close-date min, default
   // form close date, speakers conditional-aggregate row, (DEC-776) overdue
-  // assignment count row, overdue detail rows, triage detail rows, (track
-  // names — skipped when no trackIds), content agg (total+reuploaded),
-  // content detail rows, (file rows — skipped when no content rows),
-  // accepted-submission rows, then — only when the inputs actually trigger
-  // them — schedule_slot/participant queries, the combined lead-speaker
-  // query and the conflict-room-name query (each test passes `extra` for
-  // exactly the branches its own fixture data trips), and finally the comms
-  // aggregate row.
+  // assignment count row, overdue detail rows, triage detail rows, (DEC-855
+  // loadTrackNamesBySubmission — skipped only when triageDetail is itself
+  // empty, never based on whether any row turns out to have a track), content
+  // agg (total+reuploaded), content detail rows, (file rows — skipped when no
+  // content rows), accepted-submission rows, then — only when the inputs
+  // actually trigger them — schedule_slot/participant queries, the combined
+  // lead-speaker query and the conflict-room-name query (each test passes
+  // `extra` for exactly the branches its own fixture data trips), and finally
+  // the comms aggregate row.
   function emptyResponses(overrides: Partial<Record<string, unknown>> = {}, extra: unknown[] = []) {
     return [
       overrides.event ?? [{ recordPrefix: "DFC", startDate: "2027-03-10" }],
@@ -489,18 +490,21 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       trackId: null,
       createdAt: createdAt(i),
     }));
-    const db = makeFakeDb(
-      emptyResponses(
-        {
-          statusRows: [{ status: "pending", n: 12 }],
-          triageDetail: rows,
-        },
-        // The 5 triage rows have no track ids (skip trackRows) and no
-        // accepted submissions exist, but they DO feed the combined
-        // lead-speaker lookup (non-empty leadSpeakerIds) -> one query.
-        [[]],
-      ),
+    const responses = emptyResponses(
+      {
+        statusRows: [{ status: "pending", n: 12 }],
+        triageDetail: rows,
+      },
+      // No accepted submissions exist, but the 5 triage rows DO feed the
+      // combined lead-speaker lookup (non-empty leadSpeakerIds) -> one query.
+      [[]],
     );
+    // DEC-855: loadTrackNamesBySubmission is queried once per non-empty
+    // batch of submission ids -- right after triageDetail (index 9), before
+    // contentAgg -- regardless of whether any of them turn out to have a
+    // track (none do here, so the response is empty).
+    responses.splice(10, 0, []);
+    const db = makeFakeDb(responses);
     const payload = await getOverviewPayload(db, "event-1", now);
     expect(payload["triage-counts"].pending).toBe(12);
     expect(payload.triage.total).toBe(12); // total exceeds the 5 returned rows
