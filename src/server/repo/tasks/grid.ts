@@ -8,7 +8,7 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
 import { likeContains } from "../like";
-import { acceptedSpeakerExistsForContact } from "./crud";
+import { acceptedSpeakerExistsForContact, overdueAssignmentConditions } from "./crud";
 
 export interface GridTask {
   id: string;
@@ -245,21 +245,34 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
   const countsRow = await db
     .select({
       outstandingRequired: sql<number>`count(distinct case when ${schema.taskAssignment.status} <> 'complete' and ${schema.task.required} = 1 then ${schema.taskAssignment.id} end)`,
-      overdue: sql<number>`count(distinct case when ${schema.taskAssignment.status} <> 'complete' and ${schema.task.dueDate} is not null and ${schema.task.dueDate} < ${params.now} then ${schema.taskAssignment.id} end)`,
       outstandingContacts: sql<number>`count(distinct case when ${schema.taskAssignment.status} <> 'complete' then ${schema.taskAssignment.contactId} end)`,
     })
     .from(schema.taskAssignment)
     .innerJoin(schema.task, eq(schema.task.id, schema.taskAssignment.taskId))
     .where(eq(schema.task.eventId, eventId));
 
+  // DEC-776: `overdue` is a separate query (rather than folded into the
+  // count above) because it composes overdueAssignmentConditions, which
+  // needs a join to `contact` to enforce the roster predicate — a
+  // task_assignment for a contact who is no longer an accepted speaker
+  // (e.g. their submission was withdrawn after the task was assigned) must
+  // not inflate this count.
+  const overdueCountRows = await db
+    .select({ count: sql<number>`count(distinct ${schema.taskAssignment.id})` })
+    .from(schema.taskAssignment)
+    .innerJoin(schema.task, eq(schema.task.id, schema.taskAssignment.taskId))
+    .innerJoin(schema.contact, eq(schema.contact.id, schema.taskAssignment.contactId))
+    .where(overdueAssignmentConditions(eventId, params.now));
+  const overdueCount = Number(overdueCountRows[0]?.count ?? 0);
+
   const counts: OnboardingGridCounts = countsRow[0]
     ? {
         speakers: speakersCount,
         outstandingRequired: Number(countsRow[0].outstandingRequired),
-        overdue: Number(countsRow[0].overdue),
+        overdue: overdueCount,
         outstandingContacts: Number(countsRow[0].outstandingContacts),
       }
-    : { ...emptyCounts, speakers: speakersCount };
+    : { ...emptyCounts, speakers: speakersCount, overdue: overdueCount };
 
   return { tasks, rows, total, page: params.page, perPage: params.perPage, counts };
 }

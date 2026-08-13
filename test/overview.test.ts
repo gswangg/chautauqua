@@ -14,10 +14,17 @@ import {
   type LeadSpeakerRow,
 } from "../src/server/repo/overview";
 import { getOnboardingGrid } from "../src/server/repo/tasks";
+import { overdueAssignmentConditions } from "../src/server/repo/tasks/crud";
 import { findConflicts, type PlacedSession } from "../src/domain/schedule";
 import type { Db } from "../src/server/context";
 import { asc, desc } from "drizzle-orm";
+import { SQLiteSyncDialect } from "drizzle-orm/sqlite-core";
 import * as schema from "../src/db/schema";
+
+const overviewDialect = new SQLiteSyncDialect();
+function overviewSqlTextOf(cond: unknown): { sql: string; params: unknown[] } {
+  return overviewDialect.sqlToQuery(cond as any);
+}
 
 describe("aggregateTriageCounts (DEC-030 triage card)", () => {
   it("maps grouped status rows to the three triage buckets", () => {
@@ -277,14 +284,15 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
 
   // Call order inside getOverviewPayload: event lookup, triage status rows,
   // plan count, evaluations-submitted count, plan close-date min, default
-  // form close date, speakers conditional-aggregate row, overdue detail rows, triage
-  // detail rows, (track names — skipped when no trackIds), content agg
-  // (total+reuploaded), content detail rows, (file rows — skipped when no
-  // content rows), accepted-submission rows, then — only when the inputs
-  // actually trigger them — schedule_slot/participant queries, the combined
-  // lead-speaker query and the conflict-room-name query (each test passes
-  // `extra` for exactly the branches its own fixture data trips), and
-  // finally the comms aggregate row.
+  // form close date, speakers conditional-aggregate row, (DEC-776) overdue
+  // assignment count row, overdue detail rows, triage detail rows, (track
+  // names — skipped when no trackIds), content agg (total+reuploaded),
+  // content detail rows, (file rows — skipped when no content rows),
+  // accepted-submission rows, then — only when the inputs actually trigger
+  // them — schedule_slot/participant queries, the combined lead-speaker
+  // query and the conflict-room-name query (each test passes `extra` for
+  // exactly the branches its own fixture data trips), and finally the comms
+  // aggregate row.
   function emptyResponses(overrides: Partial<Record<string, unknown>> = {}, extra: unknown[] = []) {
     return [
       overrides.event ?? [{ recordPrefix: "DFC", startDate: "2027-03-10" }],
@@ -293,7 +301,8 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       overrides.evaluationsAgg ?? [{ expected: 0, submitted: 0 }],
       overrides.planClose ?? [{ closeDate: null, currentRound: null }],
       overrides.formClose ?? [{ closeDate: null }],
-      overrides.speakerAgg ?? [{ outstandingContacts: 0, overdue: 0, nextDue: null }],
+      overrides.speakerAgg ?? [{ outstandingContacts: 0, nextDue: null }],
+      overrides.overdueAssignmentCount ?? [{ count: 0 }],
       overrides.overdueDetail ?? [],
       overrides.triageDetail ?? [],
       overrides.contentAgg ?? [{ total: 0, reuploaded: 0 }],
@@ -356,7 +365,8 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     const overdueDueDate = new Date(now - 2 * 24 * 60 * 60 * 1000);
     const db = makeFakeDb(
       emptyResponses({
-        speakerAgg: [{ outstandingContacts: 1, overdue: 1, nextDue: overdueDueDate.getTime() }],
+        speakerAgg: [{ outstandingContacts: 1, nextDue: overdueDueDate.getTime() }],
+        overdueAssignmentCount: [{ count: 1 }],
         overdueDetail: [
           {
             assignmentId: "a1",
@@ -434,6 +444,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       [{ closeDate: null, currentRound: null }], // planClose
       [{ closeDate: null }], // formClose
       [], // speakerAgg
+      [{ count: 0 }], // overdueAssignmentCount
       [], // overdueDetail
       [], // triageDetail
       [{ total: 9, reuploaded: 4 }], // contentAgg
@@ -467,7 +478,8 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     const soonestPendingDue = now - 1000; // c1's earlier overdue assignment
     const db = makeFakeDb(
       emptyResponses({
-        speakerAgg: [{ outstandingContacts: 2, overdue: 2, nextDue: soonestPendingDue }],
+        speakerAgg: [{ outstandingContacts: 2, nextDue: soonestPendingDue }],
+        overdueAssignmentCount: [{ count: 2 }],
       }),
     );
     const payload = await getOverviewPayload(db, "event-1", now);
@@ -485,7 +497,10 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     const now = 1_735_999_999_999;
 
     const overviewDb = makeFakeDb(
-      emptyResponses({ speakerAgg: [{ outstandingContacts: 3, overdue: 1, nextDue: now - 5000 }] }),
+      emptyResponses({
+        speakerAgg: [{ outstandingContacts: 3, nextDue: now - 5000 }],
+        overdueAssignmentCount: [{ count: 1 }],
+      }),
     );
     const overview = await getOverviewPayload(overviewDb, "event-1", now);
 
@@ -515,7 +530,8 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       [{ count: 0 }], // total
       [], // contacts page (empty; unrelated to the counts aggregate)
       [{ count: 5 }], // DEC-754: speakers roster COUNT(*) (own query now)
-      [{ outstandingRequired: 0, overdue: 1, outstandingContacts: 3 }], // counts
+      [{ outstandingRequired: 0, outstandingContacts: 3 }], // counts
+      [{ count: 1 }], // DEC-776: overdue roster-scoped COUNT(*) (own query now)
     ]);
     const grid = await getOnboardingGrid(gridDb, "event-1", {
       page: 1,
@@ -570,13 +586,60 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     await getOverviewPayload(db, "event-1", now);
 
     // Call order: 0=event, 1=statusRows, 2=planCount, 3=evaluationsAgg,
-    // 4=planClose, 5=formClose, 6=speakerAgg, 7=overdueDetail,
-    // 8=triageDetail, 9=contentAgg, 10=contentDetail, 11=accepted, 12=comms
-    // (no track/file/slot/lead-speaker/room queries fire on this all-empty
-    // fixture).
-    expect(orderByCallsBySelectIndex[7]).toEqual([asc(schema.task.dueDate), asc(schema.taskAssignment.id)]);
-    expect(orderByCallsBySelectIndex[8]).toEqual([asc(schema.submission.createdAt), asc(schema.submission.id)]);
-    expect(orderByCallsBySelectIndex[10]).toEqual([desc(schema.submission.updatedAt), asc(schema.submission.id)]);
-    expect(orderByCallsBySelectIndex[11]).toEqual([asc(schema.submission.seq)]);
+    // 4=planClose, 5=formClose, 6=speakerAgg, 7=overdueAssignmentCount
+    // (DEC-776), 8=overdueDetail, 9=triageDetail, 10=contentAgg,
+    // 11=contentDetail, 12=accepted, 13=comms (no track/file/slot/
+    // lead-speaker/room queries fire on this all-empty fixture).
+    expect(orderByCallsBySelectIndex[8]).toEqual([asc(schema.task.dueDate), asc(schema.taskAssignment.id)]);
+    expect(orderByCallsBySelectIndex[9]).toEqual([asc(schema.submission.createdAt), asc(schema.submission.id)]);
+    expect(orderByCallsBySelectIndex[11]).toEqual([desc(schema.submission.updatedAt), asc(schema.submission.id)]);
+    expect(orderByCallsBySelectIndex[12]).toEqual([asc(schema.submission.seq)]);
+  });
+
+  // DEC-776: both the overdue COUNT query (feeds speakers.overdueAssignments)
+  // and the overdue DETAIL rows query compose overdueAssignmentConditions
+  // verbatim -- textually identical WHERE clauses -- so the number and the
+  // rows describe the SAME set (status <> 'complete', not = 'pending', plus
+  // the roster join), and a task_assignment for a contact who is no longer
+  // an accepted speaker on the event is excluded from both alike.
+  it("the overdue count query and the overdue detail-rows query both compose overdueAssignmentConditions verbatim", async () => {
+    const now = 1_735_999_999_999;
+    const whereBySelectIndex: unknown[] = [];
+    let selectIndex = -1;
+    let cursor = 0;
+    const responses = emptyResponses();
+    function chain(): any {
+      const obj: any = {};
+      const passthrough = ["from", "innerJoin", "orderBy", "limit", "offset", "groupBy"];
+      for (const m of passthrough) obj[m] = () => obj;
+      obj.where = (cond: unknown) => {
+        whereBySelectIndex[selectIndex] = cond;
+        return obj;
+      };
+      obj.then = (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => {
+        const value = responses[cursor];
+        cursor += 1;
+        return Promise.resolve(value).then(resolve, reject);
+      };
+      return obj;
+    }
+    const db = {
+      select: () => {
+        selectIndex += 1;
+        return chain();
+      },
+    } as any;
+
+    await getOverviewPayload(db, "event-13", now);
+
+    // Call order (see emptyResponses' comment above): index 7 = overdue
+    // count, index 8 = overdue detail rows.
+    const expected = overviewSqlTextOf(overdueAssignmentConditions("event-13", now));
+    const countWhere = overviewSqlTextOf(whereBySelectIndex[7]);
+    const detailWhere = overviewSqlTextOf(whereBySelectIndex[8]);
+    expect(countWhere.sql).toBe(expected.sql);
+    expect(countWhere.params).toEqual(expected.params);
+    expect(detailWhere.sql).toBe(expected.sql);
+    expect(detailWhere.params).toEqual(expected.params);
   });
 });
