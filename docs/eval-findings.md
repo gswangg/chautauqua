@@ -878,3 +878,12 @@ AND audit noStoreByDefault + any other header-stamping middleware for the same t
     Do NOT hold `.swarm-complete` for mobile work. After convergence, an external
     desktop-only fidelity pass (round 4) is the acceptance gate before deploy — the
     exit wave should leave the tree in a state it expects to pass that gate.
+
+72. **MECHANICAL, DO IMMEDIATELY: cap test parallelism IN vitest.config.ts** — env
+    caps failed (VITEST_MAX_THREADS doesn't bind the forks pool; six ~4GB workers
+    just swamped the 16GB machine again for 13+ minutes). Set in config:
+    `maxWorkers: 2` (binds both pools), plus worker isolation/recycling if worker
+    memory keeps growing (`poolOptions.forks.maxForks: 2`). ALSO implement the
+    scripts/with-test-lock.sh mutex from the test policy (mkdir-spinlock; full-suite
+    invocations serialize) — it was mandated and never built. The machine hosting
+    this swarm stalls every time two full suites overlap; this is self-harm.
