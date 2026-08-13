@@ -114,8 +114,10 @@ describe('AgendaPage render smoke', () => {
       expect(screen.getByText('Overlapping Talk B')).toBeInTheDocument();
     });
 
-    // Unscheduled tray with its count and the unplaced session.
-    expect(screen.getByText('Unscheduled (1)')).toBeInTheDocument();
+    // Unscheduled tray with its count and the unplaced session. The count
+    // is a right-aligned sibling of the "Unscheduled" label (w41), not
+    // folded into a single text node.
+    expect(document.querySelector('.chq-unscheduled-tray-header')?.textContent).toBe('Unscheduled (1)');
     expect(screen.getByText('Unplaced Talk')).toBeInTheDocument();
 
     // DEC-742: a same-room clash of exactly two sessions merges into ONE
@@ -153,6 +155,19 @@ describe('AgendaPage render smoke', () => {
     // Fixture has a room configured -- the "Add a room or track" link is
     // the grid's own empty state and must not render as a standing control.
     expect(screen.queryByRole('link', { name: 'Add a room or track' })).toBeNull();
+
+    // w41: the summary sits beside the h1 as a direct child of
+    // .chq-agenda-head, not nested inside .chq-agenda-head-actions (which
+    // now holds only Auto-schedule + Publish).
+    const head = document.querySelector('.chq-agenda-head')!;
+    expect(Array.from(head.children).map((el) => el.className)).toEqual([
+      'chq-page-title',
+      'chq-summary chq-agenda-summary',
+      'chq-agenda-head-actions',
+    ]);
+    const headActions = document.querySelector('.chq-agenda-head-actions')!;
+    expect(headActions.querySelector('.chq-agenda-summary')).toBeNull();
+    expect(headActions.textContent).toBe('Auto-schedulePublish schedule');
   });
 
   // DEC-791: plural grammar when there are 2+ conflicts.

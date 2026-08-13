@@ -10,14 +10,14 @@
 .chq-agenda-head {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
   gap: 24px;
   flex-wrap: wrap;
 }
 
-/* DEC-899/900: the page's actions (summary + Auto-schedule + Publish) live
-   on the title row itself, right-aligned, rather than a separate toolbar
-   band underneath it. */
+/* DEC-899/900 (w41 amendment): actions (Auto-schedule + Publish) live on
+   the title row itself, right-aligned, rather than a separate toolbar band
+   underneath it — the summary moved out of this group to sit beside the
+   title instead (see .chq-agenda-summary below). */
 .chq-agenda-head-actions {
   display: flex;
   align-items: center;
@@ -25,7 +25,10 @@
   margin-left: auto;
 }
 
+/* w41: sits directly beside the h1, inside .chq-agenda-head, ~16px right of
+   the title -- no longer grouped with the Auto-schedule/Publish actions. */
 .chq-agenda-summary {
+  margin-left: 16px;
   white-space: nowrap;
 }
 
@@ -505,13 +508,6 @@
   color: var(--chq-muted);
 }
 
-.chq-session-card-handle {
-  font-size: 12px;
-  line-height: 1;
-  color: var(--chq-muted);
-  letter-spacing: 0.05em;
-}
-
 .chq-session-card-title {
   font-family: var(--chq-font-display);
   font-size: 13px;
@@ -554,8 +550,7 @@
 
 .chq-session-card-conflict .chq-session-card-ref,
 .chq-session-card-conflict .chq-session-card-speakers,
-.chq-session-card-conflict .chq-session-card-tracks,
-.chq-session-card-conflict .chq-session-card-handle {
+.chq-session-card-conflict .chq-session-card-tracks {
   color: var(--chq-on-ink-muted);
 }
 
@@ -587,11 +582,23 @@
   gap: 12px;
 }
 
+/* w41: the header names the tray and states its count right-aligned on the
+   same line, rather than folding "(N)" into the title text. */
 .chq-unscheduled-tray-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   font-family: var(--chq-font-display);
   font-size: 15px;
   font-weight: 700;
   color: var(--chq-ink);
+}
+
+.chq-unscheduled-tray-count {
+  font-family: var(--chq-font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-muted);
 }
 
 .chq-unscheduled-tray-list {
@@ -604,6 +611,28 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+/* w41: tray cards are flat -- no accent stripe, no drag handle (click-to-place
+   is the sanctioned path) -- unlike the placed day-grid cards, which keep
+   the brand accent from the shared .chq-session-card base. Scoped to the
+   tray so the base class/placed cards are untouched. */
+.chq-unscheduled-tray-item .chq-session-card {
+  border-left-width: 1px;
+  border-left-color: var(--chq-rule);
+}
+
+.chq-unscheduled-tray-item .chq-session-card-conflict {
+  border-left-color: var(--chq-ink);
+}
+
+/* w41: each tray card states its placement duration ("· N min") directly
+   under the card. */
+.chq-unscheduled-tray-duration {
+  font-size: 11px;
+  color: var(--chq-muted);
+  line-height: 1.4;
+  margin: 0 0 0 2px;
 }
 
 /* DEC-615: the reason auto-schedule could not place this session — name
@@ -620,11 +649,16 @@
   color: var(--chq-muted);
 }
 
+/* w41: one line in the frame's grammar, not three -- the click-to-place +
+   drag-to-unschedule paths are named once each. */
 .chq-unscheduled-tray-hint {
   font-size: 11px;
   color: var(--chq-muted);
   line-height: 1.5;
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 @media (max-width: 900px) {
