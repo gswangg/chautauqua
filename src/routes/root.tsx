@@ -22,6 +22,7 @@ import { PUBLIC_CSS } from "./public/public.css";
 import { HOME_CSS } from "./public/home.css";
 import { getHubOrg, listHubEvents, HUB_CANDIDATE_LIMIT } from "../server/repo/public/home";
 import { groupHubEvents, hubState, type HubEvent, type HubSections, type HubState } from "../lib/home-hub";
+import { formatEventDayRange, formatEventCloseDateLabel } from "../lib/event-time";
 
 export const rootRoutes = new Hono<AppEnv>();
 
@@ -91,44 +92,13 @@ const GITHUB_MARK = (
   </svg>
 );
 
-/** Day-label formatter (UTC calendar fields, DEC-522: startDate/endDate are
- * DAY LABELS, not instants — never rendered in any timezone but UTC).
- * en-GB gives British day-before-month order with no comma, e.g. "12 May" /
- * "12 May 2027". */
-function dayLabel(ms: number, withYear: boolean): string {
-  return new Date(ms).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: withYear ? "numeric" : undefined,
-    timeZone: "UTC",
-  });
-}
-
-/** Day-of-month only, no month/year (for the "12" in "12–14 May 2027" when
- * both ends share a month — the month is printed exactly once). */
-function dayOnly(ms: number): string {
-  return new Date(ms).toLocaleDateString("en-GB", { day: "numeric", timeZone: "UTC" });
-}
-
-function dateRange(start: number, end: number): string {
-  if (start === end) return dayLabel(start, true);
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-  const sameMonth = startDate.getUTCFullYear() === endDate.getUTCFullYear() && startDate.getUTCMonth() === endDate.getUTCMonth();
-  if (sameMonth) return `${dayOnly(start)}–${dayLabel(end, true)}`;
-  return `${dayLabel(start, false)}–${dayLabel(end, true)}`;
-}
-
 /** CFP close date + "N days left", rendered in the event's own IANA
- * timezone (DEC-408: a real instant, never UTC-bare). British day-before-
- * month order (en-GB, no comma), fully uppercased. */
+ * timezone (DEC-408: a real instant, never UTC-bare). Day/time arithmetic
+ * and uppercasing live here; the Intl formatting itself is
+ * formatEventCloseDateLabel in src/lib/event-time.ts (DEC-918: one
+ * server-side calendar-day grammar). */
 function closesLine(closeMs: number, timeZone: string, nowMs: number): string {
-  const label = new Date(closeMs).toLocaleDateString("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    timeZone,
-  });
+  const label = formatEventCloseDateLabel(closeMs, timeZone);
   const days = Math.max(0, Math.ceil((closeMs - nowMs) / 86_400_000));
   return `CLOSES ${label.toUpperCase()} · ${days} DAY${days === 1 ? "" : "S"} LEFT`;
 }
@@ -146,7 +116,7 @@ function OpenCfpRow(props: { event: HubEvent; nowMs: number }) {
   return (
     <div class="chq-home-row">
       <div class="chq-home-when">
-        <span class="chq-home-dates">{dateRange(event.startDate, event.endDate)}</span>
+        <span class="chq-home-dates">{formatEventDayRange(event.startDate, event.endDate)}</span>
         {event.location ? <span class="chq-home-venue">{event.location}</span> : null}
       </div>
       <div class="chq-home-info">
@@ -170,7 +140,7 @@ function PublishedRow(props: { event: HubEvent }) {
   return (
     <div class="chq-home-row">
       <div class="chq-home-when">
-        <span class="chq-home-dates">{dateRange(event.startDate, event.endDate)}</span>
+        <span class="chq-home-dates">{formatEventDayRange(event.startDate, event.endDate)}</span>
         {event.location ? <span class="chq-home-venue">{event.location}</span> : null}
       </div>
       <div class="chq-home-info">
@@ -195,7 +165,7 @@ function ArchiveRow(props: { event: HubEvent }) {
   const { event } = props;
   return (
     <div class="chq-home-archive-row">
-      <span class="chq-home-archive-dates">{dateRange(event.startDate, event.endDate)}</span>
+      <span class="chq-home-archive-dates">{formatEventDayRange(event.startDate, event.endDate)}</span>
       <div class="chq-home-archive-info">
         <a class="chq-home-archive-name" href={`/e/${event.slug}/sessions`}>
           {event.name}
