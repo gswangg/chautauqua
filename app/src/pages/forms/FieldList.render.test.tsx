@@ -3,7 +3,7 @@
 // built-in treatment (no LOCKED pills, a single collapsed speaker-identity
 // row), and an Abstract caption naming the REAL imported length cap.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { FieldList } from './FieldList';
 import { MAX_LONG_TEXT_LENGTH } from '../../../../src/forms/validate';
@@ -172,5 +172,79 @@ describe('FieldList row anatomy (DEC-715)', () => {
     ]);
     expect(screen.getByText('Format')).toBeInTheDocument();
     expect(screen.queryByText('Session format')).not.toBeInTheDocument();
+  });
+
+  it("gives a dropdown/checkbox field with no caption of its own an '<N> options' description built from its own options array", () => {
+    renderList([
+      {
+        id: 'f-choice',
+        section: 'session',
+        kind: 'dropdown',
+        label: 'Track',
+        required: false,
+        position: 0,
+        locked: false,
+        options: ['A', 'B', 'C'],
+      },
+    ]);
+    expect(screen.getByText('3 options')).toBeInTheDocument();
+  });
+});
+
+/** Minimal DataTransfer stand-in: jsdom does not implement the drag-drop
+ * DataTransfer API, so tests supply their own get/setData store, mirroring
+ * DayGrid.render.test.tsx's approach for the same drag contract. */
+function fakeDataTransfer() {
+  const store = new Map<string, string>();
+  return {
+    setData: (type: string, value: string) => store.set(type, value),
+    getData: (type: string) => store.get(type) ?? '',
+    effectAllowed: 'none',
+  };
+}
+
+describe('FieldList drag-drop reorder (DEC-903)', () => {
+  const DRAG_FIELDS: FormField[] = [
+    { id: 'form-1:title', section: 'session', kind: 'text', label: 'Title', required: true, position: 0, locked: true },
+    { id: 'f-a', section: 'session', kind: 'text', label: 'Alpha', required: false, position: 1, locked: false },
+    { id: 'f-b', section: 'session', kind: 'text', label: 'Beta', required: false, position: 2, locked: false },
+  ];
+
+  it('dropping a row onto another row calls onMove(draggedField, delta) once', () => {
+    const onMove = vi.fn();
+    render(<FieldList fields={DRAG_FIELDS} busy={false} onEdit={vi.fn()} onDelete={vi.fn()} onMove={onMove} />);
+
+    const alphaHandle = screen.getByRole('button', { name: 'Reorder Alpha (position 2 of 3)' });
+    const betaRow = screen.getByText('Beta').closest('[role="listitem"]') as HTMLElement;
+    const dataTransfer = fakeDataTransfer();
+
+    fireEvent.dragStart(alphaHandle, { dataTransfer });
+    fireEvent.dragOver(betaRow, { dataTransfer });
+    fireEvent.drop(betaRow, { dataTransfer });
+
+    expect(onMove).toHaveBeenCalledTimes(1);
+    const [field, direction] = onMove.mock.calls[0] as [FormField, number];
+    expect(field.id).toBe('f-a');
+    expect(direction).toBe(1);
+  });
+
+  it('a locked row refuses to be a drag source or a drop target', () => {
+    const onMove = vi.fn();
+    render(<FieldList fields={DRAG_FIELDS} busy={false} onEdit={vi.fn()} onDelete={vi.fn()} onMove={onMove} />);
+
+    const titleHandle = screen.getByRole('button', { name: 'Reorder Title (position 1 of 3)' });
+    expect(titleHandle).not.toHaveAttribute('draggable', 'true');
+
+    // Dragging the unlocked "Beta" row onto the locked "Title" row must not
+    // reorder -- the locked row never accepts a drop.
+    const betaHandle = screen.getByRole('button', { name: 'Reorder Beta (position 3 of 3)' });
+    const titleRow = screen.getByText('Title').closest('[role="listitem"]') as HTMLElement;
+    const dataTransfer = fakeDataTransfer();
+
+    fireEvent.dragStart(betaHandle, { dataTransfer });
+    fireEvent.dragOver(titleRow, { dataTransfer });
+    fireEvent.drop(titleRow, { dataTransfer });
+
+    expect(onMove).not.toHaveBeenCalled();
   });
 });

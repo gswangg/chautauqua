@@ -1,3 +1,4 @@
+import { useState, type DragEvent } from 'react';
 import { describeCondition, fieldsByIdMap } from './condition';
 import { kindLabel, type FormField } from './types';
 // The FE form-builder module reads the SAME short-name test and length cap
@@ -51,6 +52,18 @@ interface DisplayRow {
   condition?: string;
   kindText: string;
   builtIn: boolean;
+}
+
+/** Kinds whose caption, when the field has no helpText of its own, states
+ * how many options the field offers -- built from the field's own `options`
+ * array (never a hand-maintained label), so it can never drift from the
+ * options the field actually stores. */
+const OPTION_COUNT_KINDS = new Set(['dropdown', 'checkbox']);
+
+function optionCountCaption(field: FormField): string | undefined {
+  if (!OPTION_COUNT_KINDS.has(field.kind)) return undefined;
+  const count = field.options?.length ?? 0;
+  return `${count} option${count === 1 ? '' : 's'}`;
 }
 
 /** Projects the form's raw field list into the mock's row anatomy: the
@@ -112,7 +125,7 @@ function buildRows(fields: FormField[]): DisplayRow[] {
       key: field.id,
       field,
       label: DISPLAY_LABEL_OVERRIDES[field.id] ?? field.label,
-      caption: field.helpText,
+      caption: field.helpText || optionCountCaption(field),
       condition: field.rule ? describeCondition(field.rule, fieldsById) : undefined,
       kindText: kindLabel(field.kind),
       builtIn: field.locked,
@@ -131,6 +144,43 @@ function buildRows(fields: FormField[]): DisplayRow[] {
  * there are no separate up/down buttons. */
 export function FieldList({ fields, busy, onEdit, onDelete, onMove }: FieldListProps) {
   const rows = buildRows(fields);
+  // The row currently under a dragged field (DEC-903 visible insertion
+  // point) -- cleared on drop/leave, never persisted past the drag gesture.
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null);
+
+  // Drag-drop reorder (same contract as DayGrid.tsx): dragstart stamps the
+  // dragged field's id on text/plain, dragover marks a valid drop target,
+  // drop reads the id back, finds both rows' indices, and calls the SAME
+  // onMove(field, delta) the keyboard path already uses -- one reorder write
+  // path, so the optimistic update/rollback in FormsPage stays written once.
+  function handleDragStart(event: DragEvent, row: DisplayRow) {
+    if (busy || row.field.locked) return;
+    event.dataTransfer.setData('text/plain', row.field.id);
+    event.dataTransfer.effectAllowed = 'move';
+  }
+
+  function handleDragOver(event: DragEvent, row: DisplayRow) {
+    if (busy || row.field.locked) return;
+    event.preventDefault();
+    if (dragOverKey !== row.key) setDragOverKey(row.key);
+  }
+
+  function handleDragLeave(row: DisplayRow) {
+    setDragOverKey((current) => (current === row.key ? null : current));
+  }
+
+  function handleDrop(event: DragEvent, targetRow: DisplayRow, targetIndex: number) {
+    setDragOverKey(null);
+    if (busy || targetRow.field.locked) return;
+    event.preventDefault();
+    const draggedId = event.dataTransfer.getData('text/plain');
+    if (!draggedId) return;
+    const sourceIndex = rows.findIndex((r) => r.field.id === draggedId);
+    if (sourceIndex < 0 || sourceIndex === targetIndex) return;
+    const sourceRow = rows[sourceIndex]!;
+    const delta = targetIndex - sourceIndex;
+    onMove(sourceRow.field, delta > 0 ? 1 : -1);
+  }
 
   return (
     <div className="chq-forms-field-list" role="list">
@@ -138,13 +188,24 @@ export function FieldList({ fields, busy, onEdit, onDelete, onMove }: FieldListP
         <div
           key={row.key}
           role="listitem"
-          className={row.builtIn ? 'chq-forms-field-row chq-forms-field-locked' : 'chq-forms-field-row'}
+          className={[
+            'chq-forms-field-row',
+            row.builtIn ? 'chq-forms-field-locked' : null,
+            dragOverKey === row.key ? 'chq-forms-field-row-drop-target' : null,
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          onDragOver={(event) => handleDragOver(event, row)}
+          onDragLeave={() => handleDragLeave(row)}
+          onDrop={(event) => handleDrop(event, row, index)}
         >
           <button
             type="button"
             className="chq-forms-field-drag"
             aria-label={`Reorder ${row.label} (position ${index + 1} of ${rows.length})`}
             disabled={busy || row.field.locked}
+            draggable={!(busy || row.field.locked)}
+            onDragStart={(event) => handleDragStart(event, row)}
             onKeyDown={(event) => {
               if (event.key === 'ArrowUp') {
                 event.preventDefault();
