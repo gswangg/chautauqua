@@ -231,6 +231,29 @@ generic role label (still open, ties to Contacts add-to-event role work).
   title, not job title — silently creates a spurious session. Label it for what it
   does or drop it (ties to existing Contacts add-to-event item).
 
+## EMB grader additions (2026-08-13, prod — 3/3 PASS; sbek's 72% here = MISSING
+capability, not broken behavior — data correctness was flawless)
+
+- **P2 public agenda grid blocks CLIP content**: short sessions (15-min) show only
+  time + track chips, title/speakers cut off (anon /e/…/agenda at 1280×800, 9:15 +
+  9:30 day-1 blocks). This is the user-reported "overflowing text in calendar grid".
+- **P2 "LIVE · 16 PUBLISHED" count wrong**: Settings public-pages rows show 16
+  (placed-session count) on all four surfaces incl. Speakers; public reality is 9.
+- Missing-capability shortlist (drove sbek's 72% — triage for cheap wins): Sessions
+  facets beyond track (format/location) · itinerary widget ignores ?q=/?trackId= ·
+  session DETAIL page lacks the Save/itinerary control its list card has ·
+  Gallery absent from public-pages list though live · no XML in embed builder;
+  /e/<slug>/schedule.ics exists but unreachable from builder · no enable/disable/
+  revoke for public surfaces · accent color no-op (--chq-brandable-accent referenced
+  once; chrome uses --chq-brand) + accent field rejects "#"-prefixed hex its own
+  placeholder shows.
+- P3 polish batch: /agenda?day=… drops day navigation (dead end, linked from
+  Sessions sidebar) · ISO dates on detail/day headings vs "Wed, May 12" on cards ·
+  "Show more" leaves truncated preview above expanded text (first sentence twice) ·
+  photo-less speaker cards emit unlabelled links (a11y) · "Add to itinerary" label
+  static when checked (/sessions flips Save→Saved) · organizer submission detail
+  omits date/time/room for a placed session · no post-download .ics confirmation.
+
 ## CNT grader additions (2026-08-13, prod — 3/3 scenarios PASS, defects below)
 
 - **P3 Session format dropped on create**: New-submission dialog discards the selected
