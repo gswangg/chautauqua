@@ -13,11 +13,20 @@ import type { EvaluationPlan, ProgressRow, Track } from './types';
 
 /** Presentational-only window state derived from openDate/closeDate — never
  * stored server-side, so it must never be asserted as more than "now vs.
- * these two dates" (DEC-377: no invented figures). */
-function planState(plan: EvaluationPlan, now: number): string {
-  if (plan.closeDate !== null && plan.closeDate < now) return 'Closed';
-  if (plan.openDate !== null && plan.openDate > now) return `Opens ${formatDateOnly(plan.openDate)}`;
-  return 'Open now';
+ * these two dates" (DEC-377: no invented figures).
+ *
+ * DEC-939 amendment: a plan's window state is a pill, not bare caps text --
+ * OPEN NOW (the reviewer's actionable state) is an olive-filled pill, OPENS N
+ * (a future state, not yet actionable) is an outlined pill, and CLOSED stays
+ * bare text since a closed plan is not a state anyone acts on. `kind` drives
+ * which review-scoped pill modifier (if any) PlanList applies; `label` is
+ * the same three-way text this always rendered. */
+function planState(plan: EvaluationPlan, now: number): { kind: 'open' | 'opens' | 'closed'; label: string } {
+  if (plan.closeDate !== null && plan.closeDate < now) return { kind: 'closed', label: 'Closed' };
+  if (plan.openDate !== null && plan.openDate > now) {
+    return { kind: 'opens', label: `Opens ${formatDateOnly(plan.openDate)}` };
+  }
+  return { kind: 'open', label: 'Open now' };
 }
 
 /** DEC-674: a plan's window is "open" iff now falls inside [openDate,
@@ -232,7 +241,14 @@ export function PlanList() {
                   {plan.maxEvaluations !== null && ` · ${plan.maxEvaluations} reviews each`}
                 </div>
               </div>
-              <span className="chq-flag">{planState(plan, now)}</span>
+              {(() => {
+                const status = planState(plan, now);
+                if (status.kind === 'closed') {
+                  return <span className="chq-flag">{status.label}</span>;
+                }
+                const modifier = status.kind === 'open' ? 'chq-review-plan-status-open' : 'chq-review-plan-status-opens';
+                return <span className={`chq-pill ${modifier}`}>{status.label}</span>;
+              })()}
               <span className="chq-review-plan-meta">
                 {planWindow(plan)}
                 {plan.rounds > 1 && (

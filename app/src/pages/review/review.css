@@ -451,8 +451,27 @@
 .chq-review-queue-score-action {
   font-size: 13px;
   font-weight: 600;
-  color: var(--chq-accent, var(--chq-ink));
   width: fit-content;
+}
+
+/* DEC-939 amendment: plan-status pills on the queue landing list.
+   OPEN NOW is the actionable state -- an olive-filled pill (mirrors
+   .chq-pill.is-active's fill, using the brand token rather than restating
+   ink). OPENS N is a future, not-yet-actionable state -- an outlined pill
+   with no fill. CLOSED is not a pill at all (rendered via .chq-flag,
+   unchanged) since a closed plan is not a state anyone acts on. */
+.chq-review-plan-status-open {
+  cursor: default;
+  border-color: var(--chq-brand);
+  background: var(--chq-brand);
+  color: var(--chq-on-brand);
+}
+
+.chq-review-plan-status-opens {
+  cursor: default;
+  border-color: var(--chq-border-strong);
+  background: transparent;
+  color: var(--chq-ink-2);
 }
 
 .chq-review-answers {
