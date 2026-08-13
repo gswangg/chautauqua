@@ -347,13 +347,6 @@ export const THEME_CSS = `
     padding-bottom: 6px;
     margin-bottom: 8px;
   }
-  .chq-row {
-    display: flex;
-    align-items: baseline;
-    gap: 1rem;
-    padding: 13px 0;
-    border-bottom: 1px solid var(--chq-hairline);
-  }
   .chq-meta {
     font-size: 12px;
     font-weight: 400;
@@ -406,15 +399,6 @@ export const THEME_CSS = `
   }
   .chq-bar-fill {
     height: 100%;
-    background: var(--chq-brand);
-  }
-  .chq-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--chq-border);
-  }
-  .chq-dot.is-on {
     background: var(--chq-brand);
   }
   .chq-kv {

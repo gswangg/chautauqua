@@ -31,13 +31,6 @@ void DEC_374;
 void DEC_382;
 
 export const TOOLS_CSS = `
-  .chq-tool-links {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
   .chq-tool-meta {
     font-size: 13px;
     color: var(--chq-muted);

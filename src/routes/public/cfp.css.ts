@@ -32,10 +32,6 @@ export const CFP_CSS = `
   .chq-cfp-intro p { margin: 0; font-size: 16px; line-height: 1.7; color: var(--chq-ink-2); }
   .chq-cfp-section-label { font-family: var(--chq-font-display); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; border-bottom: 2px solid var(--chq-ink); padding-bottom: 8px; }
   .chq-cfp-fields { padding: 18px 0 0; display: flex; flex-direction: column; gap: 20px; max-width: 760px; min-width: 0; }
-  .chq-cfp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-  .chq-cfp-field { display: flex; flex-direction: column; gap: 6px; }
-  .chq-cfp-field-full { grid-column: 1 / -1; }
-  .chq-cfp-field-hint { font-size: 12px; color: var(--chq-muted); }
 
   /* form-render.tsx's shared FormField output (used by both this CFP page
      and the portal edit forms): .chq-field wraps each labeled control,
@@ -111,6 +107,5 @@ export const CFP_CSS = `
 
   @media (max-width: 700px) {
     .chq-cfp-header, .chq-cfp-body { padding-left: 16px; padding-right: 16px; }
-    .chq-cfp-grid { grid-template-columns: 1fr; }
   }
 `;

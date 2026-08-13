@@ -173,8 +173,6 @@ export const PUBLIC_CSS = `
     border-radius: 50%;
     background: var(--chq-track-color, var(--chq-hairline));
   }
-  .chq-pub-session-action { white-space: nowrap; align-self: center; }
-
   /* Speaker grid (speakers.tsx / gallery). DEC-885/DEC-385: this codebase is
      single-direction (narrow overrides wide via max-width only, never
      min-width -- see test/breakpoint-conformance.test.ts) so the WIDE
@@ -390,12 +388,6 @@ export const PUBLIC_CSS = `
       order: -1;
     }
     .chq-pub-speaker-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
-    .chq-pub-session-action {
-      min-height: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
     .chq-pub-itinerary-cta { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
     .chq-pub-agenda-day-scroll { max-width: 100%; }
 
