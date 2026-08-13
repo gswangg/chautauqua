@@ -291,22 +291,24 @@ export function AgendaPage() {
             )
           ) : (
             <div className="chq-agenda-layout">
-              {activeDay && (
-                <DayGrid
-                  day={activeDay}
-                  rooms={agenda.rooms}
-                  tracks={agenda.tracks}
-                  placed={agenda.placed}
-                  conflicts={agenda.conflicts}
-                  dayStartMin={DAY_START_MIN}
-                  dayEndMin={DAY_END_MIN}
-                  gridMin={GRID_MIN}
-                  onDropPlace={handlePlace}
-                  armed={armed}
-                  onArm={setArmed}
-                  onPlaceAt={handlePlaceAt}
-                />
-              )}
+              <div className="chq-agenda-main">
+                {activeDay && (
+                  <DayGrid
+                    day={activeDay}
+                    rooms={agenda.rooms}
+                    tracks={agenda.tracks}
+                    placed={agenda.placed}
+                    conflicts={agenda.conflicts}
+                    dayStartMin={DAY_START_MIN}
+                    dayEndMin={DAY_END_MIN}
+                    gridMin={GRID_MIN}
+                    onDropPlace={handlePlace}
+                    armed={armed}
+                    onArm={setArmed}
+                    onPlaceAt={handlePlaceAt}
+                  />
+                )}
+              </div>
               <UnscheduledTray
                 sessions={agenda.unscheduled}
                 tracks={agenda.tracks}
