@@ -18,6 +18,8 @@ function makeEvent(overrides: Partial<HubEvent>): HubEvent {
     cfpCloseDate: null,
     cfpOpen: false,
     publishedSessionCount: 0,
+    trackCount: 0,
+    formatCount: 0,
     ...overrides,
   };
 }

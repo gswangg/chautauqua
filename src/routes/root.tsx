@@ -107,6 +107,39 @@ function sessionsLine(count: number): string {
   return `${count} session${count === 1 ? "" : "s"}`;
 }
 
+/** DEC-943: a spelled-count clause ("three tracks"), or "" when count is 0
+ * -- the same drop-a-zero-clause grammar heroSummary/pluralClause use. */
+function countClause(count: number, singularNoun: string, pluralNoun: string): string {
+  if (count === 0) return "";
+  return `${spellCount(count)} ${count === 1 ? singularNoun : pluralNoun}`;
+}
+
+function capitalizeFirst(s: string): string {
+  return s.length === 0 ? s : `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
+}
+
+/** DEC-943: the hub row's "shape" line for a live event (open CFP or
+ * published) -- "Three tracks · five formats". Either clause is dropped
+ * when its count is 0; "" (rendered as nothing) when both are 0. */
+function shapeLine(trackCount: number, formatCount: number): string {
+  const clauses = [countClause(trackCount, "track", "tracks"), countClause(formatCount, "format", "formats")].filter(
+    (c) => c.length > 0,
+  );
+  if (clauses.length === 0) return "";
+  return capitalizeFirst(clauses.join(" · "));
+}
+
+/** DEC-943: the hub row's "size" line for a past event -- "48 sessions ·
+ * three tracks" (sessions as a numeral, per sessionsLine; tracks spelled
+ * out, per shapeLine's grammar). Either clause is dropped when its count
+ * is 0. */
+function archiveLine(sessionCount: number, trackCount: number): string {
+  const clauses = [sessionCount > 0 ? sessionsLine(sessionCount) : "", countClause(trackCount, "track", "tracks")].filter(
+    (c) => c.length > 0,
+  );
+  return clauses.join(" · ");
+}
+
 /** Every field on a hub row must pass "would you mind a competitor reading
  * it?" — no submission count, review progress, or any other organizer-only
  * metric ever reaches this markup (see docs/design/Chautauqua Home.dc.html's
@@ -124,7 +157,9 @@ function OpenCfpRow(props: { event: HubEvent; nowMs: number }) {
           {event.name}
         </a>
         <span class="chq-home-state">{event.cfpCloseDate !== null ? closesLine(event.cfpCloseDate, event.timezone, nowMs) : "Open now"}</span>
-        {event.publishedSessionCount > 0 ? <span class="chq-home-meta">{sessionsLine(event.publishedSessionCount)}</span> : null}
+        {shapeLine(event.trackCount, event.formatCount) ? (
+          <span class="chq-home-meta">{shapeLine(event.trackCount, event.formatCount)}</span>
+        ) : null}
       </div>
       <div class="chq-home-actions">
         <a class="chq-home-action-primary" href={`/submit/${event.slug}`}>
@@ -147,7 +182,9 @@ function PublishedRow(props: { event: HubEvent }) {
         <a class="chq-home-name" href={`/e/${event.slug}/sessions`}>
           {event.name}
         </a>
-        <span class="chq-home-meta">{sessionsLine(event.publishedSessionCount)}</span>
+        {shapeLine(event.trackCount, event.formatCount) ? (
+          <span class="chq-home-meta">{shapeLine(event.trackCount, event.formatCount)}</span>
+        ) : null}
       </div>
       <div class="chq-home-actions">
         <a class="chq-home-action-secondary" href={`/e/${event.slug}/sessions`}>
@@ -170,7 +207,9 @@ function ArchiveRow(props: { event: HubEvent }) {
         <a class="chq-home-archive-name" href={`/e/${event.slug}/sessions`}>
           {event.name}
         </a>
-        {event.publishedSessionCount > 0 ? <span class="chq-home-meta">{sessionsLine(event.publishedSessionCount)}</span> : null}
+        {archiveLine(event.publishedSessionCount, event.trackCount) ? (
+          <span class="chq-home-meta">{archiveLine(event.publishedSessionCount, event.trackCount)}</span>
+        ) : null}
       </div>
       <a class="chq-home-action-quiet" href={`/e/${event.slug}/sessions`}>
         Sessions ›
