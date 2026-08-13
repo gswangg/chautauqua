@@ -162,6 +162,10 @@ submissionsRoutes.get("/events/:eventId/submissions", requireOrganizer, async (c
     total: result.total,
     page: parsed.page,
     perPage: parsed.perPage,
+    // DEC-913: chips + re-uploaded headline ride the same envelope as the
+    // rows — one grouped aggregate, computed in listSubmissions above.
+    contentStatusCounts: result.contentStatusCounts,
+    reuploadedCount: result.reuploadedCount,
   });
 });
 

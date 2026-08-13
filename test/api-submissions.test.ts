@@ -220,7 +220,8 @@ describe("listSubmissions: one paginated statement for q+trackId (DEC-333/335)",
     const responses = [
       [{ recordPrefix: "SES" }], // 1: event prefix lookup
       [{ count: 1 }], // 2: count
-      [row], // 3: page
+      [{ contentStatus: "pending", count: 1, reuploaded: 0 }], // 3: DEC-913 grouped counts
+      [row], // 4: page
       [], // participant enrichment
       [], // submission_track enrichment
       [], // deliverable-count enrichment (DEC-341)
@@ -240,16 +241,115 @@ describe("listSubmissions: one paginated statement for q+trackId (DEC-333/335)",
       reuploaded: null,
     });
 
-    // Exactly 7 db.select() calls total: 3 core + 4 enrichment batches.
-    expect(db.calls.length).toBe(7);
+    // Exactly 8 db.select() calls total: 4 core (incl. DEC-913 grouped
+    // counts) + 4 enrichment batches.
+    expect(db.calls.length).toBe(8);
     expect(result.total).toBe(1);
     expect(result.items[0]!.id).toBe("sub-1");
+    expect(result.contentStatusCounts).toEqual({ pending: 1, approved: 0, changes_requested: 0 });
+    expect(result.reuploadedCount).toBe(0);
 
-    const pageCallLog = db.calls[2]!;
+    const pageCallLog = db.calls[3]!;
     const limitCall = pageCallLog.find((c: { method: string }) => c.method === "limit");
     const offsetCall = pageCallLog.find((c: { method: string }) => c.method === "offset");
     expect(limitCall?.args).toEqual([5]);
     expect(offsetCall?.args).toEqual([5]); // (page 2 - 1) * perPage 5
+  });
+
+  // DEC-913: the grouped contentStatusCounts/reuploadedCount aggregate is
+  // computed over the SAME base filter (eventId/q/trackId) with the
+  // caller's own contentStatus/reuploaded narrowing stripped — so a
+  // contentStatus-filtered call still reports the full unfiltered group
+  // totals, and the chips can never disagree with which tab is active.
+  it("computes contentStatusCounts/reuploadedCount over the base filter, ignoring the caller's own contentStatus/reuploaded narrowing", async () => {
+    const EVENT_ID = "event-1";
+    const responses = [
+      [{ recordPrefix: "SES" }], // event prefix lookup
+      [{ count: 0 }], // count (narrowed to contentStatus=approved -> 0 rows)
+      [
+        { contentStatus: "pending", count: 2, reuploaded: 1 },
+        { contentStatus: "approved", count: 3, reuploaded: 0 },
+        { contentStatus: "changes_requested", count: 1, reuploaded: 1 },
+      ], // DEC-913 grouped counts: unaffected by the contentStatus filter below
+      [], // page (no rows match contentStatus=approved... this test only cares about counts)
+    ];
+    const db = makeFakeDb(responses);
+
+    const result = await listSubmissions(db, EVENT_ID, {
+      page: 1,
+      perPage: 50,
+      q: null,
+      status: [],
+      contentStatus: ["approved"] as any,
+      trackId: null,
+      sort: "newest",
+      includeAnswers: false,
+      reuploaded: null,
+    });
+
+    expect(result.contentStatusCounts).toEqual({ pending: 2, approved: 3, changes_requested: 1 });
+    expect(result.reuploadedCount).toBe(2);
+  });
+});
+
+// DEC-913: GET .../submissions serves the grouped contentStatusCounts +
+// reuploadedCount on the SAME response as the rows — the route test
+// double for the repo-level assertion above.
+describe("GET /api/v1/events/:eventId/submissions (DEC-913 grouped counts on the envelope)", () => {
+  function makeFakeDb(responses: unknown[]) {
+    let cursor = 0;
+    function chain(): any {
+      const obj: any = {};
+      const passthrough = ["from", "where", "innerJoin", "orderBy", "limit", "offset", "select", "groupBy"];
+      for (const m of passthrough) {
+        obj[m] = (..._args: unknown[]) => obj;
+      }
+      obj.then = (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => {
+        const value = responses[cursor];
+        cursor += 1;
+        return Promise.resolve(value).then(resolve, reject);
+      };
+      return obj;
+    }
+    return { select: () => chain() } as any;
+  }
+
+  const ORGANIZER: AuthInfo = { userId: "u-organizer", role: "organizer", orgId: "org-a" };
+
+  function appWithDb(db: unknown) {
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.use("*", async (c, next) => {
+      c.set("db", db as AppEnv["Variables"]["db"]);
+      c.set("auth", ORGANIZER);
+      await next();
+    });
+    app.route("/api/v1", submissionsRoutes);
+    return app;
+  }
+
+  it("returns contentStatusCounts/reuploadedCount on the envelope, computed once and unaffected by a contentStatus filter", async () => {
+    const db = makeFakeDb([
+      [{ orgId: "org-a" }], // getEventOrgId (assertEventOwnership)
+      [{ recordPrefix: "SES" }], // event prefix lookup
+      [{ count: 0 }], // count, narrowed to contentStatus=approved
+      [
+        { contentStatus: "pending", count: 2, reuploaded: 1 },
+        { contentStatus: "approved", count: 3, reuploaded: 0 },
+        { contentStatus: "changes_requested", count: 1, reuploaded: 1 },
+      ], // DEC-913 grouped counts: base filter only, ignores the contentStatus narrowing below
+      [], // page rows (none match contentStatus=approved in this fixture)
+    ]);
+    const app = appWithDb(db);
+
+    const res = await app.request(
+      new Request("http://local/api/v1/events/event-1/submissions?contentStatus=approved"),
+    );
+
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as any;
+    expect(json.contentStatusCounts).toEqual({ pending: 2, approved: 3, changes_requested: 1 });
+    expect(json.reuploadedCount).toBe(2);
   });
 });
 
@@ -527,14 +627,15 @@ describe("GET /api/v1/events/:eventId/submissions?includeAnswers=1 (DEC-243 answ
 
     // Call order for the simple (no q/trackId) path: 1) getEventOrgId
     // (assertEventOwnership), 2) event lookup for recordPrefix, 3) total
-    // count, 4) page rows, 5) participant enrichment, 6) track enrichment,
-    // 7) answer enrichment (only fetched when includeAnswers=1), 8)
-    // deliverable-count enrichment (DEC-341), 9) latestFile candidate
-    // enrichment (w15-f).
+    // count, 4) DEC-913 grouped contentStatusCounts/reuploadedCount, 5) page
+    // rows, 6) participant enrichment, 7) track enrichment, 8) answer
+    // enrichment (only fetched when includeAnswers=1), 9) deliverable-count
+    // enrichment (DEC-341), 10) latestFile candidate enrichment (w15-f).
     const db = chain([
       [{ orgId: ORG_A }],
       [{ recordPrefix: "TALK" }],
       [{ count: 1 }],
+      [{ contentStatus: "pending", count: 1, reuploaded: 0 }],
       [submissionRow],
       [],
       [],
@@ -575,6 +676,7 @@ describe("GET /api/v1/events/:eventId/submissions?includeAnswers=1 (DEC-243 answ
       [{ orgId: ORG_A }],
       [{ recordPrefix: "TALK" }],
       [{ count: 1 }],
+      [{ contentStatus: "pending", count: 1, reuploaded: 0 }], // DEC-913 grouped counts
       [submissionRow],
       [],
       [],

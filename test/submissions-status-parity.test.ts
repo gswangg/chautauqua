@@ -76,6 +76,7 @@ function listDbFor(matchingRows: ReturnType<typeof submissionRow>[]) {
     [{ orgId: ORG_ID }],
     [{ recordPrefix: "SES" }],
     [{ count: matchingRows.length }],
+    [], // DEC-913 grouped counts
     matchingRows,
     [],
     [],

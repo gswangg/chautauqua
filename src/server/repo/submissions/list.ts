@@ -10,11 +10,15 @@ import { FILE_KINDS, type FileKind } from "../../../domain/files";
 import { chunkIds, type ParsedListQuery, type SortOrder } from "./query";
 import { likeContains } from "../like";
 import { findRoot, type DeliverableFileRow } from "../files-library";
-import { DEC_692, DEC_881 } from "../../../decisions";
+import { DEC_692, DEC_881, DEC_913 } from "../../../decisions";
 
 // DEC-692: a worklist row names the session, the speaker, the LATEST
 // artefact and its status — latestFile is that artefact, computed here.
 void DEC_692;
+
+// DEC-913: the worklist's chip counts and re-uploaded headline are ONE
+// grouped aggregate on the list envelope, not one request per tab.
+void DEC_913;
 
 // DEC-881: "re-uploaded" is ONE predicate — a submission's latest deliverable
 // file (by created_at among FILE_KINDS files) has version_no > 1. Expressed
@@ -69,9 +73,22 @@ export interface SubmissionListItem {
   answers?: Record<string, unknown>;
 }
 
+export interface SubmissionContentStatusCounts {
+  pending: number;
+  approved: number;
+  changes_requested: number;
+}
+
 export interface ListSubmissionsResult {
   items: SubmissionListItem[];
   total: number;
+  // DEC-913: the worklist's chip counts and 're-uploaded' headline are ONE
+  // grouped aggregate over the SAME filtered base (eventId/q/trackId) minus
+  // this call's own contentStatus/reuploaded narrowing — so the numbers
+  // never move when the caller switches tabs, and the chips/headline/rows
+  // read one query's arithmetic instead of four separate bounded reads.
+  contentStatusCounts: SubmissionContentStatusCounts;
+  reuploadedCount: number;
 }
 
 /** ORDER BY clause for each sort, with a seq tiebreaker (DEC-335) so OFFSET
@@ -161,6 +178,33 @@ export async function listSubmissions(
     .where(whereExpr);
   const total = Number(totalRows[0]?.count ?? 0);
 
+  // DEC-913: chip counts + re-uploaded headline as ONE grouped aggregate
+  // over the same base filter (eventId/q/trackId) with this call's own
+  // contentStatus/reuploaded narrowing stripped — so a tab switch (which
+  // only changes params.contentStatus) never moves these numbers, and the
+  // conditional re-uploaded sum rides the same GROUP BY pass rather than a
+  // second query.
+  const countConditions = submissionListConditions(eventId, { ...params, contentStatus: [], reuploaded: null });
+  const countWhereExpr = and(...countConditions);
+  const countRows = await db
+    .select({
+      contentStatus: schema.submission.contentStatus,
+      count: sql<number>`count(*)`,
+      reuploaded: sql<number>`sum(case when ${reUploadedSql()} = 1 then 1 else 0 end)`,
+    })
+    .from(schema.submission)
+    .where(countWhereExpr)
+    .groupBy(schema.submission.contentStatus);
+
+  const contentStatusCounts: SubmissionContentStatusCounts = { pending: 0, approved: 0, changes_requested: 0 };
+  let reuploadedCount = 0;
+  for (const r of countRows) {
+    if (r.contentStatus === "pending" || r.contentStatus === "approved" || r.contentStatus === "changes_requested") {
+      contentStatusCounts[r.contentStatus] = Number(r.count);
+    }
+    reuploadedCount += Number(r.reuploaded ?? 0);
+  }
+
   const rows = await db
     .select()
     .from(schema.submission)
@@ -169,7 +213,7 @@ export async function listSubmissions(
     .limit(params.perPage)
     .offset(offset);
 
-  if (rows.length === 0) return { items: [], total };
+  if (rows.length === 0) return { items: [], total, contentStatusCounts, reuploadedCount };
 
   const ids = rows.map((r) => r.id);
   const idBatches = chunkIds(ids);
@@ -378,5 +422,5 @@ export async function listSubmissions(
     };
   });
 
-  return { items, total };
+  return { items, total, contentStatusCounts, reuploadedCount };
 }

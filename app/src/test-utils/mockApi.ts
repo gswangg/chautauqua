@@ -63,8 +63,23 @@ export function listEnvelope<T>(
     page: number;
     perPage: number;
     kindCounts: Record<string, number>;
+    // DEC-913: the submissions worklist envelope's grouped chip/headline
+    // counts. Default to an all-zero shape (not undefined) so tests that
+    // don't care about the chip numbers still get a defined, non-null
+    // envelope shape — matching what the real server always returns.
+    contentStatusCounts: { pending: number; approved: number; changes_requested: number };
+    reuploadedCount: number;
   }> = {},
-): { items: T[]; total: number; totalSizeBytes: number; page: number; perPage: number; kindCounts: Record<string, number> } {
+): {
+  items: T[];
+  total: number;
+  totalSizeBytes: number;
+  page: number;
+  perPage: number;
+  kindCounts: Record<string, number>;
+  contentStatusCounts: { pending: number; approved: number; changes_requested: number };
+  reuploadedCount: number;
+} {
   return {
     items,
     total: overrides.total ?? items.length,
@@ -72,6 +87,8 @@ export function listEnvelope<T>(
     page: overrides.page ?? 1,
     perPage: overrides.perPage ?? 20,
     kindCounts: overrides.kindCounts ?? {},
+    contentStatusCounts: overrides.contentStatusCounts ?? { pending: 0, approved: 0, changes_requested: 0 },
+    reuploadedCount: overrides.reuploadedCount ?? 0,
   };
 }
 

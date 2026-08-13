@@ -152,11 +152,12 @@ describe("DEC-562: JS re-aggregation sorts gain the contact-id tiebreak (byte-id
       const db = makeFakeDb([
         [{ recordPrefix: "SES" }], // 1: event prefix
         [{ count: 1 }], // 2: count
-        [submissionRow], // 3: page
-        participantRows, // 4: participant enrichment
-        [], // 5: track enrichment
-        [], // 6: deliverable-count enrichment
-        [], // 7: latestFile candidate enrichment (w15-f)
+        [], // 3: DEC-913 grouped counts
+        [submissionRow], // 4: page
+        participantRows, // 5: participant enrichment
+        [], // 6: track enrichment
+        [], // 7: deliverable-count enrichment
+        [], // 8: latestFile candidate enrichment (w15-f)
       ]);
       return listSubmissions(db, EVENT_ID, {
         page: 1,

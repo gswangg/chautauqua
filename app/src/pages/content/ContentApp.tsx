@@ -47,19 +47,38 @@ export function ContentApp() {
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // DEC-825: one bounded (perPage=1) aggregate read per chip, each filtered
-  // by EXACTLY that tab's own contentStatus value from WORKLIST_TAB_CONTENT_
-  // STATUS — never a page-count stand-in, per the field guide's "a cap the
-  // UI can't see LIES, render total".
-  const [counts, setCounts] = useState<Record<WorklistTab, number | null>>(() =>
-    Object.fromEntries(WORKLIST_TABS.map((t) => [t, null])) as Record<WorklistTab, number | null>,
-  );
+  // DEC-913: chip counts + the 're-uploaded' headline are ONE grouped
+  // aggregate riding the SAME response as the worklist rows (see
+  // loadWorklist below) — no per-tab/per-chip fetch. contentStatusCounts is
+  // keyed by contentStatus and unaffected by the active tab's own narrowing
+  // (server strips that narrowing before grouping), so switching tabs never
+  // moves these numbers.
+  const [contentStatusCounts, setContentStatusCounts] = useState<{
+    pending: number;
+    approved: number;
+    changes_requested: number;
+  } | null>(null);
   // w1-f (DEC-733/eval 60/37): the mock's header reads 'N need a decision ·
-  // M re-uploaded' regardless of which tab is active. `needs a decision`
-  // reuses the needs_decision chip's own count (same query, DEC-825); the
-  // re-uploaded figure ('changes_requested' only, no chip owns that exact
-  // predicate) is its own bounded aggregate read.
+  // M re-uploaded' regardless of which tab is active.
   const [reUploadedCount, setReUploadedCount] = useState<number | null>(null);
+
+  // DEC-913: derives a tab's chip count from the single contentStatusCounts
+  // aggregate by reading the SAME WORKLIST_TAB_CONTENT_STATUS entry the
+  // tab's own list filter reads (DEC-825's single predicate owner) —
+  // summing its comma-separated statuses, or the full total for 'all'.
+  const counts: Record<WorklistTab, number | null> = Object.fromEntries(
+    WORKLIST_TABS.map((t) => {
+      if (!contentStatusCounts) return [t, null];
+      const filter = WORKLIST_TAB_CONTENT_STATUS[t];
+      if (!filter) {
+        return [t, contentStatusCounts.pending + contentStatusCounts.approved + contentStatusCounts.changes_requested];
+      }
+      const sum = filter
+        .split(',')
+        .reduce((acc, status) => acc + (contentStatusCounts[status as keyof typeof contentStatusCounts] ?? 0), 0);
+      return [t, sum];
+    }),
+  ) as Record<WorklistTab, number | null>;
   // w1-e: bumping this remounts FilesLibrary (its own load() effect keys on
   // eventId, not on time), which forces a fresh fetch — used on view
   // switch, the explicit Refresh button, and after a deliverable upload so
@@ -87,6 +106,10 @@ export function ContentApp() {
       .then((res) => {
         setItems(res.items);
         setTotal(res.total);
+        // DEC-913: the same response carries the grouped chip/headline
+        // counts — no separate count fetch.
+        setContentStatusCounts(res.contentStatusCounts ?? null);
+        setReUploadedCount(res.reuploadedCount ?? null);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load submissions'))
       .finally(() => {
@@ -98,35 +121,6 @@ export function ContentApp() {
   useEffect(() => {
     loadWorklist();
   }, [loadWorklist]);
-
-  const loadCounts = useCallback(() => {
-    if (!eventId) return;
-    for (const t of WORKLIST_TABS) {
-      const chipParams = new URLSearchParams();
-      chipParams.set('perPage', '1');
-      const statusFilter = WORKLIST_TAB_CONTENT_STATUS[t];
-      if (statusFilter) chipParams.set('contentStatus', statusFilter);
-      apiList<ContentSubmissionListItem>(`/events/${eventId}/submissions?${chipParams.toString()}`)
-        .then((res) => setCounts((prev) => ({ ...prev, [t]: res.total })))
-        .catch(() => setCounts((prev) => ({ ...prev, [t]: null })));
-    }
-
-    // DEC-881: 're-uploaded' is the same predicate the worklist row's status
-    // cell reads (worklistStatusLabel) — a latest deliverable file with
-    // version_no > 1 — read here as a bounded (perPage=1) server-side
-    // `reuploaded=1` filter, not contentStatus=changes_requested (that's the
-    // count of rows AWAITING a re-upload, the opposite of this label).
-    const reUploadedParams = new URLSearchParams();
-    reUploadedParams.set('perPage', '1');
-    reUploadedParams.set('reuploaded', '1');
-    apiList<ContentSubmissionListItem>(`/events/${eventId}/submissions?${reUploadedParams.toString()}`)
-      .then((res) => setReUploadedCount(res.total))
-      .catch(() => setReUploadedCount(null));
-  }, [eventId]);
-
-  useEffect(() => {
-    loadCounts();
-  }, [loadCounts]);
 
   // CNT-D1: the worklist's current page almost never contains the submission
   // a Files-library click resolves to (different sort, different tab filter,
@@ -185,9 +179,10 @@ export function ContentApp() {
     if (view === 'files') {
       setFilesReloadKey((k) => k + 1);
     } else {
+      // DEC-913: loadWorklist's own response carries the chip/headline
+      // counts — no separate refresh needed.
       loadWorklist();
     }
-    loadCounts();
   }
 
   function changeTab(next: WorklistTab) {
@@ -237,7 +232,9 @@ export function ContentApp() {
     onContentStatusChange(id, status);
     try {
       await apiPost(`/submissions/${id}/content-status`, { contentStatus: status });
-      loadCounts();
+      // DEC-913: refresh the worklist so its response's grouped counts pick
+      // up the change — no standalone count fetch to call instead.
+      loadWorklist();
     } catch (err) {
       setItems(previous);
       setError(err instanceof ApiError ? `Content status update failed: ${err.message}` : 'Content status update failed');
