@@ -1,20 +1,24 @@
 import { useEffect, useState } from 'react';
-import { apiList, apiPost, ApiError } from '../../lib/api';
+import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
 import { FormRow, ModalFrame } from '../../components/ModalFrame';
-import type { ContactListItem } from './types';
+import type { ContactDetail, ContactListItem } from './types';
 // DEC-714: the role control offers the app's OWN role vocabulary, imported
 // -- never a hardcoded Speaker/Reviewer/Guest list, which would be a
 // control that lies about two of its options ('reviewer' is an account
 // role, 'guest' has no representation in the data model).
 import { PARTICIPANT_ROLE_OPTIONS, participantRoleLabel } from '../../../../src/domain/participant-roles';
-import { DEC_764, DEC_765 } from '../../../../src/decisions';
+import { DEC_764, DEC_765, DEC_795 } from '../../../../src/decisions';
+import { useCurrentEvent } from '../../lib/useCurrentEvent';
 
 // Compile-checked dependency markers: no `Invited: <name>` prefill, the
 // title field is required before submit, and the confirmation names the
 // role actually chosen (DEC-764); role is threaded through to the POST
-// body (DEC-765).
+// body (DEC-765). The Event select defaults to the event in context, and an
+// existing roster spot on the selected event is an advisory, never a block
+// (DEC-795).
 void DEC_764;
 void DEC_765;
+void DEC_795;
 
 interface EventOption {
   id: string;
@@ -29,6 +33,7 @@ interface Props {
 /** CRM-10 (DEC-156): "Add to event…" — pushes a contact into an event
  * directly as an accepted submission (no email). */
 export function AddToEventModal({ contact, onClose }: Props) {
+  const { eventId: currentEventId } = useCurrentEvent();
   const [events, setEvents] = useState<EventOption[]>([]);
   const [eventId, setEventId] = useState('');
   // DEC-764: no prefill -- a session title is something a person types, not
@@ -40,15 +45,35 @@ export function AddToEventModal({ contact, onClose }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
+  // DEC-795: the contact's own submission history, fetched on mount, so the
+  // modal can tell whether the SELECTED event already has this person on it.
+  const [detail, setDetail] = useState<ContactDetail | null>(null);
 
   useEffect(() => {
     apiList<EventOption>('/events')
       .then((res) => {
         setEvents(res.items);
-        if (res.items[0]) setEventId(res.items[0].id);
+        // DEC-795: default to the event in context (when it's actually in
+        // the returned list) -- never the arbitrary first row, which is how
+        // a speaker got added to the wrong event.
+        const inContext = currentEventId && res.items.some((ev) => ev.id === currentEventId);
+        if (inContext) setEventId(currentEventId!);
+        else if (res.items[0]) setEventId(res.items[0].id);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load events'));
-  }, []);
+  }, [currentEventId]);
+
+  useEffect(() => {
+    apiGet<ContactDetail>(`/contacts/${contact.id}`)
+      .then(setDetail)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load contact'));
+  }, [contact.id]);
+
+  // DEC-795: submissions this contact already has on the SELECTED event --
+  // an advisory, never a block (a second session is legitimate).
+  const submissionsOnSelectedEvent =
+    detail?.history.submissions.filter((s) => s.eventId === eventId) ?? [];
+  const alreadyOnRoster = eventId !== '' && submissionsOnSelectedEvent.length > 0;
 
   async function confirm() {
     if (!eventId) {
@@ -91,7 +116,7 @@ export function AddToEventModal({ contact, onClose }: Props) {
               disabled={busy || !eventId || title.trim() === ''}
               onClick={confirm}
             >
-              Add them
+              {alreadyOnRoster ? 'Add another session' : 'Add them'}
             </button>
             <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose}>
               Cancel
@@ -147,6 +172,16 @@ export function AddToEventModal({ contact, onClose }: Props) {
               placeholder="e.g. Scaling Kubernetes at 2am"
             />
           </FormRow>
+          {alreadyOnRoster && (
+            // DEC-795: named in the person's own words, above the actions --
+            // a second session is legitimate, so this never disables 'Add
+            // them' (relabelled below), only tells the organizer what
+            // they're about to do.
+            <p className="chq-contacts-advisory chq-add-to-event-advisory">
+              {contact.firstName} {contact.lastName} is already on this event — {submissionsOnSelectedEvent.length}{' '}
+              session{submissionsOnSelectedEvent.length === 1 ? '' : 's'}
+            </p>
+          )}
           <p className="chq-contacts-pipeline-caption">
             This creates an accepted session on that event. No email is sent.
           </p>

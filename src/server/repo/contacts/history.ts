@@ -12,6 +12,10 @@ export interface ContactHistorySubmission {
   id: string;
   ref: string;
   title: string;
+  // DEC-795: a name is not an identity -- the id travels alongside the
+  // display name so the client can test "is this THE selected event" rather
+  // than string-comparing names.
+  eventId: string;
   eventName: string;
   status: string;
 }
@@ -37,6 +41,7 @@ export async function getContactHistory(db: Db, contactId: string): Promise<Cont
       title: schema.submission.title,
       status: schema.submission.status,
       seq: schema.submission.seq,
+      eventId: schema.event.id,
       eventName: schema.event.name,
       recordPrefix: schema.event.recordPrefix,
     })
@@ -52,6 +57,7 @@ export async function getContactHistory(db: Db, contactId: string): Promise<Cont
     id: r.id,
     ref: formatRef(r.recordPrefix, r.seq),
     title: r.title,
+    eventId: r.eventId,
     eventName: r.eventName,
     status: r.status,
   }));
