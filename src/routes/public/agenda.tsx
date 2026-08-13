@@ -9,6 +9,9 @@ import { publicRoomLabel } from "../../domain/schedule";
 import { sessionDetailPath, surfacePath, type Surface, type SurfaceBase } from "./shell";
 import { TrackChips, FormatChip, SpeakerNames, SessionDescription, ItineraryToggle, formatDay, formatMinutes } from "./cards";
 import { PublicSearchBox, PublicFilterBar } from "./filters";
+import { DEC_999 } from "../../decisions";
+
+void DEC_999;
 
 // DEC-602: shared row-map math. The hour-label column (grid-column 1) and
 // every session block are positioned from the SAME dayStart/gridMin
@@ -24,6 +27,20 @@ function formatHourLabel(min: number): string {
   const hour12 = h % 12 === 0 ? 12 : h % 12;
   const ampm = h < 12 ? "AM" : "PM";
   return `${hour12} ${ampm}`;
+}
+
+// DEC-999: lane geometry is published as CUSTOM PROPERTIES only, never as an
+// inline width/margin-left. A percentage margin-left on a grid ITEM resolves
+// against the grid area's own inline size and does not compose with a
+// percentage width the way width:calc(100/n% - 4px); margin-left:calc(...)
+// intended — the two percentages don't share a base, so an overlap lane
+// silently overran its box. public.css.ts's .chq-pub-agenda-block rule reads
+// these two properties (with defaults) to compute width/margin-inline-start
+// itself, so a single-lane block (the overwhelming majority) needs no inline
+// style here at all.
+export function laneStyleFor(lane: number, laneCount: number): string {
+  if (laneCount <= 1) return "";
+  return `--chq-lane:${lane};--chq-lane-count:${laneCount}`;
 }
 
 /** Per-day time grid (DEC-022): CSS grid, rooms as columns, session blocks
@@ -107,10 +124,10 @@ export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; e
             const rowStart = rowForMinute(item.startMin, dayStart, gridMin);
             const rowSpan = Math.max(1, Math.ceil((item.endMin - item.startMin) / gridMin));
             const { lane, laneCount } = laneByItem.get(item.submissionId) ?? { lane: 0, laneCount: 1 };
-            const laneStyle =
-              laneCount > 1
-                ? `width:calc(${100 / laneCount}% - 4px);margin-left:calc(${(100 / laneCount) * lane}% + 2px);position:relative;z-index:1`
-                : "";
+            // DEC-999: position:relative/z-index only needed once a block
+            // shares its row with a lane sibling; the width/margin math
+            // itself now lives entirely in public.css.ts.
+            const laneStyle = laneCount > 1 ? `position:relative;z-index:1;${laneStyleFor(lane, laneCount)}` : "";
             return (
               // DEC-602: a grid block never contains an interactive control
               // (no itinerary checkbox here — that lives only in the
