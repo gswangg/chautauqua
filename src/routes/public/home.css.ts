@@ -15,12 +15,12 @@ void DEC_374;
 void DEC_582;
 
 export const HOME_CSS = `
-  .chq-home-shell { max-width: 900px; margin: 0 auto; background: var(--chq-surface); border: 1px solid var(--chq-rule); }
-  .chq-home-header { border-bottom: 1px solid var(--chq-ink); padding: 15px 44px; display: flex; align-items: center; gap: 20px; background: var(--chq-paper); }
+  .chq-home-shell { max-width: 900px; margin: 0 auto; background: var(--chq-paper); border: 1px solid var(--chq-rule); border-radius: 6px; overflow: hidden; }
+  .chq-home-header { border-bottom: 1px solid var(--chq-ink); padding: 15px 44px; display: flex; align-items: center; gap: 20px; }
   .chq-home-org { font-family: var(--chq-font-display); font-size: 20px; font-weight: 700; letter-spacing: -0.03em; }
   .chq-home-signin { margin-left: auto; font-size: 13px; font-weight: 700; text-decoration: none; }
 
-  .chq-home-body { padding: 36px 44px 40px; display: flex; flex-direction: column; gap: 30px; }
+  .chq-home-body { padding: 36px 44px 40px; display: flex; flex-direction: column; gap: 34px; }
   .chq-home-hero { display: flex; flex-direction: column; gap: 10px; }
   .chq-home-hero h1 { margin: 0; font-family: var(--chq-font-display); font-size: 44px; font-weight: 700; letter-spacing: -0.042em; line-height: 1.04; }
   .chq-home-hero p { margin: 0; font-size: 16px; line-height: 1.65; color: var(--chq-ink-2); max-width: 54ch; }
@@ -43,6 +43,10 @@ export const HOME_CSS = `
   .chq-home-action-secondary { border: 1px solid var(--chq-border-strong); border-radius: var(--chq-r-ctl); background: var(--chq-surface-sunk); min-height: 46px; display: flex; align-items: center; padding: 0 18px; font-size: 14px; font-weight: 600; color: var(--chq-ink-strong); white-space: nowrap; text-decoration: none; }
   .chq-home-action-quiet { font-size: 13px; font-weight: 700; white-space: nowrap; min-height: 44px; display: flex; align-items: center; }
 
+  .chq-home-row-published { padding: 18px 0; }
+  .chq-home-row-published .chq-home-name { font-size: 21px; letter-spacing: -0.025em; line-height: 1.25; }
+  .chq-home-row-published .chq-home-info { gap: 5px; }
+
   .chq-home-archive-row { display: grid; grid-template-columns: 158px 1fr auto; gap: 24px; align-items: baseline; padding: 16px 0; border-bottom: 1px solid var(--chq-hairline); }
   .chq-home-archive-dates { font-size: 13px; color: var(--chq-muted); }
   .chq-home-archive-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
@@ -56,7 +60,7 @@ export const HOME_CSS = `
      SVG's bottom edge, floating the whole "mark + name" above the sentence's
      baseline. In inline flow the mark's vertical-align nudge works. */
   .chq-home-footer-link { font-weight: 700; color: var(--chq-brand); white-space: nowrap; text-decoration: none; }
-  .chq-home-footer-link-end { margin-left: auto; }
+  .chq-home-footer-link-end { margin-left: auto; font-size: 12px; }
   .chq-home-github-mark { vertical-align: -2px; margin-right: 5px; }
 
   @media (max-width: 700px) {
