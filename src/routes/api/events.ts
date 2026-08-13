@@ -36,9 +36,12 @@ import {
 
 import { createDefaultForm } from "../../server/repo/forms";
 import { bumpIcsSequencesForRoom } from "../../server/repo/ics-sequence";
-import { isDateOrderValid, isIsoDate, isValidHexColor, isValidSlug, isValidTimezone } from "./validators";
+import { isDateOrderValid, isIsoDate, isValidSlug, isValidTimezone } from "./validators";
 import { listSlotsOutsideWindow } from "../../server/repo/agenda";
 import { DEC_519, DEC_844 } from "../../decisions";
+// DEC-371 amendment (wave 43): the hex-colour grammar (isValidHexColor,
+// normalizeHexColor) lives ONE place, src/domain/color.ts.
+import { isValidHexColor, normalizeHexColor } from "../../domain/color";
 
 // Compile-checked dependency marker: the room-rename ics_sequence bump
 // below implements DEC-519.
@@ -145,7 +148,10 @@ function parseBranding(body: Record<string, unknown>, fields: Record<string, str
     if (typeof b.accentColor !== "string" || !isValidHexColor(b.accentColor)) {
       fields["branding.accentColor"] = "Must be a hex color like #336699";
     } else {
-      out.accentColor = b.accentColor;
+      // DEC-371 amendment (wave 43): normalize on WRITE so a reader (SSR
+      // shells, embed query parser) can never disagree with the writer that
+      // accepted the value — '#abc' is stored as '#aabbcc'.
+      out.accentColor = normalizeHexColor(b.accentColor) as string;
     }
   }
   return out;

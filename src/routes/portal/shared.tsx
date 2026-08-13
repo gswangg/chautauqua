@@ -8,17 +8,19 @@ import type { MiddlewareHandler } from "hono";
 import type { AppEnv } from "../../server/env";
 import { ThemeStyles } from "../../views/theme";
 import { PORTAL_CSS } from "./portal.css";
-import { DEC_374, DEC_884 } from "../../decisions";
+import { DEC_374, DEC_884, DEC_371 } from "../../decisions";
+import { normalizeHexColor } from "../../domain/color";
 
 void DEC_374;
 void DEC_884;
+void DEC_371;
 
 // DEC-374: strict hex guard on the per-event accent before it ever reaches a
 // rendered attribute — falls back to the brand olive on anything that isn't
-// exactly #RRGGBB.
-const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+// a valid hex colour, per the ONE grammar in src/domain/color.ts (DEC-371
+// amendment, wave 43).
 function safeAccent(accentColor: string | null): string {
-  return accentColor && HEX_COLOR_RE.test(accentColor) ? accentColor : "#4E5C31";
+  return normalizeHexColor(accentColor) ?? "#4E5C31";
 }
 
 export interface PortalBrandingChrome {

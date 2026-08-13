@@ -6,6 +6,7 @@ import type { PublicSession, PublicTrack } from "../../server/repo/public";
 import { sessionDetailPath, type Surface } from "./shell";
 import type { CardFields } from "./query";
 import { formatEventDay } from "../../lib/event-time";
+import { normalizeHexColor } from "../../domain/color";
 
 const ALL_FIELDS_ON: CardFields = {
   track: true,
@@ -16,22 +17,22 @@ const ALL_FIELDS_ON: CardFields = {
   format: true,
 };
 
-// DEC-430/DEC-374 pattern: the track colour is organizer-supplied data and never
-// reaches the rendered attribute unless it is a strict 3- or 6-digit hex value --
-// anything else (CSS injection, `var(...)`, keywords) emits no custom property.
-const HEX_COLOR_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+// DEC-430/DEC-374 pattern: the track colour is organizer-supplied data and
+// never reaches the rendered attribute unless it passes the ONE hex-colour
+// grammar (src/domain/color.ts, DEC-371 amendment wave 43) -- anything else
+// (CSS injection, `var(...)`, keywords) emits no custom property.
 
 export function TrackChips(props: { tracks: PublicTrack[] }) {
   return (
     <>
-      {props.tracks.map((t) => (
-        <span
-          class="chq-pub-track-chip"
-          style={t.color && HEX_COLOR_RE.test(t.color) ? `--chq-track-color:${t.color}` : undefined}
-        >
-          {t.name}
-        </span>
-      ))}
+      {props.tracks.map((t) => {
+        const color = t.color ? normalizeHexColor(t.color) : null;
+        return (
+          <span class="chq-pub-track-chip" style={color ? `--chq-track-color:${color}` : undefined}>
+            {t.name}
+          </span>
+        );
+      })}
     </>
   );
 }

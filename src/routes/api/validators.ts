@@ -1,17 +1,15 @@
 // Pure validators for the events/tracks/rooms API (w2-b). No node:/cloudflare
 // imports — Web APIs only, so these are directly unit-testable.
 
+// DEC-371 amendment (wave 43): the hex-colour grammar (isValidHexColor,
+// normalizeHexColor) now lives ONE place, src/domain/color.ts — import from
+// there directly rather than through this module.
+
 const SLUG_RE = /^[a-z0-9-]+$/;
-const HEX_COLOR_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
 /** event.slug: lowercase letters, digits, hyphens only, non-empty. */
 export function isValidSlug(slug: string): boolean {
   return SLUG_RE.test(slug);
-}
-
-/** track.color / room-adjacent color fields: '#rgb' or '#rrggbb'. */
-export function isValidHexColor(color: string): boolean {
-  return HEX_COLOR_RE.test(color);
 }
 
 /**

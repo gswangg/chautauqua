@@ -16,6 +16,9 @@ import { MAX_PUBLIC_PAGE } from "../../server/repo/public/bounds";
 // importing from ../api/validators is legal (no cycle: validators.ts has no
 // imports of its own).
 import { isIsoDate } from "../api/validators";
+// DEC-371 amendment (wave 43): the hex-colour grammar lives ONE place,
+// src/domain/color.ts.
+import { normalizeHexColor } from "../../domain/color";
 
 export function parsePage(raw: string | undefined): number {
   const n = Number(raw);
@@ -50,8 +53,6 @@ export function parseNameQuery(raw: string | undefined): string | null {
 // DEC-289: embed configuration params — all optional, all degrade to
 // today's behavior on absence or bad input, none of them ever throw.
 
-const HEX3_OR_6_RE = /^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/;
-
 /** `day` = agenda/schedule filter, strict YYYY-MM-DD (DEC-510 isIsoDate) or
  * null. Never throws. */
 export function parseDay(raw: string | undefined): string | null {
@@ -79,11 +80,12 @@ export {
 /** `accent` = 3- or 6-digit hex, with ONE optional leading '#' tolerated
  * (DEC-817: the embed builder's own placeholder shows the '#' form, and a
  * value the builder can emit must round-trip through this parser), normalized
- * to '#rrggbb' lowercase (3-digit expanded); anything else parses to null. */
+ * to '#rrggbb' lowercase (3-digit expanded); anything else parses to null.
+ * Keeps its own '#'-stripping contract for the query string but delegates
+ * the grammar itself to normalizeHexColor (DEC-371 amendment, wave 43) —
+ * which already tolerates a leading '#', so stripping it first is redundant
+ * but harmless and documents the contract at this call site. */
 export function parseAccent(raw: string | undefined): string | null {
   if (!raw) return null;
-  const stripped = raw.startsWith("#") ? raw.slice(1) : raw;
-  if (!HEX3_OR_6_RE.test(stripped)) return null;
-  const hex = stripped.length === 3 ? stripped.split("").map((c) => c + c).join("") : stripped;
-  return `#${hex.toLowerCase()}`;
+  return normalizeHexColor(raw);
 }

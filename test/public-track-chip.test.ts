@@ -73,9 +73,9 @@ describe("TrackChips: DEC-374-pattern hex guard on the track colour", () => {
     expect(html).toContain('style="--chq-track-color:#1a2b3c"');
   });
 
-  it("a valid 3-digit hex value is carried as the --chq-track-color custom property", () => {
+  it("a valid 3-digit hex value is expanded to 6-digit and carried as the --chq-track-color custom property (DEC-371 amendment, wave 43: normalizeHexColor expands 3->6)", () => {
     const html = renderChip("#abc");
-    expect(html).toContain('style="--chq-track-color:#abc"');
+    expect(html).toContain('style="--chq-track-color:#aabbcc"');
   });
 
   it("never emits a background: declaration on the chip element", () => {

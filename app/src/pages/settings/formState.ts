@@ -3,6 +3,11 @@
 // diffs its local form state against the last-loaded record and only sends
 // changed fields on save (mirrors the server's partial-update contracts).
 
+// DEC-371 amendment (wave 43): the hex-colour grammar lives ONE place,
+// src/domain/color.ts — imported here (app/tsconfig.json includes
+// ../src/domain/**/*.ts) rather than re-implemented as a local regex.
+import { isValidHexColor } from "../../../../src/domain/color";
+
 export interface EventSettingsForm {
   name: string;
   slug: string;
@@ -46,11 +51,9 @@ export interface PortalSettingsForm {
   showResources: boolean;
 }
 
-const HEX_COLOR_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
-
-/** Client-side mirror of the server's isValidHexColor (src/routes/api/validators.ts) — empty is allowed (clears the field). */
+/** Client-side use of the server's grammar (src/domain/color.ts) — empty is allowed (clears the field). */
 export function isValidHexColorOrEmpty(value: string): boolean {
-  return value.trim().length === 0 || HEX_COLOR_RE.test(value);
+  return value.trim().length === 0 || isValidHexColor(value);
 }
 
 export interface PortalSettingsFormErrors {
