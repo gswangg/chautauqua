@@ -62,6 +62,7 @@ vi.mock("../src/server/repo/review", async () => {
     listCompletedPairsForPlan: vi.fn(async () => []),
     countEvaluationsBySubmission: vi.fn(async () => new Map<string, number>()),
     listSubmissionIdsRatedBy: vi.fn(async () => new Set<string>()),
+    listEvaluationScoresForReviewer: vi.fn(async () => new Map()),
     getEvaluation: vi.fn(async () => null),
     countEvaluationsForSubmission: vi.fn(async () => 0),
     upsertEvaluation: vi.fn(async (_db: unknown, input: unknown) => input),

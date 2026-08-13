@@ -157,6 +157,34 @@ export async function listSubmissionIdsRatedBy(
   return new Set(rows.map((r) => r.submissionId));
 }
 
+/** DEC-831: this reviewer's own scores for a plan round, keyed by
+ * submissionId -- read beside listSubmissionIdsRatedBy (same WHERE shape)
+ * rather than a second pass over listEvaluationsForPlan, so the reviewer
+ * queue's myScore column shares one query per reviewer per round. */
+export async function listEvaluationScoresForReviewer(
+  db: Db,
+  planId: string,
+  round: number,
+  reviewerId: string,
+): Promise<Map<string, Record<string, number | string>>> {
+  const rows = await db
+    .select({
+      submissionId: schema.evaluation.submissionId,
+      scoresJson: schema.evaluation.scoresJson,
+    })
+    .from(schema.evaluation)
+    .where(
+      and(
+        eq(schema.evaluation.planId, planId),
+        eq(schema.evaluation.round, round),
+        eq(schema.evaluation.reviewerId, reviewerId),
+      ),
+    );
+  return new Map(
+    rows.map((r) => [r.submissionId, JSON.parse(r.scoresJson) as Record<string, number | string>]),
+  );
+}
+
 /** DEC-351: reviewer+submission pairs completed for a plan+round -- a single
  * select of only reviewerId/submissionId (no scoresJson, no comment, no
  * toEvaluationRecord mapping) for /progress and /remind, which never need

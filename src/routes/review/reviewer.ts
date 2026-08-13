@@ -17,13 +17,14 @@ import {
   validateEvaluationScores,
   criteriaForRound,
   partitionRecused,
+  computeWeightedScore,
 } from "../../domain/evaluation";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import type { PlanRecord } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
-import { DEC_239, DEC_460, DEC_461, DEC_466 } from "../../decisions";
+import { DEC_239, DEC_460, DEC_461, DEC_466, DEC_831 } from "../../decisions";
 import { currentAuth, requireReviewerOrOrganizer, asRecord, requireAssignedPlan } from "./shared";
 
 export const reviewReviewerRoutes = new Hono<AppEnv>();
@@ -31,6 +32,7 @@ void DEC_239; // /review/plans/:id/queue: shaped {submissionId,ref,title,ratings
 void DEC_460; // enforced bound on every /api/v1 list envelope, no exemptions
 void DEC_461; // optional repo page param + sibling count fn + deterministic ORDER BY below
 void DEC_466; // /review/plans/:id/queue bounded below via the blessed JS-slice (DEC-461(e))
+void DEC_831; // queue items carry myScore (this reviewer's own blended score) below
 
 reviewReviewerRoutes.get("/api/v1/review/plans", async (c) => {
   requireReviewerOrOrganizer(c);
@@ -102,6 +104,26 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
   // scoped submission ids so the counts query scales with the slice too.
   const countsBySubmission = await repo.countEvaluationsBySubmission(c.var.db, plan.id, plan.currentRound);
   const ratedByMe = await repo.listSubmissionIdsRatedBy(c.var.db, plan.id, plan.currentRound, auth.userId);
+  // DEC-831: this reviewer's own scores for the queue's `myScore` column,
+  // read alongside listSubmissionIdsRatedBy rather than a second pass.
+  const myScoresBySubmission = await repo.listEvaluationScoresForReviewer(
+    c.var.db,
+    plan.id,
+    plan.currentRound,
+    auth.userId,
+  );
+  // DEC-147: blend through the round's resolved criteria, restricted to
+  // 'rating' criteria -- computeWeightedScore (src/domain/evaluation.ts) is
+  // the single blended-score formula; a plan with no rating criteria has
+  // nothing to blend (mirrors aggregateSubmission's DEC-212 short-circuit).
+  const ratingCriteria = criteriaForRound(plan.criteria, roundCriteriaJsonOf(plan), plan.currentRound).filter(
+    (crit): crit is typeof crit & { kind: "rating"; weight: number } => crit.kind === "rating",
+  );
+  const myScoreFor = (submissionId: string): number | null => {
+    const scores = myScoresBySubmission.get(submissionId);
+    if (!scores || ratingCriteria.length === 0) return null;
+    return computeWeightedScore(scores as Record<string, number>, ratingCriteria, plan.scale);
+  };
 
   // DEC-271: recused submissions are dropped from the actionable queue and
   // surfaced separately in the `recused` envelope key instead. partitionRecused
@@ -130,9 +152,9 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
 
   const orderedIds = buildReviewerQueue(queueItems);
   const byId = new Map(scopedActionable.map((s) => [s.id, s]));
-  // DEC-239: the SPA reads submissionId/ref/title/ratingsCount/
-  // alreadyRatedByMe by exact key -- emit the shaped item, not the raw
-  // SubmissionSummary row (which has `id`, not `submissionId`).
+  // DEC-239/DEC-831: the SPA reads submissionId/ref/title/ratingsCount/
+  // alreadyRatedByMe/myScore by exact key -- emit the shaped item, not the
+  // raw SubmissionSummary row (which has `id`, not `submissionId`).
   const items = orderedIds
     .map((id) => {
       const summary = byId.get(id);
@@ -143,6 +165,7 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
         title: summary.title,
         ratingsCount: countsBySubmission.get(id) ?? 0,
         alreadyRatedByMe: ratedByMe.has(id),
+        myScore: myScoreFor(id),
       };
     })
     .filter((item): item is NonNullable<typeof item> => item !== undefined);

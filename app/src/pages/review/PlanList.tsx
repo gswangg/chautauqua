@@ -39,7 +39,7 @@ function planWindow(plan: EvaluationPlan): string {
  * the plan carries no track filter, else the filtered tracks' resolved
  * names (never raw ids -- FINDINGS: "raw id leaks -- render LABELS"),
  * joined in the order the filter lists them. */
-function planTrackScope(plan: EvaluationPlan, trackNameById: Map<string, string>): string {
+export function planTrackScope(plan: EvaluationPlan, trackNameById: Map<string, string>): string {
   const trackIds = plan.filters?.trackIds ?? [];
   if (trackIds.length === 0) return 'All tracks';
   return trackIds.map((id) => trackNameById.get(id) ?? id).join(', ');

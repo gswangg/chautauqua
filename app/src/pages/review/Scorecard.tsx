@@ -5,6 +5,7 @@ import './review.css';
 import { formatAnswerValue } from './answerText';
 import { isEvaluationComplete, scorecardKeyAction } from './scorecardLogic';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { planTrackScope } from './PlanList';
 import type {
   EvaluationCriterion,
   EvaluationPlan,
@@ -12,6 +13,7 @@ import type {
   RecusalRecord,
   ReviewerQueueItem,
   ReviewerSubmissionDetail,
+  Track,
 } from './types';
 
 export function Scorecard() {
@@ -33,6 +35,11 @@ export function Scorecard() {
   const [recusalReason, setRecusalReason] = useState('');
   const [recusing, setRecusing] = useState(false);
   const [undoingRecusal, setUndoingRecusal] = useState(false);
+
+  // DEC-831: the scorecard's eyebrow names plan · track · round -- the
+  // track clause reuses the plan's own filter-scope resolution
+  // (planTrackScope, PlanList.tsx) rather than a second definition.
+  const [tracks, setTracks] = useState<Track[]>([]);
 
   useEffect(() => {
     if (!planId || !submissionId) return;
@@ -64,6 +71,19 @@ export function Scorecard() {
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load submission'))
       .finally(() => setLoading(false));
   }, [planId, submissionId]);
+
+  useEffect(() => {
+    // DEC-831: only worth a fetch when the plan actually restricts to a
+    // track subset -- an unfiltered plan reads "All tracks" with no request.
+    const trackIds = plan?.filters?.trackIds ?? [];
+    if (!plan || trackIds.length === 0) {
+      setTracks([]);
+      return;
+    }
+    apiList<Track>(`/events/${plan.eventId}/tracks`)
+      .then((res) => setTracks(res.items))
+      .catch(() => setTracks([]));
+  }, [plan]);
 
   // DEC-147: the submission detail's resolved criteria (this round) take
   // priority over the base plan.criteria.
@@ -158,15 +178,28 @@ export function Scorecard() {
     );
   }
 
+  // DEC-831: eyebrow names plan · track · round (round only when the plan
+  // runs more than one) -- the track clause reuses planTrackScope so it can
+  // never drift from the queue header's own scope wording.
+  const trackNameById = new Map(tracks.map((t) => [t.id, t.name]));
+  const scorecardEyebrow = [
+    plan.name,
+    planTrackScope(plan, trackNameById),
+    plan.rounds > 1 ? `Round ${plan.currentRound} of ${plan.rounds}` : null,
+  ]
+    .filter((v): v is string => v !== null)
+    .join(' · ');
+
   return (
     <div className="chq-page chq-review-page" onKeyDown={handleKeyDown} tabIndex={-1}>
       <p>
         <Link to={`/review/plans/${planId}`} className="chq-review-back">
-          &larr; Back to your queue
+          &lsaquo; {plan.name} queue
         </Link>
       </p>
 
       <div className="chq-review-scorecard-head">
+        <span className="chq-section-label">{scorecardEyebrow}</span>
         <h1 className="chq-page-title" style={{ fontSize: '27px' }}>
           {submission.ref} — {submission.title}
         </h1>

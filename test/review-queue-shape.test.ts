@@ -61,6 +61,7 @@ vi.mock("../src/server/repo/review", async () => {
     // aggregates instead of listEvaluationsForPlan + a JS reduce.
     countEvaluationsBySubmission: vi.fn(async () => new Map([["sub-1", 1]])),
     listSubmissionIdsRatedBy: vi.fn(async () => new Set<string>()),
+    listEvaluationScoresForReviewer: vi.fn(async () => new Map()),
   };
 });
 
