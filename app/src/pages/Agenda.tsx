@@ -9,6 +9,7 @@ import { UnscheduledTray } from './agenda/UnscheduledTray';
 import { PhoneAgenda } from './agenda/PhoneAgenda';
 import { placeOptimistically, reconcileConflictsSummary, unscheduleOptimistically } from './agenda/state';
 import type { AgendaPayload, DescribedUnplaced, RefreshedConflictsSummary, UnplacedReason } from './agenda/types';
+import { formatDayLabel } from '../lib/dates';
 import './agenda/agenda.css';
 
 const DAY_START_MIN = 540;
@@ -202,7 +203,8 @@ export function AgendaPage() {
 
       <div className="chq-toolbar chq-agenda-toolbar">
         <div className="chq-summary chq-agenda-summary">
-          <strong>{agenda?.summary.unplaced ?? 0}</strong> unplaced &middot; <strong>{agenda?.summary.conflicts ?? 0}</strong> conflicts
+          <strong>{`${agenda?.summary.unplaced ?? 0} unplaced`}</strong> &middot;{' '}
+          <strong>{`${agenda?.summary.conflicts ?? 0} ${agenda?.summary.conflicts === 1 ? 'conflict' : 'conflicts'}`}</strong>
         </div>
         <button type="button" className="chq-btn chq-btn-secondary" onClick={handleAutoSchedule} disabled={autoScheduling || !agenda}>
           {autoScheduling ? 'Auto-scheduling...' : 'Auto-schedule'}
@@ -210,6 +212,9 @@ export function AgendaPage() {
         <button type="button" className="chq-btn chq-btn-primary" onClick={handlePublish} disabled={publishing || !agenda}>
           {publishing ? 'Publishing...' : 'Publish schedule'}
         </button>
+        <a href="/settings#chq-settings-section-tracks" className="chq-toolbar-link">
+          Add a room or track
+        </a>
       </div>
 
       {loading && <DelayedLoading label="Loading agenda…" />}
@@ -226,7 +231,7 @@ export function AgendaPage() {
                 className={`chq-pill${activeDay === day ? ' active' : ''}`}
                 onClick={() => setActiveDay(day)}
               >
-                {day}
+                {formatDayLabel(day)}
               </button>
             ))}
             <span className="chq-agenda-clash-note">Clashes are flagged, not blocked</span>

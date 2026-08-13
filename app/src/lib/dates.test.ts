@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { dateInputToMs, formatDate, formatDateOnly, formatDateTime, formatDateTimeInZone, msToDateInput } from './dates';
+import {
+  dateInputToMs,
+  formatDate,
+  formatDateOnly,
+  formatDateTime,
+  formatDateTimeInZone,
+  formatDayLabel,
+  msToDateInput,
+} from './dates';
 
 describe('msToDateInput', () => {
   it('returns empty string for null', () => {
@@ -98,6 +106,28 @@ describe('formatDateTime', () => {
   it('formats a valid timestamp matching toLocaleString', () => {
     const ms = Date.UTC(2026, 0, 15, 13, 30);
     expect(formatDateTime(ms)).toBe(new Date(ms).toLocaleString());
+  });
+});
+
+describe('formatDayLabel', () => {
+  it('returns em dash for null/undefined/empty', () => {
+    expect(formatDayLabel(null)).toBe('—');
+    expect(formatDayLabel(undefined)).toBe('—');
+    expect(formatDayLabel('')).toBe('—');
+  });
+
+  it('returns em dash for a value that is not YYYY-MM-DD', () => {
+    expect(formatDayLabel('not-a-date')).toBe('—');
+    expect(formatDayLabel('2026-06-01T00:00:00.000Z')).toBe('—');
+  });
+
+  it('formats a calendar date as "Weekday D Mon"', () => {
+    expect(formatDayLabel('2026-06-01')).toBe('Mon 1 Jun');
+  });
+
+  it('reads the literal calendar date regardless of ambient timezone (never shifts via a UTC-instant reinterpretation)', () => {
+    // 2027-05-12 is a Wednesday.
+    expect(formatDayLabel('2027-05-12')).toBe('Wed 12 May');
   });
 });
 
