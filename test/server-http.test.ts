@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { ApiError, errorEnvelope, parseBoundedIdArray } from "../src/server/http";
+import { Hono } from "hono";
+import { ApiError, errorEnvelope, parseBoundedIdArray, registerErrorHandler } from "../src/server/http";
+import type { AppEnv } from "../src/server/env";
 
 describe("ApiError / errorEnvelope", () => {
   it("maps codes to the DEC-013 status codes", () => {
@@ -84,5 +86,56 @@ describe("parseBoundedIdArray", () => {
   it("respects a custom maxCount", () => {
     expect(() => parseBoundedIdArray(["a", "b", "c"], "ids", { maxCount: 2 })).toThrow(ApiError);
     expect(parseBoundedIdArray(["a", "b"], "ids", { maxCount: 2 })).toEqual(["a", "b"]);
+  });
+});
+
+// DEC-841 wave 54 amendment: the HTML error page's 'Go back' link must never
+// carry a cross-origin or protocol-relative href, even from an attacker-
+// controlled Referer header. Exercised through the real onError handler
+// (not the private safeReferrerPath helper directly) on a non-API GET.
+describe("registerErrorHandler HTML error page back-link (DEC-841)", () => {
+  function buildApp() {
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.get("/portal/boom", () => {
+      throw new ApiError("not_found", "Nope");
+    });
+    return app;
+  }
+
+  async function requestWithReferer(referer: string | undefined) {
+    const app = buildApp();
+    const headers: Record<string, string> = {};
+    if (referer !== undefined) headers.referer = referer;
+    const res = await app.request("https://app.example.com/portal/boom", { headers });
+    const body = await res.text();
+    return { res, body };
+  }
+
+  it("keeps a same-origin referer's path and search", async () => {
+    const { body } = await requestWithReferer("https://app.example.com/portal/submissions?page=2");
+    expect(body).toContain('href="/portal/submissions?page=2"');
+  });
+
+  it("falls back to '/' for a cross-origin referer", async () => {
+    const { body } = await requestWithReferer("https://evil.tld/x");
+    expect(body).toContain('href="/"');
+    expect(body).not.toContain("evil.tld");
+  });
+
+  it("falls back to '/' for a protocol-relative referer path (same-origin host, //-prefixed path)", async () => {
+    const { body } = await requestWithReferer("https://app.example.com//evil.tld/x");
+    expect(body).toContain('href="/"');
+    expect(body).not.toContain("evil.tld");
+  });
+
+  it("falls back to '/' for a garbage (unparseable) referer", async () => {
+    const { body } = await requestWithReferer("not a url");
+    expect(body).toContain('href="/"');
+  });
+
+  it("falls back to '/' when there is no referer at all", async () => {
+    const { body } = await requestWithReferer(undefined);
+    expect(body).toContain('href="/"');
   });
 });

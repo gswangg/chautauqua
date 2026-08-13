@@ -200,9 +200,9 @@ export async function readJsonBody(c: Context<AppEnv>): Promise<Record<string, u
 // navigation -- an HTML navigation never ends as a JSON blob. Same status as
 // the JSON envelope would have used; message is the visible text; 'Go back'
 // links to the referring path (same-origin only) or '/'.
-function renderHtmlError(message: string, referer: string | undefined): string {
+function renderHtmlError(message: string, referer: string | undefined, requestUrl: string): string {
   const safeMessage = escapeHtmlText(message);
-  const backHref = safeReferrerPath(referer);
+  const backHref = safeReferrerPath(referer, requestUrl);
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Error</title></head><body><p role="alert">${safeMessage}</p><p><a href="${backHref}">Go back</a></p></body></html>`;
 }
 
@@ -217,12 +217,19 @@ function escapeHtmlText(value: string): string {
 
 // Only a same-origin path is ever used as the back link -- an absolute or
 // cross-origin referer is discarded in favor of '/', never interpolated
-// unchecked into an href.
-function safeReferrerPath(referer: string | undefined): string {
+// unchecked into an href. DEC-841 wave 54 amendment: origins are compared
+// (not just parsed), and any pathname beginning with '//' is refused even
+// when same-origin, since '//host/path' renders as a protocol-relative,
+// off-site href.
+function safeReferrerPath(referer: string | undefined, requestUrl: string): string {
   if (!referer) return "/";
   try {
     const url = new URL(referer);
-    return url.pathname + url.search || "/";
+    const reqOrigin = new URL(requestUrl).origin;
+    if (url.origin !== reqOrigin) return "/";
+    const path = url.pathname + url.search;
+    if (path.startsWith("//")) return "/";
+    return path || "/";
   } catch {
     return "/";
   }
@@ -235,7 +242,7 @@ export function registerErrorHandler(app: Hono<AppEnv>): void {
     if (err instanceof ApiError) {
       if (wantsHtml) {
         return c.html(
-          renderHtmlError(err.message, c.req.header("referer") ?? undefined),
+          renderHtmlError(err.message, c.req.header("referer") ?? undefined, c.req.url),
           err.status as 400 | 401 | 403 | 404 | 409,
         );
       }
@@ -245,7 +252,7 @@ export function registerErrorHandler(app: Hono<AppEnv>): void {
     console.error("unhandled error", err);
     if (wantsHtml) {
       return c.html(
-        renderHtmlError("Internal server error", c.req.header("referer") ?? undefined),
+        renderHtmlError("Internal server error", c.req.header("referer") ?? undefined, c.req.url),
         500,
       );
     }
