@@ -43,17 +43,25 @@
   white-space: nowrap;
 }
 
+/* DEC-794: the bar always occupies its box — arming/disarming toggles only
+   its content (and aria-hidden), never its presence, so the grid below it
+   never shifts vertically when a session is armed or released. */
 .chq-agenda-armed-bar {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 8px 14px;
-  border: 1px solid var(--chq-brand);
+  min-height: 38px;
+  border: 1px solid transparent;
   border-radius: var(--chq-r-ctl);
-  background: var(--chq-surface-sunk);
   font-size: 13px;
   font-weight: 600;
   color: var(--chq-ink);
+}
+
+.chq-agenda-armed-bar:not([aria-hidden]) {
+  border-color: var(--chq-brand);
+  background: var(--chq-surface-sunk);
 }
 
 .chq-agenda-layout {
@@ -137,6 +145,53 @@
 }
 
 .chq-day-grid-cell-btn:focus-visible {
+  outline: 2px solid var(--chq-brand);
+  outline-offset: -2px;
+}
+
+/* DEC-794: while armed, cell-buttons must read as the live target even where
+   they sit under a placed card or the merged clash card — a higher z-index
+   than either, plus a standing (not just :focus-visible) outline so an
+   occupied slot's target is never buried under the card painted on top of
+   it. The clash card is quieted (below) so its ink fill doesn't visually
+   read as "solid, not clickable" while a placement is armed. */
+.chq-day-grid-armed .chq-day-grid-cell-btn {
+  z-index: 6;
+  outline: 1px solid var(--chq-brand);
+  outline-offset: -1px;
+}
+
+.chq-day-grid-armed .chq-day-grid-cell-btn:focus-visible {
+  z-index: 7;
+  outline: 2px solid var(--chq-brand);
+  outline-offset: -2px;
+}
+
+.chq-day-grid-armed .chq-day-grid-clash-card {
+  opacity: 0.55;
+  outline: 1px dashed var(--chq-on-ink);
+  outline-offset: -1px;
+}
+
+/* DEC-794: the roomless-placement capability, preserved without reflowing
+   the room columns — the "No room yet" column only appears when a session
+   is already placed without a room (DEC-724); while armed and that column
+   isn't present, this full-width button below the grid is the only way to
+   place with no room. */
+.chq-day-grid-noroom-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px 14px;
+  border: 1px dashed var(--chq-ink);
+  border-radius: var(--chq-r-ctl);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--chq-ink);
+  cursor: pointer;
+}
+
+.chq-day-grid-noroom-btn:focus-visible {
   outline: 2px solid var(--chq-brand);
   outline-offset: -2px;
 }
