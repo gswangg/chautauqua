@@ -9,7 +9,7 @@
 // callers). The action item never patches a status; it only triggers the
 // existing sendPortalInvite send.
 import { useState } from 'react';
-import { useEscapeKey } from '../../lib/useEscapeKey';
+import { useMenu } from '../../lib/useMenu';
 import { DEC_830 } from '../../../../src/decisions';
 import { INVITE_STATUS_LABELS, INVITE_STATUSES, type InviteStatus } from './types';
 
@@ -54,11 +54,11 @@ interface ParticipationMenuProps {
 export function ParticipationMenu({ contactName, status, onSelectStatus, onSendInvite, sendInviteDisabled, label }: ParticipationMenuProps) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
-  useEscapeKey(open, close);
+  const { containerRef, onPanelKeyDown } = useMenu(open, close);
   const identity = label ? `${contactName} — ${label}` : contactName;
 
   return (
-    <div className="chq-participation-menu">
+    <div className="chq-participation-menu" ref={containerRef}>
       {label && <span className="chq-participation-menu-ref">{label}</span>}
       <button
         type="button"
@@ -72,7 +72,12 @@ export function ParticipationMenu({ contactName, status, onSelectStatus, onSendI
       </button>
 
       {open && (
-        <div className="chq-participation-menu-panel" role="menu" aria-label={`Participation status for ${identity}`}>
+        <div
+          className="chq-participation-menu-panel"
+          role="menu"
+          aria-label={`Participation status for ${identity}`}
+          onKeyDown={onPanelKeyDown}
+        >
           <p className="chq-participation-menu-identity">{identity}</p>
           {INVITE_STATUSES.map((candidate) => (
             <button

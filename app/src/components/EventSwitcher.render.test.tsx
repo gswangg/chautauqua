@@ -195,6 +195,72 @@ describe('EventSwitcher', () => {
     expect(menuBtn).toHaveAttribute('aria-expanded', 'true');
   });
 
+  // DEC-969: EventSwitcher's menu adopts the shared useMenu primitive --
+  // an outside pointerdown dismisses it, ArrowDown moves focus to the next
+  // item, and Escape returns focus to the trigger.
+  it('DEC-969: a pointerdown on the document body closes the open menu', async () => {
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'Alpha Conf' }]),
+    });
+
+    render(<EventSwitcher />);
+
+    await waitFor(() => screen.getByText('Alpha Conf'));
+    fireEvent.click(screen.getByRole('button', { name: 'Switch event' }));
+    await screen.findByRole('menu', { name: 'Events' });
+
+    fireEvent.pointerDown(document.body);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('menu', { name: 'Events' })).not.toBeInTheDocument();
+    });
+  });
+
+  it('DEC-969: ArrowDown moves focus to the next item', async () => {
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      'GET /api/v1/events': listEnvelope([
+        { id: 'ev-1', name: 'Alpha Conf' },
+        { id: 'ev-2', name: 'Beta Summit' },
+      ]),
+    });
+
+    render(<EventSwitcher />);
+
+    await waitFor(() => screen.getByText('Alpha Conf'));
+    fireEvent.click(screen.getByRole('button', { name: 'Switch event' }));
+    const menu = await screen.findByRole('menu', { name: 'Events' });
+    const first = within(menu).getByRole('menuitem', { name: 'Alpha Conf' });
+    const second = within(menu).getByRole('menuitem', { name: 'Beta Summit' });
+    expect(first).toHaveFocus();
+
+    fireEvent.keyDown(menu, { key: 'ArrowDown' });
+
+    expect(second).toHaveFocus();
+  });
+
+  it('DEC-969: Escape returns focus to the trigger', async () => {
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'Alpha Conf' }]),
+    });
+
+    render(<EventSwitcher />);
+
+    await waitFor(() => screen.getByText('Alpha Conf'));
+    const trigger = screen.getByRole('button', { name: 'Switch event' });
+    fireEvent.click(trigger);
+    await screen.findByRole('menu', { name: 'Events' });
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('menu', { name: 'Events' })).not.toBeInTheDocument();
+    });
+    expect(trigger).toHaveFocus();
+  });
+
   it('shows "New event…" for an organizer', async () => {
     mockApi({
       'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
