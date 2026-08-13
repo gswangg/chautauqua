@@ -134,6 +134,11 @@ describe("runAirtableSync ref building (DEC-435)", () => {
     const whereOnly = <T>(rows: T[]) => ({
       where: () => Promise.resolve(rows),
     });
+    const whereOrderBy = <T>(rows: T[]) => ({
+      where: () => ({
+        orderBy: () => Promise.resolve(rows),
+      }),
+    });
 
     const db = {
       select: () => ({
@@ -142,7 +147,7 @@ describe("runAirtableSync ref building (DEC-435)", () => {
           if (table === schema.submission)
             return { innerJoin: () => whereLimit(subRows) };
           if (table === schema.participant)
-            return { innerJoin: () => ({ innerJoin: () => ({ innerJoin: () => whereOnly(partRows) }) }) };
+            return { innerJoin: () => ({ innerJoin: () => ({ innerJoin: () => whereOrderBy(partRows) }) }) };
           if (table === schema.submissionTrack)
             return { innerJoin: () => ({ innerJoin: () => ({ innerJoin: () => whereOnly(trackRows) }) }) };
           throw new Error("unexpected table passed to fakeDb.from in this test");
@@ -174,5 +179,98 @@ describe("runAirtableSync ref building (DEC-435)", () => {
     expect(bySub.get("sub-2")).toBe(formatRef(eventDev.recordPrefix, 7));
     // sanity: the non-default prefix must NOT collapse to the old hardcoded 'SES-' shape
     expect(bySub.get("sub-2")).not.toMatch(/^SES-/);
+  });
+});
+
+// DEC-981/DEC-974: a declined co-presenter must never be published as a
+// speaker into the customer's Airtable base, and an unchanged submission
+// must never re-upsert with a permuted Speakers string (which would fire
+// the customer's Airtable automations on a non-change).
+describe("runAirtableSync participant invite-status filtering (DEC-981)", () => {
+  it("excludes a declined participant from the pushed Speakers cell, and two runs over unchanged data produce byte-identical records", async () => {
+    const event = { id: "event-1", recordPrefix: "SES" };
+    const subRows = [
+      { id: "sub-1", seq: 1, title: "Talk A", status: "accepted", eventId: event.id, recordPrefix: event.recordPrefix },
+    ];
+    // Three participants on the same submission, in an order that is NOT
+    // insertion/contact-id order — proves the orderBy makes the join
+    // deterministic rather than relying on incidental row order.
+    const partRows = [
+      { submissionId: "sub-1", firstName: "Zoe", lastName: "Accepted", inviteStatus: "accepted" },
+      { submissionId: "sub-1", firstName: "Amir", lastName: "Declined", inviteStatus: "declined" },
+      { submissionId: "sub-1", firstName: "Bo", lastName: "None", inviteStatus: "none" },
+    ];
+
+    const whereLimit = <T>(rows: T[]) => ({
+      where: () => ({
+        limit: () => Promise.resolve(rows),
+      }),
+    });
+    const whereOnly = <T>(rows: T[]) => ({
+      where: () => Promise.resolve(rows),
+    });
+
+    const buildDb = () =>
+      ({
+        select: () => ({
+          from: (table: unknown) => {
+            if (table === schema.contact) return whereLimit([]);
+            if (table === schema.submission) return { innerJoin: () => whereLimit(subRows) };
+            if (table === schema.participant)
+              return {
+                innerJoin: () => ({
+                  innerJoin: () => ({
+                    innerJoin: () => ({
+                      // asserts the sync filters on inviteStatus in SQL, not
+                      // just relying on a fixture that happens to be clean —
+                      // the fake db itself applies the ACTIVE_INVITE_STATUSES
+                      // filter + deterministic order, mirroring the real
+                      // WHERE/ORDER BY the drizzle query issues.
+                      where: () => ({
+                        orderBy: () =>
+                          Promise.resolve(
+                            partRows
+                              .filter((p) => p.inviteStatus === "accepted" || p.inviteStatus === "none")
+                              .sort((a, b) => a.firstName.localeCompare(b.firstName)),
+                          ),
+                      }),
+                    }),
+                  }),
+                }),
+              };
+            if (table === schema.submissionTrack)
+              return { innerJoin: () => ({ innerJoin: () => ({ innerJoin: () => whereOnly([]) }) }) };
+            throw new Error("unexpected table passed to fakeDb.from in this test");
+          },
+        }),
+      }) as unknown as Db;
+
+    const runOnce = async () => {
+      const patchBodies: Array<{ table: string; body: unknown }> = [];
+      const fakeFetch = (async (url: string, init: RequestInit) => {
+        const table = decodeURIComponent(String(url).split("/").pop() ?? "");
+        patchBodies.push({ table, body: JSON.parse(String(init.body)) });
+        return { ok: true, text: async () => "" } as Response;
+      }) as typeof fetch;
+
+      await runAirtableSync(
+        { AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b", AIRTABLE_ORG_ID: "org-1" },
+        buildDb(),
+        fakeFetch,
+        NOW,
+      );
+      const submissionsPatch = patchBodies.find((p) => p.table === "Submissions");
+      const records = (
+        submissionsPatch!.body as { records: Array<{ fields: { ChautauquaId: string; Speakers: string } }> }
+      ).records;
+      return records.find((r) => r.fields.ChautauquaId === "sub-1")!.fields.Speakers;
+    };
+
+    const speakers1 = await runOnce();
+    expect(speakers1).not.toMatch(/Amir Declined/);
+    expect(speakers1).toBe("Bo None, Zoe Accepted");
+
+    const speakers2 = await runOnce();
+    expect(speakers2).toBe(speakers1);
   });
 });
