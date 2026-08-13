@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { listSourceFiles, relativePath } from "./support/list-envelope-enumeration/scan-utils";
+import { findItemsEnvelopeSites, ENVELOPE_ALLOWLIST } from "./support/list-envelope-enumeration/envelope-sites";
+import { findStrayPerPageConstantDeclarations } from "./support/list-envelope-enumeration/pagination-const-scan";
 
 /**
  * DEC-480: turns DEC-473's "population = re-runnable artifact" rule into an
@@ -10,6 +13,11 @@ import { join } from "node:path";
  * src/server/repo/contacts/query.ts, src/server/repo/submissions/query.ts --
  * all three now delegate to clampPage/clampPerPage in
  * src/lib/pagination.ts).
+ *
+ * This test file is the thin assertions module; the scan/detection logic
+ * lives in test/support/list-envelope-enumeration/ (extracted for
+ * decomposition, no behavior change -- see that directory's files for the
+ * verbatim helper implementations).
  *
  * (a) Every `return c.json({ items ...` site under src/routes/**\/*.{ts,tsx}
  *     must carry `total`, `page`, and `perPage` in the same returned object
@@ -59,89 +67,6 @@ const REPO_ROOT = join(__dirname, "..");
 const ROUTES_ROOT = join(REPO_ROOT, "src", "routes");
 const REPO_LIB_ROOTS = [join(REPO_ROOT, "src", "routes"), join(REPO_ROOT, "src", "server", "repo")];
 
-function listSourceFiles(dir: string, extRe: RegExp): string[] {
-  const out: string[] = [];
-  for (const entry of readdirSync(dir)) {
-    const full = join(dir, entry);
-    const st = statSync(full);
-    if (st.isDirectory()) {
-      out.push(...listSourceFiles(full, extRe));
-    } else if (extRe.test(entry) && !entry.endsWith(".test.ts") && !entry.endsWith(".test.tsx")) {
-      out.push(full);
-    }
-  }
-  return out;
-}
-
-function relativePath(file: string): string {
-  return file.slice(REPO_ROOT.length + 1);
-}
-
-function lineNumberAt(source: string, index: number): number {
-  let line = 1;
-  for (let i = 0; i < index; i++) {
-    if (source[i] === "\n") line++;
-  }
-  return line;
-}
-
-/** Finds the matching close-paren for a `c.json(` call starting at
- * `openParenIndex` (the index of the '(' itself), returning the index just
- * past it. Parens are balanced independently of string/template contents
- * the same way test/query-scoping-invariant.test.ts's walker does -- good
- * enough here because no c.json(...) call in this codebase embeds a raw
- * unbalanced paren inside a string literal. */
-function findCallEnd(source: string, openParenIndex: number): number {
-  let depth = 1;
-  let j = openParenIndex + 1;
-  while (j < source.length && depth > 0) {
-    if (source[j] === "(") depth++;
-    else if (source[j] === ")") depth--;
-    j++;
-  }
-  return j;
-}
-
-interface EnvelopeSite {
-  file: string;
-  line: number;
-  body: string;
-}
-
-function findItemsEnvelopeSites(source: string, file: string): EnvelopeSite[] {
-  const sites: EnvelopeSite[] = [];
-  const re = /c\.json\(\s*\{\s*items\b/g;
-  let match: RegExpExecArray | null;
-  while ((match = re.exec(source)) !== null) {
-    const openParenIndex = match.index + "c.json".length;
-    const callEnd = findCallEnd(source, openParenIndex);
-    const body = source.slice(openParenIndex + 1, callEnd - 1);
-    sites.push({ file, line: lineNumberAt(source, match.index), body });
-  }
-  return sites;
-}
-
-// DEC-480: named, individually-read exceptions to the (a) envelope-shape
-// check. Format `${relativePath}:${line}`. Adding an entry here is a
-// deliberate reviewed act -- see the file-header comment above for why each
-// one is exempt.
-const ENVELOPE_ALLOWLIST = new Set<string>([
-  "src/routes/comms.ts:500",
-  "src/routes/api/contacts/bulk-email.ts:215",
-  // NOTE (DEC-840): GET .../assignments/distribute/preview used to be
-  // allowlisted here (it was previously `c.json({ items, perReviewer,
-  // total, shortfall })`, matching the scanner's `{ items` pattern). The
-  // DEC-840 wire contract reorders the envelope to `{ cap, totalAssigned,
-  // items, perReviewer, shortfall }` (cap echoed first), so the site no
-  // longer matches `c.json({ items` at all and needs no allowlist entry --
-  // removing rather than updating the stale line-numbered entry.
-  // DEC-788: GET /contacts/duplicates/check is a bounded (cap 5),
-  // deterministically-ordered lookup for a not-yet-created candidate, not a
-  // paginated list -- same shape-exception class as the bulk-email preview
-  // above.
-  "src/routes/api/contacts/duplicates.ts:32",
-]);
-
 describe("DEC-480: list-envelope enumeration (executable, not prose)", () => {
   const routeFiles = listSourceFiles(ROUTES_ROOT, /\.(ts|tsx)$/);
 
@@ -158,7 +83,7 @@ describe("DEC-480: list-envelope enumeration (executable, not prose)", () => {
     for (const file of routeFiles) {
       const source = readFileSync(file, "utf8");
       for (const site of findItemsEnvelopeSites(source, file)) {
-        const key = `${relativePath(site.file)}:${site.line}`;
+        const key = `${relativePath(REPO_ROOT, site.file)}:${site.line}`;
         if (ENVELOPE_ALLOWLIST.has(key)) continue;
         const hasAll = /\btotal\b/.test(site.body) && /\bpage\b/.test(site.body) && /\bperPage\b/.test(site.body);
         if (!hasAll) {
@@ -181,7 +106,7 @@ describe("DEC-480: list-envelope enumeration (executable, not prose)", () => {
     for (const file of routeFiles) {
       const source = readFileSync(file, "utf8");
       for (const site of findItemsEnvelopeSites(source, file)) {
-        seen.add(`${relativePath(site.file)}:${site.line}`);
+        seen.add(`${relativePath(REPO_ROOT, site.file)}:${site.line}`);
       }
     }
     for (const entry of ENVELOPE_ALLOWLIST) {
@@ -193,21 +118,7 @@ describe("DEC-480: list-envelope enumeration (executable, not prose)", () => {
 
   it("(b) src/lib/pagination.ts is the only file declaring the per-page clamp constant pair", () => {
     const PAGINATION_FILE = join(REPO_ROOT, "src", "lib", "pagination.ts");
-    const declRe = /\b(?:const|let|var|export\s+const)\s+((?:DEFAULT|MAX)\w*PER_PAGE\w*)\s*[:=]/gi;
-    const offenders: string[] = [];
-    const scanned = new Set<string>();
-    for (const root of REPO_LIB_ROOTS) {
-      for (const file of listSourceFiles(root, /\.(ts|tsx)$/)) {
-        if (scanned.has(file)) continue;
-        scanned.add(file);
-        if (file === PAGINATION_FILE) continue;
-        const source = readFileSync(file, "utf8");
-        let match: RegExpExecArray | null;
-        while ((match = declRe.exec(source)) !== null) {
-          offenders.push(`  ${relativePath(file)}:${lineNumberAt(source, match.index)}: declares ${match[1]}`);
-        }
-      }
-    }
+    const offenders = findStrayPerPageConstantDeclarations(REPO_ROOT, PAGINATION_FILE, REPO_LIB_ROOTS);
     if (offenders.length > 0) {
       throw new Error(
         `Found ${offenders.length} per-page clamp constant declaration(s) outside src/lib/pagination.ts:\n${offenders.join(
