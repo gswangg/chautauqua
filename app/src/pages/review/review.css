@@ -148,6 +148,28 @@
   white-space: normal;
 }
 
+/* w42-h/DEC-366 amendment: the eyebrow + Download CSV link now share the
+   section-head's right-hand slot, right of the "Ranked results" label --
+   the export is a section-rule link, never an orphan bordered button
+   floating in its own toolbar band. */
+.chq-review-results-head-actions {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* w42-h/DEC-366 amendment: the frame's uppercase letterspaced eyebrow
+   treatment (matches .chq-review-criteria-locked-eyebrow's type), applied
+   to the results caption without changing its TRUE claim underneath. */
+.chq-review-results-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--chq-ink-2);
+}
+
 .chq-review-results-table {
   width: 100%;
   border-collapse: collapse;
@@ -1182,7 +1204,10 @@
   height: 40px;
   padding: 0 10px;
   border: 1px solid var(--chq-rule);
-  border-radius: var(--chq-r-card);
+  /* w42-h/DEC-366: frame value (8px) for this segmented control specifically
+     -- the shared --chq-r-card token (5px) stays untouched for every other
+     card/button in the product. */
+  border-radius: 8px;
   background: var(--chq-surface);
   font-family: var(--chq-font-display);
   font-size: 15px;

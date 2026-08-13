@@ -146,6 +146,9 @@ describe("DEC-239: plan progress/results wire shapes", () => {
       "count",
       "perCriterion",
       "perDropdown",
+      // w42-h/DEC-366 amendment: the Reviews cell's disclosure trigger names
+      // a real recusal count, never a fabricated figure -- plan-scoped.
+      "recusals",
       "ref",
       "speakers",
       "submissionId",

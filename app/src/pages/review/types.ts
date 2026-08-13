@@ -139,6 +139,9 @@ export interface ResultsRow {
   // (speakers) / the event's own track order (trackNames).
   speakers: string[];
   trackNames: string[];
+  // w42-h/DEC-366 amendment: count of reviewers who self-recused from this
+  // submission -- real data, never derived from `count`.
+  recusals: number;
 }
 
 // A single criterion's contribution to one evaluation, as rendered in the

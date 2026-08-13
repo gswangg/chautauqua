@@ -317,6 +317,11 @@ export interface ResultsRow {
   // participant order (speakers) / track.position order (trackNames).
   speakers: string[];
   trackNames: string[];
+  // w42-h/DEC-366 amendment: the Reviews cell's disclosure trigger names a
+  // real count of self-recused reviewers for this submission, never a
+  // fabricated figure -- plan-scoped (not round-scoped; a recusal has no
+  // round of its own).
+  recusals: number;
 }
 
 export async function buildResults(
@@ -352,6 +357,13 @@ export async function buildResults(
   const submissionIds = submissions.map((sub) => sub.id);
   const speakersBySubmission = await repo.listSpeakerNamesForSubmissions(c.var.db, submissionIds);
   const trackNamesBySubmission = await repo.listTrackNamesForSubmissions(c.var.db, submissionIds);
+  // w42-h/DEC-366 amendment: one plan-scoped recusal read, indexed by
+  // submissionId -- never a per-row query.
+  const planRecusals = await repo.listRecusalsForPlan(c.var.db, plan.id);
+  const recusalCountsBySubmission = new Map<string, number>();
+  for (const r of planRecusals) {
+    recusalCountsBySubmission.set(r.submissionId, (recusalCountsBySubmission.get(r.submissionId) ?? 0) + 1);
+  }
 
   const rows: ResultsRow[] = submissions.map((sub) => {
     const subEvals = evalsBySubmission.get(sub.id) ?? [];
@@ -373,6 +385,7 @@ export async function buildResults(
       status: sub.status,
       speakers: speakersBySubmission.get(sub.id) ?? [],
       trackNames: trackNamesBySubmission.get(sub.id) ?? [],
+      recusals: recusalCountsBySubmission.get(sub.id) ?? 0,
     };
   });
   return buildResultsRows(rows);

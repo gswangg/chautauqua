@@ -188,6 +188,7 @@ describe("DEC-439/DEC-440: buildResults payload width", () => {
         status: "accepted",
         speakers: [],
         trackNames: [],
+        recusals: 0,
       },
       {
         submissionId: "sub-1",
@@ -200,6 +201,7 @@ describe("DEC-439/DEC-440: buildResults payload width", () => {
         status: "pending",
         speakers: [],
         trackNames: [],
+        recusals: 0,
       },
     ]);
   });
