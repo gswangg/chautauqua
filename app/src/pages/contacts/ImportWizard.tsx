@@ -179,7 +179,12 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
   return (
     <div className="chq-scrim" role="dialog" aria-modal="true" aria-label="Import contacts" onClick={handleScrimClick}>
       <div className="chq-modal chq-contacts-import">
-        <button type="button" className="chq-btn chq-btn-tertiary" onClick={onClose} aria-label="Close">
+        <button
+          type="button"
+          className="chq-btn chq-btn-tertiary chq-contacts-import-close"
+          onClick={onClose}
+          aria-label="Close"
+        >
           ×
         </button>
         <h2 className="chq-page-title chq-modal-title">Import contacts from CSV</h2>
@@ -198,7 +203,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
             <label className="chq-contacts-import-field">
               Upload a CSV file
               <input
-                className="chq-input"
+                className="chq-file"
                 type="file"
                 accept=".csv,text/csv"
                 onChange={(e) => {

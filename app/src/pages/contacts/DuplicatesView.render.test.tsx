@@ -5,12 +5,30 @@
 // DEC-734: each pair also renders its company, a 'Keep both' dismiss, a pair
 // counter, and reads a one-shot dismissPairIds notice from MergePage's own
 // 'Not a duplicate' footer button the same way it reads a merge notice.
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { DuplicatesView } from './DuplicatesView';
 import { mockApi, listEnvelope } from '../../test-utils/mockApi';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const CSS = readFileSync(join(HERE, 'contacts-panels.css'), 'utf-8');
+
+/** Extracts a top-level (not inside an @media block) rule's declaration
+ * body by selector — same helper as ContactsApp.newContact.render.test.tsx
+ * and shell-geometry.test.ts. */
+function topLevelRuleBody(css: string, selector: string): string {
+  const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = withoutMedia.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
+  const body = match?.[1];
+  if (body === undefined) throw new Error(`no top-level rule found for ${selector}`);
+  return body;
+}
 
 const GROUP = {
   contactIds: ['ct-keep', 'ct-merge'],
@@ -174,5 +192,31 @@ describe('DuplicatesView render (DEC-684: merge moved to its own page)', () => {
     expect(screen.queryByText(/Jane Doe/)).not.toBeInTheDocument();
     expect(screen.getByText(/Sam Ng/)).toBeInTheDocument();
     expect(screen.getByText('Marked as not a duplicate.')).toBeInTheDocument();
+  });
+});
+
+// Gate report: the Duplicates tab's row wrapped at desktop width (the names
+// span, reason caption, and Merge/Keep-both actions all fighting for one
+// flex-wrap row's baseline). jsdom does not evaluate @media rules, so —
+// mirroring ContactsApp.newContact.render.test.tsx — this is a source-scan
+// of contacts-panels.css's own text rather than computed style.
+describe('contacts-panels.css: duplicate group row does not wrap at desktop width', () => {
+  it('.chq-contacts-duplicate-group is a 3-column grid outside the 700px media query', () => {
+    const body = topLevelRuleBody(CSS, '.chq-contacts-duplicate-group');
+    expect(body).toMatch(/display:\s*grid/);
+    expect(body).not.toMatch(/flex-wrap/);
+  });
+
+  it('.chq-contacts-duplicate-names truncates instead of wrapping', () => {
+    const body = topLevelRuleBody(CSS, '.chq-contacts-duplicate-names');
+    expect(body).toMatch(/white-space:\s*nowrap/);
+    expect(body).toMatch(/text-overflow:\s*ellipsis/);
+  });
+
+  it('stacks to a single column inside the 700px media query', () => {
+    const mediaBlocks = CSS.match(/@media \(max-width: 700px\) \{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g) ?? [];
+    const block = mediaBlocks.find((b) => b.includes('.chq-contacts-duplicate-group'));
+    expect(block).toBeDefined();
+    expect(block).toMatch(/\.chq-contacts-duplicate-group\s*\{[^}]*grid-template-columns:\s*1fr/);
   });
 });

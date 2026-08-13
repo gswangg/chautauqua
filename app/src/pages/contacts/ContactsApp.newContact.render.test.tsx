@@ -74,6 +74,10 @@ describe('ContactsApp: New-contact dialog (DEC-597)', () => {
     const dialog = await screen.findByRole('dialog', { name: 'New contact' });
     expect(dialog).toBeInTheDocument();
 
+    // DEC-950: every dialog field is a FormRow -- the New-contact fields
+    // render through the shared .chq-form-row skeleton, not a bare label.
+    expect(dialog.querySelectorAll('.chq-form-row').length).toBe(5);
+
     fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Nora' } });
     fireEvent.change(screen.getByLabelText('Last name'), { target: { value: 'North' } });
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'nora@example.com' } });
