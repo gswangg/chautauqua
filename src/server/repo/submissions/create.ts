@@ -8,7 +8,7 @@ import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
 import { submissionSeqSubquery } from "./seq";
 import { normalizeEmail } from "../../../domain/email";
-import { DEC_258, DEC_275, DEC_542, DEC_755 } from "../../../decisions";
+import { DEC_258, DEC_275, DEC_542, DEC_755, DEC_765 } from "../../../decisions";
 import { chunkRowsForInsert } from "../../../lib/chunk";
 
 // Compile-checked dependency marker: createSubmission's participant insert
@@ -23,11 +23,30 @@ void DEC_542;
 // Compile-checked dependency marker: findOrCreateContact's case-insensitive
 // email match below implements DEC-755.
 void DEC_755;
+// Compile-checked dependency marker: createSubmission's contact input below
+// accepts a `role` (default 'speaker') and an optional `contactId` shape
+// that links an already-owned contact by id, skipping findOrCreateContact
+// entirely (DEC-765).
+void DEC_765;
 
 export interface CreateSubmissionInput {
   title: string;
   description?: string | null;
-  contact?: { email: string; firstName: string; lastName: string } | null;
+  contact?:
+    | { email: string; firstName: string; lastName: string; role?: string }
+    | {
+        /** DEC-765: link an already-owned contact by id — skips
+         * findOrCreateContact entirely (no email round-trip, no risk of
+         * minting a duplicate contact). title/company are still snapshotted
+         * onto the participant row (DEC-258) from the caller-supplied
+         * values, since this shape carries no fresh contact record to
+         * re-query. */
+        contactId: string;
+        title?: string | null;
+        company?: string | null;
+        role?: string;
+      }
+    | null;
   /** Submission status at creation (DEC-156 push-to-event creates directly
    * as 'accepted'; every other caller keeps the 'pending' default). */
   status?: "pending" | "accepted";
@@ -99,12 +118,15 @@ export async function createSubmission(
   });
 
   if (input.contact) {
-    const contact = await findOrCreateContact(db, orgId, input.contact, now);
+    const contact: FoundOrCreatedContact =
+      "contactId" in input.contact
+        ? { id: input.contact.contactId, title: input.contact.title ?? null, company: input.contact.company ?? null }
+        : await findOrCreateContact(db, orgId, input.contact, now);
     await db.insert(schema.participant).values({
       id: newId(),
       submissionId: id,
       contactId: contact.id,
-      role: "speaker",
+      role: input.contact.role ?? "speaker",
       order: 0,
       visible: true,
       inviteStatus: "none",

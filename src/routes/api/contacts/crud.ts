@@ -18,7 +18,8 @@ import { readImageDims, MAX_HEADSHOT_EDGE_PX } from "../../../lib/image-dims";
 import { newId } from "../../../domain/ids";
 import { makeFileStore } from "../../../server/context";
 import { clampPage, listPerPage } from "../../../lib/pagination";
-import { DEC_290, DEC_461, DEC_466 } from "../../../decisions";
+import { PARTICIPANT_ROLE_OPTIONS } from "../../../domain/participant-roles";
+import { DEC_290, DEC_461, DEC_466, DEC_764, DEC_765 } from "../../../decisions";
 import {
   currentOrgId,
   asRecord,
@@ -34,6 +35,14 @@ import { parseRulesQueryParam } from "./segments";
 void DEC_290;
 void DEC_461; // optional repo page param + sibling count fn + deterministic ORDER BY
 void DEC_466; // /contacts/duplicates bounded below via the blessed JS-slice (DEC-461(e))
+// Compile-checked dependency marker: POST /contacts/:id/add-to-event below
+// rejects a blank title rather than inventing one (DEC-764).
+void DEC_764;
+// Compile-checked dependency marker: POST /contacts/:id/add-to-event below
+// validates role against PARTICIPANT_ROLE_OPTIONS and passes both role and
+// the owned contact row (never re-resolved by email) to pushContactToEvent
+// (DEC-765).
+void DEC_765;
 
 export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
   contactsRoutes.get("/contacts", async (c) => {
@@ -355,8 +364,24 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     const event = await getEventForOrg(c.var.db, body.eventId, orgId);
     if (!event) throw new ApiError("not_found", "Event not found");
 
-    const title = typeof body.title === "string" ? body.title : undefined;
-    const submissionId = await repo.pushContactToEvent(c.var.db, event.id, orgId, contact, title);
+    // DEC-764: the server no longer invents a title — a blank field is
+    // rejected rather than silently falling back to 'Invited: <name>'.
+    if (typeof body.title !== "string" || body.title.trim() === "") {
+      throw new ApiError("invalid", "Validation failed", { title: "required" });
+    }
+    const title = body.title;
+
+    // DEC-765: role reaches participant.role, validated against the app's
+    // own vocabulary (never a free-text value from the modal).
+    let role: string | undefined;
+    if (body.role !== undefined) {
+      if (typeof body.role !== "string" || !PARTICIPANT_ROLE_OPTIONS.some((o) => o.value === body.role)) {
+        throw new ApiError("invalid", "Validation failed", { role: "invalid" });
+      }
+      role = body.role;
+    }
+
+    const submissionId = await repo.pushContactToEvent(c.var.db, event.id, orgId, contact, title, role);
     return c.json({ submissionId }, 201);
   });
 }

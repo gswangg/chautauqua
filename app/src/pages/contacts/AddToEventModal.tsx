@@ -6,7 +6,15 @@ import type { ContactListItem } from './types';
 // -- never a hardcoded Speaker/Reviewer/Guest list, which would be a
 // control that lies about two of its options ('reviewer' is an account
 // role, 'guest' has no representation in the data model).
-import { PARTICIPANT_ROLE_OPTIONS } from '../../../../src/domain/participant-roles';
+import { PARTICIPANT_ROLE_OPTIONS, participantRoleLabel } from '../../../../src/domain/participant-roles';
+import { DEC_764, DEC_765 } from '../../../../src/decisions';
+
+// Compile-checked dependency markers: no `Invited: <name>` prefill, the
+// title field is required before submit, and the confirmation names the
+// role actually chosen (DEC-764); role is threaded through to the POST
+// body (DEC-765).
+void DEC_764;
+void DEC_765;
 
 interface EventOption {
   id: string;
@@ -23,7 +31,9 @@ interface Props {
 export function AddToEventModal({ contact, onClose }: Props) {
   const [events, setEvents] = useState<EventOption[]>([]);
   const [eventId, setEventId] = useState('');
-  const [title, setTitle] = useState(`Invited: ${contact.firstName} ${contact.lastName}`);
+  // DEC-764: no prefill -- a session title is something a person types, not
+  // something the modal invents on their behalf.
+  const [title, setTitle] = useState('');
   // DEC-714: default to the vocabulary's own first option ('speaker') --
   // never a bare string literal duplicating PARTICIPANT_ROLE_OPTIONS[0].
   const [role, setRole] = useState(PARTICIPANT_ROLE_OPTIONS[0]!.value);
@@ -45,12 +55,16 @@ export function AddToEventModal({ contact, onClose }: Props) {
       setError('Select an event.');
       return;
     }
+    if (title.trim() === '') {
+      setError('Enter a session title.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
       const res = await apiPost<{ submissionId: string }>(`/contacts/${contact.id}/add-to-event`, {
         eventId,
-        title: title.trim() === '' ? undefined : title,
+        title: title.trim(),
         role,
       });
       setSubmissionId(res.submissionId);
@@ -71,7 +85,12 @@ export function AddToEventModal({ contact, onClose }: Props) {
       actions={
         submissionId === null ? (
           <>
-            <button type="button" className="chq-btn chq-btn-primary" disabled={busy || !eventId} onClick={confirm}>
+            <button
+              type="button"
+              className="chq-btn chq-btn-primary"
+              disabled={busy || !eventId || title.trim() === ''}
+              onClick={confirm}
+            >
               Add them
             </button>
             <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose}>
@@ -119,22 +138,25 @@ export function AddToEventModal({ contact, onClose }: Props) {
               ))}
             </div>
           </FormRow>
-          <FormRow label="Title" htmlFor="add-to-event-title">
+          <FormRow label="Session title" htmlFor="add-to-event-title">
             <input
               id="add-to-event-title"
               className="chq-input"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Invited: Jordan Alvarez"
+              placeholder="e.g. Scaling Kubernetes at 2am"
             />
           </FormRow>
+          <p className="chq-contacts-pipeline-caption">
+            This creates an accepted session on that event. No email is sent.
+          </p>
         </>
       )}
 
       {submissionId !== null && (
         <div className="chq-add-to-event-result">
           <p>
-            {contact.firstName} {contact.lastName} was added as an accepted speaker.
+            {contact.firstName} {contact.lastName} was added as an accepted {participantRoleLabel(role).toLowerCase()}.
           </p>
           <a href="/admin/speakers">View in Speakers</a>
         </div>
