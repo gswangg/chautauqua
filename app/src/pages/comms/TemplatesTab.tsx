@@ -1,12 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiDelete, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
-import { COMPOSE_MERGE_FIELDS } from '../../lib/merge-fields';
+import { COMPOSE_MERGE_FIELDS, type MergeField } from '../../lib/merge-fields';
+import { InsertFieldMenu } from './InsertFieldMenu';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { formatDate } from '../../lib/dates';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import type { EmailTemplate } from './types';
+import { DEC_993 } from '../../../../src/decisions';
 import './templates.css';
+
+void DEC_993;
 
 interface DraftTemplate {
   name: string;
@@ -112,8 +116,27 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
     navigate(`/comms?tab=compose&template=${t.id}`);
   }
 
-  function insertChip(field: string) {
-    setDraft((d) => ({ ...d, bodyText: `${d.bodyText}{${field}}` }));
+  // DEC-793 idiom, DEC-993 control: inserts at the body textarea's current
+  // caret (not appended blindly) and restores focus + caret after insert.
+  const bodyRef = useRef<HTMLTextAreaElement | null>(null);
+  const pendingCaretRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (pendingCaretRef.current !== null && bodyRef.current) {
+      const pos = pendingCaretRef.current;
+      bodyRef.current.focus();
+      bodyRef.current.setSelectionRange(pos, pos);
+      pendingCaretRef.current = null;
+    }
+  }, [draft.bodyText]);
+
+  function insertChip(field: MergeField) {
+    const token = `{${field}}`;
+    const el = bodyRef.current;
+    const start = el?.selectionStart ?? draft.bodyText.length;
+    const end = el?.selectionEnd ?? draft.bodyText.length;
+    pendingCaretRef.current = start + token.length;
+    setDraft((d) => ({ ...d, bodyText: d.bodyText.slice(0, start) + token + d.bodyText.slice(end) }));
   }
 
   return (
@@ -207,17 +230,14 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
               <textarea
                 className="chq-textarea"
                 rows={8}
+                ref={bodyRef}
                 value={draft.bodyText}
                 onChange={(e) => setDraft((d) => ({ ...d, bodyText: e.target.value }))}
               />
             </label>
 
             <div className="chq-comms-merge-chips">
-              {COMPOSE_MERGE_FIELDS.map((field) => (
-                <button key={field} type="button" className="chq-pill" onClick={() => insertChip(field)}>
-                  {`{${field}}`}
-                </button>
-              ))}
+              <InsertFieldMenu fields={COMPOSE_MERGE_FIELDS} onInsert={insertChip} />
             </div>
 
             <div className="chq-comms-editor-actions">

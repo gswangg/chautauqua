@@ -206,10 +206,10 @@ describe('ComposeWizard recipient picker', () => {
   });
 });
 
-// DEC-793: the body step's merge-field chip row inserts at the caret (not
-// appended blindly), and the attachments panel is retitled to name only
-// what it actually holds.
-describe('ComposeWizard body merge-field chips (DEC-793)', () => {
+// DEC-793/DEC-993: the body step's 'Insert a field ▾' control inserts at the
+// caret (not appended blindly), and the attachments panel is retitled to
+// name only what it actually holds.
+describe('ComposeWizard body merge-field menu (DEC-793, DEC-993)', () => {
   async function goToTemplateStep() {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
@@ -224,16 +224,50 @@ describe('ComposeWizard body merge-field chips (DEC-793)', () => {
     await screen.findByLabelText('Body');
   }
 
-  it('inserts a clicked merge-field chip at the textarea caret position', async () => {
+  it('renders one "Insert a field" trigger, not a row of per-field chips', async () => {
+    await goToTemplateStep();
+
+    expect(screen.getByRole('button', { name: /Insert a field/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '{speaker_name}' })).not.toBeInTheDocument();
+    expect(screen.queryByText('{talk_title}')).not.toBeInTheDocument();
+  });
+
+  it('lists every offered token with its sample value once opened', async () => {
+    await goToTemplateStep();
+
+    fireEvent.click(screen.getByRole('button', { name: /Insert a field/ }));
+
+    const menu = screen.getByRole('menu', { name: /Insert a field/ });
+    const item = within(menu).getByRole('menuitem', { name: '{speaker_name}' });
+    expect(within(item).getByText('Marcus Okafor')).toBeInTheDocument();
+  });
+
+  it('inserts a chosen merge field at the textarea caret position', async () => {
     await goToTemplateStep();
 
     const body = screen.getByLabelText('Body') as HTMLTextAreaElement;
     fireEvent.change(body, { target: { value: 'Hello , see you soon' } });
     body.setSelectionRange(6, 6);
 
-    fireEvent.click(screen.getByRole('button', { name: '{speaker_name}' }));
+    fireEvent.click(screen.getByRole('button', { name: /Insert a field/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '{speaker_name}' }));
 
     expect(body.value).toBe('Hello {speaker_name}, see you soon');
+  });
+
+  it('Escape closes the menu and returns focus to the trigger', async () => {
+    await goToTemplateStep();
+
+    const trigger = screen.getByRole('button', { name: /Insert a field/ });
+    fireEvent.click(trigger);
+    expect(screen.getByRole('menu', { name: /Insert a field/ })).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('menu', { name: /Insert a field/ })).not.toBeInTheDocument();
+    });
+    expect(trigger).toHaveFocus();
   });
 
   it('titles the preview-step panel "Attachments" (attachments only)', async () => {
@@ -872,7 +906,8 @@ describe('ComposeWizard {feedback} companion plan picker (DEC-955)', () => {
 
     expect(screen.queryByText('{feedback} needs a plan')).not.toBeInTheDocument();
 
-    fireEvent.click(await screen.findByRole('button', { name: '{feedback}' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Insert a field/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '{feedback}' }));
 
     const picker = await screen.findByLabelText('{feedback} needs a plan');
     expect(picker).toBeInTheDocument();
@@ -890,9 +925,11 @@ describe('ComposeWizard {feedback} companion plan picker (DEC-955)', () => {
     });
   });
 
-  it('omits the {feedback} chip entirely when no evaluation plans exist', async () => {
+  it('omits the {feedback} token entirely when no evaluation plans exist', async () => {
     await goToTemplateStep({ [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([]) });
 
-    expect(screen.queryByRole('button', { name: '{feedback}' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Insert a field/ }));
+
+    expect(screen.queryByRole('menuitem', { name: '{feedback}' })).not.toBeInTheDocument();
   });
 });

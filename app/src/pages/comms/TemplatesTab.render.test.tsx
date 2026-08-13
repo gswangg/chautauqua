@@ -141,3 +141,66 @@ describe('TemplatesTab', () => {
     });
   });
 });
+
+// DEC-993: the template editor's per-field chip row is replaced by a single
+// 'Insert a field ▾' control.
+describe('TemplatesTab merge-field menu (DEC-993)', () => {
+  async function openEditor() {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter>
+        <TemplatesTab eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'New template' }));
+    return screen.getByLabelText('Body') as HTMLTextAreaElement;
+  }
+
+  it('renders one "Insert a field" trigger, not a row of per-field chips', async () => {
+    await openEditor();
+
+    expect(screen.getByRole('button', { name: /Insert a field/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '{speaker_name}' })).not.toBeInTheDocument();
+  });
+
+  it('lists every offered token with its sample value once opened', async () => {
+    await openEditor();
+
+    fireEvent.click(screen.getByRole('button', { name: /Insert a field/ }));
+
+    const menu = screen.getByRole('menu', { name: /Insert a field/ });
+    const item = within(menu).getByRole('menuitem', { name: '{talk_title}' });
+    expect(within(item).getByText('Taming 40-Minute CI')).toBeInTheDocument();
+  });
+
+  it('inserts a chosen merge field at the body textarea caret position', async () => {
+    const body = await openEditor();
+
+    fireEvent.change(body, { target: { value: 'Hi , see you soon' } });
+    body.setSelectionRange(3, 3);
+
+    fireEvent.click(screen.getByRole('button', { name: /Insert a field/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '{speaker_name}' }));
+
+    expect(body.value).toBe('Hi {speaker_name}, see you soon');
+  });
+
+  it('Escape closes the menu and returns focus to the trigger', async () => {
+    await openEditor();
+
+    const trigger = screen.getByRole('button', { name: /Insert a field/ });
+    fireEvent.click(trigger);
+    expect(screen.getByRole('menu', { name: /Insert a field/ })).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('menu', { name: /Insert a field/ })).not.toBeInTheDocument();
+    });
+    expect(trigger).toHaveFocus();
+  });
+});
