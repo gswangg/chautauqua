@@ -5,6 +5,7 @@
 import type { PublicSession, PublicTrack } from "../../server/repo/public";
 import { sessionDetailPath, type Surface } from "./shell";
 import type { CardFields } from "./query";
+import { formatCalendarDate } from "../../lib/event-time";
 
 const ALL_FIELDS_ON: CardFields = {
   track: true,
@@ -62,12 +63,14 @@ export function SpeakerNames(props: { speakers: PublicSession["speakers"] }) {
 // EMB-01: shared day/time formatting for session cards and agenda blocks.
 // `day` is already the wall-clock 'YYYY-MM-DD' in the event's own timezone
 // (DEC-010) — no zonedMinutesToUtc conversion needed to *display* it, only
-// to export it as a UTC .ics instant (schedule.ics).
+// to export it as a UTC .ics instant (schedule.ics). DEC-768: routes
+// through event-time.ts's formatCalendarDate (never toISOString, never the
+// browser's own zone) — a calendar-day string reads its UTC fields
+// everywhere, same rule as any other date-only label in the app.
 export function formatDay(day: string): string {
   const [year, month, date] = day.split("-").map(Number);
   if (!year || !month || !date) return day;
-  const d = new Date(Date.UTC(year, month - 1, date));
-  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+  return formatCalendarDate(Date.UTC(year, month - 1, date));
 }
 
 export function formatMinutes(min: number): string {

@@ -6,7 +6,7 @@ import type { PublicAgendaItem, PublicEvent } from "../../server/repo/public";
 import { MAX_ITINERARY_IDS, itineraryStorageKey, mergeItinerarySelection, mirrorItineraryCheckboxes } from "../../lib/itinerary";
 import { assignLanes } from "../../lib/overlap-lanes";
 import { publicRoomLabel } from "../../domain/schedule";
-import { sessionDetailPath, type Surface, type SurfaceBase } from "./shell";
+import { sessionDetailPath, surfacePath, type Surface, type SurfaceBase } from "./shell";
 import { TrackChips, FormatChip, SpeakerNames, SessionDescription, formatDay, formatMinutes } from "./cards";
 
 // DEC-602: shared row-map math. The hour-label column (grid-column 1) and
@@ -76,14 +76,17 @@ export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; e
   }
 
   return (
-    <section aria-label={`Agenda for ${day}`}>
-      <h3>{day}</h3>
+    // DEC-768: the day heading is owned by AgendaDay (the caller wrapping
+    // both this grid and AgendaItemList below) -- rendering it here too
+    // duplicated it in the DOM (both copies always present, only one
+    // display:none'd per breakpoint).
+    <section aria-label={`Agenda for ${formatDay(day)}`}>
       <div class="chq-pub-agenda-day-scroll">
         <div
           class="chq-pub-agenda-day"
           style={`grid-template-columns: 70px repeat(${rooms.length}, minmax(140px, 1fr)); grid-template-rows: auto repeat(${Math.ceil(
             (dayEnd - dayStart) / gridMin,
-          )}, 22px);`}
+          )}, minmax(22px, auto));`}
         >
           <div style="grid-column:1;grid-row:1"></div>
           {rooms.map((roomId, idx) => (
@@ -170,8 +173,9 @@ function AgendaItemList(props: {
     return a.submissionId.localeCompare(b.submissionId);
   });
   return (
-    <section aria-label={`Agenda for ${day}`} class={sectionClass ?? "chq-pub-agenda-list-wrap"}>
-      <h3>{day}</h3>
+    // DEC-768: no h3 here either -- every caller of this list (AgendaDay,
+    // ScheduleContent's per-day wrapper) owns its own single day heading.
+    <section aria-label={`Agenda for ${formatDay(day)}`} class={sectionClass ?? "chq-pub-agenda-list-wrap"}>
       <ol class={listClass ?? "chq-pub-agenda-list"}>
         {sorted.map((item) => (
           <li class="chq-pub-agenda-list-item" id={`chq-agenda-list-${item.submissionId}`} data-submission-id={item.submissionId}>
@@ -215,6 +219,9 @@ function AgendaItemList(props: {
 function AgendaDay(props: { day: string; items: PublicAgendaItem[]; event: PublicEvent; from: Surface; base?: SurfaceBase }) {
   return (
     <div id={`chq-day-${props.day}`}>
+      {/* DEC-768: the ONE heading for this day, owned here -- neither
+          AgendaDayGrid nor AgendaItemList renders its own anymore. */}
+      <h3>{formatDay(props.day)}</h3>
       <div class="chq-pub-agenda-desktop">
         <AgendaDayGrid {...props} />
       </div>
@@ -233,25 +240,51 @@ export function groupByDay(items: PublicAgendaItem[]): Map<string, PublicAgendaI
   return map;
 }
 
-/** EMB-07: day switcher — anchor links, one per event day, jumping to that
- * day's section. Deliberately just the nav wrapper around AgendaDayGrid;
- * AgendaDayGrid's internals (time grid, room columns) are untouched here. */
-function DaySwitcher(props: { days: string[] }) {
-  if (props.days.length <= 1) return null;
+/** EMB-07: day switcher — one pill per event day. DEC-768: `renderedDays`
+ * is the set of days that actually have a `#chq-day-<day>` section on THIS
+ * page (so their pill can jump in-page); any day outside that set (e.g.
+ * every other day on a `?day=`-filtered view) links out to `?day=<day>`
+ * instead, or the switcher would dead-end on a filtered view arrived at
+ * from the Sessions rail's day index. `activeDay` (the filter currently
+ * applied, if any) is marked current. `base` keeps the out-link inside
+ * /embed when this renders inside a chromeless embed (EMB-7: an embed's own
+ * links must never break out of its iframe to a full-chrome /e/... href). */
+function DaySwitcher(props: {
+  days: string[];
+  renderedDays: Set<string>;
+  event: PublicEvent;
+  surface: "agenda" | "schedule";
+  base: SurfaceBase;
+  activeDay?: string | null;
+}) {
+  const { days, renderedDays, event, surface, base, activeDay } = props;
+  if (days.length <= 1) return null;
   return (
     <nav aria-label="Jump to day" class="chq-pub-day-switcher">
-      {props.days.map((day) => (
-        <a class="chq-pub-day-pill" href={`#chq-day-${day}`}>
-          {formatDay(day)}
-        </a>
-      ))}
+      {days.map((day) => {
+        const isActive = activeDay ? day === activeDay : false;
+        const href = renderedDays.has(day) ? `#chq-day-${day}` : `${surfacePath(event, surface, base)}?day=${day}`;
+        return (
+          <a class="chq-pub-day-pill" href={href} aria-current={isActive ? "page" : undefined}>
+            {formatDay(day)}
+          </a>
+        );
+      })}
     </nav>
   );
 }
 
-export function AgendaContent(props: { event: PublicEvent; items: PublicAgendaItem[]; total: number; embed?: boolean }) {
+export function AgendaContent(props: {
+  event: PublicEvent;
+  items: PublicAgendaItem[];
+  total: number;
+  embed?: boolean;
+  allDays?: string[] | null;
+  activeDay?: string | null;
+}) {
   const byDay = groupByDay(props.items);
-  const days = [...byDay.keys()];
+  const renderedDays = new Set(byDay.keys());
+  const days = props.allDays ?? [...renderedDays];
   const base: SurfaceBase = props.embed ? "/embed" : "/e";
   return (
     <>
@@ -265,8 +298,15 @@ export function AgendaContent(props: { event: PublicEvent; items: PublicAgendaIt
               Showing the first {props.items.length} of {props.total} scheduled sessions.
             </p>
           ) : null}
-          <DaySwitcher days={days} />
-          {days.map((day) => (
+          <DaySwitcher
+            days={days}
+            renderedDays={renderedDays}
+            event={props.event}
+            surface="agenda"
+            base={base}
+            activeDay={props.activeDay}
+          />
+          {[...renderedDays].map((day) => (
             <AgendaDay day={day} items={byDay.get(day) ?? []} event={props.event} from="agenda" base={base} />
           ))}
         </>
@@ -369,9 +409,17 @@ export function ItineraryScript(props: { eventSlug: string }) {
   return <script dangerouslySetInnerHTML={{ __html: js }} />;
 }
 
-export function ScheduleContent(props: { event: PublicEvent; items: PublicAgendaItem[]; total: number; embed?: boolean }) {
+export function ScheduleContent(props: {
+  event: PublicEvent;
+  items: PublicAgendaItem[];
+  total: number;
+  embed?: boolean;
+  allDays?: string[] | null;
+  activeDay?: string | null;
+}) {
   const byDay = groupByDay(props.items);
-  const days = [...byDay.keys()];
+  const renderedDays = new Set(byDay.keys());
+  const days = props.allDays ?? [...renderedDays];
   const base: SurfaceBase = props.embed ? "/embed" : "/e";
   return (
     <>
@@ -408,9 +456,20 @@ export function ScheduleContent(props: { event: PublicEvent; items: PublicAgenda
           <p id="chq-picks-empty" class="chq-pub-picks-empty" hidden>
             You have not picked any sessions yet. Check "Add to itinerary" on a session below to add it.
           </p>
-          <DaySwitcher days={days} />
-          {days.map((day) => (
+          <DaySwitcher
+            days={days}
+            renderedDays={renderedDays}
+            event={props.event}
+            surface="schedule"
+            base={base}
+            activeDay={props.activeDay}
+          />
+          {[...renderedDays].map((day) => (
             <div id={`chq-day-${day}`}>
+              {/* DEC-768: AgendaItemList no longer renders its own heading
+                  (only AgendaDay's grid+list pairing did that before) -- this
+                  wrapper is the sole owner of the day heading here. */}
+              <h3>{formatDay(day)}</h3>
               <AgendaItemList
                 day={day}
                 items={byDay.get(day) ?? []}
