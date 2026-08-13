@@ -188,7 +188,11 @@ describe('ContactDrawer delete (DEC-758)', () => {
     fireEvent.click(deleteTrigger);
 
     const confirmDialog = await screen.findByRole('dialog', { name: 'Delete this contact' });
-    expect(within(confirmDialog).getByText('Delete Priya Raman? This cannot be undone.')).toBeInTheDocument();
+    expect(
+      within(confirmDialog).getByText(
+        'Delete Priya Raman? Any task assignments and sourcing-pipeline history for this person are removed with them. This cannot be undone.',
+      ),
+    ).toBeInTheDocument();
     expect(within(confirmDialog).getByRole('button', { name: 'Delete' })).toBeInTheDocument();
     expect(within(confirmDialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
   });

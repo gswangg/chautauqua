@@ -518,7 +518,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
                 </p>
               </>
             ) : (
-              `Delete ${firstName} ${lastName}? This cannot be undone.`
+              `Delete ${firstName} ${lastName}? Any task assignments and sourcing-pipeline history for this person are removed with them. This cannot be undone.`
             )
           }
           confirmLabel="Delete"

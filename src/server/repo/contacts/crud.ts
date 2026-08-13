@@ -14,13 +14,14 @@ import { likeContains } from "../like";
 import { backfillNullAttribution } from "../attribution";
 import { ApiError } from "../../http";
 import { chunkIds } from "../../../lib/chunk";
-import { DEC_333, DEC_336, DEC_554, DEC_758, DEC_864 } from "../../../decisions";
+import { DEC_333, DEC_336, DEC_554, DEC_758, DEC_864, DEC_979 } from "../../../decisions";
 
 void DEC_333;
 void DEC_336;
 void DEC_554;
 void DEC_758;
 void DEC_864;
+void DEC_979;
 
 export interface ContactInput {
   firstName: string;
@@ -242,12 +243,27 @@ export async function listContactReferenceRows(db: Db, contactId: string): Promi
   };
 }
 
-/** DEC-758: only reachable once listContactReferenceRows is all-empty
- * (checked by the route) — the contact itself carries no separate segment-
- * membership/label rows (segments are rule-evaluated at query time over
- * customFieldsJson, DEC-149/DEC-336; labels are that same JSON column), so
- * deleting the contact row is the whole cascade. */
+/** DEC-979: only reachable once the route has refused on submissions
+ * (participant) and userAccounts refs — task_assignment and pipeline_entry
+ * (+ its pipeline_activity feed) are NOT independent refusal classes, they
+ * are cascade-deleted here so a contact whose only references are tasks
+ * and/or sourcing-pipeline history is actually deletable (DEC-921 keeps a
+ * speaker's task assignments after their only session is deleted, which
+ * previously made them permanently undeletable). Set-based and chunked:
+ * select this contact's pipeline_entry ids, delete their pipeline_activity
+ * rows (chunked by entryId), delete the pipeline_entry rows, delete this
+ * contact's task_assignment rows, then delete the contact row itself. */
 export async function deleteContact(db: Db, contactId: string): Promise<void> {
+  const entryRows = await db
+    .select({ id: schema.pipelineEntry.id })
+    .from(schema.pipelineEntry)
+    .where(eq(schema.pipelineEntry.contactId, contactId));
+  const entryIds = entryRows.map((r) => r.id);
+  for (const batch of chunkIds(entryIds)) {
+    await db.delete(schema.pipelineActivity).where(inArray(schema.pipelineActivity.entryId, batch));
+  }
+  await db.delete(schema.pipelineEntry).where(eq(schema.pipelineEntry.contactId, contactId));
+  await db.delete(schema.taskAssignment).where(eq(schema.taskAssignment.contactId, contactId));
   await db.delete(schema.contact).where(eq(schema.contact.id, contactId));
 }
 
