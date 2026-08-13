@@ -98,7 +98,7 @@ describe('OnboardingGrid: DEC-730 one status-control family', () => {
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} onImportCsv={vi.fn()} />);
+    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
 
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
@@ -131,7 +131,7 @@ describe('OnboardingGrid: DEC-291/DEC-662 Response control', () => {
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} onImportCsv={vi.fn()} />);
+    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
 
     // Re-skinned OnboardingGrid renders the desktop grid AND the phone-width
     // card list simultaneously in the DOM (they're toggled by a CSS media
@@ -202,7 +202,7 @@ describe('OnboardingGrid: DEC-599/DEC-694 reopen from response modal', () => {
       'PATCH /api/v1/task-assignments/as2': { body: {} },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} onImportCsv={vi.fn()} />);
+    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
 
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
     screen.getAllByRole('button', { name: 'Response' })[0]!.click();
@@ -238,7 +238,7 @@ describe('OnboardingGrid: DEC-599/DEC-694 reopen from response modal', () => {
       'PATCH /api/v1/task-assignments/as2': { status: 500, body: { error: { code: 'internal', message: 'boom' } } },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} onImportCsv={vi.fn()} />);
+    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
 
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
     screen.getAllByRole('button', { name: 'Response' })[0]!.click();
@@ -281,7 +281,7 @@ describe('OnboardingGrid: DEC-694 per-row remind', () => {
       [`POST /api/v1/events/${EVENT_ID}/onboarding/remind`]: { sent: 1, failed: [], skipped: 0, remaining: 0 },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} onImportCsv={vi.fn()} />);
+    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
 
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
     screen.getAllByRole('button', { name: 'Remind Ada' })[0]!.click();

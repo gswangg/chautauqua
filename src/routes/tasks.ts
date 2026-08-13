@@ -181,15 +181,6 @@ taskRoutes.post("/events/:eventId/tasks", requireOrganizer, csrfJson, async (c) 
       : undefined;
   if (formId === undefined) fields.formId = "Must be a string";
 
-  const assignToAllAccepted = body.assignToAllAccepted === undefined
-    ? undefined
-    : typeof body.assignToAllAccepted === "boolean"
-      ? body.assignToAllAccepted
-      : undefined;
-  if (body.assignToAllAccepted !== undefined && assignToAllAccepted === undefined) {
-    fields.assignToAllAccepted = "Must be a boolean";
-  }
-
   const deliverableKind = parseDeliverableKind(body, fields, kind ?? "");
 
   // DEC-398: a 'form' task requires a formId that resolves to a form on
@@ -222,7 +213,6 @@ taskRoutes.post("/events/:eventId/tasks", requireOrganizer, csrfJson, async (c) 
     required: required as boolean,
     formId,
     deliverableKind: deliverableKind as CreateTaskInput["deliverableKind"],
-    assignToAllAccepted,
   };
   const created = await createTask(c.var.db, eventId, input);
   return c.json(created, 201);

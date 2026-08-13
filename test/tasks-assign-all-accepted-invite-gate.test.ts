@@ -197,7 +197,7 @@ describe("DEC-283: listAcceptedContactIds excludes invited/declined co-speakers"
     expect(ids).toEqual(["contact-accepted"]);
   });
 
-  it("createTask({assignToAllAccepted:true}) inserts task_assignment rows for exactly the active contacts", async () => {
+  it("createTask always inserts task_assignment rows for exactly the active contacts (DEC-746)", async () => {
     const { db, state } = fakeDb({
       submission: [acceptedSubmission()],
       participant: [
@@ -213,7 +213,6 @@ describe("DEC-283: listAcceptedContactIds excludes invited/declined co-speakers"
       kind: "general",
       title: "Announce participation",
       required: false,
-      assignToAllAccepted: true,
     });
 
     expect(record.id).toBeTruthy();
@@ -240,7 +239,6 @@ describe("DEC-283: listAcceptedContactIds excludes invited/declined co-speakers"
       kind: "general",
       title: "Finalize talk description",
       required: false,
-      assignToAllAccepted: true,
     });
 
     expect(record).toMatchObject({
