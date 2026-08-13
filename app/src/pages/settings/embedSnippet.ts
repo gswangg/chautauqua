@@ -34,6 +34,12 @@ import { ALL_CARD_FIELDS, type CardField } from '../../lib/embed-fields';
 export const EMBED_FIELDS = ALL_CARD_FIELDS;
 export type EmbedField = CardField;
 
+// design system default accent (app/src/styles.css --chq-brandable-accent).
+// Lives here (pure builder module, no JSX/DOM) rather than in EmbedsPanel.tsx
+// so the DEC-817 parity test can enumerate the exact placeholder string the
+// Accent color input advertises without importing a .tsx component module.
+export const DEFAULT_ACCENT_PLACEHOLDER = '4e5c31';
+
 export interface EmbedOptions {
   format: EmbedFormat;
   trackId?: string;

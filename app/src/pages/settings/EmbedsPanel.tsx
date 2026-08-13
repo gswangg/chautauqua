@@ -11,6 +11,7 @@ import { copyText } from '../../lib/clipboard';
 import {
   buildEmbedUrl,
   buildSnippet,
+  DEFAULT_ACCENT_PLACEHOLDER,
   EMBED_FIELDS,
   EMBED_FORMATS,
   EMBED_KNOBS_BY_SURFACE,
@@ -42,9 +43,6 @@ const FIELD_LABELS: Record<EmbedField, string> = {
   description: 'Description',
   format: 'Format',
 };
-
-// design system default accent (app/src/styles.css --chq-brandable-accent).
-const DEFAULT_ACCENT_PLACEHOLDER = '4e5c31';
 
 // DEC-289: ics is the fixed full-agenda feed — only meaningful from the
 // agenda/schedule surfaces. json is available from every surface.
