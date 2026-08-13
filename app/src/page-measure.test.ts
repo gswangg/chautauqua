@@ -135,9 +135,16 @@ describe('page measure (DEC-744/DEC-808/DEC-989)', () => {
     expect(topLevelRuleBody(css, '.chq-forms-settings')).toMatch(/max-width:\s*var\(--chq-measure\)/);
   });
 
+  // `.chq-review-editor-dates` used to be spot-checked here too. It went dead
+  // when the Review plan editor was rebuilt to the mock (DEC-706/DEC-709) --
+  // no markup has carried the class since -- and the CSS contract's reverse
+  // direction, invariant (D) in css-contract.scan.test.ts (DEC-970/DEC-976),
+  // deleted the orphaned rule. Re-adding the rule to satisfy this assertion
+  // would fail (D); the assertion was pinning dead CSS, so it is gone instead.
+  // The enumerating scan above still covers every LIVE container clamp in
+  // review.css, so nothing is left unguarded by dropping it.
   it('review.css subscreen clamps reference var(--chq-measure)', () => {
     const css = readFileSync(join(HERE, 'pages/review/review.css'), 'utf-8');
-    expect(topLevelRuleBody(css, '.chq-review-editor-dates')).toMatch(/max-width:\s*var\(--chq-measure\)/);
     expect(topLevelRuleBody(css, '.chq-review-summary-grid')).toMatch(/max-width:\s*var\(--chq-measure\)/);
   });
 
