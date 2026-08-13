@@ -177,9 +177,14 @@
   outline-offset: -2px;
 }
 
+/* The hover tint must stay translucent: this button paints at z-index 6,
+   ABOVE the clash card in the same grid area, so an opaque fill would bury
+   the card text DEC-870 requires stay legible. DEC-383 forbids a colour
+   literal here (rgba() included), so the tint composes the brand token via
+   color-mix rather than restating --chq-brand's value as rgba(78,92,49). */
 .chq-day-grid-armed .chq-day-grid-cell-btn:hover {
   outline-width: 3px;
-  background: rgba(78, 92, 49, 0.14);
+  background: color-mix(in srgb, var(--chq-brand) 14%, transparent);
 }
 
 .chq-day-grid-armed .chq-day-grid-cell-btn:focus-visible {
