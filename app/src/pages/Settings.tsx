@@ -25,7 +25,7 @@ import { PeopleRolesPanel } from './settings/PeopleRolesPanel';
 import { YourDataPanel } from './settings/YourDataPanel';
 import './settings/settings.css';
 
-interface SettingsSection {
+export interface SettingsSection {
   key: string;
   label: string;
   Panel: ComponentType;
@@ -40,7 +40,7 @@ interface SettingsSection {
 // 'Import from Sessionboard' is no longer an eighth top-level rail entry --
 // it's a row inside 'Your data' (YourDataPanel) that drills into the same
 // SessionboardImportPanel, unchanged.
-const SECTIONS: SettingsSection[] = [
+export const SECTIONS: SettingsSection[] = [
   { key: 'event', label: 'Event', Panel: EventSettingsPanel },
   { key: 'cfp', label: 'Call for papers', Panel: CallForPapersPanel },
   { key: 'tracks', label: 'Tracks and rooms', Panel: TracksRoomsPanel },

@@ -1,10 +1,12 @@
 // Speaker portal settings section (w4-h, DEC-032; summary-first w3-c,
-// DEC-747): the 'Speaker portal' read view (docs/design/Chautauqua
-// Settings.dc.html:142-182) -- Welcome note, Speakers can edit (pills),
-// Onboarding tasks, Resources (delegates to ResourcesPanel, unchanged
-// endpoints/CRUD) and Access, with 'Open as a speaker' as the section's
-// ONE rule action -- a real link to the portal, not an edit-drill toggle
-// (DEC-747: "ONE action on its rule").
+// DEC-747; SummarySection adoption w6-e, DEC-815): the 'Speaker portal'
+// read view (docs/design/Chautauqua Settings.dc.html:142-182) -- Welcome
+// note, Speakers can edit (pills), Onboarding tasks, Resources and Access
+// -- with 'Open as a speaker' kept as a row-level link (it is a live
+// navigation, not an edit) and the section's ONE rule action now the
+// SummarySection 'Change' drill (?section=portal&edit=1, DEC-728/DEC-710),
+// which reveals the panel's one real edit surface: ResourcesPanel
+// (delegates to it unchanged -- same endpoints/CRUD).
 //
 // GAP flagged for a follow-up task (not decided here): the mock's read
 // view has no action on the Welcome note / Speakers can edit / Onboarding
@@ -15,10 +17,14 @@
 // are unchanged -- only the Settings UI's path to them is removed pending
 // a decision on where that edit affordance should live.
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiGet, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { ResourcesPanel } from './ResourcesPanel';
+import { SummarySection } from './SummarySection';
+
+const SECTION_KEY = 'portal';
 
 interface PortalSettingsRecord {
   welcomeMessage: string | null;
@@ -49,6 +55,8 @@ function paragraphCount(text: string | null): number {
 
 export function PortalSettingsPanel() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
+  const [searchParams] = useSearchParams();
+  const editing = searchParams.get('section') === SECTION_KEY && searchParams.get('edit') === '1';
   const [welcomeMessage, setWelcomeMessage] = useState<string | null>(null);
   const [welcomeLoaded, setWelcomeLoaded] = useState(false);
   const [taskCount, setTaskCount] = useState<number | null>(null);
@@ -69,31 +77,19 @@ export function PortalSettingsPanel() {
 
   const paragraphs = paragraphCount(welcomeMessage);
 
-  return (
-    <section className="chq-settings-panel chq-settings-numbered" aria-label="Speaker portal">
-      <div className="chq-settings-section-head">
-        <h2>Speaker portal</h2>
-        <a className="chq-settings-section-action" href="/portal" target="_blank" rel="noopener noreferrer">
-          Open as a speaker
-        </a>
-      </div>
-      {eventLoading ? <DelayedLoading /> : null}
-      {eventError || error ? <p role="alert">{eventError ?? error}</p> : null}
-
-      <div className="chq-settings-row">
-        <span className="chq-settings-row-label">Welcome note</span>
-        <div className="chq-settings-row-value">
-          {!welcomeLoaded ? (
-            <DelayedLoading />
-          ) : (
-            `Shown above the task list · ${paragraphs} paragraph${paragraphs === 1 ? '' : 's'}`
-          )}
-        </div>
-      </div>
-
-      <div className="chq-settings-row">
-        <span className="chq-settings-row-label">Speakers can edit</span>
-        <div className="chq-settings-row-value chq-settings-portal-pills">
+  const rows = [
+    {
+      label: 'Welcome note',
+      value: !welcomeLoaded ? (
+        <DelayedLoading />
+      ) : (
+        `Shown above the task list · ${paragraphs} paragraph${paragraphs === 1 ? '' : 's'}`
+      ),
+    },
+    {
+      label: 'Speakers can edit',
+      value: (
+        <div className="chq-settings-portal-pills">
           {SPEAKER_EDIT_FIELDS.map((field) => (
             <span
               key={field.label}
@@ -103,30 +99,41 @@ export function PortalSettingsPanel() {
             </span>
           ))}
         </div>
-      </div>
+      ),
+    },
+    {
+      label: 'Onboarding tasks',
+      value:
+        taskCount === null ? (
+          <DelayedLoading />
+        ) : (
+          `${taskCount} task${taskCount === 1 ? '' : 's'} · created when a submission is accepted`
+        ),
+    },
+    { label: 'Resources', value: 'Wiki pages and files speakers can access from their portal' },
+    { label: 'Access', value: 'Speakers claim their portal from a link in their acceptance email' },
+    {
+      label: 'Open the portal',
+      value: (
+        <a href="/portal" target="_blank" rel="noopener noreferrer">
+          Open as a speaker
+        </a>
+      ),
+    },
+  ];
 
-      <div className="chq-settings-row">
-        <span className="chq-settings-row-label">Onboarding tasks</span>
-        <div className="chq-settings-row-value">
-          {taskCount === null ? (
-            <DelayedLoading />
-          ) : (
-            `${taskCount} task${taskCount === 1 ? '' : 's'} · created when a submission is accepted`
-          )}
+  return (
+    <>
+      {eventLoading ? <DelayedLoading /> : null}
+      {eventError || error ? <p role="alert">{eventError ?? error}</p> : null}
+      <SummarySection sectionKey={SECTION_KEY} label="Speaker portal" rows={rows} actionLabel="Change" editing={editing}>
+        <div className="chq-settings-row">
+          <span className="chq-settings-row-label">Resources</span>
+          <div className="chq-settings-row-value chq-settings-portal-resources">
+            <ResourcesPanel />
+          </div>
         </div>
-      </div>
-
-      <div className="chq-settings-row">
-        <span className="chq-settings-row-label">Resources</span>
-        <div className="chq-settings-row-value chq-settings-portal-resources">
-          <ResourcesPanel />
-        </div>
-      </div>
-
-      <div className="chq-settings-row">
-        <span className="chq-settings-row-label">Access</span>
-        <div className="chq-settings-row-value">Speakers claim their portal from a link in their acceptance email</div>
-      </div>
-    </section>
+      </SummarySection>
+    </>
   );
 }
