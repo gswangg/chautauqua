@@ -168,6 +168,7 @@
 .chq-speakers-status {
   display: inline-flex;
   align-items: center;
+  font-family: var(--chq-font-ui);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -232,16 +233,14 @@
   display: inline-block;
 }
 
-/* DEC-880: only reset what a <button> brings that the chip doesn't want --
-   never `border: none`, or three of the four DEC-730 status modifiers
-   (pending/overdue/none) lose their outline and only the filled Confirmed
-   variant survives. Each .chq-speakers-status-* modifier keeps its own
-   border declaration. */
+/* DEC-880/DEC-940: only reset what a <button> brings that the chip doesn't
+   want -- never `border: none`, `background`, `padding` or `font`, or the
+   trigger erases the DEC-730 pill's fill/outline, box metrics and type at
+   equal specificity (it sits after .chq-speakers-status in source order).
+   Each .chq-speakers-status-* modifier keeps its own border declaration,
+   and .chq-speakers-status keeps the shared padding/font. */
 .chq-participation-menu-trigger {
   appearance: none;
-  background: none;
-  padding: 0;
-  font: inherit;
   cursor: pointer;
 }
 
