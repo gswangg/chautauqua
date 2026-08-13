@@ -88,9 +88,9 @@ function scanForFileStorePuts(): PutHit[] {
 const KNOWN_FILE_STORE_PUTS: { file: string; line: number; reason: string }[] = [
   {
     file: "src/routes/public/submit.tsx",
-    line: 533,
+    line: 539,
     reason:
-      "Multi-object batch upload: N attachments are staged before the DB write phase, which on ANY throw deletes every object it wrote (and the submission row) in its own catch block at :566-574 -- a single delete-on-throw doesn't cover N objects, so this keeps its own rollback rather than routing through putThenRecord.",
+      "Multi-object batch upload: N attachments are staged before the DB write phase, which on ANY throw deletes every object it wrote (and the submission row) in its own catch block at :573-580 -- a single delete-on-throw doesn't cover N objects, so this keeps its own rollback rather than routing through putThenRecord. Per DEC-530 (wave 53) the staging puts and the rollback deletes both fan out via Promise.all(list.map(async ...)) rather than a serial for loop; the rollback still covers every object the batch wrote, so the exemption is unchanged in substance.",
   },
 ];
 
