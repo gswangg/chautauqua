@@ -27,7 +27,12 @@ import {
 import { formatTaskLines, type ReminderAssignment } from "../domain/reminders";
 import { listOutstandingForEvent } from "../server/repo/tasks/reminders";
 import { formatCalendarDate } from "../lib/event-time";
-import { DEC_122, DEC_252, DEC_766 } from "../decisions";
+import {
+  MAX_PORTAL_INVITE_RECIPIENTS,
+  renderPortalInvites,
+  type PortalInviteRecipient,
+} from "../domain/portal-invite";
+import { DEC_122, DEC_252, DEC_766, DEC_805 } from "../decisions";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { resolveBaseUrl } from "../server/origin";
 import { clampPage, listPerPage } from "../lib/pagination";
@@ -37,6 +42,7 @@ import { isDevMode } from "../server/env";
 
 void DEC_252;
 void DEC_766;
+void DEC_805;
 
 export const commsRoutes = new Hono<AppEnv>();
 
@@ -565,6 +571,96 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
   }
 
   return c.json({ sent: result.rendered.length - failed.length, failed, items: result.rendered });
+});
+
+// ---------------------------------------------------------------------------
+// Per-speaker portal invitation (DEC-805)
+// ---------------------------------------------------------------------------
+
+commsRoutes.post("/api/v1/events/:eventId/portal-invites", requireOrganizer, csrfJson, async (c) => {
+  const eventId = c.req.param("eventId");
+  const event = await requireOwnedEvent(c, eventId);
+
+  const body = await c.req.json().catch(() => {
+    throw new ApiError("invalid", "Invalid JSON body");
+  });
+  const contactIds = parseBoundedIdArray((body as { contactIds?: unknown }).contactIds, "contactIds", {
+    maxCount: MAX_PORTAL_INVITE_RECIPIENTS,
+  });
+
+  // Atomic preflight (DEC-805/DEC-019 precedent): every requested contactId
+  // must be a participant on a submission in this event, or the whole call
+  // fails loudly naming the ids that aren't — no half-sent batches.
+  const participants = await repo.findParticipantContactsForEvent(c.var.db, eventId, contactIds);
+  const foundIds = new Set(participants.map((p) => p.contactId));
+  const missing = contactIds.filter((id) => !foundIds.has(id));
+  if (missing.length > 0) {
+    throw new ApiError("invalid", "One or more contacts are not a participant on a submission in this event", {
+      contactIds: `unknown ids: ${missing.join(", ")}`,
+    });
+  }
+
+  const kv = c.env.KV as unknown as KVStore;
+  const origin = resolveBaseUrl(c);
+
+  // DEC-530: one batched account-identity lookup for the whole recipient
+  // set instead of per-recipient.
+  const accountMap = await repo.findAccountUserIds(
+    c.var.db,
+    participants.map((p) => ({ contactId: p.contactId, email: p.email })),
+  );
+
+  // portal_link built with the SAME helper the compose path uses; a portal
+  // invite always mints real claim tokens (never a preview).
+  const portalLinkByContactId = new Map<string, string>();
+  for (const p of participants) {
+    const userId = accountMap.get(p.contactId) ?? null;
+    portalLinkByContactId.set(p.contactId, await resolvePortalLink(kv, p.contactId, eventId, userId, origin, true));
+  }
+
+  const recipients: PortalInviteRecipient[] = participants.map((p) => ({
+    contactId: p.contactId,
+    name: `${p.firstName} ${p.lastName}`.trim(),
+    email: p.email,
+  }));
+  // Subject+body render from the ONE exported invitation template through
+  // the shared merge/render machinery — never a string typed here.
+  const { rendered, missingEmail } = renderPortalInvites(recipients, event.name, portalLinkByContactId);
+
+  const { makeMailer, d1EmailLogWriter } = await import("../server/context");
+  const mailer = makeMailer(c.var.db, c.env);
+  const emailLog = d1EmailLogWriter(c.var.db);
+  const provider = isDevMode(c.env) ? "dev" : "cloudflare-email";
+  const batchId = newId();
+  // DEC-805: a recipient with no address on file never reaches the mailer —
+  // named here (not a silent skip) alongside any real send failure.
+  const failed: { email: string; message: string }[] = missingEmail.map((m) => ({
+    email: "",
+    message: `${m.name} has no email address on file`,
+  }));
+  let sent = 0;
+  for (const r of rendered) {
+    const attempt = {
+      to: { email: r.email, name: r.name },
+      subject: r.subject,
+      text: r.text,
+      html: textToHtml(r.text),
+      eventId,
+      contactId: r.contactId,
+      batchId,
+    };
+    try {
+      await mailer.send(attempt);
+      sent += 1;
+    } catch (err) {
+      // DEC-766: the mailer rejected this recipient — write the attempted
+      // row so the send's failure is visible in comms history.
+      await logFailedSend(emailLog, attempt, provider, err);
+      failed.push({ email: r.email, message: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
+  return c.json({ sent, skipped: 0, failed });
 });
 
 function missingToFields(missing: { contactId: string; submissionId: string; field: string }[]): Record<string, string> {

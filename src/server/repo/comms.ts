@@ -132,6 +132,54 @@ export async function deleteTemplate(db: Db, id: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Portal invites (DEC-805)
+// ---------------------------------------------------------------------------
+
+export interface ParticipantContactRow {
+  contactId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
+/** DEC-805 preflight lookup: every distinct contact, among the given
+ * contactIds, that IS a `participant` on some submission in this event (any
+ * inviteStatus — unlike loadComposeSubmissions this is a membership check,
+ * not a "who should be emailed a compose" filter). The route diffs the
+ * requested contactIds against this result's ids and rejects the whole call
+ * naming any that don't come back, rather than silently inviting a smaller
+ * set. Chunked (DEC-078) since contactIds can be as large as
+ * MAX_PORTAL_INVITE_RECIPIENTS. */
+export async function findParticipantContactsForEvent(
+  db: Db,
+  eventId: string,
+  contactIds: string[],
+): Promise<ParticipantContactRow[]> {
+  if (contactIds.length === 0) return [];
+  const seen = new Set<string>();
+  const rows: ParticipantContactRow[] = [];
+  for (const batch of chunkIds(contactIds)) {
+    const batchRows = await db
+      .selectDistinct({
+        contactId: schema.contact.id,
+        firstName: schema.contact.firstName,
+        lastName: schema.contact.lastName,
+        email: schema.contact.email,
+      })
+      .from(schema.participant)
+      .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
+      .innerJoin(schema.contact, eq(schema.contact.id, schema.participant.contactId))
+      .where(and(eq(schema.submission.eventId, eventId), inArray(schema.participant.contactId, batch)));
+    for (const row of batchRows) {
+      if (seen.has(row.contactId)) continue;
+      seen.add(row.contactId);
+      rows.push(row);
+    }
+  }
+  return rows;
+}
+
+// ---------------------------------------------------------------------------
 // Compose data loading: submissions -> participants (+ feedback)
 // ---------------------------------------------------------------------------
 
