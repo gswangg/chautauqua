@@ -29,6 +29,7 @@ import { SESSION_FORMAT_FIELD_ID } from "../../forms/types";
 import { loadTrackNamesBySubmission } from "./submission-tracks";
 import { DEFAULT_AUTO_SCHEDULE_PARAMS } from "./agenda";
 import { overdueAssignmentConditions } from "./tasks/crud";
+import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
 import { DEC_370, DEC_531, DEC_704, DEC_772, DEC_776, DEC_895 } from "../../decisions";
 void DEC_370;
 void DEC_531;
@@ -319,7 +320,12 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
           contactId: schema.participant.contactId,
         })
         .from(schema.participant)
-        .where(inArray(schema.participant.submissionId, batch));
+        .where(
+          and(
+            inArray(schema.participant.submissionId, batch),
+            inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
+          ),
+        );
       participantRows.push(...batchRows);
     }
     const speakersBySubmission = new Map<string, string[]>();
@@ -582,7 +588,13 @@ async function fetchLeadSpeakers(
       })
       .from(schema.participant)
       .innerJoin(schema.contact, eq(schema.contact.id, schema.participant.contactId))
-      .where(and(inArray(schema.participant.submissionId, batch), eq(schema.participant.role, "speaker")));
+      .where(
+        and(
+          inArray(schema.participant.submissionId, batch),
+          eq(schema.participant.role, "speaker"),
+          inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
+        ),
+      );
     for (const r of rows) {
       const name = `${r.firstName} ${r.lastName}`.trim();
       const arr = rowsBySubmission.get(r.submissionId) ?? [];

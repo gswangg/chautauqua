@@ -1,0 +1,128 @@
+// DEC-512 scan-lock: every source file that READS participant rows must
+// either declare its invite-status audience (ACTIVE_INVITE_STATUSES /
+// PORTAL_VISIBLE_INVITE_STATUSES / visibleParticipantConditions /
+// isActiveParticipant / rosterParticipantConditions /
+// schema.participant.inviteStatus) or be named in the hard-coded exemption
+// map below with a stated, file-specific reason. A file that reads
+// participant rows and is neither declared NOR exempt fails this test --
+// that's the seventh-recurrence guard for the invite-status predicate
+// (fixed six times before this wave per FINDINGS w35).
+import { describe, it, expect } from "vitest";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { join, relative, sep } from "node:path";
+
+const REPO_ROOT = join(__dirname, "..");
+
+// Every file that has a genuine participant READ but is not (and, per its
+// stated reason, should not be) audience-filtered by invite status. Keep
+// this list honest: each reason describes what the file at that path
+// ACTUALLY does (read at scan time), not a guess.
+const EVERY_PARTICIPANT_AUDIENCE: Record<string, string> = {
+  "src/server/repo/contacts/crud.ts":
+    "delete-reference check: lists every submission a contact participates in so a delete refusal can name them, regardless of invite status",
+  "src/server/repo/contacts/history.ts":
+    "contact detail history panel: lists every submission a contact ever participated in, including declined invites",
+  "src/server/repo/contacts/merge.ts":
+    "write path: counts/reassigns/deletes every participant row for a merged contact, regardless of invite status",
+  "src/server/repo/exports/agenda.ts":
+    "export surface: reports every participant row on an accepted/placed session",
+  "src/server/repo/exports/showflow.ts":
+    "export surface: reports every participant row on a placed session",
+  "src/server/repo/exports/speakers.ts":
+    "export surface: reports every participant row",
+  "src/server/repo/exports/submissions.ts":
+    "export surface: reports every participant row on a submission",
+  "src/server/repo/import/sessionboard.ts":
+    "write path: inserts/updates participant rows during import (id lookup for dedup, not an audience read)",
+  "src/server/repo/profile.ts":
+    "public headshot-serve visibility gate: doesn't exclude a declined participant row from granting public access",
+  "src/server/repo/public/counts.ts":
+    "public speaker count: counts every participant row on a visible submission, regardless of invite status",
+  "src/server/repo/public/detail.ts":
+    "public speaker detail page: renders every participant row on a visible submission, regardless of invite status",
+  "src/server/repo/public/speakers.ts":
+    "public speakers directory/gallery: lists every participant row on a visible submission, regardless of invite status",
+  "src/server/repo/submissions/history.ts":
+    "submission history: joins email_log through every participant row for an audit trail, not an audience read",
+  "src/server/repo/submissions/list.ts":
+    "admin submissions grid: names every participant on a row (including the name-search subquery), regardless of invite status",
+};
+
+const AUDIENCE_MARKERS = [
+  "ACTIVE_INVITE_STATUSES",
+  "PORTAL_VISIBLE_INVITE_STATUSES",
+  "visibleParticipantConditions",
+  "isActiveParticipant",
+  "rosterParticipantConditions",
+  "schema.participant.inviteStatus",
+];
+
+const READ_PATTERNS = [
+  /\.from\(schema\.participant\)/,
+  /innerJoin\(\s*schema\.participant/,
+  /leftJoin\(\s*schema\.participant/,
+  /from\s*\$\{schema\.participant\}/,
+];
+
+function hasParticipantRead(src: string): boolean {
+  return READ_PATTERNS.some((re) => re.test(src));
+}
+
+function declaresAudience(src: string): boolean {
+  return AUDIENCE_MARKERS.some((marker) => src.includes(marker));
+}
+
+function walk(dir: string, out: string[]): void {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const abs = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (relative(join(REPO_ROOT, "src"), abs) === "decisions-data") continue;
+      walk(abs, out);
+    } else if (entry.isFile() && (entry.name.endsWith(".ts") || entry.name.endsWith(".tsx"))) {
+      out.push(relative(REPO_ROOT, abs).split(sep).join("/"));
+    }
+  }
+}
+
+function everySourceFile(): string[] {
+  const out: string[] = [];
+  walk(join(REPO_ROOT, "src"), out);
+  return out;
+}
+
+describe("participant-invite-audience scan (DEC-512)", () => {
+  it("every read-but-undeclared participant-read file is exactly the hard-coded exemption map", () => {
+    const relFiles = everySourceFile();
+    const readUndeclared: string[] = [];
+    for (const rel of relFiles) {
+      const abs = join(REPO_ROOT, rel);
+      const src = readFileSync(abs, "utf-8");
+      if (hasParticipantRead(src) && !declaresAudience(src)) {
+        readUndeclared.push(rel);
+      }
+    }
+    readUndeclared.sort();
+    const expected = Object.keys(EVERY_PARTICIPANT_AUDIENCE).sort();
+    expect(readUndeclared).toEqual(expected);
+  });
+
+  it("every reason in the exemption map is a non-empty string", () => {
+    for (const [, reason] of Object.entries(EVERY_PARTICIPANT_AUDIENCE)) {
+      expect(typeof reason).toBe("string");
+      expect(reason.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it("no exemption entry names a file that no longer exists", () => {
+    for (const path of Object.keys(EVERY_PARTICIPANT_AUDIENCE)) {
+      expect(existsSync(join(REPO_ROOT, path))).toBe(true);
+    }
+  });
+
+  it("no exemption entry names a file that now declares an audience (a stale exemption fails loudly, per DEC-985)", () => {
+    for (const path of Object.keys(EVERY_PARTICIPANT_AUDIENCE)) {
+      const src = readFileSync(join(REPO_ROOT, path), "utf-8");
+      expect(declaresAudience(src)).toBe(false);
+    }
+  });
+});
