@@ -359,9 +359,13 @@ names its target, "Swap which is kept" beside it · **Merge fields = one
 supersedes the six-chip row · markup repairs baked in (three void
 declarations, 16000px frame, doubled cap injection).
 
-Fidelity frames: design-frames-v6 rendering now; all probes/gates use v6 once
-ready. Prior width-related open items should be RE-READ against the class
-table before working them.
+Fidelity frames: design-frames-v6 READY (90 frames, manifest, zero clip; hero
+frames renamed ·1600; 01-overview--03 = the 1800px width exemplar;
+10--08/09 = the split speakers List/Grid views). NOTE: the nine Settings
+sub-screens are 390px PHONE frames in v6 (desktop-width in v5) — under the
+desktop-only rule they leave desktop scope; desktop Settings is judged from
+frame 00 + 01 + the width-system spec. Prior width-related open items must be
+RE-READ against the class table before working them.
 
 ## GATE-2 SBEK: 91.5% (coverage 93.4). SPK RECOVERED 75→89.1 (turn-diet works).
 NEW FLAG: CNT 73.9 (was 88.6) — PURE TURN-BUDGET (coverage 74%; CNT-09/10/11
