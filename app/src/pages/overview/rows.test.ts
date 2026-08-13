@@ -6,6 +6,7 @@ import {
   formatDeadlineValue,
   headlineCount,
   headlineText,
+  joinSegments,
   pluralize,
 } from './rows';
 import type { OverviewPayload } from './types';
@@ -35,6 +36,34 @@ function payload(overrides: Partial<OverviewPayload> = {}): OverviewPayload {
     ...overrides,
   };
 }
+
+describe('joinSegments', () => {
+  it('joins present segments with a single centered dot', () => {
+    expect(joinSegments(['Dana Whitmore', 'Developer Experience', 'DFC-033', 'waiting 6 days'])).toBe(
+      'Dana Whitmore · Developer Experience · DFC-033 · waiting 6 days',
+    );
+  });
+
+  it('drops null and undefined segments without leaving a doubled separator', () => {
+    expect(joinSegments(['Dana Whitmore', null, 'DFC-033', undefined])).toBe('Dana Whitmore · DFC-033');
+  });
+
+  it('drops blank string segments', () => {
+    expect(joinSegments(['Dana Whitmore', '', '  ', 'DFC-033'])).toBe('Dana Whitmore · DFC-033');
+  });
+
+  it('never leaves a leading or trailing separator', () => {
+    expect(joinSegments([null, 'DFC-033', undefined])).toBe('DFC-033');
+  });
+
+  it('renders numbers as segments', () => {
+    expect(joinSegments(['30 min', 42])).toBe('30 min · 42');
+  });
+
+  it('returns an empty string when every segment is absent', () => {
+    expect(joinSegments([null, undefined, ''])).toBe('');
+  });
+});
 
 describe('pluralize', () => {
   it('singular for 1, plural otherwise', () => {

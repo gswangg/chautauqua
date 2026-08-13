@@ -15,7 +15,7 @@ import type {
   OverviewPayload,
   TriageRow,
 } from './overview/types';
-import { buildDeadlineCells, buildNoActionRows, daysLateLabel, headlineText, pluralize } from './overview/rows';
+import { buildDeadlineCells, buildNoActionRows, daysLateLabel, headlineText, joinSegments, pluralize } from './overview/rows';
 import { AgendaWorkSection } from './overview/AgendaWorkSection';
 import './overview/overview.css';
 
@@ -328,8 +328,7 @@ export function OverviewPage() {
                 {row.title}
               </div>
               <div className="chq-overview-row-meta">
-                {row.speakerName} · {row.trackName ?? row.format} · {row.ref} ·{' '}
-                {waitingDaysLabel(row.submittedAt, now)}
+                {joinSegments([row.speakerName, row.trackName ?? row.format, row.ref, waitingDaysLabel(row.submittedAt, now)])}
               </div>
               <div className="chq-overview-row-actions-inline">
                 <button
@@ -377,8 +376,7 @@ export function OverviewPage() {
                 {row.title}
               </div>
               <div className="chq-overview-row-meta">
-                {row.speakerName} · {row.fileName}
-                {row.reuploaded ? ' · re-uploaded' : ''}
+                {joinSegments([row.speakerName, row.fileName, row.reuploaded ? 're-uploaded' : null])}
               </div>
             </div>
             <div className="chq-overview-row-actions">

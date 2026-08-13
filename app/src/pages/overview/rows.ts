@@ -5,6 +5,18 @@
 
 import type { OverviewPayload } from './types';
 
+// DEC-779: every dot-joined caption on the Overview page (triage row,
+// content-approval row, §04 unplaced/conflict captions, the "no action
+// needed" rows) goes through this ONE join so a missing/blank segment
+// (a null trackName, a null durationMin, an absent round) is dropped
+// cleanly rather than leaving a leading, trailing or doubled ' · '.
+export function joinSegments(parts: Array<string | number | null | undefined>): string {
+  return parts
+    .map((part) => (part === null || part === undefined ? '' : String(part).trim()))
+    .filter((part) => part.length > 0)
+    .join(' · ');
+}
+
 /** "1 thing" / "4 things" — used by the headline and section captions. */
 export function pluralize(count: number, singular: string, plural: string = `${singular}s`): string {
   return count === 1 ? singular : plural;
@@ -119,6 +131,14 @@ export function buildNoActionRows(payload: OverviewPayload, now: number): NoActi
   // (evaluations expected — every evaluator×plan assignment row, submitted
   // or not) must be counted over the SAME set, never plans-vs-evaluations.
   // A numerator taken outside its own denominator can exceed it.
+  //
+  // DEC-779: the mock's Review row (Chautauqua Overview.dc.html) appends a
+  // "wave N complete" clause, but ReviewAggregate carries no round or
+  // completion field — inventing one here would be a caption asserting
+  // data the payload never named. The evaluation count is the only
+  // segment this row actually has, so joinSegments is a single-element
+  // no-op today; it exists so a future round/completion field composes
+  // without hand-rebuilding the ' · ' plumbing.
   rows.push({
     key: 'review',
     title: 'Review',
@@ -127,7 +147,7 @@ export function buildNoActionRows(payload: OverviewPayload, now: number): NoActi
         ? 'No evaluation plans set up yet.'
         : payload.review.evaluationsExpected === 0
           ? 'No evaluations assigned yet.'
-          : `${payload.review.evaluationsSubmitted} of ${payload.review.evaluationsExpected} ${pluralize(payload.review.evaluationsExpected, 'evaluation')} in.`,
+          : `${joinSegments([`${payload.review.evaluationsSubmitted} of ${payload.review.evaluationsExpected} ${pluralize(payload.review.evaluationsExpected, 'evaluation')} in`])}.`,
   });
 
   const daysSinceSend =
@@ -137,7 +157,10 @@ export function buildNoActionRows(payload: OverviewPayload, now: number): NoActi
     title: 'Comms',
     detail:
       payload.comms.sentLast7Days > 0
-        ? `${payload.comms.sentLast7Days} sent in 7 days${daysSinceSend !== null ? ` · last ${daysSinceSend === 0 ? 'today' : `${daysSinceSend} ${pluralize(daysSinceSend, 'day')} ago`}` : ''}.`
+        ? `${joinSegments([
+            `${payload.comms.sentLast7Days} sent in 7 days`,
+            daysSinceSend !== null ? `last ${daysSinceSend === 0 ? 'today' : `${daysSinceSend} ${pluralize(daysSinceSend, 'day')} ago`}` : null,
+          ])}.`
         : 'No messages sent in the last 7 days.',
   });
 
