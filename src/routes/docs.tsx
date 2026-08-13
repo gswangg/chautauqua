@@ -38,6 +38,7 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "PATCH", path: "/api/v1/rooms/:roomId", role: "organizer" },
       { method: "DELETE", path: "/api/v1/rooms/:roomId", role: "organizer" },
       { method: "GET", path: "/api/v1/events/:eventId/overview", role: "organizer" },
+      { method: "GET", path: "/api/v1/events/:eventId/public-surfaces", role: "organizer (per-surface published counts, DEC-767)" },
     ],
   },
   {
@@ -201,6 +202,7 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "GET", path: "/api/v1/contacts/stats", role: "organizer" },
       { method: "GET", path: "/api/v1/contacts/:id", role: "organizer" },
       { method: "PATCH", path: "/api/v1/contacts/:id", role: "organizer" },
+      { method: "DELETE", path: "/api/v1/contacts/:id", role: "organizer (409 naming dependent counts; merge instead, DEC-758)" },
       { method: "POST", path: "/api/v1/contacts/:id/headshot", role: "organizer" },
       { method: "POST", path: "/api/v1/contacts/:id/add-to-event", role: "organizer" },
       { method: "POST", path: "/api/v1/contacts/import", role: "organizer" },
