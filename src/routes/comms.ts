@@ -39,8 +39,6 @@ import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from "../forms
 import { resolveBaseUrl } from "../server/origin";
 import { clampPage, listPerPage } from "../lib/pagination";
 import { newId } from "../domain/ids";
-import { logFailedSend } from "../mail/log-failed";
-import { isDevMode } from "../server/env";
 
 void DEC_252;
 void DEC_766;
@@ -549,10 +547,8 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
 
   const submissionById = new Map(submissions.map((s) => [s.id, s]));
   const templateId = typeof body.templateId === "string" ? body.templateId : undefined;
-  const { makeMailer, d1EmailLogWriter } = await import("../server/context");
+  const { makeMailer } = await import("../server/context");
   const mailer = makeMailer(c.var.db, c.env);
-  const emailLog = d1EmailLogWriter(c.var.db);
-  const provider = isDevMode(c.env) ? "dev" : "cloudflare-email";
   // DEC-603: one id per fan-out call, shared by every recipient in this
   // loop, so the comms history tab can group the batch into one row.
   const batchId = newId();
@@ -599,10 +595,8 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
     try {
       await mailer.send(attempt);
     } catch (err) {
-      // DEC-766: the mailer rejected this recipient — write the attempted
-      // row so the batch's failure is visible in comms history, not a
-      // silent gap that reads as '0 total'.
-      await logFailedSend(emailLog, attempt, provider, err);
+      // DEC-923: the mailer itself logs the failed attempt (status
+      // 'failed') before rethrowing — no route-level duplicate write.
       failed.push({ email: rendered.email, message: err instanceof Error ? err.message : String(err) });
     }
   }
@@ -671,10 +665,8 @@ commsRoutes.post("/api/v1/events/:eventId/portal-invites", requireOrganizer, csr
   // the shared merge/render machinery — never a string typed here.
   const { rendered, missingEmail } = renderPortalInvites(recipients, event.name, portalLinkByContactId);
 
-  const { makeMailer, d1EmailLogWriter } = await import("../server/context");
+  const { makeMailer } = await import("../server/context");
   const mailer = makeMailer(c.var.db, c.env);
-  const emailLog = d1EmailLogWriter(c.var.db);
-  const provider = isDevMode(c.env) ? "dev" : "cloudflare-email";
   const batchId = newId();
   // DEC-805: a recipient with no address on file never reaches the mailer —
   // named here (not a silent skip) alongside any real send failure.
@@ -697,9 +689,8 @@ commsRoutes.post("/api/v1/events/:eventId/portal-invites", requireOrganizer, csr
       await mailer.send(attempt);
       sent += 1;
     } catch (err) {
-      // DEC-766: the mailer rejected this recipient — write the attempted
-      // row so the send's failure is visible in comms history.
-      await logFailedSend(emailLog, attempt, provider, err);
+      // DEC-923: the mailer itself logs the failed attempt before
+      // rethrowing — no route-level duplicate write.
       failed.push({ email: r.email, message: err instanceof Error ? err.message : String(err) });
     }
   }

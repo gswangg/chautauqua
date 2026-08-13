@@ -92,18 +92,26 @@ vi.mock("../src/server/repo/tasks/reminders", async () => {
 });
 
 const sentMails: { to: { email: string }; text: string }[] = [];
+// DEC-923: makeMailer returns a REAL EmailBindingMailer over a throwing
+// EmailSender + the test's insert-recording db, so the mailer itself is the
+// sole author of the 'failed' email_log row (no route-level duplicate).
 vi.mock("../src/server/context", async () => {
   const actual = await vi.importActual<typeof import("../src/server/context")>("../src/server/context");
+  const { EmailBindingMailer } = await import("../src/mail/email-binding");
   return {
     ...actual,
-    makeMailer: vi.fn(() => ({
-      send: vi.fn(async (mail: { to: { email: string }; text: string }) => {
-        if (mail.to.email === "bad@example.com") {
-          throw new Error("simulated provider rejection");
-        }
-        sentMails.push(mail);
-      }),
-    })),
+    makeMailer: vi.fn((db: unknown) => {
+      const sender = {
+        send: vi.fn(async (mail: { to: { email: string }; text: string }) => {
+          if (mail.to.email === "bad@example.com") {
+            throw new Error("simulated provider rejection");
+          }
+          sentMails.push(mail);
+        }),
+      };
+      const log = actual.d1EmailLogWriter(db as never);
+      return new EmailBindingMailer(sender, log, { email: "noreply@example.com", name: "Chautauqua" });
+    }),
   };
 });
 
@@ -215,7 +223,11 @@ describe("POST /api/v1/events/:eventId/compose/send — partial mailer failure (
     expect(typeof failedRows[0].batchId).toBe("string");
     expect(failedRows[0].batchId.length).toBeGreaterThan(0);
 
-    // No row for the recipient that succeeded.
-    expect(inserts.some((v) => v.toEmail === "good@example.com")).toBe(false);
+    // The recipient that succeeded gets a 'sent' row, never 'failed' — the
+    // real EmailBindingMailer logs every attempt, success or failure
+    // (DEC-923: the mailer is the sole author of email_log).
+    expect(inserts.some((v) => v.toEmail === "good@example.com" && v.status === "failed")).toBe(false);
+    const sentRow = inserts.find((v) => v.toEmail === "good@example.com");
+    expect(sentRow?.status).toBe("sent");
   });
 });

@@ -518,7 +518,7 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
   // recipient or transiently fail). A send failure must NOT 500 the submit —
   // that showed the speaker an error page while the row persisted, so every
   // retry created a duplicate. Log it (the send attempt is recorded in
-  // email_log with status 'error' by the mailer) and still show success.
+  // email_log with status 'failed' by the mailer) and still show success.
   try {
     await mailer.send({
       to: { email, name: `${firstName} ${lastName}`.trim() },

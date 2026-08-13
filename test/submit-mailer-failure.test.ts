@@ -3,14 +3,15 @@
 // the speaker then duplicated the submission. The send is now best-effort
 // (src/routes/public/submit.tsx): a throwing mailer must not stop the
 // confirmation page from rendering, and the failed attempt is still logged
-// to email_log with status 'error' (EmailBindingMailer's own contract).
+// to email_log with status 'failed' (DEC-923: 'failed' is the only
+// failure word — EmailBindingMailer's own contract).
 //
 // Mounts the real publicSubmitRoutes sub-app against a minimal fake db that
 // queues select() rows in call order and records every insert(), mirroring
 // the fakeDb pattern in test/submit-hidden-file-field.test.ts. env.EMAIL is a
 // stub whose send() always throws and env.DEV_MODE is false, so
 // server/context.ts's makeMailer selects EmailBindingMailer (not the dev
-// sink) — that mailer logs an 'error' email_log row via its EmailLogWriter
+// sink) — that mailer logs a 'failed' email_log row via its EmailLogWriter
 // and rethrows, and the route's try/catch around mailer.send swallows it.
 
 import { describe, expect, it } from "vitest";
@@ -161,7 +162,7 @@ function selectQueueFor() {
 }
 
 describe("public submit: mailer failure is best-effort (DEC-237/DEC-238)", () => {
-  it("returns the confirmation page, persists the submission, and logs an 'error' email_log row when the mailer throws", async () => {
+  it("returns the confirmation page, persists the submission, and logs a 'failed' email_log row when the mailer throws", async () => {
     const { db, inserts } = fakeDb(selectQueueFor());
     const app = appWithDb(db);
     const req = submitForm();
@@ -193,14 +194,15 @@ describe("public submit: mailer failure is best-effort (DEC-237/DEC-238)", () =>
     expect(submissionInserts).toHaveLength(1);
     expect((submissionInserts[0] as any).title).toBe("My great talk");
 
-    // EmailBindingMailer logs the failed attempt with status 'error' before
-    // rethrowing (src/mail/email-binding.ts) — the route's try/catch around
-    // mailer.send swallows that rethrow.
+    // EmailBindingMailer logs the failed attempt with status 'failed' before
+    // rethrowing (DEC-923: 'failed' is the only failure word — src/mail/
+    // email-binding.ts) — the route's try/catch around mailer.send swallows
+    // that rethrow.
     const emailLogInserts = inserts.filter(
       (v) => typeof v === "object" && v !== null && !Array.isArray(v) && "toEmail" in (v as object),
     );
     expect(emailLogInserts).toHaveLength(1);
-    expect((emailLogInserts[0] as any).status).toBe("error");
+    expect((emailLogInserts[0] as any).status).toBe("failed");
     expect((emailLogInserts[0] as any).toEmail).toBe("ada@example.com");
     expect((emailLogInserts[0] as any).provider).toBe("cloudflare-email");
   });
