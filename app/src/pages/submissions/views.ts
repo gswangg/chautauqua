@@ -19,6 +19,8 @@ export interface SavedView {
   eventId: string;
   name: string;
   config: SavedViewConfig;
+  createdByUserId: string | null;
+  shared: boolean;
   createdAt: number;
   updatedAt: number;
 }

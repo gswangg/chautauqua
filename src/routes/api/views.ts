@@ -42,8 +42,8 @@ viewsRoutes.get("/events/:eventId/views", requireOrganizer, async (c) => {
   const page = clampPage(c.req.query("page"));
   const perPage = listPerPage(c.req.query("perPage")); // DEC-465
   const [items, total] = await Promise.all([
-    listSavedViews(c.var.db, eventId, { limit: perPage, offset: (page - 1) * perPage }),
-    countSavedViews(c.var.db, eventId),
+    listSavedViews(c.var.db, eventId, auth.userId, { limit: perPage, offset: (page - 1) * perPage }),
+    countSavedViews(c.var.db, eventId, auth.userId),
   ]);
   return c.json({ items, total, page, perPage });
 });
@@ -51,6 +51,7 @@ viewsRoutes.get("/events/:eventId/views", requireOrganizer, async (c) => {
 interface CreateViewBody {
   name?: unknown;
   config?: unknown;
+  shared?: unknown;
 }
 
 // POST /api/v1/events/:eventId/views
@@ -66,8 +67,18 @@ viewsRoutes.post("/events/:eventId/views", requireOrganizer, csrfJson, async (c)
       config: "Invalid saved view configuration",
     });
   }
+  // DEC-904: shared is required and author-controlled from the body, not
+  // defaulted -- an absent/non-boolean value is a caller bug and fails
+  // loudly rather than silently sharing (or hiding) the view.
+  if (typeof body.shared !== "boolean") {
+    throw new ApiError("invalid", "shared must be a boolean", {
+      shared: "Invalid saved view configuration",
+    });
+  }
 
-  const view = await createSavedView(c.var.db, eventId, name, body.config);
+  // DEC-904: the author is always the authenticated caller, never a value
+  // supplied in the body.
+  const view = await createSavedView(c.var.db, eventId, name, body.config, auth.userId, body.shared);
   return c.json(view, 201);
 });
 
