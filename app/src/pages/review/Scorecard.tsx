@@ -3,9 +3,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPost, apiPut, ApiError } from '../../lib/api';
 import './review.css';
 import { formatAnswerValue } from './answerText';
-import { isEvaluationComplete, scorecardKeyAction } from './scorecardLogic';
+import { isEvaluationComplete, ratingScaleValues, scorecardKeyAction } from './scorecardLogic';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { planTrackScope } from './PlanList';
+// DEC-873: the per-criterion weight caption and the "Overall" blend reuse
+// the exact functions the plan editor and server already use, so the
+// reviewer's number and the organizer's number can never disagree.
+import { computeWeightedScore, criterionWeightShares } from '../../../../src/domain/evaluation';
 import type {
   EvaluationCriterion,
   EvaluationPlan,
@@ -27,6 +31,8 @@ export function Scorecard() {
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // DEC-271: this reviewer's declared conflict of interest on this
@@ -89,14 +95,21 @@ export function Scorecard() {
   // priority over the base plan.criteria.
   const criteria = submission?.criteria ?? plan?.criteria ?? [];
 
+  // DEC-873: the one incomplete-card message, shared by both actions --
+  // there is no partial/draft write (validateEvaluationScores refuses
+  // partial scores by design), so both Submit and Save require every
+  // criterion filled before they'll talk to the server.
+  const INCOMPLETE_MESSAGE = 'Rate every criterion before submitting.';
+
   async function submitAndAdvance() {
     if (!planId || !submissionId || !plan) return;
     if (!isEvaluationComplete(criteria, scores)) {
-      setError('Rate every criterion before submitting.');
+      setError(INCOMPLETE_MESSAGE);
       return;
     }
     setSubmitting(true);
     setError(null);
+    setSaved(false);
     try {
       await apiPut(`/review/plans/${planId}/evaluations/${submissionId}`, { scores, comment });
       const queue = await apiList<ReviewerQueueItem>(`/review/plans/${planId}/queue`);
@@ -110,6 +123,30 @@ export function Scorecard() {
       setError(err instanceof ApiError ? err.message : 'Failed to submit evaluation');
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  // DEC-873: "Save" PUTs the identical body as Submit but stays on the
+  // page -- the frame calls this "Save draft", but there is no draft state
+  // to save (a genuinely half-saved evaluation is a cross-cutting schema
+  // change, not a button); this writes the same complete evaluation Submit
+  // would, and simply doesn't advance the reviewer to the next submission.
+  async function saveOnly() {
+    if (!planId || !submissionId || !plan) return;
+    if (!isEvaluationComplete(criteria, scores)) {
+      setError(INCOMPLETE_MESSAGE);
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    try {
+      await apiPut(`/review/plans/${planId}/evaluations/${submissionId}`, { scores, comment });
+      setSaved(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to save evaluation');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -177,6 +214,23 @@ export function Scorecard() {
       </div>
     );
   }
+
+  // DEC-873: the same reader the plan editor uses (PlanEditor.tsx) for the
+  // "Weight N · NN%" caption -- never re-derived here.
+  const weightShares = criterionWeightShares(criteria);
+
+  // DEC-873: computeWeightedScore throws on a missing score, so only call
+  // it once every rating criterion (weight > 0) has a numeric entry;
+  // otherwise the Overall block renders an em dash.
+  const ratingCriteria = criteria.filter((c) => c.kind === 'rating' && (c.weight ?? 0) > 0);
+  const overallReady = ratingCriteria.every((c) => typeof scores[c.id] === 'number' && !Number.isNaN(scores[c.id] as number));
+  const overallScore = overallReady
+    ? computeWeightedScore(
+        Object.fromEntries(ratingCriteria.map((c) => [c.id, scores[c.id] as number])),
+        ratingCriteria.map((c) => ({ id: c.id, label: c.label, weight: c.weight as number })),
+        plan.scale,
+      )
+    : null;
 
   // DEC-831: eyebrow names plan · track · round (round only when the plan
   // runs more than one) -- the track clause reuses planTrackScope so it can
@@ -288,17 +342,38 @@ export function Scorecard() {
           </label>
           {/* DEC-676: guidance renders under the label; nothing when absent. */}
           {criterion.guidance && <p className="chq-review-criterion-guidance">{criterion.guidance}</p>}
+          {/* DEC-873: weight caption reads the plan editor's own share
+              reader -- criteria with no weight (dropdown/text, or an
+              unweighted rating row) print nothing. */}
+          {criterion.kind === 'rating' && weightShares[criterion.id] !== undefined && (
+            <p className="chq-review-criterion-weight-caption">
+              Weight {criterion.weight} · {weightShares[criterion.id]}%
+            </p>
+          )}
           {criterion.kind === 'rating' ? (
-            <input
-              type="number"
-              className="chq-input"
-              min={plan.scale.min}
-              max={plan.scale.max}
-              disabled={!!recusal}
-              value={typeof scores[criterion.id] === 'number' ? (scores[criterion.id] as number) : ''}
-              onFocus={() => setFocusedId(criterion.id)}
-              onChange={(e) => setScores((s) => ({ ...s, [criterion.id]: Number(e.target.value) }))}
-            />
+            <div
+              role="radiogroup"
+              aria-label={criterion.label}
+              className="chq-review-rating-group"
+            >
+              {ratingScaleValues(plan.scale).map((value) => {
+                const selected = scores[criterion.id] === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    className={`chq-review-rating-btn${selected ? ' chq-review-rating-btn-selected' : ''}`}
+                    disabled={!!recusal}
+                    onFocus={() => setFocusedId(criterion.id)}
+                    onClick={() => setScores((s) => ({ ...s, [criterion.id]: value }))}
+                  >
+                    {value}
+                  </button>
+                );
+              })}
+            </div>
           ) : criterion.kind === 'dropdown' ? (
             <select
               className="chq-select"
@@ -327,6 +402,16 @@ export function Scorecard() {
         </div>
       ))}
 
+      {/* DEC-873: the Overall block is never an input -- it's the same
+          computeWeightedScore the server and plan editor use, printed to
+          one decimal, or an em dash until every rating criterion is
+          scored. */}
+      <section className="chq-review-overall">
+        <h2 className="chq-section-label">Overall</h2>
+        <p className="chq-review-overall-caption">Averaged by weight · not editable</p>
+        <p className="chq-review-overall-value">{overallScore === null ? '—' : overallScore.toFixed(1)}</p>
+      </section>
+
       <label className="chq-review-field">
         Comment
         <textarea className="chq-textarea" value={comment} disabled={!!recusal} onChange={(e) => setComment(e.target.value)} />
@@ -334,8 +419,16 @@ export function Scorecard() {
 
       <div className="chq-review-editor-actions">
         <button type="button" className="chq-btn chq-btn-primary" disabled={submitting || !!recusal} onClick={() => void submitAndAdvance()}>
-          {submission.myEvaluation ? 'Update rating' : 'Submit and advance'}
+          Submit and next
         </button>
+        <button type="button" className="chq-btn chq-btn-secondary" disabled={saving || !!recusal} onClick={() => void saveOnly()}>
+          Save
+        </button>
+        {saved && (
+          <span className="chq-review-saved-confirmation" role="status">
+            Saved
+          </span>
+        )}
       </div>
     </div>
   );

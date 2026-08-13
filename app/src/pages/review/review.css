@@ -1081,3 +1081,66 @@
   font-size: 13px;
   color: var(--chq-muted);
 }
+
+/* task-w15-c */
+.chq-review-rating-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.chq-review-rating-btn {
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--chq-rule);
+  border-radius: var(--chq-r-card);
+  background: var(--chq-surface);
+  font-family: var(--chq-font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--chq-ink);
+  cursor: pointer;
+}
+
+.chq-review-rating-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.chq-review-rating-btn-selected {
+  background: var(--chq-ink);
+  color: var(--chq-surface);
+  border-color: var(--chq-ink);
+}
+
+.chq-review-criterion-weight-caption {
+  margin: -2px 0 0;
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
+.chq-review-overall {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-review-overall-caption {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+.chq-review-overall-value {
+  margin: 8px 0 0;
+  font-family: var(--chq-font-display);
+  font-size: 27px;
+  font-weight: 600;
+}
+
+.chq-review-saved-confirmation {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-ink-2);
+  align-self: center;
+}
