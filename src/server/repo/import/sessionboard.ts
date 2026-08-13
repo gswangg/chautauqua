@@ -243,26 +243,53 @@ type ParticipantUpdateRow = {
   order?: number;
 };
 
-// DEC-528 (wave 47 amendment): the accumulated participant updates are
+// DEC-528 (wave 49 amendment): the accumulated participant updates are
 // flushed HERE, after the row loop has finished resolving every id -- the
-// loop itself never awaits an update. Each row still applies as its own
-// statement: SQLite's `UPDATE ... SET` binds one column list per statement,
-// and this batch's rows carry differing column sets (role only / order only
-// / both), so a genuine multi-row single-statement UPDATE would require a
-// per-column CASE/WHEN expression keyed on id. The create path (the
-// dominant cost for a fresh CSV import -- see the INSERT chunking above)
-// gets that set-based treatment; the update path (idempotent re-import of
-// already-known pairs) is deferred out of the read loop but not fused into
-// fewer statements. Flagged as a narrower interpretation of "chunked
-// UPDATEs" than a literal multi-row CASE statement -- follow up if the
-// update path also needs to collapse to O(chunks) statements.
+// loop itself never awaits an update. Rows are grouped by column-set
+// SIGNATURE (which optional keys are present -- derived by enumerating each
+// row's own keys, never a hand-listed enum that desyncs when
+// ParticipantUpdateRow grows) and then by the actual VALUE TUPLE for that
+// signature. Every row sharing a (signature, value tuple) sets the exact
+// same columns to the exact same values, so it collapses into one
+// `UPDATE ... WHERE id IN (...)` per chunk of that group's ids (chunked via
+// chunkIds for the D1 bound-parameter ceiling) instead of one statement per
+// row. A 500-row idempotent re-import (a handful of distinct role/order
+// combinations) now pays O(distinct value tuples * chunks) statements, not
+// O(rows).
 async function flushParticipantUpdates(db: Db, rows: ParticipantUpdateRow[], ts: Date): Promise<void> {
+  // Map from signature -> (value-tuple key -> { values, ids }).
+  const groups = new Map<string, Map<string, { values: Record<string, unknown>; ids: string[] }>>();
+
   for (const row of rows) {
     const { id, ...set } = row;
-    await db
-      .update(schema.participant)
-      .set({ ...set, updatedAt: ts })
-      .where(eq(schema.participant.id, id));
+    const keys = Object.keys(set).sort();
+    const signature = keys.join(",");
+    const valueKey = JSON.stringify(keys.map((k) => (set as Record<string, unknown>)[k]));
+
+    let bySignature = groups.get(signature);
+    if (!bySignature) {
+      bySignature = new Map();
+      groups.set(signature, bySignature);
+    }
+    let entry = bySignature.get(valueKey);
+    if (!entry) {
+      const values: Record<string, unknown> = {};
+      for (const k of keys) values[k] = (set as Record<string, unknown>)[k];
+      entry = { values, ids: [] };
+      bySignature.set(valueKey, entry);
+    }
+    entry.ids.push(id);
+  }
+
+  for (const bySignature of groups.values()) {
+    for (const { values, ids } of bySignature.values()) {
+      for (const batch of chunkIds(ids)) {
+        await db
+          .update(schema.participant)
+          .set({ ...values, updatedAt: ts })
+          .where(inArray(schema.participant.id, batch));
+      }
+    }
   }
 }
 
