@@ -17,6 +17,7 @@ import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { buildSnippet, type EmbedFormat, type EmbedOptions, type EmbedSurface } from './embedSnippet';
 import { formatEmbedRecipe } from './embedRecipe';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { PUBLIC_PAGES_STATE_TONE_CLASS } from './publicPagesState';
 
 // DEC-839: the wire contract — `options` is the PARSED object a saved-embed
 // row carries over the wire, never the stored JSON string.
@@ -132,8 +133,8 @@ export function SavedEmbedsPanel({ onBuild }: Props) {
                 <span className="chq-settings-public-pages-path">{`/embed/e/${embed.id}`}</span>
                 <span className="chq-embeds-recipe">{recipe}</span>
                 <span
-                  className={`chq-settings-public-pages-state chq-settings-public-pages-state-${
-                    embed.enabled ? 'live' : 'muted'
+                  className={`chq-settings-public-pages-state ${
+                    PUBLIC_PAGES_STATE_TONE_CLASS[embed.enabled ? 'live' : 'muted']
                   }`}
                 >
                   {embed.enabled ? 'On' : 'Off'}

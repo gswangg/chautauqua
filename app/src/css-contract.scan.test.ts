@@ -16,9 +16,22 @@
 //      shorthand) — otherwise it inherits the browser default (Arial) next
 //      to the app's chosen UI typeface.
 //
-// Both scans ENUMERATE every *.css file under app/src via readdirSync
-// (mirroring page-measure.test.ts / DEC-808) rather than a hand-listed
-// manifest, so a new page's CSS is checked automatically.
+//   C) (DEC-976) every `chq-…` class token used in a *.tsx file's className
+//      (a bare string, a template literal, or a conditional expression) has
+//      a matching `.chq-…` rule SOMEWHERE in the app's CSS — including
+//      inside an @media block, since a class defined only in a phone
+//      override is still defined. A markup token with no matching rule is
+//      a bug (typo/renamed class) or dead weight (a leftover className);
+//      this invariant makes both build-time failures instead of a silent
+//      no-op in the browser. A token that is a deliberate no-style hook
+//      (used only as a scroll/query anchor, never meant to carry a rule)
+//      must be named in NO_STYLE_HOOK_TOKENS below with its reason — never
+//      an allowlist populated from the failure output.
+//
+// All three scans ENUMERATE every *.css / *.tsx file under app/src via
+// readdirSync (mirroring page-measure.test.ts / DEC-808) rather than a
+// hand-listed manifest, so a new page's markup and CSS are checked
+// automatically.
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -106,6 +119,75 @@ function declaresFontFace(body: string): boolean {
   return /font-family\s*:/.test(body) || /font\s*:/.test(body);
 }
 
+/** Every *.tsx file under app/src, excluding test files (DEC-976/DEC-808). */
+function allTsxFiles(root: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
+    if (!entry.isFile() || !entry.name.endsWith('.tsx')) continue;
+    if (entry.name.includes('.test.')) continue;
+    out.push(join(entry.parentPath, entry.name));
+  }
+  return out.sort();
+}
+
+/** Strips `//` line comments and `/* *\/` block comments from TSX source. */
+function stripTsxComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+}
+
+/**
+ * Every `className={...}` / `className="..."` region's raw text, scanned
+ * for brace-balance on the `{...}` form so a nested expression (a ternary,
+ * a template literal, a function call) is captured in full.
+ */
+function classNameRegions(src: string): string[] {
+  const regions: string[] = [];
+  const re = /className\s*=\s*(\{|")/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(src)) !== null) {
+    const opener = m[1];
+    const start = re.lastIndex;
+    if (opener === '"') {
+      const end = src.indexOf('"', start);
+      if (end === -1) continue;
+      regions.push(src.slice(start, end));
+      re.lastIndex = end + 1;
+    } else {
+      let depth = 1;
+      let i = start;
+      while (i < src.length && depth > 0) {
+        if (src[i] === '{') depth++;
+        else if (src[i] === '}') depth--;
+        i++;
+      }
+      regions.push(src.slice(start, i - 1));
+      re.lastIndex = i;
+    }
+  }
+  return regions;
+}
+
+/** Every distinct `chq-…` token found inside className regions of `src`. */
+function classNameTokens(src: string): string[] {
+  const out = new Set<string>();
+  const re = /chq-[a-z0-9-]+/g;
+  for (const region of classNameRegions(src)) {
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(region)) !== null) out.add(m[0]);
+  }
+  return [...out];
+}
+
+/**
+ * Deliberate no-style hooks: a `chq-…` className used only as a scroll or
+ * query anchor, never meant to carry a rule. One named entry per class,
+ * with the reason written beside it — never an allowlist populated from
+ * the failure output (DEC-976).
+ */
+const NO_STYLE_HOOK_TOKENS = new Set<string>([
+  // (none identified yet — every markup token found a rule or was deleted)
+]);
+
 describe('CSS token + button-face contract (DEC-937)', () => {
   it('found more than one CSS file to scan', () => {
     // Guards the enumeration itself: if readdirSync ever returned nothing,
@@ -147,5 +229,38 @@ describe('CSS token + button-face contract (DEC-937)', () => {
       }
     }
     expect(offenders, `button-face rules with no font-family/font:\n${offenders.join('\n')}`).toEqual([]);
+  });
+
+  it('every chq-… className token used in markup has a matching CSS rule (DEC-976)', () => {
+    // Defined set: every `.chq-…` class selector appearing anywhere in the
+    // union of the CSS files, including inside @media blocks (comments
+    // stripped only, media NOT stripped — a phone-only class is defined).
+    const defined = new Set<string>();
+    for (const path of CSS_FILES) {
+      const css = stripComments(readFileSync(path, 'utf-8'));
+      const re = /\.(chq-[A-Za-z0-9-]+)/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(css)) !== null) {
+        const token = m[1];
+        if (token) defined.add(token);
+      }
+    }
+
+    const TSX_FILES = allTsxFiles(HERE);
+    expect(TSX_FILES.length).toBeGreaterThan(5);
+
+    const offenders: string[] = [];
+    for (const path of TSX_FILES) {
+      const src = stripTsxComments(readFileSync(path, 'utf-8'));
+      const label = relative(HERE, path);
+      for (const token of classNameTokens(src)) {
+        if (defined.has(token) || NO_STYLE_HOOK_TOKENS.has(token)) continue;
+        offenders.push(`${label}: ${token}`);
+      }
+    }
+    expect(
+      offenders,
+      `className tokens with no matching CSS rule (add a rule or delete the className):\n${offenders.join('\n')}`,
+    ).toEqual([]);
   });
 });

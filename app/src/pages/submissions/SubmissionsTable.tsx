@@ -377,7 +377,12 @@ export function SubmissionsTable() {
                   <td>{item.speakers.map((s) => s.name).join(', ')}</td>
                   <td className="chq-submissions-table-muted">{trackNames(item.trackIds, tracks)}</td>
                   <td>
-                    <span className={`chq-flag chq-status-${item.status}`}>{STATUS_LABELS[item.status]}</span>
+                    {/* DEC-367: no per-status colour -- .chq-flag is the
+                        whole of the type-only style; a per-value
+                        chq-status-<status> modifier was dead weight (no
+                        rule ever existed, and DEC-367 forbids adding one),
+                        so it is dropped rather than given a rule (DEC-976). */}
+                    <span className="chq-flag">{STATUS_LABELS[item.status]}</span>
                   </td>
                   <td className="chq-submissions-table-muted">{formatDate(item.submittedAt)}</td>
                   {shownColumns.map((col) => (
