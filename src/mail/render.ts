@@ -49,6 +49,20 @@ export const BULK_EMAIL_MERGE_FIELDS: readonly MergeField[] = [
 // the body, never the subject line.
 export const BLOCK_MERGE_FIELDS: readonly MergeField[] = ["task_list", "feedback"] as const;
 
+// DEC-993: "Merge fields are a dropdown" — the open panel lists each token
+// beside a one-line sample value. Typed as a Record over MergeField so a
+// merge field grown into MERGE_FIELDS without a matching sample is a
+// compile error, not a silently blank row in the menu.
+export const MERGE_FIELD_SAMPLES: Record<MergeField, string> = {
+  speaker_name: "Marcus Okafor",
+  talk_title: "Taming 40-Minute CI",
+  event_name: "DevFlow Conf 2027",
+  portal_link: "https://…/portal",
+  due_date: "14 Mar",
+  task_list: "• Sign speaker agreement  • Upload your slides",
+  feedback: "Great pacing — tighten the intro by about two minutes.",
+};
+
 export const SUBJECT_MERGE_FIELDS: readonly MergeField[] = COMPOSE_MERGE_FIELDS.filter(
   (f) => !(BLOCK_MERGE_FIELDS as readonly string[]).includes(f),
 );

@@ -7,14 +7,16 @@ import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { FormRow } from '../../components/ModalFrame';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { COMPOSE_MERGE_FIELDS } from '../../lib/merge-fields';
+import { COMPOSE_MERGE_FIELDS, type MergeField } from '../../lib/merge-fields';
+import { InsertFieldMenu } from './InsertFieldMenu';
 import { countOf } from '../../lib/plural';
 import type { EmailTemplate, RenderedRecipient } from './types';
 import type { EvaluationPlan } from '../review/types';
-import { DEC_793, DEC_967 } from '../../../../src/decisions';
+import { DEC_793, DEC_967, DEC_993 } from '../../../../src/decisions';
 
 void DEC_793;
 void DEC_967;
+void DEC_993;
 
 // J5's decide != notify: the picker defaults to the two decided statuses so
 // organizers compose against the submissions they've already ruled on, but
@@ -201,9 +203,10 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     return ids.length > 0 ? ids : null;
   }
 
-  // DEC-793: inserts a merge-field token at the textarea's current caret
-  // (not appended blindly) and restores focus + caret after the insert.
-  function insertMergeField(field: string) {
+  // DEC-793/DEC-993: inserts a merge-field token at the textarea's current
+  // caret (not appended blindly) and restores focus + caret after the
+  // insert.
+  function insertMergeField(field: MergeField) {
     const token = `{${field}}`;
     const el = bodyRef.current;
     const start = el?.selectionStart ?? bodyText.length;
@@ -580,12 +583,11 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               onChange={(e) => setBodyText(e.target.value)}
             />
           </FormRow>
-          <div className="chq-comms-merge-chips chq-comms-template-body-merge-chips">
-            {COMPOSE_MERGE_FIELDS.filter((field) => field !== 'feedback' || plans.length > 0).map((field) => (
-              <button key={field} type="button" className="chq-pill" onClick={() => insertMergeField(field)}>
-                {`{${field}}`}
-              </button>
-            ))}
+          <div className="chq-comms-template-body-merge-chips">
+            <InsertFieldMenu
+              fields={COMPOSE_MERGE_FIELDS.filter((field) => field !== 'feedback' || plans.length > 0)}
+              onInsert={insertMergeField}
+            />
           </div>
           <p className="chq-comms-panel-note">
             Merge fields fill in per recipient &mdash; shown resolved in Preview.
