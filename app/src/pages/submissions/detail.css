@@ -323,7 +323,7 @@
   border: 1px solid var(--chq-rule);
   border-radius: 6px;
   padding: 16px 18px 18px;
-  background: var(--chq-sunk);
+  background: var(--chq-surface-sunk);
 }
 
 .chq-detail-decision-body {
