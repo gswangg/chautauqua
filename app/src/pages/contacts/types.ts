@@ -10,6 +10,9 @@ export interface ContactListItem {
   company?: string | null;
   title?: string | null;
   submissionCount?: number;
+  // DEC-712: derived participation-role labels, batched one query per page
+  // over `participant` (never a per-row query, never a free-text column).
+  labels: string[];
 }
 
 export interface ContactStats {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildSegmentRulesFromFilters, describeRules, matchesRules } from './segments';
 import type { ContactListItem, SegmentRule } from './types';
 
-const contact: ContactListItem = { id: 'c1', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', company: 'Acme' };
+const contact: ContactListItem = { id: 'c1', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', company: 'Acme', labels: [] };
 
 describe('buildSegmentRulesFromFilters', () => {
   it('returns [] when no filters are active', () => {

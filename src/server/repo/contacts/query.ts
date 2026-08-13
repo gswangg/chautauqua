@@ -1,10 +1,17 @@
-// Contacts repo: pure, db-free decisions (unit-tested directly). Split out
-// of repo/contacts.ts (contention decomposition, no behavior change). See
+// Contacts repo: pure, db-free decisions (unit-tested directly), plus one
+// DEC-712 exception (fetchContactLabels) which is the natural batched call
+// site for the directory list's derived labels column. Split out of
+// repo/contacts.ts (contention decomposition, no behavior change). See
 // repo/contacts.ts for the module-level contract notes.
 
+import { inArray } from "drizzle-orm";
 import type { ContactRecord, SegmentRule } from "../../../domain/contacts";
 import type { ContactRow } from "./rows";
 import { clampPage, clampPerPage } from "../../../lib/pagination";
+import type { Db } from "../../context";
+import * as schema from "../../../db/schema";
+import { chunkIds } from "../../../lib/chunk";
+import { participantRoleLabel } from "../../../domain/participant-roles";
 
 export interface ParsedContactListQuery {
   page: number;
@@ -197,4 +204,48 @@ export function mergedPipelineStage(
   const mergeRank = PIPELINE_STAGE_RANK[merge];
   if (mergeRank > keepRank) return merge;
   return keep;
+}
+
+export interface ContactParticipantRoleRow {
+  contactId: string;
+  role: string;
+}
+
+/** DEC-712: maps already-fetched `participant` rows (contactId, role) to
+ * each contact's deduped label list, resolving every role through the ONE
+ * imported vocabulary (participantRoleLabel — never a hand-copied label
+ * table). Order is stable: each contact's labels appear in first-seen
+ * order among that contact's own rows, not re-sorted. Pure/db-free: the
+ * caller (fetchContactLabels below) does the actual query. */
+export function deriveContactLabels(rows: ContactParticipantRoleRow[]): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  for (const row of rows) {
+    const label = participantRoleLabel(row.role);
+    const existing = out.get(row.contactId);
+    if (existing) {
+      if (!existing.includes(label)) existing.push(label);
+    } else {
+      out.set(row.contactId, [label]);
+    }
+  }
+  return out;
+}
+
+/** DEC-712: the directory list's ONE batched query over `participant` for a
+ * page's contact ids — never a per-row query. Returns every contact id's
+ * deduped label list; a contactId with zero participant rows is simply
+ * absent from the map (callers default to []). Chunked via chunkIds
+ * (D1 bound-parameter ceiling, DEC-078) even though a single directory page
+ * (<= 200 ids, DEC-461) rarely needs more than one chunk. */
+export async function fetchContactLabels(db: Db, contactIds: string[]): Promise<Map<string, string[]>> {
+  if (contactIds.length === 0) return new Map();
+  const rows: ContactParticipantRoleRow[] = [];
+  for (const batch of chunkIds(contactIds)) {
+    const found = await db
+      .select({ contactId: schema.participant.contactId, role: schema.participant.role })
+      .from(schema.participant)
+      .where(inArray(schema.participant.contactId, batch));
+    rows.push(...found);
+  }
+  return deriveContactLabels(rows);
 }

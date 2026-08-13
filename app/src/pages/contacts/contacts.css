@@ -119,6 +119,28 @@
   letter-spacing: -0.015em;
 }
 
+/* DEC-712/eval-findings 45+55: derived-role label chips, uppercase small-caps
+   per mock (Chautauqua Contacts.dc.html:98). */
+.chq-contacts-label-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chq-contacts-label-chip {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chq-ink-2);
+  border: 1px solid var(--chq-border);
+  border-radius: var(--chq-r-pill, 99px);
+  padding: 2px 8px;
+}
+
 /* ---------------------------------------------------------------------- */
 /* Drawer                                                                  */
 /* ---------------------------------------------------------------------- */
@@ -384,17 +406,14 @@
   }
 
   .chq-contacts-table tbody td:nth-child(4)::before {
-    content: '# Submissions: ';
+    content: 'Labels: ';
     font-weight: 600;
     color: var(--chq-muted);
   }
 
   .chq-contacts-table tbody td:nth-child(5) {
     order: 5;
-  }
-
-  .chq-contacts-table tbody td:nth-child(5) .chq-btn {
-    width: 100%;
+    align-self: flex-start;
   }
 
   .chq-contacts-name-cell,

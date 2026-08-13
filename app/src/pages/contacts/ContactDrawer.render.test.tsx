@@ -18,6 +18,7 @@ const CONTACT: ContactDetail = {
   email: 'priya@example.com',
   company: 'Latticework Systems',
   title: 'Principal Engineer',
+  labels: [],
   phone: null,
   notes: null,
   bio: 'Distributed systems engineer.',

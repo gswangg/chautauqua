@@ -211,6 +211,9 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
     email,
     company: company || undefined,
     title: title || undefined,
+    // DEC-712: this drawer-local projection only feeds AddToEventModal
+    // (which doesn't render labels) — never the directory table itself.
+    labels: [],
   };
 
   function textField(

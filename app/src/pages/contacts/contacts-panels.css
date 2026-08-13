@@ -1,5 +1,5 @@
 /* Contacts lane 2 (w2-e, DEC-376): PipelineBoard, DuplicatesView, SegmentsPanel,
-   FilterRulesPanel, ImportWizard. Shared .chq-* classes (page-title, summary,
+   ImportWizard. Shared .chq-* classes (page-title, summary,
    section, section-head, section-label, btn/btn-primary/btn-secondary/
    btn-tertiary, input/select/textarea, check, table, pill, chipstrip, modal,
    drawer, empty, error, steps/step) are owned by the shell lane in
@@ -414,23 +414,9 @@
   color: var(--chq-muted);
 }
 
-/* ---------------------------------------------------------------------- */
-/* Filter rule builder                                                    */
-/* ---------------------------------------------------------------------- */
-
-.chq-contacts-filter-rules {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.chq-contacts-filter-rules-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
+/* Save-current-filters field label — shared with the former FilterRulesPanel
+ * (deleted, DEC-712/eval-findings 45+55); SegmentsPanel still uses it for
+ * its own "Segment name" field. */
 .chq-contacts-filter-rules-field {
   display: flex;
   flex-direction: column;
@@ -440,37 +426,6 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--chq-muted);
-}
-
-.chq-contacts-filter-rule-chips {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.chq-contacts-filter-rule-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid var(--chq-border);
-  border-radius: var(--chq-r-pill, 99px);
-  padding: 5px 6px 5px 12px;
-  font-size: 12px;
-  color: var(--chq-ink-2);
-  background: var(--chq-surface);
-}
-
-.chq-contacts-filter-rule-chip button {
-  background: none;
-  border: none;
-  color: var(--chq-muted);
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 2px 4px;
 }
 
 /* ---------------------------------------------------------------------- */

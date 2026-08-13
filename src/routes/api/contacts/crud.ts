@@ -41,8 +41,18 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     const rules = parseRulesQueryParam(query.rules);
     const params = repo.parseContactListQuery(query as Record<string, string | undefined>, rules);
     const result = await repo.listContactsForOrg(c.var.db, orgId, params);
+    // DEC-712: ONE batched query over `participant` for this page's contact
+    // ids -- never a per-row query. A contact with zero participant rows
+    // gets [] (map miss), not an error.
+    const labelsByContactId = await repo.fetchContactLabels(
+      c.var.db,
+      result.items.map((item) => item.id),
+    );
     return c.json({
-      items: result.items.map(serializeContact),
+      items: result.items.map((item) => ({
+        ...serializeContact(item),
+        labels: labelsByContactId.get(item.id) ?? [],
+      })),
       total: result.total,
       page: params.page,
       perPage: params.perPage,

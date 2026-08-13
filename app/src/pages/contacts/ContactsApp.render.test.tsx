@@ -37,7 +37,7 @@ describe('ContactsApp render smoke (CRM-12 top-companies drill-through)', () => 
       },
       'GET /api/v1/segments': listEnvelope([]),
       'GET /api/v1/contacts': listEnvelope([
-        { id: 'ct1', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', company: 'Acme' },
+        { id: 'ct1', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', company: 'Acme', labels: [] },
       ]),
     });
 
@@ -76,7 +76,7 @@ describe('ContactsApp render smoke: directory search (DEC-684)', () => {
       },
       'GET /api/v1/segments': listEnvelope([]),
       'GET /api/v1/contacts': listEnvelope([
-        { id: 'ct1', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', company: 'Acme' },
+        { id: 'ct1', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', company: 'Acme', labels: [] },
       ]),
     });
 

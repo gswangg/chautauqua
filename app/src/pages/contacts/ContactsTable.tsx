@@ -1,8 +1,5 @@
-import { useState } from 'react';
 import type { ContactListItem, Segment, SegmentRule } from './types';
 import { isPageFullySelected, isPagePartiallySelected, selectionReducer, type SelectionState } from './selection';
-import { FilterRulesPanel } from './FilterRulesPanel';
-import { AddToEventModal } from './AddToEventModal';
 import { DelayedLoading } from '../../components/DelayedLoading';
 
 interface Props {
@@ -10,6 +7,11 @@ interface Props {
   total: number;
   page: number;
   perPage: number;
+  // DEC-712/eval-findings 45+55: the FIELD/OPERATOR/VALUE rule builder and
+  // the in-table Segment select moved out of this component (segment
+  // control now lives on the tab row) — these five props are kept, unused,
+  // purely so ContactsApp's existing call site keeps compiling until it is
+  // updated to stop passing them.
   rules: SegmentRule[];
   segmentId: string;
   segments: Segment[];
@@ -28,40 +30,18 @@ export function ContactsTable({
   total,
   page,
   perPage,
-  rules,
-  segmentId,
-  segments,
   selection,
   loading,
-  onChangeRules,
-  onChangeSegment,
   onChangePage,
   onSelectionChange,
   onOpenContact,
   onBulkEmail,
 }: Props) {
   const pageIds = items.map((item) => item.id);
-  const [addToEventContact, setAddToEventContact] = useState<ContactListItem | null>(null);
   const selectedCount = selection.selectedIds.size;
 
   return (
     <div className="chq-contacts-table-wrap">
-      <div className="chq-toolbar">
-        <label className="chq-contacts-segment-select">
-          Segment
-          <select className="chq-select" aria-label="Segment filter" value={segmentId} onChange={(e) => onChangeSegment(e.target.value)}>
-            <option value="">All contacts</option>
-            {segments.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <FilterRulesPanel rules={rules} onChange={onChangeRules} />
-
       {selectedCount > 0 && (
         <div className="chq-bulkbar" role="toolbar" aria-label="Bulk actions">
           <span className="chq-bulkbar-count">{selectedCount} selected</span>
@@ -98,7 +78,7 @@ export function ContactsTable({
             </th>
             <th>Name and email</th>
             <th>Company</th>
-            <th># Submissions</th>
+            <th>Labels</th>
             <th></th>
           </tr>
         </thead>
@@ -141,20 +121,28 @@ export function ContactsTable({
                     <span className="chq-meta">{c.title ?? '—'}</span>
                   </div>
                 </td>
-                <td>{c.submissionCount ?? '—'}</td>
                 <td>
-                  <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setAddToEventContact(c)}>
-                    Add to event…
+                  {c.labels.length > 0 ? (
+                    <ul className="chq-contacts-label-chips">
+                      {c.labels.map((label) => (
+                        <li key={label} className="chq-contacts-label-chip">
+                          {label}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <span className="chq-meta">—</span>
+                  )}
+                </td>
+                <td>
+                  <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => onOpenContact(c.id)}>
+                    Open
                   </button>
                 </td>
               </tr>
             ))}
         </tbody>
       </table>
-
-      {addToEventContact && (
-        <AddToEventModal contact={addToEventContact} onClose={() => setAddToEventContact(null)} />
-      )}
 
       <div className="chq-pager">
         <button type="button" className="chq-btn chq-btn-secondary" disabled={page <= 1} onClick={() => onChangePage(page - 1)}>
