@@ -13,12 +13,13 @@ import * as repo from "../../server/repo/users";
 import { listEventsForOrg } from "../../server/repo/events";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import { normalizeEmail, isValidEmail } from "../../domain/email";
-import { DEC_239, DEC_454, DEC_467 } from "../../decisions";
+import { DEC_239, DEC_454, DEC_467, DEC_778 } from "../../decisions";
 
 export const usersRoutes = new Hono<AppEnv>();
 void DEC_239; // GET /api/v1/users items must retain {id,email,role,...} -- the SPA's ReviewerOption keys on `id`, not `userId`
 void DEC_454; // one canonical email rule, applied at every contact.email write/lookup
 void DEC_467; // user.email obeys DEC-454 too
+void DEC_778; // PATCH /api/v1/users/:id role change -- a role you can see is a role you can change
 
 const ALLOWED_ROLES = new Set(["reviewer", "organizer"]);
 
@@ -131,4 +132,39 @@ usersRoutes.post("/api/v1/users/:id/reset-password", requireOrganizer, csrfJson,
   await repo.deleteUserSessions(c.var.db, target.id);
 
   return c.json({ id: target.id, email: target.email, role: target.role, password }, 200);
+});
+
+// DEC-778: role change becomes a real capability. Refuses loudly rather than
+// silently no-op'ing: unknown role (400), target outside the caller's org
+// (404, matches getOrgUserById's cross-org-hides-as-missing behavior), the
+// caller targeting themselves (409 -- privilege changes are not self-service),
+// and demoting the org's last remaining organizer (409). Sessions are NOT
+// revoked -- a role change is not a compromise.
+usersRoutes.patch("/api/v1/users/:id", requireOrganizer, csrfJson, async (c) => {
+  const auth = currentAuth(c);
+  const userId = c.req.param("id");
+  const body = await c.req.json().catch(() => null);
+  const record = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
+  const role = typeof record.role === "string" ? record.role : "";
+  if (!ALLOWED_ROLES.has(role)) {
+    throw new ApiError("invalid", "role must be 'reviewer' or 'organizer'", { role: "invalid" });
+  }
+
+  const target = await repo.getOrgUserById(c.var.db, userId, auth.orgId);
+  if (!target) throw new ApiError("not_found", "User not found");
+
+  if (target.id === auth.userId) {
+    throw new ApiError("conflict", "You cannot change your own role");
+  }
+
+  if (target.role === "organizer" && role !== "organizer") {
+    const organizerCount = await repo.countOrgUsers(c.var.db, auth.orgId, "organizer");
+    if (organizerCount <= 1) {
+      throw new ApiError("conflict", "Cannot remove the organization's last organizer");
+    }
+  }
+
+  await repo.updateUserRole(c.var.db, target.id, role);
+
+  return c.json({ id: target.id, email: target.email, role }, 200);
 });

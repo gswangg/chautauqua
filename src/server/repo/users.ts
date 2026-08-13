@@ -105,6 +105,13 @@ export async function updateUserPasswordHash(db: Db, userId: string, passwordHas
   await db.update(schema.user).set({ passwordHash, updatedAt: new Date() }).where(eq(schema.user.id, userId));
 }
 
+/** Updates a user's role (DEC-778 role change). Caller is responsible for
+ * every guard (org scope, self-service refusal, last-organizer refusal) --
+ * this just writes the column. */
+export async function updateUserRole(db: Db, userId: string, role: string): Promise<void> {
+  await db.update(schema.user).set({ role, updatedAt: new Date() }).where(eq(schema.user.id, userId));
+}
+
 /** Deletes every auth_session row for a user — used on password reset/
  * re-issue to force re-authentication everywhere (mirrors DEC-200's
  * self-service /account/password revoke-all behavior). */
