@@ -587,7 +587,8 @@ interface DeleteBody {
 
 // The confirmation page's read-only preview of planSubmissionDelete —
 // projected explicitly so the internal-only fileR2Keys field (the route
-// deletes those R2 objects before committing) never reaches the wire.
+// deletes those R2 objects after committing the row delete) never reaches
+// the wire.
 submissionsRoutes.get("/events/:eventId/submissions/delete-plan", requireOrganizer, async (c) => {
   const auth = requireAuth(c);
   const eventId = c.req.param("eventId");
@@ -623,19 +624,29 @@ submissionsRoutes.post("/events/:eventId/submissions/delete", requireOrganizer, 
 
   const plan = await planSubmissionDelete(c.var.db, eventId, ids);
 
-  // DEC-713 ordering (amended wave 47): every R2 object is deleted through
-  // the same FileStore abstraction the version-delete route uses, BEFORE any
-  // DB row is touched, so a throw here leaves every submission row intact
-  // for a retry rather than orphaning an object. Batched via deleteMany so
-  // this is O(chunks) R2 round trips, not O(submissions x deliverables).
-  const store = makeFileStore(c.env.FILES);
-  await store.deleteMany(plan.eligible.flatMap((item) => item.fileR2Keys));
-
+  // DEC-713 ordering (amended wave 50): row-delete commits FIRST, then the
+  // R2 objects are deleted. The two failure modes are not symmetric — a
+  // committed row pointing at missing bytes 404s forever and silently
+  // breaks the "history complete and downloadable" guarantee, while an
+  // object outliving its row is just an unreferenced blob, invisible and
+  // reclaimable. A deleteMany throw after the commit is logged and
+  // swallowed: a committed delete must never be reported as a failure.
   const deleted = await commitSubmissionDelete(
     c.var.db,
     eventId,
     plan.eligible.map((item) => item.submissionId),
   );
+
+  const store = makeFileStore(c.env.FILES);
+  const keys = plan.eligible.flatMap((item) => item.fileR2Keys);
+  try {
+    await store.deleteMany(keys);
+  } catch (err) {
+    console.error(
+      `submissions/delete: deleteMany failed for event ${eventId} after row commit (${keys.length} keys)`,
+      err,
+    );
+  }
 
   return c.json({ deleted, refused: plan.refused });
 });

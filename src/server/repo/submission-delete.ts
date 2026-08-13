@@ -2,11 +2,13 @@
 // a confirmation PAGE that names what goes with it, and a submitted
 // evaluation makes it undeletable." Split into a read-only planning phase
 // (planSubmissionDelete) and a mutating commit phase (commitSubmissionDelete)
-// so the route can delete each eligible submission's R2 objects through the
-// same FileStore abstraction DEC-713's version-delete route uses, BEFORE
-// any DB row is touched — repo functions don't own the FileStore port
-// (DEC-012, see routes/api/portal-config.ts's resource-delete route for the
-// same split).
+// so the route can commit the DB row delete FIRST and only then delete each
+// eligible submission's R2 objects through the same FileStore abstraction
+// DEC-713's version-delete route uses (DEC-713 amendment, wave 50 — row
+// first, bytes second: a committed row pointing at missing bytes is a
+// silent, permanent failure, while an orphaned object is just reclaimable
+// garbage) — repo functions don't own the FileStore port (DEC-012, see
+// routes/api/portal-config.ts's resource-delete route for the same split).
 //
 // Everything a submission owns is removed set-based/chunked (never a query
 // per id, DEC-078's chunkIds): submission_answer, submission_track,
@@ -52,9 +54,9 @@ export interface EligibleSubmissionDelete {
   title: string;
   counts: DeleteCounts;
   scheduled: boolean;
-  // Internal only — the route deletes these R2 objects before calling
-  // commitSubmissionDelete, then must NOT let this field reach the wire
-  // (see the delete-plan route's explicit projection).
+  // Internal only — the route calls commitSubmissionDelete then deletes
+  // these R2 objects, and must NOT let this field reach the wire (see the
+  // delete-plan route's explicit projection).
   fileR2Keys: string[];
 }
 
