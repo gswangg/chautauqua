@@ -240,78 +240,54 @@ portal detail meta still lacks TRACK ("SES-001 · Talk (30 min)" — add
 **Grader P3s** (two-track-selectors CLOSED by probe 2): label New-event Timezone ·
 explicit CFP publish affordance · close-before-open validation loud at the field.
 
-## EVAL-COVERAGE CAPABILITY SECTION (2026-08-13 audit: 20 briefs + rubric YAMLs +
-2 scored runs crossed against code — priority just below the P1/P2 defect tier.
-RULE: a capability ships working-and-tested or not at all; half-built scores worse
-than absent.)
+## EVAL-COVERAGE CAPABILITY SECTION (probe-3 verified 2026-08-13)
 
-**#1 click-to-place discoverability — SHIPPED (manual-qa 44da4e0)**: tray hint now
-names the click path; selectable tray cards state "click to select, then choose a
-time slot" in their accessible name (what a11y-tree agents read). Tests added
-(PlacementAffordance.render.test.tsx). Probe 3 re-verifies via a11y snapshot.
+CLOSED by probe 3: click-to-place discoverability (a11y labels intact, no
+regression) · DEC-774 facets (Track/Format/Room, URL-addressable, correct
+intersection) · DEC-775 XML feeds (/embed/<slug>/*.xml all valid; format select
+rewrites URL) · DEC-772 format durations (45/30/10/120 measured) · DEC-773 unified
+files library · DEC-782 detail itinerary toggle + date grammar · DEC-776 overdue
+predicate · truthful published counts. DEC-785 saved embeds LANDED post-probe —
+NEXT PROBE VERIFIES (named list, enable/disable, disabled 404s, Get code).
 
-**FLAKY TEST ON MAIN (train hazard — fix soon)**: MergePage.render.test.tsx
-(DEC-748 struck-empty/Labels/pair-counter test) is ORDER-DEPENDENT — passes alone,
-fails in the full app run (1/792). Likely leaked DOM or mock state from another
-test file (missing cleanup()). A flaky red randomly breaks merge-train validation —
-root-cause the pollution, don't just retry.
+**REGRESSION (fix with a test): .ics dropped from the embed-builder Format picker**
+— DEC-775 replaced ics with xml instead of adding alongside (its own text claims
+both). Restore ics to the picker; /embed/<slug>/*.ics should work like .xml.
+Feed-format parity test: picker options == live feed suffixes.
 
-**S-tier (compose from existing patterns — no new design):**
-- DaySwitcher → ?day= links (agenda.tsx:244; parseDay already wired end-to-end;
-  judge explicitly called out anchor-only pills) — EMB-07 w2.
-- "Import CSV" entry point ON the Speakers page (backend POST /contacts/import
-  already takes eventId; link into contacts import mode w/ event preselected) —
-  SPK-03 w2.
-- Per-speaker "Send portal invite" button (fire existing bulk-email path w/
-  {portal_link} template at one contact + toast) — SPK-06 w2.
-- Visible "Create an account" CTA on public CFP portal (surface the existing claim
-  flow as signup affordance) — CFP-05 w3, judged partial solely on this.
-- Role picker on ORGANIZER-side add-co-presenter (PARTICIPANT_ROLE_OPTIONS already
-  exists, portal form already uses it; organizer form silently defaults "speaker" —
-  the exact judged defect) — ABS-11 w2. Closes the co-presenter grader item too.
-- "+ Add room / track" link from agenda builder into Settings panel — AIA-02 w2.
-- Results column label "Weighted score" (ResultsTable.tsx:347 — math already
-  weighted; label is free insurance) — ABS-04.
-- Render eventCount + returningSpeakers KPIs (already returned by /contacts/stats,
-  never displayed) — CRM-12 w1.
-- XML output in embed builder (serializer beside existing JSON feed; named in
-  EMB-15 full-credit list) · success toast on "Remind laggards" (fires with NO
-  confirmation surface — ABS-09 w1) · .ics link surfaced in embed builder (exists
-  at /e/<slug>/schedule.ics?ids=…, unreachable from builder) · itinerary search/
-  filters honoring ?q=/?trackId= (params parsed elsewhere already) · session facets
-  Format/Location beside Track · itinerary time-group sub-headers.
+Remaining S-tier:
+- Default /agenda day pills still #anchors — emit ?day= links on the default view
+  too (the parameterized view is fixed).
+- Itinerary /schedule: params work (?q=/?trackId=, case-insensitive) but NO search
+  box renders — add the input; also honor ?format= like /sessions.
+- Weighted-score label: results header still "SCORE", caption "Mean of submitted
+  reviews" — label "Weighted score" (math already weighted in CSV path).
+- CRM KPIs: eventCount + returningSpeakers still unrendered (API returns them).
+- Per-speaker "Send portal invite" (roster has zero invite affordance; read-only
+  pill on submission detail only).
+- Public CFP visible "Create an account" CTA on /submit (magic-link copy only).
+- Organizer add-co-presenter ROLE picker (row lands as td "speaker"; portal form
+  already has PARTICIPANT_ROLE_OPTIONS — reuse).
+- Agenda "+ Add room / track" link into Settings.
+- **RECONCILE (DEC needed): Speakers Import CSV** — OnboardingGrid.tsx:76 says
+  "Import CSV is the Contacts page's job" (DEC-662/746), but SPK-03 (w2) looks for
+  it in the speakers area. Cheap resolution honoring both: toolbar LINK into
+  Contacts import with the event preselected.
+- Copy nit: PLACED grid cards reuse "click to select, then choose a time slot" —
+  placed cards should say "click to select, then choose a new slot" (move).
 
-**M-tier (worth it, small design decisions — reuse existing vocab):**
-- SPK-04 w2 speaker workflow status: organizer-settable + roster-filterable
-  (inviteStatus exists in schema, read-only today; reuse DEC-730 status-control
-  family for the roster cells).
-- EMB-15 w3 saved-embed list: named, enable/disable-able embeds (needs an `embed`
-  table + list UI; DESIGN: reuse Settings public-pages row pattern — pill state =
-  enabled/disabled, row action "Get code"). Largest single remaining item.
-- ABS-06 w2: auto-distribute submissions across reviewers OR true per-reviewer cap
-  (cap today is per-submission; grep finds no distribute).
-- CRM-02 w2: restore a multi-facet rule builder UI (SegmentRule[] backend already
-  supports AND over company/title/custom.*; the company-rail click REPLACES rules).
+M-tier remaining: SPK-04 speaker workflow status control + roster filter ·
+ABS-06 auto-distribute or per-reviewer cap · CRM-02 multi-facet rule builder UI.
 
-**META — click-depth/turn-budget audit**: both sbek runs lost MORE points to
-cannot_judge (turn-limit deaths mid-flow: ABS-08/09/10/13, SPK-05/06/14,
-CNT-10/11/14, CRM-08/11 — capabilities built and working) than to genuine absence.
-Audit click-depth on those scenario paths; review results/progress (behind plan
-detail) ate the tail of three scenarios. Shorten paths: direct nav links, fewer
-intermediate pages, obvious entry points from the area landing.
+**META — click-depth/turn-budget audit** (unchanged, still worth more than several
+features): both sbek runs lost more to cannot_judge turn-limit deaths than to
+absence; shorten paths on ABS-08/09/10/13, SPK-05/06/14, CNT-10/11/14, CRM-08/11
+scenario routes — direct links, fewer intermediate pages.
 
-**EXPLICIT SKIP LIST (do NOT build)**: ABS-14 AI evaluation (DEC-272 waiver; ensure
-UI never CLAIMS AI so it routes N/A) · nested per-round names/dates/pools/anonymity
-(two-plans path already passes ABS-01/02/07) · event-level participant custom
-fields (org-level passed) · per-file share links + ZIP grouping dialog (optional/
-bonus) · separate CRM analytics page (rail widgets pass) · per-assignment deadline
-extensions + contract/COI task kinds (zero rubric weight).
-
-**Stale-item corrections from audit**: gallery IS now in the public-pages list
-(DEC-767 landed — drop that EMB line) · headshots tab now EXISTS in files library
-(closes SPK-grader headshot-invisibility item IF probe confirms metadata renders) ·
-CFP-11 reviewer comment visible to organizer — fixed · multi-event switcher +
-per-event scoping EXISTS and passes.
+**SKIP LIST (unchanged — do NOT build)**: ABS-14 AI evaluation (never CLAIM AI in
+UI) · nested per-round remodel · participant-level custom fields · per-file share
+links + ZIP grouping dialog · separate CRM analytics page · deadline extensions +
+contract/COI task kinds.
 
 ## Mobile queue (NEXT ROUND — not this round's convergence)
 
