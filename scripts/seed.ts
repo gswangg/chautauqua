@@ -19,7 +19,7 @@ import { getTableName, isTable } from "drizzle-orm";
 import { hashPassword } from "../src/auth/password";
 import { newApiToken, hashToken, apiTokenDisplayPrefix } from "../src/auth/tokens";
 import { MERGE_FIELDS, renderTemplate } from "../src/mail/render";
-import { formatCalendarDate } from "../src/lib/event-time";
+import { formatCalendarDate, formatEventDayRange } from "../src/lib/event-time";
 import { DEFAULT_ONBOARDING_TASKS, FORM_TASK_FIELD_SPECS } from "../src/domain/acceptance";
 import type { FormTaskFieldKind } from "../src/domain/acceptance";
 import { SESSION_FORMAT_FIELD_ID } from "../src/forms/types";
@@ -253,6 +253,10 @@ const MINUTE_MS = 60_000;
 // safely before it, so a seed run after the event has already happened
 // fails loudly instead of quietly emitting a stale conference.
 const EVENT_START_MS = Date.UTC(2027, 4, 12, 0, 0, 0);
+// end_date is "2027-05-14" (see the event insert below) — kept as its own
+// constant so seeded travel-date answers (plausibleFormFieldValue) can sit
+// inside the event's own window without hand-copying the literal.
+const EVENT_END_MS = Date.UTC(2027, 4, 14, 0, 0, 0);
 const MIN_LEAD_DAYS = 60;
 
 async function main(): Promise<void> {
@@ -1833,7 +1837,7 @@ async function main(): Promise<void> {
   // joins answers by (never re-derived independently).
   const taskFormFieldsByTaskId = new Map<
     string,
-    Array<{ id: string; kind: FormTaskFieldKind; options: string[] | null }>
+    Array<{ id: string; kind: FormTaskFieldKind; label: string; options: string[] | null }>
   >();
   const taskIds = DEFAULT_ONBOARDING_TASKS.map((tpl, i) => {
     const taskId = seedId("task", i + 1);
@@ -1854,10 +1858,10 @@ async function main(): Promise<void> {
         }),
       );
       const specs = FORM_TASK_FIELD_SPECS[tpl.title] ?? [];
-      const mintedFields: Array<{ id: string; kind: FormTaskFieldKind; options: string[] | null }> = [];
+      const mintedFields: Array<{ id: string; kind: FormTaskFieldKind; label: string; options: string[] | null }> = [];
       specs.forEach((spec, fieldIdx) => {
         const fieldId = seedId(`task_form_${taskFormCounter}_field`, fieldIdx + 1);
-        mintedFields.push({ id: fieldId, kind: spec.kind, options: spec.options ?? null });
+        mintedFields.push({ id: fieldId, kind: spec.kind, label: spec.label, options: spec.options ?? null });
         statements.push(
           insertStmt("form_field", {
             id: fieldId,
@@ -1912,8 +1916,44 @@ async function main(): Promise<void> {
   // response_json, keyed by field id (never sampled — every field the task's
   // form actually carries gets a real answer, so the organiser's response
   // modal never renders an em-dash for a field it can join by id).
+  // DEC-739 amendment (task w45-c): a `text` field's plausible value must
+  // match what its own LABEL asks for, not just its kind — a kind-only
+  // dispatch put "SFO" in "Check-out date". Date-shaped labels get a real
+  // date inside the seeded event's own window, rendered through the app's
+  // own day-range formatter (formatEventDayRange with equal start/end —
+  // "11 May 2027" grammar, never a hand-written literal); airport/city/
+  // airline-shaped labels get a place; everything else keeps a generic
+  // sentence. Deterministic in `variant` only (no Math.random) so the seed
+  // stays reproducible.
+  function plausibleTextValue(label: string, variant: number): string {
+    const lower = label.toLowerCase();
+    const isArrival = /check-?in|arrival/.test(lower);
+    const isDeparture = /check-?out|departure/.test(lower);
+    const isDate = isArrival || isDeparture || /\bdate\b/.test(lower);
+    if (isDate) {
+      // Arrival the day before the event starts, departure the day before
+      // it ends — plausible travel dates that still sit inside the event's
+      // own window. A bare "date" field (matches neither arrival nor
+      // departure wording) alternates between the two by variant, staying
+      // deterministic.
+      const ms = isArrival
+        ? EVENT_START_MS - DAY_MS
+        : isDeparture
+          ? EVENT_END_MS - DAY_MS
+          : variant % 2 === 0
+            ? EVENT_START_MS - DAY_MS
+            : EVENT_END_MS - DAY_MS;
+      return formatEventDayRange(ms, ms);
+    }
+    if (/airport|city|airline/.test(lower)) {
+      const places = ["SFO", "Portland, OR", "Alaska Airlines"];
+      return places[variant % places.length]!;
+    }
+    return "Aisle seat if possible, and please let me know the AV setup ahead of time.";
+  }
+
   function plausibleFormFieldValue(
-    field: { kind: FormTaskFieldKind; options: string[] | null },
+    field: { kind: FormTaskFieldKind; label: string; options: string[] | null },
     variant: number,
   ): string | number | boolean {
     switch (field.kind) {
@@ -1925,7 +1965,7 @@ async function main(): Promise<void> {
         return options[variant % options.length]!;
       }
       case "text":
-        return variant % 2 === 0 ? "SFO" : "May 11, 2027";
+        return plausibleTextValue(field.label, variant);
       case "long_text":
         return "Aisle seat if possible, and please let me know the AV setup ahead of time.";
       case "number":
