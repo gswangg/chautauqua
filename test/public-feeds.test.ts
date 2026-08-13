@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { publicRoutes } from "../src/routes/public";
-import { buildSurfaceFeed, agendaIcsEvents } from "../src/routes/public/feeds";
+import { buildSurfaceFeed, buildSurfaceFeedXml, agendaIcsEvents } from "../src/routes/public/feeds";
 import type { PublicEvent, PublicAgendaItem } from "../src/server/repo/public";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv } from "../src/server/env";
@@ -226,6 +226,31 @@ describe("GET /embed/:eventSlug/:surface.json (EMB-15)", () => {
     installFakeCaches();
     const app = buildJsonApp();
     const res = await app.request("/embed/conf/bogus.json", {}, TEST_ENV);
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("GET /embed/:eventSlug/:surface.xml (DEC-775, .json twin)", () => {
+  it("returns application/xml with an item count matching the .json twin", async () => {
+    installFakeCaches();
+    const jsonRes = await buildJsonApp().request("/embed/conf/sessions.json", {}, TEST_ENV);
+    expect(jsonRes.status).toBe(200);
+    const jsonBody = (await jsonRes.json()) as { items: unknown[] };
+
+    installFakeCaches();
+    const xmlRes = await buildJsonApp().request("/embed/conf/sessions.xml", {}, TEST_ENV);
+    expect(xmlRes.status).toBe(200);
+    expect(xmlRes.headers.get("Content-Type")).toContain("application/xml");
+    const xmlBody = await xmlRes.text();
+    const itemCount = (xmlBody.match(/<item>/g) ?? []).length;
+    expect(itemCount).toBe(jsonBody.items.length);
+    expect(xmlBody).toContain("Visible Talk");
+  });
+
+  it("404s on an unknown surface name", async () => {
+    installFakeCaches();
+    const app = buildJsonApp();
+    const res = await app.request("/embed/conf/bogus.xml", {}, TEST_ENV);
     expect(res.status).toBe(404);
   });
 });
@@ -614,6 +639,34 @@ describe("buildSurfaceFeed", () => {
       total: 1,
       items,
     });
+  });
+});
+
+describe("buildSurfaceFeedXml (DEC-775)", () => {
+  it("escapes &, <, >, \", ' in both attributes and text nodes, and omits null fields rather than emitting the string 'null'", () => {
+    const now = new Date("2026-08-11T12:00:00.000Z");
+    const items = [{ id: "sub1", title: `A & B <script>"x'</script>`, description: null }];
+    const xml = buildSurfaceFeedXml(EVENT, "sessions", { items, total: 1, page: 1, perPage: 12 }, now);
+    expect(xml).not.toContain("<script>");
+    expect(xml).not.toContain(`"x'`);
+    expect(xml).toContain("&amp;");
+    expect(xml).toContain("&lt;script&gt;");
+    expect(xml).toContain("&quot;x&apos;&lt;/script&gt;");
+    expect(xml).not.toContain("<description>");
+    expect(xml).not.toContain(">null<");
+  });
+
+  it("shapes the same envelope as buildSurfaceFeed: event attributes, feed-level surface/generatedAt/page/perPage/total, repeated <item>s", () => {
+    const now = new Date("2026-08-11T12:00:00.000Z");
+    const items = [
+      { id: "sub1", title: "Visible Talk", tracks: [{ id: "t1", name: "Track One" }] },
+      { id: "sub2", title: "Another Talk", tracks: [] },
+    ];
+    const xml = buildSurfaceFeedXml(EVENT, "sessions", { items, total: 2, page: 1, perPage: 12 }, now);
+    expect(xml).toContain('<feed surface="sessions" generatedAt="2026-08-11T12:00:00.000Z" page="1" perPage="12" total="2">');
+    expect(xml).toContain('<event slug="conf" name="Test Event" timezone="UTC" startDate="2026-08-10" endDate="2026-08-11"/>');
+    expect(xml.match(/<item>/g)).toHaveLength(2);
+    expect(xml).toContain("<tracks><id>t1</id><name>Track One</name></tracks>");
   });
 });
 

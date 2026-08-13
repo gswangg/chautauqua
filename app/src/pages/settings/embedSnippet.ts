@@ -12,7 +12,9 @@ export type EmbedSurface = (typeof EMBED_SURFACES)[number];
 // DEC-617: 'element' is the hardened <chq-embed> custom-element upgrade —
 // same URL/path rules as 'iframe', a different copyable snippet. The plain
 // iframe snippet stays the default; this is additive, never a replacement.
-export const EMBED_FORMATS = ['iframe', 'element', 'link', 'json', 'ics'] as const;
+// DEC-775: 'xml' is the XML twin of 'json' — same envelope, same knobs,
+// available on every surface (like 'json'), bare-URL snippet.
+export const EMBED_FORMATS = ['iframe', 'element', 'link', 'json', 'xml', 'ics'] as const;
 export type EmbedFormat = (typeof EMBED_FORMATS)[number];
 
 // DEC-289/DEC-673: `fields` allowlist — sessions surface cards only. Title
@@ -61,6 +63,8 @@ export function buildEmbedUrl(origin: string, slug: string, surface: EmbedSurfac
     path = `/embed/${slug}/${surface}`;
   } else if (format === 'json') {
     path = `/embed/${slug}/${surface}.json`;
+  } else if (format === 'xml') {
+    path = `/embed/${slug}/${surface}.xml`;
   } else if (format === 'ics') {
     // DEC-289: iCal is the full published agenda, a single fixed route
     // under /e/, not per-surface.
@@ -92,8 +96,9 @@ export function buildEmbedUrl(origin: string, slug: string, surface: EmbedSurfac
 }
 
 /** Builds the copyable snippet for a resolved URL. `format` drives the
- * shape: an <iframe> tag, a plain <a> tag, or the bare URL for the two
- * feed formats (json/ics — nothing to embed inline, just a link to fetch). */
+ * shape: an <iframe> tag, a plain <a> tag, or the bare URL for the three
+ * feed formats (json/xml/ics — nothing to embed inline, just a link to
+ * fetch). */
 export function buildSnippet(url: string, surface: EmbedSurface, format: EmbedFormat): string {
   if (format === 'iframe') {
     return `<iframe src="${url}" style="width:100%;min-height:600px;border:0" loading="lazy" title="${surface}"></iframe>`;
@@ -108,7 +113,7 @@ export function buildSnippet(url: string, surface: EmbedSurface, format: EmbedFo
   if (format === 'link') {
     return `<a href="${url}">${surface}</a>`;
   }
-  if (format === 'json' || format === 'ics') {
+  if (format === 'json' || format === 'xml' || format === 'ics') {
     return url;
   }
   throw new Error(`Unknown embed format: ${String(format)}`);
