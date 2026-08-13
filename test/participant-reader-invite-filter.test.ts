@@ -81,6 +81,8 @@ const ALLOWED: Record<string, string[]> = {
   ],
   "server/repo/contacts/history.ts": [
     "CRM contact-history timeline lists every submission the contact ever touched, not an eligibility read.",
+    "submissionsTotal's count(*) must count the SAME population the capped list above slices — filtering it by eligibility would make the total disagree with the rows it totals (w56-c).",
+    "The distinct-events read spans the same contactId-addressed join so 'Across your events' stays whole when the list is capped — same CRM population, not an eligibility enumeration (w56-c).",
   ],
   "server/repo/contacts/crud.ts": [
     "listContactReferenceRows lists every submission referencing the contact for the admin CRM page, not an eligibility read.",
