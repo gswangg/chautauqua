@@ -806,3 +806,13 @@ AND audit noStoreByDefault + any other header-stamping middleware for the same t
     speaker rows vs one combined built-in, "Description", settings block wedged before
     the Public link), share opt-in checkbox, detail structure set, phone fixed-footer
     decisions, co-presenter search layout bug, quick-add combined name field.
+
+66. r3-Contacts: KEEP merge-as-page + FormRow fix. **ROOT CAUSE ORDER: build the
+    Labels/customFields UI surface FIRST** (no column, no drawer row, no merge row
+    exists anywhere — this blocks item 55's Labels column AND DEC-266 verification),
+    then the item-55 two-column directory (still undelivered). Merge page: render ALL
+    differing fields (fix the loader — Company shows "—" though the directory has
+    values: DATA BUG), fixed-primary + per-field keep, pair counter, "Not a
+    duplicate", strikethrough + footer. Add-to-event ROLE control (third cycle
+    absent). Drawer read-only mode. Import: step panels or CTA above fold; unclip
+    phone chips. Pipeline captions. Duplicates "Keep both".
