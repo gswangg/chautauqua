@@ -16,45 +16,37 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   naming what goes AND what it refuses; publish the WINDOW not a flag;
   decision with no code a LIE; mandate file a HYPOTHESIS -- tree MOVES WHILE
   YOU PLAN; every page says who's signed in; submitted blank CLEARS, absent
-  key is silence; main can be RED -- grep `<<<<<<<` every wave; a gate must
-  not render children while identity loads; a per-row count is N scans (one
-  grouped query); blank is ABSENT for EVERY kind; a row is a DRAFT til Save;
-  a CREATE-time expansion is a snapshot -- BACK-FILL every activation path;
-  undefined var(--chq-*) resolves TRANSPARENT; the scrim IS the dialog; two
-  roots of one kind are two documents not versions; a JOIN row cascades on
-  contact delete; a grid class shared by two components is a CELL COUNT.
+  key is silence; main can be RED -- grep `<<<<<<<` every wave; a per-row
+  count is N scans (one grouped query); a CREATE-time expansion is a
+  snapshot -- BACK-FILL every activation path; the scrim IS the dialog; a
+  JOIN row cascades on contact delete.
 - FINDINGS w32-45 (DEC-983..999, 001-999 FULL no DEC-1000+, successor rule
   `## Amendment (wave N)` on nearest existing DEC -- never a new file; all
   heavily compacted): grep "no matches" is a fact about that minute --
-  re-probe. A predicate applied HALF is worse than none; A DEFERRAL IS A
-  DATED PROMISE; TRUST FLOWS ONE WAY; A DECISION DOC IS EVIDENCE OF A
-  DECISION, NEVER OF A FIX; A REVIEW LENS AGES FASTER THAN A MANDATE -- open
-  file:line before the lane, stop probing after three closed in a row.
-  Shapes: WRITE gated by READ predicate; CLAMP THE BOX CANNOT REACH; A SEED
-  IS A CLAIM; a GUARD PLACED AFTER THE COST guards nothing; MINTING IS IO;
-  boundary fails per RECIPIENT never per REQUEST; normalize regex on WRITE;
-  FONT DOES NOT CROSS A BUTTON; A NATIVE type=date IS A LOCALE YOU DID NOT
-  CHOOSE; THE LAST PATH IS THE DEFECT; A COUNT STATED TWICE IS TWO READERS
-  DISAGREEING; a finding can be OBSOLETE-VS-DEC; A TOKEN IS A NAME PEOPLE
-  TYPED -- rename only with a permanent resolving alias.
-- FINDINGS w46: THE MANDATE LIST IS SPENT -- real work came from opening
-  file:line on ENGINEERING claims instead. Shapes: A CONVENIENCE WRAPPER
-  INVITES THE FOURTH SERIAL LOOP -- batching landed on 4 of 5 fan-outs
-  because the singular API stayed callable, delete don't document; A
-  SAMPLE ONE-PER-FILE IS NOT AN ENUMERATION; THE LEAST REVERSIBLE ACTION IS
-  THE LEAST GUARDED; A CAP THAT CONTRADICTS ITS OWN DECISION'S ARITHMETIC
-  -- derive the number from named inputs and MEASURE it once; A LINE
-  NUMBER IS A CURSOR THAT MOVES; A CLASS WITH ONE MEMBER IS A CLAIM THE
-  HARNESS CANNOT SUPPORT.
-- FINDINGS w47: MANDATE SPENT, CONFIRMED TWICE -- 10 more gate-3/review-lens
-  claims re-probed came back CLOSED WITH TESTS; a gate report names a
-  SNAPSHOT, four waves of merges have passed it -- work came from opening
-  files. Shapes: THE SET-BASED TWIN EXISTS AND THE SINGULAR STILL WINS
-  (DEC-924's addReviewers shipped; distribute still loops the singular);
-  BATCHING LANDED ON THE READ NOT THE WRITE (import dedupe pre-pass
-  chunked, commit loop one stmt/row -- check both halves); A CAP NOBODY CAN
-  REACH (2000 rows x 3 stmts vs ~1000-subrequest ceiling); THE PLATFORM
-  ALREADY HAS THE BATCH API -- R2 delete takes an ARRAY, the abstraction
-  manufactured the loop; AN AMENDMENT THAT ADDS COPY MUST DELETE THE COPY
-  IT SUPERSEDES; PARITY IS NOT USE -- decisions-parity guards
-  doc<->constant, nothing guarded constant<->code.
+  re-probe. A predicate applied HALF is worse than none; A DECISION DOC IS
+  EVIDENCE OF A DECISION, NEVER OF A FIX; A REVIEW LENS AGES FASTER THAN A
+  MANDATE. Shapes: WRITE gated by READ predicate; A SEED IS A CLAIM; a
+  GUARD PLACED AFTER THE COST guards nothing; MINTING IS IO; boundary fails
+  per RECIPIENT never per REQUEST; THE LAST PATH IS THE DEFECT; A COUNT
+  STATED TWICE IS TWO READERS DISAGREEING; A TOKEN IS A NAME PEOPLE TYPED.
+- FINDINGS w46-47: MANDATE LIST SPENT -- work came from opening file:line
+  on engineering claims. A CONVENIENCE WRAPPER INVITES THE FOURTH SERIAL
+  LOOP -- delete, don't document; A CAP THAT CONTRADICTS ITS OWN DECISION'S
+  ARITHMETIC -- derive from named inputs, measure once; THE SET-BASED TWIN
+  EXISTS AND THE SINGULAR STILL WINS (check every caller, not just one);
+  BATCHING LANDS ON THE READ NOT THE WRITE -- check both halves; THE
+  PLATFORM ALREADY HAS THE BATCH API; PARITY IS NOT USE -- decisions-parity
+  guards doc<->constant, nothing guards constant<->code.
+- FINDINGS w48: REVIEW LENS FULLY SPENT (9 more mandate/engineering probes
+  closed) -- real work came from opening files, third wave running. A LATER
+  TABLE IS NOT IN THE OLDER MANIFEST -- contact_duplicate_dismissal (DEC-770,
+  migration 0022) is in neither the merge repoint nor the delete cascade;
+  enumerate schema columns, never extend a hand list. THE CLIENT RE-DECIDED
+  THE KIND -- agenda's merged clash card captions from its OWN overlap
+  geometry, disagreeing with the server's conflict count; geometry chooses
+  LAYOUT, never KIND. A CHAIN WALK IS A QUERY PER LINK -- batch the FRONTIER
+  (one query per DEPTH across all seeds). FIND-OR-CREATE WITHOUT A UNIQUE
+  INDEX IS A DUPLICATE WAITING (DEC-809/migration 0031 is the shape).
+  BATCHING LANDED ON THE READ, AGAIN -- wave 46 batched the KV reads, left
+  the per-recipient D1 stamp inside the send loop. DEC 001-999 IS FULL: two
+  tasks amending the SAME DEC is a merge conflict -- distinct DEC per lane.
