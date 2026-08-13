@@ -128,10 +128,11 @@ describe('OnboardingGrid: DEC-730 one status-control family', () => {
   });
 });
 
-// DEC-827: the toolbar carries a quiet link into the Contacts importer,
-// event preselected -- Import is Contacts' job, this is just the door.
-describe('OnboardingGrid: DEC-827 import link', () => {
-  it('renders a quiet link into the Contacts importer with the event preselected', async () => {
+// DEC-662 amendment (wave 55): the title-action row carries a quiet link
+// into the Contacts importer, event preselected -- Import is Contacts' job,
+// this is just the door in.
+describe('OnboardingGrid: DEC-662 import link', () => {
+  it('renders a quiet link into the Contacts importer carrying this event id', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
@@ -142,9 +143,11 @@ describe('OnboardingGrid: DEC-827 import link', () => {
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
     const link = screen.getByRole('link', { name: 'Import speakers from a CSV' });
-    expect(link).toHaveAttribute('href', '/admin/contacts?import=1');
-    // Not a button, not a second importer -- a real <a>, quiet toolbar link.
+    expect(link).toHaveAttribute('href', `/contacts?import=1&eventId=${EVENT_ID}`);
+    // Not a button, not a second importer -- a real <a>, quiet link joining
+    // the same title-action row as Add speaker/New task/Remind.
     expect(link.tagName).toBe('A');
+    expect(link.closest('.chq-speakers-head-actions')).not.toBeNull();
   });
 });
 

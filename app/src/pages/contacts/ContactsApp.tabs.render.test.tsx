@@ -16,6 +16,7 @@ import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { ContactsApp } from './ContactsApp';
 import { mockApi, listEnvelope } from '../../test-utils/mockApi';
+import { resetEventsCacheForTests } from '../../lib/useCurrentEvent';
 import type { ContactDetail, ContactListItem, DuplicateGroup, Segment } from './types';
 
 const EVENT_ID = 'evt-contacts-tabs-render';
@@ -70,6 +71,7 @@ afterEach(() => {
   cleanup();
   window.localStorage.clear();
   vi.unstubAllGlobals();
+  resetEventsCacheForTests();
 });
 
 function baseRoutes() {
@@ -85,6 +87,9 @@ function baseRoutes() {
     'GET /api/v1/segments': listEnvelope(SEGMENTS),
     'GET /api/v1/contacts': listEnvelope(CONTACTS),
     'GET /api/v1/contacts/duplicates': listEnvelope(DUPLICATE_GROUPS),
+    // DEC-662 amendment (wave 55): the import wizard's ?eventId= preselect
+    // validates against this org's own /events list.
+    'GET /api/v1/events': listEnvelope([{ id: EVENT_ID, name: 'Contacts Tabs Test Event' }]),
   };
 }
 

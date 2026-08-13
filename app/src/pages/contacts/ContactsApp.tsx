@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiGet, apiList, ApiError } from '../../lib/api';
-import { useCurrentEvent } from '../../lib/useCurrentEvent';
+import { loadEventsOnce, useCurrentEvent } from '../../lib/useCurrentEvent';
 import { countOf } from '../../lib/plural';
 import { BulkEmailModal } from './BulkEmailModal';
 import { ContactDrawer } from './ContactDrawer';
@@ -106,11 +106,10 @@ export function ContactsApp() {
   const [duplicatePreview, setDuplicatePreview] = useState<DuplicateGroup[]>([]);
 
   const [openContactId, setOpenContactId] = useState<string | null>(null);
-  // DEC-827: Speakers links into the importer with ?import=1 (the event
-  // preselected via useCurrentEvent) -- the toolbar's "Import CSV" button
-  // shares this same opener/URL-state path, so there is one way in, not
-  // two. The param is deleted the moment the wizard closes so a later
-  // navigation (e.g. browser back) can never replay it.
+  // DEC-827: Speakers links into the importer with ?import=1 (the toolbar's
+  // "Import CSV" button shares this same opener/URL-state path, so there is
+  // one way in, not two). The param is deleted the moment the wizard closes
+  // so a later navigation (e.g. browser back) can never replay it.
   const showImport = searchParams.get('import') === '1';
   function openImport() {
     setSearchParams((prev) => {
@@ -126,6 +125,36 @@ export function ContactsApp() {
       return params;
     });
   }
+
+  // DEC-662 amendment (wave 55): the Speakers roster's importer link carries
+  // its event as ?eventId=<id> (distinct from the page's own "current
+  // event" state, which the toolbar's Import CSV keeps using unchanged) so
+  // the wizard preselects the SAME event the organizer was standing on,
+  // never a silent switch to whatever event the page happens to be showing.
+  // An id that doesn't resolve against this org's own /events list (unknown,
+  // deleted, another org) falls back to the wizard's normal unselected
+  // (CRM-only) state -- it never guesses a different event.
+  const urlImportEventId = searchParams.get('eventId');
+  const [importEventId, setImportEventId] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    if (!urlImportEventId) {
+      setImportEventId(eventId ?? undefined);
+      return;
+    }
+    let cancelled = false;
+    loadEventsOnce()
+      .then((items) => {
+        if (cancelled) return;
+        const known = items.some((item) => item.id === urlImportEventId);
+        setImportEventId(known ? urlImportEventId : undefined);
+      })
+      .catch(() => {
+        if (!cancelled) setImportEventId(undefined);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [urlImportEventId, eventId]);
   const [showNewContact, setShowNewContact] = useState(false);
   const [showBulkEmail, setShowBulkEmail] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -424,7 +453,7 @@ export function ContactsApp() {
 
       {showImport && (
         <ImportWizard
-          eventId={eventId ?? undefined}
+          eventId={importEventId}
           onClose={closeImport}
           onImported={() => {
             reload();

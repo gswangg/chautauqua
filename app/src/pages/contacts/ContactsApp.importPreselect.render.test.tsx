@@ -1,0 +1,75 @@
+// DEC-662 amendment (wave 55): the Speakers roster's importer link carries
+// ?eventId=<id> so the Contacts import wizard preselects that event instead
+// of making the organizer re-pick it. An id that doesn't resolve against
+// this org's own /events list must fall back to the wizard's normal
+// unselected (CRM-only) state -- never a silent switch to a different event.
+import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
+import { ContactsApp } from './ContactsApp';
+import { mockApi, listEnvelope } from '../../test-utils/mockApi';
+import { resetEventsCacheForTests } from '../../lib/useCurrentEvent';
+
+const KNOWN_EVENT_ID = 'evt-known-preselect';
+const CURRENT_EVENT_ID = 'evt-currently-selected';
+
+afterEach(() => {
+  cleanup();
+  window.localStorage.clear();
+  resetEventsCacheForTests();
+});
+
+function mockContactsPageApi() {
+  return mockApi({
+    'GET /api/v1/contacts/stats': {
+      total: 0,
+      eventCount: 0,
+      returningSpeakers: 0,
+      speakerCount: 0,
+      duplicateCount: 0,
+      topCompanies: [],
+    },
+    'GET /api/v1/segments': listEnvelope([]),
+    'GET /api/v1/contacts/duplicates': listEnvelope([]),
+    'GET /api/v1/contacts': listEnvelope([]),
+    'GET /api/v1/events': listEnvelope([
+      { id: KNOWN_EVENT_ID, name: 'Known Conf' },
+      { id: CURRENT_EVENT_ID, name: 'Currently Selected Conf' },
+    ]),
+  });
+}
+
+describe('ContactsApp: DEC-662 import wizard event preselect from ?eventId=', () => {
+  it('preselects the event named in the URL, distinct from the current-event storage', async () => {
+    window.localStorage.setItem('chq.currentEventId', CURRENT_EVENT_ID);
+    mockContactsPageApi();
+
+    render(
+      <MemoryRouter initialEntries={[`/contacts?import=1&eventId=${KNOWN_EVENT_ID}`]}>
+        <ContactsApp />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Session title for this batch')).toBeInTheDocument();
+    });
+  });
+
+  it('leaves the wizard unselected (never a silent wrong-event default) when the URL id is unknown', async () => {
+    window.localStorage.setItem('chq.currentEventId', CURRENT_EVENT_ID);
+    mockContactsPageApi();
+
+    render(
+      <MemoryRouter initialEntries={['/contacts?import=1&eventId=evt-does-not-exist']}>
+        <ContactsApp />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Import contacts from CSV' })).toBeInTheDocument();
+    });
+
+    expect(screen.queryByLabelText('Session title for this batch')).not.toBeInTheDocument();
+  });
+});
