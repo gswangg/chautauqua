@@ -1,9 +1,10 @@
-// DEC-144 layer-2 harness (batch B, task-w3-e): component-render smoke test
-// for the form-builder page. Mounts the real FormsPage against the real
+// DEC-144 layer-2 harness (batch B, task-w3-e; w42-i: builder ends at the
+// Public link row, DEC-731). Mounts the real FormsPage against the real
 // GET .../forms single-object envelope ({id, fields: [...]}, not a list
 // envelope -- DEC-146/wire-contract shaped payload), asserts the field
 // list renders a conditional-rule field's condition summary, opens
-// FieldModal (create), and asserts FormSettings renders.
+// FieldModal (create), and asserts the Settings > Call for papers link
+// renders in place of the old FormSettings block.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -53,7 +54,7 @@ afterEach(() => {
 });
 
 describe('FormsPage render smoke', () => {
-  it('renders the field list with a conditional-rule field, opens FieldModal, and renders FormSettings', async () => {
+  it('renders the field list with a conditional-rule field, opens FieldModal, and links into Settings > Call for papers', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}`]: { id: EVENT_ID, slug: 'devcon-2026', timezone: 'UTC' },
       [`GET /api/v1/events/${EVENT_ID}/forms`]: FORM,
@@ -93,24 +94,20 @@ describe('FormsPage render smoke', () => {
     expect(screen.getAllByText('Required').length).toBeGreaterThan(0);
     expect(screen.getByText('Optional')).toBeInTheDocument();
 
-    // Fields-section footer row: "Public link · <url> · Copy" (item 51).
+    // Fields-section footer row: host+path with the protocol stripped
+    // ("Public link · <host/path> · Copy", item 51 + gate-3 strip finding);
+    // Copy itself still copies the absolute URL.
     const footer = container.querySelector('.chq-forms-fields-footer');
     expect(footer).not.toBeNull();
-    expect(within(footer as HTMLElement).getByText('http://localhost:3000/submit/devcon-2026')).toBeInTheDocument();
+    expect(within(footer as HTMLElement).getByText('localhost:3000/submit/devcon-2026')).toBeInTheDocument();
     expect(within(footer as HTMLElement).getByRole('button', { name: 'Copy' })).toBeInTheDocument();
 
-    // FormSettings strip.
-    expect(screen.getByDisplayValue('DevCon 2026 CFP')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Submit your talk!')).toBeInTheDocument();
-
-    // The settings strip renders styled .chq-input controls, not bare
-    // elements, and 'Tracks offered' as a pill-toggle chipstrip rather
-    // than raw checkboxes (DEC-367/372/379).
-    expect(container.querySelectorAll('.chq-forms-settings .chq-input').length).toBeGreaterThan(0);
-    const trackToggle = screen.getByRole('button', { name: 'Frontend' });
-    expect(trackToggle).toHaveClass('chq-pill');
-    expect(trackToggle).toHaveAttribute('aria-pressed', 'false');
-    expect(container.querySelector('.chq-forms-settings input[type="checkbox"]')).not.toBeInTheDocument();
+    // Builder ends at the Public link row (frame 04): a single link into
+    // Settings > Call for papers replaces the old FormSettings block.
+    const settingsLink = screen.getByRole('link', { name: 'Settings › Call for papers' });
+    expect(settingsLink).toHaveAttribute('href', '/settings?section=cfp');
+    expect(screen.queryByDisplayValue('DevCon 2026 CFP')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
 
     // FieldModal (create).
     const addButton = screen.getByRole('button', { name: 'Add a question' });
