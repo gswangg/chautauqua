@@ -132,14 +132,15 @@ describe('page measure (DEC-744/DEC-808/DEC-989)', () => {
   // FormsPage.tsx puts the ONE .chq-measure clamp on the page root
   // (`chq-page chq-forms-page chq-measure`); a max-width + auto margins on
   // a flex-column CHILD cancels align-items:stretch (the box shrinks to its
-  // own content instead of sharing the root's edges), so the header/
-  // content/settings blocks below must declare no clamp of their own and
-  // stretch to fill the root instead (DEC-744, task-w40-b).
-  it('forms.css header/content/settings stretch to the page root measure instead of re-clamping', () => {
+  // own content instead of sharing the root's edges), so the header/content
+  // blocks below must declare no clamp of their own and stretch to fill the
+  // root instead (DEC-744, task-w40-b). The settings block itself moved to
+  // Settings > Call for papers (DEC-731 amendment, w42-i) -- forms.css no
+  // longer carries a .chq-forms-settings rule to check.
+  it('forms.css header/content stretch to the page root measure instead of re-clamping', () => {
     const css = readFileSync(join(HERE, 'pages/forms/forms.css'), 'utf-8');
     expect(topLevelRuleBody(css, '.chq-forms-header')).not.toMatch(/max-width/);
     expect(topLevelRuleBody(css, '.chq-forms-content')).not.toMatch(/max-width/);
-    expect(topLevelRuleBody(css, '.chq-forms-settings')).not.toMatch(/max-width/);
   });
 
   // `.chq-review-editor-dates` used to be spot-checked here too. It went dead

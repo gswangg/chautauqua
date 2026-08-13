@@ -116,7 +116,7 @@ describe('FieldList row anatomy (DEC-715)', () => {
   it('renders the Abstract caption with the imported length cap, never a hardcoded number', () => {
     renderList();
     expect(screen.getByText('Abstract')).toBeInTheDocument();
-    expect(screen.getByText(`Up to ${MAX_LONG_TEXT_LENGTH} characters`)).toBeInTheDocument();
+    expect(screen.getByText(`Up to ${MAX_LONG_TEXT_LENGTH.toLocaleString('en-US')} characters`)).toBeInTheDocument();
   });
 
   it("gives a custom field's row its own helpText as caption", () => {

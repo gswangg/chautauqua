@@ -338,14 +338,30 @@ export function CallForPapersPanel() {
               {fieldErrors.closeDate ? <span className="chq-field-error">{fieldErrors.closeDate}</span> : null}
             </label>
           </div>
-          <div className="chq-settings-row">
-            <button type="button" className="chq-btn chq-btn-secondary" disabled={saving} onClick={() => void handleWindowNow('openDate')}>
-              Open the call now
-            </button>
-            <button type="button" className="chq-btn chq-btn-secondary" disabled={saving} onClick={() => void handleWindowNow('closeDate')}>
-              Close the call now
-            </button>
-          </div>
+          {event ? (
+            <div className="chq-settings-row">
+              {formWindowState(dateInputToMs(openDate), dateInputToMs(closeDate), Date.now(), event.timezone) ===
+              'open' ? (
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-secondary"
+                  disabled={saving}
+                  onClick={() => void handleWindowNow('closeDate')}
+                >
+                  Close the call now
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-secondary"
+                  disabled={saving}
+                  onClick={() => void handleWindowNow('openDate')}
+                >
+                  Open the call now
+                </button>
+              )}
+            </div>
+          ) : null}
           <div className="chq-settings-row">
             <span className="chq-settings-row-label">Tracks offered</span>
             <div className="chq-settings-row-value chq-settings-row-value-stack">

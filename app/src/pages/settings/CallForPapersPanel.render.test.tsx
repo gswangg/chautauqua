@@ -165,4 +165,85 @@ describe('CallForPapersPanel', () => {
     expect(valueColumn!.querySelector('.chq-chipstrip')).not.toBeNull();
     expect(section.querySelector('fieldset')).toBeNull();
   });
+
+  // DEC-731 amendment: exactly one window action renders, chosen by the
+  // call's current live state -- never both side by side.
+  it('renders only "Open the call now" when the call is closed', async () => {
+    mockCfp();
+    render(
+      <MemoryRouter>
+        <CallForPapersPanel />
+      </MemoryRouter>,
+    );
+    const section = await screen.findByRole('region', { name: 'Call for papers' });
+    await waitFor(() => {
+      expect(within(section).getByText(`${window.location.origin}/submit/devcon-2026`)).toBeInTheDocument();
+    });
+    fireEvent.click(within(section).getByRole('button', { name: 'Edit the form' }));
+
+    await waitFor(() => {
+      expect(within(section).getByRole('button', { name: 'Open the call now' })).toBeInTheDocument();
+    });
+    expect(within(section).queryByRole('button', { name: 'Close the call now' })).not.toBeInTheDocument();
+  });
+
+  it('renders only "Open the call now" when the call is not yet open', async () => {
+    const farFuture = Date.now() + 1000 * 60 * 60 * 24 * 365 * 50;
+    mockCfp({
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: {
+        id: 'form1',
+        eventId: EVENT_ID,
+        intro: 'Tell us about your talk.',
+        openDate: farFuture,
+        closeDate: farFuture + 1000 * 60 * 60 * 24 * 7,
+        tracks: ['trk1'],
+        fields: [{ id: 'f1', label: 'Title', locked: true }],
+      },
+    });
+    render(
+      <MemoryRouter>
+        <CallForPapersPanel />
+      </MemoryRouter>,
+    );
+    const section = await screen.findByRole('region', { name: 'Call for papers' });
+    await waitFor(() => {
+      expect(within(section).getByText(`${window.location.origin}/submit/devcon-2026`)).toBeInTheDocument();
+    });
+    fireEvent.click(within(section).getByRole('button', { name: 'Edit the form' }));
+
+    await waitFor(() => {
+      expect(within(section).getByRole('button', { name: 'Open the call now' })).toBeInTheDocument();
+    });
+    expect(within(section).queryByRole('button', { name: 'Close the call now' })).not.toBeInTheDocument();
+  });
+
+  it('renders only "Close the call now" when the call is open', async () => {
+    const now = Date.now();
+    mockCfp({
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: {
+        id: 'form1',
+        eventId: EVENT_ID,
+        intro: 'Tell us about your talk.',
+        openDate: now - 1000 * 60 * 60 * 24,
+        closeDate: now + 1000 * 60 * 60 * 24 * 30,
+        tracks: ['trk1'],
+        fields: [{ id: 'f1', label: 'Title', locked: true }],
+      },
+    });
+    render(
+      <MemoryRouter>
+        <CallForPapersPanel />
+      </MemoryRouter>,
+    );
+    const section = await screen.findByRole('region', { name: 'Call for papers' });
+    await waitFor(() => {
+      expect(within(section).getByText(`${window.location.origin}/submit/devcon-2026`)).toBeInTheDocument();
+    });
+    fireEvent.click(within(section).getByRole('button', { name: 'Edit the form' }));
+
+    await waitFor(() => {
+      expect(within(section).getByRole('button', { name: 'Close the call now' })).toBeInTheDocument();
+    });
+    expect(within(section).queryByRole('button', { name: 'Open the call now' })).not.toBeInTheDocument();
+  });
 });

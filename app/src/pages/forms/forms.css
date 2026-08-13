@@ -243,66 +243,10 @@
   max-width: 520px;
 }
 
-/* Form settings panel (DEC-650: secondary panel below the field list).
-   .chq-field/.chq-input/.chq-textarea/.chq-pill/.chq-chipstrip/.chq-btn/
-   .chq-error-banner are shared classes (styles.css) — this scopes spacing
-   only and never redefines their rules (DEC-368). */
-.chq-forms-settings {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  /* Shared page measure lives on the page root (DEC-744); this block
-     stretches to fill it. min-width removed (DEC-385) -- it forced
-     horizontal overflow at the 390px phone frame. */
-}
-
-.chq-forms-settings .chq-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.chq-forms-settings-title {
-  color: var(--chq-muted);
-}
-
-.chq-forms-settings-saving {
-  font-size: 12px;
-  color: var(--chq-muted);
-}
-
-/* DEC-731: the builder's own statement of the call's live state (derived
-   from open_date/close_date, never a separate published flag) plus the
-   "now" actions that write those dates directly. */
-.chq-forms-call-state {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.chq-forms-call-actions {
-  display: flex;
-  gap: 9px;
-}
-
-.chq-forms-settings-tracks {
-  border: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.chq-forms-public-link .chq-input {
-  flex: 1;
-}
-
 /* Fields section footer row (mock: "Public link · <url> · Copy") --
-   quiet inline row under the field list, distinct from the boxed
-   input+button pair in the Settings panel below (FormSettings.tsx). */
+   quiet inline row under the field list. The builder ends here (frame 04,
+   DEC-731 amendment); the Settings > Call for papers link sits just below
+   it, and the intro/window/tracks form itself lives in Settings now. */
 .chq-forms-fields-footer {
   display: flex;
   align-items: baseline;
@@ -322,6 +266,13 @@
 
 .chq-forms-fields-footer .chq-btn {
   margin-left: auto;
+}
+
+.chq-forms-settings-link {
+  display: inline-block;
+  margin-top: 13px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 /* Phone-only fixed footer (mock 390px frame): hidden at desktop, becomes
@@ -412,39 +363,9 @@
     border-radius: var(--chq-r-ctl-phone);
   }
 
-  .chq-forms-public-link .chq-btn {
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--chq-r-ctl-phone);
-  }
-
-  .chq-forms-public-link .chq-input {
-    min-height: 44px;
-    border-radius: var(--chq-r-ctl-phone);
-  }
-
-  .chq-forms-settings .chq-input,
-  .chq-forms-settings .chq-textarea,
-  .chq-forms-settings .chq-btn {
-    border-radius: var(--chq-r-ctl-phone);
-  }
-
-  .chq-forms-settings .chq-input,
-  .chq-forms-settings .chq-btn {
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-  }
-
-  .chq-forms-settings .chq-btn {
-    justify-content: center;
-  }
-
   /* Header actions move into the fixed footer at phone width -- the
-     desktop Preview/Save pair in the header band is redundant chrome once
-     the footer carries the primary action. */
+     desktop Preview action in the header band is redundant chrome once
+     the footer carries it instead. */
   .chq-forms-header-actions {
     display: none;
   }

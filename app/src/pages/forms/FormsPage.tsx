@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { formatDateOnly } from '../../lib/dates';
@@ -8,9 +8,8 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { FieldList } from './FieldList';
 import { FieldModal, type FieldModalInput } from './FieldModal';
-import { FormSettings, type FormSettingsHandle, type FormSettingsPatch } from './FormSettings';
 import { guardEditableField, moveId } from './logic';
-import type { CfpForm, EventTrack, FormField } from './types';
+import type { CfpForm, FormField } from './types';
 import './forms.css';
 
 interface EventSummary {
@@ -38,30 +37,22 @@ export function FormsPage() {
 
   const [event, setEvent] = useState<EventSummary | null>(null);
   const [form, setForm] = useState<CfpForm | null>(null);
-  const [tracks, setTracks] = useState<EventTrack[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [modal, setModal] = useState<ModalState>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState>(null);
   const [received, setReceived] = useState<ReceivedState>('loading');
-  const [saveError, setSaveError] = useState<string | null>(null);
   const [linkCopyResult, setLinkCopyResult] = useState<{ ok: boolean; text: string } | null>(null);
-  const settingsRef = useRef<FormSettingsHandle>(null);
 
   const load = useCallback(() => {
     if (!eventId) return;
     setLoading(true);
     setError(null);
-    Promise.all([
-      apiGet<EventSummary>(`/events/${eventId}`),
-      apiGet<CfpForm>(`/events/${eventId}/forms`),
-      apiList<EventTrack>(`/events/${eventId}/tracks`),
-    ])
-      .then(([ev, formResult, tracksResult]) => {
+    Promise.all([apiGet<EventSummary>(`/events/${eventId}`), apiGet<CfpForm>(`/events/${eventId}/forms`)])
+      .then(([ev, formResult]) => {
         setEvent(ev);
         setForm(formResult);
-        setTracks(tracksResult.items);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load the form'))
       .finally(() => setLoading(false));
@@ -88,24 +79,6 @@ export function FormsPage() {
       cancelled = true;
     };
   }, [eventId]);
-
-  async function handleSaveSettings(patch: FormSettingsPatch) {
-    if (!form) return;
-    const updated = await apiPatch<CfpForm>(`/forms/${form.id}`, patch);
-    setForm(updated);
-  }
-
-  async function handleHeaderSave() {
-    setSaveError(null);
-    setBusy(true);
-    try {
-      await settingsRef.current?.save();
-    } catch (err) {
-      setSaveError(err instanceof ApiError ? err.message : 'Failed to save the form');
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function handleCreateField(input: FieldModalInput) {
     if (!form) return;
@@ -205,6 +178,10 @@ export function FormsPage() {
 
   const receivedText = received === 'loading' || received === 'error' ? '—' : `${received.total} submissions`;
   const publicLink = `${window.location.origin}/submit/${event.slug}`;
+  // Frame grammar: the footer row displays host+path with the protocol
+  // stripped ('chautauqua.cc/submit/...'); Copy still copies the absolute
+  // URL below.
+  const publicLinkDisplay = `${window.location.host}/submit/${event.slug}`;
 
   async function handleCopyPublicLink() {
     const ok = await copyText(publicLink);
@@ -227,15 +204,10 @@ export function FormsPage() {
           <a href={`/submit/${event.slug}`} target="_blank" rel="noreferrer" className="chq-btn chq-btn-secondary">
             Preview
           </a>
-          <button type="button" className="chq-btn chq-btn-primary" disabled={busy} onClick={() => void handleHeaderSave()}>
-            Save
-          </button>
         </div>
       </header>
 
       <div className="chq-forms-content">
-        {saveError && <div className="chq-error-banner">{saveError}</div>}
-
         <div className="chq-forms-strip">
           <div className="chq-forms-strip-cell">
             <span className="chq-forms-strip-label">Opens</span>
@@ -274,7 +246,7 @@ export function FormsPage() {
 
             <div className="chq-forms-fields-footer">
               <span className="chq-forms-fields-footer-label">Public link</span>
-              <span className="chq-forms-fields-footer-value">{publicLink}</span>
+              <span className="chq-forms-fields-footer-value">{publicLinkDisplay}</span>
               <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => void handleCopyPublicLink()}>
                 {linkCopyResult?.ok ? 'Copied!' : 'Copy'}
               </button>
@@ -286,38 +258,18 @@ export function FormsPage() {
                   : 'Copy failed — select the text and copy it manually'
                 : null}
             </div>
-          </div>
-        </section>
-
-        <section className="chq-forms-section">
-          <div className="chq-forms-section-title">
-            <h2>Settings</h2>
-          </div>
-          <div className="chq-forms-section-body">
-            <FormSettings
-              ref={settingsRef}
-              form={form}
-              tracks={tracks}
-              timezone={event.timezone}
-              onSave={handleSaveSettings}
-            />
+            <Link to="/settings?section=cfp" className="chq-forms-settings-link">
+              Settings &rsaquo; Call for papers
+            </Link>
           </div>
         </section>
       </div>
 
-      {/* Phone-only fixed footer (DEC-650 mock, 390px frame): a second,
-          CSS-toggled markup rather than a text swap -- the phone footer's
-          primary action reads "Save the form", not "Save" (display:none
-          at desktop; forms.css switches the pair at 700px). */}
+      {/* Phone-only fixed footer (DEC-650 mock, 390px frame): display:none
+          at desktop; forms.css switches at 700px. Save moved to Settings ›
+          Call for papers -- fields save immediately per action, so the
+          only remaining phone action is Preview. */}
       <div className="chq-forms-phone-footer">
-        <button
-          type="button"
-          className="chq-btn chq-btn-primary"
-          disabled={busy}
-          onClick={() => void handleHeaderSave()}
-        >
-          Save the form
-        </button>
         <a href={`/submit/${event.slug}`} target="_blank" rel="noreferrer" className="chq-btn chq-btn-secondary">
           Preview
         </a>

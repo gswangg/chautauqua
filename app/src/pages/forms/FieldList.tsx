@@ -17,6 +17,13 @@ const DISPLAY_LABEL_OVERRIDES: Record<string, string> = {
   [SESSION_FORMAT_FIELD_ID]: 'Format',
 };
 
+/** Thousands-grouped integer, e.g. 20000 -> "20,000". A plain regex rather
+ * than toLocaleString/Intl (banned outside lib/dates.ts, DEC-963) -- this
+ * is a character-count grouping, not a locale-sensitive date/number. */
+function formatThousands(n: number): string {
+  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 interface FieldListProps {
   fields: FormField[];
   busy: boolean;
@@ -103,7 +110,7 @@ function buildRows(fields: FormField[]): DisplayRow[] {
         key: field.id,
         field,
         label: 'Abstract',
-        caption: `Up to ${MAX_LONG_TEXT_LENGTH} characters`,
+        caption: `Up to ${formatThousands(MAX_LONG_TEXT_LENGTH)} characters`,
         kindText: kindLabel(field.kind),
         builtIn: true,
       });
