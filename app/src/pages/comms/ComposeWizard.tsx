@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { apiList, apiPost, ApiError } from '../../lib/api';
 import { buildSubmissionsQuery } from '../submissions/filters';
 import { DEFAULT_FILTER_STATE, STATUS_LABELS, SUBMISSION_STATUSES, type SubmissionListItem, type SubmissionStatus } from '../submissions/types';
@@ -6,8 +6,12 @@ import { PreviewPane } from './PreviewPane';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { FormRow } from '../../components/ModalFrame';
+import { COMPOSE_MERGE_FIELDS } from '../../lib/merge-fields';
 import type { EmailTemplate, RenderedRecipient } from './types';
 import type { EvaluationPlan } from '../review/types';
+import { DEC_793 } from '../../../../src/decisions';
+
+void DEC_793;
 
 // J5's decide != notify: the picker defaults to the two decided statuses so
 // organizers compose against the submissions they've already ruled on, but
@@ -64,6 +68,22 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   // pre-filtered client-side, since that would hide the server's contract.
   const [icsUnscheduledIds, setIcsUnscheduledIds] = useState<string[] | null>(null);
   const [sendResult, setSendResult] = useState<SendResult | null>(null);
+  // DEC-793: when the server rejects recipients for a missing merge field,
+  // one line per rejected person is rendered inside the error banner,
+  // resolved through the already-loaded submissions rather than raw ids.
+  const [missingMergeFieldLines, setMissingMergeFieldLines] = useState<string[] | null>(null);
+
+  const bodyRef = useRef<HTMLTextAreaElement | null>(null);
+  const pendingCaretRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (pendingCaretRef.current !== null && bodyRef.current) {
+      const pos = pendingCaretRef.current;
+      bodyRef.current.focus();
+      bodyRef.current.setSelectionRange(pos, pos);
+      pendingCaretRef.current = null;
+    }
+  }, [bodyText]);
 
   useEffect(() => {
     setLoadingSubmissions(true);
@@ -140,11 +160,45 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     return ids.length > 0 ? ids : null;
   }
 
+  // DEC-793: inserts a merge-field token at the textarea's current caret
+  // (not appended blindly) and restores focus + caret after the insert.
+  function insertMergeField(field: string) {
+    const token = `{${field}}`;
+    const el = bodyRef.current;
+    const start = el?.selectionStart ?? bodyText.length;
+    const end = el?.selectionEnd ?? bodyText.length;
+    pendingCaretRef.current = start + token.length;
+    setBodyText(bodyText.slice(0, start) + token + bodyText.slice(end));
+  }
+
+  // DEC-793: the server rejects recipients with fields keyed
+  // `<contactId>:<submissionId>` and messages `missing merge field '<field>'`.
+  // Resolved through the already-loaded submissions' speakers, naming the
+  // PERSON — falling back to the submission's title when the contact
+  // doesn't resolve, never a raw id.
+  function extractMissingMergeFieldLines(err: ApiError): string[] | null {
+    if (!err.fields) return null;
+    const lines: string[] = [];
+    for (const [key, message] of Object.entries(err.fields)) {
+      const keyMatch = /^(.+):([^:]+)$/.exec(key);
+      const msgMatch = /^missing merge field '(.+)'$/.exec(message);
+      if (!keyMatch || !msgMatch) continue;
+      const [, contactId, submissionId] = keyMatch;
+      const field = msgMatch[1];
+      const submission = submissions.find((s) => s.id === submissionId);
+      const speaker = submission?.speakers.find((sp) => sp.contactId === contactId);
+      const label = speaker?.name ?? submission?.title ?? contactId;
+      lines.push(`${label} — missing {${field}}`);
+    }
+    return lines.length > 0 ? lines : null;
+  }
+
   async function runPreview(overrides?: { includeFeedback?: boolean; feedbackPlanId?: string; attachIcs?: boolean }) {
     setBusy(true);
     setError(null);
     setCapMessage(null);
     setIcsUnscheduledIds(null);
+    setMissingMergeFieldLines(null);
     try {
       const res = await apiPost<{ items: RenderedRecipient[] }>(`/events/${eventId}/compose/preview`, composeBody(overrides));
       setPreview(res.items);
@@ -153,10 +207,14 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     } catch (err) {
       if (err instanceof ApiError && err.code === 'invalid') {
         const unscheduled = extractIcsUnscheduledIds(err);
+        const missingMergeFields = extractMissingMergeFieldLines(err);
         if (unscheduled) {
           setIcsUnscheduledIds(unscheduled);
         } else if (/exceeds the .*-recipient cap/i.test(err.message)) {
           setCapMessage(err.message);
+        } else if (missingMergeFields) {
+          setError(err.message);
+          setMissingMergeFieldLines(missingMergeFields);
         } else {
           setError(err.message);
         }
@@ -192,6 +250,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setBusy(true);
     setError(null);
     setIcsUnscheduledIds(null);
+    setMissingMergeFieldLines(null);
     try {
       const res = await apiPost<SendResult>(`/events/${eventId}/compose/send`, composeBody());
       setSendResult(res);
@@ -199,8 +258,12 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     } catch (err) {
       if (err instanceof ApiError) {
         const unscheduled = extractIcsUnscheduledIds(err);
+        const missingMergeFields = extractMissingMergeFieldLines(err);
         if (unscheduled) {
           setIcsUnscheduledIds(unscheduled);
+        } else if (missingMergeFields) {
+          setError(err.message);
+          setMissingMergeFieldLines(missingMergeFields);
         } else {
           setError(err.message);
         }
@@ -229,6 +292,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setSendResult(null);
     setCapMessage(null);
     setIcsUnscheduledIds(null);
+    setMissingMergeFieldLines(null);
     setError(null);
   }
 
@@ -260,7 +324,18 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
 
   return (
     <div className="chq-compose-wizard">
-      {error && <div className="chq-error-banner">{error}</div>}
+      {error && (
+        <div className="chq-error-banner">
+          {error}
+          {missingMergeFieldLines && missingMergeFieldLines.length > 0 && (
+            <ul>
+              {missingMergeFieldLines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       {capMessage && (
         <div className="chq-error-banner" role="alert">
           {capMessage} Narrow your submission selection to {RECIPIENT_CAP} or fewer recipients and try again.
@@ -419,10 +494,21 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               id="compose-body"
               className="chq-textarea"
               rows={8}
+              ref={bodyRef}
               value={bodyText}
               onChange={(e) => setBodyText(e.target.value)}
             />
           </FormRow>
+          <div className="chq-comms-merge-chips chq-comms-template-body-merge-chips">
+            {COMPOSE_MERGE_FIELDS.map((field) => (
+              <button key={field} type="button" className="chq-pill" onClick={() => insertMergeField(field)}>
+                {`{${field}}`}
+              </button>
+            ))}
+          </div>
+          <p className="chq-comms-panel-note">
+            Merge fields fill in per recipient &mdash; shown resolved in Preview.
+          </p>
 
           <div className="chq-comms-template-actions">
             <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setStep('select')}>
@@ -466,7 +552,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             )}
 
             <div className="chq-comms-panel">
-              <span className="chq-comms-panel-title">Attachments and merge fields</span>
+              <span className="chq-comms-panel-title">Attachments</span>
               <label className="chq-comms-toggle">
                 <input
                   type="checkbox"

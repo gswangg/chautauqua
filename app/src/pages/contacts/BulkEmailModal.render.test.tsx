@@ -94,4 +94,23 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
     expect(await screen.findByText('Sent to 1 email. 1 failure.')).toBeInTheDocument();
     expect(screen.getByText('bad@example.com')).toBeInTheDocument();
   });
+
+  // DEC-793: the placeholder text must only advertise merge fields the
+  // server's bulk-email validator actually accepts — {first_name} isn't
+  // one of them (BULK_EMAIL_MERGE_FIELDS), so it must not appear anywhere
+  // in the compose step's placeholders.
+  it('advertises only BULK_EMAIL_MERGE_FIELDS in its placeholders, never {first_name}', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+    });
+
+    render(<BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} onClose={() => {}} />);
+
+    const subjectInput = (await screen.findByLabelText('Subject')) as HTMLInputElement;
+    const bodyInput = screen.getByLabelText('Body') as HTMLTextAreaElement;
+
+    expect(subjectInput.placeholder).not.toMatch(/\{first_name\}/);
+    expect(bodyInput.placeholder).not.toMatch(/\{first_name\}/);
+    expect(bodyInput.placeholder).toMatch(/\{speaker_name\}/);
+  });
 });

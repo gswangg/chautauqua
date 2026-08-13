@@ -3,6 +3,9 @@ import { apiList, apiPost, ApiError } from '../../lib/api';
 import { FormRow, ModalFrame } from '../../components/ModalFrame';
 import { BULK_EMAIL_MERGE_FIELDS, MAX_COMPOSE_RECIPIENTS as BULK_EMAIL_RECIPIENT_CAP } from '../../lib/merge-fields';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
+import { DEC_793 } from '../../../../src/decisions';
+
+void DEC_793;
 
 interface Props {
   contactIds: string[];
@@ -186,7 +189,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
               className="chq-input"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="A quick question about your session"
+              placeholder="A quick question about your {event_name} session"
             />
           </FormRow>
           <FormRow
@@ -205,7 +208,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
               rows={8}
               value={bodyText}
               onChange={(e) => setBodyText(e.target.value)}
-              placeholder="Hi {first_name}, ..."
+              placeholder="Hi {speaker_name}, ..."
             />
           </FormRow>
         </>

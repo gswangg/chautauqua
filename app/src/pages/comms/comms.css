@@ -110,6 +110,12 @@
   padding-top: 14px;
 }
 
+/* DEC-793: the compose step-2 body's merge-field chip row sits directly
+   under the textarea, matching the template editor's chip strip spacing. */
+.chq-comms-template-body-merge-chips {
+  margin-top: 10px;
+}
+
 /* ---------------------------------------------------------------------- */
 /* Compose step 3: recipients / attachments / preview                     */
 /* ---------------------------------------------------------------------- */

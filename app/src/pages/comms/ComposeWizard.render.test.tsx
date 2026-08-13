@@ -174,8 +174,8 @@ describe('ComposeWizard recipient picker', () => {
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
 
-    await screen.findByText(/Preview/);
-    fireEvent.click(screen.getByRole('button', { name: /Send \d+ emails?/ }));
+    const sendButton = await screen.findByRole('button', { name: /Send \d+ emails?/ });
+    fireEvent.click(sendButton);
 
     expect(await screen.findByText('Sent to 2 emails. 1 failure.')).toBeInTheDocument();
     expect(screen.getByText('bad@example.com')).toBeInTheDocument();
@@ -204,6 +204,105 @@ describe('ComposeWizard recipient picker', () => {
   });
 });
 
+// DEC-793: the body step's merge-field chip row inserts at the caret (not
+// appended blindly), and the attachments panel is retitled to name only
+// what it actually holds.
+describe('ComposeWizard body merge-field chips (DEC-793)', () => {
+  async function goToTemplateStep() {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    await screen.findByLabelText('Body');
+  }
+
+  it('inserts a clicked merge-field chip at the textarea caret position', async () => {
+    await goToTemplateStep();
+
+    const body = screen.getByLabelText('Body') as HTMLTextAreaElement;
+    fireEvent.change(body, { target: { value: 'Hello , see you soon' } });
+    body.setSelectionRange(6, 6);
+
+    fireEvent.click(screen.getByRole('button', { name: '{speaker_name}' }));
+
+    expect(body.value).toBe('Hello {speaker_name}, see you soon');
+  });
+
+  it('titles the preview-step panel "Attachments" (attachments only)', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(subject, { target: { value: 'Hello' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+
+    expect(await screen.findByText('Attachments')).toBeInTheDocument();
+    expect(screen.queryByText('Attachments and merge fields')).not.toBeInTheDocument();
+  });
+});
+
+// DEC-793: a 400 naming two rejected `<contactId>:<submissionId>` recipients
+// renders both PEOPLE's names in the error banner, resolved through the
+// already-loaded submissions' speakers.
+describe('ComposeWizard missing-merge-field errors (DEC-793)', () => {
+  it('names both people a preflight rejects for a missing merge field', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(
+        [
+          { ...submission(1) },
+          { ...submission(2) },
+        ],
+        { total: 2, page: 1, perPage: 50 },
+      ),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: {
+        status: 400,
+        body: {
+          error: {
+            code: 'invalid',
+            message: 'One or more recipients are missing merge fields',
+            fields: {
+              'c1:sub-1': "missing merge field 'speaker_name'",
+              'c2:sub-2': "missing merge field 'speaker_name'",
+            },
+          },
+        },
+      },
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByLabelText('Select Talk number 2'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(subject, { target: { value: 'Hello' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+
+    expect(await screen.findByText(/Speaker 1.*missing \{speaker_name\}/)).toBeInTheDocument();
+    expect(screen.getByText(/Speaker 2.*missing \{speaker_name\}/)).toBeInTheDocument();
+  });
+});
+
 // DEC-682: the "include reviewer feedback" toggle must be paired with a
 // plan picker naming exactly which plan+round to attach — never left to the
 // server to guess, and never silently omitted from the compose request.
@@ -223,7 +322,7 @@ describe('ComposeWizard feedback plan picker (DEC-682)', () => {
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
 
-    await screen.findByText(/Preview/);
+    await screen.findByText('Attachments');
     return fetchMock;
   }
 
