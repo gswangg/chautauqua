@@ -20,29 +20,20 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   row cascades on contact delete.
 - FINDINGS w32-49 (DEC-983..999, 001-999 FULL no DEC-1000+, `## Amendment
   (wave N)` on nearest existing DEC): re-probe, grep "no matches" is a fact
-  about that minute only. A DECISION DOC IS EVIDENCE OF A FIX NEVER; WRITE
-  gated by READ predicate; a GUARD AFTER THE COST guards nothing; MINTING
-  IS IO; boundary fails per RECIPIENT never REQUEST. Work comes from opening
-  file:line, not the mandate list. A CONVENIENCE WRAPPER INVITES THE FOURTH
-  SERIAL LOOP -- delete, don't document; SET-BASED TWIN EXISTS AND SINGULAR
-  STILL WINS; BATCHING LANDS ON THE READ NOT THE WRITE; PARITY IS NOT USE.
-  A CHAIN WALK IS A QUERY PER LINK -- batch the FRONTIER. FIND-OR-CREATE
-  WITHOUT A UNIQUE INDEX IS A DUPLICATE WAITING. A UNIQUE INDEX THAT KILLS
-  A FEATURE IS THE WRONG FIX -- check what it DELETES first. LANDING PAGE
-  IS THE SLOWEST READ. FOURTH WAVE OF SAME FINDING = BUILD THE SCAN.
+  about that minute only. A DECISION DOC IS EVIDENCE OF A FIX NEVER; MINTING
+  IS IO; boundary fails per RECIPIENT never REQUEST. A CONVENIENCE WRAPPER
+  INVITES THE FOURTH SERIAL LOOP. A CHAIN WALK IS A QUERY PER LINK -- batch
+  the FRONTIER. FIND-OR-CREATE WITHOUT A UNIQUE INDEX IS A DUPLICATE
+  WAITING. LANDING PAGE IS THE SLOWEST READ.
 - FINDINGS w50-54: FAILURE MODES NOT SYMMETRIC -- order by which corpse is
   worse. THE OPTIONAL BODY IS WHERE THE GUARD FELL OFF. THE UNBOUNDED
   SURFACE NEVER PAGED -- cap the QUERY not the array. TWO READERS OF ONE
   STORED ID: VALIDATES != ANSWERS. THE TREE MOVES WHILE YOU PLAN -- re-probe
   file:line before writing the task. AN EMPTY RESULT IS NOT AN EMPTY
-  PROBLEM -- branch on the SHORTFALL. A FLEX PARENT OVERRIDES AN inline-flex
-  CHILD -- fix the CONTAINER. A live task-wNN-* loose ref is NOT proof of
-  in-flight (w53's four all LANDED) -- verify by opening the fix's own
-  line. A MIGRATION THAT CANNOT RUN IS A SCHEMA THAT DOESN'T EXIST:
-  node:sqlite/better-sqlite3 accept CREATE TEMP TABLE, D1's authorizer
-  rejects it (SQLITE_AUTH) -- scan the DIALECT, not just semantics. THE
-  TEST COVERS THE SHAPE THAT ISN'T SHIPPED. A COMMENT CLAIMING A CHECK IS
-  NOT A CHECK.
+  PROBLEM -- branch on the SHORTFALL. A MIGRATION THAT CANNOT RUN IS A
+  SCHEMA THAT DOESN'T EXIST (D1 rejects CREATE TEMP TABLE). THE TEST
+  COVERS THE SHAPE THAT ISN'T SHIPPED. A COMMENT CLAIMING A CHECK IS NOT A
+  CHECK.
 - FINDINGS w55: THE PLANNER'S FIRST READ CAN BE STALE -- re-read before you
   reserve; .git/logs/HEAD shows which lanes MERGED (w54: only `a`, b-f were
   live branches with zero commits mid-plan). The review-lens list is a
@@ -55,3 +46,16 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   DRAG-ONLY MUTATION IS AN INACCESSIBLE ONE: if placing has a click path,
   removing must too. A CAPABILITY DENIED IN A COMMENT still needs a
   signpost.
+- FINDINGS w56: THE MANDATE CAN RUN OUT -- the gate-4 blocking set, all four
+  review-lens hand-offs and most S-tier items verified CLOSED by opening
+  file:line (referrer origin check, MAX_PAGE, reviewerInScope, slot-window
+  count-in-SQL, .ics picker, conditional visibility, saved-embed disabled
+  200). When the list is spent, work comes from READING REPOS. A JS CAP OVER
+  AN UNBOUNDED READ was three files this wave (overview accepted ids,
+  contact history, reminder frontier): a population you only COUNT or SLICE
+  must be counted/sliced in SQL, and the FRONTIER (which ids) is a query,
+  not a filter. AN OPTIONAL `page` ARG IS AN UNBOUNDED BRANCH WAITING --
+  delete it when the only caller pages. A NEW UNIQUE INDEX SHARPENS EVERY
+  find-or-create ON THAT TABLE: w55-b's form(event_id,title) turned
+  getOrCreateForm's benign duplicate into a 500 -- sweep every writer of
+  that table the same wave a constraint lands.
