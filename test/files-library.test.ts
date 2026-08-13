@@ -17,7 +17,7 @@
 import { describe, expect, it, vi } from "vitest";
 import * as schema from "../src/db/schema";
 import { ApiError } from "../src/server/http";
-import type { EventFilesQuery } from "../src/server/repo/files-library";
+import { MAX_FILE_LIBRARY_SCAN, type EventFilesQuery } from "../src/server/repo/files-library";
 
 type Marker =
   | { __marker: "eq"; col: unknown; val: unknown }
@@ -167,14 +167,14 @@ function evalCond(cond: unknown, row: Record<string, unknown>, seed: Seed): bool
   if (isSqlNode(cond)) return evalSqlNode(cond, row, seed);
   const m = cond as Marker;
   if (m.__marker === "eq") {
-    const right = isColumnRef(m.val) ? row[colKey(m.val)] : m.val;
-    return row[colKey(m.col)] === right;
+    const right = isColumnRef(m.val) ? getColValue(row, m.val) : m.val;
+    return getColValue(row, m.col) === right;
   }
   if (m.__marker === "and") return m.conds.every((c) => evalCond(c, row, seed));
   if (m.__marker === "or") return m.conds.some((c) => evalCond(c, row, seed));
-  if (m.__marker === "inArray") return m.vals.includes(row[colKey(m.col)]);
-  if (m.__marker === "isNull") return row[colKey(m.col)] == null;
-  if (m.__marker === "isNotNull") return row[colKey(m.col)] != null;
+  if (m.__marker === "inArray") return m.vals.includes(getColValue(row, m.col));
+  if (m.__marker === "isNull") return getColValue(row, m.col) == null;
+  if (m.__marker === "isNotNull") return getColValue(row, m.col) != null;
   throw new Error(`fake db: unsupported condition ${JSON.stringify(cond)}`);
 }
 
@@ -211,10 +211,32 @@ function evalJoinCond(cond: unknown, sRow: Record<string, unknown>, jRow: Record
   return left === right;
 }
 
-function project(row: Record<string, unknown>, fields: Record<string, unknown>) {
+// A merged multi-table row can carry several columns that share the same
+// property NAME (every table's PK is literally "id") — colKey alone can't
+// disambiguate which table's "id" a given `schema.X.id` reference means once
+// several tables have been flattened into one JS object. __colMap keys by
+// the column DEFINITION OBJECT itself (identity, not name), so `count(distinct
+// file.id)` and any two-column-from-different-tables projection (e.g.
+// {id: file.id, contactId: contact.id}) both resolve precisely regardless of
+// join order — unlike the flat row, which only ever keeps the driving side's
+// value under a colliding name.
+function buildColMap(table: Record<string, unknown>, row: Record<string, unknown>): Map<unknown, unknown> {
+  const map = new Map<unknown, unknown>();
+  for (const [key, col] of Object.entries(table)) {
+    map.set(col, row[key]);
+  }
+  return map;
+}
+
+function getColValue(row: Record<string, unknown> & { __colMap?: Map<unknown, unknown> }, col: unknown): unknown {
+  if (row.__colMap?.has(col)) return row.__colMap.get(col);
+  return row[colKey(col)];
+}
+
+function project(row: Record<string, unknown> & { __colMap?: Map<unknown, unknown> }, fields: Record<string, unknown>) {
   const out: Record<string, unknown> = {};
   for (const [outKey, col] of Object.entries(fields)) {
-    out[outKey] = isColumnRef(col) ? row[colKey(col)] : row[outKey];
+    out[outKey] = isColumnRef(col) ? getColValue(row, col) : row[outKey];
   }
   return out;
 }
@@ -268,10 +290,9 @@ function makeFakeFilesDb(seed: Seed) {
       // computeKindCounts's `group by kind` aggregate and its
       // dedupe-by-file-id headshot count.
       if (groupByCols && groupByCols.length > 0) {
-        const keys = groupByCols.map((c) => colKey(c));
         const groups = new Map<string, Record<string, unknown>[]>();
         for (const r of matched) {
-          const gkey = keys.map((k) => String(r[k])).join("||");
+          const gkey = groupByCols.map((c) => String(getColValue(r, c))).join("||");
           const arr = groups.get(gkey) ?? [];
           arr.push(r);
           groups.set(gkey, arr);
@@ -281,7 +302,7 @@ function makeFakeFilesDb(seed: Seed) {
           const rep = groupRows[0]!;
           const out: Record<string, unknown> = {};
           for (const [outKey, col] of Object.entries(fields ?? {})) {
-            out[outKey] = isSqlNode(col) ? groupRows.length : isColumnRef(col) ? rep[colKey(col)] : rep[outKey];
+            out[outKey] = isSqlNode(col) ? groupRows.length : isColumnRef(col) ? getColValue(rep, col) : rep[outKey];
           }
           rows.push(out);
         }
@@ -289,8 +310,7 @@ function makeFakeFilesDb(seed: Seed) {
       }
       const countDistinct = isCountDistinctFields(fields);
       if (countDistinct) {
-        const key = colKey(countDistinct.col);
-        return [{ count: new Set(matched.map((r) => r[key])).size }];
+        return [{ count: new Set(matched.map((r) => getColValue(r, countDistinct.col))).size }];
       }
       if (isCountStarFields(fields)) return [{ count: matched.length }];
       let filtered = matched;
@@ -318,7 +338,7 @@ function makeFakeFilesDb(seed: Seed) {
     };
     const chain: any = {
       from: (table: Record<string, unknown>) => {
-        source = (byTable.get(table) ?? []).map((r) => ({ ...r }));
+        source = (byTable.get(table) ?? []).map((r) => ({ ...r, __colMap: buildColMap(table, r) }));
         return chain;
       },
       innerJoin: (table: Record<string, unknown>, cond: unknown) => {
@@ -327,16 +347,20 @@ function makeFakeFilesDb(seed: Seed) {
         for (const s of source) {
           for (const j of joinRows) {
             if (evalJoinCond(cond, s, j)) {
-              // s (the accumulated/driving side) wins on key collisions
-              // (every table's PK is literally "id") — downstream
-              // where/select in this module only ever reference the
-              // driving table's id. evalJoinCond itself resolves each
-              // join's OWN predicate against the fresh `j`/accumulated `s`
-              // pair directly (checking `j` first), so this storage-order
-              // choice never affects join correctness, only what a LATER
-              // join step or the final WHERE/projection sees for columns
-              // this table doesn't declare.
-              merged.push({ ...j, ...s });
+              // s (the accumulated/driving side) wins on FLAT key collisions
+              // (every table's PK is literally "id") — kept for any legacy
+              // flat-property reads. __colMap (keyed by column DEFINITION
+              // OBJECT identity, not name) carries every table's own columns
+              // precisely regardless of join order, so a later getColValue
+              // lookup for e.g. schema.file.id never resolves to a
+              // mid-chain table's "id" just because it shares the JS
+              // property name. evalJoinCond itself resolves each join's OWN
+              // predicate against the fresh `j`/accumulated `s` pair
+              // directly (checking `j` first), unaffected either way.
+              const jColMap = buildColMap(table, j);
+              const sColMap = (s as { __colMap?: Map<unknown, unknown> }).__colMap ?? new Map();
+              const combined = new Map<unknown, unknown>([...jColMap, ...sColMap]);
+              merged.push({ ...j, ...s, __colMap: combined });
             }
           }
         }
@@ -574,6 +598,31 @@ describe("listEventDeliverableFiles (DEC-159/344)", () => {
   });
 });
 
+describe("MAX_FILE_LIBRARY_SCAN ceiling (DEC-773 w55-c amendment): refuse loudly rather than a truncated page", () => {
+  it("throws when the deliverable root scan exceeds the ceiling, instead of silently truncating", async () => {
+    const seed = baseSeed();
+    seed.file = [];
+    // One chain root per file (all previousFileId null) so each counts as
+    // its own root — enough roots to cross MAX_FILE_LIBRARY_SCAN.
+    for (let i = 0; i <= MAX_FILE_LIBRARY_SCAN; i++) {
+      seed.file.push({
+        id: `file-scan-${i}`,
+        submissionId: "sub-1",
+        kind: "presentation",
+        filename: `slides-${i}.pdf`,
+        previousFileId: null,
+        contentType: "application/pdf",
+        r2Key: `r2/file-scan-${i}`,
+        createdAt: new Date(2026, 0, 1, 0, 0, i),
+        sizeBytes: 1,
+        versionNo: 1,
+      });
+    }
+    const db = makeFakeFilesDb(seed);
+    await expect(listEventDeliverableFiles(db, "event-1", q())).rejects.toThrow(ApiError);
+  });
+});
+
 describe("kindCounts (DEC-902): one grouped query, matching the filtered list's own arithmetic", () => {
   function seedWithTwoKinds(): Seed {
     const seed = baseSeed();
@@ -609,6 +658,33 @@ describe("kindCounts (DEC-902): one grouped query, matching the filtered list's 
       recording: 0,
       headshot: 0,
     });
+  });
+
+  it("counts headshots by DISTINCT file id, not join-row count (a speaker on two accepted submissions must count once, DEC-773 w55-c amendment)", async () => {
+    const seed = seedWithTwoKinds();
+    // acceptedSpeakerConditions requires submission.status === 'accepted'.
+    for (const s of seed.submission) (s as unknown as { status: string }).status = "accepted";
+    // contact-priya speaks on BOTH sub-1 and sub-2, and has a headshot —
+    // the join through participant produces TWO rows (one per submission)
+    // for the SAME file id; a regression to join-row counting would report
+    // 2 here instead of 1.
+    (seed.contact[0] as unknown as { headshotUrl: string }).headshotUrl = "/headshots/file-headshot";
+    seed.file.push({
+      id: "file-headshot",
+      submissionId: null,
+      kind: "headshot",
+      filename: "priya.jpg",
+      previousFileId: null,
+      contentType: "image/jpeg",
+      r2Key: "r2/file-headshot",
+      createdAt: new Date("2026-01-08T00:00:00Z"),
+      sizeBytes: 2000,
+      versionNo: 1,
+    });
+    seed.participant.push({ submissionId: "sub-2", contactId: "contact-priya", order: 0, role: "speaker", inviteStatus: "accepted" });
+    const db = makeFakeFilesDb(seed);
+    const result = await listEventDeliverableFiles(db, "event-1", q());
+    expect(result.kindCounts.headshot).toBe(1);
   });
 
   it("kindCounts honors q the same way the list does, and stays independent of the selected kind", async () => {

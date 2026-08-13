@@ -31,6 +31,13 @@ void DEC_902;
 // alongside the deliverable kinds.
 export const HEADSHOT_KIND = "headshot";
 
+// DEC-773 amendment (w55-c): the ceiling both listEventDeliverableFiles root
+// scans (deliverable chain roots, headshot roots) refuse past — mirrors
+// contacts/rows.ts's MAX_CONTACT_DIRECTORY_SCAN. Each root query
+// `.limit(MAX_FILE_LIBRARY_SCAN + 1)`s and throws rather than silently
+// truncating an audit list once an event's matching file count exceeds this.
+export const MAX_FILE_LIBRARY_SCAN = 20000;
+
 export interface EventFilesScope {
   orgId: string;
   slug: string;
@@ -251,16 +258,20 @@ async function computeKindCounts(db: Db, eventId: string, q: string | null): Pro
     counts[g.kind] = Number(g.count);
   }
 
+  // DEC-773 amendment (w55-c): a whole-population id read used purely as a
+  // count is banned by DEC-418/DEC-461 -- one count(distinct file.id)
+  // aggregate instead (distinct because a contact can speak on several
+  // accepted submissions matching the same headshot file, per the module
+  // doc comment above).
   const headshotWhere = buildHeadshotWhere(eventId, q);
-  const headshotFileIds = await db
-    .select({ id: schema.file.id })
+  const headshotCountRows = await db
+    .select({ count: sql<number>`count(distinct ${schema.file.id})` })
     .from(schema.participant)
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
     .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
     .innerJoin(schema.file, HEADSHOT_JOIN)
-    .where(headshotWhere)
-    .groupBy(schema.file.id);
-  counts[HEADSHOT_KIND] = headshotFileIds.length;
+    .where(headshotWhere);
+  counts[HEADSHOT_KIND] = Number(headshotCountRows[0]?.count ?? 0);
 
   return counts;
 }
@@ -328,7 +339,14 @@ export async function listEventDeliverableFiles(
       .from(schema.file)
       .innerJoin(schema.submission, eq(schema.submission.id, schema.file.submissionId))
       .where(deliverableWhere)
-      .orderBy(sql`${schema.file.createdAt} desc, ${schema.file.id} asc`);
+      .orderBy(sql`${schema.file.createdAt} desc, ${schema.file.id} asc`)
+      .limit(MAX_FILE_LIBRARY_SCAN + 1);
+    if (deliverableRoots.length > MAX_FILE_LIBRARY_SCAN) {
+      throw new ApiError(
+        "invalid",
+        `This files library filter would scan more than ${MAX_FILE_LIBRARY_SCAN} deliverable files — narrow with the search box first (the q filter runs in SQL and composes with the kind filter)`,
+      );
+    }
     const submissionIds = [...new Set(deliverableRoots.map((r) => r.submissionId).filter((id): id is string => !!id))];
     deliverableChains = await loadDeliverableChains(db, submissionIds);
   }
@@ -350,7 +368,14 @@ export async function listEventDeliverableFiles(
       .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
       .innerJoin(schema.file, HEADSHOT_JOIN)
       .where(headshotWhere)
-      .orderBy(sql`${schema.file.createdAt} desc, ${schema.file.id} asc`);
+      .orderBy(sql`${schema.file.createdAt} desc, ${schema.file.id} asc`)
+      .limit(MAX_FILE_LIBRARY_SCAN + 1);
+    if (rows.length > MAX_FILE_LIBRARY_SCAN) {
+      throw new ApiError(
+        "invalid",
+        `This files library filter would scan more than ${MAX_FILE_LIBRARY_SCAN} headshot files — narrow with the search box first (the q filter runs in SQL and composes with the kind filter)`,
+      );
+    }
     // A contact can speak on multiple accepted submissions — dedupe by
     // file id (DEC-680), never rely on selectDistinct alone since row
     // identity here is the file, not the (participant, file) pair.
