@@ -11,16 +11,9 @@ import { shouldMountDevMailbox } from "../src/routes/dev/mailbox";
 import { resolveBaseUrl } from "../src/server/origin";
 import { makeMailer } from "../src/server/context";
 import { DevSinkMailer } from "../src/mail/dev-sink";
-import { EmailBindingMailer } from "../src/mail/email-binding";
-import type { EmailSender } from "../src/mail/email-binding";
+import { ResendMailer } from "../src/mail/resend";
 
 const DEV_MODE_VALUES: Array<string | undefined> = [undefined, "", "0", "1", "true", "yes"];
-
-const stubEmail: EmailSender = {
-  async send() {
-    return undefined;
-  },
-};
 
 // Minimal Db stub: makeMailer only touches db to build the EmailLogWriter
 // closure (d1EmailLogWriter(db)) which isn't invoked until send() is called.
@@ -40,7 +33,7 @@ describe("isDevMode (DEC-434): one predicate, every gate agrees", () => {
 
     it(`DEV_MODE=${JSON.stringify(devMode)}: makeMailer's mailer selection agrees with isDevMode`, () => {
       const mailer = makeMailer(stubDb, {
-        EMAIL: stubEmail,
+        RESEND_API_KEY: "re_test_key",
         DEV_MODE: devMode,
         MAIL_FROM_EMAIL: "noreply@chautauqua.cc",
         MAIL_FROM_NAME: "Chautauqua",
@@ -48,7 +41,7 @@ describe("isDevMode (DEC-434): one predicate, every gate agrees", () => {
       if (expected) {
         expect(mailer).toBeInstanceOf(DevSinkMailer);
       } else {
-        expect(mailer).toBeInstanceOf(EmailBindingMailer);
+        expect(mailer).toBeInstanceOf(ResendMailer);
       }
     });
 
@@ -75,22 +68,22 @@ describe("isDevMode (DEC-434): one predicate, every gate agrees", () => {
     });
   }
 
-  it("DEV_MODE='0' with EMAIL bound now selects EmailBindingMailer, not DevSinkMailer (the DEC-434 regression)", () => {
+  it("DEV_MODE='0' with RESEND_API_KEY set now selects ResendMailer, not DevSinkMailer (the DEC-434 regression)", () => {
     const mailer = makeMailer(stubDb, {
-      EMAIL: stubEmail,
+      RESEND_API_KEY: "re_test_key",
       DEV_MODE: "0",
       MAIL_FROM_EMAIL: "noreply@chautauqua.cc",
       MAIL_FROM_NAME: "Chautauqua",
     });
-    expect(mailer).toBeInstanceOf(EmailBindingMailer);
+    expect(mailer).toBeInstanceOf(ResendMailer);
     expect(mailer).not.toBeInstanceOf(DevSinkMailer);
   });
 });
 
 describe("makeMailer (DEC-547): never silently selects the dev sink", () => {
-  it("DEV_MODE='1' with no EMAIL bound selects DevSinkMailer", () => {
+  it("DEV_MODE='1' with no RESEND_API_KEY set selects DevSinkMailer", () => {
     const mailer = makeMailer(stubDb, {
-      EMAIL: undefined,
+      RESEND_API_KEY: undefined,
       DEV_MODE: "1",
       MAIL_FROM_EMAIL: undefined,
       MAIL_FROM_NAME: undefined,
@@ -99,15 +92,15 @@ describe("makeMailer (DEC-547): never silently selects the dev sink", () => {
   });
 
   for (const devMode of [undefined, "", "0", "true", "yes"]) {
-    it(`DEV_MODE=${JSON.stringify(devMode)} with no EMAIL bound throws naming DEV_MODE and EMAIL`, () => {
+    it(`DEV_MODE=${JSON.stringify(devMode)} with no RESEND_API_KEY set throws naming DEV_MODE and RESEND_API_KEY`, () => {
       expect(() =>
         makeMailer(stubDb, {
-          EMAIL: undefined,
+          RESEND_API_KEY: undefined,
           DEV_MODE: devMode,
           MAIL_FROM_EMAIL: undefined,
           MAIL_FROM_NAME: undefined,
         }),
-      ).toThrowError(/DEV_MODE.*EMAIL|EMAIL.*DEV_MODE/);
+      ).toThrowError(/DEV_MODE.*RESEND_API_KEY|RESEND_API_KEY.*DEV_MODE/);
     });
   }
 });
