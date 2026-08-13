@@ -202,8 +202,18 @@ export interface PipelineActivity {
   createdAt: number;
 }
 
+// DEC-013 house list envelope (w56-e): the entry detail's activity feed is
+// paged server-side (src/routes/api/pipeline.ts's GET /pipeline/:id), never
+// the whole unbounded history in one response.
+export interface PipelineActivityEnvelope {
+  items: PipelineActivity[];
+  total: number;
+  page: number;
+  perPage: number;
+}
+
 export interface PipelineEntryDetail {
   entry: { id: string; contactId: string; stage: PipelineStage; createdAt: number; updatedAt: number };
   contact: { id: string; firstName: string; lastName: string; company?: string | null; email: string };
-  activity: PipelineActivity[];
+  activity: PipelineActivityEnvelope;
 }

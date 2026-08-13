@@ -157,7 +157,12 @@ pipelineRoutes.get("/pipeline/:id", async (c) => {
   const entry = await requireOwnedEntry(c, c.req.param("id"), orgId);
   const contact = await findContactForOrg(c.var.db, entry.contactId, orgId);
   if (!contact) throw new ApiError("not_found", "Contact not found");
-  const activity = await repo.listActivityForEntry(c.var.db, entry.id);
+  const page = clampPage(c.req.query("page"));
+  const perPage = listPerPage(c.req.query("perPage")); // DEC-465
+  const [activity, activityTotal] = await Promise.all([
+    repo.listActivityForEntry(c.var.db, entry.id, { limit: perPage, offset: (page - 1) * perPage }),
+    repo.countActivityForEntry(c.var.db, entry.id),
+  ]);
 
   return c.json({
     entry: {
@@ -174,7 +179,10 @@ pipelineRoutes.get("/pipeline/:id", async (c) => {
       company: contact.company,
       email: contact.email,
     },
-    activity: activity.map(serializeActivity),
+    // DEC-013 house list envelope (w56-e): the activity feed is paged, not
+    // dumped whole -- the SPA must state a shortfall rather than silently
+    // showing a partial feed.
+    activity: { items: activity.map(serializeActivity), total: activityTotal, page, perPage },
   });
 });
 

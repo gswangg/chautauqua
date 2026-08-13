@@ -489,6 +489,7 @@ describe("GET /api/v1/pipeline/:id (detail)", () => {
       [ENTRY_ROW], // requireOwnedEntry
       [CONTACT_ORG_A], // findContactForOrg
       [newerNote, olderMove], // listActivityForEntry (already newest-first from orderBy(desc))
+      [{ count: 2 }], // countActivityForEntry
     ]);
     const app = appWithDbAndAuth(db, ORGANIZER_A);
 
@@ -497,9 +498,46 @@ describe("GET /api/v1/pipeline/:id (detail)", () => {
     const json = (await res.json()) as any;
     expect(json.entry.id).toBe("entry-1");
     expect(json.contact.firstName).toBe("Ada");
-    expect(json.activity).toHaveLength(2);
-    expect(json.activity[0].kind).toBe("note");
-    expect(json.activity[1].kind).toBe("move");
+    // DEC-013 house list envelope (w56-e): activity is paged, not a bare array.
+    expect(json.activity.total).toBe(2);
+    expect(json.activity.items).toHaveLength(2);
+    expect(json.activity.items[0].kind).toBe("note");
+    expect(json.activity.items[1].kind).toBe("move");
+  });
+
+  // w56-e: 60 activity rows -> first page returns only perPage items,
+  // newest-first, with the true total surfaced separately.
+  it("pages a 60-row activity feed: first page returns perPage items newest-first with total 60", async () => {
+    const rows = Array.from({ length: 60 }, (_, i) => ({
+      id: `act-${i}`,
+      entryId: "entry-1",
+      kind: "note",
+      body: `Note ${i}`,
+      fromStage: null,
+      toStage: null,
+      authorUserId: "u-organizer-a",
+      authorName: "Jordan Alvarez",
+      createdAt: new Date(1000 + i),
+    })).reverse(); // newest-first, matching the repo's orderBy(desc)
+
+    const perPage = 50;
+    const firstPage = rows.slice(0, perPage); // the fake db.select() chain ignores .limit()/.offset(), so we hand it the already-paged rows
+    const { db } = fakeDb([
+      [ENTRY_ROW], // requireOwnedEntry
+      [CONTACT_ORG_A], // findContactForOrg
+      firstPage, // listActivityForEntry
+      [{ count: 60 }], // countActivityForEntry
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(new Request(`http://local/api/v1/pipeline/entry-1?perPage=${perPage}`));
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as any;
+    expect(json.activity.total).toBe(60);
+    expect(json.activity.items).toHaveLength(perPage);
+    expect(json.activity.items[0].body).toBe("Note 59");
+    expect(json.activity.page).toBe(1);
+    expect(json.activity.perPage).toBe(perPage);
   });
 });
 

@@ -18,7 +18,7 @@ import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import { formatDateTime } from '../../lib/dates';
 import { pipelineCardAge } from './pipeline-age';
 import { sortByFit } from '../../../../src/domain/pipeline-fit';
-import type { ContactListItem, PipelineEntry, PipelineEntryDetail, PipelineStage } from './types';
+import type { ContactListItem, PipelineActivity, PipelineEntry, PipelineEntryDetail, PipelineStage } from './types';
 import { PIPELINE_STAGES, PIPELINE_STAGE_LABELS } from './types';
 import './contacts-panels.css';
 
@@ -627,11 +627,36 @@ function EntryDetailPanel({ entryId, onClose, onChanged }: EntryDetailPanelProps
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  // DEC-468/w56-e: the activity feed's own page cap -- distinct state so
+  // "Load more" can append without refetching the whole entry+contact.
+  const [activityItems, setActivityItems] = useState<PipelineActivity[]>([]);
+  const [activityTotal, setActivityTotal] = useState(0);
+  const [activityPage, setActivityPage] = useState(1);
+  const [loadingMoreActivity, setLoadingMoreActivity] = useState(false);
 
   function reload() {
     return apiGet<PipelineEntryDetail>(`/pipeline/${entryId}`)
-      .then(setDetail)
+      .then((d) => {
+        setDetail(d);
+        setActivityItems(d.activity.items);
+        setActivityTotal(d.activity.total);
+        setActivityPage(d.activity.page);
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load pipeline entry'));
+  }
+
+  function loadMoreActivity() {
+    const nextPage = activityPage + 1;
+    setLoadingMoreActivity(true);
+    return apiGet<PipelineEntryDetail>(`/pipeline/${entryId}?page=${nextPage}`)
+      .then((d) => {
+        // Append, never replace -- mirrors the board's own loadMore.
+        setActivityItems((prev) => [...prev, ...d.activity.items]);
+        setActivityTotal(d.activity.total);
+        setActivityPage(nextPage);
+      })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load more activity'))
+      .finally(() => setLoadingMoreActivity(false));
   }
 
   useEffect(() => {
@@ -693,7 +718,7 @@ function EntryDetailPanel({ entryId, onClose, onChanged }: EntryDetailPanelProps
 
           <h4 className="chq-section-label">Activity</h4>
           <ul className="chq-contacts-pipeline-activity">
-            {detail.activity.map((a, i) => (
+            {activityItems.map((a, i) => (
               <li key={i}>
                 {a.kind === 'move' ? (
                   <span>
@@ -707,8 +732,21 @@ function EntryDetailPanel({ entryId, onClose, onChanged }: EntryDetailPanelProps
                 {a.authorName}, {formatDateTime(a.createdAt)}
               </li>
             ))}
-            {detail.activity.length === 0 && <li className="chq-empty">No activity yet.</li>}
+            {activityItems.length === 0 && <li className="chq-empty">No activity yet.</li>}
           </ul>
+
+          {/* DEC-468/w56-e: state the shortfall rather than silently showing
+              a partial feed once the entry's activity outgrows one page. */}
+          {activityItems.length < activityTotal && (
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary chq-contacts-pipeline-load-more"
+              disabled={loadingMoreActivity}
+              onClick={loadMoreActivity}
+            >
+              {loadingMoreActivity ? 'Loading…' : 'Load more'}
+            </button>
+          )}
         </>
       )}
     </ModalFrame>
