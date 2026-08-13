@@ -125,11 +125,13 @@ describe('AgendaPage render smoke', () => {
     expect(captions.length).toBe(1);
   });
 
-  // DEC-791: the day-tab pill reads like a date ("Mon 1 Jun" for the
-  // fixture's 2026-06-01), the toolbar summary line uses correct
-  // singular/plural grammar for both counters, and a plain toolbar link
-  // points organizers at where rooms/tracks are actually configured.
-  it('renders the day pill as a formatted date, the summary with correct count grammar, and the rooms/tracks link', async () => {
+  // DEC-899/900: the day-tab pill reads like a date ("Mon 1 Jun" for the
+  // fixture's 2026-06-01); the page's summary/actions now live on the title
+  // row and the summary uses correct singular/plural grammar for the
+  // conflict counter, with only the conflict count bolded; the rooms/tracks
+  // link is the grid's own empty state, so it's absent while the fixture
+  // has a room configured.
+  it('renders the day pill as a formatted date and the title-row summary with correct count grammar', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
     });
@@ -141,13 +143,16 @@ describe('AgendaPage render smoke', () => {
 
     expect(screen.getByRole('tab', { name: 'Mon 1 Jun' })).toBeInTheDocument();
 
-    // Fixture is summary: { unplaced: 1, conflicts: 1 } -- both singular.
-    expect(screen.getByText('1 unplaced')).toBeInTheDocument();
+    // Fixture is summary: { unplaced: 1, conflicts: 1 } -- both singular;
+    // placed% derives from placed.length / (placed.length + unscheduled.length).
+    const summary = document.querySelector('.chq-agenda-head .chq-agenda-summary');
+    expect(summary?.textContent).toMatch(/^1 unplaced · 1 conflict · \d+% placed$/);
     expect(screen.getByText('1 conflict')).toBeInTheDocument();
     expect(screen.queryByText('1 conflicts')).toBeNull();
 
-    const link = screen.getByRole('link', { name: 'Add a room or track' });
-    expect(link).toHaveAttribute('href', '/settings#chq-settings-section-tracks');
+    // Fixture has a room configured -- the "Add a room or track" link is
+    // the grid's own empty state and must not render as a standing control.
+    expect(screen.queryByRole('link', { name: 'Add a room or track' })).toBeNull();
   });
 
   // DEC-791: plural grammar when there are 2+ conflicts.
@@ -166,6 +171,28 @@ describe('AgendaPage render smoke', () => {
 
     expect(screen.getByText('2 conflicts')).toBeInTheDocument();
     expect(screen.queryByText('2 conflict')).toBeNull();
+  });
+
+  // DEC-899/900: with zero rooms configured, the day grid's empty state
+  // takes its place and carries the ONLY "Add a room or track" link on the
+  // page.
+  it('renders the "Add a room or track" link only as the grid empty state when the event has zero rooms', async () => {
+    const payload = agendaPayload();
+    payload.rooms = [];
+    payload.placed = [];
+    payload.conflicts = [];
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: payload,
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      const link = screen.getByRole('link', { name: 'Add a room or track' });
+      expect(link).toHaveAttribute('href', '/settings#chq-settings-section-tracks');
+    });
+
+    expect(document.querySelector('.chq-day-grid')).toBeNull();
   });
 
   it('renders a same-room two-session clash as one merged inverted card with both titles uncropped', async () => {
@@ -500,10 +527,11 @@ describe('AgendaPage render smoke', () => {
     expect(screen.queryByText(/Placing S-003/)).toBeNull();
   });
 
-  // DEC-701: assignLanes already proves a room can hold N > 2 overlapping
-  // sessions -- the conflict caption must count them instead of assuming a
-  // pair, and every overlapping card must still render as its own card.
-  it('renders three overlapping placements as three cards with a three-session caption', async () => {
+  // DEC-899/900: any same-room overlap cluster of size >= 2 (not just
+  // exactly 2) merges into ONE inverted clash card listing every session in
+  // the cluster, with a single caption naming the count — never N separate
+  // lane cards.
+  it('renders three overlapping placements as one merged clash card with a three-session caption', async () => {
     const payload = agendaPayload();
     payload.placed.push({
       submissionId: 'sub-4',
@@ -534,33 +562,48 @@ describe('AgendaPage render smoke', () => {
     expect(screen.getByText('Overlapping Talk B')).toBeInTheDocument();
     expect(screen.getByText('Overlapping Talk C')).toBeInTheDocument();
 
+    // One card, one caption — not three separate lane cards.
+    const clashCards = document.querySelectorAll('.chq-day-grid-clash-card');
+    expect(clashCards.length).toBe(1);
     const captions = screen.getAllByText('Three sessions in one room');
-    expect(captions.length).toBe(3);
+    expect(captions.length).toBe(1);
   });
 
-  // DEC-759: a same-room 3+-way pile-up renders each session as its own
-  // lane (1/N width) rather than merging (that's the DEC-742 exactly-2
-  // path, covered above) — every lane must render BOTH its own title and
-  // its own conflict caption at rest, not hidden behind the inner
-  // scrollbar DEC-620 used to put on the card (removed by DEC-759; see
-  // agenda-card-geometry.test.ts for the CSS-level regression guard).
-  it('renders each lane of a same-room clash with its own title and conflict caption, sized to its lane', async () => {
+  // DEC-899/900: a 4-way same-room pile-up merges into the same single
+  // clash card shape as a 3-way one, listing all four sessions.
+  it('renders a four-way same-room overlap as one merged clash card listing all four titles', async () => {
     const payload = agendaPayload();
-    payload.placed.push({
-      submissionId: 'sub-4',
-      ref: 'S-004',
-      title: 'Overlapping Talk C',
-      trackIds: [],
-      speakers: [],
-      roomId: 'room-1',
-      day: '2026-06-01',
-      startMin: 645,
-      endMin: 705,
-    });
+    payload.placed.push(
+      {
+        submissionId: 'sub-4',
+        ref: 'S-004',
+        title: 'Overlapping Talk C',
+        trackIds: [],
+        speakers: [],
+        roomId: 'room-1',
+        day: '2026-06-01',
+        startMin: 645,
+        endMin: 705,
+      },
+      {
+        submissionId: 'sub-5',
+        ref: 'S-005',
+        title: 'Overlapping Talk D',
+        trackIds: [],
+        speakers: [],
+        roomId: 'room-1',
+        day: '2026-06-01',
+        startMin: 650,
+        endMin: 710,
+      },
+    );
     payload.conflicts = [
       { kind: 'room_overlap', submissionIds: ['sub-1', 'sub-2'], detail: 'A and B overlap in Main Hall.' },
       { kind: 'room_overlap', submissionIds: ['sub-1', 'sub-4'], detail: 'A and C overlap in Main Hall.' },
       { kind: 'room_overlap', submissionIds: ['sub-2', 'sub-4'], detail: 'B and C overlap in Main Hall.' },
+      { kind: 'room_overlap', submissionIds: ['sub-1', 'sub-5'], detail: 'A and D overlap in Main Hall.' },
+      { kind: 'room_overlap', submissionIds: ['sub-2', 'sub-5'], detail: 'B and D overlap in Main Hall.' },
+      { kind: 'room_overlap', submissionIds: ['sub-4', 'sub-5'], detail: 'C and D overlap in Main Hall.' },
     ];
 
     mockApi({
@@ -572,25 +615,13 @@ describe('AgendaPage render smoke', () => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
 
-    for (const [submissionId, title] of [
-      ['sub-1', 'Overlapping Talk A'],
-      ['sub-2', 'Overlapping Talk B'],
-      ['sub-4', 'Overlapping Talk C'],
-    ] as const) {
-      const card = document.querySelector(`[data-submission-id="${submissionId}"].chq-day-grid-placed-card`);
-      expect(card).not.toBeNull();
-      // Each card renders its own title...
-      expect(card?.textContent).toContain(title);
-      // ...and its own caption, both present in the same card at once (not
-      // one obscuring the other behind a scroll region).
-      const caption = card?.querySelector('.chq-conflict-caption');
-      expect(caption).not.toBeNull();
-      expect(caption?.textContent).toBe('Three sessions in one room');
-      // Lane sizing: three concurrent lanes each claim 1/3 of the cell
-      // width via the inline style DayGrid computes from assignLanes
-      // (jsdom normalizes the `calc(100% / 3)` source to a percentage).
-      expect((card as HTMLElement).style.width).toBe('calc(33.3333%)');
+    for (const title of ['Overlapping Talk A', 'Overlapping Talk B', 'Overlapping Talk C', 'Overlapping Talk D']) {
+      expect(screen.getByText(title)).toBeInTheDocument();
     }
+
+    const clashCards = document.querySelectorAll('.chq-day-grid-clash-card');
+    expect(clashCards.length).toBe(1);
+    expect(screen.getByText('Four sessions in one room')).toBeInTheDocument();
   });
 
   it('never renders the literal text "undefined" anywhere in the tree', async () => {

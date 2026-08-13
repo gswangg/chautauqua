@@ -12,14 +12,40 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 24px;
+  flex-wrap: wrap;
 }
 
-.chq-agenda-toolbar {
+/* DEC-899/900: the page's actions (summary + Auto-schedule + Publish) live
+   on the title row itself, right-aligned, rather than a separate toolbar
+   band underneath it. */
+.chq-agenda-head-actions {
+  display: flex;
+  align-items: center;
   gap: 16px;
+  margin-left: auto;
+}
+
+.chq-agenda-summary {
+  white-space: nowrap;
 }
 
 .chq-agenda-summary strong {
   color: var(--chq-ink);
+}
+
+/* DEC-899/900: the grid's own empty state when the event has zero rooms —
+   "Add a room or track" only ever appears here, never as a standing
+   toolbar control implying rooms always need attention. */
+.chq-agenda-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 32px 20px;
+  border: 1px dashed var(--chq-rule);
+  border-radius: var(--chq-r-card);
+  background: var(--chq-surface);
+  color: var(--chq-muted);
 }
 
 /* DEC-791/AIA-02: a plain toolbar-row link to Settings' rooms/tracks
@@ -187,6 +213,36 @@
   background: color-mix(in srgb, var(--chq-brand) 14%, transparent);
 }
 
+/* DEC-899/900: an armed empty cell's hover/focus state names its own free
+ * run, not just the pointer tint above — "Place here · N MIN FREE" mirrors
+ * the phone frame's free-slot language (PhoneAgenda's "Place here" /
+ * "N free" pair) so the same affordance reads consistently across
+ * breakpoints. Hidden at rest (the button's own hover tint/outline already
+ * carries the state to a sighted user scanning the grid) and surfaced only
+ * on :hover/:focus-visible so it never crowds the 24px row at rest. */
+.chq-day-grid-cell-hover-label {
+  display: none;
+}
+
+.chq-day-grid-armed .chq-day-grid-cell-btn:hover .chq-day-grid-cell-hover-label,
+.chq-day-grid-armed .chq-day-grid-cell-btn:focus-visible .chq-day-grid-cell-hover-label {
+  display: block;
+  position: absolute;
+  inset: 2px 4px auto 4px;
+  z-index: 8;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--chq-ink);
+  background: var(--chq-surface);
+  padding: 1px 3px;
+  border-radius: 2px;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .chq-day-grid-armed .chq-day-grid-cell-btn:focus-visible {
   z-index: 7;
   outline: 3px solid var(--chq-brand);
@@ -272,6 +328,15 @@
   flex-direction: column;
   gap: 4px;
   color: var(--chq-on-ink);
+  /* DEC-899/900: a cluster of N>=2 overlapping sessions spans multiple
+     15-minute rows, each of which paints its own hour/hairline rule
+     (.chq-day-grid-cell's border-bottom) at rest. Without an explicit
+     stacking position this card still masks those rules by DOM order alone
+     (it renders after the cell grid), but that's fragile against future
+     reordering — position + z-index makes the "card sits above the grid
+     lines, never cut by them" contract explicit rather than incidental. */
+  position: relative;
+  z-index: 2;
 }
 
 .chq-day-grid-clash-item {
