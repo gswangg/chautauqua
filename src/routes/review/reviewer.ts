@@ -71,7 +71,9 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
   const perPage = listPerPage(c.req.query("perPage"));
 
   if (!isPlanOpen(plan.openDate, plan.closeDate, Date.now(), plan.timezone)) {
-    return c.json({ items: [], total: 0, page, perPage, open: false });
+    // The closed-plan envelope must carry every key the open one does -- the
+    // Review landing reads `recused.length` unconditionally across all plans.
+    return c.json({ items: [], total: 0, page, perPage, open: false, recused: [] });
   }
 
   const scoped = await repo.resolveReviewerSubmissions(c.var.db, plan, auth.userId);

@@ -126,4 +126,25 @@ describe("DEC-239: reviewer queue item wire shape", () => {
     expect(body.items.find((i) => i.submissionId === "sub-2")?.alreadyRatedByMe).toBe(false);
     expect(body.total).toBe(2);
   });
+
+  // Reviewer-lockout P0 (docs/eval-findings.md): the Review landing reads
+  // `recused.length` on every plan's queue, but the closed-plan early return
+  // omitted the key entirely -- crashing the reviewer's only landing page.
+  // The closed envelope must carry the same keys as the open one.
+  it("includes recused: [] on the closed-plan envelope", async () => {
+    const { getPlanById } = await import("../src/server/repo/review");
+    vi.mocked(getPlanById).mockResolvedValueOnce({
+      ...planRecord,
+      openDate: Date.UTC(2020, 0, 1),
+      closeDate: Date.UTC(2020, 0, 2),
+    } as never);
+    const app = await buildApp({ userId: "r1", role: "reviewer", orgId: ORG_A });
+    const res = await app.request(`/api/v1/review/plans/${planRecord.id}/queue`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { items: unknown[]; total: number; open: boolean; recused: unknown[] };
+    expect(body.open).toBe(false);
+    expect(body.items).toEqual([]);
+    expect(Array.isArray(body.recused)).toBe(true);
+    expect(body.recused).toEqual([]);
+  });
 });
