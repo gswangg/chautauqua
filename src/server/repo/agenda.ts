@@ -12,12 +12,14 @@ import { chunkIds } from "../../lib/chunk";
 import { chunkRowsForInsert } from "../../lib/chunk";
 import { bumpIcsSequences } from "./ics-sequence";
 import { visibleSessionConditions } from "./public/gates";
+import { SESSION_FORMAT_FIELD_ID } from "../../forms/types";
 import {
   autoSchedule,
   describeConflict,
   describeUnplaced,
   findConflicts,
   MINUTES_PER_DAY,
+  parseFormatDurationMin,
   scheduleSummary,
   type AutoScheduleSessionInput,
   type Conflict,
@@ -304,6 +306,53 @@ async function loadAcceptedSessions(db: Db, eventId: string, recordPrefix: strin
   });
 }
 
+/** DEC-772: batches ONE query over submission_answer (chunked exactly like
+ * src/server/repo/public/sessions.ts's format hydration) for each id's
+ * SESSION_FORMAT_FIELD_ID answer, parses the "(N min)" suffix via
+ * parseFormatDurationMin, and falls back to defaultDurationMin whenever the
+ * session has no format answer or its label carries no parseable duration.
+ * `eventId` documents the caller's scope — `submissionIds` must already be
+ * scoped to that event (this table carries no event_id column of its own). */
+export async function loadDurationMinBySubmission(
+  db: Db,
+  eventId: string,
+  submissionIds: string[],
+  defaultDurationMin: number,
+): Promise<Map<string, number>> {
+  void eventId;
+  const result = new Map<string, number>();
+  if (submissionIds.length === 0) return result;
+
+  const formatRows: { submissionId: string; valueJson: string }[] = [];
+  for (const batch of chunkIds(submissionIds)) {
+    const batchRows = await db
+      .select({
+        submissionId: schema.submissionAnswer.submissionId,
+        valueJson: schema.submissionAnswer.valueJson,
+      })
+      .from(schema.submissionAnswer)
+      .where(
+        and(
+          inArray(schema.submissionAnswer.submissionId, batch),
+          eq(schema.submissionAnswer.formFieldId, SESSION_FORMAT_FIELD_ID),
+        ),
+      );
+    formatRows.push(...batchRows);
+  }
+
+  const formatBySubmission = new Map<string, string | null>();
+  for (const r of formatRows) {
+    const parsed: unknown = JSON.parse(r.valueJson);
+    formatBySubmission.set(r.submissionId, typeof parsed === "string" && parsed.length > 0 ? parsed : null);
+  }
+
+  for (const id of submissionIds) {
+    const label = formatBySubmission.get(id) ?? null;
+    result.set(id, parseFormatDurationMin(label) ?? defaultDurationMin);
+  }
+  return result;
+}
+
 /** Builds the full GET .../agenda payload (DEC-021 single round-trip). */
 export async function getAgendaPayload(db: Db, eventId: string, event: EventInfo): Promise<AgendaPayload> {
   const days = computeDays(event.startDate, event.endDate);
@@ -544,9 +593,19 @@ export async function runAutoSchedule(
   const existingIds = new Set(existing.map((s) => s.submissionId));
 
   const unscheduledAccepted = accepted.filter((s) => s.slot === null);
+  // DEC-772: a session's block length is its own format's duration, not the
+  // grid's flat default — loadDurationMinBySubmission falls back to
+  // params.defaultDurationMin per id whenever the format answer is missing
+  // or carries no parseable "(N min)" suffix.
+  const durationMinBySubmissionId = await loadDurationMinBySubmission(
+    db,
+    eventId,
+    unscheduledAccepted.map((s) => s.submissionId),
+    params.defaultDurationMin,
+  );
   const sessions: AutoScheduleSessionInput[] = unscheduledAccepted.map((s) => ({
     submissionId: s.submissionId,
-    durationMin: params.defaultDurationMin,
+    durationMin: durationMinBySubmissionId.get(s.submissionId) ?? params.defaultDurationMin,
     track: s.trackIds[0] ?? null,
     speakerContactIds: s.speakerContactIds,
   }));
@@ -591,7 +650,7 @@ export async function runAutoSchedule(
   // DEC-615: render this run's per-item reasons using the SAME title
   // lookup buildConflictLabels already builds — titleBySubmissionId
   // never desyncs from the conflicts renderer's.
-  const durationMinBySubmissionId = new Map(sessions.map((s) => [s.submissionId, s.durationMin]));
+  const placedDurationMinBySubmissionId = new Map(sessions.map((s) => [s.submissionId, s.durationMin]));
   const titleBySubmissionId = new Map(accepted.map((s) => [s.submissionId, s.title]));
   const speakerNameByContactId = new Map<string, string>();
   for (const s of accepted) {
@@ -599,7 +658,7 @@ export async function runAutoSchedule(
   }
   const unplacedLabels: UnplacedLabels = { titleBySubmissionId, speakerNameByContactId };
   const unplacedReasons: DescribedUnplaced[] = unplacedFromRun.map((u) => {
-    const durationMin = durationMinBySubmissionId.get(u.submissionId) ?? params.defaultDurationMin;
+    const durationMin = placedDurationMinBySubmissionId.get(u.submissionId) ?? params.defaultDurationMin;
     const sessionForCopy = { submissionId: u.submissionId, durationMin };
     return {
       ...u,
