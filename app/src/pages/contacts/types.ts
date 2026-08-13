@@ -56,6 +56,9 @@ export interface ContactDetail extends ContactListItem {
   notes?: string | null;
   bio?: string | null;
   headshotUrl?: string | null;
+  // DEC-894: filename + upload date of the stored headshot file, printed
+  // beside the image in the Contacts drawer. null when there is no headshot.
+  headshotFile?: { filename: string; uploadedAt: number } | null;
   socialLinks?: ContactSocialLinks | null;
   customFields?: Record<string, string>;
   history: {

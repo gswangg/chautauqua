@@ -109,6 +109,10 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
   const [website, setWebsite] = useState('');
 
   const [headshotUrl, setHeadshotUrl] = useState<string | null>(null);
+  // DEC-894: the drawer prints the stored file's filename and upload date
+  // beside the image — an uploaded file with no metadata reads as
+  // decoration, not as a record.
+  const [headshotFile, setHeadshotFile] = useState<{ filename: string; uploadedAt: number } | null>(null);
   const [headshotUploading, setHeadshotUploading] = useState(false);
   const [headshotError, setHeadshotError] = useState<string | null>(null);
   const headshotInputRef = useRef<HTMLInputElement | null>(null);
@@ -134,6 +138,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
         setGithub(c.socialLinks?.github ?? '');
         setWebsite(c.socialLinks?.website ?? '');
         setHeadshotUrl(c.headshotUrl ?? null);
+        setHeadshotFile(c.headshotFile ?? null);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load contact'))
       .finally(() => setLoading(false));
@@ -197,16 +202,48 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
     setEditingField(`custom-${customFieldRows.length}`);
   }
 
+  // DEC-894: downscale to a 512px longest edge via canvas/toBlob at 0.85
+  // JPEG quality before POSTing — same numbers as the portal's inline
+  // downscale script (src/routes/portal/profile.tsx HEADSHOT_DOWNSCALE_JS).
+  // Leaves the original file in place if the browser cannot do it (no
+  // canvas/Image support, decode failure, etc.) — the server-side dimension
+  // gate is the sole authority in that case.
+  async function downscaleHeadshot(file: File): Promise<File> {
+    try {
+      const MAX_EDGE = 512;
+      const bitmap = await createImageBitmap(file);
+      const { width, height } = bitmap;
+      if (width <= MAX_EDGE && height <= MAX_EDGE) return file;
+      const scale = MAX_EDGE / Math.max(width, height);
+      const targetW = Math.round(width * scale);
+      const targetH = Math.round(height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return file;
+      ctx.drawImage(bitmap, 0, 0, targetW, targetH);
+      const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+      if (!blob) return file;
+      const base = file.name.replace(/\.[^.]+$/, '');
+      return new File([blob], `${base}.jpg`, { type: 'image/jpeg' });
+    } catch {
+      return file;
+    }
+  }
+
   async function uploadHeadshot() {
-    const file = headshotInputRef.current?.files?.[0];
-    if (!file) return;
+    const chosen = headshotInputRef.current?.files?.[0];
+    if (!chosen) return;
     setHeadshotUploading(true);
     setHeadshotError(null);
     try {
+      const file = await downscaleHeadshot(chosen);
       const form = new FormData();
       form.set('headshot', file);
       const updated = await apiUpload<ContactDetail>(`/contacts/${contactId}/headshot`, form);
       setHeadshotUrl(updated.headshotUrl ?? null);
+      setHeadshotFile(updated.headshotFile ?? null);
       if (headshotInputRef.current) headshotInputRef.current.value = '';
       // DEC-574: refresh the list's thumbnail without closing this drawer —
       // onSaved() closes on save-and-navigate-away, which would discard any
@@ -366,11 +403,16 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
                   ) : (
                     <span className="chq-contacts-record-empty">{EM_DASH}</span>
                   )}
+                  {headshotFile && (
+                    <p className="chq-contacts-headshot-meta">
+                      {headshotFile.filename} — uploaded {formatDateTime(headshotFile.uploadedAt)}
+                    </p>
+                  )}
                   <label htmlFor="chq-contact-headshot-upload">
                     Upload headshot
                     <input
                       id="chq-contact-headshot-upload"
-                      className="chq-input"
+                      className="chq-file"
                       type="file"
                       accept=".png,.jpg,.jpeg,.webp"
                       ref={headshotInputRef}
