@@ -96,7 +96,7 @@ describe("pushContactsToEvent (DEC-357): set-based batch push", () => {
       { id: "c-3", email: "c@example.com", firstName: "Cy", lastName: "Turing", title: null, company: null },
     ];
 
-    const ids = await pushContactsToEvent(db, "event-1", ORG_A, contacts, undefined);
+    const ids = await pushContactsToEvent(db, "event-1", ORG_A, contacts, "Lightning talks");
 
     expect(ids).toHaveLength(3);
     // The read half of updateSubmissionStatuses is one chunked pass
@@ -118,12 +118,14 @@ describe("pushContactsToEvent (DEC-357): set-based batch push", () => {
 
   it("is a no-op (no updateSubmissionStatuses call at all) for an empty contact list", async () => {
     const { db, submissionSelectCalls } = statusCountingDb();
-    const ids = await pushContactsToEvent(db, "event-1", ORG_A, [], undefined);
+    const ids = await pushContactsToEvent(db, "event-1", ORG_A, [], "Lightning talks");
     expect(ids).toEqual([]);
     expect(submissionSelectCalls).toHaveLength(0);
   });
 
-  it("applies the default 'Invited: <First> <Last>' title per contact when no title is given", async () => {
+  // DEC-810: no fallback -- every contact in the batch gets the exact
+  // caller-supplied title, never an invented 'Invited: <First> <Last>'.
+  it("applies the caller-supplied title to every contact in the batch, with no fallback", async () => {
     const { db } = statusCountingDb();
     const insertedTitles: string[] = [];
     const wrapped = {
@@ -143,11 +145,14 @@ describe("pushContactsToEvent (DEC-357): set-based batch push", () => {
       wrapped,
       "event-1",
       ORG_A,
-      [{ id: "c-1", email: "a@example.com", firstName: "Ada", lastName: "Lovelace", title: null, company: null }],
-      undefined,
+      [
+        { id: "c-1", email: "a@example.com", firstName: "Ada", lastName: "Lovelace", title: null, company: null },
+        { id: "c-2", email: "b@example.com", firstName: "Bea", lastName: "Neumann", title: null, company: null },
+      ],
+      "Lightning talks",
     );
 
-    expect(insertedTitles).toEqual(["Invited: Ada Lovelace"]);
+    expect(insertedTitles).toEqual(["Lightning talks", "Lightning talks"]);
   });
 });
 
@@ -404,7 +409,7 @@ describe("POST /api/v1/contacts/import with eventId (DEC-357 batch wiring)", () 
       "c@example.com,Cy,Turing\n";
     const mapping = { Email: "email", First: "firstName", Last: "lastName" };
 
-    const res = await app.request(jsonRequest("/api/v1/contacts/import", { csvText, mapping, eventId: "event-1" }));
+    const res = await app.request(jsonRequest("/api/v1/contacts/import", { csvText, mapping, eventId: "event-1", sessionTitle: "Lightning talks" }));
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as { created: number; updated: number; addedToEvent: number };
@@ -432,6 +437,7 @@ describe("POST /api/v1/contacts/import with eventId (DEC-357 batch wiring)", () 
         csvText: "Email,First,Last\nada@example.com,Ada,Lovelace\n",
         mapping,
         eventId: "event-1",
+        sessionTitle: "Lightning talks",
       }),
     );
     expect(firstRes.status).toBe(200);
@@ -446,6 +452,7 @@ describe("POST /api/v1/contacts/import with eventId (DEC-357 batch wiring)", () 
         csvText: "Email,First,Last\nada@example.com,Ada,Lovelace\nbea@example.com,Bea,Neumann\n",
         mapping,
         eventId: "event-1",
+        sessionTitle: "Lightning talks",
       }),
     );
     expect(secondRes.status).toBe(200);

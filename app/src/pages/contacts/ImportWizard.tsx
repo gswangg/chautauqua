@@ -3,7 +3,14 @@ import { apiPost, ApiError } from '../../lib/api';
 import { expandFullNameMapping, mapImportRow, parseCsv, suggestMapping, toCsv, FULL_NAME_TARGET, STANDARD_IMPORT_FIELDS } from './csv';
 import { useEscapeKey } from '../../lib/useEscapeKey';
 import type { ImportPlan, ImportPlanRow, ImportResult } from './types';
+import { DEC_810 } from '../../../../src/decisions';
 import './contacts-panels.css';
+
+// Compile-checked dependency marker: when `eventId` is set, this wizard
+// collects a required `sessionTitle` for the batch (in the same step the
+// event is already chosen) rather than letting the server invent an
+// 'Invited: <name>' title per contact (DEC-810).
+void DEC_810;
 
 interface Props {
   onClose: () => void;
@@ -34,6 +41,7 @@ interface PlannedRequest {
   csvText: string;
   mapping: Record<string, string>;
   eventId?: string;
+  sessionTitle?: string;
 }
 
 function actionLabel(row: ImportPlanRow): string {
@@ -45,6 +53,10 @@ function actionLabel(row: ImportPlanRow): string {
 export function ImportWizard({ onClose, onImported, eventId }: Props) {
   const [csvText, setCsvText] = useState('');
   const [mapping, setMapping] = useState<Record<string, string>>({});
+  // DEC-810: when this import is scoped to an event, the whole batch shares
+  // one session title -- collected here, in the step where the event is
+  // already chosen (the eventId prop), never invented server-side.
+  const [sessionTitle, setSessionTitle] = useState('');
   const [plan, setPlan] = useState<ImportPlan | null>(null);
   const [plannedRequest, setPlannedRequest] = useState<PlannedRequest | null>(null);
   const [skipLines, setSkipLines] = useState<Set<number>>(new Set());
@@ -99,6 +111,10 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
   }
 
   async function runPreview() {
+    if (eventId && sessionTitle.trim() === '') {
+      setError('Enter a session title for this batch.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -109,7 +125,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
       const request: PlannedRequest = {
         csvText: expandedCsvText,
         mapping: expanded.mapping,
-        ...(eventId ? { eventId } : {}),
+        ...(eventId ? { eventId, sessionTitle: sessionTitle.trim() } : {}),
       };
       const res = await apiPost<ImportPlan>('/contacts/import', { ...request, dryRun: true });
       setPlan(res);
@@ -205,6 +221,23 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
 
             {parseError && <div className="chq-error">{parseError}</div>}
 
+            {eventId && (
+              <>
+                <label className="chq-contacts-import-field">
+                  Session title for this batch
+                  <input
+                    className="chq-input"
+                    value={sessionTitle}
+                    onChange={(e) => setSessionTitle(e.target.value)}
+                    placeholder="e.g. Lightning talks"
+                  />
+                </label>
+                <p className="chq-contacts-pipeline-caption">
+                  Every contact added to this event by this import is added as an accepted session with this title.
+                </p>
+              </>
+            )}
+
             {header.length > 0 && (
               <>
                 <h3 className="chq-section-label">Column mapping</h3>
@@ -276,7 +309,12 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
                 </table>
 
                 <div className="chq-contacts-import-actions">
-                  <button type="button" className="chq-btn chq-btn-primary" disabled={busy} onClick={runPreview}>
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-primary"
+                    disabled={busy || (!!eventId && sessionTitle.trim() === '')}
+                    onClick={runPreview}
+                  >
                     Preview {dataRows.length} row(s)
                   </button>
                   <span className="chq-contacts-pipeline-caption">{dataRows.length} data row(s) total.</span>

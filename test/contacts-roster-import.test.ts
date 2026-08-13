@@ -145,7 +145,7 @@ describe("POST /api/v1/contacts/import with eventId (SPK-03 roster import, DEC-2
     const mapping = { name: "firstName", email: "email", title: "title", company: "company", bio: "bio" };
 
     const res = await app.request(
-      jsonRequest("/api/v1/contacts/import", { csvText, mapping, eventId: "event-1" }),
+      jsonRequest("/api/v1/contacts/import", { csvText, mapping, eventId: "event-1", sessionTitle: "Lightning talks" }),
     );
 
     expect(res.status).toBe(200);
@@ -169,7 +169,7 @@ describe("POST /api/v1/contacts/import with eventId (SPK-03 roster import, DEC-2
     const mapping = { Email: "email", First: "firstName", Last: "lastName" };
 
     const firstRes = await app.request(
-      jsonRequest("/api/v1/contacts/import", { csvText, mapping, eventId: "event-1" }),
+      jsonRequest("/api/v1/contacts/import", { csvText, mapping, eventId: "event-1", sessionTitle: "Lightning talks" }),
     );
     expect(firstRes.status).toBe(200);
     const firstBody = (await firstRes.json()) as { created: number; addedToEvent: number };
@@ -181,6 +181,7 @@ describe("POST /api/v1/contacts/import with eventId (SPK-03 roster import, DEC-2
         csvText: "Email,First,Last\nADA@example.com,Ada,Lovelace2\n",
         mapping,
         eventId: "event-1",
+        sessionTitle: "Lightning talks",
       }),
     );
     expect(secondRes.status).toBe(200);
@@ -228,6 +229,45 @@ describe("POST /api/v1/contacts/import with eventId (SPK-03 roster import, DEC-2
     expect(state.submission).toHaveLength(0);
   });
 
+  // DEC-810: a blank/missing sessionTitle with an eventId is rejected
+  // loudly, before any write -- never a per-row 'Invited: <name>' fallback.
+  it("400s on eventId with no sessionTitle, and writes nothing", async () => {
+    const { db, inserts } = fakeDb([], [EVENT_ORG_A]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("/api/v1/contacts/import", {
+        csvText: "Email,First,Last\nada@example.com,Ada,Lovelace\n",
+        mapping: { Email: "email", First: "firstName", Last: "lastName" },
+        eventId: "event-1",
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields?.sessionTitle).toBeTruthy();
+    expect(inserts).toHaveLength(0);
+  });
+
+  it("400s on eventId with a blank sessionTitle, and writes nothing", async () => {
+    const { db, inserts } = fakeDb([], [EVENT_ORG_A]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("/api/v1/contacts/import", {
+        csvText: "Email,First,Last\nada@example.com,Ada,Lovelace\n",
+        mapping: { Email: "email", First: "firstName", Last: "lastName" },
+        eventId: "event-1",
+        sessionTitle: "   ",
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields?.sessionTitle).toBeTruthy();
+    expect(inserts).toHaveLength(0);
+  });
+
   it("a mapped bio column is persisted rather than throwing", async () => {
     const { db, state } = fakeDb([], []);
     const app = appWithDbAndAuth(db, ORGANIZER_A);
@@ -258,6 +298,7 @@ describe("POST /api/v1/contacts with eventId (SPK-03 roster create, DEC-290)", (
         lastName: "Okafor",
         email: "marcus@example.com",
         eventId: "event-1",
+        sessionTitle: "Lightning talks",
       }),
     );
 
@@ -285,6 +326,27 @@ describe("POST /api/v1/contacts with eventId (SPK-03 roster create, DEC-290)", (
     );
 
     expect(res.status).toBe(404);
+  });
+
+  // DEC-810: eventId without a sessionTitle is rejected before the contact
+  // is even created -- no invented 'Invited: <name>' title.
+  it("400s on eventId with no sessionTitle, and does not create the contact", async () => {
+    const { db, state } = fakeDb([], [EVENT_ORG_A]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("/api/v1/contacts", {
+        firstName: "Marcus",
+        lastName: "Okafor",
+        email: "marcus@example.com",
+        eventId: "event-1",
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields?.sessionTitle).toBeTruthy();
+    expect(state.contact).toHaveLength(0);
   });
 
   it("without eventId, behaves exactly as before (201, no roster push)", async () => {
