@@ -315,6 +315,13 @@
   color: var(--chq-ink);
 }
 
+/* DEC-723/DEC-737: each evaluation's own blended score, next to the
+   reviewer name in the disclosure row. */
+.chq-review-reviews-score-total {
+  color: var(--chq-ink);
+  font-weight: 700;
+}
+
 .chq-review-reviews-plan-round {
   color: var(--chq-muted);
   font-weight: 500;

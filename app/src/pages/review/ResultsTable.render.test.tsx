@@ -218,7 +218,7 @@ describe('ResultsTable decision truth + reviews drawer (DEC-632/DEC-633)', () =>
     expect(screen.queryByRole('button', { name: 'Decline' })).not.toBeInTheDocument();
   });
 
-  it('expanding a row fetches and renders a comment plus an anonymized reviewer', async () => {
+  it('expanding a row fetches and renders a comment plus the reviewer name (DEC-736)', async () => {
     mockApi({
       [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
       [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([resultsRow()]),
@@ -227,8 +227,10 @@ describe('ResultsTable decision truth + reviews drawer (DEC-632/DEC-633)', () =>
           planId: PLAN_ID,
           planName: 'Track Review',
           round: 1,
-          reviewerName: null,
+          reviewerName: 'Priya Patel',
           scores: { c1: 4 },
+          score: 4,
+          criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
           comment: 'Strong proposal, well scoped.',
           submittedAt: 1700000000000,
         },
@@ -247,6 +249,137 @@ describe('ResultsTable decision truth + reviews drawer (DEC-632/DEC-633)', () =>
     fireEvent.click(screen.getByRole('button', { name: /Reviews \(3\)/ }));
 
     expect(await screen.findByText('Strong proposal, well scoped.')).toBeInTheDocument();
-    expect(screen.getByText('(anonymized)')).toBeInTheDocument();
+    // DEC-736: the server always resolves a reviewer name -- no
+    // '(anonymized)' branch on this organiser-facing endpoint.
+    expect(screen.getByText('Priya Patel')).toBeInTheDocument();
+    expect(screen.queryByText('(anonymized)')).not.toBeInTheDocument();
+    // DEC-723: the evaluation's own blended score, and a criterion chip
+    // labelled from `criteria[].label` -- the raw criterionId never
+    // appears in the DOM.
+    expect(screen.getByText('4.00')).toBeInTheDocument();
+    expect(screen.getByText('Quality: 4')).toBeInTheDocument();
+    expect(screen.queryByText(/c1/)).not.toBeInTheDocument();
+  });
+});
+
+// DEC-737: the sort control cannot lie. Two rapid header clicks always land
+// on a `dir`, an arrow, and rendered rows that agree with each other and
+// with the last click made -- even when the first (stale) response resolves
+// after the second's, and even when a results fetch fails outright (rows
+// are cleared, never left contradicting the header).
+describe('ResultsTable sort honesty (DEC-737)', () => {
+  function deferred<T>() {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>((res) => {
+      resolve = res;
+    });
+    return { promise, resolve };
+  }
+
+  it('a stale in-flight response never overwrites the newer request\'s rows/dir', async () => {
+    const pending: { url: string; deferred: ReturnType<typeof deferred<Response>> }[] = [];
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const rawUrl = typeof input === 'string' ? input : input.toString();
+      const url = new URL(rawUrl, 'http://localhost');
+      const path = url.pathname;
+
+      if (path === `/api/v1/plans/${PLAN_ID}`) {
+        return new Response(JSON.stringify(plan()), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (path === `/api/v1/plans/${PLAN_ID}/results`) {
+        const d = deferred<Response>();
+        pending.push({ url: rawUrl, deferred: d });
+        return d.promise;
+      }
+      throw new Error(`unexpected fetch: ${path}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    // Wait for the initial (unsorted) results request to be issued.
+    await waitFor(() => expect(pending.length).toBe(1));
+    pending[0]!.deferred.resolve(
+      new Response(JSON.stringify(listEnvelope([resultsRow()])), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    expect(await screen.findByText('A Great Talk')).toBeInTheDocument();
+
+    // First click: sorts by Score (average), descending by default.
+    fireEvent.click(screen.getByRole('button', { name: /^Score/ }));
+    await waitFor(() => expect(pending.length).toBe(2));
+    const firstRequestUrl = pending[1]!.url;
+    expect(new URL(firstRequestUrl, 'http://localhost').searchParams.get('dir')).toBe('desc');
+
+    // Second click (rapid): toggles Score to ascending -- this is now the
+    // newest request.
+    fireEvent.click(screen.getByRole('button', { name: /^Score/ }));
+    await waitFor(() => expect(pending.length).toBe(3));
+    const secondRequestUrl = pending[2]!.url;
+    expect(new URL(secondRequestUrl, 'http://localhost').searchParams.get('dir')).toBe('asc');
+
+    // Resolve the SECOND (newest) request first, with its own distinct row.
+    pending[2]!.deferred.resolve(
+      new Response(
+        JSON.stringify(listEnvelope([resultsRow({ status: 'pending' })].map((r) => ({ ...r, ref: 'S-NEWEST' })))),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+    await waitFor(() => expect(screen.getByText('S-NEWEST')).toBeInTheDocument());
+
+    // Now resolve the FIRST (stale) request -- it must be discarded outright,
+    // never overwriting the newer response's rows.
+    pending[1]!.deferred.resolve(
+      new Response(
+        JSON.stringify(listEnvelope([resultsRow({ status: 'pending' })].map((r) => ({ ...r, ref: 'S-STALE' })))),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+
+    // Give the stale promise a tick to (not) apply.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(screen.getByText('S-NEWEST')).toBeInTheDocument();
+    expect(screen.queryByText('S-STALE')).not.toBeInTheDocument();
+
+    // The arrow reflects the direction actually sent by the newest request.
+    expect(screen.getByRole('button', { name: /^Score/ }).textContent).toContain('▲');
+    const scoreHeader = screen.getByRole('button', { name: /^Score/ }).closest('th')!;
+    expect(scoreHeader.getAttribute('aria-sort')).toBe('ascending');
+
+    // The CSV href's dir matches the arrow.
+    const csvLink = screen.getByRole('link', { name: 'Download CSV' });
+    expect(new URL(csvLink.getAttribute('href')!, 'http://localhost').searchParams.get('dir')).toBe('asc');
+  });
+
+  it('a failed results fetch clears rows rather than leaving them under a new header', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: () => {
+        return { status: 500, body: errorEnvelope('internal', 'Results failed') };
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Results failed');
+    });
+    expect(screen.getByText('No results yet.')).toBeInTheDocument();
   });
 });

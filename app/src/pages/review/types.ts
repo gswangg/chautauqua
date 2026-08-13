@@ -137,16 +137,35 @@ export interface ResultsRow {
   trackNames: string[];
 }
 
+// A single criterion's contribution to one evaluation, as rendered in the
+// DEC-596 "reviews behind a decision" drawer (DEC-723). `label`/`kind`/
+// `weight` are resolved server-side from the plan's criteria at the round
+// this evaluation was recorded against -- the client never looks up a
+// criterion by `id` itself, so a since-edited/removed criterion still
+// renders its original label instead of a raw id or blank cell.
+export interface SubmissionEvaluationCriterionItem {
+  id: string;
+  label: string;
+  kind: CriterionKind;
+  weight?: number;
+}
+
 // GET /api/v1/submissions/:id/evaluations item (DEC-596/DEC-622/DEC-632/
-// DEC-633): the organiser-facing "reviews behind a decision" drawer.
-// reviewerName is null exactly when the owning plan is anonymized -- the
-// server decides anonymity, the client only renders '(anonymized)'.
+// DEC-633/DEC-723/DEC-736): the organiser-facing "reviews behind a
+// decision" drawer. DEC-736: the server always resolves a reviewer name --
+// there is no anonymized-reviewer branch here (organiser-facing endpoint).
+// DEC-723: `score` is this evaluation's own blended score (2dp when
+// present, null when the criteria set has no weighted rating criterion);
+// `criteria` carries each criterion's resolved label/kind/weight alongside
+// its recorded value from `scores`.
 export interface SubmissionEvaluationItem {
   planId: string;
   planName: string;
   round: number;
-  reviewerName: string | null;
+  reviewerName: string;
   scores: Record<string, number | string>;
+  score: number | null;
+  criteria: SubmissionEvaluationCriterionItem[];
   comment: string | null;
   submittedAt: number | null;
 }
