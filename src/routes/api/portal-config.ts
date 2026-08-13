@@ -212,8 +212,7 @@ async function createFileResourceHandler(c: Context<AppEnv>, eventId: string) {
   const sanitized = sanitizeFilenameForKey(uploadedFile.name);
   const r2Key = `resource/${eventId}/${newId()}-${sanitized}`;
   const store = makeFileStore(c.env.FILES);
-  const buf = await uploadedFile.arrayBuffer();
-  await store.put(r2Key, buf, validation.servedContentType);
+  await store.put(r2Key, uploadedFile.stream(), validation.servedContentType);
 
   const fileId = await insertResourceFile(c.var.db, {
     filename: uploadedFile.name,

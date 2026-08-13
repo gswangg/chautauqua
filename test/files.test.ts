@@ -7,8 +7,31 @@ import {
   isValidFileKind,
   isValidVersionChain,
   sanitizeFilenameForKey,
+  uploadHintText,
   validateUpload,
 } from "../src/domain/files";
+
+// w42-a: the hint text must not advertise the video tier for anything
+// other than the 'recording' kind.
+describe("uploadHintText", () => {
+  it("omits video extensions and the 250 MB note for a non-recording kind", () => {
+    const text = uploadHintText("handout");
+    expect(text).not.toMatch(/mp4|mov|webm/);
+    expect(text).not.toMatch(/250 MB/);
+  });
+
+  it("omits video for no kind at all (default/unbound field)", () => {
+    const text = uploadHintText();
+    expect(text).not.toMatch(/mp4|mov|webm/);
+    expect(text).not.toMatch(/250 MB/);
+  });
+
+  it("includes video extensions and the 250 MB note for kind:'recording'", () => {
+    const text = uploadHintText("recording");
+    expect(text).toMatch(/mp4/);
+    expect(text).toMatch(/250 MB/);
+  });
+});
 
 describe("extname", () => {
   it("lowercases and strips the leading dot", () => {
@@ -156,6 +179,37 @@ describe("validateUpload — recording (DEC-879)", () => {
   it("FILE_KINDS and ALLOWED_UPLOAD_EXTENSIONS both include the new members, derived not hand-typed", () => {
     expect(FILE_KINDS).toContain("recording");
     expect(ALLOWED_UPLOAD_EXTENSIONS).toEqual(expect.arrayContaining(["mp4", "mov", "webm"]));
+  });
+
+  it("accepts a large (240 MB) mp4 for kind:'recording', under the 250 MB cap", () => {
+    const result = validateUpload({ filename: "keynote.mp4", sizeBytes: 240 * 1024 * 1024, kind: "recording" });
+    expect(result).toEqual({ ok: true, ext: "mp4", servedContentType: "video/mp4" });
+  });
+
+  // w42-a: the video tier is admitted ONLY for kind:'recording' — every
+  // other FileKind rejects a video extension outright, naming the rule.
+  for (const kind of FILE_KINDS.filter((k) => k !== "recording")) {
+    for (const ext of ["mp4", "mov", "webm"]) {
+      it(`rejects a .${ext} for kind:'${kind}' (video tier is recording-only)`, () => {
+        const result = validateUpload({ filename: `clip.${ext}`, sizeBytes: 1024, kind });
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.message).toBe("Video files are only accepted for a recording deliverable");
+          expect(result.fields?.file).toBe("Unsupported file type for this kind");
+        }
+      });
+    }
+  }
+});
+
+// w42-a: the document/image/text tiers are unaffected by the kind-gated
+// video tier — still accept/reject purely on extension + size for every kind.
+describe("validateUpload — document tier is unchanged across kinds (w42-a)", () => {
+  it("accepts a pdf under the document cap for every FileKind", () => {
+    for (const kind of FILE_KINDS) {
+      const result = validateUpload({ filename: "deck.pdf", sizeBytes: 1024, kind });
+      expect(result).toEqual({ ok: true, ext: "pdf", servedContentType: "application/pdf" });
+    }
   });
 });
 

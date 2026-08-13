@@ -73,9 +73,21 @@ export const ALLOWED_UPLOAD_EXTENSIONS: readonly string[] = [
 
 /** Human-readable summary of the upload allowlist + size caps, for form
  * field help text (DEC-020: 25 MB documents/text, 8 MB images; DEC-879:
- * 250 MB for recordings). */
-export function uploadHintText(): string {
-  return `Allowed types: ${ALLOWED_UPLOAD_EXTENSIONS.map((e) => `.${e}`).join(", ")}. Max 25 MB (8 MB for images, 250 MB for recordings).`;
+ * 250 MB for recordings — but only for the 'recording' kind: video is not
+ * part of any other kind's tier, so its hint must not advertise a video cap
+ * for a field that would reject a video file). Pass `kind` when known (e.g.
+ * a field bound to a specific FileKind) so the hint is per-tier honest;
+ * omitted, it describes the non-video tiers only. */
+export function uploadHintText(kind?: FileKind): string {
+  const extensions =
+    kind === "recording"
+      ? ALLOWED_UPLOAD_EXTENSIONS
+      : ALLOWED_UPLOAD_EXTENSIONS.filter((e) => !(e in VIDEO_EXT_CONTENT_TYPE));
+  const sizeNote =
+    kind === "recording"
+      ? "Max 25 MB (8 MB for images, 250 MB for recordings)."
+      : "Max 25 MB (8 MB for images).";
+  return `Allowed types: ${extensions.map((e) => `.${e}`).join(", ")}. ${sizeNote}`;
 }
 
 export interface UploadInput {
@@ -152,6 +164,15 @@ export function validateUpload(input: UploadInput): ValidateUploadResult {
   }
 
   if (ext in VIDEO_EXT_CONTENT_TYPE) {
+    // DEC-879: the video tier is admitted only for a 'recording' deliverable
+    // — every other kind rejects a video extension outright, never sizing it.
+    if (input.kind !== "recording") {
+      return {
+        ok: false,
+        message: "Video files are only accepted for a recording deliverable",
+        fields: { file: "Unsupported file type for this kind" },
+      };
+    }
     if (input.sizeBytes > VIDEO_MAX_BYTES) {
       return { ok: false, message: "File exceeds the 250 MB limit for recordings", fields: { file: "Too large" } };
     }

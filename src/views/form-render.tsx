@@ -146,7 +146,9 @@ export function FormField(props: { field: FormFieldDef; value: unknown; error?: 
         <FieldControl field={field} value={value} />
       </label>
       {field.helpText ? <p class="help">{field.helpText}</p> : null}
-      {field.kind === "file" ? <p class="help">{uploadHintText()}</p> : null}
+      {/* CFP file fields always upload as kind:'handout' (src/routes/public/submit.tsx)
+          — the hint must not advertise the recording-only video/250MB tier. */}
+      {field.kind === "file" ? <p class="help">{uploadHintText("handout")}</p> : null}
       {error ? (
         // DEC-367: errors are distinguished by type (weight/marker), never
         // by colour -- no semantic red anywhere in the palette.
