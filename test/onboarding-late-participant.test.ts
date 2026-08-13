@@ -57,7 +57,18 @@ function fakeDb(seed: {
     const chain: any = {
       innerJoin: () => chain,
       where: () => chain,
-      limit: () => chain,
+      // DEC-111 amendment (wave 48): getOrCreateTask/getOrCreateFormTaskForm
+      // do insert-then-select-limit(1) (task) / select-limit(1)-then-insert
+      // (form) lookups keyed by (eventId, title). WHERE is ignored here (see
+      // file header), so a naive rows[0] would always resolve to the FIRST
+      // row ever inserted, not the row a later call for a DIFFERENT title
+      // actually wants. Returning the tail (most recently inserted) is
+      // correct for every scenario in this file.
+      limit: (n: number) => ({
+        innerJoin: () => chain,
+        where: () => chain,
+        then: (resolve: (v: unknown[]) => void) => resolve(rows.slice(-n)),
+      }),
       then: (resolve: (v: unknown[]) => void) => resolve(rows),
     };
     return chain;

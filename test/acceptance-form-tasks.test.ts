@@ -64,8 +64,11 @@ describe("DEC-111 status.ts self-heals and backs kind='form' tasks with real for
     ).default as string;
     expect(source).toMatch(/FORM_TASK_FIELD_SPECS/);
     expect(source).toMatch(/formId/);
-    // self-heal: an existing task with a null formId gets one filled in.
-    expect(source).toMatch(/existing\[0\]\.formId/);
+    // self-heal: an existing/winning task row with a null formId gets one
+    // filled in (DEC-111 amendment, wave 48: getOrCreateTask's find-or-create
+    // shape is now insert-on-conflict-do-nothing then select, so the row
+    // checked here is named `row`, not `existing[0]`).
+    expect(source).toMatch(/row\.formId/);
     expect(source).toMatch(/\.update\(schema\.task\)/);
   });
 });

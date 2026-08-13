@@ -209,22 +209,49 @@ export async function createTaskAssignments(
   }
 }
 
+/** DEC-111 amendment (wave 48): task_event_id_title_idx (migrations/0032_
+ * task_title_unique.sql) is a real UNIQUE(event_id, title) DB constraint —
+ * an organizer-typed title colliding with an existing task on the same
+ * event surfaces as a named field error, mirroring patchSegment's
+ * (../contacts/segments.ts) UNIQUE-constraint-to-ApiError translation, not
+ * an uncaught 500. */
+function isTaskTitleUniqueViolation(err: unknown): boolean {
+  // The D1/better-sqlite3-style driver wraps the raw SQLite error as `cause`
+  // (e.g. drizzle's DrizzleQueryError) rather than surfacing its message
+  // directly on `err` -- check both, matching a raw throw or a wrapped one.
+  for (const candidate of [err, err instanceof Error ? err.cause : undefined]) {
+    if (candidate instanceof Error && /UNIQUE constraint failed/i.test(candidate.message) && candidate.message.includes("task.title")) {
+      return true;
+    }
+  }
+  return false;
+}
+
+const TASK_TITLE_COLLISION_FIELDS = { title: "A task with this title already exists for this event" };
+
 export async function createTask(db: Db, eventId: string, input: CreateTaskInput): Promise<TaskRecord> {
   const now = new Date();
   const id = newId();
-  await db.insert(schema.task).values({
-    id,
-    eventId,
-    kind: input.kind,
-    title: input.title,
-    description: input.description ?? null,
-    dueDate: input.dueDate !== null && input.dueDate !== undefined ? new Date(input.dueDate) : null,
-    required: input.required,
-    formId: input.formId ?? null,
-    deliverableKind: input.deliverableKind ?? null,
-    createdAt: now,
-    updatedAt: now,
-  });
+  try {
+    await db.insert(schema.task).values({
+      id,
+      eventId,
+      kind: input.kind,
+      title: input.title,
+      description: input.description ?? null,
+      dueDate: input.dueDate !== null && input.dueDate !== undefined ? new Date(input.dueDate) : null,
+      required: input.required,
+      formId: input.formId ?? null,
+      deliverableKind: input.deliverableKind ?? null,
+      createdAt: now,
+      updatedAt: now,
+    });
+  } catch (err) {
+    if (isTaskTitleUniqueViolation(err)) {
+      throw new ApiError("invalid", "A task with this title already exists for this event", TASK_TITLE_COLLISION_FIELDS);
+    }
+    throw err;
+  }
 
   // DEC-746: createTask always expands to every accepted speaker (with an
   // active invite, per DEC-283/DEC-278) -- there is no longer an opt-out.
@@ -249,18 +276,25 @@ export interface UpdateTaskInput {
 
 export async function updateTask(db: Db, taskId: string, input: UpdateTaskInput): Promise<TaskRecord> {
   const now = new Date();
-  await db
-    .update(schema.task)
-    .set({
-      ...(input.title !== undefined ? { title: input.title } : {}),
-      ...(input.description !== undefined ? { description: input.description } : {}),
-      ...(input.dueDate !== undefined ? { dueDate: input.dueDate !== null && input.dueDate !== undefined ? new Date(input.dueDate) : null } : {}),
-      ...(input.required !== undefined ? { required: input.required } : {}),
-      ...(input.formId !== undefined ? { formId: input.formId } : {}),
-      ...(input.deliverableKind !== undefined ? { deliverableKind: input.deliverableKind } : {}),
-      updatedAt: now,
-    })
-    .where(eq(schema.task.id, taskId));
+  try {
+    await db
+      .update(schema.task)
+      .set({
+        ...(input.title !== undefined ? { title: input.title } : {}),
+        ...(input.description !== undefined ? { description: input.description } : {}),
+        ...(input.dueDate !== undefined ? { dueDate: input.dueDate !== null && input.dueDate !== undefined ? new Date(input.dueDate) : null } : {}),
+        ...(input.required !== undefined ? { required: input.required } : {}),
+        ...(input.formId !== undefined ? { formId: input.formId } : {}),
+        ...(input.deliverableKind !== undefined ? { deliverableKind: input.deliverableKind } : {}),
+        updatedAt: now,
+      })
+      .where(eq(schema.task.id, taskId));
+  } catch (err) {
+    if (isTaskTitleUniqueViolation(err)) {
+      throw new ApiError("invalid", "A task with this title already exists for this event", TASK_TITLE_COLLISION_FIELDS);
+    }
+    throw err;
+  }
 
   const rows = await db.select().from(schema.task).where(eq(schema.task.id, taskId)).limit(1);
   const row = rows[0];

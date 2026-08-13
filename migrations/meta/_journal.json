@@ -127,6 +127,13 @@
       "when": 1786622940000,
       "tag": "0030_rate_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1786654400000,
+      "tag": "0032_task_title_unique",
+      "breakpoints": true
     }
   ]
 }

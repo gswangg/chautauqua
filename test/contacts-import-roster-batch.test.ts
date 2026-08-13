@@ -353,14 +353,20 @@ function fakeDb(seedContacts: unknown[], seedEvents: unknown[]) {
         return {
           then: (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => write().then(resolve, reject),
           // DEC-556: inviteParticipant's atomic ON CONFLICT DO NOTHING
-          // path — this fake db has no uniqueness of its own, so it
-          // always "succeeds" and returns the row it was given.
-          onConflictDoNothing: () => ({
-            returning: async (_sel?: unknown) => {
-              await write();
-              return [{ id: (vals as any).id, order: 0 }];
-            },
-          }),
+          // path (chained with .returning()) and getOrCreateTask's
+          // ON CONFLICT DO NOTHING path (DEC-111 amendment, wave 48 —
+          // awaited directly, no .returning()) — this fake db has no
+          // uniqueness of its own, so it always "succeeds": the write
+          // runs either way, whether or not .returning() is chained.
+          onConflictDoNothing: (_target?: unknown) => {
+            const p = write();
+            return Object.assign(p, {
+              returning: async (_sel?: unknown) => {
+                await p;
+                return [{ id: (vals as any).id, order: 0 }];
+              },
+            });
+          },
           // DEC-491 amendment (wave 47): contacts/import.ts's update flush
           // -- "excluded.col" is resolved here as "the incoming row's own
           // value for that key", exactly what excluded means when the set

@@ -66,7 +66,20 @@ function fakeDb(seedContacts: unknown[], seedEvents: unknown[]) {
     const chain: any = {
       innerJoin: () => chain,
       where: () => chain,
-      limit: () => chain,
+      // DEC-111 amendment (wave 48): getOrCreateTask/getOrCreateFormTaskForm
+      // do insert-then-select-limit(1) (task) / select-limit(1)-then-insert
+      // (form) lookups keyed by (eventId, title). WHERE is ignored here (see
+      // file header), so a naive rows[0] would always resolve to the FIRST
+      // row ever inserted into the table, not the row a later call for a
+      // DIFFERENT title actually wants. Returning the tail (most recently
+      // inserted) is correct for every scenario in this file, where each
+      // getOrCreateTask/getOrCreateFormTaskForm call is for a title it
+      // hasn't seen yet.
+      limit: (n: number) => ({
+        innerJoin: () => chain,
+        where: () => chain,
+        then: (resolve: (v: unknown[]) => void) => resolve(rows.slice(-n)),
+      }),
       then: (resolve: (v: unknown[]) => void) => resolve(rows),
     };
     return chain;
@@ -94,12 +107,20 @@ function fakeDb(seedContacts: unknown[], seedEvents: unknown[]) {
           // DEC-556: inviteParticipant's atomic ON CONFLICT DO NOTHING
           // path — this fake db has no uniqueness of its own, so it
           // always "succeeds" and returns the row it was given.
-          onConflictDoNothing: () => ({
-            returning: async (_sel?: unknown) => {
-              await write();
-              return [{ id: (vals as any).id, order: 0 }];
-            },
-          }),
+          // DEC-111 amendment (wave 48): getOrCreateTask's task insert also
+          // targets onConflictDoNothing now, awaited directly with no
+          // .returning() chained (unlike inviteParticipant's path above) —
+          // this fake has no uniqueness of its own, so both shapes always
+          // "succeed": the write runs either way.
+          onConflictDoNothing: (_target?: unknown) => {
+            const p = write();
+            return Object.assign(p, {
+              returning: async (_sel?: unknown) => {
+                await p;
+                return [{ id: (vals as any).id, order: 0 }];
+              },
+            });
+          },
           // DEC-491 amendment (wave 47): contacts/import.ts's update flush
           // -- "excluded.col" is resolved as "the incoming row's own value
           // for that key", exactly what excluded means when the set

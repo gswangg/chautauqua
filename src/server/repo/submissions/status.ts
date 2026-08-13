@@ -75,6 +75,14 @@ async function getOrCreateFormTaskForm(db: Db, eventId: string, title: string, n
   return formId;
 }
 
+/**
+ * DEC-111 amendment (wave 48): task_event_id_title_idx (migrations/0032_
+ * task_title_unique.sql) is a real UNIQUE(event_id, title) DB constraint —
+ * this insert-on-conflict-do-nothing-then-select is the same find-or-create
+ * shape upsertSegmentByName's precedent (migrations/0031, DEC-809) uses, so
+ * two concurrent acceptances racing to mint the same template title resolve
+ * to exactly one row instead of two.
+ */
 async function getOrCreateTask(
   db: Db,
   eventId: string,
@@ -82,37 +90,42 @@ async function getOrCreateTask(
   now: Date,
   dueDate: number,
 ): Promise<string> {
-  const existing = await db
+  const id = newId();
+  const formId = template.kind === "form" ? await getOrCreateFormTaskForm(db, eventId, template.title, now) : null;
+  await db
+    .insert(schema.task)
+    .values({
+      id,
+      eventId,
+      kind: template.kind,
+      title: template.title,
+      required: template.required,
+      formId,
+      dueDate: new Date(dueDate),
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoNothing({ target: [schema.task.eventId, schema.task.title] });
+
+  const winner = await db
     .select({ id: schema.task.id, formId: schema.task.formId })
     .from(schema.task)
     .where(and(eq(schema.task.eventId, eventId), eq(schema.task.title, template.title)))
     .limit(1);
-  if (existing[0]) {
-    // DEC-111 self-heal: an already-existing 'form' task with a null formId
-    // (created before this backing-form logic existed) gets one now.
-    // DEC-520: due dates are NOT self-healed here — an organizer who cleared
-    // a due date via PATCH meant it; this branch never back-fills.
-    if (template.kind === "form" && !existing[0].formId) {
-      const formId = await getOrCreateFormTaskForm(db, eventId, template.title, now);
-      await db.update(schema.task).set({ formId, updatedAt: now }).where(eq(schema.task.id, existing[0].id));
-    }
-    return existing[0].id;
-  }
+  const row = winner[0];
+  if (!row) throw new Error(`getOrCreateTask: no row for (eventId="${eventId}", title="${template.title}") after insert`);
 
-  const id = newId();
-  const formId = template.kind === "form" ? await getOrCreateFormTaskForm(db, eventId, template.title, now) : null;
-  await db.insert(schema.task).values({
-    id,
-    eventId,
-    kind: template.kind,
-    title: template.title,
-    required: template.required,
-    formId,
-    dueDate: new Date(dueDate),
-    createdAt: now,
-    updatedAt: now,
-  });
-  return id;
+  // DEC-111 self-heal: an already-existing 'form' task with a null formId
+  // (created before this backing-form logic existed, or the loser of the
+  // conflict above whose own form we just created but didn't attach) gets
+  // one now. DEC-520: due dates are NOT self-healed here — an organizer who
+  // cleared a due date via PATCH meant it; this branch never back-fills.
+  if (template.kind === "form" && !row.formId) {
+    const healedFormId = formId ?? (await getOrCreateFormTaskForm(db, eventId, template.title, now));
+    await db.update(schema.task).set({ formId: healedFormId, updatedAt: now }).where(eq(schema.task.id, row.id));
+    return row.id;
+  }
+  return row.id;
 }
 
 /**
