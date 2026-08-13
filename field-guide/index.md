@@ -25,32 +25,36 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   row cascades on contact delete, only a row losing a document may refuse;
   a grid class shared by two components is a CELL COUNT contract.
 - FINDINGS w32-37 (DEC-983..999; 001-999 FULL, no DEC-1000+; successor rule
-  is `## Amendment (wave N)` on the nearest existing DEC, decisions/README.md,
-  DEC-004 precedent -- never a new file): a grep "no matches" is a fact about
-  that minute, not main -- re-probe. Confessions in comments are defects; a
-  predicate applied HALF is worse than none; an exclusion REASON can expire
-  (check the lane landed). Mandate lists age fast -- MINE THE CODE twice. A
-  DEFERRAL IS A DATED PROMISE -- grep "not this wave", check if it landed. A
-  decision can land on ONE PACKAGE and read as done (DEC-989 stopped at src/
-  boundary) -- ask WHICH PACKAGE did it reach. A TOKEN declared and consumed
-  by nobody is the same lie as a rule no markup uses. TRUST FLOWS ONE WAY: an
-  untrusted path MORE permissive than the trusted one is a defect in the WRITE.
-- FINDINGS w38 (amendments only; the DEC-004 `## Amendment (wave N)` form): the
-  MANDATE IS EXHAUSTED. w38 re-probed ~20 more named items (public search rows,
-  per-surface published counts, headshot library, seed required-flags, .chq-file
-  inputs, participation MENU, filter-rules panel, Home landmarks, {first_name}
-  placeholder, weighted caption, CSV org->Company) -- every one already closed.
-  Worse, TWO of four external review-lens "P1"s were closed before the reviewer
-  read the tree (send_email binding -> DEC-996 Resend; login rotation -> DEC-994)
-  and a third by DEC-995. A REVIEW FINDING IS A HYPOTHESIS WITH A FILE:LINE --
-  open the line. Three defect shapes recur once you mine the code: (1) a WRITE
-  gated by a READ predicate (POST /files/:id/comments through authzFileRead; an
-  upload through a helper NAMED ...Write that only checks membership) -- name a
-  predicate after the verb it protects; (2) a RESPONSE carrying what the request
-  MINTED (compose/send returned result.rendered, live /claim/ tokens, to a client
-  that reads only sent/failed) -- a send reports counts, never bodies; (3) a rule
-  stated in a COMMENT instead of a CONSTRAINT ("no unique index on (org_id,name)
-  yet... that dedupe is separate work") -- prose plus read-then-write is not a
-  contract, and the named blocker IS the work. And a predicate with THREE readers
-  must be ONE function: DEC-318's event-range bound guards the agenda and the
-  public schedule but not loadIcsScheduleData, so .ics disagrees with both.
+  `## Amendment (wave N)` on nearest existing DEC, DEC-004 precedent -- never
+  a new file): a grep "no matches" is a fact about that minute -- re-probe. A
+  predicate applied HALF is worse than none; an exclusion REASON can expire.
+  Mandate lists age fast -- MINE THE CODE twice. A DEFERRAL IS A DATED PROMISE.
+  A decision can land on ONE PACKAGE and read as done -- ask WHICH PACKAGE. A
+  TOKEN declared and consumed by nobody is the same lie as an unused rule.
+  TRUST FLOWS ONE WAY: untrusted MORE permissive than trusted is a WRITE defect.
+- FINDINGS w38 (amendments only): MANDATE EXHAUSTED after ~20 more re-probed
+  items all closed; a REVIEW FINDING IS A HYPOTHESIS WITH A FILE:LINE -- open
+  the line. Three defect shapes: (1) a WRITE gated by a READ predicate -- name
+  a predicate after the verb it protects; (2) a RESPONSE carrying what the
+  request MINTED -- a send reports counts, never bodies; (3) a rule stated in
+  a COMMENT instead of a CONSTRAINT is not a contract. A predicate with THREE
+  readers must be ONE function (DEC-318 guarded two of three; .ics disagreed).
+- FINDINGS w39 (amendments only; `## Amendment (wave 39)` per decisions/README):
+  the MANDATE WAS NOT EXHAUSTED -- docs/eval-findings.md was RECOMPACTED the
+  same day w38 declared it dead, with a fresh GATE-3 section audited against a
+  SNAPSHOT SHA. A mandate is dated TWICE: when written, and against which
+  build -- re-read the header, then verify each item against main (~8/10
+  GATE-3 reds were still live). w38's own lanes b-f had NOT landed while its
+  amendments were already written -- A DECISION DOC IS EVIDENCE OF A DECISION,
+  NEVER OF A FIX; read the code. Four defect shapes, "a rule keyed on the
+  wrong thing": (1) a contract keyed on a NAME (selector suffix) misses faces
+  named otherwise -- key on the ELEMENT the class lands on; (2) a
+  var(--chq-x, fallback) whose token is declared NOWHERE is not a deliberate
+  default, it is a dead reference wearing the fallback's value silently; (3) a
+  PRESET meaning "these filters, default columns" written as `columns: []`
+  both clears columns AND makes the derived active tab unmatchable -- an
+  empty array is a value, absence is the silence; (4) PLACEMENT resolution and
+  DRAWING resolution are two different numbers (15-min drops, 30-min rules) --
+  conflating them strikes lines through the card the grid should show. One
+  grammar per surface: a gutter/aria-name/toast naming one instant three ways
+  is three bugs, not one style.
