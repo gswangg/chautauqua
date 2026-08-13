@@ -109,11 +109,26 @@ export function validateAnswers(
       }
       case "number": {
         const num = typeof value === "number" ? value : Number(value);
-        if (typeof value === "boolean" || Array.isArray(value) || Number.isNaN(num)) {
+        // DEC-718: NaN was the only rejected case, so 'Infinity',
+        // '-Infinity' and '1e400' validated as ok and were then persisted
+        // by JSON.stringify as the literal string 'null' — a required
+        // answer silently vanished behind a success confirmation.
+        // Number.isFinite rejects NaN, +/-Infinity, and any overflow to
+        // Infinity in one check.
+        if (
+          typeof value === "boolean" ||
+          Array.isArray(value) ||
+          (typeof value === "object" && value !== null) ||
+          !Number.isFinite(num)
+        ) {
           errors[field.id] = "must be a number";
           continue;
         }
-        cleaned[field.id] = num;
+        // Normalize -0 to 0: JSON.stringify(-0) is "0", so the sign would
+        // otherwise silently flip on the very next round-trip through the
+        // store — normalize here so `cleaned` already matches what gets
+        // persisted and read back.
+        cleaned[field.id] = num === 0 ? 0 : num;
         break;
       }
       case "file": {
