@@ -8,6 +8,7 @@ import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
 import { loadTrackNamesBySubmission } from "../submission-tracks";
+import { chunkIds } from "../../../lib/chunk";
 
 export interface PortalSession {
   submissionId: string;
@@ -109,4 +110,40 @@ export async function getLatestDeliverable(db: Db, submissionId: string): Promis
     .limit(1);
   const row = rows[0];
   return row ? { id: row.id, filename: row.filename, sizeBytes: row.sizeBytes, uploadedAt: row.createdAt.getTime() } : null;
+}
+
+/** Batched form of getLatestDeliverable: the portal home's per-session
+ * "latest deliverable" read done once per submissionId, not once PER row.
+ * Chunked via chunkIds (D1 bound-parameter ceiling, DEC-078); within each
+ * chunk a single query pulls every file row for the chunk's submissions and
+ * the newest createdAt per submissionId wins — identical row shape/tie
+ * behavior to getLatestDeliverable (ORDER BY createdAt DESC, first row per
+ * submissionId kept). */
+export async function listLatestDeliverables(db: Db, submissionIds: string[]): Promise<Map<string, PortalDeliverable>> {
+  const out = new Map<string, PortalDeliverable>();
+  if (submissionIds.length === 0) return out;
+  for (const chunk of chunkIds(submissionIds)) {
+    const rows = await db
+      .select({
+        submissionId: schema.file.submissionId,
+        id: schema.file.id,
+        filename: schema.file.filename,
+        sizeBytes: schema.file.sizeBytes,
+        createdAt: schema.file.createdAt,
+      })
+      .from(schema.file)
+      .where(inArray(schema.file.submissionId, chunk))
+      .orderBy(desc(schema.file.createdAt));
+    for (const row of rows) {
+      if (row.submissionId === null) continue;
+      if (out.has(row.submissionId)) continue;
+      out.set(row.submissionId, {
+        id: row.id,
+        filename: row.filename,
+        sizeBytes: row.sizeBytes,
+        uploadedAt: row.createdAt.getTime(),
+      });
+    }
+  }
+  return out;
 }

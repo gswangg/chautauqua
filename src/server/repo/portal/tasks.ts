@@ -9,6 +9,7 @@ import type { SubmissionStatus } from "../../../domain/status";
 import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
 import { formatRef } from "../../../domain/ids";
 import { ApiError } from "../../http";
+import { chunkIds } from "../../../lib/chunk";
 
 // 'general' | 'file_request' | 'form' — DEC-003 task.kind literal.
 export type PortalTaskKind = "general" | "file_request" | "form";
@@ -196,6 +197,58 @@ export async function listDeliverableCandidates(db: Db, contactId: string, event
     status: row.status as SubmissionStatus,
     seq: row.seq,
   }));
+}
+
+/** Batched form of listDeliverableCandidates: the portal submission-detail
+ * route's per-file_request-task candidate lookup, done once for the deduped
+ * set of eventIds rather than once PER task. Preserves the exact
+ * participant/ACTIVE_INVITE_STATUSES scoping (contactId's own participant
+ * rows only — no IDOR widening) and seq-asc order within each event; chunked
+ * via chunkIds over the eventId list (DEC-078 D1 bound-parameter ceiling). */
+export async function listDeliverableCandidatesForEvents(
+  db: Db,
+  contactId: string,
+  eventIds: string[],
+): Promise<Map<string, DeliverableCandidate[]>> {
+  const out = new Map<string, DeliverableCandidate[]>();
+  const dedupedIds = [...new Set(eventIds)];
+  if (dedupedIds.length === 0) return out;
+  for (const chunk of chunkIds(dedupedIds)) {
+    const rows = await db
+      .select({
+        id: schema.submission.id,
+        status: schema.submission.status,
+        seq: schema.submission.seq,
+        title: schema.submission.title,
+        recordPrefix: schema.event.recordPrefix,
+        eventId: schema.submission.eventId,
+      })
+      .from(schema.participant)
+      .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
+      .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
+      .where(
+        and(
+          eq(schema.participant.contactId, contactId),
+          inArray(schema.submission.eventId, chunk),
+          inArray(schema.participant.inviteStatus, ACTIVE_INVITE_STATUSES),
+        ),
+      )
+      .orderBy(schema.submission.seq);
+
+    for (const row of rows) {
+      const candidate: DeliverableCandidate = {
+        id: row.id,
+        ref: formatRef(row.recordPrefix, row.seq),
+        title: row.title,
+        status: row.status as SubmissionStatus,
+        seq: row.seq,
+      };
+      const existing = out.get(row.eventId);
+      if (existing) existing.push(candidate);
+      else out.set(row.eventId, [candidate]);
+    }
+  }
+  return out;
 }
 
 /** Pure: resolves the file.submission_id a task-assignment upload should
