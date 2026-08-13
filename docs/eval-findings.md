@@ -133,6 +133,17 @@ SES-039 confirmation dispatched. Commit 9131a53a's "unusable" verdict was static
 pattern-matched the binding name to the Email Routing API and inferred prod couldn't send) with
 ZERO observed runtime failure. Do not re-litigate this without new RUNTIME evidence.
 
+**What counts as runtime evidence (and what does NOT):** evidence means, on the DEPLOYED PROD
+worker, either (a) the binding API itself rejecting the call — an error naming the send_email
+contract, captured verbatim and reproduced — or (b) the log claiming `sent` while a REAL,
+deliverable mailbox (the user's test address, not example.com) verifiably received nothing.
+NOT evidence: anything observed under `wrangler dev`/workerd local simulation (local never
+really sends); `failed` email_log rows for reserved or undeliverable recipients — the seeded
+sbek personas are all @example.com, so failed rows for them on prod are the honest-reporting
+boundary WORKING, not the binding breaking; type errors or shape mismatches found by reading
+code or docs; tests driving the adapter over a stub. If a wave believes it has (a) or (b),
+file it to this mandate with the captured error/log — do not swap mailers unilaterally.
+
 REVERT SHAPE (mint a superseding DEC):
 - Restore `src/mail/email-binding.ts` (EmailBindingMailer) from `9131a53a^` — that version already
   carries the DEC-923 single-writer email_log discipline. Restore its tests likewise.
