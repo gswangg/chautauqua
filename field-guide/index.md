@@ -21,39 +21,37 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   drift -- IMPORT them; uniqueIndex is a CONTRACT; negation skips NULLs.
 - FINDINGS w1-17 (DEC-570..716, compacted): full suites SERIALIZED; real
   <button> not `div draggable`; colour isn't identity -- NAME it; blank
-  CSV cell is ABSENT DATA; imported row keeps THEIR id; anonymity is a
-  RATCHET; merge takes a SET; confirmation is a DIALOG; raw id leaks --
-  render LABELS; cacheability DEFAULT + "own header wins"; send ends in
-  ONE reporter; irreversible action is a PAGE; tier class ALWAYS wins;
-  hub gives a row ONE action; settings SUMMARY + drill-in; grid cells
-  POSITIONAL, absent -> EMPTY; badge refetches on nav+mutation; person
-  named by CONTACT via batched account->contact; tab selection is URL
-  state; directory is TABLE + RAIL.
+  CSV cell is ABSENT DATA; anonymity is a RATCHET; merge takes a SET;
+  raw id leaks -- render LABELS; cacheability DEFAULT + "own header
+  wins"; irreversible action is a PAGE; hub gives a row ONE action;
+  settings SUMMARY + drill-in; grid cells POSITIONAL; person named by
+  CONTACT; tab selection is URL state; directory is TABLE + RAIL.
 - FINDINGS w18 (DEC-717..726, compacted): a column with side effects has
-  ONE writer; validators refuse what the store can't carry (Infinity ->
-  `null`), assert per KIND. Sandboxed child's origin IS "null" --
-  identity is source window + nonce. Asking for changes is a MESSAGE;
-  status route stays mailer-free. One deliverable at a time: a chip
-  scopes versions AND thread. Review renders criterion LABELS + plan's
-  weighted score. Null-room column: "No room yet" only when armed.
-  Periodic push INCREMENTAL from a watermark, backs off on 429. Labels
-  are customFields, one keyed format (supersedes DEC-712).
+  ONE writer; validators refuse what the store can't carry. Sandboxed
+  child's origin IS "null" -- identity is source window + nonce. One
+  deliverable at a time: a chip scopes versions AND thread. Periodic
+  push INCREMENTAL from a watermark, backs off on 429. Labels are
+  customFields, one keyed format (supersedes DEC-712).
 - FINDINGS w19 (DEC-727..735, compacted): tiers are a PREDICATE over the
-  tree -- caps bind in config, not env. Settings SUMMARY + drill-in via
-  URL. Portal shows EVERY submission a speaker owns. Three states, ONE
-  control family. Publish is the WINDOW, not a flag. A preview names
-  each recipient's blocker. An action that can't apply is ABSENT, not
-  disabled. Duplicate group carries the fields its merge screen shows.
-  A class describes ONE layout behaviour. Desktop first, phone @media.
-- FINDINGS w20 (DEC-736..743): a recorded decision with no code is a LIE --
-  grep the ROUTE before re-tasking. Anonymised hides the SPEAKER from
-  the REVIEWER; the organiser is never told "Anonymous". Arrow, CSV
-  link and rendered rows are ONE fact -- drop superseded responses,
-  clear rows on a failed refetch. A ranked row states ONE score; detail
-  lives behind the disclosure. Labels are customFields minus the
-  reserved prose key, formatted once server-side. The seed must satisfy
-  every read it enables (task carries answers; batch carries
-  recipients) -- assert by enumeration. Asking for changes is a SEND,
-  in a module the mailer-free invariant does not bind. A clash renders
-  at full size: inner scroll hides the evidence. Detail decides the
-  SUBMISSION; content is decided on the content screen.
+  tree. Settings SUMMARY + drill-in via URL. Portal shows EVERY
+  submission a speaker owns. Publish is the WINDOW, not a flag. An
+  action that can't apply is ABSENT, not disabled. A class describes
+  ONE layout behaviour. Desktop first, phone @media.
+- FINDINGS w20 (DEC-736..743): a recorded decision with no code is a LIE
+  -- grep the ROUTE before re-tasking. Anonymised hides the SPEAKER from
+  the REVIEWER, never the organiser. Arrow/CSV/rows are ONE fact -- drop
+  superseded responses. The seed must satisfy every read it enables --
+  assert by enumeration. Asking for changes is a SEND, mailer-free
+  invariant doesn't bind. Detail decides the SUBMISSION; content is
+  decided on the content screen.
+- FINDINGS w21 (DEC-744..753): an envelope's KEYS are fixed by its route,
+  never by whether the branch had anything to say -- the empty case emits
+  the empty array. A seeded reviewer is a NAMED person (user.contact_id) or
+  every organiser surface shows an email. ONE measure token; a literal px
+  clamp in page CSS is a second opinion. Chrome fidelity never deletes a
+  capability: a mock that omits Track/Anonymise/bulk-accept moves the
+  control, it does not drop it. A dialog may not offer what the store
+  cannot carry (no owner column -> no share checkbox). A task with no
+  assignee is not a state we offer -- creation always expands. Merge shows
+  EVERY differing field; an omitted row is evidence withheld before an
+  irreversible act. State the matching rule where the matches are listed.
