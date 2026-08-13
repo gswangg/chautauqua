@@ -22,7 +22,7 @@ import { join } from "node:path";
  *     totalAssigned, items, perReviewer, shortfall }` -- cap echoed first
  *     -- so it no longer matches this scanner's `{ items` pattern and needs
  *     no entry):
- *       - src/routes/comms.ts:490 (POST .../compose/preview) returns a
+ *       - src/routes/comms.ts:500 (POST .../compose/preview) returns a
  *         compose-preview render, one row per selected submission, bounded
  *         by the 100-recipient send cap (DEC checked elsewhere in comms.ts)
  *         -- a preview payload, not a list GET.
@@ -126,7 +126,7 @@ function findItemsEnvelopeSites(source: string, file: string): EnvelopeSite[] {
 // deliberate reviewed act -- see the file-header comment above for why each
 // one is exempt.
 const ENVELOPE_ALLOWLIST = new Set<string>([
-  "src/routes/comms.ts:490",
+  "src/routes/comms.ts:500",
   "src/routes/api/contacts/bulk-email.ts:215",
   // NOTE (DEC-840): GET .../assignments/distribute/preview used to be
   // allowlisted here (it was previously `c.json({ items, perReviewer,

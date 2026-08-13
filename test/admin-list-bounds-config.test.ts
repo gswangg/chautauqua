@@ -147,6 +147,15 @@ describe("GET /api/v1/events/:eventId/templates (DEC-460/461 bounds)", () => {
         countTemplates: vi.fn(async () => allTemplates.length),
       };
     });
+    // DEC-890: the templates list also joins a "Last used" aggregate --
+    // mocked here (not exercised by this file's page/perPage bounds focus).
+    vi.doMock("../src/server/repo/email", async () => {
+      const actual = await vi.importActual<typeof import("../src/server/repo/email")>("../src/server/repo/email");
+      return {
+        ...actual,
+        listTemplateLastUsedAt: vi.fn(async () => new Map<string, number>()),
+      };
+    });
     const { commsRoutes } = await import("../src/routes/comms");
     const app = new Hono<AppEnv>();
     registerErrorHandler(app);

@@ -7,7 +7,7 @@ import type { AppEnv } from "../server/env";
 import { csrfJson, requireOrganizer } from "../server/middleware";
 import { ApiError, parseBoundedIdArray } from "../server/http";
 import * as repo from "../server/repo/comms";
-import { getEmailLogById } from "../server/repo/email";
+import { getEmailLogById, listTemplateLastUsedAt } from "../server/repo/email";
 import { bumpIcsSequences } from "../server/repo/ics-sequence";
 import { getEventForOrg } from "../server/repo/events";
 import { getPlanById } from "../server/repo/review/plans";
@@ -73,8 +73,8 @@ async function requireOwnedEvent(c: { var: { db: import("../server/context").Db;
   return event;
 }
 
-function serializeTemplate(t: repo.EmailTemplateRow) {
-  return { id: t.id, eventId: t.eventId, name: t.name, subject: t.subject, bodyText: t.bodyText };
+function serializeTemplate(t: repo.EmailTemplateRow, lastUsedAt: number | null = null) {
+  return { id: t.id, eventId: t.eventId, name: t.name, subject: t.subject, bodyText: t.bodyText, lastUsedAt };
 }
 
 // ---------------------------------------------------------------------------
@@ -86,11 +86,14 @@ commsRoutes.get("/api/v1/events/:eventId/templates", requireOrganizer, async (c)
   await requireOwnedEvent(c, eventId);
   const page = clampPage(c.req.query("page"));
   const perPage = listPerPage(c.req.query("perPage")); // DEC-465
-  const [items, total] = await Promise.all([
+  // DEC-890: one grouped query for the whole event's last-used-at map,
+  // joined onto this page's rows in memory -- never a per-row query.
+  const [items, total, lastUsedAt] = await Promise.all([
     repo.listTemplates(c.var.db, eventId, { limit: perPage, offset: (page - 1) * perPage }),
     repo.countTemplates(c.var.db, eventId),
+    listTemplateLastUsedAt(c.var.db, eventId),
   ]);
-  return c.json({ items: items.map(serializeTemplate), total, page, perPage });
+  return c.json({ items: items.map((t) => serializeTemplate(t, lastUsedAt.get(t.id) ?? null)), total, page, perPage });
 });
 
 commsRoutes.post("/api/v1/events/:eventId/templates", requireOrganizer, csrfJson, async (c) => {

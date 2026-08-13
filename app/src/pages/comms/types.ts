@@ -8,6 +8,9 @@ export interface EmailTemplate {
   name: string;
   subject: string;
   bodyText: string;
+  // DEC-890: derived from email_log (MAX(sent_at) for this template), never
+  // a stored column. Null when no logged send has ever named this template.
+  lastUsedAt?: number | null;
 }
 
 // DEC-051: present only when the compose request set attachIcs: true and
