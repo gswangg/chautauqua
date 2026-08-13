@@ -81,6 +81,18 @@ export function matchesRules(rules: SegmentRule[], contact: ContactListItem): bo
   return rules.every((rule) => matchesRule(rule, contact));
 }
 
+/**
+ * DEC-868: filters out rules that are not yet usable — an empty value
+ * (`value.trim() === ''`) or an unfinished custom field (`field === 'custom.'`,
+ * i.e. the key hasn't been typed yet). This is the ONE reader used at every
+ * site that turns FilterRulesPanel's `rules` into a query: GET /contacts,
+ * the CSV export href, and SegmentsPanel's activeFilters — so a half-typed
+ * rule never blanks the table, the CSV or a saved segment.
+ */
+export function activeRules(rules: SegmentRule[]): SegmentRule[] {
+  return rules.filter((r) => r.value.trim() !== '' && r.field !== 'custom.');
+}
+
 /** Human-readable summary of a rule set, for the segments list ("any contains 'a' AND company = 'Acme'"). */
 export function describeRules(rules: SegmentRule[]): string {
   if (rules.length === 0) return '(matches everything)';

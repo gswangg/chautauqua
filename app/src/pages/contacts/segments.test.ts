@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildSegmentRulesFromFilters, describeRules, matchesRules } from './segments';
+import { activeRules, buildSegmentRulesFromFilters, describeRules, matchesRules } from './segments';
 import type { ContactListItem, SegmentRule } from './types';
 
 const contact: ContactListItem = { id: 'c1', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', company: 'Acme', labels: [] };
@@ -66,6 +66,37 @@ describe('matchesRules', () => {
       expect(matchesRules([{ field: 'any', op: 'ne', value: 'nope' }], contact)).toBe(true);
       expect(matchesRules([{ field: 'any', op: 'ne', value: 'acme' }], contact)).toBe(false);
     });
+  });
+});
+
+describe('activeRules (DEC-868)', () => {
+  it('drops a rule with an empty (or whitespace-only) value', () => {
+    const rules: SegmentRule[] = [
+      { field: 'company', op: 'eq', value: 'Acme' },
+      { field: 'title', op: 'contains', value: '' },
+      { field: 'email', op: 'contains', value: '   ' },
+    ];
+    expect(activeRules(rules)).toEqual([{ field: 'company', op: 'eq', value: 'Acme' }]);
+  });
+
+  it('drops an unfinished custom field (field exactly "custom.")', () => {
+    const rules: SegmentRule[] = [
+      { field: 'custom.', op: 'contains', value: 'L' },
+      { field: 'custom.tshirt', op: 'contains', value: 'L' },
+    ];
+    expect(activeRules(rules)).toEqual([{ field: 'custom.tshirt', op: 'contains', value: 'L' }]);
+  });
+
+  it('keeps a fully-specified rule set unchanged', () => {
+    const rules: SegmentRule[] = [
+      { field: 'company', op: 'eq', value: 'Acme' },
+      { field: 'custom.role', op: 'eq', value: 'speaker' },
+    ];
+    expect(activeRules(rules)).toEqual(rules);
+  });
+
+  it('empty input yields empty output', () => {
+    expect(activeRules([])).toEqual([]);
   });
 });
 

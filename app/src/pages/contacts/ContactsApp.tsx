@@ -12,6 +12,7 @@ import { ImportWizard } from './ImportWizard';
 import { NewContactModal } from './NewContactModal';
 import { PipelineBoard } from './PipelineBoard';
 import { EMPTY_SELECTION, selectionReducer } from './selection';
+import { activeRules } from './segments';
 import { SegmentsPanel } from './SegmentsPanel';
 import type { ContactListItem, ContactStats, DuplicateGroup, Segment, SegmentRule } from './types';
 import { DEC_710, DEC_711 } from '../../../../src/decisions';
@@ -38,7 +39,8 @@ function contactsExportHref(
   const params = new URLSearchParams();
   if (filters.q.trim() !== '') params.set('q', filters.q.trim());
   if (filters.segmentId !== '') params.set('segmentId', filters.segmentId);
-  if (filters.rules.length > 0) params.set('rules', JSON.stringify(filters.rules));
+  const rules = activeRules(filters.rules);
+  if (rules.length > 0) params.set('rules', JSON.stringify(rules));
   params.set('format', 'csv');
   return `/api/v1/events/${eventId}/export/contacts?${params.toString()}`;
 }
@@ -195,7 +197,8 @@ export function ContactsApp() {
     params.set('perPage', String(PER_PAGE));
     if (q.trim() !== '') params.set('q', q.trim());
     if (segmentId !== '') params.set('segmentId', segmentId);
-    if (rules.length > 0) params.set('rules', JSON.stringify(rules));
+    const activeRuleSet = activeRules(rules);
+    if (activeRuleSet.length > 0) params.set('rules', JSON.stringify(activeRuleSet));
     apiList<ContactListItem>(`/contacts?${params.toString()}`)
       .then((res) => {
         setItems(res.items);
@@ -322,6 +325,9 @@ export function ContactsApp() {
                 setRules(next);
                 setPage(1);
               }}
+              matchCount={total}
+              totalCount={stats?.total ?? null}
+              onSaveAsSegment={() => setPanel('segments')}
             />
 
             <ContactsTable
@@ -370,7 +376,7 @@ export function ContactsApp() {
       {panel === 'segments' && (
         <SegmentsPanel
           segments={segments}
-          activeFilters={{ q, rules }}
+          activeFilters={{ q, rules: activeRules(rules) }}
           activeSegmentId={segmentId}
           onDeletedActiveSegment={() => {
             // Clear the applied segment (and its query-param filter state)

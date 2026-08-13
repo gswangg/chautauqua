@@ -1,9 +1,13 @@
-// DEC-787: restores the multi-facet contact filter (deleted by DEC-712/
-// eval-findings 45+55 as part of the ContactsTable redesign) as its own
-// component, wired above the directory table rather than inside it. Emits
-// SegmentRule[] (AND-composed) that ContactsApp already threads onto GET
-// /contacts?rules= and contactsExportHref — so the table, the count and the
-// CSV all follow for free (no new plumbing here).
+// DEC-787/DEC-868: restores the multi-facet contact filter (deleted by
+// DEC-712/eval-findings 45+55 as part of the ContactsTable redesign) as its
+// own component, wired above the directory table rather than inside it. It
+// renders ONE row — "Matching all of" the AND — with one editable group per
+// rule, an "Add a rule" button, and (only once a rule is active) the match
+// count and "Save as a segment" at the row's end, per the design pack's
+// grammar (docs/design/README.md:293-301). Emits SegmentRule[] (AND-composed)
+// that ContactsApp already threads onto GET /contacts?rules= and
+// contactsExportHref (through activeRules() — see segments.ts) — so the
+// table, the count and the CSV all follow for free (no new plumbing here).
 //
 // The field vocabulary is imported from src/domain/contacts.ts's
 // SEGMENT_STANDARD_FIELDS -- the SAME set GET /contacts validates ?rules=
@@ -11,10 +15,12 @@
 // of what the server accepts. custom.<key> fields are addressed by typing
 // the key: no server-side enumeration of a org's contact custom-field keys
 // exists to populate a dropdown from.
-import { useState } from 'react';
+import { activeRules } from './segments';
 import type { SegmentRule } from './types';
-import { describeRules } from './segments';
 import { SEGMENT_STANDARD_FIELDS } from '../../../../src/domain/contacts';
+import { DEC_868 } from '../../../../src/decisions';
+
+void DEC_868;
 
 export const FILTER_RULE_FIELDS: string[] = [...SEGMENT_STANDARD_FIELDS];
 
@@ -34,114 +40,123 @@ const OP_OPTIONS: { value: SegmentRule['op']; label: string }[] = [
 
 const CUSTOM_FIELD_CHOICE = 'custom';
 
+function isCustomField(field: string): boolean {
+  return field === CUSTOM_FIELD_CHOICE || field.startsWith('custom.');
+}
+
+function customKeyOf(field: string): string {
+  return field.startsWith('custom.') ? field.slice('custom.'.length) : '';
+}
+
 interface Props {
   rules: SegmentRule[];
   onChange: (rules: SegmentRule[]) => void;
+  matchCount: number;
+  totalCount: number | null;
+  onSaveAsSegment: () => void;
 }
 
-export function FilterRulesPanel({ rules, onChange }: Props) {
-  const [draftField, setDraftField] = useState<string>(FILTER_RULE_FIELDS[0]!);
-  const [draftCustomKey, setDraftCustomKey] = useState('');
-  const [draftOp, setDraftOp] = useState<SegmentRule['op']>('contains');
-  const [draftValue, setDraftValue] = useState('');
-
-  const isCustom = draftField === CUSTOM_FIELD_CHOICE;
-  const trimmedKey = draftCustomKey.trim();
-  const trimmedValue = draftValue.trim();
-  const resolvedField = isCustom ? `custom.${trimmedKey}` : draftField;
-  const canAdd = trimmedValue !== '' && (!isCustom || trimmedKey !== '');
-
-  function addRule() {
-    if (!canAdd) return;
-    onChange([...rules, { field: resolvedField, op: draftOp, value: trimmedValue }]);
-    setDraftValue('');
-    setDraftCustomKey('');
+export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSaveAsSegment }: Props) {
+  function updateRule(index: number, next: SegmentRule) {
+    onChange(rules.map((r, i) => (i === index ? next : r)));
   }
 
   function removeRule(index: number) {
     onChange(rules.filter((_, i) => i !== index));
   }
 
+  function addRule() {
+    onChange([...rules, { field: FILTER_RULE_FIELDS[0]!, op: 'contains', value: '' }]);
+  }
+
   return (
-    <div className="chq-contacts-filter-rules">
-      {rules.length > 0 && (
-        <ul className="chq-contacts-filter-rule-chips chq-chipstrip">
-          {rules.map((r, i) => (
-            <li key={`${r.field}-${r.op}-${r.value}-${i}`} className="chq-contacts-filter-rule-chip chq-pill">
-              {describeRules([r])}
-              <button
-                type="button"
-                className="chq-contacts-filter-rule-remove"
-                aria-label={`Remove filter ${describeRules([r])}`}
-                onClick={() => removeRule(i)}
-              >
-                &times;
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+    <div className="chq-contacts-filter-rules-row">
+      <span className="chq-contacts-filter-rules-caption">Matching all of</span>
 
-      <div className="chq-contacts-filter-rules-row">
-        <label className="chq-contacts-filter-rules-field">
-          Field
-          <select
-            className="chq-select"
-            aria-label="Filter field"
-            value={draftField}
-            onChange={(e) => setDraftField(e.target.value)}
-          >
-            {FILTER_RULE_FIELDS.map((f) => (
-              <option key={f} value={f}>
-                {FIELD_LABELS[f] ?? f}
-              </option>
-            ))}
-            <option value={CUSTOM_FIELD_CHOICE}>Custom field…</option>
-          </select>
-        </label>
+      {rules.map((rule, i) => {
+        const pos = i + 1;
+        const custom = isCustomField(rule.field);
+        const fieldSelectValue = custom ? CUSTOM_FIELD_CHOICE : rule.field;
+        const customKey = customKeyOf(rule.field);
 
-        {isCustom && (
-          <label className="chq-contacts-filter-rules-field">
-            Custom key
+        return (
+          <span className="chq-contacts-filter-rule-group" key={i}>
+            <select
+              className="chq-select"
+              aria-label={`Filter ${pos} field`}
+              value={fieldSelectValue}
+              onChange={(e) => {
+                const nextField = e.target.value;
+                if (nextField === CUSTOM_FIELD_CHOICE) {
+                  updateRule(i, { ...rule, field: 'custom.' });
+                } else {
+                  updateRule(i, { ...rule, field: nextField });
+                }
+              }}
+            >
+              {FILTER_RULE_FIELDS.map((f) => (
+                <option key={f} value={f}>
+                  {FIELD_LABELS[f] ?? f}
+                </option>
+              ))}
+              <option value={CUSTOM_FIELD_CHOICE}>Custom field…</option>
+            </select>
+
+            {custom && (
+              <input
+                className="chq-input"
+                aria-label={`Filter ${pos} custom field key`}
+                value={customKey}
+                onChange={(e) => updateRule(i, { ...rule, field: `custom.${e.target.value}` })}
+              />
+            )}
+
+            <select
+              className="chq-select"
+              aria-label={`Filter ${pos} operator`}
+              value={rule.op}
+              onChange={(e) => updateRule(i, { ...rule, op: e.target.value as SegmentRule['op'] })}
+            >
+              {OP_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+
             <input
               className="chq-input"
-              aria-label="Custom field key"
-              value={draftCustomKey}
-              onChange={(e) => setDraftCustomKey(e.target.value)}
+              aria-label={`Filter ${pos} value`}
+              value={rule.value}
+              onChange={(e) => updateRule(i, { ...rule, value: e.target.value })}
             />
-          </label>
-        )}
 
-        <label className="chq-contacts-filter-rules-field">
-          Operator
-          <select
-            className="chq-select"
-            aria-label="Filter operator"
-            value={draftOp}
-            onChange={(e) => setDraftOp(e.target.value as SegmentRule['op'])}
-          >
-            {OP_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              aria-label={`Remove filter ${pos}`}
+              onClick={() => removeRule(i)}
+            >
+              Remove
+            </button>
+          </span>
+        );
+      })}
 
-        <label className="chq-contacts-filter-rules-field">
-          Value
-          <input
-            className="chq-input"
-            aria-label="Filter value"
-            value={draftValue}
-            onChange={(e) => setDraftValue(e.target.value)}
-          />
-        </label>
+      <button type="button" className="chq-btn chq-contacts-add-rule" onClick={addRule}>
+        Add a rule
+      </button>
 
-        <button type="button" className="chq-btn chq-btn-secondary" onClick={addRule} disabled={!canAdd}>
-          Add filter
-        </button>
-      </div>
+      {activeRules(rules).length > 0 && (
+        <span className="chq-contacts-filter-rules-end">
+          <span className="chq-contacts-filter-match-count">
+            {matchCount} of {totalCount} match
+          </span>
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={onSaveAsSegment}>
+            Save as a segment
+          </button>
+        </span>
+      )}
     </div>
   );
 }

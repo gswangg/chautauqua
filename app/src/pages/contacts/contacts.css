@@ -63,46 +63,44 @@
   min-width: 0;
 }
 
-/* DEC-787: FilterRulesPanel — restores the multi-facet rule builder above
-   the directory table, reusing the shared .chq-pill/.chq-chipstrip chip
-   vocabulary (styles.css) rather than inventing new ones, plus the
-   .chq-contacts-filter-rules-field label already shared with SegmentsPanel
-   (contacts-panels.css). */
-.chq-contacts-filter-rules {
+/* DEC-868: FilterRulesPanel — one horizontal "Matching all of …" row per
+   the design pack's grammar (docs/design/README.md:293-301). Reuses the
+   shared .chq-btn/.chq-select/.chq-input tokens (styles.css) rather than
+   inventing new ones; the match count + "Save as a segment" control are
+   pushed to the row's end with margin-left:auto. */
+.chq-contacts-filter-rules-row {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
-.chq-contacts-filter-rule-chips {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.chq-contacts-filter-rules-caption {
+  color: var(--chq-muted);
+  white-space: nowrap;
 }
 
-.chq-contacts-filter-rule-chip {
+.chq-contacts-filter-rule-group {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  cursor: default;
 }
 
-.chq-contacts-filter-rule-remove {
-  border: none;
+.chq-contacts-add-rule {
+  border: 1px dashed var(--chq-border);
   background: none;
-  padding: 0;
-  margin: 0;
-  font-size: 13px;
-  line-height: 1;
-  color: inherit;
-  cursor: pointer;
 }
 
-.chq-contacts-filter-rules-row {
-  display: flex;
-  align-items: end;
-  gap: 12px;
-  flex-wrap: wrap;
+.chq-contacts-filter-rules-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.chq-contacts-filter-match-count {
+  color: var(--chq-muted);
+  white-space: nowrap;
 }
 
 /* Search + segment control at the RIGHT end of the tab row. */
