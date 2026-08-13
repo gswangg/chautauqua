@@ -32,12 +32,12 @@ overview fetch right after reviewer login — make the shell skip it for reviewe
 
 ## Cross-cutting sweeps (each closes a class)
 
-A. **Page-measure audit, all admin routes — STILL OPEN, half-landed**: DEC-744's
-   --chq-measure token exists but was adopted ONLY on server-rendered surfaces
-   (public/docs/mailbox/submit); app/src has ZERO adoption, so submission detail
-   (user re-confirmed on 79e58f0: content ends ~75% w/ dead right gutter), session
-   detail, plan editor, form builder still clamp left/narrow. Finish the sweep:
-   admin SPA containers adopt the token; render-sweep asserts width per route.
+A. **Page-measure — probe-4: MOSTLY CLOSED (DEC-808)**: submission detail
+   (1018+320=1372) and plan editor now full-width; builder + Settings clamp to a
+   deliberate --chq-measure:820px with a scan test. REMAINING DECISION: the v5
+   mock renders the BUILDER field list across the full content width — mock is
+   authority, exempt the builder from the measure (Settings reading-column clamp:
+   verify against the 09-settings mock before changing).
 B. **customFields/Labels UI surface** (mostly landed — probe 2: directory column AND
    drawer chips w/ label variety verified): remaining — Labels row in the MERGE view
    renders raw lowercase custom-field keys; apply the server-side formatting there
@@ -61,13 +61,8 @@ C. **Verify-then-close list** (commits claim these landed — external probe con
 ## Per-surface open items (desktop)
 
 **Overview** (DEC-735 class split CLOSED — §02 inline AND §04 stacked both verified;
-room-named suggestions CLOSED): USER: event-switcher caret sits in its own
-OUTLINED rounded box next to the event name — drop the outline; the switcher
-should read as one quiet control (name + bare ▾), border only on hover/open per
-affordance grammar · USER: /admin renders Overview WITHOUT redirecting to
-/admin/overview, so the Overview nav tab never highlights on landing — redirect
-/admin → /admin/overview (same class as the earlier <tab> vs <tab>/ highlight
-fix; check reviewer-role redirect to /admin/review still wins) · kill dangling "· ·" on triage rows ("Marcus Okafor
+room-named suggestions CLOSED): (probe-4 CLOSED: DEC-806 /admin redirect + highlight, reviewer redirect intact ·
+DEC-807 quiet event-switcher) · kill dangling "· ·" on triage rows ("Marcus Okafor
 · · SES-002 · waiting 120 days" — empty track slot between separators; drop empty
 segments) · New-event modal → root ModalFrame portal + own typography (ALL-CAPS is
 inherited), styled dates, labels STARTS/ENDS/TIME ZONE/VENUE · Public pages as
@@ -94,7 +89,9 @@ DECLINE QUEUE no-wrap · "Columns: <state>" label · bulk bar → 3 actions · d
 section · ANSWERS = curated subset · quick-add combined name field · co-presenter
 search row layout.
 
-**Review** (probe-3 CLOSED: DEC-763 plan-scoped disclosures — all 37 swept clean ·
+**Review** (probe-4 NEW: reviewer's own Review nav tab NEVER highlights — link
+href "/admin/review/" trailing slash vs pathname "/admin/review"; fix the href,
+aria-current follows) (probe-3 CLOSED: DEC-763 plan-scoped disclosures — all 37 swept clean ·
 DEC-763 export sort — hrefs byte-identical all 8 states, CSVs match · reviewer
 NAMES render · DEC-760 remind hidden at N=0; earlier: DEC-737/723/736 + blended
 SCORE): scoped queue PARTIAL — "← Your plans" breadcrumb landed, but h1 is still
@@ -159,21 +156,20 @@ placing entry.
 (CLOSED by probe 2: DEC-724 conditional "No room yet" column · DEC-742 merged clash
 card — inverted ink card, zero inner scroll, fully visible content.)
 
-**Comms** (probe-3 CLOSED: DEC-751 Recent sends under Compose on all steps ·
-History "See the recipients" bordered CTA · earlier DEC-710 + history count;
-template landmine PARTIALLY fixed: task_list + portal_link now RESOLVE in compose —
-only {due_date} remains unsupported, then the seeded "Content Reminder" template
-works; finish due_date via the task-reminder builder + add the seeded-template
-preflight parity test) · preflight error UI still discards the per-recipient field
-detail the API already returns — render culprits with human names · compose body
-step still has zero merge-field affordance (no field list/insert/hint; NOTE probe:
-the "Attachments and merge fields" panel TITLE + two toggles match the mock exactly
-— do NOT retitle; missing vs mock is the caption "3 of 23 have no slot yet — those
-get no invite") · Recent sends minor: template-label column + per-row Open link ·
-per-recipient SCHEDULED/NO-SLOT
-tags + "N have no slot" advisory in Preview · persistent Recent sends under Compose
-(STILL-OPEN — exists only inside History tab) · bordered "See the recipients" CTA on
-batch rows · SEED: one ~23-recipient batch + 4 more templates.
+**Comms** (probe-4 CLOSED: DEC-792 vocabulary — Content Reminder preflights clean
+w/ per-recipient values · DEC-793 chip row + cursor insert + hint + NAMED
+preflight errors · DEC-796 rendered history, zero raw tokens; earlier: DEC-751 +
+history CTA + DEC-710): NEW — seeded "Content Reminder" SUBJECT interpolates the
+multi-line {task_list} block (paragraph subjects; empty case "due No due date: No
+outstanding tasks.." double period) — add short/long task_list variants or reword
+the seeded subject · preflight banner needs role="alert" + name ALL missing
+fields per recipient (only first named) · template-selected mode silently ignores
+textarea edits (bogus tokens no-op — either respect edits or lock the textarea) ·
+history shows no body anywhere (list projection drops bodyText — add body to the
+expanded batch view) · SEED: give the 23-recipient batch VARIED subjects so
+per-recipient rendering is evidenced · per-recipient SCHEDULED/NO-SLOT tags +
+"N have no slot" advisory in Preview (mock caption) · Recent sends minor:
+template-label column + per-row Open link.
 
 **Contacts** (probe-3 CLOSED: Title prefill + blank-title guard (UI+API) · role
 persists w/ named confirmation DEC-765 · Keep both/Not a duplicate PERSISTED
@@ -233,13 +229,13 @@ not-in-mock Participants + full-Answers sections · header: drop "Welcome to the
 speaker portal!…" tagline (displaces identity on subpages; mock = wordmark +
 identity only) · pending status label "UNDER REVIEW" — mock vocabulary check ·
 admin-404 links run together ("Go to Overview Submissions ›" — separate them) ·
-public form track checkboxes centered above labels, should be inline · search button MOSTLY FIXED
-(same row now); residual: button center 11.1px above the input — the flex row
-centers the 44px button against the 66px label (caption+input); align to the INPUT
-box (align-items flex-end or dedicated input+button row) · DEC-777 residue: portal
-SUBPAGE headers drop identity entirely (wordmark only — restore name on subpages) ·
-portal detail meta still lacks TRACK ("SES-001 · Talk (30 min)" — add
-"· Platform & Infra").
+public form track checkboxes centered above labels, should be inline · search button STILL 11.1px high
+(probe-4 re-measured; root cause PINNED: button centers against the 66px
+label+input wrapper — align to the input box; 11px = half the label height) ·
+DEC-777 residue: portal SUBPAGE headers drop identity entirely (restore name) ·
+portal detail TRACK: template already renders detail.trackName
+(portal/index.tsx:404) but the portal query returns it NULL — fix the data fetch,
+not the template.
 
 **Grader P3s** (two-track-selectors CLOSED by probe 2): label New-event Timezone ·
 explicit CFP publish affordance · close-before-open validation loud at the field.
