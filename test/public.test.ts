@@ -168,7 +168,12 @@ function installFakeCaches(): void {
   };
 }
 
-const TEST_ENV = { KV: fakeKv() } as unknown as AppEnv["Bindings"];
+// DEC-947: the .ics ORGANIZER address resolves through
+// resolveIcsOrganizerEmail, which demands MAIL_FROM_EMAIL or DEV_MODE="1"
+// and otherwise throws (same policy as makeMailer, DEC-547). This harness
+// models a local/dev deployment, so it sets DEV_MODE="1"; without it the
+// .ics routes 500 on a *configuration* fault rather than on input.
+const TEST_ENV = { KV: fakeKv(), DEV_MODE: "1" } as unknown as AppEnv["Bindings"];
 
 const EVENT: PublicEvent = {
   id: "ev1",

@@ -31,7 +31,7 @@ export function findItemsEnvelopeSites(source: string, file: string): EnvelopeSi
 // deliberate reviewed act -- see test/list-envelope-enumeration.test.ts's
 // file-header comment above for why each one is exempt.
 export const ENVELOPE_ALLOWLIST = new Set<string>([
-  "src/routes/comms.ts:509",
+  "src/routes/comms.ts:510",
   "src/routes/api/contacts/bulk-email.ts:214",
   // NOTE (DEC-840): GET .../assignments/distribute/preview used to be
   // allowlisted here (it was previously `c.json({ items, perReviewer,

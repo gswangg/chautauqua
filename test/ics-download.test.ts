@@ -56,6 +56,12 @@ function fakeDb(): AppEnv["Variables"]["db"] {
   } as unknown as AppEnv["Variables"]["db"];
 }
 
+// DEC-947: schedule.ics resolves its ORGANIZER through
+// resolveIcsOrganizerEmail, which requires MAIL_FROM_EMAIL or DEV_MODE="1"
+// and otherwise throws (same policy as makeMailer, DEC-547). This harness
+// models a local/dev deployment.
+const TEST_ENV = { DEV_MODE: "1" } as unknown as AppEnv["Bindings"];
+
 function buildApp() {
   const app = new Hono<AppEnv>();
   app.use("*", async (c, next) => {
@@ -64,7 +70,9 @@ function buildApp() {
   });
   registerErrorHandler(app);
   app.route("/", publicRoutes);
-  return app;
+  return {
+    request: (path: string, init?: RequestInit) => app.request(path, init, TEST_ENV),
+  };
 }
 
 describe("GET /e/:slug/schedule.ics (DEC-080 300-id cap)", () => {

@@ -89,7 +89,13 @@ function buildApp() {
   });
   registerErrorHandler(app);
   app.route("/", publicRoutes);
-  const env = { KV: new InMemoryKV() as unknown as AppEnv["Bindings"]["KV"] };
+  // DEC-947: the .ics surfaces resolve their ORGANIZER via
+  // resolveIcsOrganizerEmail, which requires MAIL_FROM_EMAIL or
+  // DEV_MODE="1" and otherwise throws (DEC-547 policy).
+  const env = {
+    KV: new InMemoryKV() as unknown as AppEnv["Bindings"]["KV"],
+    DEV_MODE: "1",
+  } as unknown as AppEnv["Bindings"];
   return {
     request: (path: string, init?: RequestInit) => app.request(path, init, env),
   };

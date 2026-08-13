@@ -167,7 +167,12 @@ function installFakeCaches(): void {
   };
 }
 
-const TEST_ENV = { KV: fakeKv() } as unknown as AppEnv["Bindings"];
+// DEC-947: .ics ORGANIZER resolves via resolveIcsOrganizerEmail, which
+// requires MAIL_FROM_EMAIL or DEV_MODE="1" and otherwise throws (DEC-547
+// policy). DEC-459's "never 5xx" contract is about hostile *input*; a
+// missing organizer address is a configuration fault, so this harness
+// models a properly-configured (local/dev) deployment.
+const TEST_ENV = { KV: fakeKv(), DEV_MODE: "1" } as unknown as AppEnv["Bindings"];
 
 function buildApp(dbFactory: () => AppEnv["Variables"]["db"] = makeDb) {
   const app = new Hono<AppEnv>();
