@@ -119,9 +119,13 @@ export interface UnplacedRow {
   ref: string;
   title: string;
   speakerName: string;
-  // No stored per-submission session length (autoSchedule takes an
-  // organizer-supplied defaultDurationMin at call time, never persisted) —
-  // always null, flagged as an open gap rather than fabricated.
+  // DEC-895: the submission's own SESSION_FORMAT_FIELD_ID answer (null when
+  // absent) — carried through so the client never re-derives durationMin
+  // itself; the client only renders it.
+  format: string | null;
+  // DEC-772/DEC-895: parseFormatDurationMin(format) — null whenever the
+  // format is absent or carries no parseable "(N min)" suffix. Never a
+  // fabricated default; a row with no derivable length says so.
   durationMin: number | null;
   suggestion: PlacementSuggestion | null;
 }

@@ -538,6 +538,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       [{ id: "s1", seq: 1, title: "Talk" }], // accepted
       [], // slotRows (s1 has no schedule_slot -> unplaced)
       [], // lead-speaker rows for {s1}
+      [], // DEC-895: format-answer rows for the unplaced set {s1} (none -> durationMin null)
       [{ sentLast7Days: 0, lastSentAt: null }], // comms
     ]);
     const payload = await getOverviewPayload(db, "event-1", now);
@@ -545,6 +546,66 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     expect(payload.contentApproval.reuploadedCount).toBe(4);
     expect(payload.contentApproval.rows).toHaveLength(1);
     expect(payload.agendaWork.unplaced).toHaveLength(1);
+    expect(payload.agendaWork.unplaced[0]).toMatchObject({ format: null, durationMin: null, suggestion: null });
+  });
+
+  // DEC-895: two unplaced rows, sized by their own session format, must be
+  // handed out DIFFERENT startMin values in the same room (the growing
+  // suggestionOccupancy set), and a 120-minute format must size the
+  // suggestion's implied endMin - startMin to exactly 120, never a
+  // hardcoded 30-minute default.
+  it("sizes each unplaced row's suggestion by its own format and reserves it so the next row doesn't collide", async () => {
+    const now = 1_735_999_999_999;
+    const db = makeFakeDb([
+      [{ recordPrefix: "DFC", startDate: "2027-03-10" }], // event
+      [], // statusRows
+      [{ count: 0 }], // planCount
+      [{ expected: 0, submitted: 0 }], // evaluationsAgg
+      [{ closeDate: null, currentRound: null }], // planClose
+      [{ closeDate: null }], // formClose
+      [], // speakerAgg
+      [{ count: 0 }], // overdueAssignmentCount
+      [], // overdueDetail
+      [], // triageDetail
+      [{ total: 0, reuploaded: 0 }], // contentAgg
+      [], // contentDetail
+      [
+        { id: "s1", seq: 1, title: "Talk One" },
+        { id: "s2", seq: 2, title: "Workshop Two" },
+      ], // accepted
+      [
+        // slotRows: an existing placement in room-a occupies 540-600 on day 1
+        // so both unplaced rows are searched against a non-empty grid.
+        { submissionId: "s0", roomId: "room-a", day: "2026-08-10", startMin: 540, endMin: 600 },
+      ],
+      [{ submissionId: "s0", contactId: "c0" }], // participant rows for placed {s0}
+      [], // lead-speaker rows for the unplaced set {s1, s2}
+      [{ id: "room-a", name: "Room A" }], // room-name rows for {room-a}
+      [
+        { submissionId: "s1", valueJson: JSON.stringify("Talk (30 min)") },
+        { submissionId: "s2", valueJson: JSON.stringify("Workshop (120 min)") },
+      ], // DEC-895: format-answer rows for the unplaced set {s1, s2}
+      [{ sentLast7Days: 0, lastSentAt: null }], // comms
+    ]);
+    const payload = await getOverviewPayload(db, "event-1", now);
+
+    expect(payload.agendaWork.unplaced).toHaveLength(2);
+    const [row1, row2] = payload.agendaWork.unplaced;
+    expect(row1).toMatchObject({ submissionId: "s1", format: "Talk (30 min)", durationMin: 30 });
+    expect(row2).toMatchObject({ submissionId: "s2", format: "Workshop (120 min)", durationMin: 120 });
+
+    // Both suggestions land in the only room in use (room-a), but at
+    // DIFFERENT startMin values -- the second row's search must not offer
+    // the exact slot the first row was just handed.
+    expect(row1!.suggestion).not.toBeNull();
+    expect(row2!.suggestion).not.toBeNull();
+    expect(row1!.suggestion!.roomId).toBe("room-a");
+    expect(row2!.suggestion!.roomId).toBe("room-a");
+    expect(row1!.suggestion!.startMin).not.toBe(row2!.suggestion!.startMin);
+
+    // The 120-minute workshop's suggestion is sized by its own format, not
+    // a hardcoded 30-minute default: endMin - startMin === 120.
+    expect(row2!.durationMin).toBe(120);
   });
 
   // DEC-531: the row-materializing aggregateSpeakerCounts helper is gone —

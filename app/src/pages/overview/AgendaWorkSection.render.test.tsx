@@ -50,6 +50,7 @@ function basePayload(): OverviewPayload {
           ref: 'DFC-050',
           title: 'Docs That Answer Back',
           speakerName: 'Dana Whitmore',
+          format: 'Talk (30 min)',
           durationMin: 30,
           suggestion: {
             day: '2027-03-11',
@@ -104,10 +105,73 @@ describe('AgendaWorkSection (DEC-652)', () => {
     expect(screen.getByRole('button', { name: 'Place at 11:00 in Room 2B' })).toBeInTheDocument();
     // The old generic link is gone when a concrete suggestion exists.
     expect(screen.queryByRole('link', { name: 'Place it' })).not.toBeInTheDocument();
-    // DEC-735: the dangling "· min ·" duration clause is dropped — the
-    // server never sends a real per-submission duration for unplaced rows.
+    // DEC-895: format/duration render as their own meta segments.
+    expect(screen.getByText(/Talk \(30 min\)/)).toBeInTheDocument();
+    expect(screen.getByText(/30 min/)).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/·\s*min\s*·/);
     expect(document.body.textContent).not.toMatch(/null min/);
+  });
+
+  // DEC-895: a row's meta line drops both the format and duration segments
+  // cleanly when either is absent — never a dangling "· min ·" fragment,
+  // and the row keeps the plain "Place it" link rather than proposing an
+  // unsized slot.
+  it('drops the format/duration clause and keeps the plain Place it link when the row has no derivable duration', () => {
+    mockApi({});
+    const payload = basePayload();
+    payload.agendaWork.unplaced[0]! = {
+      submissionId: 'sub-e',
+      ref: 'DFC-052',
+      title: 'A Talk With No Format Answer',
+      speakerName: 'Nia Okafor',
+      format: null,
+      durationMin: null,
+      suggestion: null,
+    };
+    render(<Harness payload={payload} refetch={vi.fn()} />);
+
+    expect(screen.getByText('A Talk With No Format Answer')).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/·\s*min\s*·/);
+    expect(document.body.textContent).not.toMatch(/null min/);
+    expect(screen.getByRole('link', { name: 'Place it' })).toHaveAttribute('href', '/agenda');
+  });
+
+  // DEC-895: the PUT body's endMin is derived from the ROW's own duration
+  // (a 120-minute workshop), never a hardcoded 30-minute default.
+  it('PUTs an endMin sized by the row\'s own (non-default) duration', async () => {
+    const fetchMock = mockApi({
+      'PUT /api/v1/submissions/sub-c/slot': { ok: true },
+    });
+    const payload = basePayload();
+    payload.agendaWork.unplaced[0]! = {
+      submissionId: 'sub-c',
+      ref: 'DFC-050',
+      title: 'Docs That Answer Back',
+      speakerName: 'Dana Whitmore',
+      format: 'Workshop (120 min)',
+      durationMin: 120,
+      suggestion: { day: '2027-03-11', startMin: 660, roomId: 'room-2b', roomName: 'Room 2B', label: 'Place at 11:00' },
+    };
+    render(<Harness payload={payload} refetch={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Place at 11:00 in Room 2B' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Docs That Answer Back')).not.toBeInTheDocument();
+    });
+
+    const call = fetchMock.mock.calls.find(([input]) => {
+      const url = typeof input === 'string' ? input : (input as Request).toString();
+      return url.includes('/submissions/sub-c/slot');
+    });
+    expect(call).toBeTruthy();
+    const init = call![1] as RequestInit;
+    expect(JSON.parse(init.body as string)).toEqual({
+      day: '2027-03-11',
+      startMin: 660,
+      endMin: 780, // 660 + 120 (the row's own duration, not a 30min default)
+      roomId: 'room-2b',
+    });
   });
 
   // DEC-735: §02's row-actions container is an inline row, §04's conflict
@@ -134,6 +198,7 @@ describe('AgendaWorkSection (DEC-652)', () => {
         ref: 'DFC-050',
         title: 'Docs That Answer Back',
         speakerName: 'Dana Whitmore',
+        format: 'Talk (30 min)',
         durationMin: 30,
         suggestion: { day: '2027-03-11', startMin: 660, roomId: 'room-2b', roomName: 'Room 2B', label: 'Place at 11:00' },
       },
@@ -142,6 +207,7 @@ describe('AgendaWorkSection (DEC-652)', () => {
         ref: 'DFC-051',
         title: 'Zero-Downtime Schema Migrations',
         speakerName: 'Ezra Lindqvist',
+        format: 'Talk (30 min)',
         durationMin: 30,
         suggestion: { day: '2027-03-11', startMin: 660, roomId: 'room-3c', roomName: 'Room 3C', label: 'Place at 11:00' },
       },
