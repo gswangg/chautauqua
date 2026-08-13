@@ -159,6 +159,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
       taskId: schema.task.id,
       taskTitle: schema.task.title,
       dueDate: schema.task.dueDate,
+      assignedAt: schema.taskAssignment.createdAt,
     })
     .from(schema.taskAssignment)
     .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
@@ -176,7 +177,8 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
         company: r.company,
         taskId: r.taskId,
         taskTitle: r.taskTitle,
-        dueDate: r.dueDate!.getTime(),
+        taskDueDate: r.dueDate!.getTime(),
+        assignedAt: r.assignedAt!.getTime(),
       })),
       now,
     ),

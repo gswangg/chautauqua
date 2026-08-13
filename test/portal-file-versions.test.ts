@@ -132,6 +132,7 @@ describe("GET /portal/tasks — full version chain (DEC-605)", () => {
         title: "Upload slides",
         description: null,
         dueDate: null,
+        assignedAt: 0,
         required: true,
         status: "complete",
         formId: null,

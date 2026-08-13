@@ -100,6 +100,7 @@ describe("GET /portal/tasks — completed file_request assignment (DEC-242)", ()
         title: "Upload slides",
         description: null,
         dueDate: null,
+        assignedAt: 0,
         required: true,
         status: "complete",
         formId: null,

@@ -4,7 +4,14 @@
 
 import type { PlacedSession } from "../../../domain/schedule";
 import { findConflicts } from "../../../domain/schedule";
-import type { OverviewPayload, FileRowForPick, LeadSpeakerRow, OverdueTaskRow } from "./types";
+import { effectiveAssignmentDueDate } from "../../../domain/task-due";
+import type {
+  OverviewPayload,
+  FileRowForPick,
+  LeadSpeakerRow,
+  OverdueTaskRow,
+  OverdueTaskInputRow,
+} from "./types";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -48,16 +55,19 @@ export function minNonNull(values: (number | null | undefined)[]): number | null
   return min;
 }
 
-/** DEC-370 overdueTasks rows: attaches `daysLate` (whole days late, clamped
- * to zero) to each already-overdue assignment row. */
-export function buildOverdueTaskRows(
-  rows: Omit<OverdueTaskRow, "daysLate">[],
-  now: number,
-): OverdueTaskRow[] {
-  return rows.map((r) => ({
-    ...r,
-    daysLate: Math.max(0, Math.floor((now - r.dueDate) / DAY_MS)),
-  }));
+/** DEC-370/DEC-826 overdueTasks rows: derives the effective due date
+ * (effectiveAssignmentDueDate — a task can't be late before it was
+ * assigned) and attaches `daysLate` (whole days late, clamped to zero)
+ * computed against that effective date, never the raw task.dueDate. */
+export function buildOverdueTaskRows(rows: OverdueTaskInputRow[], now: number): OverdueTaskRow[] {
+  return rows.map(({ taskDueDate, assignedAt, ...rest }) => {
+    const dueDate = effectiveAssignmentDueDate(taskDueDate, assignedAt)!;
+    return {
+      ...rest,
+      dueDate,
+      daysLate: Math.max(0, Math.floor((now - dueDate) / DAY_MS)),
+    };
+  });
 }
 
 /** DEC-558: picks the "latest file" per submission from a flat row list —

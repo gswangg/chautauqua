@@ -67,6 +67,7 @@ import {
 } from "../../auth/cookies";
 import { DEC_016, DEC_020, DEC_023, DEC_028, DEC_029, DEC_240, DEC_242, DEC_244, DEC_605, DEC_657, DEC_696 } from "../../decisions";
 import { formatCalendarDate, formatEventDate, formatEventDateTime } from "../../lib/event-time";
+import { effectiveAssignmentDueDate } from "../../domain/task-due";
 import { renderMarkdown } from "../../lib/markdown";
 
 export const portalTasksRoutes = new Hono<AppEnv>();
@@ -196,6 +197,10 @@ function TaskRow(props: {
   fileExtras?: FileRequestExtras;
 }) {
   const { assignment: t, csrfToken, error, fileExtras } = props;
+  // DEC-826: a task cannot be late before it was assigned — print the
+  // effective due date, the same one the organizer's grid and the
+  // reminder email already use.
+  const effectiveDue = effectiveAssignmentDueDate(t.dueDate, t.assignedAt);
   return (
     <div class="chq-portal-row" id={`task-${t.id}`}>
       <div class="chq-portal-row-head">
@@ -210,7 +215,7 @@ function TaskRow(props: {
           {t.status === "complete" ? "Completed" : "Pending"}
         </span>
       </div>
-      {t.dueDate ? <span class="chq-portal-due">Due {formatCalendarDate(t.dueDate)}</span> : null}
+      {effectiveDue ? <span class="chq-portal-due">Due {formatCalendarDate(effectiveDue)}</span> : null}
       {t.description ? <p class="chq-portal-detail">{t.description}</p> : null}
       {error ? (
         <p role="alert" class="field-error">
@@ -342,7 +347,11 @@ function TasksPage(props: {
                 </span>
                 <span class="chq-flag">Pending</span>
               </div>
-              {t.dueDate ? <span class="chq-portal-due">Due {formatCalendarDate(t.dueDate)}</span> : null}
+              {effectiveAssignmentDueDate(t.dueDate, t.assignedAt) ? (
+                <span class="chq-portal-due">
+                  Due {formatCalendarDate(effectiveAssignmentDueDate(t.dueDate, t.assignedAt)!)}
+                </span>
+              ) : null}
               <div class="chq-portal-actions">
                 <a href={formLinkFor(t) ?? "#"} class="chq-btn chq-btn-primary">Fill out form</a>
               </div>

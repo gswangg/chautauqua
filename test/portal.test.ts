@@ -67,6 +67,7 @@ function taskFixture(overrides: Partial<PortalTaskAssignment>): PortalTaskAssign
     title: "Untitled task",
     description: null,
     dueDate: null,
+    assignedAt: 0,
     required: false,
     status: "pending",
     formId: null,
@@ -131,6 +132,46 @@ describe("PortalPage worklist headline (DEC-590)", () => {
     const res = await app.request("/portal");
     const html = await res.text();
     expect(html).toMatch(/<h1[^>]*>\s*0 things to do\s*<\/h1>/);
+  });
+});
+
+// DEC-826: the worklist's "Due" label and overdue mark must reflect the
+// effective (assignment-aware) due date, not the raw task.dueDate — a
+// speaker added after a task's raw due date is given a deadline they can
+// still meet, the same one the organizer's grid/reminder email use.
+describe("portal worklist due date (DEC-826 effective date)", () => {
+  it("prints the effective due date (assignedAt + grace), not the raw task.dueDate, and is not marked overdue", async () => {
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const nowApprox = Date.now();
+    // Task's raw due date is far in the past — if rendered raw, this row
+    // would be badly overdue. The assignment was created 2 days ago, well
+    // after that raw date, so the effective due date (assignedAt + 7-day
+    // grace, ASSIGNED_LATE_GRACE_DAYS) is ~5 days in the future — not
+    // overdue at all.
+    const rawTaskDueDate = nowApprox - 365 * DAY_MS;
+    const assignedAt = nowApprox - 2 * DAY_MS;
+    const expectedEffectiveDue = assignedAt + 7 * DAY_MS;
+    mockTasks = [
+      taskFixture({
+        id: "a1",
+        title: "Confirm bio",
+        status: "pending",
+        dueDate: rawTaskDueDate,
+        assignedAt,
+      }),
+    ];
+    mockInvitations = [];
+    const app = await buildPortalApp();
+    const res = await app.request("/portal");
+    const html = await res.text();
+    const { formatCalendarDate } = await import("../src/lib/event-time");
+    expect(html).toContain(`Due ${formatCalendarDate(expectedEffectiveDue)}`);
+    expect(html).not.toContain(`Due ${formatCalendarDate(rawTaskDueDate)}`);
+    // not overdue: the effective date is in the future, so no flag renders
+    // for this row's title.
+    const rowStart = html.indexOf("Confirm bio");
+    const rowEnd = html.indexOf("chq-portal-actions", rowStart);
+    expect(html.slice(rowStart, rowEnd)).not.toContain("Overdue");
   });
 });
 
