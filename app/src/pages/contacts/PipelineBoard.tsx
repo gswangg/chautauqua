@@ -41,6 +41,10 @@ export function PipelineBoard() {
   const [declinePrompt, setDeclinePrompt] = useState<PipelineEntry | null>(null);
   // DEC-898: the column currently under a drag, for the over-state affordance.
   const [dragOverStage, setDragOverStage] = useState<PipelineStage | null>(null);
+  // DEC-980: fit is editable after enrolment -- the card being fit-edited,
+  // via a fit-only PATCH that never carries a stage (so it never forges a
+  // move or bumps stageSince).
+  const [fitEditEntry, setFitEditEntry] = useState<PipelineEntry | null>(null);
 
   function reload() {
     setLoading(true);
@@ -98,6 +102,14 @@ export function PipelineBoard() {
       return;
     }
     void doMove(entry, stage);
+  }
+
+  // DEC-980: a fit-only edit PATCHes fitScore/rationale with no `stage` key
+  // at all, so the route never treats it as a move -- distinct write path
+  // from doMove, which always carries a stage.
+  async function saveFit(entry: PipelineEntry, fitScore: number | null, rationale: string | null) {
+    const updated = await apiPatch<PipelineEntry>(`/pipeline/${entry.id}`, { fitScore, rationale });
+    setEntries((prev) => prev.map((e) => (e.id === entry.id ? updated : e)));
   }
 
   // DEC-898: drag-and-drop reuses the exact same stage-change path as the
@@ -163,7 +175,13 @@ export function PipelineBoard() {
                 </div>
                 <ul className="chq-contacts-pipeline-column-cards">
                   {sortByFit(entries.filter((e) => e.stage === stage)).map((entry) => (
-                    <PipelineCard key={entry.id} entry={entry} onOpen={() => setOpenEntryId(entry.id)} onMove={moveTo} />
+                    <PipelineCard
+                      key={entry.id}
+                      entry={entry}
+                      onOpen={() => setOpenEntryId(entry.id)}
+                      onMove={moveTo}
+                      onEditFit={() => setFitEditEntry(entry)}
+                    />
                   ))}
                 </ul>
               </div>
@@ -260,6 +278,17 @@ export function PipelineBoard() {
           }}
         />
       )}
+
+      {fitEditEntry && (
+        <FitEditDialog
+          entry={fitEditEntry}
+          onClose={() => setFitEditEntry(null)}
+          onSave={async (fitScore, rationale) => {
+            await saveFit(fitEditEntry, fitScore, rationale);
+            setFitEditEntry(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -320,9 +349,10 @@ interface PipelineCardProps {
   entry: PipelineEntry;
   onOpen: () => void;
   onMove: (entry: PipelineEntry, stage: PipelineStage) => void;
+  onEditFit: () => void;
 }
 
-function PipelineCard({ entry, onOpen, onMove }: PipelineCardProps) {
+function PipelineCard({ entry, onOpen, onMove, onEditFit }: PipelineCardProps) {
   const age = pipelineCardAge(entry.stage, entry.stageSince, Date.now());
   // DEC-898: reuses the agenda DayGrid drag contract verbatim -- the
   // dragged entry's id in `text/plain`, effectAllowed 'move'.
@@ -343,14 +373,21 @@ function PipelineCard({ entry, onOpen, onMove }: PipelineCardProps) {
         <div className="chq-contacts-pipeline-card-decline-reason">{entry.declineReason}</div>
       )}
       {/* DEC-821: fit is a visible state, never blank -- an unrated card
-          still says so, rather than implying a zero. */}
-      {entry.fitScore !== null ? (
-        <span className="chq-pill chq-contacts-pipeline-card-fit chq-contacts-pipeline-card-fit-rated">
-          Fit {entry.fitScore}
-        </span>
-      ) : (
-        <span className="chq-pill chq-contacts-pipeline-card-fit chq-contacts-pipeline-card-fit-unrated">Unrated</span>
-      )}
+          still says so, rather than implying a zero. DEC-980: fit is
+          editable after enrolment too -- a quiet affordance beside the
+          pill opens a fit-only PATCH dialog, never a stage control. */}
+      <div className="chq-contacts-pipeline-card-fit-row">
+        {entry.fitScore !== null ? (
+          <span className="chq-pill chq-contacts-pipeline-card-fit chq-contacts-pipeline-card-fit-rated">
+            Fit {entry.fitScore}
+          </span>
+        ) : (
+          <span className="chq-pill chq-contacts-pipeline-card-fit chq-contacts-pipeline-card-fit-unrated">Unrated</span>
+        )}
+        <button type="button" className="chq-link-button chq-contacts-pipeline-card-fit-edit" onClick={onEditFit}>
+          {entry.fitScore !== null ? 'Edit' : 'Rate'}
+        </button>
+      </div>
       {entry.rationale && <div className="chq-contacts-pipeline-card-rationale">{entry.rationale}</div>}
       <label className="chq-contacts-pipeline-card-move">
         Move to
@@ -493,6 +530,88 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
       <p className="chq-contacts-pipeline-enroll-consequence">
         Adding writes a move to the activity feed · No email is sent
       </p>
+    </ModalFrame>
+  );
+}
+
+interface FitEditDialogProps {
+  entry: PipelineEntry;
+  onClose: () => void;
+  onSave: (fitScore: number | null, rationale: string | null) => Promise<void>;
+}
+
+// DEC-980: fit is editable after enrolment — the SAME two controls the
+// enrol dialog uses (fit 1-5, optional; one-line 'Why them'), but this
+// dialog never carries a stage control: it submits a fit-only PATCH
+// (no `stage` key at all), so the route never treats it as a move.
+function FitEditDialog({ entry, onClose, onSave }: FitEditDialogProps) {
+  const [fitScore, setFitScore] = useState(entry.fitScore !== null ? String(entry.fitScore) : '');
+  const [rationale, setRationale] = useState(entry.rationale ?? '');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    try {
+      await onSave(fitScore === '' ? null : Number(fitScore), rationale.trim() === '' ? null : rationale.trim());
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to save fit');
+      setBusy(false);
+    }
+  }
+
+  return (
+    <ModalFrame
+      title="Rate fit"
+      subtitle={`${entry.firstName} ${entry.lastName}`}
+      onClose={onClose}
+      closeDisabled={busy}
+      actions={
+        <>
+          <button type="button" className="chq-btn chq-btn-primary" disabled={busy} onClick={() => void save()}>
+            Save
+          </button>
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose} disabled={busy}>
+            Cancel
+          </button>
+        </>
+      }
+    >
+      {error && <div className="chq-error">{error}</div>}
+      <FormRow label="Fit" optional>
+        <div className="chq-segmented" role="group" aria-label="Fit">
+          <button
+            type="button"
+            className={fitScore === '' ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
+            aria-pressed={fitScore === ''}
+            onClick={() => setFitScore('')}
+          >
+            Unrated
+          </button>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              className={fitScore === String(n) ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
+              aria-pressed={fitScore === String(n)}
+              onClick={() => setFitScore(String(n))}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </FormRow>
+      <FormRow label="Why them" htmlFor="pipeline-fit-edit-rationale" optional>
+        <input
+          id="pipeline-fit-edit-rationale"
+          type="text"
+          className="chq-input"
+          value={rationale}
+          onChange={(e) => setRationale(e.target.value)}
+          placeholder="Keynoted a similar event last year"
+        />
+      </FormRow>
     </ModalFrame>
   );
 }

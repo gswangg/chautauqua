@@ -383,6 +383,84 @@ describe("PATCH /api/v1/pipeline/:id (move)", () => {
   });
 });
 
+// DEC-980: a fit edit after enrolment must never forge a stage move -- no
+// activity row, no updatedAt/stageSince bump.
+describe("PATCH /api/v1/pipeline/:id (fit-only, DEC-980)", () => {
+  it("a fit-only PATCH (stage omitted) updates fitScore/rationale, writes zero pipeline_activity rows, and leaves updatedAt/stageSince unchanged", async () => {
+    const { db, inserts, updates } = fakeDb([
+      [ENTRY_ROW], // requireOwnedEntry
+      [{ ...ENTRY_ROW, fitScore: 4, rationale: "Great fit" }], // findEntryById after fit update
+      [CONTACT_ORG_A], // findContactForOrg for response serialization
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("PATCH", "/api/v1/pipeline/entry-1", { fitScore: 4, rationale: "Great fit" }),
+    );
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as any;
+    expect(json.fitScore).toBe(4);
+    expect(json.rationale).toBe("Great fit");
+    expect(json.stage).toBe("identified");
+    expect(json.updatedAt).toBe(ENTRY_ROW.updatedAt.getTime());
+    expect(json.stageSince).toBe(ENTRY_ROW.updatedAt.getTime());
+
+    // zero pipeline_activity inserts (only the fit update() call happened)
+    expect(inserts).toHaveLength(0);
+    expect(updates).toHaveLength(1);
+    expect((updates[0]!.vals as any).fitScore).toBe(4);
+  });
+
+  it("a same-stage PATCH is likewise not a move", async () => {
+    const { db, inserts, updates } = fakeDb([
+      [ENTRY_ROW], // requireOwnedEntry
+      [{ ...ENTRY_ROW, rationale: "Updated note" }], // findEntryById after fit update
+      [CONTACT_ORG_A], // findContactForOrg
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("PATCH", "/api/v1/pipeline/entry-1", { stage: "identified", rationale: "Updated note" }),
+    );
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as any;
+    expect(json.rationale).toBe("Updated note");
+    expect(json.updatedAt).toBe(ENTRY_ROW.updatedAt.getTime());
+    expect(inserts).toHaveLength(0);
+  });
+
+  it("a different-stage PATCH still writes the move row", async () => {
+    const { db, inserts, updates } = fakeDb([
+      [ENTRY_ROW], // requireOwnedEntry
+      [ORGANIZER_USER], // resolveAuthorName
+      [{ ...ENTRY_ROW, stage: "contacted" }], // findEntryById after update
+      [CONTACT_ORG_A], // findContactForOrg
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(jsonRequest("PATCH", "/api/v1/pipeline/entry-1", { stage: "contacted" }));
+    expect(res.status).toBe(200);
+    expect(updates).toHaveLength(1);
+    expect(inserts).toHaveLength(1);
+    expect((inserts[0]!.vals as any).kind).toBe("move");
+  });
+
+  it("400s a PATCH carrying neither a stage change nor any fit key, naming the empty patch", async () => {
+    const { db, inserts, updates } = fakeDb([
+      [ENTRY_ROW], // requireOwnedEntry
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(jsonRequest("PATCH", "/api/v1/pipeline/entry-1", { stage: "identified" }));
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as any;
+    expect(json.error.code).toBe("invalid");
+    expect(json.error.fields?.patch).toBeTruthy();
+    expect(inserts).toHaveLength(0);
+    expect(updates).toHaveLength(0);
+  });
+});
+
 describe("GET /api/v1/pipeline/:id (detail)", () => {
   it("returns entry, contact, and newest-first activity", async () => {
     const olderMove = {

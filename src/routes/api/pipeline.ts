@@ -185,44 +185,64 @@ pipelineRoutes.patch("/pipeline/:id", csrfJson, async (c) => {
     throw new ApiError("invalid", "Invalid JSON body");
   }));
 
-  if (!repo.isPipelineStage(body.stage)) {
+  // DEC-980: `stage` is optional -- absent or equal to the entry's current
+  // stage means this PATCH is a fit-only edit, not a move, and must never
+  // call moveEntry (no activity row, no updatedAt/stageSince bump). Only a
+  // present-and-different stage is a real move.
+  const hasStage = "stage" in body && body.stage !== undefined;
+  if (hasStage && !repo.isPipelineStage(body.stage)) {
     throw new ApiError("invalid", "Validation failed", { stage: `must be one of ${repo.PIPELINE_STAGES.join(", ")}` });
   }
+  const isMove = hasStage && body.stage !== entry.stage;
 
-  // DEC-803: a move into 'declined' must carry a reason -- rejected here,
-  // before any write, not left to the UI to enforce alone.
-  const reason = typeof body.reason === "string" ? body.reason.trim() : "";
-  if (body.stage === "declined" && reason === "") {
-    throw new ApiError("invalid", "Validation failed", { reason: "required when declining" });
-  }
-
-  // DEC-821: fit fields are optional on a stage-move PATCH -- when present
-  // they're validated and persisted alongside the move, but fit never
-  // itself moves a card between stages.
+  // DEC-821: fit fields are optional on this PATCH -- when present they're
+  // validated and persisted alongside a move (if any), but fit never itself
+  // moves a card between stages.
   const hasFitScore = "fitScore" in body;
   const hasRationale = "rationale" in body;
   const fitScore = validateFitScore(body.fitScore);
   const rationale = validateRationale(body.rationale);
 
-  const authorName = await repo.resolveAuthorName(c.var.db, auth.userId);
-  const updated = await repo.moveEntry(
-    c.var.db,
-    entry,
-    body.stage,
-    { userId: auth.userId, name: authorName },
-    body.stage === "declined" ? reason : undefined,
-  );
+  if (!isMove && !hasFitScore && !hasRationale) {
+    throw new ApiError("invalid", "Validation failed", { patch: "must change stage, fitScore, or rationale" });
+  }
+
+  // DEC-803: a move into 'declined' must carry a reason -- rejected here,
+  // before any write, not left to the UI to enforce alone. This rule only
+  // applies to an actual move into 'declined', never a same-stage PATCH.
+  const reason = typeof body.reason === "string" ? body.reason.trim() : "";
+  if (isMove && body.stage === "declined" && reason === "") {
+    throw new ApiError("invalid", "Validation failed", { reason: "required when declining" });
+  }
+
+  let current = entry;
+  if (isMove) {
+    const authorName = await repo.resolveAuthorName(c.var.db, auth.userId);
+    current = await repo.moveEntry(
+      c.var.db,
+      entry,
+      body.stage as repo.PipelineStage,
+      { userId: auth.userId, name: authorName },
+      body.stage === "declined" ? reason : undefined,
+    );
+  }
 
   const withFit =
     hasFitScore || hasRationale
-      ? await repo.updateEntryFit(c.var.db, updated.id, {
+      ? await repo.updateEntryFit(c.var.db, current.id, {
           ...(hasFitScore ? { fitScore } : {}),
           ...(hasRationale ? { rationale } : {}),
         })
-      : updated;
+      : current;
 
   const contact = await findContactForOrg(c.var.db, withFit.contactId, orgId);
   if (!contact) throw new ApiError("not_found", "Contact not found");
+
+  // DEC-803: a fit-only PATCH on an already-declined entry never invents
+  // this value -- read the real newest move-to-declined activity, same as
+  // listPipelineForOrg does for the board.
+  const declineReason =
+    withFit.stage !== "declined" ? null : isMove ? reason : await repo.declineReasonForEntry(c.var.db, withFit.id);
 
   return c.json(
     serializeEntry({
@@ -234,8 +254,11 @@ pipelineRoutes.patch("/pipeline/:id", csrfJson, async (c) => {
       email: contact.email,
       stage: withFit.stage,
       updatedAt: withFit.updatedAt,
-      stageSince: updated.updatedAt,
-      declineReason: withFit.stage === "declined" ? reason : null,
+      // DEC-803: stageSince is the stored updatedAt from before any fit-only
+      // write -- updateEntryFit never touches updatedAt, so `current`
+      // (post-move, pre-fit) carries the correct stageSince either way.
+      stageSince: current.updatedAt,
+      declineReason,
       fitScore: withFit.fitScore,
       rationale: withFit.rationale,
     }),

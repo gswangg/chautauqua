@@ -156,6 +156,18 @@
   align-self: flex-start;
 }
 
+/* DEC-980: the fit pill's edit affordance -- a quiet inline link beside the
+   pill, never a second stage control. */
+.chq-contacts-pipeline-card-fit-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+}
+
+.chq-contacts-pipeline-card-fit-edit {
+  font-size: 0.85em;
+}
+
 .chq-contacts-pipeline-card-fit-unrated {
   background: transparent;
   border: 1px dashed var(--chq-muted);
