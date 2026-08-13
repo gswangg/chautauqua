@@ -60,10 +60,13 @@ onboarding-progress dashboard are built. `/admin/speakers` is the accepted-speak
 (onboarding/task status per speaker, contact/profile drill-in). See the reminder cap and
 Overview row cap below.
 
-## J7 — Speaker self-serve portal (`/portal`, `/portal/profile`, `/portal/submissions/:id`, `/portal/submissions/:id/edit`, `/portal/tasks`, `/portal/tasks/:assignmentId/form`)
+## J7 — Speaker self-serve portal (`/portal`, `/portal/profile`, `/portal/submissions`, `/portal/submissions/:id`, `/portal/submissions/:id/edit`, `/portal/tasks`, `/portal/tasks/:assignmentId/form`)
 
 Branded portal (logo/accent from event settings), submission edit within the organizer's
-open-edit window, profile, and per-task forms/uploads. Built. `MAX_PARTICIPANTS_PER_SUBMISSION`=6
+open-edit window, profile, and per-task forms/uploads. Built. `/portal/submissions` lists
+every submission the speaker owns — pending and declined included, newest first, each with
+its DEC-016 public status label — so a speaker can track a submission that was never
+accepted (DEC-729). `MAX_PARTICIPANTS_PER_SUBMISSION`=6
 (`src/server/repo/portal-edit.ts`) caps co-speakers a speaker can add to their own
 submission from the portal.
 

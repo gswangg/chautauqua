@@ -112,6 +112,9 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
 
   // --- Speaker portal (src/routes/portal/*.tsx, mounted at /portal) ---
   { path: "/portal", role: "speaker" },
+  // DEC-729: the speaker's own submission list (every submission they own,
+  // pending and declined included) — a static path, like /portal/tasks.
+  { path: "/portal/submissions", role: "speaker" },
   {
     path: `/portal/submissions/${SUBMISSION_ID}`,
     role: "speaker",

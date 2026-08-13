@@ -39,13 +39,16 @@ renders → reach a scorecard through the UI.
 A. **Page-measure audit, all admin routes**: submission detail, session detail, plan
    editor, form builder all clamp left/narrow. One shared container token; render-
    sweep asserts width per route.
-B. **customFields/Labels UI surface** (blocks Contacts): no column/drawer-row/merge-row
-   exists anywhere. Build the surface, then Contacts items below unblock.
+B. **customFields/Labels UI surface** (partially landed): directory table Labels
+   COLUMN now exists (DEC-712, probe-verified chips). Still missing: Labels row in the
+   contact DRAWER and in the MERGE view. Seed only ever derives the single label
+   "Speaker" — add label variety so multi-chip rendering is exercised.
 C. **Verify-then-close list** (commits claim these landed — external probe confirms,
-   then delete the line): Contacts DirectoryRail two-column (DEC-710/711) ·
-   data-loss trio REMAINDER (headshot-upload-discards-bio, CSV bio overwrite) ·
-   stale nav badges (refetch on route change/mutation).
-   CLOSED by probe 2026-08-13 (snapshot e254eca): form-builder row anatomy DEC-715
+   then delete the line): data-loss trio REMAINDER (headshot-upload-discards-bio,
+   CSV bio overwrite).
+   CLOSED by probe 2026-08-13 (snapshot e254eca): Contacts DirectoryRail DEC-710/711
+   (real two-column, rail sections per mock) · stale nav badges (mutation updated
+   badge immediately, correct across navs + reload) · form-builder row anatomy DEC-715
    (all 7 sub-points verified in DOM) · Review landing grammar DEC-706/707/708
    (5 of 7 sub-points; residue moved to Review section) · assign-by-track
    preview/confirm (zero non-GET before confirm) · Comms Body-width + URL-state tabs

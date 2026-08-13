@@ -112,11 +112,12 @@ describe("DEC-562: SQL ORDER BY names both columns, by identity", () => {
   it("getPortalSubmissionDetail answer query — (form_field.position asc, form_field.id asc)", async () => {
     const db = makeFakeDb([
       [{ id: "sub-1", seq: 1, title: "T", description: null, status: "pending", createdAt: new Date(0), recordPrefix: "SES", eventOrgId: "org-1", timezone: "UTC" }], // submission+event row
+      [], // formatRows (DEC-729) — no session-format answer on this submission
       [{ contactId: "contact-1", inviteStatus: "accepted" }], // participantRows — owns the submission
       [], // answerRows
     ]);
     await getPortalSubmissionDetail(db, "sub-1", "contact-1", "org-1");
-    const args = orderByArgsOf(db as any, 2);
+    const args = orderByArgsOf(db as any, 3);
     expect(args).toEqual([asc(schema.formField.position), asc(schema.formField.id)]);
   });
 });
