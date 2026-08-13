@@ -197,8 +197,14 @@ export function FormFieldsSection(props: {
  * validation (validateAnswers) is authoritative regardless of this script. */
 export function FieldRulesScript(props: { fields: FormFieldDef[] }) {
   const kindById = new Map(props.fields.map((f) => [f.id, f.kind] as const));
+  // DEC-625: a locked built-in field can never be given a visibility rule —
+  // the API refuses to persist one (src/routes/api/forms.ts:226) and
+  // resolveHiddenFieldIds (src/forms/visibility.ts) skips locked fields in
+  // both fixed-point branches. This filter is the client toggler's mirror
+  // of that same guard: a locked field's `rule`, if one ever reached this
+  // far, is never surfaced to the browser's rule set either.
   const rules = props.fields
-    .filter((f) => f.rule)
+    .filter((f) => f.rule && lockedFieldName(f.id) === null)
     .map((f) => ({
       fieldId: f.id,
       rule: f.rule,
