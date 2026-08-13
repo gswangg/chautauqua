@@ -142,18 +142,30 @@ set/order ("Needs a decision · N" FIRST, "Approved · N", "All accepted session
 N") · relative dates in LATEST FILE · SEED: worklist too sparse (28/30 "No files
 yet").
 
-**Agenda (desktop)** (probe-4 CLOSED: layout shift +58.8→+0.8px · slot targets
-visible while armed (z-6, olive ring, card dims .55) · occupied-slot
-place-anyway (probe 3) · "1 conflict" grammar + self-count · admin day-tab
-copy · OVERDUE cell copy · DEC-801 born-overdue grace · orphaned-task checkbox
-removed · public duplicate day headings): residuals — clash-cell ring 1.80:1 vs
-dimmed card (below 3:1 non-text WCAG; brighten ring or dim card more) · no
-hover state on cells (standing outline substitutes; confirm vs mock at gate) ·
-no-room target sits in the right tray column, DEC-794 wants a full-width strip
-BELOW the grid · task header "DUE 15 JAN" omits year for far dates · public
-agenda day pills still #anchors (make default emit ?day= like the
-parameterized view) · card titles CLAMP at 2 lines (decide vs mock) ·
-place-anyway lands with no confirm/toast (mock check at gate).
+**Agenda (desktop) — GATE-1 FLEET: FAIL (full report
+chautauqua-research/fidelity-gate1/06-agenda/report.md)**:
+**BROKEN — arming EVICTS the Unscheduled tray**: on the common path the no-room
+button becomes the sidebar grid item (.chq-agenda-layout 1fr/268px) and the tray
+reflows below the grid at y≈1548, off-screen (DayGrid.tsx:397-405 emits it as a
+grid sibling). Build DEC-794's actual full-width strip BELOW the grid, column 1;
+tray stays pinned. THE top agenda item.
+MAJOR: armed ring 1.80:1 over the quieted clash card — use a light-on-ink ring to
+clear 3:1 · add :hover feedback to armed cells (frame language: explicit "Place
+here · N MIN FREE") · quieted clash card is struck through by cell rules while
+armed — keep card text legible (raise card text above rules or mask rules under
+the card) · 3-way same-room overlap: extend the DEC-742 merge to N sessions (one
+card, one caption; current: 3 staggered truncated lanes + caption ×3) · page
+head to frame layout: summary + Auto-schedule + Publish on the title row
+right-aligned (kill the ~170px stacked chrome band).
+MINOR batch: summary add "· N% placed", bold only the conflict count · clash
+caption "ROOM DOUBLE-BOOKED" · tray cards: add "· N min" duration, drop track
+line + olive accent, right-align the count numeral · keyboard/click unschedule
+path (invert of DEC-570) · armed-bar min-height 38→39 drift (pin it) · time
+labels "9:00" not "9:00am" · row pitch toward frame ~68px/30min · move "Add a
+room or track" off the toolbar (not in frame — into Settings link placement per
+earlier item) · no-room toast copy.
+(Probe-4 closures stand: geometry-on-arm columns, place-anyway, toasts, DEC-724,
+DEC-853, accessible-name verb split, auto-schedule durations.)
 
 **Comms** (probe-4 CLOSED: DEC-792 vocabulary — Content Reminder preflights clean
 w/ per-recipient values · DEC-793 chip row + cursor insert + hint + NAMED
