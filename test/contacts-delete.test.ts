@@ -130,6 +130,14 @@ create table user (
   created_at integer,
   updated_at integer
 );
+create table contact_duplicate_dismissal (
+  id text primary key,
+  org_id text,
+  contact_id_a text,
+  contact_id_b text,
+  created_at integer,
+  unique (org_id, contact_id_a, contact_id_b)
+);
 `;
 
 function makeTestDb(): { db: Db; sqlite: DatabaseSync } {

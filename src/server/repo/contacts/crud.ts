@@ -14,12 +14,14 @@ import { likeContains } from "../like";
 import { backfillNullAttribution } from "../attribution";
 import { ApiError } from "../../http";
 import { chunkIds } from "../../../lib/chunk";
-import { DEC_333, DEC_336, DEC_554, DEC_758, DEC_864, DEC_979 } from "../../../decisions";
+import { deleteDismissalsForContact } from "./merge";
+import { DEC_333, DEC_336, DEC_554, DEC_758, DEC_770, DEC_864, DEC_979 } from "../../../decisions";
 
 void DEC_333;
 void DEC_336;
 void DEC_554;
 void DEC_758;
+void DEC_770;
 void DEC_864;
 void DEC_979;
 
@@ -264,6 +266,11 @@ export async function deleteContact(db: Db, contactId: string): Promise<void> {
   }
   await db.delete(schema.pipelineEntry).where(eq(schema.pipelineEntry.contactId, contactId));
   await db.delete(schema.taskAssignment).where(eq(schema.taskAssignment.contactId, contactId));
+  // DEC-770 amendment (wave 48): a duplicate-dismissal judged this contact
+  // against another, so deleting the contact leaves a stale judgement --
+  // delete it too (never repoint, there is no survivor to repoint it onto),
+  // before the contact row itself is gone.
+  await deleteDismissalsForContact(db, contactId);
   await db.delete(schema.contact).where(eq(schema.contact.id, contactId));
 }
 
