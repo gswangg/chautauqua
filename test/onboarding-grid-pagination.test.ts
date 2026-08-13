@@ -147,9 +147,9 @@ describe("getOnboardingGrid (DEC-340)", () => {
     // Deliberately more cell rows than contacts, to prove `total` isn't
     // derived from assignment-row count.
     const cellRows = [
-      { assignmentId: "a1", taskId: "task-1", status: "pending", completedAt: null, fileId: null, lastRemindedAt: null, contactId: "c1", createdAt: new Date(500_000) },
-      { assignmentId: "a2", taskId: "task-2", status: "complete", completedAt: null, fileId: null, lastRemindedAt: null, contactId: "c1", createdAt: new Date(500_000) },
-      { assignmentId: "a3", taskId: "task-3", status: "pending", completedAt: null, fileId: null, lastRemindedAt: null, contactId: "c1", createdAt: new Date(500_000) },
+      { assignmentId: "a1", taskId: "task-1", status: "pending", completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, contactId: "c1", createdAt: new Date(500_000) },
+      { assignmentId: "a2", taskId: "task-2", status: "complete", completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, contactId: "c1", createdAt: new Date(500_000) },
+      { assignmentId: "a3", taskId: "task-3", status: "pending", completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, contactId: "c1", createdAt: new Date(500_000) },
     ];
     const { db } = fakeDb([TASK_ROWS, [{ count: 1 }], contacts, cellRows, SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
     const result = await getOnboardingGrid(db, "event-1", baseParams());
@@ -227,6 +227,86 @@ describe("getOnboardingGrid (DEC-340)", () => {
     expect(sql).toContain("like");
     // and(...) joins clauses with " and " at the top level.
     expect(sql.split(" and ").length).toBeGreaterThan(1);
+  });
+
+  // DEC-920: the cells select joins schema.file so the grid can name the
+  // file, not just flag its presence -- filename/size come back on the same
+  // cellRows call, and a cell with no fileId carries null for both.
+  it("cells carry the joined filename/size for an assignment with a file, and null for one without (DEC-920)", async () => {
+    const contacts = [contactRow("c1", "Ada", "Lovelace")];
+    const cellRows = [
+      {
+        assignmentId: "a1",
+        taskId: "task-1",
+        status: "complete",
+        completedAt: null,
+        fileId: "file-1",
+        fileName: "slides.pdf",
+        fileSizeBytes: 2048,
+        lastRemindedAt: null,
+        contactId: "c1",
+        createdAt: new Date(500_000),
+      },
+      {
+        assignmentId: "a2",
+        taskId: "task-2",
+        status: "pending",
+        completedAt: null,
+        fileId: null,
+        fileName: null,
+        fileSizeBytes: null,
+        lastRemindedAt: null,
+        contactId: "c1",
+        createdAt: new Date(500_000),
+      },
+    ];
+    const { db } = fakeDb([TASK_ROWS, [{ count: 1 }], contacts, cellRows, SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
+    const result = await getOnboardingGrid(db, "event-1", baseParams());
+    const cellWithFile = result.rows[0]!.cells.find((c) => c.assignmentId === "a1");
+    const cellWithoutFile = result.rows[0]!.cells.find((c) => c.assignmentId === "a2");
+    expect(cellWithFile).toMatchObject({ fileId: "file-1", fileName: "slides.pdf", fileSizeBytes: 2048 });
+    expect(cellWithoutFile).toMatchObject({ fileId: null, fileName: null, fileSizeBytes: null });
+  });
+
+  // DEC-920: a non-null fileId whose file row didn't resolve through the
+  // join is a broken reference -- fail loudly, naming the assignment and
+  // file id, rather than silently rendering a generic label.
+  it("throws naming the assignment and file id when a fileId doesn't resolve through the join", async () => {
+    const contacts = [contactRow("c1", "Ada", "Lovelace")];
+    const cellRows = [
+      {
+        assignmentId: "a1",
+        taskId: "task-1",
+        status: "complete",
+        completedAt: null,
+        fileId: "missing-file",
+        fileName: null,
+        fileSizeBytes: null,
+        lastRemindedAt: null,
+        contactId: "c1",
+        createdAt: new Date(500_000),
+      },
+    ];
+    const { db } = fakeDb([TASK_ROWS, [{ count: 1 }], contacts, cellRows, SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
+    await expect(getOnboardingGrid(db, "event-1", baseParams())).rejects.toThrow(/a1.*missing-file/s);
+  });
+
+  // DEC-104: the cells select is chunked per PAGE, not per roster row -- the
+  // number of select() calls must not grow with how many contacts are on
+  // the page (a single page's worth of contacts stays inside one chunk).
+  it("the cells query count does not grow with the number of roster rows on the page", async () => {
+    const contacts = [contactRow("c1", "Ada", "Lovelace"), contactRow("c2", "Grace", "Hopper"), contactRow("c3", "Rosa", "Parks")];
+    const cellRows = [
+      { assignmentId: "a1", taskId: "task-1", status: "pending", completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, contactId: "c1", createdAt: new Date(500_000) },
+    ];
+    const { calls } = await (async () => {
+      const { db, calls } = fakeDb([TASK_ROWS, [{ count: 3 }], contacts, cellRows, SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
+      await getOnboardingGrid(db, "event-1", baseParams());
+      return { calls };
+    })();
+    // tasks, count, contacts page, ONE cells select, speakers count,
+    // counts aggregate, overdue count == 7 total regardless of row count.
+    expect(calls.length).toBe(7);
   });
 
   // DEC-558: the J6 grid's task COLUMN query is now a legible total order —

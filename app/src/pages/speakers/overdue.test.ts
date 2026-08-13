@@ -11,13 +11,13 @@ function task(overrides: Partial<OnboardingTask> = {}): OnboardingTask {
 
 describe('isCellOverdue', () => {
   it('is false when the task has no due date', () => {
-    expect(isCellOverdue({ taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt: 0 }, task({ dueDate: null }), NOW)).toBe(false);
+    expect(isCellOverdue({ taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 }, task({ dueDate: null }), NOW)).toBe(false);
   });
 
   it('is false when the assignment is complete, even if past due', () => {
     expect(
       isCellOverdue(
-        { taskId: 't1', assignmentId: 'a1', status: 'complete', completedAt: NOW - 1, fileId: null, lastRemindedAt: null, assignedAt: 0 },
+        { taskId: 't1', assignmentId: 'a1', status: 'complete', completedAt: NOW - 1, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 },
         task({ dueDate: NOW - 100 }),
         NOW,
       ),
@@ -27,7 +27,7 @@ describe('isCellOverdue', () => {
   it('is true when pending and due date is past', () => {
     expect(
       isCellOverdue(
-        { taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt: 0 },
+        { taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 },
         task({ dueDate: NOW - 100 }),
         NOW,
       ),
@@ -37,7 +37,7 @@ describe('isCellOverdue', () => {
   it('is false when pending but due date is in the future', () => {
     expect(
       isCellOverdue(
-        { taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt: 0 },
+        { taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 },
         task({ dueDate: NOW + 100 }),
         NOW,
       ),
@@ -46,7 +46,7 @@ describe('isCellOverdue', () => {
 
   it('is false for an unknown task', () => {
     expect(
-      isCellOverdue({ taskId: 'missing', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt: 0 }, undefined, NOW),
+      isCellOverdue({ taskId: 'missing', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 }, undefined, NOW),
     ).toBe(false);
   });
 
@@ -57,7 +57,7 @@ describe('isCellOverdue', () => {
     const assignedAt = NOW - DAY;
     expect(
       isCellOverdue(
-        { taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt },
+        { taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt },
         task({ dueDate: assignedAt - 5 * DAY }),
         NOW,
       ),
@@ -68,7 +68,7 @@ describe('isCellOverdue', () => {
     const assignedAt = NOW - 8 * DAY;
     expect(
       isCellOverdue(
-        { taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt },
+        { taskId: 't1', assignmentId: 'a1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt },
         task({ dueDate: assignedAt - 5 * DAY }),
         NOW,
       ),

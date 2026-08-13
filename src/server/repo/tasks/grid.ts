@@ -30,6 +30,10 @@ export interface GridCell {
   status: string;
   completedAt: number | null;
   fileId: string | null;
+  // DEC-920: the roster's file link must name the file, not say "File" —
+  // joined from schema.file in the SAME cells query below (never per-cell).
+  fileName: string | null;
+  fileSizeBytes: number | null;
   lastRemindedAt: number | null;
   // DEC-801: when this assignment was created — the SPA's overdue.ts feeds
   // this and the task's dueDate through effectiveAssignmentDueDate so the
@@ -282,21 +286,33 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
           status: schema.taskAssignment.status,
           completedAt: schema.taskAssignment.completedAt,
           fileId: schema.taskAssignment.fileId,
+          fileName: schema.file.filename,
+          fileSizeBytes: schema.file.sizeBytes,
           lastRemindedAt: schema.taskAssignment.lastRemindedAt,
           contactId: schema.taskAssignment.contactId,
           createdAt: schema.taskAssignment.createdAt,
         })
         .from(schema.taskAssignment)
+        .leftJoin(schema.file, eq(schema.file.id, schema.taskAssignment.fileId))
         .where(and(inArray(schema.taskAssignment.contactId, batch), inArray(schema.taskAssignment.taskId, taskIds)));
       for (const r of cellRows) {
         const row = rowsByContact.get(r.contactId);
         if (!row) continue;
+        // schema.file.filename/sizeBytes are notNull columns (DEC-920) — a
+        // non-null fileId whose file row didn't resolve through the join is
+        // a broken reference, not a "no file" state. Fail loudly rather
+        // than falling back to a generic "Has file" label.
+        if (r.fileId != null && r.fileName == null) {
+          throw new Error(`onboarding grid: assignment ${r.assignmentId} has fileId ${r.fileId} that does not resolve to a file row`);
+        }
         row.cells.push({
           taskId: r.taskId,
           assignmentId: r.assignmentId,
           status: r.status,
           completedAt: r.completedAt ? r.completedAt.getTime() : null,
           fileId: r.fileId,
+          fileName: r.fileName,
+          fileSizeBytes: r.fileSizeBytes,
           lastRemindedAt: r.lastRemindedAt ? r.lastRemindedAt.getTime() : null,
           assignedAt: r.createdAt.getTime(),
         });
