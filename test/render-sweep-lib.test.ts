@@ -824,11 +824,28 @@ describe("DEC-991 heading line-heights (>= 1.15)", () => {
     if (!ruleMatch) throw new Error(`selector ${selector} not found in CSS text`);
     const ruleBody = ruleMatch[1];
     if (ruleBody === undefined) throw new Error(`selector ${selector} matched with no capture group`);
-    const lineHeightMatch = ruleBody.match(/line-height:\s*([\d.]+)/);
+    const lineHeightMatch = ruleBody.match(/line-height:\s*(var\(\s*(--[\w-]+)\s*\)|[\d.]+)/);
     if (!lineHeightMatch) throw new Error(`selector ${selector} has no line-height declaration`);
     const value = lineHeightMatch[1];
     if (value === undefined) throw new Error(`selector ${selector} matched with no line-height capture`);
+    // DEC-643 tokenises the Overview type roles, so a role's line-height may be
+    // declared as var(--chq-type-*) rather than a literal. Resolve one level of
+    // indirection against the token source rather than forcing the literal back
+    // into the component (which is the per-component drift DEC-643 forbids).
+    const tokenName = lineHeightMatch[2];
+    if (tokenName !== undefined) return tokenLineHeight(tokenName);
     return Number(value);
+  }
+
+  /** Resolves a --chq-type-* line-height token to its declared numeric value in
+   * the app token source. Fails loudly if the token is undeclared. */
+  function tokenLineHeight(tokenName: string): number {
+    const tokenSource = readFileSync(new URL("../app/src/styles.css", import.meta.url), "utf-8");
+    const declMatch = tokenSource.match(new RegExp(`${tokenName}:\\s*([\\d.]+)\\s*;`));
+    if (!declMatch) throw new Error(`token ${tokenName} not declared in app/src/styles.css`);
+    const declared = declMatch[1];
+    if (declared === undefined) throw new Error(`token ${tokenName} matched with no capture`);
+    return Number(declared);
   }
 
   const cases: Array<{ file: string; selector: string }> = [
@@ -846,6 +863,13 @@ describe("DEC-991 heading line-heights (>= 1.15)", () => {
       expect(lineHeightFor(source, selector)).toBeGreaterThanOrEqual(1.15);
     });
   }
+
+  it("the SSR theme declares the same overview-headline line-height as the app token source", () => {
+    const themeSrc = readFileSync(new URL("../src/views/theme.ts", import.meta.url), "utf-8");
+    const themeMatch = themeSrc.match(/--chq-type-overview-headline-line-height:\s*([\d.]+)\s*;/);
+    expect(themeMatch).not.toBeNull();
+    expect(Number(themeMatch?.[1])).toBe(tokenLineHeight("--chq-type-overview-headline-line-height"));
+  });
 });
 
 describe("dead gallery-tile/name rules removed (DEC-991)", () => {

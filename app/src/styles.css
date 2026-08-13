@@ -56,7 +56,9 @@
   --chq-type-overview-headline-size: 44px;
   --chq-type-overview-headline-weight: 700;
   --chq-type-overview-headline-tracking: -0.042em;
-  --chq-type-overview-headline-line-height: 1.04;
+  /* DEC-991: 1.04 clipped the display face's glyph box below the line box;
+     raised at the token so the fix reaches every consumer of the role. */
+  --chq-type-overview-headline-line-height: 1.2;
 
   --chq-type-section-label-size: 11px;
   --chq-type-section-label-weight: 700;

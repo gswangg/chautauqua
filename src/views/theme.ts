@@ -60,7 +60,7 @@ export const THEME_CSS = `
     --chq-type-overview-headline-size: 44px;
     --chq-type-overview-headline-weight: 700;
     --chq-type-overview-headline-tracking: -0.042em;
-    --chq-type-overview-headline-line-height: 1.04;
+    --chq-type-overview-headline-line-height: 1.2;
     --chq-type-section-label-size: 11px;
     --chq-type-section-label-weight: 700;
     --chq-type-section-label-tracking: 0.12em;
