@@ -162,6 +162,15 @@ REVERT SHAPE (mint a superseding DEC):
 - Reserved-domain recipients (example.com) failing at send is CORRECT honest behavior, not a bug.
 This ships with the gate-4 deploy; deploy procedure keeps the secrets/bindings parity check.
 
+**P1 · USER-FILED (2026-08-13): scorecard first criterion boxed on load.** Scorecard.tsx:118
+pre-arms `focusedId` to the first rating criterion on mount, so the DEC-939 inset ring
+(`.chq-review-criterion.chq-focused`, review.css:549) renders before ANY interaction — the top
+scoring row sits in a stray 2px box (user screenshot). DEC-939's own rationale ("reads as one
+criterion styled unlike its siblings") applies to the ring-on-load too. Fix: focus-visible
+semantics — keep `focusedId` armed for number-key routing, but render the ring only after
+keyboard interaction (Tab/arrows/number key), never on initial paint. Render test: fresh mount
+has no `.chq-focused`; pressing a number key both scores and shows the ring.
+
 **P1 · USER-FILED (2026-08-13): reviewer queue rows use PHONE anatomy on desktop.** Screenshot
 evidence: each queue row renders ref/status line, title, meta, then a FULL-WIDTH 820px olive
 "Score this" block button — reads as the phone view. Root cause: the only v6 reviewer-queue
