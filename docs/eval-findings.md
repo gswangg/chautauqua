@@ -284,9 +284,22 @@ list = organiser + reviewers · render Markdown in wiki (raw "##" bug) · Tracks
 rooms read-only w/ drill-in · Public pages list: Speaker gallery row per mock, pill
 states.
 
-**Account** (DEC-740 CLOSED by probe 2 — designed 404s, NO-ACCOUNT block,
-"Sign in to <event>", password placeholder + minlength 12 all verified): remaining —
-‹ Back link statically underlined; mock wants plain at rest, underline on hover.
+**Account — GATE-1 FLEET: FAIL (report fidelity-gate1/11-account/report.md;
+login/password geometry near-exact)**: MAJOR — /e/<bad-slug> renders an
+UNDESIGNED second 404 (route through the designed card) · admin-404 links jammed
+into one phrase (chevron + gap on both) · demo-account block UNFRAMED — KEEP
+(judge path) but DEC it + design-bless the styling. MINOR: email placeholder
+"you@example.com" · "NEW PASSWORD AGAIN" label · headings ~30/26px per frame ·
+‹ Back up-left of indented heading, underline on hover only (same for NO-ACCOUNT
+links) · card padding/inputs metrics (35pt/450/48) · cards hug content height ·
+semantics (h1/landmarks/label-for) · drop unframed code-type sentence on admin
+404.
+
+**Home — GATE-1 FLEET: PASS ✓** (layout ~1pt-exact; composed hero grammar;
+footer verbatim). MINOR: event-row meta → "Three tracks · five formats" grammar
+(session count is the kept-off-rows shape the notes forbid) · API docs 12px ·
+footer/main landmarks. LATER: seeded pass for between-cycles + fresh-deploy
+states.
 
 **Public/Portal (desktop)** (P1 pending-submissions CLOSED by probe 2 —
 /portal/submissions renders both submissions w/ status links; headshot placeholders
