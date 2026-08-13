@@ -3,7 +3,7 @@
 // (contactId, submissionId); the 100-recipient cap and the atomic
 // preflight-before-send rule both live here so the route handler stays thin.
 
-import { renderTemplate, MergeFieldError } from "../mail/render";
+import { renderTemplate, missingMergeFields } from "../mail/render";
 
 /** DEC-019: more than 100 recipients rejects the whole batch as 'invalid'. */
 export const MAX_COMPOSE_RECIPIENTS = 100;
@@ -160,7 +160,7 @@ export interface RenderedRecipientEmail {
 export interface PreflightMissingField {
   contactId: string;
   submissionId: string;
-  field: string;
+  fields: string[];
 }
 
 export type PreflightResult =
@@ -182,32 +182,26 @@ export function preflightRender(
   const rendered: RenderedRecipientEmail[] = [];
 
   for (const target of targets) {
-    let subject: string | undefined;
-    let text: string | undefined;
-
-    try {
-      subject = renderTemplate(subjectTemplate, target.vars);
-    } catch (err) {
-      if (!(err instanceof MergeFieldError)) throw err;
-      missing.push({ contactId: target.contactId, submissionId: target.submissionId, field: err.field });
-    }
-    try {
-      text = renderTemplate(bodyTemplate, target.vars);
-    } catch (err) {
-      if (!(err instanceof MergeFieldError)) throw err;
-      missing.push({ contactId: target.contactId, submissionId: target.submissionId, field: err.field });
+    const subjectMissing = missingMergeFields(subjectTemplate, target.vars);
+    const bodyMissing = missingMergeFields(bodyTemplate, target.vars);
+    const fields = [...subjectMissing];
+    for (const f of bodyMissing) {
+      if (!fields.includes(f)) fields.push(f);
     }
 
-    if (subject !== undefined && text !== undefined) {
-      rendered.push({
-        contactId: target.contactId,
-        submissionId: target.submissionId,
-        email: target.email,
-        name: target.name,
-        subject,
-        text,
-      });
+    if (fields.length > 0) {
+      missing.push({ contactId: target.contactId, submissionId: target.submissionId, fields });
+      continue;
     }
+
+    rendered.push({
+      contactId: target.contactId,
+      submissionId: target.submissionId,
+      email: target.email,
+      name: target.name,
+      subject: renderTemplate(subjectTemplate, target.vars),
+      text: renderTemplate(bodyTemplate, target.vars),
+    });
   }
 
   if (missing.length > 0) {

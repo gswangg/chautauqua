@@ -75,6 +75,25 @@ export function blockFieldsInTemplate(template: string): MergeField[] {
   return [...found];
 }
 
+// DEC-856: preflight names every merge field a recipient is missing (not
+// just the first), in first-appearance order, deduped — renderTemplate's
+// single-value throw stays as-is for callers that render one value at a
+// time (e.g. reminders' single-recipient path).
+export function missingMergeFields(template: string, vars: Record<string, string>): string[] {
+  const missing: string[] = [];
+  const seen = new Set<string>();
+  for (const match of template.matchAll(PLACEHOLDER_RE)) {
+    const name = match[1];
+    if (name === undefined) continue;
+    if (seen.has(name)) continue;
+    if (!Object.prototype.hasOwnProperty.call(vars, name) || vars[name] === undefined) {
+      missing.push(name);
+      seen.add(name);
+    }
+  }
+  return missing;
+}
+
 export function renderTemplate(template: string, vars: Record<string, string>): string {
   return template.replace(PLACEHOLDER_RE, (_match, name: string) => {
     if (!Object.prototype.hasOwnProperty.call(vars, name) || vars[name] === undefined) {

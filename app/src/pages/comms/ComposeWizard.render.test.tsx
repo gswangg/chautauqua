@@ -257,11 +257,12 @@ describe('ComposeWizard body merge-field chips (DEC-793)', () => {
   });
 });
 
-// DEC-793: a 400 naming two rejected `<contactId>:<submissionId>` recipients
-// renders both PEOPLE's names in the error banner, resolved through the
-// already-loaded submissions' speakers.
-describe('ComposeWizard missing-merge-field errors (DEC-793)', () => {
-  it('names both people a preflight rejects for a missing merge field', async () => {
+// DEC-856: a 400 naming rejected `<contactId>:<submissionId>` recipients
+// renders each PERSON's name with EVERY field they're missing (not just the
+// first), resolved through the already-loaded submissions' speakers, and the
+// banner announces itself via role="alert".
+describe('ComposeWizard missing-merge-field errors (DEC-856)', () => {
+  it('names both people a preflight rejects, listing every missing field for one of them, in an alert banner', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(
         [
@@ -278,8 +279,8 @@ describe('ComposeWizard missing-merge-field errors (DEC-793)', () => {
             code: 'invalid',
             message: 'One or more recipients are missing merge fields',
             fields: {
-              'c1:sub-1': "missing merge field 'speaker_name'",
-              'c2:sub-2': "missing merge field 'speaker_name'",
+              'c1:sub-1': 'missing merge fields: speaker_name, talk_title',
+              'c2:sub-2': 'missing merge fields: speaker_name',
             },
           },
         },
@@ -298,8 +299,9 @@ describe('ComposeWizard missing-merge-field errors (DEC-793)', () => {
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
 
-    expect(await screen.findByText(/Speaker 1.*missing \{speaker_name\}/)).toBeInTheDocument();
+    expect(await screen.findByText(/Speaker 1.*missing \{speaker_name\}, \{talk_title\}/)).toBeInTheDocument();
     expect(screen.getByText(/Speaker 2.*missing \{speaker_name\}/)).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
   });
 });
 

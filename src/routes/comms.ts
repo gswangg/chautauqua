@@ -686,10 +686,10 @@ commsRoutes.post("/api/v1/events/:eventId/portal-invites", requireOrganizer, csr
   return c.json({ sent, skipped: 0, failed });
 });
 
-function missingToFields(missing: { contactId: string; submissionId: string; field: string }[]): Record<string, string> {
+function missingToFields(missing: { contactId: string; submissionId: string; fields: string[] }[]): Record<string, string> {
   const fields: Record<string, string> = {};
   for (const m of missing) {
-    fields[`${m.contactId}:${m.submissionId}`] = `missing merge field '${m.field}'`;
+    fields[`${m.contactId}:${m.submissionId}`] = `missing merge fields: ${m.fields.join(", ")}`;
   }
   return fields;
 }

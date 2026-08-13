@@ -383,7 +383,7 @@ describe("bulk-email atomicity (DEC-019 via preflightRender, DEC-026 whitelist)"
     const result = preflightRender([goodTarget, badTarget], "Hi {speaker_name}", "See {event_name}");
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("expected rejection");
-    expect(result.missing.some((m) => m.contactId === "ct_2" && m.field === "speaker_name")).toBe(true);
+    expect(result.missing.some((m) => m.contactId === "ct_2" && m.fields.includes("speaker_name"))).toBe(true);
     // The one bad recipient rejects the entire batch (DEC-019): no partial
     // 'rendered' list is ever produced to hand to a sender.
     expect("rendered" in result).toBe(false);
