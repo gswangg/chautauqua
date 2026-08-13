@@ -552,6 +552,8 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
       submittedEmail={email}
       claimPath={claimPath}
       state={confirmationState}
+      eventSlug={event.slug}
+      form={form}
     />,
   );
 });

@@ -65,6 +65,10 @@ export function ClosedPage(props: { event: EventRow; form: FormRow }) {
           . Thanks for your
           interest — please reach out to the organizers directly if you have questions.
         </p>
+        <div class="chq-cfp-links">
+          <a href={`/e/${props.event.slug}/sessions`}>Browse the programme &rsaquo;</a>
+          <a href="/">All events &rsaquo;</a>
+        </div>
       </div>
     </PageShell>
   );
@@ -84,6 +88,10 @@ export function NotYetOpenPage(props: { event: EventRow; form: FormRow }) {
           )}
           . Please check back then.
         </p>
+        <div class="chq-cfp-links">
+          <a href={`/e/${props.event.slug}/sessions`}>Browse the programme &rsaquo;</a>
+          <a href="/">All events &rsaquo;</a>
+        </div>
       </div>
     </PageShell>
   );
@@ -248,6 +256,9 @@ export function SubmitPage(props: {
               <span class="chq-cfp-actions-note">We email a confirmation with a link to your portal</span>
             </div>
           </form>
+          <p class="chq-cfp-actions-note">
+            Already have an account? <a href="/login">Log in &rsaquo;</a>
+          </p>
           <FieldRulesScript fields={fields} />
         </div>
       </div>
@@ -277,12 +288,19 @@ export function ConfirmationPage(props: {
   submittedEmail: string;
   claimPath: string;
   state: ConfirmationState;
+  eventSlug: string;
+  form: FormRow;
 }) {
   return (
     <PageShell title={`Submission received - ${props.event.name}`}>
       <div class="chq-cfp-confirm">
         <span class="chq-cfp-confirm-flag">SUBMITTED &middot; {props.ref}</span>
         <h1>That's in. Check your email.</h1>
+        <p class="chq-cfp-confirm-body">
+          {props.form.closeDate
+            ? `You can edit this until ${formatEventDateTime(dayLabelEndInstant(props.form.closeDate, props.event.timezone), props.event.timezone)}.`
+            : "You can edit this until the call for papers closes."}
+        </p>
         <div class="chq-cfp-confirm-card">
           <span class="chq-cfp-title" style="font-size:17px">
             {props.title}
@@ -303,10 +321,7 @@ export function ConfirmationPage(props: {
             </p>
           ) : props.state === "pending-existing-contact" ? (
             <>
-              <p>
-                A password-setup link was emailed to {props.submittedEmail}. <a href="/login">Log in</a> if you
-                already have a password.
-              </p>
+              <p>A password-setup link was emailed to {props.submittedEmail}.</p>
               <p>
                 Already have a password? <a href="/login">Log in &rsaquo;</a>
               </p>
@@ -326,6 +341,10 @@ export function ConfirmationPage(props: {
               </p>
             </>
           )}
+        </div>
+        <div class="chq-cfp-links">
+          <a href={`/submit/${props.eventSlug}`}>Submit another talk &rsaquo;</a>
+          <a href={`/e/${props.eventSlug}/sessions`}>Browse the programme &rsaquo;</a>
         </div>
       </div>
     </PageShell>
