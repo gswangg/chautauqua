@@ -200,6 +200,51 @@ describe("DEC-989 Amendment (wave 37): every public surface's <main> carries exa
   }
 });
 
+// DEC-919 amendment (wave 40): one compact search input at the head of ONE
+// pill row, on every list surface -- no visible 'Search' label/button, no
+// second and third ruled row.
+function countMatches(html: string, re: RegExp): number {
+  return (html.match(re) ?? []).length;
+}
+
+describe("DEC-919 amendment (wave 40): public search is one compact input in ONE pill row", () => {
+  const ROW_SURFACES = ["/e/conf/sessions", "/e/conf/agenda", "/e/conf/schedule"];
+
+  // Single GET per path (pubcache's shared in-memory cache in this harness
+  // cannot serve a second .text() read of the same cached Response body), so
+  // every assertion for a given surface is made against the one response.
+  for (const path of ROW_SURFACES) {
+    it(`GET ${path} emits exactly one <form role="search">, exactly one .chq-pub-filter-row, and no visible 'Search' button text`, async () => {
+      const app = buildApp();
+      const res = await app.request(path);
+      expect(res.status).toBe(200);
+      const html = await res.text();
+      expect(countMatches(html, /<form\b[^>]*\brole="search"/g)).toBe(1);
+      expect(countMatches(html, /class="chq-pub-filter-row"/g)).toBe(1);
+      // The only 'Search' button in the document is the visually-hidden
+      // submit control PublicSearchBox emits -- no plain, visible
+      // <button type="submit">Search</button> anywhere in the page.
+      expect(html).not.toMatch(/<button type="submit">Search<\/button>/);
+      const submitButtons = [...html.matchAll(/<button\b[^>]*type="submit"[^>]*>Search<\/button>/g)];
+      for (const m of submitButtons) {
+        expect(m[0]).toContain("chq-visually-hidden");
+      }
+    });
+  }
+
+  it("GET /e/conf/speakers renders no visible 'Search' button text (submit control is visually hidden)", async () => {
+    const app = buildApp();
+    const res = await app.request("/e/conf/speakers");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).not.toMatch(/<button type="submit">Search<\/button>/);
+    const submitButtons = [...html.matchAll(/<button\b[^>]*type="submit"[^>]*>Search<\/button>/g)];
+    for (const m of submitButtons) {
+      expect(m[0]).toContain("chq-visually-hidden");
+    }
+  });
+});
+
 describe("DEC-989 Amendment (wave 37): /embed/... never carries a measure class", () => {
   it("GET /embed/conf/sessions main carries chq-pub-main and no chq-measure*", async () => {
     const app = buildApp();

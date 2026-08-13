@@ -384,8 +384,8 @@ describe("/agenda and /schedule render the DEC-804 search-and-track form", () =>
     const app = buildSurfaceApp("agenda", FULL_AGENDA_ROWS, TRACKS);
     const res = await app.request("/e/conf/agenda?q=keynote&trackId=trk-a", {}, TEST_ENV);
     const html = await res.text();
-    expect(html).toContain('<form method="get" action="/e/conf/agenda" role="search">');
-    expect(html).toContain('<input type="search" name="q" value="keynote"');
+    expect(html).toContain('<form class="chq-pub-searchform" method="get" action="/e/conf/agenda" role="search">');
+    expect(html).toContain('<input class="chq-pub-search" id="chq-pub-search-q" type="search" name="q" value="keynote"');
     // DEC-919: track narrowing is the shared pill-bar idiom, not a <select>.
     expect(html).toContain('class="chq-pub-pill" href="/e/conf/agenda?trackId=trk-a&amp;q=keynote" aria-current="true">Track A</a>');
     // DEC-851: no format options configured for this event -> no format
@@ -398,8 +398,8 @@ describe("/agenda and /schedule render the DEC-804 search-and-track form", () =>
     const app = buildSurfaceApp("schedule", FULL_AGENDA_ROWS, TRACKS);
     const res = await app.request("/e/conf/schedule?q=keynote&trackId=trk-a", {}, TEST_ENV);
     const html = await res.text();
-    expect(html).toContain('<form method="get" action="/e/conf/schedule" role="search">');
-    expect(html).toContain('<input type="search" name="q" value="keynote"');
+    expect(html).toContain('<form class="chq-pub-searchform" method="get" action="/e/conf/schedule" role="search">');
+    expect(html).toContain('<input class="chq-pub-search" id="chq-pub-search-q" type="search" name="q" value="keynote"');
     // DEC-919: track narrowing is the shared pill-bar idiom, not a <select>.
     expect(html).toContain('class="chq-pub-pill" href="/e/conf/schedule?trackId=trk-a&amp;q=keynote" aria-current="true">Track A</a>');
     expect(html).not.toContain('Format filters');
@@ -410,7 +410,7 @@ describe("/agenda and /schedule render the DEC-804 search-and-track form", () =>
     const app = buildSurfaceApp("schedule", FULL_AGENDA_ROWS, TRACKS);
     const res = await app.request("/e/conf/schedule?day=2026-08-10", {}, TEST_ENV);
     const html = await res.text();
-    const formMatch = html.match(/<form method="get" action="\/e\/conf\/schedule" role="search">[\s\S]*?<\/form>/);
+    const formMatch = html.match(/<form class="chq-pub-searchform" method="get" action="\/e\/conf\/schedule" role="search">[\s\S]*?<\/form>/);
     expect(formMatch).not.toBeNull();
     expect(formMatch![0]).toContain('<input type="hidden" name="day" value="2026-08-10"/>');
   });
@@ -420,7 +420,7 @@ describe("/agenda and /schedule render the DEC-804 search-and-track form", () =>
     const app = buildSurfaceApp("agenda", FULL_AGENDA_ROWS, TRACKS);
     const res = await app.request("/embed/conf/agenda", {}, TEST_ENV);
     const html = await res.text();
-    expect(html).toContain('<form method="get" action="/embed/conf/agenda" role="search">');
+    expect(html).toContain('<form class="chq-pub-searchform" method="get" action="/embed/conf/agenda" role="search">');
     expect(html).not.toContain('action="/e/conf/agenda"');
   });
 });
