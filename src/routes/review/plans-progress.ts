@@ -178,7 +178,6 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
   // per-reviewer awaits.
   const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan);
   const assignments = resolveAssignments(submissions, reviewerRows);
-  const mailer = makeMailer(c.var.db, c.env);
 
   // DEC-271/DEC-526: a recused submission never counts toward a reviewer's
   // assigned total -- the reminder's denominator must agree with the
@@ -223,6 +222,26 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
 
   const reminded: string[] = [];
   const failed: { email: string; message: string }[] = [];
+
+  // DEC-547/DEC-238 class 2: makeMailer throws on a misconfigured
+  // environment — a config-level failure, not a per-recipient one, so it
+  // can't be caught by the per-recipient try below. Construct inside this
+  // guarded region (now that `capped` is known) so that failure reports as
+  // every laggard 'failed' in the normal 200 envelope instead of 500ing.
+  let mailer;
+  try {
+    mailer = makeMailer(c.var.db, c.env);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("plan remind: mailer unavailable", message);
+    return c.json({
+      reminded,
+      sent: 0,
+      failed: capped.map((l) => ({ email: l.email, message })),
+      remaining,
+    });
+  }
+
   for (const laggard of capped) {
     try {
       // DEC-191: reviewers are users, not contacts; per-contact email history

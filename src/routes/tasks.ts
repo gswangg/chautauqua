@@ -470,19 +470,32 @@ taskRoutes.post("/events/:eventId/onboarding/remind", requireOrganizer, csrfJson
   // contacts, identically to the preview endpoint below.
   const contactIds = body.contactIds === undefined ? undefined : parseBoundedIdArray(body.contactIds, "contactIds");
 
-  const mailer = makeMailer(c.var.db, c.env);
   const kv = c.env.KV as unknown as KVStore;
-  const result = await remindNow(
-    c.var.db,
-    mailer,
-    eventId,
-    taskIds,
-    new Date(),
-    kv,
-    resolveBaseUrl(c),
-    contactIds,
-  );
-  return c.json(result);
+  // DEC-547/DEC-238 class 2: makeMailer throws when the environment isn't
+  // configured for sending (missing RESEND_API_KEY etc) — that's a
+  // config-level failure, not a per-recipient one, so it can't be caught by
+  // sendReminderEmails' per-recipient try inside remindNow. Guard the
+  // construction itself so a misconfigured environment reports a normal
+  // {sent, failed} envelope instead of 500ing the "Remind laggards" button.
+  try {
+    const mailer = makeMailer(c.var.db, c.env);
+    const result = await remindNow(
+      c.var.db,
+      mailer,
+      eventId,
+      taskIds,
+      new Date(),
+      kv,
+      resolveBaseUrl(c),
+      contactIds,
+    );
+    return c.json(result);
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("remind now: mailer unavailable", message);
+    return c.json({ sent: 0, failed: [{ email: "*", message }], skipped: 0, remaining: 0 });
+  }
 });
 
 // POST /api/v1/events/:eventId/onboarding/remind/preview
@@ -521,7 +534,6 @@ taskRoutes.post("/events/:eventId/onboarding/remind/preview", requireOrganizer, 
 
 export async function runDueReminders(env: Bindings): Promise<void> {
   const db = makeDb(env);
-  const mailer = makeMailer(db, env);
   const now = new Date();
   const kv = env.KV as unknown as KVStore;
   const origin = resolveBaseUrlForCron(env);
@@ -534,6 +546,13 @@ export async function runDueReminders(env: Bindings): Promise<void> {
   const failedEventIds: string[] = [];
   for (const eventId of eventIds) {
     try {
+      // DEC-547: construct the mailer inside this per-event guarded region,
+      // not once above the loop — makeMailer throws on a misconfigured
+      // environment, and that failure needs to land in failedEventIds (and
+      // the aggregate rethrow below) exactly like any other per-event send
+      // failure, rather than aborting the whole cron pass before a single
+      // event is attempted.
+      const mailer = makeMailer(db, env);
       await sendDueRemindersForEvent(db, mailer, eventId, now, kv, origin);
     } catch (err) {
       console.error("due-reminder pass failed for event", eventId, err);

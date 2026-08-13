@@ -4,12 +4,15 @@
 // the failure in its {sent, failed} result (consumed as-is by POST
 // /api/v1/events/:eventId/onboarding/remind, src/routes/tasks.ts). Mirrors
 // test/tasks-due-reminders.test.ts's fakeDb/fakeMailer conventions.
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { Hono } from "hono";
 import { remindNow } from "../src/server/repo/tasks";
 import { d1EmailLogWriter, type Db } from "../src/server/context";
 import { ResendMailer } from "../src/mail/resend";
 import type { Mailer } from "../src/mail/types";
 import type { KVStore } from "../src/auth/claim";
+import { registerErrorHandler } from "../src/server/http";
+import type { AppEnv, AuthInfo } from "../src/server/env";
 
 class InMemoryKV implements KVStore {
   private readonly store = new Map<string, string>();
@@ -190,5 +193,70 @@ describe("remindNow (DEC-238 class 2 organizer batch, partial mailer failure)", 
     expect(failedRows).toHaveLength(3);
     expect(new Set(failedRows.map((r) => r.batchId)).size).toBe(1);
     expect(failedRows.map((r) => r.toEmail).sort()).toEqual(["a@example.com", "b@example.com", "c@example.com"]);
+  });
+});
+
+// DEC-547 (w43-b): the route's own makeMailer() call (POST
+// /api/v1/events/:eventId/onboarding/remind, src/routes/tasks.ts) used to
+// sit above remindNow entirely, outside any guarded region — a misconfigured
+// environment (missing RESEND_API_KEY) threw synchronously and 500'd the
+// "Remind laggards" button instead of returning the normal {sent, failed}
+// envelope. Route-level coverage, mirroring
+// test/review-remind-mailer-failure.test.ts's Hono app pattern.
+const ORG_A = "org-a";
+const EVENT_ID = "event-1";
+
+vi.mock("../src/server/repo/tasks", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/tasks")>("../src/server/repo/tasks");
+  return {
+    ...actual,
+    getEventOrgId: vi.fn(async (_db: unknown, eventId: string) => (eventId === EVENT_ID ? ORG_A : null)),
+  };
+});
+
+vi.mock("../src/server/context", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/context")>("../src/server/context");
+  return {
+    ...actual,
+    makeMailer: vi.fn(() => {
+      throw new Error("RESEND_API_KEY is not configured and DEV_MODE is not \"1\"");
+    }),
+  };
+});
+
+async function buildTaskRoutesApp(auth: AuthInfo) {
+  const { taskRoutes } = await import("../src/routes/tasks");
+  const app = new Hono<AppEnv>();
+  registerErrorHandler(app);
+  app.use("*", async (c, next) => {
+    c.set("auth", auth);
+    c.set("db", {} as never);
+    await next();
+  });
+  app.route("/api/v1", taskRoutes);
+  return app;
+}
+
+describe("POST /api/v1/events/:eventId/onboarding/remind (DEC-547 mailer-construction guard)", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("200s with {sent: 0, failed} instead of 500ing when makeMailer throws", async () => {
+    const app = await buildTaskRoutesApp({ userId: "u1", role: "organizer", orgId: ORG_A });
+    const res = await app.request(
+      `/api/v1/events/${EVENT_ID}/onboarding/remind`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+        body: "{}",
+      },
+      { KV: {} },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { sent: number; failed: { email: string; message: string }[] };
+    expect(body.sent).toBe(0);
+    expect(body.failed).toHaveLength(1);
+    expect(body.failed[0]?.message).toContain("RESEND_API_KEY");
   });
 });

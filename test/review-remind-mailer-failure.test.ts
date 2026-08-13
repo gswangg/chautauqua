@@ -107,4 +107,34 @@ describe("DEC-238: POST /api/v1/plans/:id/remind mailer-failure taxonomy", () =>
     expect(body.failed[0]?.message).toContain("mailer exploded");
     expect(sendMock).toHaveBeenCalledTimes(2);
   });
+
+  // DEC-547 (w43-b): makeMailer itself throws when the environment isn't
+  // configured for sending — that's a config-level failure, not a
+  // per-recipient one, so the per-recipient try inside the loop can never
+  // catch it. The route must guard the construction too: a 200 envelope
+  // reporting every laggard as 'failed', never a 500.
+  it("200s with every laggard reported 'failed' when makeMailer itself throws (misconfigured env)", async () => {
+    const { makeMailer } = await import("../src/server/context");
+    vi.mocked(makeMailer).mockImplementation(() => {
+      throw new Error("RESEND_API_KEY is not configured");
+    });
+    const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
+    const res = await app.request(`/api/v1/plans/${planRecord.id}/remind`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: "{}",
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      reminded: string[];
+      sent: number;
+      failed: { email: string; message: string }[];
+    };
+    expect(body.sent).toBe(0);
+    expect(body.reminded).toEqual([]);
+    expect(body.failed).toHaveLength(2);
+    expect(body.failed.map((f) => f.email).sort()).toEqual(["bad@example.test", "ok@example.test"]);
+    for (const f of body.failed) expect(f.message).toContain("RESEND_API_KEY is not configured");
+    expect(sendMock).not.toHaveBeenCalled();
+  });
 });

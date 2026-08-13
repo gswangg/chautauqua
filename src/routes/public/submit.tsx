@@ -575,7 +575,6 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
   }
   const claimUrl = `${origin}${claimPath}`;
 
-  const mailer = makeMailer(db, c.env);
   const text = renderTemplate(
     "Hi {speaker_name},\n\nWe received your submission \"{talk_title}\" ({ref}) for {event_name}.\n\n{portal_link}\n",
     {
@@ -599,6 +598,11 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
   // retry created a duplicate. Log it (the send attempt is recorded in
   // email_log with status 'failed' by the mailer) and still show success.
   try {
+    // DEC-547: construct the mailer inside this same guarded region — a
+    // misconfigured environment throws here exactly like a rejected send,
+    // and both must fall through to the same "log and still show success"
+    // path rather than 500ing a submit whose row is already persisted.
+    const mailer = makeMailer(db, c.env);
     await mailer.send({
       to: { email, name: `${firstName} ${lastName}`.trim() },
       subject: `We received your submission: ${title}`,

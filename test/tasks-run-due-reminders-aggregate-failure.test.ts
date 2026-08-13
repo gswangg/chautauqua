@@ -46,7 +46,11 @@ describe("runDueReminders (DEC-946 aggregate rethrow)", () => {
 
     const sent: string[] = [];
     const mailer = { send: vi.fn(async (m: { to: { email: string } }) => { sent.push(m.to.email); }) };
-    makeMailer.mockReturnValueOnce(mailer);
+    // DEC-547 (w43-b): makeMailer is now constructed inside the per-event
+    // guarded loop, not once above it — so it's called once per eventId
+    // (three times here), not once overall. mockReturnValue (not `Once`)
+    // covers every call.
+    makeMailer.mockReturnValue(mailer);
 
     sendDueRemindersForEvent.mockImplementation((...args: unknown[]) => {
       const [, m, eventId] = args as [unknown, typeof mailer, string];
@@ -68,5 +72,37 @@ describe("runDueReminders (DEC-946 aggregate rethrow)", () => {
 
     await expect(runDueReminders(fakeEnv)).resolves.toBeUndefined();
     expect(sendDueRemindersForEvent).toHaveBeenCalledTimes(2);
+  });
+
+  // DEC-547 (w43-b): makeMailer is constructed inside the per-event try, not
+  // once above the loop — a misconfigured environment (which throws
+  // synchronously) must land in the same failedEventIds bucket and aggregate
+  // rethrow as a sendDueRemindersForEvent rejection, and must not stop the
+  // loop from attempting the other events.
+  it("still sends for the other events and rejects naming the one whose mailer construction throws", async () => {
+    listEventIdsWithOutstandingAssignments.mockResolvedValueOnce(["event_a", "event_b", "event_c"]);
+
+    const sent: string[] = [];
+    const mailer = { send: vi.fn(async (m: { to: { email: string } }) => { sent.push(m.to.email); }) };
+
+    // Fail construction only for the second event's call (order matches
+    // listEventIdsWithOutstandingAssignments' returned array: a, b, c).
+    let call = 0;
+    makeMailer.mockImplementation(() => {
+      call += 1;
+      if (call === 2) throw new Error("RESEND_API_KEY is not configured");
+      return mailer;
+    });
+    sendDueRemindersForEvent.mockImplementation((...args: unknown[]) => {
+      const [, m, eventId] = args as [unknown, typeof mailer, string];
+      return m.send({ to: { email: `${eventId}@example.com` } }).then(() => 1);
+    });
+
+    await expect(runDueReminders(fakeEnv)).rejects.toThrow(/event_b/);
+
+    // event_b's makeMailer() call threw before sendDueRemindersForEvent
+    // could be invoked for it, so only event_a and event_c reach the mock.
+    expect(sendDueRemindersForEvent).toHaveBeenCalledTimes(2);
+    expect(sent).toEqual(["event_a@example.com", "event_c@example.com"]);
   });
 });
