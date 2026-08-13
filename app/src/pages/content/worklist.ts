@@ -12,3 +12,21 @@ export const WORKLIST_TAB_CONTENT_STATUS: Record<WorklistTab, string | undefined
   approved: 'approved',
   all: undefined,
 };
+
+// DEC-881: the worklist row's status cell and the header's re-uploaded count
+// read ONE predicate. Fixed precedence: an approved submission always reads
+// "Approved" (a re-upload after approval still shows the decision that
+// stands); otherwise a re-uploaded submission reads "Re-uploaded"; otherwise
+// contentStatus='changes_requested' reads "Changes requested"; anything else
+// (pending, no files yet) reads "Not reviewed".
+export type WorklistStatusLabel = 'Approved' | 'Re-uploaded' | 'Changes requested' | 'Not reviewed';
+
+export function worklistStatusLabel(
+  contentStatus: 'pending' | 'approved' | 'changes_requested',
+  reUploaded: boolean,
+): WorklistStatusLabel {
+  if (contentStatus === 'approved') return 'Approved';
+  if (reUploaded) return 'Re-uploaded';
+  if (contentStatus === 'changes_requested') return 'Changes requested';
+  return 'Not reviewed';
+}

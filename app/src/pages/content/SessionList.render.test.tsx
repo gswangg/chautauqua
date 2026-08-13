@@ -34,6 +34,8 @@ const baseItem: ContentSubmissionListItem = {
   ],
   deliverableCounts: { presentation: 2, poster: 0, handout: 1, recording: 0 },
   latestFile: { filename: 'slides.pdf', kind: 'presentation', versionCount: 2, uploadedAt: 1700000000000 },
+  latestFileVersionNo: 2,
+  reuploaded: true,
 };
 
 function noop() {
@@ -406,6 +408,135 @@ describe('SessionList: three DEC-825 chips, in order, each with its own count', 
 
     expect(screen.getByRole('tab', { name: TAB_LABELS.needs_decision })).toHaveTextContent(TAB_LABELS.needs_decision);
     expect(screen.getByRole('tab', { name: TAB_LABELS.needs_decision }).textContent).not.toMatch(/·/);
+  });
+});
+
+// DEC-881: the status cell renders worklistStatusLabel's precedence, not
+// CONTENT_STATUS_LABELS — a re-uploaded submission reads "Re-uploaded" even
+// though its contentStatus is still 'pending'/'changes_requested'.
+describe('SessionList: status cell renders the DEC-881 worklist label', () => {
+  it("renders 'Re-uploaded' for a pending row whose latest file was re-uploaded", () => {
+    render(
+      <SessionList
+        items={[{ ...baseItem, contentStatus: 'pending', reuploaded: true }]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={1}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+      />,
+    );
+
+    const row = screen.getByText('A Talk About Testing').closest('tr');
+    expect(row).toHaveTextContent('Re-uploaded');
+  });
+
+  it("renders 'Approved' (never 'Re-uploaded') for an approved row even when reuploaded is true", () => {
+    render(
+      <SessionList
+        items={[{ ...baseItem, contentStatus: 'approved', reuploaded: true }]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={1}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+      />,
+    );
+
+    const row = screen.getByText('A Talk About Testing').closest('tr');
+    expect(row).toHaveTextContent('Approved');
+    expect(row).not.toHaveTextContent('Re-uploaded');
+  });
+
+  it("renders 'Not reviewed' for a pending row that has never been re-uploaded", () => {
+    render(
+      <SessionList
+        items={[{ ...baseItem, contentStatus: 'pending', reuploaded: false }]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={1}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+      />,
+    );
+
+    const row = screen.getByText('A Talk About Testing').closest('tr');
+    expect(row).toHaveTextContent('Not reviewed');
+  });
+});
+
+// DEC-881: the default worklist tab is 'needs_decision' — its empty state
+// must read honestly and offer one click back to All, rather than the
+// generic 'No submissions in this view.' string every other tab uses.
+describe('SessionList: needs_decision empty state names itself and links to All (DEC-881)', () => {
+  it("renders an honest empty state with a link to All when the needs_decision tab has no rows", () => {
+    const onTabChange = vi.fn();
+    render(
+      <SessionList
+        items={[]}
+        tab="needs_decision"
+        onTabChange={onTabChange}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={0}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+      />,
+    );
+
+    expect(screen.getByText(/Nothing needs a decision/)).toBeInTheDocument();
+    const link = screen.getByRole('button', { name: /View all accepted sessions/ });
+    link.click();
+    expect(onTabChange).toHaveBeenCalledWith('all');
+  });
+
+  it("renders the generic empty state for a non-needs_decision tab with no rows", () => {
+    render(
+      <SessionList
+        items={[]}
+        tab="approved"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={0}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+      />,
+    );
+
+    expect(screen.getByText('No submissions in this view.')).toBeInTheDocument();
+    expect(screen.queryByText(/Nothing needs a decision/)).not.toBeInTheDocument();
   });
 });
 

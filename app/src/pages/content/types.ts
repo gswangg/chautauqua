@@ -57,6 +57,12 @@ export interface ContentSubmissionListItem {
   // absent state renders honestly ('No files yet'), never inferred client
   // side from deliverableCounts.
   latestFile: { filename: string; kind: FileKind; versionCount: number; uploadedAt: number } | null;
+  // DEC-881: the single re-uploaded predicate (latest deliverable file's
+  // version_no > 1), computed server-side once and read here — never
+  // re-derived client-side from latestFile.versionCount (a deleted middle
+  // version could disagree with version_no).
+  latestFileVersionNo: number | null;
+  reuploaded: boolean;
 }
 
 // GET /api/v1/submissions/:id/files item (DEC-020: flat file rows; the SPA

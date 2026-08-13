@@ -23,22 +23,20 @@ type ContentView = 'worklist' | 'files';
 
 const PER_PAGE = 50;
 
-// w11-e (DEC-665): default to the unfiltered worklist — opening on a
-// filtered tab reads '0 submissions' on a populated event whenever nothing
-// matches yet. DEC-825 reordered WORKLIST_TABS to lead with
-// 'needs_decision' (chip order matches the mock), so the default tab is
-// named directly here rather than indexed from WORKLIST_TABS[0].
-const DEFAULT_WORKLIST_TAB: WorklistTab = 'all';
+// DEC-881: default tab is 'needs_decision' per the mock — this narrows
+// DEC-665, whose 'all' default existed only to avoid landing on a "0
+// submissions" screen. That concern is now answered by copy instead of by
+// defaulting away from the frame: SessionList's needs_decision empty state
+// links back to All (see SessionList.tsx), so an event with nothing
+// currently needing a decision still reads honestly rather than blankly.
+const DEFAULT_WORKLIST_TAB: WorklistTab = 'needs_decision';
 
 /** J8 content review loop entry point: worklist -> per-session deliverable detail. */
 export function ContentApp() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
   const [searchParams, setSearchParams] = useSearchParams();
   const submissionId = searchParams.get('submissionId');
-  // w11-e: default to the unfiltered worklist (DEC-665) — opening on
-  // 'changes_requested' reads '0 submissions' on a populated event whenever
-  // nothing needs changes yet; needs-decision stays one click away via the
-  // tab row.
+  // DEC-881: defaults to 'needs_decision' — see DEFAULT_WORKLIST_TAB above.
   const tab = (searchParams.get('tab') as WorklistTab | null) ?? DEFAULT_WORKLIST_TAB;
   const view = (searchParams.get('view') as ContentView | null) ?? 'worklist';
   const pageParam = Number(searchParams.get('page'));
@@ -113,9 +111,14 @@ export function ContentApp() {
         .catch(() => setCounts((prev) => ({ ...prev, [t]: null })));
     }
 
+    // DEC-881: 're-uploaded' is the same predicate the worklist row's status
+    // cell reads (worklistStatusLabel) — a latest deliverable file with
+    // version_no > 1 — read here as a bounded (perPage=1) server-side
+    // `reuploaded=1` filter, not contentStatus=changes_requested (that's the
+    // count of rows AWAITING a re-upload, the opposite of this label).
     const reUploadedParams = new URLSearchParams();
     reUploadedParams.set('perPage', '1');
-    reUploadedParams.set('contentStatus', 'changes_requested');
+    reUploadedParams.set('reuploaded', '1');
     apiList<ContentSubmissionListItem>(`/events/${eventId}/submissions?${reUploadedParams.toString()}`)
       .then((res) => setReUploadedCount(res.total))
       .catch(() => setReUploadedCount(null));

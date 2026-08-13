@@ -30,6 +30,9 @@ export interface ParsedListQuery {
   trackId: string | null;
   sort: SortOrder;
   includeAnswers: boolean;
+  // DEC-881: null = no reuploaded filter applied; true/false narrows to the
+  // exact predicate submissionListConditions expresses in SQL.
+  reuploaded: boolean | null;
 }
 
 /**
@@ -83,6 +86,19 @@ export interface ListQueryInput {
   trackId?: string;
   sort?: string;
   includeAnswers?: string;
+  reuploaded?: string;
+}
+
+/** DEC-881: parses the `reuploaded` filter token — absent/empty means "no
+ * filter" (null), `1` means "filter to re-uploaded", `0` means "filter to
+ * not re-uploaded". Any other token THROWS (loud), same as readStatusTokens
+ * above — a typo must never silently widen the filter away. */
+export function readReuploadedToken(raw: string | undefined): boolean | null {
+  if (raw === undefined || raw.trim().length === 0) return null;
+  const token = raw.trim();
+  if (token === "1") return true;
+  if (token === "0") return false;
+  throw new Error(`Unknown reuploaded '${token}'`);
 }
 
 export function parseListQuery(raw: ListQueryInput): ParsedListQuery {
@@ -107,7 +123,9 @@ export function parseListQuery(raw: ListQueryInput): ParsedListQuery {
 
   const includeAnswers = raw.includeAnswers === "1";
 
-  return { page, perPage, q, status, contentStatus, trackId, sort, includeAnswers };
+  const reuploaded = readReuploadedToken(raw.reuploaded);
+
+  return { page, perPage, q, status, contentStatus, trackId, sort, includeAnswers, reuploaded };
 }
 
 /** Validates a single status literal against the DEC-003 set. Fails loudly

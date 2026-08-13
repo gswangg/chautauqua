@@ -35,6 +35,7 @@ function baseParams(overrides: Partial<ParsedListQuery> = {}): ParsedListQuery {
     trackId: null,
     sort: "newest",
     includeAnswers: false,
+    reuploaded: null,
     ...overrides,
   };
 }
