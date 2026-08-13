@@ -103,6 +103,11 @@ export function PlanEditor() {
 
   const activeRoundIsCustomized = activeRound !== 0 && roundOverride !== null;
   const criteriaErrors = validateCriteriaList(editingCriteria);
+  // DEC-709: the new-row kind picker is a segmented control (Rating /
+  // Dropdown / Text), never a native <select> -- toggled open by the ONE
+  // tertiary "Add criterion" link that replaces the old three-button row.
+  const [pickingKind, setPickingKind] = useState(false);
+  const [startingWave, setStartingWave] = useState(false);
 
   // DEC-676/DEC-213: the currently-edited round is locked once it already
   // carries submitted evaluations -- read the count from the plan's own
@@ -216,6 +221,29 @@ export function PlanEditor() {
       setError(err instanceof ApiError ? err.message : 'Failed to save plan');
     } finally {
       setSaving(false);
+    }
+  }
+
+  // DEC-709: locked criteria are not a dead end -- POST /plans/:id/waves
+  // freezes nothing new (the server already froze the round on its first
+  // submitted evaluation); it opens the NEXT round with an editable copy of
+  // the frozen round's criteria and jumps the tab picker straight to it.
+  async function startNewWave() {
+    if (isNew || !planId) return;
+    setStartingWave(true);
+    setError(null);
+    try {
+      const updated = await apiPost<EvaluationPlan>(`/plans/${planId}/waves`, {});
+      setDraft((d) => ({
+        ...d,
+        rounds: updated.rounds,
+        roundCriteria: updated.roundCriteria ?? null,
+      }));
+      setActiveRound(updated.currentRound);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to start a new wave');
+    } finally {
+      setStartingWave(false);
     }
   }
 
@@ -501,14 +529,16 @@ export function PlanEditor() {
 
   return (
     <div className="chq-page chq-review-page">
-      <p>
-        <Link to="/review" className="chq-review-back">
-          &larr; Back to plans
-        </Link>
-      </p>
-      <h1 className="chq-page-title" style={{ fontSize: '27px' }}>
-        {isNew ? 'New evaluation plan' : draft.name || 'Evaluation plan'}
-      </h1>
+      {/* DEC-709: breadcrumb 'Review / <plan name>' replaces the standalone
+          back-link + separate h1 -- the page's own title IS the breadcrumb's
+          trailing crumb. */}
+      <nav className="chq-review-breadcrumb" aria-label="Breadcrumb">
+        <Link to="/review">Review</Link>
+        <span aria-hidden="true"> / </span>
+        <h1 className="chq-review-breadcrumb-current">
+          {isNew ? 'New evaluation plan' : draft.name || 'Evaluation plan'}
+        </h1>
+      </nav>
       {error && (
         <div className="chq-error" role="alert">
           {error}
@@ -521,6 +551,71 @@ export function PlanEditor() {
       )}
 
       <div className="chq-review-editor">
+        {/* DEC-709: plan fields as a compact summary block -- Opens / Closes
+            / Reviews per talk / Scale, the scale field captioned exactly
+            'Applies to every criterion in this plan' since it's plan-wide,
+            never per-criterion. */}
+        <div className="chq-review-summary-grid">
+          <label className="chq-review-field">
+            Opens
+            <input
+              type="date"
+              className="chq-input chq-date-input"
+              value={msToDateInput(draft.openAt)}
+              onChange={(e) => setOpenAt(e.target.value)}
+            />
+          </label>
+          <label className="chq-review-field">
+            Closes
+            <input
+              type="date"
+              className="chq-input chq-date-input"
+              value={msToDateInput(draft.closeAt)}
+              onChange={(e) => setCloseAt(e.target.value)}
+            />
+          </label>
+          <label className="chq-review-field">
+            Reviews per talk
+            <input
+              type="number"
+              className="chq-input"
+              min={1}
+              value={draft.maxEvaluationsPerSubmission ?? ''}
+              onChange={(e) =>
+                setDraft((d) => ({
+                  ...d,
+                  maxEvaluationsPerSubmission: e.target.value === '' ? undefined : Number(e.target.value),
+                }))
+              }
+            />
+            {errors.maxEvaluationsPerSubmission && (
+              <span className="chq-review-field-error">{errors.maxEvaluationsPerSubmission}</span>
+            )}
+          </label>
+          <div className="chq-review-field">
+            Scale
+            <div className="chq-review-scale-inputs">
+              <input
+                type="number"
+                className="chq-input"
+                aria-label="Scale min"
+                value={draft.scale.min}
+                onChange={(e) => setDraft((d) => ({ ...d, scale: { ...d.scale, min: Number(e.target.value) } }))}
+              />
+              <span aria-hidden="true">to</span>
+              <input
+                type="number"
+                className="chq-input"
+                aria-label="Scale max"
+                value={draft.scale.max}
+                onChange={(e) => setDraft((d) => ({ ...d, scale: { ...d.scale, max: Number(e.target.value) } }))}
+              />
+            </div>
+            <span className="chq-review-field-caption">Applies to every criterion in this plan</span>
+            {errors.scale && <span className="chq-review-field-error">{errors.scale}</span>}
+          </div>
+        </div>
+
         <label className="chq-review-field">
           Name
           <input
@@ -540,37 +635,17 @@ export function PlanEditor() {
           />
         </label>
 
-        <div className="chq-review-editor-dates">
-          <label className="chq-review-field">
-            Opens
-            <input
-              type="date"
-              className="chq-input"
-              value={msToDateInput(draft.openAt)}
-              onChange={(e) => setOpenAt(e.target.value)}
-            />
-          </label>
-          <label className="chq-review-field">
-            Closes
-            <input
-              type="date"
-              className="chq-input"
-              value={msToDateInput(draft.closeAt)}
-              onChange={(e) => setCloseAt(e.target.value)}
-            />
-          </label>
-          <label className="chq-review-field">
-            Rounds
-            <input
-              type="number"
-              className="chq-input"
-              min={1}
-              value={draft.rounds}
-              onChange={(e) => setDraft((d) => ({ ...d, rounds: Number(e.target.value) }))}
-            />
-            {errors.rounds && <span className="chq-review-field-error">{errors.rounds}</span>}
-          </label>
-        </div>
+        <label className="chq-review-field">
+          Rounds
+          <input
+            type="number"
+            className="chq-input"
+            min={1}
+            value={draft.rounds}
+            onChange={(e) => setDraft((d) => ({ ...d, rounds: Number(e.target.value) }))}
+          />
+          {errors.rounds && <span className="chq-review-field-error">{errors.rounds}</span>}
+        </label>
 
         <fieldset>
           <legend className="chq-review-field" style={{ marginBottom: '6px' }}>
@@ -605,46 +680,6 @@ export function PlanEditor() {
           Anonymize speaker identity for reviewers
         </label>
 
-        <div className="chq-review-editor-dates">
-          <label className="chq-review-field">
-            Scale min
-            <input
-              type="number"
-              className="chq-input"
-              value={draft.scale.min}
-              onChange={(e) => setDraft((d) => ({ ...d, scale: { ...d.scale, min: Number(e.target.value) } }))}
-            />
-          </label>
-          <label className="chq-review-field">
-            Scale max
-            <input
-              type="number"
-              className="chq-input"
-              value={draft.scale.max}
-              onChange={(e) => setDraft((d) => ({ ...d, scale: { ...d.scale, max: Number(e.target.value) } }))}
-            />
-            {errors.scale && <span className="chq-review-field-error">{errors.scale}</span>}
-          </label>
-          <label className="chq-review-field">
-            Max evaluations per submission (optional cap)
-            <input
-              type="number"
-              className="chq-input"
-              min={1}
-              value={draft.maxEvaluationsPerSubmission ?? ''}
-              onChange={(e) =>
-                setDraft((d) => ({
-                  ...d,
-                  maxEvaluationsPerSubmission: e.target.value === '' ? undefined : Number(e.target.value),
-                }))
-              }
-            />
-            {errors.maxEvaluationsPerSubmission && (
-              <span className="chq-review-field-error">{errors.maxEvaluationsPerSubmission}</span>
-            )}
-          </label>
-        </div>
-
         <section className="chq-section">
           <div className="chq-section-head">
             <h2 className="chq-section-label">Scoring criteria</h2>
@@ -654,10 +689,25 @@ export function PlanEditor() {
           <p className="chq-review-section-caption">Scores average by weight.</p>
 
           {activeRoundIsLocked && (
-            <p className="chq-review-criteria-locked-notice" role="status">
-              Locked — {activeRoundLockedCount} review{activeRoundLockedCount === 1 ? '' : 's'} scored against these
-              criteria.
-            </p>
+            <div className="chq-review-criteria-locked-notice" role="status">
+              <div className="chq-review-criteria-locked-text">
+                <p className="chq-review-criteria-locked-headline">
+                  Locked - {activeRoundLockedCount} review{activeRoundLockedCount === 1 ? '' : 's'} scored against
+                  these criteria
+                </p>
+                <p className="chq-review-criteria-locked-reason">Changing these would rescore work already done</p>
+              </div>
+              {!isNew && planId && (
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-primary"
+                  disabled={startingWave}
+                  onClick={() => void startNewWave()}
+                >
+                  {startingWave ? 'Starting…' : 'Start a new wave'}
+                </button>
+              )}
+            </div>
           )}
 
           {draft.rounds > 1 && (
@@ -747,7 +797,7 @@ export function PlanEditor() {
                         />
                         {shares[criterion.id] !== undefined && (
                           <span className="chq-review-criterion-share">
-                            Weight {criterion.weight} · {shares[criterion.id]}%
+                            {criterion.weight} - {shares[criterion.id]}%
                           </span>
                         )}
                       </span>
@@ -801,52 +851,70 @@ export function PlanEditor() {
                     </button>
                   </div>
                 ))}
+                {/* DEC-676/DEC-709: ONE tertiary "Add criterion" link (never
+                    three secondary buttons); the new row picks its kind with
+                    a segmented control (Rating / Dropdown / Text), never a
+                    native <select>. Soft cap stated honestly next to it,
+                    always visible, not just once the cap is hit. */}
                 <div className="chq-review-add-criteria">
-                  <button
-                    type="button"
-                    className="chq-btn chq-btn-secondary"
-                    disabled={activeRoundIsLocked || atCap}
-                    onClick={() => setEditingCriteria((c) => addCriterion(c, 'rating' as CriterionKind))}
-                  >
-                    Add rating criterion
-                  </button>
-                  <button
-                    type="button"
-                    className="chq-btn chq-btn-secondary"
-                    disabled={activeRoundIsLocked || atCap}
-                    onClick={() => setEditingCriteria((c) => addCriterion(c, 'dropdown' as CriterionKind))}
-                  >
-                    Add dropdown criterion
-                  </button>
-                  <button
-                    type="button"
-                    className="chq-btn chq-btn-secondary"
-                    disabled={activeRoundIsLocked || atCap}
-                    onClick={() => setEditingCriteria((c) => addCriterion(c, 'text' as CriterionKind))}
-                  >
-                    Add free text criterion
-                  </button>
+                  {!pickingKind ? (
+                    <a
+                      href="#add-criterion"
+                      className="chq-review-add-link"
+                      aria-disabled={activeRoundIsLocked || atCap}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (activeRoundIsLocked || atCap) return;
+                        setPickingKind(true);
+                      }}
+                    >
+                      Add criterion
+                    </a>
+                  ) : (
+                    <div className="chq-segmented" role="group" aria-label="New criterion kind">
+                      <button
+                        type="button"
+                        className="chq-btn chq-btn-secondary"
+                        onClick={() => {
+                          setEditingCriteria((c) => addCriterion(c, 'rating' as CriterionKind));
+                          setPickingKind(false);
+                        }}
+                      >
+                        Rating
+                      </button>
+                      <button
+                        type="button"
+                        className="chq-btn chq-btn-secondary"
+                        onClick={() => {
+                          setEditingCriteria((c) => addCriterion(c, 'dropdown' as CriterionKind));
+                          setPickingKind(false);
+                        }}
+                      >
+                        Dropdown
+                      </button>
+                      <button
+                        type="button"
+                        className="chq-btn chq-btn-secondary"
+                        onClick={() => {
+                          setEditingCriteria((c) => addCriterion(c, 'text' as CriterionKind));
+                          setPickingKind(false);
+                        }}
+                      >
+                        Text
+                      </button>
+                      <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => setPickingKind(false)}>
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                  <span className="chq-review-criteria-cap-notice">
+                    {editingCriteria.length} of about {MAX_CRITERIA} - more than that and reviewers rush the last ones
+                  </span>
                 </div>
-                {atCap && !activeRoundIsLocked && (
-                  <p className="chq-review-criteria-cap-notice">
-                    Maximum {MAX_CRITERIA} criteria — remove one to add another.
-                  </p>
-                )}
               </>
             );
           })()}
         </section>
-
-        <div className="chq-review-editor-actions">
-          <button type="button" className="chq-btn chq-btn-primary" disabled={saving} onClick={save}>
-            {isNew ? 'Create plan' : 'Save plan'}
-          </button>
-          {!isNew && (
-            <button type="button" className="chq-btn chq-btn-secondary" disabled={saving} onClick={removePlan}>
-              Delete plan
-            </button>
-          )}
-        </div>
 
         {!isNew && planId && (
           <section className="chq-section">
@@ -1090,6 +1158,20 @@ export function PlanEditor() {
             )}
           </section>
         )}
+
+        {/* DEC-706: primaries live on the title row or a form's footer, never
+            a floating band -- this is the plan editor's own footer, at the
+            end of the form, not mid-page. */}
+        <footer className="chq-review-editor-footer">
+          <button type="button" className="chq-btn chq-btn-primary" disabled={saving} onClick={save}>
+            {isNew ? 'Create plan' : 'Save plan'}
+          </button>
+          {!isNew && (
+            <button type="button" className="chq-btn chq-btn-tertiary" disabled={saving} onClick={removePlan}>
+              Delete plan
+            </button>
+          )}
+        </footer>
       </div>
 
       {deletePlanConfirmOpen && (

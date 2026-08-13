@@ -94,7 +94,8 @@ describe('PlanEditor render smoke', () => {
       expect(screen.getByText('Track Review')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add rating criterion' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Add criterion' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Rating' }));
     const labelInput = screen.getByPlaceholderText('Label');
     fireEvent.change(labelInput, { target: { value: 'Innovation' } });
     expect((labelInput as HTMLInputElement).value).toBe('Innovation');
@@ -307,16 +308,16 @@ describe('PlanEditor render smoke', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Weight 3 · 75%')).toBeInTheDocument();
+      expect(screen.getByText('3 - 75%')).toBeInTheDocument();
     });
-    expect(screen.getByText('Weight 1 · 25%')).toBeInTheDocument();
+    expect(screen.getByText('1 - 25%')).toBeInTheDocument();
     // Section caption states how weights are used, never forcing sum-to-100.
     expect(screen.getByText('Scores average by weight.')).toBeInTheDocument();
   });
 
-  // DEC-676: soft cap at 7 criteria -- Add disables with an honest caption,
-  // never a silent no-op.
-  it('disables Add and states the reason once the criteria list hits the soft cap', async () => {
+  // DEC-676/DEC-709: soft cap at 7 criteria -- the Add link disables and the
+  // caption states the count honestly, in the exact copy DEC-709 pins.
+  it('disables Add and states the soft-cap caption once the criteria list hits the cap', async () => {
     const sevenCriteria = Array.from({ length: 7 }, (_, i) => ({
       id: `c${i}`,
       label: `Criterion ${i}`,
@@ -339,17 +340,17 @@ describe('PlanEditor render smoke', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Maximum 7 criteria — remove one to add another.')).toBeInTheDocument();
+      expect(
+        screen.getByText('7 of about 7 - more than that and reviewers rush the last ones'),
+      ).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: 'Add rating criterion' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Add dropdown criterion' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Add free text criterion' })).toBeDisabled();
+    expect(screen.getByRole('link', { name: 'Add criterion' })).toHaveAttribute('aria-disabled', 'true');
   });
 
-  // DEC-676/DEC-213: surfaces the server-side freeze -- a round that already
-  // has recorded evaluations renders its criterion rows read-only, names
-  // the reason and count, and disables Add/Delete for that round.
-  it('renders a locked criteria row with its reason and count once the round has evaluations', async () => {
+  // DEC-676/DEC-213/DEC-709: surfaces the server-side freeze -- a round that
+  // already has recorded evaluations renders its criterion rows read-only,
+  // names the reason and count, states WHY, and offers the forward move.
+  it('renders a locked criteria row with its reason, count and the Start-a-new-wave affordance', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/plans/${PLAN_ID}`]: {
@@ -370,10 +371,41 @@ describe('PlanEditor render smoke', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Locked — 3 reviews scored against these criteria.')).toBeInTheDocument();
+      expect(screen.getByText('Locked - 3 reviews scored against these criteria')).toBeInTheDocument();
     });
+    expect(screen.getByText('Changing these would rescore work already done')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Label')).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Add rating criterion' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Remove' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Start a new wave' })).toBeInTheDocument();
+  });
+
+  // DEC-709: the new-row kind picker is a segmented control (Rating /
+  // Dropdown / Text), never a native <select>.
+  it('picks a new criterion kind with a segmented control, not a <select>', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: 'Add criterion' })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('link', { name: 'Add criterion' }));
+
+    const picker = screen.getByRole('group', { name: 'New criterion kind' });
+    expect(picker.querySelector('select')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Dropdown' }));
+
+    expect(screen.getByPlaceholderText('Options (comma-separated)')).toBeInTheDocument();
   });
 });

@@ -24,7 +24,7 @@ import { clampPage, clampPerPage, listPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
-import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238, DEC_460, DEC_461, DEC_466, DEC_535, DEC_572, DEC_623, DEC_624, DEC_659, DEC_676 } from "../../decisions";
+import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_238, DEC_460, DEC_461, DEC_466, DEC_535, DEC_572, DEC_623, DEC_624, DEC_659, DEC_676, DEC_709 } from "../../decisions";
 import { capById, MAX_REVIEWER_REMINDER_BATCH } from "../../domain/reminders";
 import {
   asRecord,
@@ -63,6 +63,7 @@ void DEC_623; // POST /plans/:id/reviewers: submissionId resolved through findSu
 void DEC_624; // PATCH /plans/:id: anonymity ratchet guard below
 void DEC_659; // GET /plans/:id/reviewers: trackName/submissionRef/submissionTitle labels below
 void DEC_676; // GET /plans/:id: evaluationCountsByRound surfaces DEC-213's freeze reason below
+void DEC_709; // POST /plans/:id/waves: locked criteria carry forward into a new editable round below
 
 reviewPlansRoutes.get("/api/v1/events/:eventId/plans", requireOrganizer, async (c) => {
   const auth = currentAuth(c);
@@ -240,6 +241,34 @@ reviewPlansRoutes.delete("/api/v1/plans/:id", requireOrganizer, csrfJson, async 
 reviewPlansRoutes.post("/api/v1/plans/:id/advance-round", requireOrganizer, csrfJson, async (c) => {
   const plan = await requireOwnedPlan(c, c.req.param("id"));
   const updated = await repo.advancePlanRound(c.var.db, plan.id);
+  return c.json(updated);
+});
+
+// DEC-709: locked criteria are not a dead end -- a wave carries the current
+// round's frozen criteria forward into a new, editable round rather than
+// leaving the organizer staring at a read-only row with no way forward.
+// rounds and currentRound both advance to the new round number; the newly
+// opened round's roundCriteria entry starts as an editable copy of exactly
+// what the current round resolved to (never plan.criteria verbatim -- a
+// round already customized via roundCriteria must carry ITS OWN criteria
+// forward, not silently revert to the base list). 400s (naming the reason)
+// when the current round has no submitted evaluations: nothing is frozen
+// yet, so the organizer should edit the current round in place instead.
+reviewPlansRoutes.post("/api/v1/plans/:id/waves", requireOrganizer, csrfJson, async (c) => {
+  const plan = await requireOwnedPlan(c, c.req.param("id"));
+  const submittedCount = await repo.countSubmittedEvaluationsForRound(c.var.db, plan.id, plan.currentRound);
+  if (submittedCount === 0) {
+    throw new ApiError(
+      "invalid",
+      `Round ${plan.currentRound} has no submitted evaluations yet -- nothing is frozen, so edit this plan's criteria in place instead of starting a new wave`,
+    );
+  }
+  const frozenCriteria = criteriaForRound(plan.criteria, roundCriteriaJsonOf(plan), plan.currentRound);
+  const newRound = plan.rounds + 1;
+  const updated = await repo.startNewWave(c.var.db, plan.id, {
+    newRound,
+    roundCriteria: { ...(plan.roundCriteria ?? {}), [String(newRound)]: frozenCriteria },
+  });
   return c.json(updated);
 });
 
