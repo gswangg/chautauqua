@@ -752,3 +752,16 @@ AND audit noStoreByDefault + any other header-stamping middleware for the same t
     Upload/Form/Acknowledge + drop extra fields + styled date; roster phone screen;
     remove desktop Import CSV (phone-roster only); "DUE 10 APR · REQUIRED" header
     format.
+
+62. r3-Agenda: **item 49 desktop CLOSED (keep: N-aware clash Place buttons, verified)**.
+    REMAINING, ordered: (a) **phone agenda STILL invisible — the ≤700px override
+    re-enables only 11 of 22 chq-phone-* classes**; enumerate ALL (room chips, slot
+    time/title/meta, clash wrapper, free labels, footer-armed, FOOTER BUTTONS, sheet)
+    AND fix phone-block-visibility.test.ts to assert the override side per class (it
+    currently passes through this exact breakage); (b) port N-aware caption to
+    PhoneAgenda (line ~170 hardcodes "Two sessions in this slot") and give phone
+    occupied slots the place-anyway affordance (49 parity); (c) TBD column: item 56
+    still unaddressed (conditional render + "No room yet"); (d) conflict cell design
+    call: scrollable-button hides speaker+caption by default — size conflict cells to
+    content or add a reveal, and decide lane-split vs mock's full-width card in a DEC;
+    (e) focus to Cancel/first cell on placing entry.
