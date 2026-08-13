@@ -114,4 +114,44 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
     expect(actionBar).toContainElement(emailButton);
     expect(actionBar).toContainElement(addToEventButton);
   });
+
+  // DEC-894: the headshot file input uses the shared .chq-file control
+  // (not the generic .chq-input, which overflows the panel), and the
+  // drawer prints the stored file's filename and upload date beside the
+  // image so an uploaded headshot reads as a record, not decoration.
+  it('gives the headshot input the shared .chq-file class and prints stored file metadata', async () => {
+    const contactWithHeadshot: ContactDetail = {
+      ...CONTACT,
+      headshotUrl: '/headshots/file1',
+      headshotFile: { filename: 'priya-headshot.jpg', uploadedAt: 1735689600000 },
+    };
+    mockApi({ 'GET /api/v1/contacts/ct1': contactWithHeadshot });
+
+    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
+    await waitFor(() => {
+      expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
+    });
+
+    const fileInput = dialog.querySelector('input[type="file"]');
+    expect(fileInput).not.toBeNull();
+    expect(fileInput).toHaveClass('chq-file');
+    expect(fileInput).not.toHaveClass('chq-input');
+
+    expect(within(dialog).getByText(/priya-headshot\.jpg/)).toBeInTheDocument();
+  });
+
+  it('renders no headshot metadata line when there is no stored headshot', async () => {
+    mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
+
+    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
+    await waitFor(() => {
+      expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
+    });
+
+    expect(dialog.querySelector('.chq-contacts-headshot-meta')).toBeNull();
+  });
 });

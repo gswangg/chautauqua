@@ -1532,6 +1532,15 @@ a:hover {
   }
 }
 
+/* DEC-894: the stored headshot file's filename + upload date, printed
+   beside the image so an uploaded file reads as a record, not decoration. */
+.chq-contacts-headshot-meta {
+  font-family: var(--chq-font-ui);
+  font-size: 12px;
+  color: var(--chq-muted);
+  margin: 4px 0;
+}
+
 /* input[type=date]: same border/radius/height/typography as .chq-input
    (already applied via that shared class); this only tunes the native
    calendar indicator so it doesn't sit as an unstyled browser-blue glyph. */

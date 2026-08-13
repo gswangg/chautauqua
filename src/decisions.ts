@@ -729,3 +729,4 @@ export const DEC_723 = "An evaluation read carries its plan's criteria and the p
 export const DEC_724 = "The null-room agenda column is conditional, and it is called \"No room yet\"";
 export const DEC_725 = "The Airtable push is incremental from a stored watermark, and a rate-limited response backs off instead of throwing";
 export const DEC_726 = "A contact's Labels are its customFields, rendered in one keyed format everywhere (supersedes DEC-712)";
+export const DEC_894 = "Every headshot upload path runs the same dimension gate, WEBP included, and the organizer's Contacts drawer path thumbnails too (readImageDims learns the WEBP RIFF container)";

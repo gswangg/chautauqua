@@ -25,6 +25,20 @@ const PROFILE_WITH_HEADSHOT: ContactProfile = {
 
 const PROFILE_NO_HEADSHOT: ContactProfile = { ...PROFILE_WITH_HEADSHOT, headshotUrl: null };
 
+// DEC-894: the dimension gate now runs for webp too, so a webp fixture used
+// to exercise a successful upload must be real bytes a RIFF/VP8X reader can
+// parse — a minimal extended-format (VP8X) container well under the
+// MAX_HEADSHOT_EDGE_PX gate.
+function minimalWebpBytes(width = 100, height = 100): Uint8Array {
+  const u32le = (n: number) => [n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, (n >>> 24) & 0xff];
+  const u24le = (n: number) => [n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff];
+  const payload = [0, 0, 0, 0, ...u24le(width - 1), ...u24le(height - 1)];
+  const chunk = [0x56, 0x50, 0x38, 0x58 /* "VP8X" */, ...u32le(payload.length), ...payload];
+  const riffSize = 4 + chunk.length;
+  const header = [0x52, 0x49, 0x46, 0x46 /* "RIFF" */, ...u32le(riffSize), 0x57, 0x45, 0x42, 0x50 /* "WEBP" */];
+  return new Uint8Array([...header, ...chunk]);
+}
+
 const setContactHeadshotMock = vi.fn(async (..._args: unknown[]) => "file-new");
 const updateContactProfileMock = vi.fn(async (..._args: unknown[]) => undefined);
 
@@ -148,7 +162,7 @@ describe("POST /portal/profile (with a headshot part)", () => {
   it("redirects to /portal/profile?saved=1&headshot=1 on a successful upload (PRG)", async () => {
     currentProfile = PROFILE_WITH_HEADSHOT;
     const app = buildApp();
-    const file = new File([new Uint8Array([1, 2, 3])], "photo.webp", { type: "image/webp" });
+    const file = new File([minimalWebpBytes()], "photo.webp", { type: "image/webp" });
     const res = await postProfile(app, file);
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe("/portal/profile?saved=1&headshot=1");
@@ -203,7 +217,7 @@ describe("POST /portal/profile — merged form persists bio and headshot togethe
     form.set("firstName", "Jane");
     form.set("lastName", "Doe");
     form.set("bio", "A brand new bio written just before the upload.");
-    form.set("headshot", new File([new Uint8Array([1, 2, 3])], "photo.webp", { type: "image/webp" }));
+    form.set("headshot", new File([minimalWebpBytes()], "photo.webp", { type: "image/webp" }));
 
     const res = await app.request(
       "/portal/profile",

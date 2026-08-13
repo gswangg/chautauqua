@@ -2,8 +2,10 @@
 // Split out of the former monolithic src/routes/api/contacts.ts for
 // contention (803-line hotspot) reasons only; no behavior change.
 
+import { eq } from "drizzle-orm";
 import type { Hono } from "hono";
 import type { AppEnv } from "../../../server/env";
+import * as schema from "../../../db/schema";
 import { csrfJson } from "../../../server/middleware";
 import { ApiError } from "../../../server/http";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../../forms/validate"; // DEC-417
@@ -17,7 +19,8 @@ import { readImageDims, MAX_HEADSHOT_EDGE_PX } from "../../../lib/image-dims";
 import { newId } from "../../../domain/ids";
 import { makeFileStore } from "../../../server/context";
 import { clampPage, listPerPage } from "../../../lib/pagination";
-import { DEC_290, DEC_461, DEC_466 } from "../../../decisions";
+import { DEC_290, DEC_461, DEC_466, DEC_894 } from "../../../decisions";
+void DEC_894; // DEC-894: headshot dimension gate covers webp too — see below.
 import {
   currentOrgId,
   asRecord,
@@ -147,7 +150,20 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     const orgId = currentOrgId(c);
     const contact = await requireOwnedContact(c.var.db, c.req.param("id"), orgId);
     const history = await repo.getContactHistory(c.var.db, contact.id);
-    return c.json({ ...serializeContact(contact), history });
+    // DEC-894: the drawer prints the stored headshot file's filename and
+    // upload date beside the image — an uploaded file with no metadata
+    // reads as decoration, not as a record. headshotUrl is `/headshots/:fileId`.
+    let headshotFile: { filename: string; uploadedAt: number } | null = null;
+    if (contact.headshotUrl) {
+      const fileId = contact.headshotUrl.split("/").pop()!;
+      const [row] = await c.var.db
+        .select({ filename: schema.file.filename, createdAt: schema.file.createdAt })
+        .from(schema.file)
+        .where(eq(schema.file.id, fileId))
+        .limit(1);
+      if (row) headshotFile = { filename: row.filename, uploadedAt: row.createdAt.getTime() };
+    }
+    return c.json({ ...serializeContact(contact), history, headshotFile });
   });
 
   contactsRoutes.patch("/contacts/:id", csrfJson, async (c) => {
@@ -264,7 +280,12 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     const buf = await headshot.arrayBuffer();
 
     // DEC-084 dimension gate, mirrored verbatim from the portal route.
-    if (validation.servedContentType === "image/png" || validation.servedContentType === "image/jpeg") {
+    // DEC-894: webp runs the same gate as png/jpeg.
+    if (
+      validation.servedContentType === "image/png" ||
+      validation.servedContentType === "image/jpeg" ||
+      validation.servedContentType === "image/webp"
+    ) {
       let dims: { width: number; height: number };
       try {
         dims = readImageDims(new Uint8Array(buf), validation.servedContentType);

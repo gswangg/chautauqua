@@ -10,11 +10,12 @@ import { csrfForm } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import { makeFileStore } from "../../server/context";
 import { assertSpeakerContactId, getPortalData } from "../../server/repo/portal";
-import { DEC_067, DEC_084 } from "../../decisions";
+import { DEC_067, DEC_084, DEC_894 } from "../../decisions";
 import { readImageDims, MAX_HEADSHOT_EDGE_PX } from "../../lib/image-dims";
 import { MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate";
 void DEC_067; // DEC-067: /headshots/:fileId gate — see headshotServeRoutes below.
 void DEC_084; // DEC-084: server-side PNG/JPEG dimension gate on headshot upload — see below.
+void DEC_894; // DEC-894: the dimension gate covers webp too — see below.
 import {
   getContactProfile,
   getHeadshotServeScope,
@@ -335,10 +336,13 @@ portalProfileRoutes.post("/profile", csrfForm, async (c) => {
     const buf = await headshot.arrayBuffer();
 
     // DEC-084: server-side dimension gate, amending DEC-059's client-only
-    // downscale — a client can always be bypassed. PNG/JPEG are the only
-    // types we can sniff headers for; webp remains governed by the existing
-    // size cap above (DEC-084 note: webp dimension sniffing is out of scope).
-    if (validation.servedContentType === "image/png" || validation.servedContentType === "image/jpeg") {
+    // downscale — a client can always be bypassed. DEC-894: webp runs the
+    // same gate as png/jpeg.
+    if (
+      validation.servedContentType === "image/png" ||
+      validation.servedContentType === "image/jpeg" ||
+      validation.servedContentType === "image/webp"
+    ) {
       let dims: { width: number; height: number };
       try {
         dims = readImageDims(new Uint8Array(buf), validation.servedContentType);
