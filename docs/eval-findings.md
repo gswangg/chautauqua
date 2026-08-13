@@ -87,15 +87,15 @@ DECLINE QUEUE no-wrap · "Columns: <state>" label · bulk bar → 3 actions · d
 section · ANSWERS = curated subset · quick-add combined name field · co-presenter
 search row layout.
 
-**Review** (probe-4 NEW: reviewer's own Review nav tab NEVER highlights — link
-href "/admin/review/" trailing slash vs pathname "/admin/review"; fix the href,
-aria-current follows) (probe-3 CLOSED: DEC-763 plan-scoped disclosures — all 37 swept clean ·
+**Review** (probe-5 CLOSED: reviewer nav aria-current on all routes · weighted
+caption now "Scores average by weight" · earlier probe-3 batch: DEC-763 plan-scoped disclosures — all 37 swept clean ·
 DEC-763 export sort — hrefs byte-identical all 8 states, CSVs match · reviewer
 NAMES render · DEC-760 remind hidden at N=0; earlier: DEC-737/723/736 + blended
-SCORE): scoped queue vs v5 frame STILL-OPEN (probe-4): needs eyebrow "REVIEW · ‹plan›",
-h1 = count ("11 left to score"), scope+closes subtitle, progress bar, row anatomy
-SCORED x.x / NOT SCORED + "Score this" action; scorecard back link names the plan
-("‹ ‹plan› queue"); scorecard eyebrow plan · track · round · SEED still pending: stagger a SECOND
+SCORE): scoped queue probe-5 MOSTLY CLOSED (eyebrow/h1-count/subtitle/real progress
+bar/named back link all frame-true; round segment correctly suppressed at
+rounds=1 per DEC-831): row residue — scored rows say "Score this" not "Change
+your score" + extra Complete pill · no session-meta line ("Talk, 30 min ·
+advanced") · ref duplicated (span + title) · SEED still pending: stagger a SECOND
 plan open so multi-plan reviewer experience is visible · shell 403 NARROWED: fires
 once during login→redirect only (clean thereafter) — skip the overview fetch for
 non-organizers at login · plan-row subtitle truncated: "All tracks" without "· 3
@@ -158,10 +158,7 @@ place-anyway lands with no confirm/toast (mock check at gate).
 **Comms** (probe-4 CLOSED: DEC-792 vocabulary — Content Reminder preflights clean
 w/ per-recipient values · DEC-793 chip row + cursor insert + hint + NAMED
 preflight errors · DEC-796 rendered history, zero raw tokens; earlier: DEC-751 +
-history CTA + DEC-710): NEW — seeded "Content Reminder" SUBJECT interpolates the
-multi-line {task_list} block (paragraph subjects; empty case "due No due date: No
-outstanding tasks.." double period) — add short/long task_list variants or reword
-the seeded subject · preflight banner needs role="alert" + name ALL missing
+history CTA + DEC-710): (probe-5: subject fixed — "Reminder: onboarding tasks due {due_date}") · preflight banner needs role="alert" + name ALL missing
 fields per recipient (only first named) · template-selected mode silently ignores
 textarea edits (bogus tokens no-op — either respect edits or lock the textarea) ·
 history shows no body anywhere (list projection drops bodyText — add body to the
@@ -239,18 +236,16 @@ explicit CFP publish affordance · close-before-open validation loud at the fiel
 supersedes v4 for Contacts/Public-Portal/Review/Settings/Speakers; README carries
 code-level specs — READ IT). Eight design-backed additions, build per mock:
 
-1. **Saved embeds (Settings) — probe-4: skeleton only, spec NOT met.** The
-   save-form captures only name+surface (a saved embed CANNOT carry a recipe);
-   the full builder has no Name/save; NO edit path exists ("Editing · ‹name›" +
-   "Save changes" absent; Get code appends a static snippet). **Disabled embed
-   still 404s ("Embed not found.") — design REQUIRES empty 200** (blank inside
-   pasted iframes). Wording: LIVE/DISABLED + Enable/Disable → v5 ON/OFF + Turn
-   on/Turn off; add recipe caption ("Sessions · iframe · AI Engineering · 6
-   fields"), "3 on · 1 off" header count, footer caption "Turning one off breaks
-   it wherever it is pasted". URL: /embed/e/<slug> SSR resolution is fine as the
-   mechanism — keep it, drop the unimplemented ?embed= form from the spec.
-   ALSO: restore ics to the Format picker + /embed/<slug>/schedule.ics (the
-   regression; picker/feed parity test).
+1. **Saved embeds — probe-5: CORE LANDED** (builder saves full recipe; recipe
+   caption matches frame grammar; edit path hydrates + PATCHes; **disabled →
+   empty 200 verified ×2 anon w/ matching headers**; ics restored
+   surface-conditionally per DEC-289). Remaining (wording/small): quick-save form
+   in SavedEmbedsPanel still name+surface hardcoding iframe/{} — drop it or give
+   it the recipe (two save paths, different fidelity) · **saved-embed URL
+   ignores stored FORMAT — a json embed serves text/html; resolver must honor
+   embed.format** · "Save changes" label in edit mode · pills/actions → ON/OFF +
+   Turn on/Turn off · "N on · M off" header count · footer caption · Delete
+   control in UI (API exists).
 2. **Participation status (Speakers, SPK-04 w2) — probe-4: HALF-BUILT WRONG
    SHAPE**: current control CYCLES states on click (Confirmed→Declined, no menu)
    — v5 requires a MENU w/ caret (organizer picks a state; "Send portal invite"
@@ -271,23 +266,22 @@ code-level specs — READ IT). Eight design-backed additions, build per mock:
    dashed "Unrated" (must stay visible); NEEDS two nullable columns on
    pipeline_entry (fit_score int, rationale text); fit ranks WITHIN a column,
    never reorders stages; dialog states: adding writes activity, no email sent.
-6. **Assignment tooling (Review) — probe-4: preview built, spec half-met**:
-   "Distribute evenly" + per-reviewer projections exist; still needed per v5:
-   cap-per-reviewer field · rename/retarget to "Distribute the unassigned"
-   (unassigned pool, not load-leveling) · preview states what it CANNOT do
-   ("N stay unassigned — cap reached / nobody covers X") · out-of-track rows
-   listed "unchanged · wrong track".
+6. **Assignment tooling — probe-5 ESSENTIALLY CLOSED**: cap input (DEC-824) +
+   shortfall block naming each unfillable talk w/ reason + "Nothing is saved
+   until you confirm" (zero non-GET verified); behavior already gap-fills the
+   unassigned pool. Residue: label still "Distribute evenly" (DEC-840 rename
+   landed post-snapshot — verify at gate) · out-of-track rows "unchanged · wrong
+   track" listing not seen.
 7. **Scoped reviewer queue (Review)** — queue headed "Review · ‹plan name›" over
    the count + "‹scope› · closes in N days" beneath; scorecard back link "‹ ‹plan›
    queue"; scorecard eyebrow names plan · track · round.
-8. **Password CTA, three states (Public, CFP-05 w3) — SECURITY RULE (DEC-098)**:
-   `fresh` (contact created by THIS submit) → "Create a password" button w/ claim
-   path · `pending-existing-contact` (email already in CRM) → NO claim URL in the
-   HTML AT ALL; "We emailed … a link to set a password" + Log in fallback ·
-   `has-account` → "Log in to track it", no claim minted. Copy is "set a
-   password", never "create an account" (no public signup route). NOTHING on the
-   form itself. Add a test asserting the pending-existing-contact response
-   contains no claim URL.
+8. **Password CTA — probe-5: SEMANTICS CLOSED, security assertion HOLDS**
+   (fresh → claim link · CRM-known → ZERO /claim/ in raw HTML, token email-only ·
+   has-account → no token minted; email_log cross-checked). Ensure the
+   no-claim-URL test exists. Chrome residue vs frames 14/15: eyebrow
+   "SUBMITTED · ‹ref›" + "That's in. Check your email." + echo the submitted
+   address + (b) separate "Already have a password? Log in ›" block + (c)
+   primary button "Log in to track it".
 
 Fidelity frames: design-frames-v5 READY (88 frames, manifest.json) — the gate
 fleet and all probes use v5 exclusively. NOTE: v4 phone frames were CLIPPED
@@ -321,7 +315,8 @@ Remaining S-tier:
 - Weighted-score label CLOSED (probe-4); residue: caption under it still says
   "Mean of submitted reviews · recusals excluded" — update to describe the
   weighted blend.
-- CRM KPIs: eventCount + returningSpeakers still unrendered (API returns them).
+- CRM KPIs CLOSED (probe-5: "0 returning · 1 events" rendered). Nit: "1 events"
+  pluralization.
 - Public-pages Agenda/Schedule rows claim "9 published" but those surfaces render
   5 placed blocks — per-surface counts should reflect what each surface shows.
 - Per-speaker "Send portal invite" (roster has zero invite affordance; read-only
