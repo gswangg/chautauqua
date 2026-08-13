@@ -2,7 +2,7 @@
 // SINGLE predicate for who a reminder send targets -- imported here (never
 // re-derived) so the SPA's counted label and POST /plans/:id/remind agree.
 import { selectRemindTargets } from '../../../../src/domain/evaluation';
-import type { ProgressRow } from './types';
+import type { ProgressRow, ReviewerQueueItem } from './types';
 
 /** Reviewers whose queue isn't fully rated yet -- the "laggards" a Remind click targets. */
 export function reviewersWithIncompleteQueues(rows: ProgressRow[]): ProgressRow[] {
@@ -37,5 +37,17 @@ export function progressTotals(rows: ProgressRow[]): { completed: number; assign
   return {
     completed: rows.reduce((sum, r) => sum + r.completed, 0),
     assigned: rows.reduce((sum, r) => sum + r.assigned, 0),
+  };
+}
+
+/** DEC-939: the 'N of N done' completion counter for THIS reviewer's own
+ * queue -- the same completed/total pair the reviewer queue's own progress
+ * bar and caption compute off a queue envelope's items (ReviewerQueue.tsx),
+ * exposed here as the one reader so the scorecard header can show the
+ * identical figure without a second count derived in that component. */
+export function queueDoneCounts(items: ReviewerQueueItem[]): { completed: number; total: number } {
+  return {
+    completed: items.filter((i) => i.alreadyRatedByMe).length,
+    total: items.length,
   };
 }

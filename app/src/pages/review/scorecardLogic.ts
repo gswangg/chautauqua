@@ -32,6 +32,16 @@ export function ratingScaleValues(scale: EvaluationScale): number[] {
   return values;
 }
 
+/** DEC-939 reconciliation line: a plain (unweighted) mean of the same
+ * per-criterion rating values the weighted blend (computeWeightedScore)
+ * reads, in the same criterion order -- never re-derives or touches the
+ * weighted math itself, just gives the reviewer the un-weighted comparison
+ * figure alongside it. */
+export function plainAverage(values: number[]): number {
+  if (values.length === 0) throw new Error('plainAverage requires at least one value');
+  return values.reduce((sum, v) => sum + v, 0) / values.length;
+}
+
 export type ScorecardKeyAction =
   | { type: 'setRating'; criterionId: string; value: number }
   | { type: 'submitAndAdvance' }
