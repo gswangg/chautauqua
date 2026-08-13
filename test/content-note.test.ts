@@ -13,11 +13,17 @@ import type { AppEnv, AuthInfo } from "../src/server/env";
 import type { KVStore } from "../src/auth/claim";
 import type { SubmissionScope, FileScope } from "../src/server/repo/files-authz";
 
+// status/formCloseDate/timezone feed the DEC-041 speaker edit-lock in
+// authzSubmissionWrite; content-note is organizer-only, so they are inert
+// here — set to an open (editable) submission so they never mask a 403.
 const SUBMISSION_SCOPE: SubmissionScope = {
   submissionId: "sub-1",
   eventId: "evt-1",
   orgId: "org-1",
   participantContactIds: ["ct-good", "ct-bad"],
+  status: "accepted",
+  formCloseDate: null,
+  timezone: "America/New_York",
 };
 
 // Belongs to org-1 — used to prove an org-2 organizer is forbidden, not
@@ -27,6 +33,9 @@ const OTHER_ORG_SCOPE: SubmissionScope = {
   eventId: "evt-2",
   orgId: "org-1",
   participantContactIds: [],
+  status: "accepted",
+  formCloseDate: null,
+  timezone: "America/New_York",
 };
 
 const FILE_SCOPE: FileScope = {
