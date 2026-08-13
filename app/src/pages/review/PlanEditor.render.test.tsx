@@ -294,7 +294,7 @@ describe('PlanEditor render smoke', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Track - Design')).toBeInTheDocument();
+      expect(screen.getByText('Track · Design')).toBeInTheDocument();
     });
     expect(screen.getByText('SES-014 - Talk Title')).toBeInTheDocument();
     expect(screen.getByText('Track (removed)')).toBeInTheDocument();
@@ -417,9 +417,9 @@ describe('PlanEditor render smoke', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('3 - 75%')).toBeInTheDocument();
+      expect(screen.getByText('3 · 75%')).toBeInTheDocument();
     });
-    expect(screen.getByText('1 - 25%')).toBeInTheDocument();
+    expect(screen.getByText('1 · 25%')).toBeInTheDocument();
     // Section caption states how weights are used, never forcing sum-to-100.
     expect(screen.getByText('Scores average by weight.')).toBeInTheDocument();
   });
@@ -451,7 +451,7 @@ describe('PlanEditor render smoke', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('7 of about 7 - more than that and reviewers rush the last ones'),
+        screen.getByText('7 of about 7 · more than that and reviewers rush the last ones'),
       ).toBeInTheDocument();
     });
     expect(screen.getByRole('link', { name: 'Add criterion' })).toHaveAttribute('aria-disabled', 'true');
@@ -483,7 +483,7 @@ describe('PlanEditor render smoke', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Locked - 3 reviews scored against these criteria')).toBeInTheDocument();
+      expect(screen.getByText('Locked · 3 reviews scored against these criteria')).toBeInTheDocument();
     });
     expect(screen.getByText('Changing these would rescore work already done')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Start a new wave' })).toBeInTheDocument();
@@ -499,7 +499,157 @@ describe('PlanEditor render smoke', () => {
     // The lock card sits BELOW the read-only rows: the headline appears
     // after the criterion's own name in document order.
     const text = container.textContent ?? '';
-    expect(text.indexOf('Content')).toBeLessThan(text.indexOf('Locked - 3 reviews'));
+    expect(text.indexOf('Content')).toBeLessThan(text.indexOf('Locked · 3 reviews'));
+  });
+
+  // w41-f/DEC-882 amendment: the SCORING CRITERIA section rule itself
+  // carries a right-aligned eyebrow naming the lock and its count -- read
+  // from the SAME evaluationCountsByRound-derived count the lock card
+  // below states, never a second fetch. The section caption also gains
+  // the wording/weights/scale-fixed sentence while locked.
+  it('states the locked eyebrow and caption sentence on the Scoring criteria section rule', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: {
+        ...plan(),
+        criteria: [{ id: 'c1', label: 'Content', kind: 'rating', weight: 1 }],
+        evaluationCountsByRound: { '1': 37 },
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    const { container } = render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Locked — 37 reviews scored against these criteria')).toBeInTheDocument();
+    });
+    expect(container.querySelector('.chq-review-section-caption')?.textContent).toBe(
+      'Scores average by weight. Wording, weights and the scale are fixed for the rest of this wave.',
+    );
+  });
+
+  // w41-f: a locked criterion row prints "Weight N · P%" (weight plus its
+  // integer-percent share of total weight) instead of the old bare
+  // "rating"/raw-weight rendering.
+  it('renders a locked rating criterion row as "Weight N · P%"', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: {
+        ...plan(),
+        criteria: [
+          { id: 'c1', label: 'Content', kind: 'rating', weight: 3 },
+          { id: 'c2', label: 'Delivery', kind: 'rating', weight: 3 },
+        ],
+        evaluationCountsByRound: { '1': 3 },
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getAllByText('Weight 3 · 50%')).toHaveLength(2));
+  });
+
+  // w41-f/DEC-715: no handle for a locked round's criteria -- the handle is
+  // ABSENT, not disabled, since locked criteria cannot reorder.
+  it('renders no reorder handle for a locked round\'s criteria', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: {
+        ...plan(),
+        criteria: [{ id: 'c1', label: 'Content', kind: 'rating', weight: 1 }],
+        evaluationCountsByRound: { '1': 3 },
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Content')).toBeInTheDocument());
+    expect(screen.queryByLabelText(/^Reorder /)).not.toBeInTheDocument();
+  });
+
+  // w41-f/DEC-715: an unlocked round's criteria (and a brand-new plan's
+  // prefilled criteria) each carry the ONE keyboard-operable drag-handle
+  // button, reusing the form-builder's class.
+  it('renders a keyboard-operable reorder handle on every criterion row for an unlocked plan', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: {
+        ...plan(),
+        criteria: [
+          { id: 'c1', label: 'Content', kind: 'rating', weight: 1 },
+          { id: 'c2', label: 'Delivery', kind: 'rating', weight: 1 },
+        ],
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByDisplayValue('Content')).toBeInTheDocument());
+    const contentHandle = screen.getByLabelText('Reorder Content (position 1 of 2)');
+    expect(contentHandle.tagName).toBe('BUTTON');
+    expect(contentHandle).toHaveClass('chq-forms-field-drag');
+    expect(screen.getByLabelText('Reorder Delivery (position 2 of 2)')).toBeInTheDocument();
+
+    fireEvent.keyDown(contentHandle, { key: 'ArrowDown' });
+    await waitFor(() => {
+      expect(screen.getByLabelText('Reorder Delivery (position 1 of 2)')).toBeInTheDocument();
+    });
+    expect(screen.getByLabelText('Reorder Content (position 2 of 2)')).toBeInTheDocument();
+  });
+
+  // w41-f/DEC-715: same handle on the brand-new-plan route's prefilled
+  // default criteria.
+  it('renders reorder handles on a brand-new plan\'s prefilled default criteria', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/review/plans/new']}>
+        <Routes>
+          <Route path="/review/plans/new" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Create the plan' })).toBeInTheDocument());
+    expect(screen.getAllByLabelText(/^Reorder /).length).toBeGreaterThan(0);
   });
 
   // DEC-709: the new-row kind picker is a segmented control (Rating /
@@ -792,7 +942,7 @@ describe('PlanEditor render smoke', () => {
     );
 
     await waitFor(() => expect(screen.getByText('Criterion')).toBeInTheDocument());
-    expect(screen.getByText('Guidance')).toBeInTheDocument();
+    expect(screen.getByText('Guidance for reviewers · Optional')).toBeInTheDocument();
     expect(screen.getByText('Weight')).toBeInTheDocument();
   });
 

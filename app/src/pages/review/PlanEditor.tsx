@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { dateInputToMs, msToDateInput } from '../../lib/dates';
@@ -30,7 +30,7 @@ import {
 // are computed by the same pure domain functions the server uses -- no
 // re-derivation of the weight-share math client-side.
 import { criterionWeightShares, DEFAULT_PLAN_CRITERIA } from '../../../../src/domain/evaluation';
-import { DEC_745, DEC_786, DEC_824, DEC_882 } from '../../../../src/decisions';
+import { DEC_745, DEC_786, DEC_824, DEC_882, DEC_715 } from '../../../../src/decisions';
 import { countOf } from '../../lib/plural';
 
 void DEC_745; // v4 shell: title-row NAME/Duplicate/Save, 2x2 field grid, "Who reviews what" below
@@ -40,6 +40,13 @@ void DEC_882; // locked criteria render as read-only text rows below a CRITERION
 // header, lock card moved below the rows, and the open-plan header reads
 // "Open · N of M reviews in" from progressRows via progressTotals -- never
 // a second count derived here.
+// w41-f/DEC-715: every criterion row (locked, unlocked, new-plan) carries
+// the ONE reorder affordance -- a keyboard-operable drag-handle <button>,
+// reusing the form-builder's markup/class (chq-forms-field-drag, see
+// app/src/pages/forms/FieldList.tsx) rather than a second implementation.
+// Locked criteria cannot reorder, so the handle is ABSENT (not disabled)
+// on a locked row.
+void DEC_715;
 
 // DEC-676: soft cap on the criteria list -- Add disables with an honest
 // caption once reached, never a silent no-op.
@@ -47,6 +54,20 @@ const MAX_CRITERIA = 7;
 
 function defaultDraftCriteria(): EvaluationCriterion[] {
   return DEFAULT_PLAN_CRITERIA.map((c) => ({ ...c }));
+}
+
+// DEC-715: the ONE reorder write path for the criteria list -- both the
+// keyboard (ArrowUp/ArrowDown on the handle button) and the drag-drop paths
+// below call this, mirroring FieldList.tsx's onMove(field, delta) contract.
+function moveCriterion(criteria: EvaluationCriterion[], id: string, delta: number): EvaluationCriterion[] {
+  const index = criteria.findIndex((c) => c.id === id);
+  if (index < 0) return criteria;
+  const target = index + delta;
+  if (target < 0 || target >= criteria.length) return criteria;
+  const next = [...criteria];
+  const [item] = next.splice(index, 1);
+  next.splice(target, 0, item!);
+  return next;
 }
 
 // DEC-674 (mirrored from PlanList's isWindowOpen): a plan's window is "open"
@@ -164,6 +185,39 @@ export function PlanEditor() {
   // tertiary "Add criterion" link that replaces the old three-button row.
   const [pickingKind, setPickingKind] = useState(false);
   const [startingWave, setStartingWave] = useState(false);
+
+  // DEC-715: drag-drop reorder of the criteria list, same contract as
+  // FieldList.tsx's field-row handle -- dragstart stamps the dragged
+  // criterion's id on text/plain, dragover marks a valid drop target, drop
+  // reads the id back and calls moveCriterion via the ONE reorder path
+  // (setEditingCriteria/moveCriterion), the same path the handle's
+  // ArrowUp/ArrowDown keys use.
+  const [dragOverCriterionId, setDragOverCriterionId] = useState<string | null>(null);
+
+  function handleCriterionDragStart(event: DragEvent, criterionId: string) {
+    event.dataTransfer.setData('text/plain', criterionId);
+    event.dataTransfer.effectAllowed = 'move';
+  }
+
+  function handleCriterionDragOver(event: DragEvent, criterionId: string) {
+    event.preventDefault();
+    if (dragOverCriterionId !== criterionId) setDragOverCriterionId(criterionId);
+  }
+
+  function handleCriterionDragLeave(criterionId: string) {
+    setDragOverCriterionId((current) => (current === criterionId ? null : current));
+  }
+
+  function handleCriterionDrop(event: DragEvent, targetId: string, targetIndex: number) {
+    event.preventDefault();
+    setDragOverCriterionId(null);
+    const draggedId = event.dataTransfer.getData('text/plain');
+    if (!draggedId || draggedId === targetId) return;
+    const sourceIndex = editingCriteria.findIndex((c) => c.id === draggedId);
+    if (sourceIndex < 0 || sourceIndex === targetIndex) return;
+    const delta = targetIndex - sourceIndex;
+    setEditingCriteria((c) => moveCriterion(c, draggedId, delta > 0 ? 1 : -1));
+  }
 
   // DEC-676/DEC-213: the currently-edited round is locked once it already
   // carries submitted evaluations -- read the count from the plan's own
@@ -865,10 +919,22 @@ export function PlanEditor() {
         <section className="chq-section">
           <div className="chq-section-head">
             <h2 className="chq-section-label">Scoring criteria</h2>
+            {/* w41-f/DEC-882 amendment: a locked round names its constraint
+                right in the section rule, not just below the rows -- the
+                same evaluationCountsByRound-derived count the lock card
+                below already states, never a second fetch. */}
+            {activeRoundIsLocked && (
+              <span className="chq-review-criteria-locked-eyebrow">
+                Locked — {countOf(activeRoundLockedCount, 'review')} scored against these criteria
+              </span>
+            )}
           </div>
           {/* DEC-676: weights stay relative and plan-wide -- never forced to
               sum to 100 -- so the section states how they're used. */}
-          <p className="chq-review-section-caption">Scores average by weight.</p>
+          <p className="chq-review-section-caption">
+            Scores average by weight.
+            {activeRoundIsLocked && ' Wording, weights and the scale are fixed for the rest of this wave.'}
+          </p>
 
           {draft.rounds > 1 && (
             <div className="chq-review-round-tabs">
@@ -917,8 +983,10 @@ export function PlanEditor() {
               section-label type this page already uses, aligned to the
               existing criterion row's grid columns. */}
           <div className="chq-review-criteria-head-row" aria-hidden="true">
+            {/* DEC-715: the drag-handle column has no header label of its own. */}
+            <span> </span>
             <span className="chq-review-criteria-head-cell">Criterion </span>
-            <span className="chq-review-criteria-head-cell">Guidance </span>
+            <span className="chq-review-criteria-head-cell">Guidance for reviewers · Optional </span>
             <span> </span>
             <span className="chq-review-criteria-head-cell">Weight </span>
             <span> </span>
@@ -930,17 +998,25 @@ export function PlanEditor() {
             const atCap = editingCriteria.length >= MAX_CRITERIA;
             if (activeRoundIsLocked) {
               // DEC-882: a locked round reads as TEXT, not disabled inputs --
-              // zero form controls render for its criteria. Raw weight only
-              // (no percentage-share formatter here -- that vocabulary
-              // belongs to the reviewer scorecard, a concurrent lane).
+              // zero form controls render for its criteria. w41-f: the
+              // weight column reads "Weight N · P%" (weight plus its share
+              // of total weight), the same share map the unlocked editor
+              // already computes above -- never a second derivation.
               return (
                 <>
                   {editingCriteria.map((criterion) => (
                     <div key={criterion.id} className="chq-review-criterion-row chq-review-criterion-row-readonly">
+                      {/* DEC-715: criteria cannot reorder once scored -- the
+                          handle is ABSENT here, not disabled. */}
+                      <span />
                       <span>{criterion.label}</span>
                       <span>{criterion.guidance ?? ''}</span>
-                      <span className="chq-review-criterion-kind">{criterion.kind}</span>
-                      <span>{criterion.kind === 'rating' ? criterion.weight : ''}</span>
+                      <span />
+                      <span>
+                        {criterion.kind === 'rating' && shares[criterion.id] !== undefined
+                          ? `Weight ${criterion.weight} · ${shares[criterion.id]}%`
+                          : ''}
+                      </span>
                       <span />
                     </div>
                   ))}
@@ -950,7 +1026,7 @@ export function PlanEditor() {
                   <div className="chq-review-criteria-locked-notice" role="status">
                     <div className="chq-review-criteria-locked-text">
                       <p className="chq-review-criteria-locked-headline">
-                        Locked - {countOf(activeRoundLockedCount, 'review')} scored
+                        Locked · {countOf(activeRoundLockedCount, 'review')} scored
                         against these criteria
                       </p>
                       <p className="chq-review-criteria-locked-reason">Changing these would rescore work already done</p>
@@ -971,8 +1047,43 @@ export function PlanEditor() {
             }
             return (
               <>
-                {editingCriteria.map((criterion) => (
-                  <div key={criterion.id} className="chq-review-criterion-row">
+                {editingCriteria.map((criterion, index) => (
+                  <div
+                    key={criterion.id}
+                    className={[
+                      'chq-review-criterion-row',
+                      dragOverCriterionId === criterion.id ? 'chq-review-criterion-row-drop-target' : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    onDragOver={(event) => handleCriterionDragOver(event, criterion.id)}
+                    onDragLeave={() => handleCriterionDragLeave(criterion.id)}
+                    onDrop={(event) => handleCriterionDrop(event, criterion.id, index)}
+                  >
+                    {/* DEC-715: the ONE reorder affordance -- a real <button>
+                        whose accessible name states its position, draggable
+                        by pointer and operable by ArrowUp/ArrowDown, reusing
+                        the form-builder's handle markup/class
+                        (chq-forms-field-drag, FieldList.tsx) rather than a
+                        second implementation. */}
+                    <button
+                      type="button"
+                      className="chq-forms-field-drag"
+                      aria-label={`Reorder ${criterion.label || 'criterion'} (position ${index + 1} of ${editingCriteria.length})`}
+                      draggable
+                      onDragStart={(event) => handleCriterionDragStart(event, criterion.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'ArrowUp') {
+                          event.preventDefault();
+                          setEditingCriteria((c) => moveCriterion(c, criterion.id, -1));
+                        } else if (event.key === 'ArrowDown') {
+                          event.preventDefault();
+                          setEditingCriteria((c) => moveCriterion(c, criterion.id, 1));
+                        }
+                      }}
+                    >
+                      ⋮⋮
+                    </button>
                     <input
                       className="chq-input"
                       placeholder="Label"
@@ -1008,7 +1119,7 @@ export function PlanEditor() {
                         />
                         {shares[criterion.id] !== undefined && (
                           <span className="chq-review-criterion-share">
-                            {criterion.weight} - {shares[criterion.id]}%
+                            {criterion.weight} · {shares[criterion.id]}%
                           </span>
                         )}
                       </span>
@@ -1119,7 +1230,7 @@ export function PlanEditor() {
                     </div>
                   )}
                   <span className="chq-review-criteria-cap-notice">
-                    {editingCriteria.length} of about {MAX_CRITERIA} - more than that and reviewers rush the last ones
+                    {editingCriteria.length} of about {MAX_CRITERIA} · more than that and reviewers rush the last ones
                   </span>
                 </div>
               </>
@@ -1175,7 +1286,7 @@ export function PlanEditor() {
               const displayName = progress ? reviewerDisplayLabel(progress) : (r.email ?? '(account removed)');
               const trackLabel = r.trackId
                 ? r.trackName
-                  ? `Track - ${r.trackName}`
+                  ? `Track · ${r.trackName}`
                   : 'Track (removed)'
                 : r.submissionId
                   ? r.submissionRef
