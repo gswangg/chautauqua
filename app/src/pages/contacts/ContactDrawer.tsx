@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
-import { apiGet, apiPatch, apiUpload, ApiError } from '../../lib/api';
+import { Link } from 'react-router-dom';
+import { apiDelete, apiGet, apiPatch, apiUpload, ApiError } from '../../lib/api';
 import { useEscapeKey } from '../../lib/useEscapeKey';
 import { formatDateTime } from '../../lib/dates';
 import type { ContactDetail, ContactListItem } from './types';
@@ -7,6 +8,7 @@ import { fromRows, toRows, travelValue, type CustomFieldRow } from './customFiel
 import { contactLabels } from '../../../../src/domain/contact-labels';
 import { BulkEmailModal } from './BulkEmailModal';
 import { AddToEventModal } from './AddToEventModal';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DelayedLoading } from '../../components/DelayedLoading';
 
 interface Props {
@@ -81,6 +83,14 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
   const [editingField, setEditingField] = useState<string | null>(null);
   const [showEmail, setShowEmail] = useState(false);
   const [showAddToEvent, setShowAddToEvent] = useState(false);
+
+  // DEC-758: delete refuses honestly — the confirm step's own inline error
+  // (never the drawer-wide `error`) carries the server's 409 message plus a
+  // link to the Duplicates tab, and stays open rather than closing the
+  // drawer.
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -159,6 +169,20 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
     }
   }
 
+  async function confirmDelete() {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await apiDelete(`/contacts/${contactId}`);
+      setShowDeleteConfirm(false);
+      onSaved();
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : 'Failed to delete contact');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   function updateRow(index: number, patch: Partial<CustomFieldRow>) {
     setCustomFieldRows((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   }
@@ -195,7 +219,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
     }
   }
 
-  const nestedModalOpen = showEmail || showAddToEvent;
+  const nestedModalOpen = showEmail || showAddToEvent || showDeleteConfirm;
 
   useEscapeKey(!saving && !headshotUploading && !nestedModalOpen, onClose);
 
@@ -431,6 +455,16 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
               <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowAddToEvent(true)}>
                 Add to event
               </button>
+              <button
+                type="button"
+                className="chq-btn-tertiary chq-contacts-delete-trigger"
+                onClick={() => {
+                  setDeleteError(null);
+                  setShowDeleteConfirm(true);
+                }}
+              >
+                Delete this contact
+              </button>
             </div>
           </>
         )}
@@ -438,6 +472,28 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
 
       {showEmail && <BulkEmailModal contactIds={[contactId]} eventId={null} onClose={() => setShowEmail(false)} />}
       {showAddToEvent && <AddToEventModal contact={contactListItem} onClose={() => setShowAddToEvent(false)} />}
+      {showDeleteConfirm && (
+        <ConfirmDialog
+          title="Delete this contact"
+          body={
+            deleteError ? (
+              <>
+                <p>{deleteError}</p>
+                <p>
+                  <Link to="/contacts?tab=duplicates">Go to the Duplicates tab</Link> to merge this record instead.
+                </p>
+              </>
+            ) : (
+              `Delete ${firstName} ${lastName}? This cannot be undone.`
+            )
+          }
+          confirmLabel="Delete"
+          destructive
+          pending={deleting}
+          onConfirm={confirmDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
+      )}
     </div>
   );
 }

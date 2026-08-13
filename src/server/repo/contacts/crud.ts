@@ -14,11 +14,12 @@ import { likeContains } from "../like";
 import { backfillNullAttribution } from "../attribution";
 import { ApiError } from "../../http";
 import { chunkIds } from "../../../lib/chunk";
-import { DEC_333, DEC_336, DEC_554 } from "../../../decisions";
+import { DEC_333, DEC_336, DEC_554, DEC_758 } from "../../../decisions";
 
 void DEC_333;
 void DEC_336;
 void DEC_554;
+void DEC_758;
 
 export interface ContactInput {
   firstName: string;
@@ -150,6 +151,46 @@ export async function patchContact(db: Db, id: string, patch: ContactPatch): Pro
   const updated = await findContactById(db, id);
   if (!updated) throw new Error(`contact ${id} not found after update`);
   return updated;
+}
+
+export interface ContactReferenceCounts {
+  participants: number;
+  taskAssignments: number;
+  pipelineEntries: number;
+  userAccounts: number;
+}
+
+/** DEC-758: bounded one-query-per-table count of everything that would
+ * dangle if this contact were deleted — the refusal at the route names
+ * these counts in prose rather than deleting and orphaning history. */
+export async function countContactReferences(db: Db, contactId: string): Promise<ContactReferenceCounts> {
+  const [participants, taskAssignments, pipelineEntries, userAccounts] = await Promise.all([
+    db.select({ count: sql<number>`count(*)` }).from(schema.participant).where(eq(schema.participant.contactId, contactId)),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.taskAssignment)
+      .where(eq(schema.taskAssignment.contactId, contactId)),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.pipelineEntry)
+      .where(eq(schema.pipelineEntry.contactId, contactId)),
+    db.select({ count: sql<number>`count(*)` }).from(schema.user).where(eq(schema.user.contactId, contactId)),
+  ]);
+  return {
+    participants: Number(participants[0]?.count ?? 0),
+    taskAssignments: Number(taskAssignments[0]?.count ?? 0),
+    pipelineEntries: Number(pipelineEntries[0]?.count ?? 0),
+    userAccounts: Number(userAccounts[0]?.count ?? 0),
+  };
+}
+
+/** DEC-758: only reachable once countContactReferences is all-zero (checked
+ * by the route) — the contact itself carries no separate segment-
+ * membership/label rows (segments are rule-evaluated at query time over
+ * customFieldsJson, DEC-149/DEC-336; labels are that same JSON column), so
+ * deleting the contact row is the whole cascade. */
+export async function deleteContact(db: Db, contactId: string): Promise<void> {
+  await db.delete(schema.contact).where(eq(schema.contact.id, contactId));
 }
 
 export interface ContactListResult {

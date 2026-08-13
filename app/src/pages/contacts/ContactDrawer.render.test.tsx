@@ -5,10 +5,11 @@
 // history entry across all three history collections, and (3) the bottom
 // action bar exposes Save / Email / Add to event as real <button>s.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { ContactDrawer } from './ContactDrawer';
-import { mockApi } from '../../test-utils/mockApi';
+import { mockApi, errorEnvelope } from '../../test-utils/mockApi';
 import type { ContactDetail } from './types';
 
 const CONTACT: ContactDetail = {
@@ -113,5 +114,104 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
     expect(actionBar).not.toBeNull();
     expect(actionBar).toContainElement(emailButton);
     expect(actionBar).toContainElement(addToEventButton);
+  });
+});
+
+describe('ContactDrawer delete (DEC-758)', () => {
+  it('offers a quiet tertiary "Delete this contact" control, and confirming names the record', async () => {
+    mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
+
+    render(
+      <MemoryRouter>
+        <ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />
+      </MemoryRouter>,
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
+    await waitFor(() => {
+      expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
+    });
+
+    const deleteTrigger = within(dialog).getByRole('button', { name: 'Delete this contact' });
+    expect(deleteTrigger.tagName).toBe('BUTTON');
+    expect(deleteTrigger.className).toContain('chq-btn-tertiary');
+
+    fireEvent.click(deleteTrigger);
+
+    const confirmDialog = await screen.findByRole('dialog', { name: 'Delete this contact' });
+    expect(within(confirmDialog).getByText('Delete Priya Raman? This cannot be undone.')).toBeInTheDocument();
+    expect(within(confirmDialog).getByRole('button', { name: 'Delete' })).toBeInTheDocument();
+    expect(within(confirmDialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+  });
+
+  it('closes the drawer and refetches on a successful delete', async () => {
+    const onSaved = vi.fn();
+    mockApi({
+      'GET /api/v1/contacts/ct1': CONTACT,
+      // mockApi's Response constructor can't carry a 204 + body (per the
+      // Fetch spec) -- 200 exercises the same res.ok success path apiDelete
+      // reads (the route itself returns a real, bodyless 204).
+      'DELETE /api/v1/contacts/ct1': { status: 200, body: { ok: true } },
+    });
+
+    render(
+      <MemoryRouter>
+        <ContactDrawer contactId="ct1" onClose={() => {}} onSaved={onSaved} onContactChanged={() => {}} />
+      </MemoryRouter>,
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
+    await waitFor(() => expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument());
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete this contact' }));
+    const confirmDialog = await screen.findByRole('dialog', { name: 'Delete this contact' });
+    fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
+  });
+
+  it('on a 409, shows the server message with a Duplicates-tab link and keeps the drawer open', async () => {
+    const onSaved = vi.fn();
+    mockApi({
+      'GET /api/v1/contacts/ct1': CONTACT,
+      'DELETE /api/v1/contacts/ct1': {
+        status: 409,
+        body: errorEnvelope('conflict', 'This contact is on 3 submissions and 1 task. Merge it into another record instead of deleting it.', {
+          participants: '3',
+          taskAssignments: '1',
+        }),
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <ContactDrawer contactId="ct1" onClose={() => {}} onSaved={onSaved} onContactChanged={() => {}} />
+      </MemoryRouter>,
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
+    await waitFor(() => expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument());
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete this contact' }));
+    const confirmDialog = await screen.findByRole('dialog', { name: 'Delete this contact' });
+    fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => {
+      expect(
+        within(confirmDialog).getByText(
+          'This contact is on 3 submissions and 1 task. Merge it into another record instead of deleting it.',
+        ),
+      ).toBeInTheDocument();
+    });
+    expect(within(confirmDialog).getByRole('link', { name: 'Go to the Duplicates tab' })).toHaveAttribute(
+      'href',
+      '/contacts?tab=duplicates',
+    );
+
+    // Neither onSaved (which would close+refetch) nor the confirm dialog's
+    // own dismissal fired -- the drawer and its confirm step stay open.
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'Contact detail' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Delete this contact' })).toBeInTheDocument();
   });
 });
