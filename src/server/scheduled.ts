@@ -13,8 +13,28 @@ export async function handleScheduled(
   _ctx: ExecutionContext,
 ): Promise<void> {
   console.log("scheduled trigger fired", controller.cron);
+  // DEC-812: each job runs in its own try/catch so one job's failure can
+  // never cancel the other — the tick still fails loudly at the end by
+  // rethrowing an aggregate error naming every job that failed.
+  const failures: string[] = [];
+
   // Reminders first: a sync failure must not cost anyone their reminder.
-  await runDueReminders(env);
+  try {
+    await runDueReminders(env);
+  } catch (err) {
+    console.error("scheduled job failed: runDueReminders", err);
+    failures.push("runDueReminders");
+  }
+
   // One-way Airtable push (no-op unless AIRTABLE_* secrets are configured).
-  await runAirtableSync(env, makeDb(env));
+  try {
+    await runAirtableSync(env, makeDb(env));
+  } catch (err) {
+    console.error("scheduled job failed: runAirtableSync", err);
+    failures.push("runAirtableSync");
+  }
+
+  if (failures.length > 0) {
+    throw new Error(`scheduled tick: job(s) failed: ${failures.join(", ")}`);
+  }
 }

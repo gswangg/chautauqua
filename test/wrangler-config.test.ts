@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 import { ensureDevVars } from '../scripts/ensure-dev-vars';
+import { resolveBaseUrlForCron } from '../src/server/origin';
 
 function stripJsonComments(text: string): string {
   // Strips // line comments outside of string literals. Mirrors the
@@ -49,6 +50,24 @@ describe('wrangler.jsonc DEV_MODE safety (DEC-183)', () => {
     if (config.vars !== undefined) {
       expect(config.vars.DEV_MODE).toBeUndefined();
     }
+  });
+});
+
+// DEC-812/DEC-252: a scheduled (cron) trigger has no incoming request to
+// sniff an origin from, so the deployable config must pin PUBLIC_BASE_URL
+// or every tick throws before it can run either job.
+describe('wrangler.jsonc PUBLIC_BASE_URL (DEC-812)', () => {
+  it('sets vars.PUBLIC_BASE_URL', () => {
+    const raw = readFileSync(resolve(__dirname, '../wrangler.jsonc'), 'utf-8');
+    const config = JSON.parse(stripJsonComments(raw));
+    expect(config.vars.PUBLIC_BASE_URL).toBeTruthy();
+  });
+
+  it('resolveBaseUrlForCron resolves the configured value to its origin without throwing', () => {
+    const raw = readFileSync(resolve(__dirname, '../wrangler.jsonc'), 'utf-8');
+    const config = JSON.parse(stripJsonComments(raw));
+    expect(() => resolveBaseUrlForCron({ PUBLIC_BASE_URL: config.vars.PUBLIC_BASE_URL })).not.toThrow();
+    expect(resolveBaseUrlForCron({ PUBLIC_BASE_URL: config.vars.PUBLIC_BASE_URL })).toBe('https://chautauqua.cc');
   });
 });
 
