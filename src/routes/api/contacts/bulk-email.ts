@@ -137,7 +137,6 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
     }
 
     const { makeMailer } = await import("../../../server/context");
-    const mailer = makeMailer(c.var.db, c.env);
     // DEC-603: one id per fan-out call, shared by every recipient in this
     // loop, so the comms history tab can group the batch into one row.
     const batchId = newId();
@@ -145,6 +144,24 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
     // abort the whole send — catch per-recipient, keep going, and report the
     // partial outcome in the 200 response rather than surfacing a 500.
     const failed: { email: string; message: string }[] = [];
+
+    // DEC-547: makeMailer throws on a misconfigured environment — a
+    // config-level failure, not a per-recipient one, so construct it inside
+    // this guarded region (result.rendered is already known) so that
+    // failure reports as every recipient 'failed' in the normal 200
+    // envelope instead of 500ing.
+    let mailer;
+    try {
+      mailer = makeMailer(c.var.db, c.env);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("bulk email: mailer unavailable", message);
+      return c.json({
+        sent: 0,
+        failed: result.rendered.map((r) => ({ email: r.email, message })),
+      });
+    }
+
     for (const rendered of result.rendered) {
       const attempt = {
         to: { email: rendered.email, name: rendered.name },

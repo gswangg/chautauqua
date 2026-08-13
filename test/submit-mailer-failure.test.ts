@@ -252,4 +252,44 @@ describe("public submit: mailer failure is best-effort (DEC-237/DEC-238)", () =>
     expect((emailLogInserts[0] as any).toEmail).toBe("ada@example.com");
     expect((emailLogInserts[0] as any).provider).toBe("resend");
   });
+
+  // DEC-547 (w43-b): makeMailer(db, c.env) itself used to sit above the try
+  // that wraps mailer.send — a misconfigured environment (no RESEND_API_KEY,
+  // not DEV_MODE) throws synchronously from makeMailer, which the ABOVE test
+  // can't exercise (its mailer *is* constructed fine; only send() rejects).
+  // That construction failure must fall into the exact same best-effort path
+  // as a send() rejection: confirmation page renders, submission persists,
+  // no email_log row is written (the mailer that would have written it was
+  // never built).
+  it("still returns the confirmation page and persists the submission when makeMailer() itself throws (misconfigured env)", async () => {
+    const { db, inserts } = fakeDb(selectQueueFor());
+    const app = appWithDb(db);
+    const req = submitForm();
+
+    const res = await app.request(req, undefined, {
+      KV: fakeKv(),
+      FILES: fakeFilesBucket(),
+      // No RESEND_API_KEY and DEV_MODE unset: makeMailer throws synchronously
+      // before ever reaching mailer.send.
+      MAIL_FROM_EMAIL: "noreply@example.com",
+      MAIL_FROM_NAME: "Chautauqua",
+    } as unknown as AppEnv["Bindings"]);
+
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("Check your email.");
+
+    const submissionInserts = inserts.filter(
+      (v) => typeof v === "object" && v !== null && !Array.isArray(v) && "title" in (v as object) && "description" in (v as object),
+    );
+    expect(submissionInserts).toHaveLength(1);
+
+    // No mailer was ever constructed, so no email_log row was written at all
+    // (contrast with the send()-rejection test above, which logs a 'failed'
+    // row via ResendMailer).
+    const emailLogInserts = inserts.filter(
+      (v) => typeof v === "object" && v !== null && !Array.isArray(v) && "toEmail" in (v as object),
+    );
+    expect(emailLogInserts).toHaveLength(0);
+  });
 });

@@ -216,4 +216,33 @@ describe("POST /contacts/bulk-email — partial mailer failure (DEC-238 class 2)
     expect(result.items[0]?.recipientCount).toBe(3);
     expect(result.items[0]?.statusCounts).toEqual({ failed: 3 });
   });
+
+  // DEC-547 (w43-b): makeMailer() itself used to sit above the per-recipient
+  // try/catch, outside any guarded region — a misconfigured environment
+  // (missing RESEND_API_KEY) threw synchronously and 500'd the whole batch
+  // instead of returning the normal {sent, failed} envelope. Distinct from
+  // the per-recipient send() rejection covered above.
+  it("never 500s when makeMailer() itself throws (misconfigured env); reports every recipient 'failed'", async () => {
+    const { makeMailer } = await import("../src/server/context");
+    vi.mocked(makeMailer).mockImplementationOnce(() => {
+      throw new Error("RESEND_API_KEY is not configured");
+    });
+    mailerSendMock.mockClear();
+    const { db } = fakeDbWithInsertLog();
+    const app = buildApp(db);
+    const res = await postJson(app, "/contacts/bulk-email", {
+      contactIds: ["ct_good", "ct_bad"],
+      eventId: "ev1",
+      subject: "Hi {speaker_name}",
+      bodyText: "See you at {event_name}: {portal_link}",
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { sent: number; failed: { email: string; message: string }[] };
+    expect(body.sent).toBe(0);
+    expect(body.failed).toHaveLength(2);
+    expect(body.failed.map((f) => f.email).sort()).toEqual(["bad@example.com", "good@example.com"]);
+    for (const f of body.failed) expect(f.message).toContain("RESEND_API_KEY is not configured");
+    expect(mailerSendMock).not.toHaveBeenCalled();
+  });
 });
