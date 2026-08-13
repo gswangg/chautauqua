@@ -579,6 +579,8 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                           contactName={row.contact.name}
                           label={row.contact.participations.length > 1 ? participation.ref : undefined}
                           status={participation.inviteStatus}
+                          company={row.contact.company}
+                          hasAccount={row.contact.hasAccount}
                           onSelectStatus={(status) =>
                             setInviteStatus(row.contact.id, participation.submissionId, participation.participantId, status)
                           }
@@ -662,6 +664,8 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                       contactName={row.contact.name}
                       label={row.contact.participations.length > 1 ? participation.ref : undefined}
                       status={participation.inviteStatus}
+                      company={row.contact.company}
+                      hasAccount={row.contact.hasAccount}
                       onSelectStatus={(status) =>
                         setInviteStatus(row.contact.id, participation.submissionId, participation.participantId, status)
                       }

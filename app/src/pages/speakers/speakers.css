@@ -623,3 +623,15 @@
   text-transform: uppercase;
   color: var(--chq-muted);
 }
+
+/* Amendment (wave 48)/DEC-694: the segmented kind control's SELECTED chip is
+   its own visual (cream fill + 1px dark outline + ink text), not a spend of
+   the page-primary (olive-fill) vocabulary -- unselected stays the plain
+   .chq-btn-secondary look. */
+.chq-speakers-kind-selected {
+  font-family: inherit;
+  background: var(--chq-surface);
+  border: 1px solid var(--chq-ink);
+  color: var(--chq-ink);
+  font-weight: 700;
+}

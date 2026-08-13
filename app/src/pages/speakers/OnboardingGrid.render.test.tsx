@@ -236,7 +236,12 @@ describe('OnboardingGrid: DEC-599/DEC-694 reopen from response modal', () => {
     await waitFor(() => expect(screen.getByText('Hotel name')).toBeInTheDocument());
 
     const reopen = screen.getByRole('button', { name: 'Reopen this task' });
-    expect(screen.getByText('Reopening does not email the speaker.')).toBeInTheDocument();
+    const caption = screen.getByText('Sets it back to pending — the next reminder picks it up');
+    expect(caption).toBeInTheDocument();
+    // v6 frame: the caption sits BELOW the action inside the actions slot.
+    expect(
+      reopen.compareDocumentPosition(caption) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     fireEvent.click(reopen);
 
     await waitFor(() => {
