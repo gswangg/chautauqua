@@ -208,7 +208,10 @@ describe('EmbedsPanel', () => {
     expect(screen.queryByLabelText('Day')).not.toBeInTheDocument();
   });
 
-  it('hides the Track control for the agenda surface', async () => {
+  // DEC-851: agenda honors trackId as a real SQL predicate now (the server
+  // no longer silently ignores it), so its knob table keeps the Track
+  // control alongside Day rather than hiding it.
+  it('keeps the Track control for the agenda surface, alongside Day', async () => {
     mockEvent();
     renderPanel();
 
@@ -221,10 +224,13 @@ describe('EmbedsPanel', () => {
     await waitFor(() => {
       expect(screen.getAllByText(/embed\/devcon-2026\/agenda/).length).toBeGreaterThan(0);
     });
-    expect(screen.queryByRole('combobox', { name: 'Track' })).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Track' })).toBeInTheDocument();
     expect(screen.getByLabelText('Day')).toBeInTheDocument();
   });
 
+  // DEC-851: agenda/schedule now honor trackId too (they no longer belong to
+  // the "ignores it" group) — speakers/gallery are the surfaces whose knob
+  // table still drops trackId, so this leak check moves to one of those.
   it('never leaks a stale trackId into the URL after switching to a surface that ignores it', async () => {
     mockEvent();
     renderPanel();
@@ -238,9 +244,9 @@ describe('EmbedsPanel', () => {
       expect(screen.getAllByText(/trackId=trk-42/).length).toBeGreaterThan(0);
     });
 
-    fireEvent.change(screen.getByLabelText('Surface'), { target: { value: 'agenda' } });
+    fireEvent.change(screen.getByLabelText('Surface'), { target: { value: 'speakers' } });
     await waitFor(() => {
-      expect(screen.getAllByText(/embed\/devcon-2026\/agenda/).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/embed\/devcon-2026\/speakers/).length).toBeGreaterThan(0);
     });
     expect(screen.queryAllByText(/trackId=/).length).toBe(0);
   });

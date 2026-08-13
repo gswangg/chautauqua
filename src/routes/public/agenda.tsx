@@ -279,11 +279,13 @@ function DaySwitcher(props: {
   activeDay?: string | null;
   trackId?: string | null;
   q?: string | null;
+  format?: string | null;
 }) {
-  const { days, renderedDays, event, surface, base, activeDay, trackId, q } = props;
+  const { days, renderedDays, event, surface, base, activeDay, trackId, q, format } = props;
   if (days.length <= 1) return null;
-  // DEC-783: a day jump must not silently drop the active q/trackId filter
-  // — every out-link carries them forward alongside ?day=.
+  // DEC-783/DEC-851: a day jump must not silently drop the active
+  // q/trackId/format filter — every out-link carries them forward
+  // alongside ?day=.
   // DEC-835: the day a visitor is reading is in the URL — every pill (on
   // the default unfiltered view AND a filtered one) emits a real
   // `?day=<day>` href, never a bare `#chq-day-<day>` anchor, so the URL
@@ -291,7 +293,9 @@ function DaySwitcher(props: {
   // The `#chq-day-<day>` section id is still appended as a fragment so an
   // already-rendered day's pill scrolls in place instead of a full reload.
   const extraParams =
-    (trackId ? `&trackId=${encodeURIComponent(trackId)}` : "") + (q ? `&q=${encodeURIComponent(q)}` : "");
+    (trackId ? `&trackId=${encodeURIComponent(trackId)}` : "") +
+    (q ? `&q=${encodeURIComponent(q)}` : "") +
+    (format ? `&format=${encodeURIComponent(format)}` : "");
   return (
     <nav aria-label="Jump to day" class="chq-pub-day-switcher">
       {days.map((day) => {
@@ -309,13 +313,13 @@ function DaySwitcher(props: {
   );
 }
 
-// DEC-804: the itinerary surfaces (/agenda, /schedule) render the SAME
-// search-and-track control the sessions list already answers via ?q=/
-// ?trackId= (DEC-783 made both real server-side predicates here). No
-// format control: the agenda/schedule repo queries apply no format
-// predicate, so a chip the server ignores would be worse than none
-// (EMB-02 family). `activeDay` is carried forward as a hidden field so a
-// search or track pick never jumps the reader off the day they're on.
+// DEC-804/DEC-851: the itinerary surfaces (/agenda, /schedule) render the
+// SAME search-and-track-and-format control the sessions list already
+// answers via ?q=/?trackId=/?format= — all three are now real server-side
+// predicates on getPublicAgenda (DEC-783 covered q/trackId; DEC-851 added
+// format), so a control here is honoured, never a chip the server ignores.
+// `activeDay` is carried forward as a hidden field so a search/track/format
+// pick never jumps the reader off the day they're on.
 function ItinerarySearchForm(props: {
   event: PublicEvent;
   tracks: PublicTrack[];
@@ -323,8 +327,10 @@ function ItinerarySearchForm(props: {
   activeDay: string | null;
   q: string | null;
   basePath: string;
+  formatOptions?: string[];
+  activeFormat?: string | null;
 }) {
-  const { tracks, activeTrackId, activeDay, q, basePath } = props;
+  const { tracks, activeTrackId, activeDay, q, basePath, formatOptions, activeFormat } = props;
   return (
     <form method="get" action={basePath} role="search">
       <label>
@@ -344,6 +350,21 @@ function ItinerarySearchForm(props: {
           ))}
         </select>
       </label>
+      {formatOptions && formatOptions.length > 0 ? (
+        <label>
+          Format
+          <select name="format">
+            <option value="" selected={!activeFormat}>
+              All formats
+            </option>
+            {formatOptions.map((f) => (
+              <option value={f} selected={activeFormat === f}>
+                {f}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       {activeDay ? <input type="hidden" name="day" value={activeDay} /> : null}
       <button type="submit">Search</button>
     </form>
@@ -360,6 +381,8 @@ export function AgendaContent(props: {
   activeDay?: string | null;
   trackId?: string | null;
   q?: string | null;
+  formatOptions?: string[];
+  format?: string | null;
 }) {
   const byDay = groupByDay(props.items);
   const renderedDays = new Set(byDay.keys());
@@ -376,6 +399,8 @@ export function AgendaContent(props: {
         activeDay={props.activeDay ?? null}
         q={props.q ?? null}
         basePath={basePath}
+        formatOptions={props.formatOptions}
+        activeFormat={props.format ?? null}
       />
       {byDay.size === 0 ? (
         <p>No sessions scheduled yet.</p>
@@ -395,6 +420,7 @@ export function AgendaContent(props: {
             activeDay={props.activeDay}
             trackId={props.trackId}
             q={props.q}
+            format={props.format}
           />
           {[...renderedDays].map((day) => (
             <AgendaDay day={day} items={byDay.get(day) ?? []} event={props.event} from="agenda" base={base} />
@@ -509,6 +535,8 @@ export function ScheduleContent(props: {
   activeDay?: string | null;
   trackId?: string | null;
   q?: string | null;
+  formatOptions?: string[];
+  format?: string | null;
 }) {
   const byDay = groupByDay(props.items);
   const renderedDays = new Set(byDay.keys());
@@ -525,6 +553,8 @@ export function ScheduleContent(props: {
         activeDay={props.activeDay ?? null}
         q={props.q ?? null}
         basePath={basePath}
+        formatOptions={props.formatOptions}
+        activeFormat={props.format ?? null}
       />
       <p>
         Check sessions to build a personal itinerary. Your picks are saved in this browser and survive a reload.{" "}
@@ -567,6 +597,7 @@ export function ScheduleContent(props: {
             activeDay={props.activeDay}
             trackId={props.trackId}
             q={props.q}
+            format={props.format}
           />
           {[...renderedDays].map((day) => (
             <div id={`chq-day-${day}`}>

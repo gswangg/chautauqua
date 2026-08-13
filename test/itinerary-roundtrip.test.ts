@@ -87,6 +87,8 @@ vi.mock("../src/server/repo/public", async () => {
     // DEC-804: the agenda/schedule dispatch also loads getPublicTracks to
     // feed the search form's track <select> — stub it alongside the rest.
     getPublicTracks: vi.fn(async () => []),
+    // DEC-851: getPublicFormatOptions is now loaded alongside getPublicTracks.
+    getPublicFormatOptions: vi.fn(async () => []),
     getPublicAgenda: vi.fn(async () => ({ items: AGENDA, total: AGENDA.length })),
     // DEC-310: schedule.ics now scopes its query to the requested ids
     // rather than hydrating the whole agenda — mirror that filtering here

@@ -170,12 +170,13 @@ function buildScheduleApp(rows: typeof FULL_AGENDA_ROWS) {
       selectCall += 1;
       if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
       if (selectCall === 2) return makeChain([]); // DEC-804 getPublicTracks (search form's track <select>)
-      if (selectCall === 3) return makeChain([{ count: rows.length }]); // DEC-548 total
-      if (selectCall === 4) return makeChain(rows.length > 0 ? [{ id: "room1", name: "Alpha" }, { id: "room2", name: "Beta" }] : []); // roomRows
-      if (selectCall === 5) return makeChain(sessionRows); // hydrateSessions subRows
-      if (selectCall === 6) return makeChain([]); // trackRows
-      if (selectCall === 7) return makeChain([]); // speakerRows
-      if (selectCall === 8) return makeChain([]); // slotRows (unused by agenda grid)
+      if (selectCall === 3) return makeChain([]); // DEC-851 getPublicFormatOptions (search form's format <select>)
+      if (selectCall === 4) return makeChain([{ count: rows.length }]); // DEC-548 total
+      if (selectCall === 5) return makeChain(rows.length > 0 ? [{ id: "room1", name: "Alpha" }, { id: "room2", name: "Beta" }] : []); // roomRows
+      if (selectCall === 6) return makeChain(sessionRows); // hydrateSessions subRows
+      if (selectCall === 7) return makeChain([]); // trackRows
+      if (selectCall === 8) return makeChain([]); // speakerRows
+      if (selectCall === 9) return makeChain([]); // slotRows (unused by agenda grid)
       return makeChain([]); // formatRows
     },
     selectDistinct: () => makeChain(rows),
@@ -249,13 +250,14 @@ describe("/e/:eventSlug/schedule?trackId= (DEC-783)", () => {
         selectCall += 1;
         if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
         if (selectCall === 2) return makeChain([]); // DEC-804 getPublicTracks
-        if (selectCall === 3) return makeChain([{ count: FILTERED_ROWS.length }]); // DEC-548 total
-        if (selectCall === 4) return makeChain([{ id: "room1", name: "Alpha" }]); // roomRows
-        if (selectCall === 5) return makeChain(sessionRows); // hydrateSessions subRows
-        if (selectCall === 6) return makeChain([]); // trackRows
-        if (selectCall === 7) return makeChain([]); // speakerRows
-        if (selectCall === 8) return makeChain([]); // slotRows
-        if (selectCall === 9) return makeChain([]); // formatRows
+        if (selectCall === 3) return makeChain([]); // DEC-851 getPublicFormatOptions
+        if (selectCall === 4) return makeChain([{ count: FILTERED_ROWS.length }]); // DEC-548 total
+        if (selectCall === 5) return makeChain([{ id: "room1", name: "Alpha" }]); // roomRows
+        if (selectCall === 6) return makeChain(sessionRows); // hydrateSessions subRows
+        if (selectCall === 7) return makeChain([]); // trackRows
+        if (selectCall === 8) return makeChain([]); // speakerRows
+        if (selectCall === 9) return makeChain([]); // slotRows
+        if (selectCall === 10) return makeChain([]); // formatRows
         // getPublicScheduleDayCounts (allDays, since ?day= was passed)
         return makeChain([
           { day: "2026-08-10", count: 1 },
@@ -336,7 +338,12 @@ describe("/schedule groups rows sharing a start time under a time sub-header (DE
 // sequence as buildScheduleApp above, but with real track rows at position
 // 2 (getPublicTracks) and a `surface` switch so the same harness can mount
 // either /agenda or /embed/.../agenda.
-function buildSurfaceApp(surface: "agenda" | "schedule", rows: typeof FULL_AGENDA_ROWS, tracks: { id: string; name: string; color: string | null }[]) {
+function buildSurfaceApp(
+  surface: "agenda" | "schedule",
+  rows: typeof FULL_AGENDA_ROWS,
+  tracks: { id: string; name: string; color: string | null }[],
+  formatOptionsRow: { optionsJson: string | null }[] = [],
+) {
   let selectCall = 0;
   const sessionRows = rows.map((r) => sessionRow(r.submissionId, `Talk ${r.submissionId}`));
   const db = {
@@ -344,12 +351,13 @@ function buildSurfaceApp(surface: "agenda" | "schedule", rows: typeof FULL_AGEND
       selectCall += 1;
       if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
       if (selectCall === 2) return makeChain(tracks); // DEC-804 getPublicTracks
-      if (selectCall === 3) return makeChain([{ count: rows.length }]); // DEC-548 total
-      if (selectCall === 4) return makeChain(rows.length > 0 ? [{ id: "room1", name: "Alpha" }, { id: "room2", name: "Beta" }] : []); // roomRows
-      if (selectCall === 5) return makeChain(sessionRows); // hydrateSessions subRows
-      if (selectCall === 6) return makeChain([]); // trackRows
-      if (selectCall === 7) return makeChain([]); // speakerRows
-      if (selectCall === 8) return makeChain([]); // slotRows (unused by agenda grid)
+      if (selectCall === 3) return makeChain(formatOptionsRow); // DEC-851 getPublicFormatOptions
+      if (selectCall === 4) return makeChain([{ count: rows.length }]); // DEC-548 total
+      if (selectCall === 5) return makeChain(rows.length > 0 ? [{ id: "room1", name: "Alpha" }, { id: "room2", name: "Beta" }] : []); // roomRows
+      if (selectCall === 6) return makeChain(sessionRows); // hydrateSessions subRows
+      if (selectCall === 7) return makeChain([]); // trackRows
+      if (selectCall === 8) return makeChain([]); // speakerRows
+      if (selectCall === 9) return makeChain([]); // slotRows (unused by agenda grid)
       return makeChain([]); // formatRows
     },
     selectDistinct: () => makeChain(rows),
@@ -376,7 +384,8 @@ describe("/agenda and /schedule render the DEC-804 search-and-track form", () =>
     expect(html).toContain('<form method="get" action="/e/conf/agenda" role="search">');
     expect(html).toContain('<input type="search" name="q" value="keynote"');
     expect(html).toContain('<option value="trk-a" selected="">Track A</option>');
-    // No format control: /agenda's repo query applies no format predicate.
+    // DEC-851: no format options configured for this event -> no format
+    // <select> renders (never a control the server has nothing to offer).
     expect(html).not.toContain('name="format"');
   });
 

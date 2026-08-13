@@ -219,6 +219,8 @@ publicRoutes.get("/embed/:eventSlug/:surface{[a-z]+\\.xml}", async (c) => {
     limit: parseLimit(c.req.query("limit")),
     day: parseDay(c.req.query("day")),
     fields: parseCardFields(c.req.query("fields")),
+    format: c.req.query("format"),
+    roomId: c.req.query("roomId"),
   });
   return c.body(buildSurfaceFeedXml(event, surfaceParam, paged, new Date()), 200, {
     "Content-Type": "application/xml; charset=utf-8",
@@ -417,7 +419,15 @@ async function getSurfaceFeedPage(
     }
     case "agenda":
     case "schedule": {
-      const { items, total } = await getPublicAgenda(db, event, { day: query.day });
+      // DEC-851: trackId/q/format are SQL-level predicates on getPublicAgenda
+      // (mirrors dispatch.tsx's HTML case) — without them this .json/.xml
+      // twin silently ignored ?trackId=/?q=/?format= and returned the
+      // unfiltered agenda while the HTML page at the same query string
+      // returned the filtered one.
+      const trackId = parseTrackId(query.trackId);
+      const q = parseNameQuery(query.q);
+      const format = parseFormat(query.format);
+      const { items, total } = await getPublicAgenda(db, event, { day: query.day, trackId, q, format });
       return { items, total, page: 1, perPage: items.length };
     }
     default: {
