@@ -734,3 +734,21 @@ AND audit noStoreByDefault + any other header-stamping middleware for the same t
     (derive from format or drop); VERIFY the four identical "Place at 9:00"
     suggestions are room-distinct (add room name to the suggestion copy: "Place at
     9:00 in Room 2B" — disambiguates AND informs).
+
+60. r3-Content: worklist DEC-692 VERIFIED (keep). FIX: session detail IA rebuild
+    (unchanged); finish DEC-601 ("Unknown (unknown)" persists on SES-001 v2);
+    implement item 54 delete; PORT the Settings file-input styling to Content's
+    chq-file inputs (class present, styles absent); files-library stat + chips +
+    Download all; remove/conform Deliverables-Headshots tabs; hide Approve on
+    already-approved rows (conditional rule); worklist header copy to decision
+    framing ("N need a decision · M re-uploaded") + mock pill names; relative dates
+    in LATEST FILE.
+61. r3-Speakers: KEEP the three fixes (per-person Remind, Reopen label + caption,
+    one-line identity). FIX (carries): overdue cells to the shared control shape w/
+    mock's "OVERDUE" label; hover ring all states; footer caption; **the em-dash
+    response-binding bug (4/4 fields — completed answers exist but never render)**;
+    contain horizontal scroll to the grid wrapper; phone shell (bottom bar + 44px
+    pills + compact Remind-outstanding/Filter bar); New-task Kind labels
+    Upload/Form/Acknowledge + drop extra fields + styled date; roster phone screen;
+    remove desktop Import CSV (phone-roster only); "DUE 10 APR · REQUIRED" header
+    format.
