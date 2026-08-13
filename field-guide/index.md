@@ -25,35 +25,36 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   a DRAFT until Save; a CREATE-time expansion is a snapshot -- BACK-FILL
   every activation path.
 - FINDINGS w25-28 (DEC-937..964, compacted): a ref that EXISTS may be MERGED
-  -- read the CODE, undefined var(--chq-*) resolves TRANSPARENT, regression
-  tests assert the OUTCOME not the defect; two class families on ONE element
-  = later rule wins; a delete with no dialog is five deletes with no dialog;
-  a cron swallowing per-item failures makes the failure branch dead code; a
-  scan banning a MISSING className can't see a WRONG one -- ban the retired
-  token by name; a doc comment saying "the caller only passes rows it owns"
-  is the ownership check living outside the query -- put it in the WHERE;
-  Intl with `undefined` locale differs per reader; the scrim IS the dialog --
-  ban the ELEMENT PAIR.
-- FINDINGS w29 (DEC-965..971): mandate files list items already CLOSED --
-  read the CODE. A COUNT is not an IDENTITY: "v"+chain-length renumbers
-  survivors after a middle delete while the server's note names the stored
-  version_no. Two roots of one kind are two documents not two versions -- a
-  traversal knowing this can still be called by a caller that doesn't. A
-  class the stylesheet defines and no markup uses is the token-defect in
-  reverse -- scan BOTH directions, incl. SSR stylesheets. role="menu" with
-  only Escape is a list of buttons: outside press, roving arrows and focus
-  return ARE the menu. An irreversible send with one click is a delete with
-  no dialog. A frame's field TABLE (label/hint/required/order) is seed spec.
-- FINDINGS w30 (DEC-972..978): a mandate line verified CLOSED is a line to
-  DELETE, not re-check -- this wave's seven defects all came from the CODE,
-  and ~15 named-open items were already fixed. A per-event value passed as a
-  string LITERAL is invisible to a grep for its OUTPUT -- scan the CALL. A
-  transitive fixed point that hides by DELETING the trigger's answer is wrong
-  for any kind whose absence is a real value (an unchecked box is `false`) --
-  hide the dependent STRUCTURALLY, and fix the browser twin in the SAME
-  commit. A read gate with no write counterpart lets you delete a row you
-  cannot list; an invisible row answers 404, not 403. A speaker who DECLINED
-  still clashes if one query forgot the invite filter -- one active-participant
-  predicate, every reader. A scan proving the stylesheet is one direction of
-  two: a className with no rule fails silently in the browser. An
-  always-empty export column is a decision whose reason expired.
+  -- read the CODE, undefined var(--chq-*) resolves TRANSPARENT; two class
+  families on ONE element = later rule wins; a delete with no dialog is five
+  deletes with no dialog; a cron swallowing per-item failures makes the
+  failure branch dead code; a doc comment saying "the caller only passes
+  rows it owns" is the check living outside the query -- put it in the
+  WHERE; Intl with `undefined` locale differs per reader; the scrim IS the
+  dialog -- ban the ELEMENT PAIR.
+- FINDINGS w29-30 (DEC-965..978, compacted): mandate files list items already
+  CLOSED -- read the CODE. A COUNT is not an IDENTITY: "v"+chain-length
+  renumbers survivors after a middle delete. Two roots of one kind are two
+  documents not two versions. A class the stylesheet defines and no markup
+  uses is the token-defect in reverse -- scan BOTH directions, incl. SSR
+  stylesheets. role="menu" with only Escape is a list of buttons: outside
+  press, roving arrows and focus return ARE the menu. A per-event value
+  passed as a string LITERAL is invisible to a grep for its OUTPUT -- scan
+  the CALL. A transitive fixed point that hides by DELETING the trigger's
+  answer is wrong when the absence is a real value -- hide it STRUCTURALLY.
+  A read gate with no write counterpart lets you delete a row you cannot
+  list. A speaker who DECLINED still clashes if one query forgot the invite
+  filter. A scan proving the stylesheet is one direction of two.
+- FINDINGS w31 (DEC-979..982): ~25 mandate probes, ~4 still open -- the list
+  is a HYPOTHESIS, the code is the fact; find defects by READING. A refusal
+  that says "remove them from those tasks first" is a dead end when nothing
+  can remove one: a JOIN row (task_assignment, pipeline_entry) cascades with
+  its contact and the dialog NAMES it; only a row that would leave a document
+  orphaned may refuse. A value settable once and never editable is half a
+  feature -- and the edit needs its own write: a same-stage PATCH that calls
+  the mover forges a history row and resets the clock that history feeds. The
+  one active-participant predicate must reach the data that LEAVES the product
+  (Airtable) -- and an unordered join string re-writes an unchanged row on
+  every sync. A grid class shared by two components is a contract on CELL
+  COUNT: 8 cells in a 5-column template wrap silently, because the markup and
+  the grid live in different files and neither looks wrong alone.

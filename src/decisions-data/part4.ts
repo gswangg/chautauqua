@@ -353,3 +353,7 @@ export const DEC_975 = "DEC-904's read gate gets its write counterpart: you cann
 export const DEC_976 = "The app's CSS contract gains its second direction: a chq-* class in the SPA's markup must have a rule";
 export const DEC_977 = "A contact's Labels export the way they render — the empty tags column is retired";
 export const DEC_978 = "The event switcher is an organiser control: it fetches nothing and renders nothing for a reviewer";
+export const DEC_979 = "A task assignment and a pipeline entry are JOIN rows, not documents: contact delete cascades them (and the dialog names the cascade); only rows that would lose a document keep refusing";
+export const DEC_980 = "A stage move and a fit edit are different writes: stage is optional on PATCH /pipeline/:id, a same-stage PATCH is never a move, and the card can edit fit after enrolment";
+export const DEC_981 = "The one active-participant predicate reaches the data that LEAVES the product, and every participant reader is enumerated by a scan rather than spot-checked";
+export const DEC_982 = "A shared row-grid class is a contract on CELL COUNT: the saved-embed row owns its own grid";
