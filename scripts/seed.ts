@@ -17,7 +17,8 @@ import { fileURLToPath } from "node:url";
 import { getTableName, isTable } from "drizzle-orm";
 
 import { hashPassword } from "../src/auth/password";
-import { MERGE_FIELDS } from "../src/mail/render";
+import { MERGE_FIELDS, renderTemplate } from "../src/mail/render";
+import { formatCalendarDate } from "../src/lib/event-time";
 import { DEFAULT_ONBOARDING_TASKS, FORM_TASK_FIELD_SPECS } from "../src/domain/acceptance";
 import type { FormTaskFieldKind } from "../src/domain/acceptance";
 import { SESSION_FORMAT_FIELD_ID } from "../src/forms/types";
@@ -762,7 +763,13 @@ async function main(): Promise<void> {
   // Per-track submission id lists (for evaluation-plan assignment) and the
   // set of accepted submissions (for scheduling/onboarding/email seeding).
   const submissionsByTrackIndex: string[][] = fixture.event.tracks.map(() => []);
-  const acceptedSubmissions: { submissionId: string; contactId: string; email: string }[] = [];
+  const acceptedSubmissions: {
+    submissionId: string;
+    contactId: string;
+    email: string;
+    title: string;
+    speakerName: string;
+  }[] = [];
 
   function insertSubmissionWithSpeaker(opts: {
     title: string;
@@ -859,7 +866,13 @@ async function main(): Promise<void> {
 
     submissionsByTrackIndex[opts.trackIndex]!.push(submissionId);
     if (isAccepted) {
-      acceptedSubmissions.push({ submissionId, contactId: opts.contactId, email: opts.email });
+      acceptedSubmissions.push({
+        submissionId,
+        contactId: opts.contactId,
+        email: opts.email,
+        title: opts.title,
+        speakerName: `${opts.firstName} ${opts.lastName}`.trim(),
+      });
     }
     return submissionId;
   }
@@ -921,7 +934,7 @@ async function main(): Promise<void> {
   const bumpToAccepted = new Set([0, 1, 2]);
   const statuses = baseStatuses.map((s, i) => (bumpToAccepted.has(i) ? "accepted" : s));
   // Captured for the DEC-739 comms fan-out batch below.
-  const synthContacts: { contactId: string; email: string }[] = [];
+  const synthContacts: { contactId: string; email: string; speakerName: string }[] = [];
   for (let i = 0; i < additionalCount; i++) {
     const { first, last } = synthName(i);
     const email = `${first.toLowerCase()}.${last.toLowerCase().replace(/[^a-z]/g, "")}@example-speakers.test`;
@@ -968,7 +981,7 @@ async function main(): Promise<void> {
       titleAtTime: "Software Engineer",
       orgAtTime: company,
     });
-    synthContacts.push({ contactId, email });
+    synthContacts.push({ contactId, email, speakerName: `${first} ${last}`.trim() });
   }
 
   // --- contact Labels (task w2-c/DEC-739): custom_fields_json drives the
@@ -1933,9 +1946,26 @@ async function main(): Promise<void> {
   });
   const contentReminderTemplateId = additionalTemplateIds[2]!; // "Content Reminder"
 
-  // --- email log (dev sink history, DEC-006): a few 'sent' acceptance
-  // notifications so Comms history renders with real rows.
+  // DEC-796: a plausible dev portal link — the actual claim-token/portal
+  // resolution (resolvePortalLink) needs a live KV + account lookup neither
+  // of which exist at seed time, so the seed renders a fixed, readable
+  // placeholder URL rather than a real one. Never a raw '{portal_link}'
+  // token — this is history text, not a template.
+  const SEED_PORTAL_LINK = "http://localhost:8787/portal";
+
+  // --- email log (dev sink history, DEC-006/DEC-796): a few 'sent'
+  // acceptance notifications so Comms history renders with real rows. Each
+  // row renders the ACTUAL text that would have been sent to that
+  // recipient (their own speaker name + talk title), never the raw
+  // '{merge_field}' template text — a seeded history row is a record of
+  // what was sent, not the template it was sent from.
   acceptedSubmissions.slice(0, 3).forEach((acc, i) => {
+    const vars = {
+      speaker_name: acc.speakerName,
+      talk_title: acc.title,
+      event_name: fixture.event.name,
+      portal_link: SEED_PORTAL_LINK,
+    };
     statements.push(
       insertStmt("email_log", {
         id: seedId("email_log", i + 1),
@@ -1943,8 +1973,8 @@ async function main(): Promise<void> {
         template_id: emailTemplateId,
         contact_id: acc.contactId,
         to_email: acc.email,
-        subject: fixture.communications.acceptance_subject,
-        body_text: fixture.communications.acceptance_body,
+        subject: renderTemplate(fixture.communications.acceptance_subject, vars),
+        body_text: renderTemplate(fixture.communications.acceptance_body, vars),
         body_html: null,
         ics_text: null,
         ics_filename: null,
@@ -1962,9 +1992,9 @@ async function main(): Promise<void> {
   // every accepted-submission contact plus as many synthetic contacts as
   // needed, deduped by contact id.
   const emailBatchId = seedId("email_batch", 1);
-  const batchRecipientMap = new Map<string, { contactId: string; email: string }>();
+  const batchRecipientMap = new Map<string, { contactId: string; email: string; speakerName: string }>();
   for (const acc of acceptedSubmissions) {
-    batchRecipientMap.set(acc.contactId, { contactId: acc.contactId, email: acc.email });
+    batchRecipientMap.set(acc.contactId, { contactId: acc.contactId, email: acc.email, speakerName: acc.speakerName });
   }
   for (const c of synthContacts) {
     batchRecipientMap.set(c.contactId, c);
@@ -1979,7 +2009,27 @@ async function main(): Promise<void> {
   const contentReminderTemplate = ADDITIONAL_EMAIL_TEMPLATES[2]!;
   const batchSentAt = nextTs();
   const FAILED_BATCH_INDEXES = new Set([3, 17]);
+  // DEC-796: the batch is a Content Reminder fan-out, so {task_list}/
+  // {due_date} must name real outstanding onboarding tasks — reuse the
+  // seed's own already-computed DEFAULT_ONBOARDING_TASKS titles/due dates
+  // (the two still-upcoming default tasks, index 2 and 4 of
+  // dueOffsetDaysFromSeedNow, per the DEC-591/DEC-646 block above) rather
+  // than inventing new task names, so this batch stays consistent with the
+  // task/task_assignment rows the same seed writes.
+  const UPCOMING_TASK_INDEXES = [2, 4];
+  const upcomingTaskTitles = UPCOMING_TASK_INDEXES.map((idx) => DEFAULT_ONBOARDING_TASKS[idx]!.title);
+  const nearestUpcomingDueDate = Math.min(
+    ...UPCOMING_TASK_INDEXES.map((idx) => SEED_NOW + dueOffsetDaysFromSeedNow[idx]! * DAY_MS),
+  );
+  const batchTaskList = upcomingTaskTitles.join(", ");
+  const batchDueDate = formatCalendarDate(nearestUpcomingDueDate);
   batchRecipients.forEach((r, i) => {
+    const vars = {
+      speaker_name: r.speakerName,
+      task_list: batchTaskList,
+      due_date: batchDueDate,
+      portal_link: SEED_PORTAL_LINK,
+    };
     statements.push(
       insertStmt("email_log", {
         id: seedId("email_log", 4 + i),
@@ -1988,8 +2038,8 @@ async function main(): Promise<void> {
         contact_id: r.contactId,
         batch_id: emailBatchId,
         to_email: r.email,
-        subject: contentReminderTemplate.subject,
-        body_text: contentReminderTemplate.bodyText,
+        subject: renderTemplate(contentReminderTemplate.subject, vars),
+        body_text: renderTemplate(contentReminderTemplate.bodyText, vars),
         body_html: null,
         ics_text: null,
         ics_filename: null,
