@@ -33,7 +33,7 @@ import {
   buildCsrfCookie,
   isSecureRequest,
 } from "../../auth/cookies";
-import { speakerGate, PortalLayout } from "./shared";
+import { speakerGate, PortalLayout, PortalBackLink } from "./shared";
 
 // Mounted at /portal in src/index.ts (DEC-012, declared union overlap with
 // portalRoutes / portalTasksRoutes — all three sub-apps share the
@@ -139,8 +139,8 @@ function ProfilePage(props: {
   const { profile } = props;
   return (
     <PortalLayout branding={props.branding} csrfToken={props.csrfToken} speakerName={props.speakerName}>
-      <a href="/portal" class="chq-portal-back">&larr; Back to My Submissions</a>
-      <h2 class="chq-portal-hero">My Profile</h2>
+      <PortalBackLink to="/portal" />
+      <h1 class="chq-portal-hero">My Profile</h1>
       {props.error ? <p role="alert">{props.error}</p> : null}
       {props.saved ? <p role="status">Profile saved.</p> : null}
       <p><a href="/account/password">Change password</a></p>

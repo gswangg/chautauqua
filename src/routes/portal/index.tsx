@@ -7,7 +7,7 @@
 
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
-import { speakerGate, PortalLayout } from "./shared";
+import { speakerGate, PortalLayout, PortalBackLink } from "./shared";
 import { formatCalendarDate, formatEventDate } from "../../lib/event-time";
 import { effectiveAssignmentDueDate } from "../../domain/task-due";
 import { csrfForm } from "../../server/middleware";
@@ -419,7 +419,7 @@ function SubmissionDetailPage(props: {
   return (
     <PortalLayout branding={props.branding} csrfToken={props.csrfToken} speakerName={props.speakerName}>
       <div class="chq-portal-back-row">
-        <a href="/portal/submissions" class="chq-portal-back">&larr; Back to My Submissions</a>
+        <PortalBackLink to="/portal/submissions" />
       </div>
       <div class="chq-portal-status-row">
         <span class="chq-flag chq-portal-status-badge">
@@ -477,7 +477,7 @@ function SubmissionsListPage(props: {
   const { submissions } = props;
   return (
     <PortalLayout branding={props.branding} csrfToken={props.csrfToken} speakerName={props.speakerName}>
-      <a href="/portal" class="chq-portal-back">&larr; Your portal</a>
+      <PortalBackLink to="/portal" />
       <h1 class="chq-portal-hero">Your submissions</h1>
       {submissions.length === 0 ? (
         <p>No submissions yet.</p>

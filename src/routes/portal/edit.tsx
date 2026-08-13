@@ -5,7 +5,7 @@
 
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
-import { speakerGate, PortalLayout } from "./shared";
+import { speakerGate, PortalLayout, PortalBackLink } from "./shared";
 import { csrfForm } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import {
@@ -136,7 +136,7 @@ export function EditPage(props: {
   if (!editable) {
     return (
       <PortalLayout branding={props.branding} csrfToken={csrfToken} speakerName={speakerName}>
-        <a href={`/portal/submissions/${props.submissionId}`} class="chq-portal-back">&larr; Back to submission</a>
+        <PortalBackLink to={`/portal/submissions/${props.submissionId}`} />
         <h2 class="chq-portal-hero">Editing closed</h2>
         <p role="alert">
           This submission can no longer be edited — the form's submission window has closed.
@@ -150,7 +150,7 @@ export function EditPage(props: {
   const isVisible = makeVisibilityPredicate(data.fields, answers);
   return (
     <PortalLayout branding={props.branding} csrfToken={csrfToken} speakerName={speakerName}>
-      <a href={`/portal/submissions/${props.submissionId}`} class="chq-portal-back">&larr; Back to submission</a>
+      <PortalBackLink to={`/portal/submissions/${props.submissionId}`} />
       <h2 class="chq-portal-hero">Edit submission</h2>
       <form method="post" action={`/portal/submissions/${props.submissionId}/edit`}>
         <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />

@@ -6,7 +6,7 @@
 // (task actions, resource downloads) stay in ../tasks.tsx and ./resources.tsx
 // and import these components.
 
-import { PortalLayout, type PortalBrandingChrome } from "../shared";
+import { PortalLayout, PortalBackLink, type PortalBrandingChrome } from "../shared";
 import type { DeliverableCandidate, PortalTaskAssignment } from "../../../server/repo/portal";
 import type { getMyResources } from "../../../server/repo/portal";
 import type { FormFieldRow } from "../../../server/repo/forms";
@@ -234,7 +234,7 @@ export function TaskFormPage(props: {
   const isVisible = makeVisibilityPredicate(fields, answers);
   return (
     <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={speakerName}>
-      <a href="/portal/tasks" class="chq-portal-back">&larr; Back to My Tasks</a>
+      <PortalBackLink to="/portal/tasks" />
       <h2 class="chq-portal-hero">{assignment.title}</h2>
       {assignment.description ? <p class="chq-portal-sub">{assignment.description}</p> : null}
       <form method="post" action={`/portal/tasks/${assignment.id}/form`}>
@@ -271,7 +271,7 @@ export function TasksPage(props: {
   const doneCount = assignments.filter((a) => a.status === "complete").length;
   return (
     <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={speakerName}>
-      <a href="/portal" class="chq-portal-back">&larr; Back to Dashboard</a>
+      <PortalBackLink to="/portal" />
       <h2 class="chq-portal-hero">My Tasks</h2>
       {assignments.length > 0 ? (
         <div class="chq-portal-progress">
@@ -332,7 +332,7 @@ export function ResourcesPage(props: {
   const { branding, groups, csrfToken, speakerName } = props;
   return (
     <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={speakerName}>
-      <a href="/portal" class="chq-portal-back">&larr; Back to Dashboard</a>
+      <PortalBackLink to="/portal" />
       <h2 class="chq-portal-hero">Resources</h2>
       {groups.length === 0 ? (
         <p>No resources yet.</p>
