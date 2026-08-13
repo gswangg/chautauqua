@@ -114,7 +114,7 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
     >
       {error && <div className="chq-error">{error}</div>}
 
-      <FormRow label="Title" htmlFor="new-submission-title" required>
+      <FormRow label="Title" htmlFor="new-submission-title">
         <input
           id="new-submission-title"
           className="chq-input"
@@ -124,7 +124,7 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
           required
         />
       </FormRow>
-      <FormRow label="Abstract" htmlFor="new-submission-description">
+      <FormRow label="Abstract" htmlFor="new-submission-description" optional>
         <textarea
           id="new-submission-description"
           className="chq-textarea"
@@ -152,7 +152,7 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
       )}
 
       {formatField && (
-        <FormRow label={formatField.label} htmlFor="new-submission-format">
+        <FormRow label={formatField.label} htmlFor="new-submission-format" optional>
           <select id="new-submission-format" className="chq-select" value={format} onChange={(e) => setFormat(e.target.value)}>
             <option value="">Select...</option>
             {(formatField.options ?? []).map((option) => (
@@ -164,7 +164,7 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
         </FormRow>
       )}
 
-      <FormRow label="Speaker name" htmlFor="new-submission-speaker-name">
+      <FormRow label="Speaker name" htmlFor="new-submission-speaker-name" optional>
         <input
           id="new-submission-speaker-name"
           className="chq-input"
@@ -173,7 +173,7 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
           placeholder="Jordan Alvarez"
         />
       </FormRow>
-      <FormRow label="Speaker email" htmlFor="new-submission-email" error={emailError}>
+      <FormRow label="Speaker email" htmlFor="new-submission-email" optional error={emailError}>
         <input
           id="new-submission-email"
           className="chq-input"

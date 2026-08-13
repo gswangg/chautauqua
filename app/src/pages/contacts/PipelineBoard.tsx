@@ -303,7 +303,7 @@ function DeclineReasonDialog({ entry, onCancel, onConfirm }: DeclineReasonDialog
         </>
       }
     >
-      <FormRow label="Reason" htmlFor="pipeline-decline-reason" required>
+      <FormRow label="Reason" htmlFor="pipeline-decline-reason">
         <textarea
           id="pipeline-decline-reason"
           className="chq-textarea"
@@ -458,7 +458,7 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
           ))}
         </div>
       </FormRow>
-      <FormRow label="Fit">
+      <FormRow label="Fit" optional>
         <div className="chq-segmented" role="group" aria-label="Fit">
           <button
             type="button"
@@ -481,7 +481,7 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
           ))}
         </div>
       </FormRow>
-      <FormRow label="Why them" htmlFor="pipeline-enroll-rationale">
+      <FormRow label="Why them" htmlFor="pipeline-enroll-rationale" optional>
         <input
           id="pipeline-enroll-rationale"
           type="text"

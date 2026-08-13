@@ -86,7 +86,7 @@ describe('CommsPage render smoke', () => {
     fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
 
     expect(await screen.findByText('2. Pick or edit a template')).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Template'), { target: { value: 'tpl-1' } });
+    fireEvent.change(screen.getByLabelText(/Template/), { target: { value: 'tpl-1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
 
     expect(await screen.findByText('Recipients · 1')).toBeInTheDocument();

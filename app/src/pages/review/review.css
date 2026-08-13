@@ -529,6 +529,13 @@
   font-weight: 600;
 }
 
+/* DEC-917: shared optionality grammar (no asterisks) -- same suffix
+   src/views/form-render.tsx (DEC-909) and ModalFrame's FormRow use. */
+.chq-review-criterion-optional {
+  font-weight: 400;
+  color: var(--chq-muted);
+}
+
 /* DEC-676 */
 .chq-review-criterion-guidance {
   margin: -4px 0 0;

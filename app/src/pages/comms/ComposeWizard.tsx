@@ -499,7 +499,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
           <div className="chq-section-head">
             <span className="chq-section-label">2. Pick or edit a template</span>
           </div>
-          <FormRow label="Template" htmlFor="compose-template">
+          <FormRow label="Template" htmlFor="compose-template" optional>
             <select
               id="compose-template"
               className="chq-select"

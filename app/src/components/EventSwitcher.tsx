@@ -94,7 +94,7 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
     >
       {banner && <div className="chq-error-banner">{banner}</div>}
 
-      <FormRow label="Name" htmlFor="new-event-name" required error={errors.name}>
+      <FormRow label="Name" htmlFor="new-event-name" error={errors.name}>
         <input
           id="new-event-name"
           className="chq-input"
@@ -104,7 +104,7 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
           required
         />
       </FormRow>
-      <FormRow label="Slug" htmlFor="new-event-slug" required error={errors.slug}>
+      <FormRow label="Slug" htmlFor="new-event-slug" error={errors.slug}>
         <input
           id="new-event-slug"
           className="chq-input"
@@ -118,7 +118,7 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
           DEC-897: Starts/Ends is ONE range row -- the paired geometry is
           what makes close-before-open validation legible. */}
       <FormRowPair>
-        <FormRow label="Starts" htmlFor="new-event-start" required error={errors.startDate}>
+        <FormRow label="Starts" htmlFor="new-event-start" error={errors.startDate}>
           <input
             id="new-event-start"
             className="chq-input"
@@ -129,7 +129,7 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
             required
           />
         </FormRow>
-        <FormRow label="Ends" htmlFor="new-event-end" required error={errors.endDate}>
+        <FormRow label="Ends" htmlFor="new-event-end" error={errors.endDate}>
           <input
             id="new-event-end"
             className="chq-input"
@@ -141,7 +141,7 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
           />
         </FormRow>
       </FormRowPair>
-      <FormRow label="Time zone" htmlFor="new-event-timezone" required error={errors.timezone}>
+      <FormRow label="Time zone" htmlFor="new-event-timezone" error={errors.timezone}>
         <input
           id="new-event-timezone"
           className="chq-input"
@@ -151,7 +151,7 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
           required
         />
       </FormRow>
-      <FormRow label="Venue" htmlFor="new-event-location" error={errors.location}>
+      <FormRow label="Venue" htmlFor="new-event-location" optional error={errors.location}>
         <input
           id="new-event-location"
           className="chq-input"

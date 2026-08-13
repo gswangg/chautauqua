@@ -232,7 +232,7 @@ describe('SubmissionsPage render smoke', () => {
 
     // Format select is populated from the default form's Format dropdown
     // field's own options.
-    const formatSelect = screen.getByRole('combobox', { name: 'Session format' });
+    const formatSelect = screen.getByRole('combobox', { name: /Session format/ });
     expect(formatSelect).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Talk' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Workshop' })).toBeInTheDocument();

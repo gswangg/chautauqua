@@ -384,7 +384,9 @@ export function Scorecard() {
         >
           <label className="chq-review-criterion-label">
             {criterion.label}
-            {criterion.kind === 'text' && criterion.required && ' *'}
+            {criterion.kind === 'text' && !criterion.required && (
+              <span className="chq-review-criterion-optional"> &#183; optional</span>
+            )}
           </label>
           {/* DEC-676: guidance renders under the label; nothing when absent. */}
           {criterion.guidance && <p className="chq-review-criterion-guidance">{criterion.guidance}</p>}

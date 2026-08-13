@@ -41,7 +41,11 @@ interface FormRowProps {
   /** Validation message. Rendered with role="alert" and marked with a
    * leading glyph + weight (DEC-367: never colour alone). */
   error?: string | null;
-  required?: boolean;
+  /** DEC-917: marks a row as skippable per its own submit/validate handler.
+   * Renders the identical ' · optional' suffix src/views/form-render.tsx
+   * uses (DEC-909) so the two renderers cannot drift. Required rows carry
+   * no marker at all -- no asterisks anywhere in the product. */
+  optional?: boolean;
   children: ReactNode;
 }
 
@@ -49,11 +53,12 @@ interface FormRowProps {
 // label above the control at the modal's full measure, so every field in
 // every modal lines up on the same left edge instead of the drifting
 // label-beside-input layout it replaces.
-export function FormRow({ label, htmlFor, help, error, required = false, children }: FormRowProps) {
+export function FormRow({ label, htmlFor, help, error, optional = false, children }: FormRowProps) {
   return (
     <div className="chq-form-row">
       <label className="chq-form-row-label" htmlFor={htmlFor}>
         {label}
+        {optional ? <span className="chq-form-row-optional"> &#183; optional</span> : null}
       </label>
       <div className="chq-form-row-control">{children}</div>
       {help !== undefined && <div className="chq-form-row-help">{help}</div>}
