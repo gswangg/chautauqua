@@ -138,6 +138,25 @@
   font-style: italic;
 }
 
+/* DEC-821: fit is a visible state, never blank. A rated card gets the
+   product's standard solid pill; an unrated one gets a dashed outline of
+   the same shape, so its absence reads as a deliberate state, not a
+   missing render. */
+.chq-contacts-pipeline-card-fit {
+  align-self: flex-start;
+}
+
+.chq-contacts-pipeline-card-fit-unrated {
+  background: transparent;
+  border: 1px dashed var(--chq-muted);
+  color: var(--chq-muted);
+}
+
+.chq-contacts-pipeline-card-rationale {
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
 .chq-contacts-pipeline-card-move {
   display: flex;
   flex-direction: column;

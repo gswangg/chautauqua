@@ -2,7 +2,7 @@
 // dismissals. Split out of the former monolithic src/db/schema.ts
 // (contention-hotspot decomposition; behavior-preserving).
 
-import { sqliteTable, text, index, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, index, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { id, createdAt, updatedAt } from "./common";
 
 // migrations/0005_w4_segment.sql (DEC-025, task w4-c): CRM saved-segment
@@ -35,6 +35,10 @@ export const pipelineEntry = sqliteTable(
     orgId: text("org_id").notNull(),
     contactId: text("contact_id").notNull(),
     stage: text("stage").notNull().default("identified"),
+    // DEC-821: fit score (integer 1-5) and rationale -- both nullable, set at
+    // enroll time or edited after, ranking cards WITHIN a stage column only.
+    fitScore: integer("fit_score"),
+    rationale: text("rationale"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

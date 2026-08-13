@@ -24,6 +24,10 @@ export interface PipelineEntryRow {
   stage: PipelineStage;
   createdAt: number;
   updatedAt: number;
+  // DEC-821: fit score (integer 1-5) and rationale -- both nullable, and
+  // absence is a visible 'Unrated' state, never an implied zero.
+  fitScore: number | null;
+  rationale: string | null;
 }
 
 function toEntryRow(r: typeof schema.pipelineEntry.$inferSelect): PipelineEntryRow {
@@ -34,6 +38,8 @@ function toEntryRow(r: typeof schema.pipelineEntry.$inferSelect): PipelineEntryR
     stage: r.stage as PipelineStage,
     createdAt: r.createdAt.getTime(),
     updatedAt: r.updatedAt.getTime(),
+    fitScore: r.fitScore ?? null,
+    rationale: r.rationale ?? null,
   };
 }
 
@@ -136,6 +142,9 @@ export interface PipelineListItem {
   // stage is 'declined'; null otherwise (including a declined entry whose
   // move activity somehow carries no reason — never invented).
   declineReason: string | null;
+  // DEC-821: fit score (1-5) and rationale, both nullable.
+  fitScore: number | null;
+  rationale: string | null;
 }
 
 /** Counts pipeline entries for an org (same WHERE as listPipelineForOrg),
@@ -230,6 +239,8 @@ export async function listPipelineForOrg(db: Db, orgId: string, page?: { limit: 
         updatedAt: e.updatedAt,
         stageSince: e.updatedAt,
         declineReason: e.stage === "declined" ? (declineReasonByEntryId.get(e.id) ?? null) : null,
+        fitScore: e.fitScore,
+        rationale: e.rationale,
       };
     });
 }
@@ -246,6 +257,7 @@ export async function enrollContact(
   contactId: string,
   stage: PipelineStage,
   actor: { userId: string; name: string },
+  options?: { fitScore?: number | null; rationale?: string | null },
 ): Promise<PipelineEntryRow> {
   const id = newId();
   const now = new Date();
@@ -256,6 +268,8 @@ export async function enrollContact(
       orgId,
       contactId,
       stage,
+      fitScore: options?.fitScore ?? null,
+      rationale: options?.rationale ?? null,
       createdAt: now,
       updatedAt: now,
     })
@@ -309,6 +323,25 @@ export async function moveEntry(
   });
   const updated = await findEntryById(db, entry.id);
   if (!updated) throw new Error(`pipeline_entry ${entry.id} not found after update`);
+  return updated;
+}
+
+/** Updates an entry's fit score and/or rationale (DEC-821). Does not touch
+ * stage, updatedAt, or write an activity row -- fit is orthogonal to the
+ * stage-move history that pipeline_activity records. */
+export async function updateEntryFit(
+  db: Db,
+  entryId: string,
+  fit: { fitScore?: number | null; rationale?: string | null },
+): Promise<PipelineEntryRow> {
+  const patch: Partial<typeof schema.pipelineEntry.$inferInsert> = {};
+  if ("fitScore" in fit) patch.fitScore = fit.fitScore ?? null;
+  if ("rationale" in fit) patch.rationale = fit.rationale ?? null;
+  if (Object.keys(patch).length > 0) {
+    await db.update(schema.pipelineEntry).set(patch).where(eq(schema.pipelineEntry.id, entryId));
+  }
+  const updated = await findEntryById(db, entryId);
+  if (!updated) throw new Error(`pipeline_entry ${entryId} not found after fit update`);
   return updated;
 }
 

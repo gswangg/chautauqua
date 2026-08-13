@@ -42,6 +42,8 @@ const ENTRY_IDENTIFIED = {
   updatedAt: 1000,
   stageSince: 1000,
   declineReason: null,
+  fitScore: null,
+  rationale: null,
 };
 
 const ENTRY_CONTACTED = {
@@ -55,6 +57,8 @@ const ENTRY_CONTACTED = {
   updatedAt: 2000,
   stageSince: 2000,
   declineReason: null,
+  fitScore: 4,
+  rationale: 'Keynoted a similar event last year',
 };
 
 describe('PipelineBoard render smoke (CRM-07/08)', () => {
@@ -361,6 +365,61 @@ describe('PipelineBoard: card age + decline reason (DEC-803)', () => {
     const patchBody = JSON.parse(String((patchCall![1] as RequestInit).body));
     expect(patchBody).toMatchObject({ stage: 'declined', reason: 'Went with another speaker' });
     expect(screen.queryByRole('dialog', { name: 'Decline this contact?' })).not.toBeInTheDocument();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+});
+
+// DEC-821: fit is a visible state, never blank -- a null score renders a
+// dashed 'Unrated' affordance rather than nothing, and a rated card renders
+// its "Fit N" pill plus rationale. Fit orders cards WITHIN a stage only.
+describe('PipelineBoard: fit score + rationale (DEC-821)', () => {
+  it('renders the Unrated affordance for a null fit score, never blank', async () => {
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+    });
+
+    render(<PipelineBoard />);
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+
+    const identifiedColumn = document.querySelector('[data-stage="identified"]') as HTMLElement;
+    expect(within(identifiedColumn).getByText('Unrated')).toBeInTheDocument();
+    expect(identifiedColumn.querySelector('.chq-contacts-pipeline-card-fit-unrated')).not.toBeNull();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('renders a Fit N pill and the rationale for a rated card', async () => {
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_CONTACTED]),
+    });
+
+    render(<PipelineBoard />);
+    await waitFor(() => within(desktopBoard()).getByText('Grace Hopper'));
+
+    const contactedColumn = document.querySelector('[data-stage="contacted"]') as HTMLElement;
+    expect(within(contactedColumn).getByText('Fit 4')).toBeInTheDocument();
+    expect(within(contactedColumn).getByText('Keynoted a similar event last year')).toBeInTheDocument();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('orders cards within a stage by fit descending, unrated last', async () => {
+    const rated2 = { ...ENTRY_IDENTIFIED, id: 'entry-r2', firstName: 'Zed', lastName: 'Two', fitScore: 2 };
+    const rated5 = { ...ENTRY_IDENTIFIED, id: 'entry-r5', firstName: 'Amy', lastName: 'Five', fitScore: 5 };
+    const unrated = { ...ENTRY_IDENTIFIED, id: 'entry-unrated', firstName: 'Bea', lastName: 'None', fitScore: null };
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([rated2, unrated, rated5]),
+    });
+
+    render(<PipelineBoard />);
+    await waitFor(() => within(desktopBoard()).getByText('Amy Five'));
+
+    const identifiedColumn = document.querySelector('[data-stage="identified"]') as HTMLElement;
+    const names = Array.from(identifiedColumn.querySelectorAll('.chq-contacts-pipeline-card-name')).map(
+      (el) => el.textContent,
+    );
+    expect(names).toEqual(['Amy Five', 'Zed Two', 'Bea None']);
+
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 });
