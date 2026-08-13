@@ -29,7 +29,9 @@ const PROFILE_NO_HEADSHOT: ContactProfile = { ...PROFILE_WITH_HEADSHOT, headshot
 // to exercise a successful upload must be real bytes a RIFF/VP8X reader can
 // parse — a minimal extended-format (VP8X) container well under the
 // MAX_HEADSHOT_EDGE_PX gate.
-function minimalWebpBytes(width = 100, height = 100): Uint8Array {
+// Return type is the narrow ArrayBuffer-backed view (not Uint8Array<ArrayBufferLike>)
+// so the bytes are assignable to BlobPart in `new File([...])`.
+function minimalWebpBytes(width = 100, height = 100): Uint8Array<ArrayBuffer> {
   const u32le = (n: number) => [n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, (n >>> 24) & 0xff];
   const u24le = (n: number) => [n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff];
   const payload = [0, 0, 0, 0, ...u24le(width - 1), ...u24le(height - 1)];
