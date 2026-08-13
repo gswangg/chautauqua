@@ -602,13 +602,59 @@ describe('OnboardingGrid: DEC-920 file link names the file', () => {
     });
 
     const links = screen.getAllByRole('link', { name: 'Download ada-headshot-final-v2.jpg' });
-    expect(links.length).toBeGreaterThan(0);
+    // Both the table cell (:552-563) and the card mount (:648-659) render
+    // the link, so the DEC-920 guarantee holds at both breakpoints.
+    expect(links.length).toBe(2);
     for (const link of links) {
       expect(link).toHaveAttribute('title', 'ada-headshot-final-v2.jpg');
       expect(link).toHaveAttribute('href', '/files/file-1');
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noreferrer');
       expect(link).toHaveTextContent('ada-headshot-final-v2.jpg');
     }
     expect(screen.queryByText('Has file')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Has file' })).not.toBeInTheDocument();
+    expect(screen.queryByText('File', { selector: 'a' })).not.toBeInTheDocument();
+  });
+
+  it('renders no file link when a cell has no file (fileId/fileName null)', async () => {
+    const noFileGrid: OnboardingGridResponse = {
+      tasks: [{ id: 'task-1', kind: 'file_request', title: 'Upload headshot', dueDate: null, required: true }],
+      rows: [
+        {
+          contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true, participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
+          cells: [
+            {
+              taskId: 'task-1',
+              assignmentId: 'as1',
+              status: 'pending',
+              completedAt: null,
+              fileId: null,
+              fileName: null,
+              fileSizeBytes: null,
+              lastRemindedAt: null,
+              assignedAt: 0,
+            },
+          ],
+        },
+      ],
+      total: 1,
+      page: 1,
+      perPage: 50,
+      counts: { speakers: 1, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
+    };
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: noFileGrid,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Ada Lovelace').length).toBeGreaterThan(0);
+    });
+
+    expect(screen.queryByRole('link', { name: /Download/ })).not.toBeInTheDocument();
   });
 });
