@@ -77,6 +77,37 @@ export function formatDateTime(ms: number | null | undefined): string {
   return date.toLocaleString();
 }
 
+const SHORT_MONTH_NAMES = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+/**
+ * Format a UTC-midnight epoch-ms calendar-date value as "16 Aug 2026"; '—'
+ * for null/undefined/NaN/invalid. Like formatDateOnly, this reads the
+ * timestamp in the UTC timezone (DEC-153) so the entered calendar date
+ * renders identically in every browser timezone. The day/short-month/year
+ * order is built by hand (never Intl's locale-dependent month/day
+ * ordering) so the mock's exact "16 Aug 2026" shape is guaranteed
+ * regardless of the runtime's default locale.
+ */
+export function formatDateOnlyLong(ms: number | null | undefined): string {
+  if (ms === null || ms === undefined || Number.isNaN(ms)) return '—';
+  const date = new Date(ms);
+  if (Number.isNaN(date.getTime())) return '—';
+  return `${date.getUTCDate()} ${SHORT_MONTH_NAMES[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
+}
+
 /**
  * Format a timestamp (epoch-ms or ISO-8601 string) in an explicit IANA
  * timeZone, e.g. an event's own timezone rather than the viewer's ambient

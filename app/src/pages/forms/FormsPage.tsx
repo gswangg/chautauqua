@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
-import { formatDateOnly } from '../../lib/dates';
+import { formatDateOnlyLong } from '../../lib/dates';
+import { copyText } from '../../lib/clipboard';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DelayedLoading } from '../../components/DelayedLoading';
@@ -44,6 +45,7 @@ export function FormsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState>(null);
   const [received, setReceived] = useState<ReceivedState>('loading');
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [linkCopyResult, setLinkCopyResult] = useState<{ ok: boolean; text: string } | null>(null);
   const settingsRef = useRef<FormSettingsHandle>(null);
 
   const load = useCallback(() => {
@@ -201,6 +203,15 @@ export function FormsPage() {
   }
 
   const receivedText = received === 'loading' || received === 'error' ? '—' : `${received.total} submissions`;
+  const publicLink = `${window.location.origin}/submit/${event.slug}`;
+
+  async function handleCopyPublicLink() {
+    const ok = await copyText(publicLink);
+    setLinkCopyResult({ ok, text: publicLink });
+    if (ok) {
+      window.setTimeout(() => setLinkCopyResult(null), 2000);
+    }
+  }
 
   return (
     <div className="chq-page chq-forms-page">
@@ -227,11 +238,11 @@ export function FormsPage() {
         <div className="chq-forms-strip">
           <div className="chq-forms-strip-cell">
             <span className="chq-forms-strip-label">Opens</span>
-            <span className="chq-forms-strip-value">{formatDateOnly(form.openDate)}</span>
+            <span className="chq-forms-strip-value">{formatDateOnlyLong(form.openDate)}</span>
           </div>
           <div className="chq-forms-strip-cell">
             <span className="chq-forms-strip-label">Closes</span>
-            <span className="chq-forms-strip-value">{formatDateOnly(form.closeDate)}</span>
+            <span className="chq-forms-strip-value">{formatDateOnlyLong(form.closeDate)}</span>
           </div>
           <div className="chq-forms-strip-cell">
             <span className="chq-forms-strip-label">Received</span>
@@ -259,6 +270,21 @@ export function FormsPage() {
               onDelete={handleDeleteField}
               onMove={handleMoveField}
             />
+
+            <div className="chq-forms-fields-footer">
+              <span className="chq-forms-fields-footer-label">Public link</span>
+              <span className="chq-forms-fields-footer-value">{publicLink}</span>
+              <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => void handleCopyPublicLink()}>
+                {linkCopyResult?.ok ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+            <div role="status" aria-live="polite" className="chq-copy-status">
+              {linkCopyResult
+                ? linkCopyResult.ok
+                  ? 'Copied'
+                  : 'Copy failed — select the text and copy it manually'
+                : null}
+            </div>
           </div>
         </section>
 

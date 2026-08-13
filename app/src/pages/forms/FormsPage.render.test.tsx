@@ -73,9 +73,15 @@ describe('FormsPage render smoke', () => {
 
     expect(screen.getByRole('heading', { name: 'CFP form' })).toBeInTheDocument();
 
-    // FieldList: locked marker on the built-in, condition summary on the rule field.
-    expect(screen.getByLabelText('Locked built-in field')).toBeInTheDocument();
+    // FieldList (DEC-715 row anatomy): the locked built-in gets a quiet
+    // caption/kind treatment (no LOCKED pill), and the custom field's
+    // condition summary renders as its own line.
     expect(screen.getByText('Shown when Title is "Panel"')).toBeInTheDocument();
+
+    // No up/down move buttons remain; the drag handle is the ONE reorder
+    // affordance, a real button with an accessible position label.
+    expect(screen.queryByRole('button', { name: /^Move / })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reorder Title (position 1 of 2)' })).toBeInTheDocument();
 
     // Received strip cell: a real read of the submissions total (never a
     // fabricated count), rendered "N submissions".
@@ -86,6 +92,12 @@ describe('FormsPage render smoke', () => {
     // Required/optional read as text (type), not colour (DEC-367).
     expect(screen.getAllByText('Required').length).toBeGreaterThan(0);
     expect(screen.getByText('Optional')).toBeInTheDocument();
+
+    // Fields-section footer row: "Public link · <url> · Copy" (item 51).
+    const footer = container.querySelector('.chq-forms-fields-footer');
+    expect(footer).not.toBeNull();
+    expect(within(footer as HTMLElement).getByText('http://localhost:3000/submit/devcon-2026')).toBeInTheDocument();
+    expect(within(footer as HTMLElement).getByRole('button', { name: 'Copy' })).toBeInTheDocument();
 
     // FormSettings strip.
     expect(screen.getByDisplayValue('DevCon 2026 CFP')).toBeInTheDocument();

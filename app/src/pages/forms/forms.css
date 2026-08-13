@@ -124,8 +124,9 @@
   border-bottom: 2px solid var(--chq-ink);
 }
 
-/* Field list: flat rows (DEC-650), not a table. Grid columns mirror the
-   mock's 20px/1fr/150px/108px/auto rhythm. */
+/* Field list: flat one-line rows (eval-findings item 51 / DEC-715). Grid
+   columns mirror the mock's 20px/1fr/150px/108px/auto rhythm -- no second
+   action/move row, so each row is the mock's height, not ~2.5x it. */
 .chq-forms-field-list {
   display: flex;
   flex-direction: column;
@@ -136,7 +137,7 @@
   grid-template-columns: 20px 1fr 150px 108px auto;
   gap: 16px;
   align-items: center;
-  padding: 13px 0;
+  padding: 10px 0;
   border-bottom: 1px solid var(--chq-hairline);
 }
 
@@ -144,10 +145,30 @@
   border-bottom: none;
 }
 
+/* DEC-715: the drag handle is the ONE reorder affordance on the row -- a
+   real, focusable <button> (pointer click focuses it; ArrowUp/ArrowDown
+   then call onMove), not an aria-hidden glyph or a pair of up/down
+   buttons. Chromeless so it still reads as the mock's quiet ⋮⋮ glyph. */
 .chq-forms-field-drag {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
   color: var(--chq-muted);
   font-size: 14px;
   width: 20px;
+  text-align: left;
+  cursor: grab;
+}
+
+.chq-forms-field-drag:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.chq-forms-field-drag:focus-visible {
+  outline: 2px solid var(--chq-ink);
+  outline-offset: 2px;
 }
 
 .chq-forms-field-label {
@@ -188,21 +209,6 @@
 .chq-forms-field-optional {
   font-weight: 600;
   color: var(--chq-muted);
-}
-
-.chq-forms-field-locked-tag {
-  display: inline-block;
-  margin-right: 6px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--chq-muted);
-}
-
-.chq-forms-field-move {
-  display: flex;
-  gap: 4px;
 }
 
 .chq-forms-field-actions {
@@ -264,6 +270,30 @@
   flex: 1;
 }
 
+/* Fields section footer row (mock: "Public link · <url> · Copy") --
+   quiet inline row under the field list, distinct from the boxed
+   input+button pair in the Settings panel below (FormSettings.tsx). */
+.chq-forms-fields-footer {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-top: 13px;
+  font-size: 13px;
+}
+
+.chq-forms-fields-footer-label {
+  font-weight: 700;
+}
+
+.chq-forms-fields-footer-value {
+  color: var(--chq-muted);
+  overflow-wrap: anywhere;
+}
+
+.chq-forms-fields-footer .chq-btn {
+  margin-left: auto;
+}
+
 /* Phone-only fixed footer (mock 390px frame): hidden at desktop, becomes
    the flex-shrink:0 footer of the phone shell below 700px. Second markup,
    not a text swap over the desktop header actions (DEC-390 phone-selector
@@ -318,7 +348,7 @@
   .chq-forms-field-row {
     grid-template-columns: 16px 1fr auto;
     grid-template-areas:
-      'drag label move'
+      'drag label actions'
       'drag kind actions'
       'drag required actions';
     row-gap: 6px;
@@ -330,11 +360,6 @@
 
   .chq-forms-field-label {
     grid-area: label;
-  }
-
-  .chq-forms-field-move {
-    grid-area: move;
-    align-self: start;
   }
 
   .chq-forms-field-kind {
