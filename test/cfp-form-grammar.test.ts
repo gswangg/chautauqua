@@ -95,7 +95,7 @@ function appWithDb(db: AppEnv["Variables"]["db"]) {
 }
 
 describe("GET /submit/:eventSlug form grammar (DEC-951)", () => {
-  it("carries no '*' required marker on any label or legend, one <h1>, checkbox trackIds inputs, and the shared optional suffix", async () => {
+  it("carries no '*' required marker on any label or legend, one <h1>, radio trackIds inputs, and the shared optional suffix", async () => {
     const db = fakeDb([[EVENT_ROW], [FORM_ROW], FIELD_ROWS, TRACK_ROWS]);
     const app = appWithDb(db);
 
@@ -123,10 +123,11 @@ describe("GET /submit/:eventSlug form grammar (DEC-951)", () => {
     expect(body).not.toContain("<h1>Submit a talk</h1>");
     expect(body).toContain("Already have an account?");
 
-    // (c) track inputs are type=checkbox named trackIds
-    expect(body).toContain('type="checkbox"');
+    // (c) track inputs are type=radio named trackIds (DEC-986: the public
+    // CFP picks ONE track; the edit surface keeps the checkbox group)
+    expect(body).toContain('type="radio"');
     expect(body).toContain('name="trackIds"');
-    expect(body).not.toContain('type="radio"');
+    expect(body).not.toContain('type="checkbox"');
     expect(body).toContain("<legend>Tracks</legend>");
 
     // (d) an optional field still renders the shared ' · optional' suffix

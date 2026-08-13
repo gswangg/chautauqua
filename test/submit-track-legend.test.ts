@@ -1,10 +1,13 @@
-// DEC-579: the CFP track control STAYS a multi-select checkbox group
-// posting a repeating trackIds field — the fidelity report's "make them
-// radios" is rejected because submission_track is a join table and radios
-// would truncate multi-track submissions on the next edit. The actual
-// defect was the singular "Track *" legend over a multi-select control;
-// this guards both the copy fix and that the control itself never
-// regresses to type="radio" or loses its repeating name.
+// DEC-986 (supersedes DEC-951's refusal, per the user's 2026-08-13 decision
+// in docs/eval-findings.md): the public CFP track control is now a
+// SINGLE-SELECT radio group posting exactly one member of the same
+// repeating trackIds field. The multi-track model, the submission_track
+// join, and every server validation stay untouched — the edit form
+// (src/routes/portal/edit.tsx) still holds the multi-select checkbox
+// group DEC-579 protected, because it edits an existing row that may
+// already carry several tracks. This guards the create form's markup
+// (radios, "Choose one.") and that it never regresses to a multi-select
+// checkbox group.
 // Mounts the real publicSubmitRoutes sub-app against a minimal fake db,
 // mirroring the fakeDb pattern in test/submit-draft-notice.test.ts.
 
@@ -95,8 +98,8 @@ function appWithDb(db: AppEnv["Variables"]["db"]) {
   return app;
 }
 
-describe("GET /submit/:eventSlug track fieldset (DEC-579)", () => {
-  it("renders a plural 'Tracks' legend (DEC-951: no asterisk) with a 'choose all that apply' help line, not the singular 'Track'", async () => {
+describe("GET /submit/:eventSlug track fieldset (DEC-986)", () => {
+  it("renders a plural 'Tracks' legend (no asterisk) with a 'choose one' help line", async () => {
     const db = fakeDb([[EVENT_ROW], [FORM_ROW], FIELD_ROWS, TRACK_ROWS]);
     const app = appWithDb(db);
 
@@ -107,33 +110,33 @@ describe("GET /submit/:eventSlug track fieldset (DEC-579)", () => {
     expect(body).toContain("<legend>Tracks</legend>");
     expect(body).not.toContain("Tracks *");
     expect(body).not.toContain(">Track<");
-    expect(body.toLowerCase()).toContain("choose all that apply");
+    expect(body.toLowerCase()).toContain("choose one.");
   });
 
-  it("keeps the track control a checkbox group posting a repeating trackIds field, never radios", async () => {
+  it("renders the track control as a radio group posting a single trackIds value, never checkboxes", async () => {
     const db = fakeDb([[EVENT_ROW], [FORM_ROW], FIELD_ROWS, TRACK_ROWS]);
     const app = appWithDb(db);
 
     const res = await app.request("/submit/test-conf", { headers: {} }, { KV: fakeKv() } as unknown as AppEnv["Bindings"]);
     const body = await res.text();
 
-    // Every option in the offered set renders as a checkbox named trackIds.
+    // Every option in the offered set renders as a radio named trackIds.
     const trackInputs = [...body.matchAll(/<input[^>]*name="trackIds"[^>]*>/g)];
     expect(trackInputs.length).toBe(TRACK_ROWS.length);
     for (const [tag] of trackInputs) {
-      expect(tag).toContain('type="checkbox"');
-      expect(tag).not.toContain('type="radio"');
+      expect(tag).toContain('type="radio"');
+      expect(tag).not.toContain('type="checkbox"');
     }
-    // Guard against the fidelity report's rejected fix ever landing.
-    expect(body).not.toContain('type="radio"');
+    // Guard against the retired multi-select markup ever landing again.
+    expect(body).not.toContain('name="trackIds" type="checkbox"');
   });
 
   // DEC-731 (eval-findings 70c): the page must render exactly ONE track
   // control -- a leftover custom <select> dropdown beside the built-in
-  // checkbox group would let a submitter pick a track two contradictory
+  // radio group would let a submitter pick a track two contradictory
   // ways. Guard both: no <select> anywhere carries the track options, and
   // there is exactly one fieldset offering them.
-  it("renders exactly one track control (the checkbox fieldset), never a second dropdown", async () => {
+  it("renders exactly one track control (the radio fieldset), never a second dropdown", async () => {
     const db = fakeDb([[EVENT_ROW], [FORM_ROW], FIELD_ROWS, TRACK_ROWS]);
     const app = appWithDb(db);
 
@@ -141,7 +144,7 @@ describe("GET /submit/:eventSlug track fieldset (DEC-579)", () => {
     const body = await res.text();
 
     // No <select> element anywhere on the page carries a track's name as
-    // an <option> -- the only allowed track markup is the checkbox group.
+    // an <option> -- the only allowed track markup is the radio group.
     for (const track of TRACK_ROWS) {
       const selectWithTrackOption = new RegExp(`<select[^>]*>(?:(?!</select>).)*${track.name}`, "s");
       expect(body).not.toMatch(selectWithTrackOption);
