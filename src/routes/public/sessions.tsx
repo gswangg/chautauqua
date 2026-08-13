@@ -18,7 +18,45 @@ import { type CardFields } from "./query";
 import { surfacePath } from "./shell";
 import { PublicSearchBox, PublicFilterBar } from "./filters";
 import { PUBLIC_PER_PAGE, hasMorePages } from "../../server/repo/public/bounds";
-import { countOf } from "../../domain/count-copy";
+import { countOf, plural } from "../../domain/count-copy";
+import { DEC_919 } from "../../decisions";
+
+void DEC_919;
+
+// DEC-919 (wave 44 amendment): the day rail heading spells its own count
+// ("Three days") instead of the bare noun the mock's <sc-for> placeholder
+// implied -- see docs/design/Chautauqua Public and Portal.dc.html:91. Only
+// events spanning this many days or fewer get a spelled-out word; anything
+// longer falls back to the numeral rather than growing this table forever.
+const DAY_COUNT_WORDS = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
+function dayCountWord(n: number): string {
+  return DAY_COUNT_WORDS[n] ?? String(n);
+}
+
+/** Every calendar day between event.startDate and event.endDate inclusive,
+ * as 'YYYY-MM-DD' day labels (DEC-522: these are day labels, not instants --
+ * read from UTC calendar fields only, matching formatEventDay/
+ * formatEventDayRange). Malformed startDate/endDate returns [] so callers
+ * can fail soft to whatever day set they already have, matching this
+ * codebase's fail-soft contract for organizer-entered scheduling data. */
+function eventDayList(startDate: string, endDate: string): string[] {
+  if (!startDate || !endDate) return [];
+  const [sy, sm, sd] = startDate.split("-").map(Number);
+  const [ey, em, ed] = endDate.split("-").map(Number);
+  if (!sy || !sm || !sd || !ey || !em || !ed) return [];
+  const start = Date.UTC(sy, sm - 1, sd);
+  const end = Date.UTC(ey, em - 1, ed);
+  if (end < start) return [];
+  const days: string[] = [];
+  for (let cursor = start; cursor <= end; cursor += 86400000) {
+    const d = new Date(cursor);
+    const yyyy = d.getUTCFullYear();
+    const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(d.getUTCDate()).padStart(2, "0");
+    days.push(`${yyyy}-${mm}-${dd}`);
+  }
+  return days;
+}
 
 function ScheduleRailSection(props: { event: PublicEvent }) {
   const { event } = props;
@@ -39,16 +77,26 @@ function ScheduleRailSection(props: { event: PublicEvent }) {
 
 function DayIndexRailSection(props: { event: PublicEvent; dayCounts: { day: string; count: number }[] }) {
   const { event, dayCounts } = props;
-  if (dayCounts.length === 0) return null;
+  // Frame anatomy lists EVERY day of the event, not just the days that
+  // happen to already have a session scheduled -- a day with zero sessions
+  // still reads "0 sessions" rather than vanishing from the index. Falls
+  // back to whichever days dayCounts already carries if startDate/endDate
+  // fail to parse (should not happen for a real event row).
+  const allDays = eventDayList(event.startDate, event.endDate);
+  const countByDay = new Map(dayCounts.map((d) => [d.day, d.count]));
+  const days = allDays.length > 0 ? allDays : dayCounts.map((d) => d.day);
+  if (days.length === 0) return null;
   return (
     <section class="chq-pub-rail-section">
-      <h2 class="chq-pub-rail-heading">Days</h2>
+      <h2 class="chq-pub-rail-heading">
+        {dayCountWord(days.length)} {plural(days.length, "day")}
+      </h2>
       <div class="chq-pub-rail-body">
-        {dayCounts.map((d) => (
+        {days.map((day) => (
           <div class="chq-pub-rail-day-row">
-            <a href={`/e/${event.slug}/agenda?day=${d.day}`}>{formatDay(d.day)}</a>
+            <a href={`/e/${event.slug}/agenda?day=${day}`}>{formatDay(day)}</a>
             <span class="chq-pub-rail-day-count">
-              {countOf(d.count, "session")}
+              {countOf(countByDay.get(day) ?? 0, "session")}
             </span>
           </div>
         ))}
@@ -206,9 +254,15 @@ export function SessionsContent(props: {
               />
             ) : null}
           </div>
-          <p>
-            {items.length} of {countOf(total, "session")}
-          </p>
+          {/* DEC-919 (wave 44 amendment): the count lived here AND in the
+              pager below AND in the H1's surface name -- three readers of
+              one number. The pager states it now; this row only ever
+              speaks when there is nothing to page through, so a filter
+              that matches zero sessions still says so instead of
+              rendering a silently empty list. */}
+          {items.length === 0 ? (
+            <p>{q || activeTrackId || activeFmt || activeRoom ? "No sessions match your search." : "No sessions to show yet."}</p>
+          ) : null}
           {items.map((s) => (
             <SessionCard session={s} event={event} from="sessions" fields={fields} embed={embed} itinerary={!embed} />
           ))}

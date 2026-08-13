@@ -347,7 +347,9 @@ describe("DEC-594/DEC-634 (EMB-5): sessions?day= filters by scheduled day, URL s
     const res = await app.request("/embed/conf/sessions?day=2026-08-11", {}, TEST_ENV);
     const html = await res.text();
     expect(html).not.toContain('id="chq-session-sub1"');
-    expect(html).toContain("0 of 0 sessions");
+    // DEC-919 (wave-44 amendment): no "N of M sessions" restatement — the
+    // filtered-empty result still says so honestly, just not as a count.
+    expect(html).toContain("No sessions to show yet.");
   });
 
   it("sessions emits no day param in its Show-more link, even when one was supplied", async () => {

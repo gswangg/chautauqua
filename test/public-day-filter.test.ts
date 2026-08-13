@@ -323,10 +323,15 @@ describe("/e/:eventSlug/sessions?day= (DEC-634)", () => {
     const res = await app.request(`/e/conf/sessions?day=${DAY_A}&limit=${PUBLIC_PER_PAGE}`, {}, TEST_ENV);
     expect(res.status).toBe(200);
     const html = await res.text();
-    // Only PUBLIC_PER_PAGE rendered on page 1, but the reported total is the
-    // day's full 15 — never derived from items.length.
-    expect(html).toContain(`${PUBLIC_PER_PAGE} of ${DAY_A_IDS.length} sessions`);
+    // Only PUBLIC_PER_PAGE rendered on page 1 (DEC-919 wave-44 amendment:
+    // the surface no longer restates "N of M sessions" as prose — the pager
+    // is the one place that speaks) but the day's full 15 still drives
+    // pagination rather than items.length: 'Show more' links to page 2
+    // (proving total > the rendered window) and the 13th–15th titles are
+    // NOT on page 1.
     for (let i = 0; i < PUBLIC_PER_PAGE; i++) expect(html).toContain(DAY_A_TITLES[i]);
+    for (let i = PUBLIC_PER_PAGE; i < DAY_A_IDS.length; i++) expect(html).not.toContain(DAY_A_TITLES[i]);
+    expect(html).toContain("page=2");
   });
 });
 
