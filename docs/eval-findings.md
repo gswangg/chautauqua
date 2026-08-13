@@ -94,7 +94,12 @@ column w/ ▸ Reviews): **NEW P2 — ▸ Reviews disclosure NOT plan-scoped: pla
 count mismatch); scope the disclosure query by planId** · header "Export results CSV"
 ignores current sort params (diverges from in-table Download CSV — carry sort/dir) ·
 shell fires one non-fatal 403 organizer-overview fetch after reviewer login (skip for
-non-organizers) · anonymity ratchet counts evaluations submitted BEFORE anonymization
+non-organizers) · USER: reviewer-side /review vs /review/plans/:id read as
+duplicates — the plan-scoped queue (deep-link target for scorecard back-links/
+auto-advance) never ANNOUNCES its scope; add "‹ All plans" breadcrumb + plan-name
+heading + only-this-plan framing, or collapse the route in a DEC (differentiate
+preferred: multi-plan reviewers exist; seed's single open plan is why they look
+identical) · anonymity ratchet counts evaluations submitted BEFORE anonymization
 was enabled (guard should count only under-anonymity evals) · reviewer NAMES on
 progress rows (seed reviewer contacts since landed — verify names now render) ·
 title-row summary "3 plans · 1 with evaluations in" (string absent from bundle) ·
