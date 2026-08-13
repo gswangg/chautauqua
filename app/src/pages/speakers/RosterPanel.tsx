@@ -17,10 +17,12 @@ interface NewSpeakerForm {
   title: string;
   company: string;
   bio: string;
+  sessionTitle: string;
 }
 
 const EMPTY_FORM: NewSpeakerForm = {
   firstName: '',
+  sessionTitle: '',
   lastName: '',
   email: '',
   title: '',
@@ -62,13 +64,21 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
         company: form.company || undefined,
         bio: form.bio || undefined,
         eventId,
+        // DEC-810: the server never invents a session title; adding to an
+        // event requires naming the session here.
+        sessionTitle: form.sessionTitle,
       });
       setToast(`Added ${form.firstName} ${form.lastName}.`);
       setForm(EMPTY_FORM);
       onChanged();
       onClose();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to add speaker');
+      if (err instanceof ApiError) {
+        const fieldDetail = err.fields ? Object.values(err.fields).join(' · ') : '';
+        setError(fieldDetail ? `${err.message} — ${fieldDetail}` : err.message);
+      } else {
+        setError('Failed to add speaker');
+      }
     } finally {
       setAdding(false);
     }
@@ -130,6 +140,19 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
                 value={form.lastName}
                 onChange={(e) => updateField('lastName', e.target.value)}
               />
+            </label>
+            <label className="chq-speakers-roster-field" htmlFor="roster-session-title">
+              Session title
+              <input
+                id="roster-session-title"
+                className="chq-input"
+                type="text"
+                required
+                placeholder="e.g. Scaling Kubernetes at 2am"
+                value={form.sessionTitle}
+                onChange={(e) => updateField('sessionTitle', e.target.value)}
+              />
+              <span className="chq-meta">Added as an accepted session on this event. No email is sent.</span>
             </label>
             <label className="chq-speakers-roster-field" htmlFor="roster-email">
               Email
