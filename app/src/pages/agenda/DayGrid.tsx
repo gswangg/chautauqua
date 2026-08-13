@@ -2,7 +2,7 @@ import type { DragEvent } from 'react';
 import { useEffect, useRef } from 'react';
 import type { AgendaConflict, AgendaRoom, AgendaTrack, PlacedAgendaSession } from './types';
 import { SessionCard } from './SessionCard';
-import { conflictKindLabel } from './ConflictChip';
+import { clusterConflictCaption } from './ConflictChip';
 import { assignLanes, formatMinutes, gridRowEnd, minutesToGridRow, snapToGrid, totalGridRows } from './gridMath';
 import { countOf } from '../../lib/plural';
 
@@ -123,10 +123,15 @@ export function DayGrid({
   // DEC-742/DEC-899/900: any same-room cluster of two or more sessions
   // whose times overlap merges into ONE inverted clash card instead of N
   // side-by-side lanes — computed per room column via connected-component
-  // clustering.
+  // clustering. DEC-557 amendment (wave 48): the TBD (room-less) column is
+  // excluded — a "room clash" is meaningless without a room (schedule.ts
+  // never emits room_overlap for a null roomId), so two overlapping
+  // room-less sessions must fall through to the ordinary laned SessionCard
+  // path instead of forming a card that can only mis-caption itself.
   const clashClusterSubmissionIds = new Set<string>();
   const clashClusters: PlacedAgendaSession[][] = [];
   for (const key of new Set(dayPlaced.map((s) => roomKey(s.roomId)))) {
+    if (key === TBD_COL_ID) continue;
     const items = dayPlaced.filter((s) => roomKey(s.roomId) === key);
     const clusters = computeOverlapClusters(items.map((s) => ({ id: s.submissionId, startMin: s.startMin, endMin: s.endMin })));
     for (const cluster of clusters) {
@@ -385,6 +390,17 @@ export function DayGrid({
         if (colIdx < 0) return null;
         const rowStart = Math.min(...sessions.map((s) => minutesToGridRow(s.startMin, dayStartMin, gridMin)));
         const rowEnd = Math.max(...sessions.map((s) => gridRowEnd(s.endMin, dayStartMin, gridMin)));
+        // DEC-557 amendment (wave 48): the caption is read from the server's
+        // conflict `kind`, never assumed — a same-room cluster whose
+        // members happen to share no speaker still gets the room caption
+        // (every cluster member shares the room by construction), but a
+        // cluster whose overlap doesn't correspond to any recorded conflict
+        // (can't happen for a room column, kept null-safe here anyway)
+        // renders no caption rather than a fabricated one.
+        const caption = clusterConflictCaption(
+          conflicts,
+          sessions.map((s) => s.submissionId),
+        );
         return (
           <div
             key={`clash-${sessions.map((s) => s.submissionId).join('-')}`}
@@ -419,7 +435,7 @@ export function DayGrid({
                 )}
               </button>
             ))}
-            <div className="chq-day-grid-clash-caption">{conflictKindLabel('room_overlap', sessions.length)}</div>
+            {caption !== null && <div className="chq-day-grid-clash-caption">{caption}</div>}
           </div>
         );
       })}
