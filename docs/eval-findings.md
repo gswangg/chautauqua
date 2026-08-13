@@ -19,11 +19,20 @@ reporting, page measure).
 
 ## P0 — DO FIRST, ALONE
 
-**REVIEWER ROLE LOCKED OUT (4th cycle).** The shell fetches organizer-only
-`/api/v1/events/:id/overview` for every role → 403 for reviewers → crash card with
-dead-end recovery on every /admin route. FIX: shell requests badge/overview data only
-for organizer; reviewers get a role-appropriate shell landing on their queue. One
-conditional. Verify by logging in as sbek-reviewer and reaching a scorecard.
+**REVIEWER STILL LOCKED OUT (5th cycle) — ROOT CAUSE CHANGED, old fix landed.**
+External probe (2026-08-13, snapshot e254eca): the role-conditional shell IS in —
+reviewer login works, /admin redirects to /admin/review, nav is role-appropriate,
+organizer routes show a polite guard. BUT /admin/review crashes deterministically
+(3 fresh sessions): "Cannot read properties of undefined (reading 'length')". NEW
+cause: the landing fetches every plan's queue; for closed plans
+(`GET /api/v1/review/plans/:id/queue` with `open:false`) the response OMITS the
+`recused` key (open plans include `"recused":[]`), and the landing renders
+`recused.length`. Since the reviewer's only nav link points here, it's functionally
+the same lockout. Everything downstream WORKS by direct URL (queue, scorecard,
+scoring end-to-end verified 200). FIX: make the queue endpoint always include
+`recused: []` (preferred — the omission is the bug) and add a regression test that
+asserts the closed-plan queue shape. Verify: sbek-reviewer login → /admin/review
+renders → reach a scorecard through the UI.
 
 ## Cross-cutting sweeps (each closes a class)
 
@@ -34,11 +43,13 @@ B. **customFields/Labels UI surface** (blocks Contacts): no column/drawer-row/me
    exists anywhere. Build the surface, then Contacts items below unblock.
 C. **Verify-then-close list** (commits claim these landed — external probe confirms,
    then delete the line): Comms Body-width + URL-state tabs (DEC-710) · content file
-   version delete (DEC-713) · form-builder row anatomy rebuild (DEC-715) · Review
-   landing grammar rebuild (DEC-706/707/708) · Contacts DirectoryRail two-column
-   (DEC-710/711) · assign-by-track preview/confirm · data-loss trio (comment-loss
-   across versions, headshot-upload-discards-bio, CSV bio overwrite) · stale nav
-   badges (refetch on route change/mutation).
+   version delete (DEC-713) · Contacts DirectoryRail two-column (DEC-710/711) ·
+   data-loss trio (comment-loss across versions, headshot-upload-discards-bio, CSV
+   bio overwrite) · stale nav badges (refetch on route change/mutation).
+   CLOSED by probe 2026-08-13 (snapshot e254eca): form-builder row anatomy DEC-715
+   (all 7 sub-points verified in DOM) · Review landing grammar DEC-706/707/708
+   (5 of 7 sub-points; residue moved to Review section) · assign-by-track
+   preview/confirm (inline preview panel, zero non-GET requests before confirm).
 
 ## Per-surface open items (desktop)
 
@@ -52,24 +63,36 @@ X complete").
 
 **Submissions**: detail structure — Prev/Next + "N of 47", AWAITING TRIAGE banner,
 content-approval controls OUT of decision panel (two screens), history entries under
-its header, reviews as name + computed score + comment · builder rows LITERALLY per
-mock: ONE-line rows (name + caption under, kind, REQUIRED, Edit/Delete inline right),
-NO ↑↓ arrows, ONE combined "Speaker name and email · Built in" row, "Abstract", no
-LOCKED badges, settings block out of the fields flow, "Public link · url · Copy"
-footer · save-view: share opt-in checkbox, subtitle names actual track + sort ·
+its header, reviews as name + computed score + comment · builder rows CLOSED
+(probe-verified all 7 anatomy points); residue: kind copy "Dropdown"→"Single choice",
+"Session format"→"Format", captions on format/audience rows, drop duplicate
+Public-link inside Settings, align field set to mock (Track + Accessibility needs
+missing; Job title/Company/Speaker bio extra) · builder page WIDTH still clamps
+(720px in 1372px container — sweep A) · save-view: share opt-in checkbox (static
+"Shared with every organiser" text is NOT the mock's unchecked checkbox), subtitle
+names actual state ("Pending · AI Engineering · newest first" not "a track filter."),
+"Close" text not "×", label "NAME IT" · new-submission modal: Create it/Cancel
+bottom-LEFT per mock (now bottom-right), drop extra TRACKS/SESSION FORMAT/LAST NAME
+fields, "SPEAKER EMAIL" label (not "(OPTIONAL)") ·
 DECLINE QUEUE no-wrap · "Columns: <state>" label · bulk bar → 3 actions · drop META
 section · ANSWERS = curated subset · quick-add combined name field · co-presenter
 search row layout.
 
-**Review**: landing grammar (verify DEC-706-8, then): Export results CSV + New plan on
-title row, remind as tertiary "Remind the N not started" ON the rule, merged section
-headers, NO radios (row-click select), Progress · Results · Edit links, reviewer
-NAMES, DONE / N TO GO / NOT STARTED, "3 plans · 1 with evaluations in" · plan editor
-to v4 shell: uniform label+guidance+weight rows, one "Add criterion" tertiary,
-soft-cap copy, plan-wide scale caption, remove extraneous fields (rounds decorative →
-real waves or delete; reviewer account admin out), "Start a new wave" from locked
-state + "Changing these would rescore work already done", locked rows as read-only
-text · results: ONE blended SCORE column (per-criterion detail behind ▸ Reviews).
+**Review** (landing grammar mostly CLOSED — probe-verified; remaining): reviewer
+NAMES on progress rows — code already renders `name ?? email` but seed reviewers
+have `name:null`, so SEED FIX: give reviewer.b/c/d real names · title-row summary
+"3 plans · 1 with evaluations in" (string absent from bundle) · plan rows lack mock
+subtitle ("All tracks · 3 reviews each") + "N of M" counts · remind link renders
+disabled "Remind the 0 not started" at N=0 — hide instead (affordance rule) · plan
+editor v4 shell PARTIAL (criterion rows/Add-criterion/scale caption/locked-state all
+landed): still — title-row Duplicate + Save (not page-bottom Save/Delete), remove
+legacy fields the mock omits (NAME/INSTRUCTIONS/ROUNDS/track-filter checkboxes/
+Anonymize/dropdown-kind criterion), reviewer section → "WHO REVIEWS WHAT" grammar
+(names, "6 talks", "Assign a reviewer", recusal footnote; account-admin out),
+new-plan page: Cancel/"Create the plan" on title row + "Nothing is sent to reviewers
+until you open it" + don't show "NAME IS REQUIRED." before input · results: ONE
+blended SCORE column (per-criterion detail behind ▸ Reviews) — probe confirms still
+dense multi-column.
 
 **Speakers**: overdue cells = shared control shape, ink-outlined bold caps, mock's
 "OVERDUE" label · hover ring all three states · footer caption "Click any status to
