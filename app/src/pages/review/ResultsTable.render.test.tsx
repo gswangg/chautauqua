@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { ResultsTable } from './ResultsTable';
+import { paginationSummary, ResultsTable } from './ResultsTable';
 import { errorEnvelope, listEnvelope, mockApi } from '../../test-utils/mockApi';
 
 const PLAN_ID = 'plan-results-1';
@@ -79,7 +79,7 @@ describe('ResultsTable phone-card data-label invariant (DEC-390)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('A Great Talk')).toBeInTheDocument();
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
 
     const table = document.querySelector('table.chq-review-results-table')!;
     const headerLabels = Array.from(table.querySelectorAll('thead th')).map((th) => th.textContent!.trim());
@@ -113,10 +113,110 @@ describe('ResultsTable weighted-score caption (DEC-819)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('A Great Talk')).toBeInTheDocument();
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
     expect(screen.getByText('Scores average by weight · recusals excluded')).toBeInTheDocument();
     expect(screen.queryByText(/Mean of submitted reviews/)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Weighted score/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Score/ })).toBeInTheDocument();
+  });
+});
+
+// DEC-906: results lead with RANK (the row's position in the ordering
+// currently shown, default score-descending), never sortable itself, and
+// the columns the frame drops (Ref as its own column, # Evaluations) are
+// gone -- Ref survives only as a muted prefix inside the Title cell.
+describe('ResultsTable rank-led header (DEC-906)', () => {
+  it('renders RANK / TITLE / SPEAKER / TRACK / SCORE / REVIEWS / DECISION with no Ref or # Evaluations column', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([resultsRow()]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
+
+    const table = document.querySelector('table.chq-review-results-table')!;
+    const headerLabels = Array.from(table.querySelectorAll('thead th')).map((th) => th.textContent!.trim());
+    expect(headerLabels).toEqual(['Rank', 'Title', 'Speaker', 'Track', 'Score', 'Reviews', 'Decision']);
+
+    // Rank is a plain header cell, never a sort button.
+    const rankHeader = table.querySelector('thead th')!;
+    expect(rankHeader.querySelector('button')).toBeNull();
+
+    // The ref survives as a muted prefix inside the Title cell.
+    const bodyRow = table.querySelector('tbody tr')!;
+    const titleCell = bodyRow.querySelectorAll('td')[1]!;
+    expect(titleCell.textContent).toContain('S-001');
+    expect(titleCell.textContent).toContain('A Great Talk');
+    expect(titleCell.querySelector('.chq-review-results-ref')?.textContent).toBe('S-001');
+
+    // First (and only) row on page 1 is rank 1.
+    expect(bodyRow.querySelectorAll('td')[0]!.textContent).toBe('1');
+
+    // Score prints to exactly one decimal.
+    expect(screen.getByText('4.5')).toBeInTheDocument();
+  });
+
+  it('numbers rank by position within the page, offsetting by page size on page 2', async () => {
+    const rows = Array.from({ length: 3 }, (_, i) => ({
+      ...resultsRow({ speakers: ['Ada Lovelace'], trackNames: ['Engineering'] }),
+      submissionId: `sub-${i}`,
+      ref: `S-${100 + i}`,
+      title: `Talk ${i}`,
+    }));
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const rawUrl = typeof input === 'string' ? input : input.toString();
+      const url = new URL(rawUrl, 'http://localhost');
+      if (url.pathname === `/api/v1/plans/${PLAN_ID}`) {
+        return new Response(JSON.stringify(plan()), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url.pathname === `/api/v1/plans/${PLAN_ID}/results`) {
+        const body =
+          url.searchParams.get('page') === '2'
+            ? listEnvelope([{ ...rows[0], submissionId: 'sub-page2', ref: 'S-200', title: 'Page Two Talk' }], {
+                total: 51,
+              })
+            : listEnvelope(rows, { total: 51 });
+        return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      throw new Error(`unexpected fetch: ${url.pathname}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/Talk 0/)).toBeInTheDocument();
+    const table = document.querySelector('table.chq-review-results-table')!;
+    let bodyRows = Array.from(table.querySelectorAll('tbody tr')).filter((tr) => !tr.classList.contains('chq-review-reviews-row'));
+    expect(bodyRows.map((tr) => tr.querySelectorAll('td')[0]!.textContent)).toEqual(['1', '2', '3']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(await screen.findByText(/Page Two Talk/)).toBeInTheDocument();
+    bodyRows = Array.from(table.querySelectorAll('tbody tr')).filter((tr) => !tr.classList.contains('chq-review-reviews-row'));
+    // Page 2, index 0, perPage 50 -> rank 51.
+    expect(bodyRows[0]!.querySelectorAll('td')[0]!.textContent).toBe('51');
+  });
+});
+
+describe('ResultsTable pagination summary (DEC-906)', () => {
+  it('renders the product\'s one "Showing X-Y of N" shape', () => {
+    expect(paginationSummary(1, 50, 51)).toBe('Showing 1–50 of 51');
+    expect(paginationSummary(2, 50, 51)).toBe('Showing 51–51 of 51');
+    expect(paginationSummary(1, 50, 0)).toBe('Showing 0 of 0');
   });
 });
 
@@ -141,7 +241,7 @@ describe('ResultsTable Speaker/Track columns (DEC-703)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('A Great Talk')).toBeInTheDocument();
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
 
     const table = document.querySelector('table.chq-review-results-table')!;
     const headerLabels = Array.from(table.querySelectorAll('thead th')).map((th) => th.textContent!.trim());
@@ -173,7 +273,7 @@ describe('ResultsTable inline decision (DEC-587)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('A Great Talk')).toBeInTheDocument();
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
 
     await waitFor(() => {
@@ -203,7 +303,7 @@ describe('ResultsTable inline decision (DEC-587)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('A Great Talk')).toBeInTheDocument();
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Decline' }));
 
     await waitFor(() => {
@@ -238,7 +338,7 @@ describe('ResultsTable decision truth + reviews drawer (DEC-632/DEC-633)', () =>
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('A Great Talk')).toBeInTheDocument();
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
     expect(screen.getByText('Accepted')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Accept' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Decline' })).not.toBeInTheDocument();
@@ -271,7 +371,7 @@ describe('ResultsTable decision truth + reviews drawer (DEC-632/DEC-633)', () =>
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('A Great Talk')).toBeInTheDocument();
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Reviews \(3\)/ }));
 
     expect(await screen.findByText('Strong proposal, well scoped.')).toBeInTheDocument();
@@ -282,7 +382,7 @@ describe('ResultsTable decision truth + reviews drawer (DEC-632/DEC-633)', () =>
     // DEC-723: the evaluation's own blended score, and a criterion chip
     // labelled from `criteria[].label` -- the raw criterionId never
     // appears in the DOM.
-    expect(screen.getByText('4.00')).toBeInTheDocument();
+    expect(screen.getByText('4.0')).toBeInTheDocument();
     expect(screen.getByText('Quality: 4')).toBeInTheDocument();
     expect(screen.queryByText(/c1/)).not.toBeInTheDocument();
   });
@@ -341,7 +441,7 @@ describe('ResultsTable row disclosure is plan-scoped (DEC-763)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('A Great Talk')).toBeInTheDocument();
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
     const reviewsButton = screen.getByRole('button', { name: /Reviews \(3\)/ });
     fireEvent.click(reviewsButton);
 
@@ -415,17 +515,17 @@ describe('ResultsTable sort honesty (DEC-737)', () => {
         headers: { 'content-type': 'application/json' },
       }),
     );
-    expect(await screen.findByText('A Great Talk')).toBeInTheDocument();
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
 
     // First click: sorts by Score (average), descending by default.
-    fireEvent.click(screen.getByRole('button', { name: /^Weighted score/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Score/ }));
     await waitFor(() => expect(pending.length).toBe(2));
     const firstRequestUrl = pending[1]!.url;
     expect(new URL(firstRequestUrl, 'http://localhost').searchParams.get('dir')).toBe('desc');
 
     // Second click (rapid): toggles Score to ascending -- this is now the
     // newest request.
-    fireEvent.click(screen.getByRole('button', { name: /^Weighted score/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Score/ }));
     await waitFor(() => expect(pending.length).toBe(3));
     const secondRequestUrl = pending[2]!.url;
     expect(new URL(secondRequestUrl, 'http://localhost').searchParams.get('dir')).toBe('asc');
@@ -456,8 +556,8 @@ describe('ResultsTable sort honesty (DEC-737)', () => {
     expect(screen.queryByText('S-STALE')).not.toBeInTheDocument();
 
     // The arrow reflects the direction actually sent by the newest request.
-    expect(screen.getByRole('button', { name: /^Weighted score/ }).textContent).toContain('▲');
-    const scoreHeader = screen.getByRole('button', { name: /^Weighted score/ }).closest('th')!;
+    expect(screen.getByRole('button', { name: /^Score/ }).textContent).toContain('▲');
+    const scoreHeader = screen.getByRole('button', { name: /^Score/ }).closest('th')!;
     expect(scoreHeader.getAttribute('aria-sort')).toBe('ascending');
 
     // The CSV href's dir matches the arrow.

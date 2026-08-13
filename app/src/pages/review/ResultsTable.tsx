@@ -25,20 +25,32 @@ function isDecidedStatus(status: string): status is 'accepted' | 'declined' {
 // the one blended SCORE column), so their sort variants go with them --
 // nothing in the UI can ever produce a sort key the results table doesn't
 // render a header for.
+// DEC-906: Ref and # evaluations are no longer their own columns (ref moved
+// into the Title cell as a muted prefix; # evaluations is the progress
+// panel's job), so their sort keys go with them -- only Title and Score
+// remain sortable from the header row. The leading Rank column is never
+// sortable: it is always the row's position in whatever order (default:
+// score descending) the table is currently showing.
 export type SortDirection = 'asc' | 'desc';
 
-export type ResultsSortKey =
-  | { column: 'ref' }
-  | { column: 'title' }
-  | { column: 'average' }
-  | { column: 'count' };
+export type ResultsSortKey = { column: 'title' } | { column: 'average' };
 
 // DEC-737: a ranked (numeric) column defaults to descending on first click
-// -- "best first" is what a ranked column is for. Text columns (ref/title)
+// -- "best first" is what a ranked column is for. Text columns (title)
 // keep ascending.
-const NUMERIC_COLUMNS: ResultsSortKey['column'][] = ['average', 'count'];
+const NUMERIC_COLUMNS: ResultsSortKey['column'][] = ['average'];
 
 const PER_PAGE = 50;
+
+/** DEC-906: the product's one pagination-summary shape ("Showing {start}-
+ * {end} of {total}"), matching SubmissionsTable.paginationSummary. Exported
+ * for its own unit test. */
+export function paginationSummary(page: number, perPage: number, total: number): string {
+  if (total === 0) return 'Showing 0 of 0';
+  const start = (page - 1) * perPage + 1;
+  const end = Math.min(page * perPage, total);
+  return `Showing ${start}–${end} of ${total}`;
+}
 
 function sortKeysEqual(a: ResultsSortKey, b: ResultsSortKey): boolean {
   return a.column === b.column;
@@ -258,9 +270,11 @@ export function ResultsTable({
     );
   }
 
-  // DEC-737: Ref, Title, Speaker, Track, Score, # Evaluations, Reviews,
-  // Decision -- a fixed 8 columns now that per-criterion columns are gone.
-  const columnCount = 8;
+  // DEC-906: Rank, Title, Speaker, Track, Score, Reviews, Decision -- a
+  // fixed 7 columns. Ref is a muted prefix inside the Title cell, not its
+  // own column; # Evaluations is dropped (coverage is the progress panel's
+  // job, not this table's).
+  const columnCount = 7;
   const Wrapper = embedded ? Fragment : 'div';
   const wrapperProps = embedded ? {} : { className: 'chq-page chq-review-page' };
 
@@ -330,9 +344,10 @@ export function ResultsTable({
         <table className="chq-review-results-table">
           <thead>
             <tr>
-              <th aria-sort={ariaSort({ column: 'ref' }, sort)}>
-                <SortButton label="Ref" columnKey={{ column: 'ref' }} sort={sort} onSort={handleSort} />
-              </th>
+              {/* DEC-906: Rank leads -- it is never sortable itself; it is
+                 always the row's position in whatever order (default: score
+                 descending) the table is currently showing. */}
+              <th>Rank</th>
               <th aria-sort={ariaSort({ column: 'title' }, sort)}>
                 <SortButton label="Title" columnKey={{ column: 'title' }} sort={sort} onSort={handleSort} />
               </th>
@@ -344,35 +359,40 @@ export function ResultsTable({
               {/* DEC-737: ONE blended score column -- per-criterion detail
                  moved behind the row's ▸ Reviews disclosure. */}
               <th aria-sort={ariaSort({ column: 'average' }, sort)}>
-                <SortButton label="Weighted score" columnKey={{ column: 'average' }} sort={sort} onSort={handleSort} />
-              </th>
-              <th aria-sort={ariaSort({ column: 'count' }, sort)}>
-                <SortButton label="# Evaluations" columnKey={{ column: 'count' }} sort={sort} onSort={handleSort} />
+                <SortButton label="Score" columnKey={{ column: 'average' }} sort={sort} onSort={handleSort} />
               </th>
               <th>Reviews</th>
               <th>Decision</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => {
+            {rows.map((row, index) => {
               const overlay = decisions[row.submissionId];
               const effectiveStatus: string | undefined = overlay ?? row.status;
               const decided = effectiveStatus !== undefined && isDecidedStatus(effectiveStatus);
               const evaluations = evaluationsById[row.submissionId];
               const expanded = expandedId === row.submissionId;
+              // DEC-906: rank is the row's position in the ordering
+              // currently shown (default: score descending) -- (page - 1) *
+              // perPage + index + 1, never a value the server returns.
+              const rank = (page - 1) * PER_PAGE + index + 1;
               return (
               <Fragment key={row.submissionId}>
               <tr>
-                <td data-label="Ref">{row.ref}</td>
+                <td data-label="Rank">{rank}</td>
                 <td className="chq-review-results-title" data-label="Title">
+                  {/* DEC-906: the ref isn't lost with its own column -- it
+                     prints as a muted prefix so a producer can still name the
+                     row they are deciding. */}
+                  <span className="chq-review-results-ref">{row.ref}</span>
+                  {' · '}
                   {row.title}
                 </td>
                 <td data-label="Speaker">{row.speakers.length > 0 ? row.speakers.join(', ') : '—'}</td>
                 <td data-label="Track">{row.trackNames.length > 0 ? row.trackNames.join(', ') : '—'}</td>
-                <td className="chq-review-results-score" data-label="Weighted score">
-                  {row.average.toFixed(2)}
+                <td className="chq-review-results-score" data-label="Score">
+                  {row.average.toFixed(1)}
                 </td>
-                <td data-label="# Evaluations">{row.count}</td>
                 <td data-label="Reviews">
                   <button
                     type="button"
@@ -433,7 +453,7 @@ export function ResultsTable({
                                  endpoint -- no '(anonymized)' branch. */}
                               <span className="chq-review-reviews-reviewer">{ev.reviewerName}</span>
                               <span className="chq-review-reviews-score-total">
-                                {ev.score !== null ? ev.score.toFixed(2) : '—'}
+                                {ev.score !== null ? ev.score.toFixed(1) : '—'}
                               </span>
                               <span className="chq-review-reviews-plan-round">
                                 {ev.planName} · Round {ev.round}
@@ -481,9 +501,7 @@ export function ResultsTable({
             >
               Prev
             </button>
-            <span>
-              Page {page} of {totalPages}
-            </span>
+            <span>{paginationSummary(page, PER_PAGE, total)}</span>
             <button
               type="button"
               className="chq-btn chq-btn-secondary"

@@ -192,11 +192,20 @@
   color: var(--chq-ink);
 }
 
-/* DEC-587: inline Accept/Decline on a ranked results row. */
+/* DEC-587/DEC-906: inline Accept/Decline on a ranked results row -- always
+   one line, side by side, never stacked (even in the phone-card layout
+   where the cell's own column collapses to full width). */
 .chq-review-decision-actions {
   display: flex;
+  flex-direction: row;
   gap: 9px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+}
+
+/* DEC-906: the ref prefix inside the Title cell is muted, distinguishing it
+   from the title text it precedes. */
+.chq-review-results-ref {
+  color: var(--chq-muted);
 }
 
 .chq-review-sort-button {
