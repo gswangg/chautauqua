@@ -134,7 +134,7 @@ function headings(html: string): { level: number; text: string }[] {
 const CASES: { path: string; nameIncludes: string }[] = [
   { path: "/e/conf/sessions", nameIncludes: "Sessions" },
   { path: "/e/conf/speakers", nameIncludes: "Speakers" },
-  { path: "/e/conf/gallery", nameIncludes: "Speaker gallery" },
+  { path: "/e/conf/gallery", nameIncludes: "Speakers" },
   { path: "/e/conf/agenda", nameIncludes: "Agenda" },
   { path: "/e/conf/schedule", nameIncludes: "My schedule" },
   { path: "/e/conf/sessions/s1", nameIncludes: SESSION.title },

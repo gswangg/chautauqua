@@ -9,6 +9,36 @@ import { speakerInitials } from "./cards";
 import { PublicSearchBox } from "./filters";
 import { countOf } from "../../domain/count-copy";
 
+/** DEC-990: "Speakers: one page, two views" -- List (SpeakersContent) and
+ * Grid (GalleryContent) are the same public surface now, so both render this
+ * toggle beside the search box. Reuses the PublicFilterBar pill idiom's
+ * markup shape (nav + .chq-pub-pill links, aria-current="page" on the active
+ * one) rather than adding new CSS classes -- another task owns public.css.ts
+ * this wave. `?q=` and `?limit=` (when the embed passed one) carry forward
+ * onto both destinations so switching views never drops an active search or
+ * a configured page size. */
+function SpeakerViewToggle(props: {
+  event: PublicEvent;
+  active: "speakers" | "gallery";
+  q: string | null;
+  limit?: number | null;
+  base: "/e" | "/embed";
+}) {
+  const { event, active, q, limit, base } = props;
+  const qs = [q ? `q=${encodeURIComponent(q)}` : null, limit ? `limit=${limit}` : null].filter(Boolean).join("&");
+  const hrefFor = (surface: "speakers" | "gallery") => `${surfacePath(event, surface, base)}${qs ? `?${qs}` : ""}`;
+  return (
+    <nav aria-label="Speaker view" class="chq-pub-filter-bar">
+      <a class="chq-pub-pill" href={hrefFor("speakers")} aria-current={active === "speakers" ? "page" : undefined}>
+        List
+      </a>
+      <a class="chq-pub-pill" href={hrefFor("gallery")} aria-current={active === "gallery" ? "page" : undefined}>
+        Grid
+      </a>
+    </nav>
+  );
+}
+
 /** One card, shared by the directory (SpeakersContent) and the gallery
  * (GalleryContent), per DEC-593: both surfaces carry headshot, name, job
  * title and company (participant.title_at_time/org_at_time, DEC-258) — the
@@ -90,6 +120,7 @@ export function SpeakersContent(props: {
   return (
     <>
       <h1 class="chq-pub-surface-title">Speakers</h1>
+      <SpeakerViewToggle event={event} active="speakers" q={q} limit={limit} base={base} />
       <PublicSearchBox
         action={basePath}
         q={q}
@@ -139,20 +170,27 @@ export function GalleryContent(props: {
   const carryQs = limit ? `limit=${limit}&` : "";
   return (
     <>
-      <h1 class="chq-pub-surface-title">Speaker gallery</h1>
+      <h1 class="chq-pub-surface-title">Speakers</h1>
+      <SpeakerViewToggle event={event} active="gallery" q={q} limit={limit} base={base} />
       <PublicSearchBox
         action={basePath}
         q={q}
         hidden={limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
       />
-      <p>
-        {speakers.length} of {countOf(total, "speaker")}
-      </p>
-      <div class="chq-pub-speaker-grid chq-pub-gallery-grid">
-        {speakers.map((sp) => (
-          <SpeakerCard event={event} sp={sp} surface="gallery" showSessions={false} embed={embed} />
-        ))}
-      </div>
+      {speakers.length === 0 ? (
+        <p>No speakers to show yet.</p>
+      ) : (
+        <>
+          <p>
+            {speakers.length} of {countOf(total, "speaker")}
+          </p>
+          <div class="chq-pub-speaker-grid chq-pub-gallery-grid">
+            {speakers.map((sp) => (
+              <SpeakerCard event={event} sp={sp} surface="gallery" showSessions={false} embed={embed} />
+            ))}
+          </div>
+        </>
+      )}
       {hasMore ? (
         <p>
           <a class="chq-pub-accent-link" href={`${basePath}?${q ? `q=${encodeURIComponent(q)}&` : ""}${carryQs}page=${page + 1}`}>

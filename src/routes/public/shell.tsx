@@ -18,6 +18,13 @@ export function isSurface(value: string): value is Surface {
   return (SURFACES as readonly string[]).includes(value);
 }
 
+/** DEC-990: "Speakers: one page, two views" -- the gallery is still a live
+ * surface (its own URL, its own route, and the embed builder can still pick
+ * it), it just stops being a nav destination now that /speakers offers a
+ * List/Grid toggle to reach it. NAV_SURFACES is derived from SURFACES (never
+ * hand-listed) so a future surface addition can't silently desync the two. */
+export const NAV_SURFACES = SURFACES.filter((s) => s !== "gallery");
+
 // DEC-477/DEC-487: PER_PAGE moved to src/server/repo/public/bounds.ts as
 // PUBLIC_PER_PAGE — this is the ONE home for public paging constants.
 
@@ -152,7 +159,7 @@ export function PublicShell(props: { event: PublicEvent; active: Surface; title:
             </span>
           </div>
           <nav class="chq-nav">
-            {SURFACES.map((s) => (
+            {NAV_SURFACES.map((s) => (
               <a href={surfacePath(event, s)} aria-current={s === active ? "page" : undefined}>
                 {SURFACE_LABELS[s]}
               </a>
