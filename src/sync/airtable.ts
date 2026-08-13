@@ -11,10 +11,11 @@
 // (Airtable API limit); at seed scale this is a handful of requests per tick,
 // far under the 5 rps base limit.
 
-import { eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import * as schema from "../db/schema";
 import type { Db } from "../server/context";
 import { formatRef } from "../domain/ids";
+import { ACTIVE_INVITE_STATUSES } from "../domain/acceptance";
 
 const BATCH = 10;
 const API = "https://api.airtable.com/v0";
@@ -165,6 +166,13 @@ export async function runAirtableSync(
     throw new Error(`airtable sync: submission table exceeds MAX_SYNC_ROWS (${MAX_SYNC_ROWS}) for this org`);
   }
 
+  // DEC-981/DEC-974: only ACTIVE_INVITE_STATUSES participants may be
+  // published to the customer's Airtable base as a speaker — a declined
+  // co-presenter must never appear in the Speakers cell, the same class of
+  // defect DEC-974 closed on the admin agenda. orderBy makes the joined
+  // Speakers string deterministic across runs so an unchanged submission
+  // never re-upserts with a permuted string and fires the customer's
+  // Airtable automations on a non-change.
   const parts = await db
     .select({
       submissionId: schema.participant.submissionId,
@@ -175,7 +183,13 @@ export async function runAirtableSync(
     .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
     .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
-    .where(eq(schema.event.orgId, orgId));
+    .where(
+      and(
+        eq(schema.event.orgId, orgId),
+        inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
+      ),
+    )
+    .orderBy(asc(schema.participant.order), asc(schema.contact.id));
   const speakersBySub = new Map<string, string[]>();
   for (const p of parts) {
     const list = speakersBySub.get(p.submissionId) ?? [];
