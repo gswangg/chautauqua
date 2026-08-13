@@ -36,6 +36,7 @@ import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { findDuplicateGroups, type ContactRecord } from "../src/domain/contacts";
+import { computeWeightedScore, type EvaluationCriterion } from "../src/domain/evaluation";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
@@ -597,5 +598,84 @@ describe("seed coherence (DEC-887 amendment, task w40-a): the front door is live
     expect(v1.version_no).toBe("1");
     expect(v1.submission_id).toBe(v2.submission_id);
     expect(v1.kind).toBe(v2.kind);
+  });
+});
+
+describe("seed coherence (DEC-875 wave-42 amendment): the review machinery and a real re-upload", () => {
+  it("no seeded evaluation_plan has a NULL max_evaluations (enumerated over every plan row)", () => {
+    const planRows = parseInserts(sql, "evaluation_plan");
+    expect(planRows.length).toBeGreaterThanOrEqual(2);
+    for (const plan of planRows) {
+      expect(plan.max_evaluations, `evaluation_plan ${plan.id} ('${plan.name}') has a NULL max_evaluations`).not.toBeNull();
+      expect(Number(plan.max_evaluations)).toBeGreaterThan(0);
+    }
+  });
+
+  it("plan 0003 (seed_evaluation_plan_0003) has >=2 distinct reviewer user ids via plan_reviewer", () => {
+    const planReviewerRows = parseInserts(sql, "plan_reviewer");
+    const plan3ReviewerIds = new Set(
+      planReviewerRows.filter((r) => r.plan_id === "seed_evaluation_plan_0003").map((r) => r.user_id),
+    );
+    expect(
+      plan3ReviewerIds.size,
+      `expected >=2 distinct reviewer user ids on plan 0003, found ${JSON.stringify([...plan3ReviewerIds])}`,
+    ).toBeGreaterThanOrEqual(2);
+  });
+
+  it("at least one review_recusal row exists (enumerated, not sampled)", () => {
+    const recusalRows = parseInserts(sql, "review_recusal");
+    expect(recusalRows.length).toBeGreaterThanOrEqual(1);
+    for (const r of recusalRows) {
+      expect(r.plan_id, `recusal ${r.id} has no plan_id`).toBeTruthy();
+      expect(r.submission_id, `recusal ${r.id} has no submission_id`).toBeTruthy();
+      expect(r.user_id, `recusal ${r.id} has no user_id`).toBeTruthy();
+    }
+  });
+
+  it("at least one file has version_no >= 2 with a previous_file_id that resolves to a real file row", () => {
+    const fileRows = parseInserts(sql, "file");
+    const filesById = new Map(fileRows.map((f) => [f.id!, f]));
+    const v2Plus = fileRows.filter((f) => Number(f.version_no) >= 2);
+    expect(v2Plus.length, "expected >=1 seeded file with version_no >= 2").toBeGreaterThanOrEqual(1);
+    for (const f of v2Plus) {
+      expect(f.previous_file_id, `file ${f.id} has version_no ${f.version_no} but no previous_file_id`).toBeTruthy();
+      const prev = filesById.get(f.previous_file_id!);
+      expect(prev, `file ${f.id}'s previous_file_id ${f.previous_file_id} does not resolve to a seeded file row`).toBeTruthy();
+    }
+  });
+
+  it("no two adjacent ranked averages tie in plan 1's results (enumerated over every seeded evaluation)", () => {
+    const planRows = parseInserts(sql, "evaluation_plan");
+    const plan1 = planRows.find((r) => r.id === "seed_evaluation_plan_0001")!;
+    expect(plan1).toBeTruthy();
+    const criteria = (
+      JSON.parse(plan1.criteria_json!) as Array<{ id: string; label: string; kind: string; weight?: number }>
+    ).filter((c) => c.kind === "rating" && typeof c.weight === "number") as EvaluationCriterion[];
+
+    const evaluationRows = parseInserts(sql, "evaluation").filter((r) => r.plan_id === plan1.id);
+    expect(evaluationRows.length).toBeGreaterThan(0);
+
+    const scoresBySubmission = new Map<string, number[]>();
+    for (const row of evaluationRows) {
+      const scores = JSON.parse(row.scores_json!) as Record<string, number | string>;
+      const weighted = computeWeightedScore(scores as Record<string, number>, criteria);
+      const list = scoresBySubmission.get(row.submission_id!) ?? [];
+      list.push(weighted);
+      scoresBySubmission.set(row.submission_id!, list);
+    }
+
+    const averages = [...scoresBySubmission.entries()]
+      .map(([submissionId, scores]) => ({
+        submissionId,
+        average: scores.reduce((a, b) => a + b, 0) / scores.length,
+      }))
+      .sort((a, b) => (b.average !== a.average ? b.average - a.average : (a.submissionId < b.submissionId ? -1 : 1)));
+
+    for (let i = 1; i < averages.length; i++) {
+      expect(
+        Math.abs(averages[i]!.average - averages[i - 1]!.average),
+        `adjacent ranked averages tie: ${averages[i - 1]!.submissionId} (${averages[i - 1]!.average}) and ${averages[i]!.submissionId} (${averages[i]!.average})`,
+      ).toBeGreaterThan(1e-9);
+    }
   });
 });

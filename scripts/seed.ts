@@ -1279,12 +1279,19 @@ async function main(): Promise<void> {
   // persona to track 0 and three synthetic reviewers to the other tracks
   // (with one doubled-up on track 1 for reviewer-overlap realism).
   const evalPlanId = seedId("evaluation_plan", 1);
+  // DEC-875 (wave 42 amendment): content_quality:speaker_delivery weighted
+  // 5:1 (not 2:1) so a single evaluation's weighted score (5c+d)/6 is
+  // INJECTIVE over the full 1..5 x 1..5 score grid (25 distinct values,
+  // verified by enumeration in the tie-elimination pass below) -- a 2:1
+  // weighting only yields 13 distinct sums for 25 combos, which pigeonholes
+  // the ~17 single-evaluation submissions in this plan's results into
+  // unavoidable adjacent ties no amount of nudging can separate.
   const evalCriteria = [
     {
       id: "content_quality",
       label: "Content quality & depth",
       kind: "rating",
-      weight: 2,
+      weight: 5,
       guidance: "Original insight, not a rehash of the docs.",
     },
     {
@@ -1394,10 +1401,15 @@ async function main(): Promise<void> {
     return 1 + (h % 5);
   }
   let evalCounter = 0;
-  function insertEvaluation(reviewerId: string, submissionId: string, planId: string = evalPlanId): void {
+  function insertEvaluation(
+    reviewerId: string,
+    submissionId: string,
+    planId: string = evalPlanId,
+    scoreOverride?: { content_quality: number; speaker_delivery: number },
+  ): void {
     evalCounter += 1;
-    const contentScore = hashedScore(reviewerId, submissionId, "content_quality");
-    const deliveryScore = hashedScore(reviewerId, submissionId, "speaker_delivery");
+    const contentScore = scoreOverride?.content_quality ?? hashedScore(reviewerId, submissionId, "content_quality");
+    const deliveryScore = scoreOverride?.speaker_delivery ?? hashedScore(reviewerId, submissionId, "speaker_delivery");
     const recommendation =
       RECOMMENDATION_PATTERN[(evalCounter - 1) % RECOMMENDATION_PATTERN.length]!;
     const comment = EVAL_COMMENTS[evalCounter % EVAL_COMMENTS.length]!;
@@ -1424,18 +1436,128 @@ async function main(): Promise<void> {
   const track0Subs = submissionsByTrackIndex[0]!;
   const track1Subs = submissionsByTrackIndex[1]!;
   const track2Subs = submissionsByTrackIndex[2]!;
+
+  // DEC-875 (wave 42 amendment): plan 1's weighted averages (2*content +
+  // 1*delivery)/evalCount only land on ~13 distinct values across ~17
+  // single-evaluation submissions, so hashing alone (however well spread)
+  // is pigeonholed into adjacent ties on the RANKED RESULTS table -- the
+  // one surface whose entire point is rank order. Build every plan-1
+  // (reviewer, submission) pair up front, compute the hashed scores in
+  // memory, then run a deterministic minimal-nudge pass (content/delivery
+  // +-1, clamped to the 1..5 scale) until no two submissions, sorted by
+  // average descending, are adjacent-tied -- before any row is turned into
+  // SQL. Order of insertion (and therefore evalCounter/comment/
+  // recommendation cycling) is unchanged; only the two score fields move.
+  const plan1Pairs: { reviewerId: string; submissionId: string }[] = [];
   for (let i = 0; i < Math.min(7, track0Subs.length); i++) {
-    insertEvaluation(reviewerUserId, track0Subs[i]!);
+    plan1Pairs.push({ reviewerId: reviewerUserId, submissionId: track0Subs[i]! });
   }
   for (const submissionId of track1Subs) {
-    insertEvaluation(reviewerBUserId, submissionId);
+    plan1Pairs.push({ reviewerId: reviewerBUserId, submissionId });
   }
   for (const submissionId of track2Subs) {
-    insertEvaluation(reviewerCUserId, submissionId);
+    plan1Pairs.push({ reviewerId: reviewerCUserId, submissionId });
   }
   for (const submissionId of track1Subs) {
-    insertEvaluation(reviewerDUserId, submissionId);
+    plan1Pairs.push({ reviewerId: reviewerDUserId, submissionId });
   }
+
+  const plan1Scores = plan1Pairs.map((pair) => ({
+    content_quality: hashedScore(pair.reviewerId, pair.submissionId, "content_quality"),
+    speaker_delivery: hashedScore(pair.reviewerId, pair.submissionId, "speaker_delivery"),
+  }));
+  const plan1PairIndicesBySubmission = new Map<string, number[]>();
+  plan1Pairs.forEach((pair, idx) => {
+    const list = plan1PairIndicesBySubmission.get(pair.submissionId) ?? [];
+    list.push(idx);
+    plan1PairIndicesBySubmission.set(pair.submissionId, list);
+  });
+  const PLAN1_CONTENT_WEIGHT = 5;
+  const PLAN1_DELIVERY_WEIGHT = 1;
+  const PLAN1_TOTAL_WEIGHT = PLAN1_CONTENT_WEIGHT + PLAN1_DELIVERY_WEIGHT;
+  function plan1Average(submissionId: string): number {
+    const indices = plan1PairIndicesBySubmission.get(submissionId)!;
+    const sum = indices.reduce((acc, idx) => {
+      const s = plan1Scores[idx]!;
+      return (
+        acc + (PLAN1_CONTENT_WEIGHT * s.content_quality + PLAN1_DELIVERY_WEIGHT * s.speaker_delivery) / PLAN1_TOTAL_WEIGHT
+      );
+    }, 0);
+    return sum / indices.length;
+  }
+  {
+    // With PLAN1_CONTENT_WEIGHT=5, PLAN1_DELIVERY_WEIGHT=1, a single
+    // evaluation's raw weighted sum k=5*content+delivery is INJECTIVE over
+    // content,delivery in [1,5] AND its 25 possible values are exactly the
+    // 25 consecutive integers 6..30 (a bijection onto that range, verified
+    // by enumeration below). That gives a clean, guaranteed-collision-free
+    // way to lay out distinct averages directly instead of nudging
+    // hash-derived scores toward each other (which can oscillate forever,
+    // as the two-directional nudge-in-place version of this pass did):
+    // walk the submissions in their original hash-ranked order and hand
+    // each one the next still-unused, strictly-lower slot -- single-eval
+    // submissions draw an unused k in [6,30] (avg = k/6), two-eval
+    // submissions (track 1) draw an unused sum of two such k's in [12,60]
+    // (avg = sum/12, a strictly finer grid, so it never collides with a
+    // single-eval average once both grids' slots are tracked separately
+    // and every assignment is strictly decreasing across BOTH grids by
+    // construction).
+    const seenSums = new Set<number>();
+    for (let c = 1; c <= 5; c++) {
+      for (let d = 1; d <= 5; d++) seenSums.add(5 * c + d);
+    }
+    if (seenSums.size !== 25 || Math.min(...seenSums) !== 6 || Math.max(...seenSums) !== 30) {
+      throw new Error("seed: plan-1 weighted-sum injectivity assumption (5:1 weights, 1..5 scale) no longer holds");
+    }
+    function decomposeSum(k: number): { content_quality: number; speaker_delivery: number } {
+      const d = ((k - 1) % 5) + 1;
+      const c = (k - d) / 5;
+      return { content_quality: c, speaker_delivery: d };
+    }
+
+    const initialOrder = [...plan1PairIndicesBySubmission.keys()].sort((a, b) => {
+      const da = plan1Average(a);
+      const db = plan1Average(b);
+      if (db !== da) return db - da;
+      return a < b ? -1 : 1;
+    });
+    // A single evaluation's average k/6 equals a two-evaluation average
+    // total/12 exactly when total === 2*k -- so both grids are tracked in
+    // one combined set, expressed in twelfths (single -> 2*k, double ->
+    // total), to guarantee no cross-grid collision either.
+    const usedTwelfths = new Set<number>();
+    let ceiling = Number.POSITIVE_INFINITY;
+    for (const submissionId of initialOrder) {
+      const indices = plan1PairIndicesBySubmission.get(submissionId)!;
+      if (indices.length === 1) {
+        let k = Math.min(30, Math.floor(ceiling * PLAN1_TOTAL_WEIGHT - 1e-6));
+        while (k >= 6 && usedTwelfths.has(k * 2)) k -= 1;
+        if (k < 6) {
+          throw new Error(`seed: ran out of distinct single-evaluation score slots for ${submissionId}`);
+        }
+        usedTwelfths.add(k * 2);
+        Object.assign(plan1Scores[indices[0]!]!, decomposeSum(k));
+        ceiling = k / PLAN1_TOTAL_WEIGHT;
+      } else if (indices.length === 2) {
+        let total = Math.min(60, Math.floor(ceiling * PLAN1_TOTAL_WEIGHT * 2 - 1e-6));
+        while (total >= 12 && usedTwelfths.has(total)) total -= 1;
+        if (total < 12) {
+          throw new Error(`seed: ran out of distinct two-evaluation score slots for ${submissionId}`);
+        }
+        usedTwelfths.add(total);
+        const k1 = Math.max(6, Math.min(30, total - 6));
+        const k2 = total - k1;
+        Object.assign(plan1Scores[indices[0]!]!, decomposeSum(k1));
+        Object.assign(plan1Scores[indices[1]!]!, decomposeSum(k2));
+        ceiling = total / (PLAN1_TOTAL_WEIGHT * 2);
+      } else {
+        throw new Error(`seed: plan 1 tie-elimination only supports 1 or 2 evaluations per submission, got ${indices.length}`);
+      }
+    }
+  }
+  plan1Pairs.forEach((pair, idx) => {
+    insertEvaluation(pair.reviewerId, pair.submissionId, evalPlanId, plan1Scores[idx]!);
+  });
 
   // DEC-271/DEC-942: a recusal for the demo reviewer persona on a submission
   // in plan 1 (track 0, their own scope) that they have NOT already
@@ -1492,12 +1614,14 @@ async function main(): Promise<void> {
       scale_json: JSON.stringify({ min: 1, max: 5 }),
       criteria_json: JSON.stringify(evalPlan2Criteria),
       rounds: 1,
-      // Left null (no cap) per DEC-875: this plan is closed and every
-      // scoped plan_reviewer pair already has a matching evaluation for
-      // every submission in its track (100% progress) -- a cap here would
-      // change nothing observable and DEC-875 only mandates restoring the
-      // field/subtitle read path via plan 1, the OPEN plan.
-      max_evaluations: null,
+      // DEC-875 (wave 42 amendment): the "Reviews per talk" field/subtitle
+      // read path is restored on every plan, not just the open one -- null
+      // read as blank here too. Every scoped plan_reviewer pair (reviewerC
+      // + reviewerD, both on track 2) evaluates every track-2 submission
+      // exactly once, so the max per-submission count under this plan is 2;
+      // a cap of 3 is a real, non-degenerate number that still removes
+      // nothing from any queue (needsMoreRatings, src/domain/evaluation.ts).
+      max_evaluations: 3,
       created_at: nextTs(),
       updated_at: ts,
     }),
@@ -1568,7 +1692,10 @@ async function main(): Promise<void> {
       scale_json: JSON.stringify({ min: 1, max: 5 }),
       criteria_json: JSON.stringify(evalPlan3Criteria),
       rounds: 1,
-      max_evaluations: null,
+      // DEC-875 (wave 42 amendment): zero evaluations are seeded on this
+      // plan (see the comment above), so any positive cap is safe against
+      // needsMoreRatings -- 2 keeps it consistent with plan 4's cap below.
+      max_evaluations: 2,
       created_at: nextTs(),
       updated_at: ts,
     }),
@@ -1578,6 +1705,21 @@ async function main(): Promise<void> {
       id: seedId("plan_reviewer", 4 + plan2ReviewerAssignments.length + 1),
       plan_id: evalPlan3Id,
       user_id: reviewerUserId,
+      track_id: trackIds[0]!,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  // DEC-875 (wave 42 amendment): a second, distinct reviewer scoped to the
+  // same track/plan so the multi-reviewer distribute preview has >=2
+  // reviewer identities to distribute across on this plan (reviewerB is
+  // otherwise only scoped to plan 1/track 1, so reusing them here on
+  // track 0 doesn't collide with any other plan_reviewer row).
+  statements.push(
+    insertStmt("plan_reviewer", {
+      id: seedId("plan_reviewer", 4 + plan2ReviewerAssignments.length + 3),
+      plan_id: evalPlan3Id,
+      user_id: reviewerBUserId,
       track_id: trackIds[0]!,
       created_at: nextTs(),
       updated_at: ts,
@@ -1626,7 +1768,11 @@ async function main(): Promise<void> {
       scale_json: JSON.stringify({ min: 1, max: 5 }),
       criteria_json: JSON.stringify(evalPlan4Criteria),
       rounds: 1,
-      max_evaluations: null,
+      // DEC-875 (wave 42 amendment): only reviewerUserId is scoped to this
+      // plan and they evaluate 2 of track 1's submissions once each (see
+      // below), so the max per-submission count is 1 -- a cap of 2 is a
+      // real number that removes nothing from the queue.
+      max_evaluations: 2,
       created_at: nextTs(),
       updated_at: ts,
     }),

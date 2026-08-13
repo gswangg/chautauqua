@@ -690,12 +690,12 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
   });
 
   // -------------------------------------------------------------------------
-  // Task w15-g / DEC-875: evaluation_plan 1 (the OPEN plan) is capped at
-  // maxEvaluations=3 so the Reviews-per-talk field, "· N reviews each"
-  // subtitles, and distribute summary have a real cap to read; plan 2 (the
-  // closed/fully-evaluated plan) stays uncapped.
+  // Task w15-g / DEC-875 (wave 42 amendment): every seeded evaluation_plan
+  // carries a real maxEvaluations cap -- not just the open plan 1 -- so the
+  // "Reviews per talk" field and "· N reviews each" subtitle/distribute
+  // summary never render blank on any of the four seeded plans.
   // -------------------------------------------------------------------------
-  it("DEC-875: caps the open evaluation plan (plan 1) at maxEvaluations=3, leaves the closed plan (plan 2) uncapped, and no submission's evaluation count exceeds the cap", () => {
+  it("DEC-875: caps every seeded evaluation plan at a real maxEvaluations, with no submission's evaluation count exceeding its plan's cap", () => {
     const planRows = parseInserts(sql, "evaluation_plan");
     expect(planRows.length).toBeGreaterThanOrEqual(2);
 
@@ -703,9 +703,11 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
     expect(openPlan).toBeTruthy();
     expect(openPlan!.max_evaluations).toBe("3");
 
-    const closedPlan = planRows.find((r) => r.id === "seed_evaluation_plan_0002");
-    expect(closedPlan).toBeTruthy();
-    expect(closedPlan!.max_evaluations).toBeNull();
+    // Enumerate every seeded evaluation_plan row (never a hand-picked
+    // sample) -- none may carry a NULL cap.
+    for (const plan of planRows) {
+      expect(plan.max_evaluations, `evaluation_plan ${plan.id} ('${plan.name}') has a NULL max_evaluations`).not.toBeNull();
+    }
 
     // Enumerate every seeded evaluation row (not a hand-picked sample) and
     // count per (plan_id, submission_id) -- no submission may carry more
