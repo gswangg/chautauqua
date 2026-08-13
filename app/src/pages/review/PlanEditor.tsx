@@ -702,7 +702,7 @@ export function PlanEditor() {
 
   if (!eventId) {
     return (
-      <div className="chq-page chq-review-page chq-measure">
+      <div className="chq-page chq-review-page chq-measure-table">
         <h1 className="chq-page-title">Evaluation plan</h1>
         <div className="chq-error" role="alert">
           No event selected.
@@ -713,7 +713,7 @@ export function PlanEditor() {
 
   if (loading) {
     return (
-      <div className="chq-page chq-review-page chq-measure">
+      <div className="chq-page chq-review-page chq-measure-table">
         <h1 className="chq-page-title">Evaluation plan</h1>
         <DelayedLoading />
       </div>
@@ -721,7 +721,15 @@ export function PlanEditor() {
   }
 
   return (
-    <div className="chq-page chq-review-page chq-measure">
+    <div className="chq-page chq-review-page chq-measure-table">
+      {/* DEC-989 amendment (wave 39): the plan editor is table class (1440) --
+          its criteria table is scanned/compared, not composed like the two
+          named 820 editors. The title row below is a bare flex block with
+          no max-width of its own (matches the .chq-toolbar/.chq-section-head
+          idiom in styles.css), so its border-bottom rule runs edge to edge
+          of this chq-measure-table box while the fields/criteria below stay
+          inside that same box -- the "full bleed chrome" the width system
+          requires of a header rule. */}
       {/* DEC-745: the v4 title row -- a '‹ Review' back-link over the plan's
           own NAME rendered as an editable title input (renaming survives now
           that the old labelled Name field row is gone), with Duplicate/Save

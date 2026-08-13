@@ -264,6 +264,7 @@ describe('page measure (DEC-744/DEC-808/DEC-989)', () => {
       'Comms.tsx',
       'review/ResultsTable.tsx',
       'review/PlanList.tsx',
+      'review/PlanEditor.tsx',
     ];
     for (const rel of tablePages) {
       const content = readFileSync(join(PAGES_ROOT, rel), 'utf-8');

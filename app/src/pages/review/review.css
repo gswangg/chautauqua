@@ -971,7 +971,16 @@
    Cancel/Create the plan when isNew) right-aligned. Distinct class names
    from .chq-review-title-row/-title-actions above (PlanList's landing-page
    title row) since the two rows are shaped differently -- baseline h1+
-   summary there, a stacked back-link+input here. */
+   summary there, a stacked back-link+input here.
+
+   DEC-989 amendment (wave 39): the plan editor's page root now carries
+   chq-measure-table (1440), not chq-measure. This row deliberately carries
+   NO max-width of its own -- the same bare-rule idiom .chq-toolbar and
+   .chq-section-head already use in styles.css -- so its border-bottom rule
+   spans edge to edge of the page's own box while the fields/criteria in
+   .chq-review-editor below it sit inside that same box. Never add a
+   max-width here; that would re-narrow the chrome bar the width system
+   requires to stay full bleed. */
 .chq-review-editor-title-row {
   display: flex;
   align-items: flex-end;
