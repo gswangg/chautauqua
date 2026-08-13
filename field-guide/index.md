@@ -16,45 +16,44 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   merge a SET showing EVERY differing field; irreversible action a
   PAGE; publish the WINDOW not a flag; decision with no code a LIE;
   seed satisfies every read; mandate file a HYPOTHESIS -- grep before
-  tasking; Token adopted server-side only is half -- scan by
-  ENUMERATION; every page says who's signed in.
-- FINDINGS w7-11 (DEC-821..854, heavily compacted): mandate/probe
-  findings EXPIRE, plan from the TREE, re-grep the anchor line before
-  tasking. Shared predicate matches printed number to query
-  arithmetic; switched-off public surface is intentional blank not
-  404; unpublish/narrow/unschedule SAYS so at the moment of choice;
-  a link is the route it LANDS on. Error shape follows the REQUEST's
-  route; submitted blank CLEARS, absent key is silence; list+export
-  read status through ONE reader. main can be RED — grep for
-  `<<<<<<<` every wave. A hand-listed vocab/knob table per surface
-  DESYNCS — page/.json/.xml/builder read ONE enumerated set. A write
-  that succeeds says what it did in its automated twin's vocabulary;
-  a card that can only be MOVED does not say "place".
-- FINDINGS w12 (DEC-855..859, compacted): a "frozen legacy" column is
-  only dead if NOTHING writes it — pin source AND scan other storage
-  site by identifier, same commit as readers. Preflight collects ALL
-  misses per recipient, ONE message shape. A control naming an action
-  already taken is the "place" defect again; a gate must not render
-  children while identity loads; name identity via the DETECTOR's
-  normalized form not raw ===; a promised column needs controls on
-  EVERY row it claims to affect.
-- FINDINGS w13 (DEC-860..864, compacted): re-grep the anchor line
-  before tasking, even hour-old findings — several were already
-  fixed on main. Two save paths for one row is one too many. Pills
-  that clear each other are a radio group in a toggle's clothes; two
-  filter axes each name their axis. A confirmation names both the
-  reference AND the emailed address. An optional field dropped
-  unless a DIFFERENT optional field is filled inverts DEC-810's
-  fabrication guard. A harness login in a product placeholder leaks
-  the test into the product. A per-row count re-scanning per row is
-  N scans for a caption — count every set in ONE pass, list's predicate.
-- FINDINGS w14 (DEC-865..869): a role column only the AUTH layer reads
-  is not authz — a directory query with no role filter hands account
-  controls (password re-issue, role change) over PORTAL logins; list
-  and count share ONE where-builder or the total lies. An identity
-  resolved from a supplied email must never be ECHOED: dedupe by
-  email, render the name the sender typed. Blank is ABSENT for EVERY
-  kind; `ne` must not fire on an absent trigger. A filter row states
-  its conjunction, edits in place, counts N of M; incomplete rule is
-  never a query — one activeRules() reader for list/export/save. A
-  states menu names each consequence, marks the one in force (aria-checked, not CSS class).
+  tasking; every page says who's signed in.
+- FINDINGS w7-11 (DEC-821..854, compacted): mandate/probe findings
+  EXPIRE, re-grep the anchor before tasking. Shared predicate
+  matches printed number to query arithmetic; switched-off public
+  surface is intentional blank not 404; unpublish/narrow/unschedule
+  SAYS so at the moment of choice; a link is the route it LANDS on.
+  Error shape follows the REQUEST's route; submitted blank CLEARS,
+  absent key is silence; list+export read status through ONE
+  reader. main can be RED — grep `<<<<<<<` every wave. A hand-listed
+  vocab/knob table per surface DESYNCS — read ONE enumerated set. A
+  write that succeeds says what it did in its automated twin's
+  vocabulary; a card that can only be MOVED does not say "place".
+- FINDINGS w12-14 (DEC-855..869, compacted): a "frozen legacy"
+  column is only dead if NOTHING writes it — scan other storage by
+  identifier too. Preflight collects ALL misses, ONE message shape.
+  A gate must not render children while identity loads; name
+  identity via the DETECTOR's normalized form not raw ===; a
+  promised column needs controls on EVERY row it affects. Two save
+  paths for one row is one too many. Pills that clear each other are
+  a radio group in a toggle's clothes; two filter axes each name
+  their axis. A confirmation names both the reference AND the
+  emailed address. A harness login in a product placeholder leaks
+  the test. A per-row count re-scanning per row is N scans — one
+  pass. A role column only AUTH reads is not authz; list and count
+  share ONE where-builder. An identity resolved from a supplied
+  email must never be ECHOED. Blank is ABSENT for EVERY kind; `ne`
+  never fires on an absent trigger. A filter row states its
+  conjunction, counts N of M via one activeRules() reader. A states
+  menu marks the one in force (aria-checked, not CSS class).
+- FINDINGS w15 (DEC-870..876): a component that returns a FRAGMENT
+  into a CSS grid donates its extra child as a grid ITEM — wrap the
+  main column or arming evicts the sidebar. A `<td>` with
+  display:flex stops being a cell: per-column borders drift. A role
+  read off a USER is null for a row with no user — never a sentinel
+  string; "You" is an ID match, not a name match; one relative-time
+  reader, not one per page. Print the blend with the SAME pure
+  function the server aggregates with, never call a fail-loud
+  aggregate on incomplete input. A control that cannot save a
+  partial score is not a "draft" — name it for what it does. One
+  plan means land IN it, not on a hub with no frame. A narrow list
+  projection stays narrow: the body is a DETAIL read.
