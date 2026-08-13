@@ -203,6 +203,76 @@ public form track checkboxes centered above labels, should be inline.
 **Grader P3s** (two-track-selectors CLOSED by probe 2): label New-event Timezone ·
 explicit CFP publish affordance · close-before-open validation loud at the field.
 
+## EVAL-COVERAGE CAPABILITY SECTION (2026-08-13 audit: 20 briefs + rubric YAMLs +
+2 scored runs crossed against code — priority just below the P1/P2 defect tier.
+RULE: a capability ships working-and-tested or not at all; half-built scores worse
+than absent.)
+
+**#1 HIGHEST LEVERAGE — agenda click-to-place is BUILT but UNDISCOVERABLE**: the
+only hint reads "Drag to a slot · drag back to unschedule" (UnscheduledTray.tsx:76)
+and cells become buttons only after arming — BOTH sbek runs failed manual placement
+(AIA-03 w3 partial; AIA-04 w3 + AIA-06 w2 cannot_judge = 8/18 of the area's item
+weight) while our probes, told where to click, succeeded. Fix: hint copy names the
+click path ("Click a card, then click a slot…"); consider a visible affordance on
+cells pre-arm. [being shipped via manual-qa]
+
+**S-tier (compose from existing patterns — no new design):**
+- DaySwitcher → ?day= links (agenda.tsx:244; parseDay already wired end-to-end;
+  judge explicitly called out anchor-only pills) — EMB-07 w2.
+- "Import CSV" entry point ON the Speakers page (backend POST /contacts/import
+  already takes eventId; link into contacts import mode w/ event preselected) —
+  SPK-03 w2.
+- Per-speaker "Send portal invite" button (fire existing bulk-email path w/
+  {portal_link} template at one contact + toast) — SPK-06 w2.
+- Visible "Create an account" CTA on public CFP portal (surface the existing claim
+  flow as signup affordance) — CFP-05 w3, judged partial solely on this.
+- Role picker on ORGANIZER-side add-co-presenter (PARTICIPANT_ROLE_OPTIONS already
+  exists, portal form already uses it; organizer form silently defaults "speaker" —
+  the exact judged defect) — ABS-11 w2. Closes the co-presenter grader item too.
+- "+ Add room / track" link from agenda builder into Settings panel — AIA-02 w2.
+- Results column label "Weighted score" (ResultsTable.tsx:347 — math already
+  weighted; label is free insurance) — ABS-04.
+- Render eventCount + returningSpeakers KPIs (already returned by /contacts/stats,
+  never displayed) — CRM-12 w1.
+- XML output in embed builder (serializer beside existing JSON feed; named in
+  EMB-15 full-credit list) · success toast on "Remind laggards" (fires with NO
+  confirmation surface — ABS-09 w1) · .ics link surfaced in embed builder (exists
+  at /e/<slug>/schedule.ics?ids=…, unreachable from builder) · itinerary search/
+  filters honoring ?q=/?trackId= (params parsed elsewhere already) · session facets
+  Format/Location beside Track · itinerary time-group sub-headers.
+
+**M-tier (worth it, small design decisions — reuse existing vocab):**
+- SPK-04 w2 speaker workflow status: organizer-settable + roster-filterable
+  (inviteStatus exists in schema, read-only today; reuse DEC-730 status-control
+  family for the roster cells).
+- EMB-15 w3 saved-embed list: named, enable/disable-able embeds (needs an `embed`
+  table + list UI; DESIGN: reuse Settings public-pages row pattern — pill state =
+  enabled/disabled, row action "Get code"). Largest single remaining item.
+- ABS-06 w2: auto-distribute submissions across reviewers OR true per-reviewer cap
+  (cap today is per-submission; grep finds no distribute).
+- CRM-02 w2: restore a multi-facet rule builder UI (SegmentRule[] backend already
+  supports AND over company/title/custom.*; the company-rail click REPLACES rules).
+
+**META — click-depth/turn-budget audit**: both sbek runs lost MORE points to
+cannot_judge (turn-limit deaths mid-flow: ABS-08/09/10/13, SPK-05/06/14,
+CNT-10/11/14, CRM-08/11 — capabilities built and working) than to genuine absence.
+Audit click-depth on those scenario paths; review results/progress (behind plan
+detail) ate the tail of three scenarios. Shorten paths: direct nav links, fewer
+intermediate pages, obvious entry points from the area landing.
+
+**EXPLICIT SKIP LIST (do NOT build)**: ABS-14 AI evaluation (DEC-272 waiver; ensure
+UI never CLAIMS AI so it routes N/A) · nested per-round names/dates/pools/anonymity
+(two-plans path already passes ABS-01/02/07) · event-level participant custom
+fields (org-level passed) · per-file share links + ZIP grouping dialog (optional/
+bonus) · separate CRM analytics page (rail widgets pass) · per-assignment deadline
+extensions + contract/COI task kinds (zero rubric weight).
+
+**Stale-item corrections from audit**: gallery IS now in the public-pages list
+(DEC-767 landed — drop that EMB line) · headshots tab now EXISTS in files library
+(closes SPK-grader headshot-invisibility item IF probe confirms metadata renders) ·
+CFP-11 reviewer comment visible to organizer — fixed · multi-event switcher +
+per-event scoping EXISTS and passes.
+
 ## Mobile queue (NEXT ROUND — not this round's convergence)
 
 Phone agenda: enumerate ALL 22 chq-phone-* classes in the media override + fix
