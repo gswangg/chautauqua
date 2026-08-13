@@ -911,3 +911,110 @@
     width: 100%;
   }
 }
+
+/* w3-e */
+/* DEC-745: the plan editor's own title row -- back-link + the plan NAME as
+   an editable title <input> stacked on the left, Duplicate/Save (or
+   Cancel/Create the plan when isNew) right-aligned. Distinct class names
+   from .chq-review-title-row/-title-actions above (PlanList's landing-page
+   title row) since the two rows are shaped differently -- baseline h1+
+   summary there, a stacked back-link+input here. */
+.chq-review-editor-title-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-review-editor-title-col {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.chq-review-editor-back-link {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-ink);
+}
+
+/* An <input> carrying the title type -- same visual weight as
+   .chq-page-title, but editable and borderless until focused. */
+.chq-review-editor-title-input {
+  font-family: var(--chq-font-display);
+  font-size: 27px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  color: var(--chq-ink);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  padding: 2px 6px;
+  margin: -2px -6px;
+  min-width: 0;
+  width: 100%;
+  max-width: 480px;
+}
+
+.chq-review-editor-title-input:hover {
+  border-color: var(--chq-rule);
+}
+
+/* DEC-409: no outline suppression here -- the shared `:focus-visible` ring
+   in styles.css still applies; this just adds the border/background cue. */
+.chq-review-editor-title-input:focus {
+  border-color: var(--chq-ink);
+  background: var(--chq-surface);
+}
+
+.chq-review-editor-title-actions {
+  display: flex;
+  gap: 9px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 700px) {
+  .chq-review-editor-title-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chq-review-editor-title-actions {
+    width: 100%;
+  }
+}
+
+/* DEC-745: the 2x2 field grid (Opens/Closes/Reviews per talk/Rating scale)
+   replaces the earlier 4-across summary row -- overrides the DEC-709 rule
+   above on the same class name. */
+.chq-review-summary-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 440px;
+}
+
+/* DEC-745: "Who reviews what" rows now carry a track column and a load
+   column ("6 talks") alongside name/email and Remove -- widens the grid
+   from the earlier 4-column reviewer row. */
+.chq-review-reviewer-row {
+  grid-template-columns: 1fr 140px 90px auto auto;
+}
+
+.chq-review-reviewer-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chq-review-reviewer-track {
+  font-size: 13px;
+}
+
+.chq-review-reviewer-load {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
