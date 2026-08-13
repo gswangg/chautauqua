@@ -125,6 +125,10 @@ describe('ContentApp worklist latest file column (DEC-686 page-scoped hydration)
           createdAt: 1700000000000,
           deliverableCounts: { presentation: 1, poster: 0, handout: 0 },
           latestFile: { filename: 'slides-v2.pdf', kind: 'presentation', versionCount: 2, uploadedAt: 1700000100000 },
+          // DEC-965: the version shown is the row's stored identity, which the
+          // list payload ships alongside latestFile — never the chain length in
+          // latestFile.versionCount.
+          latestFileVersionNo: 2,
         },
       ]),
     });
