@@ -70,10 +70,8 @@ single summary row · resolve "· min ·" (derive from format or drop) · Review
 copy shape ("N of M plans in · wave X complete").
 
 **Submissions** (probe 2 CLOSED: AWAITING TRIAGE banner · content-approval moved out
-of Decision panel · History under own header): detail structure remaining — Prev/Next
-+ "N of 47" · review rows show reviewer EMAIL though the user links to contact "Sam
-Whitfield" — resolve identity via linked contact name, not account email · History
-section label detaches from its "02" number prefix (centered; match other sections) ·
+of Decision panel · History under own header): (probe-4 CLOSED: review rows name linked contacts · History label numeral rhythm ·
+earlier: Prev/Next "N of 31" landed DEC-761) ·
 builder rows CLOSED
 (probe-verified all 7 anatomy points); residue: kind copy "Dropdown"→"Single choice",
 "Session format"→"Format", captions on format/audience rows, drop duplicate
@@ -132,30 +130,18 @@ set/order ("Needs a decision · N" FIRST, "Approved · N", "All accepted session
 N") · relative dates in LATEST FILE · SEED: worklist too sparse (28/30 "No files
 yet").
 
-**Agenda (desktop)** (probe-3 CLOSED: occupied-slot place-anyway — PUT 200,
-persists · clash-card content legible while armed · DEC-759 cards don't scroll ·
-DEC-779 dot-joins): **NEW — placing-mode slot targets INVISIBLE over the clash
-card**: slot buttons are transparent with a 1px dashed border in rgb(27,29,23) —
-EXACTLY the clash card's background (1:1 contrast) — and empty text; "will clash
-with N" exists only in aria-label; non-clash cells have NO visible affordance and
-no hover change. Fix: dashed border on-ink over ink (paper color) + a hover state
-on all cells + consider visible micro-copy on clash targets · **layout shift on
-arm/disarm STILL-OPEN (measured)**: armed bar pushes grid +58.8px; the "No room
-yet" 5th column shrinks room columns 251→200.8px (−150px displacement). Keep
-geometry stable: overlay/reserve the banner; only add the no-room column for a
-roomless armed session or overlay it · card titles CLAMP at 2 lines (no scroll,
-but long titles truncate — decide vs mock) · place-anyway lands with NO
-confirm/toast — add the mock's feedback if any · **P2: invited-placeholder sessions ("Invited: Priya
-Raman") are invisible to double-booking detection** despite displaying speaker names
-— auto-schedule stacked them over the speakers' real sessions with zero flags ·
-auto-schedule ignores format durations (Keynote 45/Workshop 120/Lightning 10 all
-placed as 30-min blocks) · slot previews pre-announce room clashes but not speaker
-double-bookings · "1 conflicts" grammar; a session's own slot counts itself ("will
-clash with 1 session") · public agenda renders day headings twice (second empty) ·
-day tabs raw ISO ("2027-05-12") vs mock "Tue 12 May" · focus → Cancel/first cell on
-placing entry.
-(CLOSED by probe 2: DEC-724 conditional "No room yet" column · DEC-742 merged clash
-card — inverted ink card, zero inner scroll, fully visible content.)
+**Agenda (desktop)** (probe-4 CLOSED: layout shift +58.8→+0.8px · slot targets
+visible while armed (z-6, olive ring, card dims .55) · occupied-slot
+place-anyway (probe 3) · "1 conflict" grammar + self-count · admin day-tab
+copy · OVERDUE cell copy · DEC-801 born-overdue grace · orphaned-task checkbox
+removed · public duplicate day headings): residuals — clash-cell ring 1.80:1 vs
+dimmed card (below 3:1 non-text WCAG; brighten ring or dim card more) · no
+hover state on cells (standing outline substitutes; confirm vs mock at gate) ·
+no-room target sits in the right tray column, DEC-794 wants a full-width strip
+BELOW the grid · task header "DUE 15 JAN" omits year for far dates · public
+agenda day pills still #anchors (make default emit ?day= like the
+parameterized view) · card titles CLAMP at 2 lines (decide vs mock) ·
+place-anyway lands with no confirm/toast (mock check at gate).
 
 **Comms** (probe-4 CLOSED: DEC-792 vocabulary — Content Reminder preflights clean
 w/ per-recipient values · DEC-793 chip row + cursor insert + hint + NAMED
