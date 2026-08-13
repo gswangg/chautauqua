@@ -497,3 +497,78 @@
     min-height: 44px;
   }
 }
+
+/* DEC-886: session delete confirmation page (mirrors
+   .chq-contacts-merge-* -- an irreversible action gets its own page). Every
+   colour below composes the shared var(--chq-*) vocabulary in styles.css --
+   no literal hex here (DEC-383 palette closure). */
+.chq-submissions-delete-page {
+  max-width: var(--chq-measure);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chq-submissions-delete-topbar {
+  display: flex;
+  align-items: center;
+}
+
+.chq-submissions-delete-back {
+  color: var(--chq-muted);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.chq-submissions-delete-intro {
+  color: var(--chq-ink-2);
+  margin: 0;
+}
+
+.chq-submissions-delete-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--chq-border);
+  border-radius: var(--chq-r-card);
+}
+
+.chq-submissions-delete-list-item {
+  display: flex;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-submissions-delete-list-item:last-child {
+  border-bottom: none;
+}
+
+.chq-submissions-delete-list-ref {
+  font-family: var(--chq-font-ui, inherit);
+  font-weight: 600;
+  color: var(--chq-muted);
+  flex-shrink: 0;
+}
+
+.chq-submissions-delete-list-title {
+  color: var(--chq-ink);
+}
+
+.chq-submissions-delete-refused {
+  border: 1px solid var(--chq-border);
+  background: var(--chq-surface-sunk);
+  border-radius: var(--chq-r-card);
+  padding: 8px 12px;
+  color: var(--chq-ink);
+}
+
+.chq-submissions-delete-refused ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.chq-submissions-delete-footer {
+  display: flex;
+  gap: 8px;
+}

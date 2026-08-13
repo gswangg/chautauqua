@@ -46,7 +46,14 @@ import { bumpIcsSequences } from "../../server/repo/ics-sequence";
 import { getEventTracks, replaceSubmissionTracks, upsertSubmissionAnswers } from "../../server/repo/submit";
 import { getFormatFieldOptions } from "../../server/repo/forms";
 import { SESSION_FORMAT_FIELD_ID } from "../../forms/types";
-import { DEC_460, DEC_461, DEC_462, DEC_519, DEC_598, DEC_755, DEC_757 } from "../../decisions";
+import { commitSubmissionDelete, planSubmissionDelete } from "../../server/repo/submission-delete";
+import { makeFileStore } from "../../server/context";
+import { DEC_460, DEC_461, DEC_462, DEC_519, DEC_598, DEC_755, DEC_757, DEC_886 } from "../../decisions";
+
+// Compile-checked dependency marker: the delete route below (guarded
+// cascade behind a confirmation page, refusing any submission with a
+// SUBMITTED evaluation) implements DEC-886.
+void DEC_886;
 
 // Compile-checked dependency marker: the POST create route's trackIds/format
 // handling below implements DEC-755 (New submission dialog's Track and
@@ -540,4 +547,46 @@ submissionsRoutes.post("/events/:eventId/submissions/status", requireOrganizer, 
 
   const result = await updateSubmissionStatuses(c.var.db, eventId, ids, body.status, new Date());
   return c.json(result);
+});
+
+// -----------------------------------------------------------------------
+// POST /api/v1/events/:eventId/submissions/delete — DEC-886 guarded cascade
+// -----------------------------------------------------------------------
+// Self-contained block (kept separate from the status route above so this
+// merges cleanly alongside an in-flight content-status list-filter lane
+// touching the same file).
+
+interface DeleteBody {
+  ids?: unknown;
+}
+
+submissionsRoutes.post("/events/:eventId/submissions/delete", requireOrganizer, csrfJson, async (c) => {
+  const auth = requireAuth(c);
+  const eventId = c.req.param("eventId");
+  await assertEventOwnership(c.var.db, eventId, auth.orgId);
+
+  const body = (await c.req.json().catch(() => ({}))) as DeleteBody;
+  const ids = parseBoundedIdArray(body.ids, "ids"); // DEC-182
+
+  const plan = await planSubmissionDelete(c.var.db, eventId, ids);
+
+  // DEC-713-style ordering: every R2 object is deleted through the same
+  // FileStore abstraction the version-delete route uses, BEFORE any DB row
+  // is touched, so a throw here leaves every submission row intact for a
+  // retry rather than orphaning an object.
+  const store = makeFileStore(c.env.FILES);
+  for (const item of plan.eligible) {
+    for (const key of item.fileR2Keys) {
+      // eslint-disable-next-line no-await-in-loop
+      await store.delete(key);
+    }
+  }
+
+  const deleted = await commitSubmissionDelete(
+    c.var.db,
+    eventId,
+    plan.eligible.map((item) => item.submissionId),
+  );
+
+  return c.json({ deleted, refused: plan.refused });
 });

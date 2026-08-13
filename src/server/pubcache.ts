@@ -217,6 +217,10 @@ export const PUBLIC_AFFECTING: PathPattern[] = [
   "/api/v1/rooms/:id",
   "/api/v1/events/:id/submissions",
   "/api/v1/events/:id/submissions/status",
+  // DEC-886: a deleted submission that was public (accepted/visible/content-
+  // approved) must stop rendering on /e/*|/embed/* — same reasoning as the
+  // status route immediately above.
+  "/api/v1/events/:id/submissions/delete",
   "/api/v1/submissions/:id",
   "/api/v1/submissions/:id/clone",
   "/api/v1/submissions/:id/revisions/:revisionId/restore",
