@@ -18,40 +18,43 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   seed satisfies every read; mandate file a HYPOTHESIS -- grep before
   tasking; every page says who's signed in.
 - FINDINGS w7-16 (DEC-821..882, compacted): mandate/probe findings
-  EXPIRE, re-grep before tasking (six w16 lines were ALREADY CLOSED).
-  Shared predicate matches printed number to query arithmetic; a
-  "frozen" column is dead only if NOTHING writes it. Unpublish/
-  narrow/unschedule SAYS so at the moment of choice; a link is the
-  route it LANDS on; error shape follows the REQUEST's route;
-  submitted blank CLEARS, absent key is silence; list+export read
-  status through ONE reader; main can be RED — grep `<<<<<<<` every
-  wave. Hand-listed vocab tables DESYNC — read ONE enumerated set. A
-  gate must not render children while identity loads. A promised
-  column needs controls on EVERY row; two save paths for one row is
-  one too many. Pills that clear each other are a radio group in a
-  toggle's clothes; two filter axes each name their axis. A per-row
-  count re-scanning per row is N scans — one pass; list and count
-  share ONE where-builder. An identity from a supplied email must
-  never be ECHOED. Blank is ABSENT for EVERY kind. A FRAGMENT
-  returned into a CSS grid donates its extra child as a grid ITEM.
-  A role read off a USER is null for a row with no user. Print a
-  blend with the SAME pure function the server aggregates with. A
-  shared token is only adopted where a page APPLIES it. A reset
-  lands scoped to the properties it means, never a whole family. A
-  count's LABEL is a claim about its WHERE clause. A disabled input
-  is not read-only; a status picker is not a decision.
-- FINDINGS w17 (DEC-883..890): the tree MOVES WHILE YOU PLAN — a file
-  re-read minutes later already carried the fix. Verify twice before
-  re-tasking; a missing DEC marker is not proof of a missing fix. A
-  toggle needing a companion choice must REVEAL the choice and WAIT
-  — firing on the toggle makes the feature's first act a 400. A
-  shared class is shareable only where every member wants every
-  DECLARATION: a lowercase wordmark on an event name renames the
-  customer's event. auto-fill with a small minmax floor is a phone
-  rule that never stops applying — desktop columns are COUNTED. An
-  absent image is a DRAWN placeholder; an empty box reads as
-  failure. An irreversible action is a PAGE naming what goes AND
-  what it refuses; another's recorded judgment is never the
-  organizer's to erase. A prop with one call site is a setting
-  nobody sets. "Last used" comes from the log via ONE grouped query,
-  never a new column, never a query per row.
+  EXPIRE, re-grep before tasking. Shared predicate matches printed
+  number to query arithmetic; a "frozen" column is dead only if
+  NOTHING writes it. Unpublish/narrow/unschedule SAYS so at the
+  moment of choice; a link is the route it LANDS on; error shape
+  follows the REQUEST's route; submitted blank CLEARS, absent key
+  is silence; list+export read status through ONE reader; main can
+  be RED — grep `<<<<<<<` every wave. Hand-listed vocab tables
+  DESYNC — read ONE enumerated set. A gate must not render children
+  while identity loads. A promised column needs controls on EVERY
+  row; two save paths for one row is one too many. Pills that clear
+  each other are a radio group in a toggle's clothes. A per-row
+  count re-scanning per row is N scans — one pass. An identity from
+  a supplied email must never be ECHOED. Blank is ABSENT for EVERY
+  kind. A role read off a USER is null for a row with no user. A
+  disabled input is not read-only; a status picker is not a decision.
+- FINDINGS w17 (DEC-883..890, compacted): the tree MOVES WHILE YOU
+  PLAN — re-read minutes later already carried the fix; verify twice
+  before re-tasking. A toggle needing a companion choice REVEALS it
+  and WAITS. A shared class is shareable only where every member
+  wants every DECLARATION. auto-fill with a small minmax floor is a
+  phone rule that never stops — desktop columns are COUNTED. An
+  absent image is a DRAWN placeholder. An irreversible action is a
+  PAGE naming what goes AND what it refuses. A prop with one call
+  site is a setting nobody sets. "Last used" comes from the log via
+  ONE grouped query, never a new column, never per-row.
+- FINDINGS w18 (DEC-891..898): a mandate list has a HALF-LIFE — this
+  wave re-verified 9 headline items and found 7 already closed (agenda
+  tray eviction, staggered content rows, "(unknown)" author role,
+  reviewer count, per-surface published counts, saved-embed format,
+  speakers participation select + add-speaker modal). Grep before you
+  task; cite a line number or drop the item. A deterministic TIE-BREAK
+  is the right answer to "which row do we join" and the wrong answer to
+  "which of your talks is this" — when the data admits two, ASK, and
+  delete the fallback so there is one path. A timeline the data already
+  implies needs a UNION, not a migration; a fact stored twice drifts.
+  Number() parses JavaScript literals, not form fields: "1e999" is
+  Infinity and lands as null in a REQUIRED column. A gate skipped for
+  one content type is not a gate; a downscale living in one route is
+  not a property of the artefact. Suggestions computed against the same
+  snapshot all propose the same slot — accumulate as you hand them out.
