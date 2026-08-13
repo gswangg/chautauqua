@@ -171,6 +171,13 @@ describe('suggestMapping (P1 fix, w1-f: auto-map obvious CSV headers)', () => {
     expect(suggestMapping(['Shirt Size', 'Notes'])).toEqual({});
   });
 
+  it('maps an "org" header column to company (w40-h: was silently dropped)', () => {
+    expect(suggestMapping(['Email', 'org'])).toEqual({
+      Email: 'email',
+      org: 'company',
+    });
+  });
+
   it('maps a combined "name" column to the fullName pseudo-target (fixture speakers.csv shape)', () => {
     expect(suggestMapping(['name', 'email', 'title', 'company', 'bio'])).toEqual({
       name: FULL_NAME_TARGET,
