@@ -193,8 +193,11 @@ describe('Scorecard recusal control (DEC-271)', () => {
   });
 });
 
-describe('ReviewerQueue recused section (DEC-271)', () => {
-  it('reads the envelope recused array, renders it separately from items, and offers Undo', async () => {
+// DEC-874: recused rows render INLINE in the same ordered list as the
+// actionable queue (marked, with reason + Undo) rather than in a separate
+// trailing "Recused (not in your queue)" section.
+describe('ReviewerQueue recused rows render inline (DEC-271/DEC-874)', () => {
+  it('reads the envelope recused array, renders it inside the same list as items, and offers Undo', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
         ...listEnvelope([{ submissionId: 'sub-active', ref: 'S-001', title: 'Still In Queue', ratingsCount: 0 }]),
@@ -213,10 +216,14 @@ describe('ReviewerQueue recused section (DEC-271)', () => {
     );
 
     expect(await screen.findByRole('link', { name: /Still In Queue/ })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Recused (not in your queue)' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Recused (not in your queue)' })).not.toBeInTheDocument();
     expect(screen.getByText(/A Conflicted Talk/)).toBeInTheDocument();
-    // Recused items are not rendered as queue links.
+    expect(screen.getByText('Personal conflict')).toBeInTheDocument();
+    // Recused items are not rendered as queue links (no scorecard nav).
     expect(screen.queryByRole('link', { name: /A Conflicted Talk/ })).not.toBeInTheDocument();
+    // Both rows live in the same ordered list.
+    const list = screen.getByRole('link', { name: /Still In Queue/ }).closest('ol');
+    expect(list).toContainElement(screen.getByText(/A Conflicted Talk/));
 
     const undoButton = screen.getByRole('button', { name: 'Undo' });
     fireEvent.click(undoButton);

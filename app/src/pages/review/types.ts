@@ -190,6 +190,14 @@ export interface ReviewerQueueItem {
   // (already carries its own '(N min)' suffix). Null when unanswered. A
   // session-shape fact, not identity -- present even on an anonymized plan.
   format: string | null;
+  // DEC-874: an audience-level answer, when the submission's CFP form has
+  // one and the submission answered it. Optional/undefined (not just null)
+  // because unlike `format` there is no reserved field id for this yet --
+  // the wire does not populate it today; the row renders nothing when
+  // absent. Flagged as a gap: wiring a real value here is server-side work
+  // (resolving which per-event custom dropdown, if any, is "the" audience
+  // level field) outside this task's scope.
+  audienceLevel?: string | null;
 }
 
 // DEC-271: a submission this reviewer has recused themselves from (conflict
