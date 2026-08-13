@@ -46,17 +46,17 @@ function NotFoundPage(props: { eyebrow: string }) {
         <style dangerouslySetInnerHTML={{ __html: AUTH_CSS }} />
       </head>
       <body>
-        <div class="chq-auth-card chq-auth-card-narrow">
+        <main class="chq-auth-card chq-auth-card-narrow">
           <div>
             <span class="chq-auth-label">{props.eyebrow}</span>
-            <div class="chq-auth-title">That page isn't here</div>
+            <h1 class="chq-auth-title">That page isn't here</h1>
           </div>
-          <p class="chq-auth-hint">The link may be old, or the event may have been switched since it was saved.</p>
+          <p class="chq-auth-body">The link may be old, or the event may have been switched since it was saved.</p>
           <div class="chq-auth-footer-links">
             <a href="/">Go to the homepage &rsaquo;</a>
             <a href="/login">Log in &rsaquo;</a>
           </div>
-        </div>
+        </main>
       </body>
     </html>
   );
