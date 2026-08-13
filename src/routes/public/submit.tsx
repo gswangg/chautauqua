@@ -29,6 +29,7 @@ import {
   insertAttachmentFile,
 } from "../../server/repo/submit";
 import { findAccountUserId } from "../../server/repo/comms";
+import { commitSubmissionDelete } from "../../server/repo/submission-delete";
 import { validateAnswers } from "../../forms/validate";
 import { makeVisibilityPredicate } from "../../forms/visibility";
 import type { AnswerMap } from "../../forms/types";
@@ -107,6 +108,26 @@ void DEC_377;
 // attribute. Every public SSR surface shares that single guard so the CFP
 // page and the branded event pages can never disagree about what a valid
 // accent is.
+
+// DEC-626/DEC-020: a cheap same-origin check runs BEFORE the body is ever
+// parsed on the final-submit POST -- the Origin header (falling back to
+// Referer when Origin is absent, matching ordinary browser behavior for
+// same-site navigations/older UAs) must name the same host this request
+// arrived on. When NEITHER header is present this fails OPEN (the
+// double-submit CSRF token compared later remains the primary defense;
+// some legitimate clients send neither header) -- only a header that is
+// present and names a DIFFERENT host is treated as cross-origin.
+function isSameOriginSubmitPost(c: { req: { url: string; header(name: string): string | undefined } }): boolean {
+  const candidate = c.req.header("Origin") ?? c.req.header("Referer");
+  if (!candidate) return true;
+  let candidateHost: string;
+  try {
+    candidateHost = new URL(candidate).host;
+  } catch {
+    return false;
+  }
+  return candidateHost === new URL(c.req.url).host;
+}
 
 // ---------------------------------------------------------------------------
 // Routes
@@ -256,13 +277,12 @@ publicSubmitRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c) => 
   return c.redirect(`/submit/${event.slug}?draft=saved`, 302);
 });
 
-// DEC-626: this ONE route does its own CSRF check in-body (rather than the
-// csrfForm middleware) so a missing/mismatched cookie can re-render
-// <SubmitPage> with the submitter's parsed answers intact instead of
-// throwing a JSON-shaped ApiError that discards the just-typed form -- the
-// public CFP keeps the submitter's answers. The double-submit comparison
-// itself still delegates to the shared checkDoubleSubmitCsrf predicate
-// (DEC-544); this never re-inlines the comparison.
+// DEC-626/DEC-020: two body-free guards (same-origin, per-IP rate limit) run
+// before the body is ever parsed; the in-body double-submit CSRF check below
+// still does its own thing (rather than the csrfForm middleware) so a
+// missing/mismatched cookie can re-render <SubmitPage> with the submitter's
+// parsed answers intact instead of throwing a JSON-shaped ApiError that
+// discards the just-typed form -- see each guard's inline comment.
 publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
   const db = c.var.db;
   const event = await getEventBySlug(db, c.req.param("eventSlug"));
@@ -283,10 +303,72 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
   const offeredTrackIds = resolveOfferedTrackIds(form.tracksJson, eventTracks.map((t) => t.id));
   const tracks = eventTracks.filter((t) => offeredTrackIds.includes(t.id));
 
+  // Body-free guards run BEFORE the body is ever parsed, so a hostile or
+  // over-limit request never pays the cost of materializing (and later
+  // uploading) a multipart body:
+  //  (a) same-origin check (DEC-626/DEC-020) -- a cross-origin POST gets
+  //      the same CSRF-failure page the in-body double-submit check below
+  //      renders, but with an EMPTY answer set since nothing was parsed.
+  if (!isSameOriginSubmitPost(c)) {
+    const freshToken = newCsrfToken();
+    c.header("Set-Cookie", buildCsrfCookie(freshToken, { secure: isSecureRequest(c.req.url) }), { append: true });
+    return c.html(
+      <SubmitPage
+        event={event}
+        form={form}
+        fields={fields}
+        tracks={tracks}
+        answers={{}}
+        selectedTrackIds={[]}
+        hasDraft={false}
+        csrfToken={freshToken}
+        banner="Your session expired — your answers are still here, press Submit again"
+      />,
+      400,
+    );
+  }
+
+  //  (b) DEC-072: per-IP rate limit, raised from 10 to 60/hour — shared IPs
+  //      (offices, conference wifi, NAT) legitimately produce bursts of
+  //      submissions from distinct speakers; the cap exists to stop abuse,
+  //      not to punish shared addresses. DEC-057: uses the canonical scoped
+  //      limiter (DEC-038). Also runs before the body is parsed, so its 429
+  //      page necessarily shows an empty answer set.
+  const kv = c.env.KV as unknown as DraftKVStore;
+  const ip = requestIpFromHeaders((name) => c.req.header(name));
+  const rate = await checkAndIncrementScopedLimit(db, "submit", ip, Date.now(), {
+    windowSeconds: 3600,
+    max: 60,
+  });
+  if (!rate.ok) {
+    const cookiesForRateLimit = parseCookies(c.req.header("cookie") ?? null);
+    return c.html(
+      <SubmitPage
+        event={event}
+        form={form}
+        fields={fields}
+        tracks={tracks}
+        answers={{}}
+        selectedTrackIds={[]}
+        hasDraft={false}
+        csrfToken={cookiesForRateLimit[CSRF_COOKIE_NAME] ?? newCsrfToken()}
+        banner="Too many submissions from this address. Try again later."
+      />,
+      429,
+    );
+  }
+
   const body = (await c.req.parseBody({ all: true })) as Record<string, unknown>;
   const answers = extractAnswers(fields, body);
   const selectedTrackIds = extractTrackIds(body);
 
+  // DEC-626: this ONE route does its own CSRF check in-body (rather than the
+  // csrfForm middleware) so a missing/mismatched cookie can re-render
+  // <SubmitPage> with the submitter's parsed answers intact instead of
+  // throwing a JSON-shaped ApiError that discards the just-typed form -- the
+  // public CFP keeps the submitter's answers. The double-submit comparison
+  // itself still delegates to the shared checkDoubleSubmitCsrf predicate
+  // (DEC-544); this never re-inlines the comparison.
   const cookiesForCsrf = parseCookies(c.req.header("cookie") ?? null);
   const csrfCookieToken = cookiesForCsrf[CSRF_COOKIE_NAME];
   const csrfFormToken = body[CSRF_COOKIE_NAME];
@@ -306,34 +388,6 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
         banner="Your session expired — your answers are still here, press Submit again"
       />,
       400,
-    );
-  }
-
-  // DEC-072: per-IP rate limit, raised from 10 to 60/hour — shared IPs
-  // (offices, conference wifi, NAT) legitimately produce bursts of
-  // submissions from distinct speakers; the cap exists to stop abuse, not
-  // to punish shared addresses. DEC-057: uses the canonical scoped limiter
-  // (DEC-038).
-  const kv = c.env.KV as unknown as DraftKVStore;
-  const ip = requestIpFromHeaders((name) => c.req.header(name));
-  const rate = await checkAndIncrementScopedLimit(db, "submit", ip, Date.now(), {
-    windowSeconds: 3600,
-    max: 60,
-  });
-  if (!rate.ok) {
-    return c.html(
-      <SubmitPage
-        event={event}
-        form={form}
-        fields={fields}
-        tracks={tracks}
-        answers={answers}
-        selectedTrackIds={selectedTrackIds}
-        hasDraft={false}
-        csrfToken={csrfCookieToken ?? newCsrfToken()}
-        banner="Too many submissions from this address. Try again later."
-      />,
-      429,
     );
   }
 
@@ -435,20 +489,14 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
     resolvedCompany = company;
   }
 
-  const submission = await createSubmission(db, { eventId: event.id, formId: form.id, title, description });
-  const ref = formatRef(event.recordPrefix, submission.seq);
-  await createParticipant(db, {
-    submissionId: submission.id,
-    contactId,
-    titleAtTime: resolvedTitle,
-    orgAtTime: resolvedCompany,
-  });
-  await createSubmissionTracks(db, submission.id, selectedTrackIds);
-
-  // Upload each valid file answer now that the submission exists, and swap
-  // the "pending" placeholder for the real file id (DEC-040: the answer
-  // value is the file.id string).
+  // Upload every valid file answer to R2 BEFORE any row is created — a
+  // submission id doesn't exist yet, so the key is rooted under
+  // `sub/pending/` rather than `sub/<submissionId>/`; the same key is
+  // referenced on the file row below and is never renamed. Streamed
+  // (file.stream(), not file.arrayBuffer()) so a large upload is never
+  // buffered whole in memory.
   const fileStore = makeFileStore(c.env.FILES);
+  const preparedFiles: { fieldId: string; file: File; r2Key: string; validated: ValidUpload }[] = [];
   for (const field of fileFields) {
     // DEC-132: only proceed for fields that survived validation with the
     // "pending" placeholder (visible + valid upload) — hidden fields never
@@ -458,21 +506,51 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
     const file = fileAnswers[field.id];
     const validated = fileValidations[field.id];
     if (!file || !validated) continue;
-    const r2Key = `sub/${submission.id}/answer-${newId()}-${sanitizeFilenameForKey(file.name)}`;
-    const buf = await file.arrayBuffer();
-    await fileStore.put(r2Key, buf, validated.servedContentType);
-    const fileId = await insertAttachmentFile(db, {
-      submissionId: submission.id,
-      filename: file.name,
-      r2Key,
-      sizeBytes: file.size,
-      contentType: validated.servedContentType,
-      uploadedByContactId: contactId,
-    });
-    cleaned[field.id] = fileId;
+    const r2Key = `sub/pending/${newId()}-${sanitizeFilenameForKey(file.name)}`;
+    await fileStore.put(r2Key, file.stream(), validated.servedContentType);
+    preparedFiles.push({ fieldId: field.id, file, r2Key, validated });
   }
 
-  await upsertSubmissionAnswers(db, submission.id, cleaned);
+  // The DB write phase is one committed unit: any failure past this point
+  // (including a thrown error from any of these repo calls) deletes every
+  // R2 object just written above and the submission row it created (via the
+  // same cascade delete the admin session-delete route uses), then rethrows
+  // so the failure is loud rather than leaving an orphaned row or R2 object.
+  let submission: { id: string; seq: number } | undefined;
+  try {
+    submission = await createSubmission(db, { eventId: event.id, formId: form.id, title, description });
+    await createParticipant(db, {
+      submissionId: submission.id,
+      contactId,
+      titleAtTime: resolvedTitle,
+      orgAtTime: resolvedCompany,
+    });
+    await createSubmissionTracks(db, submission.id, selectedTrackIds);
+
+    for (const pf of preparedFiles) {
+      const fileId = await insertAttachmentFile(db, {
+        submissionId: submission.id,
+        filename: pf.file.name,
+        r2Key: pf.r2Key,
+        sizeBytes: pf.file.size,
+        contentType: pf.validated.servedContentType,
+        uploadedByContactId: contactId,
+      });
+      cleaned[pf.fieldId] = fileId;
+    }
+
+    await upsertSubmissionAnswers(db, submission.id, cleaned);
+  } catch (err) {
+    for (const pf of preparedFiles) {
+      await fileStore.delete(pf.r2Key);
+    }
+    if (submission !== undefined) {
+      await commitSubmissionDelete(db, event.id, [submission.id]);
+    }
+    throw err;
+  }
+
+  const ref = formatRef(event.recordPrefix, submission.seq);
 
   // Delete the KV draft — drafts never survive a successful submit (DEC-014).
   const cookies = parseCookies(c.req.header("cookie") ?? null);

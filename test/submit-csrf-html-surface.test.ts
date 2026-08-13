@@ -148,7 +148,12 @@ describe("POST /submit/:eventSlug - DEC-626 htmlSurface", () => {
     expect(body).toContain("your answers are still here");
   });
 
-  it("rate-limited path re-renders the SubmitPage (text/html, 429) with answers and the limit message", async () => {
+  // w42-b: the per-IP rate limit now runs BEFORE the body is parsed (a
+  // body-free guard, alongside the same-origin check), so its 429 page
+  // necessarily shows an EMPTY answer set rather than the submitter's
+  // just-typed values -- that tradeoff is the point: an over-limit request
+  // never pays the cost of materializing the body at all.
+  it("rate-limited path re-renders the SubmitPage (text/html, 429) with an empty answer set and the limit message", async () => {
     const now = Date.now();
     const key = scopedRateLimitKey("submit", "unknown", Math.floor(now / (3600 * 1000)) * 3600 * 1000);
     const db = fakeDb([[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW]], {
@@ -175,7 +180,7 @@ describe("POST /submit/:eventSlug - DEC-626 htmlSurface", () => {
     expect(res.status).toBe(429);
     expect(res.headers.get("content-type")).toMatch(/text\/html/);
     const body = await res.text();
-    expect(body).toContain("My Rate-Limited Talk");
+    expect(body).not.toContain("My Rate-Limited Talk");
     expect(body).toContain("Too many submissions from this address");
   });
 });
