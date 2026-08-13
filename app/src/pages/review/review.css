@@ -634,6 +634,60 @@
   padding: 0 0 6px;
 }
 
+/* w41-f/DEC-715: a leading drag-handle column on every criteria row and
+   its header, so a locked row's blank handle cell and an unlocked row's
+   handle button/kind/weight cells stay aligned to the same columns.
+   Overrides the two grid-template-columns rules above on the same class
+   names. */
+.chq-review-criterion-row,
+.chq-review-criteria-head-row {
+  grid-template-columns: auto 1fr 1fr auto auto auto;
+}
+
+/* DEC-715: reuses the form-builder's handle class/markup
+   (app/src/pages/forms/forms.css .chq-forms-field-drag) rather than a
+   second implementation -- same visual contract, restated here since a
+   page stylesheet is only loaded for its own page. */
+.chq-forms-field-drag {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--chq-muted);
+  font-size: 14px;
+  width: 20px;
+  text-align: left;
+  cursor: grab;
+}
+
+.chq-forms-field-drag:focus-visible {
+  outline: 2px solid var(--chq-ink);
+  outline-offset: 2px;
+}
+
+.chq-forms-field-drag:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* DEC-903 parity: dragging a criterion row over a valid drop target shows
+   WHERE it will land. */
+.chq-review-criterion-row-drop-target {
+  border-top: 2px solid var(--chq-ink);
+}
+
+/* w41-f: the locked-plan eyebrow on the Scoring criteria section rule --
+   right-aligned by the shared .chq-section-head's own
+   justify-content: space-between (styles.css, never redefined here). */
+.chq-review-criteria-locked-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--chq-ink-2);
+  white-space: nowrap;
+}
+
 .chq-review-criteria-head-cell {
   font-family: var(--chq-font-display);
   font-size: 11px;
