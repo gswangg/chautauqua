@@ -11,7 +11,7 @@ import type { AppEnv, AuthInfo } from "../server/env";
 import { requireOrganizer, csrfJson } from "../server/middleware";
 import { ApiError, parseBoundedIdArray } from "../server/http";
 import { MAX_LONG_TEXT_LENGTH } from "../forms/validate"; // DEC-417
-import { makeFileStore } from "../server/context";
+import { makeFileStore, putThenRecord } from "../server/context";
 import { newId } from "../domain/ids";
 import { buildZip } from "../lib/zip";
 import { clampPage, clampPerPage, listPerPage } from "../lib/pagination";
@@ -173,18 +173,18 @@ fileApiRoutes.post("/submissions/:id/files", csrfJson, async (c) => {
   const sanitized = sanitizeFilenameForKey(file.name);
   const r2Key = `sub/${submissionId}/${newId()}-${sanitized}`;
   const store = makeFileStore(c.env.FILES);
-  await store.put(r2Key, file.stream(), validation.servedContentType);
-
-  const fileId = await insertFile(c.var.db, {
-    submissionId,
-    kind,
-    filename: file.name,
-    r2Key,
-    sizeBytes: file.size,
-    contentType: validation.servedContentType,
-    previousFileId,
-    uploadedByContactId: auth.contactId ?? null,
-  });
+  const fileId = await putThenRecord(store, r2Key, file.stream(), validation.servedContentType, () =>
+    insertFile(c.var.db, {
+      submissionId,
+      kind,
+      filename: file.name,
+      r2Key,
+      sizeBytes: file.size,
+      contentType: validation.servedContentType,
+      previousFileId,
+      uploadedByContactId: auth.contactId ?? null,
+    }),
+  );
 
   return c.json({ id: fileId, filename: file.name, kind, sizeBytes: file.size, contentType: validation.servedContentType }, 201);
 });

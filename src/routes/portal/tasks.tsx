@@ -37,7 +37,7 @@ import type { AppEnv } from "../../server/env";
 import { speakerGate } from "./shared";
 import { csrfForm } from "../../server/middleware";
 import { ApiError } from "../../server/http";
-import { makeFileStore } from "../../server/context";
+import { makeFileStore, putThenRecord } from "../../server/context";
 import { newId } from "../../domain/ids";
 import { updateAssignmentStatus } from "../../server/repo/tasks";
 import {
@@ -451,7 +451,6 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
   const sanitized = sanitizeFilenameForKey(file.name);
   const r2Key = `task/${assignmentId}/${newId()}-${sanitized}`;
   const store = makeFileStore(c.env.FILES);
-  await store.put(r2Key, file.stream(), validation.servedContentType);
 
   // DEC-922: scope.fileId is this assignment's PREVIOUS upload, but the
   // speaker may have re-chosen a different eligible submission via
@@ -473,16 +472,18 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
     }
   }
 
-  const fileId = await insertFile(c.var.db, {
-    submissionId,
-    kind,
-    filename: file.name,
-    r2Key,
-    sizeBytes: file.size,
-    contentType: validation.servedContentType,
-    previousFileId,
-    uploadedByContactId: contactId,
-  });
+  const fileId = await putThenRecord(store, r2Key, file.stream(), validation.servedContentType, () =>
+    insertFile(c.var.db, {
+      submissionId,
+      kind,
+      filename: file.name,
+      r2Key,
+      sizeBytes: file.size,
+      contentType: validation.servedContentType,
+      previousFileId,
+      uploadedByContactId: contactId,
+    }),
+  );
 
   await saveTaskFileCompletion(c.var.db, assignmentId, fileId);
   await updateAssignmentStatus(c.var.db, assignmentId, "complete", auth.userId, new Date());
