@@ -34,12 +34,16 @@ const COMPLETE_SCOPE = {
   fileId: FILE_ID,
 };
 
+// DEC-927: listFileChainVersions rows carry their own stored version_no, and
+// the loader reads it straight off the batch row instead of issuing a
+// per-id getFileVersionNumber query — so the fake row must supply it.
 const CHAIN_LATEST = {
   id: FILE_ID,
   filename: "slides-v2.pdf",
   contentType: "application/pdf",
   r2Key: "task/assignment-1/slides-v2.pdf",
   createdAt: Date.now(),
+  versionNo: 2,
 };
 
 vi.mock("../src/server/repo/portal", async () => {
@@ -59,7 +63,6 @@ vi.mock("../src/server/repo/files", async () => {
   return {
     ...actual,
     resolveTaskFileChainLatest: vi.fn(),
-    getFileVersionNumber: vi.fn(async () => 2),
     listFileComments: vi.fn(async () => ({ items: [], total: 0, page: 1, perPage: 1 })),
     listFileChainVersions: vi.fn(async () => [CHAIN_LATEST]),
     insertFileComment: vi.fn(async () => "comment-new-1"),

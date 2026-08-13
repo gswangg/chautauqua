@@ -56,8 +56,23 @@ interface EventRow {
   id: string;
   orgId: string;
 }
+/** DEC-926: deleteFileVersion re-homes (never deletes) task_assignment rows
+ * that point at the deleted file, so the fake has to model that table too. */
+interface AssignmentRow {
+  id: string;
+  status: string;
+  completedAt: Date | null;
+  completedBy: string | null;
+  fileId: string | null;
+}
 
-function makeFakeDb(state: { files: FileRow[]; comments: CommentRow[]; submissions: SubmissionRow[]; events: EventRow[] }) {
+function makeFakeDb(state: {
+  files: FileRow[];
+  comments: CommentRow[];
+  submissions: SubmissionRow[];
+  events: EventRow[];
+  assignments: AssignmentRow[];
+}) {
   const calls: { op: "insert" | "update" | "delete"; table: string; detail: unknown }[] = [];
 
   const db = {
@@ -145,6 +160,26 @@ function makeFakeDb(state: { files: FileRow[]; comments: CommentRow[]; submissio
           },
         };
       }
+      if (table === schema.taskAssignment) {
+        return {
+          set(values: Partial<AssignmentRow> & { updatedAt?: Date }) {
+            return {
+              async where(cond: unknown) {
+                // set-based: WHERE file_id = <deleted id>
+                const literals = collectLiteralValues(cond);
+                const targets = state.assignments.filter((a) => a.fileId !== null && literals.has(a.fileId));
+                for (const t of targets) {
+                  if ("fileId" in values) t.fileId = values.fileId ?? null;
+                  if ("status" in values) t.status = values.status!;
+                  if ("completedAt" in values) t.completedAt = values.completedAt ?? null;
+                  if ("completedBy" in values) t.completedBy = values.completedBy ?? null;
+                }
+                calls.push({ op: "update", table: "taskAssignment", detail: { values, matched: targets.map((t) => t.id) } });
+              },
+            };
+          },
+        };
+      }
       throw new Error("unexpected table in fake update");
     },
     insert(table: unknown) {
@@ -198,7 +233,11 @@ function chain() {
   ];
   const submissions: SubmissionRow[] = [{ id: "sub1", eventId: "ev1", contentStatus: "pending" }];
   const events: EventRow[] = [{ id: "ev1", orgId: "org1" }];
-  return { files, comments, submissions, events };
+  // completed assignment linked to the middle version (v2)
+  const assignments: AssignmentRow[] = [
+    { id: "asg1", status: "complete", completedAt: new Date(5000), completedBy: "c1", fileId: "v2" },
+  ];
+  return { files, comments, submissions, events, assignments };
 }
 
 describe("deleteFileVersion (DEC-713)", () => {
@@ -260,12 +299,62 @@ describe("deleteFileVersion (DEC-713)", () => {
     const comments: CommentRow[] = [
       { id: "cmA", fileId: "solo", authorUserId: "u1", authorContactId: null, body: "hello", createdAt: new Date(1000) },
     ];
-    const { db, state } = makeFakeDb({ files, comments, submissions: [], events: [] });
+    const assignments: AssignmentRow[] = [
+      { id: "asgSolo", status: "complete", completedAt: new Date(5000), completedBy: "c2", fileId: "solo" },
+    ];
+    const { db, state } = makeFakeDb({ files, comments, submissions: [], events: [], assignments });
 
     await deleteFileVersion(db, { fileId: "solo", deletedByUserId: "organizer-1", deletedByContactId: null });
 
     expect(state.files).toHaveLength(0);
     expect(state.comments).toHaveLength(0);
+  });
+
+  // DEC-926: a linked task_assignment is never deleted with the file — it
+  // either follows the chain to the surviving link, or (sole version) reopens.
+  it("re-homes a linked task_assignment onto the surviving successor when a middle version is deleted", async () => {
+    const { db, state, calls } = makeFakeDb(chain());
+
+    await deleteFileVersion(db, { fileId: "v2", deletedByUserId: "organizer-1", deletedByContactId: null });
+
+    const asg = state.assignments.find((a) => a.id === "asg1");
+    expect(asg).toBeDefined();
+    expect(asg!.fileId).toBe("v3");
+    // completion state survives its linked file's deletion
+    expect(asg!.status).toBe("complete");
+    expect(asg!.completedBy).toBe("c1");
+    expect(calls.some((c) => c.op === "delete" && c.table === "taskAssignment")).toBe(false);
+  });
+
+  it("re-homes a linked task_assignment onto the predecessor when the latest version is deleted", async () => {
+    const fixture = chain();
+    fixture.assignments[0]!.fileId = "v3";
+    const { db, state } = makeFakeDb(fixture);
+
+    await deleteFileVersion(db, { fileId: "v3", deletedByUserId: "organizer-1", deletedByContactId: null });
+
+    const asg = state.assignments.find((a) => a.id === "asg1");
+    expect(asg!.fileId).toBe("v2");
+    expect(asg!.status).toBe("complete");
+  });
+
+  it("reopens the linked task_assignment when the sole version in the chain is deleted", async () => {
+    const files: FileRow[] = [
+      { id: "solo", submissionId: "sub2", filename: "solo.pdf", r2Key: "sub/sub2/solo.pdf", previousFileId: null, versionNo: 1, uploadedByContactId: "c2" },
+    ];
+    const assignments: AssignmentRow[] = [
+      { id: "asgSolo", status: "complete", completedAt: new Date(5000), completedBy: "c2", fileId: "solo" },
+    ];
+    const { db, state } = makeFakeDb({ files, comments: [], submissions: [], events: [], assignments });
+
+    await deleteFileVersion(db, { fileId: "solo", deletedByUserId: "organizer-1", deletedByContactId: null });
+
+    const asg = state.assignments.find((a) => a.id === "asgSolo");
+    expect(asg).toBeDefined();
+    expect(asg!.status).toBe("pending");
+    expect(asg!.fileId).toBeNull();
+    expect(asg!.completedAt).toBeNull();
+    expect(asg!.completedBy).toBeNull();
   });
 });
 
