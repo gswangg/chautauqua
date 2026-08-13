@@ -1,8 +1,8 @@
 // DEC-154 layer-2 harness: renders the real App (its own BrowserRouter) at
 // an unknown path and asserts the catch-all NotFound content shows up
 // inside the app shell (Header still renders alongside it). Also covers
-// the w1-a top-nav shell (DEC-369): wordmark, no count text in nav, badge
-// only for exceptions, reviewer confinement to Review.
+// the top-nav shell (DEC-369): wordmark, no count text in nav, no badges
+// (wave 42 amendment), reviewer confinement to Review.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -37,7 +37,8 @@ describe('App catch-all route', () => {
     });
 
     // DEC-945: the attempted path is no longer shown in the card body.
-    // Header (with the sign-out control) still renders around the 404 body.
+    // Shell footer (with the sign-out control, wave 42) still renders
+    // around the 404 body.
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Overview ›' })).toHaveAttribute('href', '/admin/overview');
   });
@@ -113,7 +114,7 @@ describe('App shell (DEC-369)', () => {
     expect(submissionsLink).toHaveTextContent(/^Submissions$/);
   });
 
-  it('hides the exception badge when overdue/conflict counts are zero', async () => {
+  it('carries no nav count badge when overdue/conflict counts are zero', async () => {
     mockApi({
       'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
       'GET /api/v1/events': { items: [{ id: 'ev-1', name: 'DevFlow Conf' }], total: 1, page: 1, perPage: 50 },
@@ -131,7 +132,11 @@ describe('App shell (DEC-369)', () => {
     expect(screen.queryByText(/CLASH/)).not.toBeInTheDocument();
   });
 
-  it('shows an exception badge when overdue/conflict counts are non-zero', async () => {
+  // DEC-369 amendment (wave 42): no v6 frame carries the nav count badges --
+  // even a non-zero overdue/conflict count renders no badge text. The
+  // exception counts keep their real homes (Overview worklists, Agenda's
+  // own counter), never the nav.
+  it('carries no nav count badge even when overdue/conflict counts are non-zero', async () => {
     mockApi({
       'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
       'GET /api/v1/events': { items: [{ id: 'ev-1', name: 'DevFlow Conf' }], total: 1, page: 1, perPage: 50 },
@@ -143,10 +148,12 @@ describe('App shell (DEC-369)', () => {
 
     render(<App />);
 
-    await waitFor(() => {
-      expect(screen.getByText('3 LATE')).toBeInTheDocument();
-      expect(screen.getByText('2 CLASH')).toBeInTheDocument();
-    });
+    const primaryNav = await screen.findByRole('navigation', { name: 'Primary' });
+    await within(primaryNav).findByRole('link', { name: 'Speakers' });
+    expect(screen.queryByText(/3 LATE/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/2 CLASH/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/LATE/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/CLASH/)).not.toBeInTheDocument();
   });
 
   it('confines reviewers to the Review section only', async () => {
@@ -164,8 +171,8 @@ describe('App shell (DEC-369)', () => {
   });
 });
 
-describe('Desktop header single row + identity (DEC-576)', () => {
-  it('renders wordmark, nav, event name as text, and initials · sign out in one row', async () => {
+describe('Desktop header single row + identity (DEC-576/369)', () => {
+  it('renders wordmark, nav, event name as text, and the identity grammar in one row, with Sign out NOT in the header', async () => {
     mockApi({
       'GET /api/v1/me': {
         userId: 'u-1',
@@ -189,19 +196,23 @@ describe('Desktop header single row + identity (DEC-576)', () => {
     // directly inside it.
     expect(within(header).getByText('chautauqua')).toBeInTheDocument();
     expect(within(header).getByRole('navigation', { name: 'Primary' })).toBeInTheDocument();
-    // The event renders as plain text, not a <select>. DEC-978: the
-    // switcher's fetch waits for `me` to resolve before firing, so this
-    // needs a waitFor rather than a synchronous assertion.
+    // The event renders as plain text, not a <select>, in its own case
+    // (wave 42: no uppercase transform). DEC-978: the switcher's fetch
+    // waits for `me` to resolve before firing, so this needs a waitFor
+    // rather than a synchronous assertion.
     await waitFor(() => {
       expect(within(header).getByText('DevFlow Conf')).toBeInTheDocument();
     });
     expect(within(header).queryByRole('combobox')).not.toBeInTheDocument();
-    // The user renders as initials-form "J. ALVAREZ" beside Sign out —
+    // DEC-369 amendment (wave 42): the frames' grammar is "JORDAN A."
+    // (given name in caps + surname initial + period), not "J. ALVAREZ" —
     // never a bare email, never the literal 'undefined'.
-    expect(within(header).getByText('J. ALVAREZ', { exact: false })).toBeInTheDocument();
+    expect(within(header).getByText('JORDAN A.', { exact: false })).toBeInTheDocument();
     expect(within(header).queryByText('organizer@example.com')).not.toBeInTheDocument();
     expect(within(header).queryByText(/undefined/i)).not.toBeInTheDocument();
-    expect(within(header).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    // Sign out no longer lives in the header identity block -- it moved to
+    // the shell footer (present on every admin page).
+    expect(within(header).queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
   });
 
   it('falls back to the email local-part, uppercased, when name is null', async () => {
@@ -223,6 +234,39 @@ describe('Desktop header single row + identity (DEC-576)', () => {
     });
     expect(screen.queryByText('organizer@example.com')).not.toBeInTheDocument();
     expect(screen.queryByText(/undefined/i)).not.toBeInTheDocument();
+  });
+});
+
+// DEC-369 amendment (wave 42): a shell footer, present on every admin page,
+// carries Sign out -- never a menu, so it stays one click from any page.
+// For a reviewer it also carries the "Scores stay hidden" reassurance
+// (frame 02's reviewer footer precedent, formerly rendered per-page by
+// ReviewerQueue.tsx per DEC-874, now a single shell-level copy).
+describe('Shell footer (DEC-369 amendment, wave 42)', () => {
+  it('carries Sign out for an organizer, with no "scores stay hidden" note', async () => {
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      'GET /api/v1/events': { items: [], total: 0, page: 1, perPage: 50 },
+    });
+
+    render(<App />);
+
+    const footer = await screen.findByRole('contentinfo');
+    expect(within(footer).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    expect(within(footer).queryByText('Scores stay hidden from other reviewers')).not.toBeInTheDocument();
+  });
+
+  it('carries Sign out AND "Scores stay hidden from other reviewers" for a reviewer', async () => {
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-2', email: 'reviewer@example.com', role: 'reviewer', orgId: 'org-1' },
+      'GET /api/v1/events': { items: [], total: 0, page: 1, perPage: 50 },
+    });
+
+    render(<App />);
+
+    const footer = await screen.findByRole('contentinfo');
+    expect(within(footer).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    expect(within(footer).getByText('Scores stay hidden from other reviewers')).toBeInTheDocument();
   });
 });
 

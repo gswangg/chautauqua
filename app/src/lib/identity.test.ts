@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { emailLocalPart, identityLabel, initialsForm } from './identity';
 
 describe('initialsForm', () => {
-  it('formats a two-part name as "F. LAST"', () => {
-    expect(initialsForm('Jordan Alvarez')).toBe('J. ALVAREZ');
+  it('formats a two-part name as "GIVEN S."', () => {
+    expect(initialsForm('Jordan Alvarez')).toBe('JORDAN A.');
   });
 
-  it('uses the last of more than two parts', () => {
-    expect(initialsForm('Mary Jane Watson')).toBe('M. WATSON');
+  it('uses the first part as the given name and the last part\'s initial for more than two parts', () => {
+    expect(initialsForm('Mary Jane Watson')).toBe('MARY W.');
   });
 
   it('uppercases a single-word name as-is, with no period', () => {
@@ -23,7 +23,7 @@ describe('emailLocalPart', () => {
 
 describe('identityLabel', () => {
   it('prefers the initials form of a non-empty name', () => {
-    expect(identityLabel('Jordan Alvarez', 'organizer@example.com')).toBe('J. ALVAREZ');
+    expect(identityLabel('Jordan Alvarez', 'organizer@example.com')).toBe('JORDAN A.');
   });
 
   it('falls back to the email local-part for a null name', () => {

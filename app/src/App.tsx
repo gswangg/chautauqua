@@ -48,9 +48,6 @@ const SpeakerDetailPage = lazy(pageLoaders.speakerDetail);
 const DeleteSubmissionsPage = lazy(pageLoaders.submissionsDelete);
 const NotFoundPage = lazy(pageLoaders.notFound);
 
-// DEC-369: nav badge source. Each entry that can carry an exception names
-// which useNavExceptions() field drives its badge and the word that follows
-// the count ("3 LATE", "2 CLASH"). Sections with no badgeKey never show one.
 // DEC-831: exported so App.render.test.tsx can enumerate every section
 // (rather than hand-listing paths, which desyncs the moment a section is
 // added/removed/reordered here) when asserting each nav link highlights at
@@ -59,23 +56,9 @@ export const NAV_SECTIONS = [
   { label: 'Overview', path: '/overview', element: <OverviewPage />, loader: pageLoaders.overview },
   { label: 'Submissions', path: '/submissions', element: <SubmissionsPage />, loader: pageLoaders.submissions },
   { label: 'Review', path: '/review/*', element: <ReviewPage />, loader: pageLoaders.review },
-  {
-    label: 'Speakers',
-    path: '/speakers',
-    element: <SpeakersPage />,
-    loader: pageLoaders.speakers,
-    badgeKey: 'late',
-    badgeWord: 'LATE',
-  },
+  { label: 'Speakers', path: '/speakers', element: <SpeakersPage />, loader: pageLoaders.speakers },
   { label: 'Content', path: '/content', element: <ContentPage />, loader: pageLoaders.content },
-  {
-    label: 'Agenda',
-    path: '/agenda',
-    element: <AgendaPage />,
-    loader: pageLoaders.agenda,
-    badgeKey: 'clash',
-    badgeWord: 'CLASH',
-  },
+  { label: 'Agenda', path: '/agenda', element: <AgendaPage />, loader: pageLoaders.agenda },
   { label: 'Comms', path: '/comms', element: <CommsPage />, loader: pageLoaders.comms },
   { label: 'Contacts', path: '/contacts', element: <ContactsPage />, loader: pageLoaders.contacts },
   { label: 'Settings', path: '/settings', element: <SettingsPage />, loader: pageLoaders.settings },
@@ -113,20 +96,11 @@ async function signOut(): Promise<void> {
   window.location.assign('/login');
 }
 
-function badgeFor(section: NavSection, exceptions: { late: number | null; clash: number | null }): string | null {
-  if (!('badgeKey' in section)) return null;
-  const count = exceptions[section.badgeKey as 'late' | 'clash'];
-  if (!count) return null;
-  return `${count} ${section.badgeWord}`;
-}
-
 function NavLinks({
   sections,
-  exceptions,
   onNavigate,
 }: {
   sections: readonly NavSection[];
-  exceptions: { late: number | null; clash: number | null };
   onNavigate?: () => void;
 }) {
   const prefetch = (path: string) => {
@@ -136,26 +110,22 @@ function NavLinks({
 
   return (
     <>
-      {sections.map((section) => {
-        const badge = badgeFor(section, exceptions);
-        return (
-          <NavLink
-            key={section.path}
-            // DEC-831: strip the trailing "/*" wholesale (not just the "*"),
-            // so '/review/*' yields '/review', not '/review/' -- a trailing
-            // slash NavLink's isActive/aria-current match never resolves
-            // against the router's actual '/review' pathname.
-            to={section.path.replace(/\/\*$/, '')}
-            className={({ isActive }) => `chq-nav-link${isActive ? ' is-active' : ''}`}
-            onMouseEnter={() => prefetch(section.path)}
-            onFocus={() => prefetch(section.path)}
-            onClick={onNavigate}
-          >
-            {section.label}
-            {badge && <span className="chq-nav-badge">{badge}</span>}
-          </NavLink>
-        );
-      })}
+      {sections.map((section) => (
+        <NavLink
+          key={section.path}
+          // DEC-831: strip the trailing "/*" wholesale (not just the "*"),
+          // so '/review/*' yields '/review', not '/review/' -- a trailing
+          // slash NavLink's isActive/aria-current match never resolves
+          // against the router's actual '/review' pathname.
+          to={section.path.replace(/\/\*$/, '')}
+          className={({ isActive }) => `chq-nav-link${isActive ? ' is-active' : ''}`}
+          onMouseEnter={() => prefetch(section.path)}
+          onFocus={() => prefetch(section.path)}
+          onClick={onNavigate}
+        >
+          {section.label}
+        </NavLink>
+      ))}
     </>
   );
 }
@@ -186,19 +156,11 @@ function Header() {
       <header className="chq-header">
         <span className="chq-wordmark">chautauqua</span>
         <nav className="chq-nav" aria-label="Primary">
-          <NavLinks sections={sections} exceptions={exceptions} />
+          <NavLinks sections={sections} />
         </nav>
         <div className="chq-header-identity">
           <EventSwitcher />
-          {me && (
-            <span className="chq-user-identity">
-              {identityLabel(me.name, me.email)}
-              <span aria-hidden="true">·</span>
-              <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => void signOut()}>
-                Sign out
-              </button>
-            </span>
-          )}
+          {me && <span className="chq-user-identity">{identityLabel(me.name, me.email)}</span>}
         </div>
       </header>
 
@@ -248,7 +210,7 @@ function Header() {
                 Close
               </button>
             </div>
-            <NavLinks sections={moreSections} exceptions={exceptions} onNavigate={closeMore} />
+            <NavLinks sections={moreSections} onNavigate={closeMore} />
             <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void signOut()}>
               Sign out
             </button>
@@ -256,6 +218,26 @@ function Header() {
         </div>
       )}
     </>
+  );
+}
+
+// DEC-369 amendment (wave 42): a shell footer, present on every admin page,
+// carries Sign out -- never a menu, so it stays exactly one click away
+// regardless of role or route. Frame 02's reviewer footer is the precedent:
+// for a reviewer it also carries the reassurance that scores stay hidden
+// from other reviewers (mirrors the former DEC-874 in-page footer, now
+// rendered once, globally, in the shell chrome rather than duplicated per
+// page).
+function Footer() {
+  const { me } = useMe();
+  const isReviewer = me?.role === 'reviewer';
+  return (
+    <footer className="chq-footer">
+      {isReviewer && <p className="chq-footer-note">Scores stay hidden from other reviewers</p>}
+      <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => void signOut()}>
+        Sign out
+      </button>
+    </footer>
   );
 }
 
@@ -339,6 +321,7 @@ export function App() {
             <RoutedContent />
           </RoleGate>
         </main>
+        <Footer />
       </div>
     </BrowserRouter>
   );

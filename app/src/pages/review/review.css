@@ -1293,13 +1293,3 @@
   color: var(--chq-muted);
   font-weight: 700;
 }
-
-/* DEC-874: footer under the queue list, beside the shell's own sign-out
-   control (App.tsx Header) -- not a second sign-out path. */
-.chq-review-queue-footer {
-  margin-top: 18px;
-  padding-top: 14px;
-  border-top: 1px solid var(--chq-hairline);
-  font-size: 12px;
-  color: var(--chq-muted);
-}
