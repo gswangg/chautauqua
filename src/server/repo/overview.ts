@@ -22,17 +22,20 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
-import { findConflicts, type PlacedSession } from "../../domain/schedule";
+import { findConflicts, parseFormatDurationMin, type PlacedSession } from "../../domain/schedule";
 import { formatRef } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
+import { SESSION_FORMAT_FIELD_ID } from "../../forms/types";
 import { loadTrackNamesBySubmission } from "./submission-tracks";
 import { DEFAULT_AUTO_SCHEDULE_PARAMS } from "./agenda";
 import { overdueAssignmentConditions } from "./tasks/crud";
-import { DEC_370, DEC_531, DEC_704, DEC_776 } from "../../decisions";
+import { DEC_370, DEC_531, DEC_704, DEC_772, DEC_776, DEC_895 } from "../../decisions";
 void DEC_370;
 void DEC_531;
 void DEC_704;
+void DEC_772;
 void DEC_776;
+void DEC_895;
 
 export * from "./overview/types";
 export * from "./overview/aggregate";
@@ -427,6 +430,83 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
   };
   const cappedConflicts = conflicts.slice(0, ROW_CAP);
 
+  // --- DEC-895: each unplaced row's own SESSION_FORMAT_FIELD_ID answer,
+  // batched exactly like loadDurationMinBySubmission (./agenda) — but this
+  // reader returns the raw label, never a defaulted duration, so a row
+  // whose format is absent or unparseable can say so (durationMin: null)
+  // rather than silently borrowing the event's default.
+  const formatLabelByUnplacedId = new Map<string, string | null>();
+  if (unplacedCappedIds.length > 0) {
+    const formatAnswerRows: { submissionId: string; valueJson: string }[] = [];
+    for (const batch of chunkIds(unplacedCappedIds)) {
+      const batchRows = await db
+        .select({
+          submissionId: schema.submissionAnswer.submissionId,
+          valueJson: schema.submissionAnswer.valueJson,
+        })
+        .from(schema.submissionAnswer)
+        .where(
+          and(
+            inArray(schema.submissionAnswer.submissionId, batch),
+            eq(schema.submissionAnswer.formFieldId, SESSION_FORMAT_FIELD_ID),
+          ),
+        );
+      formatAnswerRows.push(...batchRows);
+    }
+    for (const r of formatAnswerRows) {
+      const parsed: unknown = JSON.parse(r.valueJson);
+      formatLabelByUnplacedId.set(r.submissionId, typeof parsed === "string" && parsed.length > 0 ? parsed : null);
+    }
+  }
+
+  // --- DEC-895: suggestions are handed out against a GROWING occupancy set
+  // — the first row's accepted suggestion is reserved into
+  // suggestionOccupancy before the next row's search runs, so two rows in
+  // one payload can never both propose the same room-minute. Starts as a
+  // copy of `placed` so it never mutates the array conflicts/resolutions
+  // above already computed against.
+  const suggestionOccupancy: PlacedSession[] = [...placed];
+  const unplacedRows = unplacedCappedIds.map((id) => {
+    const submission = acceptedById.get(id);
+    if (!submission) throw new Error(`getOverviewPayload: unplaced submission ${id} not in the loaded accepted set`);
+    const format = formatLabelByUnplacedId.get(id) ?? null;
+    // DEC-772/DEC-895: the ONE parse — never a magic default when the
+    // format carries no parseable duration; the row just says null.
+    const durationMin = parseFormatDurationMin(format);
+    const leadSpeakerContactId = leadSpeakerContactIdById.get(id) ?? null;
+    let suggestion = null;
+    if (durationMin !== null) {
+      suggestion = buildPlacementSuggestion(
+        leadSpeakerContactId,
+        suggestionOccupancy,
+        placedRoomIds,
+        placedDays,
+        roomNameById,
+        nextFreeSlotParams,
+        durationMin,
+      );
+      if (suggestion) {
+        suggestionOccupancy.push({
+          submissionId: id,
+          roomId: suggestion.roomId,
+          day: suggestion.day,
+          startMin: suggestion.startMin,
+          endMin: suggestion.startMin + durationMin,
+          speakerContactIds: leadSpeakerContactId ? [leadSpeakerContactId] : [],
+        });
+      }
+    }
+    return {
+      submissionId: id,
+      ref: formatRef(recordPrefix, submission.seq),
+      title: submission.title,
+      speakerName: leadSpeakerNameById.get(id) ?? "",
+      format,
+      durationMin,
+      suggestion,
+    };
+  });
+
   const agendaWork = {
     unplacedTotal: agenda.unplaced,
     conflictTotal: agenda.conflicts,
@@ -443,25 +523,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
         nextFreeSlotParams,
       ),
     })),
-    unplaced: unplacedCappedIds.map((id) => {
-      const submission = acceptedById.get(id);
-      if (!submission) throw new Error(`getOverviewPayload: unplaced submission ${id} not in the loaded accepted set`);
-      return {
-        submissionId: id,
-        ref: formatRef(recordPrefix, submission.seq),
-        title: submission.title,
-        speakerName: leadSpeakerNameById.get(id) ?? "",
-        durationMin: null,
-        suggestion: buildPlacementSuggestion(
-          leadSpeakerContactIdById.get(id) ?? null,
-          placed,
-          placedRoomIds,
-          placedDays,
-          roomNameById,
-          nextFreeSlotParams,
-        ),
-      };
-    }),
+    unplaced: unplacedRows,
   };
 
   // --- Comms: one aggregate query, never the whole email_log table

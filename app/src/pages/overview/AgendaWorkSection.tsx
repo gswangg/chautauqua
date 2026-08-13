@@ -23,14 +23,6 @@ function formatClockTime(minutesFromMidnight: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-// DEC-652: mirrors src/server/repo/agenda.ts's DEFAULT_AUTO_SCHEDULE_PARAMS
-// .defaultDurationMin — the same default the server's nextFreeSlot used to
-// compute an unplaced row's `suggestion` (no persisted per-submission
-// length exists, so UnplacedRow.durationMin is always null; this is the
-// one place the client independently knows the duration a suggested slot
-// was sized for, for the PUT's endMin).
-const DEFAULT_UNPLACED_DURATION_MIN = 30;
-
 // DEC-877: §04's overflow — unplaced rows and conflict rows the payload
 // truncated (server total exceeds the rows actually sent) — collapsed into
 // ONE below-the-list summary sentence, joined through the page's one
@@ -147,22 +139,21 @@ export function AgendaWorkSection({ payload, setPayload, setError, refetch }: Ag
           <span className="chq-overview-caption chq-overview-caption-flush">No slot yet</span>
           <div>
             <div>{row.title}</div>
-            {/* DEC-735/DEC-779: no persisted per-submission duration reaches
-                this row (server always sends durationMin: null — see the
-                DEFAULT_UNPLACED_DURATION_MIN comment above), so joinSegments
-                drops the "N min" clause rather than leaving a dangling
-                "· min ·" fragment. */}
+            {/* DEC-895: format/duration are each an independent joinSegments
+                segment — a row whose format carries no parseable duration
+                (or has no format answer at all) drops that clause cleanly
+                rather than leaving a dangling "· min ·" fragment. */}
             <div className="chq-overview-row-meta">
-              {joinSegments([row.speakerName, row.durationMin !== null ? `${row.durationMin} min` : null, row.ref])}
+              {joinSegments([row.speakerName, row.format, row.durationMin !== null ? `${row.durationMin} min` : null, row.ref])}
             </div>
           </div>
-          {row.suggestion ? (
+          {row.suggestion && row.durationMin !== null ? (
             <button
               type="button"
               className="chq-overview-link-btn"
               onClick={() => {
                 const suggestion = row.suggestion!;
-                void placeSlot(row.submissionId, suggestion, DEFAULT_UNPLACED_DURATION_MIN, (prev) => ({
+                void placeSlot(row.submissionId, suggestion, row.durationMin!, (prev) => ({
                   ...prev,
                   agendaWork: {
                     ...prev.agendaWork,
@@ -185,10 +176,8 @@ export function AgendaWorkSection({ payload, setPayload, setError, refetch }: Ag
         </div>
       ))}
       {/* DEC-877: overflow is a summary line BELOW the list — the same
-          shape §01 uses for its own overflow. Never invents a duration
-          clause the payload doesn't carry (row.durationMin is always the
-          server's null default — see DEFAULT_UNPLACED_DURATION_MIN above);
-          only the counts the server actually sent are named. */}
+          shape §01 uses for its own overflow. Only the counts the server
+          actually sent are named, never an invented duration clause. */}
       {agendaOverflowLine(payload) && <div className="chq-overview-overflow">{agendaOverflowLine(payload)}</div>}
     </section>
   );

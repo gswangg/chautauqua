@@ -86,7 +86,12 @@ export interface UnplacedRow {
   ref: string;
   title: string;
   speakerName: string;
-  durationMin: number;
+  // DEC-895: the submission's own session-format answer, null when absent.
+  format: string | null;
+  // DEC-772/DEC-895: server-derived from `format` — null when the format is
+  // absent or carries no parseable duration. The client never re-derives
+  // this itself.
+  durationMin: number | null;
   suggestion: PlacementSuggestion | null;
 }
 
