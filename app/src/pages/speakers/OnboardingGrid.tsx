@@ -35,15 +35,25 @@ const PER_PAGE = 50;
 
 const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+/** Shared day/month(/year) formatter for a due date -- both the column
+ * header caption and a cell's title/aria-label read it, so the two can
+ * never disagree. Appends the 4-digit UTC year only when the due date's
+ * UTC year differs from `now`'s, so a far-dated column can't be mistaken
+ * for "this year" (DEC-852). Reads UTC calendar parts directly (never
+ * toISOString/local) per DEC-146/153. */
+function formatDueDate(dueDate: number, now: number): string {
+  const date = new Date(dueDate);
+  const yearSuffix = date.getUTCFullYear() !== new Date(now).getUTCFullYear() ? ` ${date.getUTCFullYear()}` : '';
+  return `${date.getUTCDate()} ${SHORT_MONTHS[date.getUTCMonth()]}${yearSuffix}`;
+}
+
 /** Task column header caption, design v4's "Due 10 Apr · Required" shape
  * (rendered upper-case via .chq-speakers-task-due's text-transform) --
- * replaces the old title + bare '*' + plain date pattern. Reads the UTC
- * calendar date directly (never toISOString/local) per DEC-146/153. */
-function taskDueLabel(task: { dueDate: number | null; required: boolean }): string {
+ * replaces the old title + bare '*' + plain date pattern. */
+function taskDueLabel(task: { dueDate: number | null; required: boolean }, now: number): string {
   const suffix = task.required ? ' · Required' : '';
   if (task.dueDate === null) return `No due date${suffix}`;
-  const date = new Date(task.dueDate);
-  const base = `Due ${date.getUTCDate()} ${SHORT_MONTHS[date.getUTCMonth()]}`;
+  const base = `Due ${formatDueDate(task.dueDate, now)}`;
   return `${base}${suffix}`;
 }
 
@@ -73,6 +83,21 @@ const OVERDUE_LABEL = 'OVERDUE';
 function overdueTitle(dueDate: number, now: number): string {
   const d = daysLate(dueDate, now);
   return `${d} day${d === 1 ? '' : 's'} late`;
+}
+
+/** The cell button's title/accessible-name suffix (DEC-852): an overdue
+ * cell keeps today's "N days late" text verbatim; any other non-complete
+ * cell with a known effective due date names that date instead, so a
+ * grace-shifted deadline is visible before it bites, not only after. */
+function cellDueTitle(
+  status: AssignmentStatus,
+  overdueTitleText: string | null,
+  effectiveDueDate: number | null,
+  now: number,
+): string | null {
+  if (overdueTitleText) return overdueTitleText;
+  if (status === 'complete' || effectiveDueDate === null) return null;
+  return `due ${formatDueDate(effectiveDueDate, now)}`;
 }
 
 function firstNameOf(fullName: string): string {
@@ -439,7 +464,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                   {grid.tasks.map((task) => (
                     <th key={task.id}>
                       {task.title}
-                      <div className="chq-speakers-task-due">{taskDueLabel(task)}</div>
+                      <div className="chq-speakers-task-due">{taskDueLabel(task, now)}</div>
                     </th>
                   ))}
                 </tr>
@@ -507,6 +532,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                       const cellClass = statusCellClass(cell.status, overdue);
                       const effectiveDueDate = effectiveAssignmentDueDate(task.dueDate, cell.assignedAt);
                       const overdueTitleText = overdue && effectiveDueDate !== null ? overdueTitle(effectiveDueDate, now) : null;
+                      const cellTitleText = cellDueTitle(cell.status, overdueTitleText, effectiveDueDate, now);
                       return (
                         <td key={task.id}>
                           <div className="chq-speakers-cell">
@@ -515,11 +541,11 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                               className={cellClass}
                               onClick={() => toggleCell(cell.assignmentId, cell.status)}
                               aria-label={
-                                overdueTitleText
-                                  ? `Toggle ${task.title} for ${row.contact.name}, ${overdueTitleText}`
+                                cellTitleText
+                                  ? `Toggle ${task.title} for ${row.contact.name}, ${cellTitleText}`
                                   : `Toggle ${task.title} for ${row.contact.name}`
                               }
-                              title={overdueTitleText ?? undefined}
+                              title={cellTitleText ?? undefined}
                             >
                               {cell.status === 'complete' ? 'Complete' : overdueTitleText ? OVERDUE_LABEL : 'Pending'}
                             </button>
@@ -601,6 +627,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                     const cellClass = statusCellClass(cell.status, overdue);
                     const effectiveDueDate = effectiveAssignmentDueDate(task.dueDate, cell.assignedAt);
                     const overdueTitleText = overdue && effectiveDueDate !== null ? overdueTitle(effectiveDueDate, now) : null;
+                    const cellTitleText = cellDueTitle(cell.status, overdueTitleText, effectiveDueDate, now);
                     return (
                       <div key={task.id} className="chq-speakers-card-task">
                         <span className="chq-speakers-card-task-label">{task.title}</span>
@@ -610,11 +637,11 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                             className={cellClass}
                             onClick={() => toggleCell(cell.assignmentId, cell.status)}
                             aria-label={
-                              overdueTitleText
-                                ? `Toggle ${task.title} for ${row.contact.name}, ${overdueTitleText}`
+                              cellTitleText
+                                ? `Toggle ${task.title} for ${row.contact.name}, ${cellTitleText}`
                                 : `Toggle ${task.title} for ${row.contact.name}`
                             }
-                            title={overdueTitleText ?? undefined}
+                            title={cellTitleText ?? undefined}
                           >
                             {cell.status === 'complete' ? 'Complete' : overdueTitleText ? OVERDUE_LABEL : 'Pending'}
                           </button>

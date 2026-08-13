@@ -340,6 +340,127 @@ describe('OnboardingGrid: DEC-694 per-row remind', () => {
   });
 });
 
+// DEC-852: a grace-shifted deadline must be visible before it bites (not
+// only once overdue), and a far-dated header column must not read as "this
+// year" when it isn't.
+describe('OnboardingGrid: DEC-852 due-date visibility', () => {
+  function fmt(ts: number, now: number): string {
+    const d = new Date(ts);
+    const suffix = d.getUTCFullYear() !== new Date(now).getUTCFullYear() ? ` ${d.getUTCFullYear()}` : '';
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${d.getUTCDate()} ${months[d.getUTCMonth()]}${suffix}`;
+  }
+
+  it('names the due date in the accessible name of a pending, not-yet-overdue cell', async () => {
+    const now = Date.now();
+    const dueDate = now + 3 * 86_400_000;
+    const grid: OnboardingGridResponse = {
+      tasks: [{ id: 'task-1', kind: 'general', title: 'Sign speaker agreement', dueDate, required: true }],
+      rows: [
+        {
+          contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true, participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
+          cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt: now - 86_400_000 }],
+        },
+      ],
+      total: 1,
+      page: 1,
+      perPage: 50,
+      counts: { speakers: 1, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
+    };
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: grid,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    const table = within(screen.getByRole('table'));
+    const expected = fmt(dueDate, now);
+    const btn = table.getByRole('button', { name: `Toggle Sign speaker agreement for Ada Lovelace, due ${expected}` });
+    expect(btn).toHaveTextContent('Pending');
+    expect(btn.getAttribute('title')).toBe(`due ${expected}`);
+  });
+
+  it('names the grace-shifted date (not the raw task.dueDate) when the task was assigned after its own due date', async () => {
+    const now = Date.now();
+    const assignedAt = now;
+    const rawDueDate = now - 10 * 86_400_000; // predates assignedAt
+    const graceDueDate = assignedAt + 7 * 86_400_000; // effectiveAssignmentDueDate's grace shift
+    const grid: OnboardingGridResponse = {
+      tasks: [{ id: 'task-1', kind: 'general', title: 'Sign speaker agreement', dueDate: rawDueDate, required: true }],
+      rows: [
+        {
+          contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true, participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
+          cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt }],
+        },
+      ],
+      total: 1,
+      page: 1,
+      perPage: 50,
+      counts: { speakers: 1, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
+    };
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: grid,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    const table = within(screen.getByRole('table'));
+    const graceExpected = fmt(graceDueDate, now);
+    const rawExpected = fmt(rawDueDate, now);
+    expect(graceExpected).not.toBe(rawExpected);
+
+    const btn = table.getByRole('button', { name: `Toggle Sign speaker agreement for Ada Lovelace, due ${graceExpected}` });
+    expect(btn).toHaveTextContent('Pending');
+    expect(
+      table.queryByRole('button', { name: `Toggle Sign speaker agreement for Ada Lovelace, due ${rawExpected}` }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the year on a header due next year but not on one due this year', async () => {
+    const now = Date.now();
+    const nowYear = new Date(now).getUTCFullYear();
+    const nextYearDue = Date.UTC(nowYear + 1, 5, 15);
+    const thisYearDue = Date.UTC(nowYear, 5, 15);
+    const grid: OnboardingGridResponse = {
+      tasks: [
+        { id: 'task-far', kind: 'general', title: 'Far task', dueDate: nextYearDue, required: false },
+        { id: 'task-near', kind: 'general', title: 'Near task', dueDate: thisYearDue, required: false },
+      ],
+      rows: [
+        {
+          contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true, participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
+          cells: [
+            { taskId: 'task-far', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt: now },
+            { taskId: 'task-near', assignmentId: 'as2', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt: now },
+          ],
+        },
+      ],
+      total: 1,
+      page: 1,
+      perPage: 50,
+      counts: { speakers: 1, outstandingRequired: 2, overdue: 0, outstandingContacts: 1 },
+    };
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: grid,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    expect(screen.getAllByText(`Due 15 Jun ${nowYear + 1}`).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Due 15 Jun').length).toBeGreaterThan(0);
+    expect(screen.queryByText(`Due 15 Jun ${nowYear}`)).not.toBeInTheDocument();
+  });
+});
+
 // DEC-830: the roster row's participation control is a MENU of named states
 // (not a click-to-cycle control) that writes through
 // PATCH /submissions/:submissionId/participants/:participantId (mocked here
