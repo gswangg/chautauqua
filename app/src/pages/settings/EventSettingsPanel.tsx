@@ -118,10 +118,16 @@ export function EventSettingsPanel() {
   const rows = form
     ? [
         { label: 'Name', value: form.name },
-        { label: 'Slug', value: form.slug },
+        // DEC-896: matches the 09-settings frame's Slug row hint verbatim
+        // ('Used in every public URL' -- submit/schedule/agenda links all
+        // key off this, per the record scoping this panel already saves).
+        { label: 'Slug', value: form.slug, hint: 'Used in every public URL' },
         { label: 'Starts', value: form.startDate },
         { label: 'Ends', value: form.endDate },
-        { label: 'Time zone', value: form.timezone },
+        // DEC-896: the time zone note -- every date on this row and every
+        // deadline elsewhere in the event (CFP closes, agenda times) reads
+        // through event-time.ts against this same zone, not the viewer's.
+        { label: 'Time zone', value: form.timezone, hint: 'Applies to every date and deadline in this event' },
         { label: 'Venue', value: form.location || 'Not set' },
         { label: 'Record prefix', value: form.recordPrefix },
         { label: 'Branding', value: brandingSummary(form) },
