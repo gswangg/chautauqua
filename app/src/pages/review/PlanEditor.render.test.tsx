@@ -967,6 +967,72 @@ describe('PlanEditor render smoke', () => {
     expect(screen.queryByText('talks each')).not.toBeInTheDocument();
   });
 
+  // w52/DEC-840 amendment: totalAssigned === 0 with a non-empty shortfall is
+  // a run blocked entirely (cap reached or nobody covers a track) -- the
+  // "already has enough" sentence would contradict the shortfall list, so
+  // this state gets its own lead sentence plus the full frame-03 anatomy
+  // (cap row, summary line, reviewer table) and no primary button.
+  it('DEC-840 wave-52: a run blocked entirely renders the blocked lead plus cap row, summary and table -- never the "already has enough" sentence', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/assignments/distribute/preview`]: {
+        cap: 5,
+        items: [],
+        perReviewer: [
+          { userId: 'u2', name: 'Grace Hopper', trackName: 'AI Engineering', before: 3, after: 3, added: 0, eligible: false, reason: 'wrong_track' },
+        ],
+        totalAssigned: 0,
+        shortfall: [
+          { submissionId: 's9', ref: 'SES-009', title: 'Talk Nine', trackName: 'AI Engineering', needed: 14, reason: 'cap_reached' },
+        ],
+      },
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Who reviews what')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Distribute the unassigned' }));
+
+    // The blocked lead appears, and the "already has enough" sentence never
+    // does -- the shortfall list would contradict it.
+    await waitFor(() => expect(screen.getByText("This run can't assign any talks.")).toBeInTheDocument());
+    expect(
+      screen.queryByText('Every submission already has enough reviewers -- nothing to distribute.'),
+    ).not.toBeInTheDocument();
+
+    // Frame-03 anatomy: cap row, summary line, reviewer table -- same as the
+    // non-empty case. Scoped to the dialog since "Cap per reviewer" also
+    // labels the plan's own cap-input field elsewhere on the page.
+    const dialog = screen.getByRole('alertdialog', { name: 'Confirm even distribution' });
+    expect(within(dialog).getByText('Cap per reviewer')).toBeInTheDocument();
+    expect(within(dialog).getByText('5')).toBeInTheDocument();
+    expect(within(dialog).getByText('talks each')).toBeInTheDocument();
+    expect(within(dialog).getByRole('table')).toBeInTheDocument();
+    expect(within(dialog).getByText('Grace Hopper')).toBeInTheDocument();
+    expect(within(dialog).getByText('AI Engineering')).toBeInTheDocument();
+    expect(within(dialog).getByText('unchanged · wrong track')).toBeInTheDocument();
+
+    // The shortfall sentence still names the constraint and the track.
+    expect(
+      screen.getByText('14 reviews stay unassigned — the cap is reached and nobody else covers AI Engineering.'),
+    ).toBeInTheDocument();
+
+    expect(screen.getByText('Nothing is saved until you confirm.')).toBeInTheDocument();
+
+    // No primary button: there is nothing to write.
+    expect(screen.queryByRole('button', { name: /Assign these/ })).not.toBeInTheDocument();
+  });
+
   // --- DEC-882: criteria table column headers + read-only lock + open-plan header ---
 
   it('renders the CRITERION / GUIDANCE / WEIGHT column headers above the criteria rows', async () => {
