@@ -332,6 +332,72 @@ describe("seed coherence (DEC-771)", () => {
     ).toBe(true);
   });
 
+  it("(DEC-848) the reviewer persona has two simultaneously open, differently-track-scoped queues, each with unscored work", () => {
+    // The reviewer persona is the fixture-identified login account (not the
+    // synthetic reviewer.b/c/d users), matched by email exactly as seed.ts
+    // derives it, so this test never hand-guesses the persona's user id.
+    const fixture = JSON.parse(readFileSync(join(REPO_ROOT, "docs", "fixtures", "sample-data.json"), "utf-8")) as {
+      identities: { reviewer: { email: string } };
+    };
+    const reviewerEmail = fixture.identities.reviewer.email;
+
+    const userRows = parseInserts(sql, "user");
+    const reviewerUser = userRows.find((r) => r.email === reviewerEmail && r.role === "reviewer");
+    expect(reviewerUser, `no seeded reviewer user with email ${reviewerEmail}`).toBeTruthy();
+    const reviewerUserId = reviewerUser!.id!;
+
+    const planRows = parseInserts(sql, "evaluation_plan");
+    const now = Date.now();
+    const isOpen = (r: Record<string, string | null>) => {
+      const openDate = Number(r.open_date);
+      const closeDate = Number(r.close_date);
+      return openDate <= now && now < closeDate;
+    };
+    const openPlans = planRows.filter(isOpen);
+    expect(openPlans.length, `expected >=2 open evaluation_plan rows: ${JSON.stringify(openPlans)}`).toBeGreaterThanOrEqual(2);
+
+    const planReviewerRows = parseInserts(sql, "plan_reviewer");
+    const openPlanIds = new Set(openPlans.map((r) => r.id!));
+    const reviewerAssignments = planReviewerRows.filter(
+      (r) => r.user_id === reviewerUserId && openPlanIds.has(r.plan_id!),
+    );
+    expect(
+      reviewerAssignments.length,
+      `expected reviewer persona to have plan_reviewer rows on >=2 open plans: ${JSON.stringify(reviewerAssignments)}`,
+    ).toBeGreaterThanOrEqual(2);
+
+    // Their track scopes must differ across at least two of those open-plan
+    // assignments -- otherwise the two live queues would only differ by name.
+    const trackScopes = new Set(reviewerAssignments.map((r) => r.track_id!));
+    expect(
+      trackScopes.size,
+      `reviewer persona's open-plan assignments all share one track scope: ${JSON.stringify([...trackScopes])}`,
+    ).toBeGreaterThan(1);
+
+    // Each of those plans must have at least one in-track submission the
+    // reviewer persona has NOT yet scored -- otherwise the queue renders
+    // empty and proves nothing (DEC-848).
+    const submissionTrackRows = parseInserts(sql, "submission_track");
+    const evaluationRows = parseInserts(sql, "evaluation");
+    for (const assignment of reviewerAssignments) {
+      const planId = assignment.plan_id!;
+      const trackId = assignment.track_id!;
+      const inTrackSubmissionIds = new Set(
+        submissionTrackRows.filter((r) => r.track_id === trackId).map((r) => r.submission_id!),
+      );
+      const scoredSubmissionIds = new Set(
+        evaluationRows
+          .filter((r) => r.plan_id === planId && r.reviewer_id === reviewerUserId)
+          .map((r) => r.submission_id!),
+      );
+      const unscored = [...inTrackSubmissionIds].filter((id) => !scoredSubmissionIds.has(id));
+      expect(
+        unscored.length,
+        `plan ${planId} (track ${trackId}) has no submission left unscored by the reviewer persona -- queue would render empty`,
+      ).toBeGreaterThan(0);
+    }
+  });
+
   it("(DEC-836) the Content worklist's three questions (needs a decision, approved, all accepted) each count a non-zero row", () => {
     const submissionRows = parseInserts(sql, "submission");
     const acceptedRows = submissionRows.filter((r) => r.status === "accepted");
