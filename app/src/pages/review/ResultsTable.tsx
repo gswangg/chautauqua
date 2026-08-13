@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
 import './review.css';
@@ -18,27 +18,30 @@ function isDecidedStatus(status: string): status is 'accepted' | 'declined' {
   return status === 'accepted' || status === 'declined';
 }
 
-// DEC-345: mirrors src/domain/evaluation.ts's ResultsSortKey/SortDirection
-// (the pure-core sort now lives server-side, so the SPA only needs the wire
-// shape of a sort spec, not the sorting logic itself).
+// DEC-345/DEC-737: mirrors src/domain/evaluation.ts's ResultsSortKey/
+// SortDirection (the pure-core sort now lives server-side, so the SPA only
+// needs the wire shape of a sort spec, not the sorting logic itself).
+// DEC-737: the per-criterion rating/dropdown columns are gone (folded into
+// the one blended SCORE column), so their sort variants go with them --
+// nothing in the UI can ever produce a sort key the results table doesn't
+// render a header for.
 export type SortDirection = 'asc' | 'desc';
 
 export type ResultsSortKey =
   | { column: 'ref' }
   | { column: 'title' }
   | { column: 'average' }
-  | { column: 'count' }
-  | { column: 'rating'; criterionId: string }
-  | { column: 'dropdown'; criterionId: string };
+  | { column: 'count' };
+
+// DEC-737: a ranked (numeric) column defaults to descending on first click
+// -- "best first" is what a ranked column is for. Text columns (ref/title)
+// keep ascending.
+const NUMERIC_COLUMNS: ResultsSortKey['column'][] = ['average', 'count'];
 
 const PER_PAGE = 50;
 
 function sortKeysEqual(a: ResultsSortKey, b: ResultsSortKey): boolean {
-  if (a.column !== b.column) return false;
-  if (a.column === 'rating' || a.column === 'dropdown') {
-    return (b as { criterionId: string }).criterionId === (a as { criterionId: string }).criterionId;
-  }
-  return true;
+  return a.column === b.column;
 }
 
 function SortButton({
@@ -60,6 +63,14 @@ function SortButton({
       {indicator}
     </button>
   );
+}
+
+function ariaSort(
+  columnKey: ResultsSortKey,
+  sort: { key: ResultsSortKey; direction: SortDirection } | null,
+): 'ascending' | 'descending' | 'none' {
+  if (!sort || !sortKeysEqual(sort.key, columnKey)) return 'none';
+  return sort.direction === 'asc' ? 'ascending' : 'descending';
 }
 
 // DEC-674: when a planId prop is supplied (the organiser Review landing
@@ -98,6 +109,12 @@ export function ResultsTable({ planId: planIdProp }: { planId?: string } = {}) {
   const [evaluationsById, setEvaluationsById] = useState<Record<string, SubmissionEvaluationItem[]>>({});
   const [evaluationsLoadingId, setEvaluationsLoadingId] = useState<string | null>(null);
   const [evaluationsError, setEvaluationsError] = useState<string | null>(null);
+  // DEC-737: a monotonically increasing request token -- a results response
+  // is only applied if it's still the newest in-flight request when it
+  // resolves. Without this, two rapid header clicks can have the first
+  // (stale) request's response land after the second's, silently showing
+  // rows in an order that contradicts the header arrow actually clicked.
+  const resultsRequestIdRef = useRef(0);
 
   useEffect(() => {
     if (!planId) return;
@@ -119,19 +136,20 @@ export function ResultsTable({ planId: planIdProp }: { planId?: string } = {}) {
 
   useEffect(() => {
     if (!planId || round === null) return;
+    const requestId = ++resultsRequestIdRef.current;
     const params = new URLSearchParams();
     params.set('round', String(round));
     if (sort) {
       params.set('sort', sort.key.column);
-      if (sort.key.column === 'rating' || sort.key.column === 'dropdown') {
-        params.set('criterionId', sort.key.criterionId);
-      }
       params.set('dir', sort.direction);
     }
     params.set('page', String(page));
     params.set('perPage', String(PER_PAGE));
     apiList<ResultsRow>(`/plans/${planId}/results?${params.toString()}`)
       .then((resultsRes) => {
+        // DEC-737: a superseded response is discarded outright -- it is
+        // never applied, not even partially.
+        if (requestId !== resultsRequestIdRef.current) return;
         setRows(resultsRes.items);
         setTotal(resultsRes.total);
         // DEC-632/DEC-633: rows just came from the server, so any transient
@@ -139,7 +157,13 @@ export function ResultsTable({ planId: planIdProp }: { planId?: string } = {}) {
         // load, a page/sort change, or the DEC-193 error-path refetch.
         setDecisions({});
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load results'));
+      .catch((err) => {
+        if (requestId !== resultsRequestIdRef.current) return;
+        // DEC-737: a failed fetch clears rows rather than leaving a stale
+        // order under a new header/arrow.
+        setRows([]);
+        setError(err instanceof ApiError ? err.message : 'Failed to load results');
+      });
   }, [planId, round, sort, page, refreshToken]);
 
   // DEC-587: Accept/Decline reuse the submissions table's own status
@@ -198,15 +222,12 @@ export function ResultsTable({ planId: planIdProp }: { planId?: string } = {}) {
       if (prev && sortKeysEqual(prev.key, key)) {
         return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
       }
-      return { key, direction: 'asc' };
+      // DEC-737: first click on a numeric (ranked) column sorts descending
+      // -- best first, since that's what a ranked column is for. Text
+      // columns (ref/title) keep ascending.
+      return { key, direction: NUMERIC_COLUMNS.includes(key.column) ? 'desc' : 'asc' };
     });
   };
-
-  // DEC-241: rating and dropdown criteria each get a results column; 'text'
-  // criteria are scorecard-only (they were the permanent '—' before this
-  // task) and are dropped entirely here.
-  const ratingCriteria = useMemo(() => (plan?.criteria ?? []).filter((c) => c.kind === 'rating'), [plan]);
-  const dropdownCriteria = useMemo(() => (plan?.criteria ?? []).filter((c) => c.kind === 'dropdown'), [plan]);
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
 
@@ -220,8 +241,9 @@ export function ResultsTable({ planId: planIdProp }: { planId?: string } = {}) {
     );
   }
 
-  // DEC-703: +2 for the Speaker/Track columns between Title and Average.
-  const columnCount = 8 + ratingCriteria.length + dropdownCriteria.length;
+  // DEC-737: Ref, Title, Speaker, Track, Score, # Evaluations, Reviews,
+  // Decision -- a fixed 8 columns now that per-criterion columns are gone.
+  const columnCount = 8;
   const Wrapper = embedded ? Fragment : 'div';
   const wrapperProps = embedded ? {} : { className: 'chq-page chq-review-page' };
 
@@ -264,7 +286,7 @@ export function ResultsTable({ planId: planIdProp }: { planId?: string } = {}) {
             href={buildResultsCsvHref(
               planId,
               round ?? undefined,
-              sort ? { column: sort.key.column, criterionId: (sort.key as { criterionId?: string }).criterionId, direction: sort.direction } : undefined,
+              sort ? { column: sort.key.column, direction: sort.direction } : undefined,
             )}
             download
             className="chq-btn chq-btn-secondary"
@@ -291,10 +313,10 @@ export function ResultsTable({ planId: planIdProp }: { planId?: string } = {}) {
         <table className="chq-review-results-table">
           <thead>
             <tr>
-              <th>
+              <th aria-sort={ariaSort({ column: 'ref' }, sort)}>
                 <SortButton label="Ref" columnKey={{ column: 'ref' }} sort={sort} onSort={handleSort} />
               </th>
-              <th>
+              <th aria-sort={ariaSort({ column: 'title' }, sort)}>
                 <SortButton label="Title" columnKey={{ column: 'title' }} sort={sort} onSort={handleSort} />
               </th>
               {/* DEC-703: SPEAKER and TRACK, unsorted (server has no sort key
@@ -302,32 +324,14 @@ export function ResultsTable({ planId: planIdProp }: { planId?: string } = {}) {
                  the page. */}
               <th>Speaker</th>
               <th>Track</th>
-              <th>
-                <SortButton label="Average" columnKey={{ column: 'average' }} sort={sort} onSort={handleSort} />
+              {/* DEC-737: ONE blended score column -- per-criterion detail
+                 moved behind the row's ▸ Reviews disclosure. */}
+              <th aria-sort={ariaSort({ column: 'average' }, sort)}>
+                <SortButton label="Score" columnKey={{ column: 'average' }} sort={sort} onSort={handleSort} />
               </th>
-              <th>
+              <th aria-sort={ariaSort({ column: 'count' }, sort)}>
                 <SortButton label="# Evaluations" columnKey={{ column: 'count' }} sort={sort} onSort={handleSort} />
               </th>
-              {ratingCriteria.map((c) => (
-                <th key={c.id}>
-                  <SortButton
-                    label={c.label}
-                    columnKey={{ column: 'rating', criterionId: c.id }}
-                    sort={sort}
-                    onSort={handleSort}
-                  />
-                </th>
-              ))}
-              {dropdownCriteria.map((c) => (
-                <th key={c.id}>
-                  <SortButton
-                    label={c.label}
-                    columnKey={{ column: 'dropdown', criterionId: c.id }}
-                    sort={sort}
-                    onSort={handleSort}
-                  />
-                </th>
-              ))}
               <th>Reviews</th>
               <th>Decision</th>
             </tr>
@@ -348,46 +352,10 @@ export function ResultsTable({ planId: planIdProp }: { planId?: string } = {}) {
                 </td>
                 <td data-label="Speaker">{row.speakers.length > 0 ? row.speakers.join(', ') : '—'}</td>
                 <td data-label="Track">{row.trackNames.length > 0 ? row.trackNames.join(', ') : '—'}</td>
-                <td className="chq-review-results-score" data-label="Average">
+                <td className="chq-review-results-score" data-label="Score">
                   {row.average.toFixed(2)}
                 </td>
                 <td data-label="# Evaluations">{row.count}</td>
-                {ratingCriteria.map((c) => (
-                  <td key={c.id} data-label={c.label}>
-                    {row.perCriterion[c.id] !== undefined ? row.perCriterion[c.id]!.toFixed(2) : '—'}
-                  </td>
-                ))}
-                {dropdownCriteria.map((c) => {
-                  const agg = row.perDropdown[c.id];
-                  if (!agg || agg.modal === null) {
-                    return (
-                      <td key={c.id} data-label={c.label}>
-                        —
-                      </td>
-                    );
-                  }
-                  // DEC-241: 'modal xN / next xM' -- modal option first, then
-                  // the next-highest-count option (ties broken by the
-                  // criterion's own option order, matching the domain's
-                  // aggregateDropdownCriterion tie-break).
-                  const ranked = (c.options ?? [])
-                    .map((option) => ({ option, count: agg.counts[option] ?? 0 }))
-                    .sort((a, b) => b.count - a.count);
-                  const [top, next] = ranked;
-                  if (!top) {
-                    return (
-                      <td key={c.id} data-label={c.label}>
-                        —
-                      </td>
-                    );
-                  }
-                  return (
-                    <td key={c.id} data-label={c.label}>
-                      {top.option} x{top.count}
-                      {next ? ` / ${next.option} x${next.count}` : ''}
-                    </td>
-                  );
-                })}
                 <td data-label="Reviews">
                   <button
                     type="button"
@@ -443,17 +411,25 @@ export function ResultsTable({ planId: planIdProp }: { planId?: string } = {}) {
                         {evaluations.map((ev, i) => (
                           <li key={`${ev.planId}-${ev.round}-${i}`} className="chq-review-reviews-item">
                             <div className="chq-review-reviews-item-head">
-                              <span className="chq-review-reviews-reviewer">
-                                {ev.reviewerName ?? '(anonymized)'}
+                              {/* DEC-736: the server always resolves a
+                                 reviewer name on this organiser-facing
+                                 endpoint -- no '(anonymized)' branch. */}
+                              <span className="chq-review-reviews-reviewer">{ev.reviewerName}</span>
+                              <span className="chq-review-reviews-score-total">
+                                {ev.score !== null ? ev.score.toFixed(2) : '—'}
                               </span>
                               <span className="chq-review-reviews-plan-round">
                                 {ev.planName} · Round {ev.round}
                               </span>
                             </div>
                             <div className="chq-review-reviews-scores">
-                              {Object.entries(ev.scores).map(([criterionId, value]) => (
-                                <span key={criterionId} className="chq-review-reviews-score-chip">
-                                  {criterionId}: {String(value)}
+                              {/* DEC-723: one chip per criterion, labelled
+                                 from the item's own resolved criteria --
+                                 the raw criterionId never appears in the
+                                 DOM. */}
+                              {ev.criteria.map((c) => (
+                                <span key={c.id} className="chq-review-reviews-score-chip">
+                                  {c.label}: {String(ev.scores[c.id] ?? '—')}
                                 </span>
                               ))}
                             </div>
