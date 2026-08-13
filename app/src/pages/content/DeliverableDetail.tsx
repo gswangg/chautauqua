@@ -316,7 +316,43 @@ export function DeliverableDetail({
             </Link>
           </p>
         </div>
-        <div className="chq-content-status-bar">
+      </div>
+
+      {/* DEC-901 amendment (wave 41): sunk CONTENT STATUS band -- states the
+          current status and when it changed, and now also carries the
+          Approve/"Download all" actions that used to sit in their own
+          .chq-content-status-bar next to the title column (deleted --
+          an element that only ever held these two actions and nothing else
+          is chrome, not a second box). Content-status writes always bump
+          the submission's own updatedAt
+          (src/server/repo/files-content-status.ts sets both in the same
+          UPDATE), the same "truthful for every status" precedent
+          SubmissionDetailPage's decidedDateLabel already relies on for the
+          decision rail -- so this is a real timestamp, not a guess. There
+          is currently no actor column recorded anywhere for a
+          content-status write (files-content-status.ts's
+          updateContentStatus takes no editor/user id), so "by whom" is
+          left off rather than fabricated; a future task needs a
+          content-status audit column/table to fill that in honestly.
+
+          DEC-989 amendment (wave 41): this band is chrome sitting on the
+          page root's own box (ContentApp wraps DeliverableDetail in
+          chq-page chq-measure-table) -- the same bare-rule idiom
+          .chq-review-editor-title-row documents in review.css -- so it
+          declares NO max-width/side margin of its own, and never reaches
+          for 100vw/cqw (.chq-main scrolls INTERNALLY, so viewport units
+          overshoot its own scrollbar gutter). See content.css. */}
+      <div className="chq-content-status-band">
+        <div className="chq-content-status-band-info">
+          <span className="chq-content-status-band-label">Content status</span>
+          <span className={pill === 'changes_requested' ? 'chq-flag' : 'chq-flag chq-content-status-muted'}>
+            {CONTENT_STATUS_LABELS[pill]}
+          </span>
+          {headerDetail && (
+            <span className="chq-meta chq-content-status-band-updated">Updated {formatDate(headerDetail.updatedAt)}</span>
+          )}
+        </div>
+        <div className="chq-content-status-band-actions">
           {/* DEC-756/DEC-733: Approve renders only while the session is not
               already approved -- an action that cannot apply is absent,
               never disabled. */}
@@ -341,27 +377,6 @@ export function DeliverableDetail({
         </div>
       </div>
 
-      {/* DEC-901: sunk CONTENT STATUS band -- states the current status and
-          when it changed. Content-status writes always bump the
-          submission's own updatedAt (src/server/repo/files-content-status.ts
-          sets both in the same UPDATE), the same "truthful for every
-          status" precedent SubmissionDetailPage's decidedDateLabel already
-          relies on for the decision rail -- so this is a real timestamp,
-          not a guess. There is currently no actor column recorded anywhere
-          for a content-status write (files-content-status.ts's
-          updateContentStatus takes no editor/user id), so "by whom" is
-          left off rather than fabricated; a future task needs a
-          content-status audit column/table to fill that in honestly. */}
-      <div className="chq-content-status-band">
-        <span className="chq-content-status-band-label">Content status</span>
-        <span className={pill === 'changes_requested' ? 'chq-flag' : 'chq-flag chq-content-status-muted'}>
-          {CONTENT_STATUS_LABELS[pill]}
-        </span>
-        {headerDetail && (
-          <span className="chq-meta chq-content-status-band-updated">Updated {formatDate(headerDetail.updatedAt)}</span>
-        )}
-      </div>
-
       {downloadStatus && (
         <p className="chq-meta chq-content-download-status" role="status">
           {downloadStatus}
@@ -381,48 +396,52 @@ export function DeliverableDetail({
 
       {!loading && (
         <div className="chq-content-detail-body">
-          {/* DEC-901: DELIVERABLES section rule over the files -- the same
-              chq-section-label vocabulary the notes column already uses
-              below, never a parallel heading style. */}
-          <h2 className="chq-section-label chq-content-deliverables-label">Deliverables</h2>
-          {chainsList.length > 0 && (
-            <>
-              <div className="chq-chipstrip" role="tablist" aria-label="Deliverable">
-                {chainsList.map(({ kind, chain }) => {
-                  // orderVersionChains never returns an empty chain (see
-                  // version-chain.ts); the non-null assertion just narrows
-                  // the type TS otherwise can't infer from array indexing.
-                  const head = chain[0]!;
-                  const headId = head.id;
-                  const isActive = activeChain?.chain[0]?.id === headId;
-                  // DEC-971: only distinguished with a filename suffix when
-                  // this kind holds more than one independent chain -- the
-                  // common single-chain case stays the plain
-                  // "<kind> · N versions" label.
-                  const suffix = chainCountByKind[kind] > 1 ? ` · ${head.filename}` : '';
-                  return (
-                    <button
-                      key={headId}
-                      type="button"
-                      role="tab"
-                      aria-selected={isActive}
-                      className={isActive ? 'chq-pill is-active' : 'chq-pill'}
-                      onClick={() => setSelectedHeadId(headId)}
-                    >
-                      {DELIVERABLE_LABELS[kind]} · {countOf(chain.length, 'version')}
-                      {suffix}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="chq-meta chq-content-chip-caption">
-                Versions and notes below are for the selected deliverable
-              </p>
-            </>
-          )}
-
+          {/* DEC-901 amendment (wave 41): "Deliverables" (left) and "Notes on
+              the <kind>" (right) are PEERS -- same top edge, each ruled
+              across its OWN column -- so both headings now live inside
+              their own .chq-content-*-col, as that column's first child,
+              rather than "Deliverables" sitting above the whole two-column
+              grid. The chip strip + its caption move down into the left
+              column with it, since they scope the same deliverable the
+              heading names. */}
           <div className="chq-content-group-body">
             <div className="chq-content-files-col">
+              <h2 className="chq-section-label chq-content-deliverables-label">Deliverables</h2>
+              {chainsList.length > 0 && (
+                <>
+                  <div className="chq-chipstrip" role="tablist" aria-label="Deliverable">
+                    {chainsList.map(({ kind, chain }) => {
+                      // orderVersionChains never returns an empty chain (see
+                      // version-chain.ts); the non-null assertion just narrows
+                      // the type TS otherwise can't infer from array indexing.
+                      const head = chain[0]!;
+                      const headId = head.id;
+                      const isActive = activeChain?.chain[0]?.id === headId;
+                      // DEC-971: only distinguished with a filename suffix when
+                      // this kind holds more than one independent chain -- the
+                      // common single-chain case stays the plain
+                      // "<kind> · N versions" label.
+                      const suffix = chainCountByKind[kind] > 1 ? ` · ${head.filename}` : '';
+                      return (
+                        <button
+                          key={headId}
+                          type="button"
+                          role="tab"
+                          aria-selected={isActive}
+                          className={isActive ? 'chq-pill is-active' : 'chq-pill'}
+                          onClick={() => setSelectedHeadId(headId)}
+                        >
+                          {DELIVERABLE_LABELS[kind]} · {countOf(chain.length, 'version')}
+                          {suffix}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="chq-meta chq-content-chip-caption">
+                    Versions and notes below are for the selected deliverable
+                  </p>
+                </>
+              )}
               <VersionList
                 versions={activeVersions}
                 onDeleted={() => void loadFiles()}
@@ -432,7 +451,9 @@ export function DeliverableDetail({
               <UploadZone kind={activeKind} replacesFileId={activeLatest?.id} onUpload={handleUpload} />
             </div>
             <div className="chq-content-comments-col">
-              <h3 className="chq-section-label">Notes on the {DELIVERABLE_LABELS[activeKind].toLowerCase()}</h3>
+              <h3 className="chq-section-label chq-content-notes-label">
+                Notes on the {DELIVERABLE_LABELS[activeKind].toLowerCase()}
+              </h3>
               {activeLatest && (
                 <CommentThread
                   comments={commentsByFile[activeLatest.id] ?? []}
