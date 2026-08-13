@@ -42,6 +42,28 @@ reporting, page measure).
 
 **P2 · Distribute preview + who-reviews-what anatomy** — frame 03: cap row `CAP PER REVIEWER [8] talks each` + summary "18 talks · 36 reviews needed at 2 each · 4 reviewers"; preview is a 3-col table (name | track | `6 → 8 talks`, `unchanged · wrong track`) + "Assign these N" + leftover line. App: one flat line, cap input shows clipped "No", no summary, no leftover line.
 
+**Pair-4 reds (07-comms FAIL 4 MAJOR · 08-contacts FAIL 1 BROKEN + 4 MAJOR):**
+
+**P1-BROKEN · Headshot file input overflows drawer AND viewport (gate-2 BROKEN survivor).** `.chq-file` hard-coded `width: 284px` inside the drawer's 220px value column: right edge 1477 vs 1440 viewport; drawer scrollWidth 456 / clientWidth 418 (38px internal overflow). Make it fit the value column (max-width: 100%); overflow test on `.chq-contacts-drawer`.
+
+**P1 · Preview ICS note contradicts per-recipient status (the ICS-contradiction P1's last leg).** Two readers again: PreviewPane chip keys off `item.scheduled` (correct), note keys off `attachIcs && !item.ics` — so "No slot yet — this recipient gets no calendar invite." prints for ALL 11 recipients including scheduled ones. Single reader rule (same class as DEC-923); the note renders only when that recipient truly has no slot. Frame shows no such note at all.
+
+**P1 · Template editor on the wrong measure** — `chq-measure-table` (1372 rendered) but v6 templates content is reading class, 757px of 1600 centered → use the 820 reading measure. Same wave: the 187×166 BODY textarea (byte-identical to gate-2) in a 671px column — width: 100% of the field column, sane min-height.
+
+**P1 · Import mapping drops Company silently + opaque disabled Preview.** `org` auto-maps to (ignore) — frame maps `org → Company`; both preview rows show Company "—" with no warning. And "Preview N rows" stays disabled solely because "Session title for this batch" is empty — no required marker, no inline error naming the blocker. Add the auto-map synonym + required marker/inline reason.
+
+**P2 · Recent Sends row = frame's 5 columns** `[time][subject][N sent][Template][Open]` (app lacks Template + per-row Open; two count columns; timestamps "Tue 11 Aug, 4:12pm" grammar); header subtitle real figures ("4 sent in 7 days · last Tue 4:12pm" pattern).
+
+**P2 · comms polish batch:** templates rows show purpose copy not subject; editor eyebrow = template name + Duplicate link, drop NAME input, preselect on entry; footer `Save` + `Use in a send`; insert-field helper line ("Six available · dropped in at the cursor" pattern with correct count); token name `{task_due_date}` per frame (alias `{due_date}`); seeded Acceptance body uses tokens not hardcoded "April 1, 2027", include `{portal_link}`; `{feedback}` error banner clears when plan selected; template row actions don't wrap (Delete orphans to line 2); drop extra Compose pill + extra SCHEDULED chip in preview TO row; Attachments card title "Attachments and merge fields".
+
+**P2 · contacts batch:** import step-2 = dedicated "Match the columns" screen anatomy (640px, filename · row count, sample value under each header, dashed "Skip this column", step-2 dedupe footer "N rows match existing contacts by email"); rail duplicate entries get reason line + `Keep both`; merge screen all 6 identity rows incl. Notes (row missing entirely) + frame composition sentence + "The discarded record is deleted."; pipeline cards drop MOVE-TO selects, staleness plain at card foot, fit chip pale outlined; pipeline header `Pipeline` h1 + `‹ Contacts` + "N people · drag between columns"; add-to-event = two event CARDS + roles Speaker/Reviewer/Guest + white-fill/dark-border selected state; drawer 520 wide, 5 populated rows not 15 with 9 "—", footer buttons one line; dedupe message renders matched contact's NAME (currently empty slot); labels plain small-caps not chips; bulk-email subtitle names recipients, terminal `Send N emails`, label MESSAGE.
+
+**SEED · pipeline variety** — 3 people all "STALE · 119 DAYS AGO" (no signal); frame has 20 across stages with varied fit/rationale/staleness; Contacted/Declined columns empty.
+
+**TOOLING NOTE for probes/fleet:** `main.chq-main` scrolls internally — Playwright fullPage silently truncates; force `overflow: visible` on it before full-page captures.
+
+(Pair-4 verified fixed: {feedback} circular gate CLOSED (itemized banner + in-place plan selector + 200 preview), send-confirm modal, step sublabels + ✓ discs, recipient refs + DEC-912, new-contact modal, import × Close, dup-tab wrap, DEC-950 drawer, DEC-979 delete cascade round-trip 204, DEC-868 rules row functional, pipeline drag-drop, "1 event" plural.)
+
 **Pair-6 reds (11-account FAIL 4 MAJOR):**
 
 **P1 · Auth reading columns far too narrow.** v6 geometry (measured off frames): login form column = 732px (the 820 column inset 44px); /account/password and 404 surfaces = the full 820 reading column. App: login content 550px (card 640, padding 44), password/404 448px (card 520, padding 35, `.chq-auth-fields max-width:450`). Consequence: the 404 body line wraps to 2 lines where v6 shows one 513px line. Retarget the auth measure to v6 (732 login / 820 elsewhere) — the gate-2 numbers (450/520/640) are OBSOLETE-VS-V6.
