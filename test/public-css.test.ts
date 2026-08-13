@@ -112,17 +112,23 @@ describe("PUBLIC_CSS phone breakpoint (DEC-584)", () => {
   });
 });
 
-describe("PUBLIC_CSS search form submit button (DEC-835)", () => {
-  it("aligns the submit button to the input box, not centred against the label+input wrapper", () => {
-    expect(PUBLIC_CSS).toMatch(
-      /form\[role=search\] button\[type=submit\] \{[^}]*align-self:\s*flex-end;[^}]*\}/,
-    );
-    // shares the same control height/padding used elsewhere in this
-    // stylesheet (.chq-pub-pill etc.) instead of the browser's own tiny
-    // default button box.
-    expect(PUBLIC_CSS).toMatch(
-      /form\[role=search\] button\[type=submit\] \{[^}]*min-height:\s*44px;[^}]*\}/,
-    );
+describe("PUBLIC_CSS search box (DEC-919 amendment, wave 40): one compact input in ONE pill row", () => {
+  it("declares .chq-visually-hidden (off-screen but still in the a11y tree) for PublicSearchBox's label/submit button", () => {
+    expect(PUBLIC_CSS).toMatch(/\.chq-visually-hidden\s*\{[^}]*position:\s*absolute;[^}]*\}/);
+    // The classic clip-to-1px technique: an element sized 1x1 and clipped
+    // stays reachable/focusable/announced but never paints on screen.
+    expect(PUBLIC_CSS).toMatch(/\.chq-visually-hidden\s*\{[^}]*width:\s*1px;[^}]*\}/);
+    expect(PUBLIC_CSS).toMatch(/\.chq-visually-hidden\s*\{[^}]*height:\s*1px;[^}]*\}/);
+  });
+
+  it("declares .chq-pub-filter-row as the ONE row a surface's search box and pill bars stack into", () => {
+    expect(PUBLIC_CSS).toMatch(/\.chq-pub-filter-row\s*\{[^}]*display:\s*flex;[^}]*\}/);
+    expect(PUBLIC_CSS).toMatch(/\.chq-pub-filter-row\s*\{[^}]*flex-wrap:\s*wrap;[^}]*\}/);
+  });
+
+  it("declares .chq-pub-search sized as a compact ~259x40 input", () => {
+    expect(PUBLIC_CSS).toMatch(/\.chq-pub-search\s*\{[^}]*width:\s*259px;[^}]*\}/);
+    expect(PUBLIC_CSS).toMatch(/\.chq-pub-search\s*\{[^}]*height:\s*40px;[^}]*\}/);
   });
 });
 

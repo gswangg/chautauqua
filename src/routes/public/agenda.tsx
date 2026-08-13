@@ -384,8 +384,12 @@ function ItinerarySearchForm(props: {
 }) {
   const { tracks, activeTrackId, activeDay, q, basePath, formatOptions, activeFormat } = props;
   const current = { day: activeDay, trackId: activeTrackId, q, format: activeFormat ?? null };
+  // DEC-919 (wave 40 amendment): one .chq-pub-filter-row -- the search box
+  // first, then every pill bar for this surface, inline and wrapping,
+  // shared by both AgendaContent and ScheduleContent (the /schedule surface
+  // gets the same row as /agenda, not a bare, unwrapped search form).
   return (
-    <>
+    <div class="chq-pub-filter-row">
       <PublicSearchBox
         action={basePath}
         q={q}
@@ -413,7 +417,7 @@ function ItinerarySearchForm(props: {
           hrefFor={(v) => `${basePath}${agendaQs(current, { format: v })}`}
         />
       ) : null}
-    </>
+    </div>
   );
 }
 

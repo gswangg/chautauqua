@@ -162,46 +162,50 @@ export function SessionsContent(props: {
       <h1 class="chq-pub-surface-title">Sessions</h1>
       <div class="chq-pub-sessions-layout">
         <div class="chq-pub-sessions-list">
-          {/* EMB-02/DEC-919: the one PublicSearchBox markup, preserving the
-              active track/format/room filters as hidden fields so search
-              composes with all three. */}
-          <PublicSearchBox
-            action={basePath}
-            q={q}
-            hidden={
-              <>
-                {activeTrackId ? <input type="hidden" name="trackId" value={activeTrackId} /> : null}
-                {activeFmt ? <input type="hidden" name="format" value={activeFmt} /> : null}
-                {activeRoom ? <input type="hidden" name="roomId" value={activeRoom} /> : null}
-                {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
-              </>
-            }
-          />
-          <PublicFilterBar
-            ariaLabel="Track filters"
-            allLabel="All tracks"
-            options={tracks.map((t) => ({ value: t.id, label: t.name }))}
-            activeValue={activeTrackId}
-            hrefFor={(v) => `${basePath}${filterQs({ trackId: v })}`}
-          />
-          {formatOptions && formatOptions.length > 0 ? (
-            <PublicFilterBar
-              ariaLabel="Format filters"
-              allLabel="All formats"
-              options={formatOptions.map((f) => ({ value: f, label: f }))}
-              activeValue={activeFmt}
-              hrefFor={(v) => `${basePath}${filterQs({ format: v })}`}
+          {/* EMB-02/DEC-919 (wave 40 amendment): the one .chq-pub-filter-row
+              -- the search box first, then every pill bar for this surface,
+              inline and wrapping instead of three separately ruled rows.
+              Hidden fields preserve the active track/format/room filters so
+              search composes with all three. */}
+          <div class="chq-pub-filter-row">
+            <PublicSearchBox
+              action={basePath}
+              q={q}
+              hidden={
+                <>
+                  {activeTrackId ? <input type="hidden" name="trackId" value={activeTrackId} /> : null}
+                  {activeFmt ? <input type="hidden" name="format" value={activeFmt} /> : null}
+                  {activeRoom ? <input type="hidden" name="roomId" value={activeRoom} /> : null}
+                  {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
+                </>
+              }
             />
-          ) : null}
-          {rooms && rooms.length > 0 ? (
             <PublicFilterBar
-              ariaLabel="Room filters"
-              allLabel="All rooms"
-              options={rooms.map((r) => ({ value: r.id, label: r.name }))}
-              activeValue={activeRoom}
-              hrefFor={(v) => `${basePath}${filterQs({ roomId: v })}`}
+              ariaLabel="Track filters"
+              allLabel="All tracks"
+              options={tracks.map((t) => ({ value: t.id, label: t.name }))}
+              activeValue={activeTrackId}
+              hrefFor={(v) => `${basePath}${filterQs({ trackId: v })}`}
             />
-          ) : null}
+            {formatOptions && formatOptions.length > 0 ? (
+              <PublicFilterBar
+                ariaLabel="Format filters"
+                allLabel="All formats"
+                options={formatOptions.map((f) => ({ value: f, label: f }))}
+                activeValue={activeFmt}
+                hrefFor={(v) => `${basePath}${filterQs({ format: v })}`}
+              />
+            ) : null}
+            {rooms && rooms.length > 0 ? (
+              <PublicFilterBar
+                ariaLabel="Room filters"
+                allLabel="All rooms"
+                options={rooms.map((r) => ({ value: r.id, label: r.name }))}
+                activeValue={activeRoom}
+                hrefFor={(v) => `${basePath}${filterQs({ roomId: v })}`}
+              />
+            ) : null}
+          </div>
           <p>
             {items.length} of {countOf(total, "session")}
           </p>

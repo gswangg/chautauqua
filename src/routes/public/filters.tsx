@@ -6,21 +6,30 @@
 // surface now renders PublicSearchBox for its keyword search and
 // PublicFilterBar for each pill-narrowable axis; neither writes its own copy.
 
-/** The one keyword-search markup: one label ('Search'), one placeholder, one
- * form shape. `hidden` carries whatever the caller's other active params are
- * (trackId/format/roomId/day/limit, ...) as already-built `<input
- * type="hidden">` elements — PublicSearchBox does not know each surface's
- * knob table, it only renders what it's handed. */
+/** The one keyword-search markup (DEC-919 amendment, wave 40): one compact
+ * input at the head of the surface's single .chq-pub-filter-row, with no
+ * visible label and no visible submit button — the row reads as one
+ * narrowing gesture, not a labelled form stacked above pill navs. The label
+ * and submit button are still emitted (visually hidden via
+ * .chq-visually-hidden) so the form still works without JS and still
+ * announces itself to assistive tech: a search form with no submit control
+ * at all is a keyboard trap for anyone who cannot press Enter. `hidden`
+ * carries whatever the caller's other active params are (trackId/format/
+ * roomId/day/limit, ...) as already-built `<input type="hidden">` elements —
+ * PublicSearchBox does not know each surface's knob table, it only renders
+ * what it's handed. */
 export function PublicSearchBox(props: { action: string; q: string | null; hidden?: unknown }) {
   const { action, q, hidden } = props;
   return (
-    <form method="get" action={action} role="search">
-      <label>
+    <form class="chq-pub-searchform" method="get" action={action} role="search">
+      <label class="chq-visually-hidden" for="chq-pub-search-q">
         Search
-        <input type="search" name="q" value={q ?? ""} placeholder="Title or speaker name" />
       </label>
+      <input class="chq-pub-search" id="chq-pub-search-q" type="search" name="q" value={q ?? ""} placeholder="Search" />
       {hidden as any}
-      <button type="submit">Search</button>
+      <button class="chq-visually-hidden" type="submit">
+        Search
+      </button>
     </form>
   );
 }

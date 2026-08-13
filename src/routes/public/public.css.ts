@@ -37,19 +37,52 @@ export const PUBLIC_CSS = `
      string to the DOM verbatim, so quoting would be safe here too, but we
      keep the unquoted convention from THEME_CSS/shell.tsx for consistency
      across every SSR surface stylesheet. */
-  form[role=search] { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
-  form[role=search] label { display: flex; flex-direction: column; gap: 0.2rem; flex: 1 1 200px; }
-  /* DEC-835: the label+input wrapper is 66px tall (label line + input); the
-     submit button has no label row above it, so align-items: center on
-     the form (above) leaves it centred against that whole 66px box instead
-     of lined up with the input itself. align-self: flex-end pins it to
-     the input's baseline, and it takes the same min-height/padding as the
-     other .chq-pub-pill/.chq-pub-itinerary-cta controls in this stylesheet
-     instead of the browser's own ~11px-tall default button box. */
-  form[role=search] button[type=submit] {
-    align-self: flex-end;
-    min-height: 44px;
+  /* DEC-919 amendment (wave 40): a .chq-visually-hidden element is off-
+     screen but still in the a11y tree and still reachable/focusable -- used
+     for PublicSearchBox's label and submit button, which must announce
+     themselves to assistive tech and keep the form usable without JS while
+     never drawing a visible label/button next to the compact input. */
+  .chq-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* DEC-919 amendment (wave 40): the ONE row every public list surface
+     stacks its narrowing controls into -- PublicSearchBox's compact input
+     first, then every PublicFilterBar pill nav for that surface, inline,
+     wrapping instead of three separately ruled rows. */
+  .chq-pub-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--chq-rule);
+    padding-bottom: 14px;
+    margin-bottom: 14px;
+  }
+  .chq-pub-filter-row .chq-pub-filter-bar {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+  .chq-pub-searchform {
+    display: flex;
+    align-items: center;
+  }
+  .chq-pub-search {
+    width: 259px;
+    height: 40px;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-pill);
     padding: 0 14px;
+    font-size: 13px;
+    color: var(--chq-ink);
   }
 
   /* Public event chrome (DEC-369/DEC-366: header carries the event's own

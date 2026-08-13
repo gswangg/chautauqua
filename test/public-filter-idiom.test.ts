@@ -128,13 +128,13 @@ function buildSimpleApp(rowsBySelect: unknown[][]) {
 // surfaces' search-box markup can be compared byte-for-byte modulo the
 // action/hidden-field attributes each surface is allowed to vary.
 function searchForm(html: string): string {
-  const m = html.match(/<form method="get"[^>]*role="search">[\s\S]*?<\/form>/);
+  const m = html.match(/<form class="chq-pub-searchform"[^>]*role="search">[\s\S]*?<\/form>/);
   if (!m) throw new Error("no search form found in: " + html);
   return m[0];
 }
 
 describe("DEC-919: one filter idiom on every public surface", () => {
-  it("sessions, schedule and speakers all emit the same search-box label ('Search') and one-label markup", async () => {
+  it("sessions, schedule and speakers all emit the same compact-input search-box markup (DEC-919 wave 40 amendment: visually-hidden label/button, one placeholder)", async () => {
     installFakeCaches();
     const sessionsApp = buildSimpleApp([
       [EVENT_ROW], // getPublicEventBySlug
@@ -163,11 +163,13 @@ describe("DEC-919: one filter idiom on every public surface", () => {
     const scheduleForm = searchForm(scheduleHtml);
     const speakersForm = searchForm(speakersHtml);
 
-    // Same label, same input shape, same button text, everywhere.
+    // Same visually-hidden label, same compact input shape, same
+    // visually-hidden button text, everywhere (DEC-919 wave 40 amendment).
     for (const form of [sessionsForm, scheduleForm, speakersForm]) {
-      expect(form).toContain("<label>Search<input type=\"search\" name=\"q\"");
-      expect(form).toContain('placeholder="Title or speaker name"');
-      expect(form).toContain("<button type=\"submit\">Search</button>");
+      expect(form).toContain('<label class="chq-visually-hidden" for="chq-pub-search-q">Search</label>');
+      expect(form).toContain('<input class="chq-pub-search" id="chq-pub-search-q" type="search" name="q"');
+      expect(form).toContain('placeholder="Search"');
+      expect(form).toContain('<button class="chq-visually-hidden" type="submit">Search</button>');
       // DEC-919: the old speakers-only "Search by name" label is gone.
       expect(form).not.toContain("Search by name");
     }
