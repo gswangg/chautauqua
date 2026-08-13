@@ -189,6 +189,12 @@ async function sendReminderEmails(
     mintClaimTokens,
   );
 
+  // wave-48 amendment: accumulate the assignment ids of every successfully
+  // emailed recipient here — the loop body performs NO db await — then issue
+  // one chunked UPDATE after the loop instead of one sequential UPDATE per
+  // recipient interleaved with the mail sends.
+  const sentAssignmentIds: string[] = [];
+
   for (const group of groups) {
     const rows = outstandingByContact.get(group.contactId) ?? [];
     if (rows.length === 0) continue;
@@ -220,16 +226,17 @@ async function sendReminderEmails(
       continue;
     }
 
-    const assignmentIds = group.assignments.map((a) => a.assignmentId);
-    for (const batch of chunkIds(assignmentIds)) {
-      await db
-        .update(schema.taskAssignment)
-        .set({ lastRemindedAt: now, updatedAt: now })
-        .where(inArray(schema.taskAssignment.id, batch));
-    }
-
+    for (const a of group.assignments) sentAssignmentIds.push(a.assignmentId);
     sent += 1;
   }
+
+  for (const batch of chunkIds(sentAssignmentIds)) {
+    await db
+      .update(schema.taskAssignment)
+      .set({ lastRemindedAt: now, updatedAt: now })
+      .where(inArray(schema.taskAssignment.id, batch));
+  }
+
   return { sent, failed };
 }
 
