@@ -15,10 +15,12 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { PERF_PROFILES, PERF_TOPICS } from "./perf-seed-lib";
+import { PERF_PROFILES, PERF_TOPICS, slotPlacementForAccepted } from "./perf-seed-lib";
 import { MAX_PUBLIC_PAGE, MAX_PUBLIC_ROWS } from "../src/server/repo/public/bounds";
+import { DEFAULT_BOUNDED_ID_ARRAY_MAX } from "../src/server/http";
 import {
   PERF_P95_BUDGET_MS,
+  alternateByIteration,
   assertContainsVevent,
   assertMinCsvLines,
   computeP95,
@@ -220,6 +222,33 @@ async function fetchAcceptedSubmissionIds(headers: Record<string, string>, count
   return ids.slice(0, count);
 }
 
+/** Fetches N `pending`-status submission ids via the organizer submissions
+ * API, paginating at PERF_MAX_PER_PAGE per page (mirrors
+ * fetchAcceptedSubmissionIds above, filtered on the other end of DEC-003's
+ * status set — every perf profile's statusCounts.pending exceeds
+ * DEFAULT_BOUNDED_ID_ARRAY_MAX, so the bulk-status-change probe below always
+ * finds enough real rows). */
+async function fetchPendingSubmissionIds(headers: Record<string, string>, count: number): Promise<string[]> {
+  const ids: string[] = [];
+  for (const { page, perPage } of planPerfPages(count, PERF_MAX_PER_PAGE)) {
+    const res = await fetch(
+      `${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/submissions?status=pending&page=${page}&perPage=${perPage}`,
+      { headers },
+    );
+    if (!res.ok) {
+      throw new Error(`fetchPendingSubmissionIds: GET submissions?status=pending (page=${page}) failed: ${res.status}`);
+    }
+    const body = (await res.json()) as { items: Array<{ id: string }> };
+    const pageIds = body.items.map((item) => item.id);
+    ids.push(...pageIds);
+    if (pageIds.length < perPage) break;
+  }
+  if (ids.length < count) {
+    throw new Error(`fetchPendingSubmissionIds: expected at least ${count} pending submissions, got ${ids.length}`);
+  }
+  return ids.slice(0, count);
+}
+
 /** Number of untimed `GET /health` samples used to measure the client/
  * transport overhead floor (DEC-309). */
 const OVERHEAD_SAMPLE_COUNT = 30;
@@ -353,6 +382,61 @@ async function main(): Promise<void> {
   }
   const PIPELINE_MOVE_STAGES = ["identified", "contacted"] as const;
   let pipelineStageToggle = pipelineEntry.stage === PIPELINE_MOVE_STAGES[0] ? 1 : 0;
+
+  // w51-c: a bounded batch of PENDING perf submission ids, sized off the
+  // real DEC-182 cap (parseBoundedIdArray's default maxCount) rather than a
+  // second hardcoded literal — used by the "bulk status change" write check
+  // below.
+  const bulkStatusChangeIds = await fetchPendingSubmissionIds(headers, DEFAULT_BOUNDED_ID_ARRAY_MAX);
+  let bulkStatusChangeIteration = 0;
+
+  // w51-c: a third accepted submission id, distinct from ratingSubmissionId
+  // (icsIds[0]) and patchSubmissionId (icsIds[1]) above, plus the two
+  // seed-shaped placements (indices 0 and 1 of slotPlacementForAccepted,
+  // the same helper scripts/perf-seed.ts uses to place every accepted perf
+  // submission) the "schedule slot PUT" write check alternates between.
+  const scheduleSlotSubmissionId = icsIds[2]!;
+  const agendaRoomsRes = await fetch(`${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/agenda`, { headers });
+  if (!agendaRoomsRes.ok) {
+    throw new Error(`fetch agenda rooms failed: ${agendaRoomsRes.status}`);
+  }
+  const agendaRoomsBody = (await agendaRoomsRes.json()) as { rooms: Array<{ id: string }> };
+  const acceptedCount = PERF_PROFILE.statusCounts.accepted ?? 0;
+  if (acceptedCount < 1) {
+    throw new Error(`schedule slot PUT setup: profile ${PERF_PROFILE.name} has no accepted submissions`);
+  }
+  const slotPlacementA = slotPlacementForAccepted(0, PERF_PROFILE.roomCount, PERF_PROFILE.dayCount, acceptedCount);
+  const slotPlacementB = slotPlacementForAccepted(1, PERF_PROFILE.roomCount, PERF_PROFILE.dayCount, acceptedCount);
+  const slotRoomIdA = agendaRoomsBody.rooms[slotPlacementA.roomIndex]?.id;
+  const slotRoomIdB = agendaRoomsBody.rooms[slotPlacementB.roomIndex]?.id;
+  if (!slotRoomIdA || !slotRoomIdB) {
+    throw new Error("schedule slot PUT setup: could not resolve room ids for the two seeded placements");
+  }
+  let scheduleSlotIteration = 0;
+
+  // w51-c: id + current status of one seeded task_assignment row, used by
+  // the "task assignment check-off" write check below to alternate
+  // complete<->pending on every call.
+  const taskAssignmentRes = await fetch(
+    `${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/onboarding?page=1&perPage=1`,
+    { headers },
+  );
+  if (!taskAssignmentRes.ok) {
+    throw new Error(`fetch task assignment pool failed: ${taskAssignmentRes.status}`);
+  }
+  const taskAssignmentBody = (await taskAssignmentRes.json()) as {
+    rows: Array<{ cells: Array<{ assignmentId: string; status: string }> }>;
+  };
+  const taskAssignmentCell = taskAssignmentBody.rows[0]?.cells[0];
+  if (!taskAssignmentCell) {
+    throw new Error("fetch task assignment pool: expected at least 1 task assignment, got 0");
+  }
+  const taskAssignmentId = taskAssignmentCell.assignmentId;
+  // alternateByIteration(iteration, "pending", "complete") returns "pending"
+  // on even iterations — start the counter so the FIRST call flips away
+  // from the row's current seeded status (complete -> iteration 0 ->
+  // "pending"; pending -> iteration 1 -> "complete").
+  let taskAssignmentIteration = taskAssignmentCell.status === "complete" ? 0 : 1;
 
   const checks: TimedCheck[] = [
     {
@@ -712,6 +796,73 @@ async function main(): Promise<void> {
           method: "PATCH",
           headers: { ...headers, "content-type": "application/json", "x-chq-csrf": "1" },
           body: JSON.stringify({ stage: toStage }),
+        });
+      },
+    },
+    {
+      // w51-c: SPEC §7 high-frequency action — organizer bulk status change
+      // (POST /api/v1/events/:eventId/submissions/status,
+      // src/routes/api/submissions.ts:558). Body shape (from that route,
+      // quoted exactly): `{ ids: string[], status: string }`, ids validated
+      // by parseBoundedIdArray (DEC-182, default cap
+      // DEFAULT_BOUNDED_ID_ARRAY_MAX). Alternates the whole batch
+      // pending<->accept_queue on every call — accept_queue is not
+      // 'accepted', so changeStatus's fireAcceptance/J6 onboarding-task
+      // expansion never fires (see updateSubmissionStatuses,
+      // src/server/repo/submissions/status.ts) and the batch is repeatable
+      // forever without growing new rows.
+      name: "bulk status change",
+      cls: "write",
+      run: () => {
+        const toStatus = alternateByIteration(bulkStatusChangeIteration, "accept_queue", "pending");
+        bulkStatusChangeIteration++;
+        return fetch(`${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/submissions/status`, {
+          method: "POST",
+          headers: { ...headers, "content-type": "application/json", "x-chq-csrf": "1" },
+          body: JSON.stringify({ ids: bulkStatusChangeIds, status: toStatus }),
+        });
+      },
+    },
+    {
+      // w51-c: SPEC §7 high-frequency action — agenda drag-and-drop
+      // scheduling (PUT /api/v1/submissions/:id/slot, src/routes/agenda.ts:47).
+      // Body shape (from that route, quoted exactly): `{ day: string,
+      // startMin: number, endMin: number, roomId?: string | null }`,
+      // validated by isValidSlotInput. Alternates between the two seeded
+      // placements slotPlacementForAccepted(0, ...) and (1, ...) produce
+      // (the same helper scripts/perf-seed.ts uses to place every accepted
+      // perf submission), so the row always lands on a placement the seed
+      // itself would have produced.
+      name: "schedule slot PUT",
+      cls: "write",
+      run: () => {
+        const placement = alternateByIteration(scheduleSlotIteration, slotPlacementA, slotPlacementB);
+        const roomId = alternateByIteration(scheduleSlotIteration, slotRoomIdA, slotRoomIdB);
+        scheduleSlotIteration++;
+        return fetch(`${PERF_URL}/api/v1/submissions/${scheduleSlotSubmissionId}/slot`, {
+          method: "PUT",
+          headers: { ...headers, "content-type": "application/json", "x-chq-csrf": "1" },
+          body: JSON.stringify({ day: placement.day, startMin: placement.startMin, endMin: placement.endMin, roomId }),
+        });
+      },
+    },
+    {
+      // w51-c: SPEC §7 high-frequency action — speaker onboarding task
+      // check-off (PATCH /api/v1/task-assignments/:id,
+      // src/routes/tasks.ts:385). Body shape (from that route, quoted
+      // exactly): `{ status: "pending" | "complete" }`. Alternates one
+      // seeded assignment complete<->pending on every call; run as the
+      // organizer (the isOwningSpeaker portal-gating branch never applies
+      // to an organizer caller).
+      name: "task assignment check-off",
+      cls: "write",
+      run: () => {
+        const toStatus = alternateByIteration(taskAssignmentIteration, "pending", "complete");
+        taskAssignmentIteration++;
+        return fetch(`${PERF_URL}/api/v1/task-assignments/${taskAssignmentId}`, {
+          method: "PATCH",
+          headers: { ...headers, "content-type": "application/json", "x-chq-csrf": "1" },
+          body: JSON.stringify({ status: toStatus }),
         });
       },
     },

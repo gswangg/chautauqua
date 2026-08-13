@@ -60,18 +60,24 @@ export function errorEnvelope(err: ApiError): {
 }
 
 // DEC-182
+/** parseBoundedIdArray's default cap when the caller doesn't pass
+ * opts.maxCount — the single source for that literal, so callers (like
+ * scripts/perf-smoke.ts's bulk status change probe) can size a batch off
+ * the real enforced cap instead of hardcoding a second copy of 1000. */
+export const DEFAULT_BOUNDED_ID_ARRAY_MAX = 1000;
+
 /**
  * Validates and returns a bounded array of non-empty string ids.
  * Fails loudly (no silent filtering) on: non-array input, empty array,
- * more than `opts.maxCount` (default 1000) elements, any non-string
- * element, or any element with length 0 or > 64.
+ * more than `opts.maxCount` (default DEFAULT_BOUNDED_ID_ARRAY_MAX) elements,
+ * any non-string element, or any element with length 0 or > 64.
  */
 export function parseBoundedIdArray(
   value: unknown,
   field: string,
   opts?: { maxCount?: number },
 ): string[] {
-  const maxCount = opts?.maxCount ?? 1000;
+  const maxCount = opts?.maxCount ?? DEFAULT_BOUNDED_ID_ARRAY_MAX;
   if (!Array.isArray(value) || value.length === 0) {
     throw new ApiError("invalid", `${field} must be a non-empty array of ids`, {
       [field]: "Required",

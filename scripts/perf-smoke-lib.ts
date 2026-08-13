@@ -180,6 +180,23 @@ const KNOWN_PERF_PROFILE_NAMES = ["default", "aie"] as const;
 export type PerfProfileName = (typeof KNOWN_PERF_PROFILE_NAMES)[number];
 
 /**
+ * Alternates between two values by iteration parity — used by the write
+ * checks that must mutate a row on every call without drifting it away
+ * from a valid/seeded state (bulk status change flips pending<->accept_queue,
+ * schedule slot PUT flips between two seeded placements, task-assignment
+ * check-off flips pending<->complete). Even iterations (0, 2, 4, ...) return
+ * `a`; odd iterations return `b`. Throws on a negative/non-integer
+ * iteration — there is no sane alternation for a fractional or negative
+ * call count.
+ */
+export function alternateByIteration<T>(iteration: number, a: T, b: T): T {
+  if (!Number.isInteger(iteration) || iteration < 0) {
+    throw new Error(`alternateByIteration: iteration must be a non-negative integer, got ${iteration}`);
+  }
+  return iteration % 2 === 0 ? a : b;
+}
+
+/**
  * Resolves which perf profile scripts/perf-smoke.ts should measure against,
  * mirroring scripts/perf-seed.ts's own resolveProfileName precedence (DEC-644):
  * a `--profile=<name>` argv flag wins, else the PERF_PROFILE env var, else
