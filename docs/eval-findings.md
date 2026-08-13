@@ -94,9 +94,10 @@ href "/admin/review/" trailing slash vs pathname "/admin/review"; fix the href,
 aria-current follows) (probe-3 CLOSED: DEC-763 plan-scoped disclosures — all 37 swept clean ·
 DEC-763 export sort — hrefs byte-identical all 8 states, CSVs match · reviewer
 NAMES render · DEC-760 remind hidden at N=0; earlier: DEC-737/723/736 + blended
-SCORE): scoped queue PARTIAL — "← Your plans" breadcrumb landed, but h1 is still
-"Your queue" on both routes; add the plan-name heading on the scoped page (the
-landing's section-label h2 is dropped there) · SEED still pending: stagger a SECOND
+SCORE): scoped queue vs v5 frame STILL-OPEN (probe-4): needs eyebrow "REVIEW · ‹plan›",
+h1 = count ("11 left to score"), scope+closes subtitle, progress bar, row anatomy
+SCORED x.x / NOT SCORED + "Score this" action; scorecard back link names the plan
+("‹ ‹plan› queue"); scorecard eyebrow plan · track · round · SEED still pending: stagger a SECOND
 plan open so multi-plan reviewer experience is visible · shell 403 NARROWED: fires
 once during login→redirect only (clean thereafter) — skip the overview fetch for
 non-organizers at login · plan-row subtitle truncated: "All tracks" without "· 3
@@ -244,19 +245,25 @@ explicit CFP publish affordance · close-before-open validation loud at the fiel
 supersedes v4 for Contacts/Public-Portal/Review/Settings/Speakers; README carries
 code-level specs — READ IT). Eight design-backed additions, build per mock:
 
-1. **Saved embeds (Settings)** — DEC-785 already built the skeleton; ALIGN IT:
-   list rows reuse PublicPagesPanel row shape (name + recipe caption + On/Off
-   state pill + Get code + Turn on/off); builder becomes "Editing · ‹name›" with
-   Name field, primary = Save changes (Copy secondary); URL carries the name
-   (?embed=<slug>) resolved server-side to stored params. **DESIGN OVERRIDES
-   DEC-785 on one point: a DISABLED embed returns an EMPTY 200, not 404** ("an
-   intentional blank, not a broken page") — change it + caption "Turning one off
-   breaks it wherever it is pasted".
-2. **Participation status (Speakers, SPK-04 w2)** — organiser-set menu control in
-   the IDENTITY column (not among task cells): Not invited/Invited/Confirmed/
-   Declined w/ caret; reuses DEC-730 shapes (filled=confirmed, outlined=invited,
-   ink caps=declined, dashed=not invited); filter row gains "Any participation ▾"
-   and the old "Any status" RELABELS to "Any task status".
+1. **Saved embeds (Settings) — probe-4: skeleton only, spec NOT met.** The
+   save-form captures only name+surface (a saved embed CANNOT carry a recipe);
+   the full builder has no Name/save; NO edit path exists ("Editing · ‹name›" +
+   "Save changes" absent; Get code appends a static snippet). **Disabled embed
+   still 404s ("Embed not found.") — design REQUIRES empty 200** (blank inside
+   pasted iframes). Wording: LIVE/DISABLED + Enable/Disable → v5 ON/OFF + Turn
+   on/Turn off; add recipe caption ("Sessions · iframe · AI Engineering · 6
+   fields"), "3 on · 1 off" header count, footer caption "Turning one off breaks
+   it wherever it is pasted". URL: /embed/e/<slug> SSR resolution is fine as the
+   mechanism — keep it, drop the unimplemented ?embed= form from the spec.
+   ALSO: restore ics to the Format picker + /embed/<slug>/schedule.ics (the
+   regression; picker/feed parity test).
+2. **Participation status (Speakers, SPK-04 w2) — probe-4: HALF-BUILT WRONG
+   SHAPE**: current control CYCLES states on click (Confirmed→Declined, no menu)
+   — v5 requires a MENU w/ caret (organizer picks a state; "Send portal invite"
+   IS the Not-invited→Invited menu item and the only transition that emails);
+   filter chips exist (vocabulary ok); "Any status" select still not relabeled
+   "Any task status". Replace cycle-on-click with the menu; identity column
+   placement per mock; DEC-730 shapes.
 3. **Send portal invite (Speakers, SPK-06 w2)** — lives IN that menu ("Send
    portal invite" = the Not invited→Invited transition; emails claim link);
    footer "Only 'Invited' sends anything…"; rows at Not-invited also get an
@@ -270,14 +277,12 @@ code-level specs — READ IT). Eight design-backed additions, build per mock:
    dashed "Unrated" (must stay visible); NEEDS two nullable columns on
    pipeline_entry (fit_score int, rationale text); fit ranks WITHIN a column,
    never reorders stages; dialog states: adding writes activity, no email sent.
-6. **Assignment tooling (Review)** — plan editor "Who reviews what" gains
-   cap-per-reviewer field + "Distribute the unassigned" with preview-then-confirm:
-   names each reviewer/track/change ("6 → 8 talks"), total ("This would assign 22
-   reviews"), "Nothing is saved until you confirm", AND states what it CANNOT do
-   ("14 reviews stay unassigned — cap reached and nobody else covers X");
-   out-of-track reviewers listed "unchanged · wrong track", not hidden.
-   (Supersedes the earlier do-not-build note — design authority now exists;
-   rubric OR already satisfied, this adds legs 1+2.)
+6. **Assignment tooling (Review) — probe-4: preview built, spec half-met**:
+   "Distribute evenly" + per-reviewer projections exist; still needed per v5:
+   cap-per-reviewer field · rename/retarget to "Distribute the unassigned"
+   (unassigned pool, not load-leveling) · preview states what it CANNOT do
+   ("N stay unassigned — cap reached / nobody covers X") · out-of-track rows
+   listed "unchanged · wrong track".
 7. **Scoped reviewer queue (Review)** — queue headed "Review · ‹plan name›" over
    the count + "‹scope› · closes in N days" beneath; scorecard back link "‹ ‹plan›
    queue"; scorecard eyebrow names plan · track · round.
@@ -319,9 +324,12 @@ Remaining S-tier:
   too (the parameterized view is fixed).
 - Itinerary /schedule: params work (?q=/?trackId=, case-insensitive) but NO search
   box renders — add the input; also honor ?format= like /sessions.
-- Weighted-score label: results header still "SCORE", caption "Mean of submitted
-  reviews" — label "Weighted score" (math already weighted in CSV path).
+- Weighted-score label CLOSED (probe-4); residue: caption under it still says
+  "Mean of submitted reviews · recusals excluded" — update to describe the
+  weighted blend.
 - CRM KPIs: eventCount + returningSpeakers still unrendered (API returns them).
+- Public-pages Agenda/Schedule rows claim "9 published" but those surfaces render
+  5 placed blocks — per-surface counts should reflect what each surface shows.
 - Per-speaker "Send portal invite" (roster has zero invite affordance; read-only
   pill on submission detail only).
 - Public CFP visible "Create an account" CTA on /submit (magic-link copy only).
