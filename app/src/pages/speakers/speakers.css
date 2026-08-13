@@ -252,6 +252,21 @@
   border: 1px dashed var(--chq-border);
 }
 
+/* Neutral: DEC-930 (wave 54 amendment) -- session status, content status and
+   task status on the per-speaker detail page are richer enums than the
+   invite/task done-ness axis the complete/pending/overdue modifiers encode
+   (e.g. waitlisted, accept_queue, changes_requested have no decided fill/
+   outline meaning), so they read through this one additional modifier
+   rather than an invented per-status mapping. Same outline family as
+   .chq-speakers-status-pending -- DEC-367: the label text carries the
+   distinction, never a colour invented per status. */
+.chq-speakers-status-neutral {
+  color: var(--chq-muted);
+  font-weight: 600;
+  background: none;
+  border: 1px solid var(--chq-border);
+}
+
 .chq-speakers-cell-none {
   font-size: 11px;
   color: var(--chq-disabled);

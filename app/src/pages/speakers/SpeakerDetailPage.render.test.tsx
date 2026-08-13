@@ -130,13 +130,23 @@ describe('SpeakerDetailPage render smoke', () => {
     expect(participation).toHaveClass('chq-speakers-status-complete');
     expect(participation).toHaveTextContent('Confirmed');
 
-    // Status / content status cells render inside .chq-flag.
+    // Status / content status cells render the page's own pill vocabulary
+    // (.chq-speakers-status), not a bare .chq-flag micro-label.
     const sessionRow = sessionLink.closest('tr');
-    expect(sessionRow?.querySelectorAll('.chq-flag')).toHaveLength(2);
+    const sessionPills = sessionRow?.querySelectorAll('.chq-speakers-status');
+    expect(sessionPills).toHaveLength(2);
+    sessionPills?.forEach((pill) => expect(pill).toHaveClass('chq-speakers-status-neutral'));
 
-    // Task status cell also renders inside .chq-flag.
+    // Task status cell also renders through the pill vocabulary, reusing the
+    // onboarding grid's own pending/complete modifiers.
     const taskRow = screen.getByText('Upload slides').closest('tr');
-    expect(taskRow?.querySelectorAll('.chq-flag')).toHaveLength(1);
+    const taskPills = taskRow?.querySelectorAll('.chq-speakers-status');
+    expect(taskPills).toHaveLength(1);
+    expect(taskPills?.[0]).toHaveClass('chq-speakers-status-complete');
+
+    // No .chq-flag survives anywhere on this page -- session/content/task
+    // status all moved to the pill vocabulary.
+    expect(document.querySelector('.chq-speaker-detail-page .chq-flag')).not.toBeInTheDocument();
 
     // Exact slot string for a placed session: day formatted via
     // formatDayLabel + zero-padded clock times, never the raw ISO day.
