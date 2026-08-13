@@ -324,7 +324,7 @@ describe('ComposeWizard template selection copies text, edits win (DEC-832)', ()
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
     fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
 
-    const templateSelect = await screen.findByLabelText('Template');
+    const templateSelect = await screen.findByLabelText(/Template/);
     fireEvent.change(templateSelect, { target: { value: 'tpl-1' } });
 
     // Selecting the template copies its text in and reverts the dropdown
@@ -528,7 +528,7 @@ describe('ComposeWizard sends edited body, not the template id (DEC-846)', () =>
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
     fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
 
-    const templateSelect = await screen.findByLabelText('Template');
+    const templateSelect = await screen.findByLabelText(/Template/);
     fireEvent.change(templateSelect, { target: { value: 'tpl-1' } });
 
     const subject = screen.getByLabelText('Subject') as HTMLInputElement;

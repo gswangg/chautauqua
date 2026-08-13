@@ -34,7 +34,7 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
       expect(screen.getByText('Template')).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText('Template'), { target: { value: 'tpl1' } });
+    fireEvent.change(screen.getByLabelText(/Template/), { target: { value: 'tpl1' } });
 
     const subjectInput = screen.getByLabelText('Subject') as HTMLInputElement;
     const bodyInput = screen.getByLabelText('Body') as HTMLTextAreaElement;

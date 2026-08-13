@@ -98,6 +98,14 @@
   gap: 16px;
 }
 
+/* DEC-917: shared optionality grammar with src/views/form-render.tsx
+   (DEC-909) -- same weight/case as the label it trails, muted colour, same
+   size. Required rows carry no marker at all. */
+.chq-form-row-optional {
+  color: var(--chq-muted);
+  font-size: var(--chq-type-section-label-size);
+}
+
 @media (max-width: 700px) {
   .chq-form-row-pair {
     grid-template-columns: 1fr;

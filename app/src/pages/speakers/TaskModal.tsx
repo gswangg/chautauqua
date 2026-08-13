@@ -133,7 +133,7 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount }: TaskModa
           />
         </FormRow>
 
-        <FormRow label="Due date" htmlFor="task-due-date">
+        <FormRow label="Due date" htmlFor="task-due-date" optional>
           <input
             id="task-due-date"
             className="chq-input"
@@ -194,7 +194,7 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount }: TaskModa
         )}
 
         {kind === 'file_request' && (
-          <FormRow label="Deliverable kind" htmlFor="task-deliverable-kind">
+          <FormRow label="Deliverable kind" htmlFor="task-deliverable-kind" optional>
             <select
               id="task-deliverable-kind"
               className="chq-select"

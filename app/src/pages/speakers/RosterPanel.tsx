@@ -180,7 +180,7 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
               onChange={(e) => updateField('email', e.target.value)}
             />
           </FormRow>
-          <FormRow label="Title" htmlFor="roster-title">
+          <FormRow label="Title" htmlFor="roster-title" optional>
             <input
               id="roster-title"
               className="chq-input"
@@ -189,7 +189,7 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
               onChange={(e) => updateField('title', e.target.value)}
             />
           </FormRow>
-          <FormRow label="Company" htmlFor="roster-company">
+          <FormRow label="Company" htmlFor="roster-company" optional>
             <input
               id="roster-company"
               className="chq-input"
@@ -198,7 +198,7 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
               onChange={(e) => updateField('company', e.target.value)}
             />
           </FormRow>
-          <FormRow label="Bio" htmlFor="roster-bio">
+          <FormRow label="Bio" htmlFor="roster-bio" optional>
             <textarea
               id="roster-bio"
               className="chq-textarea"

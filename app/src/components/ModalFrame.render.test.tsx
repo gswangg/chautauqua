@@ -65,7 +65,7 @@ describe('ModalFrame: FormRow', () => {
   it('composes inside ModalFrame with the header/close contract intact', () => {
     render(
       <ModalFrame title="Test modal" onClose={vi.fn()}>
-        <FormRow label="Name" htmlFor="name-field" required>
+        <FormRow label="Name" htmlFor="name-field">
           <input id="name-field" className="chq-input" defaultValue="" />
         </FormRow>
       </ModalFrame>,
@@ -74,6 +74,30 @@ describe('ModalFrame: FormRow', () => {
     expect(screen.getByRole('dialog', { name: 'Test modal' })).toBeInTheDocument();
     expect(screen.getByLabelText(/Name/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
+  });
+
+  it('DEC-917: a required row carries no marker at all', () => {
+    render(
+      <FormRow label="Name" htmlFor="required-name-field">
+        <input id="required-name-field" className="chq-input" defaultValue="" />
+      </FormRow>,
+    );
+
+    const label = screen.getByText('Name', { exact: false });
+    expect(label.textContent).toBe('Name');
+    expect(label.textContent).not.toContain('optional');
+    expect(label.textContent).not.toContain('*');
+  });
+
+  it('DEC-917: an optional row\'s label ends in the shared " · optional" suffix', () => {
+    render(
+      <FormRow label="Venue" htmlFor="optional-venue-field" optional>
+        <input id="optional-venue-field" className="chq-input" defaultValue="" />
+      </FormRow>,
+    );
+
+    const label = screen.getByText('Venue', { exact: false });
+    expect(label.textContent).toBe('Venue · optional');
   });
 });
 

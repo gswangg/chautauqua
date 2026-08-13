@@ -46,7 +46,7 @@ describe('ComposeWizard ?template= landing', () => {
 
     // Preselecting reverts the dropdown to "Write from scratch" (templateId
     // cleared) -- the composer's own edited text is what will be posted.
-    const select = screen.getByLabelText('Template') as HTMLSelectElement;
+    const select = screen.getByLabelText(/Template/) as HTMLSelectElement;
     expect(select.value).toBe('');
   });
 });

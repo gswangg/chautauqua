@@ -167,7 +167,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
             )}
           </p>
           {templates.length > 0 && (
-            <FormRow label="Template" htmlFor="bulk-email-template">
+            <FormRow label="Template" htmlFor="bulk-email-template" optional>
               <select
                 id="bulk-email-template"
                 className="chq-select"
