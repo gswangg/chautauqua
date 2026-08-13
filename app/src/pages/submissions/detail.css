@@ -137,6 +137,12 @@
   color: var(--chq-muted);
 }
 
+/* The "what" half carries the edit itself, so it reads at full ink against
+   the muted timestamp (the entry as a whole is muted in styles.css). */
+.chq-submission-history-what {
+  color: var(--chq-ink);
+}
+
 .chq-detail-section-body {
   padding-top: 14px;
 }
