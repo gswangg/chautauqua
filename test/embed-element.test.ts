@@ -153,4 +153,89 @@ describe("chq-embed (public/embed.js, executed in jsdom)", () => {
     );
     expect(iframe.style.height).toBe("4000px");
   });
+
+  // DEC-719: the iframe is sandboxed with allow-scripts only (no
+  // allow-same-origin), so in a real browser the child document runs in an
+  // OPAQUE origin and every message it posts arrives with
+  // event.origin === "null". jsdom does not model sandbox opaque origins,
+  // so these cases exercise that literal string directly rather than
+  // relying on jsdom to produce it.
+  it("accepts a matching resize message whose origin is the opaque-origin literal \"null\"", async () => {
+    const dom = await makeDom();
+    const el = appendEmbed(dom, { src: `${EMBED_ORIGIN}/embed/some-event/sessions`, height: "200" });
+    const iframe = el.querySelector("iframe") as HTMLIFrameElement;
+    const id = new URL(iframe.src).searchParams.get("embed_id")!;
+
+    dom.window.dispatchEvent(
+      new dom.window.MessageEvent("message", {
+        origin: "null",
+        source: iframe.contentWindow,
+        data: { type: "chq-embed-height", id, height: 900 },
+      }),
+    );
+    expect(iframe.style.height).toBe("900px");
+  });
+
+  it("clamps a matching \"null\"-origin resize message to the max height", async () => {
+    const dom = await makeDom();
+    const el = appendEmbed(dom, { src: `${EMBED_ORIGIN}/embed/some-event/sessions`, height: "200" });
+    const iframe = el.querySelector("iframe") as HTMLIFrameElement;
+    const id = new URL(iframe.src).searchParams.get("embed_id")!;
+
+    dom.window.dispatchEvent(
+      new dom.window.MessageEvent("message", {
+        origin: "null",
+        source: iframe.contentWindow,
+        data: { type: "chq-embed-height", id, height: 99999 },
+      }),
+    );
+    expect(iframe.style.height).toBe("4000px");
+  });
+
+  it("ignores a \"null\"-origin resize message from the wrong source window", async () => {
+    const dom = await makeDom();
+    const el = appendEmbed(dom, { src: `${EMBED_ORIGIN}/embed/some-event/sessions`, height: "200" });
+    const iframe = el.querySelector("iframe") as HTMLIFrameElement;
+    const id = new URL(iframe.src).searchParams.get("embed_id")!;
+
+    dom.window.dispatchEvent(
+      new dom.window.MessageEvent("message", {
+        origin: "null",
+        source: dom.window, // wrong source: the top window, not the iframe's contentWindow
+        data: { type: "chq-embed-height", id, height: 900 },
+      }),
+    );
+    expect(iframe.style.height).toBe("200px");
+  });
+
+  it("ignores a \"null\"-origin resize message with the wrong instance id", async () => {
+    const dom = await makeDom();
+    const el = appendEmbed(dom, { src: `${EMBED_ORIGIN}/embed/some-event/sessions`, height: "200" });
+    const iframe = el.querySelector("iframe") as HTMLIFrameElement;
+
+    dom.window.dispatchEvent(
+      new dom.window.MessageEvent("message", {
+        origin: "null",
+        source: iframe.contentWindow,
+        data: { type: "chq-embed-height", id: "some-other-instance-id", height: 900 },
+      }),
+    );
+    expect(iframe.style.height).toBe("200px");
+  });
+
+  it("ignores a resize message from a foreign real origin even with matching source and id", async () => {
+    const dom = await makeDom();
+    const el = appendEmbed(dom, { src: `${EMBED_ORIGIN}/embed/some-event/sessions`, height: "200" });
+    const iframe = el.querySelector("iframe") as HTMLIFrameElement;
+    const id = new URL(iframe.src).searchParams.get("embed_id")!;
+
+    dom.window.dispatchEvent(
+      new dom.window.MessageEvent("message", {
+        origin: FOREIGN_ORIGIN,
+        source: iframe.contentWindow,
+        data: { type: "chq-embed-height", id, height: 900 },
+      }),
+    );
+    expect(iframe.style.height).toBe("200px");
+  });
 });
