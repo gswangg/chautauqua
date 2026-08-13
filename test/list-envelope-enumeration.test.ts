@@ -13,9 +13,15 @@ import { join } from "node:path";
  *
  * (a) Every `return c.json({ items ...` site under src/routes/**\/*.{ts,tsx}
  *     must carry `total`, `page`, and `perPage` in the same returned object
- *     literal -- the DEC-461(a) list-envelope contract. Four sites are
+ *     literal -- the DEC-461(a) list-envelope contract. Three sites are
  *     deliberately not list-GET envelopes and are named exceptions, each
- *     read at file:line before being allowlisted:
+ *     read at file:line before being allowlisted (a fourth,
+ *     src/routes/review/plans.ts's GET .../assignments/distribute/preview,
+ *     used to be allowlisted here under the old `{ items, perReviewer,
+ *     total, shortfall }` shape; DEC-840 reordered its envelope to `{ cap,
+ *     totalAssigned, items, perReviewer, shortfall }` -- cap echoed first
+ *     -- so it no longer matches this scanner's `{ items` pattern and needs
+ *     no entry):
  *       - src/routes/comms.ts:467 (POST .../compose/preview) returns a
  *         compose-preview render, one row per selected submission, bounded
  *         by the 100-recipient send cap (DEC checked elsewhere in comms.ts)
@@ -26,14 +32,6 @@ import { join } from "node:path";
  *         BULK_EMAIL_PREVIEW_LIMIT)` (5) before rendering, so it is bounded
  *         by that constant, not by a page/perPage query param -- a preview
  *         payload, not a list GET.
- *       - src/routes/review/plans.ts:538 (GET .../assignments/distribute/
- *         preview, DEC-786/DEC-824) returns { items, perReviewer, total,
- *         shortfall }: the pure round-robin's proposed pairs, a
- *         per-reviewer load summary, the run's own total, and the honest
- *         shortfall this run's cap could not meet -- bounded by the plan's
- *         own submission x reviewer set and writing nothing -- a preview
- *         payload, not a list GET (its `total` is the run's own created
- *         count, not a page/perPage-bounded list total).
  *       - src/routes/api/contacts/duplicates.ts:32 (GET
  *         /contacts/duplicates/check, DEC-788) is a bounded (cap 5),
  *         deterministically-ordered near-duplicate lookup for a
@@ -130,16 +128,13 @@ function findItemsEnvelopeSites(source: string, file: string): EnvelopeSite[] {
 const ENVELOPE_ALLOWLIST = new Set<string>([
   "src/routes/comms.ts:467",
   "src/routes/api/contacts/bulk-email.ts:215",
-  // src/routes/review/plans.ts:538 (GET .../assignments/distribute/preview,
-  // DEC-786/DEC-824) returns { items, perReviewer, total, shortfall }: the
-  // pure round-robin's proposed pairs, a per-reviewer load summary, the
-  // run's own total, and the honest shortfall this run's cap could not
-  // meet. Bounded by the plan's own submission x reviewer set (never larger
-  // than a single POST /reviewers fan-out would produce), and writes
-  // nothing -- a preview payload, not a paginated list GET, exactly like
-  // the two sites above (its `total` is the run's own created count, not a
-  // page/perPage-bounded list total).
-  "src/routes/review/plans.ts:538",
+  // NOTE (DEC-840): GET .../assignments/distribute/preview used to be
+  // allowlisted here (it was previously `c.json({ items, perReviewer,
+  // total, shortfall })`, matching the scanner's `{ items` pattern). The
+  // DEC-840 wire contract reorders the envelope to `{ cap, totalAssigned,
+  // items, perReviewer, shortfall }` (cap echoed first), so the site no
+  // longer matches `c.json({ items` at all and needs no allowlist entry --
+  // removing rather than updating the stale line-numbered entry.
   // DEC-788: GET /contacts/duplicates/check is a bounded (cap 5),
   // deterministically-ordered lookup for a not-yet-created candidate, not a
   // paginated list -- same shape-exception class as the bulk-email preview

@@ -294,38 +294,46 @@ export interface ScopePreview {
 // nothing -- the pairs a POST to .../distribute would add, plus the
 // per-reviewer load those pairs would produce, so the organizer can review
 // before confirming.
+// DEC-840: the wire contract pinned so the route half and the editor half
+// build to the same shape -- `items` is the plain created pairs, everything
+// display-shaped (names, before/after, track) lives on `perReviewer`.
 export interface DistributePreviewItem {
-  userId: string;
-  reviewerName: string;
   submissionId: string;
-  submissionRef: string;
-  submissionTitle: string;
+  userId: string;
 }
 
 export interface DistributePreviewReviewer {
   userId: string;
   name: string;
+  // DEC-824/DEC-840: this reviewer's own scope -- null when their scope is
+  // broad ("All submissions") or spans no track.
+  trackName: string | null;
+  before: number;
+  after: number;
   added: number;
-  total: number;
-  // DEC-824: this reviewer got nothing because their scope (a track) covers
-  // no submission this run still needs a reviewer for.
-  note?: 'wrong track';
+  // DEC-840: false exactly when `reason` is set -- a reviewer the run
+  // could not use is LISTED with its reason, never omitted.
+  eligible: boolean;
+  reason: 'cap_reached' | 'wrong_track' | null;
 }
 
-// DEC-824: what a `capPerReviewer` run could not staff, per submission --
-// a closed-vocabulary reason so the dialog can name the constraint.
+// DEC-824/DEC-840: what a `cap` run could not staff, per submission -- a
+// closed-vocabulary reason so the dialog can name the constraint.
 export interface DistributePreviewShortfall {
   submissionId: string;
-  submissionRef: string;
-  submissionTitle: string;
-  trackName: string;
-  missing: number;
+  ref: string;
+  title: string;
+  trackName: string | null;
+  needed: number;
   reason: 'cap_reached' | 'no_eligible_reviewer';
 }
 
 export interface DistributePreview {
+  // DEC-840: the cap this run used, echoed back so the apply call can send
+  // byte-identically what the preview showed.
+  cap: number | null;
   items: DistributePreviewItem[];
   perReviewer: DistributePreviewReviewer[];
-  total: number;
+  totalAssigned: number;
   shortfall: DistributePreviewShortfall[];
 }
