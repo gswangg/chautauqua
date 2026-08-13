@@ -11,6 +11,7 @@ import type { ComposeSubmission } from "../../domain/compose";
 export type { ComposeSubmission } from "../../domain/compose";
 import { chunkIds, ID_CHUNK_SIZE } from "../../lib/chunk";
 import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
+import { slotWithinEventRange } from "./public/gates";
 
 // ---------------------------------------------------------------------------
 // Templates
@@ -381,10 +382,19 @@ export interface IcsScheduleRow {
 
 /** Loads schedule slot (day/start/end), room name, and the current
  * ics_sequence for each of the given submission ids, in one query pass.
- * Submissions with no schedule_slot row are simply absent from the returned
- * map — the caller (route layer) treats a missing entry as "unscheduled"
- * and rejects attachIcs before any send (DEC-051/DEC-019). */
-export async function loadIcsScheduleData(db: Db, submissionIds: string[]): Promise<Map<string, IcsScheduleRow>> {
+ * Submissions with no schedule_slot row, OR whose slot day falls outside
+ * `event`'s [startDate, endDate] range (DEC-318), are simply absent from the
+ * returned map — the caller (route layer) treats a missing entry as
+ * "unscheduled" and rejects attachIcs before any send (DEC-051/DEC-019).
+ * The DEC-318 bound is applied in SQL via slotWithinEventRange (the same
+ * predicate the public agenda/schedule reads use, per DEC-312) so this map,
+ * the DEC-912 `scheduled` flag, and the ICS preflight all agree with the
+ * admin agenda's unscheduled bucket by construction. */
+export async function loadIcsScheduleData(
+  db: Db,
+  event: { startDate: string; endDate: string },
+  submissionIds: string[],
+): Promise<Map<string, IcsScheduleRow>> {
   if (submissionIds.length === 0) return new Map();
 
   const rows: {
@@ -407,7 +417,7 @@ export async function loadIcsScheduleData(db: Db, submissionIds: string[]): Prom
       })
       .from(schema.scheduleSlot)
       .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
-      .where(inArray(schema.scheduleSlot.submissionId, batch));
+      .where(and(inArray(schema.scheduleSlot.submissionId, batch), slotWithinEventRange(event)));
     rows.push(...batchRows);
   }
 

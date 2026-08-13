@@ -146,7 +146,7 @@ describe("findAccountUserIds contract-matches findAccountUserId (DEC-456)", () =
 //    same submission still each get the identical feedback block.
 // ---------------------------------------------------------------------------
 
-const event = { id: "evt-1", name: "DevCon", recordPrefix: "DEV" };
+const event = { id: "evt-1", name: "DevCon", recordPrefix: "DEV", startDate: "2026-09-01", endDate: "2026-09-03" };
 const feedbackScope = { planId: "plan-1", round: 1 };
 
 const submissions: ComposeSubmission[] = [

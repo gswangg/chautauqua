@@ -134,7 +134,7 @@ describe("buildRenderTargets only renders the composing plan+round's feedback (D
   const submissions: ComposeSubmission[] = [
     { id: "sub-1", title: "Talk One", seq: 1, participants: [{ contactId: "ct-1", firstName: "Ada", lastName: "Lovelace", email: "ada@example.com" }] },
   ];
-  const event = { id: "evt-1", name: "DevCon", recordPrefix: "DEV" };
+  const event = { id: "evt-1", name: "DevCon", recordPrefix: "DEV", startDate: "2026-09-01", endDate: "2026-09-03" };
 
   function fakeContext(db: AppEnv["Variables"]["db"]) {
     return {

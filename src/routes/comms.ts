@@ -331,9 +331,10 @@ export function noRecipientFields(submissions: repo.ComposeSubmission[], submiss
  * DEC-019) and returns the schedule data so the caller doesn't re-query. */
 async function preflightIcsSchedule(
   db: import("../server/context").Db,
+  event: { startDate: string; endDate: string },
   submissionIds: string[],
 ): Promise<Map<string, repo.IcsScheduleRow>> {
-  const icsMap = await repo.loadIcsScheduleData(db, submissionIds);
+  const icsMap = await repo.loadIcsScheduleData(db, event, submissionIds);
   const fields = unscheduledIcsFields(icsMap, submissionIds);
   if (Object.keys(fields).length > 0) {
     throw new ApiError("invalid", "Cannot attach calendar invites: some selected sessions are unscheduled", fields);
@@ -370,7 +371,7 @@ export async function buildRenderTargets(
     env: { KV: KVNamespace; PUBLIC_BASE_URL?: string; DEV_MODE?: string };
     req: { url: string; header(name: string): string | undefined };
   },
-  event: { id: string; name: string; recordPrefix: string },
+  event: { id: string; name: string; recordPrefix: string; startDate: string; endDate: string },
   submissions: ComposeSubmission[],
   feedback: { planId: string; round: number } | null,
   mintClaimTokens: boolean,
@@ -409,7 +410,7 @@ export async function buildRenderTargets(
   // `ics` attachment payload computed at the callsite below. One batched
   // schedule-data query for the whole expanded submission set (never
   // per-recipient), mirroring the feedback/account/task batching above.
-  const icsScheduleMap = await repo.loadIcsScheduleData(c.var.db, submissionIds);
+  const icsScheduleMap = await repo.loadIcsScheduleData(c.var.db, event, submissionIds);
   const outstandingByContact = new Map<string, ReminderAssignment[]>();
   for (const row of outstandingRows) {
     const arr = outstandingByContact.get(row.contactId) ?? [];
@@ -487,7 +488,7 @@ commsRoutes.post("/api/v1/events/:eventId/compose/preview", requireOrganizer, cs
     throw new ApiError("invalid", "Some selected sessions have no eligible recipients", noRecipients);
   }
 
-  const icsMap = input.attachIcs ? await preflightIcsSchedule(c.var.db, input.submissionIds) : undefined;
+  const icsMap = input.attachIcs ? await preflightIcsSchedule(c.var.db, event, input.submissionIds) : undefined;
 
   // DEC-397: preview never mints credentials — pass mintClaimTokens=false.
   const targets = await buildRenderTargets(c, event, submissions, input.feedback, false);
@@ -537,7 +538,7 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
     throw new ApiError("invalid", "Some selected sessions have no eligible recipients", noRecipients);
   }
 
-  const icsMap = input.attachIcs ? await preflightIcsSchedule(c.var.db, input.submissionIds) : undefined;
+  const icsMap = input.attachIcs ? await preflightIcsSchedule(c.var.db, event, input.submissionIds) : undefined;
 
   // DEC-397: send mints real claim tokens — pass mintClaimTokens=true.
   const targets = await buildRenderTargets(c, event, submissions, input.feedback, true);
