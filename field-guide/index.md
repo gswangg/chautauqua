@@ -21,40 +21,36 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   is a CONTRACT; negation skips NULLs.
 - FINDINGS w1-20 (DEC-570..743, compacted): full suites SERIALIZED; real
   <button> not `div draggable`; colour isn't identity -- NAME it; blank
-  CSV cell is ABSENT DATA; anonymity is a RATCHET; merge takes a SET; raw
-  id leaks -- render LABELS; cacheability DEFAULT + "own header wins";
+  CSV cell ABSENT DATA; anonymity a RATCHET; merge takes a SET; raw id
+  leaks -- render LABELS; cacheability DEFAULT + "own header wins";
   irreversible action is a PAGE; hub gives a row ONE action; grid cells
-  POSITIONAL; person named by CONTACT; tab selection is URL state; a
-  column with side effects has ONE writer; validators refuse what the
-  store can't carry; sandboxed child's origin IS "null"; labels are
-  customFields; tiers are a PREDICATE over the tree; portal shows EVERY
-  submission a speaker owns; publish is the WINDOW, not a flag; a
-  recorded decision with no code is a LIE; anonymised hides the SPEAKER
-  from the REVIEWER, never the organiser; the seed must satisfy every
+  POSITIONAL; person named by CONTACT; tab selection URL state; column
+  with side effects has ONE writer; sandboxed child's origin IS "null";
+  tiers are a PREDICATE over the tree; publish is the WINDOW not a flag;
+  a recorded decision with no code is a LIE; seed must satisfy every
   read it enables -- assert by enumeration.
-- FINDINGS w21-22 (DEC-744..762, compacted): an envelope's KEYS are fixed
-  by its route, not whether the branch had anything to say. A seeded
-  reviewer is a NAMED person (user.contact_id). ONE measure token. Chrome
-  fidelity never deletes a capability. A task with no assignee is not a
-  state we offer -- creation always expands. Merge shows EVERY differing
-  field. A roster and the set an action expands over are ONE predicate.
-  Every control in a creation dialog must reach the store; a selector the
-  POST body drops is decoration. Contact identity is (org, lower(email)).
-  An author is a PERSON, never "Unknown". Delete is refused with counts;
-  merge is the answer for a contact carrying history. Rows grow, not
-  scroll. Position ("N of 47") re-derives from the URL, never router
-  state.
-- FINDINGS w1(this run, DEC-763..771): the mandate file was ~2 probes
-  stale AGAIN -- grep the route before re-tasking; a finding is a
-  hypothesis until the tree agrees. A disclosure and the count beside it
-  are ONE predicate. An export href must carry the sort the table shows.
-  Fix fabricated data with honesty about what the action does, not a
-  second concept the model lacks -- `participant` is the ONLY
-  contact-to-event link. Identity is an id you already hold, never an
-  email you re-derive; a duplicate contact makes speaker double-booking
-  INVISIBLE. Failure is a STATUS not an absence -- an attempt that
-  leaves no row is the one the audit needed. A count on a settings row
-  is a promise about a visitor's query: produce it with that query.
-  Public grid rows must grow like the admin grid's. A session cannot
-  clash with itself; while armed the CELL owns the click, not the card
-  over it. A control whose effect dies on reload is decoration.
+- FINDINGS w21-23 (DEC-744..771, compacted): envelope KEYS fixed by
+  route not branch content. Seeded reviewer NAMED (user.contact_id).
+  ONE measure token. Chrome fidelity never deletes a capability. Task
+  creation always expands (no unassigned state). Merge shows EVERY
+  differing field; roster and expand-set are ONE predicate; contact
+  identity is (org, lower(email)); author is a PERSON never "Unknown".
+  Rows grow, not scroll. Position re-derives from URL, never router
+  state. Grep the route before re-tasking -- mandate is a hypothesis
+  until the tree agrees. `participant` is the ONLY contact-to-event
+  link. Failure is a STATUS not an absence. While armed the CELL owns
+  the click; a control whose effect dies on reload is decoration.
+- FINDINGS w2 (DEC-772..781): the mandate file is a HYPOTHESIS -- five
+  wave-2 candidates were already closed in the tree (DEC-732 preview slot
+  tags, DEC-744 page measure, DEC-745 plan-editor shell, DEC-747 settings
+  rail, DEC-755 create-format); grep the route before tasking, and never
+  delete a capability a mock omits (the Anonymize toggle is J4, not
+  chrome). A count and the list it labels must be ONE predicate over ONE
+  set -- roster-scoped rows with an event-wide count is the same lie
+  twice. A duration the scheduler ignores is a form answer the product
+  collected and never read. A tab hides the upload that made the file;
+  one list with a kind chip does not. An output format the rubric NAMES
+  is a capability, not polish. A permanently disabled control is a
+  promise the product doesn't keep: ship the route or drop the control.
+  Punctuation asserts something on both sides of it. A speaker's own
+  page reads dates in the EVENT's timezone.
