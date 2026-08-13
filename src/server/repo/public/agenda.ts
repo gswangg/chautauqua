@@ -5,9 +5,9 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
-import { visibleSessionConditions, slotWithinEventRange } from "./gates";
+import { visibleParticipantConditions, visibleSessionConditions, slotWithinEventRange } from "./gates";
 import type { PublicEvent, PublicTrack } from "./event";
-import { hydrateSessions, type PublicSpeaker } from "./sessions";
+import { hydrateSessions, searchCondition, type PublicSpeaker } from "./sessions";
 import { MAX_PUBLIC_ROWS } from "./bounds";
 
 export interface PublicAgendaItem {
@@ -40,39 +40,82 @@ export interface PublicAgendaItem {
 export async function getPublicAgenda(
   db: Db,
   event: PublicEvent,
-  params?: { day?: string | null },
+  params?: { day?: string | null; trackId?: string | null; q?: string | null },
 ): Promise<{ items: PublicAgendaItem[]; total: number }> {
   const conditions = [eq(schema.submission.eventId, event.id), visibleSessionConditions(), slotWithinEventRange(event)];
   if (params?.day) conditions.push(eq(schema.scheduleSlot.day, params.day));
+  // DEC-783: q/trackId are SQL-level predicates on this same join (mirrors
+  // getVisibleSubmissionIdsOrdered/countVisibleSubmissions in sessions.ts) so
+  // both `items` (windowed by LIMIT below) and `total` (the count subquery)
+  // see the identical filtered set — never a post-fetch JS filter, which
+  // would desync the "Showing the first N of M" line from the actual rows.
+  if (params?.q) conditions.push(searchCondition(params.q));
+  const trackId = params?.trackId ?? null;
 
-  const sq = db
-    .selectDistinct({
-      submissionId: schema.scheduleSlot.submissionId,
-      day: schema.scheduleSlot.day,
-      startMin: schema.scheduleSlot.startMin,
-      endMin: schema.scheduleSlot.endMin,
-      roomId: schema.scheduleSlot.roomId,
-    })
-    .from(schema.scheduleSlot)
-    .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
-    .where(and(...conditions))
-    .as("agenda_rows");
+  const cols = {
+    submissionId: schema.scheduleSlot.submissionId,
+    day: schema.scheduleSlot.day,
+    startMin: schema.scheduleSlot.startMin,
+    endMin: schema.scheduleSlot.endMin,
+    roomId: schema.scheduleSlot.roomId,
+  };
+
+  // Speaker-name search needs contact reachable off the visibility-gated
+  // participant join (same shape as sessions.ts); always left-joined so the
+  // where-clause can reference it whether or not q is actually set.
+  const countQuery = trackId
+    ? db
+        .selectDistinct(cols)
+        .from(schema.scheduleSlot)
+        .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
+        .leftJoin(
+          schema.participant,
+          and(eq(schema.participant.submissionId, schema.submission.id), visibleParticipantConditions()),
+        )
+        .leftJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+        .innerJoin(schema.submissionTrack, eq(schema.submissionTrack.submissionId, schema.submission.id))
+        .where(and(...conditions, eq(schema.submissionTrack.trackId, trackId)))
+    : db
+        .selectDistinct(cols)
+        .from(schema.scheduleSlot)
+        .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
+        .leftJoin(
+          schema.participant,
+          and(eq(schema.participant.submissionId, schema.submission.id), visibleParticipantConditions()),
+        )
+        .leftJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+        .where(and(...conditions));
+
+  const sq = countQuery.as("agenda_rows");
 
   const countRows = await db.select({ count: sql<number>`count(*)` }).from(sq);
   const total = countRows[0]?.count ?? 0;
   if (total === 0) return { items: [], total: 0 };
 
-  const rows = await db
-    .selectDistinct({
-      submissionId: schema.scheduleSlot.submissionId,
-      day: schema.scheduleSlot.day,
-      startMin: schema.scheduleSlot.startMin,
-      endMin: schema.scheduleSlot.endMin,
-      roomId: schema.scheduleSlot.roomId,
-    })
-    .from(schema.scheduleSlot)
-    .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
-    .where(and(...conditions))
+  const rowsQuery = trackId
+    ? db
+        .selectDistinct(cols)
+        .from(schema.scheduleSlot)
+        .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
+        .leftJoin(
+          schema.participant,
+          and(eq(schema.participant.submissionId, schema.submission.id), visibleParticipantConditions()),
+        )
+        .leftJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+        .innerJoin(schema.submissionTrack, eq(schema.submissionTrack.submissionId, schema.submission.id))
+        .where(and(...conditions, eq(schema.submissionTrack.trackId, trackId)))
+    : db
+        .selectDistinct(cols)
+        .from(schema.scheduleSlot)
+        .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
+        .leftJoin(
+          schema.participant,
+          and(eq(schema.participant.submissionId, schema.submission.id), visibleParticipantConditions()),
+        )
+        .leftJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+        .where(and(...conditions));
+
+  const rows = await rowsQuery
     .orderBy(
       asc(schema.scheduleSlot.day),
       asc(schema.scheduleSlot.startMin),

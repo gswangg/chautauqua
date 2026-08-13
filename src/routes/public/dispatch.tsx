@@ -12,7 +12,6 @@ import {
   getPublicRooms,
   getPublicFormatOptions,
   type PublicEvent,
-  type PublicAgendaItem,
 } from "../../server/repo/public";
 import type { Surface } from "./shell";
 import { parsePage, parseTrackId, parseNameQuery, parseFormat, parseRoomId, type CardFields } from "./query";
@@ -21,23 +20,11 @@ import { SessionsContent } from "./sessions";
 import { SpeakersContent, GalleryContent } from "./speakers";
 import { AgendaContent, ScheduleContent } from "./agenda";
 
-// w1-i: the sessions surface honours ?q=/?trackId= (getPublicSessions'
-// SQL-level predicate); /schedule never applied either, so a filtered link
-// (e.g. `/schedule?trackId=X` shared from the /sessions track pills) landed
-// on the FULL unfiltered itinerary picker instead of the narrowed set the
-// URL claims to show. Filters in-memory over the same visibility-gated rows
-// getPublicAgenda already returned — no new query, same predicate semantics
-// as the sessions surface's title/speaker-name search.
-function matchesAgendaFilter(item: PublicAgendaItem, trackId: string | null, q: string | null): boolean {
-  if (trackId !== null && !item.tracks.some((t) => t.id === trackId)) return false;
-  if (q !== null) {
-    const needle = q.toLowerCase();
-    const titleMatch = item.title.toLowerCase().includes(needle);
-    const speakerMatch = item.speakers.some((s) => `${s.firstName} ${s.lastName}`.toLowerCase().includes(needle));
-    if (!titleMatch && !speakerMatch) return false;
-  }
-  return true;
-}
+// w1-i + DEC-783: the /agenda and /schedule surfaces honour ?q=/?trackId=
+// exactly as /sessions does — as SQL-level predicates inside getPublicAgenda,
+// so `items` and `total` are graded from the same filtered set. The former
+// in-memory matchesAgendaFilter() helper is gone: a post-fetch JS filter
+// desyncs the "Showing the first N of M" line from the rows it counts.
 
 export async function renderSurfaceContent(
   db: Parameters<typeof getPublicSessions>[0],
@@ -155,7 +142,12 @@ export async function renderSurfaceContent(
       };
     }
     case "agenda": {
-      const { items, total } = await getPublicAgenda(db, event, { day: query.day });
+      // DEC-783: q/trackId parsed with the ONE parsers /sessions already
+      // uses (query.ts) and pushed into the repo query as SQL predicates —
+      // both `items` and `total` see the identical filter.
+      const trackId = parseTrackId(query.trackId);
+      const q = parseNameQuery(query.q);
+      const { items, total } = await getPublicAgenda(db, event, { day: query.day, trackId, q });
       // DEC-768: ?day= filters `items` down to one day's rows, so the day
       // switcher can no longer derive its full day list from `items` alone
       // (that would drop every other day's pill, dead-ending a visitor who
@@ -165,23 +157,44 @@ export async function renderSurfaceContent(
       const allDays = query.day ? (await getPublicScheduleDayCounts(db, event)).map((d) => d.day) : null;
       return {
         title: `Agenda - ${event.name}`,
-        content: <AgendaContent event={event} items={items} total={total} embed={query.embed} allDays={allDays} activeDay={query.day ?? null} />,
+        content: (
+          <AgendaContent
+            event={event}
+            items={items}
+            total={total}
+            embed={query.embed}
+            allDays={allDays}
+            activeDay={query.day ?? null}
+            trackId={trackId}
+            q={q}
+          />
+        ),
       };
     }
     case "schedule": {
       const trackId = parseTrackId(query.trackId);
       const q = parseNameQuery(query.q);
-      const { items: rawItems, total: rawTotal } = await getPublicAgenda(db, event, { day: query.day });
-      const filtered = trackId !== null || q !== null ? rawItems.filter((item) => matchesAgendaFilter(item, trackId, q)) : rawItems;
-      const total = trackId !== null || q !== null ? filtered.length : rawTotal;
+      // DEC-783: ?trackId=/?q= are pushed into the repo query as SQL
+      // predicates (never a post-fetch JS filter), so `items` and `total`
+      // are ONE predicate over ONE set — same call shape as the agenda case.
+      const { items, total } = await getPublicAgenda(db, event, { day: query.day, trackId, q });
       // DEC-768: ?day= narrows `items`, so the day switcher's full day list
       // is fetched independently (same as the agenda case above) — the
-      // w1-i ?trackId=/?q= filter narrows the ROWS only, never the switcher.
+      // ?trackId=/?q= filter narrows the ROWS only, never the switcher.
       const allDays = query.day ? (await getPublicScheduleDayCounts(db, event)).map((d) => d.day) : null;
       return {
         title: `Schedule - ${event.name}`,
         content: (
-          <ScheduleContent event={event} items={filtered} total={total} embed={query.embed} allDays={allDays} activeDay={query.day ?? null} />
+          <ScheduleContent
+            event={event}
+            items={items}
+            total={total}
+            embed={query.embed}
+            allDays={allDays}
+            activeDay={query.day ?? null}
+            trackId={trackId}
+            q={q}
+          />
         ),
       };
     }

@@ -226,6 +226,11 @@ function buildAgendaApp() {
       const chain: any = {
         from: () => chain,
         innerJoin: () => chain,
+        // DEC-783: getPublicAgenda now always left-joins participant/contact
+        // (for the ?q= keyword search condition), same shape as the sessions
+        // surface's query — the fake chain needs the same method whether or
+        // not a given test actually sets ?q=.
+        leftJoin: () => chain,
         where: (cond: unknown) => {
           const found = extractDayFilter(cond);
           if (found) dayFilter = found;

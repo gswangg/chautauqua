@@ -164,8 +164,12 @@ function AgendaItemList(props: {
   listClass?: string;
   sectionClass?: string;
   base?: SurfaceBase;
+  // DEC-783: /schedule's per-day list groups rows that share a start time
+  // under a time sub-header; /agenda's phone list (which reuses this same
+  // component) leaves this off and keeps its exact prior output.
+  groupByStart?: boolean;
 }) {
-  const { day, items, event, from, itinerary, showDescription, showDay, listClass, sectionClass, base } = props;
+  const { day, items, event, from, itinerary, showDescription, showDay, listClass, sectionClass, base, groupByStart } = props;
   const sorted = [...items].sort((a, b) => {
     if (a.startMin !== b.startMin) return a.startMin - b.startMin;
     const posA = a.roomId ? (a.roomPosition ?? Number.POSITIVE_INFINITY) : Number.POSITIVE_INFINITY;
@@ -173,13 +177,23 @@ function AgendaItemList(props: {
     if (posA !== posB) return posA - posB;
     return a.submissionId.localeCompare(b.submissionId);
   });
+  let lastStart: number | null = null;
   return (
     // DEC-768: no h3 here either -- every caller of this list (AgendaDay,
     // ScheduleContent's per-day wrapper) owns its own single day heading.
     <section aria-label={`Agenda for ${formatDay(day)}`} class={sectionClass ?? "chq-pub-agenda-list-wrap"}>
       <ol class={listClass ?? "chq-pub-agenda-list"}>
-        {sorted.map((item) => (
-          <li class="chq-pub-agenda-list-item" id={`chq-agenda-list-${item.submissionId}`} data-submission-id={item.submissionId}>
+        {sorted.map((item) => {
+          const isNewGroup = groupByStart && item.startMin !== lastStart;
+          if (isNewGroup) lastStart = item.startMin;
+          return (
+            <>
+              {isNewGroup ? (
+                <li class="chq-pub-schedule-time-subhead" aria-hidden="true">
+                  {formatMinutes(item.startMin)}
+                </li>
+              ) : null}
+              <li class="chq-pub-agenda-list-item" id={`chq-agenda-list-${item.submissionId}`} data-submission-id={item.submissionId}>
             <div class="chq-pub-agenda-list-time">
               {showDay ? `${formatDay(day)} · ` : ""}
               {formatMinutes(item.startMin)}–{formatMinutes(item.endMin)}
@@ -201,15 +215,19 @@ function AgendaItemList(props: {
               <SpeakerNames speakers={item.speakers} />
             </div>
             {itinerary ? (
-              // w1-i: same shared ItineraryToggle as the sessions list card
-              // (cards.tsx) — the label previously stayed "Add to itinerary"
-              // even once checked, unlike /sessions' Save -> Saved flip.
-              // `.chq-pub-itinerary-row` keeps this row's own layout; the
-              // flip CSS lives in the appended block in public.css.ts.
+              // DEC-783 / w1-i: the row control NAMES its state, and it does
+              // so through the ONE shared ItineraryToggle the sessions list
+              // card and the detail page already render (cards.tsx) — a
+              // hand-copied Save/Saved span pair would drift from
+              // ITINERARY_TOGGLE_LABEL. `.chq-pub-itinerary-row` keeps this
+              // row's own layout (and carries its own :checked flip rules in
+              // public.css.ts) instead of the pill's box styling.
               <ItineraryToggle sessionId={item.submissionId} wrapperClass="chq-pub-itinerary-row" />
             ) : null}
-          </li>
-        ))}
+              </li>
+            </>
+          );
+        })}
       </ol>
     </section>
   );
@@ -259,14 +277,23 @@ function DaySwitcher(props: {
   surface: "agenda" | "schedule";
   base: SurfaceBase;
   activeDay?: string | null;
+  trackId?: string | null;
+  q?: string | null;
 }) {
-  const { days, renderedDays, event, surface, base, activeDay } = props;
+  const { days, renderedDays, event, surface, base, activeDay, trackId, q } = props;
   if (days.length <= 1) return null;
+  // DEC-783: a day jump must not silently drop the active q/trackId filter
+  // — every out-link (a day not already rendered on this filtered page)
+  // carries them forward alongside ?day=.
+  const extraParams =
+    (trackId ? `&trackId=${encodeURIComponent(trackId)}` : "") + (q ? `&q=${encodeURIComponent(q)}` : "");
   return (
     <nav aria-label="Jump to day" class="chq-pub-day-switcher">
       {days.map((day) => {
         const isActive = activeDay ? day === activeDay : false;
-        const href = renderedDays.has(day) ? `#chq-day-${day}` : `${surfacePath(event, surface, base)}?day=${day}`;
+        const href = renderedDays.has(day)
+          ? `#chq-day-${day}`
+          : `${surfacePath(event, surface, base)}?day=${day}${extraParams}`;
         return (
           <a class="chq-pub-day-pill" href={href} aria-current={isActive ? "page" : undefined}>
             {formatDay(day)}
@@ -284,6 +311,8 @@ export function AgendaContent(props: {
   embed?: boolean;
   allDays?: string[] | null;
   activeDay?: string | null;
+  trackId?: string | null;
+  q?: string | null;
 }) {
   const byDay = groupByDay(props.items);
   const renderedDays = new Set(byDay.keys());
@@ -308,6 +337,8 @@ export function AgendaContent(props: {
             surface="agenda"
             base={base}
             activeDay={props.activeDay}
+            trackId={props.trackId}
+            q={props.q}
           />
           {[...renderedDays].map((day) => (
             <AgendaDay day={day} items={byDay.get(day) ?? []} event={props.event} from="agenda" base={base} />
@@ -419,6 +450,8 @@ export function ScheduleContent(props: {
   embed?: boolean;
   allDays?: string[] | null;
   activeDay?: string | null;
+  trackId?: string | null;
+  q?: string | null;
 }) {
   const byDay = groupByDay(props.items);
   const renderedDays = new Set(byDay.keys());
@@ -457,7 +490,7 @@ export function ScheduleContent(props: {
             Show only my picks (<span id="chq-picks-only-count">0</span>)
           </label>
           <p id="chq-picks-empty" class="chq-pub-picks-empty" hidden>
-            You have not picked any sessions yet. Check "Add to itinerary" on a session below to add it.
+            You have not picked any sessions yet. Check "Save" on a session below to add it.
           </p>
           <DaySwitcher
             days={days}
@@ -466,6 +499,8 @@ export function ScheduleContent(props: {
             surface="schedule"
             base={base}
             activeDay={props.activeDay}
+            trackId={props.trackId}
+            q={props.q}
           />
           {[...renderedDays].map((day) => (
             <div id={`chq-day-${day}`}>
@@ -484,6 +519,7 @@ export function ScheduleContent(props: {
                 listClass="chq-pub-schedule-list"
                 sectionClass="chq-pub-agenda-list-wrap chq-pub-schedule-day"
                 base={base}
+                groupByStart
               />
             </div>
           ))}

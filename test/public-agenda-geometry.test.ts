@@ -106,10 +106,13 @@ describe("DEC-602 (EMB-09 w2): /schedule renders the list at every width, never 
     expect(html).toContain("Engineer, Acme");
   });
 
-  it("a schedule card still carries the 'Add to itinerary' checkbox", () => {
+  it("a schedule card still carries the itinerary checkbox, now naming its Save/Saved state", () => {
     const html = String(ScheduleContent({ event: EVENT, items: ITEMS, total: ITEMS.length }));
     expect(html).toContain('class="chq-itinerary-toggle" value="s1"');
-    expect(html).toContain("Add to itinerary");
+    expect(html).toContain('class="chq-pub-save-off"');
+    expect(html).toContain('class="chq-pub-save-on"');
+    expect(html).toContain("Saved");
+    expect(html).not.toContain("Add to itinerary");
   });
 });
 

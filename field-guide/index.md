@@ -6,55 +6,55 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   all; decisions/DEC-*.md binding, src/decisions.ts compile-checked
   (never hand-edit). House invariants: fail loudly; status changes
   never auto-email; authz every route, server-side visibility.
-- STAGE1 (DEC-002..365, COMPLETE): pure-core src/{auth,domain,forms,
-  mail,lib} import nothing node:/cf; 012/013 route files export Hono
-  sub-apps, errors {error:{code,message,fields?}}; bulk ops set-based.
-- REDESIGN w1-10 (DEC-366..419, FUNCTION FROZEN): tokens frozen, ONE
-  dialog contract, phone @700px; D1 binds PRIMITIVES (epoch-ms NUMBER);
-  dates via event-time.ts OWNING EVENT's tz never toISOString.
-- STAGE1-CLOSE w11-38 (DEC-420..569, compacted): ledger names its sha; ONE
-  email rule via findAccountUserId; universal rows graded from
-  ENUMERATION never sample; pagination ONE shape+count*+`id asc`; a cap
-  the UI can't see LIES, render `total`; atomic SQL beats read-then-write;
-  hand-listed manifests desync -- enumerate; conditional visibility a
-  FIXED POINT; hand-copied vocabularies drift -- IMPORT them; uniqueIndex
-  a CONTRACT; negation skips NULLs.
-- FINDINGS w1-20 (DEC-570..743, compacted): full suites SERIALIZED; real
-  <button> not `div draggable`; colour isn't identity -- NAME it; blank
-  CSV cell ABSENT DATA; anonymity a RATCHET; merge a SET; raw id LABELS;
-  cacheability DEFAULT + "own header wins"; irreversible action a PAGE;
-  hub gives a row ONE action; grid cells POSITIONAL; person named by
-  CONTACT; tab selection URL state; side effects ONE writer; sandboxed
-  child's origin IS "null"; tiers a PREDICATE; publish the WINDOW not a
-  flag; a decision with no code is a LIE; seed satisfies every read.
-- FINDINGS w21-23 (DEC-744..771, compacted): envelope KEYS fixed by
-  route not branch content. Seeded reviewer NAMED (user.contact_id).
-  ONE measure token. Chrome fidelity never deletes a capability. Task
-  creation always expands. Merge shows EVERY differing field; roster
-  and expand-set ONE predicate; contact identity (org, lower(email));
-  author a PERSON never "Unknown". Rows grow, not scroll. Position
-  re-derives from URL, never router state. `participant` is the ONLY
-  contact-to-event link. Failure a STATUS not an absence. While armed
-  the CELL owns the click; a control whose effect dies on reload is
-  decoration.
-- FINDINGS w2 (DEC-772..781, compacted): the mandate file is a
-  HYPOTHESIS -- grep the route before tasking; never delete a
-  capability a mock omits. A count and its list are ONE predicate over
-  ONE set. A duration the scheduler ignores is an unread form answer.
-  A tab hides the upload that made the file; a kind chip does not. An
-  output format the rubric NAMES is a capability, not polish. A
-  permanently disabled control is a promise unkept: ship the route or
-  drop it. Punctuation asserts on both sides. A speaker's own page
-  reads dates in the EVENT's timezone.
-- FINDINGS w3 (DEC-782..791): a detail page owes the reader every action
-  its card offered and the same date grammar -- and a rendered control
-  NAMES its state (Save/Saved), never a static label over a live
-  checkbox. A filter is a SET: a rail click composes, never replaces.
-  A toggle with no public consequence is decoration -- a disabled saved
-  embed must 404, not grey out. Distribute is PREVIEW then apply, pure
-  and deterministic (fewest-assigned, id tiebreak, no clock). A role
-  chosen nowhere is defaulted silently: pick it where the participant
-  is added, validate server-side against the imported vocabulary,
-  render as a LABEL. Warn about a duplicate at CREATION using the
-  predicate the Duplicates tab already imports. Never print a raw ISO
-  day, and never a separator with nothing on one side.
+- STAGE1/REDESIGN/CLOSE (DEC-002..569, compacted): pure-core imports no
+  node:/cf; Hono sub-apps, errors {error:{code,message,fields?}}; bulk
+  ops set-based; tokens frozen, ONE dialog contract; D1 binds
+  PRIMITIVES (epoch-ms NUMBER); dates via event-time.ts OWNING EVENT's
+  tz never toISOString; ONE email rule via findAccountUserId; rows
+  graded from ENUMERATION never sample; pagination ONE shape+count*+
+  `id asc`; a cap the UI can't see LIES, render `total`; atomic SQL
+  beats read-then-write; hand-listed manifests desync -- enumerate;
+  conditional visibility a FIXED POINT; hand-copied vocab drifts --
+  IMPORT it; uniqueIndex a CONTRACT; negation skips NULLs.
+- FINDINGS w1-23 (DEC-570..771, compacted): full suites SERIALIZED;
+  real <button> not `div draggable`; colour isn't identity -- NAME it;
+  blank CSV cell ABSENT DATA; anonymity a RATCHET; merge a SET; raw id
+  LABELS; cacheability DEFAULT+"own header wins"; irreversible action a
+  PAGE; hub gives a row ONE action; grid cells POSITIONAL; person named
+  by CONTACT; tab selection URL state; side effects ONE writer;
+  sandboxed child origin "null"; tiers a PREDICATE; publish the WINDOW
+  not a flag; decision with no code a LIE; seed satisfies every read;
+  envelope KEYS fixed by route; seeded reviewer NAMED; chrome fidelity
+  never deletes a capability; task creation always expands; merge
+  shows EVERY differing field; roster/expand-set ONE predicate;
+  contact identity (org, lower(email)); author a PERSON never
+  "Unknown"; rows grow not scroll; position re-derives from URL, not
+  router state; `participant` ONLY contact-to-event link; armed CELL
+  owns click; dying-on-reload control is decoration.
+- FINDINGS w2-3 (DEC-772..791, compacted): mandate file a HYPOTHESIS --
+  grep the route before tasking; never delete a capability a mock
+  omits. Count and its list ONE predicate over ONE set. Duration the
+  scheduler ignores is an unread form answer. A tab hides the upload
+  that made the file, a kind chip does not. Output format the rubric
+  NAMES is a capability. Permanently disabled control: ship the route
+  or drop it. Punctuation asserts both sides; speaker reads EVENT tz.
+  Detail page owes every action+date grammar its card offered;
+  control NAMES its state (Save/Saved). Filter a SET: rail composes,
+  never replaces. Toggle with no public consequence is decoration --
+  disabled saved embed 404s, not greys. Distribute PREVIEW then apply,
+  pure+deterministic (fewest-assigned, id tiebreak, no clock). Role
+  defaulted where added, validated server-side, rendered a LABEL.
+  Duplicate warned at CREATION via Duplicates predicate. No raw ISO day.
+- FINDINGS w4 (DEC-792..800): mandate is a PROD SNAPSHOT, prod lags
+  main -- ~8 items (755,763,746,663, failed-send history, grid
+  clipping, contact delete, Review copy) were ALREADY closed; grep the
+  route first. Merge vocabulary one SET: a send path lacking a token
+  grows the fact not the template; a SEEDED template whose tokens the
+  path rejects is a landmine -- parity is a test. Never advertise a
+  field the validator refuses; name the recipient the preflight
+  rejected. Arming a control must not move the page: reserve the
+  banner, never let a card bury its own target. Default to the event
+  in context; a legitimate repeat announces itself, never blocked.
+  Seeded log row shows what was SENT. Ratchet counts only promises
+  actually made. Disclosure replaces its preview. Test isolation
+  belongs to the harness, not the file where the flake surfaces.

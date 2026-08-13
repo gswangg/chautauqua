@@ -65,7 +65,7 @@ export interface PublicSession {
  * can't widen into a wildcard match (unescaped LIKE previously let
  * `?q=%` return every visible session). Always parameterized (via the
  * Drizzle `sql` tag), never string-concatenated into SQL. */
-function searchCondition(q: string) {
+export function searchCondition(q: string) {
   const like = likeContains(q);
   return or(
     sql`${schema.submission.title} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
