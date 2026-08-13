@@ -289,6 +289,35 @@ describe('SavedEmbedsPanel', () => {
     const snippet = row.querySelector('.chq-settings-saved-embed-snippet');
     expect(snippet).not.toBeNull();
   });
+
+  // w41-h/DEC-785: the row is an explicit grid whose descriptor column can
+  // shrink (min-width: 0) and clamps to one line via ellipsis, so a long
+  // recipe ('Sessions · iframe · AI Engineering · 6 fields') can never
+  // reflow the row -- this finding survived two gates on eyeballing alone,
+  // so it's asserted directly against the real stylesheet declarations.
+  it('DEC-785: the row grid has an explicit template, and the descriptor column clamps to one line', () => {
+    const css = readFileSync(SETTINGS_CSS_PATH, 'utf8');
+    const rowRule = /\.chq-settings-saved-embed-row\s*\{([^}]*)\}/.exec(css);
+    expect(rowRule).not.toBeNull();
+    const rowDecl = rowRule![1]!;
+    expect(rowDecl).toMatch(/grid-template-columns:\s*[^;]+;/);
+    expect(gridColumnCount('chq-settings-saved-embed-row')).toBeGreaterThanOrEqual(4);
+
+    const descriptorRule = /\.chq-settings-saved-embed-descriptor\s*\{([^}]*)\}/.exec(css);
+    expect(descriptorRule).not.toBeNull();
+    const descriptorDecl = descriptorRule![1]!;
+    expect(descriptorDecl).toMatch(/min-width:\s*0;/);
+    expect(descriptorDecl).toMatch(/white-space:\s*nowrap;/);
+    expect(descriptorDecl).toMatch(/text-overflow:\s*ellipsis;/);
+    expect(descriptorDecl).toMatch(/overflow:\s*hidden;/);
+
+    const actionsRule = /\.chq-settings-saved-embed-actions\s*\{([^}]*)\}/.exec(css);
+    expect(actionsRule).not.toBeNull();
+    // Right-flushed with an inset from the column's own right boundary --
+    // justify-self: end pins it, padding-right keeps it off the edge.
+    expect(actionsRule![1]!).toMatch(/justify-self:\s*end;/);
+    expect(actionsRule![1]!).toMatch(/padding-right:\s*[^;]+;/);
+  });
 });
 
 // w31-d/DEC-982: mirror assertion -- PublicPagesPanel's surface rows own

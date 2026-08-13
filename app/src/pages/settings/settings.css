@@ -503,17 +503,22 @@
   border-top: 1px solid var(--chq-hairline);
 }
 
-/* w31-d/DEC-982: the saved-embed row is a FIVE-cell surface row like
-   PublicPagesPanel's (name, path, recipe, state, actions), not the same
-   grid literal reused across a different cell count — cells six and up in
-   the old shared class wrapped onto an implicit row past five columns.
-   Its own class, same column rhythm, so the two lists keep one visual
-   rhythm without one grid template silently owning two different arities. */
+/* w31-d/DEC-982: the saved-embed row is a FOUR-cell surface row (name+path
+   stacked in one cell, a clamped recipe descriptor, the on/off state, and
+   the action cluster), not the same grid literal reused across a different
+   cell count — cells past the row's own column count silently wrap onto an
+   implicit row. Its own class, so this row's arity never drifts from
+   PublicPagesPanel's five-cell surface row.
+   w41-h/DEC-785 amendment: the row is pinned at its THIRD gate -- the
+   descriptor column gets min-width: 0 and a one-line ellipsis clamp so a
+   long recipe ('Sessions · iframe · AI Engineering · 6 fields') can never
+   reflow the row, and the action cluster is right-flushed with an inset
+   from the row's own right boundary (never touching it). */
 .chq-settings-saved-embed-row {
   display: grid;
-  grid-template-columns: 170px 1fr 140px auto auto;
+  grid-template-columns: 170px 1fr 90px auto;
   gap: 16px;
-  align-items: baseline;
+  align-items: center;
   padding: 13px 0;
   border-bottom: 1px solid var(--chq-hairline);
 }
@@ -522,15 +527,62 @@
   border-bottom: none;
 }
 
+.chq-settings-saved-embed-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* w41-h/DEC-785: min-width: 0 lets the flex/grid item shrink below its
+   content's natural width so overflow: hidden + ellipsis can actually
+   clamp it to one line instead of the column stretching to fit. */
+.chq-settings-saved-embed-descriptor {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  color: var(--chq-ink-2);
+}
+
 .chq-settings-saved-embed-actions {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   flex-wrap: nowrap;
+  justify-self: end;
+  padding-right: 4px;
 }
 
 .chq-settings-saved-embed-snippet {
   grid-column: 1 / -1;
+}
+
+/* w41-h/DEC-785: the eyebrow row -- title + "N on · M off" on the left,
+   the "Turning one off..." caption right-flushed on the same row. */
+.chq-settings-saved-embed-eyebrow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.chq-settings-saved-embed-eyebrow-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.chq-settings-saved-embed-caption {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.chq-settings-saved-embed-build-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
 }
 
 /* w15-e/DEC-691: People and roles -- mock lines 190-204 4-column row

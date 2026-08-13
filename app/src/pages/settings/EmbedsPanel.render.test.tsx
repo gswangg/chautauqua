@@ -153,7 +153,10 @@ describe('EmbedsPanel', () => {
     });
   });
 
-  it('drops the fields param when a field checkbox is unchecked then re-checked back to the full default set', async () => {
+  // w41-h/DEC-785: FIELDS SHOWN is one row of aria-pressed toggle pills
+  // (chq-chipstrip/chq-pill), not six stacked checkbox rows -- the
+  // selected-fields state and what it writes into the URL are unchanged.
+  it('drops the fields param when a field pill is toggled off then back on to the full default set', async () => {
     mockEvent();
     renderPanel();
 
@@ -161,15 +164,36 @@ describe('EmbedsPanel', () => {
       expect(screen.getAllByText(/embed\/devcon-2026\/sessions/).length).toBeGreaterThan(0);
     });
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Speaker' }));
+    const speakerPill = screen.getByRole('button', { name: 'Speaker' });
+    expect(speakerPill).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(speakerPill);
     await waitFor(() => {
       expect(screen.getAllByText(/fields=track%2Ctime%2Croom%2Cdescription%2Cformat/).length).toBeGreaterThan(0);
     });
+    expect(speakerPill).toHaveAttribute('aria-pressed', 'false');
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Speaker' }));
+    fireEvent.click(speakerPill);
     await waitFor(() => {
       expect(screen.queryAllByText(/fields=/).length).toBe(0);
     });
+    expect(speakerPill).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  // w41-h/DEC-785: Preview opens the SAME url the snippet embeds (never a
+  // second URL builder) in a new tab, beside Save changes and Copy snippet.
+  it('offers a Preview link that opens the same URL the snippet embeds, in a new tab', async () => {
+    mockEvent();
+    renderPanel();
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/embed\/devcon-2026\/sessions/).length).toBeGreaterThan(0);
+    });
+
+    const preview = screen.getByRole('link', { name: 'Preview' });
+    expect(preview).toHaveAttribute('target', '_blank');
+    expect(preview).toHaveAttribute('rel', 'noreferrer');
+    const [urlText] = screen.getAllByText(/embed\/devcon-2026\/sessions/);
+    expect(preview.getAttribute('href')).toBe(urlText!.textContent);
   });
 
   it('offers ics only for agenda/schedule surfaces', async () => {
