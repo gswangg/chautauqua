@@ -323,7 +323,10 @@ describe("/schedule groups rows sharing a start time under a time sub-header (DE
     const app = buildScheduleApp(FULL_AGENDA_ROWS);
     const res = await app.request("/e/conf/schedule", {}, TEST_ENV);
     const html = await res.text();
-    const subheadCount = (html.match(/chq-pub-schedule-time-subhead/g) ?? []).length;
+    // Count the MARKUP occurrences only: since DEC-970 the inlined stylesheet
+    // also carries a .chq-pub-schedule-time-subhead selector, so a bare
+    // substring count over the whole document would score the rule too.
+    const subheadCount = (html.match(/class="chq-pub-schedule-time-subhead"/g) ?? []).length;
     // Two distinct start-time groups (540, 660) -> exactly two sub-headers,
     // even though 540 has two rows sharing it.
     expect(subheadCount).toBe(2);
