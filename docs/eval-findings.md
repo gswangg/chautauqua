@@ -846,3 +846,10 @@ AND audit noStoreByDefault + any other header-stamping middleware for the same t
     redefines a non-phone class's display/flex-direction (flag for review if it
     must). (d) Every mobile-focused wave ends by re-running the DESKTOP render sweep
     — a mobile wave that changes any desktop pixel has failed.
+
+67b. (User QA, extends item 67) The CFP form builder page (/admin/submissions/forms)
+     ALSO clamps left with dead right space — add it to the shared page-measure
+     unification (same container token as Submissions/Overview; the mock's builder
+     spans the standard measure). Item 67's sweep list is now: submission detail,
+     Content session detail, Review plan editor, CFP form builder — audit ALL
+     admin routes for container-width consistency in one pass, not page by page.
