@@ -111,69 +111,89 @@ describe('SettingsPage render smoke', () => {
     expect(within(cfpSection).getByText('1 — Format')).toBeInTheDocument();
     expect(within(cfpSection).queryByDisplayValue('Tell us about your talk.')).not.toBeInTheDocument();
 
-    // Public pages and embeds panel.
-    expect(screen.getByRole('heading', { name: 'Public pages and embeds' })).toBeInTheDocument();
+    // Public pages and embeds panel — read-only summary (DEC-815) until
+    // drilled: one row per public surface, name + state pill, with the
+    // paths/View links/embed controls behind the section's 'Change'.
+    const publicPagesSection = screen.getByRole('region', { name: 'Public pages and embeds' });
+    expect(within(publicPagesSection).getByRole('heading', { name: 'Public pages and embeds' })).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByText(`/e/devcon-2026/sessions`)).toBeInTheDocument();
+      expect(within(publicPagesSection).getByText('Sessions')).toBeInTheDocument();
     });
-    expect(screen.getByText(`/submit/devcon-2026`)).toBeInTheDocument();
+    expect(within(publicPagesSection).getByText('CFP submit page')).toBeInTheDocument();
+    expect(within(publicPagesSection).queryByText(`/e/devcon-2026/sessions`)).not.toBeInTheDocument();
 
-    // Speaker portal section — one read view (DEC-747), Resources folded
-    // in via ResourcesPanel rather than its own separate heading.
-    expect(screen.getByRole('heading', { name: 'Speaker portal' })).toBeInTheDocument();
+    // Speaker portal section — read-only summary (DEC-815); the one real
+    // edit surface (ResourcesPanel) lives behind the section's 'Change',
+    // so the resource titles themselves are not on the landing view.
+    const portalSection = screen.getByRole('region', { name: 'Speaker portal' });
+    expect(within(portalSection).getByRole('heading', { name: 'Speaker portal' })).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByText(/Shown above the task list · 1 paragraph/)).toBeInTheDocument();
+      expect(within(portalSection).getByText(/Shown above the task list · 1 paragraph/)).toBeInTheDocument();
     });
-    expect(screen.getByText('Travel info')).toBeInTheDocument();
+    expect(
+      within(portalSection).getByText('Wiki pages and files speakers can access from their portal'),
+    ).toBeInTheDocument();
+    expect(within(portalSection).queryByText('Travel info')).not.toBeInTheDocument();
 
-    // People and roles panel.
-    expect(screen.getByRole('heading', { name: 'People and roles' })).toBeInTheDocument();
+    // People and roles panel — read-only summary (DEC-815): counts, not the
+    // live user table, until drilled.
+    const peopleSection = screen.getByRole('region', { name: 'People and roles' });
+    expect(within(peopleSection).getByRole('heading', { name: 'People and roles' })).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByText('self@example.com')).toBeInTheDocument();
+      expect(within(peopleSection).getByText('1 person')).toBeInTheDocument();
     });
+    expect(within(peopleSection).queryByText('self@example.com')).not.toBeInTheDocument();
 
-    // Your data section (DEC-747: ONE section -- Exports pills, API
-    // tokens, API docs and an Import-from-Sessionboard drill row).
-    expect(screen.getByRole('heading', { name: 'Your data' })).toBeInTheDocument();
+    // Your data section (DEC-747: ONE section -- Exports, API tokens, API
+    // docs and Import from Sessionboard). DEC-815: summary rows on landing;
+    // the export pills, token flow and importer stay reachable behind
+    // 'Change' (FINDINGS w21: chrome fidelity never deletes a capability).
+    const yourDataSection = screen.getByRole('region', { name: 'Your data' });
+    expect(within(yourDataSection).getByRole('heading', { name: 'Your data' })).toBeInTheDocument();
+    expect(within(yourDataSection).getByRole('link', { name: 'chautauqua.cc/docs/api' })).toHaveAttribute(
+      'href',
+      '/docs/api',
+    );
+    expect(within(yourDataSection).queryByRole('link', { name: 'Submissions CSV' })).not.toBeInTheDocument();
+
+    fireEvent.click(within(yourDataSection).getByRole('button', { name: 'Change' }));
     await waitFor(() => {
-      expect(screen.getByRole('link', { name: 'Submissions CSV' })).toHaveAttribute(
+      expect(within(yourDataSection).getByRole('link', { name: 'Submissions CSV' })).toHaveAttribute(
         'href',
         `/api/v1/events/${EVENT_ID}/export/submissions?format=csv`,
       );
     });
-    expect(screen.getByRole('link', { name: 'Contacts CSV' })).toHaveAttribute(
+    expect(within(yourDataSection).getByRole('link', { name: 'Contacts CSV' })).toHaveAttribute(
       'href',
       `/api/v1/events/${EVENT_ID}/export/contacts?format=csv`,
     );
-    expect(screen.getByRole('link', { name: 'Schedule ICS' })).toHaveAttribute(
+    expect(within(yourDataSection).getByRole('link', { name: 'Schedule ICS' })).toHaveAttribute(
       'href',
       `/e/devcon-2026/agenda.ics`,
     );
-    expect(screen.getByRole('button', { name: 'Everything JSON' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'chautauqua.cc/docs/api' })).toHaveAttribute('href', '/docs/api');
+    expect(within(yourDataSection).getByRole('button', { name: 'Everything JSON' })).toBeInTheDocument();
 
-    expect(screen.getByRole('heading', { name: 'API Tokens' })).toBeInTheDocument();
+    expect(within(yourDataSection).getByRole('heading', { name: 'API Tokens' })).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByText('CI pipeline')).toBeInTheDocument();
+      expect(within(yourDataSection).getByText('CI pipeline')).toBeInTheDocument();
     });
 
     // The full multi-kind export table stays reachable, not deleted, behind
-    // a "More export formats" drill (FINDINGS w21: chrome fidelity never
-    // deletes a capability).
-    expect(screen.queryByRole('heading', { name: 'Exports' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'More export formats' }));
-    expect(screen.getByRole('heading', { name: 'Exports' })).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: 'Download CSV' })[0]).toHaveAttribute(
+    // a "More export formats" drill (FINDINGS w21).
+    expect(within(yourDataSection).queryByRole('heading', { name: 'Exports' })).not.toBeInTheDocument();
+    fireEvent.click(within(yourDataSection).getByRole('button', { name: 'More export formats' }));
+    expect(within(yourDataSection).getByRole('heading', { name: 'Exports' })).toBeInTheDocument();
+    expect(within(yourDataSection).getAllByRole('link', { name: 'Download CSV' })[0]).toHaveAttribute(
       'href',
       `/api/v1/events/${EVENT_ID}/export/submissions?format=csv`,
     );
 
-    // Import from Sessionboard is now a row inside 'Your data' that drills
-    // into the same three-step panel, not an eighth rail entry.
-    expect(screen.queryByRole('heading', { name: 'Import from Sessionboard' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Import from Sessionboard' }));
-    expect(screen.getByRole('heading', { name: 'Import from Sessionboard' })).toBeInTheDocument();
-    expect(screen.getByText(/API token is not implemented in this build/)).toBeInTheDocument();
+    // Import from Sessionboard is a row inside 'Your data' that drills into
+    // the same three-step panel, not an eighth rail entry.
+    expect(within(yourDataSection).queryByRole('heading', { name: 'Import from Sessionboard' })).not.toBeInTheDocument();
+    fireEvent.click(within(yourDataSection).getByRole('button', { name: 'Import from Sessionboard' }));
+    expect(within(yourDataSection).getByRole('heading', { name: 'Import from Sessionboard' })).toBeInTheDocument();
+    expect(within(yourDataSection).getByText(/API token is not implemented in this build/)).toBeInTheDocument();
   });
 
   // DEC-375: below 700px the rail's section links drill into a single panel

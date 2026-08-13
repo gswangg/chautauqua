@@ -118,6 +118,11 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "GET", path: "/api/v1/plans/:id/results", role: "organizer" },
       { method: "POST", path: "/api/v1/plans/:id/remind", role: "organizer" },
       { method: "GET", path: "/api/v1/review/plans", role: "reviewer" },
+      {
+        method: "GET",
+        path: "/api/v1/review/plans/:id",
+        role: "reviewer (DEC-819: the plan-scoped queue's own name, same assignment scoping as its /queue)",
+      },
       { method: "GET", path: "/api/v1/review/plans/:id/queue", role: "reviewer" },
       { method: "GET", path: "/api/v1/review/submissions/:id", role: "reviewer" },
       {
