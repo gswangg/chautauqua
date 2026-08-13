@@ -57,6 +57,12 @@
   font-weight: 700;
 }
 
+/* 'N of M' never wraps between the two arrows (DEC-379: the class was
+   already on the span; this is the rule that closes it). */
+.chq-detail-position-count {
+  white-space: nowrap;
+}
+
 /* Desktop: main column (form-shaped content) + decision aside. */
 .chq-detail-layout {
   display: grid;

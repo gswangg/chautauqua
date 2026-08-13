@@ -576,3 +576,10 @@
   display: flex;
   gap: 9px;
 }
+
+/* DEC-758's 'Delete this contact' trigger. Layout only (same treatment as
+   content.css's .chq-content-version-delete): the tertiary button's colour
+   and weight stay with .chq-btn-tertiary in styles.css. */
+.chq-contacts-delete-trigger {
+  white-space: nowrap;
+}

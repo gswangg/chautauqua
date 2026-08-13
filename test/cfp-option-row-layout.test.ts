@@ -16,7 +16,7 @@ describe("public CFP option-row layout", () => {
       .filter((rule) => /(^|,)\s*[^,{]*\blabel\b[^,{]*\{/m.test(rule + "}"));
     expect(stackingRules.length).toBeGreaterThan(0);
     for (const rule of stackingRules) {
-      const selector = rule.split("{")[0];
+      const selector = rule.split("{")[0]!;
       for (const part of selector.split(",")) {
         if (/\blabel\b/.test(part)) {
           expect(part).toContain(":not(.chq-cfp-option)");

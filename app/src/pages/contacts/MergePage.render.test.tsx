@@ -83,7 +83,12 @@ describe('MergePage render (DEC-748: struck-empty discards, Labels row, keep-col
     expect(screen.getByText('Jane Doe')).toBeInTheDocument();
 
     // A blank duplicate side still renders a row, struck through, not
-    // silently dropped.
+    // silently dropped. The compare rows come from a SECOND request
+    // (GET /contacts/merge/preview) that can land after the pair counter's,
+    // so this waits for it instead of racing it.
+    await waitFor(() => {
+      expect(screen.getByText('Company')).toBeInTheDocument();
+    });
     const companyRow = screen.getByText('Company').closest('.chq-contacts-merge-compare-row') as HTMLElement;
     const dropCell = within(companyRow).getByText('—');
     expect(dropCell).toHaveClass('chq-contacts-merge-compare-drop');
