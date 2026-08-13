@@ -24,6 +24,18 @@ export const PUBLIC_CSS = `
      across every SSR surface stylesheet. */
   form[role=search] { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
   form[role=search] label { display: flex; flex-direction: column; gap: 0.2rem; flex: 1 1 200px; }
+  /* DEC-835: the label+input wrapper is 66px tall (label line + input); the
+     submit button has no label row above it, so align-items: center on
+     the form (above) leaves it centred against that whole 66px box instead
+     of lined up with the input itself. align-self: flex-end pins it to
+     the input's baseline, and it takes the same min-height/padding as the
+     other .chq-pub-pill/.chq-pub-itinerary-cta controls in this stylesheet
+     instead of the browser's own ~11px-tall default button box. */
+  form[role=search] button[type=submit] {
+    align-self: flex-end;
+    min-height: 44px;
+    padding: 0 14px;
+  }
 
   /* Public event chrome (DEC-369/DEC-366: header carries the event's own
      dates/venue + name, above the shared .chq-nav from THEME_CSS). */

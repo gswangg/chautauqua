@@ -97,8 +97,10 @@ describe("task-w1-e (DEC-768): day switcher survives a ?day= filtered view", () 
       }),
     );
     expect(html).toContain("chq-pub-day-switcher");
-    // The active day's own section is on this page -> anchor link.
-    expect(html).toContain('href="#chq-day-2026-08-10"');
+    // DEC-835: the active day's own section is on this page -> a real
+    // ?day= navigation href (never a bare #chq-day-<day> anchor), with the
+    // section id kept as a fragment for in-page anchoring.
+    expect(html).toContain('href="/e/ev/agenda?day=2026-08-10#chq-day-2026-08-10"');
     // The other day is NOT rendered here -> a real navigation link, not a
     // dead in-page anchor to a section that doesn't exist.
     expect(html).toContain('href="/e/ev/agenda?day=2026-08-11"');

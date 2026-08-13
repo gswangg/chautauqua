@@ -112,6 +112,20 @@ describe("PUBLIC_CSS phone breakpoint (DEC-584)", () => {
   });
 });
 
+describe("PUBLIC_CSS search form submit button (DEC-835)", () => {
+  it("aligns the submit button to the input box, not centred against the label+input wrapper", () => {
+    expect(PUBLIC_CSS).toMatch(
+      /form\[role=search\] button\[type=submit\] \{[^}]*align-self:\s*flex-end;[^}]*\}/,
+    );
+    // shares the same control height/padding used elsewhere in this
+    // stylesheet (.chq-pub-pill etc.) instead of the browser's own tiny
+    // default button box.
+    expect(PUBLIC_CSS).toMatch(
+      /form\[role=search\] button\[type=submit\] \{[^}]*min-height:\s*44px;[^}]*\}/,
+    );
+  });
+});
+
 describe("PUBLIC_CSS rendering (DEC-373/374)", () => {
   it("a non-hex brandingJson accentColor falls back to the default accent on the body style attribute", async () => {
     installFakeCaches();

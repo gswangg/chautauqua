@@ -279,6 +279,27 @@ describe("/e/:eventSlug/schedule?trackId= (DEC-783)", () => {
     // carrying the SAME trackId/q forward, not a bare ?day= href.
     expect(html).toContain('href="/e/conf/schedule?day=2026-08-11&amp;trackId=trk-a&amp;q=keynote"');
   });
+
+  it("DEC-835: on the unfiltered default view, every day pill still carries a real ?day= href (never a bare #chq-day-<day> anchor)", async () => {
+    installFakeCaches();
+    // Two days, both rendered on this unfiltered page.
+    const twoDayRows = [
+      ...FULL_AGENDA_ROWS,
+      { submissionId: "sub4", day: "2026-08-11", startMin: 540, endMin: 600, roomId: "room1" },
+    ];
+    const app = buildScheduleApp(twoDayRows);
+    const res = await app.request("/e/conf/schedule", {}, TEST_ENV);
+    const html = await res.text();
+    const pillHrefs = [...html.matchAll(/class="chq-pub-day-pill" href="([^"]*)"/g)].map((m) => m[1]!);
+    expect(pillHrefs.length).toBe(2);
+    for (const href of pillHrefs) {
+      expect(href.startsWith("#")).toBe(false);
+      expect(href).toMatch(/^\/e\/conf\/schedule\?day=2026-08-1[01]#chq-day-2026-08-1[01]$/);
+    }
+    // the #chq-day-<day> section ids are still present for in-page anchoring
+    expect(html).toContain('id="chq-day-2026-08-10"');
+    expect(html).toContain('id="chq-day-2026-08-11"');
+  });
 });
 
 describe("/schedule row control (DEC-783): a checked row names its state", () => {
