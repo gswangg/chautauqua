@@ -325,9 +325,9 @@ export function SubmissionsTable() {
               <th>Ref</th>
               <th>Title</th>
               <th>Speakers</th>
-              <th>Tracks</th>
+              <th>Track</th>
               <th>Status</th>
-              <th>Submitted</th>
+              <th>Sent</th>
               {shownColumns.map((col) => (
                 <th key={col.fieldId}>{col.label}</th>
               ))}

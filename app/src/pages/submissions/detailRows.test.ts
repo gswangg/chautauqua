@@ -40,27 +40,77 @@ describe('buildAnswerRows', () => {
     const rows = buildAnswerRows(answers, fields);
     expect(rows).toEqual([
       { fieldId: 'f1', label: 'Level', displayValue: 'Advanced' },
+      { fieldId: 'f2', label: 'First-time speaker', displayValue: '—' },
       { fieldId: 'unknown_key', label: 'unknown_key', displayValue: 'mystery' },
     ]);
   });
 
-  it('returns an empty list for empty answers', () => {
-    expect(buildAnswerRows({}, fields)).toEqual([]);
+  // DEC-908 amendment: buildAnswerRows enumerates `fields`, not `answers` --
+  // every non-locked form field gets a row even with zero answers, so an
+  // unanswered optional question (e.g. "Accessibility needs") still reads
+  // as a real question rather than vanishing.
+  it('enumerates every field even with no answers at all, using the em dash', () => {
+    expect(buildAnswerRows({}, fields)).toEqual([
+      { fieldId: 'f1', label: 'Level', displayValue: '—' },
+      { fieldId: 'f2', label: 'First-time speaker', displayValue: '—' },
+    ]);
+  });
+
+  it('renders the em dash for a form field with no stored answer, alongside its answered sibling', () => {
+    const answers = { f1: 'Advanced' };
+    const rows = buildAnswerRows(answers, fields);
+    expect(rows).toEqual([
+      { fieldId: 'f1', label: 'Level', displayValue: 'Advanced' },
+      { fieldId: 'f2', label: 'First-time speaker', displayValue: '—' },
+    ]);
+  });
+
+  it('renders the em dash for a blank/whitespace-only stored answer too', () => {
+    const answers = { f1: 'Advanced', f2: '   ' };
+    const rows = buildAnswerRows(answers, fields);
+    expect(rows).toEqual([
+      { fieldId: 'f1', label: 'Level', displayValue: 'Advanced' },
+      { fieldId: 'f2', label: 'First-time speaker', displayValue: '—' },
+    ]);
   });
 
   // DEC-908: a locked built-in field answer (matched via the SAME
   // lockedFieldName helper the builder uses -- never a hand-written list)
-  // and a blank/whitespace-only answer are both excluded, while a genuine
-  // custom-field answer still renders normally.
-  it('excludes a locked built-in field answer and a blank answer', () => {
+  // is excluded, never rendered as a Form Answers row, whether it comes
+  // through as a form field or a stray answer key.
+  it('excludes a locked built-in field answer', () => {
     const answers = {
       f1: 'Advanced',
       title: 'Should never render as a Form Answers row',
-      description: '   ',
       'form1:first_name': 'Also locked, per-form-PK form',
-      f2: '',
     };
     const rows = buildAnswerRows(answers, fields);
-    expect(rows).toEqual([{ fieldId: 'f1', label: 'Level', displayValue: 'Advanced' }]);
+    expect(rows).toEqual([
+      { fieldId: 'f1', label: 'Level', displayValue: 'Advanced' },
+      { fieldId: 'f2', label: 'First-time speaker', displayValue: '—' },
+    ]);
+  });
+
+  it('still excludes a locked field even when it appears in `fields`', () => {
+    const fieldsWithLocked: FormField[] = [
+      ...fields,
+      { id: 'title', section: 'session', kind: 'text', label: 'Title', required: true, position: 0 },
+    ];
+    const rows = buildAnswerRows({ f1: 'Advanced', title: 'My talk' }, fieldsWithLocked);
+    expect(rows).toEqual([
+      { fieldId: 'f1', label: 'Level', displayValue: 'Advanced' },
+      { fieldId: 'f2', label: 'First-time speaker', displayValue: '—' },
+    ]);
+  });
+
+  it('sorts an orphan answer key (no matching field) last, in raw key order', () => {
+    const answers = { f1: 'Advanced', zeta: 'z', alpha: 'a' };
+    const rows = buildAnswerRows(answers, fields);
+    expect(rows).toEqual([
+      { fieldId: 'f1', label: 'Level', displayValue: 'Advanced' },
+      { fieldId: 'f2', label: 'First-time speaker', displayValue: '—' },
+      { fieldId: 'alpha', label: 'alpha', displayValue: 'a' },
+      { fieldId: 'zeta', label: 'zeta', displayValue: 'z' },
+    ]);
   });
 });
