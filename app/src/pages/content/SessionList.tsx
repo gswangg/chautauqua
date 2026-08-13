@@ -1,5 +1,5 @@
-import { CONTENT_STATUS_LABELS, type ContentStatus, type ContentSubmissionListItem } from './types';
-import { WORKLIST_TABS, type WorklistTab } from './worklist';
+import { type ContentStatus, type ContentSubmissionListItem } from './types';
+import { WORKLIST_TABS, worklistStatusLabel, type WorklistTab } from './worklist';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { formatRelativeDays } from '../../lib/dates';
 
@@ -103,7 +103,22 @@ export function SessionList({
               </td>
             </tr>
           )}
-          {loaded && !loading && visible.length === 0 && (
+          {/* DEC-881: the default tab is now 'needs_decision' — its empty
+              state must read honestly ("nothing needs a decision") rather
+              than defaulting away from the frame (which is what DEC-665's
+              'all' default did), and offers one click to All so an empty
+              needs-decision queue never reads as an empty event. */}
+          {loaded && !loading && visible.length === 0 && tab === 'needs_decision' && (
+            <tr>
+              <td colSpan={5} className="chq-empty">
+                Nothing needs a decision right now.{' '}
+                <button type="button" className="chq-link-button" onClick={() => onTabChange('all')}>
+                  View all accepted sessions
+                </button>
+              </td>
+            </tr>
+          )}
+          {loaded && !loading && visible.length === 0 && tab !== 'needs_decision' && (
             <tr>
               <td colSpan={5} className="chq-empty">
                 No submissions in this view.
@@ -153,7 +168,7 @@ export function SessionList({
                         item.contentStatus === 'changes_requested' ? 'chq-flag' : 'chq-flag chq-content-status-muted'
                       }
                     >
-                      {CONTENT_STATUS_LABELS[item.contentStatus]}
+                      {worklistStatusLabel(item.contentStatus, item.reuploaded)}
                     </span>
                   </td>
                   <td onClick={(e) => e.stopPropagation()}>

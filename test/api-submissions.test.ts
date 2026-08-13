@@ -26,6 +26,7 @@ describe("parseListQuery (DEC-013 pagination + DEC-016 filters)", () => {
       trackId: null,
       sort: "newest",
       includeAnswers: false,
+      reuploaded: null,
     });
   });
 
@@ -59,6 +60,15 @@ describe("parseListQuery (DEC-013 pagination + DEC-016 filters)", () => {
     expect(parseListQuery({ trackId: "t1" }).trackId).toBe("t1");
     expect(parseListQuery({ includeAnswers: "1" }).includeAnswers).toBe(true);
     expect(parseListQuery({ includeAnswers: "true" }).includeAnswers).toBe(false);
+  });
+
+  // DEC-881: reuploaded=1/0 filters to the single re-uploaded predicate;
+  // absent means no filter; anything else fails loudly, same as status.
+  it("parses reuploaded=1/0, defaults to null (no filter), and throws on an unknown token", () => {
+    expect(parseListQuery({}).reuploaded).toBeNull();
+    expect(parseListQuery({ reuploaded: "1" }).reuploaded).toBe(true);
+    expect(parseListQuery({ reuploaded: "0" }).reuploaded).toBe(false);
+    expect(() => parseListQuery({ reuploaded: "yes" })).toThrow("yes");
   });
 });
 
@@ -227,6 +237,7 @@ describe("listSubmissions: one paginated statement for q+trackId (DEC-333/335)",
       trackId: "track-1",
       sort: "newest",
       includeAnswers: false,
+      reuploaded: null,
     });
 
     // Exactly 7 db.select() calls total: 3 core + 4 enrichment batches.

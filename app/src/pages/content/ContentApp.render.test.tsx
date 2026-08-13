@@ -51,10 +51,10 @@ describe('ContentApp / SessionList render smoke: always-visible content-status c
       </MemoryRouter>,
     );
 
-    // w11-e: default tab is 'all' (DEC-665) — the row is visible without
-    // switching tabs.
+    // DEC-881: default tab is 'needs_decision' — the row (contentStatus
+    // 'pending') is visible without switching tabs.
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: 'All accepted sessions' })).toHaveClass('is-active');
+      expect(screen.getByRole('tab', { name: /^Needs a decision/ })).toHaveClass('is-active');
     });
 
     await waitFor(() => {

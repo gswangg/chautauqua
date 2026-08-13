@@ -10,11 +10,39 @@ import { FILE_KINDS, type FileKind } from "../../../domain/files";
 import { chunkIds, type ParsedListQuery, type SortOrder } from "./query";
 import { likeContains } from "../like";
 import { findRoot, type DeliverableFileRow } from "../files-library";
-import { DEC_692 } from "../../../decisions";
+import { DEC_692, DEC_881 } from "../../../decisions";
 
 // DEC-692: a worklist row names the session, the speaker, the LATEST
 // artefact and its status — latestFile is that artefact, computed here.
 void DEC_692;
+
+// DEC-881: "re-uploaded" is ONE predicate — a submission's latest deliverable
+// file (by created_at among FILE_KINDS files) has version_no > 1. Expressed
+// once as reUploadedSql below; submissionListConditions and the row
+// projection both read it, so the header's aggregate and the row's status
+// cell can never disagree.
+void DEC_881;
+
+/** DEC-881's predicate as a scalar SQL subquery: the version_no of a
+ * submission's newest deliverable file, or NULL when it has none. Read
+ * directly off file.version_no (DEC-818: an insert-time identity, not a
+ * position among survivors) rather than a chain-length count, so a deleted
+ * middle version never flips the answer. A function, not a module-level
+ * const — building the sql.join at call time avoids relying on drizzle-orm's
+ * `sql` export being fully initialized before this module's top-level runs
+ * (import-order-sensitive under some bundlers/test runners). */
+function latestDeliverableVersionNoSql() {
+  return sql`(select ${schema.file.versionNo} from ${schema.file} where ${schema.file.submissionId} = ${schema.submission.id} and ${schema.file.kind} in (${sql.join(
+    (FILE_KINDS as readonly string[]).map((k) => sql`${k}`),
+    sql`, `,
+  )}) order by ${schema.file.createdAt} desc, ${schema.file.id} desc limit 1)`;
+}
+
+/** DEC-881: a submission is re-uploaded when its latest deliverable file's
+ * version_no > 1. NULL (no files yet) is not re-uploaded. */
+function reUploadedSql() {
+  return sql`coalesce(${latestDeliverableVersionNoSql()} > 1, 0)`;
+}
 
 export interface SubmissionSpeaker {
   contactId: string;
@@ -33,6 +61,11 @@ export interface SubmissionListItem {
   createdAt: number;
   deliverableCounts: { presentation: number; poster: number; handout: number };
   latestFile: { filename: string; kind: FileKind; versionCount: number; uploadedAt: number } | null;
+  // DEC-881: latest deliverable file's stored version_no (DEC-818 identity,
+  // not a chain-length count), and the single re-uploaded predicate derived
+  // from it — null/false when the submission has no deliverable files yet.
+  latestFileVersionNo: number | null;
+  reuploaded: boolean;
   answers?: Record<string, unknown>;
 }
 
@@ -73,6 +106,13 @@ export function submissionListConditions(eventId: string, params: ParsedListQuer
   }
   if (params.contentStatus.length > 0) {
     conditions.push(inArray(schema.submission.contentStatus, params.contentStatus));
+  }
+  if (params.reuploaded !== null) {
+    // DEC-881: reuploaded=1 filters to the exact predicate the row
+    // projection's `reuploaded` field reads below — the bounded (perPage=1)
+    // aggregate read the header's count uses and the rows it summarizes can
+    // never disagree.
+    conditions.push(params.reuploaded ? sql`${reUploadedSql()} = 1` : sql`${reUploadedSql()} = 0`);
   }
 
   // q / trackId narrowing: pushed into the WHERE clause as correlated
@@ -208,7 +248,12 @@ export async function listSubmissions(
   // whole-event scan (DEC-686). Unlike the grouped count query, this needs
   // full rows (previousFileId/createdAt) so the chain can be walked in
   // memory via files-library's findRoot rather than re-derived per file.
-  const latestFileCandidateRows: DeliverableFileRow[] = [];
+  // DEC-881: versionNo rides along on the same candidate-row query so the
+  // re-uploaded predicate reads the same "newest by created_at" row the
+  // latestFile column already resolves — never a second query that could
+  // disagree on which file is "latest".
+  type LatestFileCandidateRow = DeliverableFileRow & { versionNo: number | null };
+  const latestFileCandidateRows: LatestFileCandidateRow[] = [];
   for (const batch of idBatches) {
     const batchRows = await db
       .select({
@@ -220,10 +265,11 @@ export async function listSubmissions(
         createdAt: schema.file.createdAt,
         sizeBytes: schema.file.sizeBytes,
         uploadedByContactId: schema.file.uploadedByContactId,
+        versionNo: schema.file.versionNo,
       })
       .from(schema.file)
       .where(and(inArray(schema.file.submissionId, batch), inArray(schema.file.kind, FILE_KINDS as unknown as string[])));
-    for (const r of batchRows as DeliverableFileRow[]) {
+    for (const r of batchRows as LatestFileCandidateRow[]) {
       if (r.submissionId) latestFileCandidateRows.push(r);
     }
   }
@@ -232,20 +278,23 @@ export async function listSubmissions(
     string,
     { filename: string; kind: FileKind; versionCount: number; uploadedAt: number }
   >();
+  // DEC-881: latest deliverable file's stored version_no, keyed the same as
+  // latestFileBySubmission above — read off the identical "newest" row.
+  const latestFileVersionNoBySubmission = new Map<string, number | null>();
   {
     const byId = new Map(latestFileCandidateRows.map((f) => [f.id, f]));
     // The globally-newest file row for a submission is, by construction of
     // previous_file_id chaining, always some chain's latest link — no need
     // to separately resolve "latest per chain" before comparing across
     // chains.
-    const newestBySubmission = new Map<string, DeliverableFileRow>();
+    const newestBySubmission = new Map<string, LatestFileCandidateRow>();
     for (const f of latestFileCandidateRows) {
       const existing = newestBySubmission.get(f.submissionId);
       if (!existing || f.createdAt.getTime() > existing.createdAt.getTime()) {
         newestBySubmission.set(f.submissionId, f);
       }
     }
-    const chainsByRoot = new Map<string, DeliverableFileRow[]>();
+    const chainsByRoot = new Map<string, LatestFileCandidateRow[]>();
     for (const f of latestFileCandidateRows) {
       const root = findRoot(f.id, byId);
       const arr = chainsByRoot.get(root) ?? [];
@@ -261,6 +310,7 @@ export async function listSubmissions(
         versionCount: chain.length,
         uploadedAt: newest.createdAt.getTime(),
       });
+      latestFileVersionNoBySubmission.set(submissionId, newest.versionNo);
     }
   }
 
@@ -306,6 +356,9 @@ export async function listSubmissions(
     const trackIds = r.trackId
       ? [...new Set([r.trackId, ...joinedTracks])]
       : [...new Set(joinedTracks)];
+    // DEC-881: the same predicate the SQL filter above applies — a
+    // submission's latest deliverable file's version_no > 1.
+    const latestFileVersionNo = latestFileVersionNoBySubmission.get(r.id) ?? null;
     return {
       id: r.id,
       ref: formatRef(recordPrefix, r.seq),
@@ -319,6 +372,8 @@ export async function listSubmissions(
       deliverableCounts:
         deliverableCountsBySubmission.get(r.id) ?? { presentation: 0, poster: 0, handout: 0 },
       latestFile: latestFileBySubmission.get(r.id) ?? null,
+      latestFileVersionNo,
+      reuploaded: latestFileVersionNo !== null && latestFileVersionNo > 1,
       ...(params.includeAnswers ? { answers: answersBySubmission.get(r.id) ?? {} } : {}),
     };
   });

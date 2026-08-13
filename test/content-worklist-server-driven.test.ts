@@ -25,6 +25,7 @@ function baseParams(overrides: Partial<ParsedListQuery> = {}): ParsedListQuery {
     trackId: null,
     sort: "newest",
     includeAnswers: false,
+    reuploaded: null,
     ...overrides,
   };
 }
@@ -291,5 +292,141 @@ describe("listSubmissions latestFile (w15-f, DEC-686 page-scoped hydration)", ()
     const result = await listSubmissions(db, EVENT_ID, baseParams());
 
     expect(result.items[0]!.latestFile).toBeNull();
+  });
+});
+
+// DEC-881: "re-uploaded" is ONE predicate — a submission's latest
+// deliverable file's version_no > 1 — expressed once and read both as a
+// row-projection field and as a server-side ?reuploaded= list filter.
+describe("listSubmissions reuploaded (DEC-881)", () => {
+  it("pushes reuploaded=true into the page-query WHERE as the version_no > 1 predicate", async () => {
+    const responses = [
+      [{ recordPrefix: "SES" }],
+      [{ count: 1 }],
+      [submissionRow("sub-1", 1, "A Talk")],
+      [],
+      [],
+      [],
+      [],
+    ];
+    const db = makeFakeDb(responses);
+
+    await listSubmissions(db, EVENT_ID, baseParams({ reuploaded: true }));
+
+    const pageCallLog = db.calls[2]!;
+    const whereCall = pageCallLog.find((c: { method: string }) => c.method === "where");
+    expect(whereCall).toBeDefined();
+    const { sql } = dialect.sqlToQuery(whereCall!.args[0] as any);
+    expect(sql).toContain('"file"."version_no"');
+    expect(sql).toContain("> 1");
+  });
+
+  it("applies no reuploaded predicate when the filter is absent (null)", async () => {
+    const responses = [
+      [{ recordPrefix: "SES" }],
+      [{ count: 1 }],
+      [submissionRow("sub-1", 1, "A Talk")],
+      [],
+      [],
+      [],
+      [],
+    ];
+    const db = makeFakeDb(responses);
+
+    await listSubmissions(db, EVENT_ID, baseParams());
+
+    const pageCallLog = db.calls[2]!;
+    const whereCall = pageCallLog.find((c: { method: string }) => c.method === "where");
+    const { sql } = dialect.sqlToQuery(whereCall!.args[0] as any);
+    expect(sql).not.toContain('"file"."version_no"');
+  });
+
+  it("reports reuploaded=true and latestFileVersionNo=2 for a submission whose latest file's version_no is 2", async () => {
+    const responses = [
+      [{ recordPrefix: "SES" }],
+      [{ count: 1 }],
+      [submissionRow("sub-1", 1, "A Talk")],
+      [],
+      [],
+      [{ submissionId: "sub-1", kind: "presentation", count: 1 }],
+      [
+        {
+          id: "file-v1",
+          submissionId: "sub-1",
+          kind: "presentation",
+          filename: "slides-old.pdf",
+          previousFileId: null,
+          createdAt: new Date(2026, 0, 1),
+          sizeBytes: 100,
+          uploadedByContactId: null,
+          versionNo: 1,
+        },
+        {
+          id: "file-v2",
+          submissionId: "sub-1",
+          kind: "presentation",
+          filename: "slides-new.pdf",
+          previousFileId: "file-v1",
+          createdAt: new Date(2026, 0, 2),
+          sizeBytes: 200,
+          uploadedByContactId: null,
+          versionNo: 2,
+        },
+      ],
+    ];
+    const db = makeFakeDb(responses);
+
+    const result = await listSubmissions(db, EVENT_ID, baseParams());
+
+    expect(result.items[0]!.latestFileVersionNo).toBe(2);
+    expect(result.items[0]!.reuploaded).toBe(true);
+  });
+
+  it("reports reuploaded=false and latestFileVersionNo=1 for a submission with only its original upload", async () => {
+    const responses = [
+      [{ recordPrefix: "SES" }],
+      [{ count: 1 }],
+      [submissionRow("sub-1", 1, "A Talk")],
+      [],
+      [],
+      [{ submissionId: "sub-1", kind: "presentation", count: 1 }],
+      [
+        {
+          id: "file-v1",
+          submissionId: "sub-1",
+          kind: "presentation",
+          filename: "slides.pdf",
+          previousFileId: null,
+          createdAt: new Date(2026, 0, 1),
+          sizeBytes: 100,
+          uploadedByContactId: null,
+          versionNo: 1,
+        },
+      ],
+    ];
+    const db = makeFakeDb(responses);
+
+    const result = await listSubmissions(db, EVENT_ID, baseParams());
+
+    expect(result.items[0]!.latestFileVersionNo).toBe(1);
+    expect(result.items[0]!.reuploaded).toBe(false);
+  });
+
+  it("reports reuploaded=false and latestFileVersionNo=null for a submission with no files", async () => {
+    const responses = [
+      [{ recordPrefix: "SES" }],
+      [{ count: 1 }],
+      [submissionRow("sub-1", 1, "A Talk")],
+      [],
+      [],
+      [],
+      [],
+    ];
+    const db = makeFakeDb(responses);
+
+    const result = await listSubmissions(db, EVENT_ID, baseParams());
+
+    expect(result.items[0]!.latestFileVersionNo).toBeNull();
+    expect(result.items[0]!.reuploaded).toBe(false);
   });
 });

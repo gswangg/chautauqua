@@ -167,6 +167,7 @@ describe("DEC-562: JS re-aggregation sorts gain the contact-id tiebreak (byte-id
         trackId: null,
         sort: "newest",
         includeAnswers: false,
+        reuploaded: null,
       });
     }
 
