@@ -51,7 +51,11 @@
     // Stage-2 sender identity for the EMAIL (send_email) binding; the domain
     // is onboarded to Cloudflare Email Sending with SPF/DKIM/DMARC in-zone.
     "MAIL_FROM_EMAIL": "hello@chautauqua.cc",
-    "MAIL_FROM_NAME": "Chautauqua"
+    "MAIL_FROM_NAME": "Chautauqua",
+    // DEC-812/DEC-252: a scheduled (cron) trigger has no incoming request to
+    // sniff an origin from, so resolveBaseUrlForCron requires PUBLIC_BASE_URL
+    // to be set explicitly — matches the custom_domain declared in `routes`.
+    "PUBLIC_BASE_URL": "https://chautauqua.cc"
   }
   // DEC-183: DEV_MODE lives in .dev.vars (wrangler dev auto-loads it); production must never set it — it mounts /dev/mailbox.
 }
