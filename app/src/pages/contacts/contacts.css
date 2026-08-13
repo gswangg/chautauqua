@@ -33,6 +33,11 @@
   gap: 0;
 }
 
+/* eval-findings 55: the segment control sits at the tab row's right edge. */
+.chq-contacts-segment-select {
+  margin-left: auto;
+}
+
 /* ---------------------------------------------------------------------- */
 /* Directory: stats + table                                               */
 /* ---------------------------------------------------------------------- */

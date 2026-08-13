@@ -185,6 +185,27 @@ export function ContactsApp() {
             </button>
           ))}
         </div>
+        {/* eval-findings 55: the applied-segment control sits ON the tab row
+            right ("Segment: none ▾"); it left ContactsTable with the rule
+            builder (task-w17-d). Kept here so a saved segment remains
+            applicable to the directory — task-w17-c owns dressing this row
+            with the search field and the tab counts. */}
+        <select
+          className="chq-select chq-contacts-segment-select"
+          aria-label="Segment filter"
+          value={segmentId}
+          onChange={(e) => {
+            setSegmentId(e.target.value);
+            setPage(1);
+          }}
+        >
+          <option value="">Segment: none</option>
+          {segments.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       {panel === 'directory' && (

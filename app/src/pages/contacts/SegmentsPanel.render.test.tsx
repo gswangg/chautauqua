@@ -6,7 +6,7 @@
 // clears BEFORE the delete-triggered refetch, so no request ever asks the
 // server for a deleted segmentId, and no error banner appears.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { ContactsApp } from './ContactsApp';
@@ -68,7 +68,9 @@ describe('ContactsApp + SegmentsPanel: deleting the applied segment (w1-c P3, DE
     // Delete that segment from the Segments tab.
     fireEvent.click(screen.getByRole('tab', { name: 'Segments' }));
     await waitFor(() => {
-      expect(screen.getByText('VIP speakers', { exact: false })).toBeInTheDocument();
+      // Scoped to the saved-segment list: the name also appears as an option
+      // in the tab row's "Segment: none ▾" control (eval-findings 55).
+      expect(within(screen.getByRole('list')).getByText('VIP speakers', { exact: false })).toBeInTheDocument();
     });
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
 

@@ -141,7 +141,9 @@ describe('ContactsApp render smoke: segments tab', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Segments' }));
 
     await waitFor(() => {
-      expect(screen.getByText('VIP speakers', { exact: false })).toBeInTheDocument();
+      // Scoped to the saved-segment list: the name also appears as an option
+      // in the tab row's "Segment: none ▾" control (eval-findings 55).
+      expect(within(screen.getByRole('list')).getByText('VIP speakers', { exact: false })).toBeInTheDocument();
     });
   });
 });
