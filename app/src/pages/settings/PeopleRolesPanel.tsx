@@ -7,13 +7,15 @@
 // w15-e/DEC-691: each row also renders a Scope cell -- users are org-scoped
 // (src/routes/api/users.ts:56 lists by auth.orgId with no per-event row),
 // so every row's honest scope is "All events in this org", not a
-// fabricated per-row value. "Change" (role change) has no server route
-// (only list/invite/reset-password exist) -- it renders disabled with an
-// honest caption rather than a dead control, per the task's own fallback
-// instruction.
+// fabricated per-row value.
+//
+// DEC-778: "Change" is a real inline role control -- PATCH /api/v1/users/:id.
+// The server refuses (409) a self-service role change and demoting the
+// org's last organizer; that message surfaces inline on the row rather than
+// the panel-wide error banner, since it's specific to the row being edited.
 import { useEffect, useState, type FormEvent } from 'react';
 import { DelayedLoading } from '../../components/DelayedLoading';
-import { apiList, apiPost, ApiError } from '../../lib/api';
+import { apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { useMe } from '../../lib/useMe';
 
 interface OrgUser {
@@ -40,6 +42,11 @@ export function PeopleRolesPanel() {
 
   const [resetTargetId, setResetTargetId] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
+
+  const [roleEditId, setRoleEditId] = useState<string | null>(null);
+  const [roleEditValue, setRoleEditValue] = useState<Role>('reviewer');
+  const [roleSaving, setRoleSaving] = useState(false);
+  const [roleErrors, setRoleErrors] = useState<Record<string, string>>({});
 
   function load() {
     setLoading(true);
@@ -95,6 +102,21 @@ export function PeopleRolesPanel() {
       setError(err instanceof ApiError ? err.message : 'Failed to reset password');
     } finally {
       setResetting(false);
+    }
+  }
+
+  async function handleRoleSave(user: OrgUser) {
+    setRoleSaving(true);
+    setRoleErrors((prev) => ({ ...prev, [user.id]: '' }));
+    try {
+      await apiPatch<{ id: string; email: string; role: string }>(`/users/${user.id}`, { role: roleEditValue });
+      setRoleEditId(null);
+      await load();
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Failed to change role';
+      setRoleErrors((prev) => ({ ...prev, [user.id]: message }));
+    } finally {
+      setRoleSaving(false);
     }
   }
 
@@ -180,14 +202,53 @@ export function PeopleRolesPanel() {
                     All events in this org
                   </span>
                   <div className="chq-settings-people-actions">
-                    <button
-                      type="button"
-                      className="chq-link-button"
-                      disabled
-                      title="Role changes aren't supported yet -- reset the password and re-invite with a new role instead."
-                    >
-                      Change
-                    </button>
+                    {roleEditId === user.id ? (
+                      <span className="chq-settings-people-confirm">
+                        <select
+                          className="chq-select"
+                          aria-label={`New role for ${user.email}`}
+                          value={roleEditValue}
+                          onChange={(e) => setRoleEditValue(e.target.value as Role)}
+                        >
+                          <option value="reviewer">Reviewer</option>
+                          <option value="organizer">Organizer</option>
+                        </select>
+                        <button
+                          type="button"
+                          className="chq-btn chq-btn-primary"
+                          disabled={roleSaving}
+                          onClick={() => void handleRoleSave(user)}
+                        >
+                          {roleSaving ? 'Saving…' : 'Save role'}
+                        </button>
+                        <button
+                          type="button"
+                          className="chq-btn chq-btn-secondary"
+                          onClick={() => {
+                            setRoleEditId(null);
+                            setRoleErrors((prev) => ({ ...prev, [user.id]: '' }));
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        {roleErrors[user.id] ? (
+                          <span role="alert" className="chq-error">
+                            {roleErrors[user.id]}
+                          </span>
+                        ) : null}
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="chq-link-button"
+                        onClick={() => {
+                          setRoleEditId(user.id);
+                          setRoleEditValue(user.role === 'organizer' ? 'organizer' : 'reviewer');
+                        }}
+                      >
+                        Change
+                      </button>
+                    )}
                     {isSelf ? (
                       <span>(you)</span>
                     ) : resetTargetId === user.id ? (

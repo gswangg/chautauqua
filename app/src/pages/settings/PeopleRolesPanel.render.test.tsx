@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { PeopleRolesPanel } from './PeopleRolesPanel';
-import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+import { errorEnvelope, listEnvelope, mockApi } from '../../test-utils/mockApi';
 
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
@@ -55,7 +55,7 @@ describe('PeopleRolesPanel', () => {
   });
 
   // w15-e/DEC-691: mock's 4-column row (identity, role, scope, Change).
-  it('exposes a scope cell per row and a disabled, honestly captioned Change action', async () => {
+  it('exposes a scope cell per row', async () => {
     mockPeople();
     render(<PeopleRolesPanel />);
 
@@ -66,11 +66,57 @@ describe('PeopleRolesPanel', () => {
     const scopeCells = screen.getAllByTestId('people-scope');
     expect(scopeCells).toHaveLength(2);
     scopeCells.forEach((cell) => expect(cell).toHaveTextContent('All events in this org'));
+  });
+
+  // DEC-778: Change becomes a real inline role control that PATCHes and
+  // refreshes the list.
+  it('changes a role via the inline Change control and refreshes the list', async () => {
+    mockPeople({
+      'PATCH /api/v1/users/u-other': { status: 200, body: { id: OTHER.id, email: OTHER.email, role: 'organizer' } },
+    });
+    render(<PeopleRolesPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
 
     const otherRow = screen.getByText(OTHER.email).closest('li')!;
-    const changeButton = within(otherRow).getByRole('button', { name: 'Change' });
-    expect(changeButton).toBeDisabled();
-    expect(changeButton).toHaveAttribute('title', expect.stringContaining("aren't supported yet"));
+    fireEvent.click(within(otherRow).getByRole('button', { name: 'Change' }));
+
+    fireEvent.change(within(otherRow).getByLabelText(`New role for ${OTHER.email}`), {
+      target: { value: 'organizer' },
+    });
+    fireEvent.click(within(otherRow).getByRole('button', { name: 'Save role' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Save role' })).not.toBeInTheDocument();
+    });
+  });
+
+  // DEC-778: a 409 (last organizer / self-service refusal) surfaces inline
+  // on the row rather than a panel-wide banner.
+  it('surfaces a 409 role-change refusal inline on the row', async () => {
+    mockPeople({
+      'PATCH /api/v1/users/u-other': {
+        status: 409,
+        body: errorEnvelope('conflict', "Cannot remove the organization's last organizer"),
+      },
+    });
+    render(<PeopleRolesPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    const otherRow = screen.getByText(OTHER.email).closest('li')!;
+    fireEvent.click(within(otherRow).getByRole('button', { name: 'Change' }));
+    fireEvent.click(within(otherRow).getByRole('button', { name: 'Save role' }));
+
+    await waitFor(() => {
+      expect(within(otherRow).getByText("Cannot remove the organization's last organizer")).toBeInTheDocument();
+    });
+    // The role editor stays open on failure -- Change still says "Save role".
+    expect(within(otherRow).getByRole('button', { name: 'Save role' })).toBeInTheDocument();
   });
 
   it('shows the created one-time password exactly once and it is not re-fetchable', async () => {

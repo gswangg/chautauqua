@@ -136,6 +136,7 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "GET", path: "/api/v1/users", role: "organizer" },
       { method: "POST", path: "/api/v1/users", role: "organizer" },
       { method: "POST", path: "/api/v1/users/:id/reset-password", role: "organizer" },
+      { method: "PATCH", path: "/api/v1/users/:id", role: "organizer (DEC-778: role change; refuses self and the org's last organizer)" },
     ],
   },
   {
