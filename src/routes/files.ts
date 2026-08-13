@@ -367,17 +367,37 @@ fileApiRoutes.post("/events/:eventId/files/archive", requireOrganizer, csrfJson,
   }
 
   const store = makeFileStore(c.env.FILES);
-  const entries: { name: string; data: Uint8Array }[] = [];
-  let seq = 1;
-  for (const requestedId of fileIds) {
+
+  // DEC-160 (wave-49 amendment): fetch every R2 object as ONE parallel wave —
+  // the memory ceiling was already enforced above, before the first GET, so
+  // concurrency changes neither peak memory nor output bytes, only latency.
+  // `entries` is still built by walking `fileIds` IN REQUEST ORDER so the zip
+  // bytes are unchanged regardless of which promise settles first; on the
+  // first missing object or rejection (in request order) we throw the same
+  // ApiError naming that file.
+  const descriptors = fileIds.map((requestedId, index) => {
     const latest = resolved.get(requestedId);
     if (!latest) throw new Error("unreachable: resolveLatestVersions validated every id");
-    const obj = await store.get(latest.r2Key);
-    if (!obj) throw new ApiError("not_found", `File contents not found for ${latest.filename}`);
-    const buf = new Uint8Array(await new Response(obj.body).arrayBuffer());
+    const seq = index + 1;
     const title = latest.submissionTitle || "submission";
-    entries.push({ name: `${seq}-${slugifyTitle(title)}/${latest.filename}`, data: buf });
-    seq += 1;
+    return { latest, name: `${seq}-${slugifyTitle(title)}/${latest.filename}` };
+  });
+
+  const settled = await Promise.allSettled(
+    descriptors.map(async (d) => {
+      const obj = await store.get(d.latest.r2Key);
+      if (!obj) return null;
+      return new Uint8Array(await new Response(obj.body).arrayBuffer());
+    }),
+  );
+
+  const entries: { name: string; data: Uint8Array }[] = [];
+  for (const [i, d] of descriptors.entries()) {
+    const result = settled[i];
+    if (!result) throw new Error("unreachable: settled has one entry per descriptor");
+    if (result.status === "rejected") throw result.reason;
+    if (result.value === null) throw new ApiError("not_found", `File contents not found for ${d.latest.filename}`);
+    entries.push({ name: d.name, data: result.value });
   }
 
   const built = buildZip(entries);
