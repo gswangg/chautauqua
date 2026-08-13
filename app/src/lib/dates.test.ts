@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   dateInputToMs,
+  daysAgo,
   daysUntil,
+  epochDayIndex,
   formatDate,
   formatDateOnly,
   formatDateTime,
@@ -9,6 +11,7 @@ import {
   formatDayInput,
   formatDayLabel,
   formatRelative,
+  formatRelativeDays,
   msToDateInput,
   parseDayInput,
 } from './dates';
@@ -193,6 +196,49 @@ describe('daysUntil', () => {
     expect(daysUntil(TODAY_LABEL, 'UTC', TODAY_END)).toBe(0);
     // Well past the close day's end -- clamped to 0, not negative.
     expect(daysUntil(TODAY_LABEL, 'UTC', TODAY_END + 5 * 86_400_000)).toBe(0);
+  });
+});
+
+describe('daysAgo', () => {
+  // DEC-831 amendment (wave 54): the ONE 'how many days ago' reader --
+  // daysUntil's mirror. Four hand-rolled formulas (Math.floor, Math.round
+  // x2, Math.ceil) previously answered the same "days ago" question
+  // differently for the same instant.
+  const NOW = Date.UTC(2027, 0, 19);
+
+  it('returns whole days elapsed, floored', () => {
+    expect(daysAgo(NOW - 6 * 86_400_000, NOW)).toBe(6);
+    expect(daysAgo(NOW - 6 * 86_400_000 - 1, NOW)).toBe(6);
+    expect(daysAgo(NOW - 6 * 86_400_000 - 86_400_000 + 1, NOW)).toBe(6);
+  });
+
+  it('clamps to 0 for a future or just-now instant, never negative', () => {
+    expect(daysAgo(NOW, NOW)).toBe(0);
+    expect(daysAgo(NOW + 86_400_000, NOW)).toBe(0);
+  });
+});
+
+describe('formatRelativeDays', () => {
+  it('calls through daysAgo\'s floor convention', () => {
+    const now = Date.UTC(2027, 0, 19);
+    expect(formatRelativeDays(now, now)).toBe('today');
+    expect(formatRelativeDays(now - 86_400_000, now)).toBe('yesterday');
+    expect(formatRelativeDays(now - 3 * 86_400_000, now)).toBe('3 days ago');
+  });
+});
+
+describe('epochDayIndex', () => {
+  it('increases by exactly 1 per whole calendar day in the given zone', () => {
+    const day1 = Date.UTC(2027, 0, 19, 12);
+    const day2 = day1 + 86_400_000;
+    expect(epochDayIndex(day2, 'UTC') - epochDayIndex(day1, 'UTC')).toBe(1);
+  });
+
+  it('reads the same instant differently across zones near a day boundary', () => {
+    // 23:30 UTC on Jan 18 is already Jan 19 in a UTC+1 zone.
+    const lateEveningUtc = Date.UTC(2027, 0, 18, 23, 30);
+    expect(epochDayIndex(lateEveningUtc, 'UTC')).toBe(epochDayIndex(Date.UTC(2027, 0, 18), 'UTC'));
+    expect(epochDayIndex(lateEveningUtc, 'Europe/Paris')).toBe(epochDayIndex(Date.UTC(2027, 0, 19), 'UTC'));
   });
 });
 

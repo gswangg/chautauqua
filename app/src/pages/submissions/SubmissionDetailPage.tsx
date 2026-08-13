@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
-import { formatDate as formatTimestamp, formatDateTime } from '../../lib/dates';
+import { formatDate as formatTimestamp, formatDateTime, epochDayIndex } from '../../lib/dates';
 import { formatEventDate } from '../../../../src/lib/event-time';
 import { SESSION_FORMAT_FIELD_ID } from '../../../../src/forms/types';
 import { parseFormatDurationMin } from '../../../../src/domain/schedule';
@@ -112,25 +112,6 @@ interface SubmissionReviewItem {
   submittedAt: number | null;
 }
 
-// Whole calendar days between createdAt and now, both read in the event's
-// own IANA timezone (never the viewer's ambient zone) -- DEC-408's
-// zone-explicit contract via formatEventDate, which throws on an
-// empty/invalid timeZone. Returns null (never throws) when the zone isn't
-// known yet or is invalid, so the caller can render the label's bare form
-// rather than a dangling '· ' or a crashed page.
-function calendarDayIndex(ms: number, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date(ms));
-  const year = Number(parts.find((p) => p.type === 'year')?.value);
-  const month = Number(parts.find((p) => p.type === 'month')?.value);
-  const day = Number(parts.find((p) => p.type === 'day')?.value);
-  return Date.UTC(year, month - 1, day) / 86_400_000;
-}
-
 // DEC-908 (wave 42 amendment): the eyebrow's session-format grammar reads
 // 'Talk, 30m' -- a comma and a bare 'Nm' suffix -- never the raw CFP option
 // label's '(N min)' parenthetical. Reuses parseFormatDurationMin (the same
@@ -145,6 +126,12 @@ function formatSessionFormatGrammar(rawLabel: string): string {
   return `${name}, ${minutes}m`;
 }
 
+// Whole calendar days between createdAt and now, both read in the event's
+// own IANA timezone (never the viewer's ambient zone) -- DEC-408's
+// zone-explicit contract via formatEventDate, which throws on an
+// empty/invalid timeZone. Returns null (never throws) when the zone isn't
+// known yet or is invalid, so the caller can render the label's bare form
+// rather than a dangling '· ' or a crashed page.
 function daysAwaitingTriage(createdAt: number, timeZone: string | null, now: number): number | null {
   if (!timeZone) return null;
   try {
@@ -152,7 +139,7 @@ function daysAwaitingTriage(createdAt: number, timeZone: string | null, now: num
     // before doing the raw day-boundary arithmetic Intl doesn't expose as
     // a single call.
     formatEventDate(now, timeZone);
-    const diff = calendarDayIndex(now, timeZone) - calendarDayIndex(createdAt, timeZone);
+    const diff = epochDayIndex(now, timeZone) - epochDayIndex(createdAt, timeZone);
     return diff >= 0 ? diff : null;
   } catch {
     return null;

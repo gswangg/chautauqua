@@ -4,7 +4,7 @@
 // rendering the page. Overview.tsx is the sole consumer.
 
 import type { OverviewPayload } from './types';
-import { daysUntil } from '../../lib/dates';
+import { daysUntil, daysAgo } from '../../lib/dates';
 
 // DEC-779: every dot-joined caption on the Overview page (triage row,
 // content-approval row, §04 unplaced/conflict captions, the "no action
@@ -157,8 +157,7 @@ export function buildNoActionRows(payload: OverviewPayload, now: number): NoActi
           : `${joinSegments([`${payload.review.evaluationsSubmitted} of ${payload.review.evaluationsExpected} ${pluralize(payload.review.evaluationsExpected, 'evaluation')} in`])}.`,
   });
 
-  const daysSinceSend =
-    payload.comms.lastSentAt !== null ? Math.max(0, Math.round((now - payload.comms.lastSentAt) / 86_400_000)) : null;
+  const daysSinceSend = payload.comms.lastSentAt !== null ? daysAgo(payload.comms.lastSentAt, now) : null;
   rows.push({
     key: 'comms',
     title: 'Comms',

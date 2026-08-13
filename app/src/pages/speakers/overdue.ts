@@ -1,4 +1,5 @@
 import { effectiveAssignmentDueDate } from '../../../../src/domain/task-due';
+import { daysAgo } from '../../lib/dates';
 import type { OnboardingCell, OnboardingTask } from './types';
 
 /**
@@ -22,5 +23,5 @@ export function isCellOverdue(cell: OnboardingCell, task: OnboardingTask | undef
  * isCellOverdue is already true (dueDate non-null and in the past).
  */
 export function daysLate(dueDate: number, now: number): number {
-  return Math.max(1, Math.floor((now - dueDate) / (24 * 60 * 60 * 1000)));
+  return Math.max(1, daysAgo(dueDate, now));
 }
