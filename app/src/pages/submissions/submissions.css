@@ -555,13 +555,19 @@
 
 .chq-submissions-delete-list-item {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 4px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--chq-hairline);
 }
 
 .chq-submissions-delete-list-item:last-child {
   border-bottom: none;
+}
+
+.chq-submissions-delete-list-item > div:first-child {
+  display: flex;
+  gap: 12px;
 }
 
 .chq-submissions-delete-list-ref {
@@ -573,6 +579,11 @@
 
 .chq-submissions-delete-list-title {
   color: var(--chq-ink);
+}
+
+.chq-submissions-delete-list-blast {
+  color: var(--chq-muted);
+  font-size: 13px;
 }
 
 .chq-submissions-delete-refused {
