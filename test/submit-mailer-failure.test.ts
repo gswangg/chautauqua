@@ -154,7 +154,10 @@ function submitForm() {
  * getFormFields, getEventTracks, findContactByEmail, nextSubmissionSeq
  * (inside createSubmission), findAccountUserId. */
 function selectQueueFor() {
-  return [[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW], [], [{ maxSeq: 0 }], []];
+  // The 6th queued row answers createSubmission's post-insert readback,
+  // which selects `{ seq: schema.submission.seq }` — key must be `seq`
+  // (see same fix in test/claim-onscreen-scope.test.ts).
+  return [[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW], [], [{ seq: 7 }], []];
 }
 
 describe("public submit: mailer failure is best-effort (DEC-237/DEC-238)", () => {
@@ -178,7 +181,7 @@ describe("public submit: mailer failure is best-effort (DEC-237/DEC-238)", () =>
     // error response to the speaker.
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain("Thanks for your submission!");
+    expect(html).toContain("Check your email.");
 
     // The submission row itself was persisted regardless of the mail outcome.
     // Matched on "description" too (not just "title") since DEC-321's

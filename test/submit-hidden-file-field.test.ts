@@ -171,7 +171,7 @@ function submitForm(opts: { wantsSlides: string; file?: { name: string; content:
  * getDefaultForm, getFormFields, getEventTracks, findContactByEmail,
  * nextSubmissionSeq (inside createSubmission), findAccountUserId. */
 function selectQueueFor() {
-  return [[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW], [], [{ maxSeq: 0 }], []];
+  return [[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW], [], [{ seq: 3 }], []];
 }
 
 async function run(db: AppEnv["Variables"]["db"], req: Request, filesBucket: R2Bucket) {
