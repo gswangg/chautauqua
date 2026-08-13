@@ -98,13 +98,17 @@ describe("settings frame seed (DEC-887)", () => {
     expect(rooms.map((r) => Number(r.capacity))).toEqual([900, 220, 220, 60]);
   });
 
-  it("(2) two saved embeds exist, one enabled and one disabled, each with a real recipe", () => {
+  // DEC-887 amendment (wave 40): the frame draws FOUR saved-embed rows, not
+  // two, and the disabled row is now the seed's demonstration of a surface
+  // that is not live (a job the CFP window used to do -- see (4)).
+  it("(2) all four saved embeds the frame draws exist, with both enabled and disabled rows, each with a real recipe", () => {
     const embeds = parseInserts(sql, "embed");
-    expect(embeds.length).toBe(2);
+    expect(embeds.length).toBe(4);
     const enabled = embeds.filter((e) => e.enabled === "1");
     const disabled = embeds.filter((e) => e.enabled === "0");
-    expect(enabled.length).toBe(1);
-    expect(disabled.length).toBe(1);
+    expect(enabled.length).toBeGreaterThanOrEqual(1);
+    expect(disabled.length).toBeGreaterThanOrEqual(1);
+    expect(enabled.length + disabled.length).toBe(embeds.length);
     for (const e of embeds) {
       expect(typeof e.name).toBe("string");
       expect((e.name ?? "").length).toBeGreaterThan(0);
@@ -137,7 +141,14 @@ describe("settings frame seed (DEC-887)", () => {
     expect(tokens[0]!.token_hash).not.toBe(tokens[1]!.token_hash);
   });
 
-  it("(4) the default CFP form is not yet open, so PublicPagesPanel's CFP row reads 'Not open yet' alongside the other Live rows", () => {
+  // DEC-887 amendment (wave 40): the default form used to open in the future
+  // so PublicPagesPanel had exactly one row that was not live -- but that left
+  // /submit/<slug> reading "Submissions aren't open yet" on delivery day while
+  // Settings showed a live Open link. RULING: the window now straddles now
+  // (opens in the past, closes in the future) so the front door is live, and
+  // the 'not live' demo moves to a DISABLED saved embed, a genuinely
+  // switchable surface.
+  it("(4) the default CFP form's window straddles now, so the public front door is open, and a disabled embed carries the 'not live' demo instead", () => {
     const forms = parseInserts(sql, "form").filter((f) => f.is_default === "1");
     expect(forms.length).toBe(1);
     const form = forms[0]!;
@@ -145,8 +156,15 @@ describe("settings frame seed (DEC-887)", () => {
     expect(form.close_date).not.toBeNull();
     const openDate = Number(form.open_date);
     const closeDate = Number(form.close_date);
-    expect(Date.now()).toBeLessThan(openDate); // not open yet, as of seed time
     expect(openDate).toBeLessThan(closeDate);
+    // Open on delivery day: now sits strictly inside the window.
+    expect(openDate).toBeLessThan(Date.now());
+    expect(Date.now()).toBeLessThan(closeDate);
+
+    // The state DEC-887 originally wanted from this window is still
+    // demonstrated somewhere real -- by a switchable, disabled saved embed.
+    const disabledEmbeds = parseInserts(sql, "embed").filter((e) => e.enabled === "0");
+    expect(disabledEmbeds.length).toBeGreaterThanOrEqual(1);
   });
 
   it("(5) the organizer user resolves to a real contact name, not their raw email", () => {
