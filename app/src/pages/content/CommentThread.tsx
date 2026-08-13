@@ -2,27 +2,41 @@ import { useState } from 'react';
 import { formatDateTime } from '../../lib/dates';
 import type { FileComment } from './types';
 
-interface CommentThreadProps {
-  comments: FileComment[];
-  onPost: (body: string) => Promise<void>;
+interface SendResult {
+  sent: number;
+  failed: { email: string; message: string }[];
 }
 
-/** Comment thread for one deliverable's latest file; producer posts, speaker replies render with role labels. */
-export function CommentThread({ comments, onPost }: CommentThreadProps) {
+interface CommentThreadProps {
+  comments: FileComment[];
+  /** DEC-720/DEC-741: every note posted here is emailed to the submission's
+   * active participants — there is no silent "just comment" path. */
+  onSend: (body: string, requestChanges: boolean) => Promise<SendResult>;
+}
+
+/** Comment thread for one deliverable's latest file (DEC-573 chain thread).
+ * The composer always sends through /content-note (DEC-720/DEC-741): "Ask
+ * for changes" also moves content_status to changes_requested, "Send note
+ * only" leaves status untouched — both always email the speaker(s), so the
+ * caption below never promises a silent post. */
+export function CommentThread({ comments, onSend }: CommentThreadProps) {
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<SendResult | null>(null);
 
-  async function submit() {
+  async function submit(requestChanges: boolean) {
     const body = draft.trim();
     if (body.length === 0) return;
     setPending(true);
     setError(null);
+    setSummary(null);
     try {
-      await onPost(body);
+      const result = await onSend(body, requestChanges);
       setDraft('');
+      setSummary(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to post comment.');
+      setError(err instanceof Error ? err.message : 'Failed to send note.');
     } finally {
       setPending(false);
     }
@@ -49,22 +63,46 @@ export function CommentThread({ comments, onPost }: CommentThreadProps) {
           className="chq-textarea"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="Add a comment..."
+          placeholder="Write a note to the speaker(s)..."
           disabled={pending}
         />
-        <button
-          type="button"
-          className="chq-btn chq-btn-primary"
-          disabled={pending || draft.trim().length === 0}
-          onClick={() => void submit()}
-        >
-          Post
-        </button>
+        <p className="chq-meta chq-content-comment-caption">
+          Emailed to every active speaker on this session.
+        </p>
+        <div className="chq-content-comment-actions">
+          <button
+            type="button"
+            className="chq-btn chq-btn-secondary"
+            disabled={pending || draft.trim().length === 0}
+            onClick={() => void submit(true)}
+          >
+            Ask for changes
+          </button>
+          <button
+            type="button"
+            className="chq-btn chq-btn-primary"
+            disabled={pending || draft.trim().length === 0}
+            onClick={() => void submit(false)}
+          >
+            Send note only
+          </button>
+        </div>
       </div>
       {error && (
         <div className="chq-error" role="alert">
           {error}
         </div>
+      )}
+      {summary && summary.failed.length > 0 && (
+        <div className="chq-error" role="alert">
+          Sent to {summary.sent} recipient{summary.sent === 1 ? '' : 's'}; failed for{' '}
+          {summary.failed.map((f) => f.email).join(', ')}.
+        </div>
+      )}
+      {summary && summary.failed.length === 0 && (
+        <p className="chq-meta chq-content-comment-sent">
+          Sent to {summary.sent} recipient{summary.sent === 1 ? '' : 's'}.
+        </p>
       )}
     </div>
   );

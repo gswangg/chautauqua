@@ -100,19 +100,34 @@ export function DeliverableDetail({
     onUploaded?.();
   }
 
-  async function handlePostComment(fileId: string, body: string) {
-    await apiPost(`/files/${fileId}/comments`, { body });
+  // DEC-720/DEC-741: the composer always sends through /content-note — a
+  // note is never posted silently, it is always a message to the speaker.
+  // requestChanges also moves content_status (never 'approved' — approval
+  // stays a separate, silent action below).
+  async function handleSendNote(fileId: string, body: string, requestChanges: boolean) {
+    const result = await apiPost<{ sent: number; failed: { email: string; message: string }[] }>(
+      `/submissions/${submissionId}/content-note`,
+      { fileId, body, requestChanges },
+    );
+    if (requestChanges) {
+      setPill('changes_requested');
+      onContentStatusChange(submissionId, 'changes_requested');
+    }
     await loadComments(fileId);
+    return result;
   }
 
-  async function handleStatusChange(next: ContentStatus) {
+  // DEC-720: approval is the one status move that stays a silent flip —
+  // it asks nothing of the speaker, so it keeps using content-status
+  // directly rather than the mailer-carrying content-note endpoint.
+  async function handleApprove() {
     const previous = pill;
     setStatusPending(true);
     setError(null);
-    setPill(next);
+    setPill('approved');
     try {
-      await apiPost(`/submissions/${submissionId}/content-status`, { contentStatus: next });
-      onContentStatusChange(submissionId, next);
+      await apiPost(`/submissions/${submissionId}/content-status`, { contentStatus: 'approved' });
+      onContentStatusChange(submissionId, 'approved');
     } catch (err) {
       setPill(previous);
       setError(err instanceof ApiError ? `Status update failed: ${err.message}` : 'Status update failed');
@@ -136,17 +151,9 @@ export function DeliverableDetail({
             type="button"
             className="chq-btn chq-btn-primary"
             disabled={statusPending}
-            onClick={() => void handleStatusChange('approved')}
+            onClick={() => void handleApprove()}
           >
             Approve
-          </button>
-          <button
-            type="button"
-            className="chq-btn chq-btn-secondary"
-            disabled={statusPending}
-            onClick={() => void handleStatusChange('changes_requested')}
-          >
-            Ask for changes
           </button>
         </div>
       </div>
@@ -180,7 +187,7 @@ export function DeliverableDetail({
                   {latest && (
                     <CommentThread
                       comments={commentsByFile[latest.id] ?? []}
-                      onPost={(body) => handlePostComment(latest.id, body)}
+                      onSend={(body, requestChanges) => handleSendNote(latest.id, body, requestChanges)}
                     />
                   )}
                 </div>
