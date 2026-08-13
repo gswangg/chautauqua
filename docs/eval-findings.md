@@ -115,9 +115,7 @@ dense multi-column.
 
 **Speakers** (DEC-730 control family + hover ring + footer caption + em-dash modal
 all CLOSED by probe 2): overdue label copy — render mock's "OVERDUE", not "N DAYS
-LATE" (control anatomy is right, word is wrong) · **nav "Speakers N LATE" badge
-INCONSISTENT across routes** (9 on Speakers page vs 12 on Submissions, same session —
-unify the count source) · horizontal scroll contained to grid wrapper · New-task
+LATE" (control anatomy is right, word is wrong) · (probe-3: DEC-776 badge consistency CLOSED — badge=stat=rendered cells) · horizontal scroll contained to grid wrapper · New-task
 modal: Kind = Upload/Form/Acknowledge, drop Description + assign-all, styled date ·
 remove desktop Import CSV button · headers "DUE 10 APR · REQUIRED".
 
@@ -126,9 +124,8 @@ library pill chips counted, no select · Download all truthful): session detail
 rebuild — shared version list + ONE scoped note thread, "Send note only", Download
 all · "Unknown (unknown)" is the COMMENT AUTHOR on speaker replies (attribution bug
 in comment write path; version-uploader attribution is correct) · comment version
-tags renumber after a version delete (keep original version refs) · library: DROP
-Deliverables/Headshots tabs (still present despite DEC-733 claim) + stat needs total
-SIZE ("8 files" vs mock "31 files · 412 MB") · worklist chips: counted + mock
+tags renumber after a version delete (keep original version refs) · (probe-3: DEC-773 CLOSED — one unified list, tabs gone, "11 files · 4.9 KB" stat,
+counted chips incl. Headshot·3) · worklist chips: counted + mock
 set/order ("Needs a decision · N" FIRST, "Approved · N", "All accepted sessions ·
 N") · relative dates in LATEST FILE · SEED: worklist too sparse (28/30 "No files
 yet").
@@ -174,34 +171,39 @@ tags + "N have no slot" advisory in Preview · persistent Recent sends under Com
 (STILL-OPEN — exists only inside History tab) · bordered "See the recipients" CTA on
 batch rows · SEED: one ~23-recipient batch + 4 more templates.
 
-**Contacts** (probe-2 re-verified; CLOSED: record-picker/group identity fields ·
-Labels in directory AND drawer w/ variety · earlier DirectoryRail/chips/segment
-batch):
-**P1 (CRM grader CONFIRMED ON PROD) — add-to-event FABRICATES DATA**: Title
-pre-filled "Invited: {name}" → every add-to-event creates an ACCEPTED session +
-roster row + 10 auto-overdue tasks even with the field untouched (prod now carries
-SES-039 from the grader run). Make add-to-event create NO session by default;
-session creation must be explicit. ALSO (CRM grader): the dialog defaults Event to
-the WRONG EVENT (Forward Summit 2028 while working in DevFlow Conf 2027 — default to
-current context) and adds a DUPLICATE roster row with no already-on-roster check.
-Role IS sent to API but moderator/panelist surfaces NOWHERE; post-add message
-hardcodes "was added as an accepted speaker."; option set Speaker/Co-presenter/
-Moderator/Panelist vs mock's Speaker/Reviewer/Guest — reconcile in a DEC.
-**P2 — DEC-734 "Not a duplicate"/"Keep both" are UI-ONLY**: zero network requests;
-"Keep both" reverts on reload, "Not a duplicate" doesn't even hide the pair. Needs a
-persisted dismissal (store the pair as not-duplicate; both controls write it).
-Merge view remaining: value-vs-empty rows STILL omitted when the KEEPER has the
-value (render ALL differing fields both directions, mock shows value vs struck "—")
-· Labels/custom-field diff row renders raw lowercase ("role | speaker | reviewer") —
-apply server-side label formatting · "1 of N pairs" counter · discard column headed
-by record NAME (not generic DISCARD) · footer specifics ("3 submissions and 1 task
-move to the kept record").
-Rest: no contact-delete affordance anywhere (drawer/row/bulk/API 404 — add one, it
-also blocks probe cleanup) · duplicate DETECTION drops pairs when companies differ
-non-empty (decide matching rule in a DEC) · drawer = read-only record view (reorder
-page around history + action bar) · import: real step panels or CTA above fold ·
-pipeline: card captions ("Added N days ago", "No reply · N days" bold past 30,
-declined reason).
+**Contacts** (probe-3 CLOSED: Title prefill + blank-title guard (UI+API) · role
+persists w/ named confirmation DEC-765 · Keep both/Not a duplicate PERSISTED
+(POST dismiss + DB + reload) · merge pair counter + keep-column name + real keep
+values · contact DELETE API now exists):
+**P1 REFRAMED — add-to-event still creates INSTANT DELINQUENCY**: with a real
+title, one click creates an accepted session + roster row + 5 task assignments,
+3 BORN OVERDUE (due dates before creation; badge 9→12 LATE). Sessions/tasks on
+add must be opt-in or due dates must clamp to future. ALSO: fabrication fallback
+ALIVE at src/server/repo/contacts/push.ts:55 — reached by POST /contacts w/
+eventId (crud.ts:122) and CSV import (push.ts:88); kill the fallback everywhere ·
+event default ignores current context (AddToEventModal.tsx:47 picks
+res.items[0] by desc startDate — PROVEN with a temp 2029 event; default to the
+event in the app chrome) · no already-on-roster check (drawer already shows "On
+roster"; modal/route ignore it — second add silently duplicates) · role surfacing:
+participants table shows raw lowercase "moderator" (apply participantRoleLabel);
+NO role on Speakers roster or drawer · role option set vs mock
+(Speaker/Reviewer/Guest) — settle in a DEC.
+Merge view remaining: discard column headed literal "Discard" (MergePage.tsx:203)
+— use the record's name · absent fields render STRUCK "—" (strike only real
+discarded values, not never-present ones) · **Labels/Notes preview iterates ONLY
+the discarded record's fields** (src/domain/contacts.ts:386) — keeper-only
+labels/notes never shown; iterate both · no Name row · no footer impact line
+("N submissions and M tasks move to the kept record").
+**P2 duplicate warning at creation**: NO candidate lookup exists in
+NewContactModal (zero network while typing) though findImportDuplicateCandidates
+exists for CSV — wire it in as an inline hint.
+**SEED REGRESSION: 0 duplicate pairs in the seed now** (was 2; mock shows "1 of 6
+pairs") — the Duplicates tab demos EMPTY; reseed 2-3 pairs.
+Rest: contact-delete UI affordance (API landed — add drawer/list action) ·
+duplicate DETECTION rule when companies differ (DEC) · drawer = read-only record
+view (reorder page around history + action bar) · import: real step panels or CTA
+above fold · pipeline: card captions ("Added N days ago", "No reply · N days"
+bold past 30, declined reason) · pipeline enrol: score/rationale fields.
 
 **Settings**: READ-ONLY SUMMARY pattern (THE item — sections as label:value rows w/
 "Edit the form"/"Change"/"Replace" drill-ins; forms only on drill) · remove new
