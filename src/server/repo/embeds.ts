@@ -118,11 +118,21 @@ export async function getEmbedOwnership(db: Db, id: string): Promise<{ orgId: st
 export async function updateEmbed(
   db: Db,
   id: string,
-  patch: { name?: string; enabled?: boolean },
+  patch: { name?: string; enabled?: boolean; surface?: string; format?: string; optionsJson?: string },
 ): Promise<EmbedRecord | null> {
-  const values: { name?: string; enabled?: boolean; updatedAt: Date } = { updatedAt: new Date() };
+  const values: {
+    name?: string;
+    enabled?: boolean;
+    surface?: string;
+    format?: string;
+    optionsJson?: string;
+    updatedAt: Date;
+  } = { updatedAt: new Date() };
   if (patch.name !== undefined) values.name = patch.name;
   if (patch.enabled !== undefined) values.enabled = patch.enabled;
+  if (patch.surface !== undefined) values.surface = patch.surface;
+  if (patch.format !== undefined) values.format = patch.format;
+  if (patch.optionsJson !== undefined) values.optionsJson = patch.optionsJson;
   await db.update(schema.embed).set(values).where(eq(schema.embed.id, id));
   const rows = await db.select().from(schema.embed).where(eq(schema.embed.id, id)).limit(1);
   const row = rows[0];

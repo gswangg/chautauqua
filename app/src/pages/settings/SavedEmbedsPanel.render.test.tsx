@@ -4,10 +4,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { SavedEmbedsPanel } from './SavedEmbedsPanel';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 
 const EVENT_ID = 'evt-saved-embeds';
+
+function renderPanel(initialEntries: string[] = ['/settings']) {
+  return render(
+    <MemoryRouter initialEntries={initialEntries}>
+      <SavedEmbedsPanel />
+    </MemoryRouter>,
+  );
+}
 
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
@@ -28,11 +37,12 @@ describe('SavedEmbedsPanel', () => {
   it('renders one row per saved embed with its name, path, and a live state pill', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/embeds`]: listEnvelope([
-        { id: 'emb1', name: 'Homepage widget', surface: 'sessions', format: 'iframe', enabled: true },
-        { id: 'emb2', name: 'Old widget', surface: 'speakers', format: 'iframe', enabled: false },
+        { id: 'emb1', name: 'Homepage widget', surface: 'sessions', format: 'iframe', optionsJson: '{}', enabled: true },
+        { id: 'emb2', name: 'Old widget', surface: 'speakers', format: 'iframe', optionsJson: '{}', enabled: false },
       ]),
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
     });
-    render(<SavedEmbedsPanel />);
+    renderPanel();
 
     await waitFor(() => {
       expect(screen.getByText('Homepage widget')).toBeInTheDocument();
@@ -54,10 +64,11 @@ describe('SavedEmbedsPanel', () => {
   it('shows the copyable snippet for a row after "Get code"', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/embeds`]: listEnvelope([
-        { id: 'emb1', name: 'Homepage widget', surface: 'sessions', format: 'iframe', enabled: true },
+        { id: 'emb1', name: 'Homepage widget', surface: 'sessions', format: 'iframe', optionsJson: '{}', enabled: true },
       ]),
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
     });
-    render(<SavedEmbedsPanel />);
+    renderPanel();
 
     await waitFor(() => {
       expect(screen.getByText('Homepage widget')).toBeInTheDocument();
@@ -72,7 +83,10 @@ describe('SavedEmbedsPanel', () => {
   it('toggling enable/disable calls the real PATCH endpoint and re-renders the new state', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/embeds`]: () =>
-        listEnvelope([{ id: 'emb1', name: 'Homepage widget', surface: 'sessions', format: 'iframe', enabled: true }]),
+        listEnvelope([
+          { id: 'emb1', name: 'Homepage widget', surface: 'sessions', format: 'iframe', optionsJson: '{}', enabled: true },
+        ]),
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`PATCH /api/v1/embeds/emb1`]: {
         id: 'emb1',
         name: 'Homepage widget',
@@ -81,7 +95,7 @@ describe('SavedEmbedsPanel', () => {
         enabled: false,
       },
     });
-    render(<SavedEmbedsPanel />);
+    renderPanel();
 
     await waitFor(() => {
       expect(screen.getByText('Live')).toBeInTheDocument();
@@ -94,5 +108,35 @@ describe('SavedEmbedsPanel', () => {
         fetchMock.mock.calls.find(([input]) => String(input).includes('/api/v1/embeds/emb1')) ?? [];
       expect(patchInit).toMatchObject({ method: 'PATCH' });
     });
+  });
+
+  // DEC-822: each row states the recipe it stores, derived from the
+  // saved surface/format/options, beside its state pill — and the
+  // section carries the "Turning one off..." caption.
+  it('renders each row\'s recipe caption derived from its stored surface/format/options', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/embeds`]: listEnvelope([
+        {
+          id: 'emb1',
+          name: 'Homepage widget',
+          surface: 'sessions',
+          format: 'iframe',
+          optionsJson: JSON.stringify({ trackId: 'trk-ai', fields: ['track', 'time', 'room', 'speaker', 'description', 'format'] }),
+          enabled: true,
+        },
+      ]),
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'trk-ai', name: 'AI Engineering' }]),
+    });
+    renderPanel();
+
+    await waitFor(() => {
+      expect(screen.getByText('Homepage widget')).toBeInTheDocument();
+    });
+
+    const row = screen.getAllByRole('listitem')[0]!;
+    expect(within(row).getByText('Sessions · iframe · AI Engineering · 6 fields')).toBeInTheDocument();
+    expect(within(row).getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/settings?embed=emb1');
+
+    expect(screen.getByText('Turning one off breaks it wherever it is pasted')).toBeInTheDocument();
   });
 });

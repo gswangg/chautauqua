@@ -122,13 +122,18 @@ describe("DEC-785: GET /embed/e/:embedId", () => {
     expect(res.headers.get("Cache-Control")).toBe("no-store");
   });
 
-  it("404s the designed not-found page for a disabled embed, not a silently-served page", async () => {
+  // DEC-822 overrides DEC-785: a disabled embed is an intentional blank
+  // (an organiser switched it off), not a 404 — a 404 inside someone
+  // else's iframe would read as a broken customer page.
+  it("returns an empty 200 for a disabled embed, not the designed 404", async () => {
     const app = buildApp();
     const res = await app.request(`/embed/e/${DISABLED_EMBED.id}`);
 
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain("That page isn");
+    expect(html).toBe("");
+    expect(html).not.toContain("That page isn");
+    expect(res.headers.get("Cache-Control")).not.toBeNull();
   });
 
   it("renders the saved surface for an enabled embed", async () => {

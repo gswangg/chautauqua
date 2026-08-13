@@ -10,22 +10,31 @@
 // decoration") — that public 404 is proven by test/saved-embed-route.test.ts,
 // not by this render test.
 import { useEffect, useState, type FormEvent } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
-import { buildSnippet, EMBED_SURFACES, type EmbedFormat, type EmbedSurface } from './embedSnippet';
+import { buildSnippet, describeEmbedRecipe, EMBED_SURFACES, type EmbedFormat, type EmbedSurface } from './embedSnippet';
 
 interface SavedEmbed {
   id: string;
   name: string;
   surface: string;
   format: string;
+  optionsJson: string;
   enabled: boolean;
+}
+
+interface Track {
+  id: string;
+  name: string;
 }
 
 export function SavedEmbedsPanel() {
   const { eventId } = useCurrentEvent();
+  const [searchParams] = useSearchParams();
   const [embeds, setEmbeds] = useState<SavedEmbed[] | null>(null);
+  const [tracks, setTracks] = useState<Track[]>([]);
   const [error, setError] = useState<string | undefined>(undefined);
   const [name, setName] = useState('');
   const [surface, setSurface] = useState<EmbedSurface>('sessions');
@@ -37,9 +46,23 @@ export function SavedEmbedsPanel() {
     apiList<SavedEmbed>(`/events/${eventId}/embeds`)
       .then((res) => setEmbeds(res.items))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load saved embeds'));
+    apiList<Track>(`/events/${eventId}/tracks`)
+      .then((res) => setTracks(res.items))
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load tracks'));
   }
 
   useEffect(load, [eventId]);
+
+  const trackNameById: Record<string, string> = Object.fromEntries(tracks.map((t) => [t.id, t.name]));
+
+  // DEC-822: the Edit link opens the builder at ?embed=<id>, preserving
+  // every other search param (e.g. ?section=public-pages&edit=1) so it
+  // stays inside the drilled edit view instead of navigating away.
+  function editHref(id: string): string {
+    const params = new URLSearchParams(searchParams);
+    params.set('embed', id);
+    return `?${params.toString()}`;
+  }
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
@@ -70,6 +93,7 @@ export function SavedEmbedsPanel() {
   return (
     <section className="chq-settings-panel" aria-label="Saved embeds">
       <h2>Saved embeds</h2>
+      <p className="chq-settings-note">Turning one off breaks it wherever it is pasted</p>
       {error ? <p role="alert">{error}</p> : null}
 
       {embeds === null ? (
@@ -81,10 +105,16 @@ export function SavedEmbedsPanel() {
           {embeds.map((embed) => {
             const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/embed/e/${embed.id}`;
             const snippet = buildSnippet(url, embed.surface as EmbedSurface, embed.format as EmbedFormat);
+            // DEC-822: the row states the recipe it stores, not just its
+            // name — derived from the SAME stored surface/format/options a
+            // Save would have written, so it can never drift from what the
+            // embed actually renders.
+            const recipe = describeEmbedRecipe(embed.surface, embed.format, embed.optionsJson, trackNameById);
             return (
               <li key={embed.id} className="chq-settings-public-pages-row">
                 <span className="chq-settings-public-pages-name">{embed.name}</span>
                 <span className="chq-settings-public-pages-path">{`/embed/e/${embed.id}`}</span>
+                <span className="chq-embeds-recipe">{recipe}</span>
                 <span
                   className={`chq-settings-public-pages-state chq-settings-public-pages-state-${
                     embed.enabled ? 'live' : 'muted'
@@ -92,6 +122,9 @@ export function SavedEmbedsPanel() {
                 >
                   {embed.enabled ? 'Live' : 'Disabled'}
                 </span>
+                <Link className="chq-link-button" to={editHref(embed.id)}>
+                  Edit
+                </Link>
                 <button
                   type="button"
                   className="chq-link-button"

@@ -88,7 +88,12 @@ export function PublicPagesPanel() {
   const [counts, setCounts] = useState<PublicSurfaceCounts | null>(null);
   const [form, setForm] = useState<CfpFormSummary | null>(null);
   const [error, setError] = useState<string | undefined>(undefined);
-  const [embedOpen, setEmbedOpen] = useState(false);
+  const [embedOpenState, setEmbedOpenState] = useState(false);
+  // DEC-822: SavedEmbedsPanel's Edit link opens the builder at ?embed=<id>
+  // (preserving the drilled ?section=public-pages&edit=1 params) — the
+  // panel must actually be mounted for that link to do anything, not just
+  // sit there as a URL an organizer can't see land anywhere.
+  const embedOpen = embedOpenState || searchParams.get('embed') !== null;
 
   useEffect(() => {
     if (!eventId) return;
@@ -168,7 +173,7 @@ export function PublicPagesPanel() {
                   <a className="chq-settings-inline-action" href={row.path}>
                     View
                   </a>
-                  <button type="button" className="chq-link-button" onClick={() => setEmbedOpen(true)}>
+                  <button type="button" className="chq-link-button" onClick={() => setEmbedOpenState(true)}>
                     Embed code
                   </button>
                 </li>

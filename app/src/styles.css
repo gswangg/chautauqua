@@ -1369,6 +1369,35 @@ a:hover {
   min-height: 0;
 }
 
+/* DEC-822: the builder's Save action shares the same shape/live-region
+   contract as .chq-copy-status above (small, muted, min-height so its
+   "Saved" text doesn't reflow the layout when it appears). */
+.chq-save-status {
+  font-size: 12px;
+  color: var(--chq-muted);
+  min-height: 1em;
+}
+
+.chq-save-status:empty {
+  min-height: 0;
+}
+
+/* DEC-822: a saved embed row's recipe caption ('Sessions · iframe · AI
+   Engineering · 6 fields'), derived from the row's stored surface/format/
+   options, rendered beside its On/Off pill. */
+.chq-embeds-recipe {
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
+/* Shared small muted caption under a section heading -- e.g. Saved
+   embeds' "Turning one off breaks it wherever it is pasted" (DEC-822). */
+.chq-settings-note {
+  font-size: 12px;
+  color: var(--chq-muted);
+  margin: 0 0 8px;
+}
+
 .chq-color-swatch {
   width: 22px;
   height: 22px;

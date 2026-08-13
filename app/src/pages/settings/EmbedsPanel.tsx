@@ -4,9 +4,10 @@
 // snippet. Every knob maps 1:1 onto the query-param contract fixed in
 // decisions/DEC-289.md via embedSnippet.ts's pure builders.
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
-import { apiGet, apiList, ApiError } from '../../lib/api';
+import { apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { copyText } from '../../lib/clipboard';
 import {
   buildEmbedUrl,
@@ -20,6 +21,29 @@ import {
   type EmbedFormat,
   type EmbedSurface,
 } from './embedSnippet';
+
+// DEC-822: the shape a saved embed row comes back as from GET
+// /events/:eventId/embeds (src/server/repo/embeds.ts's EmbedRecord,
+// serialized) — loaded here (via the list endpoint; there is no
+// GET-by-id) to populate the builder when opened at ?embed=<id>.
+interface SavedEmbedRow {
+  id: string;
+  name: string;
+  surface: string;
+  format: string;
+  optionsJson: string;
+}
+
+interface StoredEmbedOptions {
+  trackId?: string;
+  sessionFormat?: string;
+  roomId?: string;
+  day?: string;
+  q?: string;
+  limit?: number;
+  fields?: EmbedField[];
+  accent?: string;
+}
 
 interface EventDetail {
   id: string;
@@ -55,6 +79,11 @@ function formatsFor(surface: EmbedSurface): EmbedFormat[] {
 
 export function EmbedsPanel() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
+  const [searchParams] = useSearchParams();
+  // DEC-822: ?embed=<id> puts the builder into edit mode for that saved
+  // embed — it loads the row (name + full recipe), heads itself
+  // 'Editing · <name>', and Save PATCHes it instead of creating a new one.
+  const embedIdParam = searchParams.get('embed');
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [loadError, setLoadError] = useState<string | undefined>(undefined);
@@ -62,6 +91,12 @@ export function EmbedsPanel() {
     null,
   );
   const failedCopyRef = useRef<HTMLInputElement | null>(null);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | undefined>(undefined);
+  const [saved, setSaved] = useState(false);
 
   const [surface, setSurface] = useState<EmbedSurface>('sessions');
   const [format, setFormat] = useState<EmbedFormat>('iframe');
@@ -87,6 +122,40 @@ export function EmbedsPanel() {
       .catch((err) => setLoadError(err instanceof ApiError ? err.message : 'Failed to load tracks'));
   }, [eventId]);
 
+  // DEC-822: loads the saved embed's row via the list endpoint (there is
+  // no GET-by-id) and populates every knob from its stored options, so
+  // editing an existing embed starts from its real saved recipe.
+  useEffect(() => {
+    if (!eventId || !embedIdParam) return;
+    apiList<SavedEmbedRow>(`/events/${eventId}/embeds`)
+      .then((res) => {
+        const found = res.items.find((row) => row.id === embedIdParam);
+        if (!found) return;
+        setEditingId(found.id);
+        setName(found.name);
+        setSurface(found.surface as EmbedSurface);
+        setFormat(found.format as EmbedFormat);
+        let opts: StoredEmbedOptions = {};
+        try {
+          const parsed = JSON.parse(found.optionsJson) as unknown;
+          if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+            opts = parsed as StoredEmbedOptions;
+          }
+        } catch {
+          opts = {};
+        }
+        setTrackId(opts.trackId ?? '');
+        setSessionFormat(opts.sessionFormat ?? '');
+        setRoomId(opts.roomId ?? '');
+        setDay(opts.day ?? '');
+        setQ(opts.q ?? '');
+        setLimit(opts.limit !== undefined ? String(opts.limit) : '');
+        setFields(Array.isArray(opts.fields) && opts.fields.length > 0 ? opts.fields : [...EMBED_FIELDS]);
+        setAccent(opts.accent ?? '');
+      })
+      .catch((err) => setLoadError(err instanceof ApiError ? err.message : 'Failed to load the saved embed'));
+  }, [eventId, embedIdParam]);
+
   // Keep the format valid whenever the surface changes away from
   // agenda/schedule while ics was selected.
   useEffect(() => {
@@ -107,6 +176,46 @@ export function EmbedsPanel() {
     setCopyResult({ target, ok, text });
     if (ok) {
       window.setTimeout(() => setCopyResult((current) => (current?.target === target ? null : current)), 2000);
+    }
+  }
+
+  // DEC-822: the builder's PRIMARY action — writes the FULL current knob
+  // set as the embed's options (not just name/enabled), so a saved
+  // embed's filters can be edited later and every page it's pasted on
+  // picks up the change. PATCHes when editing an existing row (?embed=),
+  // otherwise POSTs a new one and switches into editing it.
+  async function handleSave() {
+    if (!eventId || !name.trim()) return;
+    setSaving(true);
+    setSaveError(undefined);
+    const options: StoredEmbedOptions = {
+      trackId: trackId || undefined,
+      sessionFormat: sessionFormat || undefined,
+      roomId: roomId || undefined,
+      day: day || undefined,
+      q: q || undefined,
+      limit: limit ? Number(limit) : undefined,
+      fields,
+      accent: accent || undefined,
+    };
+    try {
+      if (editingId) {
+        await apiPatch(`/embeds/${editingId}`, { name: name.trim(), surface, format, options });
+      } else {
+        const created = await apiPost<{ id: string }>(`/events/${eventId}/embeds`, {
+          name: name.trim(),
+          surface,
+          format,
+          options,
+        });
+        setEditingId(created.id);
+      }
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setSaveError(err instanceof ApiError ? err.message : 'Failed to save embed');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -136,10 +245,11 @@ export function EmbedsPanel() {
 
   return (
     <section className="chq-settings-panel chq-embeds-panel" aria-label="Embeds">
-      <h2>Embeds</h2>
+      <h2>{editingId ? `Editing · ${name || '…'}` : 'Embeds'}</h2>
       <p>
         Build a share link for a public surface (chromeless, no login required) — pick a surface, an
-        output format, and any filters or branding, then copy the URL or snippet below.
+        output format, and any filters or branding, then Save it as a named embed (or copy the URL/snippet
+        for a one-off, unsaved link).
       </p>
       {eventLoading ? <DelayedLoading /> : null}
       {eventError || loadError ? (
@@ -150,6 +260,17 @@ export function EmbedsPanel() {
 
       {event ? (
         <div className="chq-embeds-form">
+          <label>
+            Name
+            <input
+              className="chq-input"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Homepage sessions widget"
+            />
+          </label>
+
           <label>
             Surface
             <select
@@ -289,6 +410,23 @@ export function EmbedsPanel() {
           </label>
 
           <div className="chq-embeds-output">
+            <button
+              type="button"
+              className="chq-btn chq-btn-primary"
+              disabled={saving || !name.trim()}
+              onClick={() => void handleSave()}
+            >
+              {saving ? 'Saving…' : editingId ? 'Save' : 'Save embed'}
+            </button>
+            {saveError ? (
+              <div className="chq-error" role="alert">
+                {saveError}
+              </div>
+            ) : null}
+            <div role="status" aria-live="polite" className="chq-save-status">
+              {saved ? 'Saved' : null}
+            </div>
+
             <p>
               <strong>URL</strong>
             </p>
@@ -302,7 +440,7 @@ export function EmbedsPanel() {
             <code>{snippet}</code>
             <button
               type="button"
-              className="chq-btn chq-btn-primary"
+              className="chq-btn chq-btn-secondary"
               onClick={() => void handleCopy('snippet', snippet)}
             >
               {copyResult?.target === 'snippet' && copyResult.ok ? 'Copied!' : 'Copy snippet'}
