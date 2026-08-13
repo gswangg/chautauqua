@@ -726,7 +726,7 @@ describe('ComposeWizard confirms before sending (DEC-967)', () => {
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
       [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [recipient('c1', 'sub-1', 'Priya Raman', 'DFC-014', true)] },
-      [`POST /api/v1/events/${EVENT_ID}/compose/send`]: { sent: 1, failed: [], items: [] },
+      [`POST /api/v1/events/${EVENT_ID}/compose/send`]: { sent: 1, failed: [] },
     });
 
     await goToPreviewWith(fetchMock);
@@ -748,7 +748,7 @@ describe('ComposeWizard confirms before sending (DEC-967)', () => {
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
       [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [recipient('c1', 'sub-1', 'Priya Raman', 'DFC-014', true)] },
-      [`POST /api/v1/events/${EVENT_ID}/compose/send`]: { sent: 1, failed: [], items: [] },
+      [`POST /api/v1/events/${EVENT_ID}/compose/send`]: { sent: 1, failed: [] },
     });
 
     await goToPreviewWith(fetchMock);
