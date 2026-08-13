@@ -153,8 +153,9 @@ describe('MergePage render (DEC-834: same-name pair disambiguates compare heads,
     expect(keepHead.textContent).not.toEqual(discardHead.textContent);
 
     await waitFor(() => {
-      expect(screen.getByText('Labels combine, notes are appended')).toBeInTheDocument();
+      expect(screen.getByText('Notes are appended, never chosen one over the other.')).toBeInTheDocument();
     });
+    expect(screen.getByText('The discarded record is deleted.')).toBeInTheDocument();
   });
 
   // DEC-858: names differing only by case are the same name at a merge --
@@ -403,5 +404,55 @@ describe('MergePage render (DEC-992: vintage heads, swap control, 3+ group fallb
     expect(discardHead.textContent).not.toMatch(/added/);
     // A 3+ group has no single record to swap onto.
     expect(screen.queryByRole('button', { name: 'Swap which is kept' })).not.toBeInTheDocument();
+  });
+});
+
+describe('MergePage render (DEC-992 amendment wave 47: rules block says each rule once, names the deletion)', () => {
+  it('mentions labels exactly once when the preview carries a customFields row, and always states the discarded record is deleted', async () => {
+    mockApi({
+      'GET /api/v1/contacts/duplicates': listEnvelope([GROUP]),
+      'GET /api/v1/contacts/merge/preview': {
+        fields: [
+          ...PREVIEW_FIELDS,
+          { key: 'customFields.shirtSize', label: 'shirtSize', kept: 'M', discarded: [], outcome: 'combine' },
+        ],
+      },
+    });
+
+    renderAt('/contacts/merge?ids=ct-keep,ct-merge&keep=ct-keep');
+
+    await waitFor(() => {
+      expect(screen.getByText('Merge two records')).toBeInTheDocument();
+    });
+
+    const rulesBlock = await waitFor(() => document.querySelector('.chq-contacts-merge-rules') as HTMLElement);
+    expect(rulesBlock).toBeInTheDocument();
+
+    // Exactly one rendered sentence in the rules block mentions labels --
+    // not the DEC-834 sentence AND the DEC-992 sentence both firing.
+    const labelSentences = within(rulesBlock)
+      .getAllByText((_, node) => !!node && /label/i.test(node.textContent ?? '') && node.tagName === 'P');
+    expect(labelSentences).toHaveLength(1);
+
+    // The destruction sentence renders unconditionally in the rules block.
+    expect(within(rulesBlock).getByText('The discarded record is deleted.')).toBeInTheDocument();
+  });
+
+  it('states the discarded record is deleted in the confirm dialog body too', async () => {
+    mockApi({
+      'GET /api/v1/contacts/duplicates': listEnvelope([GROUP]),
+      'GET /api/v1/contacts/merge/preview': { fields: PREVIEW_FIELDS },
+    });
+
+    renderAt('/contacts/merge?ids=ct-keep,ct-merge&keep=ct-keep');
+
+    await waitFor(() => {
+      expect(screen.getByText('Merge two records')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Merge into Jane Doe' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Merge these records?' });
+    expect(within(dialog).getByText(/discarded record is deleted/)).toBeInTheDocument();
   });
 });
