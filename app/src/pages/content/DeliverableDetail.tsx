@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { apiList, apiPost, apiPostBlob, apiUpload, ApiError } from '../../lib/api';
+import { apiGet, apiList, apiPost, apiPostBlob, apiUpload, ApiError } from '../../lib/api';
 import { CommentThread } from './CommentThread';
 import { groupByKindNewestFirst } from './version-chain';
 import { UploadZone } from './UploadZone';
 import { VersionList } from './VersionList';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
+import { formatDate, formatDayLabel } from '../../lib/dates';
 import {
   CONTENT_STATUS_LABELS,
   FILE_KINDS,
@@ -15,6 +16,55 @@ import {
   type FileKind,
   type FileComment,
 } from './types';
+
+// DEC-901: the header's speaker/CODE/slot subtitle and the CONTENT STATUS
+// band both need fields the worklist row never carries (ref, participants,
+// slot, updatedAt) -- fetched here straight from GET /api/v1/submissions/:id
+// (src/server/repo/submissions/detail.ts's SubmissionDetail), the same
+// endpoint ContentApp already uses for a Files-library deep link, just with
+// the fields this header actually reads instead of ContentApp's narrower
+// SubmissionLookup shape.
+interface DeliverableHeaderParticipant {
+  name: string;
+}
+
+interface DeliverableHeaderSlot {
+  day: string;
+  startMin: number;
+  endMin: number;
+  roomName: string | null;
+}
+
+interface DeliverableHeaderDetail {
+  ref: string;
+  updatedAt: number;
+  participants: DeliverableHeaderParticipant[];
+  slot: DeliverableHeaderSlot | null;
+}
+
+const ROOM_TBA_LABEL = 'To be announced';
+
+function formatClockTime(minutesFromMidnight: number): string {
+  const h = Math.floor(minutesFromMidnight / 60);
+  const m = minutesFromMidnight % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+/** 'Speaker · <CODE> · <slot>, <Room>' (DEC-901) -- the slot/room clause is
+ * omitted entirely (not printed as an empty '· ,') when the session hasn't
+ * been placed on the agenda yet. */
+function formatDetailSubtitle(detail: DeliverableHeaderDetail): string {
+  const [firstSpeaker, ...restSpeakers] = detail.participants;
+  const speakerLabel = firstSpeaker
+    ? `${firstSpeaker.name}${restSpeakers.length > 0 ? ` +${restSpeakers.length}` : ''}`
+    : 'No speakers';
+  const parts = [speakerLabel, detail.ref];
+  if (detail.slot) {
+    const slotLabel = `${formatDayLabel(detail.slot.day)} ${formatClockTime(detail.slot.startMin)}–${formatClockTime(detail.slot.endMin)}`;
+    parts.push(`${slotLabel}, ${detail.slot.roomName ?? ROOM_TBA_LABEL}`);
+  }
+  return parts.join(' · ');
+}
 
 interface DeliverableDetailProps {
   submissionId: string;
@@ -50,6 +100,17 @@ export function DeliverableDetail({
   const [selectedKind, setSelectedKind] = useState<FileKind | null>(null);
   const [downloadPending, setDownloadPending] = useState(false);
   const [downloadStatus, setDownloadStatus] = useState<string | null>(null);
+  // DEC-901: header-only data (subtitle + status band) -- absent (not a
+  // fabricated placeholder) until this resolves, so the header renders the
+  // title alone rather than a wrong/blank subtitle for a beat.
+  const [headerDetail, setHeaderDetail] = useState<DeliverableHeaderDetail | null>(null);
+
+  useEffect(() => {
+    setHeaderDetail(null);
+    apiGet<DeliverableHeaderDetail>(`/submissions/${submissionId}`)
+      .then((detail) => setHeaderDetail(detail))
+      .catch(() => setHeaderDetail(null));
+  }, [submissionId]);
 
   function loadFiles() {
     setLoading(true);
@@ -178,17 +239,29 @@ export function DeliverableDetail({
     }
   }
 
+  const subtitle = headerDetail ? formatDetailSubtitle(headerDetail) : null;
+
   return (
     <div className="chq-deliverable-detail chq-content-detail">
-      <button type="button" className="chq-btn chq-btn-tertiary" onClick={onBack}>
-        &larr; Back to worklist
-      </button>
+      {/* DEC-901: the back link stands on its own line above the title --
+          the frame anatomy the rest of the product's detail pages use
+          (see SubmissionDetailPage's chq-detail-topbar), not a button
+          crowded next to the H1. */}
+      <div className="chq-content-detail-topbar">
+        <button type="button" className="chq-link-button chq-content-detail-back" onClick={onBack}>
+          &lsaquo; Content
+        </button>
+      </div>
       <div className="chq-content-detail-head">
-        <h2 className="chq-page-title chq-content-detail-title">{title}</h2>
+        <div className="chq-content-detail-title-col">
+          <h1 className="chq-page-title chq-content-detail-title">{title}</h1>
+          {/* DEC-901: 'Speaker · CODE · slot, Room' -- withheld (not a blank
+              line) until the header fetch resolves, and the slot/room
+              clause is entirely absent (never an empty '· ,') for an
+              unplaced session -- see formatDetailSubtitle. */}
+          {subtitle && <p className="chq-meta chq-content-detail-subtitle">{subtitle}</p>}
+        </div>
         <div className="chq-content-status-bar">
-          <span className={pill === 'changes_requested' ? 'chq-flag' : 'chq-flag chq-content-status-muted'}>
-            {CONTENT_STATUS_LABELS[pill]}
-          </span>
           {/* DEC-756/DEC-733: Approve renders only while the session is not
               already approved -- an action that cannot apply is absent,
               never disabled. */}
@@ -213,6 +286,27 @@ export function DeliverableDetail({
         </div>
       </div>
 
+      {/* DEC-901: sunk CONTENT STATUS band -- states the current status and
+          when it changed. Content-status writes always bump the
+          submission's own updatedAt (src/server/repo/files-content-status.ts
+          sets both in the same UPDATE), the same "truthful for every
+          status" precedent SubmissionDetailPage's decidedDateLabel already
+          relies on for the decision rail -- so this is a real timestamp,
+          not a guess. There is currently no actor column recorded anywhere
+          for a content-status write (files-content-status.ts's
+          updateContentStatus takes no editor/user id), so "by whom" is
+          left off rather than fabricated; a future task needs a
+          content-status audit column/table to fill that in honestly. */}
+      <div className="chq-content-status-band">
+        <span className="chq-content-status-band-label">Content status</span>
+        <span className={pill === 'changes_requested' ? 'chq-flag' : 'chq-flag chq-content-status-muted'}>
+          {CONTENT_STATUS_LABELS[pill]}
+        </span>
+        {headerDetail && (
+          <span className="chq-meta chq-content-status-band-updated">Updated {formatDate(headerDetail.updatedAt)}</span>
+        )}
+      </div>
+
       {downloadStatus && (
         <p className="chq-meta chq-content-download-status" role="status">
           {downloadStatus}
@@ -232,6 +326,10 @@ export function DeliverableDetail({
 
       {!loading && (
         <div className="chq-content-detail-body">
+          {/* DEC-901: DELIVERABLES section rule over the files -- the same
+              chq-section-label vocabulary the notes column already uses
+              below, never a parallel heading style. */}
+          <h2 className="chq-section-label chq-content-deliverables-label">Deliverables</h2>
           {kindsWithFiles.length > 0 && (
             <>
               <div className="chq-chipstrip" role="tablist" aria-label="Deliverable">
@@ -259,7 +357,12 @@ export function DeliverableDetail({
 
           <div className="chq-content-group-body">
             <div className="chq-content-files-col">
-              <VersionList versions={activeVersions} onDeleted={() => void loadFiles()} />
+              <VersionList
+                versions={activeVersions}
+                onDeleted={() => void loadFiles()}
+                contentStatus={pill}
+                statusChangedAt={headerDetail?.updatedAt ?? null}
+              />
               <UploadZone kind={activeKind} replacesFileId={activeLatest?.id} onUpload={handleUpload} />
             </div>
             <div className="chq-content-comments-col">
