@@ -15,6 +15,7 @@ import { capReminderGroups, formatTaskLines, planManualReminders, planReminders 
 import type { KVStore } from "../../../auth/claim";
 import { resolvePortalLink } from "../portal-link";
 import { findAccountUserIds } from "../comms";
+import { effectiveAssignmentDueDate } from "../../../domain/task-due";
 
 interface OutstandingRow {
   assignmentId: string;
@@ -63,13 +64,39 @@ export async function listOutstandingForEvent(
       eventId: schema.event.id,
       eventName: schema.event.name,
       timezone: schema.event.timezone,
+      assignmentCreatedAt: schema.taskAssignment.createdAt,
     })
     .from(schema.taskAssignment)
     .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
     .innerJoin(schema.event, eq(schema.task.eventId, schema.event.id))
     .innerJoin(schema.contact, eq(schema.taskAssignment.contactId, schema.contact.id))
     .where(and(...conditions));
-  return rows;
+  // DEC-801: dueDate reported on each row is the assignment's EFFECTIVE due
+  // date, not the raw task.dueDate — so reminder emails and compose's
+  // {due_date} agree with the grid badge/cell, which judge against the same
+  // effectiveAssignmentDueDate. The row SHAPE (dueDate: Date | null) is
+  // unchanged, only the value.
+  return rows.map((r): OutstandingRow => {
+    const effective = effectiveAssignmentDueDate(
+      r.dueDate ? r.dueDate.getTime() : null,
+      r.assignmentCreatedAt.getTime(),
+    );
+    return {
+      assignmentId: r.assignmentId,
+      taskId: r.taskId,
+      taskTitle: r.taskTitle,
+      dueDate: effective === null ? null : new Date(effective),
+      status: r.status,
+      lastRemindedAt: r.lastRemindedAt,
+      contactId: r.contactId,
+      firstName: r.firstName,
+      lastName: r.lastName,
+      email: r.email,
+      eventId: r.eventId,
+      eventName: r.eventName,
+      timezone: r.timezone,
+    };
+  });
 }
 
 function toReminderAssignment(r: OutstandingRow): ReminderAssignment {

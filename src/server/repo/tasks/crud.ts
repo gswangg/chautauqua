@@ -9,7 +9,10 @@ import { newId } from "../../../domain/ids";
 import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
 import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
 import { ApiError } from "../../http";
-import { DEC_528, DEC_556 } from "../../../decisions";
+import { DEC_528, DEC_556, DEC_801 } from "../../../decisions";
+import { ASSIGNED_LATE_GRACE_DAYS } from "../../../domain/task-due";
+
+void DEC_801; // overdueAssignmentConditions below composes the DEC-801 grace window.
 
 void DEC_528; // createTaskAssignments below is set-based under MAX_TASK_ASSIGNMENT_WRITES
 // DEC-556: the (task_id, contact_id) uniqueIndex backs the insert below's
@@ -102,18 +105,24 @@ export function acceptedSpeakerExistsForContact(eventId: string) {
 /** DEC-776: the ONE overdue-assignment predicate — a task_assignment is
  * "overdue" iff its task belongs to `eventId`, its status is not 'complete'
  * (matching every non-complete status a status enum might grow, not just
- * 'pending'), its task has a due date in the past relative to `now`, AND its
- * contact is currently an accepted speaker on the event (composing
- * acceptedSpeakerExistsForContact so this can never drift from the
- * onboarding roster). Callers must join task_assignment -> task (on
+ * 'pending'), its EFFECTIVE due date (DEC-801: task.dueDate, or, when the
+ * assignment was created after that date, assignment.createdAt plus
+ * ASSIGNED_LATE_GRACE_DAYS — the SQL form of
+ * ../../../domain/task-due.ts's effectiveAssignmentDueDate, since a
+ * correlated WHERE can't call back into JS) is in the past relative to
+ * `now`, AND its contact is currently an accepted speaker on the event
+ * (composing acceptedSpeakerExistsForContact so this can never drift from
+ * the onboarding roster). Callers must join task_assignment -> task (on
  * task.id = task_assignment.task_id) -> contact (on contact.id =
  * task_assignment.contact_id) before applying this in a WHERE clause, since
  * acceptedSpeakerExistsForContact correlates against schema.contact.id. */
 export function overdueAssignmentConditions(eventId: string, now: number) {
+  const graceMs = ASSIGNED_LATE_GRACE_DAYS * 24 * 60 * 60 * 1000;
+  const effectiveDueDate = sql`(case when ${schema.task.dueDate} >= ${schema.taskAssignment.createdAt} then ${schema.task.dueDate} else ${schema.taskAssignment.createdAt} + ${graceMs} end)`;
   return and(
     eq(schema.task.eventId, eventId),
     sql`${schema.taskAssignment.status} <> 'complete'`,
-    sql`${schema.task.dueDate} is not null and ${schema.task.dueDate} < ${now}`,
+    sql`${schema.task.dueDate} is not null and ${effectiveDueDate} < ${now}`,
     acceptedSpeakerExistsForContact(eventId),
   )!;
 }

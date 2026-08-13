@@ -48,6 +48,7 @@ interface OutstandingRowShape {
   eventId: string;
   eventName: string;
   timezone: string;
+  assignmentCreatedAt: Date;
 }
 
 /** A fake Db whose account-lookup select() returns exactly the account rows
@@ -105,6 +106,7 @@ const ROW_WITH_ACCOUNT: OutstandingRowShape = {
   eventId: "event_1",
   eventName: "DevFlow Conf 2027",
   timezone: "America/Los_Angeles",
+  assignmentCreatedAt: new Date(0),
 };
 
 const ROW_WITHOUT_ACCOUNT: OutstandingRowShape = {
@@ -121,6 +123,7 @@ const ROW_WITHOUT_ACCOUNT: OutstandingRowShape = {
   eventId: "event_1",
   eventName: "DevFlow Conf 2027",
   timezone: "America/Los_Angeles",
+  assignmentCreatedAt: new Date(0),
 };
 
 function normalizeClaimToken(text: string): string {

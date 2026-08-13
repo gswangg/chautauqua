@@ -21,8 +21,8 @@ const GRID: OnboardingGridResponse = {
     {
       contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true , participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
       cells: [
-        { taskId: 'task-1', assignmentId: 'as1', status: 'complete', completedAt: 1700000000000, fileId: null, lastRemindedAt: null },
-        { taskId: 'task-2', assignmentId: 'as2', status: 'complete', completedAt: 1700000000000, fileId: null, lastRemindedAt: null },
+        { taskId: 'task-1', assignmentId: 'as1', status: 'complete', completedAt: 1700000000000, fileId: null, lastRemindedAt: null, assignedAt: 0 },
+        { taskId: 'task-2', assignmentId: 'as2', status: 'complete', completedAt: 1700000000000, fileId: null, lastRemindedAt: null, assignedAt: 0 },
       ],
     },
     {
@@ -30,8 +30,8 @@ const GRID: OnboardingGridResponse = {
       // "Response" only appears once the cell is complete.
       contact: { id: 'ct2', name: 'Grace Hopper', email: 'grace@example.com', company: 'Navy', hasAccount: false , participantId: 'p-ct2', submissionId: 'sub-ct2', inviteStatus: 'accepted' },
       cells: [
-        { taskId: 'task-1', assignmentId: 'as3', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null },
-        { taskId: 'task-2', assignmentId: 'as4', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null },
+        { taskId: 'task-1', assignmentId: 'as3', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt: 0 },
+        { taskId: 'task-2', assignmentId: 'as4', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt: 0 },
       ],
     },
   ],
@@ -80,11 +80,11 @@ describe('OnboardingGrid: DEC-730 one status-control family', () => {
       rows: [
         {
           contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true , participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
-          cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'complete', completedAt: now, fileId: null, lastRemindedAt: null }],
+          cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'complete', completedAt: now, fileId: null, lastRemindedAt: null, assignedAt: 0 }],
         },
         {
           contact: { id: 'ct2', name: 'Grace Hopper', email: 'grace@example.com', company: 'Navy', hasAccount: false , participantId: 'p-ct2', submissionId: 'sub-ct2', inviteStatus: 'accepted' },
-          cells: [{ taskId: 'task-1', assignmentId: 'as2', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null }],
+          cells: [{ taskId: 'task-1', assignmentId: 'as2', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt: 0 }],
         },
       ],
       total: 2,

@@ -1,13 +1,19 @@
+import { effectiveAssignmentDueDate } from '../../../../src/domain/task-due';
 import type { OnboardingCell, OnboardingTask } from './types';
 
 /**
  * A cell is overdue when its task has a due date in the past, the assignment
- * is not yet complete. Tasks without a due date are never overdue.
+ * is not yet complete. Tasks without a due date are never overdue. DEC-801:
+ * lateness is judged against the assignment's EFFECTIVE due date (never the
+ * raw task.dueDate), so a task assigned after its own due date isn't
+ * overdue on arrival.
  */
 export function isCellOverdue(cell: OnboardingCell, task: OnboardingTask | undefined, now: number): boolean {
-  if (!task || task.dueDate === null) return false;
+  if (!task) return false;
+  const effectiveDueDate = effectiveAssignmentDueDate(task.dueDate, cell.assignedAt);
+  if (effectiveDueDate === null) return false;
   if (cell.status === 'complete') return false;
-  return task.dueDate < now;
+  return effectiveDueDate < now;
 }
 
 /**

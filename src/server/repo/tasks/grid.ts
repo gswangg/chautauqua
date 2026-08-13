@@ -9,6 +9,7 @@ import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
 import { likeContains } from "../like";
 import { acceptedSpeakerConditions, acceptedSpeakerExistsForContact, overdueAssignmentConditions } from "./crud";
+import { ASSIGNED_LATE_GRACE_DAYS } from "../../../domain/task-due";
 
 // DEC-789 closed set (mirrors the participant.invite_status column comment
 // in db/schema.ts and the app/src/pages/speakers/types.ts InviteStatus type
@@ -30,6 +31,10 @@ export interface GridCell {
   completedAt: number | null;
   fileId: string | null;
   lastRemindedAt: number | null;
+  // DEC-801: when this assignment was created — the SPA's overdue.ts feeds
+  // this and the task's dueDate through effectiveAssignmentDueDate so the
+  // badge/cell can't judge a task late before it was assigned.
+  assignedAt: number;
 }
 
 export interface GridRow {
@@ -104,8 +109,14 @@ function onboardingMatchExists(
   if (taskId) inner.push(sql`${schema.taskAssignment.taskId} = ${taskId}`);
   if (status) inner.push(sql`${schema.taskAssignment.status} = ${status}`);
   if (overdueOnly) {
+    // DEC-801: the same effective-due-date computation as
+    // overdueAssignmentConditions in ./crud (this file's counts.overdue),
+    // so the overdueOnly row filter and the count it filters against can
+    // never disagree.
+    const graceMs = ASSIGNED_LATE_GRACE_DAYS * 24 * 60 * 60 * 1000;
+    const effectiveDueDate = sql`(case when ${schema.task.dueDate} >= ${schema.taskAssignment.createdAt} then ${schema.task.dueDate} else ${schema.taskAssignment.createdAt} + ${graceMs} end)`;
     inner.push(
-      sql`${schema.task.dueDate} is not null and ${schema.taskAssignment.status} <> 'complete' and ${schema.task.dueDate} < ${now}`,
+      sql`${schema.task.dueDate} is not null and ${schema.taskAssignment.status} <> 'complete' and ${effectiveDueDate} < ${now}`,
     );
   }
   const innerWhere = sql.join(inner, sql` and `);
@@ -266,6 +277,7 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
           fileId: schema.taskAssignment.fileId,
           lastRemindedAt: schema.taskAssignment.lastRemindedAt,
           contactId: schema.taskAssignment.contactId,
+          createdAt: schema.taskAssignment.createdAt,
         })
         .from(schema.taskAssignment)
         .where(and(inArray(schema.taskAssignment.contactId, batch), inArray(schema.taskAssignment.taskId, taskIds)));
@@ -279,6 +291,7 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
           completedAt: r.completedAt ? r.completedAt.getTime() : null,
           fileId: r.fileId,
           lastRemindedAt: r.lastRemindedAt ? r.lastRemindedAt.getTime() : null,
+          assignedAt: r.createdAt.getTime(),
         });
       }
     }

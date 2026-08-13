@@ -42,6 +42,7 @@ interface OutstandingRowShape {
   eventId: string;
   eventName: string;
   timezone: string;
+  assignmentCreatedAt: Date;
 }
 
 function fakeDb(rows: OutstandingRowShape[]): { db: Db; updateCalls: unknown[] } {
@@ -105,6 +106,7 @@ describe("reminder email due dates (DEC-522: formatCalendarDate per-task, no agg
         eventId: "event_1",
         eventName: "DevFlow Conf 2027",
         timezone: "America/Los_Angeles",
+        assignmentCreatedAt: new Date(0),
       },
     ];
     const { db } = fakeDb(rows);
@@ -136,6 +138,7 @@ describe("reminder email due dates (DEC-522: formatCalendarDate per-task, no agg
         eventId: "event_1",
         eventName: "DevFlow Conf 2027",
         timezone: "America/Los_Angeles",
+        assignmentCreatedAt: new Date(0),
       },
       {
         assignmentId: "assign_b",
@@ -151,6 +154,7 @@ describe("reminder email due dates (DEC-522: formatCalendarDate per-task, no agg
         eventId: "event_1",
         eventName: "DevFlow Conf 2027",
         timezone: "America/Los_Angeles",
+        assignmentCreatedAt: new Date(0),
       },
     ];
     const { db } = fakeDb(rows);
@@ -181,6 +185,7 @@ describe("reminder email due dates (DEC-522: formatCalendarDate per-task, no agg
         eventId: "event_1",
         eventName: "DevFlow Conf 2027",
         timezone: "America/Los_Angeles",
+        assignmentCreatedAt: new Date(0),
       },
     ];
     const { db } = fakeDb(rows);

@@ -173,8 +173,13 @@ function contactRow(id: string, email: string) {
   return { id, firstName: "First", lastName: id, email };
 }
 
+// DEC-801: this fakeDb's mergeCtx spreads raw joined-table rows verbatim
+// (ignores the select() alias map — see makeChain/then above), so a field
+// the app reads via a SELECT alias (like listOutstandingForEvent's
+// `assignmentCreatedAt: schema.taskAssignment.createdAt`) only resolves
+// here if the fixture literally carries that alias's key name.
 function assignmentRow(id: string, taskId: string, contactId: string) {
-  return { id, taskId, contactId, status: "pending", lastRemindedAt: null };
+  return { id, taskId, contactId, status: "pending", lastRemindedAt: null, assignmentCreatedAt: new Date(0) };
 }
 
 function seed() {
