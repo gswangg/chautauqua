@@ -4,11 +4,12 @@
 // Submissions.render.test.tsx. DEC-743: content approval left this page for
 // the content screen -- see the 'Review the content' link tests below.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { SubmissionDetailPage } from './SubmissionDetailPage';
 import { mockApi, errorEnvelope } from '../../test-utils/mockApi';
+import { PARTICIPANT_ROLE_OPTIONS } from '../../../../src/domain/participant-roles';
 
 const SUB_ID = 'sub-render-1';
 
@@ -271,8 +272,11 @@ describe('SubmissionDetailPage render: Reviews section + segmented decision butt
     expect(pendingBtn).toHaveClass('chq-btn-primary');
     expect(acceptedBtn).toHaveClass('chq-btn-secondary');
     expect(declinedBtn).toHaveClass('chq-btn-secondary');
-    // No native <select> for status any more.
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    // No native <select> for status any more (scoped to the decision
+    // panel -- the Participants section's own role <select>, DEC-784, is
+    // unrelated and legitimately present elsewhere on the page).
+    const decisionStatusGroup = screen.getByRole('group', { name: 'Status' });
+    expect(within(decisionStatusGroup).queryByRole('combobox')).not.toBeInTheDocument();
   });
 });
 
@@ -635,5 +639,109 @@ describe('SubmissionDetailPage render: awaiting-triage banner (DEC-761)', () => 
     await waitFor(() => {
       expect(screen.getByText(/Awaiting triage/)).toBeInTheDocument();
     });
+  });
+});
+
+// DEC-784 (+ server half of DEC-789): the co-presenter picker offers
+// exactly the imported PARTICIPANT_ROLE_OPTIONS vocabulary, defaults to its
+// first option, sends the chosen role in the POST body, and renders an
+// existing participant's role through participantRoleLabel (never the raw
+// stored value).
+describe('SubmissionDetailPage render: co-presenter role picker (DEC-784)', () => {
+  it('offers exactly the imported role vocabulary, defaults to the first option, and carries the selection in the POST body', async () => {
+    const detail = baseDetail();
+    const createdParticipant = {
+      id: 'p-new',
+      contactId: 'c-2',
+      name: 'Riley Contact',
+      email: 'riley@example.com',
+      title: null,
+      company: null,
+      role: 'moderator',
+      order: 0,
+      visible: false,
+      inviteStatus: 'invited',
+    };
+    const postMock = vi.fn(() => createdParticipant);
+    const fetchMock = mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/contacts`]: {
+        items: [{ id: 'c-2', firstName: 'Riley', lastName: 'Contact', email: 'riley@example.com' }],
+        total: 1,
+        page: 1,
+        perPage: 20,
+      },
+      [`POST /api/v1/submissions/${SUB_ID}/participants`]: postMock,
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Original description')).toBeInTheDocument();
+    });
+
+    const roleSelect = screen.getByLabelText('Role') as HTMLSelectElement;
+    const optionValues = Array.from(roleSelect.options).map((o) => o.value);
+    expect(optionValues).toEqual(PARTICIPANT_ROLE_OPTIONS.map((opt) => opt.value));
+    expect(roleSelect.value).toBe(PARTICIPANT_ROLE_OPTIONS[0]!.value);
+
+    fireEvent.change(roleSelect, { target: { value: 'moderator' } });
+
+    fireEvent.change(screen.getByLabelText('Search contacts'), { target: { value: 'Riley' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Riley Contact (riley@example.com)')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    await waitFor(() => {
+      expect(postMock).toHaveBeenCalled();
+    });
+    const postCall = fetchMock.mock.calls.find(([input, init]) => {
+      const url = typeof input === 'string' ? input : (input as Request | URL).toString();
+      return url.includes(`/submissions/${SUB_ID}/participants`) && init?.method === 'POST';
+    })!;
+    expect(JSON.parse(postCall[1]!.body as string)).toEqual({ contactId: 'c-2', role: 'moderator' });
+  });
+
+  it('renders a participant role through participantRoleLabel, never the raw stored value', async () => {
+    const detail = baseDetail({
+      participants: [
+        {
+          id: 'p1',
+          contactId: 'c1',
+          name: 'Jamie Speaker',
+          email: 'jamie@example.com',
+          title: null,
+          company: null,
+          role: 'co-presenter',
+          order: 0,
+          visible: true,
+          inviteStatus: 'accepted',
+        },
+      ],
+    });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Jamie Speaker').length).toBeGreaterThan(0);
+    });
+    const table = document.querySelector('.chq-participants-table') as HTMLElement;
+    expect(within(table).getByText('Co-presenter')).toBeInTheDocument();
+    expect(within(table).queryByText('co-presenter')).not.toBeInTheDocument();
   });
 });

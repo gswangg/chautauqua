@@ -33,8 +33,10 @@ import {
   getParticipantOwnership,
   getParticipantRow,
   inviteParticipant,
+  setParticipantInviteStatus,
   setParticipantVisible,
 } from "../../server/repo/participants";
+import { PARTICIPANT_ROLE_OPTIONS } from "../../domain/participant-roles";
 import { findContactForOrg } from "../../server/repo/contacts";
 import { resolveActorName } from "../../server/repo/users";
 import { appendSubmissionRevision, countRevisions, getRevision, listRevisions } from "../../server/repo/revisions";
@@ -404,6 +406,12 @@ submissionsRoutes.post("/submissions/:id/participants", requireOrganizer, csrfJs
     throw new ApiError("invalid", "contactId is required", { contactId: "Required" });
   }
   const role = typeof body.role === "string" && body.role.trim() ? body.role.trim() : undefined;
+  // DEC-784: role is validated against the same imported vocabulary the
+  // speaker-portal picker offers -- an unknown value is a loud field error,
+  // never silently defaulted to 'speaker'.
+  if (role !== undefined && !PARTICIPANT_ROLE_OPTIONS.some((opt) => opt.value === role)) {
+    throw new ApiError("invalid", "Unknown participant role", { role: "Invalid role" });
+  }
 
   const contact = await findContactForOrg(c.var.db, contactId, auth.orgId);
   if (!contact) {
@@ -442,7 +450,12 @@ submissionsRoutes.post("/submissions/:id/participants", requireOrganizer, csrfJs
 
 interface ParticipantVisibilityBody {
   visible?: unknown;
+  inviteStatus?: unknown;
 }
+
+// DEC-789 write half: the closed invite-status vocabulary the roster UI
+// (task w3-h) reads from and writes back through this same PATCH.
+const INVITE_STATUS_VALUES = new Set(["none", "invited", "accepted", "declined"]);
 
 // PATCH /api/v1/submissions/:id/participants/:participantId — toggle a
 // participant's public visibility. (w12-c PLANNER item #2: previously
@@ -465,11 +478,26 @@ submissionsRoutes.patch(
     }
 
     const body = (await c.req.json().catch(() => ({}))) as ParticipantVisibilityBody;
-    if (typeof body.visible !== "boolean") {
-      throw new ApiError("invalid", "visible must be a boolean", { visible: "Required" });
+    if (body.visible === undefined && body.inviteStatus === undefined) {
+      throw new ApiError("invalid", "visible or inviteStatus is required", { visible: "Required" });
     }
-
-    await setParticipantVisible(c.var.db, participantId, body.visible);
+    if (body.visible !== undefined) {
+      if (typeof body.visible !== "boolean") {
+        throw new ApiError("invalid", "visible must be a boolean", { visible: "Required" });
+      }
+      await setParticipantVisible(c.var.db, participantId, body.visible);
+    }
+    if (body.inviteStatus !== undefined) {
+      // DEC-789: organizer-only write against the closed
+      // none|invited|accepted|declined set -- an unknown value is a loud
+      // 400, never silently coerced or dropped.
+      if (typeof body.inviteStatus !== "string" || !INVITE_STATUS_VALUES.has(body.inviteStatus)) {
+        throw new ApiError("invalid", "inviteStatus must be one of none|invited|accepted|declined", {
+          inviteStatus: "Invalid invite status",
+        });
+      }
+      await setParticipantInviteStatus(c.var.db, participantId, body.inviteStatus);
+    }
     const row = await getParticipantRow(c.var.db, participantId);
     return c.json(row);
   },

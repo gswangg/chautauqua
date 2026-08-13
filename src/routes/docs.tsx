@@ -80,7 +80,7 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       {
         method: "PATCH",
         path: "/api/v1/submissions/:id/participants/:participantId",
-        role: "organizer (toggle visible)",
+        role: "organizer (toggle visible, set inviteStatus)",
       },
       { method: "GET", path: "/api/v1/submissions/:id/revisions", role: "organizer" },
       {

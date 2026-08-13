@@ -230,6 +230,25 @@ describe("POST /api/v1/submissions/:id/participants (DEC-070 invite)", () => {
     expect(res.status).toBe(403);
     expect(inserts).toHaveLength(0);
   });
+
+  // DEC-784: role is validated against PARTICIPANT_ROLE_OPTIONS -- an
+  // unknown value is a loud field error, never a silent default.
+  it("rejects an unknown role with ApiError('invalid', fields.role) and writes nothing", async () => {
+    // Role is validated before the contact lookup, so only the ownership
+    // select is ever queued.
+    const { db, inserts } = fakeDb([[SUBMISSION_ORG_A]]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("/api/v1/submissions/sub-1/participants", { contactId: "contact-1", role: "wizard" }),
+    );
+
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as any;
+    expect(json.error.code).toBe("invalid");
+    expect(json.error.fields.role).toBeTruthy();
+    expect(inserts).toHaveLength(0);
+  });
 });
 
 describe("PATCH /api/v1/submissions/:id/participants/:participantId (DEC-070 visibility toggle)", () => {
@@ -313,6 +332,42 @@ describe("PATCH /api/v1/submissions/:id/participants/:participantId (DEC-070 vis
     const res = await app.request(patchRequest("/api/v1/submissions/sub-1/participants/p1", { visible: false }));
 
     expect(res.status).toBe(403);
+    expect(updates).toHaveLength(0);
+  });
+
+  // DEC-789 write half: organizer-only write against the closed
+  // none|invited|accepted|declined set, same authz as the visible write.
+  it("accepts inviteStatus from the closed set, bumps updatedAt via the same write path", async () => {
+    const { db, updates } = fakeDb([
+      [SUBMISSION_ORG_A], // getSubmissionOwnership
+      [PARTICIPANT_SCOPE], // getParticipantOwnership
+      [{ ...PARTICIPANT_ROW_AFTER, visible: true, inviteStatus: "accepted" }], // getParticipantRow reread
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      patchRequest("/api/v1/submissions/sub-1/participants/p1", { inviteStatus: "accepted" }),
+    );
+
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as any;
+    expect(json.inviteStatus).toBe("accepted");
+    expect(updates).toHaveLength(1);
+    expect((updates[0] as any).inviteStatus).toBe("accepted");
+  });
+
+  it("rejects an inviteStatus outside the closed set with a loud 400 and writes nothing", async () => {
+    const { db, updates } = fakeDb([[SUBMISSION_ORG_A], [PARTICIPANT_SCOPE]]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      patchRequest("/api/v1/submissions/sub-1/participants/p1", { inviteStatus: "maybe" }),
+    );
+
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as any;
+    expect(json.error.code).toBe("invalid");
+    expect(json.error.fields.inviteStatus).toBeTruthy();
     expect(updates).toHaveLength(0);
   });
 });
