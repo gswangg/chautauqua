@@ -371,7 +371,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
       step: 'select',
       title: 'Recipients',
       detail:
-        selectedIds.size === 0 ? 'None selected yet' : `${selectedIds.size} submission${selectedIds.size === 1 ? '' : 's'} selected`,
+        selectedIds.size === 0 ? 'None selected yet' : `${countOf(selectedIds.size, 'submission')} selected`,
     },
     {
       step: 'template',
@@ -526,7 +526,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             disabled={selectedIds.size === 0}
             onClick={() => setStep('template')}
           >
-            Next: choose template ({selectedIds.size} submission{selectedIds.size === 1 ? '' : 's'} selected)
+            Next: choose template ({countOf(selectedIds.size, 'submission')} selected)
           </button>
         </section>
       )}
@@ -760,7 +760,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                 disabled={busy || icsUnscheduledIds !== null}
                 onClick={() => setConfirmingSend(true)}
               >
-                Send {preview.length} email{preview.length === 1 ? '' : 's'}
+                Send {countOf(preview.length, 'email')}
               </button>
               <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setStep('template')}>
                 Back to the template

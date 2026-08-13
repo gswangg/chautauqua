@@ -37,29 +37,13 @@ describe('countOf', () => {
   });
 });
 
-// DEC-925: guard against a seventh hand-copied `? '' : 's'` ternary being
+// DEC-925/DEC-987: guard against a hand-copied `? '' : 's'` ternary being
 // written anywhere under app/src. plural.ts (and this test) are the one
-// allowed home for the literal string, since they document/verify it.
+// allowed home for the literal string, since they document/verify it. No
+// legacy allowlist: every consumer converted to plural()/countOf() (w32-e).
 describe('no hand-copied pluralization ternaries outside plural.ts', () => {
   const APP_SRC = join(__dirname, '..');
   const ALLOWLIST = new Set(['lib/plural.ts', 'lib/plural.test.ts']);
-  // Pre-existing offenders as of DEC-925 (w22-h): out of this task's scope
-  // (owned by other files/tasks) but flagged for a follow-up conversion.
-  const LEGACY_ALLOWLIST = new Set([
-    'pages/forms/FieldList.tsx',
-    'pages/settings/EventSettingsPanel.tsx',
-    'pages/settings/ResourcesPanel.tsx',
-    'pages/settings/PortalSettingsPanel.tsx',
-    'pages/contacts/AddToEventModal.tsx',
-    'pages/speakers/OnboardingGrid.tsx',
-    'pages/comms/ComposeWizard.tsx',
-    'pages/content/DeliverableDetail.tsx',
-    'pages/review/ReviewerQueue.tsx',
-    'pages/review/PlanEditor.tsx',
-    'pages/submissions/SubmissionDetailPage.tsx',
-    'pages/agenda/ConflictChip.tsx',
-    'pages/agenda/DayGrid.tsx',
-  ]);
 
   function walk(dir: string): string[] {
     const out: string[] = [];
@@ -76,7 +60,7 @@ describe('no hand-copied pluralization ternaries outside plural.ts', () => {
     const offenders: string[] = [];
     for (const file of walk(APP_SRC)) {
       const rel = relative(APP_SRC, file);
-      if (ALLOWLIST.has(rel) || LEGACY_ALLOWLIST.has(rel)) continue;
+      if (ALLOWLIST.has(rel)) continue;
       const contents = readFileSync(file, 'utf8');
       if (contents.includes("? '' : 's'")) offenders.push(rel);
     }

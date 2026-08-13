@@ -42,6 +42,7 @@ import { findContactsForOrg } from "../server/repo/contacts";
 import { clampPage, clampPerPage, DEFAULT_PER_PAGE } from "../lib/pagination";
 import { resolveBaseUrl, resolveBaseUrlForCron } from "../server/origin";
 import type { KVStore } from "../auth/claim";
+import { countOf } from "../domain/count-copy";
 
 // DEC-120: task-assign contact org-scoping is referenced below so this
 // dependency is compile-checked (see decisions.ts).
@@ -541,7 +542,7 @@ export async function runDueReminders(env: Bindings): Promise<void> {
   }
   if (failedEventIds.length > 0) {
     throw new Error(
-      `runDueReminders: ${failedEventIds.length} event(s) failed: ${failedEventIds.join(", ")}`,
+      `runDueReminders: ${countOf(failedEventIds.length, "event")} failed: ${failedEventIds.join(", ")}`,
     );
   }
 }

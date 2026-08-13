@@ -314,7 +314,7 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
         .slice(0, 5)
         .map((s) => `${contact.firstName} ${contact.lastName} is a speaker on ${s.ref} "${s.title}" (${s.eventName})`)
         .join("; ");
-      const extra = refs.more.submissions > 0 ? ` and ${refs.more.submissions} more submission${refs.more.submissions === 1 ? "" : "s"}` : "";
+      const extra = refs.more.submissions > 0 ? ` and ${refs.more.submissions} more ${plural(refs.more.submissions, "submission")}` : "";
       parts.push(`${named}${extra}`);
     }
     if (refs.userAccounts.length > 0) {

@@ -36,11 +36,11 @@ function glob(dir: string): string[] {
 
 const files = [...glob(join(REPO_ROOT, "src")), ...glob(join(REPO_ROOT, "app/src"))];
 
-// src/routes/tasks.ts:544's `${failedEventIds.length} event(s) failed` is an
-// internal cron Error() message (a log/throw, not copy a person reads) --
-// explicitly left alone per this task's instructions rather than routed
-// through count-copy.
-const EXCEPTIONS = new Set([join(REPO_ROOT, "src/routes/tasks.ts")]);
+// w32-e: src/routes/tasks.ts's cron Error() message and src/routes/dev/
+// mailbox.tsx's page caption (previously invisible to this scan -- its glob
+// skips dev/) were both converted to countOf() rather than allowlisted; see
+// test/plural-scan.test.ts for the src/-only mirror that does not skip dev/.
+const EXCEPTIONS = new Set<string>([]);
 
 interface Violation {
   file: string;

@@ -23,6 +23,7 @@ import { apiGet, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { ResourcesPanel } from './ResourcesPanel';
 import { SummarySection } from './SummarySection';
+import { countOf } from '../../lib/plural';
 
 const SECTION_KEY = 'portal';
 
@@ -83,7 +84,7 @@ export function PortalSettingsPanel() {
       value: !welcomeLoaded ? (
         <DelayedLoading />
       ) : (
-        `Shown above the task list · ${paragraphs} paragraph${paragraphs === 1 ? '' : 's'}`
+        `Shown above the task list · ${countOf(paragraphs, 'paragraph')}`
       ),
     },
     {
@@ -107,7 +108,7 @@ export function PortalSettingsPanel() {
         taskCount === null ? (
           <DelayedLoading />
         ) : (
-          `${taskCount} task${taskCount === 1 ? '' : 's'} · created when a submission is accepted`
+          `${countOf(taskCount, 'task')} · created when a submission is accepted`
         ),
     },
     { label: 'Resources', value: 'Wiki pages and files speakers can access from their portal' },

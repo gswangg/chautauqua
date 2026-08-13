@@ -13,6 +13,7 @@ import { apiDelete, apiList, apiPatch, apiPost, apiUpload, ApiError } from '../.
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { validateResourceForm, type ResourceForm, type ResourceFormErrors } from './formState';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { countOf } from '../../lib/plural';
 
 interface Resource {
   id: string;
@@ -33,8 +34,7 @@ function wordCount(text: string | null): number {
 /** Read-row detail string: a wiki page's SIZE, never its body; a file's kind. */
 function resourceDetail(resource: Resource): string {
   if (resource.kind === 'file') return 'File';
-  const count = wordCount(resource.content);
-  return `${count} word${count === 1 ? '' : 's'}`;
+  return countOf(wordCount(resource.content), 'word');
 }
 
 export function ResourcesPanel() {

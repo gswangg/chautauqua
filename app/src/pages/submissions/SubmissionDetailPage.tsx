@@ -987,7 +987,7 @@ export function SubmissionDetailPage() {
                 {decidedStatus === null ? (
                   <>
                     <p className="chq-detail-triage-label">
-                      Awaiting triage{triageDays !== null ? ` · ${triageDays} day${triageDays === 1 ? '' : 's'}` : ''}
+                      Awaiting triage{triageDays !== null ? ` · ${countOf(triageDays, 'day')}` : ''}
                     </p>
                     <button
                       type="button"
