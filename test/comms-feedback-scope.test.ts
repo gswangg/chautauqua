@@ -148,6 +148,7 @@ describe("buildRenderTargets only renders the composing plan+round's feedback (D
     const feedbackDb = makeScopedFeedbackDb(rows);
     const emptyChain: any = {
       from: () => emptyChain,
+      innerJoin: () => emptyChain,
       where: () => emptyChain,
       limit: () => emptyChain,
       then: (resolve: (v: unknown[]) => void) => resolve([]),

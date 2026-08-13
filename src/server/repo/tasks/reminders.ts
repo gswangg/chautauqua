@@ -11,8 +11,7 @@ import { newId } from "../../../domain/ids";
 import type { Mailer } from "../../../mail/types";
 import { renderTemplate, textToHtml } from "../../../mail/render";
 import type { ReminderAssignment } from "../../../domain/reminders";
-import { capReminderGroups, planManualReminders, planReminders } from "../../../domain/reminders";
-import { formatCalendarDate } from "../../../lib/event-time";
+import { capReminderGroups, formatTaskLines, planManualReminders, planReminders } from "../../../domain/reminders";
 import type { KVStore } from "../../../auth/claim";
 import { resolvePortalLink } from "../portal-link";
 import { findAccountUserIds } from "../comms";
@@ -36,7 +35,7 @@ interface OutstandingRow {
 /** One joined query for every non-complete assignment in the event (or
  * across taskIds, when provided), carrying everything a reminder email
  * needs — no N+1. */
-async function listOutstandingForEvent(
+export async function listOutstandingForEvent(
   db: Db,
   eventId: string,
   taskIds?: string[],
@@ -97,28 +96,10 @@ export function buildReminderMessage(
   const header = renderTemplate("You have outstanding tasks for {event_name}:", {
     event_name: eventName,
   });
-  // DEC-564: render in a fixed order so a preview and the send it previewed
-  // (and two sends of the same group) are byte-identical regardless of the
-  // caller's array order — dueDate ascending with null (no due date) last,
-  // then taskTitle ascending, then assignmentId ascending as the final
-  // tiebreak of record.
-  const sortedAssignments = [...assignments].sort((a, b) => {
-    if (a.dueDate !== b.dueDate) {
-      if (a.dueDate === null) return 1;
-      if (b.dueDate === null) return -1;
-      return a.dueDate - b.dueDate;
-    }
-    if (a.taskTitle !== b.taskTitle) return a.taskTitle.localeCompare(b.taskTitle);
-    return a.assignmentId.localeCompare(b.assignmentId);
-  });
-  const taskLines = sortedAssignments.map((a) => {
-    if (a.dueDate === null) return `- ${a.taskTitle} — No due date`;
-    // DEC-522: dueDate is a day label (UTC-midnight), not an instant — it
-    // renders as the same calendar day for every reader regardless of the
-    // event's timezone, so eventTimezone is unused here (kept in the
-    // signature; still used by callers for other purposes).
-    return `- ${a.taskTitle} — due ${formatCalendarDate(a.dueDate)}`;
-  });
+  // DEC-564/DEC-792: shared task-line renderer — eventTimezone is unused
+  // here (dueDate is a DEC-522 calendar day, not an instant); kept in the
+  // signature since callers still use it for other purposes.
+  const taskLines = formatTaskLines(assignments);
   // DEC-559: append the portal link through the same renderTemplate
   // '{portal_link}' idiom the CFP confirmation email uses (submit.tsx).
   const footer = renderTemplate("{portal_link}", { portal_link: portalLink });

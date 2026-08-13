@@ -4,11 +4,18 @@ import {
   expandRecipients,
   formatFeedback,
   MAX_COMPOSE_RECIPIENTS,
+  NO_DUE_DATE_TEXT,
   NO_FEEDBACK_TEXT,
+  NO_TASKS_TEXT,
   preflightRender,
   type ComposeSubmission,
   type RenderTarget,
 } from "../src/domain/compose";
+
+// DEC-792: buildMergeVars now always requires taskList/dueDate — these
+// tests are scoped to feedback behavior, so pass fixed placeholder values.
+const TASK_LIST = "- Submit slides — due Mon, 01 Mar 2027";
+const DUE_DATE = "Mon, 01 Mar 2027";
 
 function participant(contactId: string, email = `${contactId}@example.com`) {
   return { contactId, firstName: "Ada", lastName: "Lovelace", email };
@@ -84,6 +91,8 @@ describe("buildMergeVars", () => {
       eventName: "DevCon",
       portalLink: "https://example.com/portal",
       feedbackComments: ["Loved it"],
+      taskList: TASK_LIST,
+      dueDate: DUE_DATE,
     });
     expect(vars).toEqual({
       speaker_name: "Ada Lovelace",
@@ -91,6 +100,8 @@ describe("buildMergeVars", () => {
       event_name: "DevCon",
       portal_link: "https://example.com/portal",
       feedback: "Reviewer 1: Loved it",
+      task_list: TASK_LIST,
+      due_date: DUE_DATE,
     });
   });
 
@@ -101,6 +112,8 @@ describe("buildMergeVars", () => {
       eventName: "DevCon",
       portalLink: "/portal",
       feedbackComments: [],
+      taskList: TASK_LIST,
+      dueDate: DUE_DATE,
     });
     expect(vars.feedback).toBe(NO_FEEDBACK_TEXT);
   });
@@ -112,12 +125,16 @@ describe("buildMergeVars", () => {
       eventName: "DevCon",
       portalLink: "/portal",
       feedbackComments: null,
+      taskList: TASK_LIST,
+      dueDate: DUE_DATE,
     });
     expect(vars).toEqual({
       speaker_name: "Ada",
       talk_title: "Title",
       event_name: "DevCon",
       portal_link: "/portal",
+      task_list: TASK_LIST,
+      due_date: DUE_DATE,
     });
     expect("feedback" in vars).toBe(false);
   });
@@ -185,5 +202,56 @@ describe("preflightRender", () => {
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("expected rejection");
     expect(result.missing).toEqual([{ contactId: "ct_1", submissionId: "sub_1", field: "feedback" }]);
+  });
+
+  // DEC-792: growing the COMPOSE_MERGE_FIELDS vocabulary to close the
+  // seeded-template landmine — a Content-Reminder-shaped template ({task_list}
+  // / {due_date}) must preflight clean for a recipient WITH outstanding tasks
+  // and for one with NONE (buildMergeVars always sets both keys).
+  describe("DEC-792: a Content-Reminder-shaped {task_list}/{due_date} template", () => {
+    const reminderSubject = "Reminder: {task_list} due {due_date}";
+    const reminderBody =
+      "Hi {speaker_name}, this is a friendly reminder that the following onboarding tasks are due " +
+      "{due_date}: {task_list}. Please complete them via the speaker portal: {portal_link}. Thanks!";
+
+    it("preflights clean for a recipient with outstanding tasks", () => {
+      const vars = buildMergeVars({
+        speakerName: "Ada Lovelace",
+        talkTitle: "On Engines",
+        eventName: "DevCon",
+        portalLink: "https://example.com/portal",
+        feedbackComments: null,
+        taskList: "- Submit slides — due Mon, 01 Mar 2027",
+        dueDate: "Mon, 01 Mar 2027",
+      });
+      const result = preflightRender(
+        [target({ vars })],
+        reminderSubject,
+        reminderBody,
+      );
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error("expected ok");
+      expect(result.rendered[0]?.subject).toBe("Reminder: - Submit slides — due Mon, 01 Mar 2027 due Mon, 01 Mar 2027");
+    });
+
+    it("preflights clean for a recipient with zero outstanding tasks (NO_TASKS_TEXT/NO_DUE_DATE_TEXT)", () => {
+      const vars = buildMergeVars({
+        speakerName: "Ada Lovelace",
+        talkTitle: "On Engines",
+        eventName: "DevCon",
+        portalLink: "https://example.com/portal",
+        feedbackComments: null,
+        taskList: NO_TASKS_TEXT,
+        dueDate: NO_DUE_DATE_TEXT,
+      });
+      const result = preflightRender(
+        [target({ vars })],
+        reminderSubject,
+        reminderBody,
+      );
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error("expected ok");
+      expect(result.rendered[0]?.subject).toBe(`Reminder: ${NO_TASKS_TEXT} due ${NO_DUE_DATE_TEXT}`);
+    });
   });
 });

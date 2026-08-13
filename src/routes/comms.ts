@@ -20,8 +20,13 @@ import {
   expandRecipients,
   preflightRender,
   MAX_COMPOSE_RECIPIENTS,
+  NO_DUE_DATE_TEXT,
+  NO_TASKS_TEXT,
   type ComposeSubmission,
 } from "../domain/compose";
+import { formatTaskLines, type ReminderAssignment } from "../domain/reminders";
+import { listOutstandingForEvent } from "../server/repo/tasks/reminders";
+import { formatCalendarDate } from "../lib/event-time";
 import { DEC_122, DEC_252, DEC_766 } from "../decisions";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { resolveBaseUrl } from "../server/origin";
@@ -358,6 +363,27 @@ export async function buildRenderTargets(
     expanded.recipients.map((r) => ({ contactId: r.contactId, email: r.email })),
   );
 
+  // DEC-792/DEC-530: one batched outstanding-task query for the whole
+  // expanded recipient set (never per-recipient), grouped by contactId, so
+  // the {task_list}/{due_date} merge fields cost one extra round trip
+  // regardless of recipient count.
+  const contactIds = [...new Set(expanded.recipients.map((r) => r.contactId))];
+  const outstandingRows = await listOutstandingForEvent(c.var.db, event.id, undefined, contactIds);
+  const outstandingByContact = new Map<string, ReminderAssignment[]>();
+  for (const row of outstandingRows) {
+    const arr = outstandingByContact.get(row.contactId) ?? [];
+    arr.push({
+      assignmentId: row.assignmentId,
+      contactId: row.contactId,
+      status: row.status,
+      dueDate: row.dueDate ? row.dueDate.getTime() : null,
+      lastRemindedAt: row.lastRemindedAt ? row.lastRemindedAt.getTime() : null,
+      taskId: row.taskId,
+      taskTitle: row.taskTitle,
+    });
+    outstandingByContact.set(row.contactId, arr);
+  }
+
   const targets = [];
   for (const recipient of expanded.recipients) {
     const submission = submissionById.get(recipient.submissionId);
@@ -365,12 +391,24 @@ export async function buildRenderTargets(
     const feedbackComments = feedback ? feedbackMap.get(recipient.submissionId) ?? [] : null;
     const userId = accountMap.get(recipient.contactId) ?? null;
     const portalLink = await resolvePortalLink(kv, recipient.contactId, event.id, userId, origin, mintClaimTokens);
+
+    const assignments = outstandingByContact.get(recipient.contactId) ?? [];
+    const taskList = assignments.length > 0 ? formatTaskLines(assignments).join("\n") : NO_TASKS_TEXT;
+    const earliestDue = assignments.reduce<number | null>((min, a) => {
+      if (a.dueDate === null) return min;
+      if (min === null || a.dueDate < min) return a.dueDate;
+      return min;
+    }, null);
+    const dueDate = earliestDue !== null ? formatCalendarDate(earliestDue) : NO_DUE_DATE_TEXT;
+
     const vars = buildMergeVars({
       speakerName: recipient.name,
       talkTitle: submission.title,
       eventName: event.name,
       portalLink,
       feedbackComments,
+      taskList,
+      dueDate,
     });
     targets.push({
       contactId: recipient.contactId,

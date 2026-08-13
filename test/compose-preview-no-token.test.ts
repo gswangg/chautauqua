@@ -60,6 +60,19 @@ vi.mock("../src/server/repo/comms", async () => {
   };
 });
 
+// DEC-792: stub the batched outstanding-task lookup so this claim-token
+// suite doesn't need a real db for buildRenderTargets's {task_list}/
+// {due_date} vars.
+vi.mock("../src/server/repo/tasks/reminders", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/tasks/reminders")>(
+    "../src/server/repo/tasks/reminders",
+  );
+  return {
+    ...actual,
+    listOutstandingForEvent: vi.fn(async () => []),
+  };
+});
+
 // DEC-397: delegate to the real createClaimToken (which does call kv.put)
 // rather than a canned return value, so puts are actually observable.
 vi.mock("../src/auth/claim", async () => {

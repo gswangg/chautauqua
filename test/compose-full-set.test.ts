@@ -74,6 +74,19 @@ vi.mock("../src/server/repo/comms", async () => {
   };
 });
 
+// DEC-792: buildRenderTargets now batches an outstanding-task lookup for
+// {task_list}/{due_date} — stub it to zero outstanding tasks so these tests
+// (unrelated to reminders) stay focused on DEC-122 full-match behavior.
+vi.mock("../src/server/repo/tasks/reminders", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/tasks/reminders")>(
+    "../src/server/repo/tasks/reminders",
+  );
+  return {
+    ...actual,
+    listOutstandingForEvent: vi.fn(async () => []),
+  };
+});
+
 const sentMails: { to: { email: string }; text: string }[] = [];
 vi.mock("../src/server/context", async () => {
   const actual = await vi.importActual<typeof import("../src/server/context")>("../src/server/context");

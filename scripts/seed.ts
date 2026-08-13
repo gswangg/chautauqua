@@ -36,6 +36,7 @@ import {
   DEC_172,
 } from "../src/decisions";
 import {
+  ADDITIONAL_EMAIL_TEMPLATES,
   additionalSubmissionStatuses,
   assertDeleteOrderCoversSchema,
   deleteAllStmt,
@@ -1909,42 +1910,9 @@ async function main(): Promise<void> {
       }
     }
   }
-  // Bodies deliberately use a literal space (never a real "\n" newline
-  // character) between sentences — seed.ts writes one statement per output
-  // line, and a raw newline embedded in a quoted value would split an
-  // INSERT across lines, breaking every line-anchored tool (grep, and this
-  // test file's own per-line SQL parser) that assumes one statement/line.
-  const ADDITIONAL_EMAIL_TEMPLATES: Array<{ name: string; subject: string; bodyText: string }> = [
-    {
-      name: "Decline Notification",
-      subject: "Update on your submission to {event_name}",
-      bodyText:
-        "Hi {speaker_name}, thank you for submitting \"{talk_title}\" to {event_name}. After careful review, " +
-        "we're not able to include it in this year's program. We hope you'll consider submitting again next time. " +
-        "Thank you, The {event_name} Team",
-    },
-    {
-      name: "Schedule Confirmation",
-      subject: "Your session is scheduled — {event_name}",
-      bodyText:
-        "Hi {speaker_name}, your session \"{talk_title}\" is now scheduled for {event_name}. You can view the " +
-        "full details, including room and time, in your speaker portal: {portal_link}. See you there!",
-    },
-    {
-      name: "Content Reminder",
-      subject: "Reminder: {task_list} due {due_date}",
-      bodyText:
-        "Hi {speaker_name}, this is a friendly reminder that the following onboarding tasks are due " +
-        "{due_date}: {task_list}. Please complete them via the speaker portal: {portal_link}. Thanks!",
-    },
-    {
-      name: "Final Logistics",
-      subject: "Final logistics for {event_name}",
-      bodyText:
-        "Hi {speaker_name}, as {event_name} approaches, here's everything you need for the big day: parking, " +
-        "AV setup, and check-in instructions are all in your speaker portal: {portal_link}. See you soon!",
-    },
-  ];
+  // ADDITIONAL_EMAIL_TEMPLATES lives in seed-lib.ts (DEC-792) so it's
+  // reachable from test/seeded-template-vocabulary.test.ts without importing
+  // the whole seed script.
   const additionalTemplateIds = ADDITIONAL_EMAIL_TEMPLATES.map((tpl, i) => {
     assertOnlyWhitelistedMergeFields(tpl.subject);
     assertOnlyWhitelistedMergeFields(tpl.bodyText);

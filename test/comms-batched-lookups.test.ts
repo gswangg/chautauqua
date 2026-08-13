@@ -36,6 +36,7 @@ interface UserRow {
 function makeSelectChain(rows: unknown[], onWhere?: (cond: unknown) => unknown[] | void) {
   const chain: any = {
     from: () => chain,
+    innerJoin: () => chain,
     where: (cond: unknown) => {
       const filtered = onWhere?.(cond);
       return filtered ? makeSelectChain(filtered) : chain;
@@ -188,6 +189,7 @@ class InMemoryKV implements KVStore {
 function makeComposeDb() {
   let feedbackCalls = 0;
   let accountCalls = 0;
+  let outstandingCalls = 0;
   let selectCalls = 0;
 
   const feedbackRows = [
@@ -203,6 +205,14 @@ function makeComposeDb() {
         feedbackCalls += 1;
         return makeSelectChain(feedbackRows);
       }
+      // DEC-792: buildRenderTargets's batched outstanding-task lookup
+      // (src/server/repo/tasks/reminders.ts listOutstandingForEvent) selects
+      // a "taskId"-shaped projection — distinguish it from the account
+      // lookup so this fixture's per-query counters stay meaningful.
+      if ("taskId" in proj) {
+        outstandingCalls += 1;
+        return makeSelectChain([]); // no outstanding tasks for any recipient
+      }
       accountCalls += 1;
       return makeSelectChain([]); // no accounts exist — every recipient gets a claim link path
     },
@@ -212,6 +222,7 @@ function makeComposeDb() {
     db,
     getFeedbackCalls: () => feedbackCalls,
     getAccountCalls: () => accountCalls,
+    getOutstandingCalls: () => outstandingCalls,
     getSelectCalls: () => selectCalls,
   };
 }
@@ -225,8 +236,8 @@ function fakeContext(db: AppEnv["Variables"]["db"], kv: KVStore) {
 }
 
 describe("buildRenderTargets batches per-request, not per-recipient (DEC-530)", () => {
-  it("issues exactly one feedback query and one account query for 3 submissions / 5 recipients", async () => {
-    const { db, getFeedbackCalls, getAccountCalls, getSelectCalls } = makeComposeDb();
+  it("issues exactly one feedback query, one account query, and one outstanding-task query for 3 submissions / 5 recipients", async () => {
+    const { db, getFeedbackCalls, getAccountCalls, getOutstandingCalls, getSelectCalls } = makeComposeDb();
     const c = fakeContext(db, new InMemoryKV());
 
     const targets = await buildRenderTargets(c as never, event, submissions, /* feedback */ feedbackScope, /* mintClaimTokens */ false);
@@ -234,7 +245,8 @@ describe("buildRenderTargets batches per-request, not per-recipient (DEC-530)", 
     expect(targets).toHaveLength(5);
     expect(getFeedbackCalls()).toBe(1);
     expect(getAccountCalls()).toBe(1);
-    expect(getSelectCalls()).toBe(2);
+    expect(getOutstandingCalls()).toBe(1);
+    expect(getSelectCalls()).toBe(3);
   });
 
   it("gives co-speakers on the same submission the identical feedback block", async () => {
