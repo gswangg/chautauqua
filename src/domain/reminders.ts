@@ -3,6 +3,8 @@
 // (DEC-009 invariant #1 companion rule) — this module reacts only to
 // dueDate/now/lastRemindedAt, never to a status transition event.
 
+import { formatCalendarDate } from "../lib/event-time";
+
 const DUE_WINDOW_MS = 72 * 60 * 60 * 1000; // 72h
 const DEDUPE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
 
@@ -33,6 +35,33 @@ export interface PlanRemindersInput {
 export interface ReminderGroup {
   contactId: string;
   assignments: ReminderAssignment[];
+}
+
+/**
+ * DEC-564/DEC-792: the ONE task-line renderer, shared by the reminder email
+ * (buildReminderMessage) and the DEC-792 compose {task_list} merge field —
+ * both must render byte-identical lines for the same assignments. Sorts
+ * dueDate ascending with null (no due date) last, then taskTitle ascending,
+ * then assignmentId ascending as the final tiebreak of record, so a preview
+ * and the send it previewed (and two sends of the same group) are always
+ * byte-identical regardless of the caller's array order. dueDate is a
+ * calendar day (DEC-522), not an instant — rendered via formatCalendarDate,
+ * never re-zoned to a reader's/event's timezone.
+ */
+export function formatTaskLines(assignments: ReminderAssignment[]): string[] {
+  const sortedAssignments = [...assignments].sort((a, b) => {
+    if (a.dueDate !== b.dueDate) {
+      if (a.dueDate === null) return 1;
+      if (b.dueDate === null) return -1;
+      return a.dueDate - b.dueDate;
+    }
+    if (a.taskTitle !== b.taskTitle) return a.taskTitle.localeCompare(b.taskTitle);
+    return a.assignmentId.localeCompare(b.assignmentId);
+  });
+  return sortedAssignments.map((a) => {
+    if (a.dueDate === null) return `- ${a.taskTitle} — No due date`;
+    return `- ${a.taskTitle} — due ${formatCalendarDate(a.dueDate)}`;
+  });
 }
 
 export interface PlanRemindersResult {

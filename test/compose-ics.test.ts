@@ -220,6 +220,19 @@ vi.mock("../src/server/repo/comms", async () => {
   };
 });
 
+// DEC-792: stub the batched outstanding-task lookup so this ics-focused
+// suite doesn't need a real db for buildRenderTargets's {task_list}/
+// {due_date} vars.
+vi.mock("../src/server/repo/tasks/reminders", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/tasks/reminders")>(
+    "../src/server/repo/tasks/reminders",
+  );
+  return {
+    ...actual,
+    listOutstandingForEvent: vi.fn(async () => []),
+  };
+});
+
 describe("compose/preview ics.timeZone (DEC-494)", () => {
   const ORG_A = ICS_TZ_ORG_A;
   const ORIGIN = ICS_TZ_ORIGIN;

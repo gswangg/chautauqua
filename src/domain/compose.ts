@@ -11,6 +11,14 @@ export const MAX_COMPOSE_RECIPIENTS = 100;
 /** DEC-019: the stated value for zero reviewer comments (not a silent blank). */
 export const NO_FEEDBACK_TEXT = "No reviewer feedback was recorded.";
 
+/** DEC-792: the stated value for a recipient with zero outstanding tasks
+ * (not a silent blank), mirroring NO_FEEDBACK_TEXT's precedent. */
+export const NO_TASKS_TEXT = "No outstanding tasks.";
+
+/** DEC-792: the stated value for {due_date} when the recipient has no
+ * outstanding task carrying a due date (not a silent blank). */
+export const NO_DUE_DATE_TEXT = "No due date";
+
 /** DEC-397: preview never mints credentials. When a compose/bulk-email
  * preview would otherwise mint a claim token for a userless recipient, it
  * renders this fixed placeholder token instead — zero KV writes. */
@@ -96,18 +104,32 @@ export interface MergeVarsInput {
    * feedback WAS attached but this recipient's submission has zero
    * qualifying comments — that still renders NO_FEEDBACK_TEXT. */
   feedbackComments: string[] | null;
+  /** DEC-792: the recipient's outstanding-task list, already rendered via
+   * the shared src/domain/reminders.ts formatTaskLines (DEC-564) — pass
+   * NO_TASKS_TEXT when the recipient has zero outstanding tasks. Unlike
+   * feedbackComments, task_list/due_date are ALWAYS present (never omitted)
+   * since every recipient of a compose has a well-defined "no tasks" state. */
+  taskList: string;
+  /** DEC-792: the recipient's earliest outstanding due date, already
+   * formatted via formatCalendarDate — pass NO_DUE_DATE_TEXT when the
+   * recipient has no outstanding task carrying a due date. */
+  dueDate: string;
 }
 
 /** Builds the DEC-006 merge vars for one recipient (speaker_name, talk_title,
- * event_name, portal_link, feedback). Does not include due_date/task_list —
- * those belong to the reminders pipeline (DEC-023), not compose. DEC-682:
- * the `feedback` key is omitted entirely when feedbackComments is null. */
+ * event_name, portal_link, feedback, due_date, task_list — DEC-792 grows the
+ * compose vocabulary to match the DEC-023 reminders pipeline). DEC-682: the
+ * `feedback` key is omitted entirely when feedbackComments is null;
+ * task_list/due_date are ALWAYS set (never omitted) so a template
+ * referencing them never fails preflight for a recipient with no tasks. */
 export function buildMergeVars(input: MergeVarsInput): Record<string, string> {
   const vars: Record<string, string> = {
     speaker_name: input.speakerName,
     talk_title: input.talkTitle,
     event_name: input.eventName,
     portal_link: input.portalLink,
+    task_list: input.taskList,
+    due_date: input.dueDate,
   };
   if (input.feedbackComments !== null) {
     vars.feedback = formatFeedback(input.feedbackComments);

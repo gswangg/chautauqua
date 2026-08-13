@@ -33,6 +33,8 @@ describe("merge-field vocabulary (DEC-660)", () => {
       eventName: "Analytical Conf",
       portalLink: "https://example.com/portal",
       feedbackComments: ["Great talk"],
+      taskList: "No outstanding tasks.",
+      dueDate: "No due date",
     });
     expect(new Set(COMPOSE_MERGE_FIELDS)).toEqual(new Set(Object.keys(vars)));
   });

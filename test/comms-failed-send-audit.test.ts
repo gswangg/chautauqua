@@ -85,6 +85,18 @@ vi.mock("../src/server/repo/comms", async () => {
   };
 });
 
+// DEC-792: stub the batched outstanding-task lookup used by buildRenderTargets
+// for {task_list}/{due_date}.
+vi.mock("../src/server/repo/tasks/reminders", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/tasks/reminders")>(
+    "../src/server/repo/tasks/reminders",
+  );
+  return {
+    ...actual,
+    listOutstandingForEvent: vi.fn(async () => []),
+  };
+});
+
 vi.mock("../src/server/context", async () => {
   const actual = await vi.importActual<typeof import("../src/server/context")>("../src/server/context");
   return {

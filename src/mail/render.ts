@@ -21,14 +21,18 @@ export type MergeField = (typeof MERGE_FIELDS)[number];
 // reject as MergeFieldError.
 
 // Matches src/domain/compose.ts buildMergeVars's target vars (speaker_name,
-// talk_title, event_name, portal_link, feedback) — due_date/task_list belong
-// to the DEC-023 reminders pipeline, not compose.
+// talk_title, event_name, portal_link, feedback, due_date, task_list) — a
+// compose template may now also reference the recipient's outstanding
+// task list (DEC-792: growing the vocabulary rather than leaving a seeded
+// template whose tokens the path rejects as a landmine).
 export const COMPOSE_MERGE_FIELDS: readonly MergeField[] = [
   "speaker_name",
   "talk_title",
   "event_name",
   "portal_link",
   "feedback",
+  "due_date",
+  "task_list",
 ] as const;
 
 // Matches src/routes/api/contacts/bulk-email.ts renderBulkEmailTargets's
