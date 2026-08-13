@@ -2,7 +2,7 @@
 // render in the event's own IANA timezone, never bare UTC, and there is no
 // silent fallback — an empty or invalid timeZone throws.
 import { describe, expect, it } from "vitest";
-import { formatCalendarDate, formatEventDateTime, formatEventDay } from "../src/lib/event-time";
+import { formatCalendarDate, formatEventDateTime, formatEventDay, formatEventDayRange, formatEventCloseDateLabel } from "../src/lib/event-time";
 
 describe("formatEventDateTime (DEC-408)", () => {
   it("renders a March instant in America/Los_Angeles as PST with the right wall-clock hour", () => {
@@ -111,5 +111,65 @@ describe("formatEventDay (w1-i): the ONE public-surface day-heading/date-label f
   it("returns the original string unchanged for malformed input rather than throwing", () => {
     expect(formatEventDay("not-a-date")).toBe("not-a-date");
     expect(formatEventDay("")).toBe("");
+  });
+});
+
+// DEC-918: formatEventDayRange is the ONE server-side calendar-day RANGE
+// grammar, shared by the public event header (shell.tsx) and the anonymous
+// home hub (root.tsx) -- en-GB day-before-month order, month printed once
+// when shared, both months when they differ, a single label when the two
+// ends are the same day.
+describe("formatEventDayRange (DEC-918)", () => {
+  it("prints a single label when start === end", () => {
+    const day = Date.UTC(2027, 4, 12); // 2027-05-12
+    expect(formatEventDayRange(day, day)).toBe("12 May 2027");
+  });
+
+  it("prints the month once when both ends share a month", () => {
+    const start = Date.UTC(2027, 4, 12); // 2027-05-12
+    const end = Date.UTC(2027, 4, 14); // 2027-05-14
+    expect(formatEventDayRange(start, end)).toBe("12–14 May 2027");
+  });
+
+  it("prints both months when the ends differ", () => {
+    const start = Date.UTC(2027, 3, 28); // 2027-04-28
+    const end = Date.UTC(2027, 4, 2); // 2027-05-02
+    expect(formatEventDayRange(start, end)).toBe("28 Apr–2 May 2027");
+  });
+
+  it("never re-interprets into a timezone (UTC calendar fields only, DEC-522)", () => {
+    const originalTz = process.env.TZ;
+    try {
+      const start = Date.UTC(2027, 4, 12);
+      const end = Date.UTC(2027, 4, 14);
+      const results = new Set<string>();
+      for (const tz of ["America/Los_Angeles", "Asia/Tokyo", "UTC"]) {
+        process.env.TZ = tz;
+        results.add(formatEventDayRange(start, end));
+      }
+      expect(results.size).toBe(1);
+    } finally {
+      process.env.TZ = originalTz;
+    }
+  });
+});
+
+// DEC-408/DEC-918: the CFP close-date label renders in the event's own IANA
+// timezone (a real instant), en-GB day-before-month order. Only the Intl
+// formatting itself lives here -- uppercasing/"N days left" arithmetic stays
+// with the caller (root.tsx's closesLine).
+describe("formatEventCloseDateLabel (DEC-408, DEC-918)", () => {
+  it("renders a weekday/day/month label in the given IANA timezone, en-GB order", () => {
+    // 2027-05-12T23:59:00Z is still 2027-05-12 16:59 in America/Los_Angeles (PDT).
+    const ms = Date.UTC(2027, 4, 12, 23, 59, 0);
+    expect(formatEventCloseDateLabel(ms, "America/Los_Angeles")).toBe("Wed 12 May");
+  });
+
+  it("shifts the calendar day across a timezone boundary, unlike the day-label formatters", () => {
+    // 2027-05-13T02:00:00Z is 2027-05-12 19:00 in America/Los_Angeles (PDT) --
+    // a genuine instant, so it renders on the PREVIOUS calendar day locally.
+    const ms = Date.UTC(2027, 4, 13, 2, 0, 0);
+    expect(formatEventCloseDateLabel(ms, "America/Los_Angeles")).toBe("Wed 12 May");
+    expect(formatEventCloseDateLabel(ms, "UTC")).toBe("Thu 13 May");
   });
 });

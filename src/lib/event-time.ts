@@ -57,8 +57,9 @@ export function formatEventDate(ms: number, timeZone: string): string {
 }
 
 /** Formats a UTC-midnight day label (epoch ms) as a date-only string, e.g.
- * "Sun, 01 Mar 2026" — DEC-522: a date-only value (task due date, etc.) is a
- * CALENDAR DAY, not an instant. It must render as the same day everywhere,
+ * "Sun, Mar 01, 2027" (en-US weekday/month-abbrev/day/year order) — DEC-522:
+ * a date-only value (task due date, etc.) is a CALENDAR DAY, not an
+ * instant. It must render as the same day everywhere,
  * regardless of viewer or event timezone, so this takes NO timezone
  * parameter and always reads the UTC calendar fields of `ms` (the value is
  * expected to already be UTC-midnight for that day). Use this ONLY for day
@@ -97,4 +98,57 @@ export function formatEventDay(day: string): string {
   const [year, month, date] = day.split("-").map(Number);
   if (!year || !month || !date) return day;
   return formatCalendarDate(Date.UTC(year, month - 1, date));
+}
+
+/** Day-of-month + month label (UTC calendar fields, DEC-522: startDate/
+ * endDate are DAY LABELS, not instants — never rendered in any timezone but
+ * UTC). en-GB gives British day-before-month order with no comma, e.g.
+ * "12 May" / "12 May 2027". Internal to formatEventDayRange below. */
+function dayMonthLabel(ms: number, withYear: boolean): string {
+  return new Date(ms).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: withYear ? "numeric" : undefined,
+    timeZone: "UTC",
+  });
+}
+
+/** Day-of-month only, no month/year (for the "12" in "12-14 May 2027" when
+ * both ends share a month — the month is printed exactly once). Internal to
+ * formatEventDayRange below. */
+function dayOnlyLabel(ms: number): string {
+  return new Date(ms).toLocaleDateString("en-GB", { day: "numeric", timeZone: "UTC" });
+}
+
+/** THE single server-side calendar-day RANGE grammar (DEC-918): every
+ * customer-facing surface that renders a startDate-endDate span (the public
+ * event header, the anonymous home hub) routes through this one function.
+ * British day-before-month order, no comma: a single label when the two
+ * ends are the same day ("12 May 2027"), the month printed once when both
+ * ends share it ("12-14 May 2027"), both months when they differ ("28
+ * Apr-2 May 2027"). Takes UTC-midnight epoch ms for both ends, matching the
+ * DEC-522 "calendar day, not an instant" contract of formatCalendarDate/
+ * formatEventDay above — never re-zoned, always read from UTC calendar
+ * fields. */
+export function formatEventDayRange(startMs: number, endMs: number): string {
+  if (startMs === endMs) return dayMonthLabel(startMs, true);
+  const startDate = new Date(startMs);
+  const endDate = new Date(endMs);
+  const sameMonth = startDate.getUTCFullYear() === endDate.getUTCFullYear() && startDate.getUTCMonth() === endDate.getUTCMonth();
+  if (sameMonth) return `${dayOnlyLabel(startMs)}–${dayMonthLabel(endMs, true)}`;
+  return `${dayMonthLabel(startMs, false)}–${dayMonthLabel(endMs, true)}`;
+}
+
+/** CFP close date label (weekday + day + month, en-GB day-before-month
+ * order, no comma), rendered in the event's own IANA timezone (DEC-408: a
+ * real instant, never UTC-bare), e.g. "Sun 12 May". Callers own the
+ * uppercasing and "N days left" arithmetic (root.tsx's closesLine) — only
+ * the Intl formatting itself lives here, per DEC-918. */
+export function formatEventCloseDateLabel(closeMs: number, timeZone: string): string {
+  return new Date(closeMs).toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone,
+  });
 }
