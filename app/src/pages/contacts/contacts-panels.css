@@ -323,6 +323,14 @@
   font-weight: 600;
 }
 
+/* DEC-802: a keeper-only row has nothing actually discarded -- a plain em
+   dash, no strikethrough, since strike styling is evidence of a real loss,
+   not decoration. */
+.chq-contacts-merge-compare-blank {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
 .chq-contacts-merge-compare-empty {
   font-size: 13px;
   color: var(--chq-muted);
@@ -331,6 +339,12 @@
 .chq-contacts-merge-footnote {
   font-size: 13px;
   color: var(--chq-muted);
+}
+
+.chq-contacts-merge-impact {
+  font-size: 13px;
+  color: var(--chq-ink-2);
+  font-weight: 600;
 }
 
 /* DEC-684: the merge page itself — full-page surface (NO chq-scrim/

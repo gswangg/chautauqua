@@ -473,6 +473,46 @@ async function mergeOnePair(db: Db, keepId: string, mergeId: string): Promise<Co
   return updated;
 }
 
+/** DEC-802: the merge preview's "N submissions and M tasks move to
+ * <keeper>" line -- a set-based count of participant and task_assignment
+ * rows belonging to the contacts that would be DISCARDED by the merge
+ * (never the keeper), so the number always matches what mergeOnePair's
+ * generic FK repoint (f) is about to touch. One chunked COUNT query per
+ * table (chunkIds keeps each IN clause within SQLite's variable cap),
+ * summed across chunks -- never loads the rows themselves. Both tables
+ * only count rows still pointed at a to-be-discarded contact id; a merge
+ * dedupes some participant/task rows away before repointing (see
+ * mergeOnePair (c)/(d)), so this is an upper bound on what actually moves,
+ * not a promise every counted row survives to land on the keeper -- but it
+ * is exactly the set of rows this contact currently owns, which is what a
+ * user deciding whether to merge needs to see. */
+export async function countMergeImpact(
+  db: Db,
+  discardedContactIds: string[],
+): Promise<{ submissions: number; tasks: number }> {
+  if (discardedContactIds.length === 0) return { submissions: 0, tasks: 0 };
+
+  let submissions = 0;
+  for (const chunk of chunkIds(discardedContactIds)) {
+    const rows = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.participant)
+      .where(inArray(schema.participant.contactId, chunk));
+    submissions += Number(rows[0]?.count ?? 0);
+  }
+
+  let tasks = 0;
+  for (const chunk of chunkIds(discardedContactIds)) {
+    const rows = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.taskAssignment)
+      .where(inArray(schema.taskAssignment.contactId, chunk));
+    tasks += Number(rows[0]?.count ?? 0);
+  }
+
+  return { submissions, tasks };
+}
+
 /** DEC-629: set-based merge. Dedupes mergeIds, drops keepId if present (a
  * no-op to merge a contact into itself), and folds each remaining id
  * through mergeOnePair in order — the survivor of each fold becomes the

@@ -79,19 +79,26 @@ describe('MergePage render (DEC-748: struck-empty discards, Labels row, keep-col
       expect(screen.getByText('1 of 2 pairs')).toBeInTheDocument();
     });
 
-    // Column head names the kept record instead of a generic label.
-    expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+    // Column head names the kept record instead of a generic label. DEC-802:
+    // the third column also now names the discarded record (also "Jane
+    // Doe" in this fixture), so scope this assertion to the head row.
+    const headRow = document.querySelector('.chq-contacts-merge-compare-head') as HTMLElement;
+    expect(within(headRow).getAllByText('Jane Doe').length).toBeGreaterThan(0);
 
-    // A blank duplicate side still renders a row, struck through, not
-    // silently dropped. The compare rows come from a SECOND request
-    // (GET /contacts/merge/preview) that can land after the pair counter's,
-    // so this waits for it instead of racing it.
+    // A blank duplicate side still renders a row, but DEC-802: nothing was
+    // actually dropped (the duplicate's side was already blank), so it
+    // renders a plain em dash -- NOT the struck 'drop' class, since strike
+    // styling is evidence of a real loss, not decoration. The compare rows
+    // come from a SECOND request (GET /contacts/merge/preview) that can
+    // land after the pair counter's, so this waits for it instead of
+    // racing it.
     await waitFor(() => {
       expect(screen.getByText('Company')).toBeInTheDocument();
     });
     const companyRow = screen.getByText('Company').closest('.chq-contacts-merge-compare-row') as HTMLElement;
     const dropCell = within(companyRow).getByText('—');
-    expect(dropCell).toHaveClass('chq-contacts-merge-compare-drop');
+    expect(dropCell).toHaveClass('chq-contacts-merge-compare-blank');
+    expect(dropCell).not.toHaveClass('chq-contacts-merge-compare-drop');
 
     // Labels combine into one row via src/domain/contact-labels.ts, and the
     // raw customFields.* row is folded into it, not listed separately.
@@ -99,6 +106,44 @@ describe('MergePage render (DEC-748: struck-empty discards, Labels row, keep-col
     const labelsRow = screen.getByText('Labels').closest('.chq-contacts-merge-compare-row') as HTMLElement;
     expect(within(labelsRow).getByText('shirtSize M')).toBeInTheDocument();
     expect(screen.getByText(/Labels always combine/)).toBeInTheDocument();
+  });
+});
+
+describe('MergePage render (DEC-802: honest discard column head and impact line)', () => {
+  const DISTINCT_GROUP = {
+    contactIds: ['ct-keep', 'ct-merge'],
+    contacts: [
+      { id: 'ct-keep', firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com', company: 'Acme' },
+      { id: 'ct-merge', firstName: 'Janie', lastName: 'Doerson', email: 'janie@example.com', company: 'Acme Corp' },
+    ],
+  };
+
+  it("heads the third column with the discarded record's own name and shows the submissions/tasks impact line", async () => {
+    mockApi({
+      'GET /api/v1/contacts/duplicates': listEnvelope([DISTINCT_GROUP]),
+      'GET /api/v1/contacts/merge/preview': {
+        fields: PREVIEW_FIELDS,
+        impact: { submissions: 3, tasks: 1 },
+      },
+    });
+
+    renderAt('/contacts/merge?ids=ct-keep,ct-merge&keep=ct-keep');
+
+    await waitFor(() => {
+      expect(screen.getByText('Merge two records')).toBeInTheDocument();
+    });
+
+    // Column head names the record that would be discarded, not the
+    // literal "Discard".
+    await waitFor(() => {
+      const head = document.querySelector('.chq-contacts-merge-compare-head') as HTMLElement;
+      expect(within(head).getByText('Janie Doerson')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Discard')).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText('3 submissions and 1 task move to Jane Doe.')).toBeInTheDocument();
+    });
   });
 });
 

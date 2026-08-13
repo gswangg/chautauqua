@@ -312,6 +312,68 @@ describe("previewMerge (DEC-748)", () => {
   });
 });
 
+describe("previewMerge custom fields and notes (DEC-802)", () => {
+  it("emits a 'keep' row with an empty discarded array for a keeper-only custom field key", () => {
+    const primary = contact({
+      id: "p",
+      email: "p@example.com",
+      firstName: "P",
+      lastName: "P",
+      customFields: { shirt: "L" },
+    });
+    const duplicate = contact({ id: "d", email: "p@example.com", firstName: "P", lastName: "P" });
+
+    const fields = previewMerge(primary, [duplicate]);
+    const shirt = fields.find((f) => f.key === "customFields.shirt");
+    expect(shirt).toBeDefined();
+    expect(shirt!.outcome).toBe("keep");
+    expect(shirt!.kept).toBe("L");
+    expect(shirt!.discarded).toEqual([]);
+  });
+
+  it("still emits a 'combine' row for a duplicate-only custom field key", () => {
+    const primary = contact({ id: "p", email: "p@example.com", firstName: "P", lastName: "P" });
+    const duplicate = contact({
+      id: "d",
+      email: "p@example.com",
+      firstName: "P",
+      lastName: "P",
+      customFields: { shirt: "L" },
+    });
+
+    const fields = previewMerge(primary, [duplicate]);
+    const shirt = fields.find((f) => f.key === "customFields.shirt");
+    expect(shirt).toBeDefined();
+    expect(shirt!.outcome).toBe("combine");
+    expect(shirt!.kept).toBe("L");
+  });
+
+  it("emits a Notes row for a keeper-only note even when the duplicate has none", () => {
+    const primary = contact({
+      id: "p",
+      email: "p@example.com",
+      firstName: "P",
+      lastName: "P",
+      notes: "Keeper's note.",
+    });
+    const duplicate = contact({ id: "d", email: "p@example.com", firstName: "P", lastName: "P" });
+
+    const fields = previewMerge(primary, [duplicate]);
+    const notes = fields.find((f) => f.key === "notes");
+    expect(notes).toBeDefined();
+    expect(notes!.outcome).toBe("keep");
+    expect(notes!.kept).toBe("Keeper's note.");
+  });
+
+  it("still suppresses the Notes row when neither side has notes", () => {
+    const primary = contact({ id: "p", email: "p@example.com", firstName: "P", lastName: "P" });
+    const duplicate = contact({ id: "d", email: "p@example.com", firstName: "P", lastName: "P" });
+
+    const fields = previewMerge(primary, [duplicate]);
+    expect(fields.some((f) => f.key === "notes")).toBe(false);
+  });
+});
+
 describe("matchesSegment", () => {
   const c = contact({
     id: "1",

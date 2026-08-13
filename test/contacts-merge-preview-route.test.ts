@@ -157,6 +157,23 @@ describe("GET /api/v1/contacts/merge/preview (DEC-705)", () => {
     expect(json.fields).toEqual(direct);
   });
 
+  it("returns impact: set-based submissions/tasks counts belonging to the discarded contact (DEC-802)", async () => {
+    const db = fakeDb([
+      [KEEP], // requireOwnedContact(keep)
+      [DUP], // requireOwnedContact(dup)
+      [{ count: 3 }], // countMergeImpact participant count
+      [{ count: 2 }], // countMergeImpact task_assignment count
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      new Request(`http://local/api/v1/contacts/merge/preview?ids=${KEEP.id},${DUP.id}&keep=${KEEP.id}`),
+    );
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { impact: { submissions: number; tasks: number } };
+    expect(json.impact).toEqual({ submissions: 3, tasks: 2 });
+  });
+
   it("a foreign/unknown id in ids -> 404, matching the POST route's org-scoped authz", async () => {
     const db = fakeDb([
       [KEEP], // requireOwnedContact(keep)

@@ -63,6 +63,9 @@ export function MergePage() {
   const [notDuplicateBusy, setNotDuplicateBusy] = useState(false);
   const [preview, setPreview] = useState<MergeFieldPreview[] | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  // DEC-802: the merge preview's "N submissions and M tasks move to
+  // <keeper>" impact line -- counted server-side, never re-derived here.
+  const [impact, setImpact] = useState<{ submissions: number; tasks: number } | null>(null);
   // DEC-748: "N of M pairs" -- this pair's position among every duplicate
   // group GET /contacts/duplicates currently reports, not a client-invented
   // count.
@@ -98,15 +101,27 @@ export function MergePage() {
     if (ids.length < 2 || !keepId) return;
     setPreview(null);
     setPreviewError(null);
-    apiGet<{ fields: MergeFieldPreview[] }>(
+    setImpact(null);
+    apiGet<{ fields: MergeFieldPreview[]; impact: { submissions: number; tasks: number } }>(
       `/contacts/merge/preview?ids=${ids.map(encodeURIComponent).join(',')}&keep=${encodeURIComponent(keepId)}`,
     )
-      .then((res) => setPreview(res.fields))
+      .then((res) => {
+        setPreview(res.fields);
+        setImpact(res.impact);
+      })
       .catch((err) => setPreviewError(err instanceof ApiError ? err.message : 'Failed to load merge preview'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsParam, keepId]);
 
   const keepContact = group?.contacts.find((c) => c.id === keepId) ?? null;
+  // DEC-802: the third column is headed by the discarded record's own
+  // name, not the literal 'Discard' -- a 3+ group has no single discarded
+  // record to name, so it reads 'N other records' instead.
+  const discardedContacts = group?.contacts.filter((c) => c.id !== keepId) ?? [];
+  const discardHeadLabel =
+    discardedContacts.length === 1
+      ? `${discardedContacts[0]!.firstName} ${discardedContacts[0]!.lastName}`
+      : `${discardedContacts.length} other records`;
 
   // DEC-770: 'Not a duplicate' persists the dismissal (POST
   // /contacts/duplicates/dismiss) BEFORE navigating back -- a fact about
@@ -201,7 +216,7 @@ export function MergePage() {
           <div className="chq-contacts-merge-compare-head">
             <span>Field</span>
             <span>{keepContact.firstName} {keepContact.lastName}</span>
-            <span>Discard</span>
+            <span>{discardHeadLabel}</span>
           </div>
           {previewError && <div className="chq-error">{previewError}</div>}
           {!previewError && !preview && <DelayedLoading />}
@@ -210,6 +225,12 @@ export function MergePage() {
               field) instead of listing each raw custom-field key here. */}
           {preview?.filter((f) => !f.key.startsWith('customFields.')).map((f) => {
             const note = outcomeNote(f.outcome);
+            // DEC-802: only a REAL dropped value is struck -- a keeper-only
+            // row (nothing actually discarded, `discarded` empty or all
+            // blank) renders a plain em dash, not the struck 'drop' class,
+            // since strike styling is evidence of a real loss, not
+            // decoration.
+            const hasRealDiscard = f.discarded.some((d) => d !== '');
             return (
               <div key={f.key} className="chq-contacts-merge-compare-row">
                 <span className="chq-contacts-merge-compare-label">{f.label}</span>
@@ -218,12 +239,16 @@ export function MergePage() {
                   className={
                     note
                       ? 'chq-contacts-merge-compare-combine'
-                      : 'chq-contacts-merge-compare-drop'
+                      : hasRealDiscard
+                        ? 'chq-contacts-merge-compare-drop'
+                        : 'chq-contacts-merge-compare-blank'
                   }
                 >
                   {note
                     ? `${f.discarded.length > 0 ? f.discarded.join(' / ') + ' — ' : ''}${note}`
-                    : f.discarded.map((d) => (d === '' ? '—' : d)).join(' / ') || '—'}
+                    : hasRealDiscard
+                      ? f.discarded.map((d) => (d === '' ? '—' : d)).join(' / ')
+                      : '—'}
                 </span>
               </div>
             );
@@ -250,6 +275,13 @@ export function MergePage() {
           )}
           {preview && preview.some((f) => f.key.startsWith('customFields.')) && (
             <p className="chq-contacts-merge-footnote">Labels always combine — they're never chosen one over the other.</p>
+          )}
+
+          {impact && keepContact && (
+            <p className="chq-contacts-merge-impact">
+              {impact.submissions} {impact.submissions === 1 ? 'submission' : 'submissions'} and {impact.tasks}{' '}
+              {impact.tasks === 1 ? 'task' : 'tasks'} move to {keepContact.firstName} {keepContact.lastName}.
+            </p>
           )}
 
           <div className="chq-contacts-merge-footer">
