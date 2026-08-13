@@ -23,13 +23,15 @@ import { chunkIds } from "../../lib/chunk";
 import { newId } from "../../domain/ids";
 import { isValidEmail, normalizeEmail } from "../../domain/email";
 import { isCoPresenterRoleValue, participantRoleLabel } from "../../domain/participant-roles";
-import { DEC_604, DEC_656, DEC_842, DEC_866 } from "../../decisions";
+import { MAX_TEXT_LENGTH } from "../../forms/validate";
+import { DEC_604, DEC_656, DEC_842, DEC_866, DEC_997 } from "../../decisions";
 
 // touch DEC constant so the dependency is compile-checked (field guide convention)
 void DEC_604;
 void DEC_656;
 void DEC_842;
 void DEC_866;
+void DEC_997;
 
 export interface EditableSubmission {
   id: string;
@@ -444,7 +446,9 @@ export async function addCoPresenter(db: Db, input: AddCoPresenterInput): Promis
   const email = normalizeEmail(input.email);
   const errors: Record<string, string> = {};
   if (!firstName) errors.firstName = "First name is required";
+  else if (firstName.length > MAX_TEXT_LENGTH) errors.firstName = `Max ${MAX_TEXT_LENGTH}`;
   if (!lastName) errors.lastName = "Last name is required";
+  else if (lastName.length > MAX_TEXT_LENGTH) errors.lastName = `Max ${MAX_TEXT_LENGTH}`;
   if (!isValidEmail(email)) errors.email = "Enter a valid email address";
   if (!isCoPresenterRoleValue(input.role)) errors.role = "Choose a role";
   if (Object.keys(errors).length > 0) return { ok: false, errors };
