@@ -287,9 +287,15 @@ export function ReviewerQueue() {
             )}
             {subtitle && <p className="chq-review-plan-meta">{subtitle}</p>}
             {routeQueueItems && totalCount > 0 && (
-              <div className="chq-bar chq-review-scoped-progress">
-                <div className="chq-bar-fill" style={{ width: `${Math.round((scoredCount / totalCount) * 100)}%` }} />
-              </div>
+              <>
+                <div className="chq-bar chq-review-scoped-progress">
+                  <div className="chq-bar-fill" style={{ width: `${Math.round((scoredCount / totalCount) * 100)}%` }} />
+                </div>
+                {/* DEC-939: the frame's "N of M done" caption, from the same
+                    two counts the bar already computes -- never a third
+                    reader. */}
+                <p className="chq-review-scoped-progress-caption">{`${scoredCount} of ${totalCount} done`}</p>
+              </>
             )}
           </div>
         )}

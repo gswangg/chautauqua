@@ -53,6 +53,10 @@ export function Scorecard() {
   // DEC-271: this reviewer's declared conflict of interest on this
   // submission, if any. Scoring is disabled once recused.
   const [recusal, setRecusal] = useState<RecusalRecord | null>(null);
+  // DEC-939: the conflict declaration is a real checkbox -- checking it is
+  // what reveals the optional reason field (DEC-883's toggle grammar), and
+  // what's required before the Declare button will act.
+  const [recusalConfirmed, setRecusalConfirmed] = useState(false);
   const [recusalReason, setRecusalReason] = useState('');
   const [recusing, setRecusing] = useState(false);
   const [undoingRecusal, setUndoingRecusal] = useState(false);
@@ -216,7 +220,7 @@ export function Scorecard() {
 
   if (loading) {
     return (
-      <div className="chq-page chq-review-page">
+      <div className="chq-page chq-review-page chq-measure">
         <h1 className="chq-page-title">Scorecard</h1>
         <DelayedLoading />
       </div>
@@ -225,7 +229,7 @@ export function Scorecard() {
 
   if (!plan || !submission) {
     return (
-      <div className="chq-page chq-review-page">
+      <div className="chq-page chq-review-page chq-measure">
         <h1 className="chq-page-title">Scorecard</h1>
         <div className="chq-error" role="alert">
           {error ?? 'This submission is not part of your assignment.'}
@@ -275,8 +279,18 @@ export function Scorecard() {
     .filter((v): v is string => v !== null)
     .join(' · ');
 
+  // DEC-939: the rating group's segment count drives a CSS custom property
+  // so the grid stays equal-width for whatever scale the plan defines,
+  // rather than review.css hard-coding a step count.
+  const ratingScaleStepCount = ratingScaleValues(plan.scale).length;
+
   return (
-    <div className="chq-page chq-review-page" onKeyDown={handleKeyDown} tabIndex={-1}>
+    <div
+      className="chq-page chq-review-page chq-measure"
+      style={{ '--chq-review-scale-steps': ratingScaleStepCount } as React.CSSProperties}
+      onKeyDown={handleKeyDown}
+      tabIndex={-1}
+    >
       <p>
         <Link to={`/review/plans/${planId}`} className="chq-review-back">
           &lsaquo; {plan.name} queue
@@ -348,33 +362,6 @@ export function Scorecard() {
         </div>
       )}
 
-      <div className="chq-review-recusal">
-        {recusal ? (
-          <>
-            <p>You recused yourself from this submission.</p>
-            <button type="button" className="chq-btn chq-btn-secondary" disabled={undoingRecusal} onClick={() => void handleUndoRecusal()}>
-              Undo
-            </button>
-          </>
-        ) : (
-          <>
-            <label className="chq-review-checkbox-label">
-              I have a conflict of interest with this submission
-              <input
-                type="text"
-                className="chq-input"
-                placeholder="Reason (optional)"
-                value={recusalReason}
-                onChange={(e) => setRecusalReason(e.target.value)}
-              />
-            </label>
-            <button type="button" className="chq-btn chq-btn-secondary" disabled={recusing} onClick={() => void handleRecuse()}>
-              Declare conflict of interest
-            </button>
-          </>
-        )}
-      </div>
-
       <p className="chq-review-hint">Tip: number keys 1-9 set the focused rating; Enter submits and advances.</p>
 
       {criteria.map((criterion: EvaluationCriterion) => (
@@ -408,6 +395,10 @@ export function Scorecard() {
               {ratingScaleValues(plan.scale).map((value) => {
                 const selected = scores[criterion.id] === value;
                 return (
+                  // DEC-939: a single-select scale is a radio group, not a
+                  // set of toggle buttons -- keeps role="radio" +
+                  // aria-checked and refuses aria-pressed (closed, not to
+                  // be re-filed).
                   <button
                     key={value}
                     type="button"
@@ -465,6 +456,50 @@ export function Scorecard() {
         Comment
         <textarea className="chq-textarea" value={comment} disabled={!!recusal} onChange={(e) => setComment(e.target.value)} />
       </label>
+
+      {/* DEC-939: the recusal declaration sits below the work, not above it
+          -- a reviewer shouldn't be asked to declare a conflict before
+          seeing what they'd be conflicted about. */}
+      <div className="chq-review-recusal">
+        {recusal ? (
+          <>
+            <p>You recused yourself from this submission.</p>
+            <button type="button" className="chq-btn chq-btn-secondary" disabled={undoingRecusal} onClick={() => void handleUndoRecusal()}>
+              Undo
+            </button>
+          </>
+        ) : (
+          <>
+            <label className="chq-review-checkbox-label">
+              <input
+                type="checkbox"
+                className="chq-check"
+                checked={recusalConfirmed}
+                onChange={(e) => setRecusalConfirmed(e.target.checked)}
+              />
+              I have a conflict of interest with this submission
+            </label>
+            {recusalConfirmed && (
+              <input
+                type="text"
+                className="chq-input"
+                placeholder="Reason (optional)"
+                aria-label="Reason (optional)"
+                value={recusalReason}
+                onChange={(e) => setRecusalReason(e.target.value)}
+              />
+            )}
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              disabled={recusing || !recusalConfirmed}
+              onClick={() => void handleRecuse()}
+            >
+              Declare conflict of interest
+            </button>
+          </>
+        )}
+      </div>
 
       <div className="chq-review-editor-actions">
         <button type="button" className="chq-btn chq-btn-primary" disabled={submitting || !!recusal} onClick={() => void submitAndAdvance()}>

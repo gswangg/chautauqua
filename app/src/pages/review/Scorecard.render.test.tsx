@@ -92,6 +92,10 @@ describe('Scorecard render smoke', () => {
 
     expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
 
+    // DEC-939: the scorecard clamps to the product measure like every
+    // other single-column surface.
+    expect(document.querySelector('.chq-page')).toHaveClass('chq-measure');
+
     // rating criterion -> segmented radiogroup, one radio per scale value
     // (DEC-873: plan.scale is {min:1, max:5}).
     const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
@@ -363,5 +367,87 @@ describe('Scorecard abstract clamp and disclosure (DEC-889)', () => {
     const disclosure = screen.getByRole('button', { name: 'Read the full submission ›' });
     fireEvent.click(disclosure);
     expect(screen.getByText('Talk length')).toBeInTheDocument();
+  });
+});
+
+// DEC-939: the recusal block moves below the work (Comment field) and
+// above the actions; the conflict control is a real checkbox that reveals
+// the optional reason field only once checked.
+describe('Scorecard recusal placement and checkbox reveal (DEC-939)', () => {
+  it('renders the recusal block after Comment and before the editor actions, with the reason field hidden until checked', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+
+    const root = document.querySelector('.chq-page')!;
+    const commentField = screen.getByText('Comment').closest('label')!;
+    const recusalBlock = document.querySelector('.chq-review-recusal')!;
+    const actions = document.querySelector('.chq-review-editor-actions')!;
+    const children = Array.from(root.children);
+    const commentIndex = children.indexOf(commentField);
+    const recusalIndex = children.indexOf(recusalBlock);
+    const actionsIndex = children.indexOf(actions);
+    expect(commentIndex).toBeGreaterThanOrEqual(0);
+    expect(recusalIndex).toBeGreaterThan(commentIndex);
+    expect(actionsIndex).toBeGreaterThan(recusalIndex);
+
+    // The control is a real checkbox; the reason field is absent until it's
+    // checked.
+    const checkbox = screen.getByRole('checkbox', { name: /conflict of interest/i });
+    expect(screen.queryByPlaceholderText('Reason (optional)')).not.toBeInTheDocument();
+    fireEvent.click(checkbox);
+    expect(screen.getByPlaceholderText('Reason (optional)')).toBeInTheDocument();
+    fireEvent.click(checkbox);
+    expect(screen.queryByPlaceholderText('Reason (optional)')).not.toBeInTheDocument();
+  });
+
+  it('rating group segment count matches the plan scale, without aria-pressed (DEC-939)', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
+    const buttons = within(qualityGroup).getAllByRole('radio');
+    expect(buttons).toHaveLength(5);
+    buttons.forEach((b) => expect(b).not.toHaveAttribute('aria-pressed'));
+
+    const root = document.querySelector('.chq-page') as HTMLElement;
+    expect(root.style.getPropertyValue('--chq-review-scale-steps')).toBe('5');
   });
 });
