@@ -29,6 +29,10 @@ export const task = sqliteTable(
   (t) => ({
     task_event_id_idx: index("task_event_id_idx").on(t.eventId),
     task_form_id_idx: index("task_form_id_idx").on(t.formId),
+    // DEC-111 amendment (wave 48): a task title is unique within its event —
+    // see migrations/0032_task_title_unique.sql for the dedupe-then-index
+    // migration and getOrCreateTask's insert-on-conflict-do-nothing shape.
+    task_event_id_title_idx: uniqueIndex("task_event_id_title_idx").on(t.eventId, t.title),
   }),
 );
 

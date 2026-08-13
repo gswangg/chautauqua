@@ -54,9 +54,27 @@ function fakeDb() {
 
   let submissionCallIdx = 0;
   let participantCallIdx = 0;
+  // DEC-111 amendment (wave 48): getOrCreateTask is now insert-on-conflict-
+  // do-nothing THEN select (was select-then-insert) — this fake's task
+  // table select must return whatever was JUST inserted, not a canned []
+  // forever, or the post-insert select finds nothing and getOrCreateTask
+  // throws. Deterministic call order (one title fully resolved before the
+  // next) means "the most recently inserted task row" is always the right
+  // answer here.
+  let lastInsertedTask: { id: string; formId: string | null } | null = null;
+  // The DEC-932 back-fill's eventTaskRows read (no .limit() call, unlike
+  // getOrCreateTask's post-insert select) needs every task row minted so
+  // far, not just the most recent one.
+  const allInsertedTasks: { id: string; formId: string | null }[] = [];
+  // DEC-932 back-fill's existingPairs read ({taskId, contactId} shape) needs
+  // real data once the main plan's task_assignment rows exist -- unlike the
+  // main plan's OWN existingTaskTitlesByContact read ({contactId, title}
+  // shape), which always runs first, while the table is still genuinely
+  // empty, so it can stay canned-empty.
+  const insertedAssignmentPairs: { taskId: string; contactId: string }[] = [];
 
   const db = {
-    select(_selection: unknown) {
+    select(selection: unknown) {
       return {
         from(table: unknown) {
           let joined = false;
@@ -79,14 +97,23 @@ function fakeDb() {
                 return makeResult(rows);
               }
               if (table === schema.taskAssignment) {
-                // existing (contactId, title) pairs — fresh event, always empty.
                 selectCalls.push({ table: "taskAssignment", joined });
-                return makeResult([]);
+                const isBackfillPairsRead = selection !== null && typeof selection === "object" && "taskId" in (selection as object);
+                return makeResult(isBackfillPairsRead ? insertedAssignmentPairs : []);
               }
               if (table === schema.task) {
-                // getOrCreateTask existence check — no pre-existing tasks.
+                // Two different real callers share this branch:
+                //  - getOrCreateTask's post-insert select calls .limit(1)
+                //    and wants the row the immediately-preceding insert()
+                //    just wrote.
+                //  - the DEC-932 back-fill's eventTaskRows read never calls
+                //    .limit() and wants every task row minted so far.
                 selectCalls.push({ table: "task", joined });
-                return makeResult([]);
+                return {
+                  limit: async (_n: number) => (lastInsertedTask ? [lastInsertedTask] : []),
+                  then: (resolve: (v: unknown[]) => void, reject?: (e: unknown) => void) =>
+                    Promise.resolve(allInsertedTasks).then(resolve, reject),
+                };
               }
               if (table === schema.form) {
                 // getOrCreateFormTaskForm existence check — no pre-existing forms.
@@ -130,11 +157,26 @@ function fakeDb() {
                     ? "form_field"
                     : "other";
           insertCalls.push({ table: name, value });
+          if (table === schema.task) {
+            const row = value as { id: string; formId?: string | null };
+            lastInsertedTask = { id: row.id, formId: row.formId ?? null };
+            allInsertedTasks.push(lastInsertedTask);
+          }
+          if (table === schema.taskAssignment) {
+            const rows = Array.isArray(value) ? value : [value];
+            for (const row of rows as { taskId: string; contactId: string }[]) {
+              insertedAssignmentPairs.push({ taskId: row.taskId, contactId: row.contactId });
+            }
+          }
           return {
             then: (resolve: (v: unknown) => void) => resolve(undefined),
             // DEC-556: task_assignment inserts target the real (task_id,
             // contact_id) unique index; this fake db has no uniqueness of
             // its own, so onConflictDoNothing is a no-op passthrough.
+            // DEC-111 amendment (wave 48): getOrCreateTask's task insert
+            // also goes through onConflictDoNothing now — same no-op
+            // passthrough, since this fake never models a real title
+            // collision (each id here is always fresh).
             onConflictDoNothing: () => Promise.resolve(undefined),
           };
         },
@@ -168,21 +210,24 @@ describe("DEC-355 bulk accept is set-based, not per-submission", () => {
 
     expect(submissionSelects).toBe(expectedChunks);
     expect(participantSelects).toBe(expectedChunks);
-    expect(taskAssignmentSelects).toBe(expectedChunks);
-    // DEC-932: the back-fill pass adds ONE more select — the event's task
-    // ids — after the DEFAULT_ONBOARDING_TASKS titles are planned. This
-    // fake db's schema.task responses are canned-empty (not stateful), so
-    // that select returns zero rows and the back-fill's chunked
-    // existing-pairs select/insert never runs (the `eventTaskIds.length ===
-    // 0` early return below fires) — taskAssignmentSelects above stays
-    // unchanged at exactly `expectedChunks`.
+    // DEC-932: the back-fill pass's eventTaskRows read (schema.task, no
+    // .limit()) now sees every real task row getOrCreateTask minted (DEC-111
+    // amendment, wave 48: getOrCreateTask is insert-then-select, and this
+    // fake's schema.task branch is stateful) — so eventTaskIds has all 5
+    // distinct titles' ids, and the back-fill's chunked existing-pairs
+    // select over schema.taskAssignment actually runs (one extra chunked
+    // select per chunk, on top of the main plan's existingTaskTitlesByContact
+    // read) — taskAssignmentSelects is `expectedChunks * 2`, not
+    // `expectedChunks`.
+    expect(taskAssignmentSelects).toBe(expectedChunks * 2);
     expect(taskSelects).toBe(distinctTitles + 1);
     expect(formSelects).toBe(formTitles);
 
     const totalSelects = selectCalls.length;
-    // +1 for the single DEC-520 event-start-date read, +1 for the DEC-932
-    // event-task-ids back-fill read.
-    expect(totalSelects).toBe(expectedChunks * 3 + distinctTitles + 1 + formTitles + 1);
+    // submission + participant + taskAssignment(main) + taskAssignment
+    // (back-fill) = expectedChunks * 4, + distinctTitles + 1 (task) +
+    // formTitles (form) + 1 (event).
+    expect(totalSelects).toBe(expectedChunks * 4 + distinctTitles + 1 + formTitles + 1);
     // The load-bearing assertion: total SELECT count is nowhere near N (200)
     // — it is bounded by chunk count + distinct-title count, not id count.
     expect(totalSelects).toBeLessThan(31);

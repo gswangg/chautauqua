@@ -106,7 +106,23 @@ function fakeDb(seedContacts: unknown[], seedEvents: unknown[]) {
     const chain: any = {
       innerJoin: () => chain,
       where: () => chain,
-      limit: () => chain,
+      // DEC-111 amendment (wave 48): getOrCreateTask/getOrCreateFormTaskForm
+      // do insert-then-select-limit(1) (task) and select-limit(1)-then-insert
+      // (form) lookups keyed by (eventId, title); this fake ignores WHERE
+      // entirely (see the module doc comment), so a naive rows[0] would
+      // always resolve to the FIRST row ever inserted into the table,
+      // regardless of which title a later call is actually looking for.
+      // `rows` is a live reference to the state array, so returning the tail
+      // (most recently inserted) is the closest approximation to "the row
+      // this specific insert/select pair just touched" without real WHERE
+      // filtering — correct for this test's single-contact, no-pre-existing
+      // -row scenario, where every getOrCreateTask/getOrCreateFormTaskForm
+      // call is for a title it hasn't seen yet.
+      limit: (n: number) => ({
+        innerJoin: () => chain,
+        where: () => chain,
+        then: (resolve: (v: unknown[]) => void) => resolve(rows.slice(-n)),
+      }),
       then: (resolve: (v: unknown[]) => void) => resolve(rows),
     };
     return chain;
@@ -213,12 +229,11 @@ describe("POST /api/v1/contacts/:id/add-to-event (CRM-10, DEC-156)", () => {
     // P1 fix (w1-f): acceptance planning actually fired — the contact got
     // every DEC-009 default onboarding task assigned (previously zero,
     // because the direct status:'accepted' insert skipped planning).
-    // (This fake's task table select() can't filter by title/eventId, so a
-    // second getOrCreateTask lookup sees the first inserted task row as an
-    // "existing" match regardless of title — the fake under-creates
-    // distinct task rows relative to real D1. The count that matters here
-    // is taskAssignment: DEC-009's planner still queues one assignment per
-    // default onboarding task for this contact.)
+    // (DEC-111 amendment, wave 48: getOrCreateTask is now insert-then-
+    // select-limit(1) keyed by (eventId, title); makeChain's limit()
+    // returns the tail of the live rows array, i.e. whatever was most
+    // recently inserted, which is correct here since every title in this
+    // single-contact scenario is seen exactly once.)
     expect(state.taskAssignment).toHaveLength(DEFAULT_ONBOARDING_TASKS.length);
     for (const assignment of state.taskAssignment) {
       expect(assignment.contactId).toBe("contact-1");
