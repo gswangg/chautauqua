@@ -1,56 +1,13 @@
 import { useEffect, useState } from 'react';
 import { apiList, ApiError } from '../../lib/api';
-import { formatDateTime } from '../../lib/dates';
 import { DelayedLoading } from '../../components/DelayedLoading';
-import type { EmailBatchRow, EmailLogRow } from './types';
+import { RecentSends } from './RecentSends';
+import type { EmailBatchRow } from './types';
 
-// DEC-603: batch rows collapse a fan-out send's per-recipient rows into one
-// "when · subject · N recipients · status tally" row; clicking one expands
-// it into the per-recipient rows via ?batchId=<batchKey> (a legacy/NULL-
-// batch row's own id is a valid batchKey too, so it still appears as its
-// own one-recipient batch).
-function statusTally(statusCounts: Record<string, number>): string {
-  return Object.entries(statusCounts)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([status, n]) => `${n} ${status}`)
-    .join(', ');
-}
-
-function BatchRecipients({ eventId, batchKey }: { eventId: string; batchKey: string }) {
-  const [items, setItems] = useState<EmailLogRow[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    apiList<EmailLogRow>(`/events/${eventId}/email-log?batchId=${encodeURIComponent(batchKey)}`)
-      .then((res) => {
-        if (!cancelled) setItems(res.items);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err instanceof ApiError ? err.message : 'Failed to load recipients');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [eventId, batchKey]);
-
-  if (error) return <div className="chq-error-banner">{error}</div>;
-  if (!items) return <DelayedLoading />;
-
-  return (
-    <div className="chq-comms-batch-recipients">
-      {items.map((row) => (
-        <div key={row.id} className="chq-comms-history-row">
-          <span className="chq-comms-history-when">{formatDateTime(row.sentAt)}</span>
-          <span className="chq-comms-history-subject">{row.subject}</span>
-          <span>{row.toEmail}</span>
-          <span className="chq-meta">{row.status}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
+// DEC-751: the batch-row + recipients-disclosure list moved into the shared
+// RecentSends component (app/src/pages/comms/RecentSends.tsx); History
+// fetches the full, paginated (unlimited/no `limit`) batch list and mounts
+// RecentSends with no `onSeeAll`, so it keeps the recipients disclosure.
 export function HistoryTab({ eventId }: { eventId: string }) {
   const [q, setQ] = useState('');
   const [items, setItems] = useState<EmailBatchRow[]>([]);
@@ -58,12 +15,10 @@ export function HistoryTab({ eventId }: { eventId: string }) {
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
     setError(null);
-    setExpanded(null);
     const params = new URLSearchParams();
     params.set('groupBy', 'batch');
     if (q.trim()) params.set('q', q.trim());
@@ -94,37 +49,8 @@ export function HistoryTab({ eventId }: { eventId: string }) {
         />
       </div>
 
-      <div className="chq-section-head">
-        <span className="chq-section-label">Recent sends</span>
-      </div>
-
       {loading && <DelayedLoading />}
-      {loaded && !loading && items.length === 0 && <p className="chq-empty">No emails sent yet.</p>}
-      {!loading &&
-        items.map((batch) => {
-          const isExpanded = expanded === batch.batchKey;
-          return (
-            <div key={batch.batchKey} className="chq-comms-batch">
-              <div className="chq-comms-batch-row">
-                <span className="chq-comms-history-when">{formatDateTime(batch.sentAt)}</span>
-                <span className="chq-comms-history-subject">{batch.subject}</span>
-                <span>{batch.recipientCount} recipient{batch.recipientCount === 1 ? '' : 's'}</span>
-                <span className="chq-meta">{statusTally(batch.statusCounts)}</span>
-                {/* DEC-732 (eval-findings 59): an explicit bordered control,
-                    not the whole row silently doubling as a toggle. */}
-                <button
-                  type="button"
-                  className="chq-btn chq-btn-secondary chq-comms-batch-toggle"
-                  aria-expanded={isExpanded}
-                  onClick={() => setExpanded(isExpanded ? null : batch.batchKey)}
-                >
-                  {isExpanded ? 'Hide the recipients' : 'See the recipients'}
-                </button>
-              </div>
-              {isExpanded && <BatchRecipients eventId={eventId} batchKey={batch.batchKey} />}
-            </div>
-          );
-        })}
+      {!loading && loaded && <RecentSends eventId={eventId} batches={items} />}
 
       <p className="chq-summary">{total} total</p>
     </div>

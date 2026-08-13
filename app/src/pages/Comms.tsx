@@ -1,11 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useCurrentEvent } from '../lib/useCurrentEvent';
 import { DelayedLoading } from '../components/DelayedLoading';
+import { apiList } from '../lib/api';
 import { TemplatesTab } from './comms/TemplatesTab';
 import { ComposeWizard } from './comms/ComposeWizard';
 import { HistoryTab } from './comms/HistoryTab';
+import { RecentSends } from './comms/RecentSends';
+import type { EmailBatchRow } from './comms/types';
 import './comms/comms.css';
+
+// DEC-751: Recent sends is capped to four rows under Compose so an
+// organiser composing a send can see what already went out (the context
+// that prevents sending the same batch twice) without History's full,
+// paginated list crowding the compose column.
+const COMPOSE_RECENT_SENDS_LIMIT = 4;
 
 type Tab = 'compose' | 'templates' | 'history';
 
@@ -37,6 +46,31 @@ export function CommsPage() {
   // never reads this flag (the CSS rules that key off it only exist inside
   // the 700px media query in comms.css).
   const [phoneEntered, setPhoneEntered] = useState(false);
+
+  // DEC-751: fed by the same GET .../email-log?groupBy=batch call History
+  // uses; this mount is capped and read-only, so it fetches independently
+  // of HistoryTab (which mounts only while tab === 'history').
+  const [recentBatches, setRecentBatches] = useState<EmailBatchRow[]>([]);
+  useEffect(() => {
+    if (!eventId || tab !== 'compose') return;
+    let cancelled = false;
+    apiList<EmailBatchRow>(`/events/${eventId}/email-log?groupBy=batch`)
+      .then((res) => {
+        if (!cancelled) setRecentBatches(res.items);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId, tab]);
+
+  function goToHistory() {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set('tab', 'history');
+      return params;
+    });
+  }
 
   function choosePhoneTab(t: Tab) {
     setSearchParams((prev) => {
@@ -88,7 +122,12 @@ export function CommsPage() {
           </div>
         </div>
 
-        {tab === 'compose' && <ComposeWizard eventId={eventId} />}
+        {tab === 'compose' && (
+          <>
+            <ComposeWizard eventId={eventId} />
+            <RecentSends eventId={eventId} batches={recentBatches} limit={COMPOSE_RECENT_SENDS_LIMIT} onSeeAll={goToHistory} />
+          </>
+        )}
         {tab === 'templates' && <TemplatesTab eventId={eventId} />}
         {tab === 'history' && <HistoryTab eventId={eventId} />}
       </div>

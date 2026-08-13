@@ -58,6 +58,7 @@ describe('CommsPage render smoke', () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([submission()]),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([template()]),
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([]),
       [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: {
         items: [
           {
@@ -98,6 +99,7 @@ describe('CommsPage render smoke', () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([template()]),
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([]),
     });
 
     render(
@@ -189,6 +191,7 @@ describe('CommsPage tab strip is URL state (DEC-710)', () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([]),
     });
 
     render(
@@ -206,6 +209,7 @@ describe('CommsPage tab strip is URL state (DEC-710)', () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([template()]),
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([]),
     });
 
     render(
@@ -229,6 +233,7 @@ describe('ComposeWizard compose-step field layout (DEC-710)', () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([submission()]),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([template()]),
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([]),
     });
 
     render(
@@ -255,5 +260,51 @@ describe('ComposeWizard compose-step field layout (DEC-710)', () => {
     // rule is what gives them the same full measure).
     expect(subjectInput.className).toBe('chq-input');
     expect(bodyTextarea.className).toBe('chq-textarea');
+  });
+});
+
+// DEC-751: Recent sends lives under Compose too -- capped, read-only, and
+// its "All history" link switches ?tab= rather than navigating away.
+describe('CommsPage Recent sends under Compose (DEC-751)', () => {
+  function batch(n: number) {
+    return {
+      batchKey: `batch-${n}`,
+      subject: `Send #${n}`,
+      sentAt: 1700000000000 + n,
+      recipientCount: n,
+      statusCounts: n % 2 === 0 ? { failed: n } : { sent: n },
+    };
+  }
+
+  it('renders up to four batches under Compose, with no recipients disclosure, and switches ?tab= on "All history"', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([batch(1), batch(2), batch(3), batch(4), batch(5)]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/comms']}>
+        <CommsPage />
+        <LocationSearchProbe />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Send #1')).toBeInTheDocument();
+    // Capped at four rows -- the fifth batch never appears here.
+    expect(screen.queryByText('Send #5')).not.toBeInTheDocument();
+
+    // A batch whose statusCounts are all failures still renders -- an
+    // attempted send is auditable whatever the transport did.
+    expect(screen.getByText('2 failed')).toBeInTheDocument();
+
+    // Read-only under Compose: no recipients disclosure.
+    expect(screen.queryByRole('button', { name: 'See the recipients' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'All history' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('location-search')).toHaveTextContent('?tab=history');
+    });
   });
 });
