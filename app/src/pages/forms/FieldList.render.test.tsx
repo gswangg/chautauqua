@@ -7,6 +7,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { FieldList } from './FieldList';
 import { MAX_LONG_TEXT_LENGTH } from '../../../../src/forms/validate';
+import { SESSION_FORMAT_FIELD_ID } from '../../../../src/forms/types';
 import type { FormField } from './types';
 
 afterEach(() => {
@@ -128,5 +129,28 @@ describe('FieldList row anatomy (DEC-715)', () => {
     renderList();
     expect(screen.queryByText('Locked')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Locked built-in field')).not.toBeInTheDocument();
+  });
+
+  it('renders the design pack\'s "Single choice" kind label for a dropdown field, never "Dropdown"', () => {
+    renderList();
+    expect(screen.getByText('Single choice')).toBeInTheDocument();
+    expect(screen.queryByText('Dropdown')).not.toBeInTheDocument();
+  });
+
+  it('renders the seeded session-format field (DEC-762) as "Format", derived from its shared id', () => {
+    renderList([
+      {
+        id: SESSION_FORMAT_FIELD_ID,
+        section: 'session',
+        kind: 'dropdown',
+        label: 'Session format',
+        required: true,
+        position: 0,
+        locked: false,
+        options: ['Talk', 'Workshop'],
+      },
+    ]);
+    expect(screen.getByText('Format')).toBeInTheDocument();
+    expect(screen.queryByText('Session format')).not.toBeInTheDocument();
   });
 });

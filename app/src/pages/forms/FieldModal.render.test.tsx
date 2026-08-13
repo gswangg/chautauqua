@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { FieldModal, type FieldModalInput } from './FieldModal';
-import type { FormField } from './types';
+import { FIELD_KIND_LABELS, type FormField } from './types';
 
 const TITLE: FormField = { id: 'f-title', section: 'session', kind: 'text', label: 'Title', required: true, position: 0, locked: true };
 const FORMAT: FormField = {
@@ -131,5 +131,23 @@ describe('FieldModal rule-value control (DEC-681)', () => {
     selectTrigger(ATTENDING.id);
     const valueSelect = screen.getByLabelText('Value', { selector: 'select' });
     expect(valueSelect).toHaveValue('false');
+  });
+});
+
+describe('FieldModal kind vocabulary (DEC-762)', () => {
+  it("lists the design pack's \"Single choice\" option for the dropdown kind, never \"Dropdown\"", () => {
+    renderModal(async () => {});
+    const kindSelect = screen.getByLabelText('Kind', { selector: 'select' });
+    const optionLabels = Array.from(kindSelect.querySelectorAll('option')).map((o) => o.textContent);
+    expect(optionLabels).toContain('Single choice');
+    expect(optionLabels).not.toContain('Dropdown');
+  });
+
+  it('reads the dropdown-options-required error from the SAME kind-label map as the Kind select', async () => {
+    renderModal(async () => {});
+    fireEvent.change(screen.getByLabelText('Label', { selector: 'input' }), { target: { value: 'Track' } });
+    fireEvent.change(screen.getByLabelText('Kind', { selector: 'select' }), { target: { value: 'dropdown' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText(`${FIELD_KIND_LABELS.dropdown} fields need at least one option.`)).toBeInTheDocument();
   });
 });

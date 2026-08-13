@@ -7,7 +7,15 @@ import {
   serializeRule,
   type RuleBuilderState,
 } from './logic';
-import { FIELD_KINDS, RULE_OPS, kindLabel, type FormField, type FormFieldKind, type FormFieldSection } from './types';
+import {
+  FIELD_KIND_LABELS,
+  FIELD_KINDS,
+  RULE_OPS,
+  kindLabel,
+  type FormField,
+  type FormFieldKind,
+  type FormFieldSection,
+} from './types';
 import { ModalFrame } from '../../components/ModalFrame';
 
 export interface FieldModalInput {
@@ -83,7 +91,7 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
       .map((o) => o.trim())
       .filter((o) => o.length > 0);
     if (kind === 'dropdown' && options.length === 0) {
-      setError('Dropdown fields need at least one option.');
+      setError(`${FIELD_KIND_LABELS.dropdown} fields need at least one option.`);
       return;
     }
 

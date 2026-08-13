@@ -1,7 +1,6 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useImperativeHandle, useState } from 'react';
 import type { CfpForm, EventTrack } from './types';
 import { dateInputToMs, msToDateInput } from '../../lib/dates';
-import { copyText } from '../../lib/clipboard';
 import { ApiError } from '../../lib/api';
 import { formWindowState } from '../../../../src/lib/submit-core';
 
@@ -51,18 +50,20 @@ export interface FormSettingsHandle {
 interface FormSettingsProps {
   form: CfpForm;
   tracks: EventTrack[];
-  eventSlug: string;
   timezone: string;
   onSave: (patch: FormSettingsPatch) => Promise<void>;
 }
 
 /** Form settings panel (DEC-650: secondary panel below the field list):
  * title (read-only — the w2-c API has no title-patch endpoint),
- * intro/description, open/close dates, tracks offered, and the copyable
- * public submission link. Saving is triggered by the page header's Save
- * button via the imperative `save()` handle, not an in-panel button. */
+ * intro/description, open/close dates, and tracks offered. The public
+ * submission link has exactly ONE disclosure on this screen -- the
+ * fields-section footer row in FormsPage (DEC-762) -- so this panel does
+ * not render a second copy of it. Saving is triggered by the page
+ * header's Save button via the imperative `save()` handle, not an
+ * in-panel button. */
 export const FormSettings = forwardRef<FormSettingsHandle, FormSettingsProps>(function FormSettings(
-  { form, tracks, eventSlug, timezone, onSave },
+  { form, tracks, timezone, onSave },
   ref,
 ) {
   const [intro, setIntro] = useState(form.intro ?? '');
@@ -75,10 +76,6 @@ export const FormSettings = forwardRef<FormSettingsHandle, FormSettingsProps>(fu
   // inline at the field they belong to, never as a quiet top-of-panel
   // banner alone.
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [copyResult, setCopyResult] = useState<{ ok: boolean; text: string } | null>(null);
-  const failedCopyRef = useRef<HTMLInputElement | null>(null);
-
-  const publicLink = `${window.location.origin}/submit/${eventSlug}`;
 
   function toggleTrack(trackId: string) {
     setSelectedTracks((prev) => (prev.includes(trackId) ? prev.filter((t) => t !== trackId) : [...prev, trackId]));
@@ -126,21 +123,6 @@ export const FormSettings = forwardRef<FormSettingsHandle, FormSettingsProps>(fu
       setSaving(false);
     }
   }
-
-  async function handleCopyLink() {
-    const ok = await copyText(publicLink);
-    setCopyResult({ ok, text: publicLink });
-    if (ok) {
-      window.setTimeout(() => setCopyResult(null), 2000);
-    }
-  }
-
-  useEffect(() => {
-    if (copyResult && !copyResult.ok) {
-      failedCopyRef.current?.focus();
-      failedCopyRef.current?.select();
-    }
-  }, [copyResult]);
 
   return (
     <section className="chq-forms-settings">
@@ -219,29 +201,6 @@ export const FormSettings = forwardRef<FormSettingsHandle, FormSettingsProps>(fu
           ))}
         </div>
       </fieldset>
-
-      <label className="chq-field">
-        Public link
-        <div className="chq-forms-public-link">
-          <input type="text" className="chq-input" value={publicLink} readOnly />
-          <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void handleCopyLink()}>
-            {copyResult?.ok ? 'Copied!' : 'Copy'}
-          </button>
-        </div>
-        <div role="status" aria-live="polite" className="chq-copy-status">
-          {copyResult ? (copyResult.ok ? 'Copied' : 'Copy failed — select the text and copy it manually') : null}
-        </div>
-        {copyResult && !copyResult.ok ? (
-          <input
-            ref={failedCopyRef}
-            className="chq-input"
-            readOnly
-            value={copyResult.text}
-            onFocus={(e) => e.currentTarget.select()}
-            aria-label="Public link to copy manually"
-          />
-        ) : null}
-      </label>
     </section>
   );
 });

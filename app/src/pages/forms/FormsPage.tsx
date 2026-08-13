@@ -298,7 +298,6 @@ export function FormsPage() {
               ref={settingsRef}
               form={form}
               tracks={tracks}
-              eventSlug={event.slug}
               timezone={event.timezone}
               onSave={handleSaveSettings}
             />
