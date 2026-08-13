@@ -2,13 +2,13 @@
 // repo/submissions.ts (contention decomposition, no behavior change). See
 // repo/submissions.ts for the module-level contract notes.
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
 import { submissionSeqSubquery } from "./seq";
 import { normalizeEmail } from "../../../domain/email";
-import { DEC_258, DEC_275, DEC_542 } from "../../../decisions";
+import { DEC_258, DEC_275, DEC_542, DEC_755 } from "../../../decisions";
 import { chunkRowsForInsert } from "../../../lib/chunk";
 
 // Compile-checked dependency marker: createSubmission's participant insert
@@ -20,6 +20,9 @@ void DEC_275;
 // Compile-checked dependency marker: cloneSubmission's child-row inserts
 // below are set-based (chunkRowsForInsert), not per-row loops (DEC-542).
 void DEC_542;
+// Compile-checked dependency marker: findOrCreateContact's case-insensitive
+// email match below implements DEC-755.
+void DEC_755;
 
 export interface CreateSubmissionInput {
   title: string;
@@ -49,10 +52,14 @@ export async function findOrCreateContact(
   now: Date,
 ): Promise<FoundOrCreatedContact> {
   const email = normalizeEmail(input.email);
+  // DEC-755: contact identity within an org is (orgId, lower(email)) on
+  // every find-or-create path -- matches submit.ts's findContactByEmail so
+  // a differently-cased address (e.g. Jordan@X.com vs jordan@x.com) reuses
+  // the existing contact instead of minting a duplicate.
   const existing = await db
     .select({ id: schema.contact.id, title: schema.contact.title, company: schema.contact.company })
     .from(schema.contact)
-    .where(and(eq(schema.contact.orgId, orgId), eq(schema.contact.email, email)))
+    .where(and(eq(schema.contact.orgId, orgId), sql`lower(${schema.contact.email}) = lower(${email})`))
     .limit(1);
   if (existing[0]) return existing[0];
 

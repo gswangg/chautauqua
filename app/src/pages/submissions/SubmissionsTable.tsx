@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { apiList, apiGet, ApiError, apiPatch, apiPost } from '../../lib/api';
+// DEC-755: createSubmission below no longer needs a follow-up apiPatch call
+// now that trackIds/format ride the create POST body directly.
+import { apiList, apiGet, ApiError, apiPost } from '../../lib/api';
 import { formatDate } from '../../lib/dates';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { BulkActionBar } from './BulkActionBar';
@@ -141,19 +143,15 @@ export function SubmissionsTable() {
 
   async function createSubmission(input: NewSubmissionInput) {
     if (!eventId) return;
-    const created = await apiPost<{ id: string }>(`/events/${eventId}/submissions`, {
+    // DEC-755: trackIds and format ride the create POST directly (ONE
+    // writer per DEC-717 on the server side — no follow-up PATCH needed).
+    await apiPost<{ id: string }>(`/events/${eventId}/submissions`, {
       title: input.title,
       description: input.description || null,
       contact: input.contact,
+      trackIds: input.trackIds,
+      ...(input.format ? { format: input.format } : {}),
     });
-    // DEC-598 (closes CNT-D6): the create endpoint doesn't take trackIds
-    // directly — apply the organizer's track selection through the same
-    // full-set-replace PATCH the detail page's track editor uses, so a
-    // submission created here can be track-scoped from the start instead of
-    // never being assignable to a track.
-    if (input.trackIds.length > 0) {
-      await apiPatch(`/submissions/${created.id}`, { trackIds: input.trackIds });
-    }
     setShowNewModal(false);
     setRefreshToken((n) => n + 1);
   }

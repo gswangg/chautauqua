@@ -25,6 +25,7 @@ export interface NewSubmissionInput {
   description: string;
   contact: { email: string; firstName: string; lastName: string } | null;
   trackIds: string[];
+  format: string;
 }
 
 interface NewSubmissionModalProps {
@@ -65,7 +66,7 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
     setPending(true);
     setError(null);
     try {
-      await onCreate({ title: trimmedTitle, description: description.trim(), contact, trackIds });
+      await onCreate({ title: trimmedTitle, description: description.trim(), contact, trackIds, format });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create submission');
     } finally {

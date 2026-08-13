@@ -41,8 +41,15 @@ import { appendSubmissionRevision, countRevisions, getRevision, listRevisions } 
 import { isValidEmail, normalizeEmail } from "../../domain/email";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import { bumpIcsSequences } from "../../server/repo/ics-sequence";
-import { getEventTracks, replaceSubmissionTracks } from "../../server/repo/submit";
-import { DEC_460, DEC_461, DEC_462, DEC_519, DEC_598 } from "../../decisions";
+import { getEventTracks, replaceSubmissionTracks, upsertSubmissionAnswers } from "../../server/repo/submit";
+import { getFormatFieldOptions } from "../../server/repo/forms";
+import { SESSION_FORMAT_FIELD_ID } from "../../forms/types";
+import { DEC_460, DEC_461, DEC_462, DEC_519, DEC_598, DEC_755 } from "../../decisions";
+
+// Compile-checked dependency marker: the POST create route's trackIds/format
+// handling below implements DEC-755 (New submission dialog's Track and
+// Format controls actually persist).
+void DEC_755;
 
 // Compile-checked dependency marker: the trackIds validate+replace below
 // (organizer editing a submission's tracks) implements DEC-598.
@@ -70,6 +77,52 @@ async function assertEventOwnership(db: Db, eventId: string, orgId: string) {
   const eventOrgId = await getEventOrgId(db, eventId);
   if (!eventOrgId) throw new ApiError("not_found", "Event not found");
   if (eventOrgId !== orgId) throw new ApiError("forbidden", "Event belongs to a different org");
+}
+
+// DEC-598/DEC-755: the ONE trackIds validation rule — array of 1-64-char
+// id strings, max 1000, an empty array is a legal "no tracks" request, and
+// every id must belong to THIS event or it's a 400 naming the unknown ids.
+// Shared by POST (create) and PATCH so the two routes can never drift.
+async function parseTrackIdsField(db: Db, eventId: string, raw: unknown): Promise<string[]> {
+  if (!Array.isArray(raw) || raw.some((t) => typeof t !== "string" || t.length === 0 || t.length > 64)) {
+    throw new ApiError("invalid", "trackIds must be an array of id strings (1-64 chars)", {
+      trackIds: "Invalid id",
+    });
+  }
+  if (raw.length > 1000) {
+    throw new ApiError("invalid", "trackIds must not exceed 1000 entries", { trackIds: "Max 1000" });
+  }
+  const trackIds = raw as string[];
+  const eventTracks = await getEventTracks(db, eventId);
+  const validTrackIds = new Set(eventTracks.map((t) => t.id));
+  const unknown = trackIds.filter((t) => !validTrackIds.has(t));
+  if (unknown.length > 0) {
+    throw new ApiError("invalid", "trackIds must belong to this event", {
+      trackIds: `Unknown track id(s): ${unknown.join(", ")}`,
+    });
+  }
+  return trackIds;
+}
+
+// DEC-755: format has no submission column — it's a submission_answer keyed
+// by SESSION_FORMAT_FIELD_ID. A supplied value must match one of the
+// event's default-form format field's own options; if the event's form has
+// no such field, a supplied format is a 400, never a silent drop. Shared by
+// POST (create) and PATCH so both routes enforce the same rule.
+async function parseFormatField(db: Db, eventId: string, raw: unknown): Promise<string> {
+  if (typeof raw !== "string" || raw.length === 0) {
+    throw new ApiError("invalid", "format must be a non-empty string", { format: "Invalid format" });
+  }
+  const options = await getFormatFieldOptions(db, eventId);
+  if (options === null) {
+    throw new ApiError("invalid", "This event's form has no session format field", {
+      format: "Not configured",
+    });
+  }
+  if (!options.includes(raw)) {
+    throw new ApiError("invalid", "format must be one of the field's options", { format: "Invalid option" });
+  }
+  return raw;
 }
 
 // GET /api/v1/events/:eventId/submissions
@@ -107,6 +160,8 @@ interface CreateSubmissionBody {
   title?: unknown;
   description?: unknown;
   contact?: { email?: unknown; firstName?: unknown; lastName?: unknown } | null;
+  trackIds?: unknown;
+  format?: unknown;
 }
 
 // POST /api/v1/events/:eventId/submissions
@@ -132,7 +187,23 @@ submissionsRoutes.post("/events/:eventId/submissions", requireOrganizer, csrfJso
     contact = { email: normalizeEmail(rawEmail), firstName, lastName };
   }
 
+  // DEC-755: validate BEFORE creating the submission row so a bad trackIds/
+  // format value never leaves a half-created submission behind.
+  const trackIds = body.trackIds !== undefined ? await parseTrackIdsField(c.var.db, eventId, body.trackIds) : undefined;
+  const format = body.format !== undefined ? await parseFormatField(c.var.db, eventId, body.format) : undefined;
+
   const id = await createSubmission(c.var.db, eventId, auth.orgId, { title, description, contact });
+
+  // DEC-755/DEC-598/DEC-717: the ONE writer for submission_track (used by
+  // PATCH too) and the ONE writer for submission_answer — never a second,
+  // create-only writer for either.
+  if (trackIds !== undefined) {
+    await replaceSubmissionTracks(c.var.db, id, trackIds);
+  }
+  if (format !== undefined) {
+    await upsertSubmissionAnswers(c.var.db, id, { [SESSION_FORMAT_FIELD_ID]: format });
+  }
+
   const detail = await getSubmissionDetail(c.var.db, id);
   return c.json(detail, 201);
 });
@@ -154,6 +225,7 @@ interface UpdateSubmissionBody {
   title?: unknown;
   description?: unknown;
   trackIds?: unknown;
+  format?: unknown;
 }
 
 // PATCH /api/v1/submissions/:id — organizer-only edit of title/description/
@@ -185,36 +257,19 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
     }); // DEC-417
   }
 
-  let trackIds: string[] | undefined;
-  if (body.trackIds !== undefined) {
-    // DEC-598: trackIds is a full-set replace, and an empty array is a
-    // valid "remove every track" request — unlike parseBoundedIdArray (used
-    // for the bulk-status ids array), an empty trackIds array must NOT 400.
-    if (!Array.isArray(body.trackIds) || body.trackIds.some((t) => typeof t !== "string" || t.length === 0 || t.length > 64)) {
-      throw new ApiError("invalid", "trackIds must be an array of id strings (1-64 chars)", {
-        trackIds: "Invalid id",
-      });
-    }
-    if (body.trackIds.length > 1000) {
-      throw new ApiError("invalid", "trackIds must not exceed 1000 entries", { trackIds: "Max 1000" });
-    }
-    trackIds = body.trackIds as string[];
-    // DEC-598: an unknown track id is a 400 with a fields entry, never a
-    // silent drop — validate against the event's OWN tracks (never a
-    // cross-event/cross-org track id).
-    const eventTracks = await getEventTracks(c.var.db, ownership.eventId);
-    const validTrackIds = new Set(eventTracks.map((t) => t.id));
-    const unknown = trackIds.filter((t) => !validTrackIds.has(t));
-    if (unknown.length > 0) {
-      throw new ApiError("invalid", "trackIds must belong to this event", {
-        trackIds: `Unknown track id(s): ${unknown.join(", ")}`,
-      });
-    }
-  }
+  // DEC-598: trackIds is a full-set replace, and an empty array is a valid
+  // "remove every track" request — unlike parseBoundedIdArray (used for the
+  // bulk-status ids array), an empty trackIds array must NOT 400.
+  const trackIds =
+    body.trackIds !== undefined ? await parseTrackIdsField(c.var.db, ownership.eventId, body.trackIds) : undefined;
+  // DEC-755: format is fixable after create — same field-options validation
+  // as the POST create route.
+  const format =
+    body.format !== undefined ? await parseFormatField(c.var.db, ownership.eventId, body.format) : undefined;
 
-  if (Object.keys(fields).length === 0 && trackIds === undefined) {
-    throw new ApiError("invalid", "At least one of title, description, or trackIds is required", {
-      title: "Provide title, description, or trackIds",
+  if (Object.keys(fields).length === 0 && trackIds === undefined && format === undefined) {
+    throw new ApiError("invalid", "At least one of title, description, trackIds, or format is required", {
+      title: "Provide title, description, trackIds, or format",
     });
   }
 
@@ -247,6 +302,12 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
   // VEVENT field and don't affect ics sequence or content history.
   if (trackIds !== undefined) {
     await replaceSubmissionTracks(c.var.db, id, trackIds);
+  }
+
+  // DEC-755: format has no submission column — the same submission_answer
+  // writer POST create uses.
+  if (format !== undefined) {
+    await upsertSubmissionAnswers(c.var.db, id, { [SESSION_FORMAT_FIELD_ID]: format });
   }
 
   const detail = await getSubmissionDetail(c.var.db, id);

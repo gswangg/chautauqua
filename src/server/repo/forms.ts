@@ -6,7 +6,7 @@ import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import type { FormFieldDef, FormFieldRule } from "../../forms/types";
-import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, lockedFieldId } from "../../forms/types";
+import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, SESSION_FORMAT_FIELD_ID, lockedFieldId } from "../../forms/types";
 import { DEC_050 } from "../../decisions";
 
 void DEC_050; // per-form locked field ids ('<formId>:<name>') — see createDefaultForm below
@@ -196,6 +196,21 @@ export async function getOrCreateForm(db: Db, eventId: string): Promise<{ form: 
     return { form: existing, fields };
   }
   return createDefaultForm(db, eventId);
+}
+
+/** DEC-755: the SESSION_FORMAT_FIELD_ID field's own dropdown options, as
+ * declared on the event's default form -- the ONE source both the "New
+ * submission" dialog's <select> and the create/PATCH route's format
+ * validation read from. Returns null when the event's default form has no
+ * such field (a supplied format value is then a validation error, never a
+ * silent drop), or `[]` when the field exists but has no options defined. */
+export async function getFormatFieldOptions(db: Db, eventId: string): Promise<string[] | null> {
+  const form = await findFormForEvent(db, eventId);
+  if (!form) return null;
+  const fields = await listFields(db, form.id);
+  const field = fields.find((f) => f.id === SESSION_FORMAT_FIELD_ID);
+  if (!field) return null;
+  return field.options ?? [];
 }
 
 export async function findFormById(db: Db, formId: string): Promise<FormRow | null> {
