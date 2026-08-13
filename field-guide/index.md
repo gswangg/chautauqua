@@ -34,27 +34,26 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   losing a document may refuse; a value settable once and never editable
   is half a feature; a grid class shared by two components is a CELL COUNT
   contract.
-- FINDINGS w32 (DEC-983..987, compacted): the tree MOVED mid-plan -- a grep
-  that says "no matches" at minute 5 is a fact about minute 5, not main;
-  re-probe before concluding a task never landed. The richest seam is the
-  codebase's OWN confessions: an ALLOWED/EXCLUDED/LEGACY entry reading
-  "pre-existing gap" is a defect with a comment. A predicate applied HALF
-  is worse than none. A state the server 409s on must be READABLE on the
-  route that renders the form. An exclusion list is a promise about a
-  route's nature, never a parking space.
-- FINDINGS w33 (DEC-988..993, compacted): mandate OPEN lists age faster than
-  code. A tested payload builder with no caller is a feature the product
-  can't set. A design pack that SUPERSEDES a decision can leave the old
-  decision's TEST standing. A container class belongs to the CONTENT (page
-  root), not re-declared per stylesheet. Two vocabularies in one constant
-  is one rename from an unreachable nav item.
-- FINDINGS w34 (DEC-994..999): mandate's open list ~90% STALE -- of ~20
-  named items probed, only two were open (Content click-depth, public
-  agenda blocks); rest already built. Stop mining the mandate; mine the
-  CODE. Richest seam: a defect spelled the SAME WAY in N places
-  (`obj.contentType ?? dbColumn` x5 serve paths, a hand-written session
-  insert x3) -- delete the SHAPE that supplies the wrong value (drop the
-  field from the store's return type) so the compiler removes the other
-  N-1, not a per-site fix. A self-typed binding is a compile-time lie:
-  env.ts declaring its OWN interface for a platform binding makes a wrong
-  call site typecheck forever.
+- FINDINGS w32-34 (DEC-983..999, heavily compacted): a grep saying "no
+  matches" is a fact about that minute, not main -- re-probe. Codebase's OWN
+  confessions ("pre-existing gap") are defects with comments; a predicate
+  applied HALF is worse than none; an exclusion list is a promise about a
+  route's nature, never a parking space. Mandate open lists age fast (~90%
+  stale by w34) -- mine the CODE. A defect spelled the SAME WAY in N places
+  is fixed by deleting the SHAPE (drop the bad field from a return type) so
+  the compiler removes the other N-1. A self-typed binding is a
+  compile-time lie.
+- FINDINGS w35 (DEC-512 -- the LAST free three-digit id; 001-999 are now
+  full, so the next decision needs FOUR digits plus an edit to
+  decisions/README.md's "three digits" rule): the mandate is SPENT. Thirty
+  more named items probed (seed required-flags, --chq-sunk, armed-clash
+  contrast, participation pill, scorecard measure, topCompanies, agenda
+  ?day=, skip-row checkboxes, duplicate-at-create, accent colour, comms
+  ICS/{feedback}, gallery toggle) -- every one already closed. Open work
+  now comes only from reading code. Two seams paid: a rule applied to N-1
+  of N query sites (the invite-status filter, fixed six times since w8,
+  still absent from the Overview's clash + lead-speaker reads and the CRM
+  speaker KPI) and an exemption whose REASON expired (a scan allow-list
+  citing "an unmerged wave-24 branch" still guarded a one-click destroy).
+  A fallback branch is a defect report: `?? user.email` is reached only
+  because a create path never mints the name.

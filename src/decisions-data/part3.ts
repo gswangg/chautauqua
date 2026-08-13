@@ -96,6 +96,7 @@ export const DEC_508 = "Dropdown options are required when a PATCH CHANGES a fie
 export const DEC_509 = "An evaluation plan's numeric fields are validated at the route on BOTH POST and PATCH; a bad value is a 400, never a silent coercion and never an uncast bind";
 export const DEC_510 = "Event start/end dates are strict ISO YYYY-MM-DD, validated at the API boundary, with ONE isIsoDate home";
 export const DEC_511 = "The LIKE-escaping invariant is locked by a globbed enumeration over the repo layer, not by the spot checks that let it rot three times";
+export const DEC_512 = "Every participant READ declares its invite-status audience; the list of reads that legitimately span all four statuses IS the enumeration, and it is a test";
 export const DEC_513 = "README evaluator credentials are contract-tested against the vendored fixture, in both directions";
 export const DEC_514 = "The stage-1 exit wave carries ZERO product-behavior tasks, because evidence cut at a wave's base sha cannot describe that wave's own fixes";
 export const DEC_515 = "Exports carry the substance, not just the identifiers: submissions gain `description` + one column per custom form field; speakers gain bio/headshot/social links";
