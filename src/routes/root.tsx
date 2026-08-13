@@ -16,7 +16,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../server/env";
 import { ApiError } from "../server/http";
-import { DEC_049, DEC_012, DEC_005, DEC_268, DEC_295, DEC_581, DEC_582 } from "../decisions";
+import { DEC_049, DEC_012, DEC_005, DEC_154, DEC_268, DEC_295, DEC_581, DEC_582, DEC_945 } from "../decisions";
 import { ThemeStyles } from "../views/theme";
 import { PUBLIC_CSS } from "./public/public.css";
 import { HOME_CSS } from "./public/home.css";
@@ -24,6 +24,8 @@ import { getHubOrg, listHubEvents, HUB_CANDIDATE_LIMIT } from "../server/repo/pu
 import { groupHubEvents, hubState, type HubEvent, type HubSections, type HubState } from "../lib/home-hub";
 import { formatEventDayRange, formatEventCloseDateLabel } from "../lib/event-time";
 import { countOf } from "../domain/count-copy";
+import { matchesAdminRoute } from "../lib/admin-routes";
+import { NotFoundDocument, resolveNotFoundEyebrow } from "../server/not-found";
 
 export const rootRoutes = new Hono<AppEnv>();
 
@@ -31,10 +33,12 @@ export const rootRoutes = new Hono<AppEnv>();
 void DEC_049;
 void DEC_012;
 void DEC_005;
+void DEC_154;
 void DEC_268;
 void DEC_295;
 void DEC_581;
 void DEC_582;
+void DEC_945;
 
 /** Fetches a static asset path from the ASSETS binding against the
  * request's own origin — building a fresh Request rather than mutating the
@@ -84,6 +88,23 @@ rootRoutes.get("/admin/*", async (c) => {
   const auth = c.var.auth;
   if (!auth) return c.redirect("/login", 302);
   if (auth.role === "speaker") return c.redirect("/portal", 302);
+  // DEC-154/DEC-945 (amendment, wave 53): an unknown /admin path is a real,
+  // chromeless 404 -- checked AFTER the anon/speaker redirects above (an
+  // unauthenticated /admin/nope must still 302 to /login, never leak route
+  // existence to anonymous callers) but BEFORE fetchAdminShell, so a bad
+  // admin URL never gets HTTP 200 with the shell's own catch-all drawing
+  // NotFound inside the full nav chrome.
+  const subPath = path.slice("/admin".length) || "/";
+  if (!matchesAdminRoute(subPath)) {
+    const eyebrow = await resolveNotFoundEyebrow(c.var.db);
+    return c.html(
+      <NotFoundDocument
+        eyebrow={eyebrow}
+        body="The link may be old, or the event may have been switched since it was saved."
+      />,
+      404,
+    );
+  }
   return fetchAdminShell(c);
 });
 
