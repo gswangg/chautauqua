@@ -369,15 +369,16 @@ describe('PlanEditor render smoke', () => {
     expect(screen.getByRole('link', { name: 'Add criterion' })).toHaveAttribute('aria-disabled', 'true');
   });
 
-  // DEC-676/DEC-213/DEC-709: surfaces the server-side freeze -- a round that
-  // already has recorded evaluations renders its criterion rows read-only,
-  // names the reason and count, states WHY, and offers the forward move.
-  it('renders a locked criteria row with its reason, count and the Start-a-new-wave affordance', async () => {
+  // DEC-676/DEC-213/DEC-709/DEC-882: surfaces the server-side freeze -- a
+  // round that already has recorded evaluations renders its criterion rows
+  // as READ-ONLY TEXT (never disabled inputs), names the reason and count
+  // BELOW the rows, and offers the forward move.
+  it('renders a locked criteria row as read-only text, with its reason/count below the rows and the Start-a-new-wave affordance', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/plans/${PLAN_ID}`]: {
         ...plan(),
-        criteria: [{ id: 'c1', label: 'Content', kind: 'rating', weight: 1 }],
+        criteria: [{ id: 'c1', label: 'Content', guidance: 'Judge on merit', kind: 'rating', weight: 1 }],
         evaluationCountsByRound: { '1': 3 },
       },
       [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
@@ -385,7 +386,7 @@ describe('PlanEditor render smoke', () => {
       'GET /api/v1/users': listEnvelope([]),
     });
 
-    render(
+    const { container } = render(
       <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
         <Routes>
           <Route path="/review/plans/:planId" element={<PlanEditor />} />
@@ -397,9 +398,20 @@ describe('PlanEditor render smoke', () => {
       expect(screen.getByText('Locked - 3 reviews scored against these criteria')).toBeInTheDocument();
     });
     expect(screen.getByText('Changing these would rescore work already done')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Label')).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Remove' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Start a new wave' })).toBeInTheDocument();
+
+    // Read-only TEXT, not disabled inputs -- the criterion's name, guidance
+    // and raw weight all render as plain text.
+    expect(screen.getByText('Content')).toBeInTheDocument();
+    expect(screen.getByText('Judge on merit')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Label')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
+    expect(container.querySelectorAll('.chq-review-criterion-row input')).toHaveLength(0);
+
+    // The lock card sits BELOW the read-only rows: the headline appears
+    // after the criterion's own name in document order.
+    const text = container.textContent ?? '';
+    expect(text.indexOf('Content')).toBeLessThan(text.indexOf('Locked - 3 reviews'));
   });
 
   // DEC-709: the new-row kind picker is a segmented control (Rating /
@@ -667,5 +679,126 @@ describe('PlanEditor render smoke', () => {
     expect(applyCall).toBeDefined();
     const applyInit = applyCall?.[1] as RequestInit | undefined;
     expect(JSON.parse(applyInit?.body as string)).toEqual({ cap: null });
+  });
+
+  // --- DEC-882: criteria table column headers + read-only lock + open-plan header ---
+
+  it('renders the CRITERION / GUIDANCE / WEIGHT column headers above the criteria rows', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: {
+        ...plan(),
+        criteria: [{ id: 'c1', label: 'Content', kind: 'rating', weight: 1 }],
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Criterion')).toBeInTheDocument());
+    expect(screen.getByText('Guidance')).toBeInTheDocument();
+    expect(screen.getByText('Weight')).toBeInTheDocument();
+  });
+
+  // DEC-882: a locked round's criteria render zero form controls -- no
+  // <input>/<button>/<select> anywhere inside the criterion rows.
+  it('renders zero form controls for a locked round\'s criteria', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: {
+        ...plan(),
+        criteria: [
+          { id: 'c1', label: 'Content', kind: 'rating', weight: 1 },
+          { id: 'c2', label: 'Format', kind: 'dropdown', options: ['Talk', 'Workshop'] },
+        ],
+        evaluationCountsByRound: { '1': 5 },
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    const { container } = render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Content')).toBeInTheDocument());
+    expect(screen.getByText('Format')).toBeInTheDocument();
+    const rows = container.querySelectorAll('.chq-review-criterion-row');
+    expect(rows.length).toBe(2);
+    for (const row of rows) {
+      expect(row.querySelectorAll('input, button, select, textarea')).toHaveLength(0);
+    }
+  });
+
+  // DEC-882: the open-plan header states both numbers from the plan's own
+  // progress aggregate (progressRows via progressTotals) -- never a second
+  // count derived in the component.
+  it('states "Open · N of M reviews in" from the progress aggregate for an open plan', async () => {
+    const now = Date.now();
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: {
+        ...plan(),
+        openDate: now - 86_400_000,
+        closeDate: now + 86_400_000,
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([
+        { userId: 'user-1', email: 'a@example.test', name: null, assigned: 6, completed: 2, recused: 0 },
+        { userId: 'user-2', email: 'b@example.test', name: null, assigned: 4, completed: 1, recused: 0 },
+      ]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Open · 3 of 10 reviews in')).toBeInTheDocument();
+    });
+  });
+
+  it('renders no open-plan status line for a plan that has not opened yet', async () => {
+    const now = Date.now();
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: {
+        ...plan(),
+        openDate: now + 86_400_000,
+        closeDate: now + 172_800_000,
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByDisplayValue('Track Review')).toBeInTheDocument());
+    expect(screen.queryByText(/^Open ·/)).not.toBeInTheDocument();
   });
 });

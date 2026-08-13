@@ -615,6 +615,33 @@
   border-bottom: 1px solid var(--chq-hairline);
 }
 
+/* DEC-882: the criteria table's own header row, aligned to
+   .chq-review-criterion-row's grid so CRITERION/GUIDANCE/WEIGHT sit over
+   their columns. New, prefixed selectors only -- this file is edited
+   concurrently by the scorecard lane. */
+.chq-review-criteria-head-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto auto auto;
+  gap: 16px;
+  padding: 0 0 6px;
+}
+
+.chq-review-criteria-head-cell {
+  font-family: var(--chq-font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+/* DEC-882: a locked round's criterion row reads as plain text, not a
+   disabled form -- no input borders/backgrounds. */
+.chq-review-criterion-row-readonly {
+  font-size: 14px;
+  color: var(--chq-ink-2);
+}
+
 @media (max-width: 700px) {
   .chq-review-criterion-row {
     grid-template-columns: 1fr;
