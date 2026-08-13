@@ -2,11 +2,12 @@
 // GET /api/v1/submissions/:id, the DEC-016 forms + tracks endpoints, and
 // the existing bulk status endpoint (ids:[id]) — no new server code.
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { formatDate as formatTimestamp, formatDateTime } from '../../lib/dates';
 import { formatEventDate } from '../../../../src/lib/event-time';
 import { SESSION_FORMAT_FIELD_ID } from '../../../../src/forms/types';
+import { parseFormatDurationMin } from '../../../../src/domain/schedule';
 import type { CfpForm } from '../forms/types';
 import { buildAnswerRows, resolveAnswerFields } from './detailRows';
 import { formatSubmissionScheduleLine } from './schedule';
@@ -130,6 +131,20 @@ function calendarDayIndex(ms: number, timeZone: string): number {
   return Date.UTC(year, month - 1, day) / 86_400_000;
 }
 
+// DEC-908 (wave 42 amendment): the eyebrow's session-format grammar reads
+// 'Talk, 30m' -- a comma and a bare 'Nm' suffix -- never the raw CFP option
+// label's '(N min)' parenthetical. Reuses parseFormatDurationMin (the same
+// minute-extraction rule the scheduler already trusts) rather than a second
+// regex, so the two readings of one label cannot drift apart; a label the
+// parser can't read (no parenthesised duration) renders unchanged rather
+// than inventing a length.
+function formatSessionFormatGrammar(rawLabel: string): string {
+  const minutes = parseFormatDurationMin(rawLabel);
+  if (minutes === null) return rawLabel;
+  const name = rawLabel.replace(/\s*\(\d+\s*(?:min|mins|minutes)\)\s*$/i, '').trim();
+  return `${name}, ${minutes}m`;
+}
+
 function daysAwaitingTriage(createdAt: number, timeZone: string | null, now: number): number | null {
   if (!timeZone) return null;
   try {
@@ -181,7 +196,6 @@ interface HistoryTimelineEntry {
 
 export function SubmissionDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const location = useLocation();
   // DEC-998: the editor and the history disclosure are URL state (`?edit=1`
   // / `?history=1`), not local-only useState -- a deliverable-detail link
@@ -196,7 +210,6 @@ export function SubmissionDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusPending, setStatusPending] = useState(false);
-  const [cloning, setCloning] = useState(false);
   const [participantsError, setParticipantsError] = useState<string | null>(null);
   const [visiblePending, setVisiblePending] = useState<string | null>(null);
   const [coPresenterQuery, setCoPresenterQuery] = useState('');
@@ -209,7 +222,11 @@ export function SubmissionDetailPage() {
   // DEC-998: editing/historyOpen are derived from the URL, not their own
   // useState -- setSearchParams is the single writer for both.
   const editing = searchParams.get('edit') === '1';
-  const historyOpen = searchParams.get('history') === '1';
+  // DEC-908 (wave 42 amendment): History renders EXPANDED by default (the
+  // frame lists entries inline) -- absent is open, `?history=0` is the one
+  // way to reach the collapsed state, so a bookmarked/shared link still
+  // round-trips through the toggle.
+  const historyOpen = searchParams.get('history') !== '0';
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
@@ -457,20 +474,6 @@ export function SubmissionDetailPage() {
     }
   }
 
-  async function cloneSubmission() {
-    if (!id) return;
-    setCloning(true);
-    setError(null);
-    try {
-      const cloned = await apiPost<SubmissionDetail>(`/submissions/${id}/clone`);
-      navigate(`/submissions/${cloned.id}`);
-    } catch (err) {
-      setError(err instanceof ApiError ? `Clone failed: ${err.message}` : 'Clone failed');
-    } finally {
-      setCloning(false);
-    }
-  }
-
   async function toggleParticipantVisible(participant: SubmissionDetailParticipant) {
     if (!detail || !id) return;
     const nextVisible = !participant.visible;
@@ -543,9 +546,9 @@ export function SubmissionDetailPage() {
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev);
       if (historyOpen) {
-        params.delete('history');
+        params.set('history', '0');
       } else {
-        params.set('history', '1');
+        params.delete('history');
       }
       return params;
     });
@@ -598,7 +601,7 @@ export function SubmissionDetailPage() {
   // either half omitted when absent, the whole line omitted when both are.
   const eyebrowTrackNames = trackNames.join(' · ');
   const eyebrowFormat = typeof detail.answers[SESSION_FORMAT_FIELD_ID] === 'string'
-    ? (detail.answers[SESSION_FORMAT_FIELD_ID] as string).trim()
+    ? formatSessionFormatGrammar((detail.answers[SESSION_FORMAT_FIELD_ID] as string).trim())
     : '';
   const eyebrowParts = [eyebrowTrackNames, eyebrowFormat].filter((part) => part !== '');
   const eyebrowText = eyebrowParts.length > 0 ? eyebrowParts.join(' · ') : null;
@@ -780,7 +783,7 @@ export function SubmissionDetailPage() {
                             reviewed -- never render 'Anonymous reviewer',
                             even for an anonymized plan. */}
                         <strong>{ev.reviewerName}</strong>
-                        <span className="chq-review-entry-score">{ev.score !== null ? ev.score.toFixed(2) : '—'}</span>
+                        <span className="chq-review-entry-score">{ev.score !== null ? ev.score.toFixed(1) : '—'}</span>
                         <span className="chq-review-entry-plan">
                           {ev.planName} &middot; Round {ev.round} &middot; {formatTimestamp(ev.submittedAt)}
                         </span>
@@ -1093,11 +1096,6 @@ export function SubmissionDetailPage() {
                 )}
                 <p className="chq-detail-decision-note">Deciding sends nothing. Notify from Comms.</p>
               </div>
-              <div className="chq-detail-decision-actions">
-                <button type="button" className="chq-btn chq-btn-secondary" disabled={cloning} onClick={cloneSubmission}>
-                  Clone
-                </button>
-              </div>
               {/* Content approval lives on the content screen (worklist /
                   deliverable detail), not here -- this page only points at
                   it (DEC-743). */}
@@ -1112,9 +1110,11 @@ export function SubmissionDetailPage() {
               <h2 className="chq-detail-section-title">Speaker</h2>
               <div className="chq-detail-section-body chq-detail-speaker-body">
                 <strong className="chq-detail-speaker-name">{speaker.name}</strong>
+                {/* DEC-908 (wave 42 amendment): 'Company · Role' with a
+                    middot, not the prior 'Role, Company' comma order. */}
                 {(speaker.title || speaker.company) && (
                   <span className="chq-detail-speaker-role">
-                    {[speaker.title, speaker.company].filter(Boolean).join(', ')}
+                    {[speaker.company, speaker.title].filter(Boolean).join(' · ')}
                   </span>
                 )}
                 <span className="chq-detail-speaker-email">{speaker.email}</span>

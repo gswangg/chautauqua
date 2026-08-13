@@ -159,10 +159,12 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
       expect(screen.getByText('Original description')).toBeInTheDocument();
     });
 
-    // DEC-707 section-action grammar: 'History' is a plain label, 'Show'
-    // is the section's ONE action -- no more 'Show history' bare toggle.
+    // DEC-707 section-action grammar: 'History' is a plain label, the
+    // show/hide toggle is the section's ONE action. DEC-908 (wave 42
+    // amendment): History renders EXPANDED by default, so the toggle
+    // already reads 'Hide' with no click needed to reveal the entries.
     expect(screen.getByText('History')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Show' }));
+    expect(screen.getByRole('button', { name: 'Hide' })).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getAllByText('Edited by organizer@example.com').length).toBe(2);
@@ -250,8 +252,9 @@ describe('SubmissionDetailPage render: DEC-998 URL-state editor + history', () =
 
 // DEC-596/DEC-723/DEC-736 (tasks w3-f, w2-h): the numbered Reviews section
 // header reads 'Reviews · N of M in', each row shows the reviewer name
-// (never 'Anonymous reviewer' — DEC-736), the plan's weighted score (2dp /
-// em-dash), full comment text, and criterion values under their
+// (never 'Anonymous reviewer' — DEC-736), the plan's weighted score (1dp
+// [DEC-908 wave 42 amendment] / em-dash), full comment text, and criterion
+// values under their
 // criteria[].label (never the raw criterionId); DEC-878: the decision panel
 // is a rail (primary Accept + secondary Decline/Waitlist pair), not a
 // segmented button group or a <select>.
@@ -324,8 +327,9 @@ describe('SubmissionDetailPage render: Reviews section + decision rail', () => {
     expect(screen.getAllByText('Technical depth').length).toBe(2);
     expect(screen.queryByText('c1')).not.toBeInTheDocument();
 
-    // Weighted score: 2dp when present, em-dash when null.
-    expect(screen.getByText('4.00')).toBeInTheDocument();
+    // DEC-908 (wave 42 amendment): score renders at 1dp -- every other
+    // review surface is already 1dp -- em-dash when null.
+    expect(screen.getByText('4.0')).toBeInTheDocument();
     expect(screen.getByText('—')).toBeInTheDocument();
 
     // 'Awaiting triage' micro-label above the decision controls, pending only.
@@ -334,7 +338,8 @@ describe('SubmissionDetailPage render: Reviews section + decision rail', () => {
     // Speaker card (name also appears in the Participants table row, so
     // assert at least one instance rather than requiring uniqueness).
     expect(screen.getAllByText('Jamie Speaker').length).toBeGreaterThan(0);
-    expect(screen.getByText('Principal Engineer, Acme Corp')).toBeInTheDocument();
+    // DEC-908 (wave 42 amendment): 'Company · Role' with a middot.
+    expect(screen.getByText('Acme Corp · Principal Engineer')).toBeInTheDocument();
     expect(screen.getAllByText('jamie@example.com').length).toBeGreaterThan(0);
 
     // DEC-878 pending rail: Accept is the full-width primary, Decline and
