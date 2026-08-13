@@ -8,14 +8,14 @@
 // confirmation copy).
 
 import type { AnswerMap, FormFieldDef } from "../../forms/types";
-import { SESSION_FORMAT_FIELD_ID } from "../../forms/types";
+import { AUDIENCE_LEVEL_FIELD_ID, SESSION_FORMAT_FIELD_ID, lockedFieldName } from "../../forms/types";
 import { makeVisibilityPredicate } from "../../forms/visibility";
-import { formatEventDateTime } from "../../lib/event-time";
+import { formatEventDateTime, formatEventDayRange } from "../../lib/event-time";
 import { dayLabelEndInstant, dayLabelStartInstant } from "../../lib/timezone";
-import { FormFieldsSection, FieldRulesScript, fieldInputName } from "../../views/form-render";
+import { FormFieldsSection, FieldRulesScript, fieldInputName, FormField } from "../../views/form-render";
 import { ThemeStyles } from "../../views/theme";
 import { CFP_CSS } from "./cfp.css";
-import { validAccent } from "./shell";
+import { eventDatesLine, validAccent } from "./shell";
 import { CSRF_COOKIE_NAME } from "../../auth/cookies";
 import type { EventRow, FormRow, TrackRow } from "../../server/repo/submit";
 
@@ -32,7 +32,14 @@ export function branding(event: EventRow): { logoUrl?: string; accentColor?: str
 // accent is the one piece of request data involved, and it lands in a
 // validated style ATTRIBUTE on <body>, never interpolated into either CSS
 // string (DEC-374).
-export function PageShell(props: { title: string; accentColor?: string; children: unknown }) {
+// DEC-986 (wave 40 amendment): `header`, when given, renders as a sibling of
+// `<main class="chq-measure">` -- OUTSIDE the page's one root clamp -- so
+// chrome (the CFP page's date·venue/wordmark/closes-line band) is genuinely
+// full bleed while `children` (the reading column) stays constrained. Mirrors
+// PublicShell's header/main split (src/routes/public/shell.tsx) rather than
+// inventing a second pattern. Every other PageShell caller (ClosedPage/
+// NotYetOpenPage/ConfirmationPage) omits `header` and is unchanged.
+export function PageShell(props: { title: string; accentColor?: string; header?: unknown; children: unknown }) {
   return (
     <html lang="en">
       <head>
@@ -43,6 +50,7 @@ export function PageShell(props: { title: string; accentColor?: string; children
         <style dangerouslySetInnerHTML={{ __html: CFP_CSS }} />
       </head>
       <body style={`--chq-brandable-accent: ${validAccent(props.accentColor)};`}>
+        {props.header ? (props.header as any) : null}
         <main class="chq-measure">{props.children as any}</main>
       </body>
     </html>
@@ -133,6 +141,10 @@ export function DraftSavedNotice() {
 export function TrackChoices(props: { tracks: TrackRow[]; selected: string[] }) {
   return (
     <fieldset class="chq-cfp-fieldset">
+      {/* DEC-986 (wave 40 amendment): "required" is carried on the input
+          itself (this component only renders when tracks.length > 0, which
+          is exactly when validateTrackChoice requires a pick) -- never a
+          textual '*' on the legend, per DEC-951's asterisk-free grammar. */}
       <legend>Tracks</legend>
       <p class="help">Choose one.</p>
       {props.tracks.map((track) => (
@@ -142,6 +154,7 @@ export function TrackChoices(props: { tracks: TrackRow[]; selected: string[] }) 
             name="trackIds"
             value={track.id}
             checked={props.selected.includes(track.id)}
+            required
           />
           {track.name}
         </label>
@@ -178,6 +191,36 @@ export function FormatChoices(props: { field: FormFieldDef; value: unknown; erro
   );
 }
 
+// DEC-986 (wave 40 amendment): the Audience-level dropdown, when the default
+// form defines it (AUDIENCE_LEVEL_FIELD_ID), is pulled out of
+// FormFieldsSection's normal <select> rendering the same way FormatChoices
+// pulls Session-format -- but drawn as a horizontal three-pill segment
+// (.chq-cfp-segment) rather than FormatChoices'/TrackChoices' one-column
+// list, reusing the same .chq-cfp-option chrome per DEC-696 parity.
+export function AudienceChoices(props: { field: FormFieldDef; value: unknown; error?: string }) {
+  const { field, value, error } = props;
+  const name = fieldInputName(field.id);
+  return (
+    <fieldset class="chq-cfp-fieldset">
+      <legend>{field.label}</legend>
+      {field.helpText ? <p class="help">{field.helpText}</p> : null}
+      <div class="chq-cfp-segment">
+        {(field.options ?? []).map((opt) => (
+          <label class="chq-cfp-option chq-cfp-pill">
+            <input type="radio" name={name} data-field-id={field.id} value={opt} checked={value === opt} required={field.required} />
+            {opt}
+          </label>
+        ))}
+      </div>
+      {error ? (
+        <p role="alert" class="chq-field-error">
+          {error}
+        </p>
+      ) : null}
+    </fieldset>
+  );
+}
+
 export function SubmitPage(props: {
   event: EventRow;
   form: FormRow;
@@ -205,60 +248,94 @@ export function SubmitPage(props: {
   // pulled out of FormFieldsSection's normal <select> rendering and drawn
   // as a radio-card group instead (FormatChoices, below).
   const formatField = fields.find((f) => f.id === SESSION_FORMAT_FIELD_ID);
+  // DEC-986 (wave 40 amendment): same pull-out, scoped to
+  // AUDIENCE_LEVEL_FIELD_ID, drawn as a pill segment (AudienceChoices).
+  const audienceField = fields.find((f) => f.id === AUDIENCE_LEVEL_FIELD_ID);
+  // The two locked session fields (Title, Abstract) render first via the
+  // generic renderer; everything else in the session section (Notes for
+  // reviewers, Accessibility needs, and any producer-added custom field)
+  // renders after the Track|Format row and the Audience-level segment —
+  // Track/Format/Audience are pulled out of both passes via excludeIds.
+  const sessionFields = fields.filter((f) => f.section === "session");
+  const nonLockedSessionIds = sessionFields.filter((f) => lockedFieldName(f.id) === null).map((f) => f.id);
+  const lockedSessionIds = sessionFields.filter((f) => lockedFieldName(f.id) !== null).map((f) => f.id);
+  const pulledOutSessionIds = [formatField?.id, audienceField?.id].filter((id): id is string => Boolean(id));
+  // DEC-986 (wave 40 amendment): the YOU section pairs Name|Email, then
+  // Company|Job title, then Bio full-width -- a layout FormFieldsSection's
+  // generic per-kind flow can't express, so the locked speaker fields are
+  // drawn directly with FormField (same component FormFieldsSection uses
+  // internally), found by their locked short name (DEC-050/DEC-475). First/
+  // last name stay two LOCKED fields (deferred name-collapse, see DEC-986's
+  // wave-40 amendment) -- never merged into one control.
+  const speakerFields = fields.filter((f) => f.section === "speaker");
+  const byLockedName = (name: string) => speakerFields.find((f) => lockedFieldName(f.id) === name);
+  const firstNameField = byLockedName("first_name");
+  const lastNameField = byLockedName("last_name");
+  const emailField = byLockedName("email");
+  const companyField = byLockedName("company");
+  const jobTitleField = byLockedName("job_title");
+  const bioField = byLockedName("bio");
+  const knownSpeakerIds = [firstNameField, lastNameField, emailField, companyField, jobTitleField, bioField]
+    .filter((f): f is FormFieldDef => Boolean(f))
+    .map((f) => f.id);
+  const renderSpeakerField = (field: FormFieldDef | undefined) =>
+    field ? <FormField field={field} value={answers[field.id]} error={errors?.[field.id]} visible={isVisible(field, answers)} /> : null;
+  // DEC-986 (wave 40 amendment): the header's date·venue eyebrow traces to
+  // the event's own startDate/endDate/location (never illustrative copy) --
+  // guarded because those columns, while NOT NULL in the schema, aren't
+  // always present on a hand-built test fixture.
+  const hasEventDates = typeof event.startDate === "string" && event.startDate.length > 0 && typeof event.endDate === "string" && event.endDate.length > 0;
+  const header = (
+    <header class="chq-cfp-header">
+      {hasEventDates ? <span class="chq-cfp-meta">{eventDatesLine(event)}</span> : null}
+      <span class="chq-cfp-title">
+        {logoUrl ? <img src={logoUrl} alt={`${event.name} logo`} height={32} /> : null}
+        {event.name}
+      </span>
+      {form.closeDate ? (
+        <span class="chq-cfp-sub">
+          Call for papers · closes {formatEventDateTime(dayLabelEndInstant(form.closeDate, event.timezone), event.timezone)}
+        </span>
+      ) : null}
+    </header>
+  );
   return (
-    <PageShell title={`Submit a session - ${event.name}`} accentColor={accentColor}>
-      <div class="chq-cfp-shell">
-        <header class="chq-cfp-header">
-          {logoUrl ? <img src={logoUrl} alt={`${event.name} logo`} height={32} /> : null}
-          <span class="chq-cfp-meta">{event.name}</span>
-          {/* DEC-951: the page names itself ONCE -- this is the page's
-              single <h1>; the intro below keeps its identity/lede
-              paragraph but drops the second "Submit a talk" heading. */}
-          <h1 class="chq-cfp-title">{form.title}</h1>
-          {form.closeDate ? (
-            <span class="chq-cfp-sub">
-              Call for papers · closes {formatEventDateTime(dayLabelEndInstant(form.closeDate, event.timezone), event.timezone)}
-            </span>
-          ) : null}
-        </header>
-        <div class="chq-cfp-body">
-          <div class="chq-cfp-intro">
-            <p class="chq-cfp-identity-note">
-              Already have an account? <a href="/login">Sign in to the speaker portal</a>. First time
-              submitting? Submitting this form creates your speaker portal account.
-            </p>
-          </div>
-          {props.banner ? (
-            <p role="alert" class="chq-cfp-actions-note">
-              {props.banner}
-            </p>
-          ) : null}
-          {props.draftSavedNotice ? (
-            <DraftSavedNotice />
-          ) : props.hasDraft && props.draftSavedAt !== undefined ? (
-            <DraftBanner formId={form.id} savedAt={props.draftSavedAt} timeZone={event.timezone} />
-          ) : null}
-          <form method="post" action={`/submit/${event.slug}`} enctype="multipart/form-data">
-            <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
-            <section>
-              <div class="chq-cfp-section-label">Your talk</div>
-              <div class="chq-cfp-fields">
-                <FormFieldsSection
-                  fields={fields}
-                  section="session"
-                  answers={answers}
-                  errors={errors}
-                  isVisible={isVisible}
-                  excludeIds={formatField ? [SESSION_FORMAT_FIELD_ID] : undefined}
-                />
-                {formatField ? (
-                  <FormatChoices field={formatField} value={answers[formatField.id]} error={errors?.[formatField.id]} />
-                ) : null}
-                {trackError ? (
-                  <p role="alert" class="chq-field-error">
-                    {trackError}
-                  </p>
-                ) : null}
+    <PageShell title={`Submit a session - ${event.name}`} accentColor={accentColor} header={header}>
+      <div class="chq-cfp-body">
+        <div class="chq-cfp-intro">
+          {/* DEC-986 (wave 40 amendment): a separate, literal <h1> sits above
+              the form inside the reading column -- the header above no
+              longer carries an <h1> of its own. */}
+          <h1>Submit a talk</h1>
+          <p class="chq-cfp-identity-note">
+            Already have an account? <a href="/login">Sign in to the speaker portal</a>. First time
+            submitting? Submitting this form creates your speaker portal account.
+          </p>
+        </div>
+        {props.banner ? (
+          <p role="alert" class="chq-cfp-actions-note">
+            {props.banner}
+          </p>
+        ) : null}
+        {props.draftSavedNotice ? (
+          <DraftSavedNotice />
+        ) : props.hasDraft && props.draftSavedAt !== undefined ? (
+          <DraftBanner formId={form.id} savedAt={props.draftSavedAt} timeZone={event.timezone} />
+        ) : null}
+        <form method="post" action={`/submit/${event.slug}`} enctype="multipart/form-data">
+          <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
+          <section>
+            <div class="chq-cfp-section-label">Your talk</div>
+            <div class="chq-cfp-fields">
+              <FormFieldsSection
+                fields={fields}
+                section="session"
+                answers={answers}
+                errors={errors}
+                isVisible={isVisible}
+                excludeIds={nonLockedSessionIds}
+              />
+              <div class="chq-cfp-track-format-row">
                 {/* DEC-301: a form offering zero tracks renders no Track
                     fieldset — once validateTrackChoice's membership check
                     clears (DEC-416: it runs even when nothing is offered,
@@ -267,21 +344,50 @@ export function SubmitPage(props: {
                     empty required-looking block would be unactionable and
                     misleading. */}
                 {tracks.length > 0 ? <TrackChoices tracks={tracks} selected={selectedTrackIds} /> : null}
+                {formatField ? (
+                  <FormatChoices field={formatField} value={answers[formatField.id]} error={errors?.[formatField.id]} />
+                ) : null}
               </div>
-            </section>
-            <section>
-              <div class="chq-cfp-section-label">You</div>
-              <div class="chq-cfp-fields">
-                <FormFieldsSection
-                  fields={fields}
-                  section="speaker"
-                  answers={answers}
-                  errors={errors}
-                  isVisible={isVisible}
-                />
+              {trackError ? (
+                <p role="alert" class="chq-field-error">
+                  {trackError}
+                </p>
+              ) : null}
+              {audienceField ? (
+                <AudienceChoices field={audienceField} value={answers[audienceField.id]} error={errors?.[audienceField.id]} />
+              ) : null}
+              <FormFieldsSection
+                fields={fields}
+                section="session"
+                answers={answers}
+                errors={errors}
+                isVisible={isVisible}
+                excludeIds={[...lockedSessionIds, ...pulledOutSessionIds]}
+              />
+            </div>
+          </section>
+          <section>
+            <div class="chq-cfp-section-label">You</div>
+            <div class="chq-cfp-fields chq-cfp-you-grid">
+              <div class="chq-cfp-you-names">
+                {renderSpeakerField(firstNameField)}
+                {renderSpeakerField(lastNameField)}
               </div>
-            </section>
-            <div class="chq-cfp-actions">
+              {renderSpeakerField(emailField)}
+              {renderSpeakerField(companyField)}
+              {renderSpeakerField(jobTitleField)}
+              {bioField ? <div class="chq-cfp-you-bio">{renderSpeakerField(bioField)}</div> : null}
+              <FormFieldsSection
+                fields={fields}
+                section="speaker"
+                answers={answers}
+                errors={errors}
+                isVisible={isVisible}
+                excludeIds={knownSpeakerIds}
+              />
+            </div>
+          </section>
+          <div class="chq-cfp-actions">
               <button type="submit" class="chq-btn chq-btn-primary">
                 Submit this talk
               </button>
@@ -296,11 +402,10 @@ export function SubmitPage(props: {
               <span class="chq-cfp-actions-note">We email a confirmation with a link to your portal</span>
             </div>
           </form>
-          <p class="chq-cfp-actions-note">
-            Already have an account? <a href="/login">Log in &rsaquo;</a>
-          </p>
-          <FieldRulesScript fields={fields} />
-        </div>
+        <p class="chq-cfp-actions-note">
+          Already have an account? <a href="/login">Log in &rsaquo;</a>
+        </p>
+        <FieldRulesScript fields={fields} />
       </div>
     </PageShell>
   );

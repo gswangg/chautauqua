@@ -142,7 +142,7 @@ export function BaseStyles() {
  * formatEventDayRange's Date arithmetic will surface as "Invalid Date"
  * rather than throwing mid-render — matching this surface's fail-soft
  * contract for organizer-entered scheduling data. */
-function dayMs(iso: string): number {
+export function dayMs(iso: string): number {
   const [year, month, date] = iso.split("-").map(Number);
   if (!year || !month || !date) return NaN;
   return Date.UTC(year, month - 1, date);
@@ -153,7 +153,7 @@ function dayMs(iso: string): number {
  * startDate/endDate/location columns, nothing illustrative; DEC-918: the
  * range itself renders through formatEventDayRange, the ONE server-side
  * calendar-day grammar). */
-function eventDatesLine(event: PublicEvent): string {
+export function eventDatesLine(event: PublicEvent): string {
   const dates = formatEventDayRange(dayMs(event.startDate), dayMs(event.endDate));
   return event.location ? `${dates} · ${event.location}` : dates;
 }

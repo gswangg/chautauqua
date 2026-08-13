@@ -28,6 +28,6 @@ describe("validateTrackChoice (DEC-416 allowlist ordering)", () => {
 
   it("rejects nothing-selected when the form offers a non-empty set", () => {
     const result = validateTrackChoice([], ["t1", "t2"]);
-    expect(result).toEqual({ ok: false, error: "Select at least one track." });
+    expect(result).toEqual({ ok: false, error: "Select a track" });
   });
 });
