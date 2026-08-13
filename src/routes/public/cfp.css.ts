@@ -46,8 +46,11 @@ export const CFP_CSS = `
      rules for the same shared class names without conflict. */
   .chq-cfp-fields .chq-field,
   .chq-cfp-fieldset .chq-field { display: flex; flex-direction: column; gap: 6px; }
-  .chq-cfp-fields label,
-  .chq-cfp-fieldset label { display: flex; flex-direction: column; gap: 6px; }
+  /* Text fields stack label-above-input; .chq-cfp-option checkbox rows must
+     stay horizontal (this selector outranks .chq-cfp-option, so exclude it —
+     the column layout once centered checkboxes above their track names). */
+  .chq-cfp-fields label:not(.chq-cfp-option),
+  .chq-cfp-fieldset label:not(.chq-cfp-option) { display: flex; flex-direction: column; gap: 6px; }
   .chq-field-label { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--chq-muted); }
   .chq-cfp-fields .help { font-size: 12px; color: var(--chq-muted); margin: 0; }
 
