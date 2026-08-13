@@ -412,8 +412,7 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
   const sanitized = sanitizeFilenameForKey(file.name);
   const r2Key = `task/${assignmentId}/${newId()}-${sanitized}`;
   const store = makeFileStore(c.env.FILES);
-  const buf = await file.arrayBuffer();
-  await store.put(r2Key, buf, validation.servedContentType);
+  await store.put(r2Key, file.stream(), validation.servedContentType);
 
   // DEC-922: scope.fileId is this assignment's PREVIOUS upload, but the
   // speaker may have re-chosen a different eligible submission via

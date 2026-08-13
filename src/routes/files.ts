@@ -165,8 +165,7 @@ fileApiRoutes.post("/submissions/:id/files", csrfJson, async (c) => {
   const sanitized = sanitizeFilenameForKey(file.name);
   const r2Key = `sub/${submissionId}/${newId()}-${sanitized}`;
   const store = makeFileStore(c.env.FILES);
-  const buf = await file.arrayBuffer();
-  await store.put(r2Key, buf, validation.servedContentType);
+  await store.put(r2Key, file.stream(), validation.servedContentType);
 
   const fileId = await insertFile(c.var.db, {
     submissionId,

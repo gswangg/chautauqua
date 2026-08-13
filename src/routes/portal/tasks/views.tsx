@@ -13,7 +13,7 @@ import type { FormFieldRow } from "../../../server/repo/forms";
 import { makeVisibilityPredicate } from "../../../forms/visibility";
 import type { AnswerMap } from "../../../forms/types";
 import { FormFieldsSection, FieldRulesScript } from "../../../views/form-render";
-import { ALLOWED_UPLOAD_EXTENSIONS, uploadHintText } from "../../../domain/files";
+import { ALLOWED_UPLOAD_EXTENSIONS, isValidFileKind, uploadHintText } from "../../../domain/files";
 import { CSRF_COOKIE_NAME } from "../../../auth/cookies";
 import { formatCalendarDate, formatEventDateTime } from "../../../lib/event-time";
 import { effectiveAssignmentDueDate } from "../../../domain/task-due";
@@ -174,7 +174,10 @@ export function TaskRow(props: {
             <form method="post" action={`/portal/tasks/${t.id}/upload`} enctype="multipart/form-data">
               <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
               {deliverableChoice ? <DeliverableSelect info={deliverableChoice} /> : null}
-              <p class="chq-portal-detail">{uploadHintText()}</p>
+              {/* Mirrors src/routes/portal/tasks.tsx's kind fallback (deliverableKind
+                  ?? 'handout') so the hint's tier matches what validateUpload
+                  actually accepts for this assignment. */}
+              <p class="chq-portal-detail">{uploadHintText(isValidFileKind(t.deliverableKind) ? t.deliverableKind : "handout")}</p>
               <input
                 type="file"
                 name="file"
