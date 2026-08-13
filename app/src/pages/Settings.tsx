@@ -21,7 +21,6 @@ import { CallForPapersPanel } from './settings/CallForPapersPanel';
 import { TracksRoomsPanel } from './settings/TracksRoomsPanel';
 import { PublicPagesPanel } from './settings/PublicPagesPanel';
 import { PortalSettingsPanel } from './settings/PortalSettingsPanel';
-import { ResourcesPanel } from './settings/ResourcesPanel';
 import { PeopleRolesPanel } from './settings/PeopleRolesPanel';
 import { ApiTokensPanel } from './settings/ApiTokensPanel';
 import { ExportsPanel } from './settings/ExportsPanel';
@@ -34,18 +33,9 @@ interface SettingsSection {
   Panel: ComponentType;
 }
 
-// DEC-691: 'Speaker portal' composes the existing PortalSettingsPanel and
-// ResourcesPanel into one section (both are the portal's own configuration
-// -- welcome message/branding and the resources shown inside it); neither
-// panel's save endpoint, upload flow or delete-reference guard changes.
-function SpeakerPortalSection() {
-  return (
-    <>
-      <PortalSettingsPanel />
-      <ResourcesPanel />
-    </>
-  );
-}
+// DEC-747: 'Speaker portal' is now ONE read-view section rendered entirely
+// by PortalSettingsPanel (its Resources row delegates to ResourcesPanel
+// internally) -- no separate wrapper needed.
 
 // DEC-691: 'Your data' composes the existing ExportsPanel and
 // ApiTokensPanel into one section (both are ways to get this event's data
@@ -68,7 +58,7 @@ const SECTIONS: SettingsSection[] = [
   { key: 'cfp', label: 'Call for papers', Panel: CallForPapersPanel },
   { key: 'tracks', label: 'Tracks and rooms', Panel: TracksRoomsPanel },
   { key: 'public-pages', label: 'Public pages and embeds', Panel: PublicPagesPanel },
-  { key: 'portal', label: 'Speaker portal', Panel: SpeakerPortalSection },
+  { key: 'portal', label: 'Speaker portal', Panel: PortalSettingsPanel },
   { key: 'people', label: 'People and roles', Panel: PeopleRolesPanel },
   { key: 'your-data', label: 'Your data', Panel: YourDataSection },
   { key: 'sessionboard-import', label: 'Import from Sessionboard', Panel: SessionboardImportPanel },

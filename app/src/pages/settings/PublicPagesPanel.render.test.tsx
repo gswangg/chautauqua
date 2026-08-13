@@ -50,6 +50,7 @@ describe('PublicPagesPanel', () => {
       ['Speakers', '/e/devcon-2026/speakers'],
       ['Agenda', '/e/devcon-2026/agenda'],
       ['Schedule', '/e/devcon-2026/schedule'],
+      ['Speaker gallery', '/e/devcon-2026/gallery'],
       ['CFP submit page', '/submit/devcon-2026'],
     ];
 
@@ -65,8 +66,10 @@ describe('PublicPagesPanel', () => {
 
     // No accepted submissions yet -> real, not hardcoded, not-published state.
     expect(within(rows[0]!).getByText('Not published yet')).toBeInTheDocument();
+    // The gallery derives its state the same way as the other accepted-count surfaces.
+    expect(within(rows[4]!).getByText('Not published yet')).toBeInTheDocument();
     // No CFP open/close window configured -> real, not hardcoded 'Open' state.
-    expect(within(rows[4]!).getByText('Open')).toBeInTheDocument();
+    expect(within(rows[5]!).getByText('Open')).toBeInTheDocument();
   });
 
   it('derives a live state from a real accepted-submission count, never a hardcoded string', async () => {
@@ -79,6 +82,8 @@ describe('PublicPagesPanel', () => {
 
     const rows = screen.getAllByRole('listitem');
     expect(within(rows[0]!).getByText('Live · 6 published')).toBeInTheDocument();
+    // DEC-747: state pill tone is a NAMED class, not a copied color literal.
+    expect(within(rows[0]!).getByText('Live · 6 published')).toHaveClass('chq-settings-public-pages-state-live');
   });
 
   it('opens the existing EmbedsPanel builder from an Embed code control without replacing the list', async () => {
@@ -96,6 +101,6 @@ describe('PublicPagesPanel', () => {
 
     expect(screen.getByRole('heading', { name: 'Embeds' })).toBeInTheDocument();
     // The list is still there beside the builder.
-    expect(screen.getAllByRole('listitem')).toHaveLength(5);
+    expect(screen.getAllByRole('listitem')).toHaveLength(6);
   });
 });

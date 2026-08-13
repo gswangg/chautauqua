@@ -62,6 +62,7 @@ function mockAllSections() {
       tracks: [],
     },
     [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+    [`GET /api/v1/events/${EVENT_ID}/onboarding`]: { tasks: [], rows: [], total: 0, page: 1, perPage: 1, counts: {} },
     'GET /api/v1/me': { userId: 'u-self', email: 'self@example.com', name: null, role: 'organizer', orgId: 'org1' },
     'GET /api/v1/users': listEnvelope([{ id: 'u-self', email: 'self@example.com', role: 'organizer' }]),
     'GET /api/v1/tokens': listEnvelope([{ id: 'tok1', name: 'CI pipeline', tokenPrefix: 'chq_abcd', lastUsedAt: null }]),
@@ -87,12 +88,13 @@ describe('SettingsPage render smoke', () => {
     expect(screen.getByRole('heading', { name: 'Event settings' })).toBeInTheDocument();
     expect(screen.queryByDisplayValue('DevCon 2026')).not.toBeInTheDocument();
 
-    // Tracks & rooms panel.
-    expect(screen.getByRole('heading', { name: 'Tracks & rooms' })).toBeInTheDocument();
+    // Tracks & rooms panel — read-only summary (DEC-747) until drilled.
+    const tracksRoomsSection = screen.getByRole('region', { name: 'Tracks and rooms' });
+    expect(within(tracksRoomsSection).getByRole('heading', { name: 'Tracks and rooms' })).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByDisplayValue('Keynotes')).toBeInTheDocument();
+      expect(within(tracksRoomsSection).getByText('Keynotes')).toBeInTheDocument();
     });
-    expect(screen.getByText(/Main Hall/)).toBeInTheDocument();
+    expect(within(tracksRoomsSection).getByText(/Main Hall/)).toBeInTheDocument();
 
     // Call for papers panel.
     expect(screen.getByRole('heading', { name: 'Call for papers' })).toBeInTheDocument();
@@ -107,15 +109,13 @@ describe('SettingsPage render smoke', () => {
     });
     expect(screen.getByText(`/submit/devcon-2026`)).toBeInTheDocument();
 
-    // Speaker portal section (Portal settings + Resources composed).
-    expect(screen.getByRole('heading', { name: 'Portal settings' })).toBeInTheDocument();
+    // Speaker portal section — one read view (DEC-747), Resources folded
+    // in via ResourcesPanel rather than its own separate heading.
+    expect(screen.getByRole('heading', { name: 'Speaker portal' })).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByDisplayValue('Welcome, speakers!')).toBeInTheDocument();
+      expect(screen.getByText(/Shown above the task list · 1 paragraph/)).toBeInTheDocument();
     });
-    expect(screen.getByRole('heading', { name: 'Resources' })).toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.getByText('Travel info')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Travel info')).toBeInTheDocument();
 
     // People and roles panel.
     expect(screen.getByRole('heading', { name: 'People and roles' })).toBeInTheDocument();
