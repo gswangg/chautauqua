@@ -137,7 +137,7 @@ export function EditPage(props: {
     return (
       <PortalLayout branding={props.branding} csrfToken={csrfToken} speakerName={speakerName}>
         <PortalBackLink to={`/portal/submissions/${props.submissionId}`} />
-        <h2 class="chq-portal-hero">Editing closed</h2>
+        <h1 class="chq-portal-hero">Editing closed</h1>
         <p role="alert">
           This submission can no longer be edited — the form's submission window has closed.
         </p>
@@ -151,7 +151,7 @@ export function EditPage(props: {
   return (
     <PortalLayout branding={props.branding} csrfToken={csrfToken} speakerName={speakerName}>
       <PortalBackLink to={`/portal/submissions/${props.submissionId}`} />
-      <h2 class="chq-portal-hero">Edit submission</h2>
+      <h1 class="chq-portal-hero">Edit submission</h1>
       <form method="post" action={`/portal/submissions/${props.submissionId}/edit`}>
         <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
         <div class="chq-section-label">Session</div>
