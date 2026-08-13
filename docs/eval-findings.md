@@ -198,7 +198,12 @@ not-in-mock Participants + full-Answers sections · header: drop "Welcome to the
 speaker portal!…" tagline (displaces identity on subpages; mock = wordmark +
 identity only) · pending status label "UNDER REVIEW" — mock vocabulary check ·
 admin-404 links run together ("Go to Overview Submissions ›" — separate them) ·
-public form track checkboxes centered above labels, should be inline.
+public form track checkboxes centered above labels, should be inline · USER-REPORTED
+(prod screenshot): public Sessions search form misaligned — src/routes/public/
+sessions.tsx:125-133 has label(text+input) then button with NO row wrapper, so the
+green Search button floats to the container top-right, vertically offset above the
+input line; wrap input+button in a flex row, button aligned to the input (check the
+other public surfaces' search forms for the same structure).
 
 **Grader P3s** (two-track-selectors CLOSED by probe 2): label New-event Timezone ·
 explicit CFP publish affordance · close-before-open validation loud at the field.
