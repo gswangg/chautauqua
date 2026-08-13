@@ -34,15 +34,18 @@ export function GridFilters({ tasks, filters, onChange }: GridFiltersProps) {
         ))}
       </select>
 
+      {/* Two status axes now share this screen (DEC-830 adds a participation
+          menu beside these task cells), so an unqualified "status" is
+          ambiguous -- this select scopes itself to task status. */}
       <select
         className="chq-select"
-        aria-label="Filter by status"
+        aria-label="Any task status"
         value={filters.status ?? ''}
         onChange={(e) =>
           onChange({ ...filters, status: e.target.value === '' ? null : (e.target.value as AssignmentStatus) })
         }
       >
-        <option value="">Any status</option>
+        <option value="">Any task status</option>
         {STATUS_OPTIONS.map((status) => (
           <option key={status} value={status}>
             {status === 'complete' ? 'Complete' : 'Pending'}

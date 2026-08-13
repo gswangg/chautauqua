@@ -340,13 +340,14 @@ describe('OnboardingGrid: DEC-694 per-row remind', () => {
   });
 });
 
-// DEC-789: the roster row's invite-status control writes through
+// DEC-830: the roster row's participation control is a MENU of named states
+// (not a click-to-cycle control) that writes through
 // PATCH /submissions/:submissionId/participants/:participantId (mocked here
 // -- this test never imports src/routes/api/submissions.ts), labelled from
 // the ONE app/src/pages/speakers/types.ts vocabulary, optimistic with
 // rollback on failure.
-describe('OnboardingGrid: DEC-789 invite status control', () => {
-  it('shows the Not invited / Invited / Confirmed / Declined labels and PATCHes through on click, cycling to the next status', async () => {
+describe('OnboardingGrid: DEC-830 participation menu', () => {
+  it('shows the Not invited / Invited / Confirmed / Declined labels and PATCHes the chosen state on selection', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
@@ -358,14 +359,16 @@ describe('OnboardingGrid: DEC-789 invite status control', () => {
 
     // GRID's ct1 fixture starts inviteStatus: 'accepted' -> labelled Confirmed.
     const table = within(screen.getByRole('table'));
-    const btn = table.getByRole('button', { name: 'Invite status for Ada Lovelace: Confirmed' });
-    expect(btn).toHaveTextContent('Confirmed');
+    const trigger = table.getByRole('button', { name: 'Participation status for Ada Lovelace: Confirmed' });
+    expect(trigger).toHaveTextContent('Confirmed');
 
-    fireEvent.click(btn);
+    fireEvent.click(trigger);
+    const menu = table.getByRole('menu', { name: 'Participation status for Ada Lovelace' });
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Declined' }));
 
-    // Optimistic: cycles accepted -> declined before the PATCH resolves.
+    // Optimistic: renders the chosen state before the PATCH resolves.
     await waitFor(() => {
-      expect(table.getByRole('button', { name: 'Invite status for Ada Lovelace: Declined' })).toBeInTheDocument();
+      expect(table.getByRole('button', { name: 'Participation status for Ada Lovelace: Declined' })).toBeInTheDocument();
     });
 
     await waitFor(() => {
@@ -392,15 +395,17 @@ describe('OnboardingGrid: DEC-789 invite status control', () => {
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
     const table = within(screen.getByRole('table'));
-    fireEvent.click(table.getByRole('button', { name: 'Invite status for Ada Lovelace: Confirmed' }));
+    fireEvent.click(table.getByRole('button', { name: 'Participation status for Ada Lovelace: Confirmed' }));
+    const menu = table.getByRole('menu', { name: 'Participation status for Ada Lovelace' });
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Declined' }));
 
     await waitFor(() => {
-      expect(table.getByRole('button', { name: 'Invite status for Ada Lovelace: Declined' })).toBeInTheDocument();
+      expect(table.getByRole('button', { name: 'Participation status for Ada Lovelace: Declined' })).toBeInTheDocument();
     });
 
     // ...rolls back visibly on the failed PATCH, and surfaces the error.
     await waitFor(() => {
-      expect(table.getByRole('button', { name: 'Invite status for Ada Lovelace: Confirmed' })).toBeInTheDocument();
+      expect(table.getByRole('button', { name: 'Participation status for Ada Lovelace: Confirmed' })).toBeInTheDocument();
     });
     expect(screen.getByText(/Update failed/)).toBeInTheDocument();
   });
