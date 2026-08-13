@@ -119,6 +119,7 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "GET", path: "/api/v1/plans/:id", role: "organizer" },
       { method: "PATCH", path: "/api/v1/plans/:id", role: "organizer" },
       { method: "DELETE", path: "/api/v1/plans/:id", role: "organizer" },
+      { method: "GET", path: "/api/v1/plans/:id/delete-preview", role: "organizer (DEC-929: names what the DELETE below destroys)" },
       { method: "POST", path: "/api/v1/plans/:id/advance-round", role: "organizer" },
       { method: "POST", path: "/api/v1/plans/:id/waves", role: "organizer" },
       { method: "POST", path: "/api/v1/plans/:id/reviewers", role: "organizer" },

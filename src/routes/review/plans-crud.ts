@@ -210,6 +210,15 @@ reviewPlansCrudRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, asy
   return c.json(updated);
 });
 
+// DEC-929: names what deletion destroys before the organizer confirms --
+// read-only preview of deletePlan's exact tally, guarded by the same
+// requireOwnedPlan check as the DELETE below.
+reviewPlansCrudRoutes.get("/api/v1/plans/:id/delete-preview", requireOrganizer, async (c) => {
+  const plan = await requireOwnedPlan(c, c.req.param("id"));
+  const counts = await repo.countPlanDeleteImpact(c.var.db, plan.id);
+  return c.json({ planId: plan.id, name: plan.name, counts });
+});
+
 reviewPlansCrudRoutes.delete("/api/v1/plans/:id", requireOrganizer, csrfJson, async (c) => {
   const plan = await requireOwnedPlan(c, c.req.param("id"));
   await repo.deletePlan(c.var.db, plan.id);
