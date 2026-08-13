@@ -526,14 +526,6 @@
   color: var(--chq-muted);
 }
 
-/* Archive limit messages must stay loud and legible (DEC-353's 40MB
-   total-byte guard, and the client's own 50-file pre-check). */
-.chq-content-archive-limit {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--chq-ink);
-}
-
 /* CNT-D5 (DEC-601): the only in-page feedback for the silent native ZIP
    download — a role=status live region reporting the outcome. */
 .chq-content-download-status {
