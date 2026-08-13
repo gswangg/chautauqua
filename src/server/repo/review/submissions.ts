@@ -456,6 +456,83 @@ export async function findSubmissionIdByRefOrId(db: Db, eventId: string, input: 
   return rows[0]?.id ?? null;
 }
 
+/** DEC-924: the batched twin of findSubmissionIdByRefOrId -- resolves a
+ * whole set of ref-or-id inputs to internal ids in ONE id-lookup query plus
+ * (for the leftovers) ONE ref-lookup query, never a per-input round trip.
+ * Same two-path resolution as the singular version: try each input as an
+ * internal id first, then as a printed ref against the event's own
+ * record_prefix. Returns a Map from the caller's original input string to
+ * the resolved internal id -- inputs that resolve neither way are simply
+ * absent from the map so the caller can name the offending refs. */
+export async function findSubmissionIdsByRefsOrIds(db: Db, eventId: string, inputs: string[]): Promise<Map<string, string>> {
+  const resolved = new Map<string, string>();
+  const unique = [...new Set(inputs)];
+  if (unique.length === 0) return resolved;
+
+  // Path 1: input is already an internal submission id.
+  const remaining: string[] = [];
+  for (const batch of chunkIds(unique)) {
+    const rows = await db
+      .select({ id: schema.submission.id })
+      .from(schema.submission)
+      .where(and(eq(schema.submission.eventId, eventId), inArray(schema.submission.id, batch)));
+    const idsInBatch = new Set(rows.map((r) => r.id));
+    for (const input of batch) {
+      if (idsInBatch.has(input)) resolved.set(input, input);
+      else remaining.push(input);
+    }
+  }
+  if (remaining.length === 0) return resolved;
+
+  // Path 2: input is a printed ref (e.g. SES-014) -- parse against the
+  // event's own record_prefix, then look up by (eventId, seq).
+  const eventRows = await db
+    .select({ recordPrefix: schema.event.recordPrefix })
+    .from(schema.event)
+    .where(eq(schema.event.id, eventId))
+    .limit(1);
+  const recordPrefix = eventRows[0]?.recordPrefix;
+  if (!recordPrefix) return resolved;
+
+  const seqToInput = new Map<number, string>();
+  for (const input of remaining) {
+    const seq = parseRef(recordPrefix, input);
+    if (seq !== null) seqToInput.set(seq, input);
+  }
+  const seqs = [...seqToInput.keys()];
+  if (seqs.length === 0) return resolved;
+
+  for (const batch of chunkIds(seqs.map(String))) {
+    const batchSeqs = batch.map(Number);
+    const rows = await db
+      .select({ id: schema.submission.id, seq: schema.submission.seq })
+      .from(schema.submission)
+      .where(and(eq(schema.submission.eventId, eventId), inArray(schema.submission.seq, batchSeqs)));
+    for (const row of rows) {
+      const input = seqToInput.get(row.seq);
+      if (input !== undefined) resolved.set(input, row.id);
+    }
+  }
+  return resolved;
+}
+
+/** DEC-924/DEC-655: the batched twin of submissionMatchesPlanFilters -- ONE
+ * query over the whole submissionIds set (bounded by the caller's own
+ * parseBoundedIdArray cap) rather than a query per submission. Returns the
+ * subset of submissionIds that satisfy the plan's own filters_json
+ * trackIds (and are in the plan's event) -- ids absent from the returned
+ * set failed the plan-filter check. */
+export async function submissionsMatchingPlanFilters(db: Db, plan: PlanRecord, submissionIds: string[]): Promise<Set<string>> {
+  const matched = new Set<string>();
+  if (submissionIds.length === 0) return matched;
+  for (const batch of chunkIds(submissionIds)) {
+    const conditions = [inArray(schema.submission.id, batch), ...buildPlanScopeConditions(db, plan)];
+    const rows = await db.select({ id: schema.submission.id }).from(schema.submission).where(and(...conditions));
+    for (const row of rows) matched.add(row.id);
+  }
+  return matched;
+}
+
 export interface SpeakerSummary {
   contactId: string;
   name: string;

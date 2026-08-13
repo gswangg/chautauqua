@@ -118,8 +118,22 @@ describe('DEC-572: PlanEditor track-scope assignment confirm gate', () => {
     expect(body).toEqual({ userId: 'user-42', trackId: TRACK_ID });
   });
 
-  it('"Choose submissions" posts one row per checked item and none for unchecked ones', async () => {
-    const postSpy = vi.fn(() => ({ status: 201, body: { id: 'pr-new', userId: 'user-42', trackId: null, submissionId: 'sub-1' } }));
+  // DEC-924: "Choose submissions" issues ONE set-based, all-or-nothing
+  // request for the whole chosen set -- never the old per-submission
+  // Promise.all, which could leave half the rows behind on a mid-batch
+  // rejection.
+  it('"Choose submissions" for 3 checked items issues exactly ONE non-GET request, carrying the full set', async () => {
+    const postSpy = vi.fn(() => ({
+      status: 201,
+      body: {
+        items: [
+          { id: 'pr-1', userId: 'user-42', trackId: null, submissionId: 'sub-1' },
+          { id: 'pr-2', userId: 'user-42', trackId: null, submissionId: 'sub-2' },
+          { id: 'pr-3', userId: 'user-42', trackId: null, submissionId: 'sub-3' },
+        ],
+        total: 3,
+      },
+    }));
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope(TRACKS),
       [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
@@ -140,18 +154,25 @@ describe('DEC-572: PlanEditor track-scope assignment confirm gate', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Choose submissions' }));
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'S-001 — Talk One' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'S-002 — Talk Two' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'S-003 — Talk Three' }));
     expect(postSpy).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm selection (2)' }));
-    await waitFor(() => expect(postSpy).toHaveBeenCalledTimes(2));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm selection (3)' }));
+    await waitFor(() => expect(postSpy).toHaveBeenCalledTimes(1));
 
-    const bodies = fetchMock.mock.calls
-      .filter(([input, init]) => String(input).includes('/reviewers') && (init as RequestInit | undefined)?.method === 'POST')
-      .map(([, init]) => JSON.parse((init as RequestInit).body as string));
-    expect(bodies.sort((a, b) => a.submissionId.localeCompare(b.submissionId))).toEqual([
-      { userId: 'user-42', submissionId: 'sub-1' },
-      { userId: 'user-42', submissionId: 'sub-3' },
-    ]);
+    // Exactly one non-GET request total, carrying the whole chosen set.
+    const nonGetCalls = fetchMock.mock.calls.filter(
+      ([, init]) => (init as RequestInit | undefined)?.method && (init as RequestInit).method !== 'GET',
+    );
+    expect(nonGetCalls.length).toBe(1);
+    const nonGetCall = nonGetCalls[0];
+    if (!nonGetCall) throw new Error("unreachable — asserted length 1 above");
+    const body = JSON.parse((nonGetCall[1] as RequestInit).body as string) as {
+      userId: string;
+      submissionIds: string[];
+    };
+    expect(body.userId).toBe('user-42');
+    expect(body.submissionIds.slice().sort()).toEqual(['sub-1', 'sub-2', 'sub-3']);
   });
 });
