@@ -1,9 +1,12 @@
-// DEC-785: GET /embed/e/:embedId resolves the saved embed row -- missing or
-// disabled 404s with the SAME designed "not found" page every other unknown
-// public route uses; enabled renders the saved surface. Mirrors the
-// vi.mock(../src/server/repo/public) + vi.mock(../src/server/repo/embeds)
-// pattern established in test/public-404-no-store.test.ts (no local
-// sqlite/D1 test driver is wired up).
+// DEC-785/DEC-822/DEC-839: GET /embed/e/:embedId resolves the saved embed
+// row -- an unknown id 404s with the SAME designed "not found" page every
+// other unknown public route uses; a DISABLED embed returns an empty 200
+// (DEC-822's explicit override of DEC-785 -- a page the organiser switched
+// off must not shout "not found" on a customer's site); enabled renders the
+// saved surface. Mirrors the vi.mock(../src/server/repo/public) +
+// vi.mock(../src/server/repo/embeds) pattern established in
+// test/public-404-no-store.test.ts (no local sqlite/D1 test driver is wired
+// up).
 
 import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
@@ -28,7 +31,7 @@ const ENABLED_EMBED = {
   name: "Homepage widget",
   surface: "sessions",
   format: "iframe",
-  optionsJson: "{}",
+  options: {},
   enabled: true,
   createdAt: 1,
   updatedAt: 1,
@@ -125,7 +128,7 @@ describe("DEC-785: GET /embed/e/:embedId", () => {
   // DEC-822 overrides DEC-785: a disabled embed is an intentional blank
   // (an organiser switched it off), not a 404 — a 404 inside someone
   // else's iframe would read as a broken customer page.
-  it("returns an empty 200 for a disabled embed, not the designed 404", async () => {
+  it("returns an empty 200 for a disabled embed -- an intentional blank, not a 404 (DEC-822)", async () => {
     const app = buildApp();
     const res = await app.request(`/embed/e/${DISABLED_EMBED.id}`);
 
@@ -133,7 +136,11 @@ describe("DEC-785: GET /embed/e/:embedId", () => {
     const html = await res.text();
     expect(html).toBe("");
     expect(html).not.toContain("That page isn");
+    expect(res.headers.get("Content-Type")).toContain("text/html");
+    // DEC-822: a switched-off embed keeps the same cache headers as a live
+    // one -- unlike publicNotFound, which forces no-store.
     expect(res.headers.get("Cache-Control")).not.toBeNull();
+    expect(res.headers.get("Cache-Control")).not.toBe("no-store");
   });
 
   it("renders the saved surface for an enabled embed", async () => {

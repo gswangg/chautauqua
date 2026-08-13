@@ -1,6 +1,6 @@
-// Saved embeds API (DEC-785). Route files export a named Hono sub-app; only
-// src/index.ts mounts it (DEC-012). Handlers stay thin: parse/authz -> repo
-// function -> response.
+// Saved embeds API (DEC-785/DEC-822/DEC-839). Route files export a named
+// Hono sub-app; only src/index.ts mounts it (DEC-012). Handlers stay thin:
+// parse/authz -> repo function -> response.
 
 import { Hono, type Context } from "hono";
 import type { AppEnv, AuthInfo } from "../../server/env";
@@ -12,7 +12,9 @@ import { getEventOrgId } from "../../server/repo/submissions";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import { isSurface } from "../public/shell";
 import { EMBED_FORMATS } from "../../lib/embed-formats";
-import { DEC_785 } from "../../decisions";
+import { ALL_CARD_FIELDS } from "../../lib/card-fields";
+import { parseTrackId, parseDay, parseNameQuery, parseLimit, parseCardFields, parseAccent, parseFormat, parseRoomId } from "../public/query";
+import { DEC_785, DEC_822, DEC_839 } from "../../decisions";
 import {
   countEmbeds,
   createEmbed,
@@ -20,9 +22,100 @@ import {
   getEmbedOwnership,
   listEmbeds,
   updateEmbed,
+  type EmbedOptions,
 } from "../../server/repo/embeds";
 
 void DEC_785;
+void DEC_822;
+void DEC_839;
+
+/** DEC-839: every option key the API accepts is validated through the SAME
+ * parsers the live public route runs (src/routes/public/query.ts) -- an
+ * unparseable value is a loud 400 naming the field, never silently dropped
+ * or stored as junk the renderer will later ignore. Shared by POST and
+ * PATCH so the two routes cannot drift. */
+function parseEmbedOptionsInput(raw: unknown): EmbedOptions {
+  if (raw === undefined || raw === null) return {};
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    throw new ApiError("invalid", "options must be an object", { options: "Invalid options" });
+  }
+  const input = raw as Record<string, unknown>;
+  const out: EmbedOptions = {};
+
+  if (input.trackId !== undefined) {
+    if (typeof input.trackId !== "string") {
+      throw new ApiError("invalid", "trackId must be a string", { trackId: "Invalid trackId" });
+    }
+    const parsed = parseTrackId(input.trackId);
+    if (parsed === null) throw new ApiError("invalid", "trackId must be non-empty", { trackId: "Invalid trackId" });
+    out.trackId = parsed;
+  }
+  // DEC-774: the sessions-surface format/room chip filters, validated
+  // through the SAME live-route parsers as every other key.
+  if (input.sessionFormat !== undefined) {
+    if (typeof input.sessionFormat !== "string") {
+      throw new ApiError("invalid", "sessionFormat must be a string", { sessionFormat: "Invalid sessionFormat" });
+    }
+    const parsed = parseFormat(input.sessionFormat);
+    if (parsed === null) {
+      throw new ApiError("invalid", "sessionFormat must be non-empty", { sessionFormat: "Invalid sessionFormat" });
+    }
+    out.sessionFormat = parsed;
+  }
+  if (input.roomId !== undefined) {
+    if (typeof input.roomId !== "string") {
+      throw new ApiError("invalid", "roomId must be a string", { roomId: "Invalid roomId" });
+    }
+    const parsed = parseRoomId(input.roomId);
+    if (parsed === null) throw new ApiError("invalid", "roomId must be non-empty", { roomId: "Invalid roomId" });
+    out.roomId = parsed;
+  }
+  if (input.day !== undefined) {
+    if (typeof input.day !== "string") {
+      throw new ApiError("invalid", "day must be a string", { day: "Invalid day" });
+    }
+    const parsed = parseDay(input.day);
+    if (parsed === null) throw new ApiError("invalid", "day must be YYYY-MM-DD", { day: "Invalid day" });
+    out.day = parsed;
+  }
+  if (input.q !== undefined) {
+    if (typeof input.q !== "string") {
+      throw new ApiError("invalid", "q must be a string", { q: "Invalid q" });
+    }
+    const parsed = parseNameQuery(input.q);
+    if (parsed === null) throw new ApiError("invalid", "q must be non-empty", { q: "Invalid q" });
+    out.q = parsed;
+  }
+  if (input.limit !== undefined) {
+    if (typeof input.limit !== "number" && typeof input.limit !== "string") {
+      throw new ApiError("invalid", "limit must be a number", { limit: "Invalid limit" });
+    }
+    const parsed = parseLimit(String(input.limit));
+    if (parsed === null) throw new ApiError("invalid", "limit must be an integer 1-100", { limit: "Invalid limit" });
+    out.limit = parsed;
+  }
+  if (input.fields !== undefined) {
+    if (!Array.isArray(input.fields) || !input.fields.every((f) => typeof f === "string")) {
+      throw new ApiError("invalid", "fields must be an array of strings", { fields: "Invalid fields" });
+    }
+    const names = input.fields as string[];
+    const unknown = names.find((n) => !(ALL_CARD_FIELDS as readonly string[]).includes(n));
+    if (unknown !== undefined) {
+      throw new ApiError("invalid", `unknown field name: ${unknown}`, { fields: "Unknown field name" });
+    }
+    const parsedFields = parseCardFields(names.join(","));
+    out.fields = ALL_CARD_FIELDS.filter((f) => parsedFields[f]);
+  }
+  if (input.accent !== undefined) {
+    if (typeof input.accent !== "string") {
+      throw new ApiError("invalid", "accent must be a string", { accent: "Invalid accent" });
+    }
+    const parsed = parseAccent(input.accent);
+    if (parsed === null) throw new ApiError("invalid", "accent must be a hex color", { accent: "Invalid accent" });
+    out.accent = parsed;
+  }
+  return out;
+}
 
 export const embedsRoutes = new Hono<AppEnv>();
 
@@ -75,21 +168,26 @@ embedsRoutes.post("/events/:eventId/embeds", requireOrganizer, csrfJson, async (
   if (typeof body.format !== "string" || !(EMBED_FORMATS as readonly string[]).includes(body.format)) {
     throw new ApiError("invalid", "format must be a known embed format", { format: "Unknown format" });
   }
-  const options = body.options !== undefined && body.options !== null ? body.options : {};
-  if (typeof options !== "object" || Array.isArray(options)) {
-    throw new ApiError("invalid", "options must be an object", { options: "Invalid options" });
-  }
+  const options = parseEmbedOptionsInput(body.options);
 
-  const embed = await createEmbed(c.var.db, auth.orgId, eventId, name, body.surface, body.format, JSON.stringify(options));
+  const embed = await createEmbed(
+    c.var.db,
+    auth.orgId,
+    eventId,
+    name,
+    body.surface,
+    body.format,
+    JSON.stringify(options),
+  );
   return c.json(embed, 201);
 });
 
 interface UpdateEmbedBody {
   name?: unknown;
-  enabled?: unknown;
   surface?: unknown;
   format?: unknown;
   options?: unknown;
+  enabled?: unknown;
 }
 
 // PATCH /api/v1/embeds/:id — DEC-822: the builder's primary Save action
@@ -106,15 +204,9 @@ embedsRoutes.patch("/embeds/:id", requireOrganizer, csrfJson, async (c) => {
   if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Embed belongs to a different org");
 
   const body = (await c.req.json().catch(() => ({}))) as UpdateEmbedBody;
-  const patch: { name?: string; enabled?: boolean; surface?: string; format?: string; optionsJson?: string } = {};
+  const patch: { name?: string; surface?: string; format?: string; optionsJson?: string; enabled?: boolean } = {};
   if (body.name !== undefined) {
     patch.name = parseBoundedText(body.name, "name", { max: MAX_NAME_LENGTH, required: true });
-  }
-  if (body.enabled !== undefined) {
-    if (typeof body.enabled !== "boolean") {
-      throw new ApiError("invalid", "enabled must be a boolean", { enabled: "Must be true or false" });
-    }
-    patch.enabled = body.enabled;
   }
   if (body.surface !== undefined) {
     if (typeof body.surface !== "string" || !isSurface(body.surface)) {
@@ -129,11 +221,13 @@ embedsRoutes.patch("/embeds/:id", requireOrganizer, csrfJson, async (c) => {
     patch.format = body.format;
   }
   if (body.options !== undefined) {
-    const options = body.options !== null ? body.options : {};
-    if (typeof options !== "object" || Array.isArray(options)) {
-      throw new ApiError("invalid", "options must be an object", { options: "Invalid options" });
+    patch.optionsJson = JSON.stringify(parseEmbedOptionsInput(body.options));
+  }
+  if (body.enabled !== undefined) {
+    if (typeof body.enabled !== "boolean") {
+      throw new ApiError("invalid", "enabled must be a boolean", { enabled: "Must be true or false" });
     }
-    patch.optionsJson = JSON.stringify(options);
+    patch.enabled = body.enabled;
   }
 
   const embed = await updateEmbed(c.var.db, id, patch);
