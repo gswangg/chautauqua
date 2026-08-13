@@ -23,12 +23,13 @@ import { chunkIds } from "../../lib/chunk";
 import { newId } from "../../domain/ids";
 import { isValidEmail, normalizeEmail } from "../../domain/email";
 import { isCoPresenterRoleValue, participantRoleLabel } from "../../domain/participant-roles";
-import { DEC_604, DEC_656, DEC_842 } from "../../decisions";
+import { DEC_604, DEC_656, DEC_842, DEC_866 } from "../../decisions";
 
 // touch DEC constant so the dependency is compile-checked (field guide convention)
 void DEC_604;
 void DEC_656;
 void DEC_842;
+void DEC_866;
 
 export interface EditableSubmission {
   id: string;
@@ -359,7 +360,13 @@ export interface PortalParticipant {
  * order. Caller is expected to have already scoped submissionId via
  * loadEditableSubmission — this performs no ownership check of its own.
  * Filters through PORTAL_VISIBLE_INVITE_STATUSES (mirrors
- * getPortalSubmissionDetail) so a declined invitation never shows here. */
+ * getPortalSubmissionDetail) so a declined invitation never shows here.
+ * DEC-866: `name` prefers the row's nameAtTime snapshot (set only by
+ * addCoPresenter, below) over the joined contact's live name — a matched
+ * existing contact's real CRM identity is never echoed back to the speaker
+ * who merely typed an email address. Rows this path did not create
+ * (nameAtTime NULL: the original CFP submitter, organizer invites) fall
+ * back to the live contact name exactly as before. */
 export async function getPortalParticipants(db: Db, submissionId: string): Promise<PortalParticipant[]> {
   const rows = await db
     .select({
@@ -370,6 +377,7 @@ export async function getPortalParticipants(db: Db, submissionId: string): Promi
       role: schema.participant.role,
       order: schema.participant.order,
       visible: schema.participant.visible,
+      nameAtTime: schema.participant.nameAtTime,
     })
     .from(schema.participant)
     .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
@@ -382,7 +390,7 @@ export async function getPortalParticipants(db: Db, submissionId: string): Promi
     .orderBy(schema.participant.order);
   return rows.map((r) => ({
     id: r.id,
-    name: `${r.firstName} ${r.lastName}`.trim(),
+    name: r.nameAtTime?.trim() || `${r.firstName} ${r.lastName}`.trim(),
     email: r.email,
     role: r.role,
     roleLabel: participantRoleLabel(r.role),
@@ -422,7 +430,14 @@ export type AddCoPresenterResult =
  * carrying first/last/email only. The (submission_id, contact_id)
  * uniqueIndex (migrations/0019_join_table_uniqueness.sql) is the duplicate
  * contract: a conflicting insert is caught via onConflictDoNothing and
- * surfaced as a field error, never a 500. */
+ * surfaced as a field error, never a 500.
+ *
+ * DEC-866: the participant row also carries nameAtTime = the SUBMITTED
+ * first/last name, on BOTH branches (matched existing contact and freshly
+ * created contact). getPortalParticipants renders nameAtTime in preference
+ * to the joined contact's live name — a speaker who typed a co-presenter's
+ * name against an email that happens to match someone else's CRM record
+ * must never have that other identity echoed back to them. */
 export async function addCoPresenter(db: Db, input: AddCoPresenterInput): Promise<AddCoPresenterResult> {
   const firstName = input.firstName.trim();
   const lastName = input.lastName.trim();
@@ -474,6 +489,9 @@ export async function addCoPresenter(db: Db, input: AddCoPresenterInput): Promis
       contactId,
       role: input.role,
       order: nextOrderSql,
+      // DEC-866: the submitted name, never the CRM identity — see
+      // getPortalParticipants above.
+      nameAtTime: `${firstName} ${lastName}`.trim(),
       // DEC-656 (amends DEC-604): a speaker-added co-presenter is RECORDED,
       // not PUBLISHED. This participant lands visible=false and reaches the
       // public site only through the organizer's existing visibility toggle
