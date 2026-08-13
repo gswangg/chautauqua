@@ -17,44 +17,44 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   decision with no code a LIE; mandate file a HYPOTHESIS -- tree MOVES WHILE
   YOU PLAN; every page says who's signed in; submitted blank CLEARS, absent
   key is silence; main can be RED -- grep `<<<<<<<` every wave; a gate must
-  not render children while identity loads; a per-row count is N scans --
-  one grouped query; blank is ABSENT for EVERY kind; a row is a DRAFT until
-  Save; a CREATE-time expansion is a snapshot -- BACK-FILL every activation
-  path; undefined var(--chq-*) resolves TRANSPARENT; the scrim IS the
-  dialog; two roots of one kind are two documents not two versions; a JOIN
-  row cascades on contact delete, only a row losing a document may refuse; a
-  grid class shared by two components is a CELL COUNT contract.
+  not render children while identity loads; a per-row count is N scans -- one
+  grouped query; blank is ABSENT for EVERY kind; a row is a DRAFT until Save;
+  a CREATE-time expansion is a snapshot -- BACK-FILL every activation path;
+  undefined var(--chq-*) resolves TRANSPARENT; the scrim IS the dialog; two
+  roots of one kind are two documents not two versions; a JOIN row cascades
+  on contact delete, only a row losing a document may refuse; a grid class
+  shared by two components is a CELL COUNT contract.
 - FINDINGS w32-37 (DEC-983..999; 001-999 FULL, no DEC-1000+; successor rule
   `## Amendment (wave N)` on nearest existing DEC, DEC-004 precedent -- never
-  a new file): a grep "no matches" is a fact about that minute -- re-probe. A
+  a new file): grep "no matches" is a fact about that minute -- re-probe. A
   predicate applied HALF is worse than none; an exclusion REASON can expire.
   Mandate lists age fast -- MINE THE CODE twice. A DEFERRAL IS A DATED PROMISE.
-  A decision can land on ONE PACKAGE and read as done -- ask WHICH PACKAGE. A
-  TOKEN declared/consumed by nobody is an unused rule. TRUST FLOWS ONE WAY:
-  untrusted MORE permissive than trusted is a WRITE defect.
+  ONE PACKAGE can land and read as done -- ask WHICH PACKAGE; an unconsumed
+  TOKEN is an unused rule; TRUST FLOWS ONE WAY.
 - FINDINGS w38-39 (amendments only): a REVIEW FINDING IS A HYPOTHESIS WITH A
-  FILE:LINE -- open it, re-probe (a "MANDATE EXHAUSTED" call on w38 was wrong;
-  eval-findings.md got RECOMPACTED same-day with a fresh SNAPSHOT-SHA GATE-3
-  section; a mandate is dated TWICE, when written AND against which build).
-  A DECISION DOC IS EVIDENCE OF A DECISION, NEVER OF A FIX -- read the code.
-  Shapes: WRITE gated by READ predicate; RESPONSE carrying what the request
-  MINTED (counts, never bodies); rule in a COMMENT not a CONSTRAINT;
-  predicate with THREE readers must be ONE function; contract keyed on a
-  NAME misses faces named otherwise -- key on the ELEMENT; var(--x,
-  fallback) with token declared NOWHERE is a dead reference; `columns: []`
-  as a preset both clears AND makes the tab unmatchable; PLACEMENT vs
-  DRAWING resolution differ; one grammar per surface, a gutter/aria-name/
-  toast naming one instant three ways is three bugs.
+  FILE:LINE -- open it, re-probe. A DECISION DOC IS EVIDENCE OF A DECISION,
+  NEVER OF A FIX -- read the code. Shapes: WRITE gated by READ predicate;
+  RESPONSE carrying what the request MINTED (counts never bodies); rule in a
+  COMMENT not a CONSTRAINT; predicate with THREE readers must be ONE function;
+  contract keyed on NAME misses faces named otherwise -- key on ELEMENT; one
+  grammar per surface -- gutter/aria-name/toast naming one instant 3 ways.
 - FINDINGS w40 (amendments only): A REVIEW LENS AGES FASTER THAN A MANDATE --
-  all four "live" security findings this wave were ALREADY FIXED on main
-  (DEC-996/994/317 amendment/files.ts:546); open the file:line before
-  planning a lane, a finding names a minute not a build. Three shapes: (1)
-  CLAMP THE BOX CANNOT REACH -- max-width + auto side margins on a flex-
-  COLUMN child cancels stretch, box sizes to its text (275px in an 820
-  column); one clamp per page, at the ROOT, nested clamp must say
-  width:100%. (2) TWO READERS OF ONE DEADLINE -- Math.round on a raw
-  day-label vs Math.ceil through owning tz answers 17 and 19 for the same
-  date; a countdown is a FORMATTER, not a per-call expression. (3) A SEED IS
-  A CLAIM ABOUT THE DEMO -- a window opening TOMORROW darkens the front
-  door for every judge arriving today; a header counting "1 re-uploaded"
-  over zero rows is the same lie.
+  4/4 "live" security findings were ALREADY FIXED on main; open file:line
+  before planning a lane. (1) CLAMP THE BOX CANNOT REACH -- max-width + auto
+  margins on a flex-COLUMN child cancels stretch; one clamp per page at the
+  ROOT, nested clamp needs width:100%. (2) TWO READERS OF ONE DEADLINE --
+  Math.round vs Math.ceil through owning tz disagree; countdown is a
+  FORMATTER not a per-call expression. (3) A SEED IS A CLAIM: a window opening
+  TOMORROW darkens the front door for a judge arriving today.
+- FINDINGS w41 (amendments only): FULL BLEED BY ABSENCE, NOT ESCAPE -- a chrome
+  band inside a measured page bleeds by declaring NO max-width/side-margin
+  (precedent .chq-review-editor-title-row); 100vw math overshoots because
+  .chq-main scrolls INTERNALLY. Shapes: a STATUS stated in one box while the
+  actions that change it sit in another is one instant named twice; a COLUMN
+  duplicating the filter above it is chrome (kind chip vs KIND column); a
+  two-view surface reached by a link is a DESTINATION not a tablist; a rule
+  that STATES its method ("averaged by weight") without showing its work
+  reads as a bug -- print the reconciliation; enumerate-vs-sample has a READ
+  face: iterating the ANSWERS map hides every unanswered question -- enumerate
+  the FORM. Re-probe paid again: 12/~20 P1s were already fixed on main and all
+  six security lens items were closed -- open the file before the lane.
