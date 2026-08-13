@@ -37,6 +37,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 import { findDuplicateGroups, type ContactRecord } from "../src/domain/contacts";
 import { computeWeightedScore, type EvaluationCriterion } from "../src/domain/evaluation";
+import { PIPELINE_STAGES } from "../src/server/repo/pipeline";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
@@ -573,6 +574,21 @@ describe("seed coherence (DEC-887 amendment, task w40-a): the front door is live
     expect(disabled.length, `no disabled saved embed among ${embedRows.length}`).toBeGreaterThanOrEqual(1);
   });
 
+  it("(DEC-739 amendment, task w44-f) the frame's two named embeds are seeded, and the format resolver sees more than one format", () => {
+    const embedRows = parseInserts(sql, "embed");
+    const names = new Set(embedRows.map((r) => r.name));
+    expect(names.has("Homepage agenda strip"), `missing 'Homepage agenda strip' among ${[...names].join(", ")}`).toBe(
+      true,
+    );
+    expect(names.has("Sponsor deck feed"), `missing 'Sponsor deck feed' among ${[...names].join(", ")}`).toBe(true);
+
+    // ENUMERATED over every seeded embed's format, never a hand-picked pair —
+    // at least one row must NOT be 'iframe' so the saved-embed format
+    // resolver is exercised by the delivered data, not just the default.
+    const formats = new Set(embedRows.map((r) => r.format));
+    expect(formats.size, `only one distinct embed format (${[...formats].join(", ")}) among ${embedRows.length} rows`).toBeGreaterThanOrEqual(2);
+  });
+
   it("seeds a re-upload chain on a submission left content_status pending, so the Content worklist's RE-UPLOADED tag has a live row (not just the header count)", () => {
     const fileRows = parseInserts(sql, "file");
     const filesById = new Map(fileRows.map((f) => [f.id!, f]));
@@ -677,5 +693,79 @@ describe("seed coherence (DEC-875 wave-42 amendment): the review machinery and a
         `adjacent ranked averages tie: ${averages[i - 1]!.submissionId} (${averages[i - 1]!.average}) and ${averages[i]!.submissionId} (${averages[i]!.average})`,
       ).toBeGreaterThan(1e-9);
     }
+  });
+});
+
+// DEC-739 amendment (task w44-f): "the seed proves the pipeline" — a
+// 3-contact seed left the CRM board's 'contacted' and 'declined' columns
+// permanently empty and every card the same staleness, which is
+// indistinguishable from those columns/features not being implemented at
+// all (field guide: "a board with one populated column proves nothing").
+// Every assertion below walks the PIPELINE_STAGES vocabulary itself
+// (imported from the same module the app and the seed both use), never a
+// hand-picked subset of stages — so a stage added later fails this test
+// instead of silently staying unseeded.
+describe("seed coherence (DEC-739 amendment, task w44-f): the pipeline board proves every column", () => {
+  it("every pipeline stage (enumerated from PIPELINE_STAGES, not sampled) has at least one seeded pipeline_entry", () => {
+    const entryRows = parseInserts(sql, "pipeline_entry");
+    for (const stage of PIPELINE_STAGES) {
+      const rows = entryRows.filter((r) => r.stage === stage);
+      expect(rows.length, `stage '${stage}' has zero seeded pipeline_entry rows`).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it("declined entries carry a real decline reason on their move-to-declined activity", () => {
+    const entryRows = parseInserts(sql, "pipeline_entry");
+    const declined = entryRows.filter((r) => r.stage === "declined");
+    expect(declined.length).toBeGreaterThanOrEqual(1);
+
+    const activityRows = parseInserts(sql, "pipeline_activity");
+    for (const entry of declined) {
+      const declineMove = activityRows.find(
+        (a) => a.entry_id === entry.id && a.kind === "move" && a.to_stage === "declined",
+      );
+      expect(declineMove, `entry ${entry.id} (stage declined) has no move-to-declined activity`).toBeTruthy();
+      expect(declineMove!.body, `entry ${entry.id}'s decline move has no reason body`).toBeTruthy();
+    }
+  });
+
+  it("pipeline_activity created_at timestamps span at least 3 distinct staleness buckets (days / weeks / months ago)", () => {
+    const activityRows = parseInserts(sql, "pipeline_activity").filter((r) => r.kind === "move");
+    expect(activityRows.length).toBeGreaterThan(0);
+
+    const bucketFor = (createdAt: number): "days" | "weeks" | "months" => {
+      const ageDays = (Date.now() - createdAt) / (24 * 60 * 60 * 1000);
+      if (ageDays < 7) return "days";
+      if (ageDays < 30) return "weeks";
+      return "months";
+    };
+
+    const buckets = new Set(activityRows.map((r) => bucketFor(Number(r.created_at))));
+    expect(
+      buckets.size,
+      `only ${buckets.size} staleness bucket(s) (${[...buckets].join(", ")}) among ${activityRows.length} move activities`,
+    ).toBeGreaterThanOrEqual(3);
+  });
+
+  it("at least 2 distinct fit_score values are seeded across pipeline_entry rows", () => {
+    const entryRows = parseInserts(sql, "pipeline_entry");
+    const rated = entryRows.filter((r) => r.fit_score !== null && r.fit_score !== undefined);
+    expect(rated.length).toBeGreaterThan(0);
+    const distinctScores = new Set(rated.map((r) => r.fit_score));
+    expect(
+      distinctScores.size,
+      `only ${distinctScores.size} distinct fit_score value(s) (${[...distinctScores].join(", ")}) among ${rated.length} rated entries`,
+    ).toBeGreaterThanOrEqual(2);
+  });
+
+  it("every rated pipeline_entry carries its own distinct one-sentence rationale (no two entries share text)", () => {
+    const entryRows = parseInserts(sql, "pipeline_entry");
+    const rationales = entryRows.map((r) => r.rationale).filter((r): r is string => !!r);
+    expect(rationales.length).toBeGreaterThan(0);
+    const distinct = new Set(rationales);
+    expect(
+      distinct.size,
+      `${rationales.length} rated entries but only ${distinct.size} distinct rationale strings`,
+    ).toBe(rationales.length);
   });
 });
