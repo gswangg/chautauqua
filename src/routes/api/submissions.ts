@@ -571,7 +571,9 @@ submissionsRoutes.post("/events/:eventId/submissions/status", requireOrganizer, 
 });
 
 // -----------------------------------------------------------------------
-// POST /api/v1/events/:eventId/submissions/delete — DEC-886 guarded cascade
+// GET /api/v1/events/:eventId/submissions/delete-plan — DEC-921 blast-radius
+// preview + POST /api/v1/events/:eventId/submissions/delete — DEC-886/921
+// guarded cascade
 // -----------------------------------------------------------------------
 // Self-contained block (kept separate from the status route above so this
 // merges cleanly alongside an in-flight content-status list-filter lane
@@ -580,6 +582,34 @@ submissionsRoutes.post("/events/:eventId/submissions/status", requireOrganizer, 
 interface DeleteBody {
   ids?: unknown;
 }
+
+// The confirmation page's read-only preview of planSubmissionDelete —
+// projected explicitly so the internal-only fileR2Keys field (the route
+// deletes those R2 objects before committing) never reaches the wire.
+submissionsRoutes.get("/events/:eventId/submissions/delete-plan", requireOrganizer, async (c) => {
+  const auth = requireAuth(c);
+  const eventId = c.req.param("eventId");
+  await assertEventOwnership(c.var.db, eventId, auth.orgId);
+
+  const raw = c.req.query("ids") ?? "";
+  const ids = parseBoundedIdArray(
+    raw.split(",").filter((s) => s.length > 0),
+    "ids",
+  ); // DEC-182 — same bounded id parsing the POST body uses
+
+  const plan = await planSubmissionDelete(c.var.db, eventId, ids);
+
+  return c.json({
+    eligible: plan.eligible.map((item) => ({
+      submissionId: item.submissionId,
+      ref: item.ref,
+      title: item.title,
+      counts: item.counts,
+      scheduled: item.scheduled,
+    })),
+    refused: plan.refused,
+  });
+});
 
 submissionsRoutes.post("/events/:eventId/submissions/delete", requireOrganizer, csrfJson, async (c) => {
   const auth = requireAuth(c);
