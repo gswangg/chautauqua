@@ -9,7 +9,6 @@ import { render, screen, waitFor, within, cleanup } from '@testing-library/react
 import '@testing-library/jest-dom/vitest';
 import { SpeakersPage } from './Speakers';
 import { mockApi } from '../test-utils/mockApi';
-import { formatDateOnly } from '../lib/dates';
 import type { OnboardingGridResponse } from './speakers/types';
 
 const EVENT_ID = 'evt-speakers-render';
@@ -84,9 +83,9 @@ describe('SpeakersPage render smoke (OnboardingGrid)', () => {
     });
     expect(screen.getAllByText('Grace Hopper').length).toBeGreaterThan(0);
 
-    // Due date rendered via the DEC-146/153 UTC date helper -- assert against
-    // the same helper's own output rather than a hardcoded locale string.
-    expect(screen.getByText(formatDateOnly(DUE_DATE_MS))).toBeInTheDocument();
+    // Due date header, design v4's "Due 15 Jan · Required" shape (DEC-730) --
+    // reads DUE_DATE_MS's UTC calendar date directly (never toISOString).
+    expect(screen.getByText('Due 15 Jan · Required')).toBeInTheDocument();
 
     // The re-skinned OnboardingGrid renders the desktop grid AND the
     // phone-width card list simultaneously in the DOM (toggled by a CSS
@@ -95,8 +94,8 @@ describe('SpeakersPage render smoke (OnboardingGrid)', () => {
     const table = within(screen.getByRole('table'));
 
     // Mixed cell states: complete (filled), pending (outline), overdue (the
-    // .chq-flag "N DAYS LATE" micro-label -- never a plain "Overdue" word,
-    // never colour alone, never red -- DEC-367).
+    // same control family, ink-outlined bold caps, "N DAYS LATE" -- never a
+    // plain "Overdue" word, never colour alone, never red -- DEC-367/730).
     expect(table.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' })).toHaveTextContent('Complete');
     expect(table.getByRole('button', { name: 'Toggle Upload headshot for Ada Lovelace' })).toHaveTextContent('Pending');
     expect(table.getByRole('button', { name: 'Toggle Sign speaker agreement for Grace Hopper' })).toHaveTextContent(

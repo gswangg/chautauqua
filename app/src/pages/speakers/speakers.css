@@ -95,17 +95,17 @@
 }
 
 /* Grid: horizontal scroll within its own container -- never breaks the page
-   layout regardless of task-column count. */
+   layout regardless of task-column count. min-width:0 is load-bearing: the
+   page is a flex column, and a flex item's default min-width is its content
+   size, which would stretch the page itself sideways instead of scrolling
+   inside this wrapper. */
 .chq-speakers-grid-wrap {
   overflow-x: auto;
+  min-width: 0;
 }
 
 .chq-speakers-grid {
   min-width: 640px;
-}
-
-.chq-speakers-required-marker {
-  color: var(--chq-muted);
 }
 
 .chq-speakers-task-due {
@@ -124,40 +124,48 @@
   flex-wrap: wrap;
 }
 
-/* Complete: filled pill. */
-.chq-speakers-cell-fill {
+/* One control family for all three onboarding statuses (DEC-730): shared
+   box metrics, a hover ring, cursor:pointer -- fill/outline/ink-outline is
+   the ONLY difference, so overdue reads as clickable like its siblings. */
+.chq-speakers-status {
+  display: inline-flex;
+  align-items: center;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--chq-on-brand);
-  background: var(--chq-brand);
-  border: none;
   border-radius: 3px;
   padding: 3px 8px;
   cursor: pointer;
 }
 
-/* Pending, not overdue: outline pill. */
-.chq-speakers-cell-outline {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--chq-muted);
-  background: none;
-  border: 1px solid var(--chq-border);
-  border-radius: 3px;
-  padding: 2px 8px;
-  cursor: pointer;
+.chq-speakers-status:hover {
+  box-shadow: 0 0 0 2px var(--chq-border-strong);
 }
 
-/* Overdue: no fill/outline -- typographic .chq-flag only, never colour/red. */
-.chq-speakers-cell-late {
-  background: none;
+/* Complete: filled olive pill. */
+.chq-speakers-status-complete {
+  color: var(--chq-on-brand);
+  background: var(--chq-brand);
   border: none;
-  padding: 0;
-  cursor: pointer;
+}
+
+/* Pending, not overdue: outline pill -- the shared "not done" axis. */
+.chq-speakers-status-pending {
+  color: var(--chq-muted);
+  font-weight: 600;
+  background: none;
+  border: 1px solid var(--chq-border);
+}
+
+/* Overdue: same family, ink-outlined bold caps -- the urgency modifier,
+   never colour/red (DEC-367/DEC-730). */
+.chq-speakers-status-overdue {
+  color: var(--chq-ink);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  background: none;
+  border: 1px solid var(--chq-ink);
 }
 
 .chq-speakers-cell-none {
@@ -237,6 +245,11 @@
   align-items: center;
   gap: 16px;
   padding-top: 6px;
+}
+
+.chq-speakers-grid-caption {
+  font-size: 13px;
+  color: var(--chq-muted);
 }
 
 .chq-speakers-pager-actions {

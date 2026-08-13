@@ -7,7 +7,6 @@ import { daysLate, isCellOverdue } from './overdue';
 import { TaskModal } from './TaskModal';
 import { ResponseModal } from './ResponseModal';
 import { RemindPreviewModal } from './RemindPreviewModal';
-import { formatDateOnly } from '../../lib/dates';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import {
   DEFAULT_GRID_FILTERS,
@@ -26,6 +25,20 @@ function nextStatus(status: AssignmentStatus): AssignmentStatus {
 
 const PER_PAGE = 50;
 
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Task column header caption, design v4's "Due 10 Apr · Required" shape
+ * (rendered upper-case via .chq-speakers-task-due's text-transform) --
+ * replaces the old title + bare '*' + plain date pattern. Reads the UTC
+ * calendar date directly (never toISOString/local) per DEC-146/153. */
+function taskDueLabel(task: { dueDate: number | null; required: boolean }): string {
+  const suffix = task.required ? ' · Required' : '';
+  if (task.dueDate === null) return `No due date${suffix}`;
+  const date = new Date(task.dueDate);
+  const base = `Due ${date.getUTCDate()} ${SHORT_MONTHS[date.getUTCMonth()]}`;
+  return `${base}${suffix}`;
+}
+
 /** Builds the DEC-340 query string from the current filters + page — every
  * active predicate is server-side, so the SPA never filters rows itself. */
 function buildGridQuery(filters: GridFilterState, page: number): string {
@@ -41,7 +54,8 @@ function buildGridQuery(filters: GridFilterState, page: number): string {
 
 /** Label for a pending, overdue cell — never colour alone, never red
  * (DEC-367). Complete is a filled pill, pending is an outline pill, overdue
- * drops the pill entirely for a .chq-flag "N DAYS LATE" typographic mark. */
+ * is the same control family (box metrics, hover ring, cursor:pointer) with
+ * an ink-outlined bold-caps "N DAYS LATE" typographic mark (DEC-730). */
 function lateLabel(dueDate: number, now: number): string {
   const d = daysLate(dueDate, now);
   return `${d} DAY${d === 1 ? '' : 'S'} LATE`;
@@ -49,6 +63,14 @@ function lateLabel(dueDate: number, now: number): string {
 
 function firstNameOf(fullName: string): string {
   return fullName.trim().split(/\s+/)[0] ?? fullName;
+}
+
+/** One control family for all three cell states (DEC-730): complete/pending/
+ * overdue share box metrics, a hover ring and cursor:pointer -- only the
+ * fill/outline/ink-outline modifier differs. */
+function statusCellClass(status: AssignmentStatus, overdue: boolean): string {
+  const modifier = status === 'complete' ? 'complete' : overdue ? 'overdue' : 'pending';
+  return `chq-speakers-status chq-speakers-status-${modifier}`;
 }
 
 // DEC-662: the roster's Add-speaker/Import-CSV triggers live here now (see
@@ -349,8 +371,7 @@ export function OnboardingGrid({ onAddSpeaker, onImportCsv }: OnboardingGridProp
                   {grid.tasks.map((task) => (
                     <th key={task.id}>
                       {task.title}
-                      {task.required && <span className="chq-speakers-required-marker"> *</span>}
-                      <div className="chq-speakers-task-due">{formatDateOnly(task.dueDate)}</div>
+                      <div className="chq-speakers-task-due">{taskDueLabel(task)}</div>
                     </th>
                   ))}
                 </tr>
@@ -394,12 +415,7 @@ export function OnboardingGrid({ onAddSpeaker, onImportCsv }: OnboardingGridProp
                         );
                       }
                       const overdue = isCellOverdue(cell, task, now);
-                      const cellClass =
-                        cell.status === 'complete'
-                          ? 'chq-speakers-cell-fill'
-                          : overdue
-                            ? 'chq-flag chq-speakers-cell-late'
-                            : 'chq-speakers-cell-outline';
+                      const cellClass = statusCellClass(cell.status, overdue);
                       return (
                         <td key={task.id}>
                           <div className="chq-speakers-cell">
@@ -481,12 +497,7 @@ export function OnboardingGrid({ onAddSpeaker, onImportCsv }: OnboardingGridProp
                       );
                     }
                     const overdue = isCellOverdue(cell, task, now);
-                    const cellClass =
-                      cell.status === 'complete'
-                        ? 'chq-speakers-cell-fill'
-                        : overdue
-                          ? 'chq-flag chq-speakers-cell-late'
-                          : 'chq-speakers-cell-outline';
+                    const cellClass = statusCellClass(cell.status, overdue);
                     return (
                       <div key={task.id} className="chq-speakers-card-task">
                         <span className="chq-speakers-card-task-label">{task.title}</span>
@@ -540,6 +551,7 @@ export function OnboardingGrid({ onAddSpeaker, onImportCsv }: OnboardingGridProp
           <span className="chq-summary">
             Showing {rangeStart}-{rangeEnd} of {total}
           </span>
+          <span className="chq-speakers-grid-caption">Click any status to mark it complete or pending</span>
           <div className="chq-speakers-pager-actions">
             <button
               type="button"
