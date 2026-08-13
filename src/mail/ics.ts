@@ -9,9 +9,11 @@
 import { DEC_131 } from "../decisions";
 void DEC_131;
 
-/** Dev-local organizer mailbox for outgoing .ics files (DEC-168). No real
- * mailbox exists behind this address in Stage 1 — it is never used to send
- * mail, only to populate the ORGANIZER property. */
+/** DEC-947: dev-only placeholder organizer address (DEC-168) used ONLY when
+ * DEV_MODE="1" — a real deployment routes through resolveIcsOrganizerEmail
+ * (src/server/context.ts), which prefers env.MAIL_FROM_EMAIL and otherwise
+ * throws rather than shipping this non-routable ".local" address. This
+ * module stays pure (DEC-002) and never reads env itself. */
 export const ICS_ORGANIZER_EMAIL = "noreply@chautauqua.local";
 
 export interface IcsEventInput {

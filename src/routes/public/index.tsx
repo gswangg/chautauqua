@@ -23,7 +23,8 @@ import {
   getPublicSessions,
   getPublicSpeakers,
 } from "../../server/repo/public";
-import { buildIcsCalendar, ICS_ORGANIZER_EMAIL } from "../../mail/ics";
+import { buildIcsCalendar } from "../../mail/ics";
+import { resolveIcsOrganizerEmail } from "../../server/context";
 import { parseItineraryIds, MAX_ITINERARY_IDS } from "../../lib/itinerary";
 import { ApiError, errorEnvelope } from "../../server/http";
 import { publicCacheMiddleware, defaultCache } from "../../server/pubcache";
@@ -320,7 +321,7 @@ publicRoutes.get("/e/:eventSlug/schedule.ics", async (c) => {
 
   const ics = buildIcsCalendar(agendaIcsEvents(event, selected, new Date()), {
     method: "PUBLISH",
-    organizer: { name: event.name, email: ICS_ORGANIZER_EMAIL },
+    organizer: { name: event.name, email: resolveIcsOrganizerEmail(c.env) },
   });
   return c.body(ics, 200, {
     "Content-Type": "text/calendar; charset=utf-8",
@@ -340,7 +341,7 @@ publicRoutes.get("/e/:eventSlug/agenda.ics", async (c) => {
   const { items: agenda } = await getPublicAgenda(c.var.db, event);
   const ics = buildIcsCalendar(agendaIcsEvents(event, agenda, new Date()), {
     method: "PUBLISH",
-    organizer: { name: event.name, email: ICS_ORGANIZER_EMAIL },
+    organizer: { name: event.name, email: resolveIcsOrganizerEmail(c.env) },
   });
   return c.body(ics, 200, {
     "Content-Type": "text/calendar; charset=utf-8",

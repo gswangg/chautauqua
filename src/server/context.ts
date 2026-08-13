@@ -10,6 +10,7 @@ import { DevSinkMailer } from "../mail/dev-sink";
 import { EmailBindingMailer } from "../mail/email-binding";
 import type { EmailLogEntry, EmailLogWriter, Mailer } from "../mail/types";
 import { newId } from "../domain/ids";
+import { ICS_ORGANIZER_EMAIL } from "../mail/ics";
 
 export function makeDb(env: Bindings) {
   return drizzle(env.DB, { schema });
@@ -62,6 +63,17 @@ export function makeMailer(db: Db, env: Pick<Bindings, "EMAIL" | "DEV_MODE" | "M
     email: env.MAIL_FROM_EMAIL,
     name: env.MAIL_FROM_NAME ?? "Chautauqua",
   });
+}
+
+/** DEC-947: the ICS ORGANIZER email is governed by the same policy as
+ * makeMailer (DEC-547) — env.MAIL_FROM_EMAIL when set, the dev-local
+ * placeholder in ics.ts only when isDevMode(env), and otherwise a loud
+ * throw rather than silently shipping a non-routable ".local" organizer
+ * that bounces RSVPs. */
+export function resolveIcsOrganizerEmail(env: Pick<Bindings, "DEV_MODE" | "MAIL_FROM_EMAIL">): string {
+  if (env.MAIL_FROM_EMAIL) return env.MAIL_FROM_EMAIL;
+  if (isDevMode(env)) return ICS_ORGANIZER_EMAIL;
+  throw new Error('MAIL_FROM_EMAIL is not set and DEV_MODE is not "1": set DEV_MODE="1" for local/dev, or configure MAIL_FROM_EMAIL for production');
 }
 
 /** Minimal R2 port; stage 1 serves files through the Worker (DEC-005), no
