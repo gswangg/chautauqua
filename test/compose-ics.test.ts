@@ -2,14 +2,18 @@
 // unscheduled-rejection field shape, use-then-bump SEQUENCE semantics, and
 // LOCATION omission when no room is assigned yet.
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
+import { DatabaseSync } from "node:sqlite";
+import { drizzle } from "drizzle-orm/sqlite-proxy";
 import { unscheduledIcsFields } from "../src/routes/comms";
 import { chunkIds } from "../src/lib/chunk";
 import type { IcsScheduleRow } from "../src/server/repo/comms";
+import * as schema from "../src/db/schema";
 import { buildIcsEvent, ICS_ORGANIZER_EMAIL, type IcsOptions } from "../src/mail/ics";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
+import type { Db } from "../src/server/context";
 
 const requestOpts: IcsOptions = {
   method: "REQUEST",
@@ -52,6 +56,120 @@ describe("unscheduledIcsFields", () => {
       sub_1: "not scheduled",
       sub_2: "not scheduled",
     });
+  });
+});
+
+// DEC-318 amendment: loadIcsScheduleData must apply the SAME [event.startDate,
+// event.endDate] bound as the admin agenda (isDayWithinEventRange) and every
+// public read (slotWithinEventRange) — a slot dated outside the event's own
+// range must be absent from the map, not just from the public schedule.
+// Real in-memory SQLite (same technique as test/plan-delete-cascade.test.ts)
+// so the actual SQL predicate is exercised, not a hand-simulated row shape.
+describe("loadIcsScheduleData applies the DEC-318 event-range bound", () => {
+  const DDL = `
+    create table submission (
+      id text primary key,
+      ics_sequence integer not null default 0
+    );
+    create table room (
+      id text primary key,
+      name text
+    );
+    create table schedule_slot (
+      id text primary key,
+      submission_id text not null,
+      room_id text,
+      day text not null,
+      start_min integer not null,
+      end_min integer not null
+    );
+  `;
+
+  function makeTestDb(): { db: Db; sqlite: DatabaseSync } {
+    const sqlite = new DatabaseSync(":memory:");
+    sqlite.exec(DDL);
+    const db = drizzle(
+      async (sqlText, params, method) => {
+        const stmt = sqlite.prepare(sqlText);
+        stmt.setReturnArrays(true);
+        if (method === "run") {
+          stmt.run(...params);
+          return { rows: [] };
+        }
+        const rows = stmt.all(...params) as unknown[];
+        return { rows };
+      },
+      { schema },
+    );
+    return { db: db as unknown as Db, sqlite };
+  }
+
+  const event = { startDate: "2026-09-01", endDate: "2026-09-03" };
+
+  let db: Db;
+  let sqlite: DatabaseSync;
+  // This file's later describe block (compose/preview ics.timeZone) declares
+  // a module-level vi.mock("../src/server/repo/comms", ...) that hoists
+  // above every import in this file, so a static top-level import of
+  // loadIcsScheduleData here would resolve to that mock. vi.importActual
+  // bypasses the mock to get the real implementation under test.
+  let loadIcsScheduleData: typeof import("../src/server/repo/comms").loadIcsScheduleData;
+
+  beforeEach(async () => {
+    ({ loadIcsScheduleData } = await vi.importActual<typeof import("../src/server/repo/comms")>("../src/server/repo/comms"));
+    ({ db, sqlite } = makeTestDb());
+    sqlite.exec(`
+      insert into submission (id, ics_sequence) values
+        ('sub-before', 0),
+        ('sub-in-range', 0),
+        ('sub-start-boundary', 0),
+        ('sub-end-boundary', 0),
+        ('sub-after', 0);
+      insert into room (id, name) values ('room-1', 'Main Hall');
+      insert into schedule_slot (id, submission_id, room_id, day, start_min, end_min) values
+        ('slot-before', 'sub-before', 'room-1', '2026-08-31', 540, 570),
+        ('slot-in-range', 'sub-in-range', 'room-1', '2026-09-02', 540, 570),
+        ('slot-start', 'sub-start-boundary', 'room-1', '2026-09-01', 540, 570),
+        ('slot-end', 'sub-end-boundary', 'room-1', '2026-09-03', 540, 570),
+        ('slot-after', 'sub-after', 'room-1', '2026-09-04', 540, 570);
+    `);
+  });
+
+  afterEach(() => {
+    sqlite.close();
+  });
+
+  it("excludes a slot whose day is before event.startDate", async () => {
+    const map = await loadIcsScheduleData(db, event, ["sub-before"]);
+    expect(map.has("sub-before")).toBe(false);
+  });
+
+  it("excludes a slot whose day is after event.endDate", async () => {
+    const map = await loadIcsScheduleData(db, event, ["sub-after"]);
+    expect(map.has("sub-after")).toBe(false);
+  });
+
+  it("includes a slot whose day is within the event range", async () => {
+    const map = await loadIcsScheduleData(db, event, ["sub-in-range"]);
+    expect(map.has("sub-in-range")).toBe(true);
+    expect(map.get("sub-in-range")?.day).toBe("2026-09-02");
+  });
+
+  it("includes slots exactly on the startDate and endDate boundaries", async () => {
+    const map = await loadIcsScheduleData(db, event, ["sub-start-boundary", "sub-end-boundary"]);
+    expect(map.has("sub-start-boundary")).toBe(true);
+    expect(map.has("sub-end-boundary")).toBe(true);
+  });
+
+  it("returns only the in-range/boundary submissions from a mixed batch, in-range slots unaffected", async () => {
+    const map = await loadIcsScheduleData(db, event, [
+      "sub-before",
+      "sub-in-range",
+      "sub-start-boundary",
+      "sub-end-boundary",
+      "sub-after",
+    ]);
+    expect([...map.keys()].sort()).toEqual(["sub-end-boundary", "sub-in-range", "sub-start-boundary"]);
   });
 });
 
@@ -206,7 +324,7 @@ vi.mock("../src/server/repo/comms", async () => {
       ids.map((id) => icsTzSubmissionFixture(id, `ct-${id}`, `${id}@example.com`)),
     ),
     loadIcsScheduleData: vi.fn(
-      async (_db: unknown, ids: string[]) =>
+      async (_db: unknown, _event: unknown, ids: string[]) =>
         new Map(
           ids.map((id) => [
             id,
