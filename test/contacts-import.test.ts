@@ -142,8 +142,38 @@ function makeFakeContactDb() {
     },
     insert(_table: unknown) {
       return {
-        values: async (vals: Record<string, unknown>) => {
-          rows.push({ ...vals });
+        // DEC-491 amendment (wave 47): real drizzle .values() accepts a
+        // single row OR an array of rows (chunkRowsForInsert always
+        // passes an array, even a one-row chunk); the returned object is
+        // both directly awaitable (the plain-INSERT create path) and
+        // chainable via .onConflictDoUpdate() (the upsert-flavored update
+        // path -- "excluded.col" is resolved here as "the incoming row's
+        // own value for that key", which is exactly what excluded means
+        // when the set clause's key equals the referenced column name, as
+        // it always does in src/server/repo/contacts/import.ts).
+        values: (vals: Record<string, unknown> | Record<string, unknown>[]) => {
+          const list = Array.isArray(vals) ? vals : [vals];
+          const insertAll = async () => {
+            for (const v of list) rows.push({ ...v });
+          };
+          return {
+            then: (resolve: (v: void) => void, reject?: (e: unknown) => void) =>
+              insertAll().then(resolve, reject),
+            onConflictDoUpdate: (opts: { set: Record<string, unknown> }) => ({
+              then: (resolve: (v: void) => void, reject?: (e: unknown) => void) => {
+                const upsertAll = async () => {
+                  for (const v of list) {
+                    const idx = rows.findIndex((r) => r.id === v.id);
+                    if (idx < 0) continue;
+                    const patch: Record<string, unknown> = {};
+                    for (const key of Object.keys(opts.set)) patch[key] = v[key];
+                    rows[idx] = { ...rows[idx], ...patch };
+                  }
+                };
+                return upsertAll().then(resolve, reject);
+              },
+            }),
+          };
         },
       };
     },

@@ -337,11 +337,18 @@ function fakeDb(seedContacts: unknown[], seedEvents: unknown[]) {
       from: (table: unknown) => makeChain(table, [...(stateArrayFor(table) ?? [])]),
     }),
     insert: (table: unknown) => ({
+      // DEC-491 amendment (wave 47): real drizzle .values() accepts a
+      // single row OR an array of rows -- contacts/import.ts's chunked
+      // create/update flush always passes an array. Each row in the list
+      // is inserted into this table's state array.
       values: (vals: unknown) => {
+        const list = Array.isArray(vals) ? (vals as Record<string, unknown>[]) : [vals as Record<string, unknown>];
         const write = async () => {
-          inserts.push({ table, vals });
-          const arr = stateArrayFor(table);
-          if (arr) arr.push({ ...(vals as object) });
+          for (const v of list) {
+            inserts.push({ table, vals: v });
+            const arr = stateArrayFor(table);
+            if (arr) arr.push({ ...v });
+          }
         };
         return {
           then: (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => write().then(resolve, reject),
@@ -352,6 +359,25 @@ function fakeDb(seedContacts: unknown[], seedEvents: unknown[]) {
             returning: async (_sel?: unknown) => {
               await write();
               return [{ id: (vals as any).id, order: 0 }];
+            },
+          }),
+          // DEC-491 amendment (wave 47): contacts/import.ts's update flush
+          // -- "excluded.col" is resolved here as "the incoming row's own
+          // value for that key", exactly what excluded means when the set
+          // clause's key equals the referenced column name (always true
+          // in import.ts).
+          onConflictDoUpdate: (opts: { set: Record<string, unknown> }) => ({
+            then: (resolve: (v: void) => void, reject?: (e: unknown) => void) => {
+              const upsertAll = async () => {
+                const arr = stateArrayFor(table);
+                if (!arr) return;
+                for (const v of list) {
+                  const row = arr.find((r) => r.id === v.id);
+                  if (!row) continue;
+                  for (const key of Object.keys(opts.set)) row[key] = v[key];
+                }
+              };
+              return upsertAll().then(resolve, reject);
             },
           }),
         };
