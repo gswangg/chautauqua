@@ -204,7 +204,10 @@ export async function listDeliverableCandidates(db: Db, contactId: string, event
  * set of eventIds rather than once PER task. Preserves the exact
  * participant/ACTIVE_INVITE_STATUSES scoping (contactId's own participant
  * rows only — no IDOR widening) and seq-asc order within each event; chunked
- * via chunkIds over the eventId list (DEC-078 D1 bound-parameter ceiling). */
+ * via chunkIds over the eventId list (DEC-078 D1 bound-parameter ceiling).
+ * DEC-962 audit: this reader already carries contactId inside the SAME
+ * query's WHERE (eq(schema.participant.contactId, contactId) below) — a
+ * foreign eventId contributes no row, by construction. No change needed. */
 export async function listDeliverableCandidatesForEvents(
   db: Db,
   contactId: string,

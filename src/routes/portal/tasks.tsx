@@ -189,7 +189,7 @@ async function loadTasksPageData(c: Context<AppEnv>, contactId: string, orgId: s
     const linkedFilenames = new Map<string, string | null>();
     for (const cand of candidates) {
       if (!linkedFilenameByCandidateId.has(cand.id)) {
-        const latest = await getLatestDeliverable(c.var.db, cand.id);
+        const latest = await getLatestDeliverable(c.var.db, contactId, orgId, cand.id);
         linkedFilenameByCandidateId.set(cand.id, latest ? latest.filename : null);
       }
       linkedFilenames.set(cand.id, linkedFilenameByCandidateId.get(cand.id) ?? null);

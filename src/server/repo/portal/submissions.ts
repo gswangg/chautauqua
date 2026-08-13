@@ -48,13 +48,24 @@ export async function getMySubmissions(db: Db, contactId: string, orgId: string)
   const ids = rows.map((r) => r.id);
   const formatBySubmission = new Map<string, string | null>();
   if (ids.length > 0) {
+    // DEC-962 audit: `ids` is derived from the `rows` query above, which
+    // already carries contactId/orgId in its own WHERE, but that scoping is
+    // caller discipline within this function, not a predicate on THIS query
+    // — join back through participant/event and AND the same contactId/orgId
+    // here too, so this query can never be lifted out and reused against a
+    // wider id list without silently losing its scope.
     const formatRows = await db
       .select({ submissionId: schema.submissionAnswer.submissionId, valueJson: schema.submissionAnswer.valueJson })
       .from(schema.submissionAnswer)
+      .innerJoin(schema.submission, eq(schema.submission.id, schema.submissionAnswer.submissionId))
+      .innerJoin(schema.participant, eq(schema.participant.submissionId, schema.submission.id))
+      .innerJoin(schema.event, eq(schema.event.id, schema.submission.eventId))
       .where(
         and(
           inArray(schema.submissionAnswer.submissionId, ids),
           eq(schema.submissionAnswer.formFieldId, SESSION_FORMAT_FIELD_ID),
+          eq(schema.participant.contactId, contactId),
+          eq(schema.event.orgId, orgId),
         ),
       );
     for (const r of formatRows) {

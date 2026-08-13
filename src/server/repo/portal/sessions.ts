@@ -2,13 +2,33 @@
 // day/start/end + room name when placed, plus the "latest deliverable" read
 // used by the portal home.
 
-import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
 import { loadTrackNamesBySubmission } from "../submission-tracks";
 import { chunkIds } from "../../../lib/chunk";
+import { DEC_962 } from "../../../decisions";
+
+void DEC_962;
+
+/** DEC-962: the correlated EXISTS twin of the participant/submission/event
+ * ownership predicate, against `schema.file.submissionId` — asserts the
+ * file's submission belongs to a participant row of `contactId` inside an
+ * event of `orgId`. ANDed into the WHERE alongside the id predicate so a
+ * foreign submissionId contributes no row, by construction, not by caller
+ * discipline. */
+function fileSubmissionOwnedByContact(contactId: string, orgId: string) {
+  return sql`exists (
+    select 1 from ${schema.participant}
+    inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId}
+    inner join ${schema.event} on ${schema.event.id} = ${schema.submission.eventId}
+    where ${schema.participant.submissionId} = ${schema.file.submissionId}
+      and ${schema.participant.contactId} = ${contactId}
+      and ${schema.event.orgId} = ${orgId}
+  )`;
+}
 
 export interface PortalSession {
   submissionId: string;
@@ -94,9 +114,16 @@ export interface PortalDeliverable {
 
 /** Most recently uploaded file linked to `submissionId` (any kind — this is
  * the portal home's "latest deliverable" line, not a kind-specific list).
- * Scoped to the caller's own submission — the route resolves submissionId
- * from the speaker's own PortalSession rows only, never a request param. */
-export async function getLatestDeliverable(db: Db, submissionId: string): Promise<PortalDeliverable | null> {
+ * DEC-962: ownership is enforced in the WHERE via a correlated EXISTS over
+ * participant/submission/event (fileSubmissionOwnedByContact), not by
+ * trusting the caller to have already scoped submissionId — a foreign
+ * submissionId returns null, by construction. */
+export async function getLatestDeliverable(
+  db: Db,
+  contactId: string,
+  orgId: string,
+  submissionId: string,
+): Promise<PortalDeliverable | null> {
   const rows = await db
     .select({
       id: schema.file.id,
@@ -105,7 +132,7 @@ export async function getLatestDeliverable(db: Db, submissionId: string): Promis
       createdAt: schema.file.createdAt,
     })
     .from(schema.file)
-    .where(eq(schema.file.submissionId, submissionId))
+    .where(and(eq(schema.file.submissionId, submissionId), fileSubmissionOwnedByContact(contactId, orgId)))
     .orderBy(desc(schema.file.createdAt))
     .limit(1);
   const row = rows[0];
@@ -118,8 +145,17 @@ export async function getLatestDeliverable(db: Db, submissionId: string): Promis
  * chunk a single query pulls every file row for the chunk's submissions and
  * the newest createdAt per submissionId wins — identical row shape/tie
  * behavior to getLatestDeliverable (ORDER BY createdAt DESC, first row per
- * submissionId kept). */
-export async function listLatestDeliverables(db: Db, submissionIds: string[]): Promise<Map<string, PortalDeliverable>> {
+ * submissionId kept). DEC-962: the same fileSubmissionOwnedByContact
+ * correlated EXISTS is ANDed into the WHERE here too, so a submissionId
+ * outside `contactId`'s own participant rows (or outside `orgId`) never
+ * contributes a row/map entry, regardless of what the caller's id list
+ * contains. */
+export async function listLatestDeliverables(
+  db: Db,
+  contactId: string,
+  orgId: string,
+  submissionIds: string[],
+): Promise<Map<string, PortalDeliverable>> {
   const out = new Map<string, PortalDeliverable>();
   if (submissionIds.length === 0) return out;
   for (const chunk of chunkIds(submissionIds)) {
@@ -132,7 +168,7 @@ export async function listLatestDeliverables(db: Db, submissionIds: string[]): P
         createdAt: schema.file.createdAt,
       })
       .from(schema.file)
-      .where(inArray(schema.file.submissionId, chunk))
+      .where(and(inArray(schema.file.submissionId, chunk), fileSubmissionOwnedByContact(contactId, orgId)))
       .orderBy(desc(schema.file.createdAt));
     for (const row of rows) {
       if (row.submissionId === null) continue;
