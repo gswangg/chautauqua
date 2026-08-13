@@ -816,3 +816,11 @@ AND audit noStoreByDefault + any other header-stamping middleware for the same t
     duplicate", strikethrough + footer. Add-to-event ROLE control (third cycle
     absent). Drawer read-only mode. Import: step panels or CTA above fold; unclip
     phone chips. Pipeline captions. Duplicates "Keep both".
+
+67. (User QA) **Individual submission detail pages don't use the page width like their
+    sibling pages — content leans left with dead space right.** Compare the detail
+    mock (02-submissions--02): sections span the same measure/margins as the list
+    pages. Fix: unify the detail page's container with the shared admin content
+    measure (same max-width + margins as Submissions/Overview), and check the same
+    on Content's session detail + Review plan editor while there — one shared
+    page-measure token, not per-page widths.
