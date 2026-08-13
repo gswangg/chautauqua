@@ -17,43 +17,41 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   conditional visibility a FIXED POINT; hand-copied vocab drifts --
   IMPORT it; uniqueIndex a CONTRACT; negation skips NULLs.
 - FINDINGS w1-23 (DEC-570..771, compacted): full suites SERIALIZED;
-  real <button> not `div draggable`; colour isn't identity -- NAME it;
-  blank CSV cell ABSENT DATA; anonymity a RATCHET; merge a SET; raw id
-  LABELS; cacheability DEFAULT+"own header wins"; irreversible action a
-  PAGE; hub gives a row ONE action; grid cells POSITIONAL; person named
-  by CONTACT; tab selection URL state; side effects ONE writer;
-  sandboxed child origin "null"; tiers a PREDICATE; publish the WINDOW
-  not a flag; decision with no code a LIE; seed satisfies every read;
-  envelope KEYS fixed by route; seeded reviewer NAMED; task creation
-  always expands; merge shows EVERY differing field; roster/expand-set
-  ONE predicate; contact identity (org, lower(email)); author a PERSON
-  never "Unknown"; rows grow not scroll; position re-derives from URL;
-  `participant` ONLY contact-to-event link; armed CELL owns click;
-  dying-on-reload control is decoration.
-- FINDINGS w2-4 (DEC-772..800, compacted): mandate file a HYPOTHESIS/
-  PROD SNAPSHOT -- grep the route before tasking, prod lags main. Count
-  and its list ONE predicate over ONE set. Output format the rubric
-  NAMES is a capability. Permanently disabled control: ship the route
-  or drop it. Speaker reads EVENT tz. Control NAMES its state
-  (Save/Saved). Filter a SET: rail composes, never replaces. Toggle
-  with no public consequence is decoration. Distribute PREVIEW then
-  apply, pure+deterministic. Role validated server-side, rendered a
-  LABEL. Duplicate warned at CREATION. No raw ISO day. Merge
-  vocabulary one SET: a seeded template whose tokens the send path
-  rejects is a landmine -- parity is a test. Name the recipient the
-  preflight rejected. Arming a control must not move the page. Default
-  to the event in context; a legitimate repeat announces itself.
-  Seeded log row shows what was SENT. Ratchet counts only promises
-  actually made. Test isolation belongs to the harness, not the file.
-- FINDINGS w5 (DEC-801..810): the tree MOVES under a planner --
-  re-grep before every claim, never re-task an in-flight wave.
-  docs/design/README.md is a REQUIREMENTS file, not decoration. A task
-  cannot be late before it was assigned. A preview that reads only the
-  discarded record hides the keeper's own labels; a strike means a
-  value was really dropped. A card in a stage owes its age; a decline
-  owes its reason. Render a control for every filter you apply and
-  none you ignore. A status pill is not an invitation -- inviting is a
-  send. A page must RESOLVE to its route or its tab never lights. A
-  border that never rests splits one control in two. A token adopted
-  server-side only is half a token; scan by ENUMERATION. A view
-  re-saved under its own name is one view. Never invent a talk title.
+  real <button> not div; colour isn't identity -- NAME it; blank CSV
+  cell ABSENT DATA; anonymity a RATCHET; merge a SET; raw id LABELS;
+  cacheability DEFAULT+"own header wins"; irreversible action a PAGE;
+  hub gives a row ONE action; grid cells POSITIONAL; person named by
+  CONTACT; tab selection URL state; side effects ONE writer; sandboxed
+  child origin "null"; tiers a PREDICATE; publish the WINDOW not a
+  flag; decision with no code a LIE; seed satisfies every read;
+  envelope KEYS fixed by route; task creation always expands; merge
+  shows EVERY differing field; contact identity (org, lower(email));
+  author a PERSON never "Unknown"; rows grow not scroll; `participant`
+  ONLY contact-to-event link; armed CELL owns click; dying-on-reload
+  control is decoration.
+- FINDINGS w2-5 (DEC-772..810, compacted): mandate file a HYPOTHESIS/
+  PROD SNAPSHOT -- grep the route before tasking, tree MOVES under a
+  planner. Count and its list ONE predicate over ONE set. Permanently
+  disabled control: ship or drop. Speaker reads EVENT tz. Control
+  NAMES its state. Filter a SET: rail composes. Toggle with no public
+  consequence is decoration. Distribute PREVIEW then apply. Role
+  validated server-side. Duplicate warned at CREATION. Merge
+  vocabulary one SET, parity a test. Arming a control must not move
+  the page. Ratchet counts only promises actually made. A preview
+  must show the keeper's own labels. Card owes its age; decline owes
+  its reason. Page must RESOLVE to its route. Token adopted
+  server-side only is half; scan by ENUMERATION. Saved view re-saved
+  under its own name is one view. Never invent a talk title.
+- FINDINGS w6 (DEC-811..820): a mandate line is a HYPOTHESIS -- this
+  wave dropped ~10 items code had already closed (TaskModal, import
+  skip boxes, Prev/Next, public-agenda clipping, merge chips, SPK-04,
+  itinerary Save/Saved). Grep before tasking. Browser input at a
+  boundary must not throw the whole app; our own cookie values are
+  base64url, so raw IS decoded. A var absent from wrangler.jsonc is
+  dev-green and prod-dead; two jobs in one bare await are one job.
+  Every write that makes a participant ACTIVE owes the tasks. An
+  anonymous form may NAME a contact, never edit one. Half an adopted
+  pattern teaches two grammars -- sweep by ENUMERATION. A per-surface
+  count is that surface's own predicate. A field accepts what its
+  placeholder shows. A version number is an identity, not a position
+  among survivors. Every page says who is signed in.
