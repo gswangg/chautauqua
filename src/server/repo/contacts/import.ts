@@ -11,13 +11,13 @@ import {
   type ContactRecord,
 } from "../../../domain/contacts";
 import { ApiError } from "../../http";
-import { chunkIds } from "../../../lib/chunk";
-import { customFieldsJsonOf, type ContactPatch } from "./crud";
+import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
+import { customFieldsJsonOf } from "./crud";
 import { resolveImportUpsert } from "./query";
-import { toContactRecord, toRow } from "./rows";
+import { toContactRecord, toRow, type ContactRow } from "./rows";
 import { isValidEmail, normalizeEmail } from "../../../domain/email"; // DEC-454
 import { newId } from "../../../domain/ids";
-import { backfillNullAttribution } from "../attribution";
+import { backfillNullAttributionMany } from "../attribution";
 
 export interface ImportSkip {
   line: number;
@@ -37,39 +37,56 @@ export interface ImportResult {
  * product (DEC-478); the route layer imports it from here rather than
  * declaring its own. Producers must split larger files client-side.
  *
- * DEC-491: applyImportRows below does NOT call createContact/patchContact
- * (src/server/repo/contacts/crud.ts) directly — those issue a trailing
- * findContactById re-read the import loop never uses, and patchContact also
- * cascades an email change onto schema.user (DEC-456), which import patches
- * never carry (resolveImportUpsert never puts `email` in an update patch).
- * Instead this file has its own createContactForImport/updateContactForImport
- * helpers that issue exactly:
- *   - create branch: 1 statement (the INSERT).
- *   - update branch: 1 statement (the contact UPDATE) + up to 2 statements
- *     (backfillNullAttribution's title/company UPDATEs, src/server/repo/
- *     attribution.ts:37,44 — DEC-299, only fires when the patch carries a
- *     non-blank title and/or company), so up to 3 in the worst case.
- * IMPORT_MAX_STATEMENTS_PER_ROW below is that worst case (3), measured by
- * test/contacts-import-write-burst.test.ts, not merely asserted here. */
+ * DEC-491 amendment (wave 47): the commit loop below issues NO awaited
+ * writes per row — every create/update is resolved in memory and flushed
+ * AFTER the loop through chunked multi-row statements (chunkRowsForInsert,
+ * DEC-528), so the per-request statement count is O(rows / chunk size), not
+ * O(rows). See MAX_D1_STATEMENTS_PER_REQUEST below for the derived bound
+ * this is checked against. */
 export const MAX_IMPORT_ROWS = 2000;
 
-/** DEC-491: worst-case D1 statements issued per import row (see the comment
- * above) — the update branch with both title and company present:
- * 1 contact UPDATE + 2 backfillNullAttribution UPDATEs = 3. */
-export const IMPORT_MAX_STATEMENTS_PER_ROW = 3;
+/** DEC-491 amendment (wave 47): a Cloudflare Workers request may issue on
+ * the order of 1000 subrequests, and each D1 statement (including each
+ * statement inside a chunked batch) counts as one. This is the ceiling the
+ * import commit flush (and its attribution backfill) must stay under —
+ * test/contacts-import-write-burst.test.ts drives a full MAX_IMPORT_ROWS
+ * import and MEASURES the actual statement count against this constant
+ * rather than asserting a per-row multiplier in a comment. */
+export const MAX_D1_STATEMENTS_PER_REQUEST = 1000;
 
-/** DEC-491/DEC-485: the real per-request write-burst bound — MAX_IMPORT_ROWS
- * is the row cap the route layer enforces, but the actual number of D1
- * statements a single import request can issue is this product. */
-export const MAX_IMPORT_WRITE_STATEMENTS = MAX_IMPORT_ROWS * IMPORT_MAX_STATEMENTS_PER_ROW;
+/** Row shape flushed to schema.contact for both the create and update
+ * commit paths (see applyImportRows below) — deliberately identical column
+ * sets for both branches so chunkRowsForInsert's ragged-row check never
+ * trips, and so a single INSERT (create) or INSERT ... ON CONFLICT DO
+ * UPDATE (update) can share one row-building helper. Columns the import
+ * path has never touched (headshotUrl, socialLinksJson, externalRef) are
+ * deliberately absent — omitted from both the create INSERT (so they
+ * default to NULL, unchanged from createContactForImport's prior behavior)
+ * and the update's ON CONFLICT SET list (so an update never overwrites
+ * them, unchanged from updateContactForImport's prior behavior). */
+interface ContactCommitRow {
+  [key: string]: unknown;
+  id: string;
+  orgId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  company: string | null;
+  title: string | null;
+  bio: string | null;
+  notes: string | null;
+  customFieldsJson: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
-/** DEC-491: mint-and-insert only — no trailing findContactById re-read (the
- * import loop only ever needs the new id, never the hydrated row). Mirrors
- * createContact's INSERT exactly (src/server/repo/contacts/crud.ts). */
-async function createContactForImport(db: Db, orgId: string, input: Omit<ContactRecord, "id">): Promise<string> {
-  const id = newId();
-  const now = new Date();
-  await db.insert(schema.contact).values({
+/** Builds the full commit row for a brand-new contact (mint-and-insert
+ * only — no trailing findContactById re-read; the import loop only ever
+ * needs the new id, never the hydrated row). Mirrors createContactForImport's
+ * former column mapping exactly. */
+function createCommitRow(id: string, orgId: string, input: Omit<ContactRecord, "id">, now: Date): ContactCommitRow {
+  return {
     id,
     orgId,
     firstName: input.firstName,
@@ -83,33 +100,92 @@ async function createContactForImport(db: Db, orgId: string, input: Omit<Contact
     customFieldsJson: customFieldsJsonOf(input.customFields) ?? null,
     createdAt: now,
     updatedAt: now,
-  });
-  return id;
+  };
 }
 
-/** DEC-491: the contact UPDATE + DEC-299 attribution backfill only — no
- * trailing findContactById re-read, and no schema.user email cascade
- * (DEC-456 never applies here: resolveImportUpsert never puts `email` in an
- * update patch, so this path never touches login identity). */
-async function updateContactForImport(db: Db, id: string, patch: ContactPatch): Promise<void> {
-  await db
-    .update(schema.contact)
-    .set({
-      ...(patch.firstName !== undefined ? { firstName: patch.firstName } : {}),
-      ...(patch.lastName !== undefined ? { lastName: patch.lastName } : {}),
-      ...(patch.phone !== undefined ? { phone: patch.phone } : {}),
-      ...(patch.company !== undefined ? { company: patch.company } : {}),
-      ...(patch.title !== undefined ? { title: patch.title } : {}),
-      ...(patch.bio !== undefined ? { bio: patch.bio } : {}),
-      ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
-      ...(patch.customFields !== undefined ? { customFieldsJson: customFieldsJsonOf(patch.customFields) } : {}),
-      updatedAt: new Date(),
-    })
-    .where(eq(schema.contact.id, id));
-  // DEC-299: repair any never-taken (NULL) attribution snapshot now that an
-  // organizer/import has written a real title/company onto this contact.
-  if (patch.title !== undefined || patch.company !== undefined) {
-    await backfillNullAttribution(db, id, { title: patch.title ?? null, company: patch.company ?? null });
+/** Applies an import patch onto a full base row (either a pre-existing DB
+ * row or an earlier-in-this-file pending commit row — see applyImportRows),
+ * producing the next full commit row. DEC-575: unprovided columns MUST
+ * carry the base row's existing values so a partial patch never blanks a
+ * column — this is the same "omitted from patch = leave alone" contract
+ * updateContactForImport enforced per-column, just applied to a full row
+ * instead of a per-column conditional SQL SET. createdAt/id/orgId/email
+ * are carried through unchanged (import patches never touch email —
+ * resolveImportUpsert never puts `email` in an update patch, so this path
+ * never cascades onto schema.user's DEC-456 login-identity check). */
+function applyCommitPatch(base: ContactCommitRow, patch: Partial<Omit<ContactRecord, "id">>, now: Date): ContactCommitRow {
+  return {
+    ...base,
+    firstName: patch.firstName !== undefined ? patch.firstName : base.firstName,
+    lastName: patch.lastName !== undefined ? patch.lastName : base.lastName,
+    phone: patch.phone !== undefined ? patch.phone : base.phone,
+    company: patch.company !== undefined ? patch.company : base.company,
+    title: patch.title !== undefined ? patch.title : base.title,
+    bio: patch.bio !== undefined ? patch.bio : base.bio,
+    notes: patch.notes !== undefined ? patch.notes : base.notes,
+    customFieldsJson: patch.customFields !== undefined ? (customFieldsJsonOf(patch.customFields) ?? null) : base.customFieldsJson,
+    updatedAt: now,
+  };
+}
+
+function commitRowFromExisting(row: ContactRow): ContactCommitRow {
+  return {
+    id: row.id,
+    orgId: row.orgId,
+    firstName: row.firstName,
+    lastName: row.lastName,
+    email: row.email,
+    phone: row.phone,
+    company: row.company,
+    title: row.title,
+    bio: row.bio,
+    notes: row.notes,
+    customFieldsJson: row.customFieldsJson,
+    createdAt: new Date(row.createdAt),
+    updatedAt: new Date(row.updatedAt),
+  };
+}
+
+/** DEC-491 amendment (wave 47): flushes every accumulated create row as one
+ * or more chunked multi-row INSERTs (chunkRowsForInsert, DEC-528) — never a
+ * per-row await inside applyImportRows' commit loop. */
+async function flushContactCreates(db: Db, rows: ContactCommitRow[]): Promise<void> {
+  for (const chunk of chunkRowsForInsert(rows)) {
+    await db.insert(schema.contact).values(chunk);
+  }
+}
+
+/** DEC-491 amendment (wave 47): flushes every accumulated update row as one
+ * or more chunked `INSERT ... ON CONFLICT (id) DO UPDATE SET <col> =
+ * excluded.<col>` statements — the same idiom src/server/repo/rate-limit.ts
+ * already uses for an atomic single-row upsert, applied here to a
+ * multi-row batch. Every row's target id already exists (it came from the
+ * chunked pre-pass lookup or an earlier row in this same file), so this
+ * never actually inserts — it is a set-based UPDATE, expressed as an
+ * upsert so one statement can carry many rows' distinct values via the
+ * `excluded` pseudo-table. Columns never touched by import (headshotUrl,
+ * socialLinksJson, externalRef) are absent from `set`, so they're
+ * untouched on conflict — identical to updateContactForImport's prior
+ * per-column conditional SET. */
+async function flushContactUpdates(db: Db, rows: ContactCommitRow[]): Promise<void> {
+  for (const chunk of chunkRowsForInsert(rows)) {
+    await db
+      .insert(schema.contact)
+      .values(chunk)
+      .onConflictDoUpdate({
+        target: schema.contact.id,
+        set: {
+          firstName: sql`excluded.first_name`,
+          lastName: sql`excluded.last_name`,
+          phone: sql`excluded.phone`,
+          company: sql`excluded.company`,
+          title: sql`excluded.title`,
+          bio: sql`excluded.bio`,
+          notes: sql`excluded.notes`,
+          customFieldsJson: sql`excluded.custom_fields_json`,
+          updatedAt: sql`excluded.updated_at`,
+        },
+      });
   }
 }
 
@@ -147,11 +223,17 @@ export async function applyImportRows(
   // file's blob) -- fetched here, in the SAME chunked pre-pass that
   // already builds byEmail, so the per-row statement budget (DEC-491)
   // never grows.
+  //
+  // DEC-491 amendment (wave 47): this pre-pass now selects the FULL
+  // contact row (not just id/email/customFieldsJson) so the commit loop
+  // below can compute a complete merged row for the update flush without
+  // an extra per-row read -- `existingById` is that full-row lookup.
   const existingCustomFieldsById = new Map<string, Record<string, string>>();
+  const existingById = new Map<string, ContactRow>();
   const emailList = [...fileEmails];
   for (const batch of chunkIds(emailList)) {
     const existing = await db
-      .select({ id: schema.contact.id, email: schema.contact.email, customFieldsJson: schema.contact.customFieldsJson })
+      .select()
       .from(schema.contact)
       .where(
         and(
@@ -159,10 +241,12 @@ export async function applyImportRows(
           inArray(sql`lower(${schema.contact.email})`, batch),
         ),
       );
-    for (const r of existing) {
-      byEmail.set(normalizeEmail(r.email), r.id);
-      if (r.customFieldsJson) {
-        existingCustomFieldsById.set(r.id, JSON.parse(r.customFieldsJson) as Record<string, string>);
+    for (const raw of existing as (typeof schema.contact.$inferSelect)[]) {
+      const row = toRow(raw);
+      byEmail.set(normalizeEmail(row.email), row.id);
+      existingById.set(row.id, row);
+      if (row.customFieldsJson) {
+        existingCustomFieldsById.set(row.id, JSON.parse(row.customFieldsJson) as Record<string, string>);
       }
     }
   }
@@ -184,6 +268,19 @@ export async function applyImportRows(
       contactIds.push(id);
     }
   };
+
+  // DEC-491 amendment (wave 47): the commit loop below contains NO await.
+  // Every row is resolved through the unchanged resolveImportUpsert and
+  // staged into `pendingById` (the row's current full state, so a
+  // within-file duplicate email's second occurrence patches the FIRST
+  // occurrence's still-in-memory row rather than needing a real read) plus
+  // `newIds` (which of those ids are creates, flushed via a plain INSERT,
+  // vs. updates, flushed via the ON CONFLICT upsert). Everything is
+  // flushed in chunked multi-row statements after the loop.
+  const now = new Date();
+  const pendingById = new Map<string, ContactCommitRow>();
+  const newIds = new Set<string>();
+  const attributionUpdates: { contactId: string; title: string | null; company: string | null }[] = [];
 
   for (const { line, parsed } of rows) {
     if (skipLineSet.has(line)) {
@@ -208,16 +305,42 @@ export async function applyImportRows(
       existingId !== undefined ? existingCustomFieldsById.get(existingId) : undefined,
     );
     if (decision.action === "create") {
-      const id = await createContactForImport(db, orgId, decision.values);
+      const id = newId();
       byEmail.set(key, id);
+      pendingById.set(id, createCommitRow(id, orgId, decision.values, now));
+      newIds.add(id);
       created++;
       addContactId(id);
     } else {
-      await updateContactForImport(db, decision.id, decision.patch);
+      const base = pendingById.get(decision.id) ?? (existingById.has(decision.id) ? commitRowFromExisting(existingById.get(decision.id)!) : undefined);
+      if (!base) {
+        throw new Error(`applyImportRows: update decision for unknown contact ${decision.id}`);
+      }
+      pendingById.set(decision.id, applyCommitPatch(base, decision.patch, now));
       updated++;
       addContactId(decision.id);
+      // DEC-299: repair any never-taken (NULL) attribution snapshot now
+      // that an organizer/import has written a real title/company onto
+      // this contact — collected here, flushed in one set-based pass
+      // after the loop (backfillNullAttributionMany).
+      if (decision.patch.title !== undefined || decision.patch.company !== undefined) {
+        attributionUpdates.push({
+          contactId: decision.id,
+          title: decision.patch.title ?? null,
+          company: decision.patch.company ?? null,
+        });
+      }
     }
   }
+
+  const createRows: ContactCommitRow[] = [];
+  const updateRows: ContactCommitRow[] = [];
+  for (const [id, row] of pendingById) {
+    (newIds.has(id) ? createRows : updateRows).push(row);
+  }
+  if (createRows.length > 0) await flushContactCreates(db, createRows);
+  if (updateRows.length > 0) await flushContactUpdates(db, updateRows);
+  if (attributionUpdates.length > 0) await backfillNullAttributionMany(db, attributionUpdates);
 
   return { created, updated, skipped, contactIds };
 }

@@ -106,8 +106,31 @@ function makeFakeContactDb() {
     },
     insert(_table: unknown) {
       return {
-        values: async (vals: Record<string, unknown>) => {
-          rows.push({ ...vals });
+        // DEC-491 amendment (wave 47): see the identical comment in
+        // test/contacts-import.test.ts's makeFakeContactDb.
+        values: (vals: Record<string, unknown> | Record<string, unknown>[]) => {
+          const list = Array.isArray(vals) ? vals : [vals];
+          const insertAll = async () => {
+            for (const v of list) rows.push({ ...v });
+          };
+          return {
+            then: (resolve: (v: void) => void, reject?: (e: unknown) => void) =>
+              insertAll().then(resolve, reject),
+            onConflictDoUpdate: (opts: { set: Record<string, unknown> }) => ({
+              then: (resolve: (v: void) => void, reject?: (e: unknown) => void) => {
+                const upsertAll = async () => {
+                  for (const v of list) {
+                    const idx = rows.findIndex((r) => r.id === v.id);
+                    if (idx < 0) continue;
+                    const patch: Record<string, unknown> = {};
+                    for (const key of Object.keys(opts.set)) patch[key] = v[key];
+                    rows[idx] = { ...rows[idx], ...patch };
+                  }
+                };
+                return upsertAll().then(resolve, reject);
+              },
+            }),
+          };
         },
       };
     },

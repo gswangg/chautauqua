@@ -53,14 +53,16 @@ function findMultiRowInsertSites(): Site[] {
 describe("DEC-528: every multi-row insert imports chunkRowsForInsert (or is exempt)", () => {
   it("finds exactly the known sites (tripwire against a silently vacuous scan)", () => {
     const sites = findMultiRowInsertSites();
-    // Ground truth as of this commit: 10 chunked sites (the original 4, plus
+    // Ground truth as of this commit: 12 chunked sites (the original 4, plus
     // DEC-542's submissions/create.ts submissionTrack/submissionAnswer/
     // participant clone inserts, DEC-924's reviewers.ts addReviewers,
     // DEC-932's submissions/status.ts back-fill-pass taskAssignment insert,
-    // plus wave 47's import/sessionboard.ts set-based participant create)
-    // + 3 bounded-exempt sites. A new multi-row insert added later must
-    // show up here.
-    expect(sites.length).toBe(13);
+    // wave 47's import/sessionboard.ts set-based participant create, plus
+    // the DEC-491 amendment (wave 47)'s two contacts/import.ts sites —
+    // flushContactCreates' create insert and flushContactUpdates' upsert
+    // flush) + 3 bounded-exempt sites. A new multi-row insert added later
+    // must show up here.
+    expect(sites.length).toBe(15);
   });
 
   it("every non-exempt site's file imports chunkRowsForInsert", () => {
