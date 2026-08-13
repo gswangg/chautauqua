@@ -60,14 +60,37 @@ C. **Verify-then-close list** (commits claim these landed — external probe con
 
 ## Per-surface open items (desktop)
 
-**Overview** (DEC-735 class split CLOSED — §02 inline AND §04 stacked both verified;
-room-named suggestions CLOSED): (probe-4 CLOSED: DEC-806 /admin redirect + highlight, reviewer redirect intact ·
-DEC-807 quiet event-switcher) · kill dangling "· ·" on triage rows ("Marcus Okafor
-· · SES-002 · waiting 120 days" — empty track slot between separators; drop empty
-segments) · New-event modal → root ModalFrame portal + own typography (ALL-CAPS is
-inherited), styled dates, labels STARTS/ENDS/TIME ZONE/VENUE · Public pages as
-single summary row · resolve "· min ·" (derive from format or drop) · Review-row
-copy shape ("N of M plans in · wave X complete").
+**Overview — GATE-1 FLEET: FAIL (report fidelity-gate1/01-overview/report.md;
+palette/type/nav/section-pattern verified pixel-faithful — divergences are
+surgical)**:
+**GLOBAL #1 — THE MEASURE**: frame's content column is 820px CENTERED at 1240
+(210px gutters; header bar full-bleed is CORRECT and matches). Build's .chq-main
+has no max-width → sections 43-67% wider than designed on EVERY page. This
+resolves sweep-A definitively: DEC-808's 820 token was frame-true; adopt
+820-centered for single-column pages (Overview, builder — and ALIGN the builder
+HEADER row to the same measure; settings ok), keep two-col pages to their
+frames' geometry. Highest-leverage fix in the app.
+MAJOR: New-event modal STARTS/ENDS side-by-side (243.5px each, 16.5 gap; not
+stacked full-width rows) · Public-pages row = ONE summary sentence in the value
+column (not six link chips) · §04 left column "Tue 12, 10:00 / Room 2A" grammar
+(now raw ISO date, no time).
+MINOR structure: §04 overflow summary below the list ("3 more unplaced · all
+need 120 minutes"); "4 more overdue" should follow the same convention (summary
+below, not nav-link above) · §03 meta carries artifact ("slides v1, 8 MB · 2
+days ago") · §04 no-slot meta carries format/duration · distinct suggested
+times per row (all propose 9:00; drop " in <room>" suffix per frame).
+MINOR type/case: header event name title-case regular (not uppercase tracked) ·
+"Next free slot…" sentence-case 13px muted · NO SLOT YET 13px · modal head rule
+near-black 1px · modal title ~21.5px · placeholder #3F4237 (not browser gray) ·
+labels #3F4237 · spell small numbers ("Four things…", "Remind all three").
+MINOR controls: secondary buttons get their #EFEBDF fill on overview (token
+exists, unused here) · modal actions 46px tall (match input height) + widths ·
+human-formatted date inputs ("11 May 2028") · drop required asterisks · "Export"
+label (not "Export submissions") · row button metrics (gap 9.5, Accept 80w,
+headline buttons 37h) · spacing rhythm batch (header 59.5h, gap 34.5, stat band
+76, row pitch 72) · nav badges + caret vs frame (caret already filed; badges =
+DEC decision, likely keep).
+(Earlier closures stand: DEC-735/779, room-named suggestions.)
 
 **Submissions — GATE-1 FLEET: FAIL (list near-pixel PASS; full report
 fidelity-gate1/02-submissions/report.md)**:
@@ -139,23 +162,26 @@ round when rounds>1) · recusal as inline checkbox · audit extra elements vs DE
 (Probe-5 closures stand: scoped-queue header block, weighted-score header+caption,
 cap+shortfall mechanics, reviewer nav highlight, names, DEC-763 batch.)
 
-**Speakers** (probe-5 CLOSED: DEC-830 participation MENU — real menu, 4 states +
-Send portal invite, persistence + role DB-verified, DEC-730 shapes all four
-correct; deviation from frame is REASONED + documented in DEC-830 (Invited kept
-as a separate no-send state because invited is portal-read-only/not-public —
-accept the deviation, do not "fix") · DEC-827 importer link w/ live event context
-· "Any task status" relabel · earlier DEC-730/em-dash/badges batch):
-**Add-speaker breakage FIXED via manual-qa a2f85f83 (probe-5 found DEC-810's
-guard made the form 100% non-functional — form now sends sessionTitle + renders
-field-level errors); next probe re-verifies end-to-end.**
-Residual (cosmetic, gate-checkable): menu lacks per-item consequence captions +
-NOW badge + identity header + olive emphasis on the action · participation filter
-is 4 toggle pills (DEC-789) not the frame's "Any participation ▾" select —
-functional; check mock intent at gate · inline Send-portal-invite gated on
-!hasAccount (superset of Not-invited rule — fine) · DEC-826 effective date:
-visible on portal pending rows; organizer grid still prints raw date pre-breach
-(surface it there too) · horizontal scroll contained to grid wrapper · New-task
-modal: styled date · headers "DUE 10 APR · REQUIRED" + year for far dates.
+**Speakers — GATE-1 FLEET: FAIL (report fidelity-gate1/04-speakers/report.md)**:
+BROKEN: `.chq-participation-menu-trigger { border: none }` (speakers.css:211)
+strips the pill from 3 of 4 participation states (only filled Confirmed
+survives) — scope the reset; one line, restores DEC-730 vocabulary.
+MAJOR: participation filter → ONE "Any participation ▾" dropdown (frame +
+design README:291; DEC-789's four pills overridden by design authority; returns
+SKIPS copy inline right) · Add speaker → centered ~740px MODAL in the section's
+chq-form-row language (now a full-bleed inline panel displacing the page) ·
+task-response modal date "sent 2 Apr" grammar (raw US locale now).
+MINOR: reopen caption below button w/ frame copy · KIND selected = outlined
+chip not solid primary · DELIVERABLE KIND select undesigned (+ default
+mismatch) · "SPEAKER · PARTICIPATION" header · task column headers title-case
+body-size · menu: panel header (name + company · portal state), tinted current
++ NOW, accent-green action · menu a11y (focus, arrows, outside-click,
+aria-checked) · "has account" plain lowercase (no chip, no dangling ·) ·
+identity column stacked · inline Send-portal-invite ONLY on NOT-INVITED rows ·
+copy EMAILED + en dash · SEED: response text-fields get "SFO" for date-labelled
+fields (seed.ts:1569) · import wizard green Close.
+(Probe-5 closures stand: DEC-830 semantics, DEC-827, Add-speaker function,
+DEC-730 grid family + ring.)
 
 **Content — GATE-1 FLEET: FAIL (full report fidelity-gate1/05-content/report.md)**:
 BROKEN: worklist row separators STAGGERED — td's carry display:flex
