@@ -1,13 +1,24 @@
 import { lockedFieldName, type AnswerMap, type FormFieldDef } from "./types";
 import { resolveHiddenFieldIds } from "./visibility";
 import { isValidEmail, normalizeEmail } from "../domain/email";
-import { DEC_124, DEC_454, DEC_455 } from "../decisions";
+import { DEC_124, DEC_454, DEC_455, DEC_718 } from "../decisions";
 
 // Referenced for compile-checked dependency per DEC-124.
 void DEC_124;
 // Referenced for compile-checked dependency per DEC-454/DEC-455.
 void DEC_454;
 void DEC_455;
+// Referenced for compile-checked dependency per DEC-718: number answers
+// must be finite, and every accepted answer survives a JSON round trip.
+void DEC_718;
+
+// DEC-718: the public CFP's <input type="number"> will hand us strings like
+// "1e999" (parses to Infinity), "0x1f" (silently reinterpreted by Number()
+// as 31), "1_000", or a bare "." — none of those are a "decimal number".
+// This is the ONE grammar a string answer must match before we even call
+// Number() on it: optional sign, digits, optional fractional part, optional
+// decimal exponent. Anchored so nothing can hide before/after a valid core.
+export const NUMBER_FIELD_PATTERN = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?$/;
 
 export const MAX_TEXT_LENGTH = 2000;
 export const MAX_LONG_TEXT_LENGTH = 20000;
@@ -108,8 +119,21 @@ export function validateAnswers(
         break;
       }
       case "number": {
-        const num = typeof value === "number" ? value : Number(value);
-        if (typeof value === "boolean" || Array.isArray(value) || Number.isNaN(num)) {
+        // DEC-718: a string answer must match the decimal grammar before
+        // Number() ever sees it (rejects "0x1f", "1_000", "Infinity",
+        // "NaN", bare "."), and the parsed/typed result must be finite
+        // (rejects "1e999", which the grammar accepts but which parses to
+        // Infinity — a required field must not silently become null).
+        let num: number;
+        if (typeof value === "number") {
+          num = value;
+        } else if (typeof value === "string" && NUMBER_FIELD_PATTERN.test(value)) {
+          num = Number(value);
+        } else {
+          errors[field.id] = "must be a number";
+          continue;
+        }
+        if (!Number.isFinite(num)) {
           errors[field.id] = "must be a number";
           continue;
         }
