@@ -356,11 +356,13 @@ vi.mock("../src/server/repo/review", async () => {
     submissionMatchesPlanFilters: vi.fn(async (_db: unknown, _plan: unknown, submissionId: string) =>
       submissionId === "sub-in-filter",
     ),
-    addReviewer: vi.fn(async (_db: unknown, planId: string, input: unknown) => ({
-      id: "pr-new",
-      planId,
-      ...(input as Record<string, unknown>),
-    })),
+    addReviewers: vi.fn(async (_db: unknown, planId: string, inputs: unknown[]) =>
+      inputs.map((input) => ({
+        id: "pr-new",
+        planId,
+        ...(input as Record<string, unknown>),
+      })),
+    ),
   };
 });
 
@@ -399,7 +401,7 @@ describe("DEC-655: POST /api/v1/plans/:id/reviewers refuses an out-of-filter sub
     const body = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
     expect(body.error.code).toBe("invalid");
     expect(body.error.fields?.submissionId).toBeDefined();
-    expect(vi.mocked(reviewRepo.addReviewer)).not.toHaveBeenCalled();
+    expect(vi.mocked(reviewRepo.addReviewers)).not.toHaveBeenCalled();
   });
 
   it("201s and assigns for an in-filter submissionId", async () => {
@@ -409,6 +411,6 @@ describe("DEC-655: POST /api/v1/plans/:id/reviewers refuses an out-of-filter sub
       { userId: "rev-1", submissionId: "sub-in-filter" },
     );
     expect(res.status).toBe(201);
-    expect(vi.mocked(reviewRepo.addReviewer)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(reviewRepo.addReviewers)).toHaveBeenCalledTimes(1);
   });
 });

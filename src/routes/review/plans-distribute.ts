@@ -218,8 +218,10 @@ reviewPlansDistributeRoutes.post("/api/v1/plans/:id/assignments/distribute", req
     capPerReviewer = parseCapPerReviewer(bodyRecord.cap);
   }
   const { created } = await computeDistribution(c, plan, capPerReviewer);
-  for (const p of created) {
-    await repo.addReviewer(c.var.db, plan.id, { userId: p.userId, submissionId: p.submissionId });
-  }
+  // DEC-924 (amendment, wave 47): one set-based insert instead of a
+  // per-assignment loop -- addReviewers chunks through chunkRowsForInsert
+  // (DEC-528) and returns [] for an empty input, so the empty-set case still
+  // 201s with created: 0.
+  await repo.addReviewers(c.var.db, plan.id, created.map((p) => ({ userId: p.userId, trackId: null, submissionId: p.submissionId })));
   return c.json({ created: created.length }, 201);
 });

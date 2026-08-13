@@ -52,29 +52,7 @@ export async function countReviewerRowsForPlan(db: Db, planId: string): Promise<
   return Number(rows[0]?.count ?? 0);
 }
 
-export async function addReviewer(
-  db: Db,
-  planId: string,
-  input: { userId: string; trackId?: string | null; submissionId?: string | null },
-): Promise<PlanReviewerRecord> {
-  const now = new Date();
-  const id = newId();
-  await db.insert(schema.planReviewer).values({
-    id,
-    planId,
-    userId: input.userId,
-    trackId: input.trackId ?? null,
-    submissionId: input.submissionId ?? null,
-    createdAt: now,
-    updatedAt: now,
-  });
-  const rows = await db.select().from(schema.planReviewer).where(eq(schema.planReviewer.id, id)).limit(1);
-  const row = rows[0];
-  if (!row) throw new Error("addReviewer: insert did not persist");
-  return toPlanReviewerRecord(row);
-}
-
-/** DEC-924: the set-based twin of addReviewer -- inserts every row from
+/** DEC-924 (amendment, wave 47): the set-based twin below -- inserts every row from
  * `inputs` (order preserved in the returned array) through
  * chunkRowsForInsert (DEC-528: chunked only for the D1 bound-parameter
  * ceiling, never a per-row insert loop), then ONE select keyed to the newly

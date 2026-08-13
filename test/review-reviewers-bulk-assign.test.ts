@@ -79,13 +79,6 @@ vi.mock("../src/server/repo/review", async () => {
     submissionMatchesPlanFilters: vi.fn(async (_db: unknown, _plan: unknown, submissionId: string) =>
       TRACK_A_SUBMISSIONS.has(submissionId),
     ),
-    addReviewer: vi.fn(
-      async (_db: unknown, planId: string, input: { userId: string; trackId?: string | null; submissionId?: string | null }) => {
-        const row = { id: `pr-${writtenRows.length + 1}`, planId, userId: input.userId, trackId: input.trackId ?? null, submissionId: input.submissionId ?? null };
-        writtenRows.push({ userId: row.userId, trackId: row.trackId, submissionId: row.submissionId });
-        return row;
-      },
-    ),
     addReviewers: vi.fn(
       async (_db: unknown, planId: string, inputs: { userId: string; trackId?: string | null; submissionId?: string | null }[]) => {
         const rows = inputs.map((input, i) => ({
