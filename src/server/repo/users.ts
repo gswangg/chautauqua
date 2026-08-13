@@ -7,6 +7,9 @@ import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import { ApiError } from "../http";
+import { DEC_757 } from "../../decisions";
+
+void DEC_757;
 
 export interface OrgUserRecord {
   id: string;
@@ -107,4 +110,31 @@ export async function updateUserPasswordHash(db: Db, userId: string, passwordHas
  * self-service /account/password revoke-all behavior). */
 export async function deleteUserSessions(db: Db, userId: string): Promise<void> {
   await db.delete(schema.authSession).where(eq(schema.authSession.userId, userId));
+}
+
+/** DEC-757: every author is a named person, never a raw email/id — resolves
+ * the display name for a user acting in the system. A user with a linked
+ * contact is named `${firstName} ${lastName}`; otherwise the user's email is
+ * the best identifying attribute available (matches the existing
+ * getUserEmail rationale). A missing user row is an invariant violation and
+ * throws — no id fallback, fail loudly. */
+export async function resolveActorName(db: Db, userId: string): Promise<string> {
+  const rows = await db
+    .select({ email: schema.user.email, contactId: schema.user.contactId })
+    .from(schema.user)
+    .where(eq(schema.user.id, userId))
+    .limit(1);
+  const user = rows[0];
+  if (!user) throw new Error(`resolveActorName: no user row for ${userId}`);
+  if (user.contactId) {
+    const contactRows = await db
+      .select({ firstName: schema.contact.firstName, lastName: schema.contact.lastName })
+      .from(schema.contact)
+      .where(eq(schema.contact.id, user.contactId))
+      .limit(1);
+    const contact = contactRows[0];
+    if (!contact) throw new Error(`resolveActorName: user ${userId} references missing contact ${user.contactId}`);
+    return `${contact.firstName} ${contact.lastName}`.trim();
+  }
+  return user.email;
 }

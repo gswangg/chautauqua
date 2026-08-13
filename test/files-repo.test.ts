@@ -194,7 +194,19 @@ function makeFilesCommentsDb(params: { fileRows: FakeFileRow[]; commentRows: Fak
               },
             };
           }
-          if (table === schema.user || table === schema.contact) {
+          if (table === schema.user) {
+            return {
+              where() {
+                return {
+                  then: (resolve: (v: unknown) => void) =>
+                    Promise.resolve([{ id: "u-author", email: "author@example.com", role: "organizer", contactId: null }]).then(
+                      resolve,
+                    ),
+                };
+              },
+            };
+          }
+          if (table === schema.contact) {
             return {
               where() {
                 return { then: (resolve: (v: unknown) => void) => Promise.resolve([]).then(resolve) };
@@ -215,11 +227,11 @@ function chainOf5() {
     { id: "f2", previousFileId: "f1" },
   ];
   const commentRows: FakeCommentRow[] = [
-    { id: "c1", fileId: "f1", body: "one", createdAt: new Date(1000), authorUserId: null },
-    { id: "c2", fileId: "f1", body: "two", createdAt: new Date(2000), authorUserId: null },
-    { id: "c3", fileId: "f2", body: "three", createdAt: new Date(3000), authorUserId: null },
-    { id: "c4", fileId: "f2", body: "four", createdAt: new Date(4000), authorUserId: null },
-    { id: "c5", fileId: "f2", body: "five", createdAt: new Date(5000), authorUserId: null },
+    { id: "c1", fileId: "f1", body: "one", createdAt: new Date(1000), authorUserId: "u-author" },
+    { id: "c2", fileId: "f1", body: "two", createdAt: new Date(2000), authorUserId: "u-author" },
+    { id: "c3", fileId: "f2", body: "three", createdAt: new Date(3000), authorUserId: "u-author" },
+    { id: "c4", fileId: "f2", body: "four", createdAt: new Date(4000), authorUserId: "u-author" },
+    { id: "c5", fileId: "f2", body: "five", createdAt: new Date(5000), authorUserId: "u-author" },
   ];
   return { fileRows, commentRows };
 }

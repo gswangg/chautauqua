@@ -327,7 +327,7 @@ describe("PATCH /api/v1/submissions/:id (CNT-09 admin session editing)", () => {
     const { db, updates, inserts } = fakeDb([
       [SUBMISSION_ORG_A], // getSubmissionOwnership
       [{ title: "Old Title", description: "Old description" }], // getSubmissionContent (pre-edit snapshot, DEC-158)
-      [{ email: "organizer@example.com" }], // getUserEmail (editor_name snapshot, DEC-158)
+      [{ email: "organizer@example.com", contactId: null }], // resolveActorName (editor_name snapshot, DEC-158)
       [{ ...DETAIL_ROW, title: "New Title", description: "New description" }], // getSubmissionDetail: submission+event
       [], // participants
       [], // tracks

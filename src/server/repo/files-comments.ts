@@ -15,9 +15,10 @@ import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import { chunkIds, ID_CHUNK_SIZE } from "../../lib/chunk";
 import { listFileChainIds } from "./files-versions";
-import { DEC_573 } from "../../decisions";
+import { DEC_573, DEC_757 } from "../../decisions";
 
 void DEC_573;
+void DEC_757;
 
 // ---------------------------------------------------------------------------
 // Comments
@@ -72,6 +73,7 @@ export async function listFileComments(
     body: string;
     createdAt: Date;
     authorUserId: string | null;
+    authorContactId: string | null;
   };
 
   let pageRows: RawCommentRow[];
@@ -92,6 +94,7 @@ export async function listFileComments(
         body: schema.fileComment.body,
         createdAt: schema.fileComment.createdAt,
         authorUserId: schema.fileComment.authorUserId,
+        authorContactId: schema.fileComment.authorContactId,
       })
       .from(schema.fileComment)
       .where(inArray(schema.fileComment.fileId, chainIds))
@@ -111,6 +114,7 @@ export async function listFileComments(
           body: schema.fileComment.body,
           createdAt: schema.fileComment.createdAt,
           authorUserId: schema.fileComment.authorUserId,
+          authorContactId: schema.fileComment.authorContactId,
         })
         .from(schema.fileComment)
         .where(inArray(schema.fileComment.fileId, batch))
@@ -133,7 +137,16 @@ export async function listFileComments(
     }
   }
 
-  const contactIds = [...new Set([...userMap.values()].map((u) => u.contactId).filter((x): x is string => !!x))];
+  // DEC-757: resolve names from every contact a comment could name — the
+  // comment's own authorContactId (its snapshot at write time) as well as
+  // each author user's linked contact, so a since-changed user->contact link
+  // doesn't retroactively rewrite history.
+  const contactIds = [
+    ...new Set([
+      ...pageRows.map((r) => r.authorContactId).filter((x): x is string => !!x),
+      ...[...userMap.values()].map((u) => u.contactId).filter((x): x is string => !!x),
+    ]),
+  ];
   const contactMap = new Map<string, string>();
   if (contactIds.length > 0) {
     for (const batch of chunkIds(contactIds)) {
@@ -147,7 +160,21 @@ export async function listFileComments(
 
   const items: FileCommentRow[] = pageRows.map((row) => {
     const user = row.authorUserId ? userMap.get(row.authorUserId) : undefined;
-    const authorName = user ? (user.contactId && contactMap.get(user.contactId)) || user.email : "Unknown";
+    // DEC-757: an author is a PERSON, never "Unknown" — resolve, in order,
+    // the comment's own authorContactId, then the author user's linked
+    // contact, then the user's email. A comment whose author user cannot be
+    // resolved is an invariant violation and throws, consistent with the
+    // chain-integrity throw below.
+    if (row.authorUserId && !user) {
+      throw new Error(`listFileComments: comment ${row.id} references unknown author user ${row.authorUserId}`);
+    }
+    const authorName =
+      (row.authorContactId && contactMap.get(row.authorContactId)) ||
+      (user?.contactId && contactMap.get(user.contactId)) ||
+      user?.email;
+    if (!authorName) {
+      throw new Error(`listFileComments: comment ${row.id} has no resolvable author name`);
+    }
     const versionNumber = versionByFileId.get(row.fileId);
     if (versionNumber === undefined) {
       throw new Error(`listFileComments: comment ${row.id} references file ${row.fileId} outside its own chain`);

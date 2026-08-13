@@ -114,7 +114,7 @@ describe("PATCH /api/v1/submissions/:id appends submission_revision rows (DEC-15
     const { db: db1, inserts: inserts1 } = fakeDb([
       [SUBMISSION_ORG_A], // getSubmissionOwnership
       [{ title: "Old Title", description: "Old description" }], // getSubmissionContent (before)
-      [{ email: "organizer@example.com" }], // getUserEmail
+      [{ email: "organizer@example.com", contactId: null }], // resolveActorName
       [{ ...DETAIL_ROW, title: "Edit One Title", description: "Edit one description" }], // getSubmissionDetail
       [], // participants
       [], // tracks
@@ -137,7 +137,7 @@ describe("PATCH /api/v1/submissions/:id appends submission_revision rows (DEC-15
     const { db: db2, inserts: inserts2 } = fakeDb([
       [SUBMISSION_ORG_A],
       [{ title: "Edit One Title", description: "Edit one description" }],
-      [{ email: "organizer@example.com" }],
+      [{ email: "organizer@example.com", contactId: null }],
       [{ ...DETAIL_ROW, title: "Edit Two Title", description: "Edit two description" }],
       [],
       [],
@@ -224,7 +224,7 @@ describe("POST /api/v1/submissions/:id/revisions/:revisionId/restore (DEC-158)",
       [SUBMISSION_ORG_A], // getSubmissionOwnership
       [{ id: "rev-1", editorName: "speaker@example.com", title: "Edit One Title", description: "Edit one description", createdAt: new Date(1000) }], // getRevision
       [{ title: "Edit Two Title", description: "Edit two description" }], // getSubmissionContent (before restore)
-      [{ email: "restorer@example.com" }], // getUserEmail (restorer)
+      [{ email: "restorer@example.com", contactId: null }], // resolveActorName (restorer)
       [{ ...DETAIL_ROW, title: "Edit One Title", description: "Edit one description" }], // getSubmissionDetail
       [], // participants
       [], // tracks
