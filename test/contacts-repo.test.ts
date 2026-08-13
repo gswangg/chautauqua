@@ -268,10 +268,13 @@ describe("mergeContacts (DEC-101 participant dedupe + six-table FK repoint)", ()
     expect(updates.some((u) => u.table === schema.user && (u.vals as any).contactId === KEEP_ID)).toBe(true);
     expect(updates.some((u) => u.table === schema.user && (u.vals as any).email === "keep@example.com")).toBe(true);
 
-    // Only the merged contact row is deleted; no participant dedupe-delete
-    // fires because the two contacts shared no submissions.
-    expect(deletes).toHaveLength(1);
-    expect(deletes[0]?.table).toBe(schema.contact);
+    // No participant dedupe-delete fires because the two contacts shared no
+    // submissions -- just the DEC-770 amendment's dismissal-cascade delete
+    // (unconditional, always runs immediately before the contact delete)
+    // and the merged contact row itself.
+    expect(deletes).toHaveLength(2);
+    expect(deletes[0]?.table).toBe(schema.contactDuplicateDismissal);
+    expect(deletes[1]?.table).toBe(schema.contact);
   });
 
   it("dedupes: deletes mergeId's participant row for a shared submission instead of repointing it, but still repoints its row on a distinct submission", async () => {
@@ -296,10 +299,13 @@ describe("mergeContacts (DEC-101 participant dedupe + six-table FK repoint)", ()
     await mergeContacts(db, KEEP_ID, [MERGE_ID]);
 
     // The dedupe-delete of the shared-submission participant row happens
-    // before the deletion of the merged contact row itself.
-    expect(deletes).toHaveLength(2);
+    // before the DEC-770 amendment's dismissal-cascade delete, which in
+    // turn happens immediately before the deletion of the merged contact
+    // row itself.
+    expect(deletes).toHaveLength(3);
     expect(deletes[0]?.table).toBe(schema.participant);
-    expect(deletes[1]?.table).toBe(schema.contact);
+    expect(deletes[1]?.table).toBe(schema.contactDuplicateDismissal);
+    expect(deletes[2]?.table).toBe(schema.contact);
 
     // The plain participant-repoint update still runs unconditionally
     // (DEC-101): it's a no-op for the shared row (already deleted) and

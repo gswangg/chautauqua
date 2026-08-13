@@ -2,7 +2,7 @@
 // (contention decomposition, no behavior change). See repo/contacts.ts for
 // the module-level contract notes.
 
-import { asc, eq, inArray, sql } from "drizzle-orm";
+import { asc, eq, inArray, or, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
@@ -50,6 +50,23 @@ export async function dismissDuplicatePair(db: Db, orgId: string, idA: string, i
         schema.contactDuplicateDismissal.contactIdB,
       ],
     });
+}
+
+/** DEC-770 amendment (wave 48): a dismissal judges a *pair*, never a single
+ * contact -- so when either side of that pair is gone (deleted, or merged
+ * away into the other contact), the dismissal row itself is deleted, never
+ * repointed onto a survivor. One statement, either match column. Called from
+ * deleteContact (crud.ts) before the contact row delete, and from
+ * mergeOnePair immediately before its own (g) contact delete. */
+export async function deleteDismissalsForContact(db: Db, contactId: string): Promise<void> {
+  await db
+    .delete(schema.contactDuplicateDismissal)
+    .where(
+      or(
+        eq(schema.contactDuplicateDismissal.contactIdA, contactId),
+        eq(schema.contactDuplicateDismissal.contactIdB, contactId),
+      ),
+    );
 }
 
 /** DEC-770: the set of dismissed pairs for an org, as "idA,idB" keys (idA <
@@ -472,6 +489,11 @@ async function mergeOnePair(db: Db, keepId: string, mergeId: string): Promise<Co
     .update(schema.user)
     .set({ email: mergedEmailLower, updatedAt: new Date() })
     .where(eq(schema.user.contactId, keepId));
+
+  // DEC-770 amendment (wave 48): a dismissal judged this pair, not either
+  // contact in isolation -- delete it rather than repoint it onto keepId,
+  // immediately before the contact delete it must precede.
+  await deleteDismissalsForContact(db, mergeId);
 
   // (g) Delete the merged contact row.
   await db.delete(schema.contact).where(eq(schema.contact.id, mergeId));
