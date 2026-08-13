@@ -158,39 +158,37 @@ per-recipient rendering is evidenced · per-recipient SCHEDULED/NO-SLOT tags +
 "N have no slot" advisory in Preview (mock caption) · Recent sends minor:
 template-label column + per-row Open link.
 
-**Contacts** (probe-3 CLOSED: Title prefill + blank-title guard (UI+API) · role
-persists w/ named confirmation DEC-765 · Keep both/Not a duplicate PERSISTED
-(POST dismiss + DB + reload) · merge pair counter + keep-column name + real keep
-values · contact DELETE API now exists):
-**P1 REFRAMED — add-to-event still creates INSTANT DELINQUENCY**: with a real
-title, one click creates an accepted session + roster row + 5 task assignments,
-3 BORN OVERDUE (due dates before creation; badge 9→12 LATE). Sessions/tasks on
-add must be opt-in or due dates must clamp to future. ALSO: fabrication fallback
-ALIVE at src/server/repo/contacts/push.ts:55 — reached by POST /contacts w/
-eventId (crud.ts:122) and CSV import (push.ts:88); kill the fallback everywhere ·
-event default ignores current context (AddToEventModal.tsx:47 picks
-res.items[0] by desc startDate — PROVEN with a temp 2029 event; default to the
-event in the app chrome) · no already-on-roster check (drawer already shows "On
-roster"; modal/route ignore it — second add silently duplicates) · role surfacing:
-participants table shows raw lowercase "moderator" (apply participantRoleLabel);
-NO role on Speakers roster or drawer · role option set vs mock
-(Speaker/Reviewer/Guest) — settle in a DEC.
-Merge view remaining: discard column headed literal "Discard" (MergePage.tsx:203)
-— use the record's name · absent fields render STRUCK "—" (strike only real
-discarded values, not never-present ones) · **Labels/Notes preview iterates ONLY
-the discarded record's fields** (src/domain/contacts.ts:386) — keeper-only
-labels/notes never shown; iterate both · no Name row · no footer impact line
-("N submissions and M tasks move to the kept record").
-**P2 duplicate warning at creation**: NO candidate lookup exists in
-NewContactModal (zero network while typing) though findImportDuplicateCandidates
-exists for CSV — wire it in as an inline hint.
-**SEED REGRESSION: 0 duplicate pairs in the seed now** (was 2; mock shows "1 of 6
-pairs") — the Duplicates tab demos EMPTY; reseed 2-3 pairs.
-Rest: contact-delete UI affordance (API landed — add drawer/list action) ·
-duplicate DETECTION rule when companies differ (DEC) · drawer = read-only record
-view (reorder page around history + action bar) · import: real step panels or CTA
-above fold · pipeline: card captions ("Added N days ago", "No reply · N days"
-bold past 30, declined reason) · pipeline enrol: score/rationale fields.
+**Contacts** (probe-4: P1 main path CLOSED — event default proven w/ planted 2028
+event · roster advisory verbatim, keyed to selected event · born-overdue killed by
+DEC-801's single pure rule (7-day grace, all 4 surfaces read it: badge/cell/
+filter/email cannot disagree) · role named in confirmation · session consequence
+labeled pre-submit · DEC-802 merge truth (keeper values render, plain — no strike
+on never-present, real drops still struck) · discard column headed by record name ·
+merge impact line present · DEC-800 named duplicate reasons incl. "Same name,
+different company" · duplicate hint at creation (debounced check + advisory) ·
+contact delete in drawer w/ honest 409 merge-instead guidance DEC-758):
+
+**P2 — LAST FABRICATION LIMB, UI-reachable**: push.ts:55 AND :88 still fabricate
+`Invited: <name>` ACCEPTED sessions on the two unguarded callers — POST /contacts
+w/ eventId (crud.ts:122; reached by Speakers → "Add speaker", whose Title field is
+the JOB title) and CSV import w/ eventId (import.ts:143; reached by Speakers →
+import). Apply the same title guard as crud.ts:368 or stop creating sessions on
+these paths (roster-only add); probe wrote 3 fabricated sessions incl. one via
+pure UI clicks.
+**NEW — duplicate-hint link 404s**: NewContactModal.tsx:177 uses <Link
+to="/admin/contacts…"> inside basename="/admin" → /admin/admin/contacts. Strip the
+basename from the `to`.
+**Merge header disambiguation**: for same-name pairs both columns render the
+IDENTICAL name at the moment of an irreversible choice — append the email/company
+disambiguator the pick-list already shows.
+Residue: effective (grace) deadline invisible until breached — surface it before
+overdue (e.g. tooltip/inline "counts from assignment: due 20 Aug") ·
+participant.invite_status written 'none' on add-to-event (write the real state) ·
+no row-level or bulk delete (drawer-only is fine if mock agrees — check at gate) ·
+**SEED still ships 0 duplicate pairs** (near-misses defeated by middle initials —
+add 2-3 real pairs so Duplicates/Merge demos non-empty) · duplicate DETECTION rule
+now explicit (DEC-800 caption) — drop the old decide-in-DEC line · drawer
+read-only reorder · import step panels/CTA · pipeline fit score (v5 §5).
 
 **Settings**: READ-ONLY SUMMARY pattern (THE item — sections as label:value rows w/
 "Edit the form"/"Change"/"Replace" drill-ins; forms only on drill) · remove new
