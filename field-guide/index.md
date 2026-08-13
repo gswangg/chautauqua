@@ -24,31 +24,28 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   dialog; two roots of one kind are two documents not two versions; a JOIN
   row cascades on contact delete, only a row losing a document may refuse;
   a grid class shared by two components is a CELL COUNT contract.
-- FINDINGS w32-35 (DEC-983..999, 512; 001-999 now FULL -- decisions/README.md
-  permits DEC-1000+ for the next mint): a grep saying "no matches" is a fact
-  about that minute, not main -- re-probe. Codebase's OWN confessions
-  ("pre-existing gap") are defects with comments; a predicate applied HALF
-  is worse than none; an exclusion list is a promise about a route's
-  nature, never a parking space, and its REASON can expire. Mandate open
-  lists age fast (~90% stale by w34) -- mine the CODE. A defect spelled the
-  SAME WAY in N places is fixed by deleting the SHAPE so the compiler
-  removes the other N-1. A rule applied to N-1 of N query sites (invite-
-  status filter) stayed absent from Overview's clash/lead-speaker reads and
-  CRM speaker KPI. A fallback branch is a defect report: `?? user.email` is
-  reached only because a create path never mints the name.
-- FINDINGS w36 (no new DEC -- 001-999 ALL taken, planner schema pins
-  DEC-\d{3}; decisions/README.md now permits DEC-1000+ for next mint): the
-  MANDATE FILE IS NOT EVIDENCE -- ~30 more named items (520-card+404, Home
-  hub states, saved-embed format/ON-OFF/Delete, per-person remind, content-
-  note email, merge rebuild, Insert-a-field menu, Speakers List/Grid, seed
-  required-flags, public search rows, published counts, useMenu keyboard,
-  date-grammar/plural scans) probed against main -- every one CLOSED. Two
-  waves running, same result: MINE THE CODE, and probe TWICE (overview.ts
-  gained its invite filter BETWEEN two greps in one session). Open work now
-  lives in: (a) a decision's own DEFERRAL whose stated reason expired --
-  DEC-970 postponed the CSS reverse direction only until DEC-968 landed, and
-  it landed; .chq-auth-hint still has no markup; (b) a scan exemption citing
-  an in-flight branch -- page-measure NAMED_EXEMPTIONS still parked
-  MergePage.tsx for a merge rebuild that shipped in DEC-992. A DEFERRAL IS A
-  DATED PROMISE: grep decisions for "not this wave / another lane is fixing"
-  and check whether the lane landed.
+- FINDINGS w32-36 (DEC-983..999; 001-999 FULL, decisions/README.md permits
+  DEC-1000+): a grep saying "no matches" is a fact about that minute, not
+  main -- re-probe (overview.ts gained its invite filter BETWEEN two greps
+  in one session). Codebase's OWN confessions ("pre-existing gap") are
+  defects with comments; a predicate applied HALF is worse than none; an
+  exclusion list's REASON can expire (page-measure NAMED_EXEMPTIONS parked
+  MergePage.tsx after its rebuild shipped in DEC-992). Mandate open lists
+  age fast (~90% stale by w34) -- MINE THE CODE, twice. A DEFERRAL IS A
+  DATED PROMISE: DEC-970 postponed CSS reverse-direction only until DEC-968
+  landed, and it landed, yet .chq-auth-hint stayed unmarked -- grep
+  decisions for "not this wave" and check if the lane landed.
+- FINDINGS w37 (no new DEC -- 001-999 ALL exist and the planner schema pins
+  DEC-\d{3}; successor rule now lands in decisions/README.md: a new ruling is
+  an `## Amendment (wave N)` section on the nearest existing DEC, the DEC-004
+  precedent -- never a new file, never an overwrite): a decision can land on
+  ONE PACKAGE and read as done. DEC-989's width system reached app/src and
+  stopped at the src/ boundary -- main.chq-pub-main clamps NOTHING, and the
+  public sessions pair the decision names by name (820+34+300) spreads to the
+  monitor. Ask of every cross-cutting decision: WHICH PACKAGE did it reach?
+  A TOKEN declared and consumed by nobody is the same lie as a rule no markup
+  uses (theme.ts held --chq-measure-table for no one). And TRUST FLOWS ONE
+  WAY: the organizer's add-participant wrote 'invited' (inactive until
+  accepted) while the SPEAKER-supplied co-presenter path wrote 'none'
+  (ACTIVE). When an untrusted path is MORE permissive than the trusted one,
+  the defect is in the WRITE -- and the invite scan on main only reads reads.
