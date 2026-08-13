@@ -281,28 +281,6 @@
   max-width: var(--chq-measure);
 }
 
-/* DEC-905 nit: BatchRecipients (RecentSends.tsx) renders five children --
-   when / subject / email / status / disclosure -- but this grid only ever
-   declared four column tracks, so the 5th (the "Show what was sent"
-   disclosure) rode inside the 4th (status) track and overlapped its text.
-   One explicit track per child, with the email cell given a min-width so a
-   long address truncates instead of colliding with status. */
-.chq-comms-history-row {
-  display: grid;
-  grid-template-columns: 150px 1fr minmax(0, 170px) 130px auto;
-  gap: 18px;
-  align-items: baseline;
-  padding: 13px 0;
-  border-bottom: 1px solid var(--chq-hairline);
-}
-
-.chq-comms-history-row > span:nth-child(3) {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .chq-comms-history-when {
   font-size: 13px;
   color: var(--chq-muted);
@@ -567,29 +545,19 @@
 /* the phone-specific card/strip treatments the mock calls for. This page */
 /* never redefines .chq-steps (shared, already single-column <=700px in   */
 /* ../../styles.css) or .chq-meta itself — the send-history override      */
-/* below is scoped under .chq-comms-history-row, matching the .chq-step   */
-/* .chq-comms-step-title contextual-override pattern used above.         */
+/* below is scoped under .chq-comms-history-row (the .chq-meta child      */
+/* selector below), matching the .chq-step .chq-comms-step-title          */
+/* contextual-override pattern used above. .chq-comms-history-row itself  */
+/* and its > span:nth-child(3) sibling rule were deleted (DEC-970/DEC-976 */
+/* dead-rule scan): RecentSends.tsx renders send-history rows as          */
+/* .chq-comms-batch-row / .chq-comms-recipient-row, never                 */
+/* .chq-comms-history-row -- .chq-comms-history-when/-subject (still      */
+/* live below) are the row's real class hooks.                           */
 /* ---------------------------------------------------------------------- */
 
 @media (max-width: 700px) {
-  /* Send-history rows: recipient / subject / status stacked as a card.
-     The row's 4th span is .chq-meta (shared); the 3rd (recipient email)
-     carries no class in HistoryTab.tsx, so it's addressed structurally. */
-  .chq-comms-history-row {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 14px 0;
-  }
-
   .chq-comms-history-when {
     order: 0;
-  }
-
-  .chq-comms-history-row > span:nth-child(3) {
-    order: 1;
-    font-size: 13px;
-    color: var(--chq-ink-2);
   }
 
   .chq-comms-history-subject {

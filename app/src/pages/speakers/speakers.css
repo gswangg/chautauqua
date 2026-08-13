@@ -466,29 +466,6 @@
   gap: 9px;
 }
 
-/* Modal shells reused by TaskModal + ResponseModal. */
-.chq-speakers-modal-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.chq-speakers-modal-head-titles {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.chq-speakers-modal-title {
-  margin: 0;
-  font-family: var(--chq-font-display, inherit);
-  font-size: 23px;
-  font-weight: 700;
-  letter-spacing: -0.035em;
-  line-height: 1;
-}
-
 .chq-speakers-modal-field {
   display: flex;
   flex-direction: column;
@@ -529,15 +506,6 @@
   margin: 0;
   font-size: 15px;
   line-height: 1.5;
-}
-
-/* DEC-599: 'Mark complete' / 'Ask for more' plus the one caption clause
-   confirming reopening never sends email. */
-.chq-speakers-response-status {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
 }
 
 /* DEC-880: add-speaker panel, rendered through the shared ModalFrame dialog

@@ -302,12 +302,6 @@
   gap: 10px;
 }
 
-.chq-forms-public-link {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
 .chq-forms-public-link .chq-input {
   flex: 1;
 }
@@ -428,11 +422,6 @@
     align-items: center;
     justify-content: center;
     border-radius: var(--chq-r-ctl-phone);
-  }
-
-  .chq-forms-public-link {
-    flex-direction: column;
-    align-items: stretch;
   }
 
   .chq-forms-public-link .chq-btn {

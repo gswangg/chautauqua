@@ -28,6 +28,20 @@
 //      must be named in NO_STYLE_HOOK_TOKENS below with its reason — never
 //      an allowlist populated from the failure output.
 //
+//   D) (DEC-970 / DEC-976) the REVERSE direction of (C): every `chq-…`
+//      class token appearing in a class selector anywhere in the union of
+//      app/src CSS — including compound (.chq-a.chq-b), descendant
+//      (.chq-a .chq-b), pseudo (.chq-a:hover, .chq-a::before) selectors,
+//      and selectors nested inside an @media block — must appear in the
+//      text of some app/src/**/*.ts or *.tsx file (EXCLUDING *.test.ts /
+//      *.test.tsx — a class kept alive only by a test assertion is dead in
+//      the product). A rule is reported dead only when EVERY chq-… token
+//      in its selector is unused; the failure names the token and the file
+//      that defines the dead rule. Tokens matching /^chq-phone-/ are out of
+//      scope: the phone layer belongs to the deferred mobile round
+//      (desktop-first standing rule) and has its own guard,
+//      app/src/phone-block-visibility.test.ts.
+//
 // All three scans ENUMERATE every *.css / *.tsx file under app/src via
 // readdirSync (mirroring page-measure.test.ts / DEC-808) rather than a
 // hand-listed manifest, so a new page's markup and CSS are checked
@@ -188,6 +202,86 @@ const NO_STYLE_HOOK_TOKENS = new Set<string>([
   // (none identified yet — every markup token found a rule or was deleted)
 ]);
 
+/** A token belonging to the deferred phone layer (its own guard lives in
+ * app/src/phone-block-visibility.test.ts) — out of scope for the (D) dead-
+ * rule scan per the desktop-first standing rule. */
+const PHONE_TOKEN = /^chq-phone-/;
+
+/** Every *.ts/*.tsx file under app/src, excluding *.test.ts(x) (DEC-976/DEC-808). */
+function allTsAndTsxFiles(root: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
+    if (!entry.isFile()) continue;
+    if (!entry.name.endsWith('.ts') && !entry.name.endsWith('.tsx')) continue;
+    if (entry.name.includes('.test.')) continue;
+    out.push(join(entry.parentPath, entry.name));
+  }
+  return out.sort();
+}
+
+/** Every `selector { body }` rule in the given CSS text, INCLUDING rules
+ * nested inside an @media block (unlike topLevelRules, which strips media
+ * blocks entirely) — a rule that only exists inside a phone-width query is
+ * still a rule that must be reachable from markup, per invariant (D). */
+function allRulesIncludingMedia(css: string): Array<{ selector: string; body: string }> {
+  const withoutComments = stripComments(css);
+  const rules: Array<{ selector: string; body: string }> = [];
+  const topLevel = withoutComments.replace(
+    /@media[^{]*\{((?:[^{}]*\{[^{}]*\}[^{}]*)*)\}/g,
+    (_full, inner: string) => {
+      const re = /([^{}]+)\{([^{}]*)\}/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(inner)) !== null) {
+        rules.push({ selector: (m[1] ?? '').trim(), body: m[2] ?? '' });
+      }
+      return '';
+    },
+  );
+  const re = /([^{}]+)\{([^{}]*)\}/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(topLevel)) !== null) {
+    rules.push({ selector: (m[1] ?? '').trim(), body: m[2] ?? '' });
+  }
+  return rules;
+}
+
+/** Every distinct `chq-…` class token appearing in a class selector — a
+ * compound (.chq-a.chq-b), descendant (.chq-a .chq-b), or pseudo
+ * (.chq-a:hover, .chq-a::before) selector all yield their `.chq-…`
+ * segments via the same `\.(chq-…)` match (a pseudo starts with `:`, not
+ * part of the token). */
+function selectorClassTokens(selector: string): string[] {
+  const out = new Set<string>();
+  const re = /\.(chq-[A-Za-z0-9-]+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(selector)) !== null) {
+    const token = m[1];
+    if (token) out.add(token);
+  }
+  return [...out];
+}
+
+/**
+ * Named exceptions to (D): a `chq-…` class token that IS live in the
+ * product but is emitted in a way the plain-text token extractor cannot
+ * see (e.g. built by string concatenation/template interpolation rather
+ * than appearing as a literal `chq-…` substring). One named entry per
+ * token, with the reason and its emitter file written beside it — never a
+ * list populated from the failure output.
+ */
+const DYNAMIC_CLASS_TOKENS = new Set<string>([
+  // Built as `chq-speakers-status-${modifier}` in
+  // app/src/pages/speakers/TaskCell.tsx's statusCellClass (modifier in
+  // 'complete' | 'overdue' | 'pending') and
+  // app/src/pages/speakers/ParticipationMenu.tsx's participationStatusClass
+  // (same three plus 'none') -- the token extractor only sees the fixed
+  // `chq-speakers-status-` prefix up to the template placeholder.
+  'chq-speakers-status-complete',
+  'chq-speakers-status-pending',
+  'chq-speakers-status-overdue',
+  'chq-speakers-status-none',
+]);
+
 describe('CSS token + button-face contract (DEC-937)', () => {
   it('found more than one CSS file to scan', () => {
     // Guards the enumeration itself: if readdirSync ever returned nothing,
@@ -261,6 +355,55 @@ describe('CSS token + button-face contract (DEC-937)', () => {
     expect(
       offenders,
       `className tokens with no matching CSS rule (add a rule or delete the className):\n${offenders.join('\n')}`,
+    ).toEqual([]);
+  });
+
+  it('every chq-… class token in a CSS selector is used somewhere in app/src markup/source (DEC-970)', () => {
+    // Used set: every `chq-…` token found in the plain text of any *.ts/
+    // *.tsx source file (excluding tests), not just className regions —
+    // (D) is deliberately broader than (C)'s className-only scan since a
+    // token can also be referenced via a helper (e.g. `classList.add`) or
+    // built from a shared constant. Deliberately scanned on the RAW source
+    // (not stripTsxComments' output): stripTsxComments' block-comment
+    // regex treats any bare "/*" as a comment opener, which a route-path
+    // string literal like '/review/*' also contains, so it can swallow
+    // real code up to the next literal "*/" (seen live: it ate the
+    // `className="chq-header"` markup in App.tsx). A token mentioned only
+    // in a comment being counted as "used" is a safe false negative here
+    // (worst case: a truly dead rule stays undetected); a token wrongly
+    // erased from the used set risks deleting a live rule, which is worse.
+    const used = new Set<string>();
+    for (const path of allTsAndTsxFiles(HERE)) {
+      const src = readFileSync(path, 'utf-8');
+      const re = /chq-[a-z0-9-]+/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(src)) !== null) used.add(m[0]);
+    }
+
+    // app/src/pages/contacts/** is a task-boundary exclusion, not a scan
+    // carve-out: another lane owns that directory this wave (a concurrent
+    // rebuild), so its CSS is enumerated by (C) above but left out of this
+    // rule's delete-fix scope. This is dated to the current wave's task
+    // split, not a standing exemption — a future wave should re-probe it.
+    const offenders: string[] = [];
+    for (const path of CSS_FILES) {
+      const label = relative(HERE, path);
+      if (label.startsWith(join('pages', 'contacts'))) continue;
+      const css = readFileSync(path, 'utf-8');
+      for (const { selector } of allRulesIncludingMedia(css)) {
+        const tokens = selectorClassTokens(selector).filter((t) => !PHONE_TOKEN.test(t));
+        if (tokens.length === 0) continue; // no in-scope chq-… token in this selector
+        const allDead = tokens.every(
+          (t) => !used.has(t) && !DYNAMIC_CLASS_TOKENS.has(t),
+        );
+        if (allDead) {
+          for (const t of tokens) offenders.push(`${label}: ${t} ("${selector}")`);
+        }
+      }
+    }
+    expect(
+      offenders,
+      `dead CSS rules (chq-… token unused in app/src *.ts/*.tsx, excluding tests):\n${offenders.join('\n')}`,
     ).toEqual([]);
   });
 });
