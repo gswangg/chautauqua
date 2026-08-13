@@ -138,7 +138,11 @@ export interface AssignmentResponseDetail {
 export interface NewTaskInput {
   kind: TaskKind;
   title: string;
-  dueDate?: number;
+  // DEC-933: null is an explicit "no due date" (create's default, and
+  // edit's "clear the due date"), distinct from omitting the field
+  // entirely -- always present so an edit PATCH can clear a due date
+  // rather than silently leaving it unchanged.
+  dueDate: number | null;
   required: boolean;
   formId?: string;
   deliverableKind?: DeliverableKind;

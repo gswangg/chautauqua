@@ -131,6 +131,30 @@
   color: var(--chq-muted);
 }
 
+/* DEC-933: the quiet Edit/Remove pair a task column header carries -- text
+   weight normal, muted, no button chrome, so a column that is otherwise
+   write-once reads as fixable without shouting. */
+.chq-speakers-task-header-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  text-transform: none;
+}
+
+.chq-speakers-task-header-actions .chq-link-button {
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* DEC-934: the ONE muted strip a row whose participation is invited/declined
+   renders instead of N blank task cells -- reads as a stated decision, not
+   an accident. */
+.chq-speakers-not-chasing {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--chq-muted);
+}
+
 .chq-speakers-cell {
   display: flex;
   align-items: center;

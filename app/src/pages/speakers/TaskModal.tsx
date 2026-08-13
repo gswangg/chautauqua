@@ -5,10 +5,11 @@ import {
   type DeliverableKind,
   type EventForm,
   type NewTaskInput,
+  type OnboardingTask,
   type TaskKind,
 } from './types';
 import { FormRow, ModalFrame } from '../../components/ModalFrame';
-import { dateInputToMs } from '../../lib/dates';
+import { dateInputToMs, msToDateInput } from '../../lib/dates';
 
 interface TaskModalProps {
   onCancel: () => void;
@@ -21,6 +22,17 @@ interface TaskModalProps {
   // DEC-746: createTask always expands to every accepted speaker now -- the
   // subtitle states the count instead of offering an opt-out checkbox.
   acceptedCount: number;
+  // DEC-933: when provided, the modal opens in EDIT mode for this existing
+  // task instead of creating a new one. Kind/Form/Deliverable-kind are the
+  // task's shape and are fixed in edit mode -- changing kind would orphan
+  // stored responses, and this modal has no wire-safe way to learn a task's
+  // current deliverableKind (the onboarding grid response never carries it,
+  // and widening that wire shape is out of this change's scope), so that
+  // picker stays hidden too rather than risk clobbering it with a fresh
+  // default. Only title/due date/required are editable; the caller is
+  // responsible for stripping kind/formId/deliverableKind out of the
+  // NewTaskInput this modal hands back before it PATCHes.
+  task?: OnboardingTask | null;
 }
 
 // DEC-746: the segmented control's labels/order per
@@ -56,11 +68,12 @@ function deliverableKindLabel(kind: DeliverableKind): string {
   return DELIVERABLE_KIND_LABELS[kind];
 }
 
-export function TaskModal({ onCancel, onSubmit, forms, acceptedCount }: TaskModalProps) {
-  const [kind, setKind] = useState<TaskKind>('file_request');
-  const [title, setTitle] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [required, setRequired] = useState(true);
+export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = null }: TaskModalProps) {
+  const isEdit = task !== null;
+  const [kind, setKind] = useState<TaskKind>(task?.kind ?? 'file_request');
+  const [title, setTitle] = useState(task?.title ?? '');
+  const [dueDate, setDueDate] = useState(task ? msToDateInput(task.dueDate) : '');
+  const [required, setRequired] = useState(task?.required ?? true);
   const [formId, setFormId] = useState('');
   const [deliverableKind, setDeliverableKind] = useState<DeliverableKind>(DELIVERABLE_KINDS[0]!);
   const [submitting, setSubmitting] = useState(false);
@@ -71,12 +84,14 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount }: TaskModa
   // async fetch resolves after the modal has already mounted with none) --
   // a blank submit is impossible by construction.
   useEffect(() => {
+    if (isEdit) return; // edit mode never renders the Form picker.
     if (forms.length === 0) {
       setFormId('');
       return;
     }
     setFormId((current) => (forms.some((f) => f.id === current) ? current : forms[0]!.id));
-  }, [forms]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forms, isEdit]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -84,7 +99,7 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount }: TaskModa
       setError('Title is required.');
       return;
     }
-    if (kind === 'form' && (forms.length === 0 || formId.trim().length === 0)) {
+    if (!isEdit && kind === 'form' && (forms.length === 0 || formId.trim().length === 0)) {
       setError('Select a form before creating a form task.');
       return;
     }
@@ -94,13 +109,13 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount }: TaskModa
       await onSubmit({
         kind,
         title: title.trim(),
-        dueDate: dateInputToMs(dueDate) ?? undefined,
+        dueDate: dateInputToMs(dueDate),
         required,
-        formId: kind === 'form' ? formId : undefined,
-        deliverableKind: kind === 'file_request' ? deliverableKind : undefined,
+        formId: !isEdit && kind === 'form' ? formId : undefined,
+        deliverableKind: !isEdit && kind === 'file_request' ? deliverableKind : undefined,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create task');
+      setError(err instanceof Error ? err.message : isEdit ? 'Failed to save task' : 'Failed to create task');
     } finally {
       setSubmitting(false);
     }
@@ -110,15 +125,15 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount }: TaskModa
     <ModalFrame
       as="form"
       onSubmit={handleSubmit}
-      title="New task"
-      subtitle={`Created for all ${acceptedCount} accepted speakers`}
+      title={isEdit ? 'Edit task' : 'New task'}
+      subtitle={isEdit ? undefined : `Created for all ${acceptedCount} accepted speakers`}
       onClose={onCancel}
       closeDisabled={submitting}
       modalClassName="chq-speakers-modal"
       actions={
         <>
           <button type="submit" className="chq-btn chq-btn-primary" disabled={submitting}>
-            {submitting ? 'Creating...' : 'Create the task'}
+            {isEdit ? (submitting ? 'Saving...' : 'Save changes') : submitting ? 'Creating...' : 'Create the task'}
           </button>
           <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={submitting}>
             Cancel
@@ -151,26 +166,37 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount }: TaskModa
           />
         </FormRow>
 
-        <div className="chq-speakers-modal-field">
-          <span className="chq-speakers-modal-label" id="task-kind-label">
-            Kind
-          </span>
-          <div className="chq-segmented" role="group" aria-label="Kind">
-            {KIND_ORDER.map((k) => (
-              <button
-                key={k}
-                type="button"
-                className={kind === k ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
-                aria-pressed={kind === k}
-                onClick={() => setKind(k)}
-              >
-                {kindLabel(k)}
-              </button>
-            ))}
+        {/* DEC-933: kind is a task's shape and is fixed once created --
+            edit mode shows it as a quiet read-only line rather than the
+            interactive segmented control (changing kind would orphan
+            responses already stored against it). */}
+        {isEdit ? (
+          <div className="chq-speakers-modal-field">
+            <span className="chq-speakers-modal-label">Kind</span>
+            <span className="chq-meta">{kindLabel(kind)} (not editable)</span>
           </div>
-        </div>
+        ) : (
+          <div className="chq-speakers-modal-field">
+            <span className="chq-speakers-modal-label" id="task-kind-label">
+              Kind
+            </span>
+            <div className="chq-segmented" role="group" aria-label="Kind">
+              {KIND_ORDER.map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  className={kind === k ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
+                  aria-pressed={kind === k}
+                  onClick={() => setKind(k)}
+                >
+                  {kindLabel(k)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
-        {kind === 'form' && (
+        {!isEdit && kind === 'form' && (
           <FormRow
             label="Form"
             htmlFor="task-form"
@@ -200,7 +226,7 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount }: TaskModa
           </FormRow>
         )}
 
-        {kind === 'file_request' && (
+        {!isEdit && kind === 'file_request' && (
           <FormRow label="Deliverable kind" htmlFor="task-deliverable-kind" optional>
             <select
               id="task-deliverable-kind"
