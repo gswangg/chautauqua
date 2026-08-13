@@ -17,45 +17,41 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   PAGE; publish the WINDOW not a flag; decision with no code a LIE;
   seed satisfies every read; mandate file a HYPOTHESIS -- grep before
   tasking; every page says who's signed in.
-- FINDINGS w7-14 (DEC-821..869, compacted): mandate/probe findings
-  EXPIRE, re-grep the anchor before tasking. Shared predicate matches
-  printed number to query arithmetic; a "frozen legacy" column is
-  only dead if NOTHING writes it, scan other storage by identifier.
-  Unpublish/narrow/unschedule SAYS so at the moment of choice; a
-  link is the route it LANDS on; error shape follows the REQUEST's
-  route; submitted blank CLEARS, absent key is silence; list+export
-  read status through ONE reader; main can be RED — grep `<<<<<<<`
-  every wave. Hand-listed vocab/knob tables DESYNC — read ONE
-  enumerated set. A gate must not render children while identity
-  loads; identity via the DETECTOR's normalized form not raw ===. A
-  promised column needs controls on EVERY row; two save paths for
-  one row is one too many. Pills that clear each other are a radio
-  group in a toggle's clothes; two filter axes each name their axis.
-  A confirmation names both the reference AND the emailed address; a
-  harness login in a product placeholder leaks the test. A per-row
-  count re-scanning per row is N scans — one pass; a role column
-  only AUTH reads is not authz, list and count share ONE
-  where-builder. An identity resolved from a supplied email must
-  never be ECHOED. Blank is ABSENT for EVERY kind; `ne` never fires
-  on an absent trigger. A filter row states its conjunction, counts
-  N of M via one activeRules() reader. A states menu marks the one
-  in force (aria-checked, not CSS class).
-- FINDINGS w15 (DEC-870..876): a FRAGMENT returned into a CSS grid
-  donates its extra child as a grid ITEM — wrap the main column. A
-  `<td>` with display:flex stops being a cell. A role read off a
-  USER is null for a row with no user, never a sentinel string;
-  "You" is an ID match not a name match. Print a blend with the
-  SAME pure function the server aggregates with. A control that
-  can't save a partial score isn't a "draft". One plan lands IN it.
-- FINDINGS w16 (DEC-877..882): the mandate is a HYPOTHESIS with a
-  half-life — six candidate lines this wave were ALREADY CLOSED in
-  code (blank-clears, SSR html errors, list/export status parity,
-  narrowed-window warning, /schedule search box, merge name case).
-  Re-grep the anchor or waste a lane. A shared token is only adopted
-  where a page APPLIES it: a defined token nobody wraps clamps
-  nothing, and a header/content that clamp differently read as two
-  documents. A reset landing after a family's modifiers DELETES the
-  family — scope a reset to the properties it means. A count's LABEL
-  is a claim about its WHERE clause: "N re-uploaded" filtered on
-  changes_requested counts the opposite. A disabled input is not a
-  read-only row; a status picker is not a decision.
+- FINDINGS w7-16 (DEC-821..882, compacted): mandate/probe findings
+  EXPIRE, re-grep before tasking (six w16 lines were ALREADY CLOSED).
+  Shared predicate matches printed number to query arithmetic; a
+  "frozen" column is dead only if NOTHING writes it. Unpublish/
+  narrow/unschedule SAYS so at the moment of choice; a link is the
+  route it LANDS on; error shape follows the REQUEST's route;
+  submitted blank CLEARS, absent key is silence; list+export read
+  status through ONE reader; main can be RED — grep `<<<<<<<` every
+  wave. Hand-listed vocab tables DESYNC — read ONE enumerated set. A
+  gate must not render children while identity loads. A promised
+  column needs controls on EVERY row; two save paths for one row is
+  one too many. Pills that clear each other are a radio group in a
+  toggle's clothes; two filter axes each name their axis. A per-row
+  count re-scanning per row is N scans — one pass; list and count
+  share ONE where-builder. An identity from a supplied email must
+  never be ECHOED. Blank is ABSENT for EVERY kind. A FRAGMENT
+  returned into a CSS grid donates its extra child as a grid ITEM.
+  A role read off a USER is null for a row with no user. Print a
+  blend with the SAME pure function the server aggregates with. A
+  shared token is only adopted where a page APPLIES it. A reset
+  lands scoped to the properties it means, never a whole family. A
+  count's LABEL is a claim about its WHERE clause. A disabled input
+  is not read-only; a status picker is not a decision.
+- FINDINGS w17 (DEC-883..890): the tree MOVES WHILE YOU PLAN — a file
+  re-read minutes later already carried the fix. Verify twice before
+  re-tasking; a missing DEC marker is not proof of a missing fix. A
+  toggle needing a companion choice must REVEAL the choice and WAIT
+  — firing on the toggle makes the feature's first act a 400. A
+  shared class is shareable only where every member wants every
+  DECLARATION: a lowercase wordmark on an event name renames the
+  customer's event. auto-fill with a small minmax floor is a phone
+  rule that never stops applying — desktop columns are COUNTED. An
+  absent image is a DRAWN placeholder; an empty box reads as
+  failure. An irreversible action is a PAGE naming what goes AND
+  what it refuses; another's recorded judgment is never the
+  organizer's to erase. A prop with one call site is a setting
+  nobody sets. "Last used" comes from the log via ONE grouped query,
+  never a new column, never a query per row.
