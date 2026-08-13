@@ -52,6 +52,9 @@ export function NotFoundPage() {
       </p>
       <Link className="chq-btn-tertiary" to="/overview">
         Go to Overview
+      </Link>{' '}
+      <Link className="chq-btn-tertiary" to="/submissions">
+        Submissions &rsaquo;
       </Link>
     </div>
   );

@@ -34,9 +34,43 @@ import { ThemeStyles } from "../views/theme";
 import { AUTH_CSS } from "./auth.css";
 import { DEMO_IDENTITIES, type DemoIdentity } from "../lib/demo-identities";
 import { demoIdentitiesPresent } from "../server/repo/demo";
-import { DEC_583 } from "../decisions";
+import { getHubOrg, listHubEvents } from "../server/repo/public/home";
+import { DEC_583, DEC_740 } from "../decisions";
 
 void DEC_583;
+void DEC_740;
+
+// DEC-740: the sign-in card names the deployment's single event when there
+// is exactly one, and offers both public doors -- reusing the SAME
+// getHubOrg/listHubEvents primitives the home hub (src/routes/root.tsx)
+// binds, rather than a second reader of cfpOpen/publishedSessionCount.
+export const MIN_PASSWORD_LENGTH = 12;
+
+interface LoginFooterEvent {
+  name: string;
+  slug: string;
+  cfpOpen: boolean;
+  hasPublished: boolean;
+}
+
+/** Resolves the deployment's single event (name/slug/window state) for the
+ * login card's subtitle + footer -- null when there isn't exactly one
+ * event, in which case the subtitle stays generic and the footer renders
+ * nothing (no single event to link to). */
+async function loadSingleEventContext(db: import("../server/context").Db): Promise<LoginFooterEvent | null> {
+  const org = await getHubOrg(db);
+  if (!org) return null;
+  const page = await listHubEvents(db, org.id, Date.now());
+  if (page.items.length !== 1) return null;
+  const event = page.items[0];
+  if (!event) return null;
+  return {
+    name: event.name,
+    slug: event.slug,
+    cfpOpen: event.cfpOpen,
+    hasPublished: event.publishedSessionCount > 0,
+  };
+}
 
 // DEC-583: prefill-only, never auto-submitted. One event-delegated click
 // handler reads data-demo-email/data-demo-password off whichever
@@ -117,8 +151,17 @@ function AuthHead(props: { title: string }) {
   );
 }
 
-function LoginPage(props: { csrfToken: string; error?: string; demoIdentities?: readonly DemoIdentity[] }) {
+function LoginPage(props: {
+  csrfToken: string;
+  error?: string;
+  demoIdentities?: readonly DemoIdentity[];
+  singleEvent?: LoginFooterEvent | null;
+}) {
   const demoIdentities = props.demoIdentities ?? [];
+  const singleEvent = props.singleEvent ?? null;
+  const subtitle = singleEvent ? `Sign in to ${singleEvent.name}` : "Sign in to your account";
+  const showSubmit = singleEvent !== null && singleEvent.cfpOpen;
+  const showBrowse = singleEvent !== null && singleEvent.hasPublished;
   return (
     <html lang="en">
       <AuthHead title="Log in - Chautauqua" />
@@ -126,7 +169,7 @@ function LoginPage(props: { csrfToken: string; error?: string; demoIdentities?: 
         <div className="chq-auth-card">
           <div>
             <span className="chq-auth-wordmark">chautauqua</span>
-            <div className="chq-auth-subtitle">Sign in to your account</div>
+            <div className="chq-auth-subtitle">{subtitle}</div>
           </div>
           {props.error ? (
             <p className="chq-auth-error" role="alert">
@@ -152,6 +195,19 @@ function LoginPage(props: { csrfToken: string; error?: string; demoIdentities?: 
               Sign in
             </button>
           </form>
+          {showSubmit || showBrowse ? (
+            <div className="chq-auth-footer">
+              <span className="chq-auth-label">No account?</span>
+              <div className="chq-auth-footer-links">
+                {showSubmit ? (
+                  <a href={`/submit/${singleEvent!.slug}`}>Submit a talk &rsaquo;</a>
+                ) : null}
+                {showBrowse ? (
+                  <a href={`/e/${singleEvent!.slug}/sessions`}>Browse the sessions &rsaquo;</a>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
           {demoIdentities.length > 0 ? (
             <div className="chq-auth-demo">
               <div className="chq-auth-demo-label">Try it with a seeded demo account</div>
@@ -195,7 +251,7 @@ function ClaimPage(props: { csrfToken: string; error?: string }) {
             <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
             <label>
               <span className="chq-auth-label">Password</span>
-              <input className="chq-input" type="password" name="password" minlength={8} required />
+              <input className="chq-input" type="password" name="password" minlength={MIN_PASSWORD_LENGTH} required />
             </label>
             <button type="submit" className="chq-btn-primary">
               Create password
@@ -211,7 +267,8 @@ authRoutes.get("/login", async (c) => {
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);
   const demoIdentities = await loadDemoIdentitiesIfPresent(c.var.db);
-  return c.html(<LoginPage csrfToken={csrfToken} demoIdentities={demoIdentities} />);
+  const singleEvent = await loadSingleEventContext(c.var.db);
+  return c.html(<LoginPage csrfToken={csrfToken} demoIdentities={demoIdentities} singleEvent={singleEvent} />);
 });
 
 authRoutes.post("/login", csrfForm, async (c) => {
@@ -246,7 +303,11 @@ authRoutes.post("/login", csrfForm, async (c) => {
   if (!userPeek.ok || !ipPeek.ok) {
     const { token: csrfToken } = ensureCsrfCookie(c);
     const demoIdentities = await loadDemoIdentitiesIfPresent(db);
-    return c.html(<LoginPage csrfToken={csrfToken} error={RATE_LIMIT_ERROR} demoIdentities={demoIdentities} />, 429);
+    const singleEvent = await loadSingleEventContext(db);
+    return c.html(
+      <LoginPage csrfToken={csrfToken} error={RATE_LIMIT_ERROR} demoIdentities={demoIdentities} singleEvent={singleEvent} />,
+      429,
+    );
   }
 
   const rows = await db.select().from(schema.user).where(eq(schema.user.email, email)).limit(1);
@@ -262,7 +323,11 @@ authRoutes.post("/login", csrfForm, async (c) => {
     });
     const { token: csrfToken } = ensureCsrfCookie(c);
     const demoIdentities = await loadDemoIdentitiesIfPresent(db);
-    return c.html(<LoginPage csrfToken={csrfToken} error="Invalid email or password." demoIdentities={demoIdentities} />, 401);
+    const singleEvent = await loadSingleEventContext(db);
+    return c.html(
+      <LoginPage csrfToken={csrfToken} error="Invalid email or password." demoIdentities={demoIdentities} singleEvent={singleEvent} />,
+      401,
+    );
   }
 
   await resetScopedLimit(kv, "login-user", email, loginNow, AUTH_RATE_LIMIT_WINDOW_SECONDS);
@@ -330,8 +395,8 @@ authRoutes.post("/claim/:token", csrfForm, async (c) => {
 
   const body = await c.req.parseBody();
   const password = String(body.password ?? "");
-  if (password.length < 8) {
-    throw new ApiError("invalid", "Password must be at least 8 characters.", {
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw new ApiError("invalid", `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`, {
       password: "Too short",
     });
   }

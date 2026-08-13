@@ -75,20 +75,27 @@ function makeFakeDb() {
   function rowsFor(table: unknown): Row[] {
     if (table === schema.user) return state.users;
     if (table === schema.authSession) return state.sessions;
+    // DEC-740: the login door also queries getHubOrg (orderBy().limit(),
+    // no where()) -- always empty here, so loadSingleEventContext
+    // short-circuits before ever querying schema.event.
+    if (table === schema.org) return [];
     throw new Error("unexpected table in fake db test helper");
   }
   const db = {
     select(fields?: Record<string, unknown>) {
       return {
         from(table: unknown) {
+          const limitFrom = (matched: Row[]) => ({
+            limit(n: number) {
+              return Promise.resolve(matched.slice(0, n).map((r) => project(r, fields)));
+            },
+          });
           return {
             where(cond: unknown) {
-              const matched = rowsFor(table).filter((r) => matches(cond, r));
-              return {
-                limit(n: number) {
-                  return Promise.resolve(matched.slice(0, n).map((r) => project(r, fields)));
-                },
-              };
+              return limitFrom(rowsFor(table).filter((r) => matches(cond, r)));
+            },
+            orderBy() {
+              return limitFrom(rowsFor(table));
             },
           };
         },

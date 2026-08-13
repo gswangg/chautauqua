@@ -37,6 +37,9 @@ describe('NotFoundPage', () => {
     const overviewLink = screen.getByRole('link', { name: 'Go to Overview' });
     expect(overviewLink).toHaveAttribute('href', '/overview');
 
+    const submissionsLink = screen.getByRole('link', { name: 'Submissions ›' });
+    expect(submissionsLink).toHaveAttribute('href', '/submissions');
+
     await waitFor(() => {
       expect(screen.getByText('Not found')).toBeInTheDocument();
     });

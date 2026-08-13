@@ -23,6 +23,10 @@ import {
 } from "../auth/cookies";
 import { ThemeStyles } from "../views/theme";
 import { AUTH_CSS } from "./auth.css";
+import { MIN_PASSWORD_LENGTH } from "./auth";
+import { DEC_740 } from "../decisions";
+
+void DEC_740;
 
 export const accountRoutes = new Hono<AppEnv>();
 
@@ -88,11 +92,18 @@ function PasswordPage(props: { csrfToken: string; error?: string; success?: bool
             </label>
             <label>
               <span className="chq-auth-label">New password</span>
-              <input className="chq-input" type="password" name="next" minlength={8} required />
+              <input
+                className="chq-input"
+                type="password"
+                name="next"
+                minlength={MIN_PASSWORD_LENGTH}
+                placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+                required
+              />
             </label>
             <label>
               <span className="chq-auth-label">Confirm new password</span>
-              <input className="chq-input" type="password" name="confirm" minlength={8} required />
+              <input className="chq-input" type="password" name="confirm" minlength={MIN_PASSWORD_LENGTH} required />
             </label>
             <div className="chq-auth-actions">
               <button type="submit" className="chq-btn-primary">
@@ -145,10 +156,10 @@ accountRoutes.post("/account/password", requireAuthOr302, csrfForm, async (c) =>
     return c.html(<PasswordPage csrfToken={csrfToken} error="Current password is incorrect." />, 400);
   }
 
-  if (next.length < 8) {
+  if (next.length < MIN_PASSWORD_LENGTH) {
     const { token: csrfToken } = ensureCsrfCookie(c);
     return c.html(
-      <PasswordPage csrfToken={csrfToken} error="New password must be at least 8 characters." />,
+      <PasswordPage csrfToken={csrfToken} error={`New password must be at least ${MIN_PASSWORD_LENGTH} characters.`} />,
       400,
     );
   }

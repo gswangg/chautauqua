@@ -11,23 +11,34 @@ import type { AppEnv } from "../src/server/env";
 import type { Db } from "../src/server/context";
 import { registerErrorHandler } from "../src/server/http";
 import { DEMO_IDENTITIES } from "../src/lib/demo-identities";
+import * as schema from "../src/db/schema";
 
 // Simulates `presentCount` of the DEMO_IDENTITIES emails having a user row
 // (demoIdentitiesPresent queries them in DEMO_IDENTITIES order, one
 // eq()+limit(1) lookup per email, short-circuiting on the first miss).
+//
+// DEC-740: the login door also queries getHubOrg (orderBy().limit(), no
+// where()) for its single-event subtitle/footer -- keyed off `table` so it
+// never shares the demo lookups' `calls` counter, and always resolves to
+// no org (subtitle/footer stay generic, which this suite doesn't assert on).
 function fakeDb(presentCount: number): Db {
   let calls = 0;
   return {
     select: () => ({
-      from: () => ({
-        where: () => ({
-          limit: async () => {
-            const hit = calls < presentCount;
-            calls++;
-            return hit ? [{ id: "u" }] : [];
-          },
-        }),
-      }),
+      from: (table: unknown) => {
+        if (table === schema.org) {
+          return { orderBy: () => ({ limit: async () => [] }) };
+        }
+        return {
+          where: () => ({
+            limit: async () => {
+              const hit = calls < presentCount;
+              calls++;
+              return hit ? [{ id: "u" }] : [];
+            },
+          }),
+        };
+      },
     }),
   } as unknown as Db;
 }

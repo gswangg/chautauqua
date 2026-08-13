@@ -218,8 +218,13 @@ describe("(c) /login pending-state handler (DEC-245 ratification)", () => {
     // DEC-583: GET /login now queries demoIdentitiesPresent, so it needs a
     // (empty-result) fake db — this test doesn't care about the demo block.
     app.use("*", async (c, next) => {
+      // DEC-740: the login door also queries getHubOrg
+      // (orderBy().limit(), no where()) -- chain supports both shapes.
       c.set("db", {
-        select: () => ({ from: () => ({ where: () => ({ limit: async () => [] }) }) }),
+        select: () => {
+          const chain: any = { from: () => chain, where: () => chain, orderBy: () => chain, limit: async () => [] };
+          return chain;
+        },
       } as unknown as AppEnv["Variables"]["db"]);
       await next();
     });
