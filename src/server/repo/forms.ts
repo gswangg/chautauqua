@@ -7,9 +7,13 @@ import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import type { FormFieldDef, FormFieldRule } from "../../forms/types";
 import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, SESSION_FORMAT_FIELD_ID, lockedFieldId } from "../../forms/types";
-import { DEC_050 } from "../../decisions";
+import { DEC_050, DEC_398 } from "../../decisions";
 
 void DEC_050; // per-form locked field ids ('<formId>:<name>') — see createDefaultForm below
+void DEC_398; // createDefaultForm's insert-on-conflict-do-nothing-then-select below resolves two
+// concurrent getOrCreateForm racers to exactly one default ('Call for Papers', isDefault:true)
+// form -- the same find-or-create shape getOrCreateFormTaskForm (submissions/status.ts) uses
+// against form_event_id_title_idx (migrations/0033, UNIQUE(event_id, title)).
 
 export interface FormFieldRow extends FormFieldDef {
   formId: string;
@@ -131,64 +135,100 @@ const LOCKED_SPEAKER_KIND: Record<string, "text" | "long_text"> = {
   bio: "long_text",
 };
 
-/** Creates the default CFP form (locked built-ins + empty custom set) for an
- * event that doesn't have one yet, per DEC-008. */
+/**
+ * Creates the default CFP form (locked built-ins + empty custom set) for an
+ * event that doesn't have one yet, per DEC-008.
+ *
+ * DEC-398 (wave-56 amendment): form_event_id_title_idx (migrations/0033_
+ * form_title_unique.sql) is a real UNIQUE(event_id, title) DB constraint --
+ * this insert-on-conflict-do-nothing-then-select is the same find-or-create
+ * shape getOrCreateFormTaskForm (repo/submissions/status.ts) uses, so two
+ * concurrent getOrCreateForm callers racing to mint the event's default form
+ * resolve to exactly one row instead of two (which previously orphaned the
+ * loser's locked form_field rows). Locked fields are only inserted when THIS
+ * call's own insert actually created the row -- a losing racer must not
+ * insert a second set of locked fields onto the winner's form.
+ */
 export async function createDefaultForm(db: Db, eventId: string): Promise<{ form: FormRow; fields: FormFieldRow[] }> {
   const now = new Date();
   const formId = newId();
-  await db.insert(schema.form).values({
-    id: formId,
-    eventId,
-    title: "Call for Papers",
-    description: null,
-    isDefault: true,
-    openDate: null,
-    closeDate: null,
-    tracksJson: null,
-    createdAt: now,
-    updatedAt: now,
-  });
-
-  let position = 0;
-  const fieldValues: (typeof schema.formField.$inferInsert)[] = [];
-  for (const fieldId of LOCKED_SESSION_FIELDS) {
-    fieldValues.push({
-      id: lockedFieldId(formId, fieldId),
-      formId,
-      section: "session",
-      kind: fieldId === "description" ? "long_text" : "text",
-      label: LOCKED_SESSION_LABELS[fieldId] ?? fieldId,
-      required: true,
-      position: position++,
-      locked: true,
+  await db
+    .insert(schema.form)
+    .values({
+      id: formId,
+      eventId,
+      title: "Call for Papers",
+      description: null,
+      isDefault: true,
+      openDate: null,
+      closeDate: null,
+      tracksJson: null,
       createdAt: now,
       updatedAt: now,
-    });
-  }
-  for (const fieldId of LOCKED_SPEAKER_FIELDS) {
-    fieldValues.push({
-      id: lockedFieldId(formId, fieldId),
-      formId,
-      section: "speaker",
-      kind: LOCKED_SPEAKER_KIND[fieldId] ?? "text",
-      label: LOCKED_SPEAKER_LABELS[fieldId] ?? fieldId,
-      required: !OPTIONAL_LOCKED_SPEAKER_FIELDS.has(fieldId),
-      position: position++,
-      locked: true,
-      createdAt: now,
-      updatedAt: now,
-    });
-  }
-  await db.insert(schema.formField).values(fieldValues);
+    })
+    .onConflictDoNothing({ target: [schema.form.eventId, schema.form.title] });
 
-  const form = await findFormForEvent(db, eventId);
-  if (!form) throw new Error("form insert did not persist");
-  const fields = await listFields(db, formId);
+  const winner = await db
+    .select()
+    .from(schema.form)
+    .where(and(eq(schema.form.eventId, eventId), eq(schema.form.title, "Call for Papers")))
+    .limit(1);
+  const row = winner[0];
+  if (!row) throw new Error(`createDefaultForm: no row for (eventId="${eventId}", title="Call for Papers") after insert`);
+  if (!row.isDefault) {
+    throw new Error(`createDefaultForm: (eventId, 'Call for Papers') resolves to a non-default form`);
+  }
+
+  // The insert above used `formId` as its candidate id -- if the winning row
+  // carries that exact id, THIS call's own insert is the one that landed (no
+  // concurrent racer beat it to the unique (eventId, title) slot), so this
+  // call also owns seeding its locked field rows. If some other id won, a
+  // racer already created the form (and, per this same invariant, already
+  // seeded its fields), so this call must not insert a duplicate set.
+  const createdHere = row.id === formId;
+  if (createdHere) {
+    let position = 0;
+    const fieldValues: (typeof schema.formField.$inferInsert)[] = [];
+    for (const fieldId of LOCKED_SESSION_FIELDS) {
+      fieldValues.push({
+        id: lockedFieldId(row.id, fieldId),
+        formId: row.id,
+        section: "session",
+        kind: fieldId === "description" ? "long_text" : "text",
+        label: LOCKED_SESSION_LABELS[fieldId] ?? fieldId,
+        required: true,
+        position: position++,
+        locked: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+    for (const fieldId of LOCKED_SPEAKER_FIELDS) {
+      fieldValues.push({
+        id: lockedFieldId(row.id, fieldId),
+        formId: row.id,
+        section: "speaker",
+        kind: LOCKED_SPEAKER_KIND[fieldId] ?? "text",
+        label: LOCKED_SPEAKER_LABELS[fieldId] ?? fieldId,
+        required: !OPTIONAL_LOCKED_SPEAKER_FIELDS.has(fieldId),
+        position: position++,
+        locked: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+    await db.insert(schema.formField).values(fieldValues);
+  }
+
+  const form = toFormRow(row);
+  const fields = await listFields(db, row.id);
   return { form, fields };
 }
 
 /** Reads the event's CFP form + ordered fields, creating the default form on
- * first read if none exists yet (DEC-008). */
+ * first read if none exists yet (DEC-008). createDefaultForm itself is
+ * race-safe (DEC-398 amendment), so there is no second creation attempt or
+ * silent second default form here. */
 export async function getOrCreateForm(db: Db, eventId: string): Promise<{ form: FormRow; fields: FormFieldRow[] }> {
   const existing = await findFormForEvent(db, eventId);
   if (existing) {
