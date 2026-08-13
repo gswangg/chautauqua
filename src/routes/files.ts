@@ -82,9 +82,15 @@ function requireAuth(c: Context<AppEnv>): AuthInfo {
 }
 
 /** organizer: any submission in their org. speaker: only when a participant
- * on the submission (per DEC-020, "organizer or participant speaker"). Read
- * only — no edit-lock check. Used for GET listing and as the shared base of
- * authzSubmissionWrite. */
+ * on the submission (per DEC-020, "organizer or participant speaker").
+ * reviewer (DEC-170 wave-54 amendment): only when the submission is in scope
+ * for one of their non-anonymized plan assignments — the SAME repo predicate
+ * (reviewerCanAccessSubmissionFile) that gates GET /files/:fileId and the
+ * file comment endpoints, so a reviewer who can already see a file's
+ * comments can also discover that file's id via this listing. Read only —
+ * no edit-lock check. Used for GET listing and as the shared base of
+ * authzSubmissionWrite (writes explicitly refuse reviewers, see
+ * authzFileWrite). */
 async function authzSubmissionRead(c: Context<AppEnv>, submissionId: string) {
   const auth = requireAuth(c);
   const scope = await getSubmissionScope(c.var.db, submissionId);
@@ -98,6 +104,10 @@ async function authzSubmissionRead(c: Context<AppEnv>, submissionId: string) {
       throw new ApiError("forbidden", "Not a participant on this submission");
     }
     return { auth, scope };
+  }
+  if (auth.role === "reviewer") {
+    const inScope = await reviewerCanAccessSubmissionFile(c.var.db, auth.userId, scope.eventId, submissionId);
+    if (inScope) return { auth, scope };
   }
   throw new ApiError("forbidden", "Requires organizer or participant speaker");
 }
@@ -411,22 +421,48 @@ fileApiRoutes.post("/events/:eventId/files/archive", requireOrganizer, csrfJson,
 // -----------------------------------------------------------------------
 // GET/POST /api/v1/files/:fileId/comments
 // -----------------------------------------------------------------------
+/** DEC-170 (wave-54 amendment): the whole reviewer-file-scope rule lives HERE,
+ * ONE place, called from both authzFileRead (comments) and authzServeFile
+ * (streaming) — a reviewer with no submissionId in scope is refused outright
+ * (getFileScope's population always carries a submissionId when non-null, so
+ * this only fires for the resource/task populations authzServeFile also
+ * probes); otherwise defers to reviewerCanAccessSubmissionFile, the same
+ * non-anonymized in-scope-plan predicate authzSubmissionRead uses. Returns
+ * undefined for every non-reviewer role — canAccessFile only reads
+ * opts.reviewerInScope on the reviewer branch, so undefined is inert there. */
+async function resolveReviewerFileScope(
+  c: Context<AppEnv>,
+  auth: AuthInfo,
+  scope: { eventId: string; submissionId: string | null },
+): Promise<boolean | undefined> {
+  if (auth.role !== "reviewer") return undefined;
+  if (!scope.submissionId) throw new ApiError("forbidden", "Not authorized for this file");
+  return reviewerCanAccessSubmissionFile(c.var.db, auth.userId, scope.eventId, scope.submissionId);
+}
+
 async function authzFileRead(c: Context<AppEnv>, fileId: string) {
   const auth = requireAuth(c);
   const scope = await getFileScope(c.var.db, fileId);
   if (!scope) throw new ApiError("not_found", "File not found");
-  if (!canAccessFile(auth, scope)) throw new ApiError("forbidden", "Not authorized for this file");
+  const reviewerInScope = await resolveReviewerFileScope(c, auth, scope);
+  if (!canAccessFile(auth, scope, { reviewerInScope })) throw new ApiError("forbidden", "Not authorized for this file");
   return { auth, scope };
 }
 
 /** authzFileRead, plus the DEC-041 edit-lock for speaker writes (e.g.
- * posting a comment) — a read predicate must never gate a write. Loads the
- * file's submission scope to apply the same canEditSubmission check
- * authzSubmissionWrite uses; scope.submissionId is always non-null here
- * (getFileScope already filters to submission-attached files). */
+ * posting a comment) — a read predicate must never gate a write. Reviewers
+ * are refused OUTRIGHT here (DEC-170, wave-54 amendment): the read grant
+ * (GET comments, GET the file itself) never implies a write grant — a
+ * reviewer's non-anonymized in-scope plan lets them read, never comment.
+ * Loads the file's submission scope to apply the same canEditSubmission
+ * check authzSubmissionWrite uses; scope.submissionId is always non-null
+ * here (getFileScope already filters to submission-attached files). */
 async function authzFileWrite(c: Context<AppEnv>, fileId: string) {
   const result = await authzFileRead(c, fileId);
   const { auth, scope } = result;
+  if (auth.role === "reviewer") {
+    throw new ApiError("forbidden", "Reviewers may not modify files");
+  }
   if (auth.role === "speaker") {
     if (!scope.submissionId) throw new ApiError("forbidden", "Not authorized for this file");
     const subScope = await getSubmissionScope(c.var.db, scope.submissionId);
@@ -548,19 +584,13 @@ async function authzServeFile(c: Context<AppEnv>, fileId: string): Promise<Serve
   const auth = requireAuth(c);
   const scope = await getFileScope(c.var.db, fileId);
   if (scope) {
-    // DEC-170 (supersedes DEC-066): reviewers aren't named in canAccessFile's
-    // org/participant logic — pass whether this reviewer's non-anonymized
-    // plan assignments put the file's submission in scope, precomputed here
-    // so canAccessFile stays a pure function. getFileScope only ever returns
-    // a non-null submissionId (it returns null itself when the file isn't
-    // submission-attached), so this is safe.
-    if (auth.role === "reviewer" && !scope.submissionId) {
-      throw new ApiError("forbidden", "Not authorized for this file");
-    }
-    const reviewerInScope =
-      auth.role === "reviewer" && scope.submissionId
-        ? await reviewerCanAccessSubmissionFile(c.var.db, auth.userId, scope.eventId, scope.submissionId)
-        : undefined;
+    // DEC-170 (supersedes DEC-066; wave-54 amendment factors this lookup out
+    // to resolveReviewerFileScope, shared with authzFileRead) — reviewers
+    // aren't named in canAccessFile's org/participant logic, so pass whether
+    // this reviewer's non-anonymized plan assignments put the file's
+    // submission in scope, precomputed here so canAccessFile stays a pure
+    // function.
+    const reviewerInScope = await resolveReviewerFileScope(c, auth, scope);
     if (!canAccessFile(auth, scope, { reviewerInScope })) {
       throw new ApiError("forbidden", "Not authorized for this file");
     }

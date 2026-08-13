@@ -1,11 +1,12 @@
-// DEC-170 regression coverage (supersedes DEC-066): reviewers may download a
-// submission deliverable via GET /files/:fileId only when the file's
-// submission is in scope for one of their NON-anonymized plan assignments —
-// pure flag into canAccessFile, comment endpoints (GET/POST
-// /api/v1/files/:fileId/comments) stay organizer/speaker only regardless of
-// the flag. Repo calls are mocked so these are pure route-level
-// access-decision tests (no D1/wrangler dependency in stage 1) — same
-// pattern as test/review-idor.test.ts.
+// DEC-170 regression coverage (supersedes DEC-066; wave-54 amendment):
+// reviewers may download a submission deliverable via GET /files/:fileId, AND
+// read its comment thread via GET /api/v1/files/:fileId/comments, only when
+// the file's submission is in scope for one of their NON-anonymized plan
+// assignments — the SAME resolveReviewerFileScope predicate feeds both
+// routes. POSTing a comment stays refused for every reviewer regardless of
+// scope (a read predicate never authorizes a write). Repo calls are mocked so
+// these are pure route-level access-decision tests (no D1/wrangler dependency
+// in stage 1) — same pattern as test/review-idor.test.ts.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
@@ -79,6 +80,7 @@ vi.mock("../src/server/repo/files", async () => {
       async (_db: unknown, userId: string, eventId: string, submissionId: string) =>
         userId === ASSIGNED_REVIEWER && eventId === "event-1" && submissionId === inScopeFileScope.submissionId,
     ),
+    listFileComments: vi.fn(async () => ({ items: [], total: 0 })),
   };
 });
 
@@ -197,14 +199,32 @@ describe("DEC-170: organizer and participant-speaker access unchanged", () => {
   });
 });
 
-describe("DEC-170: comment endpoints stay organizer/speaker-only regardless of reviewer plan assignment", () => {
-  it("GET /api/v1/files/:fileId/comments 403s an in-scope reviewer", async () => {
+// DEC-170 wave-54 amendment: the reviewer file grant is now reachable through
+// the comment READ endpoint (GET) via the SAME resolveReviewerFileScope
+// predicate GET /files/:fileId already used — a reviewer who can stream a
+// file's bytes can also read its comment thread. The WRITE endpoint (POST)
+// stays refused for every reviewer outright: a read predicate never
+// authorizes a write (authzFileWrite).
+describe("DEC-170 (wave 54): comment READ opens to an in-scope reviewer; WRITE stays refused", () => {
+  it("GET /api/v1/files/:fileId/comments 200s an in-scope reviewer", async () => {
     const app = await buildApiApp({ userId: ASSIGNED_REVIEWER, role: "reviewer", orgId: ORG_A });
     const res = await app.request(`/api/v1/files/${inScopeFileScope.fileId}/comments`);
+    expect(res.status).toBe(200);
+  });
+
+  it("GET /api/v1/files/:fileId/comments 403s a cross-track reviewer", async () => {
+    const app = await buildApiApp({ userId: ASSIGNED_REVIEWER, role: "reviewer", orgId: ORG_A });
+    const res = await app.request(`/api/v1/files/${crossTrackFileScope.fileId}/comments`);
     expect(res.status).toBe(403);
   });
 
-  it("POST /api/v1/files/:fileId/comments 403s an in-scope reviewer", async () => {
+  it("GET /api/v1/files/:fileId/comments 403s a reviewer whose only covering plan is anonymized", async () => {
+    const app = await buildApiApp({ userId: ASSIGNED_REVIEWER, role: "reviewer", orgId: ORG_A });
+    const res = await app.request(`/api/v1/files/${anonymizedOnlyFileScope.fileId}/comments`);
+    expect(res.status).toBe(403);
+  });
+
+  it("POST /api/v1/files/:fileId/comments 403s an in-scope reviewer — read grant never authorizes a write", async () => {
     const app = await buildApiApp({ userId: ASSIGNED_REVIEWER, role: "reviewer", orgId: ORG_A });
     const res = await app.request(`/api/v1/files/${inScopeFileScope.fileId}/comments`, {
       method: "POST",
