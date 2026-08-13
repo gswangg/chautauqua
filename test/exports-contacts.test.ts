@@ -1,7 +1,8 @@
 // DEC-597: 'contacts' export kind — org-scoped (not event-scoped like every
 // other kind in src/server/repo/exports/), fixed column order (id,
-// firstName, lastName, email, company, title, tags, created), DEC-560
-// total order ending in id asc.
+// firstName, lastName, email, company, title, labels, created), DEC-560
+// total order ending in id asc. DEC-977: the seventh column carries Labels
+// (contactLabels(customFields)), not an always-empty "tags" placeholder.
 
 import { describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
@@ -51,21 +52,37 @@ const rowZ = {
   title: null,
   createdAt: new Date("2026-02-01T00:00:00.000Z"),
 };
+const rowLabeled = {
+  id: "c-l",
+  firstName: "Lea",
+  lastName: "Labelle",
+  email: "lea@example.com",
+  company: null,
+  title: null,
+  createdAt: new Date("2026-03-01T00:00:00.000Z"),
+  customFieldsJson: JSON.stringify({ role: "speaker", year: "2027", travel_logistics: "connecting flight, arrives 6pm" }),
+};
 
-describe("DEC-597: contacts export column order", () => {
-  it("header is exactly id, firstName, lastName, email, company, title, tags, created", async () => {
+describe("DEC-597/DEC-977: contacts export column order", () => {
+  it("header is exactly id, firstName, lastName, email, company, title, labels, created", async () => {
     const table = await exportContacts(fakeDb([rowA]), "org-1");
-    expect(table.header).toEqual(["id", "firstName", "lastName", "email", "company", "title", "tags", "created"]);
+    expect(table.header).toEqual(["id", "firstName", "lastName", "email", "company", "title", "labels", "created"]);
     expect(CONTACTS_HEADER).toEqual(table.header);
   });
 
-  it("nulls render as empty cells (company/title), tags is a declared-but-unpopulated column", async () => {
+  it("nulls render as empty cells (company/title); no custom fields yields an empty labels cell", async () => {
     const table = await exportContacts(fakeDb([rowZ]), "org-1");
     const rec = table.records[0]!;
     expect(rec.company).toBe("");
     expect(rec.title).toBe("");
-    expect(rec.tags).toBe("");
+    expect(rec.labels).toBe("");
     expect(rec.created).toBe("2026-02-01T00:00:00.000Z");
+  });
+
+  it("DEC-977: labels cell reads contactLabels(customFields) joined by ' · ', reserved travel key excluded", async () => {
+    const table = await exportContacts(fakeDb([rowLabeled]), "org-1");
+    const rec = table.records[0]!;
+    expect(rec.labels).toBe("role speaker · year 2027");
   });
 });
 
