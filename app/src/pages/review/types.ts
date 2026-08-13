@@ -186,6 +186,10 @@ export interface ReviewerQueueItem {
   // DEC-831: this reviewer's own blended score for the plan's current round
   // (computeWeightedScore over their recorded scores), null when unscored.
   myScore: number | null;
+  // DEC-857: the submission's SESSION_FORMAT_FIELD_ID answer label, verbatim
+  // (already carries its own '(N min)' suffix). Null when unanswered. A
+  // session-shape fact, not identity -- present even on an anonymized plan.
+  format: string | null;
 }
 
 // DEC-271: a submission this reviewer has recused themselves from (conflict

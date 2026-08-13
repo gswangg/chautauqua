@@ -259,7 +259,14 @@ function RoleGate({ children }: { children: ReactNode }) {
   const { me, loading } = useMe();
   const location = useLocation();
 
-  if (!loading && me?.role === 'reviewer' && !location.pathname.startsWith('/review')) {
+  // DEC-857: while identity is still loading, no route (organizer-scoped or
+  // otherwise) mounts -- an organizer-scoped page firing organizer-only
+  // fetches during a reviewer's login redirect is the same defect as a gate
+  // that renders its children before it knows who is signed in.
+  if (loading) {
+    return <DelayedLoading />;
+  }
+  if (me?.role === 'reviewer' && !location.pathname.startsWith('/review')) {
     return <Navigate to="/review" replace />;
   }
   return <>{children}</>;

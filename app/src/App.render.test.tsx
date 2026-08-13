@@ -3,7 +3,7 @@
 // inside the app shell (Header still renders alongside it). Also covers
 // the w1-a top-nav shell (DEC-369): wordmark, no count text in nav, badge
 // only for exceptions, reviewer confinement to Review.
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { App, NAV_SECTIONS } from './App';
@@ -312,5 +312,59 @@ describe('Phone tab bar (DEC-381)', () => {
     expect(within(dialog).getByRole('link', { name: 'Contacts' })).toBeInTheDocument();
     expect(within(dialog).getByRole('link', { name: 'Settings' })).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+  });
+});
+
+// DEC-857: RoleGate must not mount any routed page while identity is still
+// resolving -- an organizer-scoped page firing organizer-only fetches during
+// a reviewer's login redirect is the same defect as a gate that renders its
+// children before it knows who is signed in.
+describe('RoleGate blocks routed content while /me is unresolved (DEC-857)', () => {
+  it('never issues the overview fetch while GET /api/v1/me is still pending', async () => {
+    window.history.pushState({}, '', '/admin');
+    let resolveMe: (value: unknown) => void = () => {};
+    const meBodyPromise = new Promise<unknown>((resolve) => {
+      resolveMe = resolve;
+    });
+    const jsonResponse = (body: unknown) =>
+      new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const rawUrl = typeof input === 'string' ? input : input.toString();
+      const path: string = (rawUrl.startsWith('http') ? new URL(rawUrl).pathname : rawUrl.split('?')[0]) ?? '';
+      // Each call awaits the SAME resolution signal but builds its OWN fresh
+      // Response -- a Response body can only be read once, and both useMe
+      // (App) and the header's own /me read independently.
+      if (path.endsWith('/api/v1/me')) return jsonResponse(await meBodyPromise);
+      if (path.endsWith('/api/v1/events')) {
+        return jsonResponse({ items: [{ id: 'ev-1', name: 'DevFlow Conf' }], total: 1, page: 1, perPage: 50 });
+      }
+      if (path.endsWith('/api/v1/events/ev-1/overview')) {
+        return jsonResponse({
+          speakers: { contactsOwing: 0, overdueAssignments: 0 },
+          agenda: { unplaced: 0, conflicts: 0 },
+        });
+      }
+      throw new Error(`unexpected fetch to "${path}" during RoleGate loading test`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    // Give any pending microtasks/effects a chance to fire while /me is
+    // still unresolved.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const calledPaths: string[] = fetchMock.mock.calls.map((call: [RequestInfo | URL]) => {
+      const input = call[0];
+      const rawUrl = typeof input === 'string' ? input : input.toString();
+      return rawUrl.split('?')[0] ?? '';
+    });
+    expect(calledPaths.some((p: string) => p.includes('/overview'))).toBe(false);
+
+    resolveMe({ userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' });
+
+    const primaryNav = await screen.findByRole('navigation', { name: 'Primary' });
+    expect(within(primaryNav).getByRole('link', { name: 'Overview' })).toBeInTheDocument();
   });
 });

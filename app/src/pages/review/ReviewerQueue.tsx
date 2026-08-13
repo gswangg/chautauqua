@@ -122,8 +122,12 @@ function PlanSection({
           <li key={item.submissionId} className="chq-review-queue-row">
             <span className="chq-review-queue-ref">{item.ref}</span>
             <Link to={`/review/plans/${planId}/submissions/${item.submissionId}`} className="chq-review-queue-title">
-              {item.ref} — {item.title}
+              {item.title}
             </Link>
+            {/* DEC-857: the format meta line is a session-shape fact, never
+                stripped for an anonymized plan -- nothing renders when the
+                submission has no format answer (no empty element/separator). */}
+            {item.format != null && <span className="chq-review-plan-meta">{item.format}</span>}
             {/* DEC-831/DEC-845: the queue's own score column -- SCORED <blended
                 score> once this reviewer has rated it, NOT SCORED with a
                 direct scoring link otherwise. Replaces the old bare
@@ -136,11 +140,14 @@ function PlanSection({
             >
               {item.alreadyRatedByMe ? `SCORED ${typeof item.myScore === 'number' ? item.myScore.toFixed(1) : '—'}` : 'NOT SCORED'}
             </span>
+            {/* DEC-857: the action link names what it actually offers -- a
+                scored row already took the action, so it reads "Change your
+                score" rather than repeating "Score this". */}
             <Link
               to={`/review/plans/${planId}/submissions/${item.submissionId}`}
               className="chq-review-queue-score-action"
             >
-              Score this
+              {item.alreadyRatedByMe ? 'Change your score' : 'Score this'}
             </Link>
           </li>
         ))}

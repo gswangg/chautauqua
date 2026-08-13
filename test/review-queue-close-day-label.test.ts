@@ -53,6 +53,8 @@ vi.mock("../src/server/repo/review", async () => {
     countEvaluationsBySubmission: vi.fn(async () => new Map()),
     listSubmissionIdsRatedBy: vi.fn(async () => new Set<string>()),
     listEvaluationScoresForReviewer: vi.fn(async () => new Map()),
+    // DEC-857: no format answers in this fixture set.
+    listFormatLabelsBySubmission: vi.fn(async () => new Map()),
   };
 });
 

@@ -24,7 +24,7 @@ import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import type { PlanRecord } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
-import { DEC_239, DEC_460, DEC_461, DEC_466, DEC_831 } from "../../decisions";
+import { DEC_239, DEC_460, DEC_461, DEC_466, DEC_831, DEC_857 } from "../../decisions";
 import { currentAuth, requireReviewerOrOrganizer, asRecord, requireAssignedPlan } from "./shared";
 
 export const reviewReviewerRoutes = new Hono<AppEnv>();
@@ -33,6 +33,7 @@ void DEC_460; // enforced bound on every /api/v1 list envelope, no exemptions
 void DEC_461; // optional repo page param + sibling count fn + deterministic ORDER BY below
 void DEC_466; // /review/plans/:id/queue bounded below via the blessed JS-slice (DEC-461(e))
 void DEC_831; // queue items carry myScore (this reviewer's own blended score) below
+void DEC_857; // queue items carry format (session-shape fact, never stripped for anonymized plans) below
 
 reviewReviewerRoutes.get("/api/v1/review/plans", async (c) => {
   requireReviewerOrOrganizer(c);
@@ -132,6 +133,14 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
     plan.currentRound,
     auth.userId,
   );
+  // DEC-857: the queue row's own format meta -- batched over the scoped
+  // submission ids, chunked exactly like loadDurationMinBySubmission
+  // (src/server/repo/agenda.ts:316-330). Not stripped for an anonymized
+  // plan: format is a session-shape fact, not identity.
+  const formatBySubmission = await repo.listFormatLabelsBySubmission(
+    c.var.db,
+    scoped.map((s) => s.id),
+  );
   // DEC-147: blend through the round's resolved criteria, restricted to
   // 'rating' criteria -- computeWeightedScore (src/domain/evaluation.ts) is
   // the single blended-score formula; a plan with no rating criteria has
@@ -168,13 +177,14 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
       ratingsCount: countsBySubmission.get(s.id) ?? 0,
       alreadyRatedByMe: ratedByMe.has(s.id),
       myScore: myScoreFor(s.id),
+      format: formatBySubmission.get(s.id) ?? null,
     }))
     .filter((item) => item.alreadyRatedByMe || needsMoreRatings(item, plan.maxEvaluations ?? undefined));
 
   const ordered = buildReviewerQueue(queueItems);
   const byId = new Map(scopedActionable.map((s) => [s.id, s]));
-  // DEC-239/DEC-831/DEC-845: the SPA reads submissionId/ref/title/
-  // ratingsCount/alreadyRatedByMe/myScore by exact key -- emit the shaped
+  // DEC-239/DEC-831/DEC-845/DEC-857: the SPA reads submissionId/ref/title/
+  // ratingsCount/alreadyRatedByMe/myScore/format by exact key -- emit the shaped
   // item, not the raw SubmissionSummary row (which has `id`, not
   // `submissionId`); myScore comes straight off buildReviewerQueue's own
   // ordered item now, not a second lookup.
@@ -189,6 +199,7 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
         ratingsCount: countsBySubmission.get(id) ?? 0,
         alreadyRatedByMe: ratedByMe.has(id),
         myScore,
+        format: formatBySubmission.get(id) ?? null,
       };
     })
     .filter((item): item is NonNullable<typeof item> => item !== undefined);
