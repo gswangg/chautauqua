@@ -349,7 +349,7 @@ export function DeliverableDetail({
             {CONTENT_STATUS_LABELS[pill]}
           </span>
           {headerDetail && (
-            <span className="chq-meta chq-content-status-band-updated">Updated {formatDate(headerDetail.updatedAt)}</span>
+            <span className="chq-meta">Updated {formatDate(headerDetail.updatedAt)}</span>
           )}
         </div>
         <div className="chq-content-status-band-actions">
