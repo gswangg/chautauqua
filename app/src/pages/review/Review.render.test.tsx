@@ -279,6 +279,9 @@ describe('ReviewPage render smoke: organizer', () => {
     await waitFor(() => {
       expect(screen.getByText('rev1@example.com')).toBeInTheDocument();
     });
+    // DEC-819: each per-reviewer row carries its own "X of Y" numeric
+    // beside the bar, alongside the DONE/N-TO-GO state flag.
+    expect(screen.getByText('2 of 4')).toBeInTheDocument();
   });
 
   it('renders the results view', async () => {
@@ -304,9 +307,10 @@ describe('ReviewPage render smoke: organizer', () => {
 });
 
 describe('ReviewPage render smoke: reviewer', () => {
-  it('renders a non-empty ReviewerQueue', async () => {
+  it('renders a non-empty ReviewerQueue, headed by the plan\'s own name (DEC-819)', async () => {
     mockApi({
       'GET /api/v1/me': reviewerMe(),
+      [`GET /api/v1/review/plans/${PLAN_ID}`]: planWithNullDates(),
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
         ...listEnvelope([
           { submissionId: 'sub-1', ref: 'S-001', title: 'A Talk About Testing', ratingsCount: 0, alreadyRatedByMe: false },
@@ -323,9 +327,14 @@ describe('ReviewPage render smoke: reviewer', () => {
       </MemoryRouter>,
     );
 
+    // DEC-819: the plan-scoped route is headed by the plan's own name, not
+    // the landing page's generic "Your queue" -- that string is reserved
+    // for the unscoped /review landing.
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Your queue' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Keynote Track Review' })).toBeInTheDocument();
     });
+    expect(screen.queryByRole('heading', { name: 'Your queue' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Your plans/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /A Talk About Testing/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Another Talk/ })).toBeInTheDocument();
 

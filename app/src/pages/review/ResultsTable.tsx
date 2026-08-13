@@ -320,7 +320,7 @@ export function ResultsTable({
             className="chq-section-action chq-review-results-note"
             style={{ color: 'var(--chq-muted)' }}
           >
-            Mean of submitted reviews · recusals excluded
+            Scores average by weight · recusals excluded
           </span>
         </div>
         {/* DEC-587/product principle 4: said once here, not per row -- a

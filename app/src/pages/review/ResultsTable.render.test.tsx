@@ -94,6 +94,32 @@ describe('ResultsTable phone-card data-label invariant (DEC-390)', () => {
   });
 });
 
+// DEC-819: the blended score is a WEIGHTED mean (computeWeightedScore via
+// aggregateEvaluations) -- the caption underneath must say so, matching the
+// plan editor's own 'Scores average by weight' rather than describing a
+// plain average.
+describe('ResultsTable weighted-score caption (DEC-819)', () => {
+  it('states the weighting, keeps the recusals-excluded clause', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([resultsRow()]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('A Great Talk')).toBeInTheDocument();
+    expect(screen.getByText('Scores average by weight · recusals excluded')).toBeInTheDocument();
+    expect(screen.queryByText(/Mean of submitted reviews/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Weighted score/ })).toBeInTheDocument();
+  });
+});
+
 // DEC-703: the ranked results row names the human and the track, between the
 // title and score columns -- the one screen an organizer decides the
 // programme from must answer "who is this and where does it go" without
