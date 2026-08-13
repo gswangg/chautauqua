@@ -128,7 +128,7 @@ describe('SubmissionsPage render smoke', () => {
     // nothing.
     expect(screen.queryByRole('columnheader', { name: 'Level' })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('Columns', { selector: 'summary' }));
+    fireEvent.click(screen.getByText('Columns: 0', { selector: 'summary' }));
     const checkbox = await screen.findByRole('checkbox', { name: 'Level' });
     fireEvent.click(checkbox);
 
@@ -273,6 +273,17 @@ describe('SubmissionsPage render smoke', () => {
 
     expect(screen.getByText('Kept across pages · sent in batches of 100')).toBeInTheDocument();
     expect(screen.getByText('1 selected')).toBeInTheDocument();
+
+    // DEC-752: with no single status filter applied, the bar offers the
+    // three "move forward" actions, not all six statuses as equal buttons.
+    const bulkbar = within(screen.getByRole('toolbar', { name: 'Bulk actions' }));
+    expect(bulkbar.getByRole('button', { name: 'Move to accept queue' })).toBeInTheDocument();
+    expect(bulkbar.getByRole('button', { name: 'Decline queue' })).toBeInTheDocument();
+    expect(bulkbar.getByRole('button', { name: 'Waitlist' })).toBeInTheDocument();
+    expect(bulkbar.getByRole('button', { name: 'Clear' })).toBeInTheDocument();
+    expect(bulkbar.queryByRole('button', { name: 'Mark accepted' })).not.toBeInTheDocument();
+    expect(bulkbar.queryByRole('button', { name: 'Mark declined' })).not.toBeInTheDocument();
+    expect(bulkbar.queryByRole('button', { name: 'Mark waitlisted' })).not.toBeInTheDocument();
   });
 
   it('save-view dialog (DEC-610) validates an empty name and POSTs the trimmed name on save', async () => {

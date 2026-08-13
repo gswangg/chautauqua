@@ -1,13 +1,45 @@
-import { STATUS_LABELS, SUBMISSION_STATUSES, type SubmissionStatus } from './types';
+import type { SubmissionStatus } from './types';
 
 interface BulkActionBarProps {
   selectedCount: number;
   pending: boolean;
+  statusFilter: SubmissionStatus | null;
   onApply: (status: SubmissionStatus) => void;
   onClear: () => void;
 }
 
-export function BulkActionBar({ selectedCount, pending, onApply, onClear }: BulkActionBarProps) {
+interface BulkMove {
+  status: SubmissionStatus;
+  label: string;
+  primary: boolean;
+}
+
+// DEC-752: the bulk bar offers the three moves relevant to the row's current
+// stage, not all six statuses as equal buttons -- a "waitlisted" row does not
+// need a "Mark waitlisted" button, it needs a way OUT.
+function movesFor(statusFilter: SubmissionStatus | null): BulkMove[] {
+  if (statusFilter === 'accept_queue') {
+    return [
+      { status: 'accepted', label: 'Mark accepted', primary: true },
+      { status: 'decline_queue', label: 'Decline queue', primary: false },
+      { status: 'waitlisted', label: 'Waitlist', primary: false },
+    ];
+  }
+  if (statusFilter === 'decline_queue') {
+    return [
+      { status: 'declined', label: 'Mark declined', primary: true },
+      { status: 'accept_queue', label: 'Accept queue', primary: false },
+      { status: 'waitlisted', label: 'Waitlist', primary: false },
+    ];
+  }
+  return [
+    { status: 'accept_queue', label: 'Move to accept queue', primary: true },
+    { status: 'decline_queue', label: 'Decline queue', primary: false },
+    { status: 'waitlisted', label: 'Waitlist', primary: false },
+  ];
+}
+
+export function BulkActionBar({ selectedCount, pending, statusFilter, onApply, onClear }: BulkActionBarProps) {
   if (selectedCount === 0) return null;
 
   return (
@@ -15,19 +47,19 @@ export function BulkActionBar({ selectedCount, pending, onApply, onClear }: Bulk
       <span className="chq-submissions-bulkbar-count">{selectedCount} selected</span>
       <span className="chq-submissions-bulkbar-note">Kept across pages · sent in batches of 100</span>
       <div className="chq-submissions-bulkbar-actions">
-        {SUBMISSION_STATUSES.map((status, index) => (
+        {movesFor(statusFilter).map((move) => (
           <button
-            key={status}
+            key={move.status}
             type="button"
-            className={index === 0 ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
+            className={move.primary ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
             disabled={pending}
-            onClick={() => onApply(status)}
+            onClick={() => onApply(move.status)}
           >
-            Mark {STATUS_LABELS[status]}
+            {move.label}
           </button>
         ))}
         <button type="button" className="chq-btn chq-btn-tertiary" disabled={pending} onClick={onClear}>
-          Clear selection
+          Clear
         </button>
       </div>
     </div>
