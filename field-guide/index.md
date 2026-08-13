@@ -6,7 +6,7 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   all; decisions/DEC-*.md binding, src/decisions.ts compile-checked
   (never hand-edit). House invariants: fail loudly; status changes
   never auto-email; authz every route, server-side visibility.
-- STAGE1-16 + FINDINGS w1-21 (DEC-002..920, heavily compacted): pure-core
+- STAGE1-16 + FINDINGS w1-24 (DEC-002..936, heavily compacted): pure-core
   imports no node:/cf; Hono sub-apps, errors {error:{code,message,fields?}};
   bulk ops set-based; D1 binds PRIMITIVES; dates via event-time.ts OWNING
   EVENT's tz; rows graded from ENUMERATION never sample; pagination ONE
@@ -25,36 +25,36 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   RED — grep `<<<<<<<` every wave. A gate must not render children while
   identity loads. A promised column needs controls on EVERY row; two save
   paths for one row is one too many. Pills that clear each other are a
-  radio group in a toggle's clothes. A per-row/per-kind count re-scanning
-  per row is N scans (even wearing Promise.all) — one grouped query. An
-  identity from a supplied email must never be ECHOED. Blank is ABSENT for
-  EVERY kind. A role read off a USER is null for a row with no user. A
+  radio group in a toggle's clothes. A per-row/per-kind count is N scans
+  even wearing Promise.all — one grouped query. An identity from a
+  supplied email must never be ECHOED. Blank is ABSENT for EVERY kind. A
   disabled input must look disabled. A toggle needing a companion choice
-  REVEALS it and WAITS. An absent image is a DRAWN placeholder. A
-  timeline the data already implies needs a UNION not a migration.
-  Number() parses "1e999" as Infinity, lands null in a REQUIRED column.
-  A gate skipped for one content type is not a gate. Nine date complaints
-  on six pages are one formatter, never the docstring. A page's actions
-  belong to its title row. A prop that renders nothing is a decision
-  callers still believe in — delete it. Three surfaces answering "narrow
-  this list" differently are three products. An onChange that writes to
-  server races its own reload — a row is a DRAFT until Save.
-- FINDINGS w22-23 (DEC-921..930, compacted): mandate files pure archaeology,
-  ~20 headline items reprobed, all CLOSED. A cascade comment claiming
-  "everything it owns" is a claim to CHECK against the table list; a
-  join row keyed on (task, contact) is not owned by the file that
-  completed it -- reopen, don't delete. One BOUNDARY is the sole author
-  of a logged event. A batch reader omitting the one column its caller
-  needs re-introduces the N queries it claims to avoid. A confirm dialog
-  with no BODY names nothing. Every new /api/v1 route lands in docs.tsx.
-- FINDINGS w24 (DEC-931..936): tree MOVED mid-plan -- re-grep before trusting
-  a probe from ten minutes ago. Mandate archaeology 3 waves running (10+
-  items reprobed, all CLOSED). A 409 naming a CLASS ("referenced by one or
-  more X") is a dead end -- name the ROWS, bounded 5+count. An expansion
-  at CREATE time is a snapshot: whoever joins later never gets it -- state
-  the invariant, BACK-FILL every activation path. A route with no caller
-  is as dead as a decision with no code -- grep apiPatch/apiDelete for
-  orphans. Two widened row sets meeting one narrow action set leave blank
-  cells permanent BY DESIGN: say so in the cells. `order by id asc limit
-  1` in a correlated subquery is the tie-break DEC-891 rejected -- ASK
-  when data admits two; check the filter predicate matches the row PRINTS.
+  REVEALS it and WAITS. An absent image is a DRAWN placeholder. Number()
+  parses "1e999" as Infinity, lands null in a REQUIRED column. A gate
+  skipped for one content type is not a gate. A page's actions belong to
+  its title row. A prop that renders nothing is a decision callers still
+  believe in — delete it. An onChange that writes to server races its own
+  reload — a row is a DRAFT until Save. Mandate files are pure
+  archaeology (~30 headline items reprobed across w22-24, all CLOSED): a
+  cascade comment claiming "everything it owns" is a claim to CHECK; a
+  batch reader omitting one column re-introduces the N queries it avoids;
+  a confirm dialog with no BODY names nothing; every /api/v1 route lands
+  in docs.tsx; a 409 naming a CLASS is a dead end -- name the ROWS; an
+  expansion at CREATE time is a snapshot -- BACK-FILL every activation
+  path; `order by id asc limit 1` in a correlated subquery is a rejected
+  tie-break -- ASK when data admits two.
+- FINDINGS w25 (DEC-937..943): wave 24 branches existed but had NOT merged --
+  ALWAYS check .git/refs/heads before re-tasking a prior wave's decisions; a
+  decision doc + field-guide entry land at PLAN time, code lands later. Mandate
+  archaeology 4 waves running (12 more items reprobed, all CLOSED). A token
+  nothing defines resolves TRANSPARENT, silently -- scan every var(--chq-*) for
+  a definition. A <button> with no font-family is Arial next to your type. A
+  regression test can ENSHRINE the defect: assert the OUTCOME the user sees,
+  never the reset's contents (3rd collision on one rule). Quieting is a COLOUR
+  substitution -- opacity fades the TEXT too and eats the AA margin. Two class
+  families on ONE element = a cascade race the later rule always wins. A single-
+  select scale is a radio group, NOT aria-pressed -- refuse-with-reason in a DEC
+  so it stops being re-filed. A delete with no dialog is five deletes with no
+  dialog: scan the call sites, name the exemptions. A branch of code the seed
+  never reaches has never rendered. Scores from one counter mod N rank by coin
+  flip.
