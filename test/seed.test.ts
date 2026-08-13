@@ -296,6 +296,36 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
     expect(speakerComment).toBeTruthy();
   });
 
+  // ---------------------------------------------------------------------
+  // Task w11-e (DEC-854): pins the Content worklist's file-coverage floor
+  // rather than a magic count — the task's own MEASURE FIRST step found
+  // the floor (>=2/3 of accepted submissions carrying >=1 file row) already
+  // met (7/9 via the onboarding file_request uploads + the explicit
+  // deliverable chain), so this is a regression guard, not new seed data.
+  // ---------------------------------------------------------------------
+  it("W11-E: at least two thirds of accepted submissions carry >=1 file row, and all three content statuses are represented among them", () => {
+    const submissionRows = [
+      ...sql.matchAll(
+        /INSERT INTO submission \([^)]*\) VALUES \('(seed_submission_\d+)', '[^']*', '[^']*', \d+, '(?:[^']|'')*', '(?:[^']|'')*', (?:NULL|'[^']*'), (?:NULL|'[^']*'), '(accept_queue|accepted|decline_queue|declined|pending)', '(approved|pending|changes_requested)',/g,
+      ),
+    ].map((r) => ({ id: r[1]!, status: r[2]!, contentStatus: r[3]! }));
+
+    const accepted = submissionRows.filter((r) => r.status === "accepted");
+    expect(accepted.length).toBeGreaterThan(0);
+
+    const fileSubmissionIds = new Set(
+      [...sql.matchAll(/INSERT INTO file \([^)]*\) VALUES \('[^']*', '(seed_submission_\d+)',/g)].map(
+        (r) => r[1]!,
+      ),
+    );
+
+    const withFile = accepted.filter((r) => fileSubmissionIds.has(r.id));
+    expect(withFile.length / accepted.length).toBeGreaterThanOrEqual(2 / 3);
+
+    const contentStatusesRepresented = new Set(accepted.map((r) => r.contentStatus));
+    expect(contentStatusesRepresented).toEqual(new Set(["approved", "pending", "changes_requested"]));
+  });
+
   it("registers the deliverable's two R2 assets against the real docs/fixtures/slides.pdf fixture", () => {
     const manifestPath = join(REPO_ROOT, ".seed-assets", "manifest.json");
     const manifest: Array<{ r2Key: string; path: string; contentType: string }> = JSON.parse(
