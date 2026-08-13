@@ -31,10 +31,10 @@ overview fetch right after reviewer login — make the shell skip it for reviewe
 A. **Page-measure audit, all admin routes**: submission detail, session detail, plan
    editor, form builder all clamp left/narrow. One shared container token; render-
    sweep asserts width per route.
-B. **customFields/Labels UI surface** (partially landed): directory table Labels
-   COLUMN now exists (DEC-712, probe-verified chips). Still missing: Labels row in the
-   contact DRAWER and in the MERGE view. Seed only ever derives the single label
-   "Speaker" — add label variety so multi-chip rendering is exercised.
+B. **customFields/Labels UI surface** (mostly landed — probe 2: directory column AND
+   drawer chips w/ label variety verified): remaining — Labels row in the MERGE view
+   renders raw lowercase custom-field keys; apply the server-side formatting there
+   (detail under Contacts).
 C. **Verify-then-close list** (commits claim these landed — external probe confirms,
    then delete the line): data-loss trio REMAINDER (headshot-upload-discards-bio,
    CSV bio overwrite).
@@ -210,18 +210,9 @@ Submissions triage cards' verbose fields, Settings subscreens as routes, phone C
 2-step wizard, phone password fixed footer + Cancel, roster screen, Home footer
 media rule). All under the additive-reflow rule.
 
-## ABS grader additions (2026-08-13, prod)
-
-- **Results sort-direction inverted (recurrence, persists)**: header arrow + CSV-link
-  direction disagree with actual row order on every click. Ranking correct, label wrong.
-- **Criterion labels CROSSED on organizer submission detail**: raw keys map to wrong
-  display names ("relevance"=4 is actually Originality; "depth"=2 is actually
-  Relevance) — values right, labels wrong, this view only.
-- **Anonymity inconsistency**: anonymized round's reviewer shows "Anonymous reviewer"
-  TO THE ORGANIZER on submission detail while named on Progress/Assignment — organizer
-  should see names consistently (per DEC-596's own rule).
-- Reconfirmed: pending submissions invisible speaker-side; co-presenter
-  organizer-only w/ generic role label.
+## ABS grader additions — ALL CLOSED by probe 2 (sort DEC-737, labels DEC-723,
+anonymity DEC-736, pending-submissions) except: co-presenter organizer-only w/
+generic role label (still open, ties to Contacts add-to-event role work).
 
 ## SPK grader additions (2026-08-13, prod — 3/3 scenarios PASS, defects below)
 
