@@ -108,6 +108,35 @@ export function formatDateOnlyLong(ms: number | null | undefined): string {
   return `${date.getUTCDate()} ${SHORT_MONTH_NAMES[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
 }
 
+const SHORT_WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/**
+ * Format a plain "YYYY-MM-DD" calendar-date string (e.g. an agenda day key)
+ * as "Tue 12 May". Parses the string's year/month/day components directly
+ * (never through `new Date(string)`, which interprets a bare date as
+ * UTC-midnight and can shift the displayed day when read back in a
+ * non-UTC-anchored way) so the weekday/day/month are computed from the
+ * literal calendar date, not a UTC instant reinterpreted in the viewer's
+ * zone. Returns '—' for a value that doesn't match YYYY-MM-DD.
+ */
+export function formatDayLabel(day: string | null | undefined): string {
+  if (!day) return '—';
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!match) return '—';
+  const [, yearStr, monthStr, dayStr] = match;
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const dayNum = Number(dayStr);
+  // Use UTC-anchored Date arithmetic purely to compute the weekday for a
+  // Y/M/D triple -- no epoch-ms value crosses this function's boundary, so
+  // this isn't a reinterpretation of a stored instant, just weekday math.
+  const utcDate = new Date(Date.UTC(year, month - 1, dayNum));
+  if (Number.isNaN(utcDate.getTime())) return '—';
+  const weekday = SHORT_WEEKDAY_NAMES[utcDate.getUTCDay()];
+  const monthName = SHORT_MONTH_NAMES[utcDate.getUTCMonth()];
+  return `${weekday} ${utcDate.getUTCDate()} ${monthName}`;
+}
+
 /**
  * Format a timestamp (epoch-ms or ISO-8601 string) in an explicit IANA
  * timeZone, e.g. an event's own timezone rather than the viewer's ambient

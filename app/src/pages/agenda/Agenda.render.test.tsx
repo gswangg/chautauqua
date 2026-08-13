@@ -125,6 +125,49 @@ describe('AgendaPage render smoke', () => {
     expect(captions.length).toBe(1);
   });
 
+  // DEC-791: the day-tab pill reads like a date ("Mon 1 Jun" for the
+  // fixture's 2026-06-01), the toolbar summary line uses correct
+  // singular/plural grammar for both counters, and a plain toolbar link
+  // points organizers at where rooms/tracks are actually configured.
+  it('renders the day pill as a formatted date, the summary with correct count grammar, and the rooms/tracks link', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('tab', { name: 'Mon 1 Jun' })).toBeInTheDocument();
+
+    // Fixture is summary: { unplaced: 1, conflicts: 1 } -- both singular.
+    expect(screen.getByText('1 unplaced')).toBeInTheDocument();
+    expect(screen.getByText('1 conflict')).toBeInTheDocument();
+    expect(screen.queryByText('1 conflicts')).toBeNull();
+
+    const link = screen.getByRole('link', { name: 'Add a room or track' });
+    expect(link).toHaveAttribute('href', '/settings#chq-settings-section-tracks');
+  });
+
+  // DEC-791: plural grammar when there are 2+ conflicts.
+  it('renders "2 conflicts" (plural) in the summary line when the conflict count is 2', async () => {
+    const payload = agendaPayload();
+    payload.summary = { unplaced: 0, conflicts: 2 };
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: payload,
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('2 conflicts')).toBeInTheDocument();
+    expect(screen.queryByText('2 conflict')).toBeNull();
+  });
+
   it('renders a same-room two-session clash as one merged inverted card with both titles uncropped', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
