@@ -623,17 +623,13 @@ submissionsRoutes.post("/events/:eventId/submissions/delete", requireOrganizer, 
 
   const plan = await planSubmissionDelete(c.var.db, eventId, ids);
 
-  // DEC-713-style ordering: every R2 object is deleted through the same
-  // FileStore abstraction the version-delete route uses, BEFORE any DB row
-  // is touched, so a throw here leaves every submission row intact for a
-  // retry rather than orphaning an object.
+  // DEC-713 ordering (amended wave 47): every R2 object is deleted through
+  // the same FileStore abstraction the version-delete route uses, BEFORE any
+  // DB row is touched, so a throw here leaves every submission row intact
+  // for a retry rather than orphaning an object. Batched via deleteMany so
+  // this is O(chunks) R2 round trips, not O(submissions x deliverables).
   const store = makeFileStore(c.env.FILES);
-  for (const item of plan.eligible) {
-    for (const key of item.fileR2Keys) {
-      // eslint-disable-next-line no-await-in-loop
-      await store.delete(key);
-    }
-  }
+  await store.deleteMany(plan.eligible.flatMap((item) => item.fileR2Keys));
 
   const deleted = await commitSubmissionDelete(
     c.var.db,

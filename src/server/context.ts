@@ -99,14 +99,22 @@ export function resolveIcsOrganizerEmail(env: Pick<Bindings, "DEV_MODE" | "MAIL_
  * served file is the DB column validateUpload's extension allowlist wrote
  * at upload time. Callers MUST read the content type from their own scope's
  * DB row, never from the object store. */
+/** DEC-713 amendment (wave 47): `delete` survives as a single-key convenience
+ * only because ENUMERATION found exactly two genuinely-single call sites
+ * (src/routes/files.ts, src/routes/api/portal-config.ts) and zero loops.
+ * Every other caller — in particular any bulk/blast-radius delete — MUST use
+ * `deleteMany` so N files cost O(chunks) R2 round trips, not O(N). */
 export interface FileStore {
   put(key: string, data: ReadableStream | ArrayBuffer, contentType?: string): Promise<void>;
   get(key: string): Promise<{ body: ReadableStream; size: number } | null>;
   delete(key: string): Promise<void>;
+  deleteMany(keys: string[]): Promise<void>;
 }
 
+const R2_DELETE_CHUNK_SIZE = 1000;
+
 export function makeFileStore(files: R2Bucket): FileStore {
-  return {
+  const store: FileStore = {
     async put(key, data, contentType) {
       await files.put(key, data, contentType ? { httpMetadata: { contentType } } : undefined);
     },
@@ -116,9 +124,17 @@ export function makeFileStore(files: R2Bucket): FileStore {
       return { body: obj.body, size: obj.size };
     },
     async delete(key) {
-      await files.delete(key);
+      return store.deleteMany([key]);
+    },
+    async deleteMany(keys) {
+      for (let i = 0; i < keys.length; i += R2_DELETE_CHUNK_SIZE) {
+        const chunk = keys.slice(i, i + R2_DELETE_CHUNK_SIZE);
+        // eslint-disable-next-line no-await-in-loop -- sequential chunks of an R2-imposed per-call ceiling, not per-key round trips
+        await files.delete(chunk);
+      }
     },
   };
+  return store;
 }
 
 export type Clock = () => number;

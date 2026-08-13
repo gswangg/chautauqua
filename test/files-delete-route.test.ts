@@ -94,8 +94,13 @@ function fakeFilesBucket(deleteSpy: (key: string) => void) {
       return null;
     },
     async put() {},
-    async delete(key: string) {
-      deleteSpy(key);
+    // FileStore.delete delegates to deleteMany (src/server/context.ts), so
+    // R2Bucket.delete is always invoked with an array — even for a single
+    // key. Unwrap the one-element array so this spy keeps asserting the key.
+    async delete(keys: string | string[]) {
+      for (const key of Array.isArray(keys) ? keys : [keys]) {
+        deleteSpy(key);
+      }
     },
   } as unknown as R2Bucket;
 }
