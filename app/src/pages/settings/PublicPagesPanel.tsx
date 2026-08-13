@@ -186,7 +186,7 @@ export function PublicPagesPanel() {
               </div>
             ) : null}
 
-            <SavedEmbedsPanel />
+            <SavedEmbedsPanel onBuild={() => setEmbedOpenState(true)} />
           </>
         ) : null}
       </SummarySection>
