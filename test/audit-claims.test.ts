@@ -54,18 +54,7 @@ function extractBacktickRoutePaths(markdown: string): string[] {
 // Routes deliberately not named in AUDIT.md, with a reason each. Keep this
 // list short and commented — anything added here is a route this test will
 // no longer catch drifting.
-const EXCLUDED = new Set<string>([
-  // DEC-985 (task w32-c): these four routes were just added to
-  // ROUTE_MANIFEST so gate:render-sweep visits them (they used to be parked
-  // in this file's HTML_ROUTE_EXCLUDED under a "pre-existing gap" reason,
-  // which DEC-985 forbids). docs/AUDIT.md itself is out of this task's
-  // two-file scope (a concurrent task may own it) -- documenting these here
-  // is a follow-up, not a permanent omission.
-  "/",
-  "/portal/resources",
-  "/dev/mailbox/:emailId",
-  "/embed/e/:embedId",
-]);
+const EXCLUDED = new Set<string>([]);
 
 describe("docs/AUDIT.md route claims vs app/src/routeManifest.ts (DEC-618)", () => {
   const auditText = readFileSync(AUDIT_PATH, "utf-8");
