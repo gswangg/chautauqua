@@ -1,14 +1,18 @@
-// DEC-240 coverage (task w1-d): task-assignment uploads join the content
-// pipeline instead of DEC-029's submission_id-null/'handout'-only rule.
+// DEC-240/DEC-891 coverage (tasks w1-d, w18-a): task-assignment uploads join
+// the content pipeline instead of DEC-029's submission_id-null/'handout'-only
+// rule. DEC-891 replaced DEC-240's deterministic lowest-seq tie-break
+// (pickDeliverableSubmission/resolveDeliverableSubmissionId, deleted) with an
+// explicit-choice resolver — see test/portal-deliverable-session.test.ts for
+// the resolveChosenDeliverable pure matrix and the two-distinct-submissions
+// route coverage. This file keeps:
 //
-// 1) pickDeliverableSubmission: the pure deterministic tie-break.
-// 2) POST /portal/tasks/:id/upload: first upload links file.submission_id
-//    via resolveDeliverableSubmissionId and uses the task's deliverableKind;
-//    a second upload on the same (now-complete) assignment chains
-//    previous_file_id to the prior file and updates assignment.file_id.
-//    Repo calls are mocked (no D1 test harness in this repo — same pattern
-//    as test/task-file-access.test.ts).
-// 3) Read side: an in-memory fake Db (pattern from test/files-library.test.ts)
+// 1) POST /portal/tasks/:id/upload: first upload links file.submission_id
+//    via the (mocked, single-candidate) listDeliverableCandidates and uses
+//    the task's deliverableKind; a second upload on the same (now-complete)
+//    assignment chains previous_file_id to the prior file and updates
+//    assignment.file_id. Repo calls are mocked (no D1 test harness in this
+//    repo — same pattern as test/task-file-access.test.ts).
+// 2) Read side: an in-memory fake Db (pattern from test/files-library.test.ts)
 //    seeded with the two chained file rows a DEC-240 upload produces shows
 //    the chain in listEventDeliverableFiles (versionCount 2) and the file
 //    counts in listSubmissionFiles (the function backing
@@ -18,38 +22,10 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
-import { pickDeliverableSubmission } from "../src/server/repo/portal";
 import * as schema from "../src/db/schema";
 
 // ---------------------------------------------------------------------------
-// 1) pure tie-break
-// ---------------------------------------------------------------------------
-
-describe("pickDeliverableSubmission (DEC-240 deterministic linkage)", () => {
-  it("returns null for no candidates", () => {
-    expect(pickDeliverableSubmission([])).toBeNull();
-  });
-
-  it("picks the lowest-seq 'accepted' submission when any exist, ignoring lower-seq non-accepted ones", () => {
-    const result = pickDeliverableSubmission([
-      { id: "sub-pending-1", status: "pending", seq: 1 },
-      { id: "sub-accepted-9", status: "accepted", seq: 9 },
-      { id: "sub-accepted-3", status: "accepted", seq: 3 },
-    ]);
-    expect(result).toBe("sub-accepted-3");
-  });
-
-  it("falls back to the lowest-seq submission of any status when none is accepted", () => {
-    const result = pickDeliverableSubmission([
-      { id: "sub-pending-5", status: "pending", seq: 5 },
-      { id: "sub-declined-2", status: "declined", seq: 2 },
-    ]);
-    expect(result).toBe("sub-declined-2");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 2) route-level: linkage + chaining on re-upload
+// route-level: linkage + chaining on re-upload
 // ---------------------------------------------------------------------------
 
 const ORG_A = "org-a";
@@ -62,7 +38,9 @@ vi.mock("../src/server/repo/portal", async () => {
   return {
     ...actual,
     getAssignmentScope: vi.fn(),
-    resolveDeliverableSubmissionId: vi.fn(async () => "sub-resolved-1"),
+    listDeliverableCandidates: vi.fn(async () => [
+      { id: "sub-resolved-1", ref: "SES-001", title: "A Talk", status: "accepted", seq: 1 },
+    ]),
     saveTaskFileCompletion: vi.fn(async () => {}),
   };
 });
@@ -125,7 +103,7 @@ function uploadRequest(csrfToken: string, filename: string): Request {
 describe("POST /portal/tasks/:assignmentId/upload (DEC-240)", () => {
   const SPEAKER: AuthInfo = { userId: "u1", role: "speaker", orgId: ORG_A, contactId: CONTACT_A };
 
-  it("first upload: links submission_id via resolveDeliverableSubmissionId, uses the task's deliverableKind, previousFileId null", async () => {
+  it("first upload: links submission_id via the (sole) candidate, uses the task's deliverableKind, previousFileId null", async () => {
     const { getAssignmentScope } = await import("../src/server/repo/portal");
     const { insertFile } = await import("../src/server/repo/files");
     vi.mocked(getAssignmentScope).mockResolvedValue({
@@ -251,10 +229,10 @@ describe("POST /portal/tasks/:assignmentId/upload (DEC-240)", () => {
 
   // DEC-549: a task with no declared deliverable_kind is a plain 'handout'
   // request — the resulting file has no submission link and
-  // resolveDeliverableSubmissionId is not even called (never joins the
-  // content pipeline this describe block otherwise exercises).
+  // listDeliverableCandidates is not even called (never joins the content
+  // pipeline this describe block otherwise exercises).
   it("falls back to 'handout' with no submission link when the task has no deliverableKind set (DEC-549)", async () => {
-    const { getAssignmentScope, resolveDeliverableSubmissionId } = await import("../src/server/repo/portal");
+    const { getAssignmentScope, listDeliverableCandidates } = await import("../src/server/repo/portal");
     const { insertFile } = await import("../src/server/repo/files");
     vi.mocked(getAssignmentScope).mockResolvedValue({
       id: ASSIGNMENT_ID,
@@ -274,7 +252,7 @@ describe("POST /portal/tasks/:assignmentId/upload (DEC-240)", () => {
     expect(res.status).toBe(302);
     const call = vi.mocked(insertFile).mock.calls[0]![1];
     expect(call).toMatchObject({ kind: "handout", submissionId: null });
-    expect(resolveDeliverableSubmissionId).not.toHaveBeenCalled();
+    expect(listDeliverableCandidates).not.toHaveBeenCalled();
   });
 });
 

@@ -7,6 +7,8 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import type { SubmissionStatus } from "../../../domain/status";
 import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
+import { formatRef } from "../../../domain/ids";
+import { ApiError } from "../../http";
 
 // 'general' | 'file_request' | 'form' — DEC-003 task.kind literal.
 export type PortalTaskKind = "general" | "file_request" | "form";
@@ -26,6 +28,10 @@ export interface PortalTaskAssignment {
   required: boolean;
   status: string;
   formId: string | null;
+  // DEC-891: null for non-file_request tasks or unset ones — mirrors
+  // PortalAssignmentScope.deliverableKind (the file kind that decides
+  // whether an upload links to a session deliverable at all).
+  deliverableKind: string | null;
   fileId: string | null;
   responseJson: string | null;
   timezone: string;
@@ -51,6 +57,7 @@ export async function getMyTaskAssignments(db: Db, contactId: string, orgId: str
       dueDate: schema.task.dueDate,
       required: schema.task.required,
       formId: schema.task.formId,
+      deliverableKind: schema.task.deliverableKind,
       eventOrgId: schema.event.orgId,
       timezone: schema.event.timezone,
     })
@@ -71,6 +78,7 @@ export async function getMyTaskAssignments(db: Db, contactId: string, orgId: str
     required: row.required,
     status: row.status,
     formId: row.formId,
+    deliverableKind: row.deliverableKind,
     fileId: row.fileId,
     responseJson: row.responseJson,
     timezone: row.timezone,
@@ -136,50 +144,79 @@ export async function getAssignmentScope(db: Db, assignmentId: string): Promise<
 }
 
 // ---------------------------------------------------------------------------
-// DEC-240: deterministic submission linkage for task-assignment uploads
+// DEC-891: explicit-choice submission linkage for task-assignment uploads
+//
+// A speaker with two accepted sessions in the same event has ONE
+// task_assignment for a file_request task (task_assignment is UNIQUE(task_id,
+// contact_id) per migrations/0019_join_table_uniqueness.sql:33) but TWO
+// candidate submissions to link an upload to. Rather than a deterministic
+// tie-break that silently always picks the same one (the DEC-240 bug this
+// supersedes: slides for the second session landed on the first), the
+// speaker now chooses explicitly via a `submissionId` form field whenever
+// there's more than one candidate.
 // ---------------------------------------------------------------------------
 
-export interface DeliverableSubmissionCandidate {
+export interface DeliverableCandidate {
   id: string;
+  ref: string;
+  title: string;
   status: SubmissionStatus;
   seq: number;
 }
 
-/** Pure tie-break: the uploader-contact's participant submission in the
- * task's event — an 'accepted' one with the lowest seq if any exist, else
- * the lowest-seq submission of any status, else null (no participant
- * submissions at all — e.g. a staff/organizer-only contact). DEC-240. */
-export function pickDeliverableSubmission(candidates: DeliverableSubmissionCandidate[]): string | null {
-  if (candidates.length === 0) return null;
-  const accepted = candidates.filter((c) => c.status === "accepted");
-  const pool = accepted.length > 0 ? accepted : candidates;
-  const lowest = pool.reduce((best, c) => (c.seq < best.seq ? c : best));
-  return lowest.id;
-}
-
-/** Resolves the file.submission_id a task-assignment upload from `contactId`
- * in `eventId` should link to, per DEC-240's deterministic rule. */
-export async function resolveDeliverableSubmissionId(
-  db: Db,
-  contactId: string,
-  eventId: string,
-): Promise<string | null> {
+/** Every accepted-session candidate `contactId` could link a task-assignment
+ * upload to within `eventId`, ordered seq asc. Scoped by ACTIVE_INVITE_STATUSES
+ * exactly as the prior DEC-240 resolver was (no IDOR: only the caller's own
+ * participant rows). */
+export async function listDeliverableCandidates(db: Db, contactId: string, eventId: string): Promise<DeliverableCandidate[]> {
   const rows = await db
     .select({
       id: schema.submission.id,
       status: schema.submission.status,
       seq: schema.submission.seq,
+      title: schema.submission.title,
+      recordPrefix: schema.event.recordPrefix,
     })
     .from(schema.participant)
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
+    .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
     .where(
       and(
         eq(schema.participant.contactId, contactId),
         eq(schema.submission.eventId, eventId),
         inArray(schema.participant.inviteStatus, ACTIVE_INVITE_STATUSES),
       ),
-    );
-  return pickDeliverableSubmission(rows as DeliverableSubmissionCandidate[]);
+    )
+    .orderBy(schema.submission.seq);
+
+  return rows.map((row) => ({
+    id: row.id,
+    ref: formatRef(row.recordPrefix, row.seq),
+    title: row.title,
+    status: row.status as SubmissionStatus,
+    seq: row.seq,
+  }));
+}
+
+/** Pure: resolves the file.submission_id a task-assignment upload should
+ * link to, given the speaker's own candidate set and the `submissionId`
+ * they posted (null if the form had no such control — the zero/one-candidate
+ * case, DEC-891's "conditional-and-quiet" rule). Zero candidates always
+ * resolves to null (a plain handout upload, no session to link). Never
+ * silently guesses across 2+ candidates: an absent choice there is a
+ * validation error, and a choice outside the candidate set is a forbidden
+ * (never evidence-revealing) rejection. */
+export function resolveChosenDeliverable(candidates: DeliverableCandidate[], chosenId: string | null): string | null {
+  if (candidates.length === 0) return null;
+  if (chosenId != null) {
+    const match = candidates.find((c) => c.id === chosenId);
+    if (!match) throw new ApiError("forbidden", "submissionId does not belong to this speaker");
+    return match.id;
+  }
+  if (candidates.length === 1) return candidates[0]!.id;
+  throw new ApiError("invalid", "submissionId is required when more than one session is eligible", {
+    submissionId: "Required",
+  });
 }
 
 /** Pure ownership guard for a task_assignment: only the speaker whose own

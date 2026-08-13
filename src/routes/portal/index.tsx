@@ -23,8 +23,8 @@ import {
   getParticipantScope,
   getPortalData,
   getPortalSubmissionDetail,
+  listDeliverableCandidates,
   nextInviteStatus,
-  resolveDeliverableSubmissionId,
   setInviteStatus,
   type InviteAction,
   type PortalData,
@@ -563,17 +563,21 @@ portalRoutes.get("/submissions/:id", async (c) => {
   const deliverableVersion = deliverable ? await getFileVersionNumber(c.var.db, deliverable.id) : null;
   // DEC-777: the Slides card only ever links to an upload page that exists
   // — resolve the speaker's own file_request task assignments (any event)
-  // and find the one whose DEC-240 deliverable linkage actually resolves to
-  // THIS submission, never a button with nowhere to go.
+  // and find one whose upload could carry THIS submission, never a button
+  // with nowhere to go. DEC-891 replaced DEC-240's deterministic linkage
+  // with an explicit choice, so the test is candidacy, not resolution: the
+  // task matches when this submission is among the caller's own deliverable
+  // candidates in that task's event (with several candidates the upload page
+  // asks which one; with exactly one it is this one).
   const myTaskAssignments = await getMyTaskAssignments(c.var.db, contactId, auth.orgId);
   const fileRequestCandidates = myTaskAssignments.filter((t) => t.kind === "file_request");
   const fileRequestMatches = await Promise.all(
     fileRequestCandidates.map(async (t) => ({
       task: t,
-      submissionId: await resolveDeliverableSubmissionId(c.var.db, contactId, t.eventId),
+      candidates: await listDeliverableCandidates(c.var.db, contactId, t.eventId),
     })),
   );
-  const fileRequestTask = fileRequestMatches.find((m) => m.submissionId === id)?.task ?? null;
+  const fileRequestTask = fileRequestMatches.find((m) => m.candidates.some((cand) => cand.id === id))?.task ?? null;
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
   return c.html(

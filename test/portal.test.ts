@@ -71,6 +71,7 @@ function taskFixture(overrides: Partial<PortalTaskAssignment>): PortalTaskAssign
     required: false,
     status: "pending",
     formId: null,
+    deliverableKind: null,
     fileId: null,
     responseJson: null,
     timezone: "UTC",

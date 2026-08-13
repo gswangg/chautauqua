@@ -13,6 +13,11 @@ import { isValidEmail } from "../../../domain/email";
 import { submissionSeqSubquery } from "../submissions/seq";
 import { findContactByEmail, replaceSubmissionTracks } from "../submit";
 import { SESSIONBOARD_SOURCE, externalRef, type SbEntity, type SbRowPlan } from "../../../domain/sessionboard";
+import { updateSubmissionStatuses } from "../submissions/status";
+import type { SubmissionStatus } from "../../../domain/status";
+import { DEC_717 } from "../../../decisions";
+
+void DEC_717; // submission.status is written ONLY through updateSubmissionStatuses -- never a raw insert/update column -- so the J6 acceptance auto-creation always fires.
 
 // DEC-675: the planner (src/domain/sessionboard.ts) is the ONE place that
 // validates a submission status / participant order against the product's
@@ -193,6 +198,12 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
   let updated = 0;
   const skipped: SbApplySkip[] = [];
   const now = () => new Date();
+  // DEC-717: submission ids whose row carried a status value, grouped by
+  // that status, applied AFTER the row loop via the one status writer
+  // (updateSubmissionStatuses) so accepted_at + the J6 onboarding-task
+  // auto-creation fire exactly as they would for any other status change.
+  // Never populated/applied on a dry run (no writes).
+  const statusIdsByStatus = new Map<SubmissionStatus, string[]>();
 
   if (entity === "participants") {
     const sessionRefs = [
@@ -370,11 +381,12 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
             seq: submissionSeqSubquery(eventId),
             title,
             description: plan.values.description ?? null,
-            // DEC-675: the planner already dropped any status outside
-            // SUBMISSION_STATUSES, so `values.status` here is either absent
-            // (writer default: pending) or already a validated
-            // SubmissionStatus literal -- never an unchecked pass-through.
-            status: plan.values.status ?? "pending",
+            // DEC-717: the raw insert always writes 'pending' -- a row
+            // whose status the planner validated (DEC-675, SUBMISSION_STATUSES)
+            // is applied AFTER the row loop through updateSubmissionStatuses,
+            // the ONE status writer, so accepted_at + J6 onboarding tasks
+            // fire on an imported acceptance exactly as on any other one.
+            status: "pending",
             contentStatus: "pending",
             externalRef: plan.externalRef,
             createdAt: ts,
@@ -386,6 +398,12 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
         }
         refMap.set(plan.externalRef, id);
         created++;
+        if (plan.values.status !== undefined && !dryRun) {
+          const s = plan.values.status as SubmissionStatus;
+          const arr = statusIdsByStatus.get(s) ?? [];
+          arr.push(id);
+          statusIdsByStatus.set(s, arr);
+        }
         continue;
       }
       // tracks
@@ -439,7 +457,9 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
           .set({
             ...(v.title !== undefined ? { title: v.title } : {}),
             ...(v.description !== undefined ? { description: v.description } : {}),
-            ...(v.status !== undefined ? { status: v.status } : {}),
+            // DEC-717: status is NEVER written here -- a row carrying a
+            // status is applied AFTER the row loop through
+            // updateSubmissionStatuses, the ONE status writer.
             updatedAt: ts,
           })
           .where(eq(schema.submission.id, existingId));
@@ -450,6 +470,12 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
         if (v.trackName !== undefined) {
           const trackId = v.trackName ? trackNameMap?.get(v.trackName.trim().toLowerCase()) : undefined;
           await replaceSubmissionTracks(db, existingId, trackId ? [trackId] : []);
+        }
+        if (v.status !== undefined) {
+          const s = v.status as SubmissionStatus;
+          const arr = statusIdsByStatus.get(s) ?? [];
+          arr.push(existingId);
+          statusIdsByStatus.set(s, arr);
         }
       } else {
         const v = plan.values;
@@ -464,6 +490,14 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
       }
     }
     updated++;
+  }
+
+  // DEC-717: apply every accumulated status, once per distinct status,
+  // through the one status writer -- never on a dry run (no writes).
+  if (!dryRun) {
+    for (const [status, ids] of statusIdsByStatus) {
+      await updateSubmissionStatuses(db, eventId, ids, status, now());
+    }
   }
 
   return { created, updated, skipped };

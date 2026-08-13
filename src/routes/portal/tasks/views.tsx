@@ -7,7 +7,7 @@
 // and import these components.
 
 import { PortalLayout, type PortalBrandingChrome } from "../shared";
-import type { PortalTaskAssignment } from "../../../server/repo/portal";
+import type { DeliverableCandidate, PortalTaskAssignment } from "../../../server/repo/portal";
 import type { getMyResources } from "../../../server/repo/portal";
 import type { FormFieldRow } from "../../../server/repo/forms";
 import { makeVisibilityPredicate } from "../../../forms/visibility";
@@ -96,13 +96,47 @@ export function CommentThread(props: { assignmentId: string; comments: FileComme
   );
 }
 
+// DEC-891: the candidates a file_request task-assignment upload could link
+// to, plus (per candidate) the filename currently linked to it — so a second
+// upload reads as belonging to a second session, not an overwrite of the
+// first.
+export interface DeliverableChoiceInfo {
+  candidates: DeliverableCandidate[];
+  linkedFilenames: Map<string, string | null>;
+}
+
+// DEC-891: conditional-and-quiet — a lone eligible session renders no
+// control at all; the select (and its required-ness) only appears once
+// there is a real choice to make.
+export function DeliverableSelect(props: { info: DeliverableChoiceInfo }) {
+  const { info } = props;
+  if (info.candidates.length < 2) return null;
+  return (
+    <label class="chq-portal-detail">
+      Which session is this for?
+      <select name="submissionId" required class="chq-select">
+        {info.candidates.map((cand) => {
+          const linked = info.linkedFilenames.get(cand.id);
+          return (
+            <option value={cand.id}>
+              {cand.ref} — {cand.title}
+              {linked ? ` (current: ${linked})` : ""}
+            </option>
+          );
+        })}
+      </select>
+    </label>
+  );
+}
+
 export function TaskRow(props: {
   assignment: PortalTaskAssignment;
   csrfToken: string;
   error?: string;
   fileExtras?: FileRequestExtras;
+  deliverableChoice?: DeliverableChoiceInfo;
 }) {
-  const { assignment: t, csrfToken, error, fileExtras } = props;
+  const { assignment: t, csrfToken, error, fileExtras, deliverableChoice } = props;
   // DEC-826: a task cannot be late before it was assigned — print the
   // effective due date, the same one the organizer's grid and the
   // reminder email already use.
@@ -139,6 +173,7 @@ export function TaskRow(props: {
           {t.kind === "file_request" ? (
             <form method="post" action={`/portal/tasks/${t.id}/upload`} enctype="multipart/form-data">
               <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
+              {deliverableChoice ? <DeliverableSelect info={deliverableChoice} /> : null}
               <p class="chq-portal-detail">{uploadHintText()}</p>
               <input
                 type="file"
@@ -166,6 +201,7 @@ export function TaskRow(props: {
           </p>
           <form method="post" action={`/portal/tasks/${t.id}/upload`} enctype="multipart/form-data">
             <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
+            {deliverableChoice ? <DeliverableSelect info={deliverableChoice} /> : null}
             <p class="chq-portal-detail">{uploadHintText()}</p>
             <input
               type="file"
@@ -219,9 +255,19 @@ export function TasksPage(props: {
   formLinkFor: (a: PortalTaskAssignment) => string | null;
   errorFor?: (assignmentId: string) => string | undefined;
   fileExtrasFor?: (assignmentId: string) => FileRequestExtras | undefined;
+  deliverableChoiceFor?: (assignmentId: string) => DeliverableChoiceInfo | undefined;
   speakerName: string;
 }) {
-  const { branding, assignments, csrfToken, formLinkFor, errorFor, fileExtrasFor, speakerName } = props;
+  const {
+    branding,
+    assignments,
+    csrfToken,
+    formLinkFor,
+    errorFor,
+    fileExtrasFor,
+    deliverableChoiceFor,
+    speakerName,
+  } = props;
   const doneCount = assignments.filter((a) => a.status === "complete").length;
   return (
     <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={speakerName}>
@@ -263,7 +309,13 @@ export function TasksPage(props: {
               </div>
             </div>
           ) : (
-            <TaskRow assignment={t} csrfToken={csrfToken} error={errorFor?.(t.id)} fileExtras={fileExtrasFor?.(t.id)} />
+            <TaskRow
+              assignment={t}
+              csrfToken={csrfToken}
+              error={errorFor?.(t.id)}
+              fileExtras={fileExtrasFor?.(t.id)}
+              deliverableChoice={deliverableChoiceFor?.(t.id)}
+            />
           ),
         )
       )}

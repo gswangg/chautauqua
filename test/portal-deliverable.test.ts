@@ -95,7 +95,7 @@ describe("GET /portal/tasks — completed file_request assignment (DEC-242)", ()
       {
         id: ASSIGNMENT_ID,
         taskId: "task-1",
-        eventId: "evt-1",
+        eventId: TASK_EVENT_ID,
         kind: "file_request",
         title: "Upload slides",
         description: null,
@@ -104,6 +104,7 @@ describe("GET /portal/tasks — completed file_request assignment (DEC-242)", ()
         required: true,
         status: "complete",
         formId: null,
+        deliverableKind: null,
         fileId: FILE_ID,
         responseJson: null,
         timezone: "UTC",
