@@ -4,6 +4,7 @@ import {
   isValidSlugLocal,
   isValidTimezoneLocal,
   mergeFieldErrors,
+  reconcileStoredEventId,
   resolveCurrentEvent,
   validateNewEventForm,
   type NewEventForm,
@@ -122,6 +123,30 @@ describe('resolveCurrentEvent', () => {
 
   it('returns null for an empty list', () => {
     expect(resolveCurrentEvent([], null)).toBeNull();
+  });
+});
+
+describe('reconcileStoredEventId (DEC-024 amendment, wave 51)', () => {
+  const items = [
+    { id: 'a', name: 'Alpha' },
+    { id: 'b', name: 'Beta' },
+  ];
+
+  it('a stored id that matches an item survives unchanged', () => {
+    expect(reconcileStoredEventId(items, 'b')).toEqual({ eventId: 'b', changed: false });
+  });
+
+  it('a stored id absent from the list is replaced by items[0], changed', () => {
+    expect(reconcileStoredEventId(items, 'missing')).toEqual({ eventId: 'a', changed: true });
+  });
+
+  it('an empty list resolves to null; changed reflects whether a non-null id was thrown away', () => {
+    expect(reconcileStoredEventId([], 'a')).toEqual({ eventId: null, changed: true });
+    expect(reconcileStoredEventId([], null)).toEqual({ eventId: null, changed: false });
+  });
+
+  it('a null stored id falls back to items[0], changed', () => {
+    expect(reconcileStoredEventId(items, null)).toEqual({ eventId: 'a', changed: true });
   });
 });
 

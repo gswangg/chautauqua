@@ -83,13 +83,40 @@ export interface EventSwitcherItem {
   name: string;
 }
 
-/** Resolves which event is "current": the id in localStorage if it matches a loaded item, else items[0] (mirrors useCurrentEvent.ts's fallback). */
-export function resolveCurrentEvent<T extends EventSwitcherItem>(items: T[], storedId: string | null): T | null {
+export interface ReconcileStoredEventIdResult {
+  eventId: string | null;
+  changed: boolean;
+}
+
+/**
+ * DEC-024 amendment (wave 51): the ONE pure decision for "which event am I
+ * on" -- is a stored/URL id still valid against the caller's own /events
+ * list? If it matches an item, it survives unchanged. If not (previous
+ * persona, other org, a deleted event -- or no id at all), it falls back to
+ * items[0], and `changed` tells the caller a correction is needed (so the
+ * hook knows to persist it). An empty `items` list falls back to `null`
+ * with `changed` reflecting whether a non-null id was thrown away -- callers
+ * that must fail soft on an empty/failed fetch (never evict a valid stored
+ * id on a network blip) guard on `items.length === 0` themselves before
+ * applying the result, since this function only decides, it never fetches.
+ */
+export function reconcileStoredEventId(
+  items: EventSwitcherItem[],
+  storedId: string | null,
+): ReconcileStoredEventIdResult {
   if (storedId) {
     const match = items.find((item) => item.id === storedId);
-    if (match) return match;
+    if (match) return { eventId: storedId, changed: false };
   }
-  return items[0] ?? null;
+  const fallback = items[0]?.id ?? null;
+  return { eventId: fallback, changed: fallback !== storedId };
+}
+
+/** Resolves which event is "current": the id in localStorage if it matches a loaded item, else items[0] (mirrors useCurrentEvent.ts's fallback). */
+export function resolveCurrentEvent<T extends EventSwitcherItem>(items: T[], storedId: string | null): T | null {
+  const { eventId } = reconcileStoredEventId(items, storedId);
+  if (eventId === null) return null;
+  return items.find((item) => item.id === eventId) ?? null;
 }
 
 /** Merges server field errors (error envelope) onto local validation errors, server taking precedence per field. */
