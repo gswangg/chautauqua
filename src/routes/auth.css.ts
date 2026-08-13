@@ -171,8 +171,17 @@ export const AUTH_CSS = `
     color: var(--chq-ink);
     text-decoration: underline;
   }
-  .chq-auth-demo-buttons .chq-auth-demo-btn:hover,
-  .chq-auth-demo-buttons .chq-auth-demo-btn:focus-visible { color: var(--chq-muted); }
+  .chq-auth-demo-buttons .chq-auth-demo-btn:hover { color: var(--chq-muted); }
+  /* DEC-366: the "all: unset" declaration above also unsets the UA's
+     default outline, so without this the demo prefill buttons are the
+     only controls on the auth surface with no focus ring at all. Restore
+     the theme's ring without reintroducing the 44px .chq-btn box unset
+     stripped away. */
+  .chq-auth-demo-buttons .chq-auth-demo-btn:focus-visible {
+    color: var(--chq-muted);
+    outline: 2px solid var(--chq-brand);
+    outline-offset: 2px;
+  }
 
   @media (max-width: 700px) {
     body { padding: 0; }

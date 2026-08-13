@@ -156,6 +156,7 @@ function AuthHead(props: { title: string }) {
 function LoginPage(props: {
   csrfToken: string;
   error?: string;
+  email?: string;
   demoIdentities?: readonly DemoIdentity[];
   singleEvent?: LoginFooterEvent | null;
 }) {
@@ -187,7 +188,15 @@ function LoginPage(props: {
             <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
             <label>
               <span className="chq-auth-label">Email</span>
-              <input className="chq-input" type="email" name="email" placeholder="you@example.com" required autofocus />
+              <input
+                className="chq-input"
+                type="email"
+                name="email"
+                placeholder="you@example.com"
+                value={props.email ?? undefined}
+                required
+                autofocus
+              />
             </label>
             <label>
               <span className="chq-auth-label">Password</span>
@@ -328,7 +337,13 @@ authRoutes.post("/login", csrfForm, async (c) => {
     const demoIdentities = await loadDemoIdentitiesIfPresent(db);
     const singleEvent = await loadSingleEventContext(db);
     return c.html(
-      <LoginPage csrfToken={csrfToken} error={RATE_LIMIT_ERROR} demoIdentities={demoIdentities} singleEvent={singleEvent} />,
+      <LoginPage
+        csrfToken={csrfToken}
+        error={RATE_LIMIT_ERROR}
+        email={email}
+        demoIdentities={demoIdentities}
+        singleEvent={singleEvent}
+      />,
       429,
     );
   }
@@ -348,7 +363,13 @@ authRoutes.post("/login", csrfForm, async (c) => {
     const demoIdentities = await loadDemoIdentitiesIfPresent(db);
     const singleEvent = await loadSingleEventContext(db);
     return c.html(
-      <LoginPage csrfToken={csrfToken} error="Invalid email or password." demoIdentities={demoIdentities} singleEvent={singleEvent} />,
+      <LoginPage
+        csrfToken={csrfToken}
+        error="Invalid email or password."
+        email={email}
+        demoIdentities={demoIdentities}
+        singleEvent={singleEvent}
+      />,
       401,
     );
   }
