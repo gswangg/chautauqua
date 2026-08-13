@@ -451,7 +451,6 @@
 .chq-review-queue-score-action {
   font-size: 13px;
   font-weight: 600;
-  color: var(--chq-accent, var(--chq-ink));
   width: fit-content;
 }
 

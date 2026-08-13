@@ -119,6 +119,14 @@ body {
   background: var(--chq-paper);
 }
 
+button,
+input,
+select,
+textarea,
+optgroup {
+  font-family: inherit;
+}
+
 a {
   color: var(--chq-brand);
   text-decoration: none;

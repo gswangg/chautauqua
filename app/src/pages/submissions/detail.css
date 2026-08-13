@@ -4,7 +4,7 @@
    or not the shell lane has landed the shared :root custom properties yet. */
 
 .chq-detail-page {
-  font-family: var(--chq-font-body, 'Figtree', 'Helvetica Neue', Arial, sans-serif);
+  font-family: var(--chq-font-ui);
   color: var(--chq-ink);
 }
 
@@ -47,7 +47,7 @@
 
 .chq-detail-heading h1 {
   margin: 0.25rem 0 1.25rem;
-  font-family: var(--chq-font-display, 'Familjen Grotesk', 'Figtree', sans-serif);
+  font-family: var(--chq-font-display);
   font-size: 30px;
   font-weight: 700;
   letter-spacing: -0.03em;
@@ -136,7 +136,7 @@
   margin: 0;
   padding-bottom: 8px;
   border-bottom: 2px solid var(--chq-ink);
-  font-family: var(--chq-font-display, 'Familjen Grotesk', 'Figtree', sans-serif);
+  font-family: var(--chq-font-display);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -188,7 +188,7 @@
 }
 
 .chq-detail-section-action {
-  font-family: var(--chq-font-body, 'Figtree', 'Helvetica Neue', Arial, sans-serif);
+  font-family: var(--chq-font-ui);
   font-size: 13px;
   font-weight: 700;
   letter-spacing: normal;
