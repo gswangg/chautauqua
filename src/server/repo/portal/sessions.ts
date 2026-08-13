@@ -9,9 +9,11 @@ import { formatRef } from "../../../domain/ids";
 import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
 import { loadTrackNamesBySubmission } from "../submission-tracks";
 import { chunkIds } from "../../../lib/chunk";
-import { DEC_962 } from "../../../decisions";
+import { findConflicts, type PlacedSession } from "../../../domain/schedule";
+import { DEC_777, DEC_962 } from "../../../decisions";
 
 void DEC_962;
+void DEC_777;
 
 /** DEC-962: the correlated EXISTS twin of the participant/submission/event
  * ownership predicate, against `schema.file.submissionId` — asserts the
@@ -30,6 +32,16 @@ function fileSubmissionOwnedByContact(contactId: string, orgId: string) {
   )`;
 }
 
+/** DEC-777 (wave 44 amendment): names the OTHER session a placed session
+ * overlaps, for the "Overlaps <REF> · <time>" inline flag — never a bare
+ * id, matching the schedule engine's own describeConflict convention. */
+export interface PortalSessionOverlap {
+  submissionId: string;
+  ref: string;
+  day: string;
+  startMin: number;
+}
+
 export interface PortalSession {
   submissionId: string;
   ref: string;
@@ -42,6 +54,12 @@ export interface PortalSession {
   acceptedAt: number | null;
   eventName: string;
   timezone: string;
+  /** DEC-777 amendment: the speaker's own placed sessions that collide with
+   * this one in time, per the SAME findConflicts predicate the organizer
+   * agenda and auto-schedule pass use — never a second overlap check.
+   * Advisory only: rendering this list is the only effect, it never blocks
+   * anything or changes status. */
+  overlaps: PortalSessionOverlap[];
 }
 
 export async function getMySessions(db: Db, contactId: string, orgId: string): Promise<PortalSession[]> {
@@ -90,7 +108,7 @@ export async function getMySessions(db: Db, contactId: string, orgId: string): P
     rows.map((row) => row.submissionId),
   );
 
-  return rows.map((row) => ({
+  const sessions = rows.map((row) => ({
     submissionId: row.submissionId,
     ref: formatRef(row.recordPrefix, row.seq),
     title: row.title,
@@ -103,6 +121,62 @@ export async function getMySessions(db: Db, contactId: string, orgId: string): P
     eventName: row.eventName,
     timezone: row.timezone,
   }));
+
+  const overlapsBySubmissionId = findMyOverlaps(sessions, contactId);
+
+  return sessions.map((s) => ({
+    ...s,
+    overlaps: overlapsBySubmissionId.get(s.submissionId) ?? [],
+  }));
+}
+
+/** DEC-777 (wave 44 amendment): the speaker sees their own clash. Runs the
+ * SAME findConflicts predicate the organizer agenda/conflict chips and
+ * auto-schedule pass use (src/domain/schedule.ts) over just this speaker's
+ * own placed sessions — every placement is tagged with `speakerContactIds:
+ * [contactId]`, so any interval overlap between two of the speaker's own
+ * sessions surfaces as a speaker_overlap conflict, scoped absolutely to
+ * `contactId` because no other speaker's placements are ever passed in.
+ * Advisory only — this never blocks, emails, or changes any status; it only
+ * feeds the inline "Overlaps <REF> · <time>" flag. */
+function findMyOverlaps(
+  sessions: Pick<PortalSession, "submissionId" | "ref" | "day" | "startMin" | "endMin">[],
+  contactId: string,
+): Map<string, PortalSessionOverlap[]> {
+  const placed = sessions.filter(
+    (s): s is typeof s & { day: string; startMin: number; endMin: number } =>
+      s.day !== null && s.startMin !== null && s.endMin !== null,
+  );
+
+  const bySubmissionId = new Map(placed.map((s) => [s.submissionId, s]));
+
+  const placedSessions: PlacedSession[] = placed.map((s) => ({
+    submissionId: s.submissionId,
+    roomId: null,
+    day: s.day,
+    startMin: s.startMin,
+    endMin: s.endMin,
+    speakerContactIds: [contactId],
+  }));
+
+  const conflicts = findConflicts(placedSessions).filter((c) => c.kind === "speaker_overlap");
+
+  const out = new Map<string, PortalSessionOverlap[]>();
+  const addOverlap = (thisId: string, otherId: string) => {
+    const other = bySubmissionId.get(otherId);
+    if (!other) return;
+    const bucket = out.get(thisId) ?? [];
+    bucket.push({ submissionId: other.submissionId, ref: other.ref, day: other.day, startMin: other.startMin });
+    out.set(thisId, bucket);
+  };
+
+  for (const c of conflicts) {
+    const [a, b] = c.submissionIds;
+    addOverlap(a, b);
+    addOverlap(b, a);
+  }
+
+  return out;
 }
 
 export interface PortalDeliverable {
