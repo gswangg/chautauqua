@@ -36,43 +36,66 @@ export const MAX_ACCEPTANCE_TASK_ASSIGNMENTS = 20000;
  * title (isDefault:false, null open/close so it can never leak into public
  * CFP submit via getDefaultForm), inserting its fields on first creation.
  * Idempotent — a pre-existing form with that title is reused as-is.
+ *
+ * DEC-111 amendment (wave 55): form_event_id_title_idx (migrations/0033_
+ * form_title_unique.sql) is a real UNIQUE(event_id, title) DB constraint —
+ * this insert-on-conflict-do-nothing-then-select is the same find-or-create
+ * shape getOrCreateTask (below) uses, so two concurrent acceptances racing
+ * to mint the same template's backing form resolve to exactly one row
+ * instead of two (which previously orphaned the loser's form_field rows).
+ * Fields are only inserted when THIS call's own insert actually created the
+ * row — a losing racer must not insert a second set of field rows onto the
+ * winner's form.
  */
 async function getOrCreateFormTaskForm(db: Db, eventId: string, title: string, now: Date): Promise<string> {
-  const existingForm = await db
+  const formId = newId();
+  await db
+    .insert(schema.form)
+    .values({
+      id: formId,
+      eventId,
+      title,
+      isDefault: false,
+      openDate: null,
+      closeDate: null,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoNothing({ target: [schema.form.eventId, schema.form.title] });
+
+  const winner = await db
     .select({ id: schema.form.id })
     .from(schema.form)
     .where(and(eq(schema.form.eventId, eventId), eq(schema.form.title, title)))
     .limit(1);
-  if (existingForm[0]) return existingForm[0].id;
+  const row = winner[0];
+  if (!row) throw new Error(`getOrCreateFormTaskForm: no row for (eventId="${eventId}", title="${title}") after insert`);
 
-  const formId = newId();
-  await db.insert(schema.form).values({
-    id: formId,
-    eventId,
-    title,
-    isDefault: false,
-    openDate: null,
-    closeDate: null,
-    createdAt: now,
-    updatedAt: now,
-  });
-
-  const specs = FORM_TASK_FIELD_SPECS[title] ?? [];
-  for (const [i, spec] of specs.entries()) {
-    await db.insert(schema.formField).values({
-      id: newId(),
-      formId,
-      section: spec.section,
-      kind: spec.kind,
-      label: spec.label,
-      required: spec.required,
-      position: i,
-      optionsJson: spec.options ? JSON.stringify(spec.options) : null,
-      createdAt: now,
-      updatedAt: now,
-    });
+  // The insert above used `formId` as its candidate id — if the winning row
+  // carries that exact id, THIS call's own insert is the one that landed
+  // (no concurrent racer beat it to the unique (eventId, title) slot), so
+  // this call also owns seeding its field rows. If some other id won, a
+  // racer already created the form (and, per this same invariant, already
+  // seeded its fields), so this call must not insert a duplicate set.
+  const createdHere = row.id === formId;
+  if (createdHere) {
+    const specs = FORM_TASK_FIELD_SPECS[title] ?? [];
+    for (const [i, spec] of specs.entries()) {
+      await db.insert(schema.formField).values({
+        id: newId(),
+        formId: row.id,
+        section: spec.section,
+        kind: spec.kind,
+        label: spec.label,
+        required: spec.required,
+        position: i,
+        optionsJson: spec.options ? JSON.stringify(spec.options) : null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
   }
-  return formId;
+  return row.id;
 }
 
 /**

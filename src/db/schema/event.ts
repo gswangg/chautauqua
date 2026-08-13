@@ -48,6 +48,10 @@ export const form = sqliteTable(
   },
   (t) => ({
     form_event_id_idx: index("form_event_id_idx").on(t.eventId),
+    // DEC-111 amendment (wave 55): form title uniqueness within an event is
+    // a real DB constraint (migrations/0033_form_title_unique.sql) -- see
+    // getOrCreateFormTaskForm in src/server/repo/submissions/status.ts.
+    form_event_id_title_idx: uniqueIndex("form_event_id_title_idx").on(t.eventId, t.title),
   }),
 );
 
