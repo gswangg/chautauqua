@@ -6,12 +6,15 @@ import { PreviewPane } from './PreviewPane';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { FormRow } from '../../components/ModalFrame';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { COMPOSE_MERGE_FIELDS } from '../../lib/merge-fields';
+import { countOf } from '../../lib/plural';
 import type { EmailTemplate, RenderedRecipient } from './types';
 import type { EvaluationPlan } from '../review/types';
-import { DEC_793 } from '../../../../src/decisions';
+import { DEC_793, DEC_967 } from '../../../../src/decisions';
 
 void DEC_793;
+void DEC_967;
 
 // J5's decide != notify: the picker defaults to the two decided statuses so
 // organizers compose against the submissions they've already ruled on, but
@@ -68,6 +71,10 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   // pre-filtered client-side, since that would hide the server's contract.
   const [icsUnscheduledIds, setIcsUnscheduledIds] = useState<string[] | null>(null);
   const [sendResult, setSendResult] = useState<SendResult | null>(null);
+  // DEC-967: an email batch asks once before it leaves -- the preview step's
+  // Send button opens this confirmation instead of posting directly; the
+  // POST fires only from the dialog's onConfirm.
+  const [confirmingSend, setConfirmingSend] = useState(false);
   // DEC-793: when the server rejects recipients for a missing merge field,
   // one line per rejected person is rendered inside the error banner,
   // resolved through the already-loaded submissions rather than raw ids.
@@ -294,6 +301,17 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     void runPreview({ attachIcs: next });
   }
 
+  // DEC-967: fires only from the ConfirmDialog's onConfirm -- never called
+  // directly from the Send button. The dialog stays open (pending=busy)
+  // until the request settles, then closes regardless of outcome.
+  async function confirmSend() {
+    try {
+      await send();
+    } finally {
+      setConfirmingSend(false);
+    }
+  }
+
   async function send() {
     setBusy(true);
     setError(null);
@@ -342,6 +360,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setIcsUnscheduledIds(null);
     setMissingMergeFieldLines(null);
     setError(null);
+    setConfirmingSend(false);
   }
 
   const rangeStart = total === 0 ? 0 : (page - 1) * PER_PAGE + 1;
@@ -374,6 +393,10 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   const overflowCount = Math.max(0, preview.length - RECIPIENT_PREVIEW_ROWS);
   const previewClamped = preview.length === 0 ? 0 : Math.min(previewIndex, preview.length - 1);
   const currentPreview = preview[previewClamped];
+  // DEC-967: names the resolved subject (merge fields applied), falling
+  // back to the raw typed subject only when no preview row has rendered
+  // yet.
+  const resolvedSendSubject = preview[0]?.subject ?? subject;
 
   return (
     <div className="chq-compose-wizard">
@@ -735,7 +758,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                 type="button"
                 className="chq-btn chq-btn-primary"
                 disabled={busy || icsUnscheduledIds !== null}
-                onClick={send}
+                onClick={() => setConfirmingSend(true)}
               >
                 Send {preview.length} email{preview.length === 1 ? '' : 's'}
               </button>
@@ -745,6 +768,18 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             </div>
           </section>
         </section>
+      )}
+
+      {confirmingSend && (
+        <ConfirmDialog
+          title="Send this email?"
+          body={`${countOf(preview.length, 'recipient')} · ${resolvedSendSubject}`}
+          confirmLabel={`Send ${countOf(preview.length, 'email')}`}
+          cancelLabel="Cancel"
+          pending={busy}
+          onConfirm={confirmSend}
+          onCancel={() => setConfirmingSend(false)}
+        />
       )}
 
       {step === 'sent' && (

@@ -4,7 +4,7 @@
 // editable), then Preview calls POST .../bulk-email/preview and renders
 // the resolved per-recipient personalization before Send.
 import { afterEach, describe, expect, it } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { BulkEmailModal } from './BulkEmailModal';
 import { mockApi, listEnvelope } from '../../test-utils/mockApi';
@@ -90,6 +90,8 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: /Send to 2 recipients/ }));
+    const confirmDialog = await screen.findByRole('dialog', { name: 'Send this email?' });
+    fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Send 2 emails' }));
 
     expect(await screen.findByText('Sent to 1 email. 1 failure.')).toBeInTheDocument();
     expect(screen.getByText('bad@example.com')).toBeInTheDocument();
@@ -101,6 +103,51 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
       'href',
       '/admin/comms?tab=history',
     );
+  });
+
+  // DEC-967: an email batch asks once before it leaves -- the terminal Send
+  // opens the shared ConfirmDialog instead of posting directly.
+  it('confirms before sending: no POST to bulk-email until confirmed, and Cancel sends nothing', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      'POST /api/v1/contacts/bulk-email/preview': {
+        items: [{ contactId: 'ct1', email: 'ada@example.com', subject: 'Hi Ada', bodyText: 'Body' }],
+      },
+      'POST /api/v1/contacts/bulk-email': { sent: 1, failed: [], items: [] },
+    });
+
+    render(<BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} onClose={() => {}} />);
+
+    fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'Hi' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('ada@example.com')).toBeInTheDocument();
+    });
+
+    function sendCallCount() {
+      return fetchMock.mock.calls.filter(([input]) =>
+        (typeof input === 'string' ? input : input.toString()).endsWith('/contacts/bulk-email'),
+      ).length;
+    }
+
+    expect(screen.queryByRole('dialog', { name: 'Send this email?' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Send to 1 recipient/ }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Send this email?' });
+    expect(dialog.textContent).toContain('1 recipient');
+    expect(sendCallCount()).toBe(0);
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog', { name: 'Send this email?' })).not.toBeInTheDocument();
+    expect(sendCallCount()).toBe(0);
+
+    fireEvent.click(screen.getByRole('button', { name: /Send to 1 recipient/ }));
+    const dialog2 = await screen.findByRole('dialog', { name: 'Send this email?' });
+    fireEvent.click(within(dialog2).getByRole('button', { name: 'Send 1 email' }));
+
+    await waitFor(() => expect(sendCallCount()).toBe(1));
   });
 
   // DEC-793: the placeholder text must only advertise merge fields the

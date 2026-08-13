@@ -1,12 +1,14 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { apiList, apiPost, ApiError } from '../../lib/api';
 import { FormRow, ModalFrame } from '../../components/ModalFrame';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { BULK_EMAIL_MERGE_FIELDS, MAX_COMPOSE_RECIPIENTS as BULK_EMAIL_RECIPIENT_CAP } from '../../lib/merge-fields';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import { countOf } from '../../lib/plural';
-import { DEC_793 } from '../../../../src/decisions';
+import { DEC_793, DEC_967 } from '../../../../src/decisions';
 
 void DEC_793;
+void DEC_967;
 
 interface Props {
   contactIds: string[];
@@ -41,6 +43,9 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
   const [step, setStep] = useState<Step>('compose');
   const [preview, setPreview] = useState<PreviewItem[]>([]);
   const [sendResult, setSendResult] = useState<SendResult | null>(null);
+  // DEC-967: an email batch asks once before it leaves -- the terminal Send
+  // opens this confirmation instead of posting directly.
+  const [confirmingSend, setConfirmingSend] = useState(false);
 
   const overCap = contactIds.length > BULK_EMAIL_RECIPIENT_CAP;
 
@@ -87,6 +92,17 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
     }
   }
 
+  // DEC-967: fires only from the ConfirmDialog's onConfirm -- never called
+  // directly from the Send button. Stays open (pending=busy) until the
+  // request settles.
+  async function confirmSend() {
+    try {
+      await send();
+    } finally {
+      setConfirmingSend(false);
+    }
+  }
+
   async function send() {
     if (!eventId) return;
     setBusy(true);
@@ -108,6 +124,9 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
   }
 
   const title = `Email ${countOf(contactIds.length, 'contact')}`;
+  // DEC-967: names the resolved subject (merge fields applied), falling back
+  // to the raw typed subject only when no preview row has rendered yet.
+  const resolvedSendSubject = preview[0]?.subject ?? subject;
 
   let actions: ReactNode = null;
   if (step === 'compose') {
@@ -129,7 +148,12 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
   } else if (step === 'preview') {
     actions = (
       <>
-        <button type="button" className="chq-btn chq-btn-primary" disabled={busy} onClick={send}>
+        <button
+          type="button"
+          className="chq-btn chq-btn-primary"
+          disabled={busy}
+          onClick={() => setConfirmingSend(true)}
+        >
           Send to {countOf(contactIds.length, 'recipient')}
         </button>
         <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setStep('compose')} disabled={busy}>
@@ -245,6 +269,18 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
           )}
           <a href="/admin/comms?tab=history">View in Comms history</a>
         </div>
+      )}
+
+      {confirmingSend && (
+        <ConfirmDialog
+          title="Send this email?"
+          body={`${countOf(contactIds.length, 'recipient')} · ${resolvedSendSubject}`}
+          confirmLabel={`Send ${countOf(contactIds.length, 'email')}`}
+          cancelLabel="Cancel"
+          pending={busy}
+          onConfirm={confirmSend}
+          onCancel={() => setConfirmingSend(false)}
+        />
       )}
     </ModalFrame>
   );

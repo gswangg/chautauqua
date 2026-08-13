@@ -4,7 +4,7 @@
 // submissions worklist (DEC-341) — no client-side filter/sort over a single
 // fetched page, and selection must span pages.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { ComposeWizard } from './ComposeWizard';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
@@ -176,6 +176,8 @@ describe('ComposeWizard recipient picker', () => {
 
     const sendButton = await screen.findByRole('button', { name: /Send \d+ emails?/ });
     fireEvent.click(sendButton);
+    const confirmDialog = await screen.findByRole('dialog', { name: 'Send this email?' });
+    fireEvent.click(within(confirmDialog).getByRole('button', { name: /Send \d+ emails?/ }));
 
     expect(await screen.findByText('Sent to 2 emails. 1 failure.')).toBeInTheDocument();
     expect(screen.getByText('bad@example.com')).toBeInTheDocument();
@@ -648,6 +650,82 @@ describe('ComposeWizard recipient rows name the talk and state the slot (DEC-912
     const atCap = Array.from({ length: 100 }, (_, i) => recipient(`c${i}`, `sub-${i}`, `Speaker ${i}`, `DFC-0${i}`, true));
     await goToPreviewWith(atCap);
     expect(screen.getByText(/100 is at the 100-recipient cap/)).toBeInTheDocument();
+  });
+});
+
+// DEC-967: an email batch asks once before it leaves -- the preview step's
+// Send button opens the shared ConfirmDialog instead of posting directly.
+describe('ComposeWizard confirms before sending (DEC-967)', () => {
+  function recipient(contactId: string, submissionId: string, name: string, ref: string, scheduled: boolean) {
+    return {
+      contactId,
+      submissionId,
+      email: `${contactId}@example.com`,
+      name,
+      ref,
+      scheduled,
+      subject: 'You are in!',
+      text: 'See you there',
+    };
+  }
+
+  async function goToPreviewWith(fetchMock: ReturnType<typeof mockApi>) {
+    render(<ComposeWizard eventId={EVENT_ID} />);
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(subject, { target: { value: 'Hello' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+    await screen.findByText('Priya Raman');
+    return fetchMock;
+  }
+
+  function sendCallCount(fetchMock: ReturnType<typeof mockApi>) {
+    return fetchMock.mock.calls.filter((call) => String(call[0]).includes('/compose/send')).length;
+  }
+
+  it('issues no POST to compose/send until the confirm dialog is confirmed, and names the recipient count', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [recipient('c1', 'sub-1', 'Priya Raman', 'DFC-014', true)] },
+      [`POST /api/v1/events/${EVENT_ID}/compose/send`]: { sent: 1, failed: [], items: [] },
+    });
+
+    await goToPreviewWith(fetchMock);
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Send \d+ emails?/ }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog.textContent).toContain('1 recipient');
+    expect(sendCallCount(fetchMock)).toBe(0);
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Send 1 email' }));
+
+    await waitFor(() => expect(sendCallCount(fetchMock)).toBe(1));
+  });
+
+  it('Cancel leaves the wizard on the preview step with zero requests to compose/send', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [recipient('c1', 'sub-1', 'Priya Raman', 'DFC-014', true)] },
+      [`POST /api/v1/events/${EVENT_ID}/compose/send`]: { sent: 1, failed: [], items: [] },
+    });
+
+    await goToPreviewWith(fetchMock);
+    fireEvent.click(screen.getByRole('button', { name: /Send \d+ emails?/ }));
+    await screen.findByRole('dialog');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByText('Priya Raman')).toBeInTheDocument();
+    expect(sendCallCount(fetchMock)).toBe(0);
   });
 });
 
