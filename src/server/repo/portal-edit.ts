@@ -501,11 +501,18 @@ export async function addCoPresenter(db: Db, input: AddCoPresenterInput): Promis
       // public site only through the organizer's existing visibility toggle
       // — no speaker-portal action here publishes a name/email server-side.
       visible: false,
-      // DEC-604: recorded but not notified — no invitation/accept-decline
-      // flow for a speaker-self-added co-presenter, so this participant is
-      // immediately active (mirrors the original CFP submitter's
-      // createParticipant, which also uses 'none').
-      inviteStatus: "none",
+      // DEC-317 Amendment (wave 37): a speaker-named co-presenter is an
+      // UNTRUSTED write path and must never mint an active grant directly —
+      // it lands 'invited', exactly like the organizer's own add-participant
+      // path (src/server/repo/participants.ts:inviteParticipant). The row is
+      // portal-visible (PORTAL_VISIBLE_INVITE_STATUSES) for reading —  the
+      // named contact sees a pending invitation — but gains read/write
+      // access, comms-recipient status, and onboarding tasks only after they
+      // accept via POST /portal/invitations/:id (src/routes/portal/index.tsx).
+      // DEC-604 still stands: no email is sent from this path — accepting
+      // requires the named contact to already be signed into the portal and
+      // see the pending invitation there.
+      inviteStatus: "invited",
       titleAtTime,
       orgAtTime,
       createdAt: now,
