@@ -163,10 +163,11 @@ describe('MergePage render (DEC-684)', () => {
     expect(body).toEqual({ keepId: 'ct-keep', mergeIds: ['ct-merge'] });
   });
 
-  it('DEC-734: the footer\'s "Not a duplicate" navigates back to /contacts with the pair to dismiss, no merge POST', async () => {
+  it('DEC-734/DEC-770: the footer\'s "Not a duplicate" POSTs the dismissal then navigates back to /contacts with the pair to dismiss, no merge POST', async () => {
     const fetchMock = mockApi({
       'GET /api/v1/contacts/duplicates': listEnvelope([GROUP]),
       'GET /api/v1/contacts/merge/preview': { fields: PREVIEW_FIELDS },
+      'POST /api/v1/contacts/duplicates/dismiss': { ok: true },
     });
 
     renderAt('/contacts/merge?ids=ct-keep,ct-merge&keep=ct-keep');
@@ -187,5 +188,12 @@ describe('MergePage render (DEC-684)', () => {
         (calls[i]![1] as RequestInit | undefined)?.method === 'POST',
     );
     expect(mergeCall).toBeUndefined();
+
+    const dismissCall = fetchMock.mock.calls.find(([input]) =>
+      (typeof input === 'string' ? input : input.toString()).endsWith('/contacts/duplicates/dismiss'),
+    );
+    expect(dismissCall).toBeDefined();
+    const body = JSON.parse((dismissCall![1] as RequestInit).body as string);
+    expect(body).toEqual({ contactIds: ['ct-keep', 'ct-merge'] });
   });
 });

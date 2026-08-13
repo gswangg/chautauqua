@@ -60,6 +60,7 @@ export function MergePage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [mergeError, setMergeError] = useState<string | null>(null);
+  const [notDuplicateBusy, setNotDuplicateBusy] = useState(false);
   const [preview, setPreview] = useState<MergeFieldPreview[] | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   // DEC-748: "N of M pairs" -- this pair's position among every duplicate
@@ -106,6 +107,27 @@ export function MergePage() {
   }, [idsParam, keepId]);
 
   const keepContact = group?.contacts.find((c) => c.id === keepId) ?? null;
+
+  // DEC-770: 'Not a duplicate' persists the dismissal (POST
+  // /contacts/duplicates/dismiss) BEFORE navigating back -- a fact about
+  // the pair, not a session mood. The dismiss endpoint's wire contract is
+  // pairwise ({contactIds: [a, b]}); a group is always two contacts in
+  // this UI (findDuplicateGroups' 3+ email-bucket case has no single pair
+  // this page could name), so group.contactIds is used as-is.
+  async function notADuplicate(group: DuplicateGroup) {
+    setNotDuplicateBusy(true);
+    setMergeError(null);
+    try {
+      await apiPost('/contacts/duplicates/dismiss', { contactIds: group.contactIds.slice(0, 2) });
+      navigate('/contacts', {
+        state: { panel: 'duplicates', notice: 'Marked as not a duplicate.', dismissPairIds: group.contactIds },
+      });
+    } catch (err) {
+      setMergeError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Failed to dismiss pair');
+    } finally {
+      setNotDuplicateBusy(false);
+    }
+  }
 
   async function doMerge() {
     if (!group || !keepId) return;
@@ -247,11 +269,8 @@ export function MergePage() {
             <button
               type="button"
               className="chq-btn chq-btn-secondary"
-              onClick={() =>
-                navigate('/contacts', {
-                  state: { panel: 'duplicates', notice: 'Marked as not a duplicate.', dismissPairIds: group.contactIds },
-                })
-              }
+              disabled={notDuplicateBusy}
+              onClick={() => notADuplicate(group)}
             >
               Not a duplicate
             </button>

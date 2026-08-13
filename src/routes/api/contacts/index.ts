@@ -15,6 +15,7 @@ import { requireOrganizer } from "../../../server/middleware";
 import { registerCrudRoutes } from "./crud";
 import { registerImportRoutes, MAX_IMPORT_CSV_BYTES, MAX_IMPORT_ROWS } from "./import";
 import { registerMergeRoutes } from "./merge";
+import { registerDuplicatesRoutes } from "./duplicates";
 import { registerSegmentRoutes, parseRulesQueryParam } from "./segments";
 import { registerBulkEmailRoutes } from "./bulk-email";
 
@@ -31,6 +32,7 @@ contactsRoutes.use("/segments/*", requireOrganizer);
 registerCrudRoutes(contactsRoutes);
 registerImportRoutes(contactsRoutes);
 registerMergeRoutes(contactsRoutes);
+registerDuplicatesRoutes(contactsRoutes);
 registerSegmentRoutes(contactsRoutes);
 registerBulkEmailRoutes(contactsRoutes);
 

@@ -4,13 +4,15 @@
 // DEC-629: MergePage still posts /contacts/merge set-based — {keepId,
 // mergeIds} — this view no longer owns any merge state or request.
 // DEC-734: a duplicates list with only 'Merge' forces a wrong irreversible
-// action -- 'Keep both' (dismiss the pair, session-only: this reader has no
-// persisted dismissal store) and a pair counter are what make the tab
-// workable. 'Not a duplicate' (MergePage's footer) lands back here the same
-// way a merge notice does -- one-shot nav state, read once on mount.
+// action -- 'Keep both' (dismiss the pair) and a pair counter are what make
+// the tab workable. 'Not a duplicate' (MergePage's footer) lands back here
+// the same way a merge notice does -- one-shot nav state, read once on
+// mount. DEC-770: both controls persist the dismissal server-side
+// (POST /contacts/duplicates/dismiss) -- it is a fact about the pair, not a
+// session mood, so it survives reload.
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { apiList, ApiError } from '../../lib/api';
+import { apiList, apiPost, ApiError } from '../../lib/api';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import type { DuplicateGroup } from './types';
 import './contacts-panels.css';
@@ -38,11 +40,13 @@ export function DuplicatesView({ onMerged, initialNotice, initialDismissPairIds 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mergedNotice] = useState<string | null>(initialNotice ?? null);
-  // DEC-734: 'Keep both'/'Not a duplicate' dismiss a pair for this session
-  // only -- findDuplicateGroupsForOrg has no persisted dismissal store, so a
-  // reload of the Duplicates tab surfaces the pair again (still genuinely a
-  // duplicate by the same detection rule).
+  // DEC-770: 'Keep both'/'Not a duplicate' persist the dismissal
+  // server-side (POST /contacts/duplicates/dismiss) -- findDuplicateGroupsForOrg
+  // excludes it from then on, so a reload of the Duplicates tab does not
+  // surface the pair again. This local set is only an optimistic mirror of
+  // that server state so the row disappears immediately, without a reload.
   const [dismissed, setDismissed] = useState<Set<string>>(() => new Set(initialDismissPairIds ? [pairKey(initialDismissPairIds)] : []));
+  const [dismissError, setDismissError] = useState<string | null>(null);
 
   function reload() {
     setLoading(true);
@@ -64,10 +68,19 @@ export function DuplicatesView({ onMerged, initialNotice, initialDismissPairIds 
   }, []);
 
   function keepBoth(group: DuplicateGroup) {
-    setDismissed((prev) => {
-      const next = new Set(prev);
-      next.add(pairKey(group.contactIds));
-      return next;
+    const key = pairKey(group.contactIds);
+    setDismissError(null);
+    // Optimistic: remove the row immediately, then persist. A failed
+    // persist rolls the row back loudly rather than leaving the UI showing
+    // a dismissal the server never recorded.
+    setDismissed((prev) => new Set(prev).add(key));
+    apiPost('/contacts/duplicates/dismiss', { contactIds: group.contactIds }).catch((err) => {
+      setDismissed((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+      setDismissError(err instanceof ApiError ? err.message : 'Failed to dismiss pair');
     });
   }
 
@@ -84,6 +97,7 @@ export function DuplicatesView({ onMerged, initialNotice, initialDismissPairIds 
         Matched on the same email, or the same name at the same company.
       </p>
       {error && <div className="chq-error">{error}</div>}
+      {dismissError && <div className="chq-error">{dismissError}</div>}
       {mergedNotice && (
         <div className="chq-error" role="status">
           {mergedNotice}
