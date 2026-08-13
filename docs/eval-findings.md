@@ -125,7 +125,16 @@ set/order ("Needs a decision · N" FIRST, "Approved · N", "All accepted session
 N") · relative dates in LATEST FILE · SEED: worklist too sparse (28/30 "No files
 yet").
 
-**Agenda (desktop)**: **P2 (AIA grader): click-to-place into an OCCUPIED slot is a
+**Agenda (desktop)**: USER-REPORTED (click-to-place UX, file w/ DEC): (a) the
+inverted ink clash card visually BURIES intersecting slot buttons in placing mode —
+placement targets under/over the black block are hard to see exactly where
+place-anyway matters; while armed, either lift slot buttons above the clash card
+(z-index + visible outline legible on ink) or dim/outline the clash card in placing
+mode; (b) arm/disarm causes LAYOUT SHIFT ×2 — the conditional "No room yet" column
+inserts a 5th grid column (reflows all widths) and the "Placing… Esc to cancel"
+banner pushes the grid down; keep geometry stable (reserve banner height or overlay
+it; only insert the no-room column when the armed session is actually roomless, or
+overlay it) · **P2 (AIA grader): click-to-place into an OCCUPIED slot is a
 silent no-op** — button says "will clash with 1 session" and banner says "Clashes are
 flagged, not blocked", but the click does nothing (existing card likely intercepts
 it); make place-anyway work · **P2: invited-placeholder sessions ("Invited: Priya
