@@ -1076,4 +1076,127 @@ describe('PlanEditor render smoke', () => {
     expect(screen.getByText(/3 recusal/)).toBeInTheDocument();
     expect(screen.getByText(/results table and CSV export go with it/)).toBeInTheDocument();
   });
+
+  // wave 49/DEC-745 amendment: dirty-state navigation guard -- FIELDS
+  // (including anonymize) stay drafted behind Save; leaving with an
+  // unsaved draft must confirm rather than silently discard it.
+  describe('dirty-state navigation guard (DEC-745 wave-49 amendment)', () => {
+    it('toggling anonymize then leaving via the back-link surfaces a confirm naming the unsaved field; Cancel keeps the draft', async () => {
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+        [`GET /api/v1/plans/${PLAN_ID}`]: {
+          ...plan(),
+          criteria: [{ id: 'c1', label: 'Content', kind: 'rating', weight: 1 }],
+        },
+        [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+        [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+        'GET /api/v1/users': listEnvelope([]),
+      });
+
+      render(
+        <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+          <Routes>
+            <Route path="/review/plans/:planId" element={<PlanEditor />} />
+            <Route path="/review" element={<div>Review list page</div>} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => expect(screen.getByDisplayValue('Track Review')).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Anonymize speaker identity for reviewers' }));
+
+      fireEvent.click(screen.getByRole('link', { name: '‹ Review' }));
+
+      expect(await screen.findByText('Leave without saving?')).toBeInTheDocument();
+      expect(screen.getByText('Anonymize is not saved yet.')).toBeInTheDocument();
+      // Still on the editor -- the Link's default navigation was blocked.
+      expect(screen.getByDisplayValue('Track Review')).toBeInTheDocument();
+
+      // Cancel ("Keep editing") keeps the draft and stays on the page.
+      fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+      expect(screen.queryByText('Leave without saving?')).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('checkbox', { name: 'Anonymize speaker identity for reviewers' }),
+      ).toBeChecked();
+
+      // Leaving again and confirming actually navigates away.
+      fireEvent.click(screen.getByRole('link', { name: '‹ Review' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
+      expect(await screen.findByText('Review list page')).toBeInTheDocument();
+    });
+
+    it('after Save the editor is clean and the back-link leaves with no confirm', async () => {
+      const patchSpy = vi.fn(() => plan({ name: 'Track Review' }));
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+        [`GET /api/v1/plans/${PLAN_ID}`]: {
+          ...plan(),
+          criteria: [{ id: 'c1', label: 'Content', kind: 'rating', weight: 1 }],
+        },
+        [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+        [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+        'GET /api/v1/users': listEnvelope([]),
+        [`PATCH /api/v1/plans/${PLAN_ID}`]: patchSpy,
+      });
+
+      render(
+        <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+          <Routes>
+            <Route path="/review/plans/:planId" element={<PlanEditor />} />
+            <Route path="/review" element={<div>Review list page</div>} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => expect(screen.getByDisplayValue('Track Review')).toBeInTheDocument());
+      fireEvent.change(screen.getByDisplayValue('Track Review'), { target: { value: 'Renamed Plan' } });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+      await waitFor(() => expect(patchSpy).toHaveBeenCalledTimes(1));
+
+      fireEvent.click(screen.getByRole('link', { name: '‹ Review' }));
+      expect(await screen.findByText('Review list page')).toBeInTheDocument();
+      expect(screen.queryByText('Leave without saving?')).not.toBeInTheDocument();
+    });
+
+    it('DEC-799: anonymize true->false surfaces the ratchet confirm at Save, not at click', async () => {
+      const patchSpy = vi.fn(() => plan({ anonymized: false }));
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+        [`GET /api/v1/plans/${PLAN_ID}`]: {
+          ...plan({ anonymized: true }),
+          criteria: [{ id: 'c1', label: 'Content', kind: 'rating', weight: 1 }],
+        },
+        [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+        [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+        'GET /api/v1/users': listEnvelope([]),
+        [`PATCH /api/v1/plans/${PLAN_ID}`]: patchSpy,
+      });
+
+      render(
+        <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+          <Routes>
+            <Route path="/review/plans/:planId" element={<PlanEditor />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => expect(screen.getByDisplayValue('Track Review')).toBeInTheDocument());
+      const checkbox = screen.getByRole('checkbox', { name: 'Anonymize speaker identity for reviewers' });
+      expect(checkbox).toBeChecked();
+
+      // Unchecking the box drafts the change -- no confirm and no request yet.
+      fireEvent.click(checkbox);
+      expect(screen.queryByText('Turn off anonymity?')).not.toBeInTheDocument();
+      expect(patchSpy).not.toHaveBeenCalled();
+
+      // The ratchet confirm fires at Save time.
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+      expect(await screen.findByText('Turn off anonymity?')).toBeInTheDocument();
+      expect(patchSpy).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Turn off anonymity' }));
+      await waitFor(() => expect(patchSpy).toHaveBeenCalledTimes(1));
+    });
+  });
 });
