@@ -82,9 +82,12 @@ vi.mock("../src/server/repo/files", async () => {
   return {
     ...actual,
     resolveTaskFileChainLatest: vi.fn(),
+    resolveTaskFileChainLatestMany: vi.fn(),
     getFileVersionNumber: vi.fn(),
     listFileComments: vi.fn(async () => ({ items: [], total: 0, page: 1, perPage: 1 })),
+    listFileCommentsForFiles: vi.fn(async () => new Map()),
     listFileChainVersions: vi.fn(),
+    listFileChainVersionsMany: vi.fn(),
   };
 });
 
@@ -123,7 +126,13 @@ const SPEAKER_B: AuthInfo = { userId: "u2", role: "speaker", orgId: ORG_A, conta
 describe("GET /portal/tasks — full version chain (DEC-605)", () => {
   it("renders one row per version, oldest to newest, each with its own download link, newest flagged Current", async () => {
     const { getMyTaskAssignments } = await import("../src/server/repo/portal");
-    const { resolveTaskFileChainLatest, listFileChainVersions, getFileVersionNumber } = await import("../src/server/repo/files");
+    const {
+      resolveTaskFileChainLatest,
+      resolveTaskFileChainLatestMany,
+      listFileChainVersions,
+      listFileChainVersionsMany,
+      getFileVersionNumber,
+    } = await import("../src/server/repo/files");
     vi.mocked(getMyTaskAssignments).mockResolvedValue([
       {
         id: ASSIGNMENT_ID,
@@ -145,7 +154,9 @@ describe("GET /portal/tasks — full version chain (DEC-605)", () => {
       },
     ]);
     vi.mocked(resolveTaskFileChainLatest).mockResolvedValue(CHAIN_LATEST);
+    vi.mocked(resolveTaskFileChainLatestMany).mockResolvedValue(new Map([[FILE_V1, CHAIN_LATEST]]));
     vi.mocked(listFileChainVersions).mockResolvedValue(CHAIN_VERSIONS);
+    vi.mocked(listFileChainVersionsMany).mockResolvedValue(new Map([[FILE_V1, CHAIN_VERSIONS]]));
     vi.mocked(getFileVersionNumber).mockImplementation(async (_db, id) => {
       const idx = CHAIN_VERSIONS.findIndex((v) => v.id === id);
       if (idx === -1) throw new Error(`unexpected file id in test: ${id}`);

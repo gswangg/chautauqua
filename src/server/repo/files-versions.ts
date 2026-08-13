@@ -109,6 +109,94 @@ export async function resolveTaskFileChainLatest(db: Db, fileId: string): Promis
   return { id: row.id, filename: row.filename, contentType: row.contentType, r2Key: row.r2Key, createdAt: row.createdAt.getTime() };
 }
 
+/** DEC-530 (wave 48 amendment): batched form of resolveTaskFileChainLatest —
+ * resolves the chain-latest file for EVERY id in `fileIds` with a query
+ * count proportional to chain DEPTH, not chain COUNT. Walks the whole
+ * frontier (every owner's current chain position that hasn't yet
+ * terminated) forward one hop per round trip: `where previous_file_id IN
+ * (frontier)`, chunked for D1's bound-parameter ceiling. Each owner keeps
+ * its own visited set (same cycle guard as the singular walk, now per
+ * chain rather than shared) and its own throw message naming the id where
+ * the cycle was found. Once every owner has terminated, one batched fetch
+ * resolves the terminal rows. Returned map is keyed by the INPUT fileId
+ * (not the resolved latest id), one entry per unique input id — mirrors
+ * resolveTaskFileChainLatest's return shape exactly, just plural. */
+export async function resolveTaskFileChainLatestMany(
+  db: Db,
+  fileIds: string[],
+): Promise<Map<string, TaskFileChainLatest>> {
+  const out = new Map<string, TaskFileChainLatest>();
+  const uniqueIds = [...new Set(fileIds)];
+  if (uniqueIds.length === 0) return out;
+
+  const current = new Map<string, string>(uniqueIds.map((id) => [id, id]));
+  const visited = new Map<string, Set<string>>(uniqueIds.map((id) => [id, new Set([id])]));
+  let active = new Set<string>(uniqueIds);
+
+  while (active.size > 0) {
+    const frontierIds = [...new Set([...active].map((owner) => current.get(owner) as string))];
+    const nextByPrev = new Map<string, string>();
+    for (const batch of chunkIds(frontierIds)) {
+      if (batch.length === 0) continue;
+      const rows = await db
+        .select({ id: schema.file.id, previousFileId: schema.file.previousFileId })
+        .from(schema.file)
+        .where(inArray(schema.file.previousFileId, batch));
+      for (const row of rows) {
+        if (row.previousFileId) nextByPrev.set(row.previousFileId, row.id);
+      }
+    }
+
+    const stillActive = new Set<string>();
+    for (const owner of active) {
+      const pos = current.get(owner) as string;
+      const next = nextByPrev.get(pos);
+      if (!next) continue; // terminated: pos is the chain latest
+      const ownerVisited = visited.get(owner) as Set<string>;
+      if (ownerVisited.has(next)) {
+        throw new Error(`resolveTaskFileChainLatestMany: previous_file_id cycle detected at ${next}`);
+      }
+      ownerVisited.add(next);
+      current.set(owner, next);
+      stillActive.add(owner);
+    }
+    active = stillActive;
+  }
+
+  const finalIds = [...new Set([...current.values()])];
+  const byId = new Map<
+    string,
+    { id: string; filename: string; contentType: string; r2Key: string; createdAt: Date }
+  >();
+  for (const batch of chunkIds(finalIds)) {
+    if (batch.length === 0) continue;
+    const rows = await db
+      .select({
+        id: schema.file.id,
+        filename: schema.file.filename,
+        contentType: schema.file.contentType,
+        r2Key: schema.file.r2Key,
+        createdAt: schema.file.createdAt,
+      })
+      .from(schema.file)
+      .where(inArray(schema.file.id, batch));
+    for (const row of rows) byId.set(row.id, row);
+  }
+
+  for (const [owner, pos] of current) {
+    const row = byId.get(pos);
+    if (!row) throw new Error(`resolveTaskFileChainLatestMany: file ${pos} not found — data corruption`);
+    out.set(owner, {
+      id: row.id,
+      filename: row.filename,
+      contentType: row.contentType,
+      r2Key: row.r2Key,
+      createdAt: row.createdAt.getTime(),
+    });
+  }
+  return out;
+}
+
 /** DEC-573: the full version chain for `fileId`, oldest-first — walks BACK
  * via previous_file_id to the chain root, then FORWARD from the root (the
  * row whose previous_file_id points at the current one, repeated) to the
@@ -210,6 +298,152 @@ export async function listFileChainVersions(db: Db, fileId: string): Promise<Fil
       versionNo: row.versionNo,
     };
   });
+}
+
+/** DEC-530 (wave 48 amendment): batched form of listFileChainVersions —
+ * resolves the full oldest-first version chain for EVERY id in `fileIds`
+ * with a query count proportional to chain DEPTH, not chain COUNT. Two
+ * frontier walks, each one chunked query per depth over the WHOLE current
+ * frontier: first BACKWARD (`where id IN (frontier)`, reading each owner's
+ * own previous_file_id column) to find every owner's chain root, then
+ * FORWARD from the root (`where previous_file_id IN (frontier)`) collecting
+ * ids oldest-first — same two-phase walk as listFileChainIds, just batched
+ * across owners. A single batched fetch over the union of every resolved id
+ * then assembles the rows. Same cycle guards and same missing-row/missing-
+ * version_no throws as the singular functions, per owner. Returned map is
+ * keyed by the INPUT fileId, one entry per unique input id. */
+export async function listFileChainVersionsMany(
+  db: Db,
+  fileIds: string[],
+): Promise<Map<string, FileChainVersionRow[]>> {
+  const out = new Map<string, FileChainVersionRow[]>();
+  const uniqueIds = [...new Set(fileIds)];
+  if (uniqueIds.length === 0) return out;
+
+  // --- Phase 1: walk backward to each owner's chain root. ---
+  const backCurrent = new Map<string, string>(uniqueIds.map((id) => [id, id]));
+  const backVisited = new Map<string, Set<string>>(uniqueIds.map((id) => [id, new Set([id])]));
+  let backActive = new Set<string>(uniqueIds);
+
+  while (backActive.size > 0) {
+    const frontierIds = [...new Set([...backActive].map((owner) => backCurrent.get(owner) as string))];
+    const prevById = new Map<string, string | null>();
+    for (const batch of chunkIds(frontierIds)) {
+      if (batch.length === 0) continue;
+      const rows = await db
+        .select({ id: schema.file.id, previousFileId: schema.file.previousFileId })
+        .from(schema.file)
+        .where(inArray(schema.file.id, batch));
+      for (const row of rows) prevById.set(row.id, row.previousFileId);
+    }
+
+    const stillActive = new Set<string>();
+    for (const owner of backActive) {
+      const pos = backCurrent.get(owner) as string;
+      if (!prevById.has(pos)) {
+        throw new Error(`listFileChainVersionsMany: file ${pos} not found mid-chain — data corruption`);
+      }
+      const prev = prevById.get(pos) ?? null;
+      if (!prev) continue; // pos is the chain root
+      const ownerVisited = backVisited.get(owner) as Set<string>;
+      if (ownerVisited.has(prev)) {
+        throw new Error(`listFileChainVersionsMany: previous_file_id cycle detected at ${prev}`);
+      }
+      ownerVisited.add(prev);
+      backCurrent.set(owner, prev);
+      stillActive.add(owner);
+    }
+    backActive = stillActive;
+  }
+  const rootByOwner = backCurrent; // owner -> chain root id
+
+  // --- Phase 2: walk forward from each owner's root, collecting ids. ---
+  const idsByOwner = new Map<string, string[]>(uniqueIds.map((id) => [id, [rootByOwner.get(id) as string]]));
+  const fwdCurrent = new Map<string, string>(rootByOwner);
+  const fwdVisited = new Map<string, Set<string>>(
+    uniqueIds.map((id) => [id, new Set([rootByOwner.get(id) as string])]),
+  );
+  let fwdActive = new Set<string>(uniqueIds);
+
+  while (fwdActive.size > 0) {
+    const frontierIds = [...new Set([...fwdActive].map((owner) => fwdCurrent.get(owner) as string))];
+    const nextByPrev = new Map<string, string>();
+    for (const batch of chunkIds(frontierIds)) {
+      if (batch.length === 0) continue;
+      const rows = await db
+        .select({ id: schema.file.id, previousFileId: schema.file.previousFileId })
+        .from(schema.file)
+        .where(inArray(schema.file.previousFileId, batch));
+      for (const row of rows) {
+        if (row.previousFileId) nextByPrev.set(row.previousFileId, row.id);
+      }
+    }
+
+    const stillActive = new Set<string>();
+    for (const owner of fwdActive) {
+      const pos = fwdCurrent.get(owner) as string;
+      const next = nextByPrev.get(pos);
+      if (!next) continue;
+      const ownerVisited = fwdVisited.get(owner) as Set<string>;
+      if (ownerVisited.has(next)) {
+        throw new Error(`listFileChainVersionsMany: previous_file_id cycle detected at ${next}`);
+      }
+      ownerVisited.add(next);
+      (idsByOwner.get(owner) as string[]).push(next);
+      fwdCurrent.set(owner, next);
+      stillActive.add(owner);
+    }
+    fwdActive = stillActive;
+  }
+
+  // --- Phase 3: one batched fetch over the union of every resolved id. ---
+  const allIds = [...new Set([...idsByOwner.values()].flat())];
+  const byId = new Map<
+    string,
+    { id: string; filename: string; contentType: string; r2Key: string; createdAt: Date; versionNo: number | null }
+  >();
+  for (const batch of chunkIds(allIds)) {
+    if (batch.length === 0) continue;
+    const rows = await db
+      .select({
+        id: schema.file.id,
+        filename: schema.file.filename,
+        contentType: schema.file.contentType,
+        r2Key: schema.file.r2Key,
+        createdAt: schema.file.createdAt,
+        versionNo: schema.file.versionNo,
+      })
+      .from(schema.file)
+      .where(inArray(schema.file.id, batch));
+    for (const row of rows) byId.set(row.id, row);
+  }
+
+  for (const owner of uniqueIds) {
+    const ids = idsByOwner.get(owner) as string[];
+    out.set(
+      owner,
+      ids.map((id) => {
+        const row = byId.get(id);
+        if (!row) {
+          throw new Error(
+            `listFileChainVersionsMany: file ${id} resolved by the frontier walk but missing from batch fetch — data corruption`,
+          );
+        }
+        if (row.versionNo === null || row.versionNo === undefined) {
+          throw new Error(`listFileChainVersionsMany: file ${id} has no stored version_no — data corruption`);
+        }
+        return {
+          id: row.id,
+          filename: row.filename,
+          contentType: row.contentType,
+          r2Key: row.r2Key,
+          createdAt: row.createdAt.getTime(),
+          versionNo: row.versionNo,
+        };
+      }),
+    );
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------

@@ -45,15 +45,18 @@ import {
   insertFile,
   insertFileComment,
   listFileChainVersions,
+  listFileChainVersionsMany,
   listFileComments,
+  listFileCommentsForFiles,
   resolveTaskFileChainLatest,
+  resolveTaskFileChainLatestMany,
 } from "../../server/repo/files";
 import {
   getAssignmentScope,
-  getLatestDeliverable,
   getMyTaskAssignments,
   getPortalData,
   listDeliverableCandidates,
+  listLatestDeliverables,
   resolveChosenDeliverable,
   saveTaskFileCompletion,
   saveTaskFormResponse,
@@ -127,6 +130,12 @@ async function loadTasksPageData(c: Context<AppEnv>, contactId: string, orgId: s
     getMyTaskAssignments(c.var.db, contactId, orgId),
   ]);
 
+  // DEC-530 (wave 48 amendment): collect every id this page needs BEFORE
+  // issuing any read — the batched *Many/ForFiles readers below each cost a
+  // query count proportional to chain DEPTH (or a constant), never to the
+  // number of assignments/candidates on the page, so the loops after them
+  // build the render maps in pure JS with no await inside.
+
   // DEC-244 (implements DEC-242): for every completed file_request
   // assignment, resolve the CHAIN-LATEST file (following previous_file_id
   // forward from the assignment's stored file id, so an organizer-side
@@ -135,18 +144,28 @@ async function loadTasksPageData(c: Context<AppEnv>, contactId: string, orgId: s
   // pure render — this org-scoped /tasks list already only ever contains
   // the caller's own assignments, so no further per-file authz is needed
   // here (ownership flows from the assignment, not the file row).
+  const fileTaskAssignments = assignments.filter(
+    (a) => a.kind === "file_request" && a.status === "complete" && a.fileId,
+  );
+  const fileIds = fileTaskAssignments.map((a) => a.fileId as string);
+
+  const [latestByFileId, chainByFileId] = await Promise.all([
+    resolveTaskFileChainLatestMany(c.var.db, fileIds),
+    listFileChainVersionsMany(c.var.db, fileIds),
+  ]);
+
+  // Every id across every chain on the page, deduped — the single set
+  // listFileCommentsForFiles reads comments for in one pass.
+  const allChainIds = [...new Set([...chainByFileId.values()].flatMap((chain) => chain.map((row) => row.id)))];
+  const commentsByFileId = await listFileCommentsForFiles(c.var.db, allChainIds);
+
   const fileExtrasByAssignmentId = new Map<string, FileRequestExtras>();
-  for (const a of assignments) {
-    if (a.kind !== "file_request" || a.status !== "complete" || !a.fileId) continue;
-    const latest = await resolveTaskFileChainLatest(c.var.db, a.fileId);
-    // DEC-605/DEC-927: full chain oldest-first, one row per version — the
-    // batch query listFileChainVersions issues already carries each row's
-    // own stored version_no, so this stays one query instead of the N a
-    // per-id getFileVersionNumber loop would re-introduce.
-    const [commentsPage, chain] = await Promise.all([
-      listFileComments(c.var.db, latest.id),
-      listFileChainVersions(c.var.db, a.fileId),
-    ]);
+  for (const a of fileTaskAssignments) {
+    const fileId = a.fileId as string;
+    const latest = latestByFileId.get(fileId);
+    if (!latest) throw new Error(`loadTasksPageData: chain latest not resolved for file ${fileId} — data corruption`);
+    const chain = chainByFileId.get(fileId);
+    if (!chain) throw new Error(`loadTasksPageData: version chain not resolved for file ${fileId} — data corruption`);
     const versions: FileVersionRow[] = chain.map((row) => ({
       id: row.id,
       version: row.versionNo,
@@ -155,44 +174,64 @@ async function loadTasksPageData(c: Context<AppEnv>, contactId: string, orgId: s
       isCurrent: row.id === latest.id,
     }));
     // The page's own "version N" text for the single-file block above —
-    // the chain's last (newest) entry is the same file resolveTaskFileChainLatest
-    // just resolved, so this reuses that same batch fetch instead of a
-    // separate lookup.
+    // the chain's last (newest) entry is the same file
+    // resolveTaskFileChainLatestMany just resolved for this owner.
     const lastChainRow = chain[chain.length - 1];
     if (!lastChainRow) throw new Error("loadTasksPageData: empty version chain — data corruption");
     const version = lastChainRow.versionNo;
+    // Every link's own bucket, flattened and re-sorted the same way
+    // listFileComments orders a chain-wide thread (createdAt asc, id asc).
+    const comments = chain
+      .flatMap((row) => commentsByFileId.get(row.id) ?? [])
+      .sort((x, y) => x.createdAt - y.createdAt || x.id.localeCompare(y.id));
     fileExtrasByAssignmentId.set(a.id, {
       filename: latest.filename,
       version,
       uploadedAt: latest.createdAt,
-      comments: commentsPage.items,
+      comments,
       timezone: a.timezone,
       versions,
     });
   }
 
   // DEC-891: candidates are event-scoped (every accepted session the caller
-  // holds in that event), not task-scoped — cache one listDeliverableCandidates
-  // call per distinct event id so a speaker with several file_request tasks
-  // in the same event doesn't re-run the same query per row.
+  // holds in that event), not task-scoped — one listDeliverableCandidates
+  // call per distinct event id (not per assignment), run in parallel.
+  const deliverableAssignments = assignments.filter((a) => a.kind === "file_request" && a.deliverableKind != null);
+  const eventIds = [...new Set(deliverableAssignments.map((a) => a.eventId))];
   const candidatesByEventId = new Map<string, DeliverableCandidate[]>();
+  await Promise.all(
+    eventIds.map(async (eventId) => {
+      candidatesByEventId.set(eventId, await listDeliverableCandidates(c.var.db, contactId, eventId));
+    }),
+  );
+
+  // DEC-962/DEC-530: one batched "latest deliverable" read over every
+  // candidate submission id this page could show (DEC-891's quiet
+  // single-candidate rule already excludes rows that won't render), instead
+  // of one getLatestDeliverable call per candidate per assignment.
+  const relevantSubmissionIds = [
+    ...new Set(
+      deliverableAssignments.flatMap((a) => {
+        const candidates = candidatesByEventId.get(a.eventId) ?? [];
+        return candidates.length < 2 ? [] : candidates.map((cand) => cand.id); // conditional-and-quiet
+      }),
+    ),
+  ];
+  const latestDeliverableBySubmissionId = await listLatestDeliverables(
+    c.var.db,
+    contactId,
+    orgId,
+    relevantSubmissionIds,
+  );
+
   const deliverableChoiceByAssignmentId = new Map<string, DeliverableChoiceInfo>();
-  const linkedFilenameByCandidateId = new Map<string, string | null>();
-  for (const a of assignments) {
-    if (a.kind !== "file_request" || a.deliverableKind == null) continue;
-    let candidates = candidatesByEventId.get(a.eventId);
-    if (!candidates) {
-      candidates = await listDeliverableCandidates(c.var.db, contactId, a.eventId);
-      candidatesByEventId.set(a.eventId, candidates);
-    }
+  for (const a of deliverableAssignments) {
+    const candidates = candidatesByEventId.get(a.eventId) ?? [];
     if (candidates.length < 2) continue; // conditional-and-quiet
     const linkedFilenames = new Map<string, string | null>();
     for (const cand of candidates) {
-      if (!linkedFilenameByCandidateId.has(cand.id)) {
-        const latest = await getLatestDeliverable(c.var.db, contactId, orgId, cand.id);
-        linkedFilenameByCandidateId.set(cand.id, latest ? latest.filename : null);
-      }
-      linkedFilenames.set(cand.id, linkedFilenameByCandidateId.get(cand.id) ?? null);
+      linkedFilenames.set(cand.id, latestDeliverableBySubmissionId.get(cand.id)?.filename ?? null);
     }
     deliverableChoiceByAssignmentId.set(a.id, { candidates, linkedFilenames });
   }
