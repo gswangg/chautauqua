@@ -1,8 +1,10 @@
 /* app/src/pages/contacts/contacts.css — Contacts page lane, lane 1 of 2
    (DEC-376: this lane owns ContactsApp/ContactsTable/DirectoryRail/
    ContactDrawer/BulkEmailModal/AddToEventModal; PipelineBoard/
-   DuplicatesView/SegmentsPanel/FilterRulesPanel/ImportWizard are lane 2's
-   files and are NOT restyled here). Classes prefixed .chq-contacts-*;
+   DuplicatesView/SegmentsPanel/ImportWizard are lane 2's files and are NOT
+   restyled here. DEC-787 restores FilterRulesPanel wired directly into
+   ContactsApp above the directory table, so its styles live here too, not
+   in lane 2's contacts-panels.css). Classes prefixed .chq-contacts-*;
    shared .chq-* classes from app/src/styles.css (page-title, summary,
    toolbar, table, pill, chipstrip, bulkbar, pager, drawer, kv, modal,
    scrim, btn, input/select/textarea, check, link-button, meta, error,
@@ -51,6 +53,56 @@
   grid-template-columns: 1.5fr 1fr;
   gap: 26px;
   align-items: start;
+}
+
+/* DEC-787: the filter builder + table stack in the grid's left column. */
+.chq-contacts-directory-main {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* DEC-787: FilterRulesPanel — restores the multi-facet rule builder above
+   the directory table, reusing the shared .chq-pill/.chq-chipstrip chip
+   vocabulary (styles.css) rather than inventing new ones, plus the
+   .chq-contacts-filter-rules-field label already shared with SegmentsPanel
+   (contacts-panels.css). */
+.chq-contacts-filter-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chq-contacts-filter-rule-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.chq-contacts-filter-rule-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: default;
+}
+
+.chq-contacts-filter-rule-remove {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1;
+  color: inherit;
+  cursor: pointer;
+}
+
+.chq-contacts-filter-rules-row {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 /* Search + segment control at the RIGHT end of the tab row. */

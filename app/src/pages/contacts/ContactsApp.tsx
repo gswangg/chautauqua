@@ -7,6 +7,7 @@ import { ContactDrawer } from './ContactDrawer';
 import { ContactsTable } from './ContactsTable';
 import { DirectoryRail } from './DirectoryRail';
 import { DuplicatesView } from './DuplicatesView';
+import { FilterRulesPanel } from './FilterRulesPanel';
 import { ImportWizard } from './ImportWizard';
 import { NewContactModal } from './NewContactModal';
 import { PipelineBoard } from './PipelineBoard';
@@ -268,37 +269,44 @@ export function ContactsApp() {
 
       {panel === 'directory' && (
         <div className="chq-contacts-directory-grid">
-          <ContactsTable
-            items={items}
-            total={total}
-            page={page}
-            perPage={PER_PAGE}
-            rules={rules}
-            segmentId={segmentId}
-            segments={segments}
-            selection={selection}
-            loading={loading}
-            onChangeRules={(next) => {
-              setRules(next);
-              setPage(1);
-            }}
-            onChangeSegment={(next) => {
-              setSegmentId(next);
-              setPage(1);
-            }}
-            onChangePage={setPage}
-            onSelectionChange={setSelection}
-            onOpenContact={setOpenContactId}
-            onBulkEmail={() => setShowBulkEmail(true)}
-          />
+          <div className="chq-contacts-directory-main">
+            {/* DEC-787: the multi-facet filter builder feeds the SAME
+                `rules` state already sent to GET /contacts and to
+                contactsExportHref, so the table, the count and the CSV all
+                follow for free. */}
+            <FilterRulesPanel
+              rules={rules}
+              onChange={(next) => {
+                setRules(next);
+                setPage(1);
+              }}
+            />
+
+            <ContactsTable
+              items={items}
+              total={total}
+              page={page}
+              perPage={PER_PAGE}
+              selection={selection}
+              loading={loading}
+              onChangePage={setPage}
+              onSelectionChange={setSelection}
+              onOpenContact={setOpenContactId}
+              onBulkEmail={() => setShowBulkEmail(true)}
+            />
+          </div>
 
           <DirectoryRail
             topCompanies={stats?.topCompanies ?? []}
             onCompanyClick={(company) => {
-              // CRM-12 drill-through: the top-companies click applies a
-              // {field:'company',op:'eq'} filter rule (DEC-149), replacing the
-              // active rule set so the directory shows exactly that company.
-              setRules([{ field: 'company', op: 'eq', value: company }]);
+              // CRM-12 drill-through + DEC-787: the top-companies click
+              // ADDS or REPLACES ONLY the company rule, leaving every other
+              // active rule (from FilterRulesPanel) standing — a rail click
+              // composes with the filter, it never replaces it wholesale.
+              setRules((prev) => [
+                ...prev.filter((r) => r.field !== 'company'),
+                { field: 'company', op: 'eq', value: company },
+              ]);
               setPage(1);
             }}
             segments={segments}

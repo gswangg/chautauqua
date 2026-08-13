@@ -41,13 +41,8 @@ function renderTable() {
       total={2}
       page={1}
       perPage={25}
-      rules={[]}
-      segmentId=""
-      segments={[]}
       selection={EMPTY_SELECTION}
       loading={false}
-      onChangeRules={() => {}}
-      onChangeSegment={() => {}}
       onChangePage={() => {}}
       onSelectionChange={() => {}}
       onOpenContact={() => {}}
