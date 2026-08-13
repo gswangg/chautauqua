@@ -143,6 +143,11 @@ sbek personas are all @example.com, so failed rows for them on prod are the hone
 boundary WORKING, not the binding breaking; type errors or shape mismatches found by reading
 code or docs; tests driving the adapter over a stub. If a wave believes it has (a) or (b),
 file it to this mandate with the captured error/log — do not swap mailers unilaterally.
+**Swarm agents NEVER deploy to prod, never run wrangler against the remote, and never
+send mail against prod to gather evidence** — prod-side evidence arrives exclusively
+through the orchestrator's gate deploys and official sbek runs. This restates the standing
+rule; the runtime-evidence bar above is a filter on what those orchestrator runs surface,
+not an invitation to probe prod.
 
 REVERT SHAPE (mint a superseding DEC):
 - Restore `src/mail/email-binding.ts` (EmailBindingMailer) from `9131a53a^` — that version already
