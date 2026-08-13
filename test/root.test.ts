@@ -587,7 +587,7 @@ describe("GET / — row meta: shape while live, size once past (DEC-943)", () =>
     expect(body).not.toContain("12 sessions");
   });
 
-  it("a published row renders the shape line too", async () => {
+  it("a published row renders 'N sessions · full programme up', not the shape line", async () => {
     const events = [
       eventRow({
         id: "e2",
@@ -610,10 +610,8 @@ describe("GET / — row meta: shape while live, size once past (DEC-943)", () =>
     });
     const res = await app.request("/", {}, { ASSETS: fakeAssets() });
     const body = await res.text();
-    // one track, zero formats -> the format clause is dropped entirely, no
-    // dangling separator.
-    expect(body).toContain("One track");
-    expect(body).not.toContain("· 0 format");
+    expect(body).toContain("12 sessions · full programme up");
+    expect(body).not.toContain("One track");
     expect(body).not.toContain("formats");
   });
 

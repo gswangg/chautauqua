@@ -107,6 +107,14 @@ function sessionsLine(count: number): string {
   return `${count} session${count === 1 ? "" : "s"}`;
 }
 
+/** The hub row's meta line for a published event -- "12 sessions · full
+ * programme up". "" when there are no published sessions yet (rendered as
+ * nothing, same drop-a-zero-clause convention as the other row metas). */
+function publishedLine(sessionCount: number): string {
+  if (sessionCount === 0) return "";
+  return `${sessionsLine(sessionCount)} · full programme up`;
+}
+
 /** DEC-943: a spelled-count clause ("three tracks"), or "" when count is 0
  * -- the same drop-a-zero-clause grammar heroSummary/pluralClause use. */
 function countClause(count: number, singularNoun: string, pluralNoun: string): string {
@@ -173,7 +181,7 @@ function OpenCfpRow(props: { event: HubEvent; nowMs: number }) {
 function PublishedRow(props: { event: HubEvent }) {
   const { event } = props;
   return (
-    <div class="chq-home-row">
+    <div class="chq-home-row chq-home-row-published">
       <div class="chq-home-when">
         <span class="chq-home-dates">{formatEventDayRange(event.startDate, event.endDate)}</span>
         {event.location ? <span class="chq-home-venue">{event.location}</span> : null}
@@ -182,16 +190,13 @@ function PublishedRow(props: { event: HubEvent }) {
         <a class="chq-home-name" href={`/e/${event.slug}/sessions`}>
           {event.name}
         </a>
-        {shapeLine(event.trackCount, event.formatCount) ? (
-          <span class="chq-home-meta">{shapeLine(event.trackCount, event.formatCount)}</span>
+        {publishedLine(event.publishedSessionCount) ? (
+          <span class="chq-home-meta">{publishedLine(event.publishedSessionCount)}</span>
         ) : null}
       </div>
       <div class="chq-home-actions">
         <a class="chq-home-action-secondary" href={`/e/${event.slug}/sessions`}>
           Browse sessions
-        </a>
-        <a class="chq-home-action-secondary" href={`/e/${event.slug}/speakers`}>
-          Speakers
         </a>
       </div>
     </div>
@@ -250,7 +255,7 @@ function heroSummary(sections: HubSections): string {
 
 function Footer() {
   return (
-    <div class="chq-home-footer">
+    <footer class="chq-home-footer">
       <span class="chq-home-footer-text">
         Running on{" "}
         <a class="chq-home-footer-link" href="https://github.com/gswangg/chautauqua">
@@ -262,7 +267,7 @@ function Footer() {
       <a class="chq-home-footer-link chq-home-footer-link-end" href="/docs/api">
         API docs
       </a>
-    </div>
+    </footer>
   );
 }
 
@@ -287,7 +292,7 @@ function HubPage(props: { orgName: string; sections: HubSections; state: HubStat
             </a>
           </header>
 
-          <div class="chq-home-body">
+          <main class="chq-home-body">
             {state === "full" ? (
               <div class="chq-home-hero">
                 <h1>Events</h1>
@@ -367,7 +372,7 @@ function HubPage(props: { orgName: string; sections: HubSections; state: HubStat
                 ))}
               </section>
             ) : null}
-          </div>
+          </main>
 
           <Footer />
         </div>
