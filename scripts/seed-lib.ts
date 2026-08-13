@@ -87,6 +87,8 @@ export const TABLES_IN_DELETE_ORDER: readonly string[] = [
   "auth_session",
   "user",
   "saved_view",
+  // DEC-785: embed references org and event, so it must clear before both.
+  "embed",
   "event",
   "segment",
   "api_token",

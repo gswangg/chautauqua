@@ -240,6 +240,10 @@ export const PUBLIC_AFFECTING: PathPattern[] = [
   // /api/v1/contacts/import already bump for, so it is public-affecting
   // for exactly their reasons.
   "/api/v1/events/:id/import/sessionboard",
+  // DEC-785: a saved embed's create/enable/disable/delete directly changes
+  // whether/what GET /embed/e/:embedId (a cached public route) serves.
+  "/api/v1/events/:id/embeds",
+  "/api/v1/embeds/:id",
   "/portal/submissions/*",
   "/portal/profile",
   "/portal/invitations/*",

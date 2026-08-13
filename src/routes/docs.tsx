@@ -233,6 +233,15 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
     ],
   },
   {
+    title: "Saved embeds",
+    rows: [
+      { method: "GET", path: "/api/v1/events/:eventId/embeds", role: "organizer" },
+      { method: "POST", path: "/api/v1/events/:eventId/embeds", role: "organizer" },
+      { method: "PATCH", path: "/api/v1/embeds/:id", role: "organizer" },
+      { method: "DELETE", path: "/api/v1/embeds/:id", role: "organizer" },
+    ],
+  },
+  {
     title: "Exports",
     rows: [
       {

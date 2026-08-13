@@ -377,6 +377,11 @@ const HTML_ROUTE_EXCLUDED: { pattern: string; reason: string }[] = [
     reason:
       "PRE-EXISTING GAP, out of task-w13-e's scope -- the speaker-facing resources list page has no ROUTE_MANIFEST entry. Flagged for a follow-up task.",
   },
+  {
+    pattern: "/embed/e/:embedId",
+    reason:
+      "DEC-785 (task w3-d): the saved-embed public route, covered directly by test/saved-embed-route.test.ts (missing/disabled 404, enabled renders). No seeded `embed` row exists yet for ROUTE_MANIFEST to resolve a concrete literal against -- flagged for a follow-up task to seed one and add a manifest entry rather than silently left uncovered.",
+  },
 ];
 
 // API routes are JSON by construction (DEC-012), and /health is a JSON
