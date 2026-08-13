@@ -351,6 +351,7 @@ export const PUBLIC_CSS = `
   .${ACCENT_BOUND_CLASSES[0]} {
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     gap: 2px;
     min-width: 0;
     min-height: 0;
@@ -364,6 +365,17 @@ export const PUBLIC_CSS = `
     border-radius: var(--chq-r-card);
     padding: 0.4rem 0.6rem;
     font-size: 0.85rem;
+  }
+  /* DEC-999 Amendment (wave 53): time/track-chip/format-chip trio share one
+     flex-wrap row (chq-pub-agenda-block-meta) instead of each occupying
+     their own line in the column flexbox above -- align-items: flex-start
+     on the block itself is what stops the inline-flex chip children being
+     stretched full-width by the block's own column-flex default (stretch). */
+  .chq-pub-agenda-block-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
   }
   /* DEC-584: phone (<700px) list markup for a single agenda day, rendered
      from the SAME items array as AgendaDayGrid and switched with the
