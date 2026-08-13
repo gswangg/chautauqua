@@ -7,7 +7,8 @@
 // (error.fields) are shown per-field per DEC-013's ApiError contract.
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { apiList, apiPost, ApiError } from '../lib/api';
+import { apiPost, ApiError } from '../lib/api';
+import { loadEventsOnce, type EventListItem } from '../lib/useCurrentEvent';
 import { useMenu } from '../lib/useMenu';
 import { useMe } from '../lib/useMe';
 import { DateField } from './DateField';
@@ -23,11 +24,6 @@ import {
 import './event-switcher.css';
 
 const STORAGE_KEY = 'chq.currentEventId';
-
-interface EventListItem {
-  id: string;
-  name: string;
-}
 
 const EMPTY_FORM: NewEventForm = {
   name: '',
@@ -171,8 +167,10 @@ export function EventSwitcher() {
     // must not act while identity is still loading, and a reviewer session
     // must never issue this request at all (it would 403 on first paint).
     if (loading || me?.role !== 'organizer') return;
-    apiList<EventListItem>('/events')
-      .then((res) => setItems(res.items))
+    // DEC-024 amendment (wave 51): the shared cache means the page pays
+    // one /events round trip even when useCurrentEvent is also mounted.
+    loadEventsOnce()
+      .then((items) => setItems(items))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load events'));
   }, [me, loading]);
 

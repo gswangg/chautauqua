@@ -8,6 +8,7 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import '@testing-library/jest-dom/vitest';
 import { App, NAV_SECTIONS } from './App';
 import { mockApi } from './test-utils/mockApi';
+import { resetEventsCacheForTests } from './lib/useCurrentEvent';
 
 beforeEach(() => {
   window.history.pushState({}, '', '/admin/this-page-does-not-exist');
@@ -21,6 +22,10 @@ afterEach(() => {
   cleanup();
   window.history.pushState({}, '', '/admin');
   window.localStorage.clear();
+  // DEC-024 amendment (wave 51): loadEventsOnce()'s cache is scoped to one
+  // real page load (a full navigation) -- this file renders more than once
+  // per run, so a stale cached /events response would otherwise leak.
+  resetEventsCacheForTests();
 });
 
 describe('App catch-all route', () => {

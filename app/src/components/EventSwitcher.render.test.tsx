@@ -11,6 +11,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { EventSwitcher } from './EventSwitcher';
+import { resetEventsCacheForTests } from '../lib/useCurrentEvent';
 import { mockApi, listEnvelope } from '../test-utils/mockApi';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -29,6 +30,10 @@ function topLevelRuleBody(css: string, selector: string): string {
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
+  // DEC-024 amendment (wave 51): loadEventsOnce()'s cache is scoped to one
+  // real page load (a full navigation) -- a render test suite doesn't get
+  // that between `it()` blocks in this file.
+  resetEventsCacheForTests();
 });
 
 describe('EventSwitcher', () => {
