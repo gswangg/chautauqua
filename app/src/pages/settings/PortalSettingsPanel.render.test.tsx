@@ -10,6 +10,7 @@ import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { PortalSettingsPanel } from './PortalSettingsPanel';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+import { buildPortalSettingsPayload } from './formState';
 
 const EVENT_ID = 'evt-portal';
 
@@ -142,5 +143,84 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
     await waitFor(() => {
       expect(within(travelRow).getByDisplayValue('Travel info')).toBeInTheDocument();
     });
+  });
+
+  // DEC-988: the edit form above ResourcesPanel -- the round trip this
+  // panel was missing before this task.
+  it('renders the branding/welcome edit controls prefilled from the GET, above the Resources sub-panel', async () => {
+    mockPortal();
+    render(
+      <MemoryRouter initialEntries={['/settings?section=portal&edit=1']}>
+        <PortalSettingsPanel />
+      </MemoryRouter>,
+    );
+
+    const welcome = await screen.findByLabelText('Welcome note');
+    expect(welcome).toHaveValue('Welcome, speakers!\n\nWe cannot wait to see you.');
+    expect(screen.getByLabelText('Logo URL')).toHaveValue('');
+    expect(screen.getByLabelText('Accent colour')).toHaveValue('');
+    expect(screen.getByRole('checkbox', { name: 'Show resources' })).toBeChecked();
+
+    await waitFor(() => {
+      expect(screen.getByText('Travel info')).toBeInTheDocument();
+    });
+  });
+
+  it('edits the welcome note and issues exactly one PUT with buildPortalSettingsPayload output', async () => {
+    const fetchMock = mockPortal({
+      [`PUT /api/v1/events/${EVENT_ID}/portal-settings`]: {
+        welcomeMessage: 'Hello there',
+        logoUrl: null,
+        accentColor: null,
+        showResources: true,
+      },
+    });
+    render(
+      <MemoryRouter initialEntries={['/settings?section=portal&edit=1']}>
+        <PortalSettingsPanel />
+      </MemoryRouter>,
+    );
+
+    const welcome = await screen.findByLabelText('Welcome note');
+    fireEvent.change(welcome, { target: { value: 'Hello there' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      const putCalls = fetchMock.mock.calls.filter(
+        ([, init]) => (init as RequestInit | undefined)?.method === 'PUT',
+      );
+      expect(putCalls.length).toBe(1);
+      const [, init] = putCalls[0]!;
+      const body = JSON.parse((init as RequestInit).body as string);
+      expect(body).toEqual(
+        buildPortalSettingsPayload({
+          logoUrl: '',
+          accentColor: '',
+          welcomeMessage: 'Hello there',
+          showResources: true,
+        }),
+      );
+    });
+  });
+
+  it('blocks the PUT and shows an inline error for an invalid accent colour', async () => {
+    const fetchMock = mockPortal();
+    render(
+      <MemoryRouter initialEntries={['/settings?section=portal&edit=1']}>
+        <PortalSettingsPanel />
+      </MemoryRouter>,
+    );
+
+    const accent = await screen.findByLabelText('Accent colour');
+    fireEvent.change(accent, { target: { value: 'nope' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Must be a hex color like #336699');
+
+    const putCalls = fetchMock.mock.calls.filter(
+      ([, init]) => (init as RequestInit | undefined)?.method === 'PUT',
+    );
+    expect(putCalls.length).toBe(0);
   });
 });

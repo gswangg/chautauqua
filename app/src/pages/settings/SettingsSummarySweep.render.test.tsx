@@ -70,7 +70,12 @@ function mockEverySettingsRoute(overrides: Record<string, unknown> = {}) {
     [`GET /api/v1/events/${EVENT_ID}/rooms`]: listEnvelope([{ id: 'rm1', name: 'Main Stage', capacity: 100 }]),
     [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([], { total: 5 }),
     [`GET /api/v1/events/${EVENT_ID}/public-surfaces`]: { sessions: 9, speakers: 3, scheduled: 2 },
-    [`GET /api/v1/events/${EVENT_ID}/portal-settings`]: { welcomeMessage: null },
+    [`GET /api/v1/events/${EVENT_ID}/portal-settings`]: {
+      welcomeMessage: null,
+      logoUrl: null,
+      accentColor: null,
+      showResources: true,
+    },
     [`GET /api/v1/events/${EVENT_ID}/onboarding`]: { tasks: [] },
     'GET /api/v1/users': listEnvelope([{ id: 'u1', email: 'a@example.com', role: 'organizer' }]),
     'GET /api/v1/me': { userId: 'u1', email: 'a@example.com', name: null, role: 'organizer', orgId: 'org1' },

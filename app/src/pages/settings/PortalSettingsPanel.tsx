@@ -5,30 +5,54 @@
 // -- with 'Open as a speaker' kept as a row-level link (it is a live
 // navigation, not an edit) and the section's ONE rule action now the
 // SummarySection 'Change' drill (?section=portal&edit=1, DEC-728/DEC-710),
-// which reveals the panel's one real edit surface: ResourcesPanel
-// (delegates to it unchanged -- same endpoints/CRUD).
+// which reveals the panel's edit surfaces: the branding/welcome form
+// (PUT /events/:eventId/portal-settings) above ResourcesPanel (delegated
+// to unchanged -- same endpoints/CRUD).
 //
-// GAP flagged for a follow-up task (not decided here): the mock's read
-// view has no action on the Welcome note / Speakers can edit / Onboarding
-// tasks / Access rows, so welcome-message/branding editing (previously
-// this panel's whole form, PUT /events/:id/portal-settings) has no entry
-// point from Settings after this conversion. The endpoint itself, and
-// buildPortalSettingsPayload/validatePortalSettingsForm in formState.ts,
-// are unchanged -- only the Settings UI's path to them is removed pending
-// a decision on where that edit affordance should live.
-import { useEffect, useState } from 'react';
+// DEC-988: closes the round trip -- buildPortalSettingsPayload /
+// validatePortalSettingsForm (formState.ts) were previously wired only to
+// their own unit test with no caller in the SPA. This panel is now that
+// caller: it hydrates a PortalSettingsForm from the GET response, PUTs the
+// full payload on save, and re-reads the record so the read view updates
+// without a reload.
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
-import { apiGet, ApiError } from '../../lib/api';
+import { apiGet, apiPut, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { ResourcesPanel } from './ResourcesPanel';
 import { SummarySection } from './SummarySection';
 import { countOf } from '../../lib/plural';
+import {
+  buildPortalSettingsPayload,
+  validatePortalSettingsForm,
+  type PortalSettingsForm,
+  type PortalSettingsFormErrors,
+} from './formState';
 
 const SECTION_KEY = 'portal';
 
 interface PortalSettingsRecord {
   welcomeMessage: string | null;
+  logoUrl: string | null;
+  accentColor: string | null;
+  showResources: boolean;
+}
+
+const EMPTY_FORM: PortalSettingsForm = {
+  logoUrl: '',
+  accentColor: '',
+  welcomeMessage: '',
+  showResources: true,
+};
+
+function formFromRecord(record: PortalSettingsRecord): PortalSettingsForm {
+  return {
+    logoUrl: record.logoUrl ?? '',
+    accentColor: record.accentColor ?? '',
+    welcomeMessage: record.welcomeMessage ?? '',
+    showResources: record.showResources,
+  };
 }
 
 interface OnboardingSummary {
@@ -63,18 +87,46 @@ export function PortalSettingsPanel() {
   const [taskCount, setTaskCount] = useState<number | null>(null);
   const [error, setError] = useState<string | undefined>(undefined);
 
-  useEffect(() => {
+  const [form, setForm] = useState<PortalSettingsForm>(EMPTY_FORM);
+  const [formErrors, setFormErrors] = useState<PortalSettingsFormErrors>({});
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | undefined>(undefined);
+
+  const loadPortalSettings = useCallback(() => {
     if (!eventId) return;
     apiGet<PortalSettingsRecord>(`/events/${eventId}/portal-settings`)
       .then((record) => {
         setWelcomeMessage(record.welcomeMessage);
         setWelcomeLoaded(true);
+        setForm(formFromRecord(record));
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load portal settings'));
+  }, [eventId]);
+
+  useEffect(() => {
+    loadPortalSettings();
+    if (!eventId) return;
     apiGet<OnboardingSummary>(`/events/${eventId}/onboarding?page=1&perPage=1`)
       .then((res) => setTaskCount(res.tasks.length))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load onboarding tasks'));
-  }, [eventId]);
+  }, [eventId, loadPortalSettings]);
+
+  async function handleSave() {
+    const errors = validatePortalSettingsForm(form);
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+    if (!eventId) return;
+    setSaving(true);
+    setSaveError(undefined);
+    try {
+      await apiPut(`/events/${eventId}/portal-settings`, buildPortalSettingsPayload(form));
+      loadPortalSettings();
+    } catch (err) {
+      setSaveError(err instanceof ApiError ? err.message : 'Failed to save portal settings');
+    } finally {
+      setSaving(false);
+    }
+  }
 
   const paragraphs = paragraphCount(welcomeMessage);
 
@@ -128,6 +180,80 @@ export function PortalSettingsPanel() {
       {eventLoading ? <DelayedLoading /> : null}
       {eventError || error ? <p role="alert">{eventError ?? error}</p> : null}
       <SummarySection sectionKey={SECTION_KEY} label="Speaker portal" rows={rows} actionLabel="Change" editing={editing}>
+        <div className="chq-settings-row">
+          <label className="chq-settings-row-label" htmlFor="chq-portal-welcome">
+            Welcome note
+          </label>
+          <div className="chq-settings-row-value">
+            <textarea
+              id="chq-portal-welcome"
+              className="chq-input"
+              value={form.welcomeMessage}
+              onChange={(e) => setForm((current) => ({ ...current, welcomeMessage: e.target.value }))}
+            />
+          </div>
+        </div>
+        <div className="chq-settings-row">
+          <label className="chq-settings-row-label" htmlFor="chq-portal-logo-url">
+            Logo URL
+          </label>
+          <div className="chq-settings-row-value">
+            <input
+              id="chq-portal-logo-url"
+              className="chq-input"
+              type="text"
+              value={form.logoUrl}
+              onChange={(e) => setForm((current) => ({ ...current, logoUrl: e.target.value }))}
+            />
+          </div>
+        </div>
+        <div className="chq-settings-row">
+          <label className="chq-settings-row-label" htmlFor="chq-portal-accent-color">
+            Accent colour
+          </label>
+          <div className="chq-settings-row-value">
+            <input
+              id="chq-portal-accent-color"
+              className="chq-input"
+              type="text"
+              placeholder="#336699"
+              value={form.accentColor}
+              onChange={(e) => setForm((current) => ({ ...current, accentColor: e.target.value }))}
+            />
+            {formErrors.accentColor ? (
+              <span role="alert">{formErrors.accentColor}</span>
+            ) : null}
+          </div>
+        </div>
+        <div className="chq-settings-row">
+          <span className="chq-settings-row-label">Show resources</span>
+          <div className="chq-settings-row-value">
+            <label>
+              <input
+                className="chq-check"
+                type="checkbox"
+                checked={form.showResources}
+                onChange={(e) => setForm((current) => ({ ...current, showResources: e.target.checked }))}
+              />
+              Show resources
+            </label>
+          </div>
+        </div>
+        <div className="chq-settings-row">
+          <div className="chq-settings-row-value">
+            <button
+              type="button"
+              className="chq-btn chq-btn-primary"
+              disabled={saving}
+              onClick={() => void handleSave()}
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            {saveError ? (
+              <span role="alert">{saveError}</span>
+            ) : null}
+          </div>
+        </div>
         <div className="chq-settings-row">
           <span className="chq-settings-row-label">Resources</span>
           <div className="chq-settings-row-value chq-settings-portal-resources">
