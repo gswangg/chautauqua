@@ -39,11 +39,14 @@ import {
   getMyTaskAssignments,
   getPortalData,
   getResourceDownloadScope,
-  resolveDeliverableSubmissionId,
+  listDeliverableCandidates,
+  resolveChosenDeliverable,
   saveTaskFileCompletion,
   saveTaskFormResponse,
+  type DeliverableCandidate,
   type PortalAssignmentScope,
   type PortalTaskAssignment,
+  getLatestDeliverable,
 } from "../../server/repo/portal";
 import { listFields, type FormFieldRow } from "../../server/repo/forms";
 import { validateAnswers } from "../../forms/validate";
@@ -65,7 +68,20 @@ import {
   isSecureRequest,
   CSRF_COOKIE_NAME,
 } from "../../auth/cookies";
-import { DEC_016, DEC_020, DEC_023, DEC_028, DEC_029, DEC_240, DEC_242, DEC_244, DEC_605, DEC_657, DEC_696 } from "../../decisions";
+import {
+  DEC_016,
+  DEC_020,
+  DEC_023,
+  DEC_028,
+  DEC_029,
+  DEC_240,
+  DEC_242,
+  DEC_244,
+  DEC_605,
+  DEC_657,
+  DEC_696,
+  DEC_891,
+} from "../../decisions";
 import { formatCalendarDate, formatEventDate, formatEventDateTime } from "../../lib/event-time";
 import { renderMarkdown } from "../../lib/markdown";
 
@@ -83,6 +99,7 @@ void DEC_244;
 void DEC_605;
 void DEC_657;
 void DEC_696;
+void DEC_891;
 
 // DEC-244: comment body cap on the portal reply endpoint (matches no
 // existing forms/validate.ts constant since file comments aren't a form
@@ -189,13 +206,47 @@ function CommentThread(props: { assignmentId: string; comments: FileCommentRow[]
   );
 }
 
+// DEC-891: the candidates a file_request task-assignment upload could link
+// to, plus (per candidate) the filename currently linked to it — so a second
+// upload reads as belonging to a second session, not an overwrite of the
+// first.
+export interface DeliverableChoiceInfo {
+  candidates: DeliverableCandidate[];
+  linkedFilenames: Map<string, string | null>;
+}
+
+// DEC-891: conditional-and-quiet — a lone eligible session renders no
+// control at all; the select (and its required-ness) only appears once
+// there is a real choice to make.
+function DeliverableSelect(props: { info: DeliverableChoiceInfo }) {
+  const { info } = props;
+  if (info.candidates.length < 2) return null;
+  return (
+    <label class="chq-portal-detail">
+      Which session is this for?
+      <select name="submissionId" required class="chq-select">
+        {info.candidates.map((cand) => {
+          const linked = info.linkedFilenames.get(cand.id);
+          return (
+            <option value={cand.id}>
+              {cand.ref} — {cand.title}
+              {linked ? ` (current: ${linked})` : ""}
+            </option>
+          );
+        })}
+      </select>
+    </label>
+  );
+}
+
 function TaskRow(props: {
   assignment: PortalTaskAssignment;
   csrfToken: string;
   error?: string;
   fileExtras?: FileRequestExtras;
+  deliverableChoice?: DeliverableChoiceInfo;
 }) {
-  const { assignment: t, csrfToken, error, fileExtras } = props;
+  const { assignment: t, csrfToken, error, fileExtras, deliverableChoice } = props;
   return (
     <div class="chq-portal-row" id={`task-${t.id}`}>
       <div class="chq-portal-row-head">
@@ -228,6 +279,7 @@ function TaskRow(props: {
           {t.kind === "file_request" ? (
             <form method="post" action={`/portal/tasks/${t.id}/upload`} enctype="multipart/form-data">
               <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
+              {deliverableChoice ? <DeliverableSelect info={deliverableChoice} /> : null}
               <p class="chq-portal-detail">{uploadHintText()}</p>
               <input
                 type="file"
@@ -255,6 +307,7 @@ function TaskRow(props: {
           </p>
           <form method="post" action={`/portal/tasks/${t.id}/upload`} enctype="multipart/form-data">
             <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
+            {deliverableChoice ? <DeliverableSelect info={deliverableChoice} /> : null}
             <p class="chq-portal-detail">{uploadHintText()}</p>
             <input
               type="file"
@@ -307,8 +360,9 @@ function TasksPage(props: {
   formLinkFor: (a: PortalTaskAssignment) => string | null;
   errorFor?: (assignmentId: string) => string | undefined;
   fileExtrasFor?: (assignmentId: string) => FileRequestExtras | undefined;
+  deliverableChoiceFor?: (assignmentId: string) => DeliverableChoiceInfo | undefined;
 }) {
-  const { branding, assignments, csrfToken, formLinkFor, errorFor, fileExtrasFor } = props;
+  const { branding, assignments, csrfToken, formLinkFor, errorFor, fileExtrasFor, deliverableChoiceFor } = props;
   const doneCount = assignments.filter((a) => a.status === "complete").length;
   return (
     <PortalLayout branding={branding} csrfToken={csrfToken}>
@@ -346,7 +400,13 @@ function TasksPage(props: {
               </div>
             </div>
           ) : (
-            <TaskRow assignment={t} csrfToken={csrfToken} error={errorFor?.(t.id)} fileExtras={fileExtrasFor?.(t.id)} />
+            <TaskRow
+              assignment={t}
+              csrfToken={csrfToken}
+              error={errorFor?.(t.id)}
+              fileExtras={fileExtrasFor?.(t.id)}
+              deliverableChoice={deliverableChoiceFor?.(t.id)}
+            />
           ),
         )
       )}
@@ -444,7 +504,33 @@ async function loadTasksPageData(c: Context<AppEnv>, contactId: string, orgId: s
     });
   }
 
-  return { data, assignments, fileExtrasByAssignmentId };
+  // DEC-891: candidates are event-scoped (every accepted session the caller
+  // holds in that event), not task-scoped — cache one listDeliverableCandidates
+  // call per distinct event id so a speaker with several file_request tasks
+  // in the same event doesn't re-run the same query per row.
+  const candidatesByEventId = new Map<string, DeliverableCandidate[]>();
+  const deliverableChoiceByAssignmentId = new Map<string, DeliverableChoiceInfo>();
+  const linkedFilenameByCandidateId = new Map<string, string | null>();
+  for (const a of assignments) {
+    if (a.kind !== "file_request" || a.deliverableKind == null) continue;
+    let candidates = candidatesByEventId.get(a.eventId);
+    if (!candidates) {
+      candidates = await listDeliverableCandidates(c.var.db, contactId, a.eventId);
+      candidatesByEventId.set(a.eventId, candidates);
+    }
+    if (candidates.length < 2) continue; // conditional-and-quiet
+    const linkedFilenames = new Map<string, string | null>();
+    for (const cand of candidates) {
+      if (!linkedFilenameByCandidateId.has(cand.id)) {
+        const latest = await getLatestDeliverable(c.var.db, cand.id);
+        linkedFilenameByCandidateId.set(cand.id, latest ? latest.filename : null);
+      }
+      linkedFilenames.set(cand.id, linkedFilenameByCandidateId.get(cand.id) ?? null);
+    }
+    deliverableChoiceByAssignmentId.set(a.id, { candidates, linkedFilenames });
+  }
+
+  return { data, assignments, fileExtrasByAssignmentId, deliverableChoiceByAssignmentId };
 }
 
 portalTasksRoutes.get("/tasks", async (c) => {
@@ -452,7 +538,11 @@ portalTasksRoutes.get("/tasks", async (c) => {
   const contactId = auth.contactId;
   if (!contactId) throw new Error("speaker auth session missing contact_id — invariant violated");
 
-  const { data, assignments, fileExtrasByAssignmentId } = await loadTasksPageData(c, contactId, auth.orgId);
+  const { data, assignments, fileExtrasByAssignmentId, deliverableChoiceByAssignmentId } = await loadTasksPageData(
+    c,
+    contactId,
+    auth.orgId,
+  );
 
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
@@ -464,6 +554,7 @@ portalTasksRoutes.get("/tasks", async (c) => {
       csrfToken={csrfToken}
       formLinkFor={(a) => `/portal/tasks/${a.id}/form`}
       fileExtrasFor={(id) => fileExtrasByAssignmentId.get(id)}
+      deliverableChoiceFor={(id) => deliverableChoiceByAssignmentId.get(id)}
     />,
   );
 });
@@ -593,7 +684,11 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
   // TasksPage inline (400, not a redirect) with the field error attached
   // to the offending row via errorFor, instead of throwing.
   async function reRenderWithError(message: string): Promise<Response> {
-    const { data, assignments, fileExtrasByAssignmentId } = await loadTasksPageData(c, contactId as string, auth.orgId);
+    const { data, assignments, fileExtrasByAssignmentId, deliverableChoiceByAssignmentId } = await loadTasksPageData(
+      c,
+      contactId as string,
+      auth.orgId,
+    );
     const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
     if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
     return c.html(
@@ -603,6 +698,7 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
         csrfToken={csrfToken}
         formLinkFor={(a) => `/portal/tasks/${a.id}/form`}
         fileExtrasFor={(id) => fileExtrasByAssignmentId.get(id)}
+        deliverableChoiceFor={(id) => deliverableChoiceByAssignmentId.get(id)}
         errorFor={(id) => (id === assignmentId ? message : undefined)}
       />,
       400,
@@ -616,18 +712,24 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
   // DEC-240 (supersedes DEC-029's submission_id-null/'handout'-only rule),
   // amended by DEC-549: a task upload is a session deliverable ONLY when the
   // task opts in by declaring deliverable_kind. When scope.deliverableKind
-  // is set, behavior is exactly DEC-240's: kind = that value, and the
-  // upload links to the uploader's own submission in the task's event
-  // (resolveDeliverableSubmissionId), chaining previous_file_id on
-  // re-upload instead of minting an unlinked file each time. When it is
-  // null, the task is a plain 'handout' request with NO submission link —
-  // submissionId is null and resolveDeliverableSubmissionId is not called,
-  // so the file never joins a submission's deliverable-authz population.
+  // is set, kind = that value, and the upload links to a submission the
+  // uploader themself named — DEC-891 replaces the old deterministic
+  // lowest-seq tie-break with an explicit `submissionId` choice whenever the
+  // speaker has more than one eligible session (resolveChosenDeliverable
+  // 403s a foreign id, 400s a missing choice when one is required),
+  // chaining previous_file_id on re-upload instead of minting an unlinked
+  // file each time. When deliverable_kind is null, the task is a plain
+  // 'handout' request with NO submission link — submissionId is null and
+  // the candidate lookup never runs, so the file never joins a submission's
+  // deliverable-authz population.
   let kind: string;
   let submissionId: string | null;
   if (scope.deliverableKind != null) {
     kind = scope.deliverableKind;
-    submissionId = await resolveDeliverableSubmissionId(c.var.db, contactId, scope.eventId);
+    const rawChosen = body["submissionId"];
+    const chosenId = typeof rawChosen === "string" && rawChosen.length > 0 ? rawChosen : null;
+    const candidates = await listDeliverableCandidates(c.var.db, contactId, scope.eventId);
+    submissionId = resolveChosenDeliverable(candidates, chosenId);
   } else {
     kind = "handout";
     submissionId = null;

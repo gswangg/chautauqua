@@ -61,6 +61,7 @@ function taskFixture(overrides: Partial<PortalTaskAssignment>): PortalTaskAssign
   return {
     id: "assign-1",
     taskId: "task-1",
+    eventId: "evt-1",
     kind: "general",
     title: "Untitled task",
     description: null,
@@ -68,6 +69,7 @@ function taskFixture(overrides: Partial<PortalTaskAssignment>): PortalTaskAssign
     required: false,
     status: "pending",
     formId: null,
+    deliverableKind: null,
     fileId: null,
     responseJson: null,
     timezone: "UTC",
