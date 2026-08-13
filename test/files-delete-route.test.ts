@@ -24,6 +24,9 @@ const SCOPES: Record<string, FileDeleteScope> = {
     previousFileId: "old-file",
     uploadedByContactId: "contact-organizer-uploaded",
     contentStatus: "approved",
+    status: "pending",
+    formCloseDate: null,
+    timezone: "UTC",
     isLatestInChain: false,
   },
   // speaker's own latest version, submission still pending — deletable by them.
@@ -37,6 +40,9 @@ const SCOPES: Record<string, FileDeleteScope> = {
     previousFileId: "mid-file",
     uploadedByContactId: "contact-speaker",
     contentStatus: "pending",
+    status: "pending",
+    formCloseDate: null,
+    timezone: "UTC",
     isLatestInChain: true,
   },
   // same speaker's own version, but NOT the latest link in the chain.
@@ -50,6 +56,9 @@ const SCOPES: Record<string, FileDeleteScope> = {
     previousFileId: null,
     uploadedByContactId: "contact-speaker",
     contentStatus: "pending",
+    status: "pending",
+    formCloseDate: null,
+    timezone: "UTC",
     isLatestInChain: false,
   },
   // speaker's own latest version, but the submission has moved past pending.
@@ -63,6 +72,9 @@ const SCOPES: Record<string, FileDeleteScope> = {
     previousFileId: "old-file",
     uploadedByContactId: "contact-speaker",
     contentStatus: "approved",
+    status: "pending",
+    formCloseDate: null,
+    timezone: "UTC",
     isLatestInChain: true,
   },
 };

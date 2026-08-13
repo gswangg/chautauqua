@@ -102,17 +102,25 @@ async function authzSubmissionRead(c: Context<AppEnv>, submissionId: string) {
   throw new ApiError("forbidden", "Requires organizer or participant speaker");
 }
 
-/** authzSubmissionRead, plus the DEC-041 edit-lock: a speaker may only
- * write (upload/replace a deliverable) while canEditSubmission holds — the
- * same rule src/routes/portal/edit.tsx enforces for the portal's own
- * submission edits. Organizers are never locked. */
+/** DEC-041 edit-lock, in ONE place: throws when a speaker's submission-scoped
+ * write (upload, comment, or delete a version) falls outside the
+ * canEditSubmission window — the same rule src/routes/portal/edit.tsx
+ * enforces for the portal's own submission edits. This is the ONLY call site
+ * of canEditSubmission in this file; every speaker write path routes
+ * through it (wave-46 amendment: the DELETE path previously bypassed it). */
+function assertSpeakerSubmissionUnlocked(scope: { status: string; formCloseDate: number | null; timezone: string }): void {
+  if (!canEditSubmission(scope.status, scope.formCloseDate, Date.now(), scope.timezone)) {
+    throw new ApiError("forbidden", "This submission can no longer be edited");
+  }
+}
+
+/** authzSubmissionRead, plus the DEC-041 edit-lock. Organizers are never
+ * locked. */
 async function authzSubmissionWrite(c: Context<AppEnv>, submissionId: string) {
   const result = await authzSubmissionRead(c, submissionId);
   const { auth, scope } = result;
   if (auth.role === "speaker") {
-    if (!canEditSubmission(scope.status, scope.formCloseDate, Date.now(), scope.timezone)) {
-      throw new ApiError("forbidden", "This submission can no longer be edited");
-    }
+    assertSpeakerSubmissionUnlocked(scope);
   }
   return result;
 }
@@ -400,9 +408,7 @@ async function authzFileWrite(c: Context<AppEnv>, fileId: string) {
     if (!scope.submissionId) throw new ApiError("forbidden", "Not authorized for this file");
     const subScope = await getSubmissionScope(c.var.db, scope.submissionId);
     if (!subScope) throw new ApiError("not_found", "Submission not found");
-    if (!canEditSubmission(subScope.status, subScope.formCloseDate, Date.now(), subScope.timezone)) {
-      throw new ApiError("forbidden", "This submission can no longer be edited");
-    }
+    assertSpeakerSubmissionUnlocked(subScope);
   }
   return result;
 }
@@ -463,6 +469,13 @@ fileApiRoutes.delete("/files/:fileId", csrfJson, async (c) => {
     if (scope.contentStatus !== PENDING_CONTENT_STATUS) {
       throw new ApiError("forbidden", "A version may only be deleted while the submission's content status is pending");
     }
+    // DEC-041 (wave-46 amendment): deleting the latest version is a
+    // destructive submission-write like upload/comment — it must be equally
+    // locked past the form close date.
+    if (scope.status === null || scope.timezone === null) {
+      throw new ApiError("not_found", "Submission not found");
+    }
+    assertSpeakerSubmissionUnlocked({ status: scope.status, formCloseDate: scope.formCloseDate, timezone: scope.timezone });
   } else {
     throw new ApiError("forbidden", "Requires organizer or the uploading speaker");
   }
