@@ -30,6 +30,30 @@ live at gate-3 (closed-plan queue returns 200 with `recused` present; no lockout
 Residue (small, filed under Review): shell still fires one non-fatal 403 organizer
 overview fetch right after reviewer login — make the shell skip it for reviewers.
 
+## SBEK RUN 3 (2026-08-13, prod, gate-3 SHA): 87.4% — DOWN from 91.5%. ROOT CAUSE IS CONFIG, NOT UI.
+
+Areas: CFP 90.7@71c · ABS 91.7@86c · SPK 88.3@91c · CNT 72.0@81c · AIA 86.1@100c · EMB 91.4@100c · CRM 94.4@95c. 10 of 19 scenarios died at the 70-turn cap (many burned turns retrying 500s below). Full report: killmysaas-evals/runs/2026-08-13T16-55-22/.
+
+**P0 · EVERY send path on prod returns 500 — makeMailer throws on missing RESEND_API_KEY.** DEC-996 switched prod mail to Resend; prod has no RESEND_API_KEY secret (verified: `wrangler secret list` shows only Airtable). `makeMailer` (context.ts, DEC-547) throws per-request → 500 on: public CFP submit (proposal persists, then confirmation dispatch throws — submitter sees "Internal server error"!), decision notifications, bulk email, single+bulk reminders, remind-laggards, organizer note replies ("Send note only"/"Ask for changes"). Sbek filed 5 criticals across 4 areas on this one cause. FIX SHAPE (respecting fail-loudly): mail dispatch is an external-IO boundary — catch at the send boundary, record per-recipient status "failed" with the reason ("mail provider not configured"), surface an honest banner ("N failed — mail provider not configured"), and NEVER fail the enclosing request after its own mutation persisted (CFP submit returns its confirmation regardless of email fate). Missing-config stays loud via a startup/health surface (Settings "Email" row shows NOT CONFIGURED), not via 500s on user actions. Keep DevSinkMailer behavior for dev. NOTE: actually delivering real mail needs the user to mint a Resend key + verify the chautauqua.cc domain — USER DECISION, filed separately; the code fix restores honest non-500 behavior without it.
+
+**P0 · Per-round anonymization configured but NOT ENFORCED** (sbek critical, ABS): with "Anonymize speaker identity for reviewers" checked on the plan, reviewer surfaces still expose the speaker identity. Enforce in the reviewer read model (single reader), test both states.
+
+**P0 · "Replace file" DESTROYS the previous version** (sbek critical, CNT): version history shows a single v1 after replace instead of v1+v2; comments attached to the file are silently lost. Versions are append-only; replace = new version row; comments ride the deliverable, not the blob. This also blocks the frame's "3 versions" chip and the RE-UPLOADED demo.
+
+**P1 · Comms History "0 total" while Recent sends shows 4** (two-reader class, filed by sbek in TWO areas): History tab reader and compose Recent-sends reader disagree over the same log. Single reader rule.
+
+**P1 · Conditional field logic not applied on the public form** (CFP): "Show when Format eq Workshop" saves and displays in the builder but the public form always shows the field.
+
+**P1 · Conflict engine gaps** (AIA): speaker double-booking flagged on one pair but MISSED on another same-slot different-room pair (SES-033/SES-003 vs SES-031); co-presenters (Participants) invisible to both agenda card display and the conflict engine; conflict label attaches to only one of the two clashing cards.
+
+**P1 · "Remind laggards (N)" 500** — same mailer P0; verify it heals with the boundary fix. **"Submission (removed)"** label renders for a live assignment on the who-reviews-what list.
+
+**P2 · duplicate-contact hygiene** (SPK+CRM): manual Add-speaker doesn't match existing email → three Priya Raman rows; CSV import creates a synthetic "Imported speaker batch talk" accepted session per row (pollutes submissions/agenda); returning-speakers KPI reads 0 until a re-import; "already on this event" dialog's only affirmative silently adds a second session.
+
+**P2 · misc from run 3:** SBEK-PORTAL-BIO-01 fixture string visible on the public speaker detail (seed hygiene); embed accent-color option appears to not re-theme the rendered embed; picks-only itinerary renders empty time-group headers; search + day-pill combine silently to "No sessions"; blank-render flash on Contacts/Speakers pages needs a loading state; CFP required-field errors rely on native tooltips only, "Key takeaway" required (check seed intent); portal task "Finalize bio + headshot" is actually a session-file upload widget (semantics mismatch).
+
+**TURN-DIET note:** 10/19 truncations, but read them with the mailer P0 in mind — CFP-S1 spent 4 attempts on a 500ing send, CNT-S2/S3 retried 500ing reminders/replies. Fix the P0, then judge turn-diet fresh at gate 4. CNT-S3 truncated at gate-2 too and remains the structural turn-diet target (content-detail navigation tax — the gate-3 content reds are the cure).
+
 ## GATE-3 FLEET VERDICTS (all 6 pair reports landed, audited vs design-frames-v6 on snapshot 9b78f61e)
 
 ALL 11 SECTIONS FAIL.
