@@ -14,14 +14,17 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
-import { buildSnippet, describeEmbedRecipe, EMBED_SURFACES, type EmbedFormat, type EmbedSurface } from './embedSnippet';
+import { buildSnippet, EMBED_SURFACES, type EmbedFormat, type EmbedOptions, type EmbedSurface } from './embedSnippet';
+import { formatEmbedRecipe } from './embedRecipe';
 
+// DEC-839: the wire contract — `options` is the PARSED object a saved-embed
+// row carries over the wire, never the stored JSON string.
 interface SavedEmbed {
   id: string;
   name: string;
   surface: string;
   format: string;
-  optionsJson: string;
+  options: EmbedOptions;
   enabled: boolean;
 }
 
@@ -90,10 +93,15 @@ export function SavedEmbedsPanel() {
 
   if (!eventId) return null;
 
+  const onCount = embeds?.filter((e) => e.enabled).length ?? 0;
+  const offCount = embeds?.filter((e) => !e.enabled).length ?? 0;
+
   return (
     <section className="chq-settings-panel" aria-label="Saved embeds">
       <h2>Saved embeds</h2>
-      <p className="chq-settings-note">Turning one off breaks it wherever it is pasted</p>
+      {embeds && embeds.length > 0 ? (
+        <p className="chq-settings-count">{`${onCount} on · ${offCount} off`}</p>
+      ) : null}
       {error ? <p role="alert">{error}</p> : null}
 
       {embeds === null ? (
@@ -105,11 +113,17 @@ export function SavedEmbedsPanel() {
           {embeds.map((embed) => {
             const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/embed/e/${embed.id}`;
             const snippet = buildSnippet(url, embed.surface as EmbedSurface, embed.format as EmbedFormat);
-            // DEC-822: the row states the recipe it stores, not just its
-            // name — derived from the SAME stored surface/format/options a
-            // Save would have written, so it can never drift from what the
-            // embed actually renders.
-            const recipe = describeEmbedRecipe(embed.surface, embed.format, embed.optionsJson, trackNameById);
+            // DEC-822/DEC-839: the row states the recipe it stores, not just
+            // its name — derived from the SAME stored surface/format/options
+            // a Save would have written, through the ONE shared formatter
+            // (formatEmbedRecipe) so it can never drift from what the
+            // editor heading states for the same embed.
+            const recipe = formatEmbedRecipe({
+              surface: embed.surface,
+              format: embed.format,
+              options: embed.options,
+              trackName: embed.options.trackId ? (trackNameById[embed.options.trackId] ?? null) : null,
+            });
             return (
               <li key={embed.id} className="chq-settings-public-pages-row">
                 <span className="chq-settings-public-pages-name">{embed.name}</span>
@@ -120,7 +134,7 @@ export function SavedEmbedsPanel() {
                     embed.enabled ? 'live' : 'muted'
                   }`}
                 >
-                  {embed.enabled ? 'Live' : 'Disabled'}
+                  {embed.enabled ? 'On' : 'Off'}
                 </span>
                 <Link className="chq-link-button" to={editHref(embed.id)}>
                   Edit
@@ -133,7 +147,7 @@ export function SavedEmbedsPanel() {
                   Get code
                 </button>
                 <button type="button" className="chq-link-button" onClick={() => void handleToggle(embed)}>
-                  {embed.enabled ? 'Disable' : 'Enable'}
+                  {embed.enabled ? 'Turn off' : 'Turn on'}
                 </button>
                 {codeOpenId === embed.id ? <code>{snippet}</code> : null}
               </li>
@@ -168,6 +182,8 @@ export function SavedEmbedsPanel() {
           Save embed
         </button>
       </form>
+
+      <p className="chq-settings-note">Turning one off breaks it wherever it is pasted</p>
     </section>
   );
 }
