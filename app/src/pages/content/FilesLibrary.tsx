@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { apiGet, apiPostBlob, ApiError } from '../../lib/api';
+import { apiGet, ApiError } from '../../lib/api';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import {
   LIBRARY_KINDS,
@@ -22,16 +22,17 @@ interface FilesLibraryProps {
 }
 
 const PER_PAGE = 50;
-// DEC-160/182's bulk-archive bound — the SPA must never let a selection
-// grow past what POST /events/:eventId/files/archive will accept.
-const MAX_ARCHIVE_FILES = 50;
 
 /** DEC-773: the files library is ONE list — deliverable version chains AND
  * speaker headshots (kind='headshot'), server-paginated and server-filtered
- * (kind + search), with multi-select bulk ZIP download and a per-row
- * Download link. Row click drills into the same DeliverableDetail used by
- * the worklist for a deliverable row; a headshot row has no submission to
- * drill into.
+ * (kind + search), with a per-row Download link. Row click drills into the
+ * same DeliverableDetail used by the worklist for a deliverable row; a
+ * headshot row has no submission to drill into.
+ *
+ * Amendment (wave 41): five columns — FILE / SESSION / VERSION / SIZE /
+ * Download. There is no selection column and no bulk ZIP control here — the
+ * archive endpoint (POST /events/:eventId/files/archive) keeps exactly one
+ * caller, the deliverable detail's own 'Download all' (DEC-901 amendment).
  *
  * DEC-902: the kind-chip counts and the total/size stat all come from the
  * SAME GET /events/:eventId/files response the table itself renders from —
@@ -47,15 +48,9 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
   const [page, setPage] = useState(1);
   const [kind, setKind] = useState<LibraryKind | ''>('');
   const [q, setQ] = useState('');
-  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [downloading, setDownloading] = useState(false);
-  // CNT-D5: the ZIP download fires a native <a download> click with no
-  // other page feedback — this live region is the only in-page signal that
-  // the request started, finished, or failed.
-  const [downloadStatus, setDownloadStatus] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -71,7 +66,6 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
         setTotal(res.total);
         setTotalSizeBytes(res.totalSizeBytes);
         setKindCounts(res.kindCounts);
-        setSelected(new Set());
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load files'))
       .finally(() => {
@@ -84,103 +78,19 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
     load();
   }, [load]);
 
-  function toggle(rootFileId: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(rootFileId)) next.delete(rootFileId);
-      else next.add(rootFileId);
-      return next;
-    });
-  }
-
-  // Select-all only ever selects the current page's rows — the library is
-  // server-paginated (DEC-344), there's no "select every matching file
-  // across the event" affordance.
-  function toggleAll() {
-    setSelected((prev) => (prev.size === items.length ? new Set() : new Set(items.map((i) => i.rootFileId))));
-  }
-
-  const overArchiveLimit = selected.size > MAX_ARCHIVE_FILES;
-
-  // Shared with downloadAll below — the archive endpoint (test/zip.test.ts,
-  // POST /events/:eventId/files/archive) is the ONE zip path; a 'Download
-  // all' affordance that didn't call it would be decorative.
-  async function runArchiveDownload(fileIds: string[]) {
-    setError(null);
-    // CNT-14/CNT-D5: the disabled button alone is not feedback — the
-    // live region must confirm generation is in flight before the
-    // native <a download> click ever fires.
-    setDownloadStatus('Preparing ZIP…');
-    setDownloading(true);
-    try {
-      const fileCount = fileIds.length;
-      const { blob, filename } = await apiPostBlob(`/events/${eventId}/files/archive`, { fileIds });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      const fileWord = fileCount === 1 ? 'file' : 'files';
-      setDownloadStatus(`${filename}: ${fileCount} ${fileWord}, ${formatBytes(blob.size)} downloaded.`);
-    } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Download failed';
-      setError(err instanceof ApiError ? `Download failed: ${err.message}` : 'Download failed');
-      setDownloadStatus(message);
-    } finally {
-      setDownloading(false);
-    }
-  }
-
-  async function downloadZip() {
-    if (overArchiveLimit) return;
-    // Latest-version ids: resolveLatestVersions accepts any chain-member
-    // id (deliverable or headshot), but the library always surfaces
-    // latestFileId per DEC-159/773.
-    const fileIds = items.filter((i) => selected.has(i.rootFileId)).map((i) => i.latestFileId);
-    await runArchiveDownload(fileIds);
-  }
-
-  // w1-f: 'Download all' — every file matching the CURRENT kind/search
-  // filters (never just the loaded page), bounded by the same
-  // MAX_ARCHIVE_FILES the row-selection ZIP already enforces. When the
-  // match count exceeds the cap it refuses with the same loud message
-  // rather than silently truncating.
-  async function downloadAll() {
-    setError(null);
-    setDownloadStatus('Preparing ZIP…');
-    setDownloading(true);
-    try {
-      const params = new URLSearchParams();
-      params.set('page', '1');
-      params.set('perPage', String(MAX_ARCHIVE_FILES));
-      if (kind) params.set('kind', kind);
-      if (q.trim() !== '') params.set('q', q.trim());
-      const res = await apiGet<EventFilesEnvelope>(`/events/${eventId}/files?${params.toString()}`);
-      if (res.total > MAX_ARCHIVE_FILES) {
-        const message = `This view has ${res.total} files; Download all is limited to ${MAX_ARCHIVE_FILES}. Narrow the search or type filter, or select files individually.`;
-        setError(message);
-        setDownloadStatus(message);
-        setDownloading(false);
-        return;
-      }
-      const fileIds = res.items.map((i) => i.latestFileId);
-      await runArchiveDownload(fileIds);
-    } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Download failed';
-      setError(err instanceof ApiError ? `Download failed: ${err.message}` : 'Download failed');
-      setDownloadStatus(message);
-      setDownloading(false);
-    }
-  }
-
   // DEC-773: a headshot file is served through /headshots/:fileId (the
   // gated route profile.tsx mounts), never /files/:fileId — the two
   // populations are structurally disjoint (submission_id null vs. not).
   function downloadHref(item: EventFileChainItem): string {
     return item.kind === HEADSHOT_KIND ? `/headshots/${item.latestFileId}` : `/files/${item.latestFileId}`;
+  }
+
+  // Amendment (wave 41): uploader + upload date fold into the FILE cell's
+  // subline instead of their own column — em dash when the uploader is
+  // unknown so the row never reads as blank.
+  function whoLine(item: EventFileChainItem): string {
+    const who = item.uploaderName ?? '—';
+    return `${who} · ${formatDateTime(item.uploadedAt)}`;
   }
 
   return (
@@ -205,15 +115,6 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
           <span className="chq-summary">
             {`${total} ${total === 1 ? 'file' : 'files'} · ${formatBytes(totalSizeBytes)}`}
           </span>
-          <button
-            type="button"
-            className="chq-btn chq-btn-secondary"
-            disabled={downloading || total === 0}
-            aria-busy={downloading}
-            onClick={downloadAll}
-          >
-            Download all
-          </button>
         </div>
       </div>
 
@@ -262,57 +163,29 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
             </button>
           ))}
         </div>
-        <button
-          type="button"
-          className="chq-btn chq-btn-primary"
-          disabled={selected.size === 0 || overArchiveLimit || downloading}
-          aria-busy={downloading}
-          onClick={downloadZip}
-        >
-          {downloading ? 'Downloading…' : `Download ZIP (${selected.size})`}
-        </button>
-        {overArchiveLimit && (
-          <span className="chq-error chq-content-archive-limit" role="alert">
-            Select at most {MAX_ARCHIVE_FILES} files to download as a ZIP.
-          </span>
-        )}
-        <span className="chq-content-download-status" role="status">
-          {downloadStatus}
-        </span>
       </div>
 
       <table className="chq-table chq-content-table chq-content-files-table">
         <thead>
           <tr>
-            <th>
-              <input
-                type="checkbox"
-                className="chq-check"
-                aria-label="Select all files on this page"
-                checked={items.length > 0 && selected.size === items.length}
-                onChange={toggleAll}
-              />
-            </th>
             <th>File</th>
-            <th>Kind</th>
             <th>Session</th>
             <th className="chq-content-files-col-version">Version</th>
             <th className="chq-content-files-col-size">Size</th>
-            <th>Uploaded</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           {loading && (
             <tr>
-              <td colSpan={8}>
+              <td colSpan={5}>
                 <DelayedLoading />
               </td>
             </tr>
           )}
           {loaded && !loading && items.length === 0 && (
             <tr>
-              <td colSpan={8} className="chq-empty">
+              <td colSpan={5} className="chq-empty">
                 No deliverable files yet.
               </td>
             </tr>
@@ -320,15 +193,6 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
           {!loading &&
             items.map((item) => (
               <tr key={item.rootFileId} className="chq-content-row">
-                <td onClick={(e) => e.stopPropagation()}>
-                  <input
-                    type="checkbox"
-                    className="chq-check"
-                    aria-label={`Select ${item.filename}`}
-                    checked={selected.has(item.rootFileId)}
-                    onChange={() => toggle(item.rootFileId)}
-                  />
-                </td>
                 <td className="chq-content-row-title">
                   <div className="chq-content-file-cell">
                     {item.submissionId ? (
@@ -343,10 +207,9 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
                     ) : (
                       <span>{item.filename}</span>
                     )}
-                    <span className="chq-meta chq-content-file-who">{item.uploaderName ?? ''}</span>
+                    <span className="chq-meta chq-content-file-who">{whoLine(item)}</span>
                   </div>
                 </td>
-                <td>{LIBRARY_KIND_LABELS[item.kind]}</td>
                 <td>
                   {item.submissionId ? (
                     <button
@@ -365,7 +228,6 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
                 </td>
                 <td className="chq-content-files-col-version">v{item.versionNo}</td>
                 <td className="chq-meta chq-content-files-col-size">{formatBytes(item.sizeBytes)}</td>
-                <td className="chq-meta">{formatDateTime(item.uploadedAt)}</td>
                 <td onClick={(e) => e.stopPropagation()}>
                   <a
                     className="chq-link-button"
