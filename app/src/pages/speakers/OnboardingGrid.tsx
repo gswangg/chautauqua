@@ -549,16 +549,16 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                             >
                               {cell.status === 'complete' ? 'Complete' : overdueTitleText ? OVERDUE_LABEL : 'Pending'}
                             </button>
-                            {cell.fileId && (
+                            {cell.fileId && cell.fileName && (
                               <a
                                 href={`/files/${cell.fileId}`}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="chq-speakers-file-link"
-                                aria-label="Has file"
-                                title="Has file"
+                                aria-label={`Download ${cell.fileName}`}
+                                title={cell.fileName}
                               >
-                                File
+                                {cell.fileName}
                               </a>
                             )}
                             {task.kind === 'form' && cell.status === 'complete' && (
@@ -645,16 +645,16 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                           >
                             {cell.status === 'complete' ? 'Complete' : overdueTitleText ? OVERDUE_LABEL : 'Pending'}
                           </button>
-                          {cell.fileId && (
+                          {cell.fileId && cell.fileName && (
                             <a
                               href={`/files/${cell.fileId}`}
                               target="_blank"
                               rel="noreferrer"
                               className="chq-speakers-file-link"
-                              aria-label="Has file"
-                              title="Has file"
+                              aria-label={`Download ${cell.fileName}`}
+                              title={cell.fileName}
                             >
-                              File
+                              {cell.fileName}
                             </a>
                           )}
                           {task.kind === 'form' && cell.status === 'complete' && (

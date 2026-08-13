@@ -24,6 +24,11 @@ export interface OnboardingCell {
   status: AssignmentStatus;
   completedAt: number | null;
   fileId: string | null;
+  // DEC-920: the file's name/size, joined server-side (src/server/repo/tasks
+  // /grid.ts) so the roster's file link can name the file rather than say
+  // "File". Both null exactly when fileId is null.
+  fileName: string | null;
+  fileSizeBytes: number | null;
   lastRemindedAt: number | null;
   // DEC-801: the moment this assignment was created -- fed through
   // effectiveAssignmentDueDate (../../../../src/domain/task-due.ts) so a

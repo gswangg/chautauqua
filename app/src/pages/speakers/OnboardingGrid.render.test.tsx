@@ -21,8 +21,8 @@ const GRID: OnboardingGridResponse = {
     {
       contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true , participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
       cells: [
-        { taskId: 'task-1', assignmentId: 'as1', status: 'complete', completedAt: 1700000000000, fileId: null, lastRemindedAt: null, assignedAt: 0 },
-        { taskId: 'task-2', assignmentId: 'as2', status: 'complete', completedAt: 1700000000000, fileId: null, lastRemindedAt: null, assignedAt: 0 },
+        { taskId: 'task-1', assignmentId: 'as1', status: 'complete', completedAt: 1700000000000, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 },
+        { taskId: 'task-2', assignmentId: 'as2', status: 'complete', completedAt: 1700000000000, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 },
       ],
     },
     {
@@ -30,8 +30,8 @@ const GRID: OnboardingGridResponse = {
       // "Response" only appears once the cell is complete.
       contact: { id: 'ct2', name: 'Grace Hopper', email: 'grace@example.com', company: 'Navy', hasAccount: false , participantId: 'p-ct2', submissionId: 'sub-ct2', inviteStatus: 'accepted' },
       cells: [
-        { taskId: 'task-1', assignmentId: 'as3', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt: 0 },
-        { taskId: 'task-2', assignmentId: 'as4', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt: 0 },
+        { taskId: 'task-1', assignmentId: 'as3', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 },
+        { taskId: 'task-2', assignmentId: 'as4', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 },
       ],
     },
   ],
@@ -80,11 +80,11 @@ describe('OnboardingGrid: DEC-730 one status-control family', () => {
       rows: [
         {
           contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true , participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
-          cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'complete', completedAt: now, fileId: null, lastRemindedAt: null, assignedAt: 0 }],
+          cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'complete', completedAt: now, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 }],
         },
         {
           contact: { id: 'ct2', name: 'Grace Hopper', email: 'grace@example.com', company: 'Navy', hasAccount: false , participantId: 'p-ct2', submissionId: 'sub-ct2', inviteStatus: 'accepted' },
-          cells: [{ taskId: 'task-1', assignmentId: 'as2', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt: 0 }],
+          cells: [{ taskId: 'task-1', assignmentId: 'as2', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 }],
         },
       ],
       total: 2,
@@ -359,7 +359,7 @@ describe('OnboardingGrid: DEC-852 due-date visibility', () => {
       rows: [
         {
           contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true, participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
-          cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt: now - 86_400_000 }],
+          cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: now - 86_400_000 }],
         },
       ],
       total: 1,
@@ -393,7 +393,7 @@ describe('OnboardingGrid: DEC-852 due-date visibility', () => {
       rows: [
         {
           contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true, participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
-          cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt }],
+          cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt }],
         },
       ],
       total: 1,
@@ -436,8 +436,8 @@ describe('OnboardingGrid: DEC-852 due-date visibility', () => {
         {
           contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true, participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
           cells: [
-            { taskId: 'task-far', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt: now },
-            { taskId: 'task-near', assignmentId: 'as2', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt: now },
+            { taskId: 'task-far', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: now },
+            { taskId: 'task-near', assignmentId: 'as2', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: now },
           ],
         },
       ],
@@ -555,5 +555,60 @@ describe('OnboardingGrid: DEC-830 participation menu', () => {
       expect(url.searchParams.get('overdueOnly')).toBe('1');
       expect(url.searchParams.get('inviteStatus')).toBe('accepted');
     });
+  });
+});
+
+// DEC-920: the roster's file link names the file (was the literal text
+// "File" with a generic "Has file" label) -- a cell with an uploaded
+// deliverable now reads its accessible name off the filename the server
+// joined in (src/server/repo/tasks/grid.ts), never a fixed placeholder.
+describe('OnboardingGrid: DEC-920 file link names the file', () => {
+  it("renders the cell's file link with the filename as its accessible name and title, not 'Has file'", async () => {
+    const fileGrid: OnboardingGridResponse = {
+      tasks: [{ id: 'task-1', kind: 'file_request', title: 'Upload headshot', dueDate: null, required: true }],
+      rows: [
+        {
+          contact: { id: 'ct1', name: 'Ada Lovelace', email: 'ada@example.com', company: 'Acme', hasAccount: true, participantId: 'p-ct1', submissionId: 'sub-ct1', inviteStatus: 'accepted' },
+          cells: [
+            {
+              taskId: 'task-1',
+              assignmentId: 'as1',
+              status: 'complete',
+              completedAt: 1700000000000,
+              fileId: 'file-1',
+              fileName: 'ada-headshot-final-v2.jpg',
+              fileSizeBytes: 204800,
+              lastRemindedAt: null,
+              assignedAt: 0,
+            },
+          ],
+        },
+      ],
+      total: 1,
+      page: 1,
+      perPage: 50,
+      counts: { speakers: 1, outstandingRequired: 0, overdue: 0, outstandingContacts: 0 },
+    };
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: fileGrid,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Ada Lovelace').length).toBeGreaterThan(0);
+    });
+
+    const links = screen.getAllByRole('link', { name: 'Download ada-headshot-final-v2.jpg' });
+    expect(links.length).toBeGreaterThan(0);
+    for (const link of links) {
+      expect(link).toHaveAttribute('title', 'ada-headshot-final-v2.jpg');
+      expect(link).toHaveAttribute('href', '/files/file-1');
+      expect(link).toHaveTextContent('ada-headshot-final-v2.jpg');
+    }
+    expect(screen.queryByText('Has file')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Has file' })).not.toBeInTheDocument();
   });
 });

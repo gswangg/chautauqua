@@ -338,6 +338,17 @@
   font-weight: 700;
 }
 
+/* DEC-920: the file link now names the file (was a fixed "File" label) — a
+   long filename must not widen the 27px-tall cell or wrap the row. */
+.chq-speakers-file-link {
+  display: inline-block;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
 /* Mobile: matrix becomes one card per speaker (DEC-367 390px reference). */
 .chq-speakers-cards {
   display: none;

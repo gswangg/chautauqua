@@ -106,6 +106,19 @@ create table task_assignment (
   updated_at integer,
   unique (task_id, contact_id)
 );
+create table file (
+  id text primary key,
+  submission_id text,
+  kind text,
+  filename text,
+  r2_key text,
+  size_bytes integer,
+  content_type text,
+  previous_file_id text,
+  version_no integer,
+  uploaded_by_contact_id text,
+  created_at integer
+);
 `;
 
 function makeTestDb(): { db: Db; sqlite: DatabaseSync } {

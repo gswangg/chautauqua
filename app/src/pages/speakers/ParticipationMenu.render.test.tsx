@@ -30,7 +30,7 @@ function gridWith(inviteStatus: InviteStatus): OnboardingGridResponse {
           submissionId: 'sub-ct1',
           inviteStatus,
         },
-        cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, lastRemindedAt: null, assignedAt: 0 }],
+        cells: [{ taskId: 'task-1', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 }],
       },
     ],
     total: 1,
