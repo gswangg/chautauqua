@@ -42,14 +42,19 @@ A. **Page-measure audit, all admin routes**: submission detail, session detail, 
 B. **customFields/Labels UI surface** (blocks Contacts): no column/drawer-row/merge-row
    exists anywhere. Build the surface, then Contacts items below unblock.
 C. **Verify-then-close list** (commits claim these landed — external probe confirms,
-   then delete the line): Comms Body-width + URL-state tabs (DEC-710) · content file
-   version delete (DEC-713) · Contacts DirectoryRail two-column (DEC-710/711) ·
-   data-loss trio (comment-loss across versions, headshot-upload-discards-bio, CSV
-   bio overwrite) · stale nav badges (refetch on route change/mutation).
+   then delete the line): Contacts DirectoryRail two-column (DEC-710/711) ·
+   data-loss trio REMAINDER (headshot-upload-discards-bio, CSV bio overwrite) ·
+   stale nav badges (refetch on route change/mutation).
    CLOSED by probe 2026-08-13 (snapshot e254eca): form-builder row anatomy DEC-715
    (all 7 sub-points verified in DOM) · Review landing grammar DEC-706/707/708
    (5 of 7 sub-points; residue moved to Review section) · assign-by-track
-   preview/confirm (inline preview panel, zero non-GET requests before confirm).
+   preview/confirm (zero non-GET before confirm) · Comms Body-width + URL-state tabs
+   DEC-710 (Subject=Body=1372px; ?tab= survives reload + direct nav) · History count
+   ("3 total" matches rows) · content file-version delete DEC-713 (DELETE 200,
+   survives reload, audit comment) · comment-loss across versions (persists through
+   upload/delete/reload — NEW small item: comment version TAGS renumber after a
+   version delete; store-vs-display drift, no content loss) · content file-input
+   styling (.chq-file styles verified applied).
 
 ## Per-surface open items (desktop)
 
@@ -102,21 +107,24 @@ modal: Kind = Upload/Form/Acknowledge, drop Description + assign-all, styled dat
 remove desktop Import CSV button · headers "DUE 10 APR · REQUIRED".
 
 **Content**: session detail rebuild — shared version list + ONE scoped note thread,
-"Send note only", Download all · "Unknown (unknown)" uploader (SES-001 v2) · port
-styled file inputs (chq-file class present, styles absent here) · library: count/size
+"Send note only", Download all · "Unknown (unknown)" is the COMMENT AUTHOR on speaker
+replies (authorName/authorRole "unknown" — attribution bug in comment write path;
+version-uploader attribution is correct) · comment version tags renumber after a
+version delete (display should keep original version refs) · library: count/size
 stat, pill chips not select, Download all, drop Deliverables/Headshots tabs · hide
 Approve on approved rows · worklist header "N need a decision · M re-uploaded" + mock
-pill names · relative dates in LATEST FILE.
+pill chips WITH counts (now "30 submissions · All view", chips uncounted) · relative
+dates in LATEST FILE · SEED: worklist too sparse (28/30 rows "No files yet").
 
 **Agenda (desktop)**: conflict cell — content hidden behind inner scroll; size to
 content or designed reveal; decide lane-split vs mock full-width card in a DEC · TBD
 column conditional + "No room yet" · focus → Cancel/first cell on placing entry ·
 verify a 3rd-placement round-trip persists.
 
-**Comms**: (verify DEC-710 first) per-recipient SCHEDULED/NO-SLOT tags + "N have no
-slot" advisory in Preview · persistent Recent sends under Compose · bordered "See the
-recipients" CTA on batch rows · prod History "0 total" count bug · SEED: one ~23-
-recipient batch + 4 more templates.
+**Comms** (DEC-710 + history count CLOSED by probe): per-recipient SCHEDULED/NO-SLOT
+tags + "N have no slot" advisory in Preview · persistent Recent sends under Compose
+(STILL-OPEN — exists only inside History tab) · bordered "See the recipients" CTA on
+batch rows · SEED: one ~23-recipient batch + 4 more templates.
 
 **Contacts** (after sweep B): verify DirectoryRail two-column, then complete: LABELS
 column + drawer row + merge rows; tab chips w/ counts; search + Segment on tab row;
