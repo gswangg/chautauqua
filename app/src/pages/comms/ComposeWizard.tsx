@@ -174,6 +174,15 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     return base;
   }
 
+  // DEC-955: names a rejected submission by its talk ref + name, resolved
+  // through the already-loaded preview rather than the raw id -- a 409/400
+  // that counts rows still refuses to name them otherwise. Falls back to
+  // the raw id only when the row isn't in the (possibly stale) preview.
+  function icsUnscheduledLabel(submissionId: string, rows: RenderedRecipient[]): string {
+    const row = rows.find((r) => r.submissionId === submissionId);
+    return row ? `${row.ref} — ${row.name}` : submissionId;
+  }
+
   // DEC-051: pulls the { <submissionId>: 'not scheduled' } field errors out
   // of an ApiError so they can be listed next to the toggle, verbatim —
   // no client-side guessing at which submissions are unscheduled.
@@ -356,7 +365,12 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
 
   const currentIndex = STEP_ORDER.indexOf(step);
 
-  const noSlotCount = preview.filter((r) => !r.ics).length;
+  // DEC-954: `ics` is only populated when the server actually ran the ICS
+  // preflight for THIS preview call -- after a rejected attachIcs toggle the
+  // stale preview would report every row as slotless even though every row
+  // prints 'Scheduled'. `scheduled` is rendered unconditionally (DEC-912),
+  // so it's the truthful predicate for this caption too.
+  const noSlotCount = preview.filter((r) => !r.scheduled).length;
   const overflowCount = Math.max(0, preview.length - RECIPIENT_PREVIEW_ROWS);
   const previewClamped = preview.length === 0 ? 0 : Math.min(previewIndex, preview.length - 1);
   const currentPreview = preview[previewClamped];
@@ -544,7 +558,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             />
           </FormRow>
           <div className="chq-comms-merge-chips chq-comms-template-body-merge-chips">
-            {COMPOSE_MERGE_FIELDS.map((field) => (
+            {COMPOSE_MERGE_FIELDS.filter((field) => field !== 'feedback' || plans.length > 0).map((field) => (
               <button key={field} type="button" className="chq-pill" onClick={() => insertMergeField(field)}>
                 {`{${field}}`}
               </button>
@@ -553,6 +567,31 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
           <p className="chq-comms-panel-note">
             Merge fields fill in per recipient &mdash; shown resolved in Preview.
           </p>
+          {/* DEC-955: {feedback} needs a plan named before composeBody() can
+              carry includeFeedback -- reveal the plan picker right where the
+              chip was inserted rather than letting the preview 400 for a
+              missing field the organizer had no way to fix here. */}
+          {bodyText.includes('{feedback}') && !includeFeedback && (
+            <label className="chq-comms-template-label">
+              {'{feedback}'} needs a plan
+              <select
+                className="chq-select"
+                value={feedbackPlanId}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setFeedbackPlanId(next);
+                  setIncludeFeedback(true);
+                }}
+              >
+                <option value="">Choose a plan&hellip;</option>
+                {plans.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
           <div className="chq-comms-template-actions">
             <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setStep('select')}>
@@ -653,14 +692,15 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                 />
                 Attach calendar invite
               </label>
-              {attachIcs && preview.length > 0 && (
+              {attachIcs && noSlotCount > 0 && (
                 <span className="chq-comms-panel-note">
                   {noSlotCount} of {preview.length} have no slot yet &mdash; those get no invite
                 </span>
               )}
               {icsUnscheduledIds && (
                 <div className="chq-error-banner" role="alert">
-                  Send blocked: these submissions aren&apos;t scheduled yet: {icsUnscheduledIds.join(', ')}. Schedule
+                  Send blocked: these submissions aren&apos;t scheduled yet:{' '}
+                  {icsUnscheduledIds.map((id) => icsUnscheduledLabel(id, preview)).join(', ')}. Schedule
                   them first, or uncheck &quot;Attach calendar invite&quot;.
                 </div>
               )}
@@ -691,7 +731,12 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             </div>
             <PreviewPane item={currentPreview} attachIcs={attachIcs} />
             <div className="chq-comms-preview-actions">
-              <button type="button" className="chq-btn chq-btn-primary" disabled={busy} onClick={send}>
+              <button
+                type="button"
+                className="chq-btn chq-btn-primary"
+                disabled={busy || icsUnscheduledIds !== null}
+                onClick={send}
+              >
                 Send {preview.length} email{preview.length === 1 ? '' : 's'}
               </button>
               <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setStep('template')}>

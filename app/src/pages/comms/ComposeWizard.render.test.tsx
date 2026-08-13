@@ -650,3 +650,171 @@ describe('ComposeWizard recipient rows name the talk and state the slot (DEC-912
     expect(screen.getByText(/100 is at the 100-recipient cap/)).toBeInTheDocument();
   });
 });
+
+// w27-d: DEC-954 -- the no-slot caption reads `scheduled` (populated on
+// every row) instead of the ICS-gated `ics` field, which only exists when
+// the server actually ran the preflight for that particular preview call;
+// a Send blocked banner disables Send instead of merely floating over it;
+// and the banner names rows by ref/name, not raw ids.
+describe('ComposeWizard ICS slot predicate and blocked-send (DEC-954)', () => {
+  function recipient(contactId: string, submissionId: string, name: string, ref: string, scheduled: boolean) {
+    return {
+      contactId,
+      submissionId,
+      email: `${contactId}@example.com`,
+      name,
+      ref,
+      scheduled,
+      subject: 'You are in!',
+      text: 'See you there',
+    };
+  }
+
+  async function goToPreviewWith(items: ReturnType<typeof recipient>[], extra: Record<string, unknown> = {}) {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items },
+      ...extra,
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(subject, { target: { value: 'Hello' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+    await screen.findByText('Attachments');
+  }
+
+  it('rows print "Scheduled" and the no-slot caption is absent when scheduled is true but ics was never sent', async () => {
+    await goToPreviewWith([
+      recipient('c1', 'sub-1', 'Priya Raman', 'DFC-014', true),
+      recipient('c2', 'sub-2', 'Nadia Ferrone', 'DFC-041', true),
+    ]);
+
+    expect(document.querySelectorAll('.chq-comms-recipient-row .chq-flag')).toHaveLength(2);
+    for (const flag of document.querySelectorAll('.chq-comms-recipient-row .chq-flag')) {
+      expect(flag.textContent).toBe('Scheduled');
+    }
+
+    fireEvent.click(screen.getByLabelText('Attach calendar invite'));
+
+    // Re-run of preview keeps every row scheduled -- no slotless caption.
+    await waitFor(() => expect(screen.getAllByText('Scheduled').length).toBeGreaterThan(0));
+    expect(screen.queryByText(/have no slot yet/)).not.toBeInTheDocument();
+  });
+
+  it('disables Send while a Send-blocked banner is showing, naming a talk ref rather than the raw id', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: (() => {
+        let call = 0;
+        return () => {
+          call += 1;
+          if (call === 1) return { items: [recipient('c1', 'sub-1', 'Priya Raman', 'DFC-014', false)] };
+          return {
+            status: 400,
+            body: {
+              error: {
+                code: 'invalid',
+                message: 'Some submissions are not scheduled',
+                fields: { 'sub-1': 'not scheduled' },
+              },
+            },
+          };
+        };
+      })(),
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(subject, { target: { value: 'Hello' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+    await screen.findByText('Priya Raman');
+
+    fireEvent.click(screen.getByLabelText('Attach calendar invite'));
+
+    const banner = await screen.findByRole('alert');
+    expect(banner.textContent).toContain('DFC-014 — Priya Raman');
+    expect(banner.textContent).not.toContain('sub-1');
+
+    const sendButton = screen.getByRole('button', { name: /Send \d+ emails?/ });
+    expect(sendButton).toBeDisabled();
+  });
+});
+
+// w27-d: DEC-955 -- typing {feedback} into the body reveals an inline plan
+// picker naming what {feedback} needs, right where the chip was inserted,
+// so composeBody() carries includeFeedback+feedbackPlanId before the
+// preview ever runs; with no plans configured the {feedback} chip itself is
+// omitted from the chip row.
+describe('ComposeWizard {feedback} companion plan picker (DEC-955)', () => {
+  function plan(id: string, name: string, currentRound: number, rounds = 3) {
+    return { id, eventId: EVENT_ID, name, openDate: null, closeDate: null, filters: null, anonymized: false, scale: { min: 1, max: 5 }, criteria: [], rounds, currentRound };
+  }
+
+  async function goToTemplateStep(extra: Record<string, unknown> = {}) {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      ...extra,
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    await screen.findByLabelText('Body');
+  }
+
+  it('reveals a plan picker naming "{feedback} needs a plan" once {feedback} is inserted, and posts includeFeedback+feedbackPlanId on preview', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([plan('plan-a', 'Track A Review', 2)]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(subject, { target: { value: 'Hello' } });
+
+    expect(screen.queryByText('{feedback} needs a plan')).not.toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole('button', { name: '{feedback}' }));
+
+    const picker = await screen.findByLabelText('{feedback} needs a plan');
+    expect(picker).toBeInTheDocument();
+
+    fireEvent.change(picker, { target: { value: 'plan-a' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+
+    await waitFor(() => {
+      const previewCalls = fetchMock.mock.calls.filter((call) => String(call[0]).includes('/compose/preview'));
+      expect(previewCalls.length).toBeGreaterThan(0);
+      const lastBody = JSON.parse(String(previewCalls[previewCalls.length - 1]?.[1]?.body ?? '{}'));
+      expect(lastBody.includeFeedback).toBe(true);
+      expect(lastBody.feedbackPlanId).toBe('plan-a');
+    });
+  });
+
+  it('omits the {feedback} chip entirely when no evaluation plans exist', async () => {
+    await goToTemplateStep({ [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([]) });
+
+    expect(screen.queryByRole('button', { name: '{feedback}' })).not.toBeInTheDocument();
+  });
+});
