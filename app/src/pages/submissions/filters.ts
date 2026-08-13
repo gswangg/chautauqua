@@ -38,8 +38,8 @@ function parseStatus(raw: string | null): SubmissionStatus[] {
   if (!raw) return [];
   return raw
     .split(',')
-    .map((s) => s.trim())
-    .filter((s): s is SubmissionStatus => (SUBMISSION_STATUSES as readonly string[]).includes(s));
+    .map((token) => token.trim())
+    .filter((token): token is SubmissionStatus => (SUBMISSION_STATUSES as readonly string[]).includes(token));
 }
 
 function parseSort(raw: string | null): SortOrder {

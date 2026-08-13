@@ -10,7 +10,7 @@ interface SessionCardProps {
   conflicts: AgendaConflict[];
   style?: CSSProperties;
   className?: string;
-  /** Placed cards fully cover the day-grid cell(s) beneath them (DEC-021
+  /** Placed cards fully cover the day-grid cells beneath them (DEC-021
    * warn-never-block: an organizer must be able to drop a session directly
    * onto an already-occupied slot to intentionally create a room/speaker
    * conflict, since the conflict is only a warning, never a block). Without

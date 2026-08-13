@@ -26,8 +26,8 @@ export function parseCardFields(raw: string | undefined): CardFields {
   const named = new Set(
     raw
       .split(",")
-      .map((s) => s.trim())
-      .filter((s): s is CardField => (ALL_CARD_FIELDS as readonly string[]).includes(s)),
+      .map((f) => f.trim())
+      .filter((f): f is CardField => (ALL_CARD_FIELDS as readonly string[]).includes(f)),
   );
   return {
     track: named.has("track"),

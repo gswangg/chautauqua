@@ -175,7 +175,7 @@ describe("DEC-624: PATCH /api/v1/plans/:id anonymity ratchet", () => {
     });
     expect(res.status).toBe(409);
     const body = (await res.json()) as { error: { message: string } };
-    expect(body.error.message).toContain("3 evaluation(s) were submitted under anonymity");
+    expect(body.error.message).toContain("3 evaluations were submitted under anonymity");
     expect(body.error.message).toContain("anonymity cannot be switched off for this plan");
   });
 
@@ -222,7 +222,7 @@ describe("DEC-624: PATCH /api/v1/plans/:id anonymity ratchet", () => {
     });
     expect(res.status).toBe(409);
     const body = (await res.json()) as { error: { message: string } };
-    expect(body.error.message).toContain("1 evaluation(s) were submitted under anonymity");
+    expect(body.error.message).toContain("1 evaluation were submitted under anonymity");
   });
 
   it("turning anonymized ON is always allowed, even with submitted evaluations", async () => {

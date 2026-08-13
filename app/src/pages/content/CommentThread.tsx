@@ -19,7 +19,7 @@ interface CommentThreadProps {
 /** Comment thread for one deliverable's latest file (DEC-573 chain thread).
  * The composer always sends through /content-note (DEC-720/DEC-741): "Ask
  * for changes" also moves content_status to changes_requested, "Send note
- * only" leaves status untouched — both always email the speaker(s), so the
+ * only" leaves status untouched — both always email the speakers, so the
  * caption below never promises a silent post. */
 export function CommentThread({ comments, onSend }: CommentThreadProps) {
   const [draft, setDraft] = useState('');
@@ -68,7 +68,7 @@ export function CommentThread({ comments, onSend }: CommentThreadProps) {
           className="chq-textarea"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="Write a note to the speaker(s)..."
+          placeholder="Write a note to the speakers..."
           disabled={pending}
         />
         <p className="chq-meta chq-content-comment-caption">

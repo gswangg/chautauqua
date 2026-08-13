@@ -337,7 +337,7 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
       if (entity === "contacts") {
         const { firstName, lastName, email } = plan.values;
         if (!firstName || !lastName || !email) {
-          skipped.push({ row: plan.row, reason: "Missing required field(s): firstName, lastName, email" });
+          skipped.push({ row: plan.row, reason: "Missing required fields: firstName, lastName, email" });
           continue;
         }
         const id = newId();
@@ -365,7 +365,7 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
       if (entity === "submissions") {
         const { title } = plan.values;
         if (!title) {
-          skipped.push({ row: plan.row, reason: "Missing required field(s): title" });
+          skipped.push({ row: plan.row, reason: "Missing required field: title" });
           continue;
         }
         const id = newId();
@@ -399,17 +399,17 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
         refMap.set(plan.externalRef, id);
         created++;
         if (plan.values.status !== undefined && !dryRun) {
-          const s = plan.values.status as SubmissionStatus;
-          const arr = statusIdsByStatus.get(s) ?? [];
+          const status = plan.values.status as SubmissionStatus;
+          const arr = statusIdsByStatus.get(status) ?? [];
           arr.push(id);
-          statusIdsByStatus.set(s, arr);
+          statusIdsByStatus.set(status, arr);
         }
         continue;
       }
       // tracks
       const { name } = plan.values;
       if (!name) {
-        skipped.push({ row: plan.row, reason: "Missing required field(s): name" });
+        skipped.push({ row: plan.row, reason: "Missing required field: name" });
         continue;
       }
       const id = newId();
@@ -472,10 +472,10 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
           await replaceSubmissionTracks(db, existingId, trackId ? [trackId] : []);
         }
         if (v.status !== undefined) {
-          const s = v.status as SubmissionStatus;
-          const arr = statusIdsByStatus.get(s) ?? [];
+          const status = v.status as SubmissionStatus;
+          const arr = statusIdsByStatus.get(status) ?? [];
           arr.push(existingId);
-          statusIdsByStatus.set(s, arr);
+          statusIdsByStatus.set(status, arr);
         }
       } else {
         const v = plan.values;

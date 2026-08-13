@@ -89,8 +89,8 @@ describe("DELETE /api/v1/fields/:fieldId cascade-confirm (DEC-300)", () => {
     const body = (await res.json()) as { error: { code: string; message: string; fields?: Record<string, string> } };
     expect(body.error.code).toBe("conflict");
     expect(body.error.message).toContain("Format");
-    expect(body.error.message).toContain("1 dependent question(s)");
-    expect(body.error.message).toContain("3 collected answer(s)");
+    expect(body.error.message).toContain("1 dependent question");
+    expect(body.error.message).toContain("3 collected answers");
     expect(body.error.fields?.dependents).toBe("Slides link");
     expect(body.error.fields?.answers).toBe("3");
   });

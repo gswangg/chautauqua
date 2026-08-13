@@ -22,7 +22,7 @@ function escapeHtml(src: string): string {
     .replace(/'/g, "&#39;");
 }
 
-/** Allow-listed link schemes: only http(s) — javascript:, data:, and every
+/** Allow-listed link schemes: only http/https — javascript:, data:, and every
  * other scheme are rejected and rendered as plain (escaped) text instead of
  * a link. */
 function isAllowedHref(href: string): boolean {
@@ -31,7 +31,7 @@ function isAllowedHref(href: string): boolean {
 
 /** Inline-level allow-list applied to an ALREADY-ESCAPED string: bold
  * (**text**), italic (*text*), and links ([text](href)) whose href passes
- * the http(s) allow-list. Runs on escaped text, so any markup characters
+ * the http/https allow-list. Runs on escaped text, so any markup characters
  * that came from the original raw input (e.g. a literal "<" typed by the
  * organizer) are already entities and cannot be reinterpreted as tags. */
 function renderInline(escaped: string): string {

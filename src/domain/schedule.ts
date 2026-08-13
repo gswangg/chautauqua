@@ -4,6 +4,7 @@
  */
 
 import { DEC_130, DEC_476, DEC_615, DEC_772 } from "../decisions";
+import { plural } from "./count-copy";
 void DEC_130;
 void DEC_476;
 void DEC_615;
@@ -71,7 +72,7 @@ export function describeConflict(c: Conflict, labels: ConflictLabels): string {
   const speakerNames = c.speakerContactIds.map(
     (id) => labels.speakerNameByContactId.get(id) ?? id,
   );
-  return `Speaker(s) ${speakerNames.join(", ")} double-booked on ${c.day} between "${titleA}" and "${titleB}"`;
+  return `${plural(speakerNames.length, "Speaker")} ${speakerNames.join(", ")} double-booked on ${c.day} between "${titleA}" and "${titleB}"`;
 }
 
 /** DEC-615: closed vocabulary for why autoSchedule could not place a

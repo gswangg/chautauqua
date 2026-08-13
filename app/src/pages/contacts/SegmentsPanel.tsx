@@ -90,17 +90,17 @@ export function SegmentsPanel({ segments, activeFilters, activeSegmentId, onChan
       </div>
 
       <ul className="chq-contacts-segment-list">
-        {segments.map((s) => (
-          <li key={s.id} className="chq-contacts-segment-row">
+        {segments.map((seg) => (
+          <li key={seg.id} className="chq-contacts-segment-row">
             <div className="chq-contacts-segment-row-main">
-              <span className="chq-contacts-segment-name">{s.name}</span>
-              <span className="chq-contacts-segment-rule">{describeRules(s.rules)}</span>
+              <span className="chq-contacts-segment-name">{seg.name}</span>
+              <span className="chq-contacts-segment-rule">{describeRules(seg.rules)}</span>
             </div>
             <button
               type="button"
               className="chq-btn chq-btn-secondary"
               disabled={busy}
-              onClick={() => setPendingDelete(s)}
+              onClick={() => setPendingDelete(seg)}
             >
               Delete
             </button>

@@ -14,6 +14,7 @@ import { roundCriteriaJsonOf } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
 import { DEC_015, DEC_123, DEC_146, DEC_147, DEC_148, DEC_213, DEC_460, DEC_461, DEC_624, DEC_676, DEC_709 } from "../../decisions";
 import { criteriaForRound } from "../../domain/evaluation";
+import { countOf } from "../../domain/count-copy";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import {
   asRecord,
@@ -189,7 +190,7 @@ reviewPlansCrudRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, asy
     if (submittedCount > 0) {
       throw new ApiError(
         "conflict",
-        `${submittedCount} evaluation(s) were submitted under anonymity; anonymity cannot be switched off for this plan.`,
+        `${countOf(submittedCount, "evaluation")} were submitted under anonymity; anonymity cannot be switched off for this plan.`,
       );
     }
   }

@@ -38,7 +38,7 @@ export function isValidSavedViewConfig(value: unknown): value is SavedViewConfig
   const v = value as Record<string, unknown>;
 
   if (typeof v.q !== "string") return false;
-  if (!Array.isArray(v.status) || !v.status.every((s) => typeof s === "string" && (SUBMISSION_STATUSES as readonly string[]).includes(s))) {
+  if (!Array.isArray(v.status) || !v.status.every((token) => typeof token === "string" && (SUBMISSION_STATUSES as readonly string[]).includes(token))) {
     return false;
   }
   if (v.trackId !== null && typeof v.trackId !== "string") return false;

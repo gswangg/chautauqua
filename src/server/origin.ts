@@ -26,7 +26,7 @@ function isLoopbackOrigin(origin: string): boolean {
   return LOOPBACK_HOSTNAMES.has(url.hostname);
 }
 
-/** Parses `value` as an absolute http(s) URL and returns its origin with no
+/** Parses `value` as an absolute http/https URL and returns its origin with no
  * trailing slash. Throws (fail loudly) on anything malformed — DEC-252
  * requires PUBLIC_BASE_URL to be either unset or a valid absolute URL. */
 function parseAbsoluteHttpOrigin(value: string): string {
@@ -37,7 +37,7 @@ function parseAbsoluteHttpOrigin(value: string): string {
     throw new Error(`resolveBaseUrl: PUBLIC_BASE_URL is not a valid absolute URL: ${JSON.stringify(value)}`);
   }
   if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw new Error(`resolveBaseUrl: PUBLIC_BASE_URL must be http(s), got ${JSON.stringify(value)}`);
+    throw new Error(`resolveBaseUrl: PUBLIC_BASE_URL must be http/https, got ${JSON.stringify(value)}`);
   }
   return url.origin;
 }
@@ -68,7 +68,7 @@ export type OriginRequestLike = {
 /**
  * Resolves the absolute base URL (origin, no trailing slash) to use for
  * user-facing links, per DEC-252/DEC-296's precedence:
- *   1. `env.PUBLIC_BASE_URL` when non-empty — must be an absolute http(s)
+ *   1. `env.PUBLIC_BASE_URL` when non-empty — must be an absolute http/https
  *      URL; throws on anything malformed.
  *   2. EXCEPTION (DEC-296, dev-only): when `env.DEV_MODE === "1"` AND the
  *      configured PUBLIC_BASE_URL itself parses to a LOOPBACK origin (the
@@ -123,7 +123,7 @@ export function resolveBaseUrl(c: OriginRequestLike): string {
  * Resolves the absolute base URL for links minted from a cron/scheduled
  * context (DEC-559), which has no incoming request to sniff a header or URL
  * origin from — unlike resolveBaseUrl, there is no dev-loopback fallback:
- * `env.PUBLIC_BASE_URL` must be set to a valid absolute http(s) URL or this
+ * `env.PUBLIC_BASE_URL` must be set to a valid absolute http/https URL or this
  * throws (fail loudly) rather than inventing one.
  */
 export function resolveBaseUrlForCron(env: { PUBLIC_BASE_URL?: string }): string {

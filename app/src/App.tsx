@@ -176,7 +176,7 @@ function Header() {
     : PHONE_TAB_PATHS.map((path) => sections.find((s) => s.path === path)).filter(
         (s): s is NavSection => s !== undefined,
       );
-  const moreSections = sections.filter((s) => !primaryTabs.includes(s));
+  const moreSections = sections.filter((section) => !primaryTabs.includes(section));
   const closeMore = () => setMoreOpen(false);
   useEscapeKey(moreOpen, closeMore);
   const anyBadgeLive = Boolean(exceptions.late) || Boolean(exceptions.clash);

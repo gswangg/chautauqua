@@ -274,7 +274,7 @@ export interface ReviewerSubmissionDetail {
   // (form_field.position asc) -- rendered in the order delivered, never
   // re-sorted.
   sessionAnswers: SubmissionAnswer[];
-  // The CFP's custom answers on the speaker record(s), when the plan isn't
+  // The CFP's custom answers on the speaker records, when the plan isn't
   // anonymized. Same shape/order guarantee as sessionAnswers.
   speakerAnswers?: SubmissionAnswer[];
   // This reviewer's own prior rating on this submission, if any. Reviewers

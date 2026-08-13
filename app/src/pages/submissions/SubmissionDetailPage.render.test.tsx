@@ -557,7 +557,7 @@ describe('SubmissionDetailPage render: unpublished-participant caption (DEC-656)
       expect(screen.getByText('Marcus Okafor')).toBeInTheDocument();
     });
     expect(
-      screen.getByText('1 speaker(s) on this session are not on the public site yet — tick Visible to publish them.'),
+      screen.getByText('1 speaker on this session are not on the public site yet — tick Visible to publish them.'),
     ).toBeInTheDocument();
   });
 

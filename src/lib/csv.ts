@@ -146,14 +146,14 @@ function formatCell(cell: string | number | null): string {
   // character could be interpreted by spreadsheet software as the start of
   // a formula/command gets a leading apostrophe, applied before the
   // existing quote-when-needed logic runs.
-  let s = cell;
-  if (/^[=+\-@\t\r]/.test(s)) {
-    s = "'" + s;
+  let text = cell;
+  if (/^[=+\-@\t\r]/.test(text)) {
+    text = "'" + text;
   }
-  if (s.includes(",") || s.includes('"') || s.includes("\n") || s.includes("\r")) {
-    return '"' + s.replace(/"/g, '""') + '"';
+  if (text.includes(",") || text.includes('"') || text.includes("\n") || text.includes("\r")) {
+    return '"' + text.replace(/"/g, '""') + '"';
   }
-  return s;
+  return text;
 }
 
 /**

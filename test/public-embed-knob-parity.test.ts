@@ -147,7 +147,7 @@ describe("DEC-489: speakers/gallery `limit` behaves identically on HTML and .jso
     const htmlApp = buildSpeakersApp();
     const htmlRes = await htmlApp.request("/embed/conf/speakers?limit=3", {}, TEST_ENV);
     const html = await htmlRes.text();
-    expect(html).toContain("3 of 5 speaker(s)");
+    expect(html).toContain("3 of 5 speakers");
 
     installFakeCaches();
     const jsonApp = buildSpeakersApp();
@@ -163,7 +163,7 @@ describe("DEC-489: speakers/gallery `limit` behaves identically on HTML and .jso
     const htmlApp = buildSpeakersApp();
     const htmlRes = await htmlApp.request("/embed/conf/gallery?limit=3", {}, TEST_ENV);
     const html = await htmlRes.text();
-    expect(html).toContain("3 of 5 speaker(s)");
+    expect(html).toContain("3 of 5 speakers");
 
     installFakeCaches();
     const jsonApp = buildSpeakersApp();
@@ -347,7 +347,7 @@ describe("DEC-594/DEC-634 (EMB-5): sessions?day= filters by scheduled day, URL s
     const res = await app.request("/embed/conf/sessions?day=2026-08-11", {}, TEST_ENV);
     const html = await res.text();
     expect(html).not.toContain('id="chq-session-sub1"');
-    expect(html).toContain("0 of 0 session(s)");
+    expect(html).toContain("0 of 0 sessions");
   });
 
   it("sessions emits no day param in its Show-more link, even when one was supplied", async () => {

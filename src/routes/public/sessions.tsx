@@ -18,6 +18,7 @@ import { type CardFields } from "./query";
 import { surfacePath } from "./shell";
 import { PublicSearchBox, PublicFilterBar } from "./filters";
 import { PUBLIC_PER_PAGE, hasMorePages } from "../../server/repo/public/bounds";
+import { countOf } from "../../domain/count-copy";
 
 function ScheduleRailSection(props: { event: PublicEvent }) {
   const { event } = props;
@@ -47,7 +48,7 @@ function DayIndexRailSection(props: { event: PublicEvent; dayCounts: { day: stri
           <div class="chq-pub-rail-day-row">
             <a href={`/e/${event.slug}/agenda?day=${d.day}`}>{formatDay(d.day)}</a>
             <span class="chq-pub-rail-day-count">
-              {d.count} session{d.count === 1 ? "" : "s"}
+              {countOf(d.count, "session")}
             </span>
           </div>
         ))}
@@ -202,7 +203,7 @@ export function SessionsContent(props: {
             />
           ) : null}
           <p>
-            {items.length} of {total} session(s)
+            {items.length} of {countOf(total, "session")}
           </p>
           {items.map((s) => (
             <SessionCard session={s} event={event} from="sessions" fields={fields} embed={embed} itinerary={!embed} />

@@ -325,7 +325,7 @@ describe("/e/:eventSlug/sessions?day= (DEC-634)", () => {
     const html = await res.text();
     // Only PUBLIC_PER_PAGE rendered on page 1, but the reported total is the
     // day's full 15 — never derived from items.length.
-    expect(html).toContain(`${PUBLIC_PER_PAGE} of ${DAY_A_IDS.length} session(s)`);
+    expect(html).toContain(`${PUBLIC_PER_PAGE} of ${DAY_A_IDS.length} sessions`);
     for (let i = 0; i < PUBLIC_PER_PAGE; i++) expect(html).toContain(DAY_A_TITLES[i]);
   });
 });

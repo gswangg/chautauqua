@@ -4,6 +4,7 @@ import { expandFullNameMapping, mapImportRow, parseCsv, suggestMapping, toCsv, F
 import { useEscapeKey } from '../../lib/useEscapeKey';
 import type { ImportPlan, ImportPlanRow, ImportResult } from './types';
 import { DEC_810 } from '../../../../src/decisions';
+import { countOf } from '../../lib/plural';
 import './contacts-panels.css';
 
 // Compile-checked dependency marker: when `eventId` is set, this wizard
@@ -320,9 +321,9 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
                     disabled={busy || (!!eventId && sessionTitle.trim() === '')}
                     onClick={runPreview}
                   >
-                    Preview {dataRows.length} row(s)
+                    Preview {countOf(dataRows.length, 'row')}
                   </button>
-                  <span className="chq-contacts-pipeline-caption">{dataRows.length} data row(s) total.</span>
+                  <span className="chq-contacts-pipeline-caption">{countOf(dataRows.length, 'data row')} total.</span>
                 </div>
               </>
             )}
@@ -384,10 +385,10 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
 
             <div className="chq-contacts-import-actions">
               <button type="button" className="chq-btn chq-btn-primary" disabled={busy} onClick={runCommit}>
-                Import {plan.rows.length - skipLines.size} row(s)
+                Import {countOf(plan.rows.length - skipLines.size, 'row')}
               </button>
               <span className="chq-contacts-pipeline-caption">
-                {skipLines.size} row(s) marked to skip.
+                {countOf(skipLines.size, 'row')} marked to skip.
               </span>
             </div>
           </div>
