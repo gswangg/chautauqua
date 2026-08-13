@@ -26,8 +26,14 @@ export function participationStatusClass(status: InviteStatus): string {
   return `chq-speakers-status chq-speakers-status-${modifier}`;
 }
 
-export const PARTICIPATION_CONSEQUENCE_CAPTION =
-  'Invited and Declined hide this speaker from the public pages and pause their uploads';
+// DEC-869: the participation menu names each state's consequence -- a Record
+// keyed by every InviteStatus so a fifth state cannot ship caption-less.
+export const PARTICIPATION_STATE_CAPTIONS: Record<InviteStatus, string> = {
+  none: 'Nothing has been sent. They still appear on the public pages.',
+  invited: 'Records that the invite went out. Hidden from the public pages until they confirm.',
+  accepted: 'Public pages and uploads are open.',
+  declined: 'Hidden from the public pages, uploads paused.',
+};
 
 export const PARTICIPATION_FOOTER_CAPTION =
   'Only Send portal invite sends anything — the other three record what you already know';
@@ -60,19 +66,24 @@ export function ParticipationMenu({ contactName, status, onSelectStatus, onSendI
 
       {open && (
         <div className="chq-participation-menu-panel" role="menu" aria-label={`Participation status for ${contactName}`}>
-          <p className="chq-participation-menu-caption">{PARTICIPATION_CONSEQUENCE_CAPTION}</p>
+          <p className="chq-participation-menu-identity">{contactName}</p>
           {INVITE_STATUSES.map((candidate) => (
             <button
               key={candidate}
               type="button"
-              role="menuitem"
+              role="menuitemradio"
+              aria-checked={candidate === status}
               className={`chq-participation-menu-item${candidate === status ? ' is-current' : ''}`}
               onClick={() => {
                 close();
                 onSelectStatus(candidate);
               }}
             >
-              {INVITE_STATUS_LABELS[candidate]}
+              <span className="chq-participation-menu-item-label">
+                {INVITE_STATUS_LABELS[candidate]}
+                {candidate === status && <span className="chq-participation-menu-now">NOW</span>}
+              </span>
+              <span className="chq-participation-menu-item-caption">{PARTICIPATION_STATE_CAPTIONS[candidate]}</span>
             </button>
           ))}
           <button

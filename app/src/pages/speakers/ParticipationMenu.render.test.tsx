@@ -10,7 +10,8 @@ import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-li
 import '@testing-library/jest-dom/vitest';
 import { OnboardingGrid } from './OnboardingGrid';
 import { mockApi } from '../../test-utils/mockApi';
-import type { InviteStatus, OnboardingGridResponse } from './types';
+import { INVITE_STATUSES, INVITE_STATUS_LABELS, type InviteStatus, type OnboardingGridResponse } from './types';
+import { PARTICIPATION_STATE_CAPTIONS } from './ParticipationMenu';
 
 const EVENT_ID = 'evt-participation-menu-render';
 
@@ -77,7 +78,7 @@ describe('ParticipationMenu (DEC-830)', () => {
 
     const menu = await openMenu();
     const label = { none: 'Not invited', invited: 'Invited', accepted: 'Confirmed', declined: 'Declined' }[status];
-    fireEvent.click(menu.getByRole('menuitem', { name: label }));
+    fireEvent.click(menu.getByRole('menuitemradio', { name: new RegExp(`^${label}`) }));
 
     await waitFor(() => {
       const call = fetchMock.mock.calls.find(([input, init]) => {
@@ -112,15 +113,59 @@ describe('ParticipationMenu (DEC-830)', () => {
     expect(patchCall).toBeUndefined();
   });
 
-  it('shows the consequence caption and the footer explaining only "Send portal invite" sends anything', async () => {
+  it('shows the footer explaining only "Send portal invite" sends anything', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWith('none'),
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
     });
     const menu = await openMenu();
-    expect(menu.getByText('Invited and Declined hide this speaker from the public pages and pause their uploads')).toBeInTheDocument();
     expect(
       menu.getByText('Only Send portal invite sends anything — the other three record what you already know'),
     ).toBeInTheDocument();
+  });
+
+  it('names the speaker in an identity header above the state items', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWith('none'),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+    const menu = await openMenu();
+    expect(menu.getByText('Ada Lovelace')).toBeInTheDocument();
+  });
+
+  it.each(INVITE_STATUSES)('the %s item is a menuitemradio rendering its Record caption', async (candidate) => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWith('none'),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+    const menu = await openMenu();
+    const item = menu.getByRole('menuitemradio', { name: new RegExp(INVITE_STATUS_LABELS[candidate]) });
+    expect(item).toBeInTheDocument();
+    expect(within(item).getByText(PARTICIPATION_STATE_CAPTIONS[candidate])).toBeInTheDocument();
+  });
+
+  it('marks exactly one item as checked (the current state) and gives it the NOW badge', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWith('none'),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+    const menu = await openMenu();
+    const radios = menu.getAllByRole('menuitemradio');
+    const checked = radios.filter((r) => r.getAttribute('aria-checked') === 'true');
+    expect(checked).toHaveLength(1);
+    const [current] = checked;
+    expect(within(current!).getByText('NOW')).toBeInTheDocument();
+    expect(current).toHaveAccessibleName(new RegExp(INVITE_STATUS_LABELS.none));
+  });
+
+  it('the "Send portal invite" action item is not a menuitemradio', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWith('none'),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+    const menu = await openMenu();
+    const action = menu.getByRole('menuitem', { name: 'Send portal invite' });
+    expect(action).not.toHaveAttribute('role', 'menuitemradio');
+    expect(action.getAttribute('aria-checked')).toBeNull();
   });
 });
