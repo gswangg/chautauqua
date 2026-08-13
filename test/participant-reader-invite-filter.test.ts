@@ -134,6 +134,7 @@ const ALLOWED: Record<string, string[]> = {
   ],
   "server/repo/import/sessionboard.ts": [
     "Builds a (submissionId, contactId) -> participant id map for the import writer, addressing rows by id, not by eligibility.",
+    "loadMaxOrderBySubmissionId's grouped MAX(order) per submission must count EVERY existing participant row — a declined/withdrawn co-presenter still occupies its order slot, so filtering by eligibility here would hand a new participant a colliding order.",
   ],
   "server/repo/portal-edit.ts": [
     "The MAX_PARTICIPANTS_PER_SUBMISSION count is a per-submission cap over every participant row, not an eligibility read.",

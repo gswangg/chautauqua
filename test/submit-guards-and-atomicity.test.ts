@@ -118,8 +118,13 @@ function fakeFilesBucket() {
     async get() {
       return null;
     },
-    async delete(key: string) {
-      deletes.push(key);
+    // FileStore.delete delegates to deleteMany (src/server/context.ts), so
+    // R2Bucket.delete is always invoked with an array — even for a single
+    // key. Flatten so `deletes` stays a flat list of keys.
+    async delete(keys: string | string[]) {
+      for (const key of Array.isArray(keys) ? keys : [keys]) {
+        deletes.push(key);
+      }
     },
   } as unknown as R2Bucket;
   return { bucket, puts, deletes };
