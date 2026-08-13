@@ -101,7 +101,8 @@ describe("buildOverdueTaskRows (DEC-370 section 01)", () => {
           company: "Acme",
           taskId: "t1",
           taskTitle: "Upload slides",
-          dueDate: now - 2 * DAY_MS - 1, // just past 2 full days late
+          taskDueDate: now - 2 * DAY_MS - 1, // just past 2 full days late
+          assignedAt: 0,
         },
         {
           assignmentId: "a2",
@@ -110,7 +111,8 @@ describe("buildOverdueTaskRows (DEC-370 section 01)", () => {
           company: null,
           taskId: "t2",
           taskTitle: "Confirm bio",
-          dueDate: now - 12 * 60 * 60 * 1000, // 12h overdue -> 0 whole days
+          taskDueDate: now - 12 * 60 * 60 * 1000, // 12h overdue -> 0 whole days
+          assignedAt: 0,
         },
       ],
       now,
@@ -129,12 +131,45 @@ describe("buildOverdueTaskRows (DEC-370 section 01)", () => {
           company: null,
           taskId: "t1",
           taskTitle: "Upload slides",
-          dueDate: now + DAY_MS,
+          taskDueDate: now + DAY_MS,
+          assignedAt: 0,
         },
       ],
       now,
     );
     expect(rows[0]!.daysLate).toBe(0);
+  });
+
+  // DEC-826: a task cannot be late before it was assigned — a row selected
+  // because it went late (by the effective date) two days ago must never
+  // be captioned with daysLate derived from the raw, earlier task.dueDate.
+  it("derives dueDate/daysLate from the effective (assignment-aware) due date, not the raw task.dueDate", () => {
+    // Assigned 9 days ago; the task's own due date is far earlier (42 days
+    // ago, well before the assignment existed) — the raw date would (wrongly)
+    // caption this row "42 days late", but the effective date (assignedAt +
+    // ASSIGNED_LATE_GRACE_DAYS) makes it only 2 days late.
+    const assignedAt = now - 9 * DAY_MS;
+    const taskDueDate = now - 42 * DAY_MS;
+    const rows = buildOverdueTaskRows(
+      [
+        {
+          assignmentId: "a1",
+          contactId: "c1",
+          contactName: "Ada Lovelace",
+          company: null,
+          taskId: "t1",
+          taskTitle: "Upload slides",
+          taskDueDate,
+          assignedAt,
+        },
+      ],
+      now,
+    );
+    // effective due date = assignedAt + 7-day grace (ASSIGNED_LATE_GRACE_DAYS)
+    const expectedEffectiveDue = assignedAt + 7 * DAY_MS;
+    expect(rows[0]!.dueDate).toBe(expectedEffectiveDue);
+    expect(rows[0]!.daysLate).toBe(2);
+    expect(rows[0]!.daysLate).not.toBe(Math.floor((now - taskDueDate) / DAY_MS));
   });
 });
 
@@ -363,6 +398,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
   it("overdueTasks.total reuses speakers.overdueAssignments (no second count query) and rows carry daysLate", async () => {
     const now = 10 * 24 * 60 * 60 * 1000;
     const overdueDueDate = new Date(now - 2 * 24 * 60 * 60 * 1000);
+    const assignedAt = new Date(now - 20 * 24 * 60 * 60 * 1000); // assigned well before the due date
     const db = makeFakeDb(
       emptyResponses({
         speakerAgg: [{ outstandingContacts: 1, nextDue: overdueDueDate.getTime() }],
@@ -377,6 +413,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
             taskId: "t1",
             taskTitle: "Upload slides",
             dueDate: overdueDueDate,
+            assignedAt,
           },
         ],
       }),
@@ -393,6 +430,50 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
         taskId: "t1",
         taskTitle: "Upload slides",
         dueDate: overdueDueDate.getTime(),
+        daysLate: 2,
+      },
+    ]);
+  });
+
+  // DEC-826: an assignment created AFTER its task's raw due date must be
+  // judged against the effective (grace-window) date, not the raw one — a
+  // row selected because it went late two days ago (by the effective date)
+  // must never be captioned with daysLate computed from a much-earlier raw
+  // task.dueDate.
+  it("overdueTasks rows use the effective due date when the assignment postdates the task's raw due date", async () => {
+    const now = 60 * 24 * 60 * 60 * 1000;
+    const rawTaskDueDate = new Date(now - 42 * 24 * 60 * 60 * 1000); // 42 days "late" by the raw date
+    const assignedAt = new Date(now - 9 * 24 * 60 * 60 * 1000); // assigned after the raw due date
+    const expectedEffectiveDue = assignedAt.getTime() + 7 * 24 * 60 * 60 * 1000; // ASSIGNED_LATE_GRACE_DAYS
+    const db = makeFakeDb(
+      emptyResponses({
+        speakerAgg: [{ outstandingContacts: 1, nextDue: rawTaskDueDate.getTime() }],
+        overdueAssignmentCount: [{ count: 1 }],
+        overdueDetail: [
+          {
+            assignmentId: "a1",
+            contactId: "c1",
+            firstName: "Grace",
+            lastName: "Hopper",
+            company: null,
+            taskId: "t1",
+            taskTitle: "Confirm bio",
+            dueDate: rawTaskDueDate,
+            assignedAt,
+          },
+        ],
+      }),
+    );
+    const payload = await getOverviewPayload(db, "event-1", now);
+    expect(payload.overdueTasks.rows).toEqual([
+      {
+        assignmentId: "a1",
+        contactId: "c1",
+        contactName: "Grace Hopper",
+        company: null,
+        taskId: "t1",
+        taskTitle: "Confirm bio",
+        dueDate: expectedEffectiveDue,
         daysLate: 2,
       },
     ]);

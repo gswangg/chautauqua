@@ -19,6 +19,10 @@ export interface PortalTaskAssignment {
   title: string;
   description: string | null;
   dueDate: number | null;
+  // DEC-826: the assignment's own createdAt, needed by every caller that
+  // must judge lateness via effectiveAssignmentDueDate — a task cannot be
+  // late before it was assigned (src/domain/task-due.ts).
+  assignedAt: number;
   required: boolean;
   status: string;
   formId: string | null;
@@ -40,6 +44,7 @@ export async function getMyTaskAssignments(db: Db, contactId: string, orgId: str
       fileId: schema.taskAssignment.fileId,
       responseJson: schema.taskAssignment.responseJson,
       completedAt: schema.taskAssignment.completedAt,
+      assignedAt: schema.taskAssignment.createdAt,
       kind: schema.task.kind,
       title: schema.task.title,
       description: schema.task.description,
@@ -62,6 +67,7 @@ export async function getMyTaskAssignments(db: Db, contactId: string, orgId: str
     title: row.title,
     description: row.description,
     dueDate: row.dueDate ? row.dueDate.getTime() : null,
+    assignedAt: row.assignedAt.getTime(),
     required: row.required,
     status: row.status,
     formId: row.formId,

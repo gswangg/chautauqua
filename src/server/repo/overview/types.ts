@@ -46,6 +46,16 @@ export interface OverdueTaskRow {
   daysLate: number;
 }
 
+/** Input row shape for buildOverdueTaskRows (DEC-826): carries the raw
+ * task.dueDate plus the assignment's createdAt so the aggregator can derive
+ * the effective due date via effectiveAssignmentDueDate before computing
+ * daysLate — the same predicate overdueAssignmentConditions already used to
+ * select the set (src/domain/task-due.ts). */
+export type OverdueTaskInputRow = Omit<OverdueTaskRow, "daysLate" | "dueDate"> & {
+  taskDueDate: number;
+  assignedAt: number;
+};
+
 export interface TriageQueueRow {
   submissionId: string;
   ref: string;

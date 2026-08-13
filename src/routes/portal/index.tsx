@@ -9,6 +9,7 @@ import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { speakerGate, PortalLayout } from "./shared";
 import { formatCalendarDate, formatEventDate } from "../../lib/event-time";
+import { effectiveAssignmentDueDate } from "../../domain/task-due";
 import { csrfForm } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import {
@@ -118,7 +119,11 @@ function taskActionLabel(t: PortalTaskAssignment): string {
 
 function WorklistTaskRow(props: { task: PortalTaskAssignment; now: number }) {
   const { task: t, now } = props;
-  const overdue = t.dueDate !== null && t.dueDate < now;
+  // DEC-826: a task cannot be late before it was assigned — the printed
+  // date and the overdue mark both use the effective due date, the same
+  // one the organizer's grid and the reminder email already use.
+  const effectiveDue = effectiveAssignmentDueDate(t.dueDate, t.assignedAt);
+  const overdue = effectiveDue !== null && effectiveDue < now;
   return (
     <div class="chq-portal-row">
       <div class="chq-portal-row-head">
@@ -130,7 +135,7 @@ function WorklistTaskRow(props: { task: PortalTaskAssignment; now: number }) {
             red swatch. */}
         {overdue ? <strong class="chq-flag">Overdue</strong> : null}
       </div>
-      {t.dueDate ? <span class="chq-portal-due">Due {formatCalendarDate(t.dueDate)}</span> : null}
+      {effectiveDue ? <span class="chq-portal-due">Due {formatCalendarDate(effectiveDue)}</span> : null}
       <div class="chq-portal-actions">
         <a href={taskActionHref(t)} class="chq-btn chq-btn-primary">
           {taskActionLabel(t)}
