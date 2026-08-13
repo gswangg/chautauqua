@@ -2,6 +2,9 @@
 // Overview worklist page. Mounts the real page against a mocked fetch
 // shaped like the v2 payload and asserts named rows render, an action
 // fires the right endpoint, and a failed action rolls back.
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -159,8 +162,11 @@ describe('OverviewPage render smoke (DEC-370)', () => {
     expect(screen.getByText('Speaker double-booked')).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/[A-Z]+_[A-Z]+/);
 
-    // DEC-611: toolbar actions beside the headline.
-    const exportLink = screen.getByRole('link', { name: 'Export submissions' });
+    // DEC-611/DEC-877 amendment: toolbar actions beside the headline. Label
+    // shortened to 'Export' so the headline row measures within its cap
+    // (h1 + gap + both buttons no longer exceeds `.chq-measure` at desktop
+    // widths -- see overview.css .chq-overview-headline-row).
+    const exportLink = screen.getByRole('link', { name: 'Export' });
     expect(exportLink).toHaveAttribute('href', `/api/v1/events/${EVENT_ID}/export/submissions`);
     const newSubmissionLink = screen.getByRole('link', { name: 'New submission' });
     expect(newSubmissionLink).toHaveAttribute('href', '/submissions');
@@ -365,5 +371,26 @@ describe('OverviewPage render smoke (DEC-370)', () => {
 
     // Row is back — the optimistic removal rolled back.
     expect(screen.getByText('Docs That Answer Back')).toBeInTheDocument();
+  });
+});
+
+// DEC-877 amendment: the headline row must not overflow its measure. The
+// title is the flexible element (min-width: 0, ellipsis) and the toolbar is
+// rigid (flex-shrink: 0) at desktop widths. jsdom does not apply an external
+// stylesheet (see page-measure.test.ts / speakers-css.test.ts), so this reads
+// the stylesheet's own text rather than rendering + measuring computed style.
+describe('overview headline row CSS contract (DEC-877 amendment)', () => {
+  it('keeps the title flexible and the toolbar rigid outside @media', () => {
+    const cssPath = join(dirname(fileURLToPath(import.meta.url)), 'overview', 'overview.css');
+    const css = readFileSync(cssPath, 'utf8');
+    const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+
+    const headlineMatch = withoutMedia.match(/\.chq-overview-headline\s*\{([^}]*)\}/);
+    expect(headlineMatch).not.toBeNull();
+    expect(headlineMatch![1]).toMatch(/min-width:\s*0/);
+
+    const toolbarMatch = withoutMedia.match(/\.chq-overview-toolbar\s*\{([^}]*)\}/);
+    expect(toolbarMatch).not.toBeNull();
+    expect(toolbarMatch![1]).toMatch(/flex-shrink:\s*0/);
   });
 });

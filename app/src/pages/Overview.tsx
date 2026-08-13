@@ -252,7 +252,7 @@ export function OverviewPage() {
             className="chq-overview-toolbar-btn"
             href={`/api/v1/events/${eventId}/export/submissions`}
           >
-            Export submissions
+            Export
           </a>
           <Link className="chq-overview-toolbar-btn chq-overview-toolbar-btn-primary" to="/submissions">
             New submission
