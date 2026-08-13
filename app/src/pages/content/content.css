@@ -716,3 +716,13 @@
   color: inherit;
   font-weight: 600;
 }
+
+/* ---------------------------------------------------------------------- */
+/* w42-c: title-row "Approve N ready" action (DEC-274 set-based content    */
+/* approval) -- no override needed, reuses .chq-btn-primary sizing; kept   */
+/* as its own class purely so this action is grep-addressable.             */
+/* ---------------------------------------------------------------------- */
+
+.chq-content-approve-ready-btn {
+  white-space: nowrap;
+}
