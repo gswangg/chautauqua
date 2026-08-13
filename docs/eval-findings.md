@@ -326,6 +326,43 @@ open · 08-contacts--12-add-to-the-pipeline · 09-settings--09-settings-saved-
 embeds · 10-public-and-portal--14/15 (password-CTA states); assignment tooling
 lives INSIDE the plan-editor frames; filter rules inside 08-contacts--00.
 
+## DESIGN PACK v6 LANDED (2026-08-13, vendored to docs/design/ — SUPERSEDES v5;
+frames redrawn at 1600. READ THE README's "Widths" section — it is now the
+page-width AUTHORITY and SUPERSEDES every prior width filing incl. DEC-877's
+820-everywhere reading):
+
+**THE WIDTH SYSTEM (four container classes; class belongs to the CONTENT):**
+- READING 820 centred: Overview, session detail, CFP form + confirmations,
+  login, **CFP form builder, Comms template editor** (editors are reading class
+  — you compose one thing).
+- READING + RAIL: Settings = 820 content centred ON THE PAGE, rail hangs in the
+  LEFT MARGIN — exact spec `grid-template-columns: minmax(196px,1fr)
+  minmax(0,820px) minmax(0,1fr)`, rail justify-self:end (do NOT centre
+  rail+content as one block). Public sessions = 1180 centred pair (820 + 34 +
+  300 rail — its rail is content).
+- TABLE 1440 centred: Submissions list, Contacts directory + pipeline board,
+  Content worklist + files, Review plans + results, Comms compose, **Speakers
+  matrix** (matrix min-width 1060, board 1000 — they are NOT canvases; the
+  canvas test is "can the column COUNT grow").
+- CANVAS uncapped: agenda grid ONLY.
+- **Submission detail = 1180** (the route the prior pass missed).
+- CHROME ALWAYS FULL BLEED: header/toolbar/section rules run edge to edge;
+  only content is constrained.
+
+**Other v6 changes:** Speakers = ONE page w/ List/Grid toggle beside search;
+Grid links to /e/:slug/gallery (URL must keep resolving; gallery nav link
+dropped) — supersedes the pending-v6 note · **Merge rebuilt**: column heads
+name BOTH records ("Keeping · Marcus Okafor · added 14 Mar" / "Discarding ·
+Marcus O. · added 2 Aug"), combine rules in a block above the actions, primary
+names its target, "Swap which is kept" beside it · **Merge fields = one
+"Insert a field ▾" dropdown** (open state lists token + sample value) —
+supersedes the six-chip row · markup repairs baked in (three void
+declarations, 16000px frame, doubled cap injection).
+
+Fidelity frames: design-frames-v6 rendering now; all probes/gates use v6 once
+ready. Prior width-related open items should be RE-READ against the class
+table before working them.
+
 ## GATE-2 SBEK: 91.5% (coverage 93.4). SPK RECOVERED 75→89.1 (turn-diet works).
 NEW FLAG: CNT 73.9 (was 88.6) — PURE TURN-BUDGET (coverage 74%; CNT-09/10/11
 cannot_judge, S3 truncated before session-edit/history/speaker-profile steps).

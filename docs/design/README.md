@@ -75,7 +75,7 @@ Two families, from Google Fonts:
 
 ### Spacing, radius, elevation
 
-- Desktop frame padding `26–34px`; measure max-width `820px` (Overview) / `660–760px` (forms).
+- Desktop frame padding `26–34px`. Content max-width follows the three container classes above: 820 reading, 1440 tables, uncapped canvases; forms sit at `660–760px` within the reading measure.
 - Section gap `26–36px`; row padding `13–18px` vertical.
 - Radius: `4px` desktop controls, `6px` phone controls, `5–6px` cards, `20px` phone frame, `99px` pills.
 - Borders: `1px` hairlines; `2px solid #1B1D17` under every section label. One `2px` rule per section — that rule *is* the section header.
@@ -142,7 +142,6 @@ All 33 routes in `app/src/routeManifest.ts` are covered. File → routes:
 | `Chautauqua Settings.dc.html` | `/admin/settings` all 7 sections, 7 phone subscreens |
 | `Chautauqua Public and Portal.dc.html` | `/e/:slug/{sessions,speakers,gallery,agenda,schedule}`, `/submit/:slug` + confirmation + closed, `/portal` and its 5 sub-routes |
 | `Chautauqua Account.dc.html` | `/login`, `/account/password`, `/admin/*` not-found (+ phone) |
-| `Chautauqua Current.dc.html` | **Before state** — recreation of today's unstyled UI, for comparison |
 
 ### Layout pattern (applies to every admin screen)
 
@@ -328,7 +327,19 @@ Copy follows the mechanism: it is *set a password* on an emailed claim link, nev
 
 Nothing about this appears on the form itself. Submitting needs no account, that promise is already in the lede, and a signup affordance beside the submit button competes with the one action that matters.
 
-## What this round added
+## Changed since the previous handoff
+
+1. **A width system, and every route redrawn at 1600px.** Frames were 1240 — a drawing width, below the caps, so the rule was invisible. Four container classes now: reading 820, reading + rail (Settings 820 centred with the rail in the left margin, public sessions 1180 as a pair), table 1440, canvas uncapped. See "Widths" above and the 1800px exemplar in `01-overview.png`.
+2. **Only the agenda grid is a canvas.** The speaker matrix and pipeline board look like canvases but their columns are bounded — by the task list and the five fixed stages — so both sit at the table measure and scroll below their minimums. The test is whether the column *count* can grow.
+3. **Editors are reading class.** The CFP form builder and Comms templates lay fields out in rows with headers, which reads as tabular, but you compose one thing rather than scanning many. Both at 820, tracks retuned.
+4. **Speakers: one page, two views.** The separate gallery frame is gone. A quiet List / Grid toggle sits beside the search; Grid is the photo-led rendering. `/e/:slug/gallery` stays as the URL the Grid segment links to, so the direct path probe, the EMB-12/13 photo-grid and card→detail flow, and the embed builder's gallery surface all keep working. The separate Gallery nav link is dropped.
+5. **Merge rebuilt.** Both records are named in the column heads — "Keeping · Marcus Okafor · added 14 Mar" against "Discarding · Marcus O. · added 2 Aug" — where before one column held an instruction and the other a name. Combine rules sit in a block above the actions; the primary button names its target and *Swap which is kept* sits beside it.
+6. **Merge fields are a dropdown.** Six bordered chips under the body field read as six competing buttons. One `Insert a field ▾` control, with the open state listing each token beside a sample value.
+7. **Submission detail capped** at 1180 — it was the one route the width pass missed.
+8. **Markup repairs:** three malformed style declarations (`flex-direction:column gap:6px` and similar) where a missing semicolon voided the rule and collapsed a column into a row; a `width:16000px` frame; and a doubled cap injection that produced `padding:th:1440px`.
+9. **The before-state file was deleted** at the user's request, with its screenshot and README rows.
+
+## What the round before that added
 
 Eight additions, in plain terms. Each has its own section above with the code-level detail.
 
@@ -347,6 +358,40 @@ Eight additions, in plain terms. Each has its own section above with the code-le
 7. **Scoped reviewer queue** (Review). The queue and scorecard name which wave you are in, so a reviewer working two plans can tell them apart.
 
 8. **Password CTA, three states** (Public). The confirmation screen's "set a password" link only appears when this submission created the contact; when the email is already in the CRM, no claim URL may appear on screen at all. That is a takeover defence, not a copy variant.
+
+## Widths — three container classes
+
+The mock frames are 1240px, which is a drawing width, not a monitor. In production the page is the browser, so every screen needs a stated rule. There are three, and the class is a property of the **content**, not the route. Shown at 1800px in `01-overview.png`.
+
+| Class | Max width | Screens |
+|---|---|---|
+| Reading measure | **820px**, centred | Overview, session detail, the CFP form and its confirmations, login |
+| Reading + rail | **820px content, centred on the page** — the rail hangs in the left margin | Settings |
+| Reading + rail | **1180px** (820 content + 34 gap + 300 rail) | Public sessions |
+| Table measure | **1440px**, centred | Submissions list, Contacts directory and pipeline board, Content worklist and files, Review plans and results, Comms compose, Speakers matrix |
+| Canvas | **none** | Agenda grid |
+
+**Chrome is always full bleed.** The header rule, the toolbar rules and section rules run edge to edge; only the content inside them is constrained. A centred card floating on a wide background would be a different design language from the one this set uses everywhere else.
+
+**A rail does not widen the measure, and it does not move it either.** Settings pairs the reading measure with a navigation rail, and the measure stays centred on the page while the rail hangs in the left margin — `grid-template-columns: minmax(196px, 1fr) minmax(0, 820px) minmax(0, 1fr)`, rail `justify-self:end`. Centring the rail *and* content as one block pushes the thing you are reading off-centre by half the rail's width. Below about 1200 the gutter track hits its 196px minimum and the layout slides right, which is the correct degradation. Public sessions differs: its 300px rail is content, not navigation, so there the pair is centred together at 1180.
+
+**An editor is reading class, whatever its rows look like.** The CFP form builder and the Comms template editor both lay their fields out in rows with a header, which makes them look tabular — but you are editing one thing at a time, not scanning many, so both sit at 820. The test is what the screen is *for*: scanning many records is table class, composing one is reading class.
+
+**Why 820 for reading:** a 60–75 character measure does not get better at 1800px, and Overview is prose plus single decisions. The gutters are the design.
+
+**Why cap tables at 1440:** tables genuinely want width, but past about 1440 the eye loses the row between the title on the left and the action on the right. On a 2560px monitor an uncapped table is worse than a capped one, not better — the remedy for a cramped table is fewer columns or a wider gap, never more monitor.
+
+**Only the agenda grid is a canvas.** Its column count is the event's room count, which an organiser can add to, so width genuinely buys columns and a cap would force scrolling on a monitor that had the room.
+
+**The speaker matrix and the pipeline board look like canvases and are not.** Their columns are bounded — by the event's task list, and by the five fixed pipeline stages — so past a certain width they stop gaining and merely spread. Both sit at the table measure and scroll horizontally below their own minimum (`min-width:1060px` for the matrix, `1000px` for the board). At 1440 that is roughly 178px per task column and 262px per stage, both comfortable. The test for canvas class is not "is it a grid" but "can the number of columns grow".
+
+Below 1240 everything degrades the same way: the reading measure keeps its padding and shrinks, table measures reach their own minimum and scroll horizontally within the content area, and at 720 and under the phone layouts in these files take over.
+
+## Public gallery — kept, but flagged
+
+`/e/:slug/gallery` is built: `GalleryContent` in `src/routes/public/speakers.tsx`, a case in `dispatch.tsx`, membership in `SURFACES`, its own `.chq-pub-gallery-grid` CSS, and a row in the settings surface counts. Per **DEC-593** it is "the speakers directory's photo-led twin" — the same `SpeakerCard`, rendered with `showSessions={false}`, plus its own `?q=` name search.
+
+The design therefore does **not** draw it as a separate frame: a tile strip beside the speaker cards showed the same six people twice. The speakers frame carries one line pointing at it instead. If the team wants to retire the surface, that is a product decision touching a route, a component, a decision record and CSS — not a mock change.
 
 ## Copy rules
 
@@ -401,7 +446,6 @@ The screens are correct as *design*; the numbers on them are illustrative until 
 
 | File | Shows |
 |---|---|
-| `00-before-current-ui.png` | **Before** — today's unstyled admin across 7 screens |
 | `01-overview.png` | Overview desktop + phone, New event modal |
 | `12-home.png` | Home — three states at both widths, plus the design-notes panel |
 | `02-submissions.png` | Table, submission detail (desktop + phone), form builder (desktop + phone), 2 modals |

@@ -25,11 +25,11 @@
   <div style="display:flex; flex-direction:column; gap:14px">
     <div style="display:flex; align-items:center; gap:12px">
       <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">Overview</span>
-      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">What needs you today · 1240</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">What needs you today · 1600</span>
       <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Work happens here, not one tab away</span>
     </div>
 
-    <div style="width:1240px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+    <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
       <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
         <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
         <nav style="display:flex; align-items:center; gap:15px; font-size:13px; font-weight:600; line-height:1">
@@ -347,6 +347,85 @@
     </div>
   </div>
 
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">1800</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Widths · what a wide monitor gets</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Three container classes, one rule each</span>
+    </div>
+
+    <div style="width:1800px; display:flex; flex-direction:column; gap:20px">
+
+      <div style="background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+        <div style="border-bottom:1px solid #1B1D17; padding:13px 34px; display:flex; align-items:center; gap:16px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:18px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Chrome is full bleed · always</span>
+        </div>
+        <div style="padding:22px 34px 26px; display:flex; justify-content:center">
+          <div style="width:100%; max-width:820px; background:#EFEBDF; border:1px dashed #A9AE94; border-radius:5px; padding:18px 20px; display:flex; flex-direction:column; gap:5px">
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:17px; font-weight:700; letter-spacing:-0.02em">Reading measure · 820px</span>
+            <span style="font-size:14px; line-height:1.6; color:#3F4237">Overview, session detail, forms, settings panels, every public page. Prose and single decisions. The gutters are the design, not waste — a 60-character measure does not improve at 1800px.</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+        <div style="border-bottom:1px solid #1B1D17; padding:13px 34px; display:flex; align-items:center; gap:16px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:18px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        </div>
+        <div style="padding:22px 34px 26px; display:flex; justify-content:center">
+          <div style="width:100%; max-width:1440px; display:flex; flex-direction:column; gap:12px">
+            <div style="background:#EFEBDF; border:1px dashed #A9AE94; border-radius:5px; padding:18px 20px; display:flex; flex-direction:column; gap:5px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:17px; font-weight:700; letter-spacing:-0.02em">Table measure · capped at 1440px</span>
+              <span style="font-size:14px; line-height:1.6; color:#3F4237">Submissions, Contacts directory, Content worklist, Review results, Comms, Settings. Tables want width — but past about 1440 the eye loses the row between the title and the action at the far end, and the fix is a wider gap, not a wider table.</span>
+            </div>
+            <div style="display:grid; grid-template-columns:74px 1fr 150px 130px 108px 118px 64px; gap:14px; padding:0 0 8px; border-bottom:2px solid #1B1D17; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
+              <span>Ref</span><span>Title</span><span>Speakers</span><span>Track</span><span>Status</span><span>Format</span><span></span>
+            </div>
+            <sc-for list="{{ triageRows }}" as="row" hint-placeholder-count="3">
+              <div style="display:grid; grid-template-columns:74px 1fr 150px 130px 108px 118px 64px; gap:14px; align-items:center; padding:2px 0 12px; border-bottom:1px solid #E1DDCE">
+                <span style="font-size:12px; font-weight:600; color:#565A4B">{{ row.ref }}</span>
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-size:15px; font-weight:600; letter-spacing:-0.01em">{{ row.title }}</span>
+                <span style="font-size:13px">{{ row.speaker }}</span>
+                <span style="font-size:12px; color:#565A4B">{{ row.track }}</span>
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase">Pending</span>
+                <span style="font-size:12px; color:#565A4B">{{ row.format }}</span>
+                <a href="#" style="font-size:12px; font-weight:700">Open</a>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+        <div style="border-bottom:1px solid #1B1D17; padding:13px 34px; display:flex; align-items:center; gap:16px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:18px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        </div>
+        <div style="padding:22px 34px 26px; display:flex; flex-direction:column; gap:12px">
+          <div style="background:#EFEBDF; border:1px dashed #A9AE94; border-radius:5px; padding:18px 20px; display:flex; flex-direction:column; gap:5px">
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:17px; font-weight:700; letter-spacing:-0.02em">Canvas · uncapped</span>
+            <span style="font-size:14px; line-height:1.6; color:#3F4237">The agenda grid, and only the agenda grid. Its column count is the event's room count, which an organiser can add to — so width genuinely buys columns and capping it would force scrolling on a monitor that had the room. The speaker matrix and pipeline board look like canvases but are not: their columns are bounded by the task list and the five fixed stages, so both sit at the table measure and scroll below their own minimum.</span>
+          </div>
+          <div style="display:grid; grid-template-columns:74px repeat(4, 1fr); gap:12px; padding:0 0 9px; border-bottom:2px solid #1B1D17">
+            <span style="font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Time</span>
+            <sc-for list="{{ canvasCols }}" as="c" hint-placeholder-count="4">
+              <span style="font-size:12px; font-weight:700; line-height:1.25">{{ c.name }}</span>
+            </sc-for>
+          </div>
+          <sc-for list="{{ canvasRows }}" as="r" hint-placeholder-count="2">
+            <div style="display:grid; grid-template-columns:74px repeat(4, 1fr); gap:12px; align-items:stretch; padding:9px 0; border-bottom:1px solid #E1DDCE">
+              <span style="font-size:12px; font-weight:600; color:#565A4B; padding-top:9px">{{ r.name }}</span>
+              <sc-for list="{{ r.cells }}" as="cell" hint-placeholder-count="4">
+                <div style="{{ cell.style }}">{{ cell.label }}</div>
+              </sc-for>
+            </div>
+          </sc-for>
+          <span style="font-size:13px; color:#565A4B; line-height:1.5">Four rooms today. Add a fifth and the grid takes the width rather than compressing the four it has.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </section>
 </x-dc>
 <script type="text/x-dc" data-dc-script>
@@ -365,6 +444,25 @@ const DOT_ON = 'width:8px; height:8px; border-radius:50%; background:#4E5C31';
 const TXT = 'font-size:11px; font-weight:600; color:#565A4B';
 const TXT_ON = 'font-size:11px; font-weight:700; color:#1B1D17';
 
+// the three submissions awaiting triage — one source, so the narrative rows and the
+// width exemplar cannot drift apart
+const TRIAGE = [
+  { ref: 'DFC-033', title: 'Docs That Answer Back: Retrieval-Grounded Documentation Sites', speaker: 'Dana Whitmore', track: 'Developer Experience', format: 'Lightning, 10m', waiting: '6 days' },
+  { ref: 'DFC-038', title: 'Zero-Downtime Schema Migrations Without a DBA', speaker: 'Ezra Lindqvist', track: 'Platform & Infra', format: 'Talk, 30m', waiting: '5 days' },
+  { ref: 'DFC-047', title: 'Onboarding in 30 Minutes: Devcontainers at Scale', speaker: 'Ruth Adeyemi', track: 'Developer Experience', format: 'Talk, 30m', waiting: '3 days' },
+];
+
+const C_DONE = 'font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#F7F9F0; background:#4E5C31; border-radius:3px; padding:3px 8px; justify-self:start';
+const C_PEND = 'font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B; border:1px solid #BAB6A6; border-radius:3px; padding:2px 8px; justify-self:start';
+const C_LATE = 'font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#1B1D17; border:1px solid #1B1D17; border-radius:3px; padding:2px 8px; justify-self:start';
+const SLOT = 'border:1px solid #D3CFC0; border-left:3px solid #4E5C31; border-radius:4px; background:#FAF8F2; padding:8px 10px; font-size:13px; font-weight:600; min-height:46px; display:flex; align-items:center';
+const SLOT_X = 'border-radius:4px; background:#1B1D17; color:#F4F1E8; padding:8px 10px; font-size:13px; font-weight:600; min-height:46px; display:flex; align-items:center';
+const SLOT_E = 'border:1px dashed #E1DDCE; border-radius:4px; min-height:46px';
+const cell = (states, labels) => states.map((s, i) => ({
+  label: (labels && labels[i]) || '',
+  style: s === 's' ? SLOT : s === 'x' ? SLOT_X : SLOT_E,
+}));
+
 class Component extends DCLogic {
   renderVals() {
     return {
@@ -379,11 +477,11 @@ class Component extends DCLogic {
         { name: 'Ruth Adeyemi', company: 'Meridian Tools', task: 'Upload final slides', late: '2 days late' },
         { name: 'Oskar Vance', company: 'Independent', task: 'Sign speaker release', late: '1 day late' },
       ],
-      triage: [
-        { title: 'Docs That Answer Back: Retrieval-Grounded Documentation Sites', meta: 'Dana Whitmore · Developer Experience · DFC-033 · waiting 6 days' },
-        { title: 'Zero-Downtime Schema Migrations Without a DBA', meta: 'Ezra Lindqvist · Platform & Infra · DFC-038 · waiting 5 days' },
-        { title: 'Onboarding in 30 Minutes: Devcontainers at Scale', meta: 'Ruth Adeyemi · Developer Experience · DFC-047 · waiting 3 days' },
-      ],
+      triage: TRIAGE.map((r) => ({
+        title: r.title,
+        meta: r.speaker + ' · ' + r.track + ' · ' + r.ref + ' · waiting ' + r.waiting,
+      })),
+      triageRows: TRIAGE,
       content: [
         { title: 'Taming 40-Minute CI: Incremental Builds at Monorepo Scale', meta: 'Priya Raman · slides v3, 14 MB · re-uploaded yesterday' },
         { title: 'Your AI Pair Programmer Is Lying to You', meta: 'Marcus Okafor · slides v1, 8 MB · 2 days ago' },
@@ -393,6 +491,16 @@ class Component extends DCLogic {
         { title: 'Docs That Answer Back: Retrieval-Grounded Documentation Sites', meta: 'Dana Whitmore · lightning talk, 10 min · DFC-033', action: 'Place at 11:30' },
         { title: 'Zero-Downtime Schema Migrations Without a DBA', meta: 'Ezra Lindqvist · talk, 30 min · DFC-038', action: 'Place at 13:00' },
         { title: 'Observability for LLM Pipelines', meta: 'Marcus Okafor, Wei Chen · panel, 45 min · DFC-052', action: 'Place at 15:30' },
+      ],
+      canvasCols: [
+        { name: 'Main Stage' },
+        { name: 'Room 2A' },
+        { name: 'Room 2B' },
+        { name: 'Workshop Lab' },
+      ],
+      canvasRows: [
+        { name: '9:00', cells: cell(['s','e','e','e'], ['Opening Keynote']) },
+        { name: '10:00', cells: cell(['e','x','e','s'], ['', 'Taming 40-Minute CI', '', 'Evaluating Agents']) },
       ],
       quiet: [
         { title: 'Review', detail: '1 of 3 plans in · wave 1 complete' },

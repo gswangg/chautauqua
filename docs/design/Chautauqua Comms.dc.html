@@ -25,11 +25,11 @@
   <div style="display:flex; flex-direction:column; gap:14px">
     <div style="display:flex; align-items:center; gap:12px">
       <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">Comms</span>
-      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Compose · step 3 of 4 · 1240</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Compose · step 3 of 4 · 1600</span>
       <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Deciding and notifying stay separate</span>
     </div>
 
-    <div style="width:1240px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+    <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
       <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
         <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
         <nav style="display:flex; align-items:center; gap:15px; font-size:13px; font-weight:600; line-height:1">
@@ -49,7 +49,7 @@
         </div>
       </header>
 
-      <div style="padding:26px 34px 34px; display:flex; flex-direction:column; gap:20px">
+      <div style="max-width:1440px; margin:0 auto; width:100%; padding:26px 34px 34px; display:flex; flex-direction:column; gap:20px">
 
         <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px">
           <div style="display:flex; align-items:baseline; gap:14px">
@@ -217,7 +217,7 @@
       <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Templates</span>
     </div>
 
-    <div style="width:900px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+    <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
       <div style="border-bottom:1px solid #1B1D17; padding:20px 32px; display:flex; align-items:flex-end; justify-content:space-between; gap:20px">
         <div style="display:flex; flex-direction:column; gap:5px">
           <a href="#" style="font-size:13px; font-weight:700">‹ Comms</a>
@@ -225,7 +225,7 @@
         </div>
         <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; padding:10px 15px; font-size:13px; font-weight:700">New template</span>
       </div>
-      <div style="padding:22px 32px 34px; display:grid; grid-template-columns:1fr 1fr; gap:30px; align-items:start">
+      <div style="max-width:820px; margin:0 auto; width:100%; max-width:820px; margin:0 auto; width:100%; padding:22px 32px 34px; display:grid; grid-template-columns:1fr 1fr; gap:30px; align-items:start">
         <section>
           <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
             <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Saved · 5</span>
@@ -254,10 +254,12 @@
               <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Body</span>
               <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; padding:13px; font-size:14px; line-height:1.65; color:#3F4237">Hi {speaker_name}, congratulations. Your session '{talk_title}' has been accepted. Please confirm your participation and complete your profile by {task_due_date}.<br /><br />{portal_link}</div>
             </div>
-            <div style="display:flex; flex-wrap:wrap; gap:7px">
-              <sc-for list="{{ merge }}" as="m" hint-placeholder-count="6">
-                <span style="border:1px solid #BAB6A6; border-radius:4px; padding:5px 10px; font-size:12px; font-weight:600; background:#EFEBDF">{{ m.tag }}</span>
-              </sc-for>
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:44px; display:flex; align-items:center; gap:10px; padding:0 13px; font-size:14px; min-width:250px">
+                <span style="color:#565A4B">Insert a field</span>
+                <span style="margin-left:auto; font-size:12px; color:#565A4B">▾</span>
+              </div>
+              <span style="font-size:13px; color:#565A4B; line-height:1.5">Six available · dropped in at the cursor</span>
             </div>
             <div style="display:flex; gap:9px; padding-top:4px">
               <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; padding:11px 16px; font-size:13px; font-weight:700">Save</span>
@@ -292,16 +294,24 @@
             <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; padding:0 14px; font-size:13px; font-weight:600">Open</span>
           </div>
         </sc-for>
+        <div style="border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; overflow:hidden; margin-bottom:4px">
+          <div style="border-bottom:1px solid #E1DDCE; padding:10px 13px; font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Insert a field · open</div>
+          <sc-for list="{{ merge }}" as="m" hint-placeholder-count="6">
+            <div style="border-bottom:1px solid #F0EDE4; min-height:44px; display:flex; align-items:center; gap:11px; padding:0 13px">
+              <span style="font-family:ui-monospace, monospace; font-size:12px; color:#2E2A24">{{ m.tag }}</span>
+              <span style="margin-left:auto; font-size:12px; color:#565A4B">{{ m.example }}</span>
+            </div>
+          </sc-for>
+        </div>
         <div style="padding:18px 0 8px; border-bottom:2px solid #1B1D17">
           <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase">Acceptance · subject</span>
         </div>
         <div style="padding:14px 0; display:flex; flex-direction:column; gap:10px">
           <div style="border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:48px; display:flex; align-items:center; padding:0 13px; font-size:14px">Your talk has been accepted to {event_name}</div>
           <div style="border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; padding:13px; min-height:150px; font-size:14px; line-height:1.6; color:#3F4237">Hi {speaker_name}, congratulations. Your session '{talk_title}' has been accepted. Please confirm your participation by {task_due_date}.</div>
-          <div style="display:flex; gap:7px; flex-wrap:wrap">
-            <sc-for list="{{ merge }}" as="m" hint-placeholder-count="6">
-              <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; padding:0 12px; font-size:12px; font-weight:600">{{ m.tag }}</span>
-            </sc-for>
+          <div style="border:1px solid #BAB6A6; border-radius:6px; background:#FAF8F2; min-height:48px; display:flex; align-items:center; gap:10px; padding:0 13px; font-size:14px">
+            <span style="color:#565A4B">Insert a field</span>
+            <span style="margin-left:auto; font-size:12px; color:#565A4B">▾</span>
           </div>
         </div></div>
       <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px">
@@ -383,6 +393,14 @@ class Component extends DCLogic {
         { name: 'Nadia Ferrone', email: 'nadia@example.com', session: 'DFC-041', flag: 'No slot yet', flagStyle: FLAG_NOTE },
         { name: 'Ruth Adeyemi', email: 'ruth@example.com', session: 'DFC-047', flag: 'No slot yet', flagStyle: FLAG_NOTE },
         { name: 'Iris Bell', email: 'iris@example.com', session: 'DFC-019', flag: 'Scheduled', flagStyle: FLAG_OK },
+      ],
+      merge: [
+        { tag: '{speaker_name}', example: 'Priya Raman' },
+        { tag: '{talk_title}', example: 'Taming 40-Minute CI' },
+        { tag: '{event_name}', example: 'DevFlow Conf 2027' },
+        { tag: '{task_due_date}', example: '1 Apr 2027' },
+        { tag: '{portal_link}', example: 'chautauqua.cc/portal' },
+        { tag: '{track}', example: 'Platform & Infra' },
       ],
       history: [
         { when: 'Tue 11 Aug, 4:12pm', subject: 'Your talk has been accepted to DevFlow Conf 2027', count: '23 sent', template: 'Acceptance' },
