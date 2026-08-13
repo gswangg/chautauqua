@@ -16,7 +16,17 @@ import type { Db } from "../src/server/context";
 
 const REPO_ROOT = path.resolve(__dirname, "..");
 const ALLOWED_FILE = "src/db/schema/submissions.ts";
-const FORBIDDEN_PATTERNS = ["schema.submission.trackId", "submission.trackId", "additionalTrackIdsJson"];
+// The scan targets the frozen SCALAR column. Each pattern is anchored on a
+// word boundary so the plural `trackIds` -- a legitimate submission_track-
+// derived field (DEC-786 wave-52 amendment resolves a submission's tracks
+// through schema.submissionTrack and hands them to the distributor as
+// `trackIds`) -- is not mistaken for a read of `submission.trackId`.
+// Without \b, "submission.trackId" matches inside "submission.trackIds".
+const FORBIDDEN_PATTERNS: { label: string; re: RegExp }[] = [
+  { label: "schema.submission.trackId", re: /\bschema\.submission\.trackId\b/ },
+  { label: "submission.trackId", re: /\bsubmission\.trackId\b/ },
+  { label: "additionalTrackIdsJson", re: /\badditionalTrackIdsJson\b/ },
+];
 
 function walk(dir: string, out: string[]) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -45,8 +55,8 @@ describe("DEC-855 ENUMERATION scan: submission_track is the only source of a sub
       const lines = fs.readFileSync(file, "utf8").split("\n");
       lines.forEach((line, idx) => {
         for (const pattern of FORBIDDEN_PATTERNS) {
-          if (line.includes(pattern)) {
-            offenses.push(`${rel}:${idx + 1} references "${pattern}" (only ${ALLOWED_FILE} may)`);
+          if (pattern.re.test(line)) {
+            offenses.push(`${rel}:${idx + 1} references "${pattern.label}" (only ${ALLOWED_FILE} may)`);
           }
         }
       });
