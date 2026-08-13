@@ -18,6 +18,8 @@
     "gate:render-sweep": "tsx scripts/render-sweep.ts",
     "gate:scale": "tsx scripts/walkthrough/stress.ts",
     "test": "sh scripts/with-test-lock.sh vitest run",
+    "test:fast": "vitest run --config vitest.fast.config.ts",
+    "test:full": "sh scripts/with-test-lock.sh vitest run",
     "test:targeted": "vitest run"
   },
   "dependencies": {

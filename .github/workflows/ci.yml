@@ -10,6 +10,10 @@ on:
 # accounts.
 
 jobs:
+  # Every push/PR gets fast build + fast (node-only, no jsdom/wrangler/
+  # miniflare/playwright) test signal. test/test-tiers.test.ts (part of
+  # this tier) enforces that the fast/full split stays accurate, so PRs
+  # never need the slower full suite to get useful signal -- DEC-727.
   build-and-test:
     runs-on: ubuntu-latest
     steps:
@@ -21,7 +25,20 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run build
       - run: npm run bundle:check
-      - run: npm test
+      - run: npm run test:fast
+
+  # The one full/locked suite run (mandate item 73: PRs stay on the fast
+  # path above; this is the sole job that runs test:full).
+  test-full:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:full
 
   perf-smoke:
     runs-on: ubuntu-latest
