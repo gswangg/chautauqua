@@ -165,22 +165,32 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
 }
 
 export function EventSwitcher() {
-  const { me } = useMe();
+  const { me, loading } = useMe();
   const [items, setItems] = useState<EventListItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showNewEvent, setShowNewEvent] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
+    // DEC-978: GET /api/v1/events is requireOrganizer server-side -- a gate
+    // must not act while identity is still loading, and a reviewer session
+    // must never issue this request at all (it would 403 on first paint).
+    if (loading || me?.role !== 'organizer') return;
     apiList<EventListItem>('/events')
       .then((res) => setItems(res.items))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load events'));
-  }, []);
+  }, [me, loading]);
 
   const storedId = window.localStorage.getItem(STORAGE_KEY);
   const current = resolveCurrentEvent(items, storedId);
   const closeMenu = () => setMenuOpen(false);
   const { containerRef, onPanelKeyDown } = useMenu(menuOpen, closeMenu);
+
+  // DEC-978: a reviewer is confined to /review (App.tsx) and has no event
+  // to switch -- the control's only action (switching/creating events) is
+  // impossible for that role, so it should not exist, mirroring the
+  // conditional-and-quiet rule already applied to 'New event…' above.
+  if (!loading && me?.role !== 'organizer') return null;
 
   function switchTo(id: string) {
     closeMenu();

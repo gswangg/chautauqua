@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { EventSwitcher } from './EventSwitcher';
@@ -143,22 +143,60 @@ describe('EventSwitcher', () => {
     });
   });
 
-  // DEC-608: 'New event…' posts to an organizer-only endpoint; a reviewer
-  // must never see a control whose only possible outcome is a 403.
-  it('hides "New event…" for a reviewer', async () => {
-    mockApi({
+  // DEC-978: GET /api/v1/events is requireOrganizer server-side -- a
+  // reviewer session must never issue that request (it would 403 on first
+  // paint of every admin route), and since the switcher's only actions
+  // (switching/creating events) are impossible for a reviewer, the control
+  // itself renders nothing (the same conditional-and-quiet rule already
+  // applied to 'New event…').
+  it('DEC-978: issues no /events request and renders nothing for a reviewer', async () => {
+    const fetchMock = mockApi({
       'GET /api/v1/me': { userId: 'u-2', email: 'reviewer@example.com', role: 'reviewer', orgId: 'org-1' },
+      'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'Alpha Conf' }]),
+    });
+
+    const { container } = render(<EventSwitcher />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/me'),
+        expect.anything(),
+      );
+    });
+
+    expect(container).toBeEmptyDOMElement();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining('/api/v1/events'),
+      expect.anything(),
+    );
+  });
+
+  // DEC-978: a gate must not act while identity is still loading.
+  it('DEC-978: issues no /events request while identity is loading', () => {
+    const fetchMock = vi.fn(() => new Promise(() => {})); // never resolves -- `me` stays loading
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<EventSwitcher />);
+
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining('/api/v1/events'),
+      expect.anything(),
+    );
+  });
+
+  it('DEC-978: fetches /events once identity resolves to organizer', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
       'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'Alpha Conf' }]),
     });
 
     render(<EventSwitcher />);
 
     await waitFor(() => screen.getByText('Alpha Conf'));
-    fireEvent.click(screen.getByRole('button', { name: 'Switch event' }));
-
-    const menu = await screen.findByRole('menu', { name: 'Events' });
-    expect(within(menu).getByRole('menuitem', { name: 'Alpha Conf' })).toBeInTheDocument();
-    expect(within(menu).queryByRole('menuitem', { name: 'New event…' })).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/api/v1/events'),
+      expect.anything(),
+    );
   });
 
   // w5-a (DEC-806/807): the name + caret read as ONE quiet control — no
