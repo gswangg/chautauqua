@@ -5,6 +5,7 @@ import { DEFAULT_FILTER_STATE, STATUS_LABELS, SUBMISSION_STATUSES, type Submissi
 import { PreviewPane } from './PreviewPane';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { FormRow } from '../../components/ModalFrame';
 import type { EmailTemplate, RenderedRecipient } from './types';
 import type { EvaluationPlan } from '../review/types';
 
@@ -384,9 +385,9 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
           <div className="chq-section-head">
             <span className="chq-section-label">2. Pick or edit a template</span>
           </div>
-          <label className="chq-comms-template-label">
-            Template
+          <FormRow label="Template" htmlFor="compose-template">
             <select
+              id="compose-template"
               className="chq-select"
               value={templateId}
               onChange={(e) => {
@@ -409,15 +410,19 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                 </option>
               ))}
             </select>
-          </label>
-          <label className="chq-comms-template-label">
-            Subject
-            <input className="chq-input" value={subject} onChange={(e) => setSubject(e.target.value)} />
-          </label>
-          <label className="chq-comms-template-label">
-            Body
-            <textarea className="chq-textarea" rows={8} value={bodyText} onChange={(e) => setBodyText(e.target.value)} />
-          </label>
+          </FormRow>
+          <FormRow label="Subject" htmlFor="compose-subject">
+            <input id="compose-subject" className="chq-input" value={subject} onChange={(e) => setSubject(e.target.value)} />
+          </FormRow>
+          <FormRow label="Body" htmlFor="compose-body">
+            <textarea
+              id="compose-body"
+              className="chq-textarea"
+              rows={8}
+              value={bodyText}
+              onChange={(e) => setBodyText(e.target.value)}
+            />
+          </FormRow>
 
           <div className="chq-comms-template-actions">
             <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setStep('select')}>

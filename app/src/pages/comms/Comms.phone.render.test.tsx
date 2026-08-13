@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { CommsPage } from '../Comms';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 
@@ -60,7 +61,11 @@ describe('CommsPage: phone landing (DEC-621)', () => {
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<CommsPage />);
+    render(
+      <MemoryRouter>
+        <CommsPage />
+      </MemoryRouter>,
+    );
 
     await screen.findByRole('heading', { name: 'Comms' });
 
@@ -85,7 +90,11 @@ describe('CommsPage: phone landing (DEC-621)', () => {
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<CommsPage />);
+    render(
+      <MemoryRouter>
+        <CommsPage />
+      </MemoryRouter>,
+    );
     await screen.findByRole('heading', { name: 'Comms' });
 
     const landing = document.querySelector('.chq-comms-phone-landing')!;

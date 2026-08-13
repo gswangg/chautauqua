@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useCurrentEvent } from '../lib/useCurrentEvent';
 import { DelayedLoading } from '../components/DelayedLoading';
 import { TemplatesTab } from './comms/TemplatesTab';
@@ -14,9 +15,20 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'history', label: 'History' },
 ];
 
+const TAB_IDS = TABS.map((t) => t.id);
+
+function isTab(value: string | null): value is Tab {
+  return value !== null && (TAB_IDS as string[]).includes(value);
+}
+
 export function CommsPage() {
   const { eventId, loading, error } = useCurrentEvent();
-  const [tab, setTab] = useState<Tab>('compose');
+  // DEC-710: the tab strip reads/writes ?tab= so it is bookmarkable and
+  // participates in browser back/forward. An absent or unknown ?tab= falls
+  // back to compose.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawTab = searchParams.get('tab');
+  const tab: Tab = isTab(rawTab) ? rawTab : 'compose';
   // DEC-621: at phone width the page opens on a landing screen naming the
   // three things Comms does, rather than dropping straight into compose
   // step 1. SSR can't know the viewport, so both the landing block and the
@@ -27,7 +39,11 @@ export function CommsPage() {
   const [phoneEntered, setPhoneEntered] = useState(false);
 
   function choosePhoneTab(t: Tab) {
-    setTab(t);
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set('tab', t);
+      return params;
+    });
     setPhoneEntered(true);
   }
 
