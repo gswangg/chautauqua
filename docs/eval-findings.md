@@ -17,14 +17,14 @@ title row or form footer; section actions are links on the section rule · one s
 vocabulary + scan-lock beats per-page fixes (dialogs=ModalFrame, buttons, send
 reporting, page measure).
 
-## P0 — FIX LANDED (manual-qa lane, commit 5edfebb) — external re-verify pending
+## P0 — CLOSED (probe-2 verified end-to-end 2026-08-13)
 
-**Reviewer lockout root cause fixed**: closed-plan queue envelope now always
-includes `recused: []` (src/routes/review/reviewer.ts) + regression test asserting
-the closed-plan queue shape (test/review-queue-shape.test.ts, verified red-without/
-green-with). Next probe MUST re-verify end-to-end: sbek-reviewer login →
-/admin/review renders → reach a scorecard through the UI. Only then does this leave
-the file. Swarm: do NOT rework this; treat as done pending verification.
+Reviewer lockout FIXED and externally verified: sbek-reviewer login → /admin/review
+renders → scorecard reached through the UI → rating inputs live. Regression test
+guards the closed-plan envelope shape (test/review-queue-shape.test.ts). Swarm has
+since refactored into a shared closed/open envelope shaper — test covers it.
+Residue (small, filed under Review): shell still fires one non-fatal 403 organizer
+overview fetch right after reviewer login — make the shell skip it for reviewers.
 
 ## Cross-cutting sweeps (each closes a class)
 
@@ -78,12 +78,20 @@ DECLINE QUEUE no-wrap · "Columns: <state>" label · bulk bar → 3 actions · d
 section · ANSWERS = curated subset · quick-add combined name field · co-presenter
 search row layout.
 
-**Review** (landing grammar mostly CLOSED — probe-verified; remaining): reviewer
-NAMES on progress rows — code already renders `name ?? email` but seed reviewers
-have `name:null`, so SEED FIX: give reviewer.b/c/d real names · title-row summary
-"3 plans · 1 with evaluations in" (string absent from bundle) · plan rows lack mock
-subtitle ("All tracks · 3 reviews each") + "N of M" counts · remind link renders
-disabled "Remind the 0 not started" at N=0 — hide instead (affordance rule) · plan
+**Review** (probe-2 CLOSED: honest sort DEC-737, criterion labels DEC-723 —
+weight-math proven, reviewer identity DEC-736 incl. anonymized case, blended SCORE
+column w/ ▸ Reviews): **NEW P2 — ▸ Reviews disclosure NOT plan-scoped: plan-2 row
+"Reviews (2)" expands to 3 entries incl. another plan's evaluation (cross-plan leak +
+count mismatch); scope the disclosure query by planId** · header "Export results CSV"
+ignores current sort params (diverges from in-table Download CSV — carry sort/dir) ·
+shell fires one non-fatal 403 organizer-overview fetch after reviewer login (skip for
+non-organizers) · anonymity ratchet counts evaluations submitted BEFORE anonymization
+was enabled (guard should count only under-anonymity evals) · reviewer NAMES on
+progress rows (seed reviewer contacts since landed — verify names now render) ·
+title-row summary "3 plans · 1 with evaluations in" (string absent from bundle) ·
+plan rows lack mock subtitle ("All tracks · 3 reviews each") + "N of M" counts ·
+remind link renders disabled "Remind the 0 not started" at N=0 — hide instead
+(affordance rule) · plan
 editor v4 shell PARTIAL (criterion rows/Add-criterion/scale caption/locked-state all
 landed): still — title-row Duplicate + Save (not page-bottom Save/Delete), remove
 legacy fields the mock omits (NAME/INSTRUCTIONS/ROUNDS/track-filter checkboxes/
