@@ -222,7 +222,7 @@
   flex-direction: column;
   gap: 2px;
   padding: 8px;
-  background: var(--chq-surface, #fff);
+  background: var(--chq-surface);
   border: 1px solid var(--chq-border);
   border-radius: 6px;
   box-shadow: inset 0 0 0 1px var(--chq-hairline);
