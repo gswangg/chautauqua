@@ -6,6 +6,7 @@ import {
   PERF_CLASS_BUDGET_MS,
   PERF_P95_BUDGET_MS,
   adjustedP95,
+  alternateByIteration,
   assertContainsVevent,
   assertMinCsvLines,
   computeP95,
@@ -238,6 +239,35 @@ describe("resolvePerfProfileName", () => {
   });
 });
 
+describe("alternateByIteration", () => {
+  it("returns a on even iterations", () => {
+    expect(alternateByIteration(0, "pending", "accept_queue")).toBe("pending");
+    expect(alternateByIteration(2, "pending", "accept_queue")).toBe("pending");
+    expect(alternateByIteration(30, "pending", "accept_queue")).toBe("pending");
+  });
+
+  it("returns b on odd iterations", () => {
+    expect(alternateByIteration(1, "pending", "accept_queue")).toBe("accept_queue");
+    expect(alternateByIteration(3, "pending", "accept_queue")).toBe("accept_queue");
+    expect(alternateByIteration(29, "pending", "accept_queue")).toBe("accept_queue");
+  });
+
+  it("works with non-string values (e.g. slot placement objects)", () => {
+    const a = { startMin: 540 };
+    const b = { startMin: 570 };
+    expect(alternateByIteration(0, a, b)).toBe(a);
+    expect(alternateByIteration(1, a, b)).toBe(b);
+  });
+
+  it("throws on a negative iteration", () => {
+    expect(() => alternateByIteration(-1, "a", "b")).toThrow();
+  });
+
+  it("throws on a non-integer iteration", () => {
+    expect(() => alternateByIteration(1.5, "a", "b")).toThrow();
+  });
+});
+
 describe("assertMinCsvLines", () => {
   it("does not throw when the line count equals the minimum exactly", () => {
     const body = Array.from({ length: 5 }, (_, i) => `line${i}`).join("\n");
@@ -290,9 +320,9 @@ describe("perf-smoke.ts write-class coverage (DEC-644 amendment, wave 46)", () =
     expect(anyClsMatches.length).toBeGreaterThan(0);
   });
 
-  it("declares at least four cls: \"write\" checks", () => {
+  it("declares at least seven cls: \"write\" checks", () => {
     const writeMatches = source.match(/cls:\s*"write"/g) ?? [];
-    expect(writeMatches.length).toBeGreaterThanOrEqual(4);
+    expect(writeMatches.length).toBeGreaterThanOrEqual(7);
   });
 
   const expectedWriteCheckNames = [
@@ -301,6 +331,9 @@ describe("perf-smoke.ts write-class coverage (DEC-644 amendment, wave 46)", () =
     "onboarding remind preview (all outstanding)",
     "submission PATCH (description edit)",
     "pipeline stage move",
+    "bulk status change",
+    "schedule slot PUT",
+    "task assignment check-off",
   ];
 
   for (const name of expectedWriteCheckNames) {
@@ -327,5 +360,36 @@ describe("perf-smoke.ts write-class coverage (DEC-644 amendment, wave 46)", () =
     // (d) [pipeline stage move] must not be default-only".
     expect(defaultOnlyBlock).not.toContain('"submission PATCH (description edit)"');
     expect(defaultOnlyBlock).not.toContain('"pipeline stage move"');
+  });
+
+  // w51-c: the three SPEC §7 high-frequency actions the perf smoke never
+  // measured — same source-scan technique as the block above.
+  const newWriteCheckNames = ["bulk status change", "schedule slot PUT", "task assignment check-off"];
+
+  for (const name of newWriteCheckNames) {
+    it(`names the "${name}" write check (w51-c)`, () => {
+      expect(source).toContain(`name: "${name}"`);
+    });
+  }
+
+  it("none of the w51-c write checks are DEFAULT_ONLY (they run on every profile)", () => {
+    const defaultOnlyMatch = source.match(/DEFAULT_ONLY_CHECK_NAMES = new Set\(\[([\s\S]*?)\]\);/);
+    expect(defaultOnlyMatch).not.toBeNull();
+    const defaultOnlyBlock = defaultOnlyMatch![1]!;
+    for (const name of newWriteCheckNames) {
+      expect(defaultOnlyBlock).not.toContain(`"${name}"`);
+    }
+  });
+
+  it("bulk status change sizes its batch off the DEC-182 cap, not a hardcoded literal", () => {
+    expect(source).toContain("DEFAULT_BOUNDED_ID_ARRAY_MAX");
+  });
+
+  it("schedule slot PUT and bulk status change quote the exact route body shapes", () => {
+    // POST .../submissions/status body (src/routes/api/submissions.ts:558).
+    expect(source).toContain("{ ids: string[], status: string }");
+    // PUT .../submissions/:id/slot body (src/routes/agenda.ts:47).
+    expect(source).toContain("day: string,");
+    expect(source).toContain("startMin: number, endMin: number, roomId?: string | null");
   });
 });
