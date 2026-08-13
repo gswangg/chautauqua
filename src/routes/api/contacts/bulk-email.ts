@@ -11,7 +11,7 @@ import * as repo from "../../../server/repo/contacts";
 import { getEventForOrg } from "../../../server/repo/events";
 import type { KVStore } from "../../../auth/claim";
 import { preflightRender, type RenderTarget } from "../../../domain/compose";
-import { resolvePortalLink } from "../../../server/repo/portal-link";
+import { resolvePortalLinks } from "../../../server/repo/portal-link";
 import { textToHtml } from "../../../mail/render";
 import type { Db } from "../../../server/context";
 import { resolveBaseUrl } from "../../../server/origin";
@@ -86,10 +86,22 @@ async function renderBulkEmailTargets(
     contacts.map((c) => ({ contactId: c.id, email: c.email })),
   );
 
+  // DEC-530 wave-42 amendment: resolve every recipient's portal link (and
+  // mint any claim tokens it needs) through ONE batched Promise.all before
+  // the loop below, instead of an await-per-recipient KV round trip inside
+  // it — the loop itself must contain no await on KV.
+  const portalLinkMap = await resolvePortalLinks(
+    kv,
+    contacts.map((c) => ({ contactId: c.id, userId: accountMap.get(c.id) ?? null })),
+    event.id,
+    origin,
+    mintClaimTokens,
+  );
+
   const targets: RenderTarget[] = [];
   for (const contact of contacts) {
-    const userId = accountMap.get(contact.id) ?? null;
-    const portalLink = await resolvePortalLink(kv, contact.id, event.id, userId, origin, mintClaimTokens);
+    const portalLink = portalLinkMap.get(contact.id);
+    if (!portalLink) throw new Error(`no portal link resolved for contactId ${contact.id}`);
     targets.push({
       contactId: contact.id,
       submissionId: "",
