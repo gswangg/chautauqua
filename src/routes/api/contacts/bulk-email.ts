@@ -16,8 +16,6 @@ import type { Db } from "../../../server/context";
 import { resolveBaseUrl } from "../../../server/origin";
 import { currentOrgId, asRecord } from "./shared";
 import { newId } from "../../../domain/ids";
-import { logFailedSend } from "../../../mail/log-failed";
-import { isDevMode } from "../../../server/env";
 import { DEC_766 } from "../../../decisions";
 
 void DEC_766;
@@ -158,10 +156,8 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
       throw new ApiError("invalid", "One or more recipients are missing merge fields (only speaker_name/event_name/portal_link are allowed)", fields);
     }
 
-    const { makeMailer, d1EmailLogWriter } = await import("../../../server/context");
+    const { makeMailer } = await import("../../../server/context");
     const mailer = makeMailer(c.var.db, c.env);
-    const emailLog = d1EmailLogWriter(c.var.db);
-    const provider = isDevMode(c.env) ? "dev" : "cloudflare-email";
     // DEC-603: one id per fan-out call, shared by every recipient in this
     // loop, so the comms history tab can group the batch into one row.
     const batchId = newId();
@@ -183,10 +179,8 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
         await mailer.send(attempt);
       } catch (err) {
         console.error("CRM bulk email failed for", rendered.email, err);
-        // DEC-766: the mailer rejected this recipient — write the attempted
-        // row so the batch's failure is visible in comms history, not a
-        // silent gap that reads as '0 total'.
-        await logFailedSend(emailLog, attempt, provider, err);
+        // DEC-923: the mailer itself logs the failed attempt before
+        // rethrowing — no route-level duplicate write.
         failed.push({ email: rendered.email, message: err instanceof Error ? err.message : String(err) });
       }
     }

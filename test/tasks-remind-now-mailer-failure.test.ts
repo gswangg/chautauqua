@@ -6,7 +6,8 @@
 // test/tasks-due-reminders.test.ts's fakeDb/fakeMailer conventions.
 import { describe, expect, it } from "vitest";
 import { remindNow } from "../src/server/repo/tasks";
-import type { Db } from "../src/server/context";
+import { d1EmailLogWriter, type Db } from "../src/server/context";
+import { EmailBindingMailer, type EmailSender } from "../src/mail/email-binding";
 import type { Mailer } from "../src/mail/types";
 import type { KVStore } from "../src/auth/claim";
 
@@ -42,8 +43,9 @@ interface OutstandingRowShape {
   assignmentCreatedAt: Date;
 }
 
-function fakeDb(rows: OutstandingRowShape[]): { db: Db; updateCalls: unknown[] } {
+function fakeDb(rows: OutstandingRowShape[]): { db: Db; updateCalls: unknown[]; inserts: unknown[] } {
   const updateCalls: unknown[] = [];
+  const inserts: unknown[] = [];
   const db = {
     select: () => ({
       from: () => ({
@@ -64,8 +66,13 @@ function fakeDb(rows: OutstandingRowShape[]): { db: Db; updateCalls: unknown[] }
         },
       }),
     }),
+    insert: () => ({
+      values: async (vals: unknown) => {
+        inserts.push(vals);
+      },
+    }),
   } as unknown as Db;
-  return { db, updateCalls };
+  return { db, updateCalls, inserts };
 }
 
 function throwingForEmail(badEmail: string): { mailer: Mailer; sent: Array<{ to: { email: string } }> } {
@@ -132,5 +139,58 @@ describe("remindNow (DEC-238 class 2 organizer batch, partial mailer failure)", 
     expect(sent[0]?.to.email).toBe("good@example.com");
     // Only the successful recipient's assignment gets last_reminded_at stamped.
     expect(updateCalls).toHaveLength(1);
+  });
+
+  // DEC-923: reminders.ts has no logFailedSend call of its own — it inherits
+  // the audit row purely from the mailer it's given. A fully-failed remindNow
+  // batch driven by a REAL EmailBindingMailer (over a throwing EmailSender)
+  // must still leave one 'failed' email_log row per recipient, sharing a
+  // batchId — the regression the graders filed as '0 total' for a
+  // fully-failed multi-recipient send.
+  it("leaves a 'failed' email_log row per recipient when every send is rejected by a real EmailBindingMailer", async () => {
+    const contacts = ["a", "b", "c"].map((letter, i) => ({
+      assignmentId: `assign_${letter}`,
+      taskId: `task_${i}`,
+      taskTitle: "Flight reimbursement form",
+      dueDate: new Date(NOW.getTime() - HOUR),
+      status: "pending",
+      lastRemindedAt: null,
+      contactId: `contact_${letter}`,
+      firstName: "First",
+      lastName: letter.toUpperCase(),
+      email: `${letter}@example.com`,
+      eventId: "event_1",
+      eventName: "DevFlow Conf 2027",
+      timezone: "America/Los_Angeles",
+      assignmentCreatedAt: new Date(0),
+    }));
+    const { db, updateCalls, inserts } = fakeDb(contacts);
+
+    const throwingSender: EmailSender = {
+      send: async () => {
+        throw new Error("simulated total provider outage");
+      },
+    };
+    const log = d1EmailLogWriter(db);
+    const mailer: Mailer = new EmailBindingMailer(throwingSender, log, {
+      email: "noreply@example.com",
+      name: "Chautauqua",
+    });
+
+    const result = await remindNow(db, mailer, "event_1", undefined, NOW, new InMemoryKV(), ORIGIN);
+
+    expect(result.sent).toBe(0);
+    expect(result.failed).toHaveLength(3);
+    // No recipient's assignment gets stamped when its send fails.
+    expect(updateCalls).toHaveLength(0);
+
+    const failedRows = inserts.filter((v) => (v as { status: string }).status === "failed") as {
+      toEmail: string;
+      batchId: string;
+      status: string;
+    }[];
+    expect(failedRows).toHaveLength(3);
+    expect(new Set(failedRows.map((r) => r.batchId)).size).toBe(1);
+    expect(failedRows.map((r) => r.toEmail).sort()).toEqual(["a@example.com", "b@example.com", "c@example.com"]);
   });
 });

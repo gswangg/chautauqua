@@ -103,15 +103,24 @@ vi.mock("../src/server/repo/tasks/reminders", async () => {
   };
 });
 
+// DEC-923: makeMailer must return a REAL EmailBindingMailer (over a
+// throwing EmailSender and the test's own insert-recording db) so this
+// test proves the mailer is the SOLE author of the 3 'failed' rows — not a
+// route-level logFailedSend duplicate.
 vi.mock("../src/server/context", async () => {
   const actual = await vi.importActual<typeof import("../src/server/context")>("../src/server/context");
+  const { EmailBindingMailer } = await import("../src/mail/email-binding");
   return {
     ...actual,
-    makeMailer: vi.fn(() => ({
-      send: vi.fn(async () => {
-        throw new Error("simulated total provider outage");
-      }),
-    })),
+    makeMailer: vi.fn((db: unknown) => {
+      const throwingSender = {
+        send: vi.fn(async () => {
+          throw new Error("simulated total provider outage");
+        }),
+      };
+      const log = actual.d1EmailLogWriter(db as never);
+      return new EmailBindingMailer(throwingSender, log, { email: "noreply@example.com", name: "Chautauqua" });
+    }),
   };
 });
 

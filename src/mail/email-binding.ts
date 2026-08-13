@@ -58,7 +58,7 @@ export class EmailBindingMailer implements Mailer {
           : {}),
       });
     } catch (err) {
-      status = "error";
+      status = "failed";
       sendError = err;
     }
     const row: EmailLogEntry = {

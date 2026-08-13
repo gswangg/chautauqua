@@ -75,11 +75,18 @@ const mailerSendMock = vi.fn(async (mail: { to: { email: string } }) => {
     throw new Error("simulated provider rejection");
   }
 });
+// DEC-923: makeMailer returns a REAL EmailBindingMailer over the throwing
+// sender + the test's insert-recording db, so the mailer is the sole
+// author of the 'failed' email_log rows (no route-level duplicate).
 vi.mock("../src/server/context", async () => {
   const actual = await vi.importActual<typeof import("../src/server/context")>("../src/server/context");
+  const { EmailBindingMailer } = await import("../src/mail/email-binding");
   return {
     ...actual,
-    makeMailer: vi.fn(() => ({ send: mailerSendMock })),
+    makeMailer: vi.fn((db: unknown) => {
+      const log = actual.d1EmailLogWriter(db as never);
+      return new EmailBindingMailer({ send: mailerSendMock }, log, { email: "noreply@example.com", name: "Chautauqua" });
+    }),
   };
 });
 
