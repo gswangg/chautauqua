@@ -53,15 +53,16 @@ const CHAIN_LATEST = {
 };
 
 const CHAIN_VERSIONS = [
-  { id: FILE_V1, filename: "slides-v1.pdf", contentType: "application/pdf", r2Key: "task/assignment-1/slides-v1.pdf", createdAt: T0 },
+  { id: FILE_V1, filename: "slides-v1.pdf", contentType: "application/pdf", r2Key: "task/assignment-1/slides-v1.pdf", createdAt: T0, versionNo: 1 },
   {
     id: FILE_V2,
     filename: "slides-v2.pdf",
     contentType: "application/pdf",
     r2Key: "task/assignment-1/slides-v2.pdf",
     createdAt: T0 + 86_400_000,
+    versionNo: 2,
   },
-  CHAIN_LATEST,
+  { ...CHAIN_LATEST, versionNo: 3 },
 ];
 
 vi.mock("../src/server/repo/portal", async () => {
