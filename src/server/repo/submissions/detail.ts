@@ -20,6 +20,13 @@ export interface SubmissionDetailParticipant {
   inviteStatus: string;
 }
 
+export interface SubmissionDetailSlot {
+  day: string;
+  startMin: number;
+  endMin: number;
+  roomName: string | null;
+}
+
 export interface SubmissionDetail {
   id: string;
   eventId: string;
@@ -37,6 +44,11 @@ export interface SubmissionDetail {
   updatedAt: number;
   participants: SubmissionDetailParticipant[];
   answers: Record<string, unknown>;
+  // DEC-780: the organiser's submission detail carries where/when the
+  // session is placed on the agenda — null when it hasn't been scheduled
+  // yet (schedule_slot has at most one row per submission, DEC-010's
+  // nullable roomId meaning "TBD is a real value").
+  slot: SubmissionDetailSlot | null;
 }
 
 /** Returns the submission's eventId + org id, for ownership checks — null if
@@ -108,9 +120,15 @@ export async function getSubmissionDetail(db: Db, submissionId: string): Promise
       createdAt: schema.submission.createdAt,
       updatedAt: schema.submission.updatedAt,
       recordPrefix: schema.event.recordPrefix,
+      slotDay: schema.scheduleSlot.day,
+      slotStartMin: schema.scheduleSlot.startMin,
+      slotEndMin: schema.scheduleSlot.endMin,
+      slotRoomName: schema.room.name,
     })
     .from(schema.submission)
     .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
+    .leftJoin(schema.scheduleSlot, eq(schema.scheduleSlot.submissionId, schema.submission.id))
+    .leftJoin(schema.room, eq(schema.room.id, schema.scheduleSlot.roomId))
     .where(eq(schema.submission.id, submissionId))
     .limit(1);
   const row = rows[0];
@@ -179,5 +197,9 @@ export async function getSubmissionDetail(db: Db, submissionId: string): Promise
       inviteStatus: p.inviteStatus,
     })),
     answers,
+    slot:
+      row.slotDay !== null && row.slotStartMin !== null && row.slotEndMin !== null
+        ? { day: row.slotDay, startMin: row.slotStartMin, endMin: row.slotEndMin, roomName: row.slotRoomName ?? null }
+        : null,
   };
 }
