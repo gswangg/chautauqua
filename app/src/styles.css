@@ -1398,6 +1398,13 @@ a:hover {
   margin: 0 0 8px;
 }
 
+/* DEC-822/DEC-839: the Saved embeds header count, e.g. "3 on · 1 off". */
+.chq-settings-count {
+  font-size: 12px;
+  color: var(--chq-muted);
+  margin: 0 0 8px;
+}
+
 .chq-color-swatch {
   width: 22px;
   height: 22px;

@@ -22,16 +22,18 @@ import {
   type EmbedSurface,
 } from './embedSnippet';
 
-// DEC-822: the shape a saved embed row comes back as from GET
+// DEC-822/DEC-839: the shape a saved embed row comes back as from GET
 // /events/:eventId/embeds (src/server/repo/embeds.ts's EmbedRecord,
 // serialized) — loaded here (via the list endpoint; there is no
-// GET-by-id) to populate the builder when opened at ?embed=<id>.
+// GET-by-id) to populate the builder when opened at ?embed=<id>. Per
+// DEC-839's wire contract, `options` is the PARSED object, never the
+// stored JSON string.
 interface SavedEmbedRow {
   id: string;
   name: string;
   surface: string;
   format: string;
-  optionsJson: string;
+  options: StoredEmbedOptions;
 }
 
 interface StoredEmbedOptions {
@@ -135,15 +137,7 @@ export function EmbedsPanel() {
         setName(found.name);
         setSurface(found.surface as EmbedSurface);
         setFormat(found.format as EmbedFormat);
-        let opts: StoredEmbedOptions = {};
-        try {
-          const parsed = JSON.parse(found.optionsJson) as unknown;
-          if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-            opts = parsed as StoredEmbedOptions;
-          }
-        } catch {
-          opts = {};
-        }
+        const opts: StoredEmbedOptions = found.options ?? {};
         setTrackId(opts.trackId ?? '');
         setSessionFormat(opts.sessionFormat ?? '');
         setRoomId(opts.roomId ?? '');
@@ -416,7 +410,7 @@ export function EmbedsPanel() {
               disabled={saving || !name.trim()}
               onClick={() => void handleSave()}
             >
-              {saving ? 'Saving…' : editingId ? 'Save' : 'Save embed'}
+              {saving ? 'Saving…' : editingId ? 'Save changes' : 'Save embed'}
             </button>
             {saveError ? (
               <div className="chq-error" role="alert">

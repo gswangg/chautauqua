@@ -117,58 +117,11 @@ export function buildEmbedUrl(origin: string, slug: string, surface: EmbedSurfac
   return `${origin}${path}${qs ? `?${qs}` : ''}`;
 }
 
-// DEC-822: a saved embed row states the recipe it stores ('Sessions ·
-// iframe · AI Engineering · 6 fields') beside its On/Off pill, so an
-// organizer can tell what a saved embed does without opening the builder.
-// Pure and defensive — optionsJson is untrusted stored data (parsed the
-// same defend-and-degrade way saved-embed.tsx's parseStoredOptions does),
-// never throws.
-export function describeEmbedRecipe(
-  surface: string,
-  format: string,
-  optionsJson: string,
-  trackNameById: Record<string, string> = {},
-): string {
-  let opts: Record<string, unknown> = {};
-  try {
-    const parsed = JSON.parse(optionsJson) as unknown;
-    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-      opts = parsed as Record<string, unknown>;
-    }
-  } catch {
-    opts = {};
-  }
-
-  const segments: string[] = [surface.length > 0 ? surface[0]!.toUpperCase() + surface.slice(1) : surface, format];
-
-  const trackId = typeof opts.trackId === 'string' ? opts.trackId : undefined;
-  if (trackId) segments.push(trackNameById[trackId] ?? trackId);
-
-  const q = typeof opts.q === 'string' ? opts.q : undefined;
-  if (q) segments.push(`"${q}"`);
-
-  const day = typeof opts.day === 'string' ? opts.day : undefined;
-  if (day) segments.push(day);
-
-  const sessionFormat = typeof opts.sessionFormat === 'string' ? opts.sessionFormat : undefined;
-  if (sessionFormat) segments.push(sessionFormat);
-
-  const roomId = typeof opts.roomId === 'string' ? opts.roomId : undefined;
-  if (roomId) segments.push(`Room ${roomId}`);
-
-  const limit = typeof opts.limit === 'number' ? opts.limit : undefined;
-  if (limit !== undefined) segments.push(`Limit ${limit}`);
-
-  // Unlike buildEmbedUrl's ?fields= (only serialized for a non-default
-  // subset), the recipe caption states the field count unconditionally —
-  // it's a summary of what's saved, not a URL param to omit when default.
-  const fields = Array.isArray(opts.fields) ? (opts.fields as unknown[]).filter((f) => typeof f === 'string') : undefined;
-  if (fields && fields.length > 0) {
-    segments.push(`${fields.length} fields`);
-  }
-
-  return segments.join(' · ');
-}
+// DEC-822/DEC-839: the recipe formatter moved to embedRecipe.ts's
+// formatEmbedRecipe — the ONE shared formatter for both the saved-embeds
+// list row and the builder's editor heading, operating on the PARSED
+// `options` object a saved-embed row carries over the wire (DEC-839),
+// never a stored JSON string.
 
 /** Builds the copyable snippet for a resolved URL. `format` drives the
  * shape: an <iframe> tag, a plain <a> tag, or the bare URL for the three

@@ -307,7 +307,7 @@ describe('EmbedsPanel', () => {
           name: 'Homepage widget',
           surface: 'speakers',
           format: 'json',
-          optionsJson: JSON.stringify({ q: 'ai', limit: 5 }),
+          options: { q: 'ai', limit: 5 },
           enabled: true,
         },
       ]),
@@ -322,13 +322,28 @@ describe('EmbedsPanel', () => {
     expect(screen.getByLabelText('Surface')).toHaveValue('speakers');
     expect(screen.getByLabelText('Search')).toHaveValue('ai');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    // DEC-822/DEC-839: in edit mode the primary action is 'Save changes'
+    // and Copy snippet stays secondary.
+    const saveButton = screen.getByRole('button', { name: 'Save changes' });
+    expect(saveButton).toHaveClass('chq-btn-primary');
+    expect(screen.getByRole('button', { name: 'Copy snippet' })).toHaveClass('chq-btn-secondary');
+
+    fireEvent.click(saveButton);
 
     await waitFor(() => {
       const call = fetchMock.mock.calls.find(([input]) => String(input).includes('/api/v1/embeds/emb-1'));
       expect(call).toBeDefined();
       const [, init] = call!;
       expect(init).toMatchObject({ method: 'PATCH' });
+      const body = JSON.parse(String(init!.body));
+      // DEC-839: PATCH carries the FULL current knob set (surface, format,
+      // options) alongside name -- never just name/enabled.
+      expect(body).toMatchObject({
+        name: 'Homepage widget',
+        surface: 'speakers',
+        format: 'json',
+        options: { q: 'ai', limit: 5 },
+      });
     });
   });
 });
