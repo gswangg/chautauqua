@@ -16,8 +16,14 @@
 }
 
 .chq-settings-layout {
+  /* DEC-989/v6: the reading measure stays centred ON THE PAGE with the rail
+     hanging in the left margin -- not the two centred together as one
+     block, which would push the read column off-centre by half the rail's
+     width. Three tracks: rail, 820px content, and a mirroring third track
+     so the content column sits centred; the rail is right-aligned
+     (justify-self:end) within its own track instead of stretching. */
   display: grid;
-  grid-template-columns: 196px 1fr;
+  grid-template-columns: minmax(196px, 1fr) minmax(0, 820px) minmax(0, 1fr);
   gap: 34px;
   align-items: start;
 }
@@ -28,6 +34,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  justify-self: end;
 }
 
 .chq-settings-rail-link {

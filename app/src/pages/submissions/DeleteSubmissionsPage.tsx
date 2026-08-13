@@ -151,7 +151,7 @@ export function DeleteSubmissionsPage() {
 
   if (ids.length === 0) {
     return (
-      <div className="chq-page chq-submissions-delete-page">
+      <div className="chq-page chq-submissions-delete-page chq-measure">
         <div className="chq-submissions-delete-topbar">{backLink}</div>
         <p className="chq-empty">No sessions selected. Pick sessions to delete from the Submissions list.</p>
       </div>
@@ -161,7 +161,7 @@ export function DeleteSubmissionsPage() {
   const deleteCount = eligible.length;
 
   return (
-    <div className="chq-page chq-submissions-delete-page">
+    <div className="chq-page chq-submissions-delete-page chq-measure">
       <div className="chq-submissions-delete-topbar">{backLink}</div>
       <h1 className="chq-page-title">Delete sessions</h1>
 

@@ -44,6 +44,10 @@
   grid-template-columns: repeat(5, 1fr);
   gap: 18px;
   align-items: start;
+  /* DEC-989/v6: the board's columns are bounded by the five fixed pipeline
+     stages, so it sits at the table measure and scrolls horizontally below
+     its own minimum rather than gaining width forever. */
+  min-width: 1000px;
 }
 
 .chq-contacts-pipeline-column {

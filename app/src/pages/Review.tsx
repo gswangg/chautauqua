@@ -22,7 +22,7 @@ import { Scorecard } from './review/Scorecard';
 
 function OtherRolePanel({ owner }: { owner: 'reviewer' | 'organiser' }) {
   return (
-    <div className="chq-page chq-review-page">
+    <div className="chq-page chq-review-page chq-measure">
       <h1 className="chq-page-title">Not your view</h1>
       <p className="chq-empty">That page belongs to the {owner} view.</p>
       <Link className="chq-btn-tertiary" to="/review">
@@ -37,7 +37,7 @@ export function ReviewPage() {
 
   if (loading) {
     return (
-      <div className="chq-page chq-review-page">
+      <div className="chq-page chq-review-page chq-measure">
         <h1 className="chq-page-title">Review</h1>
         <DelayedLoading />
       </div>

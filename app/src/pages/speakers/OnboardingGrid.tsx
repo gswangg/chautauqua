@@ -434,7 +434,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
 
   if (eventLoading) {
     return (
-      <div className="chq-page chq-speakers-page">
+      <div className="chq-page chq-speakers-page chq-measure-table">
         <h1 className="chq-page-title">Speakers</h1>
         <DelayedLoading label="Loading event…" />
       </div>
@@ -443,7 +443,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
 
   if (eventError || !eventId) {
     return (
-      <div className="chq-page chq-speakers-page">
+      <div className="chq-page chq-speakers-page chq-measure-table">
         <h1 className="chq-page-title">Speakers</h1>
         <div className="chq-error">{eventError ?? 'No event selected.'}</div>
       </div>
@@ -451,7 +451,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   }
 
   return (
-    <div className="chq-page chq-speakers-page">
+    <div className="chq-page chq-speakers-page chq-measure-table">
       {error && <div className="chq-error">{error}</div>}
       {toast && (
         <div className="chq-error" role="status">

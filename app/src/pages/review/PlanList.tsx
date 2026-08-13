@@ -138,7 +138,7 @@ export function PlanList() {
 
   if (eventLoading) {
     return (
-      <div className="chq-page chq-review-page">
+      <div className="chq-page chq-review-page chq-measure-table">
         <h1 className="chq-page-title">Review</h1>
         <DelayedLoading />
       </div>
@@ -147,7 +147,7 @@ export function PlanList() {
 
   if (eventError || !eventId) {
     return (
-      <div className="chq-page chq-review-page">
+      <div className="chq-page chq-review-page chq-measure-table">
         <h1 className="chq-page-title">Review</h1>
         <div className="chq-error">{eventError ?? 'No event selected.'}</div>
       </div>
@@ -168,7 +168,7 @@ export function PlanList() {
   }).length;
 
   return (
-    <div className="chq-page chq-review-page">
+    <div className="chq-page chq-review-page chq-measure-table">
       {/* DEC-706: title row -- h1 + summary, page-level actions
          right-aligned beside it. No lone toolbar band above the list. */}
       <div className="chq-review-title-row">

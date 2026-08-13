@@ -221,7 +221,7 @@ export function SubmissionsTable() {
 
   if (!eventId) {
     return (
-      <div className="chq-page">
+      <div className="chq-page chq-measure-table">
         <h1 className="chq-page-title">Submissions</h1>
         <div className="chq-attention-frame">No event selected. Append ?eventId=&lt;id&gt; to the URL.</div>
       </div>
@@ -229,7 +229,7 @@ export function SubmissionsTable() {
   }
 
   return (
-    <div className="chq-page chq-submissions-page">
+    <div className="chq-page chq-submissions-page chq-measure-table">
       <div className="chq-submissions-head">
         <div className="chq-submissions-head-titles">
           <h1 className="chq-page-title">Submissions</h1>

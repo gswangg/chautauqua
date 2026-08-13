@@ -221,7 +221,7 @@ export function ContactsApp() {
     : null;
 
   return (
-    <div className="chq-page chq-contacts-page">
+    <div className="chq-page chq-contacts-page chq-measure-table">
       <div className="chq-contacts-title-row">
         <h1 className="chq-page-title">Contacts</h1>
         {summary && <span className="chq-summary">{summary}</span>}

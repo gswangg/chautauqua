@@ -105,7 +105,7 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
   if (loading) {
     if (embedded) return <DelayedLoading />;
     return (
-      <div className="chq-page chq-review-page">
+      <div className="chq-page chq-review-page chq-measure">
         <h1 className="chq-page-title">Review</h1>
         <DelayedLoading />
       </div>
