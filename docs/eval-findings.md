@@ -301,24 +301,30 @@ footer verbatim). MINOR: event-row meta → "Three tracks · five formats" gramm
 footer/main landmarks. LATER: seeded pass for between-cycles + fresh-deploy
 states.
 
-**Public/Portal (desktop)** (P1 pending-submissions CLOSED by probe 2 —
-/portal/submissions renders both submissions w/ status links; headshot placeholders
-also verified fine): portal session detail polish — Accepted badge jammed inline
-against back link (needs own row/separator) · code·format·track line MISSING track +
-spans concatenate w/o separator into date line · date renders raw ISO
-("2027-05-12, 09:00" vs mock "Tue 12 May, 10:00 · Room 2A") · Slides card lacks
-version/size/"with the organisers" meta + Replace/Upload buttons · drop
-not-in-mock Participants + full-Answers sections · header: drop "Welcome to the
-speaker portal!…" tagline (displaces identity on subpages; mock = wordmark +
-identity only) · pending status label "UNDER REVIEW" — mock vocabulary check ·
-admin-404 links run together ("Go to Overview Submissions ›" — separate them) ·
-public form track checkboxes centered above labels, should be inline · search button STILL 11.1px high
-(probe-4 re-measured; root cause PINNED: button centers against the 66px
-label+input wrapper — align to the input box; 11px = half the label height) ·
-DEC-777 residue: portal SUBPAGE headers drop identity entirely (restore name) ·
-portal detail TRACK: template already renders detail.trackName
-(portal/index.tsx:404) but the portal query returns it NULL — fix the data fetch,
-not the template.
+**Public/Portal — GATE-1 FLEET: FAIL all four subsections; claim-URL security
+PASSES (report fidelity-gate1/10-public-portal/report.md — full ranked list of
+7 BROKEN / 17 MAJOR / 11 MINOR there; headline items):
+BROKEN: portal wordmark lowercases the EVENT name (theme.ts:294 transform on
+branding.eventName) · raw ISO on portal home hero line · profile back-link
+mislabelled · REMOVE the portal tagline entirely (frame has none; it shares the
+header line with identity) · speakers grid 7-col at 1440 (frame 3-up; fix
+minmax) + gallery packing · headshot fallback = empty div (frame: hatched
+placeholder) · agenda ?day= pills lack active state.
+MAJOR: sessions search = compact inline box beside pills, no submit button ·
+session rows title/speaker/meta/Save only (drop abstract + ▶) · meta as
+letterspaced caps text not pills · one filter idiom everywhere · .ics footer
+CTA · overlap indicators · empty-day heading under my-picks ·
+**submit-form control types DEC: frames = single-track radios/format cards/
+audience segment; data model = multi-track (seed has 2-track sessions) —
+reconcile deliberately** · submit form missing char counter/ACCESSIBILITY
+NEEDS/helpers/OPTIONAL suffixes/ABSTRACT label/single NAME/two-col layout ·
+confirmation chrome: SUBMITTED · <ref> eyebrow, echo email, card meta, PRIMARY
+buttons per frames 12-15, fresh-state extras, closed-CFP "Browse the sessions ›"
+· systemic date grammar · one back-link string · header on body grid.
+MINOR batch in report (pluralization, empty-.ics guard, task vocab TO DO/DONE,
+slides Replace row, bullets, spacing).
+(Closures stand: DEC-098 three states · detail badge/meta incl. TRACK ·
+pending-submissions · submit footer row · itinerary + .ics validity.)
 
 **Grader P3s** (two-track-selectors CLOSED by probe 2): label New-event Timezone ·
 explicit CFP publish affordance · close-before-open validation loud at the field.
