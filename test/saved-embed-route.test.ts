@@ -160,3 +160,72 @@ describe("DEC-785: GET /embed/e/:embedId", () => {
     expect(res.status).toBe(200);
   });
 });
+
+// DEC-850: the saved id resolves in its SAVED format, not always HTML.
+describe("DEC-850: GET /embed/e/:embedId honours the saved format", () => {
+  const JSON_EMBED = {
+    ...ENABLED_EMBED,
+    id: "emb-json",
+    format: "json",
+    options: { trackId: "trk1", sessionFormat: "talk", roomId: "room1", day: "2026-08-10", q: "keynote", limit: 5, fields: ["room", "track"], accent: "#ff0000" },
+  };
+  const XML_EMBED = { ...JSON_EMBED, id: "emb-xml", format: "xml" };
+  const ICS_EMBED = { ...ENABLED_EMBED, id: "emb-ics", surface: "agenda", format: "ics", options: { day: "2026-08-10", accent: "#ff0000" } };
+  const IFRAME_EMBED = { ...ENABLED_EMBED, id: "emb-iframe", format: "iframe" };
+
+  it("json format redirects to the surface's .json feed twin with saved options as query params", async () => {
+    // extend the mocked getEmbedById to also resolve this embed id
+    const repo = await import("../src/server/repo/embeds");
+    vi.mocked(repo.getEmbedById).mockImplementation(async (_db: unknown, id: string) => {
+      if (id === JSON_EMBED.id) return JSON_EMBED as any;
+      if (id === XML_EMBED.id) return XML_EMBED as any;
+      if (id === ICS_EMBED.id) return ICS_EMBED as any;
+      if (id === IFRAME_EMBED.id) return IFRAME_EMBED as any;
+      if (id === ENABLED_EMBED.id) return ENABLED_EMBED as any;
+      if (id === DISABLED_EMBED.id) return DISABLED_EMBED as any;
+      return null;
+    });
+
+    const app = buildApp();
+    const res = await app.request(`/embed/e/${JSON_EMBED.id}`, { redirect: "manual" });
+
+    expect(res.status).toBe(302);
+    const location = res.headers.get("Location")!;
+    expect(location.startsWith("/embed/conf/sessions.json?")).toBe(true);
+    const params = new URLSearchParams(location.split("?")[1]);
+    expect(params.get("trackId")).toBe("trk1");
+    expect(params.get("format")).toBe("talk");
+    expect(params.get("roomId")).toBe("room1");
+    expect(params.get("day")).toBe("2026-08-10");
+    expect(params.get("q")).toBe("keynote");
+    expect(params.get("limit")).toBe("5");
+    expect(params.get("fields")).toBe("room,track");
+    expect(params.get("accent")).toBe("ff0000");
+  });
+
+  it("xml format redirects to the surface's .xml feed twin", async () => {
+    const app = buildApp();
+    const res = await app.request(`/embed/e/${XML_EMBED.id}`, { redirect: "manual" });
+
+    expect(res.status).toBe(302);
+    expect(res.headers.get("Location")).toMatch(/^\/embed\/conf\/sessions\.xml\?/);
+  });
+
+  it("ics format redirects to the fixed whole-agenda route, ignoring surface-specific options", async () => {
+    const app = buildApp();
+    const res = await app.request(`/embed/e/${ICS_EMBED.id}`, { redirect: "manual" });
+
+    expect(res.status).toBe(302);
+    expect(res.headers.get("Location")).toBe("/e/conf/agenda.ics");
+  });
+
+  it("iframe format still renders inline as before", async () => {
+    const app = buildApp();
+    const res = await app.request(`/embed/e/${IFRAME_EMBED.id}`);
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("text/html");
+    const html = await res.text();
+    expect(html).toContain(EVENT.name);
+  });
+});

@@ -4,10 +4,16 @@
 // is DEC-822's explicit override of DEC-785: it returns an empty 200 (an
 // intentional blank inside someone else's iframe), not a 404 -- a page the
 // organiser switched off must not shout "not found" on a customer's site.
-// When enabled, it renders the saved surface with the saved options through
-// the existing embed render path (renderSurfaceContent + EmbedShell — the
-// identical pipeline /embed/:eventSlug/:surface uses). Route file exports a
-// named Hono sub-app; mounted with one line from ./index.tsx (DEC-012).
+// When enabled, it resolves in its SAVED format (DEC-850): iframe/element/
+// link render inline through the existing embed render path
+// (renderSurfaceContent + EmbedShell — the identical pipeline
+// /embed/:eventSlug/:surface uses); json/xml redirect (302) to the
+// per-surface feed twin (/embed/:eventSlug/:surface.json|.xml) carrying the
+// saved options as query params; ics redirects to the fixed whole-agenda
+// /e/:eventSlug/agenda.ics route (DEC-289). A redirect, not a re-render,
+// because those feed routes in ./index.tsx are the ONE implementation of
+// each envelope. Route file exports a named Hono sub-app; mounted with one
+// line from ./index.tsx (DEC-012).
 
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
@@ -18,10 +24,11 @@ import { parseTrackId, parseNameQuery, parseDay, parseLimit, parseCardFields, pa
 import { renderSurfaceContent } from "./dispatch";
 import { publicNotFound } from "./not-found";
 import { publicCacheMiddleware, defaultCache } from "../../server/pubcache";
-import { DEC_822, DEC_839 } from "../../decisions";
+import { DEC_822, DEC_839, DEC_850 } from "../../decisions";
 
 void DEC_822;
 void DEC_839;
+void DEC_850;
 
 export const savedEmbedRoutes = new Hono<AppEnv>();
 
@@ -40,9 +47,33 @@ savedEmbedRoutes.get("/embed/e/:embedId", async (c) => {
   const event = await getPublicEventById(c.var.db, embed.eventId);
   if (!event) return publicNotFound(c, "Embed not found.");
 
+  // DEC-850: the saved id resolves in its SAVED format. json/xml are feed
+  // formats with no inline rendering of their own -- redirect to the ONE
+  // implementation of that envelope (the per-surface .json/.xml route in
+  // ./index.tsx) rather than forking a second copy of it here. ics is
+  // always the fixed whole-agenda route (DEC-289), never per-surface, and
+  // carries no query knobs (mirrors buildEmbedUrl in
+  // app/src/pages/settings/embedSnippet.ts).
   // DEC-839: embed.options is already the PARSED shape (repo re-hydrates
   // options_json once, in src/server/repo/embeds.ts) -- no local re-parse.
   const opts = embed.options;
+  if (embed.format === "json" || embed.format === "xml") {
+    const params = new URLSearchParams();
+    if (opts.trackId) params.set("trackId", opts.trackId);
+    if (opts.sessionFormat) params.set("format", opts.sessionFormat);
+    if (opts.roomId) params.set("roomId", opts.roomId);
+    if (opts.day) params.set("day", opts.day);
+    if (opts.q) params.set("q", opts.q);
+    if (opts.limit !== undefined) params.set("limit", String(opts.limit));
+    if (opts.fields && opts.fields.length > 0) params.set("fields", opts.fields.join(","));
+    if (opts.accent) params.set("accent", opts.accent.replace(/^#/, ""));
+    const qs = params.toString();
+    return c.redirect(`/embed/${event.slug}/${embed.surface}.${embed.format}${qs ? `?${qs}` : ""}`, 302);
+  }
+  if (embed.format === "ics") {
+    return c.redirect(`/e/${event.slug}/agenda.ics`, 302);
+  }
+
   const { title, content } = await renderSurfaceContent(c.var.db, event, embed.surface, {
     trackId: parseTrackId(opts.trackId) ?? undefined,
     // DEC-774 (landed before DEC-839 pinned the key list): the sessions
