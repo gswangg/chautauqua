@@ -36,10 +36,11 @@ import {
   type PortalTaskAssignment,
 } from "../../server/repo/portal";
 import { getFileVersionNumber } from "../../server/repo/files";
-import { DEC_729, DEC_777 } from "../../decisions";
+import { DEC_729, DEC_777, DEC_884 } from "../../decisions";
 
 void DEC_729;
 void DEC_777;
+void DEC_884;
 import {
   parseCookies,
   newCsrfToken,
@@ -271,7 +272,11 @@ function PortalPage(props: {
   );
 
   return (
-    <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={contactName} footerExtra={footerExtra} showTagline>
+    <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={contactName} footerExtra={footerExtra}>
+      {/* DEC-884: welcomeMessage moves out of header chrome into the first
+          body block of the portal home page — it's content, not a tagline
+          the header carries on every route. */}
+      {branding.welcomeMessage ? <p class="chq-meta">{branding.welcomeMessage}</p> : null}
       <h1 class="chq-portal-hero">
         {n} {n === 1 ? "thing" : "things"} to do
       </h1>

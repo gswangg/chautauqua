@@ -8,9 +8,10 @@ import type { MiddlewareHandler } from "hono";
 import type { AppEnv } from "../../server/env";
 import { ThemeStyles } from "../../views/theme";
 import { PORTAL_CSS } from "./portal.css";
-import { DEC_374 } from "../../decisions";
+import { DEC_374, DEC_884 } from "../../decisions";
 
 void DEC_374;
+void DEC_884;
 
 // DEC-374: strict hex guard on the per-event accent before it ever reaches a
 // rendered attribute — falls back to the brand olive on anything that isn't
@@ -53,13 +54,6 @@ export function PortalLayout(props: {
   // ahead of the sign-out control — placement only, never touching the
   // sign-out form/button below (a sibling task owns that cascade).
   footerExtra?: unknown;
-  // DEC-777: the "Welcome to the speaker portal!" tagline (branding.
-  // welcomeMessage) only belongs on the portal home route, where there's no
-  // other identity being displaced — every subpage leads with the wordmark
-  // instead. Defaults to false so every existing call site (subpages) keeps
-  // the tagline off without touching each one; only the /portal home route
-  // opts in.
-  showTagline?: boolean;
 }) {
   const accent = safeAccent(props.branding.accentColor);
   return (
@@ -73,12 +67,11 @@ export function PortalLayout(props: {
       </head>
       <body style={`--chq-brandable-accent: ${accent}`}>
         <header class="chq-header">
-          <span class="chq-wordmark">
+          <span class="chq-eventmark">
             {props.branding.logoUrl ? <img src={props.branding.logoUrl} alt="" height={40} /> : null}
             {props.branding.eventName}
           </span>
           {props.speakerName ? <span class="chq-portal-header-name">{props.speakerName}</span> : null}
-          {props.showTagline && props.branding.welcomeMessage ? <p class="chq-meta">{props.branding.welcomeMessage}</p> : null}
         </header>
         <main>{props.children as any}</main>
         {/* DEC-154: sign-out control on every /portal/* page, via the
