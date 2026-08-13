@@ -244,7 +244,7 @@ function Footer() {
     <div class="chq-home-footer">
       <span class="chq-home-footer-text">
         Running on{" "}
-        <a class="chq-home-footer-link" href="https://github.com/chautauqua-project/chautauqua">
+        <a class="chq-home-footer-link" href="https://github.com/gswangg/chautauqua">
           {GITHUB_MARK}
           Chautauqua
         </a>{" "}

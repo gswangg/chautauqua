@@ -325,7 +325,7 @@ describe("GET / — anonymous hub (DEC-581)", () => {
     const res = await app.request("/", {}, { ASSETS: fakeAssets() });
     const body = await res.text();
     expect(body).toContain("Running on");
-    expect(body).toContain("github.com/chautauqua-project/chautauqua");
+    expect(body).toContain("github.com/gswangg/chautauqua");
     // the masthead carries the org's name, not the product's
     const beforeFooter = body.split("chq-home-footer")[0] ?? "";
     expect(beforeFooter.toLowerCase()).not.toContain("chautauqua");
