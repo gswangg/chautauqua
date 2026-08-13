@@ -150,7 +150,7 @@ describe("validateAnswers", () => {
 
   it("passes when visible required fields are answered", () => {
     const result = validateAnswers([titleField], { title: "My talk" });
-    expect(result).toEqual({ ok: true, cleaned: { title: "My talk" }, hiddenFieldIds: [] });
+    expect(result).toEqual({ ok: true, cleaned: { title: "My talk" }, hiddenFieldIds: [], clearedFieldIds: [] });
   });
 
   it("does not block on a hidden required field (conditional case)", () => {
@@ -206,7 +206,7 @@ describe("validateAnswers", () => {
 
   it("accepts a valid dropdown value", () => {
     const result = validateAnswers([formatField], { format: "Panel" });
-    expect(result).toEqual({ ok: true, cleaned: { format: "Panel" }, hiddenFieldIds: [] });
+    expect(result).toEqual({ ok: true, cleaned: { format: "Panel" }, hiddenFieldIds: [], clearedFieldIds: [] });
   });
 
   it("coerces checkbox values to boolean", () => {
@@ -243,12 +243,12 @@ describe("validateAnswers", () => {
 
   it("DEC-227: accepts a checked required checkbox and cleans it to true", () => {
     const result = validateAnswers([requiredAgreeField], { required_agree: true });
-    expect(result).toEqual({ ok: true, cleaned: { required_agree: true }, hiddenFieldIds: [] });
+    expect(result).toEqual({ ok: true, cleaned: { required_agree: true }, hiddenFieldIds: [], clearedFieldIds: [] });
   });
 
   it("DEC-227: a non-required unchecked checkbox still cleans to false without error", () => {
     const result = validateAnswers([agreeField], { agree: false });
-    expect(result).toEqual({ ok: true, cleaned: { agree: false }, hiddenFieldIds: [] });
+    expect(result).toEqual({ ok: true, cleaned: { agree: false }, hiddenFieldIds: [], clearedFieldIds: [] });
   });
 
   it("validates numeric fields and rejects non-numeric input", () => {
@@ -267,7 +267,7 @@ describe("validateAnswers", () => {
 
   it("carries an opaque file-id string for file fields", () => {
     const result = validateAnswers([slidesField], { slides: "file_abc123" });
-    expect(result).toEqual({ ok: true, cleaned: { slides: "file_abc123" }, hiddenFieldIds: [] });
+    expect(result).toEqual({ ok: true, cleaned: { slides: "file_abc123" }, hiddenFieldIds: [], clearedFieldIds: [] });
   });
 
   it("rejects unknown answer keys", () => {
@@ -279,5 +279,52 @@ describe("validateAnswers", () => {
     if (!result.ok) {
       expect(result.errors.bogus).toBeDefined();
     }
+  });
+
+  describe("clearedFieldIds (DEC-842)", () => {
+    it("reports a present-and-blank optional field as cleared", () => {
+      const result = validateAnswers([agreeField, attendeesField], { attendees: "" });
+      expect(result).toEqual({
+        ok: true,
+        cleaned: {},
+        hiddenFieldIds: [],
+        clearedFieldIds: ["attendees"],
+      });
+    });
+
+    it("reports a present-and-whitespace-only optional field as cleared", () => {
+      const result = validateAnswers([attendeesField], { attendees: "   " });
+      expect(result).toEqual({
+        ok: true,
+        cleaned: {},
+        hiddenFieldIds: [],
+        clearedFieldIds: ["attendees"],
+      });
+    });
+
+    it("does not report an absent optional field as cleared", () => {
+      const result = validateAnswers([attendeesField], {});
+      expect(result).toEqual({ ok: true, cleaned: {}, hiddenFieldIds: [], clearedFieldIds: [] });
+    });
+
+    it("does not report a null-valued optional field as cleared (absence stays distinguishable)", () => {
+      const result = validateAnswers([attendeesField], { attendees: null });
+      expect(result).toEqual({ ok: true, cleaned: {}, hiddenFieldIds: [], clearedFieldIds: [] });
+    });
+
+    it("still rejects a blank required field, and never adds it to clearedFieldIds", () => {
+      const result = validateAnswers([titleField], { title: "" });
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.errors.title).toBeDefined();
+      }
+    });
+
+    it("never carries an empty string in cleaned even for cleared fields", () => {
+      const result = validateAnswers([attendeesField], { attendees: "" });
+      if (result.ok) {
+        expect(result.cleaned.attendees).toBeUndefined();
+      }
+    });
   });
 });

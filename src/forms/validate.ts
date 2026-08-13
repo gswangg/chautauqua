@@ -1,13 +1,15 @@
 import { lockedFieldName, type AnswerMap, type FormFieldDef } from "./types";
 import { resolveHiddenFieldIds } from "./visibility";
 import { isValidEmail, normalizeEmail } from "../domain/email";
-import { DEC_124, DEC_454, DEC_455 } from "../decisions";
+import { DEC_124, DEC_454, DEC_455, DEC_842 } from "../decisions";
 
 // Referenced for compile-checked dependency per DEC-124.
 void DEC_124;
 // Referenced for compile-checked dependency per DEC-454/DEC-455.
 void DEC_454;
 void DEC_455;
+// Referenced for compile-checked dependency per DEC-842.
+void DEC_842;
 
 export const MAX_TEXT_LENGTH = 2000;
 export const MAX_LONG_TEXT_LENGTH = 20000;
@@ -16,7 +18,7 @@ export const MAX_NAME_LENGTH = 200;
 export const MAX_RICH_TEXT_LENGTH = 100000;
 
 export type ValidateResult =
-  | { ok: true; cleaned: AnswerMap; hiddenFieldIds: string[] }
+  | { ok: true; cleaned: AnswerMap; hiddenFieldIds: string[]; clearedFieldIds: string[] }
   | { ok: false; errors: Record<string, string> };
 
 // Server-side validation of submitted answers against a form's field defs.
@@ -32,6 +34,7 @@ export function validateAnswers(
   const errors: Record<string, string> = {};
   const cleaned: AnswerMap = {};
   const hiddenFieldIds: string[] = [];
+  const clearedFieldIds: string[] = [];
 
   const knownIds = new Set(fields.map((f) => f.id));
   for (const key of Object.keys(answers)) {
@@ -60,6 +63,11 @@ export function validateAnswers(
     if (!hasAnswer || value === undefined || value === null || value === "" || isBlankString) {
       if (field.required) {
         errors[field.id] = "required";
+      } else if (hasAnswer && (value === "" || isBlankString)) {
+        // DEC-842: a submitted blank on a visible, non-required field is an
+        // instruction to CLEAR the stored value. Absence (key not present,
+        // or null/undefined) must stay distinguishable from clearing.
+        clearedFieldIds.push(field.id);
       }
       continue;
     }
@@ -136,5 +144,5 @@ export function validateAnswers(
   if (Object.keys(errors).length > 0) {
     return { ok: false, errors };
   }
-  return { ok: true, cleaned, hiddenFieldIds };
+  return { ok: true, cleaned, hiddenFieldIds, clearedFieldIds };
 }

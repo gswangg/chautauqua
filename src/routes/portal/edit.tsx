@@ -398,6 +398,7 @@ portalEditRoutes.post("/submissions/:id/edit", csrfForm, async (c) => {
     validation.cleaned,
     tracksEditable ? selectedTrackIds : null,
     validation.hiddenFieldIds,
+    validation.clearedFieldIds,
   );
   return c.redirect(`/portal/submissions/${submissionId}`, 302);
 });
