@@ -43,10 +43,17 @@ const KIND_ORDER: readonly TaskKind[] = (() => {
   return order;
 })();
 
+// DEC-928: exhaustive Record so a new FILE_KINDS entry fails to compile
+// here rather than silently rendering unlabeled.
+const DELIVERABLE_KIND_LABELS: Record<DeliverableKind, string> = {
+  presentation: 'Presentation',
+  poster: 'Poster',
+  handout: 'Handout',
+  recording: 'Recording',
+};
+
 function deliverableKindLabel(kind: DeliverableKind): string {
-  if (kind === 'presentation') return 'Presentation';
-  if (kind === 'poster') return 'Poster';
-  return 'Handout';
+  return DELIVERABLE_KIND_LABELS[kind];
 }
 
 export function TaskModal({ onCancel, onSubmit, forms, acceptedCount }: TaskModalProps) {
@@ -55,7 +62,7 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount }: TaskModa
   const [dueDate, setDueDate] = useState('');
   const [required, setRequired] = useState(true);
   const [formId, setFormId] = useState('');
-  const [deliverableKind, setDeliverableKind] = useState<DeliverableKind>('handout');
+  const [deliverableKind, setDeliverableKind] = useState<DeliverableKind>(DELIVERABLE_KINDS[0]!);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

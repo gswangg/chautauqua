@@ -11,6 +11,7 @@ import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
 import { ApiError } from "../../http";
 import { DEC_528, DEC_556, DEC_801 } from "../../../decisions";
 import { ASSIGNED_LATE_GRACE_DAYS } from "../../../domain/task-due";
+import type { FileKind } from "../../../domain/files";
 
 void DEC_801; // overdueAssignmentConditions below composes the DEC-801 grace window.
 
@@ -20,7 +21,7 @@ void DEC_528; // createTaskAssignments below is set-based under MAX_TASK_ASSIGNM
 // existence-check pre-read (kept for DEC-528's write-burst cap).
 void DEC_556;
 
-export type DeliverableKind = "presentation" | "poster" | "handout";
+export type DeliverableKind = FileKind;
 
 export interface CreateTaskInput {
   kind: "general" | "file_request" | "form";

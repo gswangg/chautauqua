@@ -16,7 +16,7 @@ import { ApiError, parseBoundedIdArray } from "../server/http";
 import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { isEpochMs } from "./api/validators"; // DEC-517/DEC-527
 import { DEC_120, DEC_214, DEC_240, DEC_291, DEC_398 } from "../decisions";
-import { FILE_KINDS } from "../domain/files";
+import { FILE_KINDS, isValidFileKind, type FileKind } from "../domain/files";
 import { findFormById } from "../server/repo/forms";
 import {
   assignTask,
@@ -62,21 +62,21 @@ export const taskRoutes = new Hono<AppEnv>();
 
 const TASK_KINDS = new Set(["general", "file_request", "form"]);
 const ASSIGNMENT_STATUSES = new Set<TaskAssignmentStatus>(["pending", "complete"]);
-// Derived from FILE_KINDS (the single source of truth, src/domain/files.ts)
-// so a new file kind can never desync the task deliverableKind vocabulary
-// from the upload vocabulary.
-const DELIVERABLE_KINDS = new Set<string>(FILE_KINDS);
 
 /** DEC-240: deliverableKind is only meaningful (and only accepted) when the
- * task's kind is 'file_request'; every other kind must leave it null. */
+ * task's kind is 'file_request'; every other kind must leave it null.
+ * Validated via isValidFileKind (src/domain/files.ts, the single source of
+ * truth) so the task deliverableKind vocabulary can never desync from the
+ * upload vocabulary, and so the return type narrows to FileKind without a
+ * cast at the call site. */
 function parseDeliverableKind(
   body: Record<string, unknown>,
   fields: Record<string, string>,
   effectiveKind: string,
-): string | null | undefined {
+): FileKind | null | undefined {
   if (body.deliverableKind === undefined) return null;
   if (body.deliverableKind === null) return null;
-  if (typeof body.deliverableKind !== "string" || !DELIVERABLE_KINDS.has(body.deliverableKind)) {
+  if (!isValidFileKind(body.deliverableKind)) {
     fields.deliverableKind = `Must be one of ${FILE_KINDS.map((k) => `'${k}'`).join(", ")}`;
     return undefined;
   }
@@ -221,7 +221,7 @@ taskRoutes.post("/events/:eventId/tasks", requireOrganizer, csrfJson, async (c) 
     dueDate,
     required: required as boolean,
     formId,
-    deliverableKind: deliverableKind as CreateTaskInput["deliverableKind"],
+    deliverableKind,
   };
   const created = await createTask(c.var.db, eventId, input);
   return c.json(created, 201);
