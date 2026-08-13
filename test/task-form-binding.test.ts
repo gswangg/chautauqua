@@ -88,14 +88,14 @@ async function buildApp(auth: AuthInfo) {
     c.set("db", {} as never);
     await next();
   });
-  app.route("/", taskRoutes);
+  app.route("/api/v1", taskRoutes);
   return app;
 }
 
 const ORGANIZER_A: AuthInfo = { userId: "u1", role: "organizer", orgId: ORG_A };
 
 function postTask(body: Record<string, unknown>) {
-  return new Request(`http://test/events/${EVENT_ID}/tasks`, {
+  return new Request(`http://test/api/v1/events/${EVENT_ID}/tasks`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-chq-csrf": "1" },
     body: JSON.stringify(body),
@@ -103,7 +103,7 @@ function postTask(body: Record<string, unknown>) {
 }
 
 function patchTask(taskId: string, body: Record<string, unknown>) {
-  return new Request(`http://test/tasks/${taskId}`, {
+  return new Request(`http://test/api/v1/tasks/${taskId}`, {
     method: "PATCH",
     headers: { "content-type": "application/json", "x-chq-csrf": "1" },
     body: JSON.stringify(body),

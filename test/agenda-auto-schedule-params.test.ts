@@ -64,9 +64,9 @@ async function postAutoSchedule(body: unknown) {
     c.set("auth", organizer);
     await next();
   });
-  app.route("/", agendaRoutes);
+  app.route("/api/v1", agendaRoutes);
 
-  return app.request("/events/event1/agenda/auto-schedule", {
+  return app.request("/api/v1/events/event1/agenda/auto-schedule", {
     method: "POST",
     headers: { "content-type": "application/json", "x-chq-csrf": "1" },
     body: JSON.stringify(body),

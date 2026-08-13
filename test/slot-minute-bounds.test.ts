@@ -79,13 +79,13 @@ describe("PUT /submissions/:id/slot (DEC-476 minute bounds)", () => {
       c.set("auth", auth);
       await next();
     });
-    app.route("/", agendaRoutes);
+    app.route("/api/v1", agendaRoutes);
     return { app, wasWritten: () => inserted || updated };
   }
 
   async function putSlot(app: Hono<AppEnv>, body: Record<string, unknown>) {
     return app.request(
-      "/submissions/sub1/slot",
+      "/api/v1/submissions/sub1/slot",
       {
         method: "PUT",
         headers: { "content-type": "application/json", "x-chq-csrf": "1" },

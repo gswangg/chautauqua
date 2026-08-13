@@ -90,14 +90,14 @@ async function buildApp(auth: AuthInfo) {
     c.set("db", {} as never);
     await next();
   });
-  app.route("/", taskRoutes);
+  app.route("/api/v1", taskRoutes);
   return app;
 }
 
 const ORGANIZER_A: AuthInfo = { userId: "u1", role: "organizer", orgId: ORG_A };
 
 function getResponseRequest(assignmentId: string) {
-  return new Request(`http://test/task-assignments/${assignmentId}/response`);
+  return new Request(`http://test/api/v1/task-assignments/${assignmentId}/response`);
 }
 
 describe("DEC-291: GET /task-assignments/:id/response", () => {

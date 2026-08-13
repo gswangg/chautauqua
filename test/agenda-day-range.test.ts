@@ -112,7 +112,7 @@ describe("PUT /submissions/:id/slot rejects an out-of-range day (DEC-277)", () =
       c.set("auth", auth);
       await next();
     });
-    app.route("/", agendaRoutes);
+    app.route("/api/v1", agendaRoutes);
     return { app, wasWritten: () => wrote };
   }
 
@@ -126,7 +126,7 @@ describe("PUT /submissions/:id/slot rejects an out-of-range day (DEC-277)", () =
     ]);
 
     const res = await app.request(
-      "/submissions/sub1/slot",
+      "/api/v1/submissions/sub1/slot",
       {
         method: "PUT",
         headers: { "content-type": "application/json", "x-chq-csrf": "1" },

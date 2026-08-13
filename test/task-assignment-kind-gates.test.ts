@@ -122,7 +122,7 @@ async function buildApp(auth: AuthInfo) {
     c.set("db", {} as never);
     await next();
   });
-  app.route("/", taskRoutes);
+  app.route("/api/v1", taskRoutes);
   return app;
 }
 
@@ -130,7 +130,7 @@ const SPEAKER: AuthInfo = { userId: "u-speaker", role: "speaker", orgId: ORG_A, 
 const ORGANIZER: AuthInfo = { userId: "u-organizer", role: "organizer", orgId: ORG_A };
 
 function patchRequest(assignmentId: string, status: string) {
-  return new Request(`http://test/task-assignments/${assignmentId}`, {
+  return new Request(`http://test/api/v1/task-assignments/${assignmentId}`, {
     method: "PATCH",
     headers: { "content-type": "application/json", "x-chq-csrf": "1" },
     body: JSON.stringify({ status }),

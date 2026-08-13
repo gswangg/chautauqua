@@ -106,14 +106,14 @@ async function buildApp(auth: AuthInfo) {
     c.set("db", {} as never);
     await next();
   });
-  app.route("/", taskRoutes);
+  app.route("/api/v1", taskRoutes);
   return app;
 }
 
 const ORGANIZER_A: AuthInfo = { userId: "u1", role: "organizer", orgId: ORG_A };
 
 function assignRequest(contactIds: unknown[]) {
-  return new Request(`http://test/tasks/${TASK_ID}/assign`, {
+  return new Request(`http://test/api/v1/tasks/${TASK_ID}/assign`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-chq-csrf": "1" },
     body: JSON.stringify({ contactIds }),

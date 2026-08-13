@@ -78,13 +78,13 @@ describe("PUT /submissions/:id/slot (DEC-073 room-ownership gate)", () => {
       c.set("auth", auth);
       await next();
     });
-    app.route("/", agendaRoutes);
+    app.route("/api/v1", agendaRoutes);
     return app;
   }
 
   async function putSlot(app: Hono<AppEnv>, roomId: string) {
     return app.request(
-      "/submissions/sub1/slot",
+      "/api/v1/submissions/sub1/slot",
       {
         method: "PUT",
         headers: { "content-type": "application/json", "x-chq-csrf": "1" },
