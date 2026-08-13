@@ -65,6 +65,9 @@ function mockBase(overrides: Record<string, unknown> = {}) {
     [`GET /api/v1/submissions/${SUBMISSION_ID}/files`]: listEnvelope(files),
     [`GET /api/v1/files/file-slides-v2/comments`]: listEnvelope([]),
     [`GET /api/v1/files/file-recording-v1/comments`]: listEnvelope([]),
+    // w15-e: CommentThread's 'You'-vs-name identity check reads useMe(),
+    // which fetches this on mount.
+    'GET /api/v1/me': { userId: 'user-1', email: 'org@example.com', name: 'Org User', role: 'organizer', orgId: 'org-1' },
     ...overrides,
   });
 }

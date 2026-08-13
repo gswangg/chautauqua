@@ -110,7 +110,8 @@ export interface FileComment {
   // v1 is the oldest version.
   versionNumber: number;
   authorName: string;
-  authorRole: string;
+  authorRole: string | null;
+  authorUserId: string | null;
   body: string;
   createdAt: number;
 }

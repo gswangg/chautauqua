@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { formatDateTime } from '../../lib/dates';
+import { formatRelativeDays } from '../../lib/dates';
+import { useMe } from '../../lib/useMe';
 import type { FileComment } from './types';
 
 interface SendResult {
@@ -24,6 +25,8 @@ export function CommentThread({ comments, onSend }: CommentThreadProps) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<SendResult | null>(null);
+  const { me } = useMe();
+  const now = Date.now();
 
   async function submit(requestChanges: boolean) {
     const body = draft.trim();
@@ -48,10 +51,12 @@ export function CommentThread({ comments, onSend }: CommentThreadProps) {
         {comments.map((c) => (
           <li key={c.id} className="chq-comment-item chq-content-comment-item">
             <div className="chq-content-comment-head">
-              <span className="chq-comment-author chq-content-comment-author">{c.authorName}</span>
-              <span className="chq-role-label chq-meta">({c.authorRole})</span>
+              <span className="chq-comment-author chq-content-comment-author">
+                {me && c.authorUserId === me.userId ? 'You' : c.authorName}
+              </span>
+              {c.authorRole !== null && <span className="chq-role-label chq-meta">({c.authorRole})</span>}
               <span className="chq-comment-version chq-meta">v{c.versionNumber}</span>
-              <span className="chq-comment-date chq-meta">{formatDateTime(c.createdAt)}</span>
+              <span className="chq-comment-date chq-meta">{formatRelativeDays(c.createdAt, now)}</span>
             </div>
             <span className="chq-comment-body chq-content-comment-body">{c.body}</span>
           </li>

@@ -1,6 +1,7 @@
 import { CONTENT_STATUS_LABELS, type ContentStatus, type ContentSubmissionListItem } from './types';
 import { WORKLIST_TABS, type WorklistTab } from './worklist';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { formatRelativeDays } from '../../lib/dates';
 
 // DEC-825: mock pill naming (docs/design/'Chautauqua Content.dc.html',
 // screens/05-content.png) — the worklist now renders exactly the mock's
@@ -11,16 +12,6 @@ export const TAB_LABELS: Record<WorklistTab, string> = {
   all: 'All accepted sessions',
 };
 
-// w1-f: 'now' is threaded down from the caller (ContentApp) rather than
-// read via Date.now() at call time, so a render never disagrees with
-// itself between two cells of the same table on either side of a tick.
-export function formatRelativeDate(ms: number, now: number): string {
-  const dayMs = 86_400_000;
-  const days = Math.floor((now - ms) / dayMs);
-  if (days <= 0) return 'today';
-  if (days === 1) return 'yesterday';
-  return `${days} days ago`;
-}
 
 interface SessionListProps {
   items: ContentSubmissionListItem[];
@@ -148,7 +139,7 @@ export function SessionList({
                             {item.latestFile.filename} · v{item.latestFile.versionCount}
                           </div>
                           <div className="chq-content-latest-file-date">
-                            {formatRelativeDate(item.latestFile.uploadedAt, now)}
+                            {formatRelativeDays(item.latestFile.uploadedAt, now)}
                           </div>
                         </>
                       ) : (
