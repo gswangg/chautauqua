@@ -22,6 +22,16 @@ export function clampRating(value: number, scale: EvaluationScale): number {
   return Math.min(scale.max, Math.max(scale.min, value));
 }
 
+/** DEC-873: the rating control is a segmented row of buttons, one per
+ * integer in [scale.min, scale.max] -- this is the single source for that
+ * range so the radiogroup's rendered buttons and any keyboard-fast path
+ * agree on which values exist. */
+export function ratingScaleValues(scale: EvaluationScale): number[] {
+  const values: number[] = [];
+  for (let v = scale.min; v <= scale.max; v++) values.push(v);
+  return values;
+}
+
 export type ScorecardKeyAction =
   | { type: 'setRating'; criterionId: string; value: number }
   | { type: 'submitAndAdvance' }

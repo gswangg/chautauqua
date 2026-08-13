@@ -134,9 +134,12 @@ describe('Scorecard recusal control (DEC-271)', () => {
 
     expect(await screen.findByText('You recused yourself from this submission.')).toBeInTheDocument();
 
-    const scoreInput = screen.getByText('Quality').closest('div')!.querySelector('input[type="number"]');
-    expect(scoreInput).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Submit and advance' })).toBeDisabled();
+    // DEC-873: the rating control is a segmented radiogroup of buttons,
+    // not a number input -- every rating button disables while recused.
+    const ratingButtons = screen.getByRole('radiogroup', { name: 'Quality' }).querySelectorAll('button');
+    expect(ratingButtons.length).toBeGreaterThan(0);
+    ratingButtons.forEach((btn) => expect(btn).toBeDisabled());
+    expect(screen.getByRole('button', { name: 'Submit and next' })).toBeDisabled();
   });
 
   it('DELETEs the exact recusal URL on Undo, clearing the recused state', async () => {

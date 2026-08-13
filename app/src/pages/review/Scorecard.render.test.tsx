@@ -7,7 +7,7 @@
 // here only as a render assertion, not a re-derivation of criteriaForRound
 // itself.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, within, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { Scorecard } from './Scorecard';
@@ -92,9 +92,12 @@ describe('Scorecard render smoke', () => {
 
     expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
 
-    // rating criterion -> number input
-    const qualityLabel = screen.getByText('Quality').closest('div')!;
-    expect(qualityLabel.querySelector('input[type="number"]')).toBeInTheDocument();
+    // rating criterion -> segmented radiogroup, one radio per scale value
+    // (DEC-873: plan.scale is {min:1, max:5}).
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
+    const qualityRadios = within(qualityGroup).getAllByRole('radio');
+    expect(qualityRadios).toHaveLength(5);
+    expect(qualityRadios.every((r) => r.getAttribute('aria-checked') === 'false')).toBe(true);
 
     // dropdown criterion -> select with its options
     expect(screen.getByRole('option', { name: 'Great' })).toBeInTheDocument();
@@ -107,7 +110,10 @@ describe('Scorecard render smoke', () => {
     expect(screen.getByText('Talk length')).toBeInTheDocument();
     expect(screen.getByText('45 minutes')).toBeInTheDocument();
     expect(screen.getByText('AV needs')).toBeInTheDocument();
-    expect(screen.getByText('—')).toBeInTheDocument();
+    // The em dash appears twice: the null AV-needs answer, and the
+    // un-scored Overall block (DEC-873) -- assert at least one exists
+    // rather than a single unique match.
+    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2);
 
     // speakerAnswers render under their own heading.
     expect(screen.getByRole('heading', { name: 'Speaker answers' })).toBeInTheDocument();
@@ -150,5 +156,75 @@ describe('Scorecard render smoke', () => {
     // 'Fit' has no guidance -- nothing renders for it beyond its label.
     const fitRow = screen.getByText('Fit').closest('div')!;
     expect(fitRow.querySelector('.chq-review-criterion-guidance')).toBeNull();
+  });
+
+  // DEC-873: (1) rating buttons cover [scale.min, scale.max] with
+  // aria-checked on the chosen one; (2) the weight caption reads
+  // criterionWeightShares; (3) Overall renders an em dash until every
+  // rating criterion is scored, then the computed blend; (4) Save PUTs and
+  // stays on the page.
+  it('renders the scale-bound rating control, weight caption, and overall blend; Save does not navigate', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: [
+          { id: 'c1', label: 'Quality', kind: 'rating', weight: 3 },
+          { id: 'c2', label: 'Depth', kind: 'rating', weight: 1 },
+          { id: 'c3', label: 'Fit', kind: 'dropdown', options: ['Poor', 'OK', 'Great'] },
+        ],
+      },
+      [`PUT /api/v1/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`]: { ok: true },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+
+    // Weight caption: 3 and 1 share a total weight of 4 -> 75% / 25%.
+    expect(screen.getByText('Weight 3 · 75%')).toBeInTheDocument();
+    expect(screen.getByText('Weight 1 · 25%')).toBeInTheDocument();
+    // 'Fit' (dropdown, no weight) prints no weight caption.
+    const fitRow = screen.getByText('Fit').closest('div')!;
+    expect(fitRow.querySelector('.chq-review-criterion-weight-caption')).toBeNull();
+
+    // Overall renders an em dash before every rating criterion is scored.
+    expect(screen.getByText('Overall')).toBeInTheDocument();
+    expect(screen.getByText('Averaged by weight · not editable')).toBeInTheDocument();
+    const overallValue = () => document.querySelector('.chq-review-overall-value')!;
+    expect(overallValue().textContent).toBe('—');
+
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
+    const depthGroup = screen.getByRole('radiogroup', { name: 'Depth' });
+    fireEvent.click(within(qualityGroup).getByRole('radio', { name: '4' }));
+    expect(within(qualityGroup).getByRole('radio', { name: '4' })).toHaveAttribute('aria-checked', 'true');
+
+    // Still incomplete (Depth unscored, Fit unset) -> still an em dash.
+    expect(overallValue().textContent).toBe('—');
+
+    fireEvent.click(within(depthGroup).getByRole('radio', { name: '2' }));
+    fireEvent.change(screen.getByRole('option', { name: 'Great' }).closest('select')!, { target: { value: 'Great' } });
+
+    // Complete -> (4*3 + 2*1) / 4 = 3.5.
+    await waitFor(() => expect(overallValue().textContent).toBe('3.5'));
+
+    // Save PUTs the same body and stays on the page (no navigation away).
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText('Saved');
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining(`/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`),
+      expect.objectContaining({ method: 'PUT' }),
+    );
+    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
   });
 });
