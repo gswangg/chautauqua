@@ -1,8 +1,8 @@
 // DEC-990: "Speakers: one page, two views" -- Speakers is one public surface
 // with a List (/speakers) and Grid (/gallery) view, reachable via a toggle
-// beside the search box; Gallery drops out of the top nav (NAV_SURFACES)
-// while its URL keeps resolving (SURFACES is unchanged, so the embed
-// builder / route manifests still cover it).
+// beside the search box. Amendment (wave 53): Gallery is back in the top
+// nav (NAV_SURFACES, frame 10--00) alongside the toggle -- both paths reach
+// the same content.
 
 import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
@@ -99,8 +99,8 @@ function buildApp() {
   };
 }
 
-describe("DEC-990: public shell nav drops Gallery", () => {
-  it("GET /e/conf/sessions nav renders Sessions/Speakers/Agenda/Schedule and no Gallery link", async () => {
+describe("DEC-990 Amendment (wave 53): public shell nav includes Gallery", () => {
+  it("GET /e/conf/sessions nav renders Sessions/Speakers/Agenda/My schedule/Gallery", async () => {
     const app = buildApp();
     const res = await app.request("/e/conf/sessions");
     expect(res.status).toBe(200);
@@ -113,8 +113,8 @@ describe("DEC-990: public shell nav drops Gallery", () => {
     expect(navHtml).toContain(">Agenda<");
     // frame 10--00: the nav item's label is now 'My schedule'.
     expect(navHtml).toContain(">My schedule<");
-    expect(navHtml).not.toContain(">Gallery<");
-    expect(navHtml).not.toContain("/gallery");
+    expect(navHtml).toContain(">Gallery<");
+    expect(navHtml).toContain("/gallery");
   });
 });
 

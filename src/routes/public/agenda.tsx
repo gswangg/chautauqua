@@ -137,11 +137,13 @@ export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; e
                 style={`grid-column:${col};grid-row:${rowStart} / span ${rowSpan};${laneStyle}`}
                 id={`chq-agenda-${item.submissionId}`}
               >
-                <div>
-                  {formatMinutes(item.startMin)}–{formatMinutes(item.endMin)}
+                <div class="chq-pub-agenda-block-meta">
+                  <div>
+                    {formatMinutes(item.startMin)}–{formatMinutes(item.endMin)}
+                  </div>
+                  <TrackChips tracks={item.tracks} />
+                  <FormatChip format={item.format} />
                 </div>
-                <TrackChips tracks={item.tracks} />
-                <FormatChip format={item.format} />
                 <div class="chq-pub-agenda-block-title">
                   <strong>
                     <a href={sessionDetailPath(event, item.submissionId, from, base)}>{item.title}</a>

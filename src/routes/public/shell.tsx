@@ -44,12 +44,15 @@ export function measureClassForSurface(surface: Surface): PublicMeasure {
   }
 }
 
-/** DEC-990: "Speakers: one page, two views" -- the gallery is still a live
- * surface (its own URL, its own route, and the embed builder can still pick
- * it), it just stops being a nav destination now that /speakers offers a
- * List/Grid toggle to reach it. NAV_SURFACES is derived from SURFACES (never
- * hand-listed) so a future surface addition can't silently desync the two. */
-export const NAV_SURFACES = SURFACES.filter((s) => s !== "gallery");
+/** DEC-990 Amendment (wave 53): gallery is back as its own nav destination
+ * (frame 10--00) -- the /speakers List/Grid toggle reaches the same content
+ * but doesn't substitute for a direct link from every other surface's nav.
+ * NAV_SURFACES is derived from SURFACES (never hand-listed) so a future
+ * surface addition can't silently desync the two; each route's `active`
+ * Surface (index.tsx's per-surface loop passes its own `surface` value)
+ * matches exactly one NAV_SURFACES entry, so exactly one <a> ever carries
+ * aria-current. */
+export const NAV_SURFACES = SURFACES;
 
 // DEC-477/DEC-487: PER_PAGE moved to src/server/repo/public/bounds.ts as
 // PUBLIC_PER_PAGE — this is the ONE home for public paging constants.
