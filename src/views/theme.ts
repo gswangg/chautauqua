@@ -78,9 +78,14 @@ export const THEME_CSS = `
     --chq-type-micro-size: 10px;
     --chq-type-micro-weight: 800;
     --chq-type-micro-tracking: 0.11em;
-    /* Layout (DEC-744): the shared desktop page-content measure, kept at
-       token parity (DEC-367/372) with app/src/styles.css. */
+    /* Layout (DEC-744/DEC-989): the shared desktop page-content measures,
+       kept at token parity (DEC-367/372) with app/src/styles.css. Three
+       widths: reading (820), reading+rail/wide (1180), table (1440). The
+       measure CLASSES live in app/src/styles.css (DEC-989); the public
+       theme declares the tokens so the two sheets stay name-identical. */
     --chq-measure: 820px;
+    --chq-measure-wide: 1180px;
+    --chq-measure-table: 1440px;
   }
 
   @font-face {
