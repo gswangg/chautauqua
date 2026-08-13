@@ -51,6 +51,19 @@ create table file_comment (
   created_at integer,
   updated_at integer
 );
+create table task_assignment (
+  id text primary key,
+  task_id text,
+  contact_id text,
+  status text,
+  completed_at integer,
+  completed_by text,
+  response_json text,
+  file_id text,
+  last_reminded_at integer,
+  created_at integer,
+  updated_at integer
+);
 `;
 
 function makeTestDb(): { db: Db; sqlite: DatabaseSync } {

@@ -164,6 +164,10 @@ export interface FileChainVersionRow {
   contentType: string;
   r2Key: string;
   createdAt: number;
+  /** DEC-927: the row's own stored version_no (DEC-818 identity), fetched in
+   * the same batch query as the rest of this row — callers that need "which
+   * version number is this" must not issue a second per-row query for it. */
+  versionNo: number;
 }
 
 /** DEC-605: the full version chain for `fileId`, oldest-first, with the
@@ -171,7 +175,9 @@ export interface FileChainVersionRow {
  * stream a download for each one (portal GET .../file/:fileId). Thin
  * wrapper over listFileChainIds — a batch fetch keyed by the ids it
  * returns, so this stays one extra query, not N. Throws (data corruption)
- * if an id it just resolved is missing from the batch fetch. */
+ * if an id it just resolved is missing from the batch fetch, or if a row's
+ * version_no was never stored (DEC-927 — same corruption case
+ * getFileVersionNumber guards). */
 export async function listFileChainVersions(db: Db, fileId: string): Promise<FileChainVersionRow[]> {
   const ids = await listFileChainIds(db, fileId);
   const rows = await db
@@ -181,6 +187,7 @@ export async function listFileChainVersions(db: Db, fileId: string): Promise<Fil
       contentType: schema.file.contentType,
       r2Key: schema.file.r2Key,
       createdAt: schema.file.createdAt,
+      versionNo: schema.file.versionNo,
     })
     .from(schema.file)
     .where(inArray(schema.file.id, ids));
@@ -190,7 +197,17 @@ export async function listFileChainVersions(db: Db, fileId: string): Promise<Fil
     if (!row) {
       throw new Error(`listFileChainVersions: file ${id} resolved by listFileChainIds but missing from batch fetch — data corruption`);
     }
-    return { id: row.id, filename: row.filename, contentType: row.contentType, r2Key: row.r2Key, createdAt: row.createdAt.getTime() };
+    if (row.versionNo === null || row.versionNo === undefined) {
+      throw new Error(`listFileChainVersions: file ${id} has no stored version_no — data corruption`);
+    }
+    return {
+      id: row.id,
+      filename: row.filename,
+      contentType: row.contentType,
+      r2Key: row.r2Key,
+      createdAt: row.createdAt.getTime(),
+      versionNo: row.versionNo,
+    };
   });
 }
 
@@ -415,9 +432,20 @@ export interface DeleteFileVersionInput {
  * the successor that takes over the vacated slot if one exists, else the
  * predecessor, else (a single-version chain) the comments are removed with
  * the row. Appends a system note ("Removed version N - <filename>") to the
- * surviving thread. Caller (the route) MUST delete the R2 object first and
- * only call this once that succeeds — this function never touches R2, so a
- * throw here can't orphan an object, only a row that still has its file. */
+ * surviving thread.
+ *
+ * DEC-926: also re-homes (never deletes) any task_assignment row pointing at
+ * the deleted file id, set-based on file_id — when a surviving link exists
+ * (successor or predecessor) the assignment's file_id follows it to that
+ * surviving id; when this was the sole version in its chain, the assignment
+ * is reopened instead (status back to 'pending', completed_at/completed_by/
+ * file_id cleared) rather than left pointing at a row that no longer exists.
+ * A task_assignment row is never deleted here — completion state must
+ * survive its linked file's deletion.
+ *
+ * Caller (the route) MUST delete the R2 object first and only call this once
+ * that succeeds — this function never touches R2, so a throw here can't
+ * orphan an object, only a row that still has its file. */
 export async function deleteFileVersion(db: Db, input: DeleteFileVersionInput): Promise<void> {
   const { fileId } = input;
   const rows = await db
@@ -464,9 +492,22 @@ export async function deleteFileVersion(db: Db, input: DeleteFileVersionInput): 
       createdAt: now,
       updatedAt: now,
     });
+    // DEC-926: any task_assignment linked to the deleted file follows the
+    // chain to the surviving link — set-based, never a row delete.
+    await db
+      .update(schema.taskAssignment)
+      .set({ fileId: survivingId, updatedAt: now })
+      .where(eq(schema.taskAssignment.fileId, fileId));
   } else {
     // Sole version in its chain — its comments go with it.
     await db.delete(schema.fileComment).where(eq(schema.fileComment.fileId, fileId));
+    // DEC-926: no surviving link to repoint to — reopen the assignment
+    // instead of leaving it pointed at a deleted row.
+    const now = new Date();
+    await db
+      .update(schema.taskAssignment)
+      .set({ status: "pending", completedAt: null, completedBy: null, fileId: null, updatedAt: now })
+      .where(eq(schema.taskAssignment.fileId, fileId));
   }
 
   await db.delete(schema.file).where(eq(schema.file.id, fileId));

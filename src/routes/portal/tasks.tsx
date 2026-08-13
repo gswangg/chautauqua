@@ -41,7 +41,6 @@ import { makeFileStore } from "../../server/context";
 import { newId } from "../../domain/ids";
 import { updateAssignmentStatus } from "../../server/repo/tasks";
 import {
-  getFileVersionNumber,
   insertFile,
   insertFileComment,
   listFileChainVersions,
@@ -139,25 +138,28 @@ async function loadTasksPageData(c: Context<AppEnv>, contactId: string, orgId: s
   for (const a of assignments) {
     if (a.kind !== "file_request" || a.status !== "complete" || !a.fileId) continue;
     const latest = await resolveTaskFileChainLatest(c.var.db, a.fileId);
-    // DEC-605: full chain oldest-first, one row per version — reuses
-    // getFileVersionNumber (the canonical "1-indexed, oldest=v1" rule) per
-    // id rather than re-deriving numbering from array position, so this
-    // list's numbers can never drift from the single-file block above's
-    // "version N" text.
-    const [version, commentsPage, chain] = await Promise.all([
-      getFileVersionNumber(c.var.db, latest.id),
+    // DEC-605/DEC-927: full chain oldest-first, one row per version — the
+    // batch query listFileChainVersions issues already carries each row's
+    // own stored version_no, so this stays one query instead of the N a
+    // per-id getFileVersionNumber loop would re-introduce.
+    const [commentsPage, chain] = await Promise.all([
       listFileComments(c.var.db, latest.id),
       listFileChainVersions(c.var.db, a.fileId),
     ]);
-    const versions: FileVersionRow[] = await Promise.all(
-      chain.map(async (row) => ({
-        id: row.id,
-        version: await getFileVersionNumber(c.var.db, row.id),
-        filename: row.filename,
-        uploadedAt: row.createdAt,
-        isCurrent: row.id === latest.id,
-      })),
-    );
+    const versions: FileVersionRow[] = chain.map((row) => ({
+      id: row.id,
+      version: row.versionNo,
+      filename: row.filename,
+      uploadedAt: row.createdAt,
+      isCurrent: row.id === latest.id,
+    }));
+    // The page's own "version N" text for the single-file block above —
+    // the chain's last (newest) entry is the same file resolveTaskFileChainLatest
+    // just resolved, so this reuses that same batch fetch instead of a
+    // separate lookup.
+    const lastChainRow = chain[chain.length - 1];
+    if (!lastChainRow) throw new Error("loadTasksPageData: empty version chain — data corruption");
+    const version = lastChainRow.versionNo;
     fileExtrasByAssignmentId.set(a.id, {
       filename: latest.filename,
       version,
