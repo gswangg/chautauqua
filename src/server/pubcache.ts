@@ -174,6 +174,10 @@ export const NEVER_PUBLIC: PathPattern[] = [
   "/api/v1/events/:id/resources",
   "/api/v1/resources/*",
   "/api/v1/files/:id/comments",
+  // DEC-713: deleting a file version — same reasoning as
+  // /api/v1/submissions/:id/files above, no public route ever renders a
+  // submission's files.
+  "/api/v1/files/:id",
   "/api/v1/events/:id/files/archive",
   "/api/v1/submissions/:id/files",
   "/api/v1/forms/*",

@@ -285,7 +285,7 @@
 
 .chq-content-version-item {
   display: grid;
-  grid-template-columns: 48px 1fr auto;
+  grid-template-columns: 48px 1fr auto auto;
   align-items: baseline;
   gap: 14px;
   padding: 12px 0;
@@ -322,6 +322,12 @@
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.chq-content-version-delete {
+  font-size: 12px;
+  white-space: nowrap;
+  padding: 4px 8px;
 }
 
 /* ---------------------------------------------------------------------- */

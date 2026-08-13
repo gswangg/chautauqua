@@ -8,6 +8,10 @@ import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import type { FileKind } from "../../domain/files";
 import { chunkIds } from "../../lib/chunk";
+import { DEC_244, DEC_713 } from "../../decisions";
+
+void DEC_244;
+void DEC_713;
 
 // ---------------------------------------------------------------------------
 // Version-chain lookups
@@ -297,4 +301,150 @@ export async function listSubmissionFiles(db: Db, submissionId: string): Promise
     (grouped[row.kind] ??= []).push(version);
   }
   return grouped;
+}
+
+// ---------------------------------------------------------------------------
+// DEC-713: deleting a version — authz scope + the chain-relink/re-home write
+// ---------------------------------------------------------------------------
+
+export interface FileDeleteScope {
+  id: string;
+  submissionId: string | null;
+  eventId: string | null;
+  orgId: string | null;
+  filename: string;
+  r2Key: string;
+  previousFileId: string | null;
+  uploadedByContactId: string | null;
+  contentStatus: string | null;
+  /** true when no other file's previous_file_id points at this one — i.e.
+   * this is the newest link in its own version chain (DEC-713: a speaker may
+   * only delete the LATEST version they uploaded). */
+  isLatestInChain: boolean;
+}
+
+/** Loads everything the DEC-713 delete route needs to authz + act on a file
+ * version: submission/org/contentStatus (for the speaker "own latest,
+ * pending" rule), and whether this file is the chain head (no successor). */
+export async function getFileDeleteScope(db: Db, fileId: string): Promise<FileDeleteScope | null> {
+  const fileRows = await db
+    .select({
+      id: schema.file.id,
+      submissionId: schema.file.submissionId,
+      filename: schema.file.filename,
+      r2Key: schema.file.r2Key,
+      previousFileId: schema.file.previousFileId,
+      uploadedByContactId: schema.file.uploadedByContactId,
+    })
+    .from(schema.file)
+    .where(eq(schema.file.id, fileId))
+    .limit(1);
+  const fileRow = fileRows[0];
+  if (!fileRow) return null;
+
+  let orgId: string | null = null;
+  let eventId: string | null = null;
+  let contentStatus: string | null = null;
+  if (fileRow.submissionId) {
+    const subRows = await db
+      .select({ eventId: schema.submission.eventId, orgId: schema.event.orgId, contentStatus: schema.submission.contentStatus })
+      .from(schema.submission)
+      .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
+      .where(eq(schema.submission.id, fileRow.submissionId))
+      .limit(1);
+    const sub = subRows[0];
+    if (sub) {
+      orgId = sub.orgId;
+      eventId = sub.eventId;
+      contentStatus = sub.contentStatus;
+    }
+  }
+
+  const successorRows = await db
+    .select({ id: schema.file.id })
+    .from(schema.file)
+    .where(eq(schema.file.previousFileId, fileId))
+    .limit(1);
+
+  return {
+    id: fileRow.id,
+    submissionId: fileRow.submissionId,
+    eventId,
+    orgId,
+    filename: fileRow.filename,
+    r2Key: fileRow.r2Key,
+    previousFileId: fileRow.previousFileId,
+    uploadedByContactId: fileRow.uploadedByContactId,
+    contentStatus,
+    isLatestInChain: successorRows.length === 0,
+  };
+}
+
+export interface DeleteFileVersionInput {
+  fileId: string;
+  deletedByUserId: string;
+  deletedByContactId: string | null;
+}
+
+/** DEC-713 write: repoints the chain across the deleted row's gap in ONE
+ * statement (a middle deletion must never fork the chain, DEC-244/573), then
+ * re-homes the deleted row's comment thread onto the surviving neighbour —
+ * the successor that takes over the vacated slot if one exists, else the
+ * predecessor, else (a single-version chain) the comments are removed with
+ * the row. Appends a system note ("Removed version N - <filename>") to the
+ * surviving thread. Caller (the route) MUST delete the R2 object first and
+ * only call this once that succeeds — this function never touches R2, so a
+ * throw here can't orphan an object, only a row that still has its file. */
+export async function deleteFileVersion(db: Db, input: DeleteFileVersionInput): Promise<void> {
+  const { fileId } = input;
+  const rows = await db
+    .select({ id: schema.file.id, previousFileId: schema.file.previousFileId, filename: schema.file.filename })
+    .from(schema.file)
+    .where(eq(schema.file.id, fileId))
+    .limit(1);
+  const row = rows[0];
+  if (!row) throw new Error(`deleteFileVersion: file ${fileId} not found`);
+
+  // Version number of the deleted row, computed BEFORE any mutation — the
+  // repoint below only changes rows that point AT fileId, never fileId's own
+  // previous_file_id, so this is safe to compute first or last; doing it
+  // first keeps the "read, then write" ordering explicit.
+  const versionNumber = await getFileVersionNumber(db, fileId);
+
+  const successorRows = await db
+    .select({ id: schema.file.id })
+    .from(schema.file)
+    .where(eq(schema.file.previousFileId, fileId))
+    .limit(1);
+  const successor = successorRows[0] ?? null;
+
+  let survivingId: string | null = null;
+  if (successor) {
+    survivingId = successor.id;
+    // DEC-244/573: set-based repoint — every row chained off the deleted
+    // link (in a linear chain, at most one) moves in ONE statement, so a
+    // middle deletion can't fork the chain.
+    await db.update(schema.file).set({ previousFileId: row.previousFileId }).where(eq(schema.file.previousFileId, fileId));
+  } else if (row.previousFileId) {
+    survivingId = row.previousFileId;
+  }
+
+  if (survivingId) {
+    await db.update(schema.fileComment).set({ fileId: survivingId }).where(eq(schema.fileComment.fileId, fileId));
+    const now = new Date();
+    await db.insert(schema.fileComment).values({
+      id: newId(),
+      fileId: survivingId,
+      authorUserId: input.deletedByUserId,
+      authorContactId: input.deletedByContactId,
+      body: `Removed version ${versionNumber} - ${row.filename}`,
+      createdAt: now,
+      updatedAt: now,
+    });
+  } else {
+    // Sole version in its chain — its comments go with it.
+    await db.delete(schema.fileComment).where(eq(schema.fileComment.fileId, fileId));
+  }
+
+  await db.delete(schema.file).where(eq(schema.file.id, fileId));
 }

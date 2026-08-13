@@ -15,13 +15,14 @@ import { makeFileStore } from "../server/context";
 import { newId } from "../domain/ids";
 import { buildZip } from "../lib/zip";
 import { clampPage, clampPerPage, listPerPage } from "../lib/pagination";
-import { DEC_013, DEC_461, DEC_465, DEC_468, DEC_471 } from "../decisions";
+import { DEC_013, DEC_461, DEC_465, DEC_468, DEC_471, DEC_713 } from "../decisions";
 
 void DEC_013;
 void DEC_461;
 void DEC_465;
 void DEC_468;
 void DEC_471;
+void DEC_713;
 import {
   FILE_KINDS,
   isImageContentType,
@@ -42,6 +43,8 @@ import {
   getSubmissionScope,
   getTaskFileScope,
   batchContactNames,
+  deleteFileVersion,
+  getFileDeleteScope,
   insertFile,
   insertFileComment,
   isValidContentStatus,
@@ -49,6 +52,7 @@ import {
   listEventHeadshotFiles,
   listFileComments,
   listSubmissionFiles,
+  PENDING_CONTENT_STATUS,
   resolveLatestVersions,
   reviewerCanAccessSubmissionFile,
   updateContentStatus,
@@ -375,6 +379,51 @@ fileApiRoutes.post("/files/:fileId/comments", csrfJson, async (c) => {
     authorContactId: auth.contactId ?? null,
   });
   return c.json({ id: commentId }, 201);
+});
+
+// -----------------------------------------------------------------------
+// DELETE /api/v1/files/:fileId — DEC-713 version deletion
+// -----------------------------------------------------------------------
+fileApiRoutes.delete("/files/:fileId", csrfJson, async (c) => {
+  const auth = requireAuth(c);
+  const fileId = c.req.param("fileId");
+
+  const scope = await getFileDeleteScope(c.var.db, fileId);
+  if (!scope || !scope.submissionId || !scope.orgId) throw new ApiError("not_found", "File not found");
+
+  if (auth.role === "organizer") {
+    // DEC-713: an organizer may delete ANY version of a submission in their org.
+    if (scope.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
+  } else if (auth.role === "speaker") {
+    // DEC-713: a speaker may delete ONLY the latest version of the chain,
+    // that they uploaded, while the submission is still pending review.
+    if (!auth.contactId || scope.uploadedByContactId !== auth.contactId) {
+      throw new ApiError("forbidden", "Only the speaker who uploaded this version may delete it");
+    }
+    if (!scope.isLatestInChain) {
+      throw new ApiError("forbidden", "Only the latest version in the chain may be deleted");
+    }
+    if (scope.contentStatus !== PENDING_CONTENT_STATUS) {
+      throw new ApiError("forbidden", "A version may only be deleted while the submission's content status is pending");
+    }
+  } else {
+    throw new ApiError("forbidden", "Requires organizer or the uploading speaker");
+  }
+
+  // DEC-713: the R2 object is deleted through the same store abstraction the
+  // upload path uses, and BEFORE any DB write — if the object delete throws,
+  // nothing here has mutated yet, so the row (and chain) stays intact and
+  // the request just errors. Never delete the row first and orphan the object.
+  const store = makeFileStore(c.env.FILES);
+  await store.delete(scope.r2Key);
+
+  await deleteFileVersion(c.var.db, {
+    fileId,
+    deletedByUserId: auth.userId,
+    deletedByContactId: auth.contactId ?? null,
+  });
+
+  return c.json({ id: fileId, deleted: true });
 });
 
 // -----------------------------------------------------------------------
