@@ -157,6 +157,56 @@ describe('ParticipationMenu (DEC-830)', () => {
     expect(current).toHaveAccessibleName(new RegExp(INVITE_STATUS_LABELS.none));
   });
 
+  // DEC-969: ParticipationMenu's menu adopts the shared useMenu primitive --
+  // an outside pointerdown dismisses it, ArrowDown moves focus to the next
+  // item, and Escape returns focus to the trigger.
+  it('DEC-969: a pointerdown on the document body closes the open menu', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWith('none'),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+    await openMenu();
+
+    fireEvent.pointerDown(document.body);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
+  });
+
+  it('DEC-969: ArrowDown moves focus to the next item', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWith('none'),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+    const menu = await openMenu();
+    const items = menu.getAllByRole('menuitemradio');
+    const [first, second] = items;
+    expect(first).toHaveFocus();
+    const menuPanel = screen.getByRole('menu', { name: 'Participation status for Ada Lovelace' });
+
+    fireEvent.keyDown(menuPanel, { key: 'ArrowDown' });
+
+    expect(second).toHaveFocus();
+  });
+
+  it('DEC-969: Escape returns focus to the trigger', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWith('none'),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+    await openMenu();
+    const table = within(screen.getByRole('table'));
+    const trigger = table.getByRole('button', { name: 'Participation status for Ada Lovelace: Not invited' });
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('menu', { name: 'Participation status for Ada Lovelace' })).not.toBeInTheDocument();
+    });
+    expect(trigger).toHaveFocus();
+  });
+
   it('the "Send portal invite" action item is not a menuitemradio', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWith('none'),

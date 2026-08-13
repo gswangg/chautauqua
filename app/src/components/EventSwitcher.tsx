@@ -8,7 +8,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { apiList, apiPost, ApiError } from '../lib/api';
-import { useEscapeKey } from '../lib/useEscapeKey';
+import { useMenu } from '../lib/useMenu';
 import { useMe } from '../lib/useMe';
 import { FormRow, FormRowPair, ModalFrame } from './ModalFrame';
 import {
@@ -180,7 +180,7 @@ export function EventSwitcher() {
   const storedId = window.localStorage.getItem(STORAGE_KEY);
   const current = resolveCurrentEvent(items, storedId);
   const closeMenu = () => setMenuOpen(false);
-  useEscapeKey(menuOpen, closeMenu);
+  const { containerRef, onPanelKeyDown } = useMenu(menuOpen, closeMenu);
 
   function switchTo(id: string) {
     closeMenu();
@@ -196,7 +196,7 @@ export function EventSwitcher() {
   }
 
   return (
-    <div className="chq-eventswitcher">
+    <div className="chq-eventswitcher" ref={containerRef}>
       {error && <span className="chq-field-error">{error}</span>}
       {/* DEC-576: desktop header shows the current event as plain text
           (13px/600) beside a menu button, not the raw <select> this used
@@ -215,7 +215,7 @@ export function EventSwitcher() {
       </button>
 
       {menuOpen && (
-        <div className="chq-eventswitcher-menu" role="menu" aria-label="Events">
+        <div className="chq-eventswitcher-menu" role="menu" aria-label="Events" onKeyDown={onPanelKeyDown}>
           {items.length === 0 && <span className="chq-meta">No events</span>}
           {items.map((item) => (
             <button

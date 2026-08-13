@@ -10,6 +10,8 @@ import react from "@vitejs/plugin-react";
 // w6-a/w16-d: useNavExceptions.test.tsx needs the same (renderHook +
 // window.fetch stubbing + localStorage + MemoryRouter/JSX), so it moved to
 // a .test.tsx name (DEC-700).
+// w29-e (DEC-969): useMenu.test.tsx needs the same (render + fireEvent +
+// pointerdown/keydown against document, JSX harness), same treatment.
 export default defineConfig({
   plugins: [react()],
   test: {
@@ -33,12 +35,14 @@ export default defineConfig({
       ["app/src/**/*.render.test.tsx", "jsdom"],
       ["app/src/lib/useEscapeKey.test.ts", "jsdom"],
       ["app/src/lib/useNavExceptions.test.tsx", "jsdom"],
+      ["app/src/lib/useMenu.test.tsx", "jsdom"],
     ],
     include: [
       "test/**/*.test.ts",
       "app/src/**/*.test.ts",
       "app/src/**/*.render.test.tsx",
       "app/src/lib/useNavExceptions.test.tsx",
+      "app/src/lib/useMenu.test.tsx",
     ],
   },
 });
