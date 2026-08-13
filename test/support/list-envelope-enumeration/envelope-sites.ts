@@ -31,7 +31,7 @@ export function findItemsEnvelopeSites(source: string, file: string): EnvelopeSi
 // deliberate reviewed act -- see test/list-envelope-enumeration.test.ts's
 // file-header comment above for why each one is exempt.
 export const ENVELOPE_ALLOWLIST = new Set<string>([
-  "src/routes/comms.ts:511",
+  "src/routes/comms.ts:512",
   "src/routes/api/contacts/bulk-email.ts:197",
   // NOTE (DEC-840): GET .../assignments/distribute/preview used to be
   // allowlisted here (it was previously `c.json({ items, perReviewer,
@@ -48,6 +48,6 @@ export const ENVELOPE_ALLOWLIST = new Set<string>([
   // DEC-924: POST /plans/:id/reviewers's array form answers the set of rows
   // it just wrote (bounded by the request's own parseBoundedIdArray cap),
   // never a paginated read -- same shape-exception class as the compose
-  // preview above (comms.ts:511).
+  // preview above (comms.ts:512).
   "src/routes/review/plans-reviewers.ts:70",
 ]);

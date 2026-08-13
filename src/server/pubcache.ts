@@ -217,6 +217,11 @@ export const PUBLIC_AFFECTING: PathPattern[] = [
   "/api/v1/rooms/:id",
   "/api/v1/events/:id/submissions",
   "/api/v1/events/:id/submissions/status",
+  // DEC-825 amendment: the bulk content-status write reaches the public gate
+  // for exactly the reasons its single-id sibling
+  // (/api/v1/submissions/:id/content-status, below) does — the amendment
+  // names PUBLIC_AFFECTING explicitly.
+  "/api/v1/events/:id/submissions/content-status",
   // DEC-886: a deleted submission that was public (accepted/visible/content-
   // approved) must stop rendering on /e/*|/embed/* — same reasoning as the
   // status route immediately above.
