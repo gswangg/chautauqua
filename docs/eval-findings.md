@@ -21,6 +21,29 @@ title row or form footer; section actions are links on the section rule · one s
 vocabulary + scan-lock beats per-page fixes (dialogs=ModalFrame, buttons, send
 reporting, page measure).
 
+## GATE-3 EARLY REDS (fleet re-audit vs v6 in progress; snapshot 9b78f61e; full
+## dispositions + prune when all 6 pair reports land — DO NOT prune other sections yet)
+
+**P1-BROKEN · Reviewer queue "Score this" CTA illegible.** `a.chq-review-queue-score-action.chq-btn.chq-btn-primary` computes `color: rgb(27,29,23)` on olive `rgb(78,92,49)` — 2.40:1. A queue-scoped anchor color rule overrides the primary token (the same `.chq-btn-primary` on the scorecard is correct cream `rgb(247,249,240)`). One CSS line; add a computed-style render test for anchor-primaries inside the queue scope. This is the reviewer's single primary action.
+
+**P1 · Plan editor + New plan are 820 (`.chq-measure`); v6 frames 03/05/06 are table class** — criteria rule spans 1376px (l=112→r=1488 at 1600). Move `/admin/review/plans/:id` and `/plans/new` to `.chq-measure-table`, give the editor title bar (`‹ Review` / name / Duplicate·Save) full-bleed chrome-bar treatment per frames. Fixes the criteria-row cramping (guidance inputs clip mid-word) in the same stroke.
+
+**P1 · CFP builder page shrink-wraps its children.** `.chq-forms-page` is a centered flex column; `header.chq-forms-header` measures 275.5px wide (declared 820 max) so the rule + Preview/Save jam mid-page, and `.chq-forms-content` shrinks to 617px vs frame's 756. Stretch children to the measure instead of center-shrinking. (Gate-2's "builder 820-aligned header" fix REGRESSED into this.)
+
+**P1 · CFP form missing the `Track` field** (frame 04: 8 fields incl. Track — 3 options/Single choice/REQUIRED; app: 10 fields, no Track, plus unframed Job title/Company/Speaker bio; order drift Abstract 3rd vs 2nd). Ties to the user's single-track-radios decision — public form should offer track as single-choice.
+
+**P1 · Needs-triage preset renders "Columns: 0" and drops the FORMAT column** — the gate-2 empty-`columns:[]` root cause now surfaces as user-visible broken copy. Frame: `Columns: Format` + populated FORMAT column.
+
+**P2 · Submission detail FORM ANSWERS omits "Accessibility needs"** (frame renders it with value "None"; the app's own CFP form defines the field — render omission).
+
+**P2 · Plan status pills bare text** — frame 00: OPEN NOW = olive-filled pill, OPENS N = outlined pill, CLOSED = bare text; app renders all as bare text.
+
+**P2 · Scorecard OVERALL missing the reconciliation line** — frame 01: "A plain average of 5, 4, 4 would be 4.33" between "Averaged by weight · not editable" and the value. This line IS the answer to the weighted-vs-plain confusion; do NOT touch the math (DEC: weighted blend is correct).
+
+**P2 · Distribute preview + who-reviews-what anatomy** — frame 03: cap row `CAP PER REVIEWER [8] talks each` + summary "18 talks · 36 reviews needed at 2 each · 4 reviewers"; preview is a 3-col table (name | track | `6 → 8 talks`, `unchanged · wrong track`) + "Assign these N" + leftover line. App: one flat line, cap input shows clipped "No", no summary, no leftover line.
+
+(Verified fixed at gate-3, hands off: accept-primary pair+caption, save-view modal, drag handles on builder rows, review segment fill olive+equal spans, scorecard measure, recusal placement, RANK-led results 1dp, recused-envelope closed-plan queue — regression test passed live.)
+
 ## P0 — CLOSED (probe-2 verified end-to-end 2026-08-13)
 
 Reviewer lockout FIXED and externally verified: sbek-reviewer login → /admin/review
