@@ -243,6 +243,21 @@
   display: inline-block;
 }
 
+/* DEC-936: when a roster row covers more than one session, OnboardingGrid
+   renders one menu per participation and each carries THAT session's ref --
+   the small caption above the trigger is what makes two adjacent status
+   pills legible as two different talks. Same muted-caption idiom as
+   .chq-review-queue-ref; absent (never rendered) for the single-
+   participation case, so the common row is unchanged. */
+.chq-participation-menu-ref {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
 /* DEC-880/DEC-940: only reset what a <button> brings that the chip doesn't
    want -- never `border: none`, `background`, `padding` or `font`, or the
    trigger erases the DEC-730 pill's fill/outline, box metrics and type at
