@@ -80,7 +80,13 @@ function ariaSort(
 // still renders it unchanged (no planId prop -> falls back to useParams()).
 // `embedded` is derived from the prop's presence rather than a second flag,
 // since the two are the same condition by construction.
-export function ResultsTable({ planId: planIdProp }: { planId?: string } = {}) {
+export function ResultsTable({
+  planId: planIdProp,
+  onSortChange,
+}: {
+  planId?: string;
+  onSortChange?: (sort: { column: string; direction: 'asc' | 'desc' } | null) => void;
+} = {}) {
   const { planId: planIdParam } = useParams<{ planId: string }>();
   const planId = planIdProp ?? planIdParam;
   const embedded = planIdProp !== undefined;
@@ -133,6 +139,15 @@ export function ResultsTable({ planId: planIdProp }: { planId?: string } = {}) {
   useEffect(() => {
     setPage(1);
   }, [round, sort]);
+
+  // DEC-763: the landing page's title-row export link must carry the same
+  // sort the in-table 'Download CSV' link does -- notify the parent of
+  // every sort-state change, including the initial null, rather than
+  // leaving it to re-derive sort from elsewhere.
+  useEffect(() => {
+    onSortChange?.(sort ? { column: sort.key.column, direction: sort.direction } : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sort]);
 
   useEffect(() => {
     if (!planId || round === null) return;
@@ -208,7 +223,9 @@ export function ResultsTable({ planId: planIdProp }: { planId?: string } = {}) {
     setEvaluationsLoadingId(submissionId);
     setEvaluationsError(null);
     try {
-      const res = await apiList<SubmissionEvaluationItem>(`/submissions/${submissionId}/evaluations`);
+      const res = await apiList<SubmissionEvaluationItem>(
+        `/submissions/${submissionId}/evaluations?planId=${planId}`,
+      );
       setEvaluationsById((prev) => ({ ...prev, [submissionId]: res.items }));
     } catch (err) {
       setEvaluationsError(err instanceof ApiError ? err.message : 'Failed to load reviews');

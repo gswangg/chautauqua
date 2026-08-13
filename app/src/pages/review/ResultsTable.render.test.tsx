@@ -262,6 +262,84 @@ describe('ResultsTable decision truth + reviews drawer (DEC-632/DEC-633)', () =>
   });
 });
 
+// DEC-763: the row disclosure is plan-scoped -- expanding a row's
+// "Reviews (n)" toggle must ask the server for only this plan's
+// evaluations, and the expanded list must show exactly n entries.
+describe('ResultsTable row disclosure is plan-scoped (DEC-763)', () => {
+  it('requests /submissions/:id/evaluations?planId=<this plan> and renders exactly the row\'s evaluation count', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([resultsRow({ status: 'pending' })]),
+      [`GET /api/v1/submissions/sub-1/evaluations`]: listEnvelope([
+        {
+          planId: PLAN_ID,
+          planName: 'Track Review',
+          round: 1,
+          reviewerName: 'Priya Patel',
+          scores: { c1: 4 },
+          score: 4,
+          criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+          comment: 'Strong proposal, well scoped.',
+          submittedAt: 1700000000000,
+        },
+        {
+          planId: PLAN_ID,
+          planName: 'Track Review',
+          round: 1,
+          reviewerName: 'Jamie Reviewer',
+          scores: { c1: 3 },
+          score: 3,
+          criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+          comment: 'Reasonable, could tighten the scope.',
+          submittedAt: 1700000100000,
+        },
+        {
+          planId: PLAN_ID,
+          planName: 'Track Review',
+          round: 1,
+          reviewerName: 'Robin Lee',
+          scores: { c1: 5 },
+          score: 5,
+          criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+          comment: 'Excellent talk.',
+          submittedAt: 1700000200000,
+        },
+      ]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('A Great Talk')).toBeInTheDocument();
+    const reviewsButton = screen.getByRole('button', { name: /Reviews \(3\)/ });
+    fireEvent.click(reviewsButton);
+
+    expect(await screen.findByText('Strong proposal, well scoped.')).toBeInTheDocument();
+
+    // The disclosure request carried this plan's id.
+    const evaluationsCall = fetchMock.mock.calls.find(([input]) => {
+      const url = typeof input === 'string' ? input : (input as URL | Request).toString();
+      return url.includes('/submissions/sub-1/evaluations');
+    });
+    expect(evaluationsCall).toBeDefined();
+    const calledUrl = new URL(
+      (typeof evaluationsCall![0] === 'string' ? evaluationsCall![0] : evaluationsCall![0].toString()) as string,
+      'http://localhost',
+    );
+    expect(calledUrl.searchParams.get('planId')).toBe(PLAN_ID);
+
+    // The expanded entry count equals the row's "# Evaluations" (3).
+    expect(screen.getByText('Priya Patel')).toBeInTheDocument();
+    expect(screen.getByText('Jamie Reviewer')).toBeInTheDocument();
+    expect(screen.getByText('Robin Lee')).toBeInTheDocument();
+  });
+});
+
 // DEC-737: the sort control cannot lie. Two rapid header clicks always land
 // on a `dir`, an arrow, and rendered rows that agree with each other and
 // with the last click made -- even when the first (stale) response resolves

@@ -5,7 +5,7 @@
 // 'not_started').length -- the SAME domain predicate the route imports,
 // never a hand-copied count in the SPA.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { PlanList } from './PlanList';
@@ -119,6 +119,59 @@ describe('PlanList (DEC-706/DEC-707 render)', () => {
     const exportLink = screen.getByRole('link', { name: 'Export results CSV' });
     expect(exportLink.closest('.chq-review-title-row')).not.toBeNull();
     expect(exportLink).toHaveAttribute('href', expect.stringContaining(PLAN_ID));
+  });
+
+  // DEC-763: the title-row 'Export results CSV' link must honour whatever
+  // sort the in-table 'Download CSV' link is currently showing -- the same
+  // header click that changes the table's own arrow must also change this
+  // link's href.
+  it('the title-row export link gains sort/dir after a results header click', async () => {
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-organizer', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([plan()]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([
+        {
+          submissionId: 'sub-1',
+          ref: 'S-001',
+          title: 'A Great Talk',
+          count: 1,
+          average: 4,
+          perCriterion: { c1: 4 },
+          perDropdown: {},
+          status: 'pending',
+          speakers: ['Ada Lovelace'],
+          trackNames: [],
+        },
+      ]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <PlanList />
+      </MemoryRouter>,
+    );
+
+    const exportLinkBefore = await screen.findByRole('link', { name: 'Export results CSV' });
+    expect(new URL(exportLinkBefore.getAttribute('href')!, 'http://localhost').searchParams.get('sort')).toBeNull();
+
+    expect(await screen.findByText('A Great Talk')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Score/ }));
+
+    await waitFor(() => {
+      const exportLinkAfter = screen.getByRole('link', { name: 'Export results CSV' });
+      const url = new URL(exportLinkAfter.getAttribute('href')!, 'http://localhost');
+      expect(url.searchParams.get('sort')).toBe('average');
+      expect(url.searchParams.get('dir')).toBe('desc');
+    });
+
+    // The in-table 'Download CSV' link must show the SAME sort/dir.
+    const downloadLink = screen.getByRole('link', { name: 'Download CSV' });
+    const downloadUrl = new URL(downloadLink.getAttribute('href')!, 'http://localhost');
+    expect(downloadUrl.searchParams.get('sort')).toBe('average');
+    expect(downloadUrl.searchParams.get('dir')).toBe('desc');
   });
 
   // DEC-760: the title-row plan count gains a second clause once each
