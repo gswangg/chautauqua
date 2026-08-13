@@ -108,11 +108,13 @@ describe('SpeakersPage render smoke (OnboardingGrid)', () => {
     expect(dialog).toBeInTheDocument();
   });
 
-  // DEC-662: the "Add speaker" and "Import CSV" triggers moved from
-  // RosterPanel's own header band into OnboardingGrid's single title action
-  // row -- both reachable from the same row as "New task"/"Remind all
-  // outstanding".
-  it('opens Add speaker and Import CSV from the single title action row', async () => {
+  // DEC-662: the roster's "Add speaker" trigger moved from RosterPanel's own
+  // header band into OnboardingGrid's single title action row, reachable from
+  // the same row as "New task"/"Remind all outstanding". DEC-746 dropped the
+  // desktop "Import CSV" trigger from that row to match the mock's title row
+  // (docs/design/Chautauqua Speakers.dc.html:59-63 -- Add speaker / New task /
+  // Remind all outstanding); CSV import is the Contacts page's job.
+  it('opens Add speaker from the single title action row, which carries no Import CSV', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
@@ -131,7 +133,6 @@ describe('SpeakersPage render smoke (OnboardingGrid)', () => {
       expect(screen.queryByLabelText('First name')).not.toBeInTheDocument();
     });
 
-    screen.getByRole('button', { name: 'Import CSV' }).click();
-    expect(await screen.findByRole('dialog', { name: 'Import contacts' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Import CSV' })).not.toBeInTheDocument();
   });
 });
