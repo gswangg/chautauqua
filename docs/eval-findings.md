@@ -60,37 +60,19 @@ C. **Verify-then-close list** (commits claim these landed — external probe con
 
 ## Per-surface open items (desktop)
 
-**Overview — GATE-1 FLEET: FAIL (report fidelity-gate1/01-overview/report.md;
-palette/type/nav/section-pattern verified pixel-faithful — divergences are
-surgical)**:
-**GLOBAL #1 — THE MEASURE**: frame's content column is 820px CENTERED at 1240
-(210px gutters; header bar full-bleed is CORRECT and matches). Build's .chq-main
-has no max-width → sections 43-67% wider than designed on EVERY page. This
-resolves sweep-A definitively: DEC-808's 820 token was frame-true; adopt
-820-centered for single-column pages (Overview, builder — and ALIGN the builder
-HEADER row to the same measure; settings ok), keep two-col pages to their
-frames' geometry. Highest-leverage fix in the app.
-MAJOR: New-event modal STARTS/ENDS side-by-side (243.5px each, 16.5 gap; not
-stacked full-width rows) · Public-pages row = ONE summary sentence in the value
-column (not six link chips) · §04 left column "Tue 12, 10:00 / Room 2A" grammar
-(now raw ISO date, no time).
-MINOR structure: §04 overflow summary below the list ("3 more unplaced · all
-need 120 minutes"); "4 more overdue" should follow the same convention (summary
-below, not nav-link above) · §03 meta carries artifact ("slides v1, 8 MB · 2
-days ago") · §04 no-slot meta carries format/duration · distinct suggested
-times per row (all propose 9:00; drop " in <room>" suffix per frame).
-MINOR type/case: header event name title-case regular (not uppercase tracked) ·
-"Next free slot…" sentence-case 13px muted · NO SLOT YET 13px · modal head rule
-near-black 1px · modal title ~21.5px · placeholder #3F4237 (not browser gray) ·
-labels #3F4237 · spell small numbers ("Four things…", "Remind all three").
-MINOR controls: secondary buttons get their #EFEBDF fill on overview (token
-exists, unused here) · modal actions 46px tall (match input height) + widths ·
-human-formatted date inputs ("11 May 2028") · drop required asterisks · "Export"
-label (not "Export submissions") · row button metrics (gap 9.5, Accept 80w,
-headline buttons 37h) · spacing rhythm batch (header 59.5h, gap 34.5, stat band
-76, row pitch 72) · nav badges + caret vs frame (caret already filed; badges =
-DEC decision, likely keep).
-(Earlier closures stand: DEC-735/779, room-named suggestions.)
+**Overview — GATE-2: FAIL, narrow** (report fidelity-gate2/01-overview/
+report.md; measure/modal/public-row/date-anatomy/overflow all CLOSED):
+NEW ROOT CAUSES — **define `--chq-sunk`** (token never defined; secondary
+buttons resolve transparent across overview + submissions detail; one line
+closes a cross-section item) · **section buttons render in ARIAL** (no
+font-family, overview.css:246; same class on agenda no-room btn) · stat-band
+bold inconsistency · §04 clash ref wraps mid-token (nowrap) · VENUE label/
+placeholder duplication · "JORDAN A." header grammar.
+Remaining: public-row copy to count-grammar ("17 sessions live, with speakers
+and schedule") · §03 artifact meta · drop month + zero-pad in §04 times ·
+" in <room>" suffix · event-name title-case · "Next free slot" 13px sentence ·
+modal (near-black rule, 21.5 title, #3F4237 placeholders, human dates) ·
+"Export" · spelled small numbers · metrics/spacing batch (59/35/76/72).
 
 **Submissions — GATE-2: PASS w/ reservations ✓** (report
 fidelity-gate2/02-submissions/report.md): remaining — FORM ANSWERS add
@@ -173,30 +155,21 @@ notes heading copy + rule + textarea placeholder · per-version Delete vs frame
 (Probe closures stand: DEC-773 unified library, Download-all, version chaining,
 chips/counts, note paths.)
 
-**Agenda (desktop) — GATE-1 FLEET: FAIL (full report
-chautauqua-research/fidelity-gate1/06-agenda/report.md)**:
-**BROKEN — arming EVICTS the Unscheduled tray**: on the common path the no-room
-button becomes the sidebar grid item (.chq-agenda-layout 1fr/268px) and the tray
-reflows below the grid at y≈1548, off-screen (DayGrid.tsx:397-405 emits it as a
-grid sibling). Build DEC-794's actual full-width strip BELOW the grid, column 1;
-tray stays pinned. THE top agenda item.
-MAJOR: armed ring 1.80:1 over the quieted clash card — use a light-on-ink ring to
-clear 3:1 · add :hover feedback to armed cells (frame language: explicit "Place
-here · N MIN FREE") · quieted clash card is struck through by cell rules while
-armed — keep card text legible (raise card text above rules or mask rules under
-the card) · 3-way same-room overlap: extend the DEC-742 merge to N sessions (one
-card, one caption; current: 3 staggered truncated lanes + caption ×3) · page
-head to frame layout: summary + Auto-schedule + Publish on the title row
-right-aligned (kill the ~170px stacked chrome band).
-MINOR batch: summary add "· N% placed", bold only the conflict count · clash
-caption "ROOM DOUBLE-BOOKED" · tray cards: add "· N min" duration, drop track
-line + olive accent, right-align the count numeral · keyboard/click unschedule
-path (invert of DEC-570) · armed-bar min-height 38→39 drift (pin it) · time
-labels "9:00" not "9:00am" · row pitch toward frame ~68px/30min · move "Add a
-room or track" off the toolbar (not in frame — into Settings link placement per
-earlier item) · no-room toast copy.
-(Probe-4 closures stand: geometry-on-arm columns, place-anyway, toasts, DEC-724,
-DEC-853, accessible-name verb split, auto-schedule durations.)
+**Agenda (desktop) — GATE-2: FAIL, narrow** (same report; tray eviction,
+ring contrast 4.29:1, hover labels, N-way merge, title-row head, %-placed all
+CLOSED): TOP — **replace the armed clash-card opacity with a quieted-ink
+token** (opacity .55 lets the ink outlines strike the card text; 3.56:1 AA
+fail — the one AA failure left) · **lighten the armed lattice** (2px solid ink
+×144 doubles at shared edges; inset/lighter ring) · ONE time grammar (24h
+gutter incl. afternoon, align aria + toasts) · hover label on CLASH cells
+(140/144) · "N MIN FREE" = the slot gap, not end-of-day · Arial no-room button
+(--chq-sunk/font fix pair) · empty-row pitch 44pt (corrected from gate-1) +
+gutter 63 + head→tabs 36 · tray/placed card anatomy (flat tray border, no
+accent/track line, "· N min", right-aligned count; placed keeps accent, drops
+track line) · click/keyboard unschedule (placed-click = move only) · caption
+vocabulary DEC (surface-dependent strings are CORRECT — agenda generalizes
+N-way, overview uses TWO-SESSIONS string; document, don't unify blindly) ·
+no-room toast copy · tray footer copy + unframed ⋮⋮.
 
 **Comms — GATE-1 FLEET: FAIL (report fidelity-gate1/07-comms/report.md)**:
 BROKEN: "Include reviewer feedback" ALWAYS 400s (plan select only revealed BY
