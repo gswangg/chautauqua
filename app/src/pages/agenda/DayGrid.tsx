@@ -34,16 +34,6 @@ interface DayGridProps {
   onPlaceAt: (roomId: string | null, startMin: number) => void;
 }
 
-/** DEC-899/900: the grid's own left-rail row labels read plain '9:00' — the
- * am/pm suffix formatMinutes adds is load-bearing everywhere it disambiguates
- * a spoken time (placement toasts, cell accessible names), but the row rail
- * runs top-to-bottom through a single day already anchored by its own
- * am/pm-labelled hour markers, so repeating the suffix on every 30-minute
- * row is noise, not information. */
-function formatTimeLabel(minutes: number): string {
-  return formatMinutes(minutes).replace(/(am|pm)$/, '');
-}
-
 const TBD_ROOM_ID = null;
 const TBD_COL_ID = '__tbd__';
 /** DEC-724: the trailing room-less column is no longer a permanent "TBD"
@@ -255,9 +245,13 @@ export function DayGrid({
 
   const gridTemplateColumns = `80px repeat(${columns.length}, minmax(140px, 1fr))`;
   // DEC-742: rows grow to fit a merged clash card's content (its inner
-  // scroll/overflow rule is removed below) instead of staying pinned to the
-  // 24px single-line height every other row uses.
-  const gridTemplateRows = `auto repeat(${rows}, minmax(24px, auto))`;
+  // scroll/overflow rule is removed below) instead of staying pinned to a
+  // single-line height every other row uses. DEC-900 amendment (wave 39,
+  // LATTICE): the floor is 22px so two 15-minute rows settle at a uniform
+  // 44px pitch matching the frames — see .chq-day-grid-time-label's trimmed
+  // padding above, which keeps a labelled row's own min-content under this
+  // floor too, so ordinary rows no longer alternate 24.0px/32.6px.
+  const gridTemplateRows = `auto repeat(${rows}, minmax(22px, auto))`;
 
   const timeRowLabels = Array.from({ length: rows }, (_, i) => dayStartMin + i * gridMin);
 
@@ -280,7 +274,7 @@ export function DayGrid({
             className="chq-day-grid-time-label"
             style={{ gridColumn: 1, gridRow: rowIdx + 2 }}
           >
-            {formatTimeLabel(minutes)}
+            {formatMinutes(minutes)}
           </div>
         ) : null,
       )}
@@ -290,6 +284,14 @@ export function DayGrid({
           const roomId = colId === TBD_COL_ID ? TBD_ROOM_ID : colId;
           const roomName = colId === TBD_COL_ID ? TBD_LABEL : (roomNameById.get(colId) ?? colId);
           const cellStyle = { gridColumn: colIdx + 2, gridRow: rowIdx + 2 };
+          // DEC-900 amendment (wave 39, LATTICE): the grid draws a rule at
+          // every 15-minute line, but the 30-minute boundary — the bottom
+          // edge of the second row in each labelled pair — gets its own
+          // heavier rule so the lattice reads as 30-minute rows, not 36
+          // identical hairlines. rowIdx is even at the row a label starts;
+          // the boundary is the bottom edge of the row right before the
+          // next label, i.e. every odd rowIdx.
+          const boundaryClass = rowIdx % 2 === 1 ? ' chq-day-grid-cell-boundary' : '';
           if (armed) {
             const clashCount = occupancyCount(roomId, minutes);
             if (clashCount === 0) {
@@ -298,7 +300,7 @@ export function DayGrid({
                 <button
                   key={`cell-${colId}-${minutes}`}
                   type="button"
-                  className="chq-day-grid-cell-btn"
+                  className={`chq-day-grid-cell-btn${boundaryClass}`}
                   style={cellStyle}
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, roomId, minutes)}
@@ -321,7 +323,7 @@ export function DayGrid({
               <button
                 key={`cell-${colId}-${minutes}`}
                 type="button"
-                className="chq-day-grid-cell-btn chq-day-grid-cell-btn-clash"
+                className={`chq-day-grid-cell-btn chq-day-grid-cell-btn-clash${boundaryClass}`}
                 style={cellStyle}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, roomId, minutes)}
@@ -335,7 +337,7 @@ export function DayGrid({
           return (
             <div
               key={`cell-${colId}-${minutes}`}
-              className="chq-day-grid-cell"
+              className={`chq-day-grid-cell${boundaryClass}`}
               style={cellStyle}
               tabIndex={-1}
               onDragOver={handleDragOver}

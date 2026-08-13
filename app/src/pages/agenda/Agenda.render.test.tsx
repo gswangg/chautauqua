@@ -345,7 +345,7 @@ describe('AgendaPage render smoke', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Place S-003 with no room yet' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Placed S-003 in no room yet at 9:00am.')).toBeInTheDocument();
+      expect(screen.getByText('Placed S-003 in no room yet at 09:00.')).toBeInTheDocument();
     });
   });
 
@@ -368,7 +368,7 @@ describe('AgendaPage render smoke', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('Placed S-003 in no room yet at 9:00am. 1 new clash — flagged, not blocked.'),
+        screen.getByText('Placed S-003 in no room yet at 09:00. 1 new clash — flagged, not blocked.'),
       ).toBeInTheDocument();
     });
   });
@@ -512,10 +512,10 @@ describe('AgendaPage render smoke', () => {
     fireEvent.click(screen.getByRole('button', { name: 'S-003: Unplaced Talk — click to select, then choose a time slot' }));
     expect(screen.getByText(/Placing S-003 — Esc to cancel/)).toBeInTheDocument();
 
-    // sub-1 (10:00-11:00) and sub-2 (10:30-11:30) both cover 10:30am in
+    // sub-1 (10:00-11:00) and sub-2 (10:30-11:30) both cover 10:30 in
     // Main Hall, so the occupied cell there must name a two-session clash.
     const clashButton = screen.getByRole('button', {
-      name: 'Place S-003 at 10:30am in Main Hall — will clash with 2 sessions',
+      name: 'Place S-003 at 10:30 in Main Hall — will clash with 2 sessions',
     });
     expect(clashButton).toHaveClass('chq-day-grid-cell-btn-clash');
 
@@ -794,12 +794,12 @@ describe('AgendaPage armed self-clash and top-layer click-to-place (DEC-769)', (
     fireEvent.click(screen.getByRole('button', { name: 'S-001: Solo Talk A — click to select, then choose a new slot' }));
     expect(screen.getByText(/Placing S-001 — Esc to cancel/)).toBeInTheDocument();
 
-    // sub-5 occupies Room B 10:00-10:30. Click the 10:15am row -- inside
+    // sub-5 occupies Room B 10:00-10:30. Click the 10:15 row -- inside
     // sub-5's span, but NOT its own startMin -- to prove the button (not
     // the card underneath it) receives the click and reports the row's
     // own minutes.
     const clashButton = screen.getByRole('button', {
-      name: 'Place S-001 at 10:15am in Room B — will clash with 1 session',
+      name: 'Place S-001 at 10:15 in Room B — will clash with 1 session',
     });
     fireEvent.click(clashButton);
 
@@ -827,12 +827,12 @@ describe('AgendaPage armed self-clash and top-layer click-to-place (DEC-769)', (
 
     fireEvent.click(screen.getByRole('button', { name: 'S-001: Solo Talk A — click to select, then choose a new slot' }));
 
-    // sub-1's own slot (Main Hall, 10:00am) — excluded from its own
+    // sub-1's own slot (Main Hall, 10:00) — excluded from its own
     // occupancy count, so it renders as an ordinary (non-clash) button.
-    const ownCellButton = screen.getByRole('button', { name: 'Place S-001 at 10:00am in Main Hall' });
+    const ownCellButton = screen.getByRole('button', { name: 'Place S-001 at 10:00 in Main Hall' });
     expect(ownCellButton).not.toHaveClass('chq-day-grid-cell-btn-clash');
     expect(
-      screen.queryByRole('button', { name: /Place S-001 at 10:00am in Main Hall — will clash/ }),
+      screen.queryByRole('button', { name: /Place S-001 at 10:00 in Main Hall — will clash/ }),
     ).toBeNull();
   });
 
@@ -857,7 +857,7 @@ describe('AgendaPage armed self-clash and top-layer click-to-place (DEC-769)', (
 
     fireEvent.click(screen.getByRole('button', { name: 'S-001: Solo Talk A — click to select, then choose a new slot' }));
     const clashButton = screen.getByRole('button', {
-      name: 'Place S-001 at 10:15am in Room B — will clash with 1 session',
+      name: 'Place S-001 at 10:15 in Room B — will clash with 1 session',
     });
     fireEvent.click(clashButton);
 
