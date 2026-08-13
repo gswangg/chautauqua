@@ -94,6 +94,49 @@
   cursor: pointer;
 }
 
+/* DEC-707 section-action grammar: a plain label on the left of the 2px
+   rule, the section's ONE action (History's show/hide) on the right of the
+   SAME rule -- the numbered ::before prefix still applies since this stays
+   a .chq-detail-section-title element, just laid out as a row instead of
+   plain text. */
+.chq-detail-section-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.chq-detail-section-action {
+  font-family: var(--chq-font-body, 'Figtree', 'Helvetica Neue', Arial, sans-serif);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--chq-brand);
+  white-space: nowrap;
+}
+
+.chq-detail-section-action:hover {
+  color: var(--chq-brand-hover);
+}
+
+/* History rows: `when | what`, the pipe purely visual (aria-hidden). */
+.chq-submission-history-entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chq-submission-history-row {
+  overflow-wrap: anywhere;
+}
+
+.chq-submission-history-when {
+  color: var(--chq-muted);
+}
+
 .chq-detail-section-body {
   padding-top: 14px;
 }
@@ -182,6 +225,23 @@
   color: var(--chq-muted);
 }
 
+/* DEC-743: 'Awaiting triage · N days' -- a micro-label, never red (a
+   pending submission isn't an error state). */
+.chq-detail-triage-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--chq-ink);
+}
+
+/* DEC-743: content approval left this page -- a single tertiary link to
+   the content screen replaces the old Approve/Request-changes controls. */
+.chq-detail-content-link {
+  align-self: flex-start;
+}
+
 .chq-detail-decision-actions {
   display: flex;
   flex-wrap: wrap;
@@ -253,6 +313,10 @@
 
 .chq-review-entry-plan {
   color: var(--chq-muted);
+}
+
+.chq-review-entry-score {
+  font-weight: 700;
 }
 
 .chq-review-scores {
@@ -503,8 +567,13 @@
 
   .chq-track-chips,
   .chq-detail-decision-note,
-  .chq-detail-participants-note,
-  .chq-content-status {
+  .chq-detail-participants-note {
     overflow-wrap: anywhere;
+  }
+
+  .chq-detail-content-link {
+    width: 100%;
+    text-align: center;
+    border-radius: var(--chq-r-ctl-phone);
   }
 }

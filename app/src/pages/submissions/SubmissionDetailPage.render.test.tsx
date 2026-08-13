@@ -1,9 +1,8 @@
-// CNT-09 (admin session editing) + CNT-12 (content-approval reachability)
-// render regression: locks in the inline title/abstract editor (PATCH
-// /api/v1/submissions/:id) and the always-visible content-status control
-// (POST /api/v1/submissions/:id/content-status) on the submission detail
-// page, mirroring the DEC-144 layer-2 harness pattern used by
-// Submissions.render.test.tsx.
+// CNT-09 (admin session editing) render regression: locks in the inline
+// title/abstract editor (PATCH /api/v1/submissions/:id) on the submission
+// detail page, mirroring the DEC-144 layer-2 harness pattern used by
+// Submissions.render.test.tsx. DEC-743: content approval left this page for
+// the content screen -- see the 'Review the content' link tests below.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -59,6 +58,7 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
     });
     mockApi({
       [`GET /api/v1/submissions/${SUB_ID}`]: () => currentDetail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
       [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
@@ -98,33 +98,29 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
     expect(screen.getByRole('heading', { name: 'S-001: Updated Title' })).toBeInTheDocument();
   });
 
-  it('approves content via the always-visible control (no files required)', async () => {
+  it('leaves content approval to the content screen via a single tertiary link (DEC-743)', async () => {
     const detail = baseDetail();
-    const contentStatusMock = vi.fn(() => ({ id: SUB_ID, contentStatus: 'approved' }));
     mockApi({
       [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
       [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
-      [`POST /api/v1/submissions/${SUB_ID}/content-status`]: contentStatusMock,
     });
 
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('Content: pending')).toBeInTheDocument();
+      expect(screen.getByText('Original description')).toBeInTheDocument();
     });
 
-    const approveButton = screen.getByRole('button', { name: 'Approve content' });
-    expect(approveButton).toHaveClass('chq-btn-primary');
-    fireEvent.click(approveButton);
+    // No content-status controls remain on this page.
+    expect(screen.queryByRole('button', { name: 'Approve content' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Request changes' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Content:/)).not.toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(contentStatusMock).toHaveBeenCalled();
-    });
-    await waitFor(() => {
-      expect(screen.getByText('Content: approved')).toBeInTheDocument();
-    });
+    const contentLink = screen.getByRole('link', { name: /Review the content/ });
+    expect(contentLink).toHaveAttribute('href', `/content?submissionId=${SUB_ID}`);
   });
 
   it('shows history panel and restores a prior revision (CNT-11, DEC-158)', async () => {
@@ -139,6 +135,7 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
     });
     mockApi({
       [`GET /api/v1/submissions/${SUB_ID}`]: () => currentDetail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
       [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
@@ -152,11 +149,19 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
       expect(screen.getByText('Original description')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Show history' }));
+    // DEC-707 section-action grammar: 'History' is a plain label, 'Show'
+    // is the section's ONE action -- no more 'Show history' bare toggle.
+    expect(screen.getByText('History')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show' }));
 
     await waitFor(() => {
       expect(screen.getAllByText('organizer@example.com').length).toBe(2);
     });
+
+    // Each history entry renders as a `when | what` row.
+    expect(screen.getAllByText('|').length).toBeGreaterThan(0);
+
+    expect(screen.getByRole('button', { name: 'Hide' })).toBeInTheDocument();
 
     const restoreButtons = screen.getAllByRole('button', { name: 'Restore' });
     fireEvent.click(restoreButtons[1]!);
@@ -170,12 +175,14 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
   });
 });
 
-// DEC-596/DEC-577 (task w3-f): the numbered Reviews section renders every
-// recorded evaluation's scores + full comment text, hiding the reviewer name
-// for an anonymized plan; the decision panel is a segmented button group,
-// not a <select>.
+// DEC-596/DEC-577/DEC-723/DEC-736 (tasks w3-f, w2-h): the numbered Reviews
+// section header reads 'Reviews · N of M in', each row shows the reviewer
+// name (never 'Anonymous reviewer' — DEC-736), the plan's weighted score
+// (2dp / em-dash), full comment text, and criterion values under their
+// criteria[].label (never the raw criterionId); the decision panel is a
+// segmented button group, not a <select>.
 describe('SubmissionDetailPage render: Reviews section + segmented decision buttons', () => {
-  it('renders each evaluation, hides the reviewer name for an anonymized plan, and shows the Speaker card', async () => {
+  it('renders each evaluation under its criteria labels, the weighted score, and the Speaker card', async () => {
     const detail = baseDetail({
       status: 'pending',
       participants: [
@@ -195,6 +202,7 @@ describe('SubmissionDetailPage render: Reviews section + segmented decision butt
     });
     mockApi({
       [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
       [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: {
@@ -205,6 +213,8 @@ describe('SubmissionDetailPage render: Reviews section + segmented decision butt
             round: 1,
             reviewerName: 'Jamie Reviewer',
             scores: { c1: 4 },
+            criteria: [{ id: 'c1', label: 'Technical depth', kind: 'scale', weight: 1 }],
+            score: 4,
             comment: 'Solid proposal, would love more detail on the demo.',
             submittedAt: 1700000000000,
           },
@@ -212,10 +222,12 @@ describe('SubmissionDetailPage render: Reviews section + segmented decision butt
             planId: 'plan-2',
             planName: 'Blind review',
             round: 1,
-            reviewerName: null,
+            reviewerName: 'Alex Reviewer',
             scores: { c1: 2 },
+            criteria: [{ id: 'c1', label: 'Technical depth', kind: 'scale', weight: 1 }],
+            score: null,
             comment: 'Scope is too broad for the slot.',
-            submittedAt: 1700000100000,
+            submittedAt: null,
           },
         ],
       },
@@ -227,8 +239,23 @@ describe('SubmissionDetailPage render: Reviews section + segmented decision butt
       expect(screen.getByText('Solid proposal, would love more detail on the demo.')).toBeInTheDocument();
     });
     expect(screen.getByText('Jamie Reviewer')).toBeInTheDocument();
-    expect(screen.getByText('Anonymous reviewer')).toBeInTheDocument();
+    expect(screen.getByText('Alex Reviewer')).toBeInTheDocument();
+    expect(screen.queryByText('Anonymous reviewer')).not.toBeInTheDocument();
     expect(screen.getByText('Scope is too broad for the slot.')).toBeInTheDocument();
+
+    // Header: 'Reviews · N of M in' -- 1 of 2 items has a non-null submittedAt.
+    expect(screen.getByRole('heading', { name: /Reviews\s*·\s*1 of 2 in/ })).toBeInTheDocument();
+
+    // Criterion values render under their label, never the raw criterionId.
+    expect(screen.getAllByText('Technical depth').length).toBe(2);
+    expect(screen.queryByText('c1')).not.toBeInTheDocument();
+
+    // Weighted score: 2dp when present, em-dash when null.
+    expect(screen.getByText('4.00')).toBeInTheDocument();
+    expect(screen.getByText('—')).toBeInTheDocument();
+
+    // 'Awaiting triage' micro-label above the decision controls, pending only.
+    expect(screen.getByText(/Awaiting triage/)).toBeInTheDocument();
 
     // Speaker card (name also appears in the Participants table row, so
     // assert at least one instance rather than requiring uniqueness).
@@ -265,6 +292,7 @@ describe('SubmissionDetailPage render: editable Tracks section', () => {
     });
     const fetchMock = mockApi({
       [`GET /api/v1/submissions/${SUB_ID}`]: () => currentDetail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: {
         items: [
           { id: 't1', name: 'Frontend' },
@@ -314,6 +342,7 @@ describe('SubmissionDetailPage render: editable Tracks section', () => {
     });
     const fetchMock = mockApi({
       [`GET /api/v1/submissions/${SUB_ID}`]: () => currentDetail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: {
         items: [{ id: 't1', name: 'Frontend' }],
         total: 1,
@@ -353,6 +382,7 @@ describe('SubmissionDetailPage render: editable Tracks section', () => {
     const currentDetail = baseDetail({ trackIds: ['t1'] });
     mockApi({
       [`GET /api/v1/submissions/${SUB_ID}`]: () => currentDetail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: {
         items: [
           { id: 't1', name: 'Frontend' },
@@ -426,6 +456,7 @@ describe('SubmissionDetailPage render: unpublished-participant caption (DEC-656)
     });
     mockApi({
       [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
       [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
@@ -447,6 +478,7 @@ describe('SubmissionDetailPage render: unpublished-participant caption (DEC-656)
     });
     mockApi({
       [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
       [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
       [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
       [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
