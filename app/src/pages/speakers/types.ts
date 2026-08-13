@@ -25,6 +25,10 @@ export interface OnboardingCell {
   completedAt: number | null;
   fileId: string | null;
   lastRemindedAt: number | null;
+  // DEC-801: the moment this assignment was created -- fed through
+  // effectiveAssignmentDueDate (../../../../src/domain/task-due.ts) so a
+  // task cannot be judged late before it was actually assigned.
+  assignedAt: number;
 }
 
 // DEC-789: closed set written by PATCH /api/v1/submissions/:id/participants/

@@ -21,12 +21,18 @@ function sqlTextOf(cond: unknown): { sql: string; params: unknown[] } {
 }
 
 describe("overdueAssignmentConditions (DEC-776)", () => {
-  it("ANDs event scoping, non-complete status, a past due date, and the roster EXISTS predicate", () => {
+  it("ANDs event scoping, non-complete status, a past EFFECTIVE due date, and the roster EXISTS predicate", () => {
     const { sql, params } = sqlTextOf(overdueAssignmentConditions("event-1", 1_000_000));
 
     expect(sql).toContain('"task"."event_id" = ?');
     expect(sql).toContain("\"task_assignment\".\"status\" <> 'complete'");
-    expect(sql).toContain('"task"."due_date" is not null and "task"."due_date" < ?');
+    // DEC-801: a task cannot be late before it was assigned -- the
+    // effective due date is task.dueDate, or, when the assignment was
+    // created after that date, assignment.createdAt plus the grace window
+    // (ASSIGNED_LATE_GRACE_DAYS, in ms, bound as a param below).
+    expect(sql).toContain(
+      '"task"."due_date" is not null and (case when "task"."due_date" >= "task_assignment"."created_at" then "task"."due_date" else "task_assignment"."created_at" + ? end) < ?',
+    );
     // The roster predicate: acceptedSpeakerExistsForContact's correlated
     // EXISTS against schema.contact, so a task_assignment whose contact is
     // not an active participant on an accepted submission fails this
@@ -36,6 +42,7 @@ describe("overdueAssignmentConditions (DEC-776)", () => {
     expect(sql).toContain('"submission"."status" = ?');
     expect(params).toContain("event-1");
     expect(params).toContain(1_000_000);
+    expect(params).toContain(7 * 24 * 60 * 60 * 1000);
     expect(params).toContain("accepted");
   });
 

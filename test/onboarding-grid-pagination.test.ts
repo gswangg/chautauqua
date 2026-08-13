@@ -147,9 +147,9 @@ describe("getOnboardingGrid (DEC-340)", () => {
     // Deliberately more cell rows than contacts, to prove `total` isn't
     // derived from assignment-row count.
     const cellRows = [
-      { assignmentId: "a1", taskId: "task-1", status: "pending", completedAt: null, fileId: null, lastRemindedAt: null, contactId: "c1" },
-      { assignmentId: "a2", taskId: "task-2", status: "complete", completedAt: null, fileId: null, lastRemindedAt: null, contactId: "c1" },
-      { assignmentId: "a3", taskId: "task-3", status: "pending", completedAt: null, fileId: null, lastRemindedAt: null, contactId: "c1" },
+      { assignmentId: "a1", taskId: "task-1", status: "pending", completedAt: null, fileId: null, lastRemindedAt: null, contactId: "c1", createdAt: new Date(500_000) },
+      { assignmentId: "a2", taskId: "task-2", status: "complete", completedAt: null, fileId: null, lastRemindedAt: null, contactId: "c1", createdAt: new Date(500_000) },
+      { assignmentId: "a3", taskId: "task-3", status: "pending", completedAt: null, fileId: null, lastRemindedAt: null, contactId: "c1", createdAt: new Date(500_000) },
     ];
     const { db } = fakeDb([TASK_ROWS, [{ count: 1 }], contacts, cellRows, SPEAKERS_COUNT_ROW, COUNTS_ROW, OVERDUE_COUNT_ROW]);
     const result = await getOnboardingGrid(db, "event-1", baseParams());

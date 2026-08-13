@@ -51,6 +51,7 @@ interface OutstandingRowShape {
   eventId: string;
   eventName: string;
   timezone: string;
+  assignmentCreatedAt: Date;
 }
 
 /** Records every table touched by update()/insert() — a preview must
@@ -115,6 +116,7 @@ const ROWS: OutstandingRowShape[] = [
     eventId: "event_1",
     eventName: "DevFlow Conf 2027",
     timezone: "America/Los_Angeles",
+    assignmentCreatedAt: new Date(0),
   },
   {
     assignmentId: "assign_2",
@@ -130,6 +132,7 @@ const ROWS: OutstandingRowShape[] = [
     eventId: "event_1",
     eventName: "DevFlow Conf 2027",
     timezone: "America/Los_Angeles",
+    assignmentCreatedAt: new Date(0),
   },
 ];
 

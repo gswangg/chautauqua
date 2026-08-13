@@ -45,6 +45,7 @@ interface OutstandingRowShape {
   eventId: string;
   eventName: string;
   timezone: string;
+  assignmentCreatedAt: Date;
 }
 
 function fakeDb(rows: OutstandingRowShape[]): { db: Db; updateCalls: unknown[] } {
@@ -108,6 +109,7 @@ describe("sendDueRemindersForEvent (DEC-238 class 1 cron, partial mailer failure
         eventId: "event_1",
         eventName: "DevFlow Conf 2027",
         timezone: "America/Los_Angeles",
+        assignmentCreatedAt: new Date(0),
       },
       {
         assignmentId: "assign_bad",
@@ -123,6 +125,7 @@ describe("sendDueRemindersForEvent (DEC-238 class 1 cron, partial mailer failure
         eventId: "event_1",
         eventName: "DevFlow Conf 2027",
         timezone: "America/Los_Angeles",
+        assignmentCreatedAt: new Date(0),
       },
     ];
     const { db, updateCalls } = fakeDb(rows);

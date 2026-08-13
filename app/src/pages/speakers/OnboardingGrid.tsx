@@ -4,6 +4,7 @@ import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { GridFilters } from './GridFilters';
 import { daysLate, isCellOverdue } from './overdue';
+import { effectiveAssignmentDueDate } from '../../../../src/domain/task-due';
 import { TaskModal } from './TaskModal';
 import { ResponseModal } from './ResponseModal';
 import { RemindPreviewModal } from './RemindPreviewModal';
@@ -512,7 +513,8 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                       }
                       const overdue = isCellOverdue(cell, task, now);
                       const cellClass = statusCellClass(cell.status, overdue);
-                      const overdueTitleText = overdue && task.dueDate !== null ? overdueTitle(task.dueDate, now) : null;
+                      const effectiveDueDate = effectiveAssignmentDueDate(task.dueDate, cell.assignedAt);
+                      const overdueTitleText = overdue && effectiveDueDate !== null ? overdueTitle(effectiveDueDate, now) : null;
                       return (
                         <td key={task.id}>
                           <div className="chq-speakers-cell">
@@ -606,7 +608,8 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                     }
                     const overdue = isCellOverdue(cell, task, now);
                     const cellClass = statusCellClass(cell.status, overdue);
-                    const overdueTitleText = overdue && task.dueDate !== null ? overdueTitle(task.dueDate, now) : null;
+                    const effectiveDueDate = effectiveAssignmentDueDate(task.dueDate, cell.assignedAt);
+                    const overdueTitleText = overdue && effectiveDueDate !== null ? overdueTitle(effectiveDueDate, now) : null;
                     return (
                       <div key={task.id} className="chq-speakers-card-task">
                         <span className="chq-speakers-card-task-label">{task.title}</span>
