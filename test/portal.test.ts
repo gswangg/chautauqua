@@ -39,6 +39,7 @@ vi.mock("../src/server/repo/portal", async () => {
     getMyInvitations: vi.fn(async () => mockInvitations),
     getMyTaskAssignments: vi.fn(async () => mockTasks),
     getLatestDeliverable: vi.fn(async () => null),
+    getMySubmissions: vi.fn(async () => []),
   };
 });
 

@@ -309,6 +309,25 @@ export const PORTAL_CSS = `
     min-width: 28px;
   }
 
+  /* DEC-729 (w1-c): "Your submissions" rows are <a> elements (whole row
+     navigates to the detail page) styled to read exactly like the existing
+     .chq-portal-row cards, not an underlined inline link. The status badge
+     on the detail page composes .chq-flag (never a new color token, per
+     DEC-367) plus an uppercase/letter-spacing treatment matching the mock's
+     "Accepted · 14 Mar" line. */
+  a.chq-portal-submission-row {
+    color: inherit;
+    text-decoration: none;
+  }
+  .chq-portal-status-badge {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
   @media (max-width: 700px) {
     .chq-portal-row-head { align-items: flex-start; }
     .chq-portal-actions { flex-direction: column; }

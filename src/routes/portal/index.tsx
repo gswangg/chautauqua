@@ -17,6 +17,7 @@ import {
   getLatestDeliverable,
   getMyInvitations,
   getMySessions,
+  getMySubmissions,
   getMyTaskAssignments,
   getParticipantScope,
   getPortalData,
@@ -29,8 +30,12 @@ import {
   type PortalInvitation,
   type PortalSession,
   type PortalSubmissionDetail,
+  type PortalSubmissionListItem,
   type PortalTaskAssignment,
 } from "../../server/repo/portal";
+import { DEC_729 } from "../../decisions";
+
+void DEC_729;
 import {
   parseCookies,
   newCsrfToken,
@@ -202,16 +207,34 @@ function DoneRow(props: { task: PortalTaskAssignment }) {
   );
 }
 
+// DEC-729: one row per submission the speaker owns — REF · format · track
+// (whichever parts exist) plus a public status label, linked to the detail
+// page. No participants/answers here; that's the detail page's job.
+function SubmissionRow(props: { submission: PortalSubmissionListItem }) {
+  const { submission: s } = props;
+  const metaParts = [s.ref, s.format, s.trackName].filter((p): p is string => p !== null && p.length > 0);
+  return (
+    <a href={`/portal/submissions/${s.id}`} class="chq-portal-row chq-portal-submission-row">
+      <div class="chq-portal-row-head">
+        <span class="chq-portal-row-title">{s.title}</span>
+        <span class="chq-flag">{s.statusLabel}</span>
+      </div>
+      {metaParts.length > 0 ? <span class="chq-portal-due">{metaParts.join(" · ")}</span> : null}
+    </a>
+  );
+}
+
 function PortalPage(props: {
   data: PortalData;
   sessions: PortalSession[];
   invitations: PortalInvitation[];
   taskAssignments: PortalTaskAssignment[];
   deliverables: Map<string, PortalDeliverable | null>;
+  submissions: PortalSubmissionListItem[];
   csrfToken: string;
 }) {
   const { branding, contactName, contactCompany } = props.data;
-  const { sessions, invitations, taskAssignments, deliverables, csrfToken } = props;
+  const { sessions, invitations, taskAssignments, deliverables, submissions, csrfToken } = props;
   const now = Date.now();
 
   // DEC-590: n is EXACTLY the count of rows rendered below — pending task
@@ -264,6 +287,21 @@ function PortalPage(props: {
         </p>
       </section>
 
+      {/* DEC-729: every submission the speaker owns, pending/accepted/
+          declined alike — not just the ones getMySessions restricts to
+          accepted. */}
+      <section aria-label="Your submissions" class="chq-section">
+        <div class="chq-section-label">Your submissions</div>
+        {submissions.length === 0 ? (
+          <p>No submissions yet.</p>
+        ) : (
+          submissions.map((s) => <SubmissionRow submission={s} />)
+        )}
+        <p>
+          <a href="/portal/submissions">View all submissions</a>
+        </p>
+      </section>
+
       <section aria-label="Your session" class="chq-section">
         <div class="chq-section-label">Your session</div>
         {sessions.length === 0 ? (
@@ -296,30 +334,58 @@ function minutesToClock(min: number | null): string {
   return `${h}:${m}`;
 }
 
+// DEC-729 (w1-c rebuild): docs/design "Portal · Your session" frame —
+// uppercase status badge + submitted date, title, "REF · format · track"
+// line, a placement line only when the session has actually landed on the
+// schedule (day + startMin both set, same placed-test as scheduledSubline),
+// Abstract, a Slides/deliverable card, then the existing Participants/
+// Answers sections this task doesn't remove.
 function SubmissionDetailPage(props: {
   branding: PortalData["branding"];
   detail: PortalSubmissionDetail;
   editable: boolean;
   csrfToken: string;
   participants: PortalParticipant[];
+  deliverable: PortalDeliverable | null;
 }) {
-  const { detail, editable, participants } = props;
+  const { detail, editable, participants, deliverable } = props;
+  const metaParts = [detail.ref, detail.format, detail.trackName].filter(
+    (p): p is string => p !== null && p.length > 0,
+  );
+  const placed = detail.day !== null && detail.startMin !== null;
   return (
     <PortalLayout branding={props.branding} csrfToken={props.csrfToken}>
-      <a href="/portal" class="chq-portal-back">&larr; Back to My Submissions</a>
-      <h2 class="chq-portal-hero">
-        {detail.ref}: {detail.title}
-      </h2>
-      <p>
-        Status: <span class="chq-flag">{detail.statusLabel}</span>
-      </p>
+      <a href="/portal/submissions" class="chq-portal-back">&larr; Back to My Submissions</a>
+      <span class="chq-flag chq-portal-status-badge">
+        {detail.statusLabel} · {formatCalendarDate(detail.submittedAt)}
+      </span>
+      <h2 class="chq-portal-hero">{detail.title}</h2>
+      {metaParts.length > 0 ? <span class="chq-portal-sub">{metaParts.join(" · ")}</span> : null}
+      {placed ? (
+        <span class="chq-portal-sub">
+          {detail.day}, {minutesToClock(detail.startMin)}
+          {detail.roomName ? ` · ${detail.roomName}` : ""}
+        </span>
+      ) : null}
       {editable ? (
         <div class="chq-portal-actions">
           <a href={`/portal/submissions/${detail.id}/edit`} class="chq-btn chq-btn-secondary">Edit submission</a>
         </div>
       ) : null}
-      <p class="chq-portal-sub">Submitted: {formatEventDate(detail.submittedAt, detail.timezone)}</p>
-      {detail.description ? <p>{detail.description}</p> : null}
+
+      <div class="chq-section-label">Abstract</div>
+      {detail.description ? <p>{detail.description}</p> : <p>No abstract yet.</p>}
+
+      <div class="chq-section-label">Slides</div>
+      {deliverable ? (
+        <div class="chq-portal-row">
+          <span class="chq-portal-row-title">{deliverable.filename}</span>
+          <span class="chq-portal-due">Uploaded {formatEventDate(deliverable.uploadedAt, detail.timezone)}</span>
+        </div>
+      ) : (
+        <p>Nothing uploaded yet.</p>
+      )}
+
       <h3 class="chq-section-label">Participants</h3>
       {participants.length === 0 ? (
         <p>No participants yet.</p>
@@ -349,14 +415,33 @@ function SubmissionDetailPage(props: {
   );
 }
 
+// DEC-729: /portal/submissions full-page list — the same rows the portal
+// home's "Your submissions" section renders, just not truncated by the
+// home page's other sections.
+function SubmissionsListPage(props: { branding: PortalData["branding"]; csrfToken: string; submissions: PortalSubmissionListItem[] }) {
+  const { submissions } = props;
+  return (
+    <PortalLayout branding={props.branding} csrfToken={props.csrfToken}>
+      <a href="/portal" class="chq-portal-back">&larr; Your portal</a>
+      <h1 class="chq-portal-hero">Your submissions</h1>
+      {submissions.length === 0 ? (
+        <p>No submissions yet.</p>
+      ) : (
+        submissions.map((s) => <SubmissionRow submission={s} />)
+      )}
+    </PortalLayout>
+  );
+}
+
 portalRoutes.get("/", async (c) => {
   const auth = c.var.auth!;
   const contactId = assertSpeakerContactId(auth);
-  const [data, sessions, invitations, taskAssignments] = await Promise.all([
+  const [data, sessions, invitations, taskAssignments, submissions] = await Promise.all([
     getPortalData(c.var.db, contactId, auth.orgId),
     getMySessions(c.var.db, contactId, auth.orgId),
     getMyInvitations(c.var.db, contactId, auth.orgId),
     getMyTaskAssignments(c.var.db, contactId, auth.orgId),
+    getMySubmissions(c.var.db, contactId, auth.orgId),
   ]);
   const deliverableEntries = await Promise.all(
     sessions.map(async (s): Promise<[string, PortalDeliverable | null]> => [
@@ -374,9 +459,25 @@ portalRoutes.get("/", async (c) => {
       invitations={invitations}
       taskAssignments={taskAssignments}
       deliverables={deliverables}
+      submissions={submissions}
       csrfToken={csrfToken}
     />,
   );
+});
+
+// GET /portal/submissions — DEC-729: the full-page list of every submission
+// this speaker owns, not truncated by the home page's worklist/session/done
+// sections.
+portalRoutes.get("/submissions", async (c) => {
+  const auth = c.var.auth!;
+  const contactId = assertSpeakerContactId(auth);
+  const [data, submissions] = await Promise.all([
+    getPortalData(c.var.db, contactId, auth.orgId),
+    getMySubmissions(c.var.db, contactId, auth.orgId),
+  ]);
+  const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
+  if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
+  return c.html(<SubmissionsListPage branding={data.branding} csrfToken={csrfToken} submissions={submissions} />);
 });
 
 portalRoutes.get("/submissions/:id", async (c) => {
@@ -397,6 +498,7 @@ portalRoutes.get("/submissions/:id", async (c) => {
     ? canEditSubmission(editData.submission.status, editData.form.closeDate, Date.now(), editData.form.timezone)
     : false;
   const participants = await getPortalParticipants(c.var.db, id);
+  const deliverable = await getLatestDeliverable(c.var.db, id);
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
   return c.html(
@@ -406,6 +508,7 @@ portalRoutes.get("/submissions/:id", async (c) => {
       editable={editable}
       csrfToken={csrfToken}
       participants={participants}
+      deliverable={deliverable}
     />,
   );
 });
