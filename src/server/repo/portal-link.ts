@@ -9,40 +9,21 @@ import { PREVIEW_CLAIM_TOKEN } from "../../domain/compose";
 
 void DEC_530;
 
-/** portal_link (DEC-014/DEC-019): /portal when a user exists for the
- * contact's email, else a claim link. DEC-397 (preview never mints
- * credentials): when mintClaimTokens is false, a userless contact resolves
- * to the fixed PREVIEW_CLAIM_TOKEN placeholder with zero KV writes instead
- * of a freshly minted token. `userId` is looked up once per recipient set
- * (DEC-530: batched via repo.findAccountUserIds) and passed in rather than
- * re-queried per recipient here — claim-token minting itself stays
- * per-recipient (DEC-397: a KV write with real side effects), but DEC-530's
- * wave-42 amendment requires the whole recipient set's minting to run
- * concurrently rather than as N sequential awaits: see resolvePortalLinks. */
-export async function resolvePortalLink(
-  kv: KVStore,
-  contactId: string,
-  eventId: string,
-  userId: string | null,
-  origin: string,
-  mintClaimTokens: boolean,
-): Promise<string> {
-  const map = await resolvePortalLinks(kv, [{ contactId, userId }], eventId, origin, mintClaimTokens);
-  const link = map.get(contactId);
-  if (!link) throw new Error(`resolvePortalLinks produced no link for contactId ${contactId}`);
-  return link;
-}
-
-/** Batch form of resolvePortalLink (DEC-530 wave-42 amendment): dedupes by
- * contactId (a co-speaker on multiple submissions appears once) and mints
- * the claim tokens the userless recipients need through a single
- * Promise.all instead of sequential awaits, so a 100-recipient send pays
- * one round of concurrent KV writes rather than up to 100 serial ones.
- * Recipients with an account (userId set) or with mintClaimTokens=false
- * never touch KV — same zero-write PREVIEW_CLAIM_TOKEN branch as the
- * single-recipient reader. Returns contactId -> link for every recipient
- * given (deduped), so both entry points must produce identical links for
- * identical input (contract-tested). */
+/** The ONE portal_link resolver (DEC-014/DEC-019): /portal when a user
+ * exists for the contact's email, else a claim link. DEC-397 (preview never
+ * mints credentials): when mintClaimTokens is false, a userless contact
+ * resolves to the fixed PREVIEW_CLAIM_TOKEN placeholder with zero KV writes.
+ * DEC-530 wave-42/wave-46 amendments: every caller (comms compose,
+ * content-notes, contacts bulk-email, task reminders) resolves its whole
+ * recipient set through this ONE batched call — dedupes by contactId (a
+ * co-speaker on multiple submissions appears once) and mints the claim
+ * tokens the userless recipients need through a single Promise.all instead
+ * of sequential awaits, so a 100-recipient send pays one round of
+ * concurrent KV writes rather than up to 100 serial ones. Recipients with
+ * an account (userId set) or with mintClaimTokens=false never touch KV.
+ * Returns contactId -> link for every recipient given (deduped). There is
+ * no single-recipient wrapper — a caller with one recipient passes a
+ * one-element array. */
 export async function resolvePortalLinks(
   kv: KVStore,
   recipients: { contactId: string; userId: string | null }[],

@@ -5,9 +5,10 @@
 //     row (login-by-email stays in sync).
 //  2. patchContact rejects (409, no writes) a patch to an email already
 //     owned by a *different* account.
-//  3. resolvePortalLink (comms compose) and POST /claim/:token both key
-//     off contact_id, not just email — a desynced contact.email vs
-//     user.email still resolves to "has an account" via contact_id.
+//  3. comms compose's portal-link resolution (resolvePortalLinks) and POST
+//     /claim/:token both key off contact_id, not just email — a desynced
+//     contact.email vs user.email still resolves to "has an account" via
+//     contact_id.
 //  4. findAccountUserId still finds the account after a merge repoints
 //     user.contact_id onto the surviving contact.
 //
@@ -201,7 +202,7 @@ describe("patchContact cascades email onto the linked user row (DEC-456)", () =>
   });
 });
 
-describe("resolvePortalLink keys off contact_id, not email alone (DEC-456)", () => {
+describe("portal-link resolution keys off contact_id, not email alone (DEC-456)", () => {
   const ORG_A = "org-a";
   const ORIGIN = "https://events.example.com";
 
@@ -238,7 +239,7 @@ describe("resolvePortalLink keys off contact_id, not email alone (DEC-456)", () 
     // user's own stored email. findAccountUserId is stubbed to hit on
     // contactId alone here (the real DB-level contact_id-OR-email query is
     // exercised directly by the "findAccountUserId" describe block below)
-    // — this proves resolvePortalLink threads contactId through, rather
+    // — this proves the compose preview's portal-link resolution threads contactId through, rather
     // than the old email-only lookup that would have missed this account
     // and wrongly minted a claim link for an existing user.
     vi.mocked(findAccountUserId).mockImplementation(async (_db, params) =>

@@ -50,7 +50,7 @@ export interface PortalInviteRenderResult {
  * than silently dropped (DEC-805) — it never reaches the mailer at all.
  * `portalLinkByContactId` must already contain a resolved link for every
  * recipient in `recipients` (the route resolves these async, via the SAME
- * resolvePortalLink helper the compose path uses, before calling in).
+ * resolvePortalLinks helper the compose path uses, before calling in).
  */
 export function renderPortalInvites(
   recipients: PortalInviteRecipient[],

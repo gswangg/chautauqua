@@ -1,13 +1,13 @@
-// DEC-530 wave-42 amendment: resolvePortalLinks batches claim-token minting
-// for a whole recipient set through one Promise.all instead of N sequential
-// awaits. Two contracts covered here: (1) minting for a userless recipient
-// set actually runs concurrently (max in-flight KV puts > 1), and (2) the
-// batch reader and the single-recipient reader agree on the SAME link for
-// the same input — DEC-530's own standing both-directions rule.
+// DEC-530 wave-42/wave-46 amendments: resolvePortalLinks batches claim-token
+// minting for a whole recipient set through one Promise.all instead of N
+// sequential awaits — minting for a userless recipient set actually runs
+// concurrently (max in-flight KV puts > 1). Wave 46 deleted the singular
+// resolvePortalLink wrapper (every caller now batches, even a single
+// recipient), so this file exercises resolvePortalLinks only.
 
 import { describe, expect, it } from "vitest";
 import type { KVStore } from "../src/auth/claim";
-import { resolvePortalLink, resolvePortalLinks } from "../src/server/repo/portal-link";
+import { resolvePortalLinks } from "../src/server/repo/portal-link";
 import { PREVIEW_CLAIM_TOKEN } from "../src/domain/compose";
 
 const EVENT_ID = "evt-1";
@@ -90,45 +90,25 @@ describe("resolvePortalLinks", () => {
   });
 });
 
-describe("resolvePortalLink / resolvePortalLinks — both-directions contract (DEC-530)", () => {
-  it("agree on the /portal branch for an existing account", async () => {
-    const singleKv = new ConcurrencyTrackingKV();
-    const batchKv = new ConcurrencyTrackingKV();
-
-    const single = await resolvePortalLink(singleKv, "ct-1", EVENT_ID, "user-1", ORIGIN, true);
-    const batch = await resolvePortalLinks(batchKv, [{ contactId: "ct-1", userId: "user-1" }], EVENT_ID, ORIGIN, true);
-
-    expect(batch.get("ct-1")).toBe(single);
-    expect(single).toBe(`${ORIGIN}/portal`);
+describe("resolvePortalLinks — single-recipient array (no singular wrapper exists)", () => {
+  it("resolves the /portal branch for an existing account", async () => {
+    const kv = new ConcurrencyTrackingKV();
+    const batch = await resolvePortalLinks(kv, [{ contactId: "ct-1", userId: "user-1" }], EVENT_ID, ORIGIN, true);
+    expect(batch.get("ct-1")).toBe(`${ORIGIN}/portal`);
+    expect(kv.puts.length).toBe(0);
   });
 
-  it("agree on the preview placeholder branch (mintClaimTokens=false)", async () => {
-    const singleKv = new ConcurrencyTrackingKV();
-    const batchKv = new ConcurrencyTrackingKV();
-
-    const single = await resolvePortalLink(singleKv, "ct-2", EVENT_ID, null, ORIGIN, false);
-    const batch = await resolvePortalLinks(batchKv, [{ contactId: "ct-2", userId: null }], EVENT_ID, ORIGIN, false);
-
-    expect(batch.get("ct-2")).toBe(single);
-    expect(single).toBe(`${ORIGIN}/claim/${PREVIEW_CLAIM_TOKEN}`);
-    expect(singleKv.puts.length).toBe(0);
-    expect(batchKv.puts.length).toBe(0);
+  it("resolves the preview placeholder branch (mintClaimTokens=false) with zero KV writes", async () => {
+    const kv = new ConcurrencyTrackingKV();
+    const batch = await resolvePortalLinks(kv, [{ contactId: "ct-2", userId: null }], EVENT_ID, ORIGIN, false);
+    expect(batch.get("ct-2")).toBe(`${ORIGIN}/claim/${PREVIEW_CLAIM_TOKEN}`);
+    expect(kv.puts.length).toBe(0);
   });
 
-  it("both mint a real, valid claim token for a userless recipient with minting enabled", async () => {
-    const singleKv = new ConcurrencyTrackingKV();
-    const batchKv = new ConcurrencyTrackingKV();
-
-    const single = await resolvePortalLink(singleKv, "ct-3", EVENT_ID, null, ORIGIN, true);
-    const batch = await resolvePortalLinks(batchKv, [{ contactId: "ct-3", userId: null }], EVENT_ID, ORIGIN, true);
-
-    const pattern = new RegExp(`^${ORIGIN}/claim/[A-Za-z0-9_-]+$`);
-    expect(single).toMatch(pattern);
-    expect(batch.get("ct-3")).toMatch(pattern);
-    // Tokens are randomly minted per call, so the two links themselves
-    // differ — the CONTRACT under test is that both take the same shape
-    // and both actually performed exactly one mint's worth of KV writes.
-    expect(singleKv.puts.length).toBe(2);
-    expect(batchKv.puts.length).toBe(2);
+  it("mints a real, valid claim token for a userless recipient with minting enabled", async () => {
+    const kv = new ConcurrencyTrackingKV();
+    const batch = await resolvePortalLinks(kv, [{ contactId: "ct-3", userId: null }], EVENT_ID, ORIGIN, true);
+    expect(batch.get("ct-3")).toMatch(new RegExp(`^${ORIGIN}/claim/[A-Za-z0-9_-]+$`));
+    expect(kv.puts.length).toBe(2);
   });
 });
