@@ -13,6 +13,11 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   test: {
+    // Machine-protection caps (mandate item 72): the full suite spawned 6+
+    // multi-GB workers and swamped the 16GB host twice. maxWorkers binds both
+    // the threads and forks pools; keep at 2 regardless of environment.
+    maxWorkers: 2,
+    minWorkers: 1,
     environment: "node",
     environmentMatchGlobs: [
       ["app/src/**/*.render.test.tsx", "jsdom"],
