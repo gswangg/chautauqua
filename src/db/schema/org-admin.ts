@@ -33,6 +33,10 @@ export const apiToken = sqliteTable(
 // Submissions saved views. config_json shape per DEC-031: { q, status[],
 // trackId, sort, columns[] } matching the landed submissions filter/column
 // state shapes exactly.
+// migrations/0028_saved_view_share.sql (DEC-904): a saved view is private
+// until its author shares it. createdByUserId (nullable -- existing rows
+// have no known author) + shared (NOT NULL default 1, so every pre-DEC-904
+// row keeps today's fully-shared behaviour).
 export const savedView = sqliteTable(
   "saved_view",
   {
@@ -40,6 +44,8 @@ export const savedView = sqliteTable(
     eventId: text("event_id").notNull(),
     name: text("name").notNull(),
     configJson: text("config_json").notNull(),
+    createdByUserId: text("created_by_user_id"),
+    shared: integer("shared", { mode: "boolean" }).notNull().default(true),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

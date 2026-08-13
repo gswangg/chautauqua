@@ -51,8 +51,13 @@ describe("GET /api/v1/events/:eventId/views (DEC-460/461 bounds)", () => {
       const actual = await vi.importActual<typeof import("../src/server/repo/views")>("../src/server/repo/views");
       return {
         ...actual,
-        listSavedViews: vi.fn(async (_db: unknown, _eventId: string, page?: { limit: number; offset: number }) =>
-          page ? allViews.slice(page.offset, page.offset + page.limit) : allViews,
+        listSavedViews: vi.fn(
+          async (
+            _db: unknown,
+            _eventId: string,
+            _viewerUserId: string,
+            page?: { limit: number; offset: number },
+          ) => (page ? allViews.slice(page.offset, page.offset + page.limit) : allViews),
         ),
         countSavedViews: vi.fn(async () => allViews.length),
       };

@@ -100,14 +100,16 @@ interface SaveViewDialogProps {
   tracks: readonly Track[];
   pending: boolean;
   onCancel: () => void;
-  onSave: (name: string) => Promise<void>;
+  onSave: (name: string, shared: boolean) => Promise<void>;
 }
 
-// DEC-651/DEC-750: ModalFrame like every other dialog, primary bottom-left
-// (modal-frame.css). saved_view has no owner column (event-scoped only), so
-// sharing is a static caption, not a checkbox toggle the store can't persist.
+// DEC-651/DEC-750/DEC-904: ModalFrame like every other dialog, primary
+// bottom-left (modal-frame.css). A real checkbox, unchecked by default,
+// replaces the old static "everyone sees it" caption -- saved_view now has
+// an owner column and the checkbox's value is what the store persists.
 function SaveViewDialog({ filters, tracks, pending, onCancel, onSave }: SaveViewDialogProps) {
   const [name, setName] = useState('');
+  const [shared, setShared] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function submit(e: FormEvent) {
@@ -119,7 +121,7 @@ function SaveViewDialog({ filters, tracks, pending, onCancel, onSave }: SaveView
     }
     setError(null);
     try {
-      await onSave(trimmed);
+      await onSave(trimmed, shared);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save view');
     }
@@ -156,7 +158,15 @@ function SaveViewDialog({ filters, tracks, pending, onCancel, onSave }: SaveView
           disabled={pending}
         />
       </FormRow>
-      <p className="chq-submissions-modal-sub">Everyone organising this event sees it.</p>
+      <label className="chq-submissions-viewtabs-share">
+        <input
+          type="checkbox"
+          checked={shared}
+          onChange={(e) => setShared(e.target.checked)}
+          disabled={pending}
+        />
+        Share it with the other organisers
+      </label>
     </ModalFrame>
   );
 }
@@ -183,12 +193,12 @@ export function ViewTabs({ eventId, filters, visibleFieldIds, tracks, onApply }:
 
   const active = activeViewKey(filters, visibleFieldIds, views);
 
-  async function saveCurrentAsView(name: string) {
+  async function saveCurrentAsView(name: string, shared: boolean) {
     setSaving(true);
     setError(null);
     try {
       const config = serializeView(filters, visibleFieldIds);
-      const created = await apiPost<SavedView>(`/events/${eventId}/views`, { name, config });
+      const created = await apiPost<SavedView>(`/events/${eventId}/views`, { name, config, shared });
       setViews((prev) => [...prev, created]);
       setShowSaveDialog(false);
     } catch (err) {
@@ -236,6 +246,7 @@ export function ViewTabs({ eventId, filters, visibleFieldIds, tracks, onApply }:
           >
             {view.name}
           </button>
+          {!view.shared && <span className="chq-submissions-viewtabs-private">Only you</span>}
           <button
             type="button"
             className="chq-submissions-viewtabs-delete"

@@ -335,6 +335,26 @@
   color: var(--chq-ink);
 }
 
+/* DEC-904 share checkbox row inside SaveViewDialog, replacing the old
+   static "everyone sees it" caption. */
+.chq-submissions-viewtabs-share {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--chq-muted);
+  cursor: pointer;
+}
+
+/* DEC-904/DEC-730 family: a private (unshared) view's tab gets a quiet
+   micro-label -- weight/wording carry the state, never colour. */
+.chq-submissions-viewtabs-private {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--chq-muted);
+}
+
 /* Phone-only per-row triage action group (DEC-610): a row awaiting triage
    (status 'pending') gets an Accept/Decline/Waitlist group in its own cell.
    Hidden above 700px -- desktop triage happens via the bulk-action bar

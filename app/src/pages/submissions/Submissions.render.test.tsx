@@ -447,6 +447,8 @@ describe('ViewTabs pure helpers (DEC-648)', () => {
       eventId: 'evt-1',
       name: 'Declined',
       config: { q: '', status: ['declined'], trackId: null, sort: 'newest' as const, columns: [] },
+      createdByUserId: null,
+      shared: true,
       createdAt: 0,
       updatedAt: 0,
     };
