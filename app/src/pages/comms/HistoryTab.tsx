@@ -105,17 +105,22 @@ export function HistoryTab({ eventId }: { eventId: string }) {
           const isExpanded = expanded === batch.batchKey;
           return (
             <div key={batch.batchKey} className="chq-comms-batch">
-              <button
-                type="button"
-                className="chq-comms-batch-row"
-                aria-expanded={isExpanded}
-                onClick={() => setExpanded(isExpanded ? null : batch.batchKey)}
-              >
+              <div className="chq-comms-batch-row">
                 <span className="chq-comms-history-when">{formatDateTime(batch.sentAt)}</span>
                 <span className="chq-comms-history-subject">{batch.subject}</span>
                 <span>{batch.recipientCount} recipient{batch.recipientCount === 1 ? '' : 's'}</span>
                 <span className="chq-meta">{statusTally(batch.statusCounts)}</span>
-              </button>
+                {/* DEC-732 (eval-findings 59): an explicit bordered control,
+                    not the whole row silently doubling as a toggle. */}
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-secondary chq-comms-batch-toggle"
+                  aria-expanded={isExpanded}
+                  onClick={() => setExpanded(isExpanded ? null : batch.batchKey)}
+                >
+                  {isExpanded ? 'Hide the recipients' : 'See the recipients'}
+                </button>
+              </div>
               {isExpanded && <BatchRecipients eventId={eventId} batchKey={batch.batchKey} />}
             </div>
           );

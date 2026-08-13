@@ -548,7 +548,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                 </button>
               </div>
             </div>
-            <PreviewPane item={currentPreview} />
+            <PreviewPane item={currentPreview} attachIcs={attachIcs} />
             <div className="chq-comms-preview-actions">
               <button type="button" className="chq-btn chq-btn-primary" disabled={busy} onClick={send}>
                 Send {preview.length} email{preview.length === 1 ? '' : 's'}

@@ -1,4 +1,5 @@
 import type { FormEvent, MouseEvent, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useEscapeKey } from '../lib/useEscapeKey';
 import './modal-frame.css';
 
@@ -113,7 +114,12 @@ export function ModalFrame(props: ModalFrameProps) {
     </>
   );
 
-  return (
+  // DEC-732: mounted through a root portal so no ancestor's stacking
+  // context, position, or (per eval-findings 25) inherited text-transform
+  // decides how the modal renders -- a caller nested arbitrarily deep (e.g.
+  // EventSwitcher's "New event…" trigger, itself inside the ALL-CAPS
+  // .chq-header-identity block) still gets the dialog's own typography.
+  return createPortal(
     <div
       className="chq-scrim"
       role="dialog"
@@ -128,6 +134,7 @@ export function ModalFrame(props: ModalFrameProps) {
       ) : (
         <div className={modalClass}>{body}</div>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }

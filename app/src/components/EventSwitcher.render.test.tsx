@@ -74,7 +74,7 @@ describe('EventSwitcher', () => {
     expect(screen.getByText('New event')).toHaveClass('chq-modal-title');
   });
 
-  it('a local validation failure renders .chq-field-error', async () => {
+  it('a local validation failure renders a FormRow error', async () => {
     mockApi({
       'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
       'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'Alpha Conf' }]),
@@ -93,15 +93,15 @@ describe('EventSwitcher', () => {
     // Fill them with values that satisfy `required` but fail the custom
     // slug/timezone checks in validateNewEventForm, to exercise the local
     // (client-side) validation path rather than the native one.
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'DevCon' } });
-    fireEvent.change(screen.getByLabelText('Slug'), { target: { value: 'Not A Slug' } });
-    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-06-01' } });
-    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-06-03' } });
-    fireEvent.change(screen.getByLabelText('Timezone'), { target: { value: 'Not/A/Zone' } });
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: 'DevCon' } });
+    fireEvent.change(screen.getByLabelText(/^Slug/), { target: { value: 'Not A Slug' } });
+    fireEvent.change(screen.getByLabelText(/^Starts/), { target: { value: '2026-06-01' } });
+    fireEvent.change(screen.getByLabelText(/^Ends/), { target: { value: '2026-06-03' } });
+    fireEvent.change(screen.getByLabelText(/^Time zone/), { target: { value: 'Not/A/Zone' } });
     fireEvent.click(screen.getByRole('button', { name: 'Create the event' }));
 
     await waitFor(() => {
-      const errors = dialog.querySelectorAll('.chq-field-error');
+      const errors = dialog.querySelectorAll('.chq-form-row-error');
       expect(errors.length).toBeGreaterThan(0);
     });
   });

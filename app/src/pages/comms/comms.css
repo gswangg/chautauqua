@@ -239,6 +239,12 @@
   font-size: 13px;
 }
 
+/* DEC-732: the per-recipient SCHEDULED/NO SLOT tag on the "To" line
+   (chq-flag is shared/type-only per DEC-367 -- never colour alone). */
+.chq-comms-preview-ics-flag {
+  margin-left: 10px;
+}
+
 .chq-comms-preview-actions {
   margin-top: 16px;
   display: flex;
@@ -275,29 +281,24 @@
   display: block;
 }
 
-/* DEC-603: batch rows are a <button> (real, not div[onClick]) since they
-   toggle an expanded per-recipient drill-in -- same grid as the recipient
-   rows above so when/subject/count/status columns line up. */
+/* DEC-732 (eval-findings 59): batch rows are a plain row; the expand/
+   collapse affordance is its own explicit bordered "See the recipients"
+   control (.chq-comms-batch-toggle) rather than the whole row silently
+   doubling as a <button> -- same grid as the recipient rows above so
+   when/subject/count/status columns line up, plus a 5th column for the
+   toggle. */
 .chq-comms-batch-row {
   display: grid;
   grid-template-columns: 150px 1fr 130px 150px auto;
   gap: 18px;
-  align-items: baseline;
+  align-items: center;
   padding: 13px 0;
   border-bottom: 1px solid var(--chq-hairline);
   width: 100%;
-  background: none;
-  border-left: none;
-  border-right: none;
-  border-top: none;
-  text-align: left;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
 }
 
-.chq-comms-batch-row:hover {
-  background: var(--chq-surface-sunk);
+.chq-comms-batch-toggle {
+  justify-self: end;
 }
 
 .chq-comms-batch-recipients {
@@ -455,6 +456,12 @@
     font-weight: 800;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+  }
+
+  .chq-comms-batch-toggle {
+    justify-self: auto;
+    align-self: flex-start;
+    margin-top: 6px;
   }
 
   .chq-comms-batch-recipients {
