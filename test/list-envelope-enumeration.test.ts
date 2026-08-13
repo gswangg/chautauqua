@@ -117,6 +117,11 @@ function findItemsEnvelopeSites(source: string, file: string): EnvelopeSite[] {
 const ENVELOPE_ALLOWLIST = new Set<string>([
   "src/routes/comms.ts:423",
   "src/routes/api/contacts/bulk-email.ts:215",
+  // DEC-788: GET /contacts/duplicates/check is a bounded (cap 5),
+  // deterministically-ordered lookup for a not-yet-created candidate, not a
+  // paginated list -- same shape-exception class as the bulk-email preview
+  // above.
+  "src/routes/api/contacts/duplicates.ts:32",
 ]);
 
 describe("DEC-480: list-envelope enumeration (executable, not prose)", () => {

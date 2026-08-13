@@ -200,6 +200,7 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "POST", path: "/api/v1/contacts", role: "organizer" },
       { method: "GET", path: "/api/v1/contacts/duplicates", role: "organizer" },
       { method: "POST", path: "/api/v1/contacts/duplicates/dismiss", role: "organizer (DEC-770 'Not a duplicate' / 'Keep both')" },
+      { method: "GET", path: "/api/v1/contacts/duplicates/check", role: "organizer (DEC-788 create-time duplicate hint)" },
       { method: "GET", path: "/api/v1/contacts/stats", role: "organizer" },
       { method: "GET", path: "/api/v1/contacts/:id", role: "organizer" },
       { method: "PATCH", path: "/api/v1/contacts/:id", role: "organizer" },

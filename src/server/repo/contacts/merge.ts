@@ -7,6 +7,7 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
 import { findDuplicateGroups, planMerge, type ContactRecord } from "../../../domain/contacts";
+import { normalizeEmail } from "../../../domain/email";
 import { serializeSocialLinks } from "../profile";
 import { ApiError } from "../../http";
 import { findContactById } from "./crud";
@@ -75,17 +76,23 @@ export interface DuplicateGroup {
   }[];
 }
 
-export async function findDuplicateGroupsForOrg(db: Db, orgId: string): Promise<DuplicateGroup[]> {
-  // DEC-554/DEC-734: project only the columns findDuplicateGroups (via
-  // normalizeEmail/normalizedName/normalizedCompany) and this function's own
-  // output actually read -- id, email, firstName, lastName, company, title
-  // -- not every persisted contact field. `title` was added by DEC-734 so
-  // the merge page's identity columns (which draw the group straight from
-  // this payload, DEC-629) stop rendering '—' for a field the directory
-  // already shows -- never a second by-ids fetch. Bounded + deterministically
-  // ordered so page 2+ of GET /api/v1/contacts/duplicates stays meaningful
-  // (DEC-466) and the scan refuses rather than silently truncating past the
-  // cap.
+type ScannedContactRow = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  company: string | null;
+  title: string | null;
+};
+
+/** DEC-554/DEC-734/DEC-788: the one org-contact scan both
+ * findDuplicateGroupsForOrg and the create-time duplicate check
+ * (GET /contacts/duplicates/check) build on -- project only the columns
+ * findDuplicateGroups (via normalizeEmail/normalizedName/normalizedCompany)
+ * and either caller's own output actually read, not every persisted contact
+ * field. Bounded + deterministically ordered; the scan refuses rather than
+ * silently truncating past the cap. */
+async function scanContactsForOrg(db: Db, orgId: string): Promise<ScannedContactRow[]> {
   const scanned = await db
     .select({
       id: schema.contact.id,
@@ -105,9 +112,12 @@ export async function findDuplicateGroupsForOrg(db: Db, orgId: string): Promise<
       `Org has more than ${MAX_CONTACT_DIRECTORY_SCAN} contacts; duplicate detection cannot scan the whole directory at this size. Narrow the scope or raise MAX_CONTACT_DIRECTORY_SCAN.`,
     );
   }
-  const rows: { id: string; email: string; firstName: string; lastName: string; company: string | null; title: string | null }[] =
-    scanned;
-  const records: ContactRecord[] = scanned.map((r) => ({
+  return scanned;
+}
+
+export async function findDuplicateGroupsForOrg(db: Db, orgId: string): Promise<DuplicateGroup[]> {
+  const rows = await scanContactsForOrg(db, orgId);
+  const records: ContactRecord[] = rows.map((r) => ({
     id: r.id,
     email: r.email,
     firstName: r.firstName,
@@ -153,6 +163,80 @@ export async function findDuplicateGroupsForOrg(db: Db, orgId: string): Promise<
     return ai < bi ? -1 : ai > bi ? 1 : 0;
   });
   return out;
+}
+
+export interface DuplicateCandidateMatch {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  company: string | null;
+  reason: "email" | "name";
+}
+
+// A candidate being typed into "New contact" has no persisted id yet -- this
+// sentinel can never collide with a real contact id (newId()'s alphabet
+// never produces this literal string).
+const CANDIDATE_SENTINEL_ID = "__duplicate_check_candidate__";
+
+/** DEC-788: GET /contacts/duplicates/check's predicate -- reuses the exact
+ * same repo-level scan (scanContactsForOrg) and the exact same pair-matching
+ * rule (findDuplicateGroups, imported not restated) that
+ * findDuplicateGroupsForOrg powers GET /contacts/duplicates with, including
+ * its (org, lower(email)) identity bucket. The not-yet-persisted candidate
+ * is injected into the same record set under a sentinel id; whichever real
+ * contacts land in the sentinel's own group are the candidate's matches.
+ * Because findDuplicateGroups buckets by an EXACT normalized-email or
+ * normalized-name+company match, any two real contacts that land in the
+ * candidate's group necessarily already form their own real-only duplicate
+ * pair (with or without the candidate) -- so when the candidate's matches
+ * are exactly that one real pair, DEC-770's own dismissal fact for that pair
+ * governs here too: a dismissed pair is not reported. Pure read, no writes. */
+export async function findDuplicateCandidatesForOrg(
+  db: Db,
+  orgId: string,
+  candidate: { firstName: string; lastName: string; email: string; company?: string },
+): Promise<DuplicateCandidateMatch[]> {
+  const rows = await scanContactsForOrg(db, orgId);
+  const records: ContactRecord[] = rows.map((r) => ({
+    id: r.id,
+    email: r.email,
+    firstName: r.firstName,
+    lastName: r.lastName,
+    ...(r.company ? { company: r.company } : {}),
+  }));
+  const candidateRecord: ContactRecord = {
+    id: CANDIDATE_SENTINEL_ID,
+    email: candidate.email,
+    firstName: candidate.firstName,
+    lastName: candidate.lastName,
+    ...(candidate.company ? { company: candidate.company } : {}),
+  };
+  const allGroups = findDuplicateGroups([...records, candidateRecord]);
+  const group = allGroups.find((ids) => ids.includes(CANDIDATE_SENTINEL_ID));
+  if (!group) return [];
+  const matchedIds = group.filter((id) => id !== CANDIDATE_SENTINEL_ID);
+  if (matchedIds.length === 0) return [];
+
+  // DEC-770: the candidate's matched real ids necessarily also form their
+  // own real-only duplicate group (see docstring). When that group is
+  // exactly a dismissed pair, it's not reported for the candidate either.
+  if (matchedIds.length === 2) {
+    const dismissedPairKeys = await loadDismissedPairKeys(db, orgId);
+    const [a, b] = orderedPair(matchedIds[0]!, matchedIds[1]!);
+    if (dismissedPairKeys.has(`${a},${b}`)) return [];
+  }
+
+  const candidateEmail = normalizeEmail(candidate.email);
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const out: DuplicateCandidateMatch[] = matchedIds.map((id) => {
+    const r = byId.get(id);
+    if (!r) throw new Error(`duplicate candidate group referenced unknown contact ${id}`);
+    const reason: "email" | "name" = candidateEmail !== "" && normalizeEmail(r.email) === candidateEmail ? "email" : "name";
+    return { id: r.id, firstName: r.firstName, lastName: r.lastName, email: r.email, company: r.company, reason };
+  });
+  out.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return out.slice(0, 5);
 }
 
 /** DEC-565: pure predicate for the (b2) email-conflict pre-check. `owner

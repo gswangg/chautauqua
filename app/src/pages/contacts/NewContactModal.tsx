@@ -1,11 +1,26 @@
-import { useState } from 'react';
-import { apiPost, ApiError } from '../../lib/api';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { apiGet, apiPost, ApiError } from '../../lib/api';
 import { ModalFrame } from '../../components/ModalFrame';
 
 interface Props {
   onClose: () => void;
   onCreated: () => void;
 }
+
+interface DuplicateCandidateMatch {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  company: string | null;
+  reason: 'email' | 'name';
+}
+
+// DEC-788: fields settle 400ms after the last keystroke before the
+// create-time duplicate check fires — quiet enough not to hammer the
+// endpoint on every keystroke, quick enough to feel live.
+const DUPLICATE_CHECK_DEBOUNCE_MS = 400;
 
 /** DEC-597: "New contact" — the directory's own create-one-person path,
  * same ModalFrame dialog contract as AddToEventModal (Escape closes, scrim
@@ -19,6 +34,40 @@ export function NewContactModal({ onClose, onCreated }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
+  const [duplicateMatch, setDuplicateMatch] = useState<DuplicateCandidateMatch | null>(null);
+
+  // DEC-788: warn about a possible duplicate as the name/company/email
+  // fields settle, using GET /contacts/duplicates/check — the same
+  // pair-matching predicate the Duplicates tab uses. This NEVER blocks
+  // Create; it's a quiet hint above the submit row. Cancelled on unmount
+  // and whenever the fields change again before the debounce fires.
+  useEffect(() => {
+    if (firstName.trim() === '' && lastName.trim() === '' && email.trim() === '') {
+      setDuplicateMatch(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams();
+      params.set('firstName', firstName);
+      params.set('lastName', lastName);
+      params.set('email', email);
+      if (company.trim() !== '') params.set('company', company);
+      apiGet<{ items: DuplicateCandidateMatch[] }>(`/contacts/duplicates/check?${params.toString()}`)
+        .then((res) => {
+          if (!cancelled) setDuplicateMatch(res.items[0] ?? null);
+        })
+        .catch(() => {
+          // A failed check is not itself an error worth surfacing — the
+          // hint is advisory, never a save blocker.
+          if (!cancelled) setDuplicateMatch(null);
+        });
+    }, DUPLICATE_CHECK_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [firstName, lastName, email, company]);
 
   async function submit() {
     setBusy(true);
@@ -122,6 +171,15 @@ export function NewContactModal({ onClose, onCreated }: Props) {
           placeholder="Principal Engineer"
         />
       </label>
+      {duplicateMatch && (
+        <p className="chq-contacts-new-contact-duplicate-hint" role="status">
+          Possible duplicate:{' '}
+          <Link to={`/admin/contacts?openContact=${duplicateMatch.id}`} onClick={onClose}>
+            {duplicateMatch.firstName} {duplicateMatch.lastName}
+            {duplicateMatch.company ? `, ${duplicateMatch.company}` : ''}
+          </Link>
+        </p>
+      )}
     </ModalFrame>
   );
 }
