@@ -124,6 +124,7 @@ describe('ContactsApp render smoke: directory search (DEC-684/DEC-710)', () => {
 const DUPLICATE_GROUPS: DuplicateGroup[] = [
   {
     contactIds: ['ct3', 'ct4'],
+    reason: 'name_and_company',
     contacts: [
       { id: 'ct3', firstName: 'Sam', lastName: 'Rivera', email: 'sam.rivera@acme.example', company: 'Acme' },
       { id: 'ct4', firstName: 'Sam', lastName: 'Rivera', email: 'sam.r@acmecorp.example', company: 'Acme' },

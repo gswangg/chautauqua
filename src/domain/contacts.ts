@@ -5,6 +5,9 @@
 
 // DEC-467: exactly one normalizeEmail survives in the product (src/domain/email.ts).
 import { normalizeEmail } from "./email";
+import { DEC_800 } from "../decisions";
+
+void DEC_800;
 
 export interface SocialLinks {
   twitter: string;
@@ -61,6 +64,16 @@ function normalizedCompany(company: string | undefined): string {
   return (company ?? "").toLowerCase().trim();
 }
 
+/** DEC-800: why a pair/group was surfaced as a possible duplicate — an
+ * exact email match, a same-name-same-company match (DEC-143), or a
+ * same-name-different-company match (a person who changed employers). */
+export type DuplicateReason = "email" | "name_and_company" | "name";
+
+export interface DuplicateCandidate {
+  contactIds: string[];
+  reason: DuplicateReason;
+}
+
 /**
  * Groups contacts that are likely duplicates: first by case-insensitive
  * trimmed email (non-empty emails only), then — among contacts left over
@@ -72,9 +85,18 @@ function normalizedCompany(company: string | undefined): string {
  * resulting sub-group of two or more is surfaced regardless of how many
  * distinct non-empty emails it spans — email diversity no longer suppresses
  * a same-name-same-company match.
+ *
+ * DEC-800: when a name bucket's members span two or more distinct non-empty
+ * companies, the whole bucket is ALSO surfaced as its own candidate with
+ * reason 'name' — the commonest CRM duplicate is a person who changed
+ * employers, and the company sub-grouping above would otherwise never group
+ * them. This is in addition to (not instead of) the 'name_and_company'
+ * sub-group candidates; the same id set is never emitted twice, and a
+ * two-member bucket with two distinct companies yields ONLY the 'name'
+ * candidate since each company sub-group there has a single member.
  */
-export function findDuplicateGroups(contacts: ContactRecord[]): string[][] {
-  const groups: string[][] = [];
+export function findDuplicateGroups(contacts: ContactRecord[]): DuplicateCandidate[] {
+  const groups: DuplicateCandidate[] = [];
 
   const byEmail = new Map<string, ContactRecord[]>();
   const noEmail: ContactRecord[] = [];
@@ -96,7 +118,7 @@ export function findDuplicateGroups(contacts: ContactRecord[]): string[][] {
   const emailGroupedIds = new Set<string>();
   for (const bucket of byEmail.values()) {
     if (bucket.length > 1) {
-      groups.push(bucket.map((c) => c.id));
+      groups.push({ contactIds: bucket.map((c) => c.id), reason: "email" });
       for (const c of bucket) emailGroupedIds.add(c.id);
     }
   }
@@ -122,8 +144,22 @@ export function findDuplicateGroups(contacts: ContactRecord[]): string[][] {
     if (bucket.length < 2) continue;
     for (const companyGroup of subGroupByCompany(bucket)) {
       if (companyGroup.length >= 2) {
-        groups.push(companyGroup.map((c) => c.id));
+        groups.push({ contactIds: companyGroup.map((c) => c.id), reason: "name_and_company" });
       }
+    }
+
+    // DEC-800: the bucket as a whole, when it spans two or more distinct
+    // non-empty companies, is ALSO its own candidate (reason 'name') — a
+    // person who changed employers. Every per-company sub-group above is by
+    // construction a strict subset of the bucket whenever two or more named
+    // companies exist (each sub-group holds only one named company's
+    // members plus wildcards), so this id set can never collide with one
+    // already emitted above.
+    const distinctCompanies = new Set(
+      bucket.map((c) => normalizedCompany(c.company)).filter((company) => company !== ""),
+    );
+    if (distinctCompanies.size >= 2) {
+      groups.push({ contactIds: bucket.map((c) => c.id), reason: "name" });
     }
   }
 

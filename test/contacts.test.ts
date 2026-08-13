@@ -26,7 +26,7 @@ describe("findDuplicateGroups", () => {
       contact({ id: "3", email: "other@example.com", firstName: "Bob", lastName: "Smith" }),
     ];
     const groups = findDuplicateGroups(contacts);
-    expect(groups).toEqual([["1", "2"]]);
+    expect(groups).toEqual([{ contactIds: ["1", "2"], reason: "email" }]);
   });
 
   it("groups remainder by normalized name when emails differ/blank", () => {
@@ -36,7 +36,7 @@ describe("findDuplicateGroups", () => {
       contact({ id: "3", email: "", firstName: "Bob", lastName: "Smith" }),
     ];
     const groups = findDuplicateGroups(contacts);
-    expect(groups).toEqual([["1", "2"]]);
+    expect(groups).toEqual([{ contactIds: ["1", "2"], reason: "name_and_company" }]);
   });
 
   it("flags same-name same-company contacts even across different emails (DEC-143)", () => {
@@ -45,16 +45,31 @@ describe("findDuplicateGroups", () => {
       contact({ id: "2", email: "b@example.com", firstName: "Jane", lastName: "Doe", company: "acme corp" }),
     ];
     const groups = findDuplicateGroups(contacts);
-    expect(groups).toEqual([["1", "2"]]);
+    expect(groups).toEqual([{ contactIds: ["1", "2"], reason: "name_and_company" }]);
   });
 
-  it("does not flag same-name contacts with different companies", () => {
+  it("flags same-name contacts with different companies as a 'name' candidate (DEC-800)", () => {
     const contacts = [
       contact({ id: "1", email: "a@example.com", firstName: "Jane", lastName: "Doe", company: "Acme Corp" }),
       contact({ id: "2", email: "b@example.com", firstName: "Jane", lastName: "Doe", company: "Beta Inc" }),
     ];
     const groups = findDuplicateGroups(contacts);
-    expect(groups).toEqual([]);
+    // Each company sub-group here has only one member (below the >=2
+    // threshold), so only the whole-bucket 'name' candidate is emitted.
+    expect(groups).toEqual([{ contactIds: ["1", "2"], reason: "name" }]);
+  });
+
+  it("emits both 'name_and_company' and 'name' when a same-name bucket has a real 2+ company sub-group plus a third, different-company member (DEC-800)", () => {
+    const contacts = [
+      contact({ id: "1", email: "a@example.com", firstName: "Jane", lastName: "Doe", company: "Acme Corp" }),
+      contact({ id: "2", email: "b@example.com", firstName: "Jane", lastName: "Doe", company: "acme corp" }),
+      contact({ id: "3", email: "c@example.com", firstName: "Jane", lastName: "Doe", company: "Beta Inc" }),
+    ];
+    const groups = findDuplicateGroups(contacts);
+    expect(groups).toEqual([
+      { contactIds: ["1", "2"], reason: "name_and_company" },
+      { contactIds: ["1", "2", "3"], reason: "name" },
+    ]);
   });
 
   it("joins a blank-company contact into a named-company group (DEC-143)", () => {
@@ -63,7 +78,7 @@ describe("findDuplicateGroups", () => {
       contact({ id: "2", email: "b@example.com", firstName: "Jane", lastName: "Doe" }),
     ];
     const groups = findDuplicateGroups(contacts);
-    expect(groups).toEqual([["1", "2"]]);
+    expect(groups).toEqual([{ contactIds: ["1", "2"], reason: "name_and_company" }]);
   });
 
   it("does not group unique singleton contacts", () => {
