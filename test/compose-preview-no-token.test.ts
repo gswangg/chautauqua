@@ -123,7 +123,12 @@ async function buildApp() {
   return app;
 }
 
-function postJson(app: Hono<AppEnv>, path: string, body: unknown, kv: { put: (...a: unknown[]) => unknown }) {
+function postJson(
+  app: Hono<AppEnv>,
+  path: string,
+  body: unknown,
+  kv: { put: (...a: unknown[]) => unknown; get?: (...a: unknown[]) => unknown; delete?: (...a: unknown[]) => unknown },
+) {
   return app.request(
     `${ORIGIN}${path}`,
     {
@@ -202,7 +207,9 @@ describe("compose/preview vs compose/send — claim-token minting (DEC-397)", ()
   it("send mints one claim token per userless recipient", async () => {
     const app = await buildApp();
     const puts: unknown[] = [];
-    const fakeKv = { put: (...args: unknown[]) => puts.push(args) };
+    // DEC-949: createClaimToken now also reads/writes a single-active-grant
+    // index (get returns null — no prior grant — and delete is a no-op).
+    const fakeKv = { put: (...args: unknown[]) => puts.push(args), get: () => null, delete: () => {} };
 
     const res = await postJson(
       app,
@@ -213,6 +220,8 @@ describe("compose/preview vs compose/send — claim-token minting (DEC-397)", ()
 
     expect(res.status).toBe(200);
     expect(sentMails).toHaveLength(2);
-    expect(puts).toHaveLength(2);
+    // DEC-949 adds one extra put (the index key) per token, so 2 puts
+    // each = 4 total.
+    expect(puts).toHaveLength(4);
   });
 });

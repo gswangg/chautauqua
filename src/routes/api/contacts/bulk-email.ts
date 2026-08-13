@@ -9,8 +9,9 @@ import { ApiError, parseBoundedIdArray } from "../../../server/http";
 import { MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../../forms/validate"; // DEC-417
 import * as repo from "../../../server/repo/contacts";
 import { getEventForOrg } from "../../../server/repo/events";
-import { createClaimToken, type KVStore } from "../../../auth/claim";
-import { preflightRender, PREVIEW_CLAIM_TOKEN, type RenderTarget } from "../../../domain/compose";
+import type { KVStore } from "../../../auth/claim";
+import { preflightRender, type RenderTarget } from "../../../domain/compose";
+import { resolvePortalLink } from "../../../server/repo/portal-link";
 import { textToHtml } from "../../../mail/render";
 import type { Db } from "../../../server/context";
 import { resolveBaseUrl } from "../../../server/origin";
@@ -21,27 +22,6 @@ import { DEC_766 } from "../../../decisions";
 void DEC_766;
 
 const MAX_BULK_EMAIL_RECIPIENTS = 100;
-
-/** DEC-026: bulk email is contact-scoped, not submission-scoped — only
- * speaker_name/event_name/portal_link resolve; {talk_title}/{feedback} (or
- * any other placeholder) are absent from vars, so preflightRender's
- * MergeFieldError check naturally rejects them as 'invalid'. `userId` is
- * resolved once per batch (DEC-530: repo.findAccountUserIds) and passed in
- * rather than re-queried per contact — claim-token minting itself stays
- * per-recipient (DEC-397: a KV write with real side effects). */
-async function resolvePortalLink(
-  kv: KVStore,
-  contactId: string,
-  eventId: string,
-  userId: string | null,
-  origin: string,
-  mintClaimTokens: boolean,
-): Promise<string> {
-  if (userId) return `${origin}/portal`;
-  if (!mintClaimTokens) return `${origin}/claim/${PREVIEW_CLAIM_TOKEN}`;
-  const token = await createClaimToken(kv, { contactId, eventId });
-  return `${origin}/claim/${token}`;
-}
 
 type BulkEmailRequest = {
   event: { id: string; name: string };

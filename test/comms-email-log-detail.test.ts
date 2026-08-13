@@ -37,6 +37,13 @@ function row(overrides: Partial<EmailLogRow> = {}): EmailLogRow {
 const getEmailLogByIdMock = vi.fn(async (_db: unknown, id: string, _orgId: string) => {
   if (id === "log-1") return row();
   if (id === "log-foreign-event") return row({ id: "log-foreign-event", eventId: "evt-2" });
+  if (id === "log-claim") {
+    return row({
+      id: "log-claim",
+      bodyText: `Hi Ada, click https://events.example.com/claim/${"a".repeat(20)} to set your password.`,
+      bodyHtml: `<p>Click <a href="https://events.example.com/claim/${"a".repeat(20)}">here</a></p>`,
+    });
+  }
   return null;
 });
 
@@ -94,5 +101,18 @@ describe("GET /api/v1/events/:eventId/email-log/:emailId (DEC-833)", () => {
     const res = await app.request(`${ORIGIN}/api/v1/events/evt-1/email-log/unknown`, { method: "GET" }, {});
 
     expect(res.status).toBe(404);
+  });
+
+  // DEC-949: the organizer-readable audit view never renders a live claim
+  // grant — a stored /claim/<token> URL is redacted on the way out.
+  it("redacts a claim URL in bodyText and bodyHtml", async () => {
+    const app = await buildCommsApp();
+    const res = await app.request(`${ORIGIN}/api/v1/events/evt-1/email-log/log-claim`, { method: "GET" }, {});
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { bodyText: string; bodyHtml: string | null };
+    expect(body.bodyText).toBe("Hi Ada, click https://events.example.com/claim/<redacted> to set your password.");
+    expect(body.bodyText).not.toContain("aaaaaaaaaaaaaaaaaaaa");
+    expect(body.bodyHtml).toBe('<p>Click <a href="https://events.example.com/claim/<redacted>">here</a></p>');
   });
 });

@@ -12,6 +12,7 @@ import { bumpIcsSequences } from "../server/repo/ics-sequence";
 import { getEventForOrg } from "../server/repo/events";
 import { getPlanById } from "../server/repo/review/plans";
 import type { KVStore } from "../auth/claim";
+import { redactClaimUrls } from "../auth/claim";
 import { resolvePortalLink } from "../server/repo/portal-link";
 import { textToHtml, blockFieldsInTemplate } from "../mail/render";
 import { buildIcsEvent } from "../mail/ics";
@@ -732,5 +733,15 @@ commsRoutes.get("/api/v1/events/:eventId/email-log/:emailId", requireOrganizer, 
   const row = await getEmailLogById(c.var.db, emailId, auth.orgId);
   if (!row || row.eventId !== eventId) throw new ApiError("not_found", "Email not found");
 
-  return c.json(row);
+  // DEC-949: the organizer-readable audit view never renders a live claim
+  // grant — a `/claim/<token>` URL stored verbatim in email_log is a
+  // credential. /dev/mailbox is intentionally left unredacted: it is
+  // mounted only when DEV_MODE="1" and therefore does not exist in
+  // production, which is what keeps the walkthrough gates able to click a
+  // claim link.
+  return c.json({
+    ...row,
+    bodyText: redactClaimUrls(row.bodyText),
+    bodyHtml: row.bodyHtml === null ? null : redactClaimUrls(row.bodyHtml),
+  });
 });

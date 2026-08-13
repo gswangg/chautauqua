@@ -34,7 +34,7 @@ import { findStrayPerPageConstantDeclarations } from "./support/list-envelope-en
  *         compose-preview render, one row per selected submission, bounded
  *         by the 100-recipient send cap (DEC checked elsewhere in comms.ts)
  *         -- a preview payload, not a list GET.
- *       - src/routes/api/contacts/bulk-email.ts:214 (POST
+ *       - src/routes/api/contacts/bulk-email.ts:194 (POST
  *         /contacts/bulk-email/preview) is the CRM-11/DEC-150 bulk-email
  *         preview: it slices to `previewContacts = contacts.slice(0,
  *         BULK_EMAIL_PREVIEW_LIMIT)` (5) before rendering, so it is bounded
