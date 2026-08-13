@@ -384,3 +384,102 @@ describe("FieldRulesScript emits a transitive fixed point for a chain (DEC-681/D
     expect(inputDependent.required).toBe(true);
   });
 });
+
+// w54-e (P1 fix): a radio-group trigger — every option shares the same
+// data-field-id (FormatChoices/AudienceChoices, src/routes/public/
+// submit-views.tsx), so getValue must find the CHECKED member, not just the
+// first DOM match querySelector would hand back.
+describe("getValue is radio-group aware (w54-e)", () => {
+  const format: FormFieldDef = {
+    id: "format",
+    section: "session",
+    kind: "dropdown",
+    label: "Format",
+    required: true,
+    position: 0,
+    options: ["Talk", "Workshop"],
+  };
+  const materials: FormFieldDef = {
+    id: "materials",
+    section: "session",
+    kind: "text",
+    label: "Materials needed",
+    required: true,
+    position: 1,
+    rule: { fieldId: "format", op: "eq", value: "Workshop" },
+  };
+
+  function buildFakeDocument(radioValues: { value: string; checked: boolean }[]) {
+    const html = FieldRulesScript({ fields: [format, materials] }).toString();
+    const rulesMatch = html.match(
+      /<script type="application\/json" id="chq-field-rules">([\s\S]*?)<\/script>/,
+    );
+    if (!rulesMatch || rulesMatch[1] === undefined) throw new Error("chq-field-rules script tag not found");
+    const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>\s*$/);
+    if (!scriptMatch || scriptMatch[1] === undefined) throw new Error("inline script not found");
+    const inlineJs = scriptMatch[1];
+
+    const radioEls = radioValues.map((r) => ({
+      dataset: { fieldId: "format" },
+      type: "radio",
+      value: r.value,
+      checked: r.checked,
+    }));
+    const materialsInput = { dataset: { fieldId: "materials", required: "true" }, type: "text", value: "", required: false };
+    const wrapMaterials = { style: { display: "" }, querySelector: () => materialsInput };
+
+    const byId: Record<string, unknown> = {
+      "chq-field-rules": { textContent: rulesMatch[1] },
+      "chq-field-wrap-materials": wrapMaterials,
+    };
+    function querySelector(sel: string) {
+      if (sel === '[data-field-id="format"]') return radioEls[0] ?? null;
+      if (sel === '[data-field-id="materials"]') return materialsInput;
+      return null;
+    }
+    function querySelectorAll(sel: string) {
+      if (sel === '[data-field-id="format"]') return radioEls;
+      return [];
+    }
+    const fakeDocument = {
+      getElementById: (id: string) => byId[id] ?? null,
+      querySelector,
+      querySelectorAll,
+      addEventListener: () => {},
+    };
+    return { inlineJs, fakeDocument, wrapMaterials, materialsInput };
+  }
+
+  it("second option checked -> dependent field visible", () => {
+    const { inlineJs, fakeDocument, wrapMaterials, materialsInput } = buildFakeDocument([
+      { value: "Talk", checked: false },
+      { value: "Workshop", checked: true },
+    ]);
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    new Function("document", inlineJs)(fakeDocument);
+    expect(wrapMaterials.style.display).toBe("");
+    expect(materialsInput.required).toBe(true);
+  });
+
+  it("nothing checked -> dependent field hidden", () => {
+    const { inlineJs, fakeDocument, wrapMaterials, materialsInput } = buildFakeDocument([
+      { value: "Talk", checked: false },
+      { value: "Workshop", checked: false },
+    ]);
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    new Function("document", inlineJs)(fakeDocument);
+    expect(wrapMaterials.style.display).toBe("none");
+    expect(materialsInput.required).toBe(false);
+  });
+
+  it("first option checked but rule wants the second -> dependent field hidden", () => {
+    const { inlineJs, fakeDocument, wrapMaterials, materialsInput } = buildFakeDocument([
+      { value: "Talk", checked: true },
+      { value: "Workshop", checked: false },
+    ]);
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    new Function("document", inlineJs)(fakeDocument);
+    expect(wrapMaterials.style.display).toBe("none");
+    expect(materialsInput.required).toBe(false);
+  });
+});

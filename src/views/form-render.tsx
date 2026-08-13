@@ -223,6 +223,13 @@ export function FieldRulesScript(props: { fields: FormFieldDef[] }) {
   function getValue(id){
     var el = document.querySelector('[data-field-id="' + id + '"]');
     if (!el) return undefined;
+    if (el.type === 'radio') {
+      var group = document.querySelectorAll('[data-field-id="' + id + '"]');
+      for (var i = 0; i < group.length; i++) {
+        if (group[i].checked) return group[i].value;
+      }
+      return undefined;
+    }
     if (el.type === 'checkbox') return el.checked;
     return el.value;
   }
