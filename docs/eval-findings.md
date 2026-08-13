@@ -146,21 +146,25 @@ list = organiser + reviewers · render Markdown in wiki (raw "##" bug) · Tracks
 rooms read-only w/ drill-in · Public pages list: Speaker gallery row per mock, pill
 states.
 
-**Account**: server not-found.tsx → design copy + FIX its test (same test-was-wrong
-rule) · SPA 404: add "Submissions ›" link · login: NO-ACCOUNT block (CSS
-.chq-auth-footer* exists unused — write the JSX), "Sign in to <event name>" ·
-password: "At least 12 characters" placeholder AND minlength 8→12 · ‹ Back underline.
+**Account** (DEC-740 CLOSED by probe 2 — designed 404s, NO-ACCOUNT block,
+"Sign in to <event>", password placeholder + minlength 12 all verified): remaining —
+‹ Back link statically underlined; mock wants plain at rest, underline on hover.
 
-**Public/Portal (desktop)**: portal session detail rebuild (Accepted badge,
-code·format·track, date-room, Abstract, Slides card) · **portal lists ALL the
-speaker's submissions — pending/accepted/declined, linked w/ status (P1-class: pending
-submissions currently invisible to submitters; also fixes second-submission
-unreachability)** · portal header = event + identity (drop welcome sentence) ·
-headshot stripe placeholders.
+**Public/Portal (desktop)** (P1 pending-submissions CLOSED by probe 2 —
+/portal/submissions renders both submissions w/ status links; headshot placeholders
+also verified fine): portal session detail polish — Accepted badge jammed inline
+against back link (needs own row/separator) · code·format·track line MISSING track +
+spans concatenate w/o separator into date line · date renders raw ISO
+("2027-05-12, 09:00" vs mock "Tue 12 May, 10:00 · Room 2A") · Slides card lacks
+version/size/"with the organisers" meta + Replace/Upload buttons · drop
+not-in-mock Participants + full-Answers sections · header: drop "Welcome to the
+speaker portal!…" tagline (displaces identity on subpages; mock = wordmark +
+identity only) · pending status label "UNDER REVIEW" — mock vocabulary check ·
+admin-404 links run together ("Go to Overview Submissions ›" — separate them) ·
+public form track checkboxes centered above labels, should be inline.
 
-**Grader P3s**: public form has TWO track selectors (dedupe — remove leftover custom
-dropdown) · label New-event Timezone · explicit CFP publish affordance · close-before-
-open validation loud at the field.
+**Grader P3s** (two-track-selectors CLOSED by probe 2): label New-event Timezone ·
+explicit CFP publish affordance · close-before-open validation loud at the field.
 
 ## Mobile queue (NEXT ROUND — not this round's convergence)
 
