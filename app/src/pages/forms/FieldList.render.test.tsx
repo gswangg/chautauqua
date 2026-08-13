@@ -3,7 +3,7 @@
 // built-in treatment (no LOCKED pills, a single collapsed speaker-identity
 // row), and an Abstract caption naming the REAL imported length cap.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { FieldList } from './FieldList';
 import { MAX_LONG_TEXT_LENGTH } from '../../../../src/forms/validate';
@@ -135,6 +135,26 @@ describe('FieldList row anatomy (DEC-715)', () => {
     renderList();
     expect(screen.getByText('Single choice')).toBeInTheDocument();
     expect(screen.queryByText('Dropdown')).not.toBeInTheDocument();
+  });
+
+  // DEC-877: locked rows still render Edit/Delete/drag controls (the row
+  // keeps its shape), but every one of them must carry the native
+  // `disabled` attribute -- exposed to assistive tech, not merely painted
+  // quiet by CSS -- because their action is impossible for a locked field.
+  it('exposes disabled Edit/Delete/drag controls (not just a visual dimming) for a locked field', () => {
+    renderList();
+    const titleRow = screen.getByText('Title').closest('[role="listitem"]') as HTMLElement;
+    const titleEdit = within(titleRow).getByRole('button', { name: 'Edit' });
+    const titleDelete = within(titleRow).getByRole('button', { name: 'Delete' });
+    const titleDrag = screen.getByRole('button', { name: 'Reorder Title (position 1 of 4)' });
+    expect(titleEdit).toBeDisabled();
+    expect(titleDelete).toBeDisabled();
+    expect(titleDrag).toBeDisabled();
+
+    // The unlocked Format row keeps its controls enabled.
+    const formatRow = screen.getByText('Format').closest('[role="listitem"]') as HTMLElement;
+    const formatEdit = within(formatRow).getByRole('button', { name: 'Edit' });
+    expect(formatEdit).not.toBeDisabled();
   });
 
   it('renders the seeded session-format field (DEC-762) as "Format", derived from its shared id', () => {

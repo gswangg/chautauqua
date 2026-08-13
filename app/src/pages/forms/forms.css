@@ -10,7 +10,11 @@
   color: var(--chq-ink);
 }
 
-/* Header band: breadcrumb + h1 on the left, Preview/Save right-aligned. */
+/* Header band: breadcrumb + h1 on the left, Preview/Save right-aligned.
+   Shares the SAME --chq-measure clamp as .chq-forms-content below (DEC-744/
+   877) so the header row and the content column share one left and right
+   edge instead of the header spanning the full width while the content
+   column stops ~550px short of it at desktop widths. */
 .chq-forms-header {
   display: flex;
   align-items: flex-end;
@@ -18,6 +22,7 @@
   gap: 20px;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--chq-ink);
+  max-width: var(--chq-measure);
 }
 
 .chq-forms-header-titles {
@@ -161,11 +166,6 @@
   cursor: grab;
 }
 
-.chq-forms-field-drag:disabled {
-  cursor: default;
-  opacity: 0.5;
-}
-
 .chq-forms-field-drag:focus-visible {
   outline: 2px solid var(--chq-ink);
   outline-offset: 2px;
@@ -214,6 +214,21 @@
 .chq-forms-field-actions {
   display: flex;
   gap: 12px;
+}
+
+/* DEC-877: the row's drag handle / Edit / Delete controls all use the
+   native `disabled` attribute (already exposed to assistive tech -- it
+   removes the control from the tab order and is announced as
+   unavailable), but the shared .chq-btn rule (styles.css) has no
+   `:disabled` visual at all, so a disabled Edit/Delete painted identically
+   to an enabled one. Page-scoped (never redefines .chq-btn itself, per
+   DEC-368): every disabled control in the row gets the SAME quieted
+   treatment -- reduced contrast plus a `not-allowed` cursor -- rather than
+   silently pretending the control still works. */
+.chq-forms-field-drag:disabled,
+.chq-forms-field-actions .chq-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .chq-forms-field-modal {
@@ -336,6 +351,7 @@
   .chq-forms-header {
     flex-shrink: 0;
     padding-bottom: 12px;
+    max-width: none;
   }
 
   .chq-forms-header-titles h1 {
