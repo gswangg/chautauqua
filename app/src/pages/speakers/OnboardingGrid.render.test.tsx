@@ -6,6 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { OnboardingGrid } from './OnboardingGrid';
 import { mockApi } from '../../test-utils/mockApi';
 import type { AssignmentResponseDetail, OnboardingGridResponse } from './types';
@@ -98,7 +99,7 @@ describe('OnboardingGrid: DEC-730 one status-control family', () => {
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
 
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
@@ -136,7 +137,7 @@ describe('OnboardingGrid: DEC-827 import link', () => {
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
 
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
@@ -155,7 +156,7 @@ describe('OnboardingGrid: DEC-291/DEC-662 Response control', () => {
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
 
     // Re-skinned OnboardingGrid renders the desktop grid AND the phone-width
     // card list simultaneously in the DOM (they're toggled by a CSS media
@@ -226,7 +227,7 @@ describe('OnboardingGrid: DEC-599/DEC-694 reopen from response modal', () => {
       'PATCH /api/v1/task-assignments/as2': { body: {} },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
 
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
     screen.getAllByRole('button', { name: 'Response' })[0]!.click();
@@ -262,7 +263,7 @@ describe('OnboardingGrid: DEC-599/DEC-694 reopen from response modal', () => {
       'PATCH /api/v1/task-assignments/as2': { status: 500, body: { error: { code: 'internal', message: 'boom' } } },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
 
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
     screen.getAllByRole('button', { name: 'Response' })[0]!.click();
@@ -305,7 +306,7 @@ describe('OnboardingGrid: DEC-694 per-row remind', () => {
       [`POST /api/v1/events/${EVENT_ID}/onboarding/remind`]: { sent: 1, failed: [], skipped: 0, remaining: 0 },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
 
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
     screen.getAllByRole('button', { name: 'Remind Ada' })[0]!.click();
@@ -373,7 +374,7 @@ describe('OnboardingGrid: DEC-852 due-date visibility', () => {
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
     const table = within(screen.getByRole('table'));
@@ -407,7 +408,7 @@ describe('OnboardingGrid: DEC-852 due-date visibility', () => {
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
     const table = within(screen.getByRole('table'));
@@ -452,7 +453,7 @@ describe('OnboardingGrid: DEC-852 due-date visibility', () => {
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
     expect(screen.getAllByText(`Due 15 Jun ${nowYear + 1}`).length).toBeGreaterThan(0);
@@ -475,7 +476,7 @@ describe('OnboardingGrid: DEC-830 participation menu', () => {
       'PATCH /api/v1/submissions/sub-ct1/participants/p-ct1': { body: {} },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
     // GRID's ct1 fixture starts inviteStatus: 'accepted' -> labelled Confirmed.
@@ -512,7 +513,7 @@ describe('OnboardingGrid: DEC-830 participation menu', () => {
       },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
     const table = within(screen.getByRole('table'));
@@ -537,7 +538,7 @@ describe('OnboardingGrid: DEC-830 participation menu', () => {
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
     fireEvent.click(screen.getByRole('button', { name: 'Overdue only' }));
@@ -595,7 +596,7 @@ describe('OnboardingGrid: DEC-920 file link names the file', () => {
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
 
     await waitFor(() => {
       expect(screen.getAllByText('Ada Lovelace').length).toBeGreaterThan(0);
@@ -649,7 +650,7 @@ describe('OnboardingGrid: DEC-920 file link names the file', () => {
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
 
     await waitFor(() => {
       expect(screen.getAllByText('Ada Lovelace').length).toBeGreaterThan(0);

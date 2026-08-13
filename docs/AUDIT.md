@@ -64,12 +64,14 @@ route, not just this one). Comms composition, per-recipient preview, and templat
 fields are built (`/admin/comms`, `src/domain/compose.ts`). See the 100-recipient compose
 cap below.
 
-## J6 — Onboarding dashboard (`/admin/overview`, `/admin/speakers`, tasks)
+## J6 — Onboarding dashboard (`/admin/overview`, `/admin/speakers`, `/admin/speakers/:contactId`, tasks)
 
 Task assignments (forms, uploads, acknowledgements), reminder cron, and the producer's
 onboarding-progress dashboard are built. `/admin/speakers` is the accepted-speaker roster
-(onboarding/task status per speaker, contact/profile drill-in). See the reminder cap and
-Overview row cap below.
+(onboarding/task status per speaker, contact/profile drill-in). `/admin/speakers/:contactId`
+(DEC-930) is the per-speaker detail page the roster's name cell links into: one bounded GET
+carrying that speaker's sessions and task assignments, each row linking to its own submission
+or deliverable. See the reminder cap and Overview row cap below.
 
 ## J7 — Speaker self-serve portal (`/portal`, `/portal/profile`, `/portal/submissions`, `/portal/submissions/:id`, `/portal/submissions/:id/edit`, `/portal/tasks`, `/portal/tasks/:assignmentId/form`)
 

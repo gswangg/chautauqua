@@ -7,6 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { OnboardingGrid } from './OnboardingGrid';
 import { mockApi } from '../../test-utils/mockApi';
 import type { OnboardingGridResponse } from './types';
@@ -74,7 +75,7 @@ describe('OnboardingGrid: per-row "Send portal invite" control (DEC-805)', () =>
       [`POST /api/v1/events/${EVENT_ID}/portal-invites`]: { sent: 1, skipped: 0, failed: [] },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
 
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
@@ -116,7 +117,7 @@ describe('OnboardingGrid: per-row "Send portal invite" control (DEC-805)', () =>
       },
     });
 
-    render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
     const table = within(screen.getByRole('table'));

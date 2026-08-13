@@ -507,3 +507,64 @@
   font-size: 14px;
   color: var(--chq-ink-2);
 }
+
+/* DEC-930: per-speaker detail page (SpeakerDetailPage.tsx). The grid's own
+   name cell becomes a Link into this page -- keep the link visually a
+   title, not a generic anchor. */
+.chq-speakers-name-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.chq-speakers-name-link:hover,
+.chq-speakers-name-link:focus-visible {
+  text-decoration: underline;
+}
+
+.chq-speaker-detail-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chq-speaker-detail-topbar {
+  display: flex;
+}
+
+.chq-speaker-detail-back {
+  font-size: 13px;
+}
+
+.chq-speaker-detail-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chq-speaker-detail-subtitle {
+  margin: 0;
+}
+
+.chq-speaker-detail-participation {
+  margin: 0;
+}
+
+.chq-speaker-detail-sessions,
+.chq-speaker-detail-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chq-speaker-detail-sessions-table,
+.chq-speaker-detail-tasks-table {
+  width: 100%;
+}
+
+.chq-speaker-detail-required {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}

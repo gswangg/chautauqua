@@ -7,6 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { SpeakersPage } from './Speakers';
 import { mockApi } from '../test-utils/mockApi';
 import type { OnboardingGridResponse } from './speakers/types';
@@ -71,7 +72,7 @@ describe('SpeakersPage render smoke (OnboardingGrid)', () => {
       },
     });
 
-    render(<SpeakersPage />);
+    render(<MemoryRouter><SpeakersPage /></MemoryRouter>);
 
     // DEC-662: exactly one <h1> on the page -- RosterPanel no longer owns
     // its own header band.
@@ -122,7 +123,7 @@ describe('SpeakersPage render smoke (OnboardingGrid)', () => {
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
     });
 
-    render(<SpeakersPage />);
+    render(<MemoryRouter><SpeakersPage /></MemoryRouter>);
 
     await waitFor(() => {
       expect(screen.getAllByText('Ada Lovelace').length).toBeGreaterThan(0);

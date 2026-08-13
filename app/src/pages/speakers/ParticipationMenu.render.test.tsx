@@ -8,6 +8,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { OnboardingGrid } from './OnboardingGrid';
 import { mockApi } from '../../test-utils/mockApi';
 import { INVITE_STATUSES, INVITE_STATUS_LABELS, type InviteStatus, type OnboardingGridResponse } from './types';
@@ -56,7 +57,7 @@ afterEach(() => {
 });
 
 async function openMenu() {
-  render(<OnboardingGrid onAddSpeaker={vi.fn()} />);
+  render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
   await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
   const table = within(screen.getByRole('table'));
   fireEvent.click(table.getByRole('button', { name: 'Participation status for Ada Lovelace: Not invited' }));

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { apiGet, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { DEC_827 } from '../../../../src/decisions';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
@@ -480,7 +481,12 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                 {visibleRows.map((row) => (
                   <tr key={row.contact.id}>
                     <td>
-                      <div className="chq-row-title">{row.contact.name}</div>
+                      {/* DEC-930: the grid's name cell is the link into the
+                          per-speaker detail page -- every action the grid
+                          offers is one click from that one snapshot. */}
+                      <Link className="chq-row-title chq-speakers-name-link" to={`/speakers/${row.contact.id}`}>
+                        {row.contact.name}
+                      </Link>
                       <div className="chq-meta">
                         {row.contact.company ?? '—'}
                         {row.contact.hasAccount && (
@@ -585,7 +591,9 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
             {visibleRows.map((row) => (
               <div key={row.contact.id} className="chq-speakers-card">
                 <div className="chq-speakers-card-head">
-                  <span className="chq-row-title">{row.contact.name}</span>
+                  <Link className="chq-row-title chq-speakers-name-link" to={`/speakers/${row.contact.id}`}>
+                    {row.contact.name}
+                  </Link>
                   <span className="chq-meta">
                     {row.contact.company ?? '—'}
                     {row.contact.hasAccount && (

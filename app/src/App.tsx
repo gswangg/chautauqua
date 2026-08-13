@@ -25,6 +25,8 @@ const pageLoaders = {
   settings: () => import('./pages/Settings').then((m) => ({ default: m.SettingsPage })),
   submissionDetail: () =>
     import('./pages/submissions/SubmissionDetailPage').then((m) => ({ default: m.SubmissionDetailPage })),
+  speakerDetail: () =>
+    import('./pages/speakers/SpeakerDetailPage').then((m) => ({ default: m.SpeakerDetailPage })),
   submissionsDelete: () =>
     import('./pages/submissions/DeleteSubmissionsPage').then((m) => ({ default: m.DeleteSubmissionsPage })),
   notFound: () => import('./pages/NotFound').then((m) => ({ default: m.NotFoundPage })),
@@ -42,6 +44,7 @@ const ContactsPage = lazy(pageLoaders.contacts);
 const ContactsMergePage = lazy(pageLoaders.contactsMerge);
 const SettingsPage = lazy(pageLoaders.settings);
 const SubmissionDetailPage = lazy(pageLoaders.submissionDetail);
+const SpeakerDetailPage = lazy(pageLoaders.speakerDetail);
 const DeleteSubmissionsPage = lazy(pageLoaders.submissionsDelete);
 const NotFoundPage = lazy(pageLoaders.notFound);
 
@@ -305,6 +308,10 @@ function RoutedContent() {
               declaration order here doesn't matter, but forms stays
               first for readability. */}
           <Route path="/submissions/:id" element={<SubmissionDetailPage />} />
+          {/* DEC-930: per-speaker detail page, mirrors the submission detail
+              route above -- a static path (/speakers) is already claimed by
+              NAV_SECTIONS, so declaration order here doesn't matter. */}
+          <Route path="/speakers/:contactId" element={<SpeakerDetailPage />} />
           {/* DEC-154: admin catch-all, must stay last so specific routes win. */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
