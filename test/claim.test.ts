@@ -169,7 +169,7 @@ describe("POST /claim/:token (route-level, DEC-064)", () => {
   /** Minimal fake drizzle-style db: dispatches select/insert by table
    * reference identity (fine here since fixtures never hold >1 row). */
   function makeFakeDb(opts: { contacts: unknown[]; users: unknown[] }) {
-    const state = { contacts: [...opts.contacts], users: [...opts.users] };
+    const state = { contacts: [...opts.contacts], users: [...opts.users], sessions: [] as unknown[] };
     const inserted: Array<{ table: unknown; row: unknown }> = [];
     // DEC-948: checkAndIncrementScopedLimit's atomic D1 upsert, keyed by its
     // own `rate_limit` row (not schema.contact/schema.user), so it's
@@ -222,6 +222,9 @@ describe("POST /claim/:token (route-level, DEC-064)", () => {
               }
               inserted.push({ table, row });
               if (table === schema.user) state.users.push(row);
+              // DEC-994: POST /claim/:token now mints its session through
+              // issueSession, which deletes+inserts schema.authSession.
+              if (table === schema.authSession) state.sessions.push(row);
               return Promise.resolve();
             },
           };
@@ -230,6 +233,10 @@ describe("POST /claim/:token (route-level, DEC-064)", () => {
           return {
             where() {
               if (table === schema.rateLimit) return Promise.resolve();
+              // DEC-994: issueSession always deletes existing sessions for
+              // the user before inserting — a brand-new claimed user has
+              // none, so this is a no-op here.
+              if (table === schema.authSession) return Promise.resolve();
               throw new Error("unexpected table in fake db delete");
             },
           };
