@@ -42,6 +42,18 @@ reporting, page measure).
 
 **P2 · Distribute preview + who-reviews-what anatomy** — frame 03: cap row `CAP PER REVIEWER [8] talks each` + summary "18 talks · 36 reviews needed at 2 each · 4 reviewers"; preview is a 3-col table (name | track | `6 → 8 talks`, `unchanged · wrong track`) + "Assign these N" + leftover line. App: one flat line, cap input shows clipped "No", no summary, no leftover line.
 
+**Pair-6 reds (11-account FAIL 4 MAJOR):**
+
+**P1 · Auth reading columns far too narrow.** v6 geometry (measured off frames): login form column = 732px (the 820 column inset 44px); /account/password and 404 surfaces = the full 820 reading column. App: login content 550px (card 640, padding 44), password/404 448px (card 520, padding 35, `.chq-auth-fields max-width:450`). Consequence: the 404 body line wraps to 2 lines where v6 shows one 513px line. Retarget the auth measure to v6 (732 login / 820 elsewhere) — the gate-2 numbers (450/520/640) are OBSOLETE-VS-V6.
+
+**P1 · Auth cards stretch to viewport height** — `body{display:flex}` + default `align-items:stretch` in `auth.css.ts` makes every SSR card exactly 820px tall (227–521px dead space). `align-items: flex-start` (or safe-center) + card hugs content. Related: v6 shows NO card border on any 11-account frame — the `.chq-auth-card` 1px border + radius is unframed chrome; dropping it also hides the dead-space rectangle class.
+
+**P1 · `/e/<bad-slug>` third 404 shell still live** — borrows AUTH_CSS but diverges: eyebrow "NOT FOUND" (designed card uses event name), body "Event not found." vs designed line, one link vs two, title "Not found" vs "Not found - Chautauqua", and the bare `<main>` shrink-wraps the card to 293.9px. Route it through the ONE designed not-found card (src/server/not-found.tsx). Same wave: `/admin/*` 404 renders inside the admin shell in a left-aligned 520 card at HTTP 200 — frame 02 is chromeless, block flush-left in the 820 centered column, and should 404.
+
+**P2 · auth polish batch:** ‹ Back and h1 flush at same x (kill the 36px `margin-left` on `.chq-auth-titlerow .chq-auth-title`); UA `form` margin-bottom:16px un-reset (footer rule 42px below button vs 26.5); footer links min-height:44 drops ink 15.5px low; admin-404 eyebrow uses `.chq-section-label` (ink) instead of the muted `.chq-auth-label` treatment, h1 `--chq-ink-2` should be `--chq-ink`, links body-15/400 should be link-vocab 14/700; demo prefill buttons `all:unset` kills the theme `:focus-visible` outline (only controls in auth without a focus ring) and are 13px ink underlined-at-rest vs 14/700 olive no-underline; failed sign-in discards the typed email (re-render keeps `email` value); `/account/password` ‹ Back hardcodes `/admin` (role-blind — speakers bounce via redirect); organizer session at `/portal/nope` 200s with admin Overview instead of 404.
+
+(Pair-6 verified fixed/held: login geometry frame-exact incl. 81px input pitch, 28px titles, NEW PASSWORD AGAIN, underline-on-hover inversion, CSRF 400, role routing incl. /admin/overview landing + aria-current, speaker profile round-trip. NOT defects: single footer link (CFP closed on seed), no password-reset flow (unframed; /claim/:token is the recovery path).)
+
 **Pair-1 reds (01-overview FAIL 4 MAJOR · 06-agenda FAIL 4 MAJOR):**
 
 **P1 · Overview headline row wraps at exactly the 820 cap** — h1 505.2 + gap 28 + "Export submissions" 148.5 + 9 + "New submission" 129.3 = 820.0, so the h1 breaks to two lines and buttons drop below. Frame label is just "Export" (74px) and the row fits at 747. Rename the button "Export" AND make the headline row resilient (title truncates/actions never wrap under).
