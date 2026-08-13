@@ -8,10 +8,11 @@ import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import type { FileKind } from "../../domain/files";
 import { chunkIds } from "../../lib/chunk";
-import { DEC_244, DEC_713 } from "../../decisions";
+import { DEC_244, DEC_713, DEC_818 } from "../../decisions";
 
 void DEC_244;
 void DEC_713;
+void DEC_818;
 
 // ---------------------------------------------------------------------------
 // Version-chain lookups
@@ -31,26 +32,25 @@ export async function getReplacesTarget(
   return rows[0] ?? null;
 }
 
-/** DEC-242: 1-indexed version number for `fileId`, counting `fileId` itself
- * plus every ancestor reachable by walking previous_file_id — matches the
- * VersionList frontend's `versions.length - idx` numbering (oldest = v1,
- * current/latest = v<chain length>) since a task_assignment's linked file is
- * always the newest link in its chain. */
+/** DEC-818: `fileId`'s own stored version number — a version number is an
+ * identity, not a position among the survivors, so this reads the column
+ * set at insert time (see insertFile below) rather than re-deriving it from
+ * chain position. Throws (data corruption, never a normal state) when the
+ * row is missing or its version_no was never stored — a chain-position
+ * fallback would silently renumber a deleted version's later siblings,
+ * which is exactly the bug DEC-818 closes. */
 export async function getFileVersionNumber(db: Db, fileId: string): Promise<number> {
-  let current: string | null = fileId;
-  let version = 0;
-  while (current) {
-    version += 1;
-    const rows: { previousFileId: string | null }[] = await db
-      .select({ previousFileId: schema.file.previousFileId })
-      .from(schema.file)
-      .where(eq(schema.file.id, current))
-      .limit(1);
-    const row: { previousFileId: string | null } | undefined = rows[0];
-    if (!row) throw new Error(`getFileVersionNumber: file ${current} not found mid-chain — data corruption`);
-    current = row.previousFileId;
+  const rows = await db
+    .select({ versionNo: schema.file.versionNo })
+    .from(schema.file)
+    .where(eq(schema.file.id, fileId))
+    .limit(1);
+  const row = rows[0];
+  if (!row) throw new Error(`getFileVersionNumber: file ${fileId} not found — data corruption`);
+  if (row.versionNo === null || row.versionNo === undefined) {
+    throw new Error(`getFileVersionNumber: file ${fileId} has no stored version_no — data corruption`);
   }
-  return version;
+  return row.versionNo;
 }
 
 export interface TaskFileChainLatest {
@@ -211,9 +211,31 @@ export interface InsertFileInput {
   uploadedByContactId: string | null;
 }
 
+/** DEC-818: assigns the new row's own version_no — 1 + the predecessor's
+ * stored version_no when chaining onto an existing file, else 1 for a new
+ * chain. `previousFileId` always names the current head of its chain (the
+ * DEC-020 version-chain contract this repo already enforces elsewhere), so
+ * the predecessor's own version_no IS the chain max — no extra chain walk
+ * needed. Throws if the predecessor has no stored version_no (data
+ * corruption: every row past migration 0025 has one). */
 export async function insertFile(db: Db, input: InsertFileInput): Promise<string> {
   const id = newId();
   const now = new Date();
+
+  let versionNo = 1;
+  if (input.previousFileId) {
+    const predRows = await db
+      .select({ versionNo: schema.file.versionNo })
+      .from(schema.file)
+      .where(eq(schema.file.id, input.previousFileId))
+      .limit(1);
+    const pred = predRows[0];
+    if (!pred || pred.versionNo === null || pred.versionNo === undefined) {
+      throw new Error(`insertFile: predecessor ${input.previousFileId} has no stored version_no — data corruption`);
+    }
+    versionNo = pred.versionNo + 1;
+  }
+
   await db.insert(schema.file).values({
     id,
     submissionId: input.submissionId,
@@ -223,6 +245,7 @@ export async function insertFile(db: Db, input: InsertFileInput): Promise<string
     sizeBytes: input.sizeBytes,
     contentType: input.contentType,
     previousFileId: input.previousFileId,
+    versionNo,
     uploadedByContactId: input.uploadedByContactId,
     createdAt: now,
     updatedAt: now,
@@ -405,10 +428,10 @@ export async function deleteFileVersion(db: Db, input: DeleteFileVersionInput): 
   const row = rows[0];
   if (!row) throw new Error(`deleteFileVersion: file ${fileId} not found`);
 
-  // Version number of the deleted row, computed BEFORE any mutation — the
-  // repoint below only changes rows that point AT fileId, never fileId's own
-  // previous_file_id, so this is safe to compute first or last; doing it
-  // first keeps the "read, then write" ordering explicit.
+  // DEC-818: the deleted row's OWN stored version number — the repoint
+  // below is a pure re-link (nothing else ever writes version_no), so
+  // deleting a middle version never renumbers the survivors, and this note
+  // stays correct even after later versions are deleted in turn.
   const versionNumber = await getFileVersionNumber(db, fileId);
 
   const successorRows = await db

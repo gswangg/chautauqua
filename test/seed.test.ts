@@ -281,10 +281,10 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
   });
 
   it("chains a second deliverable version via previous_file_id and threads a file_comment (organizer note + speaker reply)", () => {
-    const v1 = sql.match(/INSERT INTO file \([^)]*\) VALUES \('(seed_file_\d+)', 'seed_submission_0001', 'presentation', 'slides-v1\.pdf'[^;]*NULL, 'seed_contact_0001'/);
+    const v1 = sql.match(/INSERT INTO file \([^)]*\) VALUES \('(seed_file_\d+)', 'seed_submission_0001', 'presentation', 'slides-v1\.pdf'[^;]*NULL, \d+, 'seed_contact_0001'/);
     expect(v1).toBeTruthy();
     const v1Id = v1![1]!;
-    const v2 = sql.match(new RegExp(`INSERT INTO file \\([^)]*\\) VALUES \\('(seed_file_\\d+)', 'seed_submission_0001', 'presentation', 'slides-v2\\.pdf'[^;]*'${v1Id}', 'seed_contact_0001'`));
+    const v2 = sql.match(new RegExp(`INSERT INTO file \\([^)]*\\) VALUES \\('(seed_file_\\d+)', 'seed_submission_0001', 'presentation', 'slides-v2\\.pdf'[^;]*'${v1Id}', \\d+, 'seed_contact_0001'`));
     expect(v2).toBeTruthy();
     const v2Id = v2![1]!;
 

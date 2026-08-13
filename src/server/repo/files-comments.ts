@@ -15,10 +15,11 @@ import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import { chunkIds, ID_CHUNK_SIZE } from "../../lib/chunk";
 import { listFileChainIds } from "./files-versions";
-import { DEC_573, DEC_757 } from "../../decisions";
+import { DEC_573, DEC_757, DEC_818 } from "../../decisions";
 
 void DEC_573;
 void DEC_757;
+void DEC_818;
 
 // ---------------------------------------------------------------------------
 // Comments
@@ -43,9 +44,11 @@ export interface FileCommentPage {
 
 /** DEC-573: reads every comment on the deliverable's version chain, oldest
  * first (createdAt asc, then id asc as a deterministic tiebreak) — `fileId`
- * may be any link in the chain, not just the latest. `versionNumber` reuses
- * listFileChainIds' oldest-first ordering (index 0 = v1), matching
- * getFileVersionNumber's numbering. `page` is the product's ONE list shape:
+ * may be any link in the chain, not just the latest. `versionNumber` reads
+ * each link's own stored version_no (DEC-818: a version number is an
+ * identity, not a position among the survivors) rather than deriving it
+ * from chain position, so a comment tagged against a version that outlives
+ * a sibling's deletion keeps its original number. `page` is the product's ONE list shape:
  * absent means today's unbounded behavior (for internal callers that render
  * a full thread, e.g. the portal tasks list); the HTTP route always pages.
  * `total` is the true chain-wide count, not `items.length`, so a caller can
@@ -56,7 +59,20 @@ export async function listFileComments(
   page?: { limit: number; offset: number },
 ): Promise<FileCommentPage> {
   const chainIds = await listFileChainIds(db, fileId);
-  const versionByFileId = new Map(chainIds.map((id, idx) => [id, idx + 1]));
+  const versionByFileId = new Map<string, number>();
+  for (const batch of chunkIds(chainIds)) {
+    if (batch.length === 0) continue;
+    const rows = await db
+      .select({ id: schema.file.id, versionNo: schema.file.versionNo })
+      .from(schema.file)
+      .where(inArray(schema.file.id, batch));
+    for (const row of rows) {
+      if (row.versionNo === null || row.versionNo === undefined) {
+        throw new Error(`listFileComments: file ${row.id} has no stored version_no — data corruption`);
+      }
+      versionByFileId.set(row.id, row.versionNo);
+    }
+  }
 
   let total = 0;
   for (const batch of chunkIds(chainIds)) {

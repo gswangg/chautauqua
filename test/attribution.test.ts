@@ -214,7 +214,7 @@ describe("listFileComments (DEC-757: no comment's authorName is a raw email or '
   it("resolves every actor's contact name, and 'Unknown' never appears", async () => {
     const fileId = "file-1";
     const db = makeChainDb({
-      file: [{ id: fileId, previousFileId: null, filename: "f.pdf", contentType: "application/pdf", r2Key: "k", createdAt: new Date(1000) }],
+      file: [{ id: fileId, previousFileId: null, versionNo: 1, filename: "f.pdf", contentType: "application/pdf", r2Key: "k", createdAt: new Date(1000) }],
       fileComment: ACTORS.map((actor, i) => ({
         id: `c${i}`,
         fileId,
@@ -249,7 +249,7 @@ describe("listFileComments (DEC-757: no comment's authorName is a raw email or '
   it("prefers the comment's OWN authorContactId over the author user's linked contact", async () => {
     const fileId = "file-2";
     const db = makeChainDb({
-      file: [{ id: fileId, previousFileId: null, filename: "f.pdf", contentType: "application/pdf", r2Key: "k", createdAt: new Date(1000) }],
+      file: [{ id: fileId, previousFileId: null, versionNo: 1, filename: "f.pdf", contentType: "application/pdf", r2Key: "k", createdAt: new Date(1000) }],
       fileComment: [
         {
           id: "c-own",
@@ -274,7 +274,7 @@ describe("listFileComments (DEC-757: no comment's authorName is a raw email or '
   it("throws rather than resolving role 'unknown' when the author user cannot be found", async () => {
     const fileId = "file-3";
     const db = makeChainDb({
-      file: [{ id: fileId, previousFileId: null, filename: "f.pdf", contentType: "application/pdf", r2Key: "k", createdAt: new Date(1000) }],
+      file: [{ id: fileId, previousFileId: null, versionNo: 1, filename: "f.pdf", contentType: "application/pdf", r2Key: "k", createdAt: new Date(1000) }],
       fileComment: [
         {
           id: "c-ghost",

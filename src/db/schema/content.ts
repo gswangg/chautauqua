@@ -59,6 +59,10 @@ export const file = sqliteTable(
     contentType: text("content_type").notNull(),
     // version chain — DEC-003
     previousFileId: text("previous_file_id"),
+    // DEC-818: a version number is an identity, not a position among the
+    // survivors — stored at insert time (1 + max over the chain, or 1 for a
+    // new chain) so deleting a middle version never renumbers the rest.
+    versionNo: integer("version_no"),
     uploadedByContactId: text("uploaded_by_contact_id"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
