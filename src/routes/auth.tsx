@@ -391,6 +391,48 @@ authRoutes.post("/login", csrfForm, async (c) => {
   return c.redirect(dest, 302);
 });
 
+// DEC-154 amendment (wave 8): a typed/bookmarked GET /logout must land on a
+// real page, not the generic 404 -- pubcache.ts already lists it as a
+// known no-cache path. Anonymous visitors have nothing to end, so they're
+// sent straight to /login. A signed-in visitor sees a confirmation card
+// (reusing the same auth-card-notice chrome the 404 page renders) whose
+// POST form carries the double-submit CSRF token exactly as the portal
+// footer's sign-out form does (DEC-181), and whose "stay signed in" link
+// applies the same role -> destination rule as the login handler above.
+function LogoutConfirmPage(props: { csrfToken: string; stayHref: string }) {
+  return (
+    <html lang="en">
+      <AuthHead title="Sign out - Chautauqua" />
+      <body>
+        <main className="chq-auth-card chq-auth-card-narrow chq-auth-card-notice">
+          <div className="chq-auth-titlerow">
+            <h1 className="chq-auth-title">Sign out?</h1>
+          </div>
+          <p className="chq-auth-body">You'll need to sign in again to get back to your account.</p>
+          <form method="post" action="/logout">
+            <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
+            <button type="submit" className="chq-btn-primary">
+              Sign out
+            </button>
+          </form>
+          <div className="chq-auth-footer-links">
+            <a href={props.stayHref}>Stay signed in</a>
+          </div>
+        </main>
+      </body>
+    </html>
+  );
+}
+
+authRoutes.get("/logout", async (c) => {
+  const auth = c.var.auth;
+  if (!auth) return c.redirect("/login", 302);
+  const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
+  if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);
+  const stayHref = auth.role === "speaker" ? "/portal" : "/admin";
+  return c.html(<LogoutConfirmPage csrfToken={csrfToken} stayHref={stayHref} />);
+});
+
 authRoutes.post("/logout", csrfFormOrHeader, async (c) => {
   const cookies = parseCookies(c.req.header("cookie") ?? null);
   const token = cookies[SESSION_COOKIE_NAME];
