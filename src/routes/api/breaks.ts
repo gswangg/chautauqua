@@ -49,6 +49,12 @@ breaksRoutes.get("/events/:eventId/breaks", requireOrganizer, async (c) => {
   await assertEventOwnership(c, eventId, auth);
 
   const day = c.req.query("day");
+  // DEC-905 (wave-31 amendment): fail loudly on a malformed ?day= instead of
+  // silently returning an unfiltered (or confidently empty) list -- the same
+  // isIsoDay shape gate the POST/PATCH body already runs through.
+  if (day !== undefined && !isIsoDay(day)) {
+    throw new ApiError("invalid", "day must be YYYY-MM-DD", { day: "invalid" });
+  }
   const items = await listBreaksForEvent(c.var.db, eventId, day || undefined);
   // DEC-461(a) list envelope, in DEC-488's shape for a cap-bounded list:
   // MAX_BREAKS_PER_EVENT is the real per-request ceiling (listBreaksForEvent
