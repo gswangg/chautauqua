@@ -22,8 +22,12 @@ export const CONTENT_STATUS_PRIORITY: readonly ContentStatus[] = ['changes_reque
 export type { FileKind };
 export { FILE_KINDS };
 
+// w5-i (docs/design/README.md:236, DEC-756/DEC-721/DEC-020's own quoted mock
+// text): the design vocabulary names the deliverable "Slides", never
+// "Presentation" -- the domain kind literal stays `presentation` (DEC-003),
+// only the label the SPA renders changes.
 export const DELIVERABLE_LABELS: Record<FileKind, string> = {
-  presentation: 'Presentation',
+  presentation: 'Slides',
   poster: 'Poster',
   handout: 'Handout',
   recording: 'Recording',
@@ -63,6 +67,13 @@ export interface ContentSubmissionListItem {
   // version could disagree with version_no).
   latestFileVersionNo: number | null;
   reuploaded: boolean;
+  // w5-i: a per-kind latest version_no (Partial -- a kind with no files is
+  // simply absent), so the worklist's Latest file column can print a
+  // per-kind summary ("Slides v3 · Recording v1") rather than collapsing to
+  // the single globally-newest upload's filename+version. Batched
+  // server-side (src/server/repo/submissions/list.ts), never re-derived
+  // client-side from latestFile alone.
+  latestFileByKind: Partial<Record<FileKind, number>>;
   // w41-b (DEC-902 amendment): the worklist SESSION cell's subtitle --
   // batched off schedule_slot/room server-side (src/server/repo/submissions
   // /list.ts), never a per-row fetch. null for a submission not yet placed

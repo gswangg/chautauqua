@@ -59,6 +59,38 @@ describe('CommentThread', () => {
     expect(document.querySelector('.chq-comment-date')).toHaveTextContent('2 days ago');
   });
 
+  // w5-i (DEC-708 amendment): server-side resolution (files-comments.ts)
+  // falls back to the raw login email ONLY when the batched account->
+  // contact resolver truly has nothing to name -- the render layer just
+  // trusts and prints whatever authorName the server sent, including a bare
+  // email for that unresolvable case (the email IS the identity, never a
+  // fabricated name).
+  it('renders a bare email as the author name when the server could not resolve a contact', () => {
+    const comments: FileComment[] = [
+      {
+        id: 'c3',
+        fileId: 'file-1',
+        versionNumber: 1,
+        authorName: 'sbek-organizer@example.com',
+        authorRole: 'organizer',
+        authorUserId: 'user-unresolved',
+        body: 'Please add alt text to slide 4.',
+        createdAt: Date.now() - 3_600_000,
+      },
+    ];
+    render(<CommentThread comments={comments} onSend={noopSend} />);
+    expect(screen.getByText('sbek-organizer@example.com')).toBeInTheDocument();
+  });
+
+  // w5-i: the composer's placeholder states what happens to a note (sent
+  // AND kept on the thread), not a generic "to the speakers..." string.
+  it('renders the DEC-708-amendment composer placeholder', () => {
+    render(<CommentThread comments={[]} onSend={noopSend} />);
+    expect(
+      screen.getByPlaceholderText('Write a note — sent with the decision, and kept on the thread'),
+    ).toBeInTheDocument();
+  });
+
   it('renders "Ask for changes" as the filled (primary) action and "Send note only" as secondary, with the caption below the action group (DEC-720 amendment: the filled action is the one that moves work)', () => {
     render(<CommentThread comments={[]} onSend={noopSend} />);
     const askButton = screen.getByRole('button', { name: 'Ask for changes' });

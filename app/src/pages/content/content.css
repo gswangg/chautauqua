@@ -159,6 +159,15 @@
   font-size: 28px;
 }
 
+/* w5-i: "Download all" lives on the header block now, not the status band
+   -- sits at the row's far end (chq-content-detail-head is already a
+   space-between flex row), baseline-aligned with the title column. */
+.chq-content-detail-head-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
 /* DEC-756: ONE deliverable chip strip scopes both the version list and the
    note thread beneath it. */
 .chq-content-detail-body {
@@ -326,11 +335,27 @@
 
 .chq-content-version-item {
   display: grid;
-  grid-template-columns: 48px 1fr auto auto;
+  /* w5-i: added a 5th (NEWEST badge) column -- tag / info / newest /
+     download / delete. */
+  grid-template-columns: 48px 1fr auto auto auto;
   align-items: baseline;
   gap: 14px;
   padding: 12px 0;
   border-bottom: 1px solid var(--chq-hairline);
+}
+
+/* w5-i (DEC-901 amendment): the version marker is its own right-aligned
+   badge, separate from the "vN" tag -- empty (zero width) on every row but
+   the newest, never disturbing the fixed Download/Delete columns. */
+.chq-content-version-newest {
+  font-family: var(--chq-font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--chq-brand);
+  text-align: right;
+  justify-self: end;
+  white-space: nowrap;
 }
 
 .chq-content-version-tag {
@@ -704,8 +729,11 @@
   flex-wrap: wrap;
 }
 
+/* w5-i: widened from 260px -- the placeholder ("Search filename, session, or
+   speaker") clipped at the old basis; the input still shrinks on narrow
+   viewports (flex-shrink 1), it just no longer starts truncated. */
 .chq-content-files-toolbar .chq-input {
-  flex: 0 1 260px;
+  flex: 0 1 340px;
 }
 
 /* Fixed-width size column so numerals align (DEC-902). */
@@ -717,6 +745,16 @@
 .chq-content-files-table .chq-content-files-col-version {
   width: 64px;
   white-space: nowrap;
+}
+
+/* w5-i: bold accent caps -- "v3" reads as "V3" in the brand ink, matching
+   the library's other identity marks rather than sinking to body-text
+   weight. */
+.chq-content-files-version-tag {
+  font-family: var(--chq-font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--chq-brand);
 }
 
 /* ---------------------------------------------------------------------- */

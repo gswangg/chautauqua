@@ -1,7 +1,19 @@
-import { type ContentStatus, type ContentSubmissionListItem } from './types';
+import { DELIVERABLE_LABELS, FILE_KINDS, type ContentStatus, type ContentSubmissionListItem } from './types';
 import { WORKLIST_TABS, worklistStatusLabel, type WorklistTab } from './worklist';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { formatRelativeDays, formatDayLabel } from '../../lib/dates';
+
+// w5-i (DEC-020 amendment quoted mock text, eval-findings.md STILL-PRESENT
+// residue): the Latest file column names EVERY kind that has files ("Slides
+// v3 · Recording v1"), not just the single most-recently-touched kind's
+// filename+version -- a session with a re-uploaded deck AND a first-time
+// recording otherwise hides the recording row entirely. FILE_KINDS order
+// keeps the summary deterministic across renders.
+function latestFileSummary(item: ContentSubmissionListItem): string {
+  return FILE_KINDS.filter((kind) => item.latestFileByKind[kind] != null)
+    .map((kind) => `${DELIVERABLE_LABELS[kind]} v${item.latestFileByKind[kind]}`)
+    .join(' · ');
+}
 
 /** Render minutes-from-midnight as a zero-padded HH:MM clock time (same
  * grammar as DeliverableDetail.tsx / submissions/schedule.ts). */
@@ -240,10 +252,7 @@ export function SessionList({
                     <div className="chq-content-row-latest-file">
                       {item.latestFile ? (
                         <>
-                          <div className="chq-content-latest-file-name">
-                            {item.latestFile.filename}
-                            {item.latestFileVersionNo != null ? ` · v${item.latestFileVersionNo}` : ''}
-                          </div>
+                          <div className="chq-content-latest-file-name">{latestFileSummary(item)}</div>
                           <div className="chq-content-latest-file-date">
                             {formatRelativeDays(item.latestFile.uploadedAt, now)}
                           </div>

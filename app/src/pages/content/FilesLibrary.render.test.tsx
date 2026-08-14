@@ -130,6 +130,11 @@ describe('FilesLibrary render smoke', () => {
     expect(screen.queryByRole('button', { name: /Open priya\.jpg/ })).not.toBeInTheDocument();
     expect(screen.getByText('v1')).toBeInTheDocument();
 
+    // w5-i: a headshot has no submission -- the SESSION cell states that
+    // plainly rather than rendering blank (an empty cell reads as a data
+    // gap, not a structural fact of what a headshot is).
+    expect(screen.getByText(/No session/)).toBeInTheDocument();
+
     // A headshot row's Download link serves through the gated headshot
     // route, never /files/:fileId (headshots are structurally disjoint
     // from submission deliverables — DEC-773).
@@ -176,7 +181,7 @@ describe('FilesLibrary render smoke', () => {
     expect(within(typeTabs).getByRole('tab', { name: 'All types' })).toHaveClass('is-active');
     // Nonzero kinds get a chip, with the SAME count the list's own envelope
     // supplied.
-    expect(within(typeTabs).getByRole('tab', { name: 'Presentation · 4' })).toBeInTheDocument();
+    expect(within(typeTabs).getByRole('tab', { name: 'Slides · 4' })).toBeInTheDocument();
     expect(within(typeTabs).getByRole('tab', { name: 'Headshot · 2' })).toBeInTheDocument();
     // A zero-count kind (DEC-902) offers no chip — a filter that can only
     // empty the list is a dead control.

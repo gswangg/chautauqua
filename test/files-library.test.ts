@@ -687,6 +687,34 @@ describe("kindCounts (DEC-902): one grouped query, matching the filtered list's 
     expect(result.kindCounts.headshot).toBe(1);
   });
 
+  // w5-i: a headshot uploaded during speaker signup otherwise floats to the
+  // top of an unfiltered library load purely because signup predates
+  // content review -- deliverable chains sort ahead of headshots as a
+  // whole, newest-first within each tier, rather than one flat date-desc
+  // merge across both populations.
+  it("sorts every deliverable chain ahead of every headshot, even when the headshot is newest by created_at", async () => {
+    const seed = seedWithTwoKinds();
+    for (const s of seed.submission) (s as unknown as { status: string }).status = "accepted";
+    (seed.contact[0] as unknown as { headshotUrl: string }).headshotUrl = "/headshots/file-headshot";
+    seed.file.push({
+      id: "file-headshot",
+      submissionId: null,
+      kind: "headshot",
+      filename: "priya.jpg",
+      previousFileId: null,
+      contentType: "image/jpeg",
+      r2Key: "r2/file-headshot",
+      // Newest of every file in the seed -- a flat date-desc merge would
+      // put this row first.
+      createdAt: new Date("2026-02-01T00:00:00Z"),
+      sizeBytes: 2000,
+      versionNo: 1,
+    });
+    const db = makeFakeFilesDb(seed);
+    const result = await listEventDeliverableFiles(db, "event-1", q());
+    expect(result.items.map((i) => i.kind)).toEqual(["poster", "presentation", "headshot"]);
+  });
+
   it("kindCounts honors q the same way the list does, and stays independent of the selected kind", async () => {
     const seed = seedWithTwoKinds();
 

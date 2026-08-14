@@ -221,12 +221,14 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
                       {item.submissionRef} {item.submissionTitle}
                     </button>
                   ) : (
-                    <>
-                      {item.submissionRef} {item.submissionTitle}
-                    </>
+                    // w5-i: a headshot has no submission -- an empty cell
+                    // read as a data gap, not a structural fact. A
+                    // headshot's Session cell states that plainly instead
+                    // of rendering blank.
+                    <span className="chq-meta chq-content-file-no-session">No session — speaker headshot</span>
                   )}
                 </td>
-                <td className="chq-content-files-col-version">v{item.versionNo}</td>
+                <td className="chq-content-files-col-version chq-content-files-version-tag">v{item.versionNo}</td>
                 <td className="chq-meta chq-content-files-col-size">{formatBytes(item.sizeBytes)}</td>
                 <td onClick={(e) => e.stopPropagation()}>
                   <a

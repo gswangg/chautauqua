@@ -1193,7 +1193,12 @@ export function SubmissionDetailPage() {
                             'when | what' grid -- the grid gap is the
                             separator, no literal ' | ' text. */}
                         <div className="chq-submission-history-row">
-                          <span className="chq-submission-history-when">{formatTimestamp(entry.at)}</span>
+                          {/* w5-i (DEC-708 amendment): a same-day sequence of
+                              history entries (e.g. edited, then reviewed a
+                              few hours later) is unreadable on a date-only
+                              stamp -- formatDateTime (DEC-545/DEC-907's ONE
+                              date-time grammar) carries the clock time too. */}
+                          <span className="chq-submission-history-when">{formatDateTime(entry.at)}</span>
                           <span className="chq-submission-history-what">
                             <strong>{entry.label}</strong>
                             {entry.detail ? <> &mdash; {entry.detail}</> : null}

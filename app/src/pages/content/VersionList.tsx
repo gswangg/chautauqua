@@ -85,8 +85,11 @@ export function VersionList({ versions, onDeleted, contentStatus, statusChangedA
             // be read. DEC-965: the tag reads the row's own STORED
             // version_no (a version number is an identity, not a chain
             // position) so a deleted middle version never renumbers its
-            // surviving siblings.
-            const tag = isCurrent ? `v${v.versionNo} · Latest` : `v${v.versionNo}`;
+            // surviving siblings. w5-i: the marker itself ("NEWEST") moved
+            // out of the tag into its own right-aligned badge (see
+            // .chq-content-version-newest below) rather than trailing the
+            // version number inline.
+            const tag = `v${v.versionNo}`;
             // DEC-901: a row superseded by a later upload in the SAME
             // chain (idxInChain > 0 means this chain's own head, at index
             // 0, replaced it) carries REPLACED -- never across unrelated
@@ -115,6 +118,10 @@ export function VersionList({ versions, onDeleted, contentStatus, statusChangedA
                     </span>
                   )}
                 </div>
+                {/* w5-i: always present (empty on every non-current row) so
+                    the row's grid column count never shifts Download/Delete
+                    -- see content.css. */}
+                <span className="chq-content-version-newest">{isCurrent ? 'NEWEST' : ''}</span>
                 <a href={`/files/${v.id}`} download className="chq-content-version-download">
                   Download
                 </a>

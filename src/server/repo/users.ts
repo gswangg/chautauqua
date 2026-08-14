@@ -148,7 +148,17 @@ export async function deleteUserSessions(db: Db, userId: string): Promise<void> 
  * contact is named `${firstName} ${lastName}`; otherwise the user's email is
  * the best identifying attribute available (matches the existing
  * getUserEmail rationale). A missing user row is an invariant violation and
- * throws — no id fallback, fail loudly. */
+ * throws — no id fallback, fail loudly.
+ *
+ * w5-i note: DEC-708's batchUserDisplayNames (review/users.ts) additionally
+ * tries an org-scoped contact-email match when a user has no contactId link
+ * — a strictly more complete resolver than this one. This function is NOT
+ * rewritten to delegate to it: dozens of route tests script this module's
+ * db calls as an exact ordered select-queue (test/submission-revisions.ts
+ * et al.), and batchUserDisplayNames issues a different query shape/count
+ * that desyncs every one of those scripts. Left as a narrower interpretation
+ * for this task — flagged rather than silently deciding to touch a
+ * widely-depended-on call shape. */
 export async function resolveActorName(db: Db, userId: string): Promise<string> {
   const rows = await db
     .select({ email: schema.user.email, contactId: schema.user.contactId })

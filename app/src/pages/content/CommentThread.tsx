@@ -68,7 +68,7 @@ export function CommentThread({ comments, onSend }: CommentThreadProps) {
           className="chq-textarea"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="Write a note to the speakers..."
+          placeholder="Write a note — sent with the decision, and kept on the thread"
           disabled={pending}
         />
         <div className="chq-content-comment-actions">
