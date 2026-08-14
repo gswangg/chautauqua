@@ -600,6 +600,18 @@
   gap: 0;
 }
 
+/* DEC-616 amendment (wave 15): the one-line caption that names the drawer's
+   save mechanism, sitting above the record rows. Colour/size come from
+   .chq-meta (styles.css); this rule only owns its placement. The UA's
+   default <p> margin has to go explicitly -- the sheet has no global
+   paragraph reset, and .chq-contacts-record is a gap:0 column, so an
+   unreset 1em top margin would open a gap the row rhythm never asked for.
+   The bottom margin is deliberate: it separates the caption from the first
+   label/value row, which carries its own 12px padding and hairline. */
+.chq-contacts-record-save-caption {
+  margin: 0 0 12px;
+}
+
 .chq-contacts-record-row {
   display: grid;
   /* minmax(0,1fr), not bare 1fr: a bare 1fr's auto min-content floor is the
