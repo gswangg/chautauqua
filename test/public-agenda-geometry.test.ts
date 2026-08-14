@@ -60,8 +60,11 @@ describe("DEC-584 (wave 64 amendment): AgendaDayGrid time-row sequence replaces 
     expect(times).toEqual(["8:00 AM", "10:00 AM"]);
   });
 
-  it("a block now carries the Save/Saved itinerary toggle in its head row (DEC-584 wave 64 supersedes the prior no-checkbox rule)", () => {
-    const html = String(AgendaDayGrid({ day: "2026-08-10", items: ITEMS, event: EVENT, from: "agenda" }));
+  // w69-d (DEC-584 amendment): the toggle now requires itinerary=true --
+  // "a save control renders only where its script does" -- AgendaDayGrid
+  // no longer renders it unconditionally.
+  it("a block now carries the Save/Saved itinerary toggle in its head row when itinerary=true (DEC-584 wave 64 supersedes the prior no-checkbox rule)", () => {
+    const html = String(AgendaDayGrid({ day: "2026-08-10", items: ITEMS, event: EVENT, from: "agenda", itinerary: true }));
     expect(html).toContain('class="chq-itinerary-toggle" value="s1"');
     expect(html).toContain('class="chq-itinerary-toggle" value="s2"');
   });
@@ -96,6 +99,17 @@ describe("DEC-602 (EMB-09 w2): /schedule renders the list at every width, never 
     expect(html).toContain('class="chq-pub-save-on"');
     expect(html).toContain("Saved");
     expect(html).not.toContain("Add to itinerary");
+  });
+
+  // w69-d (DEC-584 amendment): unlike AgendaContent, ScheduleContent's Save
+  // toggle and ItineraryScript are NOT gated on !embed -- /schedule renders
+  // its own inline count and .ics link rather than relying on the rail
+  // (task note: "Do NOT change ScheduleContent"), so /embed/:slug/schedule
+  // keeps both at every width.
+  it("/embed carries the itinerary toggle and its script too (unlike /agenda)", () => {
+    const html = String(ScheduleContent({ event: EVENT, items: ITEMS, total: ITEMS.length, embed: true }));
+    expect(html).toContain('class="chq-itinerary-toggle" value="s1"');
+    expect(html).toContain("chq_itinerary_ev");
   });
 });
 

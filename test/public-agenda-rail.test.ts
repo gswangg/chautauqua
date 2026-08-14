@@ -168,6 +168,17 @@ describe("DEC-683 amendment (wave 67-d): public agenda rail + Save persistence",
     // itinerary script every other itinerary surface renders (assert on
     // the stable storage-key literal rather than the whole script body).
     expect(html).toContain(JSON.stringify(itineraryStorageKey("conf")));
+
+    // w69-d (DEC-584 amendment): "a save control renders only where its
+    // script does" -- non-embed /agenda now carries the Save toggle in
+    // BOTH the desktop grid (.chq-pub-agenda-day) and the phone list
+    // (.chq-pub-agenda-list), not just the grid.
+    const gridMatch = html.match(/<div class="chq-pub-agenda-day">([\s\S]*?)<\/div>\s*<\/div>\s*<\/section>/);
+    expect(gridMatch).toBeTruthy();
+    expect(gridMatch![1]).toContain("chq-itinerary-toggle");
+    const listMatch = html.match(/<ol class="chq-pub-agenda-list">([\s\S]*?)<\/ol>/);
+    expect(listMatch).toBeTruthy();
+    expect(listMatch![1]).toContain("chq-itinerary-toggle");
   });
 
   it("GET /embed/conf/agenda renders none of the rail markup and no itinerary script (DEC-672/683)", async () => {
@@ -183,6 +194,14 @@ describe("DEC-683 amendment (wave 67-d): public agenda rail + Save persistence",
     expect(html).not.toContain("Rooms in use today");
     expect(html).not.toContain("Printable programme");
     expect(html).not.toContain(JSON.stringify(itineraryStorageKey("conf")));
+    // w69-d (DEC-584 amendment): a Save control never renders where its
+    // script does not -- /embed mounts no ItineraryScript, so it must ship
+    // zero chq-itinerary-toggle checkboxes (desktop grid AND phone list).
+    // Matches the class ATTRIBUTE, not the bare selector text -- the
+    // <style> block legitimately defines .chq-itinerary-toggle CSS rules
+    // for every surface regardless of embed (see the comment above this
+    // test's sibling assertions in public.test.ts).
+    expect(html).not.toContain('class="chq-itinerary-toggle"');
 
     // DEC-672: chromeless surface is closed both ways -- no href may point
     // at the full-chrome /e/... surface or at /submit/....

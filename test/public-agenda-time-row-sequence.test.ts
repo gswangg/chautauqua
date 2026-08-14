@@ -100,8 +100,11 @@ describe("DEC-584 (wave 64): AgendaDayGrid is a time-row sequence", () => {
   });
 
   it("the block carries the Save/Saved ItineraryToggle top-right in its head row, alongside the room eyebrow", () => {
+    // w69-d (DEC-584 amendment): the toggle now requires itinerary=true --
+    // AgendaDayGrid renders it only where AgendaContent's ItineraryScript
+    // mount also renders (non-embed).
     const items = [item({ submissionId: "s1" })];
-    const html = String(AgendaDayGrid({ day: "2026-08-10", items, event: EVENT, from: "agenda" }));
+    const html = String(AgendaDayGrid({ day: "2026-08-10", items, event: EVENT, from: "agenda", itinerary: true }));
     const headMatch = html.match(/<div class="chq-pub-agenda-block-head">([\s\S]*?)<\/div>\s*<div class="chq-pub-agenda-block-title">/);
     expect(headMatch).toBeTruthy();
     expect(headMatch![1]).toContain("chq-pub-agenda-block-room");
