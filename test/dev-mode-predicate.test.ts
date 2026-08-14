@@ -11,7 +11,7 @@ import { shouldMountDevMailbox } from "../src/routes/dev/mailbox";
 import { resolveBaseUrl } from "../src/server/origin";
 import { makeMailer } from "../src/server/context";
 import { DevSinkMailer } from "../src/mail/dev-sink";
-import { ResendMailer } from "../src/mail/resend";
+import { EmailBindingMailer } from "../src/mail/email-binding";
 import { UnconfiguredMailer } from "../src/mail/unconfigured";
 import { MailNotConfiguredError } from "../src/mail/types";
 
@@ -35,7 +35,7 @@ describe("isDevMode (DEC-434): one predicate, every gate agrees", () => {
 
     it(`DEV_MODE=${JSON.stringify(devMode)}: makeMailer's mailer selection agrees with isDevMode`, () => {
       const mailer = makeMailer(stubDb, {
-        RESEND_API_KEY: "re_test_key",
+        EMAIL: { send: async () => {} },
         DEV_MODE: devMode,
         MAIL_FROM_EMAIL: "noreply@chautauqua.cc",
         MAIL_FROM_NAME: "Chautauqua",
@@ -43,7 +43,7 @@ describe("isDevMode (DEC-434): one predicate, every gate agrees", () => {
       if (expected) {
         expect(mailer).toBeInstanceOf(DevSinkMailer);
       } else {
-        expect(mailer).toBeInstanceOf(ResendMailer);
+        expect(mailer).toBeInstanceOf(EmailBindingMailer);
       }
     });
 
@@ -70,22 +70,22 @@ describe("isDevMode (DEC-434): one predicate, every gate agrees", () => {
     });
   }
 
-  it("DEV_MODE='0' with RESEND_API_KEY set now selects ResendMailer, not DevSinkMailer (the DEC-434 regression)", () => {
+  it("DEV_MODE='0' with EMAIL bound now selects EmailBindingMailer, not DevSinkMailer (the DEC-434 regression)", () => {
     const mailer = makeMailer(stubDb, {
-      RESEND_API_KEY: "re_test_key",
+      EMAIL: { send: async () => {} },
       DEV_MODE: "0",
       MAIL_FROM_EMAIL: "noreply@chautauqua.cc",
       MAIL_FROM_NAME: "Chautauqua",
     });
-    expect(mailer).toBeInstanceOf(ResendMailer);
+    expect(mailer).toBeInstanceOf(EmailBindingMailer);
     expect(mailer).not.toBeInstanceOf(DevSinkMailer);
   });
 });
 
 describe("makeMailer (DEC-547): never silently selects the dev sink", () => {
-  it("DEV_MODE='1' with no RESEND_API_KEY set selects DevSinkMailer", () => {
+  it("DEV_MODE='1' with no EMAIL bound selects DevSinkMailer", () => {
     const mailer = makeMailer(stubDb, {
-      RESEND_API_KEY: undefined,
+      EMAIL: undefined,
       DEV_MODE: "1",
       MAIL_FROM_EMAIL: undefined,
       MAIL_FROM_NAME: undefined,
@@ -100,11 +100,11 @@ describe("makeMailer (DEC-547): never silently selects the dev sink", () => {
   // construction (which used to 500 the whole request before any recipient
   // was attempted).
   for (const devMode of [undefined, "", "0", "true", "yes"]) {
-    it(`DEV_MODE=${JSON.stringify(devMode)} with no RESEND_API_KEY set never throws at construction; selects UnconfiguredMailer, which throws MailNotConfiguredError from send()`, async () => {
+    it(`DEV_MODE=${JSON.stringify(devMode)} with no EMAIL bound never throws at construction; selects UnconfiguredMailer, which throws MailNotConfiguredError from send()`, async () => {
       let mailer: ReturnType<typeof makeMailer> | undefined;
       expect(() => {
         mailer = makeMailer(stubDb, {
-          RESEND_API_KEY: undefined,
+          EMAIL: undefined,
           DEV_MODE: devMode,
           MAIL_FROM_EMAIL: undefined,
           MAIL_FROM_NAME: undefined,
@@ -116,7 +116,7 @@ describe("makeMailer (DEC-547): never silently selects the dev sink", () => {
         typeof makeMailer
       >[0];
       const guardedMailer = makeMailer(insertedDb, {
-        RESEND_API_KEY: undefined,
+        EMAIL: undefined,
         DEV_MODE: devMode,
         MAIL_FROM_EMAIL: undefined,
         MAIL_FROM_NAME: undefined,

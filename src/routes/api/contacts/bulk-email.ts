@@ -174,7 +174,7 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
     const failed: { email: string; message: string }[] = [];
 
     // DEC-547 amendment (wave 43): makeMailer never throws — it always
-    // returns a Mailer (DevSinkMailer/ResendMailer/UnconfiguredMailer), so a
+    // returns a Mailer (DevSinkMailer/EmailBindingMailer/UnconfiguredMailer), so a
     // misconfigured environment surfaces as a per-recipient 'failed' row
     // from UnconfiguredMailer.send inside the try/catch below, not here.
     const mailer = makeMailer(c.var.db, c.env);

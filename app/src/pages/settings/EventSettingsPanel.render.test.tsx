@@ -87,11 +87,11 @@ describe('EventSettingsPanel unscheduled-by-window notice (DEC-844)', () => {
     expect(within(notice).getByRole('link', { name: 'View agenda' })).toHaveAttribute('href', '/agenda');
   });
 
-  describe('mail configuration Email row (DEC-996 amendment, wave 43)', () => {
-    it('reads "Sending as <fromEmail>" when resend is configured', async () => {
+  describe('mail configuration Email row (DEC-996 amendment, wave 57)', () => {
+    it('reads "Sending as <fromEmail>" when the email binding is configured', async () => {
       mockApi({
         [`GET /api/v1/events/${EVENT_ID}`]: eventDetail,
-        'GET /api/v1/mail-status': { provider: 'resend', configured: true, fromEmail: 'cfp@example.org' },
+        'GET /api/v1/mail-status': { provider: 'email-binding', configured: true, fromEmail: 'cfp@example.org' },
       });
       renderSummary();
 

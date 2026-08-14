@@ -59,7 +59,7 @@ function brandingSummary(form: EventSettingsForm): string {
 // surfaced here so a missing key is discoverable in Settings rather than
 // only as a 500 when a speaker submits.
 interface MailStatus {
-  provider: 'dev-sink' | 'resend' | 'none';
+  provider: 'dev-sink' | 'email-binding' | 'none';
   configured: boolean;
   fromEmail: string | null;
 }

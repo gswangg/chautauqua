@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { remindNow } from "../src/server/repo/tasks";
 import { d1EmailLogWriter, type Db } from "../src/server/context";
-import { ResendMailer } from "../src/mail/resend";
+import { EmailBindingMailer } from "../src/mail/email-binding";
 import type { Mailer } from "../src/mail/types";
 import type { KVStore } from "../src/auth/claim";
 import { registerErrorHandler } from "../src/server/http";
@@ -144,13 +144,13 @@ describe("remindNow (DEC-238 class 2 organizer batch, partial mailer failure)", 
     expect(updateCalls).toHaveLength(1);
   });
 
-  // DEC-923/DEC-996: reminders.ts has no logFailedSend call of its own — it
-  // inherits the audit row purely from the mailer it's given. A fully-failed
-  // remindNow batch driven by a REAL ResendMailer (over a throwing fetch)
-  // must still leave one 'failed' email_log row per recipient, sharing a
-  // batchId — the regression the graders filed as '0 total' for a
-  // fully-failed multi-recipient send.
-  it("leaves a 'failed' email_log row per recipient when every send is rejected by a real ResendMailer", async () => {
+  // DEC-923/DEC-996 (amendment wave 57): reminders.ts has no logFailedSend
+  // call of its own — it inherits the audit row purely from the mailer it's
+  // given. A fully-failed remindNow batch driven by a REAL EmailBindingMailer
+  // (over a throwing send_email binding) must still leave one 'failed'
+  // email_log row per recipient, sharing a batchId — the regression the
+  // graders filed as '0 total' for a fully-failed multi-recipient send.
+  it("leaves a 'failed' email_log row per recipient when every send is rejected by a real EmailBindingMailer", async () => {
     const contacts = ["a", "b", "c"].map((letter, i) => ({
       assignmentId: `assign_${letter}`,
       taskId: `task_${i}`,
@@ -169,14 +169,18 @@ describe("remindNow (DEC-238 class 2 organizer batch, partial mailer failure)", 
     }));
     const { db, updateCalls, inserts } = fakeDb(contacts);
 
-    const throwingFetch = (async () => {
-      throw new Error("simulated total provider outage");
-    }) as unknown as typeof fetch;
+    const throwingBinding = {
+      send: async () => {
+        throw new Error("simulated total provider outage");
+      },
+    };
     const log = d1EmailLogWriter(db);
-    const mailer: Mailer = new ResendMailer(throwingFetch, "re_test_key", log, {
-      email: "noreply@example.com",
-      name: "Chautauqua",
-    });
+    const mailer: Mailer = new EmailBindingMailer(
+      throwingBinding,
+      log,
+      { email: "noreply@example.com", name: "Chautauqua" },
+      (_from, to, raw) => ({ to, raw }),
+    );
 
     const result = await remindNow(db, mailer, "event_1", undefined, NOW, new InMemoryKV(), ORIGIN);
 
@@ -199,7 +203,7 @@ describe("remindNow (DEC-238 class 2 organizer batch, partial mailer failure)", 
 // DEC-547 (w43-b): the route's own makeMailer() call (POST
 // /api/v1/events/:eventId/onboarding/remind, src/routes/tasks.ts) used to
 // sit above remindNow entirely, outside any guarded region — a misconfigured
-// environment (missing RESEND_API_KEY) threw synchronously and 500'd the
+// environment (missing the EMAIL binding) threw synchronously and 500'd the
 // "Remind laggards" button instead of returning the normal {sent, failed}
 // envelope. Route-level coverage, mirroring
 // test/review-remind-mailer-failure.test.ts's Hono app pattern.
@@ -219,7 +223,7 @@ vi.mock("../src/server/context", async () => {
   return {
     ...actual,
     makeMailer: vi.fn(() => {
-      throw new Error("RESEND_API_KEY is not configured and DEV_MODE is not \"1\"");
+      throw new Error("the EMAIL binding is not configured and DEV_MODE is not \"1\"");
     }),
   };
 });
@@ -257,6 +261,6 @@ describe("POST /api/v1/events/:eventId/onboarding/remind (DEC-547 mailer-constru
     const body = (await res.json()) as { sent: number; failed: { email: string; message: string }[] };
     expect(body.sent).toBe(0);
     expect(body.failed).toHaveLength(1);
-    expect(body.failed[0]?.message).toContain("RESEND_API_KEY");
+    expect(body.failed[0]?.message).toContain("EMAIL binding");
   });
 });

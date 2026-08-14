@@ -472,7 +472,7 @@ taskRoutes.post("/events/:eventId/onboarding/remind", requireOrganizer, csrfJson
 
   const kv = c.env.KV as unknown as KVStore;
   // DEC-547/DEC-238 class 2: makeMailer throws when the environment isn't
-  // configured for sending (missing RESEND_API_KEY etc) — that's a
+  // configured for sending (missing the EMAIL binding etc) — that's a
   // config-level failure, not a per-recipient one, so it can't be caught by
   // sendReminderEmails' per-recipient try inside remindNow. Guard the
   // construction itself so a misconfigured environment reports a normal

@@ -1,6 +1,6 @@
 // DEC-547 amendment (wave 43): makeMailer must never throw at construction.
 // Before this change, an unconfigured deployment (DEV_MODE unset/not "1",
-// no RESEND_API_KEY) made makeMailer throw BEFORE any per-recipient
+// no EMAIL binding) made makeMailer throw BEFORE any per-recipient
 // try/catch could run, so every send path 500'd and wrote no email_log row
 // at all -- which is also why a fully-failed batch read '0 total' in Comms
 // History. UnconfiguredMailer instead behaves like every other Mailer: log
@@ -27,10 +27,10 @@ const baseEmail: RenderedEmail = {
 };
 
 describe("makeMailer — unconfigured deployment (DEC-547 amendment)", () => {
-  it("never throws at construction with DEV_MODE unset and no RESEND_API_KEY", () => {
+  it("never throws at construction with DEV_MODE unset and no EMAIL binding", () => {
     const log = new InMemoryEmailLog();
     const db = { insert: () => ({ values: async () => {} }) } as never;
-    expect(() => makeMailer(db, { DEV_MODE: undefined, RESEND_API_KEY: undefined, MAIL_FROM_EMAIL: undefined, MAIL_FROM_NAME: undefined })).not.toThrow();
+    expect(() => makeMailer(db, { DEV_MODE: undefined, EMAIL: undefined, MAIL_FROM_EMAIL: undefined, MAIL_FROM_NAME: undefined })).not.toThrow();
     void log;
   });
 
@@ -45,7 +45,7 @@ describe("makeMailer — unconfigured deployment (DEC-547 amendment)", () => {
     };
     const mailer = makeMailer(dbLike as never, {
       DEV_MODE: "0",
-      RESEND_API_KEY: undefined,
+      EMAIL: undefined,
       MAIL_FROM_EMAIL: undefined,
       MAIL_FROM_NAME: undefined,
     });
@@ -62,7 +62,7 @@ describe("makeMailer — unconfigured deployment (DEC-547 amendment)", () => {
     }
   });
 
-  it("still selects the dev sink when DEV_MODE is \"1\", regardless of RESEND_API_KEY", async () => {
+  it("still selects the dev sink when DEV_MODE is \"1\", regardless of the EMAIL binding", async () => {
     const log = new InMemoryEmailLog();
     const rows: unknown[] = [];
     const dbLike = {
@@ -72,7 +72,7 @@ describe("makeMailer — unconfigured deployment (DEC-547 amendment)", () => {
         },
       }),
     };
-    const mailer = makeMailer(dbLike as never, { DEV_MODE: "1", RESEND_API_KEY: undefined, MAIL_FROM_EMAIL: undefined, MAIL_FROM_NAME: undefined });
+    const mailer = makeMailer(dbLike as never, { DEV_MODE: "1", EMAIL: undefined, MAIL_FROM_EMAIL: undefined, MAIL_FROM_NAME: undefined });
     await mailer.send(baseEmail);
     expect(rows).toHaveLength(1);
     expect((rows[0] as { status: string }).status).toBe("sent");
@@ -165,7 +165,7 @@ afterEach(() => {
 const organizerAuth: AuthInfo = { userId: "u-1", role: "organizer", orgId: ORG_A };
 
 function withEnv(kv: KVStore) {
-  // DEV_MODE unset, no RESEND_API_KEY/MAIL_FROM_EMAIL: makeMailer resolves
+  // DEV_MODE unset, no EMAIL/MAIL_FROM_EMAIL: makeMailer resolves
   // the real UnconfiguredMailer (no mock needed for this route test).
   return { KV: kv as unknown as AppEnv["Bindings"]["KV"] };
 }

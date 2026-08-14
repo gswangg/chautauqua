@@ -1,7 +1,7 @@
-// DEC-996 amendment (wave 43): GET /api/v1/mail-status surfaces
-// mailConfigStatus() so a missing key is discoverable in Settings without
-// a 500. organizer-only (requireOrganizer); the response body must never
-// echo any part of RESEND_API_KEY, whatever else it contains.
+// DEC-996 amendment (wave 57): GET /api/v1/mail-status surfaces
+// mailConfigStatus() so a missing EMAIL binding is discoverable in Settings
+// without a 500. organizer-only (requireOrganizer); the response body must
+// never echo binding internals, whatever else it contains.
 
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
@@ -20,19 +20,19 @@ function buildApp(role: "organizer" | "speaker") {
   return app;
 }
 
-const SECRET_KEY = "re_super_secret_key_should_never_leak";
+const FAKE_EMAIL_BINDING = { send: async () => {} };
 
-describe("GET /api/v1/mail-status (DEC-996 amendment, wave 43)", () => {
+describe("GET /api/v1/mail-status (DEC-996 amendment, wave 57)", () => {
   it("200s for an organizer with the mailConfigStatus shape", async () => {
     const app = buildApp("organizer");
     const res = await app.request(
       "/api/v1/mail-status",
       {},
-      { KV: {}, RESEND_API_KEY: SECRET_KEY, MAIL_FROM_EMAIL: "cfp@example.org" },
+      { KV: {}, EMAIL: FAKE_EMAIL_BINDING, MAIL_FROM_EMAIL: "cfp@example.org" },
     );
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toEqual({ provider: "resend", configured: true, fromEmail: "cfp@example.org" });
+    expect(body).toEqual({ provider: "email-binding", configured: true, fromEmail: "cfp@example.org" });
   });
 
   it("403s for a speaker", async () => {
@@ -40,30 +40,29 @@ describe("GET /api/v1/mail-status (DEC-996 amendment, wave 43)", () => {
     const res = await app.request(
       "/api/v1/mail-status",
       {},
-      { KV: {}, RESEND_API_KEY: SECRET_KEY, MAIL_FROM_EMAIL: "cfp@example.org" },
+      { KV: {}, EMAIL: FAKE_EMAIL_BINDING, MAIL_FROM_EMAIL: "cfp@example.org" },
     );
     expect(res.status).toBe(403);
   });
 
-  it("never echoes the key anywhere in the response body, in any provider state", async () => {
+  it("never echoes binding internals anywhere in the response body, in any provider state", async () => {
     const app = buildApp("organizer");
 
-    const resendRes = await app.request(
+    const boundRes = await app.request(
       "/api/v1/mail-status",
       {},
-      { KV: {}, RESEND_API_KEY: SECRET_KEY, MAIL_FROM_EMAIL: "cfp@example.org" },
+      { KV: {}, EMAIL: FAKE_EMAIL_BINDING, MAIL_FROM_EMAIL: "cfp@example.org" },
     );
-    const resendText = await resendRes.text();
-    expect(resendText).not.toContain(SECRET_KEY);
+    const boundText = await boundRes.text();
+    expect(boundText).not.toContain("function");
 
     const devRes = await app.request(
       "/api/v1/mail-status",
       {},
-      { KV: {}, DEV_MODE: "1", RESEND_API_KEY: SECRET_KEY },
+      { KV: {}, DEV_MODE: "1", EMAIL: FAKE_EMAIL_BINDING },
     );
     const devBody = await devRes.json();
     expect(devBody).toEqual({ provider: "dev-sink", configured: true, fromEmail: null });
-    expect(JSON.stringify(devBody)).not.toContain(SECRET_KEY);
 
     const noneRes = await app.request("/api/v1/mail-status", {}, { KV: {} });
     const noneBody = await noneRes.json();

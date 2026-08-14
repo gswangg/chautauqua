@@ -4,22 +4,37 @@
 // (src/routes/public/submit.tsx): a throwing mailer must not stop the
 // confirmation page from rendering, and the failed attempt is still logged
 // to email_log with status 'failed' (DEC-923: 'failed' is the only
-// failure word — ResendMailer's own contract, DEC-996).
+// failure word — EmailBindingMailer's own contract, DEC-996 amendment wave 57).
 //
 // Mounts the real publicSubmitRoutes sub-app against a minimal fake db that
 // queues select() rows in call order and records every insert(), mirroring
-// the fakeDb pattern in test/submit-hidden-file-field.test.ts. env.RESEND_API_KEY
-// is set and env.DEV_MODE is false, so server/context.ts's makeMailer selects
-// ResendMailer (not the dev sink); globalThis.fetch is stubbed for the
-// duration of each test so ResendMailer's HTTP call is intercepted.
+// the fakeDb pattern in test/submit-hidden-file-field.test.ts. env.EMAIL is a
+// fake send_email binding and env.DEV_MODE is false, so server/context.ts's
+// makeMailer selects EmailBindingMailer (not the dev sink); the binding's
+// send() is stubbed per test so its call is intercepted.
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { publicSubmitRoutes } from "../src/routes/public/submit";
 import { registerErrorHandler } from "../src/server/http";
 import { CSRF_COOKIE_NAME } from "../src/auth/cookies";
 import type { AppEnv } from "../src/server/env";
 import type { R2Bucket } from "@cloudflare/workers-types";
+
+// `cloudflare:email` only exists inside workerd; server/context.ts's real
+// message factory does `await import("cloudflare:email")` lazily so vitest
+// never needs to resolve it unless a send actually runs (which this suite's
+// real-makeMailer path does) — stub the ambient module so that dynamic
+// import resolves the same way workerd's would.
+vi.mock("cloudflare:email", () => ({
+  EmailMessage: class {
+    constructor(
+      public from: string,
+      public to: string,
+      public raw: string,
+    ) {}
+  },
+}));
 
 const EVENT_ROW = {
   id: "event-1",
@@ -66,7 +81,7 @@ function makeChain(rows: unknown[]) {
 
 /** Feeds successive db.select() calls the queued row sets, in order, and
  * records every insert() write (including email_log rows written by
- * ResendMailer via d1EmailLogWriter). */
+ * EmailBindingMailer via d1EmailLogWriter). */
 function fakeDb(selectQueue: unknown[][]) {
   let call = 0;
   const inserts: any[] = [];
@@ -122,17 +137,16 @@ function fakeFilesBucket(): R2Bucket {
   } as unknown as R2Bucket;
 }
 
-/** Stub fetch whose response is always a 500 — exercises the ResendMailer
- * branch of server/context.ts's makeMailer (env.RESEND_API_KEY set +
- * DEV_MODE false), not the dev sink. */
-function throwingFetch() {
-  return vi.fn(async () => new Response("simulated provider outage", { status: 500 })) as unknown as typeof fetch;
+/** Fake send_email binding whose send() always throws — exercises the
+ * EmailBindingMailer branch of server/context.ts's makeMailer (env.EMAIL set
+ * + DEV_MODE false), not the dev sink. */
+function throwingEmailBinding() {
+  return { send: vi.fn(async () => { throw new Error("simulated provider outage"); }) };
 }
 
-const originalFetch = globalThis.fetch;
-afterEach(() => {
-  globalThis.fetch = originalFetch;
-});
+function okEmailBinding() {
+  return { send: vi.fn(async () => {}) };
+}
 
 function appWithDb(db: AppEnv["Variables"]["db"]) {
   const app = new Hono<AppEnv>();
@@ -174,7 +188,6 @@ function selectQueueFor() {
 
 describe("DEC-972: confirmation quotes the event's own record prefix, not a hardcoded literal", () => {
   it("renders the confirmation page with a ref built from the event's recordPrefix when it isn't 'SES'", async () => {
-    globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({ id: "re_ok" }), { status: 200 })) as unknown as typeof fetch;
     const eventRow = { ...EVENT_ROW, recordPrefix: "DEVX" };
     const { db, inserts } = fakeDb([[eventRow], [FORM_ROW], FIELD_ROWS, [TRACK_ROW], [], [{ seq: 7 }], []]);
     const app = appWithDb(db);
@@ -183,7 +196,7 @@ describe("DEC-972: confirmation quotes the event's own record prefix, not a hard
     const res = await app.request(req, undefined, {
       KV: fakeKv(),
       FILES: fakeFilesBucket(),
-      RESEND_API_KEY: "re_test_key",
+      EMAIL: okEmailBinding(),
       MAIL_FROM_EMAIL: "noreply@example.com",
       MAIL_FROM_NAME: "Chautauqua",
     } as unknown as AppEnv["Bindings"]);
@@ -207,7 +220,6 @@ describe("DEC-972: confirmation quotes the event's own record prefix, not a hard
 
 describe("public submit: mailer failure is best-effort (DEC-237/DEC-238)", () => {
   it("returns the confirmation page, persists the submission, and logs a 'failed' email_log row when the mailer throws", async () => {
-    globalThis.fetch = throwingFetch();
     const { db, inserts } = fakeDb(selectQueueFor());
     const app = appWithDb(db);
     const req = submitForm();
@@ -215,10 +227,10 @@ describe("public submit: mailer failure is best-effort (DEC-237/DEC-238)", () =>
     const res = await app.request(req, undefined, {
       KV: fakeKv(),
       FILES: fakeFilesBucket(),
-      RESEND_API_KEY: "re_test_key",
+      EMAIL: throwingEmailBinding(),
       // DEV_MODE is typed as an optional string (src/server/env.ts); leaving
       // it unset (falsy) is what makeMailer treats as "not dev mode" so it
-      // selects ResendMailer over the dev sink.
+      // selects EmailBindingMailer over the dev sink.
       MAIL_FROM_EMAIL: "noreply@example.com",
       MAIL_FROM_NAME: "Chautauqua",
     } as unknown as AppEnv["Bindings"]);
@@ -242,20 +254,20 @@ describe("public submit: mailer failure is best-effort (DEC-237/DEC-238)", () =>
     expect(submissionInserts).toHaveLength(1);
     expect((submissionInserts[0] as any).title).toBe("My great talk");
 
-    // ResendMailer logs the failed attempt with status 'failed' before
+    // EmailBindingMailer logs the failed attempt with status 'failed' before
     // rethrowing (DEC-923: 'failed' is the only failure word — src/mail/
-    // resend.ts, DEC-996) — the route's try/catch around mailer.send
-    // swallows that rethrow.
+    // email-binding.ts, DEC-996 amendment wave 57) — the route's try/catch
+    // around mailer.send swallows that rethrow.
     const emailLogInserts = inserts.filter(
       (v) => typeof v === "object" && v !== null && !Array.isArray(v) && "toEmail" in (v as object),
     );
     expect(emailLogInserts).toHaveLength(1);
     expect((emailLogInserts[0] as any).status).toBe("failed");
     expect((emailLogInserts[0] as any).toEmail).toBe("ada@example.com");
-    expect((emailLogInserts[0] as any).provider).toBe("resend");
+    expect((emailLogInserts[0] as any).provider).toBe("cloudflare");
   });
 
-  // DEC-547 wave-43 amendment: a misconfigured environment (no RESEND_API_KEY,
+  // DEC-547 wave-43 amendment: a misconfigured environment (no EMAIL binding,
   // DEV_MODE unset) no longer throws from makeMailer at all — makeMailer NEVER
   // throws; it returns UnconfiguredMailer (src/mail/unconfigured.ts), which
   // writes the email_log row (provider 'none', status 'failed') and only then
@@ -272,7 +284,7 @@ describe("public submit: mailer failure is best-effort (DEC-237/DEC-238)", () =>
     const res = await app.request(req, undefined, {
       KV: fakeKv(),
       FILES: fakeFilesBucket(),
-      // No RESEND_API_KEY and DEV_MODE unset: mailConfigStatus reports
+      // No EMAIL binding and DEV_MODE unset: mailConfigStatus reports
       // provider 'none', so makeMailer hands back UnconfiguredMailer.
       MAIL_FROM_EMAIL: "noreply@example.com",
       MAIL_FROM_NAME: "Chautauqua",
@@ -289,7 +301,7 @@ describe("public submit: mailer failure is best-effort (DEC-237/DEC-238)", () =>
     expect(submissionInserts).toHaveLength(1);
 
     // The attempt is still auditable: UnconfiguredMailer logs before it
-    // throws, so exactly one row lands — provider 'none' (not 'resend', which
+    // throws, so exactly one row lands — provider 'none' (not 'cloudflare', which
     // was never contacted) and DEC-923's single failure word.
     const emailLogInserts = inserts.filter(
       (v) => typeof v === "object" && v !== null && !Array.isArray(v) && "toEmail" in (v as object),

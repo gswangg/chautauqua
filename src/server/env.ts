@@ -13,11 +13,15 @@ export type Bindings = {
   // absolute links (e.g. `wrangler dev --var PUBLIC_BASE_URL:http://localhost:8801`
   // for a non-default port). Must be an absolute http/https URL when set.
   PUBLIC_BASE_URL?: string;
-  // DEC-996: production mail goes through Resend over HTTP. Optional so test
-  // env fixtures and pre-deploy local dev stay green; makeMailer only selects
-  // ResendMailer when RESEND_API_KEY is set and isDevMode(env) is false. The
-  // key is a Worker secret, set at deploy time — never checked in.
-  RESEND_API_KEY?: string;
+  // DEC-996 amendment (wave 57): production mail goes through the Cloudflare
+  // Email Service `send_email` binding — no API keys. Optional so test env
+  // fixtures and pre-deploy local dev stay green; makeMailer only selects
+  // EmailBindingMailer when EMAIL is bound and isDevMode(env) is false.
+  // Structural (DEC-002: env.ts never imports `cloudflare:email`) — the real
+  // EmailMessage construction lives in src/server/context.ts.
+  EMAIL?: { send(message: unknown): Promise<unknown> };
+  // Stage 2: sender identity for the EMAIL binding. Optional so test env
+  // fixtures and pre-deploy local dev stay green.
   MAIL_FROM_EMAIL?: string;
   MAIL_FROM_NAME?: string;
   // Optional one-way Airtable sync (bonus): both must be set (as Worker
@@ -69,22 +73,21 @@ export function isDevMode(env: Pick<Bindings, "DEV_MODE">): boolean {
   return env.DEV_MODE === "1";
 }
 
-/** DEC-996 amendment (wave 43): the ONE predicate/read for "is mail
+/** DEC-996 amendment (wave 57): the ONE predicate/read for "is mail
  * configured" -- the single source for makeMailer's selection
  * (src/server/context.ts), GET /api/v1/mail-status, and the Settings "Email"
  * definition row. isDevMode(env) is checked FIRST (DEC-434), so a dev worker
- * always reports 'dev-sink' even if a stray key is present in the
- * environment. A non-dev deployment is 'resend' only when BOTH RESEND_API_KEY
- * and MAIL_FROM_EMAIL are set (mirrors makeMailer's two separate throws under
- * DEC-547), otherwise 'none'. fromEmail reflects env.MAIL_FROM_EMAIL verbatim
- * (or null) in every provider state -- including 'none', where a set
- * from-address with a missing key is exactly what an operator needs to see.
- * It is never the key: this status never returns or logs any part of it. */
+ * always reports 'dev-sink' even if EMAIL is bound. A non-dev deployment is
+ * 'email-binding' only when BOTH the EMAIL binding and MAIL_FROM_EMAIL are
+ * set (mirrors makeMailer's two separate throws under DEC-547), otherwise
+ * 'none'. fromEmail reflects env.MAIL_FROM_EMAIL verbatim (or null) in every
+ * provider state -- including 'none', where a set from-address with no bound
+ * EMAIL is exactly what an operator needs to see. */
 export function mailConfigStatus(
-  env: Pick<Bindings, "RESEND_API_KEY" | "DEV_MODE" | "MAIL_FROM_EMAIL" | "MAIL_FROM_NAME">,
-): { provider: "dev-sink" | "resend" | "none"; configured: boolean; fromEmail: string | null } {
+  env: Pick<Bindings, "EMAIL" | "DEV_MODE" | "MAIL_FROM_EMAIL" | "MAIL_FROM_NAME">,
+): { provider: "dev-sink" | "email-binding" | "none"; configured: boolean; fromEmail: string | null } {
   const fromEmail = env.MAIL_FROM_EMAIL ?? null;
   if (isDevMode(env)) return { provider: "dev-sink", configured: true, fromEmail };
-  if (env.RESEND_API_KEY && env.MAIL_FROM_EMAIL) return { provider: "resend", configured: true, fromEmail };
+  if (env.EMAIL && env.MAIL_FROM_EMAIL) return { provider: "email-binding", configured: true, fromEmail };
   return { provider: "none", configured: false, fromEmail };
 }
