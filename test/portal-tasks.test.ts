@@ -340,6 +340,54 @@ describe("assertOwnAssignment", () => {
   });
 });
 
+// DEC-029 amendment: assertOwnAssignmentOr403's catch must only relabel the
+// ONE legitimate ownership mismatch (ForeignAssignmentError) as a 403 — any
+// other exception from assertOwnAssignment is an internal fault and must
+// surface untouched (not be mislabeled as "does not belong to you").
+describe("assertOwnAssignmentOr403 (DEC-029 amendment)", () => {
+  const scope: PortalAssignmentScope = {
+    id: "a1",
+    taskId: "t1",
+    eventId: "e1",
+    kind: "general",
+    formId: null,
+    deliverableKind: null,
+    contactId: "c1",
+    orgId: "org1",
+    status: "pending",
+    fileId: null,
+  };
+
+  it("the genuine foreign-contact case still throws a 403 ApiError", async () => {
+    const { assertOwnAssignmentOr403 } = await import("../src/routes/portal/tasks/shared");
+    try {
+      assertOwnAssignmentOr403(scope, "c2");
+      expect.unreachable();
+    } catch (err) {
+      expect((err as { status?: number }).status).toBe(403);
+      expect((err as Error).message).toBe("This task assignment does not belong to you");
+    }
+  });
+
+  it("a non-ownership exception from assertOwnAssignment surfaces untouched, not mislabeled as 403", async () => {
+    vi.resetModules();
+    vi.doMock("../src/server/repo/portal", async () => {
+      const actual = await vi.importActual<typeof import("../src/server/repo/portal")>("../src/server/repo/portal");
+      return {
+        ...actual,
+        assertOwnAssignment: () => {
+          throw new TypeError("internal fault, not an ownership mismatch");
+        },
+      };
+    });
+    const { assertOwnAssignmentOr403 } = await import("../src/routes/portal/tasks/shared");
+    expect(() => assertOwnAssignmentOr403(scope, "c1")).toThrow(TypeError);
+    expect(() => assertOwnAssignmentOr403(scope, "c1")).toThrow("internal fault, not an ownership mismatch");
+    vi.doUnmock("../src/server/repo/portal");
+    vi.resetModules();
+  });
+});
+
 describe("canTransitionInvite", () => {
   it("allows a transition only from 'invited'", () => {
     expect(canTransitionInvite("invited")).toBe(true);

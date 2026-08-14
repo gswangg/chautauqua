@@ -473,6 +473,45 @@ describe("runAirtableSync 429 backoff (DEC-725)", () => {
     expect(sleeps).toEqual([2000]);
   });
 
+  // DEC-725 amendment: an external Retry-After is untrusted — a huge value
+  // must not pause the cron for hours, and a negative value must not slip
+  // past Number.isFinite. Each variant must still produce a BOUNDED wait
+  // (<= 30_000ms, the module's MAX_RETRY_AFTER_MS) and the sync must still
+  // succeed on retry.
+  it.each([
+    ["86400", 30_000], // huge — clamped to the max
+    ["-5", 1000], // negative — falls back to 1000 * attempt (attempt=1)
+    ["soon", 1000], // unparseable — falls back to 1000 * attempt (attempt=1)
+  ])("Retry-After: %s produces a bounded wait of %ims", async (headerValue, expectedWaitMs) => {
+    const { db, sqlite } = makeTestDb();
+    seedOrgEventContact(sqlite, 1_000);
+    insertContact(sqlite, "c1", 1_000);
+    const env: AirtableSyncEnv = { AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b", AIRTABLE_ORG_ID: "org-1" };
+
+    let calls = 0;
+    const fakeFetch = (async () => {
+      calls += 1;
+      if (calls === 1) {
+        return {
+          ok: false,
+          status: 429,
+          headers: { get: (name: string) => (name === "Retry-After" ? headerValue : null) },
+          text: async () => "rate limited",
+        } as unknown as Response;
+      }
+      return { ok: true, text: async () => "" } as Response;
+    }) as typeof fetch;
+    const sleeps: number[] = [];
+    const sleep = async (ms: number) => {
+      sleeps.push(ms);
+    };
+
+    const r = await runAirtableSync(env, db, fakeFetch, new Date(2_000), sleep);
+    expect(r).toEqual({ contacts: 1, submissions: 0 });
+    expect(sleeps).toEqual([expectedWaitMs]);
+    expect(sleeps[0]!).toBeLessThanOrEqual(30_000);
+  });
+
   it("exhausts retries after MAX_RETRIES 429s, throws naming the table and status, and does NOT advance the watermark", async () => {
     const { db, sqlite } = makeTestDb();
     seedOrgEventContact(sqlite, 1_000);

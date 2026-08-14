@@ -294,12 +294,18 @@ export function resolveChosenDeliverable(candidates: DeliverableCandidate[], cho
   });
 }
 
+/** Thrown by assertOwnAssignment for the one legitimate case it detects: the
+ * assignment belongs to a different contact. Callers (assertOwnAssignmentOr403)
+ * must only relabel this as a 403 — any other exception is an internal fault
+ * and must surface as-is (DEC-029 amendment). */
+export class ForeignAssignmentError extends Error {}
+
 /** Pure ownership guard for a task_assignment: only the speaker whose own
  * contact_id matches may act on it — 403 otherwise (no IDOR across the
  * portal's task-assignment routes). */
 export function assertOwnAssignment(scope: PortalAssignmentScope, contactId: string): void {
   if (scope.contactId !== contactId) {
-    throw new Error("assignment does not belong to this contact");
+    throw new ForeignAssignmentError("assignment does not belong to this contact");
   }
 }
 

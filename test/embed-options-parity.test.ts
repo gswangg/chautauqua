@@ -67,8 +67,10 @@ vi.mock("../src/server/repo/embeds", async () => {
     ),
     getEmbedOwnership: vi.fn(async (_db: unknown, id: string) => {
       const row = store.get(id);
-      return row ? { orgId: row.orgId } : null;
+      return row ? { orgId: row.orgId, eventId: row.eventId } : null;
     }),
+    trackBelongsToEvent: vi.fn(async (_db: unknown, trackId: string, eventId: string) => trackId === "track-1" && eventId === EVENT_ID),
+    roomBelongsToEvent: vi.fn(async () => true),
     updateEmbed: vi.fn(
       async (
         _db: unknown,
@@ -261,6 +263,77 @@ describe("DEC-822/DEC-839: saved-embed options round-trip", () => {
     await app.request(`/embed/e/${embed.id}`);
     const params = renderSurfaceContentMock.mock.calls[0]![3] as Record<string, unknown>;
     expect(params.day).toBe("2026-08-11");
+  });
+
+  // DEC-839 amendment: trackId/roomId/sessionFormat/q go through
+  // parseBoundedText BEFORE the live (unbounded) parser, and a trackId/
+  // roomId is confirmed to belong to the embed's OWN event — a foreign-event
+  // id must never persist into options_json. Both routes share the same
+  // parseEmbedOptionsInput, so both must reject identically.
+  it("POST rejects an over-length q as a 400 naming the field", async () => {
+    const app = buildApp();
+    const res = await app.request(`/api/v1/events/${EVENT_ID}/embeds`, {
+      method: "POST",
+      body: JSON.stringify({
+        name: "Homepage widget",
+        surface: "sessions",
+        format: "iframe",
+        options: { q: "x".repeat(500) },
+      }),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields).toHaveProperty("q");
+  });
+
+  it("PATCH rejects an over-length q as a 400 naming the field", async () => {
+    const app = buildApp();
+    const createRes = await app.request(`/api/v1/events/${EVENT_ID}/embeds`, {
+      method: "POST",
+      body: JSON.stringify({ name: "Homepage widget", surface: "sessions", format: "iframe", options: {} }),
+    });
+    const embed = (await createRes.json()) as { id: string };
+
+    const res = await app.request(`/api/v1/embeds/${embed.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ options: { q: "x".repeat(500) } }),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields).toHaveProperty("q");
+  });
+
+  it("POST rejects a trackId that does not belong to this event as a 400 naming the field", async () => {
+    const app = buildApp();
+    const res = await app.request(`/api/v1/events/${EVENT_ID}/embeds`, {
+      method: "POST",
+      body: JSON.stringify({
+        name: "Homepage widget",
+        surface: "sessions",
+        format: "iframe",
+        options: { trackId: "track-from-another-event" },
+      }),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields).toHaveProperty("trackId");
+  });
+
+  it("PATCH rejects a trackId that does not belong to this event as a 400 naming the field", async () => {
+    const app = buildApp();
+    const createRes = await app.request(`/api/v1/events/${EVENT_ID}/embeds`, {
+      method: "POST",
+      body: JSON.stringify({ name: "Homepage widget", surface: "sessions", format: "iframe", options: {} }),
+    });
+    const embed = (await createRes.json()) as { id: string };
+
+    const res = await app.request(`/api/v1/embeds/${embed.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ options: { trackId: "track-from-another-event" } }),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields).toHaveProperty("trackId");
   });
 
   it("a disabled embed returns an empty 200 without touching the render pipeline", async () => {
