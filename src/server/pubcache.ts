@@ -96,10 +96,16 @@ export async function servePublicGet(
 
   const hit = await cache.match(cacheKey);
   if (hit) {
-    // Cached Response headers are immutable, so build a fresh Response
-    // wrapping the same body and restore the client-facing Cache-Control
-    // (the stored copy carries the internal 86400 override).
-    const restored = new Response(hit.body, hit);
+    // DEC-083 amendment (wave 10): read the body from a clone, not `hit`
+    // itself. A CacheLike implementation is free to return the same
+    // Response object on repeat match() calls for the same key (the
+    // in-memory test fake does this), and a Response body stream can only
+    // be read once — reading `hit.body` directly would disturb/lock that
+    // shared stream, breaking a second identical request. Cloning first
+    // gives each read-through its own body stream. (Headers are also
+    // immutable on the cached Response, which is the other reason this
+    // must be a fresh Response rather than a mutation of `hit`.)
+    const restored = new Response(hit.clone().body, hit);
     restored.headers.set("Cache-Control", CLIENT_CACHE_CONTROL);
     return restored;
   }
