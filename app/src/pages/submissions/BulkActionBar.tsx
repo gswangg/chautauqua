@@ -6,7 +6,6 @@ interface BulkActionBarProps {
   statusFilter: SubmissionStatus | null;
   onApply: (status: SubmissionStatus) => void;
   onClear: () => void;
-  onDelete: () => void;
 }
 
 interface BulkMove {
@@ -40,7 +39,7 @@ function movesFor(statusFilter: SubmissionStatus | null): BulkMove[] {
   ];
 }
 
-export function BulkActionBar({ selectedCount, pending, statusFilter, onApply, onClear, onDelete }: BulkActionBarProps) {
+export function BulkActionBar({ selectedCount, pending, statusFilter, onApply, onClear }: BulkActionBarProps) {
   if (selectedCount === 0) return null;
 
   return (
@@ -59,9 +58,6 @@ export function BulkActionBar({ selectedCount, pending, statusFilter, onApply, o
             {move.label}
           </button>
         ))}
-        <button type="button" className="chq-btn chq-btn-tertiary" disabled={pending} onClick={onDelete}>
-          Delete…
-        </button>
         <button type="button" className="chq-btn chq-btn-tertiary" disabled={pending} onClick={onClear}>
           Clear
         </button>

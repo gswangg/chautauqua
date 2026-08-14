@@ -213,20 +213,19 @@
   color: var(--chq-brand-hover);
 }
 
-/* DEC-900 (wave 5 amendment): the Session details disclosure trigger --
-   same quiet .chq-link-button/.chq-section-action register the agenda's
-   'Breaks ›' trigger uses (Agenda.tsx:295), sitting on its own line below
-   the last numbered section (Reviews) rather than inside a numbered rule
-   of its own, so frame 02's main column visually ends at the last review. */
-.chq-detail-session-details-disclosure {
-  padding-top: 4px;
+/* DEC-900 (wave 25 amendment): 'Session details' is a real FOURTH numbered
+   section after Reviews -- V8 draws it, so the wave-5 disclosure premise is
+   gone. Its eyebrow ('EDITABLE UNTIL THE SCHEDULE IS PUBLISHED') sits below
+   the numbered title, in the SAME muted-eyebrow register as the heading's
+   own track/format eyebrow -- an 8px top gap keeps it off the title rule. */
+.chq-detail-session-details-eyebrow {
+  margin-top: 8px;
 }
 
-/* DEC-908: 'Session details' trailing section holds its three sub-blocks
-   (Tracks/Format/Participants) stacked, each own its own quiet sub-heading
-   -- these are NOT counted sections (no border-bottom rule, no numbering)
-   since the wrapping section already carries both. DEC-900 (wave 5
-   amendment): only mounted at all once the disclosure above is open. */
+/* DEC-908: 'Session details' holds its three sub-blocks (Tracks/Format+
+   Audience level/Participants) stacked, each with its own quiet
+   sub-heading -- these are NOT counted sections (no border-bottom rule, no
+   numbering) since the wrapping section already carries both. */
 .chq-detail-session-details {
   min-width: 0;
 }
@@ -235,6 +234,32 @@
   display: flex;
   flex-direction: column;
   gap: 26px;
+}
+
+/* DEC-900 (wave 25 amendment): Format and Audience level sit side by side
+   as two narrow selects -- same subsection register, laid out in a row. */
+.chq-detail-format-audience-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+}
+
+.chq-detail-format-audience-field {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+/* Per-row participant actions: quiet tertiary links, never a
+   bordered/filled control competing with the Visible checkbox. */
+.chq-detail-participant-row-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.chq-detail-copresenter-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--chq-muted);
 }
 
 .chq-detail-subsection {
