@@ -408,6 +408,60 @@ describe("session rotation on login (DEC-994 wave-6b amendment)", () => {
     const u1Sessions = state.sessions.filter((s) => s.userId === "u_1");
     expect(u1Sessions).toHaveLength(1);
   });
+
+  it("logging in as user A while carrying user B's live session cookie leaves B's row untouched (DEC-994 wave-22)", async () => {
+    const { db, state } = makeFakeDb();
+    await seedUser(state);
+    state.users.push({
+      id: "u_2",
+      orgId: "org_1",
+      email: "other@example.test",
+      passwordHash: await hashPassword("other-password-789"),
+      role: "organizer",
+      contactId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const { app, env } = buildApp(db);
+
+    // User B logs in first, establishing a live session for u_2.
+    const { csrf: csrfB, cookie: csrfCookieB } = await getCsrf(app, env, "/login");
+    const formB = new URLSearchParams({
+      [CSRF_COOKIE_NAME]: csrfB,
+      email: "other@example.test",
+      password: "other-password-789",
+    });
+    const loginBRes = await app.request(
+      "/login",
+      {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded", cookie: csrfCookieB },
+        body: formB.toString(),
+      },
+      env,
+    );
+    expect(loginBRes.status).toBe(302);
+    const cookieB = sessionCookieFrom(loginBRes);
+
+    // User A logs in, but the request happens to carry B's live session
+    // cookie (e.g. a shared browser/proxy). This must NOT revoke B's row.
+    const loginARes = await login(app, env, PASSWORD, cookieB);
+    expect(loginARes.status).toBe(302);
+    const cookieA = sessionCookieFrom(loginARes);
+    expect(cookieA).not.toBe(cookieB);
+
+    // B's cookie still authenticates -- A's login did not touch it.
+    const checkB = await checkAdmin(app, env, cookieB);
+    expect(checkB.status).toBe(200);
+    // A's fresh cookie also authenticates.
+    const checkA = await checkAdmin(app, env, cookieA);
+    expect(checkA.status).toBe(200);
+
+    const u1Sessions = state.sessions.filter((s) => s.userId === "u_1");
+    expect(u1Sessions).toHaveLength(1);
+    const u2Sessions = state.sessions.filter((s) => s.userId === "u_2");
+    expect(u2Sessions).toHaveLength(1);
+  });
 });
 
 describe("claim/password-set (POST /claim/:token) routes through issueSessionRevokingAll (DEC-994)", () => {
@@ -513,5 +567,88 @@ describe("insert(schema.authSession) enumeration scan (DEC-994)", () => {
     walk(srcRoot);
 
     expect(hits).toEqual([path.join(srcRoot, "server", "auth-session.ts")]);
+  });
+});
+
+// -----------------------------------------------------------------------
+// delete(schema.authSession) owner-predicate scan (DEC-994 wave-22
+// amendment): every delete of an auth_session row must be scoped by
+// authSession.userId -- with exactly one ledgered exception, POST /logout,
+// which by design resolves only the session presented on this request (no
+// other user's row is even a candidate). Without the owner predicate, a
+// delete keyed on client-supplied input (a cookie's token hash) can resolve
+// to a row that doesn't belong to the request's own authenticating user.
+// -----------------------------------------------------------------------
+
+describe("delete(schema.authSession) owner-predicate scan (DEC-994 wave-22)", () => {
+  const LEDGER: Array<{ file: string; reason: string }> = [
+    {
+      file: path.join("src", "routes", "auth.tsx"),
+      reason:
+        "POST /logout ends exactly the session presented on this request and resolves no other user's row",
+    },
+  ];
+
+  function findDeleteStatements(srcRoot: string): Array<{ file: string; statement: string }> {
+    const found: Array<{ file: string; statement: string }> = [];
+    function walk(dir: string) {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+        } else if (entry.isFile() && /\.(ts|tsx)$/.test(entry.name)) {
+          const text = readFileSync(full, "utf8");
+          const needle = "delete(schema.authSession)";
+          let searchFrom = 0;
+          while (true) {
+            const idx = text.indexOf(needle, searchFrom);
+            if (idx === -1) break;
+            const semiIdx = text.indexOf(";", idx);
+            if (semiIdx === -1) throw new Error(`unterminated delete(schema.authSession) statement in ${full}`);
+            found.push({ file: full, statement: text.slice(idx, semiIdx + 1) });
+            searchFrom = semiIdx + 1;
+          }
+        }
+      }
+    }
+    walk(srcRoot);
+    return found;
+  }
+
+  it("scopes every delete by authSession.userId, except the ledgered POST /logout exception", () => {
+    const srcRoot = path.join(__dirname, "..", "src");
+    const statements = findDeleteStatements(srcRoot);
+
+    // Tripwire: a rename or a file move must not make this scan vacuously
+    // pass by finding nothing.
+    expect(statements.length).toBeGreaterThanOrEqual(4);
+
+    const ledgerFiles = new Set(LEDGER.map((e) => path.join(srcRoot, "..", e.file)));
+
+    for (const { file, statement } of statements) {
+      const scoped = statement.includes("authSession.userId");
+      const ledgered = ledgerFiles.has(file);
+      if (!scoped && !ledgered) {
+        throw new Error(
+          `${file} has a delete(schema.authSession) statement not scoped by authSession.userId and not in the ledger:\n${statement}`,
+        );
+      }
+      if (scoped && ledgered) {
+        throw new Error(
+          `${file} is ledgered as an owner-predicate exception but its delete(schema.authSession) statement IS scoped by authSession.userId -- the ledger entry is stale and should be removed:\n${statement}`,
+        );
+      }
+    }
+
+    // Every ledgered site must actually still exist with a matching
+    // (unscoped) delete statement -- a stale ledger entry silently widens
+    // the exception surface.
+    for (const entry of LEDGER) {
+      const full = path.join(srcRoot, "..", entry.file);
+      const matchingStatements = statements.filter((s) => s.file === full && !s.statement.includes("authSession.userId"));
+      if (matchingStatements.length === 0) {
+        throw new Error(`stale ledger entry: ${entry.file} has no unscoped delete(schema.authSession) statement`);
+      }
+    }
   });
 });
