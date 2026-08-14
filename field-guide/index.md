@@ -28,33 +28,31 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   SERIALIZER FOLDS, SWEEP EVERY SIBLING; TWO SUBSYSTEMS READING THE SAME
   TABLE FOR OPPOSITE PURPOSES IS THE BUG; A DISCLOSURE IS NOT A DELETION;
   A FRAMED PRIMARY WITH NOTHING TO WRITE IS A LIE -- one writer, two screens.
-- FINDINGS w1-5 (compacted; DEC space FULL): A CLAMP INSIDE A PADDED
-  ANCESTOR IS NOT THE MEASURE; NO ORDER BY READS AS ALPHABETICAL;
-  RE-PROBE THE MANDATE BEFORE SPENDING A LANE; A DECISION DOC IS NOT A
-  BRANCH (grep `## Amendment (wave N)` first, implement verbatim); A
-  LATCHED ERROR STRING IS A SECOND STATE; SIBLING COUNTS NEED THE SAME
-  PREDICATE, AGAIN; THE PAIR REPORTS OUTLIVE THE MANDATE (fidelity-
-  gate4/*/report.md STILL-PRESENT+MINOR lists, mine those not the
-  mandate's prose); A FRAME NIT CAN CONTRADICT A LANDED DECISION -- grep
-  decisions/ first; A FRAME "EXTRA" IS USUALLY A CAPABILITY -- restyle or
-  disclose, only the orchestrator deletes capability; A RAIL-GROWING
-  SURFACE MUST TAKE THE PAIR MEASURE IN THE SAME CHANGE.
-- FINDINGS w6: A COMMENT CLAIMING A CHECK IS NOT THE CHECK -- files.ts:93
-  read "writes explicitly refuse reviewers" while authzSubmissionWrite only
-  added the speaker edit-lock, so a reviewer could upload and silently
-  un-publish a session (DEC-170 wave-54 amendment; only the sibling half
-  landed). HALF A DECISION IS THE DANGEROUS HALF. ROTATION IS NOT
-  EVICTION: "rotation on login" defends fixation; revoking the user's
-  whole fleet breaks two devices and makes SHARED demo personas sign the
-  eval agent and a human judge out of each other. A MIRROR MUST COPY THE
-  ROLLBACK, not just the ordering (portal form-task uploads copied the
-  CFP putThenRecord order, never its R2/file rollback -- every failed
-  submit leaks). A LITERAL WHERE A PREDICATE BELONGS IS A SECOND GRAMMAR:
-  DeliverableDetail passed reUploaded=false, disagreeing with the
-  worklist about the same row. THE MANDATE IS EXHAUSTED, THE PAIR
-  REPORTS ARE NOT -- re-probing at file:line closed the scorecard P0,
-  admin-blank P1, sign-out footer, z-order BRK, tray trio, ics picker,
-  builder Save, headshot library, laggards 500, speakers chip; what
-  remains is MINOR lists. A REVIEW LENS CAN BE WRONG ON PURPOSE: the
-  demo-credential "leak" is the demo instance's front door (DEC-583
-  amendment refuses it) -- record the refusal so it isn't re-filed.
+- FINDINGS w1-6 (heavily compacted; DEC space FULL): RE-PROBE THE MANDATE
+  BEFORE SPENDING A LANE; A DECISION DOC IS NOT A BRANCH (grep `##
+  Amendment (wave N)` first, implement verbatim); THE PAIR REPORTS OUTLIVE
+  THE MANDATE (fidelity-gate4/*/report.md STILL-PRESENT+MINOR lists); A
+  FRAME NIT CAN CONTRADICT A LANDED DECISION -- grep decisions/ first; A
+  FRAME "EXTRA" IS USUALLY A CAPABILITY -- restyle/disclose, never delete;
+  A COMMENT CLAIMING A CHECK IS NOT THE CHECK -- HALF A DECISION IS THE
+  DANGEROUS HALF; ROTATION IS NOT EVICTION; A MIRROR MUST COPY THE
+  ROLLBACK not just the ordering; A REVIEW LENS CAN BE WRONG ON PURPOSE
+  (demo-credential "leak" is the demo's front door, DEC-583) -- record
+  refusals so they aren't re-filed.
+- FINDINGS w7: THE MANDATE IS A DIGEST, NOT A LEDGER -- re-probing ~30
+  residue clauses at file:line found most CLOSED; six survived. A READER
+  WITH NO WRITER IS A LIE THAT RENDERS NOTHING: `audienceLevel`
+  (ReviewerQueue+Scorecard) and `submissionsThisYear/lastSpokeYear`
+  (speaker rail) both had readers and comments confessing the gap -- grep
+  `unwired|no server route|when the wire|documented gap`. A STALE EXCUSE
+  OUTLIVES ITS CAUSE: reviewer.ts:244 said "no reserved field id yet"
+  while AUDIENCE_LEVEL_FIELD_ID had shipped and the public form already
+  used it. ONE FORMATTER, TWO GRAMMARS: formatEventDay vs formatDayLong,
+  ten public call sites on the wrong one -- fix the SHARED WRAPPER's body.
+  A CHROME LABEL CAN BE ROLE-SCOPED: organizer "Jordan A.", reviewer "Sam
+  Whitfield", one identityLabel served both wrong. REFUSALS RECORDED:
+  aria-pressed on rating segments (DEC-939, radio group is correct ARIA);
+  "Mean of submitted reviews" caption (DEC-873, our blend is weighted, the
+  frame's copy would be false); roster Import-CSV link (DEC-662, kept).
+  DEC space is closed -- new rulings land as `## Amendment (wave N)`
+  appended to the EXISTING file at that id, never an overwrite.
