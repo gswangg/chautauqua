@@ -4,7 +4,7 @@
 // session-resolution logic (resolveAuth) is factored out and tested against
 // tiny fakes, per the DEC-012 testing strategy.
 
-import type { MiddlewareHandler } from "hono";
+import type { Context, ExecutionContext, MiddlewareHandler } from "hono";
 import { eq } from "drizzle-orm";
 import type { AppEnv, AuthInfo } from "./env";
 import type { Db } from "./context";
@@ -27,11 +27,6 @@ void DEC_276;
 // Pure session-resolution core (testable against fakes, no Hono/D1 needed)
 // ---------------------------------------------------------------------------
 
-export interface SessionRow {
-  userId: string;
-  expiresAt: number;
-}
-
 export interface UserRow {
   id: string;
   orgId: string;
@@ -39,12 +34,16 @@ export interface UserRow {
   contactId: string | null;
 }
 
-export interface SessionLookup {
-  findByTokenHash(tokenHash: string): Promise<SessionRow | null>;
+export interface SessionUserRow {
+  expiresAt: number;
+  user: UserRow;
 }
 
-export interface UserLookup {
-  findById(userId: string): Promise<UserRow | null>;
+// DEC-276 amendment (wave 63): a single joined lookup replaces the former
+// SessionLookup + UserLookup pair — one D1 round trip instead of two
+// sequential SELECTs on every authenticated request.
+export interface SessionUserLookup {
+  findSessionUser(tokenHash: string): Promise<SessionUserRow | null>;
 }
 
 const VALID_ROLES = new Set(["organizer", "reviewer", "speaker"]);
@@ -62,16 +61,14 @@ function assertRole(role: string): asserts role is AuthInfo["role"] {
  */
 export async function resolveAuth(
   token: string | undefined,
-  sessions: SessionLookup,
-  users: UserLookup,
+  lookup: SessionUserLookup,
   now: number,
 ): Promise<AuthInfo | undefined> {
   if (!token) return undefined;
   const tokenHash = await hashToken(token);
-  const session = await sessions.findByTokenHash(tokenHash);
-  if (!session || session.expiresAt <= now) return undefined;
-  const user = await users.findById(session.userId);
-  if (!user) return undefined;
+  const row = await lookup.findSessionUser(tokenHash);
+  if (!row || row.expiresAt <= now) return undefined;
+  const { user } = row;
   assertRole(user.role);
   return {
     userId: user.id,
@@ -81,34 +78,27 @@ export async function resolveAuth(
   };
 }
 
-function drizzleSessionLookup(db: Db): SessionLookup {
+function drizzleSessionUserLookup(db: Db): SessionUserLookup {
   return {
-    async findByTokenHash(tokenHash) {
-      const rows = await db
-        .select({ userId: schema.authSession.userId, expiresAt: schema.authSession.expiresAt })
-        .from(schema.authSession)
-        .where(eq(schema.authSession.tokenHash, tokenHash))
-        .limit(1);
-      const row = rows[0];
-      return row ? { userId: row.userId, expiresAt: row.expiresAt.getTime() } : null;
-    },
-  };
-}
-
-function drizzleUserLookup(db: Db): UserLookup {
-  return {
-    async findById(userId) {
+    async findSessionUser(tokenHash) {
       const rows = await db
         .select({
-          id: schema.user.id,
+          expiresAt: schema.authSession.expiresAt,
+          userId: schema.user.id,
           orgId: schema.user.orgId,
           role: schema.user.role,
           contactId: schema.user.contactId,
         })
-        .from(schema.user)
-        .where(eq(schema.user.id, userId))
+        .from(schema.authSession)
+        .innerJoin(schema.user, eq(schema.authSession.userId, schema.user.id))
+        .where(eq(schema.authSession.tokenHash, tokenHash))
         .limit(1);
-      return rows[0] ?? null;
+      const row = rows[0];
+      if (!row) return null;
+      return {
+        expiresAt: row.expiresAt.getTime(),
+        user: { id: row.userId, orgId: row.orgId, role: row.role, contactId: row.contactId },
+      };
     },
   };
 }
@@ -119,14 +109,15 @@ function drizzleUserLookup(db: Db): UserLookup {
 
 export const BEARER_TOKEN_PREFIX = "chq_";
 
-export interface ApiTokenRow {
-  id: string;
-  orgId: string;
-  createdByUserId: string;
+export interface ApiTokenUserRow {
+  tokenOrgId: string;
+  user: UserRow;
 }
 
-export interface ApiTokenLookup {
-  findByTokenHash(tokenHash: string): Promise<ApiTokenRow | null>;
+// DEC-276 amendment (wave 63): a single joined lookup replaces the former
+// ApiTokenLookup + UserLookup pair — one D1 round trip instead of two.
+export interface ApiTokenUserLookup {
+  findTokenUser(tokenHash: string): Promise<ApiTokenUserRow | null>;
 }
 
 /** Extracts a `chq_...` bearer token from an `Authorization` header value,
@@ -138,53 +129,58 @@ export function extractBearerToken(authorizationHeader: string | undefined | nul
 }
 
 /**
- * Resolves a `chq_...` bearer token to an AuthInfo, or undefined when there's
- * no token, no matching api_token row, or the minting user no longer
- * qualifies. Per DEC-276, tokens carry no privilege of their own: every
- * request re-resolves the user who minted the token (via createdByUserId)
- * and requires that user to still exist, still hold role='organizer', and
- * still belong to the token's org — so demoting, deleting, or moving that
- * user to another org revokes the token's authority immediately, without a
- * token expiry column. A row with a role literal outside the known set is
- * data corruption (assertRole throws, per DEC-012 fail-loudly) rather than
- * silently degrading to undefined.
+ * Resolves a `chq_...` bearer token to an AuthInfo (plus the tokenHash the
+ * lookup used, so the caller can stamp api_token.last_used_at without
+ * re-hashing), or undefined when there's no token, no matching api_token
+ * row, or the minting user no longer qualifies. Per DEC-276, tokens carry no
+ * privilege of their own: every request re-resolves the user who minted the
+ * token (via createdByUserId) and requires that user to still exist, still
+ * hold role='organizer', and still belong to the token's org — so demoting,
+ * deleting, or moving that user to another org revokes the token's authority
+ * immediately, without a token expiry column. A row with a role literal
+ * outside the known set is data corruption (assertRole throws, per DEC-012
+ * fail-loudly) rather than silently degrading to undefined.
  */
 export async function resolveBearerAuth(
   token: string | undefined,
-  tokens: ApiTokenLookup,
-  users: UserLookup,
+  lookup: ApiTokenUserLookup,
   hashFn: (token: string) => Promise<string>,
-): Promise<AuthInfo | undefined> {
+): Promise<{ auth: AuthInfo; tokenHash: string } | undefined> {
   if (!token) return undefined;
   const tokenHash = await hashFn(token);
-  const row = await tokens.findByTokenHash(tokenHash);
+  const row = await lookup.findTokenUser(tokenHash);
   if (!row) return undefined;
-  const user = await users.findById(row.createdByUserId);
-  if (!user) return undefined;
+  const { user } = row;
   assertRole(user.role);
   if (user.role !== "organizer") return undefined;
-  if (user.orgId !== row.orgId) return undefined;
+  if (user.orgId !== row.tokenOrgId) return undefined;
   return {
-    userId: user.id,
-    role: user.role,
-    orgId: user.orgId,
-    viaBearer: true,
+    auth: { userId: user.id, role: user.role, orgId: user.orgId, viaBearer: true },
+    tokenHash,
   };
 }
 
-function drizzleApiTokenLookup(db: Db): ApiTokenLookup {
+function drizzleApiTokenUserLookup(db: Db): ApiTokenUserLookup {
   return {
-    async findByTokenHash(tokenHash) {
+    async findTokenUser(tokenHash) {
       const rows = await db
         .select({
-          id: schema.apiToken.id,
-          orgId: schema.apiToken.orgId,
-          createdByUserId: schema.apiToken.createdByUserId,
+          tokenOrgId: schema.apiToken.orgId,
+          userId: schema.user.id,
+          userOrgId: schema.user.orgId,
+          role: schema.user.role,
+          contactId: schema.user.contactId,
         })
         .from(schema.apiToken)
+        .innerJoin(schema.user, eq(schema.apiToken.createdByUserId, schema.user.id))
         .where(eq(schema.apiToken.tokenHash, tokenHash))
         .limit(1);
-      return rows[0] ?? null;
+      const row = rows[0];
+      if (!row) return null;
+      return {
+        tokenOrgId: row.tokenOrgId,
+        user: { id: row.userId, orgId: row.userOrgId, role: row.role, contactId: row.contactId },
+      };
     },
   };
 }
@@ -193,15 +189,46 @@ function drizzleApiTokenLookup(db: Db): ApiTokenLookup {
 // Hono middleware
 // ---------------------------------------------------------------------------
 
+/** Best-effort stamps api_token.last_used_at off the request's critical
+ * path (DEC-276 amendment, wave 63): fired through c.executionCtx.waitUntil
+ * when an ExecutionContext is present (production Worker requests), or
+ * awaited inline inside a try/catch otherwise (e.g. tests) — either way a
+ * stamp failure can never turn an authenticated read into a 500. Reuses the
+ * tokenHash the resolver already computed rather than hashing again. */
+async function stampApiTokenLastUsed(c: Context<AppEnv>, db: Db, tokenHash: string): Promise<void> {
+  const write = async () => {
+    try {
+      await db
+        .update(schema.apiToken)
+        .set({ lastUsedAt: new Date() })
+        .where(eq(schema.apiToken.tokenHash, tokenHash));
+    } catch (err) {
+      console.error("api_token last_used_at stamp failed", err);
+    }
+  };
+  let executionCtx: ExecutionContext | undefined;
+  try {
+    executionCtx = c.executionCtx;
+  } catch {
+    executionCtx = undefined;
+  }
+  if (executionCtx) {
+    executionCtx.waitUntil(write());
+    return;
+  }
+  await write();
+}
+
 /** Always-on: parses chq_session, sets c.var.auth when a live session
  * matches; falls back to an `Authorization: Bearer chq_...` API token
  * (DEC-027) when no cookie session resolved. Bearer auth best-effort stamps
- * api_token.last_used_at — that write never gates whether auth is set. */
+ * api_token.last_used_at off the critical path — that write never gates
+ * whether auth is set, and can never turn this request into a 500. */
 export const sessionLoader: MiddlewareHandler<AppEnv> = async (c, next) => {
   const cookies = parseCookies(c.req.header("cookie") ?? null);
   const token = cookies[SESSION_COOKIE_NAME];
   const db = c.var.db;
-  const auth = await resolveAuth(token, drizzleSessionLookup(db), drizzleUserLookup(db), Date.now());
+  const auth = await resolveAuth(token, drizzleSessionUserLookup(db), Date.now());
   if (auth) {
     c.set("auth", auth);
     await next();
@@ -210,14 +237,10 @@ export const sessionLoader: MiddlewareHandler<AppEnv> = async (c, next) => {
 
   const bearerToken = extractBearerToken(c.req.header("authorization"));
   if (bearerToken) {
-    const bearerAuth = await resolveBearerAuth(bearerToken, drizzleApiTokenLookup(db), drizzleUserLookup(db), hashToken);
-    if (bearerAuth) {
-      c.set("auth", bearerAuth);
-      const tokenHash = await hashToken(bearerToken);
-      await db
-        .update(schema.apiToken)
-        .set({ lastUsedAt: new Date() })
-        .where(eq(schema.apiToken.tokenHash, tokenHash));
+    const resolved = await resolveBearerAuth(bearerToken, drizzleApiTokenUserLookup(db), hashToken);
+    if (resolved) {
+      c.set("auth", resolved.auth);
+      await stampApiTokenLastUsed(c, db, resolved.tokenHash);
     }
   }
 
