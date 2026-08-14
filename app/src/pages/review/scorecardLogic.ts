@@ -2,20 +2,28 @@
 // (number keys 1-9 set the focused rating; Enter submits and advances).
 import type { EvaluationCriterion, EvaluationScale, EvaluationScores } from './types';
 
-/** True once every criterion in the plan has a valid entry in `scores`.
- * DEC-148: a 'text' criterion is complete once its value is a string --
- * required ones must be non-empty, optional ones may be ''. */
-export function isEvaluationComplete(criteria: EvaluationCriterion[], scores: EvaluationScores): boolean {
-  return criteria.every((c) => {
+/** DEC-939 (wave-3 amendment): ONE predicate for scorecard completeness --
+ * the validator, the incomplete notice, and the rail's per-criterion
+ * markers all read this same list; isEvaluationComplete is its zero-length
+ * case, never a second definition. DEC-148: a 'text' criterion is complete
+ * once its value is a string -- required ones must be non-empty, optional
+ * ones may be ''. */
+export function incompleteCriteria(criteria: EvaluationCriterion[], scores: EvaluationScores): EvaluationCriterion[] {
+  return criteria.filter((c) => {
     const v = scores[c.id];
     if (c.kind === 'text') {
-      if (typeof v !== 'string') return false;
-      return c.required ? v.trim().length > 0 : true;
+      if (typeof v !== 'string') return true;
+      return c.required ? v.trim().length === 0 : false;
     }
-    if (v === undefined || v === null || v === '') return false;
-    if (c.kind === 'rating') return typeof v === 'number' && !Number.isNaN(v);
-    return typeof v === 'string' && (c.options ?? []).includes(v);
+    if (v === undefined || v === null || v === '') return true;
+    if (c.kind === 'rating') return !(typeof v === 'number' && !Number.isNaN(v));
+    return !(typeof v === 'string' && (c.options ?? []).includes(v));
   });
+}
+
+/** True once every criterion in the plan has a valid entry in `scores`. */
+export function isEvaluationComplete(criteria: EvaluationCriterion[], scores: EvaluationScores): boolean {
+  return incompleteCriteria(criteria, scores).length === 0;
 }
 
 export function clampRating(value: number, scale: EvaluationScale): number {
@@ -51,12 +59,23 @@ export type ScorecardKeyAction =
  * Keyboard-fast scorecard input: number keys 1-9 set the focused rating
  * criterion's score (clamped to the plan scale); Enter submits and
  * advances. Pure so it's testable without simulating real DOM key events.
+ *
+ * DEC-939 (wave-3 amendment): these are page-level shortcuts, not field
+ * behaviour -- `opts.fromFormField` is true whenever the originating event
+ * target is a real input/textarea/select/[contenteditable] (typing a
+ * comment, choosing a dropdown value), and in that case this always
+ * returns 'none' so digits and Enter reach the field instead of being
+ * hijacked into a rating change or a premature submit.
  */
 export function scorecardKeyAction(
   key: string,
   focusedCriterion: EvaluationCriterion | null,
   scale: EvaluationScale,
+  opts: { fromFormField: boolean },
 ): ScorecardKeyAction {
+  if (opts.fromFormField) {
+    return { type: 'none' };
+  }
   if (key === 'Enter') {
     return { type: 'submitAndAdvance' };
   }

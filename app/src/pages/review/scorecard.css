@@ -36,31 +36,31 @@
   }
 }
 
-/* DEC-889: the scorecard's abstract clamps to its first ~60 words and the
-   single disclosure control below it owns both the clamped remainder and
-   the two answer lists -- collapsed is the default, and nothing renders
-   the submission detail a second time above the ratings. */
+/* DEC-889 (wave-72 amendment): the reading column IS the frame's body --
+   ABSTRACT eyebrow + rule + the full abstract, at rest. The word clamp and
+   the disclosure control are retired entirely (no dead selectors for
+   either survive here). */
 
-.chq-review-abstract-disclosure {
-  align-self: flex-start;
+.chq-review-scorecard-abstract-section {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-review-scorecard-abstract-rule {
+  margin: 8px 0 12px;
   border: none;
-  background: none;
-  padding: 0;
-  margin-top: 2px;
+  border-top: 1px solid var(--chq-hairline);
+}
+
+/* DEC-889 (wave-72 amendment): when `plan.anonymized`, the reading column
+   SAYS so instead of silently omitting the speaker fields -- a disclosure
+   of the server's own anonymizeForReviewer decision, never a re-derivation
+   of visibility from role. */
+.chq-review-anonymized-notice {
+  margin: 4px 0 0;
   font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.chq-review-abstract-disclosure:hover {
-  text-decoration: underline;
-}
-
-.chq-review-scorecard-abstract-remainder {
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--chq-ink-2);
-  margin: 12px 0 0;
+  font-style: italic;
+  color: var(--chq-muted);
 }
 
 /* DEC-939 reconciliation line: the plain-average comparison figure printed
@@ -85,4 +85,29 @@
   border-radius: 0;
   background: none;
   gap: 6px;
+}
+
+/* DEC-939 (wave-3 amendment): a quiet marker on a criterion row still
+   missing an entry, added only once a submit has been attempted -- weight
+   and wording carry the state (this product has no red/green pair), not a
+   loud border or fill. */
+.chq-review-criterion-missing .chq-review-criterion-label {
+  font-weight: 700;
+}
+
+.chq-review-incomplete-notice {
+  margin-top: 4px;
+}
+
+/* DEC-889 (wave-72 amendment): the rail's two actions become full-width
+   stacked -- primary over secondary -- rather than review.css's default
+   side-by-side row. */
+.chq-review-scorecard-rail .chq-review-editor-actions {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.chq-review-scorecard-rail .chq-review-editor-actions .chq-btn {
+  width: 100%;
+  text-align: center;
 }
