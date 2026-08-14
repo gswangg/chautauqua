@@ -289,8 +289,9 @@ describe("w1-i: honest dates via the shared formatDay helper", () => {
     const res = await app.request(`/e/${EVENT.slug}/sessions/${SESSION.id}`);
     const html = await res.text();
     expect(html).not.toContain(SESSION.day as string);
-    // "Mon, Aug 10" style label from formatEventDay.
-    expect(html).toMatch(/Aug 10/);
+    // DEC-768 (wave 7 amendment): "Monday 10 August" style label from
+    // formatDayLong, not the retired formatEventDay's "Mon, Aug 10".
+    expect(html).toMatch(/10 August/);
   });
 
   it("the schedule surface's day heading is not a raw ISO date", async () => {
@@ -300,7 +301,7 @@ describe("w1-i: honest dates via the shared formatDay helper", () => {
     const res = await app.request(`/e/${EVENT.slug}/schedule`);
     const html = await res.text();
     expect(html).not.toContain(">2026-08-10<");
-    expect(html).toMatch(/<h2 class="chq-pub-section-title">[^<]*Aug 10[^<]*<\/h2>/);
+    expect(html).toMatch(/<h2 class="chq-pub-section-title">[^<]*10 August[^<]*<\/h2>/);
   });
 });
 

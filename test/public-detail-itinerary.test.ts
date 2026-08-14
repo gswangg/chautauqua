@@ -110,8 +110,9 @@ describe("DEC-782: public session detail date grammar + itinerary control", () =
     const res = await app.request(`/e/${EVENT.slug}/sessions/${SESSION.id}`);
     expect(res.status).toBe(200);
     const body = await res.text();
-    // formatDay("2027-05-12") -> "Wed, May 12" (UTC calendar day, event tz UTC).
-    expect(body).toContain("Wed, May 12");
+    // DEC-768 (wave 7 amendment): formatDay("2027-05-12") -> "Wednesday 12
+    // May" (formatDayLong, UTC calendar day, event tz UTC).
+    expect(body).toContain("Wednesday 12 May");
     expect(body).not.toContain("2027-05-12,");
   });
 
@@ -143,8 +144,9 @@ describe("DEC-782: public session detail date grammar + itinerary control", () =
     expect(body).not.toContain('id="chq-ics-link"');
     expect(body).not.toContain('id="chq-ics-count"');
     expect(body).not.toContain("MAX_ITINERARY_IDS");
-    // Date grammar still holds in the embed variant.
-    expect(body).toContain("Wed, May 12");
+    // Date grammar still holds in the embed variant (DEC-768 wave 7
+    // amendment: formatDayLong, "Wednesday 12 May").
+    expect(body).toContain("Wednesday 12 May");
     expect(body).not.toContain("2027-05-12,");
   });
 });
