@@ -10,7 +10,6 @@ import {
   affectsPublicOutput,
   bumpIfMutating,
   bumpPublicVersionMiddleware,
-  hasOverlongQueryValue,
   isUncacheableIcsRequest,
   publicCacheMiddleware,
   readPublicVersion,
@@ -282,28 +281,32 @@ describe("bumpIfMutating", () => {
   });
 });
 
-describe("hasOverlongQueryValue (DEC-433 amendment, wave 30)", () => {
-  it("is false when every search-param value is within the cap", () => {
-    expect(hasOverlongQueryValue("https://x.test/e/foo/sessions?q=keynote&trackId=abc")).toBe(false);
+describe("versionedCacheKey (DEC-433 amendment, wave 45): overlong values key like absence, not like a bypass", () => {
+  it("a keyed param (q) over the cap is dropped from the key, keying identically to no q at all", () => {
+    const over = "a".repeat(MAX_PUBLIC_QUERY_VALUE_LENGTH + 1);
+    const withOver = versionedCacheKey(`https://x.test/e/foo/sessions?q=${over}`, "v0");
+    const withoutQ = versionedCacheKey("https://x.test/e/foo/sessions", "v0");
+    expect(withOver.url).toBe(withoutQ.url);
   });
 
-  it("is true when any single value exceeds MAX_PUBLIC_QUERY_VALUE_LENGTH", () => {
-    const long = "a".repeat(MAX_PUBLIC_QUERY_VALUE_LENGTH + 1);
-    expect(hasOverlongQueryValue(`https://x.test/e/foo/sessions?q=${long}`)).toBe(true);
-  });
-
-  it("is false exactly at the cap", () => {
+  it("a keyed param (q) within the cap still keys distinctly from absence and from another in-cap value", () => {
     const atCap = "a".repeat(MAX_PUBLIC_QUERY_VALUE_LENGTH);
-    expect(hasOverlongQueryValue(`https://x.test/e/foo/sessions?q=${atCap}`)).toBe(false);
+    const withQ = versionedCacheKey(`https://x.test/e/foo/sessions?q=${atCap}`, "v0");
+    const withoutQ = versionedCacheKey("https://x.test/e/foo/sessions", "v0");
+    const withOtherQ = versionedCacheKey("https://x.test/e/foo/sessions?q=keynote", "v0");
+    expect(withQ.url).not.toBe(withoutQ.url);
+    expect(withQ.url).not.toBe(withOtherQ.url);
   });
 
-  it("checks every param, not just q", () => {
-    const long = "a".repeat(MAX_PUBLIC_QUERY_VALUE_LENGTH + 1);
-    expect(hasOverlongQueryValue(`https://x.test/e/foo/sessions?trackId=${long}`)).toBe(true);
+  it("a non-keyed param (utm_source) of any length is already dropped, cap or no cap — behaviour unchanged", () => {
+    const huge = "a".repeat(5000);
+    const withUtm = versionedCacheKey(`https://x.test/e/foo/sessions?utm_source=${huge}`, "v0");
+    const bare = versionedCacheKey("https://x.test/e/foo/sessions", "v0");
+    expect(withUtm.url).toBe(bare.url);
   });
 });
 
-describe("publicCacheMiddleware: over-cap ?q= (DEC-433 amendment, wave 30)", () => {
+describe("publicCacheMiddleware: overlong param no longer bypasses the cache (DEC-433 amendment, wave 45)", () => {
   function buildApp(cache: CacheLike, kv: KVStore) {
     const app = new Hono<AppEnv>();
     app.use("*", publicCacheMiddleware(() => cache));
@@ -315,17 +318,52 @@ describe("publicCacheMiddleware: over-cap ?q= (DEC-433 amendment, wave 30)", () 
     return { app, env: { KV: kv } as unknown as AppEnv["Bindings"], getCalls: () => calls };
   }
 
-  it("an over-cap ?q= request bypasses both cache.match and cache.put — handler runs every time, nothing stored", async () => {
+  it("two GETs differing only in a 5,000-char NON-keyed param resolve to the same key: second is a hit, exactly one cache.put across both", async () => {
+    const cache = fakeCache();
+    const kv = fakeKv();
+    const { app, env, getCalls } = buildApp(cache, kv);
+    const huge = "a".repeat(5000);
+    let puts = 0;
+    const countingCache: CacheLike = {
+      match: (r) => cache.match(r),
+      put: (r, res) => {
+        puts += 1;
+        return cache.put(r, res);
+      },
+    };
+    const app2 = new Hono<AppEnv>();
+    app2.use("*", publicCacheMiddleware(() => countingCache));
+    let calls = 0;
+    app2.get("/e/:slug/sessions", (c) => {
+      calls += 1;
+      return c.text(`sessions-${calls}`, 200, { "Cache-Control": "public, max-age=60, stale-while-revalidate=300" });
+    });
+
+    const first = await app2.request(`/e/foo/sessions?utm_source=${huge}`, {}, env);
+    expect(await first.text()).toBe("sessions-1");
+    const second = await app2.request(`/e/foo/sessions?utm_source=${huge.slice(1)}newval`, {}, env);
+    expect(await second.text()).toBe("sessions-1"); // served from cache — utm_source never part of the key
+
+    expect(calls).toBe(1);
+    expect(puts).toBe(1);
+    void app;
+    void getCalls;
+  });
+
+  it("an over-cap ?q= request IS now cached (no bypass): served with client-facing Cache-Control on the hit", async () => {
     const cache = fakeCache();
     const kv = fakeKv();
     const { app, env, getCalls } = buildApp(cache, kv);
     const long = "a".repeat(MAX_PUBLIC_QUERY_VALUE_LENGTH + 1);
 
-    await app.request(`/e/foo/sessions?q=${long}`, {}, env);
-    await app.request(`/e/foo/sessions?q=${long}`, {}, env);
+    const first = await app.request(`/e/foo/sessions?q=${long}`, {}, env);
+    expect(await first.text()).toBe("sessions-1");
+    expect(cache.store.size).toBe(1);
 
-    expect(getCalls()).toBe(2);
-    expect(cache.store.size).toBe(0);
+    const second = await app.request(`/e/foo/sessions?q=${long}`, {}, env);
+    expect(await second.text()).toBe("sessions-1"); // hit, not re-run
+    expect(getCalls()).toBe(1);
+    expect(second.headers.get("Cache-Control")).toBe(CLIENT_CACHE_CONTROL);
   });
 
   it("an ordinary filtered request (within the cap) still caches, with the same version-salted key shape", async () => {
