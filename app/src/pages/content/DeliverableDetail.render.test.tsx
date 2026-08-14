@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DeliverableDetail } from './DeliverableDetail';
-import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+import { errorEnvelope, listEnvelope, mockApi } from '../../test-utils/mockApi';
 import { formatDate, formatDayLabel } from '../../lib/dates';
 
 const SUBMISSION_ID = 'sub-detail-1';
@@ -685,5 +685,95 @@ describe('DeliverableDetail render smoke', () => {
     expect(filesCol!.firstElementChild?.textContent).toBe('Deliverables');
     expect(commentsCol!.firstElementChild?.tagName).toBe('H3');
     expect(commentsCol!.firstElementChild?.textContent).toBe('Notes on the slides');
+  });
+
+  // DEC-020 amendment (wave 12): an upload can reopen content review server
+  // side (files.ts's reopenContentReview, approved -> pending) -- the header
+  // refetch that follows a successful upload is the ONE content-status
+  // reader, and it must win over the pre-upload snapshot, re-showing the
+  // Approve action the reopen makes actionable again.
+  it('re-reads content status after an upload -- a server-side reopen wins over the pre-upload approved pill and re-offers Approve', async () => {
+    let headerCallCount = 0;
+    mockApi({
+      [`GET /api/v1/submissions/${SUBMISSION_ID}/files`]: listEnvelope(files),
+      [`GET /api/v1/submissions/${SUBMISSION_ID}`]: () => {
+        headerCallCount += 1;
+        return headerCallCount === 1
+          ? submissionDetail({ contentStatus: 'approved', reuploaded: false })
+          : submissionDetail({ contentStatus: 'pending', reuploaded: true });
+      },
+      [`GET /api/v1/files/file-slides-v2/comments`]: listEnvelope([]),
+      [`GET /api/v1/files/file-recording-v1/comments`]: listEnvelope([]),
+      [`POST /api/v1/submissions/${SUBMISSION_ID}/files`]: { id: 'file-slides-v3' },
+      'GET /api/v1/me': { userId: 'user-1', email: 'org@example.com', name: 'Org User', role: 'organizer', orgId: 'org-1' },
+    });
+
+    render(
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="approved"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('slides-v2.pdf');
+    expect(screen.getByText(`Approved · Updated ${formatDate(1700000300000)}`)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument();
+
+    const input = screen.getByLabelText('Replace presentation') as HTMLInputElement;
+    const file = new File(['x'], 'slides-v3.pdf', { type: 'application/pdf' });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.getByText(`Re-uploaded · Updated ${formatDate(1700000300000)}`)).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument();
+  });
+
+  // Regression guard for the same fix: the explicit Approve action still
+  // shows 'Approved' optimistically (before the server responds) and rolls
+  // back to the prior status -- with Approve re-offered -- if the write
+  // fails.
+  it('shows Approved optimistically on the explicit Approve action and rolls back on failure', async () => {
+    mockApi({
+      [`GET /api/v1/submissions/${SUBMISSION_ID}/files`]: listEnvelope(files),
+      [`GET /api/v1/submissions/${SUBMISSION_ID}`]: submissionDetail({ contentStatus: 'pending', reuploaded: false }),
+      [`GET /api/v1/files/file-slides-v2/comments`]: listEnvelope([]),
+      [`GET /api/v1/files/file-recording-v1/comments`]: listEnvelope([]),
+      [`POST /api/v1/submissions/${SUBMISSION_ID}/content-status`]: {
+        status: 500,
+        body: errorEnvelope('server_error', 'boom'),
+      },
+      'GET /api/v1/me': { userId: 'user-1', email: 'org@example.com', name: 'Org User', role: 'organizer', orgId: 'org-1' },
+    });
+
+    render(
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="pending"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('slides-v2.pdf');
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
+
+    await waitFor(() => {
+      expect(screen.getByText(`Approved · Updated ${formatDate(1700000300000)}`)).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(`Not reviewed · Updated ${formatDate(1700000300000)}`)).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Status update failed: boom');
   });
 });

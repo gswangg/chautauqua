@@ -56,6 +56,13 @@ interface DeliverableHeaderDetail {
   // src/server/repo/submissions/list.ts) -- composed here, never re-derived,
   // so the band and the worklist row that opened it can never disagree.
   reuploaded: boolean;
+  // DEC-020 amendment (wave 12): GET /submissions/:id -> getSubmissionDetail
+  // already SELECTs contentStatus for SubmissionDetail -- carried here so
+  // this header refetch is the ONE re-read that reconciles the displayed
+  // pill after a write (upload) that moves content_status server-side
+  // (files.ts's reopenContentReview), rather than trusting a mount-time
+  // snapshot through a write it never sees.
+  contentStatus: ContentStatus;
 }
 
 const ROOM_TBA_LABEL = 'To be announced';
@@ -122,11 +129,28 @@ export function DeliverableDetail({
   // title alone rather than a wrong/blank subtitle for a beat.
   const [headerDetail, setHeaderDetail] = useState<DeliverableHeaderDetail | null>(null);
 
+  // DEC-020 amendment (wave 12): ONE content-status reader -- this is the
+  // single GET this component ever issues for header/status data. Both the
+  // mount effect below and handleUpload's post-write refetch call this same
+  // function, so a server-side content_status move (reopenContentReview on
+  // upload) is always re-read through the same path rather than trusted from
+  // a stale mount-time snapshot.
+  function loadHeader() {
+    return apiGet<DeliverableHeaderDetail>(`/submissions/${submissionId}`)
+      .then((detail) => {
+        setHeaderDetail(detail);
+        return detail;
+      })
+      .catch(() => {
+        setHeaderDetail(null);
+        return null;
+      });
+  }
+
   useEffect(() => {
     setHeaderDetail(null);
-    apiGet<DeliverableHeaderDetail>(`/submissions/${submissionId}`)
-      .then((detail) => setHeaderDetail(detail))
-      .catch(() => setHeaderDetail(null));
+    void loadHeader();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [submissionId]);
 
   function loadFiles() {
@@ -227,7 +251,15 @@ export function DeliverableDetail({
     form.set('kind', kind);
     if (replacesFileId) form.set('replacesFileId', replacesFileId);
     await apiUpload(`/submissions/${submissionId}/files`, form);
-    await loadFiles();
+    const [, detail] = await Promise.all([loadFiles(), loadHeader()]);
+    // DEC-020 amendment (wave 12): an upload can flip content_status server-
+    // side (files.ts's reopenContentReview, approved -> pending) -- the
+    // refetched header is the source of truth for the displayed pill after
+    // this write, so it wins over whatever pill held before the upload.
+    if (detail) {
+      setPill(detail.contentStatus);
+      onContentStatusChange(submissionId, detail.contentStatus);
+    }
     onUploaded?.();
   }
 
