@@ -1994,6 +1994,12 @@ async function main(): Promise<void> {
         return 250 + variant * 25;
       case "checkbox":
         return variant % 2 === 0;
+      case "file":
+        // DEC-040 amendment (wave 70): buildFormTaskResponse below branches
+        // on kind === "file" BEFORE calling this function (a real file row
+        // needs assignmentId/contactId this helper doesn't have) — reaching
+        // this case would mean that branch was bypassed.
+        throw new Error("plausibleFormFieldValue: 'file' kind must be handled by the caller, not here");
       default: {
         const exhaustive: never = field.kind;
         throw new Error(`plausibleFormFieldValue: unhandled field kind ${String(exhaustive)}`);
@@ -2001,14 +2007,51 @@ async function main(): Promise<void> {
     }
   }
 
-  function buildFormTaskResponse(taskId: string, variant: number): Record<string, string | number | boolean> {
+  // DEC-040 amendment (wave 70): a 'file' field spec has no plausible
+  // scalar value — its seeded answer is a REAL file row (mirrors the portal
+  // task-form upload route's own kind='handout'/submissionId=null shape),
+  // never a fixture-only placeholder string.
+  let taskFormFileCounter = 0;
+  function mintTaskFormFileAnswer(assignmentId: string, contactId: string): string {
+    taskFormFileCounter += 1;
+    const fileId = seedId("task_form_file", taskFormFileCounter);
+    const r2Key = `task/${assignmentId}/${fileId}-receipt.pdf`;
+    statements.push(
+      insertStmt("file", {
+        id: fileId,
+        submission_id: null,
+        kind: "handout",
+        filename: "receipt.pdf",
+        r2_key: r2Key,
+        size_bytes: registerPdfAsset(r2Key),
+        content_type: "application/pdf",
+        previous_file_id: null,
+        version_no: 1,
+        uploaded_by_contact_id: contactId,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+    return fileId;
+  }
+
+  function buildFormTaskResponse(
+    taskId: string,
+    assignmentId: string,
+    contactId: string,
+    variant: number,
+  ): Record<string, string | number | boolean> {
     const fields = taskFormFieldsByTaskId.get(taskId);
     if (!fields || fields.length === 0) {
       throw new Error(`buildFormTaskResponse: no form fields minted for task ${taskId}`);
     }
     const response: Record<string, string | number | boolean> = {};
     for (const field of fields) {
-      response[field.id] = plausibleFormFieldValue(field, variant);
+      if (field.kind === "file") {
+        response[field.id] = mintTaskFormFileAnswer(assignmentId, contactId);
+      } else {
+        response[field.id] = plausibleFormFieldValue(field, variant);
+      }
     }
     return response;
   }
@@ -2060,12 +2103,15 @@ async function main(): Promise<void> {
       // keep the original formula (this does not disturb DEC-172's pin of
       // seed_task_assignment_0001 = contactIdx 0/taskIdx 0, already pending).
       const isComplete = contactIdx === 0 && taskIdx === 4 ? false : (contactIdx + taskIdx) % 3 !== 0;
+      const assignmentId = seedId("task_assignment", taskAssignmentCounter);
 
       // DEC-739: a complete form-kind assignment carries a response_json
       // keyed by exactly this task's minted form-field ids; a complete
       // file_request assignment carries a real file_id.
       const responseJson =
-        isComplete && tpl.kind === "form" ? JSON.stringify(buildFormTaskResponse(taskId, contactIdx + taskIdx)) : null;
+        isComplete && tpl.kind === "form"
+          ? JSON.stringify(buildFormTaskResponse(taskId, assignmentId, acc.contactId, contactIdx + taskIdx))
+          : null;
       const fileId =
         isComplete && tpl.kind === "file_request"
           ? mintTaskDeliverableFile({
@@ -2077,7 +2123,7 @@ async function main(): Promise<void> {
 
       statements.push(
         insertStmt("task_assignment", {
-          id: seedId("task_assignment", taskAssignmentCounter),
+          id: assignmentId,
           task_id: taskId,
           contact_id: acc.contactId,
           status: isComplete ? "complete" : "pending",

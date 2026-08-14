@@ -17,10 +17,12 @@ describe("DEC-111 FORM_TASK_FIELD_SPECS covers every kind='form' onboarding temp
     }
   });
 
-  it("contains no 'file' kind fields (no upload path on the portal task-form POST)", () => {
+  it("every 'file' kind field is optional (a required upload can't be pre-filled by the organizer)", () => {
     for (const specs of Object.values(FORM_TASK_FIELD_SPECS)) {
       for (const spec of specs) {
-        expect(spec.kind).not.toBe("file");
+        if (spec.kind === "file") {
+          expect(spec.required, `file field "${spec.label}" must not be required`).toBe(false);
+        }
       }
     }
   });
@@ -53,6 +55,7 @@ describe("DEC-111 FORM_TASK_FIELD_SPECS covers every kind='form' onboarding temp
       { section: "speaker", kind: "text", label: "Departure airport", required: false },
       { section: "speaker", kind: "number", label: "Estimated reimbursement amount (USD)", required: false },
       { section: "speaker", kind: "long_text", label: "Notes", required: false },
+      { section: "speaker", kind: "file", label: "Receipt or booking confirmation", required: false },
     ]);
   });
 });
