@@ -114,6 +114,46 @@ and it makes the title row's most prominent element unframed. Options: keep (cap
 restyle quieter), or frame-pure (drop bulk from the worklist). Do not silently drop —
 capability decisions route through the orchestrator/user.
 
+**Pair-1 reds (01-overview FAIL 2 MAJ · 06-agenda FAIL 1 BRK + 4 MAJ):**
+
+**P0-BROKEN · Break bands struck through in select mode — the clash-card z-order bug
+REAPPEARED on the new element class.** Armed, 20 slot buttons (z-index 6) underlie the lunch
+band (z-index 4), painting 1px bottom borders straight through "12:00 · LUNCH · FOYER · 60 MIN"
+and slicing the band into strips. Fix the CLASS, not the instance: slot-button borders must
+never paint above ANY grid overlay (clash card, break band, or future overlays) — one z-order
+rule + a regression test that arms the grid and asserts no rule crosses any overlay's box.
+
+**P1 · Unframed breaks EDITOR panel displaces the agenda canvas 308px** — `.chq-breaks-panel`
+(label + 2px rule + rows + 4-field add form) sits between head and grid; frame chrome is 153px
+and shows ~687px of grid at 900 viewport vs the app's 333px. v7 designed the PUBLIC breaks
+display, not an admin editor — this is a real design gap (the user's "no screen for it" rule).
+Interim direction pending design: collapse the editor behind a disclosure on the head row
+("Breaks ›" link opening a small panel/modal) so the canvas keeps frame chrome height; do NOT
+delete the capability. Also restore the frame's two full-width day-bar rules (y138/y192).
+
+**P1 · Shared chrome: unframed 48px full-bleed sign-out FOOTER on every admin page** — frame
+puts "JORDAN A. · SIGN OUT" in the header right; no v7 frame has a bottom chrome bar; it
+permanently costs 48px of viewport. Move sign-out into the header identity, delete the footer.
+
+**P1 · Tray anatomy trio:** hint copy permanently clipped ("…click Uns…" — nowrap+ellipsis in
+a fixed 268px tray; frame copy fits); `· 30 min` duration renders OUTSIDE the card as a
+dangling sibling line (belongs inline on the ref line "DFC-033 · 10 min"); drop the
+`.chq-session-card-tracks` line from tray+grid cards (frame: ref/title/speaker only) and count
+becomes bare right-aligned "6" not "(1)".
+
+**P2 (pair-1):** overview quiet-row value column: Public-pages row offset 304.3 vs the strict
+220.5 of its siblings and 12px vs 14px (the ONE surviving gate-3 overview MAJOR — fix the row
+to the shared two-column grid + summary copy "17 sessions live, with speakers and schedule");
+stat band bolds only the nearest "Today" (tie: both bold or neither); §03 artifact meta add
+size + relative time; "Place at 13:00" drop the room suffix; NEXT-FREE-SLOT caption
+sentence-case; modal head rule ink; modal title 23px; ENDS placeholder "13 May 2028"; spell
+small numbers; §04 "Tue 12, 10:00" grammar + single duration + lowercase format; 15-min
+midpoint rules dropped (single #EDE9DD tone, 18 rules not 36); gutter 63px; clash-cell hover
+disclosure; caption "ROOM DOUBLE-BOOKED"; armed-bar reserved 38px (head→tabs 78 vs 29 — find
+a no-shift approach that doesn't reserve dead chrome); day-pill 29px h + 11.5 gaps; head
+summary gap 15.5px; "Auto-schedule" 35px + 9px gap; cards inset ~3.5px off the column divider;
+header height 57.5 + nav gaps; chrome header/rhythm spacing per measured deltas.
+
 **P2 batch (gate-4):** submissions section counters "01 —ABSTRACT" glued em-dash (all six
 detail sections); builder field extras (Job title/Company/Speaker bio unframed, Abstract
 order) + Add-a-question as green text link + Track row handle/Edit treatment + built-in Edit
