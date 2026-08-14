@@ -408,9 +408,17 @@ describe("GET / — anonymous hub (DEC-581)", () => {
         closeMs: NOW + 90 * DAY,
       }),
     );
+    // The visible rows print a "· N DAYS LEFT" numeral derived from NOW
+    // (= Date.now()), so their close offset must be chosen so that numeral
+    // can never equal HIDDEN_COUNT -- otherwise this test fails purely on
+    // the wall-clock time of day. A 6-day offset rounds up to "7 DAYS LEFT"
+    // when the suite runs late enough in the day, which is a false positive
+    // for a leak. 60 days out can render only 60 or 61, neither of which
+    // contains a standalone 7.
+    const VISIBLE_CLOSE_OFFSET_DAYS = 60;
     const visible = [
-      eventRow({ id: "v1", slug: "visible-one", startDate: "2027-05-12", endDate: "2027-05-14", openMs: null, closeMs: NOW + 6 * DAY }),
-      eventRow({ id: "v2", slug: "visible-two", startDate: "2027-06-12", endDate: "2027-06-14", openMs: null, closeMs: NOW + 6 * DAY }),
+      eventRow({ id: "v1", slug: "visible-one", startDate: "2027-05-12", endDate: "2027-05-14", openMs: null, closeMs: NOW + VISIBLE_CLOSE_OFFSET_DAYS * DAY }),
+      eventRow({ id: "v2", slug: "visible-two", startDate: "2027-06-12", endDate: "2027-06-14", openMs: null, closeMs: NOW + VISIBLE_CLOSE_OFFSET_DAYS * DAY }),
     ];
     const events = [...visible, ...hidden];
     const app = buildApp({ queue: buildQueue({ events }) });

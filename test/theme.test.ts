@@ -71,9 +71,29 @@ describe("THEME_CSS native control coverage (DEC-585)", () => {
     expect(THEME_CSS).toMatch(/input\[type=checkbox\], input\[type=radio\]\s*\{[^}]*width:\s*18px[^}]*\}/s);
   });
 
-  it("styles select with a CSS-only chevron (no inline SVG data URI) and appearance:none", () => {
+  // DEC-919 (wave-1 amendment) supersedes this test's original "CSS-only
+  // chevron, no inline SVG data URI" form: it rules that the caret is
+  // restored ONCE on the shared `select` rule as "an inline data-URI SVG
+  // background plus the padding-right that clears it". DEC-585 only ever
+  // required the chevron to live in THEME_CSS, not which technique drew it,
+  // so the data URI is now the mandated implementation rather than a defect.
+  // The double quotes around url("data:…") are safe: ThemeStyles injects
+  // THEME_CSS via dangerouslySetInnerHTML, so it is never HTML-escaped
+  // (DEC-374's trap is about <style>{THEME_CSS}</style> text children).
+  it("styles select with appearance:none plus an inline data-URI SVG caret and the padding that clears it", () => {
     expect(THEME_CSS).toMatch(/\bselect\s*\{[^}]*appearance:\s*none[^}]*\}/s);
-    expect(THEME_CSS).not.toContain("data:image/svg");
+    expect(THEME_CSS).toMatch(/\bselect\s*\{[^}]*background-image:\s*url\("data:image\/svg\+xml,[^}]*\}/s);
+    // The caret must clear the text: a right-anchored background plus a
+    // padding-right larger than the caret box and its inset.
+    expect(THEME_CSS).toMatch(/\bselect\s*\{[^}]*background-position:\s*right[^}]*\}/s);
+    expect(THEME_CSS).toMatch(/\bselect\s*\{[^}]*padding:\s*[^;]*\s2\.25rem\s[^;]*;[^}]*\}/s);
+  });
+
+  it("draws the select caret in the literal --chq-ink hex, since a data URI cannot read a CSS variable", () => {
+    // The stroke is percent-encoded (%23 for '#') and hard-coded, so it can
+    // silently desync from the token. Pin them together.
+    expect(THEME_CSS).toMatch(/--chq-ink:\s*#1B1D17/);
+    expect(THEME_CSS).toContain("stroke='%231B1D17'");
   });
 
   it("every appearance:none declaration is paired with a :focus-visible rule for the same selector family", () => {
