@@ -91,11 +91,7 @@ export function YourDataPanel() {
     try {
       const bundle: Record<string, unknown> = {};
       for (const kind of EVERYTHING_KINDS) {
-        const res = await fetch(`/api/v1/events/${eventId}/export/${kind}?format=json`, {
-          credentials: 'include',
-        });
-        if (!res.ok) throw new Error(`Failed to export ${kind}`);
-        bundle[kind] = await res.json();
+        bundle[kind] = await apiGet<unknown>(`/events/${eventId}/export/${kind}?format=json`);
       }
       const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
