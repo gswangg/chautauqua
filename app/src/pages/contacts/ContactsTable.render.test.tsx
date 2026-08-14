@@ -34,7 +34,7 @@ const ITEMS: ContactListItem[] = [
   },
 ];
 
-function renderTable() {
+function renderTable(overrides: Partial<Parameters<typeof ContactsTable>[0]> = {}) {
   return render(
     <ContactsTable
       items={ITEMS}
@@ -43,10 +43,12 @@ function renderTable() {
       perPage={25}
       selection={EMPTY_SELECTION}
       loading={false}
+      empty={{ variant: 'fresh' }}
       onChangePage={() => {}}
       onSelectionChange={() => {}}
       onOpenContact={() => {}}
       onBulkEmail={() => {}}
+      {...overrides}
     />,
   );
 }
@@ -110,5 +112,38 @@ describe('ContactsTable render (eval-findings 45+55, DEC-738/DEC-726)', () => {
     expect(nav.className).toContain('chq-contacts-pager-nav');
     const navButtons = Array.from(nav.querySelectorAll('button')).map((b) => b.textContent);
     expect(navButtons).toEqual(['Previous', 'Next']);
+  });
+});
+
+// B7 rule 6 (DEC-678): a settled empty directory renders EmptyState INSTEAD
+// of the <table>, never live column headers over an empty body.
+describe('ContactsTable empty states (B7 rule 6, DEC-678)', () => {
+  it('renders no <thead> when settled and empty', () => {
+    renderTable({ items: [], total: 0, empty: { variant: 'fresh' } });
+    expect(document.querySelector('thead')).not.toBeInTheDocument();
+  });
+
+  it('renders the fresh voice with no escape when there is no facet in flight', () => {
+    renderTable({ items: [], total: 0, empty: { variant: 'fresh' } });
+    expect(screen.getByText('No contacts yet.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Clear filter' })).not.toBeInTheDocument();
+  });
+
+  it('renders the filtered voice with an escape naming the facet when one is in flight', () => {
+    const onClear = () => {};
+    renderTable({
+      items: [],
+      total: 0,
+      empty: { variant: 'filtered', reason: 'Search "ada"', onClear },
+    });
+    expect(screen.getByText('No contacts match the current search/filter.')).toBeInTheDocument();
+    expect(screen.getByText('Search "ada"')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Clear filter' })).toBeInTheDocument();
+  });
+
+  it('still paints the loading skeleton and no EmptyState while loading', () => {
+    renderTable({ items: [], total: 0, loading: true, empty: { variant: 'fresh' } });
+    expect(screen.getByText('Loading contacts…')).toBeInTheDocument();
+    expect(screen.queryByText('No contacts yet.')).not.toBeInTheDocument();
   });
 });

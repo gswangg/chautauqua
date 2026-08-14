@@ -75,6 +75,45 @@ describe('TemplatesTab', () => {
     expect(screen.getByText('Acceptance', { selector: '.chq-comms-editor-eyebrow' })).toBeInTheDocument();
   });
 
+  // B7 rule 6 (DEC-678): Templates has no facet, so a settled empty list is
+  // always the fresh voice -- EmptyState instead of live headers over an
+  // empty body.
+  it('renders EmptyState instead of the table when the list settles empty', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter>
+        <TemplatesTab eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('No templates yet.')).toBeInTheDocument();
+    expect(document.querySelector('thead')).not.toBeInTheDocument();
+    expect(document.querySelector('table')).not.toBeInTheDocument();
+  });
+
+  // Before the initial fetch settles (loaded === false), the table's own
+  // header chrome still paints -- the "loading" branch is left untouched by
+  // this change, so it must never show EmptyState mid-flight.
+  it('does not render EmptyState before the list has settled', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter>
+        <TemplatesTab eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText('No templates yet.')).not.toBeInTheDocument();
+    expect(document.querySelector('thead')).toBeInTheDocument();
+
+    await screen.findByText('No templates yet.');
+  });
+
   it('Duplicate POSTs a copy with " (copy)" appended to the name', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([template({ id: 'tpl-1', name: 'Acceptance' })]),
