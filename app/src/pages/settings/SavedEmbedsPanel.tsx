@@ -10,13 +10,19 @@
 // decoration") — that public 404 is proven by test/saved-embed-route.test.ts,
 // not by this render test.
 //
-// w1-f, DEC-785 amendment: this panel is only ever mounted inside its
-// caller's own edit drill (PublicPagesPanel), so at rest it must not ALSO
-// dump straight into the full Edit/Turn-on-off/Delete/Build surface -- it
-// owns its own local summary/edit split. At rest each row still states its
-// name, recipe and On/Off pill and still offers "Get code" (a read, not a
-// write), but Edit/Turn on-off/Delete/Build an embed move behind the
-// panel's own 'Change'.
+// w1-f, DEC-785 amendment: this panel is mounted BOTH at rest and inside
+// PublicPagesPanel's edit drill, so at rest it must not ALSO dump straight
+// into the full Edit/Turn-on-off/Delete/Build surface. At rest each row
+// still states its name, recipe and On/Off pill and still offers "Get code"
+// (a read, not a write), but Edit/Turn on-off/Delete/Build an embed only
+// render while the caller's own drill is open.
+//
+// DEC-785 amendment (wave 15): the read/edit split is no longer a LOCAL
+// toggle -- the caller (PublicPagesPanel) passes `editing`, driven by the
+// SAME section-drill URL state as the rest of the page, so there is one
+// Back that closes everything instead of a second Change/Back button
+// nested inside the drill (a second read/edit toggle inside a drill means
+// the drill renders nothing).
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
@@ -45,9 +51,10 @@ interface Track {
 
 interface Props {
   onBuild?: () => void;
+  editing?: boolean;
 }
 
-export function SavedEmbedsPanel({ onBuild }: Props) {
+export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
   const { eventId } = useCurrentEvent();
   const [searchParams] = useSearchParams();
   const [embeds, setEmbeds] = useState<SavedEmbed[] | null>(null);
@@ -56,10 +63,6 @@ export function SavedEmbedsPanel({ onBuild }: Props) {
   const [codeOpenId, setCodeOpenId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<SavedEmbed | null>(null);
   const [deleting, setDeleting] = useState(false);
-  // w1-f, DEC-785: local read/edit split -- defaults to the read-only rows
-  // (name + recipe + On/Off pill + Get code); 'Change' reveals Edit/Turn
-  // on-off/Delete and the "Build an embed" disclosure.
-  const [showEditor, setShowEditor] = useState(false);
 
   function load() {
     if (!eventId) return;
@@ -127,9 +130,6 @@ export function SavedEmbedsPanel({ onBuild }: Props) {
         <p className="chq-settings-note chq-settings-saved-embed-caption">
           Turning one off breaks it wherever it is pasted
         </p>
-        <button type="button" className="chq-link-button" onClick={() => setShowEditor((v) => !v)}>
-          {showEditor ? 'Back' : 'Change'}
-        </button>
       </div>
       {error ? <p role="alert">{error}</p> : null}
 
@@ -181,7 +181,7 @@ export function SavedEmbedsPanel({ onBuild }: Props) {
                   >
                     Get code
                   </button>
-                  {showEditor ? (
+                  {editing ? (
                     <>
                       <Link className="chq-link-button" to={editHref(embed.id)}>
                         Edit
@@ -204,7 +204,7 @@ export function SavedEmbedsPanel({ onBuild }: Props) {
         </ul>
       )}
 
-      {onBuild && showEditor ? (
+      {onBuild && editing ? (
         // w41-h/DEC-785: the "New embed" affordance (this panel's build
         // disclosure) carries its own caption beside it -- what a saved
         // embed's URL/edit actually mean -- rather than the "Turning one

@@ -45,7 +45,7 @@ describe('SummarySection', () => {
     expect(screen.queryByText('the form')).not.toBeInTheDocument();
   });
 
-  it('renders children instead of rows, and hides the action, when editing', () => {
+  it('renders children instead of rows, and swaps the action to Back, when editing', () => {
     render(
       <MemoryRouter initialEntries={['/settings']}>
         <SummarySection
@@ -63,6 +63,31 @@ describe('SummarySection', () => {
     expect(screen.getByText('the form')).toBeInTheDocument();
     expect(screen.queryByText('DevCon 2026')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
+  });
+
+  it('clicking Back while editing clears section and edit from the URL, preserving other params', () => {
+    render(
+      <MemoryRouter initialEntries={['/settings?section=event&edit=1&foo=bar']}>
+        <LocationProbe />
+        <SummarySection
+          sectionKey="event"
+          label="Event settings"
+          rows={[{ label: 'Name', value: 'DevCon 2026' }]}
+          actionLabel="Change"
+          editing
+        >
+          <p>the form</p>
+        </SummarySection>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+    const probe = new URLSearchParams(screen.getByTestId('probe').textContent ?? '');
+    expect(probe.get('section')).toBeNull();
+    expect(probe.get('edit')).toBeNull();
+    expect(probe.get('foo')).toBe('bar');
   });
 
   it('clicking the action writes ?section=<sectionKey>&edit=1 to the URL, preserving other params', () => {

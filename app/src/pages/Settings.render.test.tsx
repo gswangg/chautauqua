@@ -307,6 +307,9 @@ describe('SettingsPage render smoke', () => {
       expect(screen.getByDisplayValue('DevCon 2026')).toBeInTheDocument();
     });
     expect(within(eventSection).queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
+    // DEC-728 amendment (wave 15): the action never disappears while
+    // editing -- it relabels to 'Back' so the drill always has a way out.
+    expect(within(eventSection).getByRole('button', { name: 'Back' })).toBeInTheDocument();
   });
 
   // DEC-896: the rail follows the reader. An explicit click is

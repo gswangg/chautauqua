@@ -83,12 +83,12 @@ describe('PublicPagesPanel', () => {
 
     fireEvent.click(within(section).getAllByRole('button', { name: 'Embed code' })[0]!);
 
-    // The section's OWN drill action (SummarySection's chq-settings-section-
-    // action) is gone once editing -- SavedEmbedsPanel mounts its own,
-    // differently-scoped 'Change' toggle alongside it, so this checks the
-    // specific class rather than the ambiguous 'Change' name.
+    // DEC-728 amendment (wave 15): the section's OWN drill action becomes
+    // 'Back' once editing -- it never disappears, since a drill with no
+    // back is a 200 with no exit. SavedEmbedsPanel no longer mounts its own
+    // local Change/Back toggle, so this is the only such action.
     await waitFor(() => {
-      expect(section.querySelector('.chq-settings-section-action')).not.toBeInTheDocument();
+      expect(within(section).getByRole('button', { name: 'Back' })).toBeInTheDocument();
     });
     expect(screen.getByRole('heading', { name: 'Embeds' })).toBeInTheDocument();
   });
@@ -137,7 +137,7 @@ describe('PublicPagesPanel', () => {
     await waitFor(() => {
       expect(within(section).getByText('/e/devcon-2026/sessions')).toBeInTheDocument();
     });
-    expect(section.querySelector('.chq-settings-section-action')).not.toBeInTheDocument();
+    expect(within(section).getByRole('button', { name: 'Back' })).toBeInTheDocument();
 
     const rows = screen.getAllByRole('listitem');
     expect(rows).toHaveLength(6);
@@ -146,8 +146,10 @@ describe('PublicPagesPanel', () => {
       '/e/devcon-2026/sessions',
     );
 
-    expect(screen.queryByRole('heading', { name: 'Embeds' })).not.toBeInTheDocument();
-    fireEvent.click(within(rows[0]!).getByRole('button', { name: 'Embed code' }));
+    // DEC-785 amendment (wave 15): editing implies the builder mounts --
+    // entering the drill (via 'Change' or a bookmarked ?edit=1 URL) is
+    // enough to render the embed builder, without a further 'Embed code'
+    // click.
     expect(screen.getByRole('heading', { name: 'Embeds' })).toBeInTheDocument();
     // The list is still there beside the builder.
     expect(screen.getAllByRole('listitem')).toHaveLength(6);
@@ -209,5 +211,47 @@ describe('PublicPagesPanel', () => {
     const builderSection = screen.getByRole('region', { name: 'Embeds' });
     const position = savedEmbedsSection.compareDocumentPosition(builderSection);
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  // DEC-728/DEC-785 amendment (wave 15): landing on the drilled edit URL
+  // directly (a bookmark or a reload, not just a click) must render real
+  // form controls, not the read-only summary rows -- editing implies the
+  // embed builder mounts. There is exactly one 'Back' action for the whole
+  // drill, and clicking it returns to the summary rows.
+  it('GET ?section=public-pages&edit=1 renders real form controls with exactly one Back action', async () => {
+    mockEvent({
+      [`GET /api/v1/events/${EVENT_ID}/embeds`]: listEnvelope([
+        { id: 'emb1', name: 'Homepage widget', surface: 'sessions', format: 'iframe', options: {}, enabled: true },
+      ]),
+    });
+    render(
+      <MemoryRouter initialEntries={['/settings?section=public-pages&edit=1']}>
+        <PublicPagesPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await screen.findByRole('region', { name: 'Public pages' });
+    await waitFor(() => {
+      expect(within(section).getByText('/e/devcon-2026/sessions')).toBeInTheDocument();
+    });
+
+    // Real form controls render inside the section without any further
+    // click -- the embed builder is already mounted.
+    await waitFor(() => {
+      const controls = document.querySelectorAll('input, textarea, select');
+      expect(controls.length).toBeGreaterThan(0);
+    });
+
+    // Exactly one Back action for the whole drill (SummarySection's own),
+    // and no second Change/Back nested inside SavedEmbedsPanel.
+    expect(screen.getAllByRole('button', { name: 'Back' })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+    await waitFor(() => {
+      expect(within(section).getByRole('button', { name: 'Change' })).toBeInTheDocument();
+    });
+    expect(document.querySelectorAll('input, textarea, select').length).toBe(0);
   });
 });
