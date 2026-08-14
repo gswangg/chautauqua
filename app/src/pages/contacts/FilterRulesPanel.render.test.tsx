@@ -159,6 +159,13 @@ describe('FilterRulesPanel (DEC-868)', () => {
     expect(onSaveAsSegment).toHaveBeenCalledOnce();
   });
 
+  it('falls back to "<matchCount> match" (no denominator) when totalCount is unknown (null)', () => {
+    const rules: SegmentRule[] = [{ field: 'company', op: 'eq', value: 'Acme' }];
+    render(<FilterRulesPanel rules={rules} onChange={noop} matchCount={41} totalCount={null} onSaveAsSegment={noop} />);
+    expect(screen.getByText('41 match')).toBeInTheDocument();
+    expect(screen.queryByText(/of.*match/)).not.toBeInTheDocument();
+  });
+
   it('"Add a rule" renders as a tertiary link, not a bordered button', () => {
     render(<FilterRulesPanel rules={[]} onChange={noop} matchCount={0} totalCount={0} onSaveAsSegment={noop} />);
     const addRule = screen.getByRole('button', { name: 'Add a rule' });
