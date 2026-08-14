@@ -354,6 +354,17 @@ const INVITE_STATUS_RANK: Record<string, number> = {
   [INVITE_STATUS_NONE]: 0,
 };
 
+// Wave-39 (DEC-020 amendment): INVITE_STATUS_RANK is a plain object literal
+// — `INVITE_STATUS_RANK[x]` for a prototype key like `constructor` returns a
+// function, so the `?? -1` fallback never fires and the doc-promised "ranks
+// lowest" guarantee breaks. Own-property lookup only, matching
+// src/domain/files.ts's allowedContentType shape.
+function lookupInviteStatusRank(status: string): number | null {
+  return Object.prototype.hasOwnProperty.call(INVITE_STATUS_RANK, status)
+    ? INVITE_STATUS_RANK[status]!
+    : null;
+}
+
 /**
  * DEC-282 amendment: picks the surviving participant.inviteStatus when both
  * contacts being merged are participants on the same submission. Rank
@@ -364,8 +375,8 @@ const INVITE_STATUS_RANK: Record<string, number> = {
  * status; ties keep `a` (the kept contact's own value).
  */
 export function mergedInviteStatus(a: string, b: string): string {
-  const rankA = INVITE_STATUS_RANK[a] ?? -1;
-  const rankB = INVITE_STATUS_RANK[b] ?? -1;
+  const rankA = lookupInviteStatusRank(a) ?? -1;
+  const rankB = lookupInviteStatusRank(b) ?? -1;
   return rankB > rankA ? b : a;
 }
 

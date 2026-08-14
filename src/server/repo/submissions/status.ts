@@ -10,7 +10,13 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
 import { changeStatus, type SubmissionStatus } from "../../../domain/status";
-import { planAcceptance, FORM_TASK_FIELD_SPECS, isActiveParticipant, onboardingTaskDueDate } from "../../../domain/acceptance";
+import {
+  planAcceptance,
+  FORM_TASK_FIELD_SPECS,
+  type FormTaskFieldSpec,
+  isActiveParticipant,
+  onboardingTaskDueDate,
+} from "../../../domain/acceptance";
 import { isValidStatusLiteral } from "./query";
 import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
 import { ApiError } from "../../http";
@@ -44,6 +50,21 @@ function chunkBySize<T>(items: T[], size: number): T[][] {
  * BEFORE any insert — unlike MAX_AUTO_SCHEDULE_PLACEMENTS' silent slice, a
  * dropped onboarding assignment would be invisible to its producer. */
 export const MAX_ACCEPTANCE_TASK_ASSIGNMENTS = 20000;
+
+// Wave-39 (DEC-020 amendment): FORM_TASK_FIELD_SPECS (src/domain/acceptance.ts)
+// is a plain object literal — `FORM_TASK_FIELD_SPECS[title]` for a task
+// titled `constructor`/`toString` returns a function, so the `?? []`
+// fallback never fires and .entries() below throws mid acceptance-write.
+// Own-property lookup only, matching src/domain/files.ts's
+// allowedContentType shape.
+// Exported (test-only consumer: test/lookup-table-own-property.test.ts)
+// so the own-property fix can be asserted directly without standing up a
+// full db-backed getOrCreateFormTaskForm harness.
+export function lookupFormTaskFieldSpecs(title: string): readonly FormTaskFieldSpec[] {
+  return Object.prototype.hasOwnProperty.call(FORM_TASK_FIELD_SPECS, title)
+    ? FORM_TASK_FIELD_SPECS[title]!
+    : [];
+}
 
 /**
  * DEC-111: for a kind='form' template title present in FORM_TASK_FIELD_SPECS,
@@ -94,7 +115,7 @@ async function getOrCreateFormTaskForm(db: Db, eventId: string, title: string, n
   // seeded its fields), so this call must not insert a duplicate set.
   const createdHere = row.id === formId;
   if (createdHere) {
-    const specs = FORM_TASK_FIELD_SPECS[title] ?? [];
+    const specs = lookupFormTaskFieldSpecs(title);
     for (const [i, spec] of specs.entries()) {
       await db.insert(schema.formField).values({
         id: newId(),

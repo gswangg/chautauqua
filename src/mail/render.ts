@@ -30,8 +30,19 @@ const MERGE_FIELD_ALIASES: Readonly<Record<string, MergeField>> = {
   due_date: "task_due_date",
 };
 
+// Wave-39 (DEC-020 amendment): MERGE_FIELD_ALIASES is a plain object literal
+// — `MERGE_FIELD_ALIASES[name]` for a prototype key like `constructor`
+// returns Object (a function), so the `?? name` identity fallback never
+// fires and the "resolved" name isn't the string it's typed as. Own-property
+// lookup only, matching src/domain/files.ts's allowedContentType shape.
+function lookupMergeFieldAlias(name: string): MergeField | null {
+  return Object.prototype.hasOwnProperty.call(MERGE_FIELD_ALIASES, name)
+    ? MERGE_FIELD_ALIASES[name]!
+    : null;
+}
+
 function canonicalMergeField(name: string): string {
-  return MERGE_FIELD_ALIASES[name] ?? name;
+  return lookupMergeFieldAlias(name) ?? name;
 }
 
 // DEC-660: one merge-field vocabulary. These are subsets of MERGE_FIELDS,
