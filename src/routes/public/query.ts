@@ -26,13 +26,15 @@ export function parsePage(raw: string | undefined): number {
   return n > MAX_PUBLIC_PAGE ? MAX_PUBLIC_PAGE : n;
 }
 
-// DEC-433 amendment (wave 30): trim-or-null, now also bounded by
+// DEC-433 amendment (wave 30, wave 45): trim-or-null, bounded by
 // MAX_PUBLIC_QUERY_VALUE_LENGTH — an over-cap value degrades to null (never
 // throws) for exactly the reason parseLimit/parseDay/parseAccent already
 // degrade on bad input on these anonymous surfaces, and keeps a megabyte
 // query string from ever reaching a D1 LIKE parameter or minting its own
-// edge-cache key (src/server/pubcache.ts's hasOverlongQueryValue bypasses
-// the cache for the same over-cap request).
+// edge-cache key (src/server/pubcache.ts's versionedCacheKey now skips a
+// keyed param over this length rather than copying it in, so this parser
+// and the cache key agree on treating the value as absent — no separate
+// bypass needed).
 function trimOrNullBounded(raw: string | undefined): string | null {
   if (!raw) return null;
   const trimmed = raw.trim();

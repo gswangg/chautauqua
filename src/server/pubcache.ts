@@ -27,6 +27,16 @@
 // same bumpPublicVersionMiddleware swap. Only a schedule.ics request that
 // carries an `ids` query string (even empty — per-user/unbounded
 // cardinality) stays excluded; see isUncacheableIcsRequest.
+//
+// DEC-433 amendment (wave 45): isUncacheableIcsRequest is the ONE remaining
+// request-shaped bypass (no cache.match, no cache.put). The former
+// hasOverlongQueryValue whole-request bypass is deleted: versionedCacheKey
+// now skips a keyed param whose value exceeds MAX_PUBLIC_QUERY_VALUE_LENGTH
+// (treating it exactly as absent) instead of copying it into the key, and
+// every route-layer parser for a PUBLIC_CACHE_KEY_PARAMS name already
+// degrades an over-cap value to the same result as `undefined` — so an
+// overlong non-keyed param was already dropped, and an overlong keyed one
+// now keys identically to its absence rather than needing a bypass at all.
 
 import type { Context, Next } from "hono";
 import type { AppEnv } from "./env";
@@ -76,13 +86,26 @@ export async function readPublicVersion(kv: KVStore): Promise<string> {
  * ignored/overwritten) is dropped. This both restores cache hits for
  * shared/tracked links and closes the unbounded-cache-entry surface an
  * arbitrary sub-cap param could otherwise open (the exact flooding shape
- * DEC-433 already clamped ?page= to close). */
+ * DEC-433 already clamped ?page= to close).
+ *
+ * DEC-433 amendment (wave 45): a keyed param whose value is longer than
+ * MAX_PUBLIC_QUERY_VALUE_LENGTH is treated exactly as absent (skipped, not
+ * copied) rather than folded into the key verbatim. Every route-layer
+ * parser for a PUBLIC_CACHE_KEY_PARAMS name already degrades an over-cap
+ * value to the same result it produces for `undefined` (proven by
+ * test/pubcache-key-param-derivation.scan.test.ts's equivalence check), so
+ * this closes the key-space flooding surface a long *keyed* value would
+ * otherwise still open (an unkeyed param was already dropped above, but a
+ * keyed one like ?q=<10000 chars> used to be copied whole into the key).
+ * This supersedes hasOverlongQueryValue's whole-request bypass, which is
+ * deleted below — the parsers' own equivalence is the reason the bypass is
+ * no longer needed, not merely a second independent bound. */
 export function versionedCacheKey(url: string, version: string): Request {
   const parsed = new URL(url);
   const keyed = new URL(parsed.pathname, parsed.origin);
   for (const name of PUBLIC_CACHE_KEY_PARAMS) {
     const value = parsed.searchParams.get(name);
-    if (value !== null) keyed.searchParams.set(name, value);
+    if (value !== null && value.length <= MAX_PUBLIC_QUERY_VALUE_LENGTH) keyed.searchParams.set(name, value);
   }
   keyed.searchParams.set("__chqv", version);
   return new Request(keyed.toString());
@@ -96,22 +119,6 @@ export function versionedCacheKey(url: string, version: string): Request {
 export function isUncacheableIcsRequest(url: string): boolean {
   const parsed = new URL(url);
   return parsed.pathname.endsWith("/schedule.ics") && parsed.searchParams.has("ids");
-}
-
-/** DEC-433 amendment (wave 30): a query-string VALUE longer than
- * MAX_PUBLIC_QUERY_VALUE_LENGTH (src/routes/public/query.ts's four
- * trim-or-null parsers already ignore it — it parses to null) still reaches
- * versionedCacheKey, which salts the cache key off the *whole* URL — so an
- * unbounded string would still mint an unbounded number of edge-cache
- * entries even though the route-layer filter itself is bounded. Request-
- * shaped skip, same DEC-442 shape: a matching request neither matches nor
- * puts, so it's served uncached instead of polluting the key space. */
-export function hasOverlongQueryValue(url: string): boolean {
-  const parsed = new URL(url);
-  for (const value of parsed.searchParams.values()) {
-    if (value.length > MAX_PUBLIC_QUERY_VALUE_LENGTH) return true;
-  }
-  return false;
 }
 
 /** Core GET-path logic, pure against CacheLike + KVStore, so it's callable
@@ -387,7 +394,7 @@ export async function bumpIfMutating(kv: KVStore, method: string, path: string, 
  * environment, and route sub-app modules must stay importable there. */
 export function publicCacheMiddleware(cache: () => CacheLike) {
   return async (c: Context<AppEnv>, next: Next) => {
-    if (c.req.method !== "GET" || isUncacheableIcsRequest(c.req.url) || hasOverlongQueryValue(c.req.url)) {
+    if (c.req.method !== "GET" || isUncacheableIcsRequest(c.req.url)) {
       await next();
       return;
     }

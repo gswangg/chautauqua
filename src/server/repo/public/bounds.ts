@@ -18,12 +18,15 @@ export const PUBLIC_PER_PAGE = 12;
 export const MAX_PUBLIC_PAGE = 100;
 export const MAX_PUBLIC_ROWS = MAX_PUBLIC_PAGE * PUBLIC_PER_PAGE;
 
-// DEC-433 amendment (wave 30): the ONE bound on every public query-string
-// STRING value (trackId/format/roomId/q), mirrored by
-// src/routes/public/query.ts's four trim-or-null parsers and by
-// src/server/pubcache.ts's hasOverlongQueryValue (which must import this
-// constant, never hand-keep a second copy of the number) so the D1 LIKE
-// parameter and the edge-cache key space are bounded by the same number.
+// DEC-433 amendment (wave 30, superseded in part by wave 45): the ONE bound
+// on every public query-string STRING value (trackId/format/roomId/q),
+// mirrored by src/routes/public/query.ts's trim-or-null parsers and
+// src/lib/card-fields.ts's parseCardFields/parseSessionListFields. Wave 45:
+// src/server/pubcache.ts's versionedCacheKey also imports this constant
+// directly — a keyed param over this length is skipped (treated as absent)
+// rather than copied into the edge-cache key, so the D1 LIKE parameter and
+// the edge-cache key space stay bounded by the same number without a
+// separate whole-request bypass (the deleted hasOverlongQueryValue).
 export const MAX_PUBLIC_QUERY_VALUE_LENGTH = 200;
 
 // DEC-433 amendment (wave 44): the closed set of query-string param names
