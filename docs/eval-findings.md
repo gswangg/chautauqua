@@ -197,6 +197,49 @@ REVERT SHAPE (as originally directed; superseded by the landed implementation ab
 - Reserved-domain recipients (example.com) failing at send is CORRECT honest behavior, not a bug.
 This ships with the gate-4 deploy; deploy procedure keeps the secrets/bindings parity check.
 
+## REVIEW PACK LANDED (2026-08-13, vendored — SUPERSEDES ALL PRIOR 03-review AUTHORITY; the reviewer surfaces finally have DESKTOP frames)
+
+`Chautauqua Review.dc.html` redrawn (9 frames incl. 1600px reviewer queue + scorecard for the
+first time — the old pack had these only at 390, which is why the build improvised phone anatomy
+on desktop). Frames re-rendered into **design-frames-v7/03-review--\*** (manifest updated); zip at
+chautauqua-research/design-pack-review.zip; README sections "Reviewer surfaces" + "the queue is
+scoped to a plan" carry the spec. Directives:
+
+**P1 · Reviewer queue desktop = frame 03--03** (supersedes the earlier USER-FILED phone-anatomy
+item with designed authority): header = eyebrow `REVIEW · WAVE 2`, h1 "11 left to score",
+subtitle "<plan name> · closes in N days", primary `Score the next one` right-aligned on the
+title row; progress bar beneath with "7 of 18 done" right; rows = `REF  STATE` eyebrow line
+(SCORED 4.5 / NOT SCORED bold caps / RECUSED), title, meta "Talk, 30 min · advanced", and an
+INTRINSIC-WIDTH right-aligned action (~220px): olive `Score this` unscored, outlined
+`Change your score` scored, outlined disabled-style `You work with this speaker` on recused rows
+(the recusal reason IS the row action); footer "Showing 5 of 18  Show all 18" left + "Your
+scores stay hidden from other reviewers" right. Reviewer chrome: wordmark + underlined `Review`
+nav item + event name + FULL name `SAM WHITFIELD · SIGN OUT`.
+
+**P1 · Scorecard desktop = TWO-COLUMN WORK SURFACE, frame 03--01** (structural — supersedes the
+single-column 820 scorecard and the "equal spans filling the 820" segment spec): reading column
+~820 left (eyebrow `WAVE 2 · AI ENGINEERING · ROUND 1`, title, `DFC-021 · talk, 30 min ·
+advanced` meta, ABSTRACT, FORM ANSWERS as label|value rows) + 300 rail right holding the ENTIRE
+scoring panel: per criterion = name + right-aligned "Weight 3 · 50%" on its rule, guidance line,
+compact 1-5 pill row (~64px squares, selected olive-filled); `Overall  4.5` + "Averaged by
+weight · not editable. A plain average of 5, 4, 4 would be 4.33."; `Comment to the committee`
+textarea; `Recuse me from this one` checkbox (plain, no card); full-width olive `Submit and
+next` + `Save draft` secondary. Chrome: back link `‹ Wave 2 queue`, progress "7 of 18 done" in
+the header right. When the plan is anonymized the reading column states it: "The speaker's name
+and company are hidden while this plan is anonymised". Phone (03--02) stacks the same content.
+
+**P2 · plan-name scoping everywhere**: queue heading names the wave; scorecard back link reads
+`‹ Wave 2 queue`; eyebrow names wave · track · round (criteriaForRound makes this load-bearing).
+
+**SEED**: plans should carry distinct weights (mock uses 3/2/1) so weighted ≠ naive is visibly
+demoable — partially landed with the earlier seed variety fix; verify.
+
+**Supersession notes for fidelity agents:** the gate-2/3-era clauses "rating segments equal
+spans across 820", "scorecard is .chq-measure 820 single column", "queue full-width action" are
+ALL DEAD — judge 03-review exclusively against the new 03--00..08 frames. The scorecard shows NO
+keyboard-tip line and NO focus box on any criterion at rest (aligns with the USER-FILED focus-ring
+item — keep the number-key behavior, drop the visible tip line, ring on keyboard interaction only).
+
 ## DESIGN PACK v7 LANDED (2026-08-13, vendored to docs/design/ — SUPERSEDES v6 FOR SECTION 10 ONLY; both HOLDs below are LIFTED)
 
 Only `Chautauqua Public and Portal.dc.html` + README changed (verified byte-diff; all other

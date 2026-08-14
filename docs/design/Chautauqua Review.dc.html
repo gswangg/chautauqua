@@ -138,6 +138,99 @@
 
   <div style="display:flex; flex-direction:column; gap:14px">
     <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">1600</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Reviewer scorecard · /review/plans/:id/submissions/:id</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Read left, score right · no scrolling between them</span>
+    </div>
+
+    <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        <a href="#" style="font-size:13px; font-weight:700">‹ Wave 2 queue</a>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:16px">
+          <span style="font-size:13px; color:#565A4B">7 of 18 done</span>
+          <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Sam Whitfield</span>
+        </div>
+      </header>
+
+      <div style="max-width:1268px; margin:0 auto; width:100%; padding:28px 44px 40px">
+       <div style="display:grid; grid-template-columns:minmax(0, 820px) 300px; gap:60px; align-items:start; justify-content:center">
+
+        <div style="min-width:0">
+          <div style="border-bottom:1px solid #D3CFC0; padding-bottom:18px; display:flex; flex-direction:column; gap:7px">
+            <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Wave 2 · AI Engineering · round 1</span>
+            <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:32px; font-weight:700; letter-spacing:-0.04em; line-height:1.1">Your AI Pair Programmer Is Lying to You</h1>
+            <span style="font-size:14px; color:#565A4B">DFC-021 · talk, 30 min · advanced</span>
+          </div>
+
+          <div style="padding:22px 0 0">
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Abstract</span>
+            </div>
+            <p style="margin:16px 0 0; font-size:16px; line-height:1.7; color:#3F4237">Code generation is easy; trusting it is hard. This session covers verification patterns for AI-generated code — property tests, mutation coverage, snapshot judges, and CI gates — with data from 18 months of running them on a 200-engineer codebase.</p>
+          </div>
+
+          <div style="padding:26px 0 0">
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Form answers</span>
+            </div>
+            <sc-for list="{{ scorecardAnswers }}" as="a" hint-placeholder-count="4">
+              <div style="display:grid; grid-template-columns:190px 1fr; gap:20px; align-items:baseline; padding:14px 0; border-bottom:1px solid #E1DDCE">
+                <span style="font-size:13px; font-weight:600; color:#3F4237">{{ a.label }}</span>
+                <span style="font-size:15px; line-height:1.6">{{ a.value }}</span>
+              </div>
+            </sc-for>
+            <span style="display:block; padding:14px 0 0; font-size:13px; color:#565A4B">The speaker's name and company are hidden while this plan is anonymised</span>
+          </div>
+        </div>
+
+        <aside style="display:flex; flex-direction:column; gap:22px">
+          <sc-for list="{{ criteria }}" as="c" hint-placeholder-count="3">
+            <section>
+              <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between; gap:10px">
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-size:12px; font-weight:700; letter-spacing:-0.01em">{{ c.label }}</span>
+                <span style="font-size:11px; font-weight:600; color:#565A4B; white-space:nowrap">{{ c.weight }}</span>
+              </div>
+              <span style="display:block; padding:10px 0 0; font-size:13px; color:#565A4B; line-height:1.5">{{ c.hint }}</span>
+              <div style="display:flex; gap:6px; padding:10px 0 0">
+                <sc-for list="{{ c.scale }}" as="n" hint-placeholder-count="5">
+                  <span style="{{ n.style }}">{{ n.value }}</span>
+                </sc-for>
+              </div>
+            </section>
+          </sc-for>
+
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:12px; font-weight:700">Overall</span>
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:26px; font-weight:700; letter-spacing:-0.03em; line-height:1">4.5</span>
+            </div>
+            <span style="display:block; padding:9px 0 0; font-size:12px; color:#565A4B; line-height:1.5">Averaged by weight · not editable. A plain average of 5, 4, 4 would be 4.33.</span>
+          </section>
+
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:12px; font-weight:700">Comment to the committee</span>
+            </div>
+            <div style="margin-top:10px; border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; padding:12px; min-height:120px; font-size:14px; line-height:1.55; color:#3F4237">Strong practical content and a clear narrative arc; abstract could name the specific tooling used. Recommend accept for the AI track.</div>
+            <label style="display:flex; align-items:center; gap:9px; min-height:44px; font-size:13px; color:#3F4237">
+              <span style="width:18px; height:18px; border:1px solid #8E8A7A; border-radius:3px; flex-shrink:0"></span>
+              Recuse me from this one
+            </label>
+            <div style="display:flex; flex-direction:column; gap:8px; padding-top:4px">
+              <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Submit and next</span>
+              <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:#2E2A24">Save draft</span>
+            </div>
+          </section>
+        </aside>
+
+       </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
       <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
       <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Reviewer scorecard · /review/plans/:id/submissions/:id</span>
       <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Reviewers only ever see this</span>
@@ -198,6 +291,65 @@
       <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; gap:8px">
         <span style="flex:1; background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:46px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700">Submit and next</span>
         <span style="border:1px solid #BAB6A6; border-radius:6px; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600">Save draft</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">1600</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Reviewer queue · /review/plans/:id</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">A reviewer sees this and the scorecard · nothing else</span>
+    </div>
+
+    <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        <nav style="display:flex; align-items:center; gap:15px; font-size:13px; font-weight:600; line-height:1">
+          <span style="padding:4px 0; box-shadow:inset 0 -2px 0 #4E5C31">Review</span>
+        </nav>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:14px">
+          <span style="font-size:13px; font-weight:600">DevFlow Conf 2027</span>
+          <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Sam Whitfield · Sign out</span>
+        </div>
+      </header>
+
+      <div style="max-width:820px; margin:0 auto; width:100%; padding:30px 34px 40px">
+        <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; border-bottom:1px solid #D3CFC0; padding-bottom:18px">
+          <div style="display:flex; flex-direction:column; gap:6px">
+            <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Review · Wave 2</span>
+            <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:36px; font-weight:700; letter-spacing:-0.04em; line-height:1">11 left to score</h1>
+            <span style="font-size:14px; color:#565A4B">AI Engineering deep pass · closes in 19 days</span>
+          </div>
+          <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:48px; display:flex; align-items:center; padding:0 20px; font-size:15px; font-weight:700; white-space:nowrap">Score the next one</span>
+        </div>
+
+        <div style="padding:16px 0 22px; display:flex; align-items:center; gap:14px">
+          <div style="flex:1; height:6px; border-radius:99px; background:#E1DDCE; overflow:hidden">
+            <div style="width:39%; height:100%; background:#4E5C31"></div>
+          </div>
+          <span style="font-size:13px; color:#565A4B; white-space:nowrap">7 of 18 done</span>
+        </div>
+
+        <sc-for list="{{ queue }}" as="q" hint-placeholder-count="5">
+          <div style="display:grid; grid-template-columns:1fr 176px; gap:24px; align-items:center; padding:18px 0; border-bottom:1px solid #E1DDCE">
+            <div style="display:flex; flex-direction:column; gap:6px; min-width:0">
+              <div style="display:flex; align-items:baseline; gap:12px">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; color:#565A4B">{{ q.ref }}</span>
+                <span style="{{ q.markStyle }}">{{ q.mark }}</span>
+              </div>
+              <a href="#" style="font-family:'Familjen Grotesk', sans-serif; font-size:20px; font-weight:600; letter-spacing:-0.022em; line-height:1.3; color:#1B1D17">{{ q.title }}</a>
+              <span style="font-size:13px; color:#565A4B">{{ q.meta }}</span>
+            </div>
+            <span style="{{ q.btnStyle }}">{{ q.btn }}</span>
+          </div>
+        </sc-for>
+
+        <div style="padding:18px 0 0; display:flex; align-items:center; gap:16px">
+          <span style="font-size:13px; color:#565A4B">Showing 5 of 18</span>
+          <a href="#" style="font-size:13px; font-weight:700">Show all 18</a>
+          <span style="margin-left:auto; font-size:13px; color:#565A4B">Your scores stay hidden from other reviewers</span>
+        </div>
       </div>
     </div>
   </div>
@@ -599,6 +751,12 @@ class Component extends DCLogic {
         { rank: '2', title: 'Your AI Pair Programmer Is Lying to You', speaker: 'Marcus Okafor', track: 'AI Engineering', score: '4.5', count: '3 reviews' },
         { rank: '3', title: 'Evaluating Agents: Harnesses, Judges, and Regression Sets', speaker: 'Nadia Ferrone', track: 'AI Engineering', score: '3.9', count: '2 reviews · 1 recusal' },
         { rank: '4', title: 'Docs That Answer Back', speaker: 'Dana Whitmore', track: 'Developer Experience', score: '3.4', count: '3 reviews' },
+      ],
+      scorecardAnswers: [
+        { label: 'Format', value: 'Talk, 30 minutes' },
+        { label: 'Audience level', value: 'Advanced' },
+        { label: 'Notes for reviewers', value: 'Happy to cut the CI-gate section if you want a tighter 20 minutes.' },
+        { label: 'Accessibility needs', value: 'None' },
       ],
       criteria: [
         { label: 'Relevance to the track', hint: 'Does it belong in AI Engineering?', weight: 'Weight 3 · 50%', scale: scale(5) },
