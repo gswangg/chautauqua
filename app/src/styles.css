@@ -150,12 +150,13 @@ a:hover {
 /* Shell + chrome (DEC-369)                                               */
 /* ---------------------------------------------------------------------- */
 
-/* DEC-576: .chq-shell is a flex column filling the viewport; header,
-   .chq-tabbar and .chq-footer are in-flow flex-shrink:0 regions and
-   .chq-main is the ONLY scrolling region (flex:1; min-height:0;
-   overflow-y:auto). No fixed positioning and no guessed bottom-padding
-   compensation — content can never sit under the tab bar because the bar
-   is not over it. */
+/* DEC-576: .chq-shell is a flex column filling the viewport; header and
+   .chq-tabbar are in-flow flex-shrink:0 regions and .chq-main is the ONLY
+   scrolling region (flex:1; min-height:0; overflow-y:auto). No fixed
+   positioning and no guessed bottom-padding compensation — content can
+   never sit under the tab bar because the bar is not over it. DEC-369
+   amendment (wave 72): there is no shell footer -- Sign out lives in
+   .chq-header-identity. */
 .chq-shell {
   height: 100%;
   display: flex;
@@ -191,13 +192,27 @@ a:hover {
 }
 
 /* DEC-576/369: "JORDAN A." — the user's identity, styled entirely by the
-   inherited .chq-header-identity type (11px/700/0.1em Muted). Sign out no
-   longer lives here (wave 42): it moved to the shell footer. */
+   inherited .chq-header-identity type (11px/700/0.1em Muted). */
 .chq-user-identity {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   white-space: nowrap;
+}
+
+/* DEC-369 amendment (wave 72): Sign out rejoins the header identity as a
+   real tertiary button beside the identity label -- never a menu, one
+   click from any page. Type/case borrow from .chq-header-identity by
+   inheritance; only the button-face reset is page-local here. */
+.chq-header-signout {
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: none;
+  margin-left: 4px;
+}
+
+.chq-header-signout::before {
+  content: '· ';
 }
 
 .chq-wordmark {
@@ -242,27 +257,6 @@ a:hover {
 .chq-tabbar {
   display: none;
   flex-shrink: 0;
-}
-
-/* DEC-369 amendment (wave 42): shell footer, present on every admin page --
-   carries Sign out (never a menu, so it stays one click from any page) and,
-   for a reviewer, the reassurance that scores stay hidden from other
-   reviewers. */
-.chq-footer {
-  flex-shrink: 0;
-  border-top: 1px solid var(--chq-ink);
-  padding: 12px 34px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  background: var(--chq-paper);
-}
-
-.chq-footer-note {
-  margin: 0;
-  font-size: 12px;
-  color: var(--chq-muted);
 }
 
 @media (max-width: 700px) {
