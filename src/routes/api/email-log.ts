@@ -9,8 +9,9 @@ import type { AppEnv } from "../../server/env";
 import { requireOrganizer } from "../../server/middleware";
 import { listEmailBatches, listEmailLog } from "../../server/repo/email";
 import { clampPage, clampPerPage } from "../../lib/pagination";
-import { ApiError } from "../../server/http";
+import { ApiError, parseBoundedText } from "../../server/http";
 import * as schema from "../../db/schema";
+import { EMAIL_LOG_STATUSES } from "../../mail/types";
 
 export const emailLogRoutes = new Hono<AppEnv>();
 
@@ -32,10 +33,23 @@ emailLogRoutes.get("/api/v1/events/:eventId/email-log", requireOrganizer, async 
 
   const page = clampPage(c.req.query("page"));
   const perPage = clampPerPage(c.req.query("perPage"));
-  const contactId = c.req.query("contactId") || undefined;
-  const status = c.req.query("status") || undefined;
-  const q = c.req.query("q") || undefined;
-  const batchId = c.req.query("batchId") || undefined;
+  const contactIdRaw = c.req.query("contactId") || undefined;
+  const contactId =
+    contactIdRaw !== undefined
+      ? parseBoundedText(contactIdRaw, "contactId", { max: 64, required: false })
+      : undefined;
+  const statusRaw = c.req.query("status") || undefined;
+  if (statusRaw !== undefined && !(EMAIL_LOG_STATUSES as readonly string[]).includes(statusRaw)) {
+    throw new ApiError("invalid", "status must be one of sent, failed", { status: "invalid" });
+  }
+  const status = statusRaw;
+  const qRaw = c.req.query("q") || undefined;
+  const q = qRaw !== undefined ? parseBoundedText(qRaw, "q", { max: 200, required: false }) : undefined;
+  const batchIdRaw = c.req.query("batchId") || undefined;
+  const batchId =
+    batchIdRaw !== undefined
+      ? parseBoundedText(batchIdRaw, "batchId", { max: 64, required: false })
+      : undefined;
 
   // DEC-905: epoch-ms lower bound on sentAt, backing the Comms head's "N
   // sent in the last 7 days" -- fails loudly on a malformed value rather
