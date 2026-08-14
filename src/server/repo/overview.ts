@@ -22,16 +22,18 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
-import { findConflicts, parseFormatDurationMin, type PlacedSession } from "../../domain/schedule";
+import { findConflicts, parseFormatDurationMin, type BlockedInterval, type PlacedSession } from "../../domain/schedule";
 import { formatRef } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
 import { SESSION_FORMAT_FIELD_ID } from "../../forms/types";
 import { loadTrackNamesBySubmission } from "./submission-tracks";
 import { DEFAULT_AUTO_SCHEDULE_PARAMS, MAX_AGENDA_SCAN } from "./agenda";
+import { listBreaksForEvent } from "./breaks";
 import { ApiError } from "../http";
 import { overdueAssignmentConditions } from "./tasks/crud";
 import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
-import { DEC_370, DEC_531, DEC_704, DEC_772, DEC_776, DEC_895 } from "../../decisions";
+import { DEC_010, DEC_370, DEC_531, DEC_704, DEC_772, DEC_776, DEC_895 } from "../../decisions";
+void DEC_010;
 void DEC_370;
 void DEC_531;
 void DEC_704;
@@ -453,7 +455,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
   // above (no await between them), and the three lookups they feed are
   // mutually independent of each other's results — one more Promise.all
   // wave, in the original leadSpeaker -> room -> format-answer call order.
-  const [{ nameById: leadSpeakerNameById, contactIdById: leadSpeakerContactIdById }, roomNameById, formatAnswerRows] =
+  const [{ nameById: leadSpeakerNameById, contactIdById: leadSpeakerContactIdById }, roomNameById, formatAnswerRows, breaks] =
     await Promise.all([
       fetchLeadSpeakers(db, [...leadSpeakerIds]),
       (async () => {
@@ -493,7 +495,18 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
         }
         return rows;
       })(),
+      // DEC-010 amendment (wave 66): the event's breaks, loaded ONCE here —
+      // never per-suggestion below — and threaded as `blocked` into every
+      // §04 nextFreeSlot call so a "Place at HH:MM"/"Move REF to HH:MM"
+      // suggestion never names a break window.
+      listBreaksForEvent(db, eventId),
     ]);
+
+  const blocked: BlockedInterval[] = breaks.map((b) => ({
+    day: b.day,
+    startMin: b.startMin,
+    endMin: b.startMin + b.durationMin,
+  }));
 
   const formatLabelByUnplacedId = new Map<string, string | null>();
   for (const r of formatAnswerRows) {
@@ -580,6 +593,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
         roomNameById,
         nextFreeSlotParams,
         durationMin,
+        blocked,
       );
       if (suggestion) {
         suggestionOccupancy.push({
@@ -617,6 +631,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
         placedDays,
         roomNameById,
         nextFreeSlotParams,
+        blocked,
       ),
     })),
     unplaced: unplacedRows,

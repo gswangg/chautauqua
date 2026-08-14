@@ -49,7 +49,8 @@ describe("getOverviewPayload: participant invite-audience (DEC-512)", () => {
       [{ submissionId: "s1", order: 1, contactId: "c-active", firstName: "Ada", lastName: "Lovelace" }], // 16 lead-speaker rows
       [{ id: "room-a", name: "Room A" }], // 17 room-name rows
       [], // 18 format-answer rows for unplaced {s1}
-      [{ sentLast7Days: 0, lastSentAt: null }], // 19 comms
+      [], // 19 DEC-010 amendment: breaks for the event
+      [{ sentLast7Days: 0, lastSentAt: null }], // 20 comms
     ];
 
     function chain(): any {

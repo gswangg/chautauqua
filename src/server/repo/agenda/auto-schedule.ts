@@ -14,6 +14,7 @@ import {
   type UnplacedLabels,
 } from "../../../domain/schedule";
 import { computeDays } from "./days";
+import { listBreaksForEvent } from "../breaks";
 import { loadAcceptedSessions, loadDurationMinBySubmission, type AcceptedSessionRow, type EventInfo } from "./rows";
 import { getAgendaPayload } from "./payload";
 import type { AgendaPayload, DescribedUnplaced } from "./types";
@@ -49,6 +50,9 @@ export async function runAutoSchedule(
   const rooms = roomRows.map((r) => r.id);
 
   const accepted = await loadAcceptedSessions(db, eventId, event.recordPrefix);
+  // DEC-010 amendment (wave 66): the placer must never place a session into
+  // an organizer-defined break window.
+  const breaks = await listBreaksForEvent(db, eventId);
 
   const existing: PlacedSession[] = accepted
     .filter((s): s is AcceptedSessionRow & { slot: NonNullable<AcceptedSessionRow["slot"]> } => s.slot !== null)
@@ -88,6 +92,7 @@ export async function runAutoSchedule(
     dayEndMin: params.dayEndMin,
     gridMin: params.gridMin,
     existing,
+    blocked: breaks.map((b) => ({ day: b.day, startMin: b.startMin, endMin: b.startMin + b.durationMin })),
   });
 
   const now = new Date();

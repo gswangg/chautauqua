@@ -350,6 +350,10 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       overrides.unplacedDetail ?? [],
       overrides.slotRows ?? [],
       ...extra,
+      // DEC-010 amendment (wave 66): listBreaksForEvent fires unconditionally
+      // in the same Phase 3 Promise.all wave as the leadSpeaker/room/format
+      // queries above, right before the comms aggregate.
+      overrides.breaks ?? [],
       overrides.comms ?? [{ sentLast7Days: 0, lastSentAt: null }],
     ];
   }
@@ -545,6 +549,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       [], // slotRows (s1 has no schedule_slot -> unplaced)
       [], // lead-speaker rows for {s1}
       [], // DEC-895: format-answer rows for the unplaced set {s1} (none -> durationMin null)
+      [], // DEC-010 amendment: breaks for the event
       [{ sentLast7Days: 0, lastSentAt: null }], // comms
     ]);
     const payload = await getOverviewPayload(db, "event-1", now);
@@ -593,6 +598,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
         { submissionId: "s1", valueJson: JSON.stringify("Talk (30 min)") },
         { submissionId: "s2", valueJson: JSON.stringify("Workshop (120 min)") },
       ], // DEC-895: format-answer rows for the unplaced set {s1, s2}
+      [], // DEC-010 amendment: breaks for the event
       [{ sentLast7Days: 0, lastSentAt: null }], // comms
     ]);
     const payload = await getOverviewPayload(db, "event-1", now);
