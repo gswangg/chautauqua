@@ -144,9 +144,14 @@ const SELECTED_COLUMNS = {
   sentAt: schema.emailLog.sentAt,
 } as const;
 
-/** Lists email_log rows newest-first, joined to event for display, with
- * optional eventId/contactId/status filters and DEC-013 pagination. */
-export async function listEmailLog(db: Db, params: EmailLogListParams): Promise<EmailLogListResult> {
+/** w41-a: the WHERE-condition-building shared by listEmailLog and the J12
+ * email-log export (src/server/repo/exports/email-log.ts) — the export's own
+ * row query needs a column (templateId) the list's narrow DEC-543 projection
+ * excludes, so it cannot reuse listEmailLog's row shape directly, but it MUST
+ * reuse this exact predicate so "one predicate, two surfaces" holds: a
+ * filtered export and the SAME filter through GET .../email-log agree on
+ * which rows match, always. */
+export function emailLogConditions(params: Pick<EmailLogListParams, "eventId" | "contactId" | "status" | "orgId" | "batchKey" | "since" | "q">) {
   const conditions = [];
   if (params.eventId) conditions.push(eq(schema.emailLog.eventId, params.eventId));
   if (params.contactId) conditions.push(eq(schema.emailLog.contactId, params.contactId));
@@ -165,6 +170,13 @@ export async function listEmailLog(db: Db, params: EmailLogListParams): Promise<
       ),
     );
   }
+  return conditions;
+}
+
+/** Lists email_log rows newest-first, joined to event for display, with
+ * optional eventId/contactId/status filters and DEC-013 pagination. */
+export async function listEmailLog(db: Db, params: EmailLogListParams): Promise<EmailLogListResult> {
+  const conditions = emailLogConditions(params);
   const where = conditions.length > 0 ? and(...conditions) : undefined;
 
   const base = db

@@ -12,9 +12,9 @@ import { type ExportKind } from "./kinds";
 import { exportSubmissions } from "./submissions";
 import type { ParsedListQuery } from "../submissions/query";
 import { exportSpeakers } from "./speakers";
-import { exportEvaluations } from "./evaluations";
+import { exportEvaluations, type EvaluationsExportParams } from "./evaluations";
 import { exportAgenda } from "./agenda";
-import { exportEmailLog } from "./email-log";
+import { exportEmailLog, type EmailLogExportParams } from "./email-log";
 import { exportContacts } from "./contacts";
 import type { ParsedContactListQuery } from "../contacts/query";
 import { type ExportTable } from "./table";
@@ -29,7 +29,8 @@ export {
   shapeSubmissionsExport,
 } from "./submissions";
 export { AGENDA_HEADER, type AgendaExportInput, shapeAgendaExport } from "./agenda";
-export { labelByCriterionId, shapeEvaluationsExport } from "./evaluations";
+export { labelByCriterionId, shapeEvaluationsExport, type EvaluationsExportParams } from "./evaluations";
+export { type EmailLogExportParams } from "./email-log";
 export { SHOWFLOW_HEADER, type ShowflowExportInput, shapeShowflowExport, buildShowflowExport } from "./showflow";
 export { CONTACTS_HEADER, exportContacts } from "./contacts";
 
@@ -44,6 +45,8 @@ export async function buildExport(
   orgId?: string,
   submissionsListParams?: ParsedListQuery,
   contactsListParams?: ParsedContactListQuery,
+  emailLogParams?: EmailLogExportParams,
+  evaluationsParams?: EvaluationsExportParams,
 ): Promise<ExportTable> {
   switch (kind) {
     case "submissions":
@@ -51,11 +54,11 @@ export async function buildExport(
     case "speakers":
       return exportSpeakers(db, eventId);
     case "evaluations":
-      return exportEvaluations(db, eventId);
+      return exportEvaluations(db, eventId, evaluationsParams);
     case "agenda":
       return exportAgenda(db, eventId);
     case "email-log":
-      return exportEmailLog(db, eventId);
+      return exportEmailLog(db, eventId, emailLogParams);
     case "contacts":
       if (!orgId) throw new Error("buildExport: orgId is required for kind 'contacts'");
       return exportContacts(db, orgId, contactsListParams);

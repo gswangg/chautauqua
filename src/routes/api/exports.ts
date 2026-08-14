@@ -10,14 +10,15 @@ import { Hono, type Context } from "hono";
 import { eq } from "drizzle-orm";
 import type { AppEnv } from "../../server/env";
 import { requireOrganizer } from "../../server/middleware";
-import { ApiError } from "../../server/http";
+import { ApiError, parseBoundedText } from "../../server/http";
 import * as schema from "../../db/schema";
 import { toCsv } from "../../lib/csv";
-import { buildExport, buildShowflowExport, isExportKind, EXPORT_MAX_ROWS } from "../../server/repo/exports";
+import { buildExport, buildShowflowExport, isExportKind, EXPORT_MAX_ROWS, type EmailLogExportParams, type EvaluationsExportParams } from "../../server/repo/exports";
 import { contentDispositionAttachment } from "../../domain/files";
 import { parseListQuery } from "../../server/repo/submissions/query";
 import { parseContactListQuery } from "../../server/repo/contacts/query";
 import { parseRulesQueryParam } from "./contacts/segments";
+import { EMAIL_LOG_STATUSES } from "../../mail/types";
 import { DEC_011, DEC_025, DEC_027, DEC_055, DEC_649, DEC_671 } from "../../decisions";
 
 void DEC_011;
@@ -116,20 +117,75 @@ exportsRoutes.get("/api/v1/events/:eventId/export/:kind", requireOrganizer, asyn
     }
   }
 
-  const table = await buildExport(c.var.db, eventId, kind, orgId, submissionsListParams, contactsListParams);
+  // w41-a (DEC-027 wave-41 amendment): the 'email-log' export honours the
+  // History tab's own filter (contactId/status/q/batchId/since) via the SAME
+  // validators the sibling route (src/routes/api/email-log.ts) uses -- not a
+  // reimplementation -- so an unrecognised status/since value 400s the same
+  // way here as it does there.
+  let emailLogParams: EmailLogExportParams | undefined;
+  if (kind === "email-log") {
+    const contactIdRaw = c.req.query("contactId") || undefined;
+    const contactId = contactIdRaw !== undefined ? parseBoundedText(contactIdRaw, "contactId", { max: 64, required: false }) : undefined;
+    const statusRaw = c.req.query("status") || undefined;
+    if (statusRaw !== undefined && !(EMAIL_LOG_STATUSES as readonly string[]).includes(statusRaw)) {
+      throw new ApiError("invalid", "status must be one of sent, failed", { status: "invalid" });
+    }
+    const qRaw = c.req.query("q") || undefined;
+    const q = qRaw !== undefined ? parseBoundedText(qRaw, "q", { max: 200, required: false }) : undefined;
+    const batchIdRaw = c.req.query("batchId") || undefined;
+    const batchKey = batchIdRaw !== undefined ? parseBoundedText(batchIdRaw, "batchId", { max: 64, required: false }) : undefined;
+    const sinceRaw = c.req.query("since");
+    let since: number | undefined;
+    if (sinceRaw !== undefined) {
+      const n = Number(sinceRaw);
+      if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) {
+        throw new ApiError("invalid", "since must be a non-negative integer epoch-ms timestamp", { since: "invalid" });
+      }
+      since = n;
+    }
+    emailLogParams = { contactId, status: statusRaw, q, batchKey, since };
+  }
 
-  // DEC-027 amendment (wave 50): refuse rather than ship a silently
-  // truncated file. 'submissions' and 'contacts' already honour the list's
+  // w41-a (DEC-027 wave-41 amendment): the 'evaluations' export honours an
+  // optional planId/round narrowing. A planId that is not a plan of THIS
+  // event is a loud ApiError (exportEvaluations itself checks ownership),
+  // never a silently empty CSV.
+  let evaluationsParams: EvaluationsExportParams | undefined;
+  if (kind === "evaluations") {
+    const planIdRaw = c.req.query("planId") || undefined;
+    const planId = planIdRaw !== undefined ? parseBoundedText(planIdRaw, "planId", { max: 64, required: false }) : undefined;
+    const roundRaw = c.req.query("round");
+    let round: number | undefined;
+    if (roundRaw !== undefined) {
+      const n = Number(roundRaw);
+      if (!Number.isInteger(n) || n < 1) {
+        throw new ApiError("invalid", "round must be a positive integer", { round: "invalid" });
+      }
+      round = n;
+    }
+    evaluationsParams = { planId, round };
+  }
+
+  const table = await buildExport(c.var.db, eventId, kind, orgId, submissionsListParams, contactsListParams, emailLogParams, evaluationsParams);
+
+  // DEC-027 amendment (wave 50, extended wave 41): refuse rather than ship a
+  // silently truncated file. 'submissions' and 'contacts' honour the list's
   // own filter (q/status/trackId/sort per DEC-649; q/segmentId/rules per
-  // DEC-671) so "narrow with that filter and retry" is a real next action;
-  // every other kind is told the cap plainly since it has no filter here.
+  // DEC-671); 'email-log' and 'evaluations' now honour their own filters too
+  // (w41-a) so "narrow with that filter and retry" is a real next action for
+  // all four; 'speakers'/'agenda' have no filter here and are told the cap
+  // plainly.
   if (table.truncated) {
     const narrowHint =
       kind === "submissions"
         ? " Narrow with the list's own filter (q/status/trackId) and retry."
         : kind === "contacts"
           ? " Narrow with the directory's own filter (q/segmentId/rules) and retry."
-          : "";
+          : kind === "email-log"
+            ? " Narrow with the history's own filter (status/q/batchId/since/contactId) and retry."
+            : kind === "evaluations"
+              ? " Narrow with planId/round and retry."
+              : "";
     throw new ApiError("invalid", `This export would exceed the ${EXPORT_MAX_ROWS}-row cap.${narrowHint}`);
   }
 
