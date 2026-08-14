@@ -1,8 +1,9 @@
 // DEC-990: "Speakers: one page, two views" -- Speakers is one public surface
 // with a List (/speakers) and Grid (/gallery) view, reachable via a toggle
-// beside the search box. Amendment (wave 53): Gallery is back in the top
-// nav (NAV_SURFACES, frame 10--00) alongside the toggle -- both paths reach
-// the same content.
+// beside the search box. DEC-593 Amendment (wave 65) supersedes DEC-990's
+// wave-53 nav clause: Gallery is dropped from the top nav again -- a
+// photo-led twin is not a nav destination, /gallery keeps its URL and
+// highlights Speakers as the active nav item.
 
 import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
@@ -99,8 +100,8 @@ function buildApp() {
   };
 }
 
-describe("DEC-990 Amendment (wave 53): public shell nav includes Gallery", () => {
-  it("GET /e/conf/sessions nav renders Sessions/Speakers/Agenda/My schedule/Gallery", async () => {
+describe("DEC-593 Amendment (wave 65): public shell nav drops Gallery", () => {
+  it("GET /e/conf/sessions nav renders exactly Sessions/Speakers/Agenda/My schedule, no Gallery", async () => {
     const app = buildApp();
     const res = await app.request("/e/conf/sessions");
     expect(res.status).toBe(200);
@@ -111,10 +112,47 @@ describe("DEC-990 Amendment (wave 53): public shell nav includes Gallery", () =>
     expect(navHtml).toContain(">Sessions<");
     expect(navHtml).toContain(">Speakers<");
     expect(navHtml).toContain(">Agenda<");
-    // frame 10--00: the nav item's label is now 'My schedule'.
     expect(navHtml).toContain(">My schedule<");
-    expect(navHtml).toContain(">Gallery<");
-    expect(navHtml).toContain("/gallery");
+    expect(navHtml).not.toContain(">Gallery<");
+  });
+
+  it("GET /e/conf/gallery is 200 and marks the Speakers nav link current", async () => {
+    const app = buildApp();
+    // A distinct query string keeps this request's version-salted cache key
+    // (src/server/pubcache.ts) from colliding with the other bare
+    // /e/conf/gallery requests elsewhere in this file, whose shared
+    // InMemoryCache mock only supports a single re-read of a stored
+    // Response body.
+    const res = await app.request("/e/conf/gallery?page=1");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    const nav = html.match(/<nav class="chq-nav">([\s\S]*?)<\/nav>/)![1]!;
+    expect(nav).not.toContain(">Gallery<");
+    expect(nav).toMatch(/aria-current="page"[^>]*>\s*Speakers/);
+    expect((nav.match(/aria-current="page"/g) ?? []).length).toBe(1);
+  });
+
+  it("a speaker-detail page reached with ?from=gallery also marks Speakers current", async () => {
+    const { getPublicSpeakerDetail } = await import("../src/server/repo/public");
+    vi.mocked(getPublicSpeakerDetail).mockResolvedValueOnce({
+      contactId: SPEAKER.contactId,
+      firstName: SPEAKER.firstName,
+      lastName: SPEAKER.lastName,
+      title: SPEAKER.title,
+      company: SPEAKER.company,
+      bio: SPEAKER.bio,
+      headshotUrl: SPEAKER.headshotUrl,
+      socialLinks: [],
+      sessions: [],
+    });
+    const app = buildApp();
+    const res = await app.request("/e/conf/speakers/c1?from=gallery");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    const nav = html.match(/<nav class="chq-nav">([\s\S]*?)<\/nav>/)![1]!;
+    expect(nav).not.toContain(">Gallery<");
+    expect(nav).toMatch(/aria-current="page"[^>]*>\s*Speakers/);
+    expect((nav.match(/aria-current="page"/g) ?? []).length).toBe(1);
   });
 });
 

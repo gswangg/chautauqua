@@ -6,13 +6,15 @@
 import type { PublicEvent } from "../../server/repo/public";
 import { ThemeStyles } from "../../views/theme";
 import { PUBLIC_CSS } from "./public.css";
-import { DEC_374, DEC_371 } from "../../decisions";
+import { DEC_374, DEC_371, DEC_593 } from "../../decisions";
 import { formatEventDayRange } from "../../lib/event-time";
 import { normalizeHexColor } from "../../domain/color";
 
 void DEC_371;
 
 void DEC_374;
+
+void DEC_593;
 
 export const SURFACES = ["sessions", "speakers", "agenda", "schedule", "gallery"] as const;
 export type Surface = (typeof SURFACES)[number];
@@ -44,15 +46,22 @@ export function measureClassForSurface(surface: Surface): PublicMeasure {
   }
 }
 
-/** DEC-990 Amendment (wave 53): gallery is back as its own nav destination
- * (frame 10--00) -- the /speakers List/Grid toggle reaches the same content
- * but doesn't substitute for a direct link from every other surface's nav.
- * NAV_SURFACES is derived from SURFACES (never hand-listed) so a future
- * surface addition can't silently desync the two; each route's `active`
- * Surface (index.tsx's per-surface loop passes its own `surface` value)
- * matches exactly one NAV_SURFACES entry, so exactly one <a> ever carries
- * aria-current. */
-export const NAV_SURFACES = SURFACES;
+/** DEC-593 Amendment (wave 65), superseding DEC-990's wave-53 nav clause on
+ * this one point: a photo-led twin is not a nav destination -- a view switch
+ * (the /speakers List/Grid toggle) must not present as leaving the section.
+ * NAV_SURFACES is derived from SURFACES (never hand-listed) by filtering out
+ * "gallery"; SURFACES itself stays unchanged so the route, feeds, embeds and
+ * the Settings surface-count rows are untouched. Every PublicShell call site
+ * routes its `active` Surface through navActiveFor() below so /gallery (and
+ * a speaker-detail page reached with ?from=gallery) highlight Speakers --
+ * exactly one nav <a> ever carries aria-current. */
+export const NAV_SURFACES: readonly Surface[] = SURFACES.filter((s) => s !== "gallery");
+
+/** DEC-593 wave-65: maps any Surface (including "gallery", which has no nav
+ * entry) to the Surface whose nav <a> should carry aria-current. */
+export function navActiveFor(surface: Surface): Surface {
+  return surface === "gallery" ? "speakers" : surface;
+}
 
 // DEC-477/DEC-487: PER_PAGE moved to src/server/repo/public/bounds.ts as
 // PUBLIC_PER_PAGE — this is the ONE home for public paging constants.
