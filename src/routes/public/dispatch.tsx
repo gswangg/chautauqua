@@ -11,6 +11,7 @@ import {
   getPublicCfpWindow,
   getPublicRooms,
   getPublicFormatOptions,
+  getPublicBreaksByDay,
   type PublicEvent,
 } from "../../server/repo/public";
 import type { Surface } from "./shell";
@@ -163,6 +164,11 @@ export async function renderSurfaceContent(
       // of scheduled days independently so the switcher always shows every
       // day, with the requested one marked current.
       const allDays = query.day ? (await getPublicScheduleDayCounts(db, event)).map((d) => d.day) : null;
+      // DEC-022 amendment: breaks read through server/repo/public's ONE
+      // mockable barrel (getPublicBreaksByDay), which itself reads through
+      // the SAME repo function src/routes/api/breaks.ts's GET uses -- never
+      // a second, public-only query.
+      const breaksByDay = await getPublicBreaksByDay(db, event, query.day);
       return {
         title: `Agenda - ${event.name}`,
         content: (
@@ -178,6 +184,7 @@ export async function renderSurfaceContent(
             q={q}
             formatOptions={formatOptions}
             format={format}
+            breaksByDay={breaksByDay}
           />
         ),
       };
@@ -200,6 +207,7 @@ export async function renderSurfaceContent(
       // ?trackId=/?q=/?format= filter narrows the ROWS only, never the
       // switcher.
       const allDays = query.day ? (await getPublicScheduleDayCounts(db, event)).map((d) => d.day) : null;
+      const breaksByDay = await getPublicBreaksByDay(db, event, query.day);
       return {
         title: `Schedule - ${event.name}`,
         content: (
@@ -215,6 +223,7 @@ export async function renderSurfaceContent(
             q={q}
             formatOptions={formatOptions}
             format={format}
+            breaksByDay={breaksByDay}
           />
         ),
       };

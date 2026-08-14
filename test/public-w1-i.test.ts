@@ -163,6 +163,9 @@ vi.mock("../src/server/repo/public", async () => {
     // (mirrors getPublicTracks above) to feed the search form's format
     // <select> — stub it so this test's synthetic `db` is never touched.
     getPublicFormatOptions: vi.fn(async () => []),
+    // DEC-022 amendment (wave 63): agenda/schedule dispatch also loads
+    // getPublicBreaksByDay -- stub it the same way, for the same reason.
+    getPublicBreaksByDay: vi.fn(async () => new Map()),
     getPublicSpeakers: vi.fn(async () => ({ items: [SPEAKER_NO_PHOTO], total: 1 })),
     getPublicSpeakerDetail: vi.fn(async (_db: unknown, _event: unknown, contactId: string) => {
       if (contactId === SPEAKER_LONG_BIO.contactId) return SPEAKER_LONG_BIO;

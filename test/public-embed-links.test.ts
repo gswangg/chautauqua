@@ -13,6 +13,7 @@ import { publicRoutes } from "../src/routes/public";
 import { SURFACES } from "../src/routes/public/shell";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv } from "../src/server/env";
+import * as schema from "../src/db/schema";
 
 function fakeKv() {
   return {
@@ -64,9 +65,16 @@ const SESSION_ROWS = Array.from({ length: 3 }, (_, i) => ({
   icsSequence: 0,
 }));
 
+// DEC-022 amendment (wave 63): getPublicBreaksByDay's underlying select is
+// keyed off .from(schema.scheduleBreak) regardless of the surrounding
+// select() call's position -- table-shape-aware rather than position-
+// counted, so it stays correct no matter where this new call lands in the
+// sequence (this harness's existing position comments were already stale
+// relative to DEC-804/DEC-851's tracks/formatOptions calls -- see the
+// field guide's "hand-listed manifests desync" entries).
 function makeChain(rows: unknown[]) {
   const chain: any = {
-    from: () => chain,
+    from: (table?: unknown) => (table === schema.scheduleBreak ? emptyChain() : chain),
     innerJoin: () => chain,
     leftJoin: () => chain,
     where: () => chain,
@@ -75,6 +83,21 @@ function makeChain(rows: unknown[]) {
     offset: async () => rows,
     as: () => chain,
     then: (resolve: (v: unknown[]) => void) => resolve(rows),
+  };
+  return chain;
+}
+
+function emptyChain() {
+  const chain: any = {
+    from: () => chain,
+    innerJoin: () => chain,
+    leftJoin: () => chain,
+    where: () => chain,
+    orderBy: () => chain,
+    limit: async () => [],
+    offset: async () => [],
+    as: () => chain,
+    then: (resolve: (v: unknown[]) => void) => resolve([]),
   };
   return chain;
 }

@@ -3,6 +3,7 @@
 // decomposition) — no behavior change.
 
 import type { PublicAgendaItem, PublicEvent, PublicTrack } from "../../server/repo/public";
+import type { ScheduleBreak } from "../../server/repo/breaks"; // type-only; the public barrel re-exports the read path (getPublicBreaksByDay)
 import { MAX_ITINERARY_IDS, itineraryStorageKey, mergeItinerarySelection, mirrorItineraryCheckboxes } from "../../lib/itinerary";
 import { assignLanes } from "../../lib/overlap-lanes";
 import { publicRoomLabel } from "../../domain/schedule";
@@ -20,6 +21,19 @@ void DEC_999;
 // formula".
 function rowForMinute(min: number, dayStart: number, gridMin: number): number {
   return Math.floor((min - dayStart) / gridMin) + 2;
+}
+
+// DEC-022 amendment (wave 63): the ONE break copy formatter, shared by the
+// desktop grid row and the phone list row so the two surfaces can never
+// drift on wording. docs/design's copy shape ("LUNCH · FOYER · 60 MIN") is
+// produced visually via text-transform:uppercase on .chq-pub-agenda-break
+// (public.css.ts) -- the DOM text itself stays natural-case (matches the
+// design handoff's own 'Lunch · Foyer' example), same convention
+// .chq-pub-agenda-list-room already uses for room names.
+function formatBreakLabel(b: ScheduleBreak): string {
+  const parts = [b.label];
+  if (b.location) parts.push(b.location);
+  return `${parts.join(" · ")} · ${b.durationMin} min`;
 }
 
 function formatHourLabel(min: number): string {
@@ -45,11 +59,22 @@ export function laneStyleFor(lane: number, laneCount: number): string {
 
 /** Per-day time grid (DEC-022): CSS grid, rooms as columns, session blocks
  * positioned by grid-row from start/end minutes. */
-export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; event: PublicEvent; from: Surface; base?: SurfaceBase }) {
-  const { day, items, event, from, base } = props;
+export function AgendaDayGrid(props: {
+  day: string;
+  items: PublicAgendaItem[];
+  event: PublicEvent;
+  from: Surface;
+  base?: SurfaceBase;
+  breaks?: ScheduleBreak[];
+}) {
+  const { day, items, event, from, base, breaks = [] } = props;
   const gridMin = 15;
-  const dayStart = Math.min(...items.map((i) => i.startMin));
-  const dayEnd = Math.max(...items.map((i) => i.endMin));
+  // DEC-022 amendment: a break can open or close a day (e.g. a coffee break
+  // ahead of the first session), so the grid's own start/end bounds are
+  // computed over items AND breaks together -- a break row must never fall
+  // outside the grid it's meant to span.
+  const dayStart = Math.min(...items.map((i) => i.startMin), ...breaks.map((b) => b.startMin));
+  const dayEnd = Math.max(...items.map((i) => i.endMin), ...breaks.map((b) => b.startMin + b.durationMin));
   // DEC-602: whole-hour marks that fall within this day's grid, positioned
   // via the SAME rowForMinute math the blocks use below.
   const hourMarks: number[] = [];
@@ -155,6 +180,19 @@ export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; e
               </div>
             );
           })}
+          {breaks.map((b) => {
+            const rowStart = rowForMinute(b.startMin, dayStart, gridMin);
+            const rowSpan = Math.max(1, Math.ceil(b.durationMin / gridMin));
+            return (
+              // DEC-022 amendment: grid-column 1 / -1 -- a spanning quiet
+              // row, never confined to one room column like a session
+              // block. No id/href/interactive control: a break is not a
+              // submission and has no detail page to link to.
+              <div class="chq-pub-agenda-break" style={`grid-column:1 / -1;grid-row:${rowStart} / span ${rowSpan}`}>
+                {formatBreakLabel(b)}
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>
@@ -188,8 +226,12 @@ function AgendaItemList(props: {
   // under a time sub-header; /agenda's phone list (which reuses this same
   // component) leaves this off and keeps its exact prior output.
   groupByStart?: boolean;
+  // DEC-022 amendment (wave 63): breaks for this same day, interleaved into
+  // the sorted list by startMin below.
+  breaks?: ScheduleBreak[];
 }) {
-  const { day, items, event, from, itinerary, showDescription, showDay, listClass, sectionClass, base, groupByStart } = props;
+  const { day, items, event, from, itinerary, showDescription, showDay, listClass, sectionClass, base, groupByStart, breaks = [] } =
+    props;
   const sorted = [...items].sort((a, b) => {
     if (a.startMin !== b.startMin) return a.startMin - b.startMin;
     const posA = a.roomId ? (a.roomPosition ?? Number.POSITIVE_INFINITY) : Number.POSITIVE_INFINITY;
@@ -197,13 +239,39 @@ function AgendaItemList(props: {
     if (posA !== posB) return posA - posB;
     return a.submissionId.localeCompare(b.submissionId);
   });
+  // Interleave breaks into the same time-ordered list, tagged so the
+  // renderer below can tell a break row from a session row -- a break never
+  // shares .chq-pub-agenda-list-item's markup (no title link, no speakers,
+  // no itinerary toggle: DEC-022's hard boundary).
+  type Row = { kind: "item"; item: PublicAgendaItem } | { kind: "break"; brk: ScheduleBreak };
+  const rows: Row[] = [
+    ...sorted.map((item): Row => ({ kind: "item", item })),
+    ...breaks.map((brk): Row => ({ kind: "break", brk })),
+  ].sort((a, b) => {
+    const startA = a.kind === "item" ? a.item.startMin : a.brk.startMin;
+    const startB = b.kind === "item" ? b.item.startMin : b.brk.startMin;
+    if (startA !== startB) return startA - startB;
+    // A break at the same start time as a session sorts first -- it reads
+    // as the thing that clears before the session begins.
+    return a.kind === b.kind ? 0 : a.kind === "break" ? -1 : 1;
+  });
   let lastStart: number | null = null;
   return (
     // DEC-768: no h3 here either -- every caller of this list (AgendaDay,
     // ScheduleContent's per-day wrapper) owns its own single day heading.
     <section aria-label={`Agenda for ${formatDay(day)}`} class={sectionClass ?? "chq-pub-agenda-list-wrap"}>
       <ol class={listClass ?? "chq-pub-agenda-list"}>
-        {sorted.map((item) => {
+        {rows.map((row) => {
+          if (row.kind === "break") {
+            const b = row.brk;
+            return (
+              <li class="chq-pub-agenda-break" aria-label={`Break: ${formatBreakLabel(b)}`}>
+                {showDay ? `${formatDay(day)} · ` : ""}
+                {formatMinutes(b.startMin)} · {formatBreakLabel(b)}
+              </li>
+            );
+          }
+          const item = row.item;
           const isNewGroup = groupByStart && item.startMin !== lastStart;
           if (isNewGroup) lastStart = item.startMin;
           return (
@@ -257,7 +325,14 @@ function AgendaItemList(props: {
  * from the same `items` array, switched at the 700px breakpoint purely by
  * CSS `display:none` (public.css.ts) so exactly one is in the a11y tree at
  * a time. */
-function AgendaDay(props: { day: string; items: PublicAgendaItem[]; event: PublicEvent; from: Surface; base?: SurfaceBase }) {
+function AgendaDay(props: {
+  day: string;
+  items: PublicAgendaItem[];
+  event: PublicEvent;
+  from: Surface;
+  base?: SurfaceBase;
+  breaks?: ScheduleBreak[];
+}) {
   return (
     <div id={`chq-day-${props.day}`}>
       {/* DEC-768: the ONE heading for this day, owned here -- neither
@@ -435,6 +510,9 @@ export function AgendaContent(props: {
   q?: string | null;
   formatOptions?: string[];
   format?: string | null;
+  // DEC-022 amendment (wave 63): breaks, keyed by the same 'YYYY-MM-DD' day
+  // string groupByDay() below groups `items` on.
+  breaksByDay?: Map<string, ScheduleBreak[]>;
 }) {
   const byDay = groupByDay(props.items);
   const renderedDays = new Set(byDay.keys());
@@ -475,7 +553,14 @@ export function AgendaContent(props: {
             format={props.format}
           />
           {[...renderedDays].map((day) => (
-            <AgendaDay day={day} items={byDay.get(day) ?? []} event={props.event} from="agenda" base={base} />
+            <AgendaDay
+              day={day}
+              items={byDay.get(day) ?? []}
+              event={props.event}
+              from="agenda"
+              base={base}
+              breaks={props.breaksByDay?.get(day) ?? []}
+            />
           ))}
         </>
       )}
@@ -589,6 +674,7 @@ export function ScheduleContent(props: {
   q?: string | null;
   formatOptions?: string[];
   format?: string | null;
+  breaksByDay?: Map<string, ScheduleBreak[]>;
 }) {
   const byDay = groupByDay(props.items);
   const renderedDays = new Set(byDay.keys());
@@ -669,6 +755,7 @@ export function ScheduleContent(props: {
                 sectionClass="chq-pub-agenda-list-wrap chq-pub-schedule-day"
                 base={base}
                 groupByStart
+                breaks={props.breaksByDay?.get(day) ?? []}
               />
             </div>
           ))}

@@ -14,6 +14,7 @@ import type { AppEnv } from "../src/server/env";
 import { getPublicAgenda } from "../src/server/repo/public";
 import type { PublicEvent } from "../src/server/repo/public";
 import type { Db } from "../src/server/context";
+import * as schema from "../src/db/schema";
 
 const EVENT: PublicEvent = {
   id: "ev1",
@@ -192,9 +193,13 @@ function buildScheduleApp(rows: typeof FULL_AGENDA_ROWS) {
   return app;
 }
 
+// DEC-022 amendment (wave 63): getPublicBreaksByDay's select is routed by
+// .from(schema.scheduleBreak) rather than this harness's positional
+// selectCall counters (see the sibling comment in test/public-embed-
+// config.test.ts) -- always resolves an empty, harmless break set.
 function makeChain(rows: unknown[]) {
   const chain: any = {
-    from: () => chain,
+    from: (table?: unknown) => (table === schema.scheduleBreak ? emptyChain() : chain),
     innerJoin: () => chain,
     leftJoin: () => chain,
     where: () => chain,
@@ -203,6 +208,21 @@ function makeChain(rows: unknown[]) {
     as: () => chain,
     limit: async (n?: number) => (typeof n === "number" ? rows.slice(0, n) : rows),
     then: (resolve: (v: unknown[]) => void) => resolve(rows),
+  };
+  return chain;
+}
+
+function emptyChain() {
+  const chain: any = {
+    from: () => chain,
+    innerJoin: () => chain,
+    leftJoin: () => chain,
+    where: () => chain,
+    orderBy: () => chain,
+    groupBy: () => chain,
+    as: () => chain,
+    limit: async () => [],
+    then: (resolve: (v: unknown[]) => void) => resolve([]),
   };
   return chain;
 }

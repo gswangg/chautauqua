@@ -242,6 +242,11 @@ export const PUBLIC_AFFECTING: PathPattern[] = [
   "/api/v1/events/:id/agenda/publish",
   "/api/v1/events/:id/agenda/auto-schedule",
   "/api/v1/submissions/:id/slot",
+  // DEC-022 amendment (wave 63): a break changes what the cached public
+  // agenda renders (a new spanning quiet row, or one removed) — same
+  // public-affecting reasoning as the slot routes immediately above.
+  "/api/v1/events/:id/breaks",
+  "/api/v1/breaks/:id",
   "/api/v1/contacts",
   "/api/v1/contacts/:id",
   "/api/v1/contacts/:id/headshot",

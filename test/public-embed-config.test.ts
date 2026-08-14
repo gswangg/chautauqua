@@ -16,14 +16,21 @@ import {
 import { MAX_PUBLIC_PAGE } from "../src/server/repo/public/bounds";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv } from "../src/server/env";
+import * as schema from "../src/db/schema";
 
 // DEC-418: getVisibleSubmissionIdsOrdered's id query now carries a real SQL
 // LIMIT (see src/server/repo/public/sessions.ts) instead of the caller
 // JS-slicing an unbounded result — so this fake, like a real driver, must
 // honor the bound passed to .limit(n) rather than ignoring it.
+//
+// DEC-022 amendment (wave 63): getPublicBreaksByDay's select is routed by
+// .from(schema.scheduleBreak) rather than by this harness's positional
+// selectCall counters, so a new call added anywhere in the sequence always
+// resolves to an empty (harmless) break set instead of colliding with
+// whatever positionally-numbered branch happens to occupy that slot.
 function makeChain(rows: unknown[]) {
   const chain: any = {
-    from: () => chain,
+    from: (table?: unknown) => (table === schema.scheduleBreak ? emptyChain() : chain),
     innerJoin: () => chain,
     leftJoin: () => chain,
     where: () => chain,
@@ -32,6 +39,21 @@ function makeChain(rows: unknown[]) {
     limit: async (n: number) => rows.slice(0, n),
     as: () => chain,
     then: (resolve: (v: unknown[]) => void) => resolve(rows),
+  };
+  return chain;
+}
+
+function emptyChain() {
+  const chain: any = {
+    from: () => chain,
+    innerJoin: () => chain,
+    leftJoin: () => chain,
+    where: () => chain,
+    groupBy: () => chain,
+    orderBy: () => chain,
+    limit: async () => [],
+    as: () => chain,
+    then: (resolve: (v: unknown[]) => void) => resolve([]),
   };
   return chain;
 }

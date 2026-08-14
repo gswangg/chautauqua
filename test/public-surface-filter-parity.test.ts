@@ -122,6 +122,7 @@ vi.mock("../src/server/repo/public", async () => {
       { day: "2026-08-10", count: 2 },
       { day: "2026-08-11", count: 1 },
     ]),
+    getPublicBreaksByDay: vi.fn(async () => new Map()),
     getPublicCfpWindow: vi.fn(async () => null),
   };
 });

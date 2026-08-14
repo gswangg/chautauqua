@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { getTableName } from "drizzle-orm";
 import * as schema from "../src/db/schema";
 
-// DEC-003: the 24 canonical table names.
+// DEC-003: the 25 canonical table names. DEC-022 amendment (wave 63) adds
+// schedule_break.
 const EXPECTED_TABLE_NAMES = [
   "org",
   "user",
@@ -20,6 +21,7 @@ const EXPECTED_TABLE_NAMES = [
   "track",
   "room",
   "schedule_slot",
+  "schedule_break",
   "task",
   "task_assignment",
   "portal_settings",
@@ -47,6 +49,7 @@ const EXPORT_NAME_BY_TABLE: Record<string, keyof typeof schema> = {
   track: "track",
   room: "room",
   schedule_slot: "scheduleSlot",
+  schedule_break: "scheduleBreak",
   task: "task",
   task_assignment: "taskAssignment",
   portal_settings: "portalSettings",
@@ -58,8 +61,8 @@ const EXPORT_NAME_BY_TABLE: Record<string, keyof typeof schema> = {
 };
 
 describe("schema", () => {
-  it("has exactly 24 tables", () => {
-    expect(EXPECTED_TABLE_NAMES).toHaveLength(24);
+  it("has exactly 25 tables", () => {
+    expect(EXPECTED_TABLE_NAMES).toHaveLength(25);
   });
 
   for (const tableName of EXPECTED_TABLE_NAMES) {

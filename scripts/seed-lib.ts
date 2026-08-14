@@ -60,6 +60,10 @@ export const TABLES_IN_DELETE_ORDER: readonly string[] = [
   "task_assignment",
   "task",
   "schedule_slot",
+  // DEC-022 amendment (wave 63): schedule_break references only event, no
+  // ordering constraint relative to schedule_slot beyond "clears before
+  // event" below.
+  "schedule_break",
   // DEC-271: review_recusal references evaluation_plan/submission/user.
   "review_recusal",
   "evaluation",
