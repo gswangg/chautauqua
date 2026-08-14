@@ -12,6 +12,7 @@ import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
 import { isValidEmail, normalizeEmail } from "../../../domain/email";
 import { SESSIONBOARD_SOURCE, externalRef, type SbEntity, type SbRowPlan } from "../../../domain/sessionboard";
 import { updateSubmissionStatuses } from "../submissions/status";
+import { touchSubmissionsForContacts, touchSubmissionsForTracks } from "../submissions/touch";
 import type { SubmissionStatus } from "../../../domain/status";
 import { DEC_717 } from "../../../decisions";
 
@@ -308,7 +309,37 @@ type ContactUpdateRow = {
   bio?: string | null;
 };
 
+/** DEC-725 (wave-32 amendment): among `rows` that carry a firstName/lastName
+ * key, finds the ids whose value actually differs from what's currently
+ * stored — a same-string re-import (common for a recurring Sessionboard
+ * sync) must not touch. One chunked pre-read (never per-row), mirroring the
+ * `current`/`before` pre-fetch pattern the interactive CRUD writers use. */
+async function findRenamedContactIds(db: Db, rows: ContactUpdateRow[]): Promise<string[]> {
+  const candidates = rows.filter((r) => r.firstName !== undefined || r.lastName !== undefined);
+  if (candidates.length === 0) return [];
+  const byId = new Map(candidates.map((r) => [r.id, r]));
+  const renamed: string[] = [];
+  for (const batch of chunkIds([...byId.keys()])) {
+    const existing = await db
+      .select({ id: schema.contact.id, firstName: schema.contact.firstName, lastName: schema.contact.lastName })
+      .from(schema.contact)
+      .where(inArray(schema.contact.id, batch));
+    for (const row of existing) {
+      const candidate = byId.get(row.id);
+      if (!candidate) continue;
+      if (
+        (candidate.firstName !== undefined && candidate.firstName !== row.firstName) ||
+        (candidate.lastName !== undefined && candidate.lastName !== row.lastName)
+      ) {
+        renamed.push(row.id);
+      }
+    }
+  }
+  return renamed;
+}
+
 async function flushContactUpdates(db: Db, rows: ContactUpdateRow[], ts: Date): Promise<void> {
+  const renamedContactIds = await findRenamedContactIds(db, rows);
   const groups = groupUpdateRows(rows);
   for (const bySignature of groups.values()) {
     for (const { values, ids } of bySignature.values()) {
@@ -320,6 +351,7 @@ async function flushContactUpdates(db: Db, rows: ContactUpdateRow[], ts: Date): 
       }
     }
   }
+  if (renamedContactIds.length > 0) await touchSubmissionsForContacts(db, renamedContactIds, ts);
 }
 
 type SubmissionUpdateRow = {
@@ -348,7 +380,30 @@ type TrackUpdateRow = {
   color?: string | null;
 };
 
+/** DEC-725 (wave-32 amendment): same shape as findRenamedContactIds, over
+ * `track.name`. */
+async function findRenamedTrackIds(db: Db, rows: TrackUpdateRow[]): Promise<string[]> {
+  const candidates = rows.filter((r) => r.name !== undefined);
+  if (candidates.length === 0) return [];
+  const byId = new Map(candidates.map((r) => [r.id, r]));
+  const renamed: string[] = [];
+  for (const batch of chunkIds([...byId.keys()])) {
+    const existing = await db
+      .select({ id: schema.track.id, name: schema.track.name })
+      .from(schema.track)
+      .where(inArray(schema.track.id, batch));
+    for (const row of existing) {
+      const candidate = byId.get(row.id);
+      if (candidate && candidate.name !== undefined && candidate.name !== row.name) {
+        renamed.push(row.id);
+      }
+    }
+  }
+  return renamed;
+}
+
 async function flushTrackUpdates(db: Db, rows: TrackUpdateRow[], ts: Date): Promise<void> {
+  const renamedTrackIds = await findRenamedTrackIds(db, rows);
   const groups = groupUpdateRows(rows);
   for (const bySignature of groups.values()) {
     for (const { values, ids } of bySignature.values()) {
@@ -360,6 +415,7 @@ async function flushTrackUpdates(db: Db, rows: TrackUpdateRow[], ts: Date): Prom
       }
     }
   }
+  if (renamedTrackIds.length > 0) await touchSubmissionsForTracks(db, renamedTrackIds, ts);
 }
 
 /** Current MAX(seq) among the event's submissions -- the ONE pre-loaded

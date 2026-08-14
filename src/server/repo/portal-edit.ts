@@ -25,7 +25,7 @@ import { isValidEmail, normalizeEmail } from "../../domain/email";
 import { isCoPresenterRoleValue, participantRoleLabel } from "../../domain/participant-roles";
 import { MAX_TEXT_LENGTH } from "../../forms/validate";
 import { DEC_604, DEC_656, DEC_842, DEC_866, DEC_997 } from "../../decisions";
-import { touchSubmissions } from "./submissions/touch";
+import { touchSubmissions, touchSubmissionsForContacts } from "./submissions/touch";
 
 // touch DEC constant so the dependency is compile-checked (field guide convention)
 void DEC_604;
@@ -285,6 +285,19 @@ export async function saveSubmissionEdits(
   if (Object.keys(contactUpdate).length > 0) {
     contactUpdate.updatedAt = now;
     await db.update(schema.contact).set(contactUpdate).where(eq(schema.contact.id, contactId));
+  }
+  // DEC-725 (wave-32 amendment): the submission row being edited is already
+  // unconditionally touched above, but a speaker's name change is a
+  // CONTACT-level rename that also shows up in every OTHER submission this
+  // contact presents on (co-presented talks, other tracks/events) — those
+  // are never touched by the plain submission UPDATE above. Bump only when
+  // the name actually changed, mirroring DEC-519's same-string no-op rule.
+  if (
+    contactBefore &&
+    ((contactUpdate.firstName !== undefined && contactUpdate.firstName !== contactBefore.firstName) ||
+      (contactUpdate.lastName !== undefined && contactUpdate.lastName !== contactBefore.lastName))
+  ) {
+    await touchSubmissionsForContacts(db, [contactId], now);
   }
 
   if (before) {

@@ -11,6 +11,7 @@ import { newId } from "../../domain/ids";
 import { visibleSubmissionConditions } from "./public";
 import { backfillNullAttribution } from "./attribution";
 import { ACTIVE_INVITE_STATUSES, PROFILE_TASK_TITLE } from "../../domain/acceptance";
+import { touchSubmissionsForContacts } from "./submissions/touch";
 
 // ---------------------------------------------------------------------------
 // Pure helpers (no db/IO) — unit-tested directly.
@@ -122,6 +123,12 @@ export interface ProfileUpdateInput {
 /** Updates the speaker's own contact row in place — same row the producer
  * sees, so the change is instant, no separate staging table (J7). */
 export async function updateContactProfile(db: Db, contactId: string, input: ProfileUpdateInput): Promise<void> {
+  const before = await db
+    .select({ firstName: schema.contact.firstName, lastName: schema.contact.lastName })
+    .from(schema.contact)
+    .where(eq(schema.contact.id, contactId))
+    .limit(1);
+  const now = new Date();
   await db
     .update(schema.contact)
     .set({
@@ -131,12 +138,20 @@ export async function updateContactProfile(db: Db, contactId: string, input: Pro
       company: input.company,
       bio: input.bio,
       socialLinksJson: serializeSocialLinks(input.socialLinks),
-      updatedAt: new Date(),
+      updatedAt: now,
     })
     .where(eq(schema.contact.id, contactId));
   // DEC-299: repair any never-taken (NULL) attribution snapshot now that the
   // speaker has written a real title/company through their portal profile.
   await backfillNullAttribution(db, contactId, { title: input.title, company: input.company });
+  // DEC-725 (wave-32 amendment): the name is what airtable.ts serializes
+  // into the Speakers cell — bump dependent submissions only when the name
+  // actually changed (a bio/title/headshot-only save is a no-op), mirroring
+  // DEC-519's same-string rule.
+  const prev = before[0];
+  if (prev && (prev.firstName !== input.firstName || prev.lastName !== input.lastName)) {
+    await touchSubmissionsForContacts(db, [contactId], now);
+  }
 }
 
 export interface InsertHeadshotFileInput {

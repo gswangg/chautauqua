@@ -31,6 +31,22 @@
 //   - src/server/repo/overview.ts's producer awaiting-approval worklist,
 //     which orders by `desc(submission.updatedAt)` so a session whose
 //     speaker list just changed moves back to the top.
+//
+// DEC-725 amendment (wave 32): the same watermark blind spot exists one hop
+// further up the graph — org-level renames. src/sync/airtable.ts builds the
+// Speakers cell from `contact.firstName/lastName` and the Tracks cell from
+// `track.name`, but renaming a contact or a track only ever bumped that
+// contact's/track's own row, never the submission rows whose pushed shape
+// embeds the old string. touchSubmissionsForContacts / touchSubmissionsFor-
+// Tracks close that gap: callers pass the contact/track id(s) whose NAME
+// just changed (never headshot/notes/other non-serialized fields — see
+// DEC-519's same-string no-op precedent at src/routes/api/events.ts) and
+// this touches every submission that currently embeds that name, via one
+// chunked SELECT (resolving submission ids from participant/submission_track
+// WHERE contact_id|track_id IN <chunk>) followed by touchSubmissions' own
+// chunked set-based UPDATE — never a per-row read-then-write, and never an
+// EXISTS predicate in airtable.ts itself (same DELETE-blindness argument as
+// above).
 
 import { inArray } from "drizzle-orm";
 import type { Db } from "../../context";
@@ -48,4 +64,46 @@ export async function touchSubmissions(db: Db, submissionIds: string[], now: Dat
   for (const chunk of chunkIds(ids)) {
     await db.update(schema.submission).set({ updatedAt: now }).where(inArray(schema.submission.id, chunk));
   }
+}
+
+/** Bumps `submission.updated_at` for every submission that has a
+ * `participant` row for one of `contactIds`. Dedupes, no-ops on an empty
+ * list. One chunked SELECT resolves the affected submission ids from
+ * `participant` (never an inArray-subquery — the codebase's shared fake-db
+ * test harnesses only evaluate inArray structurally against a plain value
+ * array, and a subquery predicate is also opaque to D1's query planner),
+ * then touchSubmissions issues the actual chunked set-based UPDATE.
+ * Callers pass the contact id(s) whose first/last name just changed —
+ * never for a non-serialized field write (headshot, notes, etc). */
+export async function touchSubmissionsForContacts(db: Db, contactIds: string[], now: Date): Promise<void> {
+  const ids = [...new Set(contactIds)];
+  if (ids.length === 0) return;
+  const submissionIds = new Set<string>();
+  for (const chunk of chunkIds(ids)) {
+    const rows = await db
+      .select({ submissionId: schema.participant.submissionId })
+      .from(schema.participant)
+      .where(inArray(schema.participant.contactId, chunk));
+    for (const row of rows) submissionIds.add(row.submissionId);
+  }
+  await touchSubmissions(db, [...submissionIds], now);
+}
+
+/** Bumps `submission.updated_at` for every submission that has a
+ * `submission_track` row for one of `trackIds`. Dedupes, no-ops on an empty
+ * list — same two-step (chunked SELECT to resolve submission ids, then
+ * touchSubmissions) shape as touchSubmissionsForContacts, for the same
+ * reason. Callers pass the track id(s) whose name just changed. */
+export async function touchSubmissionsForTracks(db: Db, trackIds: string[], now: Date): Promise<void> {
+  const ids = [...new Set(trackIds)];
+  if (ids.length === 0) return;
+  const submissionIds = new Set<string>();
+  for (const chunk of chunkIds(ids)) {
+    const rows = await db
+      .select({ submissionId: schema.submissionTrack.submissionId })
+      .from(schema.submissionTrack)
+      .where(inArray(schema.submissionTrack.trackId, chunk));
+    for (const row of rows) submissionIds.add(row.submissionId);
+  }
+  await touchSubmissions(db, [...submissionIds], now);
 }

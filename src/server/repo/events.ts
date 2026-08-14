@@ -9,6 +9,7 @@ import { ApiError } from "../http";
 import { findFormForEvent } from "./forms";
 import { listPlansForEvent } from "./review";
 import { formatScheduleSlotLabel } from "../../lib/event-time";
+import { touchSubmissionsForTracks } from "./submissions/touch";
 import { DEC_229, DEC_461, DEC_931 } from "../../decisions";
 
 void DEC_931; // delete-refusal fields name their blocking rows -- see deleteTrack/deleteRoom below
@@ -342,14 +343,23 @@ export async function updateTrack(
   const existing = await getTrackForEvent(db, trackId, eventId);
   if (!existing) throw new ApiError("not_found", "Track not found");
 
+  const now = new Date();
   await db
     .update(schema.track)
     .set({
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.color !== undefined ? { color: input.color } : {}),
-      updatedAt: new Date(),
+      updatedAt: now,
     })
     .where(eq(schema.track.id, trackId));
+
+  // DEC-725 (wave-32 amendment): the track name is serialized into every
+  // submission's pushed Tracks cell — bump dependent submissions only when
+  // the name actually changed (a color-only edit is a no-op), mirroring
+  // DEC-519's same-string no-op rule.
+  if (input.name !== undefined && input.name !== existing.name) {
+    await touchSubmissionsForTracks(db, [trackId], now);
+  }
 
   const updated = await getTrackForEvent(db, trackId, eventId);
   if (!updated) throw new Error("updateTrack: row disappeared after update");

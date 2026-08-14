@@ -22,7 +22,7 @@ import { toContactRecord, type ContactRow, MAX_CONTACT_DIRECTORY_SCAN } from "./
 import { buildMergeRepointOps, mergedPipelineStage, type PipelineStageLike } from "./query";
 import { newId } from "../../../domain/ids";
 import { DEC_479, DEC_770, DEC_992 } from "../../../decisions";
-import { touchSubmissions } from "../submissions/touch";
+import { touchSubmissions, touchSubmissionsForContacts } from "../submissions/touch";
 
 void DEC_479;
 void DEC_770;
@@ -557,6 +557,19 @@ async function mergeOnePair(db: Db, keepId: string, mergeId: string): Promise<Co
   // DEC-725 amendment: one set-based touch covering every submission whose
   // Speakers cell composition this merge changed (dedupe (c) + repoint (f)).
   await touchSubmissions(db, [...affectedSubmissionIds], new Date());
+
+  // DEC-725 (wave-32 amendment): planMerge's winning name can differ from
+  // keepRow's OWN pre-merge name (e.g. mergeRow's name wins because keepRow
+  // was missing one). affectedSubmissionIds above only covers submissions
+  // reached through mergeId's (the discarded contact's) participant rows —
+  // it never includes a submission where ONLY keepId already participated,
+  // so that submission's already-pushed Speakers string would otherwise go
+  // stale. touchSubmissionsForContacts([keepId]) covers keepId's full
+  // participant set (including the overlap with affectedSubmissionIds,
+  // which is a harmless no-op re-touch).
+  if (merged.firstName !== keepRow.firstName || merged.lastName !== keepRow.lastName) {
+    await touchSubmissionsForContacts(db, [keepId], new Date());
+  }
 
   // (g) Delete the merged contact row.
   await db.delete(schema.contact).where(eq(schema.contact.id, mergeId));
