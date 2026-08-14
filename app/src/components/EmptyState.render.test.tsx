@@ -86,6 +86,40 @@ describe('EmptyState', () => {
     ).toThrow(/fresh/);
   });
 
+  // DEC-370 amendment (wave 47): `secondary` is permitted ONLY on 'fresh'.
+  it('fresh: renders `secondary` beside the primary action as a tertiary link', () => {
+    render(
+      <MemoryRouter>
+        <EmptyState
+          variant="fresh"
+          what="Nothing needs you yet"
+          action={{ label: 'Set up the call for papers', to: '/settings?section=cfp' }}
+          secondary={{ label: 'Add a speaker by hand ›', to: '/speakers' }}
+        />
+      </MemoryRouter>,
+    );
+
+    const primary = screen.getByRole('link', { name: 'Set up the call for papers' });
+    expect(primary).toHaveAttribute('href', '/settings?section=cfp');
+    const secondary = screen.getByRole('link', { name: 'Add a speaker by hand ›' });
+    expect(secondary).toHaveAttribute('href', '/speakers');
+    expect(secondary).not.toHaveAttribute('disabled');
+  });
+
+  it('enforces: variant "filtered" throws rather than silently dropping `secondary`', () => {
+    expect(() =>
+      render(
+        <MemoryRouter>
+          <EmptyState
+            variant="filtered"
+            what="No one in Contacted"
+            secondary={{ label: 'Add a speaker by hand ›', to: '/speakers' }}
+          />
+        </MemoryRouter>,
+      ),
+    ).toThrow(/filtered/);
+  });
+
   it('never renders a disabled control on either variant', () => {
     const { rerender, container } = render(
       <MemoryRouter>
