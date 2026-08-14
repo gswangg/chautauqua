@@ -376,7 +376,12 @@ describe("DEC-594/DEC-634 (EMB-5): sessions?day= filters by scheduled day, URL s
     expect(html).not.toContain('id="chq-session-sub1"');
     // DEC-919 (wave-44 amendment): no "N of M sessions" restatement — the
     // filtered-empty result still says so honestly, just not as a count.
-    expect(html).toContain("No sessions to show yet.");
+    // DEC-919 (wave-47 amendment): dispatch.tsx passes `activeDay={null}`
+    // and `grandTotal={total}` on /embed regardless of ?day= (DEC-489: day
+    // is a configured knob, not a user-removable filter, on an embed) — so
+    // from SessionsContent's own props this reads as the 'fresh' case
+    // (no facet in flight, grandTotal 0), not 'filtered'.
+    expect(html).toContain("The programme is not out yet.");
   });
 
   it("sessions emits no day param in its Show-more link, even when one was supplied", async () => {

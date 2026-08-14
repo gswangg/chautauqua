@@ -205,10 +205,12 @@ describe("DEC-990: Speakers/Gallery share a List/Grid toggle", () => {
 });
 
 describe("DEC-990: gallery empty-state guard", () => {
-  it("an empty gallery renders 'No speakers to show yet.' not '0 of 0 speakers'", async () => {
+  // DEC-919 (wave 47 amendment): the old "No speakers to show yet." sentence
+  // with no fresh/filtered split is replaced by PublicEmptyState.
+  it("an empty gallery with no filter active renders 'No speakers listed yet.' not '0 of 0 speakers'", async () => {
     const { GalleryContent } = await import("../src/routes/public/speakers");
     const html = String(GalleryContent({ event: EVENT, speakers: [], total: 0, page: 1, q: null }));
-    expect(html).toContain("No speakers to show yet.");
+    expect(html).toContain("No speakers listed yet.");
     expect(html).not.toContain("0 of 0");
   });
 });

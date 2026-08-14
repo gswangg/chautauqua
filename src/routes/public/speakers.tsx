@@ -7,6 +7,7 @@ import { speakerDetailPath, surfacePath } from "./shell";
 import { PUBLIC_PER_PAGE, hasMorePages } from "../../server/repo/public/bounds";
 import { speakerInitials } from "./cards";
 import { PublicSearchBox } from "./filters";
+import { PublicEmptyState } from "./empty-state";
 import { countOf } from "../../domain/count-copy";
 
 /** DEC-990 Amendment (wave 40): "a toggle with two identical halves is not a
@@ -205,25 +206,45 @@ export function SpeakersContent(props: {
   // forward exactly like SessionsContent's carryQs, so a configured embed
   // (or an active track facet) does not lose either on page 2.
   const carryQs = `${limit ? `limit=${limit}&` : ""}${trackId ? `trackId=${encodeURIComponent(trackId)}&` : ""}`;
+  // DEC-919 (wave 47 amendment): 'fresh' -- no q/trackId facet in flight AND
+  // total is 0 -- drops the search box + track facet select (nothing to
+  // narrow yet) and never offers an escape link. Any facet in flight with
+  // zero matches is 'filtered': the search/facet controls stay mounted and
+  // the escape clears back to the bare surface path.
+  const anyFilterActive = Boolean(q || trackId);
+  const isFresh = !anyFilterActive && total === 0;
   return (
     <>
       <div class="chq-pub-title-row">
         <h1 class="chq-pub-surface-title">Speakers</h1>
-        <PublicSearchBox
-          action={basePath}
-          q={q}
-          hidden={
-            <>
-              {trackId ? <input type="hidden" name="trackId" value={trackId} /> : null}
-              {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
-            </>
-          }
-        />
-        <TrackFacetSelect action={basePath} tracks={tracks ?? []} activeTrackId={trackId} q={q} limit={limit} />
+        {!isFresh ? (
+          <>
+            <PublicSearchBox
+              action={basePath}
+              q={q}
+              hidden={
+                <>
+                  {trackId ? <input type="hidden" name="trackId" value={trackId} /> : null}
+                  {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
+                </>
+              }
+            />
+            <TrackFacetSelect action={basePath} tracks={tracks ?? []} activeTrackId={trackId} q={q} limit={limit} />
+          </>
+        ) : null}
         <SpeakerViewToggle event={event} active="speakers" q={q} trackId={trackId} limit={limit} base={base} />
       </div>
       {speakers.length === 0 ? (
-        <p>No speakers to show yet.</p>
+        isFresh ? (
+          <PublicEmptyState variant="fresh" what="No speakers listed yet." />
+        ) : (
+          <PublicEmptyState
+            variant="filtered"
+            what="No speakers match your search."
+            escapeHref={basePath}
+            escapeLabel="Clear filters"
+          />
+        )
       ) : (
         <>
           <p>
@@ -267,25 +288,42 @@ export function GalleryContent(props: {
   const trackId = activeTrackId ?? null;
   // DEC-289/DEC-489/DEC-990 amendment (wave 64): see SpeakersContent above.
   const carryQs = `${limit ? `limit=${limit}&` : ""}${trackId ? `trackId=${encodeURIComponent(trackId)}&` : ""}`;
+  // DEC-919 (wave 47 amendment): see SpeakersContent above -- the DEC-593
+  // gallery twin gets the identical fresh/filtered split.
+  const anyFilterActive = Boolean(q || trackId);
+  const isFresh = !anyFilterActive && total === 0;
   return (
     <>
       <div class="chq-pub-title-row">
         <h1 class="chq-pub-surface-title">Speakers</h1>
-        <PublicSearchBox
-          action={basePath}
-          q={q}
-          hidden={
-            <>
-              {trackId ? <input type="hidden" name="trackId" value={trackId} /> : null}
-              {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
-            </>
-          }
-        />
-        <TrackFacetSelect action={basePath} tracks={tracks ?? []} activeTrackId={trackId} q={q} limit={limit} />
+        {!isFresh ? (
+          <>
+            <PublicSearchBox
+              action={basePath}
+              q={q}
+              hidden={
+                <>
+                  {trackId ? <input type="hidden" name="trackId" value={trackId} /> : null}
+                  {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
+                </>
+              }
+            />
+            <TrackFacetSelect action={basePath} tracks={tracks ?? []} activeTrackId={trackId} q={q} limit={limit} />
+          </>
+        ) : null}
         <SpeakerViewToggle event={event} active="gallery" q={q} trackId={trackId} limit={limit} base={base} />
       </div>
       {speakers.length === 0 ? (
-        <p>No speakers to show yet.</p>
+        isFresh ? (
+          <PublicEmptyState variant="fresh" what="No speakers listed yet." />
+        ) : (
+          <PublicEmptyState
+            variant="filtered"
+            what="No speakers match your search."
+            escapeHref={basePath}
+            escapeLabel="Clear filters"
+          />
+        )
       ) : (
         <>
           <p>

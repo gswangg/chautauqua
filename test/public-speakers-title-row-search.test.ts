@@ -93,7 +93,11 @@ describe("task-w5-a: speakers search is inside .chq-pub-title-row", () => {
       [{ count: 0 }], // total
       [], // speaker rows
     ]);
-    const res = await app.request("/e/conf/speakers", {}, TEST_ENV);
+    // DEC-919 (wave 47 amendment): an empty AND filter-free result is now
+    // 'fresh' and drops the search box entirely -- ?q= keeps this a
+    // 'filtered' zero result so the search box stays mounted, which is
+    // what this test is actually asserting the ordering of.
+    const res = await app.request("/e/conf/speakers?q=ada", {}, TEST_ENV);
     const html = await res.text();
     const row = titleRowHtml(html);
     expect(row).toContain('<form class="chq-pub-searchform"');
@@ -108,7 +112,9 @@ describe("task-w5-a: speakers search is inside .chq-pub-title-row", () => {
       [{ count: 0 }], // total
       [], // speaker rows
     ]);
-    const res = await app.request("/e/conf/gallery", {}, TEST_ENV);
+    // DEC-919 (wave 47 amendment): see the /speakers case above -- ?q= keeps
+    // this a 'filtered' zero result so the search box stays mounted.
+    const res = await app.request("/e/conf/gallery?q=ada", {}, TEST_ENV);
     const html = await res.text();
     const row = titleRowHtml(html);
     expect(row).toContain('<form class="chq-pub-searchform"');
