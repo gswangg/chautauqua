@@ -547,6 +547,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       [{ count: 1 }], // unplacedCount
       [{ id: "s1", seq: 1, title: "Talk" }], // unplacedDetail
       [], // slotRows (s1 has no schedule_slot -> unplaced)
+      [], // DEC-895 amendment (w2-f): participant rows for the capped unplaced set {s1}
       [], // lead-speaker rows for {s1}
       [], // DEC-895: format-answer rows for the unplaced set {s1} (none -> durationMin null)
       [], // DEC-010 amendment: breaks for the event
@@ -622,6 +623,105 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     expect(row2!.durationMin).toBe(120);
   });
 
+  // DEC-895 amendment (w2-f): a placement suggestion must see EVERY active
+  // participant on the unplaced submission, not just its lead speaker. p0
+  // (placed, room-a, 540-630) and u1 (unplaced) share a CO-PRESENTER
+  // (c-shared) who is not either submission's lead. p1 (placed, room-b,
+  // 540-570) only exists to put room-b into the search set alongside
+  // room-a. A lead-only occupancy check would offer room-b at 570 (free of
+  // p1, and free of u1's own lead c-lead1) even though c-shared is still
+  // booked there via p0 until 630 -- the fix must skip straight through to
+  // 630, where c-shared (and room-a) are both actually free.
+  //
+  // u2 (unplaced, also shares c-shared with u1, as its own co-presenter --
+  // its own lead is c-lead2) then proves the RESERVED occupancy row for
+  // u1's accepted suggestion carries c-shared alongside u1's lead: once u1
+  // is reserved into room-a at 630-660, room-b at 630 is otherwise
+  // physically free (p1 ended at 570) -- a lead-only reservation would miss
+  // c-shared entirely and wrongly offer u2 room-b at 630, double-booking
+  // c-shared against u1's own new placement.
+  it("an unplaced row's suggestion never double-books a co-presenter shared with a placed OR just-suggested session", async () => {
+    const now = 1_735_999_999_999;
+    const db = makeFakeDb([
+      [{ recordPrefix: "DFC", startDate: "2027-03-10" }], // event
+      [], // statusRows
+      [{ count: 0 }], // planCount
+      [{ expected: 0, submitted: 0 }], // evaluationsAgg
+      [{ closeDate: null, currentRound: null }], // planClose
+      [{ closeDate: null }], // formClose
+      [], // speakerAgg
+      [{ count: 0 }], // overdueAssignmentCount
+      [], // overdueDetail
+      [], // triageDetail
+      [{ total: 0, reuploaded: 0 }], // contentAgg
+      [], // contentDetail
+      // fileRows skipped (contentDetail empty)
+      [{ count: 2 }], // unplacedCount
+      [
+        { id: "u1", seq: 3, title: "Co-presented Talk" },
+        { id: "u2", seq: 4, title: "Also Co-presented Talk" },
+      ], // unplacedDetail
+      [
+        { submissionId: "p0", roomId: "room-a", day: "2026-08-10", startMin: 540, endMin: 630, seq: 1, title: "Placed A" },
+        { submissionId: "p1", roomId: "room-b", day: "2026-08-10", startMin: 540, endMin: 570, seq: 2, title: "Placed B" },
+      ], // slotRows
+      [
+        // participant rows for the combined {p0, p1, u1, u2} batch -- p0 and
+        // u1 share the co-presenter c-shared (neither as lead), and u2
+        // shares c-shared too (as its own co-presenter, lead c-lead2).
+        { submissionId: "p0", contactId: "c-lead0" },
+        { submissionId: "p0", contactId: "c-shared" },
+        { submissionId: "p1", contactId: "c-other" },
+        { submissionId: "u1", contactId: "c-lead1" },
+        { submissionId: "u1", contactId: "c-shared" },
+        { submissionId: "u2", contactId: "c-lead2" },
+        { submissionId: "u2", contactId: "c-shared" },
+      ],
+      [], // lead-speaker rows for the unplaced set {u1, u2}
+      [
+        { id: "room-a", name: "Room A" },
+        { id: "room-b", name: "Room B" },
+      ], // room-name rows for {room-a, room-b}
+      [
+        { submissionId: "u1", valueJson: JSON.stringify("Talk (30 min)") },
+        { submissionId: "u2", valueJson: JSON.stringify("Talk (30 min)") },
+      ], // DEC-895: format-answer rows for {u1, u2}
+      [], // DEC-010 amendment: breaks for the event
+      [{ sentLast7Days: 0, lastSentAt: null }], // comms
+    ]);
+    const payload = await getOverviewPayload(db, "event-1", now);
+
+    expect(payload.agendaWork.unplaced).toHaveLength(2);
+    const [row1, row2] = payload.agendaWork.unplaced;
+    expect(row1).toMatchObject({ submissionId: "u1", durationMin: 30 });
+    expect(row2).toMatchObject({ submissionId: "u2", durationMin: 30 });
+    expect(row1!.suggestion).not.toBeNull();
+    expect(row2!.suggestion).not.toBeNull();
+
+    // The correct answer for u1 waits for c-shared's own booking (via p0,
+    // room-a, until 630) to clear -- never room-b at 570, which only looks
+    // free under a lead-only check.
+    expect(row1!.suggestion).toEqual({
+      day: "2026-08-10",
+      startMin: 630,
+      roomId: "room-a",
+      roomName: "Room A",
+      label: "Place at 10:30",
+    });
+
+    // u2 must not land on room-b at 630 (physically free of p1, and free
+    // of u2's own lead c-lead2) -- c-shared is booked THERE via u1's own
+    // just-reserved suggestion (room-a, 630-660), so u2 must wait for that
+    // to clear too, landing on room-a at 660.
+    expect(row2!.suggestion).toEqual({
+      day: "2026-08-10",
+      startMin: 660,
+      roomId: "room-a",
+      roomName: "Room A",
+      label: "Place at 11:00",
+    });
+  });
+
   // DEC-370 wave-56 amendment: agenda.unplaced comes straight off the SQL
   // NOT EXISTS(schedule_slot) COUNT (unplacedCountRows), never a JS filter
   // over a materialized accepted-submission array — this fixture stands in
@@ -641,10 +741,11 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
           unplacedCount: [{ count: 9 }],
           unplacedDetail: unplacedDetailRows,
         },
-        // A non-empty unplacedDetail feeds two more queries: the combined
-        // lead-speaker lookup and the DEC-895 format-answer batch (both
-        // keyed on unplacedCappedIds).
-        [[], []],
+        // A non-empty unplacedDetail feeds three more queries: the DEC-895
+        // amendment (w2-f) participant lookup for the capped unplaced ids,
+        // the combined lead-speaker lookup, and the DEC-895 format-answer
+        // batch (all keyed on unplacedCappedIds).
+        [[], [], []],
       ),
     );
     const payload = await getOverviewPayload(db, "event-1", now);
@@ -671,7 +772,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
           unplacedCount: [{ count: 60 }],
           unplacedDetail: unplacedDetailRows,
         },
-        [[], []],
+        [[], [], []],
       ),
     );
     const payload = await getOverviewPayload(db, "event-1", now);

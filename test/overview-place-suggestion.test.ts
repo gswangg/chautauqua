@@ -156,7 +156,7 @@ describe("buildPlacementSuggestion (DEC-652 unplaced row)", () => {
       { submissionId: "s1", roomId: "room-a", day: "2026-08-10", startMin: 540, endMin: 570, speakerContactIds: [] },
     ];
     const roomNameById = new Map([["room-a", "Room 2A"]]);
-    const suggestion = buildPlacementSuggestion(null, placed, ["room-a"], ["2026-08-10"], roomNameById, {
+    const suggestion = buildPlacementSuggestion([], placed, ["room-a"], ["2026-08-10"], roomNameById, {
       ...PARAMS,
     });
     expect(suggestion).toEqual({
@@ -178,7 +178,7 @@ describe("buildPlacementSuggestion (DEC-652 unplaced row)", () => {
       ["room-b", "Room 2B"],
     ]);
     const suggestion = buildPlacementSuggestion(
-      "speaker-1",
+      ["speaker-1"],
       placed,
       ["room-a", "room-b"],
       ["2026-08-10"],
@@ -199,7 +199,7 @@ describe("buildPlacementSuggestion (DEC-652 unplaced row)", () => {
   });
 
   it("is null when nextFreeSlot finds nothing (no rooms in use yet)", () => {
-    expect(buildPlacementSuggestion(null, [], [], [], new Map(), PARAMS)).toBeNull();
+    expect(buildPlacementSuggestion([], [], [], [], new Map(), PARAMS)).toBeNull();
   });
 });
 

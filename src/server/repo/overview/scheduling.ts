@@ -71,7 +71,7 @@ export function buildConflictRows(
  * autoSchedule would actually place; omitted callers keep
  * params.defaultDurationMin, matching prior behaviour. */
 export function buildPlacementSuggestion(
-  leadSpeakerContactId: string | null,
+  speakerContactIds: string[],
   placed: PlacedSession[],
   rooms: string[],
   days: string[],
@@ -83,7 +83,7 @@ export function buildPlacementSuggestion(
   const slot = nextFreeSlot({
     session: {
       durationMin,
-      speakerContactIds: leadSpeakerContactId ? [leadSpeakerContactId] : [],
+      speakerContactIds,
     },
     rooms,
     days,

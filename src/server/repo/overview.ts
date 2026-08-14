@@ -362,6 +362,12 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
   // a second accepted-submission lookup).
   const placedSeqTitleById = new Map<string, { seq: number; title: string }>();
   let placed: PlacedSession[] = [];
+  // --- Placement-suggestion co-presenter fix (DEC-895 amendment, w2-f): the
+  // ONE speakersBySubmission map below (placed ids AND capped unplaced ids)
+  // is also the source for `speakerContactIds` on each unplaced row's own
+  // buildPlacementSuggestion call further down this function — never a
+  // second lead-only lookup.
+  let speakersBySubmission: Map<string, string[]> = new Map();
   {
     const slotRows = await db
       .select({
@@ -388,8 +394,15 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
     for (const s of slotRows) placedSeqTitleById.set(s.submissionId, { seq: s.seq, title: s.title });
 
     const placedIds = [...new Set(slotRows.map((s) => s.submissionId))];
+    // --- Placement-suggestion co-presenter fix (DEC-895 amendment, w2-f): a
+    // "Place at HH:MM" suggestion must avoid double-booking EVERY active
+    // participant on the unplaced submission, not just its lead speaker —
+    // so this same chunked participant query also covers the capped
+    // unplaced ids below, and both `placed` and the unplaced-row suggestion
+    // loop read off the ONE resulting speakersBySubmission map.
+    const participantSubmissionIds = [...new Set([...placedIds, ...unplacedDetailRows.map((r) => r.id)])];
     const participantRows: { submissionId: string; contactId: string }[] = [];
-    for (const batch of chunkIds(placedIds)) {
+    for (const batch of chunkIds(participantSubmissionIds)) {
       const batchRows = await db
         .select({
           submissionId: schema.participant.submissionId,
@@ -404,7 +417,6 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
         );
       participantRows.push(...batchRows);
     }
-    const speakersBySubmission = new Map<string, string[]>();
     for (const p of participantRows) {
       const arr = speakersBySubmission.get(p.submissionId) ?? [];
       arr.push(p.contactId);
@@ -455,7 +467,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
   // above (no await between them), and the three lookups they feed are
   // mutually independent of each other's results — one more Promise.all
   // wave, in the original leadSpeaker -> room -> format-answer call order.
-  const [{ nameById: leadSpeakerNameById, contactIdById: leadSpeakerContactIdById }, roomNameById, formatAnswerRows, breaks] =
+  const [{ nameById: leadSpeakerNameById }, roomNameById, formatAnswerRows, breaks] =
     await Promise.all([
       fetchLeadSpeakers(db, [...leadSpeakerIds]),
       (async () => {
@@ -582,11 +594,11 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
     // DEC-772/DEC-895: the ONE parse — never a magic default when the
     // format carries no parseable duration; the row just says null.
     const durationMin = parseFormatDurationMin(format);
-    const leadSpeakerContactId = leadSpeakerContactIdById.get(id) ?? null;
+    const speakerContactIds = speakersBySubmission.get(id) ?? [];
     let suggestion = null;
     if (durationMin !== null) {
       suggestion = buildPlacementSuggestion(
-        leadSpeakerContactId,
+        speakerContactIds,
         suggestionOccupancy,
         placedRoomIds,
         placedDays,
@@ -602,7 +614,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
           day: suggestion.day,
           startMin: suggestion.startMin,
           endMin: suggestion.startMin + durationMin,
-          speakerContactIds: leadSpeakerContactId ? [leadSpeakerContactId] : [],
+          speakerContactIds,
         });
       }
     }
