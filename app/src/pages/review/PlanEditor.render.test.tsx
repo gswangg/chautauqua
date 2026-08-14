@@ -1737,3 +1737,17 @@ describe('PlanEditor render smoke', () => {
     expect(await screen.findByText('Nothing is saved until you confirm.')).toBeInTheDocument();
   });
 });
+
+// User-filed (gate-5 cycle): the weight cell's unconstrained input spilled
+// 28px under Remove, and the Add-criterion link sat 5px off its caption's
+// baseline. Pin both fixes at the stylesheet level.
+describe('criterion-row weight cell and add-criteria alignment', () => {
+  it('constrains the weight input to fit its grid track', () => {
+    expect(REVIEW_CSS).toMatch(/\.chq-review-criterion-weight \.chq-input \{[^}]*width: 72px/);
+    expect(REVIEW_CSS).toMatch(/\.chq-review-criterion-weight \{[^}]*min-width: 0/);
+  });
+  it('baselines the add-criteria row', () => {
+    const rule = REVIEW_CSS.match(/\.chq-review-add-criteria \{[^}]*\}/)?.[0] ?? '';
+    expect(rule).toContain('align-items: baseline');
+  });
+});

@@ -67,6 +67,13 @@
   min-height: 0;
 }
 
+/* The shrink above uses the padding SHORTHAND, which wiped .chq-select's
+   36px caret clearance — "Any task status" ran under the caret glyph
+   (user-filed, gate-5 cycle). Selects re-state the right clearance. */
+.chq-speakers-toolbar .chq-select {
+  padding-right: 36px;
+}
+
 @media (max-width: 700px) {
   .chq-speakers-toolbar .chq-input,
   .chq-speakers-toolbar .chq-select {

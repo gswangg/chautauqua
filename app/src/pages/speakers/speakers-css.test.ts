@@ -136,3 +136,13 @@ describe('speakers.css toolbar control shrink is max-width-only (DEC-385)', () =
     expect(restore).toMatch(/min-height:\s*44px/);
   });
 });
+
+// User-filed (gate-5 cycle): the toolbar shrink's padding SHORTHAND wiped
+// the select caret clearance — labels ran under the caret glyph.
+describe('speakers toolbar selects keep caret clearance', () => {
+  it('re-states padding-right after the shorthand shrink', () => {
+    const css = readFileSync(CSS_PATH, 'utf-8');
+    const rule = css.match(/\.chq-speakers-toolbar \.chq-select \{[^}]*padding-right: 36px[^}]*\}/);
+    expect(rule).not.toBeNull();
+  });
+});

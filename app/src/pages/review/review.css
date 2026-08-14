@@ -836,6 +836,9 @@
   display: flex;
   gap: 9px;
   flex-wrap: wrap;
+  /* baseline, not stretch: the Add-criterion link and its cap notice sat
+     5px out of line (user-filed). */
+  align-items: baseline;
   padding-top: 14px;
 }
 
@@ -850,6 +853,15 @@
   display: flex;
   align-items: center;
   gap: 9px;
+  /* The weight cell must fit its auto grid track: an unconstrained
+     .chq-input keeps its ~178px default and spills 28px under the Remove
+     button (user-filed, gate-5 cycle). A weight is 1-2 digits. */
+  min-width: 0;
+}
+
+.chq-review-criterion-weight .chq-input {
+  width: 72px;
+  flex: 0 0 auto;
 }
 
 .chq-review-criterion-share {
