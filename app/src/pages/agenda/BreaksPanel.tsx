@@ -18,6 +18,7 @@ import { useState } from 'react';
 import { apiDelete, apiPost, ApiError } from '../../lib/api';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { formatMinutes } from './gridMath';
+import { formatDayLabel } from '../../lib/dates';
 import { DEC_021 } from '../../../../src/decisions';
 
 void DEC_021;
@@ -45,6 +46,14 @@ interface BreaksPanelProps {
   /** The selected day's breaks, fetched once by the parent Agenda page and
    * shared with DayGrid — this panel no longer fetches its own copy. */
   breaks: ScheduleBreakRow[];
+  /** DEC-021 amendment (w69-c, closes DEC-844's loop): breaks whose day fell
+   * outside the event's current window (e.g. an organiser moved the dates
+   * after the break was added) — invisible to the day-scoped `breaks` list
+   * and the day tabs above it, but still rows in schedule_break that need a
+   * way to be seen and removed. Rendered as a second quiet group, always
+   * present (a day-scoped panel can't rely on `day` landing on one), so its
+   * own array is what decides whether the group appears at all. */
+  outsideWindow: ScheduleBreakRow[];
   /** Called after a successful add/remove so the parent can refetch the one
    * shared list (both this panel and DayGrid's bands pick up the change in
    * the same tick). */
@@ -81,7 +90,7 @@ const EMPTY_FORM = { label: '', location: '', startTime: '', durationMin: '' };
 /** Quiet Breaks section: list for the selected day, an inline add row, and
  * a tertiary Remove per row. No optimistic path (task scope) — every write
  * asks the parent (via onChanged) to refetch the day's shared list. */
-export function BreaksPanel({ eventId, day, breaks, onChanged }: BreaksPanelProps) {
+export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged }: BreaksPanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState<BreakFieldErrors>({});
@@ -134,43 +143,89 @@ export function BreaksPanel({ eventId, day, breaks, onChanged }: BreaksPanelProp
 
   // Controls render only when their action is possible (house affordance
   // grammar): with no day selected there is nothing to scope a break list
-  // (or an add) to.
-  if (!day) return null;
+  // (or an add) to — UNLESS there are outside-window breaks to surface,
+  // which have no day-scoped tab to live under and so must still get a
+  // way in even when the grid has no active day.
+  if (day === null && outsideWindow.length === 0) return null;
 
   return (
     <section className="chq-section chq-breaks-panel">
-      <div className="chq-section-head">
-        <h2 className="chq-section-label">Breaks</h2>
-      </div>
-
       {error && (
         <div className="chq-error-banner" role="alert">
           {error}
         </div>
       )}
 
-      <ul className="chq-breaks-list">
-        {breaks.length === 0 && <li className="chq-breaks-empty">No breaks yet.</li>}
-        {breaks.map((b) => (
-          <li key={b.id} className="chq-breaks-row">
-            <span className="chq-breaks-row-time">{formatMinutes(b.startMin)}</span>
-            <span className="chq-breaks-row-meta">
-              {b.label}
-              {b.location ? ` · ${b.location}` : ''}
-              {` · ${b.durationMin} min`}
-            </span>
-            <button
-              type="button"
-              className="chq-btn chq-btn-tertiary"
-              onClick={() => setPendingRemove(b)}
-              disabled={removingId === b.id}
-            >
-              Remove
-            </button>
-          </li>
-        ))}
-      </ul>
+      {day !== null && (
+        <>
+          <div className="chq-section-head">
+            <h2 className="chq-section-label">Breaks</h2>
+          </div>
 
+          <ul className="chq-breaks-list">
+            {breaks.length === 0 && <li className="chq-breaks-empty">No breaks yet.</li>}
+            {breaks.map((b) => (
+              <li key={b.id} className="chq-breaks-row">
+                <span className="chq-breaks-row-time">{formatMinutes(b.startMin)}</span>
+                <span className="chq-breaks-row-meta">
+                  {b.label}
+                  {b.location ? ` · ${b.location}` : ''}
+                  {` · ${b.durationMin} min`}
+                </span>
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-tertiary"
+                  onClick={() => setPendingRemove(b)}
+                  disabled={removingId === b.id}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {/* DEC-021 amendment (w69-c, closes DEC-844's loop): breaks stranded
+         outside the event's current window by an organiser moving the
+         dates — Settings names these rows (breaksOutsideWindow notice) but
+         had no screen that could delete one until now. Renders only when
+         non-empty (affordance grammar) so a well-behaved event with no
+         stranded rows never shows an always-empty section. */}
+      {outsideWindow.length > 0 && (
+        <div className="chq-breaks-outside-window">
+          <div className="chq-section-head">
+            <h2 className="chq-section-label">Outside the event dates</h2>
+          </div>
+          <p className="chq-breaks-outside-window-caption">
+            These days sit outside the event&apos;s dates, so they no longer appear on the public agenda or the
+            printable programme.
+          </p>
+          <ul className="chq-breaks-list">
+            {outsideWindow.map((b) => (
+              <li key={b.id} className="chq-breaks-row">
+                <span className="chq-breaks-row-day">{formatDayLabel(b.day)}</span>
+                <span className="chq-breaks-row-time">{formatMinutes(b.startMin)}</span>
+                <span className="chq-breaks-row-meta">
+                  {b.label}
+                  {b.location ? ` · ${b.location}` : ''}
+                  {` · ${b.durationMin} min`}
+                </span>
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-tertiary"
+                  onClick={() => setPendingRemove(b)}
+                  disabled={removingId === b.id}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {day !== null && (
       <div className="chq-breaks-add-row">
         <div className="chq-breaks-field">
           <label htmlFor="chq-break-label">Label</label>
@@ -237,6 +292,7 @@ export function BreaksPanel({ eventId, day, breaks, onChanged }: BreaksPanelProp
           </span>
         )}
       </div>
+      )}
 
       {pendingRemove && (
         <ConfirmDialog

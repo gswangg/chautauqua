@@ -78,7 +78,7 @@ export function AgendaPage() {
 
   const [agenda, setAgenda] = useState<AgendaPayload | null>(null);
   const [activeDay, setActiveDay] = useState<string | null>(null);
-  const [breaks, setBreaks] = useState<ScheduleBreakRow[]>([]);
+  const [allBreaks, setAllBreaks] = useState<ScheduleBreakRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoScheduling, setAutoScheduling] = useState(false);
@@ -106,25 +106,36 @@ export function AgendaPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]);
 
-  // DEC-021 amendment (w67-b): one reader for the selected day's breaks,
-  // shared by DayGrid (renders them as bands) and BreaksPanel (list/add/
-  // remove) — hoisted out of BreaksPanel so a POST/DELETE there refreshes
-  // the grid in the same tick instead of the two staying independently
-  // stale copies of the same day's rows.
+  // DEC-021 amendment (w67-b, w69-c): one reader for every break on the
+  // event, shared by DayGrid (renders the active day's rows as bands) and
+  // BreaksPanel (list/add/remove, plus the outside-window group) — hoisted
+  // out of BreaksPanel so a POST/DELETE there refreshes the grid in the
+  // same tick instead of the two staying independently stale copies. Fetched
+  // once per event (no ?day filter — the route already bounds the result to
+  // MAX_BREAKS_PER_EVENT) rather than once per day, so a break whose day
+  // fell outside the event window after an organiser moved the dates is
+  // still fetched and can be found/removed (DEC-844).
   function reloadBreaks() {
-    if (!eventId || !activeDay) {
-      setBreaks([]);
+    if (!eventId) {
+      setAllBreaks([]);
       return;
     }
-    apiGet<{ items: ScheduleBreakRow[] }>(`/events/${eventId}/breaks?day=${encodeURIComponent(activeDay)}`)
-      .then((res) => setBreaks(res.items))
+    apiGet<{ items: ScheduleBreakRow[] }>(`/events/${eventId}/breaks`)
+      .then((res) => setAllBreaks(res.items))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load breaks'));
   }
 
   useEffect(() => {
     reloadBreaks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventId, activeDay]);
+  }, [eventId]);
+
+  const dayBreaks = allBreaks.filter((b) => b.day === activeDay);
+  const outsideWindowBreaks = agenda
+    ? allBreaks
+        .filter((b) => !agenda.days.includes(b.day))
+        .sort((a, b) => (a.day === b.day ? a.startMin - b.startMin : a.day < b.day ? -1 : 1))
+    : [];
 
   async function handlePlace(submissionId: string, roomId: string | null, startMin: number, endMin: number) {
     if (!agenda) return;
@@ -324,7 +335,13 @@ export function AgendaPage() {
           </div>
 
           {eventId && (
-            <BreaksPanel eventId={eventId} day={activeDay} breaks={breaks} onChanged={reloadBreaks} />
+            <BreaksPanel
+              eventId={eventId}
+              day={activeDay}
+              breaks={dayBreaks}
+              outsideWindow={outsideWindowBreaks}
+              onChanged={reloadBreaks}
+            />
           )}
 
           {isPhone ? (
@@ -367,7 +384,7 @@ export function AgendaPage() {
                       tracks={agenda.tracks}
                       placed={agenda.placed}
                       conflicts={agenda.conflicts}
-                      breaks={breaks}
+                      breaks={dayBreaks}
                       dayStartMin={DAY_START_MIN}
                       dayEndMin={DAY_END_MIN}
                       gridMin={GRID_MIN}
