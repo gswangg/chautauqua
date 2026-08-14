@@ -2,13 +2,39 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { apiList, apiPost, ApiError } from '../../lib/api';
 import { FormRow, ModalFrame } from '../../components/ModalFrame';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { BULK_EMAIL_MERGE_FIELDS, MAX_COMPOSE_RECIPIENTS as BULK_EMAIL_RECIPIENT_CAP } from '../../lib/merge-fields';
+import {
+  BULK_EMAIL_MERGE_FIELDS,
+  MAX_COMPOSE_RECIPIENTS as BULK_EMAIL_RECIPIENT_CAP,
+  missingMergeFields,
+} from '../../lib/merge-fields';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import { countOf } from '../../lib/plural';
-import { DEC_793, DEC_967 } from '../../../../src/decisions';
+import { DEC_793, DEC_856, DEC_967 } from '../../../../src/decisions';
 
 void DEC_793;
+void DEC_856;
 void DEC_967;
+
+// DEC-856 (wave 1 amendment): the bulk context only resolves
+// BULK_EMAIL_MERGE_FIELDS (speaker_name/event_name/portal_link) -- a template
+// with any other placeholder (e.g. {talk_title}) 400s on preview/send. This
+// stub vars object exists only to probe presence via missingMergeFields; its
+// values are never rendered.
+const BULK_CONTEXT_VARS: Record<string, string> = Object.fromEntries(
+  BULK_EMAIL_MERGE_FIELDS.map((f) => [f, '']),
+);
+
+function missingFieldsForTemplate(t: { subject: string; bodyText: string }): string[] {
+  const seen = new Set<string>();
+  const combined: string[] = [];
+  for (const f of [...missingMergeFields(t.subject, BULK_CONTEXT_VARS), ...missingMergeFields(t.bodyText, BULK_CONTEXT_VARS)]) {
+    if (!seen.has(f)) {
+      seen.add(f);
+      combined.push(f);
+    }
+  }
+  return combined;
+}
 
 interface Props {
   contactIds: string[];
@@ -200,13 +226,32 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
                 onChange={(e) => applyTemplate(e.target.value)}
               >
                 <option value="">Custom (no template)</option>
-                {templates.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
+                {templates.map((t) => {
+                  const missing = missingFieldsForTemplate(t);
+                  const blocked = missing.length > 0;
+                  return (
+                    <option key={t.id} value={t.id} disabled={blocked}>
+                      {blocked ? `${t.name} — needs ${missing.map((f) => `{${f}}`).join(', ')}` : t.name}
+                    </option>
+                  );
+                })}
               </select>
             </FormRow>
+          )}
+          {templates.some((t) => missingFieldsForTemplate(t).length > 0) && (
+            <ul className="chq-bulk-email-unsendable-templates">
+              {templates
+                .filter((t) => missingFieldsForTemplate(t).length > 0)
+                .map((t) => {
+                  const missing = missingFieldsForTemplate(t);
+                  return (
+                    <li key={t.id}>
+                      {t.name} needs {missing.map((f) => `{${f}}`).join(', ')} — not available here.{' '}
+                      <a href={`/admin/comms?tab=compose&template=${t.id}`}>Use in Comms compose</a>
+                    </li>
+                  );
+                })}
+            </ul>
           )}
           <FormRow label="Subject" htmlFor="bulk-email-subject">
             <input

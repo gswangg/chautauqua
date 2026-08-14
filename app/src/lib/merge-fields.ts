@@ -7,6 +7,7 @@ export {
   BULK_EMAIL_MERGE_FIELDS,
   SUBJECT_MERGE_FIELDS,
   MERGE_FIELD_SAMPLES,
+  missingMergeFields,
 } from '../../../src/mail/render';
 export type { MergeField } from '../../../src/mail/render';
 export { MAX_COMPOSE_RECIPIENTS } from '../../../src/domain/compose';
