@@ -209,19 +209,19 @@ export function SpeakersContent(props: {
     <>
       <div class="chq-pub-title-row">
         <h1 class="chq-pub-surface-title">Speakers</h1>
+        <PublicSearchBox
+          action={basePath}
+          q={q}
+          hidden={
+            <>
+              {trackId ? <input type="hidden" name="trackId" value={trackId} /> : null}
+              {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
+            </>
+          }
+        />
         <TrackFacetSelect action={basePath} tracks={tracks ?? []} activeTrackId={trackId} q={q} limit={limit} />
         <SpeakerViewToggle event={event} active="speakers" q={q} trackId={trackId} limit={limit} base={base} />
       </div>
-      <PublicSearchBox
-        action={basePath}
-        q={q}
-        hidden={
-          <>
-            {trackId ? <input type="hidden" name="trackId" value={trackId} /> : null}
-            {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
-          </>
-        }
-      />
       {speakers.length === 0 ? (
         <p>No speakers to show yet.</p>
       ) : (
@@ -271,19 +271,19 @@ export function GalleryContent(props: {
     <>
       <div class="chq-pub-title-row">
         <h1 class="chq-pub-surface-title">Speakers</h1>
+        <PublicSearchBox
+          action={basePath}
+          q={q}
+          hidden={
+            <>
+              {trackId ? <input type="hidden" name="trackId" value={trackId} /> : null}
+              {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
+            </>
+          }
+        />
         <TrackFacetSelect action={basePath} tracks={tracks ?? []} activeTrackId={trackId} q={q} limit={limit} />
         <SpeakerViewToggle event={event} active="gallery" q={q} trackId={trackId} limit={limit} base={base} />
       </div>
-      <PublicSearchBox
-        action={basePath}
-        q={q}
-        hidden={
-          <>
-            {trackId ? <input type="hidden" name="trackId" value={trackId} /> : null}
-            {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
-          </>
-        }
-      />
       {speakers.length === 0 ? (
         <p>No speakers to show yet.</p>
       ) : (

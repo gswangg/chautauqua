@@ -9,6 +9,7 @@ import { publicRoutes } from "../src/routes/public";
 import { registerErrorHandler } from "../src/server/http";
 import { validAccent } from "../src/routes/public/shell";
 import { PUBLIC_CSS } from "../src/routes/public/public.css";
+import { AGENDA_CSS } from "../src/routes/public/css/agenda.css";
 import { THEME_CSS } from "../src/views/theme";
 import type { AppEnv } from "../src/server/env";
 
@@ -107,8 +108,12 @@ describe("PUBLIC_CSS phone breakpoint (DEC-584)", () => {
     const block = media700![1]!;
     expect(block).toMatch(/\.chq-pub-agenda-desktop\s*\{\s*display:\s*none;\s*\}/);
     expect(block).toMatch(/\.chq-pub-agenda-list\s*\{\s*display:\s*block;\s*\}/);
-    // outside the 700px block, the list starts hidden (desktop-first source order)
-    const beforeMedia = PUBLIC_CSS.slice(0, PUBLIC_CSS.indexOf("@media (max-width: 700px)"));
+    // outside the 700px block, the list starts hidden (desktop-first source
+    // order). Checked against AGENDA_CSS directly (task-w5-a: chrome.css.ts
+    // now also has its own earlier @media (max-width: 700px) block for
+    // .chq-pub-filter-row, so cutting PUBLIC_CSS at the FIRST such literal
+    // would land inside CHROME_CSS instead of AGENDA_CSS's own block).
+    const beforeMedia = AGENDA_CSS.slice(0, AGENDA_CSS.indexOf("@media (max-width: 700px)"));
     expect(beforeMedia).toMatch(/\.chq-pub-agenda-list\s*\{\s*display:\s*none;/);
   });
 });
@@ -124,11 +129,15 @@ describe("PUBLIC_CSS search box (DEC-919 amendment, wave 40): one compact input 
 
   it("declares .chq-pub-filter-row as the ONE row a surface's search box and pill bars stack into", () => {
     expect(PUBLIC_CSS).toMatch(/\.chq-pub-filter-row\s*\{[^}]*display:\s*flex;[^}]*\}/);
-    expect(PUBLIC_CSS).toMatch(/\.chq-pub-filter-row\s*\{[^}]*flex-wrap:\s*wrap;[^}]*\}/);
+    // task-w5-a: the row now fits ONE row at 820 without wrapping (its
+    // controls' declared widths now fit) -- flex-wrap: wrap is a <=700px
+    // fallback only, not the unconditional default. See
+    // public-filter-row-width.test.ts for that budget contract.
+    expect(PUBLIC_CSS).toMatch(/\.chq-pub-filter-row\s*\{[^}]*flex-wrap:\s*nowrap;[^}]*\}/);
   });
 
-  it("declares .chq-pub-search sized as a compact ~259x40 input", () => {
-    expect(PUBLIC_CSS).toMatch(/\.chq-pub-search\s*\{[^}]*width:\s*259px;[^}]*\}/);
+  it("declares .chq-pub-search sized as a compact ~190x40 input (task-w5-a: shrunk from 259 so the filter row's 5 controls fit within 820)", () => {
+    expect(PUBLIC_CSS).toMatch(/\.chq-pub-search\s*\{[^}]*width:\s*190px;[^}]*\}/);
     expect(PUBLIC_CSS).toMatch(/\.chq-pub-search\s*\{[^}]*height:\s*40px;[^}]*\}/);
   });
 });

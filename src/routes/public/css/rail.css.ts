@@ -221,11 +221,16 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
      clash marker, no search form). Server renders every candidate row
      display:none; ItineraryScript's applyScheduleView (agenda-itinerary-
      script.tsx) is what reveals the saved subset once localStorage is
-     read -- see agenda.tsx's ScheduleContent for the load-bearing reason. */
+     read -- see agenda.tsx's ScheduleContent for the load-bearing reason.
+     DEC-555 amendment (wave 5, task w5-a): schedule joins the PUBLIC PAIR
+     -- same 60px gap as .chq-pub-sessions-layout/.chq-pub-agenda-layout
+     above (34 -> 60), since /schedule now shares the WIDE measure
+     (shell.tsx's measureClassForSurface) with sessions/agenda/speakers/
+     gallery instead of being the one remaining READING column. */
   .chq-pub-schedule-layout {
     display: grid;
     grid-template-columns: 1fr 300px;
-    gap: 34px;
+    gap: 60px;
     align-items: start;
   }
   .chq-pub-schedule-col { min-width: 0; }

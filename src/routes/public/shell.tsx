@@ -24,21 +24,24 @@ export function isSurface(value: string): value is Surface {
 }
 
 /** DEC-989 Amendment (wave 37), further amended DEC-990 (wave 40) and DEC-683
- * (wave 67, and again wave 1 task w1-a, this amendment): the SSR public
- * surfaces take their container class from the CONTENT, not the route.
- * sessions is the WIDE pair (list + 300px rail, the 1180 measure DEC-989
- * itself names); schedule is the one remaining READING column; gallery (six
- * ~184px tiles + gaps is ~1180, DEC-990 wave-40 amendment) is WIDE too;
- * agenda is the SAME 1180 pair as sessions (list + rail) -- the wave-64
- * desktop room-lane matrix that justified CANVAS is gone (DEC-584: agenda is
- * a time-row sequence, not room columns), and the agenda surface has its own
- * rail (AgendaRail, agenda-rail.tsx) as of the wave-67 amendment, so the
- * "canvas" measure has no remaining surface and is removed rather than left
- * dead. DEC-683 amendment (wave 1, task w1-a): speakers moves from READING
- * to WIDE here too, so its List and Grid views share the SAME 1180 column
- * gallery already renders at -- a view switch on one surface no longer
- * resizes the page around it. EmbedShell never consumes this: an embed
- * fills its host iframe. */
+ * (wave 67, wave 1 task w1-a, and wave 5 task w5-a, this amendment): the SSR
+ * public surfaces take their container class from the CONTENT, not the
+ * route. sessions is the WIDE pair (list + 300px rail, the 1180 measure
+ * DEC-989 itself names); gallery (six ~184px tiles + gaps is ~1180, DEC-990
+ * wave-40 amendment) is WIDE too; agenda is the SAME 1180 pair as sessions
+ * (list + rail) -- the wave-64 desktop room-lane matrix that justified
+ * CANVAS is gone (DEC-584: agenda is a time-row sequence, not room columns),
+ * and the agenda surface has its own rail (AgendaRail, agenda-rail.tsx) as
+ * of the wave-67 amendment, so the "canvas" measure has no remaining surface
+ * and is removed rather than left dead. DEC-683 amendment (wave 1, task
+ * w1-a): speakers moves from READING to WIDE here too, so its List and Grid
+ * views share the SAME 1180 column gallery already renders at -- a view
+ * switch on one surface no longer resizes the page around it. DEC-555
+ * amendment (wave 5, task w5-a): schedule joins the WIDE pair too (its own
+ * list + rail, .chq-pub-schedule-layout) -- there is no longer a READING
+ * surface, but the "reading" PublicMeasure value is left in place (unused
+ * by any surface today) rather than deleted, since EmbedShell never
+ * consumes this at all: an embed fills its host iframe. */
 export type PublicMeasure = "reading" | "wide";
 
 export function measureClassForSurface(surface: Surface): PublicMeasure {
@@ -47,9 +50,8 @@ export function measureClassForSurface(surface: Surface): PublicMeasure {
     case "gallery":
     case "agenda":
     case "speakers":
-      return "wide";
     case "schedule":
-      return "reading";
+      return "wide";
   }
 }
 
