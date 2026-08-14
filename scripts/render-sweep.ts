@@ -38,15 +38,17 @@ import { fileURLToPath } from "node:url";
 
 import { chromium, type Browser, type BrowserContext, type ConsoleMessage, type Page } from "playwright";
 
-import { ROUTE_MANIFEST, type RouteManifestEntry } from "../app/src/routeManifest";
+import { EVENT_SLUG, ROUTE_MANIFEST, type RouteManifestEntry } from "../app/src/routeManifest";
 import {
   ADMIN_MOBILE_PASS_BLOCKING,
   allFontFloorPassed,
+  allInteractionStatesPassed,
   allMobilePassed,
   allPassed,
   allTypeRolePassed,
   evaluateDeadlineNearestWeights,
   evaluateFontFloor,
+  evaluateInteractionState,
   evaluateMobileRoute,
   evaluateRoute,
   evaluateTypeRoleResult,
@@ -55,11 +57,15 @@ import {
   fontFloorErrorResult,
   formatFontFloorSummary,
   formatFontFloorTable,
+  formatInteractionStateTable,
   formatMobileResultsTable,
   formatMobileSummary,
   formatResultsTable,
   formatSummary,
   formatTypeRoleTable,
+  INTERACTION_STATE_BLOCKING,
+  interactionStateErrorResult,
+  interactionStateSummaryLine,
   mobileErrorResult,
   OVERVIEW_TYPE_ROLES,
   PAGE_EVALUATE_KEEPNAMES_SHIM,
@@ -67,6 +73,8 @@ import {
   TYPE_ROLE_BLOCKING,
   typeRoleSummaryLine,
   type FontFloorResult,
+  type InteractionStateEntry,
+  type InteractionStateResult,
   type MobileRouteEntry,
   type MobileRouteResult,
   type RouteResult,
@@ -383,6 +391,169 @@ async function measureTypeRoles(
   }, selectors as string[]);
 }
 
+// DEC-409 wave-35 amendment: three deterministically measurable B8
+// interaction-state checks, one authenticated admin surface (hover, disabled)
+// and one public surface (focus — DEC-409's own rationale singles out the
+// public CFP form as "the last surface that should be guessing"). Same seed
+// ids as app/src/routeManifest.ts (PLAN_ID = "seed_evaluation_plan_0001",
+// unexported there — literal here, same convention as this file's
+// MOBILE_SESSION_ID/MOBILE_SPEAKER_ID duplicating routeManifest.ts's private
+// consts above).
+const INTERACTION_STATE_PLAN_ID = "seed_evaluation_plan_0001";
+
+export const INTERACTION_STATE_ENTRIES: readonly InteractionStateEntry[] = [
+  // FOCUS: the public CFP form's step-1 primary button (button.chq-btn.
+  // chq-btn-primary.chq-cfp-step-next — src/routes/public/submit-views.tsx),
+  // the global `:focus-visible { outline: 2px solid var(--chq-brand);
+  // outline-offset: 2px }` rule (src/views/theme.ts) applies here.
+  {
+    kind: "focus",
+    path: `/submit/${EVENT_SLUG}`,
+    selector: ".chq-cfp-step-next",
+    role: "cfp-primary-focus",
+    expected: { outlineWidthPx: 2, outlineStyle: "solid", outlineColorHex: "#4E5C31", outlineOffsetPx: 2 },
+  },
+  // HOVER: an /admin/content worklist row (.chq-content-row — app/src/pages/
+  // content/content.css) with no layout shift.
+  {
+    kind: "hover",
+    path: "/admin/content",
+    selector: ".chq-content-row",
+    role: "content-row-hover",
+    expected: { backgroundColorHex: "#EFEBDF", noLayoutShift: true },
+  },
+  // DISABLED: the review plan editor's anonymise checkbox label, frozen once
+  // the plan has a submitted review (planHasSubmittedReview — app/src/pages/
+  // review/PlanEditor.tsx; seed_evaluation_plan_0001 has 31 seeded
+  // evaluations, scripts/seed.ts, so this is true for the seeded plan).
+  {
+    kind: "disabled",
+    path: `/admin/review/plans/${INTERACTION_STATE_PLAN_ID}`,
+    selector: ".chq-review-field-disabled .chq-review-checkbox-label",
+    role: "review-anonymize-disabled",
+    expected: { colorHex: "#8E8A7A", backgroundColorHex: "#DDD8C8" },
+  },
+] as const;
+
+/** Focuses `selector` (page.locator.focus(), which Chromium treats as a
+ * keyboard-equivalent focus for :focus-visible purposes) and reads its
+ * computed outline. Returns null if the selector never resolved. */
+async function measureFocusState(
+  page: Page,
+  selector: string,
+): Promise<{ outlineWidthPx?: number; outlineStyle?: string; outlineColorHex?: string; outlineOffsetPx?: number } | null> {
+  const locator = page.locator(selector).first();
+  if ((await locator.count()) === 0) return null;
+  await locator.focus();
+  return page.evaluate((sel: string) => {
+    const el = document.querySelector(sel);
+    if (!el) return null;
+    const style = getComputedStyle(el);
+    const rgbToHex = (value: string): string | undefined => {
+      const m = value.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/);
+      if (!m) return undefined;
+      const toHex = (c: string): string => Math.round(parseFloat(c)).toString(16).padStart(2, "0");
+      return `#${toHex(m[1]!)}${toHex(m[2]!)}${toHex(m[3]!)}`.toUpperCase();
+    };
+    const outlineWidthPx = parseFloat(style.outlineWidth);
+    const outlineOffsetPx = parseFloat(style.outlineOffset);
+    return {
+      outlineWidthPx: Number.isNaN(outlineWidthPx) ? undefined : outlineWidthPx,
+      outlineStyle: style.outlineStyle,
+      outlineColorHex: rgbToHex(style.outlineColor),
+      outlineOffsetPx: Number.isNaN(outlineOffsetPx) ? undefined : outlineOffsetPx,
+    };
+  }, selector);
+}
+
+/** Reads `selector`'s box (y, height) at rest, hovers it (page.hover, a real
+ * mouse move so :hover applies), then re-reads box + background-color.
+ * Returns null if the selector never resolved. */
+async function measureHoverState(
+  page: Page,
+  selector: string,
+): Promise<{ backgroundColorHex?: string; boxBefore: { y: number; height: number }; boxAfter: { y: number; height: number } } | null> {
+  const locator = page.locator(selector).first();
+  if ((await locator.count()) === 0) return null;
+  const before = await page.evaluate((sel: string) => {
+    const el = document.querySelector(sel);
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    return { y: rect.y, height: rect.height };
+  }, selector);
+  if (!before) return null;
+  await locator.hover();
+  const after = await page.evaluate((sel: string) => {
+    const el = document.querySelector(sel);
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    const rgbToHex = (value: string): string | undefined => {
+      const m = value.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/);
+      if (!m) return undefined;
+      const toHex = (c: string): string => Math.round(parseFloat(c)).toString(16).padStart(2, "0");
+      return `#${toHex(m[1]!)}${toHex(m[2]!)}${toHex(m[3]!)}`.toUpperCase();
+    };
+    return { y: rect.y, height: rect.height, backgroundColorHex: rgbToHex(getComputedStyle(el).backgroundColor) };
+  }, selector);
+  if (!after) return null;
+  return { backgroundColorHex: after.backgroundColorHex, boxBefore: before, boxAfter: { y: after.y, height: after.height } };
+}
+
+/** Reads `selector`'s computed color + background-color with no interaction
+ * (the disabled register applies purely from the class chain / [disabled]
+ * attribute, DEC-409's amendment). Returns null if the selector never
+ * resolved. */
+async function measureDisabledState(
+  page: Page,
+  selector: string,
+): Promise<{ colorHex?: string; backgroundColorHex?: string } | null> {
+  const locator = page.locator(selector).first();
+  if ((await locator.count()) === 0) return null;
+  return page.evaluate((sel: string) => {
+    const el = document.querySelector(sel);
+    if (!el) return null;
+    const rgbToHex = (value: string): string | undefined => {
+      const m = value.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/);
+      if (!m) return undefined;
+      const toHex = (c: string): string => Math.round(parseFloat(c)).toString(16).padStart(2, "0");
+      return `#${toHex(m[1]!)}${toHex(m[2]!)}${toHex(m[3]!)}`.toUpperCase();
+    };
+    const style = getComputedStyle(el);
+    return { colorHex: rgbToHex(style.color), backgroundColorHex: rgbToHex(style.backgroundColor) };
+  }, selector);
+}
+
+/** Runs whichever INTERACTION_STATE_ENTRIES entry(ies) match `entry.path`,
+ * pushing PASS/FAIL/instrument-blocked rows onto `results` — same
+ * "advisory, never lets an instrument failure fail the desktop render-sweep
+ * pass above" convention as measureTypeRoles' call site. */
+async function measureInteractionStatesForRoute(
+  page: Page,
+  path: string,
+  results: InteractionStateResult[],
+): Promise<void> {
+  for (const stateEntry of INTERACTION_STATE_ENTRIES) {
+    if (stateEntry.path !== path) continue;
+    try {
+      if (stateEntry.kind === "focus") {
+        const observed = await measureFocusState(page, stateEntry.selector);
+        if (!observed) throw new Error(`selector never resolved: ${stateEntry.selector}`);
+        results.push(evaluateInteractionState(stateEntry, observed));
+      } else if (stateEntry.kind === "hover") {
+        const observed = await measureHoverState(page, stateEntry.selector);
+        if (!observed) throw new Error(`selector never resolved: ${stateEntry.selector}`);
+        results.push(evaluateInteractionState(stateEntry, observed));
+      } else {
+        const observed = await measureDisabledState(page, stateEntry.selector);
+        if (!observed) throw new Error(`selector never resolved: ${stateEntry.selector}`);
+        results.push(evaluateInteractionState(stateEntry, observed));
+      }
+    } catch (err) {
+      results.push(interactionStateErrorResult(stateEntry, err instanceof Error ? err.message : String(err)));
+    }
+  }
+}
+
 // DEC-620: walks every visible element, keeping those whose scrollHeight
 // exceeds their clientHeight by more than 2px while their own computed
 // overflow-y is visible|hidden — a deliberate scroll container
@@ -525,6 +696,7 @@ async function visitRoute(
   fontFloorResults?: FontFloorResult[],
   contrastResults?: ContrastResult[],
   typeRoleResults?: TypeRoleResult[],
+  interactionStateResults?: InteractionStateResult[],
 ): Promise<RouteResult> {
   const page = await context.newPage();
   // DEC-411: must run before any in-page evaluation on this page.
@@ -624,6 +796,14 @@ async function visitRoute(
         expected: {},
       });
     }
+  }
+
+  // DEC-409 wave-35 amendment: advisory B8 interaction-state measurement —
+  // same page/session, never lets an instrument failure fail the desktop
+  // render-sweep pass above. Only the routes named in
+  // INTERACTION_STATE_ENTRIES do anything (see measureInteractionStatesForRoute).
+  if (interactionStateResults) {
+    await measureInteractionStatesForRoute(page, entry.path, interactionStateResults);
   }
 
   await page.close();
@@ -818,6 +998,11 @@ async function main(): Promise<void> {
     // visit only (visitRoute is a no-op for every other path).
     const typeRoleResults: TypeRoleResult[] = [];
 
+    // DEC-409 wave-35 amendment: collects the three B8 interaction-state
+    // readings from their three named INTERACTION_STATE_ENTRIES routes only
+    // (visitRoute is a no-op for every other path).
+    const interactionStateResults: InteractionStateResult[] = [];
+
     const results: RouteResult[] = [];
     for (const entry of ROUTE_MANIFEST) {
       const context = contextByRole.get(entry.role);
@@ -834,7 +1019,9 @@ async function main(): Promise<void> {
         continue;
       }
       try {
-        results.push(await visitRoute(context, baseUrl, entry, fontFloorResults, contrastResults, typeRoleResults));
+        results.push(
+          await visitRoute(context, baseUrl, entry, fontFloorResults, contrastResults, typeRoleResults, interactionStateResults),
+        );
       } catch (err) {
         results.push(routeErrorResult(entry, err instanceof Error ? err.message : String(err)));
       }
@@ -1006,6 +1193,22 @@ async function main(): Promise<void> {
     console.log(formatContrastSummary(contrastResults));
 
     if (!allContrastPassed(contrastResults) && CONTRAST_BLOCKING) {
+      failed = true;
+    }
+
+    // DEC-409 wave-35 amendment: B8 interaction-state pass (advisory) — one
+    // focus/hover/disabled reading per INTERACTION_STATE_ENTRIES row,
+    // collected during the desktop ROUTE_MANIFEST visits above (no separate
+    // route list or extra page visits). Failures never flip the exit code
+    // while INTERACTION_STATE_BLOCKING is false (DEC-387 flip rule).
+    console.log("");
+    console.log("render-sweep: interaction-state pass (B8 focus/hover/disabled, advisory)...");
+    console.log("");
+    console.log(formatInteractionStateTable(interactionStateResults));
+    console.log("");
+    console.log(interactionStateSummaryLine(interactionStateResults));
+
+    if (!allInteractionStatesPassed(interactionStateResults) && INTERACTION_STATE_BLOCKING) {
       failed = true;
     }
 
