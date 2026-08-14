@@ -157,19 +157,19 @@ export async function countPipelineForOrg(db: Db, orgId: string): Promise<number
 /** Lists pipeline entries for an org, joined (in application code, per
  * this repo's chunkIds/inArray convention elsewhere) against contact rows
  * for the card fields the board needs. Deterministic order: updatedAt desc,
- * id asc. `page` absent means today's unbounded behavior (internal callers
- * are unaffected); when present, only that page's rows are hydrated against
- * contacts, not the whole org's entries (DEC-460/461). */
-export async function listPipelineForOrg(db: Db, orgId: string, page?: { limit: number; offset: number }): Promise<PipelineListItem[]> {
-  let query = db
-    .select()
-    .from(schema.pipelineEntry)
-    .where(eq(schema.pipelineEntry.orgId, orgId))
-    .orderBy(desc(schema.pipelineEntry.updatedAt), asc(schema.pipelineEntry.id));
-  if (page) {
-    query = query.limit(page.limit).offset(page.offset) as typeof query;
-  }
-  const entries = (await query).map(toEntryRow);
+ * id asc. `page` is required (w56-e: only that page's rows are hydrated
+ * against contacts, not the whole org's entries) -- src/routes/api/
+ * pipeline.ts:106 is the sole caller and already pages (DEC-460/461). */
+export async function listPipelineForOrg(db: Db, orgId: string, page: { limit: number; offset: number }): Promise<PipelineListItem[]> {
+  const entries = (
+    await db
+      .select()
+      .from(schema.pipelineEntry)
+      .where(eq(schema.pipelineEntry.orgId, orgId))
+      .orderBy(desc(schema.pipelineEntry.updatedAt), asc(schema.pipelineEntry.id))
+      .limit(page.limit)
+      .offset(page.offset)
+  ).map(toEntryRow);
   if (entries.length === 0) return [];
 
   const contactIds = [...new Set(entries.map((e) => e.contactId))];
@@ -402,12 +402,31 @@ export async function addNote(
 }
 
 /** Newest-first activity feed for an entry (moves + notes together), per
- * CRM-08's "a general activity feed that includes the moves". */
-export async function listActivityForEntry(db: Db, entryId: string): Promise<PipelineActivityRow[]> {
+ * CRM-08's "a general activity feed that includes the moves". `page` is
+ * required (w56-e: an unbounded read here was the same shape countPipelineForOrg
+ * already guards against for the board) -- pair with countActivityForEntry
+ * below for the route's `total`. */
+export async function listActivityForEntry(
+  db: Db,
+  entryId: string,
+  page: { limit: number; offset: number },
+): Promise<PipelineActivityRow[]> {
   const rows = await db
     .select()
     .from(schema.pipelineActivity)
     .where(eq(schema.pipelineActivity.entryId, entryId))
-    .orderBy(desc(schema.pipelineActivity.createdAt));
+    .orderBy(desc(schema.pipelineActivity.createdAt))
+    .limit(page.limit)
+    .offset(page.offset);
   return rows.map(toActivityRow);
+}
+
+/** Counts an entry's activity rows (same WHERE as listActivityForEntry),
+ * used for the route's `total` alongside a bounded page. */
+export async function countActivityForEntry(db: Db, entryId: string): Promise<number> {
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.pipelineActivity)
+    .where(eq(schema.pipelineActivity.entryId, entryId));
+  return Number(rows[0]?.count ?? 0);
 }

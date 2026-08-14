@@ -137,10 +137,8 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
 
     mockApi({
       'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
-      'GET /api/v1/pipeline/entry-1': () => ({
-        entry: { id: 'entry-1', contactId: 'ct1', stage: 'identified', createdAt: 1000, updatedAt: 1000 },
-        contact: { id: 'ct1', firstName: 'Ada', lastName: 'Lovelace', company: 'Acme', email: 'ada@example.com' },
-        activity: noteSaved
+      'GET /api/v1/pipeline/entry-1': () => {
+        const items = noteSaved
           ? [
               {
                 kind: 'note',
@@ -152,8 +150,13 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
               },
               moveActivity,
             ]
-          : [moveActivity],
-      }),
+          : [moveActivity];
+        return {
+          entry: { id: 'entry-1', contactId: 'ct1', stage: 'identified', createdAt: 1000, updatedAt: 1000 },
+          contact: { id: 'ct1', firstName: 'Ada', lastName: 'Lovelace', company: 'Acme', email: 'ada@example.com' },
+          activity: { items, total: items.length, page: 1, perPage: 200 },
+        };
+      },
       'POST /api/v1/pipeline/entry-1/notes': () => {
         noteSaved = true;
         return {
@@ -253,6 +256,47 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
     });
 
     expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  // w56-e (DEC-157 amendment): the activity feed is paged like every other
+  // house list -- 60 rows means the first page shows only perPage of them,
+  // newest-first, with a Load more control naming the true total.
+  it('pages a 60-row activity feed: first page shows perPage items newest-first with total 60', async () => {
+    const allActivity = Array.from({ length: 60 }, (_, i) => ({
+      kind: 'note',
+      body: `Note ${i}`,
+      fromStage: null,
+      toStage: null,
+      authorName: 'Jordan Alvarez',
+      createdAt: 1000 + i, // ascending; newest-first means highest i first
+    })).reverse();
+
+    const perPage = 50;
+    let call = 0;
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+      'GET /api/v1/pipeline/entry-1': () => {
+        call += 1;
+        const items = allActivity.slice((call - 1) * perPage, call * perPage);
+        return {
+          entry: { id: 'entry-1', contactId: 'ct1', stage: 'identified', createdAt: 1000, updatedAt: 1000 },
+          contact: { id: 'ct1', firstName: 'Ada', lastName: 'Lovelace', company: 'Acme', email: 'ada@example.com' },
+          activity: { items, total: allActivity.length, page: call, perPage },
+        };
+      },
+    });
+
+    render(<PipelineBoard />);
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+    fireEvent.click(within(desktopBoard()).getAllByRole('button', { name: 'Ada Lovelace' })[0]!);
+
+    await waitFor(() => {
+      expect(screen.getByText('Note: Note 59')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Note: Note 9')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Load more' })).toBeInTheDocument();
+
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 });
