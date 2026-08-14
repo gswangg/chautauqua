@@ -84,19 +84,54 @@ function valueOf(row: Row | JoinedRow, col: unknown): unknown {
   return (row as Row)[colKey(col)];
 }
 
+function chunkLiteral(chunk: unknown): string | null {
+  if (chunk && typeof chunk === "object" && "value" in (chunk as object)) {
+    const v = (chunk as { value: unknown }).value;
+    if (Array.isArray(v) && typeof v[0] === "string") return v[0];
+  }
+  return null;
+}
+
 function matches(cond: unknown, row: Row | JoinedRow): boolean {
   const chunks = (cond as { queryChunks: unknown[] }).queryChunks;
+  // and()/or() wrap their operands in a parenthesized SQL fragment whose
+  // middle chunk itself has queryChunks interleaving sub-conditions with a
+  // literal " and "/" or " separator (needed since issueSession's rotation
+  // delete combines a userId eq with an expiresAt lte).
+  if (chunkLiteral(chunks[0]) === "(") {
+    const inner = (chunks[1] as { queryChunks: unknown[] }).queryChunks;
+    const results: boolean[] = [];
+    let joiner: "and" | "or" = "and";
+    for (const part of inner) {
+      const literal = chunkLiteral(part);
+      if (literal === " and ") {
+        joiner = "and";
+        continue;
+      }
+      if (literal === " or ") {
+        joiner = "or";
+        continue;
+      }
+      results.push(matches(part, row));
+    }
+    return joiner === "and" ? results.every(Boolean) : results.some(Boolean);
+  }
+
   const column = chunks[1];
+  const operator = chunkLiteral(chunks[2]) ?? " = ";
   const rawValue = chunks[3];
   // A join condition compares two columns (eq(a.x, b.y)); a filter compares a
   // column to a literal, which drizzle wraps in a `Param` object rather than
   // passing the primitive through — unwrap it if present.
-  if (COLUMN_TABLES.has(rawValue)) return valueOf(row, column) === valueOf(row, rawValue);
-  const value =
-    rawValue && typeof rawValue === "object" && "value" in (rawValue as object)
+  const value = COLUMN_TABLES.has(rawValue)
+    ? valueOf(row, rawValue)
+    : rawValue && typeof rawValue === "object" && "value" in (rawValue as object)
       ? (rawValue as { value: unknown }).value
       : rawValue;
-  return valueOf(row, column) === value;
+  const actual = valueOf(row, column);
+  if (operator === " <= ") return (actual as number | string | Date) <= (value as number | string | Date);
+  if (operator === " >= ") return (actual as number | string | Date) >= (value as number | string | Date);
+  return actual === value;
 }
 
 function project(row: Row | JoinedRow, fields?: Record<string, unknown>): Row {

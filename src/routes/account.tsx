@@ -19,7 +19,7 @@ import {
   isSecureRequest,
   CSRF_COOKIE_NAME,
 } from "../auth/cookies";
-import { issueSession } from "../server/auth-session";
+import { issueSessionRevokingAll } from "../server/auth-session";
 import { ThemeStyles } from "../views/theme";
 import { AUTH_CSS } from "./auth.css";
 import { MIN_PASSWORD_LENGTH } from "./auth";
@@ -194,8 +194,9 @@ accountRoutes.post("/account/password", requireAuthOr302, csrfForm, async (c) =>
   // DEC-200/DEC-994: revoke every existing session for this user (including
   // the one that made this request) — then immediately issue a fresh one for
   // the current browser. Net effect: this browser stays signed in, every
-  // other device/browser is signed out. issueSession does the revoke+mint.
-  const token = await issueSession(db, auth.userId, now);
+  // other device/browser is signed out. issueSessionRevokingAll does the
+  // revoke+mint.
+  const token = await issueSessionRevokingAll(db, auth.userId, now);
 
   c.header("Set-Cookie", buildSessionCookie(token, { secure: isSecureRequest(c.req.url) }));
   const { token: csrfToken } = ensureCsrfCookie(c);

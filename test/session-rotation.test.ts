@@ -1,10 +1,13 @@
-// DEC-994: session minting is ONE helper (src/server/auth-session.ts,
-// issueSession) that revokes every existing auth_session row for a user
-// before minting a fresh one — login, the claim/password-set flow and the
-// self-service password change all route through it. This exercises the
-// three call sites end-to-end against a small in-memory fake db (same shape
-// as test/account-password.test.ts and test/claim.test.ts), plus a
-// source-grep scan proving no call site inserts an authSession row by hand.
+// DEC-994 (wave-6b amendment): session minting is TWO helpers in
+// src/server/auth-session.ts. issueSession rotates only the session
+// presented on the request (login) -- other live sessions for that user are
+// left alone, so SHARED demo personas signing in concurrently don't evict
+// each other. issueSessionRevokingAll keeps the original delete-everything
+// behaviour for credential-setting paths (claim/password-set, self-service
+// password change). This exercises all three call sites end-to-end against
+// a small in-memory fake db (same shape as test/account-password.test.ts and
+// test/claim.test.ts), plus a source-grep scan proving no call site inserts
+// an authSession row by hand.
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -81,18 +84,52 @@ function valueOf(row: Row | JoinedRow, col: unknown): unknown {
   return (row as Row)[colKey(col)];
 }
 
+function chunkLiteral(chunk: unknown): string | null {
+  if (chunk && typeof chunk === "object" && "value" in (chunk as object)) {
+    const v = (chunk as { value: unknown }).value;
+    if (Array.isArray(v) && typeof v[0] === "string") return v[0];
+  }
+  return null;
+}
+
 function matches(cond: unknown, row: Row | JoinedRow): boolean {
   const chunks = (cond as { queryChunks: unknown[] }).queryChunks;
+  // and()/or() wrap their operands in a parenthesized SQL fragment whose
+  // middle chunk itself has queryChunks interleaving sub-conditions with a
+  // literal " and "/" or " separator.
+  if (chunkLiteral(chunks[0]) === "(") {
+    const inner = (chunks[1] as { queryChunks: unknown[] }).queryChunks;
+    const results: boolean[] = [];
+    let joiner: "and" | "or" = "and";
+    for (const part of inner) {
+      const literal = chunkLiteral(part);
+      if (literal === " and ") {
+        joiner = "and";
+        continue;
+      }
+      if (literal === " or ") {
+        joiner = "or";
+        continue;
+      }
+      results.push(matches(part, row));
+    }
+    return joiner === "and" ? results.every(Boolean) : results.some(Boolean);
+  }
+
   const column = chunks[1];
+  const operator = chunkLiteral(chunks[2]) ?? " = ";
   const rawValue = chunks[3];
   // A join condition compares two columns (eq(a.x, b.y)); a filter compares a
   // column to a Param-wrapped literal.
-  if (COLUMN_TABLES.has(rawValue)) return valueOf(row, column) === valueOf(row, rawValue);
-  const value =
-    rawValue && typeof rawValue === "object" && "value" in (rawValue as object)
+  const value = COLUMN_TABLES.has(rawValue)
+    ? valueOf(row, rawValue)
+    : rawValue && typeof rawValue === "object" && "value" in (rawValue as object)
       ? (rawValue as { value: unknown }).value
       : rawValue;
-  return valueOf(row, column) === value;
+  const actual = valueOf(row, column);
+  if (operator === " <= ") return (actual as number | string | Date) <= (value as number | string | Date);
+  if (operator === " >= ") return (actual as number | string | Date) >= (value as number | string | Date);
+  return actual === value;
 }
 
 function project(row: Row | JoinedRow, fields?: Record<string, unknown>): Row {
@@ -278,14 +315,20 @@ async function getCsrf(app: Hono<AppEnv>, env: { KV: AppEnv["Bindings"]["KV"] },
   return { csrf: match[1]!, cookie: `${CSRF_COOKIE_NAME}=${match[1]}` };
 }
 
-async function login(app: Hono<AppEnv>, env: { KV: AppEnv["Bindings"]["KV"] }, password: string) {
+async function login(
+  app: Hono<AppEnv>,
+  env: { KV: AppEnv["Bindings"]["KV"] },
+  password: string,
+  presentedSessionCookie?: string,
+) {
   const { csrf, cookie } = await getCsrf(app, env, "/login");
   const form = new URLSearchParams({ [CSRF_COOKIE_NAME]: csrf, email: EMAIL, password });
+  const requestCookie = presentedSessionCookie ? `${cookie}; ${presentedSessionCookie}` : cookie;
   return app.request(
     "/login",
     {
       method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded", cookie },
+      headers: { "content-type": "application/x-www-form-urlencoded", cookie: requestCookie },
       body: form.toString(),
     },
     env,
@@ -303,8 +346,8 @@ async function checkAdmin(app: Hono<AppEnv>, env: { KV: AppEnv["Bindings"]["KV"]
   return app.request("/api/v1/events", { headers: { cookie: sessionCookie } }, env);
 }
 
-describe("session rotation on login (DEC-994)", () => {
-  it("logging in a second time revokes the first cookie; only the newest cookie renders /admin", async () => {
+describe("session rotation on login (DEC-994 wave-6b amendment)", () => {
+  it("a second login carrying no cookie leaves the first cookie authenticating; two rows survive for that user", async () => {
     const { db, state } = makeFakeDb();
     await seedUser(state);
     const { app, env } = buildApp(db);
@@ -317,52 +360,57 @@ describe("session rotation on login (DEC-994)", () => {
     const preCheck = await checkAdmin(app, env, cookieA);
     expect(preCheck.status).toBe(200);
 
+    // A second login (e.g. a different device) presents no session cookie of
+    // its own -- it must not evict cookie A's row.
     const loginB = await login(app, env, PASSWORD);
     expect(loginB.status).toBe(302);
     const cookieB = sessionCookieFrom(loginB);
     expect(cookieB).not.toBe(cookieA);
 
-    // Cookie A (the stolen/stale token) now 401s on the protected route --
-    // in the real app sessionLoader clears it and a page route would 302 to
-    // /login.
+    // Both cookies still authenticate -- logging in on one device does not
+    // sign the other out.
     const checkA = await checkAdmin(app, env, cookieA);
-    expect(checkA.status).toBe(401);
-
-    // Cookie B (this login's own cookie) still works.
+    expect(checkA.status).toBe(200);
     const checkB = await checkAdmin(app, env, cookieB);
     expect(checkB.status).toBe(200);
 
-    // Exactly one session row survives -- the login helper deletes before
-    // inserting, it does not merely add to the pile.
-    expect(state.sessions).toHaveLength(1);
+    // Exactly two session rows survive for this user -- one per device.
+    const u1Sessions = state.sessions.filter((s) => s.userId === "u_1");
+    expect(u1Sessions).toHaveLength(2);
   });
-});
 
-describe("issueSession revokes-first contract (DEC-994)", () => {
-  it("deletes every existing session for that userId before minting the fresh one", async () => {
+  it("a second login presenting the first cookie rotates it -- the old token 401s, exactly one row survives", async () => {
     const { db, state } = makeFakeDb();
-    const { issueSession } = await import("../src/server/auth-session");
-    const { hashToken } = await import("../src/auth/tokens");
+    await seedUser(state);
+    const { app, env } = buildApp(db);
 
-    state.sessions.push(
-      { id: "old_1", userId: "u_1", tokenHash: "hash-a", expiresAt: new Date(), createdAt: new Date(), updatedAt: new Date() },
-      { id: "old_2", userId: "u_1", tokenHash: "hash-b", expiresAt: new Date(), createdAt: new Date(), updatedAt: new Date() },
-      // A different user's session must be left alone -- issueSession scopes
-      // its delete to the given userId only.
-      { id: "other_user", userId: "u_2", tokenHash: "hash-c", expiresAt: new Date(), createdAt: new Date(), updatedAt: new Date() },
-    );
+    const loginA = await login(app, env, PASSWORD);
+    expect(loginA.status).toBe(302);
+    const cookieA = sessionCookieFrom(loginA);
 
-    const token = await issueSession(db, "u_1", new Date());
+    // Re-authenticating on the SAME browser presents cookie A -- this is
+    // fixation defence: the identifier presented across the auth boundary
+    // must not survive it.
+    const loginB = await login(app, env, PASSWORD, cookieA);
+    expect(loginB.status).toBe(302);
+    const cookieB = sessionCookieFrom(loginB);
+    expect(cookieB).not.toBe(cookieA);
 
+    // The stale, presented cookie now 401s.
+    const checkA = await checkAdmin(app, env, cookieA);
+    expect(checkA.status).toBe(401);
+
+    // The fresh cookie works.
+    const checkB = await checkAdmin(app, env, cookieB);
+    expect(checkB.status).toBe(200);
+
+    // Exactly one session row survives for this user.
     const u1Sessions = state.sessions.filter((s) => s.userId === "u_1");
     expect(u1Sessions).toHaveLength(1);
-    expect(u1Sessions[0]!.tokenHash).toBe(await hashToken(token));
-    // The other user's row survived untouched.
-    expect(state.sessions.some((s) => s.id === "other_user")).toBe(true);
   });
 });
 
-describe("claim/password-set (POST /claim/:token) routes through issueSession (DEC-994)", () => {
+describe("claim/password-set (POST /claim/:token) routes through issueSessionRevokingAll (DEC-994)", () => {
   const CONTACT_ID = "ct_1";
   const ORG_ID = "org_1";
   const CONTACT_EMAIL = "new-speaker@example.test";
