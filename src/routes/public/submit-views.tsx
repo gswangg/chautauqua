@@ -586,6 +586,7 @@ export function ConfirmationPage(props: {
   eventSlug: string;
   form: FormRow;
   emailDelivered: boolean;
+  meta: string | null;
 }) {
   return (
     <PageShell title={`Submission received - ${props.event.name}`}>
@@ -601,6 +602,7 @@ export function ConfirmationPage(props: {
           <span class="chq-cfp-title" style="font-size:17px">
             {props.title}
           </span>
+          {props.meta ? <span class="chq-cfp-confirm-card-meta">{props.meta}</span> : null}
         </div>
         {/* DEC-377: no delivery-window or "check spam" timing promise here —
             the earlier copy asserted arrival timing the confirmation email

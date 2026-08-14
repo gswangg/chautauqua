@@ -62,6 +62,24 @@ const FIELD_ROWS = [
   { id: "email", section: "speaker", kind: "text", label: "Email", helpText: null, required: true, position: 4, optionsJson: null, ruleJson: null },
 ];
 
+// DEC-098 (wave 8 amendment): FIELD_ROWS with the Session-format field added
+// (SESSION_FORMAT_FIELD_ID = "field_session_format"), so the confirmation
+// card's track/format meta line can be exercised end to end.
+const FIELD_ROWS_WITH_FORMAT = [
+  ...FIELD_ROWS,
+  {
+    id: "field_session_format",
+    section: "session",
+    kind: "dropdown",
+    label: "Format",
+    helpText: null,
+    required: false,
+    position: 5,
+    optionsJson: JSON.stringify(["Talk (45 min)", "Workshop (90 min)"]),
+    ruleJson: null,
+  },
+];
+
 function makeChain(rows: unknown[]) {
   const chain: any = {
     from: () => chain,
@@ -138,14 +156,19 @@ function appWithDb(db: AppEnv["Variables"]["db"]) {
 
 const CSRF_TOKEN = "test-csrf-token";
 
-function submitForm() {
+function submitForm(opts?: { trackIds?: string[]; format?: string }) {
   const form = new FormData();
   form.set(CSRF_COOKIE_NAME, CSRF_TOKEN);
   form.set("field__title", "My great talk");
   form.set("field__description", "A talk about things.");
   form.set("speaker_name", "Ada Lovelace");
   form.set("field__email", "ada@example.com");
-  form.set("trackIds", "track-1");
+  for (const trackId of opts?.trackIds ?? ["track-1"]) {
+    form.append("trackIds", trackId);
+  }
+  if (opts?.format !== undefined) {
+    form.set("field__field_session_format", opts.format);
+  }
   return new Request("http://local/submit/test-conf", {
     method: "POST",
     headers: { cookie: `${CSRF_COOKIE_NAME}=${CSRF_TOKEN}` },
@@ -155,6 +178,17 @@ function submitForm() {
 
 function selectQueueFor() {
   return [[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW], [], [{ seq: 7 }], []];
+}
+
+function selectQueueForWithFormat() {
+  return [[EVENT_ROW], [FORM_ROW], FIELD_ROWS_WITH_FORMAT, [TRACK_ROW], [], [{ seq: 7 }], []];
+}
+
+// No tracks offered at all (empty eventTracks list), so validateTrackChoice
+// never requires a selection -- used by the "no track" meta-clause tests
+// below, which would otherwise fail track-selection validation.
+function selectQueueForWithFormatNoTracks() {
+  return [[EVENT_ROW], [FORM_ROW], FIELD_ROWS_WITH_FORMAT, [], [], [{ seq: 7 }], []];
 }
 
 const commonBindings = {
@@ -203,5 +237,89 @@ describe("CFP confirmation page never asserts a delivery that did not happen (DE
     const html = await res.text();
     expect(html).toContain("Check your email.");
     expect(html).toContain("emailed a confirmation for");
+  });
+});
+
+// DEC-098 (wave 8 amendment): the confirmation card states the talk's track
+// and format, not just its title.
+describe("CFP confirmation card states track and format (DEC-098 wave 8 amendment)", () => {
+  it("submission with both a track and a format renders 'Track · Format (N min)' in the card", async () => {
+    const { db } = fakeDb(selectQueueForWithFormat());
+    const app = appWithDb(db);
+
+    const res = await app.request(
+      submitForm({ trackIds: ["track-1"], format: "Talk (45 min)" }),
+      undefined,
+      {
+        KV: fakeKv(),
+        FILES: fakeFilesBucket(),
+        EMAIL: { send: vi.fn(async () => {}) },
+        ...commonBindings,
+      } as unknown as AppEnv["Bindings"],
+    );
+
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('<span class="chq-cfp-confirm-card-meta">Main Track · Talk (45 min)</span>');
+  });
+
+  it("submission with neither a track nor a format renders the card with the title only and no meta element", async () => {
+    const { db } = fakeDb(selectQueueForWithFormatNoTracks());
+    const app = appWithDb(db);
+
+    const res = await app.request(
+      submitForm({ trackIds: [] }),
+      undefined,
+      {
+        KV: fakeKv(),
+        FILES: fakeFilesBucket(),
+        EMAIL: { send: vi.fn(async () => {}) },
+        ...commonBindings,
+      } as unknown as AppEnv["Bindings"],
+    );
+
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).not.toContain('class="chq-cfp-confirm-card-meta"');
+  });
+
+  it("submission with only a track (no format) renders that clause with no separator", async () => {
+    const { db } = fakeDb(selectQueueForWithFormat());
+    const app = appWithDb(db);
+
+    const res = await app.request(
+      submitForm({ trackIds: ["track-1"] }),
+      undefined,
+      {
+        KV: fakeKv(),
+        FILES: fakeFilesBucket(),
+        EMAIL: { send: vi.fn(async () => {}) },
+        ...commonBindings,
+      } as unknown as AppEnv["Bindings"],
+    );
+
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('<span class="chq-cfp-confirm-card-meta">Main Track</span>');
+  });
+
+  it("submission with only a format (no track) renders that clause with no separator", async () => {
+    const { db } = fakeDb(selectQueueForWithFormatNoTracks());
+    const app = appWithDb(db);
+
+    const res = await app.request(
+      submitForm({ trackIds: [], format: "Workshop (90 min)" }),
+      undefined,
+      {
+        KV: fakeKv(),
+        FILES: fakeFilesBucket(),
+        EMAIL: { send: vi.fn(async () => {}) },
+        ...commonBindings,
+      } as unknown as AppEnv["Bindings"],
+    );
+
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('<span class="chq-cfp-confirm-card-meta">Workshop (90 min)</span>');
   });
 });
