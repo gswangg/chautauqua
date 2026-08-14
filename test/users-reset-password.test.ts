@@ -49,20 +49,52 @@ function unwrap(rawValue: unknown): unknown {
     : rawValue;
 }
 
+// DEC-276 (wave 63): auth is now a single innerJoin (auth_session ⋈ user), so
+// the fake db has to resolve a column against the correct side of a joined
+// row — schema.user.id and schema.authSession.id share the key "id".
+function buildTableMap(table: Record<string, unknown>, tableRef: unknown, into: Map<unknown, unknown>) {
+  for (const col of Object.values(table)) {
+    if (col && typeof col === "object" && "name" in (col as object)) into.set(col, tableRef);
+  }
+  return into;
+}
+
+const COLUMN_TABLES = new Map<unknown, unknown>();
+for (const t of [schema.user, schema.authSession, schema.rateLimit]) {
+  buildTableMap(t as unknown as Record<string, unknown>, t, COLUMN_TABLES);
+}
+
+const JOINED = Symbol("joined");
+type JoinedRow = { [JOINED]: Map<unknown, Row> };
+
+function isJoined(row: Row | JoinedRow): row is JoinedRow {
+  return JOINED in row;
+}
+
+function valueOf(row: Row | JoinedRow, col: unknown): unknown {
+  if (isJoined(row)) {
+    const side = row[JOINED].get(COLUMN_TABLES.get(col));
+    return side ? side[colKey(col)] : undefined;
+  }
+  return (row as Row)[colKey(col)];
+}
+
 // Evaluates a real drizzle eq()/and() condition tree against a row —
 // getOrgUserById() builds an and(eq(id), eq(orgId)) clause, so a flat
 // single-eq evaluator (as in the simplest fakes) isn't enough here.
-function evalCond(cond: unknown, row: Row): boolean {
+function evalCond(cond: unknown, row: Row | JoinedRow): boolean {
   const chunks = (cond as { queryChunks: unknown[] }).queryChunks;
   if (COLUMN_KEYS.has(chunks[1])) {
+    // A join condition compares two columns (eq(a.x, b.y)).
+    if (COLUMN_TABLES.has(chunks[3])) return valueOf(row, chunks[1]) === valueOf(row, chunks[3]);
     // inArray()'s chunks[3] is an array of Param values (DEC-865:
     // getOrgUserById now scopes by inArray(role, ORG_USER_ROLES)); eq()'s
     // chunks[3] is a single Param.
     if (Array.isArray(chunks[3])) {
       const values = (chunks[3] as unknown[]).map(unwrap);
-      return values.includes(row[colKey(chunks[1])]);
+      return values.includes(valueOf(row, chunks[1]));
     }
-    return row[colKey(chunks[1])] === unwrap(chunks[3]);
+    return valueOf(row, chunks[1]) === unwrap(chunks[3]);
   }
   let any = false;
   let result = true;
@@ -76,10 +108,10 @@ function evalCond(cond: unknown, row: Row): boolean {
   return result;
 }
 
-function project(row: Row, fields?: Record<string, unknown>): Row {
-  if (!fields) return { ...row };
+function project(row: Row | JoinedRow, fields?: Record<string, unknown>): Row {
+  if (!fields) return { ...(row as Row) };
   const out: Row = {};
-  for (const [key, col] of Object.entries(fields)) out[key] = row[colKey(col)];
+  for (const [key, col] of Object.entries(fields)) out[key] = valueOf(row, col);
   return out;
 }
 
@@ -95,14 +127,30 @@ function makeFakeDb() {
     select(fields?: Record<string, unknown>) {
       return {
         from(table: unknown) {
+          const whereOver = (rows: (Row | JoinedRow)[]) => (cond: unknown) => {
+            const matched = rows.filter((r) => evalCond(cond, r));
+            return {
+              limit(n: number) {
+                return Promise.resolve(matched.slice(0, n).map((r) => project(r, fields)));
+              },
+            };
+          };
           return {
-            where(cond: unknown) {
-              const matched = rowsFor(table).filter((r) => evalCond(cond, r));
-              return {
-                limit(n: number) {
-                  return Promise.resolve(matched.slice(0, n).map((r) => project(r, fields)));
-                },
-              };
+            where: whereOver(rowsFor(table)),
+            innerJoin(joinTable: unknown, on: unknown) {
+              const joined: JoinedRow[] = [];
+              for (const left of rowsFor(table)) {
+                for (const right of rowsFor(joinTable)) {
+                  const row: JoinedRow = {
+                    [JOINED]: new Map([
+                      [table, left],
+                      [joinTable, right],
+                    ]),
+                  };
+                  if (evalCond(on, row)) joined.push(row);
+                }
+              }
+              return { where: whereOver(joined) };
             },
           };
         },

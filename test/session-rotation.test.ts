@@ -51,21 +51,54 @@ function colKey(col: unknown): string {
   return key;
 }
 
-function matches(cond: unknown, row: Row): boolean {
+// DEC-276 (wave 63): auth is now a single innerJoin (auth_session ⋈ user), so
+// the fake db has to resolve a column against the correct side of a joined
+// row — schema.user.id and schema.authSession.id share the key "id".
+function buildTableMap(table: Record<string, unknown>, tableRef: unknown, into: Map<unknown, unknown>) {
+  for (const col of Object.values(table)) {
+    if (col && typeof col === "object" && "name" in (col as object)) into.set(col, tableRef);
+  }
+  return into;
+}
+
+const COLUMN_TABLES = new Map<unknown, unknown>();
+for (const t of [schema.user, schema.authSession, schema.contact, schema.rateLimit]) {
+  buildTableMap(t as unknown as Record<string, unknown>, t, COLUMN_TABLES);
+}
+
+const JOINED = Symbol("joined");
+type JoinedRow = { [JOINED]: Map<unknown, Row> };
+
+function isJoined(row: Row | JoinedRow): row is JoinedRow {
+  return JOINED in row;
+}
+
+function valueOf(row: Row | JoinedRow, col: unknown): unknown {
+  if (isJoined(row)) {
+    const side = row[JOINED].get(COLUMN_TABLES.get(col));
+    return side ? side[colKey(col)] : undefined;
+  }
+  return (row as Row)[colKey(col)];
+}
+
+function matches(cond: unknown, row: Row | JoinedRow): boolean {
   const chunks = (cond as { queryChunks: unknown[] }).queryChunks;
   const column = chunks[1];
   const rawValue = chunks[3];
+  // A join condition compares two columns (eq(a.x, b.y)); a filter compares a
+  // column to a Param-wrapped literal.
+  if (COLUMN_TABLES.has(rawValue)) return valueOf(row, column) === valueOf(row, rawValue);
   const value =
     rawValue && typeof rawValue === "object" && "value" in (rawValue as object)
       ? (rawValue as { value: unknown }).value
       : rawValue;
-  return row[colKey(column)] === value;
+  return valueOf(row, column) === value;
 }
 
-function project(row: Row, fields?: Record<string, unknown>): Row {
-  if (!fields) return { ...row };
+function project(row: Row | JoinedRow, fields?: Record<string, unknown>): Row {
+  if (!fields) return { ...(row as Row) };
   const out: Row = {};
-  for (const [key, col] of Object.entries(fields)) out[key] = row[colKey(col)];
+  for (const [key, col] of Object.entries(fields)) out[key] = valueOf(row, col);
   return out;
 }
 
@@ -91,7 +124,7 @@ function makeFakeDb() {
     select(fields?: Record<string, unknown>) {
       return {
         from(table: unknown) {
-          const limitFrom = (matched: Row[]) => ({
+          const limitFrom = (matched: (Row | JoinedRow)[]) => ({
             limit(n: number) {
               return Promise.resolve(matched.slice(0, n).map((r) => project(r, fields)));
             },
@@ -102,6 +135,25 @@ function makeFakeDb() {
             },
             orderBy() {
               return limitFrom(rowsFor(table));
+            },
+            innerJoin(joinTable: unknown, on: unknown) {
+              const joined: JoinedRow[] = [];
+              for (const left of rowsFor(table)) {
+                for (const right of rowsFor(joinTable)) {
+                  const row: JoinedRow = {
+                    [JOINED]: new Map([
+                      [table, left],
+                      [joinTable, right],
+                    ]),
+                  };
+                  if (matches(on, row)) joined.push(row);
+                }
+              }
+              return {
+                where(cond: unknown) {
+                  return limitFrom(joined.filter((r) => matches(cond, r)));
+                },
+              };
             },
           };
         },

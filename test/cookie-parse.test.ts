@@ -53,8 +53,11 @@ describe("sessionLoader survives a malformed cookie header (DEC-811 regression)"
   it("GET /health with 'Cookie: foo=100%' answers 200, not 500", async () => {
     const app = new Hono<AppEnv>();
     app.use("*", async (c, next) => {
+      // DEC-276 (wave 63): sessionLoader's lookup is one innerJoin
+      // (auth_session ⋈ user), so the chain stub has to accept it.
       const chain: any = {
         from: () => chain,
+        innerJoin: () => chain,
         where: () => chain,
         limit: async () => [],
       };
@@ -79,6 +82,7 @@ describe("sessionLoader survives a malformed cookie header (DEC-811 regression)"
     app.use("*", async (c, next) => {
       const chain: any = {
         from: () => chain,
+        innerJoin: () => chain,
         where: () => {
           sessionLookupCalled = true;
           return chain;

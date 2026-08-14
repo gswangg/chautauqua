@@ -25,36 +25,34 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   EXIST; COMMENT CLAIMING A CHECK IS NOT ONE.
 - FINDINGS w55-60 (compacted): re-read before reserve; mandate can run out ->
   read repos; sweep every writer of a table a unique index lands on; JS cap
-  over unbounded read -> count/slice in SQL; revert mandate is not a revert;
-  `.size` is a GROUP BY; no lower bound is a forever loop; short-circuit over
-  a KDF is an oracle; config throw on anonymous surface is a 500; a decision
-  naming its own consumers is a checklist to WALK; a UI label is a spec; a
-  module header listing its own cascade is a checklist -- the guard is not
-  the cascade; a one-way status is a broken loop; two sibling dedupes that
-  both preserve progress make the third between them the bug.
-- FINDINGS w61-62 (compacted): MANDATE SPENT repeatedly -- stop re-reading
-  eval-findings, read the code. Sibling counts on one header need the SAME
-  predicate; a count's population is part of its copy; a chase fix needs a
-  portal mirror; "sent" is a status not a row count; a parsed-not-passed
-  param is a confident wrong answer; a dry run must model its own collapse;
-  a rule private to one module isn't owed to the next; a nudge with no link
-  isn't one; a sanitizer for one serializer is owed to every serializer; a
-  header is a line ending at CRLF; an attachment in multipart/alternative
-  REPLACES the body; IO you don't consume is still IO; a cap on one sibling
-  measures the others, no ORDER BY is nondeterministic; a fn whose only
-  caller is vi.fn is dead.
-- FINDINGS w63: MANDATE SPENT, SIXTH CONFIRMATION -- run-3 P0s and gate-3
-  P1s all re-probed CLOSED at file:line; stop re-reading eval-findings for
-  code work and read the code. A REFUSAL LIST IS DATED THE DAY IT WAS
-  WRITTEN -- deleteTrack's blockers predate saved embeds; the newest FK
-  consumer is the one the guard never heard of. A COUNT FROM `visibleRows`
-  IS A COUNT OF THE PAGE -- server pagination turns a client tally into an
-  understatement, worst in an irreversible dialog. "NEVER A NEW ENDPOINT" !=
-  "NEVER A QUERY PER ROW" -- one grouped aggregate is neither. AUTH IS A TAX
-  ON EVERY ROUTE: two sequential SELECTs are subtracted from every screen's
-  50ms budget; the write nobody reads (last_used_at) was awaited inline
-  under a comment promising it wasn't. A DESIGN HANDOFF SENTENCE CAN BE A
-  MISSING TABLE -- breaks had no schema, route, or render. A WATERMARK ONLY
-  SEES THE COLUMN IT COMPARES: participant writes bump participant.updated_at,
-  so the Airtable push never re-sends a submission whose speakers changed --
-  EXISTS can't rescue a DELETE. THE PARENT ROW IS THE SYNC UNIT; STAMP OWED BY ITS CHILDREN'S WRITERS.
+  over unbounded read -> count/slice in SQL; `.size` is a GROUP BY; no lower
+  bound is a forever loop; short-circuit over a KDF is an oracle; a decision
+  naming its own consumers is a checklist to WALK; a module header listing
+  its own cascade is a checklist -- the guard is not the cascade; two
+  sibling dedupes that both preserve progress make the third between them
+  the bug.
+- FINDINGS w61-63 (compacted): MANDATE SPENT repeatedly, re-probed CLOSED at
+  file:line each wave -- read the code, not eval-findings. Sibling counts
+  need the SAME predicate; "sent" is a status not a row count; a dry run
+  must model its own collapse; an attachment in multipart/alternative
+  REPLACES the body; no ORDER BY is nondeterministic. A REFUSAL LIST IS
+  DATED THE DAY IT WAS WRITTEN. A COUNT FROM `visibleRows` IS A COUNT OF
+  THE PAGE. AUTH IS A TAX ON EVERY ROUTE. A DESIGN HANDOFF SENTENCE CAN BE
+  A MISSING TABLE. A WATERMARK ONLY SEES THE COLUMN IT COMPARES --
+  participant writes bump participant.updated_at, so Airtable never re-
+  sends a submission whose speakers changed; PARENT ROW IS THE SYNC UNIT.
+- FINDINGS w64: THE HANDOFF IS THE MANDATE NOW -- eval-findings re-probed
+  CLOSED a seventh time (reminder tail, login KDF oracle, re-accept
+  fireAcceptance, ics organizer, MIME, portal-link minting, review caps,
+  distribute anatomy, /admin 404, seed dates, home hub, participation menu,
+  filter rules: all live at file:line). The open work was in docs/design/
+  read as a CHECKLIST: the public agenda desktop is still the room-lane
+  MATRIX the handoff replaced, the filter bar is still the PILL ROW the
+  handoff killed, /speakers has no facet at all. A PARAM THE ROUTE PASSES
+  AND THE PAGE HIDES IS A FEATURE NOBODY CAN REACH -- sessions ?day=
+  filters in SQL under a comment saying it filters nothing. A LIST FILTERS,
+  A SCHEDULE HIGHLIGHTS. A WATERMARK BOUNDS THE PARENT SCAN ONLY: airtable's
+  child reads stayed org-wide, so the cap that protects the first FULL push
+  condemns every INCREMENTAL one. WHEN THE DEC SPACE IS FULL, PICK THE
+  DECISION THE CODE ACTUALLY CITES and amend that one -- one DEC file per
+  lane, checked against the in-flight wave's set first.
