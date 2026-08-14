@@ -42,13 +42,13 @@ describe("EmailBindingMailer", () => {
     const call = calls[0]!;
     expect(call.from).toBe("hello@chautauqua.cc");
     expect(call.to).toBe("speaker@example.com");
-    expect(call.raw).toContain("From: Chautauqua <hello@chautauqua.cc>");
-    expect(call.raw).toContain("To: speaker@example.com");
+    expect(call.raw).toContain('From: "Chautauqua" <hello@chautauqua.cc>');
+    expect(call.raw).toContain('To: "Speaker Name" <speaker@example.com>');
     expect(call.raw).toContain("Subject: Hello");
     expect(call.raw).toContain("MIME-Version: 1.0");
     expect(call.raw).toContain("Content-Type: multipart/alternative");
-    expect(call.raw).toContain("hello text");
-    expect(call.raw).toContain("<p>hello</p>");
+    expect(call.raw).toContain(btoa("hello text"));
+    expect(call.raw).toContain(btoa("<p>hello</p>"));
 
     expect(log.rows).toHaveLength(1);
     expect(log.rows[0]!.status).toBe("sent");
@@ -72,6 +72,115 @@ describe("EmailBindingMailer", () => {
     expect(raw).toContain('Content-Type: text/calendar; charset="UTF-8"; method=REQUEST; name="session.ics"');
     expect(raw).toContain('filename="session.ics"');
     expect(raw).toContain(btoa(icsContent));
+  });
+
+  it("strips a header-injection subject to a single Subject: line with no Bcc: line", async () => {
+    const calls: Array<{ raw: string }> = [];
+    const binding = { send: async (message: unknown) => { calls.push(message as { raw: string }); } };
+    const log = new InMemoryEmailLog();
+    const mailer = new EmailBindingMailer(binding, log, { email: "hello@chautauqua.cc", name: "Chautauqua" }, identityFactory);
+
+    await mailer.send(baseMsg({ subject: "Update\r\nBcc: attacker@evil.example" }));
+
+    const raw = calls[0]!.raw;
+    const lines = raw.split("\r\n");
+    const subjectLines = lines.filter((l) => l.startsWith("Subject:"));
+    expect(subjectLines).toHaveLength(1);
+    expect(subjectLines[0]).toBe("Subject: UpdateBcc: attacker@evil.example");
+    expect(lines.some((l) => l.startsWith("Bcc:"))).toBe(false);
+  });
+
+  it("encodes a non-ASCII subject as an RFC 2047 encoded-word, never raw bytes in the header block", async () => {
+    const calls: Array<{ raw: string }> = [];
+    const binding = { send: async (message: unknown) => { calls.push(message as { raw: string }); } };
+    const log = new InMemoryEmailLog();
+    const mailer = new EmailBindingMailer(binding, log, { email: "hello@chautauqua.cc", name: "Chautauqua" }, identityFactory);
+
+    await mailer.send(baseMsg({ subject: "Café talk éé" }));
+
+    const raw = calls[0]!.raw;
+    const headerBlockEnd = raw.indexOf("\r\n\r\n");
+    const headerBlock = raw.slice(0, headerBlockEnd);
+    expect(headerBlock).toMatch(/Subject: =\?UTF-8\?B\?[A-Za-z0-9+/=]+\?=/);
+    expect(headerBlock).not.toContain("Café");
+    expect(headerBlock).not.toContain("é");
+  });
+
+  it("nests the .ics as a sibling of multipart/alternative under a top-level multipart/mixed", async () => {
+    const calls: Array<{ raw: string }> = [];
+    const binding = { send: async (message: unknown) => { calls.push(message as { raw: string }); } };
+    const log = new InMemoryEmailLog();
+    const mailer = new EmailBindingMailer(binding, log, { email: "hello@chautauqua.cc", name: "Chautauqua" }, identityFactory);
+
+    await mailer.send(baseMsg({ ics: { filename: "session.ics", content: "BEGIN:VCALENDAR\nEND:VCALENDAR" } }));
+
+    const raw = calls[0]!.raw;
+    const headerBlockEnd = raw.indexOf("\r\n\r\n");
+    const headerBlock = raw.slice(0, headerBlockEnd);
+    expect(headerBlock).toMatch(/Content-Type: multipart\/mixed; boundary="([^"]+)"/);
+    const mixedBoundary = /Content-Type: multipart\/mixed; boundary="([^"]+)"/.exec(headerBlock)![1]!;
+    const mixedBodyStart = headerBlockEnd + 4;
+    const mixedBody = raw.slice(mixedBodyStart);
+    // The multipart/alternative part and the text/calendar part must both be
+    // direct children of the mixed boundary (siblings), not nested within
+    // each other.
+    const mixedParts = mixedBody.split(`--${mixedBoundary}`);
+    const altPart = mixedParts.find((p) => p.includes("multipart/alternative"));
+    const calPart = mixedParts.find((p) => p.includes("text/calendar"));
+    expect(altPart).toBeDefined();
+    expect(calPart).toBeDefined();
+    expect(calPart).not.toContain("multipart/alternative");
+  });
+
+  it("keeps a top-level multipart/alternative when there is no .ics", async () => {
+    const calls: Array<{ raw: string }> = [];
+    const binding = { send: async (message: unknown) => { calls.push(message as { raw: string }); } };
+    const log = new InMemoryEmailLog();
+    const mailer = new EmailBindingMailer(binding, log, { email: "hello@chautauqua.cc", name: "Chautauqua" }, identityFactory);
+
+    await mailer.send(baseMsg());
+
+    const raw = calls[0]!.raw;
+    const headerBlockEnd = raw.indexOf("\r\n\r\n");
+    const headerBlock = raw.slice(0, headerBlockEnd);
+    expect(headerBlock).toMatch(/Content-Type: multipart\/alternative; boundary="[^"]+"/);
+    expect(headerBlock).not.toContain("multipart/mixed");
+  });
+
+  it("carries Date: (from the injected clock) and Message-ID:", async () => {
+    const calls: Array<{ raw: string }> = [];
+    const binding = { send: async (message: unknown) => { calls.push(message as { raw: string }); } };
+    const log = new InMemoryEmailLog();
+    const fixedNow = new Date("2026-08-12T16:04:05.000Z");
+    const mailer = new EmailBindingMailer(
+      binding,
+      log,
+      { email: "hello@chautauqua.cc", name: "Chautauqua" },
+      identityFactory,
+      { now: () => fixedNow },
+    );
+
+    await mailer.send(baseMsg());
+
+    const raw = calls[0]!.raw;
+    expect(raw).toContain("Date: Wed, 12 Aug 2026 16:04:05 +0000");
+    expect(raw).toMatch(/Message-ID: <[0-9a-f-]+@chautauqua\.cc>/);
+  });
+
+  it("mints a different boundary and Message-ID on every send", async () => {
+    const calls: Array<{ raw: string }> = [];
+    const binding = { send: async (message: unknown) => { calls.push(message as { raw: string }); } };
+    const log = new InMemoryEmailLog();
+    const mailer = new EmailBindingMailer(binding, log, { email: "hello@chautauqua.cc", name: "Chautauqua" }, identityFactory);
+
+    await mailer.send(baseMsg());
+    await mailer.send(baseMsg());
+
+    const [raw1, raw2] = calls.map((c) => c.raw);
+    const boundaryOf = (raw: string) => /boundary="([^"]+)"/.exec(raw)![1]!;
+    const messageIdOf = (raw: string) => /Message-ID: <([^>]+)>/.exec(raw)![1]!;
+    expect(boundaryOf(raw1!)).not.toBe(boundaryOf(raw2!));
+    expect(messageIdOf(raw1!)).not.toBe(messageIdOf(raw2!));
   });
 
   it("logs a 'failed' row and rethrows when the binding throws", async () => {

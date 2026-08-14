@@ -24,8 +24,6 @@ export interface EmailBinding {
  * plain object). May return a Promise — EmailBindingMailer awaits it. */
 export type EmailMessageFactory = (from: string, to: string, raw: string) => unknown;
 
-const BOUNDARY = "chq_mime_boundary";
-
 function base64Encode(raw: string): string {
   // btoa is available in both workerd and Node's test runtime; TextEncoder
   // handles non-Latin1 ICS content correctly.
@@ -35,37 +33,107 @@ function base64Encode(raw: string): string {
   return btoa(binary);
 }
 
-function buildRawMime(fromHeader: string, toEmail: string, m: RenderedEmail): string {
-  const lines: string[] = [
-    `From: ${fromHeader}`,
-    `To: ${toEmail}`,
-    `Subject: ${m.subject}`,
-    `MIME-Version: 1.0`,
-    `Content-Type: multipart/alternative; boundary="${BOUNDARY}"`,
-    "",
-    `--${BOUNDARY}`,
-    `Content-Type: text/plain; charset="UTF-8"`,
-    "",
-    m.text,
-    "",
-    `--${BOUNDARY}`,
-    `Content-Type: text/html; charset="UTF-8"`,
-    "",
-    m.html,
-    "",
-  ];
-  if (m.ics) {
-    lines.push(
-      `--${BOUNDARY}`,
-      `Content-Type: text/calendar; charset="UTF-8"; method=REQUEST; name="${m.ics.filename}"`,
-      `Content-Transfer-Encoding: base64`,
-      `Content-Disposition: attachment; filename="${m.ics.filename}"`,
-      "",
-      base64Encode(m.ics.content),
-      "",
-    );
+// RFC 5322 header value safety (DEC-996 wave-62 amendment): strip every
+// CR/LF/C0-control byte plus DEL — the same class src/mail/ics.ts sanitizeCn
+// strips and for the same reason (a bare CR/LF here would inject a new
+// header line, e.g. `Bcc:`, into an outbound message built from
+// unauthenticated CFP text). If any non-ASCII byte survives, wrap the
+// stripped value as an RFC 2047 base64 encoded-word rather than emit a raw
+// byte a header has no business carrying.
+function headerValue(raw: string): string {
+  // eslint-disable-next-line no-control-regex
+  const stripped = raw.replace(/[\x00-\x1f\x7f]/g, "");
+  // eslint-disable-next-line no-control-regex
+  if (/[^\x00-\x7f]/.test(stripped)) {
+    const b64 = base64Encode(stripped);
+    return `=?UTF-8?B?${b64}?=`;
   }
-  lines.push(`--${BOUNDARY}--`);
+  return stripped;
+}
+
+function sanitizeMimeFilename(filename: string): string {
+  return headerValue(filename).replace(/"/g, "");
+}
+
+function addressHeader(email: string, name: string | undefined): string {
+  const safeName = name ? headerValue(name) : "";
+  return safeName.length > 0 ? `"${safeName}" <${email}>` : email;
+}
+
+function formatImfDate(d: Date): string {
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const months = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  ];
+  const pad = (n: number, w = 2) => String(n).padStart(w, "0");
+  return (
+    `${days[d.getUTCDay()]}, ${pad(d.getUTCDate())} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()} ` +
+    `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())} +0000`
+  );
+}
+
+function newBoundary(): string {
+  return `chq_${crypto.randomUUID()}`;
+}
+
+function buildRawMime(from: { email: string; name: string }, m: RenderedEmail, now: Date): string {
+  const altBoundary = newBoundary();
+  const alt: string[] = [
+    `--${altBoundary}`,
+    `Content-Type: text/plain; charset="UTF-8"`,
+    `Content-Transfer-Encoding: base64`,
+    "",
+    base64Encode(m.text),
+    "",
+    `--${altBoundary}`,
+    `Content-Type: text/html; charset="UTF-8"`,
+    `Content-Transfer-Encoding: base64`,
+    "",
+    base64Encode(m.html),
+    "",
+    `--${altBoundary}--`,
+  ];
+
+  const domain = from.email.split("@")[1] ?? from.email;
+  const headers: string[] = [
+    `From: ${addressHeader(from.email, from.name)}`,
+    `To: ${addressHeader(m.to.email, m.to.name)}`,
+    `Subject: ${headerValue(m.subject)}`,
+    `Date: ${formatImfDate(now)}`,
+    `Message-ID: <${crypto.randomUUID()}@${domain}>`,
+    `MIME-Version: 1.0`,
+  ];
+
+  if (!m.ics) {
+    return [
+      ...headers,
+      `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+      "",
+      ...alt,
+    ].join("\r\n");
+  }
+
+  const mixedBoundary = newBoundary();
+  const safeFilename = sanitizeMimeFilename(m.ics.filename);
+  const lines = [
+    ...headers,
+    `Content-Type: multipart/mixed; boundary="${mixedBoundary}"`,
+    "",
+    `--${mixedBoundary}`,
+    `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+    "",
+    ...alt,
+    "",
+    `--${mixedBoundary}`,
+    `Content-Type: text/calendar; charset="UTF-8"; method=REQUEST; name="${safeFilename}"`,
+    `Content-Transfer-Encoding: base64`,
+    `Content-Disposition: attachment; filename="${safeFilename}"`,
+    "",
+    base64Encode(m.ics.content),
+    "",
+    `--${mixedBoundary}--`,
+  ];
   return lines.join("\r\n");
 }
 
@@ -81,9 +149,9 @@ export class EmailBindingMailer implements Mailer {
   async send(m: RenderedEmail): Promise<void> {
     let status = "sent";
     let sendError: unknown = null;
-    const fromHeader = `${this.from.name} <${this.from.email}>`;
+    const now = this.clock.now();
     try {
-      const raw = buildRawMime(fromHeader, m.to.email, m);
+      const raw = buildRawMime(this.from, m, now);
       const message = await this.messageFactory(this.from.email, m.to.email, raw);
       await this.binding.send(message);
     } catch (err) {
@@ -104,7 +172,7 @@ export class EmailBindingMailer implements Mailer {
       icsFilename: m.ics?.filename,
       provider: "cloudflare",
       status,
-      sentAt: this.clock.now().getTime(),
+      sentAt: now.getTime(),
     };
     // Log first so the email history reflects the failed attempt, then fail
     // loudly (house rule: no silent fallbacks; DEC-923 single-writer
