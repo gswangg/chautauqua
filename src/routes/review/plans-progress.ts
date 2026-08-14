@@ -12,6 +12,8 @@ import { makeMailer } from "../../server/context";
 import { newId } from "../../domain/ids";
 import { countOf } from "../../domain/count-copy";
 import { textToHtml } from "../../mail/render";
+import { resolveBaseUrl } from "../../server/origin";
+import { formatCalendarDate } from "../../lib/event-time";
 import {
   resolveAssignments,
   criteriaForRound,
@@ -39,7 +41,7 @@ export const reviewPlansProgressRoutes = new Hono<AppEnv>();
 void DEC_238; // /plans/:id/remind: per-recipient catch, {sent,failed} 200 below
 void DEC_466; // /plans/:id/progress bounded below via the blessed JS-slice (DEC-461(e))
 void DEC_535; // /plans/:id/remind: laggard list capped via capById below
-void DEC_707; // GET /plans/:id/progress + POST /plans/:id/remind: scope selection via selectRemindTargets below
+void DEC_707; // GET /plans/:id/progress + POST /plans/:id/remind: scope selection via selectRemindTargets, round via parseRoundQuery, queue link + name via resolveBaseUrl/batchUserDisplayNames below
 void DEC_708; // GET /plans/:id/progress: item.name via batchUserDisplayNames below
 
 reviewPlansProgressRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, async (c) => {
@@ -156,10 +158,15 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
   } else if (bodyRecord.scope !== undefined) {
     throw new ApiError("invalid", "Invalid remind request", { scope: "must be 'not_started' or 'incomplete'" });
   }
+  // DEC-707 (wave-61 amendment): resolve the round through the SAME
+  // parseRoundQuery GET /progress uses, so the count that labelled the
+  // reminder button and the set it reaches can never be resolved against
+  // different rounds.
+  const round = parseRoundQuery(c, plan);
   const reviewerRows = await repo.listReviewerRowsForPlan(c.var.db, plan.id);
   const userIds = [...new Set(reviewerRows.map((r) => r.userId))];
   const users = await repo.getUsersByIds(c.var.db, userIds);
-  const completedByReviewer = await repo.countCompletedByReviewerForPlan(c.var.db, plan.id, plan.currentRound);
+  const completedByReviewer = await repo.countCompletedByReviewerForPlan(c.var.db, plan.id, round);
   // One plan-filtered load + pure assignment resolution (DEC-081): no
   // per-reviewer awaits.
   const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan);
@@ -197,39 +204,35 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
   // loop, so the comms history tab can group the batch into one row.
   const batchId = newId();
 
+  // DEC-707 (wave-61 amendment): one batched account->contact resolution for
+  // the capped laggard set (never a query per recipient) -- the SAME helper
+  // GET /progress uses (see the top of this file).
+  const nameByUserId = await repo.batchUserDisplayNames(c.var.db, capped.map((l) => l.userId));
+
+  const queueUrl = `${resolveBaseUrl(c)}/admin/review/plans/${plan.id}`;
+  const closeDateClause = plan.closeDate !== null ? ` (closes ${formatCalendarDate(plan.closeDate)})` : "";
+
   const reminded: string[] = [];
   const failed: { email: string; message: string }[] = [];
 
-  // DEC-547/DEC-238 class 2: makeMailer throws on a misconfigured
-  // environment — a config-level failure, not a per-recipient one, so it
-  // can't be caught by the per-recipient try below. Construct inside this
-  // guarded region (now that `capped` is known) so that failure reports as
-  // every laggard 'failed' in the normal 200 envelope instead of 500ing.
-  let mailer;
-  try {
-    mailer = makeMailer(c.var.db, c.env);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("plan remind: mailer unavailable", message);
-    return c.json({
-      reminded,
-      sent: 0,
-      failed: capped.map((l) => ({ email: l.email, message })),
-      remaining,
-    });
-  }
+  // DEC-547/DEC-238 class 2 (wave-43 amendment): makeMailer is total -- it
+  // always returns a Mailer (DevSink/EmailBinding/Unconfigured) and never
+  // throws, so a misconfigured environment surfaces as a per-recipient
+  // 'failed' row from UnconfiguredMailer.send inside the try/catch below
+  // (DEC-923), never here.
+  const mailer = makeMailer(c.var.db, c.env);
 
   for (const laggard of capped) {
     try {
+      const name = nameByUserId.get(laggard.userId) ?? laggard.email;
+      const text = `You have ${countOf(laggard.assignedCount - laggard.completed, "submission")} left to review in "${plan.name}"${closeDateClause}. Review here: ${queueUrl}`;
       // DEC-191: reviewers are users, not contacts; per-contact email history
       // intentionally excludes rows like this one.
       await mailer.send({
-        to: { email: laggard.email, name: laggard.email },
+        to: { email: laggard.email, name },
         subject: `Reminder: ${plan.name} review queue`,
-        text: `You have ${countOf(laggard.assignedCount - laggard.completed, "submission")} left to review in "${plan.name}".`,
-        html: textToHtml(
-          `You have ${countOf(laggard.assignedCount - laggard.completed, "submission")} left to review in "${plan.name}".`,
-        ),
+        text,
+        html: textToHtml(text),
         eventId: plan.eventId,
         contactId: null,
         batchId,

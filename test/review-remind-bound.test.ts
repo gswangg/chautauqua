@@ -58,6 +58,7 @@ vi.mock("../src/server/repo/review", async () => {
       for (const p of completedPairs) counts.set(p.reviewerId, (counts.get(p.reviewerId) ?? 0) + 1);
       return counts;
     }),
+    batchUserDisplayNames: vi.fn(async () => new Map()),
     listPlanFilteredSubmissions: vi.fn(async () => SUBMISSIONS),
   };
 });
@@ -91,6 +92,7 @@ async function buildApp(auth: AuthInfo) {
   app.use("*", async (c, next) => {
     c.set("auth", auth);
     c.set("db", {} as never);
+    c.env = { DEV_MODE: "1" } as never;
     await next();
   });
   app.route("/", reviewRoutes);
