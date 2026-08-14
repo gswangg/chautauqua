@@ -88,6 +88,9 @@ describe('agenda ONE overlay tier (DEC-900 amendment, wave 72)', () => {
   // silently landing below the lattice with its own literal.
   it('pins the total count of z-index declarations in agenda.css', () => {
     const matches = CSS.match(/z-index\s*:/g) ?? [];
-    expect(matches.length).toBe(9);
+    // 10th: .chq-agenda-armed-bar's overlay tier on the DAY-TABS strip
+    // (delta-2 amendment) -- outside .chq-day-grid, so it is not part of
+    // the grid's one-overlay-tier contract above; classified here.
+    expect(matches.length).toBe(10);
   });
 });

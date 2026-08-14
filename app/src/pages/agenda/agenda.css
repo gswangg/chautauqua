@@ -115,23 +115,31 @@
   white-space: nowrap;
 }
 
-/* DEC-794: the bar always occupies its box — arming/disarming toggles only
-   its content (and aria-hidden), never its presence, so the grid below it
-   never shifts vertically when a session is armed or released. */
+/* DEC-021 (delta-2 amendment): the armed bar is an absolute OVERLAY on the
+   day-tabs strip — zero layout footprint at rest (the old version reserved
+   38px of empty band above the tabs on every visit), and zero shift when
+   arming/releasing because the strip's own height never changes; the bar
+   simply covers the day pills, which are not usable mid-placement anyway. */
+.chq-agenda-day-tabs {
+  position: relative;
+}
+
 .chq-agenda-armed-bar {
-  display: flex;
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 3;
   align-items: center;
   gap: 12px;
-  padding: 8px 14px;
-  min-height: 38px;
+  padding: 0 14px;
   border: 1px solid transparent;
   border-radius: var(--chq-r-ctl);
   font-size: 13px;
   font-weight: 600;
-  color: var(--chq-ink);
 }
 
 .chq-agenda-armed-bar:not([aria-hidden]) {
+  display: flex;
   border-color: var(--chq-brand);
   background: var(--chq-surface-sunk);
 }

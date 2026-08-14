@@ -316,25 +316,6 @@ export function AgendaPage() {
         </ModalFrame>
       )}
 
-      <div className="chq-agenda-armed-bar" role="status" aria-hidden={armed ? undefined : true}>
-        {armed && (
-          <>
-            Placing {armed.ref} — Esc to cancel
-            {/* DEC-021 amendment (w55): only when the armed session already
-               has a slot — arming an unscheduled-tray card has nothing to
-               unschedule, so this affordance is absent for that case. */}
-            {agenda?.placed.some((s) => s.submissionId === armed.submissionId) && (
-              <button type="button" className="chq-btn chq-btn-secondary chq-agenda-unschedule-btn" onClick={handleUnscheduleArmed}>
-                Unschedule
-              </button>
-            )}
-            <button type="button" className="chq-link-button" onClick={() => setArmed(null)}>
-              Cancel
-            </button>
-          </>
-        )}
-      </div>
-
       {error && <div className="chq-error-banner">{error}</div>}
       {toast && (
         <div className="chq-toast" role="status">
@@ -350,6 +331,24 @@ export function AgendaPage() {
       {!loading && agenda && (
         <>
           <div className="chq-agenda-day-tabs chq-chipstrip" role="tablist">
+          <div className="chq-agenda-armed-bar" role="status" aria-hidden={armed ? undefined : true}>
+            {armed && (
+              <>
+                Placing {armed.ref} — Esc to cancel
+                {/* DEC-021 amendment (w55): only when the armed session already
+                   has a slot — arming an unscheduled-tray card has nothing to
+                   unschedule, so this affordance is absent for that case. */}
+                {agenda?.placed.some((s) => s.submissionId === armed.submissionId) && (
+                  <button type="button" className="chq-btn chq-btn-secondary chq-agenda-unschedule-btn" onClick={handleUnscheduleArmed}>
+                    Unschedule
+                  </button>
+                )}
+                <button type="button" className="chq-link-button" onClick={() => setArmed(null)}>
+                  Cancel
+                </button>
+              </>
+            )}
+          </div>
             {agenda.days.map((day) => (
               <button
                 key={day}
