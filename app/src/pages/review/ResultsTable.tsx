@@ -323,12 +323,22 @@ export function ResultsTable({
            treatment, but its claim stays true: a weighted-by-criterion
            average, recusals excluded -- never "mean of submitted reviews". */}
         <div className="chq-section-head">
-          <h2 className="chq-section-label">Ranked results</h2>
+          {/* w2-d/DEC-737 amendment: embedded, this table is a PREVIEW of the
+             standalone results page -- it carries the plan-scoped heading
+             (mirroring ProgressPanel's `${plan.name} · reviewer progress`)
+             rather than the bare "Ranked results" label. Standalone, the h1
+             "Results: <plan>" already names the page -- a second "Ranked
+             results" section label under it would be a duplicate heading, so
+             it is dropped: one heading per page. */}
+          {embedded && plan && <h2 className="chq-section-label">{`${plan.name} · ranked results`}</h2>}
           <div className="chq-review-results-head-actions">
             <span className="chq-review-results-note chq-review-results-eyebrow">
               Scores average by weight · recusals excluded
             </span>
-            {planId && (
+            {/* w2-d/DEC-763: export ownership stays with the landing's
+               title-row link when embedded -- the in-table Download CSV
+               link only renders standalone. */}
+            {!embedded && planId && (
               <a
                 href={buildResultsCsvHref(
                   planId,
@@ -340,6 +350,14 @@ export function ResultsTable({
               >
                 Download CSV
               </a>
+            )}
+            {/* w2-d/DEC-737: embedded shows only a preview slice -- the
+               section-rule action becomes a "See all N results" link to the
+               standalone results route, taking the export link's place. */}
+            {embedded && planId && (
+              <Link to={`/review/plans/${planId}/results`} className="chq-section-action chq-link-button">
+                See all {total} results &rsaquo;
+              </Link>
             )}
           </div>
         </div>
@@ -372,7 +390,9 @@ export function ResultsTable({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, index) => {
+            {/* w2-d/DEC-737: embedded renders only the first 4 rows of the
+               current page -- a preview, not the page. */}
+            {(embedded ? rows.slice(0, 4) : rows).map((row, index) => {
               const overlay = decisions[row.submissionId];
               const effectiveStatus: string | undefined = overlay ?? row.status;
               const decided = effectiveStatus !== undefined && isDecidedStatus(effectiveStatus);
@@ -505,7 +525,7 @@ export function ResultsTable({
         {/* DEC-366 (wave 42): a frame drawn at ten rows never authorizes
            deleting a volume affordance -- the pager stays; server pagination
            at 2,000 rows is exactly what it's for. */}
-        {total > 0 && (
+        {!embedded && total > 0 && (
           <div className="chq-pager">
             <button
               type="button"
