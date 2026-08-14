@@ -179,6 +179,36 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
     expect(screen.getByRole('checkbox', { name: 'Skip line 2' })).toBeInTheDocument();
   });
 
+  // DEC-663 amendment (wave 61): an update row from a same-file email
+  // collapse carries a `reason` (no `contactId`) that Review must state
+  // inline, reusing the existing overwrite/duplicate detail list rather
+  // than a new column.
+  it('renders a same-file-collapse update row\'s reason in the review detail list', async () => {
+    const collapsePlan: ImportPlan = {
+      rows: [
+        { line: 2, email: 'jane@example.com', action: 'create' },
+        {
+          line: 3,
+          email: 'jane@example.com',
+          action: 'update',
+          reason: 'same email as an earlier row in this file',
+        },
+      ],
+      created: 1,
+      updated: 1,
+      skipped: 0,
+    };
+    mockApi({ 'POST /api/v1/contacts/import': collapsePlan });
+    await pasteCsvAndPreview();
+    await screen.findByText('Review before import');
+
+    const rows = screen.getAllByRole('row');
+    const secondRow = rows.find((r) => within(r).queryByText('same email as an earlier row in this file'));
+    expect(secondRow).toBeDefined();
+    expect(within(secondRow!).getByText(/Update/)).toBeInTheDocument();
+    expect(within(secondRow!).getByText('same email as an earlier row in this file')).toBeInTheDocument();
+  });
+
   it('checking "skip this row" and committing posts the SAME body plus skipLines, and Done renders the post-commit counts verbatim', async () => {
     let calls = 0;
     const fetchMock = mockApi({
