@@ -31,30 +31,29 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   NOT A REFUSAL; A REFUSAL THAT MUTATES IS NOT A REFUSAL; AN ALLOWLIST KEYED BY USER INPUT IS AN OWN-
   PROPERTY QUESTION; A WRITE GUARD THAT DOESN'T MATCH THE READ PREDICATE MINTS INVISIBLE ROWS; A
   PREDICATE FAMILY IS A LATTICE: spot-check one, drift all.
-- FINDINGS w39 (compacted). CLOSED: MergePage page-1 scan for pairs past group 200. STILL OPEN w40:
-  getContactStats dropped returningSpeakers+eventCount w/no superseding DEC, breaking
-  `npm run walkthrough` at J11 (scripts/walkthrough/data.ts:356-361); own-property family latent sites
-  (mail/render.ts, acceptance.ts, contacts.ts, forms.ts); /contacts/stats + duplicates rail both run
-  findDuplicateGroupsForOrg (two O(N) scans/mount). Shapes: A FIGURE THE API PROMISES AND A LATER WAVE
-  DELETES IS A DECISION REVERSED WITHOUT A DECISION; AN ASSERTION IN A SCRIPT NOBODY RUNS IS A RED GATE
-  NOBODY SEES; A CLIENT THAT SEARCHES ITS PAGE FOR A ROW REPORTS "GONE" FOR "PAGE 2".
-- FINDINGS w40 (verified AT THE FILE; w39 branches a-d were still IN FLIGHT, not on main — not re-filed).
-  NEW, taken: (1) Scorecard.tsx:157 counts the queue PAGE (queueDoneCounts(res.items)) while ReviewerQueue
-  beside it reads the envelope — DEC-845's w38 ruling was applied to the component that prompted it, not to
-  the endpoint's other reader; same file's submitAndAdvance takes items[0] of a list that KEEPS rated rows,
-  so after the last score it re-opens a scored card and the done state never arrives. (2) DuplicatesView.tsx:92
-  states its page length under a header stating the org total; groups past 200 have no pager and can never be
-  merged. (3) PlanEditor.tsx:1667 states `reviewers.length` (plan_reviewer ROWS, page-capped) as "N reviewers"
-  while /plans/:id/progress already returns one row per USER with a true total the component discards (:416).
-  (4) PipelineBoard EnrollDialog (:504) is a <select> over `/contacts?perPage=200` — past 200 contacts the
-  picker cannot pick, silently; the co-presenter search (`/contacts?q=`) is the idiom that already exists.
-  STALE, corrected: "TENANT axis SPOT-CHECKED not ENUMERATED" — w37's four probes DO enumerate it for PATH
-  params; the real residue is ids arriving in BODY/QUERY (w40-a).
-  STILL OPEN for the next planner: /contacts/stats + the rail's /contacts/duplicates run findDuplicateGroupsForOrg
-  TWICE per Contacts mount (two O(N) org scans, two round trips); deferred this wave because w39-a/c own
-  stats.ts/merge.ts/crud.ts. Also: getContactStats THROWS the duplicate-scan refusal past 20k contacts, taking
-  total/topCompanies/speakerCount down with it.
-  Shapes: A RULING BINDS THE ENDPOINT, NOT THE COMPONENT THAT PROMPTED IT — fix the reader family, not the
-  reader. A "NEXT" THAT TAKES ITEM[0] OF A LIST THAT KEEPS DONE ITEMS NEVER TERMINATES. A ROW COUNT IS NOT A
-  PEOPLE COUNT. A PICKER FED BY PAGE 1 CANNOT PICK. A POPULATION DERIVED BY PATH SHAPE IS BLIND TO THE ID IN
-  THE BODY.
+- FINDINGS w39-40 (compacted, do NOT re-file). CLOSED: MergePage page-1 scan past group 200; Scorecard
+  page-vs-envelope count + submitAndAdvance item[0] non-terminating loop; DuplicatesView page-length under
+  org-total header; PlanEditor reviewers.length vs progress endpoint total; EnrollDialog perPage=200 picker.
+  TENANT axis now covers PATH+BODY/QUERY. Shapes: A FIGURE THE API PROMISES AND A LATER WAVE DELETES IS A
+  DECISION REVERSED WITHOUT A DECISION; A RULING BINDS THE ENDPOINT NOT THE COMPONENT THAT PROMPTED IT; A
+  "NEXT" TAKING ITEM[0] OF A LIST THAT KEEPS DONE ITEMS NEVER TERMINATES; A ROW COUNT IS NOT A PEOPLE COUNT;
+  A PICKER FED BY PAGE 1 CANNOT PICK; A POPULATION DERIVED BY PATH SHAPE IS BLIND TO THE ID IN THE BODY.
+- FINDINGS w41 (verified AT THE FILE on main; w40's b/c LANDED — Scorecard envelope+terminating advance,
+  pipeline enroll search — while w40 a/d/e were still in flight and are NOT re-filed; the four review-lens
+  claims (files.ts prototype allowlist, tasks assign guard, ReviewerQueue paging, cron narrowing) are ALL
+  STALE — closed at files.ts:103, tasks.ts:437, ReviewerQueue.tsx:117, reminders.ts:637-687).
+  NEW, taken: (1) export cap refusals for email-log/evaluations name no narrowing at all (exports.ts:126-134
+  hints only submissions/contacts) — at J5/J4 volumes both cross EXPORT_MAX_ROWS=20000 and J12 fails for the
+  biggest customer; listEmailLog(email.ts:149) is the predicate to REUSE. (2) portal wrong-owner is proven
+  only against MOCKED resolvers (portal-idor-probe.test.ts) — the cross-org probes' own header names why
+  that is not proof. (3) /contacts/stats re-runs findDuplicateGroupsForOrg (stats.ts:83) for a number the
+  rail's own envelope already carries (ContactsApp.tsx:223 discards res.total): two O(N) scans per mount, and
+  the scan's refusal takes the whole headline down. (4) /contacts/duplicates/check scans the entire directory
+  per keystroke-settle and refuses past 20k — the hint dies when it matters. (5) spa-count-source-ledger's
+  population is apiList-only and its prose falsely claims MergePage is the ONE apiGet-envelope reader
+  (FilesLibrary.tsx:73 is another).
+  Shapes: A REFUSAL WHOSE ADVICE THE CALLER CANNOT FOLLOW IS A DEAD END, NOT A GUARD. A MOCKED RESOLVER
+  PROVES THE CALL, NOT THE FILTER. TWO SCANS FOR ONE NUMBER IS ONE SCAN TOO MANY — AND ITS REFUSAL TAKES
+  HOSTAGES. A CHECK ABOUT ONE ROW THAT READS EVERY ROW. A SCAN'S POPULATION IS BLIND TO THE HELPER IT
+  DIDN'T ENUMERATE; A FALSE SENTENCE IN A SCAN'S OWN PROSE IS A DECISION WITH NO CODE. A BUNDLE THAT FAILS
+  WHOLE LOSES THE PARTS THAT WORKED.
