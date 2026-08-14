@@ -1,9 +1,13 @@
-// DEC-616: the drawer is a record, not a form — a component-render smoke
-// test asserting (1) labelled facts render as plain values from the fixture
-// ContactDetail (including an em dash for an absent value, never a
-// fabricated one), (2) the "Across your events" section renders one row per
-// history entry across all three history collections, and (3) the bottom
-// action bar exposes Save / Email / Add to event as real <button>s.
+// DEC-616 / A20 (w26-c): the drawer is a record, not a form — a
+// component-render smoke test asserting (1) labelled facts render as plain
+// values from the fixture ContactDetail, with a blank field printing the
+// literal "Nothing recorded" (never an em dash, never a blank cell), (2)
+// the record is grouped under four titled group headers in order (Contact,
+// Profile, This event, Notes), (3) the four social links occupy exactly ONE
+// 'Links' row, (4) the "Across your events" section renders one row per
+// history entry across all three history collections, and (5) the sticky
+// footer exposes Delete far left and Cancel/Save right-flushed, with
+// Delete preceding both in DOM order.
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -40,7 +44,7 @@ const CONTACT: ContactDetail = {
   labels: [],
   phone: null,
   notes: null,
-  bio: 'Distributed systems engineer.',
+  bio: null,
   headshotUrl: null,
   socialLinks: { twitter: '@priya', linkedin: null, github: null, website: null },
   customFields: {},
@@ -60,52 +64,83 @@ afterEach(() => {
 });
 
 describe('ContactDrawer render (DEC-616 record view)', () => {
-  it('renders label/value facts, one em dash for an absent value, and the action bar', async () => {
+  it('renders the four titled groups, in order, each with the shared section-head rule', async () => {
     mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
 
     render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
 
     const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
-
     await waitFor(() => {
       expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
     });
 
-    // DEC-960: ModalFrame is now the sole scrim/dialog frame, but the
-    // drawer's own geometry (fixed right-hand panel, not a centred modal)
-    // must still win the cascade -- the dialog element carries chq-drawer
-    // alongside ModalFrame's own chq-modal class.
-    const modalEl = dialog.querySelector('.chq-modal');
-    expect(modalEl).toHaveClass('chq-drawer');
+    const heads = dialog.querySelectorAll('.chq-contacts-record-group-head .chq-section-label');
+    expect(Array.from(heads).map((el) => el.textContent)).toEqual(['Contact', 'Profile', 'This event', 'Notes']);
 
-    // '{company} · {title}' subline.
-    expect(within(dialog).getByText('Latticework Systems · Principal Engineer')).toBeInTheDocument();
+    // Every group head carries the shared 2px-ink section rule.
+    const body = topLevelRuleBody(SHARED_CSS, '.chq-section-head');
+    expect(body).toMatch(/border-bottom:\s*2px solid var\(--chq-ink\)/);
+  });
 
-    // Labels present, uppercase-tracked via CSS (class asserted, not computed style).
-    expect(within(dialog).getByText('Company')).toBeInTheDocument();
-    expect(within(dialog).getByText('Title')).toBeInTheDocument();
-    expect(within(dialog).getByText('Latticework Systems')).toBeInTheDocument();
-    expect(within(dialog).getByText('Principal Engineer')).toBeInTheDocument();
-    expect(within(dialog).getByText('Distributed systems engineer.')).toBeInTheDocument();
+  it('renders a blank field as the literal "Nothing recorded", never an em dash or empty cell', async () => {
+    mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
 
-    // DEC-616 amendment (wave 4): Phone is absent on the fixture -> the row
-    // does not render inline at all (empties collapse behind the
-    // disclosure), rather than printing an em dash next to the label.
-    expect(within(dialog).queryByText('Phone')).not.toBeInTheDocument();
-    const disclosure = within(dialog).getByRole('button', { name: /Show all fields \(\d+ hidden\)/ });
+    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
 
-    fireEvent.click(disclosure);
+    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
+    await waitFor(() => {
+      expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
+    });
 
-    // Expanded: the previously hidden Phone row now renders with an em
-    // dash, never "" or "null".
+    // Bio is null on the fixture -> its row renders inline (no
+    // hide-when-empty disclosure) with the literal empty-value string.
+    const bioLabel = within(dialog).getByText('Bio');
+    const bioRow = bioLabel.closest('.chq-contacts-record-row');
+    expect(bioRow).not.toBeNull();
+    const nothingRecorded = within(bioRow as HTMLElement).getByText('Nothing recorded');
+    expect(nothingRecorded).toHaveClass('chq-contacts-record-empty');
+
+    // Phone is also null -> same treatment, rendered inline immediately
+    // (no disclosure gate to expand first).
     const phoneLabel = within(dialog).getByText('Phone');
     const phoneRow = phoneLabel.closest('.chq-contacts-record-row');
-    expect(phoneRow).not.toBeNull();
-    expect(within(phoneRow as HTMLElement).getByText('—')).toBeInTheDocument();
-    expect(within(dialog).getByRole('button', { name: 'Show fewer fields' })).toBeInTheDocument();
+    expect(within(phoneRow as HTMLElement).getByText('Nothing recorded')).toBeInTheDocument();
+    expect(within(phoneRow as HTMLElement).queryByText('—')).not.toBeInTheDocument();
 
-    // Close affordance present.
-    expect(within(dialog).getByRole('button', { name: 'Close' })).toBeInTheDocument();
+    // The muted/disabled ink comes from a CSS variable, never a colour
+    // literal, on the class that carries "Nothing recorded".
+    const emptyBody = topLevelRuleBody(CONTACTS_CSS, '.chq-contacts-record-empty');
+    expect(emptyBody).toMatch(/color:\s*var\(--chq-muted\)/);
+    expect(emptyBody).not.toMatch(/#[0-9a-fA-F]{3,6}/);
+  });
+
+  it('collapses the four social links into exactly ONE Links row', async () => {
+    mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
+
+    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
+    await waitFor(() => {
+      expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
+    });
+
+    // Exactly one "Links" label row -- never four separate label rows.
+    expect(within(dialog).getAllByText('Links')).toHaveLength(1);
+    expect(within(dialog).queryByText('Twitter')).not.toBeInTheDocument();
+    expect(within(dialog).queryByText('LinkedIn')).not.toBeInTheDocument();
+    expect(within(dialog).queryByText('GitHub')).not.toBeInTheDocument();
+    expect(within(dialog).queryByText('Website')).not.toBeInTheDocument();
+
+    const linksRow = within(dialog).getByText('Links').closest('.chq-contacts-record-row') as HTMLElement;
+    // Non-empty twitter value shows in the collapsed summary.
+    expect(within(linksRow).getByText('@priya')).toBeInTheDocument();
+
+    // Clicking the row opens all four inputs inside that SAME row.
+    fireEvent.click(within(linksRow).getByText('@priya'));
+    expect(within(linksRow).getByPlaceholderText('@handle')).toBeInTheDocument();
+    expect(within(linksRow).getByPlaceholderText('in/handle')).toBeInTheDocument();
+    expect(within(linksRow).getByPlaceholderText('handle')).toBeInTheDocument();
+    expect(within(linksRow).getByPlaceholderText('https://example.com')).toBeInTheDocument();
   });
 
   it('renders one history row per submission/email/event history entry', async () => {
@@ -130,7 +165,7 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
     expect(within(history).getByText('DevCon 2025')).toBeInTheDocument();
   });
 
-  it('exposes Save / Email / Add to event as real buttons in one action bar', async () => {
+  it('exposes Save / Email / Add to event / Cancel as real buttons in one action bar', async () => {
     mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
 
     render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
@@ -141,17 +176,50 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
     });
 
     const saveButton = within(dialog).getByRole('button', { name: 'Save' });
+    const cancelButton = within(dialog).getByRole('button', { name: 'Cancel' });
     const emailButton = within(dialog).getByRole('button', { name: 'Email' });
     const addToEventButton = within(dialog).getByRole('button', { name: 'Add to event' });
 
     expect(saveButton.tagName).toBe('BUTTON');
+    expect(cancelButton.tagName).toBe('BUTTON');
     expect(emailButton.tagName).toBe('BUTTON');
     expect(addToEventButton.tagName).toBe('BUTTON');
 
     const actionBar = saveButton.closest('.chq-contacts-drawer-actions');
     expect(actionBar).not.toBeNull();
+    expect(actionBar).toContainElement(cancelButton);
     expect(actionBar).toContainElement(emailButton);
     expect(actionBar).toContainElement(addToEventButton);
+  });
+
+  // A20 (w26-c): 'Delete this contact' sits far left as a tertiary link;
+  // Cancel and Save are right-flushed. Delete must precede both in DOM
+  // order and must never be the element immediately adjacent to Save.
+  it('places Delete far left, ahead of Cancel and Save, and never adjacent to Save', async () => {
+    mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
+
+    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
+    await waitFor(() => {
+      expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
+    });
+
+    const actionBar = within(dialog).getByRole('button', { name: 'Save' }).closest('.chq-contacts-drawer-actions') as HTMLElement;
+    const buttons = Array.from(actionBar.querySelectorAll('button')).map((b) => b.textContent);
+
+    const deleteIndex = buttons.indexOf('Delete this contact');
+    const cancelIndex = buttons.indexOf('Cancel');
+    const saveIndex = buttons.indexOf('Save');
+
+    expect(deleteIndex).toBeGreaterThanOrEqual(0);
+    expect(deleteIndex).toBeLessThan(cancelIndex);
+    expect(deleteIndex).toBeLessThan(saveIndex);
+
+    // Delete's own DOM sibling is never the Save button.
+    const deleteEl = within(dialog).getByRole('button', { name: 'Delete this contact' });
+    const saveEl = within(dialog).getByRole('button', { name: 'Save' });
+    expect(deleteEl.nextElementSibling).not.toBe(saveEl);
   });
 
   // DEC-894: the headshot file input uses the shared .chq-file control
@@ -233,11 +301,12 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
   it('gives .chq-btn-tertiary the design-system olive focus-visible ring', () => {
     const body = topLevelRuleBody(SHARED_CSS, '.chq-btn-tertiary:focus-visible');
     expect(body).toMatch(/outline:\s*2px solid var\(--chq-brand\)/);
+    expect(body).toMatch(/outline-offset:\s*2px/);
   });
 
   // DEC-616 amendment (wave 4): the reserved travel custom field's row is
   // labelled DIETARY, the word the frame and the speaker-facing form use.
-  it('labels the reserved travel custom-field row Dietary', async () => {
+  it('labels the reserved travel custom-field row Dietary, inside "This event"', async () => {
     mockApi({
       'GET /api/v1/contacts/ct1': { ...CONTACT, bio: null, customFields: { travel_logistics: 'Vegetarian' } },
     });
@@ -253,6 +322,12 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
     expect(within(dialog).queryByText('Travel & logistics')).not.toBeInTheDocument();
     const dietaryRow = within(dialog).getByText('Dietary').closest('.chq-contacts-record-row');
     expect(within(dietaryRow as HTMLElement).getByText('Vegetarian')).toBeInTheDocument();
+
+    // Dietary lives inside the "This event" group.
+    const thisEventGroup = within(dialog)
+      .getByText('This event')
+      .closest('.chq-contacts-record-group') as HTMLElement;
+    expect(within(thisEventGroup).getByText('Dietary')).toBeInTheDocument();
   });
 
   // DEC-616 amendment (wave 15): the drawer states its own save mechanism
@@ -304,29 +379,6 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
     const body = topLevelRuleBody(SHARED_CSS, '.chq-contacts-drawer-actions');
     expect(body).toMatch(/position:\s*sticky/);
     expect(body).toMatch(/bottom:\s*0/);
-  });
-
-  // DEC-616 amendment (wave 4): only populated rows render inline; a fully
-  // populated contact has no hidden count and no disclosure at all.
-  it('renders no disclosure when every field is populated', async () => {
-    const fullContact: ContactDetail = {
-      ...CONTACT,
-      phone: '+1 555 010 1234',
-      notes: 'Internal note',
-      headshotUrl: '/headshots/file1',
-      socialLinks: { twitter: '@priya', linkedin: 'in/priya', github: 'priya', website: 'https://priya.dev' },
-      customFields: { travel_logistics: 'Vegetarian', tshirt: 'M' },
-    };
-    mockApi({ 'GET /api/v1/contacts/ct1': fullContact });
-
-    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
-
-    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
-    await waitFor(() => {
-      expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
-    });
-
-    expect(within(dialog).queryByRole('button', { name: /Show all fields/ })).not.toBeInTheDocument();
   });
 });
 

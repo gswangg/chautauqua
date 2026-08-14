@@ -23,6 +23,27 @@ interface Props {
 
 const EM_DASH = '—';
 
+// A20 (w26-c): a field with no recorded value renders this literal string,
+// in the same muted/disabled ink the rest of the record already uses for
+// "no value" (chq-contacts-record-empty -> var(--chq-muted), no colour
+// literal) — never an em dash and never a blank cell, so "blank" reads as a
+// fact the record HAS (an empty value) rather than something missing.
+const NOTHING_RECORDED = <span className="chq-contacts-record-empty">Nothing recorded</span>;
+
+// A20 (w26-c): the drawer's four titled groups, each headed by the shared
+// .chq-section-head/.chq-section-label treatment (2px ink rule, 11px/700
+// uppercase label) every other section head in the app uses.
+function FieldGroup({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="chq-contacts-record-group">
+      <div className="chq-section-head chq-contacts-record-group-head">
+        <span className="chq-section-label">{title}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
 // DEC-616: the drawer is a record, not a form. Every fact renders as plain
 // text on a label/value row; clicking (or focusing) a value turns that ONE
 // row into an input. Nothing is saved until the bottom action bar's Save is
@@ -81,10 +102,6 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
-  // DEC-616 amendment (wave 4): the record shows the facts it HAS — empty
-  // rows collapse behind this ONE disclosure inside the record section
-  // until the reader asks to see them all.
-  const [showAllFields, setShowAllFields] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
   const [showAddToEvent, setShowAddToEvent] = useState(false);
 
@@ -124,7 +141,6 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
   useEffect(() => {
     setLoading(true);
     setError(null);
-    setShowAllFields(false);
     apiGet<ContactDetail>(`/contacts/${contactId}`)
       .then((c) => {
         setContact(c);
@@ -278,15 +294,6 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
     labels: [],
   };
 
-  // A "record entry" pairs a rendered row with whether it currently HAS a
-  // value — the disclosure below uses hasValue (not the JSX) to decide what
-  // renders inline vs. behind "Show all fields" (DEC-616 amendment, wave 4).
-  interface RecordEntry {
-    key: string;
-    hasValue: boolean;
-    node: ReactNode;
-  }
-
   function textField(
     key: string,
     label: string,
@@ -302,7 +309,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
         label={label}
         editing={editing}
         onEdit={() => setEditingField(key)}
-        display={value || <span className="chq-contacts-record-empty">{EM_DASH}</span>}
+        display={value || NOTHING_RECORDED}
         editor={
           opts.multiline ? (
             <textarea
@@ -344,161 +351,158 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
       )
     ) : undefined;
 
-  // DEC-616 amendment (wave 4): the fixed identity/contact/social fields
-  // plus each custom-field row, in display order — hasValue decides what
-  // renders inline vs. behind the "Show all fields" disclosure. A field
-  // currently being edited always renders, even if its value is blank
-  // (a freshly added custom-field row, or a value the reader just cleared).
-  const recordEntries: RecordEntry[] = contact
-    ? [
-        { key: 'firstName', hasValue: firstName.trim() !== '', node: textField('firstName', 'First name', firstName, setFirstName, { placeholder: 'Priya' }) },
-        { key: 'lastName', hasValue: lastName.trim() !== '', node: textField('lastName', 'Last name', lastName, setLastName, { placeholder: 'Raman' }) },
-        {
-          key: 'email',
-          hasValue: email.trim() !== '',
-          node: textField('email', 'Email', email, setEmail, { type: 'email', placeholder: 'priya.raman@example.com' }),
-        },
-        { key: 'company', hasValue: company.trim() !== '', node: textField('company', 'Company', company, setCompany, { placeholder: 'Latticework Systems' }) },
-        { key: 'title', hasValue: title.trim() !== '', node: textField('title', 'Title', title, setTitle, { placeholder: 'Principal Engineer' }) },
-        {
-          key: 'labels',
-          // DEC-738/DEC-726: read-only view of the same Labels the directory
-          // table's chips show (contactLabels over this contact's
-          // customFields, travel key excluded) — the editable custom-field
-          // rows below are unaffected.
-          hasValue: contactLabels(contact.customFields ?? {}).length > 0,
-          node: (
-            <div className="chq-contacts-record-row" key="labels">
-              <span className="chq-contacts-record-label">Labels</span>
-              <div className="chq-contacts-record-value chq-contacts-record-readonly">
-                {contactLabels(contact.customFields ?? {}).length > 0 ? (
-                  <ul className="chq-contacts-label-chips">
-                    {contactLabels(contact.customFields ?? {}).map((label) => (
-                      <li key={label} className="chq-contacts-label-chip">
-                        {label}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <span className="chq-contacts-record-empty">{EM_DASH}</span>
-                )}
-              </div>
-            </div>
-          ),
-        },
-        { key: 'phone', hasValue: phone.trim() !== '', node: textField('phone', 'Phone', phone, setPhone, { placeholder: '+1 555 010 1234' }) },
-        {
-          key: 'notes',
-          hasValue: notes.trim() !== '',
-          node: textField('notes', 'Notes', notes, setNotes, { multiline: true, placeholder: 'Internal notes about this contact' }),
-        },
-        { key: 'bio', hasValue: bio.trim() !== '', node: textField('bio', 'Bio', bio, setBio, { multiline: true, placeholder: 'A short speaker bio' }) },
-        {
-          // DEC-616 amendment (wave 4): the reserved travel custom field is
-          // labelled DIETARY — the word the frame and the speaker-facing
-          // form use — even though its storage key stays `travel_logistics`.
-          key: 'travel',
-          hasValue: travel.trim() !== '',
-          node: textField('travel', 'Dietary', travel, setTravel, {
-            multiline: true,
-            placeholder: 'Flight details, hotel, dietary needs...',
-          }),
-        },
-        {
-          key: 'headshot',
-          hasValue: !!headshotUrl,
-          node: (
-            <div className="chq-contacts-record-row" key="headshot">
-              <span className="chq-contacts-record-label">Headshot</span>
-              <div className="chq-contacts-record-editor chq-contacts-headshot-field">
-                {headshotUrl ? (
-                  <img
-                    className="chq-contacts-headshot"
-                    src={headshotUrl}
-                    alt={`${firstName} ${lastName} headshot`}
-                    width={64}
-                    height={64}
-                  />
-                ) : (
-                  <span className="chq-contacts-record-empty">{EM_DASH}</span>
-                )}
-                {headshotFile && (
-                  <p className="chq-contacts-headshot-meta">
-                    {headshotFile.filename} — uploaded {formatDateTime(headshotFile.uploadedAt)}
-                  </p>
-                )}
-                <label className="chq-contacts-headshot-upload" htmlFor="chq-contact-headshot-upload">
-                  Upload headshot
-                  <input
-                    id="chq-contact-headshot-upload"
-                    className="chq-file"
-                    type="file"
-                    accept=".png,.jpg,.jpeg,.webp"
-                    ref={headshotInputRef}
-                    onChange={uploadHeadshot}
-                    disabled={headshotUploading}
-                    placeholder="headshot.jpg"
-                  />
-                </label>
-                {headshotUploading && <p>Uploading...</p>}
-                {headshotError && <div className="chq-error">{headshotError}</div>}
-              </div>
-            </div>
-          ),
-        },
-        { key: 'twitter', hasValue: twitter.trim() !== '', node: textField('twitter', 'Twitter', twitter, setTwitter) },
-        { key: 'linkedin', hasValue: linkedin.trim() !== '', node: textField('linkedin', 'LinkedIn', linkedin, setLinkedin) },
-        { key: 'github', hasValue: github.trim() !== '', node: textField('github', 'GitHub', github, setGithub) },
-        { key: 'website', hasValue: website.trim() !== '', node: textField('website', 'Website', website, setWebsite) },
-        ...customFieldRows.map((row, index): RecordEntry => {
-          const key = `custom-${index}`;
-          const editing = editingField === key;
-          return {
-            key,
-            hasValue: row.value.trim() !== '',
-            node: (
-              <div className="chq-contacts-record-row" key={key}>
-                <span className="chq-contacts-record-label">
-                  {editing ? (
-                    <input
-                      className="chq-input"
-                      aria-label={`Custom field ${index + 1} key`}
-                      value={row.key}
-                      onChange={(e) => updateRow(index, { key: e.target.value })}
-                      placeholder="T-shirt size"
-                    />
-                  ) : (
-                    row.key || <span className="chq-contacts-record-empty">{EM_DASH}</span>
-                  )}
-                </span>
-                {editing ? (
-                  <div className="chq-contacts-record-editor">
-                    <input
-                      className="chq-input"
-                      aria-label={`Custom field ${index + 1} value`}
-                      value={row.value}
-                      onChange={(e) => updateRow(index, { value: e.target.value })}
-                      onBlur={() => setEditingField(null)}
-                      placeholder="Large"
-                    />
-                    <button type="button" className="chq-btn chq-btn-secondary" onClick={() => removeRow(index)}>
-                      Remove
-                    </button>
-                  </div>
-                ) : (
-                  <button type="button" className="chq-contacts-record-value" onClick={() => setEditingField(key)}>
-                    {row.value || <span className="chq-contacts-record-empty">{EM_DASH}</span>}
-                  </button>
-                )}
-              </div>
-            ),
-          };
-        }),
-      ]
-    : [];
+  // A20 (w26-c): the Labels row — a read-only view of the same Labels the
+  // directory table's chips show (DEC-738/DEC-726: contactLabels over this
+  // contact's customFields, travel key excluded). The editable custom-field
+  // rows are unaffected.
+  const labelsNode = contact ? (
+    <div className="chq-contacts-record-row" key="labels">
+      <span className="chq-contacts-record-label">Labels</span>
+      <div className="chq-contacts-record-value chq-contacts-record-readonly">
+        {contactLabels(contact.customFields ?? {}).length > 0 ? (
+          <ul className="chq-contacts-label-chips">
+            {contactLabels(contact.customFields ?? {}).map((label) => (
+              <li key={label} className="chq-contacts-label-chip">
+                {label}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          NOTHING_RECORDED
+        )}
+      </div>
+    </div>
+  ) : null;
 
-  const hiddenCount = recordEntries.filter((e) => !e.hasValue).length;
-  const visibleEntries = recordEntries.filter((e) => showAllFields || e.hasValue || editingField === e.key);
+  const headshotNode = contact ? (
+    <div className="chq-contacts-record-row" key="headshot">
+      <span className="chq-contacts-record-label">Headshot</span>
+      <div className="chq-contacts-record-editor chq-contacts-headshot-field">
+        {headshotUrl ? (
+          <img
+            className="chq-contacts-headshot"
+            src={headshotUrl}
+            alt={`${firstName} ${lastName} headshot`}
+            width={64}
+            height={64}
+          />
+        ) : (
+          NOTHING_RECORDED
+        )}
+        {headshotFile && (
+          <p className="chq-contacts-headshot-meta">
+            {headshotFile.filename} — uploaded {formatDateTime(headshotFile.uploadedAt)}
+          </p>
+        )}
+        <label className="chq-contacts-headshot-upload" htmlFor="chq-contact-headshot-upload">
+          Upload headshot
+          <input
+            id="chq-contact-headshot-upload"
+            className="chq-file"
+            type="file"
+            accept=".png,.jpg,.jpeg,.webp"
+            ref={headshotInputRef}
+            onChange={uploadHeadshot}
+            disabled={headshotUploading}
+            placeholder="headshot.jpg"
+          />
+        </label>
+        {headshotUploading && <p>Uploading...</p>}
+        {headshotError && <div className="chq-error">{headshotError}</div>}
+      </div>
+    </div>
+  ) : null;
+
+  // A20 (w26-c): the four social links collapse into ONE 'Links' row — never
+  // four separate rows. Editing opens all four inputs at once; only the
+  // LAST input's blur closes the row (same convention custom-field rows
+  // already use for their key/value pair), so tabbing between the four
+  // fields doesn't prematurely exit edit mode. PATCH payload is unchanged:
+  // socialLinks: { twitter, linkedin, github, website }.
+  const linksEditing = editingField === 'links';
+  // Each populated value renders as its OWN element (never concatenated
+  // into one string) so an individual link value stays independently
+  // findable in the DOM — the row is one grid row, not one text blob.
+  const linksValues = [twitter, linkedin, github, website].filter((v) => v.trim() !== '');
+  const linksSummary: ReactNode[] = linksValues.flatMap((v, i) =>
+    i === 0 ? [<span key={v}>{v}</span>] : [' · ', <span key={v}>{v}</span>],
+  );
+  const linksNode = contact ? (
+    <div className="chq-contacts-record-row" key="links">
+      <span className="chq-contacts-record-label">Links</span>
+      {linksEditing ? (
+        <div className="chq-contacts-record-editor chq-contacts-links-editor">
+          <label className="chq-contacts-links-field">
+            <span className="chq-contacts-links-field-label">Twitter</span>
+            <input className="chq-input" autoFocus value={twitter} onChange={(e) => setTwitter(e.target.value)} placeholder="@handle" />
+          </label>
+          <label className="chq-contacts-links-field">
+            <span className="chq-contacts-links-field-label">LinkedIn</span>
+            <input className="chq-input" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} placeholder="in/handle" />
+          </label>
+          <label className="chq-contacts-links-field">
+            <span className="chq-contacts-links-field-label">GitHub</span>
+            <input className="chq-input" value={github} onChange={(e) => setGithub(e.target.value)} placeholder="handle" />
+          </label>
+          <label className="chq-contacts-links-field">
+            <span className="chq-contacts-links-field-label">Website</span>
+            <input
+              className="chq-input"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              onBlur={() => setEditingField(null)}
+              placeholder="https://example.com"
+            />
+          </label>
+        </div>
+      ) : (
+        <button type="button" className="chq-contacts-record-value" onClick={() => setEditingField('links')}>
+          {linksSummary.length > 0 ? linksSummary : NOTHING_RECORDED}
+        </button>
+      )}
+    </div>
+  ) : null;
+
+  const customFieldNodes = customFieldRows.map((row, index) => {
+    const key = `custom-${index}`;
+    const editing = editingField === key;
+    return (
+      <div className="chq-contacts-record-row" key={key}>
+        <span className="chq-contacts-record-label">
+          {editing ? (
+            <input
+              className="chq-input"
+              aria-label={`Custom field ${index + 1} key`}
+              value={row.key}
+              onChange={(e) => updateRow(index, { key: e.target.value })}
+              placeholder="T-shirt size"
+            />
+          ) : (
+            row.key || NOTHING_RECORDED
+          )}
+        </span>
+        {editing ? (
+          <div className="chq-contacts-record-editor">
+            <input
+              className="chq-input"
+              aria-label={`Custom field ${index + 1} value`}
+              value={row.value}
+              onChange={(e) => updateRow(index, { value: e.target.value })}
+              onBlur={() => setEditingField(null)}
+              placeholder="Large"
+            />
+            <button type="button" className="chq-btn chq-btn-secondary" onClick={() => removeRow(index)}>
+              Remove
+            </button>
+          </div>
+        ) : (
+          <button type="button" className="chq-contacts-record-value" onClick={() => setEditingField(key)}>
+            {row.value || NOTHING_RECORDED}
+          </button>
+        )}
+      </div>
+    );
+  });
 
   return (
     <>
@@ -523,22 +527,45 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
               <p className="chq-meta chq-contacts-record-save-caption">
                 Click a row to edit it — nothing is saved until you press Save.
               </p>
-              {visibleEntries.map((entry) => entry.node)}
-              {/* DEC-616 amendment (wave 4): the record shows the facts it
-                  HAS — empties sit behind this ONE disclosure, which states
-                  how many are hidden so "Show all fields" isn't a guess. */}
-              {hiddenCount > 0 && (
-                <button
-                  type="button"
-                  className="chq-link-button chq-contacts-show-all"
-                  onClick={() => setShowAllFields((v) => !v)}
-                >
-                  {showAllFields ? 'Show fewer fields' : `Show all fields (${hiddenCount} hidden)`}
+
+              {/* A20 (w26-c): four titled groups, in this order — Contact,
+                  Profile, This event, Notes. Every field renders (no
+                  hide-when-empty disclosure): a blank field prints "Nothing
+                  recorded" so blank is distinguishable from missing. */}
+              <FieldGroup title="Contact">
+                {textField('firstName', 'First name', firstName, setFirstName, { placeholder: 'Priya' })}
+                {textField('lastName', 'Last name', lastName, setLastName, { placeholder: 'Raman' })}
+                {textField('email', 'Email', email, setEmail, { type: 'email', placeholder: 'priya.raman@example.com' })}
+                {textField('phone', 'Phone', phone, setPhone, { placeholder: '+1 555 010 1234' })}
+                {textField('company', 'Company', company, setCompany, { placeholder: 'Latticework Systems' })}
+                {textField('title', 'Title', title, setTitle, { placeholder: 'Principal Engineer' })}
+              </FieldGroup>
+
+              <FieldGroup title="Profile">
+                {textField('bio', 'Bio', bio, setBio, { multiline: true, placeholder: 'A short speaker bio' })}
+                {headshotNode}
+                {linksNode}
+              </FieldGroup>
+
+              <FieldGroup title="This event">
+                {labelsNode}
+                {/* DEC-616 amendment (wave 4): the reserved travel custom
+                    field is labelled DIETARY — the word the frame and the
+                    speaker-facing form use — even though its storage key
+                    stays `travel_logistics`. */}
+                {textField('travel', 'Dietary', travel, setTravel, {
+                  multiline: true,
+                  placeholder: 'Flight details, hotel, dietary needs...',
+                })}
+                {customFieldNodes}
+                <button type="button" className="chq-btn chq-btn-secondary chq-contacts-add-field" onClick={addRow}>
+                  Add field
                 </button>
-              )}
-              <button type="button" className="chq-btn chq-btn-secondary chq-contacts-add-field" onClick={addRow}>
-                Add field
-              </button>
+              </FieldGroup>
+
+              <FieldGroup title="Notes">
+                {textField('notes', 'Notes', notes, setNotes, { multiline: true, placeholder: 'Internal notes about this contact' })}
+              </FieldGroup>
             </div>
 
             <section aria-label="Across your events" className="chq-contacts-history">
@@ -557,16 +584,10 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
               ))}
             </section>
 
+            {/* A20 (w26-c): 'Delete this contact' sits far left as a
+                tertiary link; Cancel and Save are right-flushed in their own
+                group — Delete is never adjacent to Save. */}
             <div className="chq-contacts-drawer-actions">
-              <button type="button" className="chq-btn chq-btn-primary" disabled={saving} onClick={save}>
-                Save
-              </button>
-              <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowEmail(true)}>
-                Email
-              </button>
-              <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowAddToEvent(true)}>
-                Add to event
-              </button>
               <button
                 type="button"
                 className="chq-btn-tertiary chq-contacts-delete-trigger"
@@ -577,6 +598,20 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
               >
                 Delete this contact
               </button>
+              <div className="chq-contacts-drawer-actions-right">
+                <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowEmail(true)}>
+                  Email
+                </button>
+                <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setShowAddToEvent(true)}>
+                  Add to event
+                </button>
+                <button type="button" className="chq-btn chq-btn-secondary" disabled={closeDisabled} onClick={onClose}>
+                  Cancel
+                </button>
+                <button type="button" className="chq-btn chq-btn-primary" disabled={saving} onClick={save}>
+                  Save
+                </button>
+              </div>
             </div>
           </>
         )}
