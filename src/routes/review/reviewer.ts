@@ -100,12 +100,18 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
   const shapeQueueEnvelope = (fields: {
     items: unknown[];
     total: number;
+    unscoredTotal: number;
     open: boolean;
     recused: unknown[];
   }) =>
     c.json({
       items: fields.items,
       total: fields.total,
+      // DEC-845 amendment (wave 38): the FULL unscored count, computed from
+      // the whole items array BEFORE the page slice below -- a track scope
+      // above MAX_PER_PAGE=200 rows must still report a true "N left to
+      // score" even though only one page of rows is on the wire.
+      unscoredTotal: fields.unscoredTotal,
       page,
       perPage,
       open: fields.open,
@@ -116,7 +122,7 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
     });
 
   if (!isPlanOpen(plan.openDate, plan.closeDate, Date.now(), plan.timezone)) {
-    return shapeQueueEnvelope({ items: [], total: 0, open: false, recused: [] });
+    return shapeQueueEnvelope({ items: [], total: 0, unscoredTotal: 0, open: false, recused: [] });
   }
 
   const scoped = await repo.resolveReviewerSubmissions(c.var.db, plan, auth.userId);
@@ -228,9 +234,12 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
   // the slice's. `recused` stays unpaged below: it's the reviewer's own
   // recusal set, not a list envelope.
   const total = items.length;
+  // DEC-845 amendment (wave 38): unscoredTotal is computed from the FULL
+  // items array, before the slice below -- it must stay true past row 200.
+  const unscoredTotal = items.filter((item) => !item.alreadyRatedByMe).length;
   const start = (page - 1) * perPage;
   const pagedItems = items.slice(start, start + perPage);
-  return shapeQueueEnvelope({ items: pagedItems, total, open: true, recused: recusedOut });
+  return shapeQueueEnvelope({ items: pagedItems, total, unscoredTotal, open: true, recused: recusedOut });
 });
 
 reviewReviewerRoutes.get("/api/v1/review/submissions/:id", async (c) => {

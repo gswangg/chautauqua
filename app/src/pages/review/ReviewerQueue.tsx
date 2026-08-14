@@ -24,6 +24,11 @@ import { dayLabelEndInstant } from '../../../../src/lib/timezone';
 // reshaping both live in this single pure-core module, imported by every
 // reader instead of each defining (or re-defining) its own grammar.
 import { sessionFormatLabel, audienceLevelLabel } from '../../../../src/lib/session-vocabulary';
+// DEC-845 amendment (wave 38): the queue fetch must always ask for the
+// site-wide page cap, not the 50-row apiList default -- a track scope above
+// MAX_PER_PAGE=200 rows needs "Show all N" to keep paging past row 200, and
+// hand-typing 200 here would drift from the server's own clamp.
+import { MAX_PER_PAGE, MAX_PAGE } from '../../../../src/lib/pagination';
 
 // DEC-831/w42-h: 'closes in N days' while the window is still open; a plan
 // whose close date has already passed reads in the past tense ('closed N
@@ -60,23 +65,33 @@ function PlanSection({
 }) {
   const [items, setItems] = useState<ReviewerQueueItem[]>([]);
   const [recused, setRecused] = useState<RecusalItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [perPage, setPerPage] = useState(MAX_PER_PAGE);
   const [open, setOpen] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [undoingId, setUndoingId] = useState<string | null>(null);
-  // REVIEW PACK 03-03: the rendered list caps at 5 rows by default; both the
-  // "Showing 5 of N" caption and the "Show all N" control read N off the
-  // SAME items/recused arrays the list itself renders -- never a second
-  // count.
+  // REVIEW PACK 03-03: the rendered list caps at 5 rows by default. DEC-845
+  // amendment (wave 38): the "Showing 5 of N" caption and "Show all N"
+  // control read N off `total + recused.length` -- the envelope's TRUE
+  // count -- never items.length, which only reflects whatever page(s) have
+  // been loaded so far.
   const [showAll, setShowAll] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   function load() {
     setLoading(true);
-    (apiList(`/review/plans/${planId}/queue`) as Promise<ReviewerQueueEnvelope>)
+    setShowAll(false);
+    // DEC-845 amendment (wave 38): always request the site-wide page cap --
+    // a reviewer scope above 200 rows must still get page 1's worth of
+    // rows, not apiList's 50-row default.
+    (apiList(`/review/plans/${planId}/queue?perPage=${MAX_PER_PAGE}`) as Promise<ReviewerQueueEnvelope>)
       .then((res) => {
         setItems(res.items);
         setOpen(res.open);
         setRecused(res.recused);
+        setTotal(res.total);
+        setPerPage(res.perPage);
         onData?.(res);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load your queue'))
@@ -85,6 +100,33 @@ function PlanSection({
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(load, [planId]);
+
+  // DEC-845 amendment (wave 38): "Show all N" loads pages 2..ceil(total/
+  // perPage) sequentially and appends each page's items before flipping
+  // showAll -- stops early on a zero-row page (belt-and-suspenders against
+  // a total that raced stale) and never walks past clampPage's own MAX_PAGE
+  // ceiling.
+  async function loadAllPages() {
+    setLoadingMore(true);
+    setError(null);
+    try {
+      const lastPage = Math.min(Math.ceil(total / perPage), MAX_PAGE);
+      let appended: ReviewerQueueItem[] = [];
+      for (let page = 2; page <= lastPage; page += 1) {
+        const res = (await (apiList(
+          `/review/plans/${planId}/queue?perPage=${perPage}&page=${page}`,
+        ) as Promise<ReviewerQueueEnvelope>)) as ReviewerQueueEnvelope;
+        if (res.items.length === 0) break;
+        appended = appended.concat(res.items);
+      }
+      setItems((prev) => prev.concat(appended));
+      setShowAll(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to load your full queue');
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   // DEC-271: undo a declared conflict of interest -- DELETEs the recusal so
   // the submission returns to this reviewer's queue.
@@ -135,7 +177,10 @@ function PlanSection({
           them since the queue endpoint reports them as a distinct set with
           no interleaved position of its own. */}
       {(() => {
-        const totalRows = items.length + recused.length;
+        // DEC-845 amendment (wave 38): the TRUE combined row count comes off
+        // the envelope's own `total` (actionable) plus `recused.length` --
+        // never items.length, which is only whatever page(s) are loaded.
+        const totalRows = total + recused.length;
         const visibleItems = showAll ? items : items.slice(0, 5);
         const remainingAfterItems = showAll ? recused.length : Math.max(0, 5 - items.length);
         const visibleRecused = showAll ? recused : recused.slice(0, remainingAfterItems);
@@ -268,7 +313,14 @@ function PlanSection({
                     <button
                       type="button"
                       className="chq-review-queue-footer-showall"
-                      onClick={() => setShowAll(true)}
+                      disabled={loadingMore}
+                      onClick={() => {
+                        // DEC-845 amendment (wave 38): page 1 is already
+                        // loaded (up to MAX_PER_PAGE rows) -- only fetch more
+                        // when there's a page 2+ still outstanding.
+                        if (items.length < total) void loadAllPages();
+                        else setShowAll(true);
+                      }}
                     >
                       {`Show all ${totalRows}`}
                     </button>
@@ -295,7 +347,10 @@ function ReviewerPlanRow({ plan }: { plan: EvaluationPlan }) {
 
   useEffect(() => {
     let cancelled = false;
-    (apiList(`/review/plans/${plan.id}/queue`) as Promise<ReviewerQueueEnvelope>)
+    // DEC-845 amendment (wave 38): this row only needs unscoredTotal/scope/
+    // closeDate meta, not a page of items -- ?perPage=1 avoids downloading
+    // up to MAX_PER_PAGE=200 rows per plan just to read that one number.
+    (apiList(`/review/plans/${plan.id}/queue?perPage=1`) as Promise<ReviewerQueueEnvelope>)
       .then((res) => {
         if (!cancelled) setEnvelope(res);
       })
@@ -309,7 +364,10 @@ function ReviewerPlanRow({ plan }: { plan: EvaluationPlan }) {
   }, [plan.id]);
 
   const scope = envelope ? envelope.scopeTrackName ?? 'All tracks' : null;
-  const left = envelope ? envelope.items.filter((i) => !i.alreadyRatedByMe).length : null;
+  // DEC-845 amendment (wave 38): read the envelope's own unscoredTotal --
+  // never derive "left to score" from envelope.items, which is only a
+  // ?perPage=1 preview page here and would undercount past row 1.
+  const left = envelope ? envelope.unscoredTotal : null;
   // DEC-874 (wave-29 amendment): closed-ness comes off the SAME
   // closesInDaysLabel helper the scoped header already uses to render
   // 'closes in N days' vs 'closed N days ago' -- one reader, one rule,
@@ -375,9 +433,13 @@ export function ReviewerQueue() {
 
   if (routePlanId) {
     const routeQueueItems = routeEnvelope?.items ?? null;
-    const scoreLeft = routeQueueItems ? routeQueueItems.filter((i) => !i.alreadyRatedByMe).length : null;
-    const scoredCount = routeQueueItems ? routeQueueItems.filter((i) => i.alreadyRatedByMe).length : 0;
-    const totalCount = routeQueueItems ? routeQueueItems.length : 0;
+    // DEC-845 amendment (wave 38): the scoped header's counts come off the
+    // envelope's own total/unscoredTotal -- true past row 200 -- never off
+    // routeQueueItems.length/filter, which only sees whatever page(s) of
+    // rows PlanSection has loaded so far.
+    const scoreLeft = routeEnvelope ? routeEnvelope.unscoredTotal : null;
+    const totalCount = routeEnvelope ? routeEnvelope.total : 0;
+    const scoredCount = routeEnvelope ? routeEnvelope.total - routeEnvelope.unscoredTotal : 0;
     const scope = routeEnvelope ? routeEnvelope.scopeTrackName ?? 'All tracks' : null;
     const closesLabel =
       routeEnvelope && routeTimezone ? closesInDaysLabel(routeEnvelope.closeDate, routeTimezone) : null;
@@ -413,6 +475,13 @@ export function ReviewerQueue() {
                   quiet when it has nothing to offer (every item already
                   scored, or the queue hasn't resolved yet), present and
                   linking straight to the first unscored item otherwise. */}
+              {/* DEC-845 amendment (wave 38): this deliberately keeps reading
+                  routeQueueItems (whatever page(s) PlanSection has loaded),
+                  not the envelope's unscoredTotal count. buildReviewerQueue
+                  (src/domain/evaluation.ts) orders the queue fewest-ratings-
+                  first with completed items sunk last, so page 1 already
+                  holds an unscored item whenever unscoredTotal > 0 -- no
+                  need to page ahead just to find "the next one". */}
               {routeQueueItems &&
                 (() => {
                   const nextItem = routeQueueItems.find((i) => !i.alreadyRatedByMe);
