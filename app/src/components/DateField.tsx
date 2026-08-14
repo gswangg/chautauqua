@@ -21,10 +21,12 @@ export function DateField(props: {
   onChange(next: string): void;
   required?: boolean;
   className?: string;
+  placeholder?: string;
   'aria-describedby'?: string;
 }): JSX.Element {
   const { id, value, onChange, required } = props;
   const className = props.className ?? 'chq-input';
+  const placeholder = props.placeholder ?? '11 May 2028';
   const [text, setText] = useState(() => formatDayInput(value));
   const [error, setError] = useState<string | null>(null);
   const focusedRef = useRef(false);
@@ -65,7 +67,7 @@ export function DateField(props: {
         type="text"
         inputMode="text"
         autoComplete="off"
-        placeholder="11 May 2028"
+        placeholder={placeholder}
         className={className}
         value={text}
         required={required}

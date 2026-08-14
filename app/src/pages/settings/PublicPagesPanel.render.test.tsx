@@ -152,4 +152,62 @@ describe('PublicPagesPanel', () => {
     // The list is still there beside the builder.
     expect(screen.getAllByRole('listitem')).toHaveLength(6);
   });
+
+  // w4-b/DEC-785 amendment: SavedEmbedsPanel is the SAME component mounted
+  // below the public-pages summary AT REST, not only once Change is
+  // clicked -- a saved embed is a first-class object and belongs in the
+  // read view.
+  it('mounts SavedEmbedsPanel below the summary at rest, before any Change click', async () => {
+    mockEvent({
+      [`GET /api/v1/events/${EVENT_ID}/embeds`]: listEnvelope([
+        { id: 'emb1', name: 'Homepage widget', surface: 'sessions', format: 'iframe', options: {}, enabled: true },
+      ]),
+    });
+    render(
+      <MemoryRouter>
+        <PublicPagesPanel />
+      </MemoryRouter>,
+    );
+
+    const publicPagesSection = await screen.findByRole('region', { name: 'Public pages' });
+    await waitFor(() => {
+      expect(within(publicPagesSection).getByText('Sessions')).toBeInTheDocument();
+    });
+
+    const savedEmbedsSection = await screen.findByRole('region', { name: 'Saved embeds' });
+    expect(within(savedEmbedsSection).getByText('Homepage widget')).toBeInTheDocument();
+    // The read-view summary never showed the Embeds builder heading.
+    expect(screen.queryByRole('heading', { name: 'Embeds' })).not.toBeInTheDocument();
+  });
+
+  // w4-b/DEC-785 amendment: when the builder opens it renders BELOW the
+  // saved-embeds list, not above it -- the builder is subordinate to the
+  // list of named records it edits.
+  it('renders the embed builder below the saved-embeds list once opened', async () => {
+    mockEvent({
+      [`GET /api/v1/events/${EVENT_ID}/embeds`]: listEnvelope([
+        { id: 'emb1', name: 'Homepage widget', surface: 'sessions', format: 'iframe', options: {}, enabled: true },
+      ]),
+    });
+    render(
+      <MemoryRouter>
+        <PublicPagesPanel />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Homepage widget')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Embed code' })[0]!);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Embeds' })).toBeInTheDocument();
+    });
+
+    const savedEmbedsSection = screen.getByRole('region', { name: 'Saved embeds' });
+    const builderSection = screen.getByRole('region', { name: 'Embeds' });
+    const position = savedEmbedsSection.compareDocumentPosition(builderSection);
+    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });

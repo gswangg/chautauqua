@@ -597,6 +597,44 @@
   gap: 12px;
 }
 
+/* w4-b/DEC-785 amendment: the embed builder's NAME|SURFACE and
+   FORMAT|TRACK rows pair two-up rather than stacking one label per row --
+   single column only at the existing 700px phone breakpoint below. An
+   unpaired second cell (e.g. Format with no Track knob for the surface)
+   simply leaves the second column empty rather than reflowing. */
+.chq-settings-embed-field-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* w4-b/DEC-785 amendment: the settings eyebrow style -- an uppercase,
+   muted caption used in place of a native fieldset's legend (which draws a
+   notched browser border no other settings control speaks). Shared shape
+   with the other eyebrow captions in the app (e.g.
+   .chq-comms-feedback-eyebrow) rather than a page-local one-off. */
+.chq-settings-eyebrow {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-settings-embed-fields {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 700px) {
+  .chq-settings-embed-field-pair {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
 /* w15-e/DEC-691: People and roles -- mock lines 190-204 4-column row
    (identity, role, scope, Change). */
 .chq-settings-people-row {

@@ -185,41 +185,50 @@ export function PublicPagesPanel() {
         editing={editing}
       >
         {event ? (
-          <>
-            <ul className="chq-settings-public-pages-list">
-              {rows.map((row) => (
-                <li key={row.key} className="chq-settings-public-pages-row">
-                  <span className="chq-settings-public-pages-name">{row.name}</span>
-                  <span className="chq-settings-public-pages-path">{row.path}</span>
-                  {row.state === null ? (
-                    <DelayedLoading />
-                  ) : (
-                    <span
-                      className={`chq-settings-public-pages-state ${PUBLIC_PAGES_STATE_TONE_CLASS[stateTone(row.state)]}`}
-                    >
-                      {row.state}
-                    </span>
-                  )}
-                  <a className="chq-settings-inline-action" href={row.path}>
-                    View
-                  </a>
-                  <button type="button" className="chq-link-button" onClick={() => setEmbedOpenState(true)}>
-                    Embed code
-                  </button>
-                </li>
-              ))}
-            </ul>
-
-            {embedOpen ? (
-              <div className="chq-settings-public-pages-embed">
-                <EmbedsPanel />
-              </div>
-            ) : null}
-
-            <SavedEmbedsPanel onBuild={() => setEmbedOpenState(true)} />
-          </>
+          <ul className="chq-settings-public-pages-list">
+            {rows.map((row) => (
+              <li key={row.key} className="chq-settings-public-pages-row">
+                <span className="chq-settings-public-pages-name">{row.name}</span>
+                <span className="chq-settings-public-pages-path">{row.path}</span>
+                {row.state === null ? (
+                  <DelayedLoading />
+                ) : (
+                  <span
+                    className={`chq-settings-public-pages-state ${PUBLIC_PAGES_STATE_TONE_CLASS[stateTone(row.state)]}`}
+                  >
+                    {row.state}
+                  </span>
+                )}
+                <a className="chq-settings-inline-action" href={row.path}>
+                  View
+                </a>
+                <button type="button" className="chq-link-button" onClick={() => setEmbedOpenState(true)}>
+                  Embed code
+                </button>
+              </li>
+            ))}
+          </ul>
         ) : null}
       </SummarySection>
+
+      {/* w4-b/DEC-785 amendment: SavedEmbedsPanel is the SAME component in
+          both the read view and the edit drill -- it is mounted below the
+          public-pages summary/row-detail (whichever SummarySection is
+          currently showing) rather than only appearing once an organizer
+          clicks Change. The embed builder, when open, renders BELOW the
+          saved list (not above it), so the builder reads as subordinate to
+          the list of named records it edits. */}
+      {event ? (
+        <>
+          <SavedEmbedsPanel onBuild={() => setEmbedOpenState(true)} />
+
+          {embedOpen ? (
+            <div className="chq-settings-public-pages-embed">
+              <EmbedsPanel />
+            </div>
+          ) : null}
+        </>
+      ) : null}
     </>
   );
 }
