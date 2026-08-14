@@ -109,6 +109,17 @@ breaksRoutes.post("/events/:eventId/breaks", requireOrganizer, csrfJson, async (
   const startMin = parseStartMin(body.startMin, fields);
   const durationMin = parseDurationMin(body.durationMin, fields);
 
+  // DEC-022 amendment (wave 66): the two per-field checks above validate
+  // startMin and durationMin independently, so {startMin: 1430,
+  // durationMin: 120} passes both yet describes a break ending at 25:50 — a
+  // break cannot run past midnight. Cross-field check runs alongside (not
+  // instead of) the per-field ones, and only overwrites `fields.durationMin`
+  // when both individual fields were themselves valid (an already-invalid
+  // durationMin keeps its own, more specific message).
+  if (!fields.startMin && !fields.durationMin && startMin + durationMin > MINUTES_PER_DAY) {
+    fields.durationMin = `startMin + durationMin must not exceed ${MINUTES_PER_DAY} (a break cannot run past midnight)`;
+  }
+
   if (Object.keys(fields).length > 0) {
     throw new ApiError("invalid", "Invalid break input", fields);
   }

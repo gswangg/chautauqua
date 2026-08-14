@@ -9,11 +9,13 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { chunkIds } from "../../../lib/chunk";
-import { DEC_055 } from "../../../decisions";
+import { DEC_055, DEC_022 } from "../../../decisions";
 import { type ExportTable, EXPORT_MAX_ROWS, buildTable, minutesToClock } from "./table";
 import { getRecordPrefix } from "./common";
+import { listBreaksForEvent } from "../breaks";
 
 void DEC_055;
+void DEC_022;
 
 export const SHOWFLOW_HEADER = [
   "ref",
@@ -27,6 +29,7 @@ export const SHOWFLOW_HEADER = [
   "speakers",
   "deck_file",
   "deck_url",
+  "kind",
 ] as const;
 
 export interface ShowflowExportInput {
@@ -43,13 +46,25 @@ export interface ShowflowExportInput {
   deckFile: string;
   deckUrl: string;
   /** submission.seq: DEC-560's tiebreak for both scheduled (room ties) and
-   * unscheduled rows — not rendered. */
+   * unscheduled rows — not rendered. Ignored for kind === 'break' rows,
+   * which always carry a day and so never reach the unscheduled tail. */
   seq: number;
+  /** DEC-022 amendment (wave 66): a schedule_break row rendered inline with
+   * sessions on the show-flow, so a producer sees "Lunch" sitting exactly
+   * between the two talks it separates instead of reading a gap as missing
+   * data. Defaults to 'session' for every pre-existing caller of this pure
+   * shaping function. A 'break' row always has ref/tracks/speakers/deck
+   * columns empty — it is not a submission (src/server/repo/breaks.ts's
+   * header) — and is distinguished at a glance via this explicit column
+   * rather than by the empty ref alone. */
+  kind?: "session" | "break";
 }
 
-/** Sorts scheduled rows by day, start, room, submission seq; unscheduled
- * rows (day === null) are appended last, ordered by submission seq. Never
- * drops a row. */
+/** Sorts scheduled rows (sessions and breaks alike) by day, start, room,
+ * seq; unscheduled session rows (day === null) are appended last, ordered by
+ * submission seq. Breaks always carry a day, so they interleave with
+ * scheduled sessions and never land in the unscheduled tail. Never drops a
+ * row. */
 export function shapeShowflowExport(inputs: ShowflowExportInput[]): ExportTable {
   const scheduled = inputs
     .filter((i) => i.day !== null)
@@ -75,6 +90,7 @@ export function shapeShowflowExport(inputs: ShowflowExportInput[]): ExportTable 
     s.speakers.join("; "),
     s.deckFile,
     s.deckUrl,
+    s.kind ?? "session",
   ]);
 
   return buildTable([...SHOWFLOW_HEADER], rows);
@@ -130,7 +146,31 @@ export async function buildShowflowExport(db: Db, eventId: string): Promise<Expo
     return buildTable([...SHOWFLOW_HEADER], [], true);
   }
 
-  if (submissions.length === 0) return shapeShowflowExport([]);
+  // DEC-022 amendment (wave 66): load through the existing repo function —
+  // it is already bounded-scan + loud-refusal (MAX_BREAKS_PER_EVENT), so no
+  // second query/cap is needed here. Breaks are event-wide (not per-
+  // submission), so they are loaded once regardless of how many submissions
+  // exist and interleaved into the same sorted output below. Loaded after
+  // the submissions overflow check so a breaks query never masks a
+  // submissions-side truncation (and vice versa).
+  const breaks = await listBreaksForEvent(db, eventId);
+  const breakInputs: ShowflowExportInput[] = breaks.map((b) => ({
+    ref: "",
+    title: b.label,
+    description: "",
+    day: b.day,
+    startMin: b.startMin,
+    endMin: b.startMin + b.durationMin,
+    room: b.location,
+    tracks: [],
+    speakers: [],
+    deckFile: "",
+    deckUrl: "",
+    seq: -1,
+    kind: "break",
+  }));
+
+  if (submissions.length === 0) return shapeShowflowExport(breakInputs);
   const ids = submissions.map((s) => s.id);
 
   const slotRows: {
@@ -241,5 +281,5 @@ export async function buildShowflowExport(db: Db, eventId: string): Promise<Expo
     };
   });
 
-  return shapeShowflowExport(inputs);
+  return shapeShowflowExport([...inputs, ...breakInputs]);
 }
