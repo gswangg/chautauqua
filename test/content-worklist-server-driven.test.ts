@@ -11,6 +11,7 @@
 import { describe, expect, it } from "vitest";
 import { SQLiteSyncDialect } from "drizzle-orm/sqlite-core";
 import { listSubmissions } from "../src/server/repo/submissions/list";
+import { getSubmissionDetail } from "../src/server/repo/submissions/detail";
 import type { ParsedListQuery } from "../src/server/repo/submissions/query";
 
 const dialect = new SQLiteSyncDialect();
@@ -457,5 +458,65 @@ describe("listSubmissions reuploaded (DEC-881)", () => {
 
     expect(result.items[0]!.latestFileVersionNo).toBeNull();
     expect(result.items[0]!.reuploaded).toBe(false);
+  });
+});
+
+// w6-e (DEC-881): getSubmissionDetail's own read composes the SAME
+// reUploadedSql() predicate the worklist row/header use (imported from
+// submissions/list.ts, never re-derived) — the detail band's status can
+// never disagree with the worklist row that opened it.
+function detailBaseRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "sub-1",
+    eventId: EVENT_ID,
+    formId: null,
+    seq: 1,
+    title: "A Talk",
+    description: null,
+    status: "accepted",
+    contentStatus: "pending",
+    acceptedAt: null,
+    icsSequence: 0,
+    createdAt: new Date(2026, 0, 1),
+    updatedAt: new Date(2026, 0, 2),
+    recordPrefix: "SES",
+    slotDay: null,
+    slotStartMin: null,
+    slotEndMin: null,
+    slotRoomName: null,
+    reuploaded: 0,
+    ...overrides,
+  };
+}
+
+describe("getSubmissionDetail reuploaded (DEC-881)", () => {
+  it("reports reuploaded=true when the base row's reUploadedSql projection is 1", async () => {
+    const responses = [
+      [detailBaseRow({ reuploaded: 1 })],
+      [], // participantRows
+      [], // trackRows
+      [], // answerRows
+      [], // answerFileRows
+    ];
+    const db = makeFakeDb(responses);
+
+    const result = await getSubmissionDetail(db, "sub-1");
+
+    expect(result!.reuploaded).toBe(true);
+  });
+
+  it("reports reuploaded=false when the base row's reUploadedSql projection is 0", async () => {
+    const responses = [
+      [detailBaseRow({ reuploaded: 0 })],
+      [], // participantRows
+      [], // trackRows
+      [], // answerRows
+      [], // answerFileRows
+    ];
+    const db = makeFakeDb(responses);
+
+    const result = await getSubmissionDetail(db, "sub-1");
+
+    expect(result!.reuploaded).toBe(false);
   });
 });

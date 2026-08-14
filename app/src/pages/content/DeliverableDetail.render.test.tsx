@@ -451,10 +451,11 @@ describe('DeliverableDetail render smoke', () => {
     );
     expect(screen.getByText('Content status')).toBeInTheDocument();
     // worklistStatusLabel('pending', false) === 'Not reviewed' -- the SAME
-    // vocabulary the worklist row's status cell uses (DEC-989 wave 72),
-    // not the standalone CONTENT_STATUS_LABELS 'Pending'.
-    expect(screen.getByText('Not reviewed')).toBeInTheDocument();
-    expect(screen.getByText(`Updated ${formatDate(1700000300000)}`)).toBeInTheDocument();
+    // vocabulary the worklist row's status cell uses (DEC-989 wave 72), not
+    // the standalone CONTENT_STATUS_LABELS 'Pending'. w6-e: the value line
+    // is one span, '<STATUS> · Updated <date>' -- the existing honest
+    // 'Updated <date>' meta supplies the since clause.
+    expect(screen.getByText(`Not reviewed · Updated ${formatDate(1700000300000)}`)).toBeInTheDocument();
     expect(screen.getByText('Deliverables')).toBeInTheDocument();
   });
 
@@ -621,6 +622,34 @@ describe('DeliverableDetail render smoke', () => {
     // second CONTENT_STATUS_LABELS lookup.
     expect(copy).toHaveTextContent('Changes requested');
     expect(copy!.children).toHaveLength(2);
+  });
+
+  // w6-e (DEC-881): the band's status reads the real reuploaded flag off
+  // GET /submissions/:id (SubmissionDetail.reuploaded), the SAME predicate
+  // the worklist row/header read -- never a hardcoded `false` literal.
+  // Precedence: pending contentStatus + reuploaded=true reads 'Re-uploaded'
+  // and stays bold ink (no .chq-content-status-muted), unlike the plain
+  // pending case above which reads 'Not reviewed' and sinks to muted.
+  it('reads the real reuploaded flag from the detail fetch, not a hardcoded literal', async () => {
+    mockBase({
+      [`GET /api/v1/submissions/${SUBMISSION_ID}`]: submissionDetail({ reuploaded: true }),
+    });
+    const { container } = render(
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="pending"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
+    );
+
+    const value = await screen.findByText(`Re-uploaded · Updated ${formatDate(1700000300000)}`);
+    expect(value).toHaveClass('chq-flag');
+    expect(value).not.toHaveClass('chq-content-status-muted');
+    expect(container.querySelector('.chq-content-status-band')).not.toBeNull();
   });
 
   // w41-a: "Deliverables" and "Notes on the <kind>" are peers -- each the

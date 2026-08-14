@@ -2,10 +2,14 @@
 // repo/submissions.ts (contention decomposition, no behavior change). See
 // repo/submissions.ts for the module-level contract notes.
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
+// DEC-881: the detail read's `reuploaded` flag composes the SAME predicate
+// the worklist row/header use (reUploadedSql, submissions/list.ts) — never a
+// second derivation that could disagree on which submissions are re-uploaded.
+import { reUploadedSql } from "./list";
 
 export interface SubmissionDetailParticipant {
   id: string;
@@ -54,6 +58,9 @@ export interface SubmissionDetail {
   // yet (schedule_slot has at most one row per submission, DEC-010's
   // nullable roomId meaning "TBD is a real value").
   slot: SubmissionDetailSlot | null;
+  // DEC-881: same predicate the worklist row/header read (reUploadedSql) —
+  // the detail band's status can never disagree with the row that opened it.
+  reuploaded: boolean;
 }
 
 /** Returns the submission's eventId + org id, for ownership checks — null if
@@ -128,6 +135,7 @@ export async function getSubmissionDetail(db: Db, submissionId: string): Promise
       slotStartMin: schema.scheduleSlot.startMin,
       slotEndMin: schema.scheduleSlot.endMin,
       slotRoomName: schema.room.name,
+      reuploaded: sql<number>`${reUploadedSql()}`,
     })
     .from(schema.submission)
     .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
@@ -211,5 +219,6 @@ export async function getSubmissionDetail(db: Db, submissionId: string): Promise
       row.slotDay !== null && row.slotStartMin !== null && row.slotEndMin !== null
         ? { day: row.slotDay, startMin: row.slotStartMin, endMin: row.slotEndMin, roomName: row.slotRoomName ?? null }
         : null,
+    reuploaded: Number(row.reuploaded) === 1,
   };
 }

@@ -30,3 +30,15 @@ export function worklistStatusLabel(
   if (contentStatus === 'changes_requested') return 'Changes requested';
   return 'Not reviewed';
 }
+
+// w6-e (DEC-825 amendment / frame 05): weight carries the state, never
+// colour -- ONE class mapping (composed with the shared .chq-flag base,
+// content.css) so the worklist row's status cell and the deliverable-detail
+// band's status value read the identical emphasis rule off the identical
+// label, rather than two per-surface conditionals that could drift apart.
+// 'Changes requested' and 'Re-uploaded' both mean "something needs you" and
+// stay bold ink (the .chq-flag base, unmodified); 'Approved' and
+// 'Not reviewed' sink to muted weight via .chq-content-status-muted.
+export function worklistStatusEmphasisClass(label: WorklistStatusLabel): string {
+  return label === 'Changes requested' || label === 'Re-uploaded' ? '' : 'chq-content-status-muted';
+}

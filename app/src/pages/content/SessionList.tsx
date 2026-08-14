@@ -1,5 +1,5 @@
 import { type ContentStatus, type ContentSubmissionListItem } from './types';
-import { WORKLIST_TABS, worklistStatusLabel, type WorklistTab } from './worklist';
+import { WORKLIST_TABS, worklistStatusLabel, worklistStatusEmphasisClass, type WorklistTab } from './worklist';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { formatRelativeDays, formatDayLabel } from '../../lib/dates';
 
@@ -254,21 +254,17 @@ export function SessionList({
                     </div>
                   </td>
                   <td>
-                    {/* DEC-825 amendment (wave 72): weight carries the state,
-                        never colour (DEC-367/DEC-730) — one vocabulary
-                        (worklistStatusLabel) decides both the text and its
-                        emphasis, no second label set. 'Changes requested'
-                        and 'Re-uploaded' both mean "something needs you" and
-                        stay bold ink; 'Approved' and 'Not reviewed' sink to
-                        muted weight. */}
+                    {/* DEC-825 amendment (wave 72) / w6-e (DEC-881): weight
+                        carries the state, never colour (DEC-367/DEC-730) —
+                        worklistStatusLabel decides the text,
+                        worklistStatusEmphasisClass decides the emphasis
+                        (worklist.ts), the SAME class mapping the
+                        deliverable-detail band's status value consumes —
+                        never two per-surface conditionals. */}
                     {(() => {
                       const label = worklistStatusLabel(item.contentStatus, item.reuploaded);
-                      const needsAttention = label === 'Changes requested' || label === 'Re-uploaded';
-                      return (
-                        <span className={needsAttention ? 'chq-flag' : 'chq-flag chq-content-status-muted'}>
-                          {label}
-                        </span>
-                      );
+                      const className = ['chq-flag', worklistStatusEmphasisClass(label)].filter(Boolean).join(' ');
+                      return <span className={className}>{label}</span>;
                     })()}
                   </td>
                   <td onClick={(e) => e.stopPropagation()}>

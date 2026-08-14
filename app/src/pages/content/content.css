@@ -66,8 +66,10 @@
    ink ("something needs you" — type, never colour, per DEC-367/DEC-730,
    DEC-825 amendment wave 72); 'Approved' and 'Not reviewed' sink to muted
    weight. worklistStatusLabel (worklist.ts) is the one vocabulary that
-   decides the text; SessionList.tsx derives this weight from that same
-   label, never a second predicate. */
+   decides the text; worklistStatusEmphasisClass (worklist.ts) is the ONE
+   class mapping both SessionList.tsx's status cell and
+   DeliverableDetail.tsx's status band consume for this weight — never a
+   second per-surface conditional. */
 .chq-content-status-muted {
   color: var(--chq-muted);
   font-weight: 600;
