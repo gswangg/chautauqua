@@ -141,7 +141,7 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
     c.var.db,
     scoped.map((s) => s.id),
   );
-  // DEC-986: the queue row's audience-level meta -- same batching as
+  // DEC-857/DEC-986: the queue row's audience-level meta -- same batching as
   // formatBySubmission above, over the same scoped id set. A session-shape
   // fact (the field lives on the CFP's session section), so it is never
   // stripped for an anonymized plan, exactly like format.
@@ -252,10 +252,13 @@ reviewReviewerRoutes.get("/api/v1/review/submissions/:id", async (c) => {
   // frame 03--01: the scorecard head's meta line needs the same
   // SESSION_FORMAT_FIELD_ID reading the queue row already carries (DEC-857)
   // -- reuse listFormatLabelsBySubmission (single-id call) rather than a
-  // second lookup. audienceLevel is left unwired (matches ReviewerQueueItem's
-  // documented gap: no reserved field id for it yet).
+  // second lookup. audienceLevel is wired the same way (single-id call to
+  // listAudienceLevelLabelsBySubmission) and, like format, is NOT stripped
+  // for an anonymized plan: a session-shape fact is not identity.
   const formatBySubmission = await repo.listFormatLabelsBySubmission(c.var.db, [submissionId]);
   const format = formatBySubmission.get(submissionId) ?? null;
+  const audienceLevelBySubmission = await repo.listAudienceLevelLabelsBySubmission(c.var.db, [submissionId]);
+  const audienceLevel = audienceLevelBySubmission.get(submissionId) ?? null;
 
   // DEC-147: the criteria embedded on the submission detail are resolved for
   // the plan's ACTIVE round -- the reviewer's scorecard renders these, not
@@ -280,6 +283,7 @@ reviewReviewerRoutes.get("/api/v1/review/submissions/:id", async (c) => {
     sessionAnswers: answers.filter((a) => a.section === "session"),
     criteria,
     format,
+    audienceLevel,
     ...(myEvaluationRecord ? { myEvaluation: { scores: myEvaluationRecord.scores, comment: myEvaluationRecord.comment } } : {}),
     ...(myRecusalRecord ? { myRecusal: { reason: myRecusalRecord.reason ?? null, createdAt: myRecusalRecord.createdAt } } : {}),
   };

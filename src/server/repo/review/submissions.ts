@@ -705,12 +705,14 @@ export async function listFormatLabelsBySubmission(db: Db, submissionIds: string
 }
 
 /** DEC-857/DEC-986: batched AUDIENCE_LEVEL_FIELD_ID answer lookup for the
- * reviewer queue -- same shape/batching as listFormatLabelsBySubmission
- * above (ONE query per chunkIds batch, keyed to the caller's own submission
- * id set). Audience level is a session-shape fact (the field lives on the
- * CFP's session section), not a speaker one, so it is never stripped by
- * anonymizeForReviewer. Null when a submission has no audience-level
- * answer (including events whose CFP has no such field at all). */
+ * reviewer queue AND the scorecard head -- exact twin of
+ * listFormatLabelsBySubmission above (same chunkIds batching, ONE query per
+ * chunk, keyed to the caller's own submission id set, never one query per
+ * submission). The stored answer LABEL is returned verbatim -- never
+ * re-parsed or reformatted here. Audience level is a session-shape fact (the
+ * field lives on the CFP's session section), not a speaker one, so it is
+ * never stripped by anonymizeForReviewer. Null when a submission has no
+ * audience-level answer (including events whose CFP has no such field). */
 export async function listAudienceLevelLabelsBySubmission(
   db: Db,
   submissionIds: string[],
