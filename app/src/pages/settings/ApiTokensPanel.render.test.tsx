@@ -5,10 +5,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { ApiTokensPanel } from './ApiTokensPanel';
+import { formatDateTime } from '../../lib/dates';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 
-function token() {
-  return { id: 'tok-1', name: 'CI pipeline', tokenPrefix: 'chq_abc', lastUsedAt: null };
+const CREATED_AT = 1_700_000_500_000;
+const LAST_USED_AT = 1_700_050_000_000;
+
+function token(overrides: Partial<ReturnType<typeof baseToken>> = {}) {
+  return { ...baseToken(), ...overrides };
+}
+
+function baseToken() {
+  return { id: 'tok-1', name: 'CI pipeline', tokenPrefix: 'chq_abc', lastUsedAt: null as number | null, createdAt: CREATED_AT };
 }
 
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
@@ -67,6 +75,47 @@ describe('ApiTokensPanel readOnly prop (DEC-815 amendment, wave 4)', () => {
 
     expect(await screen.findByText('No API tokens yet.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
+  });
+});
+
+describe('ApiTokensPanel Created column + NEVER USED mark (DEC-027 wave-47 amendment)', () => {
+  it('renders a Created column, the NEVER USED mark for an unused token, the plain date for a used one, and both standing facts before any row', async () => {
+    mockApi({
+      'GET /api/v1/tokens': listEnvelope([
+        token({ id: 'tok-unused', name: 'Unused token', lastUsedAt: null }),
+        token({ id: 'tok-used', name: 'Used token', lastUsedAt: LAST_USED_AT }),
+      ]),
+    });
+
+    render(<ApiTokensPanel />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+
+    expect(await screen.findByRole('columnheader', { name: 'Created' })).toBeInTheDocument();
+
+    const table = screen.getByRole('table');
+    const rows = within(table).getAllByRole('row');
+    // rows[0] is the header row; data rows follow in list order.
+    const unusedRow = rows[1]!;
+    const usedRow = rows[2]!;
+
+    expect(within(unusedRow).getByText(formatDateTime(CREATED_AT))).toBeInTheDocument();
+    expect(within(unusedRow).getByText('NEVER USED')).toBeInTheDocument();
+    expect(within(unusedRow).queryByText(formatDateTime(LAST_USED_AT))).not.toBeInTheDocument();
+
+    expect(within(usedRow).getByText(formatDateTime(CREATED_AT))).toBeInTheDocument();
+    expect(within(usedRow).getByText(formatDateTime(LAST_USED_AT))).toBeInTheDocument();
+    expect(within(usedRow).queryByText('NEVER USED')).not.toBeInTheDocument();
+
+    // Both standing facts render once, above the table (before any row).
+    const factOne = screen.getByText('The token is shown once, when you create it.');
+    const factTwo = screen.getByText('Revoking takes effect immediately and cannot be undone.');
+    expect(factOne).toBeInTheDocument();
+    expect(factTwo).toBeInTheDocument();
+    const position = factOne.compareDocumentPosition(table);
+    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const position2 = factTwo.compareDocumentPosition(table);
+    expect(position2 & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
 

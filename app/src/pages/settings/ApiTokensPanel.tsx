@@ -13,10 +13,12 @@
 // makes this same component serve both: the row-level `readOnly` render is
 // the plain list with no 'Change' control at all (no create/revoke, no
 // nested drill); the default (unset) keeps the existing local
-// summary/edit split used inside YourDataPanel's own edit branch. The
-// GET /tokens response has no createdAt field (DEC-027's shape), so the
-// list stays name + last-used -- adding "created" would be a new API
-// shape, which this task is scoped to avoid.
+// summary/edit split used inside YourDataPanel's own edit branch.
+//
+// DEC-027 amendment (wave 47): GET /tokens now carries createdAt too. Only
+// the full edit-view table grows a Created column -- the readOnly summary
+// and the local (unexpanded) summary/edit split (DEC-785) stay name +
+// last-used per the ruling above.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiList, apiPost, apiDelete, ApiError } from '../../lib/api';
@@ -30,6 +32,7 @@ interface ApiTokenItem {
   name: string;
   tokenPrefix: string;
   lastUsedAt: number | null;
+  createdAt: number;
 }
 
 function formatDate(ms: number | null): string {
@@ -166,6 +169,8 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
     <section className="chq-settings-panel" aria-label="API tokens">
       <h2>API Tokens</h2>
       <p>Bearer tokens authenticate scripts/integrations against the same /api/v1 the app uses.</p>
+      <p>The token is shown once, when you create it.</p>
+      <p>Revoking takes effect immediately and cannot be undone.</p>
 
       <button type="button" className="chq-link-button" onClick={() => setShowEditor(false)}>
         Back
@@ -231,8 +236,9 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
             <tr>
               <th>Name</th>
               <th>Token</th>
+              <th>Created</th>
               <th>Last used</th>
-              <th />
+              <th>Revoke</th>
             </tr>
           </thead>
           <tbody>
@@ -242,7 +248,14 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
                 <td data-label="Token">
                   <code>{t.tokenPrefix}…</code>
                 </td>
-                <td data-label="Last used">{formatDate(t.lastUsedAt)}</td>
+                <td data-label="Created">{formatDateTime(t.createdAt)}</td>
+                <td data-label="Last used">
+                  {t.lastUsedAt === null ? (
+                    <span className="chq-settings-row-note">NEVER USED</span>
+                  ) : (
+                    formatDate(t.lastUsedAt)
+                  )}
+                </td>
                 <td>
                   <button type="button" className="chq-link-button" onClick={() => setPendingDelete(t)}>
                     Revoke
