@@ -53,6 +53,7 @@ vi.mock("../src/server/repo/review", async () => {
     ]),
     listEvaluationsForPlan: vi.fn(async () => []),
     countCompletedByReviewerForPlan: vi.fn(async () => new Map()),
+    batchUserDisplayNames: vi.fn(async () => new Map()),
     listPlanFilteredSubmissions: vi.fn(async () => SUBMISSIONS),
   };
 });
@@ -80,6 +81,7 @@ async function buildApp(auth: AuthInfo) {
   app.use("*", async (c, next) => {
     c.set("auth", auth);
     c.set("db", {} as never);
+    c.env = { DEV_MODE: "1" } as never;
     await next();
   });
   app.route("/", reviewRoutes);
@@ -108,33 +110,12 @@ describe("DEC-238: POST /api/v1/plans/:id/remind mailer-failure taxonomy", () =>
     expect(sendMock).toHaveBeenCalledTimes(2);
   });
 
-  // DEC-547 (w43-b): makeMailer itself throws when the environment isn't
-  // configured for sending — that's a config-level failure, not a
-  // per-recipient one, so the per-recipient try inside the loop can never
-  // catch it. The route must guard the construction too: a 200 envelope
-  // reporting every laggard as 'failed', never a 500.
-  it("200s with every laggard reported 'failed' when makeMailer itself throws (misconfigured env)", async () => {
-    const { makeMailer } = await import("../src/server/context");
-    vi.mocked(makeMailer).mockImplementation(() => {
-      throw new Error("the EMAIL binding is not configured");
-    });
-    const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
-    const res = await app.request(`/api/v1/plans/${planRecord.id}/remind`, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
-      body: "{}",
-    });
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      reminded: string[];
-      sent: number;
-      failed: { email: string; message: string }[];
-    };
-    expect(body.sent).toBe(0);
-    expect(body.reminded).toEqual([]);
-    expect(body.failed).toHaveLength(2);
-    expect(body.failed.map((f) => f.email).sort()).toEqual(["bad@example.test", "ok@example.test"]);
-    for (const f of body.failed) expect(f.message).toContain("the EMAIL binding is not configured");
-    expect(sendMock).not.toHaveBeenCalled();
-  });
+  // DEC-547 (wave-43 amendment) + DEC-707 (wave-61 amendment): makeMailer is
+  // now total -- it never throws (a misconfigured environment returns an
+  // UnconfiguredMailer whose .send() fails per-recipient instead). The
+  // route's former defensive try/catch around the makeMailer(...) call was
+  // therefore dead code and has been removed; a misconfigured environment
+  // now surfaces through the SAME per-recipient try/catch exercised by the
+  // "one recipient's send throws" case above, via UnconfiguredMailer.send
+  // (DEC-923), not a separate construction-time guard.
 });

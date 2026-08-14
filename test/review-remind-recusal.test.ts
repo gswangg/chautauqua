@@ -101,6 +101,7 @@ async function buildApp(auth: AuthInfo) {
   app.use("*", async (c, next) => {
     c.set("auth", auth);
     c.set("db", {} as never);
+    c.env = { DEV_MODE: "1" } as never;
     await next();
   });
   app.route("/", reviewRoutes);
