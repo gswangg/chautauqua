@@ -412,14 +412,20 @@
   background: var(--chq-hairline);
 }
 
+/* DEC-869 (wave-9 amendment): the item in force gets its own tint, distinct
+   from BOTH the panel surface (--chq-surface) and the :hover background
+   above (--chq-hairline), so hovering a non-current row can never read as
+   more "in force" than the row actually in force. */
 .chq-participation-menu-item.is-current {
   font-weight: 700;
+  background: var(--chq-surface-sunk);
 }
 
 .chq-participation-menu-item-label {
   display: flex;
   align-items: center;
   gap: 6px;
+  width: 100%;
 }
 
 .chq-participation-menu-item-caption {
@@ -429,6 +435,7 @@
 }
 
 .chq-participation-menu-now {
+  margin-left: auto;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.04em;
