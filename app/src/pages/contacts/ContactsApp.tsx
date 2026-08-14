@@ -104,6 +104,12 @@ export function ContactsApp() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [duplicatePreview, setDuplicatePreview] = useState<DuplicateGroup[]>([]);
+  // Amendment (wave 41): the ONE /contacts/duplicates request this page
+  // makes carries its own `total` — the rail count, the Duplicates tab
+  // label and the title summary all read THIS state, never a second
+  // duplicateCount computed by GET /contacts/stats (that endpoint no
+  // longer scans the whole directory to produce one).
+  const [duplicateTotal, setDuplicateTotal] = useState(0);
   // DEC-678: settled flags for the two rail lists whose emptiness is
   // otherwise indistinguishable from "not back yet" (stats covers the third:
   // it is null until GET /contacts/stats settles).
@@ -221,7 +227,10 @@ export function ContactsApp() {
   // bounded to a small page rather than a second definition of "top pairs".
   useEffect(() => {
     apiList<DuplicateGroup>(`/contacts/duplicates?perPage=${RAIL_DUPLICATE_PREVIEW}`)
-      .then((res) => setDuplicatePreview(res.items))
+      .then((res) => {
+        setDuplicatePreview(res.items);
+        setDuplicateTotal(res.total);
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load duplicates'))
       .finally(() => setDuplicatesLoaded(true));
   }, [refreshKey]);
@@ -230,14 +239,14 @@ export function ContactsApp() {
   // POST /contacts/duplicates/dismiss the tab's DuplicatesView uses, so the
   // pair stays dismissed across reload no matter which mount dismissed it.
   // Optimistic: drop the row from duplicatePreview and decrement
-  // stats.duplicateCount immediately, then roll both back loudly if the
-  // persist fails.
+  // duplicateTotal immediately, then roll both back loudly if the persist
+  // fails.
   function railKeepBoth(group: DuplicateGroup) {
     setDuplicatePreview((prev) => prev.filter((g) => g.contactIds.join(',') !== group.contactIds.join(',')));
-    setStats((prev) => (prev ? { ...prev, duplicateCount: Math.max(0, prev.duplicateCount - 1) } : prev));
+    setDuplicateTotal((prev) => Math.max(0, prev - 1));
     apiPost('/contacts/duplicates/dismiss', { contactIds: group.contactIds }).catch((err) => {
       setDuplicatePreview((prev) => [...prev, group]);
-      setStats((prev) => (prev ? { ...prev, duplicateCount: prev.duplicateCount + 1 } : prev));
+      setDuplicateTotal((prev) => prev + 1);
       setError(err instanceof ApiError ? err.message : 'Failed to dismiss pair');
     });
   }
@@ -276,7 +285,7 @@ export function ContactsApp() {
         countOf(stats.speakerCount, 'speaker'),
         stats.returningSpeakers > 0 ? `${countOf(stats.returningSpeakers, 'returning speaker')}` : null,
         stats.eventCount > 1 ? `across ${countOf(stats.eventCount, 'event')}` : null,
-        countOf(stats.duplicateCount, 'possible duplicate'),
+        countOf(duplicateTotal, 'possible duplicate'),
       ]
         .filter((clause): clause is string => clause !== null)
         .join(' · ')
@@ -316,7 +325,7 @@ export function ContactsApp() {
         <div className="chq-chipstrip" role="tablist" aria-label="Contacts view">
           {(Object.keys(PANEL_LABELS) as Panel[]).map((key) => {
             let label = PANEL_LABELS[key];
-            if (key === 'duplicates' && stats) label = `${label} · ${stats.duplicateCount}`;
+            if (key === 'duplicates') label = `${label} · ${duplicateTotal}`;
             if (key === 'segments') label = `${label} · ${segments.length}`;
             return (
               <button
@@ -430,7 +439,7 @@ export function ContactsApp() {
               setPage(1);
             }}
             onSaveCurrentFilters={() => setPanel('segments')}
-            duplicateCount={stats?.duplicateCount ?? 0}
+            duplicateCount={duplicateTotal}
             duplicatePreview={duplicatePreview}
             duplicatesLoaded={duplicatesLoaded}
             onKeepBoth={railKeepBoth}

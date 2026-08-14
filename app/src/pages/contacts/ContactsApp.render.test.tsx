@@ -42,7 +42,6 @@ describe('ContactsApp render smoke (CRM-12 top-companies drill-through)', () => 
       'GET /api/v1/contacts/stats': {
         total: 3,
         speakerCount: 2,
-        duplicateCount: 0,
         returningSpeakers: 0,
         eventCount: 1,
         topCompanies: [{ company: 'Acme', count: 2 }],
@@ -84,7 +83,6 @@ describe('ContactsApp render smoke: directory search (DEC-684/DEC-710)', () => {
       'GET /api/v1/contacts/stats': {
         total: 1,
         speakerCount: 0,
-        duplicateCount: 0,
         returningSpeakers: 0,
         eventCount: 1,
         topCompanies: [],
@@ -137,7 +135,6 @@ function directoryRoutes(statsOverrides: Partial<{ total: number; speakerCount: 
     'GET /api/v1/contacts/stats': {
       total: 2,
       speakerCount: 1,
-      duplicateCount: DUPLICATE_GROUPS.length,
       returningSpeakers: 0,
       eventCount: 1,
       topCompanies: [{ company: 'Acme', count: 2 }],
@@ -146,7 +143,11 @@ function directoryRoutes(statsOverrides: Partial<{ total: number; speakerCount: 
     'GET /api/v1/segments': listEnvelope([
       { id: 'seg1', name: 'VIP speakers', rules: [{ field: 'company', op: 'eq', value: 'Acme' }], count: 2 },
     ]),
-    'GET /api/v1/contacts/duplicates': listEnvelope(DUPLICATE_GROUPS),
+    // Amendment (wave 41): duplicateCount comes from THIS envelope's `total`
+    // now, not a second scan in /contacts/stats — kept equal to
+    // DUPLICATE_GROUPS.length so both readers (title summary, rail, tab
+    // label) agree with the fixture.
+    'GET /api/v1/contacts/duplicates': listEnvelope(DUPLICATE_GROUPS, { total: DUPLICATE_GROUPS.length }),
     'GET /api/v1/contacts': listEnvelope([
       // labels[] is part of the list contract (DEC-712, GET /api/v1/contacts
       // always fills it via `?? []`); ContactsTable renders it as a column.
@@ -215,6 +216,45 @@ describe('ContactsApp render smoke: two-column directory architecture (DEC-710/D
     expect(
       screen.getByText('2 people · 1 speaker · 3 returning speakers · across 5 events · 1 possible duplicate'),
     ).toBeInTheDocument();
+  });
+
+  // Wave 41 amendment: duplicateCount is gone from /contacts/stats -- the
+  // rail count, the Duplicates tab label and the title summary's "possible
+  // duplicate" clause must all come from the ONE /contacts/duplicates
+  // request's own `total`, proven here by setting stats' (now-absent)
+  // duplicate figure and the duplicates envelope's `total` to DIFFERENT
+  // numbers and asserting every reader shows the envelope's number.
+  it('sources the rail count, tab label and summary clause from the duplicates envelope total, not stats', async () => {
+    mockApi({
+      'GET /api/v1/contacts/stats': {
+        total: 2,
+        speakerCount: 1,
+        returningSpeakers: 0,
+        eventCount: 1,
+        topCompanies: [{ company: 'Acme', count: 2 }],
+      },
+      'GET /api/v1/segments': listEnvelope([]),
+      // A single group in the page but total=7 -- the org has more
+      // duplicates than the rail's bounded preview shows.
+      'GET /api/v1/contacts/duplicates': listEnvelope(DUPLICATE_GROUPS, { total: 7 }),
+      'GET /api/v1/contacts': listEnvelope([
+        { id: 'ct1', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', company: 'Acme', labels: [] },
+      ]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <ContactsApp />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Ada Lovelace' })).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('tab', { name: 'Duplicates · 7' })).toBeInTheDocument();
+    expect(screen.getByText('2 people · 1 speaker · 7 possible duplicates')).toBeInTheDocument();
+    expect(screen.getByText('Possible duplicates · 7')).toBeInTheDocument();
   });
 
   it('round-trips the active tab through ?tab= URL state (DEC-710)', async () => {

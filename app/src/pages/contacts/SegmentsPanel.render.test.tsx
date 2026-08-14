@@ -43,7 +43,6 @@ describe('ContactsApp + SegmentsPanel: deleting the applied segment (w1-c P3, DE
       'GET /api/v1/contacts/stats': {
         total: 1,
         speakerCount: 0,
-        duplicateCount: 0,
         topCompanies: [],
       },
       'GET /api/v1/segments': () => listEnvelope(SEGMENTS),
@@ -113,7 +112,6 @@ describe('ContactsApp + SegmentsPanel: deleting the applied segment (w1-c P3, DE
       'GET /api/v1/contacts/stats': {
         total: 1,
         speakerCount: 0,
-        duplicateCount: 0,
         topCompanies: [],
       },
       'GET /api/v1/segments': () => listEnvelope(SEGMENTS),

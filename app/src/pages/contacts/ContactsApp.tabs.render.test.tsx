@@ -79,12 +79,11 @@ function baseRoutes() {
     'GET /api/v1/contacts/stats': {
       total: 2,
       speakerCount: 1,
-      duplicateCount: DUPLICATE_GROUPS.length,
       topCompanies: [{ company: 'Acme', count: 1 }],
     },
     'GET /api/v1/segments': listEnvelope(SEGMENTS),
     'GET /api/v1/contacts': listEnvelope(CONTACTS),
-    'GET /api/v1/contacts/duplicates': listEnvelope(DUPLICATE_GROUPS),
+    'GET /api/v1/contacts/duplicates': listEnvelope(DUPLICATE_GROUPS, { total: DUPLICATE_GROUPS.length }),
     // DEC-662 amendment (wave 55): the import wizard's ?eventId= preselect
     // validates against this org's own /events list.
     'GET /api/v1/events': listEnvelope([{ id: EVENT_ID, name: 'Contacts Tabs Test Event' }]),
