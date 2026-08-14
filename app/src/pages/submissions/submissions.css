@@ -405,37 +405,51 @@
     vertical-align: baseline;
   }
 
-  /* Select checkbox: keeps a >=44px tap area, sits on its own top line. */
-  .chq-submissions-table tbody td:nth-child(1) {
-    order: 1;
-    width: auto;
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-  }
-
-  /* Ref + status pill share one baseline line (space-between comes from
-     the shared flex line on the row above). */
+  /* Select checkbox + ref + status pill share one baseline line
+     (space-between comes from the shared flex line on the row above). */
+  .chq-submissions-table tbody td:nth-child(1),
   .chq-submissions-table tbody td:nth-child(2),
   .chq-submissions-table tbody td:nth-child(6) {
     order: 2;
     width: auto;
   }
 
+  /* Select checkbox: keeps a >=44px tap area even sharing the line above. */
+  .chq-submissions-table tbody td:nth-child(1) {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
   .chq-submissions-table tbody td:nth-child(3) {
     order: 3;
   }
 
-  .chq-submissions-table tbody td:nth-child(4) {
+  /* Speakers, track, sent, and every custom column share one wrapped
+     line; a leading `· ` separator (skipped on speakers, the first cell
+     on the line) keeps the separator count tied to the column count so
+     no trailing separator can appear when custom columns are added or
+     removed (DEC-610). */
+  .chq-submissions-table tbody td:nth-child(4),
+  .chq-submissions-table tbody td:nth-child(5),
+  .chq-submissions-table tbody td:nth-child(7),
+  .chq-submissions-table tbody .chq-submissions-table-custom {
     order: 4;
+    width: auto;
   }
 
-  .chq-submissions-table tbody td:nth-child(5) {
-    order: 5;
+  .chq-submissions-table tbody td:nth-child(5)::before,
+  .chq-submissions-table tbody td:nth-child(7)::before,
+  .chq-submissions-table tbody .chq-submissions-table-custom::before {
+    content: '· ';
+    color: var(--chq-muted);
   }
 
-  .chq-submissions-table tbody td:nth-child(7) {
-    order: 6;
+  /* Clone sits on the action row beside the triage group, which keeps
+     its own default order. */
+  .chq-submissions-table tbody .chq-submissions-table-clone-cell {
+    width: auto;
+    order: 7;
   }
 
   .chq-submissions-table-title {
