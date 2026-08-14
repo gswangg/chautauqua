@@ -99,10 +99,11 @@ describe('YourDataPanel', () => {
     });
     expect(within(section).getByRole('link', { name: 'Contacts CSV' })).toBeInTheDocument();
     expect(within(section).getByRole('button', { name: 'Everything JSON' })).toBeInTheDocument();
-    // The section's OWN drill action is gone; ApiTokensPanel now mounts
-    // with its own local read/edit split (w1-f, DEC-785), whose rest-state
+    // DEC-728 amendment (wave 15): the section's OWN drill action relabels
+    // to 'Back' rather than disappearing; ApiTokensPanel now mounts with
+    // its own local read/edit split (w1-f, DEC-785), whose rest-state
     // 'Change' is a different, further drill.
-    expect(section.querySelector('.chq-settings-section-action')).not.toBeInTheDocument();
+    expect(within(section).getByRole('button', { name: 'Back' })).toBeInTheDocument();
 
     fireEvent.click(within(section).getByRole('button', { name: 'Import from Sessionboard' }));
     expect(within(section).getByRole('heading', { name: 'Import from Sessionboard' })).toBeInTheDocument();

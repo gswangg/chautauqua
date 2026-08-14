@@ -101,7 +101,12 @@ export function PublicPagesPanel() {
   // (preserving the drilled ?section=public-pages&edit=1 params) — the
   // panel must actually be mounted for that link to do anything, not just
   // sit there as a URL an organizer can't see land anywhere.
-  const embedOpen = embedOpenState || searchParams.get('embed') !== null;
+  //
+  // DEC-785 amendment (wave 15): the section drill itself (`editing`) also
+  // opens the builder -- entering ?section=public-pages&edit=1 must render
+  // real form controls, not just the read-only row list, so editing implies
+  // the builder mounts.
+  const embedOpen = embedOpenState || searchParams.get('embed') !== null || editing;
 
   useEffect(() => {
     if (!eventId) return;
@@ -220,7 +225,7 @@ export function PublicPagesPanel() {
           the list of named records it edits. */}
       {event ? (
         <>
-          <SavedEmbedsPanel onBuild={() => setEmbedOpenState(true)} />
+          <SavedEmbedsPanel onBuild={() => setEmbedOpenState(true)} editing={editing} />
 
           {embedOpen ? (
             <div className="chq-settings-public-pages-embed">

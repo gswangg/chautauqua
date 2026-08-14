@@ -125,11 +125,12 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
     await waitFor(() => {
       expect(screen.getByText('Travel info')).toBeInTheDocument();
     });
-    // The section's OWN drill action is gone; ResourcesPanel now mounts
-    // with its own local read/edit split (w1-f, DEC-785: name + kind at
-    // rest), so a second 'Change' -- ResourcesPanel's own -- opens the
-    // real CRUD surface.
-    expect(section.querySelector('.chq-settings-section-action')).not.toBeInTheDocument();
+    // DEC-728 amendment (wave 15): the section's OWN drill action relabels
+    // to 'Back' rather than disappearing; ResourcesPanel now mounts with
+    // its own local read/edit split (w1-f, DEC-785: name + kind at rest),
+    // so a second 'Change' -- ResourcesPanel's own -- opens the real CRUD
+    // surface.
+    expect(within(section).getByRole('button', { name: 'Back' })).toBeInTheDocument();
     expect(screen.getByText('Wiki page')).toBeInTheDocument();
     fireEvent.click(within(section).getByRole('button', { name: 'Change' }));
 

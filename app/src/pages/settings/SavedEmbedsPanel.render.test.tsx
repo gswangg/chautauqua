@@ -33,10 +33,10 @@ function gridColumnCount(className: string): number {
 
 const EVENT_ID = 'evt-saved-embeds';
 
-function renderPanel(initialEntries: string[] = ['/settings'], onBuild?: () => void) {
+function renderPanel(initialEntries: string[] = ['/settings'], onBuild?: () => void, editing = false) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
-      <SavedEmbedsPanel onBuild={onBuild} />
+      <SavedEmbedsPanel onBuild={onBuild} editing={editing} />
     </MemoryRouter>,
   );
 }
@@ -58,9 +58,13 @@ afterEach(() => {
 
 describe('SavedEmbedsPanel', () => {
   // w1-f, DEC-785: the read view already carries the real rows (name +
-  // recipe + On/Off pill + Get code) before any Change click -- only
-  // Edit/Turn on-off/Delete/Build move behind it.
-  it('renders name + recipe + state pill + Get code at rest, before any Change click', async () => {
+  // recipe + On/Off pill + Get code) at rest -- Edit/Turn on-off/Delete/
+  // Build only render when the caller's own drill (`editing`) is open.
+  // DEC-785 amendment (wave 15): the read/edit split is driven entirely by
+  // the `editing` prop now, not a local Change/Back toggle inside this
+  // panel (a second read/edit toggle inside a drill means the drill
+  // renders nothing).
+  it('renders name + recipe + state pill + Get code at rest, with no local Change toggle', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/embeds`]: listEnvelope([
         { id: 'emb1', name: 'Homepage widget', surface: 'sessions', format: 'iframe', options: {}, enabled: true },
@@ -78,7 +82,8 @@ describe('SavedEmbedsPanel', () => {
     expect(within(row).queryByRole('link', { name: 'Edit' })).not.toBeInTheDocument();
     expect(within(row).queryByRole('button', { name: 'Turn off' })).not.toBeInTheDocument();
     expect(within(row).queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Change' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
   });
 
   it('renders one row per saved embed with its name, path, and an On/Off state pill, plus a header count', async () => {
@@ -144,12 +149,11 @@ describe('SavedEmbedsPanel', () => {
         enabled: false,
       },
     });
-    renderPanel();
+    renderPanel(['/settings'], undefined, true);
 
     await waitFor(() => {
       expect(screen.getByText('On')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Change' }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Turn off' }));
 
@@ -179,12 +183,11 @@ describe('SavedEmbedsPanel', () => {
       ]),
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'trk-ai', name: 'AI Engineering' }]),
     });
-    renderPanel();
+    renderPanel(['/settings'], undefined, true);
 
     await waitFor(() => {
       expect(screen.getByText('Homepage widget')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Change' }));
 
     const expectedRecipe = formatEmbedRecipe({
       surface: 'sessions',
@@ -228,12 +231,11 @@ describe('SavedEmbedsPanel', () => {
       [`GET /api/v1/events/${EVENT_ID}/embeds`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
     });
-    renderPanel(['/settings'], onBuild);
+    renderPanel(['/settings'], onBuild, true);
 
     await waitFor(() => {
       expect(screen.getByText('No saved embeds yet.')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Change' }));
 
     const buildButton = screen.getByRole('button', { name: 'Build an embed' });
     fireEvent.click(buildButton);
@@ -251,12 +253,11 @@ describe('SavedEmbedsPanel', () => {
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`DELETE /api/v1/embeds/emb1`]: { status: 204, body: null },
     });
-    renderPanel();
+    renderPanel(['/settings'], undefined, true);
 
     await waitFor(() => {
       expect(screen.getByText('Homepage widget')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Change' }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
 
@@ -289,12 +290,11 @@ describe('SavedEmbedsPanel', () => {
       ]),
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
     });
-    renderPanel();
+    renderPanel(['/settings'], undefined, true);
 
     await waitFor(() => {
       expect(screen.getByText('Homepage widget')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Change' }));
 
     const row = screen.getAllByRole('listitem')[0]!;
     expect(row).toHaveClass('chq-settings-saved-embed-row');

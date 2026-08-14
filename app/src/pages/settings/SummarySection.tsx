@@ -14,6 +14,12 @@
 // the write path in one place while still letting each panel decide what
 // counts as "its" section and when to reset back to the summary (e.g. on
 // save).
+//
+// DEC-728 amendment (wave 15): the action button always renders -- at rest
+// it reads `actionLabel` and opens the drill; while editing it reads 'Back'
+// and closes the drill by deleting `section`/`edit` from the URL (leaving
+// every other param intact), so a drill always has a way out (a drill with
+// no back is a 200 with no exit).
 import type { ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
@@ -56,15 +62,26 @@ export function SummarySection({ sectionKey, label, rows, actionLabel, editing, 
     });
   }
 
+  function closeEdit() {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.delete('section');
+      params.delete('edit');
+      return params;
+    });
+  }
+
   return (
     <section className="chq-settings-panel chq-settings-numbered" aria-label={label}>
       <div className="chq-settings-section-head">
         <h2>{label}</h2>
-        {!editing ? (
-          <button type="button" className="chq-settings-section-action" onClick={openEdit}>
-            {actionLabel}
-          </button>
-        ) : null}
+        <button
+          type="button"
+          className="chq-settings-section-action"
+          onClick={editing ? closeEdit : openEdit}
+        >
+          {editing ? 'Back' : actionLabel}
+        </button>
       </div>
       {editing
         ? children
