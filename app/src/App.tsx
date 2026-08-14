@@ -231,7 +231,7 @@ function Header() {
               remains the phone path for signing out. */}
           {me && (
             <span className="chq-user-identity">
-              {identityLabel(me.name, me.email)}
+              {identityLabel(me.name, me.email, me.role as 'organizer' | 'reviewer' | 'speaker')}
               <button type="button" className="chq-btn chq-btn-tertiary chq-header-signout" onClick={() => void signOut()}>
                 Sign out
               </button>

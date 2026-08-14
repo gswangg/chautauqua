@@ -21,11 +21,19 @@ export function emailLocalPart(email: string): string {
   return (at > 0 ? email.slice(0, at) : email).toUpperCase();
 }
 
-/** The header identity label: initials form of `name`, or the email
- * local-part when `name` is null/empty. Never returns an empty string or
- * the word 'undefined' given a non-empty email. */
-export function identityLabel(name: string | null | undefined, email: string): string {
+/** The header identity label. Per DEC-369, the design sources differ
+ * deliberately by role: reviewers get their full name ("Sam Whitfield" ->
+ * "SAM WHITFIELD"), everybody else gets the organizer initials form
+ * ("Jordan Alvarez" -> "JORDAN A."). Falls back to the email local-part
+ * when `name` is null/empty, for every role. Never returns an empty
+ * string or the word 'undefined' given a non-empty email. */
+export function identityLabel(
+  name: string | null | undefined,
+  email: string,
+  role: 'organizer' | 'reviewer' | 'speaker',
+): string {
   const trimmed = name?.trim();
-  if (trimmed) return initialsForm(trimmed);
-  return emailLocalPart(email);
+  if (!trimmed) return emailLocalPart(email);
+  if (role === 'reviewer') return trimmed.replace(/\s+/g, ' ').toUpperCase();
+  return initialsForm(trimmed);
 }
