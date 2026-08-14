@@ -19,36 +19,42 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   GUESSABLE URL 404 DEAD END; SUB-APP onError SWALLOWS PARENT'S MANNERS;
   WIDTH BEATS MAX-WIDTH, 700/900; no colour literal in surface CSS.
 - FINDINGS w16-30 (heavily compacted, many items re-verified closed each
-  wave; do NOT re-file, see decisions/ git history). Shapes: SCAN BINDS
-  ONE CALL SHAPE MISSES SIBLING; GUARD THAT NARROWS < NONE; MINT !=
-  DELIVERY; CATCH RETURNING A DEFAULT IS NOT A GUARD; MIDDLEWARE SCOPE IS
+  wave; do NOT re-file, see decisions/ git history). Shapes: SCAN BINDS ONE
+  CALL SHAPE MISSES SIBLING; GUARD THAT NARROWS < NONE; MINT != DELIVERY;
+  CATCH RETURNING A DEFAULT IS NOT A GUARD; MIDDLEWARE SCOPE IS
   REGISTRATION ORDER; A REVIEW LENS READS A SNAPSHOT NOT THE TREE; A
   CLOSURE PROVEN AT THE REPO IS NOT PROVEN AT THE ROUTE; A LIMITER THAT
   PEEKS ISN'T ONE UNDER CONCURRENCY; AN ALL-OR-NOTHING BLOCK IS A DESIGN
-  DECISION NOT A CONSTRAINT; A DECISION'S OWN DOCSTRING NAMING
-  "OUTSTANDING WORK" IS THE BEST OPEN-ITEM INDEX; ATOMIC ADMISSION+REFUND
-  IS THE ONLY FAILURES-ONLY LIMITER SHAPE; A CAP CHECKED AFTER THE BUFFER
-  IS NOT A CAP -- gate ahead of the FIRST body reader; A BULK ID ARRAY IS
-  A SET OR IT IS A DOUBLE-SEND; A BOUND ON THE WRITE SIDE IS NOT A BOUND
-  ON THE READ SIDE (DEC-839 stored options bounded, live ?q= wasn't); A
-  SHARED COMPONENT WITH ONLY ITS OWN TEST AS CONSUMER MARKS THE SHAPE
-  NOBODY BUILT. Amendments DEC-124/958/745/653/897/793/575/657/180/949/
-  974/874.
-- FINDINGS w31. MANDATE ESSENTIALLY EXHAUSTED: ~30 further items probed at
-  the file, ALL already closed (Venue label, criterion share column,
-  session-card snippet+Show more, task instructions, import Match-the-
-  columns, weighted-score caption, embed .ics format, /dev/mailbox
-  DEV_MODE gating, public visibility gates, agenda optimistic rollback,
-  perf-smoke endpoints, seed fixtures, speaker+content detail routes,
-  password reset, ResponseModal Reopen, pipeline fit/age, filter rules).
-  Do NOT re-file from eval-findings.md without opening the file first.
-  TAKEN (verified open): read-side filter strings unbounded (parseListQuery
-  / parseContactListQuery / ?rules=) while writes have DEC-417; email-log
-  ?status= and breaks ?day= passed to SQL unvalidated; /docs/api hand-
-  maintained with no enumerator; README claims MIT with no LICENSE file.
-  Shapes: A BOUND ON THE WRITE SIDE IS NOT A BOUND ON THE READ SIDE
-  (filters, not just ?q=); AN UNVALIDATED FILTER IS A CONFIDENT WRONG
-  ANSWER (empty 200 beats a 400 only for the attacker); A HAND-MAINTAINED
-  PUBLIC CLAIM (docs page, licence) NEEDS AN ENUMERATOR NOT TRUST; THE
-  ROUTE ENUMERATOR ALREADY EXISTS -- test/pubcache-purge-classification
-  .test.ts resolves mounts+nesting, reuse it, never re-parse.
+  DECISION NOT A CONSTRAINT; "OUTSTANDING WORK" IN A DECISION'S OWN
+  DOCSTRING IS THE BEST OPEN-ITEM INDEX; ATOMIC ADMISSION+REFUND IS THE
+  ONLY FAILURES-ONLY LIMITER SHAPE; A CAP CHECKED AFTER THE BUFFER IS NOT
+  A CAP; A BULK ID ARRAY IS A SET OR A DOUBLE-SEND; A BOUND ON THE WRITE
+  SIDE IS NOT A BOUND ON THE READ SIDE; A SHARED COMPONENT WITH ONLY ITS
+  OWN TEST AS CONSUMER MARKS THE SHAPE NOBODY BUILT. Amendments
+  DEC-124/958/745/653/897/793/575/657/180/949/974/874.
+- FINDINGS w31 (compacted; MANDATE ESSENTIALLY EXHAUSTED, ~30 items
+  re-verified closed, do NOT re-file from eval-findings.md without opening
+  it). TAKEN (verified open then): read-side filter strings unbounded
+  (parseListQuery/parseContactListQuery/?rules=) while writes have DEC-417;
+  email-log ?status=/breaks ?day= unvalidated into SQL; /docs/api
+  hand-maintained no enumerator; README claims MIT no LICENSE file. Shapes:
+  AN UNVALIDATED FILTER IS A CONFIDENT WRONG ANSWER; A HAND-MAINTAINED
+  PUBLIC CLAIM NEEDS AN ENUMERATOR NOT TRUST; reuse test/pubcache-purge
+  -classification.test.ts's resolver, never re-parse.
+- FINDINGS w32. Mandate + v2/v9 design handoff re-probed AT THE FILE: everything
+  I could test by grep is CLOSED (body-limit Content-Length gate DEC-020 w30,
+  embed option bounds + cross-event trackId, Retry-After clamp, atomic login
+  limiter, assertOwnAssignmentOr403 typed catch, portal replace-chain CNT-04,
+  conditional CFP visibility, duplicate-at-create DEC-788, .ics/xml in
+  EMBED_FORMATS, seed<->fixtures binding, CI, LICENSE, scheduled-tick
+  isolation, completed<=assigned). Do NOT re-file without opening the file.
+- THE TREE MOVES UNDER YOU MID-PLAN: parseBoundedIdArray gained its dedupe
+  between two of my own greps -- re-verify a finding IMMEDIATELY before filing.
+  TAKEN w32 (verified open): bulk-email.ts:40 discards parseBoundedIdArray's
+  RESULT then re-reads the raw body (DEC-182 w30 half-landed); DEC-725's w30
+  contact/track-rename touch is a decision with no code. Shapes: A PARSE CALL
+  WHOSE RESULT IS DISCARDED IS NOT A PARSE; AN AMENDMENT WITHOUT A CALL SITE IS
+  AN OPEN ITEM -- grep each amendment for the call sites it names; A GUARD'S
+  NAME IN A SCAN IS NOT A REFUSAL AT RUNTIME (probe was GET+anon-only 14 waves);
+  A SECOND READER BOUNDS A STAMP (submission.updated_at also orders the
+  producer worklist -- touch only when the serialized string changed).
