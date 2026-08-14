@@ -168,4 +168,39 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
     expect(bodyInput.placeholder).not.toMatch(/\{first_name\}/);
     expect(bodyInput.placeholder).toMatch(/\{speaker_name\}/);
   });
+
+  // DEC-856 (wave 1 amendment): the bulk context only resolves
+  // speaker_name/event_name/portal_link -- a template referencing anything
+  // else (e.g. {talk_title}) must be disabled in the picker, name the
+  // offending token, and offer a forward link into Comms compose with the
+  // template preselected. A fully-sendable template stays selectable.
+  it('disables an unsendable template, names its blocking token, and offers a Comms-compose forward link, while a sendable one stays selectable', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([
+        { id: 'tpl-ok', eventId: EVENT_ID, name: 'Welcome', subject: 'Hi {speaker_name}', bodyText: 'See {event_name}: {portal_link}' },
+        { id: 'tpl-bad', eventId: EVENT_ID, name: 'Acceptance', subject: 'Congrats on {talk_title}', bodyText: 'Hi {speaker_name}' },
+      ]),
+    });
+
+    render(<BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} onClose={() => {}} />);
+
+    const select = (await screen.findByLabelText(/Template/)) as HTMLSelectElement;
+    const okOption = within(select).getByRole('option', { name: 'Welcome' }) as HTMLOptionElement;
+    expect(okOption.disabled).toBe(false);
+
+    const badOption = within(select).getByRole('option', { name: /Acceptance/ }) as HTMLOptionElement;
+    expect(badOption.disabled).toBe(true);
+    expect(badOption.textContent).toContain('{talk_title}');
+
+    const forwardLink = screen.getByRole('link', { name: /Use in Comms compose/ });
+    expect(forwardLink).toHaveAttribute('href', '/admin/comms?tab=compose&template=tpl-bad');
+
+    // The sendable template is still usable end to end: selecting it fills
+    // subject/body.
+    fireEvent.change(select, { target: { value: 'tpl-ok' } });
+    const subjectInput = screen.getByLabelText('Subject') as HTMLInputElement;
+    await waitFor(() => {
+      expect(subjectInput.value).toBe('Hi {speaker_name}');
+    });
+  });
 });
