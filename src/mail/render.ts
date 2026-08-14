@@ -2,6 +2,11 @@
 // server-side rendered from an explicit whitelist. Fail loudly on any
 // placeholder absent from vars — no silent blanks in emails to real speakers.
 
+// DEC-037: outbound email HTML must never embed raw user/merge-field content.
+// escapeHtml (owned by src/lib/html-escape.ts) / textToHtml are the only
+// sanctioned path from plain text to HTML.
+import { escapeHtml } from "../lib/html-escape";
+
 export const MERGE_FIELDS = [
   "speaker_name",
   "talk_title",
@@ -148,17 +153,6 @@ export function renderTemplate(template: string, vars: Record<string, string>): 
     }
     return vars[canonical];
   });
-}
-
-// DEC-037: outbound email HTML must never embed raw user/merge-field content.
-// escapeHtml/textToHtml are the only sanctioned path from plain text to HTML.
-export function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 export function textToHtml(text: string): string {

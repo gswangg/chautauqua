@@ -13,14 +13,7 @@
 //
 // Web APIs only (DEC-002) — no node:/cloudflare: imports (pure-core rule).
 
-function escapeHtml(src: string): string {
-  return src
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
+import { escapeHtml } from "./html-escape";
 
 /** Allow-listed link schemes: only http/https — javascript:, data:, and every
  * other scheme are rejected and rendered as plain (escaped) text instead of

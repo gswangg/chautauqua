@@ -5,6 +5,7 @@
 
 import type { Context, Hono } from "hono";
 import type { AppEnv } from "./env";
+import { escapeHtml } from "../lib/html-escape";
 
 // DEC-841: the one place the "/api/v1 vs everything else" rule lives. Both
 // the notFound handler (not-found.tsx) and the onError handler below
@@ -201,18 +202,9 @@ export async function readJsonBody(c: Context<AppEnv>): Promise<Record<string, u
 // the JSON envelope would have used; message is the visible text; 'Go back'
 // links to the referring path (same-origin only) or '/'.
 function renderHtmlError(message: string, referer: string | undefined, requestUrl: string): string {
-  const safeMessage = escapeHtmlText(message);
+  const safeMessage = escapeHtml(message);
   const backHref = safeReferrerPath(referer, requestUrl);
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Error</title></head><body><p role="alert">${safeMessage}</p><p><a href="${backHref}">Go back</a></p></body></html>`;
-}
-
-function escapeHtmlText(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 // Only a same-origin path is ever used as the back link -- an absolute or
