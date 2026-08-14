@@ -579,6 +579,10 @@ describe('SessionList: status cell renders the DEC-881 worklist label', () => {
 
     const row = screen.getByText('A Talk About Testing').closest('tr');
     expect(row).toHaveTextContent('Re-uploaded');
+    // DEC-825 amendment (wave 72): weight carries the state, never colour --
+    // 'Re-uploaded' is bold ink (chq-flag, no muted class), the same
+    // emphasis 'Changes requested' already had.
+    expect(screen.getByText('Re-uploaded')).not.toHaveClass('chq-content-status-muted');
   });
 
   it("renders 'Approved' (never 'Re-uploaded') for an approved row even when reuploaded is true", () => {
@@ -628,6 +632,9 @@ describe('SessionList: status cell renders the DEC-881 worklist label', () => {
 
     const row = screen.getByText('A Talk About Testing').closest('tr');
     expect(row).toHaveTextContent('Not reviewed');
+    // DEC-825 amendment (wave 72): 'Not reviewed' is muted -- nothing has
+    // happened yet.
+    expect(screen.getByText('Not reviewed')).toHaveClass('chq-content-status-muted');
   });
 });
 

@@ -762,6 +762,31 @@ describe('ContentApp "Approve N ready" title-row action (w42-c/DEC-274)', () => 
     });
     expect(screen.queryByText('Unapproved sessions stay off the public site.')).not.toBeInTheDocument();
   });
+
+  // DEC-825 amendment (wave 72): capability wins, prominence loses -- the
+  // filled primary leaves the title row (chq-content-summary-actions) and
+  // becomes a section action on the worklist's own rule, but stays fully
+  // reachable with its confirm intact.
+  it('does not render "Approve N ready" in the title row -- it is reachable on the worklist section rule instead', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: twoUnapprovedEnvelope(),
+    });
+
+    renderContentApp();
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'All accepted sessions' }));
+    await screen.findByText('Talk One');
+
+    const titleRow = document.querySelector('.chq-content-summary-actions');
+    expect(titleRow).not.toBeNull();
+    expect(within(titleRow as HTMLElement).queryByRole('button', { name: /^Approve \d+ ready$/ })).not.toBeInTheDocument();
+
+    const button = screen.getByRole('button', { name: 'Approve 2 ready' });
+    expect(titleRow?.contains(button)).toBe(false);
+
+    fireEvent.click(button);
+    expect(await screen.findByText('Unapproved sessions stay off the public site.')).toBeInTheDocument();
+  });
 });
 
 describe('ContentApp worklist tab (DEC-825): ?tab= round-trips through the new vocabulary', () => {

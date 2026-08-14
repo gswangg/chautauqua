@@ -62,12 +62,23 @@
   color: var(--chq-ink);
 }
 
-/* Content-status flag: changes_requested stays bold ink ("needs a
-   decision" — type, never colour, per DEC-367); pending/approved sink to
-   muted weight. */
+/* Content-status flag: 'Changes requested' and 'Re-uploaded' both stay bold
+   ink ("something needs you" — type, never colour, per DEC-367/DEC-730,
+   DEC-825 amendment wave 72); 'Approved' and 'Not reviewed' sink to muted
+   weight. worklistStatusLabel (worklist.ts) is the one vocabulary that
+   decides the text; SessionList.tsx derives this weight from that same
+   label, never a second predicate. */
 .chq-content-status-muted {
   color: var(--chq-muted);
   font-weight: 600;
+}
+
+/* DEC-825 amendment (wave 72): the worklist's own section rule -- "Approve
+   N ready" moved off the title row onto here as a section action (house
+   link-on-the-rule treatment via the shared .chq-section-head/-label/
+   -action classes from styles.css; no overrides needed). */
+.chq-content-worklist-head {
+  margin-bottom: 2px;
 }
 
 .chq-content-actions {
@@ -717,12 +728,3 @@
   font-weight: 600;
 }
 
-/* ---------------------------------------------------------------------- */
-/* w42-c: title-row "Approve N ready" action (DEC-274 set-based content    */
-/* approval) -- no override needed, reuses .chq-btn-primary sizing; kept   */
-/* as its own class purely so this action is grep-addressable.             */
-/* ---------------------------------------------------------------------- */
-
-.chq-content-approve-ready-btn {
-  white-space: nowrap;
-}
