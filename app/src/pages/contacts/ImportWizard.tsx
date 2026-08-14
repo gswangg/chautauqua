@@ -379,7 +379,17 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
 
       {plan && !result && (
         <div className="chq-contacts-import-review">
-          <h3 className="chq-section-label">Review before import</h3>
+          {/* B5 (DEC-663 amendment, w27-i): the heading names the two counts
+              the dedupe outcome earns -- created/updated straight from the
+              dry run's plan, not a re-derivation from the rows array --
+              instead of the generic "Review before import" that named
+              nothing the organizer didn't already know. 'new'/'updated' are
+              invariant adjectives (never "1 news"), so countOf is called
+              with an explicit pluralForm equal to the singular rather than
+              inventing a second helper. */}
+          <h3 className="chq-section-label">
+            {countOf(plan.created, 'new', 'new')} · {countOf(plan.updated, 'updated', 'updated')}
+          </h3>
           <table className="chq-table chq-contacts-import-review-table">
             <thead>
               <tr>
@@ -390,7 +400,13 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
               </tr>
             </thead>
             <tbody>
-              {plan.rows.map((row) => {
+              {/* B5: update rows -- the only rows where something is lost --
+                  come first. Array.prototype.sort is stable, so within each
+                  group (update vs. everything else) rows keep the dry run's
+                  original line order. */}
+              {[...plan.rows]
+                .sort((a, b) => (a.action === 'update' ? 0 : 1) - (b.action === 'update' ? 0 : 1))
+                .map((row) => {
                 const updateReason = row.action === 'update' ? row.reason : undefined;
                 const decorated =
                   (row.overwrites?.length ?? 0) > 0 || (row.possibleDuplicates?.length ?? 0) > 0 || Boolean(updateReason);
@@ -405,7 +421,9 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
                           {updateReason && <li>{updateReason}</li>}
                           {(row.overwrites ?? []).map((ow, i) => (
                             <li key={`ow-${i}`}>
-                              {ow.field}: "{ow.from}" → "{ow.to}"
+                              <strong>{ow.field}</strong>:{' '}
+                              <s className="chq-contacts-import-overwrite-old">{ow.from}</s>{' '}
+                              <span className="chq-contacts-import-overwrite-new">{ow.to}</span>
                             </li>
                           ))}
                           {(row.possibleDuplicates ?? []).map((dup) => (
@@ -434,6 +452,12 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
           </table>
 
           <p className="chq-contacts-pipeline-caption">{countOf(skipLines.size, 'row')} marked to skip.</p>
+
+          {/* B5: an irreversibility line, immediately above the commit
+              action -- ModalFrame renders `children` then the actions div
+              right after (see ModalFrame.tsx), so this is the last thing in
+              the review step's own content. */}
+          <p className="chq-contacts-import-irreversible">A bulk import cannot be undone.</p>
         </div>
       )}
 

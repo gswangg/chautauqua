@@ -833,6 +833,18 @@
   color: var(--chq-muted);
 }
 
+/* B5 (DEC-663 amendment, w27-i): an overwrite's old value reads struck
+   through, the new value plain -- the pair says what is lost and what
+   replaces it without a quoted "field: from -> to" sentence. */
+.chq-contacts-import-overwrite-old {
+  text-decoration: line-through;
+  color: var(--chq-muted);
+}
+
+.chq-contacts-import-overwrite-new {
+  color: var(--chq-ink);
+}
+
 .chq-contacts-import-summary {
   display: flex;
   flex-direction: column;

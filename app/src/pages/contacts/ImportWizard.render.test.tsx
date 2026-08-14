@@ -107,7 +107,8 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
     const fetchMock = mockApi({ 'POST /api/v1/contacts/import': PLAN });
     await pasteCsvAndPreview();
 
-    await screen.findByText('Review before import');
+    // B5: the heading names the two counts the dedupe outcome earns.
+    await screen.findByText('1 new · 1 updated');
 
     const postCall = fetchMock.mock.calls.find(([input]) => (typeof input === 'string' ? input : input.toString()).includes('/contacts/import'));
     expect(postCall).toBeDefined();
@@ -123,7 +124,9 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
     expect(janeRow).toBeDefined();
 
     expect(within(johnRow!).getByText(/Update/)).toBeInTheDocument();
-    expect(within(johnRow!).getByText('company: "OldCo" → "Acme"')).toBeInTheDocument();
+    expect(within(johnRow!).getByText('OldCo')).toBeInTheDocument();
+    expect(within(johnRow!).getByText('OldCo').tagName).toBe('S');
+    expect(within(johnRow!).getByText('Acme', { selector: '.chq-contacts-import-overwrite-new' })).toBeInTheDocument();
     expect(within(johnRow!).getByRole('checkbox', { name: 'Skip line 2' })).not.toBeChecked();
 
     expect(within(janeRow!).getByText('Create')).toBeInTheDocument();
@@ -144,7 +147,7 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
     };
     mockApi({ 'POST /api/v1/contacts/import': plainPlan });
     await pasteCsvAndPreview();
-    await screen.findByText('Review before import');
+    await screen.findByText('2 new · 0 updated');
 
     expect(screen.getByRole('checkbox', { name: 'Skip line 2' })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: 'Skip line 3' })).toBeInTheDocument();
@@ -173,7 +176,7 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
     fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
     fireEvent.click(await screen.findByRole('button', { name: 'Import 2 rows' }));
 
-    await screen.findByText('Review before import');
+    await screen.findByText('1 new · 0 updated');
     expect(screen.getByText(/Jon Doe \(jon\.doe@old\.example\.com\)/)).toBeInTheDocument();
     expect(screen.getByText(/different email address/)).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: 'Skip line 2' })).toBeInTheDocument();
@@ -200,7 +203,7 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
     };
     mockApi({ 'POST /api/v1/contacts/import': collapsePlan });
     await pasteCsvAndPreview();
-    await screen.findByText('Review before import');
+    await screen.findByText('1 new · 1 updated');
 
     const rows = screen.getAllByRole('row');
     const secondRow = rows.find((r) => within(r).queryByText('same email as an earlier row in this file'));
@@ -222,7 +225,7 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
     render(<ImportWizard onClose={() => {}} onImported={() => (imported = true)} />);
     fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
     fireEvent.click(await screen.findByRole('button', { name: 'Import 2 rows' }));
-    await screen.findByText('Review before import');
+    await screen.findByText('1 new · 1 updated');
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Skip line 2' }));
     const commitBtn = await screen.findByRole('button', { name: 'Import 1 row' });
@@ -250,6 +253,83 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
   });
 });
 
+// B5 (DEC-663 amendment, w27-i): the review step says what the dedupe
+// outcome earns (two counts, not a generic heading), orders UPDATE rows --
+// the only rows where something is lost -- first, shows each overwrite as
+// struck-old/plain-new rather than a quoted sentence, and names the
+// irreversibility of the commit immediately above the button that fires it.
+describe('ImportWizard: B5 review step (DEC-663 amendment)', () => {
+  const MIXED_PLAN: ImportPlan = {
+    rows: [
+      { line: 2, email: 'jane@example.com', action: 'create' },
+      {
+        line: 3,
+        email: 'john@example.com',
+        action: 'update',
+        contactId: 'ct-john',
+        overwrites: [
+          { field: 'company', from: 'OldCo', to: 'Acme' },
+          { field: 'title', from: 'Engineer', to: 'Staff Engineer' },
+        ],
+      },
+    ],
+    created: 205,
+    updated: 9,
+    skipped: 0,
+  };
+
+  it('the heading renders both counts for a mixed plan', async () => {
+    mockApi({ 'POST /api/v1/contacts/import': MIXED_PLAN });
+    await pasteCsvAndPreview();
+    expect(await screen.findByText('205 new · 9 updated')).toBeInTheDocument();
+  });
+
+  it('a row with two overwrites renders both old values struck and both new values plain', async () => {
+    mockApi({ 'POST /api/v1/contacts/import': MIXED_PLAN });
+    await pasteCsvAndPreview();
+    await screen.findByText('205 new · 9 updated');
+
+    const rows = screen.getAllByRole('row');
+    const johnRow = rows.find((r) => within(r).queryByText('john@example.com'));
+    expect(johnRow).toBeDefined();
+
+    const oldValues = within(johnRow!).getAllByText(/OldCo|Engineer$/, { selector: '.chq-contacts-import-overwrite-old' });
+    expect(oldValues.map((el) => el.textContent)).toEqual(['OldCo', 'Engineer']);
+    oldValues.forEach((el) => expect(el.tagName).toBe('S'));
+
+    const newValues = within(johnRow!).getAllByText(/Acme|Staff Engineer/, { selector: '.chq-contacts-import-overwrite-new' });
+    expect(newValues.map((el) => el.textContent)).toEqual(['Acme', 'Staff Engineer']);
+  });
+
+  it('update rows precede create rows in document order', async () => {
+    mockApi({ 'POST /api/v1/contacts/import': MIXED_PLAN });
+    await pasteCsvAndPreview();
+    await screen.findByText('205 new · 9 updated');
+
+    const rows = screen.getAllByRole('row');
+    // rows[0] is the header row; the plan lists the create row (jane) before
+    // the update row (john), but the table must render update first.
+    const emails = rows.slice(1).map((r) => (within(r).queryByText('john@example.com') ? 'john' : 'jane'));
+    expect(emails).toEqual(['john', 'jane']);
+  });
+
+  it('the irreversibility line renders once, above the commit control', async () => {
+    mockApi({ 'POST /api/v1/contacts/import': MIXED_PLAN });
+    await pasteCsvAndPreview();
+    await screen.findByText('205 new · 9 updated');
+
+    const lines = screen.getAllByText('A bulk import cannot be undone.');
+    expect(lines).toHaveLength(1);
+    const line = lines[0]!;
+
+    const commitBtn = screen.getByRole('button', { name: /Import \d+ rows?/ });
+    // DOCUMENT_POSITION_FOLLOWING means the irreversibility line comes
+    // before the commit button in document order.
+    // eslint-disable-next-line no-bitwise
+    expect(line.compareDocumentPosition(commitBtn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
 // DEC-810: when the import is scoped to an event, the wizard collects a
 // required session title for the batch (in the same step the event is
 // already chosen), never lets the server invent an 'Invited: <name>' title.
@@ -274,7 +354,7 @@ describe('ImportWizard: DEC-810 session title required when scoped to an event',
     expect(preview).not.toBeDisabled();
 
     fireEvent.click(preview);
-    await screen.findByText('Review before import');
+    await screen.findByText('1 new · 1 updated');
 
     const postCall = fetchMock.mock.calls.find(([input]) =>
       (typeof input === 'string' ? input : input.toString()).includes('/contacts/import'),
