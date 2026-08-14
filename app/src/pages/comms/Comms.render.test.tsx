@@ -163,6 +163,62 @@ describe('CommsPage render smoke', () => {
   });
 });
 
+// DEC-905 (wave-61 amendment): the head's "N sent in the last 7 days" reads
+// a `status=sent`-scoped total, plus a second `status=failed`-scoped total
+// rendered only when non-zero -- neither figure comes from the unfiltered
+// envelope, which would count a failed send as if it went out. mockApi
+// strips query strings before matching, so these tests stub fetch directly
+// to answer the sent/failed requests differently by their `status` param.
+describe('CommsPage head "N sent in the last 7 days" counts what it claims (DEC-905)', () => {
+  function stubEmailLogFetch(counts: { sent: number; failed: number }) {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const rawUrl = typeof input === 'string' ? input : input.toString();
+        const url = new URL(rawUrl, 'http://localhost');
+        if (url.pathname === `/api/v1/events/${EVENT_ID}/submissions`) {
+          return new Response(JSON.stringify({ items: [], total: 0, page: 1, perPage: 20 }), { status: 200 });
+        }
+        if (url.pathname === `/api/v1/events/${EVENT_ID}/templates`) {
+          return new Response(JSON.stringify({ items: [], total: 0, page: 1, perPage: 20 }), { status: 200 });
+        }
+        if (url.pathname === `/api/v1/events/${EVENT_ID}/email-log`) {
+          const status = url.searchParams.get('status');
+          const total = status === 'sent' ? counts.sent : status === 'failed' ? counts.failed : 0;
+          return new Response(JSON.stringify({ items: [], total, page: 1, perPage: 20 }), { status: 200 });
+        }
+        throw new Error(`unstubbed fetch: ${rawUrl}`);
+      }),
+    );
+  }
+
+  it('renders "2 sent in the last 7 days · 3 failed" for a 2 sent + 3 failed window, not "5 sent"', async () => {
+    stubEmailLogFetch({ sent: 2, failed: 3 });
+
+    render(
+      <MemoryRouter>
+        <CommsPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('2 sent in the last 7 days · 3 failed', { exact: false })).toBeInTheDocument();
+    expect(screen.queryByText('5 sent', { exact: false })).not.toBeInTheDocument();
+  });
+
+  it('renders no failed clause when the window has zero failures', async () => {
+    stubEmailLogFetch({ sent: 4, failed: 0 });
+
+    render(
+      <MemoryRouter>
+        <CommsPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('4 sent in the last 7 days', { exact: false })).toBeInTheDocument();
+    expect(screen.queryByText(/failed/)).not.toBeInTheDocument();
+  });
+});
+
 // DEC-710: the Compose/Templates/History strip reads and writes ?tab= via
 // useSearchParams instead of component state, so the tab is bookmarkable and
 // participates in back/forward.

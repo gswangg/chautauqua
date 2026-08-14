@@ -55,7 +55,20 @@ emailLogRoutes.get("/api/v1/events/:eventId/email-log", requireOrganizer, async 
   // one batch's recipients (flat shape, same as the default), keeping
   // contactId's existing per-contact filter behavior intact alongside it.
   if (c.req.query("groupBy") === "batch") {
-    const { items, total } = await listEmailBatches(c.var.db, { eventId, q, page, perPage });
+    // DEC-905: batch grain has no per-recipient status/contact, and no
+    // single-batch drill-down (that's ?batchId= on the flat shape below) --
+    // silently dropping those filters would answer a narrower question than
+    // the one asked, so name the parameter batch grain can't express.
+    if (status !== undefined) {
+      throw new ApiError("invalid", "status cannot be combined with groupBy=batch", { groupBy: "status" });
+    }
+    if (contactId !== undefined) {
+      throw new ApiError("invalid", "contactId cannot be combined with groupBy=batch", { groupBy: "contactId" });
+    }
+    if (batchId !== undefined) {
+      throw new ApiError("invalid", "batchId cannot be combined with groupBy=batch", { groupBy: "batchId" });
+    }
+    const { items, total } = await listEmailBatches(c.var.db, { eventId, q, since, page, perPage });
     return c.json({ items, total, page, perPage });
   }
 

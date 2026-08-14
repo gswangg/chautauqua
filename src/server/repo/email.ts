@@ -247,6 +247,11 @@ export interface EmailBatchRow {
 export interface EmailBatchListParams {
   eventId: string;
   q?: string;
+  /** DEC-905: epoch-ms lower bound (inclusive) on sentAt, applied to BOTH
+   * the page query and the total-count query so the envelope's `total` and
+   * its `items` describe the same window (a batch is windowed on its own
+   * MAX(sentAt), matching the row-level `since` filter listEmailLog uses). */
+  since?: number;
   page: number;
   perPage: number;
 }
@@ -256,7 +261,7 @@ export interface EmailBatchListResult {
   total: number;
 }
 
-function batchWhere(params: Pick<EmailBatchListParams, "eventId" | "q">) {
+function batchWhere(params: Pick<EmailBatchListParams, "eventId" | "q" | "since">) {
   const conditions: (SQL<unknown> | undefined)[] = [eq(schema.emailLog.eventId, params.eventId)];
   if (params.q && params.q.trim() !== "") {
     const like = likeContains(params.q.trim());
@@ -266,6 +271,9 @@ function batchWhere(params: Pick<EmailBatchListParams, "eventId" | "q">) {
         sql`${schema.emailLog.toEmail} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
       ),
     );
+  }
+  if (params.since !== undefined) {
+    conditions.push(gte(schema.emailLog.sentAt, new Date(params.since)));
   }
   return and(...conditions);
 }

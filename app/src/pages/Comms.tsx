@@ -83,19 +83,25 @@ export function CommsPage() {
   }, [eventId, mutationVersion]);
 
   // DEC-905: the head's "N sent in the last 7 days" reads its OWN request's
-  // envelope total under the new `since` filter -- never a sum over a page
-  // of batches, which would go wrong the moment the batch list is paginated
-  // or capped.
+  // envelope total under the new `since` filter, scoped to `status=sent` --
+  // never a sum over a page of batches, which would go wrong the moment the
+  // batch list is paginated or capped, and never the unfiltered envelope
+  // total, which would count failed sends as if they went out.
   const [sentLast7Days, setSentLast7Days] = useState(0);
+  const [failedLast7Days, setFailedLast7Days] = useState(0);
   const [sentLast7DaysLoaded, setSentLast7DaysLoaded] = useState(false);
   useEffect(() => {
     if (!eventId) return;
     let cancelled = false;
     const since = Date.now() - SEVEN_DAYS_MS;
-    apiList<EmailLogRow>(`/events/${eventId}/email-log?since=${since}&perPage=1`)
-      .then((res) => {
+    Promise.all([
+      apiList<EmailLogRow>(`/events/${eventId}/email-log?since=${since}&status=sent&perPage=1`),
+      apiList<EmailLogRow>(`/events/${eventId}/email-log?since=${since}&status=failed&perPage=1`),
+    ])
+      .then(([sentRes, failedRes]) => {
         if (!cancelled) {
-          setSentLast7Days(res.total);
+          setSentLast7Days(sentRes.total);
+          setFailedLast7Days(failedRes.total);
           setSentLast7DaysLoaded(true);
         }
       })
@@ -153,6 +159,7 @@ export function CommsPage() {
             {sentLast7DaysLoaded && batchesLoaded && (
               <p className="chq-comms-head-subtitle">
                 {sentLast7Days} sent in the last 7 days
+                {failedLast7Days > 0 ? ` · ${failedLast7Days} failed` : ''}
                 {recentBatches[0] ? ` · last ${formatDate(recentBatches[0].sentAt)}` : ''}
               </p>
             )}
