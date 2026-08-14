@@ -38,11 +38,13 @@ import {
   AUTH_RATE_LIMIT_MAX,
   RATE_LIMIT_ERROR,
 } from "./auth-helpers";
-import { DEC_994, DEC_014, DEC_180 } from "../decisions";
+import { DEC_994, DEC_014, DEC_180, DEC_004 } from "../decisions";
+import { executionCtxOf } from "../server/execution-ctx";
 
 void DEC_994;
 void DEC_014;
 void DEC_180;
+void DEC_004;
 
 // -----------------------------------------------------------------------
 // Password reset (DEC-014 wave-25 amendment / DEC-154 / DEC-180 / DEC-994).
@@ -117,60 +119,84 @@ resetRoutes.post("/forgot", csrfForm, async (c) => {
   // a DEC-004 enumeration oracle.
   const origin = resolveBaseUrl(c);
 
-  if (user) {
-    const kv = c.env.KV as unknown as KVStore;
-    const resetToken = await createResetToken(kv, user.id);
-    const resetUrl = `${origin}/reset/${resetToken}`;
+  // DEC-004 (wave-44 amendment): the same TIMING oracle DEC-004's wave-58
+  // amendment closed at /login (the dummy-hash equalisation) exists here —
+  // the known-address branch below awaits a KV write, a D1 read and a
+  // mailer send (a provider HTTP call in production) while the unknown
+  // branch pays one hashResetToken, so the WALL CLOCK (not the response
+  // bytes, already byte-identical per the wave-27 amendment above) leaks
+  // account existence. `branchWork` bundles the entire branch-dependent
+  // side effect so it can be scheduled identically on both branches:
+  // handed to `ctx.waitUntil` when an ExecutionContext is available (the
+  // response returns before either branch's IO happens, so neither
+  // branch's wall-clock cost is observable), and `await`ed inline only
+  // when no ExecutionContext exists (vitest's node environment, mirroring
+  // servePublicGet's fallback in src/server/pubcache.ts) — so every
+  // direct-call test (test/password-reset-flow.test.ts included) still
+  // observes the minted token and the sent mail with no edit.
+  async function branchWork(): Promise<void> {
+    if (user) {
+      const kv = c.env.KV as unknown as KVStore;
+      const resetToken = await createResetToken(kv, user.id);
+      const resetUrl = `${origin}/reset/${resetToken}`;
 
-    // email_log.event_id is NOT NULL (DEC-006); a password reset isn't
-    // event-scoped, so — mirroring POST /api/v1/users' welcome-email
-    // anchoring (src/routes/api/users.ts) — the send is logged against
-    // the org's first event when one exists. An org with zero events
-    // still mints and stores the token (the on-screen response is
-    // identical either way) but has no event to log the send against, so
-    // sending is skipped. No design doc covers this gap; narrowest
-    // reading, flagged for the scribe.
-    const orgEvents = await listEventsForOrg(db, user.orgId);
-    const anchorEvent = orgEvents[0];
-    if (!anchorEvent) {
-      // Mint without delivery (task-w34-c): the token is live but there is
-      // no event to log the send against, so no email goes out. This must
-      // stay silent on the wire — the response below is byte-identical to
-      // every other branch — but a mint with nobody able to receive it is
-      // worth a loud server-side signal.
-      console.error(`password reset minted with no send: no events for org (userId '${user.id}')`);
-    }
-    if (anchorEvent) {
-      try {
-        const mailer = makeMailer(db, c.env);
-        const text = resetEmailText({ resetUrl, eventName: anchorEvent.name });
-        const html = renderEmailHtml(text, {
-          eventName: anchorEvent.name,
-          reason: "you requested a password reset for your account.",
-          cta: { label: "Set a new password", href: resetUrl },
-        });
-        await mailer.send({
-          to: { email: user.email, name: user.email },
-          subject: "Set a new password",
-          text,
-          html,
-          eventId: anchorEvent.id,
-          contactId: user.contactId ?? null,
-        });
-      } catch (err) {
-        console.error("password reset email failed (token still minted):", err);
+      // email_log.event_id is NOT NULL (DEC-006); a password reset isn't
+      // event-scoped, so — mirroring POST /api/v1/users' welcome-email
+      // anchoring (src/routes/api/users.ts) — the send is logged against
+      // the org's first event when one exists. An org with zero events
+      // still mints and stores the token (the on-screen response is
+      // identical either way) but has no event to log the send against, so
+      // sending is skipped. No design doc covers this gap; narrowest
+      // reading, flagged for the scribe.
+      const orgEvents = await listEventsForOrg(db, user.orgId);
+      const anchorEvent = orgEvents[0];
+      if (!anchorEvent) {
+        // Mint without delivery (task-w34-c): the token is live but there is
+        // no event to log the send against, so no email goes out. This must
+        // stay silent on the wire — the response below is byte-identical to
+        // every other branch — but a mint with nobody able to receive it is
+        // worth a loud server-side signal.
+        console.error(`password reset minted with no send: no events for org (userId '${user.id}')`);
       }
+      if (anchorEvent) {
+        try {
+          const mailer = makeMailer(db, c.env);
+          const text = resetEmailText({ resetUrl, eventName: anchorEvent.name });
+          const html = renderEmailHtml(text, {
+            eventName: anchorEvent.name,
+            reason: "you requested a password reset for your account.",
+            cta: { label: "Set a new password", href: resetUrl },
+          });
+          await mailer.send({
+            to: { email: user.email, name: user.email },
+            subject: "Set a new password",
+            text,
+            html,
+            eventId: anchorEvent.id,
+            contactId: user.contactId ?? null,
+          });
+        } catch (err) {
+          console.error("password reset email failed (token still minted):", err);
+        }
+      }
+      // No resetScopedLimit here — the atomic spend above already counted
+      // this request against the budget, and (per DEC-180 wave-29) /forgot
+      // never refunds, existing account or not, so the two branches stay
+      // indistinguishable from the budget's point of view.
+    } else {
+      // No account: burn a comparable SHA-256 cost to the mint path above
+      // (DEC-004-style — never short-circuit past the work a real branch
+      // would do). The budget was already spent atomically at admission
+      // above, before this branch ran — nothing further to record.
+      await hashResetToken(newResetToken());
     }
-    // No resetScopedLimit here — the atomic spend above already counted
-    // this request against the budget, and (per DEC-180 wave-29) /forgot
-    // never refunds, existing account or not, so the two branches stay
-    // indistinguishable from the budget's point of view.
+  }
+
+  const ctx = executionCtxOf(c);
+  if (ctx) {
+    ctx.waitUntil(branchWork());
   } else {
-    // No account: burn a comparable SHA-256 cost to the mint path above
-    // (DEC-004-style — never short-circuit past the work a real branch
-    // would do). The budget was already spent atomically at admission
-    // above, before this branch ran — nothing further to record.
-    await hashResetToken(newResetToken());
+    await branchWork();
   }
 
   return c.html(<CheckEmailPage />);
