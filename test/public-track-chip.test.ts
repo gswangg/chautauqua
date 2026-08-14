@@ -7,10 +7,9 @@
 // longer models "text on an arbitrary accent fill".
 
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { TrackChips } from "../src/routes/public/cards";
 import { AgendaContent, ScheduleContent } from "../src/routes/public/agenda";
+import { PUBLIC_CSS } from "../src/routes/public/public.css";
 import type { PublicAgendaItem, PublicEvent, PublicTrack } from "../src/server/repo/public";
 
 function track(color: string | null): PublicTrack {
@@ -110,7 +109,7 @@ describe("FormatChip on /e/:slug/agenda and /e/:slug/schedule (EMB mandate 40e)"
 
 describe("public.css.ts: chip rule no longer references --chq-on-brand", () => {
   it("the .chq-pub-track-chip rule does not use --chq-on-brand", () => {
-    const css = readFileSync(join(__dirname, "../src/routes/public/public.css.ts"), "utf8");
+    const css = PUBLIC_CSS;
     const ruleStart = css.indexOf(".chq-pub-track-chip {");
     expect(ruleStart).toBeGreaterThan(-1);
     const ruleEnd = css.indexOf("}", ruleStart);

@@ -70,30 +70,86 @@ const CSS_TS_FILES = allFiles(SRC, ".css.ts");
 const THEME_FILE = join(SRC, "views", "theme.ts");
 const SSR_STYLE_MODULES = [...CSS_TS_FILES, THEME_FILE].sort();
 
+/** Non-`.css.ts` supporting modules that exist only to be imported by a
+ * `*.css.ts` fragment (public.css.ts's contention decomposition, wave 68):
+ * css/accent-classes.ts holds ONLY the shared ACCENT_BOUND_CLASSES class-
+ * name array (DEC-838), no CSS rules of its own. Its raw text would
+ * otherwise vacuously satisfy invariant C's "used somewhere in src/**"
+ * check for those exact three class names (the same self-reference problem
+ * SSR_STYLE_MODULES is already excluded from below), so it gets the same
+ * exclusion even though it isn't itself an inlined stylesheet. */
+const NON_STYLESHEET_CSS_SOURCES = [join(SRC, "routes", "public", "css", "accent-classes.ts")];
+
 /** Strips /* ... *\/ block comments so a decision note quoting CSS-shaped
  * text is never mistaken for a real rule. */
 function stripComments(text: string): string {
   return text.replace(/\/\*[\s\S]*?\*\//g, "");
 }
 
+/** Resolves a relative import specifier (e.g. "./css/accent-classes") from
+ * `fromFile` to an on-disk path, trying the extensions a `*.css.ts`
+ * fragment or its supporting module might use. */
+function resolveImportFile(fromFile: string, relSpecifier: string): string {
+  const base = join(dirname(fromFile), relSpecifier);
+  for (const ext of [".css.ts", ".ts", ".tsx", ""]) {
+    const candidate = `${base}${ext}`;
+    try {
+      readFileSync(candidate, "utf-8");
+      return candidate;
+    } catch {
+      continue;
+    }
+  }
+  throw new Error(`cannot resolve import "${relSpecifier}" from ${fromFile}`);
+}
+
+/** Finds the array-literal items bound to `ident` -- either declared
+ * locally in `raw` (same file), or, if `ident` is imported instead (a
+ * decomposed *.css.ts fragment sharing one source array with a sibling
+ * fragment, e.g. ACCENT_BOUND_CLASSES in css/accent-classes.ts), by
+ * following the import to its source file. */
+function resolveArrayLiteral(raw: string, filePath: string, ident: string): string[] {
+  const localMatch = raw.match(new RegExp(`const\\s+${ident}\\s*=\\s*\\[([^\\]]*)\\]`));
+  if (localMatch) {
+    return [...(localMatch[1] ?? "").matchAll(/"([^"]*)"|'([^']*)'/g)].map((m) => m[1] ?? m[2] ?? "");
+  }
+  const importMatch = raw.match(new RegExp(`import\\s*\\{[^}]*\\b${ident}\\b[^}]*\\}\\s*from\\s*["']([^"']+)["']`));
+  if (!importMatch) return [];
+  const importedPath = resolveImportFile(filePath, importMatch[1] ?? "");
+  return resolveArrayLiteral(readFileSync(importedPath, "utf-8"), importedPath, ident);
+}
+
 /**
  * Extracts the exported `..._CSS` template-literal CSS text from an SSR
- * stylesheet module, and resolves any `${IDENT[N]}` interpolation (e.g.
- * public.css.ts's `${ACCENT_BOUND_CLASSES[1]}`, DEC-838) against an
- * `IDENT`-named array-literal constant declared in the same file, so an
- * interpolated selector's class name is visible to the scan just like a
- * literal one.
+ * stylesheet module, and resolves two kinds of `${...}` interpolation so an
+ * interpolated selector/fragment is visible to the scan just like a literal
+ * one:
+ *
+ *   - `${IDENT[N]}` (e.g. public.css.ts's `${ACCENT_BOUND_CLASSES[1]}`,
+ *     DEC-838) against an `IDENT`-named array-literal constant, declared
+ *     either in the same file or (css/agenda.css.ts, css/rail.css.ts)
+ *     imported from a sibling fragment module.
+ *   - bare `${IDENT}` where IDENT is an imported `..._CSS` constant (public
+ *     .css.ts's contention-decomposition fragments, wave 68: `${CHROME_CSS}
+ *     ${CARDS_CSS}${AGENDA_CSS}${RAIL_CSS}`) -- recursively resolved to
+ *     that fragment's own (already-interpolated) CSS text, so the composed
+ *     PUBLIC_CSS the scan sees matches its actual runtime value.
  */
 function extractCssText(filePath: string): string {
   const raw = readFileSync(filePath, "utf-8");
-  const cssMatch = raw.match(/export const \w+_CSS = `([\s\S]*?)\n`;/);
+  const cssMatch = raw.match(/export const \w+_CSS = `([\s\S]*?)`;/);
   if (!cssMatch) throw new Error(`no exported *_CSS template literal found in ${filePath}`);
   const css = cssMatch[1] ?? "";
-  return css.replace(/\$\{(\w+)\[(\d+)\]\}/g, (full, ident: string, idxStr: string) => {
-    const arrMatch = raw.match(new RegExp(`const\\s+${ident}\\s*=\\s*\\[([^\\]]*)\\]`));
-    if (!arrMatch) return full;
-    const items = [...(arrMatch[1] ?? "").matchAll(/"([^"]*)"|'([^']*)'/g)].map((m) => m[1] ?? m[2] ?? "");
-    return items[Number(idxStr)] ?? full;
+  return css.replace(/\$\{(\w+)(?:\[(\d+)\])?\}/g, (full, ident: string, idxStr?: string) => {
+    if (idxStr !== undefined) {
+      const items = resolveArrayLiteral(raw, filePath, ident);
+      return items[Number(idxStr)] ?? full;
+    }
+    if (!/_CSS$/.test(ident)) return full;
+    const importMatch = raw.match(new RegExp(`import\\s*\\{[^}]*\\b${ident}\\b[^}]*\\}\\s*from\\s*["']([^"']+)["']`));
+    if (!importMatch) return full;
+    const importedPath = resolveImportFile(filePath, importMatch[1] ?? "");
+    return extractCssText(importedPath);
   });
 }
 
@@ -293,7 +349,7 @@ describe("SSR stylesheet CSS token + class contract (DEC-970)", () => {
     // The stylesheet modules themselves are excluded from the "used" text
     // scan -- a selector always contains its own token, so counting that
     // occurrence as "usage" would make every rule vacuously alive.
-    const styleModuleSet = new Set(SSR_STYLE_MODULES);
+    const styleModuleSet = new Set([...SSR_STYLE_MODULES, ...NON_STYLESHEET_CSS_SOURCES]);
     const sourceFiles = [...allFiles(SRC, ".ts"), ...allFiles(SRC, ".tsx")].filter((f) => !styleModuleSet.has(f));
     const usedTokens = new Set<string>();
     for (const filePath of sourceFiles) {

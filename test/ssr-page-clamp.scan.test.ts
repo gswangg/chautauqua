@@ -54,7 +54,15 @@ function stripComments(text: string): string {
  */
 function extractCssText(filePath: string): string {
   const raw = readFileSync(filePath, "utf-8");
-  const cssMatch = raw.match(/export const \w+_CSS = `([\s\S]*?)\n`;/);
+  // Matches up to the first `` `; `` after the export (not requiring a
+  // preceding newline): public.css.ts's own literal (wave-68 contention
+  // decomposition) composes its fragments via bare `${CHROME_CSS}` etc.
+  // interpolation on one line, with no source-level newline before the
+  // closing backtick. Those fragments (src/routes/public/css/*.css.ts) are
+  // each independently enumerated and scanned in SCAN_FILES below, so
+  // public.css.ts's own (unresolved-placeholder) text contributing nothing
+  // real here doesn't create a blind spot.
+  const cssMatch = raw.match(/export const \w+_CSS = `([\s\S]*?)`;/);
   if (!cssMatch) throw new Error(`no exported *_CSS template literal found in ${filePath}`);
   return cssMatch[1] ?? "";
 }
