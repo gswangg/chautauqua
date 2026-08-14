@@ -1,6 +1,7 @@
 {
   "name": "chautauqua",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "predev": "tsx scripts/ensure-dev-vars.ts && vite build --config app/vite.config.ts",

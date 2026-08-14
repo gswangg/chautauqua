@@ -8,7 +8,7 @@ and approving session content, building the agenda, and publishing to public,
 mobile-friendly event pages — all as **one deployable unit**: a single
 Cloudflare Worker (Hono + D1/Drizzle + R2) serving the admin SPA, the
 `/api/v1` REST API, server-rendered public pages, the speaker portal, and the
-public CFP form. Licensed MIT.
+public CFP form. Licensed MIT — see [LICENSE](LICENSE).
 
 ## Live demo
 
