@@ -48,6 +48,20 @@ export function formatMinutes(minutes: number): string {
   return `${String(h24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
+/** Formats minutes-from-midnight as unpadded 24-hour 'H:MM' — the single
+ * grammar for the day grid's own left gutter rail (DEC-021 amendment,
+ * w6-f): the frame reads `9:00 / 9:30 / 10:00`, never a zero-padded
+ * `09:00`. This is the ONE formatter behind both the gutter's visible text
+ * and its aria-label, so the two can never drift into two different time
+ * grammars on the same rail. Distinct from formatMinutes above, which stays
+ * zero-padded for card times, break bands and placement toasts/aria — the
+ * gutter rail is the only surface reading the unpadded 'H:MM' form. */
+export function formatGutterTime(minutes: number): string {
+  const h24 = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${h24}:${String(m).padStart(2, '0')}`;
+}
+
 // DEC-140 side-by-side lane assignment, reimplemented locally: the SPA
 // bundle (app/src, its own tsconfig `include`/vite root) can't reach across
 // to the server's src/lib/overlap-lanes.ts pure-core module, so the same

@@ -3,7 +3,15 @@ import { useEffect, useRef } from 'react';
 import type { AgendaConflict, AgendaRoom, AgendaTrack, PlacedAgendaSession } from './types';
 import { SessionCard } from './SessionCard';
 import { clusterConflictCaption } from './ConflictChip';
-import { assignLanes, formatMinutes, gridRowEnd, minutesToGridRow, snapToGrid, totalGridRows } from './gridMath';
+import {
+  assignLanes,
+  formatGutterTime,
+  formatMinutes,
+  gridRowEnd,
+  minutesToGridRow,
+  snapToGrid,
+  totalGridRows,
+} from './gridMath';
 import { countOf } from '../../lib/plural';
 import type { ScheduleBreakRow } from './BreaksPanel';
 
@@ -39,6 +47,11 @@ interface DayGridProps {
    * (empty cell button, or clicking an already-placed card while armed). */
   onPlaceAt: (roomId: string | null, startMin: number) => void;
 }
+
+/** DEC-021 amendment (w6-f): a placed card insets this many pixels inside
+ * the column divider instead of sitting flush on it — see the laned-card
+ * style below and .chq-day-grid-clash-card's matching CSS inset. */
+const CARD_INSET_PX = 3.5;
 
 const TBD_ROOM_ID = null;
 const TBD_COL_ID = '__tbd__';
@@ -286,8 +299,9 @@ export function DayGrid({
             key={`label-${minutes}`}
             className="chq-day-grid-time-label"
             style={{ gridColumn: 1, gridRow: rowIdx + 2 }}
+            aria-label={formatGutterTime(minutes)}
           >
-            {formatMinutes(minutes)}
+            {formatGutterTime(minutes)}
           </div>
         ) : null,
       )}
@@ -405,8 +419,14 @@ export function DayGrid({
             style={{
               gridColumn: colIdx + 2,
               gridRow: `${rowStart} / ${rowEnd}`,
-              width: `calc(100% / ${laneCount})`,
-              marginInlineStart: `calc(100% / ${laneCount} * ${lane})`,
+              // DEC-021 amendment (w6-f): the card sits ~3.5px inset inside
+              // the column divider rather than flush on it — the inset is
+              // carved out of the lane width itself (not a plain margin
+              // added on top) so a laned card's own right edge still lines
+              // up with its lane neighbour instead of overflowing the
+              // column.
+              width: `calc((100% - ${CARD_INSET_PX}px) / ${laneCount})`,
+              marginInlineStart: `calc(${CARD_INSET_PX}px + (100% - ${CARD_INSET_PX}px) / ${laneCount} * ${lane})`,
             }}
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, session.roomId, session.startMin)}
