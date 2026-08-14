@@ -46,31 +46,89 @@ function foldBase64(b64: string): string {
   return chunks.join("\r\n");
 }
 
+// RFC 2047 §2: an encoded-word (`=?charset?encoding?text?=`) is capped at 75
+// characters, and RFC 5322 §2.1.1 caps a header line at 998 octets. The
+// wrapper `=?UTF-8?B?` + `?=` costs 12 of those 75 chars, leaving 63 for
+// base64 — rounded down to the nearest multiple of 4 (60) so no chunk needs
+// mid-word padding, that's 60/4*3 = 45 SOURCE bytes per encoded-word. Split
+// on UTF-8 byte boundaries (mirroring src/mail/ics.ts's foldLine) so a
+// multi-byte character is never divided across two words, and join
+// consecutive words with CRLF + one space per RFC 2047 §5's folding rule —
+// this keeps every physical line short while emitting exactly ONE logical
+// `Subject:`/`To:` header (continuation lines carry no field name).
+const ENCODED_WORD_MAX_SRC_BYTES = 45;
+
+function encodedWordChunks(stripped: string): string[] {
+  const bytes = new TextEncoder().encode(stripped);
+  const chunks: string[] = [];
+  let start = 0;
+  while (start < bytes.length) {
+    let end = Math.min(start + ENCODED_WORD_MAX_SRC_BYTES, bytes.length);
+    // Back off if we'd split a multi-byte UTF-8 sequence (continuation
+    // bytes have the high bit pattern 10xxxxxx, i.e. 0x80-0xBF).
+    while (end < bytes.length && (bytes[end]! & 0xc0) === 0x80) {
+      end -= 1;
+    }
+    let binary = "";
+    for (const b of bytes.slice(start, end)) binary += String.fromCharCode(b);
+    chunks.push(`=?UTF-8?B?${btoa(binary)}?=`);
+    start = end;
+  }
+  return chunks;
+}
+
 // RFC 5322 header value safety (DEC-996 wave-62 amendment): strip every
 // CR/LF/C0-control byte plus DEL — the same class src/mail/ics.ts sanitizeCn
 // strips and for the same reason (a bare CR/LF here would inject a new
 // header line, e.g. `Bcc:`, into an outbound message built from
 // unauthenticated CFP text). If any non-ASCII byte survives, wrap the
-// stripped value as an RFC 2047 base64 encoded-word rather than emit a raw
-// byte a header has no business carrying.
+// stripped value as one or more folded RFC 2047 base64 encoded-words rather
+// than emit a raw byte a header has no business carrying.
 function headerValue(raw: string): string {
   // eslint-disable-next-line no-control-regex
   const stripped = raw.replace(/[\x00-\x1f\x7f]/g, "");
   // eslint-disable-next-line no-control-regex
   if (/[^\x00-\x7f]/.test(stripped)) {
-    const b64 = base64Encode(stripped);
-    return `=?UTF-8?B?${b64}?=`;
+    return encodedWordChunks(stripped).join("\r\n ");
   }
   return stripped;
 }
 
+// RFC 5322 §3.2.4 quoted-string: qtext excludes DQUOTE and backslash — both
+// are the quoted-string's own escape/delimiter characters, so leaving them
+// in an interpolated `"${name}"` either terminates the quoted-string early
+// (unbalanced quote, or worse, closes it and lets the remainder of the
+// string be parsed as additional address-list members — the DEC-996
+// wave-23 amendment injection) or requires backslash-escaping to survive.
+// This file picks ONE answer, strip, and applies it everywhere a value rides
+// inside a double-quoted header parameter: the address-header display name
+// AND the Content-Disposition filename (sanitizeMimeFilename below), which
+// previously only stripped DQUOTE and left backslash untouched — two
+// answers in one file for the same class of value.
+function stripQuoteChars(s: string): string {
+  return s.replace(/["\\]/g, "");
+}
+
 function sanitizeMimeFilename(filename: string): string {
-  return headerValue(filename).replace(/"/g, "");
+  return stripQuoteChars(headerValue(filename));
+}
+
+// RFC 5322 §3.4.1 addr-spec: no CR/LF/control bytes, angle brackets, comma,
+// semicolon, DQUOTE or whitespace belong in an address interpolated raw
+// into `<${email}>` (or `mailto:${email}` in src/mail/ics.ts, which imports
+// this). src/domain/email.ts's EMAIL_PATTERN admits `<`, `>`, `,`, `;` in
+// the local part, so a stored-valid address like `a,b@c.com` would
+// otherwise render as two comma-separated To addresses — this must be
+// enforced here, at the serializer boundary, not just at intake.
+export function addressValue(email: string): string {
+  // eslint-disable-next-line no-control-regex
+  return email.replace(/[\x00-\x1f\x7f<>,;"\s]/g, "");
 }
 
 function addressHeader(email: string, name: string | undefined): string {
-  const safeName = name ? headerValue(name) : "";
-  return safeName.length > 0 ? `"${safeName}" <${email}>` : email;
+  const safeName = name ? stripQuoteChars(headerValue(name)) : "";
+  const safeEmail = addressValue(email);
+  return safeName.length > 0 ? `"${safeName}" <${safeEmail}>` : safeEmail;
 }
 
 function formatImfDate(d: Date): string {
