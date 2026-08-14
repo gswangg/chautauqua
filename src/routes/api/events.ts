@@ -35,7 +35,7 @@ import {
 } from "../../server/repo/events";
 
 import { createDefaultForm } from "../../server/repo/forms";
-import { bumpIcsSequencesForRoom } from "../../server/repo/ics-sequence";
+import { bumpIcsSequencesForRoom, bumpIcsSequencesForEvent } from "../../server/repo/ics-sequence";
 import { isDateOrderValid, isIsoDate, isValidSlug, isValidTimezone } from "./validators";
 import { listSlotsOutsideWindow } from "../../server/repo/agenda";
 import { listBreaksOutsideWindow } from "../../server/repo/breaks";
@@ -367,6 +367,15 @@ eventsRoutes.patch("/events/:eventId", csrfJson, async (c) => {
     timezone,
     branding,
   });
+
+  // DEC-519 (wave-11 amendment): a timezone change reaches every scheduled
+  // submission's absolute DTSTART/DTEND — bump only when the string
+  // actually changed (a same-string PATCH is a no-op), mirroring the
+  // room-rename rule at events.ts:537-539. Explicitly refused: name,
+  // location, startDate, endDate — see DEC-519's wave-11 amendment.
+  if (timezone !== undefined && timezone !== existing.timezone) {
+    await bumpIcsSequencesForEvent(c.var.db, eventId);
+  }
 
   // DEC-844 (amended wave 68): narrowing the window never blocks the write,
   // but names every placed session AND every break it orphans — both

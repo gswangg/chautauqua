@@ -339,6 +339,173 @@ describe("PATCH /api/v1/rooms/:roomId (DEC-519)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// 6. PATCH /events/:eventId timezone — bumps every submission with a
+// schedule_slot in that event via the set-based bumpIcsSequencesForEvent
+// helper, only when the timezone string actually changed (DEC-519 wave-11
+// amendment). Explicitly refused: name, location, startDate, endDate.
+// ---------------------------------------------------------------------------
+
+const EVENT_ROW = {
+  id: "event-1",
+  orgId: ORG_A,
+  name: "Conf",
+  slug: "conf",
+  startDate: "2026-06-01",
+  endDate: "2026-06-10",
+  location: null,
+  timezone: "America/New_York",
+  recordPrefix: "EV",
+  branding: null,
+  createdAt: 0,
+  updatedAt: 0,
+};
+
+describe("PATCH /api/v1/events/:eventId timezone (DEC-519 wave-11 amendment)", () => {
+  // Empty-result fake db for the DEC-844 window-narrowing side effect
+  // (listSlotsOutsideWindow/listBreaksOutsideWindow) — the window itself
+  // never changes in these tests, so both report zero.
+  function windowLookupDb() {
+    const chain: Record<string, unknown> = {
+      from: () => chain,
+      innerJoin: () => chain,
+      where: () => chain,
+      orderBy: () => chain,
+      limit: async () => [],
+      then: (resolve: (v: unknown[]) => void) => resolve([]),
+    };
+    return { select: () => chain };
+  }
+
+  async function setup(existing: typeof EVENT_ROW, updatedTimezone: string | undefined) {
+    vi.doMock("../src/server/repo/events", async () => {
+      const actual = await vi.importActual<typeof import("../src/server/repo/events")>(
+        "../src/server/repo/events",
+      );
+      return {
+        ...actual,
+        isSlugTaken: vi.fn(async () => false),
+        getEventForOrg: vi.fn(async () => existing),
+        updateEvent: vi.fn(async (_db: unknown, _eventId: string, _orgId: string, patch: Record<string, unknown>) => {
+          const defined = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
+          return { ...existing, ...defined };
+        }),
+      };
+    });
+    const icsSeq = await import("../src/server/repo/ics-sequence");
+    const eventBumpSpy = vi.spyOn(icsSeq, "bumpIcsSequencesForEvent").mockImplementation(async () => {});
+    const { eventsRoutes } = await import("../src/routes/api/events");
+    void updatedTimezone;
+    return { eventsRoutes, eventBumpSpy };
+  }
+
+  it("bumps once when the timezone actually changes", async () => {
+    const { eventsRoutes, eventBumpSpy } = await setup(EVENT_ROW, "Europe/London");
+    const res = await appWithAuth(eventsRoutes, ORGANIZER_A, windowLookupDb()).request(
+      patchRequest(`/api/v1/events/${EVENT_ROW.id}`, { timezone: "Europe/London" }),
+    );
+    expect(res.status).toBe(200);
+    expect(eventBumpSpy).toHaveBeenCalledTimes(1);
+    expect(eventBumpSpy).toHaveBeenCalledWith(expect.anything(), EVENT_ROW.id);
+  });
+
+  it("does NOT bump when the same timezone string is re-sent", async () => {
+    const { eventsRoutes, eventBumpSpy } = await setup(EVENT_ROW, EVENT_ROW.timezone);
+    const res = await appWithAuth(eventsRoutes, ORGANIZER_A, windowLookupDb()).request(
+      patchRequest(`/api/v1/events/${EVENT_ROW.id}`, { timezone: EVENT_ROW.timezone }),
+    );
+    expect(res.status).toBe(200);
+    expect(eventBumpSpy).not.toHaveBeenCalled();
+  });
+
+  it("does NOT bump on a name-only PATCH that never touches timezone", async () => {
+    const { eventsRoutes, eventBumpSpy } = await setup(EVENT_ROW, undefined);
+    const res = await appWithAuth(eventsRoutes, ORGANIZER_A, windowLookupDb()).request(
+      patchRequest(`/api/v1/events/${EVENT_ROW.id}`, { name: "New Conf Name" }),
+    );
+    expect(res.status).toBe(200);
+    expect(eventBumpSpy).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// bumpIcsSequencesForEvent itself: a single atomic UPDATE ... WHERE id IN
+// (SELECT submission_id FROM schedule_slot JOIN submission ON ... WHERE
+// submission.event_id = ?) — never a read-then-loop (DEC-078/DEC-492).
+// Structurally, only submissions that appear in schedule_slot can ever be
+// selected (an unscheduled submission is never in that join), and the
+// eventId equality scopes the join to submissions of exactly one event (a
+// scheduled submission in a different event is excluded by that filter).
+// ---------------------------------------------------------------------------
+
+describe("bumpIcsSequencesForEvent (DEC-519 wave-11/DEC-492: atomic set-based, never read-then-loop)", () => {
+  it("issues exactly one UPDATE on schema.submission, scoped via a schedule_slot/submission join filtered on event_id", async () => {
+    const { bumpIcsSequencesForEvent } = await import("../src/server/repo/ics-sequence");
+    const freshSchema = await import("../src/db/schema");
+    const selectFromCalls: unknown[] = [];
+    const joinCalls: unknown[] = [];
+    const whereArgs: unknown[] = [];
+    const updateCalls: { table: unknown; setValue: unknown; whereArg: unknown }[] = [];
+
+    const subqueryChain = {
+      from: (table: unknown) => {
+        selectFromCalls.push(table);
+        return subqueryChain;
+      },
+      innerJoin: (table: unknown, on: unknown) => {
+        joinCalls.push(table);
+        void on;
+        return subqueryChain;
+      },
+      where: (arg: unknown) => {
+        whereArgs.push(arg);
+        return subqueryChain;
+      },
+    };
+
+    const db = {
+      select: () => subqueryChain,
+      update: (table: unknown) => ({
+        set: (setValue: unknown) => ({
+          where: (whereArg: unknown) => {
+            updateCalls.push({ table, setValue, whereArg });
+            return Promise.resolve();
+          },
+        }),
+      }),
+    } as unknown as Db;
+
+    await bumpIcsSequencesForEvent(db, "event-42");
+
+    // Exactly one UPDATE statement, on the submission table, never a
+    // per-submission loop.
+    expect(updateCalls).toHaveLength(1);
+    expect(updateCalls[0]?.table).toBe(freshSchema.submission);
+    // Driven from schedule_slot -> an unscheduled submission (no
+    // schedule_slot row) can never appear in this subquery's result set.
+    expect(selectFromCalls).toContain(freshSchema.scheduleSlot);
+    expect(joinCalls).toContain(freshSchema.submission);
+    // Filtered on submission.event_id = 'event-42' -> a scheduled
+    // submission belonging to a different event is excluded.
+    const whereSql = whereArgs[0] as { queryChunks: unknown[] } | undefined;
+    expect(whereSql).toBeTruthy();
+    const chunks = whereSql?.queryChunks ?? [];
+    // One chunk wraps the literal value "event-42" (a drizzle Param); another
+    // references the submission.eventId column (identified by its .name, not
+    // by JSON.stringify — the column object is circular via .table).
+    const paramChunk = chunks.find(
+      (chunk): chunk is { value: unknown } =>
+        typeof chunk === "object" && chunk !== null && "value" in chunk && (chunk as { value: unknown }).value === "event-42",
+    );
+    expect(paramChunk).toBeTruthy();
+    const columnChunk = chunks.find(
+      (chunk): chunk is { name: string } =>
+        typeof chunk === "object" && chunk !== null && "name" in chunk && (chunk as { name: unknown }).name === "event_id",
+    );
+    expect(columnChunk).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // bumpIcsSequencesForRoom itself: a single atomic UPDATE ... WHERE id IN
 // (SELECT ...) — never a read-then-loop (DEC-078/DEC-492).
 // ---------------------------------------------------------------------------
