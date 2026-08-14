@@ -213,7 +213,13 @@ export function EventSwitcher() {
           (13px/600) beside a menu button, not the raw <select> this used
           to render — switching/create behaviour is unchanged, only the
           control. */}
-      <span className="chq-eventswitcher-name">{current?.name ?? 'No events'}</span>
+      {/* w6-h (DEC-369 amendment): the focusable control is the name+caret
+          GROUP, not a bare 24x23 button around the caret glyph alone -- a
+          focus ring on the glyph-only button read as stray ink around no
+          visible control. One button, >=44px tall, carries the whole
+          group so the ring frames what a sighted user sees as "the
+          control". Open/close/select behaviour (menuOpen, switchTo) is
+          unchanged; only what's focusable/clickable moved. */}
       <button
         type="button"
         className="chq-eventswitcher-menu-btn"
@@ -222,7 +228,10 @@ export function EventSwitcher() {
         aria-label="Switch event"
         onClick={() => setMenuOpen((v) => !v)}
       >
-        ▾
+        <span className="chq-eventswitcher-name">{current?.name ?? 'No events'}</span>
+        <span className="chq-eventswitcher-caret" aria-hidden="true">
+          ▾
+        </span>
       </button>
 
       {menuOpen && (
