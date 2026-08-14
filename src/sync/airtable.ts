@@ -153,6 +153,23 @@ function watermarkKey(orgId: string): string {
 // design (pagination, incremental sync) rather than silent data loss.
 export const MAX_SYNC_ROWS = 10_000;
 
+// DEC-450 wave-33 amendment: `now` is captured BEFORE the watermark-scoped
+// SELECTs run and is only stored AFTER both upserts succeed (read back,
+// stamp forward) — every writer in this repo follows the same
+// timestamp-before-await, commit-after pattern (see `patchedAt` in
+// src/server/repo/contacts/crud.ts and `now` in src/server/repo/profile.ts).
+// A row that commits between this tick's `now` capture and its SELECT can
+// therefore carry an updated_at at or before `now`, and a strict gt(now)
+// filter would miss it this tick and permanently exclude it next tick
+// (gt(now) again). WATERMARK_LOOKBACK_MS widens the filter into the past by
+// a fixed window so any such row is re-covered by the FOLLOWING tick. This
+// asymmetry (read back with lookback, stamp forward without one) is safe
+// because upsertBatches is an idempotent merge-on-ChautauquaId PATCH and both
+// pushed strings (Speakers, Tracks) are deterministically ordered (DEC-450
+// wave-64 amendment) — re-pushing an unchanged row fires no customer
+// automation, whereas a dropped row is unrecoverable.
+export const WATERMARK_LOOKBACK_MS = 5 * 60 * 1000;
+
 export async function runAirtableSync(
   env: AirtableSyncEnv,
   db: Db,
@@ -180,6 +197,7 @@ export async function runAirtableSync(
   const wmKey = watermarkKey(orgId);
   const storedMark = env.KV ? await env.KV.get(wmKey) : null;
   const mark = storedMark ? new Date(storedMark) : null;
+  const lookbackMark = mark ? new Date(mark.getTime() - WATERMARK_LOOKBACK_MS) : null;
 
   const contacts = await db
     .select({
@@ -192,8 +210,8 @@ export async function runAirtableSync(
     })
     .from(schema.contact)
     .where(
-      mark
-        ? and(eq(schema.contact.orgId, orgId), gt(schema.contact.updatedAt, mark))
+      lookbackMark
+        ? and(eq(schema.contact.orgId, orgId), gt(schema.contact.updatedAt, lookbackMark))
         : eq(schema.contact.orgId, orgId),
     )
     .limit(MAX_SYNC_ROWS + 1);
@@ -213,8 +231,8 @@ export async function runAirtableSync(
     .from(schema.submission)
     .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
     .where(
-      mark
-        ? and(eq(schema.event.orgId, orgId), gt(schema.submission.updatedAt, mark))
+      lookbackMark
+        ? and(eq(schema.event.orgId, orgId), gt(schema.submission.updatedAt, lookbackMark))
         : eq(schema.event.orgId, orgId),
     )
     .limit(MAX_SYNC_ROWS + 1);
