@@ -2,7 +2,15 @@
 // render in the event's own IANA timezone, never bare UTC, and there is no
 // silent fallback — an empty or invalid timeZone throws.
 import { describe, expect, it } from "vitest";
-import { formatCalendarDate, formatEventDateTime, formatEventDay, formatEventDayRange, formatEventCloseDateLabel } from "../src/lib/event-time";
+import {
+  formatCalendarDate,
+  formatEventDateTime,
+  formatEventDay,
+  formatEventDayRange,
+  formatEventCloseDateLabel,
+  formatDayShort,
+  formatDayLong,
+} from "../src/lib/event-time";
 
 describe("formatEventDateTime (DEC-408)", () => {
   it("renders a March instant in America/Los_Angeles as PST with the right wall-clock hour", () => {
@@ -111,6 +119,40 @@ describe("formatEventDay (w1-i): the ONE public-surface day-heading/date-label f
   it("returns the original string unchanged for malformed input rather than throwing", () => {
     expect(formatEventDay("not-a-date")).toBe("not-a-date");
     expect(formatEventDay("")).toBe("");
+  });
+});
+
+describe("formatDayShort (w1-b): the day switcher's segmented-control label", () => {
+  it("formats a 'YYYY-MM-DD' calendar day as a short weekday + day-of-month label", () => {
+    expect(formatDayShort("2026-05-12")).toBe("Tue 12");
+  });
+
+  it("never re-interprets into a timezone (DEC-522: a calendar day, not an instant)", () => {
+    // Same label regardless of any timezone the caller might be tempted to
+    // pass in -- formatDayShort takes no timeZone parameter at all. A day
+    // right at a DST transition (the kind that shifts under a naive
+    // instant-based re-zoning) still reads its own calendar fields.
+    expect(formatDayShort("2027-03-14")).toBe("Sun 14");
+  });
+
+  it("returns the original string unchanged for malformed input rather than throwing", () => {
+    expect(formatDayShort("not-a-date")).toBe("not-a-date");
+    expect(formatDayShort("")).toBe("");
+  });
+});
+
+describe("formatDayLong (w1-b): the agenda page's own <h1> day label", () => {
+  it("formats a 'YYYY-MM-DD' calendar day as a long weekday + day-of-month + month label", () => {
+    expect(formatDayLong("2026-05-12")).toBe("Tuesday 12 May");
+  });
+
+  it("never re-interprets into a timezone (DEC-522: a calendar day, not an instant)", () => {
+    expect(formatDayLong("2027-03-14")).toBe("Sunday 14 March");
+  });
+
+  it("returns the original string unchanged for malformed input rather than throwing", () => {
+    expect(formatDayLong("not-a-date")).toBe("not-a-date");
+    expect(formatDayLong("")).toBe("");
   });
 });
 

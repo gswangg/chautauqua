@@ -5,8 +5,15 @@
 
 import type { PublicEvent, PublicTrack } from "../../server/repo/public";
 import { surfacePath, type SurfaceBase } from "./shell";
-import { formatDay } from "./cards";
+import { formatDayShort } from "../../lib/event-time";
 import { PublicSearchBox } from "./filters";
+// DEC-919/DEC-768: the day switcher composes the shared filter-idiom
+// query-param contract (DEC-919) and is the ONE place a scheduled day is
+// named on the itinerary surfaces (DEC-768) -- referenced here so both
+// dependencies are compile-checked (src/decisions.ts).
+import { DEC_919, DEC_768 } from "../../decisions";
+void DEC_919;
+void DEC_768;
 
 // DEC-851 (wave 64 amendment): the ONE param-composition rule for every
 // itinerary-surface out-link (day pills, the track highlight select's Clear
@@ -83,7 +90,7 @@ export function DaySwitcher(props: {
             href={href}
             aria-current={isActive ? "page" : undefined}
           >
-            {formatDay(day)}
+            {formatDayShort(day)}
           </a>
         );
       })}

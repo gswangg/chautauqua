@@ -102,6 +102,40 @@ export function formatEventDay(day: string): string {
   return formatCalendarDate(Date.UTC(year, month - 1, date));
 }
 
+/** Short day label for the agenda day-switcher's segmented control, e.g.
+ * "Tue 12" — same "calendar day, not an instant" contract (DEC-522) as
+ * formatEventDay above: `day` is already the wall-clock 'YYYY-MM-DD' field
+ * in the owning event's own timezone (DEC-010), so this takes NO timeZone
+ * parameter and reads UTC calendar fields directly, never re-zoned. en-GB
+ * gives the weekday-before-day-of-month order the design handoff wants
+ * ("Tue 12") without a locale-format hand-assembly step. Malformed input
+ * returns the original string unchanged, matching formatEventDay's
+ * fail-soft contract for organizer-entered scheduling data. */
+export function formatDayShort(day: string): string {
+  const [year, month, date] = day.split("-").map(Number);
+  if (!year || !month || !date) return day;
+  return new Date(Date.UTC(year, month - 1, date)).toLocaleDateString("en-GB", {
+    timeZone: "UTC",
+    weekday: "short",
+    day: "numeric",
+  });
+}
+
+/** Long twin of formatDayShort, for the agenda page's own <h1> heading, e.g.
+ * "Tuesday 12 May" (DEC-768: the day appears exactly once on the page, in
+ * full). Same no-timeZone-parameter / UTC-calendar-fields / fail-soft
+ * contract as formatDayShort. */
+export function formatDayLong(day: string): string {
+  const [year, month, date] = day.split("-").map(Number);
+  if (!year || !month || !date) return day;
+  return new Date(Date.UTC(year, month - 1, date)).toLocaleDateString("en-GB", {
+    timeZone: "UTC",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+}
+
 /** Day-of-month + month label (UTC calendar fields, DEC-522: startDate/
  * endDate are DAY LABELS, not instants — never rendered in any timezone but
  * UTC). en-GB gives British day-before-month order with no comma, e.g.

@@ -215,6 +215,17 @@ export const THEME_CSS = `
     flex-shrink: 0;
   }
 
+  /* w1-b: appearance:none strips the native OS caret from every select
+     (public, portal and CFP alike -- this is the ONE shared rule), so a
+     replacement affordance is mandatory or the control renders
+     indistinguishable from a text input. DEC-374's escaping trap applies:
+     THEME_CSS is injected raw, so this stays a fixed, value-free constant
+     -- an inline data-URI SVG chevron (a literal, no interpolated value)
+     rather than a per-event colour or asset URL. A hex "#" inside the SVG
+     data URI is percent-encoded (%23) since a bare "#" would be read as a
+     URL fragment delimiter, not the fill colour's hex marker. The
+     padding-right (2.25rem) is sized to clear the caret's 12px box plus
+     its 12px right inset. */
   select {
     appearance: none;
     -webkit-appearance: none;
@@ -226,13 +237,13 @@ export const THEME_CSS = `
     font-family: inherit;
     color: var(--chq-ink);
     background-color: var(--chq-surface);
-    background-image: linear-gradient(45deg, transparent 50%, var(--chq-ink) 50%), linear-gradient(135deg, var(--chq-ink) 50%, transparent 50%);
-    background-position: calc(100% - 18px) calc(50% - 3px), calc(100% - 13px) calc(50% - 3px);
-    background-size: 5px 5px, 5px 5px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5L6 8l3.5-3.5' fill='none' stroke='%231B1D17' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 12px 12px;
     border: 1px solid var(--chq-border);
     border-radius: 4px;
-    padding: 0.4rem 2rem 0.4rem 0.6rem;
+    padding: 0.4rem 2.25rem 0.4rem 0.6rem;
   }
 
   input[type=date]:focus-visible,

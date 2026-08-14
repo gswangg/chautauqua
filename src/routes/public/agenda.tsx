@@ -13,6 +13,7 @@ import type { ScheduleBreak } from "../../server/repo/breaks"; // type-only; the
 import { plural } from "../../domain/count-copy";
 import { surfacePath, type Surface, type SurfaceBase } from "./shell";
 import { formatDay, formatMinutes } from "./cards";
+import { formatDayLong } from "../../lib/event-time";
 import { AgendaDayGrid } from "./agenda-grid";
 import { AgendaItemList } from "./agenda-list";
 // agendaQs is also re-exported below (barrel); this import is the local
@@ -147,7 +148,7 @@ export function AgendaContent(props: {
       <div class="chq-pub-title-row chq-pub-agenda-heading-row">
         <h1 class="chq-pub-surface-title">
           {activeDay
-            ? `${formatDay(activeDay)} · ${activeDayItems.length} ${plural(activeDayItems.length, "session")} · ${roomCount} ${plural(roomCount, "room")}`
+            ? `${formatDayLong(activeDay)} · ${activeDayItems.length} ${plural(activeDayItems.length, "session")} · ${roomCount} ${plural(roomCount, "room")}`
             : "Agenda"}
         </h1>
         <DaySwitcher

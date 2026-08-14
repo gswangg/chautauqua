@@ -242,35 +242,57 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
   }
   .chq-pub-agenda-day-footer a { font-weight: 700; }
 
-  .chq-pub-day-switcher { display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+  /* w1-b: ONE joined bordered group (~210px) with hairline-divided
+     segments -- replaces the former gapped, individually-pill-radiused
+     <a> row. overflow-x:auto keeps a >3-day event's extra segments
+     reachable by scroll instead of shrinking the group past 210px. */
+  .chq-pub-day-switcher {
+    display: flex;
+    width: 210px;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-card);
+  }
   /* DEC-838: the day pill (agenda + schedule's shared DaySwitcher, agenda.tsx)
      was an unclassed-color <a> before this rule -- it rendered at
      var(--chq-brand) purely via theme.ts's global a-tag colour cascade.
      This makes that inherited colour an explicit, per-event-accent-bound
      declaration instead: byte-identical by default (both tokens share the
      #4E5C31 default), customizable once an organizer sets a branding
-     accentColor. */
+     accentColor. w1-b: the pill is now one segment of the joined group --
+     no per-segment radius, a hairline border-right divides segments
+     (last segment's is dropped) instead of the old gap+full-border pill. */
   .${ACCENT_BOUND_CLASSES[1]} {
-    flex-shrink: 0;
-    border-radius: var(--chq-r-pill);
+    flex: 1 1 0;
+    min-width: 0;
     min-height: 44px;
     display: flex;
     align-items: center;
-    padding: 0 15px;
+    justify-content: center;
+    padding: 0 8px;
     font-size: 13px;
     font-weight: 500;
-    border: 1px solid var(--chq-border);
+    border: none;
+    border-right: 1px solid var(--chq-border);
     color: var(--chq-brandable-accent);
     text-decoration: none;
+    white-space: nowrap;
   }
+  .${ACCENT_BOUND_CLASSES[1]}:last-child { border-right: none; }
   /* DEC-885: the day pill in view carries aria-current="page" (agenda.tsx
      DaySwitcher) on BOTH the default and the day-filtered view -- this is
      the paired visual treatment so the "current" day reads as chosen, not
-     just accessibly marked. */
+     just accessibly marked. w1-b: the active segment fills near-black
+     (--chq-ink) rather than the accent -- DEC-838 only binds accent where
+     the DEFAULT already rendered it, and the default active fill was never
+     accent-visible content the organizer owns; the accent binding stays on
+     the base .chq-pub-day-pill rule's idle-state text colour above. */
   .chq-pub-day-pill-active {
-    background: var(--chq-brandable-accent);
+    background: var(--chq-ink);
     color: var(--chq-on-brand);
-    border-color: var(--chq-brandable-accent);
+    border-color: var(--chq-ink);
   }
 
   /* Itinerary (schedule surface, DEC-022 localStorage-driven -- class name
