@@ -2,7 +2,7 @@
 // former monolithic src/routes/public.tsx (contention decomposition) — no
 // behavior change.
 
-import type { PublicEvent, PublicSpeakerWithSessions } from "../../server/repo/public";
+import type { PublicEvent, PublicSpeakerWithSessions, PublicTrack } from "../../server/repo/public";
 import { speakerDetailPath, surfacePath } from "./shell";
 import { PUBLIC_PER_PAGE, hasMorePages } from "../../server/repo/public/bounds";
 import { speakerInitials } from "./cards";
@@ -20,11 +20,21 @@ function SpeakerViewToggle(props: {
   event: PublicEvent;
   active: "speakers" | "gallery";
   q: string | null;
+  trackId?: string | null;
   limit?: number | null;
   base: "/e" | "/embed";
 }) {
-  const { event, active, q, limit, base } = props;
-  const qs = [q ? `q=${encodeURIComponent(q)}` : null, limit ? `limit=${limit}` : null].filter(Boolean).join("&");
+  const { event, active, q, trackId, limit, base } = props;
+  // DEC-990 amendment (wave 64): the track facet carries forward across the
+  // List/Grid toggle exactly like `q`/`limit` already do — /gallery is the
+  // same reader (DEC-593), so it must not silently drop the active facet.
+  const qs = [
+    q ? `q=${encodeURIComponent(q)}` : null,
+    trackId ? `trackId=${encodeURIComponent(trackId)}` : null,
+    limit ? `limit=${limit}` : null,
+  ]
+    .filter(Boolean)
+    .join("&");
   const hrefFor = (surface: "speakers" | "gallery") => `${surfacePath(event, surface, base)}${qs ? `?${qs}` : ""}`;
   return (
     <nav aria-label="Speaker view" class="chq-pub-view-toggle">
@@ -43,6 +53,51 @@ function SpeakerViewToggle(props: {
         Grid
       </a>
     </nav>
+  );
+}
+
+/** DEC-990 amendment (wave 64): the ONE facet for the speakers surface — a
+ * quiet `All tracks ▾` select rather than a pill bar (the roster has no
+ * "day"/"format" axes to justify one, and a directory-length track list
+ * would make a pill row wrap badly). A plain GET form (no JS required to
+ * narrow — selecting and pressing the visually-hidden submit works exactly
+ * like PublicSearchBox's own form), carrying `q`/`limit` forward as hidden
+ * inputs so switching tracks never drops an active search or a configured
+ * page size. `.chq-pub-select` is the DEC-919 select markup's class name;
+ * PublicFilterSelects (a shared component) was not on main yet when this was
+ * written, so the markup/classes are inlined here rather than inventing a
+ * second visual language — a future consolidation into a shared component
+ * should keep these exact class names. */
+function TrackFacetSelect(props: {
+  action: string;
+  tracks: PublicTrack[];
+  activeTrackId: string | null;
+  q: string | null;
+  limit?: number | null;
+}) {
+  const { action, tracks, activeTrackId, q, limit } = props;
+  if (tracks.length === 0) return null;
+  return (
+    <form class="chq-pub-select-form" method="get" action={action}>
+      <label class="chq-visually-hidden" for="chq-pub-track-select">
+        Track
+      </label>
+      <select class="chq-pub-select" id="chq-pub-track-select" name="trackId">
+        <option value="" selected={activeTrackId === null}>
+          All tracks
+        </option>
+        {tracks.map((t) => (
+          <option value={t.id} selected={activeTrackId === t.id}>
+            {t.name}
+          </option>
+        ))}
+      </select>
+      {q ? <input type="hidden" name="q" value={q} /> : null}
+      {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
+      <button class="chq-visually-hidden" type="submit">
+        Filter
+      </button>
+    </form>
   );
 }
 
@@ -132,30 +187,40 @@ export function SpeakersContent(props: {
   total: number;
   page: number;
   q: string | null;
+  tracks?: PublicTrack[];
+  activeTrackId?: string | null;
   perPage?: number;
   limit?: number | null;
   embed?: boolean;
 }) {
-  const { event, speakers, total, page, q, perPage, limit, embed } = props;
+  const { event, speakers, total, page, q, tracks, activeTrackId, perPage, limit, embed } = props;
   // DEC-433/477: parsePage clamps to MAX_PUBLIC_PAGE; stop offering
   // 'Show more' once there is no further page to link to, or once the
   // cumulative row ceiling (MAX_PUBLIC_ROWS) has already been reached.
   const hasMore = hasMorePages(speakers.length, total, page, perPage ?? PUBLIC_PER_PAGE);
   const base = embed ? "/embed" : "/e";
   const basePath = surfacePath(event, "speakers", base);
-  // DEC-289/DEC-489: carry `limit` forward exactly like SessionsContent's
-  // carryQs, so a configured embed does not lose its page size on page 2.
-  const carryQs = limit ? `limit=${limit}&` : "";
+  const trackId = activeTrackId ?? null;
+  // DEC-289/DEC-489/DEC-990 amendment (wave 64): carry `limit`/`trackId`
+  // forward exactly like SessionsContent's carryQs, so a configured embed
+  // (or an active track facet) does not lose either on page 2.
+  const carryQs = `${limit ? `limit=${limit}&` : ""}${trackId ? `trackId=${encodeURIComponent(trackId)}&` : ""}`;
   return (
     <>
       <div class="chq-pub-title-row">
         <h1 class="chq-pub-surface-title">Speakers</h1>
-        <SpeakerViewToggle event={event} active="speakers" q={q} limit={limit} base={base} />
+        <TrackFacetSelect action={basePath} tracks={tracks ?? []} activeTrackId={trackId} q={q} limit={limit} />
+        <SpeakerViewToggle event={event} active="speakers" q={q} trackId={trackId} limit={limit} base={base} />
       </div>
       <PublicSearchBox
         action={basePath}
         q={q}
-        hidden={limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
+        hidden={
+          <>
+            {trackId ? <input type="hidden" name="trackId" value={trackId} /> : null}
+            {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
+          </>
+        }
       />
       {speakers.length === 0 ? (
         <p>No speakers to show yet.</p>
@@ -188,27 +253,36 @@ export function GalleryContent(props: {
   total: number;
   page: number;
   q: string | null;
+  tracks?: PublicTrack[];
+  activeTrackId?: string | null;
   perPage?: number;
   limit?: number | null;
   embed?: boolean;
 }) {
-  const { event, speakers, total, page, q, perPage, limit, embed } = props;
+  const { event, speakers, total, page, q, tracks, activeTrackId, perPage, limit, embed } = props;
   // DEC-433/477: see SpeakersContent above.
   const hasMore = hasMorePages(speakers.length, total, page, perPage ?? PUBLIC_PER_PAGE);
   const base = embed ? "/embed" : "/e";
   const basePath = surfacePath(event, "gallery", base);
-  // DEC-289/DEC-489: see SpeakersContent above.
-  const carryQs = limit ? `limit=${limit}&` : "";
+  const trackId = activeTrackId ?? null;
+  // DEC-289/DEC-489/DEC-990 amendment (wave 64): see SpeakersContent above.
+  const carryQs = `${limit ? `limit=${limit}&` : ""}${trackId ? `trackId=${encodeURIComponent(trackId)}&` : ""}`;
   return (
     <>
       <div class="chq-pub-title-row">
         <h1 class="chq-pub-surface-title">Speakers</h1>
-        <SpeakerViewToggle event={event} active="gallery" q={q} limit={limit} base={base} />
+        <TrackFacetSelect action={basePath} tracks={tracks ?? []} activeTrackId={trackId} q={q} limit={limit} />
+        <SpeakerViewToggle event={event} active="gallery" q={q} trackId={trackId} limit={limit} base={base} />
       </div>
       <PublicSearchBox
         action={basePath}
         q={q}
-        hidden={limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
+        hidden={
+          <>
+            {trackId ? <input type="hidden" name="trackId" value={trackId} /> : null}
+            {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
+          </>
+        }
       />
       {speakers.length === 0 ? (
         <p>No speakers to show yet.</p>

@@ -85,6 +85,24 @@ export const PUBLIC_CSS = `
     color: var(--chq-ink);
   }
 
+  /* DEC-990 amendment (wave 64): the speakers surface's ONE facet -- a
+     quiet 'All tracks' select on the title row. Minimal styling only;
+     w64-b's shared PublicFilterSelects component is expected to supersede
+     this rule set (same class names) once it lands. */
+  .chq-pub-select-form {
+    display: flex;
+    align-items: center;
+  }
+  .chq-pub-select {
+    height: 40px;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-ctl);
+    padding: 0 10px;
+    font-size: 13px;
+    color: var(--chq-ink);
+    background: var(--chq-surface);
+  }
+
   /* Public event chrome (DEC-369/DEC-366: header carries the event's own
      dates/venue + name, above the shared .chq-nav from THEME_CSS). */
   .chq-pub-header {

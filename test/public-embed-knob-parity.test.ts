@@ -114,7 +114,13 @@ const SPEAKERS = Array.from({ length: 5 }, (_, i) => ({
   lastName: `Last${i + 1}`,
 }));
 
-function buildSpeakersApp() {
+// DEC-990 amendment (wave 64): the HTML dispatch (renderSurfaceContent) now
+// calls getPublicTracks once, ahead of getPublicSpeakers, to feed the track
+// facet's <select> options -- same DEC-804 pattern buildAgendaApp above
+// already accounts for. The plain .json feed (getSurfaceFeedPage) does NOT
+// call it, so `forJson` controls whether the fake's select() sequence
+// includes that extra call.
+function buildSpeakersApp(forJson = false) {
   let selectCall = 0;
   const idRows = SPEAKERS.map((s) => ({ contactId: s.contactId }));
   const countRows = [{ total: SPEAKERS.length }];
@@ -133,7 +139,9 @@ function buildSpeakersApp() {
     select: (_fields?: unknown) => {
       selectCall += 1;
       if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
-      if (selectCall % 2 === 0) return makeChain(countRows); // count query
+      if (!forJson && selectCall === 2) return makeChain([]); // getPublicTracks (facet select's options, HTML dispatch only)
+      const offset = forJson ? 0 : 1;
+      if (selectCall === 2 + offset) return makeChain(countRows); // count query
       return makeChain(hydrationRows); // hydration query
     },
     selectDistinct: () => makeChain(idRows),
@@ -150,7 +158,7 @@ describe("DEC-489: speakers/gallery `limit` behaves identically on HTML and .jso
     expect(html).toContain("3 of 5 speakers");
 
     installFakeCaches();
-    const jsonApp = buildSpeakersApp();
+    const jsonApp = buildSpeakersApp(true);
     const jsonRes = await jsonApp.request("/embed/conf/speakers.json?limit=3", {}, TEST_ENV);
     const body = (await jsonRes.json()) as { items: unknown[]; total: number; perPage: number };
     expect(body.items.length).toBe(3);
@@ -166,7 +174,7 @@ describe("DEC-489: speakers/gallery `limit` behaves identically on HTML and .jso
     expect(html).toContain("3 of 5 speakers");
 
     installFakeCaches();
-    const jsonApp = buildSpeakersApp();
+    const jsonApp = buildSpeakersApp(true);
     const jsonRes = await jsonApp.request("/embed/conf/gallery.json?limit=3", {}, TEST_ENV);
     const body = (await jsonRes.json()) as { items: unknown[]; total: number; perPage: number };
     expect(body.items.length).toBe(3);

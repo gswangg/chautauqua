@@ -102,9 +102,14 @@ export async function renderSurfaceContent(
     }
     case "speakers": {
       const q = parseNameQuery(query.q);
+      const trackId = parseTrackId(query.trackId);
       const page = parsePage(query.page);
       const perPage = query.limit ?? PUBLIC_PER_PAGE;
-      const { items, total } = await getPublicSpeakers(db, event.id, { q, page, perPage });
+      // DEC-990 amendment (wave 64): the one track facet — same
+      // getPublicTracks call the sessions/agenda surfaces already use for
+      // their track select's options.
+      const tracks = await getPublicTracks(db, event.id);
+      const { items, total } = await getPublicSpeakers(db, event.id, { q, trackId, page, perPage });
       return {
         title: `Speakers - ${event.name}`,
         content: (
@@ -114,6 +119,8 @@ export async function renderSurfaceContent(
             total={total}
             page={page}
             q={q}
+            tracks={tracks}
+            activeTrackId={trackId}
             perPage={perPage}
             limit={query.limit ?? null}
             embed={query.embed}
@@ -123,9 +130,13 @@ export async function renderSurfaceContent(
     }
     case "gallery": {
       const q = parseNameQuery(query.q);
+      const trackId = parseTrackId(query.trackId);
       const page = parsePage(query.page);
       const perPage = query.limit ?? PUBLIC_PER_PAGE;
-      const { items, total } = await getPublicSpeakers(db, event.id, { q, page, perPage });
+      // DEC-990 amendment (wave 64): /gallery is the same reader as
+      // /speakers (DEC-593) — same facet, same query, photo-led rendering.
+      const tracks = await getPublicTracks(db, event.id);
+      const { items, total } = await getPublicSpeakers(db, event.id, { q, trackId, page, perPage });
       return {
         title: `Speaker gallery - ${event.name}`,
         content: (
@@ -135,6 +146,8 @@ export async function renderSurfaceContent(
             total={total}
             page={page}
             q={q}
+            tracks={tracks}
+            activeTrackId={trackId}
             perPage={perPage}
             limit={query.limit ?? null}
             embed={query.embed}
