@@ -82,10 +82,13 @@ pins updated.
 **PLANNER: DESKTOP-FIRST STILL BINDING.** Wave-12 phone tasks were premature — the mobile
 queue stays closed until the desktop gate passes (standing rule). Remaining desktop items:
 
-**P1 · SAVED-EMBEDS EDITOR REGRESSION** — `?section=public-pages&edit=1` renders ZERO form
-controls; Change relabels to "Back" with no editor. Gate-4 had a working editor; find the
-break (likely the read-views-LIST refactor dropped the edit branch), restore, and add a
-rendered-controls test (measured evidence).
+**~~P1 SAVED-EMBEDS EDITOR REGRESSION~~ WITHDRAWN (orchestrator code-read 2026-08-14):**
+NOT a regression — bare `?edit=1` shows the saved-embeds LIST by design; the editor mounts
+via each row's Edit → `?embed=<id>` (DEC-822 wiring verified intact in PublicPagesPanel/
+SavedEmbedsPanel). The delta-2 probe never clicked Edit. The REAL remaining item is the
+already-tracked read-view PARTIAL: v7 frame 09--00 renders the saved list AND the editor
+inline in the un-gated scroll document — treat as the settings read-view design gap, not a
+break. Do not hunt a phantom.
 
 **P2 (delta-2):** compose-mount Recent-Sends `Open` should expand in place (History mount's
 does; compose's navigates); import match-step: title "Match the columns" missing, panel
