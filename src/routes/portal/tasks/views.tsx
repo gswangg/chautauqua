@@ -183,7 +183,7 @@ export function TaskRow(props: {
           disclosure, so the speaker sees it without an extra click. */}
       {t.instructions ? <p class="chq-portal-instructions">{t.instructions}</p> : null}
       {error ? (
-        <p role="alert" class="field-error">
+        <p role="alert" class="chq-field-error">
           {error}
         </p>
       ) : null}
@@ -214,6 +214,8 @@ export function TaskRow(props: {
                 name="file"
                 required
                 accept={allowedUploadExtensions(uploadKind).map((e) => `.${e}`).join(",")}
+                class={error ? "chq-field-invalid" : undefined}
+                aria-invalid={error ? "true" : undefined}
               />
               <button type="submit" class="chq-btn chq-btn-primary">Upload</button>
             </form>
@@ -243,6 +245,8 @@ export function TaskRow(props: {
               name="file"
               required
               accept={allowedUploadExtensions(uploadKind).map((e) => `.${e}`).join(",")}
+              class={error ? "chq-field-invalid" : undefined}
+              aria-invalid={error ? "true" : undefined}
             />
             <button type="submit" class="chq-btn chq-btn-secondary">Replace file</button>
           </form>

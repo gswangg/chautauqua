@@ -16,12 +16,21 @@
 // .chq-btn*) rather than redefining them — DEC-367: no semantic red
 // anywhere, so task/completion state is carried by .chq-flag's type
 // treatment (weight/letter-spacing/uppercase), never a red swatch.
+//
+// DEC-657 (wave 28 amendment): the shared no-red error vocabulary (this
+// module used to redeclare its own, weaker .chq-field-error at :315-316) is
+// hoisted to src/views/error-states.css.ts (ERROR_STATES_CSS), composed at
+// the tail of this same template literal -- exactly the interpolation idiom
+// public.css.ts's PUBLIC_CSS already uses to compose CHROME_CSS/CARDS_CSS/
+// AGENDA_CSS/RAIL_CSS.
 
-import { DEC_373, DEC_374, DEC_377, DEC_989 } from "../../decisions";
+import { DEC_373, DEC_374, DEC_377, DEC_657, DEC_989 } from "../../decisions";
+import { ERROR_STATES_CSS } from "../../views/error-states.css";
 
 void DEC_373;
 void DEC_374;
 void DEC_377; // captions below only ever restate fields the portal repo already returns
+void DEC_657; // wave 28 amendment: the portal's own error vocabulary is the hoisted shared one, never a private copy
 void DEC_989; // ruling B6 (wave 25 amendment): portal content column clamps to --chq-portal-measure, not the shared reading measure
 
 export const PORTAL_CSS = `
@@ -312,8 +321,8 @@ export const PORTAL_CSS = `
     color: var(--chq-muted);
     margin: 0;
   }
-  .chq-field-error { font-size: 12px; font-weight: 800; margin: 0; }
-  .chq-field-error::before { content: "! "; }
+  /* DEC-657 (wave 28 amendment): .chq-field-error itself is styled by the
+     hoisted ERROR_STATES_CSS composed below -- no per-surface redeclaration. */
 
   /* DEC-605: full version-chain history on a completed file_request task —
      one row per version, oldest to newest. Composes .chq-flag/.chq-portal-
@@ -428,4 +437,4 @@ export const PORTAL_CSS = `
   .chq-portal-detail h2, .chq-portal-detail h3 { color: var(--chq-ink); margin: 0 0 6px; }
   .chq-portal-detail p, .chq-portal-detail ul { margin: 0 0 10px; }
   .chq-portal-detail ul { padding-left: 20px; }
-`;
+${ERROR_STATES_CSS}`;

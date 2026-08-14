@@ -70,7 +70,13 @@ import { validateAnswers } from "../../forms/validate";
 import type { AnswerMap } from "../../forms/types";
 import { fieldInputName } from "../../views/form-render";
 import { extractFileAnswers } from "../../lib/submit-core";
-import { contentDispositionAttachment, isValidFileKind, sanitizeFilenameForKey, validateUpload } from "../../domain/files";
+import {
+  contentDispositionAttachment,
+  isValidFileKind,
+  sanitizeFilenameForKey,
+  uploadHintText,
+  validateUpload,
+} from "../../domain/files";
 import { CSRF_COOKIE_NAME } from "../../auth/cookies";
 import {
   DEC_016,
@@ -522,7 +528,7 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
   }
 
   if (!(file instanceof File)) {
-    return reRenderWithError("file is required");
+    return reRenderWithError("Choose a file first — nothing was uploaded.");
   }
 
   // DEC-240 (supersedes DEC-029's submission_id-null/'handout'-only rule),
@@ -553,7 +559,13 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
   if (!isValidFileKind(kind)) throw new Error(`invalid task.deliverable_kind persisted: ${kind}`);
   const validation = validateUpload({ filename: file.name, sizeBytes: file.size, kind });
   if (!validation.ok) {
-    return reRenderWithError(validation.message);
+    // DEC-657 (wave 28 amendment): a refusal names the accepted formats and
+    // why, sourced from src/domain/files.ts's own uploadHintText -- never a
+    // re-typed copy of the allowlist -- and, on a replace (this assignment
+    // already carries a completed file), says what survived so the speaker
+    // knows their existing upload was not touched.
+    const survivalNote = scope.fileId ? " Your current file is unchanged. Nothing was replaced." : "";
+    return reRenderWithError(`${validation.message} ${uploadHintText(kind)}${survivalNote}`);
   }
 
   const sanitized = sanitizeFilenameForKey(file.name);
