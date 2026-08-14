@@ -319,6 +319,38 @@ export async function updateTask(db: Db, taskId: string, input: UpdateTaskInput)
   return toTaskRecord(row);
 }
 
+export interface TaskDeleteImpact {
+  assigned: number;
+  completed: number;
+  responses: number;
+  files: number;
+}
+
+/** DEC-933 amendment (wave 63): task deletion names what it destroys --
+ * feeds the delete confirmation dialog's prose, event-wide (never the
+ * paginated/filtered grid page). One grouped aggregate over
+ * task_assignment (never a per-row scan, never a query per column). */
+export async function countTaskDeleteImpact(db: Db, taskId: string): Promise<TaskDeleteImpact> {
+  const rows = await db
+    .select({
+      assigned: sql<number>`count(*)`,
+      completed: sql<number>`count(case when ${schema.taskAssignment.status} = 'complete' then 1 end)`,
+      responses: sql<number>`count(case when ${schema.taskAssignment.responseJson} is not null then 1 end)`,
+      files: sql<number>`count(case when ${schema.taskAssignment.fileId} is not null then 1 end)`,
+    })
+    .from(schema.taskAssignment)
+    .where(eq(schema.taskAssignment.taskId, taskId));
+  return {
+    assigned: Number(rows[0]?.assigned ?? 0),
+    completed: Number(rows[0]?.completed ?? 0),
+    responses: Number(rows[0]?.responses ?? 0),
+    files: Number(rows[0]?.files ?? 0),
+  };
+}
+
+/** DEC-933 amendment: matches countTaskDeleteImpact's tally exactly so the
+ * confirm dialog's numbers are never a lie about what this actually
+ * deletes. */
 export async function deleteTask(db: Db, taskId: string): Promise<void> {
   await db.delete(schema.taskAssignment).where(eq(schema.taskAssignment.taskId, taskId));
   await db.delete(schema.task).where(eq(schema.task.id, taskId));

@@ -15,15 +15,21 @@ export async function getEventOrgId(db: Db, eventId: string): Promise<string | n
   return rows[0]?.orgId ?? null;
 }
 
-/** Returns the (eventId, orgId, kind) owning a task row, or null if it
- * doesn't exist. `kind` is included so callers (e.g. the PATCH deliverable
- * kind gate, DEC-240) don't need a second round-trip. */
+/** Returns the (eventId, orgId, kind, title) owning a task row, or null if
+ * it doesn't exist. `kind` is included so callers (e.g. the PATCH
+ * deliverable kind gate, DEC-240) don't need a second round-trip; `title`
+ * likewise for the delete-preview route (DEC-933 amendment, wave 63). */
 export async function getTaskOwnership(
   db: Db,
   taskId: string,
-): Promise<{ eventId: string; orgId: string; kind: string } | null> {
+): Promise<{ eventId: string; orgId: string; kind: string; title: string } | null> {
   const rows = await db
-    .select({ eventId: schema.task.eventId, orgId: schema.event.orgId, kind: schema.task.kind })
+    .select({
+      eventId: schema.task.eventId,
+      orgId: schema.event.orgId,
+      kind: schema.task.kind,
+      title: schema.task.title,
+    })
     .from(schema.task)
     .innerJoin(schema.event, eq(schema.task.eventId, schema.event.id))
     .where(eq(schema.task.id, taskId))
