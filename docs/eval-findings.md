@@ -50,6 +50,40 @@ typography+pills).
 
 ## GATE-4 REDS — THE OPEN LIST (these supersede any older filing of the same finding)
 
+## SBEK RUN 4 (2026-08-14, prod, gate-4 SHA 33fbc724): 82.2% @ 78.9% coverage — READ WITH CARE
+
+CFP 88.7@82c · ABS **71.7**@82c ⚠ · SPK **79**@94c ⚠ · CNT 82@81c (turn-diet WORKING, up
+from 72) · AIA **n/a@0c** (BOTH scenarios died to API-529 harness errors at turns 1/9 —
+zero product signal) · EMB 88.6@100c · CRM 92.1@100c. The run rode the 529 storm; a targeted
+re-measure (`--resume runs/2026-08-14T05-46-07 --areas ai-agenda,abstract-management,
+speaker-management`) runs AFTER the fixes below deploy. Orchestrator runs it — not the swarm.
+
+**P0 · Scorecard submit validation false-negative (THE run-4 ABS killer).** With both rating
+criteria visibly selected (Originality=4, Relevance=2) + Recommendation + comment filled, the
+scorecard still shows "Rate every criterion before submitting" and the header count stays
+"0 of N" — the reviewer CANNOT submit; eval agents burned turn budgets fighting it (ABS-S2/S3
++ SPK truncations downstream). Mechanism hypothesis (two-reader): the two-column rebuild left
+`Submit and next`'s validation (and the header counter) reading a stale scores-state
+shape/keying while the rating pills write the new one. Fix = ONE scores store read by pills,
+validator, and counter; regression test: select all criteria via clicks → submit succeeds and
+counter increments.
+
+**P1 · Admin pages render blank/heading-only on first load** (observed independently in ABS
+and SPK captures: /admin/review, per-plan Results, Speakers — nav + h1 only until a
+wait/re-snapshot). This is a cross-area turn tax on every eval agent and reads as broken to
+humans. Diagnose the deferred data/render path (loading state must render structure, not an
+empty main region).
+
+**P2 (run 4):** review progress counter "37 of 34 evaluations in" (completed > total — the
+per-plan totals read); speakers task-status filter only TINTS matching rows when "All tasks"
+is selected (narrow the list or label the behavior); garbled roster note "Not chasing -
+invite invited"; non-Confirmed speakers hide ALL task cells (organizer can't see outstanding
+items — show cells + the not-chasing note); speaker headshots not downloadable anywhere
+(Content files says 0; contact record renders bare <img>); co-presenter list absent from the
+speaker's read-only submission view (edit view only).
+
+
+
 **P1 · CFP builder header has NO Save button** (frame 04: `Preview` + olive `Save` right;
 FormsPage.tsx renders only Preview — the page's framed primary action is absent).
 
