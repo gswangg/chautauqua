@@ -8,12 +8,20 @@ import type { MiddlewareHandler } from "hono";
 import type { AppEnv } from "../../server/env";
 import { ThemeStyles } from "../../views/theme";
 import { PORTAL_CSS } from "./portal.css";
-import { DEC_374, DEC_884, DEC_371 } from "../../decisions";
+import { DEC_374, DEC_884, DEC_371, DEC_945 } from "../../decisions";
 import { normalizeHexColor } from "../../domain/color";
+import { matchesPortalRoute } from "../../lib/portal-routes";
+import {
+  ANONYMOUS_NOT_FOUND_LINKS,
+  NotFoundDocument,
+  ORGANIZER_NOT_FOUND_LINKS,
+  resolveNotFoundEyebrow,
+} from "../../server/not-found";
 
 void DEC_374;
 void DEC_884;
 void DEC_371;
+void DEC_945;
 
 // DEC-374: strict hex guard on the per-event accent before it ever reaches a
 // rendered attribute — falls back to the brand olive on anything that isn't
@@ -31,14 +39,35 @@ export interface PortalBrandingChrome {
 }
 
 /** Gate: no session -> /login; a session that isn't a speaker (organizer,
- * reviewer) -> /admin. Exact copy of src/routes/portal/index.tsx's redirect
- * gate — deliberately distinct from the JSON-error requireSpeaker
- * middleware (DEC-012), which is built for /api/v1: an SSR surface redirects
- * instead of returning a 401/403 body. */
+ * reviewer) -> /admin, but only once the path is known to be a real
+ * /portal/* route. DEC-945 (wave-6 amendment): path existence is decided
+ * BEFORE role redirection, exactly as the /admin/* handler already does
+ * (src/routes/root.tsx) — otherwise a signed-in organizer at /portal/nope
+ * is silently redirected into /admin/overview at HTTP 200, inventing a page
+ * that never existed, while a speaker at the same URL correctly falls
+ * through to the shared app.notFound() 404 card. The speaker branch below
+ * is byte-identical to before: an unmatched path for a speaker is decided
+ * entirely by the normal Hono route table + registerNotFoundHandler. */
 export const speakerGate: MiddlewareHandler<AppEnv> = async (c, next) => {
   const auth = c.var.auth;
   if (!auth) return c.redirect("/login", 302);
-  if (auth.role !== "speaker") return c.redirect("/admin", 302);
+  if (auth.role !== "speaker") {
+    const path = new URL(c.req.url).pathname;
+    const subPath = path.slice("/portal".length) || "/";
+    if (!matchesPortalRoute(subPath)) {
+      const eyebrow = await resolveNotFoundEyebrow(c.var.db);
+      const links = auth.role === "organizer" ? ORGANIZER_NOT_FOUND_LINKS : ANONYMOUS_NOT_FOUND_LINKS;
+      return c.html(
+        <NotFoundDocument
+          eyebrow={eyebrow}
+          body="The link may be old, or the event may have been switched since it was saved."
+          links={links}
+        />,
+        404,
+      );
+    }
+    return c.redirect("/admin", 302);
+  }
   await next();
 };
 
