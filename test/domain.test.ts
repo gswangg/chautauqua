@@ -81,22 +81,41 @@ describe("status pipeline", () => {
     expect(isDecided("waitlisted")).toBe(false);
   });
 
-  it("fires acceptance exactly once on first entry into accepted", () => {
+  it("pending -> accepted: fireAcceptance and setsAcceptedAt both true, stamps now", () => {
+    const result = changeStatus({ status: "pending", acceptedAt: null }, "accepted", 100);
+    expect(result.fireAcceptance).toBe(true);
+    expect(result.setsAcceptedAt).toBe(true);
+    expect(result.acceptedAt).toBe(100);
+  });
+
+  it("accepted -> pending: fireAcceptance and setsAcceptedAt both false", () => {
+    const result = changeStatus({ status: "accepted", acceptedAt: 100 }, "pending", 200);
+    expect(result.fireAcceptance).toBe(false);
+    expect(result.setsAcceptedAt).toBe(false);
+    expect(result.acceptedAt).toBe(100);
+  });
+
+  it("re-accept (DEC-278 wave-58): fireAcceptance fires again, setsAcceptedAt stays false, acceptedAt preserved", () => {
     let state: StatusChangeInput = { status: "pending", acceptedAt: null };
 
     const first = changeStatus(state, "accepted", 100);
     expect(first.fireAcceptance).toBe(true);
+    expect(first.setsAcceptedAt).toBe(true);
     expect(first.acceptedAt).toBe(100);
     state = { status: first.status, acceptedAt: first.acceptedAt };
 
-    // Move away and re-accept: acceptedAt must not reset, fireAcceptance must stay false.
     const declined = changeStatus(state, "declined", 200);
     expect(declined.fireAcceptance).toBe(false);
+    expect(declined.setsAcceptedAt).toBe(false);
     expect(declined.acceptedAt).toBe(100);
     state = { status: declined.status, acceptedAt: declined.acceptedAt };
 
+    // pending/declined -> accepted with a non-null acceptedAt: fireAcceptance
+    // fires (re-plans onboarding, idempotently) but setsAcceptedAt is false
+    // and acceptedAt is preserved from the original accept.
     const reaccepted = changeStatus(state, "accepted", 300);
-    expect(reaccepted.fireAcceptance).toBe(false);
+    expect(reaccepted.fireAcceptance).toBe(true);
+    expect(reaccepted.setsAcceptedAt).toBe(false);
     expect(reaccepted.acceptedAt).toBe(100);
   });
 
@@ -109,13 +128,14 @@ describe("status pipeline", () => {
     );
     expect(unaccepted.acceptedAt).toBe(50);
     expect(unaccepted.fireAcceptance).toBe(false);
+    expect(unaccepted.setsAcceptedAt).toBe(false);
   });
 
   it("StatusChangeResult never carries a mailer-shaped field", () => {
     // Structural invariant (DEC-009): the type/shape returned by changeStatus
     // has no mail/email field — callers must decide notification separately.
     const result = changeStatus({ status: "pending", acceptedAt: null }, "accepted", 1);
-    expect(Object.keys(result).sort()).toEqual(["acceptedAt", "fireAcceptance", "status"]);
+    expect(Object.keys(result).sort()).toEqual(["acceptedAt", "fireAcceptance", "setsAcceptedAt", "status"]);
   });
 });
 

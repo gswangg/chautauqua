@@ -451,8 +451,9 @@ export async function updateSubmissionStatuses(
     });
   }
 
-  const nonFiringIds: string[] = [];
-  const firingIds: string[] = [];
+  const restIds: string[] = [];
+  const planIds: string[] = [];
+  const stampIds: string[] = [];
 
   for (const row of rows) {
     const currentStatus = isValidStatusLiteral(row.status) ? row.status : "pending";
@@ -463,24 +464,30 @@ export async function updateSubmissionStatuses(
     );
 
     if (result.fireAcceptance) {
-      // changeStatus sets acceptedAt = now for every fireAcceptance row
-      // (enteringAcceptedFirstTime branch), so the whole batch shares one
-      // acceptedAt value — no per-row bookkeeping needed.
-      firingIds.push(row.id);
+      // DEC-278 wave-58 amendment: fireAcceptance fires on EVERY entry into
+      // 'accepted', not just the first — a re-accept re-plans idempotently
+      // so a co-speaker added while un-accepted still gets tasks.
+      planIds.push(row.id);
+      if (result.setsAcceptedAt) {
+        // setsAcceptedAt is a subset of planIds: only the transition that
+        // actually finds accepted_at null stamps it.
+        stampIds.push(row.id);
+      }
     } else {
-      nonFiringIds.push(row.id);
+      restIds.push(row.id);
     }
   }
 
-  if (firingIds.length > 0) {
+  if (planIds.length > 0) {
     // DEC-355 set-based planning: ONE chunked participant SELECT for all
     // firing submissions, dedup contacts in memory, then plan/persist once
     // (planAndPersistOnboardingTasks) — proportional to ids/90 + distinct
     // titles, not to per-submission loops. DEC-079 ordering is preserved:
     // this all runs BEFORE any firing row's UPDATE, so a throw here leaves
-    // every firing row un-accepted and a retry re-plans idempotently.
+    // every firing row un-accepted (or, for a re-accept, un-re-accepted) and
+    // a retry re-plans idempotently.
     const participantRows: { contactId: string; inviteStatus: string }[] = [];
-    for (const idChunk of chunkIds(firingIds)) {
+    for (const idChunk of chunkIds(planIds)) {
       const chunkRows = await db
         .select({ contactId: schema.participant.contactId, inviteStatus: schema.participant.inviteStatus })
         .from(schema.participant)
@@ -491,17 +498,21 @@ export async function updateSubmissionStatuses(
       ...new Set(participantRows.filter((p) => isActiveParticipant(p.inviteStatus)).map((p) => p.contactId)),
     ];
     await planAndPersistOnboardingTasks(db, eventId, participantContactIds, now);
-
-    for (const idChunk of chunkIds(firingIds)) {
-      if (idChunk.length === 0) continue;
-      await db
-        .update(schema.submission)
-        .set({ status, acceptedAt: now, updatedAt: now })
-        .where(and(eq(schema.submission.eventId, eventId), inArray(schema.submission.id, idChunk)));
-    }
   }
 
-  for (const idChunk of chunkIds(nonFiringIds)) {
+  for (const idChunk of chunkIds(stampIds)) {
+    if (idChunk.length === 0) continue;
+    await db
+      .update(schema.submission)
+      .set({ status, acceptedAt: now, updatedAt: now })
+      .where(and(eq(schema.submission.eventId, eventId), inArray(schema.submission.id, idChunk)));
+  }
+
+  // Every other id — including re-accepts (planIds not in stampIds) — never
+  // touches accepted_at, preserving the original stamp (DEC-278 amendment).
+  const stampIdSet = new Set(stampIds);
+  const nonStampIds = [...planIds.filter((id) => !stampIdSet.has(id)), ...restIds];
+  for (const idChunk of chunkIds(nonStampIds)) {
     if (idChunk.length === 0) continue;
     await db
       .update(schema.submission)

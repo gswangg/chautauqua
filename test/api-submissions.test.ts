@@ -88,22 +88,30 @@ describe("isValidStatusLiteral (DEC-003 literals, write-path validation)", () =>
 });
 
 describe("DEC-009 acceptance idempotence guard (pure logic, exercised via the domain cores this module composes)", () => {
-  it("fires acceptance exactly once across repeated transitions into 'accepted'", () => {
+  it("stamps accepted_at exactly once, but re-fires planning on every re-entry into 'accepted' (DEC-278 wave-58 amendment)", () => {
     const now = 1000;
     const first = changeStatus({ status: "pending", acceptedAt: null }, "accepted", now);
     expect(first.fireAcceptance).toBe(true);
+    expect(first.setsAcceptedAt).toBe(true);
     expect(first.acceptedAt).toBe(now);
 
-    // Re-running with the persisted acceptedAt (simulating a retry / re-accept).
+    // Re-running while ALREADY 'accepted' (same status, no transition): no
+    // re-fire, and acceptedAt stays put.
     const second = changeStatus({ status: "accepted", acceptedAt: first.acceptedAt }, "accepted", now + 500);
     expect(second.fireAcceptance).toBe(false);
+    expect(second.setsAcceptedAt).toBe(false);
     expect(second.acceptedAt).toBe(now); // unchanged, never re-stamped
 
-    // Un-accept then re-accept: still guarded because acceptedAt was never cleared.
+    // Un-accept then re-accept: accepted_at is still never cleared/re-stamped
+    // (setsAcceptedAt stays false), but fireAcceptance fires again so a
+    // co-speaker added while un-accepted still gets planned (the planner is
+    // idempotent on (contact, task-title), so this is safe).
     const declined = changeStatus({ status: "accepted", acceptedAt: first.acceptedAt }, "declined", now + 1000);
     expect(declined.acceptedAt).toBe(now);
     const reaccepted = changeStatus({ status: "declined", acceptedAt: declined.acceptedAt }, "accepted", now + 2000);
-    expect(reaccepted.fireAcceptance).toBe(false);
+    expect(reaccepted.fireAcceptance).toBe(true);
+    expect(reaccepted.setsAcceptedAt).toBe(false);
+    expect(reaccepted.acceptedAt).toBe(now);
   });
 
   it("planAcceptance is idempotent when re-run with previously-planned titles folded in", () => {
