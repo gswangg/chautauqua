@@ -261,6 +261,10 @@ portalTasksRoutes.get("/tasks", async (c) => {
   // present only after a submission-linked upload, never persisted, purely
   // this one render's receipt.
   const uploadedAssignmentId = c.req.query("uploaded") || undefined;
+  // CNT-04: present only right after an upload the DEC-922 guard refused to
+  // chain onto this assignment's prior file — see the /upload route's
+  // chainRestarted comment.
+  const newSeriesAssignmentId = c.req.query("newSeries") || undefined;
 
   return c.html(
     <TasksPage
@@ -272,6 +276,7 @@ portalTasksRoutes.get("/tasks", async (c) => {
       deliverableChoiceFor={(id) => deliverableChoiceByAssignmentId.get(id)}
       speakerName={data.contactName}
       uploadedAssignmentId={uploadedAssignmentId}
+      newSeriesAssignmentId={newSeriesAssignmentId}
     />,
   );
 });
@@ -567,11 +572,21 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
   // assignment's own prior file, never a cross-submission id: this is not
   // a validation error for the speaker (never 400 here) — a mismatch just
   // means a fresh chain starts at v1 for the newly chosen submission.
+  // CNT-04 (wave 26 re-open of DEC-922): when the guard above legitimately
+  // refuses to continue the chain (a real submission/kind mismatch against
+  // this assignment's own prior file), that refusal must be legible to the
+  // speaker instead of silent — a bare redirect back to the same task list
+  // is indistinguishable from data loss. chainRestarted flags this case for
+  // the redirect below; it is never set on a first-ever upload (scope.fileId
+  // null, nothing to have restarted from).
   let previousFileId: string | null = null;
+  let chainRestarted = false;
   if (scope.fileId) {
     const target = await getReplacesTarget(c.var.db, scope.fileId);
     if (target && target.submissionId === submissionId && target.kind === kind) {
       previousFileId = scope.fileId;
+    } else {
+      chainRestarted = true;
     }
   }
 
@@ -603,7 +618,13 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
   // that it pulled their accepted session off the public schedule pending
   // re-approval. A plain handout upload (submissionId null, no reopen)
   // keeps today's bare redirect — nothing to disclose.
-  return c.redirect(submissionId ? `/portal/tasks?uploaded=${encodeURIComponent(assignmentId)}` : "/portal/tasks", 302);
+  const redirectParams = new URLSearchParams();
+  if (submissionId) redirectParams.set("uploaded", assignmentId);
+  // CNT-04: name the restart on the redirect so the tasks list can render a
+  // plain line disclosing it — see chainRestarted above.
+  if (chainRestarted) redirectParams.set("newSeries", assignmentId);
+  const redirectQs = redirectParams.toString();
+  return c.redirect(redirectQs ? `/portal/tasks?${redirectQs}` : "/portal/tasks", 302);
 });
 
 // DEC-244 (implements DEC-242): reply on a completed file_request
