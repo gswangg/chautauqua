@@ -162,6 +162,16 @@ REVERT SHAPE (mint a superseding DEC):
 - Reserved-domain recipients (example.com) failing at send is CORRECT honest behavior, not a bug.
 This ships with the gate-4 deploy; deploy procedure keeps the secrets/bindings parity check.
 
+**HOLD — REDESIGN PENDING (2026-08-13, user running a design pass; do NOT build these two):**
+(1) Public filter-bar collapse (delta-probe item 11 / DEC-919 one-pill-row) — the v6 one-row
+design predates the format/room facets; a redesigned filter bar is coming via design handoff.
+(2) Public agenda desktop layout — v6 has NO desktop agenda frame (10--01 is 390 phone); the
+current room-lane grid is improvised and will be replaced by a designed frame
+(10--17-public-agenda-desktop expected). Until the handoff lands: no layout work on either
+surface; copy/data fixes (e.g. the "No sessions scheduled yet" empty-state honesty when a day
+filter constrains search) are still fair game. Fidelity agents: do not file layout findings
+against these two surfaces until the new frames arrive.
+
 **P1 · USER-FILED (2026-08-13): scorecard first criterion boxed on load.** Scorecard.tsx:118
 pre-arms `focusedId` to the first rating criterion on mount, so the DEC-939 inset ring
 (`.chq-review-criterion.chq-focused`, review.css:549) renders before ANY interaction — the top
