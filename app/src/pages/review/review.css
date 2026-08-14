@@ -1412,6 +1412,14 @@
   align-self: center;
 }
 
+/* DEC-873 (wave 27 amendment): the caption sits beside "Save draft" -- the
+   control that skips completeness checks names what it skips. */
+.chq-review-draft-caption {
+  font-size: 12px;
+  color: var(--chq-muted);
+  align-self: center;
+}
+
 /* task-w15-d */
 /* DEC-874: the reviewer's own PLAN LIST (2+ assigned plans) -- one row per
    plan, linking into its scoped queue. Mirrors .chq-review-plan-row's shape

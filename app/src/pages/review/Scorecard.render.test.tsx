@@ -167,9 +167,9 @@ describe('Scorecard render smoke', () => {
   // DEC-873: (1) rating buttons cover [scale.min, scale.max] with
   // aria-checked on the chosen one; (2) the weight caption reads
   // criterionWeightShares; (3) Overall renders an em dash until every
-  // rating criterion is scored, then the computed blend; (4) Save PUTs and
-  // stays on the page.
-  it('renders the scale-bound rating control, weight caption, and overall blend; Save does not navigate', async () => {
+  // rating criterion is scored, then the computed blend; (4) Save draft
+  // PUTs and stays on the page.
+  it('renders the scale-bound rating control, weight caption, and overall blend; Save draft does not navigate', async () => {
     const fetchMock = mockApi({
       'GET /api/v1/review/plans': listEnvelope([plan()]),
       [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
@@ -227,9 +227,9 @@ describe('Scorecard render smoke', () => {
     // Complete -> (4*3 + 2*1) / 4 = 3.5.
     await waitFor(() => expect(overallValue().textContent).toBe('3.5'));
 
-    // Save PUTs the same body and stays on the page (no navigation away).
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    await screen.findByText('Saved');
+    // Save draft PUTs and stays on the page (no navigation away).
+    fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+    await screen.findByText('Saved as a draft');
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining(`/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`),
       expect.objectContaining({ method: 'PUT' }),
@@ -349,7 +349,7 @@ describe('Scorecard reading column at rest (DEC-889 wave-72 amendment)', () => {
     expect(screen.queryByText(/hidden while this plan is anonymised/)).not.toBeInTheDocument();
   });
 
-  it('the rail actions render full-width stacked, primary over secondary, with the secondary labelled Save (DEC-873)', async () => {
+  it('the rail actions render full-width stacked, primary over secondary, with the secondary labelled Save draft (DEC-873 wave 27 amendment)', async () => {
     mockApi({
       'GET /api/v1/review/plans': listEnvelope([plan()]),
       [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
@@ -371,12 +371,11 @@ describe('Scorecard reading column at rest (DEC-889 wave-72 amendment)', () => {
     );
 
     expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
-    expect(screen.queryByText('Save draft')).not.toBeInTheDocument();
     const actions = document.querySelector('.chq-review-editor-actions')!;
     const buttons = Array.from(actions.querySelectorAll('button'));
     expect(buttons[0]).toHaveTextContent('Submit and next');
     expect(buttons[0]).toHaveClass('chq-btn-primary');
-    expect(buttons[1]).toHaveTextContent('Save');
+    expect(buttons[1]).toHaveTextContent('Save draft');
     expect(buttons[1]).toHaveClass('chq-btn-secondary');
   });
 });
@@ -508,7 +507,7 @@ describe('Scorecard recusal survives reload (DEC-984)', () => {
     within(qualityGroup).getAllByRole('radio').forEach((r) => expect(r).toBeDisabled());
     expect(screen.getByRole('combobox')).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Submit and next' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();
 
     // No client-side POST was made to establish this -- it rendered straight
     // off the GET response.
@@ -963,5 +962,105 @@ describe('Scorecard completeness notice and form-field key guard (DEC-939 wave-3
       expect.stringContaining(`/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`),
       expect.objectContaining({ method: 'PUT' }),
     );
+  });
+});
+
+// DEC-873 (wave 27 amendment, task w27-g): Save draft accepts partial scores
+// (no completeness check, no `attempted` gate); Submit and next keeps its
+// full validation unchanged.
+describe('Scorecard Save draft (DEC-873 wave 27 amendment)', () => {
+  function twoRatings() {
+    return [
+      { id: 'c1', label: 'Relevance', kind: 'rating' as const, weight: 1 },
+      { id: 'c2', label: 'Recommendation', kind: 'rating' as const, weight: 1 },
+    ];
+  }
+
+  it('Save draft with zero criteria scored succeeds, while Submit with zero scored still blocks', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: twoRatings(),
+      },
+      [`PUT /api/v1/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`]: { ok: true },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
+
+    // Submit and next, with nothing scored, blocks -- no PUT, and the
+    // incomplete notice names both criteria.
+    fireEvent.click(screen.getByRole('button', { name: 'Submit and next' }));
+    expect(
+      await screen.findByText('Rate every criterion before submitting — still needed: Relevance, Recommendation'),
+    ).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining(`/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`),
+      expect.objectContaining({ method: 'PUT' }),
+    );
+
+    // Save draft, with nothing scored, succeeds -- no completeness gate.
+    fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+    await screen.findByText('Saved as a draft');
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining(`/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`),
+      expect.objectContaining({ method: 'PUT' }),
+    );
+    const draftCall = fetchMock.mock.calls.find(
+      ([input, init]) =>
+        typeof input === 'string' &&
+        input.includes(`/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`) &&
+        (init as RequestInit | undefined)?.method === 'PUT',
+    );
+    const draftBody = JSON.parse((draftCall?.[1] as RequestInit).body as string) as {
+      draft: boolean;
+      scores: Record<string, unknown>;
+    };
+    expect(draftBody.draft).toBe(true);
+    expect(draftBody.scores).toEqual({});
+
+    // Save draft did not clear/hide the still-visible incomplete notice
+    // from the earlier failed Submit attempt -- Save draft never re-runs
+    // the completeness check either way.
+    expect(
+      screen.getByText('Rate every criterion before submitting — still needed: Relevance, Recommendation'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows the "Saving a draft skips these checks" caption beside Save draft', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: twoRatings(),
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(screen.getByText('Saving a draft skips these checks')).toBeInTheDocument();
   });
 });
