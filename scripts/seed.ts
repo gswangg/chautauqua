@@ -824,6 +824,11 @@ async function main(): Promise<void> {
   // 'N on / M off' count line both have a real disabled row to demonstrate
   // (rather than borrowing that job from the CFP window, see the form
   // open_date change above).
+  //
+  // DEC-887 amendment (task w66-b): both rows now carry a real recipe (not
+  // an empty {}) so SavedEmbedsPanel/EmbedsPanel's formatEmbedRecipe line
+  // has actual knobs to render, per the surface's honoured knob set
+  // (app/src/pages/settings/embedSnippet.ts's EMBED_KNOBS_BY_SURFACE).
   statements.push(
     insertStmt("embed", {
       id: seedId("embed", 3),
@@ -832,7 +837,9 @@ async function main(): Promise<void> {
       name: "Homepage agenda strip",
       surface: "agenda",
       format: "iframe",
-      options_json: JSON.stringify({}),
+      // agenda honours trackId/format/day/q/limit/accent -- a homepage
+      // strip is a short, branded rundown of day 1's schedule.
+      options_json: JSON.stringify({ day: "2027-05-12", limit: 6, accent: "4e5c31" }),
       enabled: true,
       created_at: nextTs(),
       updated_at: ts,
@@ -846,7 +853,9 @@ async function main(): Promise<void> {
       name: "Sponsor deck feed",
       surface: "sessions",
       format: "json",
-      options_json: JSON.stringify({}),
+      // sessions honours trackId/format/roomId/day/q/limit/fields/accent --
+      // a sponsor deck feed wants a compact, field-limited JSON pull.
+      options_json: JSON.stringify({ fields: ["track", "time", "room", "speaker"], limit: 20 }),
       enabled: false,
       created_at: nextTs(),
       updated_at: ts,
@@ -1103,8 +1112,17 @@ async function main(): Promise<void> {
   // 3 bumped) — enough for a full agenda/public-page demo (task w3-j).
   // additionalSubmissionStatuses' distribution itself is untouched (owned
   // by an earlier wave-2 task and covered by its own test).
+  //
+  // DEC-887 amendment (task w66-b): index 3 is a 4th bump, per this task's
+  // "MAY promote AT MOST ONE additional seeded pending submission" allowance
+  // — the public agenda's auto-fit grid needs a real 4-up (four different
+  // rooms, one start time) case, and the approved-content pool without it is
+  // one short of covering 4-up + 2-up + solo while still leaving >=1
+  // approved submission genuinely unplaced (see the schedule-slot plan
+  // below). This is the ONLY extra promotion — growing the accepted set
+  // further is explicitly out of scope for this task.
   const baseStatuses = additionalSubmissionStatuses(additionalCount);
-  const bumpToAccepted = new Set([0, 1, 2]);
+  const bumpToAccepted = new Set([0, 1, 2, 3]);
   const statuses = baseStatuses.map((s, i) => (bumpToAccepted.has(i) ? "accepted" : s));
   // Captured for the DEC-739 comms fan-out batch below.
   const synthContacts: { contactId: string; email: string; speakerName: string }[] = [];
@@ -2088,37 +2106,79 @@ async function main(): Promise<void> {
     }
   });
 
-  // --- schedule slots (DEC-010/DEC-021): roughly two-thirds of accepted
-  // submissions placed across the event's 3 days and 4 rooms, with one
-  // deliberate room-overlap conflict and one TBD (null room) slot; the
-  // rest stay unplaced so the agenda "unscheduled" count reads honestly.
+  // --- schedule slots (DEC-010/DEC-021, DEC-887 amendment task w66-b): a
+  // placement plan over the event's 3 days and 4 rooms that gives the
+  // public agenda's per-time-slot auto-fit grid real concurrency to render,
+  // not five lonely full-width blocks. acceptedSubmissions is
+  // [fixture-approved, i0-approved, i1-changes_requested, i2-pending,
+  // i3-approved(NEW, DEC-887 amendment above), i19..i23-approved] — indices
+  // [0,1,4,5,6,7,8,9] carry content_status 'approved' (the publicly-
+  // renderable set), [2,3] don't.
+  //
+  //   - [2],[3] (non-approved content, so this is an admin-only-visible
+  //     demo, never a public one): the deliberate same-room overlap
+  //     conflict on day 1, room 0, overlapping 09:00-09:45 / 09:15-10:00.
+  //   - [8]: the TBD (room_id: null) slot, alone at its start time on day 1
+  //     -- doubles as the public agenda's 1-up ("solo") layout case, since
+  //     it's the only approved+scheduled session at 11:00 that day.
+  //   - [0],[1],[4],[5]: a real 4-up case -- one start time (day 2, 09:30),
+  //     four different rooms.
+  //   - [6],[7]: a real 2-up case -- one start time (day 3, 09:30), two
+  //     different rooms.
+  //   - [9]: deliberately left UNPLACED so the agenda "N unplaced" count
+  //     stays honest even though every other approved submission is placed.
+  //
+  // Every placement sits clear of both seeded breaks (coffee 10:15-10:30,
+  // lunch 12:00-13:00) so the public agenda's spanning break rows explain
+  // real gaps instead of colliding with a block.
   const eventDays = ["2027-05-12", "2027-05-13", "2027-05-14"];
-  const placedForSchedule = acceptedSubmissions.slice(0, 5);
-  if (placedForSchedule.length === 5) {
-    const slots: Array<{ submissionId: string; roomId: string | null; day: string; startMin: number; endMin: number }> = [
-      // Deliberate conflict: both in room 0 on day 1, overlapping 09:15-09:45.
-      { submissionId: placedForSchedule[0]!.submissionId, roomId: roomIds[0]!, day: eventDays[0]!, startMin: 9 * 60, endMin: 9 * 60 + 45 },
-      { submissionId: placedForSchedule[1]!.submissionId, roomId: roomIds[0]!, day: eventDays[0]!, startMin: 9 * 60 + 15, endMin: 10 * 60 },
-      // TBD room.
-      { submissionId: placedForSchedule[2]!.submissionId, roomId: null, day: eventDays[1]!, startMin: 10 * 60, endMin: 10 * 60 + 45 },
-      { submissionId: placedForSchedule[3]!.submissionId, roomId: roomIds[1]!, day: eventDays[1]!, startMin: 11 * 60, endMin: 11 * 60 + 45 },
-      { submissionId: placedForSchedule[4]!.submissionId, roomId: roomIds[2]!, day: eventDays[2]!, startMin: 9 * 60, endMin: 9 * 60 + 45 },
-    ];
-    slots.forEach((slot, i) => {
-      statements.push(
-        insertStmt("schedule_slot", {
-          id: seedId("schedule_slot", i + 1),
-          submission_id: slot.submissionId,
-          room_id: slot.roomId,
-          day: slot.day,
-          start_min: slot.startMin,
-          end_min: slot.endMin,
-          created_at: nextTs(),
-          updated_at: ts,
-        }),
-      );
-    });
+  const APPROVED_ACCEPTED_INDEXES = [0, 1, 4, 5, 6, 7, 8, 9];
+  if (acceptedSubmissions.length < 10) {
+    throw new Error(
+      `seed: schedule-slot concurrency plan needs 10 accepted submissions (7 approved placed + 1 approved held back + 2 conflict), got ${acceptedSubmissions.length}`,
+    );
   }
+  for (const idx of APPROVED_ACCEPTED_INDEXES) {
+    if (acceptedSubmissions[idx] === undefined) {
+      throw new Error(`seed: schedule-slot concurrency plan expected acceptedSubmissions[${idx}] to exist`);
+    }
+  }
+  if (roomIds.length < 4) {
+    throw new Error(`seed: schedule-slot concurrency plan needs 4 rooms for the 4-up case, got ${roomIds.length}`);
+  }
+  const sub = (idx: number): string => acceptedSubmissions[idx]!.submissionId;
+  const slots: Array<{ submissionId: string; roomId: string | null; day: string; startMin: number; endMin: number }> = [
+    // Deliberate same-room conflict, day 1 (admin-only demo -- these two
+    // carry non-approved content_status, see comment above).
+    { submissionId: sub(2), roomId: roomIds[0]!, day: eventDays[0]!, startMin: 9 * 60, endMin: 9 * 60 + 45 },
+    { submissionId: sub(3), roomId: roomIds[0]!, day: eventDays[0]!, startMin: 9 * 60 + 15, endMin: 10 * 60 },
+    // TBD room, day 1 -- alone at 11:00, doubling as the public agenda's
+    // 1-up ("solo") layout case.
+    { submissionId: sub(8), roomId: null, day: eventDays[0]!, startMin: 11 * 60, endMin: 11 * 60 + 45 },
+    // 4-up case: one start time, four different rooms, day 2.
+    { submissionId: sub(0), roomId: roomIds[0]!, day: eventDays[1]!, startMin: 9 * 60 + 30, endMin: 10 * 60 },
+    { submissionId: sub(1), roomId: roomIds[1]!, day: eventDays[1]!, startMin: 9 * 60 + 30, endMin: 10 * 60 },
+    { submissionId: sub(4), roomId: roomIds[2]!, day: eventDays[1]!, startMin: 9 * 60 + 30, endMin: 10 * 60 },
+    { submissionId: sub(5), roomId: roomIds[3]!, day: eventDays[1]!, startMin: 9 * 60 + 30, endMin: 10 * 60 },
+    // 2-up case: one start time, two different rooms, day 3.
+    { submissionId: sub(6), roomId: roomIds[0]!, day: eventDays[2]!, startMin: 9 * 60 + 30, endMin: 10 * 60 },
+    { submissionId: sub(7), roomId: roomIds[1]!, day: eventDays[2]!, startMin: 9 * 60 + 30, endMin: 10 * 60 },
+    // acceptedSubmissions[9] is deliberately left unplaced.
+  ];
+  slots.forEach((slot, i) => {
+    statements.push(
+      insertStmt("schedule_slot", {
+        id: seedId("schedule_slot", i + 1),
+        submission_id: slot.submissionId,
+        room_id: slot.roomId,
+        day: slot.day,
+        start_min: slot.startMin,
+        end_min: slot.endMin,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+  });
 
   // --- schedule breaks (DEC-022 amendment, wave 63): a coffee break and a
   // lunch break per day. Deliberately NOT keyed to any submission/room --
