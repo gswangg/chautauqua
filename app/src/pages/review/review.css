@@ -721,7 +721,7 @@
 
 .chq-review-criterion-row {
   display: grid;
-  grid-template-columns: 1fr 1fr auto auto;
+  grid-template-columns: 20px minmax(0, 1fr) minmax(0, 1fr) auto auto;
   gap: 16px;
   align-items: center;
   padding: 13px 0;
@@ -750,9 +750,18 @@
    (a "Weight" label vs. a full number input) drifted out of alignment
    between the header and the body rows even though both declared the
    same template. */
+/* w18-e/DEC-715 amendment: 1fr alone has a min-content floor, so a long
+   label/guidance value could push the row wider than its container --
+   minmax(0, 1fr) instead. Five explicit tracks (drag, label, guidance,
+   kind cell, remove) for the five non-error children this row renders;
+   .chq-review-field-error spans all of them below, never a sixth track. */
 .chq-review-criterion-row,
 .chq-review-criteria-head-row {
-  grid-template-columns: auto 1fr 1fr 150px 70px;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) 150px 70px;
+}
+
+.chq-review-criterion-row > .chq-review-field-error {
+  grid-column: 1 / -1;
 }
 
 /* DEC-715: reuses the form-builder's handle class/markup

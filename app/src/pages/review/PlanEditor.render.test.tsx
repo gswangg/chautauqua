@@ -12,12 +12,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { PlanEditor } from './PlanEditor';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 import { guardedNavigate } from '../../lib/useNavExceptions';
 
 const EVENT_ID = 'evt-plan-editor';
 const PLAN_ID = 'plan-1';
+const HERE = dirname(fileURLToPath(import.meta.url));
+const REVIEW_CSS = readFileSync(join(HERE, 'review.css'), 'utf-8');
 
 function plan(overrides: Record<string, unknown> = {}) {
   return {
@@ -1607,5 +1612,128 @@ describe('PlanEditor render smoke', () => {
     // Delete plan sits on the "Who reviews what" section rule now, not a
     // standalone footer band.
     expect(deleteLink.closest('.chq-section-head')).not.toBeNull();
+  });
+
+  // w18-e/DEC-715 amendment: an editable criterion row renders five
+  // non-error children (drag handle, label input, guidance input, kind
+  // cell, Remove button) -- .chq-review-criterion-row's grid must declare
+  // at least that many explicit tracks, or Remove wraps to an implicit
+  // second row.
+  it('declares at least as many grid tracks as an editable criterion row has non-error children', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: {
+        ...plan(),
+        criteria: [{ id: 'c1', label: 'Content', kind: 'rating', weight: 1 }],
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    const { container } = render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByDisplayValue('Content')).toBeInTheDocument(),
+    );
+    const row = container.querySelector('.chq-review-criterion-row') as HTMLElement;
+    expect(row).not.toBeNull();
+    const nonErrorChildren = Array.from(row.children).filter(
+      (child) => !child.classList.contains('chq-review-field-error'),
+    );
+    expect(nonErrorChildren.length).toBe(5);
+
+    const ruleMatch = REVIEW_CSS.match(
+      /\.chq-review-criterion-row,\s*\n\.chq-review-criteria-head-row\s*\{\s*\n\s*grid-template-columns:\s*([^;]+);/,
+    );
+    expect(ruleMatch).not.toBeNull();
+    const trackCount = (ruleMatch![1] as string)
+      .trim()
+      .split(/\s+/)
+      .filter((token) => token.length > 0).length;
+    expect(trackCount).toBeGreaterThanOrEqual(nonErrorChildren.length);
+  });
+
+  // w18-e/DEC-715 amendment: a validation-error span is a direct child of
+  // the row (so it can be scoped by review.css to span the full row width,
+  // not displace the controls after it into a phantom column).
+  it('renders a validation error span as a direct child of the criterion row, scoped to span the full row', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: {
+        ...plan(),
+        criteria: [{ id: 'c1', label: '', kind: 'rating', weight: 1 }],
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    const { container } = render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText('Criterion label is required.')).toBeInTheDocument(),
+    );
+    const row = container.querySelector('.chq-review-criterion-row') as HTMLElement;
+    const errorSpan = row.querySelector('.chq-review-field-error') as HTMLElement;
+    expect(errorSpan).not.toBeNull();
+    expect(errorSpan.parentElement).toBe(row);
+
+    expect(REVIEW_CSS).toContain('.chq-review-criterion-row > .chq-review-field-error');
+    expect(REVIEW_CSS).toMatch(
+      /\.chq-review-criterion-row > \.chq-review-field-error\s*\{\s*\n\s*grid-column:\s*1\s*\/\s*-1;/,
+    );
+  });
+
+  // w18-e/DEC-745 amendment: "Distribute the unassigned" is preview-then-
+  // confirm (DEC-786) -- the section caption must not claim it applies
+  // immediately, while the distribute preview's own "nothing is saved
+  // until you confirm" copy still renders once opened.
+  it('states only "Assign a reviewer applies immediately" on the section caption, not that Distribute does too', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([
+        { id: 'pr-1', userId: 'user-42', email: 'reviewer@example.test', trackId: null, submissionId: null },
+      ]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/assignments/distribute/preview`]: {
+        cap: null,
+        items: [],
+        perReviewer: [
+          { userId: 'user-42', name: 'Ada Lovelace', trackName: null, before: 0, after: 3, added: 3, eligible: true, reason: null },
+        ],
+        totalAssigned: 3,
+        shortfall: [],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const caption = await screen.findByText('Assign a reviewer applies immediately.');
+    expect(caption.textContent).toBe('Assign a reviewer applies immediately.');
+    expect(caption.textContent).not.toMatch(/Distribute/);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Distribute the unassigned' }));
+    expect(await screen.findByText('Nothing is saved until you confirm.')).toBeInTheDocument();
   });
 });

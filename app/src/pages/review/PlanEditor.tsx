@@ -1502,10 +1502,13 @@ export function PlanEditor() {
                 (Save-gated) and immediate ACTIONS is legible right on the
                 section rule -- same chq-review-section-caption convention
                 the Scoring criteria section already uses above, no new
-                band, no floating primary. */}
-            <p className="chq-review-section-caption">
-              Assign a reviewer applies immediately. Distribute the unassigned applies immediately.
-            </p>
+                band, no floating primary.
+                w18-e/DEC-745 amendment: "Distribute" is preview-then-confirm
+                (DEC-786) -- its own preview already states "Nothing is
+                saved until you confirm" (:1602), so this caption no longer
+                claims it applies immediately; only "Assign a reviewer" is a
+                real zero-confirm immediate action. */}
+            <p className="chq-review-section-caption">Assign a reviewer applies immediately.</p>
             {reviewers.map((r) => {
               const progress = progressRows.find((p) => p.userId === r.userId);
               const displayName = progress ? reviewerDisplayLabel(progress) : (r.email ?? '(account removed)');
