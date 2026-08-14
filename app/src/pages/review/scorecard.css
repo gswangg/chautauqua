@@ -2,10 +2,16 @@
    work surface -- a reading column (submission context) and a scoring rail
    (everything the reviewer writes into), not one long single-column form.
    The page root itself clamps at --chq-measure-wide (1180px); this grid's
-   two fixed tracks (820 + 300 + 36 gap = 1156) fit inside that without a
-   max-width of its own. Below ~1200px there's no room for both tracks side
-   by side, so the ONE additive media query collapses to a single column
-   and the rail simply flows under the reading column in source order. */
+   tracks (a flexible reading column that maxes at 820 + a 300 rail + 36 gap
+   = 1156 at full width) fit inside that without a max-width of its own.
+   Between 900 and 1156 the reading track absorbs the shortfall via its
+   minmax(0, 820px) lower bound rather than overflowing. At 900px there is no
+   longer room for both tracks side by side, so the ONE additive media query
+   collapses to a single column and the rail simply flows under the reading
+   column in source order. 900px is DEC-385's sanctioned intermediate
+   multi-column collapse -- the same breakpoint review.css already uses for
+   the plan row and progress grid; it is not a phone switch (that stays
+   700px) and no phone metrics live in it. */
 .chq-review-scorecard-grid {
   display: grid;
   grid-template-columns: minmax(0, 820px) 300px;
@@ -24,7 +30,7 @@
   gap: 20px;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 900px) {
   .chq-review-scorecard-grid {
     grid-template-columns: 1fr;
   }
