@@ -262,12 +262,14 @@ describe("SessionCard schedule rendering (EMB-01: date/time + room)", () => {
     const html = await res.text();
     const fragment = cardFragment(html, "sub1");
     expect(fragment).toContain("chq-pub-session-when");
-    expect(fragment).toContain("9:00 AM");
-    expect(fragment).toContain("10:00 AM");
+    // w1-c (DEC-534): the gutter now shows the 24h start time alone (no
+    // AM/PM, no zero pad) on line 1, and the room on line 2 — the day moved
+    // out to a per-day heading, and the end time is no longer shown here.
+    expect(fragment).toContain('<span class="chq-pub-session-time">9:00</span>');
     expect(fragment).toContain("Main Hall");
   });
 
-  it("DEC-698: still emits an empty .chq-pub-session-when gutter cell for an unscheduled session (no dash pile, no TBD prose) so the row keeps its 126px 1fr auto column count", async () => {
+  it("DEC-698: still emits an empty .chq-pub-session-when gutter cell for an unscheduled session (no dash pile, no TBD prose) so the row keeps its 268px 1fr auto column count", async () => {
     installFakeCaches();
     const app = buildApp();
     const res = await app.request("/e/conf/sessions", {}, TEST_ENV);
@@ -276,7 +278,7 @@ describe("SessionCard schedule rendering (EMB-01: date/time + room)", () => {
     const whenMatch = fragment.match(/<div class="chq-pub-session-when"[^>]*>([\s\S]*?)<\/div>/);
     expect(whenMatch).not.toBeNull();
     expect((whenMatch as RegExpMatchArray)[1]!.trim()).toBe("");
-    expect(fragment).not.toContain("9:00 AM");
+    expect(fragment).not.toContain("9:00");
     expect(fragment).not.toContain("Main Hall");
     expect(whenMatch![0]).not.toMatch(/TBD|TBC|—/);
   });

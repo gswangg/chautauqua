@@ -13,7 +13,7 @@ import type { AppEnv } from "../src/server/env";
 // Mirrors test/public.test.ts's makeChain, but also records the bound
 // passed to .limit() and the condition passed to .where() so assertions
 // below can inspect both the id query and the count query.
-function makeChain(rows: unknown[], record: { where?: unknown; limit?: number } = {}) {
+function makeChain(rows: unknown[], record: { where?: unknown; limit?: number; orderBy?: unknown[] } = {}) {
   const chain: any = {
     from: () => chain,
     innerJoin: () => chain,
@@ -22,7 +22,10 @@ function makeChain(rows: unknown[], record: { where?: unknown; limit?: number } 
       record.where = cond;
       return chain;
     },
-    orderBy: () => chain,
+    orderBy: (...args: unknown[]) => {
+      record.orderBy = args;
+      return chain;
+    },
     limit: (n: number) => {
       record.limit = n;
       return { then: (resolve: (v: unknown[]) => void) => resolve(rows) };
@@ -32,6 +35,20 @@ function makeChain(rows: unknown[], record: { where?: unknown; limit?: number } 
     then: (resolve: (v: unknown[]) => void) => resolve(rows),
   };
   return chain;
+}
+
+// Walks the drizzle expressions passed to .orderBy(...) collecting referenced
+// column names in order — same shape of walk as walkCondition below, applied
+// per orderBy() argument so callers can assert the ONE shared ordering
+// expression's column sequence (day, startMin, endMin, title, id) regardless
+// of which branch built the query.
+function orderByColumns(args: unknown[] | undefined): string[] {
+  if (!args) return [];
+  const out: string[] = [];
+  for (const arg of args) {
+    out.push(...walkCondition(arg));
+  }
+  return out;
 }
 
 // Walks a drizzle SQL condition tree collecting referenced column names and
@@ -75,8 +92,8 @@ const EVENT: PublicEvent = {
 // query's own db.select() call — see src/server/repo/public/sessions.ts's
 // getPublicSessions comment: id query -> hydrateSessions -> count query.
 function buildDb(idRows: { id: string }[], countValue: number, ids: string[]) {
-  const idRecord: { where?: unknown; limit?: number } = {};
-  const countRecord: { where?: unknown; limit?: number } = {};
+  const idRecord: { where?: unknown; limit?: number; orderBy?: unknown[] } = {};
+  const countRecord: { where?: unknown; limit?: number; orderBy?: unknown[] } = {};
   let selectCall = 0;
   const db = {
     selectDistinct: () => makeChain(idRows, idRecord),
@@ -147,6 +164,35 @@ describe("getPublicSessions (DEC-418): SQL-bound pagination", () => {
     await expect(
       getPublicSessions(db, EVENT, { trackId: null, page: Infinity, perPage: 12, q: null }),
     ).rejects.toThrow();
+  });
+
+  it("DEC-534: the unfiltered branch orders by day, startMin, endMin, then title, id — unscheduled after every scheduled row", async () => {
+    const { db, idRecord } = buildDb([{ id: "a" }], 1, ["a"]);
+    await getPublicSessions(db, EVENT, { trackId: null, page: 1, perPage: 12, q: null });
+    const cols = orderByColumns(idRecord.orderBy);
+    expect(cols).toEqual(["col:day", "col:start_min", "col:end_min", "col:title", "col:id"]);
+  });
+
+  it("DEC-534: the track-filtered branch uses the SAME shared ordering expression (not title/id alone)", async () => {
+    const { db, idRecord } = buildDb([{ id: "a" }], 1, ["a"]);
+    await getPublicSessions(db, EVENT, { trackId: "trk1", page: 1, perPage: 12, q: null });
+    const cols = orderByColumns(idRecord.orderBy);
+    expect(cols).toEqual(["col:day", "col:start_min", "col:end_min", "col:title", "col:id"]);
+  });
+
+  it("DEC-534: the day-filtered branch's order stays deterministic under DISTINCT across a page boundary — id remains the final tiebreaker after title", async () => {
+    const { db, idRecord } = buildDb([{ id: "a" }], 1, ["a"]);
+    await getPublicSessions(db, EVENT, { trackId: null, page: 2, perPage: 12, q: null, day: "2026-08-10" });
+    const cols = orderByColumns(idRecord.orderBy);
+    expect(cols[cols.length - 2]).toBe("col:title");
+    expect(cols[cols.length - 1]).toBe("col:id");
+  });
+
+  it("DEC-534: the trackId+day branch (cumulative show-more window) also uses the shared ordering expression", async () => {
+    const { db, idRecord } = buildDb([{ id: "a" }], 1, ["a"]);
+    await getPublicSessions(db, EVENT, { trackId: "trk1", page: 1, perPage: 12, q: null, day: "2026-08-10" });
+    const cols = orderByColumns(idRecord.orderBy);
+    expect(cols).toEqual(["col:day", "col:start_min", "col:end_min", "col:title", "col:id"]);
   });
 
   it("applies the identical keyword (q) condition to both the id query and the count query", async () => {
