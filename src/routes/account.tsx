@@ -96,29 +96,37 @@ function PasswordPage(props: {
           ) : null}
           <form className="chq-auth-fields" method="post" action="/account/password">
             <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
-            <label>
-              <span className="chq-auth-label">Current password</span>
-              <input className="chq-input" type="password" name="current" required />
-            </label>
-            <label>
-              <span className="chq-auth-label">New password</span>
-              <input
-                className="chq-input"
-                type="password"
-                name="next"
-                minlength={MIN_PASSWORD_LENGTH}
-                placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
-                required
-              />
-            </label>
-            <label>
-              <span className="chq-auth-label">New password again</span>
-              <input className="chq-input" type="password" name="confirm" minlength={MIN_PASSWORD_LENGTH} required />
-            </label>
-            <div className="chq-auth-actions">
-              <button type="submit" className="chq-btn-primary">
+            <div className="chq-auth-fieldstack">
+              <label>
+                <span className="chq-auth-label">Current password</span>
+                <input className="chq-input" type="password" name="current" required />
+              </label>
+              <label>
+                <span className="chq-auth-label">New password</span>
+                <input
+                  className="chq-input"
+                  type="password"
+                  name="next"
+                  minlength={MIN_PASSWORD_LENGTH}
+                  placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+                  required
+                />
+              </label>
+              <label>
+                <span className="chq-auth-label">New password again</span>
+                <input className="chq-input" type="password" name="confirm" minlength={MIN_PASSWORD_LENGTH} required />
+              </label>
+            </div>
+            <div className="chq-phone-actionbar chq-auth-actions">
+              <button type="submit" className="chq-btn-primary chq-phone-actionbar-primary">
                 Change it
               </button>
+              <a
+                className="chq-btn chq-btn-secondary chq-phone-actionbar-secondary chq-auth-cancel"
+                href={props.backHref}
+              >
+                Cancel
+              </a>
               <span className="chq-auth-hint">You stay signed in on this device</span>
             </div>
           </form>
