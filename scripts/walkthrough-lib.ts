@@ -188,3 +188,41 @@ export function dropdownCriterionExcludedFromAverage(
 ): boolean {
   return dropdownCriterionId in row.perDropdown && !(dropdownCriterionId in row.perCriterion);
 }
+
+// ---------------------------------------------------------------------------
+// w66-d: J9 break-lifecycle (DEC-063 amendment) — request/body builders and
+// response-shape validators for POST/GET/DELETE .../breaks and the
+// anonymous public agenda fetch, kept dependency-free per DEC-062.
+// ---------------------------------------------------------------------------
+
+export interface CreateBreakRequestBody {
+  day: string;
+  label: string;
+  startMin: number;
+  durationMin: number;
+}
+
+/** POST /api/v1/events/:eventId/breaks body (src/routes/api/breaks.ts). */
+export function buildCreateBreakBody(
+  day: string,
+  label: string,
+  startMin = 0,
+  durationMin = 15,
+): CreateBreakRequestBody {
+  return { day, label, startMin, durationMin };
+}
+
+/** Does a GET /api/v1/events/:eventId/breaks?day=... envelope's `items`
+ * contain a break with this id? Mirrors the DEC-461(a) list envelope shape
+ * (items/total/page/perPage) already used elsewhere in this file. */
+export function breaksListContainsId(items: readonly { id: string }[], breakId: string): boolean {
+  return items.some((b) => b.id === breakId);
+}
+
+/** Does the anonymous /e/:slug/agenda?day=... HTML contain this break's
+ * rendered label text? Assert on the label text only — never on a CSS
+ * class, element order, or DOM structure (a concurrently-landing markup
+ * rewrite must not break this check). */
+export function agendaHtmlContainsBreakLabel(html: string, label: string): boolean {
+  return html.includes(label);
+}

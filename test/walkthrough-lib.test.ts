@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   WALKTHROUGH_AREAS,
+  agendaHtmlContainsBreakLabel,
+  breaksListContainsId,
   buildContactsMergeBody,
+  buildCreateBreakBody,
   buildReviewerAssignmentBody,
   buildSpawnArgs,
   dropdownCriterionExcludedFromAverage,
@@ -289,5 +292,53 @@ describe("findEventBySlug", () => {
 
   it("names '(none)' when the items array is empty", () => {
     expect(() => findEventBySlug([], "devflow-conf-2027")).toThrow(/\(none\)/);
+  });
+});
+
+describe("buildCreateBreakBody (w66-d, DEC-063 amendment)", () => {
+  it("builds the POST /breaks body with explicit startMin/durationMin", () => {
+    expect(buildCreateBreakBody("2027-09-01", "Walkthrough Snack Break", 600, 20)).toEqual({
+      day: "2027-09-01",
+      label: "Walkthrough Snack Break",
+      startMin: 600,
+      durationMin: 20,
+    });
+  });
+
+  it("defaults startMin/durationMin when omitted", () => {
+    expect(buildCreateBreakBody("2027-09-01", "Walkthrough Snack Break")).toEqual({
+      day: "2027-09-01",
+      label: "Walkthrough Snack Break",
+      startMin: 0,
+      durationMin: 15,
+    });
+  });
+});
+
+describe("breaksListContainsId (w66-d)", () => {
+  const items = [{ id: "b1" }, { id: "b2" }];
+
+  it("finds a break by id", () => {
+    expect(breaksListContainsId(items, "b2")).toBe(true);
+  });
+
+  it("returns false when the id is absent", () => {
+    expect(breaksListContainsId(items, "b9")).toBe(false);
+    expect(breaksListContainsId([], "b1")).toBe(false);
+  });
+});
+
+describe("agendaHtmlContainsBreakLabel (w66-d)", () => {
+  it("matches on label text only, regardless of surrounding markup", () => {
+    expect(
+      agendaHtmlContainsBreakLabel(
+        '<div class="chq-pub-agenda-break">2:00 PM · Walkthrough Snack Break · 20 min</div>',
+        "Walkthrough Snack Break",
+      ),
+    ).toBe(true);
+  });
+
+  it("returns false when the label text is not present", () => {
+    expect(agendaHtmlContainsBreakLabel("<div>Lunch · 60 min</div>", "Walkthrough Snack Break")).toBe(false);
   });
 });
