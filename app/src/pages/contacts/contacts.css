@@ -204,6 +204,19 @@
   font-weight: 600;
 }
 
+/* DEC-734 amendment (wave 2): the rail row reads the same DuplicateRow
+   component as the Duplicates tab -- 'dense' only tightens type/spacing for
+   the rail's narrower column, it never hides the reason caption or the
+   Keep both control. */
+.chq-contacts-rail-duplicate-reason {
+  font-size: 12px;
+}
+
+.chq-contacts-rail-duplicate-actions {
+  display: flex;
+  gap: 12px;
+}
+
 .chq-contacts-name-cell,
 .chq-contacts-company-cell {
   display: flex;
