@@ -114,6 +114,73 @@ and it makes the title row's most prominent element unframed. Options: keep (cap
 restyle quieter), or frame-pure (drop bulk from the worklist). Do not silently drop —
 capability decisions route through the orchestrator/user.
 
+**Pair-6 reds (11-account FAIL 2 MAJ — near-PASS, both mechanical):**
+
+**P1 · Auth card box-math: the design's CONTENT column is applied to the CARD BOX and padded
+inward** — login content 644 (frame 732), password/404 content 750 (frame 818), every left
+edge shifted 44/35px inboard. Fix: card box = column + 2×padding (732→820 box for login,
+818→888 for narrow), content column hits 732/818 exactly. One CSS change + measure test.
+
+**P1 · 404 block vertical rhythm ~2× frame** — h1→body 48 vs 19, body→links 61 vs 26 (block
+186.5 vs 126). Causes: uniform card gap 26px on a tight block + UA `<p>` margin + footer-link
+min-height 44 adding dead lead. Type itself is frame-exact — rhythm is the only divergence.
+
+**P2 (pair-6):** admin-404 links = `Overview ›` + `Submissions ›` per frame 02 (app hard-codes
+homepage/Log-in — wrong-door for a signed-in organizer); demo prefill buttons to card link
+vocabulary (14/700 olive, no underline at rest); UA form margin-bottom 16 on login footer;
+footer links min-height 44 sit 18px low; /account/password head gaps (+13/+8.5 from Back/h1
+min-heights); organizer at /portal/nope should 404 not 200-to-overview; demo block is
+unframed (85px below the designed footer — keep per demo utility, but note as deliberate).
+
+**Pair-5 reds (09-settings FAIL 5 MAJ · 10-public FAIL 8 MAJ — USER PRIORITY):**
+
+**P1 · THE ONE ROOT FIX for most public MAJORs: the pair layout is 1112, not 1180.**
+`.chq-pub-sessions-layout`/`.chq-pub-agenda-layout` = `778px 300px; gap:34` — spec/frames
+measure content **820** + gap **60** + rail **300** = 1180. Fixing the tokens cascades:
+agenda `minmax(228px,1fr)` auto-fit yields 3 blocks across at 820 (currently 2 at 778, and a
+degenerate `674px 0px` track on day 1; block gap 8→16); the filter bar's 837px of controls
+fits one row at 820 (currently wraps "All rooms" to row 2); speakers List view joins the same
+1108-1112 column as Grid (currently 752). Measure tests against 820/60/300.
+
+**P1 · Public selects draw NO caret** — every `.chq-pub-select` computes `appearance:none;
+background-image:none`, visually identical to a text input ("All days" et al). One shared
+caret treatment (inline SVG background or wrapper ::after) across all six public selects.
+
+**P1 · /sessions must sort chronologically** (day, then start time, untimed rows LAST) — it
+currently sorts alphabetically by title with days interleaved and an untimed row mid-list;
+frame 10--00 is 9:00 → 10:45.
+
+**P1 · Agenda day switcher = ONE joined segmented control** (~210px, "Tue 12 | Wed 13 |
+Thu 14" short labels, active filled near-black) — currently three detached 99px-radius pills
+spanning 426px with long US dates. Related P2: ALL public dates use "Tuesday 12 May" family
+grammar (h1, pills, footer, rail, gutters — currently "Wed, May 12, 2027" everywhere).
+
+**P1 · /schedule (My schedule) was never rebuilt to frame 10--12** (new 1600 frame in pack
+v7): 1180 pair with rail (TAKE IT WITH YOU: saved count + Download .ics; TWO OVERLAPS block
+with "RUNS OVER THE NEXT TWO"/"INSIDE THE WORKSHOP" markers); lists the SAVED sessions with
+Remove (not all sessions with Save); "4 saved · 2 overlaps" subtitle + "Browse all sessions ›";
+two-line time/room gutter; DROP the duplicate day-pill row, "Show only my picks" checkbox,
+and highlight control (none in frame).
+
+**P1 · Settings structural batch (unchanged since gate-3 — schedule it as ONE wave):**
+definition rows = one line `label | value | right-flushed meta` at ~50px pitch (app stacks at
+88px; page 3947px vs frame 2905); read views SHOW the lists for Resources / People / Exports /
+API tokens / SAVED EMBEDS+editor (still Change-gated); public-pages read rows = 4-col
+`Sessions | /path | LIVE | Embed code`; section actions right-flushed ON the eyebrow row ×7;
+tracks-and-rooms grid spans the 820 (two ~392 halves, counts right-flushed).
+
+**P2 (pair-5):** agenda blocks drop the always-on 3px olive edge (hairline at rest; olive =
+highlight only); highlight control inverts dark with caret when set; rail swaps to "N IN
+<TRACK>" on highlight; PRINT block gets its eyebrow + caption + "Jumps…" captions; break rows
+= gutter time + quiet rule + left-aligned "COFFEE · FOYER · 15 MIN" (not centered filled band
+swallowing the gutter; keep room for coffee); day-1 h1 "0 rooms" vs rail contradiction; CFP
+column 732 (app 663) + copy drift batch (lede, TRACK, counters "412 of 1,200" family, BIO
+label+helper, footer rule, dedup account note); speakers search joins the title-row cluster;
+Save on agenda blocks = uppercase text link not bordered button; chips drop the colored dot;
+sessions CFP rail copy "Closes Sun 16 Aug · no account needed" family; embed editor 2-up
+pairs + plain eyebrow (not native fieldset legend) + trim unframed rows + SAVED EMBEDS above
+EDITING; embeds middle column = where-pasted.
+
 **Pair-1 reds (01-overview FAIL 2 MAJ · 06-agenda FAIL 1 BRK + 4 MAJ):**
 
 **P0-BROKEN · Break bands struck through in select mode — the clash-card z-order bug
