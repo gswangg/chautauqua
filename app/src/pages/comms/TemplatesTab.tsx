@@ -20,6 +20,26 @@ interface DraftTemplate {
 
 const BLANK_DRAFT: DraftTemplate = { name: '', subject: '', bodyText: '' };
 
+// DEC-890 (amendment wave 4): a row's first line is purpose copy, not the
+// subject line. EmailTemplate carries no stored purpose/description column
+// and templates have no `kind` field either (src/db/schema/email.ts), so
+// this derives a purpose line from the template's own NAME via generic
+// keyword matching against the kind of communication it names (accepted /
+// declined / scheduled / reminder / logistics / portal invite). That keeps
+// the mapping generic — it works for any organizer's own template names,
+// not just the ones scripts/seed-lib.ts happens to ship — and falls back to
+// a neutral line when no keyword matches.
+function derivePurpose(t: EmailTemplate): string {
+  const n = t.name.toLowerCase();
+  if (/declin|reject|waitlist/.test(n)) return 'Used for declined submissions';
+  if (/accept/.test(n)) return 'Used for accepted submissions';
+  if (/schedul/.test(n)) return 'Used to confirm a scheduled session';
+  if (/remind/.test(n)) return 'Used to remind speakers of open tasks';
+  if (/logistic/.test(n)) return 'Used to share final event logistics';
+  if (/portal|invit/.test(n)) return 'Used to invite a speaker to their portal';
+  return 'Custom template';
+}
+
 export function TemplatesTab({ eventId }: { eventId: string }) {
   const navigate = useNavigate();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
@@ -60,6 +80,20 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
     setEditingId(t.id);
     setDraft({ name: t.name, subject: t.subject, bodyText: t.bodyText });
   }
+
+  // DEC-890 (amendment wave 4): opening Templates preselects the first
+  // template so the right pane is never an empty box. Only fires once the
+  // list has loaded and nothing is already selected/being created, so it
+  // never fights a user who is mid-edit or mid-"New template".
+  useEffect(() => {
+    const first = templates[0];
+    if (loaded && editingId === null && first) {
+      startEdit(first);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, templates, editingId]);
+
+  const selectedTemplate = editingId && editingId !== 'new' ? templates.find((t) => t.id === editingId) ?? null : null;
 
   async function save() {
     setSaving(true);
@@ -171,9 +205,11 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
             </thead>
             <tbody>
               {templates.map((t) => (
-                <tr key={t.id}>
+                <tr key={t.id} className={t.id === editingId ? 'chq-comms-template-row-selected' : undefined}>
+                  {/* DEC-890 amendment (wave 4): purpose copy is the row's
+                      first line, the subject is demoted to secondary meta. */}
                   <td data-label="Name">
-                    <div className="chq-comms-template-name">{t.name}</div>
+                    <div className="chq-comms-template-name">{derivePurpose(t)}</div>
                     <div className="chq-comms-template-detail">{t.subject}</div>
                   </td>
                   <td data-label="Last used">
@@ -210,9 +246,29 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
 
         {editingId && (
           <section className="chq-comms-editor">
-            <div className="chq-section-head">
-              <span className="chq-section-label">{editingId === 'new' ? 'New template' : 'Edit template'}</span>
+            {/* DEC-890 amendment (wave 4): the eyebrow IS the template's
+                name, with Duplicate beside it -- renaming happens through
+                the eyebrow, which makes a separate NAME input redundant for
+                an existing template. "New template" has no name yet, so it
+                keeps a Name field until the first Save gives it one. */}
+            <div className="chq-comms-editor-head">
+              <span className="chq-comms-editor-eyebrow">{editingId === 'new' ? 'New template' : selectedTemplate?.name}</span>
+              {selectedTemplate && (
+                <button type="button" className="chq-link-button" onClick={() => duplicate(selectedTemplate)}>
+                  Duplicate
+                </button>
+              )}
             </div>
+            {editingId === 'new' && (
+              <label>
+                <span className="chq-comms-editor-label">Name</span>
+                <input
+                  className="chq-input"
+                  value={draft.name}
+                  onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+                />
+              </label>
+            )}
             <label>
               <span className="chq-comms-editor-label">Subject</span>
               <input
@@ -220,10 +276,6 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
                 value={draft.subject}
                 onChange={(e) => setDraft((d) => ({ ...d, subject: e.target.value }))}
               />
-            </label>
-            <label>
-              <span className="chq-comms-editor-label">Name</span>
-              <input className="chq-input" value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
             </label>
             <label>
               <span className="chq-comms-editor-label">Body</span>
@@ -240,13 +292,23 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
               <InsertFieldMenu fields={COMPOSE_MERGE_FIELDS} onInsert={insertChip} />
             </div>
 
+            {/* DEC-890 amendment (wave 4): footer is Save + "Use in a send".
+                A brand-new, unsaved draft has no id to send with yet, so it
+                gets Cancel (back to whatever was selected before "New
+                template") in that one slot instead. */}
             <div className="chq-comms-editor-actions">
               <button type="button" className="chq-btn chq-btn-primary" disabled={saving} onClick={save}>
                 Save
               </button>
-              <button type="button" className="chq-btn chq-btn-secondary" disabled={saving} onClick={() => setEditingId(null)}>
-                Cancel
-              </button>
+              {selectedTemplate ? (
+                <button type="button" className="chq-btn chq-btn-secondary" onClick={() => useInSend(selectedTemplate)}>
+                  Use in a send
+                </button>
+              ) : (
+                <button type="button" className="chq-btn chq-btn-secondary" disabled={saving} onClick={() => setEditingId(null)}>
+                  Cancel
+                </button>
+              )}
             </div>
           </section>
         )}
