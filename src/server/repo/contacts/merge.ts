@@ -6,7 +6,14 @@ import { asc, eq, inArray, or, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
-import { findDuplicateGroups, planMerge, type ContactRecord, type DuplicateReason } from "../../../domain/contacts";
+import {
+  findDuplicateGroups,
+  planMerge,
+  mergedInviteStatus,
+  mergedParticipantVisible,
+  type ContactRecord,
+  type DuplicateReason,
+} from "../../../domain/contacts";
 import { normalizeEmail } from "../../../domain/email";
 import { serializeSocialLinks } from "../profile";
 import { ApiError } from "../../http";
@@ -373,19 +380,56 @@ async function mergeOnePair(db: Db, keepId: string, mergeId: string): Promise<Co
   // Dedupe participant rows BEFORE repointing: if both contacts are already
   // participants on the same submission, repointing mergeId's row onto
   // keepId would produce a duplicate participant for that submission, so we
-  // delete mergeId's row for the shared submissions instead.
+  // delete mergeId's row for the shared submissions instead. DEC-282
+  // amendment: before deleting, fold the merged row's inviteStatus/visible
+  // into the kept row (mergedInviteStatus/mergedParticipantVisible) so an
+  // accepted invite or public visibility the duplicate carried is never
+  // silently lost just because it happened to be the non-surviving row.
   const mergeParticipants = await db
-    .select({ id: schema.participant.id, submissionId: schema.participant.submissionId })
+    .select({
+      id: schema.participant.id,
+      submissionId: schema.participant.submissionId,
+      inviteStatus: schema.participant.inviteStatus,
+      visible: schema.participant.visible,
+    })
     .from(schema.participant)
     .where(eq(schema.participant.contactId, mergeId));
   const keepParticipants = await db
-    .select({ submissionId: schema.participant.submissionId })
+    .select({
+      id: schema.participant.id,
+      submissionId: schema.participant.submissionId,
+      inviteStatus: schema.participant.inviteStatus,
+      visible: schema.participant.visible,
+    })
     .from(schema.participant)
     .where(eq(schema.participant.contactId, keepId));
-  const keepSubmissionIds = new Set(keepParticipants.map((p) => p.submissionId));
-  const dupeParticipantIds = mergeParticipants
-    .filter((p) => keepSubmissionIds.has(p.submissionId))
-    .map((p) => p.id);
+  const keepParticipantBySubmissionId = new Map(keepParticipants.map((p) => [p.submissionId, p]));
+  const dupeParticipantIds: string[] = [];
+  const inviteStatusIdsByTarget = new Map<string, string[]>();
+  const makeVisibleIds: string[] = [];
+  for (const mergeParticipant of mergeParticipants) {
+    const keepParticipant = keepParticipantBySubmissionId.get(mergeParticipant.submissionId);
+    if (!keepParticipant) continue;
+    dupeParticipantIds.push(mergeParticipant.id);
+    const nextStatus = mergedInviteStatus(keepParticipant.inviteStatus, mergeParticipant.inviteStatus);
+    if (nextStatus !== keepParticipant.inviteStatus) {
+      const ids = inviteStatusIdsByTarget.get(nextStatus) ?? [];
+      ids.push(keepParticipant.id);
+      inviteStatusIdsByTarget.set(nextStatus, ids);
+    }
+    const nextVisible = mergedParticipantVisible(keepParticipant.visible, mergeParticipant.visible);
+    if (nextVisible !== keepParticipant.visible) {
+      makeVisibleIds.push(keepParticipant.id);
+    }
+  }
+  for (const [targetStatus, ids] of inviteStatusIdsByTarget) {
+    for (const chunk of chunkIds(ids)) {
+      await db.update(schema.participant).set({ inviteStatus: targetStatus }).where(inArray(schema.participant.id, chunk));
+    }
+  }
+  for (const chunk of chunkIds(makeVisibleIds)) {
+    await db.update(schema.participant).set({ visible: true }).where(inArray(schema.participant.id, chunk));
+  }
   for (const chunk of chunkIds(dupeParticipantIds)) {
     await db.delete(schema.participant).where(inArray(schema.participant.id, chunk));
   }

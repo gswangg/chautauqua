@@ -320,6 +320,10 @@ export function MergePage() {
                 <p className="chq-contacts-merge-footnote">Labels always combine — they're never chosen one over the other.</p>
               )}
               <p className="chq-contacts-merge-footnote">Notes are appended, never chosen one over the other.</p>
+              <p className="chq-contacts-merge-footnote">
+                On shared submissions, an accepted invite and public visibility always survive — never chosen one
+                over the other.
+              </p>
               <p className="chq-contacts-merge-footnote">The discarded record is deleted.</p>
             </div>
           )}

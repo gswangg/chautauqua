@@ -87,9 +87,14 @@ const ALLOWED: Record<string, string[]> = {
   "server/repo/contacts/crud.ts": [
     "listContactReferenceRows lists every submission referencing the contact for the admin CRM page, not an eligibility read.",
   ],
+  // mergeParticipants/keepParticipants (DEC-282 amendment): both selects now
+  // project inviteStatus/visible so the dedupe can fold an accepted invite
+  // or public visibility into the surviving row before deleting the
+  // duplicate — this scanner's SHARED_HELPER_RE matches the literal
+  // `inviteStatus` column reference in that projection, so those two sites
+  // now count as filtered (not an eligibility read either way; still
+  // addressed by contactId, not by invite state) and are absent here.
   "server/repo/contacts/merge.ts": [
-    "mergeParticipants read addresses participant rows by mergeId's contactId to dedupe against keepId, not by eligibility.",
-    "keepParticipants read addresses participant rows by keepId's contactId to dedupe, not by eligibility.",
     "discard-count read counts participant rows by discardedContactIds for a merge-outcome summary, not by eligibility.",
   ],
   // server/repo/overview.ts is deliberately absent: both of its participant
