@@ -2,19 +2,26 @@
    prefixed .chq-overview-* and never redefine a shared .chq-* class from the
    shell lane's styles.css. Tokens follow DEC-367 (no hex literals — DEC-383). */
 
+/* Gate-4 wave-6 amendment: the top third's rule-to-rule gaps were reading
+   +28% against the frame. header-rule -> band-rule was 46px (now 8px top
+   margin, -12), band-rule -> toolbar-top was 70px (now 6px bottom margin,
+   -28) -- both spacing only, the grid/borders are unchanged. */
 .chq-overview-deadlines {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   border-top: 1px solid var(--chq-rule);
   border-bottom: 1px solid var(--chq-rule);
-  margin: 20px 0 34px;
+  margin: 8px 0 6px;
 }
 
+/* Gate-4 wave-6 amendment: the stat band measured 80px against the frame's
+   76px -- vertical padding only tightens (-2px per side), horizontal
+   padding is unchanged. */
 .chq-overview-deadline-cell {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 13px 14px;
+  padding: 11px 14px;
   border-left: 1px solid var(--chq-rule);
   color: var(--chq-ink);
   text-decoration: none;
@@ -46,12 +53,15 @@
   font-weight: var(--chq-type-deadline-value-weight-nearest);
 }
 
+/* Gate-4 wave-6 amendment: h1 ink bottom -> the §01 2px rule measured 88px
+   against the frame's 55px (-33px, split with .chq-overview-section-header
+   below: -28px here, -5px there). */
 .chq-overview-headline-row {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 28px;
-  margin: 0 0 34px;
+  margin: 0 0 6px;
 }
 
 .chq-overview-headline {
@@ -75,13 +85,14 @@
   flex-wrap: nowrap;
 }
 
-/* DEC-370 amendment (wave 5): toolbar buttons pin to 37px tall — vertical
-   padding only shrinks (17px of unclaimed padding was inflating the
-   control to 42.8px measured), horizontal padding is unchanged. */
+/* DEC-370 amendment (wave 5), Gate-4 wave-6 amendment: toolbar buttons pin
+   to 37px tall — the wave-5 pass left them measuring 42.8px against the
+   frame; vertical padding tightens a further -2.9px per side, horizontal
+   padding is unchanged. */
 .chq-overview-toolbar-btn {
   border: 1px solid var(--chq-border);
   border-radius: 4px;
-  padding: 7.1px 16px;
+  padding: 4.2px 16px;
   font-size: 13px;
   font-weight: 600;
   font-family: var(--chq-font-ui);
@@ -99,20 +110,22 @@
   background: var(--chq-brand);
   color: var(--chq-on-brand);
   font-weight: 700;
-  padding: 8.1px 16px;
+  padding: 5.2px 16px;
 }
 
 .chq-overview-section {
   margin-bottom: 34px;
 }
 
+/* Gate-4 wave-6 amendment: remainder of the h1-bottom -> §01-rule -33px
+   split (see .chq-overview-headline-row above): -5px here. */
 .chq-overview-section-header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 20px;
   border-bottom: 2px solid var(--chq-ink);
-  padding-bottom: 8px;
+  padding-bottom: 3px;
 }
 
 .chq-overview-section-label {
@@ -158,8 +171,13 @@
   border-bottom: 1px solid var(--chq-hairline);
 }
 
+/* Gate-4 wave-6 amendment: §01's row pitch measured 81px against the
+   frame's 72px -- vertical padding only tightens for THIS row shape (-4.5px
+   per side), overriding the shared .chq-overview-row padding; §02/§03/§04
+   keep the shared pitch untouched. */
 .chq-overview-row-overdue {
   grid-template-columns: 1fr 1.15fr auto;
+  padding: 11.5px 0;
 }
 
 .chq-overview-row-content {
@@ -176,10 +194,11 @@
    never grows past what a single-clause summary needs. */
 .chq-overview-row-quiet {
   grid-template-columns: 220.5px 1fr;
-  /* DEC-370 amendment (wave 5): the "No action needed" row pitch is 51px
-     (58.4px measured today) — vertical padding only tightens, the shared
+  /* DEC-370 amendment (wave 5), Gate-4 wave-6 amendment: the "No action
+     needed" row pitch is 51px (58.4px still measured after wave 5) —
+     vertical padding tightens a further -3.7px per side, the shared
      .chq-overview-row padding stays untouched for every other row shape. */
-  padding: 12.3px 0;
+  padding: 8.6px 0;
 }
 
 .chq-overview-row-quiet .chq-overview-row-title-sm,
