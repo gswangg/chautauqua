@@ -169,14 +169,15 @@ function buildScheduleApp(rows: typeof FULL_AGENDA_ROWS) {
     select: () => {
       selectCall += 1;
       if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
-      if (selectCall === 2) return makeChain([]); // DEC-804 getPublicTracks (search form's track <select>)
-      if (selectCall === 3) return makeChain([]); // DEC-851 getPublicFormatOptions (search form's format <select>)
-      if (selectCall === 4) return makeChain([{ count: rows.length }]); // DEC-548 total
-      if (selectCall === 5) return makeChain(rows.length > 0 ? [{ id: "room1", name: "Alpha" }, { id: "room2", name: "Beta" }] : []); // roomRows
-      if (selectCall === 6) return makeChain(sessionRows); // hydrateSessions subRows
-      if (selectCall === 7) return makeChain([]); // trackRows
-      if (selectCall === 8) return makeChain([]); // speakerRows
-      if (selectCall === 9) return makeChain([]); // slotRows (unused by agenda grid)
+      // DEC-851 (wave 64 amendment): getPublicFormatOptions is no longer
+      // called at all for agenda/schedule (format isn't an agenda facet).
+      if (selectCall === 2) return makeChain([]); // DEC-804 getPublicTracks (track-highlight <select>)
+      if (selectCall === 3) return makeChain([{ count: rows.length }]); // DEC-548 total
+      if (selectCall === 4) return makeChain(rows.length > 0 ? [{ id: "room1", name: "Alpha" }, { id: "room2", name: "Beta" }] : []); // roomRows
+      if (selectCall === 5) return makeChain(sessionRows); // hydrateSessions subRows
+      if (selectCall === 6) return makeChain([]); // trackRows
+      if (selectCall === 7) return makeChain([]); // speakerRows
+      if (selectCall === 8) return makeChain([]); // slotRows (unused by agenda grid)
       return makeChain([]); // formatRows
     },
     selectDistinct: () => makeChain(rows),
@@ -207,8 +208,8 @@ function makeChain(rows: unknown[]) {
   return chain;
 }
 
-describe("/e/:eventSlug/schedule?trackId= (DEC-783)", () => {
-  it("a filtered request shrinks BOTH the rendered row set and `total` together", async () => {
+describe("/e/:eventSlug/schedule?trackId= (DEC-851, wave 64 amendment): track HIGHLIGHTS, never filters", () => {
+  it("?trackId= never shrinks the rendered row set (every session still renders)", async () => {
     installFakeCaches();
     const unfiltered = await buildScheduleApp(FULL_AGENDA_ROWS).request("/e/conf/schedule", {}, TEST_ENV);
     const unfilteredHtml = await unfiltered.text();
@@ -217,25 +218,28 @@ describe("/e/:eventSlug/schedule?trackId= (DEC-783)", () => {
     expect(unfilteredHtml).toContain("chq-agenda-list-sub3");
 
     installFakeCaches();
-    const filtered = await buildScheduleApp(FILTERED_ROWS).request("/e/conf/schedule?trackId=trk-a", {}, TEST_ENV);
-    const filteredHtml = await filtered.text();
-    expect(filteredHtml).toContain("chq-agenda-list-sub1");
-    expect(filteredHtml).not.toContain("chq-agenda-list-sub2");
-    expect(filteredHtml).not.toContain("chq-agenda-list-sub3");
-    // A row set of 1 (below FULL_AGENDA_ROWS.length) never trips the
-    // "Showing the first N of M" line into disagreement — total mirrors the
-    // SAME filtered set, not the unfiltered count.
-    expect(filteredHtml).not.toContain("Showing the first");
+    // A trackId picked on the page still hands getPublicAgenda the FULL row
+    // set (no predicate) — the fake's second arg mirrors what the real repo
+    // call now returns for this query (unfiltered), unlike its pre-
+    // amendment sibling above which passed FILTERED_ROWS.
+    const highlighted = await buildScheduleApp(FULL_AGENDA_ROWS).request("/e/conf/schedule?trackId=trk-a", {}, TEST_ENV);
+    const highlightedHtml = await highlighted.text();
+    expect(highlightedHtml).toContain("chq-agenda-list-sub1");
+    expect(highlightedHtml).toContain("chq-agenda-list-sub2");
+    expect(highlightedHtml).toContain("chq-agenda-list-sub3");
   });
 
-  it("composes ?day= with ?trackId= (both narrow together)", async () => {
+  it("?day= still narrows on its own; ?trackId= composes alongside it without narrowing further", async () => {
     installFakeCaches();
     const app = buildScheduleApp(FILTERED_ROWS);
     const res = await app.request("/e/conf/schedule?day=2026-08-10&trackId=trk-a", {}, TEST_ENV);
     expect(res.status).toBe(200);
     const html = await res.text();
+    // FILTERED_ROWS here stands in for "the one row getPublicAgenda's ?day=
+    // predicate actually returned" — trackId contributed no SQL predicate at
+    // all, so this fixture only proves day still narrows, not that trackId
+    // does too (see the test above for that negative assertion).
     expect(html).toContain("chq-agenda-list-sub1");
-    expect(html).not.toContain("chq-agenda-list-sub2");
   });
 
   it("DaySwitcher out-links preserve the active trackId/q across a day jump", async () => {
@@ -248,16 +252,17 @@ describe("/e/:eventSlug/schedule?trackId= (DEC-783)", () => {
     const db = {
       select: () => {
         selectCall += 1;
+        // DEC-851 (wave 64 amendment): getPublicFormatOptions no longer
+        // called at all for agenda/schedule.
         if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
         if (selectCall === 2) return makeChain([]); // DEC-804 getPublicTracks
-        if (selectCall === 3) return makeChain([]); // DEC-851 getPublicFormatOptions
-        if (selectCall === 4) return makeChain([{ count: FILTERED_ROWS.length }]); // DEC-548 total
-        if (selectCall === 5) return makeChain([{ id: "room1", name: "Alpha" }]); // roomRows
-        if (selectCall === 6) return makeChain(sessionRows); // hydrateSessions subRows
-        if (selectCall === 7) return makeChain([]); // trackRows
-        if (selectCall === 8) return makeChain([]); // speakerRows
-        if (selectCall === 9) return makeChain([]); // slotRows
-        if (selectCall === 10) return makeChain([]); // formatRows
+        if (selectCall === 3) return makeChain([{ count: FILTERED_ROWS.length }]); // DEC-548 total
+        if (selectCall === 4) return makeChain([{ id: "room1", name: "Alpha" }]); // roomRows
+        if (selectCall === 5) return makeChain(sessionRows); // hydrateSessions subRows
+        if (selectCall === 6) return makeChain([]); // trackRows
+        if (selectCall === 7) return makeChain([]); // speakerRows
+        if (selectCall === 8) return makeChain([]); // slotRows
+        if (selectCall === 9) return makeChain([]); // formatRows
         // getPublicScheduleDayCounts (allDays, since ?day= was passed)
         return makeChain([
           { day: "2026-08-10", count: 1 },
@@ -335,18 +340,13 @@ describe("/schedule groups rows sharing a start time under a time sub-header (DE
   });
 });
 
-// DEC-804: /agenda and /schedule render the SAME search-and-track control
-// the sessions list already answers via ?q=/?trackId= (DEC-783 made both
-// real server-side predicates here). Built on the SAME db.select() call
-// sequence as buildScheduleApp above, but with real track rows at position
-// 2 (getPublicTracks) and a `surface` switch so the same harness can mount
-// either /agenda or /embed/.../agenda.
-function buildSurfaceApp(
-  surface: "agenda" | "schedule",
-  rows: typeof FULL_AGENDA_ROWS,
-  tracks: { id: string; name: string; color: string | null }[],
-  formatOptionsRow: { optionsJson: string | null }[] = [],
-) {
+// DEC-804/DEC-851 (wave 64 amendment): /agenda and /schedule render the
+// SAME search-and-track-highlight control. Built on the SAME db.select()
+// call sequence as buildScheduleApp above, but with real track rows at
+// position 2 (getPublicTracks) and a `surface` switch so the same harness
+// can mount either /agenda or /embed/.../agenda. getPublicFormatOptions is
+// no longer called for these two surfaces at all.
+function buildSurfaceApp(surface: "agenda" | "schedule", rows: typeof FULL_AGENDA_ROWS, tracks: { id: string; name: string; color: string | null }[]) {
   let selectCall = 0;
   const sessionRows = rows.map((r) => sessionRow(r.submissionId, `Talk ${r.submissionId}`));
   const db = {
@@ -354,13 +354,12 @@ function buildSurfaceApp(
       selectCall += 1;
       if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
       if (selectCall === 2) return makeChain(tracks); // DEC-804 getPublicTracks
-      if (selectCall === 3) return makeChain(formatOptionsRow); // DEC-851 getPublicFormatOptions
-      if (selectCall === 4) return makeChain([{ count: rows.length }]); // DEC-548 total
-      if (selectCall === 5) return makeChain(rows.length > 0 ? [{ id: "room1", name: "Alpha" }, { id: "room2", name: "Beta" }] : []); // roomRows
-      if (selectCall === 6) return makeChain(sessionRows); // hydrateSessions subRows
-      if (selectCall === 7) return makeChain([]); // trackRows
-      if (selectCall === 8) return makeChain([]); // speakerRows
-      if (selectCall === 9) return makeChain([]); // slotRows (unused by agenda grid)
+      if (selectCall === 3) return makeChain([{ count: rows.length }]); // DEC-548 total
+      if (selectCall === 4) return makeChain(rows.length > 0 ? [{ id: "room1", name: "Alpha" }, { id: "room2", name: "Beta" }] : []); // roomRows
+      if (selectCall === 5) return makeChain(sessionRows); // hydrateSessions subRows
+      if (selectCall === 6) return makeChain([]); // trackRows
+      if (selectCall === 7) return makeChain([]); // speakerRows
+      if (selectCall === 8) return makeChain([]); // slotRows (unused by agenda grid)
       return makeChain([]); // formatRows
     },
     selectDistinct: () => makeChain(rows),
@@ -378,31 +377,47 @@ function buildSurfaceApp(
 
 const TRACKS = [{ id: "trk-a", name: "Track A", color: null }];
 
-describe("/agenda and /schedule render the DEC-804 search-and-track form", () => {
-  it("/agenda's form carries the current q/trackId as values", async () => {
+describe("/agenda and /schedule render the DEC-851 (wave 64 amendment) search-and-highlight form", () => {
+  it("/agenda's form carries the current q as a value and the current trackId as the select's selected option", async () => {
     installFakeCaches();
     const app = buildSurfaceApp("agenda", FULL_AGENDA_ROWS, TRACKS);
     const res = await app.request("/e/conf/agenda?q=keynote&trackId=trk-a", {}, TEST_ENV);
     const html = await res.text();
     expect(html).toContain('<form class="chq-pub-searchform" method="get" action="/e/conf/agenda" role="search">');
     expect(html).toContain('<input class="chq-pub-search" id="chq-pub-search-q" type="search" name="q" value="keynote"');
-    // DEC-919: track narrowing is the shared pill-bar idiom, not a <select>.
-    expect(html).toContain('class="chq-pub-pill" href="/e/conf/agenda?trackId=trk-a&amp;q=keynote" aria-current="true">Track A</a>');
-    // DEC-851: no format options configured for this event -> no format
-    // pill bar renders (never a control the server has nothing to offer).
+    // DEC-851 (wave 64 amendment): track narrowing is a <select> now, not a
+    // pill bar -- no filter pill for a track exists on this surface at all.
+    expect(html).not.toContain('class="chq-pub-pill"');
+    expect(html).toContain('<select class="chq-pub-select" id="chq-pub-highlight-track" name="trackId"');
+    expect(html).toContain('<option value="trk-a" selected="">Track A</option>');
+    // A Clear link appears beside the select once a track is active.
+    expect(html).toContain('class="chq-pub-select-clear" href="/e/conf/agenda?q=keynote">Clear</a>');
+    // format is not an agenda facet at all: no chip, no <select>, no param.
     expect(html).not.toContain('Format filters');
+    expect(html).not.toContain('name="format"');
   });
 
-  it("/schedule's form carries the current q/trackId as values", async () => {
+  it("/schedule's form carries the current q as a value and the current trackId as the select's selected option", async () => {
     installFakeCaches();
     const app = buildSurfaceApp("schedule", FULL_AGENDA_ROWS, TRACKS);
     const res = await app.request("/e/conf/schedule?q=keynote&trackId=trk-a", {}, TEST_ENV);
     const html = await res.text();
     expect(html).toContain('<form class="chq-pub-searchform" method="get" action="/e/conf/schedule" role="search">');
     expect(html).toContain('<input class="chq-pub-search" id="chq-pub-search-q" type="search" name="q" value="keynote"');
-    // DEC-919: track narrowing is the shared pill-bar idiom, not a <select>.
-    expect(html).toContain('class="chq-pub-pill" href="/e/conf/schedule?trackId=trk-a&amp;q=keynote" aria-current="true">Track A</a>');
+    expect(html).not.toContain('class="chq-pub-pill"');
+    expect(html).toContain('<select class="chq-pub-select" id="chq-pub-highlight-track" name="trackId"');
+    expect(html).toContain('<option value="trk-a" selected="">Track A</option>');
     expect(html).not.toContain('Format filters');
+    expect(html).not.toContain('name="format"');
+  });
+
+  it("with no trackId active, the select has no Clear link and no option is selected", async () => {
+    installFakeCaches();
+    const app = buildSurfaceApp("agenda", FULL_AGENDA_ROWS, TRACKS);
+    const res = await app.request("/e/conf/agenda", {}, TEST_ENV);
+    const html = await res.text();
+    expect(html).not.toContain('<a class="chq-pub-select-clear"');
+    expect(html).toContain('<option value="trk-a">Track A</option>');
   });
 
   it("carries the active ?day= forward as a hidden input, so filtering never jumps the reader off their day", async () => {

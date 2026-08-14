@@ -8,10 +8,11 @@ import { assignLanes } from "../../lib/overlap-lanes";
 import { publicRoomLabel } from "../../domain/schedule";
 import { sessionDetailPath, surfacePath, type Surface, type SurfaceBase } from "./shell";
 import { TrackChips, FormatChip, SpeakerNames, SessionDescription, ItineraryToggle, formatDay, formatMinutes } from "./cards";
-import { PublicSearchBox, PublicFilterBar } from "./filters";
-import { DEC_999 } from "../../decisions";
+import { PublicSearchBox } from "./filters";
+import { DEC_851, DEC_999 } from "../../decisions";
 
 void DEC_999;
+void DEC_851;
 
 // DEC-602: shared row-map math. The hour-label column (grid-column 1) and
 // every session block are positioned from the SAME dayStart/gridMin
@@ -257,7 +258,17 @@ function AgendaItemList(props: {
  * from the same `items` array, switched at the 700px breakpoint purely by
  * CSS `display:none` (public.css.ts) so exactly one is in the a11y tree at
  * a time. */
-function AgendaDay(props: { day: string; items: PublicAgendaItem[]; event: PublicEvent; from: Surface; base?: SurfaceBase }) {
+function AgendaDay(props: {
+  day: string;
+  items: PublicAgendaItem[];
+  event: PublicEvent;
+  from: Surface;
+  base?: SurfaceBase;
+  // DEC-851 (wave 64 amendment): plumbing only -- threaded through so the
+  // grid's own block markup (owned separately) has the value it needs to
+  // apply the highlight/muted class per block. Not consumed here.
+  highlightTrackId?: string | null;
+}) {
   return (
     <div id={`chq-day-${props.day}`}>
       {/* DEC-768: the ONE heading for this day, owned here -- neither
@@ -281,25 +292,25 @@ export function groupByDay(items: PublicAgendaItem[]): Map<string, PublicAgendaI
   return map;
 }
 
-// DEC-919/DEC-835/DEC-851: the ONE param-composition rule for every
-// itinerary-surface out-link (day pills, track/format pills, and the search
-// form's hidden fields) — day, trackId, q and format all carry forward
-// together unless an override says otherwise, reused by DaySwitcher below
-// AND by ItinerarySearchForm's new track/format pill bars, rather than a
-// second hand-written composition living next to the first.
+// DEC-851 (wave 64 amendment): the ONE param-composition rule for every
+// itinerary-surface out-link (day pills, the track highlight select's Clear
+// link, and the search form's hidden fields) — day, trackId and q carry
+// forward together unless an override says otherwise, reused by DaySwitcher
+// below AND by ItinerarySearchForm's track-highlight control. `format` is no
+// longer a knob these two surfaces compose at all (superseded amendment: it
+// was never an agenda facet worth honouring here, and track is a highlight
+// now, not a filter — see the amendment text on DEC-851 for the ruling).
 function agendaQs(
-  current: { day?: string | null; trackId?: string | null; q?: string | null; format?: string | null },
-  override: { day?: string | null; trackId?: string | null; q?: string | null; format?: string | null } = {},
+  current: { day?: string | null; trackId?: string | null; q?: string | null },
+  override: { day?: string | null; trackId?: string | null; q?: string | null } = {},
 ): string {
   const day = override.day !== undefined ? override.day : (current.day ?? null);
   const trackId = override.trackId !== undefined ? override.trackId : (current.trackId ?? null);
   const q = override.q !== undefined ? override.q : (current.q ?? null);
-  const format = override.format !== undefined ? override.format : (current.format ?? null);
   const parts: string[] = [];
   if (day) parts.push(`day=${day}`);
   if (trackId) parts.push(`trackId=${encodeURIComponent(trackId)}`);
   if (q) parts.push(`q=${encodeURIComponent(q)}`);
-  if (format) parts.push(`format=${encodeURIComponent(format)}`);
   return parts.length > 0 ? `?${parts.join("&")}` : "";
 }
 
@@ -321,20 +332,20 @@ function DaySwitcher(props: {
   activeDay?: string | null;
   trackId?: string | null;
   q?: string | null;
-  format?: string | null;
 }) {
-  const { days, renderedDays, event, surface, base, activeDay, trackId, q, format } = props;
+  const { days, renderedDays, event, surface, base, activeDay, trackId, q } = props;
   if (days.length <= 1) return null;
   // DEC-783/DEC-851: a day jump must not silently drop the active
-  // q/trackId/format filter — every out-link carries them forward
-  // alongside ?day=, via the shared agendaQs composer above.
+  // q/trackId (highlight) selection — every out-link carries them forward
+  // alongside ?day=, via the shared agendaQs composer above. `format` is not
+  // part of this composition at all (wave 64 amendment: not an agenda facet).
   // DEC-835: the day a visitor is reading is in the URL — every pill (on
   // the default unfiltered view AND a filtered one) emits a real
   // `?day=<day>` href, never a bare `#chq-day-<day>` anchor, so the URL
   // always reflects the day in view and a reload/share lands back on it.
   // The `#chq-day-<day>` section id is still appended as a fragment so an
   // already-rendered day's pill scrolls in place instead of a full reload.
-  const current = { trackId: trackId ?? null, q: q ?? null, format: format ?? null };
+  const current = { trackId: trackId ?? null, q: q ?? null };
   // DEC-885: a navigation control that never says where you are is a list
   // of links. On the ?day=-filtered view `activeDay` names it directly; on
   // the default unfiltered view no query param picks a day, but the page
@@ -364,16 +375,17 @@ function DaySwitcher(props: {
   );
 }
 
-// DEC-804/DEC-851/DEC-919: the itinerary surfaces (/agenda, /schedule) render
-// the SAME PublicSearchBox + PublicFilterBar idiom the sessions list already
-// uses — track/format used to be <select> dropdowns living inside this form
-// (narrowing needed a submit); they are now pill bars like every other
-// public surface, honoured server-side exactly the same way (DEC-783 covered
-// q/trackId; DEC-851 added format). `activeDay` (and, now that they are no
-// longer select values, activeTrackId/activeFormat too) are carried forward
-// as hidden fields on the search box, and as query params on every pill
-// href, via the shared agendaQs composer — a search/track/format/day pick
-// never drops any of the others.
+// DEC-851 (wave 64 amendment): the itinerary surfaces' control row is
+// `[Search this day…][Highlight a track ▾]` — track is a render-level
+// highlight here (never a SQL predicate; the block-level highlight/muted
+// styling itself is applied where the session blocks render), and `format`
+// is not an agenda facet at all (no chip, no <select>, no param). The track
+// pill bar this form rendered pre-amendment is gone; a single <select>
+// (`.chq-pub-select`, shared naming with w64-b's rail control) shows the
+// active track by value with a "Clear" link beside it, both GET-submitting
+// to the same `basePath` so the URL — and every downstream out-link built
+// from it via the shared agendaQs composer — stays the single source of
+// truth for what's highlighted.
 function ItinerarySearchForm(props: {
   event: PublicEvent;
   tracks: PublicTrack[];
@@ -381,15 +393,12 @@ function ItinerarySearchForm(props: {
   activeDay: string | null;
   q: string | null;
   basePath: string;
-  formatOptions?: string[];
-  activeFormat?: string | null;
 }) {
-  const { tracks, activeTrackId, activeDay, q, basePath, formatOptions, activeFormat } = props;
-  const current = { day: activeDay, trackId: activeTrackId, q, format: activeFormat ?? null };
-  // DEC-919 (wave 40 amendment): one .chq-pub-filter-row -- the search box
-  // first, then every pill bar for this surface, inline and wrapping,
-  // shared by both AgendaContent and ScheduleContent (the /schedule surface
-  // gets the same row as /agenda, not a bare, unwrapped search form).
+  const { tracks, activeTrackId, activeDay, q, basePath } = props;
+  const current = { day: activeDay, trackId: activeTrackId, q };
+  // DEC-919 (wave 40 amendment) / DEC-851 (wave 64 amendment): one
+  // .chq-pub-filter-row -- the search box first, then the track-highlight
+  // control, shared by both AgendaContent and ScheduleContent.
   return (
     <div class="chq-pub-filter-row">
       <PublicSearchBox
@@ -398,26 +407,35 @@ function ItinerarySearchForm(props: {
         hidden={
           <>
             {activeTrackId ? <input type="hidden" name="trackId" value={activeTrackId} /> : null}
-            {activeFormat ? <input type="hidden" name="format" value={activeFormat} /> : null}
             {activeDay ? <input type="hidden" name="day" value={activeDay} /> : null}
           </>
         }
       />
-      <PublicFilterBar
-        ariaLabel="Track filters"
-        allLabel="All tracks"
-        options={tracks.map((t) => ({ value: t.id, label: t.name }))}
-        activeValue={activeTrackId}
-        hrefFor={(v) => `${basePath}${agendaQs(current, { trackId: v })}`}
-      />
-      {formatOptions && formatOptions.length > 0 ? (
-        <PublicFilterBar
-          ariaLabel="Format filters"
-          allLabel="All formats"
-          options={formatOptions.map((f) => ({ value: f, label: f }))}
-          activeValue={activeFormat ?? null}
-          hrefFor={(v) => `${basePath}${agendaQs(current, { format: v })}`}
-        />
+      <form class="chq-pub-track-highlight" method="get" action={basePath}>
+        <label class="chq-visually-hidden" for="chq-pub-highlight-track">
+          Highlight a track
+        </label>
+        {/* onchange auto-submits (no JS fallback needed: the visually-hidden
+            submit button below still works without JS, same idiom as
+            PublicSearchBox's hidden submit). */}
+        <select class="chq-pub-select" id="chq-pub-highlight-track" name="trackId" onchange="this.form.submit()">
+          <option value="">Highlight a track</option>
+          {tracks.map((t) => (
+            <option value={t.id} selected={t.id === activeTrackId ? true : undefined}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+        {activeDay ? <input type="hidden" name="day" value={activeDay} /> : null}
+        {q ? <input type="hidden" name="q" value={q} /> : null}
+        <button class="chq-visually-hidden" type="submit">
+          Highlight
+        </button>
+      </form>
+      {activeTrackId ? (
+        <a class="chq-pub-select-clear" href={`${basePath}${agendaQs(current, { trackId: null })}`}>
+          Clear
+        </a>
       ) : null}
     </div>
   );
@@ -431,10 +449,13 @@ export function AgendaContent(props: {
   embed?: boolean;
   allDays?: string[] | null;
   activeDay?: string | null;
-  trackId?: string | null;
+  // DEC-851 (wave 64 amendment): renamed from `trackId` -- this is a
+  // render-level highlight now, never a filter predicate. Threaded through
+  // to AgendaDay/AgendaDayGrid so the block-level highlight/muted styling
+  // (olive edge, inverted chip, muted card) has the value it needs; the
+  // class application itself lives in AgendaDayGrid's own block markup.
+  highlightTrackId?: string | null;
   q?: string | null;
-  formatOptions?: string[];
-  format?: string | null;
 }) {
   const byDay = groupByDay(props.items);
   const renderedDays = new Set(byDay.keys());
@@ -447,12 +468,10 @@ export function AgendaContent(props: {
       <ItinerarySearchForm
         event={props.event}
         tracks={props.tracks ?? []}
-        activeTrackId={props.trackId ?? null}
+        activeTrackId={props.highlightTrackId ?? null}
         activeDay={props.activeDay ?? null}
         q={props.q ?? null}
         basePath={basePath}
-        formatOptions={props.formatOptions}
-        activeFormat={props.format ?? null}
       />
       {byDay.size === 0 ? (
         <p>No sessions scheduled yet.</p>
@@ -470,12 +489,18 @@ export function AgendaContent(props: {
             surface="agenda"
             base={base}
             activeDay={props.activeDay}
-            trackId={props.trackId}
+            trackId={props.highlightTrackId}
             q={props.q}
-            format={props.format}
           />
           {[...renderedDays].map((day) => (
-            <AgendaDay day={day} items={byDay.get(day) ?? []} event={props.event} from="agenda" base={base} />
+            <AgendaDay
+              day={day}
+              items={byDay.get(day) ?? []}
+              event={props.event}
+              from="agenda"
+              base={base}
+              highlightTrackId={props.highlightTrackId ?? null}
+            />
           ))}
         </>
       )}
@@ -585,10 +610,10 @@ export function ScheduleContent(props: {
   embed?: boolean;
   allDays?: string[] | null;
   activeDay?: string | null;
-  trackId?: string | null;
+  // DEC-851 (wave 64 amendment): render-level highlight, not a filter -- see
+  // the matching comment on AgendaContent above.
+  highlightTrackId?: string | null;
   q?: string | null;
-  formatOptions?: string[];
-  format?: string | null;
 }) {
   const byDay = groupByDay(props.items);
   const renderedDays = new Set(byDay.keys());
@@ -601,12 +626,10 @@ export function ScheduleContent(props: {
       <ItinerarySearchForm
         event={props.event}
         tracks={props.tracks ?? []}
-        activeTrackId={props.trackId ?? null}
+        activeTrackId={props.highlightTrackId ?? null}
         activeDay={props.activeDay ?? null}
         q={props.q ?? null}
         basePath={basePath}
-        formatOptions={props.formatOptions}
-        activeFormat={props.format ?? null}
       />
       <p>
         Check sessions to build a personal itinerary. Your picks are saved in this browser and survive a reload.{" "}
@@ -647,9 +670,8 @@ export function ScheduleContent(props: {
             surface="schedule"
             base={base}
             activeDay={props.activeDay}
-            trackId={props.trackId}
+            trackId={props.highlightTrackId}
             q={props.q}
-            format={props.format}
           />
           {[...renderedDays].map((day) => (
             <div id={`chq-day-${day}`}>

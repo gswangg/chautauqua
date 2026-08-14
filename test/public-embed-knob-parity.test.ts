@@ -231,10 +231,13 @@ function buildAgendaApp(forJson = false) {
   const db = {
     select: () => {
       selectCall += 1;
-      const offset = forJson ? 0 : 2;
+      const offset = forJson ? 0 : 1;
       if (selectCall === 1) return makeChain([AGENDA_EVENT_ROW]); // getPublicEventBySlug
+      // DEC-851 (wave 64 amendment): getPublicFormatOptions is no longer
+      // called for agenda/schedule at all (format isn't an agenda facet) --
+      // only getPublicTracks (feeding the track-highlight <select>) adds an
+      // extra call over the .json feed's sequence now.
       if (!forJson && selectCall === 2) return makeChain([]); // DEC-804 getPublicTracks (search form's track <select>, HTML dispatch only)
-      if (!forJson && selectCall === 3) return makeChain([]); // DEC-851 getPublicFormatOptions (search form's format <select>, HTML dispatch only)
       // DEC-548: the unwindowed count(*) over the same filtered join, read
       // after selectDistinct's .where() has already narrowed `matched`.
       if (selectCall === 2 + offset) return makeChain([{ count: matched.length }]);

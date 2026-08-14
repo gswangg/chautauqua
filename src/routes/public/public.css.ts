@@ -9,12 +9,13 @@
 // ThemeStyles() inlines THEME_CSS, so hono/jsx never HTML-escapes it (no
 // stray &#39;/&quot;/&gt; entities in the rendered <style> text).
 
-import { DEC_367, DEC_373, DEC_374, DEC_838 } from "../../decisions";
+import { DEC_367, DEC_373, DEC_374, DEC_838, DEC_851 } from "../../decisions";
 
 void DEC_367;
 void DEC_373;
 void DEC_374;
 void DEC_838;
+void DEC_851;
 
 // DEC-838: the ONE list of classes whose colour is bound to
 // --chq-brandable-accent -- interpolated into the selectors below (never
@@ -83,6 +84,34 @@ export const PUBLIC_CSS = `
     padding: 0 14px;
     font-size: 13px;
     color: var(--chq-ink);
+  }
+
+  /* DEC-851 (wave 64 amendment): the agenda/schedule control row's track
+     control -- a real select element (w64-b's .chq-pub-select naming,
+     defined HERE only because it had not landed yet elsewhere at write
+     time -- do not duplicate this rule once it has) plus a Clear link
+     shown only while a track is selected, replacing the pill-bar track
+     filter these two surfaces used to render (track is a highlight on
+     these surfaces now, never a filter -- see the DEC-851 amendment). */
+  .chq-pub-track-highlight {
+    display: inline-flex;
+    align-items: center;
+  }
+  .chq-pub-select {
+    height: 40px;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-pill);
+    padding: 0 14px;
+    font-size: 13px;
+    color: var(--chq-ink);
+    background: var(--chq-paper);
+  }
+  .chq-pub-select-clear {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--chq-ink-2);
+    text-decoration: underline;
+    margin-left: 8px;
   }
 
   /* Public event chrome (DEC-369/DEC-366: header carries the event's own
@@ -376,6 +405,33 @@ export const PUBLIC_CSS = `
     flex-wrap: wrap;
     align-items: center;
     gap: 6px;
+  }
+  /* DEC-851 (wave 64 amendment): track is a HIGHLIGHT on the grid, never a
+     filter -- every block above still renders (the grid never reflows) and
+     already carries the default 3px olive (--chq-brandable-accent) left
+     edge from .chq-pub-agenda-block above. A block whose session does
+     NOT match the highlighted track instead gets this ONE extra class
+     (applied to the same element that already carries
+     .chq-pub-agenda-block) -- lighter card, lighter border, muted
+     ink -- so the matching subset visually reads as "kept" rather than
+     needing its own separate highlight rule. The Save/Saved control inside
+     a muted block is never dimmed or disabled by this rule (it carries no
+     opacity/pointer-events, only colour). */
+  .chq-pub-agenda-block-muted {
+    background: var(--chq-paper);
+    border-left-color: var(--chq-border);
+    color: var(--chq-muted);
+  }
+  .chq-pub-agenda-block-muted .chq-pub-agenda-block-title a,
+  .chq-pub-agenda-block-muted .chq-pub-agenda-block-speakers {
+    color: var(--chq-muted);
+  }
+  /* Track chip on a MATCHING (non-muted) block, once the block markup
+     names the matching chip -- filled olive instead of ink-on-surface. */
+  .chq-pub-track-chip-inverted {
+    color: var(--chq-on-brand);
+    background: var(--chq-brandable-accent);
+    border-color: var(--chq-brandable-accent);
   }
   /* DEC-584: phone (<700px) list markup for a single agenda day, rendered
      from the SAME items array as AgendaDayGrid and switched with the

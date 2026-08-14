@@ -80,15 +80,16 @@ function buildScheduleApp() {
   const db = {
     select: () => {
       selectCall += 1;
+      // DEC-851 (wave 64 amendment): getPublicFormatOptions is no longer
+      // called at all for agenda/schedule (format isn't an agenda facet).
       if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
       if (selectCall === 2) return makeChain(TRACKS); // getPublicTracks
-      if (selectCall === 3) return makeChain([]); // getPublicFormatOptions
-      if (selectCall === 4) return makeChain([{ count: TWO_ROWS.length }]); // total
-      if (selectCall === 5) return makeChain([{ id: "room1", name: "Alpha" }]); // roomRows
-      if (selectCall === 6) return makeChain(sessionRows); // hydrateSessions subRows
-      if (selectCall === 7) return makeChain([]); // trackRows
-      if (selectCall === 8) return makeChain([]); // speakerRows
-      if (selectCall === 9) return makeChain([]); // slotRows
+      if (selectCall === 3) return makeChain([{ count: TWO_ROWS.length }]); // total
+      if (selectCall === 4) return makeChain([{ id: "room1", name: "Alpha" }]); // roomRows
+      if (selectCall === 5) return makeChain(sessionRows); // hydrateSessions subRows
+      if (selectCall === 6) return makeChain([]); // trackRows
+      if (selectCall === 7) return makeChain([]); // speakerRows
+      if (selectCall === 8) return makeChain([]); // slotRows
       return makeChain([]); // formatRows
     },
     selectDistinct: () => makeChain(TWO_ROWS),
@@ -175,22 +176,31 @@ describe("DEC-919: one filter idiom on every public surface", () => {
     }
   });
 
-  it("/e/:slug/schedule renders .chq-pub-filter-bar with aria-current on the active track (no <select> narrowing)", async () => {
+  // DEC-851 (wave 64 amendment) supersedes this describe's original DEC-919
+  // claim for /schedule specifically: track is a render-level HIGHLIGHT on
+  // /agenda and /schedule now, never a pill-bar filter — the <select> half
+  // of the old ItinerarySearchForm is back (a different control than the
+  // pre-DEC-919 <select>, but a real select nonetheless), and no
+  // .chq-pub-filter-bar/.chq-pub-pill renders for track on these two
+  // surfaces at all.
+  it("/e/:slug/schedule renders a track-highlight <select> with its active value selected (no pill-bar narrowing)", async () => {
     installFakeCaches();
     const res = await buildScheduleApp().request("/e/conf/schedule?trackId=trk-a", {}, TEST_ENV);
     const html = await res.text();
-    expect(html).toContain('class="chq-pub-filter-bar"');
-    expect(html).toContain('class="chq-pub-pill" href="/e/conf/schedule?trackId=trk-a" aria-current="true">Track A</a>');
-    // The select-based half of the old ItinerarySearchForm is gone.
-    expect(html).not.toContain("<select");
+    expect(html).not.toContain('class="chq-pub-filter-bar"');
+    expect(html).not.toContain('class="chq-pub-pill"');
+    expect(html).toContain('<select class="chq-pub-select" id="chq-pub-highlight-track" name="trackId"');
+    expect(html).toContain('<option value="trk-a" selected="">Track A</option>');
   });
 
-  it("picking a track on /schedule preserves ?day= and ?q= in the resulting pill href", async () => {
+  it("picking a track on /schedule preserves ?day= and ?q= as hidden fields on the highlight form, and on the Clear link", async () => {
     installFakeCaches();
-    const res = await buildScheduleApp().request("/e/conf/schedule?day=2026-08-10&q=keynote", {}, TEST_ENV);
+    const res = await buildScheduleApp().request("/e/conf/schedule?day=2026-08-10&q=keynote&trackId=trk-a", {}, TEST_ENV);
     const html = await res.text();
-    expect(html).toContain(
-      'class="chq-pub-pill" href="/e/conf/schedule?day=2026-08-10&amp;trackId=trk-a&amp;q=keynote">Track A</a>',
-    );
+    const formMatch = html.match(/<form class="chq-pub-track-highlight"[^>]*>[\s\S]*?<\/form>/);
+    expect(formMatch).not.toBeNull();
+    expect(formMatch![0]).toContain('<input type="hidden" name="day" value="2026-08-10"/>');
+    expect(formMatch![0]).toContain('<input type="hidden" name="q" value="keynote"/>');
+    expect(html).toContain('class="chq-pub-select-clear" href="/e/conf/schedule?day=2026-08-10&amp;q=keynote">Clear</a>');
   });
 });

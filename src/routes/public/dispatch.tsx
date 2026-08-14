@@ -19,6 +19,9 @@ import { PUBLIC_PER_PAGE } from "../../server/repo/public/bounds";
 import { SessionsContent } from "./sessions";
 import { SpeakersContent, GalleryContent } from "./speakers";
 import { AgendaContent, ScheduleContent } from "./agenda";
+import { DEC_851 } from "../../decisions";
+
+void DEC_851;
 
 // w1-i + DEC-783: the /agenda and /schedule surfaces honour ?q=/?trackId=
 // exactly as /sessions does — as SQL-level predicates inside getPublicAgenda,
@@ -142,20 +145,19 @@ export async function renderSurfaceContent(
       };
     }
     case "agenda": {
-      // DEC-783/DEC-851: q/trackId/format parsed with the ONE parsers
-      // /sessions already uses (query.ts) and pushed into the repo query as
-      // SQL predicates — both `items` and `total` see the identical filter.
-      const trackId = parseTrackId(query.trackId);
+      // DEC-851 (wave 64 amendment): track is a render-level HIGHLIGHT on
+      // this surface, never a SQL predicate — every session still renders,
+      // so `?trackId=` is parsed but never threaded into getPublicAgenda's
+      // params. `?format=` is not an agenda facet at all (no parse, no
+      // fetch of format options). `q` stays a real SQL predicate — search
+      // still narrows the day's rows.
+      const highlightTrackId = parseTrackId(query.trackId);
       const q = parseNameQuery(query.q);
-      const format = parseFormat(query.format);
       // DEC-804: the same search/track control the sessions list renders —
       // reuse the ONE getPublicTracks repo call (sessions already calls it)
       // rather than adding a second query for the same list.
       const tracks = await getPublicTracks(db, event.id);
-      // DEC-851: same "list of possible filter options" shape as the
-      // sessions surface — fetched alongside tracks.
-      const formatOptions = await getPublicFormatOptions(db, event.id);
-      const { items, total } = await getPublicAgenda(db, event, { day: query.day, trackId, q, format });
+      const { items, total } = await getPublicAgenda(db, event, { day: query.day, q });
       // DEC-768: ?day= filters `items` down to one day's rows, so the day
       // switcher can no longer derive its full day list from `items` alone
       // (that would drop every other day's pill, dead-ending a visitor who
@@ -174,31 +176,25 @@ export async function renderSurfaceContent(
             embed={query.embed}
             allDays={allDays}
             activeDay={query.day ?? null}
-            trackId={trackId}
+            highlightTrackId={highlightTrackId}
             q={q}
-            formatOptions={formatOptions}
-            format={format}
           />
         ),
       };
     }
     case "schedule": {
-      const trackId = parseTrackId(query.trackId);
+      // DEC-851 (wave 64 amendment): same highlight-not-filter treatment as
+      // the agenda case above — `?trackId=` never reaches getPublicAgenda's
+      // params, `?format=` is not an agenda facet at all.
+      const highlightTrackId = parseTrackId(query.trackId);
       const q = parseNameQuery(query.q);
-      const format = parseFormat(query.format);
       // DEC-804: same reuse as the agenda case above — one getPublicTracks
       // call feeds the search form's track <select>.
       const tracks = await getPublicTracks(db, event.id);
-      const formatOptions = await getPublicFormatOptions(db, event.id);
-      // DEC-783/DEC-851: ?trackId=/?q=/?format= are pushed into the repo
-      // query as SQL predicates (never a post-fetch JS filter), so `items`
-      // and `total` are ONE predicate over ONE set — same call shape as the
-      // agenda case.
-      const { items, total } = await getPublicAgenda(db, event, { day: query.day, trackId, q, format });
+      const { items, total } = await getPublicAgenda(db, event, { day: query.day, q });
       // DEC-768: ?day= narrows `items`, so the day switcher's full day list
       // is fetched independently (same as the agenda case above) — the
-      // ?trackId=/?q=/?format= filter narrows the ROWS only, never the
-      // switcher.
+      // ?q= filter narrows the ROWS only, never the switcher.
       const allDays = query.day ? (await getPublicScheduleDayCounts(db, event)).map((d) => d.day) : null;
       return {
         title: `Schedule - ${event.name}`,
@@ -211,10 +207,8 @@ export async function renderSurfaceContent(
             embed={query.embed}
             allDays={allDays}
             activeDay={query.day ?? null}
-            trackId={trackId}
+            highlightTrackId={highlightTrackId}
             q={q}
-            formatOptions={formatOptions}
-            format={format}
           />
         ),
       };

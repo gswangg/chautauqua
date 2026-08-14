@@ -266,14 +266,17 @@ describe("w1-i: ONE shared itinerary label helper flips everywhere", () => {
   });
 });
 
-describe("w1-i: /schedule honors ?trackId= like /sessions does", () => {
-  it("returns only the items in the requested track", async () => {
+// DEC-851 (wave 64 amendment) supersedes this describe's original DEC-783
+// claim: track is a render-level HIGHLIGHT on /schedule now, not a filter --
+// ?trackId= never drops a row, on this surface or on /agenda.
+describe("w1-i: /schedule highlights (never filters by) ?trackId=", () => {
+  it("both items still render with ?trackId= set (track no longer narrows the row set)", async () => {
     const app = buildApp();
     const res = await app.request(`/e/${EVENT.slug}/schedule?trackId=${TRACK_A.id}`);
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain(AGENDA_ITEM_A.title);
-    expect(html).not.toContain(AGENDA_ITEM_B.title);
+    expect(html).toContain(AGENDA_ITEM_B.title);
   });
 
   it("with no ?trackId= both items still render (unfiltered)", async () => {
