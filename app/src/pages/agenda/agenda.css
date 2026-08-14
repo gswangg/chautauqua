@@ -1012,3 +1012,25 @@
   font-size: 13px;
   min-width: 92px;
 }
+
+/* ---------------------------------------------------------------------- */
+/* In-place break editor (DEC-022 amendment, wave 71)                      */
+/* ---------------------------------------------------------------------- */
+
+/* A row being edited swaps its one-line time/meta/buttons flex for a single
+   block child, so the baseline alignment and inter-cell gap that the read row
+   needs would only mis-seat the form. The row keeps its own padding and rule
+   line so the list's rhythm does not jump when an editor opens. */
+.chq-breaks-row-editing {
+  display: block;
+}
+
+/* Same control strip as .chq-breaks-add-row -- identical .chq-breaks-field
+   stacks plus Save/Cancel -- so creating and editing a break read as one
+   idiom. No padding-top here: the enclosing .chq-breaks-row already pads. */
+.chq-breaks-edit-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
