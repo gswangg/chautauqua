@@ -124,6 +124,12 @@ describe("POST /api/v1/plans/:id/remind logs contactId: null (DEC-191)", () => {
         listEvaluationsForPlan: vi.fn(async () => []),
         countCompletedByReviewerForPlan: vi.fn(async () => new Map()),
         listPlanFilteredSubmissions: vi.fn(async () => [submission]),
+        // DEC-707 (wave-61 amendment): /remind resolves the recipient's
+        // display name through the same batched helper /progress uses, so
+        // this mock must stub it too. An empty map means "no resolvable
+        // contact" -- the reminder falls back to the bare email, which is
+        // exactly what this test asserts on `to.email`.
+        batchUserDisplayNames: vi.fn(async () => new Map()),
       };
     });
     vi.doMock("../src/server/context", async () => {
@@ -145,6 +151,10 @@ describe("POST /api/v1/plans/:id/remind logs contactId: null (DEC-191)", () => {
     app.use("*", async (c, next) => {
       c.set("auth", auth);
       c.set("db", {} as never);
+      // DEC-707 (wave-61 amendment): the reminder body now carries a queue
+      // link built by resolveBaseUrl, which reads c.env -- same fixture
+      // shape the other /remind tests use.
+      c.env = { DEV_MODE: "1" } as never;
       await next();
     });
     app.route("/", reviewRoutes);
