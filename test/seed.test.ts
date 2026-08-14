@@ -764,4 +764,76 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
       expect(contact!.email).toBe(user.email);
     }
   });
+
+  // -------------------------------------------------------------------------
+  // Task w16-e / DEC-048 (wave 16 amendment): the grader package's three
+  // named "demo-truth" gaps -- an unreproducible multi-reviewer distribute
+  // table on plan 0003, an arbitrary top-of-ranking tie on the plan with the
+  // most evaluations, and seed_saved_view_0001's unconfirmed provenance --
+  // now carry named assertions so a future edit can't silently regress them.
+  // -------------------------------------------------------------------------
+  it("plan 0003 carries two reviewer scopes on distinct tracks (a real multi-reviewer distribute table)", () => {
+    const planReviewerRows = parseInserts(sql, "plan_reviewer");
+    const plan0003Reviewers = planReviewerRows.filter((r) => r.plan_id === "seed_evaluation_plan_0003");
+    // Four rows are seeded (reviewer/reviewerB/reviewerC on track 0,
+    // reviewerD on track 1); the requirement is >=2 distinct reviewers
+    // across >=2 distinct tracks, not the exact count.
+    expect(plan0003Reviewers.length).toBeGreaterThanOrEqual(2);
+
+    const distinctUserIds = new Set(plan0003Reviewers.map((r) => r.user_id));
+    expect(distinctUserIds.size, "plan 0003 has only one distinct reviewer user").toBeGreaterThanOrEqual(2);
+
+    const distinctTrackIds = new Set(plan0003Reviewers.map((r) => r.track_id));
+    expect(distinctTrackIds.size, "plan 0003's reviewers are all scoped to the same track").toBeGreaterThanOrEqual(2);
+  });
+
+  it("the top three ranked results are strictly ordered on the plan with the most evaluations", () => {
+    const evaluationRows = parseInserts(sql, "evaluation");
+    const countByPlan = new Map<string, number>();
+    for (const row of evaluationRows) {
+      countByPlan.set(row.plan_id!, (countByPlan.get(row.plan_id!) ?? 0) + 1);
+    }
+    const [busiestPlanId] = [...countByPlan.entries()].sort((a, b) => b[1] - a[1])[0]!;
+
+    const planRows = parseInserts(sql, "evaluation_plan");
+    const busiestPlan = planRows.find((r) => r.id === busiestPlanId)!;
+    const criteria = JSON.parse(busiestPlan.criteria_json!) as Array<{ id: string; kind: string; weight?: number }>;
+    const ratingCriteria = criteria.filter((c) => c.kind === "rating");
+    const totalWeight = ratingCriteria.reduce((sum, c) => sum + (c.weight ?? 1), 0);
+
+    const bySubmission = new Map<string, number[]>();
+    for (const row of evaluationRows) {
+      if (row.plan_id !== busiestPlanId) continue;
+      const scores = JSON.parse(row.scores_json!) as Record<string, number>;
+      const weighted = ratingCriteria.reduce((sum, c) => sum + (c.weight ?? 1) * scores[c.id]!, 0) / totalWeight;
+      const list = bySubmission.get(row.submission_id!) ?? [];
+      list.push(weighted);
+      bySubmission.set(row.submission_id!, list);
+    }
+
+    const averages = [...bySubmission.entries()].map(([submissionId, scores]) => ({
+      submissionId,
+      average: scores.reduce((a, b) => a + b, 0) / scores.length,
+    }));
+    averages.sort((a, b) => b.average - a.average);
+    expect(averages.length).toBeGreaterThanOrEqual(3);
+
+    const [first, second, third] = averages;
+    expect(first!.average, "rank 1 vs rank 2 tie").toBeGreaterThan(second!.average);
+    expect(second!.average, "rank 2 vs rank 3 tie").toBeGreaterThan(third!.average);
+  });
+
+  it("the seed writes seed_saved_view_0001 as a submissions saved view whose filter returns a non-empty page", () => {
+    const savedViewRows = parseInserts(sql, "saved_view");
+    const view = savedViewRows.find((r) => r.id === "seed_saved_view_0001");
+    expect(view, "seed_saved_view_0001 is not written by scripts/seed.ts").toBeTruthy();
+
+    const config = JSON.parse(view!.config_json!) as { status?: string[] };
+    expect(config.status, "saved view has no status filter").toBeTruthy();
+    expect(config.status!.length).toBeGreaterThan(0);
+
+    const submissionRows = parseInserts(sql, "submission").filter((r) => r.event_id === view!.event_id);
+    const matching = submissionRows.filter((r) => config.status!.includes(r.status!));
+    expect(matching.length, "saved view's filter matches zero seeded submissions").toBeGreaterThan(0);
+  });
 });
