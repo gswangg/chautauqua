@@ -33,3 +33,39 @@ export async function publicNotFound(c: Context<AppEnv>, message: string): Promi
     404,
   );
 }
+
+// DEC-841 (wave 16 amendment): a thrown error on the public surfaces (an
+// ApiError or an unexpected 5xx) used to fall through to http.ts's
+// renderHtmlError -- a bare <p role=alert> + "Go back" document with none of
+// the public chrome. That mismatched publicNotFound above, which renders the
+// SAME NotFoundDocument card the app's other 404 does. This is the error
+// twin: same card (same eyebrow/measure/event-resolution helpers, no forked
+// second shell), role="alert" on the message, and a link back to the
+// event's own surfaces (derived from the :eventSlug route param already on
+// this request -- no extra event query) ahead of the anonymous home/login
+// pair. Called from publicRoutes.onError in ./index.tsx for HTML
+// navigations only; feed/file-extension paths (.ics/.xml) and API paths
+// keep going through http.ts's errorResponse unchanged.
+export async function publicErrorDocument(
+  c: Context<AppEnv>,
+  message: string,
+  status: 400 | 401 | 403 | 404 | 409 | 500,
+): Promise<Response> {
+  c.header("Cache-Control", "no-store");
+  const eyebrow = await resolveNotFoundEyebrow(c.var.db);
+  const eventSlug = c.req.param("eventSlug");
+  const links = eventSlug
+    ? [{ href: `/e/${eventSlug}/sessions`, label: "Back to the event" }, ...ANONYMOUS_NOT_FOUND_LINKS]
+    : ANONYMOUS_NOT_FOUND_LINKS;
+  return await c.html(
+    <NotFoundDocument
+      eyebrow={eyebrow}
+      title="Error - Chautauqua"
+      heading="Something went wrong"
+      body={message}
+      links={links}
+      alert
+    />,
+    status,
+  );
+}

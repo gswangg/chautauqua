@@ -235,12 +235,20 @@ function safeReferrerPath(referer: string | undefined, requestUrl: string): stri
   }
 }
 
+// DEC-841: the ONE predicate deciding HTML-vs-JSON for an error response --
+// exported so a sub-app's onError (e.g. public routes, wave 16 amendment)
+// can decide whether to render its OWN html chrome around the message
+// without re-deriving a second copy of this classification.
+export function wantsHtmlResponse(c: Context<AppEnv>): boolean {
+  return c.var.htmlSurface === true || !isApiPath(new URL(c.req.url).pathname);
+}
+
 // The one error responder: a sub-app's onError may override headers (e.g.
 // Cache-Control), but never the body shape -- everything renders through
 // this function so HTML vs JSON classification and body construction stay
 // in exactly one place. DEC-841.
 export function errorResponse(c: Context<AppEnv>, err: unknown): Response {
-  const wantsHtml = c.var.htmlSurface === true || !isApiPath(new URL(c.req.url).pathname);
+  const wantsHtml = wantsHtmlResponse(c);
   if (err instanceof ApiError) {
     if (wantsHtml) {
       return c.html(
