@@ -147,10 +147,19 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
   .chq-pub-itinerary-row input.chq-itinerary-toggle:checked ~ .chq-pub-save-off { display: none; }
   .chq-pub-itinerary-row input.chq-itinerary-toggle:checked ~ .chq-pub-save-on { display: inline; }
 
-  /* Session detail page's itinerary control reuses the sessions list's
-     Save/Saved pill styling (.chq-pub-save) as-is; this just gives it its
-     own top margin so it doesn't crowd the description paragraph above it. */
-  .chq-pub-detail-itinerary { margin-top: 12px; }
+  /* DEC-782 Amendment (wave 26, DESIGN-RULINGS A26): the session detail
+     page's itinerary control now sits in the header beside the title
+     (.chq-pub-detail-header), not under the description -- placement only,
+     same ItineraryToggle markup/pill styling (.chq-pub-save) as before. */
+  .chq-pub-detail-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .chq-pub-detail-header .chq-pub-surface-title { margin-bottom: 0; }
+  .chq-pub-detail-itinerary { flex-shrink: 0; }
 
   /* ===== task-w9-b (DEC-838): per-event accent visible on every public/
      embed surface, without moving a default pixel =====

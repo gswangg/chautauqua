@@ -225,7 +225,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
                 value={templateId}
                 onChange={(e) => applyTemplate(e.target.value)}
               >
-                <option value="">Custom (no template)</option>
+                <option value="">No template — write it here</option>
                 {templates.map((t) => {
                   const missing = missingFieldsForTemplate(t);
                   const blocked = missing.length > 0;
@@ -238,21 +238,36 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
               </select>
             </FormRow>
           )}
-          {templates.some((t) => missingFieldsForTemplate(t).length > 0) && (
-            <ul className="chq-bulk-email-unsendable-templates">
-              {templates
-                .filter((t) => missingFieldsForTemplate(t).length > 0)
-                .map((t) => {
-                  const missing = missingFieldsForTemplate(t);
-                  return (
+          {(() => {
+            const unavailable = templates.filter((t) => missingFieldsForTemplate(t).length > 0);
+            if (unavailable.length === 0) return null;
+            // Ruling A19: the submission-scoped templates are named as
+            // unavailable WITH the reason, in one sentence -- e.g.
+            // "Acceptance, Decline and Schedule live need a submission, so
+            // they are not available here." Names come from the templates
+            // themselves (event-defined, never hardcoded).
+            const names = unavailable.map((t) => t.name);
+            const joined =
+              names.length === 1
+                ? names[0]
+                : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+            const verb = names.length === 1 ? 'needs' : 'need';
+            const pronoun = names.length === 1 ? 'it is' : 'they are';
+            return (
+              <>
+                <p className="chq-bulk-email-unsendable-note">
+                  {joined} {verb} a submission, so {pronoun} not available here.
+                </p>
+                <ul className="chq-bulk-email-unsendable-templates">
+                  {unavailable.map((t) => (
                     <li key={t.id}>
-                      {t.name} needs {missing.map((f) => `{${f}}`).join(', ')} — not available here.{' '}
                       <a href={`/admin/comms?tab=compose&template=${t.id}`}>Use in Comms compose</a>
                     </li>
-                  );
-                })}
-            </ul>
-          )}
+                  ))}
+                </ul>
+              </>
+            );
+          })()}
           <FormRow label="Subject" htmlFor="bulk-email-subject">
             <input
               id="bulk-email-subject"

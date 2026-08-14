@@ -99,7 +99,16 @@ export function SessionDetailContent(props: {
       <div class="chq-card">
         <TrackChips tracks={session.tracks} />
         <FormatChip format={session.format} />
-        <h1 class="chq-pub-surface-title">{session.title}</h1>
+        {/* DEC-782 (Amendment, wave 26 / DESIGN-RULINGS A26): the itinerary
+            control moves into the header, beside the session title — the
+            SAME ItineraryToggle component, the SAME chq_itinerary_<slug> key
+            and the SAME ItineraryScript already used below, placement only. */}
+        <header class="chq-pub-detail-header">
+          <h1 class="chq-pub-surface-title">{session.title}</h1>
+          {!embed ? (
+            <ItineraryToggle sessionId={session.id} wrapperClass="chq-pub-save chq-pub-detail-itinerary" />
+          ) : null}
+        </header>
         <p>
           {timeLabel ?? "Not yet scheduled"}
           {session.roomName ? ` · ${session.roomName}` : ""}
@@ -115,24 +124,13 @@ export function SessionDetailContent(props: {
           ))}
         </p>
         {session.description ? <p>{session.description}</p> : null}
-        {/* DEC-782: the list card already has a Save/Saved itinerary control
-            (SessionCard in cards.tsx) — the drill-in detail page had none, so
-            a session opened from a search result or a shared link had no way
-            to add it to the itinerary without navigating back. ONE markup
-            vocabulary: the SAME ItineraryToggle component the card renders,
-            the same localStorage key (chq_itinerary_<slug>), driven by the
-            SAME ItineraryScript — plus the picked-count/.ics CTA the sessions
-            rail carries, so the control has a visible consequence here too. */}
         {!embed ? (
-          <>
-            <ItineraryToggle sessionId={session.id} wrapperClass="chq-pub-save chq-pub-detail-itinerary" />
-            <p>
-              <span id="chq-ics-count">0 picked</span> ·{" "}
-              <a id="chq-ics-link" class="chq-pub-itinerary-cta" href={`/e/${event.slug}/schedule.ics`} aria-disabled="true">
-                Download .ics
-              </a>
-            </p>
-          </>
+          <p>
+            <span id="chq-ics-count">0 picked</span> ·{" "}
+            <a id="chq-ics-link" class="chq-pub-itinerary-cta" href={`/e/${event.slug}/schedule.ics`} aria-disabled="true">
+              Download .ics
+            </a>
+          </p>
         ) : null}
       </div>
       {!embed ? <ItineraryScript eventSlug={event.slug} /> : null}
