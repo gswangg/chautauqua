@@ -4,8 +4,11 @@
 
 import { SUBMISSION_STATUSES, type SubmissionStatus } from "../../../domain/status";
 import { CONTENT_STATUSES, type ContentStatus } from "../files-content-status";
-import { DEC_078, DEC_843 } from "../../../decisions";
+import { DEC_078, DEC_843, DEC_417 } from "../../../decisions";
 import { clampPage, clampPerPage } from "../../../lib/pagination";
+import { boundedQueryString, MAX_SEARCH_QUERY_LENGTH, MAX_FILTER_ID_LENGTH } from "../../../lib/query-bounds";
+
+void DEC_417; // wave-31 amendment: read-side q/trackId bounded, not just write-side field lengths
 
 void DEC_843; // one shared status-token reader for the list and its export
 
@@ -134,13 +137,13 @@ export function parseListQuery(raw: ListQueryInput): ParsedListQuery {
   const page = clampPage(raw.page);
   const perPage = clampPerPage(raw.perPage);
 
-  const q = raw.q && raw.q.trim().length > 0 ? raw.q.trim() : null;
+  const q = boundedQueryString(raw.q, "q", MAX_SEARCH_QUERY_LENGTH);
 
   const status = readStatusTokens(raw.status);
 
   const contentStatus = readContentStatusTokens(raw.contentStatus);
 
-  const trackId = raw.trackId && raw.trackId.trim().length > 0 ? raw.trackId.trim() : null;
+  const trackId = boundedQueryString(raw.trackId, "trackId", MAX_FILTER_ID_LENGTH);
 
   const sort: SortOrder =
     raw.sort && (SORT_ORDERS as readonly string[]).includes(raw.sort)

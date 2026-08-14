@@ -5,6 +5,7 @@
 import type { ContactRecord, SegmentRule } from "../../../domain/contacts";
 import type { ContactRow } from "./rows";
 import { clampPage, clampPerPage } from "../../../lib/pagination";
+import { boundedQueryString, MAX_SEARCH_QUERY_LENGTH, MAX_FILTER_ID_LENGTH } from "../../../lib/query-bounds";
 
 export interface ParsedContactListQuery {
   page: number;
@@ -27,10 +28,9 @@ export function parseContactListQuery(
   const page = clampPage(raw.page);
   const perPage = clampPerPage(raw.perPage);
 
-  const qTrimmed = raw.q?.trim();
-  const q = qTrimmed ? qTrimmed : null;
+  const q = boundedQueryString(raw.q, "q", MAX_SEARCH_QUERY_LENGTH);
 
-  const segmentId = raw.segmentId?.trim() ? raw.segmentId.trim() : null;
+  const segmentId = boundedQueryString(raw.segmentId, "segmentId", MAX_FILTER_ID_LENGTH);
 
   const sort = raw.sort === "recent" ? "recent" : "name";
 
