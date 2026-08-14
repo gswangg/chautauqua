@@ -91,7 +91,10 @@ describe("DEC-584: public agenda phone list + desktop grid dual markup", () => {
   });
 
   it("desktop AgendaDayGrid markup is unchanged by the surrounding wrapper", () => {
-    const bareHtml = String(AgendaDayGrid({ day: "2026-08-10", items: ITEMS, event: EVENT, from: "agenda" }));
+    // w69-d: AgendaContent passes itinerary={!embed} (true here, no embed
+    // arg) through to AgendaDayGrid, so the bare comparison call must pass
+    // the same itinerary=true to match.
+    const bareHtml = String(AgendaDayGrid({ day: "2026-08-10", items: ITEMS, event: EVENT, from: "agenda", itinerary: true }));
     const wrappedHtml = String(AgendaContent({ event: EVENT, items: ITEMS, total: ITEMS.length }));
     expect(wrappedHtml).toContain(bareHtml);
   });
@@ -107,11 +110,18 @@ describe("DEC-584: public agenda phone list + desktop grid dual markup", () => {
     expect(html).not.toContain('class="chq-pub-agenda-day"');
   });
 
-  it("the phone list itinerary row exists only on /schedule (ScheduleContent), not /agenda's phone list -- DEC-584 (wave 64) added a Save/Saved toggle to the desktop block itself, but the phone AgendaItemList still renders no toggle without an explicit itinerary prop", () => {
+  // w69-d (DEC-584 amendment): "A SAVE CONTROL RENDERS ONLY WHERE ITS SCRIPT
+  // DOES" replaces the prior rule this test encoded. AgendaContent's
+  // ItineraryScript mount is gated on !embed, and now so is AgendaDay's
+  // `itinerary` prop -- passed to BOTH AgendaDayGrid and AgendaItemList --
+  // so /agenda's phone list carries a Save toggle exactly when its desktop
+  // grid twin and the script do (non-embed), closing the gap where the
+  // phone breakpoint had no Save control at all.
+  it("the phone list itinerary row exists on /agenda's phone list too (non-embed), matching the desktop grid and the script", () => {
     const agendaHtml = String(AgendaContent({ event: EVENT, items: ITEMS, total: ITEMS.length }));
     const phoneListMatch = agendaHtml.match(/<ol class="chq-pub-agenda-list">([\s\S]*?)<\/ol>/);
     expect(phoneListMatch).toBeTruthy();
-    expect(phoneListMatch![1]).not.toContain("chq-itinerary-toggle");
+    expect(phoneListMatch![1]).toContain("chq-itinerary-toggle");
   });
 });
 

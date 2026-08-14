@@ -113,8 +113,13 @@ export function AgendaDayGrid(props: {
   // the grid renders exactly the same blocks with or without this value and
   // NEVER reflows; only the per-block classes below change.
   highlightTrackId?: string | null;
+  // DEC-584 amendment (wave 69): the Save control renders only where its
+  // script does -- /embed's AgendaContent never mounts ItineraryScript, so a
+  // toggle there would flip its own CSS to "Saved" with nothing persisted.
+  // Same condition AgendaContent already gates the rail and script on.
+  itinerary?: boolean;
 }) {
-  const { day, items, event, from, base, breaks = [], highlightTrackId = null } = props;
+  const { day, items, event, from, base, breaks = [], highlightTrackId = null, itinerary = false } = props;
   const rows = buildDayRows(items, breaks);
 
   return (
@@ -166,7 +171,7 @@ export function AgendaDayGrid(props: {
                     >
                       <div class="chq-pub-agenda-block-head">
                         <span class="chq-pub-agenda-block-room">{publicRoomLabel(item.roomName)}</span>
-                        <ItineraryToggle sessionId={item.submissionId} />
+                        {itinerary ? <ItineraryToggle sessionId={item.submissionId} /> : null}
                       </div>
                       <div class="chq-pub-agenda-block-title">
                         <strong>

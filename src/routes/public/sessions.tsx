@@ -101,13 +101,6 @@ function DayIndexRailSection(props: { event: PublicEvent; dayCounts: { day: stri
           </div>
         ))}
       </div>
-      {/* DEC-683 amendment (wave 65): the printable programme's ONE
-          discoverability link -- lives here for now (this rail is already
-          `!embed`-only, DEC-672/683), until the agenda gains its own
-          designed rail carrying the same link to the same route. */}
-      <a class="chq-pub-rail-programme-link" href={`/e/${event.slug}/programme`}>
-        Printable programme ›
-      </a>
     </section>
   );
 }

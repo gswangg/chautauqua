@@ -47,6 +47,11 @@ function AgendaDay(props: {
   // multi-day render (e.g. an out-of-scope future caller), so AgendaContent
   // passes hideHeading=true whenever it renders exactly one day.
   hideHeading?: boolean;
+  // DEC-584 amendment (wave 69): threaded through to BOTH AgendaDayGrid and
+  // AgendaItemList -- the same condition (!embed) gates the desktop grid's
+  // toggle, the phone list's toggle, the rail and ItineraryScript, so the
+  // Save control renders in exactly the surfaces where its script does.
+  itinerary?: boolean;
 }) {
   // DEC-584 (wave 64 amendment): the heading names the day's own density
   // ("<Weekday D Month> · N sessions · M rooms") rather than the bare day
@@ -194,6 +199,7 @@ export function AgendaContent(props: {
                   breaks={props.breaksByDay?.get(day) ?? []}
                   highlightTrackId={props.highlightTrackId ?? null}
                   hideHeading={hideDayHeading}
+                  itinerary={!props.embed}
                 />
               ))}
               {nextDay && lastEndMin !== null ? (
