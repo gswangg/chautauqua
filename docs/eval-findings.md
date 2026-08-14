@@ -139,6 +139,14 @@ restore. (b) **plan editor at 390 = one character per line** — reviewer/criter
 desktop grid tracks (`13.66px 140px 90px…`), doc height 8644px; frame 03--06 shows the
 stacked layout (CRITERIA/REVIEWERS sections, Swap, CAP EACH, bottom Save bar).
 
+**DELTA PROBE (2026-08-14 ~wave 21, snapshot f57ecbc6): 9/9 desktop invariants HOLD —
+zero phone-round leakage measured.** Live at 1440: login 820/732 (frame ruling) · nav
+margin 13px · agenda armed-bar display:none at rest · speakers toolbar selects 36px caret
+clearance ×3 · contacts record-row grid 130/320 · comms templates two equal 395 columns ·
+settings section-head flex row · public sessions 4 one-row filter selects with data-URI
+caret + 34px clearance · review landing loads clean. The additive-reflow scan-lock is
+holding empirically, not just in code review.
+
 **RULING · USER-FILED (2026-08-14, sandbox tour #2): sign-in desktop geometry is
 FRAME-FAITHFUL — do not "fix" it.** User flagged login as "mobile-optimized and stretched"
 on desktop. Measured at 1440: card box 820 (732 content + 2×44 padding), inputs/submit 732,
