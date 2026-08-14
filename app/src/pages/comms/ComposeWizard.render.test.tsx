@@ -148,10 +148,12 @@ describe('ComposeWizard recipient picker', () => {
     }
   });
 
-  // DEC-677: the compose send step renders the server's SendResult through
-  // describeSendResult (one reporter), not a hand-built "Sent N" sentence,
-  // and lists the failed addresses the server already reports.
-  it('renders one sentence naming sent and failed counts, and lists the failed address', async () => {
+  // Ruling B1 (DEC-967 amendment, wave 25): Send moves to step 4, and step
+  // 4 post-send is a report ABOUT RECIPIENTS -- headline audience count,
+  // then each failed recipient named individually as a row (not a bare
+  // <ul> of addresses, and never describeSendResult's sentence as the
+  // headline here).
+  it('renders no Send control on the preview step, then names sent/total and each failed recipient on step 4', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
@@ -174,13 +176,18 @@ describe('ComposeWizard recipient picker', () => {
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
 
-    const sendButton = await screen.findByRole('button', { name: /Send \d+ emails?/ });
-    fireEvent.click(sendButton);
-    const confirmDialog = await screen.findByRole('dialog', { name: 'Send this email?' });
-    fireEvent.click(within(confirmDialog).getByRole('button', { name: /Send \d+ emails?/ }));
+    await screen.findByText('Attachments');
+    expect(screen.queryByRole('button', { name: /^Send \d+ emails?$/ })).not.toBeInTheDocument();
 
-    expect(await screen.findByText('Sent to 2 emails. 1 failure.')).toBeInTheDocument();
+    const nextToSend = screen.getByRole('button', { name: 'Next: send ›' });
+    fireEvent.click(nextToSend);
+
+    const sendButton = await screen.findByRole('button', { name: /^Send \d+ emails?$/ });
+    fireEvent.click(sendButton);
+
+    expect(await screen.findByText('2 of 3 speakers were emailed')).toBeInTheDocument();
     expect(screen.getByText('bad@example.com')).toBeInTheDocument();
+    expect(screen.getByText('bounced')).toBeInTheDocument();
   });
 
   it('carries chq-input/chq-textarea on step 2 subject/body and shell classes on its buttons', async () => {
@@ -687,9 +694,11 @@ describe('ComposeWizard recipient rows name the talk and state the slot (DEC-912
   });
 });
 
-// DEC-967: an email batch asks once before it leaves -- the preview step's
-// Send button opens the shared ConfirmDialog instead of posting directly.
-describe('ComposeWizard confirms before sending (DEC-967)', () => {
+// Ruling B1 (DEC-967 amendment, wave 25): Send moves to step 4 -- the
+// preview step's primary only advances ("Next: send ›"); step 4 pre-send IS
+// the one confirmation the batch gets before it leaves, so click depth is
+// unchanged even though the standalone ConfirmDialog is gone.
+describe('ComposeWizard: Send moves to step 4 (ruling B1)', () => {
   function recipient(contactId: string, submissionId: string, name: string, ref: string, scheduled: boolean) {
     return {
       contactId,
@@ -721,7 +730,7 @@ describe('ComposeWizard confirms before sending (DEC-967)', () => {
     return fetchMock.mock.calls.filter((call) => String(call[0]).includes('/compose/send')).length;
   }
 
-  it('issues no POST to compose/send until the confirm dialog is confirmed, and names the recipient count', async () => {
+  it('issues no POST to compose/send until step 4\'s own Send primary is clicked', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
@@ -731,19 +740,18 @@ describe('ComposeWizard confirms before sending (DEC-967)', () => {
 
     await goToPreviewWith(fetchMock);
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Send \d+ emails?/ }));
+    expect(screen.queryByRole('button', { name: /^Send \d+ emails?$/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Next: send ›' }));
 
-    const dialog = await screen.findByRole('dialog');
-    expect(dialog.textContent).toContain('1 recipient');
+    const step4Send = await screen.findByRole('button', { name: /^Send \d+ emails?$/ });
     expect(sendCallCount(fetchMock)).toBe(0);
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Send 1 email' }));
+    fireEvent.click(step4Send);
 
     await waitFor(() => expect(sendCallCount(fetchMock)).toBe(1));
   });
 
-  it('Cancel leaves the wizard on the preview step with zero requests to compose/send', async () => {
+  it('names the recipient count and resolved subject on step 4 before sending', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
@@ -752,13 +760,9 @@ describe('ComposeWizard confirms before sending (DEC-967)', () => {
     });
 
     await goToPreviewWith(fetchMock);
-    fireEvent.click(screen.getByRole('button', { name: /Send \d+ emails?/ }));
-    await screen.findByRole('dialog');
+    fireEvent.click(screen.getByRole('button', { name: 'Next: send ›' }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.getByText('Priya Raman')).toBeInTheDocument();
+    expect(await screen.findByText(/1 recipient.*You are in!/)).toBeInTheDocument();
     expect(sendCallCount(fetchMock)).toBe(0);
   });
 });
@@ -860,8 +864,11 @@ describe('ComposeWizard ICS slot predicate and blocked-send (DEC-954)', () => {
     expect(banner.textContent).toContain('DFC-014 — Priya Raman');
     expect(banner.textContent).not.toContain('sub-1');
 
-    const sendButton = screen.getByRole('button', { name: /Send \d+ emails?/ });
-    expect(sendButton).toBeDisabled();
+    // Ruling B1: Send itself now lives on step 4 -- the hard block disables
+    // the preview step's own primary ("Next: send ›") instead, so a blocked
+    // batch can't even reach the step-4 confirmation.
+    const nextToSend = screen.getByRole('button', { name: 'Next: send ›' });
+    expect(nextToSend).toBeDisabled();
   });
 });
 
@@ -931,5 +938,62 @@ describe('ComposeWizard {feedback} companion plan picker (DEC-955)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Insert a field/ }));
 
     expect(screen.queryByRole('menuitem', { name: '{feedback}' })).not.toBeInTheDocument();
+  });
+});
+
+// Step-1 seam line: the selection already survives filter changes (DEC-350)
+// -- this line just says so, and it reads the live selection count.
+describe('ComposeWizard step-1 selection-survives-filters seam line', () => {
+  it('renders the live selection count against the recipient cap', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+    await screen.findByText('Talk number 1');
+
+    expect(screen.getByText(/Kept as you change filters · 0 is under the 100-recipient cap/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+
+    expect(screen.getByText(/Kept as you change filters · 1 is under the 100-recipient cap/)).toBeInTheDocument();
+  });
+});
+
+// Ruling A18: the evaluation-plan select is "Include reviewer feedback"'s
+// own parameter -- absent until the checkbox is checked, and indented
+// under it with a caption naming what gets merged.
+describe('ComposeWizard evaluation-plan select is a parameter of Include reviewer feedback (ruling A18)', () => {
+  function plan(id: string, name: string, currentRound: number, rounds = 3) {
+    return { id, eventId: EVENT_ID, name, openDate: null, closeDate: null, filters: null, anonymized: false, scale: { min: 1, max: 5 }, criteria: [], rounds, currentRound };
+  }
+
+  it('is absent until Include reviewer feedback is checked, then appears indented with its caption', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([plan('plan-a', 'Track A Review', 2)]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(subject, { target: { value: 'Hello' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+    await screen.findByText('Attachments');
+
+    expect(screen.queryByLabelText('Evaluation plan')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Include reviewer feedback'));
+
+    const select = await screen.findByLabelText('Evaluation plan');
+    expect(select.closest('.chq-comms-panel-indent')).not.toBeNull();
+    expect(screen.getByText('Only submitted, non-recused reviews are merged.')).toBeInTheDocument();
   });
 });

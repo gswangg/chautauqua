@@ -191,6 +191,26 @@
   line-height: 1.5;
 }
 
+/* Ruling A18: the evaluation-plan select is "Include reviewer feedback"'s
+   own parameter, not a peer field -- indented under the checkbox that
+   reveals it, with a left rule tying the two together visually. */
+.chq-comms-panel-indent {
+  margin-left: 26px;
+  padding-left: 12px;
+  border-left: 2px solid var(--chq-hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Ruling B1: step 4's post-send report leads with the audience count --
+   sized like the other step headings, not buried in body copy. */
+.chq-comms-send-report-headline {
+  font-family: var(--chq-font-display);
+  font-size: 16px;
+  font-weight: 700;
+}
+
 .chq-comms-preview-nav {
   display: flex;
   gap: 12px;
