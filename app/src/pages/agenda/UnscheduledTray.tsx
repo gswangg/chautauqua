@@ -69,7 +69,7 @@ export function UnscheduledTray({
     <div className="chq-unscheduled-tray" onDragOver={handleDragOver} onDrop={handleDrop} onClick={handleTrayClick}>
       <div className="chq-unscheduled-tray-header">
         <span>Unscheduled</span>
-        <span className="chq-unscheduled-tray-count">{` (${sessions.length})`}</span>
+        <span className="chq-unscheduled-tray-count">{sessions.length}</span>
       </div>
       <div className="chq-unscheduled-tray-list">
         {sessions.length === 0 && <p className="chq-unscheduled-tray-empty">All accepted sessions are placed.</p>}
@@ -85,8 +85,8 @@ export function UnscheduledTray({
             <div key={session.submissionId} className="chq-unscheduled-tray-item">
               <SessionCard
                 session={session}
-                tracks={tracks}
                 conflicts={conflicts}
+                durationMin={durationMin}
                 selected={armed?.submissionId === session.submissionId}
                 onSelect={
                   onArm
@@ -100,7 +100,6 @@ export function UnscheduledTray({
                     : undefined
                 }
               />
-              <p className="chq-unscheduled-tray-duration">{`· ${durationMin} min`}</p>
               {reason && <p className="chq-unscheduled-reason">{reason.detail}</p>}
             </div>
           );
