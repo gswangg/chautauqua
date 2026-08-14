@@ -49,6 +49,7 @@ import { buildSurfaceFeed, buildSurfaceFeedXml, agendaIcsEvents, projectCardFiel
 import type { CardFields } from "./query";
 import { publicNotFound } from "./not-found";
 import { savedEmbedRoutes } from "./saved-embed";
+import { handleProgramme } from "./programme";
 
 export const publicRoutes = new Hono<AppEnv>();
 
@@ -334,6 +335,11 @@ publicRoutes.get("/e/:eventSlug/schedule.ics", async (c) => {
     "Content-Disposition": `attachment; filename="${event.slug}-itinerary.ics"`,
   });
 });
+
+// DEC-683 amendment (wave 65): the printable programme -- a public,
+// no-login, print-first one-page rendering of the whole published
+// programme, registered alongside the other literal /e/ routes here.
+publicRoutes.get("/e/:eventSlug/programme", handleProgramme);
 
 // EMB-15 (DEC-289): the full published agenda as .ics — same UIDs/SEQUENCE
 // as schedule.ics (agendaIcsEvents in ./feeds mirrors its mapping exactly)
