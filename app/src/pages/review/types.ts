@@ -242,6 +242,11 @@ export interface RecusalRecord {
 export interface ReviewerQueueEnvelope {
   items: ReviewerQueueItem[];
   total: number;
+  // DEC-845 amendment (wave 38): the FULL unscored count across every page
+  // of this reviewer's scope, computed server-side before any page slice --
+  // never derive "N left to score" from items.length/filter, which only
+  // sees whatever page happens to be loaded (clamped to MAX_PER_PAGE=200).
+  unscoredTotal: number;
   page: number;
   perPage: number;
   open: boolean;

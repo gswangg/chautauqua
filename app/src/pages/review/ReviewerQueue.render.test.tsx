@@ -31,6 +31,26 @@ function queueItem(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
+// DEC-845 amendment (wave 38): every queue envelope now carries
+// `unscoredTotal` -- the header/footer counts read it, never
+// items.length/filter. Defaults to the true count off the SAME items array
+// (mirroring the route's own unscoredTotal computation) so existing fixtures
+// stay accurate without hand-counting each call site; `overrides.total`/
+// `overrides.unscoredTotal` let a test simulate a scope bigger than the
+// loaded page.
+function queueEnvelope(
+  items: ReturnType<typeof queueItem>[],
+  overrides: { total?: number; unscoredTotal?: number } = {},
+) {
+  return {
+    ...listEnvelope(items),
+    total: overrides.total ?? items.length,
+    unscoredTotal:
+      overrides.unscoredTotal ??
+      items.filter((i) => !(i as { alreadyRatedByMe?: boolean }).alreadyRatedByMe).length,
+  };
+}
+
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
@@ -66,7 +86,7 @@ describe('ReviewerQueue desktop row anatomy (REVIEW PACK frame 03-03)', () => {
   it('a scored row action uses the secondary face and reads "Change your score"', async () => {
     mockApi({
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
-        ...listEnvelope([queueItem({ alreadyRatedByMe: true, myScore: 4.5 })]),
+        ...queueEnvelope([queueItem({ alreadyRatedByMe: true, myScore: 4.5 })]),
         open: true,
         recused: [],
       },
@@ -82,7 +102,7 @@ describe('ReviewerQueue desktop row anatomy (REVIEW PACK frame 03-03)', () => {
   it('an unscored row action uses the primary face and reads "Score this"', async () => {
     mockApi({
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
-        ...listEnvelope([queueItem({ alreadyRatedByMe: false })]),
+        ...queueEnvelope([queueItem({ alreadyRatedByMe: false })]),
         open: true,
         recused: [],
       },
@@ -98,7 +118,7 @@ describe('ReviewerQueue desktop row anatomy (REVIEW PACK frame 03-03)', () => {
   it('a recused row\'s action column carries the reason text (falling back when null), reads RECUSED in caps, and Undo still fires the DELETE', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
-        ...listEnvelope([]),
+        ...queueEnvelope([]),
         open: true,
         recused: [
           { submissionId: 'sub-r1', ref: 'S-020', title: 'Conflicted Talk', reason: 'Personal conflict' },
@@ -139,7 +159,7 @@ describe('ReviewerQueue desktop row anatomy (REVIEW PACK frame 03-03)', () => {
     ];
     mockApi({
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
-        ...listEnvelope(items),
+        ...queueEnvelope(items),
         open: true,
         recused,
       },
@@ -168,7 +188,7 @@ describe('ReviewerQueue desktop row anatomy (REVIEW PACK frame 03-03)', () => {
   it('renders the footer note but not the count/Show-all group when the combined count is 5 or fewer', async () => {
     mockApi({
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
-        ...listEnvelope([queueItem()]),
+        ...queueEnvelope([queueItem()]),
         open: true,
         recused: [],
       },
@@ -186,7 +206,7 @@ describe('ReviewerQueue desktop row anatomy (REVIEW PACK frame 03-03)', () => {
     const items = Array.from({ length: 6 }, (_, i) => queueItem({ submissionId: `sub-${i}`, ref: `S-00${i}`, title: `Talk ${i}` }));
     mockApi({
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
-        ...listEnvelope(items),
+        ...queueEnvelope(items),
         open: true,
         recused: [],
       },
@@ -211,7 +231,7 @@ describe('ReviewerQueue desktop row anatomy (REVIEW PACK frame 03-03)', () => {
   it('a recused row keeps its meta line, exactly like an actionable row', async () => {
     mockApi({
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
-        ...listEnvelope([]),
+        ...queueEnvelope([]),
         open: true,
         recused: [
           {
@@ -241,7 +261,7 @@ describe('ReviewerQueue desktop row anatomy (REVIEW PACK frame 03-03)', () => {
   it('an actionable row meta line joins format and audienceLevel through the same vocabulary', async () => {
     mockApi({
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
-        ...listEnvelope([queueItem({ format: 'Talk (30 min)', audienceLevel: 'Advanced' })]),
+        ...queueEnvelope([queueItem({ format: 'Talk (30 min)', audienceLevel: 'Advanced' })]),
         open: true,
         recused: [],
       },
@@ -259,7 +279,7 @@ describe('ReviewerQueue progress caption (gate-4 03-review still-present finding
     mockApi({
       [`GET /api/v1/review/plans/${PLAN_ID}`]: { timezone: 'America/New_York' },
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
-        ...listEnvelope([
+        ...queueEnvelope([
           queueItem({ submissionId: 'sub-1', alreadyRatedByMe: true, myScore: 3 }),
           queueItem({ submissionId: 'sub-2', ref: 'S-002', title: 'Talk Two', alreadyRatedByMe: false }),
         ]),
@@ -312,7 +332,7 @@ describe('ReviewerQueue hub row: closed plan reads "Read your scores" (DEC-874 w
     mockApi({
       'GET /api/v1/review/plans': listEnvelope([openPlan, closedPlan]),
       'GET /api/v1/review/plans/plan-open/queue': {
-        ...listEnvelope([queueItem({ submissionId: 'open-1', alreadyRatedByMe: false })]),
+        ...queueEnvelope([queueItem({ submissionId: 'open-1', alreadyRatedByMe: false })]),
         open: true,
         recused: [],
         planName: 'Open Plan',
@@ -320,7 +340,7 @@ describe('ReviewerQueue hub row: closed plan reads "Read your scores" (DEC-874 w
         closeDate: null,
       },
       'GET /api/v1/review/plans/plan-closed/queue': {
-        ...listEnvelope([queueItem({ submissionId: 'closed-1', alreadyRatedByMe: true, myScore: 4 })]),
+        ...queueEnvelope([queueItem({ submissionId: 'closed-1', alreadyRatedByMe: true, myScore: 4 })]),
         open: true,
         recused: [],
         planName: 'Closed Plan',
@@ -358,7 +378,7 @@ describe('"Score the next one" plan-scoped title-row shortcut (REVIEW PACK frame
     mockApi({
       [`GET /api/v1/review/plans/${PLAN_ID}`]: { timezone: 'America/New_York' },
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
-        ...listEnvelope([
+        ...queueEnvelope([
           queueItem({ submissionId: 'sub-1', alreadyRatedByMe: true, myScore: 3 }),
           queueItem({ submissionId: 'sub-2', ref: 'S-002', title: 'Talk Two', alreadyRatedByMe: false }),
         ]),
@@ -380,7 +400,7 @@ describe('"Score the next one" plan-scoped title-row shortcut (REVIEW PACK frame
     mockApi({
       [`GET /api/v1/review/plans/${PLAN_ID}`]: { timezone: 'America/New_York' },
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
-        ...listEnvelope([queueItem({ alreadyRatedByMe: true, myScore: 5 })]),
+        ...queueEnvelope([queueItem({ alreadyRatedByMe: true, myScore: 5 })]),
         open: true,
         recused: [],
         planName: 'Frame Plan',
@@ -393,5 +413,62 @@ describe('"Score the next one" plan-scoped title-row shortcut (REVIEW PACK frame
 
     expect(await screen.findByRole('heading', { name: 'Nothing left in your queue. Nicely done.' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Score the next one' })).not.toBeInTheDocument();
+  });
+});
+
+// DEC-845 amendment (wave 38): a reviewer scope of 250 actionable
+// submissions -- the h1 must read the TRUE 250 (not the 200-row page 1
+// clamp), and "Show all 250" must page past row 200 to actually render
+// every row.
+describe('ReviewerQueue past MAX_PER_PAGE=200 rows (DEC-845 amendment, wave 38)', () => {
+  it('renders "250 left to score" and "Show all 250", and clicking it pages to row 250', async () => {
+    const page1Items = Array.from({ length: 200 }, (_, i) =>
+      queueItem({ submissionId: `sub-${i}`, ref: `S-${i}`, title: `Talk ${i}` }),
+    );
+    const page2Items = Array.from({ length: 50 }, (_, i) =>
+      queueItem({ submissionId: `sub-${200 + i}`, ref: `S-${200 + i}`, title: `Talk ${200 + i}` }),
+    );
+
+    let queueCalls = 0;
+    const fetchMock = mockApi({
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: () => {
+        queueCalls += 1;
+        const items = queueCalls === 1 ? page1Items : page2Items;
+        return {
+          items,
+          total: 250,
+          unscoredTotal: 250,
+          page: queueCalls === 1 ? 1 : 2,
+          perPage: 200,
+          open: true,
+          recused: [],
+          planName: 'Big Plan',
+          scopeTrackName: null,
+          closeDate: null,
+        };
+      },
+    });
+
+    renderQueue();
+
+    expect(await screen.findByRole('heading', { name: '250 left to score' })).toBeInTheDocument();
+    const showAllButton = await screen.findByRole('button', { name: 'Show all 250' });
+
+    fireEvent.click(showAllButton);
+
+    await waitFor(() => {
+      const page2Call = fetchMock.mock.calls.find(([input]) => {
+        const url = typeof input === 'string' ? input : (input as URL).toString();
+        return url.includes('/queue') && url.includes('page=2');
+      });
+      expect(page2Call).toBeDefined();
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/^S-\d+$/).length).toBe(250);
+    });
+    expect(screen.getByText('Talk 0')).toBeInTheDocument();
+    expect(screen.getByText('Talk 249')).toBeInTheDocument();
+    expect(screen.queryByText(/^Showing 5 of/)).not.toBeInTheDocument();
   });
 });
