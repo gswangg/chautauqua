@@ -66,6 +66,33 @@ tabbed hunting one — if rows are click-to-edit-auto-save, SAY so; else add Sav
 `/logout` 404s while still dropping the session (route it properly); PageSkeleton coverage
 gaps already filed (plans/:id/results renders heading+"Loading…" — finish the P1).
 
+## DELTA-2 PROBE (2026-08-14 ~11:30, snapshot 6c7f0132) + ORCHESTRATOR FIXES (ff8e8341)
+
+15 open P1s measured: 6 FIXED (schedule 10--12 rebuild ✓, bulk-template picker self-describing
+✓, merge six-row contract ✓, rail dup reasons+Keep both ✓, add-speaker duplicate forward path
+✓, has-account plain meta ✓) · 3 PARTIAL · 6 STILL-PRESENT — of which FOUR were ONE bug:
+settings.css's unscoped `.chq-settings-panel > div` stack rule silently defeating every
+intended settings layout rule at higher specificity (the source-scan "closure" passed while
+the render never changed — the measured-evidence rule in CSS form). **ORCHESTRATOR FIXED on
+main (ff8e8341): the settings cascade defeat (definition rows/section-head/public-pages
+rows/tracks grid all flip), the comms templates minmax pane split, and the agenda armed-bar
+→ zero-footprint overlay on the day-tabs strip.** HANDS OFF those three shapes; regression
+pins updated.
+
+**PLANNER: DESKTOP-FIRST STILL BINDING.** Wave-12 phone tasks were premature — the mobile
+queue stays closed until the desktop gate passes (standing rule). Remaining desktop items:
+
+**P1 · SAVED-EMBEDS EDITOR REGRESSION** — `?section=public-pages&edit=1` renders ZERO form
+controls; Change relabels to "Back" with no editor. Gate-4 had a working editor; find the
+break (likely the read-views-LIST refactor dropped the edit branch), restore, and add a
+rendered-controls test (measured evidence).
+
+**P2 (delta-2):** compose-mount Recent-Sends `Open` should expand in place (History mount's
+does; compose's navigates); import match-step: title "Match the columns" missing, panel
+560 not 640 (`.chq-modal` width beats the panel max-width), match grid `288px 288px` clips
+57px inside the 508 content box, and the always-on "SESSION TITLE FOR THIS BATCH" gate is
+unframed (make it conditional or move it off the match step).
+
 ## GATE-4 REDS — THE OPEN LIST (these supersede any older filing of the same finding)
 
 ## SBEK RUN 4 (2026-08-14, prod, gate-4 SHA 33fbc724): 82.2% @ 78.9% coverage — READ WITH CARE
