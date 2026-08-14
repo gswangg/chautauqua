@@ -9,6 +9,7 @@
 // D1/miniflare binding).
 import { describe, expect, it } from "vitest";
 import { remindNow } from "../src/server/repo/tasks";
+import { MANUAL_DEDUPE_WINDOW_MS } from "../src/domain/reminders";
 import type { Db } from "../src/server/context";
 import type { Mailer } from "../src/mail/types";
 import type { KVStore } from "../src/auth/claim";
@@ -45,21 +46,96 @@ interface OutstandingRowShape {
   assignmentCreatedAt: Date;
 }
 
+// wave-56 amendment: remindNow now calls listRemindableContactIds FIRST (one
+// GROUP BY/HAVING query for the chosen contactIds, plus two count(*)
+// subqueries for skipped/remaining), then re-queries listOutstandingForEvent
+// scoped to those ids. Since this file's fixtures never exercise the
+// dedupe/cap boundary (see reminders-batch.test.ts / reminders-sql-batch.test.ts
+// for that), the fake below computes the SAME grouping the real SQL does —
+// eligible = every distinct pending contactId whose most-recent
+// lastRemindedAt (if any) is outside MANUAL_DEDUPE_WINDOW_MS of `now` —
+// purely from the row-shape chain, without needing to evaluate the opaque
+// drizzle-orm sql`` condition objects passed to .having().
 function fakeDb(rows: OutstandingRowShape[]): { db: Db; updateCalls: unknown[] } {
   const updateCalls: unknown[] = [];
+  let asCallCount = 0;
+
+  function computeEligibleAndSkipped(): { eligible: string[]; skipped: number } {
+    const byContact = new Map<string, OutstandingRowShape[]>();
+    for (const r of rows) {
+      if (r.status !== "pending") continue;
+      const arr = byContact.get(r.contactId) ?? [];
+      arr.push(r);
+      byContact.set(r.contactId, arr);
+    }
+    let skipped = 0;
+    const eligible: string[] = [];
+    for (const [contactId, assignments] of byContact) {
+      let maxRemindedAt: number | null = null;
+      for (const a of assignments) {
+        if (!a.lastRemindedAt) continue;
+        const t = a.lastRemindedAt.getTime();
+        if (maxRemindedAt === null || t > maxRemindedAt) maxRemindedAt = t;
+      }
+      if (maxRemindedAt !== null && maxRemindedAt > NOW.getTime() - MANUAL_DEDUPE_WINDOW_MS) {
+        skipped += 1;
+      } else {
+        eligible.push(contactId);
+      }
+    }
+    eligible.sort();
+    return { eligible, skipped };
+  }
+
+  type SubqueryMarker = { __subqueryKind: "eligible" | "skipped" };
+
+  function makeChain(state: { grouped?: boolean; limited?: number; outstandingLimited?: boolean; subquery?: SubqueryMarker }): any {
+    return {
+      from: (table: unknown) => {
+        const marker = table as SubqueryMarker | undefined;
+        if (marker && marker.__subqueryKind) return makeChain({ subquery: marker });
+        return makeChain({});
+      },
+      innerJoin: () => makeChain(state),
+      where: () => makeChain(state),
+      groupBy: () => makeChain({ ...state, grouped: true }),
+      having: () => makeChain(state),
+      orderBy: () => makeChain(state),
+      limit: (n: number) => {
+        if (state.grouped) return makeChain({ ...state, limited: n });
+        return makeChain({ ...state, outstandingLimited: true });
+      },
+      as: (): SubqueryMarker => {
+        asCallCount += 1;
+        return { __subqueryKind: asCallCount === 1 ? "eligible" : "skipped" };
+      },
+      then: (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => {
+        try {
+          if (state.subquery) {
+            const { eligible, skipped } = computeEligibleAndSkipped();
+            const count = state.subquery.__subqueryKind === "eligible" ? eligible.length : skipped;
+            resolve([{ count }]);
+            return;
+          }
+          if (state.limited !== undefined) {
+            const { eligible } = computeEligibleAndSkipped();
+            resolve(eligible.slice(0, state.limited).map((contactId) => ({ contactId })));
+            return;
+          }
+          if (state.outstandingLimited) {
+            resolve(rows);
+            return;
+          }
+          resolve([]);
+        } catch (err) {
+          if (reject) reject(err);
+        }
+      },
+    };
+  }
+
   const db = {
-    select: () => ({
-      from: () => ({
-        innerJoin: () => ({
-          innerJoin: () => ({
-            innerJoin: () => ({
-              where: async () => rows,
-            }),
-          }),
-        }),
-        where: async () => [],
-      }),
-    }),
+    select: () => makeChain({}),
     update: () => ({
       set: (values: unknown) => ({
         where: async () => {

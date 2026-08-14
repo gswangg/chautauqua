@@ -3,7 +3,7 @@
 // for contention decomposition (no behavior change) — see repo/tasks.ts's
 // barrel header.
 
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
@@ -11,11 +11,25 @@ import { newId } from "../../../domain/ids";
 import type { Mailer } from "../../../mail/types";
 import { renderTemplate, textToHtml } from "../../../mail/render";
 import type { ReminderAssignment } from "../../../domain/reminders";
-import { capReminderGroups, formatTaskLines, planManualReminders, planReminders } from "../../../domain/reminders";
+import {
+  capReminderGroups,
+  formatTaskLines,
+  MANUAL_DEDUPE_WINDOW_MS,
+  MAX_REMINDER_BATCH,
+  planManualReminders,
+  planReminders,
+} from "../../../domain/reminders";
 import type { KVStore } from "../../../auth/claim";
 import { resolvePortalLinks } from "../portal-link";
 import { findAccountUserIds } from "../comms";
 import { effectiveAssignmentDueDate } from "../../../domain/task-due";
+import { ApiError } from "../../http";
+
+// DEC-319 wave-56 amendment: hard ceiling on the single-event outstanding
+// scan below — a per-event reminder pass should never be reading past this
+// many rows; refuse rather than silently truncate (contacts/crud.ts's
+// MAX_CONTACT_DIRECTORY_SCAN pattern).
+export const MAX_REMINDER_SCAN = 20000;
 
 interface OutstandingRow {
   assignmentId: string;
@@ -70,7 +84,15 @@ export async function listOutstandingForEvent(
     .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
     .innerJoin(schema.event, eq(schema.task.eventId, schema.event.id))
     .innerJoin(schema.contact, eq(schema.taskAssignment.contactId, schema.contact.id))
-    .where(and(...conditions));
+    .where(and(...conditions))
+    .limit(MAX_REMINDER_SCAN + 1);
+
+  if (rows.length > MAX_REMINDER_SCAN) {
+    throw new ApiError(
+      "invalid",
+      `This reminder pass would scan more than ${MAX_REMINDER_SCAN} outstanding assignments — narrow with taskIds/contactIds first`,
+    );
+  }
   // DEC-801: dueDate reported on each row is the assignment's EFFECTIVE due
   // date, not the raw task.dueDate — so reminder emails and compose's
   // {due_date} agree with the grid badge/cell, which judge against the same
@@ -97,6 +119,71 @@ export async function listOutstandingForEvent(
       timezone: r.timezone,
     };
   });
+}
+
+/** DEC-319 wave-56 amendment: chooses the reminder batch's recipient set in
+ * SQL (one GROUP BY over pending assignments, per-contact
+ * max(last_reminded_at) dedupe gate, ORDER BY contact_id ASC LIMIT max)
+ * instead of loading every outstanding row for the event and slicing in JS
+ * — so a huge event's dedupe/cap decision never reads more than `max`
+ * contacts' worth of rows downstream. remindNow and previewRemindNow both
+ * call this FIRST, then re-query listOutstandingForEvent scoped to
+ * `chosen.contactIds` — the two callers must derive their recipient set
+ * from this one function so preview and send never diverge. */
+export async function listRemindableContactIds(
+  db: Db,
+  eventId: string,
+  opts: { taskIds?: string[]; contactIds?: string[]; now: number; dedupeWindowMs: number; max: number },
+): Promise<{ contactIds: string[]; skipped: number; remaining: number }> {
+  const conditions = [eq(schema.task.eventId, eventId), eq(schema.taskAssignment.status, "pending")];
+  if (opts.taskIds && opts.taskIds.length > 0) {
+    conditions.push(inArray(schema.taskAssignment.taskId, opts.taskIds));
+  }
+  if (opts.contactIds && opts.contactIds.length > 0) {
+    conditions.push(inArray(schema.taskAssignment.contactId, opts.contactIds));
+  }
+
+  const cutoff = opts.now - opts.dedupeWindowMs;
+  const lastRemindedMax = sql`max(${schema.taskAssignment.lastRemindedAt})`;
+  const eligibleHaving = sql`${lastRemindedMax} is null or ${lastRemindedMax} <= ${cutoff}`;
+  const skippedHaving = sql`${lastRemindedMax} is not null and ${lastRemindedMax} > ${cutoff}`;
+
+  const eligibleGroups = db
+    .select({ contactId: schema.taskAssignment.contactId })
+    .from(schema.taskAssignment)
+    .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
+    .where(and(...conditions))
+    .groupBy(schema.taskAssignment.contactId)
+    .having(eligibleHaving)
+    .as("eligible_reminder_contacts");
+  const skippedGroups = db
+    .select({ contactId: schema.taskAssignment.contactId })
+    .from(schema.taskAssignment)
+    .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
+    .where(and(...conditions))
+    .groupBy(schema.taskAssignment.contactId)
+    .having(skippedHaving)
+    .as("skipped_reminder_contacts");
+
+  const [chosenRows, eligibleCountRows, skippedCountRows] = await Promise.all([
+    db
+      .select({ contactId: schema.taskAssignment.contactId })
+      .from(schema.taskAssignment)
+      .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
+      .where(and(...conditions))
+      .groupBy(schema.taskAssignment.contactId)
+      .having(eligibleHaving)
+      .orderBy(asc(schema.taskAssignment.contactId))
+      .limit(opts.max),
+    db.select({ count: sql<number>`count(*)` }).from(eligibleGroups),
+    db.select({ count: sql<number>`count(*)` }).from(skippedGroups),
+  ]);
+
+  const eligibleTotal = Number(eligibleCountRows[0]?.count ?? 0);
+  const skipped = Number(skippedCountRows[0]?.count ?? 0);
+  const remaining = Math.max(eligibleTotal - opts.max, 0);
+
+  return { contactIds: chosenRows.map((r) => r.contactId), skipped, remaining };
 }
 
 function toReminderAssignment(r: OutstandingRow): ReminderAssignment {
@@ -255,8 +342,21 @@ export async function remindNow(
   origin: string,
   contactIds?: string[],
 ): Promise<{ sent: number; failed: { email: string; message: string }[]; skipped: number; remaining: number }> {
-  const outstanding = await listOutstandingForEvent(db, eventId, taskIds, contactIds);
-  if (outstanding.length === 0) return { sent: 0, failed: [], skipped: 0, remaining: 0 };
+  const chosen = await listRemindableContactIds(db, eventId, {
+    taskIds,
+    contactIds,
+    now: now.getTime(),
+    dedupeWindowMs: MANUAL_DEDUPE_WINDOW_MS,
+    max: MAX_REMINDER_BATCH,
+  });
+  if (chosen.contactIds.length === 0) {
+    return { sent: 0, failed: [], skipped: chosen.skipped, remaining: chosen.remaining };
+  }
+
+  const outstanding = await listOutstandingForEvent(db, eventId, taskIds, chosen.contactIds);
+  if (outstanding.length === 0) {
+    return { sent: 0, failed: [], skipped: chosen.skipped, remaining: chosen.remaining };
+  }
   const eventName = outstanding[0]?.eventName ?? "";
   const eventTimezone = outstanding[0]?.timezone ?? "";
 
@@ -267,11 +367,18 @@ export async function remindNow(
     outstandingByContact.set(r.contactId, arr);
   }
 
+  // wave-56 amendment: the SQL cap/dedupe already ran in
+  // listRemindableContactIds — planManualReminders is now a validating
+  // no-op over the narrowed `outstanding` set (it still groups by contact
+  // and drops complete assignments, but every contact here already passed
+  // the dedupe/cap gate).
   const plan = planManualReminders({
     assignments: outstanding.map(toReminderAssignment),
     now: now.getTime(),
   });
-  if (plan.groups.length === 0) return { sent: 0, failed: [], skipped: plan.skipped, remaining: plan.remaining };
+  if (plan.groups.length === 0) {
+    return { sent: 0, failed: [], skipped: chosen.skipped, remaining: chosen.remaining };
+  }
 
   const result = await sendReminderEmails(
     db,
@@ -286,7 +393,7 @@ export async function remindNow(
     origin,
     true,
   );
-  return { ...result, skipped: plan.skipped, remaining: plan.remaining };
+  return { ...result, skipped: chosen.skipped, remaining: chosen.remaining };
 }
 
 /** Preview for "remind now" (SPEC §10 #3, DEC-441): runs the identical
@@ -307,8 +414,17 @@ export async function previewRemindNow(
   skipped: number;
   remaining: number;
 }> {
-  const outstanding = await listOutstandingForEvent(db, eventId, taskIds, contactIds);
-  if (outstanding.length === 0) return { drafts: [], skipped: 0, remaining: 0 };
+  const chosen = await listRemindableContactIds(db, eventId, {
+    taskIds,
+    contactIds,
+    now: now.getTime(),
+    dedupeWindowMs: MANUAL_DEDUPE_WINDOW_MS,
+    max: MAX_REMINDER_BATCH,
+  });
+  if (chosen.contactIds.length === 0) return { drafts: [], skipped: chosen.skipped, remaining: chosen.remaining };
+
+  const outstanding = await listOutstandingForEvent(db, eventId, taskIds, chosen.contactIds);
+  if (outstanding.length === 0) return { drafts: [], skipped: chosen.skipped, remaining: chosen.remaining };
   const eventName = outstanding[0]?.eventName ?? "";
   const eventTimezone = outstanding[0]?.timezone ?? "";
 
@@ -319,6 +435,7 @@ export async function previewRemindNow(
     outstandingByContact.set(r.contactId, arr);
   }
 
+  // wave-56 amendment: validating no-op — see remindNow's identical comment.
   const plan = planManualReminders({
     assignments: outstanding.map(toReminderAssignment),
     now: now.getTime(),
@@ -363,7 +480,7 @@ export async function previewRemindNow(
       text,
     });
   }
-  return { drafts, skipped: plan.skipped, remaining: plan.remaining };
+  return { drafts, skipped: chosen.skipped, remaining: chosen.remaining };
 }
 
 /** Due-date-driven cron reminder pass, scoped to one event's outstanding

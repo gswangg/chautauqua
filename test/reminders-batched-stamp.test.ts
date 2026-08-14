@@ -21,6 +21,7 @@ vi.mock("drizzle-orm", async (importOriginal) => {
 });
 
 import { remindNow } from "../src/server/repo/tasks";
+import { MANUAL_DEDUPE_WINDOW_MS } from "../src/domain/reminders";
 import type { Db } from "../src/server/context";
 import type { Mailer } from "../src/mail/types";
 import type { KVStore } from "../src/auth/claim";
@@ -60,21 +61,93 @@ interface UpdateCall {
   whereArg: { kind: "inArray"; vals: unknown[] };
 }
 
+// wave-56 amendment: remindNow now calls listRemindableContactIds FIRST (one
+// GROUP BY/HAVING query for the chosen contactIds, plus two count(*)
+// subqueries for skipped/remaining), then re-queries listOutstandingForEvent
+// scoped to those ids. This file's fixtures never set last_reminded_at, so
+// the fake below computes the SAME grouping the real SQL does — eligible =
+// every distinct pending contactId — without needing to evaluate the opaque
+// drizzle-orm sql`` condition objects passed to .having().
+function computeEligibleAndSkipped(rows: OutstandingRowShape[]): { eligible: string[]; skipped: number } {
+  const byContact = new Map<string, OutstandingRowShape[]>();
+  for (const r of rows) {
+    if (r.status !== "pending") continue;
+    const arr = byContact.get(r.contactId) ?? [];
+    arr.push(r);
+    byContact.set(r.contactId, arr);
+  }
+  let skipped = 0;
+  const eligible: string[] = [];
+  for (const [contactId, assignments] of byContact) {
+    let maxRemindedAt: number | null = null;
+    for (const a of assignments) {
+      if (!a.lastRemindedAt) continue;
+      const t = a.lastRemindedAt.getTime();
+      if (maxRemindedAt === null || t > maxRemindedAt) maxRemindedAt = t;
+    }
+    if (maxRemindedAt !== null && maxRemindedAt > NOW.getTime() - MANUAL_DEDUPE_WINDOW_MS) {
+      skipped += 1;
+    } else {
+      eligible.push(contactId);
+    }
+  }
+  eligible.sort();
+  return { eligible, skipped };
+}
+
+type SubqueryMarker = { __subqueryKind: "eligible" | "skipped" };
+
 function fakeDb(rows: OutstandingRowShape[]): { db: Db; updateCalls: UpdateCall[] } {
   const updateCalls: UpdateCall[] = [];
+  let asCallCount = 0;
+
+  function makeChain(state: { grouped?: boolean; limited?: number; outstandingLimited?: boolean; subquery?: SubqueryMarker }): any {
+    return {
+      from: (table: unknown) => {
+        const marker = table as SubqueryMarker | undefined;
+        if (marker && marker.__subqueryKind) return makeChain({ subquery: marker });
+        return makeChain({});
+      },
+      innerJoin: () => makeChain(state),
+      where: () => makeChain(state),
+      groupBy: () => makeChain({ ...state, grouped: true }),
+      having: () => makeChain(state),
+      orderBy: () => makeChain(state),
+      limit: (n: number) => {
+        if (state.grouped) return makeChain({ ...state, limited: n });
+        return makeChain({ ...state, outstandingLimited: true });
+      },
+      as: (): SubqueryMarker => {
+        asCallCount += 1;
+        return { __subqueryKind: asCallCount === 1 ? "eligible" : "skipped" };
+      },
+      then: (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => {
+        try {
+          if (state.subquery) {
+            const { eligible, skipped } = computeEligibleAndSkipped(rows);
+            const count = state.subquery.__subqueryKind === "eligible" ? eligible.length : skipped;
+            resolve([{ count }]);
+            return;
+          }
+          if (state.limited !== undefined) {
+            const { eligible } = computeEligibleAndSkipped(rows);
+            resolve(eligible.slice(0, state.limited).map((contactId) => ({ contactId })));
+            return;
+          }
+          if (state.outstandingLimited) {
+            resolve(rows);
+            return;
+          }
+          resolve([]);
+        } catch (err) {
+          if (reject) reject(err);
+        }
+      },
+    };
+  }
+
   const db = {
-    select: () => ({
-      from: () => ({
-        innerJoin: () => ({
-          innerJoin: () => ({
-            innerJoin: () => ({
-              where: async () => rows,
-            }),
-          }),
-        }),
-        where: async () => [],
-      }),
-    }),
+    select: () => makeChain({}),
     update: () => ({
       set: (values: unknown) => ({
         where: async (whereArg: { kind: "inArray"; vals: unknown[] }) => {
