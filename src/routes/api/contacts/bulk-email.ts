@@ -36,8 +36,11 @@ type BulkEmailRequest = {
  * event lookup, and that every contactId resolves to an org-owned
  * contact (IDOR guard — "foreign" contactIds are rejected here). */
 async function validateBulkEmailRequest(db: Db, orgId: string, body: Record<string, unknown>): Promise<BulkEmailRequest> {
-  // DEC-182
-  parseBoundedIdArray(body.contactIds, "contactIds", { maxCount: MAX_BULK_EMAIL_RECIPIENTS });
+  // DEC-182: parseBoundedIdArray's RESULT (deduped, order-preserved) is the
+  // one array used below for both the org lookup and the full-match check —
+  // never re-read the raw body, or a repeated contactId silently 404s or
+  // double-sends.
+  const contactIds = parseBoundedIdArray(body.contactIds, "contactIds", { maxCount: MAX_BULK_EMAIL_RECIPIENTS });
   if (typeof body.eventId !== "string" || body.eventId.trim() === "") {
     throw new ApiError("invalid", "Validation failed", { eventId: "required" });
   }
@@ -57,7 +60,6 @@ async function validateBulkEmailRequest(db: Db, orgId: string, body: Record<stri
   const event = await getEventForOrg(db, body.eventId, orgId);
   if (!event) throw new ApiError("not_found", "Event not found");
 
-  const contactIds = body.contactIds as string[];
   const contacts = await repo.findContactsForOrg(db, contactIds, orgId);
   if (contacts.length !== contactIds.length) {
     throw new ApiError("not_found", "One or more contacts not found");
