@@ -823,3 +823,97 @@ describe("seed coherence (DEC-739 amendment, task w44-f): the pipeline board pro
     ).toBe(rationales.length);
   });
 });
+
+// Task w26-j (DEC-739 amendment): EMB-05/EMB-13 (public speaker detail's
+// bio + 'Show more' disclosure) and EMB-02 (public keyword search). The
+// READER (src/routes/public/detail.tsx + the repo layer's contact.bio
+// select) was already correct and complete -- the gap was the seed
+// shipping bio: null on every synthetic speaker contact, so the reader had
+// no real data to demonstrate against. These assertions pin the DATA
+// property (every publicly-reachable speaker has real prose, with both a
+// disclosure-triggering and a non-triggering length present) rather than
+// any literal string, per the field guide's "assert the property, not the
+// prose". "Publicly reachable" here mirrors src/server/repo/public/gates.ts
+// visibleSubmissionConditions() exactly: submission.status='accepted' AND
+// content_status='approved' AND participant.visible=1 AND
+// participant.invite_status IN ('none','accepted').
+describe("seed coherence (task w26-j, DEC-739 amendment): public speaker bios and searchable vocabulary", () => {
+  // SessionDescription's 'Show more' disclosure threshold (public detail
+  // page) -- mirrors src/routes/public/detail.tsx's snippet length.
+  const DISCLOSURE_THRESHOLD = 160;
+
+  function publiclyVisibleContactIds(): Set<string> {
+    const submissionRows = parseInserts(sql, "submission");
+    const participantRows = parseInserts(sql, "participant");
+    const publicSubmissionIds = new Set(
+      submissionRows.filter((s) => s.status === "accepted" && s.content_status === "approved").map((s) => s.id!),
+    );
+    const visibleContactIds = new Set<string>();
+    for (const p of participantRows) {
+      if (!p.submission_id || !publicSubmissionIds.has(p.submission_id)) continue;
+      const visible = p.visible === "1" || p.visible === "true";
+      const inviteOk = p.invite_status === "none" || p.invite_status === "accepted";
+      if (visible && inviteOk) visibleContactIds.add(p.contact_id!);
+    }
+    return visibleContactIds;
+  }
+
+  it("every contact reachable from a published, publicly-visible session has a non-empty bio", () => {
+    const visibleContactIds = publiclyVisibleContactIds();
+    expect(visibleContactIds.size, "no publicly-visible participant found at all").toBeGreaterThan(0);
+
+    const contactRows = parseInserts(sql, "contact");
+    const contactsById = new Map(contactRows.map((c) => [c.id!, c]));
+
+    const missingBio: string[] = [];
+    for (const contactId of visibleContactIds) {
+      const contact = contactsById.get(contactId);
+      expect(contact, `publicly-visible participant contact ${contactId} has no contact row`).toBeTruthy();
+      if (!contact!.bio || !contact!.bio.trim()) missingBio.push(contactId);
+    }
+    expect(missingBio, `publicly-visible contacts with an empty bio: ${JSON.stringify(missingBio)}`).toEqual([]);
+  });
+
+  it("at least one publicly-visible speaker's bio exceeds the 'Show more' disclosure threshold, and at least one stays under it", () => {
+    const visibleContactIds = publiclyVisibleContactIds();
+    const contactRows = parseInserts(sql, "contact");
+    const bios = contactRows.filter((c) => visibleContactIds.has(c.id!)).map((c) => c.bio ?? "");
+    expect(bios.length).toBeGreaterThan(0);
+
+    const long = bios.filter((b) => b.length > DISCLOSURE_THRESHOLD);
+    const short = bios.filter((b) => b.length > 0 && b.length <= DISCLOSURE_THRESHOLD);
+    expect(long.length, `no publicly-visible bio exceeds ${DISCLOSURE_THRESHOLD} chars: ${JSON.stringify(bios.map((b) => b.length))}`).toBeGreaterThanOrEqual(2);
+    expect(short.length, `no publicly-visible bio stays under ${DISCLOSURE_THRESHOLD} chars: ${JSON.stringify(bios.map((b) => b.length))}`).toBeGreaterThanOrEqual(1);
+  });
+
+  it("(EMB-02) at least one published, publicly-visible session carries a real, publicly-searchable speaker surname a keyword search would match", () => {
+    // Derived from the fixture identity, never hardcoded: EMB-02's
+    // pass_criteria is "a speaker-surname query leaves only that speaker's
+    // session(s)" and searchCondition() (src/server/repo/public/sessions.ts)
+    // matches contact.last_name. The invariant under test is that the
+    // fixture speaker's own accepted+approved submission is genuinely
+    // public, not any particular literal title -- DEC-771 forbids the
+    // seeded row from also carrying the fixture's exact title text (see
+    // the "(a) the seeded fixture-derived submission does not carry..."
+    // test above), so title-vocabulary alignment intentionally routes
+    // through the speaker surname instead.
+    const fixture = JSON.parse(readFileSync(join(REPO_ROOT, "docs", "fixtures", "sample-data.json"), "utf-8")) as {
+      identities: { speaker: { name: string } };
+    };
+    const speakerLastName = fixture.identities.speaker.name.trim().split(/\s+/).slice(1).join(" ");
+    expect(speakerLastName, "fixture speaker identity has no surname to derive").toBeTruthy();
+
+    const contactRows = parseInserts(sql, "contact");
+    const speakerContactIds = new Set(
+      contactRows.filter((c) => c.last_name === speakerLastName).map((c) => c.id!),
+    );
+    expect(speakerContactIds.size, `no seeded contact has surname '${speakerLastName}'`).toBeGreaterThan(0);
+
+    const visibleContactIds = publiclyVisibleContactIds();
+    const publiclyVisibleSpeakerMatch = [...speakerContactIds].some((id) => visibleContactIds.has(id));
+    expect(
+      publiclyVisibleSpeakerMatch,
+      `fixture speaker surname '${speakerLastName}' is not attached to any publicly-visible participant`,
+    ).toBe(true);
+  });
+});
