@@ -27,8 +27,21 @@ export const CFP_CSS = `
   .chq-cfp-meta { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--chq-muted); }
   .chq-cfp-title { font-family: var(--chq-font-display); font-size: 32px; font-weight: 700; letter-spacing: -0.04em; line-height: 1.2; margin: 0; display: flex; align-items: center; gap: 10px; }
   .chq-cfp-sub { font-size: 15px; color: var(--chq-ink-2); }
-  .chq-cfp-body { padding: 28px 44px 40px; display: flex; flex-direction: column; gap: 30px; }
+  /* DEC-371 (wave 5 amendment): the CFP form's content column is 732px --
+     centred inside the 820px reading measure (PageShell's <main
+     class="chq-measure">) that already wraps this element -- not the
+     intrinsic/820 width the page previously rendered at (gate-4 measured
+     663). Distinct from the 820 page measure that contains it, and from
+     the admin CFP builder's own (separate) container. */
+  .chq-cfp-body { max-width: 732px; margin: 0 auto; padding: 28px 44px 40px; display: flex; flex-direction: column; gap: 30px; }
   .chq-cfp-intro { display: flex; flex-direction: column; gap: 11px; max-width: 62ch; }
+  /* w5-c: the "Create an account" affordance line under the lede -- same
+     small/muted note treatment as the identity note it complements. */
+  .chq-cfp-intro-cta { margin: 0; font-size: 13px; color: var(--chq-muted); line-height: 1.5; }
+  /* w5-c (frame 10--14): the YOU section sits ~54px below Your talk --
+     document flow between the form's two top-level <section>s carried no
+     explicit rule before (a bare ~15px fell out of surrounding margins). */
+  .chq-cfp-body form section + section { margin-top: 54px; }
   .chq-cfp-intro h1 { font-family: var(--chq-font-display); font-size: 34px; font-weight: 700; letter-spacing: -0.04em; line-height: 1.08; margin: 0; }
   .chq-cfp-intro p { margin: 0; font-size: 16px; line-height: 1.7; color: var(--chq-ink-2); }
   .chq-cfp-section-label { font-family: var(--chq-font-display); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; border-bottom: 2px solid var(--chq-ink); padding-bottom: 8px; }

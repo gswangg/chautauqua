@@ -130,7 +130,9 @@ describe("GET /submit/:eventSlug form grammar (DEC-951)", () => {
     expect(body).toContain('type="radio"');
     expect(body).toContain('name="trackIds"');
     expect(body).not.toContain('type="checkbox"');
-    expect(body).toContain("<legend>Tracks</legend>");
+    // w5-c (DEC-371 amendment, frame 10--14): the group label is now
+    // singular "Track".
+    expect(body).toContain("<legend>Track</legend>");
 
     // (d) an optional field still renders the shared ' · optional' suffix
     expect(body).toContain("· optional");
