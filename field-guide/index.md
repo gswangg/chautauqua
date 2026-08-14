@@ -32,29 +32,29 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   CITES; A PACK THAT ARRIVES MID-WAVE IS NOT SELF-APPLYING; A FIX CAN CARRY
   ITS OWN BUG; THE WAY IN IS PART OF THE FEATURE; NAV MEMBERSHIP IS NOT ROUTE
   MEMBERSHIP -- derive nav by FILTERING routes.
-- FINDINGS w66-67 (compacted): MANDATE SPENT 9th/10th times, re-probed CLOSED
-  at file:line each round; work comes from READING A LANDED STACK'S
-  CONSUMERS, one wave downstream. A STACK LANDS WHERE ITS CONSUMERS LEARN OF
-  IT: breaks shipped schema/repo/API/render but the SCHEDULER never heard. A
-  BOUNDARY IS ONLY AS WIDE AS ITS REASON. A FACET IS A CONTRACT, NOT A PAGE --
-  add a knob in every reader (SQL+HTML+.json/.xml+saved embed) in one change.
-  A CONTROL WITHOUT ITS SCRIPT IS A PICTURE OF A CONTROL. A COMMENT NAMING
-  ITS OWN DEFERRAL IS A WORK ITEM -- grep for TODOs-in-prose. CHECK THE TEST
-  BEFORE FILING THE BUG: a divergence may be a DECIDED split with a pinning
-  test, not a gap. WALK THE LIFECYCLE, NOT THE ROUTE.
-- FINDINGS w68: mandate spent an ELEVENTH time; every review-lens item re-probed
-  CLOSED at file:line (MIME headerValue/multipart-mixed/Date/Message-ID,
-  needsPortalLink-gated minting, MAX_PLAN_EVALUATION_SCAN, MAX_REVIEWER_SCOPE_ROWS,
-  airtable child reads scoped to pushedIds). THE TREE MOVED MID-PLAN -- re-grep
-  before you cite a line. Work came from reading the consumers of w65/w66, one
-  wave downstream, same method as w66/w67. A PROJECTION MUST CARRY ITS SOURCE'S
-  LIMITS AND ITS VOCABULARY: the printable programme drops getPublicAgenda's
-  `total` (silent truncation on the one surface you PRINT) and bypasses
-  publicRoomLabel (DEC-666), so an unroomed session loses its room where every
-  sibling says "To be announced". A REPORT NAMES EVERY KIND OF THING IT
-  ORPHANS: DEC-844's narrowed-window report names sessions; breaks landed 20
-  waves later, day-scoped identically, silently dropped by the public read
-  with the organiser told nothing -- create-time validation cannot cover a
-  range that MOVES. A HARDCODED SURFACE LIST GOES STALE: J10's SURFACES array
-  and the perf gate both predate two wave-65 public GETs -- when you add a
-  public route, grep for the lists that enumerate them.
+- FINDINGS w66-68 (compacted): MANDATE SPENT repeatedly, re-probed CLOSED at
+  file:line each round; work comes from READING A LANDED STACK'S CONSUMERS,
+  one wave downstream. A STACK LANDS WHERE ITS CONSUMERS LEARN OF IT (breaks
+  shipped schema/repo/API/render but scheduler/printable-programme/public-read
+  each learned late). A BOUNDARY IS ONLY AS WIDE AS ITS REASON. A FACET IS A
+  CONTRACT -- add a knob in every reader (SQL+HTML+.json/.xml+embed) at once.
+  A CONTROL WITHOUT ITS SCRIPT IS A PICTURE OF A CONTROL. A COMMENT NAMING ITS
+  OWN DEFERRAL IS A WORK ITEM. CHECK THE TEST BEFORE FILING THE BUG. WALK THE
+  LIFECYCLE, NOT THE ROUTE. A PROJECTION MUST CARRY ITS SOURCE'S LIMITS AND
+  VOCABULARY (dropped `total`, bypassed publicRoomLabel). A REPORT NAMES EVERY
+  KIND OF THING IT ORPHANS -- create-time validation cannot cover a range that
+  MOVES. A HARDCODED SURFACE LIST GOES STALE -- grep for enumerating lists.
+- FINDINGS w69: w68 a-d LANDED MID-PLAN (programme total+room grammar,
+  breaksOutsideWindow) -- re-read after every merge window, not once per
+  wave. A REPORT NEEDS A SCREEN THAT CAN ANSWER IT: DEC-844 names breaks
+  stranded by a date move, but the only panel that can delete one is scoped
+  to a day inside the window -- naming a thing the product cannot reach is
+  half a feature. A CONTROL THAT LIES IS WORSE THAN A DEAD ONE: embedded
+  agenda's Save flips to "Saved" by CSS with no script; phone list has no
+  Save while its desktop twin has one -- one rule (itinerary = !embed, both
+  renderings) settles both. A DAY LABEL IS NOT AN INSTANT: `endDate < now`
+  archives a running event on its own final morning; expand via
+  dayLabelEndInstant in the OWNING event's tz. TWO IMPLEMENTATIONS OF ONE
+  SENTENCE: SPA daysUntil vs root.tsx's ms division disagree on "N days
+  left". A NOW-DERIVED PAGE CANNOT JOIN A PURGE-KEYED CACHE -- bounded TTL
+  instead. AN AGGREGATE ASKED ABOUT ROWS NOBODY RENDERS IS PAID BY 404S TOO.
