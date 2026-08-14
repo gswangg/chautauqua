@@ -52,6 +52,18 @@ interface EventDetail {
   id: string;
   slug: string;
   name: string;
+  startDate?: string;
+}
+
+// w4-b/DEC-785 amendment: the Day placeholder is a worked example in the
+// SAME "11 May 2028" grammar DateField speaks, but the hardcoded 2028 read
+// as a real (and eventually stale) year -- derive the year from this
+// event's own start date so the example ages with the event instead of a
+// literal. Falls back to the original literal year when the event hasn't
+// loaded yet or has no start date.
+function dayPlaceholder(event: EventDetail | null): string {
+  const year = event?.startDate ? Number(event.startDate.slice(0, 4)) : NaN;
+  return `11 May ${Number.isFinite(year) ? year : 2028}`;
 }
 
 interface Track {
@@ -255,60 +267,71 @@ export function EmbedsPanel() {
 
       {event ? (
         <div className="chq-embeds-form">
-          <label>
-            Name
-            <input
-              className="chq-input"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Homepage sessions widget"
-            />
-          </label>
-
-          <label>
-            Surface
-            <select
-              className="chq-select"
-              value={surface}
-              onChange={(e) => setSurface(e.target.value as EmbedSurface)}
-            >
-              {EMBED_SURFACES.map((s) => (
-                <option key={s} value={s}>
-                  {s[0]!.toUpperCase() + s.slice(1)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            Format
-            <select className="chq-select" value={format} onChange={(e) => setFormat(e.target.value as EmbedFormat)}>
-              {formatsFor(surface).map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {knobs.includes('trackId') ? (
+          {/* w4-b/DEC-785 amendment: NAME|SURFACE and FORMAT|TRACK pair
+              two-up -- the editor speaks the settings grid vocabulary
+              rather than one label per row. */}
+          <div className="chq-settings-embed-field-pair">
             <label>
-              Track
+              Name
+              <input
+                className="chq-input"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Homepage sessions widget"
+              />
+            </label>
+
+            <label>
+              Surface
               <select
                 className="chq-select"
-                value={trackId}
-                onChange={(e) => setTrackId(e.target.value)}
+                value={surface}
+                onChange={(e) => setSurface(e.target.value as EmbedSurface)}
               >
-                <option value="">(all tracks)</option>
-                {tracks.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
+                {EMBED_SURFACES.map((s) => (
+                  <option key={s} value={s}>
+                    {s[0]!.toUpperCase() + s.slice(1)}
                   </option>
                 ))}
               </select>
             </label>
-          ) : null}
+          </div>
+
+          <div className="chq-settings-embed-field-pair">
+            <label>
+              Format
+              <select
+                className="chq-select"
+                value={format}
+                onChange={(e) => setFormat(e.target.value as EmbedFormat)}
+              >
+                {formatsFor(surface).map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {knobs.includes('trackId') ? (
+              <label>
+                Track
+                <select
+                  className="chq-select"
+                  value={trackId}
+                  onChange={(e) => setTrackId(e.target.value)}
+                >
+                  <option value="">(all tracks)</option>
+                  {tracks.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+          </div>
 
           {knobs.includes('format') ? (
             <label>
@@ -339,7 +362,7 @@ export function EmbedsPanel() {
           {knobs.includes('day') ? (
             <label htmlFor="embed-day">
               Day
-              <DateField id="embed-day" value={day} onChange={setDay} />
+              <DateField id="embed-day" value={day} onChange={setDay} placeholder={dayPlaceholder(event)} />
             </label>
           ) : null}
 
@@ -372,15 +395,21 @@ export function EmbedsPanel() {
           ) : null}
 
           {knobs.includes('fields') ? (
-            <fieldset>
-              <legend>Fields shown</legend>
+            // w4-b/DEC-785 amendment: the settings eyebrow markup replaces
+            // the native fieldset/legend -- a fieldset draws a notched
+            // browser border that no other settings control speaks, and
+            // this group's semantics (a labelled group of toggles) are
+            // already carried by role="group"/aria-label, same as every
+            // other chipstrip in Settings.
+            <div className="chq-settings-embed-fields" role="group" aria-label="Fields shown">
+              <p className="chq-settings-eyebrow">Fields shown</p>
               {/* w41-h/DEC-785: one row of aria-pressed toggle pills, not six
                   stacked checkbox rows -- the selected-fields state and what
                   Save writes are unchanged (toggleField), only the control
                   shape. Reuses the shared chq-chipstrip/chq-pill vocabulary
                   (CallForPapersPanel's "Tracks offered" row) rather than
                   inventing a second pill grammar. */}
-              <div className="chq-chipstrip" role="group" aria-label="Fields shown">
+              <div className="chq-chipstrip">
                 {EMBED_FIELDS.map((field) => (
                   <button
                     key={field}
@@ -393,7 +422,7 @@ export function EmbedsPanel() {
                   </button>
                 ))}
               </div>
-            </fieldset>
+            </div>
           ) : null}
 
           <label>
