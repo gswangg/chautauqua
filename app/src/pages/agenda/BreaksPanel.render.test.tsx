@@ -54,16 +54,18 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe('BreaksPanel', () => {
-  it('renders nothing when there is no selected day', () => {
+  it('renders nothing when there is no selected day and no outside-window breaks', () => {
     const { container } = render(
-      <BreaksPanel eventId={EVENT_ID} day={null} breaks={[]} onChanged={() => {}} />,
+      <BreaksPanel eventId={EVENT_ID} day={null} breaks={[]} outsideWindow={[]} onChanged={() => {}} />,
     );
     expect(container).toBeEmptyDOMElement();
     expect(apiGetMock).not.toHaveBeenCalled();
   });
 
   it("renders the breaks passed in via props without fetching its own copy", () => {
-    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} onChanged={() => {}} />);
+    render(
+      <BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} />,
+    );
 
     expect(apiGetMock).not.toHaveBeenCalled();
     expect(screen.getByText('12:00')).toBeInTheDocument();
@@ -76,7 +78,7 @@ describe('BreaksPanel', () => {
   it('Add a break POSTs numeric startMin/durationMin parsed from the inputs and the selected day, then calls onChanged', async () => {
     apiPostMock.mockResolvedValueOnce(breakRow());
     const onChanged = vi.fn();
-    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} onChanged={onChanged} />);
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} outsideWindow={[]} onChanged={onChanged} />);
 
     fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Coffee' } });
     fireEvent.change(screen.getByLabelText('Location (optional)'), { target: { value: 'Lobby' } });
@@ -103,7 +105,7 @@ describe('BreaksPanel', () => {
     apiDeleteMock.mockResolvedValueOnce({ deleted: true });
     const onChanged = vi.fn();
 
-    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} onChanged={onChanged} />);
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={onChanged} />);
     expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
@@ -117,7 +119,7 @@ describe('BreaksPanel', () => {
   });
 
   it('cancelling the remove confirmation fires no DELETE and keeps the row', async () => {
-    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} onChanged={() => {}} />);
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} />);
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
 
@@ -129,7 +131,7 @@ describe('BreaksPanel', () => {
     apiPostMock.mockRejectedValueOnce(
       new ApiError(400, 'invalid', 'Invalid break input', { startMin: 'must be an integer between 0 and 1439' }),
     );
-    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} onChanged={() => {}} />);
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} outsideWindow={[]} onChanged={() => {}} />);
 
     fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Coffee' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add a break' }));
@@ -141,5 +143,63 @@ describe('BreaksPanel', () => {
     expect(startField).toContainElement(message);
     expect(screen.queryByRole('alert', { name: /Invalid break input/ })).not.toBeInTheDocument();
     expect(screen.queryByText('Invalid break input')).not.toBeInTheDocument();
+  });
+
+  // DEC-021 amendment (w69-c, closes DEC-844's loop): breaks stranded
+  // outside the event's current window need a way in — the affordance
+  // grammar says the group is absent when there's nothing to show.
+  describe('outside-window group', () => {
+    it('is absent when outsideWindow is empty', () => {
+      render(
+        <BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} />,
+      );
+      expect(screen.queryByText('Outside the event dates')).not.toBeInTheDocument();
+    });
+
+    it('renders with a day label, time, label and location when present', () => {
+      const stranded = breakRow({ id: 'brk-2', day: '2026-04-15', label: 'Tea break', location: 'Terrace' });
+      render(
+        <BreaksPanel
+          eventId={EVENT_ID}
+          day={DAY}
+          breaks={[breakRow()]}
+          outsideWindow={[stranded]}
+          onChanged={() => {}}
+        />,
+      );
+
+      expect(screen.getByText('Outside the event dates')).toBeInTheDocument();
+      // formatDayLabel('2026-04-15') -> 'Wed 15 Apr'
+      expect(screen.getByText('Wed 15 Apr')).toBeInTheDocument();
+      expect(screen.getByText(/Tea break/)).toBeInTheDocument();
+      expect(screen.getByText(/Terrace/)).toBeInTheDocument();
+      expect(screen.getByText(/no longer appear on the public agenda/)).toBeInTheDocument();
+    });
+
+    it('the outside-window Remove flow confirms then DELETEs and calls onChanged', async () => {
+      apiDeleteMock.mockResolvedValueOnce({ deleted: true });
+      const onChanged = vi.fn();
+      const stranded = breakRow({ id: 'brk-2', day: '2026-04-15' });
+      render(
+        <BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} outsideWindow={[stranded]} onChanged={onChanged} />,
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+      expect(apiDeleteMock).not.toHaveBeenCalled();
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Remove break' }));
+
+      await waitFor(() => expect(apiDeleteMock).toHaveBeenCalledWith('/breaks/brk-2'));
+      await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+    });
+
+    it('with day=null and outside-window rows present, the section renders without the add-row', () => {
+      const stranded = breakRow({ id: 'brk-2', day: '2026-04-15' });
+      render(<BreaksPanel eventId={EVENT_ID} day={null} breaks={[]} outsideWindow={[stranded]} onChanged={() => {}} />);
+
+      expect(screen.getByText('Outside the event dates')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Add a break' })).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Label')).not.toBeInTheDocument();
+    });
   });
 });
