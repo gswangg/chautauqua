@@ -175,7 +175,7 @@ export function EditPage(props: {
               </label>
             ))}
             {trackError ? (
-              <p role="alert" class="field-error">
+              <p role="alert" class="chq-field-error">
                 {trackError}
               </p>
             ) : null}
@@ -265,7 +265,7 @@ function ParticipantsSection(props: {
         </label>
         <input id="cp-first-name" type="text" name="firstName" value={values?.firstName ?? ""} />
         {errors?.firstName ? (
-          <p role="alert" class="field-error">
+          <p role="alert" class="chq-field-error">
             {errors.firstName}
           </p>
         ) : null}
@@ -274,7 +274,7 @@ function ParticipantsSection(props: {
         </label>
         <input id="cp-last-name" type="text" name="lastName" value={values?.lastName ?? ""} />
         {errors?.lastName ? (
-          <p role="alert" class="field-error">
+          <p role="alert" class="chq-field-error">
             {errors.lastName}
           </p>
         ) : null}
@@ -283,7 +283,7 @@ function ParticipantsSection(props: {
         </label>
         <input id="cp-email" type="email" name="email" value={values?.email ?? ""} />
         {errors?.email ? (
-          <p role="alert" class="field-error">
+          <p role="alert" class="chq-field-error">
             {errors.email}
           </p>
         ) : null}
@@ -298,7 +298,7 @@ function ParticipantsSection(props: {
           ))}
         </select>
         {errors?.role ? (
-          <p role="alert" class="field-error">
+          <p role="alert" class="chq-field-error">
             {errors.role}
           </p>
         ) : null}

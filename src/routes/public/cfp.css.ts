@@ -7,11 +7,19 @@
 // DEC-374: value-free module constant, injected verbatim via
 // dangerouslySetInnerHTML by the surface's PageShell — never interpolated
 // with request/user data here.
+//
+// DEC-657 (wave 28 amendment): the shared no-red error vocabulary (used to
+// be defined here at :108-119) is hoisted to src/views/error-states.css.ts
+// (ERROR_STATES_CSS), composed at the tail of this same template literal --
+// exactly the interpolation idiom public.css.ts's PUBLIC_CSS already uses to
+// compose CHROME_CSS/CARDS_CSS/AGENDA_CSS/RAIL_CSS.
 
-import { DEC_373, DEC_374 } from "../../decisions";
+import { DEC_373, DEC_374, DEC_657 } from "../../decisions";
+import { ERROR_STATES_CSS } from "../../views/error-states.css";
 
 void DEC_373;
 void DEC_374;
+void DEC_657;
 
 export const CFP_CSS = `
   /* DEC-986 (wave 40 amendment): chrome is never constrained -- the header
@@ -92,31 +100,6 @@ export const CFP_CSS = `
   .chq-field-optional { font-weight: 800; }
   .chq-field-counter { font-size: 12px; color: var(--chq-muted); white-space: nowrap; }
   .chq-cfp-fields .help { font-size: 12px; color: var(--chq-muted); margin: 0; }
-
-  /* Errors are typographic, never colour (DEC-367/DEC-124: no semantic
-     red) -- weight + a leading marker distinguish an error from ordinary
-     help text without a colour channel. */
-  .chq-field-error { font-size: 13px; font-weight: 600; margin: 0; color: var(--chq-ink); }
-  .chq-field-error::before { content: "! "; }
-
-  /* DEC-124: the no-red error vocabulary, defined ONCE here and reused by
-     class name everywhere a control or a page needs to flag a validation
-     problem -- never re-invented per field. An invalid control gets a 1px
-     ink border plus a 3px ink LEFT edge, which replaces (not adds to) 3px
-     of the control's own left padding so nothing shifts on error. Applies
-     equally to a text input, textarea, select or fieldset. */
-  .chq-field-invalid { border: 1px solid var(--chq-ink); border-left: 3px solid var(--chq-ink); padding-left: calc(0.6rem - 3px); }
-  fieldset.chq-field-invalid { padding-left: 0; }
-
-  /* DEC-124: the top-of-form error summary -- one block, one anchor per
-     problem, each anchor pointing at the offending field's own id. The
-     field itself keeps its own .chq-field-error message too (the summary
-     orients, the field repairs). */
-  .chq-error-summary { border: 1px solid var(--chq-ink); border-left: 3px solid var(--chq-ink); padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
-  .chq-error-summary h2 { font-family: var(--chq-font-display); font-size: 15px; font-weight: 800; letter-spacing: -0.01em; margin: 0; color: var(--chq-ink); }
-  .chq-error-summary p { margin: 0; font-size: 13px; color: var(--chq-ink-2); line-height: 1.5; }
-  .chq-error-summary ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; }
-  .chq-error-summary-link { font-size: 13px; font-weight: 700; color: var(--chq-ink); }
 
   .chq-cfp-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; border-top: 1px solid var(--chq-rule); padding-top: 22px; }
   .chq-cfp-actions-note { font-size: 13px; color: var(--chq-muted); line-height: 1.5; }
@@ -202,4 +185,4 @@ export const CFP_CSS = `
     [data-chq-cfp-step="1"] .chq-cfp-actions button[type="submit"] { display: none; }
     [data-chq-cfp-step="2"] .chq-cfp-step-next { display: none; }
   }
-`;
+${ERROR_STATES_CSS}`;
