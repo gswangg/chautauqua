@@ -42,11 +42,12 @@ function item(overrides: Partial<PublicAgendaItem>): PublicAgendaItem {
   };
 }
 
-describe("task-w1-e (DEC-768): agenda row template grows to fit content", () => {
-  it("grid-template-rows uses minmax(22px, auto) for every 15-minute row", () => {
+describe("task-w1-e (DEC-768) / DEC-584 (wave 64): agenda block grows to fit content", () => {
+  it("a block is a content-sized card with no fixed grid-row height math", () => {
     const items = [item({ submissionId: "s1", title: "A Very Short Fifteen Minute Lightning Talk", startMin: 540, endMin: 555 })];
     const html = String(AgendaDayGrid({ day: "2026-08-10", items, event: EVENT, from: "agenda" }));
-    expect(html).toContain("minmax(22px, auto)");
+    expect(html).not.toContain("grid-row");
+    expect(html).not.toContain("minmax(22px, auto)");
   });
 
   it("a 15-minute session's title text is present in the rendered block", () => {

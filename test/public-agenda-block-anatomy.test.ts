@@ -63,15 +63,17 @@ describe("public.css.ts: agenda block anatomy", () => {
   });
 });
 
-describe("AgendaDayGrid: time + chips share one meta row", () => {
-  it("renders the time text and both chips inside one chq-pub-agenda-block-meta element", () => {
+describe("AgendaDayGrid: chips render inline in one meta row, trailing the block (DEC-584 wave 64)", () => {
+  it("renders both chips inside one chq-pub-agenda-block-meta element at the end of the block", () => {
     const items = [item({ submissionId: "s1", startMin: 540, endMin: 555 })];
     const html = String(AgendaDayGrid({ day: "2026-08-10", items, event: EVENT, from: "agenda" }));
-    const meta = html.match(/<div class="chq-pub-agenda-block-meta">([\s\S]*?)<\/div>\s*<div class="chq-pub-agenda-block-title">/);
+    const meta = html.match(/<div class="chq-pub-agenda-block-meta">([\s\S]*?)<\/div>\s*<\/div>/);
     expect(meta).toBeTruthy();
     const metaHtml = meta![1]!;
-    expect(metaHtml).toContain("9:00");
     expect(metaHtml).toContain("chq-pub-track-chip");
     expect(metaHtml).toContain("chq-pub-format-chip");
+    // the time is no longer repeated per block -- it lives once in the
+    // row's own time cell (chq-pub-agenda-day-time).
+    expect(html).toContain('<div class="chq-pub-agenda-day-time">9:00 AM</div>');
   });
 });

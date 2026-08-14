@@ -69,10 +69,55 @@ describe("DEC-022 amendment: AgendaContent (desktop grid) break rendering", () =
       AgendaContent({ event: EVENT, items: ITEMS, total: 2, breaksByDay }),
     );
     expect(html).toContain('class="chq-pub-agenda-break"');
-    expect(html).toContain("grid-column:1 / -1");
     expect(html).toContain("Lunch");
     expect(html).toContain("Foyer");
     expect(html).toContain("60 min");
+    // DEC-584 (wave 64 amendment) replaced the room-lane grid with a time-row
+    // sequence, so "spans the full width" is no longer an inline
+    // grid-column:1/-1 -- it is the break being a DIRECT child of the day's
+    // column flexbox (.chq-pub-agenda-day) rather than sitting inside a
+    // .chq-pub-agenda-day-row's blocks container next to session cards.
+    const day = html.slice(html.indexOf('class="chq-pub-agenda-day"'));
+    expect(day).toContain('</div><div class="chq-pub-agenda-break">');
+    expect(html).not.toContain('chq-pub-agenda-day-blocks"><div class="chq-pub-agenda-break"');
+    // ...and it carries no inline geometry at all anymore.
+    expect(html).not.toContain("grid-column:1 / -1");
+  });
+
+  it("sequences the break by start time, between the session rows it separates", () => {
+    // A break at 12:00 must fall AFTER the 9:00 row and BEFORE the 13:00 row:
+    // the row sequence is the only thing conveying when a break happens now
+    // that there is no clock axis to position against.
+    const items: PublicAgendaItem[] = [
+      item({ submissionId: "a", day: "2026-08-10", startMin: 540, endMin: 600, title: "Morning" }),
+      item({ submissionId: "z", day: "2026-08-10", startMin: 780, endMin: 840, title: "Afternoon" }),
+    ];
+    const breaksByDay = new Map([["2026-08-10", [brk({})]]]);
+    const html = String(AgendaContent({ event: EVENT, items, total: 2, breaksByDay }));
+    const morning = html.indexOf("Morning");
+    const breakAt = html.indexOf('class="chq-pub-agenda-break"');
+    const afternoon = html.indexOf("Afternoon");
+    expect(morning).toBeGreaterThan(-1);
+    expect(breakAt).toBeGreaterThan(morning);
+    expect(afternoon).toBeGreaterThan(breakAt);
+  });
+
+  it("a break sharing a start minute with a session sorts first, matching the phone list", () => {
+    const items: PublicAgendaItem[] = [
+      item({ submissionId: "a", day: "2026-08-10", startMin: 720, endMin: 780, title: "Noon talk" }),
+    ];
+    const breaksByDay = new Map([["2026-08-10", [brk({ startMin: 720 })]]]);
+    const html = String(AgendaContent({ event: EVENT, items, total: 1, breaksByDay }));
+    const desktop = html.slice(html.indexOf('class="chq-pub-agenda-day"'), html.indexOf("chq-pub-agenda-list-wrap"));
+    expect(desktop.indexOf('class="chq-pub-agenda-break"')).toBeLessThan(desktop.indexOf("Noon talk"));
+  });
+
+  it("does not count a break as a session or a room in the day heading (a break is not a submission)", () => {
+    const items: PublicAgendaItem[] = [item({ submissionId: "a", day: "2026-08-10", startMin: 540, endMin: 600 })];
+    const breaksByDay = new Map([["2026-08-10", [brk({})]]]);
+    const html = String(AgendaContent({ event: EVENT, items, total: 1, breaksByDay }));
+    expect(html).toContain("1 session · 1 room");
+    expect(html).not.toContain("2 sessions");
   });
 
   it("never renders the break on a day it does not belong to", () => {
