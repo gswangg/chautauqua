@@ -54,6 +54,43 @@ function renderSummary() {
   );
 }
 
+describe('EventSettingsPanel Dates row (DEC-896)', () => {
+  it('renders one Dates row in human grammar with a relative hint, no ISO strings, no Starts/Ends rows', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}`]: eventDetail,
+      'GET /api/v1/mail-status': { provider: 'none', configured: false, fromEmail: null },
+    });
+    renderSummary();
+
+    const region = await screen.findByRole('region');
+    await waitFor(() => {
+      expect(within(region).getByText('Dates')).toBeInTheDocument();
+    });
+
+    expect(within(region).queryByText('Starts')).not.toBeInTheDocument();
+    expect(within(region).queryByText('Ends')).not.toBeInTheDocument();
+
+    const row = within(region).getByText('Dates').closest('.chq-settings-row') as HTMLElement;
+    const valueEl = row.querySelector('.chq-settings-row-value') as HTMLElement;
+    expect(valueEl.textContent).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+    expect(valueEl.textContent).toMatch(/Jun/);
+
+    const hintEl = row.querySelector('.chq-settings-row-hint') as HTMLElement;
+    expect(hintEl.textContent).toMatch(/days? away|Today/);
+  });
+
+  it('the edit form still shows separate Start date and End date inputs', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}`]: eventDetail,
+      'GET /api/v1/mail-status': { provider: 'none', configured: false, fromEmail: null },
+    });
+    renderPanel();
+
+    expect(await screen.findByLabelText('Start date')).toBeInTheDocument();
+    expect(screen.getByLabelText('End date')).toBeInTheDocument();
+  });
+});
+
 describe('EventSettingsPanel unscheduled-by-window notice (DEC-844)', () => {
   it('renders a persistent status notice naming unscheduled sessions after a narrowing save', async () => {
     mockApi({

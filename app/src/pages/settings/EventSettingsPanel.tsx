@@ -15,6 +15,8 @@ import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { buildEventPatch, type EventSettingsForm } from './formState';
 import { SummarySection } from './SummarySection';
 import { plural } from '../../lib/plural';
+import { dateInputToMs, daysUntil } from '../../lib/dates';
+import { formatEventDayRange } from '../../../../src/lib/event-time';
 
 const SECTION_KEY = 'event';
 
@@ -55,6 +57,25 @@ function toForm(event: EventDetail): EventSettingsForm {
     logoUrl: event.branding?.logoUrl ?? '',
     accentColor: event.branding?.accentColor ?? '',
   };
+}
+
+// DEC-896: the Dates row's relative hint -- "N days away" counted from the
+// event's own timezone against its start date, through the SPA's ONE
+// days-until reader (dates.ts daysUntil) so it agrees with every other
+// countdown in the app rather than a bespoke Math.round.
+function datesHint(startMs: number, timezone: string): string {
+  const days = daysUntil(startMs, timezone, Date.now());
+  if (days === 0) return 'Today';
+  return `${days} ${plural(days, 'day')} away`;
+}
+
+// Both dates are required event fields (never '' once loaded from the API),
+// so a null here is a data-integrity bug -- fail loudly rather than render
+// a silently-blank Dates row.
+function requireDateMs(value: string): number {
+  const ms = dateInputToMs(value);
+  if (ms === null) throw new Error(`EventSettingsPanel: expected a non-empty date, got "${value}"`);
+  return ms;
 }
 
 function brandingSummary(form: EventSettingsForm): string {
@@ -159,8 +180,14 @@ export function EventSettingsPanel() {
         // ('Used in every public URL' -- submit/schedule/agenda links all
         // key off this, per the record scoping this panel already saves).
         { label: 'Slug', value: form.slug, hint: 'Used in every public URL' },
-        { label: 'Starts', value: form.startDate },
-        { label: 'Ends', value: form.endDate },
+        // DEC-896: 'Starts'/'Ends' collapsed into one human-grammar range
+        // row -- the two ISO dates now live only in the edit form's two
+        // DateFields (below), never in the read view.
+        {
+          label: 'Dates',
+          value: formatEventDayRange(requireDateMs(form.startDate), requireDateMs(form.endDate)),
+          hint: datesHint(requireDateMs(form.startDate), form.timezone),
+        },
         // DEC-896: the time zone note -- every date on this row and every
         // deadline elsewhere in the event (CFP closes, agenda times) reads
         // through event-time.ts against this same zone, not the viewer's.
