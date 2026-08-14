@@ -923,14 +923,10 @@
   }
 }
 
-/* DEC-215 amendment (wave 5): the per-reviewer Reset password link sits
-   quietly on the row's own rule -- .chq-link-button already carries the
-   text-button styling, this just keeps it from wrapping in the row's
-   narrow auto column. */
-.chq-review-reviewer-action {
-  font-size: 13px;
-  white-space: nowrap;
-}
+/* (The .chq-review-reviewer-action rule that lived here styled the
+   per-reviewer "Reset password" link, which w25-g removed from the plan
+   editor per DEC-745 ruling 9. DEC-970 forbids dead chq-* rules, so the
+   rule went with its only caller.) */
 
 .chq-review-reviewer-email {
   font-size: 12px;

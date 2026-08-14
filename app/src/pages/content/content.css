@@ -736,6 +736,23 @@
   flex-wrap: wrap;
 }
 
+/* CNT-14 (DEC-160, wave-26 amendment): the "Download all N (.zip)" secondary
+   button and its over-cap reason share one column in the header actions row,
+   so the reason reads directly under the control it explains instead of
+   pushing the file-count summary sideways. Layout only -- the button itself
+   is the frozen .chq-btn-secondary face. */
+.chq-content-files-download-all-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.chq-content-files-download-all-cap {
+  max-width: 34ch;
+  text-align: right;
+}
+
 /* Search box sits to the LEFT of the chip strip it narrows. */
 .chq-content-files-toolbar {
   flex-wrap: wrap;

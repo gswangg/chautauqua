@@ -52,10 +52,18 @@ const BANNED = ["toLocaleDateString(", "toLocaleTimeString(", "toLocaleString("]
 //     Number.prototype.toLocaleString shares a name with the banned
 //     Date methods but has nothing to do with DEC-918's calendar-day
 //     grammar.
+//   - src/routes/public/submit.tsx: overLengthErrorMessage() calls
+//     `.toLocaleString("en-US")` on three NUMBERS (typed length, overage,
+//     and the cap) to group thousands in the DEC-124 over-length error
+//     copy -- same Number.prototype.toLocaleString as form-render.tsx's
+//     counter above, nothing to do with dates.
 const NAMED_EXEMPTIONS = new Set(
-  [join(SRC_DIR, "lib/timezone.ts"), join(SRC_DIR, "routes/api/validators.ts"), join(SRC_DIR, "views/form-render.tsx")].map((p) =>
-    relative(REPO_ROOT, p),
-  ),
+  [
+    join(SRC_DIR, "lib/timezone.ts"),
+    join(SRC_DIR, "routes/api/validators.ts"),
+    join(SRC_DIR, "views/form-render.tsx"),
+    join(SRC_DIR, "routes/public/submit.tsx"),
+  ].map((p) => relative(REPO_ROOT, p)),
 );
 
 describe("Server date-time formatting is single-sourced through lib/event-time.ts (DEC-918)", () => {

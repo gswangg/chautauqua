@@ -109,6 +109,12 @@
   --chq-measure: 820px;
   --chq-measure-wide: 1180px;
   --chq-measure-table: 1440px;
+  /* DEC-989 amendment (ruling B6, wave 25 task w25-i): the speaker portal's
+     single-column task-list measure. Consumed by the server-rendered
+     src/routes/portal/portal.css.ts only; declared here because DEC-372 set
+     equality names --chq-measure-table as its ONE exception, so every other
+     token stays declared in both files. */
+  --chq-portal-measure: 560px;
   /* DEC-683 amendment (wave 1, task w1-a): the SAME left/right padding
      .chq-main declares below -- named as a token (DEC-367/372 shared
      vocabulary, mirrored in THEME_CSS) so a padded-ancestor clamp fix can

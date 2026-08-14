@@ -36,6 +36,12 @@ export const THEME_CSS = `
     --chq-ink-strong: #2E2A24;
     --chq-muted: #565A4B;
     --chq-disabled: #8E8A7A;
+    /* B8 disabled register (w25-g/DEC-745 amendment): #8E8A7A text on this
+       #DDD8C8 fill, reserved for genuinely inert controls the reader must
+       still be able to find and understand -- never for placeholder text or
+       mere de-emphasis. DEC-372 set equality keeps the name declared in
+       both token files even though only the SPA consumes it today. */
+    --chq-disabled-bg: #DDD8C8;
     --chq-hairline: #E1DDCE;
     --chq-rule: #D3CFC0;
     /* DEC-021 (wave-6 amendment): the agenda day grid's single lattice tone,

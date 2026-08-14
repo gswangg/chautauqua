@@ -161,11 +161,20 @@ export const PORTAL_CSS = `
      olive "done" tint; a still-open row keeps .chq-flag's plain ink. */
   .chq-flag.chq-portal-flag-done { color: var(--chq-brand); }
 
+  /* DEC-989 amendment (ruling B6): above phone width the task row action
+     buttons stop spanning the row's full width (that's the phone-only
+     .chq-btn { width: 100% } rule inside the max-width 700px block
+     below) and right-flush instead, since the desktop column is now
+     narrow enough (560px) that a left-flush row of buttons reads as
+     stranded whitespace. Per DEC-385 the wide rendition is the base rule
+     and the phone block below resets justify-content -- no min-width
+     query anywhere in this codebase. */
   .chq-portal-actions {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
     padding-top: 2px;
+    justify-content: flex-end;
   }
   .chq-portal-actions .chq-btn { min-height: 44px; }
 
@@ -346,21 +355,15 @@ export const PORTAL_CSS = `
     text-transform: uppercase;
   }
 
-  /* DEC-989 amendment (ruling B6): above phone width the task row action
-     buttons stop spanning the row's full width (that's the phone-only
-     .chq-btn { width: 100% } rule inside the max-width 700px block
-     below) and right-flush instead, since the desktop column is now
-     narrow enough (560px) that a left-flush row of buttons reads as
-     stranded whitespace. This is a genuinely separate min-width query,
-     not a rewrite of the existing max-width block, so the phone
-     rendition below is untouched. */
-  @media (min-width: 701px) {
-    .chq-portal-actions { justify-content: flex-end; }
-  }
-
   @media (max-width: 700px) {
     .chq-portal-row-head { align-items: flex-start; }
-    .chq-portal-actions { flex-direction: column; }
+    /* DEC-989 ruling B6's right-flush on .chq-portal-actions (base rule
+       above) is a desktop-only affordance: at phone width the buttons go
+       full-width in a column, so the flush is reset back to start here.
+       DEC-385 keeps this codebase single-direction -- narrow overrides
+       wide via max-width only -- so the desktop rendition lives in the
+       base rule and this block is the only override. */
+    .chq-portal-actions { flex-direction: column; justify-content: flex-start; }
     .chq-portal-actions .chq-btn { width: 100%; }
 
     /* w13-e: portal frame is the phone app shell -- header/main/footer

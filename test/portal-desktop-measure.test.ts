@@ -80,31 +80,20 @@ describe("portal desktop measure (DEC-989 ruling B6)", () => {
     expect(body).toMatch(/margin:\s*24px auto 0/);
   });
 
-  it("desktop action-button rule sits OUTSIDE (above) the 700px block", () => {
-    const blocks700 = extract700Blocks(PORTAL_CSS).join("\n");
-    expect(blocks700).not.toMatch(/justify-content:\s*flex-end/);
-
-    const withoutMedia = PORTAL_CSS.replace(
-      /@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g,
-      "",
-    );
-    // The right-flush rule is itself scoped to its own min-width query, so
-    // it is absent from the "no @media at all" text too -- assert instead
-    // that it exists inside a min-width (not max-width) media block.
-    expect(withoutMedia).not.toMatch(/justify-content:\s*flex-end/);
-
-    const minWidthMatch = PORTAL_CSS.match(
-      /@media \(min-width: 701px\) \{[^{}]*\.chq-portal-actions[^{}]*\{[^{}]*justify-content:\s*flex-end[^{}]*\}[^{}]*\}/,
-    );
-    expect(minWidthMatch, "expected a @media (min-width: 701px) block right-flushing .chq-portal-actions").not.toBeNull();
+  it("desktop action-button right-flush lives in the unmediated base rule", () => {
+    // DEC-385: this codebase is single-direction -- the wide rendition is
+    // the base rule and narrow overrides it via max-width. So the flush
+    // must be in the base .chq-portal-actions rule, never a min-width query.
+    const body = topLevelRuleBody(PORTAL_CSS, ".chq-portal-actions");
+    expect(body).toBeDefined();
+    expect(body).toMatch(/justify-content:\s*flex-end/);
   });
 
-  it("the min-width desktop block appears earlier in source than the max-width 700px block", () => {
-    const minWidthIdx = PORTAL_CSS.indexOf("@media (min-width: 701px)");
-    const maxWidthIdx = PORTAL_CSS.indexOf("@media (max-width: 700px)");
-    expect(minWidthIdx).toBeGreaterThan(-1);
-    expect(maxWidthIdx).toBeGreaterThan(-1);
-    expect(minWidthIdx).toBeLessThan(maxWidthIdx);
+  it("the phone block resets the flush, and no min-width query exists (DEC-385)", () => {
+    expect(PORTAL_CSS).not.toMatch(/@media[^{]*min-width/);
+    const blocks700 = extract700Blocks(PORTAL_CSS).join("\n");
+    expect(blocks700).not.toMatch(/justify-content:\s*flex-end/);
+    expect(blocks700).toMatch(/justify-content:\s*flex-start/);
   });
 
   it("does not modify the phone-only rules inside the existing 700px block", () => {
@@ -113,7 +102,7 @@ describe("portal desktop measure (DEC-989 ruling B6)", () => {
     // These are the pre-existing phone rules; they must still read exactly
     // as before this task (additive-reflow scan-lock).
     expect(joined).toMatch(/\.chq-portal-row-head\s*\{\s*align-items:\s*flex-start;\s*\}/);
-    expect(joined).toMatch(/\.chq-portal-actions\s*\{\s*flex-direction:\s*column;\s*\}/);
+    expect(joined).toMatch(/\.chq-portal-actions\s*\{\s*flex-direction:\s*column;/);
     expect(joined).toMatch(/\.chq-portal-actions \.chq-btn\s*\{\s*width:\s*100%;\s*\}/);
   });
 });
