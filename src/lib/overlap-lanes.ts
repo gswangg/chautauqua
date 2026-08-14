@@ -81,3 +81,51 @@ export function assignLanes<T extends LaneInterval>(items: T[]): LanedInterval<T
     laneCount: Math.max(1, peakConcurrencyDuring(item)),
   }));
 }
+
+/** DEC-555 amendment (wave 1, task w1-d): /schedule's saved-sessions view
+ * names each clash inline (per row) and totals them in the rail ("N saved ·
+ * M overlaps"). Picks live in localStorage (DEC-555), so this must run
+ * client-side over the rendered rows -- pure here so it's plain-vitest
+ * testable AND so ItineraryScript (agenda-itinerary-script.tsx) can embed it
+ * via `.toString()` exactly like mergeItinerarySelection/
+ * mirrorItineraryCheckboxes (the "ONE implementation" rule). Two saved items
+ * clash only when they share the same `day` AND their [startMin, endMin)
+ * ranges overlap -- a same-minute pair on different days never clashes. */
+export interface ClashItem {
+  id: string;
+  title: string;
+  day: string;
+  startMin: number;
+  endMin: number;
+}
+
+export interface SavedOverlapSummary {
+  /** Total overlapping PAIRS across all days (the rail's "N overlaps" count). */
+  pairCount: number;
+  /** id -> the titles of every OTHER saved item it overlaps, in item order. */
+  clashesById: Record<string, string[]>;
+}
+
+export function computeSavedOverlaps(items: ClashItem[]): SavedOverlapSummary {
+  const clashesById: Record<string, string[]> = {};
+  let pairCount = 0;
+  const byDay: Record<string, ClashItem[]> = {};
+  for (const item of items) {
+    (byDay[item.day] = byDay[item.day] || []).push(item);
+  }
+  for (const day in byDay) {
+    const dayItems = byDay[day]!;
+    for (let i = 0; i < dayItems.length; i += 1) {
+      for (let j = i + 1; j < dayItems.length; j += 1) {
+        const a = dayItems[i]!;
+        const b = dayItems[j]!;
+        if (a.startMin < b.endMin && b.startMin < a.endMin) {
+          pairCount += 1;
+          (clashesById[a.id] = clashesById[a.id] || []).push(b.title);
+          (clashesById[b.id] = clashesById[b.id] || []).push(a.title);
+        }
+      }
+    }
+  }
+  return { pairCount, clashesById };
+}

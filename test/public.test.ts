@@ -460,11 +460,16 @@ describe("AgendaContent / ScheduleContent day switcher (EMB-07)", () => {
     expect(html).toContain('id="chq-day-2026-08-11"');
   });
 
-  it("schedule surface also renders the day switcher with a real ?day= href", async () => {
+  // task-w1-d (DEC-555 amendment): /schedule dropped the day-pill row
+  // entirely -- frame 10--12 groups saved sessions under a plain per-day
+  // heading, never a switcher.
+  it("schedule surface renders no day switcher at all", async () => {
     const res = await buildApp("schedule");
     const html = await res.text();
-    expect(html).toContain('href="/e/conf/schedule?day=2026-08-10#chq-day-2026-08-10"');
-    expect(html).toContain('href="/e/conf/schedule?day=2026-08-11#chq-day-2026-08-11"');
+    // The shared inline stylesheet still declares the .chq-pub-day-switcher
+    // rule (for /agenda's own switcher), so assert on the ELEMENT, never a
+    // bare substring of the page.
+    expect(html).not.toContain('class="chq-pub-day-switcher"');
   });
 });
 

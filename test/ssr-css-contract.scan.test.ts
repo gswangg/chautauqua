@@ -281,12 +281,6 @@ describe("SSR stylesheet CSS token + class contract (DEC-970)", () => {
         "its visual treatment lives entirely on the nested .chq-btn/.chq-btn-tertiary/.chq-portal-signout-btn button.",
     ],
     [
-      "chq-pub-picks-only-input",
-      "agenda.tsx: the checkbox is already fully styled by theme.ts's global " +
-        "input[type=checkbox] rule (accent-color/size/margin); the class is a behavioral/selector hook only " +
-        "(the actual JS hook uses the sibling #chq-picks-only id, not this class).",
-    ],
-    [
       "chq-pub-agenda-list-wrap",
       "agenda.tsx: the <section> exists to host the day's aria-label; every visual treatment lives on its " +
         "children (.chq-pub-agenda-list, .chq-pub-agenda-list-item, etc.), not the wrapper itself.",

@@ -132,13 +132,18 @@ describe("DEC-851 (wave 64 amendment): /agenda and /schedule highlight a track, 
     expect(html).not.toContain("Showing the first");
   });
 
+  // task-w1-d (DEC-555 amendment): /schedule's rows aren't the highlight-
+  // aware AgendaItemList/AgendaDayGrid markup any more -- ?trackId= is not
+  // even a knob this surface reads (the highlight control was dropped).
+  // Every candidate row still renders server-side though (see
+  // public-agenda-schedule-filters.test.ts's "task w1-d" describe).
   it("/schedule: with ?trackId= set, every session in the day still appears in the markup", async () => {
     installFakeCaches();
     const res = await buildSurfaceApp("schedule").request("/e/conf/schedule?trackId=trk-a", {}, TEST_ENV);
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain('id="chq-agenda-list-sub1"');
-    expect(html).toContain('id="chq-agenda-list-sub2"');
+    expect(html).toContain('data-submission-id="sub1"');
+    expect(html).toContain('data-submission-id="sub2"');
     expect(html).not.toContain("Showing the first");
   });
 

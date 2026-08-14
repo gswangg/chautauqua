@@ -247,19 +247,11 @@ describe("w1-i: session detail page itinerary control", () => {
 });
 
 describe("w1-i: ONE shared itinerary label helper flips everywhere", () => {
-  it("the schedule list row's toggle uses the SAME off/on span pair as the sessions list's Save/Saved pill", async () => {
-    const app = buildApp();
-    const res = await app.request(`/e/${EVENT.slug}/schedule`);
-    expect(res.status).toBe(200);
-    const html = await res.text();
-    expect(html).toContain('class="chq-pub-save-off">Save</span>');
-    expect(html).toContain('class="chq-pub-save-on">Saved</span>');
-    // The row's toggle control itself never renders the old static string
-    // as its label any more (the phrase is still legitimately present in
-    // the unrelated "Show only my picks" empty-state prose below it).
-    expect(html).not.toMatch(/<label class="chq-pub-itinerary-row">[\s\S]*?Add to itinerary/);
-  });
-
+  // task-w1-d (DEC-555 amendment): /schedule's row is no longer the
+  // shared Save/Saved pill -- frame 10--12 only ever shows a SAVED row, so
+  // its own control is a static "Remove" label (see
+  // public-agenda-geometry.test.ts's "labelled Remove" coverage). The
+  // sessions list card and the detail page still share Save/Saved.
   it("the detail page's toggle uses the same off/on span pair too", async () => {
     const app = buildApp();
     const res = await app.request(`/e/${EVENT.slug}/sessions/${SESSION.id}`);

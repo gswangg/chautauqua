@@ -95,15 +95,14 @@ describe("FormatChip on /e/:slug/agenda and /e/:slug/schedule (EMB mandate 40e)"
     expect(html).not.toContain("chq-pub-format-chip");
   });
 
-  it("ScheduleContent renders the format chip when format is set", () => {
-    const html = String(ScheduleContent({ event: EVENT, items: [agendaItem("Workshop")], total: 1 }));
-    expect(html).toContain('class="chq-pub-format-chip"');
-    expect(html).toContain("Workshop");
-  });
-
-  it("ScheduleContent renders no format chip when format is null", () => {
-    const html = String(ScheduleContent({ event: EVENT, items: [agendaItem(null)], total: 1 }));
-    expect(html).not.toContain("chq-pub-format-chip");
+  // task-w1-d (DEC-555 amendment): /schedule's row was rebuilt to frame
+  // 10--12's shape (time/room gutter, title, speaker, clash marker, Remove)
+  // -- no track/format chip appears on this surface's row at all any more.
+  it("ScheduleContent never renders a format chip, set or not", () => {
+    const withFormat = String(ScheduleContent({ event: EVENT, items: [agendaItem("Workshop")], total: 1 }));
+    expect(withFormat).not.toContain("chq-pub-format-chip");
+    const withoutFormat = String(ScheduleContent({ event: EVENT, items: [agendaItem(null)], total: 1 }));
+    expect(withoutFormat).not.toContain("chq-pub-format-chip");
   });
 });
 

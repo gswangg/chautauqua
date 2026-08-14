@@ -214,7 +214,10 @@ function countMatches(html: string, re: RegExp): number {
 }
 
 describe("DEC-919 amendment (wave 40): public search is one compact input in ONE pill row", () => {
-  const ROW_SURFACES = ["/e/conf/sessions", "/e/conf/agenda", "/e/conf/schedule"];
+  // task-w1-d (DEC-555 amendment): /schedule dropped its search form
+  // entirely (frame 10--12 carries none) -- see public-agenda-geometry.
+  // test.ts for that surface's own "dropped control" coverage.
+  const ROW_SURFACES = ["/e/conf/sessions", "/e/conf/agenda"];
 
   // Single GET per path (pubcache's shared in-memory cache in this harness
   // cannot serve a second .text() read of the same cached Response body), so

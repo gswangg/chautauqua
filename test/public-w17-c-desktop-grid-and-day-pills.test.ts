@@ -148,15 +148,18 @@ describe("DEC-885: agenda/schedule day pills say which day is showing", () => {
     expect(firstPillMatch![0]).toContain("chq-pub-day-pill-active");
   });
 
+  // task-w1-d (DEC-555 amendment): /schedule dropped the day-pill row
+  // entirely (frame 10--12 has none) -- the day-pill contract below is now
+  // /agenda's alone, proven on AgendaContent rather than ScheduleContent.
   it("the ?day=-filtered view marks exactly one pill aria-current=\"page\" (the filtered day)", () => {
-    const html = String(ScheduleContent({ event: EVENT, items: [items[0]!], total: 2, activeDay: "2026-08-10", allDays: ["2026-08-10", "2026-08-11"] }));
+    const html = String(AgendaContent({ event: EVENT, items: [items[0]!], total: 2, activeDay: "2026-08-10", allDays: ["2026-08-10", "2026-08-11"] }));
     const current = [...html.matchAll(/aria-current="page"/g)];
     expect(current.length).toBe(1);
     expect(html).toContain('aria-current="page"');
   });
 
   it("a non-active day pill on the filtered view carries no aria-current", () => {
-    const html = String(ScheduleContent({ event: EVENT, items: [items[0]!], total: 2, activeDay: "2026-08-10", allDays: ["2026-08-10", "2026-08-11"] }));
+    const html = String(AgendaContent({ event: EVENT, items: [items[0]!], total: 2, activeDay: "2026-08-10", allDays: ["2026-08-10", "2026-08-11"] }));
     // day 08-11 pill (out-link, not rendered on this filtered page) should not carry aria-current
     const day11Pill = html.match(/<a class="chq-pub-day-pill[^"]*"[^>]*href="[^"]*day=2026-08-11[^"]*"[^>]*>/);
     expect(day11Pill).toBeTruthy();

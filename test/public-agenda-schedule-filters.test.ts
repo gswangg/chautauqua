@@ -228,135 +228,49 @@ function emptyChain() {
   return chain;
 }
 
-describe("/e/:eventSlug/schedule?trackId= (DEC-851, wave 64 amendment): track HIGHLIGHTS, never filters", () => {
-  it("?trackId= never shrinks the rendered row set (every session still renders)", async () => {
+// task-w1-d (DEC-555 amendment, wave 1): /schedule was rebuilt to frame
+// 10--12 -- no DaySwitcher, no ?trackId= highlight form, no time sub-header
+// (those were dropped: none appear in the frame). The suite below now only
+// proves the ONE thing that still holds post-rebuild: every candidate row
+// still renders server-side (data-submission-id in the markup) regardless
+// of ?trackId=, because filtering to the SAVED subset is a client-only
+// concern (DEC-555 -- picks live in localStorage, never a query param).
+describe("/e/:eventSlug/schedule?trackId= (task w1-d): every candidate row still renders server-side", () => {
+  it("?trackId= never drops a candidate row from the markup", async () => {
     installFakeCaches();
     const unfiltered = await buildScheduleApp(FULL_AGENDA_ROWS).request("/e/conf/schedule", {}, TEST_ENV);
     const unfilteredHtml = await unfiltered.text();
-    expect(unfilteredHtml).toContain("chq-agenda-list-sub1");
-    expect(unfilteredHtml).toContain("chq-agenda-list-sub2");
-    expect(unfilteredHtml).toContain("chq-agenda-list-sub3");
+    expect(unfilteredHtml).toContain('data-submission-id="sub1"');
+    expect(unfilteredHtml).toContain('data-submission-id="sub2"');
+    expect(unfilteredHtml).toContain('data-submission-id="sub3"');
 
     installFakeCaches();
-    // A trackId picked on the page still hands getPublicAgenda the FULL row
-    // set (no predicate) — the fake's second arg mirrors what the real repo
-    // call now returns for this query (unfiltered), unlike its pre-
-    // amendment sibling above which passed FILTERED_ROWS.
     const highlighted = await buildScheduleApp(FULL_AGENDA_ROWS).request("/e/conf/schedule?trackId=trk-a", {}, TEST_ENV);
     const highlightedHtml = await highlighted.text();
-    expect(highlightedHtml).toContain("chq-agenda-list-sub1");
-    expect(highlightedHtml).toContain("chq-agenda-list-sub2");
-    expect(highlightedHtml).toContain("chq-agenda-list-sub3");
+    expect(highlightedHtml).toContain('data-submission-id="sub1"');
+    expect(highlightedHtml).toContain('data-submission-id="sub2"');
+    expect(highlightedHtml).toContain('data-submission-id="sub3"');
   });
 
-  it("?day= still narrows on its own; ?trackId= composes alongside it without narrowing further", async () => {
+  it("?day= still narrows on its own (getPublicAgenda's own predicate, unrelated to the client-side saved filter)", async () => {
     installFakeCaches();
     const app = buildScheduleApp(FILTERED_ROWS);
     const res = await app.request("/e/conf/schedule?day=2026-08-10&trackId=trk-a", {}, TEST_ENV);
     expect(res.status).toBe(200);
     const html = await res.text();
-    // FILTERED_ROWS here stands in for "the one row getPublicAgenda's ?day=
-    // predicate actually returned" — trackId contributed no SQL predicate at
-    // all, so this fixture only proves day still narrows, not that trackId
-    // does too (see the test above for that negative assertion).
-    expect(html).toContain("chq-agenda-list-sub1");
-  });
-
-  it("DaySwitcher out-links preserve the active trackId/q across a day jump", async () => {
-    installFakeCaches();
-    // Only day A is rendered (activeDay filter applied); getPublicScheduleDayCounts
-    // (allDays) reports both days, so the switcher must render an out-link
-    // for day B that is NOT dropped from the a11y tree.
-    let selectCall = 0;
-    const sessionRows = FILTERED_ROWS.map((r) => sessionRow(r.submissionId, `Talk ${r.submissionId}`));
-    const db = {
-      select: () => {
-        selectCall += 1;
-        // DEC-851 (wave 64 amendment): getPublicFormatOptions no longer
-        // called at all for agenda/schedule.
-        if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
-        if (selectCall === 2) return makeChain([]); // DEC-804 getPublicTracks
-        if (selectCall === 3) return makeChain([{ count: FILTERED_ROWS.length }]); // DEC-548 total
-        if (selectCall === 4) return makeChain([{ id: "room1", name: "Alpha" }]); // roomRows
-        if (selectCall === 5) return makeChain(sessionRows); // hydrateSessions subRows
-        if (selectCall === 6) return makeChain([]); // trackRows
-        if (selectCall === 7) return makeChain([]); // speakerRows
-        if (selectCall === 8) return makeChain([]); // slotRows
-        if (selectCall === 9) return makeChain([]); // formatRows
-        // getPublicScheduleDayCounts (allDays, since ?day= was passed)
-        return makeChain([
-          { day: "2026-08-10", count: 1 },
-          { day: "2026-08-11", count: 1 },
-        ]);
-      },
-      selectDistinct: () => makeChain(FILTERED_ROWS),
-    } as unknown as AppEnv["Variables"]["db"];
-
-    const app = new Hono<AppEnv>();
-    app.use("*", async (c, next) => {
-      c.set("db", db);
-      await next();
-    });
-    registerErrorHandler(app);
-    app.route("/", publicRoutes);
-
-    const res = await app.request("/e/conf/schedule?day=2026-08-10&trackId=trk-a&q=keynote", {}, TEST_ENV);
-    const html = await res.text();
-    // day B isn't rendered on this page, so its pill must be an out-link
-    // carrying the SAME trackId/q forward, not a bare ?day= href.
-    expect(html).toContain('href="/e/conf/schedule?day=2026-08-11&amp;trackId=trk-a&amp;q=keynote"');
-  });
-
-  it("DEC-835: on the unfiltered default view, every day pill still carries a real ?day= href (never a bare #chq-day-<day> anchor)", async () => {
-    installFakeCaches();
-    // Two days, both rendered on this unfiltered page.
-    const twoDayRows = [
-      ...FULL_AGENDA_ROWS,
-      { submissionId: "sub4", day: "2026-08-11", startMin: 540, endMin: 600, roomId: "room1" },
-    ];
-    const app = buildScheduleApp(twoDayRows);
-    const res = await app.request("/e/conf/schedule", {}, TEST_ENV);
-    const html = await res.text();
-    const pillHrefs = [...html.matchAll(/class="chq-pub-day-pill[^"]*" href="([^"]*)"/g)].map((m) => m[1]!);
-    expect(pillHrefs.length).toBe(2);
-    for (const href of pillHrefs) {
-      expect(href.startsWith("#")).toBe(false);
-      expect(href).toMatch(/^\/e\/conf\/schedule\?day=2026-08-1[01]#chq-day-2026-08-1[01]$/);
-    }
-    // the #chq-day-<day> section ids are still present for in-page anchoring
-    expect(html).toContain('id="chq-day-2026-08-10"');
-    expect(html).toContain('id="chq-day-2026-08-11"');
+    expect(html).toContain('data-submission-id="sub1"');
   });
 });
 
-describe("/schedule row control (DEC-783): a checked row names its state", () => {
-  it("renders the DEC-683 Save/Saved span pair, not a static 'Add to itinerary' label", async () => {
+describe("/schedule row control (task w1-d): a checked row is named Remove, never Save/Saved", () => {
+  it("renders the .chq-itinerary-toggle checkbox wrapped in a Remove label", async () => {
     installFakeCaches();
     const app = buildScheduleApp(FULL_AGENDA_ROWS);
     const res = await app.request("/e/conf/schedule", {}, TEST_ENV);
     const html = await res.text();
-    expect(html).toContain('class="chq-pub-save-off"');
-    expect(html).toContain('class="chq-pub-save-on"');
-    expect(html).toContain("Saved");
-    expect(html).not.toContain("Add to itinerary");
-  });
-});
-
-describe("/schedule groups rows sharing a start time under a time sub-header (DEC-783)", () => {
-  it("inserts one sub-header for the two sessions starting at 540 and none extra for the lone 660 session", async () => {
-    installFakeCaches();
-    const app = buildScheduleApp(FULL_AGENDA_ROWS);
-    const res = await app.request("/e/conf/schedule", {}, TEST_ENV);
-    const html = await res.text();
-    // Count the MARKUP occurrences only: since DEC-970 the inlined stylesheet
-    // also carries a .chq-pub-schedule-time-subhead selector, so a bare
-    // substring count over the whole document would score the rule too.
-    const subheadCount = (html.match(/class="chq-pub-schedule-time-subhead"/g) ?? []).length;
-    // Two distinct start-time groups (540, 660) -> exactly two sub-headers,
-    // even though 540 has two rows sharing it.
-    expect(subheadCount).toBe(2);
-    // The sub-header renders formatMinutes' label for the shared start.
-    expect(html).toContain("9:00 AM");
+    expect(html).toContain('class="chq-itinerary-toggle" value="sub1"');
+    expect(html).toContain('<label class="chq-pub-schedule-remove">');
+    expect(html).toContain("Remove");
   });
 });
 
@@ -417,19 +331,10 @@ describe("/agenda and /schedule render the DEC-851 (wave 64 amendment) search-an
     expect(html).not.toContain('name="format"');
   });
 
-  it("/schedule's form carries the current q as a value and the current trackId as the select's selected option", async () => {
-    installFakeCaches();
-    const app = buildSurfaceApp("schedule", FULL_AGENDA_ROWS, TRACKS);
-    const res = await app.request("/e/conf/schedule?q=keynote&trackId=trk-a", {}, TEST_ENV);
-    const html = await res.text();
-    expect(html).toContain('<form class="chq-pub-searchform" method="get" action="/e/conf/schedule" role="search">');
-    expect(html).toContain('<input class="chq-pub-search" id="chq-pub-search-q" type="search" name="q" value="keynote"');
-    expect(html).not.toContain('class="chq-pub-pill"');
-    expect(html).toContain('<select class="chq-pub-select" id="chq-pub-highlight-track" name="trackId"');
-    expect(html).toContain('<option value="trk-a" selected="">Track A</option>');
-    expect(html).not.toContain('Format filters');
-    expect(html).not.toContain('name="format"');
-  });
+  // task-w1-d (DEC-555 amendment): /schedule dropped this search-and-
+  // highlight form entirely -- none of it appears in frame 10--12. See
+  // test/public-agenda-geometry.test.ts's "does not render the dropped
+  // day-pill row, picks-only checkbox or highlight control on /schedule".
 
   it("with no trackId active, the select has no Clear link and no option is selected", async () => {
     installFakeCaches();
@@ -440,12 +345,12 @@ describe("/agenda and /schedule render the DEC-851 (wave 64 amendment) search-an
     expect(html).toContain('<option value="trk-a">Track A</option>');
   });
 
-  it("carries the active ?day= forward as a hidden input, so filtering never jumps the reader off their day", async () => {
+  it("carries the active ?day= forward as a hidden input on /agenda, so filtering never jumps the reader off their day", async () => {
     installFakeCaches();
-    const app = buildSurfaceApp("schedule", FULL_AGENDA_ROWS, TRACKS);
-    const res = await app.request("/e/conf/schedule?day=2026-08-10", {}, TEST_ENV);
+    const app = buildSurfaceApp("agenda", FULL_AGENDA_ROWS, TRACKS);
+    const res = await app.request("/e/conf/agenda?day=2026-08-10", {}, TEST_ENV);
     const html = await res.text();
-    const formMatch = html.match(/<form class="chq-pub-searchform" method="get" action="\/e\/conf\/schedule" role="search">[\s\S]*?<\/form>/);
+    const formMatch = html.match(/<form class="chq-pub-searchform" method="get" action="\/e\/conf\/agenda" role="search">[\s\S]*?<\/form>/);
     expect(formMatch).not.toBeNull();
     expect(formMatch![0]).toContain('<input type="hidden" name="day" value="2026-08-10"/>');
   });

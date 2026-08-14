@@ -3,6 +3,7 @@
 // (contention decomposition, wave 66) — no behavior change.
 
 import { MAX_ITINERARY_IDS, itineraryStorageKey, mergeItinerarySelection, mirrorItineraryCheckboxes } from "../../lib/itinerary";
+import { computeSavedOverlaps } from "../../lib/overlap-lanes";
 
 /** Itinerary picker inline vanilla JS (DEC-022): reads/writes
  * localStorage chq_itinerary_<slug>, keeps the .ics download link's ?ids=
@@ -22,6 +23,7 @@ export function ItineraryScript(props: { eventSlug: string }) {
   var MAX_ITINERARY_IDS = ${MAX_ITINERARY_IDS};
   var __chqMerge = (${mergeItinerarySelection.toString()});
   var __chqMirror = (${mirrorItineraryCheckboxes.toString()});
+  var __chqOverlaps = (${computeSavedOverlaps.toString()});
   var key = ${JSON.stringify(storageKey)};
   var slug = ${JSON.stringify(props.eventSlug)};
   var stored = [];
@@ -48,35 +50,92 @@ export function ItineraryScript(props: { eventSlug: string }) {
     link.removeAttribute('aria-disabled');
     link.href = '/e/' + slug + '/schedule.ics?ids=' + encodeURIComponent(ids.join(','));
   }
-  // DEC-602: 'Show only my picks' toggle (/schedule only -- no-ops
-  // harmlessly if these elements aren't on the page). Filters the rendered
-  // list to the stored ids, shows a live count and an honest empty state,
-  // and drops a session the moment it's unchecked (see applyPicksFilter
-  // call at the end of the change handler below).
-  var picksOnly = document.getElementById('chq-picks-only');
-  var picksCount = document.getElementById('chq-picks-only-count');
-  var picksEmpty = document.getElementById('chq-picks-empty');
-  var listItems = Array.prototype.slice.call(document.querySelectorAll('.chq-pub-agenda-list-item'));
-  var daySections = Array.prototype.slice.call(document.querySelectorAll('.chq-pub-schedule-day'));
-  function applyPicksFilter(){
+  // DEC-555 amendment (wave 1, task w1-d): /schedule's main column lists
+  // ONLY the saved rows (no server round-trip, no second store -- DEC-555's
+  // merge rule still stands). No-ops harmlessly on /agenda, which never
+  // renders any '.chq-pub-schedule-row' element. Each row carries
+  // data-day/-start-min/-end-min so __chqOverlaps can name every clash
+  // purely from the DOM's own attributes.
+  var scheduleRows = Array.prototype.slice.call(document.querySelectorAll('.chq-pub-schedule-row'));
+  var dayGroups = Array.prototype.slice.call(document.querySelectorAll('.chq-pub-schedule-day-group'));
+  var subtitleEl = document.getElementById('chq-schedule-subtitle');
+  var scheduleEmptyEl = document.getElementById('chq-schedule-empty');
+  var overlapsSectionEl = document.getElementById('chq-schedule-overlaps-section');
+  var overlapsHeadingEl = document.getElementById('chq-schedule-overlaps-heading');
+  var overlapsBodyEl = document.getElementById('chq-schedule-overlaps-body');
+  function applyScheduleView(){
+    if (scheduleRows.length === 0) return;
     var ids = currentIds();
-    if (picksCount) { picksCount.textContent = String(ids.length); }
-    var on = !!(picksOnly && picksOnly.checked);
-    Array.prototype.forEach.call(listItems, function(li){
-      var id = li.getAttribute('data-submission-id');
-      li.style.display = (!on || ids.indexOf(id) !== -1) ? '' : 'none';
+    var idSet = {};
+    for (var i = 0; i < ids.length; i += 1) { idSet[ids[i]] = true; }
+    var saved = [];
+    Array.prototype.forEach.call(scheduleRows, function(row){
+      var id = row.getAttribute('data-submission-id');
+      var isSaved = !!idSet[id];
+      row.style.display = isSaved ? '' : 'none';
+      var clashEl = row.querySelector('.chq-pub-schedule-row-clash');
+      if (clashEl) { clashEl.hidden = true; clashEl.textContent = ''; }
+      if (isSaved) {
+        var titleEl = row.querySelector('.chq-pub-schedule-row-title');
+        saved.push({
+          id: id,
+          title: titleEl ? titleEl.textContent : '',
+          day: row.getAttribute('data-day') || '',
+          startMin: parseInt(row.getAttribute('data-start-min') || '0', 10),
+          endMin: parseInt(row.getAttribute('data-end-min') || '0', 10),
+        });
+      }
     });
-    Array.prototype.forEach.call(daySections, function(sec){
-      var items = sec.querySelectorAll('.chq-pub-agenda-list-item');
-      var anyVisible = Array.prototype.some.call(items, function(li){ return li.style.display !== 'none'; });
-      sec.style.display = (on && !anyVisible) ? 'none' : '';
+    var overlap = __chqOverlaps(saved);
+    Array.prototype.forEach.call(scheduleRows, function(row){
+      var id = row.getAttribute('data-submission-id');
+      var clashTitles = overlap.clashesById[id];
+      if (!clashTitles || clashTitles.length === 0) return;
+      var clashEl = row.querySelector('.chq-pub-schedule-row-clash');
+      if (!clashEl) return;
+      clashEl.hidden = false;
+      clashEl.textContent = clashTitles.length === 1 ? ('Overlaps ' + clashTitles[0]) : ('Overlaps ' + clashTitles.length + ' sessions');
     });
-    if (picksEmpty) { picksEmpty.hidden = !(on && ids.length === 0); }
+    Array.prototype.forEach.call(dayGroups, function(group){
+      var rows = group.querySelectorAll('.chq-pub-schedule-row');
+      var visibleCount = 0;
+      Array.prototype.forEach.call(rows, function(r){ if (r.style.display !== 'none') { visibleCount += 1; } });
+      group.style.display = visibleCount === 0 ? 'none' : '';
+      var countEl = group.querySelector('.chq-pub-schedule-day-count');
+      if (countEl) { countEl.textContent = String(visibleCount); }
+    });
+    if (subtitleEl) {
+      var overlapWord = overlap.pairCount === 1 ? 'overlap' : 'overlaps';
+      subtitleEl.textContent = saved.length + ' saved · ' + overlap.pairCount + ' ' + overlapWord;
+    }
+    if (scheduleEmptyEl) { scheduleEmptyEl.hidden = saved.length !== 0; }
+    if (overlapsSectionEl) { overlapsSectionEl.hidden = overlap.pairCount === 0; }
+    if (overlapsHeadingEl) {
+      overlapsHeadingEl.textContent = overlap.pairCount === 1 ? '1 overlap' : (overlap.pairCount + ' overlaps');
+    }
+    if (overlapsBodyEl) {
+      while (overlapsBodyEl.firstChild) { overlapsBodyEl.removeChild(overlapsBodyEl.firstChild); }
+      var seenPairs = {};
+      for (var s = 0; s < saved.length; s += 1) {
+        var item = saved[s];
+        var titles = overlap.clashesById[item.id];
+        if (!titles) continue;
+        for (var t = 0; t < titles.length; t += 1) {
+          var otherTitle = titles[t];
+          var pairKey = [item.title, otherTitle].sort().join('|') + '|' + item.day;
+          if (seenPairs[pairKey]) continue;
+          seenPairs[pairKey] = true;
+          var line = document.createElement('span');
+          line.className = 'chq-pub-rail-caption';
+          line.textContent = item.title + ' overlaps ' + otherTitle + '.';
+          overlapsBodyEl.appendChild(line);
+        }
+      }
+    }
   }
   Array.prototype.forEach.call(boxes, function(b){ b.checked = stored.indexOf(b.value) !== -1; });
   updateLink(stored);
-  applyPicksFilter();
-  if (picksOnly) { picksOnly.addEventListener('change', applyPicksFilter); }
+  applyScheduleView();
   document.addEventListener('change', function(e){
     if (!e.target || !e.target.classList || !e.target.classList.contains('chq-itinerary-toggle')) return;
     // THE TRAP (DEC-584): currentIds() below is "every checked box" across
@@ -92,7 +151,7 @@ export function ItineraryScript(props: { eventSlug: string }) {
     var ids = __chqMerge(latestStored, allRenderedIds, currentIds());
     localStorage.setItem(key, JSON.stringify(ids));
     updateLink(ids);
-    applyPicksFilter();
+    applyScheduleView();
   });
 })();`;
   return <script dangerouslySetInnerHTML={{ __html: js }} />;
