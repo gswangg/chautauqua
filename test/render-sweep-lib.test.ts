@@ -850,7 +850,10 @@ describe("DEC-991 heading line-heights (>= 1.15)", () => {
 
   const cases: Array<{ file: string; selector: string }> = [
     { file: "../src/routes/portal/portal.css.ts", selector: ".chq-portal-hero" },
-    { file: "../src/routes/public/public.css.ts", selector: ".chq-pub-header-title" },
+    // .chq-pub-header-title lives in public.css.ts's chrome fragment (wave-68
+    // contention decomposition, src/routes/public/css/chrome.css.ts) rather
+    // than inline in public.css.ts itself.
+    { file: "../src/routes/public/css/chrome.css.ts", selector: ".chq-pub-header-title" },
     { file: "../src/routes/public/cfp.css.ts", selector: ".chq-cfp-title" },
     { file: "../src/routes/auth.css.ts", selector: ".chq-auth-title" },
     { file: "../src/routes/public/home.css.ts", selector: ".chq-home-hero h1" },

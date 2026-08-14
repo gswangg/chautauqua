@@ -1,0 +1,159 @@
+// Part of PUBLIC_CSS (DEC-373/DEC-374, see public.css.ts) -- split out by
+// the structure custodian (contention decomposition, was 920 lines in one
+// file) into cohesive fragments assembled back together in public.css.ts.
+// This fragment: page chrome -- the search/filter row, the event header,
+// main gutter, and the shared filter-bar/pill controls.
+//
+// CHROME_CSS is a fixed, value-free module constant, exactly like the
+// PUBLIC_CSS it composes into (DEC-374) -- never interpolated with
+// request/user data.
+export const CHROME_CSS = `
+  /* DEC-253: mobile bar (390x844) -- nav/filter/submit controls stay
+     reachable and tap-target-sized, and wrap instead of overflowing.
+     Unquoted attribute selectors: dangerouslySetInnerHTML writes this
+     string to the DOM verbatim, so quoting would be safe here too, but we
+     keep the unquoted convention from THEME_CSS/shell.tsx for consistency
+     across every SSR surface stylesheet. */
+  /* DEC-919 amendment (wave 40): a .chq-visually-hidden element is off-
+     screen but still in the a11y tree and still reachable/focusable -- used
+     for PublicSearchBox's label and submit button, which must announce
+     themselves to assistive tech and keep the form usable without JS while
+     never drawing a visible label/button next to the compact input. */
+  .chq-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* DEC-919 amendment (wave 40): the ONE row every public list surface
+     stacks its narrowing controls into -- PublicSearchBox's compact input
+     first, then every PublicFilterBar pill nav for that surface, inline,
+     wrapping instead of three separately ruled rows. */
+  .chq-pub-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--chq-rule);
+    padding-bottom: 14px;
+    margin-bottom: 14px;
+  }
+  .chq-pub-filter-row .chq-pub-filter-bar {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+  .chq-pub-searchform {
+    display: flex;
+    align-items: center;
+  }
+  .chq-pub-search {
+    width: 259px;
+    height: 40px;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-pill);
+    padding: 0 14px;
+    font-size: 13px;
+    color: var(--chq-ink);
+  }
+
+  /* DEC-990 amendment (wave 64): the speakers surface's ONE facet -- a
+     quiet 'All tracks' select on the title row. Minimal styling only;
+     w64-b's shared PublicFilterSelects component is expected to supersede
+     this rule set (same class names) once it lands. */
+  .chq-pub-select-form {
+    display: flex;
+    align-items: center;
+  }
+  /* DEC-851 (wave 64 amendment): the agenda/schedule control row's track
+     control -- a real select element (the shared .chq-pub-select rule just
+     below) plus a Clear link shown only while a track is selected,
+     replacing the pill-bar track filter these two surfaces used to render
+     (track is a highlight on these surfaces now, never a filter -- see the
+     DEC-851 amendment). */
+  .chq-pub-track-highlight {
+    display: inline-flex;
+    align-items: center;
+  }
+  .chq-pub-select {
+    height: 40px;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-ctl);
+    padding: 0 10px;
+    font-size: 13px;
+    color: var(--chq-ink);
+    background: var(--chq-surface);
+  }
+  .chq-pub-select-clear {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--chq-ink-2);
+    text-decoration: underline;
+    margin-left: 8px;
+  }
+
+  /* Public event chrome (DEC-369/DEC-366: header carries the event's own
+     dates/venue + name, above the shared .chq-nav from THEME_CSS). */
+  .chq-pub-header {
+    border-bottom: 1px solid var(--chq-ink);
+    padding: 22px 34px 18px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+    background: var(--chq-paper);
+  }
+  .chq-pub-header-meta { display: flex; flex-direction: column; gap: 6px; }
+  .chq-pub-header-dates {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
+  }
+  .chq-pub-header-title {
+    font-family: var(--chq-font-display);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1.2;
+    color: var(--chq-ink);
+  }
+  .chq-pub-header-logo { height: 40px; }
+
+  main.chq-pub-main { padding: 26px 34px 34px; }
+
+  .chq-pub-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--chq-rule);
+    padding-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .chq-pub-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-pill);
+    padding: 0 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--chq-ink-2);
+    text-decoration: none;
+  }
+  .chq-pub-pill[aria-current=true] {
+    background: var(--chq-ink);
+    color: var(--chq-on-ink);
+    border-color: var(--chq-ink);
+    font-weight: 600;
+  }
+
+`;
