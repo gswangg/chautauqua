@@ -27,6 +27,7 @@ import {
   checkEpochOrder,
   deepEqual,
   requireOwnedPlan,
+  MAX_PLAN_ROUNDS,
 } from "./shared";
 
 export const reviewPlansCrudRoutes = new Hono<AppEnv>();
@@ -250,6 +251,12 @@ reviewPlansCrudRoutes.post("/api/v1/plans/:id/waves", requireOrganizer, csrfJson
     throw new ApiError(
       "invalid",
       `Round ${plan.currentRound} has no submitted evaluations yet -- nothing is frozen, so edit this plan's criteria in place instead of starting a new wave`,
+    );
+  }
+  if (plan.rounds >= MAX_PLAN_ROUNDS) {
+    throw new ApiError(
+      "invalid",
+      `This plan has reached the maximum number of waves (${MAX_PLAN_ROUNDS} rounds) -- start a new plan instead of adding another wave`,
     );
   }
   const frozenCriteria = criteriaForRound(plan.criteria, roundCriteriaJsonOf(plan), plan.currentRound);

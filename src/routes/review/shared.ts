@@ -165,13 +165,19 @@ export function parseRoundCriteria(
   return out;
 }
 
-/** DEC-082: rounds must be a positive integer. On PATCH, also refuses to
- * shrink rounds below the plan's already-reached current_round (that would
- * strand a plan mid-round with nowhere to go). */
+/** DEC-082 (wave-43 amendment): rounds must be a positive integer, capped at
+ * MAX_PLAN_ROUNDS -- every reader (PlanEditor.tsx, ResultsTable.tsx) turns
+ * this count straight into `Array.from({ length: rounds })`, so an
+ * unbounded value is a client-side allocation DoS that permanently bricks
+ * the plan's editor and results pages. On PATCH, also refuses to shrink
+ * rounds below the plan's already-reached current_round (that would strand
+ * a plan mid-round with nowhere to go). */
+export const MAX_PLAN_ROUNDS = 10;
+
 export function parseRounds(body: Record<string, unknown>, errors: Record<string, string>, minAllowed?: number): number | undefined {
   const rounds = body.rounds;
-  if (!Number.isInteger(rounds) || (rounds as number) < 1) {
-    errors.rounds = "must be an integer >= 1";
+  if (!Number.isInteger(rounds) || (rounds as number) < 1 || (rounds as number) > MAX_PLAN_ROUNDS) {
+    errors.rounds = `must be an integer between 1 and ${MAX_PLAN_ROUNDS}`;
     return undefined;
   }
   if (minAllowed !== undefined && (rounds as number) < minAllowed) {
