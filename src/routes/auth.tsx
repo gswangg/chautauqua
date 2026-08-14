@@ -12,9 +12,11 @@ import { newId } from "../domain/ids";
 import { DUMMY_PASSWORD_HASH, hashPassword, verifyPassword } from "../auth/password";
 import { hashToken } from "../auth/tokens";
 import { issueSession, issueSessionRevokingAll } from "../server/auth-session";
-import { DEC_994 } from "../decisions";
+import { DEC_994, DEC_949, DEC_004 } from "../decisions";
 
 void DEC_994;
+void DEC_949;
+void DEC_004;
 import {
   buildSessionCookie,
   buildCsrfCookie,
@@ -43,7 +45,8 @@ import { getHubOrg, listHubEvents } from "../server/repo/public/home";
 import { listEventsForOrg } from "../server/repo/events";
 import { makeMailer } from "../server/context";
 import { resolveBaseUrl } from "../server/origin";
-import { escapeHtml } from "../lib/html-escape";
+import { renderTemplate } from "../mail/render";
+import { renderEmailHtml } from "../mail/shell";
 import { DEC_583, DEC_740, DEC_014, DEC_154, DEC_180 } from "../decisions";
 
 void DEC_583;
@@ -163,16 +166,18 @@ function AuthHead(props: { title: string }) {
 
 /** DEC-154 (wave 25 amendment): keyed on the query string, this is the ONE
  * owner of the login card's muted status line -- /logout's ?signed-out=1
- * today, task-w25-b's password-reset states share this exact function
- * rather than inventing a second status mechanism. Returns null when the
- * URL carries no recognized status. */
+ * today, the password-reset states share this exact function rather than
+ * inventing a second status mechanism. Returns null when the URL carries no
+ * recognized status. */
 export function loginStatusLine(url: string): string | null {
   const query = url.includes("?") ? url.slice(url.indexOf("?")) : "";
   const params = new URLSearchParams(query);
   if (params.get("signed-out") === "1") return "You have been signed out.";
-  // task-w25-b (DEC-014 wave-25 amendment): POST /reset/:token redirects
-  // here with ?reset=done on success.
-  if (params.get("reset") === "done") return "Your password has been changed. Sign in with it.";
+  // POST /reset/:token redirects here with ?password-reset=1 on success --
+  // DEC-994 (wave-27 amendment) revokes every session on a completed reset,
+  // so the user signs back in by hand rather than being carried straight
+  // into the dashboard.
+  if (params.get("password-reset") === "1") return "Your password has been changed. Sign in with it.";
   return null;
 }
 
@@ -379,7 +384,11 @@ function ForgotPasswordPage(props: { csrfToken: string; email?: string; error?: 
   );
 }
 
-function CheckEmailPage(props: { email: string }) {
+// DEC-004 (wave-27 amendment): this copy names no address and no account
+// state -- rendered for a known and an unknown email alike, with nothing in
+// the markup that differs between the two, so the page can never be used as
+// an account-enumeration oracle.
+function CheckEmailPage() {
   return (
     <html lang="en">
       <AuthHead title="Check your email - Chautauqua" />
@@ -388,7 +397,7 @@ function CheckEmailPage(props: { email: string }) {
           <div>
             <h1 className="chq-auth-title">Check your email</h1>
             <div className="chq-auth-subtitle">
-              If {props.email} has an account, a reset link is on its way.
+              If that address has an account, a reset link is on its way.
             </div>
           </div>
           <div className="chq-auth-footer">
@@ -479,38 +488,28 @@ function ExpiredResetPage() {
   );
 }
 
-/** DEC-014 (wave-25 amendment) / B9 shell: the emailed reset link's HTML,
- * a self-contained 560px-measure paper card matching the SSR auth-card
- * vocabulary (olive #4E5C31 button, no other colour), inline-styled since
- * email clients don't load an external stylesheet. Every dynamic value is
- * escapeHtml'd (DEC-037: outbound email HTML never embeds raw user/merge-
- * field content unescaped). `eventName` is the deployment's single event
- * when resolvable (DEC-740's loadSingleEventContext), else a generic
- * "your Chautauqua account" footer line -- there is no other candidate
- * name to attribute the send to. */
-function resetEmailHtml(opts: { resetUrl: string; eventName: string | null }): string {
-  const safeUrl = escapeHtml(opts.resetUrl);
-  const reasonLine = opts.eventName
-    ? `You're receiving this because you have an account for ${escapeHtml(opts.eventName)}.`
-    : "You're receiving this because you have a Chautauqua account.";
-  return [
-    '<div style="max-width:560px;margin:0 auto;font-family:sans-serif;color:#1B1D17;">',
-    '<div style="border:1px solid #D3CFC0;border-radius:8px;padding:32px;background:#FAF8F2;">',
-    '<h1 style="font-size:20px;margin:0 0 12px;">Reset your password</h1>',
-    '<p style="font-size:15px;line-height:1.6;margin:0 0 24px;">Click the button below to choose a new password. This link expires in one hour and works once.</p>',
-    `<a href="${safeUrl}" style="display:inline-block;background:#4E5C31;color:#F7F9F0;border-radius:4px;padding:12px 22px;font-size:14px;font-weight:700;text-decoration:none;">Set a new password</a>`,
-    `<p style="font-size:13px;line-height:1.6;color:#565A4B;margin:24px 0 0;">If the button does not work, copy this link: ${safeUrl}</p>`,
-    "</div>",
-    `<p style="font-size:12px;color:#565A4B;margin:16px 0 0;">${reasonLine} If you did not request this, you can ignore this email.</p>`,
-    "</div>",
-  ].join("");
-}
+// DEC-014 (wave-25 amendment): the reset email's plain-text body, rendered
+// through renderTemplate (src/mail/render.ts) like every other outbound
+// email; the HTML body is the SAME text run through the shared B9 shell
+// (src/mail/shell.ts renderEmailHtml, DEC-037 wave-27 amendment) rather
+// than a bespoke wrapper -- never a bare textToHtml call
+// (test/email-shell-sweep.scan.test.ts enforces this repo-wide).
+// `eventName` is the deployment's single event when resolvable (DEC-740's
+// loadSingleEventContext), else a generic "your Chautauqua account" footer
+// line -- there is no other candidate name to attribute the send to.
+const RESET_EMAIL_TEMPLATE = `Set a new password
+
+Use this link to choose a new password. It expires in one hour and works once:
+{reset_link}
+
+{reason_line} If you did not request this, you can ignore this email.
+`;
 
 function resetEmailText(opts: { resetUrl: string; eventName: string | null }): string {
   const reasonLine = opts.eventName
     ? `You're receiving this because you have an account for ${opts.eventName}.`
     : "You're receiving this because you have a Chautauqua account.";
-  return `Reset your password\n\nUse this link to choose a new password (expires in one hour, works once):\n${opts.resetUrl}\n\n${reasonLine} If you did not request this, you can ignore this email.\n`;
+  return renderTemplate(RESET_EMAIL_TEMPLATE, { reset_link: opts.resetUrl, reason_line: reasonLine });
 }
 
 authRoutes.get("/login", async (c) => {
@@ -742,20 +741,25 @@ authRoutes.post("/forgot", csrfForm, async (c) => {
   const normalizedEmail = submittedEmail.toLowerCase();
   const now = Date.now();
 
-  // DEC-180: the SAME peek-then-conditionally-mutate shape as /login,
-  // keyed on the normalised email. A 429 here doesn't leak existence (it
-  // fires purely off request volume against one address, known or not).
-  const peek = await peekScopedLimit(db, "forgot", normalizedEmail, now, {
+  // DEC-004 (wave-27 amendment): there is no "failure" this handler can
+  // condition on without itself leaking account existence, so the budget
+  // is a single atomic check-and-increment (DEC-948) against the SUBMITTED
+  // email, run on every request regardless of outcome -- never a
+  // peek-then-conditionally-mutate shape (that would still branch on the
+  // rate-limit counter, but never on whether the account exists). A 429
+  // here fires purely off request volume against one address, known or
+  // not, so it doesn't leak existence either.
+  const limit = await checkAndIncrementScopedLimit(db, "password-reset", normalizedEmail, now, {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
     max: AUTH_RATE_LIMIT_MAX,
   });
-  if (!peek.ok) {
+  if (!limit.ok) {
     const { token: csrfToken } = ensureCsrfCookie(c);
     return c.html(<ForgotPasswordPage csrfToken={csrfToken} email={submittedEmail} error={RATE_LIMIT_ERROR} />, 429);
   }
 
-  // DEC-014 (wave-25 amendment): everything below this line is a
-  // server-side side effect (KV writes, the rate-limit counter, a
+  // DEC-014 (wave-25 amendment) / DEC-004 (wave-27 amendment): everything
+  // below this line is a server-side side effect (KV writes, a
   // best-effort email send) that must NEVER change the response — the
   // exact same <CheckEmailPage> is returned at the bottom of this handler
   // regardless of which branch below runs.
@@ -781,11 +785,17 @@ authRoutes.post("/forgot", csrfForm, async (c) => {
     if (anchorEvent) {
       try {
         const mailer = makeMailer(db, c.env);
+        const text = resetEmailText({ resetUrl, eventName: anchorEvent.name });
+        const html = renderEmailHtml(text, {
+          eventName: anchorEvent.name,
+          reason: "you requested a password reset for your account.",
+          cta: { label: "Set a new password", href: resetUrl },
+        });
         await mailer.send({
           to: { email: user.email, name: user.email },
-          subject: "Reset your password",
-          text: resetEmailText({ resetUrl, eventName: anchorEvent.name }),
-          html: resetEmailHtml({ resetUrl, eventName: anchorEvent.name }),
+          subject: "Set a new password",
+          text,
+          html,
           eventId: anchorEvent.id,
           contactId: user.contactId ?? null,
         });
@@ -793,20 +803,16 @@ authRoutes.post("/forgot", csrfForm, async (c) => {
         console.error("password reset email failed (token still minted):", err);
       }
     }
-
-    await resetScopedLimit(db, "forgot", normalizedEmail, now, AUTH_RATE_LIMIT_WINDOW_SECONDS);
   } else {
     // No account: burn a comparable SHA-256 cost to the mint path above
     // (DEC-004-style — never short-circuit past the work a real branch
-    // would do) and count this as a failed attempt against the budget.
+    // would do). The rate-limit budget above already counted this request
+    // regardless of outcome (checkAndIncrementScopedLimit), so there is no
+    // separate counter to advance here.
     await hashResetToken(newResetToken());
-    await incrementScopedLimit(db, "forgot", normalizedEmail, now, {
-      windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
-      max: AUTH_RATE_LIMIT_MAX,
-    });
   }
 
-  return c.html(<CheckEmailPage email={submittedEmail} />);
+  return c.html(<CheckEmailPage />);
 });
 
 authRoutes.get("/reset/:token", async (c) => {
@@ -881,13 +887,17 @@ authRoutes.post("/reset/:token", csrfForm, async (c) => {
   const now = new Date();
   await db.update(schema.user).set({ passwordHash, updatedAt: now }).where(eq(schema.user.id, user.id));
 
-  // DEC-994: a reset asserts the credential was LOST — the opposite of
-  // login's rotate-this-session-only rule — so every existing session for
-  // this user is revoked, and a fresh one is minted for this browser
-  // (mirrors POST /account/password and POST /claim/:token exactly).
-  const sessionToken = await issueSessionRevokingAll(db, user.id, now);
-  c.header("Set-Cookie", buildSessionCookie(sessionToken, { secure: isSecureRequest(c.req.url) }));
+  // DEC-994 (wave-27 amendment): a reset asserts the credential was LOST —
+  // the opposite of login's rotate-this-session-only rule — so every
+  // existing session for this user is revoked. Unlike POST /account/password
+  // and POST /claim/:token (both reached from an already-authenticated
+  // browser, or one that just proved control of an inbox mid-session), this
+  // request came from an anonymous browser that only proved control of an
+  // inbox; it does not carry the user back in on the new grant
+  // issueSessionRevokingAll mints — it discards that token and sends them to
+  // /login to sign in with the password they just set, where the status
+  // line names what happened.
+  await issueSessionRevokingAll(db, user.id, now);
 
-  const dest = user.role === "speaker" ? "/portal" : "/admin";
-  return c.redirect(dest, 302);
+  return c.redirect("/login?password-reset=1", 302);
 });

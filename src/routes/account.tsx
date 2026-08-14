@@ -20,16 +20,19 @@ import {
   CSRF_COOKIE_NAME,
 } from "../auth/cookies";
 import { issueSessionRevokingAll } from "../server/auth-session";
+import { revokeResetTokenForUser } from "../auth/password-reset";
+import type { KVStore } from "../auth/claim";
 import { ThemeStyles } from "../views/theme";
 import { AUTH_CSS } from "./auth.css";
 import { MIN_PASSWORD_LENGTH, AUTH_RATE_LIMIT_WINDOW_SECONDS, AUTH_RATE_LIMIT_MAX, RATE_LIMIT_ERROR } from "./auth";
 import { peekScopedLimit, incrementScopedLimit, resetScopedLimit } from "../server/repo/rate-limit";
-import { DEC_740, DEC_994, DEC_180 } from "../decisions";
+import { DEC_740, DEC_994, DEC_180, DEC_949 } from "../decisions";
 
 void DEC_180;
 
 void DEC_740;
 void DEC_994;
+void DEC_949;
 
 export const accountRoutes = new Hono<AppEnv>();
 
@@ -218,6 +221,14 @@ accountRoutes.post("/account/password", requireAuthOr302, csrfForm, async (c) =>
   }
 
   await resetScopedLimit(db, "password-change", auth.userId, rateLimitNow, AUTH_RATE_LIMIT_WINDOW_SECONDS);
+
+  // DEC-949 (wave-29 amendment): recovering the credential through ANY path
+  // settles the claim a password-reset token asserts, so an outstanding
+  // reset grant is revoked FIRST — before the write — so a failed update
+  // never leaves a live one-hour takeover link outstanding. Not best-effort:
+  // a KV error propagates (fail loudly).
+  const kv = c.env.KV as unknown as KVStore;
+  await revokeResetTokenForUser(kv, auth.userId);
 
   const passwordHash = await hashPassword(next);
   const now = new Date();
