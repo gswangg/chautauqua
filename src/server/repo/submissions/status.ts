@@ -30,7 +30,7 @@ void DEC_932; // back-fill pass below: every participantContactIds member gets E
  * contactId) in the same statement — half of ID_CHUNK_SIZE's 90-per-list
  * budget (45 + 45 = 90) leaves the same headroom under MAX_D1_BOUND_PARAMS
  * that ID_CHUNK_SIZE leaves for a single-list inArray. */
-const PAIR_ID_CHUNK_SIZE = 45;
+export const PAIR_ID_CHUNK_SIZE = 45;
 
 function chunkBySize<T>(items: T[], size: number): T[][] {
   const out: T[][] = [];

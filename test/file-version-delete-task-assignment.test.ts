@@ -41,6 +41,9 @@ create table file (
   previous_file_id text,
   version_no integer,
   uploaded_by_contact_id text,
+  -- migrations/0035_file_task_assignment.sql (DEC-248 amendment, wave 10):
+  -- insertFile now writes this column, so the in-memory mirror needs it.
+  task_assignment_id text,
   created_at integer,
   updated_at integer
 );

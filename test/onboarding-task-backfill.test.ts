@@ -23,6 +23,7 @@ import * as schema from "../src/db/schema";
 import { updateSubmissionStatuses, ensureOnboardingTasks } from "../src/server/repo/submissions";
 import { DEFAULT_ONBOARDING_TASKS } from "../src/domain/acceptance";
 import { chunkIds } from "../src/lib/chunk";
+import { PAIR_ID_CHUNK_SIZE } from "../src/server/repo/submissions/status";
 import type { Db } from "../src/server/context";
 
 type CtxEntry = { table: unknown; row: any };
@@ -309,8 +310,12 @@ describe("DEC-932: activation back-fills every event task onto participantContac
   });
 });
 
+function chunkCount(total: number, size: number): number {
+  return Math.ceil(total / size);
+}
+
 describe("DEC-932 back-fill pass query count: no query per contact, no query per task", () => {
-  it("holds the query count EQUAL when the event's task count grows from 1 to 300, contacts held fixed", async () => {
+  it("scales the existing-pairs select by TASK CHUNK count when the event's task count grows from 1 to 300", async () => {
     async function runWithTaskCount(taskCount: number): Promise<number> {
       const tasks = Array.from({ length: taskCount }, (_, i) => ({
         id: `task-${i}`,
@@ -333,10 +338,14 @@ describe("DEC-932 back-fill pass query count: no query per contact, no query per
     const small = await runWithTaskCount(1);
     const large = await runWithTaskCount(300);
     // The event-task-id select is ONE unchunked read regardless of how many
-    // task rows exist, and the existing-pairs select is chunked by CONTACT
-    // (chunkIds), never by task count — so growing the event's task roster
-    // 300x must not add a single extra query.
-    expect(large).toBe(small);
+    // task rows exist. The existing-pairs select binds BOTH id lists in the
+    // same statement, so DEC-078 forces both dimensions to be chunked
+    // (PAIR_ID_CHUNK_SIZE each, DEC-528 amendment wave 10): growing the task
+    // roster 300x adds one query per extra TASK CHUNK (with contacts held at
+    // one chunk), never one per task — 300 tasks is 299 more tasks but only
+    // 6 more chunks.
+    const taskChunkDelta = chunkCount(300, PAIR_ID_CHUNK_SIZE) - chunkCount(1, PAIR_ID_CHUNK_SIZE);
+    expect(large - small).toBe(taskChunkDelta);
   });
 
   it("scales the contact-chunked existing-pairs select by chunk count (DEC-078), never one-per-contact", async () => {
@@ -355,11 +364,16 @@ describe("DEC-932 back-fill pass query count: no query per contact, no query per
 
     const oneContact = await runWithContactCount(1);
     const manyContacts = await runWithContactCount(300);
-    const chunkDelta = chunkIds(contactIds(300, "contact")).length - chunkIds(contactIds(1, "contact")).length;
     // Both the first-pass existing-titles read and the DEC-932 back-fill's
     // existing-pairs read are chunked by contact — each adds exactly one
     // extra query per extra chunk (never one per extra CONTACT: 300 contacts
-    // is 299 more contacts but only 3 more chunks).
-    expect(manyContacts - oneContact).toBe(chunkDelta * 2);
+    // is 299 more contacts but only a handful more chunks). They chunk at
+    // DIFFERENT sizes: the first pass binds one id list (ID_CHUNK_SIZE via
+    // chunkIds), the back-fill's pairs read binds two in one statement so it
+    // halves the budget per list (PAIR_ID_CHUNK_SIZE, DEC-528 amendment wave
+    // 10). One task here means the task dimension is a single chunk.
+    const titlesChunkDelta = chunkIds(contactIds(300, "contact")).length - chunkIds(contactIds(1, "contact")).length;
+    const pairsChunkDelta = chunkCount(300, PAIR_ID_CHUNK_SIZE) - chunkCount(1, PAIR_ID_CHUNK_SIZE);
+    expect(manyContacts - oneContact).toBe(titlesChunkDelta + pairsChunkDelta);
   });
 });
