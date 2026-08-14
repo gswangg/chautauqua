@@ -589,7 +589,7 @@ describe('OnboardingGrid: DEC-934 amendment names the active narrowing', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Overdue only' }));
     await waitFor(() => {
-      expect(screen.getByText('Showing 2 of 2 speakers - overdue')).toBeInTheDocument();
+      expect(screen.getByText('Showing 2 of 2 speakers · overdue')).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Overdue only' }));
@@ -610,7 +610,7 @@ describe('OnboardingGrid: DEC-934 amendment names the active narrowing', () => {
     fireEvent.change(screen.getByRole('combobox', { name: 'Any task status' }), { target: { value: 'pending' } });
 
     await waitFor(() => {
-      expect(screen.getByText("Showing 2 of 2 speakers - at least one pending task")).toBeInTheDocument();
+      expect(screen.getByText("Showing 2 of 2 speakers · at least one pending task")).toBeInTheDocument();
     });
   });
 
@@ -628,8 +628,42 @@ describe('OnboardingGrid: DEC-934 amendment names the active narrowing', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('Showing 2 of 2 speakers - overdue and participation declined'),
+        screen.getByText('Showing 2 of 2 speakers · overdue and participation declined'),
       ).toBeInTheDocument();
+    });
+  });
+});
+
+// w7-f: the toolbar's constraint caption must name the real skip rule
+// planManualReminders applies (src/domain/reminders.ts:20,175 --
+// MANUAL_DEDUPE_WINDOW_MS, one hour), and must use the middot separator
+// every sibling caption in this product uses, not an ASCII hyphen.
+describe('OnboardingGrid: toolbar caption names the actual reminder skip rule', () => {
+  it('reads "Skips anyone reminded in the last hour", matching Overview\'s caption for the same rule', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    expect(screen.getByText('Skips anyone reminded in the last hour')).toBeInTheDocument();
+  });
+
+  it('separates the narrowing caption clauses with a middot, not an ASCII hyphen', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Overdue only' }));
+    await waitFor(() => {
+      expect(screen.getByText('Showing 2 of 2 speakers · overdue')).toBeInTheDocument();
+      expect(screen.queryByText(/Showing 2 of 2 speakers - overdue/)).not.toBeInTheDocument();
     });
   });
 });
