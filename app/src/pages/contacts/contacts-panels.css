@@ -400,6 +400,17 @@
   margin: 0 0 12px;
 }
 
+/* DEC-711 amendment (wave 40): the "Showing X of N / Show all N" footer
+   that pages the remainder of an org's duplicate groups past row 200 in --
+   same idiom as review.css's chq-review-queue-footer. */
+.chq-contacts-duplicates-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 8px;
+}
+
 .chq-contacts-duplicate-names {
   font-size: 14px;
   font-weight: 600;

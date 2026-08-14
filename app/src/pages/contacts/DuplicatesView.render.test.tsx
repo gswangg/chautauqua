@@ -57,6 +57,23 @@ const NAME_ONLY_GROUP = {
   ],
 };
 
+// DEC-711 amendment (wave 40): synthetic groups for past-row-200 coverage --
+// unique contactIds per index so a specific group's merge link is checkable
+// after "Show all" appends a second page.
+function generateGroups(count: number, offset: number) {
+  return Array.from({ length: count }, (_, i) => {
+    const n = offset + i;
+    return {
+      contactIds: [`ct-${n}-a`, `ct-${n}-b`],
+      reason: 'email' as const,
+      contacts: [
+        { id: `ct-${n}-a`, firstName: 'Dup', lastName: `${n}`, email: `dup${n}a@example.com`, company: null },
+        { id: `ct-${n}-b`, firstName: 'Dup', lastName: `${n}`, email: `dup${n}b@example.com`, company: null },
+      ],
+    };
+  });
+}
+
 afterEach(() => {
   cleanup();
 });
@@ -192,6 +209,110 @@ describe('DuplicatesView render (DEC-684: merge moved to its own page)', () => {
     expect(screen.queryByText(/Jane Doe/)).not.toBeInTheDocument();
     expect(screen.getByText(/Sam Ng/)).toBeInTheDocument();
     expect(screen.getByText('Marked as not a duplicate.')).toBeInTheDocument();
+  });
+});
+
+// DEC-711 amendment (wave 40): the tab must state the server's true total
+// (never the loaded page's length) and every group past row 200 must stay
+// reachable via a DEC-845-style "Showing X of N / Show all N" affordance.
+describe('DuplicatesView render (DEC-711 amendment wave 40: total-backed count + Show all)', () => {
+  it('renders the envelope total, not the loaded page length, plus the Showing/Show-all line', async () => {
+    const page1 = generateGroups(200, 0);
+    mockApi({
+      'GET /api/v1/contacts/duplicates': listEnvelope(page1, { total: 612, perPage: 200 }),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <DuplicatesView onMerged={() => {}} />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Possible duplicates/).closest('h2')).toHaveTextContent('· 612');
+    });
+    expect(screen.getByText('Showing 200 of 612')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Show all 612' })).toBeInTheDocument();
+  });
+
+  it('Show all issues the page-2 request and appends its groups, so a page-2 group renders with its merge link', async () => {
+    const page1 = generateGroups(200, 0);
+    const page2 = generateGroups(12, 200);
+    let call = 0;
+    const fetchMock = mockApi({
+      'GET /api/v1/contacts/duplicates': () => {
+        call += 1;
+        if (call === 1) return listEnvelope(page1, { total: 612, perPage: 200 });
+        if (call === 2) return listEnvelope(page2, { total: 612, perPage: 200 });
+        return listEnvelope([], { total: 612, perPage: 200 });
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <DuplicatesView onMerged={() => {}} />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Show all 612' })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show all 612' }));
+
+    await waitFor(() => {
+      const links = screen.getAllByRole('link', { name: 'Merge' });
+      const target = links.find((l) => l.getAttribute('href') === '/contacts/merge?ids=ct-200-a,ct-200-b');
+      expect(target).toBeDefined();
+    });
+
+    const page2Call = fetchMock.mock.calls.find(([input]) =>
+      (typeof input === 'string' ? input : input.toString()).includes('page=2'),
+    );
+    expect(page2Call).toBeDefined();
+
+    // The affordance itself is gone once every group is loaded.
+    expect(screen.queryByRole('button', { name: /Show all/ })).not.toBeInTheDocument();
+  });
+
+  it('Keep both decrements the stated total by exactly one, past row 200', async () => {
+    const page1 = generateGroups(200, 0);
+    mockApi({
+      'GET /api/v1/contacts/duplicates': listEnvelope(page1, { total: 612, perPage: 200 }),
+      'POST /api/v1/contacts/duplicates/dismiss': { ok: true },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <DuplicatesView onMerged={() => {}} />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Possible duplicates/).closest('h2')).toHaveTextContent('· 612');
+    });
+
+    const keepBothButtons = screen.getAllByRole('button', { name: 'Keep both' });
+    fireEvent.click(keepBothButtons[0]!);
+
+    expect(screen.getByText(/Possible duplicates/).closest('h2')).toHaveTextContent('· 611');
+  });
+
+  it('renders no Show-all affordance when the org total fits on one page', async () => {
+    mockApi({
+      'GET /api/v1/contacts/duplicates': listEnvelope([GROUP, SECOND_GROUP]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <DuplicatesView onMerged={() => {}} />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Possible duplicates/).closest('h2')).toHaveTextContent('· 2');
+    });
+    expect(screen.queryByRole('button', { name: /Show all/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Showing/)).not.toBeInTheDocument();
   });
 });
 
