@@ -662,41 +662,144 @@
 .chq-speaker-detail-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-}
-
-.chq-speaker-detail-topbar {
-  display: flex;
+  gap: 22px;
 }
 
 .chq-speaker-detail-back {
   font-size: 13px;
 }
 
+/* DEC-930 amendment (wave 26): the header row -- identity (headshot + name)
+   on the left, the promoted participation control + Email + Remind on the
+   right. The participation control lives HERE, never restated as a body
+   paragraph below. */
 .chq-speaker-detail-head {
   display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.chq-speaker-detail-identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.chq-speaker-detail-headshot-wrap {
+  display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 4px;
+}
+
+.chq-speaker-detail-headshot,
+.chq-speaker-detail-headshot-placeholder {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--chq-surface-sunk);
+  border: 1px solid var(--chq-rule);
+}
+
+.chq-speaker-detail-headshot-download {
+  font-size: 11px;
+}
+
+.chq-speaker-detail-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
 .chq-speaker-detail-subtitle {
   margin: 0;
 }
 
-.chq-speaker-detail-participation {
-  margin: 0;
+.chq-speaker-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* DEC-930 amendment (wave 26): the 1180 pair -- a flexible 820px reading
+   column plus a 300px rail, 60px gap (820 + 60 + 300 = 1180). No max-width
+   of its own -- the page root's own chq-measure-table clamp is the outer
+   bound (WIDTH BEATS MAX-WIDTH: a nested clamp here would just fight it). */
+.chq-speaker-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 820px) 300px;
+  gap: 60px;
+  align-items: start;
+}
+
+.chq-speaker-detail-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.chq-speaker-detail-rail {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .chq-speaker-detail-sessions,
-.chq-speaker-detail-tasks {
+.chq-speaker-detail-tasks,
+.chq-speaker-detail-files {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
 .chq-speaker-detail-sessions-table,
-.chq-speaker-detail-tasks-table {
+.chq-speaker-detail-tasks-table,
+.chq-speaker-detail-files-table {
   width: 100%;
+}
+
+.chq-speaker-detail-task-remind {
+  font-size: 12px;
+}
+
+.chq-speaker-detail-contact-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 4px;
+}
+
+.chq-speaker-detail-other-events-list {
+  list-style: none;
+  margin: 0;
+  padding: 12px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chq-speaker-detail-other-events-list li {
+  font-size: 14px;
+  border-bottom: 1px solid var(--chq-rule);
+  padding-bottom: 8px;
+}
+
+.chq-speaker-detail-other-events-list li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.chq-speaker-detail-notes-body {
+  margin: 0;
+  padding-top: 4px;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .chq-speaker-detail-required {

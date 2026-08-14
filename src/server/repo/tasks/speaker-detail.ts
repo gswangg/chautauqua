@@ -7,7 +7,7 @@
 // (w23-f) building the page against it — do not change these shapes without
 // re-checking that decision.
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
@@ -16,6 +16,10 @@ import { DEC_930 } from "../../../decisions";
 
 void DEC_930; // this file is the ONE bounded GET DEC-930 mandates.
 
+// DEC-930 amendment (wave 26): cross-event history is a COUNT plus up to
+// five names, never an unbounded query on a detail page.
+const OTHER_EVENTS_LIMIT = 5;
+
 export interface SpeakerDetailContact {
   id: string;
   name: string;
@@ -23,6 +27,17 @@ export interface SpeakerDetailContact {
   company: string | null;
   title: string | null;
   hasAccount: boolean;
+  phone: string | null;
+  notes: string | null;
+  // Parsed out of contact.headshotUrl (stored as `/headshots/<fileId>` --
+  // see repo/profile.ts) rather than a dedicated column, so this stays the
+  // one place a headshot URL turns into a bare id.
+  headshotFileId: string | null;
+}
+
+export interface SpeakerDetailOtherEvent {
+  eventId: string;
+  name: string;
 }
 
 export interface SpeakerDetailParticipation {
@@ -78,6 +93,21 @@ export interface SpeakerDetail {
   sessions: SpeakerDetailSession[];
   tasks: SpeakerDetailTask[];
   counts: SpeakerDetailCounts;
+  otherEvents: SpeakerDetailOtherEvent[];
+  otherEventsCount: number;
+}
+
+/** Parses `/headshots/<fileId>` (the exact shape repo/profile.ts's
+ * setHeadshot writes) back into a bare file id -- fails loudly on any other
+ * shape rather than guessing, since a malformed stored URL is a bug, not a
+ * "no headshot" state. */
+function parseHeadshotFileId(headshotUrl: string | null): string | null {
+  if (headshotUrl === null) return null;
+  const prefix = "/headshots/";
+  if (!headshotUrl.startsWith(prefix) || headshotUrl.length <= prefix.length) {
+    throw new Error(`speaker detail: headshotUrl '${headshotUrl}' does not match the expected /headshots/<fileId> shape`);
+  }
+  return headshotUrl.slice(prefix.length);
 }
 
 /** Builds the DEC-930 per-speaker detail payload for one contact on one
@@ -100,6 +130,9 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
       email: schema.contact.email,
       company: schema.contact.company,
       title: schema.contact.title,
+      phone: schema.contact.phone,
+      notes: schema.contact.notes,
+      headshotUrl: schema.contact.headshotUrl,
       userId: schema.user.id,
     })
     .from(schema.contact)
@@ -231,6 +264,35 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
   const primary = participantRows[0];
   if (!primary) throw new Error("speaker detail: participantRows unexpectedly empty after length check");
 
+  // DEC-930 amendment (wave 26): cross-event history -- every OTHER event
+  // (same org, since a contact never spans orgs) this contact has a
+  // participant row on, one row per event via a DISTINCT-by-event pass in
+  // JS (the join is still ONE query, never a query per event), newest
+  // event first, capped to OTHER_EVENTS_LIMIT with the true count reported
+  // separately rather than silently truncated.
+  const otherEventRows = await db
+    .select({
+      eventId: schema.event.id,
+      eventName: schema.event.name,
+      eventStartDate: schema.event.startDate,
+    })
+    .from(schema.submission)
+    .innerJoin(schema.participant, eq(schema.participant.submissionId, schema.submission.id))
+    .innerJoin(schema.event, eq(schema.event.id, schema.submission.eventId))
+    .where(and(eq(schema.participant.contactId, contactId), ne(schema.submission.eventId, eventId)))
+    .orderBy(schema.event.startDate);
+
+  const otherEventsByEvent = new Map<string, { eventId: string; name: string; startDate: string }>();
+  for (const r of otherEventRows) {
+    if (!otherEventsByEvent.has(r.eventId)) {
+      otherEventsByEvent.set(r.eventId, { eventId: r.eventId, name: r.eventName, startDate: r.eventStartDate });
+    }
+  }
+  const otherEventsSorted = [...otherEventsByEvent.values()].sort((a, b) => (a.startDate < b.startDate ? 1 : a.startDate > b.startDate ? -1 : 0));
+  const otherEvents: SpeakerDetailOtherEvent[] = otherEventsSorted
+    .slice(0, OTHER_EVENTS_LIMIT)
+    .map((e) => ({ eventId: e.eventId, name: e.name }));
+
   return {
     contact: {
       id: contactRow.id,
@@ -239,6 +301,9 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
       company: contactRow.company,
       title: contactRow.title,
       hasAccount: contactRow.userId != null,
+      phone: contactRow.phone,
+      notes: contactRow.notes,
+      headshotFileId: parseHeadshotFileId(contactRow.headshotUrl),
     },
     participation: {
       participantId: primary.participantId,
@@ -251,5 +316,7 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
       outstandingRequired,
       overdue: overdueRows.length,
     },
+    otherEvents,
+    otherEventsCount: otherEventsByEvent.size,
   };
 }
