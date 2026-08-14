@@ -8,6 +8,7 @@ import { ProgressPanel } from './ProgressPanel';
 import { buildResultsCsvHref } from './resultsCsv';
 import { ResultsTable } from './ResultsTable';
 import { DelayedLoading, useDelayedFlag } from '../../components/DelayedLoading';
+import { PageSkeleton } from '../../components/PageSkeleton';
 import './review.css';
 import type { EvaluationPlan, ProgressRow, Track } from './types';
 
@@ -145,11 +146,16 @@ export function PlanList() {
       });
   }, [eventId]);
 
+  // DEC-678: the page's MAIN region (this branch runs before anything else
+  // on the page has painted) renders PageSkeleton on the first frame, not a
+  // withheld DelayedLoading label -- the section-level `{loading &&
+  // <DelayedLoading />}` further down stays DelayedLoading since chrome
+  // (the title row above it) is already on screen by then.
   if (eventLoading) {
     return (
       <div className="chq-page chq-review-page chq-measure-table">
         <h1 className="chq-page-title">Review</h1>
-        <DelayedLoading />
+        <PageSkeleton variant="list" />
       </div>
     );
   }
