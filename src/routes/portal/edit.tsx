@@ -152,7 +152,15 @@ export function EditPage(props: {
     <PortalLayout branding={props.branding} csrfToken={csrfToken} speakerName={speakerName}>
       <PortalBackLink to={`/portal/submissions/${props.submissionId}`} />
       <h1 class="chq-portal-hero">Edit submission</h1>
-      <form method="post" action={`/portal/submissions/${props.submissionId}/edit`}>
+      {/* DEC-040 amendment (wave 70): this form's FormFieldsSection calls
+          below render a real <input type="file"> for any kind='file' field
+          (form-render.tsx's FieldControl has no read-only variant) even
+          though extractAnswers above explicitly never reads a file input
+          from the body (DEC-041 read-only display) -- enctype is added
+          defensively so a future re-upload path here never silently repeats
+          the exact urlencoded-drops-files bug this wave fixed on the portal
+          task form. */}
+      <form method="post" action={`/portal/submissions/${props.submissionId}/edit`} enctype="multipart/form-data">
         <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
         <div class="chq-section-label">Session</div>
         <FormFieldsSection fields={data.fields} section="session" answers={answers} errors={errors} isVisible={isVisible} />
@@ -250,7 +258,7 @@ function ParticipantsSection(props: {
         Added to this session. Your organiser puts co-presenters on the public site. They will not receive an email
         or invitation.
       </p>
-      <form method="post" action={`/portal/submissions/${submissionId}/participants`}>
+      <form method="post" action={`/portal/submissions/${submissionId}/participants`} enctype="multipart/form-data">
         <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
         <label class="chq-portal-field-label" for="cp-first-name">
           First name

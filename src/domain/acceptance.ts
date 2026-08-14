@@ -66,9 +66,10 @@ export function onboardingTaskDueDate(eventStartDate: string, dueDaysBeforeEvent
   return ms - dueDaysBeforeEventStart * 86_400_000;
 }
 
-/** DEC-008 form-field kinds usable in a field spec (no 'file' — the portal
- * task-form POST has no upload path). */
-export type FormTaskFieldKind = "text" | "long_text" | "dropdown" | "checkbox" | "number";
+/** DEC-008 form-field kinds usable in a field spec (DEC-040 amendment, wave
+ * 70: the portal task-form POST now has a real multipart upload path — see
+ * src/routes/portal/tasks.tsx's /tasks/:assignmentId/form handler). */
+export type FormTaskFieldKind = "text" | "long_text" | "dropdown" | "checkbox" | "number" | "file";
 
 export interface FormTaskFieldSpec {
   section: "speaker";
@@ -113,6 +114,7 @@ export const FORM_TASK_FIELD_SPECS: Readonly<Record<string, readonly FormTaskFie
       required: false,
     },
     { section: "speaker", kind: "long_text", label: "Notes", required: false },
+    { section: "speaker", kind: "file", label: "Receipt or booking confirmation", required: false },
   ],
 };
 

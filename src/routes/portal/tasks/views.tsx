@@ -249,7 +249,7 @@ export function TaskFormPage(props: {
       <PortalBackLink to="/portal/tasks" />
       <h1 class="chq-portal-hero">{assignment.title}</h1>
       {assignment.description ? <p class="chq-portal-sub">{assignment.description}</p> : null}
-      <form method="post" action={`/portal/tasks/${assignment.id}/form`}>
+      <form method="post" action={`/portal/tasks/${assignment.id}/form`} enctype="multipart/form-data">
         <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
         <FormFieldsSection fields={fields} section="session" answers={answers} errors={errors} isVisible={isVisible} />
         <FormFieldsSection fields={fields} section="speaker" answers={answers} errors={errors} isVisible={isVisible} />

@@ -44,6 +44,7 @@ import {
   getReplacesTarget,
   insertFile,
   insertFileComment,
+
   listFileChainVersions,
   listFileChainVersionsMany,
   listFileComments,
@@ -67,6 +68,7 @@ import { listFields } from "../../server/repo/forms";
 import { validateAnswers } from "../../forms/validate";
 import type { AnswerMap } from "../../forms/types";
 import { fieldInputName } from "../../views/form-render";
+import { extractFileAnswers } from "../../lib/submit-core";
 import { isValidFileKind, sanitizeFilenameForKey, validateUpload } from "../../domain/files";
 import { CSRF_COOKIE_NAME } from "../../auth/cookies";
 import {
@@ -330,6 +332,23 @@ portalTasksRoutes.post("/tasks/:assignmentId/form", csrfForm, async (c) => {
 
   const fields = await listFields(c.var.db, scope.formId);
   const body = (await c.req.parseBody({ all: true })) as Record<string, unknown>;
+
+  // DEC-040 amendment (wave 70): this assignment's OWN prior responseJson —
+  // needed so an empty file part on re-submit carries the stored value
+  // forward instead of clearing it (a submitted blank clears per DEC-842,
+  // but a file INPUT with no new selection is silence, not a blank).
+  const priorAssignments = await getMyTaskAssignments(c.var.db, contactId, auth.orgId);
+  const priorAssignment = priorAssignments.find((a) => a.id === assignmentId);
+  if (!priorAssignment) throw new ApiError("not_found", "Task assignment not found");
+  const priorAnswers: AnswerMap = priorAssignment.responseJson ? JSON.parse(priorAssignment.responseJson) : {};
+
+  const fileFields = fields.filter((field) => field.kind === "file");
+  const fileAnswers = extractFileAnswers(
+    fileFields.map((field) => field.id),
+    fieldInputName,
+    body,
+  );
+
   const answers: AnswerMap = {};
   for (const field of fields) {
     const name = fieldInputName(field.id);
@@ -337,16 +356,58 @@ portalTasksRoutes.post("/tasks/:assignmentId/form", csrfForm, async (c) => {
       answers[field.id] = body[name] !== undefined;
       continue;
     }
+    if (field.kind === "file") continue; // handled in the upload loop below
     const raw = body[name];
     if (raw === undefined) continue;
     answers[field.id] = typeof raw === "string" ? raw : String(raw);
   }
 
+  // DEC-040: mirrors the public CFP submit pipeline (src/routes/public/
+  // submit.tsx) for file-kind fields — validate/store each newly-uploaded
+  // file, ONE putThenRecord per field (never a bare store.put), and write
+  // the resulting file id into `answers` BEFORE validateAnswers runs so its
+  // required check sees a present answer. A field with no new upload keeps
+  // its prior stored file id (carry-forward, not a clear); a field with
+  // neither a new upload nor a prior value is simply absent, same as any
+  // other unanswered field.
+  const store = makeFileStore(c.env.FILES);
+  const fileErrors: Record<string, string> = {};
+  for (const field of fileFields) {
+    const file = fileAnswers[field.id];
+    if (!file) {
+      const prior = priorAnswers[field.id];
+      if (typeof prior === "string" && prior) {
+        answers[field.id] = prior;
+      }
+      continue;
+    }
+    const validation = validateUpload({ filename: file.name, sizeBytes: file.size, kind: "handout" });
+    if (!validation.ok) {
+      fileErrors[field.id] = validation.message;
+      continue;
+    }
+    const r2Key = `task/${assignmentId}/${newId()}-${sanitizeFilenameForKey(file.name)}`;
+    const fileId = await putThenRecord(store, r2Key, file.stream(), validation.servedContentType, () =>
+      insertFile(c.var.db, {
+        submissionId: null,
+        kind: "handout",
+        filename: file.name,
+        r2Key,
+        sizeBytes: file.size,
+        contentType: validation.servedContentType,
+        previousFileId: null,
+        uploadedByContactId: contactId,
+      }),
+    );
+    answers[field.id] = fileId;
+  }
+
   const validation = validateAnswers(fields, answers);
-  if (!validation.ok) {
+  const hasFileErrors = Object.keys(fileErrors).length > 0;
+  if (!validation.ok || hasFileErrors) {
+    const mergedErrors = { ...(validation.ok ? {} : validation.errors), ...fileErrors };
     const data = await getPortalData(c.var.db, contactId, auth.orgId);
-    const assignments = await getMyTaskAssignments(c.var.db, contactId, auth.orgId);
-    const assignment = assignments.find((a) => a.id === assignmentId);
+    const assignment = priorAssignments.find((a) => a.id === assignmentId);
     if (!assignment) throw new ApiError("not_found", "Task assignment not found");
     const { token: csrfToken } = ensureCsrfCookie(c);
     return c.html(
@@ -356,7 +417,7 @@ portalTasksRoutes.post("/tasks/:assignmentId/form", csrfForm, async (c) => {
         fields={fields}
         answers={answers}
         csrfToken={csrfToken}
-        errors={validation.errors}
+        errors={mergedErrors}
         speakerName={data.contactName}
       />,
       400,
