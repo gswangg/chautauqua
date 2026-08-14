@@ -14,7 +14,7 @@ import { planAcceptance, FORM_TASK_FIELD_SPECS, isActiveParticipant, onboardingT
 import { isValidStatusLiteral } from "./query";
 import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
 import { ApiError } from "../../http";
-import { MAX_TASK_ASSIGNMENT_WRITES } from "../tasks/crud";
+import { MAX_TASK_ASSIGNMENT_WRITES, maxUnitsForTaskAssignmentWrites } from "../tasks/crud";
 import { DEC_079, DEC_111, DEC_133, DEC_520, DEC_521, DEC_556, DEC_932 } from "../../../decisions";
 
 void DEC_079; // planning-before-commit acceptance ordering + chunked/batched bulk status changes below
@@ -24,6 +24,21 @@ void DEC_520; // auto-created onboarding tasks get a due date derived from the e
 void DEC_521; // task_assignment inserts are chunked, bounded by MAX_ACCEPTANCE_TASK_ASSIGNMENTS
 void DEC_556; // task_assignment insert below targets the real (task_id, contact_id) unique index
 void DEC_932; // back-fill pass below: every participantContactIds member gets EVERY event task
+
+/** DEC-078/DEC-528 amendment (wave 10): PAIR_ID_CHUNK_SIZE backs the one query
+ * in this file that binds two unbounded-in-principle id lists (taskId,
+ * contactId) in the same statement — half of ID_CHUNK_SIZE's 90-per-list
+ * budget (45 + 45 = 90) leaves the same headroom under MAX_D1_BOUND_PARAMS
+ * that ID_CHUNK_SIZE leaves for a single-list inArray. */
+const PAIR_ID_CHUNK_SIZE = 45;
+
+function chunkBySize<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    out.push(items.slice(i, i + size));
+  }
+  return out;
+}
 
 /** DEC-521: a planned set of task_assignment rows above this size is refused
  * BEFORE any insert — unlike MAX_AUTO_SCHEDULE_PLACEMENTS' silent slice, a
@@ -272,16 +287,29 @@ async function planAndPersistOnboardingTasks(
   const eventTaskIds = eventTaskRows.map((r) => r.id);
   if (eventTaskIds.length === 0) return;
 
+  // DEC-078/DEC-528 amendment (wave 10, defect 1): this query binds TWO
+  // unbounded-in-principle id lists in the same statement — eventTaskIds
+  // (every task row for this event, no cap) alongside contactChunk. Chunking
+  // only contactChunk at ID_CHUNK_SIZE (90) left eventTaskIds unchunked, so
+  // an event with >=11 tasks (11 * 90 = 990... actually any eventTaskIds
+  // length that pushes taskIds.length + contactChunk.length over
+  // MAX_D1_BOUND_PARAMS) blew the D1 bind budget. Both dimensions are now
+  // chunked at half the budget each (PAIR_ID_CHUNK_SIZE), nested, so no
+  // emitted statement can bind more than 2 * PAIR_ID_CHUNK_SIZE params
+  // regardless of how many tasks or contacts are involved — still set-based
+  // (no query per row, no query per contact).
   const existingPairs = new Set<string>();
-  for (const contactChunk of chunkIds(participantContactIds)) {
-    const existingRows = await db
-      .select({ taskId: schema.taskAssignment.taskId, contactId: schema.taskAssignment.contactId })
-      .from(schema.taskAssignment)
-      .where(
-        and(inArray(schema.taskAssignment.taskId, eventTaskIds), inArray(schema.taskAssignment.contactId, contactChunk)),
-      );
-    for (const r of existingRows) {
-      existingPairs.add(`${r.taskId}|${r.contactId}`);
+  for (const contactChunk of chunkBySize(participantContactIds, PAIR_ID_CHUNK_SIZE)) {
+    for (const taskChunk of chunkBySize(eventTaskIds, PAIR_ID_CHUNK_SIZE)) {
+      const existingRows = await db
+        .select({ taskId: schema.taskAssignment.taskId, contactId: schema.taskAssignment.contactId })
+        .from(schema.taskAssignment)
+        .where(
+          and(inArray(schema.taskAssignment.taskId, taskChunk), inArray(schema.taskAssignment.contactId, contactChunk)),
+        );
+      for (const r of existingRows) {
+        existingPairs.add(`${r.taskId}|${r.contactId}`);
+      }
     }
   }
 
@@ -301,10 +329,24 @@ async function planAndPersistOnboardingTasks(
   }
 
   if (missingRows.length > MAX_TASK_ASSIGNMENT_WRITES) {
+    // DEC-528 amendment (wave 10, defect 2): DEC-079 already keeps this
+    // refusal pre-write (planning runs before any submission row's UPDATE,
+    // so a throw here leaves every firing row un-accepted — a retry after
+    // shrinking the batch re-plans idempotently). What was missing was a
+    // forward path: the message must name a batch size the producer can
+    // actually use, derived from the same cap this check enforces, never a
+    // bare internal number. eventTaskIds.length is this event's per-contact
+    // row count (one assignment per event task), so
+    // maxUnitsForTaskAssignmentWrites divided by it is the largest number of
+    // accepting submissions (one contact each, the common case) this event
+    // can take in one batch.
+    const maxSubmissionsPerBatch = maxUnitsForTaskAssignmentWrites(eventTaskIds.length);
     throw new ApiError(
       "invalid",
-      `Task assignments to create (${missingRows.length}) exceed the cap of ${MAX_TASK_ASSIGNMENT_WRITES}`,
-      { contactIds: `${missingRows.length} exceeds cap ${MAX_TASK_ASSIGNMENT_WRITES}` },
+      `Accepting this batch would create ${missingRows.length} task assignments, over the cap of ${MAX_TASK_ASSIGNMENT_WRITES} — for this event's ${eventTaskIds.length} tasks, accept at most ${maxSubmissionsPerBatch} submissions per batch`,
+      {
+        contactIds: `${missingRows.length} exceeds cap ${MAX_TASK_ASSIGNMENT_WRITES}; at most ${maxSubmissionsPerBatch} submissions per batch`,
+      },
     );
   }
 

@@ -198,6 +198,19 @@ export async function listAcceptedContactIds(db: Db, eventId: string): Promise<s
  * loudly instead of silently truncated or run one row at a time. */
 export const MAX_TASK_ASSIGNMENT_WRITES = 5000;
 
+/** DEC-528 amendment (wave 10): given how many task_assignment rows a single
+ * planning unit (e.g. one accepted submission's participant, who gets one row
+ * per event task) produces, returns the largest number of such units a single
+ * call can plan/write before crossing MAX_TASK_ASSIGNMENT_WRITES. Shared so a
+ * refusal message that names "the largest batch that would succeed" can never
+ * drift from the cap it's derived from. */
+export function maxUnitsForTaskAssignmentWrites(rowsPerUnit: number): number {
+  if (rowsPerUnit <= 0) {
+    throw new Error(`maxUnitsForTaskAssignmentWrites: rowsPerUnit must be positive, got ${rowsPerUnit}`);
+  }
+  return Math.floor(MAX_TASK_ASSIGNMENT_WRITES / rowsPerUnit);
+}
+
 export async function createTaskAssignments(
   db: Db,
   taskId: string,
