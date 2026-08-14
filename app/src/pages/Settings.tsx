@@ -15,7 +15,19 @@
 // inside each panel, not here. Every panel keeps its frozen (DEC-366) save
 // endpoint, token reveal-once flow, delete-reference guards, export and
 // embed-snippet generation exactly as-is.
+//
+// DEC-728 amendment (wave 13): a settings section URL must render that
+// section on a phone. The phone drill selection ('active') is now SEEDED
+// from and kept IN SYNC with the same `?section=` URL param SummarySection
+// already writes (openEdit) so /admin/settings?section=cfp&edit=1 -- a URL
+// the product mints and a user can bookmark or be linked to -- actually
+// renders the CFP panel instead of just the rail. `selectSection` (an
+// explicit rail click) now ALSO pushes `section=<key>` so the device Back
+// button leaves a drilled section; the IntersectionObserver's own
+// scroll-driven `setActive` calls stay local component state only -- a
+// highlight that follows the reader's scroll must never write history.
 import { useEffect, useRef, useState, type ComponentType } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { EventSettingsPanel } from './settings/EventSettingsPanel';
 import { CallForPapersPanel } from './settings/CallForPapersPanel';
 import { TracksRoomsPanel } from './settings/TracksRoomsPanel';
@@ -58,7 +70,24 @@ export function SettingsPage() {
   // location -- an explicit click wins immediately; once the reader
   // scrolls, the IntersectionObserver below takes over deciding which
   // section is "active" until the next click.
-  const [active, setActive] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const validKeys = SECTIONS.map((s) => s.key);
+  const rawUrlSection = searchParams.get('section');
+  const urlSection = rawUrlSection !== null && validKeys.includes(rawUrlSection) ? rawUrlSection : null;
+
+  const [active, setActive] = useState<string | null>(urlSection);
+
+  // Keep `active` in sync whenever the URL's `section` param CHANGES (e.g.
+  // navigating directly to /settings?section=cfp, or Back/Forward) without
+  // clobbering the IntersectionObserver's own local setActive calls on
+  // every render -- only re-seed when urlSection itself moves.
+  const lastUrlSectionRef = useRef(urlSection);
+  useEffect(() => {
+    if (urlSection !== lastUrlSectionRef.current) {
+      lastUrlSectionRef.current = urlSection;
+      setActive(urlSection);
+    }
+  }, [urlSection]);
 
   // DEC-896: an explicit rail click is authoritative until the next
   // scroll settles -- suppress observer-driven updates for a moment after
@@ -69,6 +98,12 @@ export function SettingsPage() {
 
   function selectSection(key: string) {
     setActive(key);
+    lastUrlSectionRef.current = key;
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set('section', key);
+      return params;
+    });
     suppressObserverRef.current = true;
     if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
     settleTimerRef.current = setTimeout(() => {
@@ -77,6 +112,17 @@ export function SettingsPage() {
     const el = document.getElementById(`chq-settings-section-${key}`);
     // jsdom (test env) doesn't implement scrollIntoView; real browsers do.
     el?.scrollIntoView?.({ block: 'start' });
+  }
+
+  function clearSection() {
+    setActive(null);
+    lastUrlSectionRef.current = null;
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.delete('section');
+      params.delete('edit');
+      return params;
+    });
   }
 
   // DEC-896: the rail follows the reader -- once the page scrolls, the
@@ -143,7 +189,7 @@ export function SettingsPage() {
           <button
             type="button"
             className="chq-btn chq-btn-tertiary chq-settings-back"
-            onClick={() => setActive(null)}
+            onClick={clearSection}
           >
             &lsaquo; Settings
           </button>
