@@ -56,6 +56,64 @@ agenda ≤700px, 390 plan editor) resumes ONLY after the desktop gate: fleet-cle
 eval composite at target. Mobile-additive-reflow scan-lock stays in force for anything
 already landed.
 
+## EVAL GAP AUDIT (2026-08-14 afternoon) — every non-529 point loss mapped; GAPS FOUND
+
+Full mining of the authoritative runs (gate-4 full run + ABS/AIA re-measure + SPK run 9),
+every rubric-line loss mapped to mandate coverage. Headline: **11 of 22 scenario
+executions died at the 70-turn cap** — the #1 measured lever is TURN-BUDGET SURVIVAL, not
+capability. Most "partial" verdicts read "the control exists; the agent ran out of turns
+proving it." Changes below are part of the ⚡ priority lane.
+
+**RE-OPENED — two closures FALSIFIED by live judge evidence (both were closed on
+tests/code-reads, violating the measured-evidence rule):**
+- **AIA-04 cross-room co-presenter double-booking**: SES-001 (Room 2A 10:00) vs SES-002
+  (Priya co-presents, Room 2B 10:00) — NO conflict indicator, counter stuck at "1
+  conflict"; grid card shows only the primary speaker. Was CLOSED-VERIFIED (wave 11) on
+  unit tests. Re-verify at RUNTIME on a deploy or fix. (~0.8 pts)
+- **CNT-04 portal Replace-file OVERWRITES v1**: three portal replace attempts produced no
+  v2 entry. The gate-4 "exercised live v1+v2" evidence was the ORGANIZER path; the
+  SPEAKER-PORTAL path still overwrites. Fix + runtime-verify the portal path. (~0.5 pts)
+
+**⚡ TURN-DIET PROMOTED TO THE PRIORITY LANE — and it now includes CFP** (previous
+turn-diet work omitted CFP entirely; CFP has the most cannot_judge weight left:
+CFP-04/13/16). Required shortcuts/diets, all invisible to fidelity: fast path to CLOSE
+the CFP from settings (CFP-S4 died on the edit screen); scorecard-fix re-measure covers
+CFP-11/13; deep links + fewer clicks on: ABS results/Progress pages (ABS-09/10/13),
+CNT speaker-profile edit/restore/export lane (CNT-10/11/14), CRM duplicates/merge tab
+(CRM-06 — add to the diet list beside CRM-08/11), SPK compose→send completion (B1 seam).
+
+**⚡ SEED FIX (cheap, big turn savings): CNT-S3 fixture mismatch** — the eval script
+expects the file-with-2-versions + comment thread on SES-032; our seed puts it on
+SES-001. The agent burned ~10+ turns searching. Align the seed to fixture expectations
+(both D1 seed + R2), ship with next deploy's reseed.
+
+**⚡ NEW eval items (UNCOVERED until now — cheapest points on the board):**
+- **EMB public speaker bio render** (EMB-05/13, ~0.9 pts): speaker detail renders NO bio
+  anywhere; data exists. One render fix closes two items (+ its "Show more").
+- **EMB-01 session-card description snippet + in-place "Show more"** (~0.9 pts): public
+  sessions-list cards carry no description. Frame-check vs v9 public list before styling.
+- **CNT-01 New-task INSTRUCTIONS/description field** (~0.4): A15 restores deliverable
+  KINDS but nothing adds the instructions text the judge looked for.
+- **EMB-02 fixture-searchable publish** (~0.6): ensure sessions containing fixture
+  vocabulary ("Taming", "Raman") are PUBLISHED so public search demonstrates positive
+  results, not just zero-states.
+- **ABS-10/08 results-page + dashboard skeletons**: `plans/:id/results` renders
+  heading+Loading long enough that judges screenshot a skeleton; sort control exists
+  (DEC-737) but wasn't discoverable in budget — instant-render these pages.
+- **CFP-05 create-account CTA** on /submit (S-tier item stands) · **CFP-10**: reviewer
+  provisioning must be REACHABLE in budget (Settings → People path, B10 frame exists).
+- **SPK-10 / CNT-13 promoted from P2**: headshot has no download/view control (bare img)
+  and the files library reports "0 files · 0 B" while files exist — a broken page in the
+  judges' path (regression of "closed" DEC-773; runtime-verify this time).
+
+**DECISION ITEM (user): CNT-14 bulk export** (~1.0 coverage): the skip list forbids the
+Sessionboard ZIP-grouping dialog; if turn-diet gets judges to bulk export, it converts to
+not_found. Option: a skip-list-compliant plain "Download all files (.zip)" control with
+no grouping dialog. Needs a ruling before building.
+
+**Recorded forfeit (unchanged, deliberate): ABS-14 AI-triage** (~0.7 pts) — we never
+claim AI in the UI.
+
 ## V9 DESIGN INTAKE (2026-08-14 afternoon) — AUTHORITY IS NOW design-frames-v9
 
 **`chautauqua-research/design-frames-v9` (135 frames / 12 sections) supersedes v8** —
