@@ -554,6 +554,12 @@ or **unmentioned by any gate-4 report** (tagged). Nothing here is a new finding.
   picks; gate-4 measured day 1 rendering "1 session · 0 rooms". Enrich the published set (+
   breaks rows) so the agenda's multi-block rows and per-day counts are demoable.
 
+## MAILER — CLOSED (2026-08-14): USER CONFIRMED INBOX RECEIPT of the gate-4 verification
+email ("We received your submission: Gate-4 Mail Delivery Verification" at the test mailbox).
+The Cloudflare send_email binding + EmailMessage/raw-MIME shape delivers real mail end-to-end.
+The rich-shape fallback branch (chautauqua-qa mail-rich-shape-fallback) is RETIRED. The
+runtime-evidence bar below remains standing policy for any future mailer change.
+
 ## MAILER — USER DECISION, EVIDENCE BAR, MIME, STATUS
 
 **P0 · USER DECISION (2026-08-13): REVERT PROD MAIL TO CLOUDFLARE EMAIL SERVICE — DEC-996 IS
