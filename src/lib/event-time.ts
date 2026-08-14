@@ -5,7 +5,7 @@
 // in UTC. No fallback: an empty or invalid timeZone throws (fail loudly)
 // rather than silently rendering in UTC.
 
-import { zonedMinutesToUtc } from "./timezone";
+import { zonedMinutesToUtc, dayLabelEndInstant } from "./timezone";
 
 /** Formats a UTC instant (epoch ms) as a human-readable string in the given
  * IANA timeZone, e.g. "Mon, 01 Mar 2027, 11:59 PM PST". Throws if `timeZone`
@@ -153,6 +153,23 @@ export function formatEventCloseDateLabel(closeMs: number, timeZone: string): st
     month: "short",
     timeZone,
   });
+}
+
+/** DEC-918 amendment (wave 69): the server-side twin of the SPA's ONE
+ * days-until reader (app/src/lib/dates.ts's `daysUntil`) -- calendar-day
+ * difference between `targetMs` and `nowMs`, both read as calendar dates in
+ * `timeZone`, with `targetMs` expanded through the END of its calendar day
+ * (dayLabelEndInstant) so a deadline reads N until the stroke of midnight
+ * closes it, not N-1 partway through its own last day. Clamped to zero: a
+ * past-due/closing-today deadline reads 0, never negative. Throws on an
+ * empty timeZone, matching the fail-loudly contract of its neighbours above.
+ */
+export function daysUntilCalendarDay(targetMs: number, timeZone: string, nowMs: number): number {
+  if (!timeZone) {
+    throw new Error("daysUntilCalendarDay: timeZone must not be empty");
+  }
+  const end = dayLabelEndInstant(targetMs, timeZone);
+  return Math.max(0, Math.ceil((end - nowMs) / 86_400_000));
 }
 
 /** Names a schedule_slot's wall-clock placement (DEC-010: `day` +
