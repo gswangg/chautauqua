@@ -16,10 +16,6 @@ import { apiList, apiGet, apiPost, ApiError } from '../../lib/api';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import type { DuplicateGroup } from './types';
-// DEC-738: Labels combine from every record's customFields, formatted by
-// the ONE server-importable formatter -- never a hand-copied "`key` value"
-// join here.
-import { contactLabels } from '../../../../src/domain/contact-labels';
 // DEC-858: names that differ only by case are the same name at a merge --
 // share the ONE name-identity rule the duplicate detector already uses.
 import { normalizedContactName } from '../../../../src/domain/contacts';
@@ -247,10 +243,10 @@ export function MergePage() {
           </div>
           {previewError && <div className="chq-error">{previewError}</div>}
           {!previewError && !preview && <DelayedLoading />}
-          {/* DEC-738: customFields.* preview rows are folded into the single
-              Labels row below (labels COMBINE, they are not chosen field by
-              field) instead of listing each raw custom-field key here. */}
-          {preview?.filter((f) => !f.key.startsWith('customFields.')).map((f) => {
+          {/* DEC-748 amendment (wave 2): `preview` renders verbatim -- the
+              server already folds every customFields.* key into the single
+              Labels row (DEC-738) before it reaches the client. */}
+          {preview?.map((f) => {
             const note = outcomeNote(f.outcome);
             // DEC-802: only a REAL dropped value is struck -- a keeper-only
             // row (nothing actually discarded, `discarded` empty or all
@@ -280,23 +276,6 @@ export function MergePage() {
               </div>
             );
           })}
-          {preview && (() => {
-            const combinedCustomFields: Record<string, string> = {};
-            for (const f of preview) {
-              if (f.key.startsWith('customFields.')) {
-                combinedCustomFields[f.key.slice('customFields.'.length)] = f.kept;
-              }
-            }
-            const labels = contactLabels(combinedCustomFields);
-            if (labels.length === 0) return null;
-            return (
-              <div className="chq-contacts-merge-compare-row">
-                <span className="chq-contacts-merge-compare-label">Labels</span>
-                <span className="chq-contacts-merge-compare-keep">{labels.join(', ')}</span>
-                <span className="chq-contacts-merge-compare-combine">combined from both records</span>
-              </div>
-            );
-          })()}
           {preview && preview.length === 0 && (
             <p className="chq-contacts-merge-compare-empty">Every field already matches — nothing else will change.</p>
           )}
@@ -316,7 +295,7 @@ export function MergePage() {
               what it refuses. */}
           {preview && (
             <div className="chq-contacts-merge-rules">
-              {preview.some((f) => f.key.startsWith('customFields.')) && (
+              {preview.some((f) => f.key === 'labels' && f.kept !== '') && (
                 <p className="chq-contacts-merge-footnote">Labels always combine — they're never chosen one over the other.</p>
               )}
               <p className="chq-contacts-merge-footnote">Notes are appended, never chosen one over the other.</p>

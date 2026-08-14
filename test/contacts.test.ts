@@ -283,7 +283,52 @@ describe("mergedParticipantVisible (DEC-282 amendment)", () => {
   });
 });
 
-describe("previewMerge (DEC-748)", () => {
+describe("previewMerge (DEC-748 amendment, wave 2: fixed six-row identity contract)", () => {
+  const SIX_KEYS = ["name", "email", "company", "title", "labels", "notes"];
+
+  it("emits exactly six leading rows in fixed order for any pair", () => {
+    const primary = contact({
+      id: "p",
+      email: "p@example.com",
+      firstName: "P",
+      lastName: "P",
+      company: "AcmeCo",
+      title: "Engineer",
+      phone: "555-1000",
+    });
+    const duplicate = contact({ id: "d", email: "p@example.com", firstName: "P", lastName: "P", phone: "555-2000" });
+
+    const fields = previewMerge(primary, [duplicate]);
+    expect(fields.slice(0, 6).map((f) => f.key)).toEqual(SIX_KEYS);
+    expect(fields.slice(0, 6).map((f) => f.label)).toEqual(["Name", "Email", "Company", "Title", "Labels", "Notes"]);
+    // Phone differs, so it follows after the six as a non-identity row.
+    expect(fields[6]?.key).toBe("phone");
+  });
+
+  it("still shows all six rows when every field is identical between the pair", () => {
+    const primary = contact({ id: "p", email: "p@example.com", firstName: "P", lastName: "P", company: "AcmeCo" });
+    const duplicate = contact({ id: "d", email: "p@example.com", firstName: "P", lastName: "P", company: "AcmeCo" });
+
+    const fields = previewMerge(primary, [duplicate]);
+    expect(fields.map((f) => f.key)).toEqual(SIX_KEYS);
+    for (const f of fields) {
+      expect(f.outcome).toBe("keep");
+      expect(f.discarded).toEqual([]);
+    }
+  });
+
+  it("Name folds firstName+lastName to one row (no separate First/Last rows)", () => {
+    const primary = contact({ id: "p", email: "p@example.com", firstName: "Pat", lastName: "Primary" });
+    const duplicate = contact({ id: "d", email: "p@example.com", firstName: "Pat", lastName: "Duplicate" });
+
+    const fields = previewMerge(primary, [duplicate]);
+    expect(fields.some((f) => f.key === "firstName" || f.key === "lastName")).toBe(false);
+    const name = fields.find((f) => f.key === "name")!;
+    expect(name.outcome).toBe("keep");
+    expect(name.kept).toBe("Pat Primary");
+    expect(name.discarded).toEqual(["Pat Duplicate"]);
+  });
+
   it("emits a 'keep' row with a blank discarded entry when the duplicate's side is empty and the primary's is not", () => {
     const primary = contact({
       id: "p",
@@ -329,32 +374,18 @@ describe("previewMerge (DEC-748)", () => {
     expect(company!.discarded).toEqual([]);
   });
 
-  it("suppresses a field entirely when both sides are blank or identical", () => {
-    const primary = contact({ id: "p", email: "p@example.com", firstName: "P", lastName: "P", company: "AcmeCo" });
-    const duplicateBlank = contact({ id: "d1", email: "p@example.com", firstName: "P", lastName: "P" });
-    const duplicateSame = contact({ id: "d2", email: "p@example.com", firstName: "P", lastName: "P", company: "AcmeCo" });
+  it("a field that differs from a non-identity field (phone) is still suppressed when identical, but the six identity rows never are", () => {
+    const primary = contact({ id: "p", email: "p@example.com", firstName: "P", lastName: "P", phone: "555-0000" });
+    const duplicateSame = contact({ id: "d", email: "p@example.com", firstName: "P", lastName: "P", phone: "555-0000" });
 
-    // both blank (a field neither side has) never appears
-    const bothBlank = previewMerge(
-      contact({ id: "p2", email: "p@example.com", firstName: "P", lastName: "P" }),
-      [contact({ id: "d3", email: "p@example.com", firstName: "P", lastName: "P" })],
-    );
-    expect(bothBlank.some((f) => f.key === "company")).toBe(false);
-
-    // primary non-blank, duplicate blank -> still reported (asserted above);
-    // primary non-blank, duplicate identical -> suppressed
-    const identical = previewMerge(primary, [duplicateSame]);
-    expect(identical.some((f) => f.key === "company")).toBe(false);
-
-    // sanity: the blank-duplicate case from the prior test is not itself
-    // suppressed by this same-primary setup
-    const blankDup = previewMerge(primary, [duplicateBlank]);
-    expect(blankDup.find((f) => f.key === "company")?.outcome).toBe("keep");
+    const fields = previewMerge(primary, [duplicateSame]);
+    expect(fields.some((f) => f.key === "phone")).toBe(false);
+    expect(fields.map((f) => f.key)).toEqual(SIX_KEYS);
   });
 });
 
-describe("previewMerge custom fields and notes (DEC-802)", () => {
-  it("emits a 'keep' row with an empty discarded array for a keeper-only custom field key", () => {
+describe("previewMerge Labels and Notes (DEC-802, DEC-748 amendment wave 2)", () => {
+  it("Labels row keeps a keeper-only custom field key with an empty discarded array", () => {
     const primary = contact({
       id: "p",
       email: "p@example.com",
@@ -365,14 +396,13 @@ describe("previewMerge custom fields and notes (DEC-802)", () => {
     const duplicate = contact({ id: "d", email: "p@example.com", firstName: "P", lastName: "P" });
 
     const fields = previewMerge(primary, [duplicate]);
-    const shirt = fields.find((f) => f.key === "customFields.shirt");
-    expect(shirt).toBeDefined();
-    expect(shirt!.outcome).toBe("keep");
-    expect(shirt!.kept).toBe("L");
-    expect(shirt!.discarded).toEqual([]);
+    const labels = fields.find((f) => f.key === "labels")!;
+    expect(labels.outcome).toBe("keep");
+    expect(labels.kept).toBe("shirt L");
+    expect(labels.discarded).toEqual([]);
   });
 
-  it("still emits a 'combine' row for a duplicate-only custom field key", () => {
+  it("Labels row is 'combine' for a duplicate-only custom field key", () => {
     const primary = contact({ id: "p", email: "p@example.com", firstName: "P", lastName: "P" });
     const duplicate = contact({
       id: "d",
@@ -383,13 +413,37 @@ describe("previewMerge custom fields and notes (DEC-802)", () => {
     });
 
     const fields = previewMerge(primary, [duplicate]);
-    const shirt = fields.find((f) => f.key === "customFields.shirt");
-    expect(shirt).toBeDefined();
-    expect(shirt!.outcome).toBe("combine");
-    expect(shirt!.kept).toBe("L");
+    const labels = fields.find((f) => f.key === "labels")!;
+    expect(labels.outcome).toBe("combine");
+    expect(labels.kept).toBe("shirt L");
   });
 
-  it("emits a Notes row for a keeper-only note even when the duplicate has none", () => {
+  it("no raw customFields.* row reaches the caller any more", () => {
+    const primary = contact({ id: "p", email: "p@example.com", firstName: "P", lastName: "P", customFields: { shirt: "L" } });
+    const duplicate = contact({
+      id: "d",
+      email: "p@example.com",
+      firstName: "P",
+      lastName: "P",
+      customFields: { shirt: "M", dietary: "vegan" },
+    });
+
+    const fields = previewMerge(primary, [duplicate]);
+    expect(fields.some((f) => f.key.startsWith("customFields."))).toBe(false);
+  });
+
+  it("Labels row renders with an em-dash-worthy empty kept value when neither side has custom fields", () => {
+    const primary = contact({ id: "p", email: "p@example.com", firstName: "P", lastName: "P" });
+    const duplicate = contact({ id: "d", email: "p@example.com", firstName: "P", lastName: "P" });
+
+    const fields = previewMerge(primary, [duplicate]);
+    const labels = fields.find((f) => f.key === "labels")!;
+    expect(labels.kept).toBe("");
+    expect(labels.outcome).toBe("keep");
+    expect(labels.discarded).toEqual([]);
+  });
+
+  it("Notes row is present for a keeper-only note even when the duplicate has none", () => {
     const primary = contact({
       id: "p",
       email: "p@example.com",
@@ -400,18 +454,20 @@ describe("previewMerge custom fields and notes (DEC-802)", () => {
     const duplicate = contact({ id: "d", email: "p@example.com", firstName: "P", lastName: "P" });
 
     const fields = previewMerge(primary, [duplicate]);
-    const notes = fields.find((f) => f.key === "notes");
-    expect(notes).toBeDefined();
-    expect(notes!.outcome).toBe("keep");
-    expect(notes!.kept).toBe("Keeper's note.");
+    const notes = fields.find((f) => f.key === "notes")!;
+    expect(notes.outcome).toBe("keep");
+    expect(notes.kept).toBe("Keeper's note.");
   });
 
-  it("still suppresses the Notes row when neither side has notes", () => {
+  it("Notes row renders with an em-dash-worthy empty kept value when neither side has notes", () => {
     const primary = contact({ id: "p", email: "p@example.com", firstName: "P", lastName: "P" });
     const duplicate = contact({ id: "d", email: "p@example.com", firstName: "P", lastName: "P" });
 
     const fields = previewMerge(primary, [duplicate]);
-    expect(fields.some((f) => f.key === "notes")).toBe(false);
+    const notes = fields.find((f) => f.key === "notes")!;
+    expect(notes.kept).toBe("");
+    expect(notes.outcome).toBe("keep");
+    expect(notes.discarded).toEqual([]);
   });
 });
 
