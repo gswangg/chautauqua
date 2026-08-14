@@ -145,4 +145,7 @@ export interface OverviewPayload {
   content: ContentAggregate;
   agenda: AgendaAggregate;
   comms: CommsAggregate;
+  // DEC-370 amendment (wave 5): server-composed count backing the "Public
+  // pages" quiet row's summary clause — never a client-side literal.
+  publishedSessionCount: number;
 }

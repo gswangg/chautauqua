@@ -51,6 +51,7 @@ describe("getOverviewPayload: participant invite-audience (DEC-512)", () => {
       [], // 18 format-answer rows for unplaced {s1}
       [], // 19 DEC-010 amendment: breaks for the event
       [{ sentLast7Days: 0, lastSentAt: null }], // 20 comms
+      [{ count: 0 }], // 21 DEC-370 amendment (wave 5): publishedSessionCount
     ];
 
     function chain(): any {

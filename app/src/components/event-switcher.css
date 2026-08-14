@@ -11,6 +11,15 @@
   gap: 8px;
 }
 
+/* DEC-370 amendment (wave 5): the New-event modal's primary action pins to
+   the mock's 144px width -- not the shared .chq-btn's content-hugging
+   default -- so it reads as a deliberate button, not a label-wide tap
+   target. */
+.chq-eventswitcher-create-btn {
+  width: 144px;
+  justify-content: center;
+}
+
 /* DEC-576: the header's desktop row shows the current event as PLAIN TEXT
    (13px/600, matching the identity block beside it), not a raw <select>. */
 .chq-eventswitcher-name {

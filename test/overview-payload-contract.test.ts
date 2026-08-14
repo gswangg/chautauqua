@@ -71,11 +71,12 @@ function emptyResponses() {
     [], // slotRows (always fires now)
     [], // DEC-010 amendment: breaks for the event
     [{ sentLast7Days: 0, lastSentAt: null }], // comms
+    [{ count: 0 }], // DEC-370 amendment (wave 5): publishedSessionCount
   ];
 }
 
 describe("DEC-400: overview payload wire keys pinned against the client contract", () => {
-  it("Object.keys(payload) is exactly the eleven DEC-370 keys, byte-for-byte", async () => {
+  it("Object.keys(payload) is exactly the twelve DEC-370 keys, byte-for-byte", async () => {
     const now = 1_735_999_999_999;
     const db = makeFakeDb(emptyResponses());
     const payload = await getOverviewPayload(db, "event-1", now);
@@ -89,6 +90,7 @@ describe("DEC-400: overview payload wire keys pinned against the client contract
         "contentApproval",
         "deadlines",
         "overdueTasks",
+        "publishedSessionCount",
         "review",
         "speakers",
         "triage",
@@ -126,6 +128,7 @@ describe("DEC-589 amendment (wave 49): overview Phase 1 queries are concurrent, 
       [], // slotRows (always fires now)
       [], // DEC-010 amendment: breaks for the event
       [{ sentLast7Days: 0, lastSentAt: null }], // comms
+      [{ count: 0 }], // DEC-370 amendment (wave 5): publishedSessionCount
     ];
     let cursor = 0;
     let seq = 0;

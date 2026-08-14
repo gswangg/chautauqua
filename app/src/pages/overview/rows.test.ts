@@ -8,6 +8,7 @@ import {
   headlineText,
   joinSegments,
   pluralize,
+  spellSmallNumber,
 } from './rows';
 import type { OverviewPayload } from './types';
 
@@ -39,6 +40,7 @@ function payload(overrides: Partial<OverviewPayload> = {}): OverviewPayload {
     content: { awaitingApproval: 0 },
     agenda: { unplaced: 0, conflicts: 0 },
     comms: { sentLast7Days: 0, lastSentAt: null },
+    publishedSessionCount: 0,
     ...overrides,
   };
 }
@@ -201,8 +203,10 @@ describe('buildNoActionRows', () => {
     });
     const rows = buildNoActionRows(p, NOW);
     expect(rows.map((r) => r.key)).toEqual(['review', 'comms']);
-    expect(rows[0]!.detail).toBe('1 of 12 evaluations in.');
-    expect(rows[1]!.detail).toBe('4 sent in 7 days · last 2 days ago.');
+    // DEC-370 amendment (wave 5): the clause drops its trailing period --
+    // the frame's ' · ' grammar is the ONE join, never a hand-appended '.'.
+    expect(rows[0]!.detail).toBe('1 of 12 evaluations in');
+    expect(rows[1]!.detail).toBe('4 sent in 7 days · last 2 days ago');
     // A numerator taken outside its own denominator can exceed it -- assert
     // the rendered pair never violates submitted <= expected.
     expect(p.review.evaluationsSubmitted).toBeLessThanOrEqual(p.review.evaluationsExpected);
@@ -223,7 +227,43 @@ describe('buildNoActionRows', () => {
   it('handles the boundary where every expected evaluation has been submitted', () => {
     const p = payload({ review: { plans: 1, evaluationsSubmitted: 5, evaluationsExpected: 5 } });
     const rows = buildNoActionRows(p, NOW);
-    expect(rows[0]!.detail).toBe('5 of 5 evaluations in.');
+    expect(rows[0]!.detail).toBe('5 of 5 evaluations in');
     expect(p.review.evaluationsSubmitted).toBeLessThanOrEqual(p.review.evaluationsExpected);
+  });
+});
+
+describe('spellSmallNumber', () => {
+  it('spells 0-10, falling back to the numeral above that', () => {
+    expect(spellSmallNumber(0)).toBe('zero');
+    expect(spellSmallNumber(1)).toBe('one');
+    expect(spellSmallNumber(3)).toBe('three');
+    expect(spellSmallNumber(10)).toBe('ten');
+    expect(spellSmallNumber(11)).toBe('11');
+  });
+});
+
+describe('buildDeadlineCells: Today-bolding ties', () => {
+  // DEC-370 amendment (wave 5): two deadlines that both display "Today"
+  // (one exactly at the boundary, one already overdue) must bold together
+  // -- the tie is measured on the DISPLAYED word, not the raw ms.
+  it('bolds every cell that displays the same word as the nearest cell, even with different raw timestamps', () => {
+    const cells = buildDeadlineCells(
+      {
+        formCloseDate: NOW - 3 * DAY, // overdue -- also displays "Today"
+        nextTaskDueDate: NOW, // exactly today
+        planCloseDate: null,
+        planRound: null,
+        eventStartDate: NOW + 30 * DAY,
+      },
+      NOW,
+      'UTC',
+    );
+    const formClose = cells.find((c) => c.key === 'formCloseDate')!;
+    const nextTask = cells.find((c) => c.key === 'nextTaskDueDate')!;
+    expect(formClose.display).toBe('Today');
+    expect(nextTask.display).toBe('Today');
+    expect(formClose.isNearest).toBe(true);
+    expect(nextTask.isNearest).toBe(true);
+    expect(cells.find((c) => c.key === 'eventStartDate')!.isNearest).toBe(false);
   });
 });

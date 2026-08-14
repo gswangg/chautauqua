@@ -31,6 +31,7 @@ import { DEFAULT_AUTO_SCHEDULE_PARAMS, MAX_AGENDA_SCAN } from "./agenda";
 import { listBreaksForEvent } from "./breaks";
 import { ApiError } from "../http";
 import { overdueAssignmentConditions } from "./tasks/crud";
+import { visibleSessionConditions } from "./public/gates";
 import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
 import { DEC_010, DEC_370, DEC_531, DEC_704, DEC_772, DEC_776, DEC_895 } from "../../decisions";
 void DEC_010;
@@ -667,6 +668,16 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
     lastSentAt: commsRows[0]?.lastSentAt == null ? null : Number(commsRows[0].lastSentAt),
   };
 
+  // DEC-370 amendment (wave 5): "Public pages" quiet-row count -- reuses
+  // visibleSessionConditions(), the same gate the public sessions list
+  // itself applies, scoped to this event. One count query, never a
+  // materialized row list.
+  const publishedSessionCountRows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.submission)
+    .where(and(eq(schema.submission.eventId, eventId), visibleSessionConditions()));
+  const publishedSessionCount = Number(publishedSessionCountRows[0]?.count ?? 0);
+
   return {
     "triage-counts": triage,
     review: { plans, evaluationsSubmitted, evaluationsExpected },
@@ -679,6 +690,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
     triage: triageQueue,
     contentApproval,
     agendaWork,
+    publishedSessionCount,
   };
 }
 

@@ -80,7 +80,7 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
       closeDisabled={pending}
       actions={
         <>
-          <button type="submit" className="chq-btn chq-btn-primary" disabled={pending}>
+          <button type="submit" className="chq-btn chq-btn-primary chq-eventswitcher-create-btn" disabled={pending}>
             Create the event
           </button>
           <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={pending}>
@@ -124,10 +124,14 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
           />
         </FormRow>
         <FormRow label="Ends" htmlFor="new-event-end" error={errors.endDate}>
+          {/* DEC-370 amendment (wave 5): the Ends placeholder is a distinct
+              date from Starts' "11 May 2028" -- a matching pair reads as a
+              copy-paste default rather than an example. */}
           <DateField
             id="new-event-end"
             value={form.endDate}
             onChange={(next) => setField('endDate', next)}
+            placeholder="13 May 2028"
             required
           />
         </FormRow>
@@ -142,13 +146,17 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
           required
         />
       </FormRow>
-      <FormRow label="Venue" htmlFor="new-event-location" optional error={errors.location}>
+      {/* DEC-370 amendment (wave 5): "Venue" drops the ' · optional' suffix
+          and the "Optional" placeholder -- the field is already skippable
+          (no `required`); a bare descriptive placeholder never restates
+          that fact a second way. */}
+      <FormRow label="Venue" htmlFor="new-event-location" error={errors.location}>
         <input
           id="new-event-location"
           className="chq-input"
           value={form.location}
           onChange={(e) => setField('location', e.target.value)}
-          placeholder="Optional"
+          placeholder="Ferry Building, San Francisco"
         />
       </FormRow>
     </ModalFrame>

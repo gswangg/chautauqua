@@ -141,6 +141,13 @@ export interface OverviewPayloadV2 extends OverviewPayload {
     conflicts: ConflictRow[];
     unplaced: UnplacedRow[];
   };
+  // DEC-370 amendment (wave 5): the "Public pages" quiet row's summary
+  // clause ("17 sessions live, with speakers and schedule") is composed
+  // from this count, never a client-side literal. Reuses
+  // visibleSessionConditions() (repo/public/gates.ts) -- the SAME gate the
+  // public sessions list itself applies -- so "live" never gets redefined
+  // a second way here.
+  publishedSessionCount: number;
 }
 
 export interface ConflictSessionInfo {
