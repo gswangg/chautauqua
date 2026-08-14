@@ -22,6 +22,10 @@ interface UploadZoneProps {
 export function UploadZone({ kind, replacesFileId, onUpload }: UploadZoneProps) {
   const [dragOver, setDragOver] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  // V9 error standard (DEC-653, DEC-124): true only for a validation refusal
+  // on the file input itself (never for an onUpload network/server failure,
+  // which is a different failure surface, not a field-level refusal).
+  const [invalid, setInvalid] = useState(false);
   const [pending, setPending] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
@@ -29,9 +33,18 @@ export function UploadZone({ kind, replacesFileId, onUpload }: UploadZoneProps) 
   async function handleFile(file: File | undefined) {
     if (!file) return;
     setMessage(null);
+    setInvalid(false);
     const check = validateUpload({ filename: file.name, sizeBytes: file.size, kind });
     if (!check.ok) {
-      setMessage(check.message);
+      // Three clauses -- what was refused (the pure core's own message),
+      // which formats are accepted and why (derived from
+      // allowedUploadExtensions/uploadHintText, never a second hand-written
+      // list), and what survived.
+      const survives = replacesFileId
+        ? 'The current file is unchanged. Nothing was replaced.'
+        : 'Nothing was uploaded.';
+      setMessage(`${check.message} ${uploadHintText(kind)} ${survives}`);
+      setInvalid(true);
       return;
     }
     setPending(true);
@@ -72,17 +85,28 @@ export function UploadZone({ kind, replacesFileId, onUpload }: UploadZoneProps) 
         ref={inputRef}
         id={inputId}
         type="file"
-        className="chq-file chq-content-upload-input"
+        className={
+          invalid
+            ? 'chq-file chq-content-upload-input chq-field-invalid'
+            : 'chq-file chq-content-upload-input'
+        }
         accept={allowedUploadExtensions(kind).map((e) => `.${e}`).join(',')}
         aria-label={replacesFileId ? `Replace ${kind}` : `Upload ${kind}`}
+        aria-invalid={invalid ? 'true' : undefined}
         disabled={pending}
         onChange={(e) => void handleFile(e.target.files?.[0])}
       />
       {pending && <span>Uploading…</span>}
-      {message && (
-        <span className="chq-error" role="alert">
+      {invalid && message ? (
+        <span className="chq-field-error" role="alert">
           {message}
         </span>
+      ) : (
+        message && (
+          <span className="chq-error" role="alert">
+            {message}
+          </span>
+        )
       )}
     </div>
   );

@@ -41,6 +41,54 @@ describe('UploadZone', () => {
     expect(onUpload).not.toHaveBeenCalled();
   });
 
+  // w28-c (DEC-653, DEC-124): the field-error standard -- refusal, format+why,
+  // and survival clauses, plus the field register (chq-field-invalid on the
+  // input, aria-invalid, chq-field-error on the message), clearing on a
+  // subsequent valid pick.
+  it('a wrong-extension upload states the refusal, the accepted-format reason, and what survived, and marks the input invalid', async () => {
+    const onUpload = vi.fn().mockResolvedValue(undefined);
+    render(<UploadZone kind="handout" onUpload={onUpload} />);
+    const input = screen.getByLabelText('Upload handout') as HTMLInputElement;
+    const file = makeFile('notes.exe', 1024);
+    fireEvent.change(input, { target: { files: [file] } });
+    const alert = await screen.findByRole('alert');
+    // what was refused (pure core's own message)
+    expect(alert).toHaveTextContent("File type '.exe' isn't allowed");
+    // which formats are accepted and why -- derived from uploadHintText, not
+    // a second hand-written list
+    expect(alert).toHaveTextContent('Allowed types:');
+    expect(alert).toHaveTextContent('.pdf');
+    // what survived -- no replacesFileId, so nothing was uploaded
+    expect(alert).toHaveTextContent('Nothing was uploaded.');
+    expect(alert).toHaveClass('chq-field-error');
+    expect(input).toHaveClass('chq-field-invalid');
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(onUpload).not.toHaveBeenCalled();
+  });
+
+  it('states the replace-scoped survival clause when replacesFileId is set', async () => {
+    render(<UploadZone kind="handout" replacesFileId="file-1" onUpload={vi.fn()} />);
+    const input = screen.getByLabelText('Replace handout') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [makeFile('notes.exe', 1024)] } });
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('The current file is unchanged. Nothing was replaced.');
+  });
+
+  it('clears the invalid state and message once a valid file is subsequently chosen', async () => {
+    const onUpload = vi.fn().mockResolvedValue(undefined);
+    render(<UploadZone kind="handout" onUpload={onUpload} />);
+    const input = screen.getByLabelText('Upload handout') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [makeFile('notes.exe', 1024)] } });
+    await screen.findByRole('alert');
+    expect(input).toHaveClass('chq-field-invalid');
+
+    fireEvent.change(input, { target: { files: [makeFile('notes.md', 1024)] } });
+    await vi.waitFor(() => expect(onUpload).toHaveBeenCalled());
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(input).not.toHaveClass('chq-field-invalid');
+    expect(input).not.toHaveAttribute('aria-invalid');
+  });
+
   it('carries a non-empty accept attribute agreeing with the server allowlist', () => {
     render(<UploadZone kind="poster" onUpload={vi.fn()} />);
     const input = screen.getByLabelText('Upload poster') as HTMLInputElement;
