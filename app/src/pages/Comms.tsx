@@ -137,16 +137,15 @@ export function CommsPage() {
     };
   }, [eventId]);
 
-  // w1-g: "Open" on the compose mount's Recent Sends carries the batch's
-  // key (?tab=history&batch=<key>) so History lands already expanded on
-  // that batch instead of dropping the row and just switching tabs. "All
-  // history" calls this with no key.
-  function goToHistory(batchKey?: string) {
+  // DEC-751 amendment (w15-d): "All history" on the compose mount's Recent
+  // Sends switches to the History tab -- the per-row "Open" no longer hands
+  // off here (it drills in place on both mounts now), so this always clears
+  // any stale ?batch=<key> rather than setting one.
+  function goToHistory() {
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev);
       params.set('tab', 'history');
-      if (batchKey) params.set('batch', batchKey);
-      else params.delete('batch');
+      params.delete('batch');
       return params;
     });
   }

@@ -106,7 +106,15 @@ describe('RecentSends', () => {
     expect(batchRowCells(row)[3]!.textContent).toBe('—');
   });
 
-  it('caps rows at `limit` and renders "All history" plus a per-row "Open" link (not a recipients disclosure) when onSeeAll is given', () => {
+  // DEC-751 amendment (w15-d): "All history" is the only control onSeeAll
+  // still drives -- the per-row "Open" always expands the recipients
+  // disclosure in place, on both mounts.
+  it('caps rows at `limit`, renders "All history" (calling onSeeAll with no argument), and a per-row "Open" that drills in place', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([
+        { id: 'log-1', eventName: 'Evt', toEmail: 'ada@example.com', subject: 'Send #1', status: 'sent', sentAt: 1700000000000 },
+      ]),
+    });
     const onSeeAll = vi.fn();
     const batches = [1, 2, 3, 4, 5].map((n) =>
       batch({ batchKey: `b${n}`, subject: `Send #${n}`, statusCounts: { sent: n } }),
@@ -120,16 +128,18 @@ describe('RecentSends', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'All history' }));
     expect(onSeeAll).toHaveBeenCalledTimes(1);
-    // "All history" carries no batch key.
+    // "All history" carries no argument -- it switches tabs, nothing more.
     expect(onSeeAll).toHaveBeenLastCalledWith();
 
-    const openLinks = screen.getAllByRole('button', { name: 'Open' });
-    expect(openLinks).toHaveLength(4);
-    fireEvent.click(openLinks[0]!);
-    expect(onSeeAll).toHaveBeenCalledTimes(2);
-    // w1-g: a per-row "Open" carries THAT row's batchKey, so the handoff
-    // can land History already expanded on it.
-    expect(onSeeAll).toHaveBeenLastCalledWith('b1');
+    const openButtons = screen.getAllByRole('button', { name: 'Open' });
+    expect(openButtons).toHaveLength(4);
+    fireEvent.click(openButtons[0]!);
+    // The per-row "Open" never calls onSeeAll -- it drills in place.
+    expect(onSeeAll).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(screen.getByText('ada@example.com')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'Close' })).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('never fabricates a count it did not receive -- omits a limit when none is given', () => {

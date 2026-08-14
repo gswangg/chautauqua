@@ -148,13 +148,12 @@ export interface RecentSendsProps {
   eventId: string;
   batches: EmailBatchRow[];
   limit?: number;
-  /** When given, renders "All history" and a per-row "Open" as links into
-   * History instead of the per-row recipients disclosure -- the compose
-   * mount is read-only and hands off to the full History tab rather than
-   * drilling in place. A per-row "Open" passes that row's batchKey so the
-   * handoff can carry the reader there directly (?batch=<key>); "All
-   * history" calls it with no key. */
-  onSeeAll?: (batchKey?: string) => void;
+  /** DEC-751 amendment (w15-d): when given, renders the section head's "All
+   * history" link, which switches to the full History tab. The per-row
+   * "Open" control is no longer gated by this prop -- BOTH mounts drill in
+   * place (expand/collapse the recipients disclosure), so this callback
+   * takes no argument; a per-row handoff to History is no longer a thing. */
+  onSeeAll?: () => void;
   /** w1-g: expand+load this batch's recipients on mount -- the History mount
    * uses this to land already-open on the batch a compose-mount "Open"
    * handed off to via ?batch=<key>. Ignored on the compose mount (which has
@@ -257,31 +256,20 @@ export function RecentSends({ eventId, batches, limit, onSeeAll, expandBatchKey,
               <span className="chq-comms-batch-count">{sentCountLabel(batch.statusCounts)}</span>
               <span className="chq-comms-batch-template">{templateLabel}</span>
               {/* DEC-732 (eval-findings 59): an explicit bordered control,
-                  not the whole row silently doubling as a toggle. On the
-                  compose mount (onSeeAll given) "Open" hands off to the
-                  full History tab, carrying this row's batchKey (w1-g) so
-                  History lands already expanded on it instead of drilling
-                  in place. */}
-              {onSeeAll ? (
-                <button
-                  type="button"
-                  className="chq-link-button chq-comms-batch-open"
-                  onClick={() => onSeeAll(batch.batchKey)}
-                >
-                  Open
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="chq-btn chq-btn-secondary chq-comms-batch-toggle"
-                  aria-expanded={isExpanded}
-                  onClick={() => toggle(batch.batchKey)}
-                >
-                  {isExpanded ? 'Close' : 'Open'}
-                </button>
-              )}
+                  not the whole row silently doubling as a toggle. DEC-751
+                  amendment (w15-d): both mounts drill in place -- "Open"
+                  always toggles this row's own recipients disclosure; the
+                  compose mount no longer hands off to History per row. */}
+              <button
+                type="button"
+                className="chq-btn chq-btn-secondary chq-comms-batch-toggle"
+                aria-expanded={isExpanded}
+                onClick={() => toggle(batch.batchKey)}
+              >
+                {isExpanded ? 'Close' : 'Open'}
+              </button>
             </div>
-            {!onSeeAll && isExpanded && (
+            {isExpanded && (
               <BatchRecipients
                 eventId={eventId}
                 items={entry?.items ?? null}
