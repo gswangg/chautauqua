@@ -24,36 +24,35 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   NOT A BOUND ON THE READ SIDE; PARSE RESULT DISCARDED != PARSED; A
   WATERMARK STORING ITS OWN START LOSES LATE-COMMITTING WRITES; THE
   DECISIONS' OWN PATH REFS ARE A CHEAP DRIFT DETECTOR.
-- FINDINGS w34-43 (heavily compacted, do NOT re-file). Closed defects across ten waves; TENANT axis covers
-  PATH+BODY/QUERY. Re-verified NOT defects (w43): DEC-658 no-store default, /embed-only framing, both-end
+- FINDINGS w34-44 (heavily compacted, do NOT re-file). Closed defects across eleven waves; TENANT axis
+  covers PATH+BODY/QUERY. Re-verified NOT defects: DEC-658 no-store default, /embed-only framing, both-end
   clamped paging, ONE toCsv serializer, two-directional authz/CSRF scans, server-side visibility predicate,
-  bounded text caps, CI-enforced perf-smoke+walkthrough+full-suite. Shapes: A REDACTOR IS SHAPES NOT ONE
-  REGEX; CSRF != AUTHZ; A 5xx IS NOT A REFUSAL; A REFUSAL THAT MUTATES IS NOT A REFUSAL; A WRITE GUARD THAT
-  DOESN'T MATCH THE READ PREDICATE MINTS INVISIBLE ROWS; A PREDICATE FAMILY IS A LATTICE; A ROW COUNT IS NOT
-  A PEOPLE COUNT; A PICKER FED BY PAGE 1 CANNOT PICK; A REFUSAL WHOSE ADVICE THE CALLER CANNOT FOLLOW IS A
-  DEAD END; A SCAN'S POPULATION IS BLIND TO THE HELPER IT DIDN'T ENUMERATE; A BUNDLE THAT FAILS WHOLE LOSES
-  THE PARTS THAT WORKED; AN INTEGER IS NOT A DATE; A SERIALIZER INVARIANT HELD BY THE WRITER IS HELD BY
-  NOBODY; A HAND-TYPED API DOC IS A MANIFEST — DERIVE IT OR IT LIES; A FAMILY ENUMERATED BY HAND AT WAVE N IS
-  BLIND TO THE SIBLING ADDED AT WAVE N+1; A COUNT THE CLIENT TURNS INTO AN ARRAY LENGTH IS A CLIENT-SIDE DoS
-  UNLESS THE BOUNDARY BOUNDS IT; A SILENT DEFAULT ON THE AUDIT SURFACE IS A BLANK PAGE. w43 TAKEN (still
-  open on main): reset-password skips revokeResetTokenForUser; plan `rounds` unbounded above; Comms.tsx
-  swallows two loads into permanent-loading/zero.
-- FINDINGS w44 (verified AT THE FILE on main; w43-a/b/c branches exist UNMERGED and were NOT re-filed —
-  organizer reset-password still skips revokeResetTokenForUser, plan `rounds` still unbounded above,
-  Comms.tsx still swallows its two loads). Re-checked and NOT defects — do not re-file: `npm run deploy`
-  is absent BY DESIGN (SPEC §0/§8 stage-2, pinned in five spec-audit logs); isEpochMs IS bounded
-  [0001-01-01, 9999-12-31] (w42 landed); assertServedContentTypeHeader now guards ALL FOUR R2-serving
-  routes (files.ts, portal/tasks ×2, portal/profile, portal/tasks/resources); content_status has three
-  real writers (single, bulk, content-note) so the public gate is reachable, not empty-by-construction;
-  ics_sequence bumps on slot/room/timezone/title with set-based SQL; rate limits are D1-atomic
-  consume-then-refund with an expires_at index; POST /users/:id/reset-password DOES revoke sessions and
-  role reads come from the DB row per request. TAKEN: (1) `npm run walkthrough` is a REQUIRED CI job and
-  is RED on main in two independent places — J5 posts includeFeedback without DEC-682's feedbackPlanId,
-  J11 asserts 201 on a duplicate-email POST that DEC-755 made a 409; (2) /forgot's known-address branch
-  awaits a KV write + D1 read + mailer send before responding while the unknown branch pays one SHA-256 —
-  DEC-004's own wave-27 rule, unenforced; (3) versionedCacheKey salts the WHOLE url, so every utm-tagged
-  share link misses the edge cache SPEC §7 promises and any param floods the key space.
-  Shapes: A HARNESS THAT HAND-ASSERTS A CONTRACT ROTS WHEN THE CONTRACT MOVES — THE CI JOB GOES RED AND
-  THE J-BAR STOPS BEING VERIFIED. A RESPONSE THAT IS BYTE-IDENTICAL ON BOTH BRANCHES IS STILL AN ORACLE IF
-  ONE BRANCH DOES IO. A CACHE KEYED ON THE WHOLE URL IS KEYED ON THE ATTACKER'S CHOICE AND ON MARKETING'S.
-  A CONSTANT COPIED WITH A COMMENT NAMING ITS SOURCE IS A DRIFT DETECTOR THAT ONLY FIRES AFTER THE DRIFT.
+  bounded text caps, CI-enforced perf-smoke+walkthrough+full-suite, `npm run deploy` absent BY DESIGN,
+  isEpochMs bounded, R2 content-type guard on all four serving routes, content_status three real writers,
+  ics_sequence set-based bump, D1-atomic rate limits, reset-password DOES revoke sessions. Shapes: A
+  REDACTOR IS SHAPES NOT ONE REGEX; CSRF != AUTHZ; A 5xx IS NOT A REFUSAL; A REFUSAL THAT MUTATES IS NOT A
+  REFUSAL; A WRITE GUARD THAT DOESN'T MATCH THE READ PREDICATE MINTS INVISIBLE ROWS; A PREDICATE FAMILY IS
+  A LATTICE; A ROW COUNT IS NOT A PEOPLE COUNT; A PICKER FED BY PAGE 1 CANNOT PICK; A REFUSAL WHOSE ADVICE
+  THE CALLER CANNOT FOLLOW IS A DEAD END; A SCAN'S POPULATION IS BLIND TO THE HELPER IT DIDN'T ENUMERATE; A
+  BUNDLE THAT FAILS WHOLE LOSES THE PARTS THAT WORKED; AN INTEGER IS NOT A DATE; A SERIALIZER INVARIANT
+  HELD BY THE WRITER IS HELD BY NOBODY; A HAND-TYPED API DOC IS A MANIFEST — DERIVE IT OR IT LIES; A FAMILY
+  ENUMERATED BY HAND AT WAVE N IS BLIND TO THE SIBLING ADDED AT WAVE N+1; A COUNT THE CLIENT TURNS INTO AN
+  ARRAY LENGTH IS A CLIENT-SIDE DoS UNLESS THE BOUNDARY BOUNDS IT; A SILENT DEFAULT ON THE AUDIT SURFACE IS
+  A BLANK PAGE; A HARNESS THAT HAND-ASSERTS A CONTRACT ROTS WHEN THE CONTRACT MOVES; A RESPONSE
+  BYTE-IDENTICAL ON BOTH BRANCHES IS STILL AN ORACLE IF ONE BRANCH DOES IO; A CACHE KEYED ON THE WHOLE URL
+  IS KEYED ON THE ATTACKER'S CHOICE AND ON MARKETING'S; A CONSTANT COPIED WITH A COMMENT NAMING ITS SOURCE
+  IS A DRIFT DETECTOR THAT ONLY FIRES AFTER THE DRIFT.
+- FINDINGS w45 (verified AT THE FILE on main). w44 STATE: task-w44-d LANDED (versionedCacheKey canonical +
+  PUBLIC_CACHE_KEY_PARAMS in public/bounds.ts, DEC-433 wave-44 amendment written); task-w44-a/b/c branches
+  exist UNMERGED, NOT re-filed (producer.ts:758 no feedbackPlanId; data.ts:273 wrong 201; scale.ts:44
+  hand-copies ONBOARDING_TASK_COUNT=5; /forgot known-address branch still inline). w43 fully landed. TAKEN:
+  (1) gate:render-sweep RED on main — ROUTE_MANIFEST sweeps PATTERN "/admin/*" as a page, matchesAdminRoute
+  false, DEC-945 answers 404; /logout+/dev/mailbox×2 swept by a role that can't reach them, Playwright
+  follows 302 and grades /login. (2) mail-swallow ledger keys on "(route handler near line N)" while
+  claiming line-drift stability. (3) hasOverlongQueryValue survives the canonical-key change, free
+  cache-bypass lever on every public page. (4) public agenda has three disagreeing "rooms in use" readers
+  under a comment claiming they agree.
+  Shapes: A GATE GRADING AGAINST A CONSTANT IT NEVER STATES CAN ONLY BE RED OR LYING. A ROUTE SWEPT BY A
+  ROLE THAT CANNOT REACH IT SWEEPS THE REDIRECT TARGET AND REPORTS PASS. A PATTERN IN A MANIFEST IS NOT A
+  URL. A BOUND KEPT AFTER ITS REASON IS GONE IS A LEVER FOR WHOEVER FINDS IT FIRST. A LEDGER KEYED ON WHERE
+  THE CODE SITS FAILS BOTH DIRECTIONS AT ONCE ON AN UNRELATED EDIT.
