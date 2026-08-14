@@ -11,6 +11,7 @@ import type { AppEnv, AuthInfo } from "../src/server/env";
 import { registerErrorHandler } from "../src/server/http";
 import type { ContactRow } from "../src/server/repo/contacts";
 import type { KVStore } from "../src/auth/claim";
+import { createClaimToken, readClaimToken } from "../src/auth/claim";
 import { PREVIEW_CLAIM_TOKEN } from "../src/domain/compose";
 
 const CONTACT: ContactRow = {
@@ -163,5 +164,26 @@ describe("POST /contacts/bulk-email — MINT LATE (DEC-397 wave-50)", () => {
     expect(kv.putCalls).toBeGreaterThan(0);
     expect(sentMails[0]?.text).not.toContain(PREVIEW_CLAIM_TOKEN);
     expect(sentMails[0]?.text).toMatch(/See https?:\/\/[^/]+\/claim\/\S+/);
+  });
+
+  it("a template with no {portal_link} performs ZERO KV writes and leaves a pre-existing claim grant untouched (DEC-397 wave-62 amendment)", async () => {
+    const app = buildApp();
+    const kv = new CountingKV();
+    // Seed a live claim grant for the recipient before the send — a mint
+    // for an unrelated field must not revoke it (DEC-949 single-active
+    // grant: createClaimToken deletes the prior grant via claim-for:<id>).
+    const priorToken = await createClaimToken(kv, { contactId: "ct-1", eventId: "ev1" });
+    kv.putCalls = 0;
+
+    const res = await postJson(
+      app,
+      { contactIds: ["ct-1"], eventId: "ev1", subject: "Hi {speaker_name}", bodyText: "No link here." },
+      kv,
+    );
+
+    expect(res.status).toBe(200);
+    expect(kv.putCalls).toBe(0);
+    const record = await readClaimToken(kv, priorToken);
+    expect(record).toEqual({ contactId: "ct-1", eventId: "ev1" });
   });
 });

@@ -14,7 +14,7 @@ import { getPlanById } from "../server/repo/review/plans";
 import type { KVStore } from "../auth/claim";
 import { redactClaimUrls } from "../auth/claim";
 import { applyMintedPortalLinks, resolvePortalLinks } from "../server/repo/portal-link";
-import { textToHtml, blockFieldsInTemplate } from "../mail/render";
+import { textToHtml, blockFieldsInTemplate, templateUsesMergeField } from "../mail/render";
 import { buildIcsEvent } from "../mail/ics";
 import { resolveIcsOrganizerEmail } from "../server/context";
 import { zonedMinutesToUtc } from "../lib/timezone";
@@ -568,9 +568,18 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
     );
   }
 
+  // DEC-397 wave-62 amendment (MINT ONLY WHAT THE MESSAGE CARRIES): mint a
+  // claim credential only if the send actually references {portal_link} —
+  // an unused mint is destructive (it revokes/replaces any prior grant) for
+  // no delivery benefit.
+  const needsPortalLink =
+    templateUsesMergeField(input.subjectTemplate, "portal_link") ||
+    templateUsesMergeField(input.bodyTemplate, "portal_link");
   const kv = c.env.KV as unknown as KVStore;
   const origin = resolveBaseUrl(c);
-  await applyMintedPortalLinks(kv, recipients, event.id, origin, targets);
+  if (needsPortalLink) {
+    await applyMintedPortalLinks(kv, recipients, event.id, origin, targets);
+  }
   const result = preflightRender(targets, input.subjectTemplate, input.bodyTemplate);
   if (!result.ok) {
     throw new ApiError("invalid", "One or more recipients are missing merge fields", missingToFields(result.missing));
