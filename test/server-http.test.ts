@@ -87,6 +87,28 @@ describe("parseBoundedIdArray", () => {
     expect(() => parseBoundedIdArray(["a", "b", "c"], "ids", { maxCount: 2 })).toThrow(ApiError);
     expect(parseBoundedIdArray(["a", "b"], "ids", { maxCount: 2 })).toEqual(["a", "b"]);
   });
+
+  // DEC-182 amendment: set semantics -- duplicates collapse to a single
+  // occurrence, first-occurrence order is preserved, and the cap is checked
+  // against the RAW (pre-dedupe) length so a caller can't dodge the cap by
+  // repeating one id.
+  it("dedupes duplicate ids, keeping first-occurrence order", () => {
+    expect(parseBoundedIdArray(["a", "b", "a", "c", "b"], "ids")).toEqual(["a", "b", "c"]);
+  });
+
+  it("dedupes a fully-duplicated array down to a single id", () => {
+    expect(parseBoundedIdArray(["a", "a", "a"], "ids")).toEqual(["a"]);
+  });
+
+  it("measures the cap against the raw length, not the deduped length", () => {
+    const ids = Array.from({ length: 1001 }, () => "same-id");
+    expect(() => parseBoundedIdArray(ids, "ids")).toThrow(ApiError);
+  });
+
+  it("allows 1000 raw entries that dedupe down to one id", () => {
+    const ids = Array.from({ length: 1000 }, () => "same-id");
+    expect(parseBoundedIdArray(ids, "ids")).toEqual(["same-id"]);
+  });
 });
 
 // DEC-841 wave 54 amendment: the HTML error page's 'Go back' link must never

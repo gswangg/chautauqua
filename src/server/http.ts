@@ -74,6 +74,15 @@ export const DEFAULT_BOUNDED_ID_ARRAY_MAX = 1000;
  * Fails loudly (no silent filtering) on: non-array input, empty array,
  * more than `opts.maxCount` (default DEFAULT_BOUNDED_ID_ARRAY_MAX) elements,
  * any non-string element, or any element with length 0 or > 64.
+ *
+ * DEC-182 amendment: this is the ONE place bulk ids become a set. The cap
+ * and per-element checks run against the raw (possibly-duplicated) input
+ * first -- so e.g. 1000 copies of the same id still 400 on count -- and
+ * only then is the array deduped, first-occurrence order preserved, before
+ * being returned. Every downstream consumer (chunked IN() queries, bulk
+ * status updates, compose recipient expansion, etc.) counts and iterates
+ * off this returned array, so none of them can double-count or double-send
+ * a repeated id.
  */
 export function parseBoundedIdArray(
   value: unknown,
@@ -98,7 +107,7 @@ export function parseBoundedIdArray(
       });
     }
   }
-  return value;
+  return Array.from(new Set(value));
 }
 
 // DEC-417
