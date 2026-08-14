@@ -25,36 +25,34 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   task. MIGRATION THAT CAN'T RUN IS A SCHEMA THAT DOESN'T EXIST (D1 rejects
   CREATE TEMP TABLE). COMMENT CLAIMING A CHECK IS NOT A CHECK.
 - FINDINGS w55-56: PLANNER'S FIRST READ CAN BE STALE -- re-read before
-  reserve; .git/logs/HEAD shows which lanes MERGED. The hand-off LIST IS A
-  HYPOTHESIS not a finding. THE MANDATE CAN RUN OUT: once spent, work comes
-  from READING REPOS. A CONSTRAINT ONE LEVEL DOWN IS STILL MISSING -- sweep
-  every writer of a table the wave a unique index lands on it. A JS CAP
-  OVER AN UNBOUNDED READ: a population you only COUNT/SLICE must be
-  counted/sliced in SQL; the FRONTIER is a query not a filter.
+  reserve; hand-off LIST IS A HYPOTHESIS. MANDATE CAN RUN OUT -> READ REPOS.
+  A CONSTRAINT ONE LEVEL DOWN IS STILL MISSING -- sweep every writer of a
+  table a unique index lands on. A JS CAP OVER AN UNBOUNDED READ: count/slice
+  in SQL, the FRONTIER is a query not a filter.
 - FINDINGS w57: A REVERT MANDATE IS NOT A REVERT -- DEC-996's mailer swap
-  was still live three waves after the P0 said revert (resend.ts present, no
-  send_email binding, RESEND_API_KEY in env.ts); mandate and scribe commits
-  are not merges, open the file. A DECISION WITH NO CODE HIDES IN THE ORPHAN
-  LIST: DEC-725 (Airtable incremental + backoff) was recorded, never built --
-  but the ratchet's 765 "UNVERIFIED" entries are mostly missing-`void`
-  convention noise, so a recent DEC is only an orphan once you READ its
-  module. THE COUNT YOU ONLY `.size` IS A GROUP BY -- review progress/remind
-  read every reviewer-submission pair of a round to print one integer per
-  reviewer. THE SECOND SCAN IS THE ONE NOBODY CAPS: the plan-filtered load
-  bounded nothing and hydrated tracks with a whole-event join. WHEN TWO
-  SIBLING QUERIES DIFFER, THE YOUNGER ONE IS RIGHT -- airtable's speakers
-  join is order-stable "so automations don't re-fire", its tracks join is
-  not.
-- FINDINGS w58: A MANDATE OUTLIVES ITS FACTS — six more gate-3/run-3 items
-  re-opened at file:line (CFP conditional logic w54-e data-field-id,
-  plan-editor dirty guard DEC-745, reviewer shell 403 DEC-395,
-  "(removed)" labels DEC-659, contact-create 409, conflict pair labelling)
-  were ALL already CLOSED; findings come from reading repos. NO LOWER BOUND
-  IS A FOREVER LOOP: a due-date gate with no tail and no terminal state
-  re-sends until the heat death of the event. A SHORT-CIRCUIT OVER A KDF IS
-  AN ORACLE — constant-time inside the compare is worthless if the caller
-  decides whether to call it. ONE FLAG DOING TWO JOBS: `accepted_at IS NULL`
-  as both "stamp the timestamp" and "run the planner" silently loses every
-  member added while un-accepted — split the trigger from the record. A
-  CONFIG THROW ON AN ANONYMOUS SURFACE IS A 500: an OPTIONAL field
-  (ICS ORGANIZER) must degrade; only the path that needs it may fail loudly.
+  was still live three waves later; open the file, don't trust merges. A
+  DECISION WITH NO CODE HIDES IN THE ORPHAN LIST (DEC-725). THE COUNT YOU
+  ONLY `.size` IS A GROUP BY. THE SECOND SCAN IS THE ONE NOBODY CAPS. WHEN
+  TWO SIBLING QUERIES DIFFER, THE YOUNGER ONE IS RIGHT.
+- FINDINGS w58: A MANDATE OUTLIVES ITS FACTS — six gate-3/run-3 items
+  re-opened at file:line were ALL already CLOSED; findings come from reading
+  repos. NO LOWER BOUND IS A FOREVER LOOP. A SHORT-CIRCUIT OVER A KDF IS AN
+  ORACLE. ONE FLAG DOING TWO JOBS: `accepted_at IS NULL` as both "stamp" and
+  "run the planner" loses members added while un-accepted. A CONFIG THROW ON
+  AN ANONYMOUS SURFACE IS A 500: an OPTIONAL field must degrade.
+- FINDINGS w59: THE MANDATE IS SPENT, CONFIRMED TWICE — nine more gate-3/eval
+  items re-verified CLOSED at file:line this wave (.chq-file max-width:100%,
+  Scorecard ring-not-armed-on-mount, aria-pressed refused by DEC-939, distribute
+  cap/summary line, criteria drag handles, DateField (zero native type=date),
+  agenda 30-min rules, public ?day= links, seed open_date in the past). Work now
+  comes only from READING. A DECISION THAT NAMES ITS OWN CONSUMERS IS A
+  CHECKLIST — WALK IT: DEC-829's prose lists "assignment / chase / public-visible"
+  readers; every one composed acceptedSpeakerConditions EXCEPT the chase
+  (reminders.ts listOutstandingForEvent + listRemindableContactIds), so a speaker
+  who declined is emailed forever while the overdue count correctly says 0.
+  A UI LABEL IS A SPEC: "Session title for this batch" (singular) sat over a loop
+  minting one identical accepted session PER ROW. A CANONICAL TASK MUST BE ABLE
+  TO WRITE WHERE ITS NAME POINTS: "Finalize bio + headshot" was a file_request
+  over FILE_KINDS = presentation|poster|handout|recording — the headshot it asks
+  for has no way to reach contact.headshot_url, so the cell goes green and the
+  public programme stays blank.
