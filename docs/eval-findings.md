@@ -114,6 +114,55 @@ and it makes the title row's most prominent element unframed. Options: keep (cap
 restyle quieter), or frame-pure (drop bulk from the worklist). Do not silently drop —
 capability decisions route through the orchestrator/user.
 
+**Pair-4 reds (07-comms FAIL 2 MAJ · 08-contacts FAIL 1 BRK + 5 MAJ):**
+
+**~~P0-BROKEN headshot overflow~~ FIXED BY ORCHESTRATOR (9ba85315, on main):** root cause was
+the drawer record-row's bare `1fr` value column — its auto min-content floor is the file
+input's intrinsic ~284px, so it could never shrink into the 418px drawer (which is why the
+earlier `max-width:100%` bound was a no-op). `minmax(0,1fr)` + `width:100%`; scan test pins
+both halves. HANDS OFF — do not re-litigate the grid template.
+
+**P1 · Template editor STILL at table measure** (three gates now): `chq-comms-page
+chq-measure-table` renders 1372; v7 frame's templates content = 757px of 1600 (reading
+measure). Change the PAGE container for the templates tab; the two panes become ~363 each.
+The BODY-width fix landed inside the wrong container.
+
+**P1 · Recent Sends vs History STILL two readers** — identical four sends: compose mount
+Template column renders `—` ×4; History tab renders the template names for the same rows.
+One reader (History's) feeds both. Also compose-mount `Open` ignores its row (navigates to
+bare ?tab=history; the History mount's expands correctly).
+
+**P1 · Bulk-email template picker offers 3 unsendable templates** (Acceptance/Content
+Reminder/Decline preview → "recipients are missing merge fields (only speaker_name/event_name/
+portal_link are allowed)" — no offending token named, no forward path). Same dead-end class
+as the fixed {feedback} P1: either restrict the picker to templates whose tokens the bulk
+context can merge, or grow the in-place resolver. Do not leave a picker that 400s.
+
+**P1 · Import "Match the columns" dedicated screen** (frame 03, third gate): 640px screen,
+filename · row count header, each CSV header ABOVE a sample value, dashed "Skip this column",
+dedupe footer "N rows match existing contacts by email · they will be updated", primary
+"Import N rows"; the step rail currently highlights "Match columns" while step-1 upload/paste
+content is still on screen (make the steps real screens).
+
+**P1 · Merge table = fixed six-row identity contract** (Name/Email/Company/Title/Labels/
+Notes) on EVERY pair — app renders only differing fields and NEVER Labels/Notes while its own
+footnote promises "Notes are appended"; **P1 · pipeline cards drop the MOVE-TO selects** (20/20
+carry one; frame is drag-only, cards ~40% shorter); **P1 · directory-rail duplicates get the
+reason line + Keep both** (second reader drops data the Duplicates tab already renders).
+
+**P2 (pair-4):** insert-field helper count copy ("Six available" family vs "7 available");
+Recent Sends timestamps "Tue 11 Aug, 4:12pm" family + single "23 sent" count; templates rows
+purpose-copy; editor eyebrow = template name + Duplicate + preselect + drop NAME input; seeded
+Acceptance body uses {task_due_date} + {portal_link}; Attachments card title "…and merge
+fields"; EVALUATION PLAN select out of the Attachments card; one stat format; chip wording
+NO SLOT YET everywhere; drawer 520 + 5 populated rows + DIETARY + one-line buttons; contacts
+search placeholder fits; rules row match count + Save as a segment; merge chrome (tinted
+combine box, green Not-a-duplicate link, no extra Cancel, no shouted email eyebrows); pipeline
+card staleness plain at foot + rationale inline + pale outlined fit chip; add-to-event cards/
+roles/selected-state; add-to-pipeline pills/black-selected/footnote-below; bulk-email subtitle
+names + MESSAGE label + terminal Send; header stats 3 clauses + Import/Export/New order;
+labels plain small-caps; pagination arrangement.
+
 **Pair-6 reds (11-account FAIL 2 MAJ — near-PASS, both mechanical):**
 
 **P1 · Auth card box-math: the design's CONTENT column is applied to the CARD BOX and padded
