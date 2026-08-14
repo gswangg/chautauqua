@@ -217,3 +217,32 @@ describe('PublicPagesPanel per-surface count mapping (DEC-816, row by row)', () 
     expect(within(rowValue('Speaker gallery')).getByText('Live · 4 published')).toBeInTheDocument();
   });
 });
+
+describe('DEC-781: every one of the seven sections carries its action on the eyebrow rule', () => {
+  SECTIONS.forEach((section) => {
+    it(`${section.key}: the section head (label + rule) hosts the drill action, right-flushed on the same row`, async () => {
+      mockEverySettingsRoute();
+      const Panel = section.Panel;
+
+      render(
+        <MemoryRouter initialEntries={['/settings']}>
+          <Panel />
+        </MemoryRouter>,
+      );
+
+      const region = await screen.findByRole('region');
+      await waitFor(() => {
+        expect(region.textContent && region.textContent.trim().length).toBeGreaterThan(0);
+      });
+
+      // Every section is a .chq-settings-numbered panel whose head row
+      // carries BOTH the eyebrow label (h2) and its one action button --
+      // not a bare <h2> border rule with the action floating elsewhere.
+      expect(region.className).toContain('chq-settings-numbered');
+      const head = region.querySelector('.chq-settings-section-head');
+      expect(head).not.toBeNull();
+      expect(head!.querySelector('h2')).not.toBeNull();
+      expect(head!.querySelector('button')).not.toBeNull();
+    });
+  });
+});
