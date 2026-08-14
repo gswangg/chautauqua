@@ -1973,6 +1973,39 @@ async function main(): Promise<void> {
     return taskId;
   });
 
+  // DEC-739 amendment (task w11-b): one event-specific file_request task —
+  // as an organizer would create it, NOT a new default (DEFAULT_ONBOARDING_
+  // TASKS stays untouched per DEC-009's wave-59 amendment) — so the upload-
+  // deliverable path (Speakers grid upload cell, portal deliverable panel,
+  // DEC-549 deliverable_kind, getFileScope's task-upload population) has a
+  // real task to render against. Due date offset matches the existing
+  // "Announce participation" default's (-4 days) so this doesn't introduce
+  // a fourth distinct past-due offset for the DEC-646 staggered-lateness
+  // proof, which enumerates exactly {1, 2, 4} days late.
+  const deliverableTaskId = seedId("task", DEFAULT_ONBOARDING_TASKS.length + 1);
+  const deliverableTaskDueDate = SEED_NOW - 4 * DAY_MS;
+  if (deliverableTaskDueDate >= EVENT_START_MS) {
+    throw new Error(
+      `seed: file_request deliverable task due date (${new Date(deliverableTaskDueDate).toISOString()}) ` +
+        `must be before the event start (${new Date(EVENT_START_MS).toISOString()})`,
+    );
+  }
+  statements.push(
+    insertStmt("task", {
+      id: deliverableTaskId,
+      event_id: eventId,
+      kind: "file_request",
+      title: "Upload your slide deck",
+      description: null,
+      due_date: deliverableTaskDueDate,
+      required: true,
+      form_id: null,
+      deliverable_kind: "presentation",
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+
   // DEC-739: plausible per-kind values for a completed form-kind task's
   // response_json, keyed by field id (never sampled — every field the task's
   // form actually carries gets a real answer, so the organiser's response
@@ -2189,6 +2222,41 @@ async function main(): Promise<void> {
     if (contactIdx % 3 !== 0) {
       mintTaskDeliverableFile({ contactId: acc.contactId, submissionId: acc.submissionId, deliverableKind: "presentation" });
     }
+  });
+
+  // DEC-739 amendment (task w11-b): fan the file_request task out to the
+  // accepted roster in a SEPARATE loop (after the loop above, which already
+  // consumed taskAssignmentCounter for the DEFAULT_ONBOARDING_TASKS x
+  // acceptedSubmissions grid) so no existing seed_task_assignment_* id
+  // shifts — DEC-172/DEC-174 pin seed_task_assignment_0001 and _0005 by
+  // name. Roughly one third complete (each carrying a real minted file per
+  // DEC-739), the rest pending.
+  acceptedSubmissions.forEach((acc, contactIdx) => {
+    taskAssignmentCounter += 1;
+    const isComplete = contactIdx % 3 === 0;
+    const assignmentId = seedId("task_assignment", taskAssignmentCounter);
+    const fileId = isComplete
+      ? mintTaskDeliverableFile({
+          contactId: acc.contactId,
+          submissionId: acc.submissionId,
+          deliverableKind: "presentation",
+        })
+      : null;
+    statements.push(
+      insertStmt("task_assignment", {
+        id: assignmentId,
+        task_id: deliverableTaskId,
+        contact_id: acc.contactId,
+        status: isComplete ? "complete" : "pending",
+        completed_at: isComplete ? nextTs() : null,
+        completed_by: isComplete ? organizerUserId : null,
+        response_json: null,
+        file_id: fileId,
+        last_reminded_at: null,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
   });
 
   // --- schedule slots (DEC-010/DEC-021, DEC-887 amendment task w66-b,
