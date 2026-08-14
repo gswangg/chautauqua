@@ -6,7 +6,7 @@ import './review.css';
 import './scorecard.css';
 import { formatAnswerValue } from './answerText';
 import { incompleteCriteria, isEvaluationComplete, plainAverage, ratingScaleValues, scorecardKeyAction } from './scorecardLogic';
-import { DelayedLoading } from '../../components/DelayedLoading';
+import { PageSkeleton } from '../../components/PageSkeleton';
 import { planTrackScope } from './PlanList';
 // DEC-908 (wave-9 amendment): the scorecard head's meta line reuses the ONE
 // session-shape display vocabulary (Talk (30 min) -> 'Talk, 30 min',
@@ -267,11 +267,14 @@ export function Scorecard() {
     }
   }
 
+  // DEC-678: the scorecard's MAIN region renders PageSkeleton on the first
+  // frame, not a withheld DelayedLoading label -- this branch runs before
+  // any of the page's chrome has painted.
   if (loading) {
     return (
       <div className="chq-page chq-review-page chq-measure">
         <h1 className="chq-page-title">Scorecard</h1>
-        <DelayedLoading />
+        <PageSkeleton variant="detail" />
       </div>
     );
   }
