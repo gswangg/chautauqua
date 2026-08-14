@@ -148,6 +148,14 @@ describe('OnboardingGrid: DEC-662 import link', () => {
     // the same title-action row as Add speaker/New task/Remind.
     expect(link.tagName).toBe('A');
     expect(link.closest('.chq-speakers-head-actions')).not.toBeNull();
+    // Ruling A13 (DEC-662 amendment, wave 25): exactly one import affordance
+    // on the page -- and it is not inside the matrix filter row (GridFilters'
+    // .chq-speakers-filters), which owns search/task/status/invite-status
+    // predicates only.
+    expect(screen.getAllByRole('link', { name: 'Import speakers from a CSV' })).toHaveLength(1);
+    expect(link.closest('.chq-speakers-filters')).toBeNull();
+    const filterRow = screen.getByLabelText('Search speakers').closest('.chq-speakers-filters') as HTMLElement;
+    expect(within(filterRow).queryByText(/Import/)).not.toBeInTheDocument();
   });
 });
 
@@ -1032,6 +1040,24 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     ).not.toBeInTheDocument();
   });
 
+  it('Ruling A12: the task column header renders exactly one Edit link and no Remove link, and Remove appears once the editor is open', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: TASK_GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    const header = within(screen.getByRole('columnheader', { name: /Sign speaker agreement/ }));
+    expect(header.getAllByRole('button', { name: 'Edit' })).toHaveLength(1);
+    expect(header.queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
+
+    fireEvent.click(header.getByRole('button', { name: 'Edit' }));
+    const editDialog = await screen.findByRole('dialog', { name: 'Edit task' });
+    expect(within(editDialog).getByRole('button', { name: 'Remove' })).toBeInTheDocument();
+  });
+
   it('Edit opens TaskModal in edit mode prefilled, and PATCHes only title/dueDate/required (never kind/formId)', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: TASK_GRID,
@@ -1088,7 +1114,10 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
     const table = within(screen.getByRole('table'));
-    fireEvent.click(table.getByRole('button', { name: 'Remove' }));
+    // Ruling A12: Remove now lives inside the editor Edit opens.
+    fireEvent.click(table.getByRole('button', { name: 'Edit' }));
+    const editDialog = await screen.findByRole('dialog', { name: 'Edit task' });
+    fireEvent.click(within(editDialog).getByRole('button', { name: 'Remove' }));
 
     const dialog = await screen.findByRole('dialog', { name: 'Remove task' });
 
@@ -1152,7 +1181,9 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
     const table = within(screen.getByRole('table'));
-    fireEvent.click(table.getByRole('button', { name: 'Remove' }));
+    fireEvent.click(table.getByRole('button', { name: 'Edit' }));
+    const editDialog = await screen.findByRole('dialog', { name: 'Edit task' });
+    fireEvent.click(within(editDialog).getByRole('button', { name: 'Remove' }));
 
     const dialog = await screen.findByRole('dialog', { name: 'Remove task' });
     expect(dialog).toHaveTextContent('Counting affected speakers');
@@ -1185,7 +1216,9 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
 
     const table = within(screen.getByRole('table'));
-    fireEvent.click(table.getByRole('button', { name: 'Remove' }));
+    fireEvent.click(table.getByRole('button', { name: 'Edit' }));
+    const editDialog = await screen.findByRole('dialog', { name: 'Edit task' });
+    fireEvent.click(within(editDialog).getByRole('button', { name: 'Remove' }));
 
     const dialog = await screen.findByRole('dialog', { name: 'Remove task' });
     await waitFor(() => {

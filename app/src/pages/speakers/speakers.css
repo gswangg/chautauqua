@@ -195,28 +195,21 @@
   border-bottom: 2px solid var(--chq-ink);
 }
 
-/* DEC-933: the quiet Edit/Remove pair a task column header carries -- text
-   weight normal, muted, no button chrome, so a column that is otherwise
-   write-once reads as fixable without shouting. */
-.chq-speakers-task-header-actions {
+/* Ruling A12 (DEC-662 amendment, wave 25): title + the ONE quiet Edit
+   control share a line -- Remove moved inside the editor Edit opens, so a
+   column header is no longer a two-link row (six columns of Edit+Remove
+   read as twelve controls whose job was labelling). */
+.chq-speakers-task-title-row {
   display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   gap: 8px;
-  margin-top: 4px;
-  text-transform: none;
 }
 
-.chq-speakers-task-header-actions .chq-link-button {
+.chq-speakers-task-edit {
   font-size: 10px;
   font-weight: 600;
-}
-
-/* DEC-379: the two members of that pair are named classes in the .tsx, so
-   they carry rules here rather than leaning on the container selector alone
-   -- the class vocabulary stays closed. Both read as the same quiet muted
-   text (DEC-367: Remove is not signalled by colour alone; the word "Remove"
-   and its confirmation dialog carry the meaning). */
-.chq-speakers-task-edit,
-.chq-speakers-task-remove {
+  text-transform: none;
   color: var(--chq-muted);
 }
 
