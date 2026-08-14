@@ -109,6 +109,8 @@ describe('reconcileConflictsSummary', () => {
           day: '2026-09-01',
           roomId: 'room-1',
           speakerContactIds: [],
+          breakId: null,
+          breakLabel: null,
           detail: 'double-booked',
         },
       ],

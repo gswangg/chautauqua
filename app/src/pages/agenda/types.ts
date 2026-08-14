@@ -35,11 +35,15 @@ export interface AgendaTrack {
 }
 
 export interface AgendaConflict {
-  kind: 'room_overlap' | 'speaker_overlap';
-  submissionIds: [string, string];
+  kind: 'room_overlap' | 'speaker_overlap' | 'break_overlap';
+  // DEC-557 amendment (wave 71): a list of participants, not a pair tuple —
+  // exactly 2 for room_overlap/speaker_overlap, exactly 1 for break_overlap.
+  submissionIds: string[];
   day: string;
   roomId: string | null;
   speakerContactIds: string[];
+  breakId: string | null;
+  breakLabel: string | null;
   detail: string;
 }
 

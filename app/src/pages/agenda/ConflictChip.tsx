@@ -14,9 +14,13 @@ interface ConflictChipProps {
  * sessions actually sharing the slot — assignLanes (gridMath.ts) already
  * proves a room can hold N > 2 overlapping sessions, so the wording must
  * count instead of assuming a pair ("Two sessions in one room").
- * `speaker_overlap` has no room-count analogue and keeps its fixed caption. */
-export function conflictKindLabel(kind: 'room_overlap' | 'speaker_overlap', count = 2): string {
-  if (kind !== 'room_overlap') return 'Speaker double-booked';
+ * `speaker_overlap` has no room-count analogue and keeps its fixed caption.
+ * `break_overlap` (DEC-557 amendment, wave 71) likewise has a fixed caption
+ * — a session scheduled over a break has exactly one participant, never a
+ * count of clashing sessions. */
+export function conflictKindLabel(kind: 'room_overlap' | 'speaker_overlap' | 'break_overlap', count = 2): string {
+  if (kind === 'speaker_overlap') return 'Speaker double-booked';
+  if (kind === 'break_overlap') return 'Scheduled over a break';
   return `${numberWord(count)} ${plural(count, 'session')} in one room`;
 }
 
@@ -42,7 +46,8 @@ function captionForConflicts(mine: AgendaConflict[]): string | null {
   const roomConflicts = mine.filter((c) => c.kind === 'room_overlap');
   const hasRoom = roomConflicts.length > 0;
   const hasSpeaker = mine.some((c) => c.kind === 'speaker_overlap');
-  if (!hasRoom && !hasSpeaker) return null;
+  const hasBreak = mine.some((c) => c.kind === 'break_overlap');
+  if (!hasRoom && !hasSpeaker && !hasBreak) return null;
   // DEC-701: conflicts are recorded pairwise (each entry's submissionIds is
   // exactly two), so a 3-way room clash surfaces as 2 pairs touching this
   // submission. The union of every submissionId across this submission's
@@ -50,9 +55,13 @@ function captionForConflicts(mine: AgendaConflict[]): string | null {
   // slot appears in at least one pair with this one), so its size is the
   // true count — never assume a pair.
   const roomCount = new Set(roomConflicts.flatMap((c) => c.submissionIds)).size;
-  return hasRoom && hasSpeaker
-    ? 'Room & speaker conflict'
-    : conflictKindLabel(hasSpeaker ? 'speaker_overlap' : 'room_overlap', roomCount);
+  // DEC-557 amendment (wave 71): precedence is pinned — room+speaker beats
+  // either alone, room beats speaker, speaker beats break, and a break-only
+  // set gets its own caption rather than falling through to null.
+  if (hasRoom && hasSpeaker) return 'Room & speaker conflict';
+  if (hasRoom) return conflictKindLabel('room_overlap', roomCount);
+  if (hasSpeaker) return conflictKindLabel('speaker_overlap');
+  return conflictKindLabel('break_overlap');
 }
 
 /** DEC-557 amendment (wave 48): caption for a DayGrid merged clash cluster.

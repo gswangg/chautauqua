@@ -41,9 +41,14 @@ function roomLabel(room: AgendaRoom | undefined): string {
   return room ? room.name : 'TBD';
 }
 
+// DEC-557 amendment (wave 71): the room chip's CLASH marker claims a room
+// clash specifically — restrict to the kinds that actually implicate two
+// sessions sharing a room (room_overlap, speaker_overlap) so a break_overlap
+// (a session over a break, unrelated to which room it's in) doesn't
+// silently light up a room chip's CLASH flag.
 function roomHasConflict(roomId: string | null, day: string, placed: PlacedAgendaSession[], conflicts: AgendaConflict[]): boolean {
   const roomSessionIds = new Set(placed.filter((s) => s.day === day && s.roomId === roomId).map((s) => s.submissionId));
-  return conflicts.some((c) => c.submissionIds.some((id) => roomSessionIds.has(id)));
+  return conflicts.some((c) => c.kind !== 'break_overlap' && c.submissionIds.some((id) => roomSessionIds.has(id)));
 }
 
 /** Phone tap-to-place agenda (DEC-380): one room at a time, arm a session
