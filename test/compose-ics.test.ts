@@ -389,7 +389,7 @@ describe("compose/preview ics.timeZone (DEC-494)", () => {
           attachIcs: true,
         }),
       },
-      { KV: { put: vi.fn() } },
+      { KV: { put: vi.fn() }, PUBLIC_BASE_URL: ORIGIN },
     );
 
     expect(res.status).toBe(200);

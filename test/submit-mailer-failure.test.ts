@@ -199,6 +199,7 @@ describe("DEC-972: confirmation quotes the event's own record prefix, not a hard
       EMAIL: okEmailBinding(),
       MAIL_FROM_EMAIL: "noreply@example.com",
       MAIL_FROM_NAME: "Chautauqua",
+      PUBLIC_BASE_URL: "https://events.example.com",
     } as unknown as AppEnv["Bindings"]);
 
     expect(res.status).toBe(200);
@@ -233,6 +234,7 @@ describe("public submit: mailer failure is best-effort (DEC-237/DEC-238)", () =>
       // selects EmailBindingMailer over the dev sink.
       MAIL_FROM_EMAIL: "noreply@example.com",
       MAIL_FROM_NAME: "Chautauqua",
+      PUBLIC_BASE_URL: "https://events.example.com",
     } as unknown as AppEnv["Bindings"]);
 
     // Confirmation page, not a 500 — the send failure must not surface as an
@@ -288,6 +290,7 @@ describe("public submit: mailer failure is best-effort (DEC-237/DEC-238)", () =>
       // provider 'none', so makeMailer hands back UnconfiguredMailer.
       MAIL_FROM_EMAIL: "noreply@example.com",
       MAIL_FROM_NAME: "Chautauqua",
+      PUBLIC_BASE_URL: "https://events.example.com",
     } as unknown as AppEnv["Bindings"]);
 
     expect(res.status).toBe(200);

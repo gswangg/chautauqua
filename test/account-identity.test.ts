@@ -268,7 +268,10 @@ describe("portal-link resolution keys off contact_id, not email alone (DEC-456)"
           bodyText: "Hi {speaker_name}, see {portal_link}.",
         }),
       },
-      { KV: kv as unknown as AppEnv["Bindings"]["KV"] },
+      {
+        KV: kv as unknown as AppEnv["Bindings"]["KV"],
+        PUBLIC_BASE_URL: "https://events.example.com",
+      },
     );
 
     expect(res.status).toBe(200);

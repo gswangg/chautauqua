@@ -77,17 +77,17 @@ describe("resolveBaseUrl (DEC-252)", () => {
     expect(resolveBaseUrl(c)).toBe("http://chautauqua.cc");
   });
 
-  it("outside dev mode, ignores loopback headers entirely and uses the request URL origin", () => {
+  it("outside dev mode, ignores loopback headers entirely and throws when PUBLIC_BASE_URL is unset (DEC-252 amendment, wave 18)", () => {
     const c = ctx({
       url: "http://chautauqua.cc/submit/foo",
       headers: { Origin: "http://localhost:8801" },
     });
-    expect(resolveBaseUrl(c)).toBe("http://chautauqua.cc");
+    expect(() => resolveBaseUrl(c)).toThrow(/PUBLIC_BASE_URL/);
   });
 
-  it("falls back to the request URL origin in production (no PUBLIC_BASE_URL, no DEV_MODE)", () => {
+  it("outside dev mode, throws rather than guessing from the request URL origin (no PUBLIC_BASE_URL, no DEV_MODE) (DEC-252 amendment, wave 18)", () => {
     const c = ctx({ url: "https://chautauqua.cc/submit/foo" });
-    expect(resolveBaseUrl(c)).toBe("https://chautauqua.cc");
+    expect(() => resolveBaseUrl(c)).toThrow(/PUBLIC_BASE_URL/);
   });
 
   it("DEC-296: a non-loopback PUBLIC_BASE_URL always wins, even in dev mode with a loopback Origin header", () => {

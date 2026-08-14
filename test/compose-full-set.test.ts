@@ -112,7 +112,7 @@ afterEach(() => {
 const organizerAuth: AuthInfo = { userId: "u-1", role: "organizer", orgId: ORG_A };
 
 function withEnv(kv: KVStore) {
-  return { KV: kv as unknown as AppEnv["Bindings"]["KV"] };
+  return { KV: kv as unknown as AppEnv["Bindings"]["KV"], PUBLIC_BASE_URL: ORIGIN };
 }
 
 async function buildCommsApp() {

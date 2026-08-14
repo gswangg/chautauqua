@@ -194,6 +194,7 @@ function selectQueueForWithFormatNoTracks() {
 const commonBindings = {
   MAIL_FROM_EMAIL: "noreply@example.com",
   MAIL_FROM_NAME: "Chautauqua",
+  PUBLIC_BASE_URL: "https://events.example.com",
 } as const;
 
 describe("CFP confirmation page never asserts a delivery that did not happen (DEC-006 wave 51)", () => {
