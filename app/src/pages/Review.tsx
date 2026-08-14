@@ -25,7 +25,7 @@ function OtherRolePanel({ owner }: { owner: 'reviewer' | 'organiser' }) {
     <div className="chq-page chq-review-page chq-measure">
       <h1 className="chq-page-title">Not your view</h1>
       <p className="chq-empty">That page belongs to the {owner} view.</p>
-      <Link className="chq-btn-tertiary" to="/review">
+      <Link className="chq-btn chq-btn-tertiary" to="/review">
         Back to Review
       </Link>
     </div>

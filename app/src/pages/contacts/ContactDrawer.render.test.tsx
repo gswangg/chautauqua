@@ -399,6 +399,7 @@ describe('ContactDrawer delete (DEC-758)', () => {
 
     const deleteTrigger = within(dialog).getByRole('button', { name: 'Delete this contact' });
     expect(deleteTrigger.tagName).toBe('BUTTON');
+    expect(deleteTrigger.className).toContain('chq-btn');
     expect(deleteTrigger.className).toContain('chq-btn-tertiary');
 
     fireEvent.click(deleteTrigger);

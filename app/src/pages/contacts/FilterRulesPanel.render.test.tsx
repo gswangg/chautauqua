@@ -189,8 +189,12 @@ describe('contacts.css: filter-rules row has one eyebrow, one control tier', () 
     expect(CSS).not.toMatch(/\.chq-contacts-add-rule\s*\{/);
   });
 
-  it('.chq-btn-tertiary (the "Add a rule" control) declares no border of its own', () => {
+  // DEC-406 amendment (wave 47): .chq-btn-tertiary now declares its own
+  // `border: none` explicitly (rather than relying on the UA default being
+  // absent) so a bare tertiary control never picks up the browser's
+  // `2px outset ButtonBorder`.
+  it('.chq-btn-tertiary (the "Add a rule" control) declares border: none, not a bordered look', () => {
     const body = topLevelRuleBody(SHARED_CSS, '.chq-btn-tertiary');
-    expect(body).not.toMatch(/border(?!-radius)/);
+    expect(body).toMatch(/border:\s*none/);
   });
 });

@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -215,6 +216,48 @@ interface Violation {
   tag: string;
 }
 
+interface TierViolation {
+  file: string;
+  line: number;
+  tag: string;
+  classes: string[];
+}
+
+/** A tier class (chq-btn-primary/secondary/tertiary) styles only the
+ * differences from the shell; the base chq-btn class supplies shared
+ * layout/reset (e.g. `border: none`). A control carrying a tier without
+ * the shell keeps the UA default box model for whatever the tier doesn't
+ * override. This scan reuses the same file population and token
+ * extraction as the main conformance scan, just with a narrower
+ * predicate. */
+function scanFileForBareTiers(file: string): TierViolation[] {
+  const rawSrc = readFileSync(file, "utf8");
+  const src = stripComments(rawSrc);
+  const violations: TierViolation[] = [];
+  const tagRe = new RegExp(`<(${CONTROL_TAGS.join("|")})(?=[\\s/>])`, "g");
+  let m: RegExpExecArray | null;
+  while ((m = tagRe.exec(src))) {
+    const tagName = m[1]!;
+    const tagStart = m.index;
+    const tagEnd = findTagEnd(src, tagStart);
+    if (tagEnd === -1) {
+      throw new Error(`${file}: unterminated <${tagName}> starting at offset ${tagStart}`);
+    }
+    const attrs = src.slice(tagStart, tagEnd + 1);
+    const lineNumber = src.slice(0, tagStart).split("\n").length;
+    const classValue = extractAttrValue(attrs, "className");
+    if (classValue === null) continue;
+    const tokens = extractClassTokens(classValue);
+    if (tokens.length === 0) continue;
+    const set = new Set(tokens);
+    const hasTier = [...set].some((c) => TIER_CLASSES.has(c));
+    if (hasTier && !set.has("chq-btn")) {
+      violations.push({ file, line: lineNumber, tag: tagName, classes: [...set] });
+    }
+  }
+  return violations;
+}
+
 function scanFile(file: string): Violation[] {
   const rawSrc = readFileSync(file, "utf8");
   const src = stripComments(rawSrc);
@@ -265,5 +308,36 @@ describe("interactive control class conformance (DEC-406/DEC-410)", () => {
       .map((v) => `${v.file}:${v.line} <${v.tag}> missing a DEC-406 vocabulary class`)
       .join("\n");
     expect(violations, `\n${message}`).toEqual([]);
+  });
+
+  it("every tier class (chq-btn-primary/secondary/tertiary) implies the chq-btn shell class", () => {
+    const violations: TierViolation[] = [];
+    for (const file of tsxFiles) {
+      violations.push(...scanFileForBareTiers(file));
+    }
+    const message = violations
+      .map((v) => `${v.file}:${v.line} <${v.tag}> carries a tier (${v.classes.join(", ")}) without chq-btn`)
+      .join("\n");
+    expect(violations, `\n${message}`).toEqual([]);
+  });
+
+  it("a tier-without-shell fixture fails the tier-implies-chq-btn scan", () => {
+    // Proves scanFileForBareTiers actually catches the shape this guard
+    // exists to prevent, using a throwaway fixture file rather than a
+    // synthetic call to internal helpers.
+    const tmpDir = mkdtempSync(join(tmpdir(), "tier-fixture-"));
+    try {
+      const fixtureFile = join(tmpDir, "BareTier.tsx");
+      writeFileSync(
+        fixtureFile,
+        `export function BareTier() {\n  return <button className="chq-btn-tertiary">Delete</button>;\n}\n`,
+      );
+      const violations = scanFileForBareTiers(fixtureFile);
+      expect(violations).toHaveLength(1);
+      expect(violations[0]!.classes).toContain("chq-btn-tertiary");
+      expect(violations[0]!.classes).not.toContain("chq-btn");
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 });
