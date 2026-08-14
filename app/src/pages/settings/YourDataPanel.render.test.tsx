@@ -8,7 +8,7 @@ import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-li
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { YourDataPanel } from './YourDataPanel';
-import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+import { errorEnvelope, listEnvelope, mockApi } from '../../test-utils/mockApi';
 
 const EVENT_ID = 'evt-your-data';
 
@@ -107,5 +107,107 @@ describe('YourDataPanel', () => {
 
     fireEvent.click(within(section).getByRole('button', { name: 'Import from Sessionboard' }));
     expect(within(section).getByRole('heading', { name: 'Import from Sessionboard' })).toBeInTheDocument();
+  });
+
+  // DEC-815 (wave-41 amendment): 'Everything JSON' fails per kind, not per
+  // bundle -- one refused kind must not vanish the other five.
+  describe('Everything JSON per-kind failure', () => {
+    let createObjectURLSpy: ReturnType<typeof vi.fn>;
+    let revokeObjectURLSpy: ReturnType<typeof vi.fn>;
+    let clickSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      createObjectURLSpy = vi.fn(() => 'blob:mock-url');
+      revokeObjectURLSpy = vi.fn();
+      vi.stubGlobal('URL', { ...URL, createObjectURL: createObjectURLSpy, revokeObjectURL: revokeObjectURLSpy });
+      // Tag every Blob with the raw parts it was constructed from so the
+      // test can read the bundle contents without depending on jsdom's
+      // Blob#text() support.
+      class TaggedBlob extends Blob {
+        __parts: BlobPart[];
+        constructor(parts: BlobPart[], options?: BlobPropertyBag) {
+          super(parts, options);
+          this.__parts = parts;
+        }
+      }
+      vi.stubGlobal('Blob', TaggedBlob);
+      clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      clickSpy.mockRestore();
+    });
+
+    it('downloads a bundle with the five successful kinds and names the refused kind with the server message', async () => {
+      mockYourData({
+        [`GET /api/v1/events/${EVENT_ID}/export/submissions`]: { rows: ['s'] },
+        [`GET /api/v1/events/${EVENT_ID}/export/speakers`]: { rows: ['sp'] },
+        [`GET /api/v1/events/${EVENT_ID}/export/evaluations`]: { rows: ['e'] },
+        [`GET /api/v1/events/${EVENT_ID}/export/agenda`]: { rows: ['a'] },
+        [`GET /api/v1/events/${EVENT_ID}/export/email-log`]: {
+          status: 400,
+          body: errorEnvelope('invalid', 'Too many rows to export (cap is 20000)'),
+        },
+        [`GET /api/v1/events/${EVENT_ID}/export/contacts`]: { rows: ['c'] },
+      });
+      render(
+        <MemoryRouter>
+          <YourDataPanel />
+        </MemoryRouter>,
+      );
+
+      const section = await screen.findByRole('region', { name: 'Your data' });
+      fireEvent.click(within(section).getByRole('button', { name: 'Everything JSON' }));
+
+      await waitFor(() => {
+        expect(clickSpy).toHaveBeenCalled();
+      });
+
+      // A download still happened despite one kind failing.
+      expect(createObjectURLSpy).toHaveBeenCalled();
+      const blobArg = createObjectURLSpy.mock.calls[0]![0] as unknown as { __parts: string[] };
+      const text = blobArg.__parts.join('');
+      const bundle = JSON.parse(text) as Record<string, unknown>;
+      expect(bundle.submissions).toEqual({ rows: ['s'] });
+      expect(bundle.speakers).toEqual({ rows: ['sp'] });
+      expect(bundle.evaluations).toEqual({ rows: ['e'] });
+      expect(bundle.agenda).toEqual({ rows: ['a'] });
+      expect(bundle.contacts).toEqual({ rows: ['c'] });
+      expect(bundle['email-log']).toBeUndefined();
+      expect(bundle._kinds).toEqual(['submissions', 'speakers', 'evaluations', 'agenda', 'contacts']);
+
+      // The refused kind is named on screen with the server's own message.
+      const note = within(section).getByText(/Too many rows to export \(cap is 20000\)/);
+      expect(note.textContent).toContain('email-log');
+      expect(within(section).queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('shows a single error and downloads nothing when every kind refuses', async () => {
+      const failBody = { status: 400, body: errorEnvelope('invalid', 'Export refused') };
+      mockYourData({
+        [`GET /api/v1/events/${EVENT_ID}/export/submissions`]: failBody,
+        [`GET /api/v1/events/${EVENT_ID}/export/speakers`]: failBody,
+        [`GET /api/v1/events/${EVENT_ID}/export/evaluations`]: failBody,
+        [`GET /api/v1/events/${EVENT_ID}/export/agenda`]: failBody,
+        [`GET /api/v1/events/${EVENT_ID}/export/email-log`]: failBody,
+        [`GET /api/v1/events/${EVENT_ID}/export/contacts`]: failBody,
+      });
+      render(
+        <MemoryRouter>
+          <YourDataPanel />
+        </MemoryRouter>,
+      );
+
+      const section = await screen.findByRole('region', { name: 'Your data' });
+      fireEvent.click(within(section).getByRole('button', { name: 'Everything JSON' }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+      });
+      expect(screen.getByRole('alert')).toHaveTextContent('Failed to build the combined export');
+      expect(within(section).queryByRole('status')).not.toBeInTheDocument();
+      expect(createObjectURLSpy).not.toHaveBeenCalled();
+      expect(clickSpy).not.toHaveBeenCalled();
+    });
   });
 });
