@@ -21,46 +21,30 @@ void DEC_374;
 void DEC_944;
 void DEC_945;
 
-// DEC-945 amendment (task-w40-c): v6 measures. body align-items switches
-// to flex-start so a card hugs its content instead of stretching to full
-// viewport height. No card draws a border on any 11-account frame, so the
-// border/border-radius are dropped from .chq-auth-card. Class NAMES stay
-// as-is (a rename would touch five call sites two lanes are editing):
-// .chq-auth-card is the plain login/form card at 732px; the
-// .chq-auth-card-narrow modifier is now the WIDER plain-card frame at
-// the full reading measure (password / not-found) despite its name -- it
-// is no longer narrower than .chq-auth-card. The 450px control-column cap
-// under -narrow is gone.
-//
-// DEC-945 wave-1 amendment: the wave-40 ruling above stated the design's
-// CONTENT column (732 login / 818 password+404) directly on the card BOX,
-// then padded inward from there -- so the box itself measured content -88
-// (644) or content -70 (748/750), pulling every left edge inboard of the
-// frame. A measure names what you read, never what surrounds it: the BOX is
-// column + 2x padding, so .chq-auth-card is 820 (732 + 2*44) and
-// .chq-auth-card-narrow is 888 (818 + 2*35) -- both literals, because
-// neither box is itself the --chq-measure reading column (that column is
-// the CONTENT these boxes produce once padding is subtracted, not the box
-// width DEC-989's wave-37 "no hand-copied 800px+ clamp" rule was written
-// against). Every AUTH_CSS consumer (routes/auth.tsx, routes/account.tsx,
-// server/not-found.tsx, routes/public/not-found.tsx via shell.tsx's
-// BaseStyles) emits ThemeStyles/THEME_CSS first, so --chq-measure is always
-// defined here even though the auth card no longer reads it directly.
+// DEC-945 amendment (wave 25): the V8 intake redrew 11-account--00 ("a
+// card, not a stretched phone") and SUPERSEDES the pair-6 box-math ruling
+// that trued the box up to 820/888 (732/818 content + 2x padding). The
+// card is small and content-hugging, not a reading column padded inward:
+// .chq-auth-card is 460px max-width with a 1px --chq-rule border, paper
+// fill and 8px radius; .chq-auth-card-narrow is 520px. Its submit control
+// is intrinsic-width (never width:100%) inside a footer row -- full-column
+// buttons are phone anatomy, not a desktop card.
 export const AUTH_CSS = `
   body { display: flex; justify-content: center; align-items: flex-start; padding: 40px 20px; }
 
   .chq-auth-card {
     width: 100%;
-    max-width: 820px;
+    max-width: 460px;
+    border: 1px solid var(--chq-rule);
     background: var(--chq-paper);
-    padding: 44px 44px 40px;
+    border-radius: 8px;
+    padding: 36px 34px 32px;
     display: flex;
     flex-direction: column;
-    gap: 26px;
+    gap: 22px;
   }
   .chq-auth-card.chq-auth-card-narrow {
-    max-width: 888px;
-    padding: 35px;
+    max-width: 520px;
   }
 
   .chq-auth-wordmark {
@@ -144,12 +128,45 @@ export const AUTH_CSS = `
     width: 100%;
     min-height: 48px;
   }
-  .chq-auth-card button[type=submit] { width: 100%; min-height: 48px; }
+  /* wave 25 (DEC-945 V8 amendment): an intrinsic-width olive control, never
+     a full-column bar -- that's phone anatomy on a card this narrow. It
+     lives in a .chq-auth-submitrow footer row (below), never bare in
+     .chq-auth-fields' own gap. */
+  .chq-auth-card button[type=submit] {
+    width: auto;
+    min-height: 46px;
+    padding: 0 22px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  /* wave 25 (DEC-945 V8 amendment / DEC-154 wave-25 amendment): the row the
+     submit control sits in. space-between when a left-hand tertiary link
+     (e.g. task-w25-b's "Forgot your password?") shares the row, flex-end
+     when the button is alone -- :has() keeps the CSS the single owner of
+     that rule instead of a markup-side conditional class. */
+  .chq-auth-submitrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: flex-end;
+  }
+  .chq-auth-submitrow:has(.chq-auth-tertiary) {
+    justify-content: space-between;
+  }
 
   .chq-auth-error {
     font-size: 14px;
     font-weight: 700;
     color: var(--chq-ink);
+  }
+
+  /* wave 25 (DEC-154 amendment): a muted one-line status, never a banner or
+     a coloured box -- the single owner of both the /logout and (task-w25-b)
+     password-reset status text, keyed off loginStatusLine(). */
+  .chq-auth-status {
+    font-size: 14px;
+    color: var(--chq-muted);
   }
 
   .chq-auth-actions {
