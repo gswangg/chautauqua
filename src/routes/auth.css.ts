@@ -128,6 +128,7 @@ export const AUTH_CSS = `
      Zeroing it here lands the gap on the card's own gap value, no second
      source of rhythm. */
   .chq-auth-fields { display: flex; flex-direction: column; gap: 14px; margin: 0; }
+  .chq-auth-fieldstack { display: flex; flex-direction: column; gap: 14px; }
   .chq-auth-label {
     display: block;
     font-size: 11px;
@@ -166,6 +167,7 @@ export const AUTH_CSS = `
   }
   .chq-auth-actions button[type=submit] { width: auto; padding: 0 20px; }
   .chq-auth-hint { font-size: 13px; color: var(--chq-muted); }
+  .chq-auth-cancel { display: none; }
 
   .chq-auth-footer {
     border-top: 1px solid var(--chq-rule);
@@ -252,5 +254,24 @@ export const AUTH_CSS = `
       border-radius: 0;
       padding: 28px 20px 20px;
     }
+    .chq-auth-card.chq-auth-card-narrow {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+    .chq-auth-titlerow { flex-shrink: 0; }
+    .chq-auth-fields {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .chq-auth-fieldstack {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+    .chq-auth-cancel { display: inline-flex; }
+    .chq-auth-hint { display: none; }
   }
 `;
