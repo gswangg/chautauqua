@@ -57,7 +57,8 @@ import {
 } from "../../lib/draft";
 import { createClaimToken, type KVStore as ClaimKVStore } from "../../auth/claim";
 import { parseCookies, newCsrfToken, buildCsrfCookie, buildDraftCookie, isSecureRequest, CSRF_COOKIE_NAME } from "../../auth/cookies";
-import { renderTemplate, escapeHtml } from "../../mail/render";
+import { renderTemplate } from "../../mail/render";
+import { escapeHtml } from "../../lib/html-escape";
 import { validateUpload, sanitizeFilenameForKey, type ValidUpload } from "../../domain/files";
 import { newId, formatRef } from "../../domain/ids";
 import { fieldInputName } from "../../views/form-render";

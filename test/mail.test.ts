@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { MergeFieldError, MERGE_FIELDS, renderTemplate, escapeHtml, textToHtml } from "../src/mail/render";
+import { MergeFieldError, MERGE_FIELDS, renderTemplate, textToHtml } from "../src/mail/render";
+import { escapeHtml } from "../src/lib/html-escape";
 import { buildIcsCalendar, buildIcsEvent, ICS_ORGANIZER_EMAIL, type IcsEventInput, type IcsOptions } from "../src/mail/ics";
 import { DevSinkMailer, InMemoryEmailLog } from "../src/mail/dev-sink";
 import type { RenderedEmail } from "../src/mail/types";
