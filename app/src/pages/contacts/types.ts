@@ -22,6 +22,12 @@ export interface ContactStats {
   // DEC-710/DEC-711: figures the title summary and rail render.
   speakerCount: number;
   duplicateCount: number;
+  // DEC-432/DEC-809: a contact holding an active 'speaker' role on more than
+  // one of this org's events, and the number of distinct such events — the
+  // headline's returning/reach clauses render only when each is "worth
+  // saying" (>0 and >1 respectively).
+  returningSpeakers: number;
+  eventCount: number;
 }
 
 export interface ContactSubmissionHistory {

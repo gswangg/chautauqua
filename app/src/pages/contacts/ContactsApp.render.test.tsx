@@ -43,6 +43,8 @@ describe('ContactsApp render smoke (CRM-12 top-companies drill-through)', () => 
         total: 3,
         speakerCount: 2,
         duplicateCount: 0,
+        returningSpeakers: 0,
+        eventCount: 1,
         topCompanies: [{ company: 'Acme', count: 2 }],
       },
       'GET /api/v1/segments': listEnvelope([]),
@@ -83,6 +85,8 @@ describe('ContactsApp render smoke: directory search (DEC-684/DEC-710)', () => {
         total: 1,
         speakerCount: 0,
         duplicateCount: 0,
+        returningSpeakers: 0,
+        eventCount: 1,
         topCompanies: [],
       },
       'GET /api/v1/segments': listEnvelope([]),
@@ -128,13 +132,16 @@ const DUPLICATE_GROUPS: DuplicateGroup[] = [
   },
 ];
 
-function directoryRoutes() {
+function directoryRoutes(statsOverrides: Partial<{ total: number; speakerCount: number; returningSpeakers: number; eventCount: number }> = {}) {
   return {
     'GET /api/v1/contacts/stats': {
       total: 2,
       speakerCount: 1,
       duplicateCount: DUPLICATE_GROUPS.length,
+      returningSpeakers: 0,
+      eventCount: 1,
       topCompanies: [{ company: 'Acme', count: 2 }],
+      ...statsOverrides,
     },
     'GET /api/v1/segments': listEnvelope([
       { id: 'seg1', name: 'VIP speakers', rules: [{ field: 'company', op: 'eq', value: 'Acme' }], count: 2 },
@@ -175,9 +182,10 @@ describe('ContactsApp render smoke: two-column directory architecture (DEC-710/D
     // summary and the rail sections remain.
     expect(screen.queryByText('Total contacts')).not.toBeInTheDocument();
     expect(screen.queryByText('Returning speakers')).not.toBeInTheDocument();
-    // DEC-711 amendment (wave 4, fields deleted wave 33): the headline is
-    // THREE clauses -- people, speakers, possible duplicates. returningSpeakers
-    // and eventCount had no renderer and were removed from ContactStats.
+    // DEC-432/DEC-809: on a single-event org (eventCount: 1,
+    // returningSpeakers: 0) the headline renders exactly the frame's THREE
+    // clauses -- the returning and reach clauses are silent when they have
+    // nothing to say.
     expect(screen.getByText('2 people · 1 speaker · 1 possible duplicate')).toBeInTheDocument();
 
     // Tab chips carry counts.
@@ -189,6 +197,24 @@ describe('ContactsApp render smoke: two-column directory architecture (DEC-710/D
     const actions = document.querySelector('.chq-contacts-title-actions')!;
     const labels = Array.from(actions.children).map((el) => el.textContent);
     expect(labels).toEqual(['Import CSV', 'Export CSV', 'New contact']);
+  });
+
+  it('renders all five headline clauses for a multi-event org (DEC-432/DEC-809)', async () => {
+    mockApi(directoryRoutes({ returningSpeakers: 3, eventCount: 5 }));
+
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <ContactsApp />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Ada Lovelace' })).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByText('2 people · 1 speaker · 3 returning speakers · across 5 events · 1 possible duplicate'),
+    ).toBeInTheDocument();
   });
 
   it('round-trips the active tab through ?tab= URL state (DEC-710)', async () => {
