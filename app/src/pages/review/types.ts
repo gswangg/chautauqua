@@ -306,6 +306,13 @@ export interface ReviewerSubmissionDetail {
   // criteriaForRound) -- the Scorecard renders these instead of plan.criteria
   // so a round override actually takes effect.
   criteria?: EvaluationCriterion[];
+  // frame 03--01 (DEC-857 reuse): the SAME session-shape fact the reviewer
+  // queue row's meta line already carries (formatBySubmission on the reviewer
+  // route) -- a session-shape fact, not identity, so present even on an
+  // anonymized plan. audienceLevel mirrors ReviewerQueueItem's documented
+  // gap (no reserved field id yet; the wire does not populate it).
+  format: string | null;
+  audienceLevel?: string | null;
 }
 
 export interface Track {

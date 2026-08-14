@@ -90,7 +90,7 @@ describe('Scorecard render smoke', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
 
     // DEC-939 (wave-65 amendment): the loaded scorecard is a two-column
     // work surface -- it clamps at the wide measure, not the single-column
@@ -195,7 +195,7 @@ describe('Scorecard render smoke', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
 
     // Weight caption: 3 and 1 share a total weight of 4 -> 75% / 25%.
     expect(screen.getByText('Weight 3 · 75%')).toBeInTheDocument();
@@ -204,9 +204,12 @@ describe('Scorecard render smoke', () => {
     const fitRow = screen.getByText('Fit').closest('div')!;
     expect(fitRow.querySelector('.chq-review-criterion-weight-caption')).toBeNull();
 
-    // Overall renders an em dash before every rating criterion is scored.
+    // Overall renders an em dash before every rating criterion is scored;
+    // frame 03--01: caption + reconciliation merge into one sentence, and
+    // before every rating criterion is scored that sentence is just the
+    // caption (no reconciliation clause to append yet).
     expect(screen.getByText('Overall')).toBeInTheDocument();
-    expect(screen.getByText('Averaged by weight · not editable')).toBeInTheDocument();
+    expect(screen.getByText('Averaged by weight, not editable')).toBeInTheDocument();
     const overallValue = () => document.querySelector('.chq-review-overall-value')!;
     expect(overallValue().textContent).toBe('—');
 
@@ -231,7 +234,7 @@ describe('Scorecard render smoke', () => {
       expect.stringContaining(`/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`),
       expect.objectContaining({ method: 'PUT' }),
     );
-    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
   });
 });
 
@@ -267,7 +270,7 @@ describe('Scorecard reading column at rest (DEC-889 wave-72 amendment)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
 
     // The abstract renders exactly once, in full -- no 60-word clamp, no
     // trailing ellipsis, word89 (the last word) is present.
@@ -314,7 +317,7 @@ describe('Scorecard reading column at rest (DEC-889 wave-72 amendment)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
     expect(
       screen.getByText("The speaker's name and company are hidden while this plan is anonymised"),
     ).toBeInTheDocument();
@@ -342,7 +345,7 @@ describe('Scorecard reading column at rest (DEC-889 wave-72 amendment)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
     expect(screen.queryByText(/hidden while this plan is anonymised/)).not.toBeInTheDocument();
   });
 
@@ -367,7 +370,7 @@ describe('Scorecard reading column at rest (DEC-889 wave-72 amendment)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
     expect(screen.queryByText('Save draft')).not.toBeInTheDocument();
     const actions = document.querySelector('.chq-review-editor-actions')!;
     const buttons = Array.from(actions.querySelectorAll('button'));
@@ -403,7 +406,7 @@ describe('Scorecard recusal placement and checkbox reveal (DEC-939)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
 
     // DEC-939 (wave-65 amendment): Comment, the recusal declaration, and
     // the editor actions all now live inside the scoring rail (aside),
@@ -426,7 +429,7 @@ describe('Scorecard recusal placement and checkbox reveal (DEC-939)', () => {
 
     // DEC-939 (bare recusal amendment): the control is a bare checkbox with
     // no sibling button and no reason field -- nothing to reveal.
-    const checkbox = screen.getByRole('checkbox', { name: /conflict of interest/i });
+    const checkbox = screen.getByRole('checkbox', { name: /recuse me/i });
     expect(checkbox).toBeInstanceOf(HTMLInputElement);
     expect((checkbox as HTMLInputElement).type).toBe('checkbox');
     expect(screen.queryByPlaceholderText('Reason (optional)')).not.toBeInTheDocument();
@@ -455,7 +458,7 @@ describe('Scorecard recusal placement and checkbox reveal (DEC-939)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
 
     const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
     const buttons = within(qualityGroup).getAllByRole('radio');
@@ -546,8 +549,11 @@ describe('Scorecard reconciliation line (DEC-939)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
-    expect(document.querySelector('.chq-review-overall-reconciliation')).toBeNull();
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
+    // frame 03--01: the caption and the reconciliation clause are one
+    // merged sentence now -- unscored means the caption alone, with no
+    // reconciliation clause appended.
+    expect(document.querySelector('.chq-review-overall-caption')!.textContent).toBe('Averaged by weight, not editable');
   });
 
   it('prints the unweighted mean of a 5, 4, 4 rating set once every criterion is scored', async () => {
@@ -571,15 +577,15 @@ describe('Scorecard reconciliation line (DEC-939)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
 
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Quality' })).getByRole('radio', { name: '5' }));
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Originality' })).getByRole('radio', { name: '4' }));
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Delivery' })).getByRole('radio', { name: '4' }));
 
     await waitFor(() =>
-      expect(document.querySelector('.chq-review-overall-reconciliation')?.textContent).toBe(
-        'A plain average of 5, 4, 4 would be 4.33',
+      expect(document.querySelector('.chq-review-overall-caption')?.textContent).toBe(
+        'Averaged by weight, not editable — a plain average of 5, 4, 4 would be 4.33',
       ),
     );
   });
@@ -604,6 +610,14 @@ describe('Scorecard header progress counter (DEC-939)', () => {
       ]),
     });
 
+    // frame 03--01: the counter leaves the reading column and portals into
+    // App's own #chq-header-slot node -- simulate that node's presence the
+    // way App.tsx renders it, since Scorecard is mounted alone here (no
+    // App shell).
+    const headerSlot = document.createElement('div');
+    headerSlot.id = 'chq-header-slot';
+    document.body.appendChild(headerSlot);
+
     render(
       <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
         <Routes>
@@ -612,8 +626,39 @@ describe('Scorecard header progress counter (DEC-939)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByText('2 of 3 done')).toBeInTheDocument());
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
+    await waitFor(() => expect(within(headerSlot).getByText('2 of 3 done')).toBeInTheDocument());
+    headerSlot.remove();
+  });
+
+  it('renders nothing when mounted with no #chq-header-slot node in the document', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+      },
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: listEnvelope([
+        { submissionId: 'sub-a', ref: 'S-001', title: 'Rated', ratingsCount: 1, alreadyRatedByMe: true, myScore: 4, format: null },
+        { submissionId: 'sub-b', ref: 'S-002', title: 'Unrated', ratingsCount: 0, alreadyRatedByMe: false, myScore: null, format: null },
+      ]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(document.getElementById('chq-header-slot')).toBeNull();
+    expect(screen.queryByText(/of .* done/)).not.toBeInTheDocument();
   });
 
   it('renders nothing when the queue fetch cannot be resolved', async () => {
@@ -639,7 +684,7 @@ describe('Scorecard header progress counter (DEC-939)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
     expect(screen.queryByText(/of .* done/)).not.toBeInTheDocument();
   });
 });
@@ -666,7 +711,7 @@ describe('Scorecard comment label (frame 03--01)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
     expect(screen.getByText('Comment to the committee')).toBeInTheDocument();
     expect(screen.queryByText('Comment', { exact: true })).not.toBeInTheDocument();
   });
@@ -703,7 +748,7 @@ describe('Scorecard two-column work surface and armed focus ring (DEC-939 wave-6
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
     expect(document.querySelector('.chq-focused')).toBeNull();
   });
 
@@ -728,7 +773,7 @@ describe('Scorecard two-column work surface and armed focus ring (DEC-939 wave-6
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
     expect(document.querySelector('.chq-focused')).toBeNull();
 
     const root = document.querySelector('.chq-page')!;
@@ -765,7 +810,7 @@ describe('Scorecard two-column work surface and armed focus ring (DEC-939 wave-6
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
     expect(document.body.textContent).not.toContain('Tip: number keys');
   });
 
@@ -791,7 +836,7 @@ describe('Scorecard two-column work surface and armed focus ring (DEC-939 wave-6
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
 
     const rail = document.querySelector('.chq-review-scorecard-rail')!;
     const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
@@ -839,7 +884,7 @@ describe('Scorecard completeness notice and form-field key guard (DEC-939 wave-3
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
     expect(screen.queryByText(/Rate every criterion before submitting/)).not.toBeInTheDocument();
 
     // First attempt with nothing filled -- the notice names every blocker.
@@ -901,7 +946,7 @@ describe('Scorecard completeness notice and form-field key guard (DEC-939 wave-3
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
 
     const commentField = screen.getByLabelText('Comment to the committee');
     fireEvent.keyDown(commentField, { key: '4' });

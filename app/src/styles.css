@@ -1503,3 +1503,12 @@ a:hover {
   outline: 2px solid var(--chq-brand);
   outline-offset: 2px;
 }
+
+/* frame 03--01 (DEC-939 amendment): a page-owned portal target inside the
+   header identity group -- empty and invisible at rest (no page has
+   portaled a caption into it), so it never reserves layout space of its
+   own; whatever a page injects (e.g. the scorecard's 'N of N done' counter)
+   carries its own margin/typography. */
+.chq-header-slot:empty {
+  display: none;
+}

@@ -238,6 +238,13 @@ reviewReviewerRoutes.get("/api/v1/review/submissions/:id", async (c) => {
 
   const answers = await repo.listAnswersForSubmission(c.var.db, submissionId);
   const speakers = await repo.listSpeakersForSubmission(c.var.db, submissionId);
+  // frame 03--01: the scorecard head's meta line needs the same
+  // SESSION_FORMAT_FIELD_ID reading the queue row already carries (DEC-857)
+  // -- reuse listFormatLabelsBySubmission (single-id call) rather than a
+  // second lookup. audienceLevel is left unwired (matches ReviewerQueueItem's
+  // documented gap: no reserved field id for it yet).
+  const formatBySubmission = await repo.listFormatLabelsBySubmission(c.var.db, [submissionId]);
+  const format = formatBySubmission.get(submissionId) ?? null;
 
   // DEC-147: the criteria embedded on the submission detail are resolved for
   // the plan's ACTIVE round -- the reviewer's scorecard renders these, not
@@ -261,6 +268,7 @@ reviewReviewerRoutes.get("/api/v1/review/submissions/:id", async (c) => {
     speakerAnswers: answers.filter((a) => a.section === "speaker") as repo.SubmissionAnswerRow[] | undefined,
     sessionAnswers: answers.filter((a) => a.section === "session"),
     criteria,
+    format,
     ...(myEvaluationRecord ? { myEvaluation: { scores: myEvaluationRecord.scores, comment: myEvaluationRecord.comment } } : {}),
     ...(myRecusalRecord ? { myRecusal: { reason: myRecusalRecord.reason ?? null, createdAt: myRecusalRecord.createdAt } } : {}),
   };

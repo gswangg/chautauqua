@@ -23,7 +23,7 @@ import { dayLabelEndInstant } from '../../../../src/lib/timezone';
 // format string ('Talk (30 min)' -> 'Talk, 30 min') -- DEC-857's wire
 // contract (format arrives verbatim, already carrying its own duration
 // suffix) is untouched; only how the trailing parenthetical prints changes.
-function formatMetaLabel(format: string): string {
+export function formatMetaLabel(format: string): string {
   return format.replace(/\s*\(([^)]+)\)$/, ', $1');
 }
 
