@@ -602,7 +602,14 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
 
       <div className="chq-speakers-toolbar">
         {grid && <GridFilters tasks={grid.tasks} filters={filters} onChange={handleFiltersChange} />}
-        <span className="chq-speakers-toolbar-caption">Skips anyone emailed</span>
+        {/* w7-f: "Remind all outstanding" (this page's bulk send) runs
+            planManualReminders, which drops any assignment whose
+            lastRemindedAt falls within MANUAL_DEDUPE_WINDOW_MS of now --
+            src/domain/reminders.ts:20,175. That is the same one-hour
+            window Overview.tsx:276 names, so this caption uses its
+            sentence verbatim (DEC-934: an honest caption beats a novel
+            one, but a real match beats inventing a third phrasing). */}
+        <span className="chq-speakers-toolbar-caption">Skips anyone reminded in the last hour</span>
       </div>
 
       {/* DEC-934 amendment (wave 4): ONE caption naming the active
@@ -611,7 +618,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
           rendered below it. */}
       {grid && hasActiveNarrowing(filters) && (
         <div className="chq-speakers-narrowing-caption">
-          Showing {grid.total} of {counts?.speakers ?? 0} speakers - {narrowingDescription(filters, grid.tasks)}
+          Showing {grid.total} of {counts?.speakers ?? 0} speakers &middot; {narrowingDescription(filters, grid.tasks)}
         </div>
       )}
 
