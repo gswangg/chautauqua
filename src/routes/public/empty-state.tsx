@@ -20,7 +20,7 @@
 // else; the CALLER is responsible for not rendering the filter bar above it
 // (there is nothing to filter). 'filtered' (the collection is empty only
 // because of a facet the visitor applied) renders `what` + `reason` naming
-// the facet(s) in flight + an escape link back to the bare surface path --
+// every facet in flight + an escape link back to the bare surface path --
 // the filter bar stays mounted above it in the caller's markup.
 export function PublicEmptyState(props: {
   variant: "fresh" | "filtered";

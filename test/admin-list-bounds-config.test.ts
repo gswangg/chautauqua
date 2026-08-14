@@ -215,6 +215,9 @@ interface FakeTokenRow {
   name: string;
   tokenPrefix: string;
   lastUsedAt: null;
+  // api_token.created_at is NOT NULL in the schema, so the route reads it
+  // unconditionally (DEC-027 wave-47 amendment: the list carries createdAt).
+  createdAt: Date;
   orgId: string;
 }
 
@@ -256,6 +259,7 @@ describe("GET /api/v1/tokens (DEC-460/461 bounds)", () => {
     name: `Token ${i}`,
     tokenPrefix: `chq_${i}`,
     lastUsedAt: null,
+    createdAt: new Date(1_700_000_000_000 + i * 1000),
     orgId: ORG_A,
   }));
 

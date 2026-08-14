@@ -142,7 +142,10 @@ describe("DEC-919: one filter idiom on every public surface", () => {
       [], // getPublicTracks
       [], // getPublicFormatOptions
       [{ id: "room1", name: "Alpha" }], // roomRows for filter chips
-      [{ count: 0 }], // total
+      // total > 0 is load-bearing since the DEC-919 wave-47 amendment: an
+      // unfiltered surface with a zero total is 'fresh' and the caller hides
+      // the whole filter bar, search box included.
+      [{ count: 3 }], // total
     ]);
     const sessionsRes = await sessionsApp.request("/e/conf/sessions", {}, TEST_ENV);
     const sessionsHtml = await sessionsRes.text();
@@ -150,7 +153,10 @@ describe("DEC-919: one filter idiom on every public surface", () => {
     installFakeCaches();
     const speakersApp = buildSimpleApp([
       [EVENT_ROW], // getPublicEventBySlug
-      [{ count: 0 }], // total
+      [], // getPublicTracks (the one speakers facet)
+      // getPublicSpeakers' count query selects the alias `total`, and it must
+      // be non-zero: see the 'fresh' note above.
+      [{ total: 3 }], // total
       [], // speaker rows
     ]);
     const speakersRes = await speakersApp.request("/e/conf/speakers", {}, TEST_ENV);

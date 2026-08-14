@@ -67,7 +67,12 @@ vi.mock("../src/server/repo/public", async () => {
     getPublicTracks: vi.fn(async () => []),
     getPublicRooms: vi.fn(async () => []),
     getPublicFormatOptions: vi.fn(async () => []),
-    getPublicSessions: vi.fn(async () => ({ items: [], total: 0 })),
+    // total > 0 with an empty page: since the DEC-919 wave-47 amendment an
+    // unfiltered sessions surface whose total is 0 is 'fresh' and the caller
+    // hides the filter bar, which would erase the .chq-pub-filter-row this
+    // file measures. The rendered items stay empty (measure classes and the
+    // filter row are what these tests read).
+    getPublicSessions: vi.fn(async () => ({ items: [], total: 3 })),
     getPublicSpeakers: vi.fn(async () => ({ items: [], total: 0 })),
     getPublicSpeakerDetail: vi.fn(async (_db: unknown, _event: unknown, contactId: string) =>
       contactId === SPEAKER.contactId ? SPEAKER : null,

@@ -189,8 +189,13 @@ function buildApp() {
       if (selectCall === 2) return makeChain([{ id: "trk1", name: "Engineering", color: null }]); // getPublicTracks
       if (selectCall === 3) return makeChain([{ id: "room1", name: "Main Hall" }]); // getPublicRooms
       if (selectCall === 4) return makeChain([{ optionsJson: JSON.stringify(["Workshop", "Talk"]) }]); // getPublicFormatOptions
-      if (selectCall === 5) return makeChain([]); // hydrateSessions subRows (no sessions needed for chip assertions)
-      return makeChain([]);
+      // countVisibleSubmissions: a NON-ZERO count is load-bearing since the
+      // DEC-919 wave-47 amendment — an unfiltered surface whose total is 0 is
+      // 'fresh' and the caller hides the whole filter bar, so a zero here
+      // would delete the very selects this test asserts. The page rows stay
+      // empty (no session hydration needed for the chip assertions).
+      if (selectCall === 5) return makeChain([{ count: 3 }]);
+      return makeChain([{ count: 3 }]);
     },
     selectDistinct: () => makeChain([]),
   } as unknown as AppEnv["Variables"]["db"];
