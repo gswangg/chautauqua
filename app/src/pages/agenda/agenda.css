@@ -983,3 +983,32 @@
    in --chq-ink -- DEC-383's palette has no semantic red, and there is no
    --chq-danger token). This sheet deliberately re-declares nothing for it;
    the breaks form's field errors inherit that ONE rule. */
+
+/* ---------------------------------------------------------------------- */
+/* Breaks stranded outside the event window (DEC-021 amendment, wave 69)   */
+/* ---------------------------------------------------------------------- */
+
+/* The stranded-breaks block sits below the day-scoped list and can also be
+   the panel's ONLY content (no day selected), so its separation from what
+   precedes it is a margin rather than a rule line. */
+.chq-breaks-outside-window {
+  margin-top: 16px;
+}
+
+/* Same small muted caption idiom as .chq-settings-note in styles.css --
+   one sentence under a section heading, not a banner. */
+.chq-breaks-outside-window-caption {
+  font-size: 12px;
+  color: var(--chq-muted);
+  margin: 0 0 8px;
+}
+
+/* A stranded row has no day tab to sit under, so it states its own day
+   before the time. Sized to hold a short weekday+date and aligned with
+   .chq-breaks-row-time so the day/time pair reads as one column pair. */
+.chq-breaks-row-day {
+  font-variant-numeric: tabular-nums;
+  color: var(--chq-muted);
+  font-size: 13px;
+  min-width: 92px;
+}
