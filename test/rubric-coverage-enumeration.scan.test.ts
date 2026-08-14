@@ -21,6 +21,9 @@
 // validation.ts's formatAcceptedTypesMessage is now uploadHintText in
 // src/domain/files.ts, consumed by UploadZone.tsx; CRM-12: StatsStrip.tsx
 // was never split out -- the stats strip is inline in ContactsApp.tsx).
+// CFP-S4/CFP-14 cited src/routes/comms.ts, which the wave-36 custodian pass
+// decomposed into src/routes/comms/*.ts; both rows name `POST /compose/send`
+// in the frozen log, which now lives in src/routes/comms/send.ts.
 // SPK-01/SPK-04 cited rowFilters.ts's filterOnboardingRows, which DEC-340
 // records as deliberately DELETED (not renamed) when onboarding-grid
 // filtering moved server-side -- those two rows are marked `waived` naming
@@ -100,7 +103,7 @@ const RUBRIC_COVERAGE: LedgerEntry[] = [
   { id: "CFP-S1", verdict: "scenario", artifacts: ["src/forms/builder.ts", "src/routes/api/events.ts", "src/routes/public/submit.tsx"] },
   { id: "CFP-S2", verdict: "scenario", artifacts: ["src/lib/draft.ts", "src/routes/portal/edit.tsx", "src/routes/public/submit.tsx"] },
   { id: "CFP-S3", verdict: "scenario", artifacts: ["src/domain/status.ts", "src/routes/review/plans.ts", "src/routes/review/reviewer.ts"] },
-  { id: "CFP-S4", verdict: "scenario", artifacts: ["src/domain/acceptance.ts", "src/routes/comms.ts"] },
+  { id: "CFP-S4", verdict: "scenario", artifacts: ["src/domain/acceptance.ts", "src/routes/comms/send.ts"] },
   { id: "CFP-01", verdict: "covered", artifacts: ["src/forms/builder.ts", "src/forms/validate.ts", "test/form-render-rules.test.ts", "test/forms-api.test.ts", "test/forms.test.ts"] },
   { id: "CFP-02", verdict: "covered", artifacts: ["src/forms/visibility.ts", "test/form-render-rules.test.ts"] },
   { id: "CFP-03", verdict: "covered", artifacts: ["src/routes/public/index.tsx", "src/routes/public/submit.tsx", "test/public.test.ts"] },
@@ -114,7 +117,7 @@ const RUBRIC_COVERAGE: LedgerEntry[] = [
   { id: "CFP-11", verdict: "covered", artifacts: ["src/domain/evaluation.ts", "src/routes/review/reviewer.ts", "test/evaluation.test.ts", "test/round-criteria.test.ts"] },
   { id: "CFP-12", verdict: "covered", artifacts: ["src/domain/status.ts", "src/routes/api/submissions.ts", "test/status-bulk-full-match.test.ts"] },
   { id: "CFP-13", verdict: "covered", artifacts: ["src/routes/portal/index.tsx", "test/portal.test.ts"] },
-  { id: "CFP-14", verdict: "covered", artifacts: ["src/routes/comms.ts", "test/comms-send-mailer-failure.test.ts", "test/compose-full-set.test.ts", "test/compose.test.ts"] },
+  { id: "CFP-14", verdict: "covered", artifacts: ["src/routes/comms/send.ts", "test/comms-send-mailer-failure.test.ts", "test/compose-full-set.test.ts", "test/compose.test.ts"] },
   { id: "CFP-15", verdict: "covered", artifacts: ["src/domain/acceptance.ts", "test/api-submissions.test.ts", "test/domain.test.ts"] },
   { id: "CFP-16", verdict: "covered", artifacts: ["src/domain/edit-lock.ts", "src/routes/portal/edit.tsx", "test/edit-lock.test.ts", "test/portal-edit-speaker-locked.test.ts"] },
   { id: "ABS-S1", verdict: "scenario", artifacts: ["src/routes/review/plans.ts"] },
