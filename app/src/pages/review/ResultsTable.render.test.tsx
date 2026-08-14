@@ -545,6 +545,87 @@ describe('ResultsTable row disclosure is plan-scoped (DEC-763)', () => {
 // with the last click made -- even when the first (stale) response resolves
 // after the second's, and even when a results fetch fails outright (rows
 // are cleared, never left contradicting the header).
+// w2-d/DEC-737 amendment: embedded (planId prop supplied), the table is a
+// PREVIEW of the standalone results page -- at most 4 rows of the current
+// page, no pager, no in-table Download CSV link, and a "See all N results"
+// link (owned by the section rule where the export link used to sit) to the
+// standalone route, under a plan-scoped heading mirroring ProgressPanel's.
+describe('ResultsTable embedded preview (DEC-737)', () => {
+  it('renders at most 4 rows, no pager, no Download CSV, and a See-all link to the standalone route', async () => {
+    const rows = Array.from({ length: 6 }, (_, i) => ({
+      ...resultsRow(),
+      submissionId: `sub-${i}`,
+      ref: `S-${100 + i}`,
+      title: `Talk ${i}`,
+    }));
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope(rows, { total: 6 }),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/review']}>
+        <ResultsTable planId={PLAN_ID} />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/Talk 0/)).toBeInTheDocument();
+
+    const table = document.querySelector('table.chq-review-results-table')!;
+    const bodyRows = Array.from(table.querySelectorAll('tbody tr')).filter(
+      (tr) => !tr.classList.contains('chq-review-reviews-row'),
+    );
+    expect(bodyRows.length).toBe(4);
+
+    expect(document.querySelector('.chq-pager')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Download CSV' })).not.toBeInTheDocument();
+
+    const seeAllLink = screen.getByRole('link', { name: /See all 6 results/ });
+    expect(seeAllLink).toBeInTheDocument();
+    expect(seeAllLink.getAttribute('href')).toBe(`/review/plans/${PLAN_ID}/results`);
+
+    // Plan-scoped section heading, mirroring ProgressPanel's own.
+    expect(screen.getByText('Track Review · ranked results')).toBeInTheDocument();
+    expect(screen.queryByText('Ranked results')).not.toBeInTheDocument();
+  });
+});
+
+// w2-d/DEC-737: standalone (no planId prop), the table keeps the pager, the
+// export link, and the eyebrow, but no longer duplicates a "Ranked results"
+// section label under its own h1 -- one heading per page.
+describe('ResultsTable standalone keeps pager + export, one heading (DEC-737)', () => {
+  it('renders the pager and Download CSV, and exactly one results heading (the h1)', async () => {
+    const rows = Array.from({ length: 3 }, (_, i) => ({
+      ...resultsRow(),
+      submissionId: `sub-${i}`,
+      ref: `S-${100 + i}`,
+      title: `Talk ${i}`,
+    }));
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope(rows, { total: 51 }),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/Talk 0/)).toBeInTheDocument();
+
+    expect(document.querySelector('.chq-pager')).not.toBeNull();
+    expect(screen.getByRole('link', { name: 'Download CSV' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /See all/ })).not.toBeInTheDocument();
+
+    expect(screen.getByRole('heading', { name: /^Results: Track Review$/ })).toBeInTheDocument();
+    expect(screen.queryByText('Ranked results')).not.toBeInTheDocument();
+    expect(document.querySelectorAll('h1, h2.chq-section-label').length).toBe(1);
+  });
+});
+
 describe('ResultsTable sort honesty (DEC-737)', () => {
   function deferred<T>() {
     let resolve!: (value: T) => void;

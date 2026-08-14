@@ -167,11 +167,9 @@ describe('PlanList (DEC-706/DEC-707 render)', () => {
       expect(url.searchParams.get('dir')).toBe('desc');
     });
 
-    // The in-table 'Download CSV' link must show the SAME sort/dir.
-    const downloadLink = screen.getByRole('link', { name: 'Download CSV' });
-    const downloadUrl = new URL(downloadLink.getAttribute('href')!, 'http://localhost');
-    expect(downloadUrl.searchParams.get('sort')).toBe('average');
-    expect(downloadUrl.searchParams.get('dir')).toBe('desc');
+    // w2-d/DEC-737: embedded, the in-table 'Download CSV' link is gone --
+    // export ownership stays with the title-row link exclusively.
+    expect(screen.queryByRole('link', { name: 'Download CSV' })).not.toBeInTheDocument();
   });
 
   // DEC-760: the title-row plan count gains a second clause once each
