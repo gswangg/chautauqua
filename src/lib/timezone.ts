@@ -22,6 +22,8 @@
 //     exist): DEC-230 says resolve FORWARD to the post-transition instant
 //     (max of the two raw candidates).
 
+import { MIN_EPOCH_MS, MAX_EPOCH_MS } from "../routes/api/validators";
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** The IANA zone's UTC offset (in ms, positive east of UTC) at the real
@@ -99,8 +101,13 @@ export function zonedMinutesToUtc(day: string, minutes: number, timeZone: string
  * instants (form open/close dates) are stored as UTC midnight of the
  * intended calendar day. */
 function dayLabelToYmd(dayLabelMs: number): string {
-  if (!Number.isFinite(dayLabelMs)) {
-    throw new Error(`Invalid day label instant '${dayLabelMs}' — expected a finite epoch-ms value`);
+  // DEC-517 amendment (wave 42): agree exactly with isEpochMs's bound — a
+  // finite-but-out-of-range instant (e.g. 1e18) used to slip past the old
+  // Number.isFinite-only guard and produce a silent "NaN-NaN-NaN" label,
+  // which then threw deep inside zonedMinutesToUtc. Fail loudly HERE
+  // instead, at the boundary, with the same range isEpochMs enforces.
+  if (!Number.isFinite(dayLabelMs) || dayLabelMs < MIN_EPOCH_MS || dayLabelMs > MAX_EPOCH_MS) {
+    throw new Error(`Invalid day label instant '${dayLabelMs}' — expected a finite epoch-ms value within [${MIN_EPOCH_MS}, ${MAX_EPOCH_MS}]`);
   }
   const d = new Date(dayLabelMs);
   const year = d.getUTCFullYear();

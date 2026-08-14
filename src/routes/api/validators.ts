@@ -56,9 +56,22 @@ export function isDateOrderValid(startDate: string, endDate: string): boolean {
  * DEC-517: the ONE ms-epoch boundary predicate (mirrors DEC-510's isIsoDate
  * for ISO date strings). Deliberately narrow: an integer, nothing else --
  * no coercion of numeric strings, no float truncation.
+ *
+ * DEC-517 amendment (wave 42): bounded to the range that
+ * src/lib/timezone.ts's dayLabelToYmd (and Date's own ISO representation)
+ * can turn into a valid YYYY-MM-DD day label: [0001-01-01T00:00:00.000Z,
+ * 9999-12-31T23:59:59.999Z]. An unbounded integer (e.g. 1e18) passed
+ * Number.isInteger but produced "NaN-NaN-NaN" downstream and 500'd every
+ * reader of the value (public CFP, save-draft, portal edit-lock). Both
+ * bounds are inclusive.
  */
+export const MIN_EPOCH_MS = -62135596800000; // 0001-01-01T00:00:00.000Z
+export const MAX_EPOCH_MS = 253402300799999; // 9999-12-31T23:59:59.999Z
+
 export function isEpochMs(value: unknown): value is number {
-  return Number.isInteger(value);
+  if (!Number.isInteger(value)) return false;
+  const n = value as number;
+  return n >= MIN_EPOCH_MS && n <= MAX_EPOCH_MS;
 }
 
 /**

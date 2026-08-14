@@ -23,6 +23,7 @@
 import { describe, expect, it } from "vitest";
 import { globSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { isEpochMs, MIN_EPOCH_MS, MAX_EPOCH_MS } from "../src/routes/api/validators";
 
 const REPO_ROOT = path.resolve(__dirname, "..");
 const ROUTES_DIR = path.join(REPO_ROOT, "src", "routes");
@@ -64,5 +65,21 @@ describe("DEC-527: isEpochMs invariant, enumerated over src/routes/**/*.ts", () 
       (f) => f.relPath,
     );
     expect(offenders, `ms-epoch validation without isEpochMs import: ${offenders.join(", ")}`).toEqual([]);
+  });
+
+  // DEC-517 amendment (wave 42): every one of the above members shares the
+  // SAME predicate object (imported, not reimplemented), so this range
+  // assertion — run once, here, against the shared predicate — covers all
+  // of them. An unbounded integer (e.g. 1e18) is no longer a valid ms-epoch
+  // value: it satisfied the old Number.isInteger-only guard but broke every
+  // downstream reader (dayLabelToYmd -> "NaN-NaN-NaN" -> throw).
+  it("isEpochMs enforces the DEC-517 amendment range, not just integer-ness", () => {
+    expect(isEpochMs(0)).toBe(true);
+    expect(isEpochMs(MIN_EPOCH_MS)).toBe(true);
+    expect(isEpochMs(MAX_EPOCH_MS)).toBe(true);
+    expect(isEpochMs(1e18)).toBe(false);
+    expect(isEpochMs(-1e18)).toBe(false);
+    expect(isEpochMs(MAX_EPOCH_MS + 1)).toBe(false);
+    expect(isEpochMs(MIN_EPOCH_MS - 1)).toBe(false);
   });
 });
