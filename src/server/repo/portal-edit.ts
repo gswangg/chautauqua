@@ -25,6 +25,7 @@ import { isValidEmail, normalizeEmail } from "../../domain/email";
 import { isCoPresenterRoleValue, participantRoleLabel } from "../../domain/participant-roles";
 import { MAX_TEXT_LENGTH } from "../../forms/validate";
 import { DEC_604, DEC_656, DEC_842, DEC_866, DEC_997 } from "../../decisions";
+import { touchSubmissions } from "./submissions/touch";
 
 // touch DEC constant so the dependency is compile-checked (field guide convention)
 void DEC_604;
@@ -523,5 +524,9 @@ export async function addCoPresenter(db: Db, input: AddCoPresenterInput): Promis
   if (!inserted[0]) {
     return { ok: false, errors: { email: "This person is already a participant on this submission" } };
   }
+  // DEC-725 amendment: a newly-added (pending) co-presenter changes the
+  // submission's published Speakers cell composition once accepted — see
+  // submissions/touch.ts header.
+  await touchSubmissions(db, [input.submissionId], now);
   return { ok: true };
 }

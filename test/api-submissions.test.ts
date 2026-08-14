@@ -771,13 +771,14 @@ describe("GET /api/v1/events/:eventId/submissions?includeAnswers=1 (DEC-243 answ
 describe("DEC-009 invariant #1: no mailer import reachable from the status-change path", () => {
   it("neither the route module nor any repo submodule import a mailer", () => {
     const entries = Object.entries(sourceModules);
-    // routes/api/submissions.ts + repo/submissions.ts barrel + the 7 split
+    // routes/api/submissions.ts + repo/submissions.ts barrel + the 8 split
     // submissions/ modules (query, list, detail, create, status, seq,
-    // history — DEC-892) + the sibling repo/participants.ts (DEC-070). This
-    // count is a tripwire: it fails if the glob stops matching (which would
-    // make the assertions below vacuous) or if a new submodule is added
-    // without being considered against DEC-009 invariant #1.
-    expect(entries.length).toBe(10);
+    // history — DEC-892, touch — DEC-725 amendment wave 63) + the sibling
+    // repo/participants.ts (DEC-070). This count is a tripwire: it fails if
+    // the glob stops matching (which would make the assertions below
+    // vacuous) or if a new submodule is added without being considered
+    // against DEC-009 invariant #1.
+    expect(entries.length).toBe(11);
     for (const [path, source] of entries) {
       expect(source, `${path} must not import from mail/`).not.toMatch(/from ["'].*\/mail\//);
       expect(source, `${path} must not reference Mailer`).not.toMatch(/Mailer/);

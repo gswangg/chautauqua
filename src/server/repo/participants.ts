@@ -13,6 +13,7 @@ import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import { DEC_070, DEC_258, DEC_556 } from "../../decisions";
 import { chunkRowsForInsert } from "../../lib/chunk";
+import { touchSubmissions } from "./submissions/touch";
 
 // Compile-checked dependency marker: this module implements DEC_070's
 // endpoint contract (invite shape, duplicate rejection, visibility toggle).
@@ -102,6 +103,10 @@ export async function inviteParticipant(
   const row = inserted[0];
   if (!row) return DUPLICATE_PARTICIPANT;
 
+  // DEC-725 amendment: this insert changes the submission's published
+  // Speakers cell composition — see submissions/touch.ts header.
+  await touchSubmissions(db, [submissionId], now);
+
   return {
     id: row.id,
     contactId,
@@ -162,6 +167,13 @@ export async function insertActiveParticipants(
   for (const chunk of chunkRowsForInsert(rows)) {
     await db.insert(schema.participant).values(chunk);
   }
+  // DEC-725 amendment: unlike the invite/visibility/status writers below,
+  // this function's one caller (pushContactsToEvent, src/server/repo/
+  // contacts/push.ts) always calls it in the same request that just
+  // createSubmission'd submissionId — that INSERT already stamped
+  // updatedAt to `now` moments earlier, so there is no stale stamp to
+  // correct here. No touchSubmissions call (see submissions/touch.ts
+  // header for the general contract this deliberately doesn't need).
 }
 
 export interface ParticipantScope {
@@ -187,22 +199,46 @@ export async function getParticipantOwnership(db: Db, participantId: string): Pr
   return rows[0] ?? null;
 }
 
-export async function setParticipantVisible(db: Db, participantId: string, visible: boolean): Promise<void> {
+/** `submissionId` is the participant's owning submission (the caller has
+ * already resolved this via getParticipantOwnership for its own scope
+ * check) — passed in rather than re-derived here (e.g. via `.returning()`)
+ * so this stays one write, not a write-plus-readback. DEC-725 amendment: a
+ * visibility toggle changes which speakers a submission publishes, so the
+ * owning submission's updatedAt is bumped alongside the participant row's —
+ * see submissions/touch.ts header. */
+export async function setParticipantVisible(
+  db: Db,
+  participantId: string,
+  visible: boolean,
+  submissionId: string,
+): Promise<void> {
+  const now = new Date();
   await db
     .update(schema.participant)
-    .set({ visible, updatedAt: new Date() })
+    .set({ visible, updatedAt: now })
     .where(eq(schema.participant.id, participantId));
+  await touchSubmissions(db, [submissionId], now);
 }
 
 /** DEC-789 write half: organizer-only invite-status write, validated by the
  * caller against the closed none|invited|accepted|declined set before this
  * function is reached. Bumps updatedAt like every other participant write
- * in this module. */
-export async function setParticipantInviteStatus(db: Db, participantId: string, inviteStatus: string): Promise<void> {
+ * in this module, and — DEC-725 amendment — also bumps the owning
+ * submission's updatedAt (passed in, same reasoning as setParticipantVisible
+ * above), since an invite-status change (most notably a decline, DEC-981)
+ * changes the submission's published Speakers cell. */
+export async function setParticipantInviteStatus(
+  db: Db,
+  participantId: string,
+  inviteStatus: string,
+  submissionId: string,
+): Promise<void> {
+  const now = new Date();
   await db
     .update(schema.participant)
-    .set({ inviteStatus, updatedAt: new Date() })
+    .set({ inviteStatus, updatedAt: now })
     .where(eq(schema.participant.id, participantId));
+  await touchSubmissions(db, [submissionId], now);
 }
 
 /** Fetches a single participant row in the same shape inviteParticipant

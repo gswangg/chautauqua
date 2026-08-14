@@ -13,6 +13,7 @@ import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import { addCoPresenter } from "../src/server/repo/portal-edit";
 import { MAX_TEXT_LENGTH } from "../src/forms/validate";
+import * as schema from "../src/db/schema";
 
 function makeChain(rows: unknown[]) {
   const chain: any = {
@@ -43,7 +44,12 @@ function fakeDb(selectQueue: unknown[][]) {
         };
       },
     }),
-    update: () => {
+    // DEC-725 amendment: addCoPresenter now also bumps the owning
+    // submission's updated_at (submissions/touch.ts).
+    update: (table: unknown) => {
+      if (table === schema.submission) {
+        return { set: () => ({ where: () => Promise.resolve() }) };
+      }
       throw new Error("must never write to an existing contact");
     },
   };

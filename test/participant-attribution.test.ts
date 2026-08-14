@@ -57,6 +57,14 @@ function fakeDb(selectQueue: unknown[][]) {
         };
       },
     }),
+    // DEC-725 amendment: inviteParticipant now also bumps the owning
+    // submission's updated_at via touchSubmissions — a plain fire-and-await
+    // update against `submission`, no readback.
+    update: () => ({
+      set: () => ({
+        where: () => Promise.resolve(),
+      }),
+    }),
   };
   return { db: db as unknown as AppEnv["Variables"]["db"], inserts };
 }

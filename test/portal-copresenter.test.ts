@@ -11,6 +11,7 @@
 import { describe, expect, it } from "vitest";
 import { addCoPresenter, getPortalParticipants, MAX_PARTICIPANTS_PER_SUBMISSION } from "../src/server/repo/portal-edit";
 import { participantRoleLabel, PARTICIPANT_ROLE_OPTIONS } from "../src/domain/participant-roles";
+import * as schema from "../src/db/schema";
 import type { AppEnv } from "../src/server/env";
 
 function makeChain(rows: unknown[]) {
@@ -46,7 +47,14 @@ function fakeDb(selectQueue: unknown[][], insertReturning: unknown[]) {
         };
       },
     }),
-    update: () => {
+    // DEC-725 amendment: addCoPresenter now also bumps the owning
+    // submission's updated_at (submissions/touch.ts) — allowed here, but
+    // still throws for any update() against `contact` (DEC-604: never
+    // writes to an existing contact).
+    update: (table: unknown) => {
+      if (table === schema.submission) {
+        return { set: () => ({ where: () => Promise.resolve() }) };
+      }
       throw new Error("addCoPresenter must never call db.update() (DEC-604: never writes to an existing contact)");
     },
   };

@@ -522,7 +522,7 @@ submissionsRoutes.patch(
       if (typeof body.visible !== "boolean") {
         throw new ApiError("invalid", "visible must be a boolean", { visible: "Required" });
       }
-      await setParticipantVisible(c.var.db, participantId, body.visible);
+      await setParticipantVisible(c.var.db, participantId, body.visible, scope.submissionId);
     }
     if (body.inviteStatus !== undefined) {
       // DEC-789: organizer-only write against the closed
@@ -533,7 +533,7 @@ submissionsRoutes.patch(
           inviteStatus: "Invalid invite status",
         });
       }
-      await setParticipantInviteStatus(c.var.db, participantId, body.inviteStatus);
+      await setParticipantInviteStatus(c.var.db, participantId, body.inviteStatus, scope.submissionId);
     }
     const row = await getParticipantRow(c.var.db, participantId);
     // DEC-278/DEC-813: the Speakers grid's toggleInviteStatus control (this
