@@ -63,6 +63,24 @@ resetRoutes.post("/forgot", csrfForm, async (c) => {
   const normalizedEmail = submittedEmail.toLowerCase();
   const now = Date.now();
 
+  // DEC-180 (wave-36 amendment): a per-email bucket alone lets an attacker
+  // spray one request per distinct address and never hit the same email
+  // bucket twice, minting unlimited reset tokens and unlimited mail. Mirror
+  // /login's two-bucket shape: an IP bucket FIRST, then the per-email
+  // bucket. IP-first is load-bearing — a denial there must not touch the
+  // email budget at all (no partial spend to refund), keeping the two
+  // checks independent rather than sequenced-with-refund like /login's
+  // success path (which /forgot does not have, per corollary (2) below).
+  const ip = requestIpFromHeaders((name) => c.req.header(name));
+  const ipLimit = await checkAndIncrementScopedLimit(db, "forgot-ip", ip, now, {
+    windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
+    max: 100,
+  });
+  if (!ipLimit.ok) {
+    const { token: csrfToken } = ensureCsrfCookie(c);
+    return c.html(<ForgotPasswordPage csrfToken={csrfToken} email={submittedEmail} error={RATE_LIMIT_ERROR} />, 429);
+  }
+
   // DEC-948 / DEC-180 (wave-29 amendment): the SAME atomic consume shape as
   // /login, keyed on the normalised email — the deleted read-only peek
   // helper keeps no auth call site. One atomic D1 upsert up front, so N
@@ -73,6 +91,8 @@ resetRoutes.post("/forgot", csrfForm, async (c) => {
   // does not) would make bucket depletion an account-enumeration oracle,
   // which DEC-004 closes everywhere else. A 429 here doesn't leak existence
   // (it fires purely off request volume against one address, known or not).
+  // This applies equally to the IP bucket above: neither bucket is ever
+  // refunded by this handler.
   const forgotLimit = await checkAndIncrementScopedLimit(db, "forgot", normalizedEmail, now, {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
     max: AUTH_RATE_LIMIT_MAX,
