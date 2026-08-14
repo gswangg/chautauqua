@@ -14,6 +14,7 @@ import { PROGRAMME_CSS } from "./programme.css";
 import { eventDatesLine, setCacheHeaders } from "./shell";
 import { formatDay, formatMinutes, SpeakerNames } from "./cards";
 import { publicNotFound } from "./not-found";
+import { publicRoomLabel } from "../../domain/schedule";
 import { DEC_683 } from "../../decisions";
 import type { Context } from "hono";
 import type { AppEnv } from "../../server/env";
@@ -81,7 +82,7 @@ function ProgrammeDay(props: { day: string; items: PublicAgendaItem[]; breaks: S
               </div>
               <div class="chq-prog-row-sub">
                 {[
-                  row.item.roomName,
+                  publicRoomLabel(row.item.roomName),
                   row.item.tracks.map((t) => t.name).join(", ") || null,
                   row.item.format,
                 ]
@@ -99,9 +100,10 @@ function ProgrammeDay(props: { day: string; items: PublicAgendaItem[]; breaks: S
 export function ProgrammeDocument(props: {
   event: PublicEvent;
   items: PublicAgendaItem[];
+  total: number;
   breaksByDay: Map<string, ScheduleBreak[]>;
 }) {
-  const { event, items, breaksByDay } = props;
+  const { event, items, total, breaksByDay } = props;
   const byDay = groupByDay(items);
   const days = [...new Set([...byDay.keys(), ...breaksByDay.keys()])].sort();
   return (
@@ -117,6 +119,11 @@ export function ProgrammeDocument(props: {
         <main class="chq-prog-main">
           <h1 class="chq-prog-title">{event.name}</h1>
           <p class="chq-prog-meta">{eventDatesLine(event)}</p>
+          {items.length < total ? (
+            <p class="chq-prog-note">
+              Showing the first {items.length} of {total} scheduled sessions.
+            </p>
+          ) : null}
           {days.length === 0 ? (
             <p>No sessions scheduled yet.</p>
           ) : (
@@ -139,6 +146,6 @@ export async function handleProgramme(c: Context<AppEnv, "/e/:eventSlug/programm
   const db = c.var.db;
   const event = await getPublicEventBySlug(db, c.req.param("eventSlug"));
   if (!event) return publicNotFound(c, "Event not found.");
-  const [{ items }, breaksByDay] = await Promise.all([getPublicAgenda(db, event), getPublicBreaksByDay(db, event)]);
-  return c.html(<ProgrammeDocument event={event} items={items} breaksByDay={breaksByDay} />);
+  const [{ items, total }, breaksByDay] = await Promise.all([getPublicAgenda(db, event), getPublicBreaksByDay(db, event)]);
+  return c.html(<ProgrammeDocument event={event} items={items} total={total} breaksByDay={breaksByDay} />);
 }

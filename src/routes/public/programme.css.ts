@@ -21,6 +21,11 @@ export const PROGRAMME_CSS = `
     margin: 0 0 32px;
     color: var(--chq-muted);
   }
+  .chq-prog-note {
+    margin: 0 0 32px;
+    color: var(--chq-muted);
+    font-size: 0.85rem;
+  }
   .chq-prog-day {
     margin: 0 0 32px;
   }
@@ -76,6 +81,9 @@ export const PROGRAMME_CSS = `
     }
     .chq-prog-day {
       page-break-inside: avoid;
+    }
+    .chq-prog-note {
+      display: none;
     }
   }
 `;
