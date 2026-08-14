@@ -66,6 +66,10 @@ interface SessionListProps {
   // the current page (same pattern as the row-level approve/changes controls).
   selectedIds: Set<string>;
   onSelectionChange: (selectedIds: Set<string>) => void;
+  // DEC-825 amendment (wave 72): "Approve N ready" as a section action on
+  // the worklist's own rule — null/undefined when every row on the current
+  // page is already approved (N=0), in which case no action renders at all.
+  approveReady?: { count: number; onOpen: () => void } | null;
 }
 
 export function SessionList({
@@ -84,6 +88,7 @@ export function SessionList({
   counts,
   selectedIds,
   onSelectionChange,
+  approveReady,
 }: SessionListProps) {
   const visible = items;
   const rangeStart = total === 0 ? 0 : (page - 1) * perPage + 1;
@@ -111,6 +116,18 @@ export function SessionList({
 
   return (
     <div className="chq-content-worklist">
+      {/* DEC-825 amendment (wave 72): the section rule owns "Approve N
+          ready" now — house link-on-the-rule treatment, capability kept,
+          prominence lowered off the title row. Renders only when there is
+          something to approve; the rule itself is always here. */}
+      <div className="chq-section-head chq-content-worklist-head">
+        <h2 className="chq-section-label">Worklist</h2>
+        {approveReady && (
+          <button type="button" className="chq-link-button chq-section-action" onClick={approveReady.onOpen}>
+            Approve {approveReady.count} ready
+          </button>
+        )}
+      </div>
       <div className="chq-chipstrip" role="tablist" aria-label="Content status">
         {WORKLIST_TABS.map((t) => (
           <button
@@ -237,13 +254,22 @@ export function SessionList({
                     </div>
                   </td>
                   <td>
-                    <span
-                      className={
-                        item.contentStatus === 'changes_requested' ? 'chq-flag' : 'chq-flag chq-content-status-muted'
-                      }
-                    >
-                      {worklistStatusLabel(item.contentStatus, item.reuploaded)}
-                    </span>
+                    {/* DEC-825 amendment (wave 72): weight carries the state,
+                        never colour (DEC-367/DEC-730) — one vocabulary
+                        (worklistStatusLabel) decides both the text and its
+                        emphasis, no second label set. 'Changes requested'
+                        and 'Re-uploaded' both mean "something needs you" and
+                        stay bold ink; 'Approved' and 'Not reviewed' sink to
+                        muted weight. */}
+                    {(() => {
+                      const label = worklistStatusLabel(item.contentStatus, item.reuploaded);
+                      const needsAttention = label === 'Changes requested' || label === 'Re-uploaded';
+                      return (
+                        <span className={needsAttention ? 'chq-flag' : 'chq-flag chq-content-status-muted'}>
+                          {label}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td onClick={(e) => e.stopPropagation()}>
                     <div className="chq-content-actions">

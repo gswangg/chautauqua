@@ -89,9 +89,11 @@ export function ContentApp() {
   // DEC-825 amendment: set-based bulk content-approval selection.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkPending, setBulkPending] = useState(false);
-  // w42-c: title-row "Approve N ready" action — every row on the CURRENT
-  // worklist page whose contentStatus isn't already 'approved', independent
-  // of the row-selection bulk bar above (no selection required).
+  // w42-c/DEC-825 amendment (wave 72): "Approve N ready" — every row on the
+  // CURRENT worklist page whose contentStatus isn't already 'approved',
+  // independent of the row-selection bulk bar above (no selection
+  // required). Rendered as a section action on the worklist's own rule
+  // (SessionList), not the title row.
   const [showApproveReadyConfirm, setShowApproveReadyConfirm] = useState(false);
   const [approveReadyPending, setApproveReadyPending] = useState(false);
   // w1-e: bumping this remounts FilesLibrary (its own load() effect keys on
@@ -349,18 +351,6 @@ export function ContentApp() {
               (named for where it goes, not where you are) plus Refresh. */}
           {!submissionId && (
             <div className="chq-content-summary-actions">
-              {/* w42-c: only when the current worklist page has at least one
-                  row that isn't already approved — a title-row action
-                  independent of the row-selection bulk bar. */}
-              {view === 'worklist' && notApprovedIds.length > 0 && (
-                <button
-                  type="button"
-                  className="chq-btn chq-btn-primary chq-content-approve-ready-btn"
-                  onClick={() => setShowApproveReadyConfirm(true)}
-                >
-                  Approve {notApprovedIds.length} ready
-                </button>
-              )}
               {view === 'worklist' ? (
                 <button type="button" className="chq-btn chq-btn-secondary" onClick={() => changeView('files')}>
                   All files
@@ -463,6 +453,13 @@ export function ContentApp() {
           counts={counts}
           selectedIds={selectedIds}
           onSelectionChange={setSelectedIds}
+          // DEC-825 amendment (wave 72): 'Approve N ready' leaves the title
+          // row and becomes a section action on the worklist's own rule
+          // (house link-on-the-rule treatment) — same page-scoped
+          // notApprovedIds set, same confirm dialog, just relocated so an
+          // event-wide write isn't the most prominent element on a scanning
+          // surface.
+          approveReady={notApprovedIds.length > 0 ? { count: notApprovedIds.length, onOpen: () => setShowApproveReadyConfirm(true) } : null}
         />
       )}
       {showApproveReadyConfirm && (
