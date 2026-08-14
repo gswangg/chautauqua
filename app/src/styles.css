@@ -1296,6 +1296,34 @@ a:hover {
   font-size: 12px;
 }
 
+/* User-filed (gate-5 cycle): the URL/Snippet readouts flowed INLINE with
+   their Copy/Preview buttons, so the buttons floated mid-text wherever the
+   code happened to wrap. Each readout is a block: the code gets its own
+   full-width box, the actions sit in a row beneath it. */
+.chq-embeds-output-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.chq-embeds-output-block code {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  background: var(--chq-surface);
+  border: 1px solid var(--chq-rule);
+  border-radius: var(--chq-r-card);
+  overflow-wrap: anywhere;
+}
+
+.chq-embeds-output-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .chq-embeds-note {
   font-size: 12px;
   color: var(--chq-muted);

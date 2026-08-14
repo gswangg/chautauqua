@@ -67,6 +67,29 @@ describe('EmbedsPanel', () => {
     expect(screen.getByRole('combobox', { name: 'Track' })).toHaveClass('chq-select');
   });
 
+  // User-filed (gate-5 cycle): the URL/Snippet code readouts flowed INLINE
+  // with their Copy/Preview buttons, so the buttons floated mid-text wherever
+  // the code wrapped. Each readout is a block (code box, then an actions row)
+  // and the buttons live in the actions row, never in the code's text flow.
+  it('boxes each code readout with its actions in a separate row', async () => {
+    mockEvent();
+    renderPanel();
+
+    await waitFor(() => {
+      expect(screen.getByText(/^<iframe/)).toBeInTheDocument();
+    });
+
+    for (const name of ['Copy URL', 'Copy snippet']) {
+      const btn = screen.getByRole('button', { name });
+      expect(btn.closest('.chq-embeds-output-actions')).not.toBeNull();
+      expect(btn.closest('.chq-embeds-output-block')).not.toBeNull();
+    }
+    expect(screen.getByRole('link', { name: 'Preview' }).closest('.chq-embeds-output-actions')).not.toBeNull();
+    const snippetCode = screen.getByText(/^<iframe/);
+    expect(snippetCode.tagName).toBe('CODE');
+    expect(snippetCode.closest('.chq-embeds-output-block')).not.toBeNull();
+  });
+
   it('announces a successful copy via the live status region (DEC-607)', async () => {
     mockEvent();
     const writeText = vi.fn().mockResolvedValue(undefined);
