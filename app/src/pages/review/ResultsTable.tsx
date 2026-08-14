@@ -420,18 +420,26 @@ export function ResultsTable({
                   {row.average.toFixed(1)}
                 </td>
                 <td data-label="Reviews">
-                  {/* w42-h/DEC-366 amendment: the cell reads as text -- "N
-                     reviews · M recusals" -- with the existing disclosure
-                     kept behind that text as its own trigger, so a recusal
-                     count is never lost from the cell. */}
-                  <button
-                    type="button"
-                    className="chq-btn chq-btn-secondary chq-review-reviews-toggle"
-                    onClick={() => void toggleExpand(row.submissionId)}
-                  >
-                    {expanded ? '▾' : '▸'} {countOf(row.count, 'review')}
-                    {row.recusals > 0 ? ` · ${countOf(row.recusals, 'recusal')}` : ''}
-                  </button>
+                  {/* w5-f: the landing's embedded preview is a glance, not a
+                     workspace (w2-d already dropped its pager/in-table
+                     Download CSV on the same reasoning) -- it prints the
+                     plain count, no expand affordance. The standalone
+                     /results page keeps the w42-h disclosure button. */}
+                  {embedded ? (
+                    <span>
+                      {countOf(row.count, 'review')}
+                      {row.recusals > 0 ? ` · ${countOf(row.recusals, 'recusal')}` : ''}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="chq-btn chq-btn-secondary chq-review-reviews-toggle"
+                      onClick={() => void toggleExpand(row.submissionId)}
+                    >
+                      {expanded ? '▾' : '▸'} {countOf(row.count, 'review')}
+                      {row.recusals > 0 ? ` · ${countOf(row.recusals, 'recusal')}` : ''}
+                    </button>
+                  )}
                 </td>
                 <td data-label="Decision">
                   {decided ? (

@@ -590,6 +590,29 @@ describe('ResultsTable embedded preview (DEC-737)', () => {
   });
 });
 
+// w5-f: the landing's embedded preview is a glance, not a workspace (the
+// same reasoning w2-d already applied to the pager/in-table Download CSV
+// on this same table) -- its REVIEWS cell prints a plain count, never the
+// standalone page's "▸ N reviews" disclosure button.
+describe('ResultsTable embedded REVIEWS cell is a plain count (w5-f)', () => {
+  it('renders "N reviews · M recusal(s)" as text, not a disclosure button, when embedded', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([{ ...resultsRow(), recusals: 1 }]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/review']}>
+        <ResultsTable planId={PLAN_ID} />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /reviews?/ })).not.toBeInTheDocument();
+    expect(screen.getByText('3 reviews · 1 recusal')).toBeInTheDocument();
+  });
+});
+
 // w2-d/DEC-737: standalone (no planId prop), the table keeps the pager, the
 // export link, and the eyebrow, but no longer duplicates a "Ranked results"
 // section label under its own h1 -- one heading per page.

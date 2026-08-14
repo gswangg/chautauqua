@@ -121,7 +121,7 @@
 
 .chq-review-progress-row {
   display: grid;
-  grid-template-columns: 1fr 96px 64px 110px;
+  grid-template-columns: 1fr 96px 84px;
   gap: 14px;
   align-items: center;
   padding: 13px 0;

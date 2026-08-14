@@ -138,6 +138,7 @@ describe("DEC-351: /progress and /remind load-shedding is wire-identical", () =>
       assigned: 2,
       completed: 0,
       recused: 1,
+      trackName: null,
     });
     expect(byUser.get("rev-2")).toEqual({
       userId: "rev-2",
@@ -146,6 +147,7 @@ describe("DEC-351: /progress and /remind load-shedding is wire-identical", () =>
       assigned: 3,
       completed: 2,
       recused: 0,
+      trackName: null,
     });
     expect(body.total).toBe(2);
     expect(body.page).toBe(1);

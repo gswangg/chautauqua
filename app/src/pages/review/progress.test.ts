@@ -3,9 +3,9 @@ import { overallCompletion, progressTotals, reviewerDisplayLabel, reviewersNotSt
 import type { ProgressRow } from './types';
 
 const rows: ProgressRow[] = [
-  { userId: 'u1', email: 'a@example.com', name: 'Alice A', assigned: 10, completed: 10, recused: 0 },
-  { userId: 'u2', email: 'b@example.com', name: null, assigned: 8, completed: 3, recused: 1 },
-  { userId: 'u3', email: 'c@example.com', name: null, assigned: 0, completed: 0, recused: 0 },
+  { userId: 'u1', email: 'a@example.com', name: 'Alice A', assigned: 10, completed: 10, recused: 0, trackName: 'AI Engineering' },
+  { userId: 'u2', email: 'b@example.com', name: null, assigned: 8, completed: 3, recused: 1, trackName: null },
+  { userId: 'u3', email: 'c@example.com', name: null, assigned: 0, completed: 0, recused: 0, trackName: null },
 ];
 
 describe('reviewersWithIncompleteQueues', () => {
@@ -20,7 +20,7 @@ describe('reviewersWithIncompleteQueues', () => {
 
 describe('reviewersNotStarted', () => {
   it('returns only reviewers with completed === 0 and something assigned', () => {
-    expect(reviewersNotStarted([...rows, { userId: 'u4', email: 'd@example.com', name: null, assigned: 5, completed: 0, recused: 0 }]).map((r) => r.userId)).toEqual(['u4']);
+    expect(reviewersNotStarted([...rows, { userId: 'u4', email: 'd@example.com', name: null, assigned: 5, completed: 0, recused: 0, trackName: null }]).map((r) => r.userId)).toEqual(['u4']);
   });
 
   it('excludes a reviewer with nothing assigned (reads as done, not not-started)', () => {
@@ -45,7 +45,7 @@ describe('overallCompletion', () => {
 
   it('is 0 when nobody is assigned', () => {
     expect(overallCompletion([])).toBe(0);
-    expect(overallCompletion([{ userId: 'u3', email: 'c@example.com', name: null, assigned: 0, completed: 0, recused: 0 }])).toBe(0);
+    expect(overallCompletion([{ userId: 'u3', email: 'c@example.com', name: null, assigned: 0, completed: 0, recused: 0, trackName: null }])).toBe(0);
   });
 });
 
@@ -56,5 +56,31 @@ describe('progressTotals', () => {
 
   it('is {0, 0} for an empty reviewer list', () => {
     expect(progressTotals([])).toEqual({ completed: 0, assigned: 0 });
+  });
+
+  // w5-f: the '37 of 34 evaluations in' regression -- PlanList's inline
+  // "N of M evaluations in" caption sums completed/assigned straight off
+  // the SAME per-row fields the server's /plans/:id/progress route already
+  // clamps to completed <= assigned per reviewer (never a raw per-plan
+  // evaluation count against a plan-wide assigned total). A reviewer whose
+  // evaluations reach outside their own assigned set for this plan/round
+  // (server-side, never counted into `completed` -- see
+  // test/review-progress-counts.test.ts) must never push the aggregate
+  // numerator past the aggregate denominator.
+  it('never lets the aggregate completed exceed the aggregate assigned, even when a reviewer has evaluations outside the plan/round scope', () => {
+    // rev-1's server-reported row already excludes the out-of-scope/recused
+    // evaluations (that clamp happens server-side); the SPA-level invariant
+    // this test pins is that summing those already-honest per-row numbers
+    // can never itself introduce completed > assigned.
+    const rowsWithOutOfScopeReviewer: ProgressRow[] = [
+      ...rows,
+      // A reviewer whose raw evaluation count (including evaluations on a
+      // recused submission and one outside this plan's filtered scope)
+      // would be 3, but whose honest assigned/completed pair is 2/1.
+      { userId: 'u5', email: 'e@example.com', name: null, assigned: 2, completed: 1, recused: 1, trackName: 'Platform & Infra' },
+    ];
+    const totals = progressTotals(rowsWithOutOfScopeReviewer);
+    expect(totals.completed).toBeLessThanOrEqual(totals.assigned);
+    expect(totals).toEqual({ completed: 14, assigned: 20 });
   });
 });

@@ -15,6 +15,7 @@ import {
   criteriaForRound,
   partitionRecused,
   assignedExcludingRecused,
+  resolveReviewerScopeTrackId,
   type EvaluationCriterion,
   type EvaluationCriterionDef,
   type DropdownCriterionDef,
@@ -608,5 +609,27 @@ describe("selectRemindTargets (DEC-707)", () => {
 
   it("'incomplete' never selects a reviewer whose completed >= assigned", () => {
     expect(selectRemindTargets(rows, "incomplete")).not.toContainEqual(expect.objectContaining({ userId: "u-done" }));
+  });
+});
+
+describe("resolveReviewerScopeTrackId (DEC-845, w5-f)", () => {
+  it("returns null for no rows", () => {
+    expect(resolveReviewerScopeTrackId([])).toBeNull();
+  });
+
+  it("returns null when any row is unrestricted (trackId + submissionId both null)", () => {
+    expect(resolveReviewerScopeTrackId([{ trackId: "t-1", submissionId: null }, { trackId: null, submissionId: null }])).toBeNull();
+  });
+
+  it("returns the track id when every row agrees on exactly one track", () => {
+    expect(resolveReviewerScopeTrackId([{ trackId: "t-1", submissionId: null }, { trackId: "t-1", submissionId: null }])).toBe("t-1");
+  });
+
+  it("returns null when rows span more than one distinct track", () => {
+    expect(resolveReviewerScopeTrackId([{ trackId: "t-1", submissionId: null }, { trackId: "t-2", submissionId: null }])).toBeNull();
+  });
+
+  it("ignores a submission-scoped row's null trackId when a track-scoped row is also present", () => {
+    expect(resolveReviewerScopeTrackId([{ trackId: "t-1", submissionId: null }, { trackId: null, submissionId: "sub-1" }])).toBe("t-1");
   });
 });
