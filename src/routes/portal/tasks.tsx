@@ -257,6 +257,11 @@ portalTasksRoutes.get("/tasks", async (c) => {
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
 
+  // DEC-020 amendment (wave 10): the /upload handler's post-redirect flag —
+  // present only after a submission-linked upload, never persisted, purely
+  // this one render's receipt.
+  const uploadedAssignmentId = c.req.query("uploaded") || undefined;
+
   return c.html(
     <TasksPage
       branding={data.branding}
@@ -266,6 +271,7 @@ portalTasksRoutes.get("/tasks", async (c) => {
       fileExtrasFor={(id) => fileExtrasByAssignmentId.get(id)}
       deliverableChoiceFor={(id) => deliverableChoiceByAssignmentId.get(id)}
       speakerName={data.contactName}
+      uploadedAssignmentId={uploadedAssignmentId}
     />,
   );
 });
@@ -591,7 +597,12 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
 
   await saveTaskFileCompletion(c.var.db, assignmentId, fileId);
   await updateAssignmentStatus(c.var.db, assignmentId, "complete", auth.userId, new Date());
-  return c.redirect("/portal/tasks", 302);
+  // DEC-020 amendment (wave 10): the reopen above (submissionId != null) is
+  // otherwise silent — a speaker who just posted a new deck gets no receipt
+  // that it pulled their accepted session off the public schedule pending
+  // re-approval. A plain handout upload (submissionId null, no reopen)
+  // keeps today's bare redirect — nothing to disclose.
+  return c.redirect(submissionId ? `/portal/tasks?uploaded=${encodeURIComponent(assignmentId)}` : "/portal/tasks", 302);
 });
 
 // DEC-244 (implements DEC-242): reply on a completed file_request

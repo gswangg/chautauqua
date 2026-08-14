@@ -130,6 +130,22 @@ export function DeliverableSelect(props: { info: DeliverableChoiceInfo }) {
   );
 }
 
+// DEC-020 amendment (wave 10): a submission-linked upload reopens content
+// review (tasks.tsx's reopenContentReview call, gated on the same
+// isValidFileKind(t.deliverableKind) predicate) which pulls the session off
+// every public surface until the producer re-approves it (public/gates.ts
+// content_status='approved'). Say so before the speaker posts — a plain
+// handout assignment (deliverableKind null) never reopens anything and must
+// render nothing here.
+function ReuploadReviewNotice() {
+  return (
+    <p class="chq-portal-detail">
+      Posting a new version sends it back to the producer for review. The session
+      will not appear on the public schedule while it is being reviewed.
+    </p>
+  );
+}
+
 export function TaskRow(props: {
   assignment: PortalTaskAssignment;
   csrfToken: string;
@@ -187,6 +203,7 @@ export function TaskRow(props: {
                   ?? 'handout') so the hint's tier matches what validateUpload
                   actually accepts for this assignment. */}
               <p class="chq-portal-detail">{uploadHintText(isValidFileKind(t.deliverableKind) ? t.deliverableKind : "handout")}</p>
+              {isValidFileKind(t.deliverableKind) ? <ReuploadReviewNotice /> : null}
               <input
                 type="file"
                 name="file"
@@ -215,6 +232,7 @@ export function TaskRow(props: {
             <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
             {deliverableChoice ? <DeliverableSelect info={deliverableChoice} /> : null}
             <p class="chq-portal-detail">{uploadHintText()}</p>
+            {isValidFileKind(t.deliverableKind) ? <ReuploadReviewNotice /> : null}
             <input
               type="file"
               name="file"
@@ -269,6 +287,11 @@ export function TasksPage(props: {
   fileExtrasFor?: (assignmentId: string) => FileRequestExtras | undefined;
   deliverableChoiceFor?: (assignmentId: string) => DeliverableChoiceInfo | undefined;
   speakerName: string;
+  // DEC-020 amendment (wave 10): the assignment id the /upload handler just
+  // redirected here for (submission-linked uploads only — see that route's
+  // comment). Renders a receipt naming what was received and disclosing the
+  // reopen the handler already performed; absent for every other page view.
+  uploadedAssignmentId?: string;
 }) {
   const {
     branding,
@@ -279,12 +302,22 @@ export function TasksPage(props: {
     fileExtrasFor,
     deliverableChoiceFor,
     speakerName,
+    uploadedAssignmentId,
   } = props;
   const doneCount = assignments.filter((a) => a.status === "complete").length;
+  const uploadedAssignment = uploadedAssignmentId
+    ? assignments.find((a) => a.id === uploadedAssignmentId)
+    : undefined;
   return (
     <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={speakerName}>
       <PortalBackLink to="/portal" />
       <h1 class="chq-portal-hero">My Tasks</h1>
+      {uploadedAssignment ? (
+        <p role="status" class="chq-portal-detail">
+          Received your file for "{uploadedAssignment.title}". The session is off the public schedule pending the
+          producer's approval.
+        </p>
+      ) : null}
       {assignments.length > 0 ? (
         <div class="chq-portal-progress">
           <span class="chq-portal-progress-label">

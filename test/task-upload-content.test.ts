@@ -137,6 +137,11 @@ describe("POST /portal/tasks/:assignmentId/upload (DEC-240)", () => {
       previousFileId: null,
       uploadedByContactId: CONTACT_A,
     });
+    // DEC-020 amendment (wave 10): a submission-linked upload — the one that
+    // just called reopenContentReview above — redirects with a flag the
+    // /tasks page reads to render its receipt, not the bare pre-amendment
+    // redirect.
+    expect(res.headers.get("location")).toBe(`/portal/tasks?uploaded=${ASSIGNMENT_ID}`);
   });
 
   it("second upload on an already-complete assignment: chains previous_file_id to the assignment's current file and stays 'complete'", async () => {
@@ -259,6 +264,10 @@ describe("POST /portal/tasks/:assignmentId/upload (DEC-240)", () => {
     const call = vi.mocked(insertFile).mock.calls[0]![1];
     expect(call).toMatchObject({ kind: "handout", submissionId: null });
     expect(listDeliverableCandidates).not.toHaveBeenCalled();
+    // DEC-020 amendment (wave 10): a handout has no submission link, so
+    // reopenContentReview never fires — the redirect stays the plain,
+    // pre-amendment /portal/tasks with no receipt flag.
+    expect(res.headers.get("location")).toBe("/portal/tasks");
   });
 });
 
