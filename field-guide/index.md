@@ -30,31 +30,31 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   TABLE FOR OPPOSITE PURPOSES IS THE BUG; A DISCLOSURE IS NOT A DELETION;
   A FRAMED PRIMARY WITH NOTHING TO WRITE IS A LIE -- one writer, two
   screens.
-- FINDINGS w1-3 (compacted; DEC space FULL): A CLAMP INSIDE A PADDED
-  ANCESTOR IS NOT THE MEASURE; A CONTROL WHOSE ONLY OUTCOME IS A 400 --
-  disable it, name the blocking token; NO ORDER BY READS AS TIME MEANS
-  ALPHABETICAL; A FIXED CONTRACT BEATS A DIFF; AN EMBEDDED TABLE IS A
-  PREVIEW, NOT THE PAGE; RE-PROBE THE MANDATE BEFORE SPENDING A LANE;
-  CHECK .git/refs/heads and .git/logs/refs/heads/<branch> BEFORE
-  PLANNING. A DECISION DOC IS NOT A BRANCH -- wave-72 amendments sat on
-  main as PROSE while their code died on abandoned refs; read decisions/
-  before re-deciding, implement verbatim (grep `## Amendment (wave N)`
-  first). A LATCHED ERROR STRING IS A SECOND STATE. A PAGE-LEVEL KEY
-  HANDLER MUST ASK WHO HAS FOCUS. A LOADING PAGE WITH NO STRUCTURE READS
-  AS BROKEN. SIBLING COUNTS NEED THE SAME PREDICATE, AGAIN. GREP OUTPUT
-  COLLAPSES `//`.
-- FINDINGS w4 (this round): A MANDATE IS A SNAPSHOT, NOT A STATE -- gate-4
-  reds were measured on 33fbc724 and waves 1-3 closed many silently
-  (/schedule rebuilt, auth box-math 820/888, .ics in the embed picker,
-  ?day= pills, create-time duplicate check, headshot download). Re-read
-  the CODE before spending a lane; a mandate clause is a hypothesis.
-  THE PAIR REPORTS OUTLIVE THE MANDATE: chautauqua-research/fidelity-
-  gate4/*/report.md carry per-surface STILL-PRESENT + MINOR lists the
-  mandate never promoted -- mine them when the P1s are taken. A FRAME NIT
-  CAN CONTRADICT A LANDED DECISION: "one chip per kind" vs DEC-971, "drop
-  per-version Delete" vs DEC-713, "add a spam-folder line" vs DEC-377 --
-  grep decisions/ before filing a frame observation as work. A READ VIEW
-  THAT DESCRIBES A LIST IS A WRITE-MODE CLICK TO READ. A CONTROL ON EVERY
-  CARD IS A LAYOUT DECISION: one select per pipeline card cost 40% of the
-  card height. A PRIVATE COPY OF A TRANSFORM IS A SECOND GRAMMAR waiting
-  to be measured ("Talk (30 min)" vs "Talk, 30 min").
+- FINDINGS w1-4 (compacted; DEC space FULL): A CLAMP INSIDE A PADDED
+  ANCESTOR IS NOT THE MEASURE; disable a 400-only control, name the
+  blocking token; NO ORDER BY READS AS ALPHABETICAL; RE-PROBE THE
+  MANDATE BEFORE SPENDING A LANE (a mandate clause is a hypothesis,
+  gate-4 reds were measured on one commit and later waves close many
+  silently); A DECISION DOC IS NOT A BRANCH -- read decisions/ before
+  re-deciding, implement verbatim (grep `## Amendment (wave N)` first);
+  A LATCHED ERROR STRING IS A SECOND STATE; A PAGE-LEVEL KEY HANDLER
+  MUST ASK WHO HAS FOCUS; SIBLING COUNTS NEED THE SAME PREDICATE,
+  AGAIN; THE PAIR REPORTS OUTLIVE THE MANDATE (fidelity-gate4/*/
+  report.md STILL-PRESENT + MINOR lists); A FRAME NIT CAN CONTRADICT A
+  LANDED DECISION -- grep decisions/ before filing a frame observation
+  as work; A CONTROL ON EVERY CARD IS A LAYOUT DECISION; A PRIVATE COPY
+  OF A TRANSFORM IS A SECOND GRAMMAR waiting to be measured.
+- FINDINGS w5: A SURFACE THAT GROWS A RAIL MUST TAKE THE PAIR
+  MEASURE IN THE SAME CHANGE -- w1-d rebuilt /schedule to the frame's
+  list+rail while w1-a moved only its two twins to 820/60/300, so a
+  300px rail now sits inside an 820 column. TWO TASKS IN ONE WAVE CAN
+  SPLIT A CONTRACT: re-read the shared token, not just your own file.
+  THE MANDATE IS MOSTLY CLOSED -- of the gate-4 P1s re-probed this
+  wave, the public 1180 pair, select carets, day switcher, /sessions
+  chronological order, session gutter, template measure, one History
+  reader, bulk-template picker, match-columns screen, results 4-row
+  preview, auth box-math and the 404 rhythm ALL landed in waves 1-3;
+  mine the PAIR REPORTS' STILL-PRESENT lists, not the mandate's prose.
+  A FRAME "EXTRA" IS USUALLY A CAPABILITY: Reset password, Delete plan,
+  SESSION DETAILS -- restyle to the section-rule vocabulary or collapse
+  behind a disclosure; only the orchestrator deletes capability.
