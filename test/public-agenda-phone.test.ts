@@ -107,9 +107,11 @@ describe("DEC-584: public agenda phone list + desktop grid dual markup", () => {
     expect(html).not.toContain('class="chq-pub-agenda-day"');
   });
 
-  it("the phone list itinerary row exists only on /schedule (ScheduleContent), not /agenda (AgendaContent)", () => {
+  it("the phone list itinerary row exists only on /schedule (ScheduleContent), not /agenda's phone list -- DEC-584 (wave 64) added a Save/Saved toggle to the desktop block itself, but the phone AgendaItemList still renders no toggle without an explicit itinerary prop", () => {
     const agendaHtml = String(AgendaContent({ event: EVENT, items: ITEMS, total: ITEMS.length }));
-    expect(agendaHtml).not.toContain("chq-itinerary-toggle");
+    const phoneListMatch = agendaHtml.match(/<ol class="chq-pub-agenda-list">([\s\S]*?)<\/ol>/);
+    expect(phoneListMatch).toBeTruthy();
+    expect(phoneListMatch![1]).not.toContain("chq-itinerary-toggle");
   });
 });
 

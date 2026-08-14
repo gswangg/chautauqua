@@ -4,8 +4,8 @@
 
 import type { PublicAgendaItem, PublicEvent, PublicTrack } from "../../server/repo/public";
 import { MAX_ITINERARY_IDS, itineraryStorageKey, mergeItinerarySelection, mirrorItineraryCheckboxes } from "../../lib/itinerary";
-import { assignLanes } from "../../lib/overlap-lanes";
 import { publicRoomLabel } from "../../domain/schedule";
+import { plural } from "../../domain/count-copy";
 import { sessionDetailPath, surfacePath, type Surface, type SurfaceBase } from "./shell";
 import { TrackChips, FormatChip, SpeakerNames, SessionDescription, ItineraryToggle, formatDay, formatMinutes } from "./cards";
 import { PublicSearchBox, PublicFilterBar } from "./filters";
@@ -13,85 +13,62 @@ import { DEC_999 } from "../../decisions";
 
 void DEC_999;
 
-// DEC-602: shared row-map math. The hour-label column (grid-column 1) and
-// every session block are positioned from the SAME dayStart/gridMin
-// arithmetic so a label's row and a block's row can never drift apart —
-// compute it once here, not twice in two places that claim "the same
-// formula".
-function rowForMinute(min: number, dayStart: number, gridMin: number): number {
-  return Math.floor((min - dayStart) / gridMin) + 2;
-}
-
-function formatHourLabel(min: number): string {
-  const h = Math.floor(min / 60);
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  const ampm = h < 12 ? "AM" : "PM";
-  return `${hour12} ${ampm}`;
-}
-
-// DEC-999: lane geometry is published as CUSTOM PROPERTIES only, never as an
-// inline width/margin-left. A percentage margin-left on a grid ITEM resolves
-// against the grid area's own inline size and does not compose with a
-// percentage width the way width:calc(100/n% - 4px); margin-left:calc(...)
-// intended — the two percentages don't share a base, so an overlap lane
-// silently overran its box. public.css.ts's .chq-pub-agenda-block rule reads
-// these two properties (with defaults) to compute width/margin-inline-start
-// itself, so a single-lane block (the overwhelming majority) needs no inline
-// style here at all.
-export function laneStyleFor(lane: number, laneCount: number): string {
-  if (laneCount <= 1) return "";
-  return `--chq-lane:${lane};--chq-lane-count:${laneCount}`;
-}
-
-/** Per-day time grid (DEC-022): CSS grid, rooms as columns, session blocks
- * positioned by grid-row from start/end minutes. */
-export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; event: PublicEvent; from: Surface; base?: SurfaceBase }) {
-  const { day, items, event, from, base } = props;
-  const gridMin = 15;
-  const dayStart = Math.min(...items.map((i) => i.startMin));
-  const dayEnd = Math.max(...items.map((i) => i.endMin));
-  // DEC-602: whole-hour marks that fall within this day's grid, positioned
-  // via the SAME rowForMinute math the blocks use below.
-  const hourMarks: number[] = [];
-  for (let h = Math.ceil(dayStart / 60) * 60; h <= dayEnd; h += 60) {
-    hourMarks.push(h);
-  }
+/** DEC-584 (wave 64 amendment): the public agenda's desktop room-lane
+ * matrix is replaced by a time-row SEQUENCE — one row per DISTINCT start
+ * minute in the day, ascending, each row pairing an 88px time cell with a
+ * `repeat(auto-fit, minmax(228px, 1fr))` blocks container. `rooms`/
+ * `roomPositions` reproduce DEC-563's producer-owned column order (room.
+ * position asc, name asc, id asc, unroomed always last) — no longer to
+ * pick a grid COLUMN, but to order same-start-time blocks deterministically
+ * left-to-right regardless of item array order. */
+function roomSortKeys(items: PublicAgendaItem[]): { roomNames: Map<string, string>; roomPositions: Map<string, number | null> } {
   const roomNames = new Map(items.map((i) => [i.roomId ?? "tbd", publicRoomLabel(i.roomName)]));
   const roomPositions = new Map(items.map((i) => [i.roomId ?? "tbd", i.roomId ? i.roomPosition : null]));
-  // DEC-563: a room column's position is a producer-owned fact (schema
-  // `room.position`), not the accident of which item happened to appear
-  // first in the query result. The TBD/null-room column (no roomId) has no
-  // producer-owned position and always sorts last.
-  const rooms = [...new Set(items.map((i) => i.roomId ?? "tbd"))].sort((a, b) => {
-    if (a === "tbd" && b === "tbd") return 0;
-    if (a === "tbd") return 1;
-    if (b === "tbd") return -1;
-    const posA = roomPositions.get(a) ?? null;
-    const posB = roomPositions.get(b) ?? null;
-    if (posA !== posB) {
-      if (posA === null) return 1;
-      if (posB === null) return -1;
-      return posA - posB;
-    }
-    const nameCmp = (roomNames.get(a) ?? "").localeCompare(roomNames.get(b) ?? "");
-    if (nameCmp !== 0) return nameCmp;
-    return a.localeCompare(b);
-  });
+  return { roomNames, roomPositions };
+}
 
-  // DEC-140: overlapping sessions in the same room column must render
-  // side-by-side (lanes) rather than stacked, or the top block eats the
-  // pointer events meant for the blocks underneath it (docs/eval-
-  // findings.md P1). Lanes are computed per-room since only sessions in the
-  // same room column can visually collide.
-  const laneByItem = new Map<string, { lane: number; laneCount: number }>();
-  for (const roomId of rooms) {
-    const roomItems = items
-      .filter((i) => (i.roomId ?? "tbd") === roomId)
-      .map((i) => ({ id: i.submissionId, startMin: i.startMin, endMin: i.endMin }));
-    for (const laned of assignLanes(roomItems)) {
-      laneByItem.set(laned.item.id, { lane: laned.lane, laneCount: laned.laneCount });
-    }
+function roomSortCompare(a: string, b: string, roomNames: Map<string, string>, roomPositions: Map<string, number | null>): number {
+  if (a === "tbd" && b === "tbd") return 0;
+  if (a === "tbd") return 1;
+  if (b === "tbd") return -1;
+  const posA = roomPositions.get(a) ?? null;
+  const posB = roomPositions.get(b) ?? null;
+  if (posA !== posB) {
+    if (posA === null) return 1;
+    if (posB === null) return -1;
+    return posA - posB;
   }
+  const nameCmp = (roomNames.get(a) ?? "").localeCompare(roomNames.get(b) ?? "");
+  if (nameCmp !== 0) return nameCmp;
+  return a.localeCompare(b);
+}
+
+/** Groups a day's items into ascending distinct-start-minute rows, each
+ * row's items ordered by the same producer-owned room order as before. */
+function groupByStartMinute(items: PublicAgendaItem[]): { startMin: number; items: PublicAgendaItem[] }[] {
+  const { roomNames, roomPositions } = roomSortKeys(items);
+  const byStart = new Map<number, PublicAgendaItem[]>();
+  for (const item of items) {
+    const list = byStart.get(item.startMin) ?? [];
+    list.push(item);
+    byStart.set(item.startMin, list);
+  }
+  return [...byStart.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([startMin, rowItems]) => ({
+      startMin,
+      items: [...rowItems].sort((x, y) => roomSortCompare(x.roomId ?? "tbd", y.roomId ?? "tbd", roomNames, roomPositions)),
+    }));
+}
+
+/** Per-day time-row sequence (DEC-584 wave-64 amendment): one row per
+ * distinct start minute, each row's blocks laid out as a wrapping grid
+ * rather than fixed room columns — public density rarely has enough
+ * concurrent sessions to justify a lane matrix, and clashes are an
+ * organiser concept, not a public one (no clash indicators here). */
+export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; event: PublicEvent; from: Surface; base?: SurfaceBase }) {
+  const { day, items, event, from, base } = props;
+  const rows = groupByStartMinute(items);
 
   return (
     // DEC-768: the day heading is owned by AgendaDay (the caller wrapping
@@ -101,60 +78,39 @@ export function AgendaDayGrid(props: { day: string; items: PublicAgendaItem[]; e
     // (it now reaches the DOM through that single owning heading).
     <section aria-label={`Agenda for ${formatDay(day)}`}>
       <div class="chq-pub-agenda-day-scroll">
-        <div
-          class="chq-pub-agenda-day"
-          style={`grid-template-columns: 70px repeat(${rooms.length}, minmax(140px, 1fr)); grid-template-rows: auto repeat(${Math.ceil(
-            (dayEnd - dayStart) / gridMin,
-          )}, minmax(22px, auto));`}
-        >
-          <div style="grid-column:1;grid-row:1"></div>
-          {rooms.map((roomId, idx) => (
-            <div style={`grid-column:${idx + 2};grid-row:1;font-weight:600;background:#fff;padding:0.2rem`}>
-              {roomNames.get(roomId)}
-            </div>
-          ))}
-          {hourMarks.map((h) => (
-            <div class="chq-pub-agenda-hour-label" style={`grid-column:1;grid-row:${rowForMinute(h, dayStart, gridMin)}`}>
-              {formatHourLabel(h)}
-            </div>
-          ))}
-          {items.map((item) => {
-            const roomId = item.roomId ?? "tbd";
-            const col = rooms.indexOf(roomId) + 2;
-            const rowStart = rowForMinute(item.startMin, dayStart, gridMin);
-            const rowSpan = Math.max(1, Math.ceil((item.endMin - item.startMin) / gridMin));
-            const { lane, laneCount } = laneByItem.get(item.submissionId) ?? { lane: 0, laneCount: 1 };
-            // DEC-999: position:relative/z-index only needed once a block
-            // shares its row with a lane sibling; the width/margin math
-            // itself now lives entirely in public.css.ts.
-            const laneStyle = laneCount > 1 ? `position:relative;z-index:1;${laneStyleFor(lane, laneCount)}` : "";
-            return (
-              // DEC-602: a grid block never contains an interactive control
-              // (no itinerary checkbox here — that lives only in the
-              // /schedule list, which no longer renders this grid at all).
-              <div
-                class="chq-pub-agenda-block"
-                style={`grid-column:${col};grid-row:${rowStart} / span ${rowSpan};${laneStyle}`}
-                id={`chq-agenda-${item.submissionId}`}
-              >
-                <div class="chq-pub-agenda-block-meta">
-                  <div>
-                    {formatMinutes(item.startMin)}–{formatMinutes(item.endMin)}
+        <div class="chq-pub-agenda-day">
+          {rows.map((row) => (
+            <div class="chq-pub-agenda-day-row">
+              <div class="chq-pub-agenda-day-time">{formatMinutes(row.startMin)}</div>
+              <div class="chq-pub-agenda-day-blocks">
+                {row.items.map((item) => (
+                  // DEC-602/DEC-584 (wave 64): the block is a content-sized
+                  // card, not a grid-row/grid-column positioned box — no
+                  // fixed height math, no lane geometry (single-lane
+                  // matrix removed; overlap only mattered when rooms were
+                  // columns sharing a row track).
+                  <div class="chq-pub-agenda-block" id={`chq-agenda-${item.submissionId}`}>
+                    <div class="chq-pub-agenda-block-head">
+                      <span class="chq-pub-agenda-block-room">{publicRoomLabel(item.roomName)}</span>
+                      <ItineraryToggle sessionId={item.submissionId} />
+                    </div>
+                    <div class="chq-pub-agenda-block-title">
+                      <strong>
+                        <a href={sessionDetailPath(event, item.submissionId, from, base)}>{item.title}</a>
+                      </strong>
+                    </div>
+                    <div class="chq-pub-agenda-block-speakers">
+                      <SpeakerNames speakers={item.speakers} />
+                    </div>
+                    <div class="chq-pub-agenda-block-meta">
+                      <TrackChips tracks={item.tracks} />
+                      <FormatChip format={item.format} />
+                    </div>
                   </div>
-                  <TrackChips tracks={item.tracks} />
-                  <FormatChip format={item.format} />
-                </div>
-                <div class="chq-pub-agenda-block-title">
-                  <strong>
-                    <a href={sessionDetailPath(event, item.submissionId, from, base)}>{item.title}</a>
-                  </strong>
-                </div>
-                <div class="chq-pub-agenda-block-speakers">
-                  <SpeakerNames speakers={item.speakers} />
-                </div>
+                ))}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -258,11 +214,18 @@ function AgendaItemList(props: {
  * CSS `display:none` (public.css.ts) so exactly one is in the a11y tree at
  * a time. */
 function AgendaDay(props: { day: string; items: PublicAgendaItem[]; event: PublicEvent; from: Surface; base?: SurfaceBase }) {
+  // DEC-584 (wave 64 amendment): the heading names the day's own density
+  // ("<Weekday D Month> · N sessions · M rooms") rather than the bare day
+  // label — counts are derived from THIS day's items, through the one
+  // shared plural() helper (src/domain/count-copy), never hand-pluralised.
+  const roomCount = new Set(props.items.map((i) => i.roomId ?? "tbd")).size;
   return (
     <div id={`chq-day-${props.day}`}>
       {/* DEC-768: the ONE heading for this day, owned here -- neither
           AgendaDayGrid nor AgendaItemList renders its own anymore. */}
-      <h3>{formatDay(props.day)}</h3>
+      <h3>
+        {formatDay(props.day)} · {props.items.length} {plural(props.items.length, "session")} · {roomCount} {plural(roomCount, "room")}
+      </h3>
       <div class="chq-pub-agenda-desktop">
         <AgendaDayGrid {...props} />
       </div>

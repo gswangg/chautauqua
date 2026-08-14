@@ -331,46 +331,99 @@ export const PUBLIC_CSS = `
   .chq-pub-speaker-role { font-size: 13px; color: var(--chq-muted); line-height: 1.45; margin: 0; }
   .chq-pub-speaker-sessions { font-size: 13px; line-height: 1.45; margin: 0; padding-left: 1.1em; }
 
-  /* Agenda day grid (DEC-253: the day grid itself keeps its legible
-     per-room minmax columns and scrolls sideways in its own container
-     rather than collapsing the whole page or blowing out page-level
-     width). */
+  /* Agenda day (DEC-584 wave-64 amendment): a time-row SEQUENCE, not a
+     room-lane matrix -- one row per distinct start minute, an 88px time
+     cell beside a wrapping blocks container. No horizontal scroll is
+     needed anymore (no room columns to overflow), but the scroll
+     container is kept as a harmless no-op wrapper so a future wide-row
+     addition (e.g. a spanning break rule) has somewhere to sit without
+     widening the page. */
   .chq-pub-agenda-day-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 1.5rem; }
-  .chq-pub-agenda-day { display: grid; gap: 1px; background: var(--chq-hairline); margin-bottom: 0; }
-  /* DEC-999: a block is a content-sized box in its own lane -- column
-     flexbox so title/speakers/chips stack and the box's own height is the
-     content's height (the minmax(22px, auto) row track below then grows to
-     fit it, never the other way round). min-width/min-height:0 override the
-     flex-item default min-size:auto, which would otherwise refuse to shrink
-     below its content's intrinsic size and blow out the grid column. Lane
-     geometry (width/margin-inline-start) reads --chq-lane/--chq-lane-count,
-     published by agenda.tsx's laneStyleFor -- both default so the ordinary
-     single-lane block needs no inline style at all. NO overflow clipping,
-     NO -webkit-line-clamp: DEC-768 already established that a fixed-height
-     clipped block was the bug, not the fix. */
+  .chq-pub-agenda-day { display: flex; flex-direction: column; gap: 18px; margin-bottom: 0; }
+  /* DEC-584 (wave 64): one row = a fixed-width time cell + a wrapping
+     blocks container. align-items: flex-start keeps the time label
+     pinned to the row's first line even when a row's blocks wrap to
+     several lines of cards. */
+  .chq-pub-agenda-day-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+  .chq-pub-agenda-day-time {
+    flex: 0 0 88px;
+    width: 88px;
+    padding-top: 2px;
+    font-family: var(--chq-font-display);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--chq-ink);
+  }
+  /* DEC-584 (wave 64): at public density (<=10 sessions/day over 1-4
+     rooms) the blocks sharing a start time wrap into a fluid grid rather
+     than reserving a fixed column per room -- most rows have exactly one
+     block, which fills the row at 1fr. */
+  .chq-pub-agenda-day-blocks {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(228px, 1fr));
+    gap: 8px;
+  }
+  /* DEC-999: a block is a content-sized card -- column flexbox so
+     head/title/speakers/chips stack and the box's own height is the
+     content's height. min-width:0 overrides the flex-item default
+     min-size:auto, which would otherwise refuse to shrink below its
+     content's intrinsic size inside the auto-fit grid track. NO overflow
+     clipping, NO -webkit-line-clamp: DEC-768 already established that a
+     fixed-height clipped block was the bug, not the fix. Lane geometry
+     (DEC-999's original --chq-lane/--chq-lane-count custom properties) is
+     gone with the room-lane matrix (wave 64) -- the block is always full
+     width of its own grid cell now. */
   .${ACCENT_BOUND_CLASSES[0]} {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 2px;
+    gap: 4px;
     min-width: 0;
-    min-height: 0;
     box-sizing: border-box;
-    width: calc((100% - (var(--chq-lane-count, 1) - 1) * 4px) / var(--chq-lane-count, 1));
-    margin-inline-start: calc(
-      var(--chq-lane, 0) * ((100% - (var(--chq-lane-count, 1) - 1) * 4px) / var(--chq-lane-count, 1) + 4px)
-    );
+    width: 100%;
     background: var(--chq-surface);
     border-left: 3px solid var(--chq-brandable-accent);
     border-radius: var(--chq-r-card);
-    padding: 0.4rem 0.6rem;
+    padding: 0.5rem 0.7rem;
     font-size: 0.85rem;
   }
-  /* DEC-999 Amendment (wave 53): time/track-chip/format-chip trio share one
-     flex-wrap row (chq-pub-agenda-block-meta) instead of each occupying
-     their own line in the column flexbox above -- align-items: flex-start
-     on the block itself is what stops the inline-flex chip children being
-     stretched full-width by the block's own column-flex default (stretch). */
+  /* DEC-584 (wave 64): the block's top row -- the room eyebrow label left,
+     the Save/Saved toggle right -- needs the full card width to split the
+     two ends, unlike the column flexbox's content-hugging default. */
+  .chq-pub-agenda-block-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+  }
+  /* DEC-584 (wave 64): room becomes an eyebrow LABEL on the block, never a
+     column header -- small-caps treatment matching the phone list's own
+     room text (.chq-pub-agenda-list-room) so the two markups read
+     consistently. */
+  .chq-pub-agenda-block-room {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
+  }
+  /* DEC-999 Amendment (wave 53, kept wave 64): the track-chip/format-chip
+     trio share one flex-wrap row instead of each occupying their own line
+     in the column flexbox above -- align-items: flex-start on the block
+     itself is what stops the inline-flex chip children being stretched
+     full-width by the block's own column-flex default (stretch). This is
+     also what keeps TrackChips/FormatChip INLINE pills inside a block
+     (closing the 622px full-width-strip finding) rather than each chip
+     computing its own full-row width. */
   .chq-pub-agenda-block-meta {
     display: flex;
     flex-wrap: wrap;
@@ -563,29 +616,16 @@ export const PUBLIC_CSS = `
      Owned by task-w4-a; another lane may append its own labelled block
      below this one in the same file. */
 
-  /* EMB-06 w3: AgendaDayGrid reserves a 70px first column for hour labels
-     (grid-template-columns: 70px repeat(...)) but never rendered anything
-     into it. Labels are positioned via the SAME rowForMinute math the
-     session blocks use (agenda.tsx), so a label's row can never drift from
-     the blocks around it. */
-  .chq-pub-agenda-hour-label {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--chq-muted);
-    padding: 2px 4px 0 0;
-    text-align: right;
-    background: var(--chq-surface-sunk);
-  }
-
-  /* DEC-768: a grid block's grid-row span used to be a fixed 22px * spanCount
-     (overflow:hidden + line-clamp:2 to keep bleed contained), so a 15-minute
-     session's title/speakers routinely clipped away entirely. The row track
-     itself is now minmax(22px, auto) (agenda.tsx), so the block must grow
-     to its content instead of clipping it -- no fixed height, no
-     overflow:hidden, title wraps in full (mirrors app/src/pages/agenda/
-     DayGrid.tsx's DEC-742 merged-card treatment). A grid block must never
-     contain an interactive control (agenda.tsx no longer renders the
-     itinerary checkbox inside AgendaDayGrid's blocks). */
+  /* DEC-768: a block used to be clipped to a fixed 22px * spanCount grid-row
+     span (overflow:hidden + line-clamp:2), so a 15-minute session's
+     title/speakers routinely clipped away entirely. The block is now a
+     content-sized card (DEC-584 wave 64) so it grows to its content
+     instead of clipping it -- no fixed height, no overflow:hidden, title
+     wraps in full (mirrors app/src/pages/agenda/
+     DayGrid.tsx's DEC-742 merged-card treatment). DEC-584 (wave 64) now DOES put an interactive
+     control (the Save/Saved ItineraryToggle) inside the block's head row
+     -- the prior "never" here was the room-lane matrix's own constraint,
+     superseded by the amendment. */
   .chq-pub-agenda-block-title,
   .chq-pub-agenda-block-speakers {
     overflow-wrap: break-word;

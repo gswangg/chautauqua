@@ -53,34 +53,17 @@ const ITEMS: PublicAgendaItem[] = [
   }),
 ];
 
-describe("DEC-602 (EMB-06 w3): AgendaDayGrid hour-label column", () => {
-  it("emits an hour label into grid-column 1 for each whole hour spanned by the day", () => {
+describe("DEC-584 (wave 64 amendment): AgendaDayGrid time-row sequence replaces the hour-label grid column", () => {
+  it("renders exactly one time-row per distinct start minute, ascending", () => {
     const html = String(AgendaDayGrid({ day: "2026-08-10", items: ITEMS, event: EVENT, from: "agenda" }));
-    const labelMatches = [...html.matchAll(/<div class="chq-pub-agenda-hour-label" style="grid-column:1;grid-row:(\d+)">([^<]+)<\/div>/g)];
-    expect(labelMatches.length).toBeGreaterThan(0);
-    // dayStart=480 (8:00 AM), one of the marks must be exactly 8 AM.
-    expect(labelMatches.some((m) => m[2] === "8 AM")).toBe(true);
-    // 11 AM is within [480, 660] too.
-    expect(labelMatches.some((m) => m[2] === "11 AM")).toBe(true);
+    const times = [...html.matchAll(/<div class="chq-pub-agenda-day-time">([^<]+)<\/div>/g)].map((m) => m[1]);
+    expect(times).toEqual(["8:00 AM", "10:00 AM"]);
   });
 
-  it("an hour label's grid-row matches the same rowForMinute math a block at that same minute would get", () => {
-    // Item s1 starts exactly at dayStart (480 = 8 AM), so its block's
-    // rowStart and the 8 AM label's grid-row must be identical (row 2).
+  it("a block now carries the Save/Saved itinerary toggle in its head row (DEC-584 wave 64 supersedes the prior no-checkbox rule)", () => {
     const html = String(AgendaDayGrid({ day: "2026-08-10", items: ITEMS, event: EVENT, from: "agenda" }));
-    const label8am = html.match(/<div class="chq-pub-agenda-hour-label" style="grid-column:1;grid-row:(\d+)">8 AM<\/div>/);
-    expect(label8am).toBeTruthy();
-    const blockRow = html.match(/id="chq-agenda-s1"[^>]*style="grid-column:\d+;grid-row:(\d+)/);
-    // block markup is `style=...; id=...` in that attribute order, so check both.
-    const blockRowAlt = html.match(/style="grid-column:\d+;grid-row:(\d+)[^"]*"\s+id="chq-agenda-s1"/);
-    const rowNum = (blockRow ?? blockRowAlt)?.[1];
-    expect(rowNum).toBe(label8am![1]);
-  });
-
-  it("a grid block never contains an interactive control (no checkbox inside AgendaDayGrid)", () => {
-    const html = String(AgendaDayGrid({ day: "2026-08-10", items: ITEMS, event: EVENT, from: "agenda" }));
-    expect(html).not.toContain("chq-itinerary-toggle");
-    expect(html).not.toContain("<input");
+    expect(html).toContain('class="chq-itinerary-toggle" value="s1"');
+    expect(html).toContain('class="chq-itinerary-toggle" value="s2"');
   });
 });
 
