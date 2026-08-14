@@ -188,6 +188,29 @@ export function overdueAssignmentConditions(eventId: string, now: number) {
   )!;
 }
 
+/** DEC-754 amendment (wave 38): task assignment must range over the event
+ * ROSTER (rosterParticipantConditions -- any invite status), not the org
+ * contact directory -- assign was validating contactIds only against
+ * findContactsForOrg, letting an organizer mint a task_assignment row for a
+ * contact who is not a participant on any accepted submission of this
+ * event, which the grid (rosterParticipantExistsForContact) then never
+ * lists and neither reminder path (chaseableContactExists) ever chases.
+ * Chunked (chunkIds, DEC-078) against the SAME rosterParticipantConditions
+ * predicate the grid composes, never a second copy of the roster rule.
+ * Returns the distinct subset of `contactIds` that IS on the roster. */
+export async function filterRosterContactIds(db: Db, eventId: string, contactIds: string[]): Promise<Set<string>> {
+  const found = new Set<string>();
+  for (const batch of chunkIds(contactIds)) {
+    const rows = await db
+      .selectDistinct({ contactId: schema.participant.contactId })
+      .from(schema.participant)
+      .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
+      .where(and(rosterParticipantConditions(eventId), inArray(schema.participant.contactId, batch)));
+    for (const row of rows) found.add(row.contactId);
+  }
+  return found;
+}
+
 export async function listAcceptedContactIds(db: Db, eventId: string): Promise<string[]> {
   const rows = await db
     .select({ contactId: schema.participant.contactId })
