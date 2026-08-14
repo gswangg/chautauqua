@@ -368,7 +368,7 @@ async function runJ1(organizerJar: CookieJar): Promise<{ eventId: string; slug: 
 // J2: submit to the seeded event, draft, validation, confirmation + claim
 // ---------------------------------------------------------------------------
 
-async function runJ2(seededEventId: string): Promise<void> {
+async function runJ2(organizerJar: CookieJar, seededEventId: string): Promise<void> {
   const jar = new CookieJar();
   const getRes = await jarFetch(jar, `${BASE_URL}/submit/${SEEDED_EVENT_SLUG}`);
   const getBody = await getRes.text();
@@ -492,6 +492,115 @@ async function runJ2(seededEventId: string): Promise<void> {
 
   const portalRes = await jarFetch(claimJar, `${BASE_URL}/portal`);
   assertStatus("J2 GET /portal after claim", portalRes, 200, await portalRes.text());
+
+  // -------------------------------------------------------------------
+  // Password reset round trip (DEC-994), run on THIS throwaway account
+  // only — never a seeded persona, whose README "For evaluators"
+  // credentials are a published contract. Placed after every other use
+  // of claimJar above, because completing a reset revokes ALL sessions
+  // for the account (DEC-994), including the claim session just proven.
+  // -------------------------------------------------------------------
+
+  const forgotJar = new CookieJar();
+  const forgotGetRes = await jarFetch(forgotJar, `${BASE_URL}/forgot`);
+  const forgotGetBody = await forgotGetRes.text();
+  assertStatus("J2 GET /forgot", forgotGetRes, 200, forgotGetBody);
+  const forgotCsrf = forgotJar.get("chq_csrf");
+  assertTrue("J2 GET /forgot sets chq_csrf cookie", Boolean(forgotCsrf), "no chq_csrf cookie");
+
+  const forgotForm = new FormData();
+  forgotForm.set("chq_csrf", forgotCsrf!);
+  forgotForm.set("email", uniqueEmail);
+  const forgotPostRes = await jarFetch(forgotJar, `${BASE_URL}/forgot`, { method: "POST", body: forgotForm });
+  const forgotPostBody = await forgotPostRes.text();
+  assertStatus("J2 POST /forgot", forgotPostRes, 200, forgotPostBody);
+  assertTrue(
+    "J2 POST /forgot carries the enumeration-safe sent copy",
+    forgotPostBody.includes("If that address has an account, a reset link is on its way."),
+    forgotPostBody.slice(0, 400),
+  );
+
+  // Mailbox listing (organizer-authenticated per DEC-546) carries a row for
+  // the reset email addressed to the throwaway account; scrape its detail
+  // link the same way the confirmation email's mailbox row was found above.
+  const resetMailboxRes = await jarFetch(organizerJar, `${BASE_URL}/dev/mailbox`);
+  const resetMailboxBody = await resetMailboxRes.text();
+  assertStatus("J2 GET /dev/mailbox (reset email)", resetMailboxRes, 200, resetMailboxBody);
+  assertTrue(
+    "J2 dev mailbox lists the reset email",
+    resetMailboxBody.includes(uniqueEmail),
+    "expected the throwaway account's email in the mailbox listing",
+  );
+  const resetRow = (resetMailboxBody.match(/<tr>[\s\S]*?<\/tr>/g) ?? []).find(
+    (block) => block.includes(uniqueEmail) && block.includes("Set a new password"),
+  );
+  assertTrue(
+    "J2 dev mailbox listing has a row for the reset email",
+    Boolean(resetRow),
+    "expected a mailbox row addressed to the throwaway account with subject 'Set a new password'",
+  );
+  const resetRowHrefMatch = resetRow!.match(/href="([^"]+)"/);
+  assertTrue("J2 reset email row has a detail link", Boolean(resetRowHrefMatch), resetRow!);
+  const resetDetailUrl = resolveScrapedHref(resetRowHrefMatch![1]!, BASE_URL);
+
+  // DEC-543: the list projection excludes bodies — open the detail view to
+  // scrape the /reset/<token> link out of the rendered email body.
+  const resetDetailRes = await jarFetch(organizerJar, resetDetailUrl);
+  const resetDetailBody = await resetDetailRes.text();
+  assertStatus("J2 GET /dev/mailbox/:id (reset email detail)", resetDetailRes, 200, resetDetailBody);
+  const resetLinkMatch = resetDetailBody.match(/https?:\/\/[^\s"<]+\/reset\/[A-Za-z0-9_-]+/);
+  assertTrue("J2 reset email detail contains a reset link", Boolean(resetLinkMatch), resetDetailBody.slice(0, 800));
+  const resetUrl = resolveScrapedHref(resetLinkMatch![0]!, BASE_URL);
+
+  const resetPageJar = new CookieJar();
+  const resetGetRes = await jarFetch(resetPageJar, resetUrl);
+  const resetGetBody = await resetGetRes.text();
+  assertStatus("J2 GET reset link", resetGetRes, 200, resetGetBody);
+  assertTrue(
+    "J2 reset page names the throwaway account's email",
+    resetGetBody.includes(uniqueEmail),
+    resetGetBody.slice(0, 400),
+  );
+  const resetCsrf = resetPageJar.get("chq_csrf");
+  assertTrue("J2 reset page sets chq_csrf cookie", Boolean(resetCsrf), "no chq_csrf cookie");
+
+  const NEW_PASSWORD = "WalkthroughReset!2027";
+  const resetForm = new FormData();
+  resetForm.set("chq_csrf", resetCsrf!);
+  resetForm.set("next", NEW_PASSWORD);
+  resetForm.set("confirm", NEW_PASSWORD);
+  const resetPostRes = await jarFetch(resetPageJar, resetUrl, { method: "POST", body: resetForm });
+  const resetPostBody = await resetPostRes.text();
+  assertStatus("J2 POST reset (sets new password)", resetPostRes, 302, resetPostBody);
+  const resetLocation = resetPostRes.headers.get("location") ?? "";
+  assertTrue(
+    "J2 POST reset redirects to /login?password-reset=1",
+    resetLocation.includes("/login?password-reset=1"),
+    `Location: ${resetLocation}`,
+  );
+
+  // Replaying the same (now-consumed) token must 410, never re-run the
+  // change or reveal whether the token was ever valid.
+  const replayForm = new FormData();
+  replayForm.set("chq_csrf", resetCsrf!);
+  replayForm.set("next", "SecondAttemptPassword!2027");
+  replayForm.set("confirm", "SecondAttemptPassword!2027");
+  const replayRes = await jarFetch(resetPageJar, resetUrl, { method: "POST", body: replayForm });
+  assertStatus("J2 second POST of consumed reset token", replayRes, 410, await replayRes.text());
+
+  // DEC-994: completing the reset revoked every session for this user,
+  // including the claim session established above.
+  const staleClaimPortalRes = await jarFetch(claimJar, `${BASE_URL}/portal`);
+  assertTrue(
+    "J2 pre-reset claim session no longer authenticates after reset revokes all sessions",
+    staleClaimPortalRes.status !== 200,
+    `expected a non-200 status, got ${staleClaimPortalRes.status}`,
+  );
+
+  // A fresh sign-in with the new password reaches the portal.
+  const postResetJar = await loginAs(uniqueEmail, NEW_PASSWORD);
+  const postResetPortalRes = await jarFetch(postResetJar, `${BASE_URL}/portal`);
+  assertStatus("J2 GET /portal after password-reset login", postResetPortalRes, 200, await postResetPortalRes.text());
 
   void seededEventId; // reserved for future assertions against this event
 }
@@ -911,7 +1020,7 @@ async function main(): Promise<void> {
   console.log("  ok");
 
   console.log("Running J2 (public submit + claim) against devflow-conf-2027...");
-  await runJ2(seededEvent.id);
+  await runJ2(organizerJar, seededEvent.id);
   console.log("  ok");
 
   console.log("Running J3 (triage at volume) against devflow-conf-2027...");
