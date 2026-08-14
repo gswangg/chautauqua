@@ -3,15 +3,24 @@
 // rows are links -- session -> /admin/submissions/:id, deliverable -> its
 // download -- so every action the onboarding grid offers is one click from
 // one snapshot.
+//
+// DEC-930 amendment (wave 26): the page is now the 1180 pair (820 main +
+// 60 gap + 300 rail) frame B3 delivers -- the participation control moves
+// into the header row beside Email/Remind (the roster's real control, not
+// a restatement of its label); the main column carries Sessions, Tasks
+// (clickable statuses, per-task Remind) and Files; the rail carries the
+// contact block, cross-event history and Notes.
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { apiGet, ApiError } from '../../lib/api';
+import { apiGet, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { formatDateOnly, formatDayLabel } from '../../lib/dates';
-import { INVITE_STATUS_LABELS } from './types';
-import { participationStatusClass } from './ParticipationMenu';
+import type { AssignmentStatus, InviteStatus, ReminderDraft } from './types';
+import { ParticipationMenu } from './ParticipationMenu';
+import { RemindPreviewModal } from './RemindPreviewModal';
+import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import { STATUS_LABELS } from '../submissions/types';
 import { CONTENT_STATUS_LABELS } from '../content/types';
 import { DEC_930 } from '../../../../src/decisions';
@@ -19,6 +28,11 @@ import type { SpeakerDetailResponse, SpeakerDetailTaskStatus } from './speakerDe
 import './speakers.css';
 
 void DEC_930;
+
+// DEC-930 amendment (wave 26): cross-event history is a COUNT plus up to
+// five names, never an unbounded list -- the server already caps this, but
+// the page defensively re-caps rather than trusting a single writer.
+const OTHER_EVENTS_LIMIT = 5;
 
 const TASK_STATUS_LABELS: Record<SpeakerDetailTaskStatus, string> = {
   pending: 'Pending',
@@ -64,6 +78,20 @@ export function SpeakerDetailPage() {
   const [detail, setDetail] = useState<SpeakerDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  // DEC-441/DEC-829: the same review-before-send reminder flow the
+  // onboarding grid uses (RemindPreviewModal fed by the read-only preview
+  // endpoint), scoped to this one contact -- both the header's "Remind"
+  // action and each task row's "Remind this task" link open it (there is
+  // no per-task-scoped reminder endpoint; both name the same underlying
+  // send, which reminds about every outstanding task for this contact).
+  const [reviewingRemind, setReviewingRemind] = useState(false);
+  const [remindPreviewLoading, setRemindPreviewLoading] = useState(false);
+  const [remindPreviewError, setRemindPreviewError] = useState<string | null>(null);
+  const [remindDrafts, setRemindDrafts] = useState<ReminderDraft[] | null>(null);
+  const [remindSkipped, setRemindSkipped] = useState(0);
+  const [reminding, setReminding] = useState(false);
 
   useEffect(() => {
     if (!eventId || !contactId) return;
@@ -74,6 +102,96 @@ export function SpeakerDetailPage() {
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load speaker'))
       .finally(() => setLoading(false));
   }, [eventId, contactId]);
+
+  async function setInviteStatus(desired: InviteStatus) {
+    if (!detail) return;
+    const previous = detail;
+    setDetail({ ...detail, participation: { ...detail.participation, inviteStatus: desired } });
+    setError(null);
+    try {
+      await apiPatch(`/submissions/${detail.participation.submissionId}/participants/${detail.participation.participantId}`, {
+        inviteStatus: desired,
+      });
+    } catch (err) {
+      setDetail(previous);
+      setError(err instanceof ApiError ? `Update failed: ${err.message}` : 'Update failed');
+    }
+  }
+
+  async function sendPortalInvite() {
+    if (!eventId || !detail) return;
+    try {
+      const res = await apiPost<SendResult>(`/events/${eventId}/portal-invites`, { contactIds: [detail.contact.id] });
+      setToast(describeSendResult(res, { one: 'contact', many: 'contacts' }));
+    } catch (err) {
+      setError(err instanceof ApiError ? `Send failed: ${err.message}` : 'Send failed');
+    }
+  }
+
+  async function toggleTaskStatus(assignmentId: string, current: AssignmentStatus) {
+    if (!detail) return;
+    const desired: AssignmentStatus = current === 'complete' ? 'pending' : 'complete';
+    const previous = detail;
+    const now = Date.now();
+    setDetail({
+      ...detail,
+      tasks: detail.tasks.map((t) =>
+        t.assignmentId === assignmentId ? { ...t, status: desired, completedAt: desired === 'complete' ? now : null } : t,
+      ),
+    });
+    setError(null);
+    try {
+      await apiPatch(`/task-assignments/${assignmentId}`, { status: desired });
+    } catch (err) {
+      setDetail(previous);
+      setError(err instanceof ApiError ? `Update failed: ${err.message}` : 'Update failed');
+    }
+  }
+
+  async function openRemindReview() {
+    if (!eventId || !detail) return;
+    setReviewingRemind(true);
+    setRemindPreviewLoading(true);
+    setRemindPreviewError(null);
+    setRemindDrafts(null);
+    setRemindSkipped(0);
+    try {
+      const res = await apiPost<{ drafts: ReminderDraft[]; skipped: number; remaining: number }>(
+        `/events/${eventId}/onboarding/remind/preview`,
+        { contactIds: [detail.contact.id] },
+      );
+      setRemindDrafts(res.drafts);
+      setRemindSkipped(res.skipped);
+    } catch (err) {
+      setRemindPreviewError(err instanceof ApiError ? err.message : 'Failed to load reminder preview');
+    } finally {
+      setRemindPreviewLoading(false);
+    }
+  }
+
+  function closeRemindReview() {
+    setReviewingRemind(false);
+    setRemindPreviewError(null);
+    setRemindDrafts(null);
+    setRemindSkipped(0);
+  }
+
+  async function handleRemindSend() {
+    if (!eventId || !detail) return;
+    setReminding(true);
+    setError(null);
+    try {
+      const res = await apiPost<SendResult>(`/events/${eventId}/onboarding/remind`, { contactIds: [detail.contact.id] });
+      setToast(describeSendResult(res, { one: 'contact', many: 'contacts' }));
+      closeRemindReview();
+      const refreshed = await apiGet<SpeakerDetailResponse>(`/events/${eventId}/speakers/${detail.contact.id}`);
+      setDetail(refreshed);
+    } catch (err) {
+      setRemindPreviewError(err instanceof ApiError ? `Send failed: ${err.message}` : 'Send failed');
+    } finally {
+      setReminding(false);
+    }
+  }
 
   if (eventLoading) {
     return (
@@ -92,132 +210,268 @@ export function SpeakerDetailPage() {
     );
   }
 
+  const files = detail
+    ? detail.tasks.filter((t): t is typeof t & { file: NonNullable<typeof t.file> } => t.file !== null)
+    : [];
+  const otherEvents = detail ? detail.otherEvents.slice(0, OTHER_EVENTS_LIMIT) : [];
+
   return (
     <div className="chq-page chq-speaker-detail-page chq-measure-table">
-      <div className="chq-speaker-detail-topbar">
-        <Link className="chq-link-button chq-speaker-detail-back" to="/speakers">
-          &lsaquo; Speakers
-        </Link>
-      </div>
-
       {error && <div className="chq-error">{error}</div>}
+      {toast && (
+        <div className="chq-error" role="status">
+          {toast}
+          <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => setToast(null)} aria-label="Dismiss">
+            &times;
+          </button>
+        </div>
+      )}
       {loading && <DelayedLoading label="Loading speaker…" />}
 
       {!loading && detail && (
         <>
           <div className="chq-speaker-detail-head">
-            <h1 className="chq-page-title">{detail.contact.name}</h1>
-            <p className="chq-meta chq-speaker-detail-subtitle">
-              {detail.contact.company ?? '—'}
-              {' · '}
-              {detail.contact.hasAccount ? 'Has account' : 'No account'}
-            </p>
+            <div className="chq-speaker-detail-identity">
+              {detail.contact.headshotFileId ? (
+                <div className="chq-speaker-detail-headshot-wrap">
+                  <img
+                    className="chq-speaker-detail-headshot"
+                    src={`/headshots/${detail.contact.headshotFileId}`}
+                    alt={`${detail.contact.name} headshot`}
+                  />
+                  <a
+                    className="chq-btn chq-btn-tertiary chq-speaker-detail-headshot-download"
+                    href={`/headshots/${detail.contact.headshotFileId}`}
+                    download
+                  >
+                    Download
+                  </a>
+                </div>
+              ) : (
+                <div className="chq-speaker-detail-headshot-placeholder" aria-hidden="true" />
+              )}
+              <div className="chq-speaker-detail-titles">
+                <Link className="chq-link-button chq-speaker-detail-back" to="/speakers">
+                  &lsaquo; Speakers
+                </Link>
+                <h1 className="chq-page-title">{detail.contact.name}</h1>
+                <p className="chq-meta chq-speaker-detail-subtitle">
+                  {detail.contact.company ?? '—'}
+                  {' · '}
+                  {detail.contact.title ?? '—'}
+                  {' · '}
+                  {detail.contact.hasAccount ? 'has an account' : 'no account'}
+                </p>
+              </div>
+            </div>
+
+            <div className="chq-speaker-detail-actions">
+              <ParticipationMenu
+                contactName={detail.contact.name}
+                status={detail.participation.inviteStatus}
+                onSelectStatus={setInviteStatus}
+                onSendInvite={sendPortalInvite}
+                company={detail.contact.company}
+                hasAccount={detail.contact.hasAccount}
+              />
+              <a className="chq-btn chq-btn-secondary" href={`mailto:${detail.contact.email}`}>
+                Email {detail.contact.name.split(' ')[0]}
+              </a>
+              <button type="button" className="chq-btn chq-btn-primary" onClick={openRemindReview}>
+                Remind {detail.contact.name.split(' ')[0]}
+              </button>
+            </div>
           </div>
 
-          <p className="chq-meta chq-speaker-detail-participation">
-            Participation:{' '}
-            <span className={participationStatusClass(detail.participation.inviteStatus)}>
-              {INVITE_STATUS_LABELS[detail.participation.inviteStatus]}
-            </span>
-          </p>
+          <div className="chq-speaker-detail-grid">
+            <div className="chq-speaker-detail-main">
+              <section className="chq-section chq-speaker-detail-sessions">
+                <div className="chq-section-head">
+                  <span className="chq-section-label">Sessions &middot; {detail.sessions.length}</span>
+                </div>
+                {detail.sessions.length === 0 ? (
+                  <p className="chq-empty">No sessions.</p>
+                ) : (
+                  <table className="chq-table chq-speaker-detail-sessions-table">
+                    <thead>
+                      <tr>
+                        <th>Session</th>
+                        <th>Status</th>
+                        <th>Content status</th>
+                        <th>Slot / room</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detail.sessions.map((session) => (
+                        <tr key={session.submissionId}>
+                          <td>
+                            <Link to={`/submissions/${session.submissionId}`}>
+                              {session.ref} &middot; {session.title}
+                            </Link>
+                          </td>
+                          <td>
+                            <span className={neutralStatusClass()}>{STATUS_LABELS[session.status]}</span>
+                          </td>
+                          <td>
+                            <span className={neutralStatusClass()}>{CONTENT_STATUS_LABELS[session.contentStatus]}</span>
+                          </td>
+                          <td>{scheduledLabel(session.scheduled)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </section>
 
-          <section className="chq-section chq-speaker-detail-sessions">
-            <div className="chq-section-head">
-              <span className="chq-section-label">Sessions &middot; {detail.sessions.length}</span>
-            </div>
-            {detail.sessions.length === 0 ? (
-              <p className="chq-empty">No sessions.</p>
-            ) : (
-              <table className="chq-table chq-speaker-detail-sessions-table">
-                <thead>
-                  <tr>
-                    <th>Session</th>
-                    <th>Status</th>
-                    <th>Content status</th>
-                    <th>Slot / room</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.sessions.map((session) => (
-                    <tr key={session.submissionId}>
-                      <td>
-                        <Link to={`/submissions/${session.submissionId}`}>
-                          {session.ref} &middot; {session.title}
-                        </Link>
-                      </td>
-                      <td>
-                        <span className={neutralStatusClass()}>{STATUS_LABELS[session.status]}</span>
-                      </td>
-                      <td>
-                        <span className={neutralStatusClass()}>{CONTENT_STATUS_LABELS[session.contentStatus]}</span>
-                      </td>
-                      <td>{scheduledLabel(session.scheduled)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </section>
+              <section className="chq-section chq-speaker-detail-tasks">
+                <div className="chq-section-head">
+                  <span className="chq-section-label">
+                    Tasks &middot; {detail.tasks.length}
+                    {' · '}
+                    {detail.counts.outstandingRequired} outstanding
+                    {' · '}
+                    {detail.counts.overdue} overdue
+                  </span>
+                </div>
+                {detail.tasks.length === 0 ? (
+                  <p className="chq-empty">No tasks.</p>
+                ) : (
+                  <table className="chq-table chq-speaker-detail-tasks-table">
+                    <thead>
+                      <tr>
+                        <th>Task</th>
+                        <th>Due</th>
+                        <th>Status</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detail.tasks.map((task) => (
+                        <tr key={task.assignmentId}>
+                          <td>
+                            {task.title}
+                            {task.required && <span className="chq-speaker-detail-required"> Required</span>}
+                          </td>
+                          <td>{formatDateOnly(task.dueDate)}</td>
+                          <td>
+                            <button
+                              type="button"
+                              className={taskStatusClass(task.status)}
+                              onClick={() => toggleTaskStatus(task.assignmentId, task.status)}
+                              aria-label={`Toggle ${task.title} for ${detail.contact.name}`}
+                            >
+                              {TASK_STATUS_LABELS[task.status]}
+                            </button>
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              className="chq-link-button chq-speaker-detail-task-remind"
+                              onClick={openRemindReview}
+                            >
+                              Remind this task
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </section>
 
-          <section className="chq-section chq-speaker-detail-tasks">
-            <div className="chq-section-head">
-              <span className="chq-section-label">
-                Tasks &middot; {detail.tasks.length}
-                {' · '}
-                {detail.counts.outstandingRequired} outstanding
-                {' · '}
-                {detail.counts.overdue} overdue
-              </span>
+              <section className="chq-section chq-speaker-detail-files">
+                <div className="chq-section-head">
+                  <span className="chq-section-label">Files &middot; {files.length}</span>
+                </div>
+                {files.length === 0 ? (
+                  <p className="chq-empty">No files.</p>
+                ) : (
+                  <table className="chq-table chq-speaker-detail-files-table">
+                    <thead>
+                      <tr>
+                        <th>File</th>
+                        <th>Size</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {files.map((task) => (
+                        <tr key={task.assignmentId}>
+                          <td>{task.file.filename}</td>
+                          <td>{formatBytes(task.file.sizeBytes)}</td>
+                          <td>
+                            <a
+                              href={`/files/${task.file.id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="chq-speakers-file-link"
+                              title={task.file.filename}
+                            >
+                              Download
+                            </a>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </section>
             </div>
-            {detail.tasks.length === 0 ? (
-              <p className="chq-empty">No tasks.</p>
-            ) : (
-              <table className="chq-table chq-speaker-detail-tasks-table">
-                <thead>
-                  <tr>
-                    <th>Task</th>
-                    <th>Due</th>
-                    <th>Status</th>
-                    <th>Deliverable</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.tasks.map((task) => (
-                    <tr key={task.assignmentId}>
-                      <td>
-                        {task.title}
-                        {task.required && <span className="chq-speaker-detail-required"> Required</span>}
-                      </td>
-                      <td>{formatDateOnly(task.dueDate)}</td>
-                      <td>
-                        <span className={taskStatusClass(task.status)}>{TASK_STATUS_LABELS[task.status]}</span>
-                      </td>
-                      <td>
-                        {/* DEC-920/DEC-930: a deliverable link is named by the
-                            file's own filename -- never the word 'File' --
-                            and is absent entirely (not a disabled control)
-                            when no file exists yet. */}
-                        {task.file ? (
-                          <a
-                            href={`/files/${task.file.id}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="chq-speakers-file-link"
-                            title={task.file.filename}
-                          >
-                            {task.file.filename} ({formatBytes(task.file.sizeBytes)})
-                          </a>
-                        ) : (
-                          <span className="chq-speakers-cell-none">&mdash;</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </section>
+
+            <aside className="chq-speaker-detail-rail">
+              <section className="chq-section chq-speaker-detail-contact">
+                <div className="chq-section-head">
+                  <span className="chq-section-label">Contact</span>
+                </div>
+                <div className="chq-speaker-detail-contact-body">
+                  <span>{detail.contact.email}</span>
+                  {detail.contact.phone && <span className="chq-meta">{detail.contact.phone}</span>}
+                  <Link className="chq-link-button" to={`/contacts?openContact=${detail.contact.id}`}>
+                    Open the contact record &rsaquo;
+                  </Link>
+                </div>
+              </section>
+
+              <section className="chq-section chq-speaker-detail-other-events">
+                <div className="chq-section-head">
+                  <span className="chq-section-label">Across your events &middot; {detail.otherEventsCount}</span>
+                </div>
+                {otherEvents.length === 0 ? (
+                  <p className="chq-empty">No other events.</p>
+                ) : (
+                  <ul className="chq-speaker-detail-other-events-list">
+                    {otherEvents.map((e) => (
+                      <li key={e.eventId}>{e.name}</li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+
+              <section className="chq-section chq-speaker-detail-notes">
+                <div className="chq-section-head">
+                  <span className="chq-section-label">Notes</span>
+                </div>
+                {detail.contact.notes ? (
+                  <p className="chq-speaker-detail-notes-body">{detail.contact.notes}</p>
+                ) : (
+                  <p className="chq-empty">No notes.</p>
+                )}
+              </section>
+            </aside>
+          </div>
         </>
+      )}
+
+      {reviewingRemind && (
+        <RemindPreviewModal
+          loading={remindPreviewLoading}
+          error={remindPreviewError}
+          drafts={remindDrafts}
+          skipped={remindSkipped}
+          sending={reminding}
+          onSend={handleRemindSend}
+          onCancel={closeRemindReview}
+        />
       )}
     </div>
   );

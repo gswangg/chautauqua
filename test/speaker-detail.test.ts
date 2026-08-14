@@ -79,7 +79,7 @@ function fakeDb(seed: {
 const EVENT_ID = "event-1";
 const CONTACT_ID = "contact-1";
 
-function contactRow() {
+function contactRow(opts: Partial<Record<string, unknown>> = {}) {
   return {
     id: CONTACT_ID,
     firstName: "Ada",
@@ -87,8 +87,16 @@ function contactRow() {
     email: "ada@example.com",
     company: "Analytical Engines Inc",
     title: "Engineer",
+    phone: null,
+    notes: null,
+    headshotUrl: null,
     userId: null,
+    ...opts,
   };
+}
+
+function otherEventRow(eventId: string, name: string, startDate: string) {
+  return { eventId, eventName: name, eventStartDate: startDate };
 }
 
 function eventRow() {
@@ -146,6 +154,9 @@ describe("DEC-930 getSpeakerDetail", () => {
         company: "Analytical Engines Inc",
         title: "Engineer",
         hasAccount: false,
+        phone: null,
+        notes: null,
+        headshotFileId: null,
       },
       participation: {
         participantId: "p-sub-1",
@@ -184,7 +195,81 @@ describe("DEC-930 getSpeakerDetail", () => {
       // and the D1-equivalent grid tests. This test only asserts the shape
       // and that `overdue` is wired from that query's row count.
       counts: { outstandingRequired: 1, overdue: 1 },
+      otherEvents: [],
+      otherEventsCount: 0,
     });
+  });
+
+  it("parses headshotFileId out of contact.headshotUrl's /headshots/<fileId> shape", async () => {
+    const { db } = fakeDb({
+      contact: [contactRow({ headshotUrl: "/headshots/file-abc" })],
+      event: [eventRow()],
+      participant: [participantRow("sub-1", 1)],
+    });
+    const detail = await getSpeakerDetail(db, EVENT_ID, CONTACT_ID);
+    expect(detail?.contact.headshotFileId).toBe("file-abc");
+  });
+
+  it("throws loudly on a malformed stored headshotUrl rather than guessing a file id", async () => {
+    const { db } = fakeDb({
+      contact: [contactRow({ headshotUrl: "not-a-headshot-path" })],
+      event: [eventRow()],
+      participant: [participantRow("sub-1", 1)],
+    });
+    await expect(getSpeakerDetail(db, EVENT_ID, CONTACT_ID)).rejects.toThrow(/headshotUrl/);
+  });
+
+  it("carries phone/notes straight through from the contact row", async () => {
+    const { db } = fakeDb({
+      contact: [contactRow({ phone: "+1 415 555 0134", notes: "Prefers a morning slot." })],
+      event: [eventRow()],
+      participant: [participantRow("sub-1", 1)],
+    });
+    const detail = await getSpeakerDetail(db, EVENT_ID, CONTACT_ID);
+    expect(detail?.contact.phone).toBe("+1 415 555 0134");
+    expect(detail?.contact.notes).toBe("Prefers a morning slot.");
+  });
+
+  it("reports cross-event history as a count plus up to 5 names, newest event first", async () => {
+    const many = [
+      otherEventRow("event-2020", "DevFlow 2020", "2020-06-01"),
+      otherEventRow("event-2021", "DevFlow 2021", "2021-06-01"),
+      otherEventRow("event-2022", "DevFlow 2022", "2022-06-01"),
+      otherEventRow("event-2023", "DevFlow 2023", "2023-06-01"),
+      otherEventRow("event-2024", "DevFlow 2024", "2024-06-01"),
+      otherEventRow("event-2025", "DevFlow 2025", "2025-06-01"),
+    ];
+    const { db } = fakeDb({
+      contact: [contactRow()],
+      event: [eventRow()],
+      participant: [participantRow("sub-1", 1)],
+      submission: many,
+    });
+    const detail = await getSpeakerDetail(db, EVENT_ID, CONTACT_ID);
+    expect(detail?.otherEventsCount).toBe(6);
+    expect(detail?.otherEvents).toHaveLength(5);
+    expect(detail?.otherEvents.map((e) => e.eventId)).toEqual([
+      "event-2025",
+      "event-2024",
+      "event-2023",
+      "event-2022",
+      "event-2021",
+    ]);
+  });
+
+  it("de-duplicates multiple participations on the same other event into one entry", async () => {
+    const { db } = fakeDb({
+      contact: [contactRow()],
+      event: [eventRow()],
+      participant: [participantRow("sub-1", 1)],
+      submission: [
+        otherEventRow("event-2020", "DevFlow 2020", "2020-06-01"),
+        otherEventRow("event-2020", "DevFlow 2020", "2020-06-01"),
+      ],
+    });
+    const detail = await getSpeakerDetail(db, EVENT_ID, CONTACT_ID);
+    expect(detail?.otherEventsCount).toBe(1);
+    expect(detail?.otherEvents).toEqual([{ eventId: "event-2020", name: "DevFlow 2020" }]);
   });
 
   it("returns a null scheduled slot and null file for a session/task without one", async () => {

@@ -11,6 +11,16 @@ export interface SpeakerDetailContact {
   company: string | null;
   title: string | null;
   hasAccount: boolean;
+  phone: string | null;
+  notes: string | null;
+  headshotFileId: string | null;
+}
+
+// DEC-930 amendment (wave 26): cross-event history is a bounded list
+// (never an unbounded query on a detail page).
+export interface SpeakerDetailOtherEvent {
+  eventId: string;
+  name: string;
 }
 
 export interface SpeakerDetailParticipation {
@@ -86,4 +96,6 @@ export interface SpeakerDetailResponse {
   sessions: SpeakerDetailSession[];
   tasks: SpeakerDetailTask[];
   counts: SpeakerDetailCounts;
+  otherEvents: SpeakerDetailOtherEvent[];
+  otherEventsCount: number;
 }

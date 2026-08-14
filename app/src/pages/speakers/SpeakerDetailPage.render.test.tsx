@@ -1,8 +1,10 @@
-// DEC-930 client half render smoke: mounts SpeakerDetailPage against a
-// mocked GET /api/v1/events/:eventId/speakers/:contactId envelope, asserts
-// the deliverable link is named by FILENAME (never 'File'), the session
-// row links to /admin/submissions/:submissionId, and the task/session
-// counts printed on the page agree with the payload's own arrays.
+// DEC-930 client half render smoke (wave 26 amendment: the 1180 pair --
+// header actions, main column, rail). Mounts SpeakerDetailPage against a
+// mocked GET /api/v1/events/:eventId/speakers/:contactId envelope and
+// asserts: the participation control sits INSIDE the header row (not a
+// body paragraph); the rail region carries notes + the other-events list;
+// a null headshot renders no broken image and no dead Download link; and
+// otherEvents is capped at 5 even if the server ever sent more.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -14,57 +16,65 @@ import type { SpeakerDetailResponse } from './speakerDetail';
 const EVENT_ID = 'evt-speaker-detail';
 const CONTACT_ID = 'ct-1';
 
-const DETAIL: SpeakerDetailResponse = {
-  contact: {
-    id: CONTACT_ID,
-    name: 'Ada Lovelace',
-    email: 'ada@example.com',
-    company: 'Acme',
-    title: 'Engineer',
-    hasAccount: true,
-  },
-  participation: {
-    participantId: 'p-1',
-    submissionId: 'sub-1',
-    inviteStatus: 'accepted',
-  },
-  sessions: [
-    {
+function baseDetail(overrides: Partial<SpeakerDetailResponse> = {}): SpeakerDetailResponse {
+  return {
+    contact: {
+      id: CONTACT_ID,
+      name: 'Ada Lovelace',
+      email: 'ada@example.com',
+      company: 'Acme',
+      title: 'Engineer',
+      hasAccount: true,
+      phone: '+1 415 555 0134',
+      notes: 'Prefers a morning slot.',
+      headshotFileId: null,
+    },
+    participation: {
+      participantId: 'p-1',
       submissionId: 'sub-1',
-      ref: 'S-001',
-      title: 'Analytical Engines',
-      status: 'accepted',
-      contentStatus: 'pending',
-      role: 'speaker',
-      scheduled: { day: '2026-05-13', startMin: 600, endMin: 645, roomName: 'Hall A' },
+      inviteStatus: 'accepted',
     },
-  ],
-  tasks: [
-    {
-      assignmentId: 'as-1',
-      taskId: 'task-1',
-      title: 'Upload slides',
-      kind: 'file_request',
-      required: true,
-      dueDate: Date.UTC(2026, 0, 15),
-      status: 'complete',
-      completedAt: 1700000000000,
-      file: { id: 'file-1', filename: 'slides-final.pdf', sizeBytes: 2048, versionNo: 2 },
-    },
-    {
-      assignmentId: 'as-2',
-      taskId: 'task-2',
-      title: 'Sign agreement',
-      kind: 'general',
-      required: true,
-      dueDate: null,
-      status: 'pending',
-      completedAt: null,
-      file: null,
-    },
-  ],
-  counts: { outstandingRequired: 1, overdue: 0 },
-};
+    sessions: [
+      {
+        submissionId: 'sub-1',
+        ref: 'S-001',
+        title: 'Analytical Engines',
+        status: 'accepted',
+        contentStatus: 'pending',
+        role: 'speaker',
+        scheduled: { day: '2026-05-13', startMin: 600, endMin: 645, roomName: 'Hall A' },
+      },
+    ],
+    tasks: [
+      {
+        assignmentId: 'as-1',
+        taskId: 'task-1',
+        title: 'Upload slides',
+        kind: 'file_request',
+        required: true,
+        dueDate: Date.UTC(2026, 0, 15),
+        status: 'complete',
+        completedAt: 1700000000000,
+        file: { id: 'file-1', filename: 'slides-final.pdf', sizeBytes: 2048, versionNo: 2 },
+      },
+      {
+        assignmentId: 'as-2',
+        taskId: 'task-2',
+        title: 'Sign agreement',
+        kind: 'general',
+        required: true,
+        dueDate: null,
+        status: 'pending',
+        completedAt: null,
+        file: null,
+      },
+    ],
+    counts: { outstandingRequired: 1, overdue: 0 },
+    otherEvents: [{ eventId: 'evt-2025', name: 'DevFlow 2025' }],
+    otherEventsCount: 1,
+    ...overrides,
+  };
+}
 
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
@@ -94,7 +104,7 @@ function renderPage() {
 describe('SpeakerDetailPage render smoke', () => {
   it('renders the filename, session link href, and task/session counts', async () => {
     mockApi({
-      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: DETAIL,
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail(),
     });
 
     renderPage();
@@ -103,10 +113,11 @@ describe('SpeakerDetailPage render smoke', () => {
       expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument();
     });
 
-    // Deliverable named by its own filename -- never the word 'File'.
-    const fileLink = screen.getByRole('link', { name: /slides-final\.pdf/ });
-    expect(fileLink).toHaveAttribute('href', '/files/file-1');
-    expect(screen.queryByText(/^File$/)).not.toBeInTheDocument();
+    // Deliverable named by its own filename in the Files section -- never
+    // the word 'File' -- with a separate Download action beside it.
+    expect(screen.getByText('slides-final.pdf')).toBeInTheDocument();
+    const fileLink = screen.getAllByRole('link', { name: 'Download' }).find((a) => a.getAttribute('href') === '/files/file-1');
+    expect(fileLink).toBeDefined();
 
     // Session row links to /admin/submissions/:submissionId (basename-free
     // in this render, since SpeakerDetailPage is rendered without App's
@@ -118,38 +129,109 @@ describe('SpeakerDetailPage render smoke', () => {
     expect(screen.getByText('Sessions · 1')).toBeInTheDocument();
     expect(screen.getByText('Tasks · 2 · 1 outstanding · 0 overdue')).toBeInTheDocument();
 
-    // DEC-930 amendment: page root carries chq-measure-table (two scanned
-    // tables), never the plain chq-measure reading-page class.
+    // Page root carries chq-measure-table (two-plus scanned tables), never
+    // the plain chq-measure reading-page class.
     expect(document.querySelector('.chq-speaker-detail-page')).toHaveClass('chq-measure-table');
     expect(document.querySelector('.chq-speaker-detail-page')).not.toHaveClass('chq-measure');
-
-    // Participation renders the roster matrix's own four-state pill class,
-    // never plain text.
-    const participation = document.querySelector('.chq-speaker-detail-participation .chq-speakers-status');
-    expect(participation).not.toBeNull();
-    expect(participation).toHaveClass('chq-speakers-status-complete');
-    expect(participation).toHaveTextContent('Confirmed');
-
-    // Status / content status cells render the page's own pill vocabulary
-    // (.chq-speakers-status), not a bare .chq-flag micro-label.
-    const sessionRow = sessionLink.closest('tr');
-    const sessionPills = sessionRow?.querySelectorAll('.chq-speakers-status');
-    expect(sessionPills).toHaveLength(2);
-    sessionPills?.forEach((pill) => expect(pill).toHaveClass('chq-speakers-status-neutral'));
-
-    // Task status cell also renders through the pill vocabulary, reusing the
-    // onboarding grid's own pending/complete modifiers.
-    const taskRow = screen.getByText('Upload slides').closest('tr');
-    const taskPills = taskRow?.querySelectorAll('.chq-speakers-status');
-    expect(taskPills).toHaveLength(1);
-    expect(taskPills?.[0]).toHaveClass('chq-speakers-status-complete');
-
-    // No .chq-flag survives anywhere on this page -- session/content/task
-    // status all moved to the pill vocabulary.
-    expect(document.querySelector('.chq-speaker-detail-page .chq-flag')).not.toBeInTheDocument();
 
     // Exact slot string for a placed session: day formatted via
     // formatDayLabel + zero-padded clock times, never the raw ISO day.
     expect(screen.getByText('Wed 13 May 10:00–10:45, Hall A')).toBeInTheDocument();
+  });
+
+  it('promotes the participation control into the header row, not a body paragraph', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail(),
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    // The old body-paragraph restatement is gone entirely.
+    expect(document.querySelector('.chq-speaker-detail-participation')).not.toBeInTheDocument();
+
+    // The live participation control (ParticipationMenu's trigger button)
+    // lives inside the header actions row, beside Email and Remind.
+    const actions = document.querySelector('.chq-speaker-detail-actions');
+    expect(actions).not.toBeNull();
+    const trigger = actions?.querySelector('.chq-participation-menu-trigger');
+    expect(trigger).not.toBeNull();
+    expect(trigger).toHaveTextContent('Confirmed');
+    expect(actions).toHaveTextContent(/Email Ada/);
+    expect(actions).toHaveTextContent(/Remind Ada/);
+
+    // The header row itself is the ONE place the control renders.
+    const head = document.querySelector('.chq-speaker-detail-head');
+    expect(head?.contains(actions)).toBe(true);
+  });
+
+  it('the rail carries both Notes and the other-events list', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail(),
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    const rail = document.querySelector('.chq-speaker-detail-rail');
+    expect(rail).not.toBeNull();
+    expect(rail).toHaveTextContent('Prefers a morning slot.');
+    expect(rail).toHaveTextContent('DevFlow 2025');
+    expect(rail?.querySelector('.chq-speaker-detail-notes')).not.toBeNull();
+    expect(rail?.querySelector('.chq-speaker-detail-other-events')).not.toBeNull();
+    // Contact block (email/phone) also lives in the rail.
+    expect(rail).toHaveTextContent('ada@example.com');
+    expect(rail).toHaveTextContent('+1 415 555 0134');
+  });
+
+  it('a null headshot renders no broken image and no dead Download link', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
+        contact: { ...baseDetail().contact, headshotFileId: null },
+      }),
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    const identity = document.querySelector('.chq-speaker-detail-identity');
+    expect(identity?.querySelector('img.chq-speaker-detail-headshot')).not.toBeInTheDocument();
+    expect(identity?.querySelector('.chq-speaker-detail-headshot-download')).not.toBeInTheDocument();
+    // A neutral placeholder still occupies the slot.
+    expect(identity?.querySelector('.chq-speaker-detail-headshot-placeholder')).toBeInTheDocument();
+  });
+
+  it('a present headshot renders an image plus a tertiary Download link carrying the download attribute', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({
+        contact: { ...baseDetail().contact, headshotFileId: 'file-hs-1' },
+      }),
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    const identity = document.querySelector('.chq-speaker-detail-identity');
+    const img = identity?.querySelector('img.chq-speaker-detail-headshot');
+    expect(img).toHaveAttribute('src', '/headshots/file-hs-1');
+
+    const downloadLink = identity?.querySelector('.chq-speaker-detail-headshot-download');
+    expect(downloadLink).toHaveAttribute('href', '/headshots/file-hs-1');
+    expect(downloadLink).toHaveAttribute('download');
+  });
+
+  it('caps otherEvents at 5 even if the server sends more', async () => {
+    const many = Array.from({ length: 7 }, (_, i) => ({ eventId: `evt-${i}`, name: `Conf ${i}` }));
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/speakers/${CONTACT_ID}`]: baseDetail({ otherEvents: many, otherEventsCount: 7 }),
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Ada Lovelace' })).toBeInTheDocument());
+
+    const items = document.querySelectorAll('.chq-speaker-detail-other-events-list li');
+    expect(items).toHaveLength(5);
+    // The count line still reports the true total, not the capped list length.
+    expect(screen.getByText('Across your events · 7')).toBeInTheDocument();
   });
 });
