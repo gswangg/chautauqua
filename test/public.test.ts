@@ -396,21 +396,34 @@ describe("AgendaContent / ScheduleContent day switcher (EMB-07)", () => {
         // surfaces -- the sequence goes straight from tracks to the agenda
         // query (this harness is positional; leaving a slot for the removed
         // call desyncs every row shape after it and the route 500s).
+        // DEC-768 (wave 67 amendment): /agenda is single-day by default, so
+        // it (and only it -- /schedule is untouched) calls
+        // getPublicScheduleDayCounts before getPublicAgenda. It is also what
+        // now feeds the day switcher its full day list, so BOTH seeded days
+        // must come back here or no pill renders at all.
+        const dayCounts = surface === "agenda";
+        if (dayCounts && selectCall === 3) {
+          return makeChain([
+            { day: "2026-08-10", count: 1 },
+            { day: "2026-08-11", count: 1 },
+          ]);
+        }
+        const n = dayCounts ? selectCall - 1 : selectCall;
         // 3: DEC-548 getPublicAgenda's total count(*) subquery
-        if (selectCall === 3) return makeChain([{ count: 2 }]);
+        if (n === 3) return makeChain([{ count: 2 }]);
         // 4: getPublicAgenda's room lookup
-        if (selectCall === 4) return makeChain([{ id: "room1", name: "Main Hall" }]);
+        if (n === 4) return makeChain([{ id: "room1", name: "Main Hall" }]);
         // 5: hydrateSessions subRows
-        if (selectCall === 5) {
+        if (n === 5) {
           return makeChain([
             { id: "sub1", seq: 1, title: "Day One Talk", description: null, icsSequence: 0 },
             { id: "sub2", seq: 2, title: "Day Two Talk", description: null, icsSequence: 0 },
           ]);
         }
         // 6: hydrateSessions trackRows
-        if (selectCall === 6) return makeChain([]);
+        if (n === 6) return makeChain([]);
         // 7: hydrateSessions speakerRows
-        if (selectCall === 7) return makeChain([]);
+        if (n === 7) return makeChain([]);
         // 8: hydrateSessions slotRows, 9: getPublicBreaksByDay
         return makeChain([]);
       },

@@ -79,6 +79,8 @@ function makeChain(rows: unknown[]) {
     leftJoin: () => chain,
     where: () => chain,
     orderBy: () => chain,
+    // DEC-768 (wave 67 amendment): getPublicScheduleDayCounts groups by day.
+    groupBy: () => chain,
     limit: async (n: number) => rows.slice(0, n),
     offset: async () => rows,
     as: () => chain,
@@ -94,6 +96,7 @@ function emptyChain() {
     leftJoin: () => chain,
     where: () => chain,
     orderBy: () => chain,
+    groupBy: () => chain,
     limit: async () => [],
     offset: async () => [],
     as: () => chain,
@@ -164,13 +167,18 @@ function buildAgendaLikeApp() {
     select: () => {
       selectCall += 1;
       if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
-      if (selectCall === 2) return makeChain([{ count: AGENDA_ROWS.length }]); // total count
-      if (selectCall === 3) return makeChain([{ id: "room1", name: "Main Hall" }]); // roomRows
-      if (selectCall === 4) return makeChain(SESSION_ROWS); // hydrateSessions subRows
-      if (selectCall === 5) {
+      if (selectCall === 2) return makeChain([{ count: AGENDA_ROWS.length }]); // getPublicTracks
+      // DEC-768 (wave 67 amendment): /agenda is single-day by default, so
+      // dispatch calls getPublicScheduleDayCounts on EVERY agenda request
+      // (it supplies both the switcher's full day list and the default day)
+      // -- one extra select() ahead of getPublicAgenda's own sequence.
+      if (selectCall === 3) return makeChain([{ day: "2026-08-10", count: AGENDA_ROWS.length }]);
+      if (selectCall === 4) return makeChain([{ id: "room1", name: "Main Hall" }]); // total count
+      if (selectCall === 5) return makeChain(SESSION_ROWS); // roomRows
+      if (selectCall === 6) {
         return makeChain(SESSION_ROWS.map((s) => ({ submissionId: s.id, id: "trk1", name: "Track A", color: "#f00" })));
       }
-      if (selectCall === 6) {
+      if (selectCall === 7) {
         return makeChain(
           SESSION_ROWS.map((s) => ({
             submissionId: s.id,

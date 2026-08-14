@@ -89,12 +89,20 @@ function buildSurfaceApp(surface: "agenda" | "schedule") {
       // <select>) sits ahead of the standard getPublicAgenda call sequence.
       if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
       if (selectCall === 2) return makeChain(TRACKS); // getPublicTracks
-      if (selectCall === 3) return makeChain([{ count: ROWS.length }]); // DEC-548 total
-      if (selectCall === 4) return makeChain([{ id: "room1", name: "Alpha" }]); // roomRows
-      if (selectCall === 5) return makeChain(sessionRows); // hydrateSessions subRows
-      if (selectCall === 6) return makeChain([]); // trackRows
-      if (selectCall === 7) return makeChain([]); // speakerRows
-      if (selectCall === 8) return makeChain([]); // slotRows
+      // DEC-768 (wave 67 amendment): /agenda is single-day by default, so
+      // dispatch now calls getPublicScheduleDayCounts on EVERY agenda
+      // request (it supplies both the full day-switcher set and the default
+      // day) -- one extra select() ahead of getPublicAgenda's own sequence.
+      // /schedule is untouched by the amendment and never makes this call,
+      // so the positions below shift by one on the agenda path only.
+      if (surface === "agenda" && selectCall === 3) return makeChain([{ day: "2026-08-10", count: ROWS.length }]);
+      const n = surface === "agenda" ? selectCall - 1 : selectCall;
+      if (n === 3) return makeChain([{ count: ROWS.length }]); // DEC-548 total
+      if (n === 4) return makeChain([{ id: "room1", name: "Alpha" }]); // roomRows
+      if (n === 5) return makeChain(sessionRows); // hydrateSessions subRows
+      if (n === 6) return makeChain([]); // trackRows
+      if (n === 7) return makeChain([]); // speakerRows
+      if (n === 8) return makeChain([]); // slotRows
       return makeChain([]); // formatRows
     },
     selectDistinct: () => makeChain(ROWS),
@@ -107,7 +115,6 @@ function buildSurfaceApp(surface: "agenda" | "schedule") {
   });
   registerErrorHandler(app);
   app.route("/", publicRoutes);
-  void surface;
   return app;
 }
 
@@ -163,12 +170,22 @@ describe("DEC-851 (wave 64 amendment): /agenda and /schedule highlight a track, 
         selectCall += 1;
         if (selectCall === 1) return makeChain([EVENT_ROW]);
         if (selectCall === 2) return makeChain(TRACKS);
-        if (selectCall === 3) return makeChain([{ count: twoDayRows.length }]);
-        if (selectCall === 4) return makeChain([{ id: "room1", name: "Alpha" }]);
-        if (selectCall === 5) return makeChain(sessionRows);
-        if (selectCall === 6) return makeChain([]);
+        // DEC-768 (wave 67 amendment): getPublicScheduleDayCounts -- this is
+        // now what feeds the switcher its full day list (it no longer
+        // derives one from the rendered items), so BOTH days must appear
+        // here or the switcher has nothing to render.
+        if (selectCall === 3) {
+          return makeChain([
+            { day: "2026-08-10", count: 2 },
+            { day: "2026-08-11", count: 1 },
+          ]);
+        }
+        if (selectCall === 4) return makeChain([{ count: twoDayRows.length }]);
+        if (selectCall === 5) return makeChain([{ id: "room1", name: "Alpha" }]);
+        if (selectCall === 6) return makeChain(sessionRows);
         if (selectCall === 7) return makeChain([]);
         if (selectCall === 8) return makeChain([]);
+        if (selectCall === 9) return makeChain([]);
         return makeChain([]);
       },
       selectDistinct: () => makeChain(twoDayRows),

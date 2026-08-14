@@ -575,7 +575,7 @@ export const PUBLIC_CSS = `
   }
 
   /* DEC-768 (wave 67 amendment): the agenda's heading row -- the day-named
-     <h1> at the left, the day switcher right-aligned on the SAME row rather
+     h1 at the left, the day switcher right-aligned on the SAME row rather
      than stacked beneath it (docs/design's "Tuesday 12 May · 9 sessions ·
      4 rooms" left, "Tue 12 | Wed 13 | Thu 14" right). Reuses
      .chq-pub-title-row's flex/space-between shape (already shared by the

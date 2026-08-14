@@ -197,7 +197,11 @@ describe("DEC-489: speakers/gallery `limit` behaves identically on HTML and .jso
 // once to feed the search form's track <select> — the plain .json feed
 // (getSurfaceFeedPage) does NOT call it, so `forJson` controls whether this
 // fake's select() sequence includes that extra call.
-function buildAgendaApp(forJson = false) {
+// DEC-768 (wave 67 amendment): only /agenda gained the single-day default
+// (and with it the getPublicScheduleDayCounts call); /schedule is explicitly
+// untouched by the amendment, so `surface` selects which HTML sequence this
+// fake plays back.
+function buildAgendaApp(forJson = false, surface: "agenda" | "schedule" = "agenda") {
   let selectCall = 0;
   const SESSION_ROWS = [
     { id: "sub1", seq: 1, title: "Talk 1", description: "d", icsSequence: 0 },
@@ -239,13 +243,24 @@ function buildAgendaApp(forJson = false) {
   const db = {
     select: () => {
       selectCall += 1;
-      const offset = forJson ? 0 : 1;
+      // DEC-768 (wave 67 amendment): the HTML AGENDA now makes TWO calls the
+      // .json feed does not -- getPublicTracks AND getPublicScheduleDayCounts
+      // (the single-day default needs the full scheduled-day list) -- so that
+      // path's sequence sits two ahead of the feed's. HTML /schedule still
+      // makes only the getPublicTracks call, so it stays one ahead.
+      const dayCounts = !forJson && surface === "agenda";
+      const offset = forJson ? 0 : dayCounts ? 2 : 1;
       if (selectCall === 1) return makeChain([AGENDA_EVENT_ROW]); // getPublicEventBySlug
       // DEC-851 (wave 64 amendment): getPublicFormatOptions is no longer
       // called for agenda/schedule at all (format isn't an agenda facet) --
       // only getPublicTracks (feeding the track-highlight <select>) adds an
       // extra call over the .json feed's sequence now.
       if (!forJson && selectCall === 2) return makeChain([]); // DEC-804 getPublicTracks (search form's track <select>, HTML dispatch only)
+      if (dayCounts && selectCall === 3) {
+        // getPublicScheduleDayCounts: BOTH agenda days, so the switcher has
+        // its full set and the ?day= under test is a real member of it.
+        return makeChain(AGENDA_ROWS.map((r) => ({ day: r.day, count: 1 })));
+      }
       // DEC-548: the unwindowed count(*) over the same filtered join, read
       // after selectDistinct's .where() has already narrowed `matched`.
       if (selectCall === 2 + offset) return makeChain([{ count: matched.length }]);
@@ -281,7 +296,7 @@ describe("DEC-489: agenda/schedule `day` behaves identically on HTML and .json",
 
   it("schedule.json?day=<d> agrees with schedule's HTML filtering", async () => {
     installFakeCaches();
-    const htmlApp = buildAgendaApp();
+    const htmlApp = buildAgendaApp(false, "schedule");
     const htmlRes = await htmlApp.request("/embed/conf/schedule?day=2026-08-11", {}, TEST_ENV);
     const html = await htmlRes.text();
     // DEC-602: /schedule renders the itinerary list (`chq-agenda-list-<id>`),

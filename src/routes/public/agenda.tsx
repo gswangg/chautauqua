@@ -12,10 +12,12 @@ import type { PublicAgendaItem, PublicEvent, PublicTrack } from "../../server/re
 import type { ScheduleBreak } from "../../server/repo/breaks"; // type-only; the public barrel re-exports the read path (getPublicBreaksByDay)
 import { plural } from "../../domain/count-copy";
 import { surfacePath, type Surface, type SurfaceBase } from "./shell";
-import { formatDay } from "./cards";
+import { formatDay, formatMinutes } from "./cards";
 import { AgendaDayGrid } from "./agenda-grid";
 import { AgendaItemList } from "./agenda-list";
-import { DaySwitcher, ItinerarySearchForm } from "./agenda-controls";
+// agendaQs is also re-exported below (barrel); this import is the local
+// binding the agenda day-footer's "next day" out-link composes with.
+import { DaySwitcher, ItinerarySearchForm, agendaQs } from "./agenda-controls";
 import { ItineraryScript } from "./agenda-itinerary-script";
 
 export { AgendaDayGrid } from "./agenda-grid";
@@ -117,8 +119,12 @@ export function AgendaContent(props: {
   const roomCount = new Set(activeDayItems.map((i) => i.roomName).filter((n): n is string => n !== null)).size;
   // The per-day <h3> AgendaDay renders is redundant once the page names the
   // day exactly once on this heading row -- suppressed whenever exactly one
-  // day is rendered (always true on the current single-day-default surface).
-  const hideDayHeading = renderedDays.size <= 1;
+  // day is rendered (always true on the current single-day-default surface)
+  // AND the <h1> above actually names it. Without an activeDay the <h1>
+  // falls back to the bare "Agenda" label, so the per-day heading is the
+  // ONLY thing naming the day and must stay: DEC-768's amendment says the
+  // day appears exactly once, which is a floor as much as a ceiling.
+  const hideDayHeading = renderedDays.size <= 1 && activeDay !== null;
   const activeDayIndex = activeDay ? days.indexOf(activeDay) : -1;
   const nextDay = activeDayIndex >= 0 && activeDayIndex < days.length - 1 ? days[activeDayIndex + 1] : null;
   const lastEndMin = activeDayItems.length > 0 ? Math.max(...activeDayItems.map((i) => i.endMin)) : null;

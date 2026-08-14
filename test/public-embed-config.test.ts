@@ -222,18 +222,23 @@ function buildAgendaApp() {
       // DEC-851 (wave 64 amendment): format is not an agenda facet, so
       // getPublicFormatOptions is no longer called on this surface — this
       // positional harness must NOT reserve a slot for it.
-      if (selectCall === 3) {
+      // DEC-768 (wave 67 amendment): /agenda is single-day by default, so
+      // getPublicScheduleDayCounts now runs on EVERY agenda request (it
+      // supplies the switcher's full day list AND the default day) ahead of
+      // getPublicAgenda's own sequence.
+      if (selectCall === 3) return makeChain([{ day: "2026-08-10", count: AGENDA_ROWS.length }]);
+      if (selectCall === 4) {
         // DEC-548 getPublicAgenda's total count(*) subquery — reflects
         // whatever ?day= filter the just-built sq's where() captured.
         const filtered = dayFilter ? AGENDA_ROWS.filter((r) => r.day === dayFilter) : AGENDA_ROWS;
         return makeChain([{ count: filtered.length }]);
       }
-      if (selectCall === 4) return makeChain([{ id: "room1", name: "Main Hall" }]); // roomRows
-      if (selectCall === 5) return makeChain(SESSION_ROWS); // hydrateSessions subRows
-      if (selectCall === 6) {
+      if (selectCall === 5) return makeChain([{ id: "room1", name: "Main Hall" }]); // roomRows
+      if (selectCall === 6) return makeChain(SESSION_ROWS); // hydrateSessions subRows
+      if (selectCall === 7) {
         return makeChain(SESSION_ROWS.map((s) => ({ submissionId: s.id, id: "trk1", name: "Track A", color: "#f00" })));
       }
-      if (selectCall === 7) {
+      if (selectCall === 8) {
         return makeChain(
           SESSION_ROWS.map((s) => ({
             submissionId: s.id,
@@ -245,7 +250,7 @@ function buildAgendaApp() {
           })),
         );
       }
-      if (selectCall === 8) return makeChain([]); // hydrateSessions EMB-01 slotRows (unused by the agenda grid itself)
+      if (selectCall === 9) return makeChain([]); // hydrateSessions EMB-01 slotRows (unused by the agenda grid itself)
       return makeChain([]); // hydrateSessions formatRows
     },
     selectDistinct: () => {
@@ -465,12 +470,17 @@ describe("embed config: limit clamps and drives the sessions count", () => {
 });
 
 describe("embed config: day filters the agenda's fetched item array", () => {
-  it("a day with no matching slots renders 'No sessions scheduled yet.'", async () => {
+  // DEC-768 (wave 67 amendment): with a day explicitly requested, the empty
+  // state names THAT day rather than claiming the event has no schedule --
+  // the bare "No sessions scheduled yet." is now reserved for an event with
+  // no scheduled days at all (getPublicScheduleDayCounts came back empty).
+  it("a day with no matching slots renders an empty state naming that day, not 'nothing scheduled'", async () => {
     installFakeCaches();
     const app = buildAgendaApp();
     const res = await app.request("/embed/conf/agenda?day=2099-01-01", {}, TEST_ENV);
     const html = await res.text();
-    expect(html).toContain("No sessions scheduled yet.");
+    expect(html).toContain("No sessions match");
+    expect(html).not.toContain("No sessions scheduled yet.");
     expect(html).not.toContain("chq-agenda-sub1");
   });
 
