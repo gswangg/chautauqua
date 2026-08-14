@@ -1615,3 +1615,95 @@ describe('OnboardingGrid: DEC-265 rolled-back cell write announces itself', () =
     expect(screen.queryByText(/didn't save/)).not.toBeInTheDocument();
   });
 });
+
+// DEC-678 amendment (B7, wave 47): a settled zero-row grid renders
+// EmptyState instead of the <table>/phone-card list -- never the old
+// filtered-voice sentence parked inside a full <thead>.
+const EMPTY_GRID: OnboardingGridResponse = {
+  tasks: [{ id: 'task-1', kind: 'general', title: 'Sign speaker agreement', dueDate: null, required: true }],
+  rows: [],
+  total: 0,
+  page: 1,
+  perPage: 50,
+  counts: { speakers: 0, outstandingRequired: 0, overdue: 0, outstandingContacts: 0 },
+};
+
+describe('OnboardingGrid: B7 empty states (DEC-678 amendment, wave 47)', () => {
+  it('renders the fresh EmptyState (no table/thead, no filtered-voice copy) when the roster has never held a row', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: EMPTY_GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+
+    await waitFor(() => {
+      expect(screen.getByText('No speakers on the roster yet.')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Speakers appear here once a submission is accepted.')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(document.querySelector('thead')).not.toBeInTheDocument();
+    expect(screen.queryByText(/match the current filters/)).not.toBeInTheDocument();
+    // 'fresh' never renders an escape link -- there is no filter to clear.
+    expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument();
+  });
+
+  it('renders the filtered EmptyState, names the active facet, offers the escape, and keeps the filter row mounted', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: EMPTY_GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    // The filter row is present from first paint (grid.tasks fed by the
+    // empty grid's payload).
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Overdue only' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Overdue only' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('No speakers match the current filters.')).toBeInTheDocument();
+    });
+    expect(screen.getByText('overdue')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(document.querySelector('thead')).not.toBeInTheDocument();
+
+    // Filter row stays mounted underneath the empty state.
+    expect(screen.getByRole('button', { name: 'Overdue only' })).toBeInTheDocument();
+
+    const escape = screen.getByRole('button', { name: 'Clear filters' });
+    expect(escape).toBeInTheDocument();
+    fireEvent.click(escape);
+
+    // Clearing resets the narrowing facet, which re-requests the grid
+    // without overdueOnly -- the caption above the (still-empty) grid goes
+    // quiet again.
+    await waitFor(() => {
+      expect(screen.queryByText(/^Showing \d+ of \d+ speakers/)).not.toBeInTheDocument();
+    });
+    expect(screen.getByText('No speakers on the roster yet.')).toBeInTheDocument();
+  });
+
+  it('still paints the loading skeleton, not an empty state, while the grid request is in flight', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: EMPTY_GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+
+    // mockApi's fetch is an async function -- immediately after render,
+    // before its promise chain has resolved, the grid's own `loading` state
+    // is still true (set synchronously in the mount effect), so this
+    // synchronous assertion catches the skeleton frame before it flips.
+    expect(document.querySelector('.chq-skeleton-frame')).not.toBeNull();
+    expect(screen.queryByText('No speakers on the roster yet.')).not.toBeInTheDocument();
+    expect(screen.queryByText('No speakers match the current filters.')).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText('No speakers on the roster yet.')).toBeInTheDocument();
+    });
+  });
+});
