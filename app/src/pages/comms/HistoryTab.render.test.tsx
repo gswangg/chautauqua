@@ -9,6 +9,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { HistoryTab } from './HistoryTab';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 import type { EmailBatchRow, EmailLogRow as EmailLogRowShape, EmailLogDetail, EmailTemplate } from './types';
@@ -106,12 +107,19 @@ describe('HistoryTab', () => {
               ]);
         };
       })(),
-      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([template()]),
       [`GET /api/v1/events/${EVENT_ID}/email-log/log-1`]: detail({ id: 'log-1', toEmail: 'ada@example.com', bodyText: 'Hi Ada, welcome aboard.' }),
       [`GET /api/v1/events/${EVENT_ID}/email-log/log-2`]: detail({ id: 'log-2', toEmail: 'bo@example.com', bodyText: 'Hi Bo, welcome aboard.' }),
     });
 
-    render(<HistoryTab eventId={EVENT_ID} />);
+    // w1-g: templatesById is now the parent's job (Comms.tsx fetches it
+    // once) -- HistoryTab receives it as a required prop instead of
+    // fetching its own copy.
+    const tpl = template();
+    render(
+      <MemoryRouter>
+        <HistoryTab eventId={EVENT_ID} templatesById={{ [tpl.id]: tpl.name }} />
+      </MemoryRouter>,
+    );
 
     fireEvent.click(await screen.findByRole('button', { name: 'Open' }));
     await waitFor(() => {
@@ -157,11 +165,14 @@ describe('HistoryTab', () => {
           return calls === 1 ? listEnvelope([batch({ recipientCount: 1, statusCounts: { failed: 1 } })]) : listEnvelope([logRow({ status: 'failed' })]);
         };
       })(),
-      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/email-log/log-1`]: { status: 500, body: { error: { code: 'internal_error', message: 'Failed to load what was sent' } } },
     });
 
-    render(<HistoryTab eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <HistoryTab eventId={EVENT_ID} templatesById={{}} />
+      </MemoryRouter>,
+    );
 
     fireEvent.click(await screen.findByRole('button', { name: 'Open' }));
     await waitFor(() => {
@@ -173,5 +184,39 @@ describe('HistoryTab', () => {
       expect(screen.getByText('Failed to load what was sent')).toBeInTheDocument();
     });
     expect(screen.queryByText('You are in!', { selector: '.chq-comms-send-detail-body .chq-comms-history-subject' })).not.toBeInTheDocument();
+  });
+
+  // w1-g: a compose-mount "Open" hands off via ?tab=history&batch=<key> --
+  // History reads that key and lands already expanded on the matching
+  // batch, with no click needed.
+  it('lands already expanded on the batch named by ?batch= on arrival', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: (() => {
+        let calls = 0;
+        return () => {
+          calls += 1;
+          return calls === 1
+            ? listEnvelope([batch(), batch({ batchKey: 'batch-2', subject: 'A different send' })])
+            : listEnvelope([logRow({ id: 'log-1', toEmail: 'ada@example.com' })]);
+        };
+      })(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/comms?tab=history&batch=batch-1']}>
+        <HistoryTab eventId={EVENT_ID} templatesById={{}} />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('You are in!');
+    const closeButton = await screen.findByRole('button', { name: 'Close' });
+    expect(closeButton).toHaveAttribute('aria-expanded', 'true');
+    await waitFor(() => {
+      expect(screen.getByText('ada@example.com')).toBeInTheDocument();
+    });
+
+    // The non-named batch stays collapsed.
+    const otherRow = screen.getByText('A different send').closest('.chq-comms-batch-row') as HTMLElement;
+    expect(within(otherRow).getByRole('button', { name: 'Open' })).toHaveAttribute('aria-expanded', 'false');
   });
 });

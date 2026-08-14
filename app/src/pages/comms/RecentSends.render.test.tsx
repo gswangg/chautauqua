@@ -48,14 +48,14 @@ function batchRowCells(row: HTMLElement): HTMLElement[] {
 
 describe('RecentSends', () => {
   it('renders an empty state when there are no batches, and withholds the subtitle', () => {
-    render(<RecentSends eventId={EVENT_ID} batches={[]} />);
+    render(<RecentSends eventId={EVENT_ID} batches={[]} templatesById={{}} />);
     expect(screen.getByText('Recent sends')).toBeInTheDocument();
     expect(screen.getByText('No emails sent yet.')).toBeInTheDocument();
     expect(document.querySelector('.chq-comms-recent-sends-subtitle')).not.toBeInTheDocument();
   });
 
   it('renders exactly five cells per batch row: when, subject, N sent, template, Open', () => {
-    render(<RecentSends eventId={EVENT_ID} batches={[batch()]} />);
+    render(<RecentSends eventId={EVENT_ID} batches={[batch()]} templatesById={{}} />);
     const row = document.querySelector('.chq-comms-batch-row') as HTMLElement;
     const cells = batchRowCells(row);
     expect(cells).toHaveLength(5);
@@ -67,18 +67,18 @@ describe('RecentSends', () => {
   });
 
   it("states '<n> sent' with no failed suffix when there are no failures", () => {
-    render(<RecentSends eventId={EVENT_ID} batches={[batch({ statusCounts: { sent: 5 } })]} />);
+    render(<RecentSends eventId={EVENT_ID} batches={[batch({ statusCounts: { sent: 5 } })]} templatesById={{}} />);
     expect(screen.getByText('5 sent')).toBeInTheDocument();
     expect(screen.queryByText(/failed/)).not.toBeInTheDocument();
   });
 
   it("appends '· N failed' only when a failure exists", () => {
-    render(<RecentSends eventId={EVENT_ID} batches={[batch({ statusCounts: { sent: 2, failed: 1 } })]} />);
+    render(<RecentSends eventId={EVENT_ID} batches={[batch({ statusCounts: { sent: 2, failed: 1 } })]} templatesById={{}} />);
     expect(screen.getByText('2 sent · 1 failed')).toBeInTheDocument();
   });
 
   it('renders a batch whose statusCounts are all failures exactly like any other batch', () => {
-    render(<RecentSends eventId={EVENT_ID} batches={[batch({ statusCounts: { failed: 3 } })]} />);
+    render(<RecentSends eventId={EVENT_ID} batches={[batch({ statusCounts: { failed: 3 } })]} templatesById={{}} />);
     expect(screen.getByText('You are in!')).toBeInTheDocument();
     expect(screen.getByText('0 sent · 3 failed')).toBeInTheDocument();
   });
@@ -112,7 +112,7 @@ describe('RecentSends', () => {
       batch({ batchKey: `b${n}`, subject: `Send #${n}`, statusCounts: { sent: n } }),
     );
 
-    render(<RecentSends eventId={EVENT_ID} batches={batches} limit={4} onSeeAll={onSeeAll} />);
+    render(<RecentSends eventId={EVENT_ID} batches={batches} limit={4} onSeeAll={onSeeAll} templatesById={{}} />);
 
     expect(screen.getByText('Send #1')).toBeInTheDocument();
     expect(screen.getByText('Send #4')).toBeInTheDocument();
@@ -120,16 +120,21 @@ describe('RecentSends', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'All history' }));
     expect(onSeeAll).toHaveBeenCalledTimes(1);
+    // "All history" carries no batch key.
+    expect(onSeeAll).toHaveBeenLastCalledWith();
 
     const openLinks = screen.getAllByRole('button', { name: 'Open' });
     expect(openLinks).toHaveLength(4);
     fireEvent.click(openLinks[0]!);
     expect(onSeeAll).toHaveBeenCalledTimes(2);
+    // w1-g: a per-row "Open" carries THAT row's batchKey, so the handoff
+    // can land History already expanded on it.
+    expect(onSeeAll).toHaveBeenLastCalledWith('b1');
   });
 
   it('never fabricates a count it did not receive -- omits a limit when none is given', () => {
     const batches = [1, 2, 3, 4, 5].map((n) => batch({ batchKey: `b${n}`, subject: `Send #${n}` }));
-    render(<RecentSends eventId={EVENT_ID} batches={batches} />);
+    render(<RecentSends eventId={EVENT_ID} batches={batches} templatesById={{}} />);
     expect(screen.getByText('Send #5')).toBeInTheDocument();
   });
 
@@ -142,8 +147,36 @@ describe('RecentSends', () => {
       // not count toward the "N sent in 7 days" figure.
       batch({ batchKey: 'old', subject: 'Old', sentAt: now - 30 * 24 * 60 * 60 * 1000, statusCounts: { sent: 9 } }),
     ];
-    render(<RecentSends eventId={EVENT_ID} batches={batches} limit={1} onSeeAll={() => undefined} />);
+    render(<RecentSends eventId={EVENT_ID} batches={batches} limit={1} onSeeAll={() => undefined} templatesById={{}} />);
     expect(screen.getByText(`7 sent in 7 days · last ${formatDateTimeWeekday(now - 1000)}`)).toBeInTheDocument();
+  });
+
+  // w1-g: History's "Open" handoff carries the batch's key -- landing on
+  // History with that batch's key given (expandBatchKey) must expand and
+  // load it without a click, exactly as if the reader had clicked Open.
+  it('lands already expanded and loads recipients when expandBatchKey names a batch', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([
+        {
+          id: 'log-1',
+          eventName: 'Evt',
+          toEmail: 'ada@example.com',
+          subject: 'You are in!',
+          status: 'sent',
+          sentAt: 1700000000000,
+        },
+      ]),
+    });
+
+    render(
+      <RecentSends eventId={EVENT_ID} batches={[batch()]} templatesById={{}} expandBatchKey="batch-1" />,
+    );
+
+    const toggle = screen.getByRole('button', { name: 'Close' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await waitFor(() => {
+      expect(screen.getByText('ada@example.com')).toBeInTheDocument();
+    });
   });
 
   it('without onSeeAll, renders the "Open"/"Close" recipients disclosure and drills in on click (History mount)', async () => {
@@ -160,7 +193,7 @@ describe('RecentSends', () => {
       ]),
     });
 
-    render(<RecentSends eventId={EVENT_ID} batches={[batch()]} />);
+    render(<RecentSends eventId={EVENT_ID} batches={[batch()]} templatesById={{}} />);
 
     expect(screen.queryByRole('button', { name: 'All history' })).not.toBeInTheDocument();
     const toggle = screen.getByRole('button', { name: 'Open' });
@@ -187,7 +220,7 @@ describe('RecentSends', () => {
       [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([]),
     });
 
-    render(<RecentSends eventId={EVENT_ID} batches={[batch({ statusCounts: { sent: 1, failed: 2, bounced: 1 } })]} />);
+    render(<RecentSends eventId={EVENT_ID} batches={[batch({ statusCounts: { sent: 1, failed: 2, bounced: 1 } })]} templatesById={{}} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Open' }));
     await waitFor(() => {
@@ -240,7 +273,7 @@ describe('RecentSends', () => {
       },
     });
 
-    render(<RecentSends eventId={EVENT_ID} batches={[batch()]} />);
+    render(<RecentSends eventId={EVENT_ID} batches={[batch()]} templatesById={{}} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Open' }));
     await waitFor(() => {
@@ -275,7 +308,7 @@ describe('RecentSends', () => {
       ]),
     });
 
-    render(<RecentSends eventId={EVENT_ID} batches={[batch()]} />);
+    render(<RecentSends eventId={EVENT_ID} batches={[batch()]} templatesById={{}} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Open' }));
     await waitFor(() => {
@@ -306,7 +339,7 @@ describe('RecentSends', () => {
       ]),
     });
 
-    render(<RecentSends eventId={EVENT_ID} batches={[batch()]} />);
+    render(<RecentSends eventId={EVENT_ID} batches={[batch()]} templatesById={{}} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Open' }));
     await waitFor(() => {
@@ -344,7 +377,7 @@ describe('RecentSends', () => {
       },
     });
 
-    render(<RecentSends eventId={EVENT_ID} batches={[batch()]} />);
+    render(<RecentSends eventId={EVENT_ID} batches={[batch()]} templatesById={{}} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Open' }));
     await waitFor(() => {

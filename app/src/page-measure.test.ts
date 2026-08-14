@@ -263,14 +263,13 @@ describe('page measure (DEC-744/DEC-808/DEC-989)', () => {
     }
   });
 
-  it('table-class pages (submissions, contacts, content, speakers, comms, review results/plans) carry chq-measure-table', () => {
+  it('table-class pages (submissions, contacts, content, speakers, review results/plans) carry chq-measure-table', () => {
     const tablePages = [
       'submissions/SubmissionsTable.tsx',
       'contacts/ContactsApp.tsx',
       'content/ContentApp.tsx',
       'speakers/OnboardingGrid.tsx',
       'speakers/SpeakerDetailPage.tsx',
-      'Comms.tsx',
       'review/ResultsTable.tsx',
       'review/PlanList.tsx',
       'review/PlanEditor.tsx',
@@ -284,6 +283,37 @@ describe('page measure (DEC-744/DEC-808/DEC-989)', () => {
         expect(literal, `${rel} literal "${literal}"`).toContain('chq-measure-table');
       }
     }
+  });
+
+  // w1-g: Comms.tsx is per-tab, not a flat chq-measure-table literal like
+  // its table-page siblings above -- Compose/History (row-and-column
+  // layouts) stay at the 1440 table measure, but Templates is an editor
+  // (Name/Subject/Body fields) and takes the 820 reading measure, on the
+  // SAME chq-page root every other tab uses (not an inner body wrapper --
+  // that was the previous attempt's mistake, filed three times over). The
+  // loading/error early-return branches (before a tab is even meaningful)
+  // stay on the plain chq-measure-table literal and are still covered by
+  // the enumerating scan above.
+  it('Comms.tsx clamps the templates tab at chq-measure (reading) and every other tab at chq-measure-table, on the page root', () => {
+    const content = readFileSync(join(PAGES_ROOT, 'Comms.tsx'), 'utf-8');
+
+    // The two early-return (loading/error) literals still carry the flat
+    // table-measure literal, and are covered by the enumerating scan.
+    const literals = content.match(/className="chq-page[^"]*"/g) ?? [];
+    const rootLiterals = literals.filter((l) => l.slice('className="'.length, -1).split(/\s+/).includes('chq-page'));
+    expect(rootLiterals.length).toBeGreaterThan(0);
+    for (const literal of rootLiterals) {
+      expect(literal).toContain('chq-measure-table');
+    }
+
+    // The main-render page root is a per-tab template literal, not a fixed
+    // className="..." literal -- assert on the ternary that computes it
+    // directly, both that it exists and that it maps exactly
+    // templates->chq-measure, everything else->chq-measure-table.
+    expect(content).toMatch(
+      /const pageMeasureClass = tab === 'templates' \? 'chq-measure' : 'chq-measure-table';/,
+    );
+    expect(content).toMatch(/className=\{`chq-page chq-comms-page \$\{pageMeasureClass\}`\}/);
   });
 
   it('Agenda carries no measure class (the one canvas)', () => {

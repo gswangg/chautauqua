@@ -9,7 +9,7 @@ import { TemplatesTab } from './comms/TemplatesTab';
 import { ComposeWizard } from './comms/ComposeWizard';
 import { HistoryTab } from './comms/HistoryTab';
 import { RecentSends } from './comms/RecentSends';
-import type { EmailBatchRow, EmailLogRow } from './comms/types';
+import type { EmailBatchRow, EmailLogRow, EmailTemplate } from './comms/types';
 import './comms/comms.css';
 
 // DEC-905: the send rhythm the head states — "N sent in the last 7 days" —
@@ -111,10 +111,42 @@ export function CommsPage() {
     };
   }, [eventId, mutationVersion]);
 
-  function goToHistory() {
+  // w1-g: fetched once here (not by History or the compose mount
+  // separately) and passed to both RecentSends mounts, so the same four
+  // sends render the same template names whichever mount is on screen --
+  // required prop on RecentSends means a third mount can't repeat the
+  // Compose-mount em-dash bug by forgetting to pass it.
+  const [templatesById, setTemplatesById] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!eventId) return;
+    let cancelled = false;
+    apiList<EmailTemplate>(`/events/${eventId}/templates`)
+      .then((res) => {
+        if (cancelled) return;
+        const map: Record<string, string> = {};
+        for (const t of res.items) map[t.id] = t.name;
+        setTemplatesById(map);
+      })
+      .catch(() => {
+        // The template label is a courtesy annotation on an already-shown
+        // send record, not the record itself -- a failure to load the
+        // template list must not block or blank either Recent Sends mount.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId]);
+
+  // w1-g: "Open" on the compose mount's Recent Sends carries the batch's
+  // key (?tab=history&batch=<key>) so History lands already expanded on
+  // that batch instead of dropping the row and just switching tabs. "All
+  // history" calls this with no key.
+  function goToHistory(batchKey?: string) {
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev);
       params.set('tab', 'history');
+      if (batchKey) params.set('batch', batchKey);
+      else params.delete('batch');
       return params;
     });
   }
@@ -146,8 +178,16 @@ export function CommsPage() {
     );
   }
 
+  // w1-g: the Templates tab is an editor (Name/Subject/Body fields), not a
+  // table -- it takes the 820 reading measure on the PAGE container itself,
+  // same as any other reading page, while Compose/History (both row-and-
+  // column layouts) stay at the 1440 table measure. This clamps on the SAME
+  // chq-page root every other tab uses, not an inner body wrapper (the
+  // previous attempt's mistake, filed three times over).
+  const pageMeasureClass = tab === 'templates' ? 'chq-measure' : 'chq-measure-table';
+
   return (
-    <div className="chq-page chq-comms-page chq-measure-table">
+    <div className={`chq-page chq-comms-page ${pageMeasureClass}`}>
       <div className={phoneEntered ? 'chq-comms-main' : 'chq-comms-main chq-comms-main-landing'}>
         <div className="chq-comms-head">
           <div className="chq-comms-head-titles">
@@ -183,11 +223,17 @@ export function CommsPage() {
         {tab === 'compose' && (
           <>
             <ComposeWizard eventId={eventId} />
-            <RecentSends eventId={eventId} batches={recentBatches} limit={COMPOSE_RECENT_SENDS_LIMIT} onSeeAll={goToHistory} />
+            <RecentSends
+              eventId={eventId}
+              batches={recentBatches}
+              limit={COMPOSE_RECENT_SENDS_LIMIT}
+              onSeeAll={goToHistory}
+              templatesById={templatesById}
+            />
           </>
         )}
         {tab === 'templates' && <TemplatesTab eventId={eventId} />}
-        {tab === 'history' && <HistoryTab eventId={eventId} />}
+        {tab === 'history' && <HistoryTab eventId={eventId} templatesById={templatesById} />}
       </div>
 
       {/* DEC-621: phone-only landing. Hidden by default (top-level
