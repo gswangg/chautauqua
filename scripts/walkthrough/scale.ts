@@ -31,6 +31,9 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+// Scripts are tooling, not src/ pure-core, so importing src is fine.
+import { DEFAULT_ONBOARDING_TASKS } from "../../src/domain/acceptance";
+
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..", "..");
 const FIXTURE_PATH = join(REPO_ROOT, "docs", "fixtures", "sample-data.json");
@@ -41,7 +44,6 @@ const BASE_URL = urlFlagIdx !== -1 ? process.argv[urlFlagIdx + 1] : (process.env
 const SEEDED_EVENT_SLUG = "devflow-conf-2027";
 const SCALE_COUNT = 110; // >100, to exercise DEC-078/079 chunking (ID_CHUNK_SIZE=90)
 const SAMPLE_SIZE = 5;
-const ONBOARDING_TASK_COUNT = 5; // DEFAULT_ONBOARDING_TASKS in src/domain/acceptance.ts
 
 interface FixtureData {
   identities: {
@@ -288,7 +290,8 @@ async function bulkAccept(organizerJar: CookieJar, eventId: string, submissionId
 // ---------------------------------------------------------------------------
 
 interface OnboardingGrid {
-  rows: { contact: { id: string }; cells: unknown[] }[];
+  tasks: { id: string; title: string }[];
+  rows: { contact: { id: string }; cells: { taskId: string }[] }[];
 }
 
 function sampleAssignmentCounts(grid: OnboardingGrid, contactIds: string[]): Map<string, number> {
@@ -298,6 +301,28 @@ function sampleAssignmentCounts(grid: OnboardingGrid, contactIds: string[]): Map
     counts.set(contactId, byContact.get(contactId) ?? 0);
   }
   return counts;
+}
+
+// DEC-060 amendment (wave 44): grid `cells` are per ASSIGNMENT, not per
+// default template (src/server/repo/tasks/grid.ts) — a contact can legally
+// carry MORE cells than DEFAULT_ONBOARDING_TASKS whenever the event carries
+// an extra task. So the check is DERIVED (every default title has a cell)
+// rather than a positional/strict count, resolving titles through the
+// grid payload's own `tasks[]` (taskId -> title), never a hardcoded count.
+function sampleAssignedTitles(grid: OnboardingGrid, contactIds: string[]): Map<string, Set<string>> {
+  const titleByTaskId = new Map(grid.tasks.map((t) => [t.id, t.title]));
+  const byContact = new Map(grid.rows.map((r) => [r.contact.id, r.cells]));
+  const titles = new Map<string, Set<string>>();
+  for (const contactId of contactIds) {
+    const cells = byContact.get(contactId) ?? [];
+    const cellTitles = new Set<string>();
+    for (const cell of cells) {
+      const title = titleByTaskId.get(cell.taskId);
+      if (title) cellTitles.add(title);
+    }
+    titles.set(contactId, cellTitles);
+  }
+  return titles;
 }
 
 async function checkOnboardingAssignments(
@@ -313,12 +338,15 @@ async function checkOnboardingAssignments(
   assertStatus("step3: GET onboarding grid", gridRes.res, 200, gridRes.text);
   const grid = gridRes.json as OnboardingGrid;
   const counts = sampleAssignmentCounts(grid, sampleContactIds);
+  const assignedTitles = sampleAssignedTitles(grid, sampleContactIds);
+  const defaultTitles = DEFAULT_ONBOARDING_TASKS.map((t) => t.title);
   for (const contactId of sampleContactIds) {
-    const n = counts.get(contactId) ?? 0;
+    const titles = assignedTitles.get(contactId) ?? new Set<string>();
+    const missing = defaultTitles.filter((title) => !titles.has(title));
     assertTrue(
-      `step3: sampled contact ${contactId} has onboarding task_assignments`,
-      n === ONBOARDING_TASK_COUNT,
-      `expected ${ONBOARDING_TASK_COUNT} task_assignment cells, got ${n}`,
+      `step3: sampled contact ${contactId} has a cell for every default onboarding task`,
+      missing.length === 0,
+      `missing task_assignment cells for: ${JSON.stringify(missing)} (has: ${JSON.stringify([...titles])})`,
     );
   }
   pass(`step3 (onboarding task_assignments exist for ${sampleContactIds.length} sampled fresh contacts)`);

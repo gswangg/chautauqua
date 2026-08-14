@@ -261,7 +261,11 @@ async function main(): Promise<void> {
   assertStatus(dupSourceEmailRes, 200, "GET /api/v1/contacts/:id (dup source)");
   const dupSource = (await asJson(dupSourceEmailRes)) as { email: string; firstName: string; lastName: string };
 
-  const dupCreateRes = await fetch(`${BASE_URL}/api/v1/contacts`, {
+  // DEC-755 amendment (wave 44): manual contact creation is find-or-REFUSE,
+  // not find-or-mint -- POSTing the seeded contact's exact email is a 409
+  // forever, not a 201 of a second row. Pin that refusal here so this
+  // harness cannot silently drift back into asserting the old (wrong) 201.
+  const dupEmailConflictRes = await fetch(`${BASE_URL}/api/v1/contacts`, {
     method: "POST",
     headers: orgHeaders(orgCookies, true),
     body: JSON.stringify({
@@ -270,14 +274,35 @@ async function main(): Promise<void> {
       email: dupSource.email,
     }),
   });
-  assertStatus(dupCreateRes, 201, "POST /api/v1/contacts (duplicate email)");
+  assertStatus(dupEmailConflictRes, 409, "POST /api/v1/contacts (exact duplicate email)");
+  const dupEmailConflictBody = (await asJson(dupEmailConflictRes)) as { error: { fields?: Record<string, string> } };
+  if (!dupEmailConflictBody.error.fields?.email) {
+    fail("duplicate-email 409 did not carry error.fields.email");
+  }
+
+  // Mint the duplicate PAIR the way the product actually allows: same
+  // name, a FRESH unique email, and no company (a blank company is a
+  // wildcard against any named-company sub-group -- src/domain/contacts.ts).
+  const dupCreateRes = await fetch(`${BASE_URL}/api/v1/contacts`, {
+    method: "POST",
+    headers: orgHeaders(orgCookies, true),
+    body: JSON.stringify({
+      firstName: dupSource.firstName,
+      lastName: dupSource.lastName,
+      email: `walk-dup-${uniqueTag}@example.com`,
+    }),
+  });
+  assertStatus(dupCreateRes, 201, "POST /api/v1/contacts (same name, fresh email, no company)");
   const dupNewContact = (await asJson(dupCreateRes)) as { id: string };
 
   const duplicatesRes = await fetch(`${BASE_URL}/api/v1/contacts/duplicates`, { headers: orgHeaders(orgCookies, false) });
   assertStatus(duplicatesRes, 200, "GET /api/v1/contacts/duplicates");
-  const duplicatesBody = (await asJson(duplicatesRes)) as { items: { contactIds: string[] }[] };
+  const duplicatesBody = (await asJson(duplicatesRes)) as { items: { contactIds: string[]; reason: string }[] };
   const group = duplicatesBody.items.find((g) => g.contactIds.includes(dupSourceId) && g.contactIds.includes(dupNewContact.id));
   if (!group) fail("newly created duplicate did not appear in /contacts/duplicates");
+  if (group.reason !== "name" && group.reason !== "name_and_company") {
+    fail(`expected duplicate group reason 'name' or 'name_and_company', got ${JSON.stringify(group.reason)}`);
+  }
 
   // Merge the (history-empty) new contact as the keeper, folding the
   // history-bearing seeded contact into it — this proves the repoint
@@ -286,7 +311,7 @@ async function main(): Promise<void> {
   const mergeRes = await fetch(`${BASE_URL}/api/v1/contacts/merge`, {
     method: "POST",
     headers: orgHeaders(orgCookies, true),
-    body: JSON.stringify({ keepId: dupNewContact.id, mergeId: dupSourceId }),
+    body: JSON.stringify({ keepId: dupNewContact.id, mergeIds: [dupSourceId] }),
   });
   assertStatus(mergeRes, 200, "POST /api/v1/contacts/merge");
 
