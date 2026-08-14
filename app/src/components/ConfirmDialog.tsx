@@ -9,6 +9,10 @@ interface ConfirmDialogProps {
   cancelLabel?: string;
   destructive?: boolean;
   pending?: boolean;
+  // Disables only the confirm control (e.g. a still-loading or failed
+  // preview) without also disabling Cancel/Close -- unlike `pending`, which
+  // is a busy state that blocks the whole dialog.
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -24,6 +28,7 @@ export function ConfirmDialog({
   cancelLabel = 'Cancel',
   destructive = false,
   pending = false,
+  confirmDisabled = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -39,7 +44,7 @@ export function ConfirmDialog({
             type="button"
             className={destructive ? 'chq-btn chq-confirm-btn-danger' : 'chq-btn chq-btn-primary'}
             onClick={onConfirm}
-            disabled={pending}
+            disabled={pending || confirmDisabled}
           >
             {confirmLabel}
           </button>

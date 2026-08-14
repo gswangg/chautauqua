@@ -24,6 +24,16 @@ export interface OnboardingTask {
   required: boolean;
 }
 
+// GET /api/v1/tasks/:id/delete-preview (DEC-933 amendment, wave 63): names
+// what DELETE /api/v1/tasks/:id is about to destroy, event-wide -- never a
+// count of the currently filtered/paginated grid page.
+export interface TaskDeleteImpact {
+  assigned: number;
+  completed: number;
+  responses: number;
+  files: number;
+}
+
 export interface OnboardingCell {
   taskId: string;
   assignmentId: string;

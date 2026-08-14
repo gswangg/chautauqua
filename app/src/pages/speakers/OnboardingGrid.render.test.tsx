@@ -967,10 +967,15 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     });
   });
 
-  it('Remove opens a ConfirmDialog naming N assigned / M completed from rows already in state, then DELETEs and refetches', async () => {
+  it('Remove opens a ConfirmDialog that fetches the event-wide tally from the server (not the grid page), then DELETEs and refetches', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: TASK_GRID,
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+      'GET /api/v1/tasks/task-1/delete-preview': {
+        taskId: 'task-1',
+        title: 'Sign speaker agreement',
+        counts: { assigned: 812, completed: 401, responses: 118, files: 5 },
+      },
       'DELETE /api/v1/tasks/task-1': { ok: true },
     });
 
@@ -981,11 +986,16 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     fireEvent.click(table.getByRole('button', { name: 'Remove' }));
 
     const dialog = await screen.findByRole('dialog', { name: 'Remove task' });
-    // N=3 (ct1 pending, ct2 complete, ct3's stray assignment), M=1 (ct2) --
-    // computed from the grid rows already fetched, no new endpoint.
-    expect(dialog).toHaveTextContent(
-      '3 speakers are assigned this task and 1 have completed it. Their uploaded files stay in the files library; their form responses do not.',
-    );
+
+    // Server-side counts (812/401), never the grid page's -- TASK_GRID only
+    // seeds a handful of rows, so a passing assertion here proves the
+    // numbers came from the mocked delete-preview response, not visibleRows.
+    await waitFor(() => {
+      expect(dialog).toHaveTextContent(
+        '812 speakers are assigned this task and 401 have completed it. Their uploaded files stay in the files library; their form responses do not — 118 responses will be deleted.',
+      );
+    });
+    expect(within(dialog).getByRole('button', { name: 'Remove' })).not.toBeDisabled();
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
 
@@ -1008,6 +1018,75 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
       return url.includes(`/events/${EVENT_ID}/onboarding?`);
     });
     expect(gridCalls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('Remove: while the delete-preview is in flight the dialog says so and disables the destructive confirm', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: TASK_GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+    // mockApi resolves handlers synchronously, which can't model an
+    // in-flight request -- stub the delete-preview call directly with a
+    // fetch mock we control the resolution timing of.
+    let resolvePreview: (value: Response) => void = () => {};
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === 'string' ? input : input.toString();
+        if (url.includes('/tasks/task-1/delete-preview')) {
+          return new Promise<Response>((resolve) => {
+            resolvePreview = resolve;
+          });
+        }
+        return realFetch(input, init);
+      }),
+    );
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    const table = within(screen.getByRole('table'));
+    fireEvent.click(table.getByRole('button', { name: 'Remove' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Remove task' });
+    expect(dialog).toHaveTextContent('Counting affected speakers');
+    expect(within(dialog).getByRole('button', { name: 'Remove' })).toBeDisabled();
+
+    resolvePreview(
+      new Response(
+        JSON.stringify({
+          taskId: 'task-1',
+          title: 'Sign speaker agreement',
+          counts: { assigned: 4, completed: 1, responses: 0, files: 0 },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+
+    await waitFor(() => {
+      expect(within(dialog).getByRole('button', { name: 'Remove' })).not.toBeDisabled();
+    });
+  });
+
+  it('Remove: a failed delete-preview surfaces the error and never offers the destructive confirm', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: TASK_GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+      'GET /api/v1/tasks/task-1/delete-preview': { status: 500, body: { error: { code: 'internal', message: 'boom' } } },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    const table = within(screen.getByRole('table'));
+    fireEvent.click(table.getByRole('button', { name: 'Remove' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Remove task' });
+    await waitFor(() => {
+      expect(dialog).toHaveTextContent('Could not load the delete preview');
+    });
+    expect(within(dialog).getByRole('button', { name: 'Remove' })).toBeDisabled();
   });
 });
 

@@ -20,6 +20,7 @@ import { FILE_KINDS, isValidFileKind, type FileKind } from "../domain/files";
 import { findFormById } from "../server/repo/forms";
 import {
   assignTask,
+  countTaskDeleteImpact,
   createTask,
   deleteTask,
   getAssignmentOwnership,
@@ -323,6 +324,22 @@ taskRoutes.patch("/tasks/:id", requireOrganizer, csrfJson, async (c) => {
 
   const updated = await updateTask(c.var.db, taskId, input);
   return c.json(updated);
+});
+
+// DEC-933 amendment (wave 63): names what deletion destroys before the
+// organizer confirms -- read-only, event-wide preview of deleteTask's exact
+// tally, guarded by the same requireOrganizer/getTaskOwnership check as the
+// DELETE below.
+// GET /api/v1/tasks/:id/delete-preview
+taskRoutes.get("/tasks/:id/delete-preview", requireOrganizer, async (c) => {
+  const auth = requireAuth(c);
+  const taskId = c.req.param("id");
+  const ownership = await getTaskOwnership(c.var.db, taskId);
+  if (!ownership) throw new ApiError("not_found", "Task not found");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Task belongs to a different org");
+
+  const counts = await countTaskDeleteImpact(c.var.db, taskId);
+  return c.json({ taskId, title: ownership.title, counts });
 });
 
 // DELETE /api/v1/tasks/:id

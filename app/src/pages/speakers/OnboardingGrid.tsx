@@ -12,6 +12,7 @@ import { RemindPreviewModal } from './RemindPreviewModal';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import { ParticipationMenu } from './ParticipationMenu';
+import { countOf } from '../../lib/plural';
 import {
   DEFAULT_GRID_FILTERS,
   type AssignmentResponseDetail,
@@ -23,6 +24,7 @@ import {
   type OnboardingGridResponse,
   type OnboardingTask,
   type ReminderDraft,
+  type TaskDeleteImpact,
 } from './types';
 
 // Compile-checked dependency marker: DEC-827 (import lives in Contacts;
@@ -165,6 +167,12 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   const [editingTask, setEditingTask] = useState<OnboardingTask | null>(null);
   const [removingTask, setRemovingTask] = useState<OnboardingTask | null>(null);
   const [removingBusy, setRemovingBusy] = useState(false);
+  // DEC-933 amendment (wave 63): fetched from the read-only, event-wide
+  // delete-preview endpoint -- never derived from visibleRows, which is
+  // only the current filtered/paginated grid page.
+  const [removePreview, setRemovePreview] = useState<TaskDeleteImpact | null>(null);
+  const [removePreviewLoading, setRemovePreviewLoading] = useState(false);
+  const [removePreviewError, setRemovePreviewError] = useState<string | null>(null);
 
   function loadGrid(id: string, currentFilters: GridFilterState, currentPage: number) {
     setLoading(true);
@@ -202,6 +210,39 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       cancelled = true;
     };
   }, [showNewTask, eventId]);
+
+  // DEC-933 amendment (wave 63): the remove-task confirm dialog opens
+  // immediately (so Cancel is always instant) but its body never renders a
+  // number that might be wrong -- it fetches the event-wide tally from the
+  // server the moment removingTask is set, and shows a "counting" state
+  // (confirm disabled) until that resolves.
+  useEffect(() => {
+    if (!removingTask) {
+      setRemovePreview(null);
+      setRemovePreviewError(null);
+      setRemovePreviewLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setRemovePreview(null);
+    setRemovePreviewError(null);
+    setRemovePreviewLoading(true);
+    apiGet<{ taskId: string; title: string; counts: TaskDeleteImpact }>(`/tasks/${removingTask.id}/delete-preview`)
+      .then((res) => {
+        if (cancelled) return;
+        setRemovePreview(res.counts);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setRemovePreviewError(err instanceof ApiError ? err.message : 'Failed to load delete preview');
+      })
+      .finally(() => {
+        if (!cancelled) setRemovePreviewLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [removingTask]);
 
   function handleFiltersChange(next: GridFilterState) {
     setFilters(next);
@@ -432,20 +473,6 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     setEditingTask(null);
     setToast('Task updated.');
     if (eventId) await loadGrid(eventId, filters, page);
-  }
-
-  // DEC-933: N/M are read straight off the grid rows already fetched into
-  // state -- never a new count endpoint, never a query per row.
-  function taskAssignmentCounts(task: OnboardingTask): { assigned: number; completed: number } {
-    let assigned = 0;
-    let completed = 0;
-    for (const row of visibleRows) {
-      const cell = row.cells.find((c) => c.taskId === task.id);
-      if (!cell) continue;
-      assigned += 1;
-      if (cell.status === 'complete') completed += 1;
-    }
-    return { assigned, completed };
   }
 
   async function confirmRemoveTask() {
@@ -803,13 +830,17 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       {removingTask && (
         <ConfirmDialog
           title="Remove task"
-          body={(() => {
-            const { assigned, completed } = taskAssignmentCounts(removingTask);
-            return `${assigned} speakers are assigned this task and ${completed} have completed it. Their uploaded files stay in the files library; their form responses do not.`;
-          })()}
+          body={
+            removePreviewError
+              ? `Could not load the delete preview: ${removePreviewError}`
+              : removePreviewLoading || !removePreview
+                ? 'Counting affected speakers…'
+                : `${removePreview.assigned} speakers are assigned this task and ${removePreview.completed} have completed it. Their uploaded files stay in the files library; their form responses do not — ${countOf(removePreview.responses, 'response')} will be deleted.`
+          }
           confirmLabel="Remove"
           destructive
           pending={removingBusy}
+          confirmDisabled={removePreviewLoading || !!removePreviewError || !removePreview}
           onConfirm={confirmRemoveTask}
           onCancel={() => setRemovingTask(null)}
         />
