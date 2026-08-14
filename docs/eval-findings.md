@@ -149,6 +149,24 @@ through the orchestrator's gate deploys and official sbek runs. This restates th
 rule; the runtime-evidence bar above is a filter on what those orchestrator runs surface,
 not an invitation to probe prod.
 
+**P1 · MIME-construction defects in EmailBindingMailer (orchestrator code review, 2026-08-13 —
+fix BEFORE the gate-4 delivery test so structure doesn't muddy the shape verdict):**
+(a) **Header injection**: `Subject:`/`From:`/`To:` interpolate raw strings; CRLF in a subject or
+contact-derived display name injects headers. Strip CR/LF and RFC-2047-encode non-ASCII header
+content (subjects with em-dashes/diacritics are currently invalid 7-bit headers). Test: subject
+with "\r\nBcc: x@y" renders as ONE header line.
+(b) **ICS is a sibling of text/html inside multipart/alternative** — declared as an alternative
+BODY, not an attachment; clients may show only the ICS or drop it (this touches the eval's
+calendar checks). Correct: multipart/mixed wrapping [multipart/alternative(text, html),
+text/calendar attachment].
+(c) **No Content-Transfer-Encoding on text/html parts** — UTF-8 bodies under an implicit 7bit
+CTE, and long HTML lines exceed the 998-char limit. Use quoted-printable (or minimally 8bit) on
+both parts.
+(d) **Fixed boundary "chq_mime_boundary"** — a body containing that literal shatters the
+structure. Random boundary per message (no Math.random in pure-core? derive from newId()).
+Architecture is NOT in question — keep the injected binding/factory, never-throwing makeMailer,
+and single-writer logging exactly as they are.
+
 **STATUS (wave 57): REVERT LANDED (a9b85eb7) — with ONE open runtime question.** The swarm's
 implementation keeps the binding but sends `new EmailMessage(from, to, rawMime)` (documented
 Workers contract, lazily imported at the composition root) rather than the Stage-2 rich
