@@ -102,6 +102,7 @@ create table task (
   required integer,
   form_id text,
   deliverable_kind text,
+  instructions text,
   created_at integer,
   updated_at integer
 );

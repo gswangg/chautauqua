@@ -23,6 +23,10 @@ export const task = sqliteTable(
     // kind portal uploads for this task should use (defaults to 'handout'
     // at the upload site when unset).
     deliverableKind: text("deliverable_kind"),
+    // migrations/0036 (CNT-01): a free-text brief for the assignee — distinct
+    // from `description`, shown on the speaker's own task row, never
+    // required.
+    instructions: text("instructions"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

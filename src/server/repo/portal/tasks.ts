@@ -22,6 +22,10 @@ export interface PortalTaskAssignment {
   kind: PortalTaskKind;
   title: string;
   description: string | null;
+  // CNT-01 (migrations/0036): a free-text brief for the assignee, rendered
+  // in plain body ink on the speaker's own task row (never behind a
+  // disclosure) -- distinct from `description`.
+  instructions: string | null;
   dueDate: number | null;
   // DEC-826: the assignment's own createdAt, needed by every caller that
   // must judge lateness via effectiveAssignmentDueDate — a task cannot be
@@ -62,6 +66,7 @@ export async function getMyTaskAssignments(db: Db, contactId: string, orgId: str
       kind: schema.task.kind,
       title: schema.task.title,
       description: schema.task.description,
+      instructions: schema.task.instructions,
       dueDate: schema.task.dueDate,
       required: schema.task.required,
       formId: schema.task.formId,
@@ -87,6 +92,7 @@ export async function getMyTaskAssignments(db: Db, contactId: string, orgId: str
     kind: row.kind as PortalTaskKind,
     title: row.title,
     description: row.description,
+    instructions: row.instructions,
     dueDate: row.dueDate ? row.dueDate.getTime() : null,
     assignedAt: row.assignedAt.getTime(),
     required: row.required,

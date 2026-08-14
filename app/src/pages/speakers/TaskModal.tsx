@@ -30,9 +30,12 @@ interface TaskModalProps {
   // current deliverableKind (the onboarding grid response never carries it,
   // and widening that wire shape is out of this change's scope), so that
   // picker stays hidden too rather than risk clobbering it with a fresh
-  // default. Only title/due date/required are editable; the caller is
-  // responsible for stripping kind/formId/deliverableKind out of the
-  // NewTaskInput this modal hands back before it PATCHes.
+  // default. Only title/instructions/due date/required are editable; the
+  // caller is responsible for stripping kind/formId/deliverableKind out of
+  // the NewTaskInput this modal hands back before it PATCHes. CNT-01:
+  // instructions orphans nothing (unlike kind/formId/deliverableKind), so
+  // the DEC-933 edit-mode freeze does not apply to it -- it stays editable
+  // in both modes.
   task?: OnboardingTask | null;
   // Ruling A12 (DEC-662 amendment, wave 25): the column header now offers
   // only Edit -- Remove lives in here instead, so removing a task is one
@@ -79,6 +82,7 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = nul
   const isEdit = task !== null;
   const [kind, setKind] = useState<TaskKind>(task?.kind ?? 'file_request');
   const [title, setTitle] = useState(task?.title ?? '');
+  const [instructions, setInstructions] = useState(task?.instructions ?? '');
   const [dueDate, setDueDate] = useState(task ? msToDateInput(task.dueDate) : '');
   const [required, setRequired] = useState(task?.required ?? true);
   const [formId, setFormId] = useState('');
@@ -116,6 +120,7 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = nul
       await onSubmit({
         kind,
         title: title.trim(),
+        instructions: instructions.trim(),
         dueDate: dateInputToMs(dueDate),
         required,
         formId: !isEdit && kind === 'form' ? formId : undefined,
@@ -169,6 +174,17 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = nul
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Submit your slides"
             required
+          />
+        </FormRow>
+
+        <FormRow label="Instructions" htmlFor="task-instructions" optional>
+          <textarea
+            id="task-instructions"
+            className="chq-textarea"
+            value={instructions}
+            onChange={(e) => setInstructions(e.target.value)}
+            placeholder="16:9, under 20 MB, PDF or Keynote"
+            rows={3}
           />
         </FormRow>
 
