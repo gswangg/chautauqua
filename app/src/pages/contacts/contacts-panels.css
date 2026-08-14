@@ -602,8 +602,100 @@
   color: var(--chq-muted);
 }
 
-.chq-contacts-import-mapping {
-  width: 100%;
+/* w1-i (DEC-663, frame 08--03): step 2 ("Match columns") is now its own
+   640px screen -- filename + row-count header, one block per CSV column
+   (header above a sample value, target select beneath, a dashed "skip this
+   column" affordance), then the dedupe footer above the shared footer's
+   primary. The step 1 file/paste controls have already unmounted by the
+   time this renders (ImportWizard.tsx gates each step's content on
+   header.length). */
+.chq-contacts-import-match {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chq-contacts-import-match-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--chq-ink);
+}
+
+.chq-contacts-import-match-filename {
+  font-family: var(--chq-font-display);
+  font-size: 15px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chq-contacts-import-match-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--chq-muted);
+  white-space: nowrap;
+}
+
+.chq-contacts-import-columns {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.chq-contacts-import-column-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--chq-rule);
+  border-radius: var(--chq-r-card, 5px);
+  background: var(--chq-surface);
+}
+
+.chq-contacts-import-column-header {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chq-contacts-import-column-sample {
+  font-size: 12px;
+  color: var(--chq-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Dashed skip affordance, same visual family as the unrated-fit pill
+   (DEC-821): dashed outline reads as a deliberate, reversible state, not a
+   missing render. */
+.chq-contacts-import-column-skip {
+  align-self: flex-start;
+  background: transparent;
+  border: 1px dashed var(--chq-muted);
+  border-radius: var(--chq-r-ctl, 4px);
+  color: var(--chq-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.chq-contacts-import-column-skip[aria-pressed='true'] {
+  color: var(--chq-ink);
+  border-color: var(--chq-ink);
+}
+
+.chq-contacts-import-dedupe {
+  font-size: 13px;
+  color: var(--chq-muted);
+  padding-top: 8px;
+  border-top: 1px solid var(--chq-hairline);
 }
 
 .chq-contacts-import-preview-cell-skip {
@@ -665,10 +757,9 @@
 
 /* Phone: merge compare grid stacks to one column (label, then kept value,
    then discarded value -- the DOM order already reads that way, so the
-   grid collapse alone is enough, no reordering); the import wizard's
-   column-mapping table drops its thead and turns each row into a card
-   (CSV column name on its own line, 44px select beneath it -- same
-   markup, no cell dropped, DEC-386); the step strip becomes a horizontal
+   grid collapse alone is enough, no reordering); the import wizard's match-
+   columns grid (w1-i) already stacks to one column via
+   .chq-contacts-import-columns above; the step strip becomes a horizontal
    scroller so the last step stays reachable (DEC-385). */
 @media (max-width: 700px) {
   .chq-contacts-merge-compare-head {
@@ -692,76 +783,8 @@
     flex-shrink: 0;
   }
 
-  .chq-contacts-import-mapping thead {
-    display: none;
-  }
-
-  .chq-contacts-import-mapping,
-  .chq-contacts-import-mapping tbody {
-    display: block;
-    width: 100%;
-  }
-
-  .chq-contacts-import-mapping tbody tr {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    padding: 14px 0;
-    border-bottom: 1px solid var(--chq-hairline);
-  }
-
-  .chq-contacts-import-mapping tbody tr:first-child {
-    padding-top: 0;
-  }
-
-  .chq-contacts-import-mapping tbody td {
-    display: block;
-    padding: 0;
-    border-bottom: none;
-  }
-
-  .chq-contacts-import-mapping tbody td:first-child {
-    font-size: 14px;
-    font-weight: 600;
-  }
-
-  .chq-contacts-import-mapping .chq-select {
-    width: 100%;
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    border-radius: var(--chq-r-ctl-phone);
-  }
-
-  .chq-contacts-import-preview thead {
-    display: none;
-  }
-
-  .chq-contacts-import-preview,
-  .chq-contacts-import-preview tbody {
-    display: block;
-    width: 100%;
-  }
-
-  .chq-contacts-import-preview tbody tr {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    padding: 14px 0;
-    border-bottom: 1px solid var(--chq-hairline);
-  }
-
-  .chq-contacts-import-preview tbody tr:first-child {
-    padding-top: 0;
-  }
-
-  .chq-contacts-import-preview tbody td {
-    display: block;
-    padding: 0;
-    border-bottom: none;
-    overflow-wrap: anywhere;
+  .chq-contacts-import-columns {
+    grid-template-columns: 1fr;
   }
 
   .chq-contacts-import-review-table thead {
