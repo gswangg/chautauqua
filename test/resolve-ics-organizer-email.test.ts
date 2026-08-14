@@ -5,7 +5,7 @@
 // production deploy never ships a non-routable "noreply@chautauqua.local"
 // organizer that bounces RSVPs.
 import { describe, expect, it } from "vitest";
-import { resolveIcsOrganizerEmail } from "../src/server/context";
+import { resolveIcsOrganizerEmail, icsOrganizerEmailOrNull } from "../src/server/context";
 import { ICS_ORGANIZER_EMAIL } from "../src/mail/ics";
 
 describe("resolveIcsOrganizerEmail", () => {
@@ -28,5 +28,24 @@ describe("resolveIcsOrganizerEmail", () => {
     expect(() => resolveIcsOrganizerEmail({ DEV_MODE: undefined, MAIL_FROM_EMAIL: undefined })).toThrow(
       /MAIL_FROM_EMAIL is not set and DEV_MODE is not "1"/,
     );
+  });
+});
+
+describe("icsOrganizerEmailOrNull", () => {
+  it("returns null when MAIL_FROM_EMAIL is unset and DEV_MODE is not \"1\" (DEC-947 wave-58 amendment)", () => {
+    expect(icsOrganizerEmailOrNull({ DEV_MODE: "0", MAIL_FROM_EMAIL: undefined })).toBeNull();
+    expect(icsOrganizerEmailOrNull({ DEV_MODE: undefined, MAIL_FROM_EMAIL: undefined })).toBeNull();
+  });
+
+  it("falls back to the dev-local placeholder when DEV_MODE is \"1\" and MAIL_FROM_EMAIL is unset", () => {
+    expect(icsOrganizerEmailOrNull({ DEV_MODE: "1", MAIL_FROM_EMAIL: undefined })).toBe(
+      ICS_ORGANIZER_EMAIL,
+    );
+  });
+
+  it("returns MAIL_FROM_EMAIL verbatim when set", () => {
+    expect(
+      icsOrganizerEmailOrNull({ DEV_MODE: "0", MAIL_FROM_EMAIL: "organizer@example.com" }),
+    ).toBe("organizer@example.com");
   });
 });

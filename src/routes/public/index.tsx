@@ -24,7 +24,7 @@ import {
   getPublicSpeakers,
 } from "../../server/repo/public";
 import { buildIcsCalendar } from "../../mail/ics";
-import { resolveIcsOrganizerEmail } from "../../server/context";
+import { icsOrganizerEmailOrNull } from "../../server/context";
 import { parseItineraryIds, MAX_ITINERARY_IDS } from "../../lib/itinerary";
 import { ApiError, errorEnvelope } from "../../server/http";
 import { publicCacheMiddleware, defaultCache } from "../../server/pubcache";
@@ -324,9 +324,10 @@ publicRoutes.get("/e/:eventSlug/schedule.ics", async (c) => {
   // UID/SEQUENCE per session from one copy of the mapping.
   const selected = ids.length > 0 ? ids.filter((id) => agendaById.has(id)).map((id) => agendaById.get(id)!) : agenda;
 
+  const organizerEmail = icsOrganizerEmailOrNull(c.env);
   const ics = buildIcsCalendar(agendaIcsEvents(event, selected, new Date()), {
     method: "PUBLISH",
-    organizer: { name: event.name, email: resolveIcsOrganizerEmail(c.env) },
+    organizer: organizerEmail ? { name: event.name, email: organizerEmail } : undefined,
   });
   return c.body(ics, 200, {
     "Content-Type": "text/calendar; charset=utf-8",
@@ -344,9 +345,10 @@ publicRoutes.get("/e/:eventSlug/agenda.ics", async (c) => {
   if (!event) return publicNotFound(c, "Event not found.");
 
   const { items: agenda } = await getPublicAgenda(c.var.db, event);
+  const organizerEmail = icsOrganizerEmailOrNull(c.env);
   const ics = buildIcsCalendar(agendaIcsEvents(event, agenda, new Date()), {
     method: "PUBLISH",
-    organizer: { name: event.name, email: resolveIcsOrganizerEmail(c.env) },
+    organizer: organizerEmail ? { name: event.name, email: organizerEmail } : undefined,
   });
   return c.body(ics, 200, {
     "Content-Type": "text/calendar; charset=utf-8",

@@ -98,10 +98,21 @@ export function makeMailer(db: Db, env: Pick<Bindings, "EMAIL" | "DEV_MODE" | "M
  * that bounces RSVPs. Reads mailConfigStatus's fromEmail (rather than
  * env.MAIL_FROM_EMAIL directly) so both predicates agree on what "set"
  * means. */
-export function resolveIcsOrganizerEmail(env: Pick<Bindings, "DEV_MODE" | "MAIL_FROM_EMAIL">): string {
+/** DEC-947 amendment (wave 58): non-throwing variant for anonymous/public
+ * surfaces (public schedule/agenda .ics), which must degrade — omitting
+ * ORGANIZER — rather than 500 a calendar URL when mail isn't configured.
+ * Only the one-to-one REQUEST/invite path (which needs a real organizer for
+ * RSVP routing) still fails loudly via resolveIcsOrganizerEmail below. */
+export function icsOrganizerEmailOrNull(env: Pick<Bindings, "DEV_MODE" | "MAIL_FROM_EMAIL">): string | null {
   const status = mailConfigStatus({ DEV_MODE: env.DEV_MODE, MAIL_FROM_EMAIL: env.MAIL_FROM_EMAIL, EMAIL: undefined, MAIL_FROM_NAME: undefined });
   if (status.fromEmail) return status.fromEmail;
   if (isDevMode(env)) return ICS_ORGANIZER_EMAIL;
+  return null;
+}
+
+export function resolveIcsOrganizerEmail(env: Pick<Bindings, "DEV_MODE" | "MAIL_FROM_EMAIL">): string {
+  const email = icsOrganizerEmailOrNull(env);
+  if (email) return email;
   throw new Error('MAIL_FROM_EMAIL is not set and DEV_MODE is not "1": set DEV_MODE="1" for local/dev, or configure MAIL_FROM_EMAIL for production');
 }
 
