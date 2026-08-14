@@ -189,7 +189,7 @@ describe("POST /api/v1/events/:eventId/breaks", () => {
   // DEC-417 (merge-train repair, wave 63): isDayWithinEventRange compares
   // LEXICALLY, so on a multi-day event "2027-01-02" + junk sorts inside the
   // window and used to reach the DB unbounded -- the SQLITE_TOOBIG class.
-  // isIsoDay (src/server/repo/agenda.ts, shared with isValidSlotInput) pins
+  // isIsoDay (src/server/repo/agenda/days.ts, shared with isValidSlotInput) pins
   // the shape, and therefore the length, before the range check runs.
   it.each([
     ["a lexically in-range day with a megabyte of junk appended", `2027-01-02${"9".repeat(100_000)}`],

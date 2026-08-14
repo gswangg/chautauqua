@@ -1,0 +1,241 @@
+// Shared row-fetching (used by GET agenda, PUT/DELETE slot refresh, and
+// auto-schedule persistence). Track membership reads ONLY submission_track
+// (DEC-017) — submission.track_id/additional_track_ids_json are frozen
+// legacy and never touched here.
+
+import { and, eq, inArray } from "drizzle-orm";
+import type { Db } from "../../context";
+import * as schema from "../../../db/schema";
+import { formatRef } from "../../../domain/ids";
+import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
+import { chunkIds } from "../../../lib/chunk";
+import { SESSION_FORMAT_FIELD_ID } from "../../../forms/types";
+import { ApiError } from "../../http";
+import { parseFormatDurationMin } from "../../../domain/schedule";
+import type { AgendaSpeaker } from "./types";
+
+export interface EventInfo {
+  orgId: string;
+  startDate: string;
+  endDate: string;
+  recordPrefix: string;
+}
+
+export async function getEventInfo(db: Db, eventId: string): Promise<EventInfo | null> {
+  const rows = await db
+    .select({
+      orgId: schema.event.orgId,
+      startDate: schema.event.startDate,
+      endDate: schema.event.endDate,
+      recordPrefix: schema.event.recordPrefix,
+    })
+    .from(schema.event)
+    .where(eq(schema.event.id, eventId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/** True iff `roomId` names a room row belonging to `eventId` (DEC-073:
+ * room writes/reads must be event-scoped to avoid cross-org room leaks). */
+export async function roomBelongsToEvent(db: Db, roomId: string, eventId: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: schema.room.id })
+    .from(schema.room)
+    .where(and(eq(schema.room.id, roomId), eq(schema.room.eventId, eventId)))
+    .limit(1);
+  return rows.length > 0;
+}
+
+/** Returns the submission's eventId + org id, for ownership checks — null if
+ * the submission doesn't exist (mirrors submissions repo helper). */
+export async function getSubmissionOwnership(
+  db: Db,
+  submissionId: string,
+): Promise<{ eventId: string; orgId: string; status: string } | null> {
+  const rows = await db
+    .select({ eventId: schema.submission.eventId, orgId: schema.event.orgId, status: schema.submission.status })
+    .from(schema.submission)
+    .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
+    .where(eq(schema.submission.id, submissionId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export interface AcceptedSessionRow {
+  submissionId: string;
+  ref: string;
+  title: string;
+  trackIds: string[];
+  speakers: AgendaSpeaker[];
+  speakerContactIds: string[];
+  slot: { roomId: string | null; day: string; startMin: number; endMin: number } | null;
+}
+
+// DEC-021 wave-60 amendment: hard ceiling on the accepted-session scan below
+// (and on getConflictsAndSummary's/overview.ts's placed-slot scans, which
+// share this constant rather than restating it) — an agenda read should
+// never be scanning past this many rows; refuse rather than silently
+// truncate (tasks/reminders.ts's MAX_REMINDER_SCAN pattern).
+export const MAX_AGENDA_SCAN = 5000;
+
+export async function loadAcceptedSessions(db: Db, eventId: string, recordPrefix: string): Promise<AcceptedSessionRow[]> {
+  const submissionRows = await db
+    .select({ id: schema.submission.id, seq: schema.submission.seq, title: schema.submission.title })
+    .from(schema.submission)
+    .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")))
+    .limit(MAX_AGENDA_SCAN + 1);
+
+  if (submissionRows.length > MAX_AGENDA_SCAN) {
+    throw new ApiError(
+      "invalid",
+      `This agenda read would scan more than ${MAX_AGENDA_SCAN} accepted submissions`,
+    );
+  }
+
+  if (submissionRows.length === 0) return [];
+  const ids = submissionRows.map((r) => r.id);
+
+  const trackRows: { submissionId: string; trackId: string }[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
+      .select({ submissionId: schema.submissionTrack.submissionId, trackId: schema.submissionTrack.trackId })
+      .from(schema.submissionTrack)
+      .where(inArray(schema.submissionTrack.submissionId, batch));
+    trackRows.push(...batchRows);
+  }
+
+  const participantRows: {
+    submissionId: string;
+    contactId: string;
+    firstName: string;
+    lastName: string;
+    order: number;
+  }[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
+      .select({
+        submissionId: schema.participant.submissionId,
+        contactId: schema.participant.contactId,
+        firstName: schema.contact.firstName,
+        lastName: schema.contact.lastName,
+        order: schema.participant.order,
+      })
+      .from(schema.participant)
+      .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+      .where(
+        and(
+          inArray(schema.participant.submissionId, batch),
+          // DEC-974: the admin agenda's speaker set is the ACTIVE participants
+          // (not-declined). This is deliberately NOT `participant.visible` —
+          // `visible` is a public-display flag composed only for public
+          // surfaces (see visibleParticipantConditions); a speaker hidden
+          // from the public programme is still a person who cannot be
+          // double-booked, so they must still count for conflict detection.
+          inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
+        ),
+      );
+    participantRows.push(...batchRows);
+  }
+
+  const slotRows: {
+    submissionId: string;
+    roomId: string | null;
+    day: string;
+    startMin: number;
+    endMin: number;
+  }[] = [];
+  for (const batch of chunkIds(ids)) {
+    const batchRows = await db
+      .select({
+        submissionId: schema.scheduleSlot.submissionId,
+        roomId: schema.scheduleSlot.roomId,
+        day: schema.scheduleSlot.day,
+        startMin: schema.scheduleSlot.startMin,
+        endMin: schema.scheduleSlot.endMin,
+      })
+      .from(schema.scheduleSlot)
+      .where(inArray(schema.scheduleSlot.submissionId, batch));
+    slotRows.push(...batchRows);
+  }
+
+  const tracksBySubmission = new Map<string, string[]>();
+  for (const t of trackRows) {
+    const arr = tracksBySubmission.get(t.submissionId) ?? [];
+    arr.push(t.trackId);
+    tracksBySubmission.set(t.submissionId, arr);
+  }
+
+  const speakersBySubmission = new Map<string, { contactId: string; name: string; order: number }[]>();
+  for (const p of participantRows) {
+    const arr = speakersBySubmission.get(p.submissionId) ?? [];
+    arr.push({ contactId: p.contactId, name: `${p.firstName} ${p.lastName}`.trim(), order: p.order });
+    speakersBySubmission.set(p.submissionId, arr);
+  }
+  for (const arr of speakersBySubmission.values())
+    arr.sort((a, b) => a.order - b.order || (a.contactId < b.contactId ? -1 : a.contactId > b.contactId ? 1 : 0));
+
+  const slotBySubmission = new Map<string, { roomId: string | null; day: string; startMin: number; endMin: number }>();
+  for (const s of slotRows) {
+    slotBySubmission.set(s.submissionId, { roomId: s.roomId, day: s.day, startMin: s.startMin, endMin: s.endMin });
+  }
+
+  return submissionRows.map((r) => {
+    const speakers = (speakersBySubmission.get(r.id) ?? []).map(({ contactId, name }) => ({ contactId, name }));
+    return {
+      submissionId: r.id,
+      ref: formatRef(recordPrefix, r.seq),
+      title: r.title,
+      trackIds: tracksBySubmission.get(r.id) ?? [],
+      speakers,
+      speakerContactIds: speakers.map((s) => s.contactId),
+      slot: slotBySubmission.get(r.id) ?? null,
+    };
+  });
+}
+
+/** DEC-772: batches ONE query over submission_answer (chunked exactly like
+ * src/server/repo/public/sessions.ts's format hydration) for each id's
+ * SESSION_FORMAT_FIELD_ID answer, parses the "(N min)" suffix via
+ * parseFormatDurationMin, and falls back to defaultDurationMin whenever the
+ * session has no format answer or its label carries no parseable duration.
+ * `eventId` documents the caller's scope — `submissionIds` must already be
+ * scoped to that event (this table carries no event_id column of its own). */
+export async function loadDurationMinBySubmission(
+  db: Db,
+  eventId: string,
+  submissionIds: string[],
+  defaultDurationMin: number,
+): Promise<Map<string, number>> {
+  void eventId;
+  const result = new Map<string, number>();
+  if (submissionIds.length === 0) return result;
+
+  const formatRows: { submissionId: string; valueJson: string }[] = [];
+  for (const batch of chunkIds(submissionIds)) {
+    const batchRows = await db
+      .select({
+        submissionId: schema.submissionAnswer.submissionId,
+        valueJson: schema.submissionAnswer.valueJson,
+      })
+      .from(schema.submissionAnswer)
+      .where(
+        and(
+          inArray(schema.submissionAnswer.submissionId, batch),
+          eq(schema.submissionAnswer.formFieldId, SESSION_FORMAT_FIELD_ID),
+        ),
+      );
+    formatRows.push(...batchRows);
+  }
+
+  const formatBySubmission = new Map<string, string | null>();
+  for (const r of formatRows) {
+    const parsed: unknown = JSON.parse(r.valueJson);
+    formatBySubmission.set(r.submissionId, typeof parsed === "string" && parsed.length > 0 ? parsed : null);
+  }
+
+  for (const id of submissionIds) {
+    const label = formatBySubmission.get(id) ?? null;
+    result.set(id, parseFormatDurationMin(label) ?? defaultDurationMin);
+  }
+  return result;
+}

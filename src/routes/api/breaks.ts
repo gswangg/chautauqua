@@ -98,7 +98,7 @@ breaksRoutes.post("/events/:eventId/breaks", requireOrganizer, csrfJson, async (
 
   // DEC-417: isDayWithinEventRange compares lexically, so it alone would let
   // an arbitrarily long string through on a multi-day event. isIsoDay is the
-  // shared shape gate (src/server/repo/agenda.ts, same one isValidSlotInput
+  // shared shape gate (src/server/repo/agenda/days.ts, same one isValidSlotInput
   // uses) and pins `day` at exactly 10 chars before the range check runs.
   if (!isIsoDay(body.day)) {
     fields.day = "Required (YYYY-MM-DD)";
