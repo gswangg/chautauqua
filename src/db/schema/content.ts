@@ -64,6 +64,10 @@ export const file = sqliteTable(
     // new chain) so deleting a middle version never renumbers the rest.
     versionNo: integer("version_no"),
     uploadedByContactId: text("uploaded_by_contact_id"),
+    // DEC-248 amendment (wave 10): set when this file was uploaded through a
+    // kind='form' onboarding task field, so getTaskFileScope can resolve the
+    // population even though task_assignment.file_id was never written.
+    taskAssignmentId: text("task_assignment_id"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -71,6 +75,7 @@ export const file = sqliteTable(
     file_submission_id_idx: index("file_submission_id_idx").on(t.submissionId),
     file_previous_file_id_idx: index("file_previous_file_id_idx").on(t.previousFileId),
     file_uploaded_by_contact_id_idx: index("file_uploaded_by_contact_id_idx").on(t.uploadedByContactId),
+    file_task_assignment_id_idx: index("file_task_assignment_id_idx").on(t.taskAssignmentId),
   }),
 );
 

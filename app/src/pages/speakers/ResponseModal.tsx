@@ -51,7 +51,24 @@ export function ResponseModal({ contactName, loading, error, detail, onStatusCha
           {detail.fields.map((field) => (
             <div key={field.label} className="chq-speakers-response-field">
               <dt>{field.label}</dt>
-              <dd>{field.value.length > 0 ? field.value : '—'}</dd>
+              <dd>
+                {field.file ? (
+                  <a
+                    href={`/files/${field.file.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="chq-speakers-file-link"
+                    aria-label={`Download ${field.file.filename}`}
+                    title={field.file.filename}
+                  >
+                    {field.file.filename}
+                  </a>
+                ) : field.value.length > 0 ? (
+                  field.value
+                ) : (
+                  '—'
+                )}
+              </dd>
             </div>
           ))}
         </dl>

@@ -461,6 +461,10 @@ export interface InsertFileInput {
   contentType: string;
   previousFileId: string | null;
   uploadedByContactId: string | null;
+  // DEC-248 amendment (wave 10): set when this file is the answer to a
+  // kind='form' task field, so getTaskFileScope can resolve the population.
+  // Optional — every existing caller omits it and gets today's behaviour.
+  taskAssignmentId?: string | null;
 }
 
 /** DEC-818: assigns the new row's own version_no — 1 + the predecessor's
@@ -499,6 +503,7 @@ export async function insertFile(db: Db, input: InsertFileInput): Promise<string
     previousFileId: input.previousFileId,
     versionNo,
     uploadedByContactId: input.uploadedByContactId,
+    taskAssignmentId: input.taskAssignmentId ?? null,
     createdAt: now,
     updatedAt: now,
   });

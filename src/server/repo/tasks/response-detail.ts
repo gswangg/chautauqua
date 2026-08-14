@@ -3,15 +3,20 @@
 // repo/tasks.ts for contention decomposition (no behavior change) — see
 // repo/tasks.ts's barrel header.
 
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { listFields } from "../forms";
 import type { AnswerMap } from "../../../forms/types";
+import { chunkIds } from "../../../lib/chunk";
 
 export interface AssignmentResponseField {
   label: string;
   value: string;
+  // Populated for fields whose def kind is 'file' when the answer id still
+  // names a surviving `file` row (DEC-248 amendment, wave 10) — lets the
+  // organizer view download the upload instead of seeing a raw id string.
+  file?: { id: string; filename: string };
 }
 
 export interface AssignmentResponseDetail {
@@ -66,10 +71,36 @@ export async function getAssignmentResponseDetail(
 
   const answers: AnswerMap = row.responseJson ? (JSON.parse(row.responseJson) as AnswerMap) : {};
   const fieldDefs = row.formId ? await listFields(db, row.formId) : [];
-  const fields: AssignmentResponseField[] = fieldDefs.map((f) => ({
-    label: f.label,
-    value: answerToString(answers[f.id]),
-  }));
+
+  // ONE batched select of (id, filename) over every file-kind field's answer
+  // id — never a query per field. A file id with no surviving row simply
+  // gets no map entry (deleted/foreign value), and that field falls back to
+  // today's plain-string rendering.
+  const fileAnswerIds = fieldDefs
+    .filter((f) => f.kind === "file")
+    .map((f) => answers[f.id])
+    .filter((v): v is string => typeof v === "string" && v.length > 0);
+  const fileMap = new Map<string, { id: string; filename: string }>();
+  if (fileAnswerIds.length > 0) {
+    for (const chunk of chunkIds(fileAnswerIds)) {
+      const rows = await db
+        .select({ id: schema.file.id, filename: schema.file.filename })
+        .from(schema.file)
+        .where(inArray(schema.file.id, chunk));
+      for (const r of rows) fileMap.set(r.id, r);
+    }
+  }
+
+  const fields: AssignmentResponseField[] = fieldDefs.map((f) => {
+    const answer = answers[f.id];
+    const file =
+      f.kind === "file" && typeof answer === "string" && fileMap.has(answer) ? fileMap.get(answer) : undefined;
+    return {
+      label: f.label,
+      value: answerToString(answer),
+      ...(file ? { file } : {}),
+    };
+  });
 
   return {
     assignmentId: row.assignmentId,

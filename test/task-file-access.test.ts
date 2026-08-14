@@ -236,6 +236,29 @@ describe("getTaskFileScope against a fake db (DEC-248 population rule, real impl
     expect(scope?.assignmentContactId).toBe("contact-assigned");
   });
 
+  it("DEC-248 amendment (wave 10): resolves via the file's own task_assignment_id when task_assignment.fileId was never written (kind='form' upload path)", async () => {
+    const actual = await vi.importActual<typeof import("../src/server/repo/files")>("../src/server/repo/files");
+    const fakeDb = makeFakeDb(
+      [
+        {
+          id: "file-form-task",
+          kind: "handout",
+          submissionId: null,
+          filename: "receipt.pdf",
+          contentType: "application/pdf",
+          r2Key: "k",
+          uploadedByContactId: "contact-uploader",
+          taskAssignmentId: "assignment-1",
+        },
+      ],
+      [{ assignmentContactId: "contact-assigned", orgId: ORG_A }],
+    );
+    const scope = await actual.getTaskFileScope(fakeDb, "file-form-task");
+    expect(scope).not.toBeNull();
+    expect(scope?.orgId).toBe(ORG_A);
+    expect(scope?.assignmentContactId).toBe("contact-assigned");
+  });
+
   it("returns null for an unreferenced submissionId-null file (no population leak)", async () => {
     const actual = await vi.importActual<typeof import("../src/server/repo/files")>("../src/server/repo/files");
     const fakeDb = makeFakeDb(

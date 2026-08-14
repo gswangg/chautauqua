@@ -411,6 +411,7 @@ portalTasksRoutes.post("/tasks/:assignmentId/form", csrfForm, async (c) => {
         contentType: validation.servedContentType,
         previousFileId: null,
         uploadedByContactId: contactId,
+        taskAssignmentId: assignmentId,
       }),
     );
     answers[field.id] = fileId;
