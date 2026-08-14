@@ -387,12 +387,25 @@
   flex-direction: column;
 }
 
+/* REVIEW PACK frame 03-03 (DEC-874 wave-65 amendment): the row is a
+   two-column grid -- column 1 (ref/state eyebrow, title, meta) flexes,
+   column 2 (the row's action) sits at intrinsic width, clamped and
+   right-aligned, rather than the earlier phone-frame full-width button
+   stacked underneath. */
 .chq-review-queue-row {
   padding: 15px 0;
   border-bottom: 1px solid var(--chq-hairline);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.chq-review-queue-row-main {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
 }
 
 .chq-review-queue-ref {
@@ -435,6 +448,46 @@
   padding-bottom: 18px;
   margin-bottom: 12px;
   border-bottom: 1px solid var(--chq-hairline);
+}
+
+/* REVIEW PACK frame 03-03: the plan-scoped header's own title row -- the
+   h1 (or its DelayedLoading placeholder) on the left, the "Score the next
+   one" primary action right-aligned on the same row when one exists. */
+.chq-review-scoped-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chq-review-scoped-title-action {
+  flex-shrink: 0;
+}
+
+/* REVIEW PACK frame 03-03: the "Showing 5 of N" / "Show all N" footer under
+   a capped queue list. */
+.chq-review-queue-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+}
+
+.chq-review-queue-footer-count {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+.chq-review-queue-footer-showall {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-ink);
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .chq-review-scoped-progress {
@@ -1323,9 +1376,11 @@
   color: var(--chq-ink);
 }
 
-/* DEC-874 row anatomy: REF/SCORED-NOT-SCORED share a top line, the action
-   is a full-width button (not the earlier inline link), and a recused row
-   marks itself on the same top line rather than in a trailing section. */
+/* DEC-874 row anatomy: REF/SCORED-NOT-SCORED share a top line, and a
+   recused row marks itself on the same top line rather than in a trailing
+   section. REVIEW PACK 03-03 (DEC-874 wave-65 amendment): the action itself
+   moved out of this column and into the row's own grid column 2 -- see
+   .chq-review-queue-row-action below, no longer a full-width button. */
 .chq-review-queue-row-top {
   display: flex;
   align-items: baseline;
@@ -1333,14 +1388,57 @@
   gap: 12px;
 }
 
+/* REVIEW PACK frame 03-03 (DEC-874 wave-65 amendment): the row's grid
+   column-2 action -- intrinsic width, clamped and right-aligned within the
+   column, never the earlier phone-frame full-width button. This class is
+   shared by .chq-btn-primary/.chq-btn-secondary action links AND the
+   recused row's disabled reason control, so (DEC-939 amendment) it must
+   never declare color/background -- shape only. */
 .chq-review-queue-row-action {
-  display: flex;
-  width: 100%;
-  margin-top: 2px;
+  justify-self: end;
+  min-width: 180px;
+  max-width: 220px;
+  width: auto;
+  text-align: center;
+  margin-top: 0;
 }
 
 .chq-review-queue-row-recused {
   opacity: 0.85;
+}
+
+/* REVIEW PACK 03-03: Undo demoted to a quiet tertiary control beneath the
+   title in column 1 -- the reason itself is now the row's action (see
+   .chq-review-queue-recusal-reason below). */
+.chq-review-queue-row-undo {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.chq-review-queue-row-undo:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* REVIEW PACK 03-03: the recused row's action column -- the reason IS the
+   action, rendered as an outlined, disabled-styled control (never a live
+   button, never the primary/secondary button face). */
+.chq-review-queue-recusal-reason {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--chq-border-strong);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--chq-muted);
 }
 
 .chq-review-queue-score-recused {

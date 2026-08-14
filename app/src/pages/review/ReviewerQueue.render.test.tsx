@@ -1,0 +1,222 @@
+// REVIEW PACK frame 03-03 (DEC-874 wave-65 amendment): the desktop row
+// anatomy -- two-column grid (never a full-width phone-frame button), a
+// scored row's action takes the secondary face, a recused row's action IS
+// its reason (never a live button), the plan-scoped title row's own
+// "Score the next one" shortcut, and the capped-list "Showing 5 of N" /
+// "Show all N" footer. DEC-939's binding contrast guard
+// (review-primary-contrast.test.ts) already covers the color/background
+// ban on classes sharing an element with .chq-btn-primary/.chq-btn-secondary.
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { ReviewerQueue } from './ReviewerQueue';
+import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const PLAN_ID = 'plan-frame-1';
+
+function queueItem(overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    submissionId: 'sub-1',
+    ref: 'S-001',
+    title: 'A Talk',
+    ratingsCount: 0,
+    alreadyRatedByMe: false,
+    myScore: null,
+    ...overrides,
+  };
+}
+
+let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
+beforeEach(() => {
+  consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+    throw new Error(`console.error called during render: ${args.map(String).join(' ')}`);
+  });
+});
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  consoleErrorSpy.mockRestore();
+});
+
+function renderQueue() {
+  return render(
+    <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+      <Routes>
+        <Route path="/review/plans/:planId" element={<ReviewerQueue />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
+describe('ReviewerQueue desktop row anatomy (REVIEW PACK frame 03-03)', () => {
+  it('the row action selector carries no width:100% declaration in review.css', () => {
+    const css = readFileSync(join(HERE, 'review.css'), 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const rules = css.match(/\.chq-review-queue-row-action\s*\{([^{}]*)\}/);
+    expect(rules).not.toBeNull();
+    expect(rules![1]).not.toMatch(/width:\s*100%/);
+  });
+
+  it('a scored row action uses the secondary face and reads "Change your score"', async () => {
+    mockApi({
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...listEnvelope([queueItem({ alreadyRatedByMe: true, myScore: 4.5 })]),
+        open: true,
+        recused: [],
+      },
+    });
+
+    renderQueue();
+
+    const action = await screen.findByRole('link', { name: 'Change your score' });
+    expect(action).toHaveClass('chq-btn-secondary');
+    expect(action).not.toHaveClass('chq-btn-primary');
+  });
+
+  it('an unscored row action uses the primary face and reads "Score this"', async () => {
+    mockApi({
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...listEnvelope([queueItem({ alreadyRatedByMe: false })]),
+        open: true,
+        recused: [],
+      },
+    });
+
+    renderQueue();
+
+    const action = await screen.findByRole('link', { name: 'Score this' });
+    expect(action).toHaveClass('chq-btn-primary');
+    expect(action).not.toHaveClass('chq-btn-secondary');
+  });
+
+  it('a recused row\'s action column carries the reason text (falling back when null), reads RECUSED in caps, and Undo still fires the DELETE', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...listEnvelope([]),
+        open: true,
+        recused: [
+          { submissionId: 'sub-r1', ref: 'S-020', title: 'Conflicted Talk', reason: 'Personal conflict' },
+          { submissionId: 'sub-r2', ref: 'S-021', title: 'Other Conflicted Talk', reason: null },
+        ],
+      },
+      [`DELETE /api/v1/review/plans/${PLAN_ID}/recusals/sub-r1`]: { status: 204, body: undefined },
+    });
+
+    renderQueue();
+
+    expect(await screen.findByText('Personal conflict')).toBeInTheDocument();
+    expect(screen.getByText('You work with this speaker')).toBeInTheDocument();
+    expect(screen.getAllByText('RECUSED').length).toBe(2);
+
+    const undoButtons = screen.getAllByRole('button', { name: 'Undo' });
+    expect(undoButtons.length).toBe(2);
+    // The reason is not itself a live button.
+    expect(screen.queryByRole('button', { name: 'Personal conflict' })).not.toBeInTheDocument();
+
+    fireEvent.click(undoButtons[0]!);
+
+    await waitFor(() => {
+      const deleteCall = fetchMock.mock.calls.find(([input, init]) => {
+        const url = typeof input === 'string' ? input : (input as URL).toString();
+        return (init as RequestInit | undefined)?.method === 'DELETE' && url.includes('/recusals/sub-r1');
+      });
+      expect(deleteCall).toBeDefined();
+    });
+  });
+
+  it('shows "Showing 5 of N" / "Show all N" once the combined items+recused count exceeds 5, and reveals the rest on click', async () => {
+    const items = Array.from({ length: 4 }, (_, i) => queueItem({ submissionId: `sub-${i}`, ref: `S-00${i}`, title: `Talk ${i}` }));
+    const recused = [
+      { submissionId: 'sub-r1', ref: 'S-r1', title: 'Recused One', reason: 'conflict' },
+      { submissionId: 'sub-r2', ref: 'S-r2', title: 'Recused Two', reason: 'conflict' },
+      { submissionId: 'sub-r3', ref: 'S-r3', title: 'Recused Three', reason: 'conflict' },
+    ];
+    mockApi({
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...listEnvelope(items),
+        open: true,
+        recused,
+      },
+    });
+
+    renderQueue();
+
+    expect(await screen.findByText('Talk 0')).toBeInTheDocument();
+    expect(screen.getByText('Showing 5 of 7')).toBeInTheDocument();
+    // Only 5 of the 7 combined rows render: all 4 items plus 1 recused row.
+    expect(screen.getByText('Recused One')).toBeInTheDocument();
+    expect(screen.queryByText('Recused Two')).not.toBeInTheDocument();
+    expect(screen.queryByText('Recused Three')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show all 7' }));
+
+    expect(screen.getByText('Recused Two')).toBeInTheDocument();
+    expect(screen.getByText('Recused Three')).toBeInTheDocument();
+    expect(screen.queryByText('Showing 5 of 7')).not.toBeInTheDocument();
+  });
+
+  it('does not render the footer when the combined count is 5 or fewer', async () => {
+    mockApi({
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...listEnvelope([queueItem()]),
+        open: true,
+        recused: [],
+      },
+    });
+
+    renderQueue();
+
+    expect(await screen.findByText('A Talk')).toBeInTheDocument();
+    expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Show all/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('"Score the next one" plan-scoped title-row shortcut (REVIEW PACK frame 03-03)', () => {
+  it('renders, right-aligned on the h1 row, linking to the first not-yet-scored submission, when one exists', async () => {
+    mockApi({
+      [`GET /api/v1/review/plans/${PLAN_ID}`]: { timezone: 'America/New_York' },
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...listEnvelope([
+          queueItem({ submissionId: 'sub-1', alreadyRatedByMe: true, myScore: 3 }),
+          queueItem({ submissionId: 'sub-2', ref: 'S-002', title: 'Talk Two', alreadyRatedByMe: false }),
+        ]),
+        open: true,
+        recused: [],
+        planName: 'Frame Plan',
+        scopeTrackName: null,
+        closeDate: null,
+      },
+    });
+
+    renderQueue();
+
+    const shortcut = await screen.findByRole('link', { name: 'Score the next one' });
+    expect(shortcut).toHaveAttribute('href', `/review/plans/${PLAN_ID}/submissions/sub-2`);
+  });
+
+  it('is absent once every item in the queue is already scored', async () => {
+    mockApi({
+      [`GET /api/v1/review/plans/${PLAN_ID}`]: { timezone: 'America/New_York' },
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...listEnvelope([queueItem({ alreadyRatedByMe: true, myScore: 5 })]),
+        open: true,
+        recused: [],
+        planName: 'Frame Plan',
+        scopeTrackName: null,
+        closeDate: null,
+      },
+    });
+
+    renderQueue();
+
+    expect(await screen.findByRole('heading', { name: 'Nothing left in your queue. Nicely done.' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Score the next one' })).not.toBeInTheDocument();
+  });
+});
