@@ -32,7 +32,7 @@ import {
 // are computed by the same pure domain functions the server uses -- no
 // re-derivation of the weight-share math client-side.
 import { criterionWeightShares, DEFAULT_PLAN_CRITERIA } from '../../../../src/domain/evaluation';
-import { DEC_745, DEC_786, DEC_824, DEC_882, DEC_715 } from '../../../../src/decisions';
+import { DEC_745, DEC_786, DEC_824, DEC_882, DEC_715, DEC_213 } from '../../../../src/decisions';
 import { countOf } from '../../lib/plural';
 
 void DEC_745; // v4 shell: title-row NAME/Duplicate/Save, 2x2 field grid, "Who reviews what" below
@@ -49,6 +49,12 @@ void DEC_882; // locked criteria render as read-only text rows below a CRITERION
 // Locked criteria cannot reorder, so the handle is ABSENT (not disabled)
 // on a locked row.
 void DEC_715;
+// w25-g/DEC-745 amendment (A9/A10): the anonymise toggle and Delete plan
+// both freeze at the plan's first submitted review, using the SAME
+// predicate the per-round criteria freeze already reads (DEC-213) --
+// summed across every round rather than scoped to the active tab, since
+// both are plan-wide, not round-scoped.
+void DEC_213;
 
 // DEC-676: soft cap on the criteria list -- Add disables with an honest
 // caption once reached, never a silent no-op.
@@ -283,6 +289,12 @@ export function PlanEditor() {
         : [];
   const activeRoundLockedCount = lockedRounds.reduce((sum, r) => sum + (evaluationCountsByRound[String(r)] ?? 0), 0);
   const activeRoundIsLocked = lockedRounds.length > 0;
+
+  // w25-g/DEC-745 amendment (A9/A10): the plan-wide freeze -- true once ANY
+  // round has a submitted review, read off the same evaluationCountsByRound
+  // server truth as the per-round lock above (DEC-213), never a second
+  // fetch or a re-derivation scoped to the active round.
+  const planHasSubmittedReview = Object.values(evaluationCountsByRound).some((count) => count > 0);
 
   // DEC-882: the page header's "Open · N of M reviews in" reads the SAME
   // progress aggregate ProgressPanel/PlanList already read (progressRows via
@@ -716,9 +728,6 @@ export function PlanEditor() {
   const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
   const [copyResult, setCopyResult] = useState<{ ok: boolean; text: string } | null>(null);
   const failedCopyRef = useRef<HTMLInputElement | null>(null);
-  // DEC-215: tracks the userId whose "Reset password" request is in flight,
-  // so only that row's button disables (pattern: creatingReviewer above).
-  const [resettingUserId, setResettingUserId] = useState<string | null>(null);
 
   function loadReviewerOptions() {
     return apiList<ReviewerOption>('/users?role=reviewer')
@@ -879,35 +888,6 @@ export function PlanEditor() {
       setError(err instanceof ApiError ? err.message : 'Failed to remove reviewer');
     } finally {
       setUnassigningReviewer(false);
-    }
-  }
-
-  // DEC-215: organizer-triggered password re-issue for a reviewer roster
-  // entry. Reuses the same one-time-reveal banner as account creation.
-  const [resetPasswordConfirm, setResetPasswordConfirm] = useState<{ userId: string; email: string | undefined } | null>(
-    null,
-  );
-
-  function resetReviewerPassword(userId: string, email: string | undefined) {
-    setResetPasswordConfirm({ userId, email });
-  }
-
-  async function confirmResetReviewerPassword() {
-    if (!resetPasswordConfirm) return;
-    const { userId } = resetPasswordConfirm;
-    setError(null);
-    setResettingUserId(userId);
-    try {
-      const res = await apiPost<{ id: string; email: string; role: string; password: string }>(
-        `/users/${userId}/reset-password`,
-        {},
-      );
-      setRevealedPassword(res.password);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to reset password');
-    } finally {
-      setResettingUserId(null);
-      setResetPasswordConfirm(null);
     }
   }
 
@@ -1086,6 +1066,34 @@ export function PlanEditor() {
             </div>
             <span className="chq-review-field-caption">Applies to every criterion in this plan</span>
             {errors.scale && <span className="chq-review-field-error">{errors.scale}</span>}
+          </div>
+          {/* w25-g/DEC-745 amendment (A10): the anonymise toggle is a
+              plan-wide property, exactly like scale -- it joins the plan
+              fields block as Rating scale's sibling rather than living
+              inside "Who reviews what". It freezes with the criteria at
+              the plan's first submitted review (planHasSubmittedReview,
+              the SAME DEC-213 predicate the criteria already use) -- when
+              frozen it renders DISABLED in the B8 disabled register, not
+              hidden, so an organiser can see the option exists. */}
+          <div
+            className={[
+              'chq-review-field',
+              planHasSubmittedReview ? 'chq-review-field-disabled' : null,
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          >
+            <label className="chq-review-checkbox-label">
+              <input
+                type="checkbox"
+                className="chq-check"
+                checked={draft.anonymized}
+                disabled={planHasSubmittedReview}
+                onChange={(e) => setDraft((d) => ({ ...d, anonymized: e.target.checked }))}
+              />
+              Hide speaker names from reviewers
+            </label>
+            <span className="chq-review-field-caption">Reviewers see the abstract and track only</span>
           </div>
         </div>
 
@@ -1437,11 +1445,11 @@ export function PlanEditor() {
                 they just open behind this link instead of always showing. */}
             <div className="chq-section-head">
               <h2 className="chq-section-label">Who reviews what</h2>
-              {/* DEC-215/DEC-929 amendment (wave 5): Delete plan moves here
-                  from a standalone footer band -- this is the plan's LAST
-                  section rule, and a quiet link is the section-action
-                  vocabulary already established by "Assign a reviewer".
-                  Still gated by its DEC-929 blast-radius confirm below. */}
+              {/* w25-g/DEC-745 amendment (A9): Delete plan moves OUT of this
+                  section head -- it's a tertiary text link in the editor's
+                  own footer row now, far left (see chq-review-editor-footer-
+                  row below), leaving this section's action to "Assign a
+                  reviewer" alone. */}
               <div className="chq-review-section-head-actions">
                 <button
                   type="button"
@@ -1449,14 +1457,6 @@ export function PlanEditor() {
                   onClick={() => setAssignFormOpen((open) => !open)}
                 >
                   {assignFormOpen ? 'Close' : 'Assign a reviewer'}
-                </button>
-                <button
-                  type="button"
-                  className="chq-link-button chq-section-action"
-                  disabled={saving || deletePreviewLoading}
-                  onClick={removePlan}
-                >
-                  Delete plan
                 </button>
               </div>
             </div>
@@ -1530,18 +1530,6 @@ export function PlanEditor() {
                   </div>
                   <span className="chq-review-reviewer-track">{trackLabel}</span>
                   <span className="chq-review-reviewer-load">{loadLabel}</span>
-                  {/* DEC-215 amendment (wave 5): a quiet section-rule link on
-                      the reviewer row's own rule (its border-bottom), not a
-                      framed button -- the capability (and its confirm
-                      dialog) is unchanged. */}
-                  <button
-                    type="button"
-                    className="chq-link-button chq-review-reviewer-action"
-                    disabled={resettingUserId === r.userId}
-                    onClick={() => resetReviewerPassword(r.userId, r.email)}
-                  >
-                    {resettingUserId === r.userId ? 'Resetting…' : 'Reset password'}
-                  </button>
                   <button
                     type="button"
                     className="chq-btn chq-btn-tertiary"
@@ -1620,20 +1608,6 @@ export function PlanEditor() {
                 </div>
               </div>
             )}
-
-            {/* DEC-745: the anonymise switch is a reviewing rule, so it
-                lives here as one checkbox row rather than at page top level
-                (SPEC §5.7/J4 blind review stays reachable even though the
-                mock omits the control entirely). */}
-            <label className="chq-review-checkbox-label">
-              <input
-                type="checkbox"
-                className="chq-check"
-                checked={draft.anonymized}
-                onChange={(e) => setDraft((d) => ({ ...d, anonymized: e.target.checked }))}
-              />
-              Anonymize speaker identity for reviewers
-            </label>
 
             {assignFormOpen && (
               <>
@@ -1859,6 +1833,33 @@ export function PlanEditor() {
         )}
       </div>
 
+      {/* w25-g/DEC-745 amendment (A9): Delete plan lives beside Assign, but
+          as a TERTIARY text link in the editor's own footer row, far left --
+          not a framed button, and not the "Who reviews what" section head
+          it used to share with Assign a reviewer. It disables once any
+          review has landed anywhere on the plan (planHasSubmittedReview,
+          the DEC-213 predicate); disabled adjacent copy names the
+          alternative ("Start a new wave") rather than leaving the organiser
+          to guess -- the delete capability itself is never removed, only
+          gated. */}
+      {!isNew && planId && (
+        <div className="chq-review-editor-footer-row">
+          <button
+            type="button"
+            className="chq-link-button chq-review-editor-footer-delete"
+            disabled={saving || deletePreviewLoading || planHasSubmittedReview}
+            onClick={removePlan}
+          >
+            {deletePreviewLoading ? 'Loading…' : 'Delete plan'}
+          </button>
+          {planHasSubmittedReview && (
+            <span className="chq-review-field-caption">
+              Delete plan is unavailable once a review has landed — start a new wave instead.
+            </span>
+          )}
+        </div>
+      )}
+
       {deletePlanConfirmOpen && deletePreview && (
         <ConfirmDialog
           title="Delete evaluation plan"
@@ -1892,18 +1893,6 @@ export function PlanEditor() {
           pending={saving}
           onConfirm={confirmAnonymizeRatchet}
           onCancel={cancelAnonymizeRatchet}
-        />
-      )}
-
-      {resetPasswordConfirm && (
-        <ConfirmDialog
-          title="Reset password"
-          body={`Reset the password for ${resetPasswordConfirm.email ?? resetPasswordConfirm.userId}? Their existing sessions will be signed out.`}
-          confirmLabel="Reset password"
-          destructive
-          pending={resettingUserId === resetPasswordConfirm.userId}
-          onConfirm={confirmResetReviewerPassword}
-          onCancel={() => setResetPasswordConfirm(null)}
         />
       )}
 

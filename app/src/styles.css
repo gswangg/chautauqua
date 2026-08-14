@@ -28,6 +28,11 @@
   --chq-ink-strong: #2e2a24;
   --chq-muted: #565a4b;
   --chq-disabled: #8e8a7a;
+  /* B8 disabled register (w25-g/DEC-745 amendment): #8E8A7A text on this
+     #DDD8C8 fill, reserved for genuinely inert controls the reader must
+     still be able to find and understand -- never for placeholder text or
+     mere de-emphasis. */
+  --chq-disabled-bg: #ddd8c8;
   --chq-hairline: #e1ddce;
   --chq-rule: #d3cfc0;
   /* DEC-021 (wave-6 amendment): the agenda day grid's single lattice tone,

@@ -1523,3 +1523,44 @@
   color: var(--chq-muted);
   font-weight: 700;
 }
+
+/* --- w25-g/DEC-745 amendment (A9/A10 -- plan editor rulings) ------------
+   Own block, kept separate from task w25-d's results-band additions above
+   so the two can merge cleanly.
+   A10: the anonymise toggle joins the plan fields block as Rating scale's
+   sibling; frozen (B8 disabled register) rather than hidden once the plan
+   has a submitted review.
+   A9: Delete plan moves to a tertiary text link in the editor's own footer
+   row, far left; disabled (same freeze) with adjacent copy naming the
+   alternative. */
+
+.chq-review-field-disabled {
+  color: var(--chq-disabled);
+}
+
+.chq-review-field-disabled .chq-review-checkbox-label {
+  color: var(--chq-disabled);
+  background: var(--chq-disabled-bg);
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-left: -6px;
+}
+
+.chq-review-editor-footer-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--chq-hairline);
+}
+
+.chq-review-editor-footer-delete {
+  font-size: 13px;
+}
+
+.chq-review-editor-footer-delete:disabled {
+  color: var(--chq-disabled);
+  cursor: not-allowed;
+}
