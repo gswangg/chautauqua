@@ -226,7 +226,6 @@ export function PlanEditor() {
   const [saving, setSaving] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [dateFieldError, setDateFieldError] = useState<string | null>(null);
   // w28-b/DEC-124 (rule 9: a draft never validates): generalised from the
   // old name-only "touched" gate -- NO field error anywhere in this form
   // (name, dates, scale, criteria) renders before the first Save/Create
@@ -234,6 +233,13 @@ export function PlanEditor() {
   // and shows any inherited problems immediately; a brand-new plan starts
   // silent until its first submit attempt.
   const [submitted, setSubmitted] = useState(!isNew);
+  // DEC-124 (wave-30 amendment): the ninth shape is "plan editor, save
+  // REJECTED", so the top-of-form ErrorSummary is gated on an actual save
+  // attempt -- separate from `submitted` above, which governs the per-field
+  // messages and starts true for an existing plan (w18-e/DEC-715 pins that an
+  // inherited criterion error renders on load). A plan is never scolded with
+  // a summary it did not ask for by pressing Save.
+  const [saveAttempted, setSaveAttempted] = useState(false);
   // DEC-745: "Assign a reviewer" is a link on the "Who reviews what" rule,
   // not an always-open form -- it discloses the assignment controls
   // (existing create-account + scope-assign capability, never dropped).
@@ -357,24 +363,17 @@ export function PlanEditor() {
   const planIsOpen = !isNew && isPlanOpenNow(draft.openAt, draft.closeAt, Date.now());
   const { completed: reviewsCompleted, assigned: reviewsAssigned } = progressTotals(progressRows);
 
+  // DateField only ever calls onChange with '' or an already-parsed
+  // yyyy-mm-dd wire string (see DateField.tsx's handleBlur) -- an
+  // unparseable value never reaches here, so dateInputToMs is never
+  // expected to throw. No try/catch: fail loudly if that contract breaks
+  // rather than swallow it behind a dead error state (w30-d finding).
   function setOpenAt(value: string) {
-    try {
-      const ms = dateInputToMs(value);
-      setDateFieldError(null);
-      setDraft((d) => ({ ...d, openAt: ms }));
-    } catch {
-      setDateFieldError('Enter a valid open date.');
-    }
+    setDraft((d) => ({ ...d, openAt: dateInputToMs(value) }));
   }
 
   function setCloseAt(value: string) {
-    try {
-      const ms = dateInputToMs(value);
-      setDateFieldError(null);
-      setDraft((d) => ({ ...d, closeAt: ms }));
-    } catch {
-      setDateFieldError('Enter a valid close date.');
-    }
+    setDraft((d) => ({ ...d, closeAt: dateInputToMs(value) }));
   }
 
   useEffect(() => {
@@ -520,6 +519,7 @@ export function PlanEditor() {
     // w28-b/DEC-124: a Save/Create click is the ONE moment every field
     // error in the form becomes visible, never a per-field blur.
     setSubmitted(true);
+    setSaveAttempted(true);
     if (Object.keys(errors).length > 0) {
       // w28-b/DEC-124: the V9 error standard's ErrorSummary (rendered at
       // the top of the form once `submitted` is true) is now the ONE
@@ -1063,21 +1063,16 @@ export function PlanEditor() {
           {error}
         </div>
       )}
-      {dateFieldError && (
-        <div className="chq-error" role="alert">
-          {dateFieldError}
-        </div>
-      )}
 
       <div className="chq-review-editor">
         {/* w28-b/DEC-745/DEC-124: the V9 error standard's top-of-form
             summary -- one block, one anchor per problem, rendered only once
             a Save/Create click has actually failed validation (the
             `submitted` gate, so a fresh draft never validates). */}
-        {submitted && Object.keys(errors).length > 0 && (
+        {saveAttempted && Object.keys(errors).length > 0 && (
           <ErrorSummary
             heading={countHeading(Object.keys(errors).length, 'before this plan can open')}
-            kept="Nothing was lost. Everything you typed is still here."
+            kept="A plan with no criteria has nothing for reviewers to score, and the window has to run forwards."
             problems={planErrorSummaryProblems(errors)}
           />
         )}
@@ -1269,9 +1264,42 @@ export function PlanEditor() {
           )}
 
           {submitted && (activeRound === 0 ? errors.criteria : criteriaErrors.criteria) && (
-            <span className="chq-field-error" role="alert">
-              {activeRound === 0 ? errors.criteria : criteriaErrors.criteria}
-            </span>
+            // DEC-124 (wave-30 amendment): an empty criteria list is an
+            // empty-COLLECTION state, not a bare field-error string -- 'No
+            // criteria yet' with a way out (the three defaults, or add one
+            // by hand). errors.criteria is assigned in exactly one place
+            // (validateCriteriaList, for the empty list only), so this card
+            // is the whole of that error's presentation. Gated on
+            // `submitted` like every other error on this form (rule 9: a
+            // draft never validates).
+            // DEC-124 amendment: an empty criteria list is an empty-
+            // collection state, not a bare field-error string -- 'No
+            // criteria yet' with a way out (the three defaults, or add
+            // one by hand), never just 'At least one criterion is
+            // required.'
+            <div className="chq-review-criteria-empty-notice">
+              <p className="chq-review-criteria-locked-headline">No criteria yet</p>
+              <p className="chq-review-criteria-locked-reason">
+                Reviewers need at least one thing to score. Add your own, or start from the three defaults.
+              </p>
+              <div className="chq-review-criteria-empty-actions">
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-primary"
+                  onClick={() => setEditingCriteria(defaultDraftCriteria())}
+                >
+                  Add the three defaults
+                </button>
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-tertiary"
+                  onClick={() => setPickingKind(true)}
+                >
+                  Add one of my own
+                </button>
+              </div>
+              <p className="chq-review-criteria-empty-footer">You can save this as a draft plan and open it later</p>
+            </div>
           )}
           {/* DEC-882: the criteria list names its columns, in the
               section-label type this page already uses, aligned to the

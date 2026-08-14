@@ -75,7 +75,9 @@ describe('PlanEditor save-rejection error standard (DEC-745/DEC-124)', () => {
 
     const summary = findSummaryAlert();
     expect(summary).toHaveTextContent('Two things need fixing before this plan can open');
-    expect(summary).toHaveTextContent('Nothing was lost. Everything you typed is still here.');
+    expect(summary).toHaveTextContent(
+      'A plan with no criteria has nothing for reviewers to score, and the window has to run forwards.',
+    );
 
     const links = within(summary).getAllByRole('link');
     expect(links.length).toBe(2);
@@ -142,8 +144,12 @@ describe('PlanEditor save-rejection error standard (DEC-745/DEC-124)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Create the plan' }));
 
+    // DEC-124 (wave-30 amendment): the empty list is an empty-COLLECTION
+    // state -- the framed card that offers the way out, never a bare
+    // field-error string.
+    expect(screen.getByText('No criteria yet')).toBeInTheDocument();
     expect(
-      screen.getByText('A plan needs at least one criterion — reviewers score against them'),
+      screen.getByText('Reviewers need at least one thing to score. Add your own, or start from the three defaults.'),
     ).toBeInTheDocument();
 
     const summary = findSummaryAlert();

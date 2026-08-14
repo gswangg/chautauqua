@@ -1170,6 +1170,33 @@
   margin: 0;
 }
 
+/* DEC-124 amendment (w30-d): the empty-criteria card -- 'no criteria yet'
+   is an empty-collection state, not a per-field error, so it borrows the
+   locked-notice card's shape (headline/reason/actions) rather than the
+   error vocabulary's ink-border treatment. No colour literal. */
+.chq-review-criteria-empty-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--chq-surface-sunk);
+  border: 1px solid var(--chq-hairline);
+  border-radius: var(--chq-r-card, 5px);
+  padding: 14px 16px;
+  margin: 0 0 12px;
+}
+
+.chq-review-criteria-empty-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chq-review-criteria-empty-footer {
+  font-size: 12px;
+  color: var(--chq-ink-2);
+  margin: 0;
+}
+
 /* DEC-215/DEC-929 amendment (wave 5): the "Who reviews what" section head's
    right side now carries two quiet section-action links (Assign a
    reviewer, Delete plan) -- .chq-section-head's own space-between only

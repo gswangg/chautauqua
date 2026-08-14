@@ -2,6 +2,7 @@
 // (DEC-018: 'rating' requires weight > 0 and numeric scores within
 // scale_json {min,max}; 'dropdown' requires options: string[]).
 import type { CriterionKind, EvaluationCriterion, PlanDraft } from './types';
+import { formatDayInput, msToDateInput } from '../../lib/dates';
 
 let criterionCounter = 0;
 
@@ -64,7 +65,8 @@ export function validatePlanDraft(draft: PlanDraft): PlanValidationErrors {
   // CONSEQUENCE and attached to the field the reader would actually fix --
   // the close date, not the open date it conflicts with.
   if (draft.openAt !== null && draft.closeAt !== null && draft.closeAt < draft.openAt) {
-    errors.closeAt = 'This is before the plan opens, so it would never accept a review. Pick a date after it opens.';
+    const opens = formatDayInput(msToDateInput(draft.openAt));
+    errors.closeAt = `This is before the plan opens. Pick a date after ${opens}.`;
   }
   Object.assign(errors, validateCriteriaList(draft.criteria));
 
