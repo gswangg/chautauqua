@@ -26,6 +26,7 @@ void DEC_713;
 void DEC_965;
 import {
   FILE_KINDS,
+  assertServedContentTypeHeader,
   contentDispositionAttachment,
   isImageContentType,
   isValidFileKind,
@@ -640,7 +641,7 @@ fileServeRoutes.get("/files/:fileId", async (c) => {
   const obj = await store.get(scope.r2Key);
   if (!obj) throw new ApiError("not_found", "File contents not found");
 
-  const contentType = scope.contentType;
+  const contentType = assertServedContentTypeHeader(scope.contentType);
   const headers: Record<string, string> = {
     "Content-Type": contentType,
     "X-Content-Type-Options": "nosniff",

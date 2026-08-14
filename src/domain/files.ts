@@ -93,6 +93,16 @@ export const MULTIPART_FRAMING_HEADROOM_BYTES_FOR_TEST = MULTIPART_FRAMING_HEADR
 // WORKERS_REQUEST_BODY_MAX_BYTES (see test/files.test.ts).
 export const VIDEO_MAX_BYTES = 95 * BYTES_PER_MB;
 
+// Wave-38 (DEC-020 amendment): `ext in SOME_CONTENT_TYPE_MAP` walks
+// Object.prototype for a plain object literal, so a filename like
+// `deck.constructor` or `x.__proto__` clears the allowlist and yields a
+// function/object as the "content type". The ONE lookup every tier test (and
+// the video-extension filter in allowedUploadExtensions) must route through
+// — own-property only, matching src/forms/validate.ts:66's shape.
+function allowedContentType(map: Record<string, string>, ext: string): string | null {
+  return Object.prototype.hasOwnProperty.call(map, ext) ? map[ext]! : null;
+}
+
 const ALL_UPLOAD_EXTENSIONS: readonly string[] = [
   ...Object.keys(DOCUMENT_EXT_CONTENT_TYPE),
   ...Object.keys(IMAGE_EXT_CONTENT_TYPE),
@@ -110,7 +120,7 @@ const ALL_UPLOAD_EXTENSIONS: readonly string[] = [
 export function allowedUploadExtensions(kind?: FileKind): readonly string[] {
   return kind === "recording"
     ? ALL_UPLOAD_EXTENSIONS
-    : ALL_UPLOAD_EXTENSIONS.filter((e) => !(e in VIDEO_EXT_CONTENT_TYPE));
+    : ALL_UPLOAD_EXTENSIONS.filter((e) => allowedContentType(VIDEO_EXT_CONTENT_TYPE, e) === null);
 }
 
 /** Human-readable summary of the upload allowlist + size caps, for form
@@ -184,28 +194,32 @@ export function validateUpload(input: UploadInput): ValidateUploadResult {
 
   const ext = extname(input.filename);
 
-  if (ext in DOCUMENT_EXT_CONTENT_TYPE) {
+  const documentType = allowedContentType(DOCUMENT_EXT_CONTENT_TYPE, ext);
+  if (documentType !== null) {
     if (input.sizeBytes > DOCUMENT_MAX_BYTES) {
       return { ok: false, message: "File exceeds the 25 MB limit for this type", fields: { file: "Too large" } };
     }
-    return { ok: true, ext, servedContentType: DOCUMENT_EXT_CONTENT_TYPE[ext]! };
+    return { ok: true, ext, servedContentType: documentType };
   }
 
-  if (ext in IMAGE_EXT_CONTENT_TYPE) {
+  const imageType = allowedContentType(IMAGE_EXT_CONTENT_TYPE, ext);
+  if (imageType !== null) {
     if (input.sizeBytes > IMAGE_MAX_BYTES) {
       return { ok: false, message: "File exceeds the 8 MB limit for images", fields: { file: "Too large" } };
     }
-    return { ok: true, ext, servedContentType: IMAGE_EXT_CONTENT_TYPE[ext]! };
+    return { ok: true, ext, servedContentType: imageType };
   }
 
-  if (ext in TEXT_EXT_CONTENT_TYPE) {
+  const textType = allowedContentType(TEXT_EXT_CONTENT_TYPE, ext);
+  if (textType !== null) {
     if (input.sizeBytes > TEXT_MAX_BYTES) {
       return { ok: false, message: "File exceeds the 25 MB limit for this type", fields: { file: "Too large" } };
     }
-    return { ok: true, ext, servedContentType: TEXT_EXT_CONTENT_TYPE[ext]! };
+    return { ok: true, ext, servedContentType: textType };
   }
 
-  if (ext in VIDEO_EXT_CONTENT_TYPE) {
+  const videoType = allowedContentType(VIDEO_EXT_CONTENT_TYPE, ext);
+  if (videoType !== null) {
     // DEC-879: the video tier is admitted only for a 'recording' deliverable
     // — every other kind rejects a video extension outright, never sizing it.
     if (input.kind !== "recording") {
@@ -222,7 +236,7 @@ export function validateUpload(input: UploadInput): ValidateUploadResult {
         fields: { file: "Too large" },
       };
     }
-    return { ok: true, ext, servedContentType: VIDEO_EXT_CONTENT_TYPE[ext]! };
+    return { ok: true, ext, servedContentType: videoType };
   }
 
   return {
@@ -372,7 +386,8 @@ export function validateHeadshotUpload(input: HeadshotUploadInput): ValidateUplo
     return { ok: false, message: `Filename is too long (max ${MAX_NAME_LENGTH} characters)`, fields: { headshot: `Max ${MAX_NAME_LENGTH}` } };
   }
   const ext = extname(input.filename);
-  if (!(ext in HEADSHOT_EXT_CONTENT_TYPE)) {
+  const headshotType = allowedContentType(HEADSHOT_EXT_CONTENT_TYPE, ext);
+  if (headshotType === null) {
     return {
       ok: false,
       message: "Headshots must be PNG, JPG, JPEG, or WEBP",
@@ -382,5 +397,33 @@ export function validateHeadshotUpload(input: HeadshotUploadInput): ValidateUplo
   if (input.sizeBytes > HEADSHOT_MAX_BYTES) {
     return { ok: false, message: "Headshot exceeds the 8 MB limit", fields: { headshot: "Too large" } };
   }
-  return { ok: true, ext, servedContentType: HEADSHOT_EXT_CONTENT_TYPE[ext]! };
+  return { ok: true, ext, servedContentType: headshotType };
+}
+
+// C0 control range + DEL + CR/LF (CR/LF already covered by C0, kept explicit
+// for readability) — none may appear in a raw Content-Type header echo.
+const HEADER_UNSAFE_RE = /[\x00-\x1f\x7f]/;
+
+/**
+ * Wave-38 (DEC-020 amendment): the ONE boundary invariant every raw
+ * Content-Type header echo (src/routes/files.ts's byte-serving route) must
+ * pass through before it reaches an HTTP response header. `servedContentType`
+ * is normally minted by validateUpload/validateHeadshotUpload from a fixed
+ * allowlist, but this function doesn't trust that — it re-checks the value
+ * itself, throwing loudly (never coercing to a default) rather than letting a
+ * corrupted stored value (e.g. a pre-fix row minted via the prototype-chain
+ * hole this amendment closes) reach a header raw. Modeled on
+ * contentDispositionAttachment's end-of-function invariant assert above.
+ */
+export function assertServedContentTypeHeader(value: string): string {
+  if (typeof value !== "string") {
+    throw new Error("assertServedContentTypeHeader: value is not a string — invariant violated");
+  }
+  if (HEADER_UNSAFE_RE.test(value)) {
+    throw new Error("assertServedContentTypeHeader: value contains a control character — invariant violated");
+  }
+  if (value.toLowerCase().startsWith("text/html")) {
+    throw new Error("assertServedContentTypeHeader: value is text/html — invariant violated");
+  }
+  return value;
 }
