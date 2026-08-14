@@ -13,6 +13,7 @@ import { buildAnswerRows, resolveAnswerFields } from './detailRows';
 import { formatBytes } from '../content/format';
 import { formatSubmissionScheduleLine } from './schedule';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { PageSkeleton } from '../../components/PageSkeleton';
 import { buildSubmissionsQuery, parseSubmissionsQuery } from './filters';
 import { countOf } from '../../lib/plural';
 import './detail.css';
@@ -606,7 +607,7 @@ export function SubmissionDetailPage() {
         <Link to="/submissions" className="chq-detail-back">
           &lsaquo; All submissions
         </Link>
-        <DelayedLoading />
+        <PageSkeleton variant="detail" />
       </div>
     );
   }

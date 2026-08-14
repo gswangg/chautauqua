@@ -7,7 +7,7 @@ import { setNavLeaveGuard } from '../../lib/useNavExceptions';
 import { copyText } from '../../lib/clipboard';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DateField } from '../../components/DateField';
-import { DelayedLoading } from '../../components/DelayedLoading';
+import { PageSkeleton } from '../../components/PageSkeleton';
 import { addCriterion, removeCriterion, updateCriterion, validateCriteriaList, validatePlanDraft } from './planForm';
 // DEC-708: the same name-or-email resolver ProgressPanel uses -- a plan
 // reviewer row names a person by their resolved contact, never a
@@ -926,7 +926,7 @@ export function PlanEditor() {
     return (
       <div className="chq-page chq-review-page chq-measure-table">
         <h1 className="chq-page-title">Evaluation plan</h1>
-        <DelayedLoading />
+        <PageSkeleton variant="detail" />
       </div>
     );
   }

@@ -4,6 +4,7 @@ import { apiDelete, apiGet, apiList, ApiError } from '../../lib/api';
 import './review.css';
 import type { EvaluationPlan, RecusalItem, ReviewerQueueEnvelope, ReviewerQueueItem } from './types';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { PageSkeleton } from '../../components/PageSkeleton';
 import { countOf } from '../../lib/plural';
 // DEC-522/DEC-831: "closes in N days" is computed via the ONE days-until
 // reader (dates.ts daysUntil), through the owning event's own timezone --
@@ -445,7 +446,7 @@ export function ReviewerQueue() {
     return (
       <div className="chq-page chq-review-page chq-measure">
         <h1 className="chq-page-title">Review</h1>
-        <DelayedLoading />
+        <PageSkeleton variant="list" />
       </div>
     );
   }

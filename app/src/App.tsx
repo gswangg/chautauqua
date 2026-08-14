@@ -5,7 +5,7 @@ import { guardedNavigate, useNavExceptions } from './lib/useNavExceptions';
 import { useEscapeKey } from './lib/useEscapeKey';
 import { identityLabel } from './lib/identity';
 import { EventSwitcher } from './components/EventSwitcher';
-import { DelayedLoading } from './components/DelayedLoading';
+import { PageSkeleton } from './components/PageSkeleton';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 import { ADMIN_ROUTE_PATTERNS } from './lib/admin-routes';
 
@@ -317,7 +317,7 @@ function RoleGate({ children }: { children: ReactNode }) {
   // fetches during a reviewer's login redirect is the same defect as a gate
   // that renders its children before it knows who is signed in.
   if (loading) {
-    return <DelayedLoading />;
+    return <PageSkeleton variant="list" />;
   }
   if (me?.role === 'reviewer' && !location.pathname.startsWith('/review')) {
     return <Navigate to="/review" replace />;
@@ -334,7 +334,7 @@ function RoutedContent() {
   const location = useLocation();
   return (
     <RouteErrorBoundary key={location.pathname}>
-      <Suspense fallback={<DelayedLoading />}>
+      <Suspense fallback={<PageSkeleton variant="list" />}>
         <Routes>
           {/* DEC-154 (amendment, wave 53): rendered FROM ADMIN_ROUTE_PATTERNS
               via ELEMENT_BY_PATTERN, so this list cannot desync from the

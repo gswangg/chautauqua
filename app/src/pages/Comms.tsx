@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useCurrentEvent } from '../lib/useCurrentEvent';
-import { DelayedLoading } from '../components/DelayedLoading';
+import { PageSkeleton } from '../components/PageSkeleton';
 import { apiList } from '../lib/api';
 import { useMutationVersion } from '../lib/mutationSignal';
 import { formatDate } from '../lib/dates';
@@ -164,7 +164,7 @@ export function CommsPage() {
     return (
       <div className="chq-page chq-measure-table">
         <h1 className="chq-page-title">Comms</h1>
-        <DelayedLoading />
+        <PageSkeleton variant="table" />
       </div>
     );
   }

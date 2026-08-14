@@ -19,7 +19,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiGet, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
-import { DelayedLoading } from '../../components/DelayedLoading';
+import { PageSkeleton } from '../../components/PageSkeleton';
 import './submissions.css';
 
 interface DeletePlanCounts {
@@ -165,7 +165,7 @@ export function DeleteSubmissionsPage() {
       <div className="chq-submissions-delete-topbar">{backLink}</div>
       <h1 className="chq-page-title">Delete sessions</h1>
 
-      {loading && <DelayedLoading />}
+      {loading && <PageSkeleton variant="list" />}
       {!loading && loadError && <div className="chq-error">{loadError}</div>}
       {deleteError && <div className="chq-error">{deleteError}</div>}
 

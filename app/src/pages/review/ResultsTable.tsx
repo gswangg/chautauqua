@@ -4,6 +4,7 @@ import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
 import './review.css';
 import { buildResultsCsvHref } from './resultsCsv';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { PageSkeleton } from '../../components/PageSkeleton';
 import type { EvaluationPlan, ResultsRow, SubmissionEvaluationItem } from './types';
 import { STATUS_LABELS, type SubmissionStatus } from '../submissions/types';
 import { countOf } from '../../lib/plural';
@@ -266,7 +267,7 @@ export function ResultsTable({
     return (
       <div className="chq-page chq-review-page chq-measure-table">
         <h1 className="chq-page-title">Results</h1>
-        <DelayedLoading />
+        <PageSkeleton variant="table" />
       </div>
     );
   }

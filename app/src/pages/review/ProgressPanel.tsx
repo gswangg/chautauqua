@@ -8,6 +8,7 @@ import { reviewersWithIncompleteQueues, reviewersNotStarted, reviewerDisplayLabe
 import { reviewerProgressState } from '../../../../src/domain/evaluation';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { PageSkeleton } from '../../components/PageSkeleton';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import './review.css';
 import type { EvaluationPlan, ProgressRow } from './types';
@@ -107,7 +108,7 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
     return (
       <div className="chq-page chq-review-page chq-measure">
         <h1 className="chq-page-title">Review</h1>
-        <DelayedLoading />
+        <PageSkeleton variant="list" />
       </div>
     );
   }
