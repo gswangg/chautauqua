@@ -131,15 +131,17 @@ function detailDb() {
 }
 
 describe("DEC-968 as amended by the EMB-01 ruling: sessions-list row defaults include the abstract snippet", () => {
-  it("a default /e/:slug/sessions row renders the description as a snippet with an in-place Show more", async () => {
+  it("a default /e/:slug/sessions row renders the description (short ones as a plain paragraph)", async () => {
     installFakeCaches();
     const app = withDb(buildApp(), sessionsListDb());
     const res = await app.request("/e/conf/sessions", {}, TEST_ENV);
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain("<details");
-    expect(html).toContain("Show more");
-    expect(html).toContain('class="chq-pub-desc-snippet"');
+    // This fixture's description is under DESCRIPTION_SNIPPET_LEN, so it
+    // renders whole in a <p> — no <details>/Show more (that shape is
+    // covered by public-embed-config.test.ts with a long description).
+    expect(html).toContain(DESCRIPTION);
+    expect(html).not.toContain("<details");
   });
 
   it("its meta line renders through .chq-pub-session-tag with the track and format in caps text", async () => {
