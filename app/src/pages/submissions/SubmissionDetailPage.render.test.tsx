@@ -323,14 +323,26 @@ describe('SubmissionDetailPage render: Reviews section + decision rail', () => {
     // Header: 'Reviews · N of M in' -- 1 of 2 items has a non-null submittedAt.
     expect(screen.getByRole('heading', { name: /Reviews\s*·\s*1 of 2 in/ })).toBeInTheDocument();
 
-    // Criterion values render under their label, never the raw criterionId.
+    // DEC-737 (wave 2 amendment): per-criterion detail is behind a quiet,
+    // closed-by-default disclosure on each review row -- the resting row
+    // never shows criterion labels/values.
+    expect(screen.queryByText('Technical depth')).not.toBeInTheDocument();
+    const toggles = screen.getAllByRole('button', { name: /criterion/ });
+    expect(toggles.length).toBe(2);
+    toggles.forEach((toggle) => fireEvent.click(toggle));
+
+    // Criterion values render under their label, never the raw criterionId,
+    // once the disclosure is opened.
     expect(screen.getAllByText('Technical depth').length).toBe(2);
     expect(screen.queryByText('c1')).not.toBeInTheDocument();
 
     // DEC-908 (wave 42 amendment): score renders at 1dp -- every other
     // review surface is already 1dp -- em-dash when null.
     expect(screen.getByText('4.0')).toBeInTheDocument();
-    expect(screen.getByText('—')).toBeInTheDocument();
+    // Alex Reviewer's row has both a null score and a null submittedAt, so
+    // formatTimestamp/score both render the em-dash -- assert at least one
+    // instance rather than requiring page-wide uniqueness.
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
 
     // 'Awaiting triage' micro-label above the decision controls, pending only.
     expect(screen.getByText(/Awaiting triage/)).toBeInTheDocument();
@@ -1178,5 +1190,29 @@ describe('SubmissionDetailPage render: DEC-920 file-kind answer', () => {
     expect(screen.queryByText('file-gone')).not.toBeInTheDocument();
     expect(document.body.innerHTML).not.toContain('file-gone');
     expect(screen.queryByRole('link', { name: /file-gone/ })).not.toBeInTheDocument();
+  });
+});
+
+// DEC-886 (wave 2 amendment): the bulk delete flow's blast-radius page
+// already exists -- this locks in the detail page's own discoverability
+// entry point, which reuses the SAME route the bulk path navigates to.
+describe('SubmissionDetailPage render: delete entry point (DEC-886)', () => {
+  it('links to the delete confirmation page with this submission\'s id', async () => {
+    const detail = baseDetail();
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Original description')).toBeInTheDocument();
+    });
+    const deleteLink = screen.getByRole('link', { name: 'Delete this session' });
+    expect(deleteLink).toHaveAttribute('href', `/submissions/delete?ids=${SUB_ID}`);
   });
 });

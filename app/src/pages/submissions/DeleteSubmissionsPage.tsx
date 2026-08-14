@@ -20,7 +20,6 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiGet, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { DelayedLoading } from '../../components/DelayedLoading';
-import { ConfirmDialog } from '../../components/ConfirmDialog';
 import './submissions.css';
 
 interface DeletePlanCounts {
@@ -99,7 +98,6 @@ export function DeleteSubmissionsPage() {
   const [refused, setRefused] = useState<DeleteRefusal[]>([]);
   const [loading, setLoading] = useState(ids.length > 0);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletedCount, setDeletedCount] = useState<number | null>(null);
@@ -130,7 +128,6 @@ export function DeleteSubmissionsPage() {
       );
       setDeletedCount(result.deleted);
       setRefused(result.refused);
-      setConfirmOpen(false);
       if (result.refused.length === 0) {
         navigate('/submissions', {
           state: { notice: `${countPhrase(result.deleted, 'session', 'sessions')} deleted.` },
@@ -141,7 +138,6 @@ export function DeleteSubmissionsPage() {
       }
     } catch (err) {
       setDeleteError(err instanceof ApiError ? err.message : 'Delete failed');
-      setConfirmOpen(false);
     } finally {
       setBusy(false);
     }
@@ -218,34 +214,28 @@ export function DeleteSubmissionsPage() {
           )}
 
           <div className="chq-submissions-delete-footer">
+            {/* DEC-886 (wave 2 amendment): this page already names what goes
+                and what it refuses BEFORE anything is pressed -- a stacked
+                ConfirmDialog restated the same decision a second time and
+                demoted the page's own prose. The primary deletes directly;
+                `busy` still disables it mid-request. */}
             <button
               type="button"
               className="chq-btn chq-btn-primary"
               disabled={busy || deleteCount === 0}
-              onClick={() => setConfirmOpen(true)}
+              onClick={doDelete}
             >
               Delete {countPhrase(deleteCount, 'session', 'sessions')}
             </button>
             <button
               type="button"
               className="chq-btn chq-btn-secondary"
+              disabled={busy}
               onClick={() => navigate('/submissions')}
             >
               Cancel
             </button>
           </div>
-
-          {confirmOpen && (
-            <ConfirmDialog
-              title="Delete these sessions?"
-              body="Everything they own is removed permanently. This can't be undone."
-              confirmLabel={`Delete ${countPhrase(deleteCount, 'session', 'sessions')}`}
-              destructive
-              pending={busy}
-              onConfirm={doDelete}
-              onCancel={() => setConfirmOpen(false)}
-            />
-          )}
         </>
       )}
     </div>

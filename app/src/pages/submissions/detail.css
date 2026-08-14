@@ -158,13 +158,21 @@
    prefix is attached to the title text's own span instead, so it travels
    with the text as a single flex item on the left; the action button
    remains the sole item on the right. */
+/* The trailing space in a `\2014 ` escape is consumed as the escape's own
+   terminator (not rendered) -- a CSS quirk that glued the em dash straight
+   to the title text ("01 —ABSTRACT"). The em dash lives in its own string
+   so its closing quote (not a swallowed space) terminates the escape,
+   with the surrounding gaps as separate literal-space strings. One shared
+   rule per selector shape, applied through .chq-detail-section-title /
+   .chq-detail-section-title-text -- every numbered section (all six) gets
+   the fix for free, never a per-section override. */
 .chq-detail-section-title:not(.chq-detail-section-title-row)::before {
-  content: counter(chq-detail-section, decimal-leading-zero) ' \2014 ';
+  content: counter(chq-detail-section, decimal-leading-zero) ' ' '\2014' ' ';
   color: var(--chq-muted);
 }
 
 .chq-detail-section-title-row .chq-detail-section-title-text::before {
-  content: counter(chq-detail-section, decimal-leading-zero) ' \2014 ';
+  content: counter(chq-detail-section, decimal-leading-zero) ' ' '\2014' ' ';
   color: var(--chq-muted);
 }
 
@@ -461,6 +469,17 @@
   font-weight: 700;
 }
 
+/* DEC-737 (wave 2 amendment): quiet, closed-by-default disclosure for the
+   per-criterion detail -- same register as the other in-page toggles
+   (chq-link-button), never a bordered/filled control competing with the
+   comment above it. */
+.chq-review-criteria-toggle {
+  display: inline-block;
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
 .chq-review-scores {
   display: flex;
   flex-wrap: wrap;
@@ -585,6 +604,19 @@
   font-size: 13px;
   color: var(--chq-muted);
   white-space: nowrap;
+}
+
+/* DEC-886 (wave 2 amendment): quiet delete entry point below the two-column
+   layout -- own row, muted register, never styled as a destructive/danger
+   button on this screen (the blast-radius page itself carries that weight). */
+.chq-detail-footer {
+  max-width: 1112px;
+  margin: 32px auto 0;
+}
+
+.chq-detail-delete-link {
+  font-size: 13px;
+  color: var(--chq-muted);
 }
 
 /* Phone frame (DEC-385): single 700px switch. 900px above stays the
