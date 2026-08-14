@@ -15,6 +15,7 @@ import { ParticipationMenu } from './ParticipationMenu';
 import { countOf } from '../../lib/plural';
 import {
   DEFAULT_GRID_FILTERS,
+  INVITE_STATUS_LABELS,
   type AssignmentResponseDetail,
   type AssignmentStatus,
   type EventForm,
@@ -65,14 +66,50 @@ function firstNameOf(fullName: string): string {
   return fullName.trim().split(/\s+/)[0] ?? fullName;
 }
 
+/** True when any of the four narrowing predicates the server applies
+ * (taskId/status/overdueOnly/inviteStatus) is set. `q` (free-text search)
+ * is deliberately excluded -- the caption names a FILTER, not a search
+ * term already visible in the search box itself. */
+function hasActiveNarrowing(filters: GridFilterState): boolean {
+  return !!(filters.taskId || filters.status || filters.overdueOnly || filters.inviteStatus);
+}
+
+/** Prose naming what's currently narrowing the roster -- read straight off
+ * the same filter state buildGridQuery sends the server, so the caption can
+ * never name a predicate the request didn't actually apply. */
+function narrowingDescription(filters: GridFilterState, tasks: OnboardingTask[]): string {
+  const parts: string[] = [];
+  if (filters.taskId) {
+    const task = tasks.find((t) => t.id === filters.taskId);
+    parts.push(task ? `task "${task.title}"` : 'a specific task');
+  }
+  if (filters.status) parts.push(`at least one ${filters.status} task`);
+  if (filters.overdueOnly) parts.push('overdue');
+  if (filters.inviteStatus) parts.push(`participation ${INVITE_STATUS_LABELS[filters.inviteStatus].toLowerCase()}`);
+  return parts.join(' and ');
+}
+
 // DEC-934: a roster row whose participation is 'invited'/'declined' is one
 // the product will never chase (task expansion only covers
-// ACTIVE_INVITE_STATUSES) -- it renders ONE muted strip instead of N blank
-// task cells, so the emptiness reads as a stated decision, not an accident.
+// ACTIVE_INVITE_STATUSES) -- it now renders ITS ACTUAL task cells (quiet,
+// non-actionable per TaskCell's `interactive` gate) plus ONE caption
+// naming why, beneath the identity cell, rather than a strip that hid the
+// cells entirely.
 const NOT_CHASING_STATUSES: readonly InviteStatus[] = ['invited', 'declined'];
 
+// DEC-934 amendment (wave 4): names the state in prose, one sentence per
+// status -- the old "invite invited" echo is gone. NOT_CHASING_STATUSES is
+// the only source of valid inputs (notChasingStatus below only ever returns
+// a value drawn from that set), so an unmatched status is a bug, not a
+// silent fallback.
 function notChasingMessage(status: InviteStatus): string {
-  return `Not chasing - invite ${status}. Set participation to Confirmed to assign this event's tasks.`;
+  if (status === 'invited') {
+    return "Invited - not confirmed yet. Confirm participation to assign this event's tasks.";
+  }
+  if (status === 'declined') {
+    return "Declined. Confirm participation to assign this event's tasks.";
+  }
+  throw new Error(`notChasingMessage: unexpected status ${status}`);
 }
 
 // DEC-934 under DEC-936: a row now carries EVERY participation the contact
@@ -565,8 +602,18 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
 
       <div className="chq-speakers-toolbar">
         {grid && <GridFilters tasks={grid.tasks} filters={filters} onChange={handleFiltersChange} />}
-        <span className="chq-speakers-toolbar-caption">Skips anyone reminded in the last hour</span>
+        <span className="chq-speakers-toolbar-caption">Skips anyone emailed</span>
       </div>
+
+      {/* DEC-934 amendment (wave 4): ONE caption naming the active
+          narrowing -- read straight off the payload's own total/counts
+          (never a second query) so it can never disagree with the rows
+          rendered below it. */}
+      {grid && hasActiveNarrowing(filters) && (
+        <div className="chq-speakers-narrowing-caption">
+          Showing {grid.total} of {counts?.speakers ?? 0} speakers - {narrowingDescription(filters, grid.tasks)}
+        </div>
+      )}
 
       {loading && <PageSkeleton variant="table" />}
 
@@ -628,7 +675,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                         {row.contact.hasAccount && (
                           <>
                             {' '}
-                            &middot; <span className="chq-pill chq-speakers-has-account">Has account</span>
+                            &middot; has account
                           </>
                         )}
                       </div>
@@ -636,7 +683,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                           "company · has account", the participation pills
                           with its Send-portal-invite sibling on one line, then
                           Remind alone on its own line beneath -- so the
-                          participation menus and the invite control/marker
+                          participation menus and the invite control
                           share a row wrapper instead of flowing inline with
                           Remind. */}
                       <div className="chq-speakers-row-participation">
@@ -670,9 +717,6 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                             Send portal invite
                           </button>
                         )}
-                        {!row.contact.hasAccount && alreadyInvited(row.contact) && (
-                          <span className="chq-speakers-invited-marker">REMINDED</span>
-                        )}
                       </div>
                       {/* DEC-829 amendment: a declined-only row offers no
                           per-row remind action (nothing will ever be sent)
@@ -689,26 +733,29 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                           Remind {firstNameOf(row.contact.name)}
                         </button>
                       )}
+                      {/* DEC-934 amendment (wave 4): the not-chasing sentence
+                          is the row's caption, beneath the identity cell --
+                          the task cells to its right still render (quiet,
+                          non-actionable), so a stray/stale assignment stays
+                          visible instead of being hidden by a strip. */}
+                      {notChased !== null && (
+                        <div className="chq-speakers-not-chasing">{notChasingMessage(notChased)}</div>
+                      )}
                     </td>
-                    {notChased !== null ? (
-                      <td colSpan={grid.tasks.length} className="chq-speakers-not-chasing">
-                        {notChasingMessage(notChased)}
+                    {grid.tasks.map((task) => (
+                      <td key={task.id}>
+                        <TaskCell
+                          task={task}
+                          cell={row.cells.find((c) => c.taskId === task.id)}
+                          contactName={row.contact.name}
+                          now={now}
+                          onToggle={toggleCell}
+                          onOpenResponse={openResponse}
+                          notChased={declinedOnly}
+                          interactive={notChased === null}
+                        />
                       </td>
-                    ) : (
-                      grid.tasks.map((task) => (
-                        <td key={task.id}>
-                          <TaskCell
-                            task={task}
-                            cell={row.cells.find((c) => c.taskId === task.id)}
-                            contactName={row.contact.name}
-                            now={now}
-                            onToggle={toggleCell}
-                            onOpenResponse={openResponse}
-                            notChased={declinedOnly}
-                          />
-                        </td>
-                      ))
-                    )}
+                    ))}
                   </tr>
                   );
                 })}
@@ -732,7 +779,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                     {row.contact.hasAccount && (
                       <>
                         {' '}
-                        &middot; <span className="chq-pill chq-speakers-has-account">Has account</span>
+                        &middot; has account
                       </>
                     )}
                   </span>
@@ -762,26 +809,28 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                       Remind {firstNameOf(row.contact.name)}
                     </button>
                   )}
+                  {/* DEC-934 amendment (wave 4): same identity-cell caption
+                      as the pinned table -- the cells below still render. */}
+                  {notChased !== null && (
+                    <div className="chq-speakers-not-chasing">{notChasingMessage(notChased)}</div>
+                  )}
                 </div>
                 <div className="chq-speakers-card-tasks">
-                  {notChased !== null ? (
-                    <div className="chq-speakers-not-chasing">{notChasingMessage(notChased)}</div>
-                  ) : (
-                    grid.tasks.map((task) => (
-                      <div key={task.id} className="chq-speakers-card-task">
-                        <span className="chq-speakers-card-task-label">{task.title}</span>
-                        <TaskCell
-                          task={task}
-                          cell={row.cells.find((c) => c.taskId === task.id)}
-                          contactName={row.contact.name}
-                          now={now}
-                          onToggle={toggleCell}
-                          onOpenResponse={openResponse}
-                          notChased={declinedOnly}
-                        />
-                      </div>
-                    ))
-                  )}
+                  {grid.tasks.map((task) => (
+                    <div key={task.id} className="chq-speakers-card-task">
+                      <span className="chq-speakers-card-task-label">{task.title}</span>
+                      <TaskCell
+                        task={task}
+                        cell={row.cells.find((c) => c.taskId === task.id)}
+                        contactName={row.contact.name}
+                        now={now}
+                        onToggle={toggleCell}
+                        onOpenResponse={openResponse}
+                        notChased={declinedOnly}
+                        interactive={notChased === null}
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
               );

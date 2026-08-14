@@ -90,13 +90,29 @@ interface TaskCellProps {
   // a complete cell is unaffected, because the completion history is real
   // regardless of whether the product will chase this row further.
   notChased?: boolean;
+  // DEC-934 amendment (wave 4): false for a row whose participation is
+  // invited/mixed-invited (OnboardingGrid's notChasingStatus) -- the cell
+  // still RENDERS (a stray assignment can exist even though the product
+  // will never chase it further) but carries no assign/complete/toggle
+  // affordance: a plain <span>, never a <button>, with no Response link
+  // either. Defaults true (every other caller keeps the live control).
+  interactive?: boolean;
 }
 
 /** Renders exactly one grid cell's contents -- the em-dash "no assignment"
  * state, or the status toggle + optional file link + optional Response
  * link. Callers supply their own wrapper (<td> for the pinned table, a
  * labelled <div> for the phone card list). */
-export function TaskCell({ task, cell, contactName, now, onToggle, onOpenResponse, notChased = false }: TaskCellProps) {
+export function TaskCell({
+  task,
+  cell,
+  contactName,
+  now,
+  onToggle,
+  onOpenResponse,
+  notChased = false,
+  interactive = true,
+}: TaskCellProps) {
   if (!cell) {
     return <span className="chq-speakers-cell-none">&mdash;</span>;
   }
@@ -106,23 +122,30 @@ export function TaskCell({ task, cell, contactName, now, onToggle, onOpenRespons
   const effectiveDueDate = effectiveAssignmentDueDate(task.dueDate, cell.assignedAt);
   const overdueTitleText = overdue && effectiveDueDate !== null ? overdueTitle(effectiveDueDate, now) : null;
   const cellTitleText = cellDueTitle(cell.status, overdueTitleText, effectiveDueDate, now);
-  const muted = notChased && cell.status !== 'complete';
+  const muted = (notChased && cell.status !== 'complete') || !interactive;
+  const label = cell.status === 'complete' ? 'Complete' : overdueTitleText ? OVERDUE_LABEL : 'Pending';
 
   return (
     <div className={muted ? 'chq-speakers-cell chq-speakers-cell-muted' : 'chq-speakers-cell'}>
-      <button
-        type="button"
-        className={cellClass}
-        onClick={() => onToggle(cell.assignmentId, cell.status)}
-        aria-label={
-          cellTitleText
-            ? `Toggle ${task.title} for ${contactName}, ${cellTitleText}`
-            : `Toggle ${task.title} for ${contactName}`
-        }
-        title={cellTitleText ?? undefined}
-      >
-        {cell.status === 'complete' ? 'Complete' : overdueTitleText ? OVERDUE_LABEL : 'Pending'}
-      </button>
+      {interactive ? (
+        <button
+          type="button"
+          className={cellClass}
+          onClick={() => onToggle(cell.assignmentId, cell.status)}
+          aria-label={
+            cellTitleText
+              ? `Toggle ${task.title} for ${contactName}, ${cellTitleText}`
+              : `Toggle ${task.title} for ${contactName}`
+          }
+          title={cellTitleText ?? undefined}
+        >
+          {label}
+        </button>
+      ) : (
+        <span className={cellClass} title={cellTitleText ?? undefined}>
+          {label}
+        </span>
+      )}
       {cell.fileId && cell.fileName && (
         <a
           href={`/files/${cell.fileId}`}
@@ -135,7 +158,7 @@ export function TaskCell({ task, cell, contactName, now, onToggle, onOpenRespons
           {cell.fileName}
         </a>
       )}
-      {task.kind === 'form' && cell.status === 'complete' && (
+      {interactive && task.kind === 'form' && cell.status === 'complete' && (
         <button
           type="button"
           className="chq-link-button chq-speakers-response-link"
