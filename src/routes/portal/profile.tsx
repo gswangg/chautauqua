@@ -17,6 +17,7 @@ void DEC_067; // DEC-067: /headshots/:fileId gate — see headshotServeRoutes be
 void DEC_084; // DEC-084: server-side PNG/JPEG dimension gate on headshot upload — see below.
 void DEC_894; // DEC-894: the dimension gate covers webp too — see below.
 import {
+  completeProfileTaskForContact,
   getContactProfile,
   getHeadshotServeScope,
   setContactHeadshot,
@@ -391,6 +392,18 @@ portalProfileRoutes.post("/profile", csrfForm, async (c) => {
     bio: bio || null,
     socialLinks,
   });
+
+  // DEC-009 amendment (wave 59): the "Finalize bio + headshot" onboarding
+  // task closes only once this save leaves BOTH a non-empty bio AND a
+  // headshot in place — a headshot uploaded just now (uploadedHeadshot) or
+  // one already on file from a prior save (storedProfile.headshotUrl,
+  // unchanged by this request when no new file was chosen). completeProfileTaskForContact
+  // only ever touches still-pending rows, so this is safe to call on every
+  // save, not just the one that newly satisfies the condition.
+  const hasHeadshotAfterSave = uploadedHeadshot || storedProfile.headshotUrl !== null;
+  if (bio && hasHeadshotAfterSave) {
+    await completeProfileTaskForContact(c.var.db, contactId, auth.orgId, auth.userId);
+  }
 
   // Redirect (PRG) rather than re-rendering directly: a fresh GET picks up
   // the newly-saved fields and headshot, and ?saved=1 (plus ?headshot=1

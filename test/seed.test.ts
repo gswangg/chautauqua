@@ -202,7 +202,7 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
     );
   });
 
-  it("DEC-591: assigns the demo speaker's contact at least 2 task_assignment rows, including a 'form'-kind and a 'file_request'-kind task, with exactly 3 of the 5 default task due dates already past and all before the event start", () => {
+  it("DEC-591: assigns the demo speaker's contact at least 2 task_assignment rows, including a 'form'-kind and a 'general'-kind task, with exactly 3 of the 5 default task due dates already past and all before the event start", () => {
     // DEC-739: task_assignment now carries response_json/file_id/
     // last_reminded_at columns (previously always NULL/unwritten); those
     // three columns can hold arbitrary quoted JSON, so they're consumed by
@@ -226,7 +226,11 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
 
     const kindsAssigned = new Set([...taskIds].map((id) => kindByTaskId.get(id!)));
     expect(kindsAssigned.has("form")).toBe(true);
-    expect(kindsAssigned.has("file_request")).toBe(true);
+    // DEC-009 amendment (wave 59): "Finalize bio + headshot" is now
+    // kind='general' (closed via the portal profile save, never a
+    // file_request upload) — DEFAULT_ONBOARDING_TASKS no longer has a
+    // file_request-kind task at all.
+    expect(kindsAssigned.has("general")).toBe(true);
 
     for (const id of taskIds) {
       const due = dueDateByTaskId.get(id!)!;
@@ -300,8 +304,11 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
   // Task w11-e (DEC-854): pins the Content worklist's file-coverage floor
   // rather than a magic count — the task's own MEASURE FIRST step found
   // the floor (>=2/3 of accepted submissions carrying >=1 file row) already
-  // met (7/9 via the onboarding file_request uploads + the explicit
-  // deliverable chain), so this is a regression guard, not new seed data.
+  // met (originally via the onboarding file_request uploads + the explicit
+  // deliverable chain; DEC-009 amendment, wave 59, replaced the file_request
+  // source with an equivalent direct per-submission mint — see scripts/
+  // seed.ts's contactIdx%3!==0 comment), so this is a regression guard, not
+  // new seed data.
   // ---------------------------------------------------------------------
   it("W11-E: at least two thirds of accepted submissions carry >=1 file row, and all three content statuses are represented among them", () => {
     const submissionRows = [
@@ -603,7 +610,7 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
     }
   });
 
-  it("DEC-739: every complete file_request task_assignment has a non-null file_id", () => {
+  it("DEC-739: every complete file_request task_assignment has a non-null file_id (DEC-009 amendment, wave 59: DEFAULT_ONBOARDING_TASKS carries no file_request task any more, so this set is now empty by construction -- the invariant itself stays enforced for any future file_request task)", () => {
     const taskRows = parseInserts(sql, "task");
     const kindByTaskId = new Map(taskRows.map((r) => [r.id!, r.kind!]));
 
@@ -611,7 +618,7 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
     const completeFileRequestAssignments = taskAssignmentRows.filter(
       (r) => r.status === "complete" && kindByTaskId.get(r.task_id!) === "file_request",
     );
-    expect(completeFileRequestAssignments.length).toBeGreaterThan(0);
+    expect(completeFileRequestAssignments.length).toBe(0);
 
     const fileIds = new Set(parseInserts(sql, "file").map((f) => f.id!));
     for (const row of completeFileRequestAssignments) {
