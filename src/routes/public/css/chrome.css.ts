@@ -152,7 +152,19 @@ export const CHROME_CSS = `
   }
   .chq-pub-header-logo { height: 40px; }
 
-  main.chq-pub-main { padding: 26px 34px 34px; }
+  main.chq-pub-main { padding: 26px var(--chq-pub-main-pad-x) 34px; }
+  /* DEC-683 amendment (wave 1, task w1-a): main.chq-pub-main is both the
+     padded ancestor AND (via .chq-measure-wide) the element the 1180
+     max-width clamps -- box-sizing:border-box would otherwise eat
+     --chq-pub-main-pad-x's left+right padding out of that 1180, landing
+     the content column at 1112 instead of the PUBLIC PAIR's 820+60+300.
+     This overrides theme.ts's plain .chq-measure-wide rule (same
+     specificity tier, later in cascade -- PUBLIC_CSS is inlined after
+     THEME_CSS, see shell.tsx's BaseStyles) by adding the padding back via
+     the SAME token that declares it, never a vw/cqw guess. */
+  main.chq-pub-main.chq-measure-wide {
+    max-width: calc(var(--chq-measure-wide) + (var(--chq-pub-main-pad-x) * 2));
+  }
 
 
 `;

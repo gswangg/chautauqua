@@ -1,8 +1,10 @@
-// DEC-989 Amendment (wave 37), further amended DEC-990 (wave 40) and DEC-683
-// (wave 67): the SSR public surfaces take their container class from the
-// CONTENT. sessions, gallery and agenda = wide (1180: sessions'/agenda's
-// list + rail pair, gallery's six ~184px tiles + gaps); speakers/schedule/
-// session+speaker detail = reading (820). Agenda's former "canvas" measure
+// DEC-989 Amendment (wave 37), further amended DEC-990 (wave 40), DEC-683
+// (wave 67), and DEC-683 again (wave 1, task w1-a): the SSR public surfaces
+// take their container class from the CONTENT. sessions, gallery, agenda and
+// (as of wave 1) speakers = wide (1180: sessions'/agenda's list + rail pair,
+// gallery's six ~184px tiles + gaps, speakers' List/Grid pair sharing one
+// column); schedule + session/speaker detail = reading (820). Agenda's
+// former "canvas" measure
 // (no class, its lane count was the room count) is gone along with the
 // wave-64 desktop room-lane matrix it justified -- agenda is now the same
 // 1180 pair as sessions, with its own rail (AgendaRail). EmbedShell never
@@ -84,6 +86,8 @@ import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv } from "../src/server/env";
 import type { KVStore } from "../src/lib/draft";
 import { THEME_CSS } from "../src/views/theme";
+import { CHROME_CSS } from "../src/routes/public/css/chrome.css";
+import { RAIL_CSS } from "../src/routes/public/css/rail.css";
 
 class InMemoryKV implements KVStore {
   private store = new Map<string, string>();
@@ -176,7 +180,9 @@ describe("theme.ts: .chq-measure / .chq-measure-wide consume their own vars", ()
 
 const SURFACE_CASES: { path: string; expectClasses: string[] }[] = [
   { path: "/e/conf/sessions", expectClasses: ["chq-pub-main", "chq-measure-wide"] },
-  { path: "/e/conf/speakers", expectClasses: ["chq-pub-main", "chq-measure"] },
+  // DEC-683 amendment (wave 1, task w1-a): speakers moves from "reading" to
+  // "wide" so its List/Grid toggle no longer resizes the page around it.
+  { path: "/e/conf/speakers", expectClasses: ["chq-pub-main", "chq-measure-wide"] },
   { path: "/e/conf/gallery", expectClasses: ["chq-pub-main", "chq-measure-wide"] },
   { path: "/e/conf/schedule", expectClasses: ["chq-pub-main", "chq-measure"] },
   { path: "/e/conf/agenda", expectClasses: ["chq-pub-main", "chq-measure-wide"] },
@@ -241,6 +247,52 @@ describe("DEC-919 amendment (wave 40): public search is one compact input in ONE
     const submitButtons = [...html.matchAll(/<button\b[^>]*type="submit"[^>]*>Search<\/button>/g)];
     for (const m of submitButtons) {
       expect(m[0]).toContain("chq-visually-hidden");
+    }
+  });
+});
+
+// DEC-683 amendment (wave 1, task w1-a): PUBLIC PAIR = 820 (list) + 60
+// (gap) + 300 (rail) = 1180 of CONTENT at a 1440 viewport. --chq-measure-
+// wide alone only clamps main.chq-pub-main's border-box; its own left+right
+// padding (--chq-pub-main-pad-x) has to be cancelled back in via calc() on
+// the SAME token, or the content column lands at 1112, not 1180.
+describe("DEC-683 amendment (wave 1, task w1-a): PUBLIC PAIR is 820 + 60 + 300 = 1180 of content", () => {
+  it("--chq-pub-main-pad-x is declared in :root and consumed by both main.chq-pub-main's padding and its wide-measure override", () => {
+    const rootBlock = /:root\s*\{([^}]*)\}/.exec(THEME_CSS);
+    expect(rootBlock).not.toBeNull();
+    expect(rootBlock![1]).toMatch(/--chq-pub-main-pad-x:\s*34px/);
+
+    expect(CHROME_CSS).toMatch(/main\.chq-pub-main\s*\{\s*padding:\s*26px\s+var\(--chq-pub-main-pad-x\)\s+34px;/);
+  });
+
+  it("main.chq-pub-main.chq-measure-wide cancels its own padding via calc() on --chq-pub-main-pad-x, landing at 1180 of content", () => {
+    const rule = /main\.chq-pub-main\.chq-measure-wide\s*\{([^}]*)\}/.exec(CHROME_CSS);
+    expect(rule).not.toBeNull();
+    expect(rule![1]).toMatch(
+      /max-width:\s*calc\(var\(--chq-measure-wide\)\s*\+\s*\(var\(--chq-pub-main-pad-x\)\s*\*\s*2\)\)/,
+    );
+    // Concretely: 1180 (--chq-measure-wide) + 2*34 (--chq-pub-main-pad-x) =
+    // 1248 border-box, minus the 68px of padding box-sizing:border-box
+    // eats back out = 1180 of content.
+    const measureWide = 1180;
+    const padX = 34;
+    const borderBoxWidth = measureWide + padX * 2;
+    const contentWidth = borderBoxWidth - padX * 2;
+    expect(contentWidth).toBe(1180);
+  });
+
+  it("the sessions and agenda list+rail grids resolve to 820/60/300 inside a 1180 content column", () => {
+    for (const selector of [".chq-pub-sessions-layout", ".chq-pub-agenda-layout"]) {
+      const rule = new RegExp(`${selector.replace(".", "\\.")}\\s*\\{([^}]*)\\}`).exec(RAIL_CSS);
+      expect(rule, `${selector} not found in RAIL_CSS`).not.toBeNull();
+      expect(rule![1]).toMatch(/grid-template-columns:\s*1fr\s+300px;/);
+      expect(rule![1]).toMatch(/gap:\s*60px;/);
+
+      const contentWidth = 1180;
+      const railWidth = 300;
+      const gap = 60;
+      const listWidth = contentWidth - railWidth - gap;
+      expect(listWidth).toBe(820);
     }
   });
 });

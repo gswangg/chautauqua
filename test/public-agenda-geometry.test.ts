@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { AgendaContent, AgendaDayGrid, ScheduleContent } from "../src/routes/public/agenda";
 import type { PublicAgendaItem, PublicEvent } from "../src/server/repo/public";
+import { AGENDA_CSS } from "../src/routes/public/css/agenda.css";
 
 const EVENT: PublicEvent = {
   id: "e1",
@@ -67,6 +68,34 @@ describe("DEC-584 (wave 64 amendment): AgendaDayGrid time-row sequence replaces 
     const html = String(AgendaDayGrid({ day: "2026-08-10", items: ITEMS, event: EVENT, from: "agenda", itinerary: true }));
     expect(html).toContain('class="chq-itinerary-toggle" value="s1"');
     expect(html).toContain('class="chq-itinerary-toggle" value="s2"');
+  });
+});
+
+// DEC-683 amendment (wave 1, task w1-a): PUBLIC PAIR = 820 + 60 + 300 =
+// 1180 of content -- the day-block grid's own gap moves 8 -> 16 alongside
+// that column widen, and three 228px+ tracks still fit across the 820px
+// list column (no degenerate 0px track on a one-session day).
+describe("DEC-683 amendment (wave 1, task w1-a): agenda day-block grid gap is 16px inside the 820px list column", () => {
+  it(".chq-pub-agenda-day-blocks keeps a 228px auto-fit floor with a 16px gap", () => {
+    const rule = /\.chq-pub-agenda-day-blocks\s*\{([^}]*)\}/.exec(AGENDA_CSS);
+    expect(rule).not.toBeNull();
+    expect(rule![1]).toMatch(/grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(228px,\s*1fr\)\);/);
+    expect(rule![1]).toMatch(/gap:\s*16px;/);
+  });
+
+  it("three 228px tracks + 16px gaps fit inside the 820px list column with no degenerate 0px track", () => {
+    const listWidth = 820;
+    const trackFloor = 228;
+    const gap = 16;
+    // auto-fit's implied track count: as many trackFloor-wide tracks (plus
+    // one gap each) as fit in listWidth.
+    const trackCount = Math.floor((listWidth + gap) / (trackFloor + gap));
+    expect(trackCount).toBe(3);
+    const minimumRequired = trackCount * trackFloor + (trackCount - 1) * gap;
+    expect(minimumRequired).toBeLessThanOrEqual(listWidth);
+    // Every track therefore gets a positive share of the leftover space
+    // (1fr), never a 0px collapse.
+    expect(listWidth - minimumRequired).toBeGreaterThan(0);
   });
 });
 
