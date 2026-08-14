@@ -1,0 +1,90 @@
+// B9 (DEC-037 amendment, wave 27): a pure source-text scan. Before this
+// wave every outbound HTML body was `html: textToHtml(...)` -- a bare
+// paragraph run with no wordmark, no measure, no reason line. This scan
+// (1) proves no send site still produces its `html:` property from a bare
+// textToHtml call, and (2) enumerates the seven known mailer.send call
+// sites so a future send path added elsewhere cannot silently skip the
+// shell -- a new site with an `html:` property and no matching entry here
+// fails the "every mailer.send site is accounted for" assertion below.
+
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+
+const REPO_ROOT = join(__dirname, "..");
+const SRC_DIR = join(REPO_ROOT, "src");
+
+function glob(dir: string, suffixes: string[]): string[] {
+  if (!existsSync(dir)) return [];
+  const out: string[] = [];
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    const st = statSync(full);
+    if (st.isDirectory()) {
+      out.push(...glob(full, suffixes));
+    } else if (suffixes.some((suffix) => entry.endsWith(suffix))) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+// The seven send sites this wave swept (DEC-037 amendment), and how many
+// `renderEmailHtml(` call expressions each is expected to carry.
+const SWEPT_SITES: { file: string; expectedRenderEmailHtmlCalls: number }[] = [
+  { file: join(SRC_DIR, "routes", "comms.ts"), expectedRenderEmailHtmlCalls: 2 },
+  { file: join(SRC_DIR, "routes", "api", "users.ts"), expectedRenderEmailHtmlCalls: 1 },
+  { file: join(SRC_DIR, "routes", "api", "contacts", "bulk-email.ts"), expectedRenderEmailHtmlCalls: 1 },
+  { file: join(SRC_DIR, "routes", "review", "plans-progress.ts"), expectedRenderEmailHtmlCalls: 1 },
+  { file: join(SRC_DIR, "routes", "content-notes.ts"), expectedRenderEmailHtmlCalls: 1 },
+  { file: join(SRC_DIR, "server", "repo", "tasks", "reminders.ts"), expectedRenderEmailHtmlCalls: 1 },
+];
+
+describe("every outbound HTML body renders through the B9 shell (DEC-037 amendment)", () => {
+  it("no `html:` property anywhere in src is produced by a bare textToHtml call", () => {
+    const files = glob(SRC_DIR, [".ts", ".tsx"]);
+    const hits: string[] = [];
+    for (const file of files) {
+      const text = readFileSync(file, "utf8");
+      if (/html:\s*textToHtml\(/.test(text)) hits.push(file);
+    }
+    expect(hits).toEqual([]);
+  });
+
+  it("textToHtml is called from exactly its two owning files (render.ts's definition, shell.ts's one call)", () => {
+    const files = glob(SRC_DIR, [".ts", ".tsx"]);
+    const hits: string[] = [];
+    for (const file of files) {
+      const text = readFileSync(file, "utf8");
+      if (text.includes("textToHtml(")) hits.push(file);
+    }
+    expect(hits.sort()).toEqual([join(SRC_DIR, "mail", "render.ts"), join(SRC_DIR, "mail", "shell.ts")].sort());
+  });
+
+  for (const site of SWEPT_SITES) {
+    it(`${site.file.replace(SRC_DIR + "/", "src/")} sends its html: via renderEmailHtml`, () => {
+      expect(existsSync(site.file)).toBe(true);
+      const text = readFileSync(site.file, "utf8");
+      expect(text).toContain('import { renderEmailHtml } from');
+      const calls = text.match(/html:\s*renderEmailHtml\(/g) ?? [];
+      expect(calls).toHaveLength(site.expectedRenderEmailHtmlCalls);
+    });
+  }
+
+  it("every file that calls mailer.send with an html: property is one of the seven swept sites, or its html is not textToHtml-derived", () => {
+    const files = glob(SRC_DIR, [".ts", ".tsx"]);
+    const sweptPaths = new Set(SWEPT_SITES.map((s) => s.file));
+    for (const file of files) {
+      const text = readFileSync(file, "utf8");
+      if (!text.includes("mailer.send(")) continue;
+      if (!/html\s*[:,]/.test(text)) continue;
+      if (sweptPaths.has(file)) {
+        expect(text).not.toMatch(/html:\s*textToHtml\(/);
+        continue;
+      }
+      // Any send site outside the swept list must not derive its html from
+      // a bare textToHtml call -- if it does, it belongs in SWEPT_SITES.
+      expect(text).not.toMatch(/html:\s*textToHtml\(/);
+    }
+  });
+});

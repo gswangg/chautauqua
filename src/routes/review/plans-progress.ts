@@ -11,7 +11,8 @@ import { ApiError, readOptionalJsonBody } from "../../server/http";
 import { makeMailer } from "../../server/context";
 import { newId } from "../../domain/ids";
 import { countOf } from "../../domain/count-copy";
-import { textToHtml } from "../../mail/render";
+import { renderEmailHtml } from "../../mail/shell";
+import { getEventForOrg } from "../../server/repo/events";
 import { resolveBaseUrl } from "../../server/origin";
 import { formatCalendarDate } from "../../lib/event-time";
 import {
@@ -192,6 +193,11 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/results", requireOrganizer, asy
 
 reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csrfJson, async (c) => {
   const plan = await requireOwnedPlan(c, c.req.param("id"));
+  const auth = c.var.auth;
+  if (!auth) throw new ApiError("unauthorized", "Login required");
+  // B9: the reminder shell names the event in its wordmark/footer -- one
+  // extra owned lookup, not threaded through PlanRecord (DEC-037 amendment).
+  const remindEvent = await getEventForOrg(c.var.db, plan.eventId, auth.orgId);
   // DEC-707: optional scope body -- 'not_started' is the landing page's
   // tertiary link, 'incomplete' (default) is the broader batch nudge. Body
   // is optional (an empty/absent JSON body is valid: default scope).
@@ -289,7 +295,10 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
         to: { email: laggard.email, name },
         subject: `Reminder: ${plan.name} review queue`,
         text,
-        html: textToHtml(text),
+        html: renderEmailHtml(text, {
+          eventName: remindEvent?.name ?? null,
+          reason: `you're a reviewer with outstanding evaluations in "${plan.name}"`,
+        }),
         eventId: plan.eventId,
         contactId: null,
         batchId,

@@ -62,6 +62,19 @@ const sendMock = vi.fn(async (input: { to: { email: string } }) => {
   if (input.to.email === "bad@example.test") throw new Error("mailer exploded");
 });
 
+// B9 (DEC-037 amendment, wave 27): the remind route now looks up the owning
+// event's name for the shell's wordmark/footer via getEventForOrg -- mocked
+// here since this test's db is a bare `{}` fake (no drizzle behind it).
+vi.mock("../src/server/repo/events", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/events")>("../src/server/repo/events");
+  return {
+    ...actual,
+    getEventForOrg: vi.fn(async (_db: unknown, eventId: string, orgId: string) =>
+      eventId === planRecord.eventId && orgId === ORG_A ? { id: eventId, name: "Plan Event" } : null,
+    ),
+  };
+});
+
 vi.mock("../src/server/context", async () => {
   const actual = await vi.importActual<typeof import("../src/server/context")>("../src/server/context");
   return {

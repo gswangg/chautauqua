@@ -13,7 +13,8 @@ import { ApiError, readOptionalJsonBody } from "../server/http";
 import { MAX_LONG_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { makeMailer } from "../server/context";
 import { resolveBaseUrl } from "../server/origin";
-import { textToHtml } from "../mail/render";
+import { renderEmailHtml } from "../mail/shell";
+import { getEventForOrg } from "../server/repo/events";
 import { newId } from "../domain/ids";
 import type { KVStore } from "../auth/claim";
 import { resolvePortalLinks } from "../server/repo/portal-link";
@@ -106,6 +107,9 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, csrfJs
 
   const kv = c.env.KV as unknown as KVStore;
   const origin = resolveBaseUrl(c);
+  // B9: the note-reply shell names the event in its wordmark/footer
+  // (DEC-037 amendment) -- scope already validated auth.orgId owns it above.
+  const noteEvent = await getEventForOrg(c.var.db, scope.eventId, auth.orgId);
   const accountMap = await findAccountUserIds(
     c.var.db,
     composeSubmission!.participants.map((p) => ({ contactId: p.contactId, email: p.email })),
@@ -145,7 +149,10 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, csrfJs
         to: { email: participant.email, name },
         subject,
         text,
-        html: textToHtml(text),
+        html: renderEmailHtml(text, {
+          eventName: noteEvent?.name ?? null,
+          reason: `an organizer left a note on your submission${requestChanges ? " requesting changes" : ""}`,
+        }),
         eventId: scope.eventId,
         contactId: participant.contactId,
         batchId,

@@ -9,7 +9,8 @@ import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
 import { newId } from "../../../domain/ids";
 import type { Mailer } from "../../../mail/types";
-import { renderTemplate, textToHtml } from "../../../mail/render";
+import { renderTemplate } from "../../../mail/render";
+import { renderEmailHtml } from "../../../mail/shell";
 import type { ReminderAssignment } from "../../../domain/reminders";
 import {
   capReminderGroups,
@@ -425,7 +426,10 @@ async function sendReminderEmails(
         to: { email: first.email, name: `${first.firstName} ${first.lastName}`.trim() },
         subject,
         text: reminderText,
-        html: textToHtml(reminderText),
+        html: renderEmailHtml(reminderText, {
+          eventName,
+          reason: `you have outstanding tasks for ${eventName}`,
+        }),
         eventId,
         contactId: group.contactId,
         batchId,

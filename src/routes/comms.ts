@@ -14,7 +14,8 @@ import { getPlanById } from "../server/repo/review/plans";
 import type { KVStore } from "../auth/claim";
 import { redactClaimUrls } from "../auth/claim";
 import { applyMintedPortalLinks, resolvePortalLinks } from "../server/repo/portal-link";
-import { textToHtml, blockFieldsInTemplate, templateUsesMergeField } from "../mail/render";
+import { blockFieldsInTemplate, templateUsesMergeField } from "../mail/render";
+import { renderEmailHtml } from "../mail/shell";
 import { buildIcsEvent } from "../mail/ics";
 import { resolveIcsOrganizerEmail } from "../server/context";
 import { zonedMinutesToUtc } from "../lib/timezone";
@@ -631,7 +632,10 @@ commsRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJ
         to: { email: rendered.email, name: rendered.name },
         subject: rendered.subject,
         text: rendered.text,
-        html: textToHtml(rendered.text),
+        html: renderEmailHtml(rendered.text, {
+          eventName: event.name,
+          reason: `you're a participant in a submission at ${event.name}`,
+        }),
         ics,
         templateId,
         eventId,
@@ -731,7 +735,10 @@ commsRoutes.post("/api/v1/events/:eventId/portal-invites", requireOrganizer, csr
       to: { email: r.email, name: r.name },
       subject: r.subject,
       text: r.text,
-      html: textToHtml(r.text),
+      html: renderEmailHtml(r.text, {
+        eventName: event.name,
+        reason: `you're being invited to the speaker portal for ${event.name}`,
+      }),
       eventId,
       contactId: r.contactId,
       batchId,
