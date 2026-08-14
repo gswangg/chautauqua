@@ -12,7 +12,7 @@
 // of ids named in the query string, rather than a new by-ids endpoint.
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { apiList, apiGet, apiPost, ApiError } from '../../lib/api';
+import { apiGet, apiPost, ApiError } from '../../lib/api';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -23,6 +23,12 @@ import { normalizedContactName } from '../../../../src/domain/contacts';
 // DEC-992: "added <date>" renders through the app's ONE date grammar --
 // never a hand-rolled Intl call.
 import { formatDate } from '../../lib/dates';
+// DEC-748: the merge screen's own pair is resolved server-side by
+// ?ids= against the SAME stably-ordered array GET /contacts/duplicates
+// pages, never re-derived by scanning a (possibly-truncated) page client
+// side (w39-c).
+import { DEC_748 } from '../../../../src/decisions';
+void DEC_748;
 import './contacts-panels.css';
 import './contacts.css';
 
@@ -79,13 +85,14 @@ export function MergePage() {
     if (ids.length < 2) return;
     setLoading(true);
     setError(null);
-    const idSet = new Set(ids);
-    apiList<DuplicateGroup>('/contacts/duplicates')
+    // DEC-748 (w39-c): the pair is resolved server-side by ?ids= -- the
+    // server matches against the SAME stably-ordered array the unfiltered
+    // list pages, so a pair past the default page still comes back with a
+    // true position/total instead of the page-length this used to report.
+    const query = `?ids=${ids.map(encodeURIComponent).join(',')}`;
+    apiGet<{ items: DuplicateGroup[]; total: number; position: number | null }>(`/contacts/duplicates${query}`)
       .then((res) => {
-        const matchIndex = res.items.findIndex(
-          (g) => g.contactIds.length === idSet.size && g.contactIds.every((id) => idSet.has(id)),
-        );
-        const match = matchIndex === -1 ? undefined : res.items[matchIndex];
+        const match = res.items[0];
         if (!match) {
           setError('These records are no longer duplicates — they may already be merged.');
           setGroup(null);
@@ -93,7 +100,7 @@ export function MergePage() {
           return;
         }
         setGroup(match);
-        setPairPosition({ index: matchIndex + 1, total: res.items.length });
+        setPairPosition(res.position !== null ? { index: res.position, total: res.total } : null);
         setKeepId(keepParam && match.contactIds.includes(keepParam) ? keepParam : (match.contactIds[0] ?? ''));
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load duplicate records'))

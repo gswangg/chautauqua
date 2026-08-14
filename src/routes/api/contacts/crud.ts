@@ -7,7 +7,7 @@ import type { Hono } from "hono";
 import type { AppEnv } from "../../../server/env";
 import * as schema from "../../../db/schema";
 import { csrfJson } from "../../../server/middleware";
-import { ApiError } from "../../../server/http";
+import { ApiError, parseBoundedIdArray } from "../../../server/http";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../../forms/validate"; // DEC-417
 import { isValidEmail, normalizeEmail } from "../../../domain/email"; // DEC-454
 import * as repo from "../../../server/repo/contacts";
@@ -44,6 +44,7 @@ import {
   checkLen,
   serializeContact,
   requireOwnedContact,
+  requireOwnedContacts,
 } from "./shared";
 import { parseRulesQueryParam } from "./segments";
 
@@ -187,6 +188,37 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
 
   contactsRoutes.get("/contacts/duplicates", async (c) => {
     const orgId = currentOrgId(c);
+    const rawIds = c.req.query("ids");
+    // w39-c: a merge screen resolving its own pair (?ids=<a>,<b>) needs that
+    // EXACT pair back regardless of where it sorts in the unfiltered,
+    // paginated list -- a false "no longer duplicates" + a page-length
+    // masquerading as a total (see MergePage.tsx) otherwise. This does not
+    // add a second duplicate-detection rule: it still reads off
+    // findDuplicateGroupsForOrg's one stably-ordered array, just reporting a
+    // single group's position in it instead of slicing a page.
+    if (rawIds !== undefined) {
+      const ids = parseBoundedIdArray(
+        rawIds.split(",").map((id) => id.trim()).filter((id) => id.length > 0),
+        "ids",
+      );
+      // Org-scoped through the existing owned-contact check -- a foreign or
+      // unknown id 404s exactly as the sibling contact routes do, no
+      // existence leak via a duplicates-shaped response.
+      await requireOwnedContacts(c.var.db, ids, orgId);
+      const groups = await repo.findDuplicateGroupsForOrg(c.var.db, orgId);
+      const idSet = new Set(ids);
+      const matchIndex = groups.findIndex(
+        (g) => g.contactIds.length === idSet.size && g.contactIds.every((id) => idSet.has(id)),
+      );
+      const perPage = listPerPage(c.req.query("perPage"));
+      return c.json({
+        items: matchIndex === -1 ? [] : [groups[matchIndex]],
+        total: groups.length,
+        page: 1,
+        perPage,
+        position: matchIndex === -1 ? null : matchIndex + 1,
+      });
+    }
     const groups = await repo.findDuplicateGroupsForOrg(c.var.db, orgId);
     // DEC-466/DEC-461(e): blessed JS-slice -- groups is assembled from an
     // already-materialized array (findDuplicateGroupsForOrg's own order,
