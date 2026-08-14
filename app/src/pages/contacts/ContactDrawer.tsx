@@ -81,6 +81,10 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
+  // DEC-616 amendment (wave 4): the record shows the facts it HAS — empty
+  // rows collapse behind this ONE disclosure inside the record section
+  // until the reader asks to see them all.
+  const [showAllFields, setShowAllFields] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
   const [showAddToEvent, setShowAddToEvent] = useState(false);
 
@@ -120,6 +124,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
   useEffect(() => {
     setLoading(true);
     setError(null);
+    setShowAllFields(false);
     apiGet<ContactDetail>(`/contacts/${contactId}`)
       .then((c) => {
         setContact(c);
@@ -273,6 +278,15 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
     labels: [],
   };
 
+  // A "record entry" pairs a rendered row with whether it currently HAS a
+  // value — the disclosure below uses hasValue (not the JSX) to decide what
+  // renders inline vs. behind "Show all fields" (DEC-616 amendment, wave 4).
+  interface RecordEntry {
+    key: string;
+    hasValue: boolean;
+    node: ReactNode;
+  }
+
   function textField(
     key: string,
     label: string,
@@ -330,6 +344,162 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
       )
     ) : undefined;
 
+  // DEC-616 amendment (wave 4): the fixed identity/contact/social fields
+  // plus each custom-field row, in display order — hasValue decides what
+  // renders inline vs. behind the "Show all fields" disclosure. A field
+  // currently being edited always renders, even if its value is blank
+  // (a freshly added custom-field row, or a value the reader just cleared).
+  const recordEntries: RecordEntry[] = contact
+    ? [
+        { key: 'firstName', hasValue: firstName.trim() !== '', node: textField('firstName', 'First name', firstName, setFirstName, { placeholder: 'Priya' }) },
+        { key: 'lastName', hasValue: lastName.trim() !== '', node: textField('lastName', 'Last name', lastName, setLastName, { placeholder: 'Raman' }) },
+        {
+          key: 'email',
+          hasValue: email.trim() !== '',
+          node: textField('email', 'Email', email, setEmail, { type: 'email', placeholder: 'priya.raman@example.com' }),
+        },
+        { key: 'company', hasValue: company.trim() !== '', node: textField('company', 'Company', company, setCompany, { placeholder: 'Latticework Systems' }) },
+        { key: 'title', hasValue: title.trim() !== '', node: textField('title', 'Title', title, setTitle, { placeholder: 'Principal Engineer' }) },
+        {
+          key: 'labels',
+          // DEC-738/DEC-726: read-only view of the same Labels the directory
+          // table's chips show (contactLabels over this contact's
+          // customFields, travel key excluded) — the editable custom-field
+          // rows below are unaffected.
+          hasValue: contactLabels(contact.customFields ?? {}).length > 0,
+          node: (
+            <div className="chq-contacts-record-row" key="labels">
+              <span className="chq-contacts-record-label">Labels</span>
+              <div className="chq-contacts-record-value chq-contacts-record-readonly">
+                {contactLabels(contact.customFields ?? {}).length > 0 ? (
+                  <ul className="chq-contacts-label-chips">
+                    {contactLabels(contact.customFields ?? {}).map((label) => (
+                      <li key={label} className="chq-contacts-label-chip">
+                        {label}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <span className="chq-contacts-record-empty">{EM_DASH}</span>
+                )}
+              </div>
+            </div>
+          ),
+        },
+        { key: 'phone', hasValue: phone.trim() !== '', node: textField('phone', 'Phone', phone, setPhone, { placeholder: '+1 555 010 1234' }) },
+        {
+          key: 'notes',
+          hasValue: notes.trim() !== '',
+          node: textField('notes', 'Notes', notes, setNotes, { multiline: true, placeholder: 'Internal notes about this contact' }),
+        },
+        { key: 'bio', hasValue: bio.trim() !== '', node: textField('bio', 'Bio', bio, setBio, { multiline: true, placeholder: 'A short speaker bio' }) },
+        {
+          // DEC-616 amendment (wave 4): the reserved travel custom field is
+          // labelled DIETARY — the word the frame and the speaker-facing
+          // form use — even though its storage key stays `travel_logistics`.
+          key: 'travel',
+          hasValue: travel.trim() !== '',
+          node: textField('travel', 'Dietary', travel, setTravel, {
+            multiline: true,
+            placeholder: 'Flight details, hotel, dietary needs...',
+          }),
+        },
+        {
+          key: 'headshot',
+          hasValue: !!headshotUrl,
+          node: (
+            <div className="chq-contacts-record-row" key="headshot">
+              <span className="chq-contacts-record-label">Headshot</span>
+              <div className="chq-contacts-record-editor chq-contacts-headshot-field">
+                {headshotUrl ? (
+                  <img
+                    className="chq-contacts-headshot"
+                    src={headshotUrl}
+                    alt={`${firstName} ${lastName} headshot`}
+                    width={64}
+                    height={64}
+                  />
+                ) : (
+                  <span className="chq-contacts-record-empty">{EM_DASH}</span>
+                )}
+                {headshotFile && (
+                  <p className="chq-contacts-headshot-meta">
+                    {headshotFile.filename} — uploaded {formatDateTime(headshotFile.uploadedAt)}
+                  </p>
+                )}
+                <label className="chq-contacts-headshot-upload" htmlFor="chq-contact-headshot-upload">
+                  Upload headshot
+                  <input
+                    id="chq-contact-headshot-upload"
+                    className="chq-file"
+                    type="file"
+                    accept=".png,.jpg,.jpeg,.webp"
+                    ref={headshotInputRef}
+                    onChange={uploadHeadshot}
+                    disabled={headshotUploading}
+                    placeholder="headshot.jpg"
+                  />
+                </label>
+                {headshotUploading && <p>Uploading...</p>}
+                {headshotError && <div className="chq-error">{headshotError}</div>}
+              </div>
+            </div>
+          ),
+        },
+        { key: 'twitter', hasValue: twitter.trim() !== '', node: textField('twitter', 'Twitter', twitter, setTwitter) },
+        { key: 'linkedin', hasValue: linkedin.trim() !== '', node: textField('linkedin', 'LinkedIn', linkedin, setLinkedin) },
+        { key: 'github', hasValue: github.trim() !== '', node: textField('github', 'GitHub', github, setGithub) },
+        { key: 'website', hasValue: website.trim() !== '', node: textField('website', 'Website', website, setWebsite) },
+        ...customFieldRows.map((row, index): RecordEntry => {
+          const key = `custom-${index}`;
+          const editing = editingField === key;
+          return {
+            key,
+            hasValue: row.value.trim() !== '',
+            node: (
+              <div className="chq-contacts-record-row" key={key}>
+                <span className="chq-contacts-record-label">
+                  {editing ? (
+                    <input
+                      className="chq-input"
+                      aria-label={`Custom field ${index + 1} key`}
+                      value={row.key}
+                      onChange={(e) => updateRow(index, { key: e.target.value })}
+                      placeholder="T-shirt size"
+                    />
+                  ) : (
+                    row.key || <span className="chq-contacts-record-empty">{EM_DASH}</span>
+                  )}
+                </span>
+                {editing ? (
+                  <div className="chq-contacts-record-editor">
+                    <input
+                      className="chq-input"
+                      aria-label={`Custom field ${index + 1} value`}
+                      value={row.value}
+                      onChange={(e) => updateRow(index, { value: e.target.value })}
+                      onBlur={() => setEditingField(null)}
+                      placeholder="Large"
+                    />
+                    <button type="button" className="chq-btn chq-btn-secondary" onClick={() => removeRow(index)}>
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button" className="chq-contacts-record-value" onClick={() => setEditingField(key)}>
+                    {row.value || <span className="chq-contacts-record-empty">{EM_DASH}</span>}
+                  </button>
+                )}
+              </div>
+            ),
+          };
+        }),
+      ]
+    : [];
+
+  const hiddenCount = recordEntries.filter((e) => !e.hasValue).length;
+  const visibleEntries = recordEntries.filter((e) => showAllFields || e.hasValue || editingField === e.key);
+
   return (
     <>
       <ModalFrame
@@ -346,123 +516,19 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
         {!loading && contact && (
           <>
             <div className="chq-contacts-record">
-              {textField('firstName', 'First name', firstName, setFirstName, { placeholder: 'Priya' })}
-              {textField('lastName', 'Last name', lastName, setLastName, { placeholder: 'Raman' })}
-              {textField('email', 'Email', email, setEmail, { type: 'email', placeholder: 'priya.raman@example.com' })}
-              {textField('company', 'Company', company, setCompany, { placeholder: 'Latticework Systems' })}
-              {textField('title', 'Title', title, setTitle, { placeholder: 'Principal Engineer' })}
-
-              {/* DEC-738/DEC-726: read-only view of the same Labels the
-                  directory table's chips show (contactLabels over this
-                  contact's customFields, travel key excluded) — the editable
-                  custom-field rows below are unaffected. */}
-              <div className="chq-contacts-record-row">
-                <span className="chq-contacts-record-label">Labels</span>
-                <div className="chq-contacts-record-value chq-contacts-record-readonly">
-                  {contactLabels(contact.customFields ?? {}).length > 0 ? (
-                    <ul className="chq-contacts-label-chips">
-                      {contactLabels(contact.customFields ?? {}).map((label) => (
-                        <li key={label} className="chq-contacts-label-chip">
-                          {label}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <span className="chq-contacts-record-empty">{EM_DASH}</span>
-                  )}
-                </div>
-              </div>
-
-              {textField('phone', 'Phone', phone, setPhone, { placeholder: '+1 555 010 1234' })}
-              {textField('notes', 'Notes', notes, setNotes, { multiline: true, placeholder: 'Internal notes about this contact' })}
-              {textField('bio', 'Bio', bio, setBio, { multiline: true, placeholder: 'A short speaker bio' })}
-              {textField('travel', 'Travel & logistics', travel, setTravel, {
-                multiline: true,
-                placeholder: 'Flight details, hotel, dietary needs...',
-              })}
-
-              <div className="chq-contacts-record-row">
-                <span className="chq-contacts-record-label">Headshot</span>
-                <div className="chq-contacts-record-editor chq-contacts-headshot-field">
-                  {headshotUrl ? (
-                    <img
-                      className="chq-contacts-headshot"
-                      src={headshotUrl}
-                      alt={`${firstName} ${lastName} headshot`}
-                      width={64}
-                      height={64}
-                    />
-                  ) : (
-                    <span className="chq-contacts-record-empty">{EM_DASH}</span>
-                  )}
-                  {headshotFile && (
-                    <p className="chq-contacts-headshot-meta">
-                      {headshotFile.filename} — uploaded {formatDateTime(headshotFile.uploadedAt)}
-                    </p>
-                  )}
-                  <label className="chq-contacts-headshot-upload" htmlFor="chq-contact-headshot-upload">
-                    Upload headshot
-                    <input
-                      id="chq-contact-headshot-upload"
-                      className="chq-file"
-                      type="file"
-                      accept=".png,.jpg,.jpeg,.webp"
-                      ref={headshotInputRef}
-                      onChange={uploadHeadshot}
-                      disabled={headshotUploading}
-                      placeholder="headshot.jpg"
-                    />
-                  </label>
-                  {headshotUploading && <p>Uploading...</p>}
-                  {headshotError && <div className="chq-error">{headshotError}</div>}
-                </div>
-              </div>
-
-              {textField('twitter', 'Twitter', twitter, setTwitter)}
-              {textField('linkedin', 'LinkedIn', linkedin, setLinkedin)}
-              {textField('github', 'GitHub', github, setGithub)}
-              {textField('website', 'Website', website, setWebsite)}
-
-              {customFieldRows.map((row, index) => {
-                const key = `custom-${index}`;
-                const editing = editingField === key;
-                return (
-                  <div className="chq-contacts-record-row" key={key}>
-                    <span className="chq-contacts-record-label">
-                      {editing ? (
-                        <input
-                          className="chq-input"
-                          aria-label={`Custom field ${index + 1} key`}
-                          value={row.key}
-                          onChange={(e) => updateRow(index, { key: e.target.value })}
-                          placeholder="T-shirt size"
-                        />
-                      ) : (
-                        row.key || <span className="chq-contacts-record-empty">{EM_DASH}</span>
-                      )}
-                    </span>
-                    {editing ? (
-                      <div className="chq-contacts-record-editor">
-                        <input
-                          className="chq-input"
-                          aria-label={`Custom field ${index + 1} value`}
-                          value={row.value}
-                          onChange={(e) => updateRow(index, { value: e.target.value })}
-                          onBlur={() => setEditingField(null)}
-                          placeholder="Large"
-                        />
-                        <button type="button" className="chq-btn chq-btn-secondary" onClick={() => removeRow(index)}>
-                          Remove
-                        </button>
-                      </div>
-                    ) : (
-                      <button type="button" className="chq-contacts-record-value" onClick={() => setEditingField(key)}>
-                        {row.value || <span className="chq-contacts-record-empty">{EM_DASH}</span>}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
+              {visibleEntries.map((entry) => entry.node)}
+              {/* DEC-616 amendment (wave 4): the record shows the facts it
+                  HAS — empties sit behind this ONE disclosure, which states
+                  how many are hidden so "Show all fields" isn't a guess. */}
+              {hiddenCount > 0 && (
+                <button
+                  type="button"
+                  className="chq-link-button chq-contacts-show-all"
+                  onClick={() => setShowAllFields((v) => !v)}
+                >
+                  {showAllFields ? 'Show fewer fields' : `Show all fields (${hiddenCount} hidden)`}
+                </button>
+              )}
               <button type="button" className="chq-btn chq-btn-secondary chq-contacts-add-field" onClick={addRow}>
                 Add field
               </button>

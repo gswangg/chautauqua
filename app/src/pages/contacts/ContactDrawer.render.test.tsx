@@ -17,6 +17,7 @@ import type { ContactDetail } from './types';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SHARED_CSS = readFileSync(join(HERE, '../../styles.css'), 'utf-8');
+const CONTACTS_CSS = readFileSync(join(HERE, './contacts.css'), 'utf-8');
 
 /** Extracts a top-level (not inside an @media block) rule's declaration
  * body by selector -- same helper as FilterRulesPanel.render.test.tsx. */
@@ -87,11 +88,21 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
     expect(within(dialog).getByText('Principal Engineer')).toBeInTheDocument();
     expect(within(dialog).getByText('Distributed systems engineer.')).toBeInTheDocument();
 
-    // Phone is absent on the fixture -> renders as an em dash, never "" or "null".
+    // DEC-616 amendment (wave 4): Phone is absent on the fixture -> the row
+    // does not render inline at all (empties collapse behind the
+    // disclosure), rather than printing an em dash next to the label.
+    expect(within(dialog).queryByText('Phone')).not.toBeInTheDocument();
+    const disclosure = within(dialog).getByRole('button', { name: /Show all fields \(\d+ hidden\)/ });
+
+    fireEvent.click(disclosure);
+
+    // Expanded: the previously hidden Phone row now renders with an em
+    // dash, never "" or "null".
     const phoneLabel = within(dialog).getByText('Phone');
     const phoneRow = phoneLabel.closest('.chq-contacts-record-row');
     expect(phoneRow).not.toBeNull();
     expect(within(phoneRow as HTMLElement).getByText('—')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Show fewer fields' })).toBeInTheDocument();
 
     // Close affordance present.
     expect(within(dialog).getByRole('button', { name: 'Close' })).toBeInTheDocument();
@@ -190,6 +201,81 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
     });
 
     expect(dialog.querySelector('.chq-contacts-headshot-meta')).toBeNull();
+  });
+
+  // DEC-616 amendment (wave 4): frame width is 520px, not 420.
+  it('is 520px wide, not 420', () => {
+    const body = topLevelRuleBody(SHARED_CSS, '.chq-drawer');
+    expect(body).toMatch(/width:\s*min\(520px, 100vw\)/);
+    expect(body).not.toMatch(/420px/);
+  });
+
+  // DEC-616 amendment (wave 4): the record-row grid template
+  // (minmax(0,1fr)) is the orchestrator's landed overflow fix (9ba85315)
+  // and must survive this task untouched -- the drawer's zero-horizontal-
+  // scroll contract at 1440 depends on it.
+  it('keeps the record-row grid template that guarantees zero horizontal scroll', () => {
+    const body = topLevelRuleBody(CONTACTS_CSS, '.chq-contacts-record-row');
+    expect(body).toMatch(/grid-template-columns:\s*130px minmax\(0,\s*1fr\)/);
+    const fileBody = topLevelRuleBody(SHARED_CSS, '.chq-file');
+    expect(fileBody).toMatch(/max-width:\s*100%/);
+  });
+
+  // DEC-616 amendment (wave 4): action-bar buttons never wrap at 520px.
+  it('keeps the action bar on one line per button (no wrap)', () => {
+    const body = topLevelRuleBody(CONTACTS_CSS, '.chq-contacts-drawer-actions');
+    expect(body).toMatch(/flex-wrap:\s*nowrap/);
+  });
+
+  // DEC-366: .chq-btn-tertiary already carries the design-system olive
+  // focus-visible ring -- locked here since the tertiary "Delete this
+  // contact" trigger lives in this drawer's action bar.
+  it('gives .chq-btn-tertiary the design-system olive focus-visible ring', () => {
+    const body = topLevelRuleBody(SHARED_CSS, '.chq-btn-tertiary:focus-visible');
+    expect(body).toMatch(/outline:\s*2px solid var\(--chq-brand\)/);
+  });
+
+  // DEC-616 amendment (wave 4): the reserved travel custom field's row is
+  // labelled DIETARY, the word the frame and the speaker-facing form use.
+  it('labels the reserved travel custom-field row Dietary', async () => {
+    mockApi({
+      'GET /api/v1/contacts/ct1': { ...CONTACT, bio: null, customFields: { travel_logistics: 'Vegetarian' } },
+    });
+
+    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
+    await waitFor(() => {
+      expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
+    });
+
+    expect(within(dialog).getByText('Dietary')).toBeInTheDocument();
+    expect(within(dialog).queryByText('Travel & logistics')).not.toBeInTheDocument();
+    const dietaryRow = within(dialog).getByText('Dietary').closest('.chq-contacts-record-row');
+    expect(within(dietaryRow as HTMLElement).getByText('Vegetarian')).toBeInTheDocument();
+  });
+
+  // DEC-616 amendment (wave 4): only populated rows render inline; a fully
+  // populated contact has no hidden count and no disclosure at all.
+  it('renders no disclosure when every field is populated', async () => {
+    const fullContact: ContactDetail = {
+      ...CONTACT,
+      phone: '+1 555 010 1234',
+      notes: 'Internal note',
+      headshotUrl: '/headshots/file1',
+      socialLinks: { twitter: '@priya', linkedin: 'in/priya', github: 'priya', website: 'https://priya.dev' },
+      customFields: { travel_logistics: 'Vegetarian', tshirt: 'M' },
+    };
+    mockApi({ 'GET /api/v1/contacts/ct1': fullContact });
+
+    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
+    await waitFor(() => {
+      expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
+    });
+
+    expect(within(dialog).queryByRole('button', { name: /Show all fields/ })).not.toBeInTheDocument();
   });
 });
 
