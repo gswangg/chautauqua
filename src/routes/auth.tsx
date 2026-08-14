@@ -26,7 +26,14 @@ import {
   SESSION_COOKIE_NAME,
 } from "../auth/cookies";
 import { consumeClaimToken, readClaimToken, type KVStore } from "../auth/claim";
-import { createResetToken, readResetToken, consumeResetToken, hashResetToken, newResetToken } from "../auth/password-reset";
+import {
+  createResetToken,
+  readResetToken,
+  consumeResetToken,
+  hashResetToken,
+  newResetToken,
+  revokeResetTokenForUser,
+} from "../auth/password-reset";
 import { findAccountUserId } from "../server/repo/comms";
 import { requestIpFromHeaders } from "../lib/rate-limit";
 import {
@@ -719,6 +726,13 @@ authRoutes.post("/claim/:token", csrfForm, async (c) => {
     createdAt: now,
     updatedAt: now,
   });
+
+  // DEC-949 (wave 27 amendment, wired per wave 29): claiming an account sets
+  // a fresh credential — any outstanding password-reset grant for this user
+  // (mintable only once a matching user row exists, so this is the earliest
+  // point userId is known) must not survive it. Not best-effort: a KV error
+  // here propagates.
+  await revokeResetTokenForUser(kv, userId);
 
   const sessionToken = await issueSessionRevokingAll(db, userId, now);
 

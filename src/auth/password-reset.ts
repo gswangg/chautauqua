@@ -17,8 +17,8 @@
 //      requires it and contributes revokeResetTokenForUser below; the w25 API
 //      names (createResetToken/readResetToken/consumeResetToken) survive
 //      because src/routes/auth.tsx and its route-level tests are built on
-//      them. Wiring revokeResetTokenForUser into /account/password and
-//      /claim/:token is NOT done here — see the note on that function.
+//      them. revokeResetTokenForUser is wired into both /account/password
+//      and /claim/:token — see the note on that function for the call order.
 //
 // Modelled on
 // src/auth/claim.ts (same pure Web Crypto + KVStore shape, DEC-002 — no
@@ -144,11 +144,15 @@ export async function consumeResetToken(kv: KVStore, token: string): Promise<{ u
  * settles the claim and the outstanding link becomes pure attack surface.
  *
  * POST /reset/:token needs no call — consumeResetToken already deletes both
- * keys. The other two password-change paths named by DEC-949 wave 27
- * (/account/password and /claim/:token) are NOT yet wired to this function:
- * minting the mechanism was the whole of task-w27-a's scope and the call
- * sites were explicitly excluded from it. Wiring them is outstanding work,
- * not a decision this module can make for them. */
+ * keys. The other two password-change paths named by DEC-949 wave 27 are
+ * wired to this function (task-w29-d): src/routes/account.tsx's POST
+ * /account/password calls it BEFORE the password update (userId is already
+ * known from the live session, so a failed write afterward only kills a
+ * legitimate link early — self-service, instantly re-requestable — rather
+ * than risking a takeover link surviving a successful change); src/routes/
+ * auth.tsx's POST /claim/:token calls it immediately AFTER the user insert
+ * (userId isn't known until that row exists) and before the session is
+ * issued. Neither call is best-effort: a KV error propagates. */
 export async function revokeResetTokenForUser(kv: KVStore, userId: string): Promise<void> {
   const indexKey = resetIndexKey(userId);
   const hash = await kv.get(indexKey);
