@@ -343,7 +343,9 @@ describe("listPlanFilteredSubmissions (DEC-346 amendment, wave 57)", () => {
     await expect(
       listPlanFilteredSubmissions(dbOverCapFiltered, makePlan({ filters: { trackIds: ["trk-a"] } })),
     ).rejects.toBeInstanceOf(ApiError);
-  });
+    // Builds ~60k fixture rows (3x the 20k cap); ~2.6s solo but slower under
+    // full-suite CPU contention, so it needs more than the 5s default timeout.
+  }, 30_000);
 
   it("trackIds hydration is id-scoped to the matched set -- never joins submission, never event-scoped", async () => {
     const submissions = makeSubmissions(3);
