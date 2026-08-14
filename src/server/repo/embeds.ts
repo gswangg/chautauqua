@@ -3,7 +3,7 @@
 // src/routes/api/embeds.ts and the public renderer in
 // src/routes/public/saved-embed.tsx call these.
 
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
@@ -143,10 +143,38 @@ export async function createEmbed(
 }
 
 /** Ownership lookup for the PATCH/DELETE-by-id routes — null if the embed
- * doesn't exist. */
-export async function getEmbedOwnership(db: Db, id: string): Promise<{ orgId: string } | null> {
-  const rows = await db.select({ orgId: schema.embed.orgId }).from(schema.embed).where(eq(schema.embed.id, id)).limit(1);
+ * doesn't exist. eventId is included so PATCH can validate that a
+ * trackId/roomId supplied in `options` belongs to THIS embed's own event
+ * (DEC-839 amendment — a cross-event id would silently desync the DEC-931
+ * delete guard, which only scans embeds whose eventId matches). */
+export async function getEmbedOwnership(db: Db, id: string): Promise<{ orgId: string; eventId: string } | null> {
+  const rows = await db
+    .select({ orgId: schema.embed.orgId, eventId: schema.embed.eventId })
+    .from(schema.embed)
+    .where(eq(schema.embed.id, id))
+    .limit(1);
   return rows[0] ?? null;
+}
+
+/** DEC-839 amendment: existence checks for the trackId/roomId embed options
+ * scoped to the embed's own event — a track/room from ANOTHER event must
+ * never be stored. */
+export async function trackBelongsToEvent(db: Db, trackId: string, eventId: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: schema.track.id })
+    .from(schema.track)
+    .where(and(eq(schema.track.id, trackId), eq(schema.track.eventId, eventId)))
+    .limit(1);
+  return rows.length > 0;
+}
+
+export async function roomBelongsToEvent(db: Db, roomId: string, eventId: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: schema.room.id })
+    .from(schema.room)
+    .where(and(eq(schema.room.id, roomId), eq(schema.room.eventId, eventId)))
+    .limit(1);
+  return rows.length > 0;
 }
 
 export async function updateEmbed(

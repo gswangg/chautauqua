@@ -15,7 +15,11 @@ import {
   isSecureRequest,
   CSRF_COOKIE_NAME,
 } from "../../../auth/cookies";
-import { assertOwnAssignment, type PortalAssignmentScope } from "../../../server/repo/portal";
+import {
+  assertOwnAssignment,
+  ForeignAssignmentError,
+  type PortalAssignmentScope,
+} from "../../../server/repo/portal";
 
 export function requireAuth(c: Context<AppEnv>): AuthInfo {
   const auth = c.var.auth;
@@ -37,7 +41,10 @@ export function ensureCsrfCookie(c: Context<AppEnv>): { token: string; setCookie
 export function assertOwnAssignmentOr403(scope: PortalAssignmentScope, contactId: string): void {
   try {
     assertOwnAssignment(scope, contactId);
-  } catch {
-    throw new ApiError("forbidden", "This task assignment does not belong to you");
+  } catch (err) {
+    if (err instanceof ForeignAssignmentError) {
+      throw new ApiError("forbidden", "This task assignment does not belong to you");
+    }
+    throw err;
   }
 }

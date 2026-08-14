@@ -21,6 +21,8 @@ import {
   deleteEmbed,
   getEmbedOwnership,
   listEmbeds,
+  roomBelongsToEvent,
+  trackBelongsToEvent,
   updateEmbed,
   type EmbedOptions,
 } from "../../server/repo/embeds";
@@ -34,7 +36,7 @@ void DEC_839;
  * unparseable value is a loud 400 naming the field, never silently dropped
  * or stored as junk the renderer will later ignore. Shared by POST and
  * PATCH so the two routes cannot drift. */
-function parseEmbedOptionsInput(raw: unknown): EmbedOptions {
+async function parseEmbedOptionsInput(db: Db, eventId: string, raw: unknown): Promise<EmbedOptions> {
   if (raw === undefined || raw === null) return {};
   if (typeof raw !== "object" || Array.isArray(raw)) {
     throw new ApiError("invalid", "options must be an object", { options: "Invalid options" });
@@ -43,31 +45,34 @@ function parseEmbedOptionsInput(raw: unknown): EmbedOptions {
   const out: EmbedOptions = {};
 
   if (input.trackId !== undefined) {
-    if (typeof input.trackId !== "string") {
-      throw new ApiError("invalid", "trackId must be a string", { trackId: "Invalid trackId" });
-    }
-    const parsed = parseTrackId(input.trackId);
+    // DEC-839 amendment: bound the raw text BEFORE the live parser (which
+    // has no maximum), then confirm the id resolves inside the embed's own
+    // event -- a foreign-event id must never persist into options_json.
+    const bounded = parseBoundedText(input.trackId, "trackId", { max: MAX_NAME_LENGTH, required: true });
+    const parsed = parseTrackId(bounded);
     if (parsed === null) throw new ApiError("invalid", "trackId must be non-empty", { trackId: "Invalid trackId" });
+    if (!(await trackBelongsToEvent(db, parsed, eventId))) {
+      throw new ApiError("invalid", "trackId does not belong to this event", { trackId: "Unknown trackId" });
+    }
     out.trackId = parsed;
   }
   // DEC-774: the sessions-surface format/room chip filters, validated
   // through the SAME live-route parsers as every other key.
   if (input.sessionFormat !== undefined) {
-    if (typeof input.sessionFormat !== "string") {
-      throw new ApiError("invalid", "sessionFormat must be a string", { sessionFormat: "Invalid sessionFormat" });
-    }
-    const parsed = parseFormat(input.sessionFormat);
+    const bounded = parseBoundedText(input.sessionFormat, "sessionFormat", { max: MAX_NAME_LENGTH, required: true });
+    const parsed = parseFormat(bounded);
     if (parsed === null) {
       throw new ApiError("invalid", "sessionFormat must be non-empty", { sessionFormat: "Invalid sessionFormat" });
     }
     out.sessionFormat = parsed;
   }
   if (input.roomId !== undefined) {
-    if (typeof input.roomId !== "string") {
-      throw new ApiError("invalid", "roomId must be a string", { roomId: "Invalid roomId" });
-    }
-    const parsed = parseRoomId(input.roomId);
+    const bounded = parseBoundedText(input.roomId, "roomId", { max: MAX_NAME_LENGTH, required: true });
+    const parsed = parseRoomId(bounded);
     if (parsed === null) throw new ApiError("invalid", "roomId must be non-empty", { roomId: "Invalid roomId" });
+    if (!(await roomBelongsToEvent(db, parsed, eventId))) {
+      throw new ApiError("invalid", "roomId does not belong to this event", { roomId: "Unknown roomId" });
+    }
     out.roomId = parsed;
   }
   if (input.day !== undefined) {
@@ -79,10 +84,8 @@ function parseEmbedOptionsInput(raw: unknown): EmbedOptions {
     out.day = parsed;
   }
   if (input.q !== undefined) {
-    if (typeof input.q !== "string") {
-      throw new ApiError("invalid", "q must be a string", { q: "Invalid q" });
-    }
-    const parsed = parseNameQuery(input.q);
+    const bounded = parseBoundedText(input.q, "q", { max: MAX_NAME_LENGTH, required: true });
+    const parsed = parseNameQuery(bounded);
     if (parsed === null) throw new ApiError("invalid", "q must be non-empty", { q: "Invalid q" });
     out.q = parsed;
   }
@@ -168,7 +171,7 @@ embedsRoutes.post("/events/:eventId/embeds", requireOrganizer, csrfJson, async (
   if (typeof body.format !== "string" || !(EMBED_FORMATS as readonly string[]).includes(body.format)) {
     throw new ApiError("invalid", "format must be a known embed format", { format: "Unknown format" });
   }
-  const options = parseEmbedOptionsInput(body.options);
+  const options = await parseEmbedOptionsInput(c.var.db, eventId, body.options);
 
   const embed = await createEmbed(
     c.var.db,
@@ -221,7 +224,7 @@ embedsRoutes.patch("/embeds/:id", requireOrganizer, csrfJson, async (c) => {
     patch.format = body.format;
   }
   if (body.options !== undefined) {
-    patch.optionsJson = JSON.stringify(parseEmbedOptionsInput(body.options));
+    patch.optionsJson = JSON.stringify(await parseEmbedOptionsInput(c.var.db, ownership.eventId, body.options));
   }
   if (body.enabled !== undefined) {
     if (typeof body.enabled !== "boolean") {

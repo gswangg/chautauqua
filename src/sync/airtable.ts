@@ -21,6 +21,10 @@ import { chunkIds } from "../lib/chunk";
 const BATCH = 10;
 const API = "https://api.airtable.com/v0";
 const MAX_RETRIES = 3;
+// DEC-725 amendment: an external Retry-After is untrusted — a huge value
+// (e.g. 86400s) would pause the cron for a day, and a negative value would
+// otherwise slip past Number.isFinite. Clamp to [0, MAX_RETRY_AFTER_MS].
+const MAX_RETRY_AFTER_MS = 30_000;
 const realSleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 export interface AirtableRecord {
@@ -106,7 +110,10 @@ async function upsertBatches(
         attempt += 1;
         const retryAfterHeader = res.headers?.get?.("Retry-After");
         const retryAfterSeconds = retryAfterHeader ? Number(retryAfterHeader) : NaN;
-        const waitMs = Number.isFinite(retryAfterSeconds) ? retryAfterSeconds * 1000 : 1000 * attempt;
+        const waitMs =
+          Number.isFinite(retryAfterSeconds) && retryAfterSeconds >= 0
+            ? Math.min(retryAfterSeconds * 1000, MAX_RETRY_AFTER_MS)
+            : 1000 * attempt;
         await sleep(waitMs);
         continue;
       }
