@@ -57,6 +57,30 @@ afterEach(() => {
 });
 
 describe('SavedEmbedsPanel', () => {
+  // w1-f, DEC-785: the read view already carries the real rows (name +
+  // recipe + On/Off pill + Get code) before any Change click -- only
+  // Edit/Turn on-off/Delete/Build move behind it.
+  it('renders name + recipe + state pill + Get code at rest, before any Change click', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/embeds`]: listEnvelope([
+        { id: 'emb1', name: 'Homepage widget', surface: 'sessions', format: 'iframe', options: {}, enabled: true },
+      ]),
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+    });
+    renderPanel();
+
+    const row = (await screen.findAllByRole('listitem'))[0]!;
+    expect(within(row).getByText('Homepage widget')).toBeInTheDocument();
+    expect(within(row).getByText('Sessions · iframe')).toBeInTheDocument();
+    expect(within(row).getByText('On')).toBeInTheDocument();
+    expect(within(row).getByRole('button', { name: 'Get code' })).toBeInTheDocument();
+
+    expect(within(row).queryByRole('link', { name: 'Edit' })).not.toBeInTheDocument();
+    expect(within(row).queryByRole('button', { name: 'Turn off' })).not.toBeInTheDocument();
+    expect(within(row).queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Change' })).toBeInTheDocument();
+  });
+
   it('renders one row per saved embed with its name, path, and an On/Off state pill, plus a header count', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/embeds`]: listEnvelope([
@@ -125,6 +149,7 @@ describe('SavedEmbedsPanel', () => {
     await waitFor(() => {
       expect(screen.getByText('On')).toBeInTheDocument();
     });
+    fireEvent.click(screen.getByRole('button', { name: 'Change' }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Turn off' }));
 
@@ -159,6 +184,7 @@ describe('SavedEmbedsPanel', () => {
     await waitFor(() => {
       expect(screen.getByText('Homepage widget')).toBeInTheDocument();
     });
+    fireEvent.click(screen.getByRole('button', { name: 'Change' }));
 
     const expectedRecipe = formatEmbedRecipe({
       surface: 'sessions',
@@ -207,6 +233,7 @@ describe('SavedEmbedsPanel', () => {
     await waitFor(() => {
       expect(screen.getByText('No saved embeds yet.')).toBeInTheDocument();
     });
+    fireEvent.click(screen.getByRole('button', { name: 'Change' }));
 
     const buildButton = screen.getByRole('button', { name: 'Build an embed' });
     fireEvent.click(buildButton);
@@ -229,6 +256,7 @@ describe('SavedEmbedsPanel', () => {
     await waitFor(() => {
       expect(screen.getByText('Homepage widget')).toBeInTheDocument();
     });
+    fireEvent.click(screen.getByRole('button', { name: 'Change' }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
 
@@ -266,6 +294,7 @@ describe('SavedEmbedsPanel', () => {
     await waitFor(() => {
       expect(screen.getByText('Homepage widget')).toBeInTheDocument();
     });
+    fireEvent.click(screen.getByRole('button', { name: 'Change' }));
 
     const row = screen.getAllByRole('listitem')[0]!;
     expect(row).toHaveClass('chq-settings-saved-embed-row');

@@ -9,6 +9,13 @@
 // DEC-733 says omit a control the store can't carry rather than render it
 // disabled. A wiki resource's read row names the page and its SIZE (word
 // count), never its raw markdown body (DEC-747).
+//
+// w1-f, DEC-785: this panel is only ever mounted inside its caller's own
+// edit drill (PortalSettingsPanel), so at rest it must not ALSO dump
+// straight into the full add/edit/delete surface -- it owns its own local
+// summary/edit split. At rest it renders the real rows (name + kind, DEC-047
+// amendment); 'Change' switches to the CRUD surface below rather than
+// revealing it inline.
 import { useEffect, useState } from 'react';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiDelete, apiList, apiPatch, apiPost, apiUpload, ApiError } from '../../lib/api';
@@ -16,6 +23,7 @@ import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { validateResourceForm, validateResourceTitleForm, type ResourceForm, type ResourceFormErrors } from './formState';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { countOf } from '../../lib/plural';
+import './settings-lists.css';
 
 interface Resource {
   id: string;
@@ -55,6 +63,9 @@ export function ResourcesPanel() {
   // shared ConfirmDialog rather than firing on click.
   const [pendingDelete, setPendingDelete] = useState<Resource | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // w1-f, DEC-785: local read/edit split -- defaults to the read-only list
+  // (name + kind); 'Change' switches to the full CRUD surface below.
+  const [showEditor, setShowEditor] = useState(false);
 
   function reload(id: string) {
     setLoading(true);
@@ -159,10 +170,39 @@ export function ResourcesPanel() {
     }
   }
 
+  if (!showEditor) {
+    return (
+      <div className="chq-settings-portal-resources-block">
+        {loading ? <DelayedLoading /> : null}
+        {error ? <p role="alert">{error}</p> : null}
+        <ul className="chq-settings-summary-list">
+          {resources.map((resource) => (
+            <li key={resource.id} className="chq-settings-summary-row">
+              <span className="chq-settings-summary-row-primary">{resource.title}</span>
+              <span className="chq-settings-summary-row-detail">
+                {resource.kind === 'file' ? 'File' : 'Wiki page'}
+              </span>
+            </li>
+          ))}
+          {!loading && resources.length === 0 ? (
+            <li className="chq-settings-summary-empty">No resources yet.</li>
+          ) : null}
+        </ul>
+        <button type="button" className="chq-link-button" onClick={() => setShowEditor(true)}>
+          Change
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="chq-settings-portal-resources-block">
       {loading ? <DelayedLoading /> : null}
       {error ? <p role="alert">{error}</p> : null}
+
+      <button type="button" className="chq-link-button" onClick={() => setShowEditor(false)}>
+        Back
+      </button>
 
       <ul className="chq-settings-portal-resource-list">
         {resources.map((resource) => {
