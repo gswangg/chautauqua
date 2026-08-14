@@ -3,10 +3,10 @@
 // the existing bulk status endpoint (ids:[id]) — no new server code.
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
-import { apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
+import { apiGet, apiList, apiPatch, apiPost, apiDelete, ApiError } from '../../lib/api';
 import { formatDate as formatTimestamp, formatDateTime, epochDayIndex } from '../../lib/dates';
 import { formatEventDate } from '../../../../src/lib/event-time';
-import { SESSION_FORMAT_FIELD_ID } from '../../../../src/forms/types';
+import { SESSION_FORMAT_FIELD_ID, AUDIENCE_LEVEL_FIELD_ID } from '../../../../src/forms/types';
 import { parseFormatDurationMin } from '../../../../src/domain/schedule';
 import type { CfpForm } from '../forms/types';
 import { buildAnswerRows, resolveAnswerFields } from './detailRows';
@@ -28,15 +28,15 @@ import {
   type Track,
 } from './types';
 // DEC-761: code that depends on a decision must reference its constant.
-import { DEC_733, DEC_761, DEC_784, DEC_998 } from '../../../../src/decisions';
+import { DEC_733, DEC_761, DEC_784, DEC_900, DEC_998 } from '../../../../src/decisions';
 // DEC-784/DEC-604: role is picked from the SAME imported vocabulary
-// AddToEventModal.tsx uses -- never a hand-written list -- and rendered
-// through participantRoleLabel, never the raw stored value.
-import { PARTICIPANT_ROLE_OPTIONS, participantRoleLabel } from '../../../../src/domain/participant-roles';
+// AddToEventModal.tsx uses -- never a hand-written list.
+import { PARTICIPANT_ROLE_OPTIONS } from '../../../../src/domain/participant-roles';
 
 void DEC_733;
 void DEC_761;
 void DEC_784;
+void DEC_900;
 void DEC_998;
 
 // DEC-878: the decision panel is a RAIL, not a segmented button group --
@@ -259,12 +259,13 @@ export function SubmissionDetailPage() {
   const [listPosition, setListPosition] = useState<ListPosition | null>(null);
   const [formatPending, setFormatPending] = useState(false);
   const [formatError, setFormatError] = useState<string | null>(null);
-  // DEC-900 (wave 5 amendment): the unframed Session details block (tracks/
-  // format/participants) is a real capability the frame does not draw --
-  // same answer as the agenda's breaks editor (Agenda.tsx:295): collapse it
-  // behind a quiet section-rule disclosure, closed by default, so frame
-  // 02's main column ends at the last review while the editor stays reachable.
-  const [sessionDetailsOpen, setSessionDetailsOpen] = useState(false);
+  // DEC-900 (wave 25 amendment): the audience-level select mirrors Format's
+  // own optimistic-write + loud-rollback state shape exactly -- no second
+  // write pattern.
+  const [audienceLevelPending, setAudienceLevelPending] = useState(false);
+  const [audienceLevelError, setAudienceLevelError] = useState<string | null>(null);
+  const [removingParticipantId, setRemovingParticipantId] = useState<string | null>(null);
+  const [makingCoPresenterId, setMakingCoPresenterId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -491,6 +492,78 @@ export function SubmissionDetailPage() {
     }
   }
 
+  // DEC-900 (wave 25 amendment): the audience-level select PATCHes through
+  // the SAME optimistic-write + loud-rollback shape changeFormat above
+  // uses -- no second write pattern.
+  async function changeAudienceLevel(value: string) {
+    if (!detail || !id || !value) return;
+    const previous = detail;
+    setAudienceLevelPending(true);
+    setAudienceLevelError(null);
+    setDetail({ ...detail, answers: { ...detail.answers, [AUDIENCE_LEVEL_FIELD_ID]: value } });
+    try {
+      const updated = await apiPatch<SubmissionDetail>(`/submissions/${id}`, { audienceLevel: value });
+      setDetail(updated);
+    } catch (err) {
+      setDetail(previous);
+      setAudienceLevelError(
+        err instanceof ApiError ? `Audience level update failed: ${err.message}` : 'Audience level update failed',
+      );
+    } finally {
+      setAudienceLevelPending(false);
+    }
+  }
+
+  // DEC-900 (wave 25 amendment): 'Remove' drops a co-presenter from the
+  // session -- the lead is never removable from this row (no Remove link
+  // renders for it). Same optimistic-write + loud-rollback shape as
+  // toggleParticipantVisible below.
+  async function removeParticipant(participant: SubmissionDetailParticipant) {
+    if (!detail || !id) return;
+    const previous = detail;
+    setParticipantsError(null);
+    setRemovingParticipantId(participant.id);
+    setDetail({ ...detail, participants: detail.participants.filter((p) => p.id !== participant.id) });
+    try {
+      await apiDelete<{ deleted: number }>(`/submissions/${id}/participants/${participant.id}`);
+    } catch (err) {
+      setDetail(previous);
+      setParticipantsError(err instanceof ApiError ? `Remove failed: ${err.message}` : 'Remove failed');
+    } finally {
+      setRemovingParticipantId(null);
+    }
+  }
+
+  // DEC-900 (wave 25 amendment): 'Make co-presenter' normalizes a
+  // moderator/panelist participant onto the co-presenter role -- the lead
+  // is never retargeted from this row (no Make co-presenter link renders
+  // for it, and it never changes who the lead is).
+  async function makeCoPresenter(participant: SubmissionDetailParticipant) {
+    if (!detail || !id) return;
+    const previous = detail;
+    setParticipantsError(null);
+    setMakingCoPresenterId(participant.id);
+    setDetail({
+      ...detail,
+      participants: detail.participants.map((p) => (p.id === participant.id ? { ...p, role: 'co-presenter' } : p)),
+    });
+    try {
+      const updated = await apiPatch<SubmissionDetailParticipant>(`/submissions/${id}/participants/${participant.id}`, {
+        role: 'co-presenter',
+      });
+      setDetail((prev) =>
+        prev ? { ...prev, participants: prev.participants.map((p) => (p.id === participant.id ? updated : p)) } : prev,
+      );
+    } catch (err) {
+      setDetail(previous);
+      setParticipantsError(
+        err instanceof ApiError ? `Make co-presenter failed: ${err.message}` : 'Make co-presenter failed',
+      );
+    } finally {
+      setMakingCoPresenterId(null);
+    }
+  }
+
   async function toggleParticipantVisible(participant: SubmissionDetailParticipant) {
     if (!detail || !id) return;
     const nextVisible = !participant.visible;
@@ -656,6 +729,13 @@ export function SubmissionDetailPage() {
   const currentFormat = typeof detail.answers[SESSION_FORMAT_FIELD_ID] === 'string'
     ? (detail.answers[SESSION_FORMAT_FIELD_ID] as string)
     : '';
+  // DEC-900 (wave 25 amendment): the SAME imported form-field list
+  // formatField is resolved from, matched on the event's own audience-level
+  // field -- never a second hand-typed field list.
+  const audienceField = form?.fields.find((f) => f.id === AUDIENCE_LEVEL_FIELD_ID);
+  const currentAudienceLevel = typeof detail.answers[AUDIENCE_LEVEL_FIELD_ID] === 'string'
+    ? (detail.answers[AUDIENCE_LEVEL_FIELD_ID] as string)
+    : '';
 
   return (
     <div className="chq-page chq-detail-page chq-measure-wide">
@@ -728,12 +808,10 @@ export function SubmissionDetailPage() {
             <h2 className="chq-detail-section-title">Abstract</h2>
             <div className="chq-detail-section-body">
               {!editing ? (
-                <>
-                  {detail.description && <p className="chq-detail-abstract">{detail.description}</p>}
-                  <button type="button" className="chq-btn chq-btn-tertiary" onClick={startEditing}>
-                    Edit
-                  </button>
-                </>
+                // DEC-900 (ruling A6): the header's "Edit title and
+                // abstract >" link already owns this field -- a second Edit
+                // affordance here is the redundancy this pass removes.
+                detail.description && <p className="chq-detail-abstract">{detail.description}</p>
               ) : (
                 <div className="chq-detail-edit-form">
                   <label>
@@ -874,27 +952,13 @@ export function SubmissionDetailPage() {
             </div>
           </section>
 
-          {/* DEC-900 (wave 5 amendment): the unframed Session details block
-              (Tracks/Format/Participants) is a real capability frame 02 does
-              not draw -- same answer as the agenda's breaks editor
-              (Agenda.tsx:295, chq-link-button/chq-section-action class
-              vocabulary reused verbatim): a quiet disclosure on the section
-              rule, closed by default, so the main column ends at the last
-              review. Every behaviour underneath (optimistic write, loud
-              rollback, co-presenter search, role picker) is unchanged --
-              only its reachability moves behind the toggle. */}
-          <div className="chq-detail-session-details-disclosure">
-            <button
-              type="button"
-              className="chq-link-button chq-section-action"
-              aria-expanded={sessionDetailsOpen}
-              onClick={() => setSessionDetailsOpen((open) => !open)}
-            >
-              {sessionDetailsOpen ? 'Hide session details' : 'Session details ›'}
-            </button>
-          </div>
-          {sessionDetailsOpen && (
+          {/* DEC-900 (wave 25 amendment): V8 draws Session details as a real
+              FOURTH numbered section -- always rendered, no disclosure. */}
           <section className="chq-detail-section chq-detail-session-details">
+            <h2 className="chq-detail-section-title">Session details</h2>
+            <p className="chq-detail-eyebrow chq-detail-session-details-eyebrow">
+              EDITABLE UNTIL THE SCHEDULE IS PUBLISHED
+            </p>
             <div className="chq-detail-section-body chq-detail-session-details-body">
               <div className="chq-detail-subsection">
                 <h3 className="chq-detail-subsection-title">Tracks</h3>
@@ -955,28 +1019,58 @@ export function SubmissionDetailPage() {
               )}
               </div>
 
-              <div className="chq-detail-subsection">
-                <h3 className="chq-detail-subsection-title">Format</h3>
-                {formatError && <div className="chq-error-banner">{formatError}</div>}
-                {formatField ? (
-                  <select
-                    id="submission-format"
-                    className="chq-select"
-                    aria-label="Format"
-                    value={currentFormat}
-                    disabled={formatPending}
-                    onChange={(e) => changeFormat(e.target.value)}
-                  >
-                    <option value="">Not set</option>
-                    {(formatField.options ?? []).map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <p>This event's form has no session format field.</p>
-                )}
+              <div className="chq-detail-subsection chq-detail-format-audience-row">
+                <div className="chq-detail-format-audience-field">
+                  <h3 className="chq-detail-subsection-title">Format</h3>
+                  {formatError && <div className="chq-error-banner">{formatError}</div>}
+                  {formatField ? (
+                    <select
+                      id="submission-format"
+                      className="chq-select"
+                      aria-label="Format"
+                      value={currentFormat}
+                      disabled={formatPending}
+                      onChange={(e) => changeFormat(e.target.value)}
+                    >
+                      <option value="">Not set</option>
+                      {(formatField.options ?? []).map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p>This event's form has no session format field.</p>
+                  )}
+                </div>
+
+                {/* DEC-900 (wave 25 amendment): resolved from the SAME
+                    imported form-field list formatField comes from --
+                    reuses Format's optimistic-write + loud-rollback shape,
+                    never a second write pattern. */}
+                <div className="chq-detail-format-audience-field">
+                  <h3 className="chq-detail-subsection-title">Audience level</h3>
+                  {audienceLevelError && <div className="chq-error-banner">{audienceLevelError}</div>}
+                  {audienceField ? (
+                    <select
+                      id="submission-audience-level"
+                      className="chq-select"
+                      aria-label="Audience level"
+                      value={currentAudienceLevel}
+                      disabled={audienceLevelPending}
+                      onChange={(e) => changeAudienceLevel(e.target.value)}
+                    >
+                      <option value="">Not set</option>
+                      {(audienceField.options ?? []).map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p>This event's form has no session audience level field.</p>
+                  )}
+                </div>
               </div>
 
               <div className="chq-detail-subsection">
@@ -1007,31 +1101,69 @@ export function SubmissionDetailPage() {
                       <th>Role</th>
                       <th>Visible</th>
                       <th>Invite status</th>
+                      <th></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {detail.participants.map((p) => (
-                      <tr key={p.id}>
-                        <td>{p.name}</td>
-                        <td>{p.email}</td>
-                        <td>{participantRoleLabel(p.role)}</td>
-                        <td>
-                          <label className="chq-visible-toggle">
-                            <input
-                              type="checkbox"
-                              className="chq-check"
-                              checked={p.visible}
-                              disabled={visiblePending === p.id}
-                              onChange={() => toggleParticipantVisible(p)}
-                              aria-label={`Visible: ${p.name}`}
-                            />
-                          </label>
-                        </td>
-                        <td>
-                          <InviteStatusChip status={p.inviteStatus} />
-                        </td>
-                      </tr>
-                    ))}
+                    {detail.participants.map((p) => {
+                      // DEC-900 (wave 25 amendment): the Role column reads
+                      // LEAD / CO-PRESENTER, never the raw stored role key
+                      // -- the same lead participant this page's Speaker
+                      // rail already resolves (role==='speaker', falling
+                      // back to the first participant, order asc).
+                      const isLead = speaker !== null && p.id === speaker.id;
+                      return (
+                        <tr key={p.id}>
+                          <td>{p.name}</td>
+                          <td>{p.email}</td>
+                          <td>{isLead ? 'LEAD' : 'CO-PRESENTER'}</td>
+                          <td>
+                            <label className="chq-visible-toggle">
+                              <input
+                                type="checkbox"
+                                className="chq-check"
+                                checked={p.visible}
+                                disabled={visiblePending === p.id}
+                                onChange={() => toggleParticipantVisible(p)}
+                                aria-label={`Visible: ${p.name}`}
+                              />
+                            </label>
+                          </td>
+                          <td>
+                            <InviteStatusChip status={p.inviteStatus} />
+                          </td>
+                          <td>
+                            {!isLead && (
+                              <div className="chq-detail-participant-row-actions">
+                                {/* DEC-900 (wave 25 amendment): a
+                                    participant already stored as
+                                    'co-presenter' has nothing left to
+                                    normalize onto -- only a moderator/
+                                    panelist row offers the link. */}
+                                {p.role !== 'co-presenter' && (
+                                  <button
+                                    type="button"
+                                    className="chq-link-button"
+                                    disabled={makingCoPresenterId === p.id}
+                                    onClick={() => makeCoPresenter(p)}
+                                  >
+                                    Make co-presenter
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  className="chq-link-button"
+                                  disabled={removingParticipantId === p.id}
+                                  onClick={() => removeParticipant(p)}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                   </table>
                 </>
@@ -1097,11 +1229,16 @@ export function SubmissionDetailPage() {
                     ))}
                   </ul>
                 )}
+                {/* DEC-900 (wave 25 amendment): the lead is never changed by
+                    this search -- adding a co-presenter only emails them a
+                    portal link. */}
+                <p className="chq-detail-copresenter-note">
+                  Adding a co-presenter emails them a portal link · the lead presenter is not changed
+                </p>
               </div>
               </div>
             </div>
           </section>
-          )}
         </div>
 
         {/* DEC-908 rail order: Decision -> Speaker -> History. */}

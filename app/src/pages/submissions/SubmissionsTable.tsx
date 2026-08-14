@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 // DEC-755: createSubmission below no longer needs a follow-up apiPatch call
 // now that trackIds/format ride the create POST body directly.
 import { apiList, apiGet, ApiError, apiPost } from '../../lib/api';
@@ -47,7 +47,6 @@ export function exportHref(eventId: string, filters: SubmissionsFilterState): st
 
 export function SubmissionsTable() {
   const { eventId } = useCurrentEvent();
-  const navigate = useNavigate();
 
   const [filters, setFilters] = useState<SubmissionsFilterState>({ ...DEFAULT_FILTER_STATE, includeAnswers: true });
   const [items, setItems] = useState<SubmissionListItem[]>([]);
@@ -295,13 +294,6 @@ export function SubmissionsTable() {
         statusFilter={filters.status.length === 1 ? (filters.status[0] ?? null) : null}
         onApply={applyBulkStatus}
         onClear={() => setSelection((s) => selectionReducer(s, { type: 'CLEAR' }))}
-        onDelete={() => {
-          // DEC-886: delete is a confirmation PAGE, not a modal on this
-          // table -- the selected ids travel in the query string so the
-          // page survives a reload and can be bookmarked/linked.
-          const ids = [...selection.selectedIds];
-          navigate(`/submissions/delete?ids=${ids.map(encodeURIComponent).join(',')}`);
-        }}
       />
 
       <div className="chq-submissions-table-wrap">

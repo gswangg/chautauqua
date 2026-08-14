@@ -41,12 +41,13 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// DEC-900 (wave 5 amendment): Tracks/Format/Participants live behind the
-// 'Session details ›' disclosure, closed by default -- every test that
-// exercises that capability must open it first.
+// DEC-900 (wave 25 amendment): Session details is now a real, always-
+// rendered FOURTH numbered section -- no disclosure to open. Callers keep
+// this name (rather than a mass find/replace across every call site) and
+// it now just waits for the section's own heading to confirm the section
+// has mounted before interacting with its controls.
 async function openSessionDetails() {
-  const trigger = await screen.findByRole('button', { name: /Session details/ });
-  fireEvent.click(trigger);
+  await screen.findByRole('heading', { name: 'Session details' });
 }
 
 function renderPage(initialPath = `/submissions/${SUB_ID}`) {
@@ -75,10 +76,14 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
       [`PATCH /api/v1/submissions/${SUB_ID}`]: patchMock,
     });
 
-    renderPage();
+    // DEC-900 (ruling A6): the abstract's own Edit button is gone -- the
+    // header's "Edit title and abstract >" link (deliverable detail) is the
+    // one entry point, reached here via the same ?edit=1 URL state DEC-998
+    // already gives the editor.
+    renderPage(`/submissions/${SUB_ID}?edit=1`);
 
     await waitFor(() => {
-      expect(screen.getByText('Original description')).toBeInTheDocument();
+      expect(screen.getByLabelText('Title')).toBeInTheDocument();
     });
 
     // Decision rail states plainly that deciding never emails (house
@@ -86,7 +91,6 @@ describe('SubmissionDetailPage render smoke: inline edit + content-status contro
     // DEC-878: caption renders in every rail state.
     expect(screen.getByText('Deciding sends nothing. Notify from Comms.')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     const titleInput = screen.getByLabelText('Title');
     expect(titleInput).toHaveClass('chq-input');
     const abstractInput = screen.getByLabelText('Abstract');
@@ -983,7 +987,10 @@ describe('SubmissionDetailPage render: co-presenter role picker (DEC-784)', () =
     expect(JSON.parse(postCall[1]!.body as string)).toEqual({ contactId: 'c-2', role: 'moderator' });
   });
 
-  it('renders a participant role through participantRoleLabel, never the raw stored value', async () => {
+  // DEC-900 (wave 25 amendment): the Role column reads LEAD / CO-PRESENTER
+  // -- never the raw stored role key (speaker/co-presenter/moderator/
+  // panelist).
+  it('renders participant roles as LEAD / CO-PRESENTER, never the raw stored role key', async () => {
     const detail = baseDetail({
       participants: [
         {
@@ -993,10 +1000,22 @@ describe('SubmissionDetailPage render: co-presenter role picker (DEC-784)', () =
           email: 'jamie@example.com',
           title: null,
           company: null,
-          role: 'co-presenter',
+          role: 'speaker',
           order: 0,
           visible: true,
           inviteStatus: 'accepted',
+        },
+        {
+          id: 'p2',
+          contactId: 'c2',
+          name: 'Riley Moderator',
+          email: 'riley@example.com',
+          title: null,
+          company: null,
+          role: 'moderator',
+          order: 1,
+          visible: true,
+          inviteStatus: 'none',
         },
       ],
     });
@@ -1015,8 +1034,10 @@ describe('SubmissionDetailPage render: co-presenter role picker (DEC-784)', () =
     });
     await openSessionDetails();
     const table = document.querySelector('.chq-participants-table') as HTMLElement;
-    expect(within(table).getByText('Co-presenter')).toBeInTheDocument();
-    expect(within(table).queryByText('co-presenter')).not.toBeInTheDocument();
+    expect(within(table).getByText('LEAD')).toBeInTheDocument();
+    expect(within(table).getByText('CO-PRESENTER')).toBeInTheDocument();
+    expect(within(table).queryByText('speaker')).not.toBeInTheDocument();
+    expect(within(table).queryByText('moderator')).not.toBeInTheDocument();
   });
 });
 
@@ -1076,14 +1097,18 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
     await waitFor(() => {
       expect(screen.getByText('Original description')).toBeInTheDocument();
     });
-    expect(document.querySelector('.chq-detail-eyebrow')).not.toBeInTheDocument();
+    // Scoped to the heading's own eyebrow -- the Session details section
+    // below carries its own '.chq-detail-eyebrow' micro-label
+    // unconditionally (DEC-900 wave 25 amendment) and must not be confused
+    // with the heading's tracks/format eyebrow, which IS conditional.
+    const heading = document.querySelector('.chq-detail-heading') as HTMLElement;
+    expect(heading.querySelector('.chq-detail-eyebrow')).not.toBeInTheDocument();
   });
 
-  // DEC-900 (wave 5 amendment): Session details is no longer a fourth
-  // numbered section in the resting main column -- it collapses behind a
-  // 'Session details ›' disclosure below Reviews, closed by default, so
-  // the numbered/ruled sections end at Reviews.
-  it('orders the main column Abstract -> Form Answers -> Reviews, with no Meta heading, and collapses Session details behind a closed-by-default disclosure', async () => {
+  // DEC-900 (wave 25 amendment): V8 draws Session details, so it is a real
+  // FOURTH numbered section in the resting main column -- no disclosure,
+  // no click required to reveal it.
+  it('orders the main column Abstract -> Form Answers -> Reviews -> Session details, with no Meta heading, and Session details renders without any expand click', async () => {
     const detail = baseDetail();
     mockApi({
       [`GET /api/v1/submissions/${SUB_ID}`]: detail,
@@ -1104,15 +1129,18 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
     expect(sectionTitles[0]).toBe('Abstract');
     expect(sectionTitles[1]).toBe('Form answers');
     expect(sectionTitles[2]).toMatch(/^Reviews/);
-    expect(sectionTitles.length).toBe(3);
+    expect(sectionTitles[3]).toBe('Session details');
+    expect(sectionTitles.length).toBe(4);
 
-    // Session details is collapsed by default: its Tracks/Format/
-    // Participants content is not in the DOM until the disclosure opens.
-    expect(screen.queryByRole('heading', { name: 'Session details' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Edit tracks' })).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Search contacts')).not.toBeInTheDocument();
-    const trigger = screen.getByRole('button', { name: 'Session details ›' });
-    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    // Session details renders WITHOUT any expand click: its Tracks/Format/
+    // Participants content is already in the DOM, and there is no trigger
+    // button to click.
+    expect(screen.getByRole('heading', { name: 'Session details' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit tracks' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Session details/ })).not.toBeInTheDocument();
+
+    // Eyebrow micro-label.
+    expect(screen.getByText('EDITABLE UNTIL THE SCHEDULE IS PUBLISHED')).toBeInTheDocument();
 
     // Meta is gone outright -- neither heading nor its Created/Updated/
     // Accepted lines render anywhere on the page.
@@ -1121,7 +1149,7 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
     expect(screen.queryByText(/^Accepted:/)).not.toBeInTheDocument();
   });
 
-  it('opens Session details on click, revealing tracks/format/participant editing, and can be closed again', async () => {
+  it('shows the audience level select beside Format, and Session details participant roles/actions', async () => {
     const detail = baseDetail({
       trackIds: ['t1'],
       participants: [
@@ -1136,6 +1164,18 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
           order: 0,
           visible: true,
           inviteStatus: 'accepted',
+        },
+        {
+          id: 'p2',
+          contactId: 'c2',
+          name: 'Riley Panelist',
+          email: 'riley@example.com',
+          title: null,
+          company: null,
+          role: 'panelist',
+          order: 1,
+          visible: true,
+          inviteStatus: 'none',
         },
       ],
     });
@@ -1160,6 +1200,15 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
             position: 1,
             options: ['Talk', 'Workshop'],
           },
+          {
+            id: 'field_audience_level',
+            section: 'session',
+            kind: 'dropdown',
+            label: 'Audience level',
+            required: false,
+            position: 2,
+            options: ['Beginner', 'Advanced'],
+          },
         ],
       },
       [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
@@ -1168,26 +1217,27 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('Original description')).toBeInTheDocument();
-    });
-
-    const trigger = screen.getByRole('button', { name: 'Session details ›' });
-    fireEvent.click(trigger);
-
-    await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Edit tracks' })).toBeInTheDocument();
     });
     expect(screen.getByLabelText('Format')).toBeInTheDocument();
+    expect(screen.getByLabelText('Audience level')).toBeInTheDocument();
     expect(screen.getByLabelText('Search contacts')).toBeInTheDocument();
-    expect(screen.getAllByText('Jamie Speaker').length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: 'Hide session details' })).toHaveAttribute('aria-expanded', 'true');
 
-    // Closing collapses it again.
-    fireEvent.click(screen.getByRole('button', { name: 'Hide session details' }));
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'Edit tracks' })).not.toBeInTheDocument();
-    });
-    expect(screen.getByRole('button', { name: 'Session details ›' })).toHaveAttribute('aria-expanded', 'false');
+    // Role cells read LEAD / CO-PRESENTER, never the raw stored role key.
+    const table = screen.getByRole('table');
+    const rows = within(table).getAllByRole('row').slice(1); // drop header row
+    expect(within(rows[0]!).getByText('LEAD')).toBeInTheDocument();
+    expect(within(rows[1]!).getByText('CO-PRESENTER')).toBeInTheDocument();
+    expect(within(rows[1]!).getByRole('button', { name: 'Remove' })).toBeInTheDocument();
+    expect(within(rows[1]!).getByRole('button', { name: 'Make co-presenter' })).toBeInTheDocument();
+    // The lead row carries neither tertiary action.
+    expect(within(rows[0]!).queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
+    expect(within(rows[0]!).queryByRole('button', { name: 'Make co-presenter' })).not.toBeInTheDocument();
+
+    // Co-presenter note renders verbatim under the search.
+    expect(
+      screen.getByText('Adding a co-presenter emails them a portal link · the lead presenter is not changed'),
+    ).toBeInTheDocument();
   });
 
   it('moves History into the rail aside, below Speaker', async () => {
