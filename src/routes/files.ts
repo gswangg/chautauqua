@@ -9,7 +9,7 @@
 import { Hono, type Context } from "hono";
 import type { AppEnv, AuthInfo } from "../server/env";
 import { requireOrganizer, csrfJson } from "../server/middleware";
-import { ApiError, parseBoundedIdArray } from "../server/http";
+import { ApiError, parseBoundedIdArray, readOptionalJsonBody } from "../server/http";
 import { MAX_LONG_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { makeFileStore, putThenRecord } from "../server/context";
 import { newId } from "../domain/ids";
@@ -263,7 +263,7 @@ fileApiRoutes.post("/submissions/:id/content-status", requireOrganizer, csrfJson
   if (!scope) throw new ApiError("not_found", "Submission not found");
   if (scope.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
 
-  const body = (await c.req.json().catch(() => ({}))) as { contentStatus?: unknown };
+  const body = (await readOptionalJsonBody(c)) as unknown as { contentStatus?: unknown };
   if (!isValidContentStatus(body.contentStatus)) {
     throw new ApiError("invalid", "contentStatus must be one of pending, approved, changes_requested", {
       contentStatus: "Invalid value",
@@ -365,7 +365,7 @@ fileApiRoutes.post("/events/:eventId/files/archive", requireOrganizer, csrfJson,
   if (!scope) throw new ApiError("not_found", "Event not found");
   if (scope.orgId !== auth.orgId) throw new ApiError("forbidden", "Event belongs to a different org");
 
-  const body = (await c.req.json().catch(() => ({}))) as { fileIds?: unknown };
+  const body = (await readOptionalJsonBody(c)) as unknown as { fileIds?: unknown };
   const fileIds = parseBoundedIdArray(body.fileIds, "fileIds", { maxCount: MAX_ARCHIVE_FILES }); // DEC-182
 
   // Loud 404 on any unknown/non-deliverable id — no silent skips (DEC-160).
@@ -501,7 +501,7 @@ fileApiRoutes.post("/files/:fileId/comments", csrfJson, async (c) => {
   const fileId = c.req.param("fileId");
   const { auth } = await authzFileWrite(c, fileId);
 
-  const body = (await c.req.json().catch(() => ({}))) as { body?: unknown };
+  const body = (await readOptionalJsonBody(c)) as unknown as { body?: unknown };
   const text = typeof body.body === "string" ? body.body.trim() : "";
   if (!text) throw new ApiError("invalid", "body is required", { body: "Required" });
   if (text.length > MAX_LONG_TEXT_LENGTH) {

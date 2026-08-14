@@ -7,7 +7,7 @@
 import { Hono, type Context } from "hono";
 import type { AppEnv, AuthInfo } from "../../server/env";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
-import { ApiError, parseBoundedText, parseBoundedOptionalText } from "../../server/http";
+import { ApiError, parseBoundedText, parseBoundedOptionalText, readOptionalJsonBody } from "../../server/http";
 import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-417
 import { MINUTES_PER_DAY } from "../../domain/schedule";
 import { getEventInfo, isDayWithinEventRange, isIsoDay } from "../../server/repo/agenda"; // DEC-318
@@ -169,7 +169,7 @@ breaksRoutes.post("/events/:eventId/breaks", requireOrganizer, csrfJson, async (
     throw new ApiError("invalid", `This event already has ${MAX_BREAKS_PER_EVENT} breaks, the maximum allowed`);
   }
 
-  const body = (await c.req.json().catch(() => ({}))) as BreakBody;
+  const body = (await readOptionalJsonBody(c)) as unknown as BreakBody;
   const { fields, values } = validateBreakWrite(body, event, null);
 
   if (Object.keys(fields).length > 0) {
@@ -191,7 +191,7 @@ breaksRoutes.patch("/breaks/:id", requireOrganizer, csrfJson, async (c) => {
   const existing = await getBreakById(c.var.db, id);
   if (!existing) throw new ApiError("not_found", "Break not found");
 
-  const body = (await c.req.json().catch(() => ({}))) as BreakBody;
+  const body = (await readOptionalJsonBody(c)) as unknown as BreakBody;
   const { fields, values } = validateBreakWrite(body, event, existing as ResolvedBreakFields);
 
   if (Object.keys(fields).length > 0) {

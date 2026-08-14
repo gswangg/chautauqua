@@ -6,7 +6,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { csrfJson } from "../../server/middleware";
-import { ApiError } from "../../server/http";
+import { ApiError, readOptionalJsonBody } from "../../server/http";
 import * as repo from "../../server/repo/review";
 import { DEC_271 } from "../../decisions";
 import { currentAuth, requireReviewerOrOrganizer, asRecord, requireAssignedPlan, toRecusalOut } from "./shared";
@@ -30,7 +30,7 @@ reviewRecusalRoutes.post("/api/v1/review/plans/:planId/recusals/:submissionId", 
     if (!inScope) throw new ApiError("not_found", "Submission not found");
   }
 
-  const body = asRecord(await c.req.json().catch(() => ({})));
+  const body = asRecord(await readOptionalJsonBody(c));
   let reason: string | null = null;
   if (body.reason !== undefined && body.reason !== null) {
     if (typeof body.reason !== "string" || body.reason.length > 500) {

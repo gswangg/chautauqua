@@ -10,7 +10,13 @@ import { Hono, type Context } from "hono";
 import type { AppEnv, AuthInfo } from "../../server/env";
 import type { Db } from "../../server/context";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
-import { ApiError, parseBoundedIdArray, parseBoundedText, parseBoundedOptionalText } from "../../server/http";
+import {
+  ApiError,
+  parseBoundedIdArray,
+  parseBoundedText,
+  parseBoundedOptionalText,
+  readOptionalJsonBody,
+} from "../../server/http";
 import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
 import {
   cloneSubmission,
@@ -198,7 +204,7 @@ submissionsRoutes.post("/events/:eventId/submissions", requireOrganizer, csrfJso
   const eventId = c.req.param("eventId");
   await assertEventOwnership(c.var.db, eventId, auth.orgId);
 
-  const body = (await c.req.json().catch(() => ({}))) as CreateSubmissionBody;
+  const body = (await readOptionalJsonBody(c)) as unknown as CreateSubmissionBody;
   const title = parseBoundedText(body.title, "title", { max: MAX_NAME_LENGTH, required: true }); // DEC-417
   const description = parseBoundedOptionalText(body.description, "description", {
     max: MAX_LONG_TEXT_LENGTH,
@@ -273,7 +279,7 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
   if (!ownership) throw new ApiError("not_found", "Submission not found");
   if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
 
-  const body = (await c.req.json().catch(() => ({}))) as UpdateSubmissionBody;
+  const body = (await readOptionalJsonBody(c)) as unknown as UpdateSubmissionBody;
   const fields: { title?: string; description?: string | null } = {};
 
   if (body.title !== undefined) {
@@ -437,7 +443,7 @@ submissionsRoutes.post("/submissions/:id/participants", requireOrganizer, csrfJs
   if (!ownership) throw new ApiError("not_found", "Submission not found");
   if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
 
-  const body = (await c.req.json().catch(() => ({}))) as InviteParticipantBody;
+  const body = (await readOptionalJsonBody(c)) as unknown as InviteParticipantBody;
   const contactId = typeof body.contactId === "string" ? body.contactId.trim() : "";
   if (!contactId) {
     throw new ApiError("invalid", "contactId is required", { contactId: "Required" });
@@ -514,7 +520,7 @@ submissionsRoutes.patch(
       throw new ApiError("not_found", "Participant not found on this submission");
     }
 
-    const body = (await c.req.json().catch(() => ({}))) as ParticipantVisibilityBody;
+    const body = (await readOptionalJsonBody(c)) as unknown as ParticipantVisibilityBody;
     if (body.visible === undefined && body.inviteStatus === undefined) {
       throw new ApiError("invalid", "visible or inviteStatus is required", { visible: "Required" });
     }
@@ -560,7 +566,7 @@ submissionsRoutes.post("/events/:eventId/submissions/status", requireOrganizer, 
   const eventId = c.req.param("eventId");
   await assertEventOwnership(c.var.db, eventId, auth.orgId);
 
-  const body = (await c.req.json().catch(() => ({}))) as StatusUpdateBody;
+  const body = (await readOptionalJsonBody(c)) as unknown as StatusUpdateBody;
   const ids = parseBoundedIdArray(body.ids, "ids"); // DEC-182
   if (!isValidStatusLiteral(body.status)) {
     throw new ApiError("invalid", "status must be one of the DEC-003 submission statuses", {
@@ -619,7 +625,7 @@ submissionsRoutes.post("/events/:eventId/submissions/delete", requireOrganizer, 
   const eventId = c.req.param("eventId");
   await assertEventOwnership(c.var.db, eventId, auth.orgId);
 
-  const body = (await c.req.json().catch(() => ({}))) as DeleteBody;
+  const body = (await readOptionalJsonBody(c)) as unknown as DeleteBody;
   const ids = parseBoundedIdArray(body.ids, "ids"); // DEC-182
 
   const plan = await planSubmissionDelete(c.var.db, eventId, ids);
@@ -667,7 +673,7 @@ submissionsRoutes.post(
     const eventId = c.req.param("eventId");
     await assertEventOwnership(c.var.db, eventId, auth.orgId);
 
-    const body = (await c.req.json().catch(() => ({}))) as ContentStatusUpdateBody;
+    const body = (await readOptionalJsonBody(c)) as unknown as ContentStatusUpdateBody;
     const ids = parseBoundedIdArray(body.ids, "ids"); // DEC-182
     if (!isValidContentStatus(body.contentStatus)) {
       throw new ApiError("invalid", "contentStatus must be one of pending, approved, changes_requested", {

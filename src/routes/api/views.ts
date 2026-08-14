@@ -6,7 +6,7 @@ import { Hono, type Context } from "hono";
 import type { AppEnv, AuthInfo } from "../../server/env";
 import type { Db } from "../../server/context";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
-import { ApiError, parseBoundedText } from "../../server/http";
+import { ApiError, parseBoundedText, readOptionalJsonBody } from "../../server/http";
 import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-417
 import { getEventOrgId } from "../../server/repo/submissions";
 import { clampPage, listPerPage } from "../../lib/pagination";
@@ -60,7 +60,7 @@ viewsRoutes.post("/events/:eventId/views", requireOrganizer, csrfJson, async (c)
   const eventId = c.req.param("eventId");
   await assertEventOwnership(c.var.db, eventId, auth.orgId);
 
-  const body = (await c.req.json().catch(() => ({}))) as CreateViewBody;
+  const body = (await readOptionalJsonBody(c)) as unknown as CreateViewBody;
   const name = parseBoundedText(body.name, "name", { max: MAX_NAME_LENGTH, required: true }); // DEC-417
   if (!isValidSavedViewConfig(body.config)) {
     throw new ApiError("invalid", "config must match the DEC-031 saved view shape", {

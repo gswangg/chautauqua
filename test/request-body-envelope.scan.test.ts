@@ -18,14 +18,20 @@
 //     exceptions is needed for this direction.
 //
 // (b) Every `c.req.json()` call anywhere under src/routes must be
-//     immediately chained with `.catch(` -- an unguarded call throws a raw
-//     SyntaxError on a malformed body, which the shared onError handler can
-//     only report as a 500 `internal`, not the house 400 `invalid`
-//     envelope. As of wave 52 this is an absolute invariant with no
-//     exception ledger: every former ledger site (src/routes/review/
-//     plans-crud.ts, plans-reviewers.ts, reviewer.ts; src/routes/api/
-//     events.ts; src/routes/api/portal-config.ts) was converted to the
-//     guarded readJsonBody/readOptionalJsonBody readers.
+//     immediately chained with a `.catch(` whose body THROWS -- a catch that
+//     swallows the SyntaxError and returns a default (e.g. `.catch(() =>
+//     ({}))`) is not a guard: it turns a malformed body into a silent
+//     `{}`/`null`, which on an all-optional PATCH is a fail-loudly violation
+//     (a truncated request looks like a successful no-op) instead of the
+//     house 400 `invalid` envelope DEC-013 promises. (Wave 21 amendment:
+//     the guard used to accept the mere presence of `.catch(` -- its own
+//     failure message even recommended the forbidden shape -- which is how
+//     28 silent sites accumulated across 11 files after wave 52 emptied the
+//     ledger.) As of wave 21 this is an absolute invariant with no exception
+//     ledger: every call site either has no `.catch(` (violation), a
+//     `.catch(` whose body does not throw (violation), or reads through
+//     readJsonBody/readOptionalJsonBody (sanctioned, and never followed by
+//     a bare `c.req.json()`, so it never even reaches this scan).
 
 import fs from "node:fs";
 import path from "node:path";
@@ -124,14 +130,33 @@ describe("DEC-635 amendment: request body must never be parsed with a bare JSON.
   }
 });
 
+// Extracts the balanced-paren argument text of the `.catch(` chained
+// immediately after `c.req.json()`, or null if no such chain exists.
+function chainedCatchArg(content: string, afterIndex: number): string | null {
+  const after = content.slice(afterIndex);
+  const m = /^\s*\.catch\(/.exec(after);
+  if (!m) return null;
+  const argStart = afterIndex + m[0].length;
+  let depth = 1;
+  let j = argStart;
+  while (j < content.length && depth > 0) {
+    if (content[j] === "(") depth++;
+    else if (content[j] === ")") depth--;
+    j++;
+  }
+  return content.slice(argStart, j - 1);
+}
+
+// Direction (b): every `c.req.json()` call site under src/routes must be
+// guarded by a catch that THROWS -- a `.catch(` whose body does not contain
+// `throw` is a silent-default fallback wearing the shape of a guard.
 function findUnguardedJsonCalls(content: string): number[] {
   const out: number[] = [];
   const marker = "c.req.json()";
   let i = 0;
   while ((i = content.indexOf(marker, i)) !== -1) {
-    const after = content.slice(i + marker.length);
-    const chained = /^\s*\.catch\(/.test(after);
-    if (!chained) {
+    const catchArg = chainedCatchArg(content, i + marker.length);
+    if (catchArg === null || !/throw/.test(catchArg)) {
       out.push(lineAt(content, i));
     }
     i += marker.length;
@@ -139,18 +164,35 @@ function findUnguardedJsonCalls(content: string): number[] {
   return out;
 }
 
-describe("DEC-635 amendment: every c.req.json() call must be chained with .catch(", () => {
-  it("no unguarded c.req.json() call site exists anywhere under src/routes", () => {
+// Counts every sanctioned reader call site (readJsonBody/readOptionalJsonBody)
+// across src/routes -- a tripwire so a rename of either function (or of the
+// scan's marker string) cannot silently make this whole describe block
+// vacuous by making both directions pass on zero matches.
+function countSanctionedReaderCalls(content: string): number {
+  const matches = content.match(/\breadJsonBody\(c\)|\breadOptionalJsonBody\(c\)/g);
+  return matches ? matches.length : 0;
+}
+
+describe("DEC-635 amendment (wave 21): every c.req.json() call must be chained with a .catch( that THROWS", () => {
+  it("no unguarded/silent-default c.req.json() call site exists anywhere under src/routes", () => {
     const unlisted: string[] = [];
     for (const file of files) {
       const rel = path.relative(ROUTES_ROOT, file).split(path.sep).join("/");
       const content = fs.readFileSync(file, "utf8");
       for (const line of findUnguardedJsonCalls(content)) {
         unlisted.push(
-          `${rel}:${line}: c.req.json() with no .catch( -- add .catch (e.g. .catch(() => ({}))) or use readJsonBody(c)/readOptionalJsonBody(c) from src/server/http.ts`,
+          `${rel}:${line}: c.req.json() with no .catch( that throws -- a silent-default catch (e.g. .catch(() => ({}))) is not a guard; use readJsonBody(c)/readOptionalJsonBody(c) from src/server/http.ts instead`,
         );
       }
     }
     expect(unlisted, unlisted.join("\n")).toEqual([]);
+  });
+
+  it("tripwire: at least 15 sanctioned reader call sites exist across src/routes (a rename cannot make this scan vacuous)", () => {
+    let total = 0;
+    for (const file of files) {
+      total += countSanctionedReaderCalls(fs.readFileSync(file, "utf8"));
+    }
+    expect(total).toBeGreaterThanOrEqual(15);
   });
 });

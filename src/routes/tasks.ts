@@ -12,7 +12,7 @@ import type { AppEnv, AuthInfo, Bindings } from "../server/env";
 import type { Db } from "../server/context";
 import { makeDb, makeMailer } from "../server/context";
 import { requireOrganizer, csrfJson } from "../server/middleware";
-import { ApiError, parseBoundedIdArray } from "../server/http";
+import { ApiError, parseBoundedIdArray, readOptionalJsonBody } from "../server/http";
 import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { isEpochMs } from "./api/validators"; // DEC-517/DEC-527
 import { DEC_120, DEC_214, DEC_240, DEC_291, DEC_398 } from "../decisions";
@@ -169,7 +169,7 @@ taskRoutes.post("/events/:eventId/tasks", requireOrganizer, csrfJson, async (c) 
   const eventId = c.req.param("eventId");
   await assertEventOwnership(c.var.db, eventId, auth.orgId);
 
-  const body = asRecord(await c.req.json().catch(() => ({})));
+  const body = asRecord(await readOptionalJsonBody(c));
   const fields: Record<string, string> = {};
 
   const kind = typeof body.kind === "string" ? body.kind : undefined;
@@ -252,7 +252,7 @@ taskRoutes.patch("/tasks/:id", requireOrganizer, csrfJson, async (c) => {
   if (!ownership) throw new ApiError("not_found", "Task not found");
   if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Task belongs to a different org");
 
-  const body = asRecord(await c.req.json().catch(() => ({})));
+  const body = asRecord(await readOptionalJsonBody(c));
   const fields: Record<string, string> = {};
 
   const input: UpdateTaskInput = {};
@@ -366,7 +366,7 @@ taskRoutes.post("/tasks/:id/assign", requireOrganizer, csrfJson, async (c) => {
   if (!ownership) throw new ApiError("not_found", "Task not found");
   if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Task belongs to a different org");
 
-  const body = asRecord(await c.req.json().catch(() => ({})));
+  const body = asRecord(await readOptionalJsonBody(c));
   const contactIds = parseBoundedIdArray(body.contactIds, "contactIds"); // DEC-182
 
   // DEC-120: reject cross-org contact ids before any assignment write —
@@ -411,7 +411,7 @@ taskRoutes.patch("/task-assignments/:id", csrfJson, async (c) => {
     throw new ApiError("forbidden", "Not authorized to update this task assignment");
   }
 
-  const body = asRecord(await c.req.json().catch(() => ({})));
+  const body = asRecord(await readOptionalJsonBody(c));
   const status = typeof body.status === "string" ? body.status : undefined;
   if (!status || !ASSIGNMENT_STATUSES.has(status as TaskAssignmentStatus)) {
     throw new ApiError("invalid", "status must be 'pending' or 'complete'", { status: "Invalid status" });
@@ -478,7 +478,7 @@ taskRoutes.post("/events/:eventId/onboarding/remind", requireOrganizer, csrfJson
   const eventId = c.req.param("eventId");
   await assertEventOwnership(c.var.db, eventId, auth.orgId);
 
-  const body = asRecord(await c.req.json().catch(() => ({})));
+  const body = asRecord(await readOptionalJsonBody(c));
   // DEC-182: taskIds is optional (undefined => remind for all outstanding
   // tasks on the event); when present it must be a bounded array of ids.
   const taskIds = body.taskIds === undefined ? undefined : parseBoundedIdArray(body.taskIds, "taskIds");
@@ -517,7 +517,7 @@ taskRoutes.post("/events/:eventId/onboarding/remind/preview", requireOrganizer, 
   const eventId = c.req.param("eventId");
   await assertEventOwnership(c.var.db, eventId, auth.orgId);
 
-  const body = asRecord(await c.req.json().catch(() => ({})));
+  const body = asRecord(await readOptionalJsonBody(c));
   const taskIds = body.taskIds === undefined ? undefined : parseBoundedIdArray(body.taskIds, "taskIds");
   // DEC-694: same optional contactIds scope as the send endpoint, so a
   // preview and the send it previewed always address the same recipients.
