@@ -6,6 +6,8 @@
 // candidate rows and applies nothing but org scope + a bounded window;
 // this module owns the privacy predicate and the grouping/ordering/state.
 
+import { dayLabelEndInstant } from "./timezone";
+
 export interface HubEvent {
   id: string;
   name: string;
@@ -50,6 +52,14 @@ function compareId(a: HubEvent, b: HubEvent): number {
   return 0;
 }
 
+/** DEC-581 amendment (w69-a): ONE definition of "a stranger may see this
+ * event" — used by groupHubEvents' skip below, and reusable by any other
+ * surface that needs the same predicate (e.g. the repo layer scoping its
+ * shape-count queries). */
+export function isHubVisible(e: { cfpOpen: boolean; publishedSessionCount: number }): boolean {
+  return e.cfpOpen || e.publishedSessionCount > 0;
+}
+
 /** DEC-581: buckets candidate events into the sections a stranger may see,
  * and orders each section. An event that is neither an open CFP nor has any
  * published session is dropped SILENTLY — it never reaches any section,
@@ -62,10 +72,14 @@ export function groupHubEvents(events: HubEvent[], nowMs: number): HubSections {
   const past: HubEvent[] = [];
 
   for (const event of events) {
-    if (!(event.cfpOpen || event.publishedSessionCount > 0)) continue;
+    if (!isHubVisible(event)) continue;
 
-    const end = event.endDate;
-    if (end < nowMs) {
+    // DEC-581 amendment (w69-a): endDate is a UTC-midnight DAY LABEL, not an
+    // instant — expand to the last instant of that day in the OWNING
+    // event's timezone (dayLabelEndInstant), never a raw `< nowMs` compare
+    // against the day-label ms, or the event archives itself at 00:01 UTC
+    // on its own final day.
+    if (dayLabelEndInstant(event.endDate, event.timezone) < nowMs) {
       past.push(event);
     } else if (event.cfpOpen) {
       openCfp.push(event);

@@ -11,7 +11,7 @@ import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formWindowState } from "../../../lib/submit-core";
-import type { HubEvent } from "../../../lib/home-hub";
+import { isHubVisible, type HubEvent } from "../../../lib/home-hub";
 import { visibleSessionConditions } from "./gates";
 import { SESSION_FORMAT_FIELD_ID } from "../../../forms/types";
 
@@ -88,12 +88,31 @@ export async function listHubEvents(db: Db, orgId: string, nowMs: number): Promi
           .groupBy(schema.submission.eventId);
   const publishedCountByEventId = new Map(countRows.map((r) => [r.eventId, Number(r.count)]));
 
-  // DEC-943: two grouped queries over the already-collected eventIds --
-  // never a query per event (DEC-078). Both compose the same
-  // visibleSessionConditions() predicate the published-session count above
-  // uses, so "shape" counts only ever reflect publicly visible sessions.
+  // DEC-581 amendment (w69-a): cfpOpen and publishedSessionCount must be
+  // known BEFORE the shape-count queries below, so those queries can be
+  // scoped to only the ids isHubVisible() actually lets a stranger see —
+  // the same predicate groupHubEvents() applies, computed once here.
+  const cfpOpenByEventId = new Map(
+    rows.map((row) => {
+      const openDate = row.openDate ? row.openDate.getTime() : null;
+      const closeDate = row.closeDate ? row.closeDate.getTime() : null;
+      return [row.id, formWindowState(openDate, closeDate, nowMs, row.timezone) === "open"] as const;
+    }),
+  );
+  const visibleEventIds = eventIds.filter((id) =>
+    isHubVisible({
+      cfpOpen: cfpOpenByEventId.get(id) ?? false,
+      publishedSessionCount: publishedCountByEventId.get(id) ?? 0,
+    }),
+  );
+
+  // DEC-943: two grouped queries over the visible-only eventIds -- never a
+  // query per event (DEC-078), and never issued at all when nothing is
+  // visible. Both compose the same visibleSessionConditions() predicate the
+  // published-session count above uses, so "shape" counts only ever reflect
+  // publicly visible sessions.
   const trackCountRows =
-    eventIds.length === 0
+    visibleEventIds.length === 0
       ? []
       : await db
           .select({
@@ -102,12 +121,12 @@ export async function listHubEvents(db: Db, orgId: string, nowMs: number): Promi
           })
           .from(schema.submissionTrack)
           .innerJoin(schema.submission, eq(schema.submissionTrack.submissionId, schema.submission.id))
-          .where(and(inArray(schema.submission.eventId, eventIds), visibleSessionConditions()))
+          .where(and(inArray(schema.submission.eventId, visibleEventIds), visibleSessionConditions()))
           .groupBy(schema.submission.eventId);
   const trackCountByEventId = new Map(trackCountRows.map((r) => [r.eventId, Number(r.count)]));
 
   const formatCountRows =
-    eventIds.length === 0
+    visibleEventIds.length === 0
       ? []
       : await db
           .select({
@@ -118,7 +137,7 @@ export async function listHubEvents(db: Db, orgId: string, nowMs: number): Promi
           .innerJoin(schema.submission, eq(schema.submissionAnswer.submissionId, schema.submission.id))
           .where(
             and(
-              inArray(schema.submission.eventId, eventIds),
+              inArray(schema.submission.eventId, visibleEventIds),
               eq(schema.submissionAnswer.formFieldId, SESSION_FORMAT_FIELD_ID),
               visibleSessionConditions(),
             ),
@@ -127,7 +146,6 @@ export async function listHubEvents(db: Db, orgId: string, nowMs: number): Promi
   const formatCountByEventId = new Map(formatCountRows.map((r) => [r.eventId, Number(r.count)]));
 
   const items: HubEvent[] = rows.map((row) => {
-    const openDate = row.openDate ? row.openDate.getTime() : null;
     const closeDate = row.closeDate ? row.closeDate.getTime() : null;
     return {
       id: row.id,
@@ -138,7 +156,7 @@ export async function listHubEvents(db: Db, orgId: string, nowMs: number): Promi
       location: row.location,
       timezone: row.timezone,
       cfpCloseDate: closeDate,
-      cfpOpen: formWindowState(openDate, closeDate, nowMs, row.timezone) === "open",
+      cfpOpen: cfpOpenByEventId.get(row.id) ?? false,
       publishedSessionCount: publishedCountByEventId.get(row.id) ?? 0,
       trackCount: trackCountByEventId.get(row.id) ?? 0,
       formatCount: formatCountByEventId.get(row.id) ?? 0,
