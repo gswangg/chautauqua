@@ -147,6 +147,24 @@ describe("servePublicGet", () => {
     expect(stored.headers.get("Cache-Control")).toBe("public, max-age=86400");
   });
 
+  it("DEC-083 amendment (wave 10): two consecutive identical GETs against the same cache instance both get the full body and client-facing Cache-Control, even when the CacheLike returns the same Response object on repeat match()", async () => {
+    const cache = fakeCache();
+    const kv = fakeKv();
+    const next = async () =>
+      new Response("hello", { status: 200, headers: { "Cache-Control": "public, max-age=60, stale-while-revalidate=300" } });
+
+    const req = () => new Request("https://x.test/e/foo/sessions");
+    await servePublicGet(cache, kv, req(), next); // miss: populates the cache
+
+    const first = await servePublicGet(cache, kv, req(), next); // hit #1
+    expect(await first.text()).toBe("hello");
+    expect(first.headers.get("Cache-Control")).toBe(CLIENT_CACHE_CONTROL);
+
+    const second = await servePublicGet(cache, kv, req(), next); // hit #2 against the same stored Response
+    expect(await second.text()).toBe("hello");
+    expect(second.headers.get("Cache-Control")).toBe(CLIENT_CACHE_CONTROL);
+  });
+
   it("does not cache non-200 responses", async () => {
     const cache = fakeCache();
     const kv = fakeKv();
