@@ -9,6 +9,7 @@ import { newId } from "../../../domain/ids";
 import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
 import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
 import { ApiError } from "../../http";
+import { isUniqueViolation } from "../constraints";
 import { DEC_528, DEC_556, DEC_801 } from "../../../decisions";
 import { ASSIGNED_LATE_GRACE_DAYS } from "../../../domain/task-due";
 import type { FileKind } from "../../../domain/files";
@@ -230,18 +231,6 @@ export async function createTaskAssignments(
  * event surfaces as a named field error, mirroring patchSegment's
  * (../contacts/segments.ts) UNIQUE-constraint-to-ApiError translation, not
  * an uncaught 500. */
-function isTaskTitleUniqueViolation(err: unknown): boolean {
-  // The D1/better-sqlite3-style driver wraps the raw SQLite error as `cause`
-  // (e.g. drizzle's DrizzleQueryError) rather than surfacing its message
-  // directly on `err` -- check both, matching a raw throw or a wrapped one.
-  for (const candidate of [err, err instanceof Error ? err.cause : undefined]) {
-    if (candidate instanceof Error && /UNIQUE constraint failed/i.test(candidate.message) && candidate.message.includes("task.title")) {
-      return true;
-    }
-  }
-  return false;
-}
-
 const TASK_TITLE_COLLISION_FIELDS = { title: "A task with this title already exists for this event" };
 
 export async function createTask(db: Db, eventId: string, input: CreateTaskInput): Promise<TaskRecord> {
@@ -262,7 +251,7 @@ export async function createTask(db: Db, eventId: string, input: CreateTaskInput
       updatedAt: now,
     });
   } catch (err) {
-    if (isTaskTitleUniqueViolation(err)) {
+    if (isUniqueViolation(err, "task.title")) {
       throw new ApiError("invalid", "A task with this title already exists for this event", TASK_TITLE_COLLISION_FIELDS);
     }
     throw err;
@@ -305,7 +294,7 @@ export async function updateTask(db: Db, taskId: string, input: UpdateTaskInput)
       })
       .where(eq(schema.task.id, taskId));
   } catch (err) {
-    if (isTaskTitleUniqueViolation(err)) {
+    if (isUniqueViolation(err, "task.title")) {
       throw new ApiError("invalid", "A task with this title already exists for this event", TASK_TITLE_COLLISION_FIELDS);
     }
     throw err;
