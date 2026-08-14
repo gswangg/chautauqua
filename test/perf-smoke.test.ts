@@ -8,6 +8,7 @@ import {
   adjustedP95,
   alternateByIteration,
   assertContainsVevent,
+  assertMinChqProgDaySections,
   assertMinCsvLines,
   computeP95,
   computePercentile,
@@ -208,6 +209,35 @@ describe("assertContainsVevent", () => {
   });
 });
 
+describe("assertMinChqProgDaySections", () => {
+  it("does not throw when at least two chq-prog-day sections are present", () => {
+    const body = `<section class="chq-prog-day" id="chq-prog-day-1"></section><section class="chq-prog-day" id="chq-prog-day-2"></section>`;
+    expect(() => assertMinChqProgDaySections("public programme (whole agenda)", body)).not.toThrow();
+  });
+
+  it("throws with the check name and counts when only one section is present", () => {
+    const body = `<section class="chq-prog-day" id="chq-prog-day-1"></section>`;
+    expect(() => assertMinChqProgDaySections("public programme (whole agenda)", body)).toThrow(
+      /public programme \(whole agenda\): expected >= 2 chq-prog-day sections, got 1/,
+    );
+  });
+
+  it("throws when no sections are present", () => {
+    expect(() => assertMinChqProgDaySections("check", "<html></html>")).toThrow(/got 0/);
+  });
+
+  it("throws on a non-positive minSections", () => {
+    expect(() => assertMinChqProgDaySections("check", "irrelevant", 0)).toThrow();
+    expect(() => assertMinChqProgDaySections("check", "irrelevant", -1)).toThrow();
+  });
+
+  it("honors a custom minSections", () => {
+    const body = `<section class="chq-prog-day"></section><section class="chq-prog-day"></section><section class="chq-prog-day"></section>`;
+    expect(() => assertMinChqProgDaySections("check", body, 3)).not.toThrow();
+    expect(() => assertMinChqProgDaySections("check", body, 4)).toThrow(/got 3/);
+  });
+});
+
 describe("resolvePerfProfileName", () => {
   it("defaults to 'default' when neither a flag nor env var is set", () => {
     expect(resolvePerfProfileName([], {})).toBe("default");
@@ -391,5 +421,45 @@ describe("perf-smoke.ts write-class coverage (DEC-644 amendment, wave 46)", () =
     // PUT .../submissions/:id/slot body (src/routes/agenda.ts:47).
     expect(source).toContain("day: string,");
     expect(source).toContain("startMin: number, endMin: number, roomId?: string | null");
+  });
+});
+
+// w68-c: DEC-683 amendment (wave 68) — the two public GETs added in wave 65
+// (printable programme, anonymous home hub) were never covered by this
+// harness. Same source-scan technique as the write-class coverage block
+// above (a running server + perf seed is needed to actually execute these
+// checks, out of scope for this suite per the task's TESTS note).
+describe("perf-smoke.ts public GET coverage (DEC-683 amendment, wave 68)", () => {
+  const PERF_SMOKE_PATH = resolve(fileURLToPath(import.meta.url), "../../scripts/perf-smoke.ts");
+  const source = readFileSync(PERF_SMOKE_PATH, "utf-8");
+
+  it('names the "public programme (whole agenda)" check with the public class and /programme route', () => {
+    expect(source).toContain('name: "public programme (whole agenda)"');
+    expect(source).toContain("${PERF_URL}/e/${PERF_EVENT_SLUG}/programme");
+  });
+
+  it('"public programme (whole agenda)" asserts chq-prog-day sections via the shared helper', () => {
+    const idx = source.indexOf('name: "public programme (whole agenda)"');
+    expect(idx).toBeGreaterThan(-1);
+    const nextCheckIdx = source.indexOf("name:", idx + 1);
+    const block = source.slice(idx, nextCheckIdx === -1 ? source.length : nextCheckIdx);
+    expect(block).toContain('cls: "public"');
+    expect(block).toContain("assertMinChqProgDaySections(");
+  });
+
+  it('names the "home hub (anonymous)" check with the public class and root route', () => {
+    expect(source).toContain('name: "home hub (anonymous)"');
+    expect(source).toContain("fetch(`${PERF_URL}/`)");
+  });
+
+  it('"home hub (anonymous)" asserts chq-home- markup and fetches without credentials', () => {
+    const idx = source.indexOf('name: "home hub (anonymous)"');
+    expect(idx).toBeGreaterThan(-1);
+    const nextCheckIdx = source.indexOf("name:", idx + 1);
+    const block = source.slice(idx, nextCheckIdx === -1 ? source.length : nextCheckIdx);
+    expect(block).toContain('cls: "public"');
+    expect(block).toContain("chq-home-");
+    // No `headers` (the organizer cookie header) passed to this fetch call.
+    expect(block).not.toMatch(/fetch\(`\$\{PERF_URL\}\/`,\s*\{\s*headers/);
   });
 });

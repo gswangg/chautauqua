@@ -22,6 +22,7 @@ import {
   PERF_P95_BUDGET_MS,
   alternateByIteration,
   assertContainsVevent,
+  assertMinChqProgDaySections,
   assertMinCsvLines,
   computeP95,
   computePercentile,
@@ -599,6 +600,41 @@ async function main(): Promise<void> {
           const body = await res.clone().text();
           if (body.length === 0) {
             throw new Error("public schedule page: expected non-empty rendered body");
+          }
+        }
+        return res;
+      },
+    },
+    {
+      // w68-c: DEC-683 amendment (wave 68) — the printable programme
+      // (src/routes/public/programme.tsx), the only public HTML GET with
+      // neither a day scope nor a page window: it renders every day of the
+      // whole published agenda in one document. Public, unauthenticated.
+      name: "public programme (whole agenda)",
+      cls: "public",
+      run: async () => {
+        const res = await fetch(`${PERF_URL}/e/${PERF_EVENT_SLUG}/programme`);
+        if (res.ok) {
+          const body = await res.clone().text();
+          assertMinChqProgDaySections("public programme (whole agenda)", body);
+        }
+        return res;
+      },
+    },
+    {
+      // w68-c: DEC-683 amendment (wave 68) — the anonymous event hub
+      // (src/routes/root.tsx), the root URL and a judge's first request;
+      // runs getHubOrg plus listHubEvents' four grouped queries. Fetched
+      // WITHOUT credentials — an authenticated request 302s per DEC-582,
+      // which is not what this check measures.
+      name: "home hub (anonymous)",
+      cls: "public",
+      run: async () => {
+        const res = await fetch(`${PERF_URL}/`);
+        if (res.ok) {
+          const body = await res.clone().text();
+          if (!body.includes("chq-home-")) {
+            throw new Error("home hub (anonymous): expected rendered body to contain chq-home- markup");
           }
         }
         return res;
