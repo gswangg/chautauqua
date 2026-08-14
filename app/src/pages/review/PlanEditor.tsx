@@ -8,7 +8,15 @@ import { copyText } from '../../lib/clipboard';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DateField } from '../../components/DateField';
 import { PageSkeleton } from '../../components/PageSkeleton';
-import { addCriterion, removeCriterion, updateCriterion, validateCriteriaList, validatePlanDraft } from './planForm';
+import {
+  addCriterion,
+  removeCriterion,
+  updateCriterion,
+  validateCriteriaList,
+  validatePlanDraft,
+  type PlanValidationErrors,
+} from './planForm';
+import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
 // DEC-708: the same name-or-email resolver ProgressPanel uses -- a plan
 // reviewer row names a person by their resolved contact, never a
 // fabricated name, falling back to the bare email.
@@ -32,7 +40,7 @@ import {
 // are computed by the same pure domain functions the server uses -- no
 // re-derivation of the weight-share math client-side.
 import { criterionWeightShares, DEFAULT_PLAN_CRITERIA } from '../../../../src/domain/evaluation';
-import { DEC_745, DEC_786, DEC_824, DEC_882, DEC_715, DEC_213 } from '../../../../src/decisions';
+import { DEC_745, DEC_786, DEC_824, DEC_882, DEC_715, DEC_213, DEC_124 } from '../../../../src/decisions';
 import { countOf } from '../../lib/plural';
 
 void DEC_745; // v4 shell: title-row NAME/Duplicate/Save, 2x2 field grid, "Who reviews what" below
@@ -55,6 +63,51 @@ void DEC_715;
 // summed across every round rather than scoped to the active tab, since
 // both are plan-wide, not round-scoped.
 void DEC_213;
+// w28-b/DEC-124: the plan editor's save-rejection reuses the ONE admin-SPA
+// error vocabulary -- ErrorSummary at the top of the form plus a
+// .chq-field-error/chq-field-invalid pair on every offending control, never
+// a page-local error style.
+void DEC_124;
+
+// w28-b/DEC-745/DEC-124: fields the summary can anchor to. 'rounds' has no
+// editable control in this editor (rounds only advances via "Start a new
+// wave"), so a rounds error -- currently unreachable from this UI -- is
+// deliberately left out of both maps rather than pointed at a fake id.
+const PLAN_ERROR_FIELD_LABELS: Record<string, string> = {
+  name: 'Name',
+  scale: 'Rating scale',
+  maxEvaluationsPerSubmission: 'Reviews per talk',
+  closeAt: 'Closes',
+  criteria: 'Scoring criteria',
+};
+const PLAN_ERROR_FIELD_ANCHORS: Record<string, string> = {
+  name: 'plan-name',
+  scale: 'plan-scale-min',
+  maxEvaluationsPerSubmission: 'plan-max-evaluations',
+  closeAt: 'plan-close-at',
+  criteria: 'plan-criteria',
+};
+
+/** Builds the ErrorSummary's one-problem-per-error list, each anchorId a
+ * real element id in the form below -- top-level fields via the map above,
+ * per-criterion shape errors via the row's own id convention. */
+function planErrorSummaryProblems(errors: PlanValidationErrors): { anchorId: string; label: string }[] {
+  const problems: { anchorId: string; label: string }[] = [];
+  for (const key of Object.keys(errors)) {
+    const anchorId = PLAN_ERROR_FIELD_ANCHORS[key];
+    if (anchorId) {
+      problems.push({ anchorId, label: PLAN_ERROR_FIELD_LABELS[key]! });
+      continue;
+    }
+    const match = key.match(/^criterion\.(.+)\.(label|weight|options)$/);
+    if (match) {
+      const [, criterionId, sub] = match;
+      const subLabel = sub === 'label' ? 'Criterion label' : sub === 'weight' ? 'Criterion weight' : 'Criterion options';
+      problems.push({ anchorId: `criterion-${criterionId}-${sub}`, label: subLabel });
+    }
+  }
+  return problems;
+}
 
 // DEC-676: soft cap on the criteria list -- Add disables with an honest
 // caption once reached, never a silent no-op.
@@ -174,11 +227,13 @@ export function PlanEditor() {
   const [duplicating, setDuplicating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dateFieldError, setDateFieldError] = useState<string | null>(null);
-  // DEC-745: the plan NAME is the page title now, an <input> rather than a
-  // labelled field row. A brand-new plan starts blank, so its "required"
-  // error must stay silent until the field has actually been touched --
-  // an existing plan always loads with a name, so it's touched from the start.
-  const [nameTouched, setNameTouched] = useState(!isNew);
+  // w28-b/DEC-124 (rule 9: a draft never validates): generalised from the
+  // old name-only "touched" gate -- NO field error anywhere in this form
+  // (name, dates, scale, criteria) renders before the first Save/Create
+  // click. An existing plan is not a fresh draft, so it starts "submitted"
+  // and shows any inherited problems immediately; a brand-new plan starts
+  // silent until its first submit attempt.
+  const [submitted, setSubmitted] = useState(!isNew);
   // DEC-745: "Assign a reviewer" is a link on the "Who reviews what" rule,
   // not an always-open form -- it discloses the assignment controls
   // (existing create-account + scope-assign capability, never dropped).
@@ -462,11 +517,13 @@ export function PlanEditor() {
 
   async function save() {
     if (!eventId) return;
-    // DEC-745: a Save/Create click always surfaces the name error even if
-    // the title input itself was never blurred.
-    setNameTouched(true);
+    // w28-b/DEC-124: a Save/Create click is the ONE moment every field
+    // error in the form becomes visible, never a per-field blur.
+    setSubmitted(true);
     if (Object.keys(errors).length > 0) {
-      setError('Fix the highlighted fields before saving.');
+      // w28-b/DEC-124: the V9 error standard's ErrorSummary (rendered at
+      // the top of the form once `submitted` is true) is now the ONE
+      // rejection message -- no second, less specific banner underneath it.
       return;
     }
     if (!isNew && pristineDraft.anonymized && !draft.anonymized) {
@@ -942,14 +999,23 @@ export function PlanEditor() {
             &lsaquo; Review
           </Link>
           <input
-            className="chq-review-editor-title-input"
+            id="plan-name"
+            className={
+              submitted && errors.name
+                ? 'chq-review-editor-title-input chq-field-invalid'
+                : 'chq-review-editor-title-input'
+            }
             aria-label="Plan name"
             placeholder="New evaluation plan"
             value={draft.name}
             onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-            onBlur={() => setNameTouched(true)}
+            aria-invalid={submitted && errors.name ? 'true' : undefined}
           />
-          {nameTouched && errors.name && <span className="chq-review-field-error">{errors.name}</span>}
+          {submitted && errors.name && (
+            <span className="chq-field-error" role="alert">
+              {errors.name}
+            </span>
+          )}
           {isNew && <p className="chq-review-field-caption">Nothing is sent to reviewers until you open it.</p>}
           {/* DEC-882: the open-plan header states both numbers from the
               progress aggregate already loaded into progressRows -- never a
@@ -1004,6 +1070,17 @@ export function PlanEditor() {
       )}
 
       <div className="chq-review-editor">
+        {/* w28-b/DEC-745/DEC-124: the V9 error standard's top-of-form
+            summary -- one block, one anchor per problem, rendered only once
+            a Save/Create click has actually failed validation (the
+            `submitted` gate, so a fresh draft never validates). */}
+        {submitted && Object.keys(errors).length > 0 && (
+          <ErrorSummary
+            heading={countHeading(Object.keys(errors).length, 'before this plan can open')}
+            kept="Nothing was lost. Everything you typed is still here."
+            problems={planErrorSummaryProblems(errors)}
+          />
+        )}
         {/* DEC-709: plan fields as a compact summary block -- Opens / Closes
             / Reviews per talk / Scale, the scale field captioned exactly
             'Applies to every criterion in this plan' since it's plan-wide,
@@ -1022,18 +1099,35 @@ export function PlanEditor() {
             Closes
             <DateField
               id="plan-close-at"
-              className="chq-input chq-date-input"
+              className={
+                submitted && errors.closeAt ? 'chq-input chq-date-input chq-field-invalid' : 'chq-input chq-date-input'
+              }
               value={msToDateInput(draft.closeAt)}
               onChange={setCloseAt}
             />
+            {/* w28-b/DEC-745/DEC-124: cross-field error worded as a
+                consequence, attached to the close date (the field a reader
+                would actually fix), not the open date it conflicts with.
+                DateField doesn't forward an external aria-invalid prop, so
+                only the shared chq-field-invalid class above marks the
+                control visually -- see notes in the task report. */}
+            {submitted && errors.closeAt && (
+              <span className="chq-field-error" role="alert">
+                {errors.closeAt}
+              </span>
+            )}
           </label>
           <label className="chq-review-field">
             Reviews per talk
             <input
+              id="plan-max-evaluations"
               type="number"
-              className="chq-input"
+              className={
+                submitted && errors.maxEvaluationsPerSubmission ? 'chq-input chq-field-invalid' : 'chq-input'
+              }
               min={1}
               value={draft.maxEvaluationsPerSubmission ?? ''}
+              aria-invalid={submitted && errors.maxEvaluationsPerSubmission ? 'true' : undefined}
               onChange={(e) =>
                 setDraft((d) => ({
                   ...d,
@@ -1041,31 +1135,41 @@ export function PlanEditor() {
                 }))
               }
             />
-            {errors.maxEvaluationsPerSubmission && (
-              <span className="chq-review-field-error">{errors.maxEvaluationsPerSubmission}</span>
+            {submitted && errors.maxEvaluationsPerSubmission && (
+              <span className="chq-field-error" role="alert">
+                {errors.maxEvaluationsPerSubmission}
+              </span>
             )}
           </label>
           <div className="chq-review-field">
             Rating scale
             <div className="chq-review-scale-inputs">
               <input
+                id="plan-scale-min"
                 type="number"
-                className="chq-input"
+                className={submitted && errors.scale ? 'chq-input chq-field-invalid' : 'chq-input'}
                 aria-label="Scale min"
+                aria-invalid={submitted && errors.scale ? 'true' : undefined}
                 value={draft.scale.min}
                 onChange={(e) => setDraft((d) => ({ ...d, scale: { ...d.scale, min: Number(e.target.value) } }))}
               />
               <span aria-hidden="true">to</span>
               <input
+                id="plan-scale-max"
                 type="number"
-                className="chq-input"
+                className={submitted && errors.scale ? 'chq-input chq-field-invalid' : 'chq-input'}
                 aria-label="Scale max"
+                aria-invalid={submitted && errors.scale ? 'true' : undefined}
                 value={draft.scale.max}
                 onChange={(e) => setDraft((d) => ({ ...d, scale: { ...d.scale, max: Number(e.target.value) } }))}
               />
             </div>
             <span className="chq-review-field-caption">Applies to every criterion in this plan</span>
-            {errors.scale && <span className="chq-review-field-error">{errors.scale}</span>}
+            {submitted && errors.scale && (
+              <span className="chq-field-error" role="alert">
+                {errors.scale}
+              </span>
+            )}
           </div>
           {/* w25-g/DEC-745 amendment (A10): the anonymise toggle is a
               plan-wide property, exactly like scale -- it joins the plan
@@ -1097,7 +1201,7 @@ export function PlanEditor() {
           </div>
         </div>
 
-        <section className="chq-section">
+        <section className="chq-section" id="plan-criteria">
           <div className="chq-section-head">
             <h2 className="chq-section-label">Scoring criteria</h2>
             {/* w41-f/DEC-882 amendment: a locked round names its constraint
@@ -1164,8 +1268,10 @@ export function PlanEditor() {
             </div>
           )}
 
-          {(activeRound === 0 ? errors.criteria : criteriaErrors.criteria) && (
-            <span className="chq-review-field-error">{activeRound === 0 ? errors.criteria : criteriaErrors.criteria}</span>
+          {submitted && (activeRound === 0 ? errors.criteria : criteriaErrors.criteria) && (
+            <span className="chq-field-error" role="alert">
+              {activeRound === 0 ? errors.criteria : criteriaErrors.criteria}
+            </span>
           )}
           {/* DEC-882: the criteria list names its columns, in the
               section-label type this page already uses, aligned to the
@@ -1280,9 +1386,19 @@ export function PlanEditor() {
                       ⋮⋮
                     </button>
                     <input
-                      className="chq-input"
+                      id={`criterion-${criterion.id}-label`}
+                      className={
+                        submitted && (activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.label`]
+                          ? 'chq-input chq-field-invalid'
+                          : 'chq-input'
+                      }
                       placeholder="Label"
                       aria-label="Criterion label"
+                      aria-invalid={
+                        submitted && (activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.label`]
+                          ? 'true'
+                          : undefined
+                      }
                       value={criterion.label}
                       disabled={activeRoundIsLocked}
                       onChange={(e) => setEditingCriteria((c) => updateCriterion(c, criterion.id, { label: e.target.value }))}
@@ -1301,11 +1417,21 @@ export function PlanEditor() {
                     {criterion.kind === 'rating' ? (
                       <span className="chq-review-criterion-weight">
                         <input
+                          id={`criterion-${criterion.id}-weight`}
                           type="number"
-                          className="chq-input"
+                          className={
+                            submitted && (activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.weight`]
+                              ? 'chq-input chq-field-invalid'
+                              : 'chq-input'
+                          }
                           min={0}
                           step="0.1"
                           aria-label={`${criterion.label || 'criterion'} weight`}
+                          aria-invalid={
+                            submitted && (activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.weight`]
+                              ? 'true'
+                              : undefined
+                          }
                           value={criterion.weight ?? ''}
                           disabled={activeRoundIsLocked}
                           onChange={(e) =>
@@ -1322,9 +1448,19 @@ export function PlanEditor() {
                       </span>
                     ) : criterion.kind === 'dropdown' ? (
                       <input
-                        className="chq-input"
+                        id={`criterion-${criterion.id}-options`}
+                        className={
+                          submitted && (activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`]
+                            ? 'chq-input chq-field-invalid'
+                            : 'chq-input'
+                        }
                         placeholder="Options (comma-separated)"
                         aria-label={`${criterion.label || 'criterion'} options`}
+                        aria-invalid={
+                          submitted && (activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`]
+                            ? 'true'
+                            : undefined
+                        }
                         value={(criterion.options ?? []).join(', ')}
                         disabled={activeRoundIsLocked}
                         onChange={(e) =>
@@ -1351,14 +1487,20 @@ export function PlanEditor() {
                         Required
                       </label>
                     )}
-                    {(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.label`] && (
-                      <span className="chq-review-field-error">{(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.label`]}</span>
+                    {submitted && (activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.label`] && (
+                      <span className="chq-field-error chq-review-criterion-error" role="alert">
+                        {(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.label`]}
+                      </span>
                     )}
-                    {(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.weight`] && (
-                      <span className="chq-review-field-error">{(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.weight`]}</span>
+                    {submitted && (activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.weight`] && (
+                      <span className="chq-field-error chq-review-criterion-error" role="alert">
+                        {(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.weight`]}
+                      </span>
                     )}
-                    {(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`] && (
-                      <span className="chq-review-field-error">{(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`]}</span>
+                    {submitted && (activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`] && (
+                      <span className="chq-field-error chq-review-criterion-error" role="alert">
+                        {(activeRound === 0 ? errors : criteriaErrors)[`criterion.${criterion.id}.options`]}
+                      </span>
                     )}
                     <button
                       type="button"
