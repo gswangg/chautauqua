@@ -46,7 +46,7 @@ function pairKey(contactIds: string[]): string {
 export function DuplicatesView({ onMerged, initialNotice, initialDismissPairIds }: Props) {
   const [groups, setGroups] = useState<DuplicateGroup[]>([]);
   // DEC-711 amendment (wave 40): the envelope's own TRUE total (never
-  // groups.length, which is only whatever page(s) have been loaded) --
+  // groups.length, which is only whatever pages have been loaded so far) --
   // this is what the header count and "Showing X of N" line both read.
   const [total, setTotal] = useState(0);
   const [perPage, setPerPage] = useState(MAX_PER_PAGE);
