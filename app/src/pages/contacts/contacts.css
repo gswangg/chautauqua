@@ -278,6 +278,14 @@
   gap: 6px;
   font-size: 13px;
   font-weight: 600;
+  min-width: 0;
+}
+
+/* The native file input has an intrinsic width (~284px) that ignores
+   max-width against an auto-floored ancestor; an explicit width makes it
+   track the column the grid actually grants. */
+.chq-contacts-headshot-upload .chq-file {
+  width: 100%;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -540,7 +548,12 @@
 
 .chq-contacts-record-row {
   display: grid;
-  grid-template-columns: 130px 1fr;
+  /* minmax(0,1fr), not bare 1fr: a bare 1fr's auto min-content floor is the
+     native file input's intrinsic ~284px, which cannot shrink inside the
+     418px drawer -- the value column then overflows the drawer and the
+     viewport (three gates of BROKEN). minmax(0,...) lets the column shrink;
+     .chq-file's width:100% below makes the input fill whatever it gets. */
+  grid-template-columns: 130px minmax(0, 1fr);
   gap: 16px;
   align-items: baseline;
   padding: 12px 0;
