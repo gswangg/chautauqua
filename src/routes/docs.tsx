@@ -274,7 +274,7 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       {
         method: "GET",
         path: "/api/v1/events/:eventId/export/:kind?format=csv|json",
-        role: "organizer (kind: submissions, speakers, evaluations, agenda, email-log)",
+        role: "organizer (kind: submissions, speakers, evaluations, agenda, email-log, contacts (DEC-597, org-scoped))",
       },
       {
         method: "GET",
@@ -294,6 +294,51 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
   {
     title: "Current user",
     rows: [{ method: "GET", path: "/api/v1/me", role: "any authenticated user" }],
+  },
+];
+
+// Exported for test/docs-route-coverage.test.ts, which mounts the real
+// publicRoutes + publicSubmitRoutes sub-apps the same way src/index.ts does
+// and diffs this table against their actual registered GET routes so this
+// hand-maintained section can't drift either. PATHS ONLY — no per-surface
+// query knobs (?trackId=, ?fields=, ...), which change independently and
+// would go stale here.
+export const PUBLIC_ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
+  {
+    title: "Public event surfaces (HTML)",
+    rows: [
+      { method: "GET", path: "/e/:eventSlug", role: "public (redirects to /e/:eventSlug/sessions)" },
+      { method: "GET", path: "/e/:eventSlug/sessions", role: "public" },
+      { method: "GET", path: "/e/:eventSlug/speakers", role: "public" },
+      { method: "GET", path: "/e/:eventSlug/gallery", role: "public" },
+      { method: "GET", path: "/e/:eventSlug/agenda", role: "public" },
+      { method: "GET", path: "/e/:eventSlug/schedule", role: "public" },
+      { method: "GET", path: "/e/:eventSlug/sessions/:sessionId", role: "public" },
+      { method: "GET", path: "/e/:eventSlug/speakers/:contactId", role: "public" },
+      { method: "GET", path: "/e/:eventSlug/programme", role: "public (print-first one-page programme)" },
+    ],
+  },
+  {
+    title: "Public calendar feeds",
+    rows: [
+      { method: "GET", path: "/e/:eventSlug/agenda.ics", role: "public (whole published agenda)" },
+      { method: "GET", path: "/e/:eventSlug/schedule.ics", role: "public (itinerary; ?ids= selects a subset)" },
+    ],
+  },
+  {
+    title: "Embeds (chromeless, iframe-safe)",
+    rows: [
+      { method: "GET", path: "/embed/:eventSlug/:surface", role: "public, chromeless, iframe-safe" },
+      { method: "GET", path: "/embed/:eventSlug/:surface.json", role: "public, chromeless, iframe-safe (JSON feed twin)" },
+      { method: "GET", path: "/embed/:eventSlug/:surface.xml", role: "public, chromeless, iframe-safe (XML feed twin)" },
+      { method: "GET", path: "/embed/:eventSlug/sessions/:sessionId", role: "public, chromeless, iframe-safe" },
+      { method: "GET", path: "/embed/:eventSlug/speakers/:contactId", role: "public, chromeless, iframe-safe" },
+      { method: "GET", path: "/embed/e/:embedId", role: "public, saved embed; disabled returns an empty 200" },
+    ],
+  },
+  {
+    title: "Public submission (CFP)",
+    rows: [{ method: "GET", path: "/submit/:eventSlug", role: "public" }],
   },
 ];
 
@@ -358,6 +403,42 @@ function DocsPage() {
           </div>
 
           {ROUTE_GROUPS.map((group) => (
+            <div class="chq-section">
+              <div class="chq-section-label">{group.title}</div>
+              <div class="chq-tool-table-wrap">
+                <table class="chq-table">
+                  <thead>
+                    <tr>
+                      <th>Method</th>
+                      <th>Path</th>
+                      <th>Role</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.rows.map((row) => (
+                      <tr>
+                        <td>{row.method}</td>
+                        <td>
+                          <code class="chq-tool-code">{row.path}</code>
+                        </td>
+                        <td>{row.role}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+
+          <div class="chq-section">
+            <div class="chq-section-label">Public read surfaces (no login)</div>
+            <p>
+              Everything below needs no token and no login — no <code class="chq-tool-code">Authorization</code>{" "}
+              header, no session cookie.
+            </p>
+          </div>
+
+          {PUBLIC_ROUTE_GROUPS.map((group) => (
             <div class="chq-section">
               <div class="chq-section-label">{group.title}</div>
               <div class="chq-tool-table-wrap">
