@@ -129,6 +129,31 @@ restore. (b) **plan editor at 390 = one character per line** — reviewer/criter
 desktop grid tracks (`13.66px 140px 90px…`), doc height 8644px; frame 03--06 shows the
 stacked layout (CRITERIA/REVIEWERS sections, Swap, CAP EACH, bottom Save bar).
 
+**RULING · USER-FILED (2026-08-14, sandbox tour #2): sign-in desktop geometry is
+FRAME-FAITHFUL — do not "fix" it.** User flagged login as "mobile-optimized and stretched"
+on desktop. Measured at 1440: card box 820 (732 content + 2×44 padding), inputs/submit 732,
+centered — exactly frame 11-account--00 at 1600 (its input column measures 732 with a
+full-column olive Sign in bar). The 03:50 box-math amendment (e8fe9dc4) trued the app UP to
+the frame (content was 644, off-frame, before it). The user's reaction is routed to the
+design agent as a redesign candidate (narrower card); until a new frame lands, 732/820
+stands. Scoping audit of the overnight auth commits (001a7960, 13db6d8c) found them clean —
+top-level additions inert on desktop, phone shells inside the 700px block.
+
+**DESIGN GAP · USER-FILED (2026-08-14) — settings EDIT views on desktop (routed to the
+design brief, NOT swarm work).** Every 09-settings sub-screen frame (Event / Tracks / CFP /
+Public pages / Saved embeds) is 390-only; the desktop edit drill-ins are undesigned. Filed
+evidence: the CFP edit view — ~340px intro textarea in the 820 column, narrow date inputs,
+sparse rhythm, full-width olive Save + centered Cancel = phone anatomy at desktop. Do NOT
+improvise desktop redesigns of settings edit forms; hold for frames. (The structural-batch
+P1's read-view-inline work stays mandated and is unaffected. User also validated that
+batch's direction: the public-pages Change view "doesn't seem to offer much" — the read
+view already carries everything, kill the gate there per frame 09--00.)
+
+**FIXED (orchestrator, d5990e2f) — embeds URL/Snippet flow.** User filed Copy/Preview
+buttons floating mid-code-text. Root cause: flat inline flow (`<code>` then buttons).
+Now `.chq-embeds-output-block` (full-width code box + actions row beneath); render test
+asserts the buttons live in `.chq-embeds-output-actions`, never in the code's text flow.
+
 **P2 · USER-FILED (2026-08-14): state-band insets** — tinted interaction-state bands
 (results-table reviews EXPANSION rows; review-landing `is-active` plan row) put content
 flush against the band edge and free-float their columns. Interim rule until the
