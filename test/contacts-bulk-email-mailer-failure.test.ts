@@ -70,24 +70,24 @@ vi.mock("../src/auth/claim", async () => {
   };
 });
 
-const mailerSendMock = vi.fn(async (url: string, init: RequestInit) => {
-  const body = JSON.parse(init.body as string) as { to: string[] };
-  if (body.to[0]!.startsWith("bad")) {
+const mailerSendMock = vi.fn(async (message: { to: string }) => {
+  if (message.to.startsWith("bad")) {
     throw new Error("simulated provider rejection");
   }
-  return new Response(JSON.stringify({ id: "re_ok" }), { status: 200 });
 });
-// DEC-923/DEC-996: makeMailer returns a REAL ResendMailer over the throwing
-// fetch + the test's insert-recording db, so the mailer is the sole
-// author of the 'failed' email_log rows (no route-level duplicate).
+// DEC-923/DEC-996 (amendment wave 57): makeMailer returns a REAL
+// EmailBindingMailer over a fake send_email binding + the test's
+// insert-recording db, so the mailer is the sole author of the 'failed'
+// email_log rows (no route-level duplicate).
 vi.mock("../src/server/context", async () => {
   const actual = await vi.importActual<typeof import("../src/server/context")>("../src/server/context");
-  const { ResendMailer } = await import("../src/mail/resend");
+  const { EmailBindingMailer } = await import("../src/mail/email-binding");
   return {
     ...actual,
     makeMailer: vi.fn((db: unknown) => {
       const log = actual.d1EmailLogWriter(db as never);
-      return new ResendMailer(mailerSendMock as unknown as typeof fetch, "re_test_key", log, { email: "noreply@example.com", name: "Chautauqua" });
+      const binding = { send: (message: unknown) => mailerSendMock(message as { to: string }) };
+      return new EmailBindingMailer(binding, log, { email: "noreply@example.com", name: "Chautauqua" }, (_from, to) => ({ to }));
     }),
   };
 });
@@ -182,7 +182,7 @@ describe("POST /contacts/bulk-email — partial mailer failure (DEC-238 class 2)
     expect(failedRows.map((r) => r.toEmail).sort()).toEqual(["bad2@example.com", "bad3@example.com", "bad@example.com"]);
     for (const row of failedRows) {
       expect(row.eventId).toBe("ev1");
-      expect(row.provider).toBe("resend");
+      expect(row.provider).toBe("cloudflare");
     }
 
     // listEmailBatches groups by COALESCE(batch_id, id) with no special
@@ -219,7 +219,7 @@ describe("POST /contacts/bulk-email — partial mailer failure (DEC-238 class 2)
 });
 
 // DEC-547 amendment (wave 43): makeMailer NEVER throws — it always returns a
-// Mailer (DevSinkMailer/ResendMailer/UnconfiguredMailer), reading only the
+// Mailer (DevSinkMailer/EmailBindingMailer/UnconfiguredMailer), reading only the
 // pure mailConfigStatus(env) predicate. The wave-50 removal of the dead
 // try/catch around makeMailer() in src/routes/api/contacts/bulk-email.ts
 // (that block could never fire — see DEC-397's amendment) makes the old

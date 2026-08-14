@@ -92,26 +92,30 @@ vi.mock("../src/server/repo/tasks/reminders", async () => {
 });
 
 const sentMails: { to: { email: string }; text: string }[] = [];
-// DEC-923/DEC-996: makeMailer returns a REAL ResendMailer over a fetch that
-// rejects one recipient + the test's insert-recording db, so the mailer
-// itself is the sole author of the 'failed' email_log row (no route-level
-// duplicate).
+// DEC-923/DEC-996 (amendment wave 57): makeMailer returns a REAL
+// EmailBindingMailer over a fake send_email binding that rejects one
+// recipient + the test's insert-recording db, so the mailer itself is the
+// sole author of the 'failed' email_log row (no route-level duplicate).
 vi.mock("../src/server/context", async () => {
   const actual = await vi.importActual<typeof import("../src/server/context")>("../src/server/context");
-  const { ResendMailer } = await import("../src/mail/resend");
+  const { EmailBindingMailer } = await import("../src/mail/email-binding");
   return {
     ...actual,
     makeMailer: vi.fn((db: unknown) => {
-      const fetchImpl = vi.fn(async (_url: string, init: RequestInit) => {
-        const body = JSON.parse(init.body as string) as { to: string[]; text: string };
-        if (body.to[0] === "bad@example.com") {
-          throw new Error("simulated provider rejection");
-        }
-        sentMails.push({ to: { email: body.to[0]! }, text: body.text });
-        return new Response(JSON.stringify({ id: "re_ok" }), { status: 200 });
-      }) as unknown as typeof fetch;
+      const binding = {
+        send: vi.fn(async (message: unknown) => {
+          const { to, raw } = message as { to: string; raw: string };
+          if (to === "bad@example.com") {
+            throw new Error("simulated provider rejection");
+          }
+          const bodyStart = raw.indexOf("\r\n\r\n", raw.indexOf("Content-Type: text/plain"));
+          const boundaryIdx = raw.indexOf("\r\n--chq_mime_boundary", bodyStart + 4);
+          const text = bodyStart === -1 ? "" : raw.slice(bodyStart + 4, boundaryIdx === -1 ? raw.length : boundaryIdx);
+          sentMails.push({ to: { email: to }, text });
+        }),
+      };
       const log = actual.d1EmailLogWriter(db as never);
-      return new ResendMailer(fetchImpl, "re_test_key", log, { email: "noreply@example.com", name: "Chautauqua" });
+      return new EmailBindingMailer(binding, log, { email: "noreply@example.com", name: "Chautauqua" }, (_from, to, raw) => ({ to, raw }));
     }),
   };
 });
@@ -225,7 +229,7 @@ describe("POST /api/v1/events/:eventId/compose/send — partial mailer failure (
     expect(failedRows[0].batchId.length).toBeGreaterThan(0);
 
     // The recipient that succeeded gets a 'sent' row, never 'failed' — the
-    // real ResendMailer logs every attempt, success or failure
+    // real EmailBindingMailer logs every attempt, success or failure
     // (DEC-923: the mailer is the sole author of email_log).
     expect(inserts.some((v) => v.toEmail === "good@example.com" && v.status === "failed")).toBe(false);
     const sentRow = inserts.find((v) => v.toEmail === "good@example.com");

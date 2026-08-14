@@ -103,21 +103,23 @@ vi.mock("../src/server/repo/tasks/reminders", async () => {
   };
 });
 
-// DEC-923/DEC-996: makeMailer must return a REAL ResendMailer (over a
-// throwing fetch and the test's own insert-recording db) so this
-// test proves the mailer is the SOLE author of the 3 'failed' rows — not a
-// route-level logFailedSend duplicate.
+// DEC-923/DEC-996 (amendment wave 57): makeMailer must return a REAL
+// EmailBindingMailer (over a throwing send_email binding and the test's own
+// insert-recording db) so this test proves the mailer is the SOLE author of
+// the 3 'failed' rows — not a route-level logFailedSend duplicate.
 vi.mock("../src/server/context", async () => {
   const actual = await vi.importActual<typeof import("../src/server/context")>("../src/server/context");
-  const { ResendMailer } = await import("../src/mail/resend");
+  const { EmailBindingMailer } = await import("../src/mail/email-binding");
   return {
     ...actual,
     makeMailer: vi.fn((db: unknown) => {
-      const throwingFetch = vi.fn(async () => {
-        throw new Error("simulated total provider outage");
-      }) as unknown as typeof fetch;
+      const binding = {
+        send: vi.fn(async () => {
+          throw new Error("simulated total provider outage");
+        }),
+      };
       const log = actual.d1EmailLogWriter(db as never);
-      return new ResendMailer(throwingFetch, "re_test_key", log, { email: "noreply@example.com", name: "Chautauqua" });
+      return new EmailBindingMailer(binding, log, { email: "noreply@example.com", name: "Chautauqua" }, (_from, to, raw) => ({ to, raw }));
     }),
   };
 });

@@ -872,14 +872,15 @@ const KNOWN_ORPHANS: Record<string, string> = {
   DEC_989: "UNVERIFIED — no implementing module found",
   DEC_990: "process/bookkeeping decision, no runtime surface",
   DEC_991: "UNVERIFIED — no implementing module found",
-  DEC_996: "UNVERIFIED — no implementing module found",
 };
 
-// Pinned as of wave 47. Lower this number when you retire an orphan (delete
-// its KNOWN_ORPHANS line); raise it only if a future wave adds a genuinely
-// new decision that also has no implementing module on day one -- which
-// itself should be rare and should be flagged, not routine.
-const PINNED_ORPHAN_COUNT = 765;
+// Pinned as of wave 47, lowered wave 57 (DEC_996 retired: src/server/context.ts
+// now `void DEC_996;` alongside its EmailBindingMailer selection). Lower this
+// number when you retire an orphan (delete its KNOWN_ORPHANS line); raise it
+// only if a future wave adds a genuinely new decision that also has no
+// implementing module on day one -- which itself should be rare and should
+// be flagged, not routine.
+const PINNED_ORPHAN_COUNT = 764;
 
 describe("decisions-data DEC_NNN orphan ratchet (DEC-472 amendment, wave 47)", () => {
   it("PINNED_ORPHAN_COUNT matches KNOWN_ORPHANS length (the pin can only fall)", () => {

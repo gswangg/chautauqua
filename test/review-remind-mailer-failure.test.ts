@@ -116,7 +116,7 @@ describe("DEC-238: POST /api/v1/plans/:id/remind mailer-failure taxonomy", () =>
   it("200s with every laggard reported 'failed' when makeMailer itself throws (misconfigured env)", async () => {
     const { makeMailer } = await import("../src/server/context");
     vi.mocked(makeMailer).mockImplementation(() => {
-      throw new Error("RESEND_API_KEY is not configured");
+      throw new Error("the EMAIL binding is not configured");
     });
     const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
     const res = await app.request(`/api/v1/plans/${planRecord.id}/remind`, {
@@ -134,7 +134,7 @@ describe("DEC-238: POST /api/v1/plans/:id/remind mailer-failure taxonomy", () =>
     expect(body.reminded).toEqual([]);
     expect(body.failed).toHaveLength(2);
     expect(body.failed.map((f) => f.email).sort()).toEqual(["bad@example.test", "ok@example.test"]);
-    for (const f of body.failed) expect(f.message).toContain("RESEND_API_KEY is not configured");
+    for (const f of body.failed) expect(f.message).toContain("the EMAIL binding is not configured");
     expect(sendMock).not.toHaveBeenCalled();
   });
 });

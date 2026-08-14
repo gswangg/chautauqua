@@ -1,11 +1,11 @@
 // DEC-547 amendment (wave 43): the mailer selected when neither dev mode nor
-// a full Resend configuration is present. Previously makeMailer THREW at
+// the EMAIL binding is fully configured. Previously makeMailer THREW at
 // construction time -- before any per-recipient try/catch could run -- so
 // every send path 500'd with no email_log row written at all (see
 // src/routes/comms.ts's per-recipient catch, which the old throw never
 // reached). UnconfiguredMailer instead behaves like every other Mailer: it
 // logs the attempt (provider 'none', status 'failed') exactly where
-// ResendMailer logs, then throws, so callers' existing per-recipient catch
+// EmailBindingMailer logs, then throws, so callers' existing per-recipient catch
 // blocks turn this into a `failed[]` entry instead of a 500.
 
 import { MailNotConfiguredError } from "./types";
@@ -34,7 +34,7 @@ export class UnconfiguredMailer implements Mailer {
       status: "failed",
       sentAt: this.clock.now().getTime(),
     };
-    // Log first (same order as ResendMailer.send), then fail loudly.
+    // Log first (same order as EmailBindingMailer.send), then fail loudly.
     await this.log.write(row);
     throw new MailNotConfiguredError();
   }

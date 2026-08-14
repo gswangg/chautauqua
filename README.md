@@ -30,9 +30,10 @@ No login needed for the public surfaces: [CFP form](https://chautauqua.cc/submit
 [API docs](https://chautauqua.cc/docs/api)
 
 The deployed instance sends **real email** from `hello@chautauqua.cc` via the
-Resend HTTP API (DEC-996; `RESEND_API_KEY` is a Worker secret set at deploy
-time), including `.ics` calendar invites as attachments. `/dev/mailbox` (the
-local dev email sink) is deliberately **not** mounted in production.
+Cloudflare Email Service `send_email` Worker binding (DEC-996 amendment, wave
+57; no API key, no secret), including `.ics` calendar invites as a raw MIME
+part. `/dev/mailbox` (the local dev email sink) is deliberately **not**
+mounted in production.
 
 ## Quickstart
 
@@ -239,8 +240,8 @@ provisioning a live deployment:
 
 - Cloudflare account provisioning (real D1/R2 resources) and `wrangler deploy`
   to a live Worker.
-- Resend adapter for the mailer port, replacing the dev-sink email
-  implementation (`/dev/mailbox`).
+- Cloudflare Email Service `send_email` binding adapter for the mailer port,
+  replacing the dev-sink email implementation (`/dev/mailbox`).
 - Airtable one-way sync (contacts/sessions → base). Requires
   `AIRTABLE_TOKEN` + `AIRTABLE_BASE_ID` + `AIRTABLE_ORG_ID`; one base serves
   exactly one org, so a configured sync without `AIRTABLE_ORG_ID` throws

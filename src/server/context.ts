@@ -7,15 +7,16 @@ import { drizzle } from "drizzle-orm/d1";
 import * as schema from "../db/schema";
 import { isDevMode, mailConfigStatus, type Bindings } from "./env";
 import { DevSinkMailer } from "../mail/dev-sink";
-import { ResendMailer } from "../mail/resend";
+import { EmailBindingMailer, type EmailMessageFactory } from "../mail/email-binding";
 import { UnconfiguredMailer } from "../mail/unconfigured";
 import type { EmailLogEntry, EmailLogWriter, Mailer } from "../mail/types";
 import { newId } from "../domain/ids";
 import { ICS_ORGANIZER_EMAIL } from "../mail/ics";
-import { DEC_547, DEC_947, DEC_995 } from "../decisions";
+import { DEC_547, DEC_947, DEC_995, DEC_996 } from "../decisions";
 void DEC_995;
 void DEC_547;
 void DEC_947;
+void DEC_996;
 
 export function makeDb(env: Bindings) {
   return drizzle(env.DB, { schema });
@@ -48,7 +49,18 @@ export function d1EmailLogWriter(db: Db): EmailLogWriter {
   };
 }
 
-/** Stage-2 mailer selection (DEC-996): Resend over HTTP when RESEND_API_KEY is
+/** The composition root's only real `cloudflare:email` reference (DEC-002:
+ * pure-core files never import it). Dynamic/lazy so `npm run build` and
+ * vitest never need to resolve the module unless a real send actually runs
+ * — src/mail/email-binding.ts stays pure-core and testable with a plain
+ * object factory instead. */
+const cloudflareEmailMessage: EmailMessageFactory = async (from, to, raw) => {
+  const { EmailMessage } = await import("cloudflare:email");
+  return new EmailMessage(from, to, raw);
+};
+
+/** Stage-2 mailer selection (DEC-996 amendment, wave 57): the Cloudflare
+ * Email Service `send_email` binding when EMAIL + MAIL_FROM_EMAIL are
  * configured AND isDevMode(env) is false (DEC-434: DEV_MODE="1" keeps local
  * dev, tests, and the render-sweep/walkthrough gates on the dev sink +
  * /dev/mailbox; every other DEV_MODE value, including "0", is non-dev); the
@@ -57,22 +69,24 @@ export function d1EmailLogWriter(db: Db): EmailLogWriter {
  *
  * DEC-547 amendment (wave 43): makeMailer NEVER throws. It reads the ONE
  * mailConfigStatus(env) predicate (src/server/env.ts) and always returns a
- * Mailer: DevSinkMailer in dev mode, ResendMailer when Resend is fully
- * configured, and UnconfiguredMailer (src/mail/unconfigured.ts) otherwise --
- * UnconfiguredMailer logs the attempt as a 'failed' row and throws from
- * *send*, inside callers' existing per-recipient try/catch, instead of
- * failing the whole request at construction before any recipient is
- * attempted (that used to leave email_log with zero rows for a fully-failed
- * batch, which is also why Comms History read '0 total'). */
-export function makeMailer(db: Db, env: Pick<Bindings, "RESEND_API_KEY" | "DEV_MODE" | "MAIL_FROM_EMAIL" | "MAIL_FROM_NAME">): Mailer {
+ * Mailer: DevSinkMailer in dev mode, EmailBindingMailer when the binding is
+ * fully configured, and UnconfiguredMailer (src/mail/unconfigured.ts)
+ * otherwise -- UnconfiguredMailer logs the attempt as a 'failed' row and
+ * throws from *send*, inside callers' existing per-recipient try/catch,
+ * instead of failing the whole request at construction before any recipient
+ * is attempted (that used to leave email_log with zero rows for a
+ * fully-failed batch, which is also why Comms History read '0 total'). */
+export function makeMailer(db: Db, env: Pick<Bindings, "EMAIL" | "DEV_MODE" | "MAIL_FROM_EMAIL" | "MAIL_FROM_NAME">): Mailer {
   const log = d1EmailLogWriter(db);
   const status = mailConfigStatus(env);
   if (status.provider === "dev-sink") return new DevSinkMailer(log);
-  if (status.provider === "resend") {
-    return new ResendMailer(fetch, env.RESEND_API_KEY!, log, {
-      email: env.MAIL_FROM_EMAIL!,
-      name: env.MAIL_FROM_NAME ?? "Chautauqua",
-    });
+  if (status.provider === "email-binding") {
+    return new EmailBindingMailer(
+      env.EMAIL!,
+      log,
+      { email: env.MAIL_FROM_EMAIL!, name: env.MAIL_FROM_NAME ?? "Chautauqua" },
+      cloudflareEmailMessage,
+    );
   }
   return new UnconfiguredMailer(log);
 }
@@ -85,7 +99,7 @@ export function makeMailer(db: Db, env: Pick<Bindings, "RESEND_API_KEY" | "DEV_M
  * env.MAIL_FROM_EMAIL directly) so both predicates agree on what "set"
  * means. */
 export function resolveIcsOrganizerEmail(env: Pick<Bindings, "DEV_MODE" | "MAIL_FROM_EMAIL">): string {
-  const status = mailConfigStatus({ DEV_MODE: env.DEV_MODE, MAIL_FROM_EMAIL: env.MAIL_FROM_EMAIL, RESEND_API_KEY: undefined, MAIL_FROM_NAME: undefined });
+  const status = mailConfigStatus({ DEV_MODE: env.DEV_MODE, MAIL_FROM_EMAIL: env.MAIL_FROM_EMAIL, EMAIL: undefined, MAIL_FROM_NAME: undefined });
   if (status.fromEmail) return status.fromEmail;
   if (isDevMode(env)) return ICS_ORGANIZER_EMAIL;
   throw new Error('MAIL_FROM_EMAIL is not set and DEV_MODE is not "1": set DEV_MODE="1" for local/dev, or configure MAIL_FROM_EMAIL for production');

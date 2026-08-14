@@ -90,7 +90,7 @@ describe("runDueReminders (DEC-946 aggregate rethrow)", () => {
     let call = 0;
     makeMailer.mockImplementation(() => {
       call += 1;
-      if (call === 2) throw new Error("RESEND_API_KEY is not configured");
+      if (call === 2) throw new Error("the EMAIL binding is not configured");
       return mailer;
     });
     sendDueRemindersForEvent.mockImplementation((...args: unknown[]) => {

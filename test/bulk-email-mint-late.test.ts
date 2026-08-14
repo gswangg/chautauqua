@@ -53,20 +53,34 @@ vi.mock("../src/server/repo/events", async () => {
   };
 });
 
+// Extracts one MIME part's body (between its Content-Type header's trailing
+// blank line and the next boundary line) out of EmailBindingMailer's raw
+// message, so tests can inspect the plain-text body it built.
+function extractPart(raw: string, contentType: string): string {
+  const headerIdx = raw.indexOf(`Content-Type: ${contentType}`);
+  if (headerIdx === -1) return "";
+  const bodyStart = raw.indexOf("\r\n\r\n", headerIdx);
+  if (bodyStart === -1) return "";
+  const contentStart = bodyStart + 4;
+  const boundaryIdx = raw.indexOf("\r\n--chq_mime_boundary", contentStart);
+  return raw.slice(contentStart, boundaryIdx === -1 ? raw.length : boundaryIdx);
+}
+
 const sentMails: { to: { email: string }; text: string }[] = [];
 vi.mock("../src/server/context", async () => {
   const actual = await vi.importActual<typeof import("../src/server/context")>("../src/server/context");
-  const { ResendMailer } = await import("../src/mail/resend");
+  const { EmailBindingMailer } = await import("../src/mail/email-binding");
   return {
     ...actual,
     makeMailer: vi.fn((db: unknown) => {
-      const fetchImpl = vi.fn(async (_url: string, init: RequestInit) => {
-        const body = JSON.parse(init.body as string) as { to: string[]; text: string };
-        sentMails.push({ to: { email: body.to[0]! }, text: body.text });
-        return new Response(JSON.stringify({ id: "re_ok" }), { status: 200 });
-      }) as unknown as typeof fetch;
+      const binding = {
+        send: vi.fn(async (message: unknown) => {
+          const { to, raw } = message as { to: string; raw: string };
+          sentMails.push({ to: { email: to }, text: extractPart(raw, "text/plain") });
+        }),
+      };
       const log = actual.d1EmailLogWriter(db as never);
-      return new ResendMailer(fetchImpl, "re_test_key", log, { email: "noreply@example.com", name: "Chautauqua" });
+      return new EmailBindingMailer(binding, log, { email: "noreply@example.com", name: "Chautauqua" }, (_from, to, raw) => ({ to, raw }));
     }),
   };
 });

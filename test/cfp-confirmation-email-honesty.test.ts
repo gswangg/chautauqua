@@ -8,13 +8,28 @@
 //
 // Reuses the fakeDb/fakeKv/appWithDb harness from test/submit-mailer-failure.test.ts.
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { publicSubmitRoutes } from "../src/routes/public/submit";
 import { registerErrorHandler } from "../src/server/http";
 import { CSRF_COOKIE_NAME } from "../src/auth/cookies";
 import type { AppEnv } from "../src/server/env";
 import type { R2Bucket } from "@cloudflare/workers-types";
+
+// `cloudflare:email` only exists inside workerd; server/context.ts's real
+// message factory does `await import("cloudflare:email")` lazily so vitest
+// never needs to resolve it unless a send actually runs (which this suite's
+// real-makeMailer path does) — stub the ambient module so that dynamic
+// import resolves the same way workerd's would.
+vi.mock("cloudflare:email", () => ({
+  EmailMessage: class {
+    constructor(
+      public from: string,
+      public to: string,
+      public raw: string,
+    ) {}
+  },
+}));
 
 const EVENT_ROW = {
   id: "event-1",
@@ -110,11 +125,6 @@ function fakeFilesBucket(): R2Bucket {
   } as unknown as R2Bucket;
 }
 
-const originalFetch = globalThis.fetch;
-afterEach(() => {
-  globalThis.fetch = originalFetch;
-});
-
 function appWithDb(db: AppEnv["Variables"]["db"]) {
   const app = new Hono<AppEnv>();
   registerErrorHandler(app);
@@ -147,22 +157,21 @@ function selectQueueFor() {
   return [[EVENT_ROW], [FORM_ROW], FIELD_ROWS, [TRACK_ROW], [], [{ seq: 7 }], []];
 }
 
-const BINDINGS = {
-  RESEND_API_KEY: "re_test_key",
+const commonBindings = {
   MAIL_FROM_EMAIL: "noreply@example.com",
   MAIL_FROM_NAME: "Chautauqua",
 } as const;
 
 describe("CFP confirmation page never asserts a delivery that did not happen (DEC-006 wave 51)", () => {
   it("mailer throws: 200, submission persisted, HTML makes no delivery claim", async () => {
-    globalThis.fetch = vi.fn(async () => new Response("simulated provider outage", { status: 500 })) as unknown as typeof fetch;
     const { db, inserts } = fakeDb(selectQueueFor());
     const app = appWithDb(db);
 
     const res = await app.request(submitForm(), undefined, {
       KV: fakeKv(),
       FILES: fakeFilesBucket(),
-      ...BINDINGS,
+      EMAIL: { send: vi.fn(async () => { throw new Error("simulated provider outage"); }) },
+      ...commonBindings,
     } as unknown as AppEnv["Bindings"]);
 
     expect(res.status).toBe(200);
@@ -180,14 +189,14 @@ describe("CFP confirmation page never asserts a delivery that did not happen (DE
   });
 
   it("working mailer: existing delivery-claiming copy is unchanged", async () => {
-    globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({ id: "re_ok" }), { status: 200 })) as unknown as typeof fetch;
     const { db } = fakeDb(selectQueueFor());
     const app = appWithDb(db);
 
     const res = await app.request(submitForm(), undefined, {
       KV: fakeKv(),
       FILES: fakeFilesBucket(),
-      ...BINDINGS,
+      EMAIL: { send: vi.fn(async () => {}) },
+      ...commonBindings,
     } as unknown as AppEnv["Bindings"]);
 
     expect(res.status).toBe(200);
