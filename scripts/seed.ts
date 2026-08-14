@@ -1113,16 +1113,26 @@ async function main(): Promise<void> {
   // additionalSubmissionStatuses' distribution itself is untouched (owned
   // by an earlier wave-2 task and covered by its own test).
   //
-  // DEC-887 amendment (task w66-b): index 3 is a 4th bump, per this task's
+  // DEC-887 amendment (task w66-b): index 3 is a 4th bump, per that task's
   // "MAY promote AT MOST ONE additional seeded pending submission" allowance
   // — the public agenda's auto-fit grid needs a real 4-up (four different
   // rooms, one start time) case, and the approved-content pool without it is
   // one short of covering 4-up + 2-up + solo while still leaving >=1
   // approved submission genuinely unplaced (see the schedule-slot plan
-  // below). This is the ONLY extra promotion — growing the accepted set
-  // further is explicitly out of scope for this task.
+  // below). That was the ONLY extra promotion FOR THAT TASK.
+  //
+  // DEC-854 amendment (wave 5, task w5-j): gate-4 measured day 1 of the
+  // public agenda rendering "1 session · 0 rooms" — day 1 only ever carried
+  // the admin-only same-room conflict pair (non-approved content) plus one
+  // TBD-room solo session, so no real room and no multi-block time row was
+  // ever demoable/measurable there, even though day 2 (4-up) and day 3
+  // (2-up) both had real concurrency. Indices 4-7 are four MORE bumps
+  // (originally 'pending'), spent entirely on giving day 1 its own real
+  // multi-room, multi-block-row shape in the schedule-slot plan below —
+  // this is the day-1 fix the wave-5 amendment calls for, not a general
+  // re-opening of "grow the accepted set" scope.
   const baseStatuses = additionalSubmissionStatuses(additionalCount);
-  const bumpToAccepted = new Set([0, 1, 2, 3]);
+  const bumpToAccepted = new Set([0, 1, 2, 3, 4, 5, 6, 7]);
   const statuses = baseStatuses.map((s, i) => (bumpToAccepted.has(i) ? "accepted" : s));
   // Captured for the DEC-739 comms fan-out batch below.
   const synthContacts: { contactId: string; email: string; speakerName: string }[] = [];
@@ -1748,6 +1758,35 @@ async function main(): Promise<void> {
       updated_at: ts,
     }),
   );
+  // DEC-854 amendment (wave 5, task w5-j): docs/design/Chautauqua
+  // Review.dc.html's distribute-preview frame ("frame 03") shows FOUR named
+  // reviewers (Sam Whitfield, Ana Petrov, Devin Cole all scoped to the same
+  // track, plus Ines Duarte scoped to a DIFFERENT track -- the mock's
+  // "unchanged · wrong track" delta case) -- gate-4 found plan 0003 only
+  // ever carried 2 of those 4, so the four-row distribute table was
+  // unreproducible. reviewerC (Devin) joins on the same track as Sam/Ana;
+  // reviewerD (Ines) is deliberately scoped to a different track, matching
+  // the mock's mismatched-track row.
+  statements.push(
+    insertStmt("plan_reviewer", {
+      id: seedId("plan_reviewer", 10),
+      plan_id: evalPlan3Id,
+      user_id: reviewerCUserId,
+      track_id: trackIds[0]!,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
+  statements.push(
+    insertStmt("plan_reviewer", {
+      id: seedId("plan_reviewer", 11),
+      plan_id: evalPlan3Id,
+      user_id: reviewerDUserId,
+      track_id: trackIds[1]!,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
 
   // --- evaluation plan 4 (DEC-848): a SECOND plan simultaneously open
   // alongside plan 1 (distinct from plan 3, which shares plan 1's track 0
@@ -2152,36 +2191,45 @@ async function main(): Promise<void> {
     }
   });
 
-  // --- schedule slots (DEC-010/DEC-021, DEC-887 amendment task w66-b): a
-  // placement plan over the event's 3 days and 4 rooms that gives the
-  // public agenda's per-time-slot auto-fit grid real concurrency to render,
-  // not five lonely full-width blocks. acceptedSubmissions is
-  // [fixture-approved, i0-approved, i1-changes_requested, i2-pending,
-  // i3-approved(NEW, DEC-887 amendment above), i19..i23-approved] — indices
-  // [0,1,4,5,6,7,8,9] carry content_status 'approved' (the publicly-
-  // renderable set), [2,3] don't.
+  // --- schedule slots (DEC-010/DEC-021, DEC-887 amendment task w66-b,
+  // DEC-854 amendment task w5-j): a placement plan over the event's 3 days
+  // and 4 rooms that gives the public agenda's per-time-slot auto-fit grid
+  // real concurrency to render, not five lonely full-width blocks.
+  // acceptedSubmissions is [fixture-approved, i0-approved,
+  // i1-changes_requested, i2-pending, i3-approved, i4..i7-approved(NEW,
+  // DEC-854 amendment above), i19..i23-approved] — indices
+  // [0,1,4,5,6,7,8,9,10,11,12,13] carry content_status 'approved' (the
+  // publicly-renderable set), [2,3] don't.
   //
   //   - [2],[3] (non-approved content, so this is an admin-only-visible
   //     demo, never a public one): the deliberate same-room overlap
   //     conflict on day 1, room 0, overlapping 09:00-09:45 / 09:15-10:00.
-  //   - [8]: the TBD (room_id: null) slot, alone at its start time on day 1
+  //   - [5],[6]: day 1's own real multi-block time row -- one start time
+  //     (day 1, 09:30), two different real rooms (room 1, room 2), so day 1
+  //     stops reading as "1 session · 0 rooms" (gate-4 finding, DEC-854
+  //     amendment).
+  //   - [7],[8]: a second day-1 time row, 14:00, rooms 3 and 1 -- day 1 now
+  //     carries two distinct multi-block rows across 3 distinct real rooms
+  //     (room 0 stays reserved for the admin-only conflict above so it
+  //     never triple-books).
+  //   - [12]: the TBD (room_id: null) slot, alone at its start time on day 1
   //     -- doubles as the public agenda's 1-up ("solo") layout case, since
   //     it's the only approved+scheduled session at 11:00 that day.
-  //   - [0],[1],[4],[5]: a real 4-up case -- one start time (day 2, 09:30),
+  //   - [0],[1],[4],[9]: a real 4-up case -- one start time (day 2, 09:30),
   //     four different rooms.
-  //   - [6],[7]: a real 2-up case -- one start time (day 3, 09:30), two
+  //   - [10],[11]: a real 2-up case -- one start time (day 3, 09:30), two
   //     different rooms.
-  //   - [9]: deliberately left UNPLACED so the agenda "N unplaced" count
+  //   - [13]: deliberately left UNPLACED so the agenda "N unplaced" count
   //     stays honest even though every other approved submission is placed.
   //
   // Every placement sits clear of both seeded breaks (coffee 10:15-10:30,
   // lunch 12:00-13:00) so the public agenda's spanning break rows explain
   // real gaps instead of colliding with a block.
   const eventDays = ["2027-05-12", "2027-05-13", "2027-05-14"];
-  const APPROVED_ACCEPTED_INDEXES = [0, 1, 4, 5, 6, 7, 8, 9];
-  if (acceptedSubmissions.length < 10) {
+  const APPROVED_ACCEPTED_INDEXES = [0, 1, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+  if (acceptedSubmissions.length < 14) {
     throw new Error(
-      `seed: schedule-slot concurrency plan needs 10 accepted submissions (7 approved placed + 1 approved held back + 2 conflict), got ${acceptedSubmissions.length}`,
+      `seed: schedule-slot concurrency plan needs 14 accepted submissions (11 approved placed + 1 approved held back + 2 conflict), got ${acceptedSubmissions.length}`,
     );
   }
   for (const idx of APPROVED_ACCEPTED_INDEXES) {
@@ -2195,21 +2243,28 @@ async function main(): Promise<void> {
   const sub = (idx: number): string => acceptedSubmissions[idx]!.submissionId;
   const slots: Array<{ submissionId: string; roomId: string | null; day: string; startMin: number; endMin: number }> = [
     // Deliberate same-room conflict, day 1 (admin-only demo -- these two
-    // carry non-approved content_status, see comment above).
+    // carry non-approved content_status, see comment above). Room 0 stays
+    // reserved for this pair on day 1 so no approved placement triple-books it.
     { submissionId: sub(2), roomId: roomIds[0]!, day: eventDays[0]!, startMin: 9 * 60, endMin: 9 * 60 + 45 },
     { submissionId: sub(3), roomId: roomIds[0]!, day: eventDays[0]!, startMin: 9 * 60 + 15, endMin: 10 * 60 },
+    // Day 1's first real multi-block row: one start time, two real rooms.
+    { submissionId: sub(5), roomId: roomIds[1]!, day: eventDays[0]!, startMin: 9 * 60 + 30, endMin: 10 * 60 },
+    { submissionId: sub(6), roomId: roomIds[2]!, day: eventDays[0]!, startMin: 9 * 60 + 30, endMin: 10 * 60 },
     // TBD room, day 1 -- alone at 11:00, doubling as the public agenda's
     // 1-up ("solo") layout case.
-    { submissionId: sub(8), roomId: null, day: eventDays[0]!, startMin: 11 * 60, endMin: 11 * 60 + 45 },
+    { submissionId: sub(12), roomId: null, day: eventDays[0]!, startMin: 11 * 60, endMin: 11 * 60 + 45 },
+    // Day 1's second real multi-block row, in the afternoon (clear of lunch).
+    { submissionId: sub(7), roomId: roomIds[3]!, day: eventDays[0]!, startMin: 14 * 60, endMin: 14 * 60 + 45 },
+    { submissionId: sub(8), roomId: roomIds[1]!, day: eventDays[0]!, startMin: 14 * 60, endMin: 14 * 60 + 45 },
     // 4-up case: one start time, four different rooms, day 2.
     { submissionId: sub(0), roomId: roomIds[0]!, day: eventDays[1]!, startMin: 9 * 60 + 30, endMin: 10 * 60 },
     { submissionId: sub(1), roomId: roomIds[1]!, day: eventDays[1]!, startMin: 9 * 60 + 30, endMin: 10 * 60 },
     { submissionId: sub(4), roomId: roomIds[2]!, day: eventDays[1]!, startMin: 9 * 60 + 30, endMin: 10 * 60 },
-    { submissionId: sub(5), roomId: roomIds[3]!, day: eventDays[1]!, startMin: 9 * 60 + 30, endMin: 10 * 60 },
+    { submissionId: sub(9), roomId: roomIds[3]!, day: eventDays[1]!, startMin: 9 * 60 + 30, endMin: 10 * 60 },
     // 2-up case: one start time, two different rooms, day 3.
-    { submissionId: sub(6), roomId: roomIds[0]!, day: eventDays[2]!, startMin: 9 * 60 + 30, endMin: 10 * 60 },
-    { submissionId: sub(7), roomId: roomIds[1]!, day: eventDays[2]!, startMin: 9 * 60 + 30, endMin: 10 * 60 },
-    // acceptedSubmissions[9] is deliberately left unplaced.
+    { submissionId: sub(10), roomId: roomIds[0]!, day: eventDays[2]!, startMin: 9 * 60 + 30, endMin: 10 * 60 },
+    { submissionId: sub(11), roomId: roomIds[1]!, day: eventDays[2]!, startMin: 9 * 60 + 30, endMin: 10 * 60 },
+    // acceptedSubmissions[13] is deliberately left unplaced.
   ];
   slots.forEach((slot, i) => {
     statements.push(
