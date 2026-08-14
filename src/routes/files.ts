@@ -63,9 +63,9 @@ import {
 
 // DEC-773: the ?kind= filter on the files library also accepts 'headshot'
 // (a headshot is a file kind, not a separate tab/endpoint) — kept separate
-// from domain FILE_KINDS, which stays the upload-time vocabulary
-// (presentation/poster/handout only; a headshot is never uploaded through
-// the submission-files upload route).
+// from domain FILE_KINDS, which stays the upload-time vocabulary (DEC-879:
+// all of presentation/poster/handout/recording; a headshot is never
+// uploaded through the submission-files upload route).
 const LIBRARY_KIND_TOKENS: readonly string[] = [...FILE_KINDS, HEADSHOT_KIND];
 
 // Mounted at /api/v1 (submission-scoped file/comment/content-status
@@ -167,7 +167,9 @@ fileApiRoutes.post("/submissions/:id/files", csrfJson, async (c) => {
   // validateUpload already checked isValidFileKind; re-check here purely to
   // narrow the type for insertFile without an unsafe cast.
   if (!isValidFileKind(kind)) {
-    throw new ApiError("invalid", "kind must be presentation, poster, or handout", { kind: "Invalid file kind" });
+    throw new ApiError("invalid", `kind must be one of ${FILE_KINDS.map((k) => `'${k}'`).join(", ")}`, {
+      kind: "Invalid file kind",
+    });
   }
 
   let previousFileId: string | null = null;

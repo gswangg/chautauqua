@@ -54,7 +54,7 @@ describe('ContentApp / SessionList render smoke: always-visible content-status c
           trackIds: [],
           submittedAt: null,
           createdAt: 1700000000000,
-          deliverableCounts: { presentation: 0, poster: 0, handout: 0 },
+          deliverableCounts: { presentation: 0, poster: 0, handout: 0, recording: 0 },
           latestFile: null,
         },
       ]),
@@ -144,7 +144,7 @@ describe('ContentApp worklist latest file column (DEC-686 page-scoped hydration)
           trackIds: [],
           submittedAt: null,
           createdAt: 1700000000000,
-          deliverableCounts: { presentation: 1, poster: 0, handout: 0 },
+          deliverableCounts: { presentation: 1, poster: 0, handout: 0, recording: 0 },
           latestFile: { filename: 'slides-v2.pdf', kind: 'presentation', versionCount: 2, uploadedAt: 1700000100000 },
           // DEC-965: the version shown is the row's stored identity, which the
           // list payload ships alongside latestFile — never the chain length in
@@ -186,7 +186,7 @@ describe('ContentApp worklist latest file column (DEC-686 page-scoped hydration)
           trackIds: [],
           submittedAt: null,
           createdAt: 1700000000000,
-          deliverableCounts: { presentation: 0, poster: 0, handout: 0 },
+          deliverableCounts: { presentation: 0, poster: 0, handout: 0, recording: 0 },
           latestFile: null,
         },
       ]),
@@ -224,7 +224,7 @@ describe('ContentApp worklist bulk content-status (DEC-825 amendment)', () => {
         trackIds: [],
         submittedAt: null,
         createdAt: 1700000000000,
-        deliverableCounts: { presentation: 0, poster: 0, handout: 0 },
+        deliverableCounts: { presentation: 0, poster: 0, handout: 0, recording: 0 },
       },
       {
         id: 'sub-2',
@@ -236,7 +236,7 @@ describe('ContentApp worklist bulk content-status (DEC-825 amendment)', () => {
         trackIds: [],
         submittedAt: null,
         createdAt: 1700000001000,
-        deliverableCounts: { presentation: 0, poster: 0, handout: 0 },
+        deliverableCounts: { presentation: 0, poster: 0, handout: 0, recording: 0 },
       },
     ]);
   }
@@ -303,7 +303,7 @@ describe('ContentApp: fresh loads on view switch and explicit refresh', () => {
           trackIds: [],
           submittedAt: null,
           createdAt: 1700000000000,
-          deliverableCounts: { presentation: 0, poster: 0, handout: 0 },
+          deliverableCounts: { presentation: 0, poster: 0, handout: 0, recording: 0 },
           latestFile: null,
         },
       ]),
@@ -495,7 +495,7 @@ describe('ContentApp (DEC-935): /content/:submissionId is a real route', () => {
           trackIds: [],
           submittedAt: null,
           createdAt: 1700000000000,
-          deliverableCounts: { presentation: 0, poster: 0, handout: 0 },
+          deliverableCounts: { presentation: 0, poster: 0, handout: 0, recording: 0 },
           latestFile: null,
         },
       ]),
@@ -525,7 +525,7 @@ describe('ContentApp (DEC-935): /content/:submissionId is a real route', () => {
           trackIds: [],
           submittedAt: null,
           createdAt: 1700000000000,
-          deliverableCounts: { presentation: 0, poster: 0, handout: 0 },
+          deliverableCounts: { presentation: 0, poster: 0, handout: 0, recording: 0 },
           latestFile: null,
         },
       ]),
@@ -654,7 +654,7 @@ describe('ContentApp (DEC-952): exactly one h1 in every state', () => {
           trackIds: [],
           submittedAt: null,
           createdAt: 1700000000000,
-          deliverableCounts: { presentation: 0, poster: 0, handout: 0 },
+          deliverableCounts: { presentation: 0, poster: 0, handout: 0, recording: 0 },
           latestFile: null,
         },
       ]),
@@ -688,7 +688,7 @@ describe('ContentApp "Approve N ready" title-row action (w42-c/DEC-274)', () => 
         trackIds: [],
         submittedAt: null,
         createdAt: 1700000000000,
-        deliverableCounts: { presentation: 0, poster: 0, handout: 0 },
+        deliverableCounts: { presentation: 0, poster: 0, handout: 0, recording: 0 },
       },
       {
         id: 'sub-2',
@@ -700,7 +700,7 @@ describe('ContentApp "Approve N ready" title-row action (w42-c/DEC-274)', () => 
         trackIds: [],
         submittedAt: null,
         createdAt: 1700000001000,
-        deliverableCounts: { presentation: 0, poster: 0, handout: 0 },
+        deliverableCounts: { presentation: 0, poster: 0, handout: 0, recording: 0 },
       },
     ]);
   }
@@ -718,7 +718,7 @@ describe('ContentApp "Approve N ready" title-row action (w42-c/DEC-274)', () => 
           trackIds: [],
           submittedAt: null,
           createdAt: 1700000000000,
-          deliverableCounts: { presentation: 0, poster: 0, handout: 0 },
+          deliverableCounts: { presentation: 0, poster: 0, handout: 0, recording: 0 },
         },
       ]),
     });
