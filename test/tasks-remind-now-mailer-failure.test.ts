@@ -276,13 +276,17 @@ describe("remindNow (DEC-238 class 2 organizer batch, partial mailer failure)", 
   });
 });
 
-// DEC-547 (w43-b): the route's own makeMailer() call (POST
-// /api/v1/events/:eventId/onboarding/remind, src/routes/tasks.ts) used to
-// sit above remindNow entirely, outside any guarded region — a misconfigured
-// environment (missing the EMAIL binding) threw synchronously and 500'd the
-// "Remind laggards" button instead of returning the normal {sent, failed}
-// envelope. Route-level coverage, mirroring
-// test/review-remind-mailer-failure.test.ts's Hono app pattern.
+// DEC-547 (wave 18 amendment): makeMailer NEVER throws (its wave-43
+// amendment made it return an UnconfiguredMailer whose .send fails per
+// recipient inside remindNow's own boundary). The route no longer wraps
+// makeMailer + remindNow in a try/catch, so a config failure still reports
+// the normal {sent, failed} envelope (via remindNow's own per-recipient
+// handling — exercised at repo level by the describes above), while a
+// genuine bug inside remindNow surfaces as a real 500 instead of being
+// converted into a fabricated `email: "*"` sentinel. Route-level coverage,
+// mirroring test/review-remind-mailer-failure.test.ts's Hono app pattern,
+// mocking remindNow directly so both outcomes are exercised without
+// depending on the mailer's internals.
 const ORG_A = "org-a";
 const EVENT_ID = "event-1";
 
@@ -291,16 +295,12 @@ vi.mock("../src/server/repo/tasks", async () => {
   return {
     ...actual,
     getEventOrgId: vi.fn(async (_db: unknown, eventId: string) => (eventId === EVENT_ID ? ORG_A : null)),
-  };
-});
-
-vi.mock("../src/server/context", async () => {
-  const actual = await vi.importActual<typeof import("../src/server/context")>("../src/server/context");
-  return {
-    ...actual,
-    makeMailer: vi.fn(() => {
-      throw new Error("the EMAIL binding is not configured and DEV_MODE is not \"1\"");
-    }),
+    // Default implementation delegates to the real remindNow so the two
+    // describes above (which call remindNow directly, unmocked) keep testing
+    // the real function; the route-level describe below overrides it
+    // per-test with mockResolvedValueOnce/mockRejectedValueOnce, which
+    // vi.clearAllMocks() (afterEach) does not strip back off the default.
+    remindNow: vi.fn(actual.remindNow),
   };
 });
 
@@ -317,12 +317,19 @@ async function buildTaskRoutesApp(auth: AuthInfo) {
   return app;
 }
 
-describe("POST /api/v1/events/:eventId/onboarding/remind (DEC-547 mailer-construction guard)", () => {
+describe("POST /api/v1/events/:eventId/onboarding/remind (DEC-547 wave-18 amendment: no swallowing catch)", () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  it("200s with {sent: 0, failed} instead of 500ing when makeMailer throws", async () => {
+  it("passes through remindNow's {sent, failed} envelope when a recipient's send fails (config failure or otherwise), naming a real address", async () => {
+    const { remindNow } = await import("../src/server/repo/tasks");
+    vi.mocked(remindNow).mockResolvedValueOnce({
+      sent: 0,
+      failed: [{ email: "a@example.com", message: "mail provider not configured" }],
+      skipped: 0,
+      remaining: 0,
+    });
     const app = await buildTaskRoutesApp({ userId: "u1", role: "organizer", orgId: ORG_A });
     const res = await app.request(
       `/api/v1/events/${EVENT_ID}/onboarding/remind`,
@@ -331,12 +338,33 @@ describe("POST /api/v1/events/:eventId/onboarding/remind (DEC-547 mailer-constru
         headers: { "content-type": "application/json", "x-chq-csrf": "1" },
         body: "{}",
       },
-      { KV: {} },
+      { KV: {}, PUBLIC_BASE_URL: "https://events.example.com" },
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as { sent: number; failed: { email: string; message: string }[] };
     expect(body.sent).toBe(0);
     expect(body.failed).toHaveLength(1);
-    expect(body.failed[0]?.message).toContain("EMAIL binding");
+    expect(body.failed[0]?.email).toBe("a@example.com");
+    expect(JSON.stringify(body)).not.toContain('"*"');
+  });
+
+  it("answers 500 with the standard error envelope when remindNow rejects with a genuine bug, never a 200", async () => {
+    const { remindNow } = await import("../src/server/repo/tasks");
+    vi.mocked(remindNow).mockRejectedValueOnce(new Error("boom"));
+    const app = await buildTaskRoutesApp({ userId: "u1", role: "organizer", orgId: ORG_A });
+    const res = await app.request(
+      `/api/v1/events/${EVENT_ID}/onboarding/remind`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+        body: "{}",
+      },
+      { KV: {}, PUBLIC_BASE_URL: "https://events.example.com" },
+    );
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as { error: { code: string; message: string } };
+    expect(body.error).toBeDefined();
+    expect(typeof body.error.code).toBe("string");
+    expect(typeof body.error.message).toBe("string");
   });
 });
