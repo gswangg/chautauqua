@@ -240,8 +240,10 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
 
     // Exactly 3 of the 5 DEFAULT_ONBOARDING_TASKS due dates are already
     // past relative to 'now' (DEC-591's SEED_NOW offsets: -2,-1,+9,-4,+23,
-    // DEC-646).
-    const allTaskDueDates = [...dueDateByTaskId.values()];
+    // DEC-646). DEC-739 amendment (task w11-b) adds a SIXTH, event-specific
+    // task (kind='file_request', not a default) — excluded here since this
+    // assertion is scoped to DEFAULT_ONBOARDING_TASKS specifically.
+    const allTaskDueDates = taskRows.filter((r) => r[2] !== "file_request").map((r) => Number(r[3]));
     expect(allTaskDueDates.length).toBe(5);
     const pastCount = allTaskDueDates.filter((d) => d < Date.now()).length;
     expect(pastCount).toBe(3);
@@ -610,7 +612,7 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
     }
   });
 
-  it("DEC-739: every complete file_request task_assignment has a non-null file_id (DEC-009 amendment, wave 59: DEFAULT_ONBOARDING_TASKS carries no file_request task any more, so this set is now empty by construction -- the invariant itself stays enforced for any future file_request task)", () => {
+  it("DEC-739 amendment (task w11-b): every complete file_request task_assignment has a non-null file_id (the file_request task is now event-specific, minted alongside DEFAULT_ONBOARDING_TASKS but not one of its members -- DEC-009's wave-59 amendment still holds for the defaults)", () => {
     const taskRows = parseInserts(sql, "task");
     const kindByTaskId = new Map(taskRows.map((r) => [r.id!, r.kind!]));
 
@@ -618,7 +620,7 @@ describe("seed.ts output (task w1-d, DEC-145)", () => {
     const completeFileRequestAssignments = taskAssignmentRows.filter(
       (r) => r.status === "complete" && kindByTaskId.get(r.task_id!) === "file_request",
     );
-    expect(completeFileRequestAssignments.length).toBe(0);
+    expect(completeFileRequestAssignments.length).toBeGreaterThan(0);
 
     const fileIds = new Set(parseInserts(sql, "file").map((f) => f.id!));
     for (const row of completeFileRequestAssignments) {
