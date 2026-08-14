@@ -73,6 +73,16 @@ export async function renderSurfaceContent(
         format,
         roomId,
       });
+      // v7 active-filter line needs the UNFILTERED count ("9 of 18
+      // sessions"); one extra COUNT-shaped query, run only when a filter is
+      // actually active — at rest grandTotal === total and the line renders
+      // nothing anyway. /embed is excluded wholesale: configured knobs are
+      // not user filters (DEC-489's rationale survives v7 for embeds — a
+      // removable chip inside an embed would un-configure it).
+      const anyFilter = !query.embed && Boolean(q || query.day || trackId || format || roomId);
+      const grandTotal = anyFilter
+        ? (await getPublicSessions(db, event, { trackId: null, page: 1, perPage: 1, q: null, day: null, format: null, roomId: null })).total
+        : total;
       // DEC-683: the rail (Your schedule / day index / call for papers) is
       // chromeless-closed — /embed never renders it, so these two extra
       // queries are skipped entirely rather than fetched-then-hidden.
@@ -90,8 +100,10 @@ export async function renderSurfaceContent(
             formatOptions={formatOptions}
             activeFormat={format}
             q={q}
+            activeDay={query.embed ? null : (query.day ?? null)}
             items={items}
             total={total}
+            grandTotal={grandTotal}
             page={page}
             perPage={perPage}
             limit={query.limit ?? null}

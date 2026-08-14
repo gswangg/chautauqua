@@ -206,30 +206,30 @@ function buildApp() {
 }
 
 describe("sessions.tsx (DEC-774): format/room filter chips", () => {
-  it("renders format and room chip bars alongside the track chip bar, all active by default", async () => {
+  it("renders format and room facet selects alongside the track select, all at their All state by default (v7 filter bar)", async () => {
     installFakeCaches();
     const app = buildApp();
     const res = await app.request("/e/conf/sessions", {}, TEST_ENV);
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain('aria-label="Track filters"');
-    expect(html).toContain('aria-label="Format filters"');
-    expect(html).toContain('aria-label="Room filters"');
-    expect(html).toContain(">Workshop<");
-    expect(html).toContain(">Talk<");
-    expect(html).toContain(">Main Hall<");
+    for (const name of ["trackId", "format", "roomId"]) {
+      expect(html).toMatch(new RegExp(`<select class="chq-pub-select"[^>]*name="${name}"`));
+    }
+    expect(html).toContain('<option value="">All formats</option>');
+    expect(html).toContain('<option value="Workshop">Workshop</option>');
+    expect(html).toContain('<option value="Talk">Talk</option>');
+    expect(html).toContain('<option value="room1">Main Hall</option>');
   });
 
-  it("a format chip's href preserves the active trackId and roomId", async () => {
+  it("the format select's form carries the active trackId and roomId as hidden inputs (v7 facet composition)", async () => {
     installFakeCaches();
     const app = buildApp();
     const res = await app.request("/e/conf/sessions?trackId=trk1&roomId=room1", {}, TEST_ENV);
     const html = await res.text();
-    const match = html.match(/href="(\/e\/conf\/sessions\?[^"]*format=Workshop[^"]*)"/);
-    expect(match).not.toBeNull();
-    const href = match![1]!;
-    expect(href).toContain("trackId=trk1");
-    expect(href).toContain("roomId=room1");
+    const form = html.match(/<form class="chq-pub-select-form"[^>]*>(?:(?!<\/form>)[\s\S])*name="format"[\s\S]*?<\/form>/);
+    expect(form).not.toBeNull();
+    expect(form![0]).toContain('<input type="hidden" name="trackId" value="trk1"');
+    expect(form![0]).toContain('<input type="hidden" name="roomId" value="room1"');
   });
 
   it("the search form carries the active format/roomId as hidden inputs", async () => {
