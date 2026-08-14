@@ -25,6 +25,7 @@ import {
   type ContactProfile,
   type SocialLinks,
 } from "../../server/repo/profile";
+import { CLIENT_CACHE_CONTROL } from "../../server/pubcache";
 import { sanitizeFilenameForKey, validateHeadshotUpload } from "../../domain/files";
 import { newId } from "../../domain/ids";
 import {
@@ -433,10 +434,14 @@ headshotServeRoutes.get("/headshots/:fileId", async (c) => {
 
   let cacheControl: string;
   if (scope.publiclyVisible) {
-    // DEC-059: safe to cache immutably — every upload writes a fresh
-    // random R2 key (see r2Key above), so a given fileId's contents never
-    // change.
-    cacheControl = "public, max-age=31536000, immutable";
+    // DEC-059 (amended wave 70): immutable may describe BYTES (every
+    // upload writes a fresh random R2 key, see r2Key above, so a given
+    // fileId's contents never change) but must never describe an
+    // AUTHORIZATION OUTCOME — this scope flips to private the moment the
+    // speaker is un-published, and no purge path reaches /headshots/*.
+    // Share the same short-lived, revalidating budget as the public pages
+    // that embed this image, so both expire on one clock.
+    cacheControl = CLIENT_CACHE_CONTROL;
   } else {
     const auth = c.var.auth;
     const authorized =
@@ -453,9 +458,13 @@ headshotServeRoutes.get("/headshots/:fileId", async (c) => {
   if (!obj) throw new ApiError("not_found", "Headshot contents not found");
 
   const contentType = scope.contentType;
+  // Vary: Cookie — the same URL answers 404 to a stranger and 200 to the
+  // owning speaker/organizer while a headshot is private, so a shared
+  // cache must never mix the two responses.
   return c.body(obj.body, 200, {
     "Content-Type": contentType,
     "Cache-Control": cacheControl,
     "X-Content-Type-Options": "nosniff",
+    Vary: "Cookie",
   });
 });
