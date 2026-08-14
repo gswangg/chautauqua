@@ -58,7 +58,7 @@ import {
 import { createClaimToken, type KVStore as ClaimKVStore } from "../../auth/claim";
 import { parseCookies, newCsrfToken, buildCsrfCookie, buildDraftCookie, isSecureRequest, CSRF_COOKIE_NAME } from "../../auth/cookies";
 import { renderTemplate } from "../../mail/render";
-import { escapeHtml } from "../../lib/html-escape";
+import { renderEmailHtml } from "../../mail/shell";
 import { validateUpload, sanitizeFilenameForKey, type ValidUpload } from "../../domain/files";
 import { newId, formatRef } from "../../domain/ids";
 import { fieldInputName } from "../../views/form-render";
@@ -703,12 +703,14 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
       portal_link: claimUrl,
     },
   );
-  const safeSpeakerName = escapeHtml(`${firstName} ${lastName}`.trim());
-  const safeTitle = escapeHtml(title);
-  const safeRef = escapeHtml(ref);
-  const safeEventName = escapeHtml(event.name);
-  const safeClaimUrl = escapeHtml(claimUrl);
-  const html = `<p>Hi ${safeSpeakerName},</p><p>We received your submission "${safeTitle}" (${safeRef}) for ${safeEventName}.</p><p><a href="${safeClaimUrl}">${safeClaimUrl}</a></p>`;
+  const html = renderEmailHtml(text, {
+    eventName: event.name,
+    reason: "you submitted a talk to this event.",
+    cta: {
+      label: existingUser ? "Sign in to view your submission" : "Claim your account to view your submission",
+      href: claimUrl,
+    },
+  });
   // The submission is already persisted; the confirmation email is a
   // best-effort side effect at an IO boundary (a real provider can reject a
   // recipient or transiently fail). A send failure must NOT 500 the submit —
