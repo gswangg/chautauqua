@@ -1,0 +1,76 @@
+// DEC-683 amendment (wave 65): the printable programme is a print-first
+// surface, not another /agenda skin — its own stylesheet, not another block
+// grown inside public.css.ts, because print has its own rules (no
+// background fills, black ink, no page break inside a day). PROGRAMME_CSS is
+// a fixed, value-free module constant (DEC-374's convention) -- never
+// interpolated with request/user data -- inlined by ProgrammeContent via
+// `<style dangerouslySetInnerHTML={{ __html: PROGRAMME_CSS }} />`, exactly
+// like shell.tsx's BaseStyles inlines PUBLIC_CSS.
+
+export const PROGRAMME_CSS = `
+  .chq-prog-main {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 24px 16px 64px;
+  }
+  .chq-prog-title {
+    margin: 0 0 4px;
+    font-size: 1.6rem;
+  }
+  .chq-prog-meta {
+    margin: 0 0 32px;
+    color: var(--chq-muted, #555);
+  }
+  .chq-prog-day {
+    margin: 0 0 32px;
+  }
+  .chq-prog-day-heading {
+    margin: 0 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 2px solid #000;
+    font-size: 1.1rem;
+  }
+  .chq-prog-row {
+    display: flex;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid #ddd;
+  }
+  .chq-prog-row-time {
+    flex: 0 0 130px;
+    font-variant-numeric: tabular-nums;
+  }
+  .chq-prog-row-body {
+    flex: 1 1 auto;
+  }
+  .chq-prog-row-title {
+    font-weight: 600;
+  }
+  .chq-prog-row-sub {
+    color: var(--chq-muted, #555);
+    font-size: 0.9rem;
+  }
+  .chq-prog-break {
+    font-variant: small-caps;
+    letter-spacing: 0.02em;
+    color: var(--chq-muted, #555);
+  }
+  @media print {
+    body {
+      background: #fff !important;
+      color: #000 !important;
+    }
+    .chq-prog-main {
+      max-width: none;
+      padding: 0;
+    }
+    .chq-prog-row-sub,
+    .chq-prog-meta,
+    .chq-prog-break {
+      color: #000 !important;
+    }
+    .chq-prog-day {
+      page-break-inside: avoid;
+    }
+  }
+`;
