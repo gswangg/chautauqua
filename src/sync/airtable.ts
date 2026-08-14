@@ -11,7 +11,7 @@
 // (Airtable API limit); at seed scale this is a handful of requests per tick,
 // far under the 5 rps base limit.
 
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, gt, inArray } from "drizzle-orm";
 import * as schema from "../db/schema";
 import type { Db } from "../server/context";
 import { formatRef } from "../domain/ids";
@@ -19,6 +19,8 @@ import { ACTIVE_INVITE_STATUSES } from "../domain/acceptance";
 
 const BATCH = 10;
 const API = "https://api.airtable.com/v0";
+const MAX_RETRIES = 3;
+const realSleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 export interface AirtableRecord {
   fields: Record<string, string>;
@@ -71,28 +73,45 @@ export function chunk<T>(items: T[], size: number = BATCH): T[][] {
   return out;
 }
 
+// DEC-725: a 429 is a rate limit, not a failure — honour Retry-After and
+// retry, bounded at MAX_RETRIES attempts so a permanently-throttled base
+// still fails the tick loudly (naming the table and the status) instead of
+// retrying forever. sleep is injected so tests never actually wait.
 async function upsertBatches(
   fetchImpl: typeof fetch,
   token: string,
   baseId: string,
   table: string,
   records: AirtableRecord[],
+  sleep: (ms: number) => Promise<void> = realSleep,
 ): Promise<number> {
   let upserted = 0;
   for (const batch of chunk(records)) {
-    const res = await fetchImpl(`${API}/${baseId}/${encodeURIComponent(table)}`, {
-      method: "PATCH",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        performUpsert: { fieldsToMergeOn: ["ChautauquaId"] },
-        records: batch,
-      }),
-    });
-    if (!res.ok) {
+    let attempt = 0;
+    for (;;) {
+      const res = await fetchImpl(`${API}/${baseId}/${encodeURIComponent(table)}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          performUpsert: { fieldsToMergeOn: ["ChautauquaId"] },
+          records: batch,
+        }),
+      });
+      if (res.ok) {
+        upserted += batch.length;
+        break;
+      }
+      if (res.status === 429 && attempt < MAX_RETRIES) {
+        attempt += 1;
+        const retryAfterHeader = res.headers?.get?.("Retry-After");
+        const retryAfterSeconds = retryAfterHeader ? Number(retryAfterHeader) : NaN;
+        const waitMs = Number.isFinite(retryAfterSeconds) ? retryAfterSeconds * 1000 : 1000 * attempt;
+        await sleep(waitMs);
+        continue;
+      }
       const body = await res.text();
       throw new Error(`airtable upsert ${table} failed: ${res.status} ${body.slice(0, 200)}`);
     }
-    upserted += batch.length;
   }
   return upserted;
 }
@@ -106,6 +125,18 @@ export interface AirtableSyncEnv {
   AIRTABLE_TOKEN?: string;
   AIRTABLE_BASE_ID?: string;
   AIRTABLE_ORG_ID?: string;
+  // DEC-725: structural port so scheduled.ts's already-full env (which
+  // carries a real Cloudflare KVNamespace) satisfies this with no caller
+  // change. Optional — a missing KV means every tick is a full push (no
+  // watermark to read or write), never an error.
+  KV?: {
+    get(key: string): Promise<string | null>;
+    put(key: string, value: string): Promise<void>;
+  };
+}
+
+function watermarkKey(orgId: string): string {
+  return `airtable:watermark:${orgId}`;
 }
 
 // DEC-450: hard cap on rows read per sync tick. A cap that's silently
@@ -119,6 +150,7 @@ export async function runAirtableSync(
   db: Db,
   fetchImpl: typeof fetch = fetch,
   now: Date = new Date(),
+  sleep: (ms: number) => Promise<void> = realSleep,
 ): Promise<{ contacts: number; submissions: number } | null> {
   const token = env.AIRTABLE_TOKEN;
   const baseId = env.AIRTABLE_BASE_ID;
@@ -133,6 +165,14 @@ export async function runAirtableSync(
     );
   }
 
+  // DEC-725: a present watermark means an incremental push (only rows
+  // changed since the last successful tick); an absent watermark means a
+  // full push — correct for the first sync and for a restore, so the
+  // incremental path needs no separate bootstrap.
+  const wmKey = watermarkKey(orgId);
+  const storedMark = env.KV ? await env.KV.get(wmKey) : null;
+  const mark = storedMark ? new Date(storedMark) : null;
+
   const contacts = await db
     .select({
       id: schema.contact.id,
@@ -143,7 +183,11 @@ export async function runAirtableSync(
       title: schema.contact.title,
     })
     .from(schema.contact)
-    .where(eq(schema.contact.orgId, orgId))
+    .where(
+      mark
+        ? and(eq(schema.contact.orgId, orgId), gt(schema.contact.updatedAt, mark))
+        : eq(schema.contact.orgId, orgId),
+    )
     .limit(MAX_SYNC_ROWS + 1);
   if (contacts.length > MAX_SYNC_ROWS) {
     throw new Error(`airtable sync: contact table exceeds MAX_SYNC_ROWS (${MAX_SYNC_ROWS}) for this org`);
@@ -160,7 +204,11 @@ export async function runAirtableSync(
     })
     .from(schema.submission)
     .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
-    .where(eq(schema.event.orgId, orgId))
+    .where(
+      mark
+        ? and(eq(schema.event.orgId, orgId), gt(schema.submission.updatedAt, mark))
+        : eq(schema.event.orgId, orgId),
+    )
     .limit(MAX_SYNC_ROWS + 1);
   if (subs.length > MAX_SYNC_ROWS) {
     throw new Error(`airtable sync: submission table exceeds MAX_SYNC_ROWS (${MAX_SYNC_ROWS}) for this org`);
@@ -189,7 +237,11 @@ export async function runAirtableSync(
         inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
       ),
     )
-    .orderBy(asc(schema.participant.order), asc(schema.contact.id));
+    .orderBy(asc(schema.participant.order), asc(schema.contact.id))
+    .limit(MAX_SYNC_ROWS + 1);
+  if (parts.length > MAX_SYNC_ROWS) {
+    throw new Error(`airtable sync: participant table exceeds MAX_SYNC_ROWS (${MAX_SYNC_ROWS}) for this org`);
+  }
   const speakersBySub = new Map<string, string[]>();
   for (const p of parts) {
     const list = speakersBySub.get(p.submissionId) ?? [];
@@ -197,6 +249,9 @@ export async function runAirtableSync(
     speakersBySub.set(p.submissionId, list);
   }
 
+  // DEC-725 amendment: deterministic order (track.position then id) so the
+  // Tracks cell — like the Speakers cell above — never permutes between
+  // runs and re-fires the customer's automations on a non-change.
   const subTracks = await db
     .select({
       submissionId: schema.submissionTrack.submissionId,
@@ -206,7 +261,12 @@ export async function runAirtableSync(
     .innerJoin(schema.track, eq(schema.submissionTrack.trackId, schema.track.id))
     .innerJoin(schema.submission, eq(schema.submissionTrack.submissionId, schema.submission.id))
     .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
-    .where(eq(schema.event.orgId, orgId));
+    .where(eq(schema.event.orgId, orgId))
+    .orderBy(asc(schema.track.position), asc(schema.track.id))
+    .limit(MAX_SYNC_ROWS + 1);
+  if (subTracks.length > MAX_SYNC_ROWS) {
+    throw new Error(`airtable sync: submission_track table exceeds MAX_SYNC_ROWS (${MAX_SYNC_ROWS}) for this org`);
+  }
   const tracksBySub = new Map<string, string[]>();
   for (const t of subTracks) {
     const list = tracksBySub.get(t.submissionId) ?? [];
@@ -229,8 +289,16 @@ export async function runAirtableSync(
     ),
   );
 
-  const nContacts = await upsertBatches(fetchImpl, token, baseId, "Contacts", contactRecords);
-  const nSubs = await upsertBatches(fetchImpl, token, baseId, "Submissions", submissionRecords);
+  const nContacts = await upsertBatches(fetchImpl, token, baseId, "Contacts", contactRecords, sleep);
+  const nSubs = await upsertBatches(fetchImpl, token, baseId, "Submissions", submissionRecords, sleep);
+
+  // DEC-725: the watermark advances only once BOTH upserts have succeeded —
+  // a failed tick must not advance the clock, so a retried tick re-covers
+  // the rows the failed tick never actually pushed.
+  if (env.KV) {
+    await env.KV.put(wmKey, now.toISOString());
+  }
+
   console.log(`airtable sync: upserted ${nContacts} contacts, ${nSubs} submissions`);
   return { contacts: nContacts, submissions: nSubs };
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { DatabaseSync } from "node:sqlite";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
-import { chunk, contactRecord, submissionRecord, runAirtableSync } from "../src/sync/airtable";
+import { chunk, contactRecord, submissionRecord, runAirtableSync, MAX_SYNC_ROWS, type AirtableSyncEnv } from "../src/sync/airtable";
 import { formatRef } from "../src/domain/ids";
 import * as schema from "../src/db/schema";
 import type { Db } from "../src/server/context";
@@ -131,12 +132,11 @@ describe("runAirtableSync ref building (DEC-435)", () => {
         limit: () => Promise.resolve(rows),
       }),
     });
-    const whereOnly = <T>(rows: T[]) => ({
-      where: () => Promise.resolve(rows),
-    });
-    const whereOrderBy = <T>(rows: T[]) => ({
+    const whereOrderByLimit = <T>(rows: T[]) => ({
       where: () => ({
-        orderBy: () => Promise.resolve(rows),
+        orderBy: () => ({
+          limit: () => Promise.resolve(rows),
+        }),
       }),
     });
 
@@ -147,9 +147,9 @@ describe("runAirtableSync ref building (DEC-435)", () => {
           if (table === schema.submission)
             return { innerJoin: () => whereLimit(subRows) };
           if (table === schema.participant)
-            return { innerJoin: () => ({ innerJoin: () => ({ innerJoin: () => whereOrderBy(partRows) }) }) };
+            return { innerJoin: () => ({ innerJoin: () => ({ innerJoin: () => whereOrderByLimit(partRows) }) }) };
           if (table === schema.submissionTrack)
-            return { innerJoin: () => ({ innerJoin: () => ({ innerJoin: () => whereOnly(trackRows) }) }) };
+            return { innerJoin: () => ({ innerJoin: () => ({ innerJoin: () => whereOrderByLimit(trackRows) }) }) };
           throw new Error("unexpected table passed to fakeDb.from in this test");
         },
       }),
@@ -206,8 +206,12 @@ describe("runAirtableSync participant invite-status filtering (DEC-981)", () => 
         limit: () => Promise.resolve(rows),
       }),
     });
-    const whereOnly = <T>(rows: T[]) => ({
-      where: () => Promise.resolve(rows),
+    const whereOrderByLimit = <T>(rows: T[]) => ({
+      where: () => ({
+        orderBy: () => ({
+          limit: () => Promise.resolve(rows),
+        }),
+      }),
     });
 
     const buildDb = () =>
@@ -225,21 +229,23 @@ describe("runAirtableSync participant invite-status filtering (DEC-981)", () => 
                       // just relying on a fixture that happens to be clean —
                       // the fake db itself applies the ACTIVE_INVITE_STATUSES
                       // filter + deterministic order, mirroring the real
-                      // WHERE/ORDER BY the drizzle query issues.
+                      // WHERE/ORDER BY/LIMIT the drizzle query issues.
                       where: () => ({
-                        orderBy: () =>
-                          Promise.resolve(
-                            partRows
-                              .filter((p) => p.inviteStatus === "accepted" || p.inviteStatus === "none")
-                              .sort((a, b) => a.firstName.localeCompare(b.firstName)),
-                          ),
+                        orderBy: () => ({
+                          limit: () =>
+                            Promise.resolve(
+                              partRows
+                                .filter((p) => p.inviteStatus === "accepted" || p.inviteStatus === "none")
+                                .sort((a, b) => a.firstName.localeCompare(b.firstName)),
+                            ),
+                        }),
                       }),
                     }),
                   }),
                 }),
               };
             if (table === schema.submissionTrack)
-              return { innerJoin: () => ({ innerJoin: () => ({ innerJoin: () => whereOnly([]) }) }) };
+              return { innerJoin: () => ({ innerJoin: () => ({ innerJoin: () => whereOrderByLimit([]) }) }) };
             throw new Error("unexpected table passed to fakeDb.from in this test");
           },
         }),
@@ -272,5 +278,317 @@ describe("runAirtableSync participant invite-status filtering (DEC-981)", () => 
 
     const speakers2 = await runOnce();
     expect(speakers2).toBe(speakers1);
+  });
+});
+
+// DEC-725: incremental sync from a KV watermark, over a real (in-memory)
+// SQLite engine via node:sqlite + drizzle-orm's sqlite-proxy driver (same
+// technique as test/contacts-delete.test.ts) so the gt(updatedAt, mark)
+// predicate is actually exercised, not hand-simulated.
+const DDL = `
+create table contact (
+  id text primary key,
+  org_id text,
+  first_name text,
+  last_name text,
+  email text,
+  company text,
+  title text,
+  created_at integer,
+  updated_at integer
+);
+create table event (
+  id text primary key,
+  org_id text,
+  record_prefix text,
+  created_at integer,
+  updated_at integer
+);
+create table submission (
+  id text primary key,
+  event_id text,
+  seq integer,
+  title text,
+  status text,
+  created_at integer,
+  updated_at integer
+);
+create table participant (
+  id text primary key,
+  submission_id text,
+  contact_id text,
+  "order" integer,
+  invite_status text,
+  created_at integer,
+  updated_at integer
+);
+create table track (
+  id text primary key,
+  event_id text,
+  name text,
+  position integer,
+  created_at integer,
+  updated_at integer
+);
+create table submission_track (
+  submission_id text,
+  track_id text,
+  created_at integer
+);
+`;
+
+function makeTestDb(): { db: Db; sqlite: DatabaseSync } {
+  const sqlite = new DatabaseSync(":memory:");
+  sqlite.exec(DDL);
+  const db = drizzle(
+    async (sqlText, params, method) => {
+      const stmt = sqlite.prepare(sqlText);
+      stmt.setReturnArrays(true);
+      if (method === "run") {
+        stmt.run(...params);
+        return { rows: [] };
+      }
+      const rows = stmt.all(...params) as unknown[];
+      return { rows };
+    },
+    { schema },
+  );
+  return { db: db as unknown as Db, sqlite };
+}
+
+function makeFakeKv(): NonNullable<AirtableSyncEnv["KV"]> & { store: Map<string, string> } {
+  const store = new Map<string, string>();
+  return {
+    store,
+    get: async (key: string) => store.get(key) ?? null,
+    put: async (key: string, value: string) => {
+      store.set(key, value);
+    },
+  };
+}
+
+function seedOrgEventContact(sqlite: DatabaseSync, ts: number) {
+  sqlite.exec(`
+    insert into event (id, org_id, record_prefix, created_at, updated_at)
+      values ('event-1', 'org-1', 'SES', ${ts}, ${ts});
+  `);
+}
+
+function insertContact(sqlite: DatabaseSync, id: string, ts: number) {
+  const stmt = sqlite.prepare(
+    `insert into contact (id, org_id, first_name, last_name, email, company, title, created_at, updated_at)
+     values (?, 'org-1', ?, 'Test', ?, null, null, ?, ?)`,
+  );
+  stmt.run(id, id, `${id}@x.com`, ts, ts);
+}
+
+function fakeFetchCollecting(patchBodies: Array<{ table: string; body: unknown }>) {
+  return (async (url: string, init: RequestInit) => {
+    const table = decodeURIComponent(String(url).split("/").pop() ?? "");
+    patchBodies.push({ table, body: JSON.parse(String(init.body)) });
+    return { ok: true, text: async () => "" } as Response;
+  }) as typeof fetch;
+}
+
+const noSleep = async () => {};
+
+describe("runAirtableSync incremental watermark (DEC-725)", () => {
+  it("first run pushes everything and stores the watermark; a second run with no changes pushes zero records", async () => {
+    const { db, sqlite } = makeTestDb();
+    seedOrgEventContact(sqlite, 1_000);
+    insertContact(sqlite, "c1", 1_000);
+    const kv = makeFakeKv();
+    const env: AirtableSyncEnv = { AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b", AIRTABLE_ORG_ID: "org-1", KV: kv };
+
+    const patch1: Array<{ table: string; body: unknown }> = [];
+    const r1 = await runAirtableSync(env, db, fakeFetchCollecting(patch1), new Date(2_000), noSleep);
+    expect(r1).toEqual({ contacts: 1, submissions: 0 });
+    expect(kv.store.get("airtable:watermark:org-1")).toBe(new Date(2_000).toISOString());
+
+    const patch2: Array<{ table: string; body: unknown }> = [];
+    const r2 = await runAirtableSync(env, db, fakeFetchCollecting(patch2), new Date(3_000), noSleep);
+    expect(r2).toEqual({ contacts: 0, submissions: 0 });
+    expect(patch2.find((p) => p.table === "Contacts")).toBeUndefined();
+  });
+
+  it("a row changed after the watermark is picked up on the next tick", async () => {
+    const { db, sqlite } = makeTestDb();
+    seedOrgEventContact(sqlite, 1_000);
+    insertContact(sqlite, "c1", 1_000);
+    const kv = makeFakeKv();
+    const env: AirtableSyncEnv = { AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b", AIRTABLE_ORG_ID: "org-1", KV: kv };
+
+    await runAirtableSync(env, db, fakeFetchCollecting([]), new Date(2_000), noSleep);
+
+    // c1 is updated after the stored watermark (2000).
+    sqlite.exec(`update contact set updated_at = 2500 where id = 'c1'`);
+    insertContact(sqlite, "c2", 100); // stale row, must NOT be picked up
+    sqlite.exec(`update contact set updated_at = 100 where id = 'c2'`);
+
+    const patch: Array<{ table: string; body: unknown }> = [];
+    const r = await runAirtableSync(env, db, fakeFetchCollecting(patch), new Date(3_000), noSleep);
+    expect(r).toEqual({ contacts: 1, submissions: 0 });
+    const body = patch.find((p) => p.table === "Contacts")!.body as { records: Array<{ fields: { ChautauquaId: string } }> };
+    expect(body.records.map((rec) => rec.fields.ChautauquaId)).toEqual(["c1"]);
+  });
+
+  it("no KV means every tick is a full push (no watermark to read or write)", async () => {
+    const { db, sqlite } = makeTestDb();
+    seedOrgEventContact(sqlite, 1_000);
+    insertContact(sqlite, "c1", 1_000);
+    const env: AirtableSyncEnv = { AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b", AIRTABLE_ORG_ID: "org-1" };
+
+    const p1: Array<{ table: string; body: unknown }> = [];
+    await runAirtableSync(env, db, fakeFetchCollecting(p1), new Date(2_000), noSleep);
+    const p2: Array<{ table: string; body: unknown }> = [];
+    const r2 = await runAirtableSync(env, db, fakeFetchCollecting(p2), new Date(3_000), noSleep);
+    expect(r2).toEqual({ contacts: 1, submissions: 0 });
+  });
+});
+
+describe("runAirtableSync 429 backoff (DEC-725)", () => {
+  it("retries a 429 honouring Retry-After and succeeds without waiting in the test", async () => {
+    const { db, sqlite } = makeTestDb();
+    seedOrgEventContact(sqlite, 1_000);
+    insertContact(sqlite, "c1", 1_000);
+    const env: AirtableSyncEnv = { AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b", AIRTABLE_ORG_ID: "org-1" };
+
+    let calls = 0;
+    const sleeps: number[] = [];
+    const fakeFetch = (async () => {
+      calls += 1;
+      if (calls === 1) {
+        return {
+          ok: false,
+          status: 429,
+          headers: { get: (name: string) => (name === "Retry-After" ? "2" : null) },
+          text: async () => "rate limited",
+        } as unknown as Response;
+      }
+      return { ok: true, text: async () => "" } as Response;
+    }) as typeof fetch;
+    const sleep = async (ms: number) => {
+      sleeps.push(ms);
+    };
+
+    const r = await runAirtableSync(env, db, fakeFetch, new Date(2_000), sleep);
+    expect(r).toEqual({ contacts: 1, submissions: 0 });
+    expect(calls).toBe(2);
+    expect(sleeps).toEqual([2000]);
+  });
+
+  it("exhausts retries after MAX_RETRIES 429s, throws naming the table and status, and does NOT advance the watermark", async () => {
+    const { db, sqlite } = makeTestDb();
+    seedOrgEventContact(sqlite, 1_000);
+    insertContact(sqlite, "c1", 1_000);
+    const kv = makeFakeKv();
+    const env: AirtableSyncEnv = { AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b", AIRTABLE_ORG_ID: "org-1", KV: kv };
+
+    const fakeFetch = (async () => ({
+      ok: false,
+      status: 429,
+      headers: { get: () => null },
+      text: async () => "rate limited",
+    })) as unknown as typeof fetch;
+    const sleep = async () => {};
+
+    await expect(runAirtableSync(env, db, fakeFetch, new Date(2_000), sleep)).rejects.toThrow(
+      /airtable upsert Contacts failed: 429/,
+    );
+    expect(kv.store.has("airtable:watermark:org-1")).toBe(false);
+  });
+});
+
+describe("runAirtableSync deterministic Tracks order (DEC-725 amendment)", () => {
+  it("the Tracks cell is byte-stable across two runs even when the underlying rows are inserted/returned in shuffled order", async () => {
+    const { db, sqlite } = makeTestDb();
+    seedOrgEventContact(sqlite, 1_000);
+    sqlite.exec(`
+      insert into submission (id, event_id, seq, title, status, created_at, updated_at)
+        values ('sub-1', 'event-1', 1, 'Talk', 'accepted', 1000, 1000);
+      insert into track (id, event_id, name, position, created_at, updated_at)
+        values ('trk-b', 'event-1', 'Track B', 1, 1000, 1000);
+      insert into track (id, event_id, name, position, created_at, updated_at)
+        values ('trk-a', 'event-1', 'Track A', 0, 1000, 1000);
+      insert into submission_track (submission_id, track_id, created_at)
+        values ('sub-1', 'trk-b', 1000);
+      insert into submission_track (submission_id, track_id, created_at)
+        values ('sub-1', 'trk-a', 1000);
+    `);
+    const env: AirtableSyncEnv = { AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b", AIRTABLE_ORG_ID: "org-1" };
+
+    const runOnce = async () => {
+      const patch: Array<{ table: string; body: unknown }> = [];
+      await runAirtableSync(env, db, fakeFetchCollecting(patch), new Date(2_000), noSleep);
+      const subs = (patch.find((p) => p.table === "Submissions")!.body as {
+        records: Array<{ fields: { Tracks: string } }>;
+      }).records;
+      return subs[0]!.fields.Tracks;
+    };
+
+    const tracks1 = await runOnce();
+    expect(tracks1).toBe("Track A, Track B");
+    const tracks2 = await runOnce();
+    expect(tracks2).toBe(tracks1);
+  });
+});
+
+describe("runAirtableSync participant/track joins refuse past MAX_SYNC_ROWS (DEC-725)", () => {
+  const whereLimit = <T>(rows: T[]) => ({
+    where: () => ({ limit: () => Promise.resolve(rows) }),
+  });
+  const overLimitParts = Array.from({ length: MAX_SYNC_ROWS + 1 }, (_, i) => ({
+    submissionId: "sub-1",
+    firstName: `F${i}`,
+    lastName: "L",
+  }));
+  const overLimitTracks = Array.from({ length: MAX_SYNC_ROWS + 1 }, (_, i) => ({
+    submissionId: "sub-1",
+    name: `T${i}`,
+  }));
+
+  function buildDb(opts: { overflowParts?: boolean; overflowTracks?: boolean }): Db {
+    const whereOrderByLimit = <T>(rows: T[]) => ({
+      where: () => ({ orderBy: () => ({ limit: () => Promise.resolve(rows) }) }),
+    });
+    return {
+      select: () => ({
+        from: (table: unknown) => {
+          if (table === schema.contact) return whereLimit([]);
+          if (table === schema.submission) return { innerJoin: () => whereLimit([]) };
+          if (table === schema.participant)
+            return {
+              innerJoin: () => ({
+                innerJoin: () => ({
+                  innerJoin: () => whereOrderByLimit(opts.overflowParts ? overLimitParts : []),
+                }),
+              }),
+            };
+          if (table === schema.submissionTrack)
+            return {
+              innerJoin: () => ({
+                innerJoin: () => ({
+                  innerJoin: () => whereOrderByLimit(opts.overflowTracks ? overLimitTracks : []),
+                }),
+              }),
+            };
+          throw new Error("unexpected table passed to fakeDb.from in this test");
+        },
+      }),
+    } as unknown as Db;
+  }
+
+  it("refuses when the participant join exceeds MAX_SYNC_ROWS", async () => {
+    const db = buildDb({ overflowParts: true });
+    await expect(
+      runAirtableSync({ AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b", AIRTABLE_ORG_ID: "org-1" }, db),
+    ).rejects.toThrow(/participant table exceeds MAX_SYNC_ROWS/);
+  });
+
+  it("refuses when the submission_track join exceeds MAX_SYNC_ROWS", async () => {
+    const db = buildDb({ overflowTracks: true });
+    await expect(
+      runAirtableSync({ AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b", AIRTABLE_ORG_ID: "org-1" }, db),
+    ).rejects.toThrow(/submission_track table exceeds MAX_SYNC_ROWS/);
   });
 });
