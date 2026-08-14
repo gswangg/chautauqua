@@ -465,8 +465,12 @@ or **unmentioned by any gate-4 report** (tagged). Nothing here is a new finding.
   the two clashing cards. (The engine's co-presenter *visibility* is closed server-side —
   DEC-974.)
 - **P1 · "Remind laggards (N)" 500** — same mailer cause; verify it heals with the boundary
-  fix. **"Submission (removed)"** label renders for a live assignment on the who-reviews-what
-  list.
+  fix. — CLOSED-VERIFIED (wave 11, test/review-remind-laggards.test.ts::"200s with a
+  structured partial-failure body, never a 500, when one recipient's send throws"). **"Submission
+  (removed)"** label renders for a live assignment on the who-reviews-what
+  list. — CLOSED-VERIFIED (wave 11, app/src/pages/review/PlanEditor.render.test.tsx::"renders
+  reviewer scope by name, never by ULID, and words a null label as removed" — extended to also
+  assert a genuinely dangling submission-scoped row still renders "Submission (removed)").
 - **P2 · duplicate-contact hygiene** (SPK+CRM): manual Add-speaker doesn't match an existing
   email → three Priya Raman rows; CSV import creates a synthetic "Imported speaker batch talk"
   accepted session per row (pollutes submissions/agenda); returning-speakers KPI reads 0 until

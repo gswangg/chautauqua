@@ -290,6 +290,22 @@ describe('PlanEditor render smoke', () => {
           submissionRef: null,
           submissionTitle: null,
         },
+        // wave 11 (task w11-e): a genuinely dangling submission-scoped row
+        // -- submissionId set, but the server's batched label lookup found
+        // no matching submission (deleted) so submissionRef/submissionTitle
+        // are both null. The "(removed)" label must still render for THIS
+        // shape, or the label has lost its meaning (it would only ever
+        // fire for tracks, never submissions).
+        {
+          id: 'pr-removed-submission',
+          userId: 'user-45',
+          email: 'reviewer4@example.test',
+          trackId: null,
+          submissionId: '01ARZ3NDEKTSV4RRFFQ69G5FDY',
+          trackName: null,
+          submissionRef: null,
+          submissionTitle: null,
+        },
       ]),
       [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
       'GET /api/v1/users': listEnvelope([]),
@@ -306,8 +322,12 @@ describe('PlanEditor render smoke', () => {
     await waitFor(() => {
       expect(screen.getByText('Track · Design')).toBeInTheDocument();
     });
+    // Live assignment: real submission ref/title, never "(removed)".
     expect(screen.getByText('SES-014 - Talk Title')).toBeInTheDocument();
     expect(screen.getByText('Track (removed)')).toBeInTheDocument();
+    // Genuinely dangling assignment: the label still fires for a
+    // submission-scoped row, not just a track-scoped one.
+    expect(screen.getByText('Submission (removed)')).toBeInTheDocument();
 
     // No 26-character ULID anywhere in the rendered reviewer list.
     expect(container.textContent ?? '').not.toMatch(/\b[0-9A-Za-z]{26}\b/);
