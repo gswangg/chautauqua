@@ -8,6 +8,7 @@ import {
   claimKvKey,
   claimIndexKey,
   redactClaimUrls,
+  SUPERSEDED_GRACE_SECONDS,
 } from "../src/auth/claim";
 import type { KVStore } from "../src/auth/claim";
 import { authRoutes } from "../src/routes/auth";
@@ -18,13 +19,17 @@ import type { AppEnv } from "../src/server/env";
 
 class InMemoryKV implements KVStore {
   private readonly store = new Map<string, string>();
+  readonly putOpts = new Map<string, { expirationTtl?: number }>();
+  readonly putCalls: Array<{ key: string; opts?: { expirationTtl?: number } }> = [];
 
   async get(key: string): Promise<string | null> {
     return this.store.get(key) ?? null;
   }
 
-  async put(key: string, value: string): Promise<void> {
+  async put(key: string, value: string, opts?: { expirationTtl?: number }): Promise<void> {
     this.store.set(key, value);
+    if (opts) this.putOpts.set(key, opts);
+    this.putCalls.push({ key, opts });
   }
 
   async delete(key: string): Promise<void> {
@@ -80,17 +85,59 @@ describe("claim token flow", () => {
   });
 });
 
-// DEC-949: a grant is SINGLE-ACTIVE per (contactId, eventId) — minting a
-// second token for the same pair revokes the first.
-describe("single-active claim grant (DEC-949)", () => {
-  it("minting a second grant for the same (contactId, eventId) makes the first token unreadable and unconsumable while the second works", async () => {
+// DEC-949 (wave 18 amendment): a grant is SINGLE-ACTIVE per (contactId,
+// eventId) — the newest mint's hash becomes canonical in the index — but a
+// mint SUPERSEDES rather than instantly revokes: the prior grant's record
+// keeps working for a bounded SUPERSEDED_GRACE_SECONDS (48h) overlap.
+describe("single-active claim grant with a superseded-grace overlap (DEC-949)", () => {
+  it("minting a second grant for the same (contactId, eventId) moves the index to the new hash, but the first token stays readable with a re-put SUPERSEDED_GRACE_SECONDS TTL, while the second works", async () => {
     const kv = new InMemoryKV();
     const first = await createClaimToken(kv, { contactId: "c1", eventId: "e1" });
+    const firstHash = await hashClaimToken(first);
     const second = await createClaimToken(kv, { contactId: "c1", eventId: "e1" });
 
     expect(second).not.toBe(first);
-    await expect(readClaimToken(kv, first)).resolves.toBeNull();
-    await expect(consumeClaimToken(kv, first)).resolves.toBeNull();
+
+    // Index now points at the newer grant.
+    await expect(kv.get(claimIndexKey("c1", "e1"))).resolves.toBe(await hashClaimToken(second));
+
+    // The first token's record was re-put (not deleted) with the grace TTL.
+    await expect(readClaimToken(kv, first)).resolves.toEqual({ contactId: "c1", eventId: "e1" });
+    expect(kv.putOpts.get(claimKvKey(firstHash))?.expirationTtl).toBe(SUPERSEDED_GRACE_SECONDS);
+
+    await expect(readClaimToken(kv, second)).resolves.toEqual({ contactId: "c1", eventId: "e1" });
+  });
+
+  it("consuming the superseded token during the grace window still leaves the newer grant's index untouched", async () => {
+    const kv = new InMemoryKV();
+    const first = await createClaimToken(kv, { contactId: "c1", eventId: "e1" });
+    const second = await createClaimToken(kv, { contactId: "c1", eventId: "e1" });
+    const secondHash = await hashClaimToken(second);
+
+    // consumeClaimToken only deletes the index when it still points at the
+    // hash being consumed (src/auth/claim.ts) — since the index now points
+    // at `second`, consuming the superseded `first` must leave it alone.
+    await expect(consumeClaimToken(kv, first)).resolves.toEqual({ contactId: "c1", eventId: "e1" });
+    await expect(kv.get(claimIndexKey("c1", "e1"))).resolves.toBe(secondHash);
+    await expect(readClaimToken(kv, second)).resolves.toEqual({ contactId: "c1", eventId: "e1" });
+  });
+
+  it("minting a grant when the index points at an already-gone prior record (consumed/expired) does not throw and performs no re-put", async () => {
+    const kv = new InMemoryKV();
+    const first = await createClaimToken(kv, { contactId: "c1", eventId: "e1" });
+    const firstHash = await hashClaimToken(first);
+    // Simulate the record having already expired/been consumed out from
+    // under the index (leave the index dangling, pointing at a dead hash).
+    await kv.delete(claimKvKey(firstHash));
+
+    const putCallsBefore = kv.putCalls.length;
+    const second = await createClaimToken(kv, { contactId: "c1", eventId: "e1" });
+
+    // No re-put happened for the already-gone prior key: exactly two puts
+    // occurred (new record + moved index), neither targeting firstHash's key.
+    const newPuts = kv.putCalls.slice(putCallsBefore);
+    expect(newPuts).toHaveLength(2);
+    expect(newPuts.some((p) => p.key === claimKvKey(firstHash))).toBe(false);
     await expect(readClaimToken(kv, second)).resolves.toEqual({ contactId: "c1", eventId: "e1" });
   });
 
@@ -124,16 +171,6 @@ describe("single-active claim grant (DEC-949)", () => {
     expect(kv.has(claimIndexKey("c1", "e1"))).toBe(false);
   });
 
-  it("consuming a stale (already-revoked) token does not delete the newer grant's index", async () => {
-    const kv = new InMemoryKV();
-    const first = await createClaimToken(kv, { contactId: "c1", eventId: "e1" });
-    const second = await createClaimToken(kv, { contactId: "c1", eventId: "e1" });
-
-    // The first token's record is already gone (revoked), so this is a
-    // no-op — but it must not disturb the index now pointing at `second`.
-    await expect(consumeClaimToken(kv, first)).resolves.toBeNull();
-    await expect(readClaimToken(kv, second)).resolves.toEqual({ contactId: "c1", eventId: "e1" });
-  });
 });
 
 // DEC-949: the organizer-facing disclosure REDACTS every /claim/<token> URL.

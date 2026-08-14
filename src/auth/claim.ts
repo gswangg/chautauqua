@@ -11,6 +11,12 @@ void DEC_949;
 
 export const CLAIM_TTL_SECONDS = 30 * 24 * 60 * 60;
 
+/** DEC-949 (wave 18 amendment): a mint SUPERSEDES the prior grant, it does
+ * not instantly revoke it — the superseded record is re-put with this
+ * shorter TTL so a batch send that fails after minting doesn't permanently
+ * strand the speaker with no working link. */
+export const SUPERSEDED_GRACE_SECONDS = 48 * 60 * 60;
+
 export interface ClaimRecord {
   contactId: string;
   eventId: string;
@@ -63,15 +69,24 @@ export function newClaimToken(): string {
 
 /** Creates and stores a fresh claim token, returning the plaintext token
  * (only ever placed in an email link / on-screen confirmation URL).
- * DEC-949: single-active grant per (contactId, eventId) — any prior grant
- * for the same pair is revoked (its record key deleted) before the new one
- * is stored, so the newest email is the only one that works. Only hashes
- * are ever stored; plaintext exists nowhere but the email. */
+ * DEC-949 (wave 18 amendment): a mint SUPERSEDES the prior grant for the
+ * same (contactId, eventId) — it does not instantly revoke it. The newest
+ * link is canonical (the index moves to its hash immediately), but the
+ * prior grant's record is re-put with a bounded SUPERSEDED_GRACE_SECONDS
+ * (48h) overlap rather than deleted, so a failed send (mint happens before
+ * the best-effort per-recipient delivery loop) doesn't permanently strand
+ * the speaker with no working link. Only a delivered link ever actually
+ * revokes the one before it, by aging out. Only hashes are ever stored;
+ * plaintext exists nowhere but the email. */
 export async function createClaimToken(kv: KVStore, record: ClaimRecord): Promise<string> {
   const indexKey = claimIndexKey(record.contactId, record.eventId);
   const priorHash = await kv.get(indexKey);
   if (priorHash) {
-    await kv.delete(claimKvKey(priorHash));
+    const priorKey = claimKvKey(priorHash);
+    const priorRaw = await kv.get(priorKey);
+    if (priorRaw !== null) {
+      await kv.put(priorKey, priorRaw, { expirationTtl: SUPERSEDED_GRACE_SECONDS });
+    }
   }
 
   const token = newClaimToken();
