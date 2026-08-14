@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { apiDelete, apiGet, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { DEC_827 } from '../../../../src/decisions';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
-import { DelayedLoading } from '../../components/DelayedLoading';
+import { PageSkeleton } from '../../components/PageSkeleton';
 import { GridFilters } from './GridFilters';
 import { TaskCell, formatDueDate, isRowNotChased } from './TaskCell';
 import { TaskModal } from './TaskModal';
@@ -497,7 +497,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     return (
       <div className="chq-page chq-speakers-page chq-measure-table">
         <h1 className="chq-page-title">Speakers</h1>
-        <DelayedLoading label="Loading event…" />
+        <PageSkeleton variant="table" label="Loading event…" />
       </div>
     );
   }
@@ -568,7 +568,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
         <span className="chq-speakers-toolbar-caption">Skips anyone reminded in the last hour</span>
       </div>
 
-      {loading && <DelayedLoading />}
+      {loading && <PageSkeleton variant="table" />}
 
       {!loading && grid && (
         <>

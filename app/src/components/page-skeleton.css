@@ -1,0 +1,106 @@
+/* PageSkeleton (DEC-678 wave-3 amendment): the ONE loading-structure
+   primitive for a page's MAIN region. Pure CSS, no animation dependency --
+   flat placeholder bars in the token palette, never a spinner/shimmer that
+   would need its own timing story. */
+
+.chq-skeleton-sr-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.chq-skeleton-bar {
+  display: block;
+  height: 14px;
+  border-radius: var(--chq-r-ctl);
+  background: var(--chq-surface-sunk);
+  border: 1px solid var(--chq-hairline);
+}
+
+/* Table variant: bordered frame of full-width row blocks, each carrying
+   one wide bar (title/ref column) plus two narrower bars (status/meta
+   columns), matching the shape of the tables it stands in for. */
+.chq-skeleton-frame {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--chq-hairline);
+  border-radius: var(--chq-r-card);
+  overflow: hidden;
+}
+
+.chq-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+}
+
+.chq-skeleton-row + .chq-skeleton-row {
+  border-top: 1px solid var(--chq-hairline);
+}
+
+.chq-skeleton-row-table .chq-skeleton-bar-wide {
+  flex: 2 1 0;
+}
+
+.chq-skeleton-row-table .chq-skeleton-bar-narrow {
+  flex: 1 1 0;
+}
+
+/* List variant: ref/title/meta stack, three lines of decreasing width. */
+.chq-skeleton-row-list {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.chq-skeleton-bar-ref {
+  width: 30%;
+  height: 10px;
+}
+
+.chq-skeleton-bar-title {
+  width: 70%;
+  height: 16px;
+}
+
+.chq-skeleton-bar-meta {
+  width: 45%;
+  height: 10px;
+}
+
+/* Detail variant: one title bar, then two columns of stacked bars. */
+.chq-skeleton-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.chq-skeleton-bar-title-lg {
+  width: 40%;
+  height: 28px;
+}
+
+.chq-skeleton-detail-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.chq-skeleton-detail-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (max-width: 700px) {
+  .chq-skeleton-detail-columns {
+    grid-template-columns: 1fr;
+  }
+}
