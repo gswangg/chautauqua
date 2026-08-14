@@ -7,7 +7,6 @@ import {
   hashClaimToken,
   claimKvKey,
   claimIndexKey,
-  redactClaimUrls,
   SUPERSEDED_GRACE_SECONDS,
 } from "../src/auth/claim";
 import type { KVStore } from "../src/auth/claim";
@@ -173,27 +172,10 @@ describe("single-active claim grant with a superseded-grace overlap (DEC-949)", 
 
 });
 
-// DEC-949: the organizer-facing disclosure REDACTS every /claim/<token> URL.
-describe("redactClaimUrls (DEC-949)", () => {
-  it("leaves non-claim text byte-identical", () => {
-    const text = "Hi Ada, welcome to DevCon! See you at /agenda and /portal.";
-    expect(redactClaimUrls(text)).toBe(text);
-  });
-
-  it("kills a real token", async () => {
-    const kv = new InMemoryKV();
-    const token = await createClaimToken(kv, { contactId: "c1", eventId: "e1" });
-    const text = `Set your password: https://example.com/claim/${token}`;
-    const redacted = redactClaimUrls(text);
-    expect(redacted).not.toContain(token);
-    expect(redacted).toBe("Set your password: https://example.com/claim/<redacted>");
-  });
-
-  it("redacts multiple occurrences", () => {
-    const text = "Link one: /claim/abcdefghijklmnopqrstuvwxyz and again /claim/ABCDEFGHIJKLMNOP12345";
-    expect(redactClaimUrls(text)).toBe("Link one: /claim/<redacted> and again /claim/<redacted>");
-  });
-});
+// DEC-949 (wave 34 amendment): redaction of claim/reset URLs moved to
+// src/auth/credential-urls.ts (redactCredentialUrls) — see
+// test/credential-url-redaction.scan.test.ts and
+// test/comms-email-log-detail.test.ts for coverage.
 
 // DEC-064 regression: POST /claim/:token must not burn the one-time link on
 // a validation failure (short password, duplicate-user redirect) — it may
