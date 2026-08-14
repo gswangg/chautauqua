@@ -457,28 +457,40 @@ export function EmbedsPanel() {
             <p>
               <strong>URL</strong>
             </p>
-            <code>{url}</code>
-            <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void handleCopy('url', url)}>
-              {copyResult?.target === 'url' && copyResult.ok ? 'Copied!' : 'Copy URL'}
-            </button>
+            <div className="chq-embeds-output-block">
+              <code>{url}</code>
+              <div className="chq-embeds-output-actions">
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-secondary"
+                  onClick={() => void handleCopy('url', url)}
+                >
+                  {copyResult?.target === 'url' && copyResult.ok ? 'Copied!' : 'Copy URL'}
+                </button>
+              </div>
+            </div>
             <p>
               <strong>Snippet</strong>
             </p>
-            <code>{snippet}</code>
-            <button
-              type="button"
-              className="chq-btn chq-btn-secondary"
-              onClick={() => void handleCopy('snippet', snippet)}
-            >
-              {copyResult?.target === 'snippet' && copyResult.ok ? 'Copied!' : 'Copy snippet'}
-            </button>
-            {/* w41-h/DEC-785: Preview opens the SAME url the snippet embeds
-                (built above via buildEmbedUrl) -- never a second URL
-                builder, so the preview can never drift from what the
-                snippet/Copy URL actually point at. */}
-            <a className="chq-btn chq-btn-secondary" href={url} target="_blank" rel="noreferrer">
-              Preview
-            </a>
+            <div className="chq-embeds-output-block">
+              <code>{snippet}</code>
+              <div className="chq-embeds-output-actions">
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-secondary"
+                  onClick={() => void handleCopy('snippet', snippet)}
+                >
+                  {copyResult?.target === 'snippet' && copyResult.ok ? 'Copied!' : 'Copy snippet'}
+                </button>
+                {/* w41-h/DEC-785: Preview opens the SAME url the snippet embeds
+                    (built above via buildEmbedUrl) -- never a second URL
+                    builder, so the preview can never drift from what the
+                    snippet/Copy URL actually point at. */}
+                <a className="chq-btn chq-btn-secondary" href={url} target="_blank" rel="noreferrer">
+                  Preview
+                </a>
+              </div>
+            </div>
             <div role="status" aria-live="polite" className="chq-copy-status">
               {copyResult
                 ? copyResult.ok
