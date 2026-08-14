@@ -16,7 +16,8 @@ import { join, resolve, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROUTES_DIR = resolve(fileURLToPath(import.meta.url), "../../src/routes");
-const AUTH_PATH = resolve(fileURLToPath(import.meta.url), "../../src/routes/auth.tsx");
+const LOGIN_PATH = resolve(fileURLToPath(import.meta.url), "../../src/routes/auth-login.tsx");
+const CLAIM_PATH = resolve(fileURLToPath(import.meta.url), "../../src/routes/auth-claim.tsx");
 const SUBMIT_PATH = resolve(fileURLToPath(import.meta.url), "../../src/routes/public/submit.tsx");
 
 const CSRF_MIDDLEWARE = ["csrfJson", "csrfForm", "csrfFormOrHeader"];
@@ -186,7 +187,8 @@ describe("SPEC §6: every mutating route registration carries CSRF middleware (D
 });
 
 describe("SPEC §6: unauthenticated write paths are rate limited (DEC-628)", () => {
-  const authSource = readFileSync(AUTH_PATH, "utf-8");
+  const loginSource = readFileSync(LOGIN_PATH, "utf-8");
+  const claimSource = readFileSync(CLAIM_PATH, "utf-8");
   const submitSource = readFileSync(SUBMIT_PATH, "utf-8");
 
   /** Extracts the source slice for a `<receiver>.post("<path>", ...)`
@@ -208,14 +210,14 @@ describe("SPEC §6: unauthenticated write paths are rate limited (DEC-628)", () 
   // shape let N concurrent requests all read the same pre-increment count and
   // all pass — replaced by the atomic checkAndIncrementScopedLimit, issued
   // before the password derivation runs.
-  it("POST /login (auth.tsx) uses checkAndIncrementScopedLimit (DEC-180 wave-29: consume-then-refund)", () => {
-    const slice = sliceForRoute(authSource, "/login");
+  it("POST /login (auth-login.tsx) uses checkAndIncrementScopedLimit (DEC-180 wave-29: consume-then-refund)", () => {
+    const slice = sliceForRoute(loginSource, "/login");
     expect(slice).toMatch(/\bcheckAndIncrementScopedLimit\b/);
     expect(slice).toMatch(/\brefundScopedLimit\b/);
   });
 
-  it("POST /claim/:token (auth.tsx) uses checkAndIncrementScopedLimit", () => {
-    const slice = sliceForRoute(authSource, "/claim/:token");
+  it("POST /claim/:token (auth-claim.tsx) uses checkAndIncrementScopedLimit", () => {
+    const slice = sliceForRoute(claimSource, "/claim/:token");
     expect(slice).toMatch(/\bcheckAndIncrementScopedLimit\b/);
   });
 
