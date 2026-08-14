@@ -4,7 +4,7 @@
 // session-resolution logic (resolveAuth) is factored out and tested against
 // tiny fakes, per the DEC-012 testing strategy.
 
-import type { Context, ExecutionContext, MiddlewareHandler } from "hono";
+import type { Context, MiddlewareHandler } from "hono";
 import { eq } from "drizzle-orm";
 import type { AppEnv, AuthInfo } from "./env";
 import type { Db } from "./context";
@@ -18,6 +18,7 @@ import {
 import { hashToken } from "../auth/tokens";
 import { ApiError } from "./http";
 import { DEC_027, DEC_276 } from "../decisions";
+import { executionCtxOf } from "./execution-ctx";
 import { responseHasHeader, setResponseHeaders } from "./response-headers";
 
 void DEC_027;
@@ -206,12 +207,7 @@ async function stampApiTokenLastUsed(c: Context<AppEnv>, db: Db, tokenHash: stri
       console.error("api_token last_used_at stamp failed", err);
     }
   };
-  let executionCtx: ExecutionContext | undefined;
-  try {
-    executionCtx = c.executionCtx;
-  } catch {
-    executionCtx = undefined;
-  }
+  const executionCtx = executionCtxOf(c);
   if (executionCtx) {
     executionCtx.waitUntil(write());
     return;
