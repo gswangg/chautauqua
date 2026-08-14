@@ -160,7 +160,7 @@
 }
 
 /* w42-h/DEC-366 amendment: the frame's uppercase letterspaced eyebrow
-   treatment (matches .chq-review-criteria-locked-eyebrow's type), applied
+   treatment (matches .chq-review-criteria-eyebrow's type), applied
    to the results caption without changing its TRUE claim underneath. */
 .chq-review-results-eyebrow {
   font-size: 11px;
@@ -708,7 +708,7 @@
 
 .chq-review-criterion-row {
   display: grid;
-  grid-template-columns: 1fr 1fr auto auto auto;
+  grid-template-columns: 1fr 1fr auto auto;
   gap: 16px;
   align-items: center;
   padding: 13px 0;
@@ -721,19 +721,25 @@
    concurrently by the scorecard lane. */
 .chq-review-criteria-head-row {
   display: grid;
-  grid-template-columns: 1fr 1fr auto auto auto;
+  grid-template-columns: 1fr 1fr auto auto;
   gap: 16px;
   padding: 0 0 6px;
 }
 
 /* w41-f/DEC-715: a leading drag-handle column on every criteria row and
    its header, so a locked row's blank handle cell and an unlocked row's
-   handle button/kind/weight cells stay aligned to the same columns.
-   Overrides the two grid-template-columns rules above on the same class
-   names. */
+   handle button/weight cells stay aligned to the same columns. Overrides
+   the two grid-template-columns rules above on the same class names.
+   w5-e: the KIND column is gone (5 cols -> 4 after the drag column), and
+   the WEIGHT/trailing columns are fixed widths rather than `auto` -- each
+   .chq-review-criterion-row/.chq-review-criteria-head-row pair is its OWN
+   grid container, so an `auto` track sized from that row's own content
+   (a "Weight" label vs. a full number input) drifted out of alignment
+   between the header and the body rows even though both declared the
+   same template. */
 .chq-review-criterion-row,
 .chq-review-criteria-head-row {
-  grid-template-columns: auto 1fr 1fr auto auto auto;
+  grid-template-columns: auto 1fr 1fr 150px 70px;
 }
 
 /* DEC-715: reuses the form-builder's handle class/markup
@@ -768,10 +774,12 @@
   border-top: 2px solid var(--chq-ink);
 }
 
-/* w41-f: the locked-plan eyebrow on the Scoring criteria section rule --
-   right-aligned by the shared .chq-section-head's own
-   justify-content: space-between (styles.css, never redefined here). */
-.chq-review-criteria-locked-eyebrow {
+/* w41-f/w5-e: the Scoring criteria section rule's right-aligned eyebrow --
+   "Scores average by weight" while unlocked, "Locked — N reviews scored..."
+   while locked -- right-aligned by the shared .chq-section-head's own
+   justify-content: space-between (styles.css, never redefined here). One
+   class, one slot: never both at once. */
+.chq-review-criteria-eyebrow {
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.09em;
@@ -800,11 +808,6 @@
   .chq-review-criterion-row {
     grid-template-columns: 1fr;
   }
-}
-
-.chq-review-criterion-kind {
-  font-size: 12px;
-  color: var(--chq-muted);
 }
 
 .chq-review-add-criteria {
@@ -870,6 +873,15 @@
   .chq-review-reviewer-row {
     grid-template-columns: 1fr;
   }
+}
+
+/* DEC-215 amendment (wave 5): the per-reviewer Reset password link sits
+   quietly on the row's own rule -- .chq-link-button already carries the
+   text-button styling, this just keeps it from wrapping in the row's
+   narrow auto column. */
+.chq-review-reviewer-action {
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 .chq-review-reviewer-email {
@@ -1113,14 +1125,17 @@
   margin: 0;
 }
 
-/* DEC-706: the editor's footer -- Save plan (primary), Delete plan
-   (tertiary) -- lives at the end of the form, never a floating band. */
-.chq-review-editor-footer {
+/* DEC-215/DEC-929 amendment (wave 5): the "Who reviews what" section head's
+   right side now carries two quiet section-action links (Assign a
+   reviewer, Delete plan) -- .chq-section-head's own space-between only
+   handles ONE trailing item, so this wrapper groups both and lets
+   space-between apply to the group as a whole. Replaces the old standalone
+   .chq-review-editor-footer band (deleted -- Delete plan is no longer a
+   framed control at the end of the document). */
+.chq-review-section-head-actions {
   display: flex;
-  gap: 9px;
-  padding-top: 6px;
-  border-top: 1px solid var(--chq-hairline);
-  margin-top: 4px;
+  align-items: baseline;
+  gap: 20px;
 }
 
 /* w17-a */

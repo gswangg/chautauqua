@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { dateInputToMs, msToDateInput } from '../../lib/dates';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
+import { setNavLeaveGuard } from '../../lib/useNavExceptions';
 import { copyText } from '../../lib/clipboard';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DateField } from '../../components/DateField';
@@ -429,6 +430,16 @@ export function PlanEditor() {
     }
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [dirty]);
+
+  // w5-e/DEC-745 amendment: GLOBAL-NAV exits (the chrome nav's Review link,
+  // not just this page's own back-link/Cancel) must confirm too -- register
+  // this page's requestLeave as the shared leave-guard while mounted, so
+  // App.tsx's NavLinks consults the SAME dirty check instead of navigating
+  // silently. Cleared on unmount/route change.
+  useEffect(() => {
+    setNavLeaveGuard((proceed) => requestLeave(proceed));
+    return () => setNavLeaveGuard(null);
   }, [dirty]);
 
   // DEC-799: anonymize is now a drafted FIELD (wave 49/DEC-745 amendment),
@@ -1084,19 +1095,26 @@ export function PlanEditor() {
             {/* w41-f/DEC-882 amendment: a locked round names its constraint
                 right in the section rule, not just below the rows -- the
                 same evaluationCountsByRound-derived count the lock card
-                below already states, never a second fetch. */}
-            {activeRoundIsLocked && (
-              <span className="chq-review-criteria-locked-eyebrow">
+                below already states, never a second fetch. w5-e: the SAME
+                right-aligned uppercase eyebrow slot carries "Scores average
+                by weight" when unlocked -- never a body sentence. */}
+            {activeRoundIsLocked ? (
+              <span className="chq-review-criteria-eyebrow">
                 Locked — {countOf(activeRoundLockedCount, 'review')} scored against these criteria
               </span>
+            ) : (
+              <span className="chq-review-criteria-eyebrow">Scores average by weight</span>
             )}
           </div>
           {/* DEC-676: weights stay relative and plan-wide -- never forced to
-              sum to 100 -- so the section states how they're used. */}
-          <p className="chq-review-section-caption">
-            Scores average by weight.
-            {activeRoundIsLocked && ' Wording, weights and the scale are fixed for the rest of this wave.'}
-          </p>
+              sum to 100 -- so the section states how they're used. w5-e: the
+              "Scores average by weight" sentence moved to the eyebrow above;
+              this caption now only appears while locked. */}
+          {activeRoundIsLocked && (
+            <p className="chq-review-section-caption">
+              Wording, weights and the scale are fixed for the rest of this wave.
+            </p>
+          )}
 
           {draft.rounds > 1 && (
             <div className="chq-review-round-tabs">
@@ -1149,7 +1167,9 @@ export function PlanEditor() {
             <span> </span>
             <span className="chq-review-criteria-head-cell">Criterion </span>
             <span className="chq-review-criteria-head-cell">Guidance for reviewers · Optional </span>
-            <span> </span>
+            {/* w5-e: the KIND column (rating/dropdown) is dropped -- it read
+                as internal plumbing between Guidance and Weight, not
+                information the frame names. */}
             <span className="chq-review-criteria-head-cell">Weight </span>
             <span> </span>
           </div>
@@ -1173,7 +1193,7 @@ export function PlanEditor() {
                       <span />
                       <span>{criterion.label}</span>
                       <span>{criterion.guidance ?? ''}</span>
-                      <span />
+                      {/* w5-e: KIND column dropped. */}
                       <span>
                         {criterion.kind === 'rating' && shares[criterion.id] !== undefined
                           ? `Weight ${criterion.weight} · ${shares[criterion.id]}%`
@@ -1187,11 +1207,16 @@ export function PlanEditor() {
                       cannot change. */}
                   <div className="chq-review-criteria-locked-notice" role="status">
                     <div className="chq-review-criteria-locked-text">
+                      {/* w5-e: the section rule's own eyebrow already says
+                          "Locked" -- this headline states the count without
+                          repeating that word. */}
                       <p className="chq-review-criteria-locked-headline">
-                        Locked · {countOf(activeRoundLockedCount, 'review')} scored
-                        against these criteria
+                        {countOf(activeRoundLockedCount, 'review')} scored against these criteria
                       </p>
-                      <p className="chq-review-criteria-locked-reason">Changing these would rescore work already done</p>
+                      <p className="chq-review-criteria-locked-reason">
+                        Changing these would rescore work already done. To score differently, open a new wave — the
+                        reviews already in stay attached to this one.
+                      </p>
                     </div>
                     {!isNew && planId && (
                       <button
@@ -1264,7 +1289,7 @@ export function PlanEditor() {
                         setEditingCriteria((c) => updateCriterion(c, criterion.id, { guidance: e.target.value }))
                       }
                     />
-                    <span className="chq-review-criterion-kind">{criterion.kind}</span>
+                    {/* w5-e: KIND column dropped. */}
                     {criterion.kind === 'rating' ? (
                       <span className="chq-review-criterion-weight">
                         <input
@@ -1279,10 +1304,12 @@ export function PlanEditor() {
                             setEditingCriteria((c) => updateCriterion(c, criterion.id, { weight: Number(e.target.value) }))
                           }
                         />
+                        {/* w5-e: prints once -- the input already shows the
+                            weight number, so the adjacent text states only
+                            its share (frame form "[3] 50%", never a
+                            duplicated "5 · 71%"). */}
                         {shares[criterion.id] !== undefined && (
-                          <span className="chq-review-criterion-share">
-                            {criterion.weight} · {shares[criterion.id]}%
-                          </span>
+                          <span className="chq-review-criterion-share">{shares[criterion.id]}%</span>
                         )}
                       </span>
                     ) : criterion.kind === 'dropdown' ? (
@@ -1410,13 +1437,28 @@ export function PlanEditor() {
                 they just open behind this link instead of always showing. */}
             <div className="chq-section-head">
               <h2 className="chq-section-label">Who reviews what</h2>
-              <button
-                type="button"
-                className="chq-link-button chq-section-action"
-                onClick={() => setAssignFormOpen((open) => !open)}
-              >
-                {assignFormOpen ? 'Close' : 'Assign a reviewer'}
-              </button>
+              {/* DEC-215/DEC-929 amendment (wave 5): Delete plan moves here
+                  from a standalone footer band -- this is the plan's LAST
+                  section rule, and a quiet link is the section-action
+                  vocabulary already established by "Assign a reviewer".
+                  Still gated by its DEC-929 blast-radius confirm below. */}
+              <div className="chq-review-section-head-actions">
+                <button
+                  type="button"
+                  className="chq-link-button chq-section-action"
+                  onClick={() => setAssignFormOpen((open) => !open)}
+                >
+                  {assignFormOpen ? 'Close' : 'Assign a reviewer'}
+                </button>
+                <button
+                  type="button"
+                  className="chq-link-button chq-section-action"
+                  disabled={saving || deletePreviewLoading}
+                  onClick={removePlan}
+                >
+                  Delete plan
+                </button>
+              </div>
             </div>
             {/* DEC-745 (wave-72 amendment): frame 05's PERSISTENT row --
                 cap input, Distribute (a real button; it opens a preview,
@@ -1485,9 +1527,13 @@ export function PlanEditor() {
                   </div>
                   <span className="chq-review-reviewer-track">{trackLabel}</span>
                   <span className="chq-review-reviewer-load">{loadLabel}</span>
+                  {/* DEC-215 amendment (wave 5): a quiet section-rule link on
+                      the reviewer row's own rule (its border-bottom), not a
+                      framed button -- the capability (and its confirm
+                      dialog) is unchanged. */}
                   <button
                     type="button"
-                    className="chq-btn chq-btn-secondary"
+                    className="chq-link-button chq-review-reviewer-action"
                     disabled={resettingUserId === r.userId}
                     onClick={() => resetReviewerPassword(r.userId, r.email)}
                   >
@@ -1808,22 +1854,6 @@ export function PlanEditor() {
             <p className="chq-review-field-caption">A reviewer never sees a talk they are recused from.</p>
           </section>
         )}
-
-        {/* DEC-745: Save/Create moved to the title row -- Delete stays as
-            ONE quiet tertiary at the very end of the document, never beside
-            Save. */}
-        {!isNew && (
-          <footer className="chq-review-editor-footer">
-            <button
-              type="button"
-              className="chq-btn chq-btn-tertiary"
-              disabled={saving || deletePreviewLoading}
-              onClick={removePlan}
-            >
-              Delete plan
-            </button>
-          </footer>
-        )}
       </div>
 
       {deletePlanConfirmOpen && deletePreview && (
@@ -1853,7 +1883,7 @@ export function PlanEditor() {
       {anonymizeRatchetConfirmOpen && (
         <ConfirmDialog
           title="Turn off anonymity?"
-          body="Anyone who already reviewed under anonymity keeps that promise -- it cannot be revoked for evaluations already submitted. Turning this off only changes what happens from here on."
+          body="Anyone who already reviewed under anonymity keeps that promise — it cannot be revoked for evaluations already submitted. Turning this off only changes what happens from here on."
           confirmLabel="Turn off anonymity"
           destructive
           pending={saving}

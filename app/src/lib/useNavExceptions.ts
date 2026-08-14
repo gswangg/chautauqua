@@ -25,6 +25,28 @@ export interface NavExceptions {
 
 const EMPTY: NavExceptions = { late: null, clash: null };
 
+// w5-e/DEC-745 amendment: a dirty editor's unsaved-draft guard previously
+// only covered its OWN back-link/Cancel controls -- clicking the chrome
+// nav's Review link navigated away silently. This module-level registry
+// (not React state -- consulted synchronously at click time, never a
+// re-render trigger) lets a page register the same "confirm before
+// leaving" guard the global nav shell (App.tsx's NavLinks) consults before
+// every chrome nav-link navigation, so ANY exit from a dirty editor -- not
+// just its own controls -- asks first.
+type LeaveGuard = (proceed: () => void) => void;
+let activeLeaveGuard: LeaveGuard | null = null;
+
+/** Called by the page that owns the dirty-state guard (e.g. PlanEditor); pass null to clear on unmount. */
+export function setNavLeaveGuard(guard: LeaveGuard | null): void {
+  activeLeaveGuard = guard;
+}
+
+/** Called by chrome-nav click handlers before navigating -- runs `proceed` immediately when no guard is registered. */
+export function guardedNavigate(proceed: () => void): void {
+  if (activeLeaveGuard) activeLeaveGuard(proceed);
+  else proceed();
+}
+
 export function useNavExceptions(): NavExceptions {
   const { eventId } = useCurrentEvent();
   const { me, loading: meLoading } = useMe();

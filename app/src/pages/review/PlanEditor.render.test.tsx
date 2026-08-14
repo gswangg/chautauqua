@@ -14,6 +14,7 @@ import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { PlanEditor } from './PlanEditor';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+import { guardedNavigate } from '../../lib/useNavExceptions';
 
 const EVENT_ID = 'evt-plan-editor';
 const PLAN_ID = 'plan-1';
@@ -487,11 +488,15 @@ describe('PlanEditor render smoke', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('3 · 75%')).toBeInTheDocument();
+      // w5-e: the weight cell prints the number once -- the input already
+      // shows it, so the adjacent share text is just the percentage.
+      expect(screen.getByText('75%')).toBeInTheDocument();
     });
-    expect(screen.getByText('1 · 25%')).toBeInTheDocument();
-    // Section caption states how weights are used, never forcing sum-to-100.
-    expect(screen.getByText('Scores average by weight.')).toBeInTheDocument();
+    expect(screen.getByText('25%')).toBeInTheDocument();
+    // w5-e: "Scores average by weight" is now the section rule's own
+    // right-aligned eyebrow, never a body sentence.
+    expect(screen.getByText('Scores average by weight')).toBeInTheDocument();
+    expect(screen.queryByText('Scores average by weight.')).not.toBeInTheDocument();
   });
 
   // DEC-676/DEC-709: soft cap at 7 criteria -- the Add link disables and the
@@ -553,9 +558,17 @@ describe('PlanEditor render smoke', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Locked · 3 reviews scored against these criteria')).toBeInTheDocument();
+      // w5-e: the headline no longer repeats "Locked" -- the section rule's
+      // own eyebrow already says it.
+      expect(screen.getByText('3 reviews scored against these criteria')).toBeInTheDocument();
     });
-    expect(screen.getByText('Changing these would rescore work already done')).toBeInTheDocument();
+    // w5-e/DEC-215 amendment: the reason paragraph gains a second sentence
+    // naming the escape hatch (open a new wave).
+    expect(
+      screen.getByText(
+        'Changing these would rescore work already done. To score differently, open a new wave — the reviews already in stay attached to this one.',
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Start a new wave' })).toBeInTheDocument();
 
     // Read-only TEXT, not disabled inputs -- the criterion's name, guidance
@@ -567,9 +580,11 @@ describe('PlanEditor render smoke', () => {
     expect(container.querySelectorAll('.chq-review-criterion-row input')).toHaveLength(0);
 
     // The lock card sits BELOW the read-only rows: the headline appears
-    // after the criterion's own name in document order.
+    // after the criterion's own name in document order. (The section rule's
+    // own eyebrow states the same count EARLIER, above the rows -- use the
+    // LAST occurrence, which is the lock-card headline.)
     const text = container.textContent ?? '';
-    expect(text.indexOf('Content')).toBeLessThan(text.indexOf('Locked · 3 reviews'));
+    expect(text.indexOf('Content')).toBeLessThan(text.lastIndexOf('3 reviews scored against these criteria'));
   });
 
   // w41-f/DEC-882 amendment: the SCORING CRITERIA section rule itself
@@ -601,8 +616,11 @@ describe('PlanEditor render smoke', () => {
     await waitFor(() => {
       expect(screen.getByText('Locked — 37 reviews scored against these criteria')).toBeInTheDocument();
     });
+    // w5-e: "Scores average by weight" moved to the (unlocked-state) eyebrow
+    // -- while locked, the caption states only the wording/weights/scale
+    // sentence.
     expect(container.querySelector('.chq-review-section-caption')?.textContent).toBe(
-      'Scores average by weight. Wording, weights and the scale are fixed for the rest of this wave.',
+      'Wording, weights and the scale are fixed for the rest of this wave.',
     );
   });
 
@@ -1414,5 +1432,160 @@ describe('PlanEditor render smoke', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Turn off anonymity' }));
       await waitFor(() => expect(patchSpy).toHaveBeenCalledTimes(1));
     });
+
+    // w5-e/DEC-745 amendment: GLOBAL-NAV exits (the chrome nav's Review
+    // link) must confirm too -- requestLeave is now registered as the
+    // shared leave-guard App.tsx's NavLinks consults via guardedNavigate
+    // before every chrome nav-link navigation, not just this page's own
+    // back-link/Cancel controls.
+    it('registers the shared leave-guard while dirty, so a GLOBAL-NAV exit (guardedNavigate) raises the same confirm', async () => {
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+        [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+        [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+        [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+        'GET /api/v1/users': listEnvelope([]),
+      });
+
+      render(
+        <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+          <Routes>
+            <Route path="/review/plans/:planId" element={<PlanEditor />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => expect(screen.getByDisplayValue('Track Review')).toBeInTheDocument());
+      fireEvent.change(screen.getByDisplayValue('Track Review'), { target: { value: 'Renamed Plan' } });
+
+      // Simulates App.tsx's chrome NavLink onClick, which routes every
+      // nav-link navigation through guardedNavigate rather than navigating
+      // straight away.
+      const proceed = vi.fn();
+      guardedNavigate(proceed);
+
+      expect(await screen.findByText('Leave without saving?')).toBeInTheDocument();
+      expect(proceed).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Leave' }));
+      await waitFor(() => expect(proceed).toHaveBeenCalledTimes(1));
+    });
+
+    it('a clean (non-dirty) editor lets guardedNavigate proceed with no confirm', async () => {
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+        [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+        [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+        [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+        'GET /api/v1/users': listEnvelope([]),
+      });
+
+      render(
+        <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+          <Routes>
+            <Route path="/review/plans/:planId" element={<PlanEditor />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => expect(screen.getByDisplayValue('Track Review')).toBeInTheDocument());
+
+      const proceed = vi.fn();
+      guardedNavigate(proceed);
+      expect(proceed).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText('Leave without saving?')).not.toBeInTheDocument();
+    });
+  });
+
+  // --- w5-e: frame 05/07/08 residue -------------------------------------
+
+  it('renders "Scores average by weight" as a right-aligned uppercase eyebrow on the section rule, not a body sentence', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByDisplayValue('Track Review')).toBeInTheDocument());
+    const eyebrow = screen.getByText('Scores average by weight');
+    expect(eyebrow.className).toContain('chq-review-criteria-eyebrow');
+    expect(eyebrow.closest('.chq-section-head')).not.toBeNull();
+    expect(screen.queryByText('Scores average by weight.')).not.toBeInTheDocument();
+  });
+
+  it('drops the rating/dropdown KIND column between GUIDANCE and WEIGHT', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: {
+        ...plan(),
+        criteria: [
+          { id: 'c1', label: 'Content', kind: 'rating', weight: 3 },
+          { id: 'c2', label: 'Delivery', kind: 'rating', weight: 1 },
+        ],
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    const { container } = render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByDisplayValue('Content')).toBeInTheDocument());
+    // No standalone "rating"/"dropdown" kind cell renders anywhere.
+    expect(container.querySelector('.chq-review-criterion-kind')).toBeNull();
+    expect(screen.queryByText('rating')).not.toBeInTheDocument();
+    // Frame form: the weight cell prints the number once (the input) plus
+    // its share -- never the duplicated "N · P%" text.
+    expect(screen.getByText('75%')).toBeInTheDocument();
+    expect(screen.getByText('25%')).toBeInTheDocument();
+    expect(screen.queryByText(/^3 · 75%$/)).not.toBeInTheDocument();
+  });
+
+  it('renders the per-reviewer Reset password and the Delete plan controls as quiet section-rule links, not framed buttons', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([
+        { id: 'pr-1', userId: 'user-42', email: 'reviewer@example.test', trackId: null, submissionId: null },
+      ]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const resetLink = await screen.findByRole('button', { name: 'Reset password' });
+    expect(resetLink.className).toContain('chq-link-button');
+    expect(resetLink.className).not.toContain('chq-btn ');
+    expect(resetLink.className).not.toContain('chq-btn-secondary');
+
+    const deleteLink = screen.getByRole('button', { name: 'Delete plan' });
+    expect(deleteLink.className).toContain('chq-link-button');
+    expect(deleteLink.className).not.toContain('chq-btn-tertiary');
+    // Delete plan sits on the "Who reviews what" section rule now, not a
+    // standalone footer band.
+    expect(deleteLink.closest('.chq-section-head')).not.toBeNull();
   });
 });
