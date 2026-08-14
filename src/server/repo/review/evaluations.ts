@@ -185,23 +185,24 @@ export async function listEvaluationScoresForReviewer(
   );
 }
 
-/** DEC-351: reviewer+submission pairs completed for a plan+round -- a single
- * select of only reviewerId/submissionId (no scoresJson, no comment, no
- * toEvaluationRecord mapping) for /progress and /remind, which never need
- * scores. */
-export async function listCompletedPairsForPlan(
+/** DEC-351/DEC-449: per-reviewer completed-evaluation counts for a plan+round,
+ * via one SQL `count(*) ... group by reviewer_id` -- replaces loading every
+ * (reviewerId, submissionId) pair for the round and reducing to Set.size in
+ * JS (the /progress and /remind routes' prior approach). Mirrors
+ * countEvaluationsBySubmission's shape exactly. */
+export async function countCompletedByReviewerForPlan(
   db: Db,
   planId: string,
   round: number,
-): Promise<{ reviewerId: string; submissionId: string }[]> {
+): Promise<Map<string, number>> {
   const rows = await db
-    .select({
-      reviewerId: schema.evaluation.reviewerId,
-      submissionId: schema.evaluation.submissionId,
-    })
+    .select({ reviewerId: schema.evaluation.reviewerId, count: sql<number>`count(*)` })
     .from(schema.evaluation)
-    .where(and(eq(schema.evaluation.planId, planId), eq(schema.evaluation.round, round)));
-  return rows;
+    .where(and(eq(schema.evaluation.planId, planId), eq(schema.evaluation.round, round)))
+    .groupBy(schema.evaluation.reviewerId);
+  const result = new Map<string, number>();
+  for (const r of rows) result.set(r.reviewerId, Number(r.count));
+  return result;
 }
 
 export interface SubmissionEvaluationRow {

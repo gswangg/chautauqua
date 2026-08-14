@@ -63,7 +63,7 @@ vi.mock("../src/server/repo/review", async () => {
     listTrackNamesForSubmissions: vi.fn(async () => new Map()),
     listEvaluationsForPlan: vi.fn(async () => []),
     listEvaluationScoresForPlan: vi.fn(async () => []),
-    listCompletedPairsForPlan: vi.fn(async () => []),
+    countCompletedByReviewerForPlan: vi.fn(async () => new Map()),
   };
 });
 

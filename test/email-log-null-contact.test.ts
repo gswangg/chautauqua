@@ -122,7 +122,7 @@ describe("POST /api/v1/plans/:id/remind logs contactId: null (DEC-191)", () => {
         // /progress does (assignedExcludingRecused) -- no recusals here.
         listRecusalsForPlan: vi.fn(async () => []),
         listEvaluationsForPlan: vi.fn(async () => []),
-        listCompletedPairsForPlan: vi.fn(async () => []),
+        countCompletedByReviewerForPlan: vi.fn(async () => new Map()),
         listPlanFilteredSubmissions: vi.fn(async () => [submission]),
       };
     });
