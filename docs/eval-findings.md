@@ -74,6 +74,59 @@ the open list.
   (`app/src/pages/submissions/SubmissionDetailPage.tsx:988`) and displays the actual
   role via `participantRoleLabel` (`:939`), not a hardcoded "speaker".
 
+## GATE-4 FLEET (in progress, snapshot 33fbc724 vs design-frames-v7) — EARLY VERDICTS + REDS
+
+**Verdicts so far: 04-speakers PASS (first PASS of the oscillation) · 05-content FAIL 2 MAJ ·
+02-submissions FAIL 1 MAJ · 03-review FAIL 4 MAJ.** Full reports at
+chautauqua-research/fidelity-gate4/. Massive convergence — gate-3's BROKEN + nearly all MAJORs
+verified fixed (queue CTA contrast, plan-editor measure, distribute anatomy, focus ring,
+draft guard, replace-keeps-versions exercised live v1+v2, speakers matrix typography+pills).
+
+**P1 · CFP builder header has NO Save button** (frame 04: `Preview` + olive `Save` right;
+FormsPage.tsx renders only Preview — the page's framed primary action is absent).
+
+**P1 · Scorecard reading column drops the frame's body** (frame 03--01: ABSTRACT eyebrow+rule
++ abstract + FORM ANSWERS block with 4 label|value rows; app: title → abstract ¶ → "Read the
+full submission ›" then ~600px dead space). Also: rail actions must be full-width STACKED
+(`Submit and next` olive over `Save draft` secondary — app has intrinsic-width side-by-side
+"Save"); anonymized plans must state "The speaker's name and company are hidden while this
+plan is anonymised" in the reading column (currently silent omission).
+
+**P1 · Reviewer queue row anatomy** (frame 03--03): REF + STATE are ONE paired left eyebrow
+(~8px apart; app spreads them 500px); recused rows get the outlined ~220px right action
+"You work with this speaker" + keep their meta line (app: inline Undo link, meta dropped);
+footer = "Showing 5 of 18  Show all 18" as one left group + "**Your** scores stay hidden from
+other reviewers" right-aligned on the queue's own footer row (not the chrome footer).
+
+**P1 · Cap row still collapsed into the WHO-REVIEWS-WHAT head** (frame 05: head = label +
+`Assign a reviewer` right → rule → persistent row `CAP PER REVIEWER [8] talks each
+[Distribute the unassigned] 18 talks · 36 reviews needed at 2 each · 4 reviewers`; app hides
+the summary + "talks each" inside the distribute confirm panel; Distribute is a text link not
+a button).
+
+**P1 · Content status band: full-bleed is the ONE missing dimension** (every other aspect
+landed: tint, top ink rule, actions inside; band is clamped x34→1406 — span x0→1440; bottom
+rule color rgb(211,207,192) not hairline).
+
+**DEC NEEDED · Worklist select-all checkbox column + filled `Approve N ready` primary** —
+deliberately added (DEC-274) for eval bulk-approve capability but absent from the v7 frame,
+and it makes the title row's most prominent element unframed. Options: keep (capability wins;
+restyle quieter), or frame-pure (drop bulk from the worklist). Do not silently drop —
+capability decisions route through the orchestrator/user.
+
+**P2 batch (gate-4):** submissions section counters "01 —ABSTRACT" glued em-dash (all six
+detail sections); builder field extras (Job title/Company/Speaker bio unframed, Abstract
+order) + Add-a-question as green text link + Track row handle/Edit treatment + built-in Edit
+stays green; Columns picker 44px square in a 26px pill row; subtitle recomputes to filtered
+set; new-submission modal extras; ← vs ‹ glyph mixing (also review's "← Your plans");
+scorecard "N of M done" belongs in chrome header right; queue progress caption right of bar
+on the same line; recusal copy "Recuse me from this one"; locked banner second sentence;
+"Scores average by weight" as right-aligned eyebrow; ASCII "--" in ratchet dialog; draft
+guard should also cover global-nav exits; speakers "Has account" back to plain lowercase
+meta (regressed to a chip); extra EMAILED marker unframed; content RE-UPLOADED emphasis
+inverted (bold ink) vs NOT REVIEWED muted; band copy two-line + agree with worklist label;
+files library Download all on header block; kind vocabulary "Slides · N versions".
+
 ## P0 — CLOSED (probe-2 verified end-to-end 2026-08-13)
 
 Reviewer lockout FIXED and externally verified: sbek-reviewer login → /admin/review
