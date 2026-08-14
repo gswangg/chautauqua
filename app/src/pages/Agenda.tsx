@@ -7,7 +7,7 @@ import { DelayedLoading } from '../components/DelayedLoading';
 import { DayGrid, type ArmedAgendaSession } from './agenda/DayGrid';
 import { UnscheduledTray } from './agenda/UnscheduledTray';
 import { PhoneAgenda } from './agenda/PhoneAgenda';
-import { BreaksPanel } from './agenda/BreaksPanel';
+import { BreaksPanel, type ScheduleBreakRow } from './agenda/BreaksPanel';
 import { placeOptimistically, reconcileConflictsSummary, unscheduleOptimistically } from './agenda/state';
 import type { AgendaPayload, DescribedUnplaced, RefreshedConflictsSummary, UnplacedReason } from './agenda/types';
 import { formatDayLabel } from '../lib/dates';
@@ -78,6 +78,7 @@ export function AgendaPage() {
 
   const [agenda, setAgenda] = useState<AgendaPayload | null>(null);
   const [activeDay, setActiveDay] = useState<string | null>(null);
+  const [breaks, setBreaks] = useState<ScheduleBreakRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoScheduling, setAutoScheduling] = useState(false);
@@ -104,6 +105,26 @@ export function AgendaPage() {
     loadAgenda(eventId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]);
+
+  // DEC-021 amendment (w67-b): one reader for the selected day's breaks,
+  // shared by DayGrid (renders them as bands) and BreaksPanel (list/add/
+  // remove) — hoisted out of BreaksPanel so a POST/DELETE there refreshes
+  // the grid in the same tick instead of the two staying independently
+  // stale copies of the same day's rows.
+  function reloadBreaks() {
+    if (!eventId || !activeDay) {
+      setBreaks([]);
+      return;
+    }
+    apiGet<{ items: ScheduleBreakRow[] }>(`/events/${eventId}/breaks?day=${encodeURIComponent(activeDay)}`)
+      .then((res) => setBreaks(res.items))
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load breaks'));
+  }
+
+  useEffect(() => {
+    reloadBreaks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId, activeDay]);
 
   async function handlePlace(submissionId: string, roomId: string | null, startMin: number, endMin: number) {
     if (!agenda) return;
@@ -302,7 +323,9 @@ export function AgendaPage() {
             <span className="chq-agenda-clash-note">Clashes are flagged, not blocked</span>
           </div>
 
-          {eventId && <BreaksPanel eventId={eventId} day={activeDay} />}
+          {eventId && (
+            <BreaksPanel eventId={eventId} day={activeDay} breaks={breaks} onChanged={reloadBreaks} />
+          )}
 
           {isPhone ? (
             activeDay && (
@@ -344,6 +367,7 @@ export function AgendaPage() {
                       tracks={agenda.tracks}
                       placed={agenda.placed}
                       conflicts={agenda.conflicts}
+                      breaks={breaks}
                       dayStartMin={DAY_START_MIN}
                       dayEndMin={DAY_END_MIN}
                       gridMin={GRID_MIN}

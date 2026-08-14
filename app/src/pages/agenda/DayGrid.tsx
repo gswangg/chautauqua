@@ -5,6 +5,7 @@ import { SessionCard } from './SessionCard';
 import { clusterConflictCaption } from './ConflictChip';
 import { assignLanes, formatMinutes, gridRowEnd, minutesToGridRow, snapToGrid, totalGridRows } from './gridMath';
 import { countOf } from '../../lib/plural';
+import type { ScheduleBreakRow } from './BreaksPanel';
 
 export interface ArmedAgendaSession {
   submissionId: string;
@@ -19,6 +20,11 @@ interface DayGridProps {
   tracks: AgendaTrack[];
   placed: PlacedAgendaSession[];
   conflicts: AgendaConflict[];
+  /** The selected day's breaks (DEC-021 amendment, w67-b), rendered as
+   * read-only full-width bands spanning every room column — see the render
+   * block below. Optional/omittable so tests that don't exercise breaks
+   * can keep passing no prop at all. */
+  breaks?: ScheduleBreakRow[];
   dayStartMin: number;
   dayEndMin: number;
   gridMin: number;
@@ -96,6 +102,7 @@ export function DayGrid({
   tracks,
   placed,
   conflicts,
+  breaks,
   dayStartMin,
   dayEndMin,
   gridMin,
@@ -106,6 +113,7 @@ export function DayGrid({
 }: DayGridProps) {
   const rows = totalGridRows(dayStartMin, dayEndMin, gridMin);
   const dayPlaced = placed.filter((s) => s.day === day);
+  const dayBreaks = (breaks ?? []).filter((b) => b.day === day);
   const roomNameById = new Map(rooms.map((r) => [r.id, r.name]));
 
   // DEC-724/DEC-794: the room-less column only earns a place in the grid
@@ -353,6 +361,32 @@ export function DayGrid({
           );
         }),
       )}
+
+      {/* DEC-021 amendment (w67-b): breaks render as read-only full-width
+          bands spanning every room column, positioned with the SAME
+          gridMath helpers a placed card uses (start minute -> row offset,
+          durationMin -> span) so a band and a card at the same minute line
+          up exactly. Deliberately not a drop target/drag handle/click
+          handler and carries no data-submission-id — the cells underneath
+          stay live drop targets (J9 warn-never-block: the hand may still
+          place a session over a break) and this band never enters the
+          conflict engine, unscheduled tray, or state.ts's placement
+          arithmetic. */}
+      {dayBreaks.map((brk) => {
+        const rowStart = minutesToGridRow(brk.startMin, dayStartMin, gridMin);
+        const rowEnd = gridRowEnd(brk.startMin + brk.durationMin, dayStartMin, gridMin);
+        return (
+          <div
+            key={`break-${brk.id}`}
+            className="chq-agenda-break-band"
+            style={{ gridColumn: `2 / span ${columns.length}`, gridRow: `${rowStart} / ${rowEnd}` }}
+          >
+            <span className="chq-agenda-break-band-label">
+              {`${formatMinutes(brk.startMin)} · ${brk.label}${brk.location ? ` · ${brk.location}` : ''} · ${brk.durationMin} min`}
+            </span>
+          </div>
+        );
+      })}
 
       {lanedPlaced.map((session) => {
         const colIdx = session.roomId === null ? columns.length - 1 : columns.indexOf(session.roomId);

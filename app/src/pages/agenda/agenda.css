@@ -449,6 +449,38 @@
   align-self: flex-start;
 }
 
+/* DEC-021 amendment (w67-b): a break renders as a quiet full-width band
+   spanning every room column, positioned by the same gridMath helpers a
+   placed card uses so it lines up with cards at the same minute. It is
+   NOT interactive (no drop target, no drag handle, no click handler) —
+   pointer-events: none lets drag/drop and the armed click-to-place path
+   reach the slot cell underneath untouched (J9 warn-never-block: the hand
+   may still place a session over a break). Quiet rule styling, no red
+   (DEC-367: no red/third accent) — a break is not a warning. */
+.chq-agenda-break-band {
+  align-self: stretch;
+  justify-self: stretch;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  background: var(--chq-surface-sunk);
+  border-top: 1px solid var(--chq-rule);
+  border-bottom: 1px solid var(--chq-rule);
+  pointer-events: none;
+  position: relative;
+  z-index: 4;
+}
+
+.chq-agenda-break-band-label {
+  font-family: var(--chq-font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-variant: small-caps;
+  color: var(--chq-muted);
+}
+
 .chq-day-grid-placed-card {
   align-self: stretch;
   justify-self: start;

@@ -1,8 +1,12 @@
-// DEC-021 amendment (wave 65): render smoke for BreaksPanel — the organiser
-// way in to the schedule_break table (list/add/remove for the selected
-// day) that the server-side stack landed in wave 63 with no UI. Mocks the
-// api module directly (RosterPanel/TracksRoomsPanel convention) so we can
-// assert on exact call args rather than stubbing fetch.
+// DEC-021 amendment (wave 65, updated w67-b): render smoke for BreaksPanel —
+// the organiser way in to the schedule_break table (list/add/remove for the
+// selected day) that the server-side stack landed in wave 63 with no UI.
+// Since w67-b the panel is props-driven (`breaks`/`onChanged`) — the parent
+// Agenda page owns the single fetch shared with DayGrid's bands — so this
+// suite passes `breaks` directly and asserts `onChanged` fires after a
+// write instead of mocking a self-fetch. Mocks the api module directly
+// (RosterPanel/TracksRoomsPanel convention) so we can assert on exact call
+// args rather than stubbing fetch.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -51,31 +55,28 @@ afterEach(() => cleanup());
 
 describe('BreaksPanel', () => {
   it('renders nothing when there is no selected day', () => {
-    const { container } = render(<BreaksPanel eventId={EVENT_ID} day={null} />);
+    const { container } = render(
+      <BreaksPanel eventId={EVENT_ID} day={null} breaks={[]} onChanged={() => {}} />,
+    );
     expect(container).toBeEmptyDOMElement();
     expect(apiGetMock).not.toHaveBeenCalled();
   });
 
-  it("loads the selected day's breaks via GET and renders them", async () => {
-    apiGetMock.mockResolvedValueOnce({ items: [breakRow()] });
-    render(<BreaksPanel eventId={EVENT_ID} day={DAY} />);
+  it("renders the breaks passed in via props without fetching its own copy", () => {
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} onChanged={() => {}} />);
 
-    await waitFor(() =>
-      expect(apiGetMock).toHaveBeenCalledWith(`/events/${EVENT_ID}/breaks?day=${DAY}`),
-    );
-    expect(await screen.findByText('12:00')).toBeInTheDocument();
+    expect(apiGetMock).not.toHaveBeenCalled();
+    expect(screen.getByText('12:00')).toBeInTheDocument();
     expect(screen.getByText(/Lunch/)).toBeInTheDocument();
     expect(screen.getByText(/Foyer/)).toBeInTheDocument();
     expect(screen.getByText(/60 min/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
   });
 
-  it('Add a break POSTs numeric startMin/durationMin parsed from the inputs and the selected day', async () => {
-    apiGetMock.mockResolvedValue({ items: [] });
+  it('Add a break POSTs numeric startMin/durationMin parsed from the inputs and the selected day, then calls onChanged', async () => {
     apiPostMock.mockResolvedValueOnce(breakRow());
-    render(<BreaksPanel eventId={EVENT_ID} day={DAY} />);
-
-    await waitFor(() => expect(apiGetMock).toHaveBeenCalledTimes(1));
+    const onChanged = vi.fn();
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} onChanged={onChanged} />);
 
     fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Coffee' } });
     fireEvent.change(screen.getByLabelText('Location (optional)'), { target: { value: 'Lobby' } });
@@ -91,21 +92,19 @@ describe('BreaksPanel', () => {
       startMin: 615,
       durationMin: 15,
     });
-    // Refetches after the write.
-    await waitFor(() => expect(apiGetMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+    expect(apiGetMock).not.toHaveBeenCalled();
   });
 
   // DEC-941: removing a break is irreversible, so Remove opens the shared
   // ConfirmDialog first — the DELETE only fires from the dialog's own
   // destructive control, never straight off the row button.
-  it('Remove asks for confirmation first, then DELETEs and the row drops after refetch', async () => {
-    apiGetMock
-      .mockResolvedValueOnce({ items: [breakRow()] })
-      .mockResolvedValueOnce({ items: [] });
+  it('Remove asks for confirmation first, then DELETEs and calls onChanged', async () => {
     apiDeleteMock.mockResolvedValueOnce({ deleted: true });
+    const onChanged = vi.fn();
 
-    render(<BreaksPanel eventId={EVENT_ID} day={DAY} />);
-    expect(await screen.findByRole('button', { name: 'Remove' })).toBeInTheDocument();
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} onChanged={onChanged} />);
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
     expect(apiDeleteMock).not.toHaveBeenCalled();
@@ -113,15 +112,13 @@ describe('BreaksPanel', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Remove break' }));
 
     await waitFor(() => expect(apiDeleteMock).toHaveBeenCalledWith('/breaks/brk-1'));
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument());
-    expect(screen.getByText('No breaks yet.')).toBeInTheDocument();
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+    expect(apiGetMock).not.toHaveBeenCalled();
   });
 
   it('cancelling the remove confirmation fires no DELETE and keeps the row', async () => {
-    apiGetMock.mockResolvedValue({ items: [breakRow()] });
-
-    render(<BreaksPanel eventId={EVENT_ID} day={DAY} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} onChanged={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
 
     expect(apiDeleteMock).not.toHaveBeenCalled();
@@ -129,12 +126,10 @@ describe('BreaksPanel', () => {
   });
 
   it("a 400 with fields.startMin renders that message beside the start-time input, not a bare banner", async () => {
-    apiGetMock.mockResolvedValue({ items: [] });
     apiPostMock.mockRejectedValueOnce(
       new ApiError(400, 'invalid', 'Invalid break input', { startMin: 'must be an integer between 0 and 1439' }),
     );
-    render(<BreaksPanel eventId={EVENT_ID} day={DAY} />);
-    await waitFor(() => expect(apiGetMock).toHaveBeenCalledTimes(1));
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} onChanged={() => {}} />);
 
     fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Coffee' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add a break' }));
