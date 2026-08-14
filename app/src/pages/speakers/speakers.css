@@ -711,3 +711,13 @@
   color: var(--chq-ink);
   font-weight: 700;
 }
+
+/* DEC-788 amendment (wave 8): the Add-speaker modal's pre-submit duplicate
+   hint (app/src/pages/speakers/RosterPanel.tsx) is advisory and never blocks
+   the save, so it reads muted and quiet -- the same face as the contacts
+   modal's DEC-788 hint, not a validation error. */
+.chq-speakers-roster-duplicate-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--chq-muted);
+}

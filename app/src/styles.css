@@ -1083,6 +1083,18 @@ a:hover {
   color: var(--chq-muted);
 }
 
+/* DEC-788 amendment (wave 8): the shared duplicate-email forward path
+   (app/src/pages/contacts/DuplicateEmailNotice.tsx) rendered under a 409's
+   .chq-error. It's the resolution of a refusal, not a second error, so it
+   reads muted and quiet like the DEC-788 hint above; the inline "Add to
+   this event" button is allowed to wrap onto its own line rather than
+   stretch the notice. */
+.chq-contacts-duplicate-email-notice {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
 /* DEC-795: a contacts-modal advisory states a fact the organizer should know
    before acting (already on this event's roster) -- it never blocks the
    action, so it reads muted and quiet like the DEC-788 duplicate hint rather

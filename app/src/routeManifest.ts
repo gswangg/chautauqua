@@ -171,6 +171,15 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   { path: "/account/password", role: "reviewer" },
   { path: "/account/password", role: "speaker" },
 
+  // --- Sign-out confirmation (src/routes/auth.tsx, DEC-154 amendment
+  // wave 8 — a typed/bookmarked GET /logout renders a real confirmation
+  // card instead of 404ing; the session only ends on the POST, so the GET
+  // is idempotently visitable by the sweep). One row per role branch of the
+  // page's "Stay signed in" destination (speaker -> /portal, else /admin),
+  // following the /account/password precedent above. ---
+  { path: "/logout", role: "organizer" },
+  { path: "/logout", role: "speaker" },
+
   // --- Admin catch-all (DEC-154, task w2-g's App.tsx <Route path="*">) ---
   // Literal "/*" tail so routeManifest.test.ts's suffix match sees the
   // wildcard segment; noted in w2-g's task text as an expected merge-train

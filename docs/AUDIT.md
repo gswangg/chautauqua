@@ -190,11 +190,18 @@ Cross-org access returns 404, never 403, so an attacker can't distinguish "not y
 "doesn't exist" (`test/exports-cross-org.test.ts`). Bearer tokens cannot mint further
 tokens (DEC-027).
 
-## Admin shell / auth (`/login`, `/account/password`, `/admin/*`)
+## Admin shell / auth (`/login`, `/logout`, `/account/password`, `/admin/*`)
 
 Session login, self-service password change (any authenticated role), and the SPA
 catch-all (`/admin/*`) that every unmatched admin path resolves through (DEC-154) rather than a
 blank screen. Built.
+
+`/logout` (`src/routes/auth.tsx`, DEC-154 amendment wave 8) is the GET twin of the sign-out
+POST: a typed or bookmarked sign-out URL lands on a real confirmation card, not the 404 it
+used to hit. Anonymous visitors have nothing to end and are redirected to `/login`; a
+signed-in visitor gets a confirm form carrying the double-submit CSRF token (DEC-181) plus a
+role-scoped "Stay signed in" link. The session itself only ends on the POST, so the GET is
+idempotent. Built.
 
 ## Dev-only (`/dev/mailbox`, `/dev/mailbox/:emailId`)
 
