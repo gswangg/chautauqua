@@ -5,7 +5,7 @@
 // drop), plus the unscheduled tray and a conflict chip surfacing the
 // room_overlap between them.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { AgendaPage } from '../Agenda';
 import { mockApi } from '../../test-utils/mockApi';
@@ -158,7 +158,7 @@ describe('AgendaPage render smoke', () => {
 
     // w41: the summary sits beside the h1 as a direct child of
     // .chq-agenda-head, not nested inside .chq-agenda-head-actions (which
-    // now holds only Auto-schedule + Publish).
+    // now also carries the Breaks disclosure per DEC-021/DEC-900 wave 72).
     const head = document.querySelector('.chq-agenda-head')!;
     expect(Array.from(head.children).map((el) => el.className)).toEqual([
       'chq-page-title',
@@ -167,7 +167,9 @@ describe('AgendaPage render smoke', () => {
     ]);
     const headActions = document.querySelector('.chq-agenda-head-actions')!;
     expect(headActions.querySelector('.chq-agenda-summary')).toBeNull();
-    expect(headActions.textContent).toBe('Auto-schedulePublish schedule');
+    // DEC-021/DEC-900 amendment (wave 72): the fixture has a selected day, so
+    // the "Breaks ›" disclosure renders alongside Auto-schedule/Publish.
+    expect(headActions.textContent).toBe('Breaks ›Auto-schedulePublish schedule');
   });
 
   // DEC-791: plural grammar when there are 2+ conflicts.
@@ -965,6 +967,78 @@ describe('AgendaPage click/keyboard unschedule (DEC-021 amendment)', () => {
     await waitFor(() => {
       expect(screen.getByText('Unscheduled S-001.')).toBeInTheDocument();
     });
+  });
+});
+
+// DEC-021/DEC-900 amendment (wave 72): the breaks editor is a disclosure on
+// the head row that opens in the ONE shared dialog frame (ModalFrame,
+// DEC-651) rather than a band between the head and the grid that displaced
+// the canvas (gate-4 measured 308px of chrome cost). BreaksPanel's own
+// component/props are byte-identical -- these tests exercise the mounting
+// change only.
+describe('AgendaPage breaks disclosure (DEC-021/DEC-900 amendment, wave 72)', () => {
+  it('does not render the breaks editor inline between the day tabs and the grid before the disclosure is opened', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    // No inline breaks panel anywhere -- the canvas is never displaced.
+    expect(document.querySelector('.chq-breaks-panel')).toBeNull();
+    // The day-tab strip sits directly beside the grid layout with nothing
+    // between them.
+    const dayTabs = document.querySelector('.chq-agenda-day-tabs')!;
+    const layout = document.querySelector('.chq-agenda-layout')!;
+    expect(dayTabs.nextElementSibling).toBe(layout);
+
+    expect(screen.getByRole('button', { name: 'Breaks ›' })).toBeInTheDocument();
+  });
+
+  it('opens BreaksPanel in the shared ModalFrame dialog when the "Breaks ›" disclosure is clicked, and closes it again', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Breaks ›' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Breaks' });
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Add a break' })).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('dialog', { name: 'Breaks' })).toBeNull();
+    expect(document.querySelector('.chq-breaks-panel')).toBeNull();
+  });
+
+  it("the grid's chrome height (day-tab row -> layout adjacency) is unchanged whether or not the dialog has ever been opened", async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    const dayTabs = document.querySelector('.chq-agenda-day-tabs')!;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Breaks ›' }));
+    expect(screen.getByRole('dialog', { name: 'Breaks' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+
+    // After the dialog closes, the day-tab row's sibling is still the grid
+    // layout directly -- opening/closing the dialog never left a band behind.
+    const layout = document.querySelector('.chq-agenda-layout')!;
+    expect(dayTabs.nextElementSibling).toBe(layout);
   });
 });
 
