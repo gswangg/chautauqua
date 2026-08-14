@@ -46,8 +46,25 @@ function stringChunkText(v: unknown): string {
   return Array.isArray(value) ? value.join("") : String(value ?? "");
 }
 
-function evalCond(cond: any, ctx: CtxEntry[]): boolean {
+// DEC-829 (wave-59 amendment): chaseableContactExists is a raw sql`` EXISTS
+// fragment with its own nested join (participant/submission), not a plain
+// drizzle eq()/and() condition tree — this evaluator can't walk its ON
+// clauses generically. Detected by its leading literal text and evaluated
+// against `chaseable` (a callback fakeDb supplies, computed once per
+// contactId from the seeded participant/submission rows) instead.
+function isChaseableExistsChunks(chunks: unknown[]): boolean {
+  const first = chunks[0];
+  return typeof first === "object" && first !== null && stringChunkText(first).startsWith("exists (select 1 from ");
+}
+
+function evalCond(cond: any, ctx: CtxEntry[], chaseable?: (contactId: string) => boolean): boolean {
   const chunks: unknown[] = cond.queryChunks;
+  if (isChaseableExistsChunks(chunks)) {
+    if (!chaseable) throw new Error("fakeDb: chaseableContactExists encountered with no `chaseable` callback wired");
+    const entry = ctx.find((e) => e.table === schema.taskAssignment);
+    if (!entry) throw new Error("fakeDb: chaseableContactExists needs a taskAssignment row in context");
+    return chaseable(entry.row.contactId as string);
+  }
   const colIdx = chunks.findIndex(isColumnNode);
   if (colIdx !== -1) {
     const column = chunks[colIdx] as { table: unknown; name: string };
@@ -71,7 +88,7 @@ function evalCond(cond: any, ctx: CtxEntry[]): boolean {
   const subConds = chunks.filter(
     (c) => c && typeof c === "object" && Array.isArray((c as { queryChunks?: unknown }).queryChunks),
   );
-  if (subConds.length > 0) return subConds.every((c) => evalCond(c, ctx));
+  if (subConds.length > 0) return subConds.every((c) => evalCond(c, ctx, chaseable));
   throw new Error("fakeDb: unrecognized condition shape (no column, no sub-conditions)");
 }
 
@@ -89,19 +106,43 @@ function evalCond(cond: any, ctx: CtxEntry[]): boolean {
 // before skippedGroups), matching production's code order exactly.
 type SubqueryMarker = { __subqueryKind: "eligible" | "skipped" };
 
-function fakeDb(seed: { taskAssignment: any[]; task: any[]; event: any[]; contact: any[] }) {
+function fakeDb(seed: {
+  taskAssignment: any[];
+  task: any[];
+  event: any[];
+  contact: any[];
+  submission?: any[];
+  participant?: any[];
+}) {
   const state = {
     taskAssignment: [...seed.taskAssignment],
     task: [...seed.task],
     event: [...seed.event],
     contact: [...seed.contact],
+    submission: [...(seed.submission ?? [])],
+    participant: [...(seed.participant ?? [])],
   };
+
+  // DEC-829 (wave-59 amendment): the fakeDb twin of chaseableContactExists —
+  // a contact is chaseable iff it has a participant row on an accepted
+  // submission of THIS event with an ACTIVE invite status ('none' or
+  // 'accepted').
+  function chaseable(contactId: string): boolean {
+    return state.participant.some((p) => {
+      if (p.contactId !== contactId) return false;
+      if (p.inviteStatus !== "none" && p.inviteStatus !== "accepted") return false;
+      const sub = state.submission.find((s) => s.id === p.submissionId);
+      return !!sub && sub.eventId === EVENT_ID && sub.status === "accepted";
+    });
+  }
 
   function stateArrayFor(table: unknown): any[] | undefined {
     if (table === schema.taskAssignment) return state.taskAssignment;
     if (table === schema.task) return state.task;
     if (table === schema.event) return state.event;
     if (table === schema.contact) return state.contact;
+    if (table === schema.submission) return state.submission;
+    if (table === schema.participant) return state.participant;
     return undefined;
   }
 
@@ -137,7 +178,7 @@ function fakeDb(seed: { taskAssignment: any[]; task: any[]; event: any[]; contac
         }
         return makeChain(joined);
       },
-      where: (cond: unknown) => makeChain(ctxLists.filter((ctxList) => evalCond(cond, ctxList))),
+      where: (cond: unknown) => makeChain(ctxLists.filter((ctxList) => evalCond(cond, ctxList, chaseable))),
       groupBy: () => makeChain(ctxLists, true),
       having: () => chain,
       orderBy: () => chain,
@@ -288,6 +329,18 @@ function assignmentRow(id: string, taskId: string, contactId: string) {
   return { id, taskId, contactId, status: "pending", lastRemindedAt: null, assignmentCreatedAt: new Date(0) };
 }
 
+// DEC-829 (wave-59 amendment): every contact in this file's shared `seed()`
+// must be chaseable (an accepted submission, invite-active participant) so
+// these DEC-694 scoping tests keep exercising scope, not the chase gate —
+// the chase gate itself is covered by the dedicated tests below.
+function submissionRow(id: string) {
+  return { id, eventId: EVENT_ID, status: "accepted" };
+}
+
+function participantRow(id: string, submissionId: string, contactId: string, inviteStatus: string) {
+  return { id, submissionId, contactId, inviteStatus };
+}
+
 function seed() {
   return {
     event: [eventRow()],
@@ -296,6 +349,11 @@ function seed() {
     taskAssignment: [
       assignmentRow("assign-1", "task-1", "contact-1"),
       assignmentRow("assign-2", "task-2", "contact-2"),
+    ],
+    submission: [submissionRow("submission-1"), submissionRow("submission-2")],
+    participant: [
+      participantRow("participant-1", "submission-1", "contact-1", "accepted"),
+      participantRow("participant-2", "submission-2", "contact-2", "accepted"),
     ],
   };
 }

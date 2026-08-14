@@ -88,6 +88,37 @@ create table user (
   created_at integer,
   updated_at integer
 );
+create table submission (
+  id text primary key,
+  event_id text,
+  form_id text,
+  seq integer,
+  title text,
+  description text,
+  track_id text,
+  additional_track_ids_json text,
+  status text,
+  content_status text,
+  accepted_at integer,
+  ics_sequence integer,
+  external_ref text,
+  created_at integer,
+  updated_at integer
+);
+create table participant (
+  id text primary key,
+  submission_id text,
+  contact_id text,
+  role text,
+  "order" integer,
+  visible integer,
+  invite_status text,
+  title_at_time text,
+  org_at_time text,
+  name_at_time text,
+  created_at integer,
+  updated_at integer
+);
 `;
 
 function makeTestDb(): { db: Db; sqlite: DatabaseSync } {
@@ -166,6 +197,23 @@ function seedManyContacts(sqlite: DatabaseSync, count: number, opts?: { reminded
          values (?, ?, 'First', ?, ?, ?, ?)`,
       )
       .run(cId, ORG_ID, cId, `${cId}@example.com`, NOW_MS, NOW_MS);
+
+    // DEC-829 (wave-59 amendment): a contact is only chaseable while active
+    // (invite_status 'none'/'accepted') on an accepted submission of the
+    // event — every seeded contact here gets exactly that, so this fixture
+    // still exercises the SQL cap/dedupe/ordering it was written for.
+    sqlite
+      .prepare(
+        `insert into submission (id, event_id, seq, title, status, content_status, ics_sequence, created_at, updated_at)
+         values (?, ?, ?, 'Talk', 'accepted', 'approved', 0, ?, ?)`,
+      )
+      .run(`submission-${cId}`, EVENT_ID, i, NOW_MS, NOW_MS);
+    sqlite
+      .prepare(
+        `insert into participant (id, submission_id, contact_id, role, "order", visible, invite_status, created_at, updated_at)
+         values (?, ?, ?, 'speaker', 0, 1, 'accepted', ?, ?)`,
+      )
+      .run(`participant-${cId}`, `submission-${cId}`, cId, NOW_MS, NOW_MS);
 
     const lastRemindedAt = opts?.remindedRecentlyId === cId ? NOW_MS - 10 * MINUTE : null;
     sqlite

@@ -104,6 +104,21 @@ export function acceptedSpeakerExistsForContact(eventId: string) {
   return sql`exists (select 1 from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.contact.id} and ${acceptedSpeakerConditions(eventId)})`;
 }
 
+/** DEC-829 amendment (wave 59): the ONE 'chase' predicate — the same
+ * correlated EXISTS as acceptedSpeakerExistsForContact above (an accepted
+ * submission with an invite-active participant), but correlated against
+ * `schema.taskAssignment.contactId` instead of `schema.contact.id`, so
+ * queries that build a task_assignment -> task -> event chain WITHOUT ever
+ * joining `contact` (reminders.ts's listOutstandingForEvent and
+ * listRemindableContactIds) can still compose it in their WHERE clause. A
+ * speaker who has declined every accepted submission on the event must
+ * never be chased for an outstanding task, matching what
+ * overdueAssignmentConditions already reports via
+ * acceptedSpeakerExistsForContact. */
+export function chaseableContactExists(eventId: string) {
+  return sql`exists (select 1 from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.taskAssignment.contactId} and ${acceptedSpeakerConditions(eventId)})`;
+}
+
 /** DEC-829: the ONE roster-participant predicate — accepted submissions in
  * `eventId`, with NO inviteStatus clause (unlike acceptedSpeakerConditions
  * above, which restricts to ACTIVE_INVITE_STATUSES). This is the base set

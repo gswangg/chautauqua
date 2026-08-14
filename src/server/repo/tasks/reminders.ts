@@ -25,6 +25,7 @@ import { findAccountUserIds } from "../comms";
 import { effectiveAssignmentDueDate } from "../../../domain/task-due";
 import { ApiError } from "../../http";
 import { zonedMinutesToUtc } from "../../../lib/timezone";
+import { chaseableContactExists } from "./crud";
 
 // DEC-319 wave-56 amendment: hard ceiling on the single-event outstanding
 // scan below — a per-event reminder pass should never be reading past this
@@ -58,7 +59,11 @@ export async function listOutstandingForEvent(
   taskIds?: string[],
   contactIds?: string[],
 ): Promise<OutstandingRow[]> {
-  const conditions = [eq(schema.task.eventId, eventId), eq(schema.taskAssignment.status, "pending")];
+  const conditions = [
+    eq(schema.task.eventId, eventId),
+    eq(schema.taskAssignment.status, "pending"),
+    chaseableContactExists(eventId),
+  ];
   if (taskIds && taskIds.length > 0) {
     conditions.push(inArray(schema.taskAssignment.taskId, taskIds));
   }
@@ -139,7 +144,11 @@ export async function listRemindableContactIds(
   eventId: string,
   opts: { taskIds?: string[]; contactIds?: string[]; now: number; dedupeWindowMs: number; max: number },
 ): Promise<{ contactIds: string[]; skipped: number; remaining: number }> {
-  const conditions = [eq(schema.task.eventId, eventId), eq(schema.taskAssignment.status, "pending")];
+  const conditions = [
+    eq(schema.task.eventId, eventId),
+    eq(schema.taskAssignment.status, "pending"),
+    chaseableContactExists(eventId),
+  ];
   if (opts.taskIds && opts.taskIds.length > 0) {
     conditions.push(inArray(schema.taskAssignment.taskId, opts.taskIds));
   }
