@@ -150,7 +150,7 @@ export function FilterRulesPanel({ rules, onChange, matchCount, totalCount, onSa
       {activeRules(rules).length > 0 && (
         <span className="chq-contacts-filter-rules-end">
           <span className="chq-contacts-filter-match-count">
-            {matchCount} of {totalCount} match
+            {totalCount === null ? `${matchCount} match` : `${matchCount} of ${totalCount} match`}
           </span>
           <button type="button" className="chq-btn chq-btn-secondary" onClick={onSaveAsSegment}>
             Save as a segment
