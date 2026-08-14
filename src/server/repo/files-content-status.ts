@@ -79,3 +79,20 @@ export async function updateContentStatuses(
 
   return { updated: requested.length };
 }
+
+/** DEC-020 amendment: a new deliverable version reopens content review.
+ * One set-based UPDATE, never read-then-write; idempotent — a submission
+ * already 'pending' is left untouched (WHERE excludes it), and rows outside
+ * ('approved','changes_requested') are simply not matched. DEC-009 invariant
+ * applies here too — this module MUST NEVER import a mailer. */
+export async function reopenContentReview(db: Db, submissionId: string): Promise<void> {
+  await db
+    .update(schema.submission)
+    .set({ contentStatus: PENDING_CONTENT_STATUS, updatedAt: new Date() })
+    .where(
+      and(
+        eq(schema.submission.id, submissionId),
+        inArray(schema.submission.contentStatus, ["approved", "changes_requested"]),
+      ),
+    );
+}

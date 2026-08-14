@@ -43,6 +43,7 @@ vi.mock("../src/server/repo/files", async () => {
     ...actual,
     getReplacesTarget: vi.fn(),
     insertFile: vi.fn(async () => NEW_FILE_ID),
+    reopenContentReview: vi.fn(async () => {}),
   };
 });
 

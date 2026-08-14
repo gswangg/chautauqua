@@ -105,6 +105,7 @@ vi.mock("../src/server/repo/files", async () => {
   return {
     ...actual,
     insertFile: vi.fn(async () => "file-new-1"),
+    reopenContentReview: vi.fn(async () => {}),
   };
 });
 

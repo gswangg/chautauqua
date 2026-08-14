@@ -55,6 +55,7 @@ import {
   listFileComments,
   listSubmissionFiles,
   PENDING_CONTENT_STATUS,
+  reopenContentReview,
   resolveLatestVersions,
   reviewerCanAccessSubmissionFile,
   updateContentStatus,
@@ -195,6 +196,12 @@ fileApiRoutes.post("/submissions/:id/files", csrfJson, async (c) => {
       uploadedByContactId: auth.contactId ?? null,
     }),
   );
+
+  // DEC-020 amendment: a new deliverable version reopens content review.
+  // submissionId is always present (route param) and kind is already
+  // narrowed to FILE_KINDS above (never HEADSHOT_KIND) — this is always a
+  // real deliverable upload, never a resource/library upload.
+  await reopenContentReview(c.var.db, submissionId);
 
   return c.json({ id: fileId, filename: file.name, kind, sizeBytes: file.size, contentType: validation.servedContentType }, 201);
 });
