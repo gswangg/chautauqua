@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState, type ReactNode } from 'react';
-import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useMe } from './lib/useMe';
-import { useNavExceptions } from './lib/useNavExceptions';
+import { guardedNavigate, useNavExceptions } from './lib/useNavExceptions';
 import { useEscapeKey } from './lib/useEscapeKey';
 import { identityLabel } from './lib/identity';
 import { EventSwitcher } from './components/EventSwitcher';
@@ -145,6 +145,7 @@ function NavLinks({
   sections: readonly NavSection[];
   onNavigate?: () => void;
 }) {
+  const navigate = useNavigate();
   const prefetch = (path: string) => {
     const loader = prefetchByPath.get(path);
     if (loader) void loader();
@@ -152,22 +153,33 @@ function NavLinks({
 
   return (
     <>
-      {sections.map((section) => (
-        <NavLink
-          key={section.path}
-          // DEC-831: strip the trailing "/*" wholesale (not just the "*"),
-          // so '/review/*' yields '/review', not '/review/' -- a trailing
-          // slash NavLink's isActive/aria-current match never resolves
-          // against the router's actual '/review' pathname.
-          to={section.path.replace(/\/\*$/, '')}
-          className={({ isActive }) => `chq-nav-link${isActive ? ' is-active' : ''}`}
-          onMouseEnter={() => prefetch(section.path)}
-          onFocus={() => prefetch(section.path)}
-          onClick={onNavigate}
-        >
-          {section.label}
-        </NavLink>
-      ))}
+      {sections.map((section) => {
+        const to = section.path.replace(/\/\*$/, '');
+        return (
+          <NavLink
+            key={section.path}
+            // DEC-831: strip the trailing "/*" wholesale (not just the "*"),
+            // so '/review/*' yields '/review', not '/review/' -- a trailing
+            // slash NavLink's isActive/aria-current match never resolves
+            // against the router's actual '/review' pathname.
+            to={to}
+            className={({ isActive }) => `chq-nav-link${isActive ? ' is-active' : ''}`}
+            onMouseEnter={() => prefetch(section.path)}
+            onFocus={() => prefetch(section.path)}
+            // w5-e/DEC-745 amendment: chrome nav is GLOBAL-NAV, so a dirty
+            // page's unsaved-draft guard (PlanEditor's requestLeave, wired
+            // through the shared useNavExceptions leave-guard registry)
+            // must confirm here too, not just on the page's own back-link.
+            onClick={(e) => {
+              e.preventDefault();
+              guardedNavigate(() => navigate(to));
+              onNavigate?.();
+            }}
+          >
+            {section.label}
+          </NavLink>
+        );
+      })}
     </>
   );
 }
@@ -175,6 +187,7 @@ function NavLinks({
 function Header() {
   const { me } = useMe();
   const exceptions = useNavExceptions();
+  const tabsNavigate = useNavigate();
   const [moreOpen, setMoreOpen] = useState(false);
   const isReviewer = me?.role === 'reviewer';
   const sections = isReviewer ? NAV_SECTIONS.filter(isReviewerNav) : NAV_SECTIONS;
@@ -228,24 +241,33 @@ function Header() {
           width. */}
       {primaryTabs.length > 0 && (
         <nav className="chq-tabbar" aria-label="Primary, phone">
-          {primaryTabs.map((section) => (
-            <NavLink
-              key={section.path}
-              // DEC-831: strip the trailing "/*" wholesale (not just the "*"),
-            // so '/review/*' yields '/review', not '/review/' -- a trailing
-            // slash NavLink's isActive/aria-current match never resolves
-            // against the router's actual '/review' pathname.
-            to={section.path.replace(/\/\*$/, '')}
-              className={({ isActive }) => `chq-nav-link${isActive ? ' is-active' : ''}`}
-            >
-              {({ isActive }) => (
-                <>
-                  {section.label}
-                  {isActive && <span className="chq-dot is-on" aria-hidden="true" />}
-                </>
-              )}
-            </NavLink>
-          ))}
+          {primaryTabs.map((section) => {
+            const to = section.path.replace(/\/\*$/, '');
+            return (
+              <NavLink
+                key={section.path}
+                // DEC-831: strip the trailing "/*" wholesale (not just the "*"),
+                // so '/review/*' yields '/review', not '/review/' -- a trailing
+                // slash NavLink's isActive/aria-current match never resolves
+                // against the router's actual '/review' pathname.
+                to={to}
+                className={({ isActive }) => `chq-nav-link${isActive ? ' is-active' : ''}`}
+                // w5-e/DEC-745 amendment: same GLOBAL-NAV leave-guard as the
+                // desktop nav (NavLinks above).
+                onClick={(e) => {
+                  e.preventDefault();
+                  guardedNavigate(() => tabsNavigate(to));
+                }}
+              >
+                {({ isActive }) => (
+                  <>
+                    {section.label}
+                    {isActive && <span className="chq-dot is-on" aria-hidden="true" />}
+                  </>
+                )}
+              </NavLink>
+            );
+          })}
           <button type="button" className="chq-nav-link" onClick={() => setMoreOpen(true)}>
             More
             {anyBadgeLive && <span className="chq-dot" aria-hidden="true" />}
