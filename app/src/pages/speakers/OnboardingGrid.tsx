@@ -633,11 +633,13 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                   <th>Speaker &middot; Participation</th>
                   {grid.tasks.map((task) => (
                     <th key={task.id}>
-                      <div className="chq-speakers-task-title">{task.title}</div>
-                      <div className="chq-speakers-task-due">{taskDueLabel(task, now)}</div>
-                      {/* DEC-933: quiet Edit/Remove controls -- the grid's
-                          columns are otherwise write-once. */}
-                      <div className="chq-speakers-task-header-actions">
+                      {/* Ruling A12 (DEC-662 amendment, wave 25): ONE quiet
+                          Edit control per column, on the same line as the
+                          title -- Remove now lives inside the editor Edit
+                          opens (six columns of Edit+Remove was twelve
+                          controls in a row whose job is labelling). */}
+                      <div className="chq-speakers-task-title-row">
+                        <span className="chq-speakers-task-title">{task.title}</span>
                         <button
                           type="button"
                           className="chq-link-button chq-speakers-task-edit"
@@ -645,14 +647,8 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                         >
                           Edit
                         </button>
-                        <button
-                          type="button"
-                          className="chq-link-button chq-speakers-task-remove"
-                          onClick={() => setRemovingTask(task)}
-                        >
-                          Remove
-                        </button>
                       </div>
+                      <div className="chq-speakers-task-due">{taskDueLabel(task, now)}</div>
                     </th>
                   ))}
                 </tr>
@@ -887,6 +883,13 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
           onSubmit={handleEditTask}
           forms={taskForms}
           acceptedCount={counts?.speakers ?? 0}
+          // Ruling A12: Remove now opens from inside the editor -- swap the
+          // Edit modal for the existing Remove confirm flow (removingTask
+          // drives the same delete-preview + ConfirmDialog as before).
+          onRemove={() => {
+            setRemovingTask(editingTask);
+            setEditingTask(null);
+          }}
         />
       )}
 

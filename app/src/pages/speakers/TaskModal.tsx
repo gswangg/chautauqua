@@ -34,6 +34,12 @@ interface TaskModalProps {
   // responsible for stripping kind/formId/deliverableKind out of the
   // NewTaskInput this modal hands back before it PATCHes.
   task?: OnboardingTask | null;
+  // Ruling A12 (DEC-662 amendment, wave 25): the column header now offers
+  // only Edit -- Remove lives in here instead, so removing a task is one
+  // click deeper (into the thing you're already editing) rather than a
+  // second control sitting beside Edit in every column. Only rendered in
+  // edit mode; ignored for New task.
+  onRemove?: () => void;
 }
 
 // DEC-746: the segmented control's labels/order per
@@ -69,7 +75,7 @@ function deliverableKindLabel(kind: DeliverableKind): string {
   return DELIVERABLE_KIND_LABELS[kind];
 }
 
-export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = null }: TaskModalProps) {
+export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = null, onRemove }: TaskModalProps) {
   const isEdit = task !== null;
   const [kind, setKind] = useState<TaskKind>(task?.kind ?? 'file_request');
   const [title, setTitle] = useState(task?.title ?? '');
@@ -139,6 +145,16 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = nul
           <button type="button" className="chq-btn chq-btn-secondary" onClick={onCancel} disabled={submitting}>
             Cancel
           </button>
+          {isEdit && onRemove && (
+            <button
+              type="button"
+              className="chq-btn chq-btn-tertiary chq-speakers-task-remove"
+              onClick={onRemove}
+              disabled={submitting}
+            >
+              Remove
+            </button>
+          )}
         </>
       }
     >

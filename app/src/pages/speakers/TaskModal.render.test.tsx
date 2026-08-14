@@ -36,6 +36,32 @@ describe('TaskModal: DEC-746 always-assign subtitle and dropped fields', () => {
   });
 });
 
+// Ruling A12 (DEC-662 amendment, wave 25): the task column header now
+// offers only Edit; Remove moved into the editor Edit opens.
+describe('TaskModal: A12 Remove lives inside the editor', () => {
+  const TASK = { id: 'task-1', kind: 'general' as const, title: 'Sign speaker agreement', dueDate: null, required: true };
+
+  it('renders no Remove control in create mode, or in edit mode without an onRemove handler', () => {
+    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} />);
+    expect(screen.queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
+    cleanup();
+
+    render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} task={TASK} />);
+    expect(screen.queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
+  });
+
+  it('renders exactly one Remove control in edit mode when onRemove is provided, and it fires onRemove', () => {
+    const onRemove = vi.fn();
+    render(
+      <TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} task={TASK} onRemove={onRemove} />,
+    );
+    const removeButtons = screen.getAllByRole('button', { name: 'Remove' });
+    expect(removeButtons).toHaveLength(1);
+    fireEvent.click(removeButtons[0]!);
+    expect(onRemove).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('TaskModal: DEC-398 form picker', () => {
   it('hides the Form field for non-form kinds', () => {
     render(<TaskModal onCancel={() => {}} onSubmit={vi.fn()} forms={FORMS} acceptedCount={12} />);
@@ -97,6 +123,23 @@ describe('TaskModal: DEC-928 deliverable kind vocabulary', () => {
 
   it('parity: SPA DELIVERABLE_KINDS equals the pure-core FILE_KINDS, member-for-member and in order', () => {
     expect(DELIVERABLE_KINDS).toEqual(FILE_KINDS);
+  });
+
+  // Ruling A15 (DEC-662 amendment, wave 25): kind drives real downstream
+  // behaviour (only upload-kind tasks get a File link), so the picked value
+  // must actually ride along in the create payload the modal posts --
+  // never silently dropped in favour of the default.
+  it('includes the selected deliverable kind in the submitted create payload', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<TaskModal onCancel={() => {}} onSubmit={onSubmit} forms={FORMS} acceptedCount={12} />);
+
+    const select = screen.getByLabelText(/Deliverable kind/) as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: 'recording' } });
+    fillTitle('Upload your recording');
+    fireEvent.click(screen.getByRole('button', { name: 'Create the task' }));
+
+    await vi.waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0]![0]).toMatchObject({ kind: 'file_request', deliverableKind: 'recording' });
   });
 });
 
