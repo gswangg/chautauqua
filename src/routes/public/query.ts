@@ -10,7 +10,7 @@
 // DEC-477/DEC-487: MAX_PUBLIC_PAGE now lives in src/server/repo/public/
 // bounds.ts, the ONE home for public paging constants (alongside
 // PUBLIC_PER_PAGE and their derived MAX_PUBLIC_ROWS).
-import { MAX_PUBLIC_PAGE } from "../../server/repo/public/bounds";
+import { MAX_PUBLIC_PAGE, MAX_PUBLIC_QUERY_VALUE_LENGTH } from "../../server/repo/public/bounds";
 // DEC-510: isIsoDate is the ONE home for the YYYY-MM-DD format+round-trip
 // rule; both this module and src/routes/api/events.ts are route-layer, so
 // importing from ../api/validators is legal (no cycle: validators.ts has no
@@ -26,28 +26,42 @@ export function parsePage(raw: string | undefined): number {
   return n > MAX_PUBLIC_PAGE ? MAX_PUBLIC_PAGE : n;
 }
 
+// DEC-433 amendment (wave 30): trim-or-null, now also bounded by
+// MAX_PUBLIC_QUERY_VALUE_LENGTH — an over-cap value degrades to null (never
+// throws) for exactly the reason parseLimit/parseDay/parseAccent already
+// degrade on bad input on these anonymous surfaces, and keeps a megabyte
+// query string from ever reaching a D1 LIKE parameter or minting its own
+// edge-cache key (src/server/pubcache.ts's hasOverlongQueryValue bypasses
+// the cache for the same over-cap request).
+function trimOrNullBounded(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (trimmed.length === 0 || trimmed.length > MAX_PUBLIC_QUERY_VALUE_LENGTH) return null;
+  return trimmed;
+}
+
 export function parseTrackId(raw: string | undefined): string | null {
-  return raw && raw.trim().length > 0 ? raw.trim() : null;
+  return trimOrNullBounded(raw);
 }
 
 // DEC-774: format/room chip filters on the public sessions surface — same
-// trim/length-bounds-free trim-or-null shape as parseTrackId (ids/format
-// values are opaque to the route layer; the repo-side EXISTS predicates do
-// the real matching).
+// bounded trim-or-null shape as parseTrackId (ids/format values are opaque
+// to the route layer; the repo-side EXISTS predicates do the real
+// matching).
 export function parseFormat(raw: string | undefined): string | null {
-  return raw && raw.trim().length > 0 ? raw.trim() : null;
+  return trimOrNullBounded(raw);
 }
 
 export function parseRoomId(raw: string | undefined): string | null {
-  return raw && raw.trim().length > 0 ? raw.trim() : null;
+  return trimOrNullBounded(raw);
 }
 
-/** Trim-or-null for the ?q= search box, shared by both search surfaces: the
- * EMB-02 keyword search on /sessions (title + speaker names) and the DEC-151
- * name search on /speakers and /gallery. Parsing is identical — only the
- * repo-side condition differs. */
+/** Bounded trim-or-null for the ?q= search box, shared by both search
+ * surfaces: the EMB-02 keyword search on /sessions (title + speaker names)
+ * and the DEC-151 name search on /speakers and /gallery. Parsing is
+ * identical — only the repo-side condition differs. */
 export function parseNameQuery(raw: string | undefined): string | null {
-  return raw && raw.trim().length > 0 ? raw.trim() : null;
+  return trimOrNullBounded(raw);
 }
 
 // DEC-289: embed configuration params — all optional, all degrade to
