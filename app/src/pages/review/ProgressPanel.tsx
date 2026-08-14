@@ -182,15 +182,18 @@ export function ProgressPanel({ planId: planIdProp }: { planId?: string } = {}) 
         </div>
         <div className="chq-review-progress-grid">
           {rows.map((row) => {
-            const fraction = row.assigned === 0 ? 0 : Math.min(1, row.completed / row.assigned);
             return (
+              // w5-f: the mock's reviewer-progress row is name + track
+              // subtitle, a "N of N" count, and a flag -- no bar (the frame
+              // never draws one here; PlanList's plan-level row is the only
+              // place this surface bars).
               <div key={row.userId} className="chq-review-progress-row">
                 <div>
                   <span className="chq-review-progress-name">{reviewerDisplayLabel(row)}</span>
-                  {row.recused > 0 && <span className="chq-review-plan-meta"> · {row.recused} recused</span>}
-                </div>
-                <div className="chq-bar">
-                  <div className="chq-bar-fill" style={{ width: `${Math.round(fraction * 100)}%` }} />
+                  <div className="chq-review-plan-meta">
+                    {row.trackName ?? 'All tracks'}
+                    {row.recused > 0 && ` · ${row.recused} recused`}
+                  </div>
                 </div>
                 <span className="chq-review-plan-meta">
                   {row.completed} of {row.assigned}

@@ -20,6 +20,7 @@ import {
   assignedExcludingRecused,
   sortResultsRows,
   selectRemindTargets,
+  resolveReviewerScopeTrackId,
 } from "../../domain/evaluation";
 import { toCsv } from "../../lib/csv";
 import { clampPage, clampPerPage, listPerPage } from "../../lib/pagination";
@@ -81,6 +82,23 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, as
   // reviewer set, never a query per row.
   const nameByUserId = await repo.batchUserDisplayNames(c.var.db, users.map((u) => u.userId));
 
+  // w5-f/DEC-845 (reuse): the mock's reviewer-progress row carries this
+  // reviewer's OWN track scope (e.g. "AI Engineering"), not the plan-wide
+  // filter -- resolved from the reviewerRows already loaded above (grouped
+  // per user), never a query per reviewer.
+  const reviewerRowsByUser = new Map<string, { trackId: string | null; submissionId: string | null }[]>();
+  for (const r of reviewerRows) {
+    const list = reviewerRowsByUser.get(r.userId) ?? [];
+    list.push({ trackId: r.trackId, submissionId: r.submissionId });
+    reviewerRowsByUser.set(r.userId, list);
+  }
+  const scopeTrackIdByUser = new Map<string, string | null>();
+  for (const userId of userIds) {
+    scopeTrackIdByUser.set(userId, resolveReviewerScopeTrackId(reviewerRowsByUser.get(userId) ?? []));
+  }
+  const scopeTrackIds = [...new Set([...scopeTrackIdByUser.values()].filter((id): id is string => id !== null))];
+  const trackNameById = await repo.getTrackNamesByIds(c.var.db, scopeTrackIds);
+
   const items = users.map((user) => {
     const assigned = assignedExcludingRecused(assignments.get(user.userId) ?? [], recusedByUser.get(user.userId) ?? new Set());
     // DEC-707 (wave-3 amendment): `completed` is a SUBSET of `assigned` --
@@ -93,6 +111,7 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, as
     for (const submissionId of evaluated) {
       if (assignedIds.has(submissionId)) completed += 1;
     }
+    const scopeTrackId = scopeTrackIdByUser.get(user.userId) ?? null;
     return {
       userId: user.userId,
       email: user.email,
@@ -100,6 +119,9 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, as
       assigned: assigned.length,
       completed,
       recused: recusedByUser.get(user.userId)?.size ?? 0,
+      // w5-f: null (no single-track scope) reads as "All tracks" in the SPA
+      // -- the same rule getReviewerScopeTrackId's callers already use.
+      trackName: scopeTrackId ? (trackNameById.get(scopeTrackId) ?? null) : null,
     };
   });
   // DEC-466/DEC-461(e): blessed JS-slice -- `items` is assembled from

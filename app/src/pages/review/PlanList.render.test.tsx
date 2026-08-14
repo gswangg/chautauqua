@@ -37,10 +37,10 @@ function plan() {
 }
 
 const PROGRESS_ROWS: ProgressRow[] = [
-  { userId: 'u-1', email: 'started@example.com', name: null, assigned: 4, completed: 2, recused: 0 },
-  { userId: 'u-2', email: 'fresh1@example.com', name: null, assigned: 4, completed: 0, recused: 0 },
-  { userId: 'u-3', email: 'fresh2@example.com', name: null, assigned: 4, completed: 0, recused: 0 },
-  { userId: 'u-4', email: 'done@example.com', name: null, assigned: 4, completed: 4, recused: 0 },
+  { userId: 'u-1', email: 'started@example.com', name: null, assigned: 4, completed: 2, recused: 0, trackName: null },
+  { userId: 'u-2', email: 'fresh1@example.com', name: null, assigned: 4, completed: 0, recused: 0, trackName: null },
+  { userId: 'u-3', email: 'fresh2@example.com', name: null, assigned: 4, completed: 0, recused: 0, trackName: null },
+  { userId: 'u-4', email: 'done@example.com', name: null, assigned: 4, completed: 4, recused: 0, trackName: null },
 ];
 
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;

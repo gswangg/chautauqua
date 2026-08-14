@@ -124,13 +124,17 @@ async function buildReviewApp() {
 }
 
 describe("DEC-239: plan progress/results wire shapes", () => {
-  it("GET /api/v1/plans/:id/progress items match ProgressRow {userId,email,name,assigned,completed,recused}", async () => {
+  it("GET /api/v1/plans/:id/progress items match ProgressRow {userId,email,name,assigned,completed,recused,trackName}", async () => {
     const app = await buildReviewApp();
     const res = await app.request(`/api/v1/plans/${PLAN.id}/progress`);
     expect(res.status).toBe(200);
     const body = (await res.json()) as { items: Record<string, unknown>[] };
     expect(body.items.length).toBeGreaterThan(0);
-    expect(keysOf(first(body.items))).toEqual(["assigned", "completed", "email", "name", "recused", "userId"]);
+    // w5-f: trackName -- this reviewer's own track scope, resolved from
+    // their plan_reviewer rows (DEC-845 reuse) -- rides the envelope so the
+    // reviewer-progress row can carry the plan's track subtitle without a
+    // second fetch.
+    expect(keysOf(first(body.items))).toEqual(["assigned", "completed", "email", "name", "recused", "trackName", "userId"]);
   });
 
   it("GET /api/v1/plans/:id/results items match ResultsRow incl perCriterion/perDropdown", async () => {

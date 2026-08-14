@@ -119,6 +119,11 @@ export interface ProgressRow {
   assigned: number;
   completed: number;
   recused: number;
+  // w5-f/DEC-845 (reuse): this reviewer's own track scope ("AI Engineering"),
+  // resolved server-side from their plan_reviewer rows -- null reads as "All
+  // tracks" (the mock's reviewer-progress row subtitle, never the plan-wide
+  // filters.trackIds).
+  trackName: string | null;
 }
 
 // GET /api/v1/plans/:id/results item.

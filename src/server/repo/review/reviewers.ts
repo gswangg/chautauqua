@@ -7,6 +7,7 @@ import * as schema from "../../../db/schema";
 import { formatRef, newId } from "../../../domain/ids";
 import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
 import { ApiError } from "../../http";
+import { resolveReviewerScopeTrackId } from "../../../domain/evaluation";
 
 // DEC-439 amendment (wave 62): the ceiling every unbounded plan_reviewer read
 // in this module refuses past -- mirrors MAX_PLAN_SUBMISSION_SCAN
@@ -174,12 +175,7 @@ export async function getReviewerScopeTrackId(db: Db, planId: string, userId: st
       `This reviewer's scope would scan more than ${MAX_REVIEWER_SCOPE_ROWS} plan_reviewer rows -- narrow the reviewer's assignment scope first`,
     );
   }
-  if (rows.length === 0) return null;
-  const unrestricted = rows.some((r) => r.trackId === null && r.submissionId === null);
-  if (unrestricted) return null;
-  const trackIds = [...new Set(rows.filter((r) => r.trackId !== null).map((r) => r.trackId as string))];
-  if (trackIds.length !== 1) return null;
-  return trackIds[0] ?? null;
+  return resolveReviewerScopeTrackId(rows);
 }
 
 export async function listPlanIdsForReviewer(db: Db, userId: string): Promise<string[]> {

@@ -669,6 +669,24 @@ export function reviewerProgressState({
   return "in_progress";
 }
 
+/** DEC-845/w5-f: a reviewer's own track scope, resolved from THEIR
+ * plan_reviewer scope rows for one plan -- the same pure fold
+ * getReviewerScopeTrackId (server/repo/review/reviewers.ts) wraps with a
+ * DB read, factored out so the progress endpoint can resolve it for every
+ * reviewer from rows it already has in memory (no query per reviewer). A
+ * row with both trackId and submissionId null means "no track restriction"
+ * (null result); more than one distinct trackId across the reviewer's rows
+ * is not a single scope either (null result) -- only a reviewer whose scope
+ * rows agree on exactly one track resolves to that track's id. */
+export function resolveReviewerScopeTrackId(rows: { trackId: string | null; submissionId: string | null }[]): string | null {
+  if (rows.length === 0) return null;
+  const unrestricted = rows.some((r) => r.trackId === null && r.submissionId === null);
+  if (unrestricted) return null;
+  const trackIds = [...new Set(rows.filter((r) => r.trackId !== null).map((r) => r.trackId as string))];
+  if (trackIds.length !== 1) return null;
+  return trackIds[0] ?? null;
+}
+
 export interface RemindTargetRow {
   userId: string;
   assigned: number;
