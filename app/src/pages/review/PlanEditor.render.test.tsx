@@ -1864,3 +1864,64 @@ describe('criterion-row weight cell and add-criteria alignment', () => {
     expect(rule).toContain('align-items: baseline');
   });
 });
+
+// DEC-124 amendment (w30-d): the plan editor's rejected-save error shape --
+// summary at the top, one anchor per problem, the empty-criteria collection
+// card offering the way out (docs/design/Chautauqua Review.dc.html:788-831).
+describe('rejected save (DEC-124 amendment)', () => {
+  it('renders the two-problem summary with working anchors, and "Add the three defaults" clears the empty-criteria card', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: { ...plan(), name: '', criteria: [] },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const saveButton = await screen.findByRole('button', { name: 'Save' });
+
+    // No summary before a save attempt -- a blank new-ish plan isn't
+    // scolded on load.
+    expect(screen.queryByText(/things need fixing/)).not.toBeInTheDocument();
+
+    fireEvent.click(saveButton);
+
+    expect(await screen.findByText('Two things need fixing before this plan can open')).toBeInTheDocument();
+    expect(
+      screen.getByText('A plan with no criteria has nothing for reviewers to score, and the window has to run forwards.'),
+    ).toBeInTheDocument();
+
+    const summaryHeading = screen.getByText('Two things need fixing before this plan can open');
+    const summary = summaryHeading.closest('.chq-error-summary') as HTMLElement;
+    expect(summary).not.toBeNull();
+    const links = within(summary).getAllByRole('link');
+    expect(links).toHaveLength(2);
+    expect(links.map((l) => l.getAttribute('href'))).toEqual(['#plan-name', '#plan-criteria-section']);
+    expect(document.getElementById('plan-name')).not.toBeNull();
+    expect(document.getElementById('plan-criteria-section')).not.toBeNull();
+
+    // The empty-collection card, not a bare field-error string.
+    expect(screen.getByText('No criteria yet')).toBeInTheDocument();
+    expect(
+      screen.getByText('Reviewers need at least one thing to score. Add your own, or start from the three defaults.'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('You can save this as a draft plan and open it later')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add the three defaults' }));
+
+    expect(screen.getAllByPlaceholderText('Label').map((el) => (el as HTMLInputElement).value)).toEqual([
+      'Relevance',
+      'Depth',
+      'Speaker readiness',
+    ]);
+    expect(screen.queryByText('No criteria yet')).not.toBeInTheDocument();
+  });
+});

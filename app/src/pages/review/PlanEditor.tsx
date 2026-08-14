@@ -8,6 +8,7 @@ import { copyText } from '../../lib/clipboard';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DateField } from '../../components/DateField';
 import { PageSkeleton } from '../../components/PageSkeleton';
+import { countHeading, ErrorSummary } from '../../components/ErrorSummary';
 import { addCriterion, removeCriterion, updateCriterion, validateCriteriaList, validatePlanDraft } from './planForm';
 // DEC-708: the same name-or-email resolver ProgressPanel uses -- a plan
 // reviewer row names a person by their resolved contact, never a
@@ -62,6 +63,36 @@ const MAX_CRITERIA = 7;
 
 function defaultDraftCriteria(): EvaluationCriterion[] {
   return DEFAULT_PLAN_CRITERIA.map((c) => ({ ...c }));
+}
+
+// DEC-124 amendment: maps a validatePlanDraft error key to the offending
+// field's own element id and a short label, for the top-of-form
+// ErrorSummary's one-anchor-per-problem list (rule 1). Per-criterion keys
+// (criterion.<id>.<field>) point at that row's own input, which carries a
+// matching id below.
+function fieldAnchor(key: string): { anchorId: string; label: string } {
+  switch (key) {
+    case 'name':
+      return { anchorId: 'plan-name', label: 'Name' };
+    case 'closeAt':
+      return { anchorId: 'plan-close-at', label: 'Closes' };
+    case 'scale':
+      return { anchorId: 'plan-scale-min', label: 'Rating scale' };
+    case 'maxEvaluationsPerSubmission':
+      return { anchorId: 'plan-max-evaluations', label: 'Reviews per talk' };
+    case 'criteria':
+      return { anchorId: 'plan-criteria-section', label: 'Scoring criteria' };
+    default: {
+      const criterionMatch = /^criterion\.(.+)\.(label|weight|options)$/.exec(key);
+      if (criterionMatch) {
+        const [, criterionId, field] = criterionMatch;
+        return { anchorId: `criterion-${criterionId}-${field}`, label: 'Scoring criteria' };
+      }
+      // 'rounds' has no dedicated UI field yet -- anchor to the title so
+      // the link still lands somewhere on the page rather than 404ing.
+      return { anchorId: 'plan-name', label: key };
+    }
+  }
 }
 
 // DEC-715: the ONE reorder write path for the criteria list -- both the
@@ -173,7 +204,11 @@ export function PlanEditor() {
   const [saving, setSaving] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [dateFieldError, setDateFieldError] = useState<string | null>(null);
+  // DEC-124 amendment: tracks whether a Save/Create click has been made at
+  // least once with the current errors still outstanding, so the top-of-
+  // form ErrorSummary only appears on a rejected save attempt, not while
+  // the organiser is still filling in a brand-new plan.
+  const [saveAttempted, setSaveAttempted] = useState(false);
   // DEC-745: the plan NAME is the page title now, an <input> rather than a
   // labelled field row. A brand-new plan starts blank, so its "required"
   // error must stay silent until the field has actually been touched --
@@ -302,24 +337,17 @@ export function PlanEditor() {
   const planIsOpen = !isNew && isPlanOpenNow(draft.openAt, draft.closeAt, Date.now());
   const { completed: reviewsCompleted, assigned: reviewsAssigned } = progressTotals(progressRows);
 
+  // DateField only ever calls onChange with '' or an already-parsed
+  // yyyy-mm-dd wire string (see DateField.tsx's handleBlur) -- an
+  // unparseable value never reaches here, so dateInputToMs is never
+  // expected to throw. No try/catch: fail loudly if that contract breaks
+  // rather than swallow it behind a dead error state (w30-d finding).
   function setOpenAt(value: string) {
-    try {
-      const ms = dateInputToMs(value);
-      setDateFieldError(null);
-      setDraft((d) => ({ ...d, openAt: ms }));
-    } catch {
-      setDateFieldError('Enter a valid open date.');
-    }
+    setDraft((d) => ({ ...d, openAt: dateInputToMs(value) }));
   }
 
   function setCloseAt(value: string) {
-    try {
-      const ms = dateInputToMs(value);
-      setDateFieldError(null);
-      setDraft((d) => ({ ...d, closeAt: ms }));
-    } catch {
-      setDateFieldError('Enter a valid close date.');
-    }
+    setDraft((d) => ({ ...d, closeAt: dateInputToMs(value) }));
   }
 
   useEffect(() => {
@@ -466,6 +494,7 @@ export function PlanEditor() {
     // the title input itself was never blurred.
     setNameTouched(true);
     if (Object.keys(errors).length > 0) {
+      setSaveAttempted(true);
       setError('Fix the highlighted fields before saving.');
       return;
     }
@@ -942,6 +971,7 @@ export function PlanEditor() {
             &lsaquo; Review
           </Link>
           <input
+            id="plan-name"
             className="chq-review-editor-title-input"
             aria-label="Plan name"
             placeholder="New evaluation plan"
@@ -992,14 +1022,16 @@ export function PlanEditor() {
           )}
         </div>
       </div>
+      {saveAttempted && Object.keys(errors).length > 0 && (
+        <ErrorSummary
+          heading={countHeading(Object.keys(errors).length, 'before this plan can open')}
+          kept="A plan with no criteria has nothing for reviewers to score, and the window has to run forwards."
+          problems={Object.keys(errors).map((key) => fieldAnchor(key))}
+        />
+      )}
       {error && (
         <div className="chq-error" role="alert">
           {error}
-        </div>
-      )}
-      {dateFieldError && (
-        <div className="chq-error" role="alert">
-          {dateFieldError}
         </div>
       )}
 
@@ -1026,10 +1058,12 @@ export function PlanEditor() {
               value={msToDateInput(draft.closeAt)}
               onChange={setCloseAt}
             />
+            {errors.closeAt && <span className="chq-review-field-error">{errors.closeAt}</span>}
           </label>
           <label className="chq-review-field">
             Reviews per talk
             <input
+              id="plan-max-evaluations"
               type="number"
               className="chq-input"
               min={1}
@@ -1049,6 +1083,7 @@ export function PlanEditor() {
             Rating scale
             <div className="chq-review-scale-inputs">
               <input
+                id="plan-scale-min"
                 type="number"
                 className="chq-input"
                 aria-label="Scale min"
@@ -1098,7 +1133,7 @@ export function PlanEditor() {
         </div>
 
         <section className="chq-section">
-          <div className="chq-section-head">
+          <div className="chq-section-head" id="plan-criteria-section">
             <h2 className="chq-section-label">Scoring criteria</h2>
             {/* w41-f/DEC-882 amendment: a locked round names its constraint
                 right in the section rule, not just below the rows -- the
@@ -1165,7 +1200,34 @@ export function PlanEditor() {
           )}
 
           {(activeRound === 0 ? errors.criteria : criteriaErrors.criteria) && (
-            <span className="chq-review-field-error">{activeRound === 0 ? errors.criteria : criteriaErrors.criteria}</span>
+            // DEC-124 amendment: an empty criteria list is an empty-
+            // collection state, not a bare field-error string -- 'No
+            // criteria yet' with a way out (the three defaults, or add
+            // one by hand), never just 'At least one criterion is
+            // required.'
+            <div className="chq-review-criteria-empty-notice">
+              <p className="chq-review-criteria-locked-headline">No criteria yet</p>
+              <p className="chq-review-criteria-locked-reason">
+                Reviewers need at least one thing to score. Add your own, or start from the three defaults.
+              </p>
+              <div className="chq-review-criteria-empty-actions">
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-primary"
+                  onClick={() => setEditingCriteria(defaultDraftCriteria())}
+                >
+                  Add the three defaults
+                </button>
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-tertiary"
+                  onClick={() => setPickingKind(true)}
+                >
+                  Add one of my own
+                </button>
+              </div>
+              <p className="chq-review-criteria-empty-footer">You can save this as a draft plan and open it later</p>
+            </div>
           )}
           {/* DEC-882: the criteria list names its columns, in the
               section-label type this page already uses, aligned to the
@@ -1280,6 +1342,7 @@ export function PlanEditor() {
                       ⋮⋮
                     </button>
                     <input
+                      id={`criterion-${criterion.id}-label`}
                       className="chq-input"
                       placeholder="Label"
                       aria-label="Criterion label"
@@ -1301,6 +1364,7 @@ export function PlanEditor() {
                     {criterion.kind === 'rating' ? (
                       <span className="chq-review-criterion-weight">
                         <input
+                          id={`criterion-${criterion.id}-weight`}
                           type="number"
                           className="chq-input"
                           min={0}
@@ -1322,6 +1386,7 @@ export function PlanEditor() {
                       </span>
                     ) : criterion.kind === 'dropdown' ? (
                       <input
+                        id={`criterion-${criterion.id}-options`}
                         className="chq-input"
                         placeholder="Options (comma-separated)"
                         aria-label={`${criterion.label || 'criterion'} options`}

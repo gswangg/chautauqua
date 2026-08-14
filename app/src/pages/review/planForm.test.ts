@@ -139,6 +139,34 @@ describe('validateCriteriaList (DEC-147/DEC-148, used for round overrides)', () 
   });
 });
 
+// DEC-124 amendment: the client mirrors the server's DEC-509 checkEpochOrder
+// (src/routes/review/shared.ts) so the SPA never posts a shape the server
+// will reject.
+describe('validatePlanDraft cross-field date rule (DEC-124 amendment)', () => {
+  const validCriteria: EvaluationCriterion[] = [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }];
+
+  it('allows equal open/close dates', () => {
+    const openAt = Date.UTC(2027, 8, 2);
+    const errors = validatePlanDraft(draft({ name: 'Plan', criteria: validCriteria, openAt, closeAt: openAt }));
+    expect(errors.closeAt).toBeUndefined();
+  });
+
+  it('flags a close date before the open date, naming the open date', () => {
+    const openAt = Date.UTC(2027, 8, 2); // 2 Sep 2027
+    const closeAt = Date.UTC(2027, 7, 20); // 20 Aug 2027
+    const errors = validatePlanDraft(draft({ name: 'Plan', criteria: validCriteria, openAt, closeAt }));
+    expect(errors.closeAt).toBe('This is before the plan opens. Pick a date after 2 Sep 2027.');
+  });
+
+  it('does not fire when either side is unset', () => {
+    const openAt = Date.UTC(2027, 8, 2);
+    expect(validatePlanDraft(draft({ name: 'Plan', criteria: validCriteria, openAt, closeAt: null })).closeAt).toBeUndefined();
+    expect(
+      validatePlanDraft(draft({ name: 'Plan', criteria: validCriteria, openAt: null, closeAt: Date.UTC(2020, 0, 1) })).closeAt,
+    ).toBeUndefined();
+  });
+});
+
 describe('totalRatingWeight', () => {
   it('sums only rating-criterion weights, ignoring dropdown criteria', () => {
     const criteria: EvaluationCriterion[] = [

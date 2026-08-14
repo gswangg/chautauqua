@@ -2,6 +2,7 @@
 // (DEC-018: 'rating' requires weight > 0 and numeric scores within
 // scale_json {min,max}; 'dropdown' requires options: string[]).
 import type { CriterionKind, EvaluationCriterion, PlanDraft } from './types';
+import { formatDayInput, msToDateInput } from '../../lib/dates';
 
 let criterionCounter = 0;
 
@@ -60,6 +61,19 @@ export function validatePlanDraft(draft: PlanDraft): PlanValidationErrors {
   ) {
     errors.maxEvaluationsPerSubmission = 'Max evaluations must be at least 1, if set.';
   }
+  // DEC-124 amendment: mirrors the server's DEC-509 checkEpochOrder
+  // (src/routes/review/shared.ts:216-225) client-side so the SPA never
+  // posts a shape the server will reject. Only fires when BOTH sides are
+  // set -- an absent bound means "unset", not a violation.
+  if (
+    draft.openAt !== null &&
+    draft.closeAt !== null &&
+    draft.closeAt < draft.openAt
+  ) {
+    const opens = formatDayInput(msToDateInput(draft.openAt));
+    errors.closeAt = `This is before the plan opens. Pick a date after ${opens}.`;
+  }
+
   Object.assign(errors, validateCriteriaList(draft.criteria));
 
   return errors;
