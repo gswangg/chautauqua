@@ -134,13 +134,20 @@ function buildApp() {
 }
 
 describe("DEC-672: /embed session/speaker detail routes", () => {
-  it("GET /embed/:eventSlug/sessions/:sessionId is 200 rendered inside EmbedShell (no chq-nav)", async () => {
+  it("GET /embed/:eventSlug/sessions/:sessionId is 200 rendered inside EmbedShell (no chq-nav), time line has no AM/PM, speaker line has no parenthesized title/company (DEC-768/DEC-968)", async () => {
     const app = buildApp();
     const res = await app.request(`/embed/${EVENT.slug}/sessions/${SESSION.id}`);
     expect(res.status).toBe(200);
     const body = await res.text();
     expect(body).not.toContain('<nav class="chq-nav"');
     expect(body).toContain(SESSION.title);
+    const timeLine = body.match(/<p>[^<]*Room A<\/p>/)?.[0];
+    expect(timeLine).toBeDefined();
+    expect(timeLine).not.toMatch(/AM|PM/);
+    const speakerLine = body.match(/<p><a href="\/embed\/conf\/speakers\/[^"]*"[^>]*>[^<]*<\/a><\/p>/)?.[0];
+    expect(speakerLine).toBeDefined();
+    expect(speakerLine).toContain(SESSION.speakers[0]!.firstName);
+    expect(speakerLine).not.toContain("(");
   });
 
   it("GET /embed/:eventSlug/sessions/:sessionId Back link href starts with /embed/", async () => {
