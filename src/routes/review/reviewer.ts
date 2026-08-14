@@ -24,7 +24,7 @@ import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import type { PlanRecord } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
-import { DEC_239, DEC_460, DEC_461, DEC_466, DEC_831, DEC_857 } from "../../decisions";
+import { DEC_239, DEC_460, DEC_461, DEC_466, DEC_831, DEC_857, DEC_873 } from "../../decisions";
 import { currentAuth, requireReviewerOrOrganizer, requireAssignedPlan } from "./shared";
 import { lockedFieldName } from "../../forms/types";
 
@@ -35,6 +35,7 @@ void DEC_461; // optional repo page param + sibling count fn + deterministic ORD
 void DEC_466; // /review/plans/:id/queue bounded below via the blessed JS-slice (DEC-461(e))
 void DEC_831; // queue items carry myScore (this reviewer's own blended score) below
 void DEC_857; // queue items carry format (session-shape fact, never stripped for anonymized plans) below
+void DEC_873; // PUT evaluations: draft flag skips the completeness check and never stamps submittedAt, below
 
 reviewReviewerRoutes.get("/api/v1/review/plans", async (c) => {
   requireReviewerOrOrganizer(c);
@@ -334,9 +335,19 @@ reviewReviewerRoutes.put("/api/v1/review/plans/:planId/evaluations/:submissionId
   if (typeof scores !== "object" || scores === null) {
     throw new ApiError("invalid", "scores is required", { scores: "required" });
   }
+  // DEC-873 (wave 27 amendment): draft defaults false -- absent means
+  // today's full-submit behaviour, unchanged.
+  const draft = body.draft === true;
 
   const round = plan.currentRound;
   const existing = await repo.getEvaluation(c.var.db, plan.id, submissionId, auth.userId, round);
+
+  // DEC-873 (wave 27 amendment): a draft PUT against a row that is already
+  // submitted is a loud 400 -- never a silent un-submit.
+  if (draft && existing && existing.submittedAt !== null) {
+    throw new ApiError("invalid", "This evaluation has been submitted");
+  }
+
   if (!existing) {
     const ratingsCount = await repo.countEvaluationsForSubmission(c.var.db, plan.id, submissionId, round);
     if (!needsMoreRatings({ ratingsCount }, plan.maxEvaluations ?? undefined)) {
@@ -346,8 +357,13 @@ reviewReviewerRoutes.put("/api/v1/review/plans/:planId/evaluations/:submissionId
 
   // DEC-147: validate against THIS round's resolved criteria, not the base
   // plan.criteria -- a round override changes what's a valid submission.
+  // DEC-873 (wave 27 amendment): a draft skips the completeness check
+  // (missing criteria are allowed) but every PRESENT value is still
+  // validated exactly as a full submit would.
   const roundCriteria = criteriaForRound(plan.criteria, roundCriteriaJsonOf(plan), round);
-  const result = validateEvaluationScores(scores as Record<string, unknown>, roundCriteria, plan.scale);
+  const result = validateEvaluationScores(scores as Record<string, unknown>, roundCriteria, plan.scale, {
+    partial: draft,
+  });
   if (!result.ok) {
     throw new ApiError("invalid", "Invalid scores", result.errors);
   }
@@ -364,6 +380,7 @@ reviewReviewerRoutes.put("/api/v1/review/plans/:planId/evaluations/:submissionId
     round,
     scores: scores as Record<string, number | string>,
     comment: typeof body.comment === "string" ? body.comment : null,
+    draft,
   });
   return c.json(saved);
 });

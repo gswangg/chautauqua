@@ -204,18 +204,27 @@ export type EvaluationErrors = Record<string, string>;
  * criterion ids in `scores` are also rejected. Returns `{ ok: true }` or
  * `{ ok: false, errors }` keyed by criterion id -- never throws, since this
  * validates untrusted reviewer input at the route boundary.
+ *
+ * DEC-873 (wave 27 amendment): pass `{ partial: true }` for a draft save --
+ * a criterion with no entry in `scores` is skipped rather than erroring
+ * ("no completeness check"), but any criterion that IS present in `scores`
+ * is still validated by kind/range/options exactly as a full submit would,
+ * so a draft can never persist a malformed value.
  */
 export function validateEvaluationScores(
   scores: Record<string, unknown>,
   criteria: EvaluationCriterionDef[],
   scale: { min: number; max: number },
+  opts?: { partial?: boolean },
 ): { ok: true } | { ok: false; errors: EvaluationErrors } {
   const errors: EvaluationErrors = {};
   const criterionIds = new Set(criteria.map((c) => c.id));
+  const partial = opts?.partial === true;
 
   for (const criterion of criteria) {
     const value = scores[criterion.id];
     if (value === undefined || value === null) {
+      if (partial) continue;
       errors[criterion.id] = "score is required";
       continue;
     }

@@ -188,22 +188,17 @@ export function Scorecard() {
     }
   }
 
-  // DEC-873: "Save" PUTs the identical body as Submit but stays on the
-  // page -- the frame calls this "Save draft", but there is no draft state
-  // to save (a genuinely half-saved evaluation is a cross-cutting schema
-  // change, not a button); this writes the same complete evaluation Submit
-  // would, and simply doesn't advance the reviewer to the next submission.
+  // DEC-873 (wave 27 amendment): "Save draft" PUTs a draft evaluation --
+  // scores may be partial (no completeness check, no `attempted` gate) and
+  // the server never stamps submittedAt for it. Submit and next keeps its
+  // full validation unchanged.
   async function saveOnly() {
     if (!planId || !submissionId || !plan) return;
-    setAttempted(true);
-    if (!isEvaluationComplete(criteria, scores)) {
-      return;
-    }
     setSaving(true);
     setError(null);
     setSaved(false);
     try {
-      await apiPut(`/review/plans/${planId}/evaluations/${submissionId}`, { scores, comment });
+      await apiPut(`/review/plans/${planId}/evaluations/${submissionId}`, { scores, comment, draft: true });
       setSaved(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to save evaluation');
@@ -615,11 +610,15 @@ export function Scorecard() {
               Submit and next
             </button>
             <button type="button" className="chq-btn chq-btn-secondary" disabled={saving || !!recusal} onClick={() => void saveOnly()}>
-              Save
+              Save draft
             </button>
+            {/* DEC-873 (wave 27 amendment): a draft accepts partial scores --
+                the caption sits beside the control that skips the checks, not
+                a tooltip or a disabled-state guess. */}
+            <span className="chq-review-draft-caption">Saving a draft skips these checks</span>
             {saved && (
               <span className="chq-review-saved-confirmation" role="status">
-                Saved
+                Saved as a draft
               </span>
             )}
           </div>

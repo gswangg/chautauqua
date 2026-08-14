@@ -25,6 +25,9 @@ export interface EvaluationRecord {
   round: number;
   scores: Record<string, number | string>;
   comment: string | null;
+  // DEC-873 (wave 27 amendment): null means this row is a draft -- only the
+  // write stamps it, every read side treats null as "not yet submitted".
+  submittedAt: number | null;
 }
 
 function toEvaluationRecord(row: typeof schema.evaluation.$inferSelect): EvaluationRecord {
@@ -36,6 +39,7 @@ function toEvaluationRecord(row: typeof schema.evaluation.$inferSelect): Evaluat
     round: row.round,
     scores: JSON.parse(row.scoresJson) as Record<string, number | string>,
     comment: row.comment,
+    submittedAt: row.submittedAt ? row.submittedAt.getTime() : null,
   };
 }
 
@@ -57,7 +61,16 @@ export async function listEvaluationScoresForPlan(
       scoresJson: schema.evaluation.scoresJson,
     })
     .from(schema.evaluation)
-    .where(and(eq(schema.evaluation.planId, planId), eq(schema.evaluation.round, round)))
+    .where(
+      and(
+        eq(schema.evaluation.planId, planId),
+        eq(schema.evaluation.round, round),
+        // DEC-873 (wave 27 amendment): a draft (submittedAt null) never
+        // enters the results/weighted-mean computation -- only a submitted
+        // evaluation was actually recorded.
+        sql`${schema.evaluation.submittedAt} is not null`,
+      ),
+    )
     .orderBy(asc(schema.evaluation.submissionId), asc(schema.evaluation.id))
     .limit(MAX_PLAN_EVALUATION_SCAN + 1);
   if (rows.length > MAX_PLAN_EVALUATION_SCAN) {
@@ -209,7 +222,16 @@ export async function listEvaluatedPairsForPlan(
   return db
     .select({ reviewerId: schema.evaluation.reviewerId, submissionId: schema.evaluation.submissionId })
     .from(schema.evaluation)
-    .where(and(eq(schema.evaluation.planId, planId), eq(schema.evaluation.round, round)));
+    .where(
+      and(
+        eq(schema.evaluation.planId, planId),
+        eq(schema.evaluation.round, round),
+        // DEC-873 (wave 27 amendment): a draft never counts toward
+        // progress's `completed` -- only a submitted evaluation is a
+        // recorded pair.
+        sql`${schema.evaluation.submittedAt} is not null`,
+      ),
+    );
 }
 
 export interface SubmissionEvaluationRow {
@@ -312,7 +334,13 @@ export async function listPlanCriteriaByIds(db: Db, planIds: string[]): Promise<
 }
 
 /** Upserts a reviewer's evaluation for a submission+round (unique per
- * plan+submission+reviewer+round, per DEC-018). */
+ * plan+submission+reviewer+round, per DEC-018). DEC-873 (wave 27
+ * amendment): `draft` (default false) decides whether this write stamps
+ * submittedAt or clears it -- a draft row's submittedAt is always null, a
+ * non-draft row's is always the write's own timestamp. Callers must have
+ * already refused a draft write against a row that is already submitted
+ * (see the route) -- this function itself trusts its caller and always
+ * writes what it's given. */
 export async function upsertEvaluation(
   db: Db,
   input: {
@@ -322,9 +350,11 @@ export async function upsertEvaluation(
     round: number;
     scores: Record<string, number | string>;
     comment?: string | null;
+    draft?: boolean;
   },
 ): Promise<EvaluationRecord> {
   const now = new Date();
+  const submittedAt = input.draft ? null : now;
   // DEC-552: one atomic statement -- no read-then-write over the
   // evaluation_plan_submission_reviewer_round_idx uniqueIndex.
   await db
@@ -337,7 +367,7 @@ export async function upsertEvaluation(
       round: input.round,
       scoresJson: JSON.stringify(input.scores),
       comment: input.comment ?? null,
-      submittedAt: now,
+      submittedAt,
       createdAt: now,
       updatedAt: now,
     })
@@ -351,7 +381,7 @@ export async function upsertEvaluation(
       set: {
         scoresJson: JSON.stringify(input.scores),
         comment: input.comment ?? null,
-        submittedAt: now,
+        submittedAt,
         updatedAt: now,
       },
     });
