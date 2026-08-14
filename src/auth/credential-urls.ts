@@ -1,7 +1,7 @@
 // DEC-949 (wave 34 amendment): a mint (createClaimToken / createResetToken)
 // produces a live, single-use account-takeover credential embedded in a URL.
 // Every path segment that fronts a freshly minted token must be listed here
-// so the organizer-readable audit view (src/routes/comms.ts send-detail)
+// so the organizer-readable audit view (src/routes/comms/email-log.ts send-detail)
 // never renders it verbatim. Pure — no KV, no node:/cloudflare imports
 // (DEC-002) — so this is fully vitest-testable in isolation.
 //

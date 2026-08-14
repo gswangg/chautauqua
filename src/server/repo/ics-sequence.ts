@@ -49,7 +49,7 @@ export async function bumpIcsSequencesForRoom(db: Db, roomId: string): Promise<v
 /** DEC-519 (wave-11 amendment): an event timezone change reaches every
  * scheduled submission's VEVENT, since DTSTART/DTEND are computed as
  * zonedMinutesToUtc(day, startMin, event.timezone) in BOTH readers
- * (src/routes/comms.ts:617-618 for METHOD:REQUEST invites and
+ * (src/routes/comms/send.ts for METHOD:REQUEST invites and
  * src/routes/public/feeds.ts:196-197 for the PUBLISH feed). Bumps all
  * submissions with a schedule_slot in this event in one atomic set-based
  * UPDATE ... WHERE id IN (SELECT submission_id FROM schedule_slot JOIN

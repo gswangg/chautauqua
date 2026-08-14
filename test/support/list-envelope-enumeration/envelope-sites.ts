@@ -36,7 +36,7 @@ export const ENVELOPE_ALLOWLIST = new Set<string>([
   // Shifted again (245 -> 247) by DEC-182's wave-32 fix, which made
   // validateBulkEmailRequest consume parseBoundedIdArray's deduped result.
   // The exceptions themselves are unchanged.
-  "src/routes/comms.ts:525",
+  "src/routes/comms/preview.ts:68",
   "src/routes/api/contacts/bulk-email.ts:247",
   // NOTE (DEC-840): GET .../assignments/distribute/preview used to be
   // allowlisted here (it was previously `c.json({ items, perReviewer,
@@ -53,6 +53,6 @@ export const ENVELOPE_ALLOWLIST = new Set<string>([
   // DEC-924: POST /plans/:id/reviewers's array form answers the set of rows
   // it just wrote (bounded by the request's own parseBoundedIdArray cap),
   // never a paginated read -- same shape-exception class as the compose
-  // preview above (comms.ts:525).
+  // preview above (comms/preview.ts:68).
   "src/routes/review/plans-reviewers.ts:111",
 ]);

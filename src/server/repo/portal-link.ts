@@ -1,5 +1,5 @@
 // DEC-559: the ONE shared portal-link resolver — moved verbatim out of
-// src/routes/comms.ts so J6 reminder sends (src/server/repo/tasks/
+// src/routes/comms/compose-core.ts so J6 reminder sends (src/server/repo/tasks/
 // reminders.ts) and comms compose sends resolve a recipient's portal link
 // through the same code path instead of two drifting copies.
 

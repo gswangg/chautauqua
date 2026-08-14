@@ -2,7 +2,7 @@
 // the EMAIL binding is fully configured. Previously makeMailer THREW at
 // construction time -- before any per-recipient try/catch could run -- so
 // every send path 500'd with no email_log row written at all (see
-// src/routes/comms.ts's per-recipient catch, which the old throw never
+// src/routes/comms/send.ts's per-recipient catch, which the old throw never
 // reached). UnconfiguredMailer instead behaves like every other Mailer: it
 // logs the attempt (provider 'none', status 'failed') exactly where
 // EmailBindingMailer logs, then throws, so callers' existing per-recipient catch
