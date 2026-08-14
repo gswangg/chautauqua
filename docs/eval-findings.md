@@ -164,8 +164,14 @@ CTE, and long HTML lines exceed the 998-char limit. Use quoted-printable (or min
 both parts.
 (d) **Fixed boundary "chq_mime_boundary"** — a body containing that literal shatters the
 structure. Random boundary per message (no Math.random in pure-core? derive from newId()).
-Architecture is NOT in question — keep the injected binding/factory, never-throwing makeMailer,
-and single-writer logging exactly as they are.
+**PREFERRED FIX (user-endorsed direction): do not hand-patch buildRawMime — replace it with
+`mimetext`** (the library Cloudflare's own send_email docs recommend for building EmailMessage
+raw content; small, zero-dep, workers-compatible). It solves (b)/(c)/(d) by construction and
+most of (a); keep a thin wrapper that strips CR/LF from header inputs, and keep the injected
+binding/factory, never-throwing makeMailer, and single-writer logging exactly as they are —
+the DEPENDENCY replaces only the serialization, not the adapter. Check bundle-check budget
+(mimetext is ~small); pin the structure with one test asserting multipart/mixed >
+[alternative(text,html), calendar] when ics is present.
 
 **STATUS (wave 57): REVERT LANDED (a9b85eb7) — with ONE open runtime question.** The swarm's
 implementation keeps the binding but sends `new EmailMessage(from, to, rawMime)` (documented
