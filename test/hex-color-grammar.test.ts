@@ -83,6 +83,19 @@ vi.mock("../src/server/repo/agenda", () => ({
   listSlotsOutsideWindow: vi.fn(async () => ({ count: 0, sessions: [] })),
 }));
 
+// DEC-844 amendment (wave 68): PATCH /api/v1/events also names the breaks a
+// narrowed window orphans; this suite's db mock has no select(), so stub the
+// breaks read the same way listSlotsOutsideWindow is stubbed above.
+vi.mock("../src/server/repo/breaks", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/breaks")>(
+    "../src/server/repo/breaks",
+  );
+  return {
+    ...actual,
+    listBreaksOutsideWindow: vi.fn(async () => ({ count: 0, breaks: [] })),
+  };
+});
+
 afterEach(() => {
   vi.clearAllMocks();
 });

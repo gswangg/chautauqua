@@ -88,17 +88,24 @@ function buildApp() {
       if (selectCall === 1) return makeChain([EVENT_ROW]);
       // 2: getPublicTracks (DEC-804 track-highlight <select>)
       if (selectCall === 2) return makeChain([]);
+      // DEC-768 (wave 67 amendment): /agenda is single-day by default, so the
+      // dispatch layer calls getPublicScheduleDayCounts BEFORE getPublicAgenda
+      // -- this harness is positional, so that extra call shifts every row
+      // shape after it by one (leave it out and the route 500s when the break
+      // read is handed session rows).
+      if (selectCall === 3) return makeChain([{ day: "2026-08-10", count: SLOT_ROWS.length }]);
+      const n = selectCall - 1;
       // 3: DEC-548 getPublicAgenda's total count(*) subquery
-      if (selectCall === 3) return makeChain([{ count: SLOT_ROWS.length }]);
+      if (n === 3) return makeChain([{ count: SLOT_ROWS.length }]);
       // 4: getPublicAgenda's room lookup
-      if (selectCall === 4) {
+      if (n === 4) {
         return makeChain([
           { id: "room1", name: "Main Hall", position: 1 },
           { id: "room2", name: "Overflow Room", position: 2 },
         ]);
       }
       // 5: hydrateSessions subRows
-      if (selectCall === 5) {
+      if (n === 5) {
         return makeChain([
           { id: "sub1", seq: 1, title: "Talk One", description: null, icsSequence: 0 },
           { id: "sub2", seq: 2, title: "Talk Two", description: null, icsSequence: 0 },
@@ -106,7 +113,7 @@ function buildApp() {
         ]);
       }
       // 6: hydrateSessions trackRows
-      if (selectCall === 6) return makeChain([]);
+      if (n === 6) return makeChain([]);
       // 7: hydrateSessions speakerRows
       // 8+: hydrateSessions slotRows/formatRows, getPublicBreaksByDay -- all empty.
       return makeChain([]);

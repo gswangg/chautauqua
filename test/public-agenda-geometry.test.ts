@@ -108,8 +108,18 @@ describe("DEC-602 (EMB-10 w1): 'Show only my picks' toggle scaffolding", () => {
     expect(html).toMatch(/id="chq-picks-empty"[^>]*hidden/);
   });
 
-  it("does not render the picks toggle on /agenda (AgendaContent has no itinerary flow)", () => {
+  it("does not render the picks-only filter control on /agenda (that toggle is /schedule's alone)", () => {
     const html = String(AgendaContent({ event: EVENT, items: ITEMS, total: ITEMS.length }));
-    expect(html).not.toContain("chq-picks-only");
+    // DEC-683 amendment (wave 67-d): AgendaContent now DOES emit
+    // ItineraryScript so its Save/Saved toggles actually persist, and that
+    // one shared script body mentions the picks-only ids it drives on
+    // /schedule (getElementById returns null here -- a no-op). So assert on
+    // the CONTROL's own markup, never a bare substring of the script.
+    // (Not the label's copy: ItineraryScript's inlined source carries that
+    // phrase in a source comment, so only the markup is a sound signal.)
+    expect(html).not.toContain('id="chq-picks-only"');
+    expect(html).not.toContain('id="chq-picks-only-count"');
+    expect(html).not.toContain("chq-pub-picks-toggle");
+    expect(html).not.toContain('id="chq-picks-empty"');
   });
 });

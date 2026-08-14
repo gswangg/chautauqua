@@ -68,6 +68,19 @@ vi.mock("../src/server/repo/agenda", async () => {
   };
 });
 
+vi.mock("../src/server/repo/breaks", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/breaks")>(
+    "../src/server/repo/breaks",
+  );
+  return {
+    ...actual,
+    // DEC-844 amendment (wave 68): the PATCH route now also names the breaks
+    // a narrowed window orphans, querying the real db alongside
+    // listSlotsOutsideWindow above. Same reason, same stub.
+    listBreaksOutsideWindow: vi.fn(async () => ({ count: 0, breaks: [] })),
+  };
+});
+
 vi.mock("../src/server/repo/forms", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/forms")>(
     "../src/server/repo/forms",
