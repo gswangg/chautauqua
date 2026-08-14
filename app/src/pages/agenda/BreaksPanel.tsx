@@ -8,12 +8,14 @@
 // HARD BOUNDARY (restated from src/server/repo/breaks.ts's header): a break
 // is not a submission. This file never touches the day grid's row-map/
 // placement arithmetic, the conflict engine, auto-schedule, the
-// unscheduled tray, or any export/.ics/feed path — it only lists, adds and
-// removes rows in the schedule_break table for the selected day. Rendering
-// breaks as spanning bands inside the day grid is deliberately out of
-// scope this wave.
-import { useEffect, useState } from 'react';
-import { apiDelete, apiGet, apiPost, ApiError } from '../../lib/api';
+// unscheduled tray, or any export/.ics/feed path — it only adds and
+// removes rows in the schedule_break table for the selected day (the
+// selected day's rows themselves are read once by the parent Agenda page —
+// see agenda/DayGrid.tsx, which renders those same rows as read-only bands
+// — and handed down here as props, so this panel and the grid beside it
+// never fall out of sync on an add/remove).
+import { useState } from 'react';
+import { apiDelete, apiPost, ApiError } from '../../lib/api';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { formatMinutes } from './gridMath';
 import { DEC_021 } from '../../../../src/decisions';
@@ -40,6 +42,13 @@ interface BreaksPanelProps {
    * only when their action is possible) the whole section renders nothing
    * rather than an empty/day-less list. */
   day: string | null;
+  /** The selected day's breaks, fetched once by the parent Agenda page and
+   * shared with DayGrid — this panel no longer fetches its own copy. */
+  breaks: ScheduleBreakRow[];
+  /** Called after a successful add/remove so the parent can refetch the one
+   * shared list (both this panel and DayGrid's bands pick up the change in
+   * the same tick). */
+  onChanged: () => void;
 }
 
 interface BreakFieldErrors {
@@ -71,9 +80,8 @@ const EMPTY_FORM = { label: '', location: '', startTime: '', durationMin: '' };
 
 /** Quiet Breaks section: list for the selected day, an inline add row, and
  * a tertiary Remove per row. No optimistic path (task scope) — every write
- * refetches the day's list from the server. */
-export function BreaksPanel({ eventId, day }: BreaksPanelProps) {
-  const [breaks, setBreaks] = useState<ScheduleBreakRow[]>([]);
+ * asks the parent (via onChanged) to refetch the day's shared list. */
+export function BreaksPanel({ eventId, day, breaks, onChanged }: BreaksPanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState<BreakFieldErrors>({});
@@ -83,18 +91,6 @@ export function BreaksPanel({ eventId, day }: BreaksPanelProps) {
   // path), so the Remove control opens the ONE shared ConfirmDialog rather
   // than firing the DELETE on click.
   const [pendingRemove, setPendingRemove] = useState<ScheduleBreakRow | null>(null);
-
-  function load() {
-    if (!eventId || !day) return;
-    apiGet<{ items: ScheduleBreakRow[] }>(`/events/${eventId}/breaks?day=${encodeURIComponent(day)}`)
-      .then((res) => setBreaks(res.items))
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load breaks'));
-  }
-
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventId, day]);
 
   async function handleAdd() {
     if (!eventId || !day) return;
@@ -110,7 +106,7 @@ export function BreaksPanel({ eventId, day }: BreaksPanelProps) {
         durationMin: form.durationMin.trim().length > 0 ? Number(form.durationMin) : NaN,
       });
       setForm(EMPTY_FORM);
-      load();
+      onChanged();
     } catch (err) {
       if (err instanceof ApiError && err.fields) {
         setFieldErrors(err.fields as BreakFieldErrors);
@@ -127,7 +123,7 @@ export function BreaksPanel({ eventId, day }: BreaksPanelProps) {
     setRemovingId(id);
     try {
       await apiDelete(`/breaks/${id}`);
-      load();
+      onChanged();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to remove break');
     } finally {

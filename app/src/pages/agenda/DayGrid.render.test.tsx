@@ -10,6 +10,8 @@ afterEach(cleanup);
 
 import { DayGrid } from './DayGrid';
 import type { AgendaConflict, AgendaRoom, AgendaTrack, PlacedAgendaSession } from './types';
+import type { ScheduleBreakRow } from './BreaksPanel';
+import { minutesToGridRow } from './gridMath';
 
 const ROOMS: AgendaRoom[] = [{ id: 'room-1', name: 'Room One' }];
 const TRACKS: AgendaTrack[] = [];
@@ -101,5 +103,52 @@ describe('DayGrid clash cards', () => {
     ];
     const { container } = render(<DayGrid {...BASE_PROPS} placed={placed} conflicts={conflicts} />);
     expect(container.querySelector('.chq-day-grid-clash-caption')?.textContent).toBe('Two sessions in one room');
+  });
+});
+
+function breakRow(overrides: Partial<ScheduleBreakRow> = {}): ScheduleBreakRow {
+  return {
+    id: 'brk-1',
+    eventId: 'evt-1',
+    day: '2026-08-13',
+    label: 'Lunch',
+    location: 'Foyer',
+    startMin: 720,
+    durationMin: 60,
+    createdAt: 1000,
+    updatedAt: 1000,
+    ...overrides,
+  };
+}
+
+describe('DayGrid breaks (DEC-021 amendment, w67-b)', () => {
+  it('renders a break band with its label text at the row its start minute implies', () => {
+    const { container } = render(<DayGrid {...BASE_PROPS} placed={[]} conflicts={[]} breaks={[breakRow()]} />);
+    const band = container.querySelector('.chq-agenda-break-band');
+    expect(band).not.toBeNull();
+    expect(band?.textContent).toContain('Lunch');
+    expect(band?.textContent).toContain('Foyer');
+    expect(band?.textContent).toContain('60 min');
+    const expectedRow = String(minutesToGridRow(720, BASE_PROPS.dayStartMin, BASE_PROPS.gridMin));
+    expect((band as HTMLElement).style.gridRow.split(' / ')[0]).toBe(expectedRow);
+  });
+
+  it('is not interactive and leaves the cell underneath a live drop target', () => {
+    const { container } = render(<DayGrid {...BASE_PROPS} placed={[]} conflicts={[]} breaks={[breakRow()]} />);
+    const band = container.querySelector('.chq-agenda-break-band') as HTMLElement;
+    expect(band.tagName).not.toBe('BUTTON');
+    expect(band.onclick).toBeNull();
+    expect(band.getAttribute('id')).toBeNull();
+    // The underlying cell at the break's start minute is still present and
+    // still carries its drop-target data attributes.
+    const cell = container.querySelector('[data-room-id="room-1"][data-start-min="720"]');
+    expect(cell).not.toBeNull();
+  });
+
+  it('renders no break band for a break on a different day', () => {
+    const { container } = render(
+      <DayGrid {...BASE_PROPS} placed={[]} conflicts={[]} breaks={[breakRow({ day: '2026-08-14' })]} />,
+    );
+    expect(container.querySelector('.chq-agenda-break-band')).toBeNull();
   });
 });
