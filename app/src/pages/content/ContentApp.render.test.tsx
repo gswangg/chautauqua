@@ -207,10 +207,12 @@ describe('ContentApp worklist latest file column (DEC-686 page-scoped hydration)
   });
 });
 
-// DEC-825 amendment: set-based bulk content-approval — selecting rows on
-// the worklist surfaces a .chq-bulkbar (shared vocabulary, DEC-825) with
-// Approve/Request changes/Mark pending, sending one POST carrying every
-// selected id and reloading the worklist on success.
+// DEC-825 amendment (wave 25, ruling A1): set-based bulk content-approval —
+// selecting rows surfaces a .chq-bulkbar (shared vocabulary, DEC-825),
+// rendered INSIDE SessionList between the chipstrip and the table, with
+// ONE verb ("Approve N") plus the consequence line and a "Clear" tertiary.
+// Approve sends one POST carrying every selected id and reloads the
+// worklist on success.
 describe('ContentApp worklist bulk content-status (DEC-825 amendment)', () => {
   function twoRowEnvelope() {
     return listEnvelope([
@@ -266,7 +268,8 @@ describe('ContentApp worklist bulk content-status (DEC-825 amendment)', () => {
     const callsBeforeBulk = submissionsMock.mock.calls.length;
 
     const bulkbar = screen.getByRole('toolbar', { name: 'Bulk content actions' });
-    fireEvent.click(within(bulkbar).getByRole('button', { name: 'Approve' }));
+    expect(within(bulkbar).getByText('Approving sends nothing · the speaker sees it in their portal')).toBeInTheDocument();
+    fireEvent.click(within(bulkbar).getByRole('button', { name: 'Approve 2' }));
 
     await waitFor(() => {
       const bulkCalls = fetchMock.mock.calls.filter(
@@ -670,54 +673,38 @@ describe('ContentApp (DEC-952): exactly one h1 in every state', () => {
   });
 });
 
-// w42-c (DEC-274): a title-row "Approve N ready" action, distinct from the
-// row-selection bulk bar (DEC-825) above -- N is every row on the CURRENT
-// worklist page whose contentStatus isn't already 'approved', with no
-// selection required. Rendered only when N > 0; confirming posts every one
-// of those ids in a single request and reloads.
-describe('ContentApp "Approve N ready" title-row action (w42-c/DEC-274)', () => {
-  function twoUnapprovedEnvelope() {
-    return listEnvelope([
-      {
-        id: 'sub-1',
-        ref: 'S-001',
-        title: 'Talk One',
-        status: 'accepted',
-        contentStatus: 'pending',
-        speakers: [],
-        trackIds: [],
-        submittedAt: null,
-        createdAt: 1700000000000,
-        deliverableCounts: { presentation: 0, poster: 0, handout: 0, recording: 0 },
-      },
-      {
-        id: 'sub-2',
-        ref: 'S-002',
-        title: 'Talk Two',
-        status: 'accepted',
-        contentStatus: 'changes_requested',
-        speakers: [],
-        trackIds: [],
-        submittedAt: null,
-        createdAt: 1700000001000,
-        deliverableCounts: { presentation: 0, poster: 0, handout: 0, recording: 0 },
-      },
-    ]);
-  }
-
-  it('is absent when every row on the current page is already approved (N=0)', async () => {
+// DEC-825 amendment (wave 25, ruling A1): the page-wide "Approve N ready"
+// title-row/section-rule action is GONE — two olive primaries with
+// different scopes (every eligible row on the page vs. the ticked rows)
+// left a user unable to tell which one they were pressing. Bulk approval
+// now has exactly ONE primary: the selection bar's own "Approve N" button
+// (see 'ContentApp worklist bulk content-status' above).
+describe('ContentApp: no second bulk-approve primary (DEC-825 amendment, ruling A1)', () => {
+  it('never renders an "Approve N ready" control, selection or not', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([
         {
           id: 'sub-1',
           ref: 'S-001',
-          title: 'Approved Talk',
+          title: 'Talk One',
           status: 'accepted',
-          contentStatus: 'approved',
+          contentStatus: 'pending',
           speakers: [],
           trackIds: [],
           submittedAt: null,
           createdAt: 1700000000000,
+          deliverableCounts: { presentation: 0, poster: 0, handout: 0, recording: 0 },
+        },
+        {
+          id: 'sub-2',
+          ref: 'S-002',
+          title: 'Talk Two',
+          status: 'accepted',
+          contentStatus: 'changes_requested',
+          speakers: [],
+          trackIds: [],
+          submittedAt: null,
+          createdAt: 1700000001000,
           deliverableCounts: { presentation: 0, poster: 0, handout: 0, recording: 0 },
         },
       ]),
@@ -726,70 +713,10 @@ describe('ContentApp "Approve N ready" title-row action (w42-c/DEC-274)', () => 
     renderContentApp();
 
     fireEvent.click(await screen.findByRole('tab', { name: 'All accepted sessions' }));
-    await screen.findByText('Approved Talk');
+    await screen.findByText('Talk One');
 
     expect(screen.queryByRole('button', { name: /^Approve \d+ ready$/ })).not.toBeInTheDocument();
-  });
-
-  it('names the count, opens a confirm naming the consequence, and posts every not-yet-approved id on confirm', async () => {
-    const submissionsMock = vi.fn(() => twoUnapprovedEnvelope());
-    const fetchMock = mockApi({
-      [`GET /api/v1/events/${EVENT_ID}/submissions`]: submissionsMock,
-      [`POST /api/v1/events/${EVENT_ID}/submissions/content-status`]: { updated: 2 },
-    });
-
-    renderContentApp();
-
-    fireEvent.click(await screen.findByRole('tab', { name: 'All accepted sessions' }));
-    await screen.findByText('Talk One');
-    await screen.findByText('Talk Two');
-
-    const openButton = screen.getByRole('button', { name: 'Approve 2 ready' });
-    fireEvent.click(openButton);
-
-    expect(await screen.findByText('Unapproved sessions stay off the public site.')).toBeInTheDocument();
-
-    const callsBeforeConfirm = submissionsMock.mock.calls.length;
-    fireEvent.click(screen.getByRole('button', { name: 'Approve 2' }));
-
-    await waitFor(() => {
-      const bulkCalls = fetchMock.mock.calls.filter(([input]) => String(input).includes('/submissions/content-status'));
-      expect(bulkCalls).toHaveLength(1);
-    });
-    const [, init] = fetchMock.mock.calls.find(([input]) => String(input).includes('/submissions/content-status'))!;
-    const body = JSON.parse((init as RequestInit).body as string) as { ids: string[]; contentStatus: string };
-    expect(body.contentStatus).toBe('approved');
-    expect(body.ids.sort()).toEqual(['sub-1', 'sub-2']);
-
-    await waitFor(() => {
-      expect(submissionsMock.mock.calls.length).toBeGreaterThan(callsBeforeConfirm);
-    });
     expect(screen.queryByText('Unapproved sessions stay off the public site.')).not.toBeInTheDocument();
-  });
-
-  // DEC-825 amendment (wave 72): capability wins, prominence loses -- the
-  // filled primary leaves the title row (chq-content-summary-actions) and
-  // becomes a section action on the worklist's own rule, but stays fully
-  // reachable with its confirm intact.
-  it('does not render "Approve N ready" in the title row -- it is reachable on the worklist section rule instead', async () => {
-    mockApi({
-      [`GET /api/v1/events/${EVENT_ID}/submissions`]: twoUnapprovedEnvelope(),
-    });
-
-    renderContentApp();
-
-    fireEvent.click(await screen.findByRole('tab', { name: 'All accepted sessions' }));
-    await screen.findByText('Talk One');
-
-    const titleRow = document.querySelector('.chq-content-summary-actions');
-    expect(titleRow).not.toBeNull();
-    expect(within(titleRow as HTMLElement).queryByRole('button', { name: /^Approve \d+ ready$/ })).not.toBeInTheDocument();
-
-    const button = screen.getByRole('button', { name: 'Approve 2 ready' });
-    expect(titleRow?.contains(button)).toBe(false);
-
-    fireEvent.click(button);
-    expect(await screen.findByText('Unapproved sessions stay off the public site.')).toBeInTheDocument();
   });
 });
 

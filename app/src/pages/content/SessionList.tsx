@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { DELIVERABLE_LABELS, FILE_KINDS, type ContentStatus, type ContentSubmissionListItem } from './types';
 import { WORKLIST_TABS, worklistStatusLabel, worklistStatusEmphasisClass, type WorklistTab } from './worklist';
 import { DelayedLoading } from '../../components/DelayedLoading';
@@ -79,10 +80,13 @@ interface SessionListProps {
   // the current page (same pattern as the row-level approve/changes controls).
   selectedIds: Set<string>;
   onSelectionChange: (selectedIds: Set<string>) => void;
-  // DEC-825 amendment (wave 72): "Approve N ready" as a section action on
-  // the worklist's own rule — null/undefined when every row on the current
-  // page is already approved (N=0), in which case no action renders at all.
-  approveReady?: { count: number; onOpen: () => void } | null;
+  // DEC-825 amendment (wave 25, ruling A1): ONE primary — the bulk bar's
+  // own "Approve N" button. The page-wide "Approve N ready" section-rule
+  // button is gone: two olive primaries with different scopes (every
+  // eligible row on the page vs. the ticked rows) left a user unable to
+  // tell which one they were pressing.
+  onBulkApprove: () => void | Promise<void>;
+  bulkPending: boolean;
 }
 
 export function SessionList({
@@ -101,12 +105,28 @@ export function SessionList({
   counts,
   selectedIds,
   onSelectionChange,
-  approveReady,
+  onBulkApprove,
+  bulkPending,
 }: SessionListProps) {
   const visible = items;
   const pageIds = visible.map((item) => item.id);
   const allSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
   const someSelected = pageIds.some((id) => selectedIds.has(id));
+
+  // DEC-825 amendment (wave 25, ruling A1): pre-tick re-uploads only, once
+  // per `items` identity (a fresh page/tab load or refresh) — never
+  // 'Not reviewed' rows, and never fighting a tick the user makes
+  // afterwards. Keyed on the items array reference so this seeds exactly
+  // once per fetch, not on every render.
+  const seededForRef = useRef<ContentSubmissionListItem[] | null>(null);
+  useEffect(() => {
+    if (seededForRef.current === items) return;
+    seededForRef.current = items;
+    const reuploaded = items.filter((item) => worklistStatusLabel(item.contentStatus, item.reuploaded) === 'Re-uploaded');
+    if (reuploaded.length === 0) return;
+    onSelectionChange(new Set(reuploaded.map((item) => item.id)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
 
   function toggleRow(id: string) {
     const next = new Set(selectedIds);
@@ -127,17 +147,12 @@ export function SessionList({
 
   return (
     <div className="chq-content-worklist">
-      {/* DEC-825 amendment (wave 72): the section rule owns "Approve N
-          ready" now — house link-on-the-rule treatment, capability kept,
-          prominence lowered off the title row. Renders only when there is
-          something to approve; the rule itself is always here. */}
+      {/* DEC-825 amendment (wave 25, ruling A1): the section rule carries no
+          action now — bulk approval lives in the bar below, scoped to the
+          ticked rows, so this rule never competes with it as a second
+          primary. */}
       <div className="chq-section-head chq-content-worklist-head">
         <h2 className="chq-section-label">Worklist</h2>
-        {approveReady && (
-          <button type="button" className="chq-link-button chq-section-action" onClick={approveReady.onOpen}>
-            Approve {approveReady.count} ready
-          </button>
-        )}
       </div>
       <div className="chq-chipstrip" role="tablist" aria-label="Content status">
         {WORKLIST_TABS.map((t) => (
@@ -154,6 +169,32 @@ export function SessionList({
           </button>
         ))}
       </div>
+
+      {/* DEC-825 amendment (wave 25, ruling A1): ONE primary for bulk
+          approval, scoped to the ticked rows only — no page-wide "Approve N
+          ready" competitor. Sits below the chipstrip, directly above the
+          table it acts on. Approving is a status change, never an email
+          (house invariant), hence the consequence line rather than any
+          "notify" language. */}
+      {selectedIds.size > 0 && (
+        <div className="chq-bulkbar" role="toolbar" aria-label="Bulk content actions">
+          <span className="chq-bulkbar-count">{selectedIds.size} selected</span>
+          <span className="chq-bulkbar-note">Approving sends nothing · the speaker sees it in their portal</span>
+          <div className="chq-bulkbar-actions">
+            <button type="button" className="chq-btn chq-btn-primary" disabled={bulkPending} onClick={onBulkApprove}>
+              Approve {selectedIds.size}
+            </button>
+            <button
+              type="button"
+              className="chq-btn chq-btn-tertiary"
+              disabled={bulkPending}
+              onClick={() => onSelectionChange(new Set())}
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* v4 mock IA (docs/design/Chautauqua Content.dc.html, DEC-692): five
           columns — Session, Speaker, Latest file, Status, actions. 'Ask for

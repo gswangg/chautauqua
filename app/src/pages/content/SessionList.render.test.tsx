@@ -6,6 +6,7 @@
 // and that the row's actions are Approve + Open only (no per-row 'Ask for
 // changes' — that action moved to the deliverable-detail screen).
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { useState, type ComponentProps } from 'react';
 import { cleanup, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { readFileSync } from 'node:fs';
@@ -47,7 +48,12 @@ function noop() {
 // DEC-825 amendment: bulk selection props — these render assertions cover the
 // DEC-692 column IA, not selection, so every case starts with an empty
 // selection and a noop change handler.
-const SELECTION_PROPS = { selectedIds: new Set<string>(), onSelectionChange: noop };
+const SELECTION_PROPS = {
+  selectedIds: new Set<string>(),
+  onSelectionChange: noop,
+  onBulkApprove: noop,
+  bulkPending: false,
+};
 
 describe('SessionList: v4 mock five-column IA (DEC-692)', () => {
   // DEC-825 amendment adds a leading selection column (its header carries the
@@ -740,6 +746,148 @@ describe('SessionList: needs_decision empty state names itself and links to All 
 // scan enumerates every class actually applied to a `<td>` in this file (no
 // hand-listed trio) and asserts none of them carries `display: flex` in
 // content.css, so a future column can't reintroduce the stagger.
+// DEC-825 amendment (wave 25, ruling A1): the second bulk-approve primary
+// is gone — ONE bar, scoped to the ticked rows, renders between the
+// chipstrip and the table; it pre-ticks Re-uploaded rows only.
+function StatefulSessionList(props: Omit<ComponentProps<typeof SessionList>, 'selectedIds' | 'onSelectionChange'>) {
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  return <SessionList {...props} selectedIds={selectedIds} onSelectionChange={setSelectedIds} />;
+}
+
+describe('SessionList: ONE bulk-approve primary, ruling A1 (DEC-825 amendment)', () => {
+  const reuploadedItem: ContentSubmissionListItem = { ...baseItem, id: 'sub-r', contentStatus: 'pending', reuploaded: true };
+  const notReviewedA: ContentSubmissionListItem = {
+    ...baseItem,
+    id: 'sub-a',
+    contentStatus: 'pending',
+    reuploaded: false,
+    latestFile: null,
+  };
+  const notReviewedB: ContentSubmissionListItem = {
+    ...baseItem,
+    id: 'sub-b',
+    contentStatus: 'pending',
+    reuploaded: false,
+    latestFile: null,
+  };
+
+  it('never renders a numbered "Approve N" control outside the bulk bar', () => {
+    render(
+      <StatefulSessionList
+        items={[reuploadedItem, notReviewedA, notReviewedB]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={3}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+        onBulkApprove={noop}
+        bulkPending={false}
+      />,
+    );
+
+    // The per-row "Approve" control (CNT-12) carries no count in its name;
+    // only the bulk bar's button reads "Approve N".
+    const numberedApproveButtons = screen.getAllByRole('button').filter((btn) => /^Approve \d+$/.test(btn.textContent ?? ''));
+    for (const button of numberedApproveButtons) {
+      expect(button.closest('.chq-bulkbar')).not.toBeNull();
+    }
+    // No page-wide "Approve N ready" control exists at all.
+    expect(screen.queryByRole('button', { name: /^Approve \d+ ready$/ })).not.toBeInTheDocument();
+  });
+
+  it('renders the bulk bar between the chipstrip and the table', () => {
+    const { container } = render(
+      <StatefulSessionList
+        items={[reuploadedItem, notReviewedA, notReviewedB]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={3}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+        onBulkApprove={noop}
+        bulkPending={false}
+      />,
+    );
+
+    const worklist = container.querySelector('.chq-content-worklist');
+    expect(worklist).not.toBeNull();
+    const children = Array.from(worklist!.children);
+    const chipstripIndex = children.findIndex((el) => el.classList.contains('chq-chipstrip'));
+    const bulkbarIndex = children.findIndex((el) => el.classList.contains('chq-bulkbar'));
+    const tableIndex = children.findIndex((el) => el.tagName === 'TABLE');
+    expect(chipstripIndex).toBeGreaterThanOrEqual(0);
+    expect(bulkbarIndex).toBeGreaterThan(chipstripIndex);
+    expect(tableIndex).toBeGreaterThan(bulkbarIndex);
+  });
+
+  it('pre-ticks Re-uploaded rows only, never Not-reviewed rows, and the bar reads "1 selected"', () => {
+    render(
+      <StatefulSessionList
+        items={[reuploadedItem, notReviewedA, notReviewedB]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={3}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+        onBulkApprove={noop}
+        bulkPending={false}
+      />,
+    );
+
+    expect(screen.getByText('1 selected')).toBeInTheDocument();
+    const checkedBoxes = screen
+      .getAllByRole('checkbox')
+      .filter((box) => (box as HTMLInputElement).checked && box.getAttribute('aria-label') !== 'Select all on page');
+    expect(checkedBoxes).toHaveLength(1);
+    expect(checkedBoxes[0]).toHaveAccessibleName(`Select ${reuploadedItem.title}`);
+  });
+
+  it('renders the consequence line verbatim', () => {
+    render(
+      <StatefulSessionList
+        items={[reuploadedItem]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={1}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+        onBulkApprove={noop}
+        bulkPending={false}
+      />,
+    );
+
+    expect(screen.getByText('Approving sends nothing · the speaker sees it in their portal')).toBeInTheDocument();
+  });
+});
+
 describe('SessionList: no <td> ever carries display:flex (DEC-871)', () => {
   it('every class applied to a <td> in SessionList.tsx is flex-free in content.css', () => {
     // Vitest runs this suite from the repo root, so resolve siblings
