@@ -48,12 +48,41 @@ interface OutstandingRowShape {
 
 function fakeDb(rows: OutstandingRowShape[]): { db: Db; updateCalls: unknown[] } {
   const updateCalls: unknown[] = [];
+  // wave-38 amendment (DEC-319): the cron now bounds its read via
+  // listDueReminderContactIds' ONE-innerJoin grouped query BEFORE the
+  // existing THREE-innerJoin listOutstandingForEvent chain below — a dumb
+  // mock, so it just returns the distinct contactIds present in `rows`
+  // regardless of the query's actual WHERE/HAVING bounds (real window/dedupe
+  // filtering is exercised in test/reminders-cron-bounded.test.ts against
+  // real SQLite rows instead).
+  const dueContactIdRows = () => {
+    const seen = new Set<string>();
+    const out: { contactId: string }[] = [];
+    for (const r of rows) {
+      if (!seen.has(r.contactId)) {
+        seen.add(r.contactId);
+        out.push({ contactId: r.contactId });
+      }
+    }
+    return out;
+  };
   const db = {
     select: () => ({
       from: () => ({
-        // listOutstandingForEvent's join chain (MAX_REMINDER_SCAN wave-56
-        // amendment added a trailing .limit() after .where()).
         innerJoin: () => ({
+          // listDueReminderContactIds' ONE-innerJoin chain: where -> groupBy
+          // -> having -> orderBy -> limit.
+          where: () => ({
+            groupBy: () => ({
+              having: () => ({
+                orderBy: () => ({
+                  limit: async () => dueContactIdRows(),
+                }),
+              }),
+            }),
+          }),
+          // listOutstandingForEvent's join chain (MAX_REMINDER_SCAN wave-56
+          // amendment added a trailing .limit() after .where()).
           innerJoin: () => ({
             innerJoin: () => ({
               where: () => ({

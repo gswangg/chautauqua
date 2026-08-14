@@ -14,16 +14,19 @@ import { renderEmailHtml } from "../../../mail/shell";
 import type { ReminderAssignment } from "../../../domain/reminders";
 import {
   capReminderGroups,
+  DEDUPE_WINDOW_MS,
+  DUE_WINDOW_MS,
   formatTaskLines,
   MANUAL_DEDUPE_WINDOW_MS,
   MAX_REMINDER_BATCH,
   planManualReminders,
   planReminders,
+  REMINDER_OVERDUE_TAIL_MS,
 } from "../../../domain/reminders";
 import type { KVStore } from "../../../auth/claim";
 import { resolvePortalLinks } from "../portal-link";
 import { findAccountUserIds } from "../comms";
-import { effectiveAssignmentDueDate } from "../../../domain/task-due";
+import { ASSIGNED_LATE_GRACE_DAYS, effectiveAssignmentDueDate } from "../../../domain/task-due";
 import { ApiError } from "../../http";
 import { zonedMinutesToUtc } from "../../../lib/timezone";
 import { chaseableContactExists } from "./crud";
@@ -612,6 +615,58 @@ export async function previewRemindNow(
   return { drafts, skipped: chosen.skipped, remaining: chosen.remaining };
 }
 
+/** DEC-319 amendment (wave 38): bounds the cron's read instead of refusing
+ * the pass. This is a COARSE SUPERSET pre-filter, ONLY a bound on how many
+ * contacts the cron's per-event query loads downstream — mirroring the
+ * wording on listEventIdsWithOutstandingAssignments's coarse pre-filter
+ * above. It is NOT the authoritative "is this reminder due" verdict:
+ * planReminders (via isReminderDue, same DUE_WINDOW_MS/DEDUPE_WINDOW_MS/
+ * REMINDER_OVERDUE_TAIL_MS constants) remains the one authority for what
+ * actually sends, applied afterward by sendDueRemindersForEvent over the
+ * rows this function's contactIds narrow listOutstandingForEvent to.
+ *
+ * Composes the DEC-801 effective-due CASE expression in the same shape as
+ * overdueAssignmentConditions (./crud) — task.dueDate, or, when the
+ * assignment was created after that date, assignment.createdAt plus the
+ * ASSIGNED_LATE_GRACE_DAYS grace window — between now - REMINDER_OVERDUE_
+ * TAIL_MS and now + DUE_WINDOW_MS, and only contacts never reminded or last
+ * reminded before now - DEDUPE_WINDOW_MS. Grouped by contact, ordered
+ * contactId ascending, limited to `max` so a later tick's cap starts from
+ * the next slice (DEC-535 capById convention) rather than repeating the
+ * same head of the set forever. */
+export async function listDueReminderContactIds(
+  db: Db,
+  eventId: string,
+  opts: { now: number; max: number },
+): Promise<string[]> {
+  const graceMs = ASSIGNED_LATE_GRACE_DAYS * 24 * 60 * 60 * 1000;
+  const effectiveDueDate = sql`(case when ${schema.task.dueDate} >= ${schema.taskAssignment.createdAt} then ${schema.task.dueDate} else ${schema.taskAssignment.createdAt} + ${graceMs} end)`;
+  const windowStart = opts.now - REMINDER_OVERDUE_TAIL_MS;
+  const windowEnd = opts.now + DUE_WINDOW_MS;
+  const dedupeCutoff = opts.now - DEDUPE_WINDOW_MS;
+  const lastRemindedMax = sql`max(${schema.taskAssignment.lastRemindedAt})`;
+
+  const rows = await db
+    .select({ contactId: schema.taskAssignment.contactId })
+    .from(schema.taskAssignment)
+    .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
+    .where(
+      and(
+        eq(schema.task.eventId, eventId),
+        eq(schema.taskAssignment.status, "pending"),
+        chaseableContactExists(eventId),
+        sql`${schema.task.dueDate} is not null`,
+        sql`${effectiveDueDate} >= ${windowStart} and ${effectiveDueDate} <= ${windowEnd}`,
+      ),
+    )
+    .groupBy(schema.taskAssignment.contactId)
+    .having(sql`${lastRemindedMax} is null or ${lastRemindedMax} <= ${dedupeCutoff}`)
+    .orderBy(asc(schema.taskAssignment.contactId))
+    .limit(opts.max);
+
+  return rows.map((r) => r.contactId);
+}
+
 /** Due-date-driven cron reminder pass, scoped to one event's outstanding
  * assignments, filtered through the pure DEC-023 planReminders gate. Never
  * triggered by a submission/assignment status change (DEC-009). */
@@ -623,7 +678,13 @@ export async function sendDueRemindersForEvent(
   kv: KVStore,
   origin: string,
 ): Promise<number> {
-  const outstanding = await listOutstandingForEvent(db, eventId);
+  const dueContactIds = await listDueReminderContactIds(db, eventId, {
+    now: now.getTime(),
+    max: MAX_REMINDER_BATCH,
+  });
+  if (dueContactIds.length === 0) return 0;
+
+  const outstanding = await listOutstandingForEvent(db, eventId, undefined, dueContactIds);
   if (outstanding.length === 0) return 0;
   const eventName = outstanding[0]?.eventName ?? "";
   const eventTimezone = outstanding[0]?.timezone ?? "";

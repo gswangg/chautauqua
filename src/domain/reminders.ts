@@ -5,8 +5,12 @@
 
 import { formatCalendarDate } from "../lib/event-time";
 
-const DUE_WINDOW_MS = 72 * 60 * 60 * 1000; // 72h
-const DEDUPE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
+// DEC-319 amendment (wave 38): exported so the cron's SQL bounding
+// pre-filter (listDueReminderContactIds, repo/tasks/reminders.ts) derives
+// its window from the SAME constants planReminders/isReminderDue gate on
+// below, instead of a hand-typed SQL duplicate that could drift.
+export const DUE_WINDOW_MS = 72 * 60 * 60 * 1000; // 72h
+export const DEDUPE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
 
 // DEC-023 (wave-58 amendment): the cron's automatic reminder gate has a
 // terminal tail -- an assignment more than 7 days past its due date stops
