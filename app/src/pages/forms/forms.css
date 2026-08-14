@@ -95,6 +95,30 @@
   line-height: 1.2;
 }
 
+/* Amendment (wave 72): the Opens/Closes strip cells become the page's
+   editable CFP window -- a DateField styled as the strip's 22px display
+   value rather than the shared .chq-input treatment, with no visible
+   border until focus so the cell still reads as a fact until touched. */
+.chq-forms-strip-datefield {
+  font-family: var(--chq-font-display);
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.2;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.chq-forms-strip-datefield:hover,
+.chq-forms-strip-datefield:focus {
+  border-color: var(--chq-rule);
+  padding: 2px 4px;
+  outline: none;
+}
+
 .chq-forms-section {
   display: block;
 }

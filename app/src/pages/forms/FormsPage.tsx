@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
-import { formatDateOnly } from '../../lib/dates';
+import { msToDateInput, dateInputToMs } from '../../lib/dates';
 import { copyText } from '../../lib/clipboard';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { DateField } from '../../components/DateField';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { FieldList } from './FieldList';
 import { FieldModal, type FieldModalInput } from './FieldModal';
@@ -28,10 +29,12 @@ type DeleteConfirmState = { field: FormField; conflictMessage?: string } | null;
 type ReceivedState = { total: number } | 'loading' | 'error';
 
 /** J1 form builder SPA (DEC-033, DEC-650 mock rebuild): loads the event's
- * default CFP form and renders the header band, the Opens/Closes/Received
- * strip, the field list (now the page's primary content), and the
- * settings panel below it. Zero new server code — every call goes through
- * the landed w2-c forms API via api.ts. */
+ * default CFP form and renders the header band (Preview + the wave-72
+ * window-editing Save), the Opens/Closes/Received strip (Opens/Closes now
+ * an editable CFP window, Received a read-only fact), the field list (the
+ * page's primary content), and the settings link below it. Zero new
+ * server code — every call goes through the landed w2-c forms API via
+ * api.ts. */
 export function FormsPage() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
 
@@ -45,6 +48,16 @@ export function FormsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState>(null);
   const [received, setReceived] = useState<ReceivedState>('loading');
   const [linkCopyResult, setLinkCopyResult] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // Amendment (wave 72): the Opens/Closes strip cells become the page's
+  // editable CFP window. openInput/closeInput hold the DateField wire
+  // strings (yyyy-mm-dd), seeded from the loaded form and re-seeded on
+  // every reload; Save is disabled until they differ from the loaded
+  // form's values, so it never claims work it has none of.
+  const [openInput, setOpenInput] = useState('');
+  const [closeInput, setCloseInput] = useState('');
+  const [windowSaving, setWindowSaving] = useState(false);
+  const [windowFieldErrors, setWindowFieldErrors] = useState<Record<string, string>>({});
 
   // The builder is the organiser's authoritative view of what the public
   // form actually asks (DEC-008 amendment): the event's tracks feed the
@@ -64,6 +77,9 @@ export function FormsPage() {
         setEvent(ev);
         setForm(formResult);
         setTracks(tracksResult.items);
+        setOpenInput(msToDateInput(formResult.openDate ?? null));
+        setCloseInput(msToDateInput(formResult.closeDate ?? null));
+        setWindowFieldErrors({});
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load the form'))
       .finally(() => setLoading(false));
@@ -160,6 +176,34 @@ export function FormsPage() {
     }
   }
 
+  // Amendment (wave 72): the SAME endpoint and payload keys
+  // CallForPapersPanel already uses -- the server's close-before-open
+  // refusal (DEC-731/DEC-517) stays the only place that rule lives; a
+  // 400 naming openDate/closeDate renders on the strip cell it names,
+  // never a page-level banner.
+  async function handleSaveWindow() {
+    if (!form) return;
+    setWindowSaving(true);
+    setWindowFieldErrors({});
+    try {
+      const updated = await apiPatch<CfpForm>(`/forms/${form.id}`, {
+        openDate: dateInputToMs(openInput),
+        closeDate: dateInputToMs(closeInput),
+      });
+      setForm(updated);
+      setOpenInput(msToDateInput(updated.openDate ?? null));
+      setCloseInput(msToDateInput(updated.closeDate ?? null));
+    } catch (err) {
+      if (err instanceof ApiError && err.fields) {
+        setWindowFieldErrors(err.fields);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to save the CFP window');
+      }
+    } finally {
+      setWindowSaving(false);
+    }
+  }
+
   if (eventLoading || loading) {
     return (
       <div className="chq-page chq-measure">
@@ -188,6 +232,10 @@ export function FormsPage() {
   }
 
   const receivedText = received === 'loading' || received === 'error' ? '—' : `${received.total} submissions`;
+  // Amendment (wave 72): Save is disabled until the strip differs from the
+  // loaded form, so it never claims work it has none of.
+  const windowDirty =
+    openInput !== msToDateInput(form.openDate ?? null) || closeInput !== msToDateInput(form.closeDate ?? null);
   const publicLink = `${window.location.origin}/submit/${event.slug}`;
   // DEC-015/DEC-416: the public form offers form.tracks (a chosen subset)
   // when set/non-empty, else every event track (src/lib/submit-core.ts's
@@ -223,18 +271,52 @@ export function FormsPage() {
           <a href={`/submit/${event.slug}`} target="_blank" rel="noreferrer" className="chq-btn chq-btn-secondary">
             Preview
           </a>
+          <button
+            type="button"
+            className="chq-btn chq-btn-primary"
+            disabled={!windowDirty || windowSaving}
+            onClick={() => void handleSaveWindow()}
+          >
+            {windowSaving ? 'Saving…' : 'Save'}
+          </button>
         </div>
       </header>
 
       <div className="chq-forms-content">
         <div className="chq-forms-strip">
           <div className="chq-forms-strip-cell">
-            <span className="chq-forms-strip-label">Opens</span>
-            <span className="chq-forms-strip-value">{formatDateOnly(form.openDate)}</span>
+            <label className="chq-forms-strip-label" htmlFor="chq-forms-open-date">
+              Opens
+            </label>
+            <DateField
+              id="chq-forms-open-date"
+              className="chq-forms-strip-datefield"
+              value={openInput}
+              onChange={(next) => {
+                setOpenInput(next);
+                setWindowFieldErrors((prev) => ({ ...prev, openDate: '' }));
+              }}
+            />
+            {windowFieldErrors.openDate ? (
+              <span className="chq-field-error">{windowFieldErrors.openDate}</span>
+            ) : null}
           </div>
           <div className="chq-forms-strip-cell">
-            <span className="chq-forms-strip-label">Closes</span>
-            <span className="chq-forms-strip-value">{formatDateOnly(form.closeDate)}</span>
+            <label className="chq-forms-strip-label" htmlFor="chq-forms-close-date">
+              Closes
+            </label>
+            <DateField
+              id="chq-forms-close-date"
+              className="chq-forms-strip-datefield"
+              value={closeInput}
+              onChange={(next) => {
+                setCloseInput(next);
+                setWindowFieldErrors((prev) => ({ ...prev, closeDate: '' }));
+              }}
+            />
+            {windowFieldErrors.closeDate ? (
+              <span className="chq-field-error">{windowFieldErrors.closeDate}</span>
+            ) : null}
           </div>
           <div className="chq-forms-strip-cell">
             <span className="chq-forms-strip-label">Received</span>
@@ -286,9 +368,12 @@ export function FormsPage() {
       </div>
 
       {/* Phone-only fixed footer (DEC-650 mock, 390px frame): display:none
-          at desktop; forms.css switches at 700px. Save moved to Settings ›
-          Call for papers -- fields save immediately per action, so the
-          only remaining phone action is Preview. */}
+          at desktop; forms.css switches at 700px. Frozen (mobile is
+          out of scope for the wave-72 window editor): the header's
+          window-editing Save is desktop-only chrome (.chq-forms-header-
+          actions hides at phone width), and the CFP window can still be
+          edited via Settings › Call for papers on phone -- the only
+          remaining phone action here is Preview. */}
       <div className="chq-forms-phone-footer">
         <a href={`/submit/${event.slug}`} target="_blank" rel="noreferrer" className="chq-btn chq-btn-secondary">
           Preview
