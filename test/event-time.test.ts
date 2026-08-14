@@ -9,6 +9,7 @@ import {
   formatEventCloseDateLabel,
   formatDayShort,
   formatDayLong,
+  formatDayMedium,
 } from "../src/lib/event-time";
 
 describe("formatEventDateTime (DEC-408)", () => {
@@ -132,6 +133,21 @@ describe("formatDayLong (w1-b): the agenda page's own <h1> day label", () => {
   it("returns the original string unchanged for malformed input rather than throwing", () => {
     expect(formatDayLong("not-a-date")).toBe("not-a-date");
     expect(formatDayLong("")).toBe("");
+  });
+});
+
+describe("formatDayMedium (w13-d): the portal's ONE placement grammar day label", () => {
+  it("formats a 'YYYY-MM-DD' calendar day as a short weekday + day-of-month + month label", () => {
+    expect(formatDayMedium("2026-05-12")).toBe("Tue 12 May");
+  });
+
+  it("never re-interprets into a timezone (DEC-522: a calendar day, not an instant)", () => {
+    expect(formatDayMedium("2027-03-14")).toBe("Sun 14 Mar");
+  });
+
+  it("returns the original string unchanged for malformed input rather than throwing", () => {
+    expect(formatDayMedium("not-a-date")).toBe("not-a-date");
+    expect(formatDayMedium("")).toBe("");
   });
 });
 
