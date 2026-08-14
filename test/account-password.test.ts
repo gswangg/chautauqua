@@ -529,12 +529,16 @@ describe("POST /account/password — rate limiting (DEC-180)", () => {
 
   // DEC-180 (wave-29 amendment): consume-then-refund, not peek-then-
   // increment. checkAndIncrementScopedLimit spends one unit of budget
-  // atomically at admission, before verifyPassword runs -- only a
-  // COMPLETED change (resetScopedLimit) gives the budget back. A request
-  // that passes the current-password check but fails a later validation
-  // step (confirm mismatch) still spent its unit at admission, same as a
-  // wrong-password request would have.
-  it("a correct current password with a downstream validation failure still spends the admission unit -- AUTH_RATE_LIMIT_MAX such attempts then 429s", async () => {
+  // atomically at admission, before verifyPassword runs -- but the budget
+  // is a FAILURES-ONLY budget ("increment only when the current password is
+  // wrong, reset on success"; wave-29: "Failures-only steady state
+  // survives"). What this limiter meters is the current-password guessing
+  // oracle, so a CORRECT current password refunds the unit as soon as the
+  // verify succeeds -- before the independent new-password validation. A
+  // user who fat-fingers the confirmation field never burns the budget they
+  // would need to actually change their password, and an attacker cannot
+  // reach the refund without already knowing the password.
+  it("a correct current password refunds the admission unit even when a downstream validation fails -- such attempts never exhaust the budget", async () => {
     const { db, state } = makeFakeDb();
     await seedUser(state);
     const { app, env } = buildApp(db);
@@ -559,9 +563,24 @@ describe("POST /account/password — rate limiting (DEC-180)", () => {
       next: NEW_PASSWORD,
       confirm: "does-not-match",
     });
-    expect(finalRes.status).toBe(429);
+    // Still the validation error, never a 429: none of the AUTH_RATE_LIMIT_MAX
+    // preceding attempts kept its admission unit, because each one proved the
+    // current password.
+    expect(finalRes.status).toBe(400);
     const text = await finalRes.text();
-    expect(text).toContain("Too many attempts");
+    expect(text).toContain("New password and confirmation do not match.");
+    expect(text).not.toContain("Too many attempts");
+
+    // And the budget is genuinely intact: a wrong current password now still
+    // gets the ordinary 400, not a 429 left over from the loop above.
+    const wrong = await getAccountCsrf(app, env, sessionCookie);
+    const wrongRes = await postPasswordChange(app, env, sessionCookie, wrong.csrf, wrong.csrfCookie, {
+      current: "not-the-password",
+      next: NEW_PASSWORD,
+      confirm: NEW_PASSWORD,
+    });
+    expect(wrongRes.status).toBe(400);
+    expect(await wrongRes.text()).toContain("Current password is incorrect.");
   });
 
   it("a successful change clears the budget for that user", async () => {
