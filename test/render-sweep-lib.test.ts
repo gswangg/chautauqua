@@ -504,11 +504,13 @@ describe("PAGE_EVALUATE_KEEPNAMES_SHIM (DEC-411)", () => {
     // No page.evaluate call site anywhere in the file is reachable without
     // going through one of the two functions checked above, or through the
     // measureFontFloor() / measureContrast() / measureClipOffenders() /
-    // measureTypeRoles() helpers those functions call after installing the
-    // shim (DEC-421/DEC-426/DEC-620/DEC-643) — the module has no
-    // page.evaluate call sites outside visitRoute, visitMobileRoute,
-    // measureFontFloor, measureContrast, measureClipOffenders, and
-    // measureTypeRoles.
+    // measureTypeRoles() / measureFocusState() / measureHoverState() /
+    // measureDisabledState() helpers those functions call after installing
+    // the shim (DEC-421/DEC-426/DEC-620/DEC-643/DEC-409 wave-35 amendment) —
+    // the module has no page.evaluate call sites outside visitRoute,
+    // visitMobileRoute, measureFontFloor, measureContrast,
+    // measureClipOffenders, measureTypeRoles, measureFocusState,
+    // measureHoverState, and measureDisabledState.
     const evaluateCallCount = (source.match(/page\.evaluate\(/g) ?? []).length;
     const evaluateCallsInVisitRouteBody = (visitRouteBody.match(/page\.evaluate\(/g) ?? []).length;
     const evaluateCallsInMobileBody = (visitMobileRouteBody.match(/page\.evaluate\(/g) ?? []).length;
@@ -532,13 +534,31 @@ describe("PAGE_EVALUATE_KEEPNAMES_SHIM (DEC-411)", () => {
     const measureTypeRolesEnd = source.indexOf("\n}\n", measureTypeRolesStart) + 3;
     const measureTypeRolesBody = source.slice(measureTypeRolesStart, measureTypeRolesEnd);
     const evaluateCallsInMeasureTypeRoles = (measureTypeRolesBody.match(/page\.evaluate\(/g) ?? []).length;
+    const measureFocusStateStart = source.indexOf("async function measureFocusState(");
+    expect(measureFocusStateStart).toBeGreaterThan(-1);
+    const measureFocusStateEnd = source.indexOf("\n}\n", measureFocusStateStart) + 3;
+    const measureFocusStateBody = source.slice(measureFocusStateStart, measureFocusStateEnd);
+    const evaluateCallsInMeasureFocusState = (measureFocusStateBody.match(/page\.evaluate\(/g) ?? []).length;
+    const measureHoverStateStart = source.indexOf("async function measureHoverState(");
+    expect(measureHoverStateStart).toBeGreaterThan(-1);
+    const measureHoverStateEnd = source.indexOf("\n}\n", measureHoverStateStart) + 3;
+    const measureHoverStateBody = source.slice(measureHoverStateStart, measureHoverStateEnd);
+    const evaluateCallsInMeasureHoverState = (measureHoverStateBody.match(/page\.evaluate\(/g) ?? []).length;
+    const measureDisabledStateStart = source.indexOf("async function measureDisabledState(");
+    expect(measureDisabledStateStart).toBeGreaterThan(-1);
+    const measureDisabledStateEnd = source.indexOf("\n}\n", measureDisabledStateStart) + 3;
+    const measureDisabledStateBody = source.slice(measureDisabledStateStart, measureDisabledStateEnd);
+    const evaluateCallsInMeasureDisabledState = (measureDisabledStateBody.match(/page\.evaluate\(/g) ?? []).length;
     expect(evaluateCallCount).toBe(
       evaluateCallsInVisitRouteBody +
         evaluateCallsInMobileBody +
         evaluateCallsInMeasureFontFloor +
         evaluateCallsInMeasureContrast +
         evaluateCallsInMeasureClipOffenders +
-        evaluateCallsInMeasureTypeRoles,
+        evaluateCallsInMeasureTypeRoles +
+        evaluateCallsInMeasureFocusState +
+        evaluateCallsInMeasureHoverState +
+        evaluateCallsInMeasureDisabledState,
     );
   });
 });

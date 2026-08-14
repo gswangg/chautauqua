@@ -616,3 +616,200 @@ export function typeRoleSummaryLine(results: readonly TypeRoleResult[]): string 
   const passed = results.filter((r) => r.ok).length;
   return `${passed}/${results.length} type-role checks passed`;
 }
+
+// ---------------------------------------------------------------------------
+// DEC-409 B8 interaction-state pass (wave-35 amendment): the three
+// deterministically measurable states from docs/design/DESIGN-RULINGS.md
+// §B8 — focus, hover, disabled — measured live via getComputedStyle in
+// scripts/render-sweep.ts rather than proven only by a stylesheet source
+// scan (test/control-class-conformance.test.ts, test/state-band-inset.scan.
+// test.ts stay in place for their own regression role; a passing source
+// scan proves intent, not that the cascade actually renders it — see the
+// settings-panel cascade-defeat precedent DEC-409's amendment names).
+// Advisory (INTERACTION_STATE_BLOCKING false) until a run reads all-PASS,
+// same DEC-387 flip rule as FONT_FLOOR_BLOCKING/TYPE_ROLE_BLOCKING above.
+// ---------------------------------------------------------------------------
+
+export const INTERACTION_STATE_BLOCKING = false;
+
+export type InteractionStateKind = "focus" | "hover" | "disabled";
+
+/** Only the properties relevant to a given check's kind are set; only
+ * properties present on `expected` are compared (same "only measured
+ * properties can fail" convention as TypeRoleExpected/evaluateTypeRoleResult). */
+export interface InteractionStateExpected {
+  readonly outlineWidthPx?: number;
+  readonly outlineStyle?: string;
+  readonly outlineColorHex?: string;
+  readonly outlineOffsetPx?: number;
+  readonly backgroundColorHex?: string;
+  readonly colorHex?: string;
+  /** DEC-409/§B8's hover "no shift": the element's own box (y, height) must
+   * read identically before and after the hover interaction. */
+  readonly noLayoutShift?: boolean;
+}
+
+export interface InteractionStateObserved {
+  readonly outlineWidthPx?: number;
+  readonly outlineStyle?: string;
+  readonly outlineColorHex?: string;
+  readonly outlineOffsetPx?: number;
+  readonly backgroundColorHex?: string;
+  readonly colorHex?: string;
+  readonly boxBefore?: { y: number; height: number };
+  readonly boxAfter?: { y: number; height: number };
+}
+
+export interface InteractionStateEntry {
+  readonly kind: InteractionStateKind;
+  readonly path: string;
+  readonly selector: string;
+  readonly role: string;
+  readonly expected: InteractionStateExpected;
+}
+
+export interface InteractionStateResult {
+  kind: InteractionStateKind;
+  path: string;
+  selector: string;
+  role: string;
+  ok: boolean;
+  failureReason?: string;
+  observed: InteractionStateObserved;
+  expected: InteractionStateExpected;
+}
+
+const BOX_SHIFT_TOLERANCE_PX = 0.5;
+
+/** Pure, DOM-free comparison of one interaction-state entry's observed
+ * getComputedStyle/box reading against its expected values — mirrors
+ * evaluateTypeRoleResult's shape (only the properties present on `expected`
+ * are checked). The failure message is always prefixed with the entry's
+ * selector so a FAIL row names the exact element that missed. */
+export function evaluateInteractionState(
+  entry: InteractionStateEntry,
+  observed: InteractionStateObserved,
+): InteractionStateResult {
+  const { expected } = entry;
+  const reasons: string[] = [];
+
+  if (expected.outlineWidthPx !== undefined) {
+    if (observed.outlineWidthPx === undefined || Number.isNaN(observed.outlineWidthPx)) {
+      reasons.push(`outline-width not measured (expected ${expected.outlineWidthPx}px)`);
+    } else if (observed.outlineWidthPx !== expected.outlineWidthPx) {
+      reasons.push(`outline-width ${observed.outlineWidthPx}px !== expected ${expected.outlineWidthPx}px`);
+    }
+  }
+
+  if (expected.outlineStyle !== undefined) {
+    if (observed.outlineStyle === undefined) {
+      reasons.push(`outline-style not measured (expected ${expected.outlineStyle})`);
+    } else if (observed.outlineStyle !== expected.outlineStyle) {
+      reasons.push(`outline-style ${observed.outlineStyle} !== expected ${expected.outlineStyle}`);
+    }
+  }
+
+  if (expected.outlineColorHex !== undefined) {
+    if (observed.outlineColorHex === undefined) {
+      reasons.push(`outline-color not measured (expected ${expected.outlineColorHex})`);
+    } else if (observed.outlineColorHex.toUpperCase() !== expected.outlineColorHex.toUpperCase()) {
+      reasons.push(`outline-color ${observed.outlineColorHex} !== expected ${expected.outlineColorHex}`);
+    }
+  }
+
+  if (expected.outlineOffsetPx !== undefined) {
+    if (observed.outlineOffsetPx === undefined || Number.isNaN(observed.outlineOffsetPx)) {
+      reasons.push(`outline-offset not measured (expected ${expected.outlineOffsetPx}px)`);
+    } else if (observed.outlineOffsetPx !== expected.outlineOffsetPx) {
+      reasons.push(`outline-offset ${observed.outlineOffsetPx}px !== expected ${expected.outlineOffsetPx}px`);
+    }
+  }
+
+  if (expected.backgroundColorHex !== undefined) {
+    if (observed.backgroundColorHex === undefined) {
+      reasons.push(`background-color not measured (expected ${expected.backgroundColorHex})`);
+    } else if (observed.backgroundColorHex.toUpperCase() !== expected.backgroundColorHex.toUpperCase()) {
+      reasons.push(`background-color ${observed.backgroundColorHex} !== expected ${expected.backgroundColorHex}`);
+    }
+  }
+
+  if (expected.colorHex !== undefined) {
+    if (observed.colorHex === undefined) {
+      reasons.push(`color not measured (expected ${expected.colorHex})`);
+    } else if (observed.colorHex.toUpperCase() !== expected.colorHex.toUpperCase()) {
+      reasons.push(`color ${observed.colorHex} !== expected ${expected.colorHex}`);
+    }
+  }
+
+  if (expected.noLayoutShift) {
+    if (!observed.boxBefore || !observed.boxAfter) {
+      reasons.push("element box not measured before/after hover");
+    } else if (
+      Math.abs(observed.boxBefore.y - observed.boxAfter.y) > BOX_SHIFT_TOLERANCE_PX ||
+      Math.abs(observed.boxBefore.height - observed.boxAfter.height) > BOX_SHIFT_TOLERANCE_PX
+    ) {
+      reasons.push(
+        `element box shifted on hover: before y=${observed.boxBefore.y},h=${observed.boxBefore.height} ` +
+          `!== after y=${observed.boxAfter.y},h=${observed.boxAfter.height}`,
+      );
+    }
+  }
+
+  return {
+    kind: entry.kind,
+    path: entry.path,
+    selector: entry.selector,
+    role: entry.role,
+    ok: reasons.length === 0,
+    failureReason: reasons.length > 0 ? `${entry.selector}: ${reasons.join("; ")}` : undefined,
+    observed,
+    expected,
+  };
+}
+
+/** DEC-389-style FAIL row for an interaction-state check whose in-page
+ * measurement threw (e.g. the target selector never resolved) — reported as
+ * instrument-blocked rather than a false empty observation. */
+export function interactionStateErrorResult(
+  entry: InteractionStateEntry,
+  message: string,
+): InteractionStateResult {
+  return {
+    kind: entry.kind,
+    path: entry.path,
+    selector: entry.selector,
+    role: entry.role,
+    ok: false,
+    failureReason: `${entry.selector}: instrument-blocked: ${message}`,
+    observed: {},
+    expected: entry.expected,
+  };
+}
+
+/** Renders a PASS/FAIL table for the collected interaction-state results,
+ * one line per check (mirrors formatTypeRoleTable's shape). */
+export function formatInteractionStateTable(results: readonly InteractionStateResult[]): string {
+  const selectorWidth = Math.max(...results.map((r) => r.selector.length), "selector".length);
+  const roleWidth = Math.max(...results.map((r) => r.role.length), "role".length);
+  const lines: string[] = [];
+  lines.push(`${"selector".padEnd(selectorWidth)}  ${"role".padEnd(roleWidth)}  kind      status`);
+  for (const r of results) {
+    const mark = r.ok ? "PASS" : "FAIL";
+    const detail = r.ok ? "" : `  (${r.failureReason})`;
+    lines.push(`${r.selector.padEnd(selectorWidth)}  ${r.role.padEnd(roleWidth)}  ${r.kind.padEnd(8)}  ${mark}${detail}`);
+  }
+  return lines.join("\n");
+}
+
+/** True if every interaction-state result passed; kept for symmetry with
+ * allTypeRolePassed even though INTERACTION_STATE_BLOCKING keeps this out of
+ * the gate's exit code for now. */
+export function allInteractionStatesPassed(results: readonly InteractionStateResult[]): boolean {
+  return results.every((r) => r.ok);
+}
+
+/** Summary line: "N/M interaction-state checks passed". */
+export function interactionStateSummaryLine(results: readonly InteractionStateResult[]): string {
+  const passed = results.filter((r) => r.ok).length;
+  return `${passed}/${results.length} interaction-state checks passed`;
+}
