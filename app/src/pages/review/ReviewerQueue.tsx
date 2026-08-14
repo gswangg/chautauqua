@@ -66,6 +66,11 @@ function PlanSection({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [undoingId, setUndoingId] = useState<string | null>(null);
+  // REVIEW PACK 03-03: the rendered list caps at 5 rows by default; both the
+  // "Showing 5 of N" caption and the "Show all N" control read N off the
+  // SAME items/recused arrays the list itself renders -- never a second
+  // count.
+  const [showAll, setShowAll] = useState(false);
 
   function load() {
     setLoading(true);
@@ -131,70 +136,123 @@ function PlanSection({
           order (see the comment above); recused rows are appended after
           them since the queue endpoint reports them as a distinct set with
           no interleaved position of its own. */}
-      <ol className="chq-review-queue-list">
-        {items.map((item) => (
+      {(() => {
+        const totalRows = items.length + recused.length;
+        const visibleItems = showAll ? items : items.slice(0, 5);
+        const remainingAfterItems = showAll ? recused.length : Math.max(0, 5 - items.length);
+        const visibleRecused = showAll ? recused : recused.slice(0, remainingAfterItems);
+        return (
+          <>
+            <ol className="chq-review-queue-list">
+              {visibleItems.map((item) => (
           <li key={item.submissionId} className="chq-review-queue-row">
-            <div className="chq-review-queue-row-top">
-              <span className="chq-review-queue-ref">{item.ref}</span>
-              {/* DEC-831/DEC-845: the queue's own score column -- SCORED
-                  <blended score> once this reviewer has rated it, NOT
-                  SCORED otherwise. DEC-730 micro-label family: weight/
-                  wording carry the state, never colour. */}
-              <span
-                className={`chq-review-queue-score ${
-                  item.alreadyRatedByMe ? 'chq-review-queue-score-scored' : 'chq-review-queue-score-unscored'
-                }`}
+            {/* REVIEW PACK frame 03-03 (DEC-874 wave-65 amendment): column 1
+                stacks the eyebrow/title/meta; column 2 holds the action
+                alone -- the row is a two-column grid, not a stacked column
+                with a full-width button underneath. */}
+            <div className="chq-review-queue-row-main">
+              <div className="chq-review-queue-row-top">
+                <span className="chq-review-queue-ref">{item.ref}</span>
+                {/* DEC-831/DEC-845: the queue's own score column -- SCORED
+                    <blended score> once this reviewer has rated it, NOT
+                    SCORED otherwise. DEC-730 micro-label family: weight/
+                    wording carry the state, never colour. */}
+                <span
+                  className={`chq-review-queue-score ${
+                    item.alreadyRatedByMe ? 'chq-review-queue-score-scored' : 'chq-review-queue-score-unscored'
+                  }`}
+                >
+                  {item.alreadyRatedByMe
+                    ? `SCORED ${typeof item.myScore === 'number' ? item.myScore.toFixed(1) : '—'}`
+                    : 'NOT SCORED'}
+                </span>
+              </div>
+              <Link to={`/review/plans/${planId}/submissions/${item.submissionId}`} className="chq-review-queue-title">
+                {item.title}
+              </Link>
+              {/* DEC-857/DEC-874: the meta line is a session-shape fact, never
+                  stripped for an anonymized plan -- format and (when the item
+                  carries one) audience level, joined on one line; nothing
+                  renders when the submission has neither. */}
+              {(item.format != null || item.audienceLevel != null) && (
+                <p className="chq-review-plan-meta">
+                  {[item.format != null ? formatMetaLabel(item.format) : null, item.audienceLevel]
+                    .filter((v): v is string => v != null)
+                    .join(' · ')}
+                </p>
+              )}
+            </div>
+            {/* DEC-857/DEC-874/REVIEW PACK 03-03: the action names what it
+                actually offers -- a scored row already took the action, so
+                it takes the secondary face and reads "Change your score"
+                rather than repeating the primary "Score this". Never a
+                full-width button anymore; column 2 clamps its width. Two
+                literal branches (not a dynamic class expression) so
+                review-primary-contrast.test.ts's static co-occurrence scan
+                sees both faces named alongside this action class. */}
+            {item.alreadyRatedByMe ? (
+              <Link
+                to={`/review/plans/${planId}/submissions/${item.submissionId}`}
+                className="chq-review-queue-score-action chq-btn chq-btn-secondary chq-review-queue-row-action"
               >
-                {item.alreadyRatedByMe
-                  ? `SCORED ${typeof item.myScore === 'number' ? item.myScore.toFixed(1) : '—'}`
-                  : 'NOT SCORED'}
-              </span>
-            </div>
-            <Link to={`/review/plans/${planId}/submissions/${item.submissionId}`} className="chq-review-queue-title">
-              {item.title}
-            </Link>
-            {/* DEC-857/DEC-874: the meta line is a session-shape fact, never
-                stripped for an anonymized plan -- format and (when the item
-                carries one) audience level, joined on one line; nothing
-                renders when the submission has neither. */}
-            {(item.format != null || item.audienceLevel != null) && (
-              <p className="chq-review-plan-meta">
-                {[item.format != null ? formatMetaLabel(item.format) : null, item.audienceLevel]
-                  .filter((v): v is string => v != null)
-                  .join(' · ')}
-              </p>
+                Change your score
+              </Link>
+            ) : (
+              <Link
+                to={`/review/plans/${planId}/submissions/${item.submissionId}`}
+                className="chq-review-queue-score-action chq-btn chq-btn-primary chq-review-queue-row-action"
+              >
+                Score this
+              </Link>
             )}
-            {/* DEC-857/DEC-874: the action names what it actually offers --
-                a scored row already took the action, so it reads "Change
-                your score" rather than repeating "Score this" -- rendered
-                as a full-width button, not an inline link. */}
-            <Link
-              to={`/review/plans/${planId}/submissions/${item.submissionId}`}
-              className="chq-review-queue-score-action chq-btn chq-btn-primary chq-review-queue-row-action"
-            >
-              {item.alreadyRatedByMe ? 'Change your score' : 'Score this'}
-            </Link>
           </li>
-        ))}
-        {recused.map((item) => (
+              ))}
+              {visibleRecused.map((item) => (
           <li key={item.submissionId} className="chq-review-queue-row chq-review-queue-row-recused">
-            <div className="chq-review-queue-row-top">
-              <span className="chq-review-queue-ref">{item.ref}</span>
-              <span className="chq-review-queue-score chq-review-queue-score-recused">Recused</span>
+            <div className="chq-review-queue-row-main">
+              <div className="chq-review-queue-row-top">
+                <span className="chq-review-queue-ref">{item.ref}</span>
+                <span className="chq-review-queue-score chq-review-queue-score-recused">RECUSED</span>
+              </div>
+              <span className="chq-review-queue-title">{item.title}</span>
+              {/* REVIEW PACK 03-03: Undo moves beneath the title as a quiet
+                  tertiary control -- the reason itself now lives in the
+                  action column (see below), naming what the row actually
+                  offers: undoing the recusal, not repeating the reason. */}
+              <button
+                type="button"
+                className="chq-review-queue-row-undo"
+                disabled={undoingId === item.submissionId}
+                onClick={() => void undoRecusal(item.submissionId)}
+              >
+                Undo
+              </button>
             </div>
-            <span className="chq-review-queue-title">{item.title}</span>
-            {item.reason && <p className="chq-review-plan-meta">{item.reason}</p>}
-            <button
-              type="button"
-              className="chq-btn chq-btn-secondary chq-review-queue-row-action"
-              disabled={undoingId === item.submissionId}
-              onClick={() => void undoRecusal(item.submissionId)}
-            >
-              Undo
-            </button>
+            {/* REVIEW PACK 03-03: the reason IS the row action -- an
+                outlined, disabled-styled control (never a live button,
+                never chq-btn-primary/secondary) naming why this row is
+                recused instead of offering a scoring action. */}
+            <span className="chq-review-queue-row-action chq-review-queue-recusal-reason" aria-disabled="true">
+              {item.reason ?? 'You work with this speaker'}
+            </span>
           </li>
-        ))}
-      </ol>
+              ))}
+            </ol>
+            {!showAll && totalRows > 5 && (
+              <div className="chq-review-queue-footer">
+                <span className="chq-review-queue-footer-count">{`Showing 5 of ${totalRows}`}</span>
+                <button
+                  type="button"
+                  className="chq-review-queue-footer-showall"
+                  onClick={() => setShowAll(true)}
+                >
+                  {`Show all ${totalRows}`}
+                </button>
+              </div>
+            )}
+          </>
+        );
+      })()}
     </section>
   );
 }
@@ -301,13 +359,32 @@ export function ReviewerQueue() {
                 sanctioned delayed block instead. DEC-831/DEC-845's "counts
                 what is LEFT" title appears the moment the count exists; the
                 zero case reads as done rather than "0 left to score". */}
-            {scoreLeft === null ? (
-              <DelayedLoading />
-            ) : scoreLeft === 0 ? (
-              <h1 className="chq-page-title">Nothing left in your queue. Nicely done.</h1>
-            ) : (
-              <h1 className="chq-page-title">{`${scoreLeft} left to score`}</h1>
-            )}
+            <div className="chq-review-scoped-title-row">
+              {scoreLeft === null ? (
+                <DelayedLoading />
+              ) : scoreLeft === 0 ? (
+                <h1 className="chq-page-title">Nothing left in your queue. Nicely done.</h1>
+              ) : (
+                <h1 className="chq-page-title">{`${scoreLeft} left to score`}</h1>
+              )}
+              {/* REVIEW PACK 03-03: the title row's own primary action --
+                  quiet when it has nothing to offer (every item already
+                  scored, or the queue hasn't resolved yet), present and
+                  linking straight to the first unscored item otherwise. */}
+              {routeQueueItems &&
+                (() => {
+                  const nextItem = routeQueueItems.find((i) => !i.alreadyRatedByMe);
+                  if (!nextItem) return null;
+                  return (
+                    <Link
+                      to={`/review/plans/${routePlanId}/submissions/${nextItem.submissionId}`}
+                      className="chq-btn chq-btn-primary chq-review-scoped-title-action"
+                    >
+                      Score the next one
+                    </Link>
+                  );
+                })()}
+            </div>
             {subtitle && <p className="chq-review-plan-meta">{subtitle}</p>}
             {routeQueueItems && totalCount > 0 && (
               <>
