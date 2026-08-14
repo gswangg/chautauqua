@@ -142,7 +142,11 @@ describe('NewContactModal duplicate-address 409 (DEC-755 amendment wave 43)', ()
       'Already on an existing contact',
     );
 
-    const openLink = await screen.findByRole('link', { name: 'Open the existing record' });
+    // DEC-788 amendment (wave 8): the 409 forward path now rides the shared
+    // DuplicateEmailNotice component (also used by RosterPanel's
+    // Add-speaker), which resolves the existing contact and links it with
+    // "Open this contact".
+    const openLink = await screen.findByRole('link', { name: 'Open this contact' });
     expect(openLink).toHaveAttribute('href', '/contacts?openContact=ct-existing');
   });
 
@@ -166,6 +170,6 @@ describe('NewContactModal duplicate-address 409 (DEC-755 amendment wave 43)', ()
     await waitFor(() => {
       expect(document.querySelector('.chq-error')).toHaveTextContent('Validation failed');
     });
-    expect(screen.queryByRole('link', { name: 'Open the existing record' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Open this contact' })).not.toBeInTheDocument();
   });
 });
