@@ -9,12 +9,23 @@
 // (reviewerCanAccessSubmissionFile) keeps seeing every plan, never just a
 // first page, since a paged read there would silently weaken a reviewer's
 // file-access check.
+//
+// DEC-346 amendment (wave 62): also bounds the two plan-wide review reads
+// that had no cap at all -- listEvaluationScoresForPlan (evaluations.ts) and
+// listRecusalsForPlan (recusal.ts). These import the repo submodules
+// DIRECTLY (not "../src/server/repo/review", which the vi.mock above
+// replaces wholesale) against a minimal fake db chain, mirroring
+// test/review-plan-submissions-scan.test.ts's approach but without needing
+// to evaluate the actual where-expression (the cap/order-by behavior under
+// test doesn't depend on WHERE semantics).
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
+import { ApiError } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import type { PlanRecord } from "../src/server/repo/review";
+import type { Db } from "../src/server/context";
 
 const ORG_A = "org-a";
 const EVENT_ID = "event-1";
@@ -288,5 +299,125 @@ describe("DEC-461(b) regression: files-authz.ts:153's unpaged listPlansForEvent 
     // files-authz.ts:153 must call listPlansForEvent with NO page arg (the
     // SAFETY-CRITICAL invariant this task must not violate).
     expect(reviewModule.listPlansForEvent).toHaveBeenCalledWith(fakeDb, EVENT_ID);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DEC-346 amendment (wave 62): listEvaluationScoresForPlan / listRecusalsForPlan
+// ---------------------------------------------------------------------------
+
+interface FakeQueryCall {
+  limitN?: number;
+  orderByCalled: boolean;
+}
+
+/** A minimal select().from().where().orderBy().limit() chain that returns
+ * exactly `rowCount` canned rows (sliced to whatever `.limit(n)` was called
+ * with, mirroring real SQL LIMIT semantics), and records whether `.orderBy`
+ * was called and what `.limit` was passed -- enough to exercise the cap +
+ * order-by behavior under test without evaluating real WHERE predicates. */
+function makeCappedFakeDb(rowCount: number, makeRow: (i: number) => Record<string, unknown>) {
+  const calls: FakeQueryCall[] = [];
+  const db = {
+    select: () => {
+      const call: FakeQueryCall = { orderByCalled: false };
+      calls.push(call);
+      const chain = {
+        from: () => chain,
+        where: () => chain,
+        orderBy: (..._args: unknown[]) => {
+          call.orderByCalled = true;
+          return chain;
+        },
+        limit: (n: number) => {
+          call.limitN = n;
+          return chain;
+        },
+        then: (resolve: (v: unknown[]) => unknown, reject?: (e: unknown) => unknown) => {
+          const rows = Array.from({ length: rowCount }, (_, i) => makeRow(i));
+          const sliced = call.limitN !== undefined ? rows.slice(0, call.limitN) : rows;
+          return Promise.resolve(sliced).then(resolve, reject);
+        },
+      };
+      return chain;
+    },
+  };
+  return { db: db as unknown as Db, calls };
+}
+
+describe("DEC-346 amendment (wave 62): listEvaluationScoresForPlan cap", () => {
+  it("MAX_PLAN_EVALUATION_SCAN + 1 rows: throws an ApiError naming the cap", async () => {
+    const { listEvaluationScoresForPlan, MAX_PLAN_EVALUATION_SCAN } = await import(
+      "../src/server/repo/review/evaluations"
+    );
+    const { db } = makeCappedFakeDb(MAX_PLAN_EVALUATION_SCAN + 1, (i) => ({
+      submissionId: `sub-${i}`,
+      scoresJson: "{}",
+    }));
+
+    await expect(listEvaluationScoresForPlan(db, "plan-1", 1)).rejects.toMatchObject({
+      code: "invalid",
+      message: expect.stringContaining(String(MAX_PLAN_EVALUATION_SCAN)),
+    });
+    await expect(listEvaluationScoresForPlan(db, "plan-1", 1)).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it("a normal-sized read returns its rows, and the issued query carries both a limit and an order-by", async () => {
+    const { listEvaluationScoresForPlan, MAX_PLAN_EVALUATION_SCAN } = await import(
+      "../src/server/repo/review/evaluations"
+    );
+    const { db, calls } = makeCappedFakeDb(3, (i) => ({
+      submissionId: `sub-${i}`,
+      scoresJson: JSON.stringify({ overall: i }),
+    }));
+
+    const result = await listEvaluationScoresForPlan(db, "plan-1", 1);
+
+    expect(result).toEqual([
+      { submissionId: "sub-0", scores: { overall: 0 } },
+      { submissionId: "sub-1", scores: { overall: 1 } },
+      { submissionId: "sub-2", scores: { overall: 2 } },
+    ]);
+    expect(calls.length).toBe(1);
+    expect(calls[0]!.limitN).toBe(MAX_PLAN_EVALUATION_SCAN + 1);
+    expect(calls[0]!.orderByCalled).toBe(true);
+  });
+});
+
+describe("DEC-346 amendment (wave 62): listRecusalsForPlan cap", () => {
+  it("MAX_PLAN_EVALUATION_SCAN + 1 rows: throws an ApiError naming the cap", async () => {
+    const { listRecusalsForPlan } = await import("../src/server/repo/review/recusal");
+    const { MAX_PLAN_EVALUATION_SCAN } = await import("../src/server/repo/review/evaluations");
+    const { db } = makeCappedFakeDb(MAX_PLAN_EVALUATION_SCAN + 1, (i) => ({
+      id: `rec-${i}`,
+      submissionId: `sub-${i}`,
+      userId: `user-${i}`,
+    }));
+
+    await expect(listRecusalsForPlan(db, "plan-1")).rejects.toMatchObject({
+      code: "invalid",
+      message: expect.stringContaining(String(MAX_PLAN_EVALUATION_SCAN)),
+    });
+    await expect(listRecusalsForPlan(db, "plan-1")).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it("a normal-sized read returns its rows, and the issued query carries both a limit and an order-by", async () => {
+    const { listRecusalsForPlan } = await import("../src/server/repo/review/recusal");
+    const { MAX_PLAN_EVALUATION_SCAN } = await import("../src/server/repo/review/evaluations");
+    const { db, calls } = makeCappedFakeDb(2, (i) => ({
+      id: `rec-${i}`,
+      submissionId: `sub-${i}`,
+      userId: `user-${i}`,
+    }));
+
+    const result = await listRecusalsForPlan(db, "plan-1");
+
+    expect(result).toEqual([
+      { submissionId: "sub-0", userId: "user-0" },
+      { submissionId: "sub-1", userId: "user-1" },
+    ]);
+    expect(calls.length).toBe(1);
+    expect(calls[0]!.limitN).toBe(MAX_PLAN_EVALUATION_SCAN + 1);
+    expect(calls[0]!.orderByCalled).toBe(true);
   });
 });

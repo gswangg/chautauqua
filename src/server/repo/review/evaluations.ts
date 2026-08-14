@@ -7,6 +7,15 @@ import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
 import { resolveReviewerIdentity } from "../../../domain/review-identity";
 import type { EvaluationCriterionDef } from "../../../domain/evaluation";
+import { ApiError } from "../../http";
+
+// DEC-346 amendment (wave 62): the ceiling listEvaluationScoresForPlan's
+// scan refuses past -- mirrors MAX_PLAN_SUBMISSION_SCAN
+// (src/server/repo/review/submissions.ts:21), but set higher because
+// evaluations are submissions x reviewers (every submission can carry more
+// than one evaluation row, one per assigned reviewer), so the same plan
+// scans a strictly larger evaluation table than submission table.
+export const MAX_PLAN_EVALUATION_SCAN = 50000;
 
 export interface EvaluationRecord {
   id: string;
@@ -30,21 +39,13 @@ function toEvaluationRecord(row: typeof schema.evaluation.$inferSelect): Evaluat
   };
 }
 
-/** DEC-087: `round` is a required third param -- every call site filters
- * server-side (SQL `where`) rather than loading the whole plan's evaluations
- * across all rounds and filtering in JS. */
-export async function listEvaluationsForPlan(db: Db, planId: string, round: number): Promise<EvaluationRecord[]> {
-  const rows = await db
-    .select()
-    .from(schema.evaluation)
-    .where(and(eq(schema.evaluation.planId, planId), eq(schema.evaluation.round, round)));
-  return rows.map(toEvaluationRecord);
-}
-
-/** DEC-439/DEC-440: payload-width twin of listEvaluationsForPlan for the
- * results endpoint -- selects only submission_id + scores_json (no id,
+/** DEC-439/DEC-440: payload-width twin of the plan+round evaluation read for
+ * the results endpoint -- selects only submission_id + scores_json (no id,
  * planId, reviewerId, round, comment, timestamps) since buildResults never
- * reads those columns. Same WHERE as listEvaluationsForPlan. */
+ * reads those columns. DEC-346 amendment (wave 62): totally ordered
+ * (submissionId asc, id asc) and capped at MAX_PLAN_EVALUATION_SCAN + 1 --
+ * refuses loudly rather than silently truncating once a plan's evaluation
+ * count crosses the cap. */
 export async function listEvaluationScoresForPlan(
   db: Db,
   planId: string,
@@ -56,7 +57,15 @@ export async function listEvaluationScoresForPlan(
       scoresJson: schema.evaluation.scoresJson,
     })
     .from(schema.evaluation)
-    .where(and(eq(schema.evaluation.planId, planId), eq(schema.evaluation.round, round)));
+    .where(and(eq(schema.evaluation.planId, planId), eq(schema.evaluation.round, round)))
+    .orderBy(asc(schema.evaluation.submissionId), asc(schema.evaluation.id))
+    .limit(MAX_PLAN_EVALUATION_SCAN + 1);
+  if (rows.length > MAX_PLAN_EVALUATION_SCAN) {
+    throw new ApiError(
+      "invalid",
+      `This plan would scan more than ${MAX_PLAN_EVALUATION_SCAN} evaluations -- narrow the plan's track filter first`,
+    );
+  }
   return rows.map((r) => ({
     submissionId: r.submissionId,
     scores: JSON.parse(r.scoresJson) as Record<string, number | string>,
@@ -159,7 +168,7 @@ export async function listSubmissionIdsRatedBy(
 
 /** DEC-831: this reviewer's own scores for a plan round, keyed by
  * submissionId -- read beside listSubmissionIdsRatedBy (same WHERE shape)
- * rather than a second pass over listEvaluationsForPlan, so the reviewer
+ * rather than a second pass over listEvaluationScoresForPlan, so the reviewer
  * queue's myScore column shares one query per reviewer per round. */
 export async function listEvaluationScoresForReviewer(
   db: Db,
