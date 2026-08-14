@@ -76,6 +76,31 @@ afterEach(() => {
   consoleErrorSpy.mockRestore();
 });
 
+// DEC-678 wave-3 amendment: a pending useMe() renders the page skeleton
+// (structure), never an empty main under the "Review" h1.
+describe('ReviewPage loading (DEC-678 wave-3 amendment)', () => {
+  it('renders the page skeleton while useMe is pending, not a blank main', () => {
+    // A fetch that never resolves keeps useMe()'s `loading` flag true for
+    // the lifetime of the test -- the render must never depend on it
+    // settling.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => new Promise(() => {})),
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <ReviewPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Review' })).toBeInTheDocument();
+    const status = screen.getByRole('status');
+    expect(status).toHaveAttribute('aria-busy', 'true');
+    expect(status.children.length).toBeGreaterThan(0);
+  });
+});
+
 describe('ReviewPage render smoke: organizer', () => {
   it('renders the plan list', async () => {
     mockApi({

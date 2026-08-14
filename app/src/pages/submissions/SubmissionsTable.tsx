@@ -11,7 +11,7 @@ import { deriveColumnsFromFormFields, findFormatField, formatAnswerValue, visibl
 import { FilterBar, FilterBarSearchSort } from './FilterBar';
 import { buildSubmissionsQuery } from './filters';
 import { NewSubmissionModal, type NewSubmissionInput } from './NewSubmissionModal';
-import { DelayedLoading } from '../../components/DelayedLoading';
+import { PageSkeleton } from '../../components/PageSkeleton';
 import { EMPTY_SELECTION, isPageFullySelected, isPagePartiallySelected, selectionReducer } from './selection';
 import {
   DEFAULT_FILTER_STATE,
@@ -339,7 +339,7 @@ export function SubmissionsTable() {
             {loading && (
               <tr>
                 <td className="chq-submissions-loading" colSpan={9 + shownColumns.length}>
-                  <DelayedLoading />
+                  <PageSkeleton variant="table" rows={4} />
                 </td>
               </tr>
             )}
