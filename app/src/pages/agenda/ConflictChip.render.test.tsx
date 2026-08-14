@@ -17,6 +17,8 @@ describe('ConflictChip', () => {
         day: '2026-09-01',
         roomId: 'room-1',
         speakerContactIds: [],
+        breakId: null,
+        breakLabel: null,
         detail: 'Room "Ballroom" double-booked on 2026-09-01 between "Talk One" and "Talk Two"',
       },
     ];
@@ -32,6 +34,8 @@ describe('ConflictChip', () => {
         day: '2026-09-01',
         roomId: null,
         speakerContactIds: ['ct-1'],
+        breakId: null,
+        breakLabel: null,
         detail: 'Speaker(s) Ada Lovelace double-booked on 2026-09-01 between "Talk One" and "Talk Two"',
       },
     ];
@@ -43,6 +47,59 @@ describe('ConflictChip', () => {
   it('returns null when the submission has no conflicts', () => {
     const { container } = render(<ConflictChip conflicts={[]} submissionId="sub-1" />);
     expect(container.firstChild).toBeNull();
+  });
+
+  // DEC-557 amendment (wave 71): a break-only set used to fall through to
+  // null (the bug the precedence rule closes) -- it must render its own
+  // caption, not silently invert the card with no words.
+  it('renders the break caption for a break-only card, with the detail on hover', () => {
+    const conflicts: AgendaConflict[] = [
+      {
+        kind: 'break_overlap',
+        submissionIds: ['sub-1'],
+        day: '2026-09-01',
+        roomId: 'room-1',
+        speakerContactIds: [],
+        breakId: 'break-1',
+        breakLabel: 'Lunch',
+        detail: '"Talk One" is scheduled over the "Lunch" break on 2026-09-01',
+      },
+    ];
+    render(<ConflictChip conflicts={conflicts} submissionId="sub-1" />);
+    const chip = screen.getByText('Scheduled over a break');
+    expect(chip).toBeInTheDocument();
+    expect(chip).toHaveAttribute('title', '"Talk One" is scheduled over the "Lunch" break on 2026-09-01');
+  });
+
+  it('renders the room caption (not the break caption) for a break+room card, joining both details on hover', () => {
+    const conflicts: AgendaConflict[] = [
+      {
+        kind: 'room_overlap',
+        submissionIds: ['sub-1', 'sub-2'],
+        day: '2026-09-01',
+        roomId: 'room-1',
+        speakerContactIds: [],
+        breakId: null,
+        breakLabel: null,
+        detail: 'Room "Ballroom" double-booked on 2026-09-01 between "Talk One" and "Talk Two"',
+      },
+      {
+        kind: 'break_overlap',
+        submissionIds: ['sub-1'],
+        day: '2026-09-01',
+        roomId: 'room-1',
+        speakerContactIds: [],
+        breakId: 'break-1',
+        breakLabel: 'Lunch',
+        detail: '"Talk One" is scheduled over the "Lunch" break on 2026-09-01',
+      },
+    ];
+    render(<ConflictChip conflicts={conflicts} submissionId="sub-1" />);
+    const chip = screen.getByText('Two sessions in one room');
+    expect(chip).toBeInTheDocument();
+    expect(chip.getAttribute('title')).toBe(
+      'Room "Ballroom" double-booked on 2026-09-01 between "Talk One" and "Talk Two"\n"Talk One" is scheduled over the "Lunch" break on 2026-09-01',
+    );
   });
 });
 
@@ -64,6 +121,8 @@ describe('clusterConflictCaption', () => {
         day: '2026-09-01',
         roomId: null,
         speakerContactIds: ['ct-1'],
+        breakId: null,
+        breakLabel: null,
         detail: 'irrelevant',
       },
     ];
@@ -78,6 +137,8 @@ describe('clusterConflictCaption', () => {
         day: '2026-09-01',
         roomId: null,
         speakerContactIds: ['ct-1'],
+        breakId: null,
+        breakLabel: null,
         detail: 'speaker clash across rooms',
       },
     ];
@@ -92,6 +153,8 @@ describe('clusterConflictCaption', () => {
         day: '2026-09-01',
         roomId: 'room-1',
         speakerContactIds: [],
+        breakId: null,
+        breakLabel: null,
         detail: 'room clash',
       },
       {
@@ -100,6 +163,8 @@ describe('clusterConflictCaption', () => {
         day: '2026-09-01',
         roomId: null,
         speakerContactIds: ['ct-1'],
+        breakId: null,
+        breakLabel: null,
         detail: 'speaker clash',
       },
     ];
@@ -114,6 +179,8 @@ describe('clusterConflictCaption', () => {
         day: '2026-09-01',
         roomId: null,
         speakerContactIds: ['ct-1'],
+        breakId: null,
+        breakLabel: null,
         detail: 'speaker clash',
       },
     ];
