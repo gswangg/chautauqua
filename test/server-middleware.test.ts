@@ -11,81 +11,83 @@ import {
   csrfForm,
   csrfFormOrHeader,
 } from "../src/server/middleware";
-import type { SessionLookup, UserLookup, SessionRow, UserRow } from "../src/server/middleware";
+import type { SessionUserLookup, SessionUserRow } from "../src/server/middleware";
 import { hashToken, newSessionToken, newApiToken } from "../src/auth/tokens";
 import { CSRF_COOKIE_NAME } from "../src/auth/cookies";
 import type { AppEnv } from "../src/server/env";
 import * as schema from "../src/db/schema";
 import { registerErrorHandler } from "../src/server/http";
 
-class FakeSessions implements SessionLookup {
-  constructor(private readonly rows: Map<string, SessionRow>) {}
-  async findByTokenHash(tokenHash: string): Promise<SessionRow | null> {
+class FakeSessionUsers implements SessionUserLookup {
+  private calls = 0;
+  constructor(private readonly rows: Map<string, SessionUserRow>) {}
+  async findSessionUser(tokenHash: string): Promise<SessionUserRow | null> {
+    this.calls++;
     return this.rows.get(tokenHash) ?? null;
   }
-}
-
-class FakeUsers implements UserLookup {
-  constructor(private readonly rows: Map<string, UserRow>) {}
-  async findById(userId: string): Promise<UserRow | null> {
-    return this.rows.get(userId) ?? null;
+  get callCount(): number {
+    return this.calls;
   }
 }
 
 describe("resolveAuth", () => {
   it("returns undefined when there's no token", async () => {
-    const sessions = new FakeSessions(new Map());
-    const users = new FakeUsers(new Map());
-    await expect(resolveAuth(undefined, sessions, users, Date.now())).resolves.toBeUndefined();
+    const lookup = new FakeSessionUsers(new Map());
+    await expect(resolveAuth(undefined, lookup, Date.now())).resolves.toBeUndefined();
   });
 
-  it("resolves a live session to AuthInfo", async () => {
+  it("resolves a live session to AuthInfo with exactly one lookup call", async () => {
     const token = newSessionToken();
     const tokenHash = await hashToken(token);
     const now = Date.now();
-    const sessions = new FakeSessions(new Map([[tokenHash, { userId: "u1", expiresAt: now + 1000 }]]));
-    const users = new FakeUsers(
-      new Map([["u1", { id: "u1", orgId: "o1", role: "organizer", contactId: null }]]),
+    const lookup = new FakeSessionUsers(
+      new Map([
+        [
+          tokenHash,
+          { expiresAt: now + 1000, user: { id: "u1", orgId: "o1", role: "organizer", contactId: null } },
+        ],
+      ]),
     );
-    const auth = await resolveAuth(token, sessions, users, now);
+    const auth = await resolveAuth(token, lookup, now);
     expect(auth).toEqual({ userId: "u1", role: "organizer", orgId: "o1", contactId: undefined });
+    expect(lookup.callCount).toBe(1);
   });
 
   it("returns undefined for an expired session", async () => {
     const token = newSessionToken();
     const tokenHash = await hashToken(token);
     const now = Date.now();
-    const sessions = new FakeSessions(new Map([[tokenHash, { userId: "u1", expiresAt: now - 1000 }]]));
-    const users = new FakeUsers(
-      new Map([["u1", { id: "u1", orgId: "o1", role: "organizer", contactId: null }]]),
+    const lookup = new FakeSessionUsers(
+      new Map([
+        [
+          tokenHash,
+          { expiresAt: now - 1000, user: { id: "u1", orgId: "o1", role: "organizer", contactId: null } },
+        ],
+      ]),
     );
-    await expect(resolveAuth(token, sessions, users, now)).resolves.toBeUndefined();
+    await expect(resolveAuth(token, lookup, now)).resolves.toBeUndefined();
   });
 
   it("returns undefined for an unknown token", async () => {
-    const sessions = new FakeSessions(new Map());
-    const users = new FakeUsers(new Map());
-    await expect(resolveAuth("no-such-token", sessions, users, Date.now())).resolves.toBeUndefined();
+    const lookup = new FakeSessionUsers(new Map());
+    await expect(resolveAuth("no-such-token", lookup, Date.now())).resolves.toBeUndefined();
   });
 
-  it("returns undefined when the session's user no longer exists", async () => {
-    const token = newSessionToken();
-    const tokenHash = await hashToken(token);
-    const now = Date.now();
-    const sessions = new FakeSessions(new Map([[tokenHash, { userId: "ghost", expiresAt: now + 1000 }]]));
-    const users = new FakeUsers(new Map());
-    await expect(resolveAuth(token, sessions, users, now)).resolves.toBeUndefined();
+  it("returns undefined when the session's user no longer exists (join yields no row)", async () => {
+    const lookup = new FakeSessionUsers(new Map());
+    await expect(resolveAuth("some-token", lookup, Date.now())).resolves.toBeUndefined();
   });
 
   it("carries contactId through for speaker users", async () => {
     const token = newSessionToken();
     const tokenHash = await hashToken(token);
     const now = Date.now();
-    const sessions = new FakeSessions(new Map([[tokenHash, { userId: "u2", expiresAt: now + 1000 }]]));
-    const users = new FakeUsers(
-      new Map([["u2", { id: "u2", orgId: "o1", role: "speaker", contactId: "c1" }]]),
+    const lookup = new FakeSessionUsers(
+      new Map([
+        [tokenHash, { expiresAt: now + 1000, user: { id: "u2", orgId: "o1", role: "speaker", contactId: "c1" } }],
+      ]),
     );
-    const auth = await resolveAuth(token, sessions, users, now);
+    const auth = await resolveAuth(token, lookup, now);
     expect(auth?.contactId).toBe("c1");
   });
 
@@ -93,11 +95,12 @@ describe("resolveAuth", () => {
     const token = newSessionToken();
     const tokenHash = await hashToken(token);
     const now = Date.now();
-    const sessions = new FakeSessions(new Map([[tokenHash, { userId: "u3", expiresAt: now + 1000 }]]));
-    const users = new FakeUsers(
-      new Map([["u3", { id: "u3", orgId: "o1", role: "admin", contactId: null }]]),
+    const lookup = new FakeSessionUsers(
+      new Map([
+        [tokenHash, { expiresAt: now + 1000, user: { id: "u3", orgId: "o1", role: "admin", contactId: null } }],
+      ]),
     );
-    await expect(resolveAuth(token, sessions, users, now)).rejects.toThrow(/unknown user role/i);
+    await expect(resolveAuth(token, lookup, now)).rejects.toThrow(/unknown user role/i);
   });
 });
 
@@ -278,46 +281,59 @@ describe("noStoreByDefault", () => {
   });
 });
 
+// Minimal fake drizzle db exercising sessionLoader's single joined lookup
+// (apiToken innerJoin user) plus the best-effort last_used_at update, for
+// the bearer-token path (no cookie present, so resolveAuth short-circuits
+// on the missing token without touching the db).
+function fakeBearerDb(
+  joinedRow: unknown[],
+  opts: { updateThrows?: boolean } = {},
+): AppEnv["Variables"]["db"] {
+  return {
+    select() {
+      return {
+        from(table: unknown) {
+          return {
+            innerJoin() {
+              return {
+                where() {
+                  return {
+                    limit: async () => (table === schema.apiToken ? joinedRow : []),
+                  };
+                },
+              };
+            },
+          };
+        },
+      };
+    },
+    update() {
+      return {
+        set() {
+          return {
+            where: async () => {
+              if (opts.updateThrows) {
+                throw new Error("D1 write failed");
+              }
+              return undefined;
+            },
+          };
+        },
+      };
+    },
+  } as unknown as AppEnv["Variables"]["db"];
+}
+
 // DEC-276: a bearer token minted while its user was an organizer must stop
 // authenticating the instant that user is demoted, without any expiry
-// column — sessionLoader re-resolves the minting user on every request.
+// column — sessionLoader re-resolves the minting user on every request via
+// a single joined lookup.
 describe("sessionLoader + requireOrganizer with a bearer token whose minting user was demoted (DEC-276)", () => {
-  it("401s an organizer-only route for a token whose minting user is now a reviewer", async () => {
+  it("(c) 401s an organizer-only route for a token whose minting user is now a reviewer", async () => {
     const token = newApiToken();
-
-    // Minimal fake drizzle db: dispatches by which table .from() names,
-    // covering the two lookups sessionLoader performs (apiToken, then
-    // user) plus the best-effort last_used_at update.
-    const fakeDb = {
-      select() {
-        return {
-          from(table: unknown) {
-            return {
-              where() {
-                return {
-                  limit: async () => {
-                    if (table === schema.apiToken) {
-                      return [{ id: "tok1", orgId: "org-1", createdByUserId: "u-1" }];
-                    }
-                    if (table === schema.user) {
-                      return [{ id: "u-1", orgId: "org-1", role: "reviewer", contactId: null }];
-                    }
-                    return [];
-                  },
-                };
-              },
-            };
-          },
-        };
-      },
-      update() {
-        return {
-          set() {
-            return { where: async () => undefined };
-          },
-        };
-      },
-    } as unknown as AppEnv["Variables"]["db"];
+    const fakeDb = fakeBearerDb([
+      { tokenOrgId: "org-1", userId: "u-1", userOrgId: "org-1", role: "reviewer", contactId: null },
+    ]);
 
     const app = new Hono<AppEnv>();
     registerErrorHandler(app);
@@ -332,5 +348,29 @@ describe("sessionLoader + requireOrganizer with a bearer token whose minting use
       headers: { authorization: `Bearer ${token}` },
     });
     expect(res.status).toBe(401);
+  });
+
+  it("(d) a throwing last_used_at write leaves the request authenticated and does not reject", async () => {
+    const token = newApiToken();
+    const fakeDb = fakeBearerDb(
+      [{ tokenOrgId: "org-1", userId: "u-1", userOrgId: "org-1", role: "organizer", contactId: null }],
+      { updateThrows: true },
+    );
+
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.use("*", async (c, next) => {
+      c.set("db", fakeDb);
+      await next();
+    });
+    app.use("*", sessionLoader);
+    app.get("/api/v1/organizer-only", requireOrganizer, (c) => c.json({ ok: true, auth: c.var.auth }));
+
+    const res = await app.request("/api/v1/organizer-only", {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { ok: boolean; auth: { userId: string } };
+    expect(body.auth.userId).toBe("u-1");
   });
 });
