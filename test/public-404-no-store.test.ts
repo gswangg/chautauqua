@@ -145,8 +145,11 @@ describe("DEC-324: public onError overrides the 60s cache header on non-200s", (
     expect(res.status).toBe(400);
     expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(res.headers.get("Cache-Control")).not.toContain("max-age=60");
-    const body = await res.json();
-    expect(body).toMatchObject({ error: { code: "invalid" } });
+    // DEC-841 (wave 14): the sub-app's onError overrides the header only; the
+    // body comes from the one responder, so an HTML surface gets HTML.
+    expect(res.headers.get("content-type")).toMatch(/text\/html/);
+    const body = await res.text();
+    expect(body).toContain("Too many ids");
   });
 
   it("an unexpected repo throw on a public surface is a 500 with Cache-Control: no-store", async () => {
@@ -161,8 +164,10 @@ describe("DEC-324: public onError overrides the 60s cache header on non-200s", (
 
     expect(res.status).toBe(500);
     expect(res.headers.get("Cache-Control")).toBe("no-store");
-    const body = await res.json();
-    expect(body).toMatchObject({ error: { code: "internal" } });
+    // DEC-841 (wave 14): HTML surface -> rendered page, no JSON envelope.
+    expect(res.headers.get("content-type")).toMatch(/text\/html/);
+    const body = await res.text();
+    expect(body).toContain("Internal server error");
 
     consoleErrorSpy.mockRestore();
   });
