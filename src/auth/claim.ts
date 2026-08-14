@@ -121,16 +121,3 @@ export async function consumeClaimToken(kv: KVStore, token: string): Promise<Cla
   }
   return record;
 }
-
-// DEC-949: the base64url token charset newClaimToken emits (RFC 4648 §5,
-// unpadded), long enough (16+) to avoid matching short incidental path
-// segments elsewhere in a message body.
-const CLAIM_URL_RE = /\/claim\/[A-Za-z0-9_-]{16,}/g;
-
-/** Rewrites every `/claim/<token>` URL in `text` to `/claim/<redacted>`,
- * leaving every other byte identical. DEC-949: applied to the organizer-
- * readable send-detail (and history list, if it ever grows bodies) so a
- * credential never sits disclosed in an audit view. Pure — no KV access. */
-export function redactClaimUrls(text: string): string {
-  return text.replace(CLAIM_URL_RE, "/claim/<redacted>");
-}

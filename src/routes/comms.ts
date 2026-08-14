@@ -12,7 +12,7 @@ import { bumpIcsSequences } from "../server/repo/ics-sequence";
 import { getEventForOrg } from "../server/repo/events";
 import { getPlanById } from "../server/repo/review/plans";
 import type { KVStore } from "../auth/claim";
-import { redactClaimUrls } from "../auth/claim";
+import { redactCredentialUrls } from "../auth/credential-urls";
 import { applyMintedPortalLinks, resolvePortalLinks } from "../server/repo/portal-link";
 import { blockFieldsInTemplate, templateUsesMergeField } from "../mail/render";
 import { renderEmailHtml } from "../mail/shell";
@@ -789,15 +789,16 @@ commsRoutes.get("/api/v1/events/:eventId/email-log/:emailId", requireOrganizer, 
   const row = await getEmailLogById(c.var.db, emailId, auth.orgId);
   if (!row || row.eventId !== eventId) throw new ApiError("not_found", "Email not found");
 
-  // DEC-949: the organizer-readable audit view never renders a live claim
-  // grant — a `/claim/<token>` URL stored verbatim in email_log is a
-  // credential. /dev/mailbox is intentionally left unredacted: it is
-  // mounted only when DEV_MODE="1" and therefore does not exist in
+  // DEC-949 (wave 34 amendment): the organizer-readable audit view never
+  // renders a live claim OR reset grant — a `/claim/<token>` or
+  // `/reset/<token>` URL stored verbatim in email_log is an account-
+  // takeover credential. /dev/mailbox is intentionally left unredacted: it
+  // is mounted only when DEV_MODE="1" and therefore does not exist in
   // production, which is what keeps the walkthrough gates able to click a
-  // claim link.
+  // claim/reset link.
   return c.json({
     ...row,
-    bodyText: redactClaimUrls(row.bodyText),
-    bodyHtml: row.bodyHtml === null ? null : redactClaimUrls(row.bodyHtml),
+    bodyText: redactCredentialUrls(row.bodyText),
+    bodyHtml: row.bodyHtml === null ? null : redactCredentialUrls(row.bodyHtml),
   });
 });

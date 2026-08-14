@@ -44,6 +44,13 @@ const getEmailLogByIdMock = vi.fn(async (_db: unknown, id: string, _orgId: strin
       bodyHtml: `<p>Click <a href="https://events.example.com/claim/${"a".repeat(20)}">here</a></p>`,
     });
   }
+  if (id === "log-reset") {
+    return row({
+      id: "log-reset",
+      bodyText: `Hi Ada, reset your password: https://events.example.com/reset/${"b".repeat(20)}`,
+      bodyHtml: `<p><a href="https://events.example.com/reset/${"b".repeat(20)}">Reset password</a></p>`,
+    });
+  }
   return null;
 });
 
@@ -114,5 +121,20 @@ describe("GET /api/v1/events/:eventId/email-log/:emailId (DEC-833)", () => {
     expect(body.bodyText).toBe("Hi Ada, click https://events.example.com/claim/<redacted> to set your password.");
     expect(body.bodyText).not.toContain("aaaaaaaaaaaaaaaaaaaa");
     expect(body.bodyHtml).toBe('<p>Click <a href="https://events.example.com/claim/<redacted>">here</a></p>');
+  });
+
+  // DEC-949 (wave 34 amendment): a stored /reset/<token> URL — the
+  // password-reset link src/routes/auth-reset.tsx mails — is just as much
+  // a live account-takeover credential as a claim link, and is redacted
+  // the same way through the real route (not just the pure helper).
+  it("redacts a reset URL in bodyText and bodyHtml", async () => {
+    const app = await buildCommsApp();
+    const res = await app.request(`${ORIGIN}/api/v1/events/evt-1/email-log/log-reset`, { method: "GET" }, {});
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { bodyText: string; bodyHtml: string | null };
+    expect(body.bodyText).toBe("Hi Ada, reset your password: https://events.example.com/reset/<redacted>");
+    expect(body.bodyText).not.toContain("bbbbbbbbbbbbbbbbbbbb");
+    expect(body.bodyHtml).toBe('<p><a href="https://events.example.com/reset/<redacted>">Reset password</a></p>');
   });
 });
