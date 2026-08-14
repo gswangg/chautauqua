@@ -63,16 +63,21 @@ already landed.
    counter "1 unplaced · 2 conflicts", and SES-009's card lists both speakers
    ("Frankie Lindqvist, Elliot Ekström"). Fix was DEC-974's participant hydration;
    evidence now measured, closure valid under the standing rule.
-2. **EMB-01 — ORCHESTRATOR IS BUILDING THIS NOW; swarm DO NOT pick up.** RECORDED
-   RULING (eval-motivated design extension, pending design-agent ratification): public
-   sessions-list cards gain a one-line muted description snippet (13px register) under
-   the speaker line, with a native in-place "Show more" disclosure in the quiet-link
-   register; absent when the session has no description. Frame 10--00 shows no
-   description — this extends it; fleet should treat the recorded ruling as authority.
-3. **CFP close-path — ORCHESTRATOR IS BUILDING THIS NOW; swarm DO NOT pick up.** The
-   CFP read section in Settings gains a "Close the call now ›" section action on the
-   eyebrow rule (the already-mandated section-actions grammar), so closing is 2 clicks
-   from /admin/settings without entering the edit view. Edit-view button unchanged.
+2. **EMB-01 CLOSED (orchestrator, a6ac400e, runtime-verified):** the block was ONE
+   default — SESSION_LIST_DEFAULT_FIELDS.description:false (DEC-968) withheld the
+   already-built SessionDescription snippet/Show-more from every list. Flipped under the
+   recorded ruling; measured 12/12 rows rendering snippets on /e/ AND /embed (fresh
+   cache keys — NOTE: the public edge cache serves pre-change renders until keys turn;
+   prod reseed + TTL handles it). Fleet: the recorded ruling is authority over frame
+   10--00's description-less cards, pending design-agent ratification.
+3. **CFP close-path CLOSED (already built by swarm, runtime-verified):** the read-view
+   "Close the call" action exists in CallForPapersPanel (confirmCloseNow — same PATCH as
+   the edit form, DEC-731) and renders in the Settings read scroll. My burn-down greps
+   missed the commit; no work was duplicated.
+
+**GATE CYCLE STARTING (orchestrator): boundary snapshot a6ac400e** — deploy (migrations +
+full reseed incl. the CNT-S3 fixture alignment + parity check), then sbek full run +
+fidelity fleet vs v9 in parallel. Swarm continues; next boundary picks up its merges.
 
 ## DELTA PROBE 2 (2026-08-14 ~wave 29, snapshot 0bb56c9c) — landed v9 batch VERIFIED LIVE
 
