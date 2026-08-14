@@ -104,9 +104,6 @@ const ALLOWED: Record<string, string[]> = {
   "server/repo/exports/submissions.ts": [
     "Admin CSV export hydrates every participant of the exported row for the organizer, mirroring submissions/list.ts — not an eligibility read.",
   ],
-  "server/repo/exports/speakers.ts": [
-    "Admin CSV export hydrates every participant of the event for the organizer, mirroring submissions/list.ts — not an eligibility read.",
-  ],
   "server/repo/exports/showflow.ts": [
     "Admin CSV export hydrates every participant of the exported row for the organizer, mirroring submissions/list.ts — not an eligibility read.",
   ],

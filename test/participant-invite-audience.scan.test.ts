@@ -34,8 +34,6 @@ const EVERY_PARTICIPANT_AUDIENCE: Record<string, string> = {
     "export surface: reports every participant row on an accepted/placed session",
   "src/server/repo/exports/showflow.ts":
     "export surface: reports every participant row on a placed session",
-  "src/server/repo/exports/speakers.ts":
-    "export surface: reports every participant row",
   "src/server/repo/exports/submissions.ts":
     "export surface: reports every participant row on a submission",
   "src/server/repo/import/sessionboard.ts":

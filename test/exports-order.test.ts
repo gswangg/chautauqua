@@ -122,6 +122,8 @@ describe("DEC-560: speakers export — per-contact aggregate deterministic regar
     bio: null,
     headshotUrl: null,
     socialLinksJson: null,
+    inviteStatus: "accepted",
+    contentStatus: "approved",
   };
 
   it("orders speakers by (lastName, firstName, contactId) and sorts each speaker's acceptedSessions cell — byte-identical CSV under reversed row order", async () => {
@@ -142,6 +144,73 @@ describe("DEC-560: speakers export — per-contact aggregate deterministic regar
     // Amy's two accepted refs (seq 1, 2) render lowest-seq-first regardless
     // of the join rows' arrival order.
     expect(tableA.rows[0]![acceptedCol]).toBe("SES-001; SES-002");
+  });
+
+  it("DEC-560 amendment: company/title come from the ACCEPTED participant row with lowest submission.seq, falling back to the first row overall — deterministic under row shuffle", async () => {
+    const rows = [
+      // Higher-seq (2) ACCEPTED row with different org/title — must lose to
+      // the lower-seq (1) ACCEPTED row below, regardless of arrival order.
+      { ...baseRow, contactId: "c-a", firstName: "Amy", lastName: "Adams", email: "a@example.com", visible: true, status: "accepted", seq: 2, company: "LateCo", title: "VP" },
+      // Non-accepted (invited) row that arrives first in one ordering — must
+      // never win over an accepted row.
+      { ...baseRow, contactId: "c-a", firstName: "Amy", lastName: "Adams", email: "a@example.com", visible: true, status: "pending", inviteStatus: "invited", seq: 3, company: "NeverCo", title: "Nope" },
+      { ...baseRow, contactId: "c-a", firstName: "Amy", lastName: "Adams", email: "a@example.com", visible: true, status: "accepted", seq: 1, company: "EarlyCo", title: "Eng" },
+    ];
+    const shuffled = [rows[1]!, rows[2]!, rows[0]!];
+
+    const tableStraight = await buildExport(fakeDb(queue(rows)), "event-1", "speakers");
+    const tableShuffled = await buildExport(fakeDb(queue(shuffled)), "event-1", "speakers");
+
+    expect(toCsv([tableStraight.header, ...tableStraight.rows])).toBe(toCsv([tableShuffled.header, ...tableShuffled.rows]));
+    const companyCol = tableStraight.header.indexOf("company");
+    const titleCol = tableStraight.header.indexOf("title");
+    expect(tableStraight.rows[0]![companyCol]).toBe("EarlyCo");
+    expect(tableStraight.rows[0]![titleCol]).toBe("Eng");
+  });
+
+  it("DEC-560 amendment: company/title fall back to the first row overall when the contact has no accepted participant row", async () => {
+    const rows = [
+      { ...baseRow, contactId: "c-a", firstName: "Amy", lastName: "Adams", email: "a@example.com", visible: false, status: "pending", inviteStatus: "invited", seq: 3, company: "LaterCo", title: "Later" },
+      { ...baseRow, contactId: "c-a", firstName: "Amy", lastName: "Adams", email: "a@example.com", visible: false, status: "pending", inviteStatus: "none", seq: 1, company: "FirstCo", title: "First" },
+    ];
+    const shuffled = [...rows].reverse();
+
+    const tableStraight = await buildExport(fakeDb(queue(rows)), "event-1", "speakers");
+    const tableShuffled = await buildExport(fakeDb(queue(shuffled)), "event-1", "speakers");
+
+    expect(toCsv([tableStraight.header, ...tableStraight.rows])).toBe(toCsv([tableShuffled.header, ...tableShuffled.rows]));
+    const companyCol = tableStraight.header.indexOf("company");
+    expect(tableStraight.rows[0]![companyCol]).toBe("FirstCo");
+  });
+
+  it("DEC-560 amendment: visible mirrors public/gates.ts visibleSubmissionConditions — false when the only visible participant row hangs off a pending or content-unapproved submission, true once accepted+approved", async () => {
+    const visibleCol = (t: { header: string[] }) => t.header.indexOf("visible");
+    const acceptedRefCol = (t: { header: string[] }) => t.header.indexOf("acceptedSessions");
+
+    // Case 1: visible participant row, but submission.status='pending' — never publicly visible.
+    const pendingRows = [
+      { ...baseRow, contactId: "c-a", firstName: "Amy", lastName: "Adams", email: "a@example.com", visible: true, status: "pending", contentStatus: "pending", seq: 1 },
+    ];
+    const tablePending = await buildExport(fakeDb(queue(pendingRows)), "event-1", "speakers");
+    expect(tablePending.rows[0]![visibleCol(tablePending)]).toBe("false");
+    expect(tablePending.rows[0]![acceptedRefCol(tablePending)]).toBe("");
+
+    // Case 2: visible participant row, submission accepted but content not approved — still not visible.
+    const contentPendingRows = [
+      { ...baseRow, contactId: "c-a", firstName: "Amy", lastName: "Adams", email: "a@example.com", visible: true, status: "accepted", contentStatus: "pending", seq: 1 },
+    ];
+    const tableContentPending = await buildExport(fakeDb(queue(contentPendingRows)), "event-1", "speakers");
+    expect(tableContentPending.rows[0]![visibleCol(tableContentPending)]).toBe("false");
+    // acceptedSessions reflects submission.status alone (unaffected by contentStatus).
+    expect(tableContentPending.rows[0]![acceptedRefCol(tableContentPending)]).toBe("SES-001");
+
+    // Case 3: same speaker, submission accepted AND content approved — visible=true.
+    const approvedRows = [
+      { ...baseRow, contactId: "c-a", firstName: "Amy", lastName: "Adams", email: "a@example.com", visible: true, status: "accepted", contentStatus: "approved", seq: 1 },
+    ];
+    const tableApproved = await buildExport(fakeDb(queue(approvedRows)), "event-1", "speakers");
+    expect(tableApproved.rows[0]![visibleCol(tableApproved)]).toBe("true");
+    expect(tableApproved.rows[0]![acceptedRefCol(tableApproved)]).toBe("SES-001");
   });
 });
 
