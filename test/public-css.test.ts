@@ -196,3 +196,25 @@ describe("PUBLIC_CSS rendering (DEC-373/374)", () => {
     }
   });
 });
+
+// Mini-gate probe finding: `.chq-pub-select`'s `background:` SHORTHAND reset
+// background-image and silently erased theme.ts's shared select chevron --
+// four public filter dropdowns rendered as bare rectangles. These assertions
+// ban the shorthand from every public select rule and pin the active-state
+// cream chevron (the ink-stroke base chevron vanishes on the ink fill).
+describe("public select rules never clobber the shared caret", () => {
+  it("no .chq-pub-select* rule uses the bare `background:` shorthand", () => {
+    for (const m of PUBLIC_CSS.matchAll(/\.chq-pub-select[\w-]* \{[^}]*\}/g)) {
+      expect(m[0]).not.toMatch(/background:\s/);
+    }
+  });
+  it("the active (ink-filled) select carries its own cream chevron", () => {
+    const rule = PUBLIC_CSS.match(/\.chq-pub-select-active \{[^}]*\}/)?.[0] ?? "";
+    expect(rule).toContain("background-image");
+    expect(rule).toContain("%23F4F1E8");
+  });
+  it("the base public select clears the chevron box with right padding", () => {
+    const rule = PUBLIC_CSS.match(/\.chq-pub-select \{[^}]*\}/)?.[0] ?? "";
+    expect(rule).toMatch(/padding: 0 34px 0 10px/);
+  });
+});
