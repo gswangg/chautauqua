@@ -10,8 +10,13 @@
 // DEC-951 retired the public CFP's "Tracks *" asterisk (the last asterisk
 // marker in the product's optionality grammar, DEC-917) but was scoped to
 // src/routes/public/submit-views.tsx only; DEC-986 finishes the job by
-// dropping /portal/edit's own leftover "Tracks *" legend too, so both
-// surfaces now read the identical bare "Tracks" legend.
+// dropping /portal/edit's own leftover "Tracks *" legend too.
+//
+// w5-c (DEC-371 amendment, frame 10--14): the public form's group label is
+// now singular "Track" (not "Tracks"), and its "Choose one." sub-caption is
+// dropped -- a single-select radio group is self-explanatory without it.
+// /portal/edit is out of this task's file scope and keeps its own plural
+// "Tracks"/"Choose all that apply." caption unchanged.
 
 import { describe, expect, it } from "vitest";
 import { EditPage } from "../src/routes/portal/edit";
@@ -67,13 +72,12 @@ describe("track fieldset render parity (DEC-696)", () => {
 
   it("captions differ by design: edit stays multi-select, submit is single-select (DEC-986)", () => {
     expect(editHtml).toContain("Choose all that apply.");
-    expect(submitHtml).toContain("Choose one.");
-    expect(editHtml).not.toContain("Choose one.");
+    expect(submitHtml).not.toContain("Choose one.");
     expect(submitHtml).not.toContain("Choose all that apply.");
   });
 
-  it("both surfaces' legends carry no asterisk (DEC-951/DEC-986 finish the optionality grammar)", () => {
-    expect(submitHtml).toContain("<legend>Tracks</legend>");
+  it("both surfaces' legends carry no asterisk (DEC-951/DEC-986 finish the optionality grammar); the public form's is singular (w5-c)", () => {
+    expect(submitHtml).toContain("<legend>Track</legend>");
     expect(editHtml).toContain("<legend>Tracks</legend>");
     expect(editHtml).not.toContain("Tracks *");
   });

@@ -99,7 +99,10 @@ function appWithDb(db: AppEnv["Variables"]["db"]) {
 }
 
 describe("GET /submit/:eventSlug track fieldset (DEC-986)", () => {
-  it("renders a plural 'Tracks' legend (no asterisk) with a 'choose one' help line", async () => {
+  // w5-c (DEC-371 amendment, frame 10--14): the group label is now
+  // singular "Track" (not "Tracks"), and the "Choose one." sub-caption is
+  // dropped -- a single-select radio group reads as self-explanatory.
+  it("renders a singular 'Track' legend (no asterisk), no 'choose one' sub-caption", async () => {
     const db = fakeDb([[EVENT_ROW], [FORM_ROW], FIELD_ROWS, TRACK_ROWS]);
     const app = appWithDb(db);
 
@@ -107,10 +110,10 @@ describe("GET /submit/:eventSlug track fieldset (DEC-986)", () => {
     expect(res.status).toBe(200);
     const body = await res.text();
 
-    expect(body).toContain("<legend>Tracks</legend>");
-    expect(body).not.toContain("Tracks *");
-    expect(body).not.toContain(">Track<");
-    expect(body.toLowerCase()).toContain("choose one.");
+    expect(body).toContain("<legend>Track</legend>");
+    expect(body).not.toContain("<legend>Tracks</legend>");
+    expect(body).not.toContain("Track *");
+    expect(body.toLowerCase()).not.toContain("choose one.");
   });
 
   it("renders the track control as a radio group posting a single trackIds value, never checkboxes", async () => {
@@ -150,7 +153,7 @@ describe("GET /submit/:eventSlug track fieldset (DEC-986)", () => {
       expect(body).not.toMatch(selectWithTrackOption);
     }
     // Exactly one fieldset/legend pair offers tracks.
-    const legendMatches = [...body.matchAll(/<legend>Tracks<\/legend>/g)];
+    const legendMatches = [...body.matchAll(/<legend>Track<\/legend>/g)];
     expect(legendMatches.length).toBe(1);
   });
 });
