@@ -120,7 +120,7 @@ function postJson(app: Hono<AppEnv>, path: string, body: unknown) {
       headers: { "content-type": "application/json", "x-chq-csrf": "1" },
       body: JSON.stringify(body),
     },
-    { KV: {} },
+    { KV: {}, PUBLIC_BASE_URL: "https://events.example.com" },
   );
 }
 

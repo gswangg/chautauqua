@@ -50,10 +50,11 @@ describe("isDevMode (DEC-434): one predicate, every gate agrees", () => {
     it(`DEV_MODE=${JSON.stringify(devMode)}: resolveBaseUrl's loopback sniffing agrees with isDevMode`, () => {
       // No PUBLIC_BASE_URL configured, request URL is loopback: loopback
       // sniffing (dev-only) should return the loopback origin verbatim only
-      // when isDevMode(env) is true; otherwise it falls through to the
-      // (identical, in this case) request-origin default. Use a request
-      // whose header-based loopback candidate DIFFERS from the request URL
-      // origin so the two code paths are actually distinguishable.
+      // when isDevMode(env) is true; otherwise (DEC-252 amendment, wave 18)
+      // resolveBaseUrl refuses to guess from the request Host at all and
+      // throws naming PUBLIC_BASE_URL. Use a request whose header-based
+      // loopback candidate DIFFERS from the request URL origin so the two
+      // code paths are actually distinguishable.
       const c = {
         req: {
           url: "http://chautauqua.cc/submit/foo",
@@ -61,11 +62,10 @@ describe("isDevMode (DEC-434): one predicate, every gate agrees", () => {
         },
         env: { DEV_MODE: devMode },
       };
-      const result = resolveBaseUrl(c);
       if (expected) {
-        expect(result).toBe("http://localhost:8801");
+        expect(resolveBaseUrl(c)).toBe("http://localhost:8801");
       } else {
-        expect(result).toBe("http://chautauqua.cc");
+        expect(() => resolveBaseUrl(c)).toThrow(/PUBLIC_BASE_URL/);
       }
     });
   }

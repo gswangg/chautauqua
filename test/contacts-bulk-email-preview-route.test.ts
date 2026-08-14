@@ -101,7 +101,7 @@ function postJson(app: Hono<AppEnv>, path: string, body: unknown) {
       headers: { "content-type": "application/json", "x-chq-csrf": "1" },
       body: JSON.stringify(body),
     },
-    { KV: {} },
+    { KV: {}, PUBLIC_BASE_URL: "https://events.example.com" },
   );
 }
 
@@ -181,7 +181,7 @@ describe("POST /contacts/bulk-email/preview vs /contacts/bulk-email — claim-to
         headers: { "content-type": "application/json", "x-chq-csrf": "1" },
         body: JSON.stringify(body),
       },
-      { KV: kv },
+      { KV: kv, PUBLIC_BASE_URL: "https://events.example.com" },
     );
   }
 

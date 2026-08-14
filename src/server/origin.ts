@@ -85,13 +85,21 @@ export type OriginRequestLike = {
  *      header, `Referer` origin]. Header sniffing is gated to dev +
  *      loopback only so it can never be used to poison a production link
  *      with an attacker-supplied header.
- *   4. The request URL origin (production default; also the dev fallback
- *      when none of the loopback candidates apply, e.g. `wrangler dev`'s
- *      route-shadowed request whose own URL origin isn't loopback but no
- *      loopback header exists either — see the `routes` note below).
+ *   4. DEV-ONLY (`env.DEV_MODE === "1"`): the request URL origin, used as the
+ *      dev fallback when none of the loopback candidates apply, e.g.
+ *      `wrangler dev`'s route-shadowed request whose own URL origin isn't
+ *      loopback but no loopback header exists either — see the `routes`
+ *      note below.
  *
- * Outside dev mode (`env.DEV_MODE !== "1"`) behavior is byte-identical to
- * the pre-DEC-296 rule: `PUBLIC_BASE_URL` always wins when set, full stop.
+ * Outside dev mode (`env.DEV_MODE !== "1"`), behavior mirrors
+ * resolveBaseUrlForCron: if `PUBLIC_BASE_URL` isn't set (or doesn't win per
+ * the precedence above — it always wins outright when set), this throws
+ * (fail loudly, DEC-252 amendment wave 18) rather than falling back to the
+ * request's Host header, which a deployment might not control and which
+ * would poison mailed links (e.g. `/claim/<token>` on the unauthenticated
+ * public CFP submit path) with an attacker- or proxy-supplied origin.
+ * `wrangler.jsonc`'s `vars` block must set `PUBLIC_BASE_URL` for every real
+ * (non-dev) deployment.
  */
 export function resolveBaseUrl(c: OriginRequestLike): string {
   const publicBaseUrl = c.env.PUBLIC_BASE_URL;
@@ -109,12 +117,17 @@ export function resolveBaseUrl(c: OriginRequestLike): string {
     return loopbackCandidate ?? parsedPublicBaseUrl;
   }
 
+  if (!devMode) {
+    // DEC-252 amendment (wave 18): outside dev, a mailed link needs a
+    // configured base — refuse to guess from the request Host. Set
+    // PUBLIC_BASE_URL in wrangler.jsonc's `vars` block for this deployment.
+    throw new Error("resolveBaseUrl: PUBLIC_BASE_URL is not set — set it in wrangler.jsonc's `vars` block for this deployment");
+  }
+
   const requestOrigin = new URL(c.req.url).origin;
 
-  if (devMode) {
-    const loopbackCandidate = firstLoopbackCandidate(c);
-    if (loopbackCandidate) return loopbackCandidate;
-  }
+  const loopbackCandidate = firstLoopbackCandidate(c);
+  if (loopbackCandidate) return loopbackCandidate;
 
   return requestOrigin;
 }

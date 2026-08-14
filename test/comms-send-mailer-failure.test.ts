@@ -128,7 +128,10 @@ afterEach(() => {
 const organizerAuth: AuthInfo = { userId: "u-1", role: "organizer", orgId: ORG_A };
 
 function withEnv(kv: KVStore) {
-  return { KV: kv as unknown as AppEnv["Bindings"]["KV"] };
+  return {
+    KV: kv as unknown as AppEnv["Bindings"]["KV"],
+    PUBLIC_BASE_URL: "https://events.example.com",
+  };
 }
 
 /** DEC-766: the catch block now also writes a 'failed' email_log row via
