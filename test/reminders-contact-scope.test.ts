@@ -10,6 +10,7 @@
 import { describe, expect, it } from "vitest";
 import * as schema from "../src/db/schema";
 import { previewRemindNow, remindNow } from "../src/server/repo/tasks";
+import { MANUAL_DEDUPE_WINDOW_MS } from "../src/domain/reminders";
 import type { Db } from "../src/server/context";
 import type { Mailer } from "../src/mail/types";
 import type { KVStore } from "../src/auth/claim";
@@ -74,6 +75,20 @@ function evalCond(cond: any, ctx: CtxEntry[]): boolean {
   throw new Error("fakeDb: unrecognized condition shape (no column, no sub-conditions)");
 }
 
+// wave-56 amendment: remindNow/previewRemindNow now call
+// listRemindableContactIds FIRST (one GROUP BY schema.taskAssignment.contactId
+// / HAVING max(last_reminded_at) query for the chosen ids, plus two count(*)
+// subqueries for skipped/remaining), then re-query listOutstandingForEvent
+// scoped to `chosen.contactIds` (itself now carrying a trailing
+// MAX_REMINDER_SCAN .limit()). This file's fixtures never set
+// last_reminded_at, so the eligible/skipped split below is computed for
+// real (max(lastRemindedAt) per contactId vs MANUAL_DEDUPE_WINDOW_MS of the
+// caller's `now`) rather than needing to evaluate the opaque drizzle-orm
+// sql`` having expression — the two count(*)-over-subquery calls are
+// distinguished by call ORDER (the real code always builds eligibleGroups
+// before skippedGroups), matching production's code order exactly.
+type SubqueryMarker = { __subqueryKind: "eligible" | "skipped" };
+
 function fakeDb(seed: { taskAssignment: any[]; task: any[]; event: any[]; contact: any[] }) {
   const state = {
     taskAssignment: [...seed.taskAssignment],
@@ -94,7 +109,22 @@ function fakeDb(seed: { taskAssignment: any[]; task: any[]; event: any[]; contac
     return ctx.reduce((acc, e) => ({ ...acc, ...e.row }), {});
   }
 
-  function makeChain(ctxLists: CtxEntry[][]) {
+  function contactIdOf(ctxList: CtxEntry[]): string {
+    const entry = ctxList.find((e) => e.table === schema.taskAssignment);
+    if (!entry) throw new Error("fakeDb: no taskAssignment row context for groupBy(contactId)");
+    return entry.row.contactId as string;
+  }
+
+  function lastRemindedAtOf(ctxList: CtxEntry[]): number | null {
+    const entry = ctxList.find((e) => e.table === schema.taskAssignment);
+    const v = entry?.row.lastRemindedAt;
+    if (v === null || v === undefined) return null;
+    return v instanceof Date ? v.getTime() : Number(v);
+  }
+
+  let asCallCount = 0;
+
+  function makeChain(ctxLists: CtxEntry[][], grouped = false): any {
     const chain: any = {
       innerJoin: (table: unknown, cond: unknown) => {
         const rightRows = stateArrayFor(table) ?? [];
@@ -108,14 +138,90 @@ function fakeDb(seed: { taskAssignment: any[]; task: any[]; event: any[]; contac
         return makeChain(joined);
       },
       where: (cond: unknown) => makeChain(ctxLists.filter((ctxList) => evalCond(cond, ctxList))),
+      groupBy: () => makeChain(ctxLists, true),
+      having: () => chain,
+      orderBy: () => chain,
+      limit: (n: number) => {
+        if (grouped) {
+          // The eligible-contactIds "chosenRows" query — always the
+          // eligibleHaving criterion in production (see file header).
+          const byContact = new Map<string, CtxEntry[][]>();
+          for (const ctxList of ctxLists) {
+            const cId = contactIdOf(ctxList);
+            const arr = byContact.get(cId) ?? [];
+            arr.push(ctxList);
+            byContact.set(cId, arr);
+          }
+          const eligible: string[] = [];
+          for (const [contactId, groupRows] of byContact) {
+            let maxRemindedAt: number | null = null;
+            for (const ctxList of groupRows) {
+              const t = lastRemindedAtOf(ctxList);
+              if (t !== null && (maxRemindedAt === null || t > maxRemindedAt)) maxRemindedAt = t;
+            }
+            if (maxRemindedAt === null || maxRemindedAt <= NOW.getTime() - MANUAL_DEDUPE_WINDOW_MS) {
+              eligible.push(contactId);
+            }
+          }
+          eligible.sort();
+          const chosen = eligible.slice(0, n).map((contactId) => ({ contactId }));
+          return { then: (resolve: (v: unknown) => void) => resolve(chosen) };
+        }
+        // listOutstandingForEvent's MAX_REMINDER_SCAN guard limit.
+        return { then: (resolve: (v: unknown[]) => void) => resolve(ctxLists.map(mergeCtx)) };
+      },
+      as: (): SubqueryMarker => {
+        asCallCount += 1;
+        return { __subqueryKind: asCallCount === 1 ? "eligible" : "skipped" };
+      },
       then: (resolve: (v: unknown[]) => void) => resolve(ctxLists.map(mergeCtx)),
     };
     return chain;
   }
 
+  function computeGroupCounts(ctxLists: CtxEntry[][]): { eligible: number; skipped: number } {
+    const byContact = new Map<string, CtxEntry[][]>();
+    for (const ctxList of ctxLists) {
+      const cId = contactIdOf(ctxList);
+      const arr = byContact.get(cId) ?? [];
+      arr.push(ctxList);
+      byContact.set(cId, arr);
+    }
+    let eligible = 0;
+    let skipped = 0;
+    for (const groupRows of byContact.values()) {
+      let maxRemindedAt: number | null = null;
+      for (const ctxList of groupRows) {
+        const t = lastRemindedAtOf(ctxList);
+        if (t !== null && (maxRemindedAt === null || t > maxRemindedAt)) maxRemindedAt = t;
+      }
+      if (maxRemindedAt === null || maxRemindedAt <= NOW.getTime() - MANUAL_DEDUPE_WINDOW_MS) eligible += 1;
+      else skipped += 1;
+    }
+    return { eligible, skipped };
+  }
+
   const db = {
     select: (_cols?: unknown) => ({
-      from: (table: unknown) => makeChain((stateArrayFor(table) ?? []).map((row) => [{ table, row }])),
+      from: (table: unknown) => {
+        const marker = table as SubqueryMarker | undefined;
+        if (marker && marker.__subqueryKind) {
+          // The subquery markers don't carry the original ctxLists, so
+          // re-derive them from the FULL joined taskAssignment/task set —
+          // count(*) queries have no further .where() scoping in the real
+          // code either (the filter already ran inside the subquery).
+          const fullJoin = (state.taskAssignment as any[])
+            .map((row) => [{ table: schema.taskAssignment, row }])
+            .flatMap((ctxList) => {
+              const taskRows = state.task.filter((t) => t.id === ctxList[0]?.row.taskId);
+              return taskRows.map((t) => [...ctxList, { table: schema.task, row: t }]);
+            });
+          const { eligible, skipped } = computeGroupCounts(fullJoin);
+          const count = marker.__subqueryKind === "eligible" ? eligible : skipped;
+          return { then: (resolve: (v: unknown) => void) => resolve([{ count }]) };
+        }
+        return makeChain((stateArrayFor(table) ?? []).map((row) => [{ table, row }]));
+      },
     }),
     update: (table: unknown) => ({
       set: (patch: Record<string, unknown>) => ({

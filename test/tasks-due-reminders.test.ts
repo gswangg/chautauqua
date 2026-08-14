@@ -50,11 +50,14 @@ function fakeDb(rows: OutstandingRowShape[]): { db: Db; updateCalls: unknown[] }
   const db = {
     select: () => ({
       from: () => ({
-        // listOutstandingForEvent's join chain.
+        // listOutstandingForEvent's join chain (MAX_REMINDER_SCAN wave-56
+        // amendment added a trailing .limit() after .where()).
         innerJoin: () => ({
           innerJoin: () => ({
             innerJoin: () => ({
-              where: async () => rows,
+              where: () => ({
+                limit: async () => rows,
+              }),
             }),
           }),
         }),

@@ -53,10 +53,14 @@ function fakeDb(rows: OutstandingRowShape[]): { db: Db; updateCalls: unknown[] }
   const db = {
     select: () => ({
       from: () => ({
+        // MAX_REMINDER_SCAN wave-56 amendment added a trailing .limit()
+        // after .where().
         innerJoin: () => ({
           innerJoin: () => ({
             innerJoin: () => ({
-              where: async () => rows,
+              where: () => ({
+                limit: async () => rows,
+              }),
             }),
           }),
         }),
