@@ -294,6 +294,12 @@ export function TasksPage(props: {
   // comment). Renders a receipt naming what was received and disclosing the
   // reopen the handler already performed; absent for every other page view.
   uploadedAssignmentId?: string;
+  // CNT-04 (wave 26 re-open of DEC-922): the assignment id the /upload
+  // handler just redirected here for when its version-chain guard refused to
+  // continue the chain (a real submission/kind mismatch against this
+  // assignment's own prior file) — renders a plain line naming the restart
+  // so it never reads as silent data loss.
+  newSeriesAssignmentId?: string;
 }) {
   const {
     branding,
@@ -305,10 +311,14 @@ export function TasksPage(props: {
     deliverableChoiceFor,
     speakerName,
     uploadedAssignmentId,
+    newSeriesAssignmentId,
   } = props;
   const doneCount = assignments.filter((a) => a.status === "complete").length;
   const uploadedAssignment = uploadedAssignmentId
     ? assignments.find((a) => a.id === uploadedAssignmentId)
+    : undefined;
+  const newSeriesAssignment = newSeriesAssignmentId
+    ? assignments.find((a) => a.id === newSeriesAssignmentId)
     : undefined;
   return (
     <PortalLayout branding={branding} csrfToken={csrfToken} speakerName={speakerName}>
@@ -318,6 +328,12 @@ export function TasksPage(props: {
         <p role="status" class="chq-portal-detail">
           Received your file for "{uploadedAssignment.title}". The session is off the public schedule pending the
           producer's approval.
+        </p>
+      ) : null}
+      {newSeriesAssignment ? (
+        <p role="status" class="chq-portal-detail">
+          Received your file for "{newSeriesAssignment.title}" as a new version series — it didn't continue your
+          previous upload's history because it names a different session.
         </p>
       ) : null}
       {assignments.length > 0 ? (
