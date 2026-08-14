@@ -43,8 +43,9 @@ describe('App catch-all route', () => {
     });
 
     // DEC-945: the attempted path is no longer shown in the card body.
-    // Shell footer (with the sign-out control, wave 42) still renders
-    // around the 404 body.
+    // DEC-369 amendment (wave 72): there is no shell footer -- Sign out
+    // lives in the header identity block, still one click from any page,
+    // 404 included.
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Overview ›' })).toHaveAttribute('href', '/admin/overview');
   });
@@ -194,7 +195,7 @@ describe('App shell (DEC-369)', () => {
 });
 
 describe('Desktop header single row + identity (DEC-576/369)', () => {
-  it('renders wordmark, nav, event name as text, and the identity grammar in one row, with Sign out NOT in the header', async () => {
+  it('renders wordmark, nav, event name as text, and the identity grammar in one row, with Sign out IN the header', async () => {
     mockApi({
       'GET /api/v1/me': {
         userId: 'u-1',
@@ -232,9 +233,10 @@ describe('Desktop header single row + identity (DEC-576/369)', () => {
     expect(within(header).getByText('JORDAN A.', { exact: false })).toBeInTheDocument();
     expect(within(header).queryByText('organizer@example.com')).not.toBeInTheDocument();
     expect(within(header).queryByText(/undefined/i)).not.toBeInTheDocument();
-    // Sign out no longer lives in the header identity block -- it moved to
-    // the shell footer (present on every admin page).
-    expect(within(header).queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
+    // DEC-369 amendment (wave 72): no shell footer -- Sign out rejoins the
+    // header identity beside the identity label ("JORDAN A. · SIGN OUT"),
+    // a real button, never a menu.
+    expect(within(header).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
   });
 
   it('falls back to the email local-part, uppercased, when name is null', async () => {
@@ -259,13 +261,14 @@ describe('Desktop header single row + identity (DEC-576/369)', () => {
   });
 });
 
-// DEC-369 amendment (wave 42): a shell footer, present on every admin page,
-// carries Sign out -- never a menu, so it stays one click from any page.
-// For a reviewer it also carries the "Scores stay hidden" reassurance
-// (frame 02's reviewer footer precedent, formerly rendered per-page by
-// ReviewerQueue.tsx per DEC-874, now a single shell-level copy).
-describe('Shell footer (DEC-369 amendment, wave 42)', () => {
-  it('carries Sign out for an organizer, with no "scores stay hidden" note', async () => {
+// DEC-369 amendment (wave 72): no bottom chrome bar -- the shell footer is
+// deleted, and Sign out rejoins .chq-header-identity beside the identity
+// label (still never a menu, still one click from any page). The reviewer
+// reassurance ("Scores stay hidden from other reviewers") is NOT re-homed
+// in chrome: it belongs to the review queue's own footer row (DEC-874,
+// implemented by the queue), so chrome must stop carrying it entirely.
+describe('No shell footer; Sign out lives in the header (DEC-369 amendment, wave 72)', () => {
+  it('renders no .chq-footer / contentinfo landmark at all', async () => {
     mockApi({
       'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
       'GET /api/v1/events': { items: [], total: 0, page: 1, perPage: 50 },
@@ -273,12 +276,24 @@ describe('Shell footer (DEC-369 amendment, wave 42)', () => {
 
     render(<App />);
 
-    const footer = await screen.findByRole('contentinfo');
-    expect(within(footer).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
-    expect(within(footer).queryByText('Scores stay hidden from other reviewers')).not.toBeInTheDocument();
+    await screen.findByRole('banner');
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
   });
 
-  it('carries Sign out AND "Scores stay hidden from other reviewers" for a reviewer', async () => {
+  it('carries Sign out in the header for an organizer, with no "scores stay hidden" note anywhere in chrome', async () => {
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      'GET /api/v1/events': { items: [], total: 0, page: 1, perPage: 50 },
+    });
+
+    render(<App />);
+
+    const header = await screen.findByRole('banner');
+    expect(within(header).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    expect(screen.queryByText('Scores stay hidden from other reviewers')).not.toBeInTheDocument();
+  });
+
+  it('carries Sign out in the header for a reviewer, with no "scores stay hidden" note in chrome', async () => {
     mockApi({
       'GET /api/v1/me': { userId: 'u-2', email: 'reviewer@example.com', role: 'reviewer', orgId: 'org-1' },
       'GET /api/v1/events': { items: [], total: 0, page: 1, perPage: 50 },
@@ -286,9 +301,9 @@ describe('Shell footer (DEC-369 amendment, wave 42)', () => {
 
     render(<App />);
 
-    const footer = await screen.findByRole('contentinfo');
-    expect(within(footer).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
-    expect(within(footer).getByText('Scores stay hidden from other reviewers')).toBeInTheDocument();
+    const header = await screen.findByRole('banner');
+    expect(within(header).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    expect(screen.queryByText('Scores stay hidden from other reviewers')).not.toBeInTheDocument();
   });
 });
 

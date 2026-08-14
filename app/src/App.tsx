@@ -202,7 +202,22 @@ function Header() {
         </nav>
         <div className="chq-header-identity">
           <EventSwitcher />
-          {me && <span className="chq-user-identity">{identityLabel(me.name, me.email)}</span>}
+          {/* DEC-369 amendment (wave 72): no bottom chrome bar -- Sign out
+              rejoins the header identity, "JORDAN A. · SIGN OUT", a real
+              button one click from any page, never a menu. It's nested
+              inside .chq-user-identity (not a sibling in
+              .chq-header-identity) so the existing ≤700px rule that drops
+              the identity block on phone keeps dropping Sign out with it —
+              the phone header has no identity block, so the More sheet
+              remains the phone path for signing out. */}
+          {me && (
+            <span className="chq-user-identity">
+              {identityLabel(me.name, me.email)}
+              <button type="button" className="chq-btn chq-btn-tertiary chq-header-signout" onClick={() => void signOut()}>
+                Sign out
+              </button>
+            </span>
+          )}
         </div>
       </header>
 
@@ -263,26 +278,6 @@ function Header() {
   );
 }
 
-// DEC-369 amendment (wave 42): a shell footer, present on every admin page,
-// carries Sign out -- never a menu, so it stays exactly one click away
-// regardless of role or route. Frame 02's reviewer footer is the precedent:
-// for a reviewer it also carries the reassurance that scores stay hidden
-// from other reviewers (mirrors the former DEC-874 in-page footer, now
-// rendered once, globally, in the shell chrome rather than duplicated per
-// page).
-function Footer() {
-  const { me } = useMe();
-  const isReviewer = me?.role === 'reviewer';
-  return (
-    <footer className="chq-footer">
-      {isReviewer && <p className="chq-footer-note">Scores stay hidden from other reviewers</p>}
-      <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => void signOut()}>
-        Sign out
-      </button>
-    </footer>
-  );
-}
-
 // Reviewers are confined to /review; any other path bounces them there
 // rather than exposing organizer-only screens they have no API access to.
 function RoleGate({ children }: { children: ReactNode }) {
@@ -338,7 +333,6 @@ export function App() {
             <RoutedContent />
           </RoleGate>
         </main>
-        <Footer />
       </div>
     </BrowserRouter>
   );
