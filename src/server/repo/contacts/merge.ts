@@ -2,7 +2,7 @@
 // (contention decomposition, no behavior change). See repo/contacts.ts for
 // the module-level contract notes.
 
-import { asc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, or, sql, type SQL } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
@@ -11,6 +11,7 @@ import {
   planMerge,
   mergedInviteStatus,
   mergedParticipantVisible,
+  stripContactNameWhitespace,
   type ContactRecord,
   type DuplicateReason,
 } from "../../../domain/contacts";
@@ -117,14 +118,71 @@ type ScannedContactRow = {
   createdAt: Date;
 };
 
+// Wave-41 (DEC-788 amendment): the closed-class whitespace codepoints
+// stripContactNameWhitespace (src/domain/contacts.ts) strips -- restated here
+// as SQLite char() codepoints (tab, LF, VT, FF, CR, space, NBSP) so the SQL
+// narrowing built from them is a PROVABLE mirror of that same closed set,
+// not a guess at what SQL "whitespace" means.
+const CONTACT_NAME_WHITESPACE_CODEPOINTS = [9, 10, 11, 12, 13, 32, 160];
+
+/** Wave-41 (DEC-788 amendment): `lower(coalesce(first_name,'') ||
+ * coalesce(last_name,''))` with every whitespace codepoint in
+ * CONTACT_NAME_WHITESPACE_CODEPOINTS stripped out -- the SQL mirror of
+ * stripContactNameWhitespace(firstName + lastName) in JS. */
+function strippedNameSqlExpr(): SQL {
+  let expr: SQL = sql`lower(coalesce(${schema.contact.firstName}, '') || coalesce(${schema.contact.lastName}, ''))`;
+  for (const codepoint of CONTACT_NAME_WHITESPACE_CODEPOINTS) {
+    expr = sql`replace(${expr}, char(${codepoint}), '')`;
+  }
+  return expr;
+}
+
+/** Wave-41 (DEC-788 amendment): a PROVABLE SQL superset of what
+ * findDuplicateGroups would actually bucket a `candidate` row with --
+ * (normalized email equality) OR (whitespace-stripped name equality, using
+ * the SAME closed whitespace class stripContactNameWhitespace uses). Used
+ * ONLY by findDuplicateCandidatesForOrg's single-candidate check;
+ * findDuplicateGroupsForOrg's full-directory scan is untouched. A superset,
+ * not the matcher itself: findDuplicateGroups (imported, never restated)
+ * remains the only thing that decides an actual match against the rows this
+ * narrows down to. */
+function duplicateCandidateNarrowingCondition(candidate: {
+  email: string;
+  firstName: string;
+  lastName: string;
+}): SQL {
+  const normalizedEmail = normalizeEmail(candidate.email);
+  const strippedCandidateName = stripContactNameWhitespace(candidate.firstName + candidate.lastName);
+  const nameCond = sql`${strippedNameSqlExpr()} = ${strippedCandidateName}`;
+  if (normalizedEmail === "") return nameCond;
+  const emailCond = sql`lower(trim(${schema.contact.email})) = ${normalizedEmail}`;
+  return sql`(${emailCond}) or (${nameCond})`;
+}
+
 /** DEC-554/DEC-734/DEC-788: the one org-contact scan both
  * findDuplicateGroupsForOrg and the create-time duplicate check
  * (GET /contacts/duplicates/check) build on -- project only the columns
  * findDuplicateGroups (via normalizeEmail/normalizedContactName/normalizedCompany)
  * and either caller's own output actually read, not every persisted contact
  * field. Bounded + deterministically ordered; the scan refuses rather than
- * silently truncating past the cap. */
-async function scanContactsForOrg(db: Db, orgId: string): Promise<ScannedContactRow[]> {
+ * silently truncating past the cap.
+ *
+ * Wave-41 amendment: `narrowTo`, used ONLY by findDuplicateCandidatesForOrg,
+ * adds a PROVABLE-superset SQL predicate (see
+ * duplicateCandidateNarrowingCondition) on top of the org filter -- the same
+ * `.limit(MAX_CONTACT_DIRECTORY_SCAN + 1)` bound and the same loud refusal
+ * past the cap apply to the narrowed query, so a single-candidate check can
+ * still answer for an org whose FULL directory would refuse via
+ * findDuplicateGroupsForOrg. findDuplicateGroupsForOrg itself never passes
+ * `narrowTo` and its full-scan behaviour is unchanged. */
+async function scanContactsForOrg(
+  db: Db,
+  orgId: string,
+  narrowTo?: { email: string; firstName: string; lastName: string },
+): Promise<ScannedContactRow[]> {
+  const whereCond = narrowTo
+    ? and(eq(schema.contact.orgId, orgId), duplicateCandidateNarrowingCondition(narrowTo))
+    : eq(schema.contact.orgId, orgId);
   const scanned = await db
     .select({
       id: schema.contact.id,
@@ -136,7 +194,7 @@ async function scanContactsForOrg(db: Db, orgId: string): Promise<ScannedContact
       createdAt: schema.contact.createdAt,
     })
     .from(schema.contact)
-    .where(eq(schema.contact.orgId, orgId))
+    .where(whereCond)
     .orderBy(asc(schema.contact.id))
     .limit(MAX_CONTACT_DIRECTORY_SCAN + 1);
   if (scanned.length > MAX_CONTACT_DIRECTORY_SCAN) {
@@ -232,7 +290,11 @@ export async function findDuplicateCandidatesForOrg(
   orgId: string,
   candidate: { firstName: string; lastName: string; email: string; company?: string },
 ): Promise<DuplicateCandidateMatch[]> {
-  const rows = await scanContactsForOrg(db, orgId);
+  const rows = await scanContactsForOrg(db, orgId, {
+    email: candidate.email,
+    firstName: candidate.firstName,
+    lastName: candidate.lastName,
+  });
   const records: ContactRecord[] = rows.map((r) => ({
     id: r.id,
     email: r.email,
