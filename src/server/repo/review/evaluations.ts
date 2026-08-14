@@ -17,6 +17,18 @@ import { ApiError } from "../../http";
 // scans a strictly larger evaluation table than submission table.
 export const MAX_PLAN_EVALUATION_SCAN = 50000;
 
+// DEC-873 (wave 46 amendment): the ONE submitted-evaluation predicate every
+// read side outside the draft's own resume read (getEvaluation) must carry
+// in its WHERE -- a draft (submittedAt null) is not yet a recorded
+// evaluation, so it must never count toward a cap, an aggregate, an
+// "already rated" set, a queue's myScore, or the organiser's evaluations
+// list. Previously inlined ad hoc at two call sites (results computation,
+// progress pairs) while five siblings had no predicate at all -- see wave 46
+// FINDINGS.
+export function submittedEvaluationCondition() {
+  return sql`${schema.evaluation.submittedAt} is not null`;
+}
+
 export interface EvaluationRecord {
   id: string;
   planId: string;
@@ -68,7 +80,7 @@ export async function listEvaluationScoresForPlan(
         // DEC-873 (wave 27 amendment): a draft (submittedAt null) never
         // enters the results/weighted-mean computation -- only a submitted
         // evaluation was actually recorded.
-        sql`${schema.evaluation.submittedAt} is not null`,
+        submittedEvaluationCondition(),
       ),
     )
     .orderBy(asc(schema.evaluation.submissionId), asc(schema.evaluation.id))
@@ -85,6 +97,13 @@ export async function listEvaluationScoresForPlan(
   }));
 }
 
+/** DEC-873 (wave 46 amendment): draft-inclusive by design -- this is the
+ * one exception to submittedEvaluationCondition(). It is the reviewer's own
+ * draft resume read (the PUT form loads whatever the reviewer last saved,
+ * submitted or not) AND the source of the already-submitted guard at
+ * reviewer.ts:356 (a route must read the row's own submittedAt to decide
+ * whether a further draft write is refused). No other reader may reuse this
+ * function's draft-inclusive result for a cap, aggregate, or list. */
 export async function getEvaluation(
   db: Db,
   planId: string,
@@ -126,6 +145,10 @@ export async function countEvaluationsForSubmission(
         eq(schema.evaluation.planId, planId),
         eq(schema.evaluation.submissionId, submissionId),
         eq(schema.evaluation.round, round),
+        // DEC-873 (wave 46 amendment): another reviewer's unsubmitted
+        // draft must never count against maxEvaluations -- the cap check
+        // at reviewer.ts:361 counts recorded evaluations, not drafts.
+        submittedEvaluationCondition(),
       ),
     );
   return Number(rows[0]?.count ?? 0);
@@ -150,7 +173,16 @@ export async function countEvaluationsBySubmission(
   const rows = await db
     .select({ submissionId: schema.evaluation.submissionId, count: sql<number>`count(*)` })
     .from(schema.evaluation)
-    .where(and(eq(schema.evaluation.planId, planId), eq(schema.evaluation.round, round)))
+    .where(
+      and(
+        eq(schema.evaluation.planId, planId),
+        eq(schema.evaluation.round, round),
+        // DEC-873 (wave 46 amendment): a draft must not inflate
+        // ratingsCount nor pull a submission out of needsMoreRatings (J4
+        // fewest-ratings-first) before it is actually recorded.
+        submittedEvaluationCondition(),
+      ),
+    )
     .groupBy(schema.evaluation.submissionId);
   const result = new Map<string, number>();
   for (const r of rows) result.set(r.submissionId, Number(r.count));
@@ -174,6 +206,9 @@ export async function listSubmissionIdsRatedBy(
         eq(schema.evaluation.planId, planId),
         eq(schema.evaluation.round, round),
         eq(schema.evaluation.reviewerId, reviewerId),
+        // DEC-873 (wave 46 amendment): a reviewer's own unsubmitted draft
+        // must not mark that submission as already-rated.
+        submittedEvaluationCondition(),
       ),
     );
   return new Set(rows.map((r) => r.submissionId));
@@ -200,6 +235,9 @@ export async function listEvaluationScoresForReviewer(
         eq(schema.evaluation.planId, planId),
         eq(schema.evaluation.round, round),
         eq(schema.evaluation.reviewerId, reviewerId),
+        // DEC-873 (wave 46 amendment): the queue's myScore must never be
+        // read from a partial, unsubmitted draft.
+        submittedEvaluationCondition(),
       ),
     );
   return new Map(
@@ -229,7 +267,7 @@ export async function listEvaluatedPairsForPlan(
         // DEC-873 (wave 27 amendment): a draft never counts toward
         // progress's `completed` -- only a submitted evaluation is a
         // recorded pair.
-        sql`${schema.evaluation.submittedAt} is not null`,
+        submittedEvaluationCondition(),
       ),
     );
 }
@@ -275,9 +313,16 @@ export async function listEvaluationsForSubmission(
     .innerJoin(schema.user, eq(schema.evaluation.reviewerId, schema.user.id))
     .leftJoin(schema.contact, eq(schema.user.contactId, schema.contact.id))
     .where(
+      // DEC-873 (wave 46 amendment): the organiser's Reviews section shows
+      // only recorded evaluations -- a reviewer's draft-in-progress is not
+      // yet visible to the organiser.
       planId
-        ? and(eq(schema.evaluation.submissionId, submissionId), eq(schema.evaluation.planId, planId))
-        : eq(schema.evaluation.submissionId, submissionId),
+        ? and(
+            eq(schema.evaluation.submissionId, submissionId),
+            eq(schema.evaluation.planId, planId),
+            submittedEvaluationCondition(),
+          )
+        : and(eq(schema.evaluation.submissionId, submissionId), submittedEvaluationCondition()),
     )
     .orderBy(
       asc(schema.evaluationPlan.name),
