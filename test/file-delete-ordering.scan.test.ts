@@ -32,7 +32,16 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const ROOT = join(__dirname, "..");
-const SCAN_DIRS = ["src/routes", "src/server"];
+const SRC_ROOT = "src";
+// WAVE-19 amendment (DEC-713): the RECEIVER is part of the call shape -- the
+// scan used to require the literal identifier `store` and only walked
+// src/routes + src/server, which silently missed both a renamed local
+// binding (`fileStore.delete(...)`) and any store call sitting under a
+// different top-level src/ directory. Every top-level entry under src/ must
+// now be either scanned (implicitly, by SRC_ROOT covering it) or listed here
+// with a stated reason it's structurally exempt from ever holding a store
+// delete call site.
+const EXCLUDED_ROOTS: { name: string; reason: string }[] = [];
 const SKIP_DIRS = new Set(["node_modules", "dist", ".wrangler", "build", ".git"]);
 
 interface DeleteHit {
@@ -53,6 +62,65 @@ function walk(dir: string, out: string[]): void {
       out.push(full);
     }
   }
+}
+
+/** Strips `//` line comments and `/* *\/` block comments, replacing every
+ * stripped character with a space (newlines preserved verbatim) so the
+ * output has EXACTLY the same length -- and therefore the same character
+ * offsets and line numbers -- as `src`. String/template literals are
+ * tracked so a `//` or `/*` inside a string (e.g. a URL) is never mistaken
+ * for the start of a comment. Deliberately still a lightweight text pass,
+ * not a real lexer -- good enough for this repo's existing comment style. */
+function stripComments(src: string): string {
+  let out = "";
+  let i = 0;
+  const n = src.length;
+  while (i < n) {
+    const c = src[i];
+    const c2 = i + 1 < n ? src[i + 1] : "";
+    if (c === "/" && c2 === "/") {
+      while (i < n && src[i] !== "\n") {
+        out += " ";
+        i++;
+      }
+      continue;
+    }
+    if (c === "/" && c2 === "*") {
+      out += "  ";
+      i += 2;
+      while (i < n && !(src[i] === "*" && src[i + 1] === "/")) {
+        out += src[i] === "\n" ? "\n" : " ";
+        i++;
+      }
+      if (i < n) {
+        out += "  ";
+        i += 2;
+      }
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") {
+      const quote = c;
+      out += c;
+      i++;
+      while (i < n && src[i] !== quote) {
+        if (src[i] === "\\" && i + 1 < n) {
+          out += (src[i] ?? "") + (src[i + 1] ?? "");
+          i += 2;
+          continue;
+        }
+        out += src[i];
+        i++;
+      }
+      if (i < n) {
+        out += src[i];
+        i++;
+      }
+      continue;
+    }
+    out += c;
+    i++;
+  }
+  return out;
 }
 
 /** Brace-matches a `{` at `openIdx` (the index OF the `{`) to its closing
@@ -168,7 +236,14 @@ function nearestEnclosingFunction(scopes: NamedScope[], pos: number): string {
   return picked.map((s) => s.name).join(".");
 }
 
-const DELETE_CALL = /\bstore\s*\.\s*(delete|deleteMany)\s*\(/g;
+// WAVE-19 amendment (DEC-713): the RECEIVER is part of the call shape. This
+// used to require the literal identifier `store`, which missed a renamed
+// local binding like `fileStore.delete(...)`. Now matches any identifier
+// ENDING in "store" (case-insensitive, so `fileStore`, `FileStore`,
+// `attachmentStore`, or the bare `store` itself all match) immediately
+// followed by `.delete(` or `.deleteMany(` -- a renamed local binding can no
+// longer hide a call site from this scan.
+const DELETE_CALL = /\b\w*store\s*\.\s*(delete|deleteMany)\s*\(/gi;
 
 /** EXEMPT hits: known-by-file+function, not by silence. Neither of these is
  * a caller of the store performing a delete-before-row-commit -- one runs
@@ -188,21 +263,31 @@ const EXEMPT_HITS: { file: string; functionOrNearestExport: string; reason: stri
   },
 ];
 
+/** Every top-level entry directly under src/ (files AND directories) that is
+ * actually scanned -- i.e. not named in EXCLUDED_ROOTS. Used both to build
+ * the file list and to back the "nothing under src/ silently escapes" test
+ * below. */
+function scannedTopLevelEntries(): string[] {
+  const excluded = new Set(EXCLUDED_ROOTS.map((e) => e.name));
+  return readdirSync(join(ROOT, SRC_ROOT)).filter((name) => !SKIP_DIRS.has(name) && !excluded.has(name));
+}
+
 function scanForDeleteHits(): DeleteHit[] {
   const files: string[] = [];
-  for (const dir of SCAN_DIRS) {
-    const abs = join(ROOT, dir);
-    try {
-      statSync(abs);
-    } catch {
-      continue;
+  for (const name of scannedTopLevelEntries()) {
+    const abs = join(ROOT, SRC_ROOT, name);
+    const stat = statSync(abs);
+    if (stat.isDirectory()) {
+      walk(abs, files);
+    } else if (stat.isFile() && /\.(ts|tsx)$/.test(name)) {
+      files.push(abs);
     }
-    walk(abs, files);
   }
 
   const hits: DeleteHit[] = [];
   for (const file of files) {
-    const src = readFileSync(file, "utf8");
+    const rawSrc = readFileSync(file, "utf8");
+    const src = stripComments(rawSrc);
     const tryCatchBlocks = findTryCatchBlocks(src);
     const namedScopes = findNamedScopes(src);
 
@@ -233,14 +318,47 @@ function scanForDeleteHits(): DeleteHit[] {
 
 // The ledger for any deliberate object-before-row delete (a hit that is NOT
 // in the committed-delete shape and is not one of the two fixed EXEMPT_HITS
-// above). Empty today: all three real call sites (files.ts, submissions.ts,
-// portal-config.ts) are in the committed-delete shape as of wave 50/51.
-const KNOWN_BYTES_BEFORE_ROW: { file: string; functionOrNearestExport: string; reason: string }[] = [];
+// above). Three real call sites (files.ts, submissions.ts, portal-config.ts)
+// are in the committed-delete shape as of wave 50/51. One deliberate
+// exception, found wave 19 once the RECEIVER-aware regex could see it:
+const KNOWN_BYTES_BEFORE_ROW: { file: string; functionOrNearestExport: string; reason: string }[] = [
+  {
+    file: "src/routes/public/submit.tsx",
+    functionOrNearestExport: "(module scope)",
+    reason:
+      "This is the anonymous public CFP submit handler's own N-object rollback (see the comment directly above it, and src/server/context.ts's putThenRecord doc comment: 'Multi-object batch uploads (src/routes/public/submit.tsx) keep their own rollback because a single delete-on-throw doesn't cover N objects'). It runs inside the catch of the DB-write try block, AFTER createSubmission() has already committed a submission row, and it deletes the just-uploaded R2 objects BEFORE commitSubmissionDelete() removes that row two lines later -- object-before-row, not the committed-delete shape. This is not the same situation the committed-delete shape guards against: this is a full transaction rollback (both the row and its R2 objects are being discarded together because a later step in the same request failed), not a steady-state row update that leaves R2 objects referenced by a row that no longer exists. The catch also rethrows (`throw err`), which alone disqualifies it from the committed-delete shape (that shape specifically requires a swallowing catch). Reordering this path (row-delete first, R2-delete second, swallowed) is a genuine behaviour change on the anonymous public CFP write path and deserves its own wave, not a drive-by fix inside this scan-widening task.",
+  },
+];
 
-describe("R2 delete-before-row-commit ordering scan (DEC-713 amendment, wave 51)", () => {
-  it("the scan itself finds store.delete/deleteMany call sites under src/routes and src/server (not vacuous)", () => {
+describe("R2 delete-before-row-commit ordering scan (DEC-713 amendment, wave 19/51)", () => {
+  it("the scan finds store.delete/deleteMany call sites across all of src/ (not vacuous, and not just the pre-wave-19 6)", () => {
     const hits = scanForDeleteHits();
-    expect(hits.length).toBeGreaterThan(0);
+    // Before wave 19 this scan found 6 hits (context.ts x2, files.ts,
+    // submissions.ts, portal-config.ts, portal/tasks.tsx) because its
+    // literal `\bstore\.` regex couldn't see a renamed receiver like
+    // `fileStore`. This threshold requires the 7th (submit.tsx:610's
+    // `fileStore.delete(...)`) to be found too, so a future regression back
+    // to a bare `store` match is caught here, not rediscovered by hand.
+    expect(hits.length).toBeGreaterThanOrEqual(7);
+  });
+
+  it("finds the renamed-receiver call site (fileStore.delete) that the pre-wave-19 literal `store.` regex missed", () => {
+    const hits = scanForDeleteHits();
+    const hit = hits.find((h) => h.file === "src/routes/public/submit.tsx" && h.line === 610);
+    expect(hit, "expected a hit at src/routes/public/submit.tsx:610 (fileStore.delete) -- the receiver-aware regex regressed").toBeDefined();
+  });
+
+  it("every top-level entry under src/ is either scanned or listed in EXCLUDED_ROOTS with a reason", () => {
+    const excludedNames = new Set(EXCLUDED_ROOTS.map((e) => e.name));
+    for (const entry of EXCLUDED_ROOTS) {
+      expect(entry.reason.length, `EXCLUDED_ROOTS entry "${entry.name}" has no stated reason`).toBeGreaterThan(0);
+    }
+    const topLevel = readdirSync(join(ROOT, SRC_ROOT)).filter((name) => !SKIP_DIRS.has(name));
+    const unaccounted = topLevel.filter((name) => !excludedNames.has(name) && !scannedTopLevelEntries().includes(name));
+    expect(
+      unaccounted,
+      unaccounted.map((name) => `src/${name}: neither scanned nor listed in EXCLUDED_ROOTS -- it can silently hide a store.delete/deleteMany call site.`).join("\n"),
+    ).toEqual([]);
   });
 
   it("every store.delete/deleteMany hit is either in the committed-delete shape, EXEMPT, or ledgered", () => {
