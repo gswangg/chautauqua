@@ -36,8 +36,15 @@ function mockYourData(overrides: Record<string, unknown> = {}) {
 }
 
 describe('YourDataPanel', () => {
-  it('renders a read-only summary with the API docs link, and no export pills/tokens/import control before edit', async () => {
-    mockYourData();
+  // DEC-815 amendment (wave 4): the read view LISTS its sets at rest
+  // (exports as real links, tokens as real rows) rather than describing
+  // them in a sentence; only creation/import controls stay behind Change.
+  it('renders a read-only summary that lists the real exports and tokens, with no creation/import control before edit', async () => {
+    mockYourData({
+      'GET /api/v1/tokens': listEnvelope([
+        { id: 'tok-1', name: 'CI pipeline', tokenPrefix: 'chq_abc', lastUsedAt: null },
+      ]),
+    });
     render(
       <MemoryRouter>
         <YourDataPanel />
@@ -54,8 +61,19 @@ describe('YourDataPanel', () => {
     );
     expect(within(section).getByText('Import from Sessionboard')).toBeInTheDocument();
 
-    expect(within(section).queryByRole('link', { name: 'Submissions CSV' })).not.toBeInTheDocument();
+    expect(within(section).getByRole('link', { name: 'Submissions CSV' })).toHaveAttribute(
+      'href',
+      `/api/v1/events/${EVENT_ID}/export/submissions?format=csv`,
+    );
+    expect(within(section).getByRole('link', { name: 'Contacts CSV' })).toBeInTheDocument();
+    expect(within(section).getByRole('button', { name: 'Everything JSON' })).toBeInTheDocument();
+    expect(within(section).queryByRole('button', { name: 'More export formats' })).not.toBeInTheDocument();
+
+    expect(await within(section).findByText('CI pipeline')).toBeInTheDocument();
+    expect(within(section).getByText('Last used: Never')).toBeInTheDocument();
     expect(within(section).queryByRole('button', { name: 'New token' })).not.toBeInTheDocument();
+    expect(within(section).queryByRole('button', { name: 'Revoke' })).not.toBeInTheDocument();
+
     expect(
       within(section).queryByRole('button', { name: 'Import from Sessionboard' }),
     ).not.toBeInTheDocument();

@@ -54,7 +54,10 @@ function mockPortal(overrides: Record<string, unknown> = {}) {
 }
 
 describe('PortalSettingsPanel (Speaker portal read view)', () => {
-  it('renders every row of the read view from real data, with Open as a speaker as a row-level link and no resource form before edit', async () => {
+  // DEC-815 amendment (wave 4): the Resources row LISTS the real resources
+  // at rest instead of describing the set in a sentence; only add/delete
+  // controls stay behind Change.
+  it('renders every row of the read view from real data, listing the real resources, with Open as a speaker as a row-level link and no resource add/delete control before edit', async () => {
     mockPortal();
     render(
       <MemoryRouter>
@@ -83,9 +86,15 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
     expect(within(section).getByText('Session title')).not.toHaveClass('is-active');
     expect(within(section).getByText('Abstract')).not.toHaveClass('is-active');
 
-    // Summary view: resource list/add form is not rendered yet.
-    expect(within(section).queryByText('Travel info')).not.toBeInTheDocument();
+    // Resources row: the real rows list at rest (title + kind), but no
+    // add/delete control until Change is clicked.
+    expect(await within(section).findByText('Travel info')).toBeInTheDocument();
+    expect(within(section).getByText('Wiki page')).toBeInTheDocument();
+    expect(within(section).getByText('Slide template')).toBeInTheDocument();
+    expect(within(section).getByText(/^File/)).toBeInTheDocument();
+    expect(within(section).getByRole('link', { name: 'Download' })).toHaveAttribute('href', '/files/file1');
     expect(within(section).queryByRole('button', { name: 'Add a resource' })).not.toBeInTheDocument();
+    expect(within(section).queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
     expect(within(section).getByRole('button', { name: 'Change' })).toBeInTheDocument();
   });
 

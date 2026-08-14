@@ -77,6 +77,8 @@ function mockEverySettingsRoute(overrides: Record<string, unknown> = {}) {
       showResources: true,
     },
     [`GET /api/v1/events/${EVENT_ID}/onboarding`]: { tasks: [] },
+    [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([]),
+    'GET /api/v1/tokens': listEnvelope([]),
     'GET /api/v1/users': listEnvelope([{ id: 'u1', email: 'a@example.com', role: 'organizer' }]),
     'GET /api/v1/me': { userId: 'u1', email: 'a@example.com', name: null, role: 'organizer', orgId: 'org1' },
     ...overrides,

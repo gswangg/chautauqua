@@ -16,6 +16,15 @@
 // summary/edit split. At rest it renders the real rows (name + kind, DEC-047
 // amendment); 'Change' switches to the CRUD surface below rather than
 // revealing it inline.
+//
+// DEC-815 amendment (wave 4): PortalSettingsPanel's own SummarySection row
+// (before 'Change' is clicked) also needs the real resource rows instead
+// of a describing sentence. `readOnly` makes this component serve both
+// views rather than a second list renderer: the row-level `readOnly` render
+// is the plain title + kind list (a file row also links its download,
+// mirroring the CRUD view's own link) with no add/delete control at all;
+// the default (unset) keeps the existing local summary/edit split used
+// inside PortalSettingsPanel's own edit branch.
 import { useEffect, useState } from 'react';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiDelete, apiList, apiPatch, apiPost, apiUpload, ApiError } from '../../lib/api';
@@ -47,7 +56,7 @@ function resourceDetail(resource: Resource): string {
   return countOf(wordCount(resource.content), 'word');
 }
 
-export function ResourcesPanel() {
+export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
   const { eventId } = useCurrentEvent();
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
@@ -168,6 +177,36 @@ export function ResourcesPanel() {
     } finally {
       setDeleting(false);
     }
+  }
+
+  if (readOnly) {
+    return (
+      <>
+        {loading ? <DelayedLoading /> : null}
+        {error ? <p role="alert">{error}</p> : null}
+        <ul className="chq-settings-summary-list">
+          {resources.map((resource) => (
+            <li key={resource.id} className="chq-settings-summary-row">
+              <span className="chq-settings-summary-row-primary">{resource.title}</span>
+              <span className="chq-settings-summary-row-detail">
+                {resource.kind === 'file' ? 'File' : 'Wiki page'}
+                {resource.kind === 'file' && resource.fileId ? (
+                  <>
+                    {' · '}
+                    <a className="chq-settings-inline-action" href={`/files/${resource.fileId}`}>
+                      Download
+                    </a>
+                  </>
+                ) : null}
+              </span>
+            </li>
+          ))}
+          {!loading && resources.length === 0 ? (
+            <li className="chq-settings-summary-empty">No resources yet.</li>
+          ) : null}
+        </ul>
+      </>
+    );
   }
 
   if (!showEditor) {

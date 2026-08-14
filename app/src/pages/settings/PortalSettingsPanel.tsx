@@ -15,6 +15,12 @@
 // caller: it hydrates a PortalSettingsForm from the GET response, PUTs the
 // full payload on save, and re-reads the record so the read view updates
 // without a reload.
+//
+// DEC-815 amendment (wave 4): the summary Resources row used to describe
+// the set ("Wiki pages and files speakers can access from their portal")
+// rather than list it. It now renders ResourcesPanel itself in its new
+// `readOnly` mode -- the same component the edit branch already uses,
+// never a second list renderer, with no add/delete control at rest.
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
@@ -163,7 +169,10 @@ export function PortalSettingsPanel() {
           `${countOf(taskCount, 'task')} · created when a submission is accepted`
         ),
     },
-    { label: 'Resources', value: 'Wiki pages and files speakers can access from their portal' },
+    {
+      label: 'Resources',
+      value: <ResourcesPanel readOnly />,
+    },
     { label: 'Access', value: 'Speakers claim their portal from a link in their acceptance email' },
     {
       label: 'Open the portal',
