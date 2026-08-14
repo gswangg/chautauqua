@@ -9,6 +9,7 @@ import { publicRoutes } from "../src/routes/public";
 import { registerErrorHandler } from "../src/server/http";
 import { validAccent } from "../src/routes/public/shell";
 import { PUBLIC_CSS } from "../src/routes/public/public.css";
+import { THEME_CSS } from "../src/views/theme";
 import type { AppEnv } from "../src/server/env";
 
 function makeChain(rows: unknown[]) {
@@ -129,6 +130,36 @@ describe("PUBLIC_CSS search box (DEC-919 amendment, wave 40): one compact input 
   it("declares .chq-pub-search sized as a compact ~259x40 input", () => {
     expect(PUBLIC_CSS).toMatch(/\.chq-pub-search\s*\{[^}]*width:\s*259px;[^}]*\}/);
     expect(PUBLIC_CSS).toMatch(/\.chq-pub-search\s*\{[^}]*height:\s*40px;[^}]*\}/);
+  });
+});
+
+// w1-b: appearance:none with no replacement affordance renders a <select>
+// indistinguishable from a text input -- every rule that strips the native
+// caret must pair it with a replacement (a background-image caret and the
+// padding-right that clears it) in the SAME rule body, not just somewhere
+// else in the sheet. Scans every `appearance: none` declaration's own rule
+// block across both THEME_CSS (the shared select rule every public/portal/
+// CFP surface renders through) and PUBLIC_CSS (public-surface-only rules,
+// if any ever add one) so this doesn't silently regress on a future rule.
+function ruleBlocksWithAppearanceNone(css: string): string[] {
+  const stripped = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const blocks: string[] = [];
+  const ruleRe = /[^{}]*\{[^{}]*\}/g;
+  let m: RegExpExecArray | null;
+  while ((m = ruleRe.exec(stripped))) {
+    if (/appearance:\s*none/.test(m[0])) blocks.push(m[0]);
+  }
+  return blocks;
+}
+
+describe("w1-b: appearance:none never ships without a replacement caret affordance", () => {
+  it("every appearance:none rule in THEME_CSS and PUBLIC_CSS also declares a background-image caret and clearing padding-right", () => {
+    const blocks = [...ruleBlocksWithAppearanceNone(THEME_CSS), ...ruleBlocksWithAppearanceNone(PUBLIC_CSS)];
+    expect(blocks.length).toBeGreaterThan(0);
+    for (const block of blocks) {
+      expect(block).toMatch(/background-image:\s*url\(/);
+      expect(block).toMatch(/padding(-right)?:\s*[^;]*(\d)/);
+    }
   });
 });
 
