@@ -24,32 +24,31 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   WHILE YOU PLAN. MIGRATION THAT CAN'T RUN IS A SCHEMA THAT DOESN'T EXIST
   (D1 rejects CREATE TEMP TABLE). COMMENT CLAIMING A CHECK IS NOT A CHECK.
 - FINDINGS w55-58: PLANNER'S FIRST READ CAN BE STALE -- re-read before
-  reserve; hand-off LIST IS A HYPOTHESIS. MANDATE CAN RUN OUT -> READ REPOS.
-  A CONSTRAINT ONE LEVEL DOWN IS STILL MISSING -- sweep every writer of a
-  table a unique index lands on. A JS CAP OVER AN UNBOUNDED READ: count/slice
-  in SQL, the FRONTIER is a query not a filter. A REVERT MANDATE IS NOT A
-  REVERT -- open the file, don't trust merges. THE COUNT YOU ONLY `.size` IS
-  A GROUP BY. NO LOWER BOUND IS A FOREVER LOOP. A SHORT-CIRCUIT OVER A KDF
-  IS AN ORACLE. ONE FLAG DOING TWO JOBS loses state added mid-flag. A CONFIG
-  THROW ON AN ANONYMOUS SURFACE IS A 500 -- an OPTIONAL field must degrade.
-- FINDINGS w59: THE MANDATE IS SPENT, CONFIRMED TWICE — nine gate-3/eval
-  items re-verified CLOSED at file:line. Work now comes only from READING.
-  A DECISION THAT NAMES ITS OWN CONSUMERS IS A CHECKLIST — WALK IT: DEC-829
-  listed "assignment/chase/public-visible" readers; the chase alone skipped
-  acceptedSpeakerConditions, so a declined speaker is emailed forever while
-  the overdue count says 0. A UI LABEL IS A SPEC: "title for this batch"
-  (singular) sat over a loop minting one session PER ROW. A CANONICAL TASK
-  MUST WRITE WHERE ITS NAME POINTS: "Finalize bio + headshot" had no path to
-  contact.headshot_url, so the cell goes green and the programme stays blank.
-- FINDINGS w60: A MODULE HEADER THAT LISTS ITS OWN CASCADE IS A CHECKLIST —
-  submission-delete's prose named 8 tables and quietly omitted evaluation and
-  plan_reviewer. THE GUARD IS NOT THE CASCADE: refusing SUBMITTED evaluations
-  is not deleting the DRAFT ones. A ONE-WAY STATUS IS A BROKEN LOOP — nothing
-  writes content_status on upload, so approve/ask-for-changes never reopens
-  and DEC-881's "2 re-uploaded + 3 not reviewed = 5" can be false. WHEN TWO
-  SIBLING DEDUPES BOTH PRESERVE PROGRESS, THE THIRD ONE BETWEEN THEM IS THE
-  BUG (merge kept 'complete' and merged pipeline stage, then dropped an
-  accepted invite). A RECONCILE THAT READS THE WHOLE SET TO USE A SUBSET is
-  the hot path's cost. AND: RE-READ BEFORE RESERVING — a planned task
-  ("back-fill every event task on activation") was already DEC-932, live at
-  status.ts:261; the amendment doc existed AND the code did.
+  reserve. MANDATE CAN RUN OUT -> READ REPOS. A CONSTRAINT ONE LEVEL DOWN IS
+  STILL MISSING -- sweep every writer of a table a unique index lands on. A
+  JS CAP OVER AN UNBOUNDED READ: count/slice in SQL. A REVERT MANDATE IS NOT
+  A REVERT -- open the file. THE COUNT YOU ONLY `.size` IS A GROUP BY. NO
+  LOWER BOUND IS A FOREVER LOOP. A SHORT-CIRCUIT OVER A KDF IS AN ORACLE. A
+  CONFIG THROW ON AN ANONYMOUS SURFACE IS A 500.
+- FINDINGS w59-60: THE MANDATE IS SPENT, CONFIRMED TWICE — gate-3/eval items
+  re-verified CLOSED at file:line. Work now comes only from READING. A
+  DECISION THAT NAMES ITS OWN CONSUMERS IS A CHECKLIST — WALK IT: DEC-829's
+  chase alone skipped acceptedSpeakerConditions. A UI LABEL IS A SPEC.
+  A CANONICAL TASK MUST WRITE WHERE ITS NAME POINTS. A MODULE HEADER THAT
+  LISTS ITS OWN CASCADE IS A CHECKLIST — submission-delete's prose omitted
+  evaluation and plan_reviewer. THE GUARD IS NOT THE CASCADE. A ONE-WAY
+  STATUS IS A BROKEN LOOP. WHEN TWO SIBLING DEDUPES BOTH PRESERVE PROGRESS,
+  THE THIRD ONE BETWEEN THEM IS THE BUG. RE-READ BEFORE RESERVING.
+- FINDINGS w61: THE MANDATE IS SPENT, FOURTH CONFIRMATION — ten more
+  eval-findings items re-probed CLOSED at file:line. THREE SIBLING COUNTS ON
+  ONE HEADER, TWO CARRY THE PREDICATE: "N accepted · M tasks open · K overdue"
+  — only M had no roster/chase clause, so a declined speaker inflates it
+  forever. A COUNT'S POPULATION IS PART OF ITS COPY. THE MIRROR OF A CHASE FIX
+  IS A PORTAL FIX: w59 stopped emailing declined speakers; their portal still
+  listed the tasks. "SENT" IS A STATUS, NOT A ROW COUNT — a `since` filter with
+  no `status` prints failures as sends. A PARAMETER PARSED AND NOT PASSED IS A
+  WRONG ANSWER WITH A CONFIDENT ENVELOPE (groupBy=batch dropped four). A DRY RUN
+  THAT DOESN'T MODEL ITS OWN COLLAPSE LIES IN ADVANCE. A RULE PRIVATE TO ONE
+  MODULE CANNOT BE APPLIED BY THE NEXT — the `err.cause` walk was fixed for
+  tasks in w48 and still missing in segments, turning a promised 400 into a 500.
+  A NUDGE WITH NO LINK IS NOT A NUDGE.
