@@ -224,6 +224,12 @@ export function SubmissionDetailPage() {
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [evaluations, setEvaluations] = useState<SubmissionReviewItem[]>([]);
   const [evaluationsError, setEvaluationsError] = useState<string | null>(null);
+  // DEC-737 (wave 2 amendment): per-criterion detail is collapsed behind a
+  // quiet per-row disclosure, closed by default -- same rule the results
+  // table already applies to its own row. Keyed on the review's own React
+  // list key, not a single page-wide flag, so opening one row never opens
+  // another.
+  const [expandedReviewKeys, setExpandedReviewKeys] = useState<Set<string>>(new Set());
   const [editingTracks, setEditingTracks] = useState(false);
   const [trackSelection, setTrackSelection] = useState<string[]>([]);
   const [savingTracks, setSavingTracks] = useState(false);
@@ -530,6 +536,18 @@ export function SubmissionDetailPage() {
     setHistoryEntries(res.items);
   }
 
+  function toggleReviewCriteria(key: string) {
+    setExpandedReviewKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
   function toggleHistory() {
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev);
@@ -778,36 +796,56 @@ export function SubmissionDetailPage() {
                 <p>No reviews recorded yet.</p>
               ) : (
                 <ul className="chq-review-list">
-                  {evaluations.map((ev, i) => (
-                    <li key={`${ev.planId}-${ev.round}-${i}`} className="chq-review-entry">
-                      <div className="chq-review-entry-meta">
-                        {/* DEC-736: the organiser is always told who
-                            reviewed -- never render 'Anonymous reviewer',
-                            even for an anonymized plan. */}
-                        <strong>{ev.reviewerName}</strong>
-                        <span className="chq-review-entry-score">{ev.score !== null ? ev.score.toFixed(1) : '—'}</span>
-                        <span className="chq-review-entry-plan">
-                          {ev.planName} &middot; Round {ev.round} &middot; {formatTimestamp(ev.submittedAt)}
-                        </span>
-                      </div>
-                      {ev.criteria.length > 0 && (
-                        <dl className="chq-review-scores">
-                          {/* Criterion values render under criteria[].label
-                              -- the raw criterionId key never reaches the
-                              DOM (used only as the React list key). */}
-                          {ev.criteria.map((criterion) => (
-                            <div key={criterion.id} className="chq-review-score">
-                              <dt>{criterion.label}</dt>
-                              <dd>{ev.scores[criterion.id] ?? '—'}</dd>
-                            </div>
-                          ))}
-                        </dl>
-                      )}
-                      {/* Copy rule 6: sentences are for people -- the full
-                          comment text, never truncated. */}
-                      {ev.comment && <p className="chq-review-comment">{ev.comment}</p>}
-                    </li>
-                  ))}
+                  {evaluations.map((ev, i) => {
+                    const key = `${ev.planId}-${ev.round}-${i}`;
+                    const criteriaOpen = expandedReviewKeys.has(key);
+                    return (
+                      <li key={key} className="chq-review-entry">
+                        <div className="chq-review-entry-meta">
+                          {/* DEC-736: the organiser is always told who
+                              reviewed -- never render 'Anonymous reviewer',
+                              even for an anonymized plan. */}
+                          <strong>{ev.reviewerName}</strong>
+                          <span className="chq-review-entry-score">{ev.score !== null ? ev.score.toFixed(1) : '—'}</span>
+                          <span className="chq-review-entry-plan">{formatTimestamp(ev.submittedAt)}</span>
+                        </div>
+                        {/* Copy rule 6: sentences are for people -- the full
+                            comment text, never truncated. */}
+                        {ev.comment && <p className="chq-review-comment">{ev.comment}</p>}
+                        {/* DEC-737 (wave 2 amendment): per-criterion detail
+                            moved behind a quiet, closed-by-default disclosure
+                            -- the resting row is reviewer/score/date/comment
+                            only, same rule the results table's own row
+                            disclosure already applies. */}
+                        {ev.criteria.length > 0 && (
+                          <>
+                            <button
+                              type="button"
+                              className="chq-link-button chq-review-criteria-toggle"
+                              aria-expanded={criteriaOpen}
+                              onClick={() => toggleReviewCriteria(key)}
+                            >
+                              {criteriaOpen ? '▾' : '▸'} {countOf(ev.criteria.length, 'criterion', 'criteria')}
+                            </button>
+                            {criteriaOpen && (
+                              <dl className="chq-review-scores">
+                                {/* Criterion values render under
+                                    criteria[].label -- the raw criterionId
+                                    key never reaches the DOM (used only as
+                                    the React list key). */}
+                                {ev.criteria.map((criterion) => (
+                                  <div key={criterion.id} className="chq-review-score">
+                                    <dt>{criterion.label}</dt>
+                                    <dd>{ev.scores[criterion.id] ?? '—'}</dd>
+                                  </div>
+                                ))}
+                              </dl>
+                            )}
+                          </>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
@@ -1182,6 +1220,18 @@ export function SubmissionDetailPage() {
             )}
           </section>
         </aside>
+      </div>
+
+      {/* DEC-886 (wave 2 amendment): the blast-radius delete page already
+          works from the bulk worklist -- this is its missing discoverability
+          half from a single submission's own detail page. A quiet entry
+          point (never a destructive-styled button on this screen), reusing
+          the SAME route the bulk path already navigates to (ids=<id>) so
+          there is exactly one delete flow. */}
+      <div className="chq-detail-footer">
+        <Link to={`/submissions/delete?ids=${encodeURIComponent(id ?? '')}`} className="chq-link-button chq-detail-delete-link">
+          Delete this session
+        </Link>
       </div>
     </div>
   );

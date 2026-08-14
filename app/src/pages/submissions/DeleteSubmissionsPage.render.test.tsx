@@ -7,7 +7,7 @@
 // own branch, so this test mocks the delete-plan endpoint against the
 // contract fixed by DEC-921 rather than depending on a real implementation.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { DeleteSubmissionsPage } from './DeleteSubmissionsPage';
@@ -145,5 +145,55 @@ describe('DeleteSubmissionsPage', () => {
     expect(screen.getByText(/1 session can't be deleted:/)).toBeInTheDocument();
     expect(screen.getByText(/Has a submitted evaluation/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Delete 1 session' })).toBeInTheDocument();
+  });
+
+  // DEC-886 (wave 2 amendment): this page already names what goes and what
+  // it refuses before anything is pressed, so the primary deletes directly
+  // -- no stacked ConfirmDialog restating the same decision a second time.
+  it('deletes directly on the primary click, with no second confirmation dialog', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions/delete-plan`]: {
+        eligible: [
+          {
+            submissionId: 'sub-1',
+            ref: 'S-001',
+            title: 'A Talk About Testing',
+            counts: {
+              files: 0,
+              comments: 0,
+              participants: 0,
+              answers: 0,
+              tracks: 0,
+              recusals: 0,
+              revisions: 0,
+              taskResponses: 0,
+            },
+            scheduled: false,
+          },
+        ],
+        refused: [],
+      },
+      [`POST /api/v1/events/${EVENT_ID}/submissions/delete`]: { deleted: 1, refused: [] },
+    });
+
+    renderPage(['sub-1']);
+
+    await waitFor(() => {
+      expect(screen.getByText('A Talk About Testing')).toBeInTheDocument();
+    });
+
+    const deleteBtn = screen.getByRole('button', { name: 'Delete 1 session' });
+    fireEvent.click(deleteBtn);
+
+    // No stacked confirmation dialog restating the decision a second time.
+    expect(screen.queryByText('Delete these sessions?')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Everything they own is removed permanently/)).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      const deleteCalls = fetchMock.mock.calls.filter(
+        ([input]) => String(input).includes('/submissions/delete') && !String(input).includes('delete-plan'),
+      );
+      expect(deleteCalls).toHaveLength(1);
+    });
   });
 });
