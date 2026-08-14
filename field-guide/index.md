@@ -13,41 +13,47 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   via event-time.ts OWNING EVENT's tz; pagination ONE shape+count*+id asc;
   atomic SQL beats read-then-write; uniqueIndex CONTRACT; negation skips
   NULLs; irreversible action a PAGE naming what goes/refuses; decision
-  w/no code a LIE; blank CLEARS, absent key silent; JOIN cascades; MINTING
-  IS IO; boundary fails per RECIPIENT not REQUEST; batch the FRONTIER;
-  FIND-OR-CREATE NEEDS A UNIQUE INDEX; UNBOUNDED SURFACE NEVER PAGED; NAV
-  != ROUTE; grep decisions/ first; FRAME "EXTRA" IS A CAPABILITY; READER
-  W/NO WRITER RENDERS NOTHING; SECOND READER INHERITS NO MANNERS;
-  GUESSABLE URL 404 DEAD END; PHONE REFUSING DESKTOP IS DIFFERENT PRODUCT
-  (J9); HIDDEN W/NO OVERRIDE NEVER RENDERS; DOM ORDER IS POSITION; SUB-APP
-  onError SWALLOWS PARENT'S MANNERS; DEAD DUPLICATE KEPT ALIVE BY OWN
-  TEST; WIDTH BEATS MAX-WIDTH; TYPED FILE LIST SCAN MEASURES FILES
-  REMEMBERED. max-width 700/900; no overflow-x:hidden; no colour literal
-  in surface CSS. Lanes land MID-PLAN, re-open file:line.
+  w/no code a LIE; JOIN cascades; MINTING IS IO; boundary fails per
+  RECIPIENT not REQUEST; FIND-OR-CREATE NEEDS A UNIQUE INDEX; UNBOUNDED
+  SURFACE NEVER PAGED; NAV != ROUTE; grep decisions/ first; FRAME "EXTRA"
+  IS A CAPABILITY; READER W/NO WRITER RENDERS NOTHING; SECOND READER
+  INHERITS NO MANNERS; GUESSABLE URL 404 DEAD END; PHONE REFUSING DESKTOP
+  IS DIFFERENT PRODUCT (J9); HIDDEN W/NO OVERRIDE NEVER RENDERS; SUB-APP
+  onError SWALLOWS PARENT'S MANNERS; WIDTH BEATS MAX-WIDTH. max-width
+  700/900; no overflow-x:hidden; no colour literal in surface CSS.
 - FINDINGS w16-22 (heavily compacted). Shapes: SCAN BINDS ONE CALL SHAPE
-  MISSES SIBLING; GUARD THAT NARROWS < NONE; HAND-TYPED LIST FORGETS 3RD
-  MEMBER; MINT != DELIVERY; FALLBACK THAT GUESSES IS ATTACKER INPUT;
-  CATCH JUSTIFIED BY COMMENT OUTLIVES PREMISE; POLICY IN ONE HOOK ISN'T A
-  POLICY; ALLOW-LIST REASON NAMING A DELEGATE IS A CLAIM, RESOLVE OR
-  DELETE; CATCH RETURNING A DEFAULT IS NOT A GUARD; ALLOWLIST W/NO STALE
-  DIRECTION IS PERMISSION; A DELETE KEYED ON CLIENT INPUT NEEDS THE OWNER
-  PREDICATE; UNAUTHENTICATED ROUTES GOT THE RATE LIMITS; MIDDLEWARE SCOPE
-  IS REGISTRATION ORDER. Amendments DEC-528/837/841/914/048/438/628/635/
-  949/252/547/550/715/745/078/024/678/948/713/098/939/402/908/879/459/
-  432/994/180/083.
+  MISSES SIBLING; GUARD THAT NARROWS < NONE; MINT != DELIVERY; FALLBACK
+  THAT GUESSES IS ATTACKER INPUT; CATCH RETURNING A DEFAULT IS NOT A
+  GUARD; MIDDLEWARE SCOPE IS REGISTRATION ORDER. Amendments DEC-528/837/
+  841/914/048/438/628/635/949/252/547/550/715/745/078/024/678/948/713/
+  098/939/402/908/879/459/432/994/180/083.
 - FINDINGS w23 (compacted). Wave 21/22 LANDED. Shapes: SERIALIZER THAT
-  QUOTES MUST STRIP THE QUOTE; SANITIZE ADDRESS NOT JUST LABEL; CONTRACT
-  IN DOCSTRING IS NOT A GATE; INVARIANT SCAN THAT ONLY READS; ONE THROWING
-  GETTER, TWO HAND-COPIES. Amendments DEC-996/499/451/274/276/775.
-- FINDINGS w24 (planner re-verified on main). Wave 23 FULLY LANDED: execution-ctx.ts
-  single reader, public-session-gate / serializer-single-source / write-scoping scans,
-  MIME addressValue + folded encoded-words. Mandate residue RE-VERIFIED STALE (do not
-  re-file): criteria 6th track, distribute copy, agenda day pills = ?day=, ics in the
-  embed picker, headshots in the files library (DEC-773), pipeline fit/rationale,
-  per-person remind contactIds, multi-room seed days, origin.ts cron parity, claim
-  supersede grace (DEC-949), authz probe parses index mounts. Shapes: A SANITIZER AT
-  SEND MAKES INTAKE A LIAR (isValidEmail admits what addressValue silently deletes --
-  stored != delivered mailbox); A HEADER VALUE IS ASCII-ONLY (4 Content-Disposition
-  hand-copies strip CR/LF/\" only, RFC 5987 in none); FLAG THE ENCODING OR THE NAME IS
-  CP437 (zip bit 11 clear over UTF-8 bytes); THE THIRD IDENTICAL COPY IS WHERE DRIFT
-  ENTERS (3 escapeHtml). Amendments DEC-425/160/037/454.
+  QUOTES MUST STRIP THE QUOTE; CONTRACT IN DOCSTRING IS NOT A GATE.
+  Amendments DEC-996/499/451/274/276/775.
+- FINDINGS w24 (planner re-verified on main). Wave 23 FULLY LANDED. Mandate
+  residue RE-VERIFIED STALE (do not re-file): criteria 6th track, distribute
+  copy, agenda day pills, ics embed picker, headshots (DEC-773), pipeline
+  fit/rationale, remind contactIds, multi-room seed, origin.ts cron parity,
+  claim grace (DEC-949), authz index mounts. Shapes: A SANITIZER AT SEND
+  MAKES INTAKE A LIAR (isValidEmail vs addressValue); A HEADER VALUE IS
+  ASCII-ONLY (RFC 5987); FLAG THE ENCODING OR THE NAME IS CP437 (zip bit
+  11). Amendments DEC-425/160/037/454.
+- FINDINGS w25 (planner re-verified on main; wave 24 partially landed -- only
+  task-w24-b, the ZIP bit-11/zipEntryPath work). EVERY security review-lens item
+  handed to this wave was ALREADY FIXED: auth-session delete carries the userId
+  predicate, /account/password has the DEC-180 limiter, VIDEO_MAX_BYTES is 95MB
+  derived from WORKERS_REQUEST_BODY_MAX_BYTES, resolveBaseUrl throws outside dev,
+  createClaimToken supersedes with a 48h grace, the two /embed cache registrations
+  are disjoint and runtime-proven, tasks.ts's fabricated-200 catch is gone, submit
+  rollback commits the row delete before R2. DO NOT RE-FILE ANY OF THESE.
+  Shape: A REVIEW LENS READS A SNAPSHOT, NOT THE TREE -- open the file:line before
+  planning a fix, or you plan a wave against last week's code.
+  Wave 25 pivots to the V8 design intake (docs/design/DESIGN-RULINGS.md is now
+  authority alongside the frames): "matches a frame or a recorded ruling" is the
+  closed fidelity test. Shapes: TWO PRIMARIES WITH DIFFERENT SCOPES IS ONE TOO MANY
+  (worklist Approve-ready vs Approve-selected); AN EXPANDED BAND THAT DOESN'T
+  INHERIT THE GRID IS A SECOND TABLE; A CAPABILITY BEHIND A DISCLOSURE IS A
+  CAPABILITY NOBODY FINDS; A CENTRED CARD IS NOT A DESKTOP DESIGN (full-column
+  buttons + one-field-per-row = phone anatomy at any width); A COUNT OF SKIPS IS
+  NOT ACTIONABLE, TWO NAMES ARE. Amendments DEC-945/154/014/825/633/900/967/745/
+  662/989.
