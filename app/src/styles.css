@@ -298,6 +298,11 @@ a:hover {
   }
 
   .chq-main {
+    /* DEC-989 amendment (wave 72): the ONLY line this media block may add --
+       --chq-pub-main-pad-x re-declared so a full-bleed chrome band's
+       margin-inline cancel and .chq-main's own padding stay the SAME value
+       under the phone breakpoint too (one token, two consumers). */
+    --chq-pub-main-pad-x: 16px;
     padding: 16px;
     overflow-wrap: anywhere;
   }

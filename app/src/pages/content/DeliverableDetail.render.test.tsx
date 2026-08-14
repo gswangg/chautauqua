@@ -450,7 +450,10 @@ describe('DeliverableDetail render smoke', () => {
       `Ada Lovelace · S-042 · ${formatDayLabel('2026-05-12')} 10:00–10:30, Main Hall`,
     );
     expect(screen.getByText('Content status')).toBeInTheDocument();
-    expect(screen.getByText('Pending')).toBeInTheDocument();
+    // worklistStatusLabel('pending', false) === 'Not reviewed' -- the SAME
+    // vocabulary the worklist row's status cell uses (DEC-989 wave 72),
+    // not the standalone CONTENT_STATUS_LABELS 'Pending'.
+    expect(screen.getByText('Not reviewed')).toBeInTheDocument();
     expect(screen.getByText(`Updated ${formatDate(1700000300000)}`)).toBeInTheDocument();
     expect(screen.getByText('Deliverables')).toBeInTheDocument();
   });
@@ -552,16 +555,72 @@ describe('DeliverableDetail render smoke', () => {
     expect(Array.from(approvedBand!.querySelectorAll('button')).find((b) => b.textContent === 'Download all')).toBeDefined();
   });
 
-  // DEC-989 amendment (wave 41): the band is chrome -- no max-width/side
-  // margin of its own, the same bare-rule idiom
-  // .chq-review-editor-title-row uses (review.css:995-1007).
-  it('declares no max-width on the status band in content.css', () => {
+  // DEC-989 amendment (wave 41, widened wave 72): the band is chrome -- no
+  // max-width/side margin of its own (wave 41), and now bleeds across
+  // .chq-main's own padding by cancelling that SAME token rather than by
+  // escaping into viewport units (wave 72: absence alone only reaches the
+  // padded parent's content box).
+  it('declares no max-width on the status band in content.css, and bleeds through --chq-pub-main-pad-x never vw/cqw', () => {
     const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'content.css'), 'utf-8');
     const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
     const match = withoutMedia.match(/\.chq-content-status-band\s*\{([^}]*)\}/);
     expect(match).not.toBeNull();
-    expect(match![1]).not.toMatch(/max-width/);
-    expect(match![1]).not.toMatch(/margin:\s*0\s+auto/);
+    const body = match![1];
+    expect(body).not.toMatch(/max-width/);
+    expect(body).not.toMatch(/margin:\s*0\s+auto/);
+    // the negative inline margin cancels .chq-main's own horizontal padding
+    // through the shared token, never a hand-copied px or a viewport unit.
+    expect(body).toMatch(/margin-inline:\s*calc\(var\(--chq-pub-main-pad-x\)\s*\*\s*-1\)/);
+    expect(body).toMatch(/padding:\s*[^;]*var\(--chq-pub-main-pad-x\)/);
+    expect(body).not.toMatch(/\d+\s*(vw|cqw)/);
+    // the bottom edge takes --chq-rule, not the hairline.
+    expect(body).toMatch(/border-bottom:\s*1px solid var\(--chq-rule\)/);
+    expect(body).not.toMatch(/border-bottom:\s*1px solid var\(--chq-hairline\)/);
+
+    const stylesCss = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'styles.css'),
+      'utf-8',
+    );
+    // .chq-main's own horizontal padding is the SAME token, and the token
+    // is re-declared (not hand-copied) under the phone breakpoint so the
+    // two consumers can never drift.
+    const mainMatch = stylesCss.match(/\n\.chq-main\s*\{([^}]*)\}/);
+    expect(mainMatch).not.toBeNull();
+    expect(mainMatch![1]).toMatch(/padding:[^;]*var\(--chq-pub-main-pad-x\)/);
+    const phoneMainMatch = stylesCss.match(/@media[^{]*\{[\s\S]*?\.chq-main\s*\{([^}]*)\}/);
+    expect(phoneMainMatch).not.toBeNull();
+    expect(phoneMainMatch![1]).toMatch(/--chq-pub-main-pad-x:\s*16px/);
+  });
+
+  // DEC-989 amendment (wave 72): the band's copy stacks two lines and reads
+  // the status value through worklistStatusLabel -- the ONE vocabulary the
+  // worklist row already uses -- rather than a second label set.
+  it('renders the status band copy as two stacked lines using worklistStatusLabel', async () => {
+    mockBase();
+    const { container } = render(
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="changes_requested"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('slides-v2.pdf');
+    const band = container.querySelector('.chq-content-status-band');
+    expect(band).not.toBeNull();
+    const copy = band!.querySelector('.chq-content-status-band-copy');
+    expect(copy).not.toBeNull();
+    const label = copy!.querySelector('.chq-content-status-band-label');
+    expect(label).toHaveTextContent('Content status');
+    // worklistStatusLabel('changes_requested', false) === 'Changes requested'
+    // -- the SAME string the worklist row shows for this status, not a
+    // second CONTENT_STATUS_LABELS lookup.
+    expect(copy).toHaveTextContent('Changes requested');
+    expect(copy!.children).toHaveLength(2);
   });
 
   // w41-a: "Deliverables" and "Notes on the <kind>" are peers -- each the
