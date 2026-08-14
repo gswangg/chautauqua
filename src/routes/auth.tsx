@@ -757,14 +757,19 @@ authRoutes.post("/forgot", csrfForm, async (c) => {
   const normalizedEmail = submittedEmail.toLowerCase();
   const now = Date.now();
 
-  // DEC-180: the SAME peek-then-conditionally-mutate shape as /login,
-  // keyed on the normalised email. A 429 here doesn't leak existence (it
-  // fires purely off request volume against one address, known or not).
-  const peek = await peekScopedLimit(db, "forgot", normalizedEmail, now, {
+  // DEC-948 (wave 27 amendment): the SAME check-and-increment-then-reset
+  // shape as /login, keyed on the normalised email — peekScopedLimit keeps
+  // no auth call site. One atomic D1 upsert up front, so N concurrent
+  // requests against one address land on distinct counts and exactly one
+  // crosses the cap. DEC-180's requirement that a success not consume the
+  // budget is preserved by the reset on the account-found branch below.
+  // A 429 here doesn't leak existence (it fires purely off request volume
+  // against one address, known or not).
+  const forgotCheck = await checkAndIncrementScopedLimit(db, "forgot", normalizedEmail, now, {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
     max: AUTH_RATE_LIMIT_MAX,
   });
-  if (!peek.ok) {
+  if (!forgotCheck.ok) {
     const { token: csrfToken } = ensureCsrfCookie(c);
     return c.html(<ForgotPasswordPage csrfToken={csrfToken} email={submittedEmail} error={RATE_LIMIT_ERROR} />, 429);
   }
@@ -813,12 +818,9 @@ authRoutes.post("/forgot", csrfForm, async (c) => {
   } else {
     // No account: burn a comparable SHA-256 cost to the mint path above
     // (DEC-004-style — never short-circuit past the work a real branch
-    // would do) and count this as a failed attempt against the budget.
+    // would do). The budget was already incremented atomically above,
+    // before this branch ran — nothing further to record on failure.
     await hashResetToken(newResetToken());
-    await incrementScopedLimit(db, "forgot", normalizedEmail, now, {
-      windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
-      max: AUTH_RATE_LIMIT_MAX,
-    });
   }
 
   return c.html(<CheckEmailPage email={submittedEmail} />);

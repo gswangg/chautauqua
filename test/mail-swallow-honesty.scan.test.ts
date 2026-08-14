@@ -157,7 +157,7 @@ const KNOWN_SWALLOWS: { file: string; functionOrNearestExport: string; reason: s
   },
   {
     file: "src/routes/auth.tsx",
-    functionOrNearestExport: "(route handler near line 738)",
+    functionOrNearestExport: "(route handler near line 753)",
     reason:
       "POST /forgot: surfacing this outcome is what DEC-014's wave-25 amendment forbids -- the anti-enumeration rule is that the response is the same 'Check your email' card whether or not a user row exists and 'never branches its response', so a send failure cannot reach the caller without also disclosing that the address resolved to an account. The failure is logged server-side, and the reset token is still minted, so a user who asks again gets a fresh link.",
   },
