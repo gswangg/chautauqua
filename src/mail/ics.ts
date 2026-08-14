@@ -17,6 +17,7 @@ void DEC_131;
 // no node:/cloudflare: imports), and email-binding.ts has no import that
 // would make this circular.
 import { addressValue } from "./email-binding";
+import { contentDispositionAttachment } from "../domain/files";
 
 /** DEC-947: dev-only placeholder organizer address (DEC-168) used ONLY when
  * DEV_MODE="1" — a real deployment routes through resolveIcsOrganizerEmail
@@ -163,23 +164,15 @@ export function buildIcsEvent(e: IcsEventInput, opts: IcsOptions): string {
   return buildIcsCalendar([e], opts);
 }
 
-/** Escapes a filename for a Content-Disposition header value (strips CR/LF
- * and double quotes, which would otherwise let it break out of the quoted
- * string / inject headers). */
-function sanitizeFilename(filename: string): string {
-  return filename.replace(/[\r\n"]/g, "");
-}
-
 /**
  * Headers for serving a stored .ics file as a download (dev mailbox detail
  * view, DEC-006): 'text/calendar' with the stored filename, never served as
  * an inline page.
  */
 export function icsDownloadHeaders(filename: string): Record<string, string> {
-  const safeName = sanitizeFilename(filename);
   return {
     "Content-Type": "text/calendar; charset=utf-8",
-    "Content-Disposition": `attachment; filename="${safeName}"`,
+    "Content-Disposition": contentDispositionAttachment(filename),
   };
 }
 

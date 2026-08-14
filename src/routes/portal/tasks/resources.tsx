@@ -9,7 +9,7 @@ import type { AppEnv } from "../../../server/env";
 import { ApiError } from "../../../server/http";
 import { makeFileStore } from "../../../server/context";
 import { getMyResources, getPortalData, getResourceDownloadScope } from "../../../server/repo/portal";
-import { isImageContentType } from "../../../domain/files";
+import { contentDispositionAttachment, isImageContentType } from "../../../domain/files";
 import { requireAuth, ensureCsrfCookie } from "./shared";
 import { ResourcesPage } from "./views";
 
@@ -50,8 +50,7 @@ portalResourcesRoutes.get("/resources/:resourceId/download", async (c) => {
     "X-Content-Type-Options": "nosniff",
   };
   if (!isImageContentType(contentType)) {
-    const safeName = scope.filename.replace(/[\r\n"]/g, "");
-    headers["Content-Disposition"] = `attachment; filename="${safeName}"`;
+    headers["Content-Disposition"] = contentDispositionAttachment(scope.filename);
   }
   return c.body(obj.body, 200, headers);
 });

@@ -70,7 +70,7 @@ import { validateAnswers } from "../../forms/validate";
 import type { AnswerMap } from "../../forms/types";
 import { fieldInputName } from "../../views/form-render";
 import { extractFileAnswers } from "../../lib/submit-core";
-import { isValidFileKind, sanitizeFilenameForKey, validateUpload } from "../../domain/files";
+import { contentDispositionAttachment, isValidFileKind, sanitizeFilenameForKey, validateUpload } from "../../domain/files";
 import { CSRF_COOKIE_NAME } from "../../auth/cookies";
 import {
   DEC_016,
@@ -670,11 +670,10 @@ portalTasksRoutes.get("/tasks/:assignmentId/file", async (c) => {
   const obj = await store.get(latest.r2Key);
   if (!obj) throw new ApiError("not_found", "File contents not found");
 
-  const safeName = latest.filename.replace(/[\r\n"]/g, "");
   return c.body(obj.body, 200, {
     "Content-Type": latest.contentType,
     "X-Content-Type-Options": "nosniff",
-    "Content-Disposition": `attachment; filename="${safeName}"`,
+    "Content-Disposition": contentDispositionAttachment(latest.filename),
   });
 });
 
@@ -710,11 +709,10 @@ portalTasksRoutes.get("/tasks/:assignmentId/file/:fileId", async (c) => {
   const obj = await store.get(target.r2Key);
   if (!obj) throw new ApiError("not_found", "File contents not found");
 
-  const safeName = target.filename.replace(/[\r\n"]/g, "");
   return c.body(obj.body, 200, {
     "Content-Type": target.contentType,
     "X-Content-Type-Options": "nosniff",
-    "Content-Disposition": `attachment; filename="${safeName}"`,
+    "Content-Disposition": contentDispositionAttachment(target.filename),
   });
 });
 
