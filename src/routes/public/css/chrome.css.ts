@@ -128,10 +128,14 @@ export const CHROME_CSS = `
     height: 40px;
     border: 1px solid var(--chq-border);
     border-radius: var(--chq-r-ctl);
-    padding: 0 10px;
+    /* right padding clears theme.ts's data-URI chevron (12px box + 12px
+       inset); background-COLOR, never the shorthand -- the background shorthand resets
+       background-image and silently erases the shared select caret (the
+       exact bug this comment now guards against). */
+    padding: 0 34px 0 10px;
     font-size: 13px;
     color: var(--chq-ink);
-    background: var(--chq-surface);
+    background-color: var(--chq-surface);
   }
   .chq-pub-select-clear {
     font-size: 13px;

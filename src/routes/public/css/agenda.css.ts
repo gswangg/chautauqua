@@ -436,7 +436,12 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
      CHROME_CSS then AGENDA_CSS), so it wins at equal specificity without
      that file needing a change. */
   .chq-pub-select-active {
-    background: var(--chq-ink);
+    background-color: var(--chq-ink);
+    /* Same chevron as theme.ts's shared select rule but stroked in cream
+       (%23F4F1E8): the base ink-stroke chevron would vanish on the ink
+       fill. background-COLOR above, never the shorthand, so this image
+       survives. */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5L6 8l3.5-3.5' fill='none' stroke='%23F4F1E8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     color: var(--chq-on-brand);
     border-color: var(--chq-ink);
   }
