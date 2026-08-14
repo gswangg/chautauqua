@@ -82,8 +82,10 @@ describe("task-w1-e (DEC-768): exactly one heading per day", () => {
     const label = h3Match![1];
     expect(label).not.toBe("2026-08-10");
     expect(label).not.toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    // formatCalendarDate (event-time.ts) output: "Mon, Aug 10, 2026".
-    expect(label).toMatch(/Mon, Aug 10, 2026/);
+    // DEC-768 (wave 7 amendment): formatDay now delegates to formatDayLong
+    // (event-time.ts) -- en-GB "Monday 10 August", not the retired
+    // formatEventDay's en-US "Mon, Aug 10, 2026".
+    expect(label).toMatch(/Monday 10 August/);
   });
 });
 

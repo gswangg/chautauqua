@@ -5,7 +5,7 @@
 import type { PublicSession, PublicTrack } from "../../server/repo/public";
 import { sessionDetailPath, type Surface } from "./shell";
 import type { CardFields } from "./query";
-import { formatEventDay } from "../../lib/event-time";
+import { formatDayLong } from "../../lib/event-time";
 import { normalizeHexColor } from "../../domain/color";
 import { publicRoomLabel } from "../../domain/schedule";
 
@@ -77,6 +77,10 @@ export function SessionTagLine(props: { tracks: PublicTrack[]; format: string | 
   );
 }
 
+// DEC-968 (wave 7 amendment): a session-scoped speaker line is BARE NAMES —
+// title/company is an identity fact and belongs on the speaker's own page
+// (detail.tsx's SpeakerDetailContent), not repeated on every row that
+// mentions them.
 export function SpeakerNames(props: { speakers: PublicSession["speakers"] }) {
   return (
     <>
@@ -86,7 +90,6 @@ export function SpeakerNames(props: { speakers: PublicSession["speakers"] }) {
           <strong>
             {s.firstName} {s.lastName}
           </strong>
-          {s.title || s.company ? ` (${[s.title, s.company].filter(Boolean).join(", ")})` : ""}
         </>
       ))}
     </>
@@ -97,14 +100,17 @@ export function SpeakerNames(props: { speakers: PublicSession["speakers"] }) {
 // `day` is already the wall-clock 'YYYY-MM-DD' in the event's own timezone
 // (DEC-010) — no zonedMinutesToUtc conversion needed to *display* it, only
 // to export it as a UTC .ics instant (schedule.ics).
-// w1-i + DEC-768 (merge): delegates to the ONE shared formatter
-// (src/lib/event-time.ts's formatEventDay, which itself renders through
-// formatCalendarDate — never toISOString, never the browser's own zone) so
-// every public surface's day heading/date label (session cards, day
-// headings, session-detail schedule line) renders identically instead of
-// each surface re-implementing (or skipping) the same Y-M-D -> label math.
+// DEC-768 (wave 7 amendment): ONE public calendar-day grammar. This used to
+// wrap formatEventDay (en-US "Wed, May 12, 2027"), which duplicated
+// formatDayLong's en-GB "Tuesday 12 May" that the agenda h1 already used —
+// two grammars on the same page is the defect, not the locale. Repointing
+// this shared wrapper to formatDayLong fixes every public day label (session
+// cards, day headings, session-detail schedule line) in one edit; the ten
+// call sites keep calling formatDay and inherit the fix unchanged.
+// formatDayShort stays the agenda day-switcher's short form ("Tue 12") and
+// is untouched by this change.
 export function formatDay(day: string): string {
-  return formatEventDay(day);
+  return formatDayLong(day);
 }
 
 // DEC-885: initials for the drawn headshot-fallback placeholder

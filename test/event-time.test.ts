@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest";
 import {
   formatCalendarDate,
   formatEventDateTime,
-  formatEventDay,
   formatEventDayRange,
   formatEventCloseDateLabel,
   formatDayShort,
@@ -99,26 +98,6 @@ describe("formatCalendarDate (DEC-522)", () => {
   it("throws on a non-finite input", () => {
     expect(() => formatCalendarDate(Infinity)).toThrow();
     expect(() => formatCalendarDate(-Infinity)).toThrow();
-  });
-});
-
-describe("formatEventDay (w1-i): the ONE public-surface day-heading/date-label formatter", () => {
-  it("formats a 'YYYY-MM-DD' calendar day as a weekday/month/day label", () => {
-    // Merge note: renders THROUGH formatCalendarDate (one Intl config for
-    // every day label in the app, DEC-522/DEC-768), so the label carries
-    // the same "Mon, Aug 10, 2026" shape as an epoch-keyed day label.
-    expect(formatEventDay("2026-08-10")).toBe("Mon, Aug 10, 2026");
-  });
-
-  it("never re-interprets into a timezone (DEC-522: a calendar day, not an instant)", () => {
-    // Same day regardless of any timezone the caller might be tempted to
-    // pass in -- formatEventDay takes no timeZone parameter at all.
-    expect(formatEventDay("2027-05-12")).toBe("Wed, May 12, 2027");
-  });
-
-  it("returns the original string unchanged for malformed input rather than throwing", () => {
-    expect(formatEventDay("not-a-date")).toBe("not-a-date");
-    expect(formatEventDay("")).toBe("");
   });
 });
 

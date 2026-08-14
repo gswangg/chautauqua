@@ -83,33 +83,14 @@ export function formatCalendarDate(ms: number): string {
   return formatter.format(new Date(ms));
 }
 
-/** Formats a `day` field (DEC-010: already the wall-clock 'YYYY-MM-DD' in
- * the owning event's own timezone — never re-zoned here) as a human label,
- * e.g. "Wed, May 12, 2027" — same DEC-522 "calendar day, not an instant"
- * rule as formatCalendarDate (no timeZone param, no toISOString: this is
- * the ONE formatter every public-surface day heading and schedule/detail
- * date label routes through, replacing the raw ISO string those surfaces
- * used to emit directly). This is the STRING-KEYED door onto
- * formatCalendarDate — the rendering itself lives there and only there, so
- * a day label reads identically whether its source is a 'YYYY-MM-DD' field
- * or a UTC-midnight epoch. Malformed input (not a parseable Y-M-D string)
- * returns the original string unchanged rather than throwing mid-render,
- * matching the public surfaces' fail-soft rendering contract for
- * organizer-entered scheduling data. */
-export function formatEventDay(day: string): string {
-  const [year, month, date] = day.split("-").map(Number);
-  if (!year || !month || !date) return day;
-  return formatCalendarDate(Date.UTC(year, month - 1, date));
-}
-
 /** Short day label for the agenda day-switcher's segmented control, e.g.
  * "Tue 12" — same "calendar day, not an instant" contract (DEC-522) as
- * formatEventDay above: `day` is already the wall-clock 'YYYY-MM-DD' field
- * in the owning event's own timezone (DEC-010), so this takes NO timeZone
- * parameter and reads UTC calendar fields directly, never re-zoned. en-GB
- * gives the weekday-before-day-of-month order the design handoff wants
- * ("Tue 12") without a locale-format hand-assembly step. Malformed input
- * returns the original string unchanged, matching formatEventDay's
+ * formatCalendarDate above: `day` is already the wall-clock 'YYYY-MM-DD'
+ * field in the owning event's own timezone (DEC-010), so this takes NO
+ * timeZone parameter and reads UTC calendar fields directly, never re-zoned.
+ * en-GB gives the weekday-before-day-of-month order the design handoff
+ * wants ("Tue 12") without a locale-format hand-assembly step. Malformed
+ * input returns the original string unchanged, matching this file's
  * fail-soft contract for organizer-entered scheduling data. */
 export function formatDayShort(day: string): string {
   const [year, month, date] = day.split("-").map(Number);
@@ -163,9 +144,8 @@ function dayOnlyLabel(ms: number): string {
  * ends are the same day ("12 May 2027"), the month printed once when both
  * ends share it ("12-14 May 2027"), both months when they differ ("28
  * Apr-2 May 2027"). Takes UTC-midnight epoch ms for both ends, matching the
- * DEC-522 "calendar day, not an instant" contract of formatCalendarDate/
- * formatEventDay above — never re-zoned, always read from UTC calendar
- * fields. */
+ * DEC-522 "calendar day, not an instant" contract of formatCalendarDate
+ * above — never re-zoned, always read from UTC calendar fields. */
 export function formatEventDayRange(startMs: number, endMs: number): string {
   if (startMs === endMs) return dayMonthLabel(startMs, true);
   const startDate = new Date(startMs);

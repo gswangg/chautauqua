@@ -597,9 +597,12 @@ describe("sessionTimeLabel", () => {
 
   it("formats a scheduled session's day + time range", () => {
     // DEC-782: `day` routes through the card's shared formatDay helper
-    // (src/lib/event-time.ts's formatEventDay) — a weekday-named calendar
+    // (src/lib/event-time.ts's formatDayLong) — a weekday-named calendar
     // date, never the raw 'YYYY-MM-DD' interpolated directly.
-    expect(sessionTimeLabel("2027-05-12", 540, 600)).toBe("Wed, May 12, 2027, 9:00 AM–10:00 AM");
+    // DEC-768 (wave 7 amendment): formatDay now delegates to formatDayLong,
+    // en-GB "Wednesday 12 May" -- not the retired formatEventDay's en-US
+    // "Wed, May 12, 2027".
+    expect(sessionTimeLabel("2027-05-12", 540, 600)).toBe("Wednesday 12 May, 9:00 AM–10:00 AM");
   });
 });
 

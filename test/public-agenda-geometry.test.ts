@@ -114,8 +114,9 @@ describe("DEC-602/DEC-555 (task w1-d): /schedule renders its OWN saved-list mark
   it("a schedule row carries title, full day, start-end time, room, and speaker name", () => {
     const html = String(ScheduleContent({ event: EVENT, items: ITEMS, total: ITEMS.length }));
     expect(html).toContain("Opening Talk");
-    // full day text (formatDay output) is on the day-group heading
-    expect(html).toMatch(/Mon, Aug 10/);
+    // full day text (formatDay output, DEC-768 wave 7 amendment: formatDayLong)
+    // is on the day-group heading.
+    expect(html).toMatch(/Monday 10 August/);
     expect(html).toContain("8:00 AM");
     expect(html).toContain("9:30 AM");
     expect(html).toContain("Alpha Hall");
