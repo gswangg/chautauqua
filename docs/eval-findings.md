@@ -96,6 +96,49 @@ does; compose's navigates); import match-step: title "Match the columns" missing
 57px inside the 508 content box, and the always-on "SESSION TITLE FOR THIS BATCH" gate is
 unframed (make it conditional or move it off the match step).
 
+## GATE-5 PASS-CHECK (2026-08-14, snapshot 0bc2b12e vs v7) — VERDICTS + LAST DESKTOP REDS
+
+**10-public-portal: PASS (clean sweep — track-highlight verified exactly to spec, zero
+reflow, Save never dimmed).** 06-agenda: every DESKTOP disposition ✓ exact (armed-bar
+overlay Δy=0, one z-tier, breaks disclosure, single-tone lattice, 24h gutter) — its FAIL is
+phone-scoped (below). 03-review: the ENTIRE rebuild verified incl. mouse-driven submit E2E;
+FAIL narrowed to two small desktop MAJORs (below). 09-settings: cascade fix landed
+(definition rows 53px, ×7 eyebrow actions, tracks grid 820, read-view lists, embeds editor
+via Edit ✓); its one MAJOR (public-pages read rows) + the shell wordmark/nav overlap were
+FIXED BY ORCHESTRATOR post-snapshot (re-gridded summary-value; nav margin -9px→+13px — the
+-9px comment's frame numbers were mismeasured; pin test updated). Reports:
+chautauqua-research/fidelity-gate5/.
+
+**P1 · Criteria-row grid: 5 tracks, 6 children** — `.chq-review-criterion-row`
+`20px 534px 534px 150px 70px` leaves `.chq-review-criterion-share` ("71%") and Remove
+overprinting in the last cell (both plan editor and /plans/new). Add the sixth track (share
+column before the action), both illegible now.
+
+**P1 · Distribute copy self-contradiction** — PlanEditor prints "Distribute the unassigned
+applies immediately." while the flow is preview-then-confirm and the preview says "Nothing
+is saved until you confirm." Drop the wrong clause (frame has no such caption; Assign-a-
+reviewer's half is true and may stay).
+
+**PHONE QUEUE — P0s for the CURRENT phone lane (both are regressions from this run's own
+phone work; frames exist):** (a) **phone agenda (≤700px) renders BLANK** — the base
+`display:none` on `.chq-phone-*` is only partially restored in the media query; never
+restored: room-chip, slot-time, slot-card-meta/title, slot-clash, slot-free-label/length,
+footer-btn, sheet — markup mounts fine, CSS eats it (frame 06--01 is exactly this view);
+add a scan test asserting every `.chq-phone-*` class set to display:none has a media-query
+restore. (b) **plan editor at 390 = one character per line** — reviewer/criteria rows keep
+desktop grid tracks (`13.66px 140px 90px…`), doc height 8644px; frame 03--06 shows the
+stacked layout (CRITERIA/REVIEWERS sections, Swap, CAP EACH, bottom Save bar).
+
+**P2 (gate-5):** queue/score actions floor-clamped 180px (frame sizes to content); FORM
+ANSWERS re-prints title/abstract + exposes name/email rows (curate to Format/Audience/
+Notes/Accessibility — also an anonymization hygiene point); frozen panel headline/body
+inverted + header row; Delete-plan unframed beside Assign; scorecard rail not sticky
+(Submit below the 900 fold); tray hint wraps 2 lines at 238px; gutter rule tone vs field
+rows; settings saved-embeds eyebrow rule/note; People rows emails-only + label wrap;
+public MINORs from pairA (day switcher in rail column vs day-title row, agenda title
+underlines, list bullets, avatar-initial underline, last select 30px short of content
+edge, off-palette seed headshots).
+
 ## GATE-4 REDS — THE OPEN LIST (these supersede any older filing of the same finding)
 
 ## SBEK RUN 4 (2026-08-14, prod, gate-4 SHA 33fbc724): 82.2% @ 78.9% coverage — READ WITH CARE
