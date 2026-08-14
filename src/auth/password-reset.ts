@@ -118,12 +118,16 @@ export async function readResetToken(kv: KVStore, token: string): Promise<{ user
   return { userId };
 }
 
-/** Reads and deletes the reset grant (used on a successful POST). Also
- * deletes the userId's index when it still points at the hash being
- * consumed, so a stale index never resurrects a dead grant. Consuming
- * FIRST (before any password/session mutation) means a replayed POST
- * against an already-used token always lands on the 410 "no longer
- * valid" card rather than silently re-running the change. */
+/** Reads and deletes the reset grant (used immediately before the
+ * password/session mutation on a successful POST — validate first with
+ * readResetToken, THEN consume here as the gate right before the write;
+ * see src/routes/auth-reset.tsx task-w34-c). Also deletes the userId's
+ * index when it still points at the hash being consumed, so a stale index
+ * never resurrects a dead grant. Consuming as the last step before the
+ * write (rather than before validation) means a mistyped confirm doesn't
+ * burn the token, while a replayed POST against an already-used token
+ * still lands on the 410 "no longer valid" card — the write is
+ * unreachable without a successful consume. */
 export async function consumeResetToken(kv: KVStore, token: string): Promise<{ userId: string } | null> {
   const hash = await hashResetToken(token);
   const key = resetKvKey(hash);

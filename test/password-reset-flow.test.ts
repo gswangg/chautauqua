@@ -15,7 +15,7 @@
 // (test/account-password.test.ts), so the real SELECT/INSERT/UPDATE/DELETE
 // statements the routes issue are exercised, not hand-simulated.
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DatabaseSync } from "node:sqlite";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
 import { eq } from "drizzle-orm";
@@ -366,6 +366,116 @@ describe("full round trip: request -> dev-sink message -> GET link -> POST -> ol
     // A GET against the same dead token renders the same 410 card.
     const getRes = await app.request(`/reset/${token}`, {}, env);
     expect(getRes.status).toBe(410);
+  });
+});
+
+describe("validate-then-consume (task-w34-c): a mistyped retry doesn't burn the token", () => {
+  let db: Db;
+  let sqlite: DatabaseSync;
+  let kv: InMemoryKV;
+
+  beforeEach(async () => {
+    ({ db, sqlite } = makeTestDb());
+    kv = new InMemoryKV();
+    seed(sqlite);
+    await seedUser(sqlite);
+  });
+
+  async function mintToken(app: Hono<AppEnv>, env: Record<string, unknown>) {
+    const { csrf: forgotCsrf, cookie: forgotCookie } = await getCsrf(app, env, "/forgot");
+    await postForm(app, env, "/forgot", forgotCookie, { [CSRF_COOKIE_NAME]: forgotCsrf, email: EMAIL });
+    const logRows = await db.select().from(schema.emailLog);
+    return logRows[logRows.length - 1]!.bodyText.match(/\/reset\/([A-Za-z0-9_-]+)/)![1]!;
+  }
+
+  it("a mismatched confirm 400s and the SAME token then succeeds on a corrected retry", async () => {
+    const { app, env } = buildApp(db, kv);
+    const token = await mintToken(app, env);
+
+    const { csrf, cookie } = await getCsrf(app, env, `/reset/${token}`);
+
+    const badPost = await postForm(app, env, `/reset/${token}`, cookie, {
+      [CSRF_COOKIE_NAME]: csrf,
+      next: NEW_PASSWORD,
+      confirm: "does-not-match",
+    });
+    expect(badPost.status).toBe(400);
+    const badBody = await badPost.text();
+    expect(badBody).toContain("New password and confirmation do not match.");
+
+    // The token is still live: a GET renders the form, not the 410 card.
+    const getRes = await app.request(`/reset/${token}`, {}, env);
+    expect(getRes.status).toBe(200);
+
+    const goodPost = await postForm(app, env, `/reset/${token}`, cookie, {
+      [CSRF_COOKIE_NAME]: csrf,
+      next: NEW_PASSWORD,
+      confirm: NEW_PASSWORD,
+    });
+    expect(goodPost.status).toBe(302);
+    expect(goodPost.headers.get("location")).toBe("/login?password-reset=1");
+
+    const userRows = await db.select().from(schema.user).where(eq(schema.user.id, "u_1"));
+    const passwordOk = await verifyPassword(NEW_PASSWORD, userRows[0]!.passwordHash);
+    expect(passwordOk).toBe(true);
+  });
+
+  it("a too-short password 400s and the SAME token then succeeds on a corrected retry", async () => {
+    const { app, env } = buildApp(db, kv);
+    const token = await mintToken(app, env);
+
+    const { csrf, cookie } = await getCsrf(app, env, `/reset/${token}`);
+
+    const badPost = await postForm(app, env, `/reset/${token}`, cookie, {
+      [CSRF_COOKIE_NAME]: csrf,
+      next: "short",
+      confirm: "short",
+    });
+    expect(badPost.status).toBe(400);
+    const badBody = await badPost.text();
+    expect(badBody).toContain("New password must be at least");
+
+    const getRes = await app.request(`/reset/${token}`, {}, env);
+    expect(getRes.status).toBe(200);
+
+    const goodPost = await postForm(app, env, `/reset/${token}`, cookie, {
+      [CSRF_COOKIE_NAME]: csrf,
+      next: NEW_PASSWORD,
+      confirm: NEW_PASSWORD,
+    });
+    expect(goodPost.status).toBe(302);
+
+    const userRows = await db.select().from(schema.user).where(eq(schema.user.id, "u_1"));
+    const passwordOk = await verifyPassword(NEW_PASSWORD, userRows[0]!.passwordHash);
+    expect(passwordOk).toBe(true);
+  });
+});
+
+describe("POST /forgot in an org with no event (task-w34-c): mint without delivery stays silent on the wire", () => {
+  it("returns the byte-identical Sent card while console.error fires", async () => {
+    const { db, sqlite } = makeTestDb();
+    // Org exists, no events seeded.
+    sqlite.exec(`insert into org (id, name) values ('${ORG_ID}', 'Acme')`);
+    await seedUser(sqlite);
+    const { app, env } = buildApp(db, new InMemoryKV());
+
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const { csrf, cookie } = await getCsrf(app, env, "/forgot");
+      const res = await postForm(app, env, "/forgot", cookie, { [CSRF_COOKIE_NAME]: csrf, email: EMAIL });
+      expect(res.status).toBe(200);
+      const body = await res.text();
+      expect(body).toContain("If that address has an account, a reset link is on its way.");
+
+      expect(errSpy).toHaveBeenCalledTimes(1);
+      expect(errSpy.mock.calls[0]![0]).toContain("no events for org");
+
+      // No send was queued -- there was no event to log it against.
+      const rows = await db.select().from(schema.emailLog);
+      expect(rows).toHaveLength(0);
+    } finally {
+      errSpy.mockRestore();
+    }
   });
 });
 
