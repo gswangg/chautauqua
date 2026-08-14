@@ -24,36 +24,37 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   NOT A BOUND ON THE READ SIDE; PARSE RESULT DISCARDED != PARSED; A
   WATERMARK STORING ITS OWN START LOSES LATE-COMMITTING WRITES; THE
   DECISIONS' OWN PATH REFS ARE A CHEAP DRIFT DETECTOR.
-- FINDINGS w34-38 (compacted, do NOT re-file). Closed defects across all four waves; TENANT axis now
-  covers PATH params (w37) but BODY/QUERY ids were open until w40-a below. Shapes: A REDACTOR IS SHAPES
-  NOT ONE REGEX; CSRF != AUTHZ; A PROOF NOBODY HAS SHOWN A VIOLATION TO IS NOT A PROOF; A THROWING DB
-  CANNOT PROVE A REFUSAL NEEDING A READ -- use REAL ROWS (node:sqlite+drizzle sqlite-proxy); A 5xx IS
-  NOT A REFUSAL; A REFUSAL THAT MUTATES IS NOT A REFUSAL; AN ALLOWLIST KEYED BY USER INPUT IS AN OWN-
-  PROPERTY QUESTION; A WRITE GUARD THAT DOESN'T MATCH THE READ PREDICATE MINTS INVISIBLE ROWS; A
-  PREDICATE FAMILY IS A LATTICE: spot-check one, drift all.
-- FINDINGS w39-40 (compacted, do NOT re-file). CLOSED: MergePage page-1 scan past group 200; Scorecard
-  page-vs-envelope count + submitAndAdvance item[0] non-terminating loop; DuplicatesView page-length under
-  org-total header; PlanEditor reviewers.length vs progress endpoint total; EnrollDialog perPage=200 picker.
-  TENANT axis now covers PATH+BODY/QUERY. Shapes: A FIGURE THE API PROMISES AND A LATER WAVE DELETES IS A
-  DECISION REVERSED WITHOUT A DECISION; A RULING BINDS THE ENDPOINT NOT THE COMPONENT THAT PROMPTED IT; A
-  "NEXT" TAKING ITEM[0] OF A LIST THAT KEEPS DONE ITEMS NEVER TERMINATES; A ROW COUNT IS NOT A PEOPLE COUNT;
-  A PICKER FED BY PAGE 1 CANNOT PICK; A POPULATION DERIVED BY PATH SHAPE IS BLIND TO THE ID IN THE BODY.
-- FINDINGS w41 (verified AT THE FILE on main; w40's b/c LANDED — Scorecard envelope+terminating advance,
-  pipeline enroll search — while w40 a/d/e were still in flight and are NOT re-filed; the four review-lens
-  claims (files.ts prototype allowlist, tasks assign guard, ReviewerQueue paging, cron narrowing) are ALL
-  STALE — closed at files.ts:103, tasks.ts:437, ReviewerQueue.tsx:117, reminders.ts:637-687).
-  NEW, taken: (1) export cap refusals for email-log/evaluations name no narrowing at all (exports.ts:126-134
-  hints only submissions/contacts) — at J5/J4 volumes both cross EXPORT_MAX_ROWS=20000 and J12 fails for the
-  biggest customer; listEmailLog(email.ts:149) is the predicate to REUSE. (2) portal wrong-owner is proven
-  only against MOCKED resolvers (portal-idor-probe.test.ts) — the cross-org probes' own header names why
-  that is not proof. (3) /contacts/stats re-runs findDuplicateGroupsForOrg (stats.ts:83) for a number the
-  rail's own envelope already carries (ContactsApp.tsx:223 discards res.total): two O(N) scans per mount, and
-  the scan's refusal takes the whole headline down. (4) /contacts/duplicates/check scans the entire directory
-  per keystroke-settle and refuses past 20k — the hint dies when it matters. (5) spa-count-source-ledger's
-  population is apiList-only and its prose falsely claims MergePage is the ONE apiGet-envelope reader
-  (FilesLibrary.tsx:73 is another).
-  Shapes: A REFUSAL WHOSE ADVICE THE CALLER CANNOT FOLLOW IS A DEAD END, NOT A GUARD. A MOCKED RESOLVER
-  PROVES THE CALL, NOT THE FILTER. TWO SCANS FOR ONE NUMBER IS ONE SCAN TOO MANY — AND ITS REFUSAL TAKES
-  HOSTAGES. A CHECK ABOUT ONE ROW THAT READS EVERY ROW. A SCAN'S POPULATION IS BLIND TO THE HELPER IT
-  DIDN'T ENUMERATE; A FALSE SENTENCE IN A SCAN'S OWN PROSE IS A DECISION WITH NO CODE. A BUNDLE THAT FAILS
-  WHOLE LOSES THE PARTS THAT WORKED.
+- FINDINGS w34-40 (compacted, do NOT re-file). Closed defects across all seven waves; TENANT axis now covers
+  PATH+BODY/QUERY (w37/w40-a). Shapes: A REDACTOR IS SHAPES NOT ONE REGEX; CSRF != AUTHZ; A PROOF NOBODY HAS
+  SHOWN A VIOLATION TO IS NOT A PROOF; A THROWING DB CANNOT PROVE A REFUSAL NEEDING A READ -- use REAL ROWS
+  (node:sqlite+drizzle sqlite-proxy); A 5xx IS NOT A REFUSAL; A REFUSAL THAT MUTATES IS NOT A REFUSAL; AN
+  ALLOWLIST KEYED BY USER INPUT IS AN OWN-PROPERTY QUESTION; A WRITE GUARD THAT DOESN'T MATCH THE READ
+  PREDICATE MINTS INVISIBLE ROWS; A PREDICATE FAMILY IS A LATTICE; A FIGURE THE API PROMISES AND A LATER WAVE
+  DELETES IS A DECISION REVERSED WITHOUT A DECISION; A "NEXT" TAKING ITEM[0] OF A LIST THAT KEEPS DONE ITEMS
+  NEVER TERMINATES; A ROW COUNT IS NOT A PEOPLE COUNT; A PICKER FED BY PAGE 1 CANNOT PICK; A POPULATION
+  DERIVED BY PATH SHAPE IS BLIND TO THE ID IN THE BODY.
+- FINDINGS w41 (compacted, do NOT re-file). CLOSED: export cap refusal narrowing (exports.ts), portal wrong-
+  owner proven only via mocked resolvers, /contacts/stats double O(N) scan, /contacts/duplicates/check per-
+  keystroke full scan, spa-count-source-ledger apiGet blind spot (FilesLibrary.tsx). Shapes: A REFUSAL WHOSE
+  ADVICE THE CALLER CANNOT FOLLOW IS A DEAD END; A MOCKED RESOLVER PROVES THE CALL NOT THE FILTER; TWO SCANS
+  FOR ONE NUMBER IS ONE TOO MANY; A SCAN'S POPULATION IS BLIND TO THE HELPER IT DIDN'T ENUMERATE; A BUNDLE
+  THAT FAILS WHOLE LOSES THE PARTS THAT WORKED.
+- FINDINGS w42 (verified AT THE FILE on main). The mandate's three ⚡ STRAGGLERS ARE LANDED IN CODE — EMB-01
+  snippet+in-place Show more (public/cards.tsx SessionDescription), CFP close fast path ("Close the call" +
+  confirm, CallForPapersPanel.tsx:313-320/459), AIA-04 cross-room speaker_overlap (domain/schedule.ts:366) with
+  both-card render tests; they close on MEASUREMENT (orchestrator), NOT on a planner re-filing them. Also STALE
+  and NOT re-filed: PlanEditor "applies immediately", criterion-row share column, /logout, password-reset flow,
+  weighted-score caption, embed .ics picker, home landmarks, CFP create-account CTA, contacts ?tab= deep links,
+  RecentSends/History one reader (templatesById now REQUIRED), portal replace-file version chain, headshot-vs-bio
+  (DEC-574), CSV bio overwrite (DEC-575), pipeline/public/archive bounds. Review-lens: #1 content_status is BY
+  DESIGN (overview publishedSessionCount + contentApproval worklist + walkthrough/public.ts gate checks) and #3
+  `npm run deploy` is SPEC §0 STAGE 2 — neither is a defect. TAKEN: (2) isEpochMs = Number.isInteger, unbounded
+  (validators.ts:60) -> 1e18 closeDate persists and 500s the public CFP forever via dayLabelToYmd; (4) only 1 of
+  5 R2-serving routes asserts the served Content-Type (files.ts:644 vs portal/tasks.tsx:707/746,
+  portal/profile.tsx:465, portal/tasks/resources.tsx:49). NEW: /docs/api's ~90 endpoint rows are hand-typed
+  against a >100-route /api/v1 surface; the reviewer real-row probes cover cross-ORG but not same-org wrong-PLAN
+  or in-plan out-of-scope.
+  Shapes: AN INTEGER IS NOT A DATE — A BOUNDARY PREDICATE THAT ADMITS 1e18 SHIPS A PERMANENT 500 TO A PUBLIC
+  PAGE. TWO BOUNDARY PREDICATES THAT DON'T AGREE (isEpochMs vs isIsoDate) ARE ONE MISSING INVARIANT. A
+  SERIALIZER INVARIANT HELD BY THE WRITER IS HELD BY NOBODY. A HAND-TYPED API DOC IS A MANIFEST — DERIVE IT OR
+  IT LIES. CROSS-ORG IS NOT CROSS-PLAN. A MANDATE ITEM CLOSES ON MEASUREMENT; RE-FILING IT BURNS A LANE.
