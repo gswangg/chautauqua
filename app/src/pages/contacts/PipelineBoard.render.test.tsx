@@ -1,15 +1,20 @@
 // DEC-144/DEC-161 layer-2 harness: component-render smoke test for the
 // CRM-07/08 sourcing pipeline board. Mounts the real board against a mocked
-// fetch: initial load renders cards in their stage columns, Move-to select
-// optimistically reconciles against a PATCH response, and opening a card
-// shows the detail panel's notes + activity feed.
+// fetch: initial load renders cards in their stage columns, the detail
+// panel's Stage select optimistically reconciles against a PATCH response,
+// and opening a card shows the detail panel's notes + activity feed.
 //
 // w2-e redesign note: the board now also renders a phone-width duplicate of
 // each card (CSS-only media-query swap, DEC-375 "client-state swap"), so
 // jsdom (which ignores media queries) sees each entry's name/Move-to select
-// TWICE. Queries below are scoped with `within()` to the desktop
-// `.chq-contacts-pipeline-columns` grid to keep single-match assertions
-// meaningful.
+// TWICE (phone only, post w2-b -- see below). Queries below are scoped with
+// `within()` to the desktop `.chq-contacts-pipeline-columns` grid to keep
+// single-match assertions meaningful.
+//
+// DEC-157 amendment (w2-b): the desktop card is drag-only -- its per-card
+// stage <select> moved into EntryDetailPanel (still the same moveTo/doMove
+// PATCH path, decline prompt included). The phone strip's per-card select is
+// unchanged and out of scope.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -82,16 +87,30 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 
-  it('moves a card via the Move-to select, reconciling against the PATCH response', async () => {
+  // DEC-157 amendment (w2-b): the desktop card no longer carries a stage
+  // control -- the move happens through the detail panel's Stage select,
+  // which calls the SAME moveTo/doMove PATCH path.
+  function detailStub() {
+    return {
+      entry: { id: 'entry-1', contactId: 'ct1', stage: 'identified', createdAt: 1000, updatedAt: 1000 },
+      contact: { id: 'ct1', firstName: 'Ada', lastName: 'Lovelace', company: 'Acme', email: 'ada@example.com' },
+      activity: { items: [], total: 0, page: 1, perPage: 200 },
+    };
+  }
+
+  it("moves a card via the detail panel's Stage select, reconciling against the PATCH response", async () => {
     mockApi({
       'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+      'GET /api/v1/pipeline/entry-1': detailStub(),
       'PATCH /api/v1/pipeline/entry-1': { ...ENTRY_IDENTIFIED, stage: 'contacted', updatedAt: 3000 },
     });
 
     render(<PipelineBoard />);
     await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+    fireEvent.click(within(desktopBoard()).getAllByRole('button', { name: 'Ada Lovelace' })[0]!);
 
-    const select = within(desktopBoard()).getAllByLabelText('Move to')[0] as HTMLSelectElement;
+    const dialog = await screen.findByRole('dialog', { name: 'Pipeline card detail' });
+    const select = within(dialog).getByLabelText('Stage') as HTMLSelectElement;
     fireEvent.change(select, { target: { value: 'contacted' } });
 
     await waitFor(() => {
@@ -105,13 +124,16 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
   it('rolls back loudly (with a visible error) when the move PATCH fails', async () => {
     mockApi({
       'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+      'GET /api/v1/pipeline/entry-1': detailStub(),
       'PATCH /api/v1/pipeline/entry-1': { status: 409, body: errorEnvelope('conflict', 'Move failed') },
     });
 
     render(<PipelineBoard />);
     await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+    fireEvent.click(within(desktopBoard()).getAllByRole('button', { name: 'Ada Lovelace' })[0]!);
 
-    const select = within(desktopBoard()).getAllByLabelText('Move to')[0] as HTMLSelectElement;
+    const dialog = await screen.findByRole('dialog', { name: 'Pipeline card detail' });
+    const select = within(dialog).getByLabelText('Stage') as HTMLSelectElement;
     fireEvent.change(select, { target: { value: 'contacted' } });
 
     await waitFor(() => {
@@ -372,6 +394,11 @@ describe('PipelineBoard: card age + decline reason (DEC-803)', () => {
   it('asks for a reason before moving a card into declined, and sends it with the move', async () => {
     const fetchMock = mockApi({
       'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+      'GET /api/v1/pipeline/entry-1': {
+        entry: { id: 'entry-1', contactId: 'ct1', stage: 'identified', createdAt: 1000, updatedAt: 1000 },
+        contact: { id: 'ct1', firstName: 'Ada', lastName: 'Lovelace', company: 'Acme', email: 'ada@example.com' },
+        activity: { items: [], total: 0, page: 1, perPage: 200 },
+      },
       'PATCH /api/v1/pipeline/entry-1': () => ({
         ...ENTRY_IDENTIFIED,
         stage: 'declined',
@@ -381,8 +408,10 @@ describe('PipelineBoard: card age + decline reason (DEC-803)', () => {
 
     render(<PipelineBoard />);
     await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+    fireEvent.click(within(desktopBoard()).getAllByRole('button', { name: 'Ada Lovelace' })[0]!);
 
-    const select = within(desktopBoard()).getAllByLabelText('Move to')[0] as HTMLSelectElement;
+    const detailDialog = await screen.findByRole('dialog', { name: 'Pipeline card detail' });
+    const select = within(detailDialog).getByLabelText('Stage') as HTMLSelectElement;
     fireEvent.change(select, { target: { value: 'declined' } });
 
     // The card must not have moved yet -- it's still in the identified
@@ -699,16 +728,82 @@ describe('PipelineBoard: drag-and-drop stage change (DEC-898)', () => {
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 
-  it("the Move-to select's value equals the entry's current stage, never blank", async () => {
+  it("the phone card's Move-to select value equals the entry's current stage, never blank", async () => {
+    // Phone strip defaults to the first stage (identified); use an entry in
+    // that stage so its phone card is the one rendered without an extra pill
+    // click (out of scope here -- this is only re-confirming the untouched
+    // phone select, not driving the phone stage filter).
     mockApi({
-      'GET /api/v1/pipeline': listEnvelope([ENTRY_CONTACTED]),
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
     });
 
     render(<PipelineBoard />);
-    await waitFor(() => within(desktopBoard()).getByText('Grace Hopper'));
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
 
-    const select = within(desktopBoard()).getAllByLabelText('Move to')[0] as HTMLSelectElement;
-    expect(select.value).toBe('contacted');
+    const select = screen.getAllByLabelText('Move to')[0] as HTMLSelectElement;
+    expect(select.value).toBe('identified');
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+});
+
+// DEC-157 amendment (w2-b): the desktop card is drag-only -- its stage
+// control moved into the detail panel.
+describe('PipelineBoard: desktop card is drag-only (DEC-157 amendment, w2-b)', () => {
+  it('renders no stage select on any desktop card', async () => {
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED, ENTRY_CONTACTED]),
+    });
+
+    render(<PipelineBoard />);
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+
+    expect(within(desktopBoard()).queryByLabelText('Move to')).not.toBeInTheDocument();
+    expect(desktopBoard().querySelector('select')).toBeNull();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('keeps the desktop card draggable', async () => {
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+    });
+
+    render(<PipelineBoard />);
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+
+    const card = within(desktopBoard()).getByText('Ada Lovelace').closest('li') as HTMLElement;
+    expect(card).toHaveAttribute('draggable', 'true');
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it("persists a move through PATCH via the detail panel's Stage select", async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+      'GET /api/v1/pipeline/entry-1': {
+        entry: { id: 'entry-1', contactId: 'ct1', stage: 'identified', createdAt: 1000, updatedAt: 1000 },
+        contact: { id: 'ct1', firstName: 'Ada', lastName: 'Lovelace', company: 'Acme', email: 'ada@example.com' },
+        activity: { items: [], total: 0, page: 1, perPage: 200 },
+      },
+      'PATCH /api/v1/pipeline/entry-1': { ...ENTRY_IDENTIFIED, stage: 'contacted', updatedAt: 3000 },
+    });
+
+    render(<PipelineBoard />);
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+    fireEvent.click(within(desktopBoard()).getAllByRole('button', { name: 'Ada Lovelace' })[0]!);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Pipeline card detail' });
+    const select = within(dialog).getByLabelText('Stage') as HTMLSelectElement;
+    expect(select.value).toBe('identified');
+    fireEvent.change(select, { target: { value: 'contacted' } });
+
+    await waitFor(() => {
+      const patchCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'PATCH');
+      expect(patchCall).toBeDefined();
+      const body = JSON.parse(String((patchCall![1] as RequestInit).body));
+      expect(body).toMatchObject({ stage: 'contacted' });
+    });
 
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
