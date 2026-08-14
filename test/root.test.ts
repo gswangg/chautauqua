@@ -194,6 +194,21 @@ describe("GET / — role redirects (DEC-582)", () => {
     expect(res.headers.get("location")).toBe("/admin");
   });
 
+  // DEC-918/DEC-022 amendment (wave 69): a signed-in role redirect must
+  // never be cached -- publicCacheMiddleware isn't mounted on "/" at all,
+  // but the response itself must still refuse caching so a shared proxy/
+  // browser-back never replays a stale redirect for a since-signed-out
+  // session.
+  it("both role redirects carry Cache-Control: no-store", async () => {
+    const organizerRes = await buildApp({ auth: ORGANIZER }).request("/", {}, { ASSETS: fakeAssets() });
+    expect(organizerRes.status).toBe(302);
+    expect(organizerRes.headers.get("cache-control")).toBe("no-store");
+
+    const speakerRes = await buildApp({ auth: SPEAKER }).request("/", {}, { ASSETS: fakeAssets() });
+    expect(speakerRes.status).toBe(302);
+    expect(speakerRes.headers.get("cache-control")).toBe("no-store");
+  });
+
   it("redirects a reviewer session to /admin", async () => {
     const app = buildApp({ auth: REVIEWER });
     const res = await app.request("/", {}, { ASSETS: fakeAssets() });
@@ -218,6 +233,21 @@ describe("GET / — anonymous hub (DEC-581)", () => {
     expect(body).toContain("Chautauqua Demo Org");
     expect(body).toContain("Nothing here yet");
     expect(body).toContain('href="/login"');
+  });
+
+  // DEC-918/DEC-022 amendment (wave 69): GET / gets the same public cache
+  // contract as every other anonymous public GET (setCacheHeaders, imported
+  // from ./public/shell so the value can't drift) plus Vary: Cookie -- but
+  // is NOT mounted under publicCacheMiddleware (see the header comment on
+  // the route for why: it's a now-derived page with no purge hook, and the
+  // middleware answers before the auth-redirect branch could ever run).
+  it("anonymous GET / carries the 60s public cache contract and Vary: Cookie", async () => {
+    const app = buildApp({ queue: buildQueue({ events: [] }) });
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("public, max-age=60, stale-while-revalidate=300");
+    expect(res.headers.get("vary")).toBe("Cookie");
+    expect(res.headers.get("access-control-allow-origin")).toBe("*");
   });
 
   it("between_cycles state: only a past event -- archive leads, sign-in note shown", async () => {

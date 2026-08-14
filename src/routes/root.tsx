@@ -22,7 +22,8 @@ import { PUBLIC_CSS } from "./public/public.css";
 import { HOME_CSS } from "./public/home.css";
 import { getHubOrg, listHubEvents, HUB_CANDIDATE_LIMIT } from "../server/repo/public/home";
 import { groupHubEvents, hubState, type HubEvent, type HubSections, type HubState } from "../lib/home-hub";
-import { formatEventDayRange, formatEventCloseDateLabel } from "../lib/event-time";
+import { formatEventDayRange, formatEventCloseDateLabel, daysUntilCalendarDay } from "../lib/event-time";
+import { setCacheHeaders } from "./public/shell";
 import { countOf } from "../domain/count-copy";
 import { matchesAdminRoute } from "../lib/admin-routes";
 import { NotFoundDocument, resolveNotFoundEyebrow } from "../server/not-found";
@@ -121,7 +122,7 @@ const GITHUB_MARK = (
  * server-side calendar-day grammar). */
 function closesLine(closeMs: number, timeZone: string, nowMs: number): string {
   const label = formatEventCloseDateLabel(closeMs, timeZone);
-  const days = Math.max(0, Math.ceil((closeMs - nowMs) / 86_400_000));
+  const days = daysUntilCalendarDay(closeMs, timeZone, nowMs);
   return `CLOSES ${label.toUpperCase()} · ${days} DAY${days === 1 ? "" : "S"} LEFT`;
 }
 
@@ -403,12 +404,31 @@ function HubPage(props: { orgName: string; sections: HubSections; state: HubStat
   );
 }
 
+// DEC-918/DEC-022 amendment (wave 69): GET / gets the same 60s public cache
+// contract as every other anonymous public GET (setCacheHeaders is imported
+// from ./public/shell rather than re-declared, so the header value can never
+// drift from theirs) plus `Vary: Cookie` -- but is deliberately NOT mounted
+// under publicCacheMiddleware. That middleware answers from a stored KV copy
+// before the handler runs at all, which would serve a cached anonymous hub
+// straight to a signed-in organiser hitting "/" (the auth-redirect branch
+// above would never even execute). Every row on this page is also
+// now-derived (cfpOpen, "N days left", the past/published grouping) with no
+// mutation to purge a stored copy on -- a long-lived cached copy would drift
+// stale silently. A 60s bounded max-age (the same value setCacheHeaders sets
+// everywhere else) is the stage-1 contract instead: short enough staleness,
+// no purge-keyed cache to go wrong. setCacheHeaders also sets
+// Access-Control-Allow-Origin: * (DEC-553), which is fine here too -- this
+// page is already fully anonymous, nothing behind it is scoped by origin.
 rootRoutes.get("/", async (c) => {
   const auth = c.var.auth;
   if (auth) {
+    c.header("Cache-Control", "no-store");
     if (auth.role === "speaker") return c.redirect("/portal", 302);
     return c.redirect("/admin", 302);
   }
+
+  setCacheHeaders(c);
+  c.header("Vary", "Cookie");
 
   const nowMs = Date.now();
   const org = await getHubOrg(c.var.db);
