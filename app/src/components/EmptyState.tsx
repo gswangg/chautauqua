@@ -51,7 +51,12 @@ export function EmptyState({ variant, what, reason, action, escape }: EmptyState
   }
 
   return (
-    <div className={`chq-empty-block chq-empty-block-${variant}`}>
+    // DEC-976/DEC-970: the class token is written out in full per variant
+    // rather than interpolated. An interpolated `chq-empty-block-${variant}`
+    // is invisible to the CSS-contract scan in both directions -- it reads as
+    // a partial token `chq-empty-block-` with no rule, and it leaves the real
+    // -fresh/-filtered rules looking dead.
+    <div className={variant === 'fresh' ? 'chq-empty-block chq-empty-block-fresh' : 'chq-empty-block chq-empty-block-filtered'}>
       <p className="chq-empty-what">{what}</p>
       {reason && <p className="chq-empty-reason">{reason}</p>}
       {action &&

@@ -45,6 +45,10 @@ describe("POST /api/v1/users welcome email logs contactId: null (DEC-191)", () =
       return {
         ...actual,
         listEventsForOrg: vi.fn(async () => [{ id: "event-1", orgId: ORG_A }]),
+        // B9 (DEC-037 amendment, wave 27): the remind route names the event in
+        // the email shell, via an owned single-event lookup this stub db cannot
+        // answer.
+        getEventForOrg: vi.fn(async (_db: unknown, eventId: string) => ({ id: eventId, name: "Event One" })),
       };
     });
     vi.doMock("../src/server/context", async () => {

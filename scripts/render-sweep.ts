@@ -121,6 +121,11 @@ export const MOBILE_ROUTE_MANIFEST: readonly MobileRouteEntry[] = [
   { path: `/embed/${MOBILE_EVENT_SLUG}/schedule`, role: "public" },
   { path: `/embed/${MOBILE_EVENT_SLUG}/gallery`, role: "public" },
   { path: "/login", role: "public" },
+  // DEC-014 amendment (wave 25) parity: the password-reset request form is a
+  // public no-login page reached from /login, so the phone pass visits it for
+  // the same reason it visits /login. Its /reset/:token sibling is single-use
+  // and therefore not sweepable (see test/audit-claims.test.ts).
+  { path: "/forgot", role: "public" },
   { path: "/docs/api", role: "public" },
   { path: "/dev/mailbox", role: "public" },
   // DEC-985 parity (w69-e): the single sent-email detail view — same

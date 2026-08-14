@@ -190,7 +190,7 @@ Cross-org access returns 404, never 403, so an attacker can't distinguish "not y
 "doesn't exist" (`test/exports-cross-org.test.ts`). Bearer tokens cannot mint further
 tokens (DEC-027).
 
-## Admin shell / auth (`/login`, `/logout`, `/account/password`, `/admin/*`)
+## Admin shell / auth (`/login`, `/logout`, `/forgot`, `/account/password`, `/admin/*`)
 
 Session login, self-service password change (any authenticated role), and the SPA
 catch-all (`/admin/*`) that every unmatched admin path resolves through (DEC-154) rather than a
@@ -202,6 +202,17 @@ used to hit. Anonymous visitors have nothing to end and are redirected to `/logi
 signed-in visitor gets a confirm form carrying the double-submit CSRF token (DEC-181) plus a
 role-scoped "Stay signed in" link. The session itself only ends on the POST, so the GET is
 idempotent. Built.
+
+`/forgot` (`src/routes/auth.tsx`, DEC-014 amendment wave 25) is the password-reset request
+form, and its `POST /reset/:token` sibling completes the change. The grant is a hashed,
+single-use, 1-hour KV record, newest-only: a fresh request hard-deletes the previous one
+(unlike a claim token, which supersedes with a grace window, because a reset is asked for by
+the account holder themselves and can trivially be asked for again). Enumeration is closed
+the DEC-004 way — the same "Check your email" card renders whether or not an account exists,
+and the response never branches, which is also why a failed send cannot be surfaced to the
+caller. Completing a reset enforces the minimum password length and revokes every other
+session. Only `/forgot` is in the render manifest; the token route is single-use and so is
+excluded from the idempotent render sweep. Built.
 
 ## Dev-only (`/dev/mailbox`, `/dev/mailbox/:emailId`)
 

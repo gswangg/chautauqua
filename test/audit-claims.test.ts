@@ -360,6 +360,11 @@ const HTML_ROUTE_EXCLUDED: { pattern: string; reason: string }[] = [
     reason:
       "Not idempotently visitable -- invite-claim tokens are single-use, so an idempotent render sweep can't safely visit one without burning seed data.",
   },
+  {
+    pattern: "/reset/:token",
+    reason:
+      "Not idempotently visitable -- DEC-014's wave-25 amendment makes password-reset grants single-use and 1h-lived, so a render sweep can't visit one without burning it. The sibling /forgot form IS in ROUTE_MANIFEST.",
+  },
 ];
 
 // API routes are JSON by construction (DEC-012), and /health is a JSON

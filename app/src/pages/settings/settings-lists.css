@@ -42,29 +42,10 @@
   padding: 6px 0;
 }
 
-/* w1-f/DEC-785, re-gridded at gate-5: the read row is the frame's 4-col
-   contract — name (SummarySection's label cell) | path | state | Embed
-   code. A flex pack left every column ragged (state at x686-700, action
-   at x812-825, right edges stair-stepping 104px short of the 1130 content
-   edge). The value cell spans the row's remaining width, so a 3-col grid
-   here completes the alignment: path takes the flexible track, state gets
-   a fixed 140px column, the action right-flushes to the content edge. */
-.chq-settings-public-pages-summary-value {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 140px max-content;
-  align-items: baseline;
-  column-gap: 16px;
-  width: 100%;
-}
-
-.chq-settings-public-pages-summary-value > .chq-link-button {
-  justify-self: end;
-}
-
-.chq-settings-public-pages-summary-path {
-  color: var(--chq-ink-2);
-  font-size: 13px;
-}
+/* NOTE (wave 26, task-w26-b): the .chq-settings-public-pages-summary-value
+   3-col grid and its -path sibling were deleted here when PublicPagesPanel
+   stopped rendering that bespoke read row and moved to the shared summary
+   rows. DEC-970 forbids leaving the rules behind unused. */
 
 /* DEC-815 amendment (wave 4): YourDataPanel's Exports row at rest -- the
    same pills the edit branch renders, packed into the value cell. */

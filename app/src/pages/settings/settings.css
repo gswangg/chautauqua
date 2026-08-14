@@ -21,11 +21,6 @@
   --chq-field-w-slug: 420px;
 }
 
-.chq-settings-account-link {
-  margin: 0 0 20px;
-  font-size: 13px;
-}
-
 .chq-settings-layout {
   /* DEC-989/v6: the reading measure stays centred ON THE PAGE with the rail
      hanging in the left margin -- not the two centred together as one

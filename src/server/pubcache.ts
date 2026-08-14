@@ -168,6 +168,12 @@ export function matchPattern(pattern: PathPattern, path: string): boolean {
 export const NEVER_PUBLIC: PathPattern[] = [
   "/login",
   "/logout",
+  // DEC-014 (wave-25 amendment): the password-reset pair writes a KV grant
+  // and, on completion, a password hash + session. Exactly the /login and
+  // /claim/* class -- credential and session state only, nothing that any
+  // /e/* or /embed/* page renders.
+  "/forgot",
+  "/reset/*",
   "/claim/*",
   "/account/*",
   "/api/v1/tokens*",

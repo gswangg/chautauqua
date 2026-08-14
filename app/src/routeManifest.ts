@@ -228,6 +228,11 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
     params: { eventSlug: EVENT_SLUG, speakerId: MOBILE_SPEAKER_ID },
   },
   { path: "/login", role: "public" },
+  // DEC-014 (wave-25 amendment): the "forgot password" form is a plain
+  // public GET with no token and no seed data -- idempotently visitable,
+  // so it gets a real manifest entry rather than an exclusion. Its sibling
+  // /reset/:token is single-use and excluded in test/audit-claims.test.ts.
+  { path: "/forgot", role: "public" },
   { path: "/docs/api", role: "public" },
   { path: "/dev/mailbox", role: "public" },
 

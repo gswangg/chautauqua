@@ -155,6 +155,12 @@ const KNOWN_SWALLOWS: { file: string; functionOrNearestExport: string; reason: s
     reason:
       "POST /api/v1/users: the welcome-email send failure is caught and logged, but the 201 response already returns the freshly generated one-time password on screen -- nothing is claimed that did not happen (the account creation itself succeeded; the welcome notice is a best-effort courtesy copy of information the caller already has in hand).",
   },
+  {
+    file: "src/routes/auth.tsx",
+    functionOrNearestExport: "(route handler near line 738)",
+    reason:
+      "POST /forgot: surfacing this outcome is what DEC-014's wave-25 amendment forbids -- the anti-enumeration rule is that the response is the same 'Check your email' card whether or not a user row exists and 'never branches its response', so a send failure cannot reach the caller without also disclosing that the address resolved to an account. The failure is logged server-side, and the reset token is still minted, so a user who asks again gets a fresh link.",
+  },
 ];
 
 describe("mail-swallow catch blocks surface their outcome or are ledgered (DEC-006 wave 51)", () => {

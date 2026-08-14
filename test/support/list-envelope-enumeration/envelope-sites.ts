@@ -31,8 +31,11 @@ export function findItemsEnvelopeSites(source: string, file: string): EnvelopeSi
 // deliberate reviewed act -- see test/list-envelope-enumeration.test.ts's
 // file-header comment above for why each one is exempt.
 export const ENVELOPE_ALLOWLIST = new Set<string>([
-  "src/routes/comms.ts:524",
-  "src/routes/api/contacts/bulk-email.ts:241",
+  // Line numbers shifted by the wave-27 B9 email-shell sweep (DEC-037
+  // amendment), which added renderEmailHtml imports/calls above both sites.
+  // The exceptions themselves are unchanged.
+  "src/routes/comms.ts:525",
+  "src/routes/api/contacts/bulk-email.ts:245",
   // NOTE (DEC-840): GET .../assignments/distribute/preview used to be
   // allowlisted here (it was previously `c.json({ items, perReviewer,
   // total, shortfall })`, matching the scanner's `{ items` pattern). The
@@ -48,6 +51,6 @@ export const ENVELOPE_ALLOWLIST = new Set<string>([
   // DEC-924: POST /plans/:id/reviewers's array form answers the set of rows
   // it just wrote (bounded by the request's own parseBoundedIdArray cap),
   // never a paginated read -- same shape-exception class as the compose
-  // preview above (comms.ts:524).
+  // preview above (comms.ts:525).
   "src/routes/review/plans-reviewers.ts:111",
 ]);

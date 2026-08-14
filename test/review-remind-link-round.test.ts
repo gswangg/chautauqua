@@ -82,6 +82,18 @@ const sendMock = vi.fn(async (input: { to: { email: string; name: string }; text
   sent.push(input);
 });
 
+// B9 (DEC-037 amendment, wave 27): POST /remind names the event in the email
+// shell's wordmark/footer, so the route makes one owned event lookup. This
+// harness sets db to {} and mocks every repo module the route touches, so the
+// events module has to be mocked here too or the real query hits the stub db.
+vi.mock("../src/server/repo/events", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/events")>("../src/server/repo/events");
+  return {
+    ...actual,
+    getEventForOrg: vi.fn(async (_db: unknown, eventId: string) => ({ id: eventId, name: "Event One" })),
+  };
+});
+
 vi.mock("../src/server/context", async () => {
   const actual = await vi.importActual<typeof import("../src/server/context")>("../src/server/context");
   return {
