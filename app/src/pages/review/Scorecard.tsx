@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPost, apiPut, ApiError } from '../../lib/api';
 import './review.css';
@@ -7,6 +8,10 @@ import { formatAnswerValue } from './answerText';
 import { incompleteCriteria, isEvaluationComplete, plainAverage, ratingScaleValues, scorecardKeyAction } from './scorecardLogic';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { planTrackScope } from './PlanList';
+// frame 03--01: the scorecard head's meta line reuses the reviewer queue's
+// own format-label vocabulary (Talk (30 min) -> 'Talk, 30 min') -- never a
+// second label grammar defined in this component.
+import { formatMetaLabel } from './ReviewerQueue';
 // DEC-939: the scorecard header's 'N of N done' counter reads the SAME
 // reader the reviewer queue's own progress caption is built from -- never a
 // second count derived in this component.
@@ -349,16 +354,39 @@ export function Scorecard() {
 
           <div className="chq-review-scorecard-head">
             <span className="chq-section-label">{scorecardEyebrow}</span>
-            {/* DEC-939: the same 'N of N done' progress the reviewer queue
-                shows, computed through queueDoneCounts (progress.ts) --
-                renders nothing until that fetch resolves, and nothing at
-                all for an empty queue (nothing to count). */}
-            {queueProgress && queueProgress.total > 0 && (
-              <p className="chq-review-scoped-progress-caption">{`${queueProgress.completed} of ${queueProgress.total} done`}</p>
-            )}
+            {/* frame 03--01: the 'N of N done' caption leaves the reading
+                column entirely -- it portals into App's own
+                #chq-header-slot node (rendered in the header identity
+                group) rather than printing here. Renders nothing when
+                that node isn't mounted (a Scorecard mounted alone in a
+                render test), same as it always rendered nothing before
+                queueProgress resolved. */}
+            {queueProgress &&
+              queueProgress.total > 0 &&
+              typeof document !== 'undefined' &&
+              document.getElementById('chq-header-slot') &&
+              createPortal(
+                <p className="chq-review-scoped-progress-caption">{`${queueProgress.completed} of ${queueProgress.total} done`}</p>,
+                document.getElementById('chq-header-slot') as HTMLElement,
+              )}
             <h1 className="chq-page-title" style={{ fontSize: '27px' }}>
-              {submission.ref} — {submission.title}
+              {submission.title}
             </h1>
+            {/* frame 03--01: the meta line reads ref · format(, duration) ·
+                audience level, in the frame's lowercase grammar -- reusing
+                the reviewer queue row's own formatMetaLabel (ReviewerQueue.tsx)
+                rather than a second label grammar. The ref always renders
+                (it no longer appears in the h1); format/audienceLevel
+                render only when the wire carries them. */}
+            <p className="chq-review-scorecard-meta">
+              {[
+                submission.ref,
+                submission.format != null ? formatMetaLabel(submission.format) : null,
+                submission.audienceLevel ?? null,
+              ]
+                .filter((v): v is string => v != null)
+                .join(' · ')}
+            </p>
             {submission.speakers && (
               <span className="chq-summary">Speakers: {submission.speakers.map((s) => s.name).join(', ')}</span>
             )}
@@ -422,22 +450,28 @@ export function Scorecard() {
               }`}
               onFocus={() => setFocusedId(criterion.id)}
             >
-              <label className="chq-review-criterion-label">
-                {criterion.label}
-                {criterion.kind === 'text' && !criterion.required && (
-                  <span className="chq-review-criterion-optional">{OPTIONAL_SUFFIX}</span>
+              {/* frame 03--01: the weight caption moves onto the criterion's
+                  own name line, right-aligned, with a hairline rule under
+                  that row -- instead of stacking under the label as its own
+                  block. */}
+              <div className="chq-review-criterion-name-row">
+                <label className="chq-review-criterion-label">
+                  {criterion.label}
+                  {criterion.kind === 'text' && !criterion.required && (
+                    <span className="chq-review-criterion-optional">{OPTIONAL_SUFFIX}</span>
+                  )}
+                </label>
+                {/* DEC-873: weight caption reads the plan editor's own share
+                    reader -- criteria with no weight (dropdown/text, or an
+                    unweighted rating row) print nothing. */}
+                {criterion.kind === 'rating' && weightShares[criterion.id] !== undefined && (
+                  <span className="chq-review-criterion-weight-caption">
+                    Weight {criterion.weight} · {weightShares[criterion.id]}%
+                  </span>
                 )}
-              </label>
+              </div>
               {/* DEC-676: guidance renders under the label; nothing when absent. */}
               {criterion.guidance && <p className="chq-review-criterion-guidance">{criterion.guidance}</p>}
-              {/* DEC-873: weight caption reads the plan editor's own share
-                  reader -- criteria with no weight (dropdown/text, or an
-                  unweighted rating row) print nothing. */}
-              {criterion.kind === 'rating' && weightShares[criterion.id] !== undefined && (
-                <p className="chq-review-criterion-weight-caption">
-                  Weight {criterion.weight} · {weightShares[criterion.id]}%
-                </p>
-              )}
               {criterion.kind === 'rating' ? (
                 <div
                   role="radiogroup"
@@ -494,27 +528,25 @@ export function Scorecard() {
             </div>
           ))}
 
-          {/* DEC-873: the Overall block is never an input -- it's the same
-              computeWeightedScore the server and plan editor use, printed
-              to one decimal, or an em dash until every rating criterion is
-              scored. */}
+          {/* frame 03--01: Overall prints its label and value on ONE line --
+              the same computeWeightedScore the server and plan editor use,
+              printed to one decimal, or an em dash until every rating
+              criterion is scored -- with the caption and the plain-average
+              reconciliation merged into a single sentence beneath it
+              (same numbers, same computeWeightedScore/plainAverage calls,
+              fewer elements). */}
           <section className="chq-review-overall">
-            <h2 className="chq-section-label">Overall</h2>
-            <p className="chq-review-overall-caption">Averaged by weight · not editable</p>
-            {/* DEC-939 reconciliation line: the SAME per-criterion rating
-                values the weighted blend above just read, in criterion
-                order, as a plain (unweighted) mean -- never touches
-                computeWeightedScore's own math, only shows the un-weighted
-                comparison figure. Renders only once overallScore itself is
-                non-null. */}
-            {overallScore !== null && ratingCriteria.length > 0 && (
-              <p className="chq-review-overall-reconciliation">
-                {`A plain average of ${ratingCriteria
-                  .map((c) => scores[c.id] as number)
-                  .join(', ')} would be ${plainAverage(ratingCriteria.map((c) => scores[c.id] as number)).toFixed(2)}`}
-              </p>
-            )}
-            <p className="chq-review-overall-value">{overallScore === null ? '—' : overallScore.toFixed(1)}</p>
+            <p className="chq-review-overall-line">
+              <span className="chq-section-label">Overall</span>
+              <span className="chq-review-overall-value">{overallScore === null ? '—' : overallScore.toFixed(1)}</span>
+            </p>
+            <p className="chq-review-overall-caption">
+              {overallScore !== null && ratingCriteria.length > 0
+                ? `Averaged by weight, not editable — a plain average of ${ratingCriteria
+                    .map((c) => scores[c.id] as number)
+                    .join(', ')} would be ${plainAverage(ratingCriteria.map((c) => scores[c.id] as number)).toFixed(2)}`
+                : 'Averaged by weight, not editable'}
+            </p>
           </section>
 
           <label className="chq-review-field">
@@ -558,7 +590,7 @@ export function Scorecard() {
                     if (checked) void handleRecuse();
                   }}
                 />
-                Recuse me — conflict of interest
+                Recuse me from this one
               </label>
             )}
           </div>

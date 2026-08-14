@@ -63,15 +63,6 @@
   color: var(--chq-muted);
 }
 
-/* DEC-939 reconciliation line: the plain-average comparison figure printed
-   between the Overall caption and its blended value -- same size/colour as
-   the caption it sits beside, never louder than the number itself. */
-.chq-review-overall-reconciliation {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--chq-muted);
-}
-
 /* DEC-939 (bare recusal amendment): strips the review.css `.chq-review-
    recusal` card (padding/border/border-radius/background) back to nothing
    -- the conflict checkbox now sits on its own line, no bordered card, no
@@ -110,4 +101,43 @@
 .chq-review-scorecard-rail .chq-review-editor-actions .chq-btn {
   width: 100%;
   text-align: center;
+}
+
+/* frame 03--01 (DEC-939 amendment): the head's meta line -- ref · format(,
+   duration) · audience level -- in the frame's lowercase grammar, sitting
+   beneath the h1 (which now carries the title alone) and above the
+   Speakers line. */
+.chq-review-scorecard-meta {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+/* frame 03--01: the Overall block's label+value on one line. */
+.chq-review-overall-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0;
+}
+
+.chq-review-overall-line .chq-review-overall-value {
+  margin: 0;
+}
+
+/* frame 03--01: the per-criterion weight caption moves onto the name line,
+   right-aligned, with a hairline rule under that row -- instead of
+   stacking under the label as its own block. */
+.chq-review-criterion-name-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-review-criterion-name-row .chq-review-criterion-weight-caption {
+  margin: 0;
+  white-space: nowrap;
 }

@@ -214,6 +214,12 @@ function Header() {
           <NavLinks sections={sections} />
         </nav>
         <div className="chq-header-identity">
+          {/* frame 03--01 (DEC-939 amendment): a page-owned portal target --
+              the scorecard's 'N of N done' counter injects itself here via
+              createPortal so it leaves the reading column, without App.tsx
+              knowing anything about the scorecard. Renders empty (no
+              caption) whenever no page portals into it. */}
+          <div id="chq-header-slot" className="chq-header-slot" />
           <EventSwitcher />
           {/* DEC-369 amendment (wave 72): no bottom chrome bar -- Sign out
               rejoins the header identity, "JORDAN A. · SIGN OUT", a real
