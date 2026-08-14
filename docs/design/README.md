@@ -438,6 +438,14 @@ Below 1240 everything degrades the same way: the reading measure keeps its paddi
 
 The design therefore does **not** draw it as a separate frame: a tile strip beside the speaker cards showed the same six people twice. The speakers frame carries one line pointing at it instead. If the team wants to retire the surface, that is a product decision touching a route, a component, a decision record and CSS — not a mock change.
 
+## Rulings on unframed capabilities
+
+`DESIGN-RULINGS.md` in this folder rules on every item in the 2026-08-14 audit brief — 28 extensions and 10 uncovered surfaces — as **BLESS** (deliberate as built), **RESTYLE** (keep it, redraw it, spec given) or **DROP**. Read it alongside these frames: together they make "matches a frame or a recorded ruling" a closed test.
+
+It also carries two specs that close whole classes rather than single screens: the **interaction-states standard** (hover / selected / expanded / focus / disabled, and the rule that a state band inherits its parent's column grid) and **Settings edit views on desktop** (field widths against content, paired fields two-up, form footers as right-flushed rows rather than phone action bars). Both were drawn from defects the audit found repeatedly.
+
+Every frame the rulings called for is now drawn — including a new `Chautauqua Emails.dc.html` for the transactional email shell. Also framed in this pass: Content bulk-approve, the sign-in card redraw, the Comms evaluation-plan select, and the bulk-email template select. Frames still owed are listed at the end of that document in leverage order.
+
 ## Copy rules
 
 These were the most-revised part of the design. Hold them:
@@ -498,6 +506,7 @@ The screens are correct as *design*; the numbers on them are illustrative until 
 | `04-speakers.png` | Onboarding grid + phone, roster phone, New task and Task response modals |
 | `05-content.png` | Worklist + deliverable detail, phone list, files library (desktop + phone) |
 | `06-agenda.png` | Day grid, phone tap-to-place |
+| `07-comms.png` | Also carries the four rendered emails and the six email rules. |
 | `07-comms.png` | Compose step 3, templates (desktop + phone), send history phone |
 | `08-contacts.png` | Directory, drawer, import, pipeline, merge — each desktop + phone — and 2 modals |
 | `09-settings.png` | All 7 desktop sections, 7 phone subscreens |

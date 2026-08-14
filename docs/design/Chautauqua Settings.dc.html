@@ -126,15 +126,17 @@
           </section>
 
           <section>
-            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
               <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Public pages and embeds</span>
+              <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">Unpublishing returns 404 to anyone holding the link</span>
             </div>
             <sc-for list="{{ publicPages }}" as="p" hint-placeholder-count="5">
-              <div style="display:grid; grid-template-columns:170px 1fr 108px auto; gap:20px; align-items:baseline; padding:13px 0; border-bottom:1px solid #E1DDCE">
+              <div style="display:grid; grid-template-columns:170px 1fr 124px 82px 84px; gap:20px; align-items:center; padding:13px 0; border-bottom:1px solid #E1DDCE">
                 <span style="font-size:14px; font-weight:600">{{ p.name }}</span>
                 <span style="font-size:13px; color:#565A4B">{{ p.path }}</span>
                 <span style="{{ p.stateStyle }}">{{ p.state }}</span>
-                <a href="#" style="font-size:12px; font-weight:700">Embed code</a>
+                <a href="#" style="font-size:12px; font-weight:700; color:#565A4B; white-space:nowrap">{{ p.toggle }}</a>
+                <a href="#" style="font-size:12px; font-weight:700; white-space:nowrap">Embed code</a>
               </div>
             </sc-for>
           </section>
@@ -145,16 +147,17 @@
               <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">Turning one off breaks it wherever it is pasted</span>
             </div>
             <sc-for list="{{ savedEmbeds }}" as="e" hint-placeholder-count="4">
-              <div style="display:grid; grid-template-columns:1fr 128px 96px auto; gap:20px; align-items:center; padding:14px 0; border-bottom:1px solid #E1DDCE">
+              <div style="display:grid; grid-template-columns:1fr 128px 96px 190px; gap:20px; align-items:center; padding:14px 0; border-bottom:1px solid #E1DDCE">
                 <div style="display:flex; flex-direction:column; gap:3px">
                   <span style="font-family:'Familjen Grotesk', sans-serif; font-size:15px; font-weight:600; letter-spacing:-0.01em">{{ e.name }}</span>
                   <span style="font-size:12px; color:#565A4B">{{ e.recipe }}</span>
                 </div>
                 <span style="font-size:12px; color:#565A4B">{{ e.used }}</span>
                 <span style="{{ e.stateStyle }}">{{ e.state }}</span>
-                <div style="display:flex; gap:14px; font-size:12px; font-weight:700">
-                  <a href="#">Get code</a>
-                  <a href="#" style="color:#565A4B">{{ e.toggle }}</a>
+                <div style="display:grid; grid-template-columns:34px 66px 62px; gap:14px; font-size:12px; font-weight:700">
+                  <a href="#" style="white-space:nowrap">Edit</a>
+                  <a href="#" style="white-space:nowrap">Get code</a>
+                  <a href="#" style="color:#565A4B; white-space:nowrap">{{ e.toggle }}</a>
                 </div>
               </div>
             </sc-for>
@@ -164,50 +167,7 @@
             </div>
           </section>
 
-          <section>
-            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
-              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Editing · AI track sessions</span>
-              <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">Chromeless · no login needed</span>
-            </div>
-            <div style="padding:16px 0 0; display:grid; grid-template-columns:1fr 1fr; gap:16px; max-width:620px">
-              <div style="display:flex; flex-direction:column; gap:6px">
-                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Name</span>
-                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; font-weight:600">AI track sessions</div>
-              </div>
-              <div style="display:flex; flex-direction:column; gap:6px">
-                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Surface</span>
-                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">Sessions ▾</div>
-              </div>
-              <div style="display:flex; flex-direction:column; gap:6px">
-                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Format</span>
-                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">iframe ▾</div>
-              </div>
-              <div style="display:flex; flex-direction:column; gap:6px">
-                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Track</span>
-                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">AI Engineering ▾</div>
-              </div>
-            </div>
 
-            <div style="padding:18px 0 0; display:flex; flex-direction:column; gap:8px">
-              <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Fields shown</span>
-              <div style="display:flex; gap:7px; flex-wrap:wrap">
-                <sc-for list="{{ embedFields }}" as="x" hint-placeholder-count="6">
-                  <span style="{{ x.style }}">{{ x.name }}</span>
-                </sc-for>
-              </div>
-            </div>
-
-            <div style="margin-top:18px; border:1px solid #D3CFC0; border-radius:5px; background:#FAF8F2; padding:14px 16px; display:flex; flex-direction:column; gap:9px">
-              <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Snippet</span>
-              <span style="font-family:ui-monospace, monospace; font-size:12px; line-height:1.7; color:#2E2A24; word-break:break-all">&lt;iframe src="chautauqua.cc/e/devflow-conf-2027/sessions?embed=ai-track&amp;format=iframe" width="100%" height="600" style="border:0"&gt;&lt;/iframe&gt;</span>
-              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
-                <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Save changes</span>
-                <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Copy snippet</span>
-                <a href="#" style="font-size:13px; font-weight:700; padding:0 6px">Preview</a>
-              </div>
-              <span style="font-size:12px; color:#565A4B; line-height:1.5">The URL carries the embed's name, so changing these settings updates every page it is pasted on</span>
-            </div>
-          </section>
 
           <section>
             <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
@@ -532,6 +492,7 @@
             </div>
             <span style="font-size:12px; color:#565A4B; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ p.path }}</span>
             <div style="display:flex; gap:8px; padding-top:2px">
+              <span style="flex:1; border:1px solid #CFC7B7; border-radius:6px; background:#EFEBDF; color:#2E2A24; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600">{{ p.toggle }}</span>
               <span style="flex:1; border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600">View</span>
               <span style="flex:1; border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600">Embed code</span>
             </div>
@@ -640,13 +601,615 @@
     </div>
   </div>
 
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">1600</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Settings · editing the call for papers</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Exemplar for all five edit views</span>
+    </div>
+
+    <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        <span style="font-size:13px; font-weight:600; color:#565A4B">Settings · Call for papers</span>
+        <span style="margin-left:auto; font-size:13px; font-weight:600">DevFlow Conf 2027</span>
+      </header>
+
+      <div style="padding:30px 34px 36px; display:grid; grid-template-columns:minmax(196px, 1fr) minmax(0, 820px) minmax(0, 1fr); gap:34px; align-items:start">
+        <nav style="width:196px; justify-self:end; display:flex; flex-direction:column; gap:2px; position:sticky; top:0">
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Event</a>
+          <span style="padding:9px 12px; border-radius:4px; background:#EFEBDF; border-left:3px solid #4E5C31; font-size:14px; font-weight:700">Call for papers</span>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Tracks and rooms</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Public pages</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Speaker portal</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Your data</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">People and roles</a>
+        </nav>
+
+        <div style="grid-column:2; min-width:0; display:flex; flex-direction:column; gap:26px">
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px">
+            <div style="display:flex; flex-direction:column; gap:5px">
+              <a href="#" style="font-size:13px; font-weight:700">‹ Call for papers</a>
+              <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:30px; font-weight:700; letter-spacing:-0.04em; line-height:1">Edit the form</h1>
+            </div>
+            <span style="font-size:13px; color:#565A4B">47 submissions received · changes do not affect them</span>
+          </div>
+
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">When it runs</span>
+            </div>
+            <div style="padding:16px 0 0; display:grid; grid-template-columns:1fr 1fr; gap:18px; max-width:420px">
+              <div style="display:flex; flex-direction:column; gap:6px">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Opens</span>
+                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">1 Feb 2027</div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:6px">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Closes</span>
+                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">16 Aug 2027</div>
+              </div>
+            </div>
+            <div style="padding:14px 0 0; display:flex; flex-direction:column; gap:6px; max-width:200px">
+              <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Time zone</span>
+              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; justify-content:space-between; gap:12px">Pacific <span style="color:#565A4B">▾</span></div>
+            </div>
+          </section>
+
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">What submitters read</span>
+            </div>
+            <div style="padding:16px 0 0; display:flex; flex-direction:column; gap:14px">
+              <div style="display:flex; flex-direction:column; gap:6px; max-width:420px">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Form name</span>
+                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">Default CFP form</div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:6px">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Intro shown above the form</span>
+                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; padding:13px; min-height:104px; font-size:15px; line-height:1.65; color:#3F4237">Three tracks, five formats, no account needed. We email you a portal link, and you can edit until the form closes.</div>
+                <span style="font-size:12px; color:#565A4B">Takes the full measure · about three lines on the public form</span>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Questions · 8</span>
+              <a href="#" style="font-size:13px; font-weight:700">Open the form builder ›</a>
+            </div>
+            <div style="padding:14px 0 0; font-size:14px; line-height:1.6; color:#3F4237; max-width:60ch">Adding, reordering and removing questions happens in the builder — this page owns the window and the wording around the form.</div>
+          </section>
+
+          <div style="border-top:1px solid #D3CFC0; padding-top:20px; display:flex; align-items:center; gap:12px">
+            <a href="#" style="font-size:13px; font-weight:700; color:#565A4B">Close the form now</a>
+            <div style="margin-left:auto; display:flex; align-items:center; gap:10px">
+              <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Cancel</span>
+              <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 20px; font-size:14px; font-weight:700">Save changes</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">1600</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Settings · editing the event</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Names, dates, venue</span>
+    </div>
+
+    <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        <span style="font-size:13px; font-weight:600; color:#565A4B">Settings · Event</span>
+        <span style="margin-left:auto; font-size:13px; font-weight:600">DevFlow Conf 2027</span>
+      </header>
+
+      <div style="padding:30px 34px 36px; display:grid; grid-template-columns:minmax(196px, 1fr) minmax(0, 820px) minmax(0, 1fr); gap:34px; align-items:start">
+        <nav style="width:196px; justify-self:end; display:flex; flex-direction:column; gap:2px; position:sticky; top:0">
+          <span style="padding:9px 12px; border-radius:4px; background:#EFEBDF; border-left:3px solid #4E5C31; font-size:14px; font-weight:700">Event</span>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Call for papers</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Tracks and rooms</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Public pages</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Speaker portal</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Your data</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">People and roles</a>
+        </nav>
+
+        <div style="grid-column:2; min-width:0; display:flex; flex-direction:column; gap:26px">
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px">
+            <div style="display:flex; flex-direction:column; gap:5px">
+              <a href="#" style="font-size:13px; font-weight:700">‹ Event</a>
+              <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:30px; font-weight:700; letter-spacing:-0.04em; line-height:1">Edit the event</h1>
+            </div>
+            <span style="font-size:13px; color:#565A4B">Renaming does not change the public URL</span>
+          </div>
+
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Name and address</span>
+            </div>
+            <div style="padding:16px 0 0; display:flex; flex-direction:column; gap:14px">
+              <div style="display:flex; flex-direction:column; gap:6px; max-width:420px">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Event name</span>
+                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">DevFlow Conf 2027</div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:6px">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Public URL</span>
+                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">chautauqua.cc/e/devflow-conf-2027</div>
+                <span style="font-size:12px; color:#565A4B; line-height:1.5">Changing the slug breaks every link already shared, including saved embeds</span>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">When and where</span>
+            </div>
+            <div style="padding:16px 0 0; display:grid; grid-template-columns:1fr 1fr; gap:18px; max-width:420px">
+              <div style="display:flex; flex-direction:column; gap:6px">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Starts</span>
+                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">12 May 2027</div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:6px">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Ends</span>
+                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">14 May 2027</div>
+              </div>
+            </div>
+            <div style="padding:14px 0 0; display:flex; flex-direction:column; gap:14px">
+              <div style="display:flex; flex-direction:column; gap:6px; max-width:300px">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Time zone</span>
+                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; justify-content:space-between; gap:12px">America/Los_Angeles <span style="color:#565A4B">▾</span></div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:6px; max-width:460px">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Venue</span>
+                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">Moscone West, San Francisco</div>
+                <span style="font-size:12px; color:#565A4B; line-height:1.5">Shown on the public pages and in calendar invites</span>
+              </div>
+            </div>
+          </section>
+
+          <div style="border-top:1px solid #D3CFC0; padding-top:20px; display:flex; align-items:center; gap:12px">
+            <a href="#" style="font-size:13px; font-weight:700; color:#565A4B">Archive this event</a>
+            <div style="margin-left:auto; display:flex; align-items:center; gap:10px">
+              <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Cancel</span>
+              <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 20px; font-size:14px; font-weight:700">Save changes</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">1600</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Settings · editing tracks and rooms</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Two lists, one page</span>
+    </div>
+
+    <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        <span style="font-size:13px; font-weight:600; color:#565A4B">Settings · Tracks and rooms</span>
+        <span style="margin-left:auto; font-size:13px; font-weight:600">DevFlow Conf 2027</span>
+      </header>
+
+      <div style="padding:30px 34px 36px; display:grid; grid-template-columns:minmax(196px, 1fr) minmax(0, 820px) minmax(0, 1fr); gap:34px; align-items:start">
+        <nav style="width:196px; justify-self:end; display:flex; flex-direction:column; gap:2px; position:sticky; top:0">
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Event</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Call for papers</a>
+          <span style="padding:9px 12px; border-radius:4px; background:#EFEBDF; border-left:3px solid #4E5C31; font-size:14px; font-weight:700">Tracks and rooms</span>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Public pages</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Speaker portal</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Your data</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">People and roles</a>
+        </nav>
+
+        <div style="grid-column:2; min-width:0; display:flex; flex-direction:column; gap:26px">
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px">
+            <div style="display:flex; flex-direction:column; gap:5px">
+              <a href="#" style="font-size:13px; font-weight:700">‹ Tracks and rooms</a>
+              <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:30px; font-weight:700; letter-spacing:-0.04em; line-height:1">Edit tracks and rooms</h1>
+            </div>
+            <span style="font-size:13px; color:#565A4B">47 submissions reference these tracks</span>
+          </div>
+
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Tracks · 3</span>
+              <a href="#" style="font-size:13px; font-weight:700">Add a track</a>
+            </div>
+            <sc-for list="{{ editTracks }}" as="t" hint-placeholder-count="3">
+              <div style="display:grid; grid-template-columns:20px 1fr 150px auto; gap:16px; align-items:center; padding:10px 0; border-bottom:1px solid #E1DDCE">
+                <span style="font-size:14px; color:#8E8A7A">⋮⋮</span>
+                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; font-weight:600; max-width:320px">{{ t.name }}</div>
+                <span style="font-size:12px; color:#565A4B">{{ t.used }}</span>
+                <span style="{{ t.delStyle }}">Remove</span>
+              </div>
+            </sc-for>
+            <div style="padding:12px 0 0; font-size:13px; color:#565A4B; line-height:1.5">A track in use cannot be removed — retire it instead and it stops appearing on the form</div>
+          </section>
+
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Rooms · 4</span>
+              <a href="#" style="font-size:13px; font-weight:700">Add a room</a>
+            </div>
+            <sc-for list="{{ editRooms }}" as="r" hint-placeholder-count="4">
+              <div style="display:grid; grid-template-columns:20px 1fr 110px 150px auto; gap:16px; align-items:center; padding:10px 0; border-bottom:1px solid #E1DDCE">
+                <span style="font-size:14px; color:#8E8A7A">⋮⋮</span>
+                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; font-weight:600; max-width:280px">{{ r.name }}</div>
+                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px">{{ r.seats }}</div>
+                <span style="font-size:12px; color:#565A4B">{{ r.used }}</span>
+                <span style="{{ r.delStyle }}">Remove</span>
+              </div>
+            </sc-for>
+            <div style="padding:12px 0 0; font-size:13px; color:#565A4B; line-height:1.5">Seats are advisory — the agenda flags an over-capacity room but never blocks it</div>
+          </section>
+
+          <div style="border-top:1px solid #D3CFC0; padding-top:20px; display:flex; align-items:center; gap:12px">
+            <div style="margin-left:auto; display:flex; align-items:center; gap:10px">
+              <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Cancel</span>
+              <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 20px; font-size:14px; font-weight:700">Save changes</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">1600</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Settings · editing the speaker portal</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">What speakers see and may change</span>
+    </div>
+
+    <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        <span style="font-size:13px; font-weight:600; color:#565A4B">Settings · Speaker portal</span>
+        <span style="margin-left:auto; font-size:13px; font-weight:600">DevFlow Conf 2027</span>
+      </header>
+
+      <div style="padding:30px 34px 36px; display:grid; grid-template-columns:minmax(196px, 1fr) minmax(0, 820px) minmax(0, 1fr); gap:34px; align-items:start">
+        <nav style="width:196px; justify-self:end; display:flex; flex-direction:column; gap:2px; position:sticky; top:0">
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Event</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Call for papers</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Tracks and rooms</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Public pages</a>
+          <span style="padding:9px 12px; border-radius:4px; background:#EFEBDF; border-left:3px solid #4E5C31; font-size:14px; font-weight:700">Speaker portal</span>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Your data</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">People and roles</a>
+        </nav>
+
+        <div style="grid-column:2; min-width:0; display:flex; flex-direction:column; gap:26px">
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px">
+            <div style="display:flex; flex-direction:column; gap:5px">
+              <a href="#" style="font-size:13px; font-weight:700">‹ Speaker portal</a>
+              <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:30px; font-weight:700; letter-spacing:-0.04em; line-height:1">Edit the speaker portal</h1>
+            </div>
+            <span style="font-size:13px; color:#565A4B">23 speakers can sign in today</span>
+          </div>
+
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Welcome note</span>
+            </div>
+            <div style="padding:16px 0 0; display:flex; flex-direction:column; gap:6px">
+              <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; padding:13px; min-height:96px; font-size:15px; line-height:1.65; color:#3F4237">Thanks for speaking at DevFlow. Everything we need from you is on this page, in order.</div>
+              <span style="font-size:12px; color:#565A4B; line-height:1.5">Takes the full measure · appears above the task list</span>
+            </div>
+          </section>
+
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">What speakers may edit</span>
+            </div>
+            <div style="padding:16px 0 0; display:flex; gap:8px; flex-wrap:wrap">
+              <sc-for list="{{ portalFields }}" as="p" hint-placeholder-count="5">
+                <span style="{{ p.style }}">{{ p.name }}</span>
+              </sc-for>
+            </div>
+            <div style="padding:14px 0 0; font-size:13px; color:#565A4B; line-height:1.5">Title and abstract stay organiser-only — a speaker editing them after acceptance would change what the committee accepted</div>
+          </section>
+
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Resources · 3</span>
+              <a href="#" style="font-size:13px; font-weight:700">Add a resource</a>
+            </div>
+            <sc-for list="{{ editResources }}" as="r" hint-placeholder-count="3">
+              <div style="display:grid; grid-template-columns:1fr 170px auto; gap:18px; align-items:center; padding:12px 0; border-bottom:1px solid #E1DDCE">
+                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; max-width:420px">{{ r.name }}</div>
+                <span style="font-size:12px; color:#565A4B">{{ r.detail }}</span>
+                <a href="#" style="font-size:12px; font-weight:700; color:#565A4B">Replace</a>
+              </div>
+            </sc-for>
+          </section>
+
+          <div style="border-top:1px solid #D3CFC0; padding-top:20px; display:flex; align-items:center; gap:12px">
+            <div style="margin-left:auto; display:flex; align-items:center; gap:10px">
+              <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Cancel</span>
+              <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 20px; font-size:14px; font-weight:700">Save changes</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">1600</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Settings · editing people and roles</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">The one place credentials live</span>
+    </div>
+
+    <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        <span style="font-size:13px; font-weight:600; color:#565A4B">Settings · People and roles</span>
+        <span style="margin-left:auto; font-size:13px; font-weight:600">DevFlow Conf 2027</span>
+      </header>
+
+      <div style="padding:30px 34px 36px; display:grid; grid-template-columns:minmax(196px, 1fr) minmax(0, 820px) minmax(0, 1fr); gap:34px; align-items:start">
+        <nav style="width:196px; justify-self:end; display:flex; flex-direction:column; gap:2px; position:sticky; top:0">
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Event</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Call for papers</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Tracks and rooms</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Public pages</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Speaker portal</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Your data</a>
+          <span style="padding:9px 12px; border-radius:4px; background:#EFEBDF; border-left:3px solid #4E5C31; font-size:14px; font-weight:700">People and roles</span>
+        </nav>
+
+        <div style="grid-column:2; min-width:0; display:flex; flex-direction:column; gap:26px">
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px">
+            <div style="display:flex; flex-direction:column; gap:5px">
+              <a href="#" style="font-size:13px; font-weight:700">‹ People and roles</a>
+              <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:30px; font-weight:700; letter-spacing:-0.04em; line-height:1">Edit people and roles</h1>
+            </div>
+            <span style="font-size:13px; color:#565A4B">Only organisers can change roles</span>
+          </div>
+
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">People · 4</span>
+              <a href="#" style="font-size:13px; font-weight:700">Invite someone</a>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 170px 190px auto; gap:18px; padding:14px 0 8px; border-bottom:1px solid #D3CFC0; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
+              <span>Person</span><span>Role</span><span>Scope</span><span></span>
+            </div>
+            <sc-for list="{{ editPeople }}" as="p" hint-placeholder-count="4">
+              <div style="display:grid; grid-template-columns:1fr 170px 190px auto; gap:18px; align-items:center; padding:12px 0; border-bottom:1px solid #E1DDCE">
+                <div style="display:flex; flex-direction:column; gap:2px">
+                  <span style="font-size:15px; font-weight:600">{{ p.name }}</span>
+                  <span style="font-size:12px; color:#565A4B; word-break:break-all">{{ p.email }}</span>
+                </div>
+                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 12px; font-size:14px">{{ p.role }} <span style="color:#565A4B">▾</span></div>
+                <span style="font-size:13px; color:#565A4B">{{ p.scope }}</span>
+                <div style="display:flex; gap:14px; font-size:12px; font-weight:700">
+                  <a href="#" style="color:#565A4B">Reset password</a>
+                  <span style="{{ p.delStyle }}">Remove</span>
+                </div>
+              </div>
+            </sc-for>
+            <div style="padding:14px 0 0; font-size:13px; color:#565A4B; line-height:1.5">You cannot remove or demote yourself · a reviewer's scope limits which tracks they are assigned</div>
+          </section>
+
+          <div style="border-top:1px solid #D3CFC0; padding-top:20px; display:flex; align-items:center; gap:12px">
+            <a href="#" style="font-size:13px; font-weight:700; color:#565A4B">Change your own password</a>
+            <div style="margin-left:auto; display:flex; align-items:center; gap:10px">
+              <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Cancel</span>
+              <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 20px; font-size:14px; font-weight:700">Save changes</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">1600</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Settings · editing one saved embed</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">A subscreen, like every other edit view</span>
+    </div>
+
+    <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        <span style="font-size:13px; font-weight:600; color:#565A4B">Settings · Public pages · AI track sessions</span>
+        <span style="margin-left:auto; font-size:13px; font-weight:600">DevFlow Conf 2027</span>
+      </header>
+
+      <div style="padding:30px 34px 36px; display:grid; grid-template-columns:minmax(196px, 1fr) minmax(0, 820px) minmax(0, 1fr); gap:34px; align-items:start">
+        <nav style="width:196px; justify-self:end; display:flex; flex-direction:column; gap:2px; position:sticky; top:0">
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Event</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Call for papers</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Tracks and rooms</a>
+          <span style="padding:9px 12px; border-radius:4px; background:#EFEBDF; border-left:3px solid #4E5C31; font-size:14px; font-weight:700">Public pages</span>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Speaker portal</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Your data</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">People and roles</a>
+        </nav>
+
+        <div style="grid-column:2; min-width:0; display:flex; flex-direction:column; gap:26px">
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px">
+            <div style="display:flex; flex-direction:column; gap:5px">
+              <a href="#" style="font-size:13px; font-weight:700">‹ Public pages</a>
+              <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:30px; font-weight:700; letter-spacing:-0.04em; line-height:1">AI track sessions</h1>
+            </div>
+            <span style="font-size:13px; color:#565A4B">On · in use on devflowconf.com</span>
+          </div>
+
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">The recipe</span>
+              <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">Chromeless · no login needed</span>
+            </div>
+            <div style="padding:16px 0 0; display:grid; grid-template-columns:1fr 1fr; gap:16px; max-width:620px">
+              <div style="display:flex; flex-direction:column; gap:6px">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Name</span>
+                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; font-weight:600">AI track sessions</div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:6px">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Surface</span>
+                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; justify-content:space-between; gap:12px">Sessions <span style="color:#565A4B">▾</span></div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:6px">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Format</span>
+                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; justify-content:space-between; gap:12px">iframe <span style="color:#565A4B">▾</span></div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:6px">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Track</span>
+                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; justify-content:space-between; gap:12px">AI Engineering <span style="color:#565A4B">▾</span></div>
+              </div>
+            </div>
+
+            <div style="padding:18px 0 0; display:flex; flex-direction:column; gap:8px">
+              <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Fields shown</span>
+              <div style="display:flex; gap:7px; flex-wrap:wrap">
+                <sc-for list="{{ embedFields }}" as="x" hint-placeholder-count="6">
+                  <span style="{{ x.style }}">{{ x.name }}</span>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="margin-top:18px; border:1px solid #D3CFC0; border-radius:5px; background:#FAF8F2; padding:14px 16px; display:flex; flex-direction:column; gap:9px">
+              <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Snippet</span>
+              <span style="font-family:ui-monospace, monospace; font-size:12px; line-height:1.7; color:#2E2A24; word-break:break-all">&lt;iframe src="chautauqua.cc/e/devflow-conf-2027/sessions?embed=ai-track&amp;format=iframe" width="100%" height="600" style="border:0"&gt;&lt;/iframe&gt;</span>
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+                <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Copy snippet</span>
+                <a href="#" style="font-size:13px; font-weight:700; padding:0 6px">Preview</a>
+              </div>
+              <span style="font-size:12px; color:#565A4B; line-height:1.5">The URL carries the embed's name, so changing these settings updates every page it is pasted on</span>
+            </div>
+          </section>
+
+          <div style="border-top:1px solid #D3CFC0; padding-top:20px; display:flex; align-items:center; gap:12px">
+            <a href="#" style="font-size:13px; font-weight:700; color:#565A4B">Turn this embed off</a>
+            <div style="margin-left:auto; display:flex; align-items:center; gap:10px">
+              <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Cancel</span>
+              <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 20px; font-size:14px; font-weight:700">Save changes</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">1600</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Settings · editing your data</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Retention and tokens · exports are actions</span>
+    </div>
+
+    <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        <span style="font-size:13px; font-weight:600; color:#565A4B">Settings · Your data</span>
+        <span style="margin-left:auto; font-size:13px; font-weight:600">DevFlow Conf 2027</span>
+      </header>
+
+      <div style="padding:30px 34px 36px; display:grid; grid-template-columns:minmax(196px, 1fr) minmax(0, 820px) minmax(0, 1fr); gap:34px; align-items:start">
+        <nav style="width:196px; justify-self:end; display:flex; flex-direction:column; gap:2px; position:sticky; top:0">
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Event</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Call for papers</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Tracks and rooms</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Public pages</a>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">Speaker portal</a>
+          <span style="padding:9px 12px; border-radius:4px; background:#EFEBDF; border-left:3px solid #4E5C31; font-size:14px; font-weight:700">Your data</span>
+          <a href="#" style="padding:9px 12px; border-radius:4px; font-size:14px; font-weight:500; color:#3F4237">People and roles</a>
+        </nav>
+
+        <div style="grid-column:2; min-width:0; display:flex; flex-direction:column; gap:26px">
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px">
+            <div style="display:flex; flex-direction:column; gap:5px">
+              <a href="#" style="font-size:13px; font-weight:700">‹ Your data</a>
+              <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:30px; font-weight:700; letter-spacing:-0.04em; line-height:1">Edit your data settings</h1>
+            </div>
+            <span style="font-size:13px; color:#565A4B">Retention applies to every event in this org</span>
+          </div>
+
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Tokens · 2</span>
+              <a href="#" style="font-size:13px; font-weight:700">New token</a>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 150px 150px auto; gap:18px; padding:14px 0 8px; border-bottom:1px solid #D3CFC0; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
+              <span>Name and prefix</span><span>Created</span><span>Last used</span><span></span>
+            </div>
+            <sc-for list="{{ tokens }}" as="t" hint-placeholder-count="2">
+              <div style="display:grid; grid-template-columns:1fr 150px 150px auto; gap:18px; align-items:center; padding:13px 0; border-bottom:1px solid #E1DDCE">
+                <div style="display:flex; flex-direction:column; gap:3px">
+                  <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; font-weight:600; max-width:320px">{{ t.name }}</div>
+                  <span style="font-family:ui-monospace, monospace; font-size:12px; color:#565A4B">{{ t.prefix }}</span>
+                </div>
+                <span style="font-size:13px; color:#565A4B">{{ t.created }}</span>
+                <span style="{{ t.usedStyle }}">{{ t.used }}</span>
+                <a href="#" style="font-size:12px; font-weight:700; color:#4E5C31">Revoke</a>
+              </div>
+            </sc-for>
+            <div style="padding:14px 0 0; font-size:13px; color:#565A4B; line-height:1.5">A token's secret is shown once, when it is created — after that only the prefix. Revoking takes effect immediately and cannot be undone.</div>
+          </section>
+
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Keeping and deleting</span>
+            </div>
+            <div style="padding:16px 0 0; display:flex; flex-direction:column; gap:14px">
+              <div style="display:flex; flex-direction:column; gap:6px; max-width:300px">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Keep declined submissions for</span>
+                <div style="border:1px solid #BAB6A6; border-radius:4px; background:#FAF8F2; min-height:46px; display:flex; align-items:center; padding:0 13px; font-size:15px; justify-content:space-between; gap:12px">24 months <span style="color:#565A4B">▾</span></div>
+                <span style="font-size:12px; color:#565A4B; line-height:1.5">After that the abstract and reviews are deleted; the contact stays</span>
+              </div>
+              <label style="display:flex; align-items:center; gap:10px; min-height:44px; font-size:14px; color:#3F4237">
+                <span style="width:18px; height:18px; border:1px solid #4E5C31; background:#4E5C31; border-radius:3px; flex-shrink:0"></span>
+                Keep uploaded files after the event ends
+              </label>
+              <label style="display:flex; align-items:center; gap:10px; min-height:44px; font-size:14px; color:#3F4237">
+                <span style="width:18px; height:18px; border:1px solid #8E8A7A; border-radius:3px; flex-shrink:0"></span>
+                Let speakers delete their own contact record
+              </label>
+            </div>
+          </section>
+
+          <section>
+            <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+              <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Exports</span>
+            </div>
+            <div style="padding:15px 0 0; display:flex; align-items:center; gap:14px; flex-wrap:wrap">
+              <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Submissions CSV</span>
+              <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Contacts CSV</span>
+              <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Everything as JSON</span>
+            </div>
+            <div style="padding:14px 0 0; font-size:13px; color:#565A4B; line-height:1.5">Exports are actions, not settings — they download at once and there is nothing here to save.</div>
+          </section>
+
+          <div style="border-top:1px solid #D3CFC0; padding-top:20px; display:flex; align-items:center; gap:12px">
+            <a href="#" style="font-size:13px; font-weight:700; color:#565A4B">Revoke every token</a>
+            <div style="margin-left:auto; display:flex; align-items:center; gap:10px">
+              <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Cancel</span>
+              <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 20px; font-size:14px; font-weight:700">Save changes</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </section>
 </x-dc>
 <script type="text/x-dc" data-dc-script>
 const NAV_ON = 'font-size:14px; font-weight:700; padding:8px 0; box-shadow:inset 2px 0 0 #4E5C31; padding-left:11px; color:#1B1D17';
 const NAV_OFF = 'font-size:14px; font-weight:500; padding:8px 0 8px 11px; color:#3F4237';
-const LIVE = 'font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#4E5C31';
-const HIDDEN = 'font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#565A4B';
+const LIVE = 'font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#4E5C31; white-space:nowrap';
+const HIDDEN = 'font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#565A4B; white-space:nowrap';
 const DOT = 'width:8px; height:8px; border-radius:50%; background:#BAB6A6';
 const DOT_ON = 'width:8px; height:8px; border-radius:50%; background:#4E5C31';
 const TXT = 'font-size:11px; font-weight:600; color:#565A4B';
@@ -656,6 +1219,11 @@ const EMBED_ON = 'font-size:11px; font-weight:800; letter-spacing:0.09em; text-t
 const EMBED_OFF = 'font-size:11px; font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:#565A4B';
 const FIELD_ON = 'background:#1B1D17; color:#F4F1E8; border-radius:99px; padding:7px 13px; font-size:13px; font-weight:600';
 const FIELD_OFF = 'border:1px solid #BAB6A6; border-radius:99px; padding:6px 13px; font-size:13px; font-weight:500; color:#3F4237';
+
+const DEL_ON = 'font-size:12px; font-weight:700; color:#4E5C31; cursor:pointer';
+const DEL_OFF = 'font-size:12px; font-weight:700; color:#8E8A7A';
+const PF_ON = 'background:#1B1D17; color:#F4F1E8; border-radius:99px; padding:7px 13px; font-size:13px; font-weight:600';
+const PF_OFF = 'border:1px solid #BAB6A6; border-radius:99px; padding:6px 13px; font-size:13px; font-weight:500; color:#3F4237';
 
 class Component extends DCLogic {
   renderVals() {
@@ -675,6 +1243,39 @@ class Component extends DCLogic {
         { label: 'Dates', value: '12–14 May 2027', note: '274 days away' },
         { label: 'Time zone', value: 'America/Los_Angeles', note: '' },
         { label: 'Venue', value: 'Moscone West, San Francisco', note: '' },
+      ],
+      editTracks: [
+        { name: 'AI Engineering', used: '18 submissions', delStyle: DEL_OFF },
+        { name: 'Platform & Infra', used: '21 submissions', delStyle: DEL_OFF },
+        { name: 'Developer Experience', used: 'Not used yet', delStyle: DEL_ON },
+      ],
+      editRooms: [
+        { name: 'Main Stage', seats: '400', used: '6 sessions', delStyle: DEL_OFF },
+        { name: 'Room 2A', seats: '120', used: '4 sessions', delStyle: DEL_OFF },
+        { name: 'Room 2B', seats: '120', used: '3 sessions', delStyle: DEL_OFF },
+        { name: 'Workshop Lab', seats: '40', used: 'Not used yet', delStyle: DEL_ON },
+      ],
+      portalFields: [
+        { name: 'Bio', style: PF_ON },
+        { name: 'Headshot', style: PF_ON },
+        { name: 'Links', style: PF_ON },
+        { name: 'Job title', style: PF_OFF },
+        { name: 'Abstract', style: PF_OFF },
+      ],
+      editResources: [
+        { name: 'Speaker handbook 2027.pdf', detail: '2.1 MB · 18 opens' },
+        { name: 'Slide template.key', detail: '8.4 MB · 11 opens' },
+        { name: 'Stage and A/V notes.pdf', detail: '640 KB · 4 opens' },
+      ],
+      editPeople: [
+        { name: 'Jordan Alvarez', email: 'sbek-organizer@example.com', role: 'Organiser', scope: 'Everything · you', delStyle: DEL_OFF },
+        { name: 'Sam Whitfield', email: 'sbek-reviewer@example.com', role: 'Reviewer', scope: 'AI Engineering', delStyle: DEL_ON },
+        { name: 'Ines Duarte', email: 'ines@example.com', role: 'Reviewer', scope: 'Developer Experience', delStyle: DEL_ON },
+        { name: 'Ana Petrov', email: 'ana@example.com', role: 'Reviewer', scope: 'AI Engineering', delStyle: DEL_ON },
+      ],
+      tokens: [
+        { name: 'Sponsor deck feed', prefix: 'chq_live_7f2a…', created: '2 Mar 2027', used: 'Today', usedStyle: 'font-size:13px; color:#565A4B' },
+        { name: 'Website build', prefix: 'chq_live_c14b…', created: '18 Jan 2027', used: 'Never used', usedStyle: 'font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; color:#1B1D17' },
       ],
       formQuestions: [
         { label: 'Title', type: 'Short text', req: 'required' },
@@ -712,11 +1313,11 @@ class Component extends DCLogic {
         { name: 'Format', style: FIELD_ON },
       ],
       publicPages: [
-        { name: 'Sessions', path: '/e/devflow-conf-2027/sessions', state: 'Live', stateStyle: LIVE },
-        { name: 'Speakers', path: '/e/devflow-conf-2027/speakers', state: 'Live', stateStyle: LIVE },
-        { name: 'Agenda', path: '/e/devflow-conf-2027/agenda', state: 'Live', stateStyle: LIVE },
-        { name: 'Schedule and ICS', path: '/e/devflow-conf-2027/schedule', state: 'Live', stateStyle: LIVE },
-        { name: 'Speaker gallery', path: '/e/devflow-conf-2027/gallery', state: 'Not published', stateStyle: HIDDEN },
+        { name: 'Sessions', toggle: 'Unpublish', path: '/e/devflow-conf-2027/sessions', state: 'Live', stateStyle: LIVE },
+        { name: 'Speakers', toggle: 'Unpublish', path: '/e/devflow-conf-2027/speakers', state: 'Live', stateStyle: LIVE },
+        { name: 'Agenda', toggle: 'Unpublish', path: '/e/devflow-conf-2027/agenda', state: 'Live', stateStyle: LIVE },
+        { name: 'Schedule and ICS', toggle: 'Unpublish', path: '/e/devflow-conf-2027/schedule', state: 'Live', stateStyle: LIVE },
+        { name: 'Speaker gallery', toggle: 'Publish', path: '/e/devflow-conf-2027/gallery', state: 'Not published', stateStyle: HIDDEN },
       ],
       resources: [
         { name: 'Speaker handbook', detail: 'PDF · 2.1 MB' },
@@ -732,7 +1333,7 @@ class Component extends DCLogic {
       exports: [
         { name: 'Submissions', detail: 'CSV · 47 rows, all custom fields' },
         { name: 'Contacts', detail: 'CSV · 318 rows' },
-        { name: 'Schedule', detail: 'ICS · 17 placed sessions' },
+        { name: 'Schedule', toggle: 'Unpublish', detail: 'ICS · 17 placed sessions' },
         { name: 'Everything', detail: 'JSON · full event' },
       ],
       tokens: [

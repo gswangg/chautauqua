@@ -43,6 +43,97 @@ different Template columns for identical rows. A file:line read proves intent, n
 Scribes: a CLOSED-VERIFIED entry must cite a measured/exercised check (computed style, HTTP
 round-trip, rendered DOM), or it stays open.
 
+## V8 DESIGN INTAKE (2026-08-14 midday) — NEW AUTHORITY + THE RULINGS RECORD
+
+**Authority is now `chautauqua-research/design-frames-v8`** (121 frames / 12 sections;
+10 sections redrawn, agenda+home carried from v7) **plus `docs/design/DESIGN-RULINGS.md`**
+(vendored) — the design agent's ruling on every design-standard-brief item. From this
+intake forward, "matches a v8 frame or a recorded ruling" is the closed fidelity standard;
+anything matching neither is improvisation and gets flagged. verify-frames passed (five
+portal-frame 1px-border flags accepted as benign).
+
+**KNOWN-BROKEN FRAME — do not audit or build against it:** `08-contacts--02-contact-drawer`
+rendered without its four field groups (source bug: `valueStyle: VAL`/`VAL_EMPTY` constants
+undefined in Chautauqua Contacts.dc.html; reported to the user for a design-agent fix).
+Ruling A20's TEXT spec (four titled groups Contact/Profile/This event/Notes, "Nothing
+recorded" in disabled ink, sticky footer Delete-far-left / Cancel+Save right) stands
+meanwhile.
+
+**DROP (deletions, swarm work):** public-pages Change/edit view (read view carries
+everything; kill the gate) · bulk-bar "Delete…" on submissions · per-reviewer "Reset
+password" in the plan editor (Settings → People owns credentials) · the Edit link under
+the abstract (header "Edit title and abstract ›" covers it).
+
+**MUST-FIX:** `/logout` — currently 404s while dropping the session. Real POST →
+redirect `/login?signed-out=1`; login card carries one muted "You have been signed out."
+line. No dedicated screen.
+
+**⚡ PRIORITY BUILD BATCH (eval-relevant, frames delivered — this is the eval-lift lane):**
+1. **A1 worklist bulk-approve** (05-content--00 + Content·selecting·390): 26px checkbox
+   col; select-all with partial mark; ONLY re-uploads pre-ticked; bulk bar BELOW filters /
+   above header — "N selected · Approving sends nothing · the speaker sees it in their
+   portal · Approve N · Clear"; title row keeps quiet actions only. Phone = select mode.
+2. **A5 SESSION DETAILS section** on submission detail (02-submissions--02): fourth
+   numbered section after Reviews — tracks chips + Edit tracks, FORMAT + AUDIENCE LEVEL
+   selects, participants table (LEAD/CO-PRESENTER, Make co-presenter/Remove), add-co-
+   presenter search + "emailed a portal link · the lead presenter is not changed" note,
+   eyebrow "EDITABLE UNTIL THE SCHEDULE IS PUBLISHED".
+3. **A27 expanded reviews band** (03-review--00): review count is a disclosure; expanded
+   band REPEATS the results table's grid — per-criterion scores under their columns,
+   recused rows as em-dashes, footer "One reviewer recused · their scores are excluded
+   from the mean".
+4. **B1 comms seam** (Compose step 1 + step 4 frames): selection survives filter changes
+   and says so; unscheduled recipients named; every step's primary is the next step, Send
+   exists only at step 4; step 4 is a REPORT — leads with "21 of 23 speakers were
+   emailed", names each skipped recipient with reason + retry time.
+5. **A19 bulk-email template select** (08-contacts--10) + **A18 evaluation-plan select**
+   indented under Include-reviewer-feedback with "Only submitted, non-recused reviews are
+   merged." + **A26 public session-detail Save** in the header, same two-state control as
+   list rows, same `chq_itinerary_<slug>` key.
+
+**B10 settings edit views — the design gap is CLOSED, seven 1600 frames delivered**
+(editing: event / tracks-and-rooms / CFP / speaker portal / people-and-roles / one saved
+embed / your data). Build to frames; field width follows content; footer row right-flushed
+(never a full-width bar); each view carries its consequence line (see DESIGN-RULINGS B10
+table). Your-data: exports are actions (no edit view); API tokens own the edit view.
+
+**B8 interaction-states standard SUPERSEDES the interim ~16px state-band rule:** hover
+#EFEBDF no shift · selected adds 3px olive left edge replacing 3px of padding · expanded
+band #FAF8F2 with 1px #E1DDCE rules, inherits parent grid, 16px insets · carets right-edge
+via space-between (fixed-width) or 6px gap (content-width), muted ink, never a trailing
+glyph · focus 2px olive outline/2px offset everywhere · disabled #8E8A7A on #DDD8C8,
+genuinely-inert only.
+
+**Sign-in REDRAWN (11-account--00 "a card, not a stretched phone") — supersedes the
+732/820 hold ruling:** ~460px bordered card, vertically composed, footer row with
+right-flushed Sign in. ⚠ The frame shows a "Forgot your password?" link — that capability
+DOES NOT EXIST in the app; DEC pending with the user (build a reset flow vs drop the
+link). Do NOT ship a dead link; omit it until the DEC lands. Demo-accounts block per
+ruling A23: below the card, outside it, DEMO ACCOUNTS micro-label, prefills not submits.
+
+**Also recorded (ruling IS the artifact — flag deviations):** A2 detail-header tertiary
+links · A3 per-version Delete (tertiary, confirm only on newest) · A4 note version tags
+BLESSED · A6 rail Clone/Review-content links · A7 new-submission extras BLESSED
+(lowercase `· optional`) · A9 Delete-plan tertiary in footer, frozen with criteria ·
+A10 anonymize toggle beside Rating scale ("Hide speaker names from reviewers") · A11
+number-key scoring BLESSED unlabelled · A12 matrix-header one Edit link, Remove inside
+editor · A13 Import-CSV lives on the roster, not the filter row · A14 EMAILED marker
+BLESSED (micro-label) · A15 DELIVERABLE KIND restored in New-task · A17 Compose pill
+BLESSED · A21 lowercase optional suffixes · A22 settings rows BLESSED ("Open as a
+speaker" must say read-only; change-password moves to People beside your own row) ·
+A25 TBD room column BLESSED (dashed header rule, never public) · B2 breaks editor =
+2×2 modal in New-task register · B4 wave lifecycle (Start-a-new-wave = prefilled
+New-plan; reviewer landing skips to queue when single-plan) · B6 portal desktop = the
+390 column centered at 560, buttons shrink to right-flushed · B7 empty-state rules
+(fresh hides chrome + primary; filtered keeps chrome + names the facet + escape link;
+never headers-over-nothing; six empty-state frames delivered) · B9 email shell (four
+620 frames: Submission received / Accepted / Tasks outstanding / Schedule published).
+
+**OPEN from this intake:** (a) reviewer "Your plans" hub delivered 390-only — desktop
+artifact missing by the pack's own reflow principle; routed back to the design agent
+(cheap ruling: same list at the reading measure). (b) "Forgot your password?" DEC (above).
+(c) contact-drawer frame re-vendor after the VAL fix.
+
 ## GATE-4 FLEET VERDICTS (all 6 pair reports landed, audited vs design-frames-v7 on snapshot 33fbc724)
 
 01:2MAJ · 02:1MAJ · 03:4MAJ · 04:**PASS** · 05:2MAJ · 06:1BRK+4MAJ · 07:2MAJ ·
@@ -147,8 +238,9 @@ settings section-head flex row · public sessions 4 one-row filter selects with 
 caret + 34px clearance · review landing loads clean. The additive-reflow scan-lock is
 holding empirically, not just in code review.
 
-**RULING · USER-FILED (2026-08-14, sandbox tour #2): sign-in desktop geometry is
-FRAME-FAITHFUL — do not "fix" it.** User flagged login as "mobile-optimized and stretched"
+**SUPERSEDED by V8 intake (sign-in redrawn — see V8 section; build to 11-account--00
+"a card, not a stretched phone").** ~~RULING · USER-FILED (2026-08-14, sandbox tour #2):
+sign-in desktop geometry is FRAME-FAITHFUL — do not "fix" it.~~ User flagged login as "mobile-optimized and stretched"
 on desktop. Measured at 1440: card box 820 (732 content + 2×44 padding), inputs/submit 732,
 centered — exactly frame 11-account--00 at 1600 (its input column measures 732 with a
 full-column olive Sign in bar). The 03:50 box-math amendment (e8fe9dc4) trued the app UP to
@@ -160,8 +252,9 @@ build agent touches sign-in geometry. Scoping audit of the overnight auth commit
 (001a7960, 13db6d8c) found them clean — top-level additions inert on desktop, phone shells
 inside the 700px block.
 
-**DESIGN GAP · USER-FILED (2026-08-14) — settings EDIT views on desktop (routed to the
-design brief, NOT swarm work).** Every 09-settings sub-screen frame (Event / Tracks / CFP /
+**CLOSED by V8 intake (seven settings edit-view frames delivered — see V8 section, B10).**
+~~DESIGN GAP · USER-FILED (2026-08-14) — settings EDIT views on desktop (routed to the
+design brief, NOT swarm work).~~ Every 09-settings sub-screen frame (Event / Tracks / CFP /
 Public pages / Saved embeds) is 390-only; the desktop edit drill-ins are undesigned. Filed
 evidence: the CFP edit view — ~340px intro textarea in the 820 column, narrow date inputs,
 sparse rhythm, full-width olive Save + centered Cancel = phone anatomy at desktop. Do NOT

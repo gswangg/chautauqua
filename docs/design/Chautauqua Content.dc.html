@@ -55,7 +55,7 @@
             <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:36px; font-weight:700; letter-spacing:-0.04em; line-height:1">Content</h1>
             <span style="font-size:13px; color:#565A4B">5 need a decision · 2 re-uploaded</span>
           </div>
-          <div style="display:flex; gap:9px">
+          <div style="display:flex; align-items:center; gap:9px">
             <a href="#" style="border:1px solid #BAB6A6; border-radius:4px; padding:9px 15px; font-size:13px; font-weight:600; color:#1B1D17">All files</a>
             <a href="#" style="border:1px solid #BAB6A6; border-radius:4px; padding:9px 15px; font-size:13px; font-weight:600; color:#1B1D17">Refresh</a>
           </div>
@@ -68,12 +68,22 @@
           
         </div>
 
+        <div style="display:flex; align-items:center; gap:16px; background:#EFEBDF; border-radius:4px; padding:11px 15px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:14px; font-weight:600">2 selected</span>
+          <span style="font-size:12px; color:#565A4B">Approving sends nothing · the speaker sees it in their portal</span>
+          <div style="margin-left:auto; display:flex; gap:9px">
+            <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; padding:8px 14px; font-size:12px; font-weight:700">Approve 2</span>
+            <a href="#" style="font-size:12px; font-weight:700; padding:7px 4px">Clear</a>
+          </div>
+        </div>
+
         <div>
-          <div style="display:grid; grid-template-columns:1fr 168px 200px 152px auto; gap:18px; padding:0 0 9px; border-bottom:2px solid #1B1D17; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
-            <span>Session</span><span>Speaker</span><span>Latest file</span><span>Status</span><span></span>
+          <div style="display:grid; grid-template-columns:26px 1fr 168px 200px 152px auto; gap:18px; padding:0 0 9px; border-bottom:2px solid #1B1D17; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
+            <span>⊟</span><span>Session</span><span>Speaker</span><span>Latest file</span><span>Status</span><span></span>
           </div>
           <sc-for list="{{ rows }}" as="row" hint-placeholder-count="5">
-            <div style="display:grid; grid-template-columns:1fr 168px 200px 152px auto; gap:18px; align-items:baseline; padding:15px 0; border-bottom:1px solid #E1DDCE">
+            <div style="display:grid; grid-template-columns:26px 1fr 168px 200px 152px auto; gap:18px; align-items:baseline; padding:15px 0; border-bottom:1px solid #E1DDCE">
+              <span style="font-size:13px; color:#565A4B">{{ row.check }}</span>
               <div style="display:flex; flex-direction:column; gap:3px">
                 <a href="#" style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.015em; line-height:1.3; color:#1B1D17">{{ row.title }}</a>
                 <span style="font-size:12px; color:#565A4B">{{ row.ref }} · {{ row.slot }}</span>
@@ -192,7 +202,10 @@
           <span style="margin-left:auto; font-size:12px; font-weight:600; color:#565A4B">DevFlow 2027</span>
         </div>
         <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:27px; font-weight:700; letter-spacing:-0.04em; line-height:1">Content</h1>
-        <span style="font-size:13px; color:#565A4B; line-height:1.5">5 need a decision · 2 re-uploaded</span>
+        <div style="display:flex; align-items:center; gap:12px">
+          <span style="font-size:13px; color:#565A4B; line-height:1.5">5 need a decision · 2 re-uploaded</span>
+          <a href="#" style="margin-left:auto; font-size:13px; font-weight:700; min-height:44px; display:inline-flex; align-items:center; white-space:nowrap">Select</a>
+        </div>
         <div style="display:flex; gap:7px; overflow-x:auto; -webkit-overflow-scrolling:touch">
           <span style="flex-shrink:0; background:#1B1D17; color:#F4F1E8; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:600">Needs a decision · 5</span>
           <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:500">Approved · 9</span>
@@ -220,6 +233,51 @@
             <span style="{{ t.text }}">{{ t.label }}</span>
           </div>
         </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">390</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Content · selecting</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Approve many, in phone grammar</span>
+    </div>
+
+    <div style="width:390px; height:844px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:14px 16px; flex-shrink:0; display:flex; flex-direction:column; gap:11px">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:20px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+          <span style="margin-left:auto; font-size:12px; font-weight:600; color:#565A4B">DevFlow 2027</span>
+        </div>
+        <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:27px; font-weight:700; letter-spacing:-0.04em; line-height:1">Content</h1>
+        <div style="display:flex; align-items:center; gap:12px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:15px; font-weight:600">2 selected</span>
+          <a href="#" style="margin-left:auto; font-size:13px; font-weight:700; min-height:44px; display:inline-flex; align-items:center; white-space:nowrap">All 5</a>
+          <a href="#" style="font-size:13px; font-weight:700; min-height:44px; display:inline-flex; align-items:center">Done</a>
+        </div>
+        <div style="display:flex; gap:7px; overflow-x:auto; -webkit-overflow-scrolling:touch">
+          <span style="flex-shrink:0; background:#1B1D17; color:#F4F1E8; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:600">Needs a decision · 5</span>
+          <span style="flex-shrink:0; border:1px solid #BAB6A6; border-radius:99px; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:500">Approved · 9</span>
+        </div>
+      </div>
+
+      <div style="flex:1; min-height:0; overflow-y:auto; padding:4px 16px 16px">
+        <sc-for list="{{ rows }}" as="row" hint-placeholder-count="4">
+          <div style="padding:16px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:9px">
+            <div style="display:flex; align-items:center; gap:11px">
+              <span style="font-size:17px; color:#4E5C31">{{ row.check }}</span>
+              <span style="{{ row.statusStyleM }}">{{ row.status }}</span>
+            </div>
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:17px; font-weight:600; letter-spacing:-0.02em; line-height:1.3">{{ row.title }}</span>
+            <span style="font-size:13px; color:#565A4B; line-height:1.5">{{ row.speaker }} · {{ row.file }}, {{ row.when }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="flex-shrink:0; border-top:1px solid #1B1D17; background:#EFEBDF; padding:12px 16px 16px; display:flex; flex-direction:column; gap:8px">
+        <span style="background:#4E5C31; color:#F7F9F0; border-radius:6px; min-height:48px; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:700">Approve 2</span>
+        <span style="font-size:12px; color:#565A4B; line-height:1.5; text-align:center">Approving sends nothing · the speaker sees it in their portal</span>
       </div>
     </div>
   </div>
@@ -395,11 +453,11 @@ class Component extends DCLogic {
         { name: 'flags-demo.mp4', who: 'Tomas Bell · 6 days ago', session: 'Feature Flags Without the Debt', ver: 'v1', verStyle: 'font-size:12px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; color:#4E5C31', size: '186 MB' },
       ],
       rows: [
-        { title: 'Taming 40-Minute CI: Incremental Builds at Monorepo Scale', ref: 'DFC-014', slot: 'Tue 10:00, Room 2A', speaker: 'Priya Raman', file: 'Slides v3 · recording v1', when: 'yesterday', status: 'Re-uploaded', statusStyle: ST_AGAIN, statusStyleM: ST_AGAIN_M },
-        { title: 'Evaluating Agents: Harnesses, Judges, and Regression Sets', ref: 'DFC-041', slot: 'Tue 10:00, Workshop Lab', speaker: 'Nadia Ferrone', file: 'Workshop pack, 41 MB', when: '3 days ago', status: 'Re-uploaded', statusStyle: ST_AGAIN, statusStyleM: ST_AGAIN_M },
-        { title: 'Your AI Pair Programmer Is Lying to You', ref: 'DFC-021', slot: 'Tue 10:30, Main Stage', speaker: 'Marcus Okafor', file: 'Slides v1, 8 MB', when: '2 days ago', status: 'Not reviewed', statusStyle: ST_NEW, statusStyleM: ST_NEW_M },
-        { title: 'Trunk-Based Development at 400 Engineers', ref: 'DFC-019', slot: 'Tue 9:30, Room 2B', speaker: 'Iris Bell', file: 'Slides v2, 22 MB', when: '4 days ago', status: 'Not reviewed', statusStyle: ST_NEW, statusStyleM: ST_NEW_M },
-        { title: 'Feature Flags Without the Debt', ref: 'DFC-028', slot: 'Tue 11:00, Room 2B', speaker: 'Tomas Bell', file: 'Slides v1, 6 MB', when: '6 days ago', status: 'Not reviewed', statusStyle: ST_NEW, statusStyleM: ST_NEW_M },
+        { check: '☑', title: 'Taming 40-Minute CI: Incremental Builds at Monorepo Scale', ref: 'DFC-014', slot: 'Tue 10:00, Room 2A', speaker: 'Priya Raman', file: 'Slides v3 · recording v1', when: 'yesterday', status: 'Re-uploaded', statusStyle: ST_AGAIN, statusStyleM: ST_AGAIN_M },
+        { check: '☑', title: 'Evaluating Agents: Harnesses, Judges, and Regression Sets', ref: 'DFC-041', slot: 'Tue 10:00, Workshop Lab', speaker: 'Nadia Ferrone', file: 'Workshop pack, 41 MB', when: '3 days ago', status: 'Re-uploaded', statusStyle: ST_AGAIN, statusStyleM: ST_AGAIN_M },
+        { check: '☐', title: 'Your AI Pair Programmer Is Lying to You', ref: 'DFC-021', slot: 'Tue 10:30, Main Stage', speaker: 'Marcus Okafor', file: 'Slides v1, 8 MB', when: '2 days ago', status: 'Not reviewed', statusStyle: ST_NEW, statusStyleM: ST_NEW_M },
+        { check: '☐', title: 'Trunk-Based Development at 400 Engineers', ref: 'DFC-019', slot: 'Tue 9:30, Room 2B', speaker: 'Iris Bell', file: 'Slides v2, 22 MB', when: '4 days ago', status: 'Not reviewed', statusStyle: ST_NEW, statusStyleM: ST_NEW_M },
+        { check: '☐', title: 'Feature Flags Without the Debt', ref: 'DFC-028', slot: 'Tue 11:00, Room 2B', speaker: 'Tomas Bell', file: 'Slides v1, 6 MB', when: '6 days ago', status: 'Not reviewed', statusStyle: ST_NEW, statusStyleM: ST_NEW_M },
       ],
       versions: [
         { tag: 'v3', name: 'taming-ci-devflow.pdf', meta: '14 MB · Priya Raman, yesterday 18:40', mark: 'Newest', markStyle: 'font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#4E5C31' },

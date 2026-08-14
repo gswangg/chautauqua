@@ -65,9 +65,9 @@
 
         <div style="display:flex; align-items:center; gap:12px; border-top:1px solid #D3CFC0; border-bottom:1px solid #D3CFC0; padding:13px 0; flex-wrap:wrap">
           <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; color:#565A4B; background:#FAF8F2; min-width:230px">Search speaker or company…</div>
-          <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; font-weight:600">All tasks ▾</div>
-          <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; font-weight:600">Any task status ▾</div>
-          <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; font-weight:600">Any participation ▾</div>
+          <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; font-weight:600">All tasks<span style="color:#565A4B; padding-left:6px">▾</span></div>
+          <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; font-weight:600">Any task status<span style="color:#565A4B; padding-left:6px">▾</span></div>
+          <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; font-weight:600">Any participation<span style="color:#565A4B; padding-left:6px">▾</span></div>
           <span style="background:#1B1D17; color:#F4F1E8; border-radius:99px; padding:6px 13px; font-size:12px; font-weight:600">Overdue only</span>
           <span style="margin-left:auto; font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">Skips anyone emailed in the last hour</span>
         </div>
@@ -88,7 +88,7 @@
                 <a href="#" style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.015em; color:#1B1D17">{{ row.name }}</a>
                 <span style="font-size:12px; color:#565A4B">{{ row.meta }}</span>
                 <div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap">
-                  <span style="{{ row.inviteStyle }}" style-hover="box-shadow:0 0 0 2px #CFC7B7">{{ row.invite }} ▾</span>
+                  <span style="{{ row.inviteStyle }}" style-hover="box-shadow:0 0 0 2px #CFC7B7">{{ row.invite }}<span style="color:#565A4B; padding-left:6px">▾</span></span>
                   <sc-if value="{{ row.needsInvite }}" hint-placeholder-val="{{ false }}">
                     <a href="#" style="font-size:12px; font-weight:700">Send portal invite</a>
                   </sc-if>
@@ -151,7 +151,7 @@
             <div style="display:flex; flex-direction:column; gap:5px">
               <span style="font-family:'Familjen Grotesk', sans-serif; font-size:17px; font-weight:600; letter-spacing:-0.02em">{{ row.name }}</span>
               <span style="font-size:12px; color:#565A4B">{{ row.meta }}</span>
-              <span style="{{ row.inviteStyleM }}">{{ row.invite }} ▾</span>
+              <span style="{{ row.inviteStyleM }}">{{ row.invite }}<span style="color:#565A4B; padding-left:6px">▾</span></span>
             </div>
             <div style="display:flex; flex-direction:column; gap:8px">
               <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="6">
@@ -273,7 +273,7 @@
             <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:2px">
               <span style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.015em">{{ row.name }}</span>
               <span style="font-size:12px; color:#565A4B; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ row.meta }}</span>
-              <span style="{{ row.inviteStyleM }}">{{ row.invite }} ▾</span>
+              <span style="{{ row.inviteStyleM }}">{{ row.invite }}<span style="color:#565A4B; padding-left:6px">▾</span></span>
             </div>
             <span style="border:1px solid #BAB6A6; border-radius:6px; background:#EFEBDF; min-height:44px; display:flex; align-items:center; padding:0 13px; font-size:13px; font-weight:600">Open</span>
           </div>
@@ -313,6 +313,225 @@
       </div>
       <div style="border-top:1px solid #D3CFC0; background:#EFEBDF; padding:14px 20px; display:flex; flex-direction:column; gap:4px">
         <span style="font-size:12px; color:#565A4B; line-height:1.5">Only "Invited" sends anything — the other two just record what you already know</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">1600</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Speaker detail · /admin/speakers/:contactId</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">One person, everything about them</span>
+    </div>
+
+    <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        <span style="font-size:13px; font-weight:600; color:#565A4B">Speakers · Priya Raman</span>
+        <span style="margin-left:auto; font-size:13px; font-weight:600">DevFlow Conf 2027</span>
+      </header>
+
+      <div style="max-width:1440px; margin:0 auto; width:100%; padding:26px 34px 36px; display:flex; flex-direction:column; gap:26px">
+        <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px">
+          <div style="display:flex; align-items:center; gap:16px">
+            <div style="width:64px; height:64px; border-radius:50%; background:repeating-linear-gradient(135deg, #E1DDCE 0 6px, #D8D3C2 6px 12px); display:grid; place-items:center; flex-shrink:0"><span style="font-family:ui-monospace, monospace; font-size:10px; color:#565A4B">headshot</span></div>
+            <div style="display:flex; flex-direction:column; gap:5px">
+              <a href="#" style="font-size:13px; font-weight:700">‹ Speakers</a>
+              <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:32px; font-weight:700; letter-spacing:-0.04em; line-height:1">Priya Raman</h1>
+              <span style="font-size:13px; color:#565A4B">Latticework Systems · Principal Engineer · has an account</span>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px">
+            <span style="font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; color:#F7F9F0; background:#4E5C31; border-radius:3px; padding:4px 10px">Confirmed<span style="color:#565A4B; padding-left:6px">▾</span></span>
+            <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Email Priya</span>
+            <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Remind Priya</span>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 320px; gap:34px; align-items:start">
+          <div style="min-width:0; display:flex; flex-direction:column; gap:26px">
+            <section>
+              <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Sessions · 1 accepted</span>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 150px 130px; gap:18px; align-items:baseline; padding:15px 0; border-bottom:1px solid #E1DDCE">
+                <a href="#" style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:600; letter-spacing:-0.015em; line-height:1.3; color:#1B1D17">Taming 40-Minute CI: Incremental Builds at Monorepo Scale</a>
+                <span style="font-size:13px; color:#565A4B">Tue 10:00, Room 2A</span>
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; color:#4E5C31">Accepted</span>
+              </div>
+            </section>
+
+            <section>
+              <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px; display:flex; align-items:baseline; justify-content:space-between">
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Tasks · 2 outstanding</span>
+                <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#565A4B">Click a status to change it</span>
+              </div>
+              <sc-for list="{{ tasks }}" as="t" hint-placeholder-count="6">
+                <div style="display:grid; grid-template-columns:1fr 150px 130px auto; gap:18px; align-items:center; padding:12px 0; border-bottom:1px solid #E1DDCE">
+                  <span style="font-size:15px">{{ t.title }}</span>
+                  <span style="font-size:13px; color:#565A4B">{{ t.due }}</span>
+                  <span style="{{ t.style }}" style-hover="box-shadow:0 0 0 2px #CFC7B7">{{ t.state }}</span>
+                  <a href="#" style="font-size:12px; font-weight:700; color:#565A4B">Remind this task</a>
+                </div>
+              </sc-for>
+            </section>
+
+            <section>
+              <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Files · 3</span>
+              </div>
+              <sc-for list="{{ speakerFiles }}" as="v" hint-placeholder-count="3">
+                <div style="display:grid; grid-template-columns:52px 1fr 150px auto; gap:18px; align-items:center; padding:12px 0; border-bottom:1px solid #E1DDCE">
+                  <span style="font-family:'Familjen Grotesk', sans-serif; font-size:14px; font-weight:700">{{ v.tag }}</span>
+                  <span style="font-size:14px; word-break:break-all">{{ v.name }}</span>
+                  <span style="font-size:12px; color:#565A4B">{{ v.when }}</span>
+                  <a href="#" style="font-size:12px; font-weight:700">Download</a>
+                </div>
+              </sc-for>
+            </section>
+          </div>
+
+          <aside style="display:flex; flex-direction:column; gap:24px">
+            <section>
+              <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Contact</span>
+              </div>
+              <div style="padding:14px 0 0; display:flex; flex-direction:column; gap:4px">
+                <span style="font-size:14px">sbek-speaker@example.com</span>
+                <span style="font-size:13px; color:#565A4B">+1 415 555 0134</span>
+                <a href="#" style="font-size:13px; font-weight:700; padding-top:6px">Open the contact record ›</a>
+              </div>
+            </section>
+            <section>
+              <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Across your events</span>
+              </div>
+              <div style="padding:12px 0 0; display:flex; flex-direction:column; gap:2px">
+                <div style="padding:10px 0; border-bottom:1px solid #E1DDCE; display:flex; flex-direction:column; gap:2px">
+                  <span style="font-size:14px; font-weight:600">DevFlow 2026</span>
+                  <span style="font-size:13px; color:#565A4B">Spoke · Build Caches in Anger</span>
+                </div>
+                <div style="padding:10px 0; display:flex; flex-direction:column; gap:2px">
+                  <span style="font-size:14px; font-weight:600">DevFlow 2025</span>
+                  <span style="font-size:13px; color:#565A4B">Submitted, declined</span>
+                </div>
+              </div>
+            </section>
+            <section>
+              <div style="border-bottom:2px solid #1B1D17; padding-bottom:8px">
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase">Notes</span>
+              </div>
+              <div style="padding:14px 0 0; font-size:14px; line-height:1.6; color:#3F4237">Prefers a morning slot. Happy to share a hotel with other speakers.</div>
+            </section>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">1600</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Speakers · search found nothing</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Filtered · names the excluding facet</span>
+    </div>
+
+    <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        <nav style="display:flex; align-items:center; gap:15px; font-size:13px; font-weight:600; line-height:1">
+          <a href="#" style="color:#565A4B; padding:4px 0">Overview</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Submissions</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Review</a>
+          <span style="padding:4px 0; box-shadow:inset 0 -2px 0 #4E5C31">Speakers</span>
+          <a href="#" style="color:#565A4B; padding:4px 0">Content</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Agenda</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Comms</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Contacts</a>
+          <a href="#" style="color:#565A4B; padding:4px 0">Settings</a>
+        </nav>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:14px">
+          <span style="font-size:13px; font-weight:600">DevFlow Conf 2027</span>
+          <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Jordan A.</span>
+        </div>
+      </header>
+
+      <div style="max-width:1440px; margin:0 auto; width:100%; padding:34px 34px 44px; display:flex; flex-direction:column; gap:22px">
+        <div style="display:flex; align-items:baseline; gap:14px">
+          <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:36px; font-weight:700; letter-spacing:-0.04em; line-height:1">Speakers</h1>
+          <span style="font-size:13px; color:#565A4B">12 accepted · 3 overdue</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:9px; border-top:1px solid #D3CFC0; border-bottom:1px solid #D3CFC0; padding:12px 0; flex-wrap:wrap">
+          <div style="border:1px solid #BAB6A6; border-radius:4px; padding:8px 12px; font-size:13px; color:#1B1D17; background:#FAF8F2; min-width:230px">okafor</div>
+          <span style="background:#1B1D17; color:#F4F1E8; border-radius:99px; padding:7px 14px; font-size:13px; font-weight:600">Overdue only</span>
+          <a href="#" style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 14px; font-size:13px; font-weight:500; color:#3F4237">All tasks</a>
+          <a href="#" style="border:1px solid #BAB6A6; border-radius:99px; padding:6px 14px; font-size:13px; font-weight:500; color:#3F4237">Any participation</a>
+        </div>
+        <div style="padding:30px 0 24px; display:flex; flex-direction:column; gap:12px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:26px; font-weight:700; letter-spacing:-0.035em; line-height:1.2">No speaker matches all three filters</span>
+          <span style="font-size:16px; line-height:1.65; color:#3F4237; max-width:52ch">Marcus Okafor is on the roster, but nothing of his is overdue. Clearing “Overdue only” finds him.</span>
+          <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding-top:6px">
+            <a href="#" style="font-size:14px; font-weight:700">Clear the overdue filter ›</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#1B1D17; color:#F4F1E8; padding:5px 10px; border-radius:4px">Modal</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Review these reminders</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Where the reminder email is actually read</span>
+    </div>
+
+    <div style="width:560px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:20px 26px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px">
+        <div style="display:flex; flex-direction:column; gap:4px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:23px; font-weight:700; letter-spacing:-0.035em; line-height:1">Review these reminders</span>
+          <span style="font-size:13px; color:#565A4B">3 speakers · nothing has been sent yet</span>
+        </div>
+        <a href="#" style="font-size:13px; font-weight:700">Close</a>
+      </div>
+
+      <div style="padding:20px 26px 26px; display:flex; flex-direction:column; gap:18px">
+        <sc-for list="{{ remindPreview }}" as="r" hint-placeholder-count="3">
+          <div style="display:grid; grid-template-columns:1fr auto; gap:16px; align-items:baseline; padding-bottom:12px; border-bottom:1px solid #E1DDCE">
+            <div style="display:flex; flex-direction:column; gap:2px">
+              <span style="font-size:15px; font-weight:600">{{ r.name }}</span>
+              <span style="font-size:13px; color:#565A4B; line-height:1.5">{{ r.tasks }}</span>
+            </div>
+            <span style="{{ r.flagStyle }}">{{ r.flag }}</span>
+          </div>
+        </sc-for>
+
+        <div style="display:flex; flex-direction:column; gap:8px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">What Marcus will read</span>
+          <div style="background:#E9E7E2; border:1px solid #D3CFC0; border-radius:5px; padding:20px">
+            <div style="max-width:560px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:4px; padding:22px 24px; display:flex; flex-direction:column; gap:14px">
+              <div style="display:flex; flex-direction:column; gap:2px; padding-bottom:12px; border-bottom:1px solid #E1DDCE">
+                <span style="font-family:'Familjen Grotesk', sans-serif; font-size:17px; font-weight:700; letter-spacing:-0.025em">DevFlow Conf 2027</span>
+                <span style="font-size:12px; color:#565A4B">12–14 May 2027 · Moscone West, San Francisco</span>
+              </div>
+              <span style="font-size:15px; line-height:1.6">Hi Marcus,</span>
+              <span style="font-size:15px; line-height:1.65; color:#3F4237">A quick nudge — two of your speaker tasks are still open, and one is past its due date.</span>
+              <div style="border-left:3px solid #4E5C31; padding:2px 0 2px 14px; display:flex; flex-direction:column; gap:4px">
+                <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">Still to do</span>
+                <span style="font-size:14px; line-height:1.6">Upload headshot — was due 10 April. Complete your bio — due 10 April.</span>
+              </div>
+              <span style="display:inline-flex; align-items:center; align-self:flex-start; background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:44px; padding:0 20px; font-size:14px; font-weight:700">Open your tasks</span>
+              <span style="font-size:13px; color:#565A4B; line-height:1.6; word-break:break-all">Or paste this into your browser: chautauqua.cc/portal/tasks</span>
+              <span style="font-size:15px; line-height:1.6; color:#3F4237">— Jordan Alvarez, DevFlow Conf</span>
+            </div>
+          </div>
+          <span style="font-size:12px; color:#565A4B; line-height:1.5">Each speaker's list is their own · the body is built from their outstanding tasks, not typed</span>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+          <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Send these 3</span>
+          <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Cancel</span>
+          <span style="font-size:12px; color:#565A4B; line-height:1.5">Logged in Comms history</span>
+        </div>
       </div>
     </div>
   </div>
@@ -367,6 +586,24 @@ const M_LABEL = 'font-size:15px; font-weight:600';
 class Component extends DCLogic {
   renderVals() {
     return {
+      tasks: [
+        { title: 'Confirm participation', due: 'Was due 1 Apr', state: 'Complete', style: DONE },
+        { title: 'Upload headshot', due: 'Was due 10 Apr', state: 'Complete', style: DONE },
+        { title: 'Bio and profile', due: 'Due 10 Apr', state: 'Pending', style: PEND },
+        { title: 'Final slides', due: 'Due 1 May', state: 'Pending', style: PEND },
+        { title: 'Speaker release', due: 'Was due 20 Apr', state: 'Complete', style: DONE },
+        { title: 'Hotel stay form', due: 'Due 25 Apr', state: 'Complete', style: DONE },
+      ],
+      speakerFiles: [
+        { tag: 'v3', name: 'taming-ci-devflow.pdf', when: 'Yesterday' },
+        { tag: 'v2', name: 'taming-ci-devflow.pdf', when: '8 days ago' },
+        { tag: 'v1', name: 'taming-ci-draft.key', when: '22 days ago' },
+      ],
+      remindPreview: [
+        { name: 'Marcus Okafor', tasks: 'Upload headshot · Complete your bio', flag: '1 overdue', flagStyle: 'font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; white-space:nowrap' },
+        { name: 'Ruth Adeyemi', tasks: 'Upload final slides', flag: '1 overdue', flagStyle: 'font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; white-space:nowrap' },
+        { name: 'Oskar Vance', tasks: 'Sign speaker release', flag: 'Due soon', flagStyle: 'font-size:11px; font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:#565A4B; white-space:nowrap' },
+      ],
       responseRows: [
         { q: 'Do you need a room?', a: 'Yes, two nights' },
         { q: 'Arriving', a: '11 May 2027' },
