@@ -407,3 +407,50 @@ describe('overview headline row CSS contract (DEC-877 amendment)', () => {
     expect(toolbarMatch![1]).toMatch(/flex-shrink:\s*0/);
   });
 });
+
+// Gate-4 wave-6 amendment: pins the five top-third junctions (plus the two
+// button/row pitch fixes in the same class) that regressed +86px (+28%)
+// against the frame. Reads the raw stylesheet text (jsdom does not apply an
+// external stylesheet — see the headline-row contract test above) so the
+// declared spacing values themselves can't silently drift back.
+describe('overview top-third spacing measure (Gate-4 wave-6 amendment)', () => {
+  const cssPath = join(dirname(fileURLToPath(import.meta.url)), 'overview', 'overview.css');
+  const css = readFileSync(cssPath, 'utf8');
+  const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+
+  function ruleBody(selector: string): string {
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = withoutMedia.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
+    const body = match?.[1];
+    if (body === undefined) throw new Error(`no top-level rule found for ${selector}`);
+    return body;
+  }
+
+  it('header-rule -> band-rule and band-rule -> toolbar-top: the deadlines strip margin is 8px top / 6px bottom', () => {
+    expect(ruleBody('.chq-overview-deadlines')).toMatch(/margin:\s*8px 0 6px/);
+  });
+
+  it('stat band: the deadline cell vertical padding is 11px', () => {
+    expect(ruleBody('.chq-overview-deadline-cell')).toMatch(/padding:\s*11px 14px/);
+  });
+
+  it('h1 ink bottom -> the §01 2px rule: headline-row margin-bottom is 6px and section-header padding-bottom is 3px', () => {
+    expect(ruleBody('.chq-overview-headline-row')).toMatch(/margin:\s*0 0 6px/);
+    expect(ruleBody('.chq-overview-section-header')).toMatch(/padding-bottom:\s*3px/);
+  });
+
+  it('§01 row pitch: the overdue row overrides the shared padding to 11.5px, leaving other row shapes untouched', () => {
+    expect(ruleBody('.chq-overview-row-overdue')).toMatch(/padding:\s*11.5px 0/);
+    expect(ruleBody('.chq-overview-row')).toMatch(/padding:\s*16px 0/);
+  });
+
+  it('toolbar buttons: vertical padding is 4.2px (secondary) / 5.2px (primary), horizontal padding unchanged', () => {
+    expect(ruleBody('.chq-overview-toolbar-btn')).toMatch(/padding:\s*4.2px 16px/);
+    expect(ruleBody('.chq-overview-toolbar-btn-primary')).toMatch(/padding:\s*5.2px 16px/);
+  });
+
+  it('"No action needed" quiet-row pitch: vertical padding is 8.6px, the shared value column grid is untouched', () => {
+    expect(ruleBody('.chq-overview-row-quiet')).toMatch(/padding:\s*8.6px 0/);
+    expect(ruleBody('.chq-overview-row-quiet')).toMatch(/grid-template-columns:\s*220.5px 1fr/);
+  });
+});
