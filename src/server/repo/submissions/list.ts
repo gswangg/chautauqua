@@ -44,7 +44,7 @@ function latestDeliverableVersionNoSql() {
 
 /** DEC-881: a submission is re-uploaded when its latest deliverable file's
  * version_no > 1. NULL (no files yet) is not re-uploaded. */
-function reUploadedSql() {
+export function reUploadedSql() {
   return sql`coalesce(${latestDeliverableVersionNoSql()} > 1, 0)`;
 }
 

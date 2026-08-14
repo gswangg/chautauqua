@@ -17,7 +17,7 @@ import {
   type FileKind,
   type FileComment,
 } from './types';
-import { worklistStatusLabel } from './worklist';
+import { worklistStatusLabel, worklistStatusEmphasisClass } from './worklist';
 // DEC-761/DEC-998: code that depends on a decision must reference its
 // constant.
 import { DEC_998 } from '../../../../src/decisions';
@@ -52,6 +52,10 @@ interface DeliverableHeaderDetail {
   updatedAt: number;
   participants: DeliverableHeaderParticipant[];
   slot: DeliverableHeaderSlot | null;
+  // DEC-881: same predicate the worklist row/header read (reUploadedSql,
+  // src/server/repo/submissions/list.ts) -- composed here, never re-derived,
+  // so the band and the worklist row that opened it can never disagree.
+  reuploaded: boolean;
 }
 
 const ROOM_TBA_LABEL = 'To be announced';
@@ -263,6 +267,10 @@ export function DeliverableDetail({
     }
   }
 
+  // w6-e (DEC-881): the band's status reads the SAME predicate the worklist
+  // row does -- headerDetail.reuploaded, absent (false) only while the
+  // header fetch hasn't resolved yet, never a fabricated guess.
+  const statusLabel = worklistStatusLabel(pill, headerDetail?.reuploaded ?? false);
   const subtitleTrailer = headerDetail ? formatDetailTrailer(headerDetail) : null;
   // DEC-901/DEC-998: the shown speaker name (first participant, '+N' suffix
   // for the rest, unchanged from the prior plain-text form) is now a link
@@ -347,21 +355,27 @@ export function DeliverableDetail({
           ("Content status" label over the status value) and the value
           reads through worklistStatusLabel (worklist.ts) -- the SAME
           vocabulary the worklist row's status cell uses -- rather than a
-          second label set (CONTENT_STATUS_LABELS). This component has no
-          re-upload signal available from GET /submissions/:id today, so
-          reUploaded is passed as false; a future task that threads that
-          flag through can drop the literal. */}
+          second label set (CONTENT_STATUS_LABELS).
+
+          w6-e (DEC-881 amendment): reUploaded now threads through from
+          GET /submissions/:id (SubmissionDetail.reuploaded, composed from
+          the same reUploadedSql() the worklist row/header read) -- the band
+          can no longer disagree with the worklist row that opened it. The
+          value line is "<STATUS> · <since clause>" on one span, the
+          existing honest "Updated <date>" meta supplying the since clause
+          (no fabricated actor). Emphasis reads through ONE shared class
+          mapping (worklist.ts's worklistStatusEmphasisClass, composed with
+          content.css's .chq-content-status-muted / the base .chq-flag) that
+          both this band and the worklist status cell consume. */}
       <div className="chq-content-status-band">
         <div className="chq-content-status-band-info">
           <div className="chq-content-status-band-copy">
             <span className="chq-content-status-band-label">Content status</span>
-            <span className={pill === 'changes_requested' ? 'chq-flag' : 'chq-flag chq-content-status-muted'}>
-              {worklistStatusLabel(pill, false)}
+            <span className={['chq-flag', worklistStatusEmphasisClass(statusLabel)].filter(Boolean).join(' ')}>
+              {statusLabel}
+              {headerDetail ? ` · Updated ${formatDate(headerDetail.updatedAt)}` : ''}
             </span>
           </div>
-          {headerDetail && (
-            <span className="chq-meta">Updated {formatDate(headerDetail.updatedAt)}</span>
-          )}
         </div>
         <div className="chq-content-status-band-actions">
           {/* DEC-756/DEC-733: Approve renders only while the session is not
