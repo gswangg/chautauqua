@@ -23,22 +23,16 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   UNBOUNDED SURFACE NEVER PAGED -- cap the QUERY not the array. TREE MOVES
   WHILE YOU PLAN. MIGRATION THAT CAN'T RUN IS A SCHEMA THAT DOESN'T EXIST
   (D1 rejects CREATE TEMP TABLE). COMMENT CLAIMING A CHECK IS NOT A CHECK.
-- FINDINGS w55-58: PLANNER'S FIRST READ CAN BE STALE -- re-read before
-  reserve. MANDATE CAN RUN OUT -> READ REPOS. A CONSTRAINT ONE LEVEL DOWN IS
-  STILL MISSING -- sweep every writer of a table a unique index lands on. A
-  JS CAP OVER AN UNBOUNDED READ: count/slice in SQL. A REVERT MANDATE IS NOT
-  A REVERT -- open the file. THE COUNT YOU ONLY `.size` IS A GROUP BY. NO
-  LOWER BOUND IS A FOREVER LOOP. A SHORT-CIRCUIT OVER A KDF IS AN ORACLE. A
-  CONFIG THROW ON AN ANONYMOUS SURFACE IS A 500.
-- FINDINGS w59-60: THE MANDATE IS SPENT, CONFIRMED TWICE — gate-3/eval items
-  re-verified CLOSED at file:line. Work now comes only from READING. A
-  DECISION THAT NAMES ITS OWN CONSUMERS IS A CHECKLIST — WALK IT: DEC-829's
-  chase alone skipped acceptedSpeakerConditions. A UI LABEL IS A SPEC.
-  A CANONICAL TASK MUST WRITE WHERE ITS NAME POINTS. A MODULE HEADER THAT
-  LISTS ITS OWN CASCADE IS A CHECKLIST — submission-delete's prose omitted
-  evaluation and plan_reviewer. THE GUARD IS NOT THE CASCADE. A ONE-WAY
-  STATUS IS A BROKEN LOOP. WHEN TWO SIBLING DEDUPES BOTH PRESERVE PROGRESS,
-  THE THIRD ONE BETWEEN THEM IS THE BUG. RE-READ BEFORE RESERVING.
+- FINDINGS w55-60 (compacted): re-read before reserve; mandate can run out ->
+  read repos; sweep every writer of a table a unique index lands on; JS cap
+  over unbounded read -> count/slice in SQL; revert mandate is not a revert;
+  `.size` is a GROUP BY; no lower bound is a forever loop; short-circuit over
+  a KDF is an oracle; config throw on anonymous surface is a 500; a decision
+  naming its own consumers is a checklist to WALK; a UI label is a spec; a
+  module header listing its own cascade is a checklist (submission-delete
+  omitted evaluation/plan_reviewer); the guard is not the cascade; a one-way
+  status is a broken loop; when two sibling dedupes both preserve progress,
+  the third between them is the bug.
 - FINDINGS w61: THE MANDATE IS SPENT, FOURTH CONFIRMATION — ten more
   eval-findings items re-probed CLOSED at file:line. THREE SIBLING COUNTS ON
   ONE HEADER, TWO CARRY THE PREDICATE: "N accepted · M tasks open · K overdue"
@@ -52,3 +46,15 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   MODULE CANNOT BE APPLIED BY THE NEXT — the `err.cause` walk was fixed for
   tasks in w48 and still missing in segments, turning a promised 400 into a 500.
   A NUDGE WITH NO LINK IS NOT A NUDGE.
+- FINDINGS w62: MANDATE SPENT, FIFTH CONFIRMATION — reminder tail, login KDF,
+  fireAcceptance-on-re-accept and the anonymous .ics organizer all re-verified
+  CLOSED at file:line. THE SANITIZER YOU WROTE FOR ONE SERIALIZER IS OWED TO
+  EVERY SERIALIZER: ics.ts strips C0/DEL because public CFP text reaches it —
+  the MIME builder and the XML feed builder take the same input and never got
+  the rule. A HEADER IS A LINE; A LINE ENDS AT CRLF. AN ATTACHMENT PUSHED INTO
+  multipart/alternative REPLACES THE BODY, it does not accompany it. IO YOU
+  DON'T CONSUME IS STILL IO — and when minting REVOKES, an unused mint is
+  destructive: mint only what the message carries. A CAP ON ONE SIBLING IS A
+  MEASUREMENT OF THE OTHERS — three reads on one handler, only one capped.
+  A CAP WITH NO ORDER BY IS A NONDETERMINISTIC TRUNCATION. A FUNCTION WHOSE
+  ONLY CALLER IS A vi.fn IS DEAD — delete it, don't cap it.
