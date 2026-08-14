@@ -467,7 +467,7 @@ export function ResultsTable({
               {expanded && (evaluationsLoadingId === row.submissionId ||
                 (evaluationsError && !evaluations) ||
                 (evaluations && evaluations.length === 0)) && (
-                <tr className="chq-review-reviews-row chq-review-band-row chq-review-band-first chq-review-band-last">
+                <tr className="chq-review-reviews-row chq-review-band-first chq-review-band-last">
                   <td colSpan={columnCount} className="chq-review-reviews-detail">
                     {evaluationsLoadingId === row.submissionId && <DelayedLoading label="Loading reviews…" />}
                     {evaluationsError && !evaluations && evaluationsLoadingId !== row.submissionId && (
@@ -489,7 +489,7 @@ export function ResultsTable({
                   <tr
                     key={`${ev.planId}-${ev.round}-${i}`}
                     className={
-                      'chq-review-reviews-row chq-review-band-row' +
+                      'chq-review-reviews-row' +
                       (i === 0 ? ' chq-review-band-first' : '') +
                       (i === evaluations.length - 1 && row.recusals === 0 ? ' chq-review-band-last' : '')
                     }
@@ -525,7 +525,7 @@ export function ResultsTable({
                   </tr>
                 ))}
               {expanded && evaluations && evaluations.length > 0 && row.recusals > 0 && (
-                <tr className="chq-review-reviews-row chq-review-band-row chq-review-band-last chq-review-reviews-recusal-footer">
+                <tr className="chq-review-reviews-row chq-review-band-last chq-review-reviews-recusal-footer">
                   <td colSpan={columnCount} className="chq-review-reviews-detail">
                     {countOf(row.recusals, 'reviewer')} recused · their scores are excluded from the mean
                   </td>

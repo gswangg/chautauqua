@@ -302,7 +302,12 @@
   white-space: nowrap;
 }
 
+/* DEC-939 wave-20: a colSpan band carries its own fill and REAL 16px padding
+   (no negative margin -- there are no sibling columns to stay aligned to).
+   Still applies after DEC-633 wave-25: the loading/empty/recusal-footer rows
+   remain colSpan bands even though each evaluation is now a real <tr>. */
 .chq-review-reviews-detail {
+  background: var(--chq-surface);
   padding: 16px;
 }
 
@@ -317,22 +322,29 @@
    top of that grid, not a per-surface variant. Keep additions to this
    file in this clearly separated block (review.css is also touched by
    w25-g's plan editor work). */
-.chq-review-band-row {
+.chq-review-reviews-row {
   background: var(--chq-surface);
 }
 
-.chq-review-band-row > td {
+.chq-review-reviews-row > td {
   padding-top: 16px;
   padding-bottom: 16px;
   border-bottom: none;
 }
 
-.chq-review-band-row.chq-review-band-first > td {
+.chq-review-reviews-row.chq-review-band-first > td {
   border-top: 1px solid var(--chq-hairline);
 }
 
-.chq-review-band-row.chq-review-band-last > td {
+.chq-review-reviews-row.chq-review-band-last > td {
   border-bottom: 1px solid var(--chq-hairline);
+}
+
+/* The band's cells inherit the results table's column widths; they only need
+   to top-align, since the Speaker cell carries a multi-line comment while its
+   siblings are short or empty. */
+.chq-review-reviews-cell {
+  vertical-align: top;
 }
 
 .chq-review-reviews-recusal-footer .chq-review-reviews-detail {

@@ -7,8 +7,13 @@
 //     grid-template-columns stay pixel-identical to unstated siblings).
 //   - .chq-review-reviews-detail: background + non-zero padding (this is
 //     the colSpan <td>, so real padding is correct -- no negative margin).
-//   - .chq-review-reviews-item-head: declares grid-template-columns and no
-//     longer free-floats its cells with justify-content: space-between.
+//   - the reviews band keeps the surface's columns and never free-floats its
+//     cells with justify-content: space-between. DEC-633's wave-25 amendment
+//     SUPERSEDES the original form of this clause: .chq-review-reviews-item-head
+//     (a colSpan free-float list styled with its own hand-copied grid template)
+//     no longer exists -- each evaluation is a real <tr> in the results table,
+//     so the browser aligns it to the header columns. The wave-20 requirement
+//     is therefore pinned on the real-row band instead of the deleted rule.
 //   - .chq-review-queue-row-action: keeps max-width, drops the min-width
 //     floor that invented width the frame does not have.
 import { readFileSync } from "node:fs";
@@ -53,10 +58,24 @@ describe("review.css state-band inset (DEC-939 wave-20 amendment)", () => {
     expect(body).not.toMatch(/padding:\s*0/);
   });
 
-  it(".chq-review-reviews-item-head declares grid-template-columns and never justify-content: space-between", () => {
-    const body = findRule(css, ".chq-review-reviews-item-head");
-    expect(body).toMatch(/grid-template-columns:/);
-    expect(body).not.toMatch(/justify-content:\s*space-between/);
+  it("the reviews band is real table rows and never free-floats with justify-content: space-between (DEC-633 wave-25)", () => {
+    // The band row carries the fill; its cells take the 16px inset. Both are
+    // real <tr>/<td>, so the column grid is the table's own -- nothing to
+    // hand-copy and nothing to drift.
+    const row = findRule(css, ".chq-review-reviews-row");
+    expect(row).toMatch(/background:/);
+    const cells = findRule(css, ".chq-review-reviews-row > td");
+    expect(cells).toMatch(/padding-top:\s*16px/);
+    expect(cells).toMatch(/padding-bottom:\s*16px/);
+
+    // The superseded free-float rule must NOT come back, in any form: no
+    // .chq-review-reviews-* rule may lay its cells out with space-between.
+    // (Scoped to the band -- unrelated review.css rules use space-between
+    // legitimately, and wave-20's clause was only ever about this band.)
+    expect(css).not.toMatch(/\.chq-review-reviews-item-head\s*\{/);
+    const bandRules = css.match(/\.chq-review-reviews-[\w->. ]*\{[^{}]*\}/g) ?? [];
+    expect(bandRules.length).toBeGreaterThan(0); // vacuous-scan tripwire
+    expect(bandRules.filter((r) => /justify-content:\s*space-between/.test(r))).toEqual([]);
   });
 
   it(".chq-review-queue-row-action declares no min-width floor", () => {
