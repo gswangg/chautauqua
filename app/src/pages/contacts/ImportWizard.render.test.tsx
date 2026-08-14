@@ -62,7 +62,7 @@ const COMMIT_RESULT: ImportResult = {
 async function pasteCsvAndPreview() {
   render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
   fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
-  const preview = await screen.findByRole('button', { name: 'Preview 2 rows' });
+  const preview = await screen.findByRole('button', { name: 'Import 2 rows' });
   fireEvent.click(preview);
   return preview;
 }
@@ -171,7 +171,7 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
     mockApi({ 'POST /api/v1/contacts/import': dupPlan });
     render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
     fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
-    fireEvent.click(await screen.findByRole('button', { name: 'Preview 2 rows' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Import 2 rows' }));
 
     await screen.findByText('Review before import');
     expect(screen.getByText(/Jon Doe \(jon\.doe@old\.example\.com\)/)).toBeInTheDocument();
@@ -221,7 +221,7 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
     let imported = false;
     render(<ImportWizard onClose={() => {}} onImported={() => (imported = true)} />);
     fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
-    fireEvent.click(await screen.findByRole('button', { name: 'Preview 2 rows' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Import 2 rows' }));
     await screen.findByText('Review before import');
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Skip line 2' }));
@@ -253,7 +253,7 @@ describe('ImportWizard: DEC-810 session title required when scoped to an event',
   it('shows no session title field when eventId is absent', async () => {
     render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
     fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
-    await screen.findByRole('button', { name: 'Preview 2 rows' });
+    await screen.findByRole('button', { name: 'Import 2 rows' });
     expect(screen.queryByLabelText('Session title for this batch')).not.toBeInTheDocument();
   });
 
@@ -262,7 +262,7 @@ describe('ImportWizard: DEC-810 session title required when scoped to an event',
     render(<ImportWizard onClose={() => {}} onImported={() => {}} eventId="ev-1" />);
     fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
 
-    const preview = await screen.findByRole('button', { name: 'Preview 2 rows' });
+    const preview = await screen.findByRole('button', { name: 'Import 2 rows' });
     expect(preview).toBeDisabled();
 
     const titleInput = screen.getByLabelText('Session title for this batch');
@@ -287,7 +287,7 @@ describe('ImportWizard: DEC-810 session title required when scoped to an event',
     render(<ImportWizard onClose={() => {}} onImported={() => {}} eventId="ev-1" />);
     fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
 
-    const preview = await screen.findByRole('button', { name: 'Preview 2 rows' });
+    const preview = await screen.findByRole('button', { name: 'Import 2 rows' });
     expect(preview).toBeDisabled();
     expect(screen.getByText('Add a session title for this batch to preview')).toBeInTheDocument();
 
@@ -296,5 +296,65 @@ describe('ImportWizard: DEC-810 session title required when scoped to an event',
 
     expect(preview).not.toBeDisabled();
     expect(screen.queryByText('Add a session title for this batch to preview')).not.toBeInTheDocument();
+  });
+});
+
+// w1-i (DEC-663, frame 08--03): step 2 ("Match columns") is a real screen --
+// once a header row is parsed, step 1's file/paste controls unmount, and
+// the screen becomes one block per CSV column (header above a sample value,
+// target select beneath) plus a dedupe footer and the primary carrying the
+// row count.
+describe('ImportWizard: w1-i step 2 "Match columns" screen', () => {
+  it('unmounts step 1\'s file/paste controls once a header row is parsed', async () => {
+    render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
+    // Step 1: file/paste controls present, no column blocks yet.
+    expect(screen.getByLabelText('Upload a CSV file')).toBeInTheDocument();
+    expect(screen.getByLabelText('Or paste CSV text')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Map column Email')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
+
+    // Step 2: column blocks appear, and step 1's controls are gone.
+    await screen.findByLabelText('Map column Email');
+    expect(screen.queryByLabelText('Upload a CSV file')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Or paste CSV text')).not.toBeInTheDocument();
+  });
+
+  it('pairs each column\'s header with a sample value from the file, above its target select', async () => {
+    render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
+    fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
+
+    const emailSelect = await screen.findByLabelText('Map column Email');
+    const emailBlock = emailSelect.closest('.chq-contacts-import-column-block');
+    expect(emailBlock).not.toBeNull();
+    expect(within(emailBlock as HTMLElement).getByText('Email')).toBeInTheDocument();
+    expect(within(emailBlock as HTMLElement).getByText('john@example.com')).toBeInTheDocument();
+    expect(within(emailBlock as HTMLElement).getByRole('button', { name: 'Skip this column' })).toBeInTheDocument();
+
+    const companySelect = screen.getByLabelText('Map column Company');
+    const companyBlock = companySelect.closest('.chq-contacts-import-column-block');
+    expect(within(companyBlock as HTMLElement).getByText('Company')).toBeInTheDocument();
+    expect(within(companyBlock as HTMLElement).getByText('Acme')).toBeInTheDocument();
+  });
+
+  it('the "skip this column" affordance clears that column\'s mapping', async () => {
+    render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
+    fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
+
+    const emailSelect = (await screen.findByLabelText('Map column Email')) as HTMLSelectElement;
+    expect(emailSelect.value).toBe('email');
+
+    const emailBlock = emailSelect.closest('.chq-contacts-import-column-block') as HTMLElement;
+    fireEvent.click(within(emailBlock).getByRole('button', { name: 'Skip this column' }));
+
+    expect(emailSelect.value).toBe('');
+  });
+
+  it('the primary\'s label carries the row count on step 2', async () => {
+    render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
+    fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
+    await screen.findByLabelText('Map column Email');
+
+    expect(screen.getByRole('button', { name: 'Import 2 rows' })).toBeInTheDocument();
   });
 });

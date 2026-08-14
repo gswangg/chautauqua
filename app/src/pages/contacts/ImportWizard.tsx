@@ -36,8 +36,6 @@ interface Props {
 // (the checked "skip this row" boxes), never a body reconstructed from
 // possibly-since-edited mapping state.
 
-const PREVIEW_ROWS = 5;
-
 interface PlannedRequest {
   csvText: string;
   mapping: Record<string, string>;
@@ -53,6 +51,7 @@ function actionLabel(row: ImportPlanRow): string {
 
 export function ImportWizard({ onClose, onImported, eventId }: Props) {
   const [csvText, setCsvText] = useState('');
+  const [fileName, setFileName] = useState<string | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   // DEC-810: when this import is scoped to an event, the whole batch shares
   // one session title -- collected here, in the step where the event is
@@ -96,8 +95,24 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [header.join('\u0000')]);
 
-  const previewRows = dataRows.slice(0, PREVIEW_ROWS);
-  const previewMapped = previewRows.map((row) => mapImportRow(mapping, header, row));
+  // Match-columns dedupe footer: a client-side approximation ("N rows share
+  // an email with an earlier row in THIS file") computed from data already
+  // on the page -- not a query against existing contacts, which only the
+  // server's dry run (POST .../import { dryRun: true }, see runPreview
+  // below) can answer. Real cross-file dedupe/update counts are shown on
+  // the Review step once that dry run returns; this step's number is a
+  // best-effort preview of the same idea using only what's parsed so far.
+  const dedupeCount = useMemo(() => {
+    const seen = new Set<string>();
+    let dupes = 0;
+    for (const row of dataRows) {
+      const mapped = mapImportRow(mapping, header, row);
+      if (!mapped.email) continue;
+      if (seen.has(mapped.email)) dupes += 1;
+      else seen.add(mapped.email);
+    }
+    return dupes;
+  }, [dataRows, mapping, header]);
 
   // Step strip (mock "Import CSV · step 3 of 4"): 1 = choose a file, 2 =
   // map columns, 3 = review the dry run, 4 = done. Display-only -- does
@@ -106,9 +121,22 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
   const step = result ? 4 : plan ? 3 : header.length > 0 ? 2 : 1;
 
   function handleFile(file: File) {
+    setFileName(file.name);
     const reader = new FileReader();
     reader.onload = () => setCsvText(String(reader.result ?? ''));
     reader.readAsText(file);
+  }
+
+  function setColumnMapping(col: string, value: string) {
+    setMapping((prev) => {
+      const next = { ...prev };
+      if (value === '') {
+        delete next[col];
+      } else {
+        next[col] = value;
+      }
+      return next;
+    });
   }
 
   async function runPreview() {
@@ -190,7 +218,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
         disabled={busy || dataRows.length === 0 || (!!eventId && sessionTitle.trim() === '')}
         onClick={runPreview}
       >
-        Preview {countOf(dataRows.length, 'row')}
+        Import {countOf(dataRows.length, 'row')}
       </button>
       <button type="button" className="chq-btn chq-btn-secondary" onClick={onClose}>
         Cancel
@@ -222,7 +250,32 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
 
       {error && <div className="chq-error">{error}</div>}
 
-      {!plan && !result && (
+      {/* DEC-810: the session title lives with the wizard, not a specific
+          step -- it's tied to eventId (already chosen before the wizard
+          opened), not to CSV/header state, so it stays visible across
+          steps 1 and 2 rather than unmounting with step 1's file/paste
+          controls below. */}
+      {eventId && !plan && !result && (
+        <FormRow
+          label="Session title for this batch"
+          htmlFor="import-session-title"
+          help="Every contact added to this event by this import joins ONE accepted session with this title."
+        >
+          <input
+            id="import-session-title"
+            className="chq-input"
+            value={sessionTitle}
+            onChange={(e) => setSessionTitle(e.target.value)}
+            placeholder="e.g. Lightning talks"
+            required
+          />
+        </FormRow>
+      )}
+
+      {/* Step 1 -- choose a file, unmounted entirely once a header row has
+          been parsed (from either the file input or the paste box) so it
+          never shares the screen with step 2's column-matching UI. */}
+      {header.length === 0 && !plan && !result && (
         <div className="chq-contacts-import-drop">
           <FormRow label="Upload a CSV file" htmlFor="import-csv-file">
             <input
@@ -249,95 +302,65 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
           </FormRow>
 
           {parseError && <div className="chq-error">{parseError}</div>}
+        </div>
+      )}
 
-          {eventId && (
-            <FormRow
-              label="Session title for this batch"
-              htmlFor="import-session-title"
-              help="Every contact added to this event by this import joins ONE accepted session with this title."
-            >
-              <input
-                id="import-session-title"
-                className="chq-input"
-                value={sessionTitle}
-                onChange={(e) => setSessionTitle(e.target.value)}
-                placeholder="e.g. Lightning talks"
-                required
-              />
-            </FormRow>
-          )}
+      {/* Step 2 (frame 08--03) -- file/paste controls are gone; one block
+          per CSV column pairs its header with a sample value from the file
+          and the target select beneath it, plus a dashed "skip this
+          column" affordance. Does not touch the dry-run/commit contract
+          (DEC-663): mapping state feeds the same runPreview() call as
+          before, unchanged below. */}
+      {header.length > 0 && !plan && !result && (
+        <div className="chq-contacts-import-match">
+          <div className="chq-contacts-import-match-head">
+            <span className="chq-contacts-import-match-filename">{fileName ?? 'Pasted CSV'}</span>
+            <span className="chq-contacts-import-match-count">{countOf(dataRows.length, 'row')}</span>
+          </div>
 
-          {header.length > 0 && (
-            <>
-              <h3 className="chq-section-label">Column mapping</h3>
-              <table className="chq-table chq-contacts-import-mapping">
-                <thead>
-                  <tr>
-                    <th>CSV column</th>
-                    <th>Maps to</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {header.map((col) => (
-                    <tr key={col}>
-                      <td>{col}</td>
-                      <td>
-                        <select
-                          className="chq-select"
-                          aria-label={`Map column ${col}`}
-                          value={mapping[col] ?? ''}
-                          onChange={(e) =>
-                            setMapping((prev) => {
-                              const next = { ...prev };
-                              if (e.target.value === '') {
-                                delete next[col];
-                              } else {
-                                next[col] = e.target.value;
-                              }
-                              return next;
-                            })
-                          }
-                        >
-                          <option value="">(ignore)</option>
-                          {STANDARD_IMPORT_FIELDS.map((f) => (
-                            <option key={f} value={f}>
-                              {f}
-                            </option>
-                          ))}
-                          <option value={FULL_NAME_TARGET}>Full name (splits into first / last)</option>
-                          <option value={`custom.${col}`}>custom: {col}</option>
-                        </select>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {parseError && <div className="chq-error">{parseError}</div>}
 
-              <h3 className="chq-section-label">Preview (first {PREVIEW_ROWS} rows)</h3>
-              <table className="chq-table chq-contacts-import-preview">
-                <thead>
-                  <tr>
-                    <th>Email</th>
-                    <th>First</th>
-                    <th>Last</th>
-                    <th>Company</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {previewMapped.map((row, i) => (
-                    <tr key={i}>
-                      <td>{row.email ?? <em className="chq-contacts-import-preview-cell-skip">skip — no email</em>}</td>
-                      <td>{row.firstName ?? '—'}</td>
-                      <td>{row.lastName ?? '—'}</td>
-                      <td>{row.company ?? '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <div className="chq-contacts-import-columns">
+            {header.map((col, i) => {
+              const sample = dataRows[0]?.[i] ?? '';
+              const skipped = !mapping[col];
+              return (
+                <div key={col} className="chq-contacts-import-column-block">
+                  <div className="chq-contacts-import-column-header">{col}</div>
+                  <div className="chq-contacts-import-column-sample">
+                    {sample !== '' ? sample : <em className="chq-contacts-import-preview-cell-skip">(blank)</em>}
+                  </div>
+                  <select
+                    className="chq-select"
+                    aria-label={`Map column ${col}`}
+                    value={mapping[col] ?? ''}
+                    onChange={(e) => setColumnMapping(col, e.target.value)}
+                  >
+                    <option value="">(ignore)</option>
+                    {STANDARD_IMPORT_FIELDS.map((f) => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
+                    <option value={FULL_NAME_TARGET}>Full name (splits into first / last)</option>
+                    <option value={`custom.${col}`}>custom: {col}</option>
+                  </select>
+                  <button
+                    type="button"
+                    className="chq-contacts-import-column-skip"
+                    aria-pressed={skipped}
+                    onClick={() => setColumnMapping(col, '')}
+                  >
+                    Skip this column
+                  </button>
+                </div>
+              );
+            })}
+          </div>
 
-              <p className="chq-contacts-pipeline-caption">{countOf(dataRows.length, 'data row')} total.</p>
-            </>
-          )}
+          <p className="chq-contacts-import-dedupe">
+            {countOf(dedupeCount, 'row')} match existing contacts by email · they will be updated
+          </p>
         </div>
       )}
 
