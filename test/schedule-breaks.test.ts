@@ -300,6 +300,28 @@ describe("POST /api/v1/events/:eventId/breaks", () => {
     expect(await countBreaksForEvent(db, "event-a")).toBe(0);
   });
 
+  // DEC-510 (wave 46 amendment): isIsoDay used to be a bare shape regex, so
+  // a calendar-invalid day lexically inside the event's range persisted
+  // instead of being refused. Now it delegates to isIsoDate and 400s.
+  it("refuses a calendar-invalid day inside the event's lexical range (DEC-510 amendment)", async () => {
+    const { db, sqlite } = makeTestDb();
+    seedEvent(sqlite, "event-a", "org-a", "2027-02-01", "2027-03-05");
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      postRequest("/api/v1/events/event-a/breaks", {
+        day: "2027-02-30",
+        label: "Lunch",
+        startMin: 720,
+        durationMin: 60,
+      }),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields?.day).toBeDefined();
+    expect(await countBreaksForEvent(db, "event-a")).toBe(0);
+  });
+
   it("refuses a missing label, naming the field", async () => {
     const { db, sqlite } = makeTestDb();
     seedEvent(sqlite, "event-a", "org-a", "2027-01-01", "2027-01-03");

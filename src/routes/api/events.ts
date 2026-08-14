@@ -36,7 +36,8 @@ import {
 
 import { createDefaultForm } from "../../server/repo/forms";
 import { bumpIcsSequencesForRoom, bumpIcsSequencesForEvent } from "../../server/repo/ics-sequence";
-import { isDateOrderValid, isIsoDate, isValidSlug, isValidTimezone } from "./validators";
+import { isDateOrderValid, isValidSlug, isValidTimezone } from "./validators";
+import { isIsoDate } from "../../domain/iso-date";
 import { listSlotsOutsideWindow } from "../../server/repo/agenda";
 import { listBreaksOutsideWindow } from "../../server/repo/breaks";
 import { DEC_519, DEC_844 } from "../../decisions";

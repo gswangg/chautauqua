@@ -12,10 +12,8 @@
 // PUBLIC_PER_PAGE and their derived MAX_PUBLIC_ROWS).
 import { MAX_PUBLIC_PAGE, MAX_PUBLIC_QUERY_VALUE_LENGTH } from "../../server/repo/public/bounds";
 // DEC-510: isIsoDate is the ONE home for the YYYY-MM-DD format+round-trip
-// rule; both this module and src/routes/api/events.ts are route-layer, so
-// importing from ../api/validators is legal (no cycle: validators.ts has no
-// imports of its own).
-import { isIsoDate } from "../api/validators";
+// rule, in pure core (src/domain/iso-date.ts, no imports).
+import { isIsoDate } from "../../domain/iso-date";
 // DEC-371 amendment (wave 43): the hex-colour grammar lives ONE place,
 // src/domain/color.ts.
 import { normalizeHexColor } from "../../domain/color";
