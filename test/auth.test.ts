@@ -187,7 +187,7 @@ describe("POST /logout (route-level, DEC-181)", () => {
     });
 
     expect(res.status).toBe(302);
-    expect(res.headers.get("location")).toBe("/login");
+    expect(res.headers.get("location")).toBe("/login?signed-out=1");
     expect(wasDeleted()).toBe(true);
   });
 
@@ -207,7 +207,7 @@ describe("POST /logout (route-level, DEC-181)", () => {
     });
 
     expect(res.status).toBe(302);
-    expect(res.headers.get("location")).toBe("/login");
+    expect(res.headers.get("location")).toBe("/login?signed-out=1");
     expect(wasDeleted()).toBe(true);
   });
 });

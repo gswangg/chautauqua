@@ -96,17 +96,18 @@ describe("auth surface card shape (DEC-944)", () => {
   });
 });
 
-describe("AUTH_CSS card metrics (DEC-944/DEC-945 v6 amendment)", () => {
+describe("AUTH_CSS card metrics (DEC-944/DEC-945 V8 amendment, wave 25)", () => {
   it("declares the frames' card, narrow-card, title and input numbers", () => {
-    // DEC-945 wave-1 amendment: the box is column + 2x padding, not the
-    // column itself -- 820 (732 content + 2*44) for the plain card, 888
-    // (818 content + 2*35) for the narrow variant.
-    expect(AUTH_CSS).toContain("max-width: 820px");
+    // DEC-945 wave-25 amendment: the V8 intake ("a card, not a stretched
+    // phone") supersedes the pair-6 box-math ruling -- .chq-auth-card is
+    // 460, .chq-auth-card-narrow is 520.
+    expect(AUTH_CSS).toMatch(/\.chq-auth-card\s*\{[^}]*max-width:\s*460px/);
     expect(AUTH_CSS).toMatch(
-      /\.chq-auth-card\.chq-auth-card-narrow\s*\{[^}]*max-width:\s*888px/,
+      /\.chq-auth-card\.chq-auth-card-narrow\s*\{[^}]*max-width:\s*520px/,
     );
-    expect(AUTH_CSS).toContain("padding: 35px");
     expect(AUTH_CSS).not.toContain("max-width: 450px");
+    expect(AUTH_CSS).not.toContain("max-width: 820px");
+    expect(AUTH_CSS).not.toContain("max-width: 888px");
     expect(AUTH_CSS).toMatch(/\.chq-auth-title\s*\{[^}]*font-size:\s*28px/);
     expect(AUTH_CSS).toMatch(/input\[type=password\]\s*\{[^}]*min-height:\s*48px/);
   });

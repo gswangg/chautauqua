@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
-import { authRoutes } from "../src/routes/auth";
+import { authRoutes, loginStatusLine } from "../src/routes/auth";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv } from "../src/server/env";
 
-// DEC-154 amendment (wave 8): a typed/bookmarked GET /logout must render a
-// real confirmation page rather than 404ing, and never itself end the
-// session (only the POST does that).
-describe("GET /logout (DEC-154 amendment, wave 8)", () => {
+// DEC-154 (wave 25 amendment): /logout has no screen at all. GET /logout
+// redirects to /login and never mutates anything (a bare GET side effect
+// is a CSRF hole -- <img src="/logout"> would sign a producer out); POST
+// keeps its CSRF guard + session delete and redirects to
+// /login?signed-out=1, which the login card reads via loginStatusLine.
+// The wave-8 LogoutConfirmPage is gone.
+describe("GET /logout (DEC-154 wave-25 amendment)", () => {
   function buildApp(auth?: AppEnv["Variables"]["auth"]) {
     const db = {
       delete() {
@@ -36,39 +39,20 @@ describe("GET /logout (DEC-154 amendment, wave 8)", () => {
     expect(res.headers.get("location")).toBe("/login");
   });
 
-  it("organizer sees a confirmation page with a POST /logout form carrying the CSRF token, and the session cookie is not cleared", async () => {
+  it("a signed-in visitor's bookmarked GET also just redirects to /login -- no confirmation screen, no session mutation", async () => {
     const app = buildApp({ userId: "u1", role: "organizer", orgId: "org1", contactId: undefined });
     const res = await app.request("/logout");
-    expect(res.status).toBe(200);
-    const body = await res.text();
-    expect(body).toContain('action="/logout"');
-    expect(body).toContain('method="post"');
-    expect(body).toMatch(/<input type="hidden" name="chq_csrf" value="[^"]+"/);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/login");
     expect(res.headers.get("set-cookie") ?? "").not.toContain("chq_session=;");
-  });
-
-  it("speaker's 'Stay signed in' link points at /portal", async () => {
-    const app = buildApp({ userId: "u2", role: "speaker", orgId: "org1", contactId: "c1" });
-    const res = await app.request("/logout");
-    expect(res.status).toBe(200);
-    const body = await res.text();
-    expect(body).toContain('href="/portal"');
-    expect(body).toContain("Stay signed in");
-  });
-
-  it("organizer's 'Stay signed in' link points at /admin", async () => {
-    const app = buildApp({ userId: "u1", role: "organizer", orgId: "org1", contactId: undefined });
-    const res = await app.request("/logout");
-    expect(res.status).toBe(200);
-    const body = await res.text();
-    expect(body).toContain('href="/admin"');
   });
 });
 
 // Regression guard: the GET handler must not change POST /logout's
-// behaviour -- it still ends the session and redirects to /login.
+// behaviour -- it still ends the session and redirects to /login with the
+// status query param the login card reads.
 describe("POST /logout still works (regression guard)", () => {
-  it("drops the session row and redirects to /login", async () => {
+  it("drops the session row and redirects to /login?signed-out=1", async () => {
     let deleteCalled = false;
     const db = {
       delete() {
@@ -97,7 +81,21 @@ describe("POST /logout still works (regression guard)", () => {
     });
 
     expect(res.status).toBe(302);
-    expect(res.headers.get("location")).toBe("/login");
+    expect(res.headers.get("location")).toBe("/login?signed-out=1");
     expect(deleteCalled).toBe(true);
+  });
+});
+
+describe("loginStatusLine (DEC-154 wave-25 amendment)", () => {
+  it("returns the signed-out message for ?signed-out=1", () => {
+    expect(loginStatusLine("https://example.com/login?signed-out=1")).toBe("You have been signed out.");
+  });
+
+  it("returns null for a bare /login URL", () => {
+    expect(loginStatusLine("https://example.com/login")).toBeNull();
+  });
+
+  it("returns null for an unrecognized query string", () => {
+    expect(loginStatusLine("https://example.com/login?foo=bar")).toBeNull();
   });
 });

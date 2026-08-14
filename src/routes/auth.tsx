@@ -153,12 +153,25 @@ function AuthHead(props: { title: string }) {
   );
 }
 
+/** DEC-154 (wave 25 amendment): keyed on the query string, this is the ONE
+ * owner of the login card's muted status line -- /logout's ?signed-out=1
+ * today, task-w25-b's password-reset states share this exact function
+ * rather than inventing a second status mechanism. Returns null when the
+ * URL carries no recognized status. */
+export function loginStatusLine(url: string): string | null {
+  const query = url.includes("?") ? url.slice(url.indexOf("?")) : "";
+  const params = new URLSearchParams(query);
+  if (params.get("signed-out") === "1") return "You have been signed out.";
+  return null;
+}
+
 function LoginPage(props: {
   csrfToken: string;
   error?: string;
   email?: string;
   demoIdentities?: readonly DemoIdentity[];
   singleEvent?: LoginFooterEvent | null;
+  statusLine?: string | null;
 }) {
   const demoIdentities = props.demoIdentities ?? [];
   const singleEvent = props.singleEvent ?? null;
@@ -174,6 +187,7 @@ function LoginPage(props: {
             <h1 className="chq-auth-wordmark">chautauqua</h1>
             <div className="chq-auth-subtitle">{subtitle}</div>
           </div>
+          {props.statusLine ? <p className="chq-auth-status">{props.statusLine}</p> : null}
           {props.error ? (
             <p className="chq-auth-error" role="alert">
               {props.error}
@@ -202,9 +216,11 @@ function LoginPage(props: {
               <span className="chq-auth-label">Password</span>
               <input className="chq-input" type="password" name="password" required />
             </label>
-            <button type="submit" id="chq-login-submit" className="chq-btn-primary">
-              Sign in
-            </button>
+            <div className="chq-auth-submitrow">
+              <button type="submit" id="chq-login-submit" className="chq-btn-primary">
+                Sign in
+              </button>
+            </div>
           </form>
           {showSubmit || showBrowse ? (
             <div className="chq-auth-footer">
@@ -264,9 +280,11 @@ function ClaimPage(props: { csrfToken: string; error?: string }) {
               <span className="chq-auth-label">Password</span>
               <input className="chq-input" type="password" name="password" minlength={MIN_PASSWORD_LENGTH} required />
             </label>
-            <button type="submit" className="chq-btn-primary">
-              Create password
-            </button>
+            <div className="chq-auth-submitrow">
+              <button type="submit" className="chq-btn-primary">
+                Create password
+              </button>
+            </div>
           </form>
         </main>
       </body>
@@ -301,7 +319,15 @@ authRoutes.get("/login", async (c) => {
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);
   const demoIdentities = await loadDemoIdentitiesIfPresent(c.var.db);
   const singleEvent = await loadSingleEventContext(c.var.db);
-  return c.html(<LoginPage csrfToken={csrfToken} demoIdentities={demoIdentities} singleEvent={singleEvent} />);
+  const statusLine = loginStatusLine(c.req.url);
+  return c.html(
+    <LoginPage
+      csrfToken={csrfToken}
+      demoIdentities={demoIdentities}
+      singleEvent={singleEvent}
+      statusLine={statusLine}
+    />,
+  );
 });
 
 authRoutes.post("/login", csrfForm, async (c) => {
@@ -391,46 +417,14 @@ authRoutes.post("/login", csrfForm, async (c) => {
   return c.redirect(dest, 302);
 });
 
-// DEC-154 amendment (wave 8): a typed/bookmarked GET /logout must land on a
-// real page, not the generic 404 -- pubcache.ts already lists it as a
-// known no-cache path. Anonymous visitors have nothing to end, so they're
-// sent straight to /login. A signed-in visitor sees a confirmation card
-// (reusing the same auth-card-notice chrome the 404 page renders) whose
-// POST form carries the double-submit CSRF token exactly as the portal
-// footer's sign-out form does (DEC-181), and whose "stay signed in" link
-// applies the same role -> destination rule as the login handler above.
-function LogoutConfirmPage(props: { csrfToken: string; stayHref: string }) {
-  return (
-    <html lang="en">
-      <AuthHead title="Sign out - Chautauqua" />
-      <body>
-        <main className="chq-auth-card chq-auth-card-narrow chq-auth-card-notice">
-          <div className="chq-auth-titlerow">
-            <h1 className="chq-auth-title">Sign out?</h1>
-          </div>
-          <p className="chq-auth-body">You'll need to sign in again to get back to your account.</p>
-          <form method="post" action="/logout">
-            <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
-            <button type="submit" className="chq-btn-primary">
-              Sign out
-            </button>
-          </form>
-          <div className="chq-auth-footer-links">
-            <a href={props.stayHref}>Stay signed in</a>
-          </div>
-        </main>
-      </body>
-    </html>
-  );
-}
-
+// DEC-154 (wave 25 amendment): /logout has no screen. A bookmarked GET
+// must never sign anyone out (a bare GET side effect is a CSRF hole --
+// <img src="/logout"> would sign a producer out), so it mutates nothing
+// and redirects straight to /login. POST keeps its CSRF guard and session
+// delete, then redirects to /login?signed-out=1 -- the sign-in card is the
+// one place that status is read (loginStatusLine above).
 authRoutes.get("/logout", async (c) => {
-  const auth = c.var.auth;
-  if (!auth) return c.redirect("/login", 302);
-  const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
-  if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);
-  const stayHref = auth.role === "speaker" ? "/portal" : "/admin";
-  return c.html(<LogoutConfirmPage csrfToken={csrfToken} stayHref={stayHref} />);
+  return c.redirect("/login", 302);
 });
 
 authRoutes.post("/logout", csrfFormOrHeader, async (c) => {
@@ -441,7 +435,7 @@ authRoutes.post("/logout", csrfFormOrHeader, async (c) => {
     await c.var.db.delete(schema.authSession).where(eq(schema.authSession.tokenHash, tokenHash));
   }
   c.header("Set-Cookie", clearSessionCookie());
-  return c.redirect("/login", 302);
+  return c.redirect("/login?signed-out=1", 302);
 });
 
 authRoutes.get("/claim/:token", async (c) => {
