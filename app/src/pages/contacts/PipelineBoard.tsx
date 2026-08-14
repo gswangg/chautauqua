@@ -179,7 +179,6 @@ export function PipelineBoard() {
                       key={entry.id}
                       entry={entry}
                       onOpen={() => setOpenEntryId(entry.id)}
-                      onMove={moveTo}
                       onEditFit={() => setFitEditEntry(entry)}
                     />
                   ))}
@@ -266,7 +265,18 @@ export function PipelineBoard() {
         />
       )}
 
-      {openEntryId && <EntryDetailPanel entryId={openEntryId} onClose={() => setOpenEntryId(null)} onChanged={reload} />}
+      {openEntryId && (() => {
+        const openEntry = entries.find((e) => e.id === openEntryId);
+        return openEntry ? (
+          <EntryDetailPanel
+            entryId={openEntryId}
+            entry={openEntry}
+            onClose={() => setOpenEntryId(null)}
+            onChanged={reload}
+            onMove={(stage) => moveTo(openEntry, stage)}
+          />
+        ) : null;
+      })()}
 
       {declinePrompt && (
         <DeclineReasonDialog
@@ -348,11 +358,14 @@ function DeclineReasonDialog({ entry, onCancel, onConfirm }: DeclineReasonDialog
 interface PipelineCardProps {
   entry: PipelineEntry;
   onOpen: () => void;
-  onMove: (entry: PipelineEntry, stage: PipelineStage) => void;
   onEditFit: () => void;
 }
 
-function PipelineCard({ entry, onOpen, onMove, onEditFit }: PipelineCardProps) {
+// DEC-157 amendment (w2-b): the desktop card is drag-only -- the stage
+// control that used to live here moved into EntryDetailPanel, which calls
+// the SAME moveTo/doMove path (PATCH /pipeline/:id) so the decline prompt
+// and optimistic-update/rollback behaviour are unchanged.
+function PipelineCard({ entry, onOpen, onEditFit }: PipelineCardProps) {
   const age = pipelineCardAge(entry.stage, entry.stageSince, Date.now());
   // DEC-898: reuses the agenda DayGrid drag contract verbatim -- the
   // dragged entry's id in `text/plain`, effectAllowed 'move'.
@@ -389,16 +402,6 @@ function PipelineCard({ entry, onOpen, onMove, onEditFit }: PipelineCardProps) {
         </button>
       </div>
       {entry.rationale && <div className="chq-contacts-pipeline-card-rationale">{entry.rationale}</div>}
-      <label className="chq-contacts-pipeline-card-move">
-        Move to
-        <select className="chq-select" value={entry.stage} onChange={(e) => onMove(entry, e.target.value as PipelineStage)}>
-          {PIPELINE_STAGES.map((s) => (
-            <option key={s} value={s}>
-              {PIPELINE_STAGE_LABELS[s]}
-            </option>
-          ))}
-        </select>
-      </label>
     </li>
   );
 }
@@ -618,11 +621,18 @@ function FitEditDialog({ entry, onClose, onSave }: FitEditDialogProps) {
 
 interface EntryDetailPanelProps {
   entryId: string;
+  entry: PipelineEntry;
   onClose: () => void;
   onChanged: () => void;
+  onMove: (stage: PipelineStage) => void;
 }
 
-function EntryDetailPanel({ entryId, onClose, onChanged }: EntryDetailPanelProps) {
+// DEC-157 amendment (w2-b): the stage control lives here now, not on the
+// desktop card -- `entry` is the board's live PipelineEntry (kept current by
+// PipelineBoard's own setEntries on every move) so the select always shows
+// the latest confirmed/optimistic stage without this panel duplicating the
+// PATCH request itself.
+function EntryDetailPanel({ entryId, entry, onClose, onChanged, onMove }: EntryDetailPanelProps) {
   const [detail, setDetail] = useState<PipelineEntryDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState('');
@@ -699,7 +709,21 @@ function EntryDetailPanel({ entryId, onClose, onChanged }: EntryDetailPanelProps
       {!detail && <DelayedLoading />}
       {detail && (
         <>
-          <p>Stage: {PIPELINE_STAGE_LABELS[detail.entry.stage]}</p>
+          <label className="chq-contacts-pipeline-detail-stage" htmlFor="pipeline-detail-stage">
+            Stage
+            <select
+              id="pipeline-detail-stage"
+              className="chq-select"
+              value={entry.stage}
+              onChange={(e) => onMove(e.target.value as PipelineStage)}
+            >
+              {PIPELINE_STAGES.map((s) => (
+                <option key={s} value={s}>
+                  {PIPELINE_STAGE_LABELS[s]}
+                </option>
+              ))}
+            </select>
+          </label>
 
           <div className="chq-contacts-pipeline-notes">
             <label className="chq-contacts-import-field">

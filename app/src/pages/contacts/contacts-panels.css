@@ -241,6 +241,19 @@
   display: none;
 }
 
+/* DEC-157 amendment (w2-b): the stage control moved off the desktop card
+   into the detail panel -- same labelled-select shape the panel already
+   uses for other fields (chq-contacts-import-field), not the card's
+   uppercase micro-label treatment. */
+.chq-contacts-pipeline-detail-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--chq-muted);
+}
+
 .chq-contacts-pipeline-notes {
   display: flex;
   flex-direction: column;
