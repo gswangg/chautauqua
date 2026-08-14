@@ -105,29 +105,92 @@ interface TabSurface {
   labels: string[];
 }
 
+// DEC-837 (wave-16 amendment): the label sets below are no longer hand-
+// copied into this file (a hand copy only agrees with the surface's own
+// tab/section table until the next label is renamed and nobody remembers to
+// update the copy here -- exactly the drift risk this amendment closes).
+// Each surface's labels are PARSED at scan time from that surface's own
+// source-of-truth table, the same house pattern app/src/page-loading-
+// structure.scan.test.ts's derivePageFiles() uses to parse App.tsx's
+// pageLoaders rather than hand-listing pages.
+
+/** Parses every `label: '...'` (or `label: "..."`) literal out of Settings.tsx's
+ * `export const SECTIONS: SettingsSection[] = [...]` array -- the settings
+ * rail's own source of truth for its section labels. */
+function parseSettingsSectionLabels(): string[] {
+  const source = readFileSync(join(APP_SRC_DIR, "pages", "Settings.tsx"), "utf-8");
+  const arrayMatch = /export const SECTIONS: SettingsSection\[\] = \[([\s\S]*?)\n\];/.exec(source);
+  if (!arrayMatch) throw new Error("Settings.tsx: could not find `export const SECTIONS: SettingsSection[] = [...]`");
+  const body = arrayMatch[1]!;
+  const labels: string[] = [];
+  const labelRe = /label:\s*'([^']*)'|label:\s*"([^"]*)"/g;
+  let m: RegExpExecArray | null;
+  while ((m = labelRe.exec(body))) {
+    labels.push((m[1] ?? m[2])!);
+  }
+  return labels;
+}
+
+/** Parses every `label: '...'` (or `label: "..."`) literal out of Comms.tsx's
+ * `TABS: { id: Tab; label: string }[] = [...]` tab table -- the comms tab
+ * strip's own source of truth for its tab labels. */
+function parseCommsTabLabels(): string[] {
+  const source = readFileSync(join(APP_SRC_DIR, "pages", "Comms.tsx"), "utf-8");
+  const arrayMatch = /const TABS: \{ id: Tab; label: string \}\[\] = \[([\s\S]*?)\n\];/.exec(source);
+  if (!arrayMatch) throw new Error("Comms.tsx: could not find `const TABS: { id: Tab; label: string }[] = [...]`");
+  const body = arrayMatch[1]!;
+  const labels: string[] = [];
+  const labelRe = /label:\s*'([^']*)'|label:\s*"([^"]*)"/g;
+  let m: RegExpExecArray | null;
+  while ((m = labelRe.exec(body))) {
+    labels.push((m[1] ?? m[2])!);
+  }
+  return labels;
+}
+
+/** Parses every value literal out of ContactsApp.tsx's
+ * `PANEL_LABELS: Record<Panel, string> = {...}` map -- the contacts panel
+ * strip's own source of truth for its panel labels. */
+function parseContactsPanelLabels(): string[] {
+  const source = readFileSync(join(APP_SRC_DIR, "pages", "contacts", "ContactsApp.tsx"), "utf-8");
+  const objectMatch = /const PANEL_LABELS: Record<Panel, string> = \{([\s\S]*?)\n\};/.exec(source);
+  if (!objectMatch) throw new Error("ContactsApp.tsx: could not find `const PANEL_LABELS: Record<Panel, string> = {...}`");
+  const body = objectMatch[1]!;
+  const labels: string[] = [];
+  const valueRe = /:\s*'([^']*)'|:\s*"([^"]*)"/g;
+  let m: RegExpExecArray | null;
+  while ((m = valueRe.exec(body))) {
+    labels.push((m[1] ?? m[2])!);
+  }
+  return labels;
+}
+
+const PARSED_SETTINGS_LABELS = parseSettingsSectionLabels();
+const PARSED_COMMS_LABELS = parseCommsTabLabels();
+const PARSED_CONTACTS_LABELS = parseContactsPanelLabels();
+
+// Deliberate extra synonyms this scan also treats as naming a tab/section,
+// kept as an explicit, separately-named additive list (not folded into the
+// parsed set) so an intentional extra label still reads as intent rather
+// than looking like a stray parse artifact.
+const COMMS_EXTRA_LABELS = ["Comms history"];
+const CONTACTS_EXTRA_LABELS = ["Duplicates tab"];
+
 const TAB_SURFACES: TabSurface[] = [
   {
     pathPrefixes: ["/admin/comms", "/comms"],
     param: "tab",
-    labels: ["Compose", "Templates", "History", "Comms history"],
+    labels: [...PARSED_COMMS_LABELS, ...COMMS_EXTRA_LABELS],
   },
   {
     pathPrefixes: ["/admin/contacts", "/contacts"],
     param: "tab",
-    labels: ["Directory", "Duplicates", "Segments", "Pipeline", "Duplicates tab"],
+    labels: [...PARSED_CONTACTS_LABELS, ...CONTACTS_EXTRA_LABELS],
   },
   {
     pathPrefixes: ["/admin/settings", "/settings"],
     param: "section",
-    labels: [
-      "Event",
-      "Call for papers",
-      "Tracks and rooms",
-      "Public pages",
-      "Speaker portal",
-      "People and roles",
-      "Your data",
-    ],
+    labels: PARSED_SETTINGS_LABELS,
   },
 ];
 
@@ -185,6 +248,23 @@ function violatesTabRule(href: string, label: string): TabSurface | undefined {
 describe("in-app link targets land where they say (DEC-837)", () => {
   it("scans at least a floor count of app source files", () => {
     expect(sourceFiles.length).toBeGreaterThan(50);
+  });
+
+  // Per-surface vacuous-parse tripwires: a future rename of SECTIONS/TABS/
+  // PANEL_LABELS (or their shape) that breaks the regexes above must fail
+  // loudly here instead of silently shrinking TAB_SURFACES to an
+  // under-populated (or empty) label set that then rubber-stamps every link.
+  // Floors are the count each parse yields on main today.
+  it("parses at least 7 settings section labels from Settings.tsx SECTIONS (vacuous-scan tripwire)", () => {
+    expect(PARSED_SETTINGS_LABELS.length).toBeGreaterThanOrEqual(7);
+  });
+
+  it("parses at least 3 comms tab labels from Comms.tsx TABS (vacuous-scan tripwire)", () => {
+    expect(PARSED_COMMS_LABELS.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("parses at least 4 contacts panel labels from ContactsApp.tsx PANEL_LABELS (vacuous-scan tripwire)", () => {
+    expect(PARSED_CONTACTS_LABELS.length).toBeGreaterThanOrEqual(4);
   });
 
   for (const file of sourceFiles) {
