@@ -139,12 +139,16 @@ export function AgendaWorkSection({ payload, setPayload, setError, refetch }: Ag
           <span className="chq-overview-caption chq-overview-caption-flush">No slot yet</span>
           <div>
             <div>{row.title}</div>
-            {/* DEC-895: format/duration are each an independent joinSegments
-                segment — a row whose format carries no parseable duration
-                (or has no format answer at all) drops that clause cleanly
-                rather than leaving a dangling "· min ·" fragment. */}
+            {/* DEC-652 amendment (wave 2): duration is stated ONCE per row —
+                `format` already embeds it parenthetically ("Talk (30 min)")
+                whenever durationMin is derivable (DEC-895's parse reads the
+                duration out of format itself), so a second bare "30 min"
+                segment here would repeat the same fact twice. A row whose
+                format carries no parseable duration (or has no format
+                answer at all) still drops cleanly, never a dangling
+                "· ·" fragment. */}
             <div className="chq-overview-row-meta">
-              {joinSegments([row.speakerName, row.format, row.durationMin !== null ? `${row.durationMin} min` : null, row.ref])}
+              {joinSegments([row.speakerName, row.format, row.ref])}
             </div>
           </div>
           {row.suggestion && row.durationMin !== null ? (
@@ -163,10 +167,13 @@ export function AgendaWorkSection({ payload, setPayload, setError, refetch }: Ag
                 }));
               }}
             >
-              {/* DEC-735: a suggestion names the room it would fill —
-                  otherwise several "Place at 9:00" rows on the same wall
-                  clock are indistinguishable. */}
-              {row.suggestion.label} in {row.suggestion.roomName}
+              {/* DEC-652 amendment (wave 2): the suggestion label is the
+                  server's own "Place at HH:MM" text verbatim, no client-
+                  appended room suffix — a room-distinct pair of same-time
+                  suggestions is still two distinct rows (different title,
+                  format, ref), not a single button whose accessible name
+                  must carry the room. */}
+              {row.suggestion.label}
             </button>
           ) : (
             <Link to="/agenda" className="chq-overview-link-btn">

@@ -427,10 +427,10 @@ export function OverviewPage() {
             own public root (`/e/<slug>`) is the only link, matching the
             frame's convention that a row states its fact in prose and links
             out exactly once. */}
-        <div className="chq-overview-row chq-overview-row-public">
+        <div className="chq-overview-row chq-overview-row-quiet">
           <span className="chq-overview-row-title chq-overview-row-title-sm">Public pages</span>
           {eventSlug ? (
-            <span className="chq-overview-row-meta">
+            <span className="chq-overview-row-meta chq-overview-row-meta-sm">
               {joinSegments(PUBLIC_SURFACES.map((s) => s.label))} are live at{' '}
               <a href={`/e/${eventSlug}`} target="_blank" rel="noreferrer" className="chq-overview-link-btn">
                 /e/{eventSlug}
@@ -438,7 +438,7 @@ export function OverviewPage() {
               .
             </span>
           ) : (
-            <span className="chq-overview-row-meta">{slugError ?? 'Resolving link…'}</span>
+            <span className="chq-overview-row-meta chq-overview-row-meta-sm">{slugError ?? 'Resolving link…'}</span>
           )}
         </div>
       </section>

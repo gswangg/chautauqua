@@ -179,13 +179,17 @@ describe('OverviewPage render smoke (DEC-370)', () => {
     });
     const publicRootLink = screen.getByRole('link', { name: `/e/${EVENT_SLUG}` });
     expect(publicRootLink).toHaveAttribute('href', `/e/${EVENT_SLUG}`);
-    const publicRow = publicRootLink.closest('.chq-overview-row-public')!;
+    // DEC-611 amendment (wave 2): the Public pages row renders through the
+    // SAME quiet-row shape as its "No action needed" siblings, not a
+    // bespoke `-public` variant — its value column lands on the siblings'
+    // column at their type size.
+    const publicRow = publicRootLink.closest('.chq-overview-row-quiet')!;
     expect(publicRow.textContent).toBe(
       `Public pagesSessions · Speakers · Gallery · Agenda · Schedule · CFP form are live at /e/${EVENT_SLUG}.`,
     );
     // Exactly one link in the row — the public root, not a chip per surface.
     expect(publicRow.querySelectorAll('a').length).toBe(1);
-    expect(document.querySelectorAll('.chq-overview-row-public').length).toBe(1);
+    expect(document.querySelectorAll('.chq-overview-row-public').length).toBe(0);
 
     // DEC-704: the deadlines strip keeps a FIXED reading order (never
     // reshuffles by nearest date) and names its Review wave round.

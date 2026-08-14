@@ -107,16 +107,22 @@ export function buildDeadlineCells(
     };
   });
 
-  let nearestIndex = -1;
-  for (let i = 0; i < cells.length; i++) {
-    const value = cells[i]!.value;
-    if (value === null) continue;
-    if (nearestIndex === -1 || value < (cells[nearestIndex]!.value as number)) {
-      nearestIndex = i;
+  // DEC-611 amendment (wave 2): the nearest-deadline emphasis is a SET, not
+  // an arbitrary first-wins pick — on a tie every cell sharing the minimum
+  // non-null value is marked isNearest.
+  let nearestValue: number | null = null;
+  for (const cell of cells) {
+    if (cell.value === null) continue;
+    if (nearestValue === null || cell.value < nearestValue) {
+      nearestValue = cell.value;
     }
   }
-  if (nearestIndex !== -1) {
-    cells[nearestIndex] = { ...cells[nearestIndex]!, isNearest: true };
+  if (nearestValue !== null) {
+    for (let i = 0; i < cells.length; i++) {
+      if (cells[i]!.value === nearestValue) {
+        cells[i] = { ...cells[i]!, isNearest: true };
+      }
+    }
   }
 
   return cells;

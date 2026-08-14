@@ -101,15 +101,17 @@ describe('AgendaWorkSection (DEC-652)', () => {
     expect(document.body.textContent).not.toMatch(/2027-03-11/);
     expect(screen.getByRole('button', { name: 'Move DFC-047 to 11:30' })).toBeInTheDocument();
     expect(screen.getByText('Next free slot in Room 2A')).toBeInTheDocument();
-    // DEC-735: the suggestion names the room it would fill.
-    expect(screen.getByRole('button', { name: 'Place at 11:00 in Room 2B' })).toBeInTheDocument();
+    // DEC-652 amendment (wave 2): the suggestion label is the server's own
+    // "Place at HH:MM" text verbatim -- no client-appended room suffix.
+    expect(screen.getByRole('button', { name: 'Place at 11:00' })).toBeInTheDocument();
     // The old generic link is gone when a concrete suggestion exists.
     expect(screen.queryByRole('link', { name: 'Place it' })).not.toBeInTheDocument();
-    // DEC-895: format/duration render as their own meta segments.
+    // DEC-652 amendment (wave 2): format renders once and already embeds the
+    // duration parenthetically -- no separate "30 min" segment restating it.
     expect(screen.getByText(/Talk \(30 min\)/)).toBeInTheDocument();
-    expect(screen.getByText(/30 min/)).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/·\s*min\s*·/);
     expect(document.body.textContent).not.toMatch(/null min/);
+    expect(document.body.textContent).not.toMatch(/30 min\).*30 min/);
   });
 
   // DEC-895: a row's meta line drops both the format and duration segments
@@ -154,7 +156,7 @@ describe('AgendaWorkSection (DEC-652)', () => {
     };
     render(<Harness payload={payload} refetch={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Place at 11:00 in Room 2B' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Place at 11:00' }));
 
     await waitFor(() => {
       expect(screen.queryByText('Docs That Answer Back')).not.toBeInTheDocument();
@@ -187,9 +189,12 @@ describe('AgendaWorkSection (DEC-652)', () => {
     expect(resolutionContainer).not.toHaveClass('chq-overview-row-actions-inline');
   });
 
-  // DEC-735: four "Place at 9:00" suggestions at the same clock time are
-  // indistinguishable unless the room disambiguates them.
-  it('keeps same-time placement suggestions room-distinct', () => {
+  // DEC-652 amendment (wave 2): the suggestion button carries the server's
+  // "Place at HH:MM" label verbatim, no client-appended room suffix -- two
+  // same-time suggestions on different rows are still two distinct buttons
+  // (each scoped to its own row's title/format/ref), not disambiguated by
+  // the button's own accessible name.
+  it('renders one same-time suggestion button per row, each scoped to its own row', () => {
     mockApi({});
     const payload = basePayload();
     payload.agendaWork.unplaced = [
@@ -214,11 +219,12 @@ describe('AgendaWorkSection (DEC-652)', () => {
     ];
     render(<Harness payload={payload} refetch={vi.fn()} />);
 
-    const first = screen.getByRole('button', { name: 'Place at 11:00 in Room 2B' });
-    const second = screen.getByRole('button', { name: 'Place at 11:00 in Room 3C' });
-    expect(first).toBeInTheDocument();
-    expect(second).toBeInTheDocument();
-    expect(first.textContent).not.toEqual(second.textContent);
+    const buttons = screen.getAllByRole('button', { name: 'Place at 11:00' });
+    expect(buttons).toHaveLength(2);
+    const firstRow = screen.getByText('Docs That Answer Back').closest('.chq-overview-row-agenda')!;
+    const secondRow = screen.getByText('Zero-Downtime Schema Migrations').closest('.chq-overview-row-agenda')!;
+    expect(firstRow.contains(buttons[0]!)).toBe(true);
+    expect(secondRow.contains(buttons[1]!)).toBe(true);
   });
 
   it('falls back to the "Place it" link when a row has no suggestion (never invents a time)', () => {
@@ -239,7 +245,7 @@ describe('AgendaWorkSection (DEC-652)', () => {
     });
     render(<Harness payload={basePayload()} refetch={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Place at 11:00 in Room 2B' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Place at 11:00' }));
 
     await waitFor(() => {
       expect(screen.queryByText('Docs That Answer Back')).not.toBeInTheDocument();
@@ -318,7 +324,7 @@ describe('AgendaWorkSection (DEC-652)', () => {
     const refetch = vi.fn().mockResolvedValue(undefined);
     render(<Harness payload={basePayload()} refetch={refetch} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Place at 11:00 in Room 2B' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Place at 11:00' }));
 
     await waitFor(() => {
       expect(screen.getByText(/Slot already taken/)).toBeInTheDocument();
