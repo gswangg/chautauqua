@@ -33,6 +33,9 @@ export interface CreateTaskInput {
   formId?: string | null;
   // DEC-240: only meaningful when kind='file_request'.
   deliverableKind?: DeliverableKind | null;
+  // CNT-01 (migrations/0036): a free-text brief for the assignee, distinct
+  // from `description`. null clears/omits it.
+  instructions?: string | null;
 }
 
 export interface TaskRecord {
@@ -45,6 +48,7 @@ export interface TaskRecord {
   required: boolean;
   formId: string | null;
   deliverableKind: string | null;
+  instructions: string | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -60,6 +64,7 @@ function toTaskRecord(row: typeof schema.task.$inferSelect): TaskRecord {
     required: row.required,
     formId: row.formId,
     deliverableKind: row.deliverableKind,
+    instructions: row.instructions,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
   };
@@ -273,6 +278,7 @@ export async function createTask(db: Db, eventId: string, input: CreateTaskInput
       required: input.required,
       formId: input.formId ?? null,
       deliverableKind: input.deliverableKind ?? null,
+      instructions: input.instructions ?? null,
       createdAt: now,
       updatedAt: now,
     });
@@ -302,6 +308,9 @@ export interface UpdateTaskInput {
   formId?: string | null;
   // DEC-240: only meaningful when the task's kind is 'file_request'.
   deliverableKind?: DeliverableKind | null;
+  // CNT-01 (migrations/0036): a free-text brief for the assignee, distinct
+  // from `description`. null clears it.
+  instructions?: string | null;
 }
 
 export async function updateTask(db: Db, taskId: string, input: UpdateTaskInput): Promise<TaskRecord> {
@@ -316,6 +325,7 @@ export async function updateTask(db: Db, taskId: string, input: UpdateTaskInput)
         ...(input.required !== undefined ? { required: input.required } : {}),
         ...(input.formId !== undefined ? { formId: input.formId } : {}),
         ...(input.deliverableKind !== undefined ? { deliverableKind: input.deliverableKind } : {}),
+        ...(input.instructions !== undefined ? { instructions: input.instructions } : {}),
         updatedAt: now,
       })
       .where(eq(schema.task.id, taskId));

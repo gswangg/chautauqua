@@ -23,6 +23,7 @@ function taskRecord(overrides: Partial<TaskRecord> = {}): TaskRecord {
     kind: "general",
     title: "T",
     description: null,
+    instructions: null,
     dueDate: null,
     required: false,
     formId: null,

@@ -23,6 +23,9 @@ export interface GridTask {
   title: string;
   dueDate: number | null;
   required: boolean;
+  // CNT-01: the task's free-text brief, so the organizer's edit modal can
+  // prefill it without a second round-trip.
+  instructions: string | null;
 }
 
 export interface GridCell {
@@ -148,6 +151,7 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
       title: schema.task.title,
       dueDate: schema.task.dueDate,
       required: schema.task.required,
+      instructions: schema.task.instructions,
     })
     .from(schema.task)
     .where(eq(schema.task.eventId, eventId))
@@ -159,6 +163,7 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
     title: t.title,
     dueDate: t.dueDate ? t.dueDate.getTime() : null,
     required: t.required,
+    instructions: t.instructions,
   }));
 
   const emptyCounts: OnboardingGridCounts = {

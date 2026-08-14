@@ -155,6 +155,14 @@ export const PORTAL_CSS = `
     color: var(--chq-muted);
     line-height: 1.5;
   }
+  /* CNT-01: a task's instructions is a real brief, not a muted footnote --
+     plain body ink (var(--chq-ink), the surface's default text colour),
+     never behind a disclosure. */
+  .chq-portal-instructions {
+    font-size: 13px;
+    color: var(--chq-ink);
+    line-height: 1.5;
+  }
   /* Completion state text: composes the shared .chq-flag class (never
      red — DEC-367) rather than redefining it. This modifier only adds the
      olive "done" tint; a still-open row keeps .chq-flag's plain ink. */

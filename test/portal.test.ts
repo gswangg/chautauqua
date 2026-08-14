@@ -66,6 +66,7 @@ function taskFixture(overrides: Partial<PortalTaskAssignment>): PortalTaskAssign
     kind: "general",
     title: "Untitled task",
     description: null,
+    instructions: null,
     dueDate: null,
     assignedAt: 0,
     required: false,

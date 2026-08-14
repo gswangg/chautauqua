@@ -179,6 +179,9 @@ export function TaskRow(props: {
       </div>
       {effectiveDue ? <span class="chq-portal-due">Due {formatCalendarDate(effectiveDue)}</span> : null}
       {t.description ? <p class="chq-portal-detail">{t.description}</p> : null}
+      {/* CNT-01: the task's free-text brief -- plain body ink, not behind a
+          disclosure, so the speaker sees it without an extra click. */}
+      {t.instructions ? <p class="chq-portal-instructions">{t.instructions}</p> : null}
       {error ? (
         <p role="alert" class="field-error">
           {error}

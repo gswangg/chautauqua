@@ -85,6 +85,7 @@ describe("portal repo row types carry timezone (DEC-413)", () => {
       kind: "general",
       title: "Do a thing",
       description: null,
+      instructions: null,
       dueDate: null,
       assignedAt: 0,
       required: true,

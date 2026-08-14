@@ -150,6 +150,7 @@ function assignmentWithResponse(responseJson: string | null) {
     kind: "form" as const,
     title: "Flight reimbursement form",
     description: null,
+    instructions: null,
     dueDate: null,
     assignedAt: 0,
     required: true,

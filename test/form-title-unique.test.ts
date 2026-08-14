@@ -42,6 +42,7 @@ create table task (
   required integer,
   form_id text,
   deliverable_kind text,
+  instructions text,
   created_at integer,
   updated_at integer
 );
@@ -238,6 +239,7 @@ describe("migrations/0033_form_title_unique.sql dedupe (DEC-111 amendment, wave 
       required integer,
       form_id text,
       deliverable_kind text,
+  instructions text,
       created_at integer,
       updated_at integer
     );

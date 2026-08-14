@@ -22,6 +22,11 @@ export interface OnboardingTask {
   title: string;
   dueDate: number | null;
   required: boolean;
+  // CNT-01: the task's free-text brief -- editable in both create and edit
+  // modes, unlike kind/formId/deliverableKind. Optional/undefined (as well
+  // as null) means "none", so existing OnboardingTask fixtures/mocks that
+  // predate this field keep compiling.
+  instructions?: string | null;
 }
 
 // GET /api/v1/tasks/:id/delete-preview (DEC-933 amendment, wave 63): names
@@ -170,6 +175,10 @@ export interface NewTaskInput {
   required: boolean;
   formId?: string;
   deliverableKind?: DeliverableKind;
+  // CNT-01: trimmed by the modal before it's sent; empty string is never
+  // sent (omitted -- the server treats undefined and "" the same, but the
+  // client's own trim keeps the two forms interchangeable at either side).
+  instructions?: string;
 }
 
 // DEC-398: one entry of the `forms` list additively returned by
