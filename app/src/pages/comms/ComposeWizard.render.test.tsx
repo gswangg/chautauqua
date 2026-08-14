@@ -124,6 +124,42 @@ describe('ComposeWizard recipient picker', () => {
     });
   });
 
+  // DEC-678 (B7 rule 6, wave 47): the status set IS the facet narrowing this
+  // list to nothing, so an empty step-1 result renders the shared EmptyState
+  // 'filtered' block -- naming the selected statuses, offering a single
+  // escape that restores the default selection -- and never the bare
+  // `<td colSpan={4}>No submissions...</td>` row or the table underneath it.
+  it('renders EmptyState filtered (not a bare <td> apology) when no submissions match the selected statuses', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([], { total: 0, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+
+    expect(await screen.findByText('No submissions match the selected statuses.')).toBeInTheDocument();
+    expect(screen.getByText(/Filtered by status: Accepted, Declined/)).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    // The status controls stay visible above the message -- 'filtered' never
+    // hides the chrome that produced the empty result.
+    expect(screen.getByRole('checkbox', { name: 'Pending' })).toBeInTheDocument();
+
+    // Narrow further (uncheck Accepted) so the facet actually changes, then
+    // take the escape -- it must restore the DEFAULT status selection
+    // (accepted + declined), not "every status" literally.
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Accepted' }));
+    expect(screen.getByRole('checkbox', { name: 'Accepted' })).not.toBeChecked();
+
+    await screen.findByText(/Filtered by status: Declined$/);
+    fireEvent.click(screen.getByRole('button', { name: 'Select every status' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('checkbox', { name: 'Accepted' })).toBeChecked();
+    });
+    expect(screen.getByRole('checkbox', { name: 'Declined' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Pending' })).not.toBeChecked();
+  });
+
   // w8-b: DEC-406/DEC-402 re-skin of compose steps 1-2 — the picker table
   // must carry both the shared .chq-table class and its page-prefixed
   // second class, and every rendered <button> must carry a shell chq-*

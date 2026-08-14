@@ -6,6 +6,7 @@ import { buildResultsCsvHref } from './resultsCsv';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { paginationSummary } from '../../lib/pagination-summary';
 import { PageSkeleton } from '../../components/PageSkeleton';
+import { EmptyState } from '../../components/EmptyState';
 import type { EvaluationPlan, ResultsRow, SubmissionEvaluationItem } from './types';
 import { STATUS_LABELS, type SubmissionStatus } from '../submissions/types';
 import { countOf } from '../../lib/plural';
@@ -357,6 +358,19 @@ export function ResultsTable({
            decision never triggers email; notifying speakers is a separate,
            explicit action elsewhere. */}
         <p className="chq-review-hint">Deciding here never sends email — notify speakers separately.</p>
+        {rows.length === 0 ? (
+          // DEC-678 (B7 rule 6, wave 47): a settled-but-empty row set never
+          // renders the <table> -- a full sortable header row and pager over
+          // a one-cell apology is exactly the pattern B7 forbids. There is
+          // no facet narrowing this set (round selection isn't a filter that
+          // excludes rows the collection otherwise has), so it's 'fresh'.
+          <EmptyState
+            variant="fresh"
+            what="Nothing has been scored yet."
+            reason="Results appear as reviewers submit their scorecards."
+            action={null}
+          />
+        ) : (
         <table className="chq-table chq-review-results-table">
           <thead>
             <tr>
@@ -534,20 +548,14 @@ export function ResultsTable({
               </Fragment>
               );
             })}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={columnCount} className="chq-empty">
-                  No results yet.
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
+        )}
 
         {/* DEC-366 (wave 42): a frame drawn at ten rows never authorizes
            deleting a volume affordance -- the pager stays; server pagination
            at 2,000 rows is exactly what it's for. */}
-        {!embedded && total > 0 && (
+        {!embedded && rows.length > 0 && total > 0 && (
           <div className="chq-pager">
             <button
               type="button"

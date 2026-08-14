@@ -926,6 +926,33 @@ describe('ResultsTable sort honesty (DEC-737)', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('Results failed');
     });
-    expect(screen.getByText('No results yet.')).toBeInTheDocument();
+    // DEC-678 (B7 rule 6, wave 47): an empty row set renders the shared
+    // EmptyState 'fresh' block, never the retired flat `chq-empty` <td>.
+    expect(screen.getByText('Nothing has been scored yet.')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it('a settled empty row set renders EmptyState fresh, not a sortable table over a one-cell apology (DEC-678 B7 rule 6)', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Nothing has been scored yet.')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Results appear as reviewers submit their scorecards.')).toBeInTheDocument();
+    // Never the table, its sortable header row, or the pager underneath it.
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Score/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Prev' })).not.toBeInTheDocument();
   });
 });

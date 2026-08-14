@@ -5,6 +5,7 @@ import { DEFAULT_FILTER_STATE, STATUS_LABELS, SUBMISSION_STATUSES, type Submissi
 import { PreviewPane } from './PreviewPane';
 import type { SendResult } from '../../lib/sendResult';
 import { PageSkeleton } from '../../components/PageSkeleton';
+import { EmptyState } from '../../components/EmptyState';
 import { FormRow } from '../../components/ModalFrame';
 import { COMPOSE_MERGE_FIELDS, type MergeField } from '../../lib/merge-fields';
 import { InsertFieldMenu } from './InsertFieldMenu';
@@ -506,61 +507,84 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               headers over an empty body -- structure flicker is not the risk
               DEC-678 opened with, label flicker is. */}
           {loadingSubmissions && <PageSkeleton variant="table" label="Loading submissions…" />}
-          <table className="chq-table chq-comms-compose-table">
-            <thead>
-              <tr>
-                <th />
-                <th>Title</th>
-                <th>Speakers</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {submissions.map((s) => (
-                <tr key={s.id}>
-                  <td data-label="Select">
-                    <input
-                      type="checkbox"
-                      className="chq-check"
-                      checked={selectedIds.has(s.id)}
-                      onChange={() => toggleSubmission(s.id)}
-                      aria-label={`Select ${s.title}`}
-                    />
-                  </td>
-                  <td data-label="Title">{s.title}</td>
-                  <td data-label="Speakers">{s.speakers.map((sp) => sp.name).join(', ')}</td>
-                  <td data-label="Status">{STATUS_LABELS[s.status]}</td>
-                </tr>
-              ))}
-              {!loadingSubmissions && submissions.length === 0 && (
-                <tr>
-                  <td colSpan={4}>No submissions match the selected statuses.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          {!loadingSubmissions && submissions.length === 0 ? (
+            // DEC-678 (B7 rule 6, wave 47): the status set IS the facet
+            // narrowing this list to nothing -- a full <thead> over a
+            // one-cell apology is exactly the pattern B7 forbids. 'filtered'
+            // names the selected statuses in `reason` and offers the one
+            // escape that clears the facet (restores the default status
+            // selection); it never renders a primary action here (the fix is
+            // "change the filter", not "do a new thing").
+            <EmptyState
+              variant="filtered"
+              what="No submissions match the selected statuses."
+              reason={
+                statusFilter.length > 0
+                  ? `Filtered by status: ${statusFilter.map((s) => STATUS_LABELS[s]).join(', ')}`
+                  : 'No statuses are selected.'
+              }
+              escape={{
+                label: 'Select every status',
+                onClick: () => {
+                  setStatusFilter(DECIDED_STATUSES);
+                  setPage(1);
+                },
+              }}
+            />
+          ) : (
+            <>
+              <table className="chq-table chq-comms-compose-table">
+                <thead>
+                  <tr>
+                    <th />
+                    <th>Title</th>
+                    <th>Speakers</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {submissions.map((s) => (
+                    <tr key={s.id}>
+                      <td data-label="Select">
+                        <input
+                          type="checkbox"
+                          className="chq-check"
+                          checked={selectedIds.has(s.id)}
+                          onChange={() => toggleSubmission(s.id)}
+                          aria-label={`Select ${s.title}`}
+                        />
+                      </td>
+                      <td data-label="Title">{s.title}</td>
+                      <td data-label="Speakers">{s.speakers.map((sp) => sp.name).join(', ')}</td>
+                      <td data-label="Status">{STATUS_LABELS[s.status]}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
 
-          <div className="chq-pager">
-            <span>
-              {paginationSummary(page, PER_PAGE, total)}
-            </span>
-            <button
-              type="button"
-              className="chq-btn chq-btn-secondary"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              className="chq-btn chq-btn-secondary"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={page * PER_PAGE >= total}
-            >
-              Next
-            </button>
-          </div>
+              <div className="chq-pager">
+                <span>
+                  {paginationSummary(page, PER_PAGE, total)}
+                </span>
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-secondary"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-secondary"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={page * PER_PAGE >= total}
+                >
+                  Next
+                </button>
+              </div>
+            </>
+          )}
 
           <button
             type="button"
