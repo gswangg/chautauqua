@@ -105,7 +105,6 @@ const MOBILE_TASK_ASSIGNMENT_ID = "seed_task_assignment_0001";
 // Same seed ids as app/src/routeManifest.ts's ROUTE_MANIFEST "DEC-985"
 // entries (test/render-sweep-manifest-parity.test.ts's derived assertion
 // requires every public ROUTE_MANIFEST row to have a mobile counterpart).
-const MOBILE_EMAIL_LOG_ID = "seed_email_log_0001";
 const MOBILE_EMBED_ID = "seed_embed_0001";
 
 export const MOBILE_ROUTE_MANIFEST: readonly MobileRouteEntry[] = [
@@ -135,10 +134,15 @@ export const MOBILE_ROUTE_MANIFEST: readonly MobileRouteEntry[] = [
   // and therefore not sweepable (see test/audit-claims.test.ts).
   { path: "/forgot", role: "public" },
   { path: "/docs/api", role: "public" },
-  { path: "/dev/mailbox", role: "public" },
-  // DEC-985 parity (w69-e): the single sent-email detail view — same
-  // deterministic seed id as ROUTE_MANIFEST's /dev/mailbox/seed_email_log_0001 row.
-  { path: `/dev/mailbox/${MOBILE_EMAIL_LOG_ID}`, role: "public" },
+  // w45-a: /dev/mailbox and /dev/mailbox/:id removed from here — they were
+  // declared role: "public" but guardDevMailbox actually requires role
+  // 'organizer' and redirects anonymous visitors to /login, so an anonymous
+  // mobile-pass visit was vacuously grading the sign-in card. ROUTE_MANIFEST's
+  // two /dev/mailbox rows are now role: "organizer" and ADMIN_MOBILE_ROUTE_MANIFEST
+  // derives its rows from ROUTE_MANIFEST's organizer+reviewer entries, so
+  // they're covered there instead once an organizer mobile counterpart
+  // exists — see render-sweep-manifest-parity.test.ts's public-row parity
+  // check, which no longer expects a mobile counterpart for these two paths.
   // DEC-785 parity (w69-e): the saved-embed public route — same
   // deterministic seed id as ROUTE_MANIFEST's /embed/e/seed_embed_0001 row
   // (the enabled "AI track sessions" embed, scripts/seed.ts).
@@ -731,6 +735,12 @@ async function visitRoute(
     bodyText = "";
   }
 
+  // w45-a: the pathname the browser actually landed on once navigation
+  // settled -- read after the goto/waitForSelector block above so a
+  // redirect (e.g. GET /logout -> /login) is reflected rather than silently
+  // assumed to equal entry.path.
+  const landedPath = new URL(page.url()).pathname;
+
   // DEC-620: vertical-clip probe, same page/session — filtered against
   // KNOWN_CLIP_EXCEPTIONS before being handed to evaluateRoute, so a named
   // exception never fails the gate.
@@ -807,7 +817,7 @@ async function visitRoute(
   }
 
   await page.close();
-  return evaluateRoute(entry, { status, bodyText, consoleErrors, pageErrors, clipOffenders });
+  return evaluateRoute(entry, { status, bodyText, consoleErrors, pageErrors, clipOffenders, landedPath });
 }
 
 const MOBILE_VIEWPORT = { width: 390, height: 844 };

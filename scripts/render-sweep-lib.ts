@@ -12,6 +12,7 @@ export interface RouteResult {
   consoleErrors: string[];
   pageErrors: string[];
   clipOffenders: string[];
+  landedPath: string;
   ok: boolean;
   failureReason?: string;
 }
@@ -39,12 +40,25 @@ export function evaluateRoute(
      * of bug that let agenda cards bleed past their own boxes unseen.
      * Already filtered against KNOWN_CLIP_EXCEPTIONS by the caller. */
     clipOffenders?: string[];
+    /** w45-a: the pathname the browser actually landed on once navigation
+     * settled (e.g. after following a redirect). Defaults to `entry.path`
+     * when the caller omits it (existing unit tests that don't care about
+     * this axis). */
+    landedPath?: string;
   },
 ): RouteResult {
   const bodyNonEmpty = isNonEmptyText(observed.bodyText);
   const clipOffenders = observed.clipOffenders ?? [];
+  const landedPath = observed.landedPath ?? entry.path;
+  const expectedStatus = entry.expectedStatus ?? 200;
+  const expectedLandedPath = entry.expectedLandedPath ?? entry.path;
   const reasons: string[] = [];
-  if (observed.status !== 200) reasons.push(`status ${observed.status} !== 200`);
+  if (observed.status !== expectedStatus) {
+    reasons.push(`status ${observed.status} !== expected ${expectedStatus}`);
+  }
+  if (landedPath !== expectedLandedPath) {
+    reasons.push(`landed on ${landedPath} !== expected ${expectedLandedPath}`);
+  }
   if (!bodyNonEmpty) reasons.push("empty rendered text");
   if (observed.consoleErrors.length > 0) {
     reasons.push(`${observed.consoleErrors.length} console error(s): ${observed.consoleErrors.join(" | ")}`);
@@ -62,6 +76,7 @@ export function evaluateRoute(
     consoleErrors: observed.consoleErrors,
     pageErrors: observed.pageErrors,
     clipOffenders,
+    landedPath,
     ok: reasons.length === 0,
     failureReason: reasons.length > 0 ? reasons.join("; ") : undefined,
   };
@@ -78,6 +93,7 @@ export function routeErrorResult(entry: RouteManifestEntry, message: string): Ro
     consoleErrors: [],
     pageErrors: [],
     clipOffenders: [],
+    landedPath: entry.path,
     ok: false,
     failureReason: message,
   };

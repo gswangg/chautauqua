@@ -46,6 +46,17 @@ export interface RouteManifestEntry {
   readonly path: string;
   readonly role: "organizer" | "reviewer" | "speaker" | "public";
   readonly params?: Record<string, string>;
+  /** Expected HTTP status for this row's navigation. Defaults to 200 when
+   * omitted (evaluateRoute in scripts/render-sweep-lib.ts). Only rows whose
+   * real destination is a deliberate non-200 (e.g. the DEC-945 chromeless
+   * 404 for an unmatched /admin/* path) set this. */
+  readonly expectedStatus?: number;
+  /** Expected pathname the browser lands on after navigation settles.
+   * Defaults to `entry.path` when omitted -- only rows whose role cannot
+   * reach `entry.path` (a guard redirects it elsewhere) declare where it
+   * actually lands, so the sweep grades the real destination instead of
+   * silently grading whatever page a redirect happened to land on. */
+  readonly expectedLandedPath?: string;
 }
 
 export const EVENT_SLUG = "devflow-conf-2027";
@@ -171,20 +182,26 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   { path: "/account/password", role: "reviewer" },
   { path: "/account/password", role: "speaker" },
 
-  // --- Sign-out confirmation (src/routes/auth.tsx, DEC-154 amendment
-  // wave 8 — a typed/bookmarked GET /logout renders a real confirmation
-  // card instead of 404ing; the session only ends on the POST, so the GET
-  // is idempotently visitable by the sweep). One row per role branch of the
-  // page's "Stay signed in" destination (speaker -> /portal, else /admin),
-  // following the /account/password precedent above. ---
-  { path: "/logout", role: "organizer" },
-  { path: "/logout", role: "speaker" },
+  // --- Sign-out (src/routes/auth-login.tsx, DEC-154 amendment wave 8/w45-a
+  // correction) — GET /logout has no screen for any role: a bare GET side
+  // effect would be a CSRF hole, so it mutates nothing and always 302s
+  // straight to /login (loginRoutes.get("/logout", ...) unconditionally
+  // redirects, regardless of role). Both rows below declare
+  // expectedLandedPath so the sweep grades the real destination instead of
+  // vacuously re-grading the sign-in card as if it were /logout's own
+  // content (w45-a: the prior "renders a real confirmation card" comment
+  // here was stale — the route has always been an inert redirect). ---
+  { path: "/logout", role: "organizer", expectedLandedPath: "/login" },
+  { path: "/logout", role: "speaker", expectedLandedPath: "/login" },
 
   // --- Admin catch-all (DEC-154, task w2-g's App.tsx <Route path="*">) ---
   // Literal "/*" tail so routeManifest.test.ts's suffix match sees the
   // wildcard segment; noted in w2-g's task text as an expected merge-train
-  // touch on this file.
-  { path: "/admin/*", role: "organizer" },
+  // touch on this file. w45-a: matchesAdminRoute("/*") is FALSE (no admin
+  // route pattern matches a literal "*" segment), so src/routes/root.tsx's
+  // DEC-945 chromeless-404 branch answers this path with a real 404 -- the
+  // sweep must expect that, not 200.
+  { path: "/admin/*", role: "organizer", expectedStatus: 404 },
 
   // --- DEC-403: no-login surfaces the mobile pass visits, not otherwise
   // reachable from App.tsx's own <Route> tree, added so the desktop sweep
@@ -234,7 +251,13 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   // /reset/:token is single-use and excluded in test/audit-claims.test.ts.
   { path: "/forgot", role: "public" },
   { path: "/docs/api", role: "public" },
-  { path: "/dev/mailbox", role: "public" },
+  // w45-a: guardDevMailbox (src/server/app.ts) redirects an anonymous
+  // visitor to /login and requires role 'organizer' -- this row was
+  // declaring role: "public" but no anonymous visitor can actually reach
+  // this path, so the sweep was vacuously grading the sign-in card. Flipped
+  // to organizer (matches the seeded organizer persona that logs in for
+  // every other "role: organizer" row).
+  { path: "/dev/mailbox", role: "organizer" },
 
   // --- DEC-985 (task w32-c): four routes the render sweep never visited
   // because HTML_ROUTE_EXCLUDED (test/audit-claims.test.ts) parked them
@@ -248,9 +271,11 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   { path: "/portal/resources", role: "speaker" },
   // Single sent-email detail view. scripts/seed.ts:2370 seeds email_log
   // rows via seedId("email_log", i + 1); the first is seed_email_log_0001.
+  // w45-a: role flipped to organizer for the same reason as the bare
+  // /dev/mailbox row above -- guardDevMailbox requires role 'organizer'.
   {
     path: "/dev/mailbox/seed_email_log_0001",
-    role: "public",
+    role: "organizer",
     params: { emailId: "seed_email_log_0001" },
   },
   // DEC-785 (task w3-d): the saved-embed public route. scripts/seed.ts:787

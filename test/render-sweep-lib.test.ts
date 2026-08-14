@@ -99,6 +99,78 @@ describe("evaluateRoute", () => {
   });
 });
 
+describe("evaluateRoute expectedStatus / expectedLandedPath (w45-a)", () => {
+  it("a row declaring expectedStatus: 404 passes at 404", () => {
+    const entry: RouteManifestEntry = { path: "/admin/*", role: "organizer", expectedStatus: 404 };
+    const result = evaluateRoute(entry, {
+      status: 404,
+      bodyText: "Not Found",
+      consoleErrors: [],
+      pageErrors: [],
+      landedPath: "/admin/*",
+    });
+    expect(result.ok).toBe(true);
+    expect(result.failureReason).toBeUndefined();
+  });
+
+  it("a row declaring expectedStatus: 404 fails at 200 (the DEC-945 chromeless-404 regression this row exists to catch)", () => {
+    const entry: RouteManifestEntry = { path: "/admin/*", role: "organizer", expectedStatus: 404 };
+    const result = evaluateRoute(entry, {
+      status: 200,
+      bodyText: "Overview",
+      consoleErrors: [],
+      pageErrors: [],
+      landedPath: "/admin/*",
+    });
+    expect(result.ok).toBe(false);
+    expect(result.failureReason).toMatch(/status 200 !== expected 404/);
+  });
+
+  it("a row with no expectedStatus still defaults to 200", () => {
+    const result = evaluateRoute(ENTRY, {
+      status: 404,
+      bodyText: "",
+      consoleErrors: [],
+      pageErrors: [],
+      landedPath: ENTRY.path,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.failureReason).toMatch(/status 404 !== expected 200/);
+  });
+
+  it("a row landing on /login fails unless it declares expectedLandedPath", () => {
+    const entry: RouteManifestEntry = { path: "/logout", role: "organizer" };
+    const result = evaluateRoute(entry, {
+      status: 200,
+      bodyText: "Sign in",
+      consoleErrors: [],
+      pageErrors: [],
+      landedPath: "/login",
+    });
+    expect(result.ok).toBe(false);
+    expect(result.failureReason).toMatch(/landed on \/login !== expected \/logout/);
+  });
+
+  it("a row declaring expectedLandedPath passes when it actually lands there", () => {
+    const entry: RouteManifestEntry = { path: "/logout", role: "organizer", expectedLandedPath: "/login" };
+    const result = evaluateRoute(entry, {
+      status: 200,
+      bodyText: "Sign in",
+      consoleErrors: [],
+      pageErrors: [],
+      landedPath: "/login",
+    });
+    expect(result.ok).toBe(true);
+    expect(result.failureReason).toBeUndefined();
+  });
+
+  it("landedPath defaults to entry.path when the caller omits it", () => {
+    const result = evaluateRoute(ENTRY, { status: 200, bodyText: "Overview", consoleErrors: [], pageErrors: [] });
+    expect(result.landedPath).toBe(ENTRY.path);
+    expect(result.ok).toBe(true);
+  });
+});
+
 describe("allPassed / formatSummary / formatResultsTable", () => {
   const passing = evaluateRoute(ENTRY, { status: 200, bodyText: "ok", consoleErrors: [], pageErrors: [] });
   const failing = evaluateRoute(
