@@ -188,6 +188,45 @@ function scanForCallSites(): CallSite[] {
   return out;
 }
 
+describe("parse-result-used scan negative control (DEC-518 wave-35 amendment)", () => {
+  // classify(src, callStart) is the pure predicate the repo-wide walk above
+  // feeds every real call site through. These tests feed it synthetic
+  // snippets directly -- a bare-statement call must classify "statement"
+  // (the violation this scan exists to catch), and every consuming shape
+  // (assignment, return, argument, property initializer) must classify
+  // "consumed" -- proving the scan can both fail and pass.
+  function callStartOf(src: string, fn: string): number {
+    const idx = src.indexOf(fn);
+    if (idx < 0) throw new Error(`fixture bug: ${fn} not found in ${JSON.stringify(src)}`);
+    return idx;
+  }
+
+  it("VIOLATION: a bare-statement call classifies as 'statement' (discarded result)", () => {
+    const src = "parseBoundedIdArray(body.ids, 'ids');";
+    expect(classify(src, callStartOf(src, "parseBoundedIdArray"))).toBe("statement");
+  });
+
+  it("COMPLIANT: an assignment classifies as 'consumed'", () => {
+    const src = "const ids = parseBoundedIdArray(body.ids, 'ids');";
+    expect(classify(src, callStartOf(src, "parseBoundedIdArray"))).toBe("consumed");
+  });
+
+  it("COMPLIANT: a return classifies as 'consumed'", () => {
+    const src = "function f() { return parseBoundedIdArray(body.ids, 'ids'); }";
+    expect(classify(src, callStartOf(src, "parseBoundedIdArray"))).toBe("consumed");
+  });
+
+  it("COMPLIANT: an argument position classifies as 'consumed'", () => {
+    const src = "foo(parseBoundedIdArray(body.ids, 'ids'));";
+    expect(classify(src, callStartOf(src, "parseBoundedIdArray"))).toBe("consumed");
+  });
+
+  it("COMPLIANT: a property initializer classifies as 'consumed'", () => {
+    const src = "const obj = { ids: parseBoundedIdArray(body.ids, 'ids') };";
+    expect(classify(src, callStartOf(src, "parseBoundedIdArray"))).toBe("consumed");
+  });
+});
+
 describe("parse-result-used scan (DEC-182 wave-32 amendment)", () => {
   it("finds at least 15 call sites across src/ (floor guards against the matcher silently narrowing)", () => {
     const hits = scanForCallSites();

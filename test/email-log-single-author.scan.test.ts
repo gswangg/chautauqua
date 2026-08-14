@@ -32,21 +32,85 @@ function glob(dir: string, suffixes: string[]): string[] {
   return out;
 }
 
+const SOLE_AUTHOR_PATH = "src/server/context.ts";
+
+/** Pure function over one file's source text: any `insert(schema.emailLog)`
+ * outside SOLE_AUTHOR_PATH, any import of the deleted mail/log-failed
+ * module, or any call to the deleted logFailedSend is a violation.
+ * `repoRelPath` is a forward-slash path relative to the repo root. */
+function findViolations(fileText: string, repoRelPath: string): string[] {
+  const violations: string[] = [];
+  if (fileText.includes("insert(schema.emailLog)") && repoRelPath !== SOLE_AUTHOR_PATH) {
+    violations.push(
+      `${repoRelPath}: writes email_log directly via insert(schema.emailLog) -- only ${SOLE_AUTHOR_PATH} (d1EmailLogWriter) may author email_log rows (DEC-923)`,
+    );
+  }
+  if (fileText.includes("mail/log-failed")) {
+    violations.push(`${repoRelPath}: imports the deleted mail/log-failed module`);
+  }
+  if (fileText.includes("logFailedSend")) {
+    violations.push(`${repoRelPath}: calls the deleted logFailedSend`);
+  }
+  return violations;
+}
+
+function repoRelPath(file: string): string {
+  return file.slice(REPO_ROOT.length + 1).split("\\").join("/");
+}
+
+describe("email-log-single-author scan negative control (DEC-518 wave-35 amendment)", () => {
+  it("VIOLATION: a second file inserting into schema.emailLog is reported", () => {
+    const src = "async function bad() { await db.insert(schema.emailLog).values(row); }";
+    expect(findViolations(src, "src/mail/rogue-writer.ts")).toEqual([
+      "src/mail/rogue-writer.ts: writes email_log directly via insert(schema.emailLog) -- only src/server/context.ts (d1EmailLogWriter) may author email_log rows (DEC-923)",
+    ]);
+  });
+
+  it("VIOLATION: an import of the deleted mail/log-failed module is reported", () => {
+    const src = 'import { logFailedSend } from "../mail/log-failed";';
+    const violations = findViolations(src, "src/routes/fixture.ts");
+    expect(violations).toContain("src/routes/fixture.ts: imports the deleted mail/log-failed module");
+    expect(violations).toContain("src/routes/fixture.ts: calls the deleted logFailedSend");
+  });
+
+  it("COMPLIANT: insert(schema.emailLog) in the sole-author file itself is silent", () => {
+    const src = "async function d1EmailLogWriter() { await db.insert(schema.emailLog).values(row); }";
+    expect(findViolations(src, SOLE_AUTHOR_PATH)).toEqual([]);
+  });
+
+  it("COMPLIANT: a file with neither pattern is silent", () => {
+    const src = "async function send() { await mailer.send(msg); }";
+    expect(findViolations(src, "src/mail/dev-sink.ts")).toEqual([]);
+  });
+});
+
 describe("email_log has exactly one author (DEC-923)", () => {
   it("src/mail/log-failed.ts no longer exists", () => {
     expect(existsSync(join(SRC_DIR, "mail", "log-failed.ts"))).toBe(false);
   });
 
-  it("`insert(schema.emailLog)` occurs in exactly one file, src/server/context.ts", () => {
+  it("`insert(schema.emailLog)` occurs in exactly one file, src/server/context.ts (declared-vs-discovered, both directions)", () => {
     const files = glob(SRC_DIR, [".ts", ".tsx"]);
-    const hits: string[] = [];
+    const discoveredAuthors = new Set<string>();
+    const otherViolations: string[] = [];
     for (const file of files) {
       const text = readFileSync(file, "utf8");
-      if (text.includes("insert(schema.emailLog)")) {
-        hits.push(file);
-      }
+      const rel = repoRelPath(file);
+      if (text.includes("insert(schema.emailLog)")) discoveredAuthors.add(rel);
+      otherViolations.push(...findViolations(text, rel).filter((v) => !v.includes("insert(schema.emailLog)")));
     }
-    expect(hits).toEqual([join(SRC_DIR, "server", "context.ts")]);
+
+    // Direction 1: every discovered author besides the declared sole author
+    // is an unauthorized write site (discovered-but-undeclared).
+    const unauthorized = [...discoveredAuthors].filter((f) => f !== SOLE_AUTHOR_PATH);
+    expect(unauthorized, `unauthorized email_log writers: ${unauthorized.join(", ")}`).toEqual([]);
+
+    // Direction 2: the declared sole author must actually be a discovered
+    // writer (declared-but-absent -- catches the file being renamed out
+    // from under this assertion without the check ever noticing).
+    expect(discoveredAuthors.has(SOLE_AUTHOR_PATH), `${SOLE_AUTHOR_PATH} no longer writes insert(schema.emailLog) -- update DEC-923's declared sole author`).toBe(true);
+
+    expect(otherViolations).toEqual([]);
   });
 
   it("nothing imports the deleted log-failed module or calls logFailedSend", () => {

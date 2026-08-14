@@ -184,6 +184,36 @@ function relativePath(file: string): string {
   return file.slice(join(__dirname, "..").length + 1);
 }
 
+describe("write-scoping-invariant scan negative control (DEC-518 wave-35 amendment)", () => {
+  // findUnscopedWrites(source, file) is already the pure predicate the
+  // repo-wide walk above feeds every file through -- these tests feed it
+  // synthetic snippets directly, proving it can both fail and pass.
+  it("VIOLATION: a top-level .update(schema.X) chain with no .where( is reported", () => {
+    const src = "async function bad() { db.update(schema.foo).set({ x: 1 }); }";
+    const offenders = findUnscopedWrites(src, "src/fixture.ts");
+    expect(offenders.length).toBe(1);
+    expect(offenders[0]?.kind).toBe("update");
+    expect(offenders[0]?.enclosingFunction).toBe("bad");
+  });
+
+  it("VIOLATION: a top-level .delete(schema.X) chain with no .where( is reported", () => {
+    const src = "async function bad() { db.delete(schema.foo); }";
+    const offenders = findUnscopedWrites(src, "src/fixture.ts");
+    expect(offenders.length).toBe(1);
+    expect(offenders[0]?.kind).toBe("delete");
+  });
+
+  it("COMPLIANT: a .where(-scoped chain is silent", () => {
+    const src = "async function ok() { db.update(schema.foo).set({ x: 1 }).where(eq(schema.foo.id, id)); }";
+    expect(findUnscopedWrites(src, "src/fixture.ts")).toEqual([]);
+  });
+
+  it("COMPLIANT: a chain nested as an argument (never reaches a top-level ';') is silent", () => {
+    const src = "async function ok() { await run(db.update(schema.foo).set({ x: 1 })); }";
+    expect(findUnscopedWrites(src, "src/fixture.ts")).toEqual([]);
+  });
+});
+
 describe("write-scoping invariant: every top-level update(schema.X)/delete(schema.X) is .where()-scoped", () => {
   const files = listTsFiles(SRC_ROOT);
   const allOffenders: ChainResult[] = [];
