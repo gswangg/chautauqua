@@ -907,3 +907,30 @@ describe('PipelineBoard: card face keyboard reachability (w4-c/DEC-898 amendment
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 });
+
+// B7 (DEC-678 amendment): an empty stage column names the stage via the
+// shared EmptyState 'filtered' variant -- the column's own name/count
+// header stays visible above it, and no button/action renders (moving a
+// card in happens via drag or the detail panel, never a button this empty
+// column would have to invent).
+describe('PipelineBoard: empty stage column (B7/DEC-678 amendment)', () => {
+  it('names the stage in the empty column, keeps the column header above it, and offers no button', async () => {
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+    });
+
+    renderBoard();
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+
+    const contactedColumn = document.querySelector('[data-stage="contacted"]') as HTMLElement;
+    // The column's own name/count header still renders above the message.
+    expect(within(contactedColumn).getByText('Contacted')).toBeInTheDocument();
+    expect(within(contactedColumn).getByText('0')).toBeInTheDocument();
+    expect(within(contactedColumn).getByText(/No one in Contacted/)).toBeInTheDocument();
+    // No button/no card-column-cards list -- the ul is replaced entirely.
+    expect(contactedColumn.querySelector('button')).toBeNull();
+    expect(contactedColumn.querySelector('.chq-contacts-pipeline-column-cards')).toBeNull();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+});

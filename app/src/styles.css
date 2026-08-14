@@ -1620,3 +1620,43 @@ a:hover {
 .chq-header-slot:empty {
   display: none;
 }
+
+/* ---------------------------------------------------------------------
+   B7 empty-state vocabulary (DEC-678 amendment, w27-d) -- additive block,
+   touches no existing selector. app/src/components/EmptyState.tsx owns the
+   fresh-vs-filtered split; these rules give each variant its own top room
+   and left-aligned, no-illustration layout in the content measure. Legacy
+   `.chq-empty` (above) stays intact for surfaces not yet converted.
+   ----------------------------------------------------------------------- */
+.chq-empty-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  text-align: left;
+}
+
+.chq-empty-block-fresh {
+  padding-top: 44px;
+}
+
+.chq-empty-block-filtered {
+  padding-top: 30px;
+}
+
+.chq-empty-what {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--chq-ink);
+}
+
+.chq-empty-reason {
+  margin: 0;
+  font-size: 14px;
+  color: var(--chq-muted);
+}
+
+.chq-empty-escape {
+  margin-top: 4px;
+}
