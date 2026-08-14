@@ -216,6 +216,14 @@ describe("DEC-972: confirmation quotes the event's own record prefix, not a hard
     );
     expect(emailLogInserts).toHaveLength(1);
     expect((emailLogInserts[0] as any).status).toBe("sent");
+
+    // task-w34-a: the confirmation email's html body renders through the B9
+    // shell (src/mail/shell.ts), not a hand-assembled <p> string — carries
+    // the wordmark (the event's own name, since brandingJson is null so it
+    // falls back to it) and the footer's reason clause naming that event.
+    const bodyHtml = (emailLogInserts[0] as any).bodyHtml as string;
+    expect(bodyHtml).toContain(eventRow.name);
+    expect(bodyHtml).toContain("you submitted a talk to this event.");
   });
 });
 
