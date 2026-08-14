@@ -7,7 +7,6 @@ import { FilesLibrary } from './FilesLibrary';
 import { SessionList } from './SessionList';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { PageSkeleton } from '../../components/PageSkeleton';
-import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { type ContentStatus, type ContentSubmissionListItem } from './types';
 import { WORKLIST_TAB_CONTENT_STATUS, WORKLIST_TABS, type WorklistTab } from './worklist';
 
@@ -87,16 +86,13 @@ export function ContentApp() {
     }),
   ) as Record<WorklistTab, number | null>;
 
-  // DEC-825 amendment: set-based bulk content-approval selection.
+  // DEC-825 amendment (wave 25, ruling A1): set-based bulk content-approval
+  // selection. This is now the ONLY bulk-approval path — the page-wide
+  // "Approve N ready" primary (and its own confirm dialog) is gone; two
+  // olive primaries with different scopes left a user unable to tell which
+  // one they were pressing.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkPending, setBulkPending] = useState(false);
-  // w42-c/DEC-825 amendment (wave 72): "Approve N ready" — every row on the
-  // CURRENT worklist page whose contentStatus isn't already 'approved',
-  // independent of the row-selection bulk bar above (no selection
-  // required). Rendered as a section action on the worklist's own rule
-  // (SessionList), not the title row.
-  const [showApproveReadyConfirm, setShowApproveReadyConfirm] = useState(false);
-  const [approveReadyPending, setApproveReadyPending] = useState(false);
   // w1-e: bumping this remounts FilesLibrary (its own load() effect keys on
   // eventId, not on time), which forces a fresh fetch — used on view
   // switch, the explicit Refresh button, and after a deliverable upload so
@@ -259,12 +255,14 @@ export function ContentApp() {
     }
   }
 
-  // DEC-825 amendment: set-based bulk content-approval — approve, request
-  // changes, or mark pending across every selected row in one round trip
-  // (DEC-568's bulk write). Loud failure surfaced the same way
+  // DEC-825 amendment (wave 25, ruling A1): set-based bulk content-approval
+  // across every selected row in one round trip (DEC-568's bulk write).
+  // ONE verb — 'approved' is the only status this bar can set; "Ask for
+  // changes" and "Reset to pending" already exist per-row on the
+  // deliverable detail. Loud failure surfaced the same way
   // requestContentStatus's single-row rollback does; no optimistic update
   // here since a failed preflight leaves every row untouched server-side.
-  async function bulkContentStatus(status: ContentStatus) {
+  async function bulkContentStatus(status: Extract<ContentStatus, 'approved'>) {
     if (!eventId || selectedIds.size === 0) return;
     setError(null);
     setBulkPending(true);
@@ -279,27 +277,6 @@ export function ContentApp() {
       setError(err instanceof ApiError ? `Bulk content status update failed: ${err.message}` : 'Bulk content status update failed');
     } finally {
       setBulkPending(false);
-    }
-  }
-
-  // w42-c: ready-to-approve rows on the current worklist page.
-  const notApprovedIds = items.filter((item) => item.contentStatus !== 'approved').map((item) => item.id);
-
-  async function confirmApproveReady() {
-    if (!eventId || notApprovedIds.length === 0) return;
-    setError(null);
-    setApproveReadyPending(true);
-    try {
-      await apiPost(`/events/${eventId}/submissions/content-status`, {
-        ids: notApprovedIds,
-        contentStatus: 'approved',
-      });
-      setShowApproveReadyConfirm(false);
-      loadWorklist();
-    } catch (err) {
-      setError(err instanceof ApiError ? `Approve failed: ${err.message}` : 'Approve failed');
-    } finally {
-      setApproveReadyPending(false);
     }
   }
 
@@ -370,46 +347,6 @@ export function ContentApp() {
       )}
       {error && <div className="chq-error" role="alert">{error}</div>}
 
-      {!submissionId && view === 'worklist' && selectedIds.size > 0 && (
-        <div className="chq-bulkbar" role="toolbar" aria-label="Bulk content actions">
-          <span className="chq-bulkbar-count">{selectedIds.size} selected</span>
-          <div className="chq-bulkbar-actions">
-            <button
-              type="button"
-              className="chq-btn chq-btn-primary"
-              disabled={bulkPending}
-              onClick={() => bulkContentStatus('approved')}
-            >
-              Approve
-            </button>
-            <button
-              type="button"
-              className="chq-btn chq-btn-secondary"
-              disabled={bulkPending}
-              onClick={() => bulkContentStatus('changes_requested')}
-            >
-              Request changes
-            </button>
-            <button
-              type="button"
-              className="chq-btn chq-btn-secondary"
-              disabled={bulkPending}
-              onClick={() => bulkContentStatus('pending')}
-            >
-              Mark pending
-            </button>
-            <button
-              type="button"
-              className="chq-btn chq-btn-tertiary"
-              disabled={bulkPending}
-              onClick={() => setSelectedIds(new Set())}
-            >
-              Clear selection
-            </button>
-          </div>
-        </div>
-      )}
-
       {submissionId && selected ? (
         <DeliverableDetail
           submissionId={selected.id}
@@ -454,23 +391,11 @@ export function ContentApp() {
           counts={counts}
           selectedIds={selectedIds}
           onSelectionChange={setSelectedIds}
-          // DEC-825 amendment (wave 72): 'Approve N ready' leaves the title
-          // row and becomes a section action on the worklist's own rule
-          // (house link-on-the-rule treatment) — same page-scoped
-          // notApprovedIds set, same confirm dialog, just relocated so an
-          // event-wide write isn't the most prominent element on a scanning
-          // surface.
-          approveReady={notApprovedIds.length > 0 ? { count: notApprovedIds.length, onOpen: () => setShowApproveReadyConfirm(true) } : null}
-        />
-      )}
-      {showApproveReadyConfirm && (
-        <ConfirmDialog
-          title={`Approve ${notApprovedIds.length} ready`}
-          body="Unapproved sessions stay off the public site."
-          confirmLabel={`Approve ${notApprovedIds.length}`}
-          pending={approveReadyPending}
-          onConfirm={confirmApproveReady}
-          onCancel={() => setShowApproveReadyConfirm(false)}
+          // DEC-825 amendment (wave 25, ruling A1): ONE bulk-approve primary,
+          // scoped to the ticked rows — the bar itself renders inside
+          // SessionList now, between the chipstrip and the table.
+          onBulkApprove={() => bulkContentStatus('approved')}
+          bulkPending={bulkPending}
         />
       )}
     </div>

@@ -46,6 +46,16 @@
   border-bottom: 2px solid var(--chq-ink);
 }
 
+/* DEC-825 amendment (wave 25, ruling A1): the selection column is a fixed
+   26px, distinct from the 18px .chq-check control it holds — the column's
+   own width, not the checkbox's, matching the ContactsTable precedent's
+   intent of a narrow lead column that never competes with Session/Speaker
+   for space. */
+.chq-content-table thead th:first-child,
+.chq-content-table tbody td:first-child {
+  width: 26px;
+}
+
 .chq-content-row {
   cursor: pointer;
 }
