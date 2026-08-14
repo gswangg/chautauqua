@@ -2,9 +2,11 @@
 // stable UID from submission id, SEQUENCE bumped by caller, METHOD is
 // caller-supplied (REQUEST for one-to-one scheduling emails, PUBLISH for
 // public/anonymous itinerary exports), LOCATION only when provided, UTC
-// times, 75-octet line folding, CRLF line endings. Every VEVENT carries an
-// ORGANIZER; REQUEST events also carry a single ATTENDEE (fail loudly if
-// that pairing is violated).
+// times, 75-octet line folding, CRLF line endings. A VEVENT carries an
+// ORGANIZER when the caller supplies one (DEC-947 wave-58 amendment: the
+// public/anonymous PUBLISH export may omit it rather than 500 when no mail
+// is configured); REQUEST events MUST supply an organizer and also carry a
+// single ATTENDEE (fail loudly if either pairing is violated).
 
 import { DEC_131 } from "../decisions";
 void DEC_131;
@@ -34,7 +36,7 @@ export interface IcsPerson {
 
 export interface IcsOptions {
   method: "REQUEST" | "PUBLISH";
-  organizer: { name: string; email: string };
+  organizer?: { name: string; email: string };
   attendee?: IcsPerson;
 }
 
@@ -137,7 +139,9 @@ function buildVevent(e: IcsEventInput, opts: IcsOptions): string[] {
   if (e.location !== undefined) {
     lines.push(`LOCATION:${sanitizeIcsText(e.location)}`);
   }
-  lines.push(`ORGANIZER;CN="${sanitizeCn(opts.organizer.name)}":mailto:${opts.organizer.email}`);
+  if (opts.organizer) {
+    lines.push(`ORGANIZER;CN="${sanitizeCn(opts.organizer.name)}":mailto:${opts.organizer.email}`);
+  }
   if (opts.method === "REQUEST") {
     const attendee = opts.attendee!;
     lines.push(
@@ -178,6 +182,9 @@ export function buildIcsCalendar(events: IcsEventInput[], opts: IcsOptions): str
   }
   if (opts.method === "PUBLISH" && opts.attendee) {
     throw new Error("buildIcsCalendar: METHOD:PUBLISH must not have an attendee");
+  }
+  if (opts.method === "REQUEST" && !opts.organizer) {
+    throw new Error("buildIcsCalendar: METHOD:REQUEST requires an organizer");
   }
   const lines: string[] = [];
   lines.push("BEGIN:VCALENDAR");
