@@ -8,7 +8,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { speakerGate, PortalLayout, PortalBackLink } from "./shared";
-import { formatCalendarDate, formatEventDate, formatScheduleSlotLabel } from "../../lib/event-time";
+import { formatCalendarDate, formatDayMedium, formatEventDate, formatScheduleSlotLabel } from "../../lib/event-time";
 import { effectiveAssignmentDueDate } from "../../domain/task-due";
 import { csrfForm } from "../../server/middleware";
 import { ApiError } from "../../server/http";
@@ -138,6 +138,7 @@ function WorklistTaskRow(props: { task: PortalTaskAssignment; now: number }) {
         {overdue ? <strong class="chq-flag">Overdue</strong> : null}
       </div>
       {effectiveDue ? <span class="chq-portal-due">Due {formatCalendarDate(effectiveDue)}</span> : null}
+      {t.description ? <p class="chq-portal-detail">{t.description}</p> : null}
       <div class="chq-portal-actions">
         <a href={taskActionHref(t)} class="chq-btn chq-btn-primary">
           {taskActionLabel(t)}
@@ -172,16 +173,16 @@ function WorklistInvitationRow(props: { invitation: PortalInvitation; csrfToken:
   );
 }
 
-/** DEC-590/w15-b subline: "<Event name> · you speak <day>, <HH:MM>, <room>"
- * when the speaker has an accepted session that's actually been placed on
- * the schedule (day + startMin both set); else the event name alone. The
- * first such placed session is used — the portal home states one line, not
- * a per-session list. */
+/** DEC-590/w15-b subline: "<Event name> · you speak <formatPlacement>" when
+ * the speaker has an accepted session that's actually been placed on the
+ * schedule (day + startMin both set); else the event name alone. The first
+ * such placed session is used — the portal home states one line, not a
+ * per-session list. Composes formatPlacement below — the ONE portal
+ * placement grammar (w13-d) — rather than hand-assembling day/time/room. */
 function scheduledSubline(eventName: string, sessions: PortalSession[]): string {
   const placed = sessions.find((s) => s.day !== null && s.startMin !== null);
   if (!placed) return eventName;
-  const room = placed.roomName ? `, ${placed.roomName}` : "";
-  return `${eventName} · you speak ${placed.day}, ${minutesToClock(placed.startMin)}${room}`;
+  return `${eventName} · you speak ${formatPlacement(placed.day!, placed.startMin!, placed.roomName)}`;
 }
 
 function SessionCard(props: { session: PortalSession; deliverable: PortalDeliverable | null }) {
@@ -357,27 +358,17 @@ function minutesToClock(min: number | null): string {
   return `${h}:${m}`;
 }
 
-/** DEC-522-style treatment: `day` ('YYYY-MM-DD') is a calendar day already
- * expressed in the owning event's timezone (schema.scheduleSlot.day), not a
- * raw instant — so it's parsed as a UTC-midnight label and rendered through
- * formatCalendarDate (never toISOString, never re-zoned through a second
- * timezone conversion, which would risk shifting the calendar day). */
-function parseDayLabel(day: string): number {
-  const [year, month, date] = day.split("-").map(Number);
-  if (!year || !month || !date) {
-    throw new Error(`Invalid day '${day}' — expected 'YYYY-MM-DD'`);
-  }
-  return Date.UTC(year, month - 1, date);
-}
-
-// DEC-777: "<day>, <HH:MM> · <room>" — day via formatCalendarDate (a
-// calendar-day label, not an instant), start time via the already-local
-// startMin (schedule_slot stores minutes-from-midnight IN the event's own
-// timezone — DEC-010 — so no further zone conversion applies), and an
-// honest "Room to be announced" instead of silently omitting the room.
+// DEC-777/w13-d: "<day>, <HH:MM> · <room>" — THE ONE portal placement
+// grammar, day via formatDayMedium (a calendar-day label, not an instant —
+// same "Tue 12 May" the design handoff and the agenda day-switcher family
+// use), start time via the already-local startMin (schedule_slot stores
+// minutes-from-midnight IN the event's own timezone — DEC-010 — so no
+// further zone conversion applies), and an honest "Room to be announced"
+// instead of silently omitting the room. scheduledSubline composes this
+// same function rather than hand-assembling day/time/room a second time.
 function formatPlacement(day: string, startMin: number, roomName: string | null): string {
   const room = roomName ?? "Room to be announced";
-  return `${formatCalendarDate(parseDayLabel(day))}, ${minutesToClock(startMin)} · ${room}`;
+  return `${formatDayMedium(day)}, ${minutesToClock(startMin)} · ${room}`;
 }
 
 const BYTE_UNITS = ["B", "KB", "MB", "GB"];

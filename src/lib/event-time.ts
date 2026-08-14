@@ -117,6 +117,25 @@ export function formatDayLong(day: string): string {
   });
 }
 
+/** Medium day label for placement/schedule sublines, e.g. "Tue 12 May" —
+ * same "calendar day, not an instant" contract (DEC-522) as formatDayShort/
+ * formatDayLong above: `day` is already the wall-clock 'YYYY-MM-DD' field in
+ * the owning event's own timezone (DEC-010), so this takes NO timeZone
+ * parameter and reads UTC calendar fields directly, never re-zoned. en-GB
+ * gives the weekday-day-month order the design handoff wants ("Tue 12 May").
+ * Malformed input returns the original string unchanged, matching this
+ * file's fail-soft contract for organizer-entered scheduling data. */
+export function formatDayMedium(day: string): string {
+  const [year, month, date] = day.split("-").map(Number);
+  if (!year || !month || !date) return day;
+  return new Date(Date.UTC(year, month - 1, date)).toLocaleDateString("en-GB", {
+    timeZone: "UTC",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
 /** Day-of-month + month label (UTC calendar fields, DEC-522: startDate/
  * endDate are DAY LABELS, not instants — never rendered in any timezone but
  * UTC). en-GB gives British day-before-month order with no comma, e.g.
