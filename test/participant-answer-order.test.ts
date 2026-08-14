@@ -92,7 +92,7 @@ describe("DEC-562: SQL ORDER BY names both columns, by identity", () => {
 
   it("getSubmissionDetail participant query — (participant.order asc, contact.id asc)", async () => {
     const db = makeFakeDb([
-      [{ id: "sub-1", eventId: "event-1", formId: null, title: "T", description: null, status: "submitted", contentStatus: "unset", trackId: null, additionalTrackIdsJson: null, createdAt: new Date(0), updatedAt: new Date(0), acceptedAt: null, icsSequence: 0, recordPrefix: "SES", seq: 1, timezone: "UTC" }], // submission+event row
+      [{ id: "sub-1", eventId: "event-1", formId: null, title: "T", description: null, status: "submitted", contentStatus: "unset", trackId: null, additionalTrackIdsJson: null, createdAt: new Date(0), updatedAt: new Date(0), acceptedAt: null, icsSequence: 0, recordPrefix: "SES", orgId: "org-1", startDate: "2026-01-01", seq: 1, timezone: "UTC" }], // submission+event row
       [], // participantRows
       [], // trackRows
       [], // answerRows

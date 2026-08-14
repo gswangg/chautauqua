@@ -443,6 +443,8 @@ describe("PATCH /api/v1/submissions/:id (CNT-09 admin session editing)", () => {
     createdAt: new Date(1000),
     updatedAt: new Date(2000),
     recordPrefix: "TALK",
+    orgId: ORG_A,
+    startDate: "2024-01-01",
     slotDay: null,
     slotStartMin: null,
     slotEndMin: null,

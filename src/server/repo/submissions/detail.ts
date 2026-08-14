@@ -2,10 +2,11 @@
 // repo/submissions.ts (contention decomposition, no behavior change). See
 // repo/submissions.ts for the module-level contract notes.
 
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
+import { eventYear } from "../../../lib/event-time";
 // DEC-881: the detail read's `reuploaded` flag composes the SAME predicate
 // the worklist row/header use (reUploadedSql, submissions/list.ts) — never a
 // second derivation that could disagree on which submissions are re-uploaded.
@@ -22,6 +23,14 @@ export interface SubmissionDetailParticipant {
   order: number;
   visible: boolean;
   inviteStatus: string;
+  // DEC-900: the speaker rail's history line ("N submissions this year ·
+  // spoke in YYYY"). submissionsThisYear always includes this submission
+  // itself so it is always >= 1 -- non-optional. lastSpokeYear is absent
+  // (not null, not 0) when the contact has no PRIOR accepted-and-scheduled
+  // submission, matching reviewer.ts's myEvaluation/myRecusal "absent means
+  // none" convention.
+  submissionsThisYear: number;
+  lastSpokeYear?: number;
 }
 
 export interface SubmissionDetailSlot {
@@ -131,6 +140,8 @@ export async function getSubmissionDetail(db: Db, submissionId: string): Promise
       createdAt: schema.submission.createdAt,
       updatedAt: schema.submission.updatedAt,
       recordPrefix: schema.event.recordPrefix,
+      orgId: schema.event.orgId,
+      startDate: schema.event.startDate,
       slotDay: schema.scheduleSlot.day,
       slotStartMin: schema.scheduleSlot.startMin,
       slotEndMin: schema.scheduleSlot.endMin,
@@ -164,6 +175,36 @@ export async function getSubmissionDetail(db: Db, submissionId: string): Promise
     .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
     .where(eq(schema.participant.submissionId, submissionId))
     .orderBy(asc(schema.participant.order), asc(schema.contact.id));
+
+  // DEC-900: speaker rail history line ("N submissions this year · spoke in
+  // YYYY") — ONE batched query keyed on the detail's participant contact
+  // ids, never a per-speaker fetch (the N-scan rule). Scoped to the SAME ORG
+  // as this submission's event via event.orgId.
+  const contactIds = [...new Set(participantRows.map((p) => p.contactId))];
+  const historyRows =
+    contactIds.length > 0
+      ? await db
+          .select({
+            contactId: schema.participant.contactId,
+            submissionId: schema.submission.id,
+            startDate: schema.event.startDate,
+            status: schema.submission.status,
+            scheduled: sql<number>`case when ${schema.scheduleSlot.id} is not null then 1 else 0 end`,
+          })
+          .from(schema.participant)
+          .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
+          .innerJoin(schema.event, eq(schema.event.id, schema.submission.eventId))
+          .leftJoin(schema.scheduleSlot, eq(schema.scheduleSlot.submissionId, schema.submission.id))
+          .where(and(inArray(schema.participant.contactId, contactIds), eq(schema.event.orgId, row.orgId)))
+      : [];
+
+  const historyByContact = new Map<string, typeof historyRows>();
+  for (const h of historyRows) {
+    const list = historyByContact.get(h.contactId) ?? [];
+    list.push(h);
+    historyByContact.set(h.contactId, list);
+  }
+  const thisSubmissionYear = eventYear(row.startDate);
 
   const trackRows = await db
     .select({ trackId: schema.submissionTrack.trackId })
@@ -201,18 +242,35 @@ export async function getSubmissionDetail(db: Db, submissionId: string): Promise
     icsSequence: row.icsSequence,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
-    participants: participantRows.map((p) => ({
-      id: p.id,
-      contactId: p.contactId,
-      name: `${p.firstName} ${p.lastName}`.trim(),
-      email: p.email,
-      title: p.title,
-      company: p.company,
-      role: p.role,
-      order: p.order,
-      visible: p.visible,
-      inviteStatus: p.inviteStatus,
-    })),
+    participants: participantRows.map((p) => {
+      const rowsForContact = historyByContact.get(p.contactId) ?? [];
+      const seenSubmissions = new Set<string>();
+      let submissionsThisYear = 0;
+      let lastSpokeYear: number | undefined;
+      for (const h of rowsForContact) {
+        if (seenSubmissions.has(h.submissionId)) continue;
+        seenSubmissions.add(h.submissionId);
+        const y = eventYear(h.startDate);
+        if (y === thisSubmissionYear) submissionsThisYear++;
+        if (y < thisSubmissionYear && h.status === "accepted" && Number(h.scheduled) === 1) {
+          if (lastSpokeYear === undefined || y > lastSpokeYear) lastSpokeYear = y;
+        }
+      }
+      return {
+        id: p.id,
+        contactId: p.contactId,
+        name: `${p.firstName} ${p.lastName}`.trim(),
+        email: p.email,
+        title: p.title,
+        company: p.company,
+        role: p.role,
+        order: p.order,
+        visible: p.visible,
+        inviteStatus: p.inviteStatus,
+        submissionsThisYear,
+        ...(lastSpokeYear !== undefined ? { lastSpokeYear } : {}),
+      };
+    }),
     answers,
     answerFiles: answerFileRows,
     slot:

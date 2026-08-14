@@ -52,6 +52,8 @@ const BASE_SUBMISSION_ROW = {
   createdAt: new Date(0),
   updatedAt: new Date(0),
   recordPrefix: "SES",
+  orgId: "org-a",
+  startDate: "2024-01-01",
   slotDay: null,
   slotStartMin: null,
   slotEndMin: null,
