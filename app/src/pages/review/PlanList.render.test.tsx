@@ -214,4 +214,28 @@ describe('PlanList (DEC-706/DEC-707 render)', () => {
     const rowB = screen.getByText('Empty Plan').closest('.chq-review-plan-row')!;
     expect(rowB).toHaveTextContent('AI Engineering · 2 reviews each');
   });
+
+  // B7 (DEC-678 amendment): a fresh (never-created) plan list renders the
+  // shared EmptyState with a 'New plan' action, and never a results header
+  // over an unselected/nonexistent plan.
+  it('renders the fresh empty state with a New plan action, and no results header, when there are no plans', async () => {
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-organizer', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <PlanList />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('No review plans yet')).toBeInTheDocument();
+    // Two "New plan" affordances is fine (title-row link + empty-state
+    // action) -- what matters is at least one exists and no results table
+    // header renders over a nonexistent selection.
+    expect(screen.getAllByRole('link', { name: 'New plan' }).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/results · ranked/)).not.toBeInTheDocument();
+  });
 });

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { apiList, ApiError } from '../../lib/api';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { EmptyState } from '../../components/EmptyState';
 import { RecentSends } from './RecentSends';
 import type { EmailBatchRow } from './types';
 
@@ -23,8 +24,19 @@ export function HistoryTab({ eventId, templatesById }: { eventId: string; templa
   const [error, setError] = useState<string | null>(null);
   // w1-g: a compose-mount "Open" hands off here via ?tab=history&batch=<key>
   // -- read once on arrival so the matching batch lands already expanded.
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const expandBatchKey = searchParams.get('batch');
+
+  // B7 (DEC-678 amendment): the same tab-switch path Comms.tsx's own
+  // "All history" link uses in reverse -- ?tab= on this same route, never a
+  // route navigation.
+  function goToCompose() {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set('tab', 'compose');
+      return params;
+    });
+  }
 
   useEffect(() => {
     setLoading(true);
@@ -63,7 +75,18 @@ export function HistoryTab({ eventId, templatesById }: { eventId: string; templa
       {!loading && loaded && items.length === 0 && q.trim() !== '' && (
         <p className="chq-empty">No sends match &ldquo;{q.trim()}&rdquo;.</p>
       )}
-      {!loading && loaded && (items.length > 0 || q.trim() === '') && (
+      {/* B7 (DEC-678 amendment): totally fresh (never sent anything, no
+          search applied) REPLACES the batch table entirely -- it never
+          renders RecentSends' own section head/table chrome over zero
+          rows. */}
+      {!loading && loaded && items.length === 0 && q.trim() === '' && (
+        <EmptyState
+          variant="fresh"
+          what="Nothing has been sent yet"
+          action={{ label: 'Compose', onClick: goToCompose }}
+        />
+      )}
+      {!loading && loaded && items.length > 0 && (
         <RecentSends
           eventId={eventId}
           batches={items}

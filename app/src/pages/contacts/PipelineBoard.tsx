@@ -15,6 +15,7 @@ import { useEffect, useState, type DragEvent, type FormEvent, type ReactNode } f
 import { useSearchParams } from 'react-router-dom';
 import { apiGet, apiList, apiPost, apiPatch, ApiError } from '../../lib/api';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { EmptyState } from '../../components/EmptyState';
 import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import { formatDateTime } from '../../lib/dates';
 import { pipelineCardAge } from './pipeline-age';
@@ -198,16 +199,36 @@ export function PipelineBoard() {
                     {entries.filter((e) => e.stage === stage).length}
                   </span>
                 </div>
-                <ul className="chq-contacts-pipeline-column-cards">
-                  {sortByFit(entries.filter((e) => e.stage === stage)).map((entry) => (
-                    <PipelineCard
-                      key={entry.id}
-                      entry={entry}
-                      onOpen={() => setOpenEntryId(entry.id)}
-                      onEditFit={() => setFitEditEntry(entry)}
-                    />
-                  ))}
-                </ul>
+                {(() => {
+                  const stageEntries = sortByFit(entries.filter((e) => e.stage === stage));
+                  if (stageEntries.length === 0) {
+                    // B7 (DEC-678 amendment): 'filtered' -- the column's own
+                    // name/count header stays visible above this (the
+                    // stage split is the excluding facet), tighter spacing,
+                    // and no primary action (moving a card here happens via
+                    // drag or the detail panel's Stage select, not a button
+                    // this empty column would have to invent).
+                    return (
+                      <EmptyState
+                        variant="filtered"
+                        what={`No one in ${PIPELINE_STAGE_LABELS[stage]}`}
+                        reason={`Move a card into ${PIPELINE_STAGE_LABELS[stage]} to see it here.`}
+                      />
+                    );
+                  }
+                  return (
+                    <ul className="chq-contacts-pipeline-column-cards">
+                      {stageEntries.map((entry) => (
+                        <PipelineCard
+                          key={entry.id}
+                          entry={entry}
+                          onOpen={() => setOpenEntryId(entry.id)}
+                          onEditFit={() => setFitEditEntry(entry)}
+                        />
+                      ))}
+                    </ul>
+                  );
+                })()}
               </div>
             ))}
           </div>

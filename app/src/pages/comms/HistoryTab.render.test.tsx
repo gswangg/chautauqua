@@ -219,4 +219,27 @@ describe('HistoryTab', () => {
     const otherRow = screen.getByText('A different send').closest('.chq-comms-batch-row') as HTMLElement;
     expect(within(otherRow).getByRole('button', { name: 'Open' })).toHaveAttribute('aria-expanded', 'false');
   });
+
+  // B7 (DEC-678 amendment): the batch table (RecentSends' own section head +
+  // rows) is REPLACED, not sat under, when nothing has ever been sent --
+  // the fresh empty state with a Compose action renders instead.
+  it('replaces the batch table with a fresh empty state + Compose action when nothing has been sent', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter>
+        <HistoryTab eventId={EVENT_ID} templatesById={{}} />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Nothing has been sent yet')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Compose' })).toBeInTheDocument();
+
+    // No batch-table chrome (RecentSends' own "Recent sends" section head)
+    // renders over the zero rows.
+    expect(screen.queryByText('Recent sends')).not.toBeInTheDocument();
+    expect(document.querySelector('.chq-comms-batch-row')).toBeNull();
+  });
 });

@@ -8,6 +8,7 @@ import { ProgressPanel } from './ProgressPanel';
 import { buildResultsCsvHref } from './resultsCsv';
 import { ResultsTable } from './ResultsTable';
 import { DelayedLoading, useDelayedFlag } from '../../components/DelayedLoading';
+import { EmptyState } from '../../components/EmptyState';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import './review.css';
 import type { EvaluationPlan, ProgressRow, Track } from './types';
@@ -218,7 +219,13 @@ export function PlanList() {
           <h2 className="chq-section-label">Evaluation plans</h2>
         </div>
         {loading && <DelayedLoading />}
-        {loaded && !loading && plans.length === 0 && <p className="chq-empty">No evaluation plans yet.</p>}
+        {loaded && !loading && plans.length === 0 && (
+          <EmptyState
+            variant="fresh"
+            what="No review plans yet"
+            action={{ label: 'New plan', to: '/review/plans/new' }}
+          />
+        )}
         {plans.map((plan) => {
           const isSelected = selected === plan.id;
           return (
