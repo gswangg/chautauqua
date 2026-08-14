@@ -22,24 +22,40 @@ describe('emailLocalPart', () => {
 });
 
 describe('identityLabel', () => {
-  it('prefers the initials form of a non-empty name', () => {
-    expect(identityLabel('Jordan Alvarez', 'organizer@example.com')).toBe('JORDAN A.');
+  it('prefers the initials form of a non-empty name for an organizer', () => {
+    expect(identityLabel('Jordan Alvarez', 'organizer@example.com', 'organizer')).toBe('JORDAN A.');
+  });
+
+  it('renders the full, uppercased name for a reviewer (DEC-369)', () => {
+    expect(identityLabel('Sam Whitfield', 'sam@example.com', 'reviewer')).toBe('SAM WHITFIELD');
+  });
+
+  it('collapses internal whitespace and trims for a reviewer full name', () => {
+    expect(identityLabel('  Sam   Whitfield  ', 'sam@example.com', 'reviewer')).toBe('SAM WHITFIELD');
+  });
+
+  it('uppercases a single-word name as-is for a reviewer, with no period', () => {
+    expect(identityLabel('Madonna', 'madonna@example.com', 'reviewer')).toBe('MADONNA');
   });
 
   it('falls back to the email local-part for a null name', () => {
-    expect(identityLabel(null, 'organizer@example.com')).toBe('ORGANIZER');
+    expect(identityLabel(null, 'organizer@example.com', 'organizer')).toBe('ORGANIZER');
   });
 
   it('falls back to the email local-part for an undefined name', () => {
-    expect(identityLabel(undefined, 'organizer@example.com')).toBe('ORGANIZER');
+    expect(identityLabel(undefined, 'organizer@example.com', 'organizer')).toBe('ORGANIZER');
   });
 
   it('falls back to the email local-part for a whitespace-only name', () => {
-    expect(identityLabel('   ', 'organizer@example.com')).toBe('ORGANIZER');
+    expect(identityLabel('   ', 'organizer@example.com', 'organizer')).toBe('ORGANIZER');
+  });
+
+  it('falls back to the email local-part for a null name, for a reviewer too', () => {
+    expect(identityLabel(null, 'sam@example.com', 'reviewer')).toBe('SAM');
   });
 
   it('never returns a bare email or the literal "undefined"', () => {
-    const label = identityLabel(undefined, 'organizer@example.com');
+    const label = identityLabel(undefined, 'organizer@example.com', 'organizer');
     expect(label).not.toBe('organizer@example.com');
     expect(label.toLowerCase()).not.toContain('undefined');
   });

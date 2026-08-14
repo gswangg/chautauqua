@@ -259,6 +259,30 @@ describe('Desktop header single row + identity (DEC-576/369)', () => {
     expect(screen.queryByText('organizer@example.com')).not.toBeInTheDocument();
     expect(screen.queryByText(/undefined/i)).not.toBeInTheDocument();
   });
+
+  // DEC-369: the two design sources differ deliberately -- organizer chrome
+  // reads "JORDAN A." (initials form), reviewer chrome reads the full
+  // surname, "SAM WHITFIELD" (docs/design/Chautauqua Review.dc.html:152,313).
+  it('renders the reviewer full name, not the organizer initials form', async () => {
+    mockApi({
+      'GET /api/v1/me': {
+        userId: 'u-2',
+        email: 'sam@example.com',
+        name: 'Sam Whitfield',
+        role: 'reviewer',
+        orgId: 'org-1',
+      },
+      'GET /api/v1/events': { items: [], total: 0, page: 1, perPage: 50 },
+    });
+
+    render(<App />);
+
+    const header = await screen.findByRole('banner');
+    await waitFor(() => {
+      expect(within(header).getByText('SAM WHITFIELD', { exact: false })).toBeInTheDocument();
+    });
+    expect(within(header).queryByText('SAM W.', { exact: false })).not.toBeInTheDocument();
+  });
 });
 
 // DEC-369 amendment (wave 72): no bottom chrome bar -- the shell footer is
