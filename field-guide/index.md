@@ -16,45 +16,40 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   REQUEST; FIND-OR-CREATE NEEDS A UNIQUE INDEX; UNBOUNDED SURFACE NEVER
   PAGED; grep decisions/ first; READER W/NO WRITER RENDERS NOTHING;
   GUESSABLE URL 404 DEAD END; SUB-APP onError SWALLOWS PARENT'S MANNERS.
-- FINDINGS w16-30 (heavily compacted; do NOT re-file, see decisions/ git
-  history). Shapes: SCAN BINDS ONE CALL SHAPE MISSES SIBLING; GUARD THAT
-  NARROWS < NONE; MINT != DELIVERY; CATCH RETURNING A DEFAULT IS NOT A
-  GUARD; A REVIEW LENS READS A SNAPSHOT NOT THE TREE; A CLOSURE PROVEN AT
-  THE REPO IS NOT PROVEN AT THE ROUTE; A LIMITER THAT PEEKS ISN'T ONE UNDER
+- FINDINGS w16-33 (heavily compacted; do NOT re-file, see decisions/ git
+  history; MANDATE ~EXHAUSTED on this list, re-verified closed each wave).
+  Shapes: SCAN BINDS ONE CALL SHAPE MISSES SIBLING; GUARD THAT NARROWS <
+  NONE; MINT != DELIVERY; CATCH RETURNING A DEFAULT IS NOT A GUARD; A
+  REVIEW LENS READS A SNAPSHOT NOT THE TREE; A CLOSURE PROVEN AT THE REPO
+  IS NOT PROVEN AT THE ROUTE; A LIMITER THAT PEEKS ISN'T ONE UNDER
   CONCURRENCY; A CAP CHECKED AFTER THE BUFFER IS NOT A CAP; A BULK ID ARRAY
   IS A SET OR A DOUBLE-SEND; A BOUND ON THE WRITE SIDE IS NOT A BOUND ON
-  THE READ SIDE; A SHARED COMPONENT WITH ONLY ITS OWN TEST AS CONSUMER
-  MARKS THE SHAPE NOBODY BUILT. Amendments
-  DEC-124/958/745/653/897/793/575/657/180/949/974/874.
-- FINDINGS w31-32 (compacted; MANDATE ~EXHAUSTED, re-verified closed each
-  wave, do NOT re-file without opening eval-findings.md): filter strings,
-  email-log validation, /docs/api enumerator, LICENSE, body-limit gate,
-  embed bounds, Retry-After clamp, login limiter, assertOwnAssignmentOr403,
-  CFP visibility, duplicate-at-create, EMBED_FORMATS, seed<->fixtures, CI,
-  scheduled-tick isolation. TAKEN w32: bulk-email.ts:40 discards
-  parseBoundedIdArray's result then re-reads raw body; DEC-725's w30
-  rename-touch was a decision with no code. Shapes: PARSE RESULT DISCARDED
-  != PARSED; AMENDMENT W/NO CALL SITE IS OPEN; SECOND READER BOUNDS A STAMP;
-  TREE MOVES UNDER YOU MID-PLAN -- re-verify immediately.
-- FINDINGS w33. Re-probed the mandate + all 8 review-lens items AT THE FILE: every one
-  is CLOSED except bulk-email.ts:40, which still discards parseBoundedIdArray's result
-  and re-reads the raw body at :60 -- that is OWNED BY task-w32-a (branch exists,
-  unmerged at plan time). NEXT PLANNER: confirm it landed before re-filing. Also
-  re-verified closed, do NOT re-file: LICENSE, email-log ?status=, README credential
-  enumerator (DEC-513), CSV formula injection (DEC-179), pubcache purge classification
-  (DEC-627), reminder dedupe window, aria-pressed (DEC-939), Venue label, criteria-row
-  6th track, Distribute copy, password-reset flow, home hub (DEC-581/582), CI perf
-  smoke. `npm run deploy` absent is BY DESIGN (README lists wrangler deploy as stage 2).
-- TAKEN w33 (verified open at the file): Airtable's watermark stores the tick's own
-  START and reads with strict gt(), so a row committing after the SELECT with an
-  earlier updated_at is lost forever; DEC-725's stamp fires on non-changes (import
-  re-upload, colour-only track patch, bio-only profile save) while overview.ts:284 is
-  desc(updated_at) LIMIT 5, so a bulk import EVICTS real work from Overview;
-  ContactStats computes eventCount/returningSpeakers that no surface renders.
-- Shapes: A WATERMARK THAT STORES ITS OWN START LOSES ANY WRITE WHOSE TIMESTAMP
-  PRECEDES ITS COMMIT -- read back, stamp forward. A STAMP FIRED ON A NON-CHANGE IS A
-  WORKLIST EVICTION, NOT A NO-OP -- grep the stamp's second reader for a LIMIT. A
-  FIGURE COMPUTED FOR NOBODY IS A HOT-ROUTE TAX -- enumerate endpoint field ->
-  rendering consumer. THE DECISIONS' OWN PATH REFERENCES ARE A CHEAP DRIFT DETECTOR:
-  a file split leaves prose pointing at a deleted path, and an exemption belongs in
-  the prose, not in an allowlist nobody opens.
+  THE READ SIDE; A SHARED COMPONENT W/ONLY ITS OWN TEST MARKS THE SHAPE
+  NOBODY BUILT; PARSE RESULT DISCARDED != PARSED; AMENDMENT W/NO CALL SITE
+  IS OPEN; A WATERMARK STORING ITS OWN START LOSES LATE-COMMITTING WRITES
+  -- read back, stamp forward; A STAMP FIRED ON A NON-CHANGE IS A WORKLIST
+  EVICTION -- grep the stamp's 2nd reader for a LIMIT; A FIGURE COMPUTED
+  FOR NOBODY IS A HOT-ROUTE TAX; THE DECISIONS' OWN PATH REFS ARE A CHEAP
+  DRIFT DETECTOR. Amendments DEC-124/958/745/653/897/793/575/657/180/949/
+  974/874. `npm run deploy` absent is BY DESIGN (README stage-2 deploy).
+- FINDINGS w34 (all re-verified AT THE FILE before filing). TAKEN, verified OPEN: /forgot mails and
+  logs `${origin}/reset/<token>` into email_log while redactClaimUrls (claim.ts:128) knows only
+  `/claim/`, so Comms "Show what was sent" (comms.ts:800) hands any peer organizer a live 1h
+  takeover link; POST /reset/:token consumes at :176 BEFORE validating, so a mistyped confirm burns
+  the grant and the retry form posts to a dead token; the CFP confirmation - the one email every
+  submitter gets - is hand-assembled at submit.tsx:711 instead of renderEmailHtml, and
+  email-shell-sweep's "every send site is accounted for" test asserts the SAME predicate in both
+  branches, so it never enumerated anything (6 listed, 8 real sites).
+- Re-verified CLOSED w34, do NOT re-file: parseBoundedIdArray dedupes AND all 17 call sites use the
+  RESULT (incl. bulk-email.ts:43 - w32-a landed); touchSubmissionsForContacts/ForTracks have real
+  call sites (portal-edit, profile, contacts/crud, events, contacts/import, sessionboard, merge) and
+  profile.ts already guards on a real name change; conditional visibility (forms/visibility.ts);
+  /logout POST + ?signed-out=1; MIME hardening (control-char strip, base64 CTE, multipart/mixed);
+  EMB-01 snippet + Show more (public/cards.tsx:151); review progress completed<=assigned (DEC-707);
+  file serving nosniff; resolveBaseUrl header-poisoning.
+- Shapes: A REDACTOR IS A SET OF CREDENTIAL SHAPES, NOT ONE REGEX - the second credential path ships
+  disclosed. CONSUME-BEFORE-VALIDATE TURNS A TYPO INTO A DEAD LINK; the gate belongs immediately in
+  front of the WRITE. A GUARD WHOSE TWO BRANCHES ASSERT THE SAME THING ENUMERATES NOTHING. A SIDE
+  EFFECT PLACED INSIDE ONE BRANCH OF AN ORACLE-CLOSED PAIR RE-OPENS THE ORACLE (resolveBaseUrl inside
+  `if (user)`). PROVEN IN-PROCESS IS NOT PROVEN AT RUNTIME - the walkthrough is the higher bar, and it
+  must mint its own throwaway account rather than rotate a published credential.
