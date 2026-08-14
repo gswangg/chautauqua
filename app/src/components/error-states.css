@@ -1,0 +1,72 @@
+/* DEC-124/DEC-958: the ONE admin-SPA error vocabulary. Every module that
+   needs to flag a validation problem imports './error-states.css' (via
+   main.tsx, immediately after styles.css) and reuses these classes by
+   name -- never re-declared per page/dialog. Errors are typographic, never
+   colour (no semantic red): weight + a leading marker/border distinguish
+   an error from ordinary text without a colour channel. */
+
+/* DEC-124: an invalid control gets a 1px ink border plus a 3px ink LEFT
+   edge, which replaces (not adds to) 3px of the control's own left
+   padding so nothing shifts on error. `.chq-field-invalid` is the
+   standalone hook (public CFP builder); ModalFrame's FormRow instead
+   marks its wrapper `data-invalid="true"` and this same block reaches the
+   nested .chq-input/.chq-select/.chq-textarea control via the descendant
+   selector below -- one declaration, two ways in. */
+.chq-field-invalid,
+.chq-form-row[data-invalid='true'] .chq-form-row-control > .chq-input,
+.chq-form-row[data-invalid='true'] .chq-form-row-control > .chq-select,
+.chq-form-row[data-invalid='true'] .chq-form-row-control > .chq-textarea {
+  border: 1px solid var(--chq-ink);
+  border-left: 3px solid var(--chq-ink);
+  padding-left: calc(0.6rem - 3px);
+}
+
+/* DEC-124: the top-of-form error summary -- one block, one anchor per
+   problem, each anchor pointing at the offending field's own id. Mirrors
+   src/routes/public/cfp.css.ts's .chq-error-summary family so the public
+   CFP builder and the admin SPA share one visual contract. */
+.chq-error-summary {
+  border: 1px solid var(--chq-ink);
+  border-left: 3px solid var(--chq-ink);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.chq-error-summary h2 {
+  font-family: var(--chq-font-display);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin: 0;
+  color: var(--chq-ink);
+}
+.chq-error-summary p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--chq-ink-2);
+  line-height: 1.5;
+}
+.chq-error-summary ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.chq-error-summary-link {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-ink);
+}
+
+/* DEC-958 restyle: 13px/600 ink, sentence case -- drops the earlier
+   11px/700/uppercase/tracked treatment (text-transform + letter-spacing
+   removed) so an inline field error reads as a sentence, matching the
+   error-summary's own body type instead of a shouted label. */
+.chq-field-error,
+.chq-form-row-error {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-ink);
+}

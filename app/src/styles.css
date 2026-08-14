@@ -1051,13 +1051,9 @@ a:hover {
   }
 }
 
-.chq-field-error {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--chq-ink);
-}
+/* DEC-124/DEC-958 (task-w28-a): .chq-field-error now lives in
+   app/src/components/error-states.css, the ONE error-vocabulary module --
+   declared exactly once, not here. */
 
 .chq-checkbox-label {
   display: flex;

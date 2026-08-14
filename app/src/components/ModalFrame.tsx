@@ -54,13 +54,19 @@ interface FormRowProps {
   children: ReactNode;
 }
 
+// DEC-124/DEC-958: an errored row carries `data-invalid="true"` on the
+// .chq-form-row wrapper, which error-states.css picks up via
+// `.chq-form-row[data-invalid='true'] .chq-form-row-control > .chq-input`
+// (and its .chq-select/.chq-textarea siblings) -- the same border treatment
+// the standalone `.chq-field-invalid` class applies elsewhere (the public
+// CFP builder), reached here without adding a second className.
 // DEC-685: the ONE form-row skeleton every dialog field is built on --
 // label above the control at the modal's full measure, so every field in
 // every modal lines up on the same left edge instead of the drifting
 // label-beside-input layout it replaces.
 export function FormRow({ label, htmlFor, help, error, optional = false, children }: FormRowProps) {
   return (
-    <div className="chq-form-row">
+    <div className="chq-form-row" data-invalid={error ? 'true' : undefined}>
       <label className="chq-form-row-label" htmlFor={htmlFor}>
         {label}
         {optional ? <span className="chq-form-row-optional">{OPTIONAL_SUFFIX}</span> : null}
@@ -68,7 +74,7 @@ export function FormRow({ label, htmlFor, help, error, optional = false, childre
       <div className="chq-form-row-control">{children}</div>
       {help !== undefined && <div className="chq-form-row-help">{help}</div>}
       {error ? (
-        <div className="chq-form-row-error" role="alert">
+        <div id={htmlFor + '-error'} className="chq-form-row-error" role="alert">
           <span aria-hidden="true">&#9650; </span>
           {error}
         </div>

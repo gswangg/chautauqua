@@ -145,13 +145,9 @@
   color: var(--chq-muted);
 }
 
-.chq-form-row-error {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--chq-ink);
-}
+/* DEC-124/DEC-958 (task-w28-a): .chq-form-row-error's typography now lives
+   in app/src/components/error-states.css, the ONE error-vocabulary module
+   -- declared exactly once, not here. */
 
 @media (max-width: 700px) {
   .chq-form-row-control > .chq-input,
