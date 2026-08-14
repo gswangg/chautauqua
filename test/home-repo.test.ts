@@ -194,4 +194,124 @@ describe("listHubEvents", () => {
     expect(page.items).toHaveLength(HUB_CANDIDATE_LIMIT);
     expect(page.capped).toBe(true);
   });
+
+  // DEC-581 amendment (w69-a): the track/format shape-count queries are
+  // scoped to isHubVisible ids, computed BEFORE they run -- never issued at
+  // all when nothing is visible, and never given a hidden event's id when
+  // something is.
+  it("does not issue the track/format aggregate queries when nothing is visible", async () => {
+    const eventRows = [
+      {
+        id: "e1",
+        name: "Not Visible",
+        slug: "not-visible",
+        startDate: "2099-06-01",
+        endDate: "2099-06-02",
+        location: null,
+        timezone: "UTC",
+        openDate: { getTime: () => Date.UTC(2099, 0, 1) }, // not yet open
+        closeDate: null,
+      },
+    ];
+    // event-rows, published-count(=0) -- track/format must never be reached.
+    const responses = [eventRows, []];
+    let selectCalls = 0;
+    const db = {
+      select: () => {
+        const rows = responses[selectCalls] ?? [];
+        selectCalls += 1;
+        return makeChain(rows);
+      },
+    } as unknown as Db;
+
+    const page = await listHubEvents(db, "org-1", Date.UTC(2026, 5, 1));
+    expect(selectCalls).toBe(2);
+    expect(page.items[0]!.trackCount).toBe(0);
+    expect(page.items[0]!.formatCount).toBe(0);
+  });
+
+  it("scopes the track/format queries to visible ids only, never scanning a hidden event's id", async () => {
+    const eventRows = [
+      {
+        id: "e1", // visible: open CFP
+        name: "Visible",
+        slug: "visible",
+        startDate: "2099-06-01",
+        endDate: "2099-06-02",
+        location: null,
+        timezone: "UTC",
+        openDate: null,
+        closeDate: null,
+      },
+      {
+        id: "e2", // hidden: not-yet-open CFP, zero published sessions
+        name: "Hidden",
+        slug: "hidden",
+        startDate: "2099-06-01",
+        endDate: "2099-06-02",
+        location: null,
+        timezone: "UTC",
+        openDate: { getTime: () => Date.UTC(2099, 0, 1) },
+        closeDate: null,
+      },
+    ];
+    const responses = [
+      eventRows,
+      [{ eventId: "e1", count: 1 }], // published-count: only e1 has any
+      [{ eventId: "e1", count: 2 }], // track-count
+      [{ eventId: "e1", count: 1 }], // format-count
+    ];
+    let selectCalls = 0;
+    const whereArgsByCall: unknown[] = [];
+    const db = {
+      select: () => {
+        const rows = responses[selectCalls] ?? [];
+        const callIndex = selectCalls;
+        selectCalls += 1;
+        const chain: any = {
+          from: () => chain,
+          leftJoin: () => chain,
+          innerJoin: () => chain,
+          where: (arg: unknown) => {
+            whereArgsByCall[callIndex] = arg;
+            return chain;
+          },
+          orderBy: () => chain,
+          groupBy: () => chain,
+          limit: () => chain,
+          offset: () => chain,
+          then: (resolve: (v: unknown[]) => void) => resolve(rows),
+        };
+        return chain;
+      },
+    } as unknown as Db;
+
+    const page = await listHubEvents(db, "org-1", Date.UTC(2026, 5, 1));
+    expect(selectCalls).toBe(4);
+
+    // Drizzle's SQL builder objects are circular (condition -> table ->
+    // column -> table), so a plain JSON.stringify throws -- drop already-
+    // seen objects instead of failing on the cycle. We only need to see
+    // the literal id values inArray() embeds, not reproduce the tree.
+    function stringifyIgnoringCycles(value: unknown): string {
+      const seen = new WeakSet();
+      return JSON.stringify(value, (_key, val) => {
+        if (typeof val === "object" && val !== null) {
+          if (seen.has(val)) return undefined;
+          seen.add(val);
+        }
+        return val;
+      });
+    }
+    const trackWhere = stringifyIgnoringCycles(whereArgsByCall[2]);
+    const formatWhere = stringifyIgnoringCycles(whereArgsByCall[3]);
+    expect(trackWhere).toContain("e1");
+    expect(trackWhere).not.toContain("e2");
+    expect(formatWhere).toContain("e1");
+    expect(formatWhere).not.toContain("e2");
+
+    const e2 = page.items.find((e) => e.id === "e2")!;
+    expect(e2.trackCount).toBe(0);
+    expect(e2.formatCount).toBe(0);
+  });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
-import { groupHubEvents, hubState, type HubEvent } from "../src/lib/home-hub";
+import { groupHubEvents, hubState, isHubVisible, type HubEvent } from "../src/lib/home-hub";
 import { rootRoutes } from "../src/routes/root";
 import { HOME_CSS } from "../src/routes/public/home.css";
 import type { AppEnv } from "../src/server/env";
@@ -59,6 +59,80 @@ describe("groupHubEvents — visibility predicate (DEC-581)", () => {
     });
     const sections = groupHubEvents([event], NOW);
     expect(sections.openCfp.map((e) => e.id)).toEqual(["e1"]);
+  });
+});
+
+describe("isHubVisible (DEC-581 amendment, w69-a)", () => {
+  it("is true when cfpOpen is true, even with zero published sessions", () => {
+    expect(isHubVisible({ cfpOpen: true, publishedSessionCount: 0 })).toBe(true);
+  });
+
+  it("is true when publishedSessionCount is positive, even with cfpOpen false", () => {
+    expect(isHubVisible({ cfpOpen: false, publishedSessionCount: 1 })).toBe(true);
+  });
+
+  it("is false when neither holds", () => {
+    expect(isHubVisible({ cfpOpen: false, publishedSessionCount: 0 })).toBe(false);
+  });
+});
+
+describe("groupHubEvents — past boundary uses dayLabelEndInstant, not the raw day-label ms (DEC-581 amendment, w69-a)", () => {
+  // endDate day label 2026-06-01, event in America/Los_Angeles (UTC-7 in
+  // June). Local end-of-day is 2026-06-02T06:59:59.999Z.
+  const endDate = Date.UTC(2026, 5, 1);
+
+  it("an event whose endDate is today is NOT past at 09:00 local time in America/Los_Angeles", () => {
+    // 09:00 PDT on 2026-06-01 == 16:00Z. The old `end < nowMs` compare
+    // (end = UTC-midnight day label) would wrongly call this past.
+    const nowMs = Date.UTC(2026, 5, 1, 16, 0, 0);
+    const event = makeEvent({
+      id: "e1",
+      publishedSessionCount: 1,
+      timezone: "America/Los_Angeles",
+      startDate: endDate,
+      endDate,
+    });
+    const sections = groupHubEvents([event], nowMs);
+    expect(sections.past).toEqual([]);
+    expect(sections.published.map((e) => e.id)).toEqual(["e1"]);
+  });
+
+  it("IS past once that day has ended in America/Los_Angeles", () => {
+    // One ms after the local end-of-day instant.
+    const nowMs = Date.UTC(2026, 5, 2, 7, 0, 0);
+    const event = makeEvent({
+      id: "e1",
+      publishedSessionCount: 1,
+      timezone: "America/Los_Angeles",
+      startDate: endDate,
+      endDate,
+    });
+    const sections = groupHubEvents([event], nowMs);
+    expect(sections.past.map((e) => e.id)).toEqual(["e1"]);
+    expect(sections.published).toEqual([]);
+  });
+
+  it("a UTC event's behaviour is unchanged: still past well after its end day, still not past well before it", () => {
+    const utcEndDate = Date.UTC(2026, 0, 3);
+    const event = makeEvent({
+      id: "e1",
+      publishedSessionCount: 1,
+      timezone: "UTC",
+      startDate: Date.UTC(2026, 0, 1),
+      endDate: utcEndDate,
+    });
+    const pastSections = groupHubEvents([event], NOW);
+    expect(pastSections.past.map((e) => e.id)).toEqual(["e1"]);
+
+    const futureEvent = makeEvent({
+      id: "e2",
+      publishedSessionCount: 1,
+      timezone: "UTC",
+      startDate: Date.UTC(2026, 9, 1),
+      endDate: Date.UTC(2026, 9, 3),
+    });
+    const futureSections = groupHubEvents([futureEvent], NOW);
+    expect(futureSections.published.map((e) => e.id)).toEqual(["e2"]);
   });
 });
 
