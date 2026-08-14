@@ -752,10 +752,28 @@ async function runJ5(organizerJar: CookieJar, eventId: string, eventStartDate: s
   assertTrue("J5 event has at least one accepted submission", accepted.length >= 1, acceptedRes.text);
   const submissionIds = accepted.map((s) => s.id);
 
+  // DEC-682 (wave-44 amendment): includeFeedback now requires a
+  // feedbackPlanId naming exactly which plan+round's comments to attach —
+  // create a plan on this job's own eventId (mirroring review.ts's plan
+  // creation body shape) so the preview call below has one to point at.
+  const feedbackPlanRes = await api(organizerJar, "POST", `/api/v1/events/${eventId}/plans`, {
+    name: "Walkthrough J5 compose feedback plan",
+    instructions: "Score each proposal so J5 has feedback to attach to compose previews.",
+    openDate: Date.now() - 24 * 60 * 60 * 1000,
+    closeDate: Date.now() + 30 * 24 * 60 * 60 * 1000,
+    filters: {},
+    anonymized: true,
+    scale: { min: 1, max: 5 },
+    criteria: [{ id: "content_quality", label: "Content quality", kind: "rating", weight: 1 }],
+  });
+  assertStatus("J5 POST create feedback plan", feedbackPlanRes.res, 201, feedbackPlanRes.text);
+  const feedbackPlanId = feedbackPlanRes.json.id as string;
+
   const previewRes = await api(organizerJar, "POST", `/api/v1/events/${eventId}/compose/preview`, {
     templateId,
     submissionIds,
     includeFeedback: true,
+    feedbackPlanId,
   });
   assertStatus("J5 POST compose/preview (template)", previewRes.res, 200, previewRes.text);
   const previewItems = previewRes.json.items as any[];
@@ -869,7 +887,14 @@ async function runJ5(organizerJar: CookieJar, eventId: string, eventStartDate: s
     `/api/v1/events/${eventId}/email-log?perPage=5&q=${encodeURIComponent(targetTitle.slice(0, 20))}`,
   );
   assertStatus("J5 GET email-log for the sent ICS message", sentLogRes.res, 200, sentLogRes.text);
-  const sentLogItem = (sentLogRes.json.items as any[])[0];
+  const sentLogListItem = (sentLogRes.json.items as any[])[0];
+  assertTrue("J5 email-log list has a matching row", Boolean(sentLogListItem?.id), JSON.stringify(sentLogListItem));
+  // DEC-543: the LIST row is a narrow projection (id/eventName/toEmail/
+  // subject/status/sentAt only) — icsText lives on the per-recipient DETAIL
+  // route (GET .../email-log/:emailId), not the list.
+  const sentLogDetailRes = await api(organizerJar, "GET", `/api/v1/events/${eventId}/email-log/${sentLogListItem.id}`);
+  assertStatus("J5 GET email-log detail for the sent ICS message", sentLogDetailRes.res, 200, sentLogDetailRes.text);
+  const sentLogItem = sentLogDetailRes.json;
   assertTrue("J5 sent email_log row has an ICS body", Boolean(sentLogItem?.icsText), JSON.stringify(sentLogItem));
   const uidMatch = sentLogItem.icsText.match(/UID:([^\r\n]+)/);
   const sequenceMatch = sentLogItem.icsText.match(/SEQUENCE:(\d+)/);
@@ -909,8 +934,13 @@ async function runJ5(organizerJar: CookieJar, eventId: string, eventStartDate: s
     `/api/v1/events/${eventId}/email-log?perPage=5&q=${encodeURIComponent("Dangerous Title")}`,
   );
   assertStatus("J5 GET email-log for dangerous-title send", dangerousLog.res, 200, dangerousLog.text);
-  const dangerousItem = (dangerousLog.json.items as any[])[0];
-  assertTrue("J5 dangerous-title email_log row found", Boolean(dangerousItem), dangerousLog.text);
+  const dangerousListItem = (dangerousLog.json.items as any[])[0];
+  assertTrue("J5 dangerous-title email_log row found", Boolean(dangerousListItem), dangerousLog.text);
+  // DEC-543: bodyHtml is excluded from the LIST projection — fetch the
+  // per-recipient DETAIL route to read it.
+  const dangerousDetailRes = await api(organizerJar, "GET", `/api/v1/events/${eventId}/email-log/${dangerousListItem.id}`);
+  assertStatus("J5 GET email-log detail for dangerous-title send", dangerousDetailRes.res, 200, dangerousDetailRes.text);
+  const dangerousItem = dangerousDetailRes.json;
   assertTrue(
     "J5 body_html entity-escapes the injected markup",
     dangerousItem.bodyHtml.includes("&lt;img src=x&gt;") && !dangerousItem.bodyHtml.includes("<img src=x>"),
