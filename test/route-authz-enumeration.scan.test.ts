@@ -331,13 +331,19 @@ function prefixCovers(prefix: string, path: string): boolean {
 // ---------------------------------------------------------------------------
 // Guard names -- read out of src/server/middleware.ts rather than assumed,
 // per DEC-459's own instruction. Matches `export const NAME` / `export
-// function NAME` where NAME looks like a role guard (require*) or a CSRF
-// guard (csrf*) or the always-on session loader.
+// function NAME` where NAME looks like a role guard (require*).
+//
+// DEC-459 wave 35 amendment: sessionLoader and noStoreByDefault are
+// deliberately excluded from the guard vocabulary. sessionLoader only SETS
+// c.var.auth (it never refuses a request -- it runs on every request,
+// authenticated or not, and downstream code decides what to do with an
+// absent auth). noStoreByDefault only sets a Cache-Control header. Neither
+// one refuses anything, so neither can stand as evidence of authorization.
 // ---------------------------------------------------------------------------
 const middlewareSrc = stripComments(readFileSync(join(ROOT, "src", "server", "middleware.ts"), "utf8"));
 const MIDDLEWARE_EXPORT_NAMES: string[] = [];
 {
-  const re = /export (?:const|function) (require\w+|csrf\w+|sessionLoader|noStoreByDefault)\b/g;
+  const re = /export (?:const|function) (require\w+)\b/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(middlewareSrc))) {
     const name = m[1];
@@ -365,9 +371,23 @@ function expect_(cond: boolean, msg: string): void {
 // rather than per-route, so it never appears in an individual
 // registration's own chain (see MOUNT_LEVEL_USES below).
 const EXTRA_GUARD_NAMES = ["requireReviewerOrOrganizer", "requireAssignedPlan", "requireAuthOr302", "speakerGate"];
-const GUARD_NAMES = new Set([...MIDDLEWARE_EXPORT_NAMES, ...EXTRA_GUARD_NAMES]);
+const ROLE_GUARD_EXPORTS = [...MIDDLEWARE_EXPORT_NAMES, ...EXTRA_GUARD_NAMES];
+const GUARD_NAMES = new Set(ROLE_GUARD_EXPORTS);
 
+// DEC-459 wave 35 amendment: a CSRF guard proves the request came from our
+// own page (double-submit token match) -- it says nothing about WHO may
+// perform it, so it must never fold into GUARD_NAMES. Kept in a disjoint
+// set, asserted below.
 const CSRF_GUARD_NAMES = ["csrfJson", "csrfForm", "csrfFormOrHeader"];
+
+// Negative control on the vocabulary split itself: if a rename ever makes a
+// CSRF guard's name collide with a role-guard name (or vice versa), the
+// whole classification direction silently degrades back to "any mutating
+// route self-certifies" -- fail loudly here instead.
+{
+  const overlap = ROLE_GUARD_EXPORTS.filter((n) => (CSRF_GUARD_NAMES as string[]).includes(n));
+  expect_(overlap.length === 0, `ROLE_GUARD_EXPORTS and CSRF_GUARD_NAMES must be disjoint, found: ${overlap.join(", ")}`);
+}
 
 /** Object-level ownership markers -- the doc's own vocabulary (requireAuth(,
  * assertEventOwnership(, requireOwnedEvent(, requireOwnedContact(,
@@ -420,12 +440,14 @@ const PUBLIC_BY_DESIGN: LedgerEntry[] = [
   // src/routes/auth.tsx
   { file: "src/routes/auth-login.tsx", method: "GET", path: "/login", reason: "renders the login form itself; must be reachable with no session" },
   { file: "src/routes/auth-login.tsx", method: "POST", path: "/login", reason: "the auth-establishing endpoint; guarded by per-email+per-IP rate limiting (DEC-072/DEC-180), never by session" },
-  { file: "src/routes/auth-login.tsx", method: "POST", path: "/logout", reason: "a no-op for an anonymous caller (deletes only the session row matching the presented cookie, if any); CSRF-protected via csrfFormOrHeader" },
+  { file: "src/routes/auth-login.tsx", method: "POST", path: "/logout", reason: "DEC-459 (wave 35 amendment): self-scoped by possession of the caller's own session cookie -- it deletes only the session row matching the presented cookie, if any, never another caller's; a no-op for an anonymous caller with no cookie at all" },
   { file: "src/routes/auth-login.tsx", method: "GET", path: "/logout", reason: "DEC-154 (wave 25 amendment): mutates nothing at all -- it exists precisely so a bookmarked/prefetched GET cannot sign anyone out, and redirects to /login. Nothing to guard: it reads no session and touches no row" },
   { file: "src/routes/auth-claim.tsx", method: "GET", path: "/claim/:token", reason: "the 'auth' is possession of an unguessable KV claim token, not a session; this is the account-creation entry point by design" },
   { file: "src/routes/auth-claim.tsx", method: "POST", path: "/claim/:token", reason: "same token-possession model, plus per-IP rate limiting" },
   { file: "src/routes/auth-reset.tsx", method: "GET", path: "/forgot", reason: "DEC-014 (wave 25 amendment): renders the ask-for-a-link form itself; must be reachable with no session" },
   { file: "src/routes/auth-reset.tsx", method: "GET", path: "/reset/:token", reason: "DEC-014 (wave 25 amendment): the 'auth' is possession of an unguessable KV reset token, not a session, same model as /claim/:token" },
+  { file: "src/routes/auth-reset.tsx", method: "POST", path: "/forgot", reason: "DEC-459 (wave 35 amendment): the auth-establishing recovery endpoint itself -- no session exists yet to check a role against; protected by per-email+per-IP rate limiting (DEC-180), not CSRF middleware" },
+  { file: "src/routes/auth-reset.tsx", method: "POST", path: "/reset/:token", reason: "DEC-459 (wave 35 amendment): the 'auth' is possession of the unguessable KV reset token minted for /forgot, not a session; CSRF middleware proves nothing about who holds that token" },
   // src/routes/dev/mailbox.tsx
   { file: "src/routes/dev/mailbox.tsx", method: "GET", path: "/dev/mailbox", reason: "DEC-005: routes literally don't exist (404) unless DEV_MODE==='1'; single-tenant local dev tooling, no secrets present in Stage 1" },
   { file: "src/routes/dev/mailbox.tsx", method: "GET", path: "/dev/mailbox/:emailId/ics", reason: "same DEV_MODE gate" },
@@ -481,6 +503,36 @@ function findLedgerMatch(ledger: LedgerEntry[], reg: RouteReg): LedgerEntry | un
   return ledger.find((e) => e.file === reg.file && e.method === reg.method && e.path === reg.path);
 }
 
+/** True when some `.use(prefix, ...)` in the SAME file names a guard (role
+ * middleware or ownership marker) and its prefix covers `reg`'s path -- the
+ * "Mount-level guard" pattern the doc cites throughout (contacts/segments,
+ * events, pipeline, portal-config, the whole portal sub-apps via
+ * speakerGate). */
+function mountLevelGuardCovers(reg: RouteReg, mountUses: MountUse[]): boolean {
+  return mountUses.some((u) => {
+    if (u.file !== reg.file) return false;
+    if (!prefixCovers(u.prefix, reg.path)) return false;
+    const hasGuard = [...GUARD_NAMES].some((name) => new RegExp(`\\b${name}\\b`).test(u.useText));
+    const hasOwnershipMarker = OWNERSHIP_MARKER.test(u.useText);
+    return hasGuard || hasOwnershipMarker;
+  });
+}
+
+/** DEC-459 wave 35 amendment: the classifier as a pure, exported function so
+ * it can be shown a violation directly -- a synthetic registration whose
+ * only middleware is a CSRF guard (or sessionLoader/noStoreByDefault) must
+ * classify 'gap', not 'guarded'. Both the population test below and the
+ * negative-control unit tests call this same function, so there is no
+ * second copy of the logic to drift out of sync. */
+export function classifyRegistration(reg: RouteReg, mountUses: MountUse[]): "guarded" | "public-by-design" | "gap" {
+  const chainHasGuard = [...GUARD_NAMES].some((name) => new RegExp(`\\b${name}\\b`).test(reg.registrationText));
+  const hasOwnershipMarker = OWNERSHIP_MARKER.test(reg.registrationText);
+  if (chainHasGuard || hasOwnershipMarker) return "guarded";
+  if (mountLevelGuardCovers(reg, mountUses)) return "guarded";
+  if (findLedgerMatch(PUBLIC_BY_DESIGN, reg)) return "public-by-design";
+  return "gap";
+}
+
 describe("route-authz-enumeration.scan (DEC-459 amendment, wave 21)", () => {
   const files: string[] = [];
   walk(ROUTES_ROOT, files);
@@ -497,21 +549,6 @@ describe("route-authz-enumeration.scan (DEC-459 amendment, wave 21)", () => {
     }
   }
 
-  /** True when some `.use(prefix, ...)` in the SAME file names a guard
-   * (role middleware or ownership marker) and its prefix covers `reg`'s
-   * path -- the "Mount-level guard" pattern the doc cites throughout
-   * (contacts/segments, events, pipeline, portal-config, the whole portal
-   * sub-apps via speakerGate). */
-  function mountLevelGuardCovers(reg: RouteReg): boolean {
-    return mountUses.some((u) => {
-      if (u.file !== reg.file) return false;
-      if (!prefixCovers(u.prefix, reg.path)) return false;
-      const hasGuard = [...GUARD_NAMES].some((name) => new RegExp(`\\b${name}\\b`).test(u.useText));
-      const hasOwnershipMarker = OWNERSHIP_MARKER.test(u.useText);
-      return hasGuard || hasOwnershipMarker;
-    });
-  }
-
   it("tripwire: registration count doesn't silently collapse", () => {
     expect(registrations.length).toBeGreaterThanOrEqual(140);
   });
@@ -523,12 +560,8 @@ describe("route-authz-enumeration.scan (DEC-459 amendment, wave 21)", () => {
   it("every registration is GUARDED or ledgered PUBLIC_BY_DESIGN -- no GAP", () => {
     const gaps: string[] = [];
     for (const reg of registrations) {
-      const chainHasGuard = [...GUARD_NAMES].some((name) => new RegExp(`\\b${name}\\b`).test(reg.registrationText));
-      const hasOwnershipMarker = OWNERSHIP_MARKER.test(reg.registrationText);
-      if (chainHasGuard || hasOwnershipMarker) continue;
-      if (mountLevelGuardCovers(reg)) continue;
-      if (findLedgerMatch(PUBLIC_BY_DESIGN, reg)) continue;
-      gaps.push(`${reg.file}:${reg.line} ${reg.method} ${reg.path}`);
+      const verdict = classifyRegistration(reg, mountUses);
+      if (verdict === "gap") gaps.push(`${reg.file}:${reg.line} ${reg.method} ${reg.path}`);
     }
     expect(gaps, `unguarded, unledgered registrations (add a guard or a PUBLIC_BY_DESIGN ledger row):\n${gaps.join("\n")}`).toEqual([]);
   });
@@ -561,5 +594,56 @@ describe("route-authz-enumeration.scan (DEC-459 amendment, wave 21)", () => {
       if (!match) stale.push(`${entry.file} ${entry.method} ${entry.path}`);
     }
     expect(stale, `stale CSRF_EXEMPT entries (delete these lines -- no matching live registration):\n${stale.join("\n")}`).toEqual([]);
+  });
+
+  it("every non-GET/HEAD/OPTIONS PUBLIC_BY_DESIGN row names a non-session protection in its reason", () => {
+    const NON_SESSION_PROTECTION = /rate.?limit|token|unguessable|possession/i;
+    const bad: string[] = [];
+    for (const entry of PUBLIC_BY_DESIGN) {
+      if (entry.method === "GET" || entry.method === "HEAD" || entry.method === "OPTIONS") continue;
+      if (!NON_SESSION_PROTECTION.test(entry.reason)) bad.push(`${entry.file} ${entry.method} ${entry.path}: ${entry.reason}`);
+    }
+    expect(
+      bad,
+      `PUBLIC_BY_DESIGN rows for a mutating route must name a real, non-session protection (rate limit, or possession of an unguessable token) in their reason -- CSRF middleware proves nothing about who may perform the action:\n${bad.join("\n")}`,
+    ).toEqual([]);
+  });
+});
+
+describe("classifyRegistration negative controls (DEC-459 wave 35 amendment)", () => {
+  function synthReg(registrationText: string): RouteReg {
+    return { file: "src/routes/__synthetic__.tsx", line: 1, method: "POST", path: "/__synthetic__", registrationText };
+  }
+
+  it("a registration whose ONLY middleware is a CSRF guard classifies 'gap' -- proves the scan can fail", () => {
+    const reg = synthReg('app.post("/__synthetic__", csrfJson, async (c) => c.json({}))');
+    expect(classifyRegistration(reg, [])).toBe("gap");
+  });
+
+  it("a registration whose ONLY middleware is sessionLoader classifies 'gap' -- setting auth is not refusing", () => {
+    const reg = synthReg('app.post("/__synthetic__", sessionLoader, async (c) => c.json({}))');
+    expect(classifyRegistration(reg, [])).toBe("gap");
+  });
+
+  it("a registration whose ONLY middleware is noStoreByDefault classifies 'gap' -- a header is not a refusal", () => {
+    const reg = synthReg('app.post("/__synthetic__", noStoreByDefault, async (c) => c.json({}))');
+    expect(classifyRegistration(reg, [])).toBe("gap");
+  });
+
+  it("a registration naming a real role guard classifies 'guarded' -- proves the scan can pass", () => {
+    const reg = synthReg('app.post("/__synthetic__", requireOrganizer, async (c) => c.json({}))');
+    expect(classifyRegistration(reg, [])).toBe("guarded");
+  });
+
+  it("ROLE_GUARD_EXPORTS and CSRF_GUARD_NAMES are disjoint", () => {
+    const overlap = ROLE_GUARD_EXPORTS.filter((n) => (CSRF_GUARD_NAMES as string[]).includes(n));
+    expect(overlap).toEqual([]);
+  });
+
+  it("sessionLoader and noStoreByDefault are excluded from both guard vocabularies", () => {
+    expect(GUARD_NAMES.has("sessionLoader")).toBe(false);
+    expect(GUARD_NAMES.has("noStoreByDefault")).toBe(false);
+    expect(CSRF_GUARD_NAMES).not.toContain("sessionLoader");
+    expect(CSRF_GUARD_NAMES).not.toContain("noStoreByDefault");
   });
 });
