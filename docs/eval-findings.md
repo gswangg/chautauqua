@@ -129,6 +129,13 @@ restore. (b) **plan editor at 390 = one character per line** — reviewer/criter
 desktop grid tracks (`13.66px 140px 90px…`), doc height 8644px; frame 03--06 shows the
 stacked layout (CRITERIA/REVIEWERS sections, Swap, CAP EACH, bottom Save bar).
 
+**P2 · USER-FILED (2026-08-14): state-band insets** — tinted interaction-state bands
+(results-table reviews EXPANSION rows; review-landing `is-active` plan row) put content
+flush against the band edge and free-float their columns. Interim rule until the
+interaction-states design ruling lands: a state band insets its content ~16px and inherits
+the surface's column grid. Do not invent per-surface treatments; the design-standard brief
+(chautauqua-research/design-standard-brief.md) carries the class.
+
 **P2 (gate-5):** queue/score actions floor-clamped 180px (frame sizes to content); FORM
 ANSWERS re-prints title/abstract + exposes name/email rows (curate to Format/Audience/
 Notes/Accessibility — also an anonymization hygiene point); frozen panel headline/body
