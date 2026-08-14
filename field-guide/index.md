@@ -11,26 +11,20 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   compacted): pure-core no node:/cf; Hono sub-apps, errors
   {error:{code,message,fields?}}; bulk ops set-based; D1 PRIMITIVES; dates
   via event-time.ts OWNING EVENT's tz; pagination ONE shape+count*+id asc;
-  atomic SQL beats read-then-write; uniqueIndex CONTRACT; irreversible
-  action a PAGE naming what goes/refuses; decision w/no code a LIE; JOIN
-  cascades; MINTING IS IO; boundary fails per RECIPIENT not REQUEST;
-  FIND-OR-CREATE NEEDS A UNIQUE INDEX; UNBOUNDED SURFACE NEVER PAGED;
-  NAV != ROUTE; grep decisions/ first; READER W/NO WRITER RENDERS NOTHING;
-  GUESSABLE URL 404 DEAD END; SUB-APP onError SWALLOWS PARENT'S MANNERS;
-  WIDTH BEATS MAX-WIDTH, 700/900; no colour literal in surface CSS.
-- FINDINGS w16-30 (heavily compacted, many items re-verified closed each
-  wave; do NOT re-file, see decisions/ git history). Shapes: SCAN BINDS ONE
-  CALL SHAPE MISSES SIBLING; GUARD THAT NARROWS < NONE; MINT != DELIVERY;
-  CATCH RETURNING A DEFAULT IS NOT A GUARD; MIDDLEWARE SCOPE IS
-  REGISTRATION ORDER; A REVIEW LENS READS A SNAPSHOT NOT THE TREE; A
-  CLOSURE PROVEN AT THE REPO IS NOT PROVEN AT THE ROUTE; A LIMITER THAT
-  PEEKS ISN'T ONE UNDER CONCURRENCY; AN ALL-OR-NOTHING BLOCK IS A DESIGN
-  DECISION NOT A CONSTRAINT; "OUTSTANDING WORK" IN A DECISION'S OWN
-  DOCSTRING IS THE BEST OPEN-ITEM INDEX; ATOMIC ADMISSION+REFUND IS THE
-  ONLY FAILURES-ONLY LIMITER SHAPE; A CAP CHECKED AFTER THE BUFFER IS NOT
-  A CAP; A BULK ID ARRAY IS A SET OR A DOUBLE-SEND; A BOUND ON THE WRITE
-  SIDE IS NOT A BOUND ON THE READ SIDE; A SHARED COMPONENT WITH ONLY ITS
-  OWN TEST AS CONSUMER MARKS THE SHAPE NOBODY BUILT. Amendments
+  atomic SQL beats read-then-write; uniqueIndex CONTRACT; decision w/no code
+  a LIE; JOIN cascades; MINTING IS IO; boundary fails per RECIPIENT not
+  REQUEST; FIND-OR-CREATE NEEDS A UNIQUE INDEX; UNBOUNDED SURFACE NEVER
+  PAGED; grep decisions/ first; READER W/NO WRITER RENDERS NOTHING;
+  GUESSABLE URL 404 DEAD END; SUB-APP onError SWALLOWS PARENT'S MANNERS.
+- FINDINGS w16-30 (heavily compacted; do NOT re-file, see decisions/ git
+  history). Shapes: SCAN BINDS ONE CALL SHAPE MISSES SIBLING; GUARD THAT
+  NARROWS < NONE; MINT != DELIVERY; CATCH RETURNING A DEFAULT IS NOT A
+  GUARD; A REVIEW LENS READS A SNAPSHOT NOT THE TREE; A CLOSURE PROVEN AT
+  THE REPO IS NOT PROVEN AT THE ROUTE; A LIMITER THAT PEEKS ISN'T ONE UNDER
+  CONCURRENCY; A CAP CHECKED AFTER THE BUFFER IS NOT A CAP; A BULK ID ARRAY
+  IS A SET OR A DOUBLE-SEND; A BOUND ON THE WRITE SIDE IS NOT A BOUND ON
+  THE READ SIDE; A SHARED COMPONENT WITH ONLY ITS OWN TEST AS CONSUMER
+  MARKS THE SHAPE NOBODY BUILT. Amendments
   DEC-124/958/745/653/897/793/575/657/180/949/974/874.
 - FINDINGS w31-32 (compacted; MANDATE ~EXHAUSTED, re-verified closed each
   wave, do NOT re-file without opening eval-findings.md): filter strings,
@@ -39,10 +33,9 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   CFP visibility, duplicate-at-create, EMBED_FORMATS, seed<->fixtures, CI,
   scheduled-tick isolation. TAKEN w32: bulk-email.ts:40 discards
   parseBoundedIdArray's result then re-reads raw body; DEC-725's w30
-  rename-touch was a decision with no code. Shapes: AN UNVALIDATED FILTER IS
-  A CONFIDENT WRONG ANSWER; A PARSE CALL WHOSE RESULT IS DISCARDED IS NOT A
-  PARSE; AN AMENDMENT WITHOUT A CALL SITE IS AN OPEN ITEM; A SECOND READER
-  BOUNDS A STAMP; THE TREE MOVES UNDER YOU MID-PLAN -- re-verify immediately.
+  rename-touch was a decision with no code. Shapes: PARSE RESULT DISCARDED
+  != PARSED; AMENDMENT W/NO CALL SITE IS OPEN; SECOND READER BOUNDS A STAMP;
+  TREE MOVES UNDER YOU MID-PLAN -- re-verify immediately.
 - FINDINGS w33. Re-probed the mandate + all 8 review-lens items AT THE FILE: every one
   is CLOSED except bulk-email.ts:40, which still discards parseBoundedIdArray's result
   and re-reads the raw body at :60 -- that is OWNED BY task-w32-a (branch exists,
