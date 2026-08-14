@@ -1,4 +1,4 @@
-import { useState, type DragEvent } from 'react';
+import { Fragment, useState, type DragEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { describeCondition, fieldsByIdMap } from './condition';
 import { kindLabel, type EventTrack, type FormField } from './types';
@@ -111,7 +111,11 @@ function buildTrackRow(tracks: EventTrack[]): DisplayRow {
     kindText: kindLabel('dropdown'),
     builtIn: true,
     viewOnly: true,
-    viewLink: { to: '/settings?section=tracks-rooms&edit=1', label: 'Manage in Settings' },
+    // frame-04 anatomy (w5-h): the link IS the row's Edit affordance (its
+    // target stays the Settings tracks editor, since a track's real fields
+    // live there, not in FieldModal) -- "Manage in Settings" no longer
+    // stands in for the row's whole Edit/Delete pair.
+    viewLink: { to: '/settings?section=tracks-rooms&edit=1', label: 'Edit' },
   };
 }
 
@@ -197,7 +201,19 @@ function buildRows(fields: FormField[], tracks: EventTrack[]): DisplayRow[] {
  * (ArrowUp/ArrowDown call the existing onMove(field, -1|1) contract) --
  * there are no separate up/down buttons. */
 export function FieldList({ fields, tracks, busy, onEdit, onDelete, onMove }: FieldListProps) {
-  const rows = buildRows(fields, tracks);
+  // Frame-04 anatomy (w5-h): every SPEAKER-section field (the collapsed
+  // "Speaker name and email" row plus the three DEC-321 profile extras --
+  // job_title/company/bio) folds under a "You" group, trailing every
+  // SESSION-section question (Title/Abstract/Track/custom talk fields) --
+  // rather than interleaving by raw position, which let a talk question
+  // land after the speaker-profile rows whenever its position number was
+  // higher than job_title/company/bio's. Grouping is presentational only:
+  // `rows` stays the ONE flat array both the drag-drop index math and the
+  // render loop below share, just reordered.
+  const allRows = buildRows(fields, tracks);
+  const sessionRows = allRows.filter((r) => r.field.section !== 'speaker');
+  const speakerRows = allRows.filter((r) => r.field.section === 'speaker');
+  const rows = [...sessionRows, ...speakerRows];
   // The row currently under a dragged field (DEC-903 visible insertion
   // point) -- cleared on drop/leave, never persisted past the drag gesture.
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
@@ -239,26 +255,31 @@ export function FieldList({ fields, tracks, busy, onEdit, onDelete, onMove }: Fi
   return (
     <div className="chq-forms-field-list" role="list">
       {rows.map((row, index) => (
-        <div
-          key={row.key}
-          role="listitem"
-          className={[
-            'chq-forms-field-row',
-            row.builtIn ? 'chq-forms-field-locked' : null,
-            dragOverKey === row.key ? 'chq-forms-field-row-drop-target' : null,
-          ]
-            .filter(Boolean)
-            .join(' ')}
-          onDragOver={(event) => handleDragOver(event, row)}
-          onDragLeave={() => handleDragLeave(row)}
-          onDrop={(event) => handleDrop(event, row, index)}
-        >
-          {row.viewOnly ? (
-            // Synthesized Track row: not reorderable, so there is no drag
-            // handle at all -- an inert, non-interactive placeholder keeps
-            // the row's grid cell count identical to every other row.
-            <span className="chq-forms-field-drag chq-forms-field-drag-empty" aria-hidden="true" />
-          ) : (
+        <Fragment key={row.key}>
+          {index === sessionRows.length && speakerRows.length > 0 && (
+            <div className="chq-forms-field-group-header" role="presentation">
+              You
+            </div>
+          )}
+          <div
+            role="listitem"
+            className={[
+              'chq-forms-field-row',
+              row.builtIn ? 'chq-forms-field-locked' : null,
+              dragOverKey === row.key ? 'chq-forms-field-row-drop-target' : null,
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            onDragOver={(event) => handleDragOver(event, row)}
+            onDragLeave={() => handleDragLeave(row)}
+            onDrop={(event) => handleDrop(event, row, index)}
+          >
+            {/* frame-04 anatomy (w5-h): every row, the synthesized Track
+                view included, gets the SAME ⋮⋮ handle -- Track's is simply
+                disabled (there is no real position to drag; its rows are a
+                view over the event's tracks, not a form_field). One handle
+                shape for every row, never a second inert placeholder
+                markup. */}
             <button
               type="button"
               className="chq-forms-field-drag"
@@ -278,47 +299,61 @@ export function FieldList({ fields, tracks, busy, onEdit, onDelete, onMove }: Fi
             >
               ⋮⋮
             </button>
-          )}
 
-          <div className="chq-forms-field-label">
-            <span className="chq-forms-field-label-text">{row.label}</span>
-            {row.caption && <span className="chq-forms-field-help">{row.caption}</span>}
-            {row.condition && <span className="chq-forms-field-condition">{row.condition}</span>}
+            <div className="chq-forms-field-label">
+              <span className="chq-forms-field-label-text">{row.label}</span>
+              {row.caption && <span className="chq-forms-field-help">{row.caption}</span>}
+              {row.condition && <span className="chq-forms-field-condition">{row.condition}</span>}
+            </div>
+
+            <span className="chq-forms-field-kind">{row.kindText}</span>
+
+            <span className={row.field.required ? 'chq-forms-field-required' : 'chq-forms-field-optional'}>
+              {row.field.required ? 'Required' : 'Optional'}
+            </span>
+
+            <div className="chq-forms-field-actions">
+              {row.viewOnly && row.viewLink ? (
+                // frame-04 anatomy (w5-h): Track keeps the row's real
+                // Edit/Delete PAIR -- an active Edit link (its target is
+                // the Settings tracks editor, where a track's own fields
+                // live) alongside a greyed Delete, matching every other
+                // built-in row instead of one link standing in for both.
+                <>
+                  <Link to={row.viewLink.to} className="chq-btn chq-btn-tertiary">
+                    {row.viewLink.label}
+                  </Link>
+                  <button type="button" className="chq-btn chq-btn-tertiary" disabled>
+                    Delete
+                  </button>
+                </>
+              ) : (
+                <>
+                  {/* frame-04 anatomy (w5-h): a built-in/locked row's Edit
+                      stays active (green) -- only Delete greys out, since
+                      DEC-016 locked fields are non-removable, not
+                      non-editable. */}
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-tertiary"
+                    disabled={busy}
+                    onClick={() => onEdit(row.field)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-tertiary"
+                    disabled={busy || row.field.locked}
+                    onClick={() => onDelete(row.field)}
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-
-          <span className="chq-forms-field-kind">{row.kindText}</span>
-
-          <span className={row.field.required ? 'chq-forms-field-required' : 'chq-forms-field-optional'}>
-            {row.field.required ? 'Required' : 'Optional'}
-          </span>
-
-          <div className="chq-forms-field-actions">
-            {row.viewOnly && row.viewLink ? (
-              <Link to={row.viewLink.to} className="chq-btn chq-btn-tertiary">
-                {row.viewLink.label}
-              </Link>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="chq-btn chq-btn-tertiary"
-                  disabled={busy || row.field.locked}
-                  onClick={() => onEdit(row.field)}
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  className="chq-btn chq-btn-tertiary"
-                  disabled={busy || row.field.locked}
-                  onClick={() => onDelete(row.field)}
-                >
-                  Delete
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+        </Fragment>
       ))}
     </div>
   );

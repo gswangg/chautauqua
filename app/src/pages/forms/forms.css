@@ -11,11 +11,16 @@
 }
 
 /* Header band: breadcrumb + h1 on the left, Preview/Save right-aligned.
-   The page ROOT (.chq-forms-page, via .chq-measure on FormsPage.tsx) carries
-   the one --chq-measure clamp (DEC-744); this block stretches to fill it
-   rather than re-clamping itself, since an auto-margin max-width on a flex
-   COLUMN child cancels align-items:stretch and the box shrinks to its
-   content instead of sharing the root's edges. */
+   Frame-04 anatomy (w5-h): the page ROOT now carries .chq-measure-table
+   (1440, styles.css) instead of .chq-measure -- the SAME width the review
+   plan editor's sibling title row already uses (DEC-989) -- so this bar
+   goes full bleed at 1440 with the title at the shell's own gutter and
+   Preview/Save at the far right, while .chq-forms-content (below) clamps
+   itself back to the 820 builder measure. This block declares NO max-width
+   of its own (the bare-rule idiom .chq-toolbar/.chq-review-editor-title-row
+   already use) so it stretches to the root's full 1440 box -- an
+   auto-margin max-width on a flex COLUMN child cancels align-items:stretch
+   and the box shrinks to its content instead of sharing the root's edges. */
 .chq-forms-header {
   display: flex;
   align-items: flex-end;
@@ -50,13 +55,21 @@
   gap: 9px;
 }
 
+/* Frame-04 anatomy (w5-h): the builder's CONTENT (Opens/Closes/Received
+   strip, field list, public-link footer) stays at the 820 builder measure
+   even though the page root is now 1440 (chq-measure-table, for the header
+   above) -- the same "chrome full bleed, content clamped" split the public
+   CFP page and the review plan editor's sibling title row already use.
+   Centred within the wider root via auto margins (this IS the content's own
+   clamp, unlike the header above, which deliberately declares none). */
 .chq-forms-content {
   display: flex;
   flex-direction: column;
   gap: 24px;
   padding-top: 22px;
-  /* Shared page measure lives on the page root (DEC-744); this block
-     stretches to fill it. */
+  max-width: var(--chq-measure);
+  margin: 0 auto;
+  width: 100%;
 }
 
 /* Opens / Closes / Received three-cell strip. */
@@ -156,6 +169,23 @@
   border-bottom: 2px solid var(--chq-ink);
 }
 
+/* Frame 04: "Add a question" is a green text link sitting on the section
+   rule, not a bordered secondary button -- shares the app-wide
+   .chq-link-button shell (styles.css) for its colour/hover/focus contract,
+   with only the size/weight/case overridden here since it sits inside the
+   uppercase .chq-forms-section-title row and must not inherit that. */
+.chq-forms-add-question {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.chq-forms-add-question:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Field list: flat one-line rows (eval-findings item 51 / DEC-715). Grid
    columns mirror the mock's 20px/1fr/150px/108px/auto rhythm -- no second
    action/move row, so each row is the mock's height, not ~2.5x it. */
@@ -177,6 +207,20 @@
   border-bottom: none;
 }
 
+/* Frame-04 anatomy (w5-h): the "You" group header separates every
+   SPEAKER-section row (the collapsed "Speaker name and email" row plus the
+   DEC-321 job_title/company/bio extras) from the talk questions above it --
+   a quiet section label, not a rule (the section rule under "Fields" is
+   already the one heavy divider on this page). */
+.chq-forms-field-group-header {
+  padding: 14px 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
 /* DEC-715: the drag handle is the ONE reorder affordance on the row -- a
    real, focusable <button> (pointer click focuses it; ArrowUp/ArrowDown
    then call onMove), not an aria-hidden glyph or a pair of up/down
@@ -196,14 +240,6 @@
 .chq-forms-field-drag:focus-visible {
   outline: 2px solid var(--chq-ink);
   outline-offset: 2px;
-}
-
-/* Synthesized Track row (DEC-008 amendment, w45-e): a non-interactive
-   placeholder standing in for the drag handle -- it must reserve the SAME
-   20px grid cell as every other row's handle, but never invite a drag
-   gesture the row can't perform. */
-.chq-forms-field-drag-empty {
-  cursor: default;
 }
 
 .chq-forms-field-label {

@@ -104,7 +104,11 @@ function builderQuestionIds(fields: FormField[], tracks: EventTrack[]): Set<stri
   const rows = screen.getAllByRole('listitem');
   const ids = new Set<string>();
   for (const row of rows) {
-    const settingsLink = within(row).queryByRole('link', { name: 'Manage in Settings' });
+    // frame-04 anatomy (w5-h): the track view row's link is now labelled
+    // "Edit" (the affordance is the link, not a dead label) rather than
+    // "Manage in Settings" -- still identified as a real <a>, distinct from
+    // every other row's Edit <button>.
+    const settingsLink = within(row).queryByRole('link', { name: 'Edit' });
     if (settingsLink) {
       ids.add('track');
       continue;

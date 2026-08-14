@@ -1,18 +1,21 @@
-// DEC-877/DEC-744 (task-w40-b): forms.css clamped .chq-forms-content to
+// DEC-877/DEC-744 (task-w40-b), superseded by the frame-04 anatomy
+// (task-w5-h): forms.css originally clamped .chq-forms-content to
 // var(--chq-measure) while .chq-forms-header (the Preview/Save row) stayed
 // unclamped, so at a wide desktop frame the header spanned the full content
 // width while the field list/settings column stopped ~550px short of it --
-// two different right edges on the same page. The fix was NOT to give the
-// header its own matching clamp: FormsPage.tsx already puts the ONE
-// .chq-measure clamp on the page root, and a max-width + auto margins on a
-// flex-column CHILD cancels align-items:stretch (the box shrinks to its own
-// content, 275px observed, instead of sharing the root's edges). So the
-// header/content blocks now declare NO max-width of their own and stretch
-// to fill the root instead. This test reads the stylesheet's own text
-// (mirroring app/src/page-measure.test.ts and
-// app/src/pages/agenda/agenda-card-geometry.test.ts -- jsdom does not apply
-// an external stylesheet's layout) and asserts the header and content
-// column share ONE right edge by both declaring no clamp of their own.
+// two different right edges on the same page. w40-b's fix made BOTH blocks
+// share the page root's single measure by declaring no clamp of their own.
+//
+// Frame 04 (docs/design/Chautauqua Submissions.dc.html:358-414) instead
+// draws the header bar full bleed at 1440 (title at the shell's own gutter,
+// Preview/Save at the far right) with the field-list CONTENT staying at the
+// narrower 820 builder measure -- the same "chrome full bleed, content
+// clamped" split DEC-989's review-plan-editor title row and the public CFP
+// page already use. FormsPage.tsx's page root now carries .chq-measure-table
+// (1440) instead of .chq-measure (820), so .chq-forms-header can keep
+// declaring no clamp of its own (stretches to the wider root) while
+// .chq-forms-content re-clamps itself back to var(--chq-measure) -- the two
+// blocks now deliberately DISAGREE, on purpose.
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -47,15 +50,19 @@ function topLevelRuleBody(css: string, selector: string): string {
   return body;
 }
 
-describe('forms.css header measure (DEC-877/DEC-744)', () => {
-  it('.chq-forms-header and .chq-forms-content declare no max-width of their own, stretching to the page root measure', () => {
+describe('forms.css header measure (frame-04 anatomy, task-w5-h)', () => {
+  it('.chq-forms-header declares no max-width of its own, stretching to the page root\'s full 1440 measure', () => {
     expect(topLevelRuleBody(CSS, '.chq-forms-header')).not.toMatch(/max-width/);
-    expect(topLevelRuleBody(CSS, '.chq-forms-content')).not.toMatch(/max-width/);
   });
 
-  it('never hard-codes a px max-width on the header or content clamp', () => {
+  it('.chq-forms-content re-clamps itself to the 820 builder measure via the shared token, never a hard-coded px', () => {
+    const body = topLevelRuleBody(CSS, '.chq-forms-content');
+    expect(body).toMatch(/max-width:\s*var\(--chq-measure\)/);
+    expect(body).not.toMatch(/max-width:\s*\d+px/);
+  });
+
+  it('never hard-codes a px max-width on the header clamp', () => {
     expect(topLevelRuleBody(CSS, '.chq-forms-header')).not.toMatch(/max-width:\s*\d+px/);
-    expect(topLevelRuleBody(CSS, '.chq-forms-content')).not.toMatch(/max-width:\s*\d+px/);
   });
 
   it('every top-level rule touching the field-row drag handle or actions declares a disabled treatment', () => {

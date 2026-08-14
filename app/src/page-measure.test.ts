@@ -129,18 +129,19 @@ describe('page measure (DEC-744/DEC-808/DEC-989)', () => {
     }
   });
 
-  // FormsPage.tsx puts the ONE .chq-measure clamp on the page root
-  // (`chq-page chq-forms-page chq-measure`); a max-width + auto margins on
-  // a flex-column CHILD cancels align-items:stretch (the box shrinks to its
-  // own content instead of sharing the root's edges), so the header/content
-  // blocks below must declare no clamp of their own and stretch to fill the
-  // root instead (DEC-744, task-w40-b). The settings block itself moved to
+  // Frame-04 anatomy (task-w5-h) supersedes DEC-744/task-w40-b's "both
+  // stretch to the root" rule: FormsPage.tsx's page root now carries
+  // .chq-measure-table (1440), not .chq-measure, so the header bar (Preview
+  // + Save) can go full bleed at 1440 while .chq-forms-content re-clamps
+  // itself back to the 820 builder measure -- the same "chrome full bleed,
+  // content clamped" split DEC-989's review-plan-editor title row and the
+  // public CFP page already use. The settings block itself moved to
   // Settings > Call for papers (DEC-731 amendment, w42-i) -- forms.css no
   // longer carries a .chq-forms-settings rule to check.
-  it('forms.css header/content stretch to the page root measure instead of re-clamping', () => {
+  it('forms.css header stays unclamped (full bleed to the 1440 page root) while content re-clamps to var(--chq-measure)', () => {
     const css = readFileSync(join(HERE, 'pages/forms/forms.css'), 'utf-8');
     expect(topLevelRuleBody(css, '.chq-forms-header')).not.toMatch(/max-width/);
-    expect(topLevelRuleBody(css, '.chq-forms-content')).not.toMatch(/max-width/);
+    expect(topLevelRuleBody(css, '.chq-forms-content')).toMatch(/max-width:\s*var\(--chq-measure\)/);
   });
 
   // `.chq-review-editor-dates` used to be spot-checked here too. It went dead
