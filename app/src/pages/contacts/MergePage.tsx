@@ -123,27 +123,35 @@ export function MergePage() {
   const discardedContacts = group?.contacts.filter((c) => c.id !== keepId) ?? [];
   // DEC-834: when the keeper's and the sole discarded record's display
   // names are identical, the two compare-table column heads are otherwise
-  // indistinguishable -- append the same disambiguator the pick list above
-  // already shows for that purpose (email, else company).
-  function disambiguator(c: { email: string; company?: string | null }) {
-    return c.email || c.company || '';
-  }
+  // indistinguishable -- append a disambiguator (see headDisambiguator
+  // below).
   const soleDiscard = discardedContacts.length === 1 ? discardedContacts[0]! : null;
   const namesCollide =
     !!keepContact &&
     !!soleDiscard &&
     normalizedContactName(keepContact.firstName, keepContact.lastName) ===
       normalizedContactName(soleDiscard.firstName, soleDiscard.lastName);
+  // DEC-992 amendment (wave 4): the head eyebrow row renders in small caps
+  // (text-transform: uppercase) — a raw email address in that row reads as
+  // SHOUTED. The collision disambiguator here is company-only (never the
+  // email the pick list above uses for the same purpose); a colliding pair
+  // with no company on either record simply carries no disambiguator, the
+  // 'added <date>' vintage still tells them apart.
+  function headDisambiguator(c: { company?: string | null }) {
+    return c.company || '';
+  }
   // DEC-992: the column heads name BOTH the record and its vintage --
   // "Keeping · <name>[ (disambiguator)] · added <date>" / "Discarding ·
   // ...". A 3+ group has no single discarded record to name (DEC-802), so
   // it keeps the 'N other records' fallback with no vintage -- there is no
   // one createdAt to show.
+  const keepDisambiguator = namesCollide && keepContact ? headDisambiguator(keepContact) : '';
+  const discardDisambiguator = namesCollide && soleDiscard ? headDisambiguator(soleDiscard) : '';
   const keepHeadLabel = keepContact
-    ? `Keeping · ${namesCollide ? `${keepContact.firstName} ${keepContact.lastName} (${disambiguator(keepContact)})` : `${keepContact.firstName} ${keepContact.lastName}`} · added ${formatDate(keepContact.createdAt)}`
+    ? `Keeping · ${keepContact.firstName} ${keepContact.lastName}${keepDisambiguator ? ` (${keepDisambiguator})` : ''} · added ${formatDate(keepContact.createdAt)}`
     : '';
   const discardHeadLabel = soleDiscard
-    ? `Discarding · ${namesCollide ? `${soleDiscard.firstName} ${soleDiscard.lastName} (${disambiguator(soleDiscard)})` : `${soleDiscard.firstName} ${soleDiscard.lastName}`} · added ${formatDate(soleDiscard.createdAt)}`
+    ? `Discarding · ${soleDiscard.firstName} ${soleDiscard.lastName}${discardDisambiguator ? ` (${discardDisambiguator})` : ''} · added ${formatDate(soleDiscard.createdAt)}`
     : `Discarding · ${discardedContacts.length} other records`;
 
   // DEC-770: 'Not a duplicate' persists the dismissal (POST
@@ -236,6 +244,13 @@ export function MergePage() {
             </p>
           )}
 
+          {/* DEC-992 amendment (wave 4): the combine rule is stated ONCE, in
+              a single tinted box above the compare table -- not one loose
+              footnote per rule trailing the table (the discarded-record
+              deletion fact lives in the confirm dialog below, so it is not
+              repeated here). */}
+          <div className="chq-contacts-merge-rule-box">Labels combine, notes are appended</div>
+
           <div className="chq-contacts-merge-compare-head">
             <span>Field</span>
             <span>{keepHeadLabel}</span>
@@ -287,26 +302,6 @@ export function MergePage() {
             </p>
           )}
 
-          {/* DEC-992 (amended wave 47): the combine-rules explanation is ONE
-              block ABOVE the action row, exactly one sentence per rule, in a
-              stable order: labels (only when the preview actually carries a
-              customFields row), notes, and the fact that the discarded
-              record is deleted -- an irreversible action names what goes AND
-              what it refuses. */}
-          {preview && (
-            <div className="chq-contacts-merge-rules">
-              {preview.some((f) => f.key === 'labels' && f.kept !== '') && (
-                <p className="chq-contacts-merge-footnote">Labels always combine — they're never chosen one over the other.</p>
-              )}
-              <p className="chq-contacts-merge-footnote">Notes are appended, never chosen one over the other.</p>
-              <p className="chq-contacts-merge-footnote">
-                On shared submissions, an accepted invite and public visibility always survive — never chosen one
-                over the other.
-              </p>
-              <p className="chq-contacts-merge-footnote">The discarded record is deleted.</p>
-            </div>
-          )}
-
           <div className="chq-contacts-merge-footer">
             <button type="button" className="chq-btn chq-btn-primary" onClick={() => setConfirmOpen(true)}>
               {keepContact ? `Merge into ${keepContact.firstName} ${keepContact.lastName}` : 'Merge'}
@@ -324,25 +319,24 @@ export function MergePage() {
                 Swap which is kept
               </button>
             )}
-            <button
-              type="button"
-              className="chq-btn chq-btn-secondary"
-              onClick={() => navigate('/contacts', { state: { panel: 'duplicates' } })}
-            >
-              Cancel
-            </button>
-            {/* DEC-734: 'Not a duplicate' -- these records aren't the same
-                person, dismiss the pair (session-only, same mechanism as
-                DuplicatesView's own 'Keep both') and land back on the tab. */}
-            <button
-              type="button"
-              className="chq-btn chq-btn-secondary"
-              disabled={notDuplicateBusy}
-              onClick={() => notADuplicate(group)}
-            >
-              Not a duplicate
-            </button>
           </div>
+
+          {/* DEC-992 amendment (wave 4): the back link at the top of the
+              page is the ONE cancel path -- no second Cancel button here.
+              'Not a duplicate' is an escape hatch, not a peer of the
+              irreversible Merge primary, so it is a green text link rather
+              than a fourth boxed button. */}
+          {/* DEC-734: 'Not a duplicate' -- these records aren't the same
+              person, dismiss the pair (session-only, same mechanism as
+              DuplicatesView's own 'Keep both') and land back on the tab. */}
+          <button
+            type="button"
+            className="chq-contacts-merge-not-duplicate"
+            disabled={notDuplicateBusy}
+            onClick={() => notADuplicate(group)}
+          >
+            Not a duplicate
+          </button>
 
           {confirmOpen && (
             <ConfirmDialog
