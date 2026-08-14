@@ -291,9 +291,11 @@ export async function createSubmissionTracks(
 ): Promise<void> {
   if (trackIds.length === 0) return;
   const now = new Date();
-  await db.insert(schema.submissionTrack).values(
-    trackIds.map((trackId) => ({ submissionId, trackId, createdAt: now })),
-  );
+  const rows = trackIds.map((trackId) => ({ submissionId, trackId, createdAt: now }));
+  // DEC-528: chunked by bound-parameter budget (columns-per-row derived).
+  for (const chunk of chunkRowsForInsert(rows)) {
+    await db.insert(schema.submissionTrack).values(chunk);
+  }
   // DEC-725 amendment: unlike replaceSubmissionTracks below, this writer is
   // only ever called immediately after createSubmission (both the public
   // CFP route and the organizer create route insert the tracks in the same
@@ -317,9 +319,11 @@ export async function replaceSubmissionTracks(
   const now = new Date();
   await db.delete(schema.submissionTrack).where(eq(schema.submissionTrack.submissionId, submissionId));
   if (trackIds.length > 0) {
-    await db.insert(schema.submissionTrack).values(
-      trackIds.map((trackId) => ({ submissionId, trackId, createdAt: now })),
-    );
+    const rows = trackIds.map((trackId) => ({ submissionId, trackId, createdAt: now }));
+    // DEC-528: chunked by bound-parameter budget (columns-per-row derived).
+    for (const chunk of chunkRowsForInsert(rows)) {
+      await db.insert(schema.submissionTrack).values(chunk);
+    }
   }
   // DEC-725 amendment: touch even on a delete-to-empty-set — the touch-on-
   // write shape must fire regardless of the resulting track count so a

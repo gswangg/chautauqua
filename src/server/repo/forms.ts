@@ -8,6 +8,7 @@ import { newId } from "../../domain/ids";
 import type { FormFieldDef, FormFieldRule } from "../../forms/types";
 import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, SESSION_FORMAT_FIELD_ID, lockedFieldId } from "../../forms/types";
 import { DEC_050, DEC_398 } from "../../decisions";
+import { chunkRowsForInsert } from "../../lib/chunk";
 
 void DEC_050; // per-form locked field ids ('<formId>:<name>') — see createDefaultForm below
 void DEC_398; // createDefaultForm's insert-on-conflict-do-nothing-then-select below resolves two
@@ -217,7 +218,13 @@ export async function createDefaultForm(db: Db, eventId: string): Promise<{ form
         updatedAt: now,
       });
     }
-    await db.insert(schema.formField).values(fieldValues);
+    // DEC-528: 8 locked-field rows x 10 columns = 80 bound params today,
+    // against chunkRowsForInsert's own MAX_D1_BOUND_PARAMS-10 budget —
+    // chunked by bound-parameter budget (columns-per-row derived), never a
+    // hand-declared count that drifts silently when a column is added.
+    for (const chunk of chunkRowsForInsert(fieldValues)) {
+      await db.insert(schema.formField).values(chunk);
+    }
   }
 
   const form = toFormRow(row);
