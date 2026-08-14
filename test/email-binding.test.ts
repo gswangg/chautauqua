@@ -206,6 +206,106 @@ describe("EmailBindingMailer", () => {
     await mailer.send(baseMsg()).catch(() => {});
     expect(log.rows).toHaveLength(1);
   });
+
+  it("folds base64 body lines at 76 characters and every raw line at <= 998 octets for a long body (RFC 2045 / RFC 5322)", async () => {
+    const calls: Array<{ raw: string }> = [];
+    const binding = { send: async (message: unknown) => { calls.push(message as { raw: string }); } };
+    const log = new InMemoryEmailLog();
+    const mailer = new EmailBindingMailer(binding, log, { email: "hello@chautauqua.cc", name: "Chautauqua" }, identityFactory);
+
+    const longText = "The quick brown fox jumps over the lazy dog. ".repeat(120); // ~5,640 chars
+    const longHtml = `<p>${"The quick brown fox jumps over the lazy dog. ".repeat(120)}</p>`;
+    await mailer.send(baseMsg({ text: longText, html: longHtml }));
+
+    const raw = calls[0]!.raw;
+    const lines = raw.split("\r\n");
+    for (const line of lines) {
+      expect(new TextEncoder().encode(line).length).toBeLessThanOrEqual(998);
+    }
+
+    // Identify the base64 body blocks (between the blank line after each
+    // Content-Transfer-Encoding: base64 header and the next boundary line)
+    // and assert every line within them is <= 76 characters.
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i] === "Content-Transfer-Encoding: base64") {
+        let j = i + 1;
+        expect(lines[j]).toBe(""); // blank separator line
+        j += 1;
+        while (j < lines.length && !lines[j]!.startsWith("--")) {
+          expect(lines[j]!.length).toBeLessThanOrEqual(76);
+          j += 1;
+        }
+      }
+    }
+  });
+
+  it("round-trips a long text/html body through fold+decode to the exact original bytes", async () => {
+    const calls: Array<{ raw: string }> = [];
+    const binding = { send: async (message: unknown) => { calls.push(message as { raw: string }); } };
+    const log = new InMemoryEmailLog();
+    const mailer = new EmailBindingMailer(binding, log, { email: "hello@chautauqua.cc", name: "Chautauqua" }, identityFactory);
+
+    const longText = "Line with unicode café — ".repeat(200); // ~5,200 chars, non-ASCII
+    const longHtml = `<p>${"body ".repeat(200)}</p>`;
+    await mailer.send(baseMsg({ text: longText, html: longHtml }));
+
+    const raw = calls[0]!.raw;
+    const headerBlockEnd = raw.indexOf("\r\n\r\n");
+    const body = raw.slice(headerBlockEnd + 4);
+    const parts = body.split(/\r\n--[^\r\n]+\r\n/).filter((p) => p.trim().length > 0);
+
+    const decodeBase64Block = (block: string): string => {
+      const blockLines = block.split("\r\n");
+      const blankIdx = blockLines.indexOf("");
+      const b64Lines = blockLines.slice(blankIdx + 1).filter((l) => l.length > 0 && !l.startsWith("--"));
+      const b64 = b64Lines.join("");
+      const binary = atob(b64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return new TextDecoder().decode(bytes);
+    };
+
+    const textPart = parts.find((p) => p.includes("Content-Type: text/plain"));
+    const htmlPart = parts.find((p) => p.includes("Content-Type: text/html"));
+    expect(textPart).toBeDefined();
+    expect(htmlPart).toBeDefined();
+    expect(decodeBase64Block(textPart!)).toBe(longText);
+    expect(decodeBase64Block(htmlPart!)).toBe(longHtml);
+  });
+
+  it("round-trips a multi-session .ics attachment through fold+decode to the exact original bytes", async () => {
+    const calls: Array<{ raw: string }> = [];
+    const binding = { send: async (message: unknown) => { calls.push(message as { raw: string }); } };
+    const log = new InMemoryEmailLog();
+    const mailer = new EmailBindingMailer(binding, log, { email: "hello@chautauqua.cc", name: "Chautauqua" }, identityFactory);
+
+    const icsEvents = Array.from({ length: 30 }, (_, i) => (
+      `BEGIN:VEVENT\r\nUID:chq-${i}@chautauqua\r\nSUMMARY:Session number ${i} with a fairly long title so the ics body grows past a single 76-char line\r\nEND:VEVENT`
+    )).join("\r\n");
+    const icsContent = `BEGIN:VCALENDAR\r\n${icsEvents}\r\nEND:VCALENDAR`;
+    await mailer.send(baseMsg({ ics: { filename: "sessions.ics", content: icsContent } }));
+
+    const raw = calls[0]!.raw;
+    const lines = raw.split("\r\n");
+    for (const line of lines) {
+      expect(new TextEncoder().encode(line).length).toBeLessThanOrEqual(998);
+    }
+
+    const calStart = raw.indexOf("Content-Type: text/calendar");
+    const calSection = raw.slice(calStart);
+    const calBlockEnd = calSection.indexOf("\r\n\r\n");
+    const afterHeaders = calSection.slice(calBlockEnd + 4);
+    const nextBoundaryIdx = afterHeaders.indexOf("\r\n--");
+    const calBody = nextBoundaryIdx === -1 ? afterHeaders : afterHeaders.slice(0, nextBoundaryIdx);
+    const b64 = calBody.split("\r\n").filter((l) => l.length > 0).join("");
+    for (const line of calBody.split("\r\n").filter((l) => l.length > 0)) {
+      expect(line.length).toBeLessThanOrEqual(76);
+    }
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    expect(new TextDecoder().decode(bytes)).toBe(icsContent);
+  });
 });
 
 describe("mailConfigStatus (DEC-996 amendment, wave 57)", () => {

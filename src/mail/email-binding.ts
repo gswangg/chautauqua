@@ -33,6 +33,19 @@ function base64Encode(raw: string): string {
   return btoa(binary);
 }
 
+// RFC 2045 §6.8: base64 body content must be folded at 76 characters per
+// line. Unlike src/mail/ics.ts's foldLine (which folds UTF-8 TEXT content
+// and must never split a multi-byte character across a boundary), base64
+// output is pure ASCII — every character is one octet — so this is a plain
+// fixed-width chunk split with no byte-boundary handling needed.
+function foldBase64(b64: string): string {
+  const chunks: string[] = [];
+  for (let i = 0; i < b64.length; i += 76) {
+    chunks.push(b64.slice(i, i + 76));
+  }
+  return chunks.join("\r\n");
+}
+
 // RFC 5322 header value safety (DEC-996 wave-62 amendment): strip every
 // CR/LF/C0-control byte plus DEL — the same class src/mail/ics.ts sanitizeCn
 // strips and for the same reason (a bare CR/LF here would inject a new
@@ -84,13 +97,13 @@ function buildRawMime(from: { email: string; name: string }, m: RenderedEmail, n
     `Content-Type: text/plain; charset="UTF-8"`,
     `Content-Transfer-Encoding: base64`,
     "",
-    base64Encode(m.text),
+    foldBase64(base64Encode(m.text)),
     "",
     `--${altBoundary}`,
     `Content-Type: text/html; charset="UTF-8"`,
     `Content-Transfer-Encoding: base64`,
     "",
-    base64Encode(m.html),
+    foldBase64(base64Encode(m.html)),
     "",
     `--${altBoundary}--`,
   ];
@@ -130,7 +143,7 @@ function buildRawMime(from: { email: string; name: string }, m: RenderedEmail, n
     `Content-Transfer-Encoding: base64`,
     `Content-Disposition: attachment; filename="${safeFilename}"`,
     "",
-    base64Encode(m.ics.content),
+    foldBase64(base64Encode(m.ics.content)),
     "",
     `--${mixedBoundary}--`,
   ];
