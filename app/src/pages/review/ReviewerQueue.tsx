@@ -310,8 +310,18 @@ function ReviewerPlanRow({ plan }: { plan: EvaluationPlan }) {
 
   const scope = envelope ? envelope.scopeTrackName ?? 'All tracks' : null;
   const left = envelope ? envelope.items.filter((i) => !i.alreadyRatedByMe).length : null;
+  // DEC-874 (wave-29 amendment): closed-ness comes off the SAME
+  // closesInDaysLabel helper the scoped header already uses to render
+  // 'closes in N days' vs 'closed N days ago' -- one reader, one rule,
+  // rather than a second closed/open predicate against envelope.closeDate.
+  const closesLabel = envelope ? closesInDaysLabel(envelope.closeDate, plan.timezone) : null;
+  const isClosed = closesLabel !== null && closesLabel.startsWith('closed ');
 
-  const meta = [scope, left !== null ? `${left} left to score` : null].filter((v): v is string => v !== null);
+  // A closed plan's "N left to score" count is noise (nothing left to
+  // act on) -- the row keeps its scope meta and drops the count.
+  const meta = [scope, !isClosed && left !== null ? `${left} left to score` : null].filter(
+    (v): v is string => v !== null,
+  );
 
   return (
     <li className="chq-reviewer-plan-row">
@@ -319,6 +329,11 @@ function ReviewerPlanRow({ plan }: { plan: EvaluationPlan }) {
         <span className="chq-reviewer-plan-row-name">{plan.name}</span>
         {meta.length > 0 && <span className="chq-review-plan-meta">{meta.join(' · ')}</span>}
       </Link>
+      {isClosed && (
+        <Link to={`/review/plans/${plan.id}`} className="chq-reviewer-plan-row-read-scores">
+          Read your scores &rsaquo;
+        </Link>
+      )}
     </li>
   );
 }

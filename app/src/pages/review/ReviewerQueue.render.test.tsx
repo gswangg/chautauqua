@@ -291,6 +291,68 @@ describe('ReviewerQueue progress caption (gate-4 03-review still-present finding
   });
 });
 
+// DEC-874 (wave-29 amendment): a closed plan stays listed in the 2+ plan
+// hub with a quiet 'Read your scores' link instead of an unactionable
+// 'N left to score' count.
+describe('ReviewerQueue hub row: closed plan reads "Read your scores" (DEC-874 wave-29 amendment)', () => {
+  function renderHub() {
+    return render(
+      <MemoryRouter initialEntries={['/review']}>
+        <Routes>
+          <Route path="/review" element={<ReviewerQueue />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  it('shows exactly one "Read your scores" link, pointing at the closed plan, and drops its "left to score" count while keeping the open row unchanged', async () => {
+    const openPlan = { id: 'plan-open', eventId: 'evt-1', name: 'Open Plan', timezone: 'America/New_York' };
+    const closedPlan = { id: 'plan-closed', eventId: 'evt-1', name: 'Closed Plan', timezone: 'America/New_York' };
+
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([openPlan, closedPlan]),
+      'GET /api/v1/review/plans/plan-open/queue': {
+        ...listEnvelope([queueItem({ submissionId: 'open-1', alreadyRatedByMe: false })]),
+        open: true,
+        recused: [],
+        planName: 'Open Plan',
+        scopeTrackName: 'Main Stage',
+        closeDate: null,
+      },
+      'GET /api/v1/review/plans/plan-closed/queue': {
+        ...listEnvelope([queueItem({ submissionId: 'closed-1', alreadyRatedByMe: true, myScore: 4 })]),
+        open: true,
+        recused: [],
+        planName: 'Closed Plan',
+        scopeTrackName: 'Side Stage',
+        closeDate: Date.now() - 10 * 24 * 60 * 60 * 1000,
+      },
+    });
+
+    renderHub();
+
+    expect(await screen.findByText('Open Plan')).toBeInTheDocument();
+    expect(screen.getByText('Closed Plan')).toBeInTheDocument();
+
+    // Exactly one "Read your scores" link, on the closed row.
+    const readScoresLinks = await screen.findAllByRole('link', { name: /Read your scores/ });
+    expect(readScoresLinks.length).toBe(1);
+    expect(readScoresLinks[0]).toHaveAttribute('href', '/review/plans/plan-closed');
+
+    // The closed row's meta keeps scope but drops "left to score".
+    const closedRow = screen.getByText('Closed Plan').closest('li')!;
+    expect(closedRow.textContent).toContain('Side Stage');
+    expect(closedRow.textContent).not.toMatch(/left to score/);
+
+    // The open row is unchanged: scope + count, no "Read your scores" link.
+    const openRow = screen.getByText('Open Plan').closest('li')!;
+    await waitFor(() => expect(openRow.textContent).toContain('Main Stage'));
+    expect(openRow.textContent).toMatch(/left to score/);
+    expect(openRow.querySelector('a[href="/review/plans/plan-open"]')).not.toBeNull();
+    expect(openRow.textContent).not.toMatch(/Read your scores/);
+  });
+});
+
 describe('"Score the next one" plan-scoped title-row shortcut (REVIEW PACK frame 03-03)', () => {
   it('renders, right-aligned on the h1 row, linking to the first not-yet-scored submission, when one exists', async () => {
     mockApi({
