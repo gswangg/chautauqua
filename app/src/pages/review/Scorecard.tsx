@@ -155,7 +155,12 @@ export function Scorecard() {
     // fabricated one.
     if (!planId) return;
     apiList<ReviewerQueueItem>(`/review/plans/${planId}/queue`)
-      .then((res) => setQueueProgress(queueDoneCounts(res.items)))
+      // DEC-518 (wave-39 amendment): `total` is the envelope's res.total, not
+      // items.length -- the queue endpoint truncates items at its perPage
+      // cap (see src/lib/pagination.ts listPerPage), so a reviewer with more
+      // assignments than that cap would otherwise see a shrunken "N of N"
+      // that quietly claims to be exhaustive.
+      .then((res) => setQueueProgress({ completed: queueDoneCounts(res.items).completed, total: res.total }))
       .catch(() => setQueueProgress(null));
   }, [planId]);
 
