@@ -94,6 +94,11 @@ export const MOBILE_EVENT_SLUG = "devflow-conf-2027";
 const MOBILE_SESSION_ID = "seed_submission_0001";
 const MOBILE_SPEAKER_ID = "seed_contact_0001";
 const MOBILE_TASK_ASSIGNMENT_ID = "seed_task_assignment_0001";
+// Same seed ids as app/src/routeManifest.ts's ROUTE_MANIFEST "DEC-985"
+// entries (test/render-sweep-manifest-parity.test.ts's derived assertion
+// requires every public ROUTE_MANIFEST row to have a mobile counterpart).
+const MOBILE_EMAIL_LOG_ID = "seed_email_log_0001";
+const MOBILE_EMBED_ID = "seed_embed_0001";
 
 export const MOBILE_ROUTE_MANIFEST: readonly MobileRouteEntry[] = [
   // DEC-582 mandate: the anonymous event hub at / must be render-swept too.
@@ -104,6 +109,10 @@ export const MOBILE_ROUTE_MANIFEST: readonly MobileRouteEntry[] = [
   { path: `/e/${MOBILE_EVENT_SLUG}/agenda`, role: "public" },
   { path: `/e/${MOBILE_EVENT_SLUG}/schedule`, role: "public" },
   { path: `/e/${MOBILE_EVENT_SLUG}/gallery`, role: "public" },
+  // DEC-503 amendment (w69-e): the printable programme is the one public
+  // surface a producer prints — render-sweep-manifest-parity.test.ts derives
+  // this row from ROUTE_MANIFEST's public entries, so it must never regress.
+  { path: `/e/${MOBILE_EVENT_SLUG}/programme`, role: "public" },
   { path: `/e/${MOBILE_EVENT_SLUG}/sessions/${MOBILE_SESSION_ID}`, role: "public" },
   { path: `/e/${MOBILE_EVENT_SLUG}/speakers/${MOBILE_SPEAKER_ID}`, role: "public" },
   { path: `/embed/${MOBILE_EVENT_SLUG}/sessions`, role: "public" },
@@ -112,6 +121,15 @@ export const MOBILE_ROUTE_MANIFEST: readonly MobileRouteEntry[] = [
   { path: `/embed/${MOBILE_EVENT_SLUG}/schedule`, role: "public" },
   { path: `/embed/${MOBILE_EVENT_SLUG}/gallery`, role: "public" },
   { path: "/login", role: "public" },
+  { path: "/docs/api", role: "public" },
+  { path: "/dev/mailbox", role: "public" },
+  // DEC-985 parity (w69-e): the single sent-email detail view — same
+  // deterministic seed id as ROUTE_MANIFEST's /dev/mailbox/seed_email_log_0001 row.
+  { path: `/dev/mailbox/${MOBILE_EMAIL_LOG_ID}`, role: "public" },
+  // DEC-785 parity (w69-e): the saved-embed public route — same
+  // deterministic seed id as ROUTE_MANIFEST's /embed/e/seed_embed_0001 row
+  // (the enabled "AI track sessions" embed, scripts/seed.ts).
+  { path: `/embed/e/${MOBILE_EMBED_ID}`, role: "public" },
   { path: "/portal", role: "speaker" },
   // DEC-411: widen the mobile pass from the single /portal route to the
   // whole phone product — the same speaker portal surfaces already in
@@ -122,8 +140,6 @@ export const MOBILE_ROUTE_MANIFEST: readonly MobileRouteEntry[] = [
   { path: "/portal/tasks", role: "speaker" },
   { path: `/portal/tasks/${MOBILE_TASK_ASSIGNMENT_ID}/form`, role: "speaker" },
   { path: "/account/password", role: "speaker" },
-  { path: "/docs/api", role: "public" },
-  { path: "/dev/mailbox", role: "public" },
 ] as const;
 
 /** Selector list for "primary nav/filter/submit controls" (DEC-253): surface
