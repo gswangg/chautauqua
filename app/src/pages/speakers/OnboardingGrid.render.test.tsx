@@ -855,7 +855,7 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     counts: { speakers: 4, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
   };
 
-  it('renders ONE muted strip (not N blank cells) for invited/declined rows, with a live participation control, and the header summary matches the server counts (excluding those rows)', async () => {
+  it('renders ONE muted strip (not N blank cells) for an invited-only row, with a live participation control, and the header summary matches the server counts (excluding those rows)', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: TASK_GRID,
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
@@ -865,19 +865,20 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     await waitFor(() => screen.getAllByText('Marie Curie').length > 0);
 
     const table = within(screen.getByRole('table'));
+    // ct3 (invited-only, no real assignment) still gets the DEC-934 strip.
     expect(
       table.getAllByText("Not chasing - invite invited. Set participation to Confirmed to assign this event's tasks."),
     ).toHaveLength(1);
+    // ct4 (declined-only) no longer gets the strip -- DEC-829 amendment
+    // below covers its individual-cell treatment.
     expect(
-      table.getAllByText("Not chasing - invite declined. Set participation to Confirmed to assign this event's tasks."),
-    ).toHaveLength(1);
+      table.queryByText("Not chasing - invite declined. Set participation to Confirmed to assign this event's tasks."),
+    ).not.toBeInTheDocument();
 
-    // No per-task toggle renders for either not-chased row.
+    // No per-task toggle renders for the invited-only row (no assignment
+    // ever existed to toggle).
     expect(
       table.queryByRole('button', { name: /Toggle Sign speaker agreement for Marie Curie/ }),
-    ).not.toBeInTheDocument();
-    expect(
-      table.queryByRole('button', { name: /Toggle Sign speaker agreement for Rosalind Franklin/ }),
     ).not.toBeInTheDocument();
 
     // The row's own participation control stays live -- it IS the fix.
@@ -889,12 +890,41 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     ).toBeInTheDocument();
 
     // The printed summary reads straight off the server's counts (which
-    // already exclude ct3's stray assignment) -- "1", never "2".
+    // already exclude ct3/ct4's stray assignments) -- "1", never "2".
     expect(screen.getByText('1', { selector: 'strong' })).toBeInTheDocument();
     const summary = screen.getByText(/tasks open/).closest('span');
     expect(summary).toHaveTextContent('4 accepted');
     expect(summary).toHaveTextContent('1 tasks open');
     expect(summary).toHaveTextContent('0 overdue');
+  });
+
+  // DEC-829 amendment (wave 59): a declined-only row renders its actual
+  // cells (muted when incomplete) instead of the DEC-934 strip, keeps
+  // completed history visible, shows a quiet "Not chased" marker, and
+  // offers no per-row remind control.
+  it('DEC-829: a declined-only row renders muted cells + a quiet marker, not the strip, and no Remind control', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: TASK_GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Rosalind Franklin').length > 0);
+
+    const table = within(screen.getByRole('table'));
+    const row = table.getByText('Rosalind Franklin').closest('tr')!;
+    const rowScope = within(row);
+
+    // No strip text for this row.
+    expect(rowScope.queryByText(/Not chasing/)).not.toBeInTheDocument();
+    // Quiet row-level marker instead of the per-row Remind control.
+    expect(rowScope.getByText('Not chased')).toHaveClass('chq-speakers-not-chased-marker');
+    expect(rowScope.queryByRole('button', { name: /^Remind/ })).not.toBeInTheDocument();
+    // No assignment exists for this row's task (cells: []), so the cell
+    // renders the em-dash "no assignment" placeholder, not a toggle.
+    expect(
+      rowScope.queryByRole('button', { name: /Toggle Sign speaker agreement for Rosalind Franklin/ }),
+    ).not.toBeInTheDocument();
   });
 
   it('Edit opens TaskModal in edit mode prefilled, and PATCHes only title/dueDate/required (never kind/formId)', async () => {
@@ -1114,5 +1144,110 @@ describe('OnboardingGrid: DEC-934 amendment "Send portal invite" gates on not-ye
     expect(table.queryByRole('button', { name: 'Send portal invite' })).not.toBeInTheDocument();
     const marker = table.getByText('EMAILED');
     expect(marker).toHaveClass('chq-speakers-invited-marker');
+  });
+});
+
+// DEC-829 amendment (wave 59): a declined-only row can carry REAL
+// assignment history (tasks assigned while the participant was still
+// active) -- the muted-cell treatment must keep completed cells visible and
+// only mute the incomplete ones, and a mixed-status row (any active
+// participation) must render exactly as before.
+describe('OnboardingGrid: DEC-829 amendment muted-cell treatment for a declined-only row', () => {
+  function gridFor(rows: OnboardingGridResponse['rows']): OnboardingGridResponse {
+    return {
+      tasks: [
+        { id: 'task-1', kind: 'general', title: 'Sign speaker agreement', dueDate: null, required: true },
+        { id: 'task-2', kind: 'general', title: 'Upload headshot', dueDate: null, required: true },
+      ],
+      rows,
+      total: rows.length,
+      page: 1,
+      perPage: 50,
+      counts: { speakers: rows.length, outstandingRequired: 0, overdue: 0, outstandingContacts: 0 },
+    };
+  }
+
+  it('a declined-only row with real assignment history mutes the incomplete cell but keeps the complete cell live', async () => {
+    const grid = gridFor([
+      {
+        contact: {
+          id: 'ct-declined-history',
+          name: 'Nina Byte',
+          email: 'nina@example.com',
+          company: null,
+          hasAccount: false,
+          participations: [{ participantId: 'p1', submissionId: 'sub1', ref: 'SES-001', title: 'Talk', inviteStatus: 'declined' }],
+        },
+        cells: [
+          { taskId: 'task-1', assignmentId: 'as1', status: 'complete', completedAt: 1700000000000, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 },
+          { taskId: 'task-2', assignmentId: 'as2', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 },
+        ],
+      },
+    ]);
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: grid,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Nina Byte').length > 0);
+
+    const table = within(screen.getByRole('table'));
+    const row = table.getByText('Nina Byte').closest('tr')!;
+    const rowScope = within(row);
+
+    expect(rowScope.getByText('Not chased')).toHaveClass('chq-speakers-not-chased-marker');
+    expect(rowScope.queryByRole('button', { name: /^Remind/ })).not.toBeInTheDocument();
+
+    // Completed cell renders normally, no muted wrapper.
+    const completeBtn = rowScope.getByRole('button', { name: 'Toggle Sign speaker agreement for Nina Byte' });
+    expect(completeBtn).toHaveTextContent('Complete');
+    expect(completeBtn.closest('.chq-speakers-cell')).not.toHaveClass('chq-speakers-cell-muted');
+
+    // Pending (incomplete) cell renders muted, but the toggle itself still
+    // works -- only the visual treatment changes.
+    const pendingBtn = rowScope.getByRole('button', { name: 'Toggle Upload headshot for Nina Byte' });
+    expect(pendingBtn).toHaveTextContent('Pending');
+    expect(pendingBtn.closest('.chq-speakers-cell')).toHaveClass('chq-speakers-cell-muted');
+  });
+
+  it('a row with one declined and one accepted participation renders normally (no marker, no muting, Remind control present)', async () => {
+    const grid = gridFor([
+      {
+        contact: {
+          id: 'ct-mixed',
+          name: 'Otto Base',
+          email: 'otto@example.com',
+          company: null,
+          hasAccount: false,
+          participations: [
+            { participantId: 'p1', submissionId: 'sub1', ref: 'SES-001', title: 'Talk One', inviteStatus: 'declined' },
+            { participantId: 'p2', submissionId: 'sub2', ref: 'SES-002', title: 'Talk Two', inviteStatus: 'accepted' },
+          ],
+        },
+        cells: [
+          { taskId: 'task-1', assignmentId: 'as1', status: 'pending', completedAt: null, fileId: null, fileName: null, fileSizeBytes: null, lastRemindedAt: null, assignedAt: 0 },
+        ],
+      },
+    ]);
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: grid,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Otto Base').length > 0);
+
+    const table = within(screen.getByRole('table'));
+    const row = table.getByText('Otto Base').closest('tr')!;
+    const rowScope = within(row);
+
+    expect(rowScope.queryByText('Not chased')).not.toBeInTheDocument();
+    expect(rowScope.getByRole('button', { name: 'Remind Otto' })).toBeInTheDocument();
+
+    const pendingBtn = rowScope.getByRole('button', { name: 'Toggle Sign speaker agreement for Otto Base' });
+    expect(pendingBtn.closest('.chq-speakers-cell')).not.toHaveClass('chq-speakers-cell-muted');
   });
 });

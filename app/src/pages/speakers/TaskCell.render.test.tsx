@@ -6,7 +6,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { TaskCell } from './TaskCell';
+import { TaskCell, isRowNotChased } from './TaskCell';
 import type { OnboardingCell, OnboardingTask } from './types';
 
 afterEach(() => cleanup());
@@ -75,5 +75,75 @@ describe('TaskCell', () => {
     );
     const link = screen.getByRole('link', { name: 'Download slides.pdf' });
     expect(link).toHaveAttribute('href', '/files/file-1');
+  });
+
+  // DEC-829 amendment: notChased mutes an INCOMPLETE cell (visual only --
+  // the toggle keeps working) but never a complete one, since that history
+  // is real regardless of whether the row is still chased.
+  it('mutes an incomplete cell when notChased is true, but not a complete one', () => {
+    render(
+      <TaskCell
+        task={TASK}
+        cell={makeCell({ status: 'pending' })}
+        contactName="Ada Lovelace"
+        now={Date.now()}
+        onToggle={vi.fn()}
+        onOpenResponse={vi.fn()}
+        notChased={true}
+      />,
+    );
+    const btn = screen.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' });
+    expect(btn.closest('.chq-speakers-cell')).toHaveClass('chq-speakers-cell-muted');
+
+    cleanup();
+
+    render(
+      <TaskCell
+        task={TASK}
+        cell={makeCell({ status: 'complete', completedAt: 1 })}
+        contactName="Ada Lovelace"
+        now={Date.now()}
+        onToggle={vi.fn()}
+        onOpenResponse={vi.fn()}
+        notChased={true}
+      />,
+    );
+    const completeBtn = screen.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' });
+    expect(completeBtn.closest('.chq-speakers-cell')).not.toHaveClass('chq-speakers-cell-muted');
+  });
+
+  it('does not mute when notChased is false/omitted', () => {
+    render(
+      <TaskCell task={TASK} cell={makeCell({ status: 'pending' })} contactName="Ada Lovelace" now={Date.now()} onToggle={vi.fn()} onOpenResponse={vi.fn()} />,
+    );
+    const btn = screen.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' });
+    expect(btn.closest('.chq-speakers-cell')).not.toHaveClass('chq-speakers-cell-muted');
+  });
+});
+
+// DEC-829 amendment: the ONE row-level predicate -- every participation
+// must be declined, and a non-empty array is required.
+describe('isRowNotChased (DEC-829 amendment)', () => {
+  it('is true only when every participation is declined', () => {
+    expect(isRowNotChased({ participations: [{ inviteStatus: 'declined' }] })).toBe(true);
+    expect(
+      isRowNotChased({
+        participations: [
+          { inviteStatus: 'declined' },
+          { inviteStatus: 'declined' },
+        ],
+      }),
+    ).toBe(true);
+  });
+
+  it('is false when any participation is not declined', () => {
+    expect(
+      isRowNotChased({
+        participations: [{ inviteStatus: 'declined' }, { inviteStatus: 'accepted' }],
+      }),
+    ).toBe(false);
+    expect(isRowNotChased({ participations: [{ inviteStatus: 'invited' }] })).toBe(false);
+    expect(isRowNotChased({ participations: [{ inviteStatus: 'none' }] })).toBe(false);
+    expect(isRowNotChased({ participations: [{ inviteStatus: 'accepted' }] })).toBe(false);
   });
 });
