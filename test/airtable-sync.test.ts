@@ -9,6 +9,14 @@ import { patchContact } from "../src/server/repo/contacts/crud";
 
 const NOW = new Date("2027-01-01T00:00:00.000Z");
 
+// DEC-450 wave-33 amendment: watermark reads now use a 5-minute
+// (WATERMARK_LOOKBACK_MS) lookback window instead of a strict boundary, so
+// tests asserting an exact watermark cutoff need timestamp gaps larger than
+// that window to land unambiguously on one side of it. T0 is a realistic
+// wall-clock-scale base (matching test/submission-touch-on-rename.test.ts's
+// T0) so these gaps behave the same as they would against a real clock.
+const T0 = 1_700_000_000_000;
+
 describe("airtable sync mapping", () => {
   it("maps a contact to Airtable fields with ChautauquaId merge key", () => {
     const r = contactRecord(
@@ -399,38 +407,40 @@ const noSleep = async () => {};
 describe("runAirtableSync incremental watermark (DEC-725)", () => {
   it("first run pushes everything and stores the watermark; a second run with no changes pushes zero records", async () => {
     const { db, sqlite } = makeTestDb();
-    seedOrgEventContact(sqlite, 1_000);
-    insertContact(sqlite, "c1", 1_000);
+    seedOrgEventContact(sqlite, T0);
+    insertContact(sqlite, "c1", T0);
     const kv = makeFakeKv();
     const env: AirtableSyncEnv = { AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b", AIRTABLE_ORG_ID: "org-1", KV: kv };
 
     const patch1: Array<{ table: string; body: unknown }> = [];
-    const r1 = await runAirtableSync(env, db, fakeFetchCollecting(patch1), new Date(2_000), noSleep);
+    const r1 = await runAirtableSync(env, db, fakeFetchCollecting(patch1), new Date(T0 + 1_000_000), noSleep);
     expect(r1).toEqual({ contacts: 1, submissions: 0 });
-    expect(kv.store.get("airtable:watermark:org-1")).toBe(new Date(2_000).toISOString());
+    expect(kv.store.get("airtable:watermark:org-1")).toBe(new Date(T0 + 1_000_000).toISOString());
 
+    // c1's updated_at (T0) is well outside the 5-minute lookback of the
+    // stored watermark (T0 + 1_000_000), so the second tick must push zero.
     const patch2: Array<{ table: string; body: unknown }> = [];
-    const r2 = await runAirtableSync(env, db, fakeFetchCollecting(patch2), new Date(3_000), noSleep);
+    const r2 = await runAirtableSync(env, db, fakeFetchCollecting(patch2), new Date(T0 + 1_100_000), noSleep);
     expect(r2).toEqual({ contacts: 0, submissions: 0 });
     expect(patch2.find((p) => p.table === "Contacts")).toBeUndefined();
   });
 
   it("a row changed after the watermark is picked up on the next tick", async () => {
     const { db, sqlite } = makeTestDb();
-    seedOrgEventContact(sqlite, 1_000);
-    insertContact(sqlite, "c1", 1_000);
+    seedOrgEventContact(sqlite, T0);
+    insertContact(sqlite, "c1", T0);
     const kv = makeFakeKv();
     const env: AirtableSyncEnv = { AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b", AIRTABLE_ORG_ID: "org-1", KV: kv };
 
-    await runAirtableSync(env, db, fakeFetchCollecting([]), new Date(2_000), noSleep);
+    await runAirtableSync(env, db, fakeFetchCollecting([]), new Date(T0 + 1_000_000), noSleep);
 
-    // c1 is updated after the stored watermark (2000).
-    sqlite.exec(`update contact set updated_at = 2500 where id = 'c1'`);
-    insertContact(sqlite, "c2", 100); // stale row, must NOT be picked up
-    sqlite.exec(`update contact set updated_at = 100 where id = 'c2'`);
+    // c1 is updated after the stored watermark (T0 + 1_000_000).
+    sqlite.exec(`update contact set updated_at = ${T0 + 1_000_500} where id = 'c1'`);
+    // c2 is far outside the 5-minute lookback of the watermark, must NOT be picked up.
+    insertContact(sqlite, "c2", T0);
 
     const patch: Array<{ table: string; body: unknown }> = [];
-    const r = await runAirtableSync(env, db, fakeFetchCollecting(patch), new Date(3_000), noSleep);
+    const r = await runAirtableSync(env, db, fakeFetchCollecting(patch), new Date(T0 + 1_100_000), noSleep);
     expect(r).toEqual({ contacts: 1, submissions: 0 });
     const body = patch.find((p) => p.table === "Contacts")!.body as { records: Array<{ fields: { ChautauquaId: string } }> };
     expect(body.records.map((rec) => rec.fields.ChautauquaId)).toEqual(["c1"]);
@@ -681,36 +691,37 @@ describe("runAirtableSync participant/track joins refuse past MAX_SYNC_ROWS (DEC
 describe("runAirtableSync incremental child-table scoping (DEC-450 wave-64 amendment)", () => {
   it("scopes participant/submission_track reads to the pushed submission ids, not the whole org", async () => {
     const { db, sqlite } = makeTestDb();
-    seedOrgEventContact(sqlite, 1_000);
+    seedOrgEventContact(sqlite, T0);
     sqlite.exec(`
       insert into submission (id, event_id, seq, title, status, created_at, updated_at)
-        values ('sub-changed', 'event-1', 1, 'Changed Talk', 'accepted', 1000, 1000);
+        values ('sub-changed', 'event-1', 1, 'Changed Talk', 'accepted', ${T0}, ${T0});
       insert into submission (id, event_id, seq, title, status, created_at, updated_at)
-        values ('sub-unchanged', 'event-1', 2, 'Unchanged Talk', 'accepted', 1000, 1000);
+        values ('sub-unchanged', 'event-1', 2, 'Unchanged Talk', 'accepted', ${T0}, ${T0});
       insert into contact (id, org_id, first_name, last_name, email, company, title, created_at, updated_at)
-        values ('c-changed', 'org-1', 'Changed', 'Speaker', 'c@x.com', null, null, 1000, 1000);
+        values ('c-changed', 'org-1', 'Changed', 'Speaker', 'c@x.com', null, null, ${T0}, ${T0});
       insert into contact (id, org_id, first_name, last_name, email, company, title, created_at, updated_at)
-        values ('c-unchanged', 'org-1', 'Unchanged', 'Speaker', 'u@x.com', null, null, 1000, 1000);
+        values ('c-unchanged', 'org-1', 'Unchanged', 'Speaker', 'u@x.com', null, null, ${T0}, ${T0});
       insert into participant (id, submission_id, contact_id, "order", invite_status, created_at, updated_at)
-        values ('p-changed', 'sub-changed', 'c-changed', 0, 'accepted', 1000, 1000);
+        values ('p-changed', 'sub-changed', 'c-changed', 0, 'accepted', ${T0}, ${T0});
       insert into participant (id, submission_id, contact_id, "order", invite_status, created_at, updated_at)
-        values ('p-unchanged', 'sub-unchanged', 'c-unchanged', 0, 'accepted', 1000, 1000);
+        values ('p-unchanged', 'sub-unchanged', 'c-unchanged', 0, 'accepted', ${T0}, ${T0});
       insert into track (id, event_id, name, position, created_at, updated_at)
-        values ('trk-1', 'event-1', 'Track One', 0, 1000, 1000);
+        values ('trk-1', 'event-1', 'Track One', 0, ${T0}, ${T0});
       insert into submission_track (submission_id, track_id, created_at)
-        values ('sub-changed', 'trk-1', 1000);
+        values ('sub-changed', 'trk-1', ${T0});
       insert into submission_track (submission_id, track_id, created_at)
-        values ('sub-unchanged', 'trk-1', 1000);
+        values ('sub-unchanged', 'trk-1', ${T0});
     `);
 
     const kv = makeFakeKv();
     const env: AirtableSyncEnv = { AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b", AIRTABLE_ORG_ID: "org-1", KV: kv };
 
     // First tick: full push, sets the watermark. Both submissions pushed.
-    await runAirtableSync(env, db, fakeFetchCollecting([]), new Date(2_000), noSleep);
+    await runAirtableSync(env, db, fakeFetchCollecting([]), new Date(T0 + 1_000_000), noSleep);
 
-    // Only sub-changed is touched after the watermark.
-    sqlite.exec(`update submission set updated_at = 2500 where id = 'sub-changed'`);
+    // Only sub-changed is touched after the watermark. Everything else
+    // (T0) sits well outside the 5-minute lookback of the stored watermark.
+    sqlite.exec(`update submission set updated_at = ${T0 + 1_000_500} where id = 'sub-changed'`);
 
     const captured: Array<{ sql: string; params: unknown[] }> = [];
     const spyDb = drizzle(
@@ -729,7 +740,7 @@ describe("runAirtableSync incremental child-table scoping (DEC-450 wave-64 amend
     ) as unknown as Db;
 
     const patch: Array<{ table: string; body: unknown }> = [];
-    const r = await runAirtableSync(env, spyDb, fakeFetchCollecting(patch), new Date(3_000), noSleep);
+    const r = await runAirtableSync(env, spyDb, fakeFetchCollecting(patch), new Date(T0 + 1_100_000), noSleep);
     expect(r).toEqual({ contacts: 0, submissions: 1 });
 
     const submissionsPatch = patch.find((p) => p.table === "Submissions")!.body as {
@@ -755,12 +766,12 @@ describe("runAirtableSync incremental child-table scoping (DEC-450 wave-64 amend
 
   it("skips both child reads entirely when nothing is pushed (empty incremental tick)", async () => {
     const { db, sqlite } = makeTestDb();
-    seedOrgEventContact(sqlite, 1_000);
-    insertContact(sqlite, "c1", 1_000);
+    seedOrgEventContact(sqlite, T0);
+    insertContact(sqlite, "c1", T0);
     const kv = makeFakeKv();
     const env: AirtableSyncEnv = { AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b", AIRTABLE_ORG_ID: "org-1", KV: kv };
 
-    await runAirtableSync(env, db, fakeFetchCollecting([]), new Date(2_000), noSleep);
+    await runAirtableSync(env, db, fakeFetchCollecting([]), new Date(T0 + 1_000_000), noSleep);
 
     const captured: Array<{ sql: string }> = [];
     const spyDb = drizzle(
@@ -778,7 +789,7 @@ describe("runAirtableSync incremental child-table scoping (DEC-450 wave-64 amend
       { schema },
     ) as unknown as Db;
 
-    const r = await runAirtableSync(env, spyDb, fakeFetchCollecting([]), new Date(3_000), noSleep);
+    const r = await runAirtableSync(env, spyDb, fakeFetchCollecting([]), new Date(T0 + 1_100_000), noSleep);
     expect(r).toEqual({ contacts: 0, submissions: 0 });
     const childReads = captured.filter(
       (c) => /from\s+"participant"/.test(c.sql) || /from\s+"submission_track"/.test(c.sql),
@@ -788,16 +799,16 @@ describe("runAirtableSync incremental child-table scoping (DEC-450 wave-64 amend
 
   it("an org whose total child rows exceed MAX_SYNC_ROWS still syncs a small incremental delta", async () => {
     const { db, sqlite } = makeTestDb();
-    seedOrgEventContact(sqlite, 1_000);
-    // sub-a: the ONLY submission changed since the watermark (500) — this is
-    // what the tick pushes.
+    seedOrgEventContact(sqlite, T0);
+    // sub-a: the ONLY submission changed since the watermark's lookback
+    // window — this is what the tick pushes.
     sqlite.exec(`
       insert into submission (id, event_id, seq, title, status, created_at, updated_at)
-        values ('sub-a', 'event-1', 1, 'Talk A', 'accepted', 1000, 2500);
+        values ('sub-a', 'event-1', 1, 'Talk A', 'accepted', ${T0}, ${T0 + 1_000_000});
       insert into contact (id, org_id, first_name, last_name, email, company, title, created_at, updated_at)
-        values ('c-a', 'org-1', 'A', 'Speaker', 'a@x.com', null, null, 1000, 1000);
+        values ('c-a', 'org-1', 'A', 'Speaker', 'a@x.com', null, null, ${T0}, ${T0 + 500_000});
       insert into participant (id, submission_id, contact_id, "order", invite_status, created_at, updated_at)
-        values ('p-a', 'sub-a', 'c-a', 0, 'accepted', 1000, 1000);
+        values ('p-a', 'sub-a', 'c-a', 0, 'accepted', ${T0}, ${T0});
     `);
 
     // Bulk-insert far MORE participant rows than MAX_SYNC_ROWS, all attached
@@ -806,29 +817,31 @@ describe("runAirtableSync incremental child-table scoping (DEC-450 wave-64 amend
     // only) does not, and this tick never reads those submissions at all.
     sqlite.exec(`
       insert into contact (id, org_id, first_name, last_name, email, company, title, created_at, updated_at)
-        values ('c-bulk', 'org-1', 'Bulk', 'Speaker', 'bulk@x.com', null, null, 1000, 1000);
+        values ('c-bulk', 'org-1', 'Bulk', 'Speaker', 'bulk@x.com', null, null, ${T0}, ${T0 + 500_000});
     `);
     const insertSub = sqlite.prepare(
       `insert into submission (id, event_id, seq, title, status, created_at, updated_at)
-       values (?, 'event-1', ?, 'Bulk', 'accepted', 100, 100)`, // updated_at=100, BEFORE the watermark (500)
+       values (?, 'event-1', ?, 'Bulk', 'accepted', ?, ?)`, // updated_at=T0, well outside the lookback of the watermark
     );
     const insertPart = sqlite.prepare(
       `insert into participant (id, submission_id, contact_id, "order", invite_status, created_at, updated_at)
-       values (?, ?, 'c-bulk', 0, 'accepted', 1000, 1000)`,
+       values (?, ?, 'c-bulk', 0, 'accepted', ${T0}, ${T0})`,
     );
     const BULK = 10_050; // exceeds MAX_SYNC_ROWS (10_000) org-wide
     for (let i = 0; i < BULK; i++) {
       const subId = `sub-bulk-${i}`;
-      insertSub.run(subId, i + 10);
+      insertSub.run(subId, i + 10, T0, T0);
       insertPart.run(`p-bulk-${i}`, subId);
     }
 
     const kv = makeFakeKv();
-    kv.store.set("airtable:watermark:org-1", new Date(500).toISOString());
+    // Watermark's lookback (5min) reaches back to T0 + 400_000: sub-a/c-a/
+    // c-bulk (>= T0 + 500_000) are inside it, the bulk subs (T0) are not.
+    kv.store.set("airtable:watermark:org-1", new Date(T0 + 700_000).toISOString());
     const env: AirtableSyncEnv = { AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b", AIRTABLE_ORG_ID: "org-1", KV: kv };
 
     const patch: Array<{ table: string; body: unknown }> = [];
-    const r = await runAirtableSync(env, db, fakeFetchCollecting(patch), new Date(3_000), noSleep);
+    const r = await runAirtableSync(env, db, fakeFetchCollecting(patch), new Date(T0 + 1_200_000), noSleep);
     expect(r).toEqual({ contacts: 2, submissions: 1 });
     const submissionsPatch = patch.find((p) => p.table === "Submissions")!.body as {
       records: Array<{ fields: { ChautauquaId: string; Speakers: string } }>;
