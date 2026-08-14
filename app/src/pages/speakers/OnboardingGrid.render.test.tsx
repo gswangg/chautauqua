@@ -1126,7 +1126,7 @@ describe('OnboardingGrid: DEC-730 amendment matrix header names both axes', () =
 
 // DEC-934 amendment: "Send portal invite" only where inviting is still
 // possible -- an account rules it out (DEC-805), and now so does an
-// already-invited row, which renders the quiet 'EMAILED' marker in the same
+// already-invited row, which renders the quiet 'REMINDED' marker in the same
 // cell instead. The invite state is read straight off
 // participations[].inviteStatus, the field the roster row model already
 // carries.
@@ -1169,7 +1169,7 @@ describe('OnboardingGrid: DEC-934 amendment "Send portal invite" gates on not-ye
 
     const table = within(screen.getByRole('table'));
     expect(table.queryByRole('button', { name: 'Send portal invite' })).not.toBeInTheDocument();
-    expect(table.queryByText('EMAILED')).not.toBeInTheDocument();
+    expect(table.queryByText('REMINDED')).not.toBeInTheDocument();
   });
 
   it('no-account, not yet invited: the control renders', async () => {
@@ -1195,10 +1195,10 @@ describe('OnboardingGrid: DEC-934 amendment "Send portal invite" gates on not-ye
 
     const table = within(screen.getByRole('table'));
     expect(table.getByRole('button', { name: 'Send portal invite' })).toBeInTheDocument();
-    expect(table.queryByText('EMAILED')).not.toBeInTheDocument();
+    expect(table.queryByText('REMINDED')).not.toBeInTheDocument();
   });
 
-  it('no-account, already invited: the quiet EMAILED marker renders, not the control', async () => {
+  it('no-account, already invited: the quiet REMINDED marker renders, not the control', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWithRows([
         {
@@ -1221,7 +1221,7 @@ describe('OnboardingGrid: DEC-934 amendment "Send portal invite" gates on not-ye
 
     const table = within(screen.getByRole('table'));
     expect(table.queryByRole('button', { name: 'Send portal invite' })).not.toBeInTheDocument();
-    const marker = table.getByText('EMAILED');
+    const marker = table.getByText('REMINDED');
     expect(marker).toHaveClass('chq-speakers-invited-marker');
   });
 });
