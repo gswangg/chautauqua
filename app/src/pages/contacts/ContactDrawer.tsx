@@ -516,6 +516,13 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
         {!loading && contact && (
           <>
             <div className="chq-contacts-record">
+              {/* DEC-616 amendment (wave 15): the drawer states its own save
+                  mechanism in the record head, in plain words, rather than
+                  leaving Save's persistent footer (below) to speak for
+                  itself. */}
+              <p className="chq-meta chq-contacts-record-save-caption">
+                Click a row to edit it — nothing is saved until you press Save.
+              </p>
               {visibleEntries.map((entry) => entry.node)}
               {/* DEC-616 amendment (wave 4): the record shows the facts it
                   HAS — empties sit behind this ONE disclosure, which states

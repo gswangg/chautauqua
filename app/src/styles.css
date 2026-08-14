@@ -715,6 +715,24 @@ a:hover {
   z-index: 20;
 }
 
+/* DEC-616 amendment (wave 15): the drawer's action row (Save/Email/Add to
+   event/Delete) is the ONE place a save actually happens — it stays pinned
+   to the drawer's bottom edge via position:sticky inside the drawer's own
+   scroll container (.chq-drawer, overflow-y:auto above) so it's reachable
+   without scrolling past a long record. The drawer's own paper background
+   (not transparent) keeps scrolled-past rows from showing through while
+   it's pinned. Layout (display/gap/flex-wrap/overflow-x) stays owned by
+   .chq-contacts-drawer-actions in app/src/pages/contacts/contacts.css --
+   this rule only adds the sticky-footer mechanics. */
+.chq-contacts-drawer-actions {
+  position: sticky;
+  bottom: 0;
+  margin: 0 -26px -20px;
+  padding: 16px 26px 20px;
+  background: var(--chq-paper);
+  border-top: 1px solid var(--chq-rule);
+}
+
 .chq-empty {
   padding: 24px 0;
   font-size: 14px;
