@@ -56,7 +56,7 @@ describe('contacts-panels.css: pipeline phone list hidden at desktop width', () 
 describe('ContactsApp: New-contact dialog (DEC-597)', () => {
   it('opens the dialog from the toolbar, submits to POST /contacts, and reloads the directory', async () => {
     const fetchMock = mockApi({
-      'GET /api/v1/contacts/stats': { total: 0, eventCount: 0, returningSpeakers: 0, topCompanies: [] },
+      'GET /api/v1/contacts/stats': { total: 0, topCompanies: [] },
       'GET /api/v1/segments': listEnvelope([]),
       'GET /api/v1/contacts': listEnvelope([]),
       'POST /api/v1/contacts': { status: 201, body: { id: 'ct-new', firstName: 'Nora', lastName: 'North', email: 'nora@example.com' } },
@@ -103,7 +103,7 @@ describe('ContactsApp: New-contact dialog (DEC-597)', () => {
 
   it('Escape closes the dialog', async () => {
     mockApi({
-      'GET /api/v1/contacts/stats': { total: 0, eventCount: 0, returningSpeakers: 0, topCompanies: [] },
+      'GET /api/v1/contacts/stats': { total: 0, topCompanies: [] },
       'GET /api/v1/segments': listEnvelope([]),
       'GET /api/v1/contacts': listEnvelope([]),
     });

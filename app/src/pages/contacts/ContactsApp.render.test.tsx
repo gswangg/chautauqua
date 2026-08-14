@@ -41,8 +41,6 @@ describe('ContactsApp render smoke (CRM-12 top-companies drill-through)', () => 
     const fetchMock = mockApi({
       'GET /api/v1/contacts/stats': {
         total: 3,
-        eventCount: 1,
-        returningSpeakers: 1,
         speakerCount: 2,
         duplicateCount: 0,
         topCompanies: [{ company: 'Acme', count: 2 }],
@@ -83,8 +81,6 @@ describe('ContactsApp render smoke: directory search (DEC-684/DEC-710)', () => {
     const fetchMock = mockApi({
       'GET /api/v1/contacts/stats': {
         total: 1,
-        eventCount: 1,
-        returningSpeakers: 0,
         speakerCount: 0,
         duplicateCount: 0,
         topCompanies: [],
@@ -136,8 +132,6 @@ function directoryRoutes() {
   return {
     'GET /api/v1/contacts/stats': {
       total: 2,
-      eventCount: 1,
-      returningSpeakers: 1,
       speakerCount: 1,
       duplicateCount: DUPLICATE_GROUPS.length,
       topCompanies: [{ company: 'Acme', count: 2 }],
@@ -181,9 +175,9 @@ describe('ContactsApp render smoke: two-column directory architecture (DEC-710/D
     // summary and the rail sections remain.
     expect(screen.queryByText('Total contacts')).not.toBeInTheDocument();
     expect(screen.queryByText('Returning speakers')).not.toBeInTheDocument();
-    // DEC-711 amendment (wave 4): the headline falls to THREE clauses --
-    // people, speakers, possible duplicates -- dropping returningSpeakers
-    // and eventCount (a "0 returning speakers" clause reads as a defect).
+    // DEC-711 amendment (wave 4, fields deleted wave 33): the headline is
+    // THREE clauses -- people, speakers, possible duplicates. returningSpeakers
+    // and eventCount had no renderer and were removed from ContactStats.
     expect(screen.getByText('2 people · 1 speaker · 1 possible duplicate')).toBeInTheDocument();
 
     // Tab chips carry counts.

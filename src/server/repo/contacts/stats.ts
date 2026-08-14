@@ -13,8 +13,6 @@ void DEC_711; // speakerCount + duplicateCount: every figure the directory page 
 
 export interface ContactStats {
   total: number;
-  eventCount: number;
-  returningSpeakers: number;
   topCompanies: { company: string; count: number }[];
   // DEC-710/DEC-711: figures the directory title summary and rail actually
   // render — a contact holding a 'speaker' participant role on any of the
@@ -24,13 +22,10 @@ export interface ContactStats {
   duplicateCount: number;
 }
 
-// Amendment (wave 21): returningSpeakers and speakerCount are two readers of
-// the same contact -> participant -> submission -> event join, and they must
-// share ONE predicate — a "returning speaker" is a contact holding a
-// 'speaker' participant role with an ACTIVE invite status, on THIS ORG's
-// events (via event.orgId, not just contact.orgId), never any participant
-// role on any event. One helper backs both subqueries so they cannot drift
-// again.
+// Amendment (wave 21, narrowed wave 33): backs the speakerCount subquery — a
+// contact holding a 'speaker' participant role with an ACTIVE invite status,
+// on THIS ORG's events (via event.orgId, not just contact.orgId), never any
+// participant role on any event.
 function speakerParticipationConditions(orgId: string) {
   return and(
     eq(schema.contact.orgId, orgId),
@@ -47,33 +42,6 @@ export async function getContactStats(db: Db, orgId: string): Promise<ContactSta
     .where(eq(schema.contact.orgId, orgId));
   const total = Number(totalRows[0]?.count ?? 0);
 
-  // CRM-12 dashboard KPI: total events the org runs (not per-contact).
-  const orgEventCountRows = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(schema.event)
-    .where(eq(schema.event.orgId, orgId));
-  const eventCount = Number(orgEventCountRows[0]?.count ?? 0);
-
-  // DEC-432 (+ wave-21 amendment): count returning speakers with a single
-  // count(*) over a GROUP BY/HAVING subquery instead of pulling one row per
-  // contact and filtering in JS — no per-contact rows cross the wire. Joined
-  // through to event and filtered by speakerParticipationConditions so this
-  // shares its sibling's (speakerCount) manners: only 'speaker' participants
-  // with an active invite, on this org's own events, ever count as
-  // "returning" (distinct event_id > 1).
-  const returningSubquery = db
-    .select({ contactId: schema.contact.id })
-    .from(schema.contact)
-    .innerJoin(schema.participant, eq(schema.participant.contactId, schema.contact.id))
-    .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
-    .innerJoin(schema.event, eq(schema.event.id, schema.submission.eventId))
-    .where(speakerParticipationConditions(orgId))
-    .groupBy(schema.contact.id)
-    .having(sql`count(distinct ${schema.submission.eventId}) > 1`)
-    .as("returning_contacts");
-  const returningSpeakersRows = await db.select({ count: sql<number>`count(*)` }).from(returningSubquery);
-  const returningSpeakers = Number(returningSpeakersRows[0]?.count ?? 0);
-
   const companyRows = await db
     .select({ company: schema.contact.company, count: sql<number>`count(*)` })
     .from(schema.contact)
@@ -87,8 +55,7 @@ export async function getContactStats(db: Db, orgId: string): Promise<ContactSta
 
   // Contacts holding a 'speaker' participant role on any of the org's
   // events (DEC-711): distinct contact count via a single count(*) over a
-  // GROUP BY subquery, same shape as the returningSpeakers query above and
-  // the same speakerParticipationConditions predicate.
+  // GROUP BY subquery, filtered by speakerParticipationConditions.
   const speakerSubquery = db
     .select({ contactId: schema.contact.id })
     .from(schema.contact)
@@ -106,5 +73,5 @@ export async function getContactStats(db: Db, orgId: string): Promise<ContactSta
   const duplicateGroups = await findDuplicateGroupsForOrg(db, orgId);
   const duplicateCount = duplicateGroups.length;
 
-  return { total, eventCount, returningSpeakers, topCompanies, speakerCount, duplicateCount };
+  return { total, topCompanies, speakerCount, duplicateCount };
 }

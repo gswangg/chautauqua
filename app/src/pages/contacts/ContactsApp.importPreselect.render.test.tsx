@@ -24,8 +24,6 @@ function mockContactsPageApi() {
   return mockApi({
     'GET /api/v1/contacts/stats': {
       total: 0,
-      eventCount: 0,
-      returningSpeakers: 0,
       speakerCount: 0,
       duplicateCount: 0,
       topCompanies: [],

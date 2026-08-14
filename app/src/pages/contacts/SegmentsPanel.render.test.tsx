@@ -42,8 +42,6 @@ describe('ContactsApp + SegmentsPanel: deleting the applied segment (w1-c P3, DE
     const fetchMock = mockApi({
       'GET /api/v1/contacts/stats': {
         total: 1,
-        eventCount: 1,
-        returningSpeakers: 0,
         speakerCount: 0,
         duplicateCount: 0,
         topCompanies: [],
@@ -114,8 +112,6 @@ describe('ContactsApp + SegmentsPanel: deleting the applied segment (w1-c P3, DE
     const fetchMock = mockApi({
       'GET /api/v1/contacts/stats': {
         total: 1,
-        eventCount: 1,
-        returningSpeakers: 0,
         speakerCount: 0,
         duplicateCount: 0,
         topCompanies: [],
