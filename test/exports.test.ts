@@ -248,6 +248,7 @@ describe("shapeShowflowExport (DEC-055)", () => {
       "speakers",
       "deck_file",
       "deck_url",
+      "kind",
     ]);
   });
 
@@ -328,6 +329,7 @@ describe("shapeShowflowExport (DEC-055)", () => {
       "Grace Hopper; Alan Turing",
       "",
       "",
+      "session",
     ]);
 
     // Deck columns joined when present.
@@ -343,6 +345,7 @@ describe("shapeShowflowExport (DEC-055)", () => {
       "Ada Lovelace",
       "slides.pptx (v2)",
       "/files/f2",
+      "session",
     ]);
 
     // Unscheduled row last, with empty schedule columns and empty deck columns.
@@ -358,6 +361,7 @@ describe("shapeShowflowExport (DEC-055)", () => {
       "",
       "",
       "",
+      "session",
     ]);
   });
 

@@ -277,7 +277,8 @@ describe("DEC-560: agenda export — total order (day, startMin, room, submissio
 describe("DEC-560: showflow export — total order (day, startMin, room, submission seq), unscheduled last by seq", () => {
   it("byte-identical CSV under reversed join-row order", async () => {
     // buildShowflowExport select() order: 1 getRecordPrefix, 2 submissions,
-    // 3 slotRows, 4 trackJoinRows, 5 participantRows, 6 presentationFiles.
+    // 3 breaks (schedule_break, DEC-022 amendment wave 66), 4 slotRows,
+    // 5 trackJoinRows, 6 participantRows, 7 presentationFiles.
     const submissions = [{ id: "sub-1", seq: 1, title: "Talk 1", description: "" }];
     const slotRows = [{ submissionId: "sub-1", day: "2026-06-01", startMin: 540, endMin: 570, roomName: "Room A" }];
     const trackRowsA = [
@@ -294,6 +295,7 @@ describe("DEC-560: showflow export — total order (day, startMin, room, submiss
     const queue = (trackRows: unknown[], participantRows: unknown[]) => [
       [{ recordPrefix: "SES" }],
       submissions,
+      [], // breaks
       slotRows,
       trackRows,
       participantRows,
