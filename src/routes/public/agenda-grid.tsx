@@ -133,32 +133,42 @@ export function AgendaDayGrid(props: {
         <div class="chq-pub-agenda-day">
           {rows.map((row) =>
             row.kind === "break" ? (
-              // DEC-022 amendment + DEC-584 (wave 64): a break is a FULL-WIDTH
-              // spanning quiet rule, never a block inside a session row and
-              // never confined to one room -- so it is its own direct child of
-              // the day's column flexbox, spanning the time cell's gutter too
-              // (the wave-63 grid said the same thing as grid-column:1/-1; the
-              // row-sequence layout needs no inline geometry to say it). The
-              // start time is carried in the text because this layout has no
-              // clock axis to position against, and it is the SAME text the
-              // phone list renders. No id/href/interactive control: a break is
-              // not a submission and has no detail page to link to.
-              <div class="chq-pub-agenda-break">
-                {formatMinutes(row.brk.startMin)} · {formatBreakLabel(row.brk)}
+              // DEC-022 amendment + DEC-584 (wave 64), restructured wave 5
+              // (DEC-851 amendment): the break's start time moves OUT of the
+              // band and into the SAME time gutter cell every session row
+              // uses (.chq-pub-agenda-day-time), so the row still reads as
+              // one entry in the time-row sequence; the band itself becomes
+              // a quiet, left-aligned rule starting at the block column
+              // (formatBreakLabel's natural-case text is uppercased purely
+              // via CSS text-transform, matching the phone list's own
+              // convention). A break carries no id/href/interactive control:
+              // it is not a submission and has no detail page to link to.
+              <div class="chq-pub-agenda-day-row chq-pub-agenda-break-row">
+                <div class="chq-pub-agenda-day-time">{formatMinutes(row.brk.startMin)}</div>
+                <div class="chq-pub-agenda-break">{formatBreakLabel(row.brk)}</div>
               </div>
             ) : (
               <div class="chq-pub-agenda-day-row">
                 <div class="chq-pub-agenda-day-time">{formatMinutes(row.startMin)}</div>
                 <div class="chq-pub-agenda-day-blocks">
                   {row.items.map((item) => {
-                    // DEC-851 (wave 64 amendment): a block whose session does
-                    // not carry the highlighted track recedes to a muted card
-                    // via ONE extra class on the element already carrying
-                    // .chq-pub-agenda-block — it is still rendered, still
-                    // linked, and its Save control is never dimmed, because
-                    // the reason it stays on screen is that you might still
-                    // take it. No highlight selected => every block matches.
-                    const matches = highlightTrackId == null || item.tracks.some((t) => t.id === highlightTrackId);
+                    // DEC-851 amendment (wave 5): a block whose session
+                    // carries the highlighted track is the ONE state that
+                    // spends the 3px olive edge signal — every other block
+                    // (no highlight selected, OR highlighted but not a
+                    // match) stays at the plain hairline edge
+                    // .chq-pub-agenda-block already carries at rest, so the
+                    // edge is never pre-spent before a track is chosen. It
+                    // is still rendered, still linked, and its Save control
+                    // is never dimmed, because the reason it stays on screen
+                    // is that you might still take it.
+                    const highlighted = highlightTrackId != null;
+                    const matches = !highlighted || item.tracks.some((t) => t.id === highlightTrackId);
+                    const blockClass = !highlighted
+                      ? "chq-pub-agenda-block"
+                      : matches
+                        ? "chq-pub-agenda-block chq-pub-agenda-block-highlight"
+                        : "chq-pub-agenda-block chq-pub-agenda-block-muted";
                     return (
                     // DEC-602/DEC-584 (wave 64): the block is a content-sized
                     // card, not a grid-row/grid-column positioned box — no
@@ -166,12 +176,18 @@ export function AgendaDayGrid(props: {
                     // matrix removed; overlap only mattered when rooms were
                     // columns sharing a row track).
                     <div
-                      class={matches ? "chq-pub-agenda-block" : "chq-pub-agenda-block chq-pub-agenda-block-muted"}
+                      class={blockClass}
                       id={`chq-agenda-${item.submissionId}`}
                     >
                       <div class="chq-pub-agenda-block-head">
                         <span class="chq-pub-agenda-block-room">{publicRoomLabel(item.roomName)}</span>
-                        {itinerary ? <ItineraryToggle sessionId={item.submissionId} /> : null}
+                        {/* DEC-851 amendment (wave 5): the per-block control
+                            is an uppercase SAVE/SAVED text link — reuses the
+                            shared itinerary label pair (cards.tsx, w1-i) —
+                            not the sessions list's bordered pill, which would
+                            compete with the room eyebrow for the block
+                            head's weight. */}
+                        {itinerary ? <ItineraryToggle sessionId={item.submissionId} wrapperClass="chq-pub-agenda-block-save" /> : null}
                       </div>
                       <div class="chq-pub-agenda-block-title">
                         <strong>

@@ -322,7 +322,10 @@ describe("/agenda and /schedule render the DEC-851 (wave 64 amendment) search-an
     // DEC-851 (wave 64 amendment): track narrowing is a <select> now, not a
     // pill bar -- no filter pill for a track exists on this surface at all.
     expect(html).not.toContain('class="chq-pub-pill"');
-    expect(html).toContain('<select class="chq-pub-select" id="chq-pub-highlight-track" name="trackId"');
+    // DEC-851 amendment (wave 5): the control inverts dark (near-black fill,
+    // cream text) once a track is set -- .chq-pub-select-active is the
+    // second class carrying that, added alongside the base .chq-pub-select.
+    expect(html).toContain('<select class="chq-pub-select chq-pub-select-active" id="chq-pub-highlight-track" name="trackId"');
     expect(html).toContain('<option value="trk-a" selected="">Track A</option>');
     // A Clear link appears beside the select once a track is active.
     expect(html).toContain('class="chq-pub-select-clear" href="/e/conf/agenda?q=keynote">Clear</a>');

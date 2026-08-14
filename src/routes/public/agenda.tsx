@@ -21,7 +21,7 @@ import { AgendaItemList } from "./agenda-list";
 // binding the agenda day-footer's "next day" out-link composes with.
 import { DaySwitcher, ItinerarySearchForm, agendaQs } from "./agenda-controls";
 import { ItineraryScript } from "./agenda-itinerary-script";
-import { AgendaRail, ScheduleRail } from "./agenda-rail";
+import { AgendaRail, ScheduleRail, roomsInUse } from "./agenda-rail";
 
 export { AgendaDayGrid } from "./agenda-grid";
 export { AgendaItemList } from "./agenda-list";
@@ -120,11 +120,14 @@ export function AgendaContent(props: {
   // so `renderedDays` here is 0 or 1 entries, never the whole event stacked.
   const activeDay = props.activeDay ?? null;
   const activeDayItems = activeDay ? (byDay.get(activeDay) ?? []) : [];
-  // Task spec: M is the count of DISTINCT NON-NULL room names on the active
-  // day (deliberately not AgendaDay's own roomCount, which also counts an
-  // unassigned "tbd" bucket as a room -- the page heading counts only rooms
-  // that actually have a name).
-  const roomCount = new Set(activeDayItems.map((i) => i.roomName).filter((n): n is string => n !== null)).size;
+  // DEC-851 amendment (wave 5), ONE READER: M is the count of real
+  // (non-"tbd") rooms in use on the active day, counted through the SAME
+  // roomsInUse() grouping the rail's own room rows render from (agenda-
+  // rail.tsx) -- a room is identified by roomId, never by roomName, so the
+  // heading and the rail can never disagree about how many rooms are in
+  // play the way a roomName-based count could when a roomed item's roomName
+  // happened to be null.
+  const roomCount = roomsInUse(activeDayItems).filter((r) => r.roomKey !== "tbd").length;
   // The per-day <h3> AgendaDay renders is redundant once the page names the
   // day exactly once on this heading row -- suppressed whenever exactly one
   // day is rendered (always true on the current single-day-default surface)
@@ -216,7 +219,15 @@ export function AgendaContent(props: {
         {/* DEC-672/DEC-683 (wave 67 amendment): the rail is chromeless-
             closed -- /embed renders none of it (no <aside>, no /submit or
             /e/ hrefs, no ItineraryScript). */}
-        {!props.embed ? <AgendaRail event={props.event} items={railItems} activeDay={effectiveActiveDay} /> : null}
+        {!props.embed ? (
+          <AgendaRail
+            event={props.event}
+            items={railItems}
+            activeDay={effectiveActiveDay}
+            highlightTrackId={props.highlightTrackId ?? null}
+            tracks={props.tracks ?? []}
+          />
+        ) : null}
       </div>
       {!props.embed ? <ItineraryScript eventSlug={props.event.slug} /> : null}
     </>

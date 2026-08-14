@@ -20,9 +20,10 @@
 // Only ever rendered when `!embed` (DEC-672/683: the rail is chromeless-
 // closed) -- see the call site in agenda.tsx's AgendaContent.
 
-import type { PublicAgendaItem, PublicEvent } from "../../server/repo/public";
+import type { PublicAgendaItem, PublicEvent, PublicTrack } from "../../server/repo/public";
 import { publicRoomLabel } from "../../domain/schedule";
 import { countOf } from "../../domain/count-copy";
+import { formatMinutes } from "./cards";
 
 function ScheduleRailSection(props: { event: PublicEvent }) {
   const { event } = props;
@@ -54,8 +55,17 @@ interface RoomRailRow {
  * so the rail row can anchor at the same block AgendaDayGrid renders that
  * id on. Room order matches the desktop grid's own room tiebreak (DEC-563
  * producer-owned position asc, name asc, id asc, unroomed always last) so
- * the rail and the grid can never disagree about room order. */
-function roomsInUse(items: PublicAgendaItem[]): RoomRailRow[] {
+ * the rail and the grid can never disagree about room order.
+ *
+ * DEC-851 amendment (wave 5), ONE READER: exported so AgendaContent's <h1>
+ * room count and this rail's own room list both count rooms through this
+ * SAME grouping (keyed on roomId, an unassigned block folded into one "tbd"
+ * bucket) instead of each computing its own definition -- the prior bug had
+ * the heading count distinct non-null `roomName` while this rail counted
+ * distinct `roomId` including the unassigned bucket, so a day whose blocks
+ * all carried a roomId but a null roomName read "0 rooms" on the heading
+ * while the rail still listed one. */
+export function roomsInUse(items: PublicAgendaItem[]): RoomRailRow[] {
   const sorted = [...items].sort(
     (a, b) => a.startMin - b.startMin || a.submissionId.localeCompare(b.submissionId),
   );
@@ -103,23 +113,88 @@ function RoomsRailSection(props: { items: PublicAgendaItem[] }) {
             <span class="chq-pub-rail-day-count">{countOf(r.count, "session")}</span>
           </div>
         ))}
+        <span class="chq-pub-rail-caption">Jumps to that room's first session</span>
       </div>
     </section>
   );
 }
 
-export function AgendaRail(props: { event: PublicEvent; items: PublicAgendaItem[]; activeDay: string | null }) {
-  const { event, items } = props;
+/** DEC-851 amendment (wave 5): while a highlight is set, the rail's FIRST
+ * block swaps from "Rooms in use today" to this section -- the room list is
+ * no longer the most useful thing to lead with once an attendee has told the
+ * page which track they are following. Rows are the matching day's blocks
+ * in start-time order (room + time, the same anchor id AgendaDayGrid already
+ * emits per block), never a re-derivation of the grid's own match rule
+ * (AgendaDayGrid computes `matches` itself; this mirrors that exact
+ * predicate -- `item.tracks.some((t) => t.id === trackId)` -- so the two
+ * can never disagree about which blocks are "in" the highlight). */
+function TrackHighlightRailSection(props: { items: PublicAgendaItem[]; trackId: string; trackName: string }) {
+  const { items, trackId, trackName } = props;
+  const matches = items
+    .filter((item) => item.tracks.some((t) => t.id === trackId))
+    .sort((a, b) => a.startMin - b.startMin || a.submissionId.localeCompare(b.submissionId));
+  return (
+    <section class="chq-pub-rail-section">
+      <h2 class="chq-pub-rail-heading">
+        {matches.length} in {trackName}
+      </h2>
+      <div class="chq-pub-rail-body">
+        {matches.map((item) => (
+          <div class="chq-pub-rail-day-row">
+            <a href={`#chq-agenda-${item.submissionId}`}>
+              {publicRoomLabel(item.roomName)} · {formatMinutes(item.startMin)}
+            </a>
+          </div>
+        ))}
+        <span class="chq-pub-rail-caption">Jumps to that session</span>
+      </div>
+    </section>
+  );
+}
+
+export function AgendaRail(props: {
+  event: PublicEvent;
+  items: PublicAgendaItem[];
+  activeDay: string | null;
+  // DEC-851 amendment (wave 5): threaded through so the rail can swap its
+  // own first block on the same highlight AgendaDayGrid paints — a render-
+  // level highlight, never a filter (DEC-851's wave-64 amendment), so
+  // `items` itself is unchanged either way.
+  highlightTrackId?: string | null;
+  tracks?: PublicTrack[];
+}) {
+  const { event, items, highlightTrackId = null, tracks = [] } = props;
+  // The highlighted track's name is resolved from the event's own track
+  // list first (so the section still names it even on a day with zero
+  // matches) and falls back to a matching item's own track name only if the
+  // id is somehow absent from `tracks` (defensive, not expected).
+  const highlightTrack = highlightTrackId
+    ? (tracks.find((t) => t.id === highlightTrackId) ??
+      items.flatMap((i) => i.tracks).find((t) => t.id === highlightTrackId) ??
+      null)
+    : null;
   return (
     <aside class="chq-pub-agenda-rail">
       <ScheduleRailSection event={event} />
-      <RoomsRailSection items={items} />
-      {/* DEC-683 amendment (wave 67): the printable programme's one
-          discoverability link, moved here off the sessions rail now that
-          the agenda has its own designed rail to carry it. */}
-      <a class="chq-pub-rail-programme-link" href={`/e/${event.slug}/programme`}>
-        Printable programme ›
-      </a>
+      {highlightTrackId && highlightTrack ? (
+        <TrackHighlightRailSection items={items} trackId={highlightTrackId} trackName={highlightTrack.name} />
+      ) : (
+        <RoomsRailSection items={items} />
+      )}
+      {/* DEC-683 amendment (wave 67), restructured wave 5 (DEC-851
+          amendment): the printable programme link is now its own rail
+          section (PRINT eyebrow, matching every other section's
+          heading/body vocabulary) rather than a bare out-link -- and names
+          what it links to instead of leaving that to the link text alone. */}
+      <section class="chq-pub-rail-section">
+        <h2 class="chq-pub-rail-heading">Print</h2>
+        <div class="chq-pub-rail-body">
+          <a class="chq-pub-rail-programme-link" href={`/e/${event.slug}/programme`}>
+            Printable programme ›
+          </a>
+          <span class="chq-pub-rail-caption">A one-page version of all three days.</span>
+        </div>
+      </section>
     </aside>
   );
 }
