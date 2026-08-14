@@ -5,8 +5,28 @@
 // were wrong and nothing failed. This file replaces hand-listing with
 // enumeration: it composes every sub-app src/index.ts mounts, at the same
 // prefixes, in the same order (including guardDevMailbox immediately before
-// devMailboxRoutes, exactly as src/index.ts:72-73 does), over a db stub
+// devMailboxRoutes, exactly as src/index.ts:84-85 does), over a db stub
 // that THROWS on any property access and records that it was touched.
+//
+// DEC-550 (Amendment, wave 18): buildAnonymousApp used to be a hand-copied
+// list of `app.route(...)` calls -- a second manifest that could (and did)
+// drift from src/index.ts's real mount list, silently missing six mounts
+// (importRoutes, publicSurfacesRoutes, embedsRoutes, breaksRoutes,
+// contentNoteRoutes, mailStatusRoutes). It now composes over
+// test/helpers/index-mounts.ts's parseIndexMounts(), the same
+// parse-source/resolve-imports/dynamic-import technique
+// test/ssr-link-targets-scan.test.ts uses (DEC-518) -- the mount list this
+// probe builds on is derived from src/index.ts's own source, not typed by
+// hand, so it cannot silently narrow again. buildAnonymousApp is therefore
+// async.
+//
+// Finding from building this probe (wave 18): of the six newly-covered
+// mounts, every enumerated GET route among them was already gated by a
+// synchronous auth check before touching the db (requireAuth/
+// requireOrganizer/requireReviewerOrOrganizer) or is a POST-only sub-app
+// with no GET routes at all -- no new anonymous-reachable db-touching route
+// was found. The exhaustive composition still matters going forward: it is
+// what makes that finding load-bearing instead of hopeful.
 //
 // Composition deliberately does NOT call src/server/app.ts's
 // createBaseApp() -- that wires the always-on sessionLoader, which is
@@ -76,36 +96,7 @@ import { Hono } from "hono";
 import type { AppEnv } from "../src/server/env";
 import { registerErrorHandler } from "../src/server/http";
 import { guardDevMailbox } from "../src/server/app";
-
-import { authRoutes } from "../src/routes/auth";
-import { accountRoutes } from "../src/routes/account";
-import { eventsRoutes } from "../src/routes/api/events";
-import { portalConfigRoutes } from "../src/routes/api/portal-config";
-import { emailLogRoutes } from "../src/routes/api/email-log";
-import { formsRoutes } from "../src/routes/api/forms";
-import { submissionsRoutes } from "../src/routes/api/submissions";
-import { contactsRoutes } from "../src/routes/api/contacts";
-import { pipelineRoutes } from "../src/routes/api/pipeline";
-import { overviewRoutes } from "../src/routes/api/overview";
-import { viewsRoutes } from "../src/routes/api/views";
-import { commsRoutes } from "../src/routes/comms";
-import { agendaRoutes } from "../src/routes/agenda";
-import { publicSubmitRoutes } from "../src/routes/public/submit";
-import { portalRoutes } from "../src/routes/portal/index";
-import { publicRoutes } from "../src/routes/public";
-import { portalTasksRoutes } from "../src/routes/portal/tasks";
-import { portalEditRoutes } from "../src/routes/portal/edit";
-import { devMailboxRoutes } from "../src/routes/dev/mailbox";
-import { taskRoutes } from "../src/routes/tasks";
-import { reviewRoutes } from "../src/routes/review";
-import { meRoutes } from "../src/routes/me";
-import { fileApiRoutes, fileServeRoutes } from "../src/routes/files";
-import { portalProfileRoutes, headshotServeRoutes } from "../src/routes/portal/profile";
-import { tokensRoutes } from "../src/routes/api/tokens";
-import { exportsRoutes } from "../src/routes/api/exports";
-import { usersRoutes } from "../src/routes/api/users";
-import { rootRoutes } from "../src/routes/root";
-import { docsRoutes } from "../src/routes/docs";
+import { parseIndexMounts } from "./helpers/index-mounts";
 
 // ---------------------------------------------------------------------------
 // PUBLIC_BY_DESIGN allowlist -- every entry below was verified against its
@@ -220,7 +211,7 @@ function makeThrowingDb(): { db: AppEnv["Variables"]["db"]; touched: () => boole
 // for an authz probe), plus createBaseApp()'s two inline meta routes.
 // ---------------------------------------------------------------------------
 
-function buildAnonymousApp() {
+async function buildAnonymousApp() {
   const { db, touched, reset } = makeThrowingDb();
   const app = new Hono<AppEnv>();
 
@@ -236,41 +227,20 @@ function buildAnonymousApp() {
   app.get("/health", (c) => c.json({ ok: true }));
   app.get("/api/v1", (c) => c.json({ name: "chautauqua", version: "v1" }));
 
-  app.route("/", authRoutes);
-  app.route("/", accountRoutes);
-  app.route("/api/v1", eventsRoutes);
-  app.route("/api/v1", portalConfigRoutes);
-  app.route("/api/v1", submissionsRoutes);
-  app.route("/api/v1", contactsRoutes);
-  app.route("/api/v1", pipelineRoutes);
-  app.route("/api/v1", overviewRoutes);
-  app.route("/api/v1", viewsRoutes);
-  app.route("/api/v1", agendaRoutes);
-  app.route("/api/v1", taskRoutes);
-  app.route("/api/v1", fileApiRoutes);
-  app.route("/", fileServeRoutes);
-  app.route("/", emailLogRoutes);
-  app.route("/", formsRoutes);
-  app.route("/", commsRoutes);
-  app.route("/", publicSubmitRoutes);
-  app.route("/", reviewRoutes);
-  app.route("/", meRoutes);
-  app.route("/", tokensRoutes);
-  app.route("/", exportsRoutes);
-  app.route("/", usersRoutes);
-  app.route("/portal", portalRoutes);
-  app.route("/portal", portalProfileRoutes);
-  app.route("/portal", portalTasksRoutes);
-  app.route("/portal", portalEditRoutes);
-  app.route("/", headshotServeRoutes);
-  app.route("/", publicRoutes);
-  app.route("/", docsRoutes);
-  app.route("/", rootRoutes);
+  // Mounts are derived from src/index.ts's own source (parseIndexMounts,
+  // DEC-518 technique) -- not typed by hand -- so this composition cannot
+  // silently drop a mount again. guardDevMailbox is still applied
+  // immediately before the devMailboxRoutes mount, exactly as
+  // src/index.ts:84-85 does.
+  const mounts = await parseIndexMounts();
+  for (const { prefix, identifier, subApp } of mounts) {
+    if (identifier === "devMailboxRoutes") {
+      guardDevMailbox(app);
+    }
+    app.route(prefix, subApp);
+  }
 
-  guardDevMailbox(app);
-  app.route("/", devMailboxRoutes);
-
-  return { app, touched, reset };
+  return { app, touched, reset, mountCount: mounts.length };
 }
 
 // ---------------------------------------------------------------------------
@@ -324,8 +294,8 @@ function enumerateGetPaths(app: Hono<AppEnv>): string[] {
 // ---------------------------------------------------------------------------
 
 describe("anonymous-GET authz probe (DEC-550)", () => {
-  it("enumerates at least the routes this task expects to exist (composition sanity)", () => {
-    const { app } = buildAnonymousApp();
+  it("enumerates at least the routes this task expects to exist (composition sanity)", async () => {
+    const { app, mountCount } = await buildAnonymousApp();
     const getPaths = enumerateGetPaths(app);
     // A loose sanity floor, not the authz assertion itself -- proves the
     // composed app actually mounted every sub-app rather than silently
@@ -333,10 +303,14 @@ describe("anonymous-GET authz probe (DEC-550)", () => {
     expect(getPaths.length).toBeGreaterThan(40);
     expect(getPaths).toContain("/health");
     expect(getPaths).toContain("/api/v1/me");
+    // The parsed mount count itself must never silently narrow again (it
+    // was 29 in the wave-16 hand list vs. the real 35 -- see DEC-550
+    // amendment, wave 18).
+    expect(mountCount).toBeGreaterThanOrEqual(35);
   });
 
   it("every enumerated GET route is authz-gated or an exact, justified PUBLIC_BY_DESIGN entry", async () => {
-    const { app, touched, reset } = buildAnonymousApp();
+    const { app, touched, reset } = await buildAnonymousApp();
     const getPaths = enumerateGetPaths(app);
     const matchedPatterns = new Set<string>();
     const failures: string[] = [];
