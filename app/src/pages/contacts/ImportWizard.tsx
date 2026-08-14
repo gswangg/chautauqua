@@ -3,7 +3,7 @@ import { apiPost, ApiError } from '../../lib/api';
 import { expandFullNameMapping, mapImportRow, parseCsv, suggestMapping, toCsv, FULL_NAME_TARGET, STANDARD_IMPORT_FIELDS } from './csv';
 import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import type { ImportPlan, ImportPlanRow, ImportResult } from './types';
-import { DEC_810 } from '../../../../src/decisions';
+import { DEC_810, DEC_575, DEC_124 } from '../../../../src/decisions';
 import { countOf } from '../../lib/plural';
 import './contacts-panels.css';
 
@@ -12,6 +12,14 @@ import './contacts-panels.css';
 // event is already chosen) rather than letting the server invent an
 // 'Invited: <name>' title per contact (DEC-810).
 void DEC_810;
+// DEC-575 (wave 28 amendment): a file whose rows are partly unusable (no
+// email -- the dedupe key) offers a pre-mapping partial import instead of
+// proceeding silently or failing whole. See badRows/showFileWarning below.
+// The block reuses the SPA's shared .chq-error-summary vocabulary (DEC-124
+// wave 26/28 amendments) by class name only -- it does not define those
+// classes; app/src/components/error-states.css owns them.
+void DEC_575;
+void DEC_124;
 
 interface Props {
   onClose: () => void;
@@ -49,6 +57,14 @@ function actionLabel(row: ImportPlanRow): string {
   return `Skip — ${row.reason ?? 'no reason given'}`;
 }
 
+/** Row numbers capped at ten, then 'and N more' (DEC-575 wave-28 amendment). */
+function formatRowList(lines: number[]): string {
+  if (lines.length <= 10) return lines.join(', ');
+  const shown = lines.slice(0, 10);
+  const more = lines.length - shown.length;
+  return `${shown.join(', ')}, and ${more} more`;
+}
+
 export function ImportWizard({ onClose, onImported, eventId }: Props) {
   const [csvText, setCsvText] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
@@ -63,6 +79,11 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
   const [result, setResult] = useState<ImportResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // DEC-575 (wave 28 amendment): true once the organizer has accepted the
+  // file-level "N rows have no email address" block and asked to proceed
+  // with only the usable rows. Reset by resetToChooseFile so a fresh
+  // upload gets its own file-level check.
+  const [warningAcknowledged, setWarningAcknowledged] = useState(false);
 
   const parsed = useMemo(() => {
     if (csvText.trim() === '') return null;
@@ -75,8 +96,36 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
 
   const rows = typeof parsed === 'object' && parsed !== null ? parsed : null;
   const header = rows?.[0] ?? [];
-  const dataRows = rows ? rows.slice(1) : [];
+  const allDataRows = rows ? rows.slice(1) : [];
   const parseError = typeof parsed === 'string' ? parsed : null;
+
+  // DEC-575 (wave 28 amendment): a pre-mapping, file-level refusal for rows
+  // missing the dedupe key (email) -- counted from the header's own
+  // auto-suggested mapping (suggestMapping, same alias table the "Match
+  // columns" screen uses to prime its selects), computed ONCE per parsed
+  // file and never re-derived from the organizer's later, live edits to
+  // `mapping` in the match step -- a match-step "skip this column" toggle
+  // on Email must not resurrect this file-level gate after it has already
+  // been passed.
+  const badRows = useMemo(() => {
+    if (header.length === 0) return [];
+    const autoMapping = suggestMapping(header);
+    const bad: number[] = [];
+    allDataRows.forEach((row, i) => {
+      const mapped = mapImportRow(autoMapping, header, row);
+      if (!mapped.email) bad.push(i + 2); // +2: header is line 1, first data row is line 2.
+    });
+    return bad;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allDataRows, header.join(' ')]);
+
+  const showFileWarning = header.length > 0 && !plan && !result && badRows.length > 0 && !warningAcknowledged;
+
+  // Once the organizer accepts "Import the N good rows", every downstream
+  // step (match columns, dedupe preview, dry run) sees only the usable
+  // rows -- the raw file (csvText / allDataRows) is untouched so re-upload
+  // and "the file is still loaded" both stay true.
+  const dataRows = warningAcknowledged ? allDataRows.filter((_, i) => !badRows.includes(i + 2)) : allDataRows;
 
   // P1 fix (w1-f): auto-suggest a mapping from header names on the first
   // sight of a given header (see suggestMapping in ./csv.ts), so a CSV whose
@@ -137,6 +186,18 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
     const reader = new FileReader();
     reader.onload = () => setCsvText(String(reader.result ?? ''));
     reader.readAsText(file);
+  }
+
+  // DEC-575 (wave 28 amendment): the file-level warning's secondary path.
+  // An explicit user action -- never the warning state itself -- clears the
+  // parsed file so step 1's choose-file screen comes back for a corrected
+  // upload.
+  function resetToChooseFile() {
+    setCsvText('');
+    setFileName(null);
+    setMapping({});
+    setWarningAcknowledged(false);
+    lastAutoMappedHeader.current = null;
   }
 
   function setColumnMapping(col: string, value: string) {
@@ -209,7 +270,20 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
     }
   }
 
-  const actions = result ? (
+  const actions = showFileWarning ? (
+    <>
+      <button
+        type="button"
+        className="chq-btn chq-btn-primary"
+        onClick={() => setWarningAcknowledged(true)}
+      >
+        Import the {countOf(allDataRows.length - badRows.length, 'good row', 'good rows')}
+      </button>
+      <button type="button" className="chq-btn chq-btn-secondary" onClick={resetToChooseFile}>
+        Re-upload a different file
+      </button>
+    </>
+  ) : result ? (
     <button type="button" className="chq-btn chq-btn-primary" onClick={onClose}>
       Done
     </button>
@@ -264,6 +338,28 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
 
       {error && <div className="chq-error">{error}</div>}
 
+      {/* DEC-575 (wave 28 amendment): a file-level, pre-mapping block for
+          rows missing the dedupe key (email) -- rendered above the step
+          content, offering a partial import instead of proceeding silently
+          or failing whole. Reuses the SPA's shared .chq-error-summary
+          vocabulary (DEC-124) by class name only; the file itself is never
+          cleared by this state. */}
+      {showFileWarning && (
+        <div className="chq-error-summary" role="alert">
+          <p className="chq-error-summary-heading">
+            {badRows.length} of {allDataRows.length} rows have no email address
+          </p>
+          <p className="chq-error-summary-detail">
+            Email is the key the importer uses to match and update existing contacts, so these rows can't be
+            imported.
+          </p>
+          <p className="chq-error-summary-rows">
+            Row{badRows.length === 1 ? '' : 's'} {formatRowList(badRows)}.
+          </p>
+          <p className="chq-error-summary-kept">Nothing was lost — the file is still loaded.</p>
+        </div>
+      )}
+
       {/* Step 1 -- choose a file, unmounted entirely once a header row has
           been parsed (from either the file input or the paste box) so it
           never shares the screen with step 2's column-matching UI. */}
@@ -303,7 +399,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
           column" affordance. Does not touch the dry-run/commit contract
           (DEC-663): mapping state feeds the same runPreview() call as
           before, unchanged below. */}
-      {header.length > 0 && !plan && !result && (
+      {header.length > 0 && !plan && !result && !showFileWarning && (
         <div className="chq-contacts-import-match">
           <div className="chq-contacts-import-match-head">
             <span className="chq-contacts-import-match-filename">{fileName ?? 'Pasted CSV'}</span>
