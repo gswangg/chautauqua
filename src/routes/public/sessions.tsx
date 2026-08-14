@@ -340,9 +340,32 @@ export function SessionsContent(props: {
           {items.length === 0 ? (
             <p>{q || activeDay || activeTrackId || activeFmt || activeRoom ? "No sessions match your search." : "No sessions to show yet."}</p>
           ) : null}
-          {items.map((s) => (
-            <SessionCard session={s} event={event} from="sessions" fields={fields} embed={embed} itinerary={!embed} />
-          ))}
+          {/* w1-c (DEC-534): with the gutter's day label gone (now start
+              time + room only, see SessionSchedule in ./cards), a list that
+              spans more than one scheduled day needs a heading of its own
+              so the day is still legible. Only rendered when no ?day=
+              filter is already narrowing to a single day (activeDay unset)
+              and the current page's items actually span >1 distinct
+              scheduled day — a single-day page (or an all-unscheduled one)
+              gets no headings. Unscheduled rows (day: null) never get a
+              heading — the shared order (DEC-534, sessionOrderBy in the
+              repo layer) always places them after every scheduled row, so
+              they trail the last day's group with nothing above them. */}
+          {(() => {
+            const distinctDays = new Set(items.map((s) => s.day).filter((d): d is string => d !== null));
+            const showDayHeadings = !activeDay && distinctDays.size > 1;
+            let lastHeadingDay: string | null = null;
+            return items.map((s) => {
+              const showHeadingHere = showDayHeadings && s.day !== null && s.day !== lastHeadingDay;
+              if (showHeadingHere) lastHeadingDay = s.day;
+              return (
+                <>
+                  {showHeadingHere ? <h2 class="chq-pub-sessions-day-heading">{formatDay(s.day as string)}</h2> : null}
+                  <SessionCard session={s} event={event} from="sessions" fields={fields} embed={embed} itinerary={!embed} />
+                </>
+              );
+            });
+          })()}
           {hasMore ? (
             <p>
               <a

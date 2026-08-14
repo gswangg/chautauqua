@@ -7,6 +7,7 @@ import { sessionDetailPath, type Surface } from "./shell";
 import type { CardFields } from "./query";
 import { formatEventDay } from "../../lib/event-time";
 import { normalizeHexColor } from "../../domain/color";
+import { publicRoomLabel } from "../../domain/schedule";
 
 const ALL_FIELDS_ON: CardFields = {
   track: true,
@@ -125,6 +126,16 @@ export function formatMinutes(min: number): string {
   return `${hour12}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
+// w1-c: the sessions-list gutter's line-1 start time — 24h, no leading zero
+// on the hour ("9:00", not "09:00" or "9:00 AM"). Distinct from
+// formatMinutes (still used by the session-detail schedule line, which
+// keeps the AM/PM range) since the gutter no longer has room for a range.
+export function formatStartTime24(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${h}:${String(m).padStart(2, "0")}`;
+}
+
 const DESCRIPTION_SNIPPET_LEN = 160;
 
 // w4-k: the snippet lives inside the <summary> alongside the "Show more"
@@ -150,13 +161,17 @@ export function SessionDescription(props: { description: string | null }) {
   );
 }
 
-/** EMB-01/DEC-698: date/time + room cell. When the `time` field is enabled
- * the row ALWAYS has this gutter cell (grid-template-columns: 126px 1fr auto
- * in public.css.ts depends on it) — an unscheduled session renders an EMPTY
- * .chq-pub-session-when (no dash pile, no placeholder prose per DEC-666)
- * rather than omitting the cell and collapsing the body into the gutter
- * column. Only when the `time` field is off entirely does the caller drop
- * the cell and switch the row to the notime grid template. */
+/** EMB-01/DEC-698/DEC-534 (w1-c): start-time + room cell. When the `time`
+ * field is enabled the row ALWAYS has this gutter cell (grid-template-
+ * columns: ~268px 1fr auto in cards.css.ts depends on it) — an unscheduled
+ * session renders an EMPTY .chq-pub-session-when (no dash pile, no
+ * placeholder prose per DEC-666) rather than omitting the cell and
+ * collapsing the body into the gutter column. Only when the `time` field is
+ * off entirely does the caller drop the cell and switch the row to the
+ * notime grid template. The day moves out of this cell into a day heading
+ * (rendered by the caller when the list spans days) — this cell now shows
+ * only the start time (line 1) and room (line 2, via publicRoomLabel, so an
+ * unroomed slot still reads "TBA" rather than blank). */
 export function SessionSchedule(props: { session: PublicSession; fields?: CardFields }) {
   const { session } = props;
   const fields = props.fields ?? ALL_FIELDS_ON;
@@ -166,13 +181,8 @@ export function SessionSchedule(props: { session: PublicSession; fields?: CardFi
   }
   return (
     <div class="chq-pub-session-when">
-      <span class="chq-pub-session-time">
-        {formatMinutes(session.startMin)}–{formatMinutes(session.endMin)}
-      </span>
-      <span class="chq-pub-session-room">
-        {formatDay(session.day)}
-        {fields.room && session.roomName ? ` · ${session.roomName}` : ""}
-      </span>
+      <span class="chq-pub-session-time">{formatStartTime24(session.startMin)}</span>
+      {fields.room ? <span class="chq-pub-session-room">{publicRoomLabel(session.roomName)}</span> : null}
     </div>
   );
 }

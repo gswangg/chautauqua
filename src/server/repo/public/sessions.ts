@@ -112,6 +112,32 @@ function dayFilterJoinCondition(event: Pick<PublicEvent, "startDate" | "endDate"
   );
 }
 
+/** DEC-534: the sessions list's ordering join — the same submission_id +
+ * slotWithinEventRange bound that dayFilterJoinCondition and hydrateSessions
+ * already apply, minus the day equality. schedule_slot has at most one row
+ * per submission_id (unique index — the same assumption hydrateSessions'
+ * batched slot read relies on), so this leftJoin cannot multiply rows.
+ * Shared by the trackId-only and unfiltered branches below, which otherwise
+ * have no schedule_slot join to order by. */
+function scheduleOrderJoinCondition(event: Pick<PublicEvent, "startDate" | "endDate">) {
+  return and(eq(schema.scheduleSlot.submissionId, schema.submission.id), slotWithinEventRange(event));
+}
+
+/** DEC-534: ONE shared ordering expression for every branch of the sessions
+ * list — scheduled rows sort by day, then startMin, then endMin; every
+ * unscheduled row (schedule_slot.day IS NULL — the day-filtered branches
+ * never see this case, since dayFilterJoinCondition's innerJoin excludes
+ * unscheduled rows entirely) sorts after every scheduled row. title, then
+ * id are the final tiebreakers throughout — id keeps the page order
+ * deterministic under DISTINCT even when two sessions share a title (the
+ * property DEC-534 already required of the pre-existing title/id order).
+ * A single `sql` template (mirrors submissions/list.ts's orderByForSort
+ * pattern) rather than an array of asc()/desc() calls, so it composes as
+ * ONE .orderBy() argument in every branch below. */
+function sessionOrderBy() {
+  return sql`case when ${schema.scheduleSlot.day} is null then 1 else 0 end asc, ${schema.scheduleSlot.day} asc, ${schema.scheduleSlot.startMin} asc, ${schema.scheduleSlot.endMin} asc, ${schema.submission.title} asc, ${schema.submission.id} asc`;
+}
+
 /** Distinct, visibility-gated, optionally track/day-filtered and/or keyword-
  * filtered submission ids for an event, ordered by title — the stable
  * pagination order for the sessions list. Track filtering (DEC-080) is a
@@ -155,7 +181,7 @@ async function getVisibleSubmissionIdsOrdered(
       .innerJoin(schema.submissionTrack, eq(schema.submissionTrack.submissionId, schema.submission.id))
       .innerJoin(schema.scheduleSlot, dayFilterJoinCondition(event, day))
       .where(and(...baseConditions, eq(schema.submissionTrack.trackId, trackId)))
-      .orderBy(asc(schema.submission.title), asc(schema.submission.id))
+      .orderBy(sessionOrderBy())
       .limit(limit);
     const rows = await (offset > 0 ? query.offset(offset) : query);
     return rows;
@@ -171,12 +197,12 @@ async function getVisibleSubmissionIdsOrdered(
       )
       .leftJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
       .innerJoin(schema.submissionTrack, eq(schema.submissionTrack.submissionId, schema.submission.id))
+      .leftJoin(schema.scheduleSlot, scheduleOrderJoinCondition(event))
       .where(and(...baseConditions, eq(schema.submissionTrack.trackId, trackId)))
-      // DEC-534: title alone is not unique — two sessions sharing a title
-      // would make the show-more list's page order nondeterministic.
-      // submission.id is already in the selectDistinct projection, so
-      // ordering by it is safe under DISTINCT.
-      .orderBy(asc(schema.submission.title), asc(schema.submission.id))
+      // DEC-534: shared ordering — see sessionOrderBy(). submission.id
+      // remains a tiebreaker (title alone is not unique), and stays safe
+      // under DISTINCT since it's already in the selectDistinct projection.
+      .orderBy(sessionOrderBy())
       .limit(limit);
     // DEC-516: offset() is only chained when non-zero — page-1 (offset 0)
     // stays the identical query shape whether windowed or cumulative, so
@@ -197,7 +223,7 @@ async function getVisibleSubmissionIdsOrdered(
       .leftJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
       .innerJoin(schema.scheduleSlot, dayFilterJoinCondition(event, day))
       .where(and(...baseConditions))
-      .orderBy(asc(schema.submission.title), asc(schema.submission.id))
+      .orderBy(sessionOrderBy())
       .limit(limit);
     const rows = await (offset > 0 ? query.offset(offset) : query);
     return rows;
@@ -211,9 +237,11 @@ async function getVisibleSubmissionIdsOrdered(
       and(eq(schema.participant.submissionId, schema.submission.id), visibleParticipantConditions()),
     )
     .leftJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+    .leftJoin(schema.scheduleSlot, scheduleOrderJoinCondition(event))
     .where(and(...baseConditions))
-    // DEC-534: title alone is not unique (see the trackId branch above).
-    .orderBy(asc(schema.submission.title), asc(schema.submission.id))
+    // DEC-534: shared ordering — see sessionOrderBy() (title/id tiebreaker
+    // rationale unchanged from the trackId branch above).
+    .orderBy(sessionOrderBy())
     .limit(limit);
   const rows = await (offset > 0 ? query.offset(offset) : query);
   return rows;

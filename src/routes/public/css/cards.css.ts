@@ -9,7 +9,11 @@
 export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
   .chq-pub-session-row {
     display: grid;
-    grid-template-columns: 126px 1fr auto;
+    /* w1-c (DEC-534): gutter widened ~126px -> ~268px now that it carries
+       two lines (start time, then room) instead of the old three-line
+       wrapping time-range + date + room cell -- the day moved out to a
+       per-day heading (see .chq-pub-sessions-day-heading below). */
+    grid-template-columns: 268px 1fr auto;
     gap: 22px;
     align-items: baseline;
     padding: 20px 0;
@@ -17,7 +21,7 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
   }
   /* DEC-698: the /embed field toggles can drop the time field entirely --
      the row then carries no .chq-pub-session-when cell at all, so the
-     126px gutter column must not exist either or the body lands in it
+     268px gutter column must not exist either or the body lands in it
      and wraps word-per-word. */
   .chq-pub-session-row-notime { grid-template-columns: 1fr auto; }
   .chq-pub-session-when { display: flex; flex-direction: column; gap: 2px; }
@@ -34,6 +38,17 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
     text-decoration: none;
   }
   .chq-pub-session-speaker { font-size: 14px; color: var(--chq-ink-2); margin: 0; }
+  /* w1-c (DEC-534): the day heading rendered before the first card of each
+     scheduled day once the gutter drops the day (sessions.tsx). */
+  .chq-pub-sessions-day-heading {
+    font-family: var(--chq-font-display);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--chq-ink);
+    margin: 28px 0 4px;
+  }
+  .chq-pub-sessions-day-heading:first-child { margin-top: 0; }
   /* w4-k: the description snippet lives inside the summary alongside "Show
      more" so it doubles as the collapsed preview -- once the disclosure is
      opened the snippet must disappear or the full description prints
