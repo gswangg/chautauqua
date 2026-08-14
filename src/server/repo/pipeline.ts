@@ -415,7 +415,7 @@ export async function listActivityForEntry(
     .select()
     .from(schema.pipelineActivity)
     .where(eq(schema.pipelineActivity.entryId, entryId))
-    .orderBy(desc(schema.pipelineActivity.createdAt))
+    .orderBy(desc(schema.pipelineActivity.createdAt), asc(schema.pipelineActivity.id))
     .limit(page.limit)
     .offset(page.offset);
   return rows.map(toActivityRow);
