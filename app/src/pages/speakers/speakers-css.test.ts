@@ -107,3 +107,32 @@ describe('speakers.css matrix header register (DEC-730 amendment, wave 39)', () 
     expect(body).toMatch(/border-bottom:\s*2px solid var\(--chq-ink\)/);
   });
 });
+
+// DEC-385: the toolbar's 13px control shrink is single-direction -- it is the
+// BASE rule and the phone block restores the 44px tap target. Because
+// `.chq-speakers-toolbar .chq-input` outranks the bare `.chq-input` phone
+// rule in styles.css, dropping the restore here would silently shrink every
+// toolbar control to a sub-44px target at 390px.
+describe('speakers.css toolbar control shrink is max-width-only (DEC-385)', () => {
+  const css = readFileSync(CSS_PATH, 'utf-8');
+
+  it('declares no min-width media query anywhere', () => {
+    expect(css.replace(/\/\*[\s\S]*?\*\//g, '')).not.toMatch(/min-width\s*:\s*[0-9.]+px\s*\)/);
+  });
+
+  it('shrinks the toolbar controls at the top level, not inside a media block', () => {
+    const body = topLevelRuleBody(css, '.chq-speakers-toolbar .chq-input,\n.chq-speakers-toolbar .chq-select');
+    expect(body).toMatch(/font-size:\s*13px/);
+    expect(body).toMatch(/min-height:\s*0/);
+  });
+
+  it('restores the 44px tap target for those same controls inside the 700px phone block', () => {
+    const phone = css.match(/@media \(max-width: 700px\) \{([\s\S]*)\}\s*$/)?.[1];
+    if (phone === undefined) throw new Error('no @media (max-width: 700px) block found in speakers.css');
+    const restore = phone.match(
+      /\.chq-speakers-toolbar \.chq-input,\s*\.chq-speakers-toolbar \.chq-select\s*\{([^}]*)\}/,
+    )?.[1];
+    if (restore === undefined) throw new Error('the phone block does not restate the toolbar control rule');
+    expect(restore).toMatch(/min-height:\s*44px/);
+  });
+});

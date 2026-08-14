@@ -633,10 +633,10 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                         )}
                       </div>
                       {/* Frame stacks this identity block 4 lines deep: name,
-                          "company · has account", the participation pill(s)
+                          "company · has account", the participation pills
                           with its Send-portal-invite sibling on one line, then
                           Remind alone on its own line beneath -- so the
-                          participation menu(s) and the invite control/marker
+                          participation menus and the invite control/marker
                           share a row wrapper instead of flowing inline with
                           Remind. */}
                       <div className="chq-speakers-row-participation">

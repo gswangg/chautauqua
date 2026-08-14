@@ -55,15 +55,24 @@
 /* Frame (Chautauqua Speakers.dc.html) sizes every toolbar control --
    search, the three selects -- to padding:8px 12px / font-size:13px with no
    forced min-height, not the shared .chq-input/.chq-select 44px tap-target
-   rule (styles.css:578-589). That 44px rule is the PHONE rule (its own
-   @media (max-width:700px) block restates it) and stays untouched; this
-   scopes the shrink to desktop only so the phone target survives. */
-@media (min-width: 701px) {
+   rule (styles.css:578-589). DEC-385 makes this codebase single-direction
+   (narrow overrides wide via max-width only), so the shrink is the base rule
+   and the phone block below restores the shared 44px control -- these
+   selectors outrank the bare .chq-input/.chq-select phone rule in
+   styles.css, so the restore has to be restated here. */
+.chq-speakers-toolbar .chq-input,
+.chq-speakers-toolbar .chq-select {
+  padding: 8px 12px;
+  font-size: 13px;
+  min-height: 0;
+}
+
+@media (max-width: 700px) {
   .chq-speakers-toolbar .chq-input,
   .chq-speakers-toolbar .chq-select {
-    padding: 8px 12px;
-    font-size: 13px;
-    min-height: 0;
+    padding: 0 13px;
+    font-size: 15px;
+    min-height: 44px;
   }
 }
 
