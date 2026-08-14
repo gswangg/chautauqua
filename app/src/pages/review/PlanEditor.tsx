@@ -42,6 +42,11 @@ import {
 import { criterionWeightShares, DEFAULT_PLAN_CRITERIA } from '../../../../src/domain/evaluation';
 import { DEC_745, DEC_786, DEC_824, DEC_882, DEC_715, DEC_213, DEC_124 } from '../../../../src/decisions';
 import { countOf } from '../../lib/plural';
+// w40-e/DEC-745 amendment: the reviewer roster is the ONE place an
+// assignment can be Removed, so it must request/page through the site-wide
+// cap like ReviewerQueue.tsx's own "Show all N" affordance, never silently
+// truncate at listPerPage's default.
+import { MAX_PER_PAGE, MAX_PAGE } from '../../../../src/lib/pagination';
 
 void DEC_745; // v4 shell: title-row NAME/Duplicate/Save, 2x2 field grid, "Who reviews what" below
 void DEC_786; // "Distribute evenly" link below: preview-then-confirm, zero non-GET requests before confirm
@@ -222,6 +227,14 @@ export function PlanEditor() {
   const [evaluationCountsByRound, setEvaluationCountsByRound] = useState<Record<string, number>>({});
   const [tracks, setTracks] = useState<Track[]>([]);
   const [reviewers, setReviewers] = useState<PlanReviewer[]>([]);
+  // w40-e/DEC-745 amendment: the roster's TRUE row count and page size --
+  // `reviewers` above only ever holds however many pages have been loaded
+  // so far (page 1 = MAX_PER_PAGE rows on the initial fetch), never a
+  // fabricated "that's everyone" assumption once total exceeds the loaded
+  // length.
+  const [reviewersTotal, setReviewersTotal] = useState(0);
+  const [reviewersPerPage, setReviewersPerPage] = useState(MAX_PER_PAGE);
+  const [reviewersLoadingMore, setReviewersLoadingMore] = useState(false);
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
@@ -253,6 +266,13 @@ export function PlanEditor() {
   // count the server already loads for assignment resolution, never a
   // client-side re-derivation.
   const [submissionsInScope, setSubmissionsInScope] = useState<number | null>(null);
+  // w40-e/DEC-745 amendment: the cap row's "N reviewers" term is a COUNT OF
+  // ACCOUNTS, not assignment rows -- the progress envelope already returns
+  // one row per user with the true `total` (src/routes/review/
+  // plans-progress.ts), captured here instead of re-deriving it from
+  // reviewers.length (a plan_reviewer ROW list, one row per scope, and also
+  // page-capped past 200 rows).
+  const [reviewerAccountCount, setReviewerAccountCount] = useState<number | null>(null);
 
   // DEC-147: 0 = editing the base criteria; a round number 1..rounds means
   // editing that round's override (or "inherit base" when no override key
@@ -407,8 +427,15 @@ export function PlanEditor() {
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load plan'))
       .finally(() => setLoading(false));
-    apiList<PlanReviewer>(`/plans/${planId}/reviewers`)
-      .then((res) => setReviewers(res.items))
+    // w40-e/DEC-745 amendment: request the site-wide page cap so the
+    // roster's page 1 is the full MAX_PER_PAGE rows, not apiList's smaller
+    // default -- "Show all N" below only has to page past row 200.
+    apiList<PlanReviewer>(`/plans/${planId}/reviewers?perPage=${MAX_PER_PAGE}`)
+      .then((res) => {
+        setReviewers(res.items);
+        setReviewersTotal(res.total);
+        setReviewersPerPage(res.perPage);
+      })
       .catch(() => {
         // Reviewer roster is a nice-to-have on the editor; the plan itself
         // still loaded, so don't block the page on this failing.
@@ -417,6 +444,10 @@ export function PlanEditor() {
       .then((res) => {
         setProgressRows(res.items);
         setSubmissionsInScope(res.submissionsInScope ?? null);
+        // w40-e/DEC-745 amendment: `total` here is one row per reviewer
+        // ACCOUNT (src/routes/review/plans-progress.ts), the true figure
+        // the cap row's summary names.
+        setReviewerAccountCount(res.total);
       })
       .catch(() => {
         // Same non-blocking treatment -- rows still render with a bare
@@ -740,8 +771,12 @@ export function PlanEditor() {
       // preview the organizer saw is exactly what gets written.
       await apiPost<{ created: number }>(`/plans/${planId}/assignments/distribute`, { cap: distributePreview.cap });
       cancelDistribute();
-      const [reviewersRes] = await Promise.all([apiList<PlanReviewer>(`/plans/${planId}/reviewers`)]);
+      const [reviewersRes] = await Promise.all([
+        apiList<PlanReviewer>(`/plans/${planId}/reviewers?perPage=${MAX_PER_PAGE}`),
+      ]);
       setReviewers(reviewersRes.items);
+      setReviewersTotal(reviewersRes.total);
+      setReviewersPerPage(reviewersRes.perPage);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to distribute reviewer assignments');
     } finally {
@@ -844,6 +879,7 @@ export function PlanEditor() {
     // computes (DEC-659 amendment), so the row never flashes a raw id or a
     // "(removed)" label before the next reload.
     setReviewers((prev) => [...prev, created]);
+    setReviewersTotal((prev) => prev + 1);
     return created;
   }
 
@@ -907,6 +943,7 @@ export function PlanEditor() {
       // every item already carries email/trackName/submissionRef/
       // submissionTitle, so no client-side patching is needed.
       setReviewers((prev) => [...prev, ...items]);
+      setReviewersTotal((prev) => prev + items.length);
       setReviewerUserId('');
       resetScopeConfirm();
       setScopePreview(null);
@@ -940,11 +977,37 @@ export function PlanEditor() {
     try {
       await apiDelete(`/plans/${planId}/reviewers/${id}`);
       setReviewers((prev) => prev.filter((r) => r.id !== id));
+      setReviewersTotal((prev) => Math.max(0, prev - 1));
       setPendingUnassignReviewer(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to remove reviewer');
     } finally {
       setUnassigningReviewer(false);
+    }
+  }
+
+  // w40-e/DEC-745 amendment: "Show all N" for the reviewer roster -- same
+  // shape as ReviewerQueue.tsx's loadAllPages, sequential page loads
+  // appended onto the already-loaded page 1, bounded by clampPage's own
+  // MAX_PAGE ceiling, so every assignment (not just the first MAX_PER_PAGE
+  // rows) stays visible and removable.
+  async function loadAllReviewerAssignments() {
+    if (!planId) return;
+    setReviewersLoadingMore(true);
+    setError(null);
+    try {
+      const lastPage = Math.min(Math.ceil(reviewersTotal / reviewersPerPage), MAX_PAGE);
+      let appended: PlanReviewer[] = [];
+      for (let page = 2; page <= lastPage; page += 1) {
+        const res = await apiList<PlanReviewer>(`/plans/${planId}/reviewers?perPage=${reviewersPerPage}&page=${page}`);
+        if (res.items.length === 0) break;
+        appended = appended.concat(res.items);
+      }
+      setReviewers((prev) => prev.concat(appended));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to load the full reviewer roster');
+    } finally {
+      setReviewersLoadingMore(false);
     }
   }
 
@@ -1662,9 +1725,15 @@ export function PlanEditor() {
               >
                 {distributeLoading ? 'Loading…' : 'Distribute the unassigned'}
               </button>
-              {submissionsInScope !== null && (
+              {/* w40-e/DEC-745 amendment: the reviewer term is the account
+                  COUNT off the progress envelope's `total` (one row per
+                  user), never reviewers.length (a plan_reviewer ROW list --
+                  one reviewer scoped to two tracks is two rows). Neither
+                  figure is fabricated: the whole summary waits for both
+                  numbers to have actually loaded. */}
+              {submissionsInScope !== null && reviewerAccountCount !== null && (
                 <span className="chq-review-distribute-summary">
-                  {capRowSummaryLine(submissionsInScope, draft.maxEvaluationsPerSubmission ?? 1, reviewers.length)}
+                  {capRowSummaryLine(submissionsInScope, draft.maxEvaluationsPerSubmission ?? 1, reviewerAccountCount)}
                 </span>
               )}
             </div>
@@ -1711,6 +1780,26 @@ export function PlanEditor() {
               );
             })}
             {reviewers.length === 0 && <p className="chq-empty">No reviewers assigned yet.</p>}
+            {/* w40-e/DEC-745 amendment: the roster is the ONE place an
+                assignment can be Removed -- past the page-1 MAX_PER_PAGE
+                rows this states the true bound and lets every remaining
+                assignment page in, same affordance as ReviewerQueue.tsx's
+                "Show all N" footer. */}
+            {reviewers.length > 0 && reviewers.length < reviewersTotal && (
+              <div className="chq-review-queue-footer">
+                <span className="chq-review-queue-footer-count-group">
+                  <span className="chq-review-queue-footer-count">{`Showing ${reviewers.length} of ${reviewersTotal}`}</span>
+                  <button
+                    type="button"
+                    className="chq-review-queue-footer-showall"
+                    disabled={reviewersLoadingMore}
+                    onClick={() => void loadAllReviewerAssignments()}
+                  >
+                    {reviewersLoadingMore ? 'Loading…' : `Show all ${reviewersTotal}`}
+                  </button>
+                </span>
+              </div>
+            )}
 
             {/* DEC-786: nothing is POSTed until the explicit confirm below --
                 the preview already ran (GET only) when the link was clicked. */}

@@ -993,7 +993,13 @@ describe('PlanEditor render smoke', () => {
       [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([
         { id: 'pr-1', planId: PLAN_ID, userId: 'u1', email: 'ada@example.test', trackId: null, trackName: null, submissionId: null, submissionRef: null, submissionTitle: null },
       ]),
-      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([], { submissionsInScope: 18 }),
+      // w40-e/DEC-745 amendment: the cap row's reviewer term now reads the
+      // progress envelope's own `total` (one row per account) rather than
+      // reviewers.length.
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope(
+        [{ userId: 'u1', email: 'ada@example.test', name: null, assigned: 0, completed: 0, recused: 0, trackName: null }],
+        { submissionsInScope: 18 },
+      ),
       'GET /api/v1/users': listEnvelope([]),
     });
 
@@ -1014,6 +1020,104 @@ describe('PlanEditor render smoke', () => {
     const distributeButton = screen.getByRole('button', { name: 'Distribute the unassigned' });
     expect(distributeButton.className).toContain('chq-btn');
     expect(distributeButton.className).not.toContain('chq-link-button');
+  });
+
+  // w40-e/DEC-745 amendment: "N reviewers" in the cap row's summary is a
+  // COUNT OF ACCOUNTS (the progress envelope's own `total`, one row per
+  // user), never reviewers.length (a plan_reviewer ROW list -- one
+  // reviewer scoped to two tracks is two rows).
+  it('states the cap row reviewer count from the progress total, not the reviewer row count', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      // Three plan_reviewer ROWS across two distinct userIds (u1 scoped to
+      // two tracks).
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([
+        { id: 'pr-1', userId: 'u1', email: 'ada@example.test', trackId: 't1', trackName: 'AI', submissionId: null, submissionRef: null, submissionTitle: null },
+        { id: 'pr-2', userId: 'u1', email: 'ada@example.test', trackId: 't2', trackName: 'Design', submissionId: null, submissionRef: null, submissionTitle: null },
+        { id: 'pr-3', userId: 'u2', email: 'bo@example.test', trackId: null, trackName: null, submissionId: null, submissionRef: null, submissionTitle: null },
+      ]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope(
+        [
+          { userId: 'u1', email: 'ada@example.test', name: null, assigned: 0, completed: 0, recused: 0, trackName: null },
+          { userId: 'u2', email: 'bo@example.test', name: null, assigned: 0, completed: 0, recused: 0, trackName: null },
+        ],
+        { submissionsInScope: 10, total: 2 },
+      ),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Who reviews what')).toBeInTheDocument());
+    expect(await screen.findByText('10 talks · 10 reviews needed at 1 each · 2 reviewers')).toBeInTheDocument();
+  });
+
+  // w40-e/DEC-745 amendment: the roster is the ONE place an assignment can
+  // be Removed -- past MAX_PER_PAGE=200 rows it must state the true bound
+  // and page every remaining assignment in, same "Show all N" affordance
+  // ReviewerQueue.tsx already uses.
+  it('pages the reviewer roster past MAX_PER_PAGE=200 rows via Show all', async () => {
+    function reviewerRow(i: number) {
+      return {
+        id: `pr-${i}`,
+        userId: `u${i}`,
+        email: `r${i}@example.test`,
+        trackId: null,
+        trackName: null,
+        submissionId: null,
+        submissionRef: null,
+        submissionTitle: null,
+      };
+    }
+    const page1Items = Array.from({ length: 200 }, (_, i) => reviewerRow(i));
+    const page2Items = Array.from({ length: 50 }, (_, i) => reviewerRow(200 + i));
+
+    let reviewerCalls = 0;
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: () => {
+        reviewerCalls += 1;
+        const items = reviewerCalls === 1 ? page1Items : page2Items;
+        return listEnvelope(items, { total: 250, page: reviewerCalls === 1 ? 1 : 2, perPage: 200 });
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Who reviews what')).toBeInTheDocument());
+    expect(await screen.findByText('Showing 200 of 250')).toBeInTheDocument();
+    expect(screen.getByText('r0@example.test')).toBeInTheDocument();
+    expect(screen.queryByText('r249@example.test')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show all 250' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('r249@example.test')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Showing 200 of 250')).not.toBeInTheDocument();
+
+    // Every row from the second page is fully rendered, including its own
+    // Remove control -- the roster is the ONE place an assignment can be
+    // removed, so a page-2 row must be just as actionable as a page-1 row.
+    const lastRow = screen.getByText('r249@example.test').closest('.chq-review-reviewer-row');
+    expect(lastRow).not.toBeNull();
+    expect(within(lastRow as HTMLElement).getByRole('button', { name: 'Remove' })).toBeInTheDocument();
   });
 
   it('DEC-840: distribute confirm dialog states the total, each reviewer\'s change, the shortfall sentence naming the constraint and track, and lists an unchanged reviewer with its reason', async () => {
