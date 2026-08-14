@@ -45,14 +45,8 @@ const USERS = [
 ];
 
 // rev-named finished round 1 but not round 2; rev-unnamed finished neither.
-const COMPLETED_ROUND_1 = new Map([
-  ["rev-named", 1],
-  ["rev-unnamed", 0],
-]);
-const COMPLETED_ROUND_2 = new Map([
-  ["rev-named", 0],
-  ["rev-unnamed", 0],
-]);
+const EVALUATED_ROUND_1 = [{ reviewerId: "rev-named", submissionId: "sub-1" }];
+const EVALUATED_ROUND_2: { reviewerId: string; submissionId: string }[] = [];
 
 const batchUserDisplayNamesMock = vi.fn(async (_db: unknown, userIds: string[]) => {
   const m = new Map<string, string | null>();
@@ -76,8 +70,8 @@ vi.mock("../src/server/repo/review", async () => {
     listReviewerRowsForPlan: vi.fn(async () => REVIEWER_ROWS),
     getUsersByIds: vi.fn(async () => USERS),
     batchUserDisplayNames: batchUserDisplayNamesMock,
-    countCompletedByReviewerForPlan: vi.fn(async (_db: unknown, _planId: string, round: number) =>
-      round === 1 ? COMPLETED_ROUND_1 : COMPLETED_ROUND_2,
+    listEvaluatedPairsForPlan: vi.fn(async (_db: unknown, _planId: string, round: number) =>
+      round === 1 ? EVALUATED_ROUND_1 : EVALUATED_ROUND_2,
     ),
     listPlanFilteredSubmissions: vi.fn(async () => SUBMISSIONS),
   };

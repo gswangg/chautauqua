@@ -69,6 +69,11 @@ export function listEnvelope<T>(
     // envelope shape — matching what the real server always returns.
     contentStatusCounts: { pending: number; approved: number; changes_requested: number };
     reuploadedCount: number;
+    // DEC-745 (wave-72 amendment): GET /plans/:id/progress's submissionsInScope
+    // -- the plan editor's persistent cap row reads its summary off this.
+    // Undefined by default (omitted from the response), matching every other
+    // apiList<T> caller that doesn't care about it.
+    submissionsInScope: number;
   }> = {},
 ): {
   items: T[];
@@ -79,6 +84,7 @@ export function listEnvelope<T>(
   kindCounts: Record<string, number>;
   contentStatusCounts: { pending: number; approved: number; changes_requested: number };
   reuploadedCount: number;
+  submissionsInScope?: number;
 } {
   return {
     items,
@@ -89,6 +95,7 @@ export function listEnvelope<T>(
     kindCounts: overrides.kindCounts ?? {},
     contentStatusCounts: overrides.contentStatusCounts ?? { pending: 0, approved: 0, changes_requested: 0 },
     reuploadedCount: overrides.reuploadedCount ?? 0,
+    ...(overrides.submissionsInScope !== undefined ? { submissionsInScope: overrides.submissionsInScope } : {}),
   };
 }
 

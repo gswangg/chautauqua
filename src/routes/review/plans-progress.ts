@@ -52,7 +52,16 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, as
   const reviewerRows = await repo.listReviewerRowsForPlan(c.var.db, plan.id);
   const userIds = [...new Set(reviewerRows.map((r) => r.userId))];
   const users = await repo.getUsersByIds(c.var.db, userIds);
-  const completedByReviewer = await repo.countCompletedByReviewerForPlan(c.var.db, plan.id, round);
+  // DEC-707 (wave-3 amendment): every evaluated pair, folded per reviewer
+  // against THEIR OWN resolved-assigned set below -- never a raw per-plan
+  // count, which is how 'completed' could exceed 'assigned'.
+  const evaluatedPairs = await repo.listEvaluatedPairsForPlan(c.var.db, plan.id, round);
+  const evaluatedByReviewer = new Map<string, Set<string>>();
+  for (const p of evaluatedPairs) {
+    const set = evaluatedByReviewer.get(p.reviewerId) ?? new Set<string>();
+    set.add(p.submissionId);
+    evaluatedByReviewer.set(p.reviewerId, set);
+  }
   // One plan-filtered load + pure assignment resolution (DEC-081): no
   // per-reviewer awaits.
   const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan);
@@ -74,7 +83,16 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, as
 
   const items = users.map((user) => {
     const assigned = assignedExcludingRecused(assignments.get(user.userId) ?? [], recusedByUser.get(user.userId) ?? new Set());
-    const completed = completedByReviewer.get(user.userId) ?? 0;
+    // DEC-707 (wave-3 amendment): `completed` is a SUBSET of `assigned` --
+    // only evaluations whose submissionId is in this reviewer's own
+    // resolved-assigned set for the round count toward it, so
+    // `completed <= assigned` holds as an invariant rather than a hope.
+    const assignedIds = new Set(assigned.map((s) => s.id));
+    const evaluated = evaluatedByReviewer.get(user.userId) ?? new Set<string>();
+    let completed = 0;
+    for (const submissionId of evaluated) {
+      if (assignedIds.has(submissionId)) completed += 1;
+    }
     return {
       userId: user.userId,
       email: user.email,
@@ -90,7 +108,11 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, as
   const total = items.length;
   const start = (page - 1) * perPage;
   const pagedItems = items.slice(start, start + perPage);
-  return c.json({ items: pagedItems, total, page, perPage, round });
+  // DEC-745 (wave-72 amendment): the plan editor's cap row reads its
+  // talks/reviews/reviewers summary off this ONE number -- zero extra
+  // queries, since `submissions` is already loaded above for assignment
+  // resolution.
+  return c.json({ items: pagedItems, total, page, perPage, round, submissionsInScope: submissions.length });
 });
 
 reviewPlansProgressRoutes.get("/api/v1/plans/:id/results", requireOrganizer, async (c) => {
@@ -166,7 +188,15 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
   const reviewerRows = await repo.listReviewerRowsForPlan(c.var.db, plan.id);
   const userIds = [...new Set(reviewerRows.map((r) => r.userId))];
   const users = await repo.getUsersByIds(c.var.db, userIds);
-  const completedByReviewer = await repo.countCompletedByReviewerForPlan(c.var.db, plan.id, round);
+  // DEC-707 (wave-3 amendment): same fold as GET /progress -- completed is a
+  // subset of assigned, never a raw per-plan evaluation count.
+  const evaluatedPairs = await repo.listEvaluatedPairsForPlan(c.var.db, plan.id, round);
+  const evaluatedByReviewer = new Map<string, Set<string>>();
+  for (const p of evaluatedPairs) {
+    const set = evaluatedByReviewer.get(p.reviewerId) ?? new Set<string>();
+    set.add(p.submissionId);
+    evaluatedByReviewer.set(p.reviewerId, set);
+  }
   // One plan-filtered load + pure assignment resolution (DEC-081): no
   // per-reviewer awaits.
   const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan);
@@ -192,7 +222,12 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
   // the single place that decides who a given scope actually reaches.
   const progressRows = users.map((user) => {
     const assigned = assignedExcludingRecused(assignments.get(user.userId) ?? [], recusedByUser.get(user.userId) ?? new Set());
-    const completed = completedByReviewer.get(user.userId) ?? 0;
+    const assignedIds = new Set(assigned.map((s) => s.id));
+    const evaluated = evaluatedByReviewer.get(user.userId) ?? new Set<string>();
+    let completed = 0;
+    for (const submissionId of evaluated) {
+      if (assignedIds.has(submissionId)) completed += 1;
+    }
     return { userId: user.userId, email: user.email, assignedCount: assigned.length, assigned: assigned.length, completed };
   });
   const laggards = selectRemindTargets(progressRows, scope);

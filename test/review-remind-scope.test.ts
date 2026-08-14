@@ -47,10 +47,11 @@ const USERS = [
   { userId: "rev-in-progress", email: "in-progress@example.test" },
   { userId: "rev-done", email: "done@example.test" },
 ];
-const COMPLETED_COUNTS = new Map([
-  ["rev-in-progress", 1],
-  ["rev-done", 2],
-]);
+const EVALUATED_PAIRS = [
+  { reviewerId: "rev-in-progress", submissionId: "sub-1" },
+  { reviewerId: "rev-done", submissionId: "sub-1" },
+  { reviewerId: "rev-done", submissionId: "sub-2" },
+];
 
 vi.mock("../src/server/repo/review", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/review")>("../src/server/repo/review");
@@ -65,7 +66,7 @@ vi.mock("../src/server/repo/review", async () => {
     listReviewerRowsForPlan: vi.fn(async () => REVIEWER_ROWS),
     getUsersByIds: vi.fn(async () => USERS),
     batchUserDisplayNames: vi.fn(async () => new Map()),
-    countCompletedByReviewerForPlan: vi.fn(async () => COMPLETED_COUNTS),
+    listEvaluatedPairsForPlan: vi.fn(async () => EVALUATED_PAIRS),
     listPlanFilteredSubmissions: vi.fn(async () => SUBMISSIONS),
   };
 });

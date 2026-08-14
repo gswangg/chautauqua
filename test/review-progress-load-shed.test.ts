@@ -1,7 +1,8 @@
 // DEC-351/DEC-449 regression coverage: /plans/:id/progress and
 // /plans/:id/remind must stop loading every evaluation row of the round --
 // they source per-reviewer completed counts from
-// repo.countCompletedByReviewerForPlan (a SQL count/group-by) instead of
+// repo.listEvaluatedPairsForPlan (DEC-707 wave-3 amendment: folded against
+// each reviewer's own resolved-assigned set) instead of
 // repo.listEvaluationsForPlan (full scored rows, which /results genuinely
 // needs per DEC-345). This test asserts the
 // wire response is byte-identical to the pre-fix shape for a plan with two
@@ -52,13 +53,16 @@ const USERS = [
   { userId: "rev-2", email: "rev2@org.test" },
 ];
 const RECUSALS = [{ id: "rc-1", planId: plan.id, submissionId: SUB_3.id, userId: "rev-1", reason: "conflict", createdAt: 1 }];
-const COMPLETED_COUNTS = new Map([["rev-2", 2]]);
+const EVALUATED_PAIRS = [
+  { reviewerId: "rev-2", submissionId: SUB_1.id },
+  { reviewerId: "rev-2", submissionId: SUB_2.id },
+];
 
 const listEvaluationsForPlan = vi.fn(async () => {
   throw new Error("listEvaluationsForPlan must not be called by /progress or /remind (DEC-351)");
 });
-const countCompletedByReviewerForPlan = vi.fn(async (_db: unknown, planId: string, round: number) =>
-  planId === plan.id && round === plan.currentRound ? COMPLETED_COUNTS : new Map(),
+const listEvaluatedPairsForPlan = vi.fn(async (_db: unknown, planId: string, round: number) =>
+  planId === plan.id && round === plan.currentRound ? EVALUATED_PAIRS : [],
 );
 
 vi.mock("../src/server/repo/review", async () => {
@@ -80,7 +84,7 @@ vi.mock("../src/server/repo/review", async () => {
     listRecusalsForReviewer: vi.fn(async () => []),
     hasRecusal: vi.fn(async () => null),
     listEvaluationsForPlan,
-    countCompletedByReviewerForPlan,
+    listEvaluatedPairsForPlan,
   };
 });
 
@@ -152,7 +156,7 @@ describe("DEC-351: /progress and /remind load-shedding is wire-identical", () =>
     expect(body.round).toBe(1);
 
     expect(listEvaluationsForPlan).not.toHaveBeenCalled();
-    expect(countCompletedByReviewerForPlan).toHaveBeenCalledWith(expect.anything(), plan.id, plan.currentRound);
+    expect(listEvaluatedPairsForPlan).toHaveBeenCalledWith(expect.anything(), plan.id, plan.currentRound);
   });
 
   it("POST /remind returns the pre-fix {reminded, sent, failed} shape without calling listEvaluationsForPlan", async () => {
@@ -174,6 +178,6 @@ describe("DEC-351: /progress and /remind load-shedding is wire-identical", () =>
     expect(body.failed).toEqual([]);
 
     expect(listEvaluationsForPlan).not.toHaveBeenCalled();
-    expect(countCompletedByReviewerForPlan).toHaveBeenCalledWith(expect.anything(), plan.id, plan.currentRound);
+    expect(listEvaluatedPairsForPlan).toHaveBeenCalledWith(expect.anything(), plan.id, plan.currentRound);
   });
 });

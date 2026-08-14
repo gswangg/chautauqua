@@ -194,24 +194,22 @@ export async function listEvaluationScoresForReviewer(
   );
 }
 
-/** DEC-351/DEC-449: per-reviewer completed-evaluation counts for a plan+round,
- * via one SQL `count(*) ... group by reviewer_id` -- replaces loading every
- * (reviewerId, submissionId) pair for the round and reducing to Set.size in
- * JS (the /progress and /remind routes' prior approach). Mirrors
- * countEvaluationsBySubmission's shape exactly. */
-export async function countCompletedByReviewerForPlan(
+/** DEC-707 (wave-3 amendment): every (reviewerId, submissionId) evaluated
+ * pair for a plan+round, one query -- the /progress and /remind routes fold
+ * this against each reviewer's OWN resolved-assigned submission set so
+ * `completed` can never exceed `assigned` (the '37 of 34' bug: the prior
+ * countCompletedByReviewerForPlan counted every evaluation row regardless of
+ * whether the submission was still in that reviewer's scope). Mirrors
+ * listEvaluationScoresForPlan's shape (submissionId + reviewerId only). */
+export async function listEvaluatedPairsForPlan(
   db: Db,
   planId: string,
   round: number,
-): Promise<Map<string, number>> {
-  const rows = await db
-    .select({ reviewerId: schema.evaluation.reviewerId, count: sql<number>`count(*)` })
+): Promise<{ reviewerId: string; submissionId: string }[]> {
+  return db
+    .select({ reviewerId: schema.evaluation.reviewerId, submissionId: schema.evaluation.submissionId })
     .from(schema.evaluation)
-    .where(and(eq(schema.evaluation.planId, planId), eq(schema.evaluation.round, round)))
-    .groupBy(schema.evaluation.reviewerId);
-  const result = new Map<string, number>();
-  for (const r of rows) result.set(r.reviewerId, Number(r.count));
-  return result;
+    .where(and(eq(schema.evaluation.planId, planId), eq(schema.evaluation.round, round)));
 }
 
 export interface SubmissionEvaluationRow {
