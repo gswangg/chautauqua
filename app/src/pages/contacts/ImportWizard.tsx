@@ -4,7 +4,7 @@ import { expandFullNameMapping, mapImportRow, parseCsv, suggestMapping, toCsv, F
 import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import type { ImportPlan, ImportPlanRow, ImportResult } from './types';
 import { DEC_810, DEC_575, DEC_124 } from '../../../../src/decisions';
-import { countOf } from '../../lib/plural';
+import { countOf, plural } from '../../lib/plural';
 import './contacts-panels.css';
 
 // Compile-checked dependency marker: when `eventId` is set, this wizard
@@ -354,7 +354,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
             imported.
           </p>
           <p className="chq-error-summary-rows">
-            Row{badRows.length === 1 ? '' : 's'} {formatRowList(badRows)}.
+            {plural(badRows.length, 'Row')} {formatRowList(badRows)}.
           </p>
           <p className="chq-error-summary-kept">Nothing was lost — the file is still loaded.</p>
         </div>

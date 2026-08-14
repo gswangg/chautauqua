@@ -60,6 +60,30 @@
   color: var(--chq-ink);
 }
 
+/* DEC-575 (wave 28 amendment): the file-level, pre-mapping variant of the
+   summary states its parts as <p> elements rather than an h2 + <ul> of
+   anchors (there is no offending field to link to -- the problem is the
+   file). The heading part therefore has to carry the h2 treatment
+   explicitly instead of inheriting it from `.chq-error-summary h2`; the
+   remaining parts inherit `.chq-error-summary p` and only name their role
+   so the block's reading order is addressable from CSS. */
+.chq-error-summary-heading {
+  font-family: var(--chq-font-display);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--chq-ink);
+}
+.chq-error-summary-detail {
+  color: var(--chq-ink-2);
+}
+.chq-error-summary-rows {
+  color: var(--chq-ink-2);
+}
+.chq-error-summary-kept {
+  color: var(--chq-muted);
+}
+
 /* DEC-958 restyle: 13px/600 ink, sentence case -- drops the earlier
    11px/700/uppercase/tracked treatment (text-transform + letter-spacing
    removed) so an inline field error reads as a sentence, matching the

@@ -46,6 +46,16 @@
   color: var(--chq-muted);
 }
 
+/* B5: the irreversibility line sits immediately above the import wizard's
+   commit action. It reads at the caption measure but in full ink, not
+   muted -- a consequence the operator has to see is not a footnote. */
+.chq-contacts-import-irreversible {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-ink);
+  margin: 0;
+}
+
 .chq-contacts-pipeline-columns {
   display: grid;
   grid-template-columns: repeat(5, 1fr);

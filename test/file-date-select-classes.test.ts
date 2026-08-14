@@ -159,6 +159,56 @@ const fileControls = allControls.filter(
 // single shared definition of "native date input" to point at.
 const selectControls = allControls.filter((c) => c.kind === "select");
 
+/** Does this tag's className -- literal OR braced expression -- name `cls`?
+ *
+ * A control whose class list varies (e.g. UploadZone.tsx adds
+ * chq-field-invalid when the file is rejected) writes
+ * `className={cond ? 'chq-file a' : 'chq-file b'}`, which a
+ * `className="..."`-only regex reads as "no chq-file at all". The shell
+ * class is still on every branch, so the guard has to look inside the
+ * expression rather than declare a false offender. Rule: every string
+ * literal in the expression that names ANY chq- class must name `cls`
+ * (fragments with no chq- class at all -- ' is-current', a stray key --
+ * are not class-list alternatives and are ignored), and at least one must
+ * exist. That keeps "the shell class is unconditional" enforced on every
+ * branch instead of accepting one lucky branch. */
+function carriesClass(attrs: string, cls: string): boolean {
+  const has = new RegExp(`\\b${cls}\\b`);
+  const m = /className\s*=\s*/.exec(attrs);
+  if (!m) return false;
+  let i = m.index + m[0].length;
+  const opener = attrs[i];
+  if (opener === '"' || opener === "'") {
+    const end = attrs.indexOf(opener, i + 1);
+    if (end === -1) throw new Error(`unterminated className literal in: ${attrs}`);
+    return has.test(attrs.slice(i + 1, end));
+  }
+  if (opener !== "{") return false;
+  // Walk the balanced brace expression, collecting its string literals.
+  const literals: string[] = [];
+  let depth = 0;
+  for (; i < attrs.length; i++) {
+    const ch = attrs[i]!;
+    if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) break;
+    } else if (ch === '"' || ch === "'" || ch === "`") {
+      const quote = ch;
+      let lit = "";
+      i++;
+      while (i < attrs.length && attrs[i] !== quote) {
+        if (attrs[i] === "\\") i++;
+        lit += attrs[i];
+        i++;
+      }
+      literals.push(lit);
+    }
+  }
+  const classLists = literals.filter((l) => l.includes("chq-"));
+  return classLists.length > 0 && classLists.every((l) => has.test(l));
+}
+
 describe("input[type=file]/select share the DEC-577 classes", () => {
   it("enumerated at least one control of each kind (the guard isn't vacuous)", () => {
     expect(fileControls.length).toBeGreaterThan(0);
@@ -166,12 +216,12 @@ describe("input[type=file]/select share the DEC-577 classes", () => {
   });
 
   it("every in-scope (content/settings) input[type=file] carries chq-file", () => {
-    const offenders = fileControls.filter((c) => !/className\s*=\s*["'][^"']*\bchq-file\b/.test(c.attrs));
+    const offenders = fileControls.filter((c) => !carriesClass(c.attrs, "chq-file"));
     expect(offenders.map((c) => `${c.file}:${c.line}`)).toEqual([]);
   });
 
   it("every select carries chq-select", () => {
-    const offenders = selectControls.filter((c) => !/className\s*=\s*["'][^"']*\bchq-select\b/.test(c.attrs));
+    const offenders = selectControls.filter((c) => !carriesClass(c.attrs, "chq-select"));
     expect(offenders.map((c) => `${c.file}:${c.line}`)).toEqual([]);
   });
 });
