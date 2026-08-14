@@ -21,7 +21,7 @@ import { AgendaItemList } from "./agenda-list";
 // binding the agenda day-footer's "next day" out-link composes with.
 import { DaySwitcher, ItinerarySearchForm, agendaQs } from "./agenda-controls";
 import { ItineraryScript } from "./agenda-itinerary-script";
-import { AgendaRail, ScheduleRail, roomsInUse } from "./agenda-rail";
+import { AgendaRail, ScheduleRail, realRoomsInUse } from "./agenda-rail";
 
 export { AgendaDayGrid } from "./agenda-grid";
 export { AgendaItemList } from "./agenda-list";
@@ -32,7 +32,7 @@ export { ItineraryScript } from "./agenda-itinerary-script";
  * from the same `items` array, switched at the 700px breakpoint purely by
  * CSS `display:none` (public.css.ts) so exactly one is in the a11y tree at
  * a time. */
-function AgendaDay(props: {
+export function AgendaDay(props: {
   day: string;
   items: PublicAgendaItem[];
   event: PublicEvent;
@@ -60,7 +60,11 @@ function AgendaDay(props: {
   // label — counts are derived from THIS day's items, through the one
   // shared plural() helper (src/domain/count-copy), never hand-pluralised.
   // Breaks are deliberately NOT counted: DEC-022's break is not a session.
-  const roomCount = new Set(props.items.map((i) => i.roomId ?? "tbd")).size;
+  // DEC-851 amendment (wave 45), ONE READER: room count goes through
+  // realRoomsInUse() (agenda-rail.tsx), the same reader AgendaContent's <h1>
+  // and the rail's own room list use -- never a re-derivation, and never
+  // counting the "tbd" (unroomed) bucket as a room.
+  const roomCount = realRoomsInUse(props.items).length;
   return (
     <div id={`chq-day-${props.day}`}>
       {/* DEC-768: the ONE heading for this day, owned here -- neither
@@ -120,14 +124,13 @@ export function AgendaContent(props: {
   // so `renderedDays` here is 0 or 1 entries, never the whole event stacked.
   const activeDay = props.activeDay ?? null;
   const activeDayItems = activeDay ? (byDay.get(activeDay) ?? []) : [];
-  // DEC-851 amendment (wave 5), ONE READER: M is the count of real
-  // (non-"tbd") rooms in use on the active day, counted through the SAME
-  // roomsInUse() grouping the rail's own room rows render from (agenda-
-  // rail.tsx) -- a room is identified by roomId, never by roomName, so the
-  // heading and the rail can never disagree about how many rooms are in
-  // play the way a roomName-based count could when a roomed item's roomName
-  // happened to be null.
-  const roomCount = roomsInUse(activeDayItems).filter((r) => r.roomKey !== "tbd").length;
+  // DEC-851 amendment (wave 45), ONE READER: M is the count of real
+  // (non-"tbd") rooms in use on the active day, counted through
+  // realRoomsInUse() (agenda-rail.tsx) -- the SAME reader AgendaDay's own
+  // <h3> and the rail's room list use, so no two surfaces can ever disagree
+  // about how many rooms are in play, or whether the unroomed bucket counts
+  // as one.
+  const roomCount = realRoomsInUse(activeDayItems).length;
   // The per-day <h3> AgendaDay renders is redundant once the page names the
   // day exactly once on this heading row -- suppressed whenever exactly one
   // day is rendered (always true on the current single-day-default surface)

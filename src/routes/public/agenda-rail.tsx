@@ -57,14 +57,15 @@ interface RoomRailRow {
  * producer-owned position asc, name asc, id asc, unroomed always last) so
  * the rail and the grid can never disagree about room order.
  *
- * DEC-851 amendment (wave 5), ONE READER: exported so AgendaContent's <h1>
- * room count and this rail's own room list both count rooms through this
- * SAME grouping (keyed on roomId, an unassigned block folded into one "tbd"
- * bucket) instead of each computing its own definition -- the prior bug had
- * the heading count distinct non-null `roomName` while this rail counted
- * distinct `roomId` including the unassigned bucket, so a day whose blocks
- * all carried a roomId but a null roomName read "0 rooms" on the heading
- * while the rail still listed one. */
+ * DEC-851 amendment (wave 5): exported so every caller groups blocks by room
+ * through this SAME grouping (keyed on roomId, an unassigned block folded
+ * into one "tbd" bucket) instead of each computing its own definition. This
+ * grouping is a superset of "rooms" -- it also carries the unroomed bucket
+ * as a row, load-bearing for the grid's own tiebreak/ordering contract, so
+ * this function stays unchanged. DEC-851 amendment (wave 45): the "tbd"
+ * bucket is NOT a room -- callers that count or list rooms (never sessions)
+ * must go through `realRoomsInUse()` below, the one reader that filters it
+ * out, rather than re-deriving their own `roomKey !== "tbd"` filter. */
 export function roomsInUse(items: PublicAgendaItem[]): RoomRailRow[] {
   const sorted = [...items].sort(
     (a, b) => a.startMin - b.startMin || a.submissionId.localeCompare(b.submissionId),
@@ -100,8 +101,19 @@ export function roomsInUse(items: PublicAgendaItem[]): RoomRailRow[] {
   });
 }
 
+/** DEC-851 amendment (wave 45), ONE READER for "how many rooms are in play on
+ * this day": `roomsInUse()` groups by roomId, folding every unassigned block
+ * into a "tbd" bucket -- that bucket is a real ROW (it anchors to the first
+ * unroomed block, DEC-851's own contract) but it is never a ROOM, so any
+ * caller counting or listing rooms (never sessions) must filter it out here,
+ * in this one place, rather than each caller re-deriving its own
+ * `roomKey !== "tbd"` filter. */
+export function realRoomsInUse(items: PublicAgendaItem[]): RoomRailRow[] {
+  return roomsInUse(items).filter((r) => r.roomKey !== "tbd");
+}
+
 function RoomsRailSection(props: { items: PublicAgendaItem[] }) {
-  const rows = roomsInUse(props.items);
+  const rows = realRoomsInUse(props.items);
   if (rows.length === 0) return null;
   return (
     <section class="chq-pub-rail-section">
