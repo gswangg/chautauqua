@@ -977,6 +977,12 @@ async function main(): Promise<void> {
     email: string;
     title: string;
     speakerName: string;
+    // DEC-258 snapshot fields, carried alongside the lead contact so a later
+    // co-presenter row copied off this same contact (wave-29 amendment,
+    // DEC-974) can reuse the real title_at_time/org_at_time rather than
+    // inventing a second value for the same person.
+    titleAtTime: string | null;
+    orgAtTime: string | null;
   }[] = [];
 
   function insertSubmissionWithSpeaker(opts: {
@@ -1086,6 +1092,8 @@ async function main(): Promise<void> {
         email: opts.email,
         title: opts.title,
         speakerName: `${opts.firstName} ${opts.lastName}`.trim(),
+        titleAtTime: opts.titleAtTime,
+        orgAtTime: opts.orgAtTime,
       });
     }
     return submissionId;
@@ -2380,6 +2388,42 @@ async function main(): Promise<void> {
       }),
     );
   });
+
+  // --- cross-room co-presenter double-booking (wave-29 amendment, DEC-974
+  // / DEC-854): [5]/[6] above sit at the SAME start time (day 1, 09:30) in
+  // two DIFFERENT real rooms and both carry content_status 'approved'.
+  // Without a participant row placing one real person in both sessions,
+  // the co-presenter-aware branch of findConflicts (kind:'speaker_overlap')
+  // never fires against seeded data — a same-room-only conflict (see [2]/
+  // [3] above) can never exercise it, since two different rooms at the same
+  // time is exactly the case room_overlap does NOT catch. This row makes
+  // acceptedSubmissions[5]'s lead contact a co-presenter on
+  // acceptedSubmissions[6] as well, so both sessions' speaker sets share a
+  // contact and findConflicts emits exactly one speaker_overlap conflict
+  // naming both submission ids. invite_status 'accepted' (an
+  // ACTIVE_INVITE_STATUS, DEC-974) so it counts for the admin agenda's
+  // conflict detection; visible true so it's a normal, not hidden,
+  // co-presentation. seedId('participant', 9999) is far outside the
+  // 1..30 range insertSubmissionWithSpeaker's submissionCounter produces
+  // (30 accepted+pending submissions total, see test/seed-coherence.test.ts),
+  // so it cannot collide with a generated participant row.
+  const coPresenterLead = acceptedSubmissions[5]!;
+  const coPresenterHostSubmissionId = acceptedSubmissions[6]!.submissionId;
+  statements.push(
+    insertStmt("participant", {
+      id: seedId("participant", 9999),
+      submission_id: coPresenterHostSubmissionId,
+      contact_id: coPresenterLead.contactId,
+      role: "co-presenter",
+      order: 1,
+      visible: true,
+      invite_status: "accepted",
+      title_at_time: coPresenterLead.titleAtTime,
+      org_at_time: coPresenterLead.orgAtTime,
+      created_at: nextTs(),
+      updated_at: ts,
+    }),
+  );
 
   // --- schedule breaks (DEC-022 amendment, wave 63): a coffee break and a
   // lunch break per day. Deliberately NOT keyed to any submission/room --
