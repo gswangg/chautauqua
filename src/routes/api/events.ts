@@ -38,6 +38,7 @@ import { createDefaultForm } from "../../server/repo/forms";
 import { bumpIcsSequencesForRoom } from "../../server/repo/ics-sequence";
 import { isDateOrderValid, isIsoDate, isValidSlug, isValidTimezone } from "./validators";
 import { listSlotsOutsideWindow } from "../../server/repo/agenda";
+import { listBreaksOutsideWindow } from "../../server/repo/breaks";
 import { DEC_519, DEC_844 } from "../../decisions";
 // DEC-371 amendment (wave 43): the hex-colour grammar (isValidHexColor,
 // normalizeHexColor) lives ONE place, src/domain/color.ts.
@@ -367,12 +368,16 @@ eventsRoutes.patch("/events/:eventId", csrfJson, async (c) => {
     branding,
   });
 
-  // DEC-844: narrowing the window never blocks the write, but names every
-  // placed session it unschedules — computed AFTER the update succeeds,
-  // against the NEW (now-persisted) window.
+  // DEC-844 (amended wave 68): narrowing the window never blocks the write,
+  // but names every placed session AND every break it orphans — both
+  // computed AFTER the update succeeds, against the NEW (now-persisted)
+  // window.
   void DEC_844;
-  const unscheduledByWindow = await listSlotsOutsideWindow(c.var.db, eventId, updated.startDate, updated.endDate);
-  return c.json({ ...updated, unscheduledByWindow });
+  const [unscheduledByWindow, breaksOutsideWindow] = await Promise.all([
+    listSlotsOutsideWindow(c.var.db, eventId, updated.startDate, updated.endDate),
+    listBreaksOutsideWindow(c.var.db, eventId, updated.startDate, updated.endDate),
+  ]);
+  return c.json({ ...updated, unscheduledByWindow, breaksOutsideWindow });
 });
 
 // ---------------------------------------------------------------------------

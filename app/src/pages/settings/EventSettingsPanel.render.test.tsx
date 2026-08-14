@@ -87,6 +87,66 @@ describe('EventSettingsPanel unscheduled-by-window notice (DEC-844)', () => {
     expect(within(notice).getByRole('link', { name: 'View agenda' })).toHaveAttribute('href', '/agenda');
   });
 
+  it('renders both a sessions clause and a breaks clause when a narrowing save orphans both (DEC-844 amendment, wave 68)', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}`]: eventDetail,
+      'GET /api/v1/mail-status': { provider: 'none', configured: false, fromEmail: null },
+      [`PATCH /api/v1/events/${EVENT_ID}`]: {
+        ...eventDetail,
+        endDate: '2026-06-05',
+        unscheduledByWindow: {
+          count: 1,
+          sessions: [{ submissionId: 's1', ref: 'SES-004', title: 'Talk 4', day: '2026-06-15' }],
+        },
+        breaksOutsideWindow: {
+          count: 2,
+          breaks: [
+            { id: 'b1', day: '2026-06-15', label: 'Lunch', startMin: 720 },
+            { id: 'b2', day: '2026-06-16', label: 'Coffee', startMin: 600 },
+          ],
+        },
+      },
+    });
+    renderPanel();
+
+    const endDateInput = await screen.findByLabelText('End date');
+    fireEvent.change(endDateInput, { target: { value: '5 Jun 2026' } });
+    fireEvent.blur(endDateInput);
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    const notice = await screen.findByRole('status');
+    expect(notice).toHaveTextContent('SES-004');
+    expect(notice).toHaveTextContent('Lunch');
+    expect(notice).toHaveTextContent('Coffee');
+    expect(within(notice).getByRole('link', { name: 'View agenda' })).toHaveAttribute('href', '/agenda');
+  });
+
+  it('renders only the breaks clause when just breaks fall outside the new window', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}`]: eventDetail,
+      'GET /api/v1/mail-status': { provider: 'none', configured: false, fromEmail: null },
+      [`PATCH /api/v1/events/${EVENT_ID}`]: {
+        ...eventDetail,
+        endDate: '2026-06-05',
+        unscheduledByWindow: { count: 0, sessions: [] },
+        breaksOutsideWindow: {
+          count: 1,
+          breaks: [{ id: 'b1', day: '2026-06-15', label: 'Lunch', startMin: 720 }],
+        },
+      },
+    });
+    renderPanel();
+
+    const endDateInput = await screen.findByLabelText('End date');
+    fireEvent.change(endDateInput, { target: { value: '5 Jun 2026' } });
+    fireEvent.blur(endDateInput);
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    const notice = await screen.findByRole('status');
+    expect(notice).toHaveTextContent('Lunch');
+    expect(notice).not.toHaveTextContent('placed sessions');
+  });
+
   describe('mail configuration Email row (DEC-996 amendment, wave 57)', () => {
     it('reads "Sending as <fromEmail>" when the email binding is configured', async () => {
       mockApi({
@@ -127,6 +187,7 @@ describe('EventSettingsPanel unscheduled-by-window notice (DEC-844)', () => {
         ...eventDetail,
         name: 'Renamed Con',
         unscheduledByWindow: { count: 0, sessions: [] },
+        breaksOutsideWindow: { count: 0, breaks: [] },
       },
     });
     renderPanel();

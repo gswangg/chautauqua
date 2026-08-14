@@ -119,13 +119,18 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-// Fake db: three select() calls inside listSlotsOutsideWindow — (1) the
-// event row for recordPrefix, (2) a COUNT(*) over the scheduleSlot/submission
-// join, (3) the LIMITed row query over the same join (DEC-844 wave 54: both
-// now carry the day-outside-range condition in SQL, so the fake db is given
-// the ALREADY-outside-window rows directly, standing in for what a real WHERE
-// clause would have filtered down to). Mirrors the makeChain pattern
-// established in test/agenda-repo.test.ts.
+// Fake db backing BOTH listSlotsOutsideWindow (3 select() calls: event
+// lookup, COUNT(*), LIMITed row query) and listBreaksOutsideWindow (2 select()
+// calls: COUNT(*), LIMITed row query) — DEC-844 amendment (wave 68): the PATCH
+// handler now runs both via Promise.all, so the two functions' select() calls
+// interleave. Traced empirically (Node's Promise.all evaluates array elements
+// in order, each async function running synchronously to its first await):
+// the actual call sequence is (1) event lookup [listSlotsOutsideWindow],
+// (2) breaks COUNT(*) [listBreaksOutsideWindow — its first select, and it
+// starts running while listSlotsOutsideWindow is paused on its first await],
+// (3) sessions COUNT(*) [listSlotsOutsideWindow resumes], (4) breaks LIMITed
+// rows, (5) sessions LIMITed rows. Mirrors the makeChain pattern established
+// in test/agenda-repo.test.ts.
 function makeChain(rows: unknown[], onLimit?: (n: number) => void) {
   const chain: any = {
     from: () => chain,
@@ -141,14 +146,19 @@ function makeChain(rows: unknown[], onLimit?: (n: number) => void) {
   return chain;
 }
 
-function fakeDb(outsideRows: { submissionId: string; day: string; seq: number; title: string }[]) {
+function fakeDb(
+  outsideRows: { submissionId: string; day: string; seq: number; title: string }[],
+  outsideBreakRows: { id: string; day: string; label: string; startMin: number }[] = [],
+) {
   let call = 0;
   return {
     select: () => {
       call += 1;
       if (call === 1) return makeChain([{ recordPrefix: "EV" }]); // event lookup
-      if (call === 2) return makeChain([{ count: outsideRows.length }]); // COUNT(*)
-      return makeChain(outsideRows); // LIMITed row query
+      if (call === 2) return makeChain([{ count: outsideBreakRows.length }]); // breaks COUNT(*)
+      if (call === 3) return makeChain([{ count: outsideRows.length }]); // sessions COUNT(*)
+      if (call === 4) return makeChain(outsideBreakRows); // breaks LIMITed rows
+      return makeChain(outsideRows); // sessions LIMITed rows
     },
   } as unknown as import("../src/server/context").Db;
 }
@@ -187,6 +197,7 @@ describe("DEC-844: PATCH /api/v1/events/:eventId narrowing names unscheduled ses
       startDate: string;
       endDate: string;
       unscheduledByWindow: { count: number; sessions: { submissionId: string; ref: string; title: string }[] };
+      breaksOutsideWindow: { count: number; breaks: unknown[] };
     };
     // the write applied (the mocked updateEvent's patch flowed through to the response)
     expect(body.endDate).toBe("2026-06-05");
@@ -194,6 +205,30 @@ describe("DEC-844: PATCH /api/v1/events/:eventId narrowing names unscheduled ses
     expect(body.unscheduledByWindow.count).toBe(1);
     expect(body.unscheduledByWindow.sessions).toEqual([
       { submissionId: "sub-1", ref: "EV-004", title: "Outside Talk", day: "2026-06-15" },
+    ]);
+    // and, alongside it, the breaksOutsideWindow key is present even at 0
+    expect(body.breaksOutsideWindow).toEqual({ count: 0, breaks: [] });
+  });
+
+  it("also names a break that now falls outside the new window", async () => {
+    const db = fakeDb([], [{ id: "brk-1", day: "2026-06-15", label: "Lunch", startMin: 720 }]);
+    const app = await buildApp(db, { userId: "u1", role: "organizer", orgId: ORG_A });
+
+    const res = await app.request(`/api/v1/events/${EVENT_ID}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ endDate: "2026-06-05" }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      unscheduledByWindow: { count: number; sessions: unknown[] };
+      breaksOutsideWindow: { count: number; breaks: { id: string; day: string; label: string; startMin: number }[] };
+    };
+    expect(body.unscheduledByWindow).toEqual({ count: 0, sessions: [] });
+    expect(body.breaksOutsideWindow.count).toBe(1);
+    expect(body.breaksOutsideWindow.breaks).toEqual([
+      { id: "brk-1", day: "2026-06-15", label: "Lunch", startMin: 720 },
     ]);
   });
 
@@ -208,7 +243,11 @@ describe("DEC-844: PATCH /api/v1/events/:eventId narrowing names unscheduled ses
     });
 
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { unscheduledByWindow: { count: number; sessions: unknown[] } };
+    const body = (await res.json()) as {
+      unscheduledByWindow: { count: number; sessions: unknown[] };
+      breaksOutsideWindow: { count: number; breaks: unknown[] };
+    };
     expect(body.unscheduledByWindow).toEqual({ count: 0, sessions: [] });
+    expect(body.breaksOutsideWindow).toEqual({ count: 0, breaks: [] });
   });
 });
