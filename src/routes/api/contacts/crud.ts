@@ -70,7 +70,13 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     const orgId = currentOrgId(c);
     const query = c.req.query();
     const rules = parseRulesQueryParam(query.rules);
-    const params = repo.parseContactListQuery(query as Record<string, string | undefined>, rules);
+    let params;
+    try {
+      params = repo.parseContactListQuery(query as Record<string, string | undefined>, rules);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new ApiError("invalid", message);
+    }
     const result = await repo.listContactsForOrg(c.var.db, orgId, params);
     // DEC-738/DEC-726 (supersedes DEC-712): labels are the contact's own
     // customFields, formatted once here -- no separate query.

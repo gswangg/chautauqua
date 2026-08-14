@@ -108,7 +108,12 @@ exportsRoutes.get("/api/v1/events/:eventId/export/:kind", requireOrganizer, asyn
   if (kind === "contacts") {
     const query = c.req.query();
     const rules = parseRulesQueryParam(query.rules);
-    contactsListParams = parseContactListQuery(query as Record<string, string | undefined>, rules);
+    try {
+      contactsListParams = parseContactListQuery(query as Record<string, string | undefined>, rules);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new ApiError("invalid", message);
+    }
   }
 
   const table = await buildExport(c.var.db, eventId, kind, orgId, submissionsListParams, contactsListParams);
