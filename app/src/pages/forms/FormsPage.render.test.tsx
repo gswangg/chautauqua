@@ -131,7 +131,12 @@ describe('FormsPage render smoke', () => {
     const settingsLink = screen.getByRole('link', { name: 'Settings › Call for papers' });
     expect(settingsLink).toHaveAttribute('href', '/settings?section=cfp');
     expect(screen.queryByDisplayValue('DevCon 2026 CFP')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+
+    // Amendment (wave 72): the header's Save renders from load and is
+    // disabled until the Opens/Closes strip differs from the loaded form.
+    const headerSave = screen.getByRole('button', { name: 'Save' });
+    expect(headerSave).toHaveClass('chq-btn', 'chq-btn-primary');
+    expect(headerSave).toBeDisabled();
 
     // FieldModal (create).
     const addButton = screen.getByRole('button', { name: 'Add a question' });
@@ -177,5 +182,110 @@ describe('FormsPage render smoke', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: 'New field' })).not.toBeInTheDocument();
     });
+  });
+});
+
+// Amendment (wave 72): the Opens/Closes strip cells become the page's
+// editable CFP window, and the header's Save PATCHes the SAME endpoint and
+// payload keys CallForPapersPanel already uses.
+describe('FormsPage CFP window Save (DEC-033 wave-72 amendment)', () => {
+  const WINDOW_FORM: CfpForm = {
+    id: 'form-1',
+    eventId: EVENT_ID,
+    title: 'DevCon 2026 CFP',
+    intro: 'Submit your talk!',
+    isDefault: true,
+    openDate: Date.UTC(2026, 0, 1),
+    closeDate: Date.UTC(2026, 5, 1),
+    tracks: [],
+    fields: [],
+  };
+
+  function setup(patchHandler: unknown) {
+    return mockApi({
+      [`GET /api/v1/events/${EVENT_ID}`]: { id: EVENT_ID, slug: 'devcon-2026', timezone: 'UTC' },
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: WINDOW_FORM,
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([], { total: 0 }),
+      [`PATCH /api/v1/forms/${WINDOW_FORM.id}`]: patchHandler,
+    });
+  }
+
+  it('renders Received as a read-only fact, never an input', async () => {
+    setup({ ...WINDOW_FORM });
+    render(
+      <MemoryRouter>
+        <FormsPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+    });
+    expect(screen.getByText('0 submissions')).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Received/i)).not.toBeInTheDocument();
+  });
+
+  it('enables Save when Opens is edited, and Save PATCHes exactly {openDate, closeDate}', async () => {
+    const fetchMock = setup({ ...WINDOW_FORM, openDate: Date.UTC(2026, 0, 15) });
+    render(
+      <MemoryRouter>
+        <FormsPage />
+      </MemoryRouter>,
+    );
+
+    const saveButton = await screen.findByRole('button', { name: 'Save' });
+    expect(saveButton).toBeDisabled();
+
+    const openField = screen.getByLabelText('Opens');
+    fireEvent.change(openField, { target: { value: '2026-01-15' } });
+    fireEvent.blur(openField);
+
+    await waitFor(() => expect(saveButton).not.toBeDisabled());
+
+    fireEvent.click(saveButton);
+
+    await waitFor(() => expect(saveButton).toBeDisabled());
+
+    const patchCall = fetchMock.mock.calls.find(
+      ([input, init]) =>
+        (typeof input === 'string' ? input : input.toString()).includes(`/forms/${WINDOW_FORM.id}`) &&
+        (init?.method ?? '').toUpperCase() === 'PATCH',
+    );
+    expect(patchCall).toBeDefined();
+    const body = JSON.parse((patchCall?.[1]?.body as string) ?? '{}');
+    expect(body).toEqual({ openDate: Date.UTC(2026, 0, 15), closeDate: Date.UTC(2026, 5, 1) });
+  });
+
+  it('renders a server 400 naming closeDate on the Closes cell, not a page-level banner', async () => {
+    setup({
+      status: 400,
+      body: {
+        error: {
+          code: 'validation_error',
+          message: 'The call cannot close before it opens.',
+          fields: { closeDate: 'Must be after the open date' },
+        },
+      },
+    });
+    render(
+      <MemoryRouter>
+        <FormsPage />
+      </MemoryRouter>,
+    );
+
+    const saveButton = await screen.findByRole('button', { name: 'Save' });
+    const closeField = screen.getByLabelText('Closes');
+    fireEvent.change(closeField, { target: { value: '2025-01-01' } });
+    fireEvent.blur(closeField);
+
+    await waitFor(() => expect(saveButton).not.toBeDisabled());
+    fireEvent.click(saveButton);
+
+    const closesCell = closeField.closest('.chq-forms-strip-cell') as HTMLElement;
+    await waitFor(() => {
+      expect(within(closesCell).getByText('Must be after the open date')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('The call cannot close before it opens.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
