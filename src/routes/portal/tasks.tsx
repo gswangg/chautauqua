@@ -415,15 +415,28 @@ portalTasksRoutes.post("/tasks/:assignmentId/form", csrfForm, async (c) => {
   const hasFileErrors = Object.keys(fileErrors).length > 0;
   if (!validation.ok || hasFileErrors) {
     // DEC-040 amendment (wave 74): a validation failure on ANY field must
-    // not leave this request's already-uploaded files behind — delete the
-    // R2 objects (through the same store handle) and their `file` rows
-    // before rendering the 400. A cleanup failure is loud, not swallowed:
-    // it replaces the original validation error, same as the CFP path's
-    // rollback catch would surface a thrown delete.
+    // not leave this request's already-uploaded files behind — delete their
+    // `file` rows and the R2 objects before rendering the 400.
+    //
+    // DEC-713 ordering (amended wave 50/51, scanned by
+    // test/file-delete-ordering.scan.test.ts): the DB rows commit FIRST,
+    // then the R2 objects are deleted in a try whose catch logs and
+    // swallows. The two failure modes are not symmetric — a surviving `file`
+    // row pointing at missing bytes 404s forever, while an object outliving
+    // its row is just an unreferenced blob, invisible and reclaimable. So a
+    // cleanup failure never replaces the validation error the speaker
+    // actually needs to see: they still get their 400 naming the bad field.
     if (writtenFiles.length > 0) {
-      await store.deleteMany(writtenFiles.map((f) => f.r2Key));
       for (const f of writtenFiles) {
         await deleteFileRow(c.var.db, f.fileId);
+      }
+      try {
+        await store.deleteMany(writtenFiles.map((f) => f.r2Key));
+      } catch (err) {
+        console.error(
+          `portal/tasks form rollback: store.deleteMany failed for assignment ${assignmentId} after row commit (${writtenFiles.length} keys)`,
+          err,
+        );
       }
     }
     const mergedErrors = { ...(validation.ok ? {} : validation.errors), ...fileErrors };
