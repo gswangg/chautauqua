@@ -78,6 +78,14 @@
 //     A 200 here is a refusal that doesn't mutate, not a leak -- ledgered
 //     with a reason rather than forced into the binary 400/403/404 shape the
 //     other two already satisfy.
+//
+// Wave 41: DEC-027's wave-41 amendment gave the email-log and evaluations
+// export kinds their own surface's narrowing filter, so GET /api/v1/events/
+// :eventId/export/:kind reads ?contactId=/?planId= and JOINED this
+// population. It is EXERCISED (not excluded): the evaluations kind resolves
+// ?planId= against this event's own plans and throws before any row query
+// when it isn't one, so a foreign plan id is refused 400 rather than
+// silently narrowing the CSV to empty.
 
 import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
@@ -555,6 +563,17 @@ const CASES: RouteCase[] = [
     requestPath: `/api/v1/tasks/${IDS.taskB}/assign`,
     body: { contactIds: [IDS.contactA] },
   },
+  // Joined the population in wave 41 (DEC-027 wave-41 amendment gave the
+  // email-log and evaluations export kinds their own surface's filter, so
+  // this registration now reads ?contactId=/?planId=). Exercised on the
+  // evaluations kind, the one matched key exportEvaluations actually
+  // DEREFERENCES as an object reference.
+  {
+    method: "GET",
+    path: "/api/v1/events/:eventId/export/:kind",
+    requestPath: `/api/v1/events/${EVENT_B}/export/evaluations`,
+    query: { planId: IDS.planA },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -616,6 +635,14 @@ const CROSS_ORG_BODY_LEDGER: LedgerEntry[] = [
     path: "/api/v1/events/:eventId/onboarding/remind/preview",
     reason: "same narrowing-filter shape as its /remind sibling immediately above (reminders.ts:535-575)",
   },
+  // wave 41: exportEvaluations resolves ?planId= against THIS event's plans
+  // and throws ApiError('invalid') before any row query when it isn't one
+  // (exports/evaluations.ts:135-144), so the foreign id is refused 400, not
+  // silently narrowed to an empty CSV. (The email-log kind's ?contactId= on
+  // the same registration is the narrowing-filter shape already ledgered for
+  // GET /events/:eventId/email-log above; the stronger planId contract is
+  // what this registration is exercised on.)
+  { method: "GET", path: "/api/v1/events/:eventId/export/:kind", expectedStatus: 400 },
 ];
 
 function ledgerKey(entry: { method: string; path: string }): string {
