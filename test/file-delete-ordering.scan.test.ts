@@ -318,17 +318,12 @@ function scanForDeleteHits(): DeleteHit[] {
 
 // The ledger for any deliberate object-before-row delete (a hit that is NOT
 // in the committed-delete shape and is not one of the two fixed EXEMPT_HITS
-// above). Three real call sites (files.ts, submissions.ts, portal-config.ts)
-// are in the committed-delete shape as of wave 50/51. One deliberate
-// exception, found wave 19 once the RECEIVER-aware regex could see it:
-const KNOWN_BYTES_BEFORE_ROW: { file: string; functionOrNearestExport: string; reason: string }[] = [
-  {
-    file: "src/routes/public/submit.tsx",
-    functionOrNearestExport: "(module scope)",
-    reason:
-      "This is the anonymous public CFP submit handler's own N-object rollback (see the comment directly above it, and src/server/context.ts's putThenRecord doc comment: 'Multi-object batch uploads (src/routes/public/submit.tsx) keep their own rollback because a single delete-on-throw doesn't cover N objects'). It runs inside the catch of the DB-write try block, AFTER createSubmission() has already committed a submission row, and it deletes the just-uploaded R2 objects BEFORE commitSubmissionDelete() removes that row two lines later -- object-before-row, not the committed-delete shape. This is not the same situation the committed-delete shape guards against: this is a full transaction rollback (both the row and its R2 objects are being discarded together because a later step in the same request failed), not a steady-state row update that leaves R2 objects referenced by a row that no longer exists. The catch also rethrows (`throw err`), which alone disqualifies it from the committed-delete shape (that shape specifically requires a swallowing catch). Reordering this path (row-delete first, R2-delete second, swallowed) is a genuine behaviour change on the anonymous public CFP write path and deserves its own wave, not a drive-by fix inside this scan-widening task.",
-  },
-];
+// above). All real call sites (files.ts, submissions.ts, portal-config.ts,
+// and -- as of DEC-713 wave 21 -- submit.tsx's own rollback) are in the
+// committed-delete shape. A ledger entry that outlives the lane that could
+// not fix it becomes permission (DEC-635 wave-52), so entries are deleted
+// when the underlying ordering is fixed, not carried forward or reworded.
+const KNOWN_BYTES_BEFORE_ROW: { file: string; functionOrNearestExport: string; reason: string }[] = [];
 
 describe("R2 delete-before-row-commit ordering scan (DEC-713 amendment, wave 19/51)", () => {
   it("the scan finds store.delete/deleteMany call sites across all of src/ (not vacuous, and not just the pre-wave-19 6)", () => {
@@ -342,10 +337,14 @@ describe("R2 delete-before-row-commit ordering scan (DEC-713 amendment, wave 19/
     expect(hits.length).toBeGreaterThanOrEqual(7);
   });
 
-  it("finds the renamed-receiver call site (fileStore.delete) that the pre-wave-19 literal `store.` regex missed", () => {
+  it("finds the renamed-receiver call site (fileStore.delete) that the pre-wave-19 literal `store.` regex missed, now in the committed-delete shape (DEC-713 wave 21)", () => {
     const hits = scanForDeleteHits();
-    const hit = hits.find((h) => h.file === "src/routes/public/submit.tsx" && h.line === 610);
-    expect(hit, "expected a hit at src/routes/public/submit.tsx:610 (fileStore.delete) -- the receiver-aware regex regressed").toBeDefined();
+    // Pinned by FILE, not by line number: the wave-21 reorder (row-delete
+    // first, R2 cleanup second, wrapped in its own swallowing try) moves the
+    // fileStore.delete call off the old line 610.
+    const hit = hits.find((h) => h.file === "src/routes/public/submit.tsx");
+    expect(hit, "expected a hit at src/routes/public/submit.tsx (fileStore.delete) -- the receiver-aware regex regressed").toBeDefined();
+    expect(hit?.committedShape, "submit.tsx's rollback delete should be in the committed-delete shape as of DEC-713 wave 21").toBe(true);
   });
 
   it("every top-level entry under src/ is either scanned or listed in EXCLUDED_ROOTS with a reason", () => {

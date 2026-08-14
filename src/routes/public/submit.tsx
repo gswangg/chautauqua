@@ -606,10 +606,17 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
 
     await upsertSubmissionAnswers(db, submission.id, cleaned);
   } catch (err) {
-    // DEC-530: rollback deletes fan out in parallel too.
-    await Promise.all(preparedFiles.map((pf) => fileStore.delete(pf.r2Key)));
+    // DEC-713 (wave 21): a rollback is still an ordering — commit the row
+    // delete first, then best-effort clean up the R2 objects (DEC-530: the
+    // cleanup still fans out in parallel), and always rethrow the original
+    // error rather than letting cleanup failure mask it.
     if (submission !== undefined) {
       await commitSubmissionDelete(db, event.id, [submission.id]);
+    }
+    try {
+      await Promise.all(preparedFiles.map((pf) => fileStore.delete(pf.r2Key)));
+    } catch (cleanupErr) {
+      console.error("submit rollback: R2 cleanup failed", cleanupErr);
     }
     throw err;
   }
