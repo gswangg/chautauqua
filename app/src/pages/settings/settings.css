@@ -10,6 +10,17 @@
    back to literal hex so the page still renders before the shell lane
    lands :root tokens. */
 
+/* DEC-896 amendment (wave 26): field widths for the shared settings edit
+   shell (SettingsEditForm.tsx) -- custom properties, never a literal at a
+   call site, so the same five widths (plus 'full' = 100% of --chq-measure)
+   are the ONLY widths a settings edit field can render at. */
+:root {
+  --chq-field-w-date: 200px;
+  --chq-field-w-seats: 110px;
+  --chq-field-w-name: 320px;
+  --chq-field-w-slug: 420px;
+}
+
 .chq-settings-account-link {
   margin: 0 0 20px;
   font-size: 13px;
@@ -736,6 +747,116 @@
   grid-template-columns: 1fr 1fr;
   gap: 0 34px;
   width: 100%;
+}
+
+/* DEC-896 amendment (wave 26): the shared settings edit-view shell
+   (SettingsEditForm.tsx). Section rhythm matches the read view -- the
+   `.chq-settings-panel form` rule above already gives the form's own
+   direct children (fields wrapper / consequence line / footer) a 14px
+   stack gap; the fields wrapper repeats that same 14px between individual
+   fields. */
+.chq-settings-edit-form {
+  width: 100%;
+}
+
+.chq-settings-edit-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chq-settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Width is fixed per field kind via the tokens above -- an explicit width
+   on a flex child (parent is flex-direction:column) wins over the
+   parent's default stretch, so this alone is enough to stop every field
+   from going full width. */
+.chq-settings-field-date {
+  width: var(--chq-field-w-date);
+}
+
+.chq-settings-field-seats {
+  width: var(--chq-field-w-seats);
+}
+
+.chq-settings-field-name {
+  width: var(--chq-field-w-name);
+}
+
+.chq-settings-field-slug {
+  width: var(--chq-field-w-slug);
+}
+
+.chq-settings-field-full {
+  width: 100%;
+}
+
+.chq-settings-field-label-text {
+  display: block;
+}
+
+.chq-settings-field-optional {
+  font-weight: 400;
+  color: var(--chq-ink-2);
+}
+
+.chq-settings-field-hint {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--chq-ink-2);
+}
+
+/* Two fields on one line (Start date / End date): the pair's grid gives
+   each field its column width, so a paired field's own fixed width token
+   is overridden back to 100% of that column. */
+.chq-settings-field-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.chq-settings-field-pair .chq-settings-field {
+  width: 100%;
+}
+
+/* The B10 consequence line -- right-aligned, one per edit view, naming
+   exactly what a save changes/breaks. */
+.chq-settings-edit-consequence {
+  margin: 0;
+  font-size: 12px;
+  color: var(--chq-ink-2);
+  text-align: right;
+}
+
+/* The footer is a ROW, never a full-width primary bar with a centred
+   Cancel beneath (the single most visible phone tell): destructive far
+   left via margin-right:auto, then secondary/primary right-flushed via
+   justify-content:flex-end on the row itself -- auto margins on the
+   destructive wrapper win over justify-content for that one item, which is
+   what pushes it away from the right-flushed pair rather than into it. */
+.chq-settings-edit-footer {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 18px;
+  border-top: 1px solid var(--chq-hairline);
+}
+
+.chq-settings-edit-footer-destructive,
+.chq-settings-edit-footer-secondary,
+.chq-settings-edit-footer-primary {
+  display: flex;
+}
+
+.chq-settings-edit-footer-destructive {
+  margin-right: auto;
 }
 
 .chq-settings-tracks-rooms-col {

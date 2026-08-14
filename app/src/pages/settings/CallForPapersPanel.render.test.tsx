@@ -46,6 +46,7 @@ function mockCfp(overrides: Record<string, unknown> = {}) {
       { id: 'trk1', name: 'Keynotes' },
       { id: 'trk2', name: 'Workshops' },
     ]),
+    [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([], { total: 4 }),
     ...overrides,
   });
 }
@@ -245,5 +246,99 @@ describe('CallForPapersPanel', () => {
       expect(within(section).getByRole('button', { name: 'Close the call now' })).toBeInTheDocument();
     });
     expect(within(section).queryByRole('button', { name: 'Open the call now' })).not.toBeInTheDocument();
+  });
+
+  // DEC-896 amendment (wave 26): the shared settings edit shell.
+  describe('edit view shell (DEC-896)', () => {
+    it('renders the footer as destructive-then-secondary-then-primary in DOM order, no full-width buttons, and the consequence line', async () => {
+      mockCfp();
+      render(
+        <MemoryRouter>
+          <CallForPapersPanel />
+        </MemoryRouter>,
+      );
+      const section = await screen.findByRole('region', { name: 'Call for papers' });
+      await waitFor(() => {
+        expect(within(section).getByText(`${window.location.origin}/submit/devcon-2026`)).toBeInTheDocument();
+      });
+      fireEvent.click(within(section).getByRole('button', { name: 'Edit the form' }));
+
+      await waitFor(() => {
+        expect(within(section).getByText(/submissions received/)).toBeInTheDocument();
+      });
+      expect(within(section).getByText('4 submissions received · changes do not affect them')).toBeInTheDocument();
+
+      const footer = section.querySelector('.chq-settings-edit-footer') as HTMLElement;
+      expect(footer).not.toBeNull();
+      // No destructive control on this panel -- only secondary then primary.
+      expect(footer.querySelector('.chq-settings-edit-footer-destructive')).toBeNull();
+      const secondaryButton = within(footer).getByRole('button', { name: 'Cancel' });
+      const primaryButton = within(footer).getByRole('button', { name: 'Save' });
+      const order = Array.from(footer.querySelectorAll('button'));
+      expect(order.indexOf(secondaryButton as HTMLButtonElement)).toBeLessThan(
+        order.indexOf(primaryButton as HTMLButtonElement),
+      );
+
+      const footerButtons = Array.from(footer.querySelectorAll('button'));
+      expect(footerButtons.length).toBeGreaterThan(0);
+      for (const button of footerButtons) {
+        expect(button.className).not.toMatch(/full-width|btn-full/);
+      }
+    });
+
+    it('shows a "Close the call" fast path on the read view while the call is open, and closes it behind a confirm without entering edit', async () => {
+      const now = Date.now();
+      mockCfp({
+        [`GET /api/v1/events/${EVENT_ID}/forms`]: {
+          id: 'form1',
+          eventId: EVENT_ID,
+          intro: 'Tell us about your talk.',
+          openDate: now - 1000 * 60 * 60 * 24,
+          closeDate: now + 1000 * 60 * 60 * 24 * 30,
+          tracks: ['trk1'],
+          fields: [{ id: 'f1', label: 'Title', locked: true }],
+        },
+      });
+      render(
+        <MemoryRouter>
+          <CallForPapersPanel />
+        </MemoryRouter>,
+      );
+      const section = await screen.findByRole('region', { name: 'Call for papers' });
+      const fastPath = await within(section).findByRole('button', { name: 'Close the call' });
+
+      fireEvent.click(fastPath);
+      const confirmButton = await screen.findByRole('button', { name: 'Close the call now' });
+
+      mockCfp({
+        [`GET /api/v1/events/${EVENT_ID}/forms`]: {
+          id: 'form1',
+          eventId: EVENT_ID,
+          intro: 'Tell us about your talk.',
+          openDate: now - 1000 * 60 * 60 * 24,
+          closeDate: now,
+          tracks: ['trk1'],
+          fields: [{ id: 'f1', label: 'Title', locked: true }],
+        },
+        [`PATCH /api/v1/forms/form1`]: {
+          id: 'form1',
+          eventId: EVENT_ID,
+          intro: 'Tell us about your talk.',
+          openDate: now - 1000 * 60 * 60 * 24,
+          closeDate: now,
+          tracks: ['trk1'],
+          fields: [{ id: 'f1', label: 'Title', locked: true }],
+        },
+      });
+      fireEvent.click(confirmButton);
+
+      // Never entered the edit drill -- the confirm dialog closes and the
+      // panel stays on its read-only summary throughout.
+      await waitFor(() => {
+        expect(screen.queryByRole('button', { name: 'Close the call now' })).not.toBeInTheDocument();
+      });
+      expect(within(section).queryByRole('textbox')).not.toBeInTheDocument();
+      expect(within(section).getByRole('button', { name: 'Edit the form' })).toBeInTheDocument();
+    });
   });
 });

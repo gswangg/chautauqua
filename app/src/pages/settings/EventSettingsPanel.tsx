@@ -14,6 +14,7 @@ import { apiGet, apiPatch, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { buildEventPatch, type EventSettingsForm } from './formState';
 import { SummarySection } from './SummarySection';
+import { SettingsEditForm, SettingsField, SettingsFieldPair } from './SettingsEditForm';
 import { plural } from '../../lib/plural';
 import { dateInputToMs, daysUntil } from '../../lib/dates';
 import { formatEventDayRange } from '../../../../src/lib/event-time';
@@ -231,68 +232,68 @@ export function EventSettingsPanel() {
         editing={editing}
       >
         {form ? (
-        <form
+        <SettingsEditForm
           onSubmit={(e) => {
             e.preventDefault();
             void handleSave();
           }}
+          consequence="Changing the slug breaks every link already shared, including saved embeds"
+          footer={{
+            primary: (
+              <button type="submit" className="chq-btn chq-btn-primary" disabled={saving}>
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            ),
+            secondary: (
+              <button type="button" className="chq-btn chq-btn-secondary" onClick={closeEdit} disabled={saving}>
+                Cancel
+              </button>
+            ),
+          }}
         >
-          <label>
-            Name
+          <SettingsField label="Name" width="name">
             <input className="chq-input" value={form.name} onChange={(e) => update('name', e.target.value)} />
-          </label>
-          <label>
-            Slug
+          </SettingsField>
+          <SettingsField label="Slug" width="slug">
             <input className="chq-input" value={form.slug} onChange={(e) => update('slug', e.target.value)} />
-          </label>
-          <label htmlFor="event-settings-start-date">
-            Start date
-            <DateField
-              id="event-settings-start-date"
-              value={form.startDate}
-              onChange={(next) => update('startDate', next)}
-            />
-          </label>
-          <label htmlFor="event-settings-end-date">
-            End date
-            <DateField
-              id="event-settings-end-date"
-              value={form.endDate}
-              onChange={(next) => update('endDate', next)}
-            />
-          </label>
-          <label>
-            Location
+          </SettingsField>
+          <SettingsFieldPair>
+            <SettingsField label="Start date" htmlFor="event-settings-start-date" width="date">
+              <DateField
+                id="event-settings-start-date"
+                value={form.startDate}
+                onChange={(next) => update('startDate', next)}
+              />
+            </SettingsField>
+            <SettingsField label="End date" htmlFor="event-settings-end-date" width="date">
+              <DateField
+                id="event-settings-end-date"
+                value={form.endDate}
+                onChange={(next) => update('endDate', next)}
+              />
+            </SettingsField>
+          </SettingsFieldPair>
+          <SettingsField label="Venue" width="name">
             <input className="chq-input" value={form.location} onChange={(e) => update('location', e.target.value)} />
-          </label>
-          <label>
-            Timezone
+          </SettingsField>
+          <SettingsField label="Time zone" width="name">
             <input className="chq-input" value={form.timezone} onChange={(e) => update('timezone', e.target.value)} />
-          </label>
-          <label>
-            Record prefix
+          </SettingsField>
+          <SettingsField label="Record prefix" width="name">
             <input className="chq-input" value={form.recordPrefix} readOnly disabled />
-          </label>
-          <label>
-            Logo URL
+          </SettingsField>
+          <SettingsField label="Logo URL" width="full">
             <input className="chq-input" value={form.logoUrl} onChange={(e) => update('logoUrl', e.target.value)} />
-          </label>
-          <label>
-            Accent color
+          </SettingsField>
+          <SettingsField label="Accent color" width="name">
             <input
               className="chq-input"
               value={form.accentColor}
               onChange={(e) => update('accentColor', e.target.value)}
             />
-          </label>
-          <button type="submit" className="chq-btn chq-btn-primary" disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-          <button type="button" className="chq-btn chq-btn-tertiary" onClick={closeEdit} disabled={saving}>
-            Cancel
-          </button>
+          </SettingsField>
           {saved ? <span role="status"> Saved.</span> : null}
-        </form>
+        </SettingsEditForm>
         ) : null}
       </SummarySection>
     </>
