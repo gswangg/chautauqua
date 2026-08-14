@@ -49,7 +49,7 @@ import {
   isSecureRequest,
   CSRF_COOKIE_NAME,
 } from "../../auth/cookies";
-import { loadEditableSubmission } from "../../server/repo/portal-edit";
+import { loadEditableSubmission, getPortalParticipants, type PortalParticipant } from "../../server/repo/portal-edit";
 import { canEditSubmission } from "../../domain/edit-lock";
 import { ensureOnboardingTasks, getSubmissionStatusForParticipant } from "../../server/repo/submissions";
 
@@ -420,12 +420,21 @@ function SubmissionDetailPage(props: {
   deliverableVersion: number | null;
   fileRequestTask: PortalTaskAssignment | null;
   speakerName: string;
+  coPresenters: PortalParticipant[];
 }) {
-  const { detail, editable, deliverable, deliverableVersion, fileRequestTask } = props;
+  const { detail, editable, deliverable, deliverableVersion, fileRequestTask, coPresenters } = props;
   const metaParts = [detail.ref, detail.format, detail.trackName].filter(
     (p): p is string => p !== null && p.length > 0,
   );
   const placed = detail.day !== null && detail.startMin !== null;
+  // DEC-777 (wave 4 amendment): the speaker's own fact of who else is on
+  // the session — named exactly as the portal stored them (DEC-866, never
+  // a CRM identity resolved from a supplied email), the viewer's own row
+  // excluded upstream, role suffixed only when it isn't the plain "speaker"
+  // role. Absent entirely when there is nobody else — never "With -".
+  const withLine = coPresenters
+    .map((p) => (p.role === "speaker" ? p.name : `${p.name} (${p.roleLabel.toLowerCase()})`))
+    .join(", ");
   return (
     <PortalLayout branding={props.branding} csrfToken={props.csrfToken} speakerName={props.speakerName}>
       <div class="chq-portal-back-row">
@@ -438,6 +447,7 @@ function SubmissionDetailPage(props: {
       </div>
       <h1 class="chq-portal-hero">{detail.title}</h1>
       {metaParts.length > 0 ? <p class="chq-portal-sub">{metaParts.join(" · ")}</p> : null}
+      {coPresenters.length > 0 ? <p class="chq-portal-sub">With {withLine}</p> : null}
       {placed ? (
         <p class="chq-portal-sub">{formatPlacement(detail.day!, detail.startMin!, detail.roomName)}</p>
       ) : null}
@@ -588,6 +598,11 @@ portalRoutes.get("/submissions/:id", async (c) => {
   const fileRequestTask =
     fileRequestCandidates.find((t) => (candidatesByEvent.get(t.eventId) ?? []).some((cand) => cand.id === id)) ??
     null;
+  // DEC-777 (wave 4 amendment): the SAME getPortalParticipants read
+  // edit.tsx uses — one call, never a second query shape or a
+  // per-participant query — with the viewer's own row excluded.
+  const participants = await getPortalParticipants(c.var.db, id);
+  const coPresenters = participants.filter((p) => p.contactId !== contactId);
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
   if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
   return c.html(
@@ -600,6 +615,7 @@ portalRoutes.get("/submissions/:id", async (c) => {
       deliverableVersion={deliverableVersion}
       fileRequestTask={fileRequestTask}
       speakerName={data.contactName}
+      coPresenters={coPresenters}
     />,
   );
 });

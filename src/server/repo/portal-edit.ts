@@ -352,6 +352,7 @@ export async function saveSubmissionEdits(
 
 export interface PortalParticipant {
   id: string;
+  contactId: string;
   name: string;
   email: string;
   role: string;
@@ -374,6 +375,7 @@ export async function getPortalParticipants(db: Db, submissionId: string): Promi
   const rows = await db
     .select({
       id: schema.participant.id,
+      contactId: schema.participant.contactId,
       firstName: schema.contact.firstName,
       lastName: schema.contact.lastName,
       email: schema.contact.email,
@@ -393,6 +395,7 @@ export async function getPortalParticipants(db: Db, submissionId: string): Promi
     .orderBy(schema.participant.order);
   return rows.map((r) => ({
     id: r.id,
+    contactId: r.contactId,
     name: r.nameAtTime?.trim() || `${r.firstName} ${r.lastName}`.trim(),
     email: r.email,
     role: r.role,
