@@ -48,6 +48,7 @@ import {
   listFileChainVersionsMany,
   listFileComments,
   listFileCommentsForFiles,
+  reopenContentReview,
   resolveTaskFileChainLatest,
   resolveTaskFileChainLatestMany,
 } from "../../server/repo/files";
@@ -484,6 +485,14 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
       uploadedByContactId: contactId,
     }),
   );
+
+  // DEC-020 amendment: a new deliverable version reopens content review.
+  // submissionId is null for a plain 'handout' task (no submission link) —
+  // reopen only when this upload is a real, submission-linked deliverable.
+  // kind is already narrowed to FILE_KINDS above (never HEADSHOT_KIND).
+  if (submissionId) {
+    await reopenContentReview(c.var.db, submissionId);
+  }
 
   await saveTaskFileCompletion(c.var.db, assignmentId, fileId);
   await updateAssignmentStatus(c.var.db, assignmentId, "complete", auth.userId, new Date());

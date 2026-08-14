@@ -55,6 +55,7 @@ vi.mock("../src/server/repo/files", async () => {
     // this suite resolves to is "sub-resolved-1"/"presentation", so the
     // prior file in these fixtures always belongs to that same submission.
     getReplacesTarget: vi.fn(async () => ({ submissionId: "sub-resolved-1", kind: "presentation" })),
+    reopenContentReview: vi.fn(async () => {}),
   };
 });
 
