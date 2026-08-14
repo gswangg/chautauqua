@@ -64,6 +64,7 @@ import {
   saveTaskFormResponse,
   type DeliverableCandidate,
 } from "../../server/repo/portal";
+import { deleteFileRow } from "../../server/repo/portal-config";
 import { listFields } from "../../server/repo/forms";
 import { validateAnswers } from "../../forms/validate";
 import type { AnswerMap } from "../../forms/types";
@@ -372,6 +373,13 @@ portalTasksRoutes.post("/tasks/:assignmentId/form", csrfForm, async (c) => {
   // other unanswered field.
   const store = makeFileStore(c.env.FILES);
   const fileErrors: Record<string, string> = {};
+  // DEC-040 amendment (wave 74): every file this request writes gets tracked
+  // here so a validation failure below can roll them back — mirrors the
+  // public CFP path (src/routes/public/submit.tsx) instead of leaking an R2
+  // object + `file` row on every failed multi-field attempt. A carried-
+  // forward prior file id (the `priorAnswers` branch above) is NEVER added
+  // here — it isn't this request's write, so it must never be deleted.
+  const writtenFiles: { r2Key: string; fileId: string }[] = [];
   for (const field of fileFields) {
     const file = fileAnswers[field.id];
     if (!file) {
@@ -400,11 +408,24 @@ portalTasksRoutes.post("/tasks/:assignmentId/form", csrfForm, async (c) => {
       }),
     );
     answers[field.id] = fileId;
+    writtenFiles.push({ r2Key, fileId });
   }
 
   const validation = validateAnswers(fields, answers);
   const hasFileErrors = Object.keys(fileErrors).length > 0;
   if (!validation.ok || hasFileErrors) {
+    // DEC-040 amendment (wave 74): a validation failure on ANY field must
+    // not leave this request's already-uploaded files behind — delete the
+    // R2 objects (through the same store handle) and their `file` rows
+    // before rendering the 400. A cleanup failure is loud, not swallowed:
+    // it replaces the original validation error, same as the CFP path's
+    // rollback catch would surface a thrown delete.
+    if (writtenFiles.length > 0) {
+      await store.deleteMany(writtenFiles.map((f) => f.r2Key));
+      for (const f of writtenFiles) {
+        await deleteFileRow(c.var.db, f.fileId);
+      }
+    }
     const mergedErrors = { ...(validation.ok ? {} : validation.errors), ...fileErrors };
     const data = await getPortalData(c.var.db, contactId, auth.orgId);
     const assignment = priorAssignments.find((a) => a.id === assignmentId);
