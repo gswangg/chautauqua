@@ -19,42 +19,39 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   matches" is a fact about that minute only. DECISION DOC != FIX; MINTING IS
   IO; boundary fails per RECIPIENT never REQUEST; batch the FRONTIER not
   query-per-link; FIND-OR-CREATE NEEDS A UNIQUE INDEX; UNBOUNDED SURFACE
-  NEVER PAGED -- cap the QUERY not the array; TREE MOVES WHILE YOU PLAN;
-  COMMENT CLAIMING A CHECK IS NOT ONE; a module-header naming its own
-  consumers is a CHECKLIST TO WALK; sibling counts need the SAME predicate;
-  no ORDER BY is nondeterministic; A WATERMARK ONLY SEES THE COLUMN IT
-  COMPARES -- PARENT ROW IS THE SYNC UNIT; WHEN THE DEC SPACE IS FULL, amend
-  the DECISION THE CODE ACTUALLY CITES; NAV MEMBERSHIP IS NOT ROUTE
-  MEMBERSHIP -- derive nav by FILTERING routes.
-- FINDINGS w66-71 (compacted): MANDATE SPENT repeatedly, re-probed CLOSED at
-  file:line each round; work comes from READING A LANDED STACK'S CONSUMERS one
-  wave downstream; A BOUNDARY IS ONLY AS WIDE AS ITS REASON; A FACET IS A
-  CONTRACT (knob in every reader at once); A CONTROL WITHOUT ITS SCRIPT/SAVE
-  IS A PICTURE OR A LIE; WALK THE LIFECYCLE, NOT THE ROUTE; A PROJECTION MUST
-  CARRY ITS SOURCE'S LIMITS AND VOCABULARY; A DAY LABEL IS NOT AN INSTANT; A
-  NOW-DERIVED PAGE CANNOT JOIN A PURGE-KEYED CACHE; A HARDCODED SURFACE LIST
-  GOES STALE -- pair with a COUNT assertion; A COMMENT EXPLAINING AN ABSENCE
-  IS THE ABSENCE'S ONLY GUARD; classify by the MOST PUBLIC-REACHING WRITE;
-  IMMUTABLE MAY DESCRIBE BYTES, NEVER AN AUTHORIZATION OUTCOME; ONE
+  NEVER PAGED; TREE MOVES WHILE YOU PLAN; COMMENT CLAIMING A CHECK IS NOT
+  ONE; sibling counts need the SAME predicate; no ORDER BY is
+  nondeterministic; A WATERMARK ONLY SEES THE COLUMN IT COMPARES -- PARENT
+  ROW IS THE SYNC UNIT; NAV MEMBERSHIP IS NOT ROUTE MEMBERSHIP.
+- FINDINGS w66-72 (compacted): MANDATE SPENT re-probed CLOSED at file:line;
+  work comes from READING A LANDED STACK'S CONSUMERS a wave downstream; A
+  FACET IS A CONTRACT; A CONTROL WITHOUT ITS SCRIPT/SAVE IS A PICTURE OR A
+  LIE; A PROJECTION MUST CARRY ITS SOURCE'S LIMITS AND VOCABULARY (and drops
+  the half nobody asked for -- check a batched lookup's second consumer); A
+  DAY LABEL IS NOT AN INSTANT; A HARDCODED SURFACE LIST GOES STALE -- pair
+  with a COUNT assertion; classify by the MOST PUBLIC-REACHING WRITE; ONE
   SERIALIZER FOLDS, SWEEP EVERY SIBLING; WAVE N-1 MAY STILL BE IN FLIGHT --
-  check .git/logs/HEAD for `merge task-w<N-1>-*` before re-planning; TWO
-  SUBSYSTEMS READING THE SAME TABLE FOR OPPOSITE PURPOSES IS THE BUG -- sweep
-  every consumer of a fact; A CAPTION FUNCTION RETURNING NULL FOR AN UNKNOWN
-  KIND IS A SILENT SURFACE; A PAIR TUPLE IS A CARDINALITY ASSUMPTION -- widen
-  to a list; A COVERAGE TEST IS ONLY AS WIDE AS THE SUB-APPS IT MOUNTS.
-- FINDINGS w72: WAVE N-1 STILL IN FLIGHT AGAIN — w70 had landed (4 merges + a
-  merge-train repair) and TWO fresh mandate commits arrived AFTER w71 was
-  planned; read `.git/logs/HEAD` past the last `scribe wave N` for mandate
-  commits too, not just merges. A PER-INSTANCE Z-FIX IS A CLASS BUG DEFERRED:
-  DEC-900 raised the clash card, then the placed card, then a break band
-  reintroduced the same strike-through — name the TIER as a token and pin the
-  z-index DECLARATION COUNT so a new overlay must be classified. BLEED BY
-  ABSENCE ONLY REACHES THE PARENT'S CONTENT BOX — across a PADDED ancestor,
-  cancel that padding through the SAME token, never vw/cqw. A DISCLOSURE IS
-  NOT A DELETION: an unframed editor on a canvas moves behind the shared
-  ModalFrame with its props byte-identical, so the in-flight lane editing that
-  panel never conflicts. A PROJECTION DROPS THE HALF NOBODY ASKED FOR: the
-  queue computed `format` over EVERY scoped id and threw the recused half
-  away — check what a batched lookup's second consumer never received. A
-  FRAMED PRIMARY WITH NOTHING TO WRITE IS THE OTHER LIE: give it the page's
-  real editable fact and keep validation server-side, one writer, two screens.
+  check .git/logs/HEAD past the last `scribe wave N` for merges AND mandate
+  commits; TWO SUBSYSTEMS READING THE SAME TABLE FOR OPPOSITE PURPOSES IS
+  THE BUG; A PER-INSTANCE Z-FIX IS A CLASS BUG DEFERRED -- name the TIER as
+  a token, pin the z-index DECLARATION COUNT; BLEED BY ABSENCE ONLY REACHES
+  THE PARENT'S CONTENT BOX -- across a PADDED ancestor cancel via the SAME
+  token, never vw/cqw; A DISCLOSURE IS NOT A DELETION -- move behind the
+  shared frame with props byte-identical; A FRAMED PRIMARY WITH NOTHING TO
+  WRITE IS A LIE -- give it the real editable fact, one writer, two screens.
+- FINDINGS w1 (this round; DEC space 001-999 FULL -- every ruling is an
+  `## Amendment (wave N)` on the DEC the code already cites): A CLAMP INSIDE
+  A PADDED ANCESTOR IS NOT THE MEASURE -- .chq-measure-wide is 1180 and the
+  pair still computed 1112/778 because main pads 34px; state the CONTENT
+  column and cancel the padding through the SAME token. APPEARANCE:NONE
+  WITHOUT A CARET IS A CONTROL THAT LIES -- restore the affordance on the
+  ONE shared select rule, not per surface. AN OPTIONAL PROP NOBODY PASSES IS
+  A SECOND READER wearing the first one's clothes (Recent Sends'
+  templatesById): make it required at the first divergence. A CONTROL WHOSE
+  ONLY OUTCOME IS A 400 is the sibling of a primary with nothing to write --
+  disable it, NAME the blocking token, one forward path. A STEP STRIP THAT
+  HIGHLIGHTS A SCREEN NOBODY LEFT is a picture of a flow: unmount the step
+  you claim is done. NO ORDER BY THE USER CAN READ AS TIME MEANS
+  ALPHABETICAL -- a programme is a sequence; one ordering expression, every
+  branch, untimed last. CHECK .git/refs/heads BEFORE PLANNING: a prior
+  round's task-w72-* branches carry ten landed-but-UNMERGED P1 fixes.
