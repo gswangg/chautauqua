@@ -482,6 +482,192 @@ describe("POST /account/password — wrong current password", () => {
   });
 });
 
+// DEC-180 (wave-22 amendment): rate limit on POST /account/password,
+// failures-only, keyed by auth.userId (not email/IP -- this route always
+// has a live session).
+describe("POST /account/password — rate limiting (DEC-180)", () => {
+  it("after AUTH_RATE_LIMIT_MAX wrong-current-password posts, the next post 429s with RATE_LIMIT_ERROR and performs no password verification", async () => {
+    const { db, state } = makeFakeDb();
+    await seedUser(state);
+    const { app, env } = buildApp(db);
+
+    const loginRes = await login(app, env, OLD_PASSWORD);
+    const sessionCookie = sessionCookieFrom(loginRes);
+    const { csrf, csrfCookie } = await getAccountCsrf(app, env, sessionCookie);
+
+    const AUTH_RATE_LIMIT_MAX = 20;
+    for (let i = 0; i < AUTH_RATE_LIMIT_MAX; i++) {
+      const res = await postPasswordChange(app, env, sessionCookie, csrf, csrfCookie, {
+        current: "totally-wrong",
+        next: NEW_PASSWORD,
+        confirm: NEW_PASSWORD,
+      });
+      expect(res.status).toBe(400);
+    }
+
+    const res = await postPasswordChange(app, env, sessionCookie, csrf, csrfCookie, {
+      current: "totally-wrong",
+      next: NEW_PASSWORD,
+      confirm: NEW_PASSWORD,
+    });
+    expect(res.status).toBe(429);
+    const text = await res.text();
+    expect(text).toContain("Too many attempts. Try again in a few minutes.");
+
+    // Verifying "no password verification happened" indirectly: even the
+    // CORRECT current password is refused with 429 while the budget is
+    // exhausted (a successful verifyPassword call would otherwise have
+    // proceeded to the next validation step and returned something other
+    // than 429).
+    const resWithCorrectPassword = await postPasswordChange(app, env, sessionCookie, csrf, csrfCookie, {
+      current: OLD_PASSWORD,
+      next: NEW_PASSWORD,
+      confirm: NEW_PASSWORD,
+    });
+    expect(resWithCorrectPassword.status).toBe(429);
+  });
+
+  it("a correct current password never increments the counter (failures-only)", async () => {
+    const { db, state } = makeFakeDb();
+    await seedUser(state);
+    const { app, env } = buildApp(db);
+
+    const loginRes = await login(app, env, OLD_PASSWORD);
+    const sessionCookie = sessionCookieFrom(loginRes);
+
+    // Fail once, then succeed with the wrong new-password confirmation
+    // (still hits a 400 after passing the correct-current-password check),
+    // repeated well past AUTH_RATE_LIMIT_MAX to prove correct-current
+    // attempts never consume the failures-only budget.
+    for (let i = 0; i < 25; i++) {
+      const { csrf, csrfCookie } = await getAccountCsrf(app, env, sessionCookie);
+      const res = await postPasswordChange(app, env, sessionCookie, csrf, csrfCookie, {
+        current: OLD_PASSWORD,
+        next: NEW_PASSWORD,
+        confirm: "does-not-match",
+      });
+      expect(res.status).toBe(400);
+    }
+
+    const { csrf, csrfCookie } = await getAccountCsrf(app, env, sessionCookie);
+    const finalRes = await postPasswordChange(app, env, sessionCookie, csrf, csrfCookie, {
+      current: OLD_PASSWORD,
+      next: NEW_PASSWORD,
+      confirm: "does-not-match",
+    });
+    expect(finalRes.status).toBe(400);
+    const text = await finalRes.text();
+    expect(text).not.toContain("Too many attempts");
+  });
+
+  it("a successful change clears the budget for that user", async () => {
+    const { db, state } = makeFakeDb();
+    await seedUser(state);
+    const { app, env } = buildApp(db);
+
+    const loginRes = await login(app, env, OLD_PASSWORD);
+    const sessionCookie = sessionCookieFrom(loginRes);
+
+    // Rack up several failures (below the cap).
+    for (let i = 0; i < 5; i++) {
+      const { csrf, csrfCookie } = await getAccountCsrf(app, env, sessionCookie);
+      const res = await postPasswordChange(app, env, sessionCookie, csrf, csrfCookie, {
+        current: "totally-wrong",
+        next: NEW_PASSWORD,
+        confirm: NEW_PASSWORD,
+      });
+      expect(res.status).toBe(400);
+    }
+
+    // Successfully change the password.
+    const { csrf, csrfCookie } = await getAccountCsrf(app, env, sessionCookie);
+    const changeRes = await postPasswordChange(app, env, sessionCookie, csrf, csrfCookie, {
+      current: OLD_PASSWORD,
+      next: NEW_PASSWORD,
+      confirm: NEW_PASSWORD,
+    });
+    expect(changeRes.status).toBe(200);
+    const freshCookie = sessionCookieFrom(changeRes);
+
+    // Budget should now be reset: 20 more wrong-current attempts (using the
+    // new password's owner, still under the fresh cap) are all 400s, not a
+    // 429 -- proving resetScopedLimit cleared the prior 5 failures.
+    for (let i = 0; i < 19; i++) {
+      const { csrf: csrf2, csrfCookie: csrfCookie2 } = await getAccountCsrf(app, env, freshCookie);
+      const res = await postPasswordChange(app, env, freshCookie, csrf2, csrfCookie2, {
+        current: "totally-wrong",
+        next: NEW_PASSWORD,
+        confirm: NEW_PASSWORD,
+      });
+      expect(res.status).toBe(400);
+    }
+  });
+
+  it("keys on auth.userId — a second user's attempts are unaffected by the first user's exhausted budget", async () => {
+    const { db, state } = makeFakeDb();
+    await seedUser(state);
+    const secondPasswordHash = await hashPassword("second-user-pw-123");
+    state.users.push({
+      id: "u_2",
+      orgId: "org_1",
+      email: "second@example.test",
+      passwordHash: secondPasswordHash,
+      role: "organizer",
+      contactId: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const { app, env } = buildApp(db);
+
+    const loginRes1 = await login(app, env, OLD_PASSWORD);
+    const session1 = sessionCookieFrom(loginRes1);
+
+    const AUTH_RATE_LIMIT_MAX = 20;
+    for (let i = 0; i < AUTH_RATE_LIMIT_MAX; i++) {
+      const { csrf, csrfCookie } = await getAccountCsrf(app, env, session1);
+      const res = await postPasswordChange(app, env, session1, csrf, csrfCookie, {
+        current: "totally-wrong",
+        next: NEW_PASSWORD,
+        confirm: NEW_PASSWORD,
+      });
+      expect(res.status).toBe(400);
+    }
+    const { csrf, csrfCookie } = await getAccountCsrf(app, env, session1);
+    const exhaustedRes = await postPasswordChange(app, env, session1, csrf, csrfCookie, {
+      current: "totally-wrong",
+      next: NEW_PASSWORD,
+      confirm: NEW_PASSWORD,
+    });
+    expect(exhaustedRes.status).toBe(429);
+
+    // Second user, separate login, is unaffected.
+    const form = new URLSearchParams();
+    const { csrf: loginCsrf, cookie: loginCookie } = await getLoginCsrf(app, env);
+    form.set(CSRF_COOKIE_NAME, loginCsrf);
+    form.set("email", "second@example.test");
+    form.set("password", "second-user-pw-123");
+    const loginRes2 = await app.request(
+      "/login",
+      {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded", cookie: loginCookie },
+        body: form.toString(),
+      },
+      env,
+    );
+    const session2 = sessionCookieFrom(loginRes2);
+    const { csrf: csrf2, csrfCookie: csrfCookie2 } = await getAccountCsrf(app, env, session2);
+    const res2 = await postPasswordChange(app, env, session2, csrf2, csrfCookie2, {
+      current: "wrong-for-user-2",
+      next: NEW_PASSWORD,
+      confirm: NEW_PASSWORD,
+    });
+    expect(res2.status).toBe(400);
+    const text2 = await res2.text();
+    expect(text2).toContain("Current password is incorrect.");
+  });
+});
+
 describe("POST /account/password — successful change", () => {
   it("old password now fails login (401), new password succeeds", async () => {
     const { db, state } = makeFakeDb();
