@@ -64,13 +64,13 @@ describe("computeAgendaSummary (DEC-030 agenda card, delegates to findConflicts)
         speakerContactIds: ["c2"],
       },
     ];
-    const result = computeAgendaSummary(["s1", "s2", "s3"], placed);
-    expect(result.unplaced).toBe(1); // s3 has no slot
+    const result = computeAgendaSummary(1, placed);
+    expect(result.unplaced).toBe(1); // caller-supplied SQL count (e.g. s3 has no slot)
     expect(result.conflicts).toBe(1); // room_overlap between s1/s2
   });
 
   it("is zero/zero for no accepted submissions", () => {
-    expect(computeAgendaSummary([], [])).toEqual({ unplaced: 0, conflicts: 0 });
+    expect(computeAgendaSummary(0, [])).toEqual({ unplaced: 0, conflicts: 0 });
   });
 });
 
@@ -324,11 +324,14 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
   // loadTrackNamesBySubmission — skipped only when triageDetail is itself
   // empty, never based on whether any row turns out to have a track), content
   // agg (total+reuploaded), content detail rows, (file rows — skipped when no
-  // content rows), accepted-submission rows, then — only when the inputs
-  // actually trigger them — schedule_slot/participant queries, the combined
-  // lead-speaker query and the conflict-room-name query (each test passes
-  // `extra` for exactly the branches its own fixture data trips), and finally
-  // the comms aggregate row.
+  // content rows), (DEC-370 wave-56 amendment) the unplaced-count SQL count
+  // and the unplaced-detail LIMIT ROW_CAP rows (both always fire — no more
+  // materialized accepted-submission array), the schedule_slot query (also
+  // always fires now — it's already event/status-scoped by its join), then —
+  // only when the inputs actually trigger them — participant queries, the
+  // combined lead-speaker query and the conflict-room-name query (each test
+  // passes `extra` for exactly the branches its own fixture data trips), and
+  // finally the comms aggregate row.
   function emptyResponses(overrides: Partial<Record<string, unknown>> = {}, extra: unknown[] = []) {
     return [
       overrides.event ?? [{ recordPrefix: "DFC", startDate: "2027-03-10" }],
@@ -343,7 +346,9 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       overrides.triageDetail ?? [],
       overrides.contentAgg ?? [{ total: 0, reuploaded: 0 }],
       overrides.contentDetail ?? [],
-      overrides.accepted ?? [],
+      overrides.unplacedCount ?? [{ count: 0 }],
+      overrides.unplacedDetail ?? [],
+      overrides.slotRows ?? [],
       ...extra,
       overrides.comms ?? [{ sentLast7Days: 0, lastSentAt: null }],
     ];
@@ -515,12 +520,12 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
 
   it("contentApproval.total/reuploadedCount can exceed the 5 returned rows", async () => {
     const now = 1_735_999_999_999;
-    // Non-empty content-detail/accepted rows trip three extra queries not
-    // present in the all-empty base case: file rows (per-submission latest
-    // file, right after contentDetail), schedule_slot rows (right after
-    // accepted, since acceptedIds is non-empty), and the combined
-    // lead-speaker lookup (submission s1 feeds both the content row and the
-    // unplaced-row set, since it has no schedule_slot).
+    // Non-empty content-detail rows trip an extra query not present in the
+    // all-empty base case: file rows (per-submission latest file, right
+    // after contentDetail). unplacedCount/unplacedDetail/slotRows always
+    // fire now (DEC-370 wave-56 amendment); the combined lead-speaker lookup
+    // fires because submission s1 feeds both the content row and the
+    // unplaced-row set, since it has no schedule_slot.
     const db = makeFakeDb([
       [{ recordPrefix: "DFC", startDate: "2027-03-10" }], // event
       [], // statusRows
@@ -535,7 +540,8 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       [{ total: 9, reuploaded: 4 }], // contentAgg
       [{ id: "s1", seq: 1, title: "Talk", updatedAt: new Date(1_700_000_000_000) }], // contentDetail
       [], // fileRows (s1's file rows -- empty is fine, not asserted)
-      [{ id: "s1", seq: 1, title: "Talk" }], // accepted
+      [{ count: 1 }], // unplacedCount
+      [{ id: "s1", seq: 1, title: "Talk" }], // unplacedDetail
       [], // slotRows (s1 has no schedule_slot -> unplaced)
       [], // lead-speaker rows for {s1}
       [], // DEC-895: format-answer rows for the unplaced set {s1} (none -> durationMin null)
@@ -569,14 +575,16 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       [], // triageDetail
       [{ total: 0, reuploaded: 0 }], // contentAgg
       [], // contentDetail
+      // fileRows skipped (contentDetail empty)
+      [{ count: 2 }], // unplacedCount
       [
         { id: "s1", seq: 1, title: "Talk One" },
         { id: "s2", seq: 2, title: "Workshop Two" },
-      ], // accepted
+      ], // unplacedDetail
       [
         // slotRows: an existing placement in room-a occupies 540-600 on day 1
         // so both unplaced rows are searched against a non-empty grid.
-        { submissionId: "s0", roomId: "room-a", day: "2026-08-10", startMin: 540, endMin: 600 },
+        { submissionId: "s0", roomId: "room-a", day: "2026-08-10", startMin: 540, endMin: 600, seq: 99, title: "Placed Session" },
       ],
       [{ submissionId: "s0", contactId: "c0" }], // participant rows for placed {s0}
       [], // lead-speaker rows for the unplaced set {s1, s2}
@@ -606,6 +614,64 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     // The 120-minute workshop's suggestion is sized by its own format, not
     // a hardcoded 30-minute default: endMin - startMin === 120.
     expect(row2!.durationMin).toBe(120);
+  });
+
+  // DEC-370 wave-56 amendment: agenda.unplaced comes straight off the SQL
+  // NOT EXISTS(schedule_slot) COUNT (unplacedCountRows), never a JS filter
+  // over a materialized accepted-submission array — this fixture stands in
+  // for "12 accepted, 3 placed" by feeding that count (9) directly, with a
+  // 5-row, seq-ascending unplacedDetail page (the DB's own LIMIT ROW_CAP
+  // ORDER BY seq, not a .slice(0, ROW_CAP) in JS).
+  it("agenda.unplaced reflects the SQL count directly, and unplaced rows are the seq-ascending capped page (12 accepted, 3 placed)", async () => {
+    const now = 1_735_999_999_999;
+    const unplacedDetailRows = Array.from({ length: 5 }, (_, i) => ({
+      id: `u${i}`,
+      seq: i + 1,
+      title: `Unplaced ${i}`,
+    }));
+    const db = makeFakeDb(
+      emptyResponses(
+        {
+          unplacedCount: [{ count: 9 }],
+          unplacedDetail: unplacedDetailRows,
+        },
+        // A non-empty unplacedDetail feeds two more queries: the combined
+        // lead-speaker lookup and the DEC-895 format-answer batch (both
+        // keyed on unplacedCappedIds).
+        [[], []],
+      ),
+    );
+    const payload = await getOverviewPayload(db, "event-1", now);
+    expect(payload.agenda.unplaced).toBe(9);
+    expect(payload.agendaWork.unplacedTotal).toBe(9);
+    expect(payload.agendaWork.unplaced).toHaveLength(5);
+    expect(payload.agendaWork.unplaced.map((r) => r.submissionId)).toEqual(["u0", "u1", "u2", "u3", "u4"]);
+    expect(payload.agendaWork.unplaced.map((r) => r.ref)).toEqual(["DFC-001", "DFC-002", "DFC-003", "DFC-004", "DFC-005"]);
+  });
+
+  // DEC-370: at scale (e.g. 60 accepted, unplaced) the payload must still
+  // only ever carry 5 named rows behind the true count — the query is
+  // capped, not the array.
+  it("a 60-accepted-and-unplaced event still returns exactly 5 unplaced rows with the correct total", async () => {
+    const now = 1_735_999_999_999;
+    const unplacedDetailRows = Array.from({ length: 5 }, (_, i) => ({
+      id: `u${i}`,
+      seq: i + 1,
+      title: `Unplaced ${i}`,
+    }));
+    const db = makeFakeDb(
+      emptyResponses(
+        {
+          unplacedCount: [{ count: 60 }],
+          unplacedDetail: unplacedDetailRows,
+        },
+        [[], []],
+      ),
+    );
+    const payload = await getOverviewPayload(db, "event-1", now);
+    expect(payload.agenda.unplaced).toBe(60);
+    expect(payload.agendaWork.unplacedTotal).toBe(60);
+    expect(payload.agendaWork.unplaced).toHaveLength(5);
   });
 
   // DEC-531: the row-materializing aggregateSpeakerCounts helper is gone —
@@ -734,12 +800,14 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     // Call order: 0=event, 1=statusRows, 2=planCount, 3=evaluationsAgg,
     // 4=planClose, 5=formClose, 6=speakerAgg, 7=overdueAssignmentCount
     // (DEC-776), 8=overdueDetail, 9=triageDetail, 10=contentAgg,
-    // 11=contentDetail, 12=accepted, 13=comms (no track/file/slot/
-    // lead-speaker/room queries fire on this all-empty fixture).
+    // 11=contentDetail, 12=unplacedCount, 13=unplacedDetail, 14=slotRows
+    // (DEC-370 wave-56 amendment: unplacedCount/unplacedDetail/slotRows all
+    // always fire now), 15=comms (no track/file/participant/lead-speaker/
+    // room queries fire on this all-empty fixture).
     expect(orderByCallsBySelectIndex[8]).toEqual([asc(schema.task.dueDate), asc(schema.taskAssignment.id)]);
     expect(orderByCallsBySelectIndex[9]).toEqual([asc(schema.submission.createdAt), asc(schema.submission.id)]);
     expect(orderByCallsBySelectIndex[11]).toEqual([desc(schema.submission.updatedAt), asc(schema.submission.id)]);
-    expect(orderByCallsBySelectIndex[12]).toEqual([asc(schema.submission.seq)]);
+    expect(orderByCallsBySelectIndex[13]).toEqual([asc(schema.submission.seq)]);
   });
 
   // DEC-776: both the overdue COUNT query (feeds speakers.overdueAssignments)

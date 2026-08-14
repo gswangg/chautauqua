@@ -42,16 +42,14 @@ describe("getOverviewPayload: participant invite-audience (DEC-512)", () => {
       [], // 9 triageDetail
       [{ total: 0, reuploaded: 0 }], // 10 contentAgg
       [], // 11 contentDetail
-      [
-        { id: "s0", seq: 1, title: "Placed Talk" },
-        { id: "s1", seq: 2, title: "Unplaced Talk" },
-      ], // 12 accepted
-      [{ submissionId: "s0", roomId: "room-a", day: "2026-08-10", startMin: 540, endMin: 600 }], // 13 slotRows
-      [{ submissionId: "s0", contactId: "c-active" }], // 14 placed-participant rows
-      [{ submissionId: "s1", order: 1, contactId: "c-active", firstName: "Ada", lastName: "Lovelace" }], // 15 lead-speaker rows
-      [{ id: "room-a", name: "Room A" }], // 16 room-name rows
-      [], // 17 format-answer rows for unplaced {s1}
-      [{ sentLast7Days: 0, lastSentAt: null }], // 18 comms
+      [{ count: 1 }], // 12 unplacedCount (DEC-370 wave-56 amendment)
+      [{ id: "s1", seq: 2, title: "Unplaced Talk" }], // 13 unplacedDetail
+      [{ submissionId: "s0", roomId: "room-a", day: "2026-08-10", startMin: 540, endMin: 600, seq: 1, title: "Placed Talk" }], // 14 slotRows
+      [{ submissionId: "s0", contactId: "c-active" }], // 15 placed-participant rows
+      [{ submissionId: "s1", order: 1, contactId: "c-active", firstName: "Ada", lastName: "Lovelace" }], // 16 lead-speaker rows
+      [{ id: "room-a", name: "Room A" }], // 17 room-name rows
+      [], // 18 format-answer rows for unplaced {s1}
+      [{ sentLast7Days: 0, lastSentAt: null }], // 19 comms
     ];
 
     function chain(): any {
@@ -86,7 +84,7 @@ describe("getOverviewPayload: participant invite-audience (DEC-512)", () => {
     expect(payload.agendaWork.unplaced).toHaveLength(1);
     expect(payload.agendaWork.unplaced[0]).toMatchObject({ submissionId: "s1", speakerName: "Ada Lovelace" });
 
-    // 14: placed-session participant fan-out (batch of {s0}) must AND in
+    // 15: placed-session participant fan-out (batch of {s0}) must AND in
     // the same inArray(inviteStatus, ACTIVE_INVITE_STATUSES) predicate
     // files-library.ts already uses -- a declined co-presenter on a placed
     // submission must never produce a speaker clash.
@@ -96,11 +94,11 @@ describe("getOverviewPayload: participant invite-audience (DEC-512)", () => {
         inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
       ),
     );
-    const actualParticipantWhere = sqlTextOf(whereBySelectIndex[14]);
+    const actualParticipantWhere = sqlTextOf(whereBySelectIndex[15]);
     expect(actualParticipantWhere.sql).toBe(expectedParticipantWhere.sql);
     expect(actualParticipantWhere.params).toEqual(expectedParticipantWhere.params);
 
-    // 15: combined lead-speaker lookup (batch of the unplaced id set {s1})
+    // 16: combined lead-speaker lookup (batch of the unplaced id set {s1})
     // must AND in the identical invite-status predicate alongside role=
     // 'speaker' -- a declined co-presenter must never be rendered as the
     // owning lead speaker.
@@ -111,7 +109,7 @@ describe("getOverviewPayload: participant invite-audience (DEC-512)", () => {
         inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
       ),
     );
-    const actualLeadWhere = sqlTextOf(whereBySelectIndex[15]);
+    const actualLeadWhere = sqlTextOf(whereBySelectIndex[16]);
     expect(actualLeadWhere.sql).toBe(expectedLeadWhere.sql);
     expect(actualLeadWhere.params).toEqual(expectedLeadWhere.params);
   });

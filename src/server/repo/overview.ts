@@ -283,13 +283,23 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
   const content = { awaitingApproval: Number(contentAggRows[0]?.total ?? 0) };
   const reuploadedCount = Number(contentAggRows[0]?.reuploaded ?? 0);
 
-  // --- Phase 2b (w49-d, DEC-589 amendment): fileRows needs
-  // contentDetailRows' ids (this Phase's own contentDetailRows above), and
-  // acceptedRows needs only eventId — independent of each other and of
-  // fileRows, contiguous with it in the original sequential order, so one
-  // more Promise.all wave.
+  // --- Phase 2b (w49-d, DEC-589 amendment; w56-b/DEC-370 amendment): fileRows
+  // needs contentDetailRows' ids (this Phase's own contentDetailRows above);
+  // unplacedCountRows/unplacedDetailRows need only eventId — independent of
+  // each other and of fileRows, contiguous with it in the original
+  // sequential order, so one more Promise.all wave. w56-b/DEC-370: the old
+  // "every accepted submission id/seq/title, no LIMIT" query is gone —
+  // agenda.unplaced is now a NOT EXISTS(schedule_slot) COUNT, and the
+  // unplaced detail rows are their own LIMIT ROW_CAP query ordered by seq
+  // (the placed set below already carries its own seq/title off the
+  // schedule_slot join, so the accepted-id array has no remaining reader).
+  const UNPLACED_ACCEPTED_CONDITIONS = and(
+    eq(schema.submission.eventId, eventId),
+    eq(schema.submission.status, "accepted"),
+    sql`not exists (select 1 from ${schema.scheduleSlot} where ${schema.scheduleSlot.submissionId} = ${schema.submission.id})`,
+  );
   const contentSubmissionIds = contentDetailRows.map((r) => r.id);
-  const [fileRows, acceptedRows] = await Promise.all([
+  const [fileRows, unplacedCountRows, unplacedDetailRows] = await Promise.all([
     contentSubmissionIds.length > 0
       ? db
           .select({
@@ -302,15 +312,23 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
           .from(schema.file)
           .where(inArray(schema.file.submissionId, contentSubmissionIds))
       : Promise.resolve([] as { id: string; submissionId: string | null; filename: string; previousFileId: string | null; createdAt: Date }[]),
-    // --- Agenda: accepted submissions (their schedule_slot rows are fetched
-    // separately below via a conditional query, to avoid an outer-join row
-    // explosion when combined with the speaker fan-out).
+    // --- Agenda unplaced count (DEC-370 wave-56 amendment): a SQL count,
+    // never a filter over a materialized accepted-submission array.
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.submission)
+      .where(UNPLACED_ACCEPTED_CONDITIONS),
+    // --- Agenda unplaced detail rows (DEC-370 section 05): the same
+    // predicate as the count above, capped + ordered by seq ascending —
+    // this is also unplacedCappedIds (no separate .slice(0, ROW_CAP)).
     db
       .select({ id: schema.submission.id, seq: schema.submission.seq, title: schema.submission.title })
       .from(schema.submission)
-      .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")))
-      .orderBy(asc(schema.submission.seq)),
+      .where(UNPLACED_ACCEPTED_CONDITIONS)
+      .orderBy(asc(schema.submission.seq))
+      .limit(ROW_CAP),
   ]);
+  const unplacedCount = Number(unplacedCountRows[0]?.count ?? 0);
 
   const latestFileBySubmission = new Map<string, { filename: string; uploadedAt: number; reuploaded: boolean }>();
   {
@@ -333,11 +351,15 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
     }
   }
 
-  const acceptedIds = acceptedRows.map((r) => r.id);
-  const acceptedById = new Map(acceptedRows.map((r) => [r.id, r]));
-
+  // --- Placed sessions (DEC-370 wave-56 amendment): the schedule_slot query
+  // is already event- and status-scoped by its join to `submission`, so it
+  // runs unconditionally (no more gate on a materialized accepted-id list)
+  // — and now selects submission.seq/title off that SAME join so every
+  // placed row carries its own ref/title (sessionById below no longer needs
+  // a second accepted-submission lookup).
+  const placedSeqTitleById = new Map<string, { seq: number; title: string }>();
   let placed: PlacedSession[] = [];
-  if (acceptedIds.length > 0) {
+  {
     const slotRows = await db
       .select({
         submissionId: schema.scheduleSlot.submissionId,
@@ -345,10 +367,14 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
         day: schema.scheduleSlot.day,
         startMin: schema.scheduleSlot.startMin,
         endMin: schema.scheduleSlot.endMin,
+        seq: schema.submission.seq,
+        title: schema.submission.title,
       })
       .from(schema.scheduleSlot)
       .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
       .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")));
+
+    for (const s of slotRows) placedSeqTitleById.set(s.submissionId, { seq: s.seq, title: s.title });
 
     const placedIds = [...new Set(slotRows.map((s) => s.submissionId))];
     const participantRows: { submissionId: string; contactId: string }[] = [];
@@ -383,13 +409,15 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
       speakerContactIds: speakersBySubmission.get(s.submissionId) ?? [],
     }));
   }
-  const agenda = computeAgendaSummary(acceptedIds, placed);
+  const agenda = computeAgendaSummary(unplacedCount, placed);
   const conflicts = findConflicts(placed);
   const placedById = new Map(placed.map((p) => [p.submissionId, p]));
 
-  const placedIdSet = new Set(placed.map((p) => p.submissionId));
-  const unplacedIds = acceptedIds.filter((id) => !placedIdSet.has(id));
-  const unplacedCappedIds = unplacedIds.slice(0, ROW_CAP);
+  // --- Unplaced rows (DEC-370 wave-56 amendment): unplacedDetailRows is
+  // already the <=ROW_CAP, seq-ordered set from the NOT EXISTS query above —
+  // no further slicing/filtering against a materialized accepted-id list.
+  const unplacedById = new Map(unplacedDetailRows.map((r) => [r.id, r]));
+  const unplacedCappedIds = unplacedDetailRows.map((r) => r.id);
 
   // --- One combined lead-speaker lookup for every submission id any DEC-370
   // row section below needs a display name for (triage queue rows, content
@@ -497,15 +525,15 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
 
   const sessionById = new Map<string, ConflictSessionInfo>();
   for (const p of placed) {
-    const submission = acceptedById.get(p.submissionId);
-    if (!submission) continue;
+    const seqTitle = placedSeqTitleById.get(p.submissionId);
+    if (!seqTitle) continue;
     sessionById.set(p.submissionId, {
       day: p.day,
       startMin: p.startMin,
       endMin: p.endMin,
       roomId: p.roomId,
-      ref: formatRef(recordPrefix, submission.seq),
-      title: submission.title,
+      ref: formatRef(recordPrefix, seqTitle.seq),
+      title: seqTitle.title,
       speakerName: leadSpeakerNameById.get(p.submissionId) ?? "",
     });
   }
@@ -526,8 +554,8 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
   // above already computed against.
   const suggestionOccupancy: PlacedSession[] = [...placed];
   const unplacedRows = unplacedCappedIds.map((id) => {
-    const submission = acceptedById.get(id);
-    if (!submission) throw new Error(`getOverviewPayload: unplaced submission ${id} not in the loaded accepted set`);
+    const submission = unplacedById.get(id);
+    if (!submission) throw new Error(`getOverviewPayload: unplaced submission ${id} not in the loaded unplaced-detail set`);
     const format = formatLabelByUnplacedId.get(id) ?? null;
     // DEC-772/DEC-895: the ONE parse — never a magic default when the
     // format carries no parseable duration; the row just says null.

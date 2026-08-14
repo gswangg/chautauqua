@@ -30,15 +30,16 @@ export function aggregateTriageCounts(
   };
 }
 
-/** Agenda numbers: unplaced accepted submissions + schedule conflicts
- * (delegated to src/domain/schedule.ts findConflicts, DEC-010). */
+/** Agenda numbers: unplaced accepted submissions (DEC-370 wave-56
+ * amendment: a SQL NOT EXISTS(schedule_slot) count, computed by the caller
+ * — never a JS filter over a materialized accepted-id array) + schedule
+ * conflicts (delegated to src/domain/schedule.ts findConflicts, DEC-010). */
 export function computeAgendaSummary(
-  acceptedSubmissionIds: string[],
+  unplacedCount: number,
   placed: PlacedSession[],
 ): OverviewPayload["agenda"] {
-  const placedIds = new Set(placed.map((p) => p.submissionId));
   return {
-    unplaced: acceptedSubmissionIds.filter((id) => !placedIds.has(id)).length,
+    unplaced: unplacedCount,
     conflicts: findConflicts(placed).length,
   };
 }
