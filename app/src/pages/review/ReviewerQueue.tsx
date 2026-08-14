@@ -74,7 +74,7 @@ function PlanSection({
   // REVIEW PACK 03-03: the rendered list caps at 5 rows by default. DEC-845
   // amendment (wave 38): the "Showing 5 of N" caption and "Show all N"
   // control read N off `total + recused.length` -- the envelope's TRUE
-  // count -- never items.length, which only reflects whatever page(s) have
+  // count -- never items.length, which only reflects whatever pages have
   // been loaded so far.
   const [showAll, setShowAll] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -179,7 +179,7 @@ function PlanSection({
       {(() => {
         // DEC-845 amendment (wave 38): the TRUE combined row count comes off
         // the envelope's own `total` (actionable) plus `recused.length` --
-        // never items.length, which is only whatever page(s) are loaded.
+        // never items.length, which is only whatever pages are loaded.
         const totalRows = total + recused.length;
         const visibleItems = showAll ? items : items.slice(0, 5);
         const remainingAfterItems = showAll ? recused.length : Math.max(0, 5 - items.length);
@@ -435,7 +435,7 @@ export function ReviewerQueue() {
     const routeQueueItems = routeEnvelope?.items ?? null;
     // DEC-845 amendment (wave 38): the scoped header's counts come off the
     // envelope's own total/unscoredTotal -- true past row 200 -- never off
-    // routeQueueItems.length/filter, which only sees whatever page(s) of
+    // routeQueueItems.length/filter, which only sees whatever pages of
     // rows PlanSection has loaded so far.
     const scoreLeft = routeEnvelope ? routeEnvelope.unscoredTotal : null;
     const totalCount = routeEnvelope ? routeEnvelope.total : 0;
@@ -476,7 +476,7 @@ export function ReviewerQueue() {
                   scored, or the queue hasn't resolved yet), present and
                   linking straight to the first unscored item otherwise. */}
               {/* DEC-845 amendment (wave 38): this deliberately keeps reading
-                  routeQueueItems (whatever page(s) PlanSection has loaded),
+                  routeQueueItems (whatever pages PlanSection has loaded),
                   not the envelope's unscoredTotal count. buildReviewerQueue
                   (src/domain/evaluation.ts) orders the queue fewest-ratings-
                   first with completed items sunk last, so page 1 already

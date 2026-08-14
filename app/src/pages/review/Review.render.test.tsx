@@ -22,6 +22,24 @@ import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 const EVENT_ID = 'evt-review-render';
 const PLAN_ID = 'plan-render-1';
 
+// DEC-845 amendment (wave 38): every reviewer-queue envelope now carries
+// `unscoredTotal` -- the scoped header's "N left to score" and the plan-list
+// rows read it, never items.length/filter. Mirrors the local helper in
+// ReviewerQueue.render.test.tsx: defaults to the true count off the SAME
+// items array (as the route itself computes it) so these fixtures stay
+// accurate without hand-counting, with overrides for simulating a scope
+// bigger than the loaded page.
+function queueEnvelope<T extends { alreadyRatedByMe?: boolean }>(
+  items: T[],
+  overrides: { total?: number; unscoredTotal?: number } = {},
+) {
+  return {
+    ...listEnvelope(items),
+    total: overrides.total ?? items.length,
+    unscoredTotal: overrides.unscoredTotal ?? items.filter((i) => !i.alreadyRatedByMe).length,
+  };
+}
+
 function organizerMe() {
   return { userId: 'u-organizer', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' };
 }
@@ -337,7 +355,7 @@ describe('ReviewPage render smoke: reviewer', () => {
       'GET /api/v1/me': reviewerMe(),
       [`GET /api/v1/review/plans/${PLAN_ID}`]: planWithNullDates(),
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
-        ...listEnvelope([
+        ...queueEnvelope([
           { submissionId: 'sub-1', ref: 'S-001', title: 'A Talk About Testing', ratingsCount: 0, alreadyRatedByMe: false, myScore: null },
           { submissionId: 'sub-2', ref: 'S-002', title: 'Another Talk', ratingsCount: 1, alreadyRatedByMe: true, myScore: 4.5 },
         ]),
@@ -393,7 +411,7 @@ describe('ReviewPage render smoke: reviewer', () => {
       'GET /api/v1/me': reviewerMe(),
       [`GET /api/v1/review/plans/${PLAN_ID}`]: planWithNullDates(),
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
-        ...listEnvelope([
+        ...queueEnvelope([
           {
             submissionId: 'sub-1',
             ref: 'S-001',
@@ -461,7 +479,7 @@ describe('ReviewPage render smoke: reviewer', () => {
       'GET /api/v1/me': reviewerMe(),
       [`GET /api/v1/review/plans/${PLAN_ID}`]: { ...planWithNullDates(), timezone: 'America/New_York' },
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
-        ...listEnvelope([
+        ...queueEnvelope([
           { submissionId: 'sub-1', ref: 'S-001', title: 'A Talk About Testing', ratingsCount: 0, alreadyRatedByMe: false, myScore: null },
           { submissionId: 'sub-2', ref: 'S-002', title: 'Another Talk', ratingsCount: 1, alreadyRatedByMe: true, myScore: 4.5 },
         ]),
@@ -496,7 +514,7 @@ describe('ReviewPage render smoke: reviewer', () => {
       'GET /api/v1/me': reviewerMe(),
       [`GET /api/v1/review/plans/${PLAN_ID}`]: { ...planWithNullDates(), timezone: 'America/New_York' },
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
-        ...listEnvelope([
+        ...queueEnvelope([
           { submissionId: 'sub-1', ref: 'S-001', title: 'A Talk About Testing', ratingsCount: 0, alreadyRatedByMe: false, myScore: null },
         ]),
         open: true,
@@ -525,7 +543,7 @@ describe('ReviewPage render smoke: reviewer', () => {
       'GET /api/v1/me': reviewerMe(),
       [`GET /api/v1/review/plans/${PLAN_ID}`]: planWithNullDates(),
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
-        ...listEnvelope([
+        ...queueEnvelope([
           { submissionId: 'sub-1', ref: 'S-001', title: 'A Talk About Testing', ratingsCount: 1, alreadyRatedByMe: true, myScore: 4 },
         ]),
         open: true,
@@ -570,7 +588,7 @@ describe('ReviewPage render smoke: reviewer', () => {
       'GET /api/v1/review/plans': listEnvelope([{ ...planWithNullDates(), id: PLAN_ID, name: 'Solo Plan' }]),
       [`GET /api/v1/review/plans/${PLAN_ID}`]: planWithNullDates(),
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
-        ...listEnvelope([
+        ...queueEnvelope([
           { submissionId: 'sub-1', ref: 'S-001', title: 'Only Talk', ratingsCount: 0, alreadyRatedByMe: false },
         ]),
         open: true,
@@ -609,7 +627,7 @@ describe('ReviewPage render smoke: reviewer', () => {
       'GET /api/v1/me': reviewerMe(),
       'GET /api/v1/review/plans': listEnvelope([planA, planB]),
       'GET /api/v1/review/plans/plan-a/queue': {
-        ...listEnvelope([
+        ...queueEnvelope([
           { submissionId: 'a-1', ref: 'A-001', title: 'Alpha First', ratingsCount: 0, alreadyRatedByMe: false },
           { submissionId: 'a-2', ref: 'A-002', title: 'Alpha Second', ratingsCount: 1, alreadyRatedByMe: true },
         ]),
@@ -620,7 +638,7 @@ describe('ReviewPage render smoke: reviewer', () => {
         closeDate: null,
       },
       'GET /api/v1/review/plans/plan-b/queue': {
-        ...listEnvelope([
+        ...queueEnvelope([
           { submissionId: 'b-1', ref: 'B-001', title: 'Beta First', ratingsCount: 0, alreadyRatedByMe: false },
         ]),
         open: true,
