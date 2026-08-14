@@ -54,17 +54,22 @@ vi.mock("../src/server/repo/events", async () => {
   };
 });
 
-// Extracts one MIME part's body (between its Content-Type header's trailing
-// blank line and the next boundary line) out of EmailBindingMailer's raw
-// message, so tests can inspect the plain-text body it built.
+// Extracts and DECODES one MIME part's body (between its header block's
+// trailing blank line and the next boundary line) out of EmailBindingMailer's
+// raw message, so tests can inspect the plain-text body it built.
+// Per DEC-996's wave-62 amendment the serializer emits base64 body parts and a
+// per-message RANDOM boundary (`chq_<uuid>`), so this stops at the next
+// boundary delimiter rather than a fixed token and base64-decodes as UTF-8.
 function extractPart(raw: string, contentType: string): string {
   const headerIdx = raw.indexOf(`Content-Type: ${contentType}`);
   if (headerIdx === -1) return "";
   const bodyStart = raw.indexOf("\r\n\r\n", headerIdx);
   if (bodyStart === -1) return "";
   const contentStart = bodyStart + 4;
-  const boundaryIdx = raw.indexOf("\r\n--chq_mime_boundary", contentStart);
-  return raw.slice(contentStart, boundaryIdx === -1 ? raw.length : boundaryIdx);
+  const boundaryIdx = raw.indexOf("\r\n--chq_", contentStart);
+  const encoded = raw.slice(contentStart, boundaryIdx === -1 ? raw.length : boundaryIdx);
+  const binary = atob(encoded.replace(/\s+/g, ""));
+  return new TextDecoder().decode(Uint8Array.from(binary, (c) => c.charCodeAt(0)));
 }
 
 const sentMails: { to: { email: string }; text: string }[] = [];
