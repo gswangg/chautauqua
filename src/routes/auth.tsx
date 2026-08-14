@@ -11,7 +11,7 @@ import * as schema from "../db/schema";
 import { newId } from "../domain/ids";
 import { DUMMY_PASSWORD_HASH, hashPassword, verifyPassword } from "../auth/password";
 import { hashToken } from "../auth/tokens";
-import { issueSession } from "../server/auth-session";
+import { issueSession, issueSessionRevokingAll } from "../server/auth-session";
 import { DEC_994 } from "../decisions";
 
 void DEC_994;
@@ -381,7 +381,10 @@ authRoutes.post("/login", csrfForm, async (c) => {
   await resetScopedLimit(db, "login-user", email, loginNow, AUTH_RATE_LIMIT_WINDOW_SECONDS);
 
   const now = new Date();
-  const token = await issueSession(db, user.id, now);
+  const presentedCookies = parseCookies(c.req.header("cookie") ?? null);
+  const presentedToken = presentedCookies[SESSION_COOKIE_NAME];
+  const presentedTokenHash = presentedToken ? await hashToken(presentedToken) : null;
+  const token = await issueSession(db, user.id, now, presentedTokenHash);
 
   c.header("Set-Cookie", buildSessionCookie(token, { secure: isSecureRequest(c.req.url) }));
   const dest = user.role === "speaker" ? "/portal" : "/admin";
@@ -481,7 +484,7 @@ authRoutes.post("/claim/:token", csrfForm, async (c) => {
     updatedAt: now,
   });
 
-  const sessionToken = await issueSession(db, userId, now);
+  const sessionToken = await issueSessionRevokingAll(db, userId, now);
 
   c.header("Set-Cookie", buildSessionCookie(sessionToken, { secure: isSecureRequest(c.req.url) }));
   return c.redirect("/portal", 302);
