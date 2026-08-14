@@ -1,10 +1,21 @@
+// Token-mechanism coverage for src/auth/password-reset.ts (task-w27-a).
+//
+// MERGE NOTE (wave 27 integration): waves 25 and 27 independently implemented
+// this same module. The surviving implementation keeps the wave-25 API names
+// (createResetToken/readResetToken/consumeResetToken), because src/routes
+// /auth.tsx and test/password-reset.test.ts are built on them, and the
+// wave-27 index key `pwreset:user:<userId>` plus revokeResetTokenForUser,
+// because DEC-949's wave-27 amendment is the later ruling. These cases are
+// task-w27-a's, ported onto that reconciled surface: they are the mechanism
+// tests (hard-delete-vs-supersede, revocation, cross-user isolation), where
+// test/password-reset.test.ts covers the /forgot and /reset/:token routes.
 import { describe, expect, it } from "vitest";
 import {
-  createPasswordResetToken,
-  peekPasswordResetToken,
-  consumePasswordResetToken,
-  revokePasswordResetTokenForUser,
-  PASSWORD_RESET_TTL_SECONDS,
+  createResetToken,
+  readResetToken,
+  consumeResetToken,
+  revokeResetTokenForUser,
+  RESET_TTL_SECONDS,
 } from "../src/auth/password-reset";
 import type { KVStore } from "../src/auth/password-reset";
 
@@ -31,23 +42,19 @@ class InMemoryKV implements KVStore {
 }
 
 describe("password-reset token flow", () => {
-  it("a minted token round-trips through peek", async () => {
+  it("a minted token round-trips through read", async () => {
     const kv = new InMemoryKV();
-    const token = await createPasswordResetToken(kv, { userId: "u1", email: "a@example.test" });
-    await expect(peekPasswordResetToken(kv, token)).resolves.toEqual({
-      userId: "u1",
-      email: "a@example.test",
-    });
+    const token = await createResetToken(kv, "u1");
+    await expect(readResetToken(kv, token)).resolves.toEqual({ userId: "u1" });
   });
 
   it("stores the record with the 1h TTL", async () => {
     const kv = new InMemoryKV();
-    const token = await createPasswordResetToken(kv, { userId: "u1", email: "a@example.test" });
-    void token;
-    expect(PASSWORD_RESET_TTL_SECONDS).toBe(3600);
+    await createResetToken(kv, "u1");
+    expect(RESET_TTL_SECONDS).toBe(3600);
     // Every put made during mint used the 1h TTL.
     for (const opts of kv.putOpts.values()) {
-      expect(opts.expirationTtl).toBe(PASSWORD_RESET_TTL_SECONDS);
+      expect(opts.expirationTtl).toBe(RESET_TTL_SECONDS);
     }
   });
 
@@ -59,79 +66,68 @@ describe("password-reset token flow", () => {
   // on a shorter timer.
   it("a second mint for the same user makes the FIRST token dead immediately (hard delete, not a shorter-lived grace like claim.ts)", async () => {
     const kv = new InMemoryKV();
-    const first = await createPasswordResetToken(kv, { userId: "u1", email: "a@example.test" });
-    await expect(peekPasswordResetToken(kv, first)).resolves.not.toBeNull();
+    const first = await createResetToken(kv, "u1");
+    await expect(readResetToken(kv, first)).resolves.not.toBeNull();
 
-    const second = await createPasswordResetToken(kv, { userId: "u1", email: "a@example.test" });
+    const second = await createResetToken(kv, "u1");
     expect(second).not.toBe(first);
 
     // The first token is dead right away, with no grace-window re-put.
-    await expect(peekPasswordResetToken(kv, first)).resolves.toBeNull();
-    await expect(peekPasswordResetToken(kv, second)).resolves.toEqual({
-      userId: "u1",
-      email: "a@example.test",
-    });
+    await expect(readResetToken(kv, first)).resolves.toBeNull();
+    await expect(readResetToken(kv, second)).resolves.toEqual({ userId: "u1" });
   });
 
   it("consume returns the record once and null the second time", async () => {
     const kv = new InMemoryKV();
-    const token = await createPasswordResetToken(kv, { userId: "u1", email: "a@example.test" });
-    await expect(consumePasswordResetToken(kv, token)).resolves.toEqual({
-      userId: "u1",
-      email: "a@example.test",
-    });
-    await expect(consumePasswordResetToken(kv, token)).resolves.toBeNull();
+    const token = await createResetToken(kv, "u1");
+    await expect(consumeResetToken(kv, token)).resolves.toEqual({ userId: "u1" });
+    await expect(consumeResetToken(kv, token)).resolves.toBeNull();
   });
 
   it("consume clears the per-user index", async () => {
     const kv = new InMemoryKV();
-    const token = await createPasswordResetToken(kv, { userId: "u1", email: "a@example.test" });
+    const token = await createResetToken(kv, "u1");
     expect(kv.has("pwreset:user:u1")).toBe(true);
-    await consumePasswordResetToken(kv, token);
+    await consumeResetToken(kv, token);
     expect(kv.has("pwreset:user:u1")).toBe(false);
   });
 
-  it("revokePasswordResetTokenForUser kills a live token", async () => {
+  it("revokeResetTokenForUser kills a live token", async () => {
     const kv = new InMemoryKV();
-    const token = await createPasswordResetToken(kv, { userId: "u1", email: "a@example.test" });
-    await revokePasswordResetTokenForUser(kv, "u1");
-    await expect(peekPasswordResetToken(kv, token)).resolves.toBeNull();
+    const token = await createResetToken(kv, "u1");
+    await revokeResetTokenForUser(kv, "u1");
+    await expect(readResetToken(kv, token)).resolves.toBeNull();
     expect(kv.has("pwreset:user:u1")).toBe(false);
   });
 
-  it("revokePasswordResetTokenForUser on a user with no live token does not throw", async () => {
+  it("revokeResetTokenForUser on a user with no live token does not throw", async () => {
     const kv = new InMemoryKV();
-    await expect(revokePasswordResetTokenForUser(kv, "nobody")).resolves.toBeUndefined();
+    await expect(revokeResetTokenForUser(kv, "nobody")).resolves.toBeUndefined();
   });
 
   it("returns null for an unknown token", async () => {
     const kv = new InMemoryKV();
-    await expect(peekPasswordResetToken(kv, "nonexistent")).resolves.toBeNull();
-    await expect(consumePasswordResetToken(kv, "nonexistent")).resolves.toBeNull();
+    await expect(readResetToken(kv, "nonexistent")).resolves.toBeNull();
+    await expect(consumeResetToken(kv, "nonexistent")).resolves.toBeNull();
   });
 
   it("a token for user A never resolves to user B", async () => {
     const kv = new InMemoryKV();
-    const tokenA = await createPasswordResetToken(kv, { userId: "userA", email: "a@example.test" });
-    const tokenB = await createPasswordResetToken(kv, { userId: "userB", email: "b@example.test" });
+    const tokenA = await createResetToken(kv, "userA");
+    const tokenB = await createResetToken(kv, "userB");
 
-    const recordA = await peekPasswordResetToken(kv, tokenA);
-    expect(recordA?.userId).toBe("userA");
-    const recordB = await peekPasswordResetToken(kv, tokenB);
-    expect(recordB?.userId).toBe("userB");
+    await expect(readResetToken(kv, tokenA)).resolves.toEqual({ userId: "userA" });
+    await expect(readResetToken(kv, tokenB)).resolves.toEqual({ userId: "userB" });
 
     // Revoking user A's token must not touch user B's live token.
-    await revokePasswordResetTokenForUser(kv, "userA");
-    await expect(peekPasswordResetToken(kv, tokenB)).resolves.toEqual({
-      userId: "userB",
-      email: "b@example.test",
-    });
+    await revokeResetTokenForUser(kv, "userA");
+    await expect(readResetToken(kv, tokenB)).resolves.toEqual({ userId: "userB" });
   });
 
   it("issues distinct tokens across calls", async () => {
     const kv = new InMemoryKV();
-    const a = await createPasswordResetToken(kv, { userId: "u1", email: "a@example.test" });
-    const b = await createPasswordResetToken(kv, { userId: "u2", email: "b@example.test" });
+    const a = await createResetToken(kv, "u1");
+    const b = await createResetToken(kv, "u2");
     expect(a).not.toBe(b);
   });
 });

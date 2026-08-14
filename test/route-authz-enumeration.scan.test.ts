@@ -424,6 +424,8 @@ const PUBLIC_BY_DESIGN: LedgerEntry[] = [
   { file: "src/routes/auth.tsx", method: "GET", path: "/logout", reason: "DEC-154 (wave 25 amendment): mutates nothing at all -- it exists precisely so a bookmarked/prefetched GET cannot sign anyone out, and redirects to /login. Nothing to guard: it reads no session and touches no row" },
   { file: "src/routes/auth.tsx", method: "GET", path: "/claim/:token", reason: "the 'auth' is possession of an unguessable KV claim token, not a session; this is the account-creation entry point by design" },
   { file: "src/routes/auth.tsx", method: "POST", path: "/claim/:token", reason: "same token-possession model, plus per-IP rate limiting" },
+  { file: "src/routes/auth.tsx", method: "GET", path: "/forgot", reason: "DEC-014 (wave 25 amendment): renders the ask-for-a-link form itself; must be reachable with no session" },
+  { file: "src/routes/auth.tsx", method: "GET", path: "/reset/:token", reason: "DEC-014 (wave 25 amendment): the 'auth' is possession of an unguessable KV reset token, not a session, same model as /claim/:token" },
   // src/routes/dev/mailbox.tsx
   { file: "src/routes/dev/mailbox.tsx", method: "GET", path: "/dev/mailbox", reason: "DEC-005: routes literally don't exist (404) unless DEV_MODE==='1'; single-tenant local dev tooling, no secrets present in Stage 1" },
   { file: "src/routes/dev/mailbox.tsx", method: "GET", path: "/dev/mailbox/:emailId/ics", reason: "same DEV_MODE gate" },
