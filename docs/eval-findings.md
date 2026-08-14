@@ -131,8 +131,29 @@ never headers-over-nothing; six empty-state frames delivered) · B9 email shell 
 
 **OPEN from this intake:** (a) reviewer "Your plans" hub delivered 390-only — desktop
 artifact missing by the pack's own reflow principle; routed back to the design agent
-(cheap ruling: same list at the reading measure). (b) "Forgot your password?" DEC (above).
-(c) contact-drawer frame re-vendor after the VAL fix.
+(cheap ruling: same list at the reading measure). (b) contact-drawer frame re-vendor
+after the VAL fix.
+
+**USER DEC (2026-08-14): PASSWORD RESET WILL BE BUILT.** The design agent is mocking the
+screens; frames incoming. Sequencing: the MECHANISM is design-independent — the swarm can
+build it now; the SCREENS (request form, reset form, email) build to frames when they
+land, and the sign-in "Forgot your password?" link ships only once the flow works
+end-to-end. Mechanism requirements (same security posture as the existing auth work):
+- POST request-reset endpoint answers IDENTICALLY whether the email exists or not — no
+  account enumeration (same oracle-closing discipline as DEC-004), and rate-limited in
+  the DEC-180 failures-only shape.
+- Token: single-use, ~1h expiry, 256-bit random, stored HASHED (a reset token is a
+  password equivalent — never store it plain). Invalidated on use AND on any password
+  change; only the newest token per user is live.
+- Reset email goes through the existing EmailBindingMailer; template follows the B9
+  email shell (560 measure, one olive button, footer naming the event and why they
+  received it) until its own frame lands.
+- Completing a reset enforces MIN_PASSWORD_LENGTH=12 and revokes ALL of the user's
+  sessions (a reset asserts the credential was lost — unlike login's rotate-this-
+  session-only rule, DEC-994).
+- Runtime evidence required to close: a real reset round-trip on a seeded account
+  (request → email content captured → token consumed → old sessions dead → new
+  password signs in; second use of the token rejected).
 
 ## GATE-4 FLEET VERDICTS (all 6 pair reports landed, audited vs design-frames-v7 on snapshot 33fbc724)
 
