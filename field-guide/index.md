@@ -28,33 +28,32 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   (demo-credential "leak", DEC-583) -- record refusals so they aren't
   re-filed; A READER WITH NO WRITER IS A LIE THAT RENDERS NOTHING; ONE
   FORMATTER, TWO GRAMMARS; A SECOND READER OF THE SAME WRITE INHERITS
-  NONE OF ITS MANNERS -- grep EVERY caller of a route; A GUESSABLE URL
-  THAT 404s IS A DEAD END; A CONTROL WITHOUT ITS SCRIPT/SAVE IS A
-  PICTURE OR A LIE; A PROJECTION MUST CARRY ITS SOURCE'S LIMITS AND
-  VOCABULARY; A HARDCODED SURFACE LIST GOES STALE; A FRAMED PRIMARY WITH
-  NOTHING TO WRITE IS A LIE. REFUSALS: aria-pressed (DEC-939), "Mean of
-  submitted reviews" (DEC-873), Import-CSV link (DEC-662).
-- FINDINGS w9 (compacted): mandate re-probed CLOSED except: A DUPLICATED
-  FORMATTER DRIFTS AT ITS LAST COPY; A FIXTURE WRITTEN TO THE ANSWER
-  CANNOT FAIL; A COMMENT CLAIMING A CHECK IS NOT THE CHECK.
-- FINDINGS w10 (compacted): POLISH mandate spent — re-probed CLOSED items,
-  formatMinutes LIVE (prior "dead code" find WRONG). Survivors: A WRITER
-  WITH NO READER IS A LIE THAT STORES NOTHING; A CAP ON DERIVED WORK MUST
-  BE STATED IN THE PRODUCER'S UNITS; AN UNBOUNDED inArray HIDES BEHIND A
-  CHUNKED ONE (DEC-078 obeyed on one axis only); A DOC COMMENT CAN NAME A
-  RULE NOTHING OBEYS; ONE FORMATTER, TWO GRAMMARS again; A GATE SPEC
-  MANDATES IS NOT A BUG, ITS SILENCE IS.
-- FINDINGS w11 (mandate re-probed at ~20 clauses; ALL closed except two
-  found by fresh reading, so: STOP RE-PROBING THE MANDATE BY READING —
-  DEC-438 amendment: a clause closes only on a NAMED EXECUTED TEST,
-  annotated in place, never deleted, never for a pixel clause). New
-  shapes: A RULE ENUMERATED BY EXAMPLE MISSES ITS NEXT MEMBER (DEC-519
-  named title/description/room-name; event.timezone shifts every DTSTART
-  through both .ics readers and bumped nothing). A SEED THAT NEVER MINTS
-  A KIND CANNOT DEMO IT (no DEFAULT_ONBOARDING_TASK is file_request, so
-  the whole upload-deliverable path ships unseeded — DEC-739). A
-  PER-AREA SWEEP IS NOT AN INVARIANT (chunk sweeps existed for two
-  areas; the rule is repo-wide). Mechanics: wave-10 lanes landed MID-PLAN
-  (w10-c/w10-d were on main by mid-wave) — re-open the file:line at the
-  moment of editing, not from the brief. Grep -C context can eat a
-  leading `//`: read the file before believing a syntax error.
+  NONE OF ITS MANNERS -- grep EVERY caller; A GUESSABLE URL THAT 404s IS
+  A DEAD END; A CONTROL WITHOUT ITS SCRIPT/SAVE IS A PICTURE OR A LIE; A
+  PROJECTION MUST CARRY ITS SOURCE'S LIMITS/VOCABULARY; A HARDCODED
+  SURFACE LIST GOES STALE; A FRAMED PRIMARY WITH NOTHING TO WRITE IS A
+  LIE. REFUSALS: aria-pressed (DEC-939), "Mean of submitted reviews"
+  (DEC-873), Import-CSV link (DEC-662).
+- FINDINGS w9-11 (compacted, all CLOSED): DUPLICATED FORMATTER DRIFTS AT
+  LAST COPY; FIXTURE WRITTEN TO THE ANSWER CANNOT FAIL; COMMENT CLAIMING A
+  CHECK IS NOT THE CHECK; WRITER WITH NO READER STORES NOTHING; CAP ON
+  DERIVED WORK MUST NAME PRODUCER'S UNITS; UNBOUNDED inArray HIDES BEHIND
+  A CHUNKED ONE; GATE SPEC MANDATES IS NOT A BUG, SILENCE IS; RULE
+  ENUMERATED BY EXAMPLE MISSES ITS NEXT MEMBER (DEC-519); SEED THAT NEVER
+  MINTS A KIND CANNOT DEMO IT (DEC-739); PER-AREA SWEEP IS NOT AN
+  INVARIANT. Mechanics: lanes land MID-PLAN, re-open file:line at edit
+  time; grep -C eats leading `//`; DEC-438: clause closes only on a
+  NAMED EXECUTED TEST.
+- FINDINGS w12 (mandate + review-lens re-probed at ~12 clauses; ALL 8
+  probed clauses ALREADY CLOSED on main). DESKTOP MANDATE IS EXHAUSTED BY
+  READING; new desktop findings now need the external gate. New shapes,
+  each found by fresh reading, not by the list:
+  A COPY OF A PROP IS A SNAPSHOT, NOT A SUBSCRIPTION (DeliverableDetail's
+  pill froze 'approved' through the reopen its own upload caused, hiding the
+  Approve action that would republish); A CAPTION THAT NAMES A NUMBER MUST
+  COUNT ('Two sessions in this slot' over an unbounded list); A PHONE SURFACE
+  THAT REFUSES WHAT DESKTOP ALLOWS IS A DIFFERENT PRODUCT, NOT A REFLOW (J9
+  never-blocking held only on the grid); A NEGATIVE SCAN IS NOT A FLOOR (44px
+  test only forbids old 40px string); HIDDEN AT TOP LEVEL WITH NO OVERRIDE IS
+  A PICTURE THAT NEVER RENDERS. Rulings landed as `## Amendment (wave 12)` on
+  DEC-380/385/394/020/825.
