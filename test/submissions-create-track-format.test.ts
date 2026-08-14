@@ -149,6 +149,8 @@ function detailRow(overrides: Partial<Record<string, unknown>> = {}) {
     createdAt: new Date(1000),
     updatedAt: new Date(2000),
     recordPrefix: "TALK",
+    orgId: "org-a",
+    startDate: "2024-01-01",
     ...overrides,
   };
 }

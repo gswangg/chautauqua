@@ -480,6 +480,8 @@ function detailBaseRow(overrides: Record<string, unknown> = {}) {
     createdAt: new Date(2026, 0, 1),
     updatedAt: new Date(2026, 0, 2),
     recordPrefix: "SES",
+    orgId: "org-a",
+    startDate: "2024-01-01",
     slotDay: null,
     slotStartMin: null,
     slotEndMin: null,

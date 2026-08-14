@@ -138,8 +138,12 @@ describe("DEC-265: participant write-path responses are reload-equivalent", () =
 
     // What submissions/detail.ts would produce for this exact row on reload
     // (same id, contactId, contact name/email, role, order, visible,
-    // inviteStatus — the values inviteParticipant just wrote).
-    const reloadEquivalent: SubmissionDetailParticipant = {
+    // inviteStatus — the values inviteParticipant just wrote). The DEC-900
+    // speaker-rail history fields (submissionsThisYear/lastSpokeYear) are
+    // deliberately excluded here: they come from detail.ts's own batched
+    // cross-submission query, not from the participant row the write path
+    // returns, so they are out of scope for this row-identity parity check.
+    const reloadEquivalent: Omit<SubmissionDetailParticipant, "submissionsThisYear" | "lastSpokeYear"> = {
       id: posted.id,
       contactId: "contact-1",
       name: "Ada Lovelace",

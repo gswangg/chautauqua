@@ -206,6 +206,21 @@ export function daysUntilCalendarDay(targetMs: number, timeZone: string, nowMs: 
   return Math.max(0, Math.ceil((end - nowMs) / 86_400_000));
 }
 
+/** Extracts the calendar year from an event's `startDate` field (DEC-010/
+ * DEC-522: already a wall-clock 'YYYY-MM-DD' day label in the owning
+ * event's own timezone -- never re-zoned, never read via toISOString or the
+ * server's local clock). Used by the speaker rail's "N submissions this
+ * year"/"spoke in YYYY" history line (DEC-900) to bucket submissions by
+ * their OWNING EVENT's year. Throws on a malformed startDate rather than
+ * silently returning NaN, matching this module's fail-loudly contract. */
+export function eventYear(startDate: string): number {
+  const year = Number(startDate.slice(0, 4));
+  if (!Number.isInteger(year) || year < 1000) {
+    throw new Error(`eventYear: invalid startDate '${startDate}'`);
+  }
+  return year;
+}
+
 /** Names a schedule_slot's wall-clock placement (DEC-010: `day` +
  * `startMin` are already the wall-clock fields in the owning event's own
  * timezone) as "Wed 12, 10:00" — weekday + day-of-month, 24h HH:MM — for use
