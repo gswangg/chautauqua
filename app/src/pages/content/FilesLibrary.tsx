@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiGet, apiPostBlob, ApiError } from '../../lib/api';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { EmptyState } from '../../components/EmptyState';
 import {
   LIBRARY_KINDS,
   LIBRARY_KIND_LABELS,
@@ -31,6 +32,16 @@ const PER_PAGE = 50;
 const ARCHIVE_MAX_FILES = 50;
 const ARCHIVE_MAX_TOTAL_BYTES = 20 * 1024 * 1024;
 const ARCHIVE_CAP_MESSAGE = '50 files or 20 MB at a time — narrow the filter';
+
+// DEC-678 amendment (B7): names the exact facet(s) narrowing an empty
+// result set — search text and/or the active kind chip — so the reason
+// line never reads as a generic "try something else".
+function filesFilterReason(q: string, kind: LibraryKind | ''): string {
+  const parts: string[] = [];
+  if (q.trim() !== '') parts.push(`search "${q.trim()}"`);
+  if (kind !== '') parts.push(`type "${LIBRARY_KIND_LABELS[kind]}"`);
+  return `Filtered by ${parts.join(' and ')}.`;
+}
 
 /** DEC-773: the files library is ONE list — deliverable version chains AND
  * speaker headshots (kind='headshot'), server-paginated and server-filtered
@@ -225,33 +236,65 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
         </div>
       </div>
 
-      <table className="chq-table chq-content-table chq-content-files-table">
-        <thead>
-          <tr>
-            <th>File</th>
-            <th>Session</th>
-            <th className="chq-content-files-col-version">Version</th>
-            <th className="chq-content-files-col-size">Size</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {loading && (
+      {loading ? (
+        <table className="chq-table chq-content-table chq-content-files-table">
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Session</th>
+              <th className="chq-content-files-col-version">Version</th>
+              <th className="chq-content-files-col-size">Size</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
             <tr>
               <td colSpan={5}>
                 <DelayedLoading />
               </td>
             </tr>
-          )}
-          {loaded && !loading && items.length === 0 && (
+          </tbody>
+        </table>
+      ) : loaded && items.length === 0 ? (
+        // DEC-678 amendment (B7): a loaded, empty visible set never renders
+        // the <table> — a full <thead> over a one-cell apology is exactly
+        // the pattern B7 forbids. A search/kind facet narrows the set, so an
+        // empty result under one is 'filtered' (names the facet, offers a
+        // single escape that clears it); with no facet in flight it's
+        // 'fresh' -- and 'fresh' never offers a primary action here, since
+        // files arrive from speakers, not from a control on this page
+        // (DESIGN-RULINGS §B7 rule 3: no fake/disabled action where the
+        // producer of the row can't act).
+        q.trim() !== '' || kind !== '' ? (
+          <EmptyState
+            variant="filtered"
+            what="No deliverable files yet."
+            reason={filesFilterReason(q, kind)}
+            escape={{
+              label: 'Clear filters',
+              onClick: () => {
+                setQ('');
+                setKind('');
+                setPage(1);
+              },
+            }}
+          />
+        ) : (
+          <EmptyState variant="fresh" what="No deliverable files yet." />
+        )
+      ) : (
+        <table className="chq-table chq-content-table chq-content-files-table">
+          <thead>
             <tr>
-              <td colSpan={5} className="chq-empty">
-                No deliverable files yet.
-              </td>
+              <th>File</th>
+              <th>Session</th>
+              <th className="chq-content-files-col-version">Version</th>
+              <th className="chq-content-files-col-size">Size</th>
+              <th></th>
             </tr>
-          )}
-          {!loading &&
-            items.map((item) => (
+          </thead>
+          <tbody>
+            {items.map((item) => (
               <tr key={item.rootFileId} className="chq-content-row">
                 <td className="chq-content-row-title">
                   <div className="chq-content-file-cell">
@@ -301,8 +344,9 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
                 </td>
               </tr>
             ))}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      )}
 
       <div className="chq-files-library-pager chq-content-files-pager">
         <button type="button" className="chq-btn chq-btn-secondary" disabled={page <= 1 || loading} onClick={() => setPage((p) => p - 1)}>

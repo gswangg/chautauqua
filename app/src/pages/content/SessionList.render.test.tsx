@@ -740,6 +740,116 @@ describe('SessionList: needs_decision empty state names itself and links to All 
   });
 });
 
+// DEC-678 amendment (B7, task-w46-e): a loaded, empty visible set never
+// renders the <table> — no columnheader role survives. A non-'all' tab
+// narrows the set, so it's 'filtered' (names the tab, offers exactly one
+// escape back to 'all'); the 'all' tab with zero rows carries no narrowing
+// facet, so it's 'fresh' (no escape, no fabricated primary action).
+describe('SessionList: B7 zero-row states render no <table> (DEC-678 amendment)', () => {
+  it('renders no columnheader when the needs_decision tab is empty (filtered)', () => {
+    render(
+      <SessionList
+        {...SELECTION_PROPS}
+        items={[]}
+        tab="needs_decision"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={0}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+      />,
+    );
+
+    expect(screen.queryAllByRole('columnheader')).toHaveLength(0);
+    expect(screen.getByText(/Filtered by the "Needs a decision" tab/)).toBeInTheDocument();
+    // Exactly one escape control — the reused "View all accepted sessions"
+    // link — no second control.
+    expect(screen.getAllByRole('button', { name: 'View all accepted sessions' })).toHaveLength(1);
+  });
+
+  it('renders no columnheader when the approved tab is empty (filtered), naming that tab', () => {
+    const onTabChange = vi.fn();
+    render(
+      <SessionList
+        {...SELECTION_PROPS}
+        items={[]}
+        tab="approved"
+        onTabChange={onTabChange}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={0}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+      />,
+    );
+
+    expect(screen.queryAllByRole('columnheader')).toHaveLength(0);
+    expect(screen.getByText(/Filtered by the "Approved" tab/)).toBeInTheDocument();
+    const escape = screen.getByRole('button', { name: 'View all accepted sessions' });
+    escape.click();
+    expect(onTabChange).toHaveBeenCalledWith('all');
+  });
+
+  it("renders no columnheader and a fresh empty state (no escape, no reason) when the 'all' tab is empty", () => {
+    render(
+      <SessionList
+        {...SELECTION_PROPS}
+        items={[]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={0}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+      />,
+    );
+
+    expect(screen.queryAllByRole('columnheader')).toHaveLength(0);
+    expect(screen.getByText('No accepted sessions yet.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /View all accepted sessions/ })).not.toBeInTheDocument();
+  });
+
+  it('still renders a <table> with columnheaders while loading, even with zero items', () => {
+    render(
+      <SessionList
+        {...SELECTION_PROPS}
+        items={[]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={true}
+        loaded={false}
+        onContentStatusChange={noop}
+        total={0}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+      />,
+    );
+
+    expect(screen.queryAllByRole('columnheader').length).toBeGreaterThan(0);
+  });
+});
+
 // DEC-871: `<td>` must keep table-cell display so per-column borders land on
 // the same baseline across a worklist row — any flex layout for a cell's
 // contents belongs on an inner wrapper div, never on the td itself. This
