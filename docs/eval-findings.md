@@ -48,6 +48,24 @@ nearly all MAJORs verified fixed (queue CTA contrast, plan-editor measure, distr
 focus ring, draft guard, replace-keeps-versions exercised live v1+v2, speakers matrix
 typography+pills).
 
+## 3-AREA RE-MEASURE (2026-08-14 ~09:00, mini-gate SHA 63a692c3 on prod) — THE P0 FIX CONVERTED
+
+**AIA 91.7 @ 100% coverage** (from n/a/0% — the 529 zeroing fully exonerated) · **ABS 82.7 @
+93%** (from 71.7 — the scorecard-submit fix converted; mouse-driven E2E also verified by the
+mini-gate probe) · SPK 72.2 @ 82% — **understated: SPK-S2 is a KILL ARTIFACT** (the external
+process kill closed the browser at turn 0; the resume baked it in as attempted-failed).
+Best-known composite across runs ≈ **85-86** and climbing. SPK gets ONE more targeted re-run
+after the next deploy (which carries the PageSkeleton + caret + filter-row fixes prod lacks).
+
+**P1 · Add-speaker duplicate-email dead-end** — the modal blocks on a detected duplicate with
+no resolution path (re-click just re-renders the warning). Same no-forward-path class as the
+bulk-template picker: offer "Use existing contact" / link to the contact, or name the action.
+
+**P2 (re-measure):** contact drawer has no discoverable Save affordance (agents scrolled/
+tabbed hunting one — if rows are click-to-edit-auto-save, SAY so; else add Save);
+`/logout` 404s while still dropping the session (route it properly); PageSkeleton coverage
+gaps already filed (plans/:id/results renders heading+"Loading…" — finish the P1).
+
 ## GATE-4 REDS — THE OPEN LIST (these supersede any older filing of the same finding)
 
 ## SBEK RUN 4 (2026-08-14, prod, gate-4 SHA 33fbc724): 82.2% @ 78.9% coverage — READ WITH CARE
