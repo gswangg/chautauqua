@@ -8,17 +8,26 @@
 // module under app/src/pages/** calling apiList against a paged list
 // endpoint -- apiList<T> always targets one, by its ListEnvelope<T> return
 // type; app/src/lib/api.ts's own jsdoc distinguishes it from apiGet<T>,
-// which returns T, not an envelope, and this codebase never calls apiGet
-// against a paginated list route), ledger asserted exact in both
+// which returns T, not an envelope), ledger asserted exact in both
 // directions, exported pure classifier, negative controls.
 //
 // EXCLUDED from this ledger's population (named per DEC-518's own honesty
 // rule -- an exclusion is a word in the prose, not a silent omission):
 //   - app/src/pages/review/ReviewerQueue.tsx -- owned by wave-38 task c
-//   - app/src/pages/contacts/MergePage.tsx   -- owned by wave-39 task c
-// Both are asserted present in the RAW (unfiltered) scan below, so a future
-// rename that makes either file stop calling apiList (or a revert that
-// un-excludes it) is caught rather than silently drifting.
+// It is asserted present in the RAW (unfiltered) scan below, so a future
+// rename that makes it stop calling apiList (or a revert that un-excludes
+// it) is caught rather than silently drifting.
+//
+// OUT OF POPULATION BY CONSTRUCTION, named for the same honesty reason:
+//   - app/src/pages/contacts/MergePage.tsx -- wave-39 task c (DEC-748) fixed
+//     the pair-total defect that motivated this scan by having the merge
+//     screen resolve its own pair server-side: GET /contacts/duplicates?ids=
+//     via apiGet<{ items; total; position }>, reading position/total straight
+//     off that envelope. So it is the one place this codebase calls apiGet
+//     against a paginated list route, and it is therefore NOT an apiList
+//     caller and not in this population. Asserted below in both directions
+//     (absent from the raw scan, and genuinely reading .total off the
+//     envelope) so a revert of DEC-748 cannot silently slip past this file.
 //
 // VERDICT KEY (one per population member):
 //   'envelope'    -- every whole-set count this module renders reads
@@ -85,9 +94,9 @@ function relPath(absPath: string): string {
 }
 
 /** Raw (unfiltered) scan -- every non-test app/src/pages/** module that
- * calls apiList against a paged list endpoint, INCLUDING the two excluded
- * files. Exported so the exclusion-honesty check below can assert both
- * excluded files are actually found here (never a stale exclusion). */
+ * calls apiList against a paged list endpoint, INCLUDING the excluded
+ * file. Exported so the exclusion-honesty check below can assert the
+ * excluded file is actually found here (never a stale exclusion). */
 export function scanApiListCallers(): string[] {
   return walk(PAGES_DIR)
     .filter((f) => APILIST_CALL_RE.test(readFileSync(f, "utf8")))
@@ -97,8 +106,12 @@ export function scanApiListCallers(): string[] {
 
 const EXCLUSIONS: { file: string; owner: string }[] = [
   { file: "app/src/pages/review/ReviewerQueue.tsx", owner: "wave-38 task c" },
-  { file: "app/src/pages/contacts/MergePage.tsx", owner: "wave-39 task c" },
 ];
+
+// Not an exclusion -- it is not an apiList caller at all (see the header
+// note). Checked below so its departure from the population stays a written,
+// asserted fact rather than a silent absence.
+const MERGE_PAGE = "app/src/pages/contacts/MergePage.tsx";
 const EXCLUDED_FILES = new Set(EXCLUSIONS.map((e) => e.file));
 
 // ---------------------------------------------------------------------------
@@ -257,17 +270,24 @@ describe("spa-count-source-ledger.scan (DEC-518 wave-39 amendment)", () => {
   const rawScan = scanApiListCallers();
   const population = rawScan.filter((f) => !EXCLUDED_FILES.has(f));
 
-  it("tripwire: raw scan finds at least 32 apiList-calling modules under app/src/pages/**, never hardcoded", () => {
-    expect(rawScan.length).toBeGreaterThanOrEqual(32);
+  it("tripwire: raw scan finds at least 31 apiList-calling modules under app/src/pages/**, never hardcoded", () => {
+    expect(rawScan.length).toBeGreaterThanOrEqual(31);
   });
 
-  it("both named exclusions are genuinely found by the raw scan (an exclusion for a file that doesn't call apiList would be dishonest)", () => {
+  it("every named exclusion is genuinely found by the raw scan (an exclusion for a file that doesn't call apiList would be dishonest)", () => {
     for (const { file } of EXCLUSIONS) {
       expect(rawScan, `${file} not found by the raw scan -- exclusion may be stale`).toContain(file);
     }
   });
 
-  it("tripwire: population (raw scan minus the two exclusions) is at least 30", () => {
+  it("MergePage.tsx is out of the population because DEC-748 made it an apiGet-envelope reader, not because it was quietly dropped", () => {
+    expect(rawScan, `${MERGE_PAGE} is calling apiList again -- it must be ledgered, not treated as out of population`).not.toContain(MERGE_PAGE);
+    const src = readFileSync(join(ROOT, MERGE_PAGE), "utf8");
+    expect(src, `${MERGE_PAGE} must still resolve its pair via apiGet against /contacts/duplicates (DEC-748)`).toMatch(/apiGet\s*<[^>]*>\s*\(\s*[`'"]\/contacts\/duplicates/);
+    expect(src, `${MERGE_PAGE} must still read its pair total off the envelope, never items.length (DEC-748)`).toMatch(/res\.total/);
+  });
+
+  it("tripwire: population (raw scan minus the named exclusions) is at least 30", () => {
     expect(population.length).toBeGreaterThanOrEqual(30);
   });
 
