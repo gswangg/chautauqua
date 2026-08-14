@@ -1,6 +1,7 @@
 import type { ContactListItem } from './types';
 import { isPageFullySelected, isPagePartiallySelected, selectionReducer, type SelectionState } from './selection';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { paginationSummary } from '../../lib/pagination-summary';
 
 interface Props {
   items: ContactListItem[];
@@ -136,9 +137,7 @@ export function ContactsTable({
           spreads these two DOM children (span, then the nav group) to the
           row's ends without any pager-specific CSS change. */}
       <div className="chq-pager">
-        <span>
-          Showing {items.length === 0 ? 0 : (page - 1) * perPage + 1}&ndash;{(page - 1) * perPage + items.length} of {total}
-        </span>
+        <span>{paginationSummary(page, perPage, total, items.length)}</span>
         <div className="chq-contacts-pager-nav">
           <button type="button" className="chq-btn chq-btn-secondary" disabled={page <= 1} onClick={() => onChangePage(page - 1)}>
             Previous

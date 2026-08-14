@@ -11,7 +11,8 @@ import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { SubmissionsPage } from '../Submissions';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
-import { exportHref, paginationSummary } from './SubmissionsTable';
+import { exportHref } from './SubmissionsTable';
+import { paginationSummary } from '../../lib/pagination-summary';
 import { activeViewKey, builtInViews } from './ViewTabs';
 import { DEFAULT_FILTER_STATE, type FormField, type SubmissionsFilterState } from './types';
 

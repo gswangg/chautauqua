@@ -2,6 +2,7 @@ import { DELIVERABLE_LABELS, FILE_KINDS, type ContentStatus, type ContentSubmiss
 import { WORKLIST_TABS, worklistStatusLabel, worklistStatusEmphasisClass, type WorklistTab } from './worklist';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { formatRelativeDays, formatDayLabel } from '../../lib/dates';
+import { paginationSummary } from '../../lib/pagination-summary';
 
 // w5-i (DEC-020 amendment quoted mock text, eval-findings.md STILL-PRESENT
 // residue): the Latest file column names EVERY kind that has files ("Slides
@@ -103,8 +104,6 @@ export function SessionList({
   approveReady,
 }: SessionListProps) {
   const visible = items;
-  const rangeStart = total === 0 ? 0 : (page - 1) * perPage + 1;
-  const rangeEnd = Math.min(page * perPage, total);
   const pageIds = visible.map((item) => item.id);
   const allSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
   const someSelected = pageIds.some((id) => selectedIds.has(id));
@@ -308,7 +307,7 @@ export function SessionList({
           Previous
         </button>
         <span>
-          Showing {rangeStart}-{rangeEnd} of {total}
+          {paginationSummary(page, perPage, total)}
         </span>
         <button
           type="button"

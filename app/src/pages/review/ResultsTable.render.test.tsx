@@ -7,7 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { paginationSummary, ResultsTable } from './ResultsTable';
+import { ResultsTable } from './ResultsTable';
+import { paginationSummary } from '../../lib/pagination-summary';
 import { errorEnvelope, listEnvelope, mockApi } from '../../test-utils/mockApi';
 
 const PLAN_ID = 'plan-results-1';

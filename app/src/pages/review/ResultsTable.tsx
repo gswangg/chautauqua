@@ -4,6 +4,7 @@ import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
 import './review.css';
 import { buildResultsCsvHref } from './resultsCsv';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { paginationSummary } from '../../lib/pagination-summary';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import type { EvaluationPlan, ResultsRow, SubmissionEvaluationItem } from './types';
 import { STATUS_LABELS, type SubmissionStatus } from '../submissions/types';
@@ -43,16 +44,6 @@ export type ResultsSortKey = { column: 'title' } | { column: 'average' };
 const NUMERIC_COLUMNS: ResultsSortKey['column'][] = ['average'];
 
 const PER_PAGE = 50;
-
-/** DEC-906: the product's one pagination-summary shape ("Showing {start}-
- * {end} of {total}"), matching SubmissionsTable.paginationSummary. Exported
- * for its own unit test. */
-export function paginationSummary(page: number, perPage: number, total: number): string {
-  if (total === 0) return 'Showing 0 of 0';
-  const start = (page - 1) * perPage + 1;
-  const end = Math.min(page * perPage, total);
-  return `Showing ${start}–${end} of ${total}`;
-}
 
 function sortKeysEqual(a: ResultsSortKey, b: ResultsSortKey): boolean {
   return a.column === b.column;

@@ -10,6 +10,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { COMPOSE_MERGE_FIELDS, type MergeField } from '../../lib/merge-fields';
 import { InsertFieldMenu } from './InsertFieldMenu';
 import { countOf } from '../../lib/plural';
+import { paginationSummary } from '../../lib/pagination-summary';
 import type { EmailTemplate, RenderedRecipient } from './types';
 import type { EvaluationPlan } from '../review/types';
 import { DEC_793, DEC_967, DEC_993 } from '../../../../src/decisions';
@@ -366,8 +367,6 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setConfirmingSend(false);
   }
 
-  const rangeStart = total === 0 ? 0 : (page - 1) * PER_PAGE + 1;
-  const rangeEnd = total === 0 ? 0 : Math.min(page * PER_PAGE, total);
 
   const stepMeta: StepMeta[] = [
     {
@@ -503,7 +502,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
 
           <div className="chq-pager">
             <span>
-              Showing {rangeStart}-{rangeEnd} of {total}
+              {paginationSummary(page, PER_PAGE, total)}
             </span>
             <button
               type="button"
