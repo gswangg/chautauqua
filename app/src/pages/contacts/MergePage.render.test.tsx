@@ -93,12 +93,15 @@ describe('MergePage render (DEC-748: struck-empty discards, Labels row, keep-col
     // DEC-992: column heads name both the record AND its vintage --
     // "Keeping · <name> · added <date>" / "Discarding · <name> · added
     // <date>". DEC-802: the third column also now names the discarded
-    // record (also "Jane Doe" in this fixture). DEC-834: since the names
-    // collide, both heads carry the pick list's disambiguator (email) so
-    // they read distinctly.
+    // record (also "Jane Doe" in this fixture). DEC-834/wave-4 amendment:
+    // since the names collide, both heads carry a company disambiguator --
+    // never the pick list's email, which would render SHOUTED in the
+    // uppercase eyebrow row.
     const headRow = document.querySelector('.chq-contacts-merge-compare-head') as HTMLElement;
-    expect(within(headRow).getByText('Keeping · Jane Doe (jane@example.com) · added 1 Jan 2024')).toBeInTheDocument();
-    expect(within(headRow).getByText('Discarding · Jane Doe (jane.merge@example.com) · added 15 Jun 2024')).toBeInTheDocument();
+    expect(within(headRow).getByText('Keeping · Jane Doe (Acme) · added 1 Jan 2024')).toBeInTheDocument();
+    expect(within(headRow).getByText('Discarding · Jane Doe (Acme Corp) · added 15 Jun 2024')).toBeInTheDocument();
+    expect(within(headRow).queryByText(/jane@example\.com/)).not.toBeInTheDocument();
+    expect(within(headRow).queryByText(/jane\.merge@example\.com/)).not.toBeInTheDocument();
 
     // A blank duplicate side still renders a row, but DEC-802: nothing was
     // actually dropped (the duplicate's side was already blank), so it
@@ -120,11 +123,14 @@ describe('MergePage render (DEC-748: struck-empty discards, Labels row, keep-col
     expect(screen.queryByText('shirtSize')).not.toBeInTheDocument();
     const labelsRow = screen.getByText('Labels').closest('.chq-contacts-merge-compare-row') as HTMLElement;
     expect(within(labelsRow).getByText('shirtSize M')).toBeInTheDocument();
-    expect(screen.getByText(/Labels always combine/)).toBeInTheDocument();
+
+    // DEC-992 amendment (wave 4): the combine rule is stated ONCE, in a
+    // single tinted box above the compare table.
+    expect(screen.getByText('Labels combine, notes are appended')).toBeInTheDocument();
   });
 });
 
-describe('MergePage render (DEC-834: same-name pair disambiguates compare heads, notes footnote)', () => {
+describe('MergePage render (DEC-834/wave-4 amendment: same-name pair disambiguates compare heads with a company, never an email)', () => {
   const SAME_NAME_GROUP = {
     contactIds: ['ct-keep', 'ct-merge'],
     contacts: [
@@ -133,7 +139,7 @@ describe('MergePage render (DEC-834: same-name pair disambiguates compare heads,
     ],
   };
 
-  it('gives each column head an email disambiguator when the kept and discarded names are identical, and prints the notes-append footnote', async () => {
+  it('gives each column head a company disambiguator when the kept and discarded names are identical, never a shouted uppercased email', async () => {
     mockApi({
       'GET /api/v1/contacts/duplicates': listEnvelope([SAME_NAME_GROUP]),
       'GET /api/v1/contacts/merge/preview': { fields: PREVIEW_FIELDS },
@@ -147,19 +153,17 @@ describe('MergePage render (DEC-834: same-name pair disambiguates compare heads,
 
     const headRow = document.querySelector('.chq-contacts-merge-compare-head') as HTMLElement;
     // Both heads read "Sam Ng" alone before DEC-834 -- indistinguishable at
-    // the moment of an irreversible choice. Each must now carry the pick
-    // list's own disambiguator (email) so the two heads read differently,
-    // plus DEC-992's Keeping/Discarding prefix and added-date vintage.
-    const keepHead = within(headRow).getByText('Keeping · Sam Ng (sam@lattice.com) · added 1 Jan 2024');
-    const discardHead = within(headRow).getByText('Discarding · Sam Ng (sam@other.com) · added 15 Jun 2024');
+    // the moment of an irreversible choice. Each must now carry a company
+    // disambiguator so the two heads read differently, plus DEC-992's
+    // Keeping/Discarding prefix and added-date vintage. Wave-4 amendment:
+    // never the raw email -- the eyebrow row renders uppercase.
+    const keepHead = within(headRow).getByText('Keeping · Sam Ng (Lattice) · added 1 Jan 2024');
+    const discardHead = within(headRow).getByText('Discarding · Sam Ng (Other Co) · added 15 Jun 2024');
     expect(keepHead).toBeInTheDocument();
     expect(discardHead).toBeInTheDocument();
     expect(keepHead.textContent).not.toEqual(discardHead.textContent);
-
-    await waitFor(() => {
-      expect(screen.getByText('Notes are appended, never chosen one over the other.')).toBeInTheDocument();
-    });
-    expect(screen.getByText('The discarded record is deleted.')).toBeInTheDocument();
+    expect(within(headRow).queryByText(/sam@lattice\.com/)).not.toBeInTheDocument();
+    expect(within(headRow).queryByText(/sam@other\.com/)).not.toBeInTheDocument();
   });
 
   // DEC-858: names differing only by case are the same name at a merge --
@@ -186,8 +190,8 @@ describe('MergePage render (DEC-834: same-name pair disambiguates compare heads,
     });
 
     const headRow = document.querySelector('.chq-contacts-merge-compare-head') as HTMLElement;
-    const keepHead = within(headRow).getByText('Keeping · PARKER anders (parker@upper.com) · added 1 Jan 2024');
-    const discardHead = within(headRow).getByText('Discarding · Parker Anders (parker@lower.com) · added 15 Jun 2024');
+    const keepHead = within(headRow).getByText('Keeping · PARKER anders (Upper Co) · added 1 Jan 2024');
+    const discardHead = within(headRow).getByText('Discarding · Parker Anders (Lower Co) · added 15 Jun 2024');
     expect(keepHead).toBeInTheDocument();
     expect(discardHead).toBeInTheDocument();
     expect(keepHead.textContent).not.toEqual(discardHead.textContent);
@@ -310,6 +314,22 @@ describe('MergePage render (DEC-684)', () => {
     expect(body).toEqual({ keepId: 'ct-keep', mergeIds: ['ct-merge'] });
   });
 
+  it('DEC-992 amendment (wave 4): the back link is the ONE cancel path -- no second Cancel button in the footer', async () => {
+    mockApi({
+      'GET /api/v1/contacts/duplicates': listEnvelope([GROUP]),
+      'GET /api/v1/contacts/merge/preview': { fields: PREVIEW_FIELDS },
+    });
+
+    renderAt('/contacts/merge?ids=ct-keep,ct-merge&keep=ct-keep');
+
+    await waitFor(() => {
+      expect(screen.getByText('Merge two records')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Contacts.*Duplicates/ })).toBeInTheDocument();
+  });
+
   it('DEC-734/DEC-770: the footer\'s "Not a duplicate" POSTs the dismissal then navigates back to /contacts with the pair to dismiss, no merge POST', async () => {
     const fetchMock = mockApi({
       'GET /api/v1/contacts/duplicates': listEnvelope([GROUP]),
@@ -323,7 +343,12 @@ describe('MergePage render (DEC-684)', () => {
       expect(screen.getByText('Merge two records')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Not a duplicate' }));
+    // DEC-992 amendment (wave 4): 'Not a duplicate' is a green text link,
+    // not a boxed chq-btn peer of Merge/Swap.
+    const notDuplicateControl = screen.getByRole('button', { name: 'Not a duplicate' });
+    expect(notDuplicateControl).toHaveClass('chq-contacts-merge-not-duplicate');
+    expect(notDuplicateControl).not.toHaveClass('chq-btn');
+    fireEvent.click(notDuplicateControl);
 
     await waitFor(() => {
       expect(screen.getByText('Contacts landing')).toBeInTheDocument();
@@ -359,14 +384,14 @@ describe('MergePage render (DEC-992: vintage heads, swap control, 3+ group fallb
     });
 
     const headRow = document.querySelector('.chq-contacts-merge-compare-head') as HTMLElement;
-    expect(within(headRow).getByText('Keeping · Jane Doe (jane@example.com) · added 1 Jan 2024')).toBeInTheDocument();
-    expect(within(headRow).getByText('Discarding · Jane Doe (jane.merge@example.com) · added 15 Jun 2024')).toBeInTheDocument();
+    expect(within(headRow).getByText('Keeping · Jane Doe (Acme) · added 1 Jan 2024')).toBeInTheDocument();
+    expect(within(headRow).getByText('Discarding · Jane Doe (Acme Corp) · added 15 Jun 2024')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Swap which is kept' }));
 
     await waitFor(() => {
-      expect(within(headRow).getByText('Keeping · Jane Doe (jane.merge@example.com) · added 15 Jun 2024')).toBeInTheDocument();
-      expect(within(headRow).getByText('Discarding · Jane Doe (jane@example.com) · added 1 Jan 2024')).toBeInTheDocument();
+      expect(within(headRow).getByText('Keeping · Jane Doe (Acme Corp) · added 15 Jun 2024')).toBeInTheDocument();
+      expect(within(headRow).getByText('Discarding · Jane Doe (Acme) · added 1 Jan 2024')).toBeInTheDocument();
     });
 
     // The primary button re-names its new target too.
@@ -411,8 +436,8 @@ describe('MergePage render (DEC-992: vintage heads, swap control, 3+ group fallb
   });
 });
 
-describe('MergePage render (DEC-992 amendment wave 47: rules block says each rule once, names the deletion)', () => {
-  it('mentions labels exactly once when the preview carries a non-empty Labels row, and always states the discarded record is deleted', async () => {
+describe('MergePage render (DEC-992 amendment wave 4: one tinted combine-rule box above the compare table, deletion named in the confirm dialog)', () => {
+  it('states the combine rule exactly once, in a single tinted box positioned before the compare-head, with no trailing footnote paragraphs', async () => {
     mockApi({
       'GET /api/v1/contacts/duplicates': listEnvelope([GROUP]),
       'GET /api/v1/contacts/merge/preview': {
@@ -429,20 +454,25 @@ describe('MergePage render (DEC-992 amendment wave 47: rules block says each rul
       expect(screen.getByText('Merge two records')).toBeInTheDocument();
     });
 
-    const rulesBlock = await waitFor(() => document.querySelector('.chq-contacts-merge-rules') as HTMLElement);
-    expect(rulesBlock).toBeInTheDocument();
+    const ruleBox = await waitFor(() => document.querySelector('.chq-contacts-merge-rule-box') as HTMLElement);
+    expect(ruleBox).toBeInTheDocument();
+    expect(ruleBox).toHaveTextContent('Labels combine, notes are appended');
 
-    // Exactly one rendered sentence in the rules block mentions labels --
-    // not the DEC-834 sentence AND the DEC-992 sentence both firing.
-    const labelSentences = within(rulesBlock)
-      .getAllByText((_, node) => !!node && /label/i.test(node.textContent ?? '') && node.tagName === 'P');
-    expect(labelSentences).toHaveLength(1);
+    // Exactly one element states the combine rule -- no loose footnote
+    // paragraphs duplicating it.
+    expect(screen.getAllByText('Labels combine, notes are appended')).toHaveLength(1);
+    expect(screen.queryByText(/Labels always combine/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Notes are appended, never chosen/)).not.toBeInTheDocument();
+    expect(screen.queryByText('The discarded record is deleted.')).not.toBeInTheDocument();
 
-    // The destruction sentence renders unconditionally in the rules block.
-    expect(within(rulesBlock).getByText('The discarded record is deleted.')).toBeInTheDocument();
+    // The rule box sits ABOVE the compare table in DOM order.
+    const compareHead = document.querySelector('.chq-contacts-merge-compare-head') as HTMLElement;
+    expect(
+      ruleBox.compareDocumentPosition(compareHead) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
-  it('states the discarded record is deleted in the confirm dialog body too', async () => {
+  it('states the discarded record is deleted in the confirm dialog body', async () => {
     mockApi({
       'GET /api/v1/contacts/duplicates': listEnvelope([GROUP]),
       'GET /api/v1/contacts/merge/preview': { fields: PREVIEW_FIELDS },

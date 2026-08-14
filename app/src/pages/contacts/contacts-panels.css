@@ -472,6 +472,39 @@
   color: var(--chq-muted);
 }
 
+/* DEC-992 amendment (wave 4): the ONE combine-rule statement, in a tinted
+   box above the compare table -- replaces the loose trailing footnote
+   paragraphs (two of which used to end with the same clause). */
+.chq-contacts-merge-rule-box {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chq-ink-2);
+  background: var(--chq-surface-sunk);
+  border-radius: var(--chq-r-card);
+  padding: 10px 14px;
+}
+
+/* DEC-992 amendment (wave 4): 'Not a duplicate' is an escape hatch, not a
+   peer of the irreversible Merge primary -- a green text link (the
+   palette's one green, --chq-brand), not a fourth boxed button in the
+   footer row. */
+.chq-contacts-merge-not-duplicate {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chq-brand);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.chq-contacts-merge-not-duplicate:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 .chq-contacts-merge-impact {
   font-size: 13px;
   color: var(--chq-ink-2);
@@ -483,10 +516,16 @@
    frames. Breadcrumb back to Contacts · Duplicates, page title, the same
    field-by-field KEEP/DISCARD comparison above, then a primary Merge /
    secondary Cancel footer action row. */
+/* DEC-992 amendment (wave 4): content sits at a 764px inset inside the
+   page's own 820px --chq-measure clamp (chq-measure stays on the page
+   root, untouched -- this is an inner padding, not a second measure). */
 .chq-contacts-merge-page {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  box-sizing: border-box;
+  padding-left: 28px;
+  padding-right: 28px;
 }
 
 .chq-contacts-merge-topbar {
