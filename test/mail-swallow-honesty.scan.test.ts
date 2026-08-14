@@ -103,14 +103,20 @@ function catchSurfacesOutcome(catchBody: string): boolean {
 }
 
 const FUNCTION_DECL = /^(?:export\s+)?(?:async\s+)?function\s+([A-Za-z0-9_]+)\s*\(/;
-const ROUTE_HANDLER_DECL = /\.(?:post|get|put|patch|delete)\s*\(\s*["'`][^"'`]*["'`]/;
+// Captures the HTTP method and the route's own registered path literal, e.g.
+// `usersRoutes.post("/api/v1/users", requireOrganizer, ...)` -> method=post,
+// path=/api/v1/users. This is what the ledger below keys on -- the route's
+// registration (method + path), not the line it happens to sit on -- so an
+// unrelated edit that shifts lines above the handler never re-keys it.
+const ROUTE_HANDLER_DECL = /\.(post|get|put|patch|delete)\s*\(\s*["'`]([^"'`]*)["'`]/;
 
 function nearestEnclosingFunction(lines: string[], startLineIdx: number): string {
   for (let i = startLineIdx; i >= 0; i--) {
     const line = lines[i] ?? "";
     const fnMatch = FUNCTION_DECL.exec(line);
     if (fnMatch?.[1]) return fnMatch[1];
-    if (ROUTE_HANDLER_DECL.test(line)) return `(route handler near line ${i + 1})`;
+    const routeMatch = ROUTE_HANDLER_DECL.exec(line);
+    if (routeMatch) return `${routeMatch[1]!.toUpperCase()} "${routeMatch[2]}"`;
   }
   return "(module scope)";
 }
@@ -157,19 +163,23 @@ function scanForMailSwallows(): SwallowHit[] {
 }
 
 // The ledger. Every hit that doesn't surface its outcome must have exactly
-// one entry here (matched on file + functionOrNearestExport, stable across
-// line-number drift). A hit with no matching entry fails the scan; an entry
-// matching no hit fails as a stale ledger line.
+// one entry here, matched on file + functionOrNearestExport. For a
+// route-handler hit, functionOrNearestExport is the route's own registration
+// (HTTP method + path literal, e.g. `POST "/forgot"`), NOT a line number --
+// stable across line-number drift, since it's keyed on what the route IS
+// rather than where it currently sits in the file. A hit with no matching
+// entry fails the scan; an entry matching no hit fails as a stale ledger
+// line.
 const KNOWN_SWALLOWS: { file: string; functionOrNearestExport: string; reason: string }[] = [
   {
     file: "src/routes/api/users.ts",
-    functionOrNearestExport: "(route handler near line 64)",
+    functionOrNearestExport: 'POST "/api/v1/users"',
     reason:
       "POST /api/v1/users: the welcome-email send failure is caught and logged, but the 201 response already returns the freshly generated one-time password on screen -- nothing is claimed that did not happen (the account creation itself succeeded; the welcome notice is a best-effort courtesy copy of information the caller already has in hand).",
   },
   {
     file: "src/routes/auth-reset.tsx",
-    functionOrNearestExport: "(route handler near line 61)",
+    functionOrNearestExport: 'POST "/forgot"',
     reason:
       "POST /forgot: surfacing this outcome is what DEC-014's wave-25 amendment forbids -- the anti-enumeration rule is that the response is the same 'Check your email' card whether or not a user row exists and 'never branches its response', so a send failure cannot reach the caller without also disclosing that the address resolved to an account. The failure is logged server-side, and the reset token is still minted, so a user who asks again gets a fresh link. (task-w44-c: the mint/send side effect now lives in a local `branchWork` closure -- indented, so the scan's line-anchored FUNCTION_DECL regex doesn't match it and this still resolves to the nearest enclosing route-handler line -- scheduled via `executionCtxOf`/`waitUntil` to close DEC-004's wave-44 timing oracle.)",
   },
@@ -202,6 +212,53 @@ describe("mail-swallow-honesty scan negative control (DEC-518 wave-35 amendment)
       "}",
     ].join("\n");
     expect(findMailSwallowHits(src, "src/routes/fixture.ts")).toEqual([]);
+  });
+
+  it("STABLE KEY: a route-handler descriptor is identical no matter how many blank lines precede it", () => {
+    const routeSrc = [
+      'resetRoutes.post("/forgot", csrfForm, async (c) => {',
+      "  try {",
+      "    await mailer.send(msg);",
+      "  } catch (err) {",
+      "    console.error(err);",
+      "  }",
+      "});",
+    ].join("\n");
+    const baseline = findMailSwallowHits(routeSrc, "src/routes/fixture.ts");
+    expect(baseline.length).toBe(1);
+    expect(baseline[0]?.functionOrNearestExport).toBe('POST "/forgot"');
+
+    for (const n of [1, 5, 40]) {
+      const padded = Array.from({ length: n }, () => "").join("\n") + "\n" + routeSrc;
+      const hits = findMailSwallowHits(padded, "src/routes/fixture.ts");
+      expect(hits.length).toBe(1);
+      expect(hits[0]?.functionOrNearestExport).toBe(baseline[0]?.functionOrNearestExport);
+    }
+  });
+
+  it("DISTINCT KEY: two route handlers with different registered paths get distinct descriptors", () => {
+    const src = [
+      'usersRoutes.post("/api/v1/users", requireOrganizer, csrfJson, async (c) => {',
+      "  try {",
+      "    await mailer.send(welcomeMsg);",
+      "  } catch (err) {",
+      "    console.error(err);",
+      "  }",
+      "});",
+      "",
+      'usersRoutes.post("/api/v1/users/:id/reset-password", requireOrganizer, csrfJson, async (c) => {',
+      "  try {",
+      "    await mailer.send(resetMsg);",
+      "  } catch (err) {",
+      "    console.error(err);",
+      "  }",
+      "});",
+    ].join("\n");
+    const hits = findMailSwallowHits(src, "src/routes/fixture.ts");
+    expect(hits.length).toBe(2);
+    expect(hits[0]?.functionOrNearestExport).toBe('POST "/api/v1/users"');
+    expect(hits[1]?.functionOrNearestExport).toBe('POST "/api/v1/users/:id/reset-password"');
+    expect(hits[0]?.functionOrNearestExport).not.toBe(hits[1]?.functionOrNearestExport);
   });
 
   it("COMPLIANT: a catch body that returns a failure-bearing response is silent", () => {
