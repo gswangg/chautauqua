@@ -12,6 +12,10 @@ import { formatDayLabel } from '../../lib/dates';
 import { conflictKindLabel } from '../agenda/ConflictChip';
 import { joinSegments, pluralize } from './rows';
 import type { OverviewPayload } from './types';
+// DEC-908 (wave-9 amendment): the ONE session-shape display vocabulary --
+// format's trailing-parenthetical reshaping ('Talk (30 min)' -> 'Talk, 30
+// min').
+import { sessionFormatLabel } from '../../../../src/lib/session-vocabulary';
 
 // DEC-828 (schedule.ts): render minutes-from-midnight as a zero-padded
 // HH:MM clock time — never a raw ISO string, never Intl's browser-locale
@@ -148,7 +152,7 @@ export function AgendaWorkSection({ payload, setPayload, setError, refetch }: Ag
                 answer at all) still drops cleanly, never a dangling
                 "· ·" fragment. */}
             <div className="chq-overview-row-meta">
-              {joinSegments([row.speakerName, row.format, row.ref])}
+              {joinSegments([row.speakerName, row.format != null ? sessionFormatLabel(row.format) : null, row.ref])}
             </div>
           </div>
           {row.suggestion && row.durationMin !== null ? (

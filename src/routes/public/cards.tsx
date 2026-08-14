@@ -8,6 +8,12 @@ import type { CardFields } from "./query";
 import { formatDayLong } from "../../lib/event-time";
 import { normalizeHexColor } from "../../domain/color";
 import { publicRoomLabel } from "../../domain/schedule";
+// DEC-908 (wave-9 amendment): the ONE session-shape display vocabulary --
+// format's trailing-parenthetical reshaping ('Talk (30 min)' -> 'Talk, 30
+// min'), swept onto the public cards' own format readers so
+// .chq-pub-session-tag's uppercase transform reads 'TALK, 30 MIN' rather
+// than 'TALK (30 MIN)'.
+import { sessionFormatLabel } from "../../lib/session-vocabulary";
 
 const ALL_FIELDS_ON: CardFields = {
   track: true,
@@ -52,7 +58,7 @@ export function TrackChips(props: { tracks: PublicTrack[]; highlightTrackId?: st
 // or no answer given) renders NOTHING — never a labelled blank chip.
 export function FormatChip(props: { format: string | null }) {
   if (!props.format) return null;
-  return <span class="chq-pub-format-chip">{props.format}</span>;
+  return <span class="chq-pub-format-chip">{sessionFormatLabel(props.format)}</span>;
 }
 
 // DEC-968: the sessions-list row's meta line is a single caps line -- one or
@@ -72,7 +78,7 @@ export function SessionTagLine(props: { tracks: PublicTrack[]; format: string | 
     <div class="chq-pub-session-tags">
       {showTrack ? <span class="chq-pub-session-tag">{trackNames}</span> : null}
       {showTrack && showFormat ? <span class="chq-pub-session-tag-dot" /> : null}
-      {showFormat ? <span class="chq-pub-session-tag">{props.format}</span> : null}
+      {showFormat ? <span class="chq-pub-session-tag">{sessionFormatLabel(props.format as string)}</span> : null}
     </div>
   );
 }

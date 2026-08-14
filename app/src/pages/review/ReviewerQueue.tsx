@@ -19,14 +19,11 @@ import { daysUntil, daysAgo } from '../../lib/dates';
 // other direction. dayLabelEndInstant is the shared primitive daysUntil
 // itself is built on (src/lib/timezone, pure-core).
 import { dayLabelEndInstant } from '../../../../src/lib/timezone';
-
-// w42-h/DEC-366 amendment: display-only reshaping of the server-verbatim
-// format string ('Talk (30 min)' -> 'Talk, 30 min') -- DEC-857's wire
-// contract (format arrives verbatim, already carrying its own duration
-// suffix) is untouched; only how the trailing parenthetical prints changes.
-export function formatMetaLabel(format: string): string {
-  return format.replace(/\s*\(([^)]+)\)$/, ', $1');
-}
+// DEC-908 (wave-9 amendment): the ONE session-shape display vocabulary --
+// format's trailing-parenthetical reshaping and audienceLevel's lowercase
+// reshaping both live in this single pure-core module, imported by every
+// reader instead of each defining (or re-defining) its own grammar.
+import { sessionFormatLabel, audienceLevelLabel } from '../../../../src/lib/session-vocabulary';
 
 // DEC-831/w42-h: 'closes in N days' while the window is still open; a plan
 // whose close date has already passed reads in the past tense ('closed N
@@ -177,7 +174,10 @@ function PlanSection({
                   renders when the submission has neither. */}
               {(item.format != null || item.audienceLevel != null) && (
                 <p className="chq-review-plan-meta">
-                  {[item.format != null ? formatMetaLabel(item.format) : null, item.audienceLevel]
+                  {[
+                    item.format != null ? sessionFormatLabel(item.format) : null,
+                    item.audienceLevel != null ? audienceLevelLabel(item.audienceLevel) : null,
+                  ]
                     .filter((v): v is string => v != null)
                     .join(' · ')}
                 </p>
@@ -223,7 +223,10 @@ function PlanSection({
                   above, not a second component. */}
               {(item.format != null || item.audienceLevel != null) && (
                 <p className="chq-review-plan-meta">
-                  {[item.format != null ? formatMetaLabel(item.format) : null, item.audienceLevel]
+                  {[
+                    item.format != null ? sessionFormatLabel(item.format) : null,
+                    item.audienceLevel != null ? audienceLevelLabel(item.audienceLevel) : null,
+                  ]
                     .filter((v): v is string => v != null)
                     .join(' · ')}
                 </p>

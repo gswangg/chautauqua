@@ -220,7 +220,7 @@ describe('ReviewerQueue desktop row anatomy (REVIEW PACK frame 03-03)', () => {
             title: 'Conflicted Talk',
             reason: 'Personal conflict',
             format: 'Talk (30 min)',
-            audienceLevel: 'advanced',
+            audienceLevel: 'Advanced',
           },
         ],
       },
@@ -234,12 +234,14 @@ describe('ReviewerQueue desktop row anatomy (REVIEW PACK frame 03-03)', () => {
 
   // gate-4 03-review still-present finding: an actionable row's meta line
   // must read "Talk, 30 min · advanced" -- format joined with the queue
-  // item's own audienceLevel, through the SAME formatMetaLabel vocabulary
-  // the meta line already uses for format (no second formatter).
+  // item's own audienceLevel, through the ONE session-vocabulary module
+  // (session-vocabulary.ts) the meta line routes BOTH clauses through --
+  // the seed stores audienceLevel Title-Case ('Advanced'); only the display
+  // reshaping lowercases it.
   it('an actionable row meta line joins format and audienceLevel through the same vocabulary', async () => {
     mockApi({
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
-        ...listEnvelope([queueItem({ format: 'Talk (30 min)', audienceLevel: 'advanced' })]),
+        ...listEnvelope([queueItem({ format: 'Talk (30 min)', audienceLevel: 'Advanced' })]),
         open: true,
         recused: [],
       },
