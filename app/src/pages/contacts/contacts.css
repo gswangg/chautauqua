@@ -114,8 +114,10 @@
   margin-left: auto;
 }
 
+/* DEC-711 amendment (wave 4): wide enough that the placeholder "Search
+   name, email or company…" renders unclipped (measured ~230px before). */
 .chq-contacts-search {
-  min-width: 230px;
+  min-width: 280px;
 }
 
 .chq-contacts-segment-summary {
@@ -131,6 +133,15 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+/* DEC-711 amendment (wave 4): [Previous][Next] sit together as one group
+   on the pager's right; .chq-pager (styles.css) still spreads this group
+   and the "Showing…" span to the row's two ends via space-between. */
+.chq-contacts-pager-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .chq-contacts-segment-select {
@@ -231,8 +242,23 @@
   letter-spacing: -0.015em;
 }
 
+/* DEC-738 amendment (wave 4): the DIRECTORY column's LABELS cell prints the
+   server-formatted `key value` strings as plain small-caps meta joined by
+   ' - ' — the bordered-chip chrome is gone there; .chq-meta (styles.css)
+   supplies the muted colour/size, this rule only adds the small-caps
+   treatment. The drawer's own Labels row (below) is untouched by this
+   amendment and keeps the chip chrome. */
+.chq-contacts-labels-meta {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 /* DEC-712/eval-findings 45+55: derived-role label chips, uppercase small-caps
-   per mock (Chautauqua Contacts.dc.html:98). */
+   per mock (Chautauqua Contacts.dc.html:98) — still used by the drawer's
+   read-only Labels row (ContactDrawer.tsx); the directory table no longer
+   renders this markup (DEC-738 amendment, wave 4). */
 .chq-contacts-label-chips {
   list-style: none;
   margin: 0;

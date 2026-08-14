@@ -256,13 +256,14 @@ export function ContactsApp() {
 
   const selectedIds = [...selection.selectedIds];
 
-  // DEC-710/DEC-711/DEC-809: the title summary names every figure GET
-  // /contacts/stats computes — eventCount and returningSpeakers were
-  // already shipped in the payload (src/server/repo/contacts/stats.ts) but
-  // dropped on render; this reads the same `stats` fetch, no new request
-  // and no client-side re-derivation.
+  // DEC-711 amendment (wave 4): the title summary falls to THREE clauses —
+  // people, speakers, possible duplicates. returningSpeakers and eventCount
+  // are dropped from the header (a "0 returning speakers" clause reads as a
+  // defect); both figures stay available where they are actually used
+  // (stats.returningSpeakers/eventCount still flow through the `stats`
+  // fetch for any other consumer — no payload change).
   const summary = stats
-    ? `${countOf(stats.total, 'person', 'people')} · ${countOf(stats.speakerCount, 'speaker')} · ${countOf(stats.returningSpeakers, 'returning speaker')} · ${countOf(stats.eventCount, 'event')} · ${countOf(stats.duplicateCount, 'possible duplicate')}`
+    ? `${countOf(stats.total, 'person', 'people')} · ${countOf(stats.speakerCount, 'speaker')} · ${countOf(stats.duplicateCount, 'possible duplicate')}`
     : null;
 
   return (
@@ -270,7 +271,12 @@ export function ContactsApp() {
       <div className="chq-contacts-title-row">
         <h1 className="chq-page-title">Contacts</h1>
         {summary && <span className="chq-summary">{summary}</span>}
+        {/* DEC-711 amendment (wave 4): the action cluster orders Import /
+            Export / New. */}
         <div className="chq-contacts-title-actions">
+          <button type="button" className="chq-btn chq-btn-secondary" onClick={openImport}>
+            Import CSV
+          </button>
           {eventId && (
             <a
               className="chq-btn chq-btn-secondary"
@@ -279,9 +285,6 @@ export function ContactsApp() {
               Export CSV
             </a>
           )}
-          <button type="button" className="chq-btn chq-btn-secondary" onClick={openImport}>
-            Import CSV
-          </button>
           <button type="button" className="chq-btn chq-btn-primary" onClick={() => setShowNewContact(true)}>
             New contact
           </button>
