@@ -153,20 +153,21 @@ describe("DEC-841 (wave 16 amendment): a public 500 wears the public shell", () 
     expectPublicChrome(body);
   });
 
-  it("a non-HTML public path (.ics over the id cap) keeps today's plain error page, not the chrome", async () => {
+  it("a non-HTML public path (.ics over the id cap) gets the JSON envelope, not the HTML chrome or bare page", async () => {
+    // DEC-841 (wave 17 amendment): a feed path is a machine surface -- it
+    // gets http.ts's errorEnvelope JSON body, never an HTML document (bare
+    // or chromed).
     const app = buildApp();
     const ids = Array.from({ length: MAX_ITINERARY_IDS + 1 }, (_, i) => `sub-${i}`).join(",");
     const res = await app.request(`/e/conf/schedule.ics?ids=${ids}`);
 
     expect(res.status).toBe(400);
     expect(res.headers.get("Cache-Control")).toBe("no-store");
-    expect(res.headers.get("content-type")).toMatch(/text\/html/);
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
 
-    const body = await res.text();
-    expect(body).not.toContain('{"error":');
-    expect(body).toContain("Too many ids");
-    // Unchanged bare error page (http.ts's renderHtmlError), not the public
-    // chrome card -- no chq-auth-card markup here.
-    expect(body).not.toContain("chq-auth-card");
+    const body = await res.json();
+    expect(body).toMatchObject({ error: { code: "invalid", message: expect.stringContaining("Too many ids") } });
+    const bodyText = JSON.stringify(body);
+    expect(bodyText).not.toContain("chq-auth-card");
   });
 });

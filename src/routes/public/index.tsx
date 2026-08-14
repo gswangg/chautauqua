@@ -26,7 +26,7 @@ import {
 import { buildIcsCalendar } from "../../mail/ics";
 import { icsOrganizerEmailOrNull } from "../../server/context";
 import { parseItineraryIds, MAX_ITINERARY_IDS } from "../../lib/itinerary";
-import { ApiError, errorResponse, wantsHtmlResponse } from "../../server/http";
+import { ApiError, errorEnvelope, errorResponse, wantsHtmlResponse } from "../../server/http";
 import { publicCacheMiddleware, defaultCache } from "../../server/pubcache";
 import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083, DEC_151, DEC_289, DEC_489, DEC_661, DEC_672 } from "../../decisions";
 import { SURFACES, isSurface, setCacheHeaders, PublicShell, EmbedShell, isValidFrom, measureClassForSurface, navActiveFor, type Surface } from "./shell";
@@ -96,25 +96,44 @@ publicRoutes.use("/embed/*", publicCacheMiddleware(defaultCache));
 // no-store on the way out — mirrors publicNotFound's rationale above, but
 // covers thrown errors instead of the explicit 404 path.
 //
-// DEC-841 (wave 16 amendment): the SAME paths' explicit 404 (publicNotFound)
+// DEC-841 (wave 17 amendment): the SAME paths' explicit 404 (publicNotFound)
 // already renders full public chrome; a thrown error used to fall through
 // to http.ts's bare renderHtmlError instead -- fix the chrome, not the
 // envelope. HTML-vs-JSON classification stays the ONE predicate DEC-841
-// established (wantsHtmlResponse, re-exported from http.ts) -- no second
-// classifier here. A feed/file-extension request (schedule.ics, the
-// .json/.xml embed twins) is not a full-page HTML navigation even though it
-// isn't an /api/v1 path either, so it keeps going through errorResponse
-// unchanged (today's behavior, unaffected by this amendment).
-const FEED_EXTENSION_PATH = /\.(ics|xml)$/;
+// established (wantsHtmlResponse, re-exported from http.ts) for HTML
+// navigations, but a feed/file-extension request (schedule.ics, the
+// .json/.xml embed twins) is a MACHINE surface even though it isn't an
+// /api/v1 path either -- it must get http.ts's JSON envelope (errorEnvelope),
+// not the HTML error page and not a second, hand-rolled JSON shape. The
+// derivation lives in one place: FEED_EXTENSIONS + isFeedPath below, walked
+// by test/public-feed-error-envelope.test.ts against every registered route
+// in this file so a future feed extension can't be forgotten silently.
+export const FEED_EXTENSIONS = [".ics", ".json", ".xml"] as const;
+
+export function isFeedPath(pathname: string): boolean {
+  const lastSegment = pathname.slice(pathname.lastIndexOf("/") + 1);
+  const dotIndex = lastSegment.lastIndexOf(".");
+  if (dotIndex === -1) return false;
+  const ext = lastSegment.slice(dotIndex).toLowerCase();
+  return (FEED_EXTENSIONS as readonly string[]).includes(ext);
+}
 
 publicRoutes.onError((err, c) => {
   c.header("Cache-Control", "no-store");
   const pathname = new URL(c.req.url).pathname;
-  if (!FEED_EXTENSION_PATH.test(pathname) && wantsHtmlResponse(c)) {
+  if (isFeedPath(pathname)) {
     const isApiErr = err instanceof ApiError;
     if (!isApiErr) {
       // Fail loudly: unexpected errors are never swallowed, always logged --
       // mirrors errorResponse's own console.error for the non-HTML/JSON path.
+      console.error("unhandled error", err);
+    }
+    const apiErr = isApiErr ? (err as ApiError) : new ApiError("internal", "Internal server error");
+    return c.json(errorEnvelope(apiErr), apiErr.status as 400 | 401 | 403 | 404 | 409 | 500);
+  }
+  if (wantsHtmlResponse(c)) {
+    const isApiErr = err instanceof ApiError;
+    if (!isApiErr) {
       console.error("unhandled error", err);
     }
     const status = isApiErr ? (err as ApiError).status : 500;
