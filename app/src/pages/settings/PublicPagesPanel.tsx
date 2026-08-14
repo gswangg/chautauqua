@@ -18,10 +18,16 @@
 // Speakers/Gallery read counts.speakers.
 //
 // DEC-815: the landing view is a read-only summary (SummarySection) --
-// name + live state per surface, nothing clickable -- and the full row
-// detail (path, View link, Embed code control, the embed builder and the
-// saved-embeds list) lives behind the section's 'Change' drill
-// (?section=public-pages&edit=1, DEC-728/DEC-710).
+// name + live state per surface -- and the full row detail (View link, the
+// embed builder and the saved-embeds list) lives behind the section's
+// 'Change' drill (?section=public-pages&edit=1, DEC-728/DEC-710).
+//
+// w1-f, DEC-785 amendment: the read row is the frame's four columns --
+// name | path | state pill | Embed code -- not just name + state. 'Embed
+// code' at rest is a read-only affordance into the SAME editor (it drills
+// straight to ?section=public-pages&edit=1 with the builder already open)
+// rather than revealing the builder inline, matching 'Change switches to
+// the editor for that list rather than revealing it'.
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
@@ -31,6 +37,7 @@ import { EmbedsPanel } from './EmbedsPanel';
 import { SavedEmbedsPanel } from './SavedEmbedsPanel';
 import { SummarySection, type SummarySectionRow } from './SummarySection';
 import { PUBLIC_PAGES_STATE_TONE_CLASS } from './publicPagesState';
+import './settings-lists.css';
 
 const SECTION_KEY = 'public-pages';
 
@@ -83,7 +90,7 @@ function stateTone(state: string): 'live' | 'muted' {
 
 export function PublicPagesPanel() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const editing = searchParams.get('section') === SECTION_KEY && searchParams.get('edit') === '1';
   const [event, setEvent] = useState<EventSummary | null>(null);
   const [counts, setCounts] = useState<PublicSurfaceCounts | null>(null);
@@ -132,18 +139,38 @@ export function PublicPagesPanel() {
       ]
     : [];
 
+  // w1-f, DEC-785: 'Embed code' at rest drills straight into the section's
+  // own edit drill (same URL state SummarySection's 'Change' writes) with
+  // the embed builder already open, rather than revealing it inline here.
+  function openEmbedFromSummary() {
+    setEmbedOpenState(true);
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set('section', SECTION_KEY);
+      params.set('edit', '1');
+      return params;
+    });
+  }
+
   const summaryRows: SummarySectionRow[] = rows.map((row) => ({
     label: row.name,
-    value:
-      row.state === null ? (
-        <DelayedLoading />
-      ) : (
-        <span
-          className={`chq-settings-public-pages-state ${PUBLIC_PAGES_STATE_TONE_CLASS[stateTone(row.state)]}`}
-        >
-          {row.state}
-        </span>
-      ),
+    value: (
+      <div className="chq-settings-public-pages-summary-value">
+        <span className="chq-settings-public-pages-summary-path">{row.path}</span>
+        {row.state === null ? (
+          <DelayedLoading />
+        ) : (
+          <span
+            className={`chq-settings-public-pages-state ${PUBLIC_PAGES_STATE_TONE_CLASS[stateTone(row.state)]}`}
+          >
+            {row.state}
+          </span>
+        )}
+        <button type="button" className="chq-link-button" onClick={openEmbedFromSummary}>
+          Embed code
+        </button>
+      </div>
+    ),
   }));
 
   return (

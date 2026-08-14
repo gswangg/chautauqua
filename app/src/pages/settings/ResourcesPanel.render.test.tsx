@@ -33,6 +33,25 @@ afterEach(() => {
   consoleErrorSpy.mockRestore();
 });
 
+describe('ResourcesPanel (w1-f, DEC-785)', () => {
+  it('renders the real rows (name + kind) at rest, before any Change click', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([resource(), fileResource()]),
+    });
+
+    render(<ResourcesPanel />);
+
+    expect(await screen.findByText('Speaker FAQ')).toBeInTheDocument();
+    expect(screen.getByText('Wiki page')).toBeInTheDocument();
+    expect(screen.getByText('Handout.pdf')).toBeInTheDocument();
+    expect(screen.getByText('File')).toBeInTheDocument();
+
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add a resource' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Change' })).toBeInTheDocument();
+  });
+});
+
 describe('ResourcesPanel (DEC-941)', () => {
   it('gates resource delete behind a confirm dialog naming the resource and the consequence, and only DELETEs on confirm', async () => {
     const fetchMock = mockApi({
@@ -42,6 +61,7 @@ describe('ResourcesPanel (DEC-941)', () => {
 
     render(<ResourcesPanel />);
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
 
     const dialog = screen.getByRole('dialog');
@@ -75,6 +95,8 @@ describe('ResourcesPanel file-row Rename (DEC-029 amendment)', () => {
 
     render(<ResourcesPanel />);
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+
     expect(await screen.findByRole('button', { name: 'Rename' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Replace' })).not.toBeInTheDocument();
 
@@ -93,6 +115,7 @@ describe('ResourcesPanel file-row Rename (DEC-029 amendment)', () => {
 
     render(<ResourcesPanel />);
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Rename' }));
     const titleInput = await screen.findByDisplayValue('Handout.pdf');
     fireEvent.change(titleInput, { target: { value: 'Renamed Handout' } });

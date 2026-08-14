@@ -25,6 +25,22 @@ afterEach(() => {
   consoleErrorSpy.mockRestore();
 });
 
+describe('ApiTokensPanel (w1-f, DEC-785)', () => {
+  it('renders label + last-used at rest, before any Change click, never the secret', async () => {
+    mockApi({
+      'GET /api/v1/tokens': listEnvelope([token()]),
+    });
+
+    render(<ApiTokensPanel />);
+
+    expect(await screen.findByText('CI pipeline')).toBeInTheDocument();
+    expect(screen.getByText('Last used: Never')).toBeInTheDocument();
+    expect(screen.queryByText(/chq_abc/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Revoke' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Change' })).toBeInTheDocument();
+  });
+});
+
 describe('ApiTokensPanel (DEC-941)', () => {
   it('gates Revoke behind a confirm dialog naming the token and the consequence, and only DELETEs on confirm', async () => {
     const fetchMock = mockApi({
@@ -34,6 +50,7 @@ describe('ApiTokensPanel (DEC-941)', () => {
 
     render(<ApiTokensPanel />);
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Revoke' }));
 
     const dialog = screen.getByRole('dialog');

@@ -167,8 +167,15 @@ describe('DEC-896: real row hints on the Event and People and roles summaries', 
     expect(hintFor('Name')).toBeNull();
   });
 
-  it('People and roles: the Reviewers row carries a real hint about track scoping', async () => {
-    mockEverySettingsRoute();
+  // w1-f, DEC-785: the read view is now real per-person rows, so the hint
+  // lives on the individual reviewer's own row, not a "Reviewers" count row.
+  it("People and roles: a reviewer's row carries a real hint about track scoping", async () => {
+    mockEverySettingsRoute({
+      'GET /api/v1/users': listEnvelope([
+        { id: 'u1', email: 'a@example.com', role: 'organizer' },
+        { id: 'u2', email: 'b@example.com', role: 'reviewer' },
+      ]),
+    });
 
     render(
       <MemoryRouter initialEntries={['/settings']}>
@@ -178,10 +185,10 @@ describe('DEC-896: real row hints on the Event and People and roles summaries', 
 
     const region = await screen.findByRole('region');
     await waitFor(() => {
-      expect(within(region).getByText('Reviewers')).toBeInTheDocument();
+      expect(within(region).getByText('b@example.com')).toBeInTheDocument();
     });
 
-    const row = within(region).getByText('Reviewers').closest('.chq-settings-row') as HTMLElement;
+    const row = within(region).getByText('b@example.com').closest('.chq-settings-row') as HTMLElement;
     expect(row.querySelector('.chq-settings-row-hint')).toHaveTextContent(
       'Can be scoped to specific tracks in review assignment',
     );

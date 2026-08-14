@@ -42,7 +42,10 @@ function mockEvent(overrides: Record<string, unknown> = {}) {
 }
 
 describe('PublicPagesPanel', () => {
-  it('renders a read-only summary row per public surface, with no path/View/Embed control before edit', async () => {
+  // w1-f, DEC-785: the read row is the frame's four columns -- name | path |
+  // state pill | Embed code -- before any Change click. The View link and
+  // the embed builder/saved-embeds list still live behind Change.
+  it('renders the real four-column row (name, path, state, Embed code) at rest, before any Change click', async () => {
     mockEvent();
     render(
       <MemoryRouter>
@@ -59,10 +62,35 @@ describe('PublicPagesPanel', () => {
       expect(within(section).getByText(name)).toBeInTheDocument();
     });
 
-    expect(within(section).queryByText('/e/devcon-2026/sessions')).not.toBeInTheDocument();
+    expect(within(section).getByText('/e/devcon-2026/sessions')).toBeInTheDocument();
+    expect(within(section).getAllByRole('button', { name: 'Embed code' }).length).toBeGreaterThan(0);
     expect(within(section).queryByRole('link', { name: 'View' })).not.toBeInTheDocument();
-    expect(within(section).queryByRole('button', { name: 'Embed code' })).not.toBeInTheDocument();
     expect(within(section).getByRole('button', { name: 'Change' })).toBeInTheDocument();
+  });
+
+  it("'Embed code' at rest drills into the edit view with the builder already open", async () => {
+    mockEvent();
+    render(
+      <MemoryRouter>
+        <PublicPagesPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await screen.findByRole('region', { name: 'Public pages' });
+    await waitFor(() => {
+      expect(within(section).getByText('/e/devcon-2026/sessions')).toBeInTheDocument();
+    });
+
+    fireEvent.click(within(section).getAllByRole('button', { name: 'Embed code' })[0]!);
+
+    // The section's OWN drill action (SummarySection's chq-settings-section-
+    // action) is gone once editing -- SavedEmbedsPanel mounts its own,
+    // differently-scoped 'Change' toggle alongside it, so this checks the
+    // specific class rather than the ambiguous 'Change' name.
+    await waitFor(() => {
+      expect(section.querySelector('.chq-settings-section-action')).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('heading', { name: 'Embeds' })).toBeInTheDocument();
   });
 
   it('DEC-816: Agenda and Schedule read the scheduled count, a DIFFERENT number from Sessions', async () => {
@@ -109,7 +137,7 @@ describe('PublicPagesPanel', () => {
     await waitFor(() => {
       expect(within(section).getByText('/e/devcon-2026/sessions')).toBeInTheDocument();
     });
-    expect(within(section).queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
+    expect(section.querySelector('.chq-settings-section-action')).not.toBeInTheDocument();
 
     const rows = screen.getAllByRole('listitem');
     expect(rows).toHaveLength(6);

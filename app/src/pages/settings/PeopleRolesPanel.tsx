@@ -18,6 +18,11 @@
 // summary -- people/organizer/reviewer counts -- with the whole directory
 // (invite, per-row role change, reset password) behind the section's
 // 'Change' drill (?section=people&edit=1, DEC-728/DEC-710).
+//
+// w1-f, DEC-785: a count is not a row -- the read view now lists the real
+// rows (name + role, one per person) instead of a count-only summary. The
+// interactive directory (invite, per-row role change, reset password, scope
+// cell) still lives entirely behind 'Change'.
 import { useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
@@ -147,47 +152,30 @@ export function PeopleRolesPanel() {
     }
   }
 
-  // DEC-910: a role count counts the role -- grouped in one pass over the
-  // observed role values (never a hand-written complementary predicate, so
-  // a third role -- e.g. a speaker with a portal account -- cannot be
-  // silently absorbed into "reviewer"). There's no single exported user-role
-  // vocabulary to source order from (routeManifest.ts's role union covers
-  // route access, not the org user directory), so unknown roles fall back to
-  // an alphabetical tail after the two known roles.
-  const KNOWN_ROLE_ORDER = ['organizer', 'reviewer'] as const;
-  const ROLE_LABELS: Record<string, string> = { organizer: 'Organizers', reviewer: 'Reviewers' };
+  // DEC-910: a role is reported as itself -- never a hand-written
+  // complementary predicate that could silently absorb a third role (e.g. a
+  // speaker with a portal account) into "reviewer".
+  const ROLE_LABELS: Record<string, string> = { organizer: 'Organizer', reviewer: 'Reviewer' };
   function roleLabel(role: string): string {
     const known = ROLE_LABELS[role];
     if (known) return known;
-    const capitalized = role.charAt(0).toUpperCase() + role.slice(1);
-    return capitalized.endsWith('s') ? capitalized : `${capitalized}s`;
+    return role.charAt(0).toUpperCase() + role.slice(1);
   }
 
-  const roleCounts = new Map<string, number>();
-  for (const u of users) {
-    roleCounts.set(u.role, (roleCounts.get(u.role) ?? 0) + 1);
-  }
-  const observedRoles = [...roleCounts.keys()];
-  // Organizers/Reviewers always render (even at 0, even mid-load, matching
-  // prior behaviour); any other observed role -- e.g. a speaker holding a
-  // portal account -- gets its own row rather than being folded in.
-  const roleOrder = [
-    ...KNOWN_ROLE_ORDER,
-    ...observedRoles.filter((r) => !(KNOWN_ROLE_ORDER as readonly string[]).includes(r)).sort(),
-  ];
-
-  const rows = [
-    { label: 'People', value: loading ? <DelayedLoading /> : `${total} ${total === 1 ? 'person' : 'people'}` },
-    ...roleOrder.map((role) => ({
-      label: roleLabel(role),
-      value: loading ? <DelayedLoading /> : `${roleCounts.get(role) ?? 0}`,
-      // DEC-896: a real hint, not a decorative one -- plan_reviewer rows can
-      // scope a reviewer to specific tracks (DEC-824, src/routes/review/
-      // plans-distribute.ts), so "N reviewers" alone hides that some of them
-      // may only ever see a subset of tracks.
-      ...(role === 'reviewer' ? { hint: 'Can be scoped to specific tracks in review assignment' } : {}),
-    })),
-  ];
+  // w1-f, DEC-785: the read view is the real per-person rows (name + role),
+  // not a count.
+  const rows = loading
+    ? [{ label: 'People', value: <DelayedLoading /> }]
+    : users.length === 0
+      ? [{ label: 'People', value: 'No people yet.' }]
+      : users.map((user) => ({
+          label: personLabel(user),
+          value: roleLabel(user.role),
+          // DEC-896: a real hint, not a decorative one -- a reviewer row can
+          // be scoped to specific tracks (DEC-824, src/routes/review/
+          // plans-distribute.ts), so the bare role alone hides that.
+          ...(user.role === 'reviewer' ? { hint: 'Can be scoped to specific tracks in review assignment' } : {}),
+        }));
 
   return (
     <SummarySection sectionKey={SECTION_KEY} label="People and roles" rows={rows} actionLabel="Change" editing={editing}>

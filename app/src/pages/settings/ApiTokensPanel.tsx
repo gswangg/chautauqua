@@ -1,11 +1,18 @@
 // DEC-032 Settings panel: list/create/delete DEC-027 bearer API tokens.
 // The plaintext token is only ever returned once, at creation time.
+//
+// w1-f, DEC-785: this panel is only ever mounted inside its caller's own
+// edit drill (YourDataPanel), so at rest it must not ALSO dump straight
+// into the full create/revoke surface -- it owns its own local
+// summary/edit split. At rest it lists label + last-used per token (never
+// the token/prefix); 'Change' switches to the full table below.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiList, apiPost, apiDelete, ApiError } from '../../lib/api';
 import { formatDateTime } from '../../lib/dates';
 import { copyText } from '../../lib/clipboard';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import './settings-lists.css';
 
 interface ApiTokenItem {
   id: string;
@@ -33,6 +40,9 @@ export function ApiTokensPanel() {
   // straight from the row's Revoke link.
   const [pendingDelete, setPendingDelete] = useState<ApiTokenItem | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // w1-f, DEC-785: local read/edit split -- defaults to the read-only list
+  // (label + last-used); 'Change' switches to the full create/revoke table.
+  const [showEditor, setShowEditor] = useState(false);
 
   function load() {
     setLoading(true);
@@ -95,10 +105,39 @@ export function ApiTokensPanel() {
     }
   }
 
+  if (!showEditor) {
+    return (
+      <section className="chq-settings-panel" aria-label="API tokens">
+        <h2>API Tokens</h2>
+        {error && <div className="chq-error" role="alert">{error}</div>}
+        {loading ? (
+          <DelayedLoading />
+        ) : (
+          <ul className="chq-settings-summary-list">
+            {tokens.map((t) => (
+              <li key={t.id} className="chq-settings-summary-row">
+                <span className="chq-settings-summary-row-primary">{t.name}</span>
+                <span className="chq-settings-summary-row-detail">Last used: {formatDate(t.lastUsedAt)}</span>
+              </li>
+            ))}
+            {tokens.length === 0 ? <li className="chq-settings-summary-empty">No API tokens yet.</li> : null}
+          </ul>
+        )}
+        <button type="button" className="chq-link-button" onClick={() => setShowEditor(true)}>
+          Change
+        </button>
+      </section>
+    );
+  }
+
   return (
     <section className="chq-settings-panel" aria-label="API tokens">
       <h2>API Tokens</h2>
       <p>Bearer tokens authenticate scripts/integrations against the same /api/v1 the app uses.</p>
+
+      <button type="button" className="chq-link-button" onClick={() => setShowEditor(false)}>
+        Back
+      </button>
 
       {error && <div className="chq-error" role="alert">{error}</div>}
 

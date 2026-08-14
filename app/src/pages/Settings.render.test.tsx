@@ -111,16 +111,18 @@ describe('SettingsPage render smoke', () => {
     expect(within(cfpSection).getByText('1 — Format')).toBeInTheDocument();
     expect(within(cfpSection).queryByDisplayValue('Tell us about your talk.')).not.toBeInTheDocument();
 
-    // Public pages panel — read-only summary (DEC-815) until
-    // drilled: one row per public surface, name + state pill, with the
-    // paths/View links/embed controls behind the section's 'Change'.
+    // Public pages panel — read-only summary (DEC-815) until drilled: one
+    // row per public surface, now the frame's four columns (w1-f, DEC-785:
+    // name, path, state pill, Embed code), with the View link/embed
+    // builder/saved-embeds list behind the section's 'Change'.
     const publicPagesSection = screen.getByRole('region', { name: 'Public pages' });
     expect(within(publicPagesSection).getByRole('heading', { name: 'Public pages' })).toBeInTheDocument();
     await waitFor(() => {
       expect(within(publicPagesSection).getByText('Sessions')).toBeInTheDocument();
     });
     expect(within(publicPagesSection).getByText('CFP submit page')).toBeInTheDocument();
-    expect(within(publicPagesSection).queryByText(`/e/devcon-2026/sessions`)).not.toBeInTheDocument();
+    expect(within(publicPagesSection).getByText(`/e/devcon-2026/sessions`)).toBeInTheDocument();
+    expect(within(publicPagesSection).queryByRole('link', { name: 'View' })).not.toBeInTheDocument();
 
     // Speaker portal section — read-only summary (DEC-815); the one real
     // edit surface (ResourcesPanel) lives behind the section's 'Change',
@@ -135,14 +137,16 @@ describe('SettingsPage render smoke', () => {
     ).toBeInTheDocument();
     expect(within(portalSection).queryByText('Travel info')).not.toBeInTheDocument();
 
-    // People and roles panel — read-only summary (DEC-815): counts, not the
-    // live user table, until drilled.
+    // People and roles panel — read-only summary (DEC-815) whose rows are
+    // now the real per-person rows (w1-f, DEC-785: name + role), not a
+    // count -- the interactive directory (invite, reset password) still
+    // lives behind 'Change'.
     const peopleSection = screen.getByRole('region', { name: 'People and roles' });
     expect(within(peopleSection).getByRole('heading', { name: 'People and roles' })).toBeInTheDocument();
     await waitFor(() => {
-      expect(within(peopleSection).getByText('1 person')).toBeInTheDocument();
+      expect(within(peopleSection).getByText('self@example.com')).toBeInTheDocument();
     });
-    expect(within(peopleSection).queryByText('self@example.com')).not.toBeInTheDocument();
+    expect(within(peopleSection).queryByRole('button', { name: 'Invite someone' })).not.toBeInTheDocument();
 
     // Your data section (DEC-747: ONE section -- Exports, API tokens, API
     // docs and Import from Sessionboard). DEC-815: summary rows on landing;
@@ -179,10 +183,15 @@ describe('SettingsPage render smoke', () => {
     });
 
     // The full multi-kind export table stays reachable, not deleted, behind
-    // a "More export formats" drill (FINDINGS w21).
+    // a "More export formats" drill (FINDINGS w21) -- ExportsPanel owns its
+    // own local read/edit split (w1-f, DEC-785), so a second 'Change'
+    // reveals the download table.
     expect(within(yourDataSection).queryByRole('heading', { name: 'Exports' })).not.toBeInTheDocument();
     fireEvent.click(within(yourDataSection).getByRole('button', { name: 'More export formats' }));
-    expect(within(yourDataSection).getByRole('heading', { name: 'Exports' })).toBeInTheDocument();
+    const exportsSubsection = within(yourDataSection)
+      .getByRole('heading', { name: 'Exports' })
+      .closest('section') as HTMLElement;
+    fireEvent.click(within(exportsSubsection).getByRole('button', { name: 'Change' }));
     expect(within(yourDataSection).getAllByRole('link', { name: 'Download CSV' })[0]).toHaveAttribute(
       'href',
       `/api/v1/events/${EVENT_ID}/export/submissions?format=csv`,

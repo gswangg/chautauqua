@@ -45,7 +45,7 @@ function renderPanel(initialEntries?: string[]) {
 }
 
 describe('PeopleRolesPanel', () => {
-  it('renders a read-only summary of people/organizer/reviewer counts, with no directory before edit', async () => {
+  it('renders the real rows (name + role) at rest, with no directory controls before edit', async () => {
     mockPeople();
     renderPanel();
 
@@ -53,42 +53,32 @@ describe('PeopleRolesPanel', () => {
     expect(within(section).getByRole('heading', { name: 'People and roles' })).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(within(section).getByText('2 people')).toBeInTheDocument();
+      expect(within(section).getByText(SELF.name)).toBeInTheDocument();
     });
-    // 1 organizer (SELF), 1 reviewer (OTHER).
-    expect(within(section).getAllByText('1')).toHaveLength(2);
+    expect(within(section).getByText('Organizer')).toBeInTheDocument();
+    expect(within(section).getByText(OTHER.email)).toBeInTheDocument();
+    expect(within(section).getByText('Reviewer')).toBeInTheDocument();
 
-    expect(within(section).queryByText(SELF.email)).not.toBeInTheDocument();
     expect(within(section).queryByRole('button', { name: 'Invite someone' })).not.toBeInTheDocument();
+    expect(within(section).queryByRole('button', { name: 'Reset password' })).not.toBeInTheDocument();
     expect(within(section).getByRole('button', { name: 'Change' })).toBeInTheDocument();
   });
 
-  // DEC-910: a speaker holding a portal account must not be counted (and
-  // printed, with the per-track-scoping hint) as a reviewer. This fails
-  // against the old `u.role !== 'organizer'` predicate, which would report
-  // Reviewers 3 (1 real reviewer + 2 speakers) instead of Reviewers 1.
-  it('counts each role by grouping, not by negating "organizer" (DEC-910)', async () => {
+  // DEC-910: a speaker holding a portal account must be reported with its
+  // own real role -- never absorbed into "reviewer" by a negated predicate.
+  it('reports each person by their own role, not a negated "organizer" predicate (DEC-910)', async () => {
     const SPEAKER_1 = { id: 'u-speaker-1', email: 'speaker1@example.com', role: 'speaker' };
-    const SPEAKER_2 = { id: 'u-speaker-2', email: 'speaker2@example.com', role: 'speaker' };
-    mockPeople({ 'GET /api/v1/users': listEnvelope([SELF, OTHER, SPEAKER_1, SPEAKER_2]) });
+    mockPeople({ 'GET /api/v1/users': listEnvelope([SELF, OTHER, SPEAKER_1]) });
     renderPanel();
 
     const section = await screen.findByRole('region', { name: 'People and roles' });
     await waitFor(() => {
-      expect(within(section).getByText('4 people')).toBeInTheDocument();
+      expect(within(section).getByText(SPEAKER_1.email)).toBeInTheDocument();
     });
 
-    expect(within(section).getByText('Organizers')).toBeInTheDocument();
-
-    // Organisers 1, Reviewers 1 -- the two speakers must not inflate the
-    // reviewer count.
-    const reviewersLabel = within(section).getByText('Reviewers');
-    const reviewersRow = reviewersLabel.closest('.chq-settings-row') as HTMLElement;
-    expect(within(reviewersRow).getByText('1')).toBeInTheDocument();
-
-    const organizersLabel = within(section).getByText('Organizers');
-    const organizersRow = organizersLabel.closest('.chq-settings-row') as HTMLElement;
-    expect(within(organizersRow).getByText('1')).toBeInTheDocument();
+    const speakerRow = within(section).getByText(SPEAKER_1.email).closest('.chq-settings-row') as HTMLElement;
+    expect(within(speakerRow).getByText('Speaker')).toBeInTheDocument();
+    expect(within(speakerRow).queryByText('Reviewer')).not.toBeInTheDocument();
   });
 
   it('drills into the directory via Change, marking the signed-in row non-actionable', async () => {
@@ -97,7 +87,7 @@ describe('PeopleRolesPanel', () => {
 
     const section = await screen.findByRole('region', { name: 'People and roles' });
     await waitFor(() => {
-      expect(within(section).getByText('2 people')).toBeInTheDocument();
+      expect(within(section).getByText(SELF.name)).toBeInTheDocument();
     });
 
     fireEvent.click(within(section).getByRole('button', { name: 'Change' }));

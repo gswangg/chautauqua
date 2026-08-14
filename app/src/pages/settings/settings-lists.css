@@ -1,0 +1,58 @@
+/* w1-f, DEC-785: shared read-view list styling for the settings panels that
+   render their real rows at rest (Resources, Exports, API tokens) instead of
+   hiding them behind Change. People/roles, Public pages and Saved embeds
+   reuse existing settings.css row classes for their own read rows and don't
+   need anything from here -- this file only covers the plain summary lists
+   these three panels introduce. Deliberately has no page/measure clamp
+   selectors (app/src/page-measure.test.ts, DEC-808, enumerates every *.css
+   file under app/src). */
+
+.chq-settings-summary-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+
+.chq-settings-summary-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+  font-size: 14px;
+}
+
+.chq-settings-summary-row:last-child {
+  border-bottom: none;
+}
+
+.chq-settings-summary-row-primary {
+  font-weight: 600;
+}
+
+.chq-settings-summary-row-detail {
+  color: var(--chq-ink-2);
+  font-size: 13px;
+}
+
+.chq-settings-summary-empty {
+  color: var(--chq-ink-2);
+  font-size: 13px;
+  padding: 6px 0;
+}
+
+/* w1-f, DEC-785: PublicPagesPanel's read row -- name (SummarySection's own
+   label cell) | path | state pill | Embed code -- packed into the value
+   cell as a simple flex row rather than a second grid contract. */
+.chq-settings-public-pages-summary-value {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.chq-settings-public-pages-summary-path {
+  color: var(--chq-ink-2);
+  font-size: 13px;
+}
