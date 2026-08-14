@@ -5,6 +5,8 @@
 
 import { describe, expect, it } from "vitest";
 import { PUBLIC_CSS } from "../src/routes/public/public.css";
+import { AGENDA_CSS } from "../src/routes/public/css/agenda.css";
+import { CARDS_CSS } from "../src/routes/public/css/cards.css";
 import { SpeakersContent, GalleryContent } from "../src/routes/public/speakers";
 import { AgendaContent, ScheduleContent } from "../src/routes/public/agenda";
 import type { PublicAgendaItem, PublicEvent, PublicSpeakerWithSessions } from "../src/server/repo/public";
@@ -58,8 +60,14 @@ function item(overrides: Partial<PublicAgendaItem>): PublicAgendaItem {
 
 describe("DEC-885/DEC-385: desktop speaker grid is three-up (single-direction, max-width only)", () => {
   it("the unprefixed (desktop) .chq-pub-speaker-grid rule declares exactly 3 columns", () => {
-    const beforeAnyMedia = PUBLIC_CSS.slice(0, PUBLIC_CSS.indexOf("@media"));
-    expect(beforeAnyMedia).toMatch(
+    // Checked against CARDS_CSS directly (task-w5-a: chrome.css.ts now also
+    // has its own earlier @media (max-width: 700px) block for
+    // .chq-pub-filter-row, so cutting PUBLIC_CSS at the FIRST "@media"
+    // literal would land inside CHROME_CSS, before .chq-pub-speaker-grid's
+    // own rule in CARDS_CSS is ever reached). CARDS_CSS carries no @media
+    // block of its own, so the whole fragment is unprefixed.
+    expect(CARDS_CSS).not.toMatch(/@media/);
+    expect(CARDS_CSS).toMatch(
       /\.chq-pub-speaker-grid\s*\{\s*display:\s*grid;\s*grid-template-columns:\s*repeat\(3,\s*1fr\);/,
     );
   });
@@ -77,11 +85,15 @@ describe("DEC-885/DEC-385: desktop speaker grid is three-up (single-direction, m
   });
 
   it("the existing narrow-viewport (700px) speaker-grid rule is untouched and sits after the 900px block, still winning below 700px", () => {
-    expect(PUBLIC_CSS).toMatch(
+    expect(AGENDA_CSS).toMatch(
       /\.chq-pub-speaker-grid\s*\{\s*grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(120px,\s*1fr\)\);\s*\}/,
     );
-    const idx900 = PUBLIC_CSS.indexOf("@media (max-width: 900px)");
-    const idx700 = PUBLIC_CSS.indexOf("@media (max-width: 700px)");
+    // task-w5-a: compared within AGENDA_CSS, not PUBLIC_CSS -- chrome.css.ts
+    // now has its own earlier, unrelated @media (max-width: 700px) block
+    // (see the "gallery's own DEC-593 override" test below for the same
+    // caveat on the concatenated string).
+    const idx900 = AGENDA_CSS.indexOf("@media (max-width: 900px)");
+    const idx700 = AGENDA_CSS.indexOf("@media (max-width: 700px)");
     expect(idx900).toBeGreaterThan(-1);
     expect(idx700).toBeGreaterThan(idx900);
   });

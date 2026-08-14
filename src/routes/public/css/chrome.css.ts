@@ -33,16 +33,25 @@ export const CHROME_CSS = `
 
   /* DEC-919 amendment (wave 40): the ONE row every public list surface
      stacks its narrowing controls into -- PublicSearchBox's compact input
-     first, then every PublicFilterBar pill nav for that surface, inline,
-     wrapping instead of three separately ruled rows. */
+     first, then every PublicFilterBar pill nav for that surface, inline.
+     task-w5-a: with .chq-pub-search/.chq-pub-select's fixed widths above,
+     the row's worst case (all five controls) fits in one row at <= 820, so
+     wrapping is now a <=700px-only fallback (below) rather than the
+     unconditional default -- ONE row at 820, per docs/design/README.md
+     "Public filter bar -- one idiom, four surfaces". */
   .chq-pub-filter-row {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     gap: 10px;
     border-bottom: 1px solid var(--chq-rule);
     padding-bottom: 14px;
     margin-bottom: 14px;
+  }
+  @media (max-width: 700px) {
+    .chq-pub-filter-row {
+      flex-wrap: wrap;
+    }
   }
   .chq-pub-searchform {
     display: flex;
@@ -77,8 +86,15 @@ export const CHROME_CSS = `
   .chq-pub-activefilters-clear {
     font-weight: 700;
   }
+  /* task-w5-a (docs/design/README.md "Public filter bar -- one idiom, four
+     surfaces"): the filter row holds ONE row at 820. Gate-4 measured 837 of
+     control widths at rest (search 259 + day 131 + track 149 + format 153 +
+     room 105, + 4 * 10px gaps) -- 17px over. Both this box and .chq-pub-
+     select below now declare a fixed width instead of sizing to content, so
+     the row's worst case (all five controls present) sums to
+     190 + 4*140 + 40 = 790, under 820 with margin. */
   .chq-pub-search {
-    width: 259px;
+    width: 190px;
     height: 40px;
     border: 1px solid var(--chq-border);
     border-radius: var(--chq-r-pill);
@@ -105,7 +121,10 @@ export const CHROME_CSS = `
     display: inline-flex;
     align-items: center;
   }
+  /* task-w5-a: fixed width (was content-sized) -- see .chq-pub-search above
+     for the 820 budget this and the search box together fit inside. */
   .chq-pub-select {
+    width: 140px;
     height: 40px;
     border: 1px solid var(--chq-border);
     border-radius: var(--chq-r-ctl);

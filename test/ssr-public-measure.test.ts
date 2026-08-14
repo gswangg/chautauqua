@@ -1,10 +1,11 @@
 // DEC-989 Amendment (wave 37), further amended DEC-990 (wave 40), DEC-683
-// (wave 67), and DEC-683 again (wave 1, task w1-a): the SSR public surfaces
-// take their container class from the CONTENT. sessions, gallery, agenda and
-// (as of wave 1) speakers = wide (1180: sessions'/agenda's list + rail pair,
+// (wave 67), DEC-683 again (wave 1, task w1-a), and DEC-555 again (wave 5,
+// task w5-a): the SSR public surfaces take their container class from the
+// CONTENT. sessions, gallery, agenda, speakers (wave 1) and (as of wave 5)
+// schedule = wide (1180: sessions'/agenda's/schedule's list + rail pair,
 // gallery's six ~184px tiles + gaps, speakers' List/Grid pair sharing one
-// column); schedule + session/speaker detail = reading (820). Agenda's
-// former "canvas" measure
+// column); session/speaker detail = reading (820). Agenda's former "canvas"
+// measure
 // (no class, its lane count was the room count) is gone along with the
 // wave-64 desktop room-lane matrix it justified -- agenda is now the same
 // 1180 pair as sessions, with its own rail (AgendaRail). EmbedShell never
@@ -184,7 +185,7 @@ const SURFACE_CASES: { path: string; expectClasses: string[] }[] = [
   // "wide" so its List/Grid toggle no longer resizes the page around it.
   { path: "/e/conf/speakers", expectClasses: ["chq-pub-main", "chq-measure-wide"] },
   { path: "/e/conf/gallery", expectClasses: ["chq-pub-main", "chq-measure-wide"] },
-  { path: "/e/conf/schedule", expectClasses: ["chq-pub-main", "chq-measure"] },
+  { path: "/e/conf/schedule", expectClasses: ["chq-pub-main", "chq-measure-wide"] },
   { path: "/e/conf/agenda", expectClasses: ["chq-pub-main", "chq-measure-wide"] },
   { path: "/e/conf/sessions/s1", expectClasses: ["chq-pub-main", "chq-measure"] },
   { path: "/e/conf/speakers/c1", expectClasses: ["chq-pub-main", "chq-measure"] },
