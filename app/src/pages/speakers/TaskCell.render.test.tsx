@@ -119,6 +119,35 @@ describe('TaskCell', () => {
     const btn = screen.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' });
     expect(btn.closest('.chq-speakers-cell')).not.toHaveClass('chq-speakers-cell-muted');
   });
+
+  // DEC-265 amendment (error-states rule 8): a reverted write must keep
+  // announcing itself on the cell -- weight/rule (the overdue class family),
+  // never a new colour -- until the caller's banner clears.
+  it('appends " · not saved" and borrows the overdue class family when notSaved is true', () => {
+    render(
+      <TaskCell
+        task={TASK}
+        cell={makeCell({ status: 'pending' })}
+        contactName="Ada Lovelace"
+        now={Date.now()}
+        onToggle={vi.fn()}
+        onOpenResponse={vi.fn()}
+        notSaved={true}
+      />,
+    );
+    const btn = screen.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' });
+    expect(btn).toHaveTextContent('Pending · not saved');
+    expect(btn.className).toContain('chq-speakers-status-overdue');
+  });
+
+  it('does not append the marker when notSaved is false/omitted', () => {
+    render(
+      <TaskCell task={TASK} cell={makeCell({ status: 'pending' })} contactName="Ada Lovelace" now={Date.now()} onToggle={vi.fn()} onOpenResponse={vi.fn()} />,
+    );
+    const btn = screen.getByRole('button', { name: 'Toggle Sign speaker agreement for Ada Lovelace' });
+    expect(btn).toHaveTextContent('Pending');
+    expect(btn).not.toHaveTextContent('not saved');
+  });
 });
 
 // DEC-829 amendment: the ONE row-level predicate -- every participation
