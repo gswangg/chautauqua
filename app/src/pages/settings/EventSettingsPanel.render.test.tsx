@@ -240,3 +240,48 @@ describe('EventSettingsPanel unscheduled-by-window notice (DEC-844)', () => {
     expect(screen.queryByText(/now fall/)).not.toBeInTheDocument();
   });
 });
+
+// DEC-896 amendment (wave 26): the shared settings edit shell.
+describe('EventSettingsPanel edit view shell (DEC-896)', () => {
+  it('renders the footer as secondary-then-primary in DOM order, no full-width buttons, and the slug consequence line', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}`]: eventDetail,
+      'GET /api/v1/mail-status': { provider: 'none', configured: false, fromEmail: null },
+    });
+    renderPanel();
+
+    await screen.findByLabelText('Name');
+    expect(
+      screen.getByText('Changing the slug breaks every link already shared, including saved embeds'),
+    ).toBeInTheDocument();
+
+    const footer = document.querySelector('.chq-settings-edit-footer') as HTMLElement;
+    expect(footer).not.toBeNull();
+    expect(footer.querySelector('.chq-settings-edit-footer-destructive')).toBeNull();
+    const secondaryButton = within(footer).getByRole('button', { name: 'Cancel' });
+    const primaryButton = within(footer).getByRole('button', { name: 'Save' });
+    const order = Array.from(footer.querySelectorAll('button'));
+    expect(order.indexOf(secondaryButton as HTMLButtonElement)).toBeLessThan(
+      order.indexOf(primaryButton as HTMLButtonElement),
+    );
+
+    const footerButtons = Array.from(footer.querySelectorAll('button'));
+    expect(footerButtons.length).toBe(2);
+    for (const button of footerButtons) {
+      expect(button.className).not.toMatch(/full-width|btn-full/);
+    }
+  });
+
+  it('paints Start date and End date as a SettingsFieldPair', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}`]: eventDetail,
+      'GET /api/v1/mail-status': { provider: 'none', configured: false, fromEmail: null },
+    });
+    renderPanel();
+
+    const startInput = await screen.findByLabelText('Start date');
+    const pair = startInput.closest('.chq-settings-field-pair');
+    expect(pair).not.toBeNull();
+    expect(within(pair as HTMLElement).getByLabelText('End date')).toBeInTheDocument();
+  });
+});

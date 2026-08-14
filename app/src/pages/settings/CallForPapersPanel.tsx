@@ -17,6 +17,9 @@ import { copyText } from '../../lib/clipboard';
 import { formWindowState } from '../../../../src/lib/submit-core';
 import { dayLabelEndInstant } from '../../../../src/lib/timezone';
 import { SummarySection } from './SummarySection';
+import { SettingsEditForm, SettingsField, SettingsFieldPair } from './SettingsEditForm';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { countOf } from '../../lib/plural';
 import { DEC_888 } from '../../../../src/decisions';
 
 void DEC_888;
@@ -120,6 +123,14 @@ export function CallForPapersPanel() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [copyResult, setCopyResult] = useState<{ ok: boolean; text: string } | null>(null);
   const failedCopyRef = useRef<HTMLInputElement | null>(null);
+  // DEC-896: the edit view's consequence line names a real read of the
+  // submissions list total (same read FormsPage's own received-count uses),
+  // never a fabricated/derived number.
+  const [receivedTotal, setReceivedTotal] = useState<number | null>(null);
+  // CFP-S4 turn-diet fast path: close the call from the read view in one
+  // click behind a confirm, without entering the edit screen.
+  const [pendingCloseNow, setPendingCloseNow] = useState(false);
+  const [closingNow, setClosingNow] = useState(false);
 
   useEffect(() => {
     if (!eventId) return;
@@ -129,8 +140,9 @@ export function CallForPapersPanel() {
       apiGet<EventSummary>(`/events/${eventId}`),
       apiGet<CfpForm>(`/events/${eventId}/forms`),
       apiList<EventTrack>(`/events/${eventId}/tracks`),
+      apiList<unknown>(`/events/${eventId}/submissions?perPage=1`),
     ])
-      .then(([ev, formResult, tracksResult]) => {
+      .then(([ev, formResult, tracksResult, submissionsResult]) => {
         setEvent(ev);
         setForm(formResult);
         setTracks(tracksResult.items);
@@ -138,6 +150,7 @@ export function CallForPapersPanel() {
         setOpenDate(msToDateInput(formResult.openDate ?? null));
         setCloseDate(msToDateInput(formResult.closeDate ?? null));
         setSelectedTracks(formResult.tracks ?? []);
+        setReceivedTotal(submissionsResult.total);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load the CFP form'))
       .finally(() => setLoading(false));
@@ -204,6 +217,28 @@ export function CallForPapersPanel() {
     }
   }
 
+  // CFP-S4: the same PATCH the edit form's "Close the call now" control
+  // uses (openDate/closeDate are the ONE write path, DEC-731) -- this just
+  // reaches it from the read view instead of the drilled form.
+  async function confirmCloseNow() {
+    if (!form) return;
+    setClosingNow(true);
+    setError(null);
+    setFieldErrors({});
+    const today = todayDayLabelMs();
+    try {
+      const updated = await apiPatch<CfpForm>(`/forms/${form.id}`, { closeDate: today });
+      setForm(updated);
+      setCloseDate(msToDateInput(today));
+      setPendingCloseNow(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to close the call');
+      setPendingCloseNow(false);
+    } finally {
+      setClosingNow(false);
+    }
+  }
+
   async function handleCopyLink(publicLink: string) {
     const ok = await copyText(publicLink);
     setCopyResult({ ok, text: publicLink });
@@ -226,6 +261,12 @@ export function CallForPapersPanel() {
   const editWindowState = event
     ? formWindowState(dateInputToMs(openDate), dateInputToMs(closeDate), Date.now(), event.timezone)
     : null;
+
+  // DEC-731: the call's LIVE state read off the SAVED form (never the
+  // in-progress edit-view fields) -- this is what the read view's fast
+  // path gates on.
+  const readWindowState =
+    event && form ? formWindowState(form.openDate ?? null, form.closeDate ?? null, Date.now(), event.timezone) : null;
 
   const publicLink = event ? `${window.location.origin}/submit/${event.slug}` : '';
 
@@ -267,13 +308,27 @@ export function CallForPapersPanel() {
       </>
     ) : null;
 
+  // CFP-S4 turn-diet fast path: only while the call is actually open,
+  // sitting beside the Closes row's own value rather than a new row.
+  const closeCallFastPath =
+    readWindowState === 'open' ? (
+      <button type="button" className="chq-link-button chq-settings-inline-action" onClick={() => setPendingCloseNow(true)}>
+        Close the call
+      </button>
+    ) : null;
+
   const rows =
     event && form
       ? [
           { label: 'Public link', value: publicLinkValue },
           {
             label: 'Closes',
-            value: form.closeDate !== null && form.closeDate !== undefined ? closesValue : 'No close date set',
+            value: (
+              <>
+                {form.closeDate !== null && form.closeDate !== undefined ? closesValue : 'No close date set'}
+                {closeCallFastPath}
+              </>
+            ),
           },
           { label: 'Custom questions', value: customQuestionsSummary(form.fields) },
         ]
@@ -291,33 +346,44 @@ export function CallForPapersPanel() {
         editing={editing}
       >
       {form ? (
-        <form
+        <SettingsEditForm
           onSubmit={(e) => {
             e.preventDefault();
             void handleSave();
           }}
+          consequence={
+            receivedTotal !== null ? `${countOf(receivedTotal, 'submission')} received · changes do not affect them` : undefined
+          }
+          footer={{
+            primary: (
+              <button type="submit" className="chq-btn chq-btn-primary" disabled={saving}>
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            ),
+            secondary: (
+              <button type="button" className="chq-btn chq-btn-secondary" onClick={closeEdit} disabled={saving}>
+                Cancel
+              </button>
+            ),
+          }}
         >
-          <div className="chq-settings-row">
-            <label>
-              Intro text
-              <textarea
-                className="chq-textarea"
-                value={intro}
-                onChange={(e) => {
-                  setIntro(e.target.value);
-                  setSaved(false);
-                }}
-              />
-            </label>
-          </div>
+          <SettingsField label="Intro text" width="full">
+            <textarea
+              className="chq-textarea"
+              value={intro}
+              onChange={(e) => {
+                setIntro(e.target.value);
+                setSaved(false);
+              }}
+            />
+          </SettingsField>
           {event && editWindowState ? (
             <p role="status" className="chq-settings-row">
               {callStateLabel(editWindowState, dateInputToMs(closeDate))}
             </p>
           ) : null}
-          <div className="chq-settings-row">
-            <label htmlFor="cfp-open-date">
-              Opens
+          <SettingsFieldPair>
+            <SettingsField label="Opens" htmlFor="cfp-open-date" width="date">
               <DateField
                 id="cfp-open-date"
                 value={openDate}
@@ -328,11 +394,8 @@ export function CallForPapersPanel() {
                 }}
               />
               {fieldErrors.openDate ? <span className="chq-field-error">{fieldErrors.openDate}</span> : null}
-            </label>
-          </div>
-          <div className="chq-settings-row">
-            <label htmlFor="cfp-close-date">
-              Closes
+            </SettingsField>
+            <SettingsField label="Closes" htmlFor="cfp-close-date" width="date">
               <DateField
                 id="cfp-close-date"
                 value={closeDate}
@@ -343,8 +406,8 @@ export function CallForPapersPanel() {
                 }}
               />
               {fieldErrors.closeDate ? <span className="chq-field-error">{fieldErrors.closeDate}</span> : null}
-            </label>
-          </div>
+            </SettingsField>
+          </SettingsFieldPair>
           {event ? (
             <div className="chq-settings-row">
               {editWindowState === 'open' ? (
@@ -389,16 +452,20 @@ export function CallForPapersPanel() {
               ) : null}
             </div>
           </div>
-          <button type="submit" className="chq-btn chq-btn-primary" disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-          <button type="button" className="chq-btn chq-btn-tertiary" onClick={closeEdit} disabled={saving}>
-            Cancel
-          </button>
           {saved ? <span role="status"> Saved.</span> : null}
-        </form>
+        </SettingsEditForm>
       ) : null}
       </SummarySection>
+      {pendingCloseNow ? (
+        <ConfirmDialog
+          title="Close the call for papers?"
+          body="Speakers will no longer be able to submit. You can reopen the call later from Settings."
+          confirmLabel="Close the call now"
+          pending={closingNow}
+          onConfirm={() => void confirmCloseNow()}
+          onCancel={() => setPendingCloseNow(false)}
+        />
+      ) : null}
     </>
   );
 }

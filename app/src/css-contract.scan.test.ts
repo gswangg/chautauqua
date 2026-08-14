@@ -278,7 +278,13 @@ function classNameTokens(src: string): string[] {
  * the failure output (DEC-976).
  */
 const NO_STYLE_HOOK_TOKENS = new Set<string>([
-  // (none identified yet — every markup token found a rule or was deleted)
+  // Extractor artifact, not a real class: SettingsField.tsx builds
+  // `chq-settings-field-${width}` as a template literal, and the bare
+  // regex captures the fixed prefix up to the placeholder as its own
+  // token. The five real, fully-interpolated tokens
+  // (chq-settings-field-date/seats/name/slug/full) each have their own
+  // CSS rule in settings.css.
+  'chq-settings-field-',
 ]);
 
 /** A token belonging to the deferred phone layer (its own guard lives in
@@ -359,6 +365,16 @@ const DYNAMIC_CLASS_TOKENS = new Set<string>([
   'chq-speakers-status-pending',
   'chq-speakers-status-overdue',
   'chq-speakers-status-none',
+  // Built as `chq-settings-field-${width}` in
+  // app/src/pages/settings/SettingsEditForm.tsx's SettingsField (width in
+  // 'date' | 'seats' | 'name' | 'slug' | 'full', DEC-896 amendment wave
+  // 26) -- the token extractor only sees the fixed `chq-settings-field-`
+  // prefix up to the template placeholder.
+  'chq-settings-field-date',
+  'chq-settings-field-seats',
+  'chq-settings-field-name',
+  'chq-settings-field-slug',
+  'chq-settings-field-full',
 ]);
 
 /**
