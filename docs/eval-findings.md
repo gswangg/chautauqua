@@ -108,6 +108,84 @@ speaker bios render** (EMB-05 live). Reviews expansion: implemented with the ban
 (DEC-632/633), toggle labelled "Reviews (n)" — FIDELITY NIT for the fleet: frame copy is
 "3 reviews" / "2 reviews · 1 recusal" as the disclosure text.
 
+## GATE-6 FLEET VERDICTS (audited vs design-frames-v9 on boundary a6ac400e; full detail per pair in chautauqua-research/fidelity-gate6/pair*/report.md)
+
+**01:1MAJ · 02:2MAJ · 03:4MAJ · 04:5MAJ · 05:2MAJ · 06:MINOR · 07:7MAJ · 08:7MAJ ·
+09:11MAJ · 10:4MAJ · 11:2MAJ · 12:1MAJ — 46 MAJORs, zero BROKEN.** Read this correctly:
+v9 tripled the audited authority (empty/error states, B8, B10 edit views, new pages);
+what gate-5 passed still passes (public grid exact, agenda MINOR, auth card anatomy
+right, A1 bulk bar verbatim, EMB-01 ruling respected). The MAJORs are mostly the NEW
+standard not yet built. Priority is the CROSS-CUTTING CLASSES — each closes findings on
+many sections at once:
+
+**CLASS 1 — admin content measure (every 1600 admin frame):** app 1440 @ 80px gutters vs
+frame 1372 @ 114px; topbar 65 vs 59. One shell change; re-measures everything.
+**CLASS 2 — B7 empty states are still headers-over-nothing:** submissions filtered-to-zero
+(full thead + pager + live count), speakers search-found-nothing (6-col header + pager +
+action cluster stay), plan-editor zero-criteria (headers + error-edge misuse), comms
+history empty (search above the message). And three zero-states DON'T EXIST: overview
+brand-new-event (frame 01--04; Overview.tsx has no empty branch), public sessions
+programme-not-out (frame 10--20; one bare sentence + chrome), home fresh-deploy variants.
+**CLASS 3 — B10 settings edit views failed as a class (11 majors):** an edit view must be
+a SCREEN (‹ back + per-view H1 + consequence line), not an inline panel in the read
+scroll; caps section sub-labels over 2px rules; FIELD WIDTH FOLLOWS CONTENT (dates 200,
+seats 110, slug/textarea 820 — app uses four arbitrary widths); footer = destructive
+far-left + Cancel + "Save changes"; kill the full-width olive "Add track" bar (the named
+phone tell); people-and-roles needs the framed PERSON/ROLE/SCOPE grid + role select;
+your-data needs the API-token anatomy (prefix, dates, per-row Revoke, shown-once/
+irreversible facts, never-used mark); saved-embed editor still has the forbidden stacked
+code blocks; portal edit lacks the what-speakers-may-edit toggles; CFP edit binds Intro
+text to the form NAME (data bug) and omits FORM NAME/TIME ZONE/QUESTIONS block.
+**CLASS 4 — bare-page 820 shell missing:** /account/password, /admin/* 404, and
+CFP-closed all render in bordered cards; frames are full-bleed 820 columns. ONE new shell
+(no border/bg/radius, max-width 820 centered) routes all three. /login,/forgot,/reset
+stay on the 460 card (correct).
+**CLASS 5 — error vocabulary absent where framed:** sign-in rejection has no #EFEBDF
+band/3px ink edge/two-line copy and inputs take no error treatment (frame 11--09);
+settings server-reject renders one unstyled line; upload-rejected modal (frame 05--07)
+doesn't exist — instead a 69px-wide inline error ribbon; speakers write-failed banner has
+wrong anatomy/placement; compose merge-field pre-flight fires at step 2 as a plain panel
+instead of step 3's RECIPIENT/MISSING table.
+**CLASS 6 — public register sweep:** H1s uniformly 24px (frames 30-40); every control
+44px tall (frames 35-39 — the 44px tap target is phone grammar on desktop); 12-hour +
+machine timestamps ("Tue, Sep 01, 2026, 23:59 PDT") vs frames' 24-hour + human dates;
+active-filter chip pill-outline vs frame's rectangular ink fill; header pad 34 vs 46.
+
+**Section-specific MAJORs beyond the classes:** 12-home shell boxed at 900px+border vs
+CHROME IS FULL BLEED (strip shell, body measure 732) · 03: duplicated ranked-results
+section head; is-active row has NO 3px olive edge and bleeds 16px outside the measure;
+Your-plans hub missing 5 framed row elements (header/state pill/progress bar/action/
+closed plans); no Save-as-draft path (error-rule 9) · 04: participation menu ships an
+"Invited" radio that records without sending (frame: Send-portal-invite occupies that
+slot) + 260px panel vs 420; speaker-detail grid 1018/34/320 + drop theads; reminders
+modal lacks per-speaker rows + rendered B9 email preview (and prints a raw
+localhost:8799 portal URL — env leak into copy) · 05: files library FILE/SESSION column
+widths effectively swapped (filenames wrap mid-token, pitch 86-137 vs 60) + orphan
+title-less action row; "Download all 21 (.zip)" → "Download all"; facet vocab
+Slides/Video/Other · 07 (worst section): step-1 recipient table missing selection bar/
+SLOT column/footer; templates tab overflows its grid at 1600 (buttons clip into editor);
+history tab missing all chrome + B8 band anatomy; step-4 report missing the whole framed
+anatomy; step-3 preview is an unstyled paragraph (B9 shell exists in src/mail/shell.ts
+but is never used for preview) · 08: drawer Delete renders UA-default 2px outset border
+(.chq-btn-tertiary never resets border + missing .chq-btn class); drawer THIS EVENT
+missing TRAVEL/ACCESSIBILITY rows and mislabels travel_logistics as DIETARY; import
+step-2 2-up grid vs framed single-column; step-3 lists all 214 rows vs the 9 updates
+with diffs; bulk-email emits four identical unlabelled template links; A21 helper lines
+replaced with bare "optional" · 10: public agenda renders the TBD room (ruling A25
+violation — never on public; also in ROOMS IN USE) ; speakers toolbar distributed
+across the measure vs right-grouped + underlined avatar initials + bulleted sessions
+column + off-palette blue avatars · 02: SESSION DETAILS built but abandons the
+label-left definition grid (stacked labels; participants table wrong columns/order; role
+not a chip) · uppercase "· OPTIONAL" persists across 02/04/08 (rulings A7/A21 say
+lowercase).
+
+**FLEET RULINGS-ADJACENT NOTES:** (a) the app's non-personalized reset-Sent copy is
+JUDGED CORRECT over frame 11--06's personalized variant (enumeration risk) — record as
+ruling; (b) event-switcher caret is unframed but B8-compliant and load-bearing —
+recommend BLESS; (c) upload accept-list includes .zip while frame 05--07's exemplar
+rejects .zip with a rationale — needs a policy DEC; (d) numbers-as-words: headlineText
+should use spellSmallNumber ("Four things" not "4 things").
+
 ## EVAL GAP AUDIT (2026-08-14 afternoon) — every non-529 point loss mapped; GAPS FOUND
 
 Full mining of the authoritative runs (gate-4 full run + ABS/AIA re-measure + SPK run 9),
