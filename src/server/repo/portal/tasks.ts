@@ -10,6 +10,7 @@ import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
 import { formatRef } from "../../../domain/ids";
 import { ApiError } from "../../http";
 import { chunkIds } from "../../../lib/chunk";
+import { chaseableContactExistsForTaskEvent } from "../tasks/crud";
 
 // 'general' | 'file_request' | 'form' — DEC-003 task.kind literal.
 export type PortalTaskKind = "general" | "file_request" | "form";
@@ -40,7 +41,13 @@ export interface PortalTaskAssignment {
 }
 
 /** Lists every task_assignment belonging to `contactId`, joined through task
- * -> event and scoped to the caller's org. */
+ * -> event and scoped to the caller's org. DEC-776 amendment (wave 61): also
+ * composes chaseableContactExistsForTaskEvent — the same "still owes
+ * something" predicate the onboarding grid's counts use — so a speaker who
+ * has declined every accepted submission on the event (or whose submission
+ * left 'accepted') no longer sees that event's tasks on their own portal.
+ * Nothing is deleted: the rows return the moment the contact is chaseable
+ * again (e.g. re-accepting the invite, or a second accepted participation). */
 export async function getMyTaskAssignments(db: Db, contactId: string, orgId: string): Promise<PortalTaskAssignment[]> {
   const rows = await db
     .select({
@@ -65,7 +72,13 @@ export async function getMyTaskAssignments(db: Db, contactId: string, orgId: str
     .from(schema.taskAssignment)
     .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
     .innerJoin(schema.event, eq(schema.task.eventId, schema.event.id))
-    .where(and(eq(schema.taskAssignment.contactId, contactId), eq(schema.event.orgId, orgId)));
+    .where(
+      and(
+        eq(schema.taskAssignment.contactId, contactId),
+        eq(schema.event.orgId, orgId),
+        chaseableContactExistsForTaskEvent(),
+      ),
+    );
 
   return rows.map((row) => ({
     id: row.id,

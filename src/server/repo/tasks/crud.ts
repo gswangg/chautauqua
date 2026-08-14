@@ -119,6 +119,19 @@ export function chaseableContactExists(eventId: string) {
   return sql`exists (select 1 from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.taskAssignment.contactId} and ${acceptedSpeakerConditions(eventId)})`;
 }
 
+/** DEC-776 amendment (wave 61): the ONE 'still owes something' predicate —
+ * chaseableContactExists above, but with the event correlated on
+ * schema.task.eventId instead of a bound literal, so callers that already
+ * have task_assignment -> task joined (the onboarding grid's countsRow, and
+ * the speaker portal's getMyTaskAssignments) can compose it without binding
+ * an eventId up front. Built from the same acceptedSpeakerConditions /
+ * ACTIVE_INVITE_STATUSES this file's other predicates use, so the organizer's
+ * counts and the speaker's own portal can never drift apart on who still
+ * "owes" a task. */
+export function chaseableContactExistsForTaskEvent() {
+  return sql`exists (select 1 from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.taskAssignment.contactId} and ${schema.submission.eventId} = ${schema.task.eventId} and ${schema.submission.status} = 'accepted' and ${inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES])})`;
+}
+
 /** DEC-829: the ONE roster-participant predicate — accepted submissions in
  * `eventId`, with NO inviteStatus clause (unlike acceptedSpeakerConditions
  * above, which restricts to ACTIVE_INVITE_STATUSES). This is the base set
