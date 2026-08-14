@@ -186,6 +186,50 @@ function NavLinks({
 
 function Header() {
   const { me } = useMe();
+  const isReviewer = me?.role === 'reviewer';
+  const sections = isReviewer ? NAV_SECTIONS.filter(isReviewerNav) : NAV_SECTIONS;
+
+  return (
+    <header className="chq-header">
+      <span className="chq-wordmark">chautauqua</span>
+      <nav className="chq-nav" aria-label="Primary">
+        <NavLinks sections={sections} />
+      </nav>
+      <div className="chq-header-identity">
+        {/* frame 03--01 (DEC-939 amendment): a page-owned portal target --
+            the scorecard's 'N of N done' counter injects itself here via
+            createPortal so it leaves the reading column, without App.tsx
+            knowing anything about the scorecard. Renders empty (no
+            caption) whenever no page portals into it. */}
+        <div id="chq-header-slot" className="chq-header-slot" />
+        <EventSwitcher />
+        {/* DEC-369 amendment (wave 72): no bottom chrome bar -- Sign out
+            rejoins the header identity, "JORDAN A. · SIGN OUT", a real
+            button one click from any page, never a menu. It's nested
+            inside .chq-user-identity (not a sibling in
+            .chq-header-identity) so the existing ≤700px rule that drops
+            the identity block on phone keeps dropping Sign out with it —
+            the phone header has no identity block, so the More sheet
+            remains the phone path for signing out. */}
+        {me && (
+          <span className="chq-user-identity">
+            {identityLabel(me.name, me.email, me.role as 'organizer' | 'reviewer' | 'speaker')}
+            <button type="button" className="chq-btn chq-btn-tertiary chq-header-signout" onClick={() => void signOut()}>
+              Sign out
+            </button>
+          </span>
+        )}
+      </div>
+    </header>
+  );
+}
+
+// DEC-576 amendment (wave 13): the phone tab bar is the shell's bottom
+// region -- it renders as the LAST child of .chq-shell (after <main>), not
+// as a sibling squeezed between <header> and <main>, so DOM order matches
+// the "Five-item bottom tab bar" phone pattern without any `order:` CSS.
+function PhoneTabBar() {
+  const { me } = useMe();
   const exceptions = useNavExceptions();
   const tabsNavigate = useNavigate();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -206,80 +250,50 @@ function Header() {
   useEscapeKey(moreOpen, closeMore);
   const anyBadgeLive = Boolean(exceptions.late) || Boolean(exceptions.clash);
 
+  if (primaryTabs.length === 0) {
+    return null;
+  }
+
   return (
     <>
-      <header className="chq-header">
-        <span className="chq-wordmark">chautauqua</span>
-        <nav className="chq-nav" aria-label="Primary">
-          <NavLinks sections={sections} />
-        </nav>
-        <div className="chq-header-identity">
-          {/* frame 03--01 (DEC-939 amendment): a page-owned portal target --
-              the scorecard's 'N of N done' counter injects itself here via
-              createPortal so it leaves the reading column, without App.tsx
-              knowing anything about the scorecard. Renders empty (no
-              caption) whenever no page portals into it. */}
-          <div id="chq-header-slot" className="chq-header-slot" />
-          <EventSwitcher />
-          {/* DEC-369 amendment (wave 72): no bottom chrome bar -- Sign out
-              rejoins the header identity, "JORDAN A. · SIGN OUT", a real
-              button one click from any page, never a menu. It's nested
-              inside .chq-user-identity (not a sibling in
-              .chq-header-identity) so the existing ≤700px rule that drops
-              the identity block on phone keeps dropping Sign out with it —
-              the phone header has no identity block, so the More sheet
-              remains the phone path for signing out. */}
-          {me && (
-            <span className="chq-user-identity">
-              {identityLabel(me.name, me.email, me.role as 'organizer' | 'reviewer' | 'speaker')}
-              <button type="button" className="chq-btn chq-btn-tertiary chq-header-signout" onClick={() => void signOut()}>
-                Sign out
-              </button>
-            </span>
-          )}
-        </div>
-      </header>
-
       {/* DEC-381: .chq-tabbar and the More sheet are siblings of <header>
           inside .chq-shell, not header children — styles.css right-aligns
           the identity block via `.chq-header > *:last-child`, and the tab
           bar being a header child silently stole that selector at phone
           width. */}
-      {primaryTabs.length > 0 && (
-        <nav className="chq-tabbar" aria-label="Primary, phone">
-          {primaryTabs.map((section) => {
-            const to = section.path.replace(/\/\*$/, '');
-            return (
-              <NavLink
-                key={section.path}
-                // DEC-831: strip the trailing "/*" wholesale (not just the "*"),
-                // so '/review/*' yields '/review', not '/review/' -- a trailing
-                // slash NavLink's isActive/aria-current match never resolves
-                // against the router's actual '/review' pathname.
-                to={to}
-                className={({ isActive }) => `chq-nav-link${isActive ? ' is-active' : ''}`}
-                // w5-e/DEC-745 amendment: same GLOBAL-NAV leave-guard as the
-                // desktop nav (NavLinks above).
-                onClick={(e) => {
-                  e.preventDefault();
-                  guardedNavigate(() => tabsNavigate(to));
-                }}
-              >
-                {({ isActive }) => (
-                  <>
-                    {section.label}
-                    {isActive && <span className="chq-dot is-on" aria-hidden="true" />}
-                  </>
-                )}
-              </NavLink>
-            );
-          })}
-          <button type="button" className="chq-nav-link" onClick={() => setMoreOpen(true)}>
-            More
-            {anyBadgeLive && <span className="chq-dot" aria-hidden="true" />}
-          </button>
-        </nav>
-      )}
+      <nav className="chq-tabbar" aria-label="Primary, phone">
+        {primaryTabs.map((section) => {
+          const to = section.path.replace(/\/\*$/, '');
+          return (
+            <NavLink
+              key={section.path}
+              // DEC-831: strip the trailing "/*" wholesale (not just the "*"),
+              // so '/review/*' yields '/review', not '/review/' -- a trailing
+              // slash NavLink's isActive/aria-current match never resolves
+              // against the router's actual '/review' pathname.
+              to={to}
+              className={({ isActive }) => `chq-nav-link${isActive ? ' is-active' : ''}`}
+              // w5-e/DEC-745 amendment: same GLOBAL-NAV leave-guard as the
+              // desktop nav (NavLinks above).
+              onClick={(e) => {
+                e.preventDefault();
+                guardedNavigate(() => tabsNavigate(to));
+              }}
+            >
+              {({ isActive }) => (
+                <>
+                  {section.label}
+                  {isActive && <span className="chq-dot is-on" aria-hidden="true" />}
+                </>
+              )}
+            </NavLink>
+          );
+        })}
+        <button type="button" className="chq-nav-link" onClick={() => setMoreOpen(true)}>
+          More
+          {anyBadgeLive && <span className="chq-dot" aria-hidden="true" />}
+        </button>
+      </nav>
 
       {moreOpen && (
         <div
@@ -361,6 +375,7 @@ export function App() {
             <RoutedContent />
           </RoleGate>
         </main>
+        <PhoneTabBar />
       </div>
     </BrowserRouter>
   );

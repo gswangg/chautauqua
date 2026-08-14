@@ -440,6 +440,71 @@ describe('Phone tab bar (DEC-381)', () => {
   });
 });
 
+// DEC-576 amendment (wave 13): the phone tab bar is the shell's BOTTOM
+// region -- it must be the last child of .chq-shell, after <main>, so its
+// existing `border-top`/`display:flex` CSS reads as a bottom bar without any
+// `order:` declaration.
+describe('Phone tab bar is the shell bottom region (DEC-576 amendment, wave 13)', () => {
+  it('places nav.chq-tabbar after main.chq-main in DOM order', async () => {
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      'GET /api/v1/events': { items: [], total: 0, page: 1, perPage: 50 },
+    });
+
+    const { container } = render(<App />);
+
+    await screen.findByRole('navigation', { name: 'Primary, phone' });
+    const main = container.querySelector('main.chq-main');
+    const bar = container.querySelector('nav.chq-tabbar');
+    expect(main).not.toBeNull();
+    expect(bar).not.toBeNull();
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    expect(main!.compareDocumentPosition(bar!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('renders both main.chq-main and nav.chq-tabbar as direct children of .chq-shell', async () => {
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      'GET /api/v1/events': { items: [], total: 0, page: 1, perPage: 50 },
+    });
+
+    const { container } = render(<App />);
+
+    await screen.findByRole('navigation', { name: 'Primary, phone' });
+    const shell = container.querySelector('.chq-shell');
+    expect(shell).not.toBeNull();
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const children = Array.from(shell!.children).map((el) => el.tagName.toLowerCase());
+    expect(children).toContain('main');
+    expect(children).toContain('nav');
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    expect(shell!.querySelector(':scope > main.chq-main')).not.toBeNull();
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    expect(shell!.querySelector(':scope > nav.chq-tabbar')).not.toBeNull();
+  });
+
+  it('still opens the More sheet, lists non-primary sections, and offers Sign out', async () => {
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      'GET /api/v1/events': { items: [], total: 0, page: 1, perPage: 50 },
+    });
+
+    render(<App />);
+
+    const tabbar = await screen.findByRole('navigation', { name: 'Primary, phone' });
+    const moreButton = within(tabbar).getByRole('button', { name: /^More/ });
+    moreButton.click();
+
+    const dialog = await screen.findByRole('dialog', { name: 'More' });
+    expect(within(dialog).getByRole('link', { name: 'Review' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('link', { name: 'Agenda' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('link', { name: 'Comms' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('link', { name: 'Contacts' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('link', { name: 'Settings' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+  });
+});
+
 // DEC-857: RoleGate must not mount any routed page while identity is still
 // resolving -- an organizer-scoped page firing organizer-only fetches during
 // a reviewer's login redirect is the same defect as a gate that renders its
