@@ -35,26 +35,24 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   MEMBER ADDED. REFUSED: no public "create account" CTA on /submit.
   Amendments DEC-528/837/841/914/048/438/628/635/949/252/547/550/715/
   745/078/024/678/948/713/098/939/402/908/879.
-- FINDINGS w21 (planner re-verified on main; review-lens items 3+4 --
-  public onError JSON envelope, signOut res.ok -- ALREADY FIXED, as were
-  origin/tasks/claim/probe items: VERIFY BEFORE FILING). Shapes: CATCH
-  RETURNING A DEFAULT IS NOT A GUARD (DEC-635 wanted ".catch that
-  THROWS"; 28 sites answered malformed body with 200/{}); MARKDOWN
-  ENUMERATION PINNED TO ITS SHA (re-derive population at TEST TIME, not
-  prose); ALLOWLIST W/NO STALE DIRECTION IS PERMISSION; ROLLBACK IS
-  STILL AN ORDERING (submit.tsx deleted R2 before row-delete); SIBLING
-  FIGURES IN ONE FUNCTION DRIFT. Amendments DEC-635/713/459/078/432.
-- FINDINGS w22 (planner re-verified on main; mandate open list exhausted
-  8th time, ~12 P1/P2s already landed). TWO of four review-lens items were
-  STALE: content-notes "minting destroys live grant" is FALSE since DEC-949
-  wave-18 (grant re-put w/ 48h grace); "/embed/e/* cached twice" is FALSE --
-  Hono compose advances only on next(), a use() after a sub-app mount never
-  wraps it; that registration is LOAD-BEARING. Shapes: A DELETE KEYED ON
-  CLIENT INPUT NEEDS THE OWNER PREDICATE (issueSession deleted by tokenHash
-  alone let login-with-another's-cookie revoke THEIR session); THE
-  UNAUTHENTICATED ROUTES GOT THE RATE LIMITS (login/claim/submit metered,
-  /account/password ran unmetered 100k-PBKDF2 -- authenticated != safe from
-  oracle/CPU-sink); AN ADVERTISED CAP THE PLATFORM REFUSES IS A LIE (250 MB
-  recordings vs 100 MB Workers body ceiling -- derive caps from a named
-  platform limit); MIDDLEWARE SCOPE IS REGISTRATION ORDER -- COUNT THE
-  PASSES, DON'T READ THE use() LINES. Amendments DEC-994/180/879/083.
+- FINDINGS w21-22 (compacted). Shapes: CATCH RETURNING A DEFAULT IS NOT A
+  GUARD; MARKDOWN ENUMERATION PINNED TO ITS SHA; ALLOWLIST W/NO STALE
+  DIRECTION IS PERMISSION; ROLLBACK IS STILL AN ORDERING; SIBLING FIGURES
+  IN ONE FUNCTION DRIFT; A DELETE KEYED ON CLIENT INPUT NEEDS THE OWNER
+  PREDICATE; UNAUTHENTICATED ROUTES GOT THE RATE LIMITS (authenticated !=
+  safe from oracle/CPU-sink); ADVERTISED CAP THE PLATFORM REFUSES IS A
+  LIE; MIDDLEWARE SCOPE IS REGISTRATION ORDER. Amendments DEC-635/713/
+  459/078/432/994/180/879/083.
+- FINDINGS w23 (planner re-verified on main). Wave 21 LANDED (scans all
+  present; submit.tsx rollback row-delete-FIRST, ledger EMPTY). Wave 22
+  STILL IN FLIGHT (auth-session.ts, account.tsx, domain/files.ts, pubcache
+  prefix UNTOUCHED): HANDS OFF. Five review-lens items re-confirmed STALE
+  (origin.ts/tasks.ts/authz probe/claim mint/inArray migration). Shapes:
+  THE SERIALIZER THAT QUOTES MUST STRIP THE QUOTE (ics sanitizeCn strips
+  `"`, MIME addressHeader doesn't -- one file, two answers); SANITIZE THE
+  ADDRESS, NOT JUST THE LABEL (`<${email}>`/`mailto:${email}` raw,
+  isValidEmail admits `<>,;`); A CONTRACT IN THE DOCSTRING IS NOT A GATE
+  (hydrateSessions read by id w/ no gate, "caller already checked" x7);
+  THE INVARIANT SCAN THAT ONLY READS (DEC-451 guards select(), not
+  update()/delete()); ONE THROWING GETTER, TWO HAND-COPIES. Amendments
+  DEC-996/499/451/274/276/775.
