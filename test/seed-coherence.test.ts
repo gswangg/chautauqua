@@ -627,15 +627,15 @@ describe("seed coherence (DEC-875 wave-42 amendment): the review machinery and a
     }
   });
 
-  it("plan 0003 (seed_evaluation_plan_0003) has >=2 distinct reviewer user ids via plan_reviewer", () => {
+  it("plan 0003 (seed_evaluation_plan_0003) has >=4 distinct reviewer user ids via plan_reviewer (DEC-854 amendment: frame 03's four-reviewer distribute table)", () => {
     const planReviewerRows = parseInserts(sql, "plan_reviewer");
     const plan3ReviewerIds = new Set(
       planReviewerRows.filter((r) => r.plan_id === "seed_evaluation_plan_0003").map((r) => r.user_id),
     );
     expect(
       plan3ReviewerIds.size,
-      `expected >=2 distinct reviewer user ids on plan 0003, found ${JSON.stringify([...plan3ReviewerIds])}`,
-    ).toBeGreaterThanOrEqual(2);
+      `expected >=4 distinct reviewer user ids on plan 0003, found ${JSON.stringify([...plan3ReviewerIds])}`,
+    ).toBeGreaterThanOrEqual(4);
   });
 
   it("at least one review_recusal row exists (enumerated, not sampled)", () => {
