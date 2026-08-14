@@ -10,6 +10,7 @@ import {
   affectsPublicOutput,
   bumpIfMutating,
   bumpPublicVersionMiddleware,
+  hasOverlongQueryValue,
   isUncacheableIcsRequest,
   publicCacheMiddleware,
   readPublicVersion,
@@ -17,6 +18,7 @@ import {
   versionedCacheKey,
   type CacheLike,
 } from "../src/server/pubcache";
+import { MAX_PUBLIC_QUERY_VALUE_LENGTH } from "../src/server/repo/public/bounds";
 import type { KVStore } from "../src/lib/draft";
 import type { AppEnv } from "../src/server/env";
 
@@ -277,6 +279,72 @@ describe("bumpIfMutating", () => {
     await bumpIfMutating(kv, "POST", "/api/v1/contacts", 200);
     const second = kv.store[PUBVER_KEY];
     expect(first).not.toBe(second);
+  });
+});
+
+describe("hasOverlongQueryValue (DEC-433 amendment, wave 30)", () => {
+  it("is false when every search-param value is within the cap", () => {
+    expect(hasOverlongQueryValue("https://x.test/e/foo/sessions?q=keynote&trackId=abc")).toBe(false);
+  });
+
+  it("is true when any single value exceeds MAX_PUBLIC_QUERY_VALUE_LENGTH", () => {
+    const long = "a".repeat(MAX_PUBLIC_QUERY_VALUE_LENGTH + 1);
+    expect(hasOverlongQueryValue(`https://x.test/e/foo/sessions?q=${long}`)).toBe(true);
+  });
+
+  it("is false exactly at the cap", () => {
+    const atCap = "a".repeat(MAX_PUBLIC_QUERY_VALUE_LENGTH);
+    expect(hasOverlongQueryValue(`https://x.test/e/foo/sessions?q=${atCap}`)).toBe(false);
+  });
+
+  it("checks every param, not just q", () => {
+    const long = "a".repeat(MAX_PUBLIC_QUERY_VALUE_LENGTH + 1);
+    expect(hasOverlongQueryValue(`https://x.test/e/foo/sessions?trackId=${long}`)).toBe(true);
+  });
+});
+
+describe("publicCacheMiddleware: over-cap ?q= (DEC-433 amendment, wave 30)", () => {
+  function buildApp(cache: CacheLike, kv: KVStore) {
+    const app = new Hono<AppEnv>();
+    app.use("*", publicCacheMiddleware(() => cache));
+    let calls = 0;
+    app.get("/e/:slug/sessions", (c) => {
+      calls += 1;
+      return c.text(`sessions-${calls}`, 200, { "Cache-Control": "public, max-age=60, stale-while-revalidate=300" });
+    });
+    return { app, env: { KV: kv } as unknown as AppEnv["Bindings"], getCalls: () => calls };
+  }
+
+  it("an over-cap ?q= request bypasses both cache.match and cache.put — handler runs every time, nothing stored", async () => {
+    const cache = fakeCache();
+    const kv = fakeKv();
+    const { app, env, getCalls } = buildApp(cache, kv);
+    const long = "a".repeat(MAX_PUBLIC_QUERY_VALUE_LENGTH + 1);
+
+    await app.request(`/e/foo/sessions?q=${long}`, {}, env);
+    await app.request(`/e/foo/sessions?q=${long}`, {}, env);
+
+    expect(getCalls()).toBe(2);
+    expect(cache.store.size).toBe(0);
+  });
+
+  it("an ordinary filtered request (within the cap) still caches, with the same version-salted key shape", async () => {
+    const cache = fakeCache();
+    const kv = fakeKv();
+    const { app, env, getCalls } = buildApp(cache, kv);
+
+    const first = await app.request("/e/foo/sessions?q=keynote", {}, env);
+    expect(await first.text()).toBe("sessions-1");
+    expect(getCalls()).toBe(1);
+    expect(cache.store.size).toBe(1);
+    const storedUrl = [...cache.store.keys()][0]!;
+    const storedParams = new URL(storedUrl).searchParams;
+    expect(storedParams.get("q")).toBe("keynote");
+    expect(storedParams.get("__chqv")).toBe("v0");
+
+    const second = await app.request("/e/foo/sessions?q=keynote", {}, env);
+    expect(await second.text()).toBe("sessions-1"); // served from cache
+    expect(getCalls()).toBe(1);
   });
 });
 

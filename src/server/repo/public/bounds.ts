@@ -18,6 +18,14 @@ export const PUBLIC_PER_PAGE = 12;
 export const MAX_PUBLIC_PAGE = 100;
 export const MAX_PUBLIC_ROWS = MAX_PUBLIC_PAGE * PUBLIC_PER_PAGE;
 
+// DEC-433 amendment (wave 30): the ONE bound on every public query-string
+// STRING value (trackId/format/roomId/q), mirrored by
+// src/routes/public/query.ts's four trim-or-null parsers and by
+// src/server/pubcache.ts's hasOverlongQueryValue (which must import this
+// constant, never hand-keep a second copy of the number) so the D1 LIKE
+// parameter and the edge-cache key space are bounded by the same number.
+export const MAX_PUBLIC_QUERY_VALUE_LENGTH = 200;
+
 function assertFiniteIntGte1(n: number, name: string): void {
   if (!Number.isInteger(n) || n < 1) {
     throw new Error(`boundedRowLimit: ${name} must be a finite integer >= 1, got ${n}`);

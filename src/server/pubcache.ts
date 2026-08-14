@@ -33,6 +33,7 @@ import type { AppEnv } from "./env";
 import type { KVStore } from "../lib/draft";
 import { DEC_627 } from "../decisions";
 import { executionCtxOf } from "./execution-ctx";
+import { MAX_PUBLIC_QUERY_VALUE_LENGTH } from "./repo/public/bounds";
 
 void DEC_627;
 
@@ -82,6 +83,22 @@ export function versionedCacheKey(url: string, version: string): Request {
 export function isUncacheableIcsRequest(url: string): boolean {
   const parsed = new URL(url);
   return parsed.pathname.endsWith("/schedule.ics") && parsed.searchParams.has("ids");
+}
+
+/** DEC-433 amendment (wave 30): a query-string VALUE longer than
+ * MAX_PUBLIC_QUERY_VALUE_LENGTH (src/routes/public/query.ts's four
+ * trim-or-null parsers already ignore it — it parses to null) still reaches
+ * versionedCacheKey, which salts the cache key off the *whole* URL — so an
+ * unbounded string would still mint an unbounded number of edge-cache
+ * entries even though the route-layer filter itself is bounded. Request-
+ * shaped skip, same DEC-442 shape: a matching request neither matches nor
+ * puts, so it's served uncached instead of polluting the key space. */
+export function hasOverlongQueryValue(url: string): boolean {
+  const parsed = new URL(url);
+  for (const value of parsed.searchParams.values()) {
+    if (value.length > MAX_PUBLIC_QUERY_VALUE_LENGTH) return true;
+  }
+  return false;
 }
 
 /** Core GET-path logic, pure against CacheLike + KVStore, so it's callable
@@ -357,7 +374,7 @@ export async function bumpIfMutating(kv: KVStore, method: string, path: string, 
  * environment, and route sub-app modules must stay importable there. */
 export function publicCacheMiddleware(cache: () => CacheLike) {
   return async (c: Context<AppEnv>, next: Next) => {
-    if (c.req.method !== "GET" || isUncacheableIcsRequest(c.req.url)) {
+    if (c.req.method !== "GET" || isUncacheableIcsRequest(c.req.url) || hasOverlongQueryValue(c.req.url)) {
       await next();
       return;
     }
