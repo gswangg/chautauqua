@@ -108,6 +108,13 @@ export function EventSettingsPanel() {
   const [initial, setInitial] = useState<EventSettingsForm | null>(null);
   const [form, setForm] = useState<EventSettingsForm | null>(null);
   const [error, setError] = useState<string | undefined>(undefined);
+  // DEC-897/DEC-124 server-only-conflict shape: a save refusal the server
+  // attributes to a specific field (fields map, or a conflict/409 code --
+  // on this form the slug is the only field a server-side uniqueness check
+  // can refuse) renders under that field's own control instead of the page
+  // banner, and never resets/refetches the form -- the user's unsaved edits
+  // in every other field survive the refusal untouched.
+  const [slugError, setSlugError] = useState<string | undefined>(undefined);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [unscheduledNotice, setUnscheduledNotice] = useState<OutsideWindowNotice | null>(null);
@@ -153,6 +160,7 @@ export function EventSettingsPanel() {
     }
     setSaving(true);
     setError(undefined);
+    setSlugError(undefined);
     try {
       const updated = await apiPatch<EventDetail>(`/events/${eventId}`, patch);
       const f = toForm(updated);
@@ -168,7 +176,18 @@ export function EventSettingsPanel() {
       );
       closeEdit();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to save event settings');
+      // DEC-897/DEC-124: a field-scoped refusal (fields.slug, or a bare
+      // conflict/409 -- the only server-side uniqueness check on this form
+      // is the slug) renders under the Slug control instead of the page
+      // banner, and the copy names what's wrong without blaming the input
+      // (rule 12: never "invalid slug" -- the slug the user typed may be
+      // perfectly well-formed, it's simply already claimed). No refetch, no
+      // reset: `form` and `initial` are left exactly as the user had them.
+      if (err instanceof ApiError && (err.fields?.slug !== undefined || err.code === 'conflict')) {
+        setSlugError('That slug is already taken by another event in this org.');
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to save event settings');
+      }
     } finally {
       setSaving(false);
     }
@@ -254,8 +273,34 @@ export function EventSettingsPanel() {
           <SettingsField label="Name" width="name">
             <input className="chq-input" value={form.name} onChange={(e) => update('name', e.target.value)} />
           </SettingsField>
-          <SettingsField label="Slug" width="slug">
-            <input className="chq-input" value={form.slug} onChange={(e) => update('slug', e.target.value)} />
+          <SettingsField
+            label="Slug"
+            width="slug"
+            // The error/survival copy renders through `hint`, i.e. as a
+            // sibling AFTER </label> rather than inside children (which sit
+            // inside the <label>) -- text inside a <label> becomes part of
+            // the control's accessible name, which would silently break
+            // every getByLabelText('Slug') lookup (and any real screen
+            // reader's field announcement) the moment an error appears.
+            hint={
+              slugError ? (
+                <span className="chq-settings-field-error-row">
+                  <span className="chq-field-error" role="alert">
+                    {slugError}
+                  </span>
+                  <span className="chq-settings-field-survival">
+                    Everything else on this page is fine and is still here.
+                  </span>
+                </span>
+              ) : undefined
+            }
+          >
+            <input
+              className={slugError ? 'chq-input chq-field-invalid' : 'chq-input'}
+              value={form.slug}
+              onChange={(e) => update('slug', e.target.value)}
+              aria-invalid={slugError ? 'true' : undefined}
+            />
           </SettingsField>
           <SettingsFieldPair>
             <SettingsField label="Start date" htmlFor="event-settings-start-date" width="date">

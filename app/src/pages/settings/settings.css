@@ -1129,3 +1129,20 @@
   border-bottom: none;
   gap: 0;
 }
+
+/* w28-d/DEC-897/DEC-124: server-only-conflict shape for a settings field
+   (Event > Slug). The .chq-field-error / .chq-field-invalid vocabulary
+   itself is wave 28's error-states.css standard -- this rule only lays the
+   error text and its survival note out BESIDE each other on the same line
+   (page-local layout, not a redefinition of the shared error classes). */
+.chq-settings-field-error-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.chq-settings-field-survival {
+  font-size: 11px;
+  color: var(--chq-ink-2);
+}
