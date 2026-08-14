@@ -10,6 +10,7 @@ import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import { visibleSubmissionConditions } from "./public";
 import { backfillNullAttribution } from "./attribution";
+import { touchSubmissionsForContacts } from "./submissions/touch";
 import { ACTIVE_INVITE_STATUSES, PROFILE_TASK_TITLE } from "../../domain/acceptance";
 
 // ---------------------------------------------------------------------------
@@ -122,6 +123,7 @@ export interface ProfileUpdateInput {
 /** Updates the speaker's own contact row in place — same row the producer
  * sees, so the change is instant, no separate staging table (J7). */
 export async function updateContactProfile(db: Db, contactId: string, input: ProfileUpdateInput): Promise<void> {
+  const now = new Date();
   await db
     .update(schema.contact)
     .set({
@@ -131,12 +133,15 @@ export async function updateContactProfile(db: Db, contactId: string, input: Pro
       company: input.company,
       bio: input.bio,
       socialLinksJson: serializeSocialLinks(input.socialLinks),
-      updatedAt: new Date(),
+      updatedAt: now,
     })
     .where(eq(schema.contact.id, contactId));
   // DEC-299: repair any never-taken (NULL) attribution snapshot now that the
   // speaker has written a real title/company through their portal profile.
   await backfillNullAttribution(db, contactId, { title: input.title, company: input.company });
+  // DEC-725 amendment: firstName/lastName feed the pushed Speakers cell —
+  // bump every dependent submission so the next Airtable tick re-selects it.
+  await touchSubmissionsForContacts(db, [contactId], now);
 }
 
 export interface InsertHeadshotFileInput {

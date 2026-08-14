@@ -146,6 +146,9 @@ const ALLOWED: Record<string, string[]> = {
   "server/repo/portal-edit.ts": [
     "The MAX_PARTICIPANTS_PER_SUBMISSION count is a per-submission cap over every participant row, not an eligibility read.",
   ],
+  "server/repo/submissions/touch.ts": [
+    "touchSubmissionsForContacts resolves participant.contactId -> participant.submissionId to find which submissions to re-stamp after a contact rename -- every participant row denormalizes the same contact name into the pushed Speakers cell regardless of invite status, not an eligibility read.",
+  ],
   "server/repo/files-library.ts": [
     "Headshot-count read filters via the local `headshotWhere` variable, built from buildHeadshotWhere()'s acceptedSpeakerConditions(eventId) — same predicate, indirected through a variable this scanner's regex doesn't follow.",
     "Headshot-list read filters via the same local `headshotWhere` variable built from acceptedSpeakerConditions(eventId) — same predicate, indirected through a variable.",

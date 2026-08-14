@@ -26,6 +26,11 @@ function makeFakeDb(data: FakeDbData) {
     if (table === schema.submission) return data.submissionRows ?? [];
     if (table === schema.contact) return data.contactRows ?? [];
     if (table === schema.submissionAnswer) return [];
+    // DEC-725 amendment: saveSubmissionEdits now calls
+    // touchSubmissionsForContacts, whose subquery reads schema.participant
+    // to resolve dependent submission ids -- this fake never seeds
+    // participants, so it always resolves to none.
+    if (table === schema.participant) return [];
     throw new Error("fake db: unexpected table in select");
   }
 

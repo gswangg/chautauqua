@@ -18,6 +18,7 @@ import { toContactRecord, toRow, type ContactRow } from "./rows";
 import { isValidEmail, normalizeEmail } from "../../../domain/email"; // DEC-454
 import { newId } from "../../../domain/ids";
 import { backfillNullAttributionMany } from "../attribution";
+import { touchSubmissionsForContacts } from "../submissions/touch";
 
 export interface ImportSkip {
   line: number;
@@ -186,6 +187,14 @@ async function flushContactUpdates(db: Db, rows: ContactCommitRow[]): Promise<vo
           updatedAt: sql`excluded.updated_at`,
         },
       });
+    // DEC-725 amendment: an import row may rename firstName/lastName/title/
+    // company on an EXISTING contact — bump every submission the whole
+    // chunk's contacts participate in so the rename reaches Airtable.
+    await touchSubmissionsForContacts(
+      db,
+      chunk.map((r) => r.id),
+      new Date(),
+    );
   }
 }
 
