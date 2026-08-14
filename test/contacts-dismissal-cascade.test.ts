@@ -53,6 +53,7 @@ create table participant (
   role text,
   "order" integer,
   visible integer,
+  invite_status text not null default 'none',
   created_at integer,
   updated_at integer
 );
