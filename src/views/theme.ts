@@ -96,6 +96,14 @@ export const THEME_CSS = `
        these vars. */
     --chq-measure: 820px;
     --chq-measure-wide: 1180px;
+    /* DEC-989 amendment (ruling B6, wave 25 task w25-i): the speaker
+       portal is a task list for one person, not a reading surface --
+       390 is a device width, 820 is too wide for a single-column task
+       list. A fourth named measure keeps DEC-989's enumerating scan
+       honest (every page still picks exactly one named token) rather
+       than overriding --chq-measure locally. Consumed by
+       src/routes/portal/portal.css.ts only. */
+    --chq-portal-measure: 560px;
     /* DEC-683 amendment (wave 1, task w1-a): the PUBLIC PAIR contract is
        820 (list) + 60 (gap) + 300 (rail) = 1180 of CONTENT at a 1440
        viewport. --chq-measure-wide alone only clamps a rule's max-width;

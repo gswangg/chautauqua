@@ -17,11 +17,12 @@
 // anywhere, so task/completion state is carried by .chq-flag's type
 // treatment (weight/letter-spacing/uppercase), never a red swatch.
 
-import { DEC_373, DEC_374, DEC_377 } from "../../decisions";
+import { DEC_373, DEC_374, DEC_377, DEC_989 } from "../../decisions";
 
 void DEC_373;
 void DEC_374;
 void DEC_377; // captions below only ever restate fields the portal repo already returns
+void DEC_989; // ruling B6 (wave 25 amendment): portal content column clamps to --chq-portal-measure, not the shared reading measure
 
 export const PORTAL_CSS = `
   /* --- verbatim starting point (moved from PortalLayout's inline <style>) --- */
@@ -232,10 +233,20 @@ export const PORTAL_CSS = `
      page footer (DEC-590) — placement only, .chq-btn-tertiary is the
      existing frozen tertiary token (THEME_CSS), never a new button style. */
   .chq-portal-footer {
-    max-width: var(--chq-measure);
+    max-width: var(--chq-portal-measure);
     margin: 24px auto 0;
     padding: 16px 1rem 40px;
     border-top: 1px solid var(--chq-hairline);
+  }
+
+  /* DEC-989 amendment (ruling B6): PortalLayout's <main> (src/routes/portal/
+     shared.tsx) carries the shared .chq-measure class for its auto-margin
+     centring behaviour, but the portal is a single-person task list, not a
+     reading surface -- this override narrows just that instance to the
+     portal's own token, centred in the page. Nothing else consuming
+     .chq-measure elsewhere in the tree is touched. */
+  .chq-portal-shell > .chq-measure {
+    max-width: var(--chq-portal-measure);
   }
   .chq-portal-signout-btn { min-height: 44px; }
 
@@ -333,6 +344,18 @@ export const PORTAL_CSS = `
     font-weight: 800;
     letter-spacing: 0.09em;
     text-transform: uppercase;
+  }
+
+  /* DEC-989 amendment (ruling B6): above phone width the task row action
+     buttons stop spanning the row's full width (that's the phone-only
+     .chq-btn { width: 100% } rule inside the max-width 700px block
+     below) and right-flush instead, since the desktop column is now
+     narrow enough (560px) that a left-flush row of buttons reads as
+     stranded whitespace. This is a genuinely separate min-width query,
+     not a rewrite of the existing max-width block, so the phone
+     rendition below is untouched. */
+  @media (min-width: 701px) {
+    .chq-portal-actions { justify-content: flex-end; }
   }
 
   @media (max-width: 700px) {
