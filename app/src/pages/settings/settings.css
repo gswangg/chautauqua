@@ -318,10 +318,22 @@
   color: var(--chq-brand, inherit);
 }
 
+/* task-w1-e/DEC-781: ONE definition-grid row -- label | value | right-
+   flushed meta, ~50px pitch (was flex-direction:column stacking every row
+   at ~88px, since consolidated here rather than left as a dead rule that a
+   later same-specificity override silently won -- a source-scan test (see
+   the module doc comments in contacts-panels.css/etc.) matches the FIRST
+   top-level `.chq-settings-row {` it finds, so a duplicate selector is a
+   trap for exactly that test technique even when the cascade itself
+   resolves correctly. The meta column is `auto`: with no
+   .chq-settings-row-hint child rendered, the track has no content to size
+   against and collapses to zero width. */
 .chq-settings-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: 170px 1fr auto;
+  align-items: baseline;
+  column-gap: 20px;
+  row-gap: 6px;
   padding: 14px 0;
   border-bottom: 1px solid var(--chq-hairline);
 }
@@ -863,6 +875,8 @@
   font-size: 12px;
   color: var(--chq-ink-2);
   margin: 0;
+  text-align: right;
+  white-space: nowrap;
 }
 
 @media (max-width: 700px) {
@@ -884,32 +898,20 @@
   }
 }
 
-/* w18-f/DEC-896: SummarySectionRow becomes the frame's three-column
-   definition grid (label / value / hint) -- mock 09-settings.png's Event
-   section ('Slug' → 'Used in every public URL', 'Dates' → '274 days
-   away'). The hint track is `auto`: with no `.chq-settings-row-hint`
-   child rendered for a hint-less row, the track has no content to size
-   against and collapses to zero width -- never an empty cell, never a
-   dangling separator column. Overrides the earlier .chq-settings-row
-   flex-column rule above (same selector, later in source order) so every
-   panel built on SummarySectionRow (Event, Call for papers, Tracks and
-   rooms, Public pages, Speaker portal, People and roles, Your data)
-   picks this up for free -- one shared vocabulary, not six per-page
-   rewrites. */
-.chq-settings-row {
-  display: grid;
-  grid-template-columns: 170px 1fr auto;
-  align-items: baseline;
-  column-gap: 20px;
-  row-gap: 6px;
-}
-
-.chq-settings-row-hint {
-  font-size: 12px;
-  color: var(--chq-ink-2);
-  text-align: right;
-  white-space: nowrap;
-}
+/* w18-f/DEC-896, consolidated w1-e/DEC-781: SummarySectionRow is the
+   frame's three-column definition grid (label / value / hint) -- mock
+   09-settings.png's Event section ('Slug' → 'Used in every public URL',
+   'Dates' → '274 days away'). The hint track is `auto`: with no
+   `.chq-settings-row-hint` child rendered for a hint-less row, the track
+   has no content to size against and collapses to zero width -- never an
+   empty cell, never a dangling separator column. Every panel built on
+   SummarySectionRow (Event, Call for papers, Tracks and rooms, Public
+   pages, Speaker portal, People and roles, Your data) picks this up for
+   free from the single .chq-settings-row definition above -- one shared
+   vocabulary, not six per-page rewrites. (The definition itself now lives
+   in one place, not two same-selector rules relying on cascade order --
+   a duplicate top-level selector is invisible to a source-scan test that
+   only finds the first match.) */
 
 @media (max-width: 700px) {
   /* Phone rows already reflow as a single-column stack (label above
