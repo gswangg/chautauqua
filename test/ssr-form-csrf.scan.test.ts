@@ -153,4 +153,37 @@ describe("ssr-form-csrf.scan: allowlist entries are reviewable, not silent", () 
       expect(entry.reason.length).toBeGreaterThan(20);
     }
   });
+
+  it("every FORM_CSRF_ALLOWLIST entry still matches a real hit (no stale lines)", () => {
+    // DEC-078 wave-21 amendment: naming a reason isn't enough by itself --
+    // an entry whose form was fixed, removed, or renamed would keep passing
+    // forever and silently pre-clear any FUTURE post form in the same file
+    // whose body happens to contain the same marker text. This asserts the
+    // other direction: every allowlist entry's (file, formActionOrLineMarker)
+    // key still matches a real method="post" form body found by the scan
+    // above -- the SAME match used at the pass-check
+    // (`entry.file === rel && body.includes(entry.formActionOrLineMarker)`).
+    const files = listTsxFiles(SRC_DIR);
+    const staleEntries = FORM_CSRF_ALLOWLIST.filter((entry) => {
+      return !files.some((file) => {
+        const rel = relative(SRC_DIR, file);
+        if (rel !== entry.file) return false;
+        const text = readFileSync(file, "utf8");
+        const opens = findFormOpenTags(text);
+        const postForms = opens.filter((tag) => extractMethod(tag.tagText) === "post");
+        return postForms.some((tag) => {
+          const closeIndex = findMatchingFormClose(text, tag.startIndex + tag.tagText.length);
+          const body = text.slice(tag.startIndex, closeIndex);
+          return body.includes(entry.formActionOrLineMarker);
+        });
+      });
+    });
+
+    expect(
+      staleEntries,
+      staleEntries
+        .map((entry) => `${entry.file} :: "${entry.formActionOrLineMarker}": stale entry -- delete this line (test/ssr-form-csrf.scan.test.ts FORM_CSRF_ALLOWLIST) -- no matching method="post" form body was found.`)
+        .join("\n"),
+    ).toEqual([]);
+  });
 });

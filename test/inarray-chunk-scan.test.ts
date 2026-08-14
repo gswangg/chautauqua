@@ -384,6 +384,26 @@ describe("DEC-078 repo-wide inArray/chunkIds scan (per call site)", () => {
     expect(allSites.length).toBeGreaterThanOrEqual(24);
   });
 
+  it("every BOUNDED_INARRAY_CALLSITES entry still matches a real hit (no stale lines)", () => {
+    // DEC-078 wave-21 amendment: the previous check above only proved the
+    // named FILE exists and was scanned -- it never checked that the
+    // (file, identifier) pair still names a live inArray( call site. An
+    // entry whose call site was chunked, renamed, or deleted would keep
+    // passing forever and silently pre-clear any FUTURE call site that
+    // reuses that same (file, identifier) pair. This asserts, in the other
+    // direction, that every allowlist entry matches at least one hit found
+    // by allSites (the same extraction the per-call-site test below uses).
+    const staleEntries = BOUNDED_INARRAY_CALLSITES.filter(
+      ([file, identifier]) => !allSites.some(({ site }) => site.file === file && site.leadingIdentifier === identifier),
+    );
+    expect(
+      staleEntries,
+      staleEntries
+        .map(([file, identifier]) => `${file} :: ${identifier}: stale entry -- delete this line (test/inarray-chunk-scan.test.ts BOUNDED_INARRAY_CALLSITES) -- no matching inArray(..., ${identifier}) call site was found in ${file}.`)
+        .join("\n"),
+    ).toEqual([]);
+  });
+
   for (const { site, src } of allSites) {
     it(`${site.file}:${site.line}: inArray(..., ${site.leadingIdentifier}) is chunk-bound, a literal enum/array, or allowlisted (DEC-078)`, () => {
       const chunkBound = isChunkLoopBound(src, site.leadingIdentifier);

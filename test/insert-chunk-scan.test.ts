@@ -173,6 +173,28 @@ describe("DEC-528 repo-wide .insert(...).values(...)/chunkRowsForInsert scan (pe
     expect(chunkBoundCount).toBeGreaterThanOrEqual(1);
   });
 
+  it("every BOUNDED_INSERT_CALLSITES entry still matches a real hit (no stale lines)", () => {
+    // DEC-078 wave-21 amendment: the previous check above only proved the
+    // named FILE exists and was scanned -- it never checked that the
+    // (file, identifier) pair still names a live .insert(...).values(...)
+    // call site. An entry whose call site was chunked, renamed, or deleted
+    // would keep passing forever and silently pre-clear any FUTURE call
+    // site that reuses that same (file, identifier) pair. This asserts, in
+    // the other direction, that every allowlist entry matches at least one
+    // hit found by allSites (the same extraction the per-call-site test
+    // below uses). Currently vacuous (BOUNDED_INSERT_CALLSITES is empty),
+    // but stays live so the first entry ever added is checked both ways.
+    const staleEntries = BOUNDED_INSERT_CALLSITES.filter(
+      ([file, identifier]) => !allSites.some(({ site }) => site.file === file && site.leadingIdentifier === identifier),
+    );
+    expect(
+      staleEntries,
+      staleEntries
+        .map(([file, identifier]) => `${file} :: ${identifier}: stale entry -- delete this line (test/insert-chunk-scan.test.ts BOUNDED_INSERT_CALLSITES) -- no matching .insert(...).values(${identifier}) call site was found in ${file}.`)
+        .join("\n"),
+    ).toEqual([]);
+  });
+
   for (const { site, src } of allSites) {
     it(`${site.file}:${site.line}: .insert(...).values(${site.leadingIdentifier}) is an inline object literal, chunk-bound, or allowlisted (DEC-528)`, () => {
       const inlineObject = isInlineObjectLiteral(site.argPreview);

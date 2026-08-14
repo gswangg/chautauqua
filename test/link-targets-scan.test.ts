@@ -434,7 +434,6 @@ function stripQueryAndHash(path: string): string {
 // an explicit, reviewable allowlist (each with a one-line reason) rather
 // than silently falling out of the "/admin"-prefix filter unnoticed.
 const NON_ADMIN_HREF_ALLOWLIST: { prefix: string; reason: string }[] = [
-  { prefix: "/login", reason: "sign-out redirect (App.tsx signOut()); real full-page login screen, not a SPA route" },
   { prefix: "/portal", reason: "PortalSettingsPanel 'Open as speaker' link into the separate speaker portal app" },
   { prefix: "/files/", reason: "file download/proxy served directly by the Worker, not part of the /admin SPA" },
   { prefix: "/e/", reason: "public event page (agenda view / .ics feed), a separate audience-facing surface" },
@@ -547,6 +546,39 @@ describe("in-app link targets land where they say (DEC-837)", () => {
   it("resolves BulkEmailModal's live /admin/comms?tab=... targets against the declared route table", () => {
     expect(resolvesToRoute(stripQueryAndHash("/comms?tab=compose&template=x"), false)).toBe(true);
     expect(resolvesToRoute(stripQueryAndHash("/comms?tab=history"), false)).toBe(true);
+  });
+
+  it("every NON_ADMIN_HREF_ALLOWLIST entry still matches a real absolute href in app/src (no stale lines)", () => {
+    // DEC-078 wave-21 amendment: an allowlist that only names a reviewable
+    // prefix, never checked against a live hit, would keep passing forever
+    // after the href it excused was deleted or rewritten -- silently
+    // pre-clearing any future, unrelated href that happens to reuse the
+    // same prefix. Collects every absolute, non-"/admin" href= literal
+    // across app/src (the same raw values scanUnlistedAbsoluteHrefs checks
+    // against the allowlist) and requires each allowlist prefix to match at
+    // least one of them.
+    const rawHrefRe = /\bhref=(?:\{`([^`]*)`\}|"([^"]*)"|'([^']*)')/g;
+    const allRawHrefs: string[] = [];
+    for (const file of sourceFiles) {
+      const text = readFileSync(file, "utf-8");
+      rawHrefRe.lastIndex = 0;
+      let m: RegExpExecArray | null;
+      while ((m = rawHrefRe.exec(text))) {
+        const raw = (m[1] ?? m[2] ?? m[3])!;
+        if (!raw.startsWith("/") || raw.startsWith("//")) continue;
+        if (raw.startsWith("/admin")) continue;
+        allRawHrefs.push(raw);
+      }
+    }
+    const stale = NON_ADMIN_HREF_ALLOWLIST.filter(
+      (entry) => !allRawHrefs.some((raw) => matchesAllowlistEntry(raw, entry.prefix)),
+    );
+    expect(
+      stale,
+      stale
+        .map((entry) => `NON_ADMIN_HREF_ALLOWLIST prefix "${entry.prefix}": stale entry -- delete this line (test/link-targets-scan.test.ts) -- no matching href="${entry.prefix}..." was found in app/src.`)
+        .join("\n"),
+    ).toEqual([]);
   });
 
   for (const file of sourceFiles) {
