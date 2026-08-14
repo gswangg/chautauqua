@@ -75,9 +75,27 @@ already landed.
    the edit form, DEC-731) and renders in the Settings read scroll. My burn-down greps
    missed the commit; no work was duplicated.
 
-**GATE CYCLE STARTING (orchestrator): boundary snapshot a6ac400e** — deploy (migrations +
-full reseed incl. the CNT-S3 fixture alignment + parity check), then sbek full run +
-fidelity fleet vs v9 in parallel. Swarm continues; next boundary picks up its merges.
+**GATE CYCLE IN FLIGHT (orchestrator): boundary a6ac400e DEPLOYED** (version d3e4750d;
+migrations through 0036; D1 775-statement reseed incl. CNT-S3 fixture alignment; 35 R2
+objects --remote, spot-verified; parity clean; EMB-01 live on prod). Sbek full run in
+progress (fresh run 22-14-24 — an earlier start was stopped by an orchestrator
+false-alarm about the CFP name field; root cause was probe/fixture staleness, not the
+product; ~3 scenarios of spend lost). Fidelity fleet (6 pairs vs v9) running in parallel.
+
+**PASSWORD RESET — CLOSED with runtime evidence (walkthrough J2 green on the gate
+build):** full round trip on a THROWAWAY account (never a seeded persona): POST /forgot →
+enumeration-safe copy asserted → organizer-authed /dev/mailbox captures the email →
+/reset/<token> names the account → completion sets the password, revokes ALL sessions,
+token single-use. Mechanism+routes+screens+rate-limits all exercised. Prod mailer path
+already proven (gate-4 inbox confirmation).
+
+**HARNESS MAINTENANCE (walkthrough fixture drift — swarm lane, NOT gate-blocking):**
+orchestrator fixed J1/J2 (c9194533: speaker_name, radio dropdowns, "Submission received"
+copy, authed+polled mailbox, template-field autofill). Still stale: **J5** compose
+preview omits the now-required feedbackPlanId when the template carries {feedback} ·
+**J11** duplicate-contact POST expects 201, seeded data already holds the pair (409) ·
+**scale step3** expects 5 task_assignment cells, new seed has 6. Every fixture that
+hand-enumerates form/seed shape should re-read it the way J1 now does.
 
 ## DELTA PROBE 2 (2026-08-14 ~wave 29, snapshot 0bb56c9c) — landed v9 batch VERIFIED LIVE
 
