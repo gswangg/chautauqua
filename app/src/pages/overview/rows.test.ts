@@ -173,6 +173,21 @@ describe('buildDeadlineCells', () => {
     );
     expect(cells.every((c) => c.isNearest === false)).toBe(true);
   });
+
+  // DEC-611 amendment (wave 2): nearest-deadline emphasis is a SET — a tie
+  // marks every cell sharing the minimum value, never an arbitrary
+  // first-wins pick.
+  it('marks every tied cell nearest when two deadlines share the same soonest value', () => {
+    const cells = buildDeadlineCells(
+      { formCloseDate: NOW + 2 * DAY, nextTaskDueDate: NOW + 2 * DAY, planCloseDate: NOW + 9 * DAY, planRound: null, eventStartDate: null },
+      NOW,
+      'UTC',
+    );
+    expect(cells.find((c) => c.key === 'formCloseDate')!.isNearest).toBe(true);
+    expect(cells.find((c) => c.key === 'nextTaskDueDate')!.isNearest).toBe(true);
+    expect(cells.find((c) => c.key === 'planCloseDate')!.isNearest).toBe(false);
+    expect(cells.find((c) => c.key === 'eventStartDate')!.isNearest).toBe(false);
+  });
 });
 
 describe('buildNoActionRows', () => {

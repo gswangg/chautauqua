@@ -171,10 +171,6 @@
   grid-template-columns: 200px 1fr;
 }
 
-.chq-overview-row-public {
-  grid-template-columns: 1fr auto;
-}
-
 .chq-overview-row-title {
   font-family: var(--chq-font-display);
   font-size: 18px;
@@ -318,7 +314,6 @@
   .chq-overview-row-content,
   .chq-overview-row-agenda,
   .chq-overview-row-quiet,
-  .chq-overview-row-public,
   .chq-overview-row-single {
     grid-template-columns: 1fr;
   }
