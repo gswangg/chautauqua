@@ -36,30 +36,47 @@ export interface StatusChangeResult {
   status: SubmissionStatus;
   acceptedAt: number | null;
   /**
-   * True only on the transition into 'accepted' when accepted_at was
-   * previously null — the idempotency guard from DEC-009. Callers use this
+   * True on every transition INTO 'accepted' from a non-accepted status
+   * (DEC-278 wave-58 amendment) — not just the first one. Callers use this
    * flag to decide whether to run acceptance planning (see acceptance.ts);
-   * it never triggers email itself.
+   * it never triggers email itself. The planner is idempotent on
+   * (contact, task-title), so re-running it on a re-accept is safe and is
+   * what lets a co-speaker added after an accept -> un-accept -> re-accept
+   * cycle still get onboarding tasks.
    */
   fireAcceptance: boolean;
+  /**
+   * True only when this transition actually STAMPS accepted_at, i.e. the
+   * transition is into 'accepted' AND accepted_at was previously null.
+   * accepted_at is still written exactly once and is never cleared by
+   * un-accepting (DEC-009). Callers use this to gate the accepted_at column
+   * write separately from the (broader) fireAcceptance flag.
+   */
+  setsAcceptedAt: boolean;
 }
 
 /**
  * Any status may move to any other status (Sessionboard's pill allows free
  * transitions). accepted_at is set exactly once, on first entry into
  * 'accepted', and is never cleared by un-accepting (DEC-009: un-accepting
- * does not delete created records).
+ * does not delete created records). The onboarding PLANNER, however, runs on
+ * every entry into 'accepted' (DEC-278 wave-58 amendment) — including
+ * re-accepts — because it is idempotent on (contact, task-title): re-running
+ * it after a co-speaker was added while un-accepted is what gives that
+ * co-speaker onboarding tasks. This module keeps its zero-mailer invariant.
  */
 export function changeStatus(
   current: StatusChangeInput,
   next: SubmissionStatus,
   now: number,
 ): StatusChangeResult {
-  const enteringAcceptedFirstTime = next === "accepted" && current.acceptedAt === null;
-  const acceptedAt = enteringAcceptedFirstTime ? now : current.acceptedAt;
+  const entersAccepted = next === "accepted" && current.status !== "accepted";
+  const stampsAcceptedAt = next === "accepted" && current.acceptedAt === null;
+  const acceptedAt = stampsAcceptedAt ? now : current.acceptedAt;
   return {
     status: next,
     acceptedAt,
-    fireAcceptance: enteringAcceptedFirstTime,
+    fireAcceptance: entersAccepted,
+    setsAcceptedAt: stampsAcceptedAt,
   };
 }
