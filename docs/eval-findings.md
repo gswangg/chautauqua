@@ -173,7 +173,62 @@ REVERT SHAPE (as originally directed; superseded by the landed implementation ab
 - Reserved-domain recipients (example.com) failing at send is CORRECT honest behavior, not a bug.
 This ships with the gate-4 deploy; deploy procedure keeps the secrets/bindings parity check.
 
-**HOLD — REDESIGN PENDING (2026-08-13, user running a design pass; do NOT build these two):**
+## DESIGN PACK v7 LANDED (2026-08-13, vendored to docs/design/ — SUPERSEDES v6 FOR SECTION 10 ONLY; both HOLDs below are LIFTED)
+
+Only `Chautauqua Public and Portal.dc.html` + README changed (verified byte-diff; all other
+sections stay on v6 authority). Frames: **chautauqua-research/design-frames-v7/** (v6 clone with
+section 10 re-rendered — 20 frames, manifest updated; fidelity agents use v7 for EVERYTHING from
+now on, it is a superset). Zip vendored at chautauqua-research/design-pack-v7.zip. READ THE
+VENDORED README's new sections — "Public agenda — desktop" and "Public filter bar — one idiom,
+four surfaces" — they carry the full spec; summary directives:
+
+**P1 · Public agenda desktop = SEQUENCE, not matrix** (frames 10--01/02, README §Public agenda):
+one row per start time — 88px time column + blocks in `repeat(auto-fit, minmax(228px, 1fr))`
+inside the 820 content column of the 1180 pair (1 session = full 712, 2 split, 3 at ~228, 4 wrap
+2×2); room = LABEL ON THE BLOCK (eyebrow), never a lane header; day appears ONCE as the h1
+("Tuesday 12 May · 9 sessions · 4 rooms") with a Tue|Wed|Thu SEGMENTED SWITCHER right-aligned on
+the heading row (one day at a time — navigation, not a filter; ?day= param); time renders only
+where something starts; BREAKS are spanning quiet rules with small-caps labels ("COFFEE · FOYER ·
+15 MIN", "LUNCH · FOYER · 60 MIN") — needs a breaks data model (per-event/day: label, location,
+startMin, duration) + seed rows; block = ROOM eyebrow + SAVE/SAVED top-right + title (links to
+detail) + speaker + track/format chips; footer "Last session ends 14:30 · Wednesday 13 May ›";
+rail = YOUR SCHEDULE (saved count + Download .ics olive button) / ROOMS IN USE TODAY (per-room
+session counts, each jumps to that room's first session) / PRINT ("Printable programme ›" — a
+one-page all-days route). NO clash indicators on public.
+
+**P1 · Agenda track control = HIGHLIGHT, not filter** ("a list filters; a schedule highlights",
+frame 10--02): `Highlight a track ▾` beside the day-scoped search; matching blocks keep full ink
++ 3px olive left edge + track chip inverted to filled olive; every other block recedes (lighter
+card/border, muted ink) but the GRID NEVER REFLOWS and Save is NEVER dimmed; rail rooms line
+becomes "N in <track>"; control shows active value + Clear. Room and format are DROPPED from the
+agenda bar entirely (rooms live in the rail; both remain full filters on Sessions where the eval
+probes them).
+
+**P1 · Public filter bar — one row, one idiom** (frame 10--00, README §Public filter bar): built
+for the 820 column — search at the head + compact SELECTS of one visual language. Sessions:
+`[Search sessions or speakers…][All days ▾][All tracks ▾][All formats ▾][All rooms ▾]`. Agenda:
+`[Search this day…][Highlight a track ▾]`. Speakers: `[Search speakers…][All tracks ▾][List|Grid]`.
+NO pill rows anywhere on public (the pill-row idiom is dead — that's what forced the stacked
+rows). ACTIVE-FILTER LINE appears only when set: "9 of 18 sessions [Tuesday 12 May ×] Clear" —
+count + one removable chip per active filter + Clear; zero height at rest.
+
+**P2 · Sessions list row anatomy per frame 10--00:** two-line left gutter (start time / room),
+title, speaker, uppercase small-caps meta "TRACK · FORMAT, N MIN", bordered Save/Saved button
+right; per-day section capping with "4 more on Tuesday  Show all 9"; rail = YOUR SCHEDULE /
+THREE DAYS (per-day counts, jumps down the page) / CALL FOR PAPERS (closes date · no account
+needed + "Submit a talk ›").
+
+**NAV RULING (pack-internal discrepancy):** frame 10--00's header still shows a "Gallery" nav
+entry; frame 10--01's header and README "Changed since the previous handoff" §4 drop it. The
+README + the standing USER DECISION win: public nav = Sessions / Speakers / Agenda / My schedule,
+NO Gallery; /gallery stays as the Grid URL with Speakers nav-active. Fidelity agents: do not file
+the sessions frame's nav row.
+
+**SEED note:** frames depict 18 published sessions across 3 days with breaks and 4 saved picks;
+current seed publishes 7 on 2 days. Enrich the published set (+ breaks rows) so the agenda's
+multi-block rows and per-day counts are demoable.
+
+**~~HOLD — REDESIGN PENDING~~ (LIFTED by v7 above — build both now):**
 (1) Public filter-bar collapse (delta-probe item 11 / DEC-919 one-pill-row) — the v6 one-row
 design predates the format/room facets; a redesigned filter bar is coming via design handoff.
 (2) Public agenda desktop layout — v6 has NO desktop agenda frame (10--01 is 390 phone); the

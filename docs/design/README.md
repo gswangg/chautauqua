@@ -327,6 +327,51 @@ Copy follows the mechanism: it is *set a password* on an emailed claim link, nev
 
 Nothing about this appears on the form itself. Submitting needs no account, that promise is already in the lede, and a signup affordance beside the submit button competes with the one action that matters.
 
+## Public agenda — desktop
+
+There was no desktop frame for this page, so the build scaled up the admin's room-lane × time-gutter grid. That idiom is built for organiser density and collapses at public density: the day rendered three times, the time gutter was a sparse beige column that anchored to nothing, and full-width room lanes held one or two sessions each.
+
+**The published programme is a sequence, not a matrix.** ≤10 sessions a day over 1–4 rooms, some days one room. So the desktop agenda is **one row per start time**, not one lane per room:
+
+- **88px time column**, then the sessions that start at that time, laid out `repeat(auto-fit, minmax(228px, 1fr))`. One session takes the full 712px measure; two split it; three sit at ~228px; four wrap 2×2. No hand-tuned cases and no empty lanes — the sparse day is the *default* case rather than a degradation.
+- **Room is a label on the block**, not a column header. With four rooms and eight sessions, lanes spend most of their pixels on nothing; a label costs one line and only appears where a session exists.
+- **The day appears once**, as the `<h1>` ("Tuesday 12 May · 8 sessions · 9:00 to 17:30"). The filter bar's day control is the switcher — one day at a time, since ten sessions is a page, not a scroll. That removes two of the three day repetitions on its own.
+- **Time appears only where something starts**, beside the block rather than in a tick gutter. Breaks are a spanning quiet rule with their label in small caps ("Lunch · Foyer") — real programmes have them, and they explain gaps that would otherwise read as missing data.
+- **A block carries** room, title (linking to session detail), speaker, then track and format as chips, plus Save/Saved. No clash indicators: clashes are an organiser concept.
+- **Rail**: saved count + `.ics`, rooms in use today (each filtering the day to one room), and a printable programme.
+
+## Public filter bar — one idiom, four surfaces
+
+Sessions, agenda and speakers share one bar, built for the **820px content column** of the 1180 pair layout. The resting state is deliberately quiet: **one row, search at the head, everything else a compact select of the same type.**
+
+```
+Sessions   [Search sessions or speakers…] [All days ▾] [All tracks ▾] [All formats ▾] [All rooms ▾]
+Agenda     [Search this day…]             [All tracks ▾] [All formats ▾] [All rooms ▾]
+Speakers   [Search speakers…]             [All tracks ▾]                    [List | Grid]
+```
+
+Two earlier versions of this bar were rejected for clutter, and the reasons are worth keeping:
+
+- **No pill rows.** Tracks were pills on their own row on the theory that the high-traffic facet deserves prominence. Pills for one facet plus selects for two others is two visual languages for one job, and the pill row is what forced a second row. Four selects read as one control group; one pill row plus two selects reads as five things.
+- **Day is navigation on the agenda, not a filter.** The agenda shows one day at a time, so its day switcher belongs on the heading row opposite the `<h1>` — `Tuesday 12 May · 9 sessions · 4 rooms` on the left, `Tue 12 | Wed 13 | Thu 14` on the right. On Sessions the same facet *is* a filter (the page lists all days), so there it is an `All days ▾` select in the bar. Same data, different role, different placement.
+- **Active filters appear only when set**, as a second line: a count, one removable chip per active filter, and *Clear*. Nothing is spent on that line at rest, and the count answers the question filtering raises ("12 of 41 sessions").
+
+**A list filters; a schedule highlights.** Sessions and Agenda share the bar's *shape* but not its contents, because the surfaces answer different questions:
+
+| | Sessions (a list) | Agenda (a day schedule) |
+|---|---|---|
+| Search | yes | yes, scoped to the day |
+| Day | `All days ▾` filter | segmented control on the heading row — navigation, not a filter |
+| Track | `All tracks ▾` filter | **`Highlight a track ▾`** — dims the rest, removes nothing |
+| Format | `All formats ▾` filter | — |
+| Room | `All rooms ▾` filter | — |
+
+Filtering a list removes rows and the list closes up. Filtering a schedule punches holes in the one thing the schedule is for: showing what runs *concurrently*. An attendee following the AI track still needs to see what they're giving up at 10:00 — so on the agenda, track dims rather than removes.
+
+**What highlighting looks like** (second agenda frame): the matching blocks keep full-weight ink and gain a 3px olive left edge, with their track chip inverted to filled olive; every other block recedes to a lighter card, lighter border and muted ink. Two rules matter here — **the grid never reflows**, so 10:00 still shows both concurrent sessions in place, and **the Save action is never dimmed**, because the reason non-matching sessions stay on screen is that you might still take one. The rail's "Rooms in use today" becomes "3 in AI Engineering", and the control shows the active value with a *Clear* beside it.
+
+Room and format are dropped from the agenda entirely. The agenda's columns already **are** rooms, so a room filter is just reading a column; and filtering a day to one format leaves a grid of gaps. Both remain full filters on Sessions, which is where the eval probes them.
+
 ## Changed since the previous handoff
 
 1. **A width system, and every route redrawn at 1600px.** Frames were 1240 — a drawing width, below the caps, so the rule was invisible. Four container classes now: reading 820, reading + rail (Settings 820 centred with the rail in the left margin, public sessions 1180 as a pair), table 1440, canvas uncapped. See "Widths" above and the 1800px exemplar in `01-overview.png`.
