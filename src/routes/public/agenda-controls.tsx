@@ -141,7 +141,19 @@ export function ItinerarySearchForm(props: {
         {/* onchange auto-submits (no JS fallback needed: the visually-hidden
             submit button below still works without JS, same idiom as
             PublicSearchBox's hidden submit). */}
-        <select class="chq-pub-select" id="chq-pub-highlight-track" name="trackId" onchange="this.form.submit()">
+        {/* DEC-851 amendment (wave 5): the control itself is one of the
+            highlight's three visible consequences -- it inverts dark (near-
+            black fill, cream text) with its caret whenever a track is set,
+            reading neutral at rest. `.chq-pub-select-active` is declared in
+            agenda.css.ts (this fragment's own owner this wave), layered
+            after chrome.css.ts's plain `.chq-pub-select` base so it wins at
+            equal specificity without touching that file. */}
+        <select
+          class={activeTrackId ? "chq-pub-select chq-pub-select-active" : "chq-pub-select"}
+          id="chq-pub-highlight-track"
+          name="trackId"
+          onchange="this.form.submit()"
+        >
           <option value="">Highlight a track</option>
           {tracks.map((t) => (
             <option value={t.id} selected={t.id === activeTrackId ? true : undefined}>

@@ -75,7 +75,15 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
     box-sizing: border-box;
     width: 100%;
     background: var(--chq-surface);
-    border-left: 3px solid var(--chq-brandable-accent);
+    /* DEC-838: this class stays accent-bound (ACCENT_BOUND_CLASSES[0]) --
+       the custom property carries the per-event accent forward for
+       .chq-pub-agenda-block-highlight below to spend, WITHOUT the base rule
+       itself painting a pixel with it (DEC-851 amendment wave 5: the 3px
+       olive edge is one of the highlight's three visible consequences and
+       must read neutral at rest). The resting edge is a plain 1px hairline
+       instead, same token every other quiet card border uses. */
+    --chq-agenda-block-accent: var(--chq-brandable-accent);
+    border-left: 1px solid var(--chq-hairline);
     border-radius: var(--chq-r-card);
     padding: 0.5rem 0.7rem;
     font-size: 0.85rem;
@@ -139,24 +147,37 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
     text-transform: uppercase;
     text-align: center;
   }
-  /* Desktop grid context (a <div> grid item, not a list <li>) overrides the
-     list-row look above -- centered inside its full-width spanning row. */
-  .chq-pub-agenda-day .chq-pub-agenda-break {
+  /* DEC-851 amendment (wave 5): restructured desktop grid context -- the
+     break is now its own .chq-pub-agenda-day-row (time gutter cell + band),
+     same row shape every session row uses, so the start time lives in the
+     SAME time gutter (.chq-pub-agenda-day-time) rather than inside the band
+     text. The band itself is a quiet rule, left-aligned (not centered) so
+     the label starts flush with the block column every session row's cards
+     start at, and grows to fill that column exactly like
+     .chq-pub-agenda-day-blocks does. */
+  .chq-pub-agenda-break-row .chq-pub-agenda-break {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
+    flex: 1 1 auto;
+    min-width: 0;
     min-height: 0;
     background: var(--chq-surface-sunk);
     border-bottom: none;
     font-size: 11px;
     padding: 2px 6px;
   }
+  /* DEC-851 amendment (wave 5): the matching block's own highlight state --
+     the 3px olive (--chq-brandable-accent) left edge is spent HERE ONLY,
+     never at rest, so choosing a track is what makes an edge appear rather
+     than un-hiding one that was already drawn. */
+  .chq-pub-agenda-block-highlight {
+    border-left: 3px solid var(--chq-agenda-block-accent);
+  }
   /* DEC-851 (wave 64 amendment): track is a HIGHLIGHT on the grid, never a
-     filter -- every block above still renders (the grid never reflows) and
-     already carries the default 3px olive (--chq-brandable-accent) left
-     edge from .chq-pub-agenda-block above. A block whose session does
-     NOT match the highlighted track instead gets this ONE extra class
-     (applied to the same element that already carries
+     filter -- every block above still renders (the grid never reflows). A
+     block whose session does NOT match the highlighted track gets this ONE
+     extra class (applied to the same element that already carries
      .chq-pub-agenda-block) -- lighter card, lighter border, muted
      ink -- so the matching subset visually reads as "kept" rather than
      needing its own separate highlight rule. The Save/Saved control inside
@@ -404,5 +425,60 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
     font-size: 0.8rem;
     margin-right: 0.25rem;
   }
+
+  /* DEC-851 amendment (wave 5): the "Highlight a track" control is one of
+     the highlight's three visible consequences -- it inverts dark (near-
+     black fill, cream text) whenever a track is set, matching the same
+     ink/on-brand pair the day-pill's active state already uses
+     (.chq-pub-day-pill-active above), and reads neutral (chrome.css.ts's
+     plain .chq-pub-select) at rest. This selector composes AFTER
+     chrome.css.ts's base rule in PUBLIC_CSS (public.css.ts concatenates
+     CHROME_CSS then AGENDA_CSS), so it wins at equal specificity without
+     that file needing a change. */
+  .chq-pub-select-active {
+    background: var(--chq-ink);
+    color: var(--chq-on-brand);
+    border-color: var(--chq-ink);
+  }
+
+  /* DEC-851 amendment (wave 5): track chips inside the agenda surface's own
+     blocks/list drop the organizer-colour swatch dot (cards.css.ts's
+     .chq-pub-track-chip::before, shared by every OTHER surface's chip) --
+     scoped to the agenda block/list context rather than changing the shared
+     rule, which every session card and the detail page still render with
+     the dot. */
+  .chq-pub-agenda-block-meta .chq-pub-track-chip::before,
+  .chq-pub-agenda-list-item .chq-pub-track-chip::before {
+    display: none;
+  }
+
+  /* DEC-851 amendment (wave 5), w1-i: the per-block Save control is an
+     uppercase SAVE/SAVED text link, not the sessions list's bordered pill
+     (.chq-pub-save, rail.css.ts) -- reuses the exact same shared
+     ItineraryToggle markup/behaviour (cards.tsx), only this wrapper class
+     and its own scoped :checked flip rules differ, so it doesn't drag the
+     pill's box styling into the block head. */
+  .chq-pub-agenda-block-save {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--chq-ink-2);
+    cursor: pointer;
+  }
+  .chq-pub-agenda-block-save input.chq-itinerary-toggle {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    margin: 0;
+  }
+  .chq-pub-agenda-block-save .chq-pub-save-on { display: none; }
+  .chq-pub-agenda-block-save input.chq-itinerary-toggle:checked ~ .chq-pub-save-off { display: none; }
+  .chq-pub-agenda-block-save input.chq-itinerary-toggle:checked ~ .chq-pub-save-on { display: inline; }
 
 `;
