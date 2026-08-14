@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { apiGet, apiList, ApiError } from '../../lib/api';
 import { formatDateTime, formatDateTimeWeekday } from '../../lib/dates';
 import { DelayedLoading } from '../../components/DelayedLoading';
@@ -148,23 +148,57 @@ export interface RecentSendsProps {
   eventId: string;
   batches: EmailBatchRow[];
   limit?: number;
-  /** When given, renders "All history" as the section-rule link instead of
-   * the per-row recipients disclosure -- the compose mount is read-only and
-   * hands off to the full History tab rather than drilling in place. */
-  onSeeAll?: () => void;
-  /** DEC-876 nit + DEC-751 amendment (w41-g): id->name map, used both for
-   * the collapsed row's template column (batch.templateId looked up here,
-   * else an em dash) and the per-row send-detail disclosure's template
-   * label. Optional and additive -- a missing/empty map just falls back to
-   * an em dash / omits the label rather than failing. */
-  templatesById?: Record<string, string>;
+  /** When given, renders "All history" and a per-row "Open" as links into
+   * History instead of the per-row recipients disclosure -- the compose
+   * mount is read-only and hands off to the full History tab rather than
+   * drilling in place. A per-row "Open" passes that row's batchKey so the
+   * handoff can carry the reader there directly (?batch=<key>); "All
+   * history" calls it with no key. */
+  onSeeAll?: (batchKey?: string) => void;
+  /** w1-g: expand+load this batch's recipients on mount -- the History mount
+   * uses this to land already-open on the batch a compose-mount "Open"
+   * handed off to via ?batch=<key>. Ignored on the compose mount (which has
+   * no recipients disclosure to expand). */
+  expandBatchKey?: string | null;
+  /** DEC-876 nit + DEC-751 amendment (w41-g), required per w1-g: id->name
+   * map, used both for the collapsed row's template column
+   * (batch.templateId looked up here, else an em dash) and the per-row
+   * send-detail disclosure's template label. Required (not optional) so a
+   * caller cannot forget to fetch and pass it -- an empty map just falls
+   * back to an em dash / omits the label rather than failing. */
+  templatesById: Record<string, string>;
 }
 
-export function RecentSends({ eventId, batches, limit, onSeeAll, templatesById }: RecentSendsProps) {
-  const [expanded, setExpanded] = useState<string | null>(null);
+export function RecentSends({ eventId, batches, limit, onSeeAll, expandBatchKey, templatesById }: RecentSendsProps) {
+  const [expanded, setExpanded] = useState<string | null>(expandBatchKey ?? null);
   const [recipients, setRecipients] = useState<Record<string, RecipientsState>>({});
 
   const rows = typeof limit === 'number' ? batches.slice(0, limit) : batches;
+
+  function loadRecipients(batchKey: string) {
+    if (recipients[batchKey]) return;
+    apiList<EmailLogRow>(`/events/${eventId}/email-log?batchId=${encodeURIComponent(batchKey)}`)
+      .then((res) => {
+        setRecipients((prev) => ({ ...prev, [batchKey]: { items: res.items, error: null } }));
+      })
+      .catch((err) => {
+        setRecipients((prev) => ({
+          ...prev,
+          [batchKey]: { items: null, error: err instanceof ApiError ? err.message : 'Failed to load recipients' },
+        }));
+      });
+  }
+
+  // w1-g: land already-expanded on the batch a compose-mount "Open" handed
+  // off to (?tab=history&batch=<key>) -- runs once per incoming key, not on
+  // every batches refetch, so a later mutationVersion-driven refetch doesn't
+  // re-force this batch back open after the reader has since closed it.
+  useEffect(() => {
+    if (!expandBatchKey) return;
+    setExpanded(expandBatchKey);
+    loadRecipients(expandBatchKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandBatchKey]);
 
   function toggle(batchKey: string) {
     if (expanded === batchKey) {
@@ -172,18 +206,7 @@ export function RecentSends({ eventId, batches, limit, onSeeAll, templatesById }
       return;
     }
     setExpanded(batchKey);
-    if (!recipients[batchKey]) {
-      apiList<EmailLogRow>(`/events/${eventId}/email-log?batchId=${encodeURIComponent(batchKey)}`)
-        .then((res) => {
-          setRecipients((prev) => ({ ...prev, [batchKey]: { items: res.items, error: null } }));
-        })
-        .catch((err) => {
-          setRecipients((prev) => ({
-            ...prev,
-            [batchKey]: { items: null, error: err instanceof ApiError ? err.message : 'Failed to load recipients' },
-          }));
-        });
-    }
+    loadRecipients(batchKey);
   }
 
   // w41-g: the section-head subtitle is computed from the FULL batches prop
@@ -208,7 +231,7 @@ export function RecentSends({ eventId, batches, limit, onSeeAll, templatesById }
           {subtitle && <p className="chq-comms-recent-sends-subtitle">{subtitle}</p>}
         </div>
         {onSeeAll && (
-          <button type="button" className="chq-link-button" onClick={onSeeAll}>
+          <button type="button" className="chq-link-button" onClick={() => onSeeAll()}>
             All history
           </button>
         )}
@@ -236,12 +259,14 @@ export function RecentSends({ eventId, batches, limit, onSeeAll, templatesById }
               {/* DEC-732 (eval-findings 59): an explicit bordered control,
                   not the whole row silently doubling as a toggle. On the
                   compose mount (onSeeAll given) "Open" hands off to the
-                  full History tab instead of drilling in place. */}
+                  full History tab, carrying this row's batchKey (w1-g) so
+                  History lands already expanded on it instead of drilling
+                  in place. */}
               {onSeeAll ? (
                 <button
                   type="button"
                   className="chq-link-button chq-comms-batch-open"
-                  onClick={onSeeAll}
+                  onClick={() => onSeeAll(batch.batchKey)}
                 >
                   Open
                 </button>

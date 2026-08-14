@@ -321,13 +321,25 @@ describe('ComposeWizard compose-step field layout (DEC-710)', () => {
 // DEC-751: Recent sends lives under Compose too -- capped, read-only, and
 // its "All history" link switches ?tab= rather than navigating away.
 describe('CommsPage Recent sends under Compose (DEC-751)', () => {
+  // w1-g: clicking a compose-mount "Open" now hands off ?batch=<key>, which
+  // makes History auto-expand and fetch that batch's recipients on
+  // arrival. mockApi matches on path only (query strings stripped), so the
+  // same /email-log response also answers that recipients fetch -- this
+  // fixture carries both the EmailBatchRow fields (batch row rendering)
+  // and the EmailLogRow fields (recipient row rendering, including a
+  // stable `id` so React's key warning doesn't fire) so either reading of
+  // the same object renders without crashing.
   function batch(n: number) {
     return {
       batchKey: `batch-${n}`,
+      id: `batch-${n}`,
       subject: `Send #${n}`,
       sentAt: 1700000000000 + n,
       recipientCount: n,
       statusCounts: n % 2 === 0 ? { failed: n } : { sent: n },
+      toEmail: `recipient-${n}@example.com`,
+      status: n % 2 === 0 ? 'failed' : 'sent',
+      eventName: 'Evt',
     };
   }
 
@@ -355,10 +367,13 @@ describe('CommsPage Recent sends under Compose (DEC-751)', () => {
 
     // Read-only under Compose: no per-row recipients disclosure -- the
     // trailing "Open" control is a link into History instead (DEC-751
-    // amendment, w41-g), same destination as "All history".
+    // amendment, w41-g), same destination as "All history", but carrying
+    // that row's batch key (w1-g) so History can land already expanded on
+    // it.
     fireEvent.click(screen.getAllByRole('button', { name: 'Open' })[0]!);
     await waitFor(() => {
       expect(screen.getByTestId('location-search')).toHaveTextContent('?tab=history');
+      expect(screen.getByTestId('location-search')).toHaveTextContent('batch=batch-1');
     });
   });
 
@@ -381,5 +396,138 @@ describe('CommsPage Recent sends under Compose (DEC-751)', () => {
     await waitFor(() => {
       expect(screen.getByTestId('location-search')).toHaveTextContent('?tab=history');
     });
+  });
+
+  // w1-g: RecentSends.tsx:155-160's templatesById used to be optional and
+  // the compose mount never passed it, so the same batch rendered its
+  // template name in History and an em dash under Compose. Comms.tsx now
+  // fetches templatesById once and passes it to both mounts.
+  it('renders the same Template cell for the same batch under both Compose and History', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([
+        { id: 'tpl-1', eventId: EVENT_ID, name: 'Acceptance letter', subject: 'You are in!', bodyText: 'Hi' },
+      ]),
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([
+        { ...batch(1), templateId: 'tpl-1' },
+      ]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/comms']}>
+        <CommsPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Send #1')).toBeInTheDocument();
+    const composeRow = screen.getByText('Send #1').closest('.chq-comms-batch-row') as HTMLElement;
+    expect(within(composeRow).getByText('Acceptance letter')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'History' }));
+    await waitFor(() => {
+      const historyRow = screen.getByText('Send #1').closest('.chq-comms-batch-row') as HTMLElement;
+      expect(within(historyRow).getByText('Acceptance letter')).toBeInTheDocument();
+    });
+  });
+
+  // w1-g: the full round trip -- Compose's "Open" hands off ?batch=<key>
+  // and History lands already expanded on that exact batch, not just on
+  // the History tab in general. mockApi strips query strings (can't tell
+  // groupBy=batch, status=sent/failed, and batchId=<key> apart, and
+  // Comms.tsx's own head fetches hit the same /email-log path too), so this
+  // test stubs fetch directly and routes on the real querystring instead.
+  it('a compose-mount "Open" lands History already expanded on that batch', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const rawUrl = typeof input === 'string' ? input : input.toString();
+        const url = new URL(rawUrl, 'http://localhost');
+        const empty = () => new Response(JSON.stringify(listEnvelope([])), { status: 200 });
+        if (url.pathname === `/api/v1/events/${EVENT_ID}/submissions`) return empty();
+        if (url.pathname === `/api/v1/events/${EVENT_ID}/templates`) return empty();
+        if (url.pathname === `/api/v1/events/${EVENT_ID}/email-log`) {
+          if (url.searchParams.get('batchId') === 'batch-1') {
+            return new Response(
+              JSON.stringify(
+                listEnvelope([
+                  {
+                    id: 'log-1',
+                    eventName: 'Evt',
+                    toEmail: 'ada@example.com',
+                    subject: 'Send #1',
+                    status: 'sent',
+                    sentAt: 1700000001000,
+                  },
+                ]),
+              ),
+              { status: 200 },
+            );
+          }
+          if (url.searchParams.get('status')) return empty();
+          return new Response(JSON.stringify(listEnvelope([batch(1)])), { status: 200 });
+        }
+        throw new Error(`unstubbed fetch: ${rawUrl}`);
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/comms']}>
+        <CommsPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Open' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'History' })).toHaveAttribute('aria-selected', 'true');
+    });
+    const closeButton = await screen.findByRole('button', { name: 'Close' });
+    expect(closeButton).toHaveAttribute('aria-expanded', 'true');
+    await waitFor(() => {
+      expect(screen.getByText('ada@example.com')).toBeInTheDocument();
+    });
+  });
+});
+
+// w1-g: Comms.tsx:150 used to put every tab on chq-measure-table (1440).
+// The templates tab is an editor, not a table, and now clamps at the 820
+// reading measure on the page root itself.
+describe('CommsPage per-tab page measure (w1-g)', () => {
+  it('the templates tab carries chq-measure on the page root, not chq-measure-table', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/comms?tab=templates']}>
+        <CommsPage />
+      </MemoryRouter>,
+    );
+
+    const heading = await screen.findByRole('heading', { name: 'Comms' });
+    const pageRoot = heading.closest('.chq-page') as HTMLElement;
+    expect(pageRoot).toHaveClass('chq-measure');
+    expect(pageRoot).not.toHaveClass('chq-measure-table');
+  });
+
+  it('the compose and history tabs carry chq-measure-table on the page root', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/comms']}>
+        <CommsPage />
+      </MemoryRouter>,
+    );
+
+    const heading = await screen.findByRole('heading', { name: 'Comms' });
+    const pageRoot = heading.closest('.chq-page') as HTMLElement;
+    expect(pageRoot).toHaveClass('chq-measure-table');
+    expect(pageRoot).not.toHaveClass('chq-measure');
   });
 });

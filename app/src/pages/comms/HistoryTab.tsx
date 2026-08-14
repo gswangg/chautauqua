@@ -1,27 +1,30 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { apiList, ApiError } from '../../lib/api';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { RecentSends } from './RecentSends';
-import type { EmailBatchRow, EmailTemplate } from './types';
+import type { EmailBatchRow } from './types';
 
 // DEC-751: the batch-row + recipients-disclosure list moved into the shared
 // RecentSends component (app/src/pages/comms/RecentSends.tsx); History
 // fetches the full, paginated (unlimited/no `limit`) batch list and mounts
 // RecentSends with no `onSeeAll`, so it keeps the recipients disclosure.
-export function HistoryTab({ eventId }: { eventId: string }) {
+//
+// w1-g: templatesById is now fetched ONCE by the Comms.tsx parent and
+// passed to both RecentSends mounts (History and Compose) -- History no
+// longer fetches its own copy, so the same batch renders the same template
+// name under either tab.
+export function HistoryTab({ eventId, templatesById }: { eventId: string; templatesById: Record<string, string> }) {
   const [q, setQ] = useState('');
   const [items, setItems] = useState<EmailBatchRow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // DEC-876 nit: a template-label for an opened send's detail. EmailBatchRow/
-  // EmailLogListRow stay narrow (DEC-543) -- no templateId at list-row grain
-  // -- but the per-row detail fetch (DEC-833) already returns templateId, so
-  // this id->name map (fetched once, from the event's own template list) is
-  // enough to label that detail once it's open, with no list-column widening
-  // and no src/ change.
-  const [templatesById, setTemplatesById] = useState<Record<string, string>>({});
+  // w1-g: a compose-mount "Open" hands off here via ?tab=history&batch=<key>
+  // -- read once on arrival so the matching batch lands already expanded.
+  const [searchParams] = useSearchParams();
+  const expandBatchKey = searchParams.get('batch');
 
   useEffect(() => {
     setLoading(true);
@@ -40,20 +43,6 @@ export function HistoryTab({ eventId }: { eventId: string }) {
         setLoaded(true);
       });
   }, [eventId, q]);
-
-  useEffect(() => {
-    apiList<EmailTemplate>(`/events/${eventId}/templates`)
-      .then((res) => {
-        const map: Record<string, string> = {};
-        for (const t of res.items) map[t.id] = t.name;
-        setTemplatesById(map);
-      })
-      .catch(() => {
-        // The template label is a courtesy annotation on an already-shown
-        // send record, not the record itself -- a failure to load the
-        // template list must not block or blank the history tab.
-      });
-  }, [eventId]);
 
   return (
     <div className="chq-comms-history-tab">
@@ -75,7 +64,12 @@ export function HistoryTab({ eventId }: { eventId: string }) {
         <p className="chq-empty">No sends match &ldquo;{q.trim()}&rdquo;.</p>
       )}
       {!loading && loaded && (items.length > 0 || q.trim() === '') && (
-        <RecentSends eventId={eventId} batches={items} templatesById={templatesById} />
+        <RecentSends
+          eventId={eventId}
+          batches={items}
+          templatesById={templatesById}
+          expandBatchKey={expandBatchKey}
+        />
       )}
 
       <p className="chq-summary">{total} total</p>
