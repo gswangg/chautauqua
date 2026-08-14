@@ -3,10 +3,9 @@ import { apiList, apiPost, ApiError } from '../../lib/api';
 import { buildSubmissionsQuery } from '../submissions/filters';
 import { DEFAULT_FILTER_STATE, STATUS_LABELS, SUBMISSION_STATUSES, type SubmissionListItem, type SubmissionStatus } from '../submissions/types';
 import { PreviewPane } from './PreviewPane';
-import { describeSendResult, type SendResult } from '../../lib/sendResult';
+import type { SendResult } from '../../lib/sendResult';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { FormRow } from '../../components/ModalFrame';
-import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { COMPOSE_MERGE_FIELDS, type MergeField } from '../../lib/merge-fields';
 import { InsertFieldMenu } from './InsertFieldMenu';
 import { countOf } from '../../lib/plural';
@@ -74,10 +73,10 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   // pre-filtered client-side, since that would hide the server's contract.
   const [icsUnscheduledIds, setIcsUnscheduledIds] = useState<string[] | null>(null);
   const [sendResult, setSendResult] = useState<SendResult | null>(null);
-  // DEC-967: an email batch asks once before it leaves -- the preview step's
-  // Send button opens this confirmation instead of posting directly; the
-  // POST fires only from the dialog's onConfirm.
-  const [confirmingSend, setConfirmingSend] = useState(false);
+  // DEC-967 amendment (wave 25, ruling B1): step 4 IS the confirmation --
+  // there is no separate dialog. `sentAt` is stamped the instant the send
+  // resolves, purely for the post-send report's "when" line (never posted).
+  const [sentAt, setSentAt] = useState<number | null>(null);
   // DEC-793: when the server rejects recipients for a missing merge field,
   // one line per rejected person is rendered inside the error banner,
   // resolved through the already-loaded submissions rather than raw ids.
@@ -305,17 +304,10 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     void runPreview({ attachIcs: next });
   }
 
-  // DEC-967: fires only from the ConfirmDialog's onConfirm -- never called
-  // directly from the Send button. The dialog stays open (pending=busy)
-  // until the request settles, then closes regardless of outcome.
-  async function confirmSend() {
-    try {
-      await send();
-    } finally {
-      setConfirmingSend(false);
-    }
-  }
-
+  // DEC-967 amendment (wave 25, ruling B1): step 4 pre-send IS the
+  // confirmation -- the batch still asks exactly once before it leaves, but
+  // that ask is this step's own primary button, not a second dialog on top
+  // of it.
   async function send() {
     setBusy(true);
     setError(null);
@@ -324,7 +316,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     try {
       const res = await apiPost<SendResult>(`/events/${eventId}/compose/send`, composeBody());
       setSendResult(res);
-      setStep('sent');
+      setSentAt(Date.now());
     } catch (err) {
       if (err instanceof ApiError) {
         const unscheduled = extractIcsUnscheduledIds(err);
@@ -360,11 +352,11 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setPreview([]);
     setPreviewIndex(0);
     setSendResult(null);
+    setSentAt(null);
     setCapMessage(null);
     setIcsUnscheduledIds(null);
     setMissingMergeFieldLines(null);
     setError(null);
-    setConfirmingSend(false);
   }
 
 
@@ -399,6 +391,12 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   // back to the raw typed subject only when no preview row has rendered
   // yet.
   const resolvedSendSubject = preview[0]?.subject ?? subject;
+  // Ruling B1: the post-send report's headline audience count. `total` is
+  // every recipient the server actually attempted (sent + named failures) --
+  // never the pre-send preview count, which can't see per-recipient
+  // failures the server hasn't reported yet.
+  const sentFailedCount = sendResult?.failed?.length ?? 0;
+  const sentTotal = sendResult ? sendResult.sent + sentFailedCount : 0;
 
   return (
     <div className="chq-compose-wizard">
@@ -464,6 +462,14 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               placeholder="Search submissions"
             />
           </label>
+          {/* DEC-350/DEC-967 amendment (wave 25): the selection already
+              survives filter changes (never cleared on page/q/status
+              change) -- this line just says so, so an organizer filtering
+              after selecting doesn't assume their picks were dropped. */}
+          <p className="chq-comms-panel-note">
+            Kept as you change filters &middot; {selectedIds.size} is{' '}
+            {selectedIds.size > RECIPIENT_CAP ? 'over' : 'under'} the {RECIPIENT_CAP}-recipient cap
+          </p>
 
           {loadingSubmissions && <DelayedLoading label="Loading submissions…" />}
           <table className="chq-table chq-comms-compose-table">
@@ -676,37 +682,42 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                 />
                 Include reviewer feedback
               </label>
+              {/* Ruling A18: the plan select is a PARAMETER of "Include
+                  reviewer feedback", not a peer field -- indented under the
+                  checkbox it belongs to and revealed only by it. */}
               {includeFeedback && (
-                <label className="chq-comms-template-label">
-                  Evaluation plan
-                  <select
-                    className="chq-select"
-                    value={feedbackPlanId}
-                    required
-                    onChange={(e) => handleFeedbackPlanChange(e.target.value)}
-                  >
-                    <option value="">Choose a plan&hellip;</option>
-                    {plans.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <div className="chq-comms-panel-indent">
+                  <label className="chq-comms-template-label">
+                    Evaluation plan
+                    <select
+                      className="chq-select"
+                      value={feedbackPlanId}
+                      required
+                      onChange={(e) => handleFeedbackPlanChange(e.target.value)}
+                    >
+                      <option value="">Choose a plan&hellip;</option>
+                      {plans.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <span className="chq-comms-panel-note">Only submitted, non-recused reviews are merged.</span>
+                  {feedbackPlanId === '' && (
+                    <span className="chq-comms-panel-note">Choose a plan to merge its feedback.</span>
+                  )}
+                  {feedbackPlanId &&
+                    (() => {
+                      const selectedPlan = plans.find((p) => p.id === feedbackPlanId);
+                      return selectedPlan ? (
+                        <span className="chq-comms-panel-note">
+                          Round {selectedPlan.currentRound} of {selectedPlan.name}
+                        </span>
+                      ) : null;
+                    })()}
+                </div>
               )}
-              {includeFeedback && feedbackPlanId === '' && (
-                <span className="chq-comms-panel-note">Choose a plan to merge its feedback.</span>
-              )}
-              {includeFeedback &&
-                feedbackPlanId &&
-                (() => {
-                  const selectedPlan = plans.find((p) => p.id === feedbackPlanId);
-                  return selectedPlan ? (
-                    <span className="chq-comms-panel-note">
-                      Round {selectedPlan.currentRound} of {selectedPlan.name}
-                    </span>
-                  ) : null;
-                })()}
               <label className="chq-comms-toggle">
                 <input
                   type="checkbox"
@@ -755,13 +766,19 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             </div>
             <PreviewPane item={currentPreview} attachIcs={attachIcs} />
             <div className="chq-comms-preview-actions">
+              {/* Ruling B1: Send moves to step 4 -- this primary only
+                  advances; the dedicated ConfirmDialog is gone because
+                  step 4 pre-send IS the confirmation (one ask, same click
+                  depth). The hard ICS block still gates advancing past
+                  this step, since step 4 no longer has a way back into the
+                  attachments toggle that produced it. */}
               <button
                 type="button"
                 className="chq-btn chq-btn-primary"
                 disabled={busy || icsUnscheduledIds !== null}
-                onClick={() => setConfirmingSend(true)}
+                onClick={() => setStep('sent')}
               >
-                Send {countOf(preview.length, 'email')}
+                Next: send &rsaquo;
               </button>
               <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setStep('template')}>
                 Back to the template
@@ -771,30 +788,85 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
         </section>
       )}
 
-      {confirmingSend && (
-        <ConfirmDialog
-          title="Send this email?"
-          body={`${countOf(preview.length, 'recipient')} · ${resolvedSendSubject}`}
-          confirmLabel={`Send ${countOf(preview.length, 'email')}`}
-          cancelLabel="Cancel"
-          pending={busy}
-          onConfirm={confirmSend}
-          onCancel={() => setConfirmingSend(false)}
-        />
-      )}
-
-      {step === 'sent' && (
+      {step === 'sent' && !sendResult && (
         <section>
           <div className="chq-section-head">
-            <span className="chq-section-label">Sent</span>
+            <span className="chq-section-label">4. Send</span>
           </div>
-          {sendResult && <p>{describeSendResult(sendResult, { one: 'email', many: 'emails' })}</p>}
-          {sendResult?.failed && sendResult.failed.length > 0 && (
-            <ul>
-              {sendResult.failed.map((f) => (
-                <li key={f.email}>{f.email}</li>
+          <p>
+            {countOf(preview.length, 'recipient')} &middot; {resolvedSendSubject}
+          </p>
+          {/* Pre-flight exclusions, named individually -- never just a
+              count. The wizard already computed both of these on the
+              preview step; step 4 restates them right before the
+              irreversible action. */}
+          {attachIcs && noSlotCount > 0 && (
+            <div className="chq-comms-panel-note">
+              <p>
+                {noSlotCount} of {preview.length} have no slot yet &mdash; excluded from the calendar invite:
+              </p>
+              <ul>
+                {preview
+                  .filter((r) => !r.scheduled)
+                  .map((r) => (
+                    <li key={r.contactId + r.submissionId}>
+                      {r.ref} &mdash; {r.name}: no slot yet, no invite attached
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          )}
+          {icsUnscheduledIds && (
+            <div className="chq-error-banner" role="alert">
+              Send blocked: these submissions aren&apos;t scheduled yet:{' '}
+              {icsUnscheduledIds.map((id) => icsUnscheduledLabel(id, preview)).join(', ')}. Schedule
+              them first, or uncheck &quot;Attach calendar invite&quot;.
+            </div>
+          )}
+          <div className="chq-comms-preview-actions">
+            <button
+              type="button"
+              className="chq-btn chq-btn-primary"
+              disabled={busy || icsUnscheduledIds !== null}
+              onClick={() => void send()}
+            >
+              Send {countOf(preview.length, 'email')}
+            </button>
+            <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setStep('preview')}>
+              Back to the preview
+            </button>
+          </div>
+        </section>
+      )}
+
+      {step === 'sent' && sendResult && (
+        <section>
+          <div className="chq-section-head">
+            <span className="chq-section-label">4. Send</span>
+          </div>
+          {/* Ruling B1: a report ABOUT RECIPIENTS, not a copy of the email --
+              leads with the audience, then the metadata the organizer needs
+              to find this batch again, then names every failed recipient
+              individually. Never invents a skipped-recipient list or a
+              retry clock: compose/send returns skipped: 0 on this path, and
+              a fabricated field is worse than a missing one. */}
+          <p className="chq-comms-send-report-headline">
+            {sendResult.sent} of {sentTotal} speakers were emailed
+          </p>
+          <div className="chq-comms-panel-note">
+            <p>Template: {templateName || 'No template'}</p>
+            <p>Subject: {resolvedSendSubject}</p>
+            {sentAt !== null && <p>Sent: {new Date(sentAt).toLocaleString()}</p>}
+          </div>
+          {sentFailedCount > 0 && (
+            <div>
+              {(sendResult.failed ?? []).map((f) => (
+                <div key={f.email} className="chq-comms-recipient-row">
+                  <span className="chq-comms-recipient-name">{f.email}</span>
+                  <span className="chq-comms-recipient-meta">{f.message}</span>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
           <button type="button" className="chq-btn chq-btn-primary" onClick={reset}>
             Compose another
