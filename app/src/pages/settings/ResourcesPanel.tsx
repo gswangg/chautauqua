@@ -2,16 +2,18 @@
 // DEC-747): wiki page list/create/edit/delete plus file-resource upload.
 // Rendered as a fragment (no own <section>/h2) inside PortalSettingsPanel's
 // Resources row -- 'Add a resource' toggles both add-forms; a wiki row's
-// 'Replace' opens its inline edit form. A file row has no replace control:
-// there is no server endpoint that replaces a file's bytes, and DEC-733
-// says omit a control the store can't carry rather than render it
+// 'Replace' opens its inline edit form (title + content). A file row's
+// 'Rename' opens the same inline form limited to the title input -- title
+// and position are editable for any resource kind (DEC-029 amendment), but
+// there is still no server endpoint that replaces a file's bytes, and
+// DEC-733 says omit a control the store can't carry rather than render it
 // disabled. A wiki resource's read row names the page and its SIZE (word
 // count), never its raw markdown body (DEC-747).
 import { useEffect, useState } from 'react';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiDelete, apiList, apiPatch, apiPost, apiUpload, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
-import { validateResourceForm, type ResourceForm, type ResourceFormErrors } from './formState';
+import { validateResourceForm, validateResourceTitleForm, type ResourceForm, type ResourceFormErrors } from './formState';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { countOf } from '../../lib/plural';
 
@@ -128,13 +130,14 @@ export function ResourcesPanel() {
     if (!eventId) return;
     const form = editing[resource.id];
     if (!form) return;
-    const errors = validateResourceForm(form);
+    const isWiki = resource.kind === 'wiki';
+    const errors = isWiki ? validateResourceForm(form) : validateResourceTitleForm(form);
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;
     }
     try {
-      await apiPatch(`/resources/${resource.id}`, { title: form.title, content: form.content });
+      await apiPatch(`/resources/${resource.id}`, isWiki ? { title: form.title, content: form.content } : { title: form.title });
       cancelEdit(resource);
       reload(eventId);
     } catch (err) {
@@ -166,7 +169,7 @@ export function ResourcesPanel() {
           const editForm = editing[resource.id];
           return (
             <li key={resource.id} className="chq-settings-portal-resource-row">
-              {editForm && resource.kind === 'wiki' ? (
+              {editForm ? (
                 <div className="chq-settings-portal-resource-edit">
                   <input
                     className="chq-input"
@@ -175,15 +178,17 @@ export function ResourcesPanel() {
                       setEditing((prev) => ({ ...prev, [resource.id]: { ...editForm, title: e.target.value } }))
                     }
                   />
-                  <textarea
-                    className="chq-textarea"
-                    value={editForm.content}
-                    onChange={(e) =>
-                      setEditing((prev) => ({ ...prev, [resource.id]: { ...editForm, content: e.target.value } }))
-                    }
-                  />
+                  {resource.kind === 'wiki' ? (
+                    <textarea
+                      className="chq-textarea"
+                      value={editForm.content}
+                      onChange={(e) =>
+                        setEditing((prev) => ({ ...prev, [resource.id]: { ...editForm, content: e.target.value } }))
+                      }
+                    />
+                  ) : null}
                   {fieldErrors.title ? <span role="alert">{fieldErrors.title}</span> : null}
-                  {fieldErrors.content ? <span role="alert">{fieldErrors.content}</span> : null}
+                  {resource.kind === 'wiki' && fieldErrors.content ? <span role="alert">{fieldErrors.content}</span> : null}
                   <button type="button" className="chq-btn chq-btn-primary" onClick={() => void saveEdit(resource)}>
                     Save
                   </button>
@@ -204,7 +209,11 @@ export function ResourcesPanel() {
                     <button type="button" className="chq-link-button" onClick={() => startEdit(resource)}>
                       Replace
                     </button>
-                  ) : null}
+                  ) : (
+                    <button type="button" className="chq-link-button" onClick={() => startEdit(resource)}>
+                      Rename
+                    </button>
+                  )}
                   <button type="button" className="chq-link-button" onClick={() => setPendingDelete(resource)}>
                     Delete
                   </button>

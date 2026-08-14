@@ -23,7 +23,7 @@ import {
   insertResourceFile,
   listResourcesForEvent,
   resourceEventId,
-  updateWikiResource,
+  updateResource,
   upsertPortalSettings,
 } from "../../server/repo/portal-config";
 import { isValidHexColor, normalizeHexColor } from "../../domain/color";
@@ -305,7 +305,7 @@ portalConfigRoutes.patch("/resources/:resourceId", csrfJson, async (c) => {
     throw new ApiError("invalid", "Invalid resource", fields);
   }
 
-  const updated = await updateWikiResource(db, resourceId, eventId, {
+  const updated = await updateResource(db, resourceId, eventId, {
     title: title as string | undefined,
     content: content as string | undefined,
     position: position as number | undefined,

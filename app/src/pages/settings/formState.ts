@@ -95,6 +95,13 @@ export function validateResourceForm(form: ResourceForm): ResourceFormErrors {
   return errors;
 }
 
+/** Title-only validation for the file-resource Rename form (DEC-029 amendment): no content field to check. */
+export function validateResourceTitleForm(form: Pick<ResourceForm, "title">): Pick<ResourceFormErrors, "title"> {
+  const errors: Pick<ResourceFormErrors, "title"> = {};
+  if (form.title.trim().length === 0) errors.title = "Required";
+  return errors;
+}
+
 export interface TrackForm {
   name: string;
   color: string;

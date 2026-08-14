@@ -137,7 +137,7 @@ export async function upsertPortalSettings(
 }
 
 // ---------------------------------------------------------------------------
-// Resources (wiki pages via this API; kind='file' is a later wave)
+// Resources (title and position editable for any kind; content is wiki-only)
 // ---------------------------------------------------------------------------
 
 export interface ResourceRecord {
@@ -177,7 +177,7 @@ export function resourceBelongsToEvent(actualEventId: string | null, eventId: st
   return actualEventId !== null && actualEventId === eventId;
 }
 
-/** Only kind='wiki' resources can be edited via this API (file-kind resources are a later wave, DEC-029). */
+/** Only kind='wiki' resources carry a page body: gates the `content` field on update, not title/position (DEC-029). */
 export function isWikiResource(kind: string): boolean {
   return kind === "wiki";
 }
@@ -243,7 +243,7 @@ export async function resourceEventId(db: Db, resourceId: string): Promise<strin
   return rows[0]?.eventId ?? null;
 }
 
-export async function updateWikiResource(
+export async function updateResource(
   db: Db,
   resourceId: string,
   eventId: string,
@@ -251,8 +251,8 @@ export async function updateWikiResource(
 ): Promise<ResourceRecord> {
   const existing = await getResourceForEvent(db, resourceId, eventId);
   if (!existing) throw new ApiError("not_found", "Resource not found");
-  if (!isWikiResource(existing.kind)) {
-    throw new ApiError("invalid", "Only wiki resources can be edited via this API");
+  if (input.content !== undefined && !isWikiResource(existing.kind)) {
+    throw new ApiError("invalid", "A file resource has no page body", { content: "A file resource has no page body" });
   }
 
   await db
@@ -266,7 +266,7 @@ export async function updateWikiResource(
     .where(eq(schema.resource.id, resourceId));
 
   const updated = await getResourceForEvent(db, resourceId, eventId);
-  if (!updated) throw new Error("updateWikiResource: row disappeared after update");
+  if (!updated) throw new Error("updateResource: row disappeared after update");
   return updated;
 }
 

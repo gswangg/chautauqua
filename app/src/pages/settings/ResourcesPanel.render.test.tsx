@@ -13,6 +13,10 @@ function resource() {
   return { id: 'res-1', kind: 'wiki', title: 'Speaker FAQ', content: 'Some content here', fileId: null, position: 0 };
 }
 
+function fileResource() {
+  return { id: 'res-2', kind: 'file', title: 'Handout.pdf', content: null, fileId: 'file-1', position: 0 };
+}
+
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
@@ -59,6 +63,46 @@ describe('ResourcesPanel (DEC-941)', () => {
     });
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
+});
+
+describe('ResourcesPanel file-row Rename (DEC-029 amendment)', () => {
+  it('a file row shows a Rename control (not Replace), opening a title-only edit form with no content textarea', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([fileResource()]),
+    });
+
+    render(<ResourcesPanel />);
+
+    expect(await screen.findByRole('button', { name: 'Rename' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Replace' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rename' }));
+
+    const titleInput = await screen.findByDisplayValue('Handout.pdf');
+    expect(titleInput.tagName).toBe('INPUT');
+    expect(document.querySelector('textarea')).not.toBeInTheDocument();
+  });
+
+  it('saving a file-row rename PATCHes only title, never content', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([fileResource()]),
+      'PATCH /api/v1/resources/res-2': { status: 200, body: { ...fileResource(), title: 'Renamed Handout' } },
+    });
+
+    render(<ResourcesPanel />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Rename' }));
+    const titleInput = await screen.findByDisplayValue('Handout.pdf');
+    fireEvent.change(titleInput, { target: { value: 'Renamed Handout' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      const patchCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'PATCH');
+      expect(patchCall).toBeTruthy();
+      const body = JSON.parse((patchCall![1] as RequestInit).body as string);
+      expect(body).toEqual({ title: 'Renamed Handout' });
     });
   });
 });
