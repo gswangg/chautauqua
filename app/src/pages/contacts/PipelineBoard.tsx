@@ -490,9 +490,18 @@ interface EnrollDialogProps {
   onEnrolled: () => void;
 }
 
+// w40-c/DEC-821 amendment: the enroll picker used to load /contacts?perPage=200
+// once on mount and render every returned contact as an <option> -- past 200
+// org contacts (routine at SPEC's 200-800 speakers plus a multi-year network)
+// most of the directory was silently unreachable, with no search and no
+// statement of the bound. This is the same server-search idiom
+// SubmissionDetailPage's add-co-presenter search already uses
+// (`/contacts?q=...`), never a second contacts-search predicate.
+const PIPELINE_ENROLL_SEARCH_LIMIT = 20;
+
 function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: EnrollDialogProps) {
-  const [contacts, setContacts] = useState<ContactListItem[]>([]);
   const [contactId, setContactId] = useState('');
+  const [selectedContact, setSelectedContact] = useState<ContactListItem | null>(null);
   const [stage, setStage] = useState<PipelineStage>('identified');
   // DEC-821: fit is optional at enroll time -- '' means "unrated", never a
   // silently-assumed score.
@@ -501,13 +510,44 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    apiList<ContactListItem>('/contacts?perPage=200')
-      .then((res) => setContacts(res.items))
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load contacts'));
-  }, []);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<ContactListItem[]>([]);
+  const [resultsTotal, setResultsTotal] = useState(0);
+  const [searched, setSearched] = useState(false);
+  const [searching, setSearching] = useState(false);
 
-  const available = contacts.filter((c) => !alreadyEnrolledContactIds.has(c.id));
+  async function searchContacts() {
+    const q = query.trim();
+    if (!q) {
+      // An empty query renders no rows plus the search hint, never a list --
+      // never re-fetches the whole directory.
+      setResults([]);
+      setResultsTotal(0);
+      setSearched(false);
+      return;
+    }
+    setSearching(true);
+    setError(null);
+    try {
+      const res = await apiList<ContactListItem>(
+        `/contacts?q=${encodeURIComponent(q)}&perPage=${PIPELINE_ENROLL_SEARCH_LIMIT}`,
+      );
+      setResults(res.items);
+      setResultsTotal(res.total);
+      setSearched(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Contact search failed');
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  const available = results.filter((c) => !alreadyEnrolledContactIds.has(c.id));
+
+  function selectContact(c: ContactListItem) {
+    setContactId(c.id);
+    setSelectedContact(c);
+  }
 
   async function enroll() {
     if (!contactId) return;
@@ -552,20 +592,68 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
       }
     >
       {error && <div className="chq-error">{error}</div>}
-      <FormRow label="Contact" htmlFor="pipeline-enroll-contact">
-        <select
-          id="pipeline-enroll-contact"
-          className="chq-select"
-          value={contactId}
-          onChange={(e) => setContactId(e.target.value)}
-        >
-          <option value="">Select a contact...</option>
-          {available.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.firstName} {c.lastName} — {c.email}
-            </option>
-          ))}
-        </select>
+      <FormRow label="Contact" htmlFor="pipeline-enroll-contact-search">
+        <div className="chq-contacts-pipeline-enroll-search">
+          <input
+            id="pipeline-enroll-contact-search"
+            type="search"
+            className="chq-input"
+            aria-label="Search contacts"
+            placeholder="Search by name, email or company..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                void searchContacts();
+              }
+            }}
+          />
+          <button
+            type="button"
+            className="chq-btn chq-btn-secondary"
+            disabled={searching}
+            onClick={() => void searchContacts()}
+          >
+            Search
+          </button>
+        </div>
+        {query.trim() === '' && (
+          <p className="chq-contacts-pipeline-enroll-search-hint">Search by name, email or company</p>
+        )}
+        {query.trim() !== '' && searched && available.length === 0 && (
+          <p className="chq-contacts-pipeline-enroll-search-empty">No contacts found.</p>
+        )}
+        {available.length > 0 && (
+          <ul className="chq-contacts-pipeline-enroll-search-results">
+            {available.map((c) => (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  className={`chq-contacts-pipeline-enroll-result${contactId === c.id ? ' is-selected' : ''}`}
+                  aria-pressed={contactId === c.id}
+                  onClick={() => selectContact(c)}
+                >
+                  {c.firstName} {c.lastName} — {c.email}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {/* DEC-468 idiom: the bound is stated from the envelope's true
+            total, never from items.length -- a search whose real match
+            count exceeds the page cap says so and tells the user how to
+            narrow it. */}
+        {resultsTotal > results.length && (
+          <p className="chq-contacts-pipeline-enroll-search-bound">
+            Showing the first {results.length} of {resultsTotal} — narrow your search
+          </p>
+        )}
+        {selectedContact && (
+          <p className="chq-contacts-pipeline-enroll-selected">
+            Selected: {selectedContact.firstName} {selectedContact.lastName} — {selectedContact.email}
+          </p>
+        )}
       </FormRow>
       <FormRow label="Starting stage">
         {/* w4-c: full pills, near-black selected fill -- the same
