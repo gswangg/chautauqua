@@ -24,37 +24,37 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   NOT A BOUND ON THE READ SIDE; PARSE RESULT DISCARDED != PARSED; A
   WATERMARK STORING ITS OWN START LOSES LATE-COMMITTING WRITES; THE
   DECISIONS' OWN PATH REFS ARE A CHEAP DRIFT DETECTOR.
-- FINDINGS w34-37 (compacted, do NOT re-file). Closed defects across both waves; TENANT axis SPOT-
-  CHECKED not ENUMERATED still open since w37. Shapes: A REDACTOR IS SHAPES NOT ONE REGEX; CONSUME-
-  BEFORE-VALIDATE TURNS A TYPO INTO A DEAD LINK; A CSRF CHECK IS NOT AN AUTHZ CHECK; A PROOF NOBODY HAS
-  SHOWN A VIOLATION TO IS NOT A PROOF -- ship a NEGATIVE CONTROL; A PER-IDENTITY BUCKET IS NOT A
-  BUDGET; CURRENT-TENSE PROSE IS A LIE WITH A TIMESTAMP; GREPPING A MODULE FOR AN IDENTIFIER PROVES AN
-  IMPORT NOT A PAINT; A MOCKED RESOLVER PROVES THE ROUTE CALLS IT, NOT THAT IT FILTERS; A THROWING DB
-  CANNOT PROVE A REFUSAL NEEDING A READ -- use REAL ROWS (node:sqlite+drizzle sqlite-proxy); SPOT-
-  CHECKED IS NOT ENUMERATED; A 5xx IS NOT A REFUSAL; A REFUSAL THAT MUTATES IS NOT A REFUSAL.
-- FINDINGS w38 (compacted). CLOSED w38-a (own-property files.ts); b/c/d (assign-guard, ReviewerQueue
-  perPage, cron unfiltered read) OWNED BY w38 BRANCHES, reconfirmed still open w39. Shapes: AN
-  ALLOWLIST KEYED BY USER INPUT IS AN OWN-PROPERTY QUESTION. A WRITE GUARD THAT DOESN'T MATCH THE READ
-  PREDICATE MINTS INVISIBLE ROWS. A CLIENT THAT COUNTS ITS PAGE LIES ABOUT THE WHOLE. A REFUSAL WHOSE
-  REMEDIATION NAMES A PARAMETER THE CALLER CANNOT SUPPLY IS A BUG IN THE CALLER. A PREDICATE FAMILY IS
-  A LATTICE: spot-check one, drift all. Re-verified CLOSED: mailer MIME, portal replace-file version
-  chains, CFP-05 CTA, results caption, no `#day` anchors. docs/eval-findings.md residue ~EXHAUSTED.
-- FINDINGS w39 (verified AT THE FILE). NEW, taken: (1) getContactStats dropped returningSpeakers+
-  eventCount end-to-end, reversing DEC-432/DEC-809 with a SOURCE COMMENT, no superseding DEC --
-  scripts/walkthrough/data.ts:356-361 still asserts the field and fail()=process.exit(1), so
-  `npm run walkthrough` dies at J11 and every J12 check after never runs. (2) MergePage.tsx scans page
-  1 of /contacts/duplicates (server clamps 200) for its pair -- a duplicate past group 200 reads "no
-  longer duplicates" and cannot be merged; pairPosition.total is the page length, not the true total.
-  (3) own-property family has 4 more sites: mail/render.ts MERGE_FIELD_ALIASES, acceptance.ts
-  FORM_TASK_FIELD_SPECS (read at submissions/status.ts:97), contacts.ts INVITE_STATUS_RANK,
-  forms.ts LOCKED_* -- all latent (keys are literals today), all documented as if `?? fallback` catches
-  an unknown key, which a prototype key defeats.
-  OPEN for next planner: /contacts/stats runs findDuplicateGroupsForOrg (full-org scan+JS grouping) on
-  every Contacts mount while the duplicates rail fires the SAME scan again -- two O(N) scans per page
-  view (SPEC §7 one-round-trip+p95); absent from scripts/perf-smoke.ts.
-  Re-verified CLOSED: conditional field logic server-side; import "N good rows"; task `instructions`
-  end-to-end; public gates content_status='approved'; top-companies renders; onboarding-grid renders.
-  Shapes: A FIGURE THE API PROMISES AND A LATER WAVE DELETES IS A DECISION REVERSED WITHOUT A DECISION
-  -- read the DEC before deleting a field. AN ASSERTION IN A SCRIPT NOBODY RUNS IS A RED GATE NOBODY
-  SEES -- bind script contracts with vitest. A CLIENT THAT SEARCHES ITS PAGE FOR A ROW REPORTS "GONE"
-  FOR "PAGE 2". A FALLBACK (`?? x`) IS NOT A GUARD WHEN THE PROTOTYPE ANSWERS.
+- FINDINGS w34-38 (compacted, do NOT re-file). Closed defects across all four waves; TENANT axis now
+  covers PATH params (w37) but BODY/QUERY ids were open until w40-a below. Shapes: A REDACTOR IS SHAPES
+  NOT ONE REGEX; CSRF != AUTHZ; A PROOF NOBODY HAS SHOWN A VIOLATION TO IS NOT A PROOF; A THROWING DB
+  CANNOT PROVE A REFUSAL NEEDING A READ -- use REAL ROWS (node:sqlite+drizzle sqlite-proxy); A 5xx IS
+  NOT A REFUSAL; A REFUSAL THAT MUTATES IS NOT A REFUSAL; AN ALLOWLIST KEYED BY USER INPUT IS AN OWN-
+  PROPERTY QUESTION; A WRITE GUARD THAT DOESN'T MATCH THE READ PREDICATE MINTS INVISIBLE ROWS; A
+  PREDICATE FAMILY IS A LATTICE: spot-check one, drift all.
+- FINDINGS w39 (compacted). CLOSED: MergePage page-1 scan for pairs past group 200. STILL OPEN w40:
+  getContactStats dropped returningSpeakers+eventCount w/no superseding DEC, breaking
+  `npm run walkthrough` at J11 (scripts/walkthrough/data.ts:356-361); own-property family latent sites
+  (mail/render.ts, acceptance.ts, contacts.ts, forms.ts); /contacts/stats + duplicates rail both run
+  findDuplicateGroupsForOrg (two O(N) scans/mount). Shapes: A FIGURE THE API PROMISES AND A LATER WAVE
+  DELETES IS A DECISION REVERSED WITHOUT A DECISION; AN ASSERTION IN A SCRIPT NOBODY RUNS IS A RED GATE
+  NOBODY SEES; A CLIENT THAT SEARCHES ITS PAGE FOR A ROW REPORTS "GONE" FOR "PAGE 2".
+- FINDINGS w40 (verified AT THE FILE; w39 branches a-d were still IN FLIGHT, not on main — not re-filed).
+  NEW, taken: (1) Scorecard.tsx:157 counts the queue PAGE (queueDoneCounts(res.items)) while ReviewerQueue
+  beside it reads the envelope — DEC-845's w38 ruling was applied to the component that prompted it, not to
+  the endpoint's other reader; same file's submitAndAdvance takes items[0] of a list that KEEPS rated rows,
+  so after the last score it re-opens a scored card and the done state never arrives. (2) DuplicatesView.tsx:92
+  states its page length under a header stating the org total; groups past 200 have no pager and can never be
+  merged. (3) PlanEditor.tsx:1667 states `reviewers.length` (plan_reviewer ROWS, page-capped) as "N reviewers"
+  while /plans/:id/progress already returns one row per USER with a true total the component discards (:416).
+  (4) PipelineBoard EnrollDialog (:504) is a <select> over `/contacts?perPage=200` — past 200 contacts the
+  picker cannot pick, silently; the co-presenter search (`/contacts?q=`) is the idiom that already exists.
+  STALE, corrected: "TENANT axis SPOT-CHECKED not ENUMERATED" — w37's four probes DO enumerate it for PATH
+  params; the real residue is ids arriving in BODY/QUERY (w40-a).
+  STILL OPEN for the next planner: /contacts/stats + the rail's /contacts/duplicates run findDuplicateGroupsForOrg
+  TWICE per Contacts mount (two O(N) org scans, two round trips); deferred this wave because w39-a/c own
+  stats.ts/merge.ts/crud.ts. Also: getContactStats THROWS the duplicate-scan refusal past 20k contacts, taking
+  total/topCompanies/speakerCount down with it.
+  Shapes: A RULING BINDS THE ENDPOINT, NOT THE COMPONENT THAT PROMPTED IT — fix the reader family, not the
+  reader. A "NEXT" THAT TAKES ITEM[0] OF A LIST THAT KEEPS DONE ITEMS NEVER TERMINATES. A ROW COUNT IS NOT A
+  PEOPLE COUNT. A PICKER FED BY PAGE 1 CANNOT PICK. A POPULATION DERIVED BY PATH SHAPE IS BLIND TO THE ID IN
+  THE BODY.
