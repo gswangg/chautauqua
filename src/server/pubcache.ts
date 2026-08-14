@@ -90,6 +90,7 @@ export async function servePublicGet(
   kv: KVStore,
   request: Request,
   next: () => Promise<Response>,
+  waitUntil?: (p: Promise<unknown>) => void,
 ): Promise<Response> {
   const version = await readPublicVersion(kv);
   const cacheKey = versionedCacheKey(request.url, version);
@@ -114,7 +115,19 @@ export async function servePublicGet(
   if (response.status === 200) {
     const stored = new Response(response.clone().body, response);
     stored.headers.set("Cache-Control", CLIENT_CACHE_CONTROL_OVERRIDE);
-    await cache.put(cacheKey, stored);
+    // wave 15 (DEC-083 amendment): the edge-store write is not on the
+    // visitor's critical path. When a waitUntil is supplied (the Workers
+    // execution context — see publicCacheMiddleware), the put runs after
+    // the response has already been returned. When absent, the put is
+    // still awaited here (the direct unit-test callers in
+    // test/pubcache.test.ts rely on this — they call servePublicGet
+    // without a waitUntil and then read `cache.store` synchronously right
+    // after the call returns).
+    if (waitUntil) {
+      waitUntil(cache.put(cacheKey, stored));
+    } else {
+      await cache.put(cacheKey, stored);
+    }
   }
   return response;
 }
@@ -335,6 +348,21 @@ export async function bumpIfMutating(kv: KVStore, method: string, path: string, 
  * registration never touches the `caches` global at import time — it's a
  * real Workers-runtime global, but absent under vitest's node test
  * environment, and route sub-app modules must stay importable there. */
+/** Hono's `c.executionCtx` getter throws (not returns undefined) when the
+ * runtime handed no ExecutionContext/FetchEvent to this request (e.g. under
+ * vitest's node test environment, or a synthetic Context built without
+ * one) — this is the one deliberate check for that specific, expected
+ * absence, not a catch-all: any other error is not expected here and would
+ * propagate normally since this function only wraps the getter access. */
+function hasExecutionCtx(c: Context<AppEnv>): boolean {
+  try {
+    void c.executionCtx;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function publicCacheMiddleware(cache: () => CacheLike) {
   return async (c: Context<AppEnv>, next: Next) => {
     if (c.req.method !== "GET" || isUncacheableIcsRequest(c.req.url)) {
@@ -343,10 +371,21 @@ export function publicCacheMiddleware(cache: () => CacheLike) {
     }
     if (!c.env.KV) throw new Error("publicCacheMiddleware requires the KV binding");
     const kv: KVStore = c.env.KV;
-    const response = await servePublicGet(cache(), kv, c.req.raw, async () => {
-      await next();
-      return c.res;
-    });
+    // c.executionCtx throws (rather than returning undefined) when Hono has
+    // no Workers execution context to hand back (e.g. under vitest's node
+    // test environment) — deliberately take the awaited path in that case
+    // rather than swallowing an unrelated error from a try/catch.
+    const waitUntil = hasExecutionCtx(c) ? (p: Promise<unknown>) => c.executionCtx.waitUntil(p) : undefined;
+    const response = await servePublicGet(
+      cache(),
+      kv,
+      c.req.raw,
+      async () => {
+        await next();
+        return c.res;
+      },
+      waitUntil,
+    );
     c.res = response;
   };
 }

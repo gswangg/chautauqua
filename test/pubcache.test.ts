@@ -197,6 +197,41 @@ describe("servePublicGet", () => {
     expect(calls).toBe(2);
     expect(await afterBump.text()).toBe("body-2");
   });
+
+  it("wave 15 (DEC-083 amendment): with a waitUntil, a never-resolving cache.put does not delay the returned response, and the collector still receives exactly one put with the version-salted key", async () => {
+    const kv = fakeKv();
+    const puts: Array<{ url: string }> = [];
+    const cache: CacheLike = {
+      async match() {
+        return undefined;
+      },
+      put(request) {
+        puts.push({ url: request.url });
+        return new Promise(() => {}); // never resolves
+      },
+    };
+    const collected: Promise<unknown>[] = [];
+    const waitUntil = (p: Promise<unknown>) => collected.push(p);
+    const next = async () => new Response("hello", { status: 200, headers: { "Cache-Control": "public, max-age=60" } });
+
+    const response = await servePublicGet(cache, kv, new Request("https://x.test/e/foo/sessions"), next, waitUntil);
+
+    expect(await response.text()).toBe("hello");
+    expect(puts).toEqual([{ url: "https://x.test/e/foo/sessions?__chqv=v0" }]);
+    expect(collected).toHaveLength(1);
+  });
+
+  it("wave 15: the returned response on a miss keeps the handler's own Cache-Control, while the stored copy carries the 86400 override", async () => {
+    const cache = fakeCache();
+    const kv = fakeKv();
+    const next = async () => new Response("hello", { status: 200, headers: { "Cache-Control": "public, max-age=60, stale-while-revalidate=300" } });
+
+    const response = await servePublicGet(cache, kv, new Request("https://x.test/e/foo/sessions"), next);
+
+    expect(response.headers.get("Cache-Control")).toBe("public, max-age=60, stale-while-revalidate=300");
+    const stored = [...cache.store.values()][0]!;
+    expect(stored.headers.get("Cache-Control")).toBe("public, max-age=86400");
+  });
 });
 
 describe("bumpIfMutating", () => {
