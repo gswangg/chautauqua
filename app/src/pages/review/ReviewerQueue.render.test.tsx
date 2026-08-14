@@ -231,6 +231,62 @@ describe('ReviewerQueue desktop row anatomy (REVIEW PACK frame 03-03)', () => {
     expect(await screen.findByText('Conflicted Talk')).toBeInTheDocument();
     expect(screen.getByText('Talk, 30 min · advanced')).toBeInTheDocument();
   });
+
+  // gate-4 03-review still-present finding: an actionable row's meta line
+  // must read "Talk, 30 min · advanced" -- format joined with the queue
+  // item's own audienceLevel, through the SAME formatMetaLabel vocabulary
+  // the meta line already uses for format (no second formatter).
+  it('an actionable row meta line joins format and audienceLevel through the same vocabulary', async () => {
+    mockApi({
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...listEnvelope([queueItem({ format: 'Talk (30 min)', audienceLevel: 'advanced' })]),
+        open: true,
+        recused: [],
+      },
+    });
+
+    renderQueue();
+
+    expect(await screen.findByText('A Talk')).toBeInTheDocument();
+    expect(screen.getByText('Talk, 30 min · advanced')).toBeInTheDocument();
+  });
+});
+
+describe('ReviewerQueue progress caption (gate-4 03-review still-present finding)', () => {
+  it('places the "N of M done" caption in the same flex row as the bar (right of it, not stacked below)', async () => {
+    mockApi({
+      [`GET /api/v1/review/plans/${PLAN_ID}`]: { timezone: 'America/New_York' },
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...listEnvelope([
+          queueItem({ submissionId: 'sub-1', alreadyRatedByMe: true, myScore: 3 }),
+          queueItem({ submissionId: 'sub-2', ref: 'S-002', title: 'Talk Two', alreadyRatedByMe: false }),
+        ]),
+        open: true,
+        recused: [],
+        planName: 'Frame Plan',
+        scopeTrackName: null,
+        closeDate: null,
+      },
+    });
+
+    renderQueue();
+
+    const caption = await screen.findByText('1 of 2 done');
+    const bar = caption.parentElement!.querySelector('.chq-review-scoped-progress');
+    expect(bar).not.toBeNull();
+    expect(caption.parentElement).toHaveClass('chq-review-scoped-progress-row');
+    expect(bar!.parentElement).toBe(caption.parentElement);
+  });
+
+  it('the progress row is a flex container, and the caption never wraps', () => {
+    const css = readFileSync(join(HERE, 'review.css'), 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const rowRules = css.match(/\.chq-review-scoped-progress-row\s*\{([^{}]*)\}/);
+    expect(rowRules).not.toBeNull();
+    expect(rowRules![1]).toMatch(/display:\s*flex/);
+    const captionRules = css.match(/\.chq-review-scoped-progress-caption\s*\{([^{}]*)\}/);
+    expect(captionRules).not.toBeNull();
+    expect(captionRules![1]).toMatch(/white-space:\s*nowrap/);
+  });
 });
 
 describe('"Score the next one" plan-scoped title-row shortcut (REVIEW PACK frame 03-03)', () => {

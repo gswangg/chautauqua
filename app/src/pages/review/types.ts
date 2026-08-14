@@ -198,14 +198,12 @@ export interface ReviewerQueueItem {
   // (already carries its own '(N min)' suffix). Null when unanswered. A
   // session-shape fact, not identity -- present even on an anonymized plan.
   format: string | null;
-  // DEC-874: an audience-level answer, when the submission's CFP form has
-  // one and the submission answered it. Optional/undefined (not just null)
-  // because unlike `format` there is no reserved field id for this yet --
-  // the wire does not populate it today; the row renders nothing when
-  // absent. Flagged as a gap: wiring a real value here is server-side work
-  // (resolving which per-event custom dropdown, if any, is "the" audience
-  // level field) outside this task's scope.
-  audienceLevel?: string | null;
+  // DEC-874/DEC-986: an audience-level answer, when the submission's CFP
+  // form has one (AUDIENCE_LEVEL_FIELD_ID, src/forms/types.ts) and the
+  // submission answered it. Null (not absent) when there's no such answer,
+  // mirroring `format`'s convention -- the wire now always includes the
+  // key. A session-shape fact, never stripped for an anonymized plan.
+  audienceLevel: string | null;
 }
 
 // DEC-271: a submission this reviewer has recused themselves from (conflict
@@ -218,14 +216,13 @@ export interface RecusalItem {
   ref: string;
   title: string;
   reason: string | null;
-  // DEC-874 (wave 72 amendment): the same session-shape fact an actionable
-  // row's meta line carries -- a recused row must keep its "Talk, 30 min ·
-  // advanced" meta line, not drop it. The server carries `format` for every
-  // recused row (never stripped); `audienceLevel` mirrors ReviewerQueueItem's
-  // optional/unwired-today convention for symmetry, though the wire does not
-  // populate it yet either.
+  // DEC-874 (wave 72 amendment)/DEC-986: the same session-shape fact an
+  // actionable row's meta line carries -- a recused row must keep its
+  // "Talk, 30 min · advanced" meta line, not drop it. The server carries
+  // both `format` and `audienceLevel` for every recused row (never
+  // stripped), mirroring ReviewerQueueItem's convention exactly.
   format: string | null;
-  audienceLevel?: string | null;
+  audienceLevel: string | null;
 }
 
 // POST/DELETE /api/v1/review/plans/:planId/recusals/:submissionId response

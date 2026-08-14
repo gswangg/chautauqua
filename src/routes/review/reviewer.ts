@@ -141,6 +141,14 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
     c.var.db,
     scoped.map((s) => s.id),
   );
+  // DEC-986: the queue row's audience-level meta -- same batching as
+  // formatBySubmission above, over the same scoped id set. A session-shape
+  // fact (the field lives on the CFP's session section), so it is never
+  // stripped for an anonymized plan, exactly like format.
+  const audienceLevelBySubmission = await repo.listAudienceLevelLabelsBySubmission(
+    c.var.db,
+    scoped.map((s) => s.id),
+  );
   // DEC-147: blend through the round's resolved criteria, restricted to
   // 'rating' criteria -- computeWeightedScore (src/domain/evaluation.ts) is
   // the single blended-score formula; a plan with no rating criteria has
@@ -174,6 +182,7 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
     title: s.title,
     reason: recusalBySubmission.get(s.id)?.reason ?? null,
     format: formatBySubmission.get(s.id) ?? null,
+    audienceLevel: audienceLevelBySubmission.get(s.id) ?? null,
   }));
 
   const queueItems = scopedActionable
@@ -183,6 +192,7 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
       alreadyRatedByMe: ratedByMe.has(s.id),
       myScore: myScoreFor(s.id),
       format: formatBySubmission.get(s.id) ?? null,
+      audienceLevel: audienceLevelBySubmission.get(s.id) ?? null,
     }))
     .filter((item) => item.alreadyRatedByMe || needsMoreRatings(item, plan.maxEvaluations ?? undefined));
 
@@ -205,6 +215,7 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
         alreadyRatedByMe: ratedByMe.has(id),
         myScore,
         format: formatBySubmission.get(id) ?? null,
+        audienceLevel: audienceLevelBySubmission.get(id) ?? null,
       };
     })
     .filter((item): item is NonNullable<typeof item> => item !== undefined);

@@ -66,6 +66,9 @@ vi.mock("../src/server/repo/review", async () => {
     getTrackNamesByIds: vi.fn(async () => new Map()),
     // DEC-857: sub-1 carries a format answer, sub-2 has none.
     listFormatLabelsBySubmission: vi.fn(async () => new Map([["sub-1", "Talk (30 min)"]])),
+    // DEC-986 (task w6-i): sub-1 carries an audience-level answer, sub-2
+    // has none -- mirrors listFormatLabelsBySubmission's fixture exactly.
+    listAudienceLevelLabelsBySubmission: vi.fn(async () => new Map([["sub-1", "advanced"]])),
   };
 });
 
@@ -196,5 +199,53 @@ describe("DEC-239: reviewer queue item wire shape", () => {
     // sub-2 has no format answer -- carried through as null, not dropped.
     const recusedSub2 = body.recused.find((r) => r.submissionId === "sub-2");
     expect(recusedSub2).toBeUndefined();
+  });
+
+  // DEC-986 (task w6-i): the queue envelope carries `audienceLevel` -- the
+  // stored answer LABEL verbatim, null when the submission has no
+  // audience-level answer. Same wire shape/convention as `format`.
+  it("carries audienceLevel on each queue item, null when unanswered", async () => {
+    const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
+    const res = await app.request(`/api/v1/review/plans/${planRecord.id}/queue`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      items: { submissionId: string; audienceLevel: string | null }[];
+    };
+    const bySubmission = new Map(body.items.map((i) => [i.submissionId, i]));
+    expect(bySubmission.get("sub-1")?.audienceLevel).toBe("advanced");
+    expect(bySubmission.get("sub-2")?.audienceLevel).toBeNull();
+  });
+
+  // DEC-874/DEC-986: a recused row keeps the same audienceLevel meta fact
+  // an actionable row carries, exactly mirroring format's treatment above.
+  it("carries audienceLevel on recused items too, mirroring the actionable items", async () => {
+    const { listRecusalsForReviewer } = await import("../src/server/repo/review");
+    vi.mocked(listRecusalsForReviewer).mockResolvedValueOnce([
+      { id: "recusal-1", planId: planRecord.id, submissionId: "sub-1", userId: "r1", reason: "Co-author", createdAt: 0 },
+    ]);
+    const app = await buildApp({ userId: "r1", role: "reviewer", orgId: ORG_A });
+    const res = await app.request(`/api/v1/review/plans/${planRecord.id}/queue`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      recused: { submissionId: string; audienceLevel: string | null }[];
+    };
+    const recusedSub1 = body.recused.find((r) => r.submissionId === "sub-1");
+    expect(recusedSub1?.audienceLevel).toBe("advanced");
+  });
+
+  // Anonymization scope check: audience level is a SESSION property (like
+  // format), never a speaker one -- anonymizeForReviewer (src/domain/
+  // evaluation.ts) only strips `speakers`/`speakerAnswers`, so an
+  // anonymized plan must still carry audienceLevel on its queue items.
+  it("still carries audienceLevel on an anonymized plan's queue items", async () => {
+    const { getPlanById } = await import("../src/server/repo/review");
+    vi.mocked(getPlanById).mockResolvedValueOnce({ ...planRecord, anonymized: true } as never);
+    const app = await buildApp({ userId: "r1", role: "reviewer", orgId: ORG_A });
+    const res = await app.request(`/api/v1/review/plans/${planRecord.id}/queue`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      items: { submissionId: string; audienceLevel: string | null }[];
+    };
+    expect(body.items.find((i) => i.submissionId === "sub-1")?.audienceLevel).toBe("advanced");
   });
 });
