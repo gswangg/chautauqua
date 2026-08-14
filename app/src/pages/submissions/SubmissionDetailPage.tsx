@@ -10,6 +10,7 @@ import { SESSION_FORMAT_FIELD_ID } from '../../../../src/forms/types';
 import { parseFormatDurationMin } from '../../../../src/domain/schedule';
 import type { CfpForm } from '../forms/types';
 import { buildAnswerRows, resolveAnswerFields } from './detailRows';
+import { formatBytes } from '../content/format';
 import { formatSubmissionScheduleLine } from './schedule';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { buildSubmissionsQuery, parseSubmissionsQuery } from './filters';
@@ -583,7 +584,7 @@ export function SubmissionDetailPage() {
   }
 
   const trackNames = detail.trackIds.map((trackId) => tracks.find((t) => t.id === trackId)?.name ?? trackId);
-  const answerRows = buildAnswerRows(detail.answers, resolveAnswerFields(form, detail.formId));
+  const answerRows = buildAnswerRows(detail.answers, resolveAnswerFields(form, detail.formId), detail.answerFiles);
   // DEC-908 eyebrow: track names joined ' · ' plus the session format,
   // either half omitted when absent, the whole line omitted when both are.
   const eyebrowTrackNames = trackNames.join(' · ');
@@ -745,7 +746,21 @@ export function SubmissionDetailPage() {
                   {answerRows.map((row) => (
                     <div key={row.fieldId} className="chq-answer-row">
                       <dt>{row.label}</dt>
-                      <dd>{row.displayValue}</dd>
+                      {/* DEC-920: a resolvable 'file'-kind answer renders as
+                          a link named by the filename (accessible name =
+                          link text) plus its size; an unresolvable id
+                          renders the plain 'File removed' text from
+                          row.displayValue -- every other kind is unchanged. */}
+                      <dd>
+                        {row.file ? (
+                          <>
+                            <a href={row.file.href}>{row.file.filename}</a>{' '}
+                            <span className="chq-answer-file-size">({formatBytes(row.file.sizeBytes)})</span>
+                          </>
+                        ) : (
+                          row.displayValue
+                        )}
+                      </dd>
                     </div>
                   ))}
                 </dl>

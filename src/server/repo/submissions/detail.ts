@@ -2,7 +2,7 @@
 // repo/submissions.ts (contention decomposition, no behavior change). See
 // repo/submissions.ts for the module-level contract notes.
 
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
@@ -43,6 +43,12 @@ export interface SubmissionDetail {
   updatedAt: number;
   participants: SubmissionDetailParticipant[];
   answers: Record<string, unknown>;
+  // DEC-920: a 'file'-kind CFP answer stores an opaque file id (DEC-040) in
+  // `answers` — this carries the real attachment rows (submission_id's
+  // 'attachment'-kind file rows) so the organiser detail can render a
+  // filename/link instead of the raw id. Populated by ONE additional query
+  // alongside answerRows, never a per-answer fetch.
+  answerFiles: { id: string; filename: string; sizeBytes: number }[];
   // DEC-780: the organiser's submission detail carries where/when the
   // session is placed on the agenda — null when it hasn't been scheduled
   // yet (schedule_slot has at most one row per submission, DEC-010's
@@ -164,6 +170,13 @@ export async function getSubmissionDetail(db: Db, submissionId: string): Promise
   const answers: Record<string, unknown> = {};
   for (const a of answerRows) answers[a.formFieldId] = JSON.parse(a.valueJson);
 
+  // DEC-920: the real attachment rows for a 'file'-kind answer — ONE query,
+  // never a per-answer fetch (the N-scan rule).
+  const answerFileRows = await db
+    .select({ id: schema.file.id, filename: schema.file.filename, sizeBytes: schema.file.sizeBytes })
+    .from(schema.file)
+    .where(and(eq(schema.file.submissionId, submissionId), eq(schema.file.kind, "attachment")));
+
   const trackIds = [...new Set(trackRows.map((t) => t.trackId))];
 
   return {
@@ -193,6 +206,7 @@ export async function getSubmissionDetail(db: Db, submissionId: string): Promise
       inviteStatus: p.inviteStatus,
     })),
     answers,
+    answerFiles: answerFileRows,
     slot:
       row.slotDay !== null && row.slotStartMin !== null && row.slotEndMin !== null
         ? { day: row.slotDay, startMin: row.slotStartMin, endMin: row.slotEndMin, roomName: row.slotRoomName ?? null }

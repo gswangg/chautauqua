@@ -113,4 +113,43 @@ describe('buildAnswerRows', () => {
       { fieldId: 'zeta', label: 'zeta', displayValue: 'z' },
     ]);
   });
+
+  // DEC-920: a 'file'-kind field's stored answer is an opaque file id
+  // (DEC-040) -- resolved against answerFiles instead of the generic
+  // formatAnswerValue, so the row carries enough for the view to render an
+  // anchor rather than the bare id.
+  describe('file-kind answers (DEC-920)', () => {
+    const fileFields: FormField[] = [
+      { id: 'f1', section: 'session', kind: 'text', label: 'Level', required: true, position: 1 },
+      { id: 'f3', section: 'session', kind: 'file', label: 'Slides', required: false, position: 2 },
+    ];
+
+    it('resolves a matching file id to a link', () => {
+      const answers = { f1: 'Advanced', f3: 'file-1' };
+      const answerFiles = [{ id: 'file-1', filename: 'slides.pdf', sizeBytes: 4096 }];
+      const rows = buildAnswerRows(answers, fileFields, answerFiles);
+      expect(rows).toEqual([
+        { fieldId: 'f1', label: 'Level', displayValue: 'Advanced' },
+        {
+          fieldId: 'f3',
+          label: 'Slides',
+          displayValue: 'slides.pdf',
+          file: { href: '/files/file-1', filename: 'slides.pdf', sizeBytes: 4096 },
+        },
+      ]);
+    });
+
+    it('renders the literal "File removed" (never the bare id) when the id has no matching answerFiles row', () => {
+      const answers = { f1: 'Advanced', f3: 'file-deleted' };
+      const rows = buildAnswerRows(answers, fileFields, []);
+      const fileRow = rows.find((r) => r.fieldId === 'f3');
+      expect(fileRow).toEqual({ fieldId: 'f3', label: 'Slides', displayValue: 'File removed' });
+      expect(fileRow?.displayValue).not.toContain('file-deleted');
+    });
+
+    it('renders the em dash for an unanswered file field', () => {
+      const rows = buildAnswerRows({ f1: 'Advanced' }, fileFields, []);
+      expect(rows.find((r) => r.fieldId === 'f3')).toEqual({ fieldId: 'f3', label: 'Slides', displayValue: '—' });
+    });
+  });
 });

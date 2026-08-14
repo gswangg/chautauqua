@@ -137,6 +137,9 @@ export interface SubmissionDetail {
   updatedAt: number;
   participants: SubmissionDetailParticipant[];
   answers: Record<string, unknown>;
+  // DEC-920: real attachment rows for 'file'-kind answers, resolved by
+  // detailRows.ts against the raw file id stored in `answers`.
+  answerFiles: { id: string; filename: string; sizeBytes: number }[];
   // DEC-780: null when the session hasn't been placed on the agenda yet.
   slot: { day: string; startMin: number; endMin: number; roomName: string | null } | null;
 }

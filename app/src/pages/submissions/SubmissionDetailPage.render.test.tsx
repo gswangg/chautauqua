@@ -1123,3 +1123,60 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
     expect(main.querySelector('.chq-submission-history')).toBeNull();
   });
 });
+
+// DEC-920 (task w70-e): a 'file'-kind CFP answer stores an opaque file id
+// (DEC-040) -- the organiser's submission detail must render a filename
+// link, never the bare id, and 'File removed' text when the id no longer
+// resolves to a real attachment row.
+describe('SubmissionDetailPage render: DEC-920 file-kind answer', () => {
+  const fileFormFields = [{ id: 'f_slides', section: 'session', kind: 'file', label: 'Slides', required: false, position: 1 }];
+
+  it('renders a resolvable file answer as a link named by the filename, with its size', async () => {
+    const detail = baseDetail({
+      formId: 'form-1',
+      answers: { f_slides: 'file-1' },
+      answerFiles: [{ id: 'file-1', filename: 'my-slides.pdf', sizeBytes: 2048 }],
+    });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: fileFormFields },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Slides')).toBeInTheDocument();
+    });
+    const link = screen.getByRole('link', { name: 'my-slides.pdf' });
+    expect(link).toHaveAttribute('href', '/files/file-1');
+    // Raw id never reaches the DOM.
+    expect(screen.queryByText('file-1')).not.toBeInTheDocument();
+  });
+
+  it('renders "File removed" (never the bare id) for an unresolvable file answer', async () => {
+    const detail = baseDetail({
+      formId: 'form-1',
+      answers: { f_slides: 'file-gone' },
+      answerFiles: [],
+    });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: fileFormFields },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('File removed')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('file-gone')).not.toBeInTheDocument();
+    expect(document.body.innerHTML).not.toContain('file-gone');
+    expect(screen.queryByRole('link', { name: /file-gone/ })).not.toBeInTheDocument();
+  });
+});
