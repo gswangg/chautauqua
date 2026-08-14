@@ -3,6 +3,9 @@
 // inside the app shell (Header still renders alongside it). Also covers
 // the top-nav shell (DEC-369): wordmark, no count text in nav, no badges
 // (wave 42 amendment), reviewer confinement to Review.
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -10,6 +13,19 @@ import { App, NAV_SECTIONS } from './App';
 import { mockApi } from './test-utils/mockApi';
 import { resetEventsCacheForTests } from './lib/useCurrentEvent';
 import { matchesAdminRoute } from './lib/admin-routes';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const STYLES_CSS = readFileSync(join(HERE, 'styles.css'), 'utf-8');
+
+/** Extracts a top-level (not inside an @media block) rule's declaration body by selector. */
+function topLevelRuleBody(css: string, selector: string): string {
+  const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = withoutMedia.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
+  const body = match?.[1];
+  if (body === undefined) throw new Error(`no top-level rule found for ${selector}`);
+  return body;
+}
 
 beforeEach(() => {
   window.history.pushState({}, '', '/admin/this-page-does-not-exist');
@@ -451,5 +467,26 @@ describe('RoleGate blocks routed content while /me is unresolved (DEC-857)', () 
 
     const primaryNav = await screen.findByRole('navigation', { name: 'Primary' });
     expect(within(primaryNav).getByRole('link', { name: 'Overview' })).toBeInTheDocument();
+  });
+});
+
+// w6-h (DEC-369 amendment): Gate-4 measured the header rule 15% too tall
+// (logical y=66.2 vs the 01/06 frames' 57.5) and nav ink starting 31px too
+// far right (x=169 vs 138), with an extra ~4.4px of gap per nav item (35px
+// over the 8 gaps between the 9 sections). jsdom doesn't run real layout,
+// so this pins the CSS declarations directly against the stylesheet — a
+// regression guard against the geometry drifting back, not a live pixel
+// measurement.
+describe('Header/nav geometry pinned to the frame (DEC-369 amendment)', () => {
+  it('.chq-header: vertical padding trimmed by 4.35px/side (closes the 8.7px height delta) and no wordmark<->nav gap', () => {
+    const body = topLevelRuleBody(STYLES_CSS, '.chq-header');
+    expect(body).toMatch(/padding:\s*10\.65px 34px/);
+    expect(body).toMatch(/gap:\s*0/);
+  });
+
+  it('.chq-nav: item gap trimmed to 10.625px (15px - 4.375px) with a -9px margin closing the wordmark<->nav offset', () => {
+    const body = topLevelRuleBody(STYLES_CSS, '.chq-nav');
+    expect(body).toMatch(/gap:\s*10\.625px/);
+    expect(body).toMatch(/margin-left:\s*-9px/);
   });
 });

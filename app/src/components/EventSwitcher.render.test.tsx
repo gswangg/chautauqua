@@ -341,6 +341,26 @@ describe('EventSwitcher', () => {
     expect(trigger).toHaveFocus();
   });
 
+  // w6-h (DEC-369 amendment): the 24x23 caret-only button used to hold the
+  // focus ring around bare ink; the focusable control is now the name+
+  // caret GROUP, with a real >=44px tap target so the ring frames the
+  // whole visible control.
+  it('the focusable "Switch event" control wraps both the event name and the caret, at a >=44px min-height', async () => {
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'Alpha Conf' }]),
+    });
+
+    render(<EventSwitcher />);
+
+    await waitFor(() => screen.getByText('Alpha Conf'));
+    const trigger = screen.getByRole('button', { name: 'Switch event' });
+    expect(within(trigger).getByText('Alpha Conf')).toHaveClass('chq-eventswitcher-name');
+    expect(trigger.querySelector('.chq-eventswitcher-caret')).toBeInTheDocument();
+
+    expect(topLevelRuleBody(EVENT_SWITCHER_CSS, '.chq-eventswitcher-menu-btn')).toMatch(/min-height:\s*44px/);
+  });
+
   it('shows "New event…" for an organizer', async () => {
     mockApi({
       'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },

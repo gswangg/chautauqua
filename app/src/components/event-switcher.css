@@ -37,8 +37,16 @@
    resting border, so the button matches the plain-text name beside it.
    Border + surface-sunk background appear only on :hover and while the
    menu is open (aria-expanded), signalling interactivity without adding
-   chrome at rest. */
+   chrome at rest.
+   w6-h (DEC-369 amendment): this IS the name+caret group now (a bare
+   24x23 button that used to hold only the caret glyph put its 2px focus
+   ring around stray ink) -- inline-flex the two children with a real
+   >=44px tap target, so the ring frames the whole visible control. */
 .chq-eventswitcher-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
   background: none;
   border: 1px solid transparent;
   border-radius: var(--chq-r-ctl);
@@ -48,6 +56,12 @@
   line-height: 1;
   padding: 4px 8px;
   cursor: pointer;
+}
+
+.chq-eventswitcher-caret {
+  font-size: 11px;
+  color: var(--chq-muted);
+  line-height: 1;
 }
 
 .chq-eventswitcher-menu-btn:hover,
