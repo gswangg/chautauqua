@@ -68,13 +68,38 @@ export const PUBLIC_CSS = `
     padding-bottom: 14px;
     margin-bottom: 14px;
   }
-  .chq-pub-filter-row .chq-pub-filter-bar {
-    border-bottom: none;
-    padding-bottom: 0;
-  }
   .chq-pub-searchform {
     display: flex;
     align-items: center;
+  }
+  /* v7 active-filter line: renders only when a filter is set — count,
+     one removable chip per active filter, Clear. Zero height at rest. */
+  .chq-pub-activefilters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: -4px 0 14px;
+    font-size: 13px;
+  }
+  .chq-pub-activefilters-count {
+    color: var(--chq-muted);
+  }
+  .chq-pub-activefilters-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--chq-border);
+    border-radius: var(--chq-r-pill);
+    background: var(--chq-surface);
+    padding: 3px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--chq-ink);
+    text-decoration: none;
+  }
+  .chq-pub-activefilters-clear {
+    font-weight: 700;
   }
   .chq-pub-search {
     width: 259px;
@@ -153,32 +178,6 @@ export const PUBLIC_CSS = `
 
   main.chq-pub-main { padding: 26px 34px 34px; }
 
-  .chq-pub-filter-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    border-bottom: 1px solid var(--chq-rule);
-    padding-bottom: 14px;
-    flex-wrap: wrap;
-  }
-  .chq-pub-pill {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    border: 1px solid var(--chq-border);
-    border-radius: var(--chq-r-pill);
-    padding: 0 14px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--chq-ink-2);
-    text-decoration: none;
-  }
-  .chq-pub-pill[aria-current=true] {
-    background: var(--chq-ink);
-    color: var(--chq-on-ink);
-    border-color: var(--chq-ink);
-    font-weight: 600;
-  }
 
   /* Session rows (sessions.tsx SessionCard). */
   .chq-pub-session-row {

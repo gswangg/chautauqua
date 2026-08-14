@@ -34,29 +34,74 @@ export function PublicSearchBox(props: { action: string; q: string | null; hidde
   );
 }
 
-/** The one pill-bar markup: an "All ..." pill plus one pill per option,
- * aria-current on whichever is active. `hrefFor(value)` builds the full href
- * for a given option value (or `null` for the "All ..." pill) — the caller
- * owns param composition (which other active filters/day/q carry forward),
- * this component only owns the markup and the active-state wiring. */
-export function PublicFilterBar(props: {
-  ariaLabel: string;
+/** v7 filter bar (design-pack v7, "Public filter bar — one idiom, four
+ * surfaces"): a compact narrowing SELECT, one per facet, sitting beside the
+ * search box on the surface's single .chq-pub-filter-row. Each select is its
+ * own GET form (same idiom as agenda-controls.tsx's track-highlight control:
+ * onchange auto-submits, a visually-hidden submit keeps the no-JS path and
+ * assistive tech working) carrying the surface's OTHER active params as
+ * hidden inputs so every facet composes with the rest. The pill-bar idiom is
+ * dead on public surfaces — "four selects read as one control group; one
+ * pill row plus two selects reads as five things." */
+export function PublicFilterSelectForm(props: {
+  action: string;
+  name: string;
   allLabel: string;
   options: { value: string; label: string }[];
   activeValue: string | null;
-  hrefFor: (value: string | null) => string;
+  hidden?: unknown;
 }) {
-  const { ariaLabel, allLabel, options, activeValue, hrefFor } = props;
+  const { action, name, allLabel, options, activeValue, hidden } = props;
+  const id = `chq-pub-filter-${name}`;
   return (
-    <nav aria-label={ariaLabel} class="chq-pub-filter-bar">
-      <a class="chq-pub-pill" href={hrefFor(null)} aria-current={activeValue === null ? "true" : undefined}>
+    <form class="chq-pub-select-form" method="get" action={action}>
+      <label class="chq-visually-hidden" for={id}>
         {allLabel}
-      </a>
-      {options.map((o) => (
-        <a class="chq-pub-pill" href={hrefFor(o.value)} aria-current={activeValue === o.value ? "true" : undefined}>
-          {o.label}
-        </a>
-      ))}
-    </nav>
+      </label>
+      <select class="chq-pub-select" id={id} name={name} onchange="this.form.submit()">
+        <option value="">{allLabel}</option>
+        {options.map((o) => (
+          <option value={o.value} selected={o.value === activeValue ? true : undefined}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      {hidden as any}
+      <button class="chq-visually-hidden" type="submit">
+        Apply
+      </button>
+    </form>
   );
 }
+
+/** v7 active-filter line: renders ONLY when at least one filter is set —
+ * "9 of 18 sessions", one removable chip per active filter, and Clear.
+ * Zero height at rest ("nothing is spent on that line at rest, and the
+ * count answers the question filtering raises"). The caller owns chip
+ * labels and clearing hrefs; this component owns the markup. */
+export function PublicActiveFilters(props: {
+  total: number;
+  grandTotal: number;
+  noun: string;
+  chips: { label: string; clearHref: string }[];
+  clearAllHref: string;
+}) {
+  const { total, grandTotal, noun, chips, clearAllHref } = props;
+  if (chips.length === 0) return null;
+  return (
+    <div class="chq-pub-activefilters">
+      <span class="chq-pub-activefilters-count">
+        {total} of {grandTotal} {noun}
+      </span>
+      {chips.map((c) => (
+        <a class="chq-pub-activefilters-chip" href={c.clearHref} aria-label={`Remove filter: ${c.label}`}>
+          {c.label} <span aria-hidden="true">×</span>
+        </a>
+      ))}
+      <a class="chq-pub-activefilters-clear" href={clearAllHref}>
+        Clear
+      </a>
+    </div>
+  );
+}
+

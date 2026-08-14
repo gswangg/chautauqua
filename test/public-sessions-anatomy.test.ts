@@ -64,7 +64,12 @@ describe("DEC-919 (wave 44): sessions surface stops restating its count", () => 
   it("an empty (filtered) result still states its emptiness honestly", () => {
     const html = render({ items: [], total: 0, q: "no-match-query" });
     expect(html).toContain("No sessions match your search.");
-    expect(html).not.toMatch(/\d+ of \d+ sessions?/);
+    // v7 supersedes DEC-919's blanket no-count rule for FILTERED views: the
+    // active-filter line states "0 of N sessions" precisely because a filter
+    // is set ("the count answers the question filtering raises"). The
+    // no-count rule still holds at rest (test above).
+    expect(html).toContain('class="chq-pub-activefilters"');
+    expect(html).toMatch(/0 of \d+ sessions/);
   });
 
   it("an empty result with no filter active states emptiness without implying a search was run", () => {
