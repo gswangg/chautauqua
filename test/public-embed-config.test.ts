@@ -420,10 +420,12 @@ describe("embed config: fields param gates card content (title always renders)",
     expect(fragment).not.toContain("Ada");
   });
 
-  // DEC-968: an absent ?fields= on the sessions surface now defaults to
-  // SESSION_LIST_DEFAULT_FIELDS (all six minus description) rather than all
-  // six on -- the abstract only reappears when named explicitly.
-  it("every param absent uses the sessions-list default (all fields but description)", async () => {
+  // DEC-968 as amended by the EMB-01 orchestrator ruling: an absent
+  // ?fields= on the sessions surface defaults to SESSION_LIST_DEFAULT_FIELDS
+  // with ALL SIX fields on — the description renders as a snippet with an
+  // in-place "Show more" disclosure, and dropping it requires naming the
+  // other fields explicitly.
+  it("every param absent uses the sessions-list default (all six fields, description as snippet)", async () => {
     installFakeCaches();
     const app = buildApp();
     const res = await app.request("/embed/conf/sessions", {}, TEST_ENV);
@@ -433,7 +435,7 @@ describe("embed config: fields param gates card content (title always renders)",
     expect(fragment).toContain("Ada");
     expect(fragment).toContain("chq-pub-session-when");
     expect(fragment).toContain('class="chq-pub-session-tag"');
-    expect(fragment).not.toContain("A description long enough");
+    expect(fragment).toContain("A description long enough");
   });
 
   it("?fields=track,description restores the description alongside the default track/format meta line", async () => {

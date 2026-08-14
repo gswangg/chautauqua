@@ -130,15 +130,16 @@ function detailDb() {
   };
 }
 
-describe("DEC-968: sessions-list row default fields drop the abstract", () => {
-  it("a default /e/:slug/sessions row has no <details>/'Show more' and no description text", async () => {
+describe("DEC-968 as amended by the EMB-01 ruling: sessions-list row defaults include the abstract snippet", () => {
+  it("a default /e/:slug/sessions row renders the description as a snippet with an in-place Show more", async () => {
     installFakeCaches();
     const app = withDb(buildApp(), sessionsListDb());
     const res = await app.request("/e/conf/sessions", {}, TEST_ENV);
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).not.toContain("<details");
-    expect(html).not.toContain(DESCRIPTION);
+    expect(html).toContain("<details");
+    expect(html).toContain("Show more");
+    expect(html).toContain('class="chq-pub-desc-snippet"');
   });
 
   it("its meta line renders through .chq-pub-session-tag with the track and format in caps text", async () => {
