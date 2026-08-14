@@ -1575,7 +1575,7 @@ export function PlanEditor() {
                         the section rule -- the confirm panel is not a
                         second opinion about the run's shape, just the
                         per-reviewer detail table. */}
-                    <table className="chq-review-results-table chq-review-distribute-table">
+                    <table className="chq-table chq-review-results-table chq-review-distribute-table">
                       <thead>
                         <tr>
                           <th>Name</th>

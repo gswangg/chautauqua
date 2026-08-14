@@ -357,7 +357,7 @@ export function ResultsTable({
            decision never triggers email; notifying speakers is a separate,
            explicit action elsewhere. */}
         <p className="chq-review-hint">Deciding here never sends email — notify speakers separately.</p>
-        <table className="chq-review-results-table">
+        <table className="chq-table chq-review-results-table">
           <thead>
             <tr>
               {/* DEC-906: Rank leads -- it is never sortable itself; it is
