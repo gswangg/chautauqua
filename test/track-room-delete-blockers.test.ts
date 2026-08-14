@@ -228,6 +228,7 @@ describe("deleteTrack 409 refusal names its blocking rows (DEC-931)", () => {
         [], // no form
         plans, // listPlansForEvent -- unbounded read, but reviewer step below does not scale with it
         [], // plan_reviewer join evaluation_plan join user, limit 5 -- ONE query, no matches
+        [], // embed select (DEC-931 amendment, w63-a) -- limit 5, no matches
       ]);
       await deleteTrack(db, "track1", "event1");
       return queryCount();
@@ -236,7 +237,7 @@ describe("deleteTrack 409 refusal names its blocking rows (DEC-931)", () => {
     const small = await runWithPlanCount(3);
     const large = await runWithPlanCount(30);
     expect(small).toBe(large);
-    expect(small).toBe(7);
+    expect(small).toBe(8);
   });
 });
 

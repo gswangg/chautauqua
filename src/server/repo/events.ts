@@ -451,6 +451,39 @@ export async function deleteTrack(db: Db, trackId: string, eventId: string): Pro
     });
   }
 
+  // DEC-931 amendment (w63-a): a saved embed whose stored recipe
+  // (options_json.trackId) names this track blocks deletion too -- an
+  // organizer-facing saved_view (filters_json) is deliberately NOT a
+  // blocker here: it's a private admin filter with no public consequence.
+  // An embed blocks regardless of its `enabled` column -- a disabled embed
+  // can be re-enabled later, so it still names a live dependency.
+  const embedRows = await db
+    .select({ name: schema.embed.name })
+    .from(schema.embed)
+    .where(
+      and(
+        eq(schema.embed.eventId, eventId),
+        sql`json_extract(${schema.embed.optionsJson}, '$.trackId') = ${trackId}`,
+      ),
+    )
+    .limit(5);
+  if (embedRows.length > 0) {
+    const countRows = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.embed)
+      .where(
+        and(
+          eq(schema.embed.eventId, eventId),
+          sql`json_extract(${schema.embed.optionsJson}, '$.trackId') = ${trackId}`,
+        ),
+      );
+    const total = Number(countRows[0]?.count ?? 0);
+    const names = embedRows.map((r) => r.name);
+    throw new ApiError("conflict", "Track is referenced by a saved embed", {
+      embeds: namesWithMore(names, total).join("; "),
+    });
+  }
+
   await db.delete(schema.track).where(eq(schema.track.id, trackId));
 }
 
@@ -590,6 +623,37 @@ export async function deleteRoom(db: Db, roomId: string, eventId: string): Promi
     );
     throw new ApiError("conflict", "Room is referenced by one or more schedule slots", {
       slots: namesWithMore(names, total).join("; "),
+    });
+  }
+
+  // DEC-931 amendment (w63-a): a saved embed whose stored recipe
+  // (options_json.roomId) names this room blocks deletion too -- see the
+  // matching comment in deleteTrack above (saved_view is not a blocker;
+  // a disabled embed still blocks since it can be re-enabled).
+  const embedRows = await db
+    .select({ name: schema.embed.name })
+    .from(schema.embed)
+    .where(
+      and(
+        eq(schema.embed.eventId, eventId),
+        sql`json_extract(${schema.embed.optionsJson}, '$.roomId') = ${roomId}`,
+      ),
+    )
+    .limit(5);
+  if (embedRows.length > 0) {
+    const countRows = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.embed)
+      .where(
+        and(
+          eq(schema.embed.eventId, eventId),
+          sql`json_extract(${schema.embed.optionsJson}, '$.roomId') = ${roomId}`,
+        ),
+      );
+    const total = Number(countRows[0]?.count ?? 0);
+    const names = embedRows.map((r) => r.name);
+    throw new ApiError("conflict", "Room is referenced by a saved embed", {
+      embeds: namesWithMore(names, total).join("; "),
     });
   }
 
