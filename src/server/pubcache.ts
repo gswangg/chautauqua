@@ -32,6 +32,7 @@ import type { Context, Next } from "hono";
 import type { AppEnv } from "./env";
 import type { KVStore } from "../lib/draft";
 import { DEC_627 } from "../decisions";
+import { executionCtxOf } from "./execution-ctx";
 
 void DEC_627;
 
@@ -348,21 +349,6 @@ export async function bumpIfMutating(kv: KVStore, method: string, path: string, 
  * registration never touches the `caches` global at import time — it's a
  * real Workers-runtime global, but absent under vitest's node test
  * environment, and route sub-app modules must stay importable there. */
-/** Hono's `c.executionCtx` getter throws (not returns undefined) when the
- * runtime handed no ExecutionContext/FetchEvent to this request (e.g. under
- * vitest's node test environment, or a synthetic Context built without
- * one) — this is the one deliberate check for that specific, expected
- * absence, not a catch-all: any other error is not expected here and would
- * propagate normally since this function only wraps the getter access. */
-function hasExecutionCtx(c: Context<AppEnv>): boolean {
-  try {
-    void c.executionCtx;
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 export function publicCacheMiddleware(cache: () => CacheLike) {
   return async (c: Context<AppEnv>, next: Next) => {
     if (c.req.method !== "GET" || isUncacheableIcsRequest(c.req.url)) {
@@ -371,11 +357,11 @@ export function publicCacheMiddleware(cache: () => CacheLike) {
     }
     if (!c.env.KV) throw new Error("publicCacheMiddleware requires the KV binding");
     const kv: KVStore = c.env.KV;
-    // c.executionCtx throws (rather than returning undefined) when Hono has
-    // no Workers execution context to hand back (e.g. under vitest's node
-    // test environment) — deliberately take the awaited path in that case
-    // rather than swallowing an unrelated error from a try/catch.
-    const waitUntil = hasExecutionCtx(c) ? (p: Promise<unknown>) => c.executionCtx.waitUntil(p) : undefined;
+    // executionCtxOf is the one deliberate reader of Hono's throwing
+    // c.executionCtx getter (src/server/execution-ctx.ts) — captured once
+    // here so the waitUntil closure below never re-accesses the getter.
+    const ctx = executionCtxOf(c);
+    const waitUntil = ctx ? (p: Promise<unknown>) => ctx.waitUntil(p) : undefined;
     const response = await servePublicGet(
       cache(),
       kv,
