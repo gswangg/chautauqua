@@ -2120,6 +2120,32 @@ async function main(): Promise<void> {
     });
   }
 
+  // --- schedule breaks (DEC-022 amendment, wave 63): a coffee break and a
+  // lunch break per day. Deliberately NOT keyed to any submission/room --
+  // see src/server/repo/breaks.ts's header for the hard boundary. These
+  // fill the gap the schedule_slot rows above leave around midday, which
+  // otherwise reads as missing data on the public agenda.
+  const breaks: Array<{ day: string; label: string; location: string | null; startMin: number; durationMin: number }> =
+    eventDays.flatMap((day) => [
+      { day, label: "Coffee break", location: null, startMin: 10 * 60 + 15, durationMin: 15 },
+      { day, label: "Lunch", location: "Foyer", startMin: 12 * 60, durationMin: 60 },
+    ]);
+  breaks.forEach((brk, i) => {
+    statements.push(
+      insertStmt("schedule_break", {
+        id: seedId("schedule_break", i + 1),
+        event_id: eventId,
+        day: brk.day,
+        label: brk.label,
+        location: brk.location,
+        start_min: brk.startMin,
+        duration_min: brk.durationMin,
+        created_at: nextTs(),
+        updated_at: ts,
+      }),
+    );
+  });
+
   // --- portal settings + a wiki resource ---
   statements.push(
     insertStmt("portal_settings", {

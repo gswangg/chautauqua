@@ -47,5 +47,5 @@ export type {
   PublicSessionDetail,
 } from "./public/detail";
 
-export { getPublicAgenda, getPublicAgendaByIds, getPublicScheduleDayCounts } from "./public/agenda";
+export { getPublicAgenda, getPublicAgendaByIds, getPublicScheduleDayCounts, getPublicBreaksByDay } from "./public/agenda";
 export type { PublicAgendaItem } from "./public/agenda";

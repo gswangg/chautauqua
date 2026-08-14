@@ -9,7 +9,10 @@ import { visibleParticipantConditions, visibleSessionConditions, slotWithinEvent
 import type { PublicEvent, PublicTrack } from "./event";
 import { hydrateSessions, searchCondition, formatFilterCondition, type PublicSpeaker } from "./sessions";
 import { MAX_PUBLIC_ROWS } from "./bounds";
-import { DEC_851 } from "../../../decisions";
+import { listBreaksForEvent, type ScheduleBreak } from "../breaks";
+import { DEC_022, DEC_851 } from "../../../decisions";
+
+void DEC_022;
 
 // Compile-checked dependency marker: getPublicAgenda's `format` predicate
 // below (and its callers threading trackId/q/format through the same
@@ -291,4 +294,30 @@ export async function getPublicAgendaByIds(
       return item;
     })
     .filter((item): item is PublicAgendaItem => item !== null);
+}
+
+/** DEC-022 amendment (wave 63): the ONE public-facing read for the agenda's
+ * break rows -- reads through the SAME src/server/repo/breaks.ts function
+ * the organizer-only route (src/routes/api/breaks.ts) uses (never a second,
+ * public-only query), applies DEC-318's [startDate, endDate] bound the same
+ * lexical-ISO-day way schedule_slot reads already apply it, then groups by
+ * day exactly like getPublicAgenda's items are grouped by the caller. Lives
+ * in server/repo/public/ (not server/repo/breaks.ts directly) so the public
+ * dispatch layer's ONE mockable surface (server/repo/public's barrel) stays
+ * whole -- see test/public-page-headings.test.ts and friends' vi.mock of
+ * this barrel. */
+export async function getPublicBreaksByDay(
+  db: Db,
+  event: PublicEvent,
+  day?: string | null,
+): Promise<Map<string, ScheduleBreak[]>> {
+  const rows = await listBreaksForEvent(db, event.id, day ?? undefined);
+  const map = new Map<string, ScheduleBreak[]>();
+  for (const b of rows) {
+    if (b.day < event.startDate || b.day > event.endDate) continue;
+    const list = map.get(b.day) ?? [];
+    list.push(b);
+    map.set(b.day, list);
+  }
+  return map;
 }

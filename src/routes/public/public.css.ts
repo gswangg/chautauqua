@@ -377,6 +377,40 @@ export const PUBLIC_CSS = `
     align-items: center;
     gap: 6px;
   }
+  /* DEC-022 amendment (wave 63): a break is a spanning QUIET row -- lower
+     visual weight than a session block (no left accent border, muted
+     surface), small-caps-style label via text-transform so 'Lunch · Foyer
+     · 60 min' reads as 'LUNCH · FOYER · 60 MIN' the way docs/design's copy
+     shape specifies, without duplicating the wording in uppercase at the
+     source (agenda.tsx keeps the natural-case DOM text). In the desktop
+     grid it is a grid item spanning every room column (grid-column:1/-1,
+     set inline by agenda.tsx); in the phone/schedule list it is a plain
+     <li> among session rows (reusing .chq-pub-agenda-list's ol, never
+     .chq-pub-agenda-list-item's card layout -- a break has no title link,
+     speakers or itinerary toggle). */
+  .chq-pub-agenda-break {
+    display: block;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+    color: var(--chq-muted);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-align: center;
+  }
+  /* Desktop grid context (a <div> grid item, not a list <li>) overrides the
+     list-row look above -- centered inside its full-width spanning row. */
+  .chq-pub-agenda-day .chq-pub-agenda-break {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    background: var(--chq-surface-sunk);
+    border-bottom: none;
+    font-size: 11px;
+    padding: 2px 6px;
+  }
   /* DEC-584: phone (<700px) list markup for a single agenda day, rendered
      from the SAME items array as AgendaDayGrid and switched with the
      desktop grid purely via display:none below (breakpoint block) so
