@@ -56,6 +56,21 @@ agenda ≤700px, 390 plan editor) resumes ONLY after the desktop gate: fleet-cle
 eval composite at target. Mobile-additive-reflow scan-lock stays in force for anything
 already landed.
 
+## ⚠ STRAGGLER CALL-OUT (orchestrator, 17:05) — three ⚡ items are blocking the gate
+
+Wave planners: these three carry more eval weight than any hardening/scan work and are
+the ONLY items still blocking the gate cycle (fleet + deploy + sbek). Pull them into the
+next wave ahead of everything else:
+1. **AIA-04 FIX** — cross-room co-presenter double-booking must produce a conflict
+   indicator + co-presenters on grid cards. The verification seed is already in
+   (DEC-974); the detection fix itself has NOT landed. Runtime-verify against the seeded
+   clash.
+2. **EMB-01** — public sessions-list cards: description snippet + in-place "Show more"
+   (frame-check the v9 public list first). ~0.9 composite pts.
+3. **CFP close-path turn-diet** — a fast, obvious path to CLOSE the CFP from settings
+   ("Close the call now" reachable in ≤3 clicks from /admin; CFP-S4 died on the edit
+   screen). This is the largest single coverage risk (CFP-04/16 cannot_judge).
+
 ## DELTA PROBE 2 (2026-08-14 ~wave 29, snapshot 0bb56c9c) — landed v9 batch VERIFIED LIVE
 
 Measured at 1440 on a fresh snapshot: **SESSION DETAILS section live** on submission
