@@ -25,34 +25,19 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   WATERMARK STORING ITS OWN START LOSES LATE-COMMITTING WRITES; THE
   DECISIONS' OWN PATH REFS ARE A CHEAP DRIFT DETECTOR.
 - FINDINGS w34-44 (heavily compacted, do NOT re-file). Closed defects across eleven waves; TENANT axis
-  covers PATH+BODY/QUERY. Re-verified NOT defects: DEC-658 no-store default, /embed-only framing, both-end
-  clamped paging, ONE toCsv serializer, two-directional authz/CSRF scans, server-side visibility predicate,
-  bounded text caps, CI-enforced perf-smoke+walkthrough+full-suite, `npm run deploy` absent BY DESIGN,
-  isEpochMs bounded, R2 content-type guard on all four serving routes, content_status three real writers,
-  ics_sequence set-based bump, D1-atomic rate limits, reset-password DOES revoke sessions. Shapes: A
-  REDACTOR IS SHAPES NOT ONE REGEX; CSRF != AUTHZ; A 5xx IS NOT A REFUSAL; A REFUSAL THAT MUTATES IS NOT A
-  REFUSAL; A WRITE GUARD THAT DOESN'T MATCH THE READ PREDICATE MINTS INVISIBLE ROWS; A PREDICATE FAMILY IS
-  A LATTICE; A ROW COUNT IS NOT A PEOPLE COUNT; A PICKER FED BY PAGE 1 CANNOT PICK; A REFUSAL WHOSE ADVICE
-  THE CALLER CANNOT FOLLOW IS A DEAD END; A SCAN'S POPULATION IS BLIND TO THE HELPER IT DIDN'T ENUMERATE; A
-  BUNDLE THAT FAILS WHOLE LOSES THE PARTS THAT WORKED; AN INTEGER IS NOT A DATE; A SERIALIZER INVARIANT
-  HELD BY THE WRITER IS HELD BY NOBODY; A HAND-TYPED API DOC IS A MANIFEST — DERIVE IT OR IT LIES; A FAMILY
-  ENUMERATED BY HAND AT WAVE N IS BLIND TO THE SIBLING ADDED AT WAVE N+1; A COUNT THE CLIENT TURNS INTO AN
-  ARRAY LENGTH IS A CLIENT-SIDE DoS UNLESS THE BOUNDARY BOUNDS IT; A SILENT DEFAULT ON THE AUDIT SURFACE IS
-  A BLANK PAGE; A HARNESS THAT HAND-ASSERTS A CONTRACT ROTS WHEN THE CONTRACT MOVES; A RESPONSE
-  BYTE-IDENTICAL ON BOTH BRANCHES IS STILL AN ORACLE IF ONE BRANCH DOES IO; A CACHE KEYED ON THE WHOLE URL
-  IS KEYED ON THE ATTACKER'S CHOICE AND ON MARKETING'S; A CONSTANT COPIED WITH A COMMENT NAMING ITS SOURCE
-  IS A DRIFT DETECTOR THAT ONLY FIRES AFTER THE DRIFT.
-- FINDINGS w45 (verified AT THE FILE on main). w44 STATE: task-w44-d LANDED (versionedCacheKey canonical +
-  PUBLIC_CACHE_KEY_PARAMS in public/bounds.ts, DEC-433 wave-44 amendment written); task-w44-a/b/c branches
-  exist UNMERGED, NOT re-filed (producer.ts:758 no feedbackPlanId; data.ts:273 wrong 201; scale.ts:44
-  hand-copies ONBOARDING_TASK_COUNT=5; /forgot known-address branch still inline). w43 fully landed. TAKEN:
-  (1) gate:render-sweep RED on main — ROUTE_MANIFEST sweeps PATTERN "/admin/*" as a page, matchesAdminRoute
-  false, DEC-945 answers 404; /logout+/dev/mailbox×2 swept by a role that can't reach them, Playwright
-  follows 302 and grades /login. (2) mail-swallow ledger keys on "(route handler near line N)" while
-  claiming line-drift stability. (3) hasOverlongQueryValue survives the canonical-key change, free
-  cache-bypass lever on every public page. (4) public agenda has three disagreeing "rooms in use" readers
-  under a comment claiming they agree.
-  Shapes: A GATE GRADING AGAINST A CONSTANT IT NEVER STATES CAN ONLY BE RED OR LYING. A ROUTE SWEPT BY A
-  ROLE THAT CANNOT REACH IT SWEEPS THE REDIRECT TARGET AND REPORTS PASS. A PATTERN IN A MANIFEST IS NOT A
-  URL. A BOUND KEPT AFTER ITS REASON IS GONE IS A LEVER FOR WHOEVER FINDS IT FIRST. A LEDGER KEYED ON WHERE
-  THE CODE SITS FAILS BOTH DIRECTIONS AT ONCE ON AN UNRELATED EDIT.
+  covers PATH+BODY/QUERY. Re-verified NOT defects: no-store default, embed-only framing, clamped paging,
+  ONE toCsv serializer, authz/CSRF scans, visibility predicate, bounded text caps, CI gates, isEpochMs
+  bounded, R2 content-type guard, content_status writers, ics_sequence set-based bump, D1-atomic rate
+  limits. Shapes: REDACTOR IS SHAPES NOT ONE REGEX; CSRF != AUTHZ; 5xx IS NOT A REFUSAL; A REFUSAL THAT
+  MUTATES IS NOT A REFUSAL; A WRITE GUARD MISMATCHED TO ITS READ PREDICATE MINTS INVISIBLE ROWS; A
+  PREDICATE FAMILY IS A LATTICE; A ROW COUNT IS NOT A PEOPLE COUNT; A SCAN'S POPULATION IS BLIND TO THE
+  HELPER IT DIDN'T ENUMERATE; A HAND-TYPED API DOC IS A MANIFEST — DERIVE IT OR IT LIES; A FAMILY ENUMERATED
+  BY HAND AT WAVE N IS BLIND TO THE SIBLING ADDED AT WAVE N+1; A SILENT DEFAULT ON THE AUDIT SURFACE IS A
+  BLANK PAGE; A CACHE KEYED ON THE WHOLE URL IS KEYED ON THE ATTACKER'S CHOICE.
+- FINDINGS w45 (compacted). task-w44-d LANDED; w44-a/b/c UNMERGED not re-filed. TAKEN: gate:render-sweep RED
+  (ROUTE_MANIFEST pattern-vs-URL mismatch, role-swept redirect targets graded PASS); mail-swallow ledger
+  keys on line-number comments; hasOverlongQueryValue survives canonical cache key; public agenda has three
+  disagreeing room-count readers. Shapes: A GATE GRADING AGAINST AN UNSTATED CONSTANT IS RED OR LYING; A
+  PATTERN IN A MANIFEST IS NOT A URL; A LEDGER KEYED ON WHERE CODE SITS FAILS ON AN UNRELATED EDIT.
+- FINDINGS w46 (verified AT THE FILE on main; w45 branches a/b/c/d all still UNMERGED — do NOT re-file render-sweep ROUTE_MANIFEST patterns, the mail-swallow line-number ledger, hasOverlongQueryValue, or the public-agenda room counters). Re-verified NOT defects this wave: portal replace DOES chain versions (CNT-04 closed, tasks.tsx:595-604), notes ARE appended on contact merge, planMerge/distributeAssignments bounded, MAX_ITINERARY_IDS/MAX_COMPOSE_RECIPIENTS bounded, the public cache version bump is a global middleware (derived, not hand-enumerated), CNT-01 instructions shipped in migrations/0036. TAKEN: (1) three evaluation reads omit `submittedAt is not null` while four siblings carry it — countEvaluationsForSubmission 409s a reviewer on ANOTHER reviewer's draft (reviewer.ts:361), countEvaluationsBySubmission inflates ratingsCount AND drops rows via needsMoreRatings (J4 fewest-ratings-first), listEvaluationsForSubmission shows the organiser unsubmitted scores. (2) TWO YYYY-MM-DD grammars: DEC-510's round-tripping isIsoDate (validators.ts:40) and days.ts:31's bare regex, so 2027-02-30 persists on a slot/break inside the event range and DTSTART rolls to 03-02 while the grid draws 02-30. (3) auto-schedule.ts:101 `.slice()` discards placements it already computed with no entry in unplacedReasons, and :115 inserts slots with no onConflict against schedule_slot_submission_id_idx — the race upsertSlot closed under DEC-552, with earlier chunks committed on the loser. (4) B7 rule 6 ("never an empty table with headers") is broken by the three biggest admin worklists (SubmissionsTable.tsx:301, SessionList.tsx:205, FilesLibrary.tsx:229) while EmptyState already exists and is honoured by PlanList/HistoryTab/PipelineBoard.
+  Shapes: A PREDICATE FOUR SIBLINGS CARRY AND THE FIFTH DOESN'T IS A BUG WITH A WITNESS. TWO GRAMMARS FOR ONE VALUE MEANS THE LOOSER ONE IS THE CONTRACT. A CAP THAT DROPS WORK WITHOUT NAMING IT IS A SILENT TRUNCATION. A BULK WRITE IS A WRITE — THE ATOMICITY RULE THE SINGLE-ROW PATH KEEPS APPLIES TO THE CHUNK. A BUMP NAMING ROWS IT DIDN'T WRITE IS A LIE TO EVERY SUBSCRIBER. A COMPONENT THAT EXISTS AND ISN'T CALLED IS A RULE THAT ISN'T ENFORCED.
