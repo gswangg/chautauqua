@@ -203,6 +203,7 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "POST", path: "/api/v1/events/:eventId/agenda/auto-schedule", role: "organizer" },
       { method: "GET", path: "/api/v1/events/:eventId/breaks", role: "organizer" },
       { method: "POST", path: "/api/v1/events/:eventId/breaks", role: "organizer" },
+      { method: "PATCH", path: "/api/v1/breaks/:id", role: "organizer" },
       { method: "DELETE", path: "/api/v1/breaks/:id", role: "organizer" },
     ],
   },

@@ -8,7 +8,7 @@
 // (RosterPanel/TracksRoomsPanel convention) so we can assert on exact call
 // args rather than stubbing fetch.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { BreaksPanel } from './BreaksPanel';
 import { ApiError } from '../../lib/api';
@@ -18,6 +18,7 @@ const DAY = '2026-03-02';
 
 const apiGetMock = vi.fn();
 const apiPostMock = vi.fn();
+const apiPatchMock = vi.fn();
 const apiDeleteMock = vi.fn();
 
 vi.mock('../../lib/api', async () => {
@@ -26,6 +27,7 @@ vi.mock('../../lib/api', async () => {
     ...actual,
     apiGet: (...args: unknown[]) => apiGetMock(...args),
     apiPost: (...args: unknown[]) => apiPostMock(...args),
+    apiPatch: (...args: unknown[]) => apiPatchMock(...args),
     apiDelete: (...args: unknown[]) => apiDeleteMock(...args),
   };
 });
@@ -48,6 +50,7 @@ function breakRow(overrides: Partial<Record<string, unknown>> = {}) {
 beforeEach(() => {
   apiGetMock.mockReset();
   apiPostMock.mockReset();
+  apiPatchMock.mockReset();
   apiDeleteMock.mockReset();
 });
 
@@ -96,6 +99,64 @@ describe('BreaksPanel', () => {
     });
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
     expect(apiGetMock).not.toHaveBeenCalled();
+  });
+
+  // DEC-022 amendment (wave 71): inline edit affordance driving PATCH
+  // /api/v1/breaks/:id.
+  it('Edit opens an inline form pre-filled from the row, and Save PATCHes then calls onChanged', async () => {
+    apiPatchMock.mockResolvedValueOnce(breakRow({ label: 'Lunch (extended)', durationMin: 90 }));
+    const onChanged = vi.fn();
+
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={onChanged} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+
+    const editForm = within(document.querySelector('.chq-breaks-row-editing') as HTMLElement);
+    const labelInput = editForm.getByLabelText('Label') as HTMLInputElement;
+    expect(labelInput.value).toBe('Lunch');
+    expect((editForm.getByLabelText('Start time') as HTMLInputElement).value).toBe('12:00');
+
+    fireEvent.change(labelInput, { target: { value: 'Lunch (extended)' } });
+    fireEvent.change(editForm.getByLabelText('Duration (min)'), { target: { value: '90' } });
+    fireEvent.click(editForm.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(apiPatchMock).toHaveBeenCalledTimes(1));
+    expect(apiPatchMock).toHaveBeenCalledWith('/breaks/brk-1', {
+      label: 'Lunch (extended)',
+      location: 'Foyer',
+      startMin: 720,
+      durationMin: 90,
+    });
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+    // The inline form closes back to the read-only row.
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+  });
+
+  it('Cancel on the inline edit form fires no PATCH and restores the read-only row', () => {
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(apiPatchMock).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+  });
+
+  it('a 400 with fields.durationMin from the PATCH renders beside the duration input', async () => {
+    apiPatchMock.mockRejectedValueOnce(
+      new ApiError(400, 'invalid', 'Invalid break input', {
+        durationMin: 'startMin + durationMin must not exceed 1440 (a break cannot run past midnight)',
+      }),
+    );
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[breakRow()]} outsideWindow={[]} onChanged={() => {}} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    const editForm = within(document.querySelector('.chq-breaks-row-editing') as HTMLElement);
+    fireEvent.click(editForm.getByRole('button', { name: 'Save' }));
+
+    const message = await screen.findByText(/cannot run past midnight/);
+    expect(message).toBeInTheDocument();
+    const durationField = editForm.getByLabelText('Duration (min)').closest('.chq-breaks-field');
+    expect(durationField).toContainElement(message);
   });
 
   // DEC-941: removing a break is irreversible, so Remove opens the shared
