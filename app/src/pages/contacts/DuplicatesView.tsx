@@ -11,19 +11,11 @@
 // (POST /contacts/duplicates/dismiss) -- it is a fact about the pair, not a
 // session mood, so it survives reload.
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { apiList, apiPost, ApiError } from '../../lib/api';
 import { DelayedLoading } from '../../components/DelayedLoading';
-import type { DuplicateGroup, DuplicateReason } from './types';
+import { DuplicateRow } from './DuplicateRow';
+import type { DuplicateGroup } from './types';
 import './contacts-panels.css';
-
-// DEC-800: the reason a group was surfaced, as a plain-text caption -- never
-// a colour-only signal.
-const REASON_CAPTIONS: Record<DuplicateReason, string> = {
-  email: 'Same email',
-  name_and_company: 'Same name and company',
-  name: 'Same name, different company',
-};
 
 interface Props {
   onMerged: () => void;
@@ -116,24 +108,7 @@ export function DuplicatesView({ onMerged, initialNotice, initialDismissPairIds 
 
       <ul className="chq-contacts-duplicate-groups">
         {visibleGroups.map((g, i) => (
-          <li key={i} className="chq-contacts-duplicate-group">
-            <span className="chq-contacts-duplicate-names">
-              {g.contacts
-                .map((c) => `${c.firstName} ${c.lastName} <${c.email}>${c.company ? ` — ${c.company}` : ''}`)
-                .join(' / ')}
-            </span>
-            <span className="chq-contacts-duplicate-reason chq-contacts-pipeline-caption">
-              {REASON_CAPTIONS[g.reason]}
-            </span>
-            <div className="chq-contacts-import-actions">
-              <Link className="chq-btn chq-btn-primary" to={`/contacts/merge?ids=${g.contactIds.join(',')}`}>
-                Merge
-              </Link>
-              <button type="button" className="chq-btn chq-btn-secondary" onClick={() => keepBoth(g)}>
-                Keep both
-              </button>
-            </div>
-          </li>
+          <DuplicateRow key={i} group={g} onKeepBoth={keepBoth} />
         ))}
       </ul>
     </div>

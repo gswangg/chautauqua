@@ -9,7 +9,7 @@
 // Per-segment counts are never recomputed here — they arrive already
 // computed by GET /segments with the SAME segment-rule where clause the
 // directory list applies (server/routes/api/contacts/segments.ts).
-import { Link } from 'react-router-dom';
+import { DuplicateRow } from './DuplicateRow';
 import { describeRules } from './segments';
 import type { DuplicateGroup, Segment } from './types';
 
@@ -21,10 +21,7 @@ interface Props {
   onSaveCurrentFilters: () => void;
   duplicateCount: number;
   duplicatePreview: DuplicateGroup[];
-}
-
-function duplicateGroupLabel(g: DuplicateGroup): string {
-  return g.contacts.map((c) => `${c.firstName} ${c.lastName}`).join(' · ');
+  onKeepBoth: (group: DuplicateGroup) => void;
 }
 
 export function DirectoryRail({
@@ -35,6 +32,7 @@ export function DirectoryRail({
   onSaveCurrentFilters,
   duplicateCount,
   duplicatePreview,
+  onKeepBoth,
 }: Props) {
   return (
     <aside className="chq-contacts-rail">
@@ -84,12 +82,7 @@ export function DirectoryRail({
         </div>
         <ul className="chq-contacts-rail-duplicates">
           {duplicatePreview.map((g) => (
-            <li key={g.contactIds.join(',')} className="chq-contacts-rail-duplicate-row">
-              <span className="chq-contacts-rail-duplicate-names">{duplicateGroupLabel(g)}</span>
-              <Link className="chq-link-button" to={`/contacts/merge?ids=${g.contactIds.join(',')}`}>
-                Merge
-              </Link>
-            </li>
+            <DuplicateRow key={g.contactIds.join(',')} group={g} onKeepBoth={onKeepBoth} dense />
           ))}
           {duplicatePreview.length === 0 && <li className="chq-contacts-rail-row chq-empty">No duplicate groups found.</li>}
         </ul>

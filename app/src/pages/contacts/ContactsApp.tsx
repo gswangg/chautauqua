@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { apiGet, apiList, ApiError } from '../../lib/api';
+import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
 import { loadEventsOnce, useCurrentEvent } from '../../lib/useCurrentEvent';
 import { countOf } from '../../lib/plural';
 import { BulkEmailModal } from './BulkEmailModal';
@@ -219,6 +219,22 @@ export function ContactsApp() {
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load duplicates'));
   }, [refreshKey]);
 
+  // DEC-734 amendment (wave 2): the rail's Keep both persists the SAME
+  // POST /contacts/duplicates/dismiss the tab's DuplicatesView uses, so the
+  // pair stays dismissed across reload no matter which mount dismissed it.
+  // Optimistic: drop the row from duplicatePreview and decrement
+  // stats.duplicateCount immediately, then roll both back loudly if the
+  // persist fails.
+  function railKeepBoth(group: DuplicateGroup) {
+    setDuplicatePreview((prev) => prev.filter((g) => g.contactIds.join(',') !== group.contactIds.join(',')));
+    setStats((prev) => (prev ? { ...prev, duplicateCount: Math.max(0, prev.duplicateCount - 1) } : prev));
+    apiPost('/contacts/duplicates/dismiss', { contactIds: group.contactIds }).catch((err) => {
+      setDuplicatePreview((prev) => [...prev, group]);
+      setStats((prev) => (prev ? { ...prev, duplicateCount: prev.duplicateCount + 1 } : prev));
+      setError(err instanceof ApiError ? err.message : 'Failed to dismiss pair');
+    });
+  }
+
   useEffect(() => {
     setLoading(true);
     setError(null);
@@ -395,6 +411,7 @@ export function ContactsApp() {
             onSaveCurrentFilters={() => setPanel('segments')}
             duplicateCount={stats?.duplicateCount ?? 0}
             duplicatePreview={duplicatePreview}
+            onKeepBoth={railKeepBoth}
           />
         </div>
       )}

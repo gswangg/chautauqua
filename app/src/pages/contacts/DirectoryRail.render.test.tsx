@@ -46,6 +46,7 @@ function renderRail(overrides: Partial<ComponentProps<typeof DirectoryRail>> = {
         onSaveCurrentFilters={vi.fn()}
         duplicateCount={DUPLICATE_GROUPS.length}
         duplicatePreview={DUPLICATE_GROUPS}
+        onKeepBoth={vi.fn()}
         {...overrides}
       />
     </MemoryRouter>,
@@ -99,6 +100,18 @@ describe('DirectoryRail', () => {
     expect(screen.getByText('Sam Rivera · Sam Rivera')).toBeInTheDocument();
     const mergeLink = screen.getByRole('link', { name: 'Merge' });
     expect(mergeLink).toHaveAttribute('href', '/contacts/merge?ids=ct3,ct4');
+  });
+
+  it('renders the reason caption and a Keep both control alongside every duplicate pair, same as the Duplicates tab', () => {
+    const onKeepBoth = vi.fn();
+    renderRail({ onKeepBoth });
+
+    expect(screen.getByText('Same name and company')).toBeInTheDocument();
+
+    const keepBothButton = screen.getByRole('button', { name: 'Keep both' });
+    expect(keepBothButton).toBeInTheDocument();
+    keepBothButton.click();
+    expect(onKeepBoth).toHaveBeenCalledWith(DUPLICATE_GROUPS[0]);
   });
 
   it('renders an honest empty state for each section when there is nothing to show', () => {
