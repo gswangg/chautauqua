@@ -89,6 +89,11 @@ vi.mock("../src/server/repo/public", async () => {
     getPublicTracks: vi.fn(async () => []),
     // DEC-851: getPublicFormatOptions is now loaded alongside getPublicTracks.
     getPublicFormatOptions: vi.fn(async () => []),
+    // DEC-022 amendment (wave 63): the schedule dispatch also loads
+    // getPublicBreaksByDay -- stub it the same way, for the same reason
+    // (this test's synthetic `db` ({}) is never touched by a real drizzle
+    // select).
+    getPublicBreaksByDay: vi.fn(async () => new Map()),
     getPublicAgenda: vi.fn(async () => ({ items: AGENDA, total: AGENDA.length })),
     // DEC-310: schedule.ics now scopes its query to the requested ids
     // rather than hydrating the whole agenda — mirror that filtering here

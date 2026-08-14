@@ -186,6 +186,30 @@ describe("POST /api/v1/events/:eventId/breaks", () => {
     expect(body.error.fields?.day).toBeDefined();
   });
 
+  // DEC-417 (merge-train repair, wave 63): isDayWithinEventRange compares
+  // LEXICALLY, so on a multi-day event "2027-01-02" + junk sorts inside the
+  // window and used to reach the DB unbounded -- the SQLITE_TOOBIG class.
+  // isIsoDay (src/server/repo/agenda.ts, shared with isValidSlotInput) pins
+  // the shape, and therefore the length, before the range check runs.
+  it.each([
+    ["a lexically in-range day with a megabyte of junk appended", `2027-01-02${"9".repeat(100_000)}`],
+    ["a non-ISO shape", "Jan 2 2027"],
+    ["an unpadded day", "2027-1-2"],
+    ["a non-string", 20270102],
+  ])("refuses %s, naming the day field", async (_label, day) => {
+    const { db, sqlite } = makeTestDb();
+    seedEvent(sqlite, "event-a", "org-a", "2027-01-01", "2027-01-03");
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      postRequest("/api/v1/events/event-a/breaks", { day, label: "Lunch", startMin: 720, durationMin: 60 }),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields?.day).toBeDefined();
+    expect(await countBreaksForEvent(db, "event-a")).toBe(0);
+  });
+
   it("refuses a missing label, naming the field", async () => {
     const { db, sqlite } = makeTestDb();
     seedEvent(sqlite, "event-a", "org-a", "2027-01-01", "2027-01-03");
@@ -274,6 +298,24 @@ describe("GET /api/v1/events/:eventId/breaks", () => {
     const filtered = await app.request(new Request("http://local/api/v1/events/event-a/breaks?day=2027-01-02"));
     const filteredBody = (await filtered.json()) as { items: { label: string }[] };
     expect(filteredBody.items.map((b) => b.label)).toEqual(["Lunch"]);
+  });
+
+  // DEC-461(a)/DEC-488 (merge-train repair, wave 63): a cap-bounded list GET
+  // still ships the full envelope, and perPage is the real per-request
+  // ceiling (MAX_BREAKS_PER_EVENT) -- never `items.length || 1`, which
+  // DEC-466 killed. test/list-envelope-enumeration.test.ts grades this site
+  // mechanically; this asserts the wire shape it grades.
+  it("ships the DEC-461(a) envelope with MAX_BREAKS_PER_EVENT as perPage", async () => {
+    const { db, sqlite } = makeTestDb();
+    seedEvent(sqlite, "event-a", "org-a", "2027-01-01", "2027-01-03");
+    await createBreak(db, "event-a", { day: "2027-01-01", label: "Coffee", location: null, startMin: 600, durationMin: 15 });
+
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+    const res = await app.request(new Request("http://local/api/v1/events/event-a/breaks"));
+    const body = (await res.json()) as { items: unknown[]; total: number; page: number; perPage: number };
+    expect(body.total).toBe(1);
+    expect(body.page).toBe(1);
+    expect(body.perPage).toBe(MAX_BREAKS_PER_EVENT);
   });
 });
 

@@ -102,6 +102,11 @@ describe("DEC-555: the schedule page ships the one implementation, not a copy", 
         getPublicTracks: vi.fn(async () => []),
         // DEC-851: getPublicFormatOptions is now loaded alongside getPublicTracks.
         getPublicFormatOptions: vi.fn(async () => []),
+        // DEC-022 amendment (wave 63): the schedule dispatch also loads
+        // getPublicBreaksByDay -- stub it the same way, for the same reason
+        // (this test's synthetic `db` ({}) is never touched by a real
+        // drizzle select).
+        getPublicBreaksByDay: vi.fn(async () => new Map()),
         getPublicAgenda: vi.fn(async () => ({ items: AGENDA, total: AGENDA.length })),
         getPublicAgendaByIds: vi.fn(async (_db: unknown, _event: unknown, ids: string[]) =>
           AGENDA.filter((item) => ids.includes(item.submissionId)),

@@ -10,7 +10,7 @@ import { requireOrganizer, csrfJson } from "../../server/middleware";
 import { ApiError, parseBoundedText, parseBoundedOptionalText } from "../../server/http";
 import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-417
 import { MINUTES_PER_DAY } from "../../domain/schedule";
-import { getEventInfo, isDayWithinEventRange } from "../../server/repo/agenda"; // DEC-318
+import { getEventInfo, isDayWithinEventRange, isIsoDay } from "../../server/repo/agenda"; // DEC-318
 import {
   countBreaksForEvent,
   createBreak,
@@ -47,7 +47,12 @@ breaksRoutes.get("/events/:eventId/breaks", requireOrganizer, async (c) => {
 
   const day = c.req.query("day");
   const items = await listBreaksForEvent(c.var.db, eventId, day || undefined);
-  return c.json({ items });
+  // DEC-461(a) list envelope, in DEC-488's shape for a cap-bounded list:
+  // MAX_BREAKS_PER_EVENT is the real per-request ceiling (listBreaksForEvent
+  // refuses loudly above it), so it -- never `items.length || 1` (DEC-466) --
+  // is the perPage. This read is unpaginated on purpose: a break set is one
+  // page by construction.
+  return c.json({ items, total: items.length, page: 1, perPage: MAX_BREAKS_PER_EVENT });
 });
 
 interface CreateBreakBody {
@@ -91,8 +96,12 @@ breaksRoutes.post("/events/:eventId/breaks", requireOrganizer, csrfJson, async (
   const label = parseBoundedText(body.label, "label", { max: MAX_NAME_LENGTH, required: true });
   const location = parseBoundedOptionalText(body.location, "location", { max: MAX_NAME_LENGTH });
 
-  if (typeof body.day !== "string" || body.day.length === 0) {
-    fields.day = "Required";
+  // DEC-417: isDayWithinEventRange compares lexically, so it alone would let
+  // an arbitrarily long string through on a multi-day event. isIsoDay is the
+  // shared shape gate (src/server/repo/agenda.ts, same one isValidSlotInput
+  // uses) and pins `day` at exactly 10 chars before the range check runs.
+  if (!isIsoDay(body.day)) {
+    fields.day = "Required (YYYY-MM-DD)";
   } else if (!isDayWithinEventRange(body.day, event.startDate, event.endDate)) {
     fields.day = `Outside ${event.startDate}..${event.endDate}`;
   }

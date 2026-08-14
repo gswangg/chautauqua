@@ -58,9 +58,22 @@ export function computeDays(startDate: string, endDate: string): string[] {
   return days;
 }
 
+/** The ONE day-shape gate for request bodies: a zero-padded ISO
+ * `YYYY-MM-DD`, and nothing else. isDayWithinEventRange below compares
+ * LEXICALLY, so it accepts any string that sorts between the two bounds --
+ * `"2027-01-02" + 1MB of junk` sorts inside a multi-day event and would
+ * reach the DB (the DEC-417 SQLITE_TOOBIG class). Pinning the shape here
+ * bounds the value at exactly 10 chars for every caller. Used by
+ * isValidSlotInput below and by src/routes/api/breaks.ts (DEC-022
+ * amendment) -- never re-spelled per route. */
+export function isIsoDay(value: unknown): value is string {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
 /** True iff `day` (YYYY-MM-DD) falls within [startDate, endDate] inclusive,
  * using lexical string comparison (safe for zero-padded ISO dates). DEC-277:
- * slot writes and payload classification must agree on this boundary. */
+ * slot writes and payload classification must agree on this boundary.
+ * Callers must have already shape-gated `day` through isIsoDay. */
 export function isDayWithinEventRange(day: string, startDate: string, endDate: string): boolean {
   return day >= startDate && day <= endDate;
 }
@@ -670,7 +683,7 @@ export interface SlotInput {
 export function isValidSlotInput(body: unknown): body is SlotInput {
   if (typeof body !== "object" || body === null) return false;
   const b = body as Record<string, unknown>;
-  const dayOk = typeof b.day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b.day);
+  const dayOk = isIsoDay(b.day);
   const startOk =
     typeof b.startMin === "number" &&
     Number.isInteger(b.startMin) &&
