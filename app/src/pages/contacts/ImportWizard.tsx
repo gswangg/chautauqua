@@ -120,6 +120,18 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
   // csvText/header/plan/result exactly as before.
   const step = result ? 4 : plan ? 3 : header.length > 0 ? 2 : 1;
 
+  // w15-c: the dialog title names the current step; "Import contacts from
+  // CSV" moves down to the ModalFrame subtitle so it stays visible across
+  // every step instead of being the one static title.
+  const stepTitle =
+    step === 4
+      ? 'Import complete'
+      : step === 3
+        ? 'Review the import'
+        : step === 2
+          ? 'Match the columns'
+          : 'Choose a file';
+
   function handleFile(file: File) {
     setFileName(file.name);
     const reader = new FileReader();
@@ -234,11 +246,13 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
 
   return (
     <ModalFrame
-      title="Import contacts from CSV"
+      title={stepTitle}
+      subtitle="Import contacts from CSV"
       ariaLabel="Import contacts"
       onClose={onClose}
       closeDisabled={busy}
       modalClassName="chq-contacts-import"
+      size="wide"
       actions={actions}
     >
       <ol className="chq-steps" aria-label="Import steps">
@@ -249,28 +263,6 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
       </ol>
 
       {error && <div className="chq-error">{error}</div>}
-
-      {/* DEC-810: the session title lives with the wizard, not a specific
-          step -- it's tied to eventId (already chosen before the wizard
-          opened), not to CSV/header state, so it stays visible across
-          steps 1 and 2 rather than unmounting with step 1's file/paste
-          controls below. */}
-      {eventId && !plan && !result && (
-        <FormRow
-          label="Session title for this batch"
-          htmlFor="import-session-title"
-          help="Every contact added to this event by this import joins ONE accepted session with this title."
-        >
-          <input
-            id="import-session-title"
-            className="chq-input"
-            value={sessionTitle}
-            onChange={(e) => setSessionTitle(e.target.value)}
-            placeholder="e.g. Lightning talks"
-            required
-          />
-        </FormRow>
-      )}
 
       {/* Step 1 -- choose a file, unmounted entirely once a header row has
           been parsed (from either the file input or the paste box) so it
@@ -319,6 +311,27 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
           </div>
 
           {parseError && <div className="chq-error">{parseError}</div>}
+
+          {/* DEC-810: the session title is collected here, in the match
+              panel, once the event is already chosen (eventId) and a
+              header row is parsed -- not in step 1's file/paste screen,
+              which has no other event-scoped state. */}
+          {eventId && (
+            <FormRow
+              label="Session title for this batch"
+              htmlFor="import-session-title"
+              help="Every contact added to this event by this import joins ONE accepted session with this title."
+            >
+              <input
+                id="import-session-title"
+                className="chq-input"
+                value={sessionTitle}
+                onChange={(e) => setSessionTitle(e.target.value)}
+                placeholder="e.g. Lightning talks"
+                required
+              />
+            </FormRow>
+          )}
 
           <div className="chq-contacts-import-columns">
             {header.map((col, i) => {

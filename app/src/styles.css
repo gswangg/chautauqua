@@ -698,6 +698,13 @@ a:hover {
   gap: 16px;
 }
 
+/* w15-c: ModalFrame's size="wide" prop -- widens the frame itself for
+   dialogs whose body needs more than the default 560px (e.g. the CSV
+   import wizard's two-column match-the-columns grid). */
+.chq-modal.is-wide {
+  width: min(640px, 100%);
+}
+
 .chq-drawer {
   position: fixed;
   top: 0;

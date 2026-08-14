@@ -16,6 +16,10 @@ interface ModalFrameBaseProps {
   closeDisabled?: boolean;
   /** Extra class(es) appended to the .chq-modal element for page-specific sizing/layout. */
   modalClassName?: string;
+  /** Widens the frame itself. Default 560px; 'wide' is 640px (adds
+   * .is-wide to the .chq-modal element) for dialogs whose body needs the
+   * extra room (e.g. a two-column grid). */
+  size?: 'default' | 'wide';
   /** Body content, below the header. */
   children: ReactNode;
   /** Rendered inside .chq-modal-actions. Per DEC-651/the mock, the PRIMARY
@@ -89,7 +93,7 @@ export function FormRowPair({ children }: { children: ReactNode }) {
 // and a .chq-modal-actions slot. Every dialog in the app should be built on
 // this frame so the header/action-order contract can't drift per-modal.
 export function ModalFrame(props: ModalFrameProps) {
-  const { title, subtitle, ariaLabel, onClose, closeDisabled = false, modalClassName, children, actions } = props;
+  const { title, subtitle, ariaLabel, onClose, closeDisabled = false, modalClassName, size = 'default', children, actions } = props;
 
   useEscapeKey(!closeDisabled, onClose);
 
@@ -114,7 +118,13 @@ export function ModalFrame(props: ModalFrameProps) {
     </div>
   );
 
-  const modalClass = modalClassName ? `chq-modal ${modalClassName}` : 'chq-modal';
+  const modalClass = [
+    'chq-modal',
+    size === 'wide' ? 'is-wide' : null,
+    modalClassName ?? null,
+  ]
+    .filter(Boolean)
+    .join(' ');
   const body = (
     <>
       {head}
