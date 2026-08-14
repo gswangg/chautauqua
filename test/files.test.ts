@@ -1,35 +1,68 @@
 import { describe, expect, it } from "vitest";
 import {
   allowedUploadExtensions,
+  DOCUMENT_MAX_BYTES_FOR_TEST,
   extname,
   FILE_KINDS,
+  HEADSHOT_MAX_BYTES_FOR_TEST,
+  IMAGE_MAX_BYTES_FOR_TEST,
   isImageContentType,
   isValidFileKind,
   isValidVersionChain,
   sanitizeFilenameForKey,
+  TEXT_MAX_BYTES_FOR_TEST,
   uploadHintText,
   validateUpload,
+  VIDEO_MAX_BYTES,
+  WORKERS_REQUEST_BODY_MAX_BYTES,
+  MULTIPART_FRAMING_HEADROOM_BYTES_FOR_TEST,
 } from "../src/domain/files";
+
+const BYTES_PER_MB = 1024 * 1024;
+const VIDEO_MAX_MB = VIDEO_MAX_BYTES / BYTES_PER_MB;
 
 // w42-a: the hint text must not advertise the video tier for anything
 // other than the 'recording' kind.
 describe("uploadHintText", () => {
-  it("omits video extensions and the 250 MB note for a non-recording kind", () => {
+  it(`omits video extensions and the ${VIDEO_MAX_MB} MB note for a non-recording kind`, () => {
     const text = uploadHintText("handout");
     expect(text).not.toMatch(/mp4|mov|webm/);
-    expect(text).not.toMatch(/250 MB/);
+    expect(text).not.toMatch(new RegExp(`${VIDEO_MAX_MB} MB`));
   });
 
   it("omits video for no kind at all (default/unbound field)", () => {
     const text = uploadHintText();
     expect(text).not.toMatch(/mp4|mov|webm/);
-    expect(text).not.toMatch(/250 MB/);
+    expect(text).not.toMatch(new RegExp(`${VIDEO_MAX_MB} MB`));
   });
 
-  it("includes video extensions and the 250 MB note for kind:'recording'", () => {
+  it(`includes video extensions and the ${VIDEO_MAX_MB} MB note for kind:'recording'`, () => {
     const text = uploadHintText("recording");
     expect(text).toMatch(/mp4/);
-    expect(text).toMatch(/250 MB/);
+    expect(text).toMatch(new RegExp(`${VIDEO_MAX_MB} MB`));
+  });
+});
+
+// DEC-879 (wave-22 amendment): the recording cap must be derived from the
+// Workers request-body ceiling, with headroom for multipart framing, and no
+// upload tier may advertise a size the edge itself would refuse.
+describe("VIDEO_MAX_BYTES derivation", () => {
+  it("VIDEO_MAX_BYTES + multipart framing headroom fits under the Workers request-body ceiling", () => {
+    expect(VIDEO_MAX_BYTES + MULTIPART_FRAMING_HEADROOM_BYTES_FOR_TEST).toBeLessThanOrEqual(
+      WORKERS_REQUEST_BODY_MAX_BYTES,
+    );
+  });
+
+  it("every upload tier constant stays strictly below the Workers request-body ceiling", () => {
+    for (const tierBytes of [
+      DOCUMENT_MAX_BYTES_FOR_TEST,
+      IMAGE_MAX_BYTES_FOR_TEST,
+      TEXT_MAX_BYTES_FOR_TEST,
+      VIDEO_MAX_BYTES,
+      HEADSHOT_MAX_BYTES_FOR_TEST,
+    ]) {
+      expect(tierBytes).toBeLessThan(WORKERS_REQUEST_BODY_MAX_BYTES);
+    }
   });
 });
 
@@ -174,15 +207,15 @@ describe("validateUpload", () => {
 
 // DEC-879: a recording is a deliverable like any other file kind.
 describe("validateUpload — recording (DEC-879)", () => {
-  it("accepts a 186 MB mp4 under the 250 MB video cap", () => {
-    const result = validateUpload({ filename: "talk.mp4", sizeBytes: 186 * 1024 * 1024, kind: "recording" });
+  it(`accepts a 90 MB mp4 under the ${VIDEO_MAX_MB} MB video cap`, () => {
+    const result = validateUpload({ filename: "talk.mp4", sizeBytes: 90 * BYTES_PER_MB, kind: "recording" });
     expect(result).toEqual({ ok: true, ext: "mp4", servedContentType: "video/mp4" });
   });
 
-  it("rejects a 300 MB mp4 over the 250 MB video cap", () => {
-    const result = validateUpload({ filename: "talk.mp4", sizeBytes: 300 * 1024 * 1024, kind: "recording" });
+  it(`rejects a 100 MB mp4 over the ${VIDEO_MAX_MB} MB video cap`, () => {
+    const result = validateUpload({ filename: "talk.mp4", sizeBytes: 100 * BYTES_PER_MB, kind: "recording" });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.message).toMatch(/250 MB/);
+    if (!result.ok) expect(result.message).toMatch(new RegExp(`${VIDEO_MAX_MB} MB`));
   });
 
   it("accepts mov and webm too, never with an HTML/sniffable content type", () => {
@@ -210,8 +243,8 @@ describe("validateUpload — recording (DEC-879)", () => {
     expect(allowedUploadExtensions("recording")).toEqual(expect.arrayContaining(["mp4", "mov", "webm"]));
   });
 
-  it("accepts a large (240 MB) mp4 for kind:'recording', under the 250 MB cap", () => {
-    const result = validateUpload({ filename: "keynote.mp4", sizeBytes: 240 * 1024 * 1024, kind: "recording" });
+  it(`accepts a large (94 MB) mp4 for kind:'recording', under the ${VIDEO_MAX_MB} MB cap`, () => {
+    const result = validateUpload({ filename: "keynote.mp4", sizeBytes: 94 * BYTES_PER_MB, kind: "recording" });
     expect(result).toEqual({ ok: true, ext: "mp4", servedContentType: "video/mp4" });
   });
 

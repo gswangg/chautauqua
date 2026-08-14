@@ -147,7 +147,8 @@ export function FormField(props: { field: FormFieldDef; value: unknown; error?: 
       </label>
       {field.helpText ? <p class="help">{field.helpText}</p> : null}
       {/* CFP file fields always upload as kind:'handout' (src/routes/public/submit.tsx)
-          — the hint must not advertise the recording-only video/250MB tier. */}
+          — the hint must not advertise the recording-only video tier (its cap
+          is derived from VIDEO_MAX_BYTES, see src/domain/files.ts). */}
       {field.kind === "file" ? <p class="help">{uploadHintText("handout")}</p> : null}
       {error ? (
         // DEC-367: errors are distinguished by type (weight/marker), never
