@@ -457,4 +457,75 @@ describe('FilesLibrary render smoke', () => {
     if (!who) throw new Error('who subline not found');
     expect(who.textContent).toContain('—');
   });
+
+  // DEC-678 amendment (B7, task-w46-e): a loaded, empty visible set never
+  // renders the <table> — no columnheader role survives. With no
+  // search/kind facet in flight it's 'fresh' (no button at all — files
+  // arrive from speakers, so this page offers no producer action); with a
+  // facet applied it's 'filtered' (names the facet, offers exactly one
+  // escape that clears it).
+  describe('B7 zero-row states render no <table> (DEC-678 amendment)', () => {
+    it('renders no columnheader and no button at all when the library is fresh (no facet)', async () => {
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([], { kindCounts: ALL_ZERO_KIND_COUNTS }),
+      });
+
+      render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('No deliverable files yet.')).toBeInTheDocument();
+      });
+      expect(screen.queryAllByRole('columnheader')).toHaveLength(0);
+      // No 'Download all' (the set is empty), and B7 rule 3 forbids
+      // fabricating a primary action here (the producer is the speaker, not
+      // this page) — no escape link either, since there is no facet to
+      // clear.
+      expect(screen.queryByRole('button', { name: /Download all/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /./ })).not.toBeInTheDocument();
+    });
+
+    it('renders no columnheader, names the search facet, and offers exactly one escape that clears it', async () => {
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([], { kindCounts: ALL_ZERO_KIND_COUNTS }),
+      });
+
+      render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('No deliverable files yet.')).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByLabelText('Search files'), { target: { value: 'nonexistent-file' } });
+
+      await waitFor(() => {
+        expect(screen.getByText(/Filtered by search "nonexistent-file"/)).toBeInTheDocument();
+      });
+      expect(screen.queryAllByRole('columnheader')).toHaveLength(0);
+      const escapeButtons = screen.getAllByRole('button', { name: 'Clear filters' });
+      expect(escapeButtons).toHaveLength(1);
+
+      fireEvent.click(escapeButtons[0]!);
+      await waitFor(() => {
+        expect(screen.getByLabelText('Search files')).toHaveValue('');
+      });
+    });
+
+    it('still renders a <table> with columnheaders while loading, even with zero items', async () => {
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([], { kindCounts: ALL_ZERO_KIND_COUNTS }),
+      });
+
+      render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
+
+      // Before the fetch resolves, the loading branch still renders the
+      // full table shell with its columnheaders (untouched by this
+      // amendment).
+      expect(screen.queryAllByRole('columnheader').length).toBeGreaterThan(0);
+
+      await waitFor(() => {
+        expect(screen.getByText('No deliverable files yet.')).toBeInTheDocument();
+      });
+    });
+  });
 });

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { DELIVERABLE_LABELS, FILE_KINDS, type ContentStatus, type ContentSubmissionListItem } from './types';
 import { WORKLIST_TABS, worklistStatusLabel, worklistStatusEmphasisClass, type WorklistTab } from './worklist';
 import { PageSkeleton } from '../../components/PageSkeleton';
+import { EmptyState } from '../../components/EmptyState';
 import { formatRelativeDays, formatDayLabel } from '../../lib/dates';
 import { paginationSummary } from '../../lib/pagination-summary';
 
@@ -201,69 +202,98 @@ export function SessionList({
           changes' moved off this row onto the deliverable-detail screen
           (docs/design/README.md); the row keeps only Approve + Open, Open
           selecting the submission the same way the row click already does. */}
-      <table className="chq-table chq-content-table">
-        <thead>
-          <tr>
-            {/* DEC-825 amendment: selection column leads the DEC-692 column
-                set (Session · Speaker · Latest file · Status · actions) —
-                bulk selection is added TO that IA, it does not replace it. */}
-            <th>
-              <input
-                className="chq-check"
-                type="checkbox"
-                aria-label="Select all on page"
-                checked={allSelected}
-                ref={(el) => {
-                  if (el) el.indeterminate = !allSelected && someSelected;
-                }}
-                onChange={togglePage}
-              />
-            </th>
-            <th>Session</th>
-            <th>Speaker</th>
-            <th>Latest file</th>
-            <th>Status</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {/* DEC-678 (wave-3/wave-8, proven by app/src/admin-first-paint.
-              render.test.tsx): the worklist IS Content's main region, so its
-              wait renders shaped placeholder rows on the FIRST frame. A
-              DelayedLoading here withheld everything for 250ms, which painted
-              column headers over an empty body -- the "blank/heading-only on
-              first load" report -- rather than the shape of what is coming. */}
-          {loading && (
+      {loading ? (
+        <table className="chq-table chq-content-table">
+          <thead>
+            <tr>
+              <th>
+                <input
+                  className="chq-check"
+                  type="checkbox"
+                  aria-label="Select all on page"
+                  checked={allSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = !allSelected && someSelected;
+                  }}
+                  onChange={togglePage}
+                />
+              </th>
+              <th>Session</th>
+              <th>Speaker</th>
+              <th>Latest file</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {/* DEC-678 (wave-3/wave-8, proven by app/src/admin-first-paint.
+                render.test.tsx): the worklist IS Content's main region, so its
+                wait renders shaped placeholder rows on the FIRST frame. A
+                DelayedLoading here withheld everything for 250ms, which painted
+                column headers over an empty body -- the "blank/heading-only on
+                first load" report -- rather than the shape of what is coming. */}
             <tr>
               <td colSpan={6}>
                 <PageSkeleton variant="table" label="Loading sessions…" />
               </td>
             </tr>
-          )}
-          {/* DEC-881: the default tab is now 'needs_decision' — its empty
-              state must read honestly ("nothing needs a decision") rather
-              than defaulting away from the frame (which is what DEC-665's
-              'all' default did), and offers one click to All so an empty
-              needs-decision queue never reads as an empty event. */}
-          {loaded && !loading && visible.length === 0 && tab === 'needs_decision' && (
+          </tbody>
+        </table>
+      ) : loaded && visible.length === 0 ? (
+        // DEC-678 amendment (B7): a loaded, empty visible set never renders
+        // the <table> — a full <thead> over a one-cell apology is exactly
+        // the pattern B7 forbids. 'needs_decision'/'approved' narrow away
+        // from 'all' (DEC-881's default), so an empty result there is
+        // 'filtered' (names the tab, offers the existing "View all accepted
+        // sessions" escape back to 'all'); an empty 'all' tab has no facet
+        // narrowing it, so it's 'fresh' (no escape -- there is nothing to
+        // clear -- and no fabricated action, since sessions arrive here via
+        // acceptance/scheduling, not a control on this page).
+        tab === 'needs_decision' ? (
+          <EmptyState
+            variant="filtered"
+            what="Nothing needs a decision right now."
+            reason={`Filtered by the "${TAB_LABELS.needs_decision}" tab.`}
+            escape={{ label: 'View all accepted sessions', onClick: () => onTabChange('all') }}
+          />
+        ) : tab !== 'all' ? (
+          <EmptyState
+            variant="filtered"
+            what="No submissions in this view."
+            reason={`Filtered by the "${TAB_LABELS[tab]}" tab.`}
+            escape={{ label: 'View all accepted sessions', onClick: () => onTabChange('all') }}
+          />
+        ) : (
+          <EmptyState variant="fresh" what="No accepted sessions yet." />
+        )
+      ) : (
+        <table className="chq-table chq-content-table">
+          <thead>
             <tr>
-              <td colSpan={6} className="chq-empty">
-                Nothing needs a decision right now.{' '}
-                <button type="button" className="chq-link-button" onClick={() => onTabChange('all')}>
-                  View all accepted sessions
-                </button>
-              </td>
+              {/* DEC-825 amendment: selection column leads the DEC-692 column
+                  set (Session · Speaker · Latest file · Status · actions) —
+                  bulk selection is added TO that IA, it does not replace it. */}
+              <th>
+                <input
+                  className="chq-check"
+                  type="checkbox"
+                  aria-label="Select all on page"
+                  checked={allSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = !allSelected && someSelected;
+                  }}
+                  onChange={togglePage}
+                />
+              </th>
+              <th>Session</th>
+              <th>Speaker</th>
+              <th>Latest file</th>
+              <th>Status</th>
+              <th></th>
             </tr>
-          )}
-          {loaded && !loading && visible.length === 0 && tab !== 'needs_decision' && (
-            <tr>
-              <td colSpan={6} className="chq-empty">
-                No submissions in this view.
-              </td>
-            </tr>
-          )}
-          {!loading &&
-            visible.map((item) => {
+          </thead>
+          <tbody>
+            {visible.map((item) => {
               const [firstSpeaker, ...restSpeakers] = item.speakers;
               return (
                 <tr key={item.id} className="chq-content-row" onClick={() => onSelect(item.id)}>
@@ -346,8 +376,9 @@ export function SessionList({
                 </tr>
               );
             })}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      )}
 
       <div className="chq-content-pager">
         <button type="button" className="chq-btn chq-btn-secondary" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
