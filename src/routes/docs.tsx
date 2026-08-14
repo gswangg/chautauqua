@@ -170,6 +170,7 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
       { method: "POST", path: "/api/v1/events/:eventId/tasks", role: "organizer" },
       { method: "PATCH", path: "/api/v1/tasks/:id", role: "organizer" },
       { method: "DELETE", path: "/api/v1/tasks/:id", role: "organizer" },
+      { method: "GET", path: "/api/v1/tasks/:id/delete-preview", role: "organizer (DEC-933 amendment: names what the DELETE above destroys)" },
       { method: "POST", path: "/api/v1/tasks/:id/assign", role: "organizer" },
       { method: "PATCH", path: "/api/v1/task-assignments/:id", role: "organizer or assigned speaker" },
       { method: "GET", path: "/api/v1/task-assignments/:id/response", role: "organizer (kind='form' only)" },
