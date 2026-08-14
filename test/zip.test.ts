@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildZip, crc32 } from "../src/lib/zip";
+import { buildZip, crc32, zipEntryPath } from "../src/lib/zip";
 
 function b(bytes: Uint8Array, offset: number): number {
   return bytes[offset] ?? 0;
@@ -100,5 +100,76 @@ describe("buildZip", () => {
     ]);
     expect(u16le(zip, eocdStart + 10)).toBe(entries.length);
     expect(u32le(zip, eocdStart + 16)).toBe(offset);
+  });
+
+  it("sets general purpose bit flag 0x0800 (UTF-8 name) on both the local header and the central directory record", () => {
+    const data = enc.encode("hello world");
+    const zip = buildZip([{ name: "hello.txt", data }]);
+
+    // Local file header: general purpose bit flag is the u16 at offset 6.
+    const localFlag = u16le(zip, 6);
+    expect(localFlag).toBe(0x0800);
+
+    const nameLen = u16le(zip, 26);
+    const localHeaderLen = 30 + nameLen;
+    const localRecordLen = localHeaderLen + data.length;
+    const cdStart = localRecordLen;
+
+    // Central directory record: magic(4) + version made by(2) +
+    // version needed to extract(2) = 8, then the general purpose bit flag.
+    const cdFlag = u16le(zip, cdStart + 8);
+    expect(cdFlag).toBe(0x0800);
+  });
+
+  it("round-trips a CJK entry name as UTF-8 bytes under the local header and central directory", () => {
+    const name = "講演-資料.pdf"; // "講演-資料.pdf"
+    const data = enc.encode("cjk name test");
+    const zip = buildZip([{ name, data }]);
+
+    const nameLen = u16le(zip, 26);
+    const nameBytes = zip.slice(30, 30 + nameLen);
+    const decoded = new TextDecoder("utf-8", { fatal: true }).decode(nameBytes);
+    expect(decoded).toBe(name);
+
+    const localHeaderLen = 30 + nameLen;
+    const localRecordLen = localHeaderLen + data.length;
+    const cdStart = localRecordLen;
+    // Central directory header is 46 bytes before the name field.
+    const cdNameLen = u16le(zip, cdStart + 28);
+    expect(cdNameLen).toBe(nameLen);
+    const cdNameBytes = zip.slice(cdStart + 46, cdStart + 46 + cdNameLen);
+    expect(new TextDecoder("utf-8", { fatal: true }).decode(cdNameBytes)).toBe(name);
+  });
+});
+
+describe("zipEntryPath", () => {
+  it("joins sanitized segments with a single slash", () => {
+    expect(zipEntryPath(["1-my-talk", "slides.pdf"])).toBe("1-my-talk/slides.pdf");
+  });
+
+  it("strips any / or \\ a segment contains, producing exactly one slash for a two-segment path", () => {
+    const path = zipEntryPath(["1-my-talk", "../../etc/passwd"]);
+    const slashCount = (path.match(/\//g) ?? []).length;
+    expect(slashCount).toBe(1);
+    // No segment (split on the single slash we produced) is literally ".."
+    // or "." — the sanitizer strips the / and \ *inside* a segment, it
+    // doesn't turn an embedded ".." into a path-traversal segment of its own.
+    for (const segment of path.split("/")) {
+      expect(segment).not.toBe("..");
+      expect(segment).not.toBe(".");
+    }
+  });
+
+  it("maps a segment that is exactly . or .. to _", () => {
+    expect(zipEntryPath(["..", "file.txt"])).toBe("_/file.txt");
+    expect(zipEntryPath([".", "file.txt"])).toBe("_/file.txt");
+  });
+
+  it("maps a segment that becomes empty after stripping to _", () => {
+    expect(zipEntryPath(["///", "file.txt"])).toBe("_/file.txt");
+  });
+
+  it("strips C0 control characters and DEL", () => {
+    expect(zipEntryPath(["a" + String.fromCharCode(0x00) + "b" + String.fromCharCode(0x1f) + "c" + String.fromCharCode(0x7f), "file.txt"])).toBe("abc/file.txt");
   });
 });
