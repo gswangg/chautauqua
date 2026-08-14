@@ -24,7 +24,8 @@ export type ApiErrorCode =
   | "not_found"
   | "invalid"
   | "conflict"
-  | "internal";
+  | "internal"
+  | "payload_too_large";
 
 const STATUS_BY_CODE: Record<ApiErrorCode, number> = {
   unauthorized: 401,
@@ -33,6 +34,7 @@ const STATUS_BY_CODE: Record<ApiErrorCode, number> = {
   invalid: 400,
   conflict: 409,
   internal: 500,
+  payload_too_large: 413,
 };
 
 export class ApiError extends Error {
@@ -245,10 +247,10 @@ export function errorResponse(c: Context<AppEnv>, err: unknown): Response {
     if (wantsHtml) {
       return c.html(
         renderHtmlError(err.message, c.req.header("referer") ?? undefined, c.req.url),
-        err.status as 400 | 401 | 403 | 404 | 409,
+        err.status as 400 | 401 | 403 | 404 | 409 | 413,
       );
     }
-    return c.json(errorEnvelope(err), err.status as 400 | 401 | 403 | 404 | 409);
+    return c.json(errorEnvelope(err), err.status as 400 | 401 | 403 | 404 | 409 | 413);
   }
   // Fail loudly: unexpected errors are never swallowed, always logged.
   console.error("unhandled error", err);

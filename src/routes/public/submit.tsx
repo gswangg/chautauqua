@@ -595,9 +595,11 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
   // Upload every valid file answer to R2 BEFORE any row is created — a
   // submission id doesn't exist yet, so the key is rooted under
   // `sub/pending/` rather than `sub/<submissionId>/`; the same key is
-  // referenced on the file row below and is never renamed. Streamed
-  // (file.stream(), not file.arrayBuffer()) so a large upload is never
-  // buffered whole in memory.
+  // referenced on the file row below and is never renamed. requestBodyLimit
+  // (src/server/body-limit.ts) refuses an oversized request by its
+  // Content-Length header before parseBody ever runs, ahead of any handler;
+  // validateUpload (src/domain/files.ts) then enforces the per-kind size cap
+  // once the body has actually been parsed.
   const fileStore = makeFileStore(c.env.FILES);
   // DEC-132: only proceed for fields that survived validation with the
   // "pending" placeholder (visible + valid upload) — hidden fields never
