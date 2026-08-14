@@ -141,10 +141,6 @@ export function matchPattern(pattern: PathPattern, path: string): boolean {
  * (enforced by the source-scanning test) is what makes the PUBLIC-
  * AFFECTING list trustworthy as "everything not here bumps".
  *
- * /api/v1/submissions/:id/files (raw attachment upload) is here, not in
- * PUBLIC-AFFECTING: no public route ever renders a submission's files —
- * only submission content-status (separately listed below, PUBLIC-
- * AFFECTING) gates whether approved content is publicly visible.
  * /api/v1/forms/* and /api/v1/fields/* (CFP form-builder) are here too:
  * the /submit/:eventSlug page that renders them is never behind the
  * cache (only /e/* and /embed/* are), so editing the form structure has
@@ -182,16 +178,22 @@ export const NEVER_PUBLIC: PathPattern[] = [
   "/api/v1/events/:id/resources",
   "/api/v1/resources/*",
   "/api/v1/files/:id/comments",
-  // DEC-713: deleting a file version — same reasoning as
-  // /api/v1/submissions/:id/files above, no public route ever renders a
-  // submission's files.
+  // DEC-713: deleting a file version writes no content_status (it removes a
+  // stored version row/object; see files.ts's DELETE /files/:id handler) —
+  // it doesn't touch content_status at all, so nothing gates on it and no
+  // public row's visibility can change from this write.
   "/api/v1/files/:id",
   "/api/v1/events/:id/files/archive",
-  "/api/v1/submissions/:id/files",
   "/api/v1/forms/*",
   "/api/v1/fields/*",
   "/api/v1/users*",
-  "/portal/tasks/*",
+  // DEC-627: only the three non-upload task-assignment mutations below are
+  // never-public; /portal/tasks/:id/upload reopens content review (DEC-020)
+  // and is PUBLIC-AFFECTING (see below) — a wildcard "/portal/tasks/*" would
+  // have silently swallowed it too.
+  "/portal/tasks/:id/complete",
+  "/portal/tasks/:id/form",
+  "/portal/tasks/:id/comments",
   // /submit/:eventSlug[/save-draft] (public CFP submission create/draft) is
   // never-public too: a freshly-created submission starts in a non-public
   // status and only becomes visible once an organizer accepts it, which
@@ -232,6 +234,14 @@ export const PUBLIC_AFFECTING: PathPattern[] = [
   "/api/v1/submissions/:id/participants",
   "/api/v1/submissions/:id/participants/:participantId",
   "/api/v1/submissions/:id/content-status",
+  // DEC-020 reopen amendment: a raw attachment upload calls
+  // reopenContentReview, writing content_status back to 'pending' for a
+  // submission that may have been publicly approved — the same gate
+  // /api/v1/submissions/:id/content-status above bumps for. "no public
+  // route ever renders a submission's files" (this list's old rationale)
+  // is true but irrelevant: the write this route performs isn't the file
+  // row, it's the content_status row that gates /e/*|/embed/* visibility.
+  "/api/v1/submissions/:id/files",
   // DEC-741: the content note endpoint posts to the chain thread AND (when
   // requestChanges) performs the very same content_status write that
   // /api/v1/submissions/:id/content-status above bumps for, so it is
@@ -266,6 +276,10 @@ export const PUBLIC_AFFECTING: PathPattern[] = [
   "/portal/submissions/*",
   "/portal/profile",
   "/portal/invitations/*",
+  // DEC-020 reopen amendment: the speaker-portal task-upload path reaches
+  // reopenContentReview the same way /api/v1/submissions/:id/files does
+  // (see above) — same content_status write, same public gate.
+  "/portal/tasks/:id/upload",
 ];
 
 /** DEC-627: GET/HEAD/OPTIONS never mutate, so they're always false without

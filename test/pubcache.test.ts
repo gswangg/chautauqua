@@ -385,11 +385,13 @@ describe("affectsPublicOutput (DEC-627)", () => {
     expect(affectsPublicOutput("DELETE", "/api/v1/resources/r1")).toBe(false);
     expect(affectsPublicOutput("POST", "/api/v1/files/f1/comments")).toBe(false);
     expect(affectsPublicOutput("POST", "/api/v1/events/e1/files/archive")).toBe(false);
-    expect(affectsPublicOutput("POST", "/api/v1/submissions/s1/files")).toBe(false);
+    expect(affectsPublicOutput("DELETE", "/api/v1/files/f1")).toBe(false);
     expect(affectsPublicOutput("PATCH", "/api/v1/forms/f1")).toBe(false);
     expect(affectsPublicOutput("DELETE", "/api/v1/fields/fl1")).toBe(false);
     expect(affectsPublicOutput("POST", "/api/v1/users")).toBe(false);
     expect(affectsPublicOutput("POST", "/portal/tasks/a1/complete")).toBe(false);
+    expect(affectsPublicOutput("POST", "/portal/tasks/a1/form")).toBe(false);
+    expect(affectsPublicOutput("POST", "/portal/tasks/a1/comments")).toBe(false);
   });
 
   it("PUBLIC-AFFECTING: events/tracks/rooms/submissions/agenda/contacts/portal-submission writes bump", () => {
@@ -400,6 +402,8 @@ describe("affectsPublicOutput (DEC-627)", () => {
     expect(affectsPublicOutput("POST", "/api/v1/submissions/s1/clone")).toBe(true);
     expect(affectsPublicOutput("POST", "/api/v1/events/e1/submissions/status")).toBe(true);
     expect(affectsPublicOutput("POST", "/api/v1/submissions/s1/content-status")).toBe(true);
+    expect(affectsPublicOutput("POST", "/api/v1/submissions/s1/files")).toBe(true);
+    expect(affectsPublicOutput("POST", "/portal/tasks/a1/upload")).toBe(true);
     expect(affectsPublicOutput("PUT", "/api/v1/submissions/s1/slot")).toBe(true);
     expect(affectsPublicOutput("POST", "/api/v1/events/e1/agenda/publish")).toBe(true);
     expect(affectsPublicOutput("POST", "/api/v1/events/e1/agenda/auto-schedule")).toBe(true);
