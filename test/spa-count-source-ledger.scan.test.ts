@@ -23,11 +23,19 @@
 //     the pair-total defect that motivated this scan by having the merge
 //     screen resolve its own pair server-side: GET /contacts/duplicates?ids=
 //     via apiGet<{ items; total; position }>, reading position/total straight
-//     off that envelope. So it is the one place this codebase calls apiGet
-//     against a paginated list route, and it is therefore NOT an apiList
-//     caller and not in this population. Asserted below in both directions
-//     (absent from the raw scan, and genuinely reading .total off the
-//     envelope) so a revert of DEC-748 cannot silently slip past this file.
+//     off that envelope. So it is NOT an apiList caller and not in THIS
+//     population. Asserted below in both directions (absent from the raw
+//     scan, and genuinely reading .total off the envelope) so a revert of
+//     DEC-748 cannot silently slip past this file.
+//
+//     wave-41 amendment (task d): this file's own apiList-only scan cannot
+//     see the apiGet family at all, so it is not "the one place this
+//     codebase calls apiGet against a paginated list route" -- that was a
+//     false sentence with no code behind it (FilesLibrary.tsx also does,
+//     against GET /events/:eventId/files, src/routes/files.ts). The apiGet-
+//     envelope family (MergePage.tsx included) is now owned, enumerated,
+//     and ledgered by the sibling scan test/spa-envelope-reader-ledger.scan.
+//     test.ts -- this file's job stays exactly apiList<T>.
 //
 // VERDICT KEY (one per population member):
 //   'envelope'    -- every whole-set count this module renders reads
@@ -280,7 +288,7 @@ describe("spa-count-source-ledger.scan (DEC-518 wave-39 amendment)", () => {
     }
   });
 
-  it("MergePage.tsx is out of the population because DEC-748 made it an apiGet-envelope reader, not because it was quietly dropped", () => {
+  it("MergePage.tsx is out of THIS (apiList-only) population because DEC-748 made it an apiGet-envelope reader -- ledgered instead by the sibling apiGet scan, not quietly dropped", () => {
     expect(rawScan, `${MERGE_PAGE} is calling apiList again -- it must be ledgered, not treated as out of population`).not.toContain(MERGE_PAGE);
     const src = readFileSync(join(ROOT, MERGE_PAGE), "utf8");
     expect(src, `${MERGE_PAGE} must still resolve its pair via apiGet against /contacts/duplicates (DEC-748)`).toMatch(/apiGet\s*<[^>]*>\s*\(\s*[`'"]\/contacts\/duplicates/);
