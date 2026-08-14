@@ -36,7 +36,16 @@ const EXCLUDED = new Set([
 
 const REPO_ROOT = join(__dirname, "..");
 const APP_SRC = join(REPO_ROOT, "app/src");
-const DELAYED_LOADING_FILE = join(APP_SRC, "components", "DelayedLoading.tsx");
+
+// DEC-678's wave-3 amendment adds a SECOND sanctioned loading primitive:
+// PageSkeleton renders a page's MAIN region structure on the first frame,
+// where DelayedLoading stays the inline-sub-region wait. Both are the
+// primitives this scan protects, not call sites hand-rolling a literal, so
+// both own a "Loading" default label and are exempt from their own guard.
+const PRIMITIVE_FILES = [
+  join(APP_SRC, "components", "DelayedLoading.tsx"),
+  join(APP_SRC, "components", "PageSkeleton.tsx"),
+];
 
 /** Recursively collect `.tsx` files under `dir`, skipping test files. */
 function glob(dir: string): string[] {
@@ -54,7 +63,7 @@ function glob(dir: string): string[] {
   return out;
 }
 
-const tsxFiles = glob(APP_SRC).filter((f) => f !== DELAYED_LOADING_FILE);
+const tsxFiles = glob(APP_SRC).filter((f) => !PRIMITIVE_FILES.includes(f));
 
 interface Violation {
   file: string;
@@ -72,10 +81,11 @@ function scanFile(file: string): Violation[] {
   const violations: Violation[] = [];
   lines.forEach((line, i) => {
     if (!LOADING_RE.test(line)) return;
-    // Text passed as the `label` prop to <DelayedLoading /> (or the
-    // component's own JSX name in an import) IS the sanctioned path --
-    // only a "Loading" that appears outside that call is a violation.
-    if (/DelayedLoading/.test(line)) return;
+    // Text passed as the `label` prop to <DelayedLoading /> or
+    // <PageSkeleton /> (or either component's own JSX name in an import)
+    // IS the sanctioned path -- only a "Loading" that appears outside such
+    // a call is a violation.
+    if (/DelayedLoading|PageSkeleton/.test(line)) return;
     violations.push({ file: rel, line: i + 1, text: line.trim() });
   });
   return violations;

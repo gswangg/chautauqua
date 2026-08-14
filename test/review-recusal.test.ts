@@ -297,11 +297,16 @@ describe("DEC-271: reviewer recusal", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       items: { submissionId: string }[];
-      recused: { submissionId: string; ref: string; title: string; reason: string | null }[];
+      recused: { submissionId: string; ref: string; title: string; reason: string | null; format: string | null }[];
     };
     expect(body.items.some((i) => i.submissionId === SUB_1.id)).toBe(false);
     expect(body.items.some((i) => i.submissionId === SUB_2.id)).toBe(true);
-    expect(body.recused).toEqual([{ submissionId: SUB_1.id, ref: SUB_1.ref, title: SUB_1.title, reason: "conflict" }]);
+    // `format` per DEC-874's wave-72 amendment: a recused row keeps the same
+    // meta line an actionable row shows, so the recused projection carries
+    // its source's vocabulary. SUB_1 has no format set in this fixture.
+    expect(body.recused).toEqual([
+      { submissionId: SUB_1.id, ref: SUB_1.ref, title: SUB_1.title, reason: "conflict", format: null },
+    ]);
   });
 
   it("PUT evaluations 409s once the reviewer has recused from that submission", async () => {

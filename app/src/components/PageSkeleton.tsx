@@ -81,8 +81,13 @@ function DetailRows({ rows }: { rows: number }) {
  * announces the wait instead of silence.
  */
 export function PageSkeleton({ rows = 6, variant = 'table', label = 'Loading…' }: PageSkeletonProps) {
+  // No `chq-skeleton-${variant}` modifier on the container: the variant
+  // already selects which subtree renders below, and each subtree carries
+  // its own shape classes, so a container modifier would be a class with no
+  // rule (and `chq-skeleton-detail` would collide with the inner wrapper of
+  // the same name).
   return (
-    <div className={`chq-skeleton chq-skeleton-${variant}`} role="status" aria-busy="true">
+    <div className="chq-skeleton" role="status" aria-busy="true">
       <span className="chq-skeleton-sr-label">{label}</span>
       {variant === 'table' && <TableRows rows={rows} />}
       {variant === 'list' && <ListRows rows={rows} />}

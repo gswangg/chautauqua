@@ -3,6 +3,13 @@
    flat placeholder bars in the token palette, never a spinner/shimmer that
    would need its own timing story. */
 
+/* The container itself: a plain block that fills the main region it stands
+   in for, so the variants below lay out against the page's real width. */
+.chq-skeleton {
+  display: block;
+  width: 100%;
+}
+
 .chq-skeleton-sr-label {
   position: absolute;
   width: 1px;
