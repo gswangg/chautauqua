@@ -115,6 +115,34 @@ function nearestEnclosingFunction(lines: string[], startLineIdx: number): string
   return "(module scope)";
 }
 
+/** Pure function over a single file's source text: every try/catch block in
+ * `fileText` whose try body calls mailer.send(/makeMailer( and whose catch
+ * body does not surface the outcome (per SURFACE_PATTERNS) is a violation.
+ * `repoRelPath` is used only to label the returned hits -- no filesystem
+ * access happens here, so this is the predicate the negative-control tests
+ * below feed synthetic snippets through directly. */
+function findMailSwallowHits(fileText: string, repoRelPath: string): SwallowHit[] {
+  const lines = fileText.split("\n");
+  const blocks = findTryCatchBlocks(fileText);
+  const hits: SwallowHit[] = [];
+
+  for (const { start, block } of blocks) {
+    const tryBody = fileText.slice(block.tryBodyStart, block.tryBodyEnd);
+    if (!MAIL_CALL.test(tryBody)) continue;
+
+    const catchBody = fileText.slice(block.catchBodyStart, block.catchBodyEnd);
+    if (catchSurfacesOutcome(catchBody)) continue;
+
+    const lineIdx = fileText.slice(0, start).split("\n").length - 1;
+    hits.push({
+      file: repoRelPath,
+      line: lineIdx + 1,
+      functionOrNearestExport: nearestEnclosingFunction(lines, lineIdx),
+    });
+  }
+  return hits;
+}
+
 function scanForMailSwallows(): SwallowHit[] {
   const files: string[] = [];
   const abs = join(ROOT, SCAN_DIR);
@@ -123,23 +151,7 @@ function scanForMailSwallows(): SwallowHit[] {
   const hits: SwallowHit[] = [];
   for (const file of files) {
     const src = readFileSync(file, "utf8");
-    const lines = src.split("\n");
-    const blocks = findTryCatchBlocks(src);
-
-    for (const { start, block } of blocks) {
-      const tryBody = src.slice(block.tryBodyStart, block.tryBodyEnd);
-      if (!MAIL_CALL.test(tryBody)) continue;
-
-      const catchBody = src.slice(block.catchBodyStart, block.catchBodyEnd);
-      if (catchSurfacesOutcome(catchBody)) continue;
-
-      const lineIdx = src.slice(0, start).split("\n").length - 1;
-      hits.push({
-        file: relative(ROOT, file).split("\\").join("/"),
-        line: lineIdx + 1,
-        functionOrNearestExport: nearestEnclosingFunction(lines, lineIdx),
-      });
-    }
+    hits.push(...findMailSwallowHits(src, relative(ROOT, file).split("\\").join("/")));
   }
   return hits;
 }
@@ -162,6 +174,49 @@ const KNOWN_SWALLOWS: { file: string; functionOrNearestExport: string; reason: s
       "POST /forgot: surfacing this outcome is what DEC-014's wave-25 amendment forbids -- the anti-enumeration rule is that the response is the same 'Check your email' card whether or not a user row exists and 'never branches its response', so a send failure cannot reach the caller without also disclosing that the address resolved to an account. The failure is logged server-side, and the reset token is still minted, so a user who asks again gets a fresh link.",
   },
 ];
+
+describe("mail-swallow-honesty scan negative control (DEC-518 wave-35 amendment)", () => {
+  it("VIOLATION: a catch body that swallows a mailer.send( failure without surfacing it is reported", () => {
+    const src = [
+      "async function sendIt() {",
+      "  try {",
+      "    await mailer.send(msg);",
+      "  } catch (err) {",
+      "    console.error(err);",
+      "  }",
+      "}",
+    ].join("\n");
+    const hits = findMailSwallowHits(src, "src/routes/fixture.ts");
+    expect(hits.length).toBe(1);
+    expect(hits[0]?.functionOrNearestExport).toBe("sendIt");
+  });
+
+  it("COMPLIANT: a catch body that pushes to a failed[]-shaped array is silent", () => {
+    const src = [
+      "async function sendIt() {",
+      "  try {",
+      "    await mailer.send(msg);",
+      "  } catch (err) {",
+      "    failed.push(recipient);",
+      "  }",
+      "}",
+    ].join("\n");
+    expect(findMailSwallowHits(src, "src/routes/fixture.ts")).toEqual([]);
+  });
+
+  it("COMPLIANT: a catch body that returns a failure-bearing response is silent", () => {
+    const src = [
+      "async function sendIt() {",
+      "  try {",
+      "    await mailer.send(msg);",
+      "  } catch (err) {",
+      "    return c.json({ error: 'send failed' }, 500);",
+      "  }",
+      "}",
+    ].join("\n");
+    expect(findMailSwallowHits(src, "src/routes/fixture.ts")).toEqual([]);
+  });
+});
 
 describe("mail-swallow catch blocks surface their outcome or are ledgered (DEC-006 wave 51)", () => {
   it("the scan itself finds try/catch blocks under src/routes (not vacuous)", () => {
