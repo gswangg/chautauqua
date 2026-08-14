@@ -881,3 +881,73 @@
     gap: 8px;
   }
 }
+
+/* ---------------------------------------------------------------------- */
+/* Breaks panel (DEC-021 amendment, wave 65)                              */
+/* ---------------------------------------------------------------------- */
+
+.chq-breaks-panel {
+  margin-bottom: 16px;
+}
+
+.chq-breaks-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chq-breaks-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--chq-rule);
+}
+
+.chq-breaks-row-time {
+  font-variant-numeric: tabular-nums;
+  color: var(--chq-muted);
+  font-size: 13px;
+}
+
+.chq-breaks-row-meta {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chq-ink-2);
+}
+
+.chq-breaks-empty {
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+.chq-breaks-add-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 10px;
+}
+
+.chq-breaks-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chq-breaks-field label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--chq-muted);
+}
+
+.chq-field-error {
+  font-size: 12px;
+  color: var(--chq-danger, #b91c1c);
+}

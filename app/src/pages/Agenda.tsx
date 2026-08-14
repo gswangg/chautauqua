@@ -7,6 +7,7 @@ import { DelayedLoading } from '../components/DelayedLoading';
 import { DayGrid, type ArmedAgendaSession } from './agenda/DayGrid';
 import { UnscheduledTray } from './agenda/UnscheduledTray';
 import { PhoneAgenda } from './agenda/PhoneAgenda';
+import { BreaksPanel } from './agenda/BreaksPanel';
 import { placeOptimistically, reconcileConflictsSummary, unscheduleOptimistically } from './agenda/state';
 import type { AgendaPayload, DescribedUnplaced, RefreshedConflictsSummary, UnplacedReason } from './agenda/types';
 import { formatDayLabel } from '../lib/dates';
@@ -300,6 +301,8 @@ export function AgendaPage() {
             ))}
             <span className="chq-agenda-clash-note">Clashes are flagged, not blocked</span>
           </div>
+
+          {eventId && <BreaksPanel eventId={eventId} day={activeDay} />}
 
           {isPhone ? (
             activeDay && (
