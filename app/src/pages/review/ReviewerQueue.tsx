@@ -215,11 +215,11 @@ function PlanSection({
                 <span className="chq-review-queue-score chq-review-queue-score-recused">RECUSED</span>
               </div>
               <span className="chq-review-queue-title">{item.title}</span>
-              {/* DEC-874 wave-72 amendment: a recused row keeps the same
-                  meta line an actionable row shows -- the server now carries
-                  format (and audienceLevel, when the wire ever populates it)
-                  on recused items too; this is the SAME branch shape as the
-                  actionable row above, not a second component. */}
+              {/* DEC-874 wave-72 amendment/DEC-986: a recused row keeps the
+                  same meta line an actionable row shows -- the server
+                  carries both format and audienceLevel on recused items
+                  too; this is the SAME branch shape as the actionable row
+                  above, not a second component. */}
               {(item.format != null || item.audienceLevel != null) && (
                 <p className="chq-review-plan-meta">
                   {[item.format != null ? formatMetaLabel(item.format) : null, item.audienceLevel]
@@ -410,7 +410,12 @@ export function ReviewerQueue() {
             </div>
             {subtitle && <p className="chq-review-plan-meta">{subtitle}</p>}
             {routeQueueItems && totalCount > 0 && (
-              <>
+              // REVIEW PACK 03-review (gate-4 still-present finding): the
+              // frame puts the "N of M done" caption RIGHT of the bar, on
+              // the same line -- not stacked below it, left-aligned. Both
+              // pieces read off the same scoredCount/totalCount the bar
+              // itself computes, never a third reader.
+              <div className="chq-review-scoped-progress-row">
                 <div className="chq-bar chq-review-scoped-progress">
                   <div className="chq-bar-fill" style={{ width: `${Math.round((scoredCount / totalCount) * 100)}%` }} />
                 </div>
@@ -418,7 +423,7 @@ export function ReviewerQueue() {
                     two counts the bar already computes -- never a third
                     reader. */}
                 <p className="chq-review-scoped-progress-caption">{`${scoredCount} of ${totalCount} done`}</p>
-              </>
+              </div>
             )}
           </div>
         )}
