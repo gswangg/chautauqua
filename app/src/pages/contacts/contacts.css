@@ -312,6 +312,21 @@
   gap: 9px;
 }
 
+/* DEC-856 (wave-1 amendment): templates whose merge fields the bulk-email
+   context cannot resolve are disabled in the picker; this list names the
+   blocking token and the one forward path (Comms compose). A note, not a
+   control tier — muted, sized with the modal's other helper text. */
+.chq-bulk-email-unsendable-templates {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
 .chq-bulk-email-preview-list {
   list-style: none;
   margin: 0;
