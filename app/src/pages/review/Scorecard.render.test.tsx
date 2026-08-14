@@ -92,9 +92,10 @@ describe('Scorecard render smoke', () => {
 
     expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
 
-    // DEC-939: the scorecard clamps to the product measure like every
-    // other single-column surface.
-    expect(document.querySelector('.chq-page')).toHaveClass('chq-measure');
+    // DEC-939 (wave-65 amendment): the loaded scorecard is a two-column
+    // work surface -- it clamps at the wide measure, not the single-column
+    // reading measure (the loading/error branches keep that one).
+    expect(document.querySelector('.chq-page')).toHaveClass('chq-measure-wide');
 
     // rating criterion -> segmented radiogroup, one radio per scale value
     // (DEC-873: plan.scale is {min:1, max:5}).
@@ -397,11 +398,18 @@ describe('Scorecard recusal placement and checkbox reveal (DEC-939)', () => {
 
     expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
 
-    const root = document.querySelector('.chq-page')!;
+    // DEC-939 (wave-65 amendment): Comment, the recusal declaration, and
+    // the editor actions all now live inside the scoring rail (aside),
+    // not as direct children of the page root -- the ordering contract
+    // still holds, just scoped to the rail.
+    const rail = document.querySelector('.chq-review-scorecard-rail')!;
     const commentField = screen.getByText('Comment to the committee').closest('label')!;
     const recusalBlock = document.querySelector('.chq-review-recusal')!;
     const actions = document.querySelector('.chq-review-editor-actions')!;
-    const children = Array.from(root.children);
+    expect(rail.contains(commentField)).toBe(true);
+    expect(rail.contains(recusalBlock)).toBe(true);
+    expect(rail.contains(actions)).toBe(true);
+    const children = Array.from(rail.children);
     const commentIndex = children.indexOf(commentField);
     const recusalIndex = children.indexOf(recusalBlock);
     const actionsIndex = children.indexOf(actions);
@@ -654,5 +662,137 @@ describe('Scorecard comment label (frame 03--01)', () => {
     expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
     expect(screen.getByText('Comment to the committee')).toBeInTheDocument();
     expect(screen.queryByText('Comment', { exact: true })).not.toBeInTheDocument();
+  });
+});
+
+// DEC-939 (wave-65 amendment): the two-column work surface (frame 03--01)
+// and the focus ring gated to keyboard use only.
+describe('Scorecard two-column work surface and armed focus ring (DEC-939 wave-65 amendment)', () => {
+  function twoCriteria() {
+    return [
+      { id: 'c1', label: 'Quality', kind: 'rating' as const, weight: 1 },
+      { id: 'c2', label: 'Originality', kind: 'rating' as const, weight: 1 },
+    ];
+  }
+
+  it('renders no chq-focused element on a fresh mount', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: twoCriteria(),
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(document.querySelector('.chq-focused')).toBeNull();
+  });
+
+  it('pressing a number key sets the focused criterion score and arms the ring', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: twoCriteria(),
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(document.querySelector('.chq-focused')).toBeNull();
+
+    const root = document.querySelector('.chq-page')!;
+    fireEvent.keyDown(root, { key: '4' });
+
+    // The first rating criterion (pre-armed focusedId) receives the score.
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
+    expect(within(qualityGroup).getByRole('radio', { name: '4' })).toHaveAttribute('aria-checked', 'true');
+
+    // And the ring is now armed on that same criterion's row.
+    const focused = document.querySelectorAll('.chq-focused');
+    expect(focused).toHaveLength(1);
+    expect(focused[0]).toContainElement(qualityGroup);
+  });
+
+  it('renders no "Tip: number keys" hint text', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: twoCriteria(),
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain('Tip: number keys');
+  });
+
+  it('the rating radiogroup and Submit and next live inside the scoring rail, while the abstract does not', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        description: 'A talk about testing scorecards.',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: twoCriteria(),
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+
+    const rail = document.querySelector('.chq-review-scorecard-rail')!;
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
+    const submitButton = screen.getByRole('button', { name: 'Submit and next' });
+    expect(rail.contains(qualityGroup)).toBe(true);
+    expect(rail.contains(submitButton)).toBe(true);
+
+    const abstract = document.querySelector('.chq-review-scorecard-abstract')!;
+    expect(rail.contains(abstract)).toBe(false);
   });
 });

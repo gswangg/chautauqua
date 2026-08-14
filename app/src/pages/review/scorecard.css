@@ -1,3 +1,35 @@
+/* DEC-939 (wave-65 amendment, frame 03--01): the scorecard is a two-column
+   work surface -- a reading column (submission context) and a scoring rail
+   (everything the reviewer writes into), not one long single-column form.
+   The page root itself clamps at --chq-measure-wide (1180px); this grid's
+   two fixed tracks (820 + 300 + 36 gap = 1156) fit inside that without a
+   max-width of its own. Below ~1200px there's no room for both tracks side
+   by side, so the ONE additive media query collapses to a single column
+   and the rail simply flows under the reading column in source order. */
+.chq-review-scorecard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 820px) 300px;
+  gap: 36px;
+  align-items: start;
+}
+
+.chq-review-scorecard-reading {
+  min-width: 0;
+}
+
+.chq-review-scorecard-rail {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@media (max-width: 1200px) {
+  .chq-review-scorecard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* DEC-889: the scorecard's abstract clamps to its first ~60 words and the
    single disclosure control below it owns both the clamped remainder and
    the two answer lists -- collapsed is the default, and nothing renders
