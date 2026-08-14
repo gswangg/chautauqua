@@ -32,6 +32,22 @@ void DEC_850;
 
 export const savedEmbedRoutes = new Hono<AppEnv>();
 
+// DEC-083 wave-22 amendment: this is NOT a duplicate of publicRoutes'
+// `/embed/*` cache registration in ./index.tsx -- it is the ONLY thing
+// keeping /embed/e/:embedId behind the cache. Hono's compose() (node_modules/
+// hono/dist/compose.js:22, 37) walks handlers strictly in registration order
+// and only advances past a `.use()` when that middleware calls next() --
+// there is no re-matching pass afterward. `publicRoutes.route("/",
+// savedEmbedRoutes)` (./index.tsx:61) splices THIS sub-app's use()+handler in
+// ahead of ./index.tsx:89-90's own `.use("/embed/*", ...)`, so once this
+// route matches, the parent's later `/embed/*` registration never runs for
+// it at all -- it's not "also" covered by the parent, it's covered ONLY
+// here. Deleting this line would not create a duplicate cache pass; it would
+// remove saved embeds from the cache entirely (0 passes, not 1). Proven at
+// runtime (not by reading these lines) in
+// test/pubcache-prefix-coverage.test.ts, which mounts the real publicRoutes
+// sub-app and asserts exactly one kv.get(PUBVER_KEY) / cache.match per
+// request for this shape.
 savedEmbedRoutes.use("/embed/e/*", publicCacheMiddleware(defaultCache));
 
 savedEmbedRoutes.get("/embed/e/:embedId", async (c) => {
