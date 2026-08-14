@@ -361,16 +361,6 @@
   display: none;
 }
 
-/* DEC-651's optional dialog subtitle. Page-scoped rather than a new shared
-   `chq-modal-*` name: the shared header contract enforces only the title
-   and the Close control, so the Save-this-view caption stays local to this
-   page's vocabulary. */
-.chq-submissions-modal-sub {
-  margin: 0;
-  font-size: 13px;
-  color: var(--chq-ink-2);
-}
-
 /* Phone (DEC-385/386): one markup tree, no duplicated DOM. The table body
    rows become cards purely through CSS -- `td`s are reflowed onto separate
    lines with the `order` property (DOM order in the document is untouched;
