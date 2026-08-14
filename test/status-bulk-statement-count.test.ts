@@ -228,20 +228,29 @@ describe("DEC-355 bulk accept is set-based, not per-submission", () => {
     // .limit()) now sees every real task row getOrCreateTask minted (DEC-111
     // amendment, wave 48: getOrCreateTask is insert-then-select, and this
     // fake's schema.task branch is stateful) — so eventTaskIds has all 5
-    // distinct titles' ids, and the back-fill's chunked existing-pairs
-    // select over schema.taskAssignment actually runs (one extra chunked
-    // select per chunk, on top of the main plan's existingTaskTitlesByContact
-    // read) — taskAssignmentSelects is `expectedChunks * 2`, not
-    // `expectedChunks`.
-    expect(taskAssignmentSelects).toBe(expectedChunks * 2);
+    // distinct titles' ids, and the back-fill's existing-pairs select over
+    // schema.taskAssignment actually runs.
+    //
+    // DEC-528 amendment (wave 10, defect 1 fix): that existing-pairs query
+    // binds inArray(taskId, eventTaskIds) alongside inArray(contactId,
+    // contactChunk) in the SAME statement, so BOTH dimensions are now
+    // chunked at PAIR_ID_CHUNK_SIZE (45, half of ID_CHUNK_SIZE's 90) instead
+    // of only the contact dimension at ID_CHUNK_SIZE — with only 5 event
+    // tasks (well under 45) the task dimension stays a single chunk, but the
+    // contact dimension now chunks at 45 instead of 90, so the back-fill's
+    // own select count is ceil(N / 45), not `expectedChunks` (ceil(N / 90)).
+    const backfillPairChunks = Math.ceil(N / 45);
+    expect(taskAssignmentSelects).toBe(expectedChunks + backfillPairChunks);
     expect(taskSelects).toBe(distinctTitles + 1);
     expect(formSelects).toBe(formTitles);
 
     const totalSelects = selectCalls.length;
-    // submission + participant + taskAssignment(main) + taskAssignment
-    // (back-fill) = expectedChunks * 4, + distinctTitles + 1 (task) +
-    // formTitles (form) + 1 (event).
-    expect(totalSelects).toBe(expectedChunks * 4 + distinctTitles + 1 + formTitles + 1);
+    // submission + participant + taskAssignment(main, expectedChunks) +
+    // taskAssignment(back-fill, backfillPairChunks), + distinctTitles + 1
+    // (task) + formTitles (form) + 1 (event).
+    expect(totalSelects).toBe(
+      expectedChunks * 2 + expectedChunks + backfillPairChunks + distinctTitles + 1 + formTitles + 1,
+    );
     // The load-bearing assertion: total SELECT count is nowhere near N (200)
     // — it is bounded by chunk count + distinct-title count, not id count.
     expect(totalSelects).toBeLessThan(31);
