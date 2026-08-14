@@ -318,17 +318,16 @@ describe('ComposeWizard compose-step field layout (DEC-710)', () => {
   });
 });
 
-// DEC-751: Recent sends lives under Compose too -- capped, read-only, and
-// its "All history" link switches ?tab= rather than navigating away.
+// DEC-751 (amendment, w15-d): Recent sends lives under Compose too --
+// capped, and its per-row "Open" drills in place exactly like the History
+// mount; only "All history" switches ?tab=.
 describe('CommsPage Recent sends under Compose (DEC-751)', () => {
-  // w1-g: clicking a compose-mount "Open" now hands off ?batch=<key>, which
-  // makes History auto-expand and fetch that batch's recipients on
-  // arrival. mockApi matches on path only (query strings stripped), so the
-  // same /email-log response also answers that recipients fetch -- this
-  // fixture carries both the EmailBatchRow fields (batch row rendering)
-  // and the EmailLogRow fields (recipient row rendering, including a
-  // stable `id` so React's key warning doesn't fire) so either reading of
-  // the same object renders without crashing.
+  // mockApi matches on path only (query strings stripped), so the same
+  // /email-log response also answers the recipients-disclosure fetch --
+  // this fixture carries both the EmailBatchRow fields (batch row
+  // rendering) and the EmailLogRow fields (recipient row rendering,
+  // including a stable `id` so React's key warning doesn't fire) so either
+  // reading of the same object renders without crashing.
   function batch(n: number) {
     return {
       batchKey: `batch-${n}`,
@@ -343,7 +342,7 @@ describe('CommsPage Recent sends under Compose (DEC-751)', () => {
     };
   }
 
-  it('renders up to four batches under Compose, with no recipients disclosure, and switches ?tab= on "All history"', async () => {
+  it('renders up to four batches under Compose, and a per-row "Open" expands recipients in place (no navigation)', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
@@ -365,16 +364,13 @@ describe('CommsPage Recent sends under Compose (DEC-751)', () => {
     // attempted send is auditable whatever the transport did.
     expect(screen.getByText('0 sent · 2 failed')).toBeInTheDocument();
 
-    // Read-only under Compose: no per-row recipients disclosure -- the
-    // trailing "Open" control is a link into History instead (DEC-751
-    // amendment, w41-g), same destination as "All history", but carrying
-    // that row's batch key (w1-g) so History can land already expanded on
-    // it.
+    // DEC-751 amendment (w15-d): the compose mount's "Open" drills in
+    // place exactly like History's -- it never navigates or touches ?tab=.
     fireEvent.click(screen.getAllByRole('button', { name: 'Open' })[0]!);
     await waitFor(() => {
-      expect(screen.getByTestId('location-search')).toHaveTextContent('?tab=history');
-      expect(screen.getByTestId('location-search')).toHaveTextContent('batch=batch-1');
+      expect(screen.getByText('recipient-1@example.com')).toBeInTheDocument();
     });
+    expect(screen.getByTestId('location-search')).not.toHaveTextContent('history');
   });
 
   it('switches ?tab= to history on the "All history" link', async () => {
@@ -430,13 +426,14 @@ describe('CommsPage Recent sends under Compose (DEC-751)', () => {
     });
   });
 
-  // w1-g: the full round trip -- Compose's "Open" hands off ?batch=<key>
-  // and History lands already expanded on that exact batch, not just on
-  // the History tab in general. mockApi strips query strings (can't tell
-  // groupBy=batch, status=sent/failed, and batchId=<key> apart, and
-  // Comms.tsx's own head fetches hit the same /email-log path too), so this
-  // test stubs fetch directly and routes on the real querystring instead.
-  it('a compose-mount "Open" lands History already expanded on that batch', async () => {
+  // DEC-751 amendment (w15-d): a compose-mount "Open" expands the
+  // recipients disclosure inline and never switches tabs; "All history"
+  // is the only control that still lands on History. mockApi strips query
+  // strings (can't tell groupBy=batch, status=sent/failed, and
+  // batchId=<key> apart, and Comms.tsx's own head fetches hit the same
+  // /email-log path too), so this test stubs fetch directly and routes on
+  // the real querystring instead.
+  it('a compose-mount "Open" expands the recipients inline; "All history" still switches tabs', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async (input: RequestInfo | URL) => {
@@ -473,18 +470,24 @@ describe('CommsPage Recent sends under Compose (DEC-751)', () => {
     render(
       <MemoryRouter initialEntries={['/comms']}>
         <CommsPage />
+        <LocationSearchProbe />
       </MemoryRouter>,
     );
 
     fireEvent.click(await screen.findByRole('button', { name: 'Open' }));
 
-    await waitFor(() => {
-      expect(screen.getByRole('tab', { name: 'History' })).toHaveAttribute('aria-selected', 'true');
-    });
+    // Drilling in stays on the compose mount -- no tab switch, no ?batch=.
+    expect(screen.getByRole('tab', { name: 'Compose' })).toHaveAttribute('aria-selected', 'true');
     const closeButton = await screen.findByRole('button', { name: 'Close' });
     expect(closeButton).toHaveAttribute('aria-expanded', 'true');
     await waitFor(() => {
       expect(screen.getByText('ada@example.com')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('location-search')).not.toHaveTextContent('history');
+
+    fireEvent.click(screen.getByRole('button', { name: 'All history' }));
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'History' })).toHaveAttribute('aria-selected', 'true');
     });
   });
 });
