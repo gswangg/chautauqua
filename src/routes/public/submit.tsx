@@ -330,12 +330,19 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
     );
   }
 
-  //  (b) DEC-072: per-IP rate limit, raised from 10 to 60/hour — shared IPs
+  //  (b) DEC-072: two independent budgets, mirroring auth.tsx's login check.
+  //      A per-IP rate limit, raised from 10 to 60/hour — shared IPs
   //      (offices, conference wifi, NAT) legitimately produce bursts of
   //      submissions from distinct speakers; the cap exists to stop abuse,
   //      not to punish shared addresses. DEC-057: uses the canonical scoped
-  //      limiter (DEC-038). Also runs before the body is parsed, so its 429
-  //      page necessarily shows an empty answer set.
+  //      limiter (DEC-038). Runs before the body is parsed, so its 429
+  //      page necessarily shows an empty answer set. A SECOND budget, keyed
+  //      on the submitted email (scope "submit-email", 10/hour), closes the
+  //      gap this per-IP check leaves open: x-forwarded-for is client-
+  //      supplied (see rate-limit.ts's own doc comment) and trivially
+  //      spoofable, so an attacker can rotate it to bypass the IP budget
+  //      while hammering the same address. That second check runs later,
+  //      once `email` is known (just above the first write) — see there.
   const kv = c.env.KV as unknown as DraftKVStore;
   const ip = requestIpFromHeaders((name) => c.req.header(name));
   const rate = await checkAndIncrementScopedLimit(db, "submit", ip, Date.now(), {
@@ -482,6 +489,34 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
   const jobTitle = String(cleaned[LOCKED_SPEAKER_FIELDS[3]] ?? "").trim() || null;
   const company = String(cleaned[LOCKED_SPEAKER_FIELDS[4]] ?? "").trim() || null;
   const bio = String(cleaned[LOCKED_SPEAKER_FIELDS[5]] ?? "").trim() || null;
+
+  // DEC-072: per-email budget, well below the per-IP budget above — closes
+  // the spoofed-x-forwarded-for gap (see the comment at the IP check).
+  // Runs here, after validation passes and before the FIRST write of any
+  // kind (contact, submission, R2 object, email), so a refused attempt
+  // never touches storage, but the submitter's just-typed answers survive
+  // into the re-rendered page (unlike the pre-parse IP check, which
+  // necessarily renders empty).
+  const emailRate = await checkAndIncrementScopedLimit(db, "submit-email", email, Date.now(), {
+    windowSeconds: 3600,
+    max: 10,
+  });
+  if (!emailRate.ok) {
+    return c.html(
+      <SubmitPage
+        event={event}
+        form={form}
+        fields={fields}
+        tracks={tracks}
+        answers={answers}
+        selectedTrackIds={selectedTrackIds}
+        hasDraft={false}
+        csrfToken={(c.req.header("cookie") && parseCookies(c.req.header("cookie") ?? null)[CSRF_COOKIE_NAME]) || newCsrfToken()}
+        banner={`Too many submissions from ${email}. Try again later.`}
+      />,
+      429,
+    );
+  }
 
   const existingContact = await findContactByEmail(db, event.orgId, email);
   const contactIsFresh = !existingContact;
