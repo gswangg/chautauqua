@@ -137,6 +137,27 @@ function shapeRow(row: Record<string, unknown>, cols: Record<string, { name: str
   return out;
 }
 
+/** DEC-439 amendment (wave 62): resolveReviewerSubmissions' plan_reviewer
+ * and (unjoined) submission reads now chain `.orderBy(...).limit(n)` after
+ * `.where(...)` -- this fake's `where()` result must stay thenable (so
+ * un-chained callers keep working) while also exposing no-op orderBy/limit
+ * methods that return the same (already-ordered-enough for these fixtures)
+ * row set, sliced to the caller's cap. */
+function withOrderByLimit(rows: Record<string, unknown>[], tag: CondTag | undefined) {
+  const out = Promise.resolve(rows) as Promise<Record<string, unknown>[]> & {
+    __whereTag?: CondTag;
+    orderBy: (...args: unknown[]) => typeof chainable;
+    limit: (n: number) => Promise<Record<string, unknown>[]>;
+  };
+  out.__whereTag = tag;
+  const chainable = {
+    limit: (n: number) => Promise.resolve(rows.slice(0, n)),
+  };
+  out.orderBy = () => chainable;
+  out.limit = (n: number) => Promise.resolve(rows.slice(0, n));
+  return out;
+}
+
 /** Records every submission_track query's condition tag, so test (c) can
  * assert none of them is an unrestricted/whole-event scan. */
 function makeFakeDb(submissionTrackQueries: CondTag[]) {
@@ -147,15 +168,13 @@ function makeFakeDb(submissionTrackQueries: CondTag[]) {
           const tag = cond?.[TAG];
           if (table === schema.planReviewer) {
             const rows = PLAN_REVIEWER_ROWS.filter((r) => evalCond(tag, r as unknown as Record<string, unknown>));
-            const out = Promise.resolve(rows.map((r) => shapeRow(r as unknown as Record<string, unknown>, cols)));
-            (out as unknown as { __whereTag?: CondTag }).__whereTag = tag;
-            return out;
+            const shaped = rows.map((r) => shapeRow(r as unknown as Record<string, unknown>, cols));
+            return withOrderByLimit(shaped, tag);
           }
           if (table === schema.submission) {
             const rows = SUBMISSION_ROWS.filter((r) => evalCond(tag, r));
-            const out = Promise.resolve(rows.map((r) => shapeRow(r, cols)));
-            (out as unknown as { __whereTag?: CondTag }).__whereTag = tag;
-            return out;
+            const shaped = rows.map((r) => shapeRow(r, cols));
+            return withOrderByLimit(shaped, tag);
           }
           if (table === schema.event) {
             const rows = EVENT_ROWS_MATCHING(tag);

@@ -156,7 +156,7 @@ function makeFakeDb() {
               // property names. Cover both shapes explicitly rather than
               // shapeRow()'ing an undefined cols map.
               if (cols) {
-                return Promise.resolve(rows.map((r) => shapeRow(r as unknown as Record<string, unknown>, cols)));
+                return chainable(rows.map((r) => shapeRow(r as unknown as Record<string, unknown>, cols)), tag);
               }
               return Promise.resolve(
                 rows.map((r) => ({

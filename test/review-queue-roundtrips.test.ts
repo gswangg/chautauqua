@@ -56,10 +56,11 @@ function makeCountingDb(matchedSubmissionCount: number): { db: Db; queryCount: (
         where: (_cond: unknown) => {
           count += 1;
           if (table === schema.planReviewer) {
-            return Promise.resolve([{ trackId: null, submissionId: null }]);
+            const rows = [{ trackId: null, submissionId: null }];
+            return { orderBy: () => ({ limit: () => Promise.resolve(rows) }) };
           }
           if (table === schema.submission) {
-            return Promise.resolve(submissionRows);
+            return { orderBy: () => ({ limit: () => Promise.resolve(submissionRows) }) };
           }
           if (table === schema.event) {
             return {
