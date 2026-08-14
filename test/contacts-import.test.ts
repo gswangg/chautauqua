@@ -177,10 +177,18 @@ function makeFakeContactDb() {
         },
       };
     },
-    update(_table: unknown) {
+    update(table: unknown) {
       return {
         set: (vals: Record<string, unknown>) => ({
+          // touchSubmissionsForContacts (DEC-725 amendment) now issues an
+          // UPDATE ... submission ... WHERE id IN (SELECT ... FROM
+          // participant ...) after every contact write in the flush loop.
+          // This fake only models the `contact` table (see module comment);
+          // an update against any other table is a no-op, mirroring
+          // select()'s existing "unmodeled table -> empty result" guard
+          // above rather than misapplying the condition to contact rows.
           where: async (cond: unknown) => {
+            if (table !== schema.contact) return;
             rows = rows.map((r) => (evalCond(cond, r) ? { ...r, ...vals } : r));
           },
         }),

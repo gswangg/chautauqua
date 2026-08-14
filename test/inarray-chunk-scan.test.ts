@@ -238,6 +238,18 @@ const BOUNDED_INARRAY_CALLSITES: Array<[file: string, identifier: string, reason
     "contactIdChunk iterates idChunksOrUndefined(contactIds), same " +
       "chunkIds delegation as taskIdChunk above.",
   ],
+  [
+    "src/server/repo/submissions/touch.ts",
+    "db",
+    "touchSubmissionsForContacts/touchSubmissionsForTracks's inArray(...) " +
+      "second argument is a correlated subquery (db.select(...).from(...)" +
+      ".where(inArray(<column>, chunk))), not an in-memory id list -- the " +
+      "subquery's OWN inArray is bound to `chunk`, produced by the " +
+      "enclosing `for (const chunk of chunkIds(...))` loop over the " +
+      "renamed contact/track ids, so the whole statement resolves to one " +
+      "set-based UPDATE per D1-bound-parameter-sized chunk, never an " +
+      "unbounded scan.",
+  ],
 ];
 
 const allowlistByFileAndId = new Map(

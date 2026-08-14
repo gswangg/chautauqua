@@ -15,6 +15,7 @@ import { backfillNullAttribution } from "../attribution";
 import { ApiError } from "../../http";
 import { chunkIds } from "../../../lib/chunk";
 import { deleteDismissalsForContact } from "./merge";
+import { touchSubmissionsForContacts } from "../submissions/touch";
 import { DEC_333, DEC_336, DEC_554, DEC_758, DEC_770, DEC_864, DEC_979 } from "../../../decisions";
 
 void DEC_333;
@@ -122,6 +123,7 @@ export async function patchContact(db: Db, id: string, patch: ContactPatch): Pro
       }
     }
   }
+  const patchedAt = new Date();
   await db
     .update(schema.contact)
     .set({
@@ -135,9 +137,20 @@ export async function patchContact(db: Db, id: string, patch: ContactPatch): Pro
       ...(patch.socialLinksJson !== undefined ? { socialLinksJson: patch.socialLinksJson } : {}),
       ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
       ...(patch.customFields !== undefined ? { customFieldsJson: customFieldsJsonOf(patch.customFields) } : {}),
-      updatedAt: new Date(),
+      updatedAt: patchedAt,
     })
     .where(eq(schema.contact.id, id));
+  // DEC-725 amendment: firstName/lastName/title/company feed the pushed
+  // Speakers cell (or its attribution) — bump every submission this contact
+  // participates in so a rename re-selects them on the next Airtable tick.
+  if (
+    patch.firstName !== undefined ||
+    patch.lastName !== undefined ||
+    patch.title !== undefined ||
+    patch.company !== undefined
+  ) {
+    await touchSubmissionsForContacts(db, [id], patchedAt);
+  }
   // DEC-456: cascade the (already-conflict-checked) new email onto this
   // contact's linked user row, if any, so login identity never drifts out
   // of sync with the CRM's record of the contact's address.
