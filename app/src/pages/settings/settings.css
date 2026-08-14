@@ -97,8 +97,16 @@
   text-transform: uppercase;
 }
 
+/* The stack rule for panel content wrappers. Scoped with :not(): an
+   unscoped `> div` arm silently DEFEATED every intended settings rule at
+   (0,1,1) vs (0,1,0) — definition-grid rows, the section-head row and the
+   tracks-and-rooms grid all rendered as stacked flex columns while their
+   own correctly-written rules lost the cascade (delta-2 probe, gate-4
+   cycle). A source-scan test kept passing because it reads source, not
+   rendered styles. Add new layout containers to the :not() chain rather
+   than widening this rule. */
 .chq-settings-panel form,
-.chq-settings-panel > div {
+.chq-settings-panel > div:not(.chq-settings-row):not(.chq-settings-section-head):not(.chq-settings-tracks-rooms-grid) {
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -295,6 +303,8 @@
    action can sit flush right on the same rule. */
 .chq-settings-numbered .chq-settings-section-head {
   display: flex;
+  /* explicit: the stack rule above must never re-column this row */
+  flex-direction: row;
   align-items: baseline;
   justify-content: space-between;
   border-bottom: 2px solid var(--chq-ink);

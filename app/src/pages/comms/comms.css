@@ -453,7 +453,11 @@
 
 .chq-comms-templates {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0,1fr): bare 1fr floors at min-content, so the list pane's
+     unbreakable row-action strip stole 225px from the editor pane
+     (507/282 at the 820 measure; SUBJECT clipped mid-word). minmax(0,..)
+     splits the measure evenly. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 30px;
   align-items: start;
 }
