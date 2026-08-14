@@ -207,6 +207,13 @@ vi.mock("../src/server/repo/review", async () => {
     getSubmissionSummaryInEvent: vi.fn(async () => SUMMARY),
     listAnswersForSubmission: vi.fn(async () => ANSWERS),
     listSpeakersForSubmission: vi.fn(async () => SPEAKERS),
+    // DEC-939 (wave-6 amendment): the detail route now reads the scorecard
+    // meta line's format label through the same DEC-857 batched lookup the
+    // queue uses. These fixtures carry no format answer, so the map is
+    // empty and `format` serialises as null -- stubbed here because the
+    // real implementation issues a drizzle db.select() and this suite's db
+    // is `{}` (same stub the queue suites already carry).
+    listFormatLabelsBySubmission: vi.fn(async () => new Map<string, string | null>()),
     getEvaluation: vi.fn(async (_db: unknown, planId: string, submissionId: string, reviewerId: string, round: number) => {
       const key = `${planId}:${submissionId}:${reviewerId}:${round}`;
       const row = evaluationStore.get(key);

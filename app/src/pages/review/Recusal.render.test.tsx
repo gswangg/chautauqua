@@ -36,6 +36,12 @@ function plan() {
   };
 }
 
+// DEC-939 (wave-6 amendment) supersedes the earlier "Recuse me — conflict of
+// interest" wording with the frame's copy, and moves the ref out of the h1
+// onto the meta line. Both are asserted here through this one constant so a
+// future copy change has a single edit point.
+const RECUSE_LABEL = 'Recuse me from this one';
+
 function submissionDetail() {
   return {
     id: SUBMISSION_ID,
@@ -64,7 +70,7 @@ afterEach(() => {
 });
 
 describe('Scorecard recusal control (DEC-271/DEC-939 bare checkbox)', () => {
-  it('renders a bare checkbox control whose label contains "conflict of interest", with no sibling button', async () => {
+  it('renders a bare checkbox control labelled with the frame copy, with no sibling button', async () => {
     mockApi({
       'GET /api/v1/review/plans': listEnvelope([plan()]),
       [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: submissionDetail(),
@@ -78,16 +84,21 @@ describe('Scorecard recusal control (DEC-271/DEC-939 bare checkbox)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'S-020 — A Conflicted Talk' })).toBeInTheDocument();
-    // The rubric records the wording as evidence: the visible control label
-    // must contain the words "conflict of interest".
-    const checkbox = screen.getByRole('checkbox', { name: /conflict of interest/i });
+    expect(await screen.findByRole('heading', { name: 'A Conflicted Talk' })).toBeInTheDocument();
+    // The wording is recorded as evidence: DEC-939's wave-6 amendment names
+    // the frame copy exactly, so the visible control label is asserted
+    // verbatim rather than by substring.
+    const checkbox = screen.getByRole('checkbox', { name: RECUSE_LABEL });
     expect(checkbox).toBeInstanceOf(HTMLInputElement);
     expect((checkbox as HTMLInputElement).type).toBe('checkbox');
-    expect(screen.getAllByText(/conflict of interest/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(RECUSE_LABEL).length).toBeGreaterThan(0);
+    // The superseded "conflict of interest" phrasing is gone from the control.
+    expect(screen.queryByText(/conflict of interest/i)).not.toBeInTheDocument();
+    // frame 03--01: the ref left the h1 for the meta line beneath it.
+    expect(document.querySelector('.chq-review-scorecard-meta')?.textContent).toContain('S-020');
     // DEC-939 (bare recusal amendment): no separate Declare button, no
     // bordered card wrapper.
-    expect(screen.queryByRole('button', { name: /conflict of interest/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: RECUSE_LABEL })).not.toBeInTheDocument();
     const recusalBlock = document.querySelector('.chq-review-recusal')!;
     expect(recusalBlock).toBeInTheDocument();
     expect(recusalBlock.querySelector('button')).toBeNull();
@@ -122,12 +133,12 @@ describe('Scorecard recusal control (DEC-271/DEC-939 bare checkbox)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'S-020 — A Conflicted Talk' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'A Conflicted Talk' })).toBeInTheDocument();
 
     // DEC-939 (bare recusal amendment): no reason field or separate action
     // -- checking the checkbox itself is the declaration.
     expect(screen.queryByPlaceholderText('Reason (optional)')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('checkbox', { name: /conflict of interest/i }));
+    fireEvent.click(screen.getByRole('checkbox', { name: RECUSE_LABEL }));
 
     await waitFor(() => {
       const postCall = fetchMock.mock.calls.find(([input, init]) => {
@@ -179,8 +190,8 @@ describe('Scorecard recusal control (DEC-271/DEC-939 bare checkbox)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'S-020 — A Conflicted Talk' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('checkbox', { name: /conflict of interest/i }));
+    expect(await screen.findByRole('heading', { name: 'A Conflicted Talk' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('checkbox', { name: RECUSE_LABEL }));
     expect(await screen.findByText('You recused yourself from this submission.')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
@@ -199,7 +210,7 @@ describe('Scorecard recusal control (DEC-271/DEC-939 bare checkbox)', () => {
     await waitFor(() => {
       expect(screen.queryByText('You recused yourself from this submission.')).not.toBeInTheDocument();
     });
-    expect(screen.getByRole('checkbox', { name: /conflict of interest/i })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: RECUSE_LABEL })).toBeInTheDocument();
   });
 });
 

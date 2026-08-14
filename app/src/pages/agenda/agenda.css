@@ -239,15 +239,13 @@
    the second row in each labelled pair — in one tone, matching the frame's
    18 rules/day instead of the prior 36 hairlines split across two tones
    (--chq-hairline at every 15-minute midpoint, --chq-rule at the 30-minute
-   line). --chq-agenda-lattice is scoped to this page's day grid rather than
-   reusing either shared token, since the frame's tone (#ede9dd) sits
-   between the two. Compound selectors (2 classes) so this wins over
+   line). The lattice takes its own token, --chq-agenda-lattice, rather than
+   reusing either shared tone, since the frame's tone is lighter than both;
+   per DEC-383 the literal itself lives in the two token files
+   (app/src/styles.css + src/views/theme.ts) and this sheet only composes
+   var(). Compound selectors (2 classes) so this wins over
    .chq-day-grid-cell/-cell-btn/-cell-btn-clash regardless of where those
    base rules land in the file. */
-.chq-day-grid {
-  --chq-agenda-lattice: #ede9dd;
-}
-
 .chq-day-grid-cell.chq-day-grid-cell-boundary,
 .chq-day-grid-cell-btn.chq-day-grid-cell-boundary {
   border-bottom: 1px solid var(--chq-agenda-lattice);

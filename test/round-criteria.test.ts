@@ -100,6 +100,12 @@ vi.mock("../src/server/repo/review", async () => {
     getSubmissionSummaryInEvent: vi.fn(async () => submission),
     listAnswersForSubmission: vi.fn(async () => []),
     listSpeakersForSubmission: vi.fn(async () => []),
+    // DEC-939 (wave-6 amendment): the submission-detail route now reads the
+    // scorecard meta line's format label through the DEC-857 batched lookup.
+    // Stubbed empty here -- these fixtures assert criteria resolution, and
+    // the real implementation issues a drizzle db.select() this suite's
+    // `{}` db cannot serve.
+    listFormatLabelsBySubmission: vi.fn(async () => new Map<string, string | null>()),
     isSubmissionInReviewerScope: vi.fn(async () => true),
     listEvaluationsForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
       store.filter((e) => e.planId === planId && e.round === round),

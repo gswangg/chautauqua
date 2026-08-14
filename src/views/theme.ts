@@ -38,6 +38,12 @@ export const THEME_CSS = `
     --chq-disabled: #8E8A7A;
     --chq-hairline: #E1DDCE;
     --chq-rule: #D3CFC0;
+    /* DEC-021 (wave-6 amendment): the agenda day grid's single lattice tone,
+       the frame's #EDE9DD, which sits lighter than both --chq-hairline and
+       --chq-rule. DEC-383 keeps colour literals in the two token files only,
+       so the value lives here and agenda.css composes var(--chq-agenda-lattice);
+       DEC-372 set equality keeps the name declared in both token files. */
+    --chq-agenda-lattice: #EDE9DD;
     --chq-border: #BAB6A6;
     --chq-border-strong: #CFC7B7;
     --chq-brand: #4E5C31;

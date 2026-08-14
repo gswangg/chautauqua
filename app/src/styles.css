@@ -30,6 +30,12 @@
   --chq-disabled: #8e8a7a;
   --chq-hairline: #e1ddce;
   --chq-rule: #d3cfc0;
+  /* DEC-021 (wave-6 amendment): the agenda day grid's single lattice tone,
+     the frame's #EDE9DD, which sits lighter than both --chq-hairline and
+     --chq-rule. DEC-383 keeps colour literals in the two token files only,
+     so the value lives here and agenda.css composes var(--chq-agenda-lattice);
+     DEC-372 set equality keeps the name declared in both token files. */
+  --chq-agenda-lattice: #ede9dd;
   --chq-border: #bab6a6;
   --chq-border-strong: #cfc7b7;
   --chq-brand: #4e5c31;
