@@ -254,7 +254,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
             <FormRow
               label="Session title for this batch"
               htmlFor="import-session-title"
-              help="Every contact added to this event by this import is added as an accepted session with this title."
+              help="Every contact added to this event by this import joins ONE accepted session with this title."
             >
               <input
                 id="import-session-title"

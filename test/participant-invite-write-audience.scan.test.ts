@@ -73,6 +73,9 @@ const ACTIVE_MAP: Record<string, string[]> = {
     "createSubmission — organizer manually creates a session and names its contact directly (admin surface, routes/api/submissions.ts POST); not a speaker/portal-driven write.",
     "cloneSubmission — organizer clones a submission; copies only already-ACTIVE source participants (none|accepted) and resets invite_status to 'none' on the copy (DEC-275), never invents a new active grant from an untrusted input.",
   ],
+  "server/repo/participants.ts": [
+    "insertActiveParticipants (DEC-810 amendment, wave 59) — organizer-run CSV roster import (routes/api/contacts/import.ts) attaches every imported contact as an ACTIVE participant of the batch's one submission; an admin-initiated bulk import of already-vetted contacts the organizer chose to push onto the event, not a speaker/portal-driven write, and 'none' (not 'invited') is required so DEC-283/DEC-746's onboarding-task expansion picks them up immediately.",
+  ],
 };
 
 describe("every participant-insert inviteStatus literal write is enumerated (DEC-317 Amendment, wave 37)", () => {

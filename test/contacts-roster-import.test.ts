@@ -314,6 +314,51 @@ describe("POST /api/v1/contacts/import with eventId (SPK-03 roster import, DEC-2
     expect(inserts).toHaveLength(0);
   });
 
+  // DEC-810 amendment (wave 59): a batch roster add is ONE session, not one
+  // per imported row -- and every imported contact is an ACTIVE participant
+  // (inviteStatus 'none'), so DEC-283's onboarding-task expansion picks up
+  // all of them, not just a lead contact.
+  it("a 3-row import with an eventId creates exactly ONE accepted submission with 3 active participants, and onboarding-tasks every one of them", async () => {
+    const { db, state } = fakeDb([], [EVENT_ORG_A]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const csvText =
+      "Email,First,Last\n" +
+      "ada@example.com,Ada,Lovelace\n" +
+      "bea@example.com,Bea,Neumann\n" +
+      "cy@example.com,Cy,Turing\n";
+    const mapping = { Email: "email", First: "firstName", Last: "lastName" };
+
+    const res = await app.request(
+      jsonRequest("/api/v1/contacts/import", { csvText, mapping, eventId: "event-1", sessionTitle: "Lightning talks" }),
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { created: number; addedToEvent: number };
+    // addedToEvent is a people count, not a session count.
+    expect(body).toEqual({ created: 3, updated: 0, skipped: [], addedToEvent: 3 });
+
+    expect(state.contact).toHaveLength(3);
+    expect(state.submission).toHaveLength(1);
+    expect(state.submission[0].status).toBe("accepted");
+    expect(state.submission[0].title).toBe("Lightning talks");
+
+    expect(state.participant).toHaveLength(3);
+    expect(state.participant.every((p: any) => p.submissionId === state.submission[0].id)).toBe(true);
+    expect(state.participant.every((p: any) => p.visible === true)).toBe(true);
+    expect(state.participant.every((p: any) => p.inviteStatus === "none")).toBe(true);
+
+    // Every one of the 3 imported contacts gets all 5
+    // DEFAULT_ONBOARDING_TASKS assignments -- 15 total, not just the lead
+    // contact's 5.
+    expect(state.taskAssignment).toHaveLength(15);
+    const contactIds = state.contact.map((c: any) => c.id);
+    for (const contactId of contactIds) {
+      const assignmentsForContact = state.taskAssignment.filter((a: any) => a.contactId === contactId);
+      expect(assignmentsForContact).toHaveLength(5);
+    }
+  });
+
   it("a mapped bio column is persisted rather than throwing", async () => {
     const { db, state } = fakeDb([], []);
     const app = appWithDbAndAuth(db, ORGANIZER_A);

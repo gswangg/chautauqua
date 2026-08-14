@@ -5,8 +5,12 @@
 // pushContactToEvent — each iteration its own full acceptance-planning
 // pass (its own updateSubmissionStatuses call). This now does one chunked
 // findContactsForOrg load (DEC-078, ID_CHUNK_SIZE=90) plus one
-// pushContactsToEvent call that runs updateSubmissionStatuses exactly once
-// over every newly created submission id.
+// pushContactsToEvent call that runs updateSubmissionStatuses exactly once.
+//
+// DEC-810 amendment (wave 59): pushContactsToEvent itself now creates
+// exactly ONE submission for the whole batch (not one per contact), with
+// every contact attached as an active participant of it -- so
+// updateSubmissionStatuses's single pass is over ONE id, not K.
 
 import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
@@ -87,8 +91,8 @@ function statusCountingDb() {
   return { db: db as unknown as Db, submissionSelectCalls, submissionUpdateCalls, contactSelectCalls };
 }
 
-describe("pushContactsToEvent (DEC-357): set-based batch push", () => {
-  it("runs updateSubmissionStatuses's row-status read exactly ONCE for K contacts, not once per contact", async () => {
+describe("pushContactsToEvent (DEC-357, DEC-810 amendment wave 59): ONE session per batch", () => {
+  it("creates exactly ONE submission for K contacts, and runs updateSubmissionStatuses's row-status read/update exactly ONCE (over that one id)", async () => {
     const { db, submissionSelectCalls, submissionUpdateCalls } = statusCountingDb();
     const contacts = [
       { id: "c-1", email: "a@example.com", firstName: "Ada", lastName: "Lovelace", title: null, company: null },
@@ -96,18 +100,13 @@ describe("pushContactsToEvent (DEC-357): set-based batch push", () => {
       { id: "c-3", email: "c@example.com", firstName: "Cy", lastName: "Turing", title: null, company: null },
     ];
 
-    const ids = await pushContactsToEvent(db, "event-1", ORG_A, contacts, "Lightning talks");
+    const id = await pushContactsToEvent(db, "event-1", ORG_A, contacts, "Lightning talks");
 
-    expect(ids).toHaveLength(3);
-    // The read half of updateSubmissionStatuses is one chunked pass
-    // (chunkIds over the 3 created ids together), not 3 separate calls.
+    expect(typeof id).toBe("string");
+    expect(id.length).toBeGreaterThan(0);
+    // ONE submission created for the whole batch -- not one per contact
+    // (DEC-810 amendment, wave 59).
     expect(submissionSelectCalls).toHaveLength(1);
-    // The commit half is one chunked UPDATE over all firing ids, not one per
-    // row: DEC-355 collapsed that loop ("only then ONE chunked UPDATE setting
-    // status/acceptedAt/updatedAt over the firing ids"), and changeStatus
-    // gives every first-time-accepted row the same acceptedAt=now, so there
-    // is no per-row bookkeeping left to split it. 3 ids < ID_CHUNK_SIZE=90
-    // -> exactly 1 UPDATE.
     expect(submissionUpdateCalls).toHaveLength(1);
     for (const call of submissionUpdateCalls) {
       const setValue = call.setValue as { status: string; acceptedAt: Date };
@@ -116,16 +115,14 @@ describe("pushContactsToEvent (DEC-357): set-based batch push", () => {
     }
   });
 
-  it("is a no-op (no updateSubmissionStatuses call at all) for an empty contact list", async () => {
-    const { db, submissionSelectCalls } = statusCountingDb();
-    const ids = await pushContactsToEvent(db, "event-1", ORG_A, [], "Lightning talks");
-    expect(ids).toEqual([]);
-    expect(submissionSelectCalls).toHaveLength(0);
+  it("throws for an empty contact list rather than silently minting a submission (callers must skip the call)", async () => {
+    const { db } = statusCountingDb();
+    await expect(pushContactsToEvent(db, "event-1", ORG_A, [], "Lightning talks")).rejects.toThrow();
   });
 
-  // DEC-810: no fallback -- every contact in the batch gets the exact
+  // DEC-810: no fallback -- the batch's ONE session gets the exact
   // caller-supplied title, never an invented 'Invited: <First> <Last>'.
-  it("applies the caller-supplied title to every contact in the batch, with no fallback", async () => {
+  it("applies the caller-supplied title to the batch's one session, with no fallback", async () => {
     const { db } = statusCountingDb();
     const insertedTitles: string[] = [];
     const wrapped = {
@@ -152,7 +149,54 @@ describe("pushContactsToEvent (DEC-357): set-based batch push", () => {
       "Lightning talks",
     );
 
-    expect(insertedTitles).toEqual(["Lightning talks", "Lightning talks"]);
+    // Exactly one submission insert -- one title, not one per contact.
+    expect(insertedTitles).toEqual(["Lightning talks"]);
+  });
+
+  it("attaches every remaining contact as an active participant (inviteStatus 'none', not 'invited') of the one submission", async () => {
+    const { db } = statusCountingDb();
+    const insertedParticipants: any[] = [];
+    const wrapped = {
+      ...db,
+      insert(table: unknown) {
+        const real = (db as any).insert(table);
+        return {
+          values: async (vals: any) => {
+            if (table === schema.participant) {
+              const list = Array.isArray(vals) ? vals : [vals];
+              insertedParticipants.push(...list);
+            }
+            return real.values(vals);
+          },
+        };
+      },
+    } as unknown as Db;
+
+    const submissionId = await pushContactsToEvent(
+      wrapped,
+      "event-1",
+      ORG_A,
+      [
+        { id: "c-1", email: "a@example.com", firstName: "Ada", lastName: "Lovelace", title: null, company: null },
+        { id: "c-2", email: "b@example.com", firstName: "Bea", lastName: "Neumann", title: "Dr.", company: "Acme" },
+        { id: "c-3", email: "c@example.com", firstName: "Cy", lastName: "Turing", title: null, company: null },
+      ],
+      "Lightning talks",
+    );
+
+    // All 3 contacts end up as participants of the one submission: c-1 (the
+    // lead) via createSubmission's own participant insert (order 0), c-2/c-3
+    // via insertActiveParticipants' chunked insert (order 1, 2).
+    expect(insertedParticipants).toHaveLength(3);
+    expect(insertedParticipants.every((p) => p.submissionId === submissionId)).toBe(true);
+    expect(insertedParticipants.every((p) => p.role === "speaker")).toBe(true);
+    expect(insertedParticipants.every((p) => p.visible === true)).toBe(true);
+    expect(insertedParticipants.every((p) => p.inviteStatus === "none")).toBe(true);
+    expect(insertedParticipants.map((p) => p.contactId)).toEqual(["c-1", "c-2", "c-3"]);
+    expect(insertedParticipants.map((p) => p.order)).toEqual([0, 1, 2]);
+    const bea = insertedParticipants.find((p) => p.contactId === "c-2");
+    expect(bea.titleAtTime).toBe("Dr.");
+    expect(bea.orgAtTime).toBe("Acme");
   });
 });
 
@@ -426,8 +470,8 @@ function jsonRequest(path: string, body: unknown) {
   });
 }
 
-describe("POST /api/v1/contacts/import with eventId (DEC-357 batch wiring)", () => {
-  it("imports K new contacts with exactly one findContactsForOrg call and one pushContactsToEvent call", async () => {
+describe("POST /api/v1/contacts/import with eventId (DEC-357 batch wiring, DEC-810 amendment wave 59)", () => {
+  it("imports K new contacts as ONE session with K participants, via exactly one findContactsForOrg call and one pushContactsToEvent call", async () => {
     const { db, state } = fakeDb([], [EVENT_ORG_A]);
     const app = appWithDbAndAuth(db, ORGANIZER_A);
 
@@ -445,10 +489,16 @@ describe("POST /api/v1/contacts/import with eventId (DEC-357 batch wiring)", () 
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as { created: number; updated: number; addedToEvent: number };
+    // addedToEvent is a PEOPLE count (3 contacts joined the roster), not a
+    // session count -- there is exactly one session for the batch.
     expect(body).toEqual({ created: 3, updated: 0, skipped: [], addedToEvent: 3 });
 
     expect(state.contact).toHaveLength(3);
-    expect(state.submission).toHaveLength(3);
+    expect(state.submission).toHaveLength(1);
+    expect(state.submission[0].status).toBe("accepted");
+    expect(state.submission[0].title).toBe("Lightning talks");
+    expect(state.participant).toHaveLength(3);
+    expect(state.participant.every((p: any) => p.submissionId === state.submission[0].id)).toBe(true);
 
     expect(findSpy).toHaveBeenCalledTimes(1);
     expect(pushSpy).toHaveBeenCalledTimes(1);

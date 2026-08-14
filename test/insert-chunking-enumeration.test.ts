@@ -63,9 +63,12 @@ describe("DEC-528: every multi-row insert imports chunkRowsForInsert (or is exem
     // flush — plus wave 52's DEC-528 amendment batching import/
     // sessionboard.ts's contacts/submissions/tracks branch: 5 new chunked
     // create-insert sites (contact, submission, submission_track-on-create,
-    // track, submission_track-on-update-replace)) + 3 bounded-exempt sites.
-    // A new multi-row insert added later must show up here.
-    expect(sites.length).toBe(20);
+    // track, submission_track-on-update-replace)) + 3 bounded-exempt sites,
+    // plus the DEC-810 amendment (wave 59)'s participants.ts
+    // insertActiveParticipants chunked set-based attach (pushContactsToEvent's
+    // batch roster import — one submission, K participants). A new multi-row
+    // insert added later must show up here.
+    expect(sites.length).toBe(21);
   });
 
   it("every non-exempt site's file imports chunkRowsForInsert", () => {

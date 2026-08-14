@@ -5,7 +5,8 @@
 import type { Db } from "../../context";
 import { createSubmission } from "../submissions/create";
 import { updateSubmissionStatuses } from "../submissions";
-import { DEC_156, DEC_765, DEC_810 } from "../../../decisions";
+import { insertActiveParticipants } from "../participants";
+import { DEC_156, DEC_542, DEC_765, DEC_810 } from "../../../decisions";
 import type { ContactRow } from "./rows";
 
 // Compile-checked dependency marker: pushContactToEvent below implements
@@ -22,6 +23,10 @@ void DEC_765;
 // 'Invited: <First> <Last>' fallback. Callers (routes) reject a
 // missing/blank title before ever reaching this module (DEC-810).
 void DEC_810;
+// Compile-checked dependency marker: pushContactsToEvent's participant
+// attach below is one chunked insertActiveParticipants call
+// (chunkRowsForInsert), not a per-contact loop (DEC-542).
+void DEC_542;
 
 /**
  * Pushes an already-org-owned contact into an event as an organizer-invited
@@ -66,19 +71,21 @@ export async function pushContactToEvent(
 }
 
 /**
- * Set-based counterpart to pushContactToEvent (DEC-357), for batch roster
- * adds (CSV import + eventId, src/routes/api/contacts.ts's /contacts/import).
- * Creates one submission per contact via the same per-row createSubmission
- * (deliberately NOT a multi-row insert: submissionSeqSubquery at
- * src/server/repo/submit.ts:225 evaluates against the pre-statement table
- * state, so a multi-row VALUES would collide on seq), applying the same
- * caller-supplied `title` (DEC-810 — no per-contact 'Invited: <First>
- * <Last>' fallback) to every contact in the batch, then runs
- * updateSubmissionStatuses ONCE over every created id (instead of once per
- * contact) so the acceptance planner (DEC-079) does a single set-based
- * pass. Same DEC-156 contract as pushContactToEvent: status accepted,
- * content_status pending, visible participant, no email. Returns
- * submission ids in input order.
+ * Batch-roster counterpart to pushContactToEvent, for CSV import + eventId
+ * (src/routes/api/contacts/import.ts's /contacts/import). DEC-810 amendment
+ * (wave 59): a batch roster add is ONE session for the whole batch, not one
+ * identical session per imported row. Creates exactly ONE submission (via
+ * createSubmission, using the FIRST contact for its DEC-765 contactId/
+ * title/company attribution), attaches every REMAINING contact as an
+ * ACTIVE participant (role 'speaker', visible=true, inviteStatus='none' --
+ * never 'invited', see insertActiveParticipants) in one chunked set-based
+ * insert (DEC-542), then runs updateSubmissionStatuses ONCE (DEC-079's
+ * acceptance planner, a single set-based pass over the one submission id).
+ * Same DEC-156 contract as pushContactToEvent otherwise: status accepted,
+ * content_status pending, no email. Returns the single submission id.
+ * Caller must not call this with an empty `contacts` list -- there is no
+ * batch to push, so no submission id to hand back (fail loudly rather than
+ * mint a sentinel); import.ts guards this before calling.
  */
 export async function pushContactsToEvent(
   db: Db,
@@ -86,17 +93,32 @@ export async function pushContactsToEvent(
   orgId: string,
   contacts: Pick<ContactRow, "id" | "email" | "firstName" | "lastName" | "title" | "company">[],
   title: string,
-): Promise<string[]> {
-  const submissionIds: string[] = [];
-  for (const contact of contacts) {
-    const submissionId = await createSubmission(db, eventId, orgId, {
-      title,
-      contact: { contactId: contact.id, title: contact.title, company: contact.company },
-    });
-    submissionIds.push(submissionId);
+): Promise<string> {
+  if (contacts.length === 0) {
+    throw new Error("pushContactsToEvent: contacts must be non-empty -- caller should skip the call instead");
   }
-  if (submissionIds.length > 0) {
-    await updateSubmissionStatuses(db, eventId, submissionIds, "accepted", new Date());
-  }
-  return submissionIds;
+  const [lead, ...rest] = contacts as [
+    Pick<ContactRow, "id" | "email" | "firstName" | "lastName" | "title" | "company">,
+    ...Pick<ContactRow, "id" | "email" | "firstName" | "lastName" | "title" | "company">[],
+  ];
+
+  const submissionId = await createSubmission(db, eventId, orgId, {
+    title,
+    contact: { contactId: lead.id, title: lead.title, company: lead.company },
+  });
+
+  await insertActiveParticipants(
+    db,
+    submissionId,
+    rest.map((contact, idx) => ({
+      contactId: contact.id,
+      role: "speaker",
+      order: idx + 1,
+      titleAtTime: contact.title,
+      orgAtTime: contact.company,
+    })),
+  );
+
+  await updateSubmissionStatuses(db, eventId, [submissionId], "accepted", new Date());
+  return submissionId;
 }
