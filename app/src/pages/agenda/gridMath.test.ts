@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  formatGutterTime,
   formatMinutes,
   gridRowEnd,
   gridRowToMinutes,
@@ -60,5 +61,16 @@ describe('formatMinutes', () => {
     expect(formatMinutes(720)).toBe('12:00');
     expect(formatMinutes(0)).toBe('00:00');
     expect(formatMinutes(1080)).toBe('18:00');
+  });
+});
+
+describe('formatGutterTime (DEC-021 amendment, w6-f)', () => {
+  it('formats the gutter rail as unpadded 24-hour H:MM, never zero-padded', () => {
+    expect(formatGutterTime(540)).toBe('9:00');
+    expect(formatGutterTime(570)).toBe('9:30');
+    expect(formatGutterTime(600)).toBe('10:00');
+    expect(formatGutterTime(720)).toBe('12:00');
+    expect(formatGutterTime(0)).toBe('0:00');
+    expect(formatGutterTime(1080)).toBe('18:00');
   });
 });

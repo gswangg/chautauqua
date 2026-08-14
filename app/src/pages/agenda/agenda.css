@@ -25,10 +25,31 @@
   margin-left: auto;
 }
 
-/* w41: sits directly beside the h1, inside .chq-agenda-head, ~16px right of
-   the title -- no longer grouped with the Auto-schedule/Publish actions. */
+/* DEC-021 amendment (w6-f): shrinks the gap between the two head buttons
+   (Auto-schedule, Publish schedule) from the row's general 16px to 9px
+   without touching the Breaks link's own spacing before them — targeted to
+   the .chq-btn + .chq-btn adjacency (Breaks is a .chq-link-button, not a
+   .chq-btn) rather than lowering .chq-agenda-head-actions' gap itself. */
+.chq-agenda-head-actions .chq-btn + .chq-btn {
+  margin-left: -7px;
+}
+
+/* DEC-021 amendment (w6-f): .chq-btn-secondary's own 1px border adds 2px of
+   height over the borderless .chq-btn-primary at the same padding, so
+   Auto-schedule (secondary) rendered 2px taller than Publish schedule
+   (primary) at 37px vs 35px. Scoped to the agenda head only — every other
+   .chq-btn-secondary sitewide keeps its own padding. */
+.chq-agenda-head-actions .chq-btn-secondary {
+  padding-top: 9px;
+  padding-bottom: 9px;
+}
+
+/* DEC-021 amendment (w6-f): the gap from the title's own ink to the
+   summary's ink is 15.5px (title ends 147, summary starts 162.5) — the
+   flex row's 24px item gap plus this rule's own margin needed to net down
+   to that, not add on top of it. */
 .chq-agenda-summary {
-  margin-left: 16px;
+  margin-left: -8.5px;
   white-space: nowrap;
 }
 
@@ -70,6 +91,18 @@
   padding: 10px 0;
   border-top: 1px solid var(--chq-hairline);
   border-bottom: 1px solid var(--chq-hairline);
+}
+
+/* DEC-021 amendment (w6-f): the day pills grow from 26px to 29px and their
+   own inter-pill gap from 8px to 11.5px — scoped to this row (it doubles as
+   .chq-chipstrip, shared sitewide) so no other chip strip's spacing moves. */
+.chq-agenda-day-tabs.chq-chipstrip {
+  gap: 11.5px;
+}
+
+.chq-agenda-day-tabs .chq-pill {
+  padding-top: 6.5px;
+  padding-bottom: 6.5px;
 }
 
 .chq-agenda-clash-note {
@@ -161,10 +194,13 @@
   z-index: 2;
 }
 
+/* DEC-021 amendment (w6-f): the band's own 1px --chq-ink rule stays (it
+   already closes the header at the right weight) — only the padding shrinks
+   the band's height from 41.8px to the frame's 36.0px. */
 .chq-day-grid-room-header {
   border-bottom: 1px solid var(--chq-ink);
   border-left: 1px solid var(--chq-hairline);
-  padding: 10px 10px;
+  padding: 7px 10px;
   font-family: var(--chq-font-display);
   font-size: 13px;
   font-weight: 700;
@@ -194,21 +230,34 @@
 }
 
 .chq-day-grid-cell {
-  border-bottom: 1px solid var(--chq-hairline);
   border-left: 1px solid var(--chq-hairline);
 }
 
-/* DEC-900 amendment (wave 39, LATTICE): every 15-minute line draws the same
-   hairline rule, but the 30-minute boundary — the bottom edge of the second
-   row in each labelled pair — draws the stronger --chq-rule tone instead,
-   one rule per boundary, so the lattice reads as 30-minute rows rather than
-   36 indistinguishable lines. Compound selectors (2 classes) so this wins
-   over .chq-day-grid-cell/-cell-btn/-cell-btn-clash regardless of where
-   those rules land in the file. */
+/* DEC-021 amendment (w6-f, LATTICE tone): placement arithmetic still
+   resolves every cell at 15-minute increments (36 rows/day), but the
+   PAINTED lattice draws only at the 30-minute boundary — the bottom edge of
+   the second row in each labelled pair — in one tone, matching the frame's
+   18 rules/day instead of the prior 36 hairlines split across two tones
+   (--chq-hairline at every 15-minute midpoint, --chq-rule at the 30-minute
+   line). --chq-agenda-lattice is scoped to this page's day grid rather than
+   reusing either shared token, since the frame's tone (#ede9dd) sits
+   between the two. Compound selectors (2 classes) so this wins over
+   .chq-day-grid-cell/-cell-btn/-cell-btn-clash regardless of where those
+   base rules land in the file. */
+.chq-day-grid {
+  --chq-agenda-lattice: #ede9dd;
+}
+
 .chq-day-grid-cell.chq-day-grid-cell-boundary,
-.chq-day-grid-cell-btn.chq-day-grid-cell-boundary,
+.chq-day-grid-cell-btn.chq-day-grid-cell-boundary {
+  border-bottom: 1px solid var(--chq-agenda-lattice);
+}
+
+/* .chq-day-grid-cell-btn-clash keeps its own dashed warning border (DEC-367:
+   type not colour) — only its tone follows the unified lattice here, not
+   its style. */
 .chq-day-grid-cell-btn-clash.chq-day-grid-cell-boundary {
-  border-bottom-color: var(--chq-rule);
+  border-bottom-color: var(--chq-agenda-lattice);
 }
 
 /* DEC-570: while a session is armed, every cell in the grid (occupied or
@@ -218,7 +267,6 @@
    without this the card would intercept the click and place at the card's
    own startMin instead of the row the organiser aimed at. */
 .chq-day-grid-cell-btn {
-  border-bottom: 1px solid var(--chq-hairline);
   border-left: 1px solid var(--chq-hairline);
   background: transparent;
   border-top: none;
@@ -382,7 +430,10 @@
 .chq-day-grid-clash-card {
   align-self: stretch;
   justify-self: start;
-  width: 100%;
+  /* DEC-021 amendment (w6-f): matches .chq-day-grid-placed-card's own
+     ~3.5px inset inside the column divider instead of sitting flush on it. */
+  width: calc(100% - 3.5px);
+  margin-left: 3.5px;
   background: var(--chq-ink);
   border: 1px solid var(--chq-ink);
   border-radius: var(--chq-r-ctl);

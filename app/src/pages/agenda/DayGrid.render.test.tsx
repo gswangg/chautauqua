@@ -127,6 +127,26 @@ function breakRow(overrides: Partial<ScheduleBreakRow> = {}): ScheduleBreakRow {
   };
 }
 
+describe('DayGrid gutter rail (DEC-021 amendment, w6-f)', () => {
+  it('reads unpadded 24h "H:MM" for both the visible label and its aria string, from one formatter', () => {
+    const { container } = render(<DayGrid {...BASE_PROPS} placed={[]} conflicts={[]} />);
+    const firstLabel = container.querySelector('.chq-day-grid-time-label');
+    expect(firstLabel?.textContent).toBe('9:00');
+    expect(firstLabel?.getAttribute('aria-label')).toBe('9:00');
+    const labels = [...container.querySelectorAll('.chq-day-grid-time-label')].map((el) => el.textContent);
+    expect(labels).not.toContain('09:00');
+    expect(labels).toContain('9:30');
+    expect(labels).toContain('10:00');
+  });
+
+  it('paints exactly 18 lattice boundary rules for the default 36-row (540..1080@15min) day', () => {
+    const { container } = render(<DayGrid {...BASE_PROPS} placed={[]} conflicts={[]} />);
+    const boundaries = container.querySelectorAll('.chq-day-grid-cell-boundary');
+    // One boundary cell per 30-minute row pair, per room column (1 room here).
+    expect(boundaries.length).toBe(18);
+  });
+});
+
 describe('DayGrid breaks (DEC-021 amendment, w67-b)', () => {
   it('renders a break band with its label text at the row its start minute implies', () => {
     const { container } = render(<DayGrid {...BASE_PROPS} placed={[]} conflicts={[]} breaks={[breakRow()]} />);
