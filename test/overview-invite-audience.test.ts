@@ -85,13 +85,16 @@ describe("getOverviewPayload: participant invite-audience (DEC-512)", () => {
     expect(payload.agendaWork.unplaced).toHaveLength(1);
     expect(payload.agendaWork.unplaced[0]).toMatchObject({ submissionId: "s1", speakerName: "Ada Lovelace" });
 
-    // 15: placed-session participant fan-out (batch of {s0}) must AND in
-    // the same inArray(inviteStatus, ACTIVE_INVITE_STATUSES) predicate
-    // files-library.ts already uses -- a declined co-presenter on a placed
-    // submission must never produce a speaker clash.
+    // 15: the placed+unplaced participant fan-out (DEC-895 amendment, w2-f:
+    // batch of {s0, s1} -- placed ids then the capped unplaced ids, so a
+    // placement suggestion's own occupancy check sees every active
+    // participant, not just leads) must AND in the same
+    // inArray(inviteStatus, ACTIVE_INVITE_STATUSES) predicate files-library.ts
+    // already uses -- a declined co-presenter on either a placed submission
+    // or an unplaced one must never produce a speaker clash.
     const expectedParticipantWhere = sqlTextOf(
       and(
-        inArray(schema.participant.submissionId, ["s0"]),
+        inArray(schema.participant.submissionId, ["s0", "s1"]),
         inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
       ),
     );
