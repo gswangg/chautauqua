@@ -259,7 +259,7 @@ export function FormsPage() {
   }
 
   return (
-    <div className="chq-page chq-forms-page chq-measure">
+    <div className="chq-page chq-forms-page chq-measure-table">
       <header className="chq-forms-header">
         <div className="chq-forms-header-titles">
           <Link to="/submissions" className="chq-forms-back">
@@ -329,7 +329,7 @@ export function FormsPage() {
             <h2>Fields</h2>
             <button
               type="button"
-              className="chq-btn chq-btn-secondary"
+              className="chq-link-button chq-forms-add-question"
               onClick={() => setModal({ mode: 'create' })}
               disabled={busy}
             >

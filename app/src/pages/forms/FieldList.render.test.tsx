@@ -4,6 +4,7 @@
 // row), and an Abstract caption naming the REAL imported length cap.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import '@testing-library/jest-dom/vitest';
 import { FieldList } from './FieldList';
 import { MAX_LONG_TEXT_LENGTH } from '../../../../src/forms/validate';
@@ -82,7 +83,7 @@ describe('FieldList row anatomy (DEC-715)', () => {
   it('ArrowDown on the drag handle calls onMove(field, 1)', () => {
     const onMove = vi.fn();
     render(<FieldList fields={FIELDS} tracks={[]} busy={false} onEdit={vi.fn()} onDelete={vi.fn()} onMove={onMove} />);
-    const handle = screen.getByRole('button', { name: 'Reorder Format (position 4 of 4)' });
+    const handle = screen.getByRole('button', { name: 'Reorder Format (position 3 of 4)' });
     handle.focus();
     handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
     expect(onMove).toHaveBeenCalledTimes(1);
@@ -94,7 +95,7 @@ describe('FieldList row anatomy (DEC-715)', () => {
   it('ArrowUp on the drag handle calls onMove(field, -1)', () => {
     const onMove = vi.fn();
     render(<FieldList fields={FIELDS} tracks={[]} busy={false} onEdit={vi.fn()} onDelete={vi.fn()} onMove={onMove} />);
-    const handle = screen.getByRole('button', { name: 'Reorder Format (position 4 of 4)' });
+    const handle = screen.getByRole('button', { name: 'Reorder Format (position 3 of 4)' });
     handle.focus();
     handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
     expect(onMove).toHaveBeenCalledTimes(1);
@@ -137,24 +138,28 @@ describe('FieldList row anatomy (DEC-715)', () => {
     expect(screen.queryByText('Dropdown')).not.toBeInTheDocument();
   });
 
-  // DEC-877: locked rows still render Edit/Delete/drag controls (the row
-  // keeps its shape), but every one of them must carry the native
-  // `disabled` attribute -- exposed to assistive tech, not merely painted
-  // quiet by CSS -- because their action is impossible for a locked field.
-  it('exposes disabled Edit/Delete/drag controls (not just a visual dimming) for a locked field', () => {
+  // DEC-877/frame-04 anatomy (task-w5-h): locked rows still render
+  // Edit/Delete/drag controls (the row keeps its shape) with the native
+  // `disabled` attribute where the action is genuinely impossible -- but
+  // DEC-016 locked fields are non-REMOVABLE, not non-editable: only Delete
+  // and the drag handle are disabled for a built-in row now; Edit stays
+  // active/green like every other row's.
+  it('greys only Delete and the drag handle for a locked field; Edit stays active (green)', () => {
     renderList();
     const titleRow = screen.getByText('Title').closest('[role="listitem"]') as HTMLElement;
     const titleEdit = within(titleRow).getByRole('button', { name: 'Edit' });
     const titleDelete = within(titleRow).getByRole('button', { name: 'Delete' });
     const titleDrag = screen.getByRole('button', { name: 'Reorder Title (position 1 of 4)' });
-    expect(titleEdit).toBeDisabled();
+    expect(titleEdit).not.toBeDisabled();
     expect(titleDelete).toBeDisabled();
     expect(titleDrag).toBeDisabled();
 
-    // The unlocked Format row keeps its controls enabled.
+    // The unlocked Format row keeps every control enabled.
     const formatRow = screen.getByText('Format').closest('[role="listitem"]') as HTMLElement;
     const formatEdit = within(formatRow).getByRole('button', { name: 'Edit' });
+    const formatDelete = within(formatRow).getByRole('button', { name: 'Delete' });
     expect(formatEdit).not.toBeDisabled();
+    expect(formatDelete).not.toBeDisabled();
   });
 
   it('renders the seeded session-format field (DEC-762) as "Format", derived from its shared id', () => {
@@ -188,6 +193,135 @@ describe('FieldList row anatomy (DEC-715)', () => {
       },
     ]);
     expect(screen.getByText('3 options')).toBeInTheDocument();
+  });
+});
+
+// Frame-04 anatomy (task-w5-h): the "You" group and its field order.
+describe('FieldList "You" group (frame-04 anatomy)', () => {
+  const JOB_TITLE: FormField = {
+    id: 'form-1:job_title',
+    section: 'speaker',
+    kind: 'text',
+    label: 'Job title',
+    required: false,
+    position: 5,
+    locked: true,
+  };
+  const COMPANY: FormField = {
+    id: 'form-1:company',
+    section: 'speaker',
+    kind: 'text',
+    label: 'Company',
+    required: false,
+    position: 6,
+    locked: true,
+  };
+  const BIO: FormField = {
+    id: 'form-1:bio',
+    section: 'speaker',
+    kind: 'long_text',
+    label: 'Speaker bio',
+    required: false,
+    position: 7,
+    locked: true,
+  };
+  const CUSTOM_TALK_FIELD: FormField = {
+    id: 'f-notes',
+    section: 'session',
+    kind: 'long_text',
+    label: 'Notes for reviewers',
+    required: false,
+    position: 8,
+    locked: false,
+  };
+
+  it('folds job_title/company/bio under a "You" header, trailing every talk (session) field including a custom one added after them', () => {
+    render(
+      <FieldList
+        fields={[...FIELDS, JOB_TITLE, COMPANY, BIO, CUSTOM_TALK_FIELD]}
+        tracks={[]}
+        busy={false}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onMove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('You')).toBeInTheDocument();
+    expect(screen.getByText('Job title')).toBeInTheDocument();
+    expect(screen.getByText('Company')).toBeInTheDocument();
+    expect(screen.getByText('Speaker bio')).toBeInTheDocument();
+
+    // Order: Title, Abstract (frame's second position), Format, Notes for
+    // reviewers (talk/session fields, position order) -- then the "You"
+    // group's Speaker name and email, Job title, Company, Speaker bio.
+    const labels = screen
+      .getAllByRole('listitem')
+      .map((row) => row.querySelector('.chq-forms-field-label-text')?.textContent);
+    expect(labels).toEqual([
+      'Title',
+      'Abstract',
+      'Format',
+      'Notes for reviewers',
+      'Speaker name and email',
+      'Job title',
+      'Company',
+      'Speaker bio',
+    ]);
+  });
+
+  it('renders no "You" header when the form has no speaker-section fields', () => {
+    render(
+      <FieldList
+        fields={[{ id: 't', section: 'session', kind: 'text', label: 'Title', required: true, position: 0, locked: true }]}
+        tracks={[]}
+        busy={false}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onMove={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText('You')).not.toBeInTheDocument();
+  });
+});
+
+// Frame-04 anatomy (task-w5-h): the synthesized Track row's handle and
+// Edit/Delete pair.
+describe('FieldList Track row (frame-04 anatomy)', () => {
+  it('gives Track the same disabled ⋮⋮ handle its siblings have, an active Edit link, and a greyed Delete', () => {
+    render(
+      <MemoryRouter>
+        <FieldList
+          fields={[
+            { id: 't', section: 'session', kind: 'text', label: 'Title', required: true, position: 0, locked: true },
+            {
+              id: 'form-1:description',
+              section: 'session',
+              kind: 'long_text',
+              label: 'Description',
+              required: true,
+              position: 1,
+              locked: true,
+            },
+          ]}
+          tracks={[{ id: 'trk-1', name: 'Frontend' }]}
+          busy={false}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+          onMove={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+    const trackRow = screen.getByText('Track').closest('[role="listitem"]') as HTMLElement;
+    const handle = within(trackRow).getByRole('button', { name: /^Reorder Track/ });
+    expect(handle).toBeDisabled();
+    expect(handle).toHaveTextContent('⋮⋮');
+
+    const editLink = within(trackRow).getByRole('link', { name: 'Edit' });
+    expect(editLink).toHaveAttribute('href', '/settings?section=tracks-rooms&edit=1');
+
+    const deleteButton = within(trackRow).getByRole('button', { name: 'Delete' });
+    expect(deleteButton).toBeDisabled();
   });
 });
 

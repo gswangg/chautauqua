@@ -83,19 +83,33 @@ describe('FormsPage render smoke', () => {
 
     expect(screen.getByRole('heading', { name: 'CFP form' })).toBeInTheDocument();
 
-    // DEC-008 amendment (w45-e): the builder synthesizes a Track row from
-    // the event's tracks -- the SAME single-choice question the public CFP
-    // (TrackChoices) renders -- as a view, never a real field row: no
-    // Edit/Delete, no drag handle, just a quiet link into Settings.
+    // Frame-04 anatomy (w5-h): the builder header bar goes full bleed at
+    // 1440 -- the page root carries .chq-measure-table, not the narrower
+    // .chq-measure the content column below re-clamps itself to.
+    const pageRoot = container.querySelector('.chq-forms-page');
+    expect(pageRoot).toHaveClass('chq-measure-table');
+    expect(pageRoot).not.toHaveClass('chq-measure');
+
+    // DEC-008 amendment (w45-e), frame-04 anatomy (w5-h): the builder
+    // synthesizes a Track row from the event's tracks -- the SAME
+    // single-choice question the public CFP (TrackChoices) renders -- as a
+    // view, never a real field row backed by its own PATCH/DELETE. It still
+    // carries the same ⋮⋮ handle its siblings have (disabled -- there is no
+    // real position to drag) and an active Edit whose target is the
+    // Settings tracks editor, paired with a greyed (disabled) Delete like
+    // every other built-in row -- "Manage in Settings" no longer stands in
+    // for the row's Edit/Delete pair.
     const trackRow = screen.getByText('Track').closest('[role="listitem"]') as HTMLElement;
     expect(trackRow).not.toBeNull();
     expect(trackRow).toHaveClass('chq-forms-field-locked');
     expect(within(trackRow).getByText('Single choice')).toBeInTheDocument();
     expect(within(trackRow).getByText('1 option')).toBeInTheDocument();
-    expect(within(trackRow).queryByRole('button', { name: /^Reorder /i })).not.toBeInTheDocument();
+    const trackHandle = within(trackRow).getByRole('button', { name: /^Reorder /i });
+    expect(trackHandle).toBeDisabled();
     expect(within(trackRow).queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
-    expect(within(trackRow).queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
-    const trackLink = within(trackRow).getByRole('link', { name: 'Manage in Settings' });
+    const trackDelete = within(trackRow).getByRole('button', { name: 'Delete' });
+    expect(trackDelete).toBeDisabled();
+    const trackLink = within(trackRow).getByRole('link', { name: 'Edit' });
     expect(trackLink).toHaveAttribute('href', '/settings?section=tracks-rooms&edit=1');
 
     // FieldList (DEC-715 row anatomy): the locked built-in gets a quiet
@@ -138,9 +152,11 @@ describe('FormsPage render smoke', () => {
     expect(headerSave).toHaveClass('chq-btn', 'chq-btn-primary');
     expect(headerSave).toBeDisabled();
 
-    // FieldModal (create).
+    // FieldModal (create). Frame 04: "Add a question" is a green text link
+    // on the section rule, not a bordered button.
     const addButton = screen.getByRole('button', { name: 'Add a question' });
-    expect(addButton).toHaveClass('chq-btn', 'chq-btn-secondary');
+    expect(addButton).toHaveClass('chq-link-button');
+    expect(addButton).not.toHaveClass('chq-btn-secondary');
     addButton.click();
     const dialog = await screen.findByRole('dialog', { name: 'New field' });
     expect(dialog).toBeInTheDocument();
