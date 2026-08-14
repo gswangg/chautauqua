@@ -255,6 +255,57 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
     expect(within(dietaryRow as HTMLElement).getByText('Vegetarian')).toBeInTheDocument();
   });
 
+  // DEC-616 amendment (wave 15): the drawer states its own save mechanism
+  // in the record head, exactly once, in plain words.
+  it('states how the drawer saves in one caption in the record head', async () => {
+    mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
+
+    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
+    await waitFor(() => {
+      expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
+    });
+
+    const captions = within(dialog).getAllByText(
+      'Click a row to edit it — nothing is saved until you press Save.',
+    );
+    expect(captions).toHaveLength(1);
+    expect(captions[0]).toHaveClass('chq-meta');
+  });
+
+  // DEC-616 amendment (wave 15): the action row (where Save lives) is a
+  // persistent footer -- a sibling of the scrolling record body inside the
+  // drawer, pinned via the sticky class rather than nested under it.
+  it('keeps Save in a sticky actions footer, a sibling of the record body', async () => {
+    mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
+
+    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
+    await waitFor(() => {
+      expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
+    });
+
+    const saveButton = within(dialog).getByRole('button', { name: 'Save' });
+    const actionsEl = saveButton.closest('.chq-contacts-drawer-actions');
+    expect(actionsEl).not.toBeNull();
+
+    const drawerEl = dialog.querySelector('.chq-modal.chq-drawer');
+    expect(drawerEl).not.toBeNull();
+    expect(actionsEl!.parentElement).toBe(drawerEl);
+
+    const recordEl = dialog.querySelector('.chq-contacts-record');
+    expect(recordEl).not.toBeNull();
+    expect(recordEl!.parentElement).toBe(drawerEl);
+    expect(actionsEl).not.toBe(recordEl);
+
+    // Sticky mechanics live on this same class in styles.css.
+    const body = topLevelRuleBody(SHARED_CSS, '.chq-contacts-drawer-actions');
+    expect(body).toMatch(/position:\s*sticky/);
+    expect(body).toMatch(/bottom:\s*0/);
+  });
+
   // DEC-616 amendment (wave 4): only populated rows render inline; a fully
   // populated contact has no hidden count and no disclosure at all.
   it('renders no disclosure when every field is populated', async () => {
