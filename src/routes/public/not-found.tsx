@@ -12,7 +12,11 @@
 // sub-app). This module has no dependents that create a cycle.
 import type { Context } from "hono";
 import type { AppEnv } from "../../server/env";
-import { NotFoundDocument, resolveNotFoundEyebrow } from "../../server/not-found";
+import {
+  ANONYMOUS_NOT_FOUND_LINKS,
+  NotFoundDocument,
+  resolveNotFoundEyebrow,
+} from "../../server/not-found";
 
 // DEC-297: public surfaces must never emit a cacheable non-200. A 404 (or
 // any other non-200) response must always carry Cache-Control: no-store,
@@ -24,5 +28,8 @@ import { NotFoundDocument, resolveNotFoundEyebrow } from "../../server/not-found
 export async function publicNotFound(c: Context<AppEnv>, message: string): Promise<Response> {
   c.header("Cache-Control", "no-store");
   const eyebrow = await resolveNotFoundEyebrow(c.var.db);
-  return await c.html(<NotFoundDocument eyebrow={eyebrow} body={message} />, 404);
+  return await c.html(
+    <NotFoundDocument eyebrow={eyebrow} body={message} links={ANONYMOUS_NOT_FOUND_LINKS} />,
+    404,
+  );
 }

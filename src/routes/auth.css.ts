@@ -32,23 +32,26 @@ void DEC_945;
 // is no longer narrower than .chq-auth-card. The 450px control-column cap
 // under -narrow is gone.
 //
-// That full measure is DEC-945's "the full 820", and 820 is exactly the
-// --chq-measure reading column theme.ts already declares -- so it is spelt
-// var(--chq-measure), not a hand-copied 820px. DEC-989's wave-37 amendment
-// forbids hand-copied page clamps of 800px+ on the SSR side and names
-// .chq-home-shell as its ONE exception; .chq-portal-footer took the same
-// var(--chq-measure) treatment there rather than keeping its own number.
-// Every AUTH_CSS consumer (routes/auth.tsx, routes/account.tsx,
+// DEC-945 wave-1 amendment: the wave-40 ruling above stated the design's
+// CONTENT column (732 login / 818 password+404) directly on the card BOX,
+// then padded inward from there -- so the box itself measured content -88
+// (644) or content -70 (748/750), pulling every left edge inboard of the
+// frame. A measure names what you read, never what surrounds it: the BOX is
+// column + 2x padding, so .chq-auth-card is 820 (732 + 2*44) and
+// .chq-auth-card-narrow is 888 (818 + 2*35) -- both literals, because
+// neither box is itself the --chq-measure reading column (that column is
+// the CONTENT these boxes produce once padding is subtracted, not the box
+// width DEC-989's wave-37 "no hand-copied 800px+ clamp" rule was written
+// against). Every AUTH_CSS consumer (routes/auth.tsx, routes/account.tsx,
 // server/not-found.tsx, routes/public/not-found.tsx via shell.tsx's
-// BaseStyles) emits ThemeStyles/THEME_CSS first, so the token is always
-// defined here. The 732 stays a literal: it is the 820 column inset by the
-// card's own 44px padding, not the measure itself.
+// BaseStyles) emits ThemeStyles/THEME_CSS first, so --chq-measure is always
+// defined here even though the auth card no longer reads it directly.
 export const AUTH_CSS = `
   body { display: flex; justify-content: center; align-items: flex-start; padding: 40px 20px; }
 
   .chq-auth-card {
     width: 100%;
-    max-width: 732px;
+    max-width: 820px;
     background: var(--chq-paper);
     padding: 44px 44px 40px;
     display: flex;
@@ -56,7 +59,7 @@ export const AUTH_CSS = `
     gap: 26px;
   }
   .chq-auth-card.chq-auth-card-narrow {
-    max-width: var(--chq-measure);
+    max-width: 888px;
     padding: 35px;
   }
 
@@ -77,7 +80,17 @@ export const AUTH_CSS = `
     color: var(--chq-ink);
   }
   .chq-auth-subtitle { font-size: 14px; color: var(--chq-muted); margin-top: 6px; }
-  .chq-auth-body { font-size: 15px; line-height: 1.63; color: var(--chq-ink-2); }
+  .chq-auth-body { font-size: 15px; line-height: 1.63; color: var(--chq-ink-2); margin: 0; }
+
+  /* Wave-1 (DEC-945 amendment): the 404 card is a tight title/body/links
+     notice, not a form -- the card's uniform 26px gap (tuned for the login
+     form's field stack) reads roughly 2x the frame's rhythm here, and the
+     UA <p> margin this file never zeroed used to stack on top of it.
+     .chq-auth-card-notice turns the card's own gap off and states the
+     frame's own numbers explicitly: h1->body ~19px, body->links ~26px. */
+  .chq-auth-card.chq-auth-card-notice { gap: 0; }
+  .chq-auth-card-notice .chq-auth-titlerow { margin-bottom: 19px; }
+  .chq-auth-card-notice .chq-auth-body { margin-bottom: 26px; }
 
   .chq-auth-titlerow { display: flex; flex-direction: column; gap: 10px; }
   .chq-auth-back {
@@ -144,7 +157,10 @@ export const AUTH_CSS = `
     font-weight: 700;
     min-height: 44px;
     display: inline-flex;
-    align-items: center;
+    align-items: center; /* 44px tap target via vertical centering, not
+                             top padding -- padding above the text would
+                             itself become extra rhythm the frame doesn't
+                             draw. */
     text-decoration: none;
   }
   .chq-auth-footer-links a:hover,

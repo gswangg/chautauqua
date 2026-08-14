@@ -106,7 +106,8 @@ function expectSharedCardMarkup(body: string) {
   expect(body).toContain("<title>Not found - Chautauqua</title>");
   expect(body).toContain('<meta name="robots" content="noindex"');
   expect(body).not.toContain('<div class="chq-auth-card"');
-  const mainMatches = body.match(/<main class="chq-auth-card chq-auth-card-narrow">/g) ?? [];
+  const mainMatches =
+    body.match(/<main class="chq-auth-card chq-auth-card-narrow chq-auth-card-notice">/g) ?? [];
   expect(mainMatches).toHaveLength(1);
   expect(body).toContain('href="/">Go to the homepage');
   expect(body).toContain('href="/login">Log in');
