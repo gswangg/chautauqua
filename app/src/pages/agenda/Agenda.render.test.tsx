@@ -1078,7 +1078,9 @@ describe('AgendaPage phone tap-to-place (DEC-380)', () => {
     expect(roomChip.querySelector('.chq-flag')?.textContent).toBe('CLASH');
 
     // Overlapping A/B render as one merged clash run, not two placed cards.
-    expect(screen.getByText('Two sessions in this slot')).toBeInTheDocument();
+    // DEC-380 amendment (w12-a): derived from slot.sessions.length via the
+    // shared countOf helper, not a hardcoded "Two".
+    expect(screen.getByText('2 sessions in this slot')).toBeInTheDocument();
   });
 
   it('arms an unscheduled session from the sheet, places it on tap, and fires the same PUT as desktop drag-drop', async () => {
@@ -1112,5 +1114,79 @@ describe('AgendaPage phone tap-to-place (DEC-380)', () => {
     });
     // sub-3 moved out of the unscheduled sheet trigger's count.
     expect(screen.getByRole('button', { name: /Unscheduled 0/ })).toBeInTheDocument();
+  });
+
+  // DEC-380 amendment (w12-a) defect fix: the clash caption is derived from
+  // slot.sessions.length via the shared countOf helper, not a hardcoded
+  // "Two" — this fixture carries a 3-way same-room overlap.
+  it('renders a plural-correct clash caption for a 3-session same-room overlap', async () => {
+    stubPhoneMatchMedia();
+    const payload = agendaPayload();
+    payload.placed.push({
+      submissionId: 'sub-4',
+      ref: 'S-004',
+      title: 'Overlapping Talk C',
+      trackIds: [],
+      speakers: [],
+      roomId: 'room-1',
+      day: '2026-06-01',
+      startMin: 645,
+      endMin: 705,
+    });
+    payload.conflicts = [
+      { kind: 'room_overlap', submissionIds: ['sub-1', 'sub-2'], detail: 'A and B overlap in Main Hall.' },
+      { kind: 'room_overlap', submissionIds: ['sub-1', 'sub-4'], detail: 'A and C overlap in Main Hall.' },
+      { kind: 'room_overlap', submissionIds: ['sub-2', 'sub-4'], detail: 'B and C overlap in Main Hall.' },
+    ];
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: payload,
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('3 sessions in this slot')).toBeInTheDocument();
+    expect(screen.queryByText('Two sessions in this slot')).toBeNull();
+  });
+
+  // DEC-380 amendment (w12-a) defect fix: the desktop DayGrid places onto
+  // occupied cells and surfaces a clash (SPEC J9/DEC-010, warn-never-block).
+  // While armed, every slot row — not just 'free' ones — must render a
+  // placement control so the phone doesn't refuse a write the desktop
+  // accepts.
+  it('while armed, an occupied (clash) slot renders a "Place here anyway" control that places with the armed session\'s own duration', async () => {
+    stubPhoneMatchMedia();
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
+      'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 2 } } },
+    });
+
+    render(<AgendaPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
+    });
+
+    // Arm sub-3 (unscheduled, 30-minute default duration) from the sheet.
+    fireEvent.click(screen.getByRole('button', { name: /Unscheduled 1/ }));
+    fireEvent.click(screen.getByText('Unplaced Talk'));
+    expect(screen.getByText('Placing · tap a free slot')).toBeInTheDocument();
+
+    const placeAnyway = screen.getByText('Place here anyway').closest('button')!;
+    fireEvent.click(placeAnyway);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Unscheduled 0/ })).toBeInTheDocument();
+    });
+
+    const call = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'PUT');
+    expect(call).toBeDefined();
+    const body = JSON.parse((call![1] as RequestInit).body as string);
+    // The clash slot (sub-1/sub-2) starts at 600 -- the armed session
+    // (unscheduled, DEFAULT_PLACE_DURATION_MIN=30) is written there with
+    // ITS OWN duration, not the occupying run's span.
+    expect(body).toMatchObject({ roomId: 'room-1', startMin: 600, endMin: 630 });
   });
 });

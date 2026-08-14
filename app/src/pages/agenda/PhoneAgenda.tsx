@@ -3,6 +3,7 @@ import type { AgendaConflict, AgendaRoom, PlacedAgendaSession, UnscheduledAgenda
 import { buildPhoneSlots } from './phoneSlots';
 import { formatMinutes } from './gridMath';
 import { useEscapeKey } from '../../lib/useEscapeKey';
+import { countOf } from '../../lib/plural';
 
 interface Armed {
   submissionId: string;
@@ -163,6 +164,16 @@ export function PhoneAgenda({
                     <span className="chq-phone-slot-card-meta">{sess.speakers.map((sp) => sp.name).join(', ')}</span>
                   )}
                 </button>
+                {armed && (
+                  <button
+                    type="button"
+                    className="chq-phone-slot-place-anyway"
+                    onClick={() => placeArmedAt(slot.startMin)}
+                  >
+                    <span className="chq-phone-slot-free-label">Place here anyway</span>
+                    <span className="chq-phone-slot-free-length">{lengthLabel}</span>
+                  </button>
+                )}
               </div>
             );
           }
@@ -172,7 +183,7 @@ export function PhoneAgenda({
               <div key={key} className="chq-phone-slot">
                 <span className="chq-phone-slot-time">{formatMinutes(slot.startMin)}</span>
                 <div className="chq-panel chq-phone-slot-clash">
-                  <span className="chq-flag">Two sessions in this slot</span>
+                  <span className="chq-flag">{countOf(slot.sessions.length, 'session')} in this slot</span>
                   {slot.sessions.map((sess, idx) => (
                     <div key={sess.submissionId}>
                       {idx > 0 && <div className="chq-panel-rule" />}
@@ -185,6 +196,16 @@ export function PhoneAgenda({
                     </div>
                   ))}
                 </div>
+                {armed && (
+                  <button
+                    type="button"
+                    className="chq-phone-slot-place-anyway"
+                    onClick={() => placeArmedAt(slot.startMin)}
+                  >
+                    <span className="chq-phone-slot-free-label">Place here anyway</span>
+                    <span className="chq-phone-slot-free-length">{lengthLabel}</span>
+                  </button>
+                )}
               </div>
             );
           }

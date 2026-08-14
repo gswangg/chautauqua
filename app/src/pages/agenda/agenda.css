@@ -794,6 +794,7 @@
 .chq-phone-slot-free,
 .chq-phone-slot-free-label,
 .chq-phone-slot-free-length,
+.chq-phone-slot-place-anyway,
 .chq-phone-footer,
 .chq-phone-footer-armed,
 .chq-phone-footer-armed-info,
@@ -914,6 +915,19 @@
     letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--chq-muted);
+  }
+
+  .chq-phone-slot-place-anyway {
+    grid-column: 2;
+    border: 1px dashed var(--chq-brand);
+    background: var(--chq-surface-sunk);
+    border-radius: var(--chq-r-ctl-phone);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    cursor: pointer;
   }
 
   .chq-phone-footer {
