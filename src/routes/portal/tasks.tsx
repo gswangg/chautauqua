@@ -71,6 +71,7 @@ import type { AnswerMap } from "../../forms/types";
 import { fieldInputName } from "../../views/form-render";
 import { extractFileAnswers } from "../../lib/submit-core";
 import {
+  assertServedContentTypeHeader,
   contentDispositionAttachment,
   isValidFileKind,
   sanitizeFilenameForKey,
@@ -704,7 +705,7 @@ portalTasksRoutes.get("/tasks/:assignmentId/file", async (c) => {
   if (!obj) throw new ApiError("not_found", "File contents not found");
 
   return c.body(obj.body, 200, {
-    "Content-Type": latest.contentType,
+    "Content-Type": assertServedContentTypeHeader(latest.contentType),
     "X-Content-Type-Options": "nosniff",
     "Content-Disposition": contentDispositionAttachment(latest.filename),
   });
@@ -743,7 +744,7 @@ portalTasksRoutes.get("/tasks/:assignmentId/file/:fileId", async (c) => {
   if (!obj) throw new ApiError("not_found", "File contents not found");
 
   return c.body(obj.body, 200, {
-    "Content-Type": target.contentType,
+    "Content-Type": assertServedContentTypeHeader(target.contentType),
     "X-Content-Type-Options": "nosniff",
     "Content-Disposition": contentDispositionAttachment(target.filename),
   });

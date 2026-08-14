@@ -26,7 +26,7 @@ import {
   type SocialLinks,
 } from "../../server/repo/profile";
 import { CLIENT_CACHE_CONTROL } from "../../server/pubcache";
-import { sanitizeFilenameForKey, validateHeadshotUpload } from "../../domain/files";
+import { assertServedContentTypeHeader, sanitizeFilenameForKey, validateHeadshotUpload } from "../../domain/files";
 import { newId } from "../../domain/ids";
 import {
   CSRF_COOKIE_NAME,
@@ -457,7 +457,7 @@ headshotServeRoutes.get("/headshots/:fileId", async (c) => {
   const obj = await store.get(scope.r2Key);
   if (!obj) throw new ApiError("not_found", "Headshot contents not found");
 
-  const contentType = scope.contentType;
+  const contentType = assertServedContentTypeHeader(scope.contentType);
   // Vary: Cookie — the same URL answers 404 to a stranger and 200 to the
   // owning speaker/organizer while a headshot is private, so a shared
   // cache must never mix the two responses.
