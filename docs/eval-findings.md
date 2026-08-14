@@ -12,12 +12,17 @@ classification: phone frames are the ≈390pt-wide captures (<800px at @2x) —
 NARROW FRAMES ABOVE THAT (880-1280px modals/drawers/panels) ARE DESKTOP frames
 and stay in scope; phone frames (v5, full-scroll) are held for the mobile round —
 phone findings filed before the gate go to the mobile queue, not the open items · mobile is additive reflow (media-blocks/phone-classes only; a mobile wave that
-changes a desktop pixel has failed; scan-lock) · USER PRINCIPLE (2026-08-14): mobile
-REFLOWS the desktop design, it never competes with it — the corollary governs
-derivation direction: when a surface has ONLY a 390 frame, desktop is NEVER "phone
-anatomy scaled up" (no full-width primary bars, no phone stacking in wide columns);
-the desktop state holds for a frame or derives from the width system + affordance
-grammar, and the gap gets filed to the design-standard brief · tests: workers targeted, trains run
+changes a desktop pixel has failed; scan-lock) · USER PRINCIPLE (2026-08-14, refined):
+mobile REFLOWS the desktop design, it never competes with it. Reflow IS inclusive of
+phone-native grammar — action bars, sheets, stacking, 44px targets are legitimate
+translations of desktop affordances (an action bar translates a form footer), so do
+NOT strip phone idioms in the name of reflow. The principle governs DIRECTION OF
+AUTHORITY, two rules: (1) the phone rendition keeps the desktop design's hierarchy,
+capabilities, and token vocabulary — only the grammar changes; (2) derivation is
+one-way: when a surface has ONLY a 390 frame, desktop is NEVER "phone anatomy scaled
+up" (no full-width primary bars or phone stacking in wide columns) — the desktop
+state holds for a frame or derives from the width system + affordance grammar, and
+the gap gets filed to the design-standard brief · tests: workers targeted, trains run
 fast tier (pure domain + scans, <60s), full suite ONLY at exit, maxWorkers 2 (now in
 vitest.config.ts — keep) · every fix needs a test; where a test contradicts the v4
 design copy, THE TEST IS WRONG · affordance grammar: conditional-and-quiet; controls
