@@ -33,8 +33,14 @@ export function useMe(): UseMeResult {
         if (cancelled) return;
         // Fail loudly: an unauthenticated/broken session should not look
         // like a silently-empty "no user" state to callers debugging it.
+        // Same policy the Worker's /admin gate already enforces for an
+        // anonymous request: a 401 sends the caller to the login door
+        // rather than rendering an app frame with no signed-in user.
+        // setMe(null) still runs so nothing renders in the frame between
+        // the assign() call and the browser unloading for /login.
         if (err instanceof ApiError && err.status === 401) {
           setMe(null);
+          window.location.assign('/login');
           return;
         }
         throw err;

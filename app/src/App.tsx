@@ -129,13 +129,31 @@ const PHONE_TAB_PATHS = ['/overview', '/submissions', '/speakers', '/content'] a
 // (x-chq-csrf header on mutations, credentials 'include') even though
 // /logout isn't under /api/v1 — it's not routed through api.ts's request()
 // helper because that helper hardcodes the /api/v1 prefix.
+//
+// DEC-154 (wave 14 amendment): only navigate to /login when the /logout
+// response is ok. If it isn't (or the fetch itself throws), the chq_session
+// cookie is still live server-side -- navigating to /login anyway would
+// assert a sign-out that did not happen, silently leaving an authenticated
+// session behind a page that looks signed-out. Instead this throws, so the
+// rejection surfaces to the caller instead of being swallowed.
 async function signOut(): Promise<void> {
-  await fetch('/logout', {
+  const res = await fetch('/logout', {
     method: 'POST',
     credentials: 'include',
     headers: { 'x-chq-csrf': '1' },
   });
+  if (!res.ok) {
+    throw new Error(`Sign-out failed: /logout responded ${res.status}`);
+  }
   window.location.assign('/login');
+}
+
+// Calls signOut() without swallowing a rejection into `void` -- a failed
+// sign-out must surface (fail loudly) rather than be silently discarded.
+function handleSignOutClick(): void {
+  signOut().catch((err) => {
+    throw err;
+  });
 }
 
 function NavLinks({
@@ -214,7 +232,7 @@ function Header() {
         {me && (
           <span className="chq-user-identity">
             {identityLabel(me.name, me.email, me.role as 'organizer' | 'reviewer' | 'speaker')}
-            <button type="button" className="chq-btn chq-btn-tertiary chq-header-signout" onClick={() => void signOut()}>
+            <button type="button" className="chq-btn chq-btn-tertiary chq-header-signout" onClick={handleSignOutClick}>
               Sign out
             </button>
           </span>
@@ -310,7 +328,7 @@ function PhoneTabBar() {
               </button>
             </div>
             <NavLinks sections={moreSections} onNavigate={closeMore} />
-            <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void signOut()}>
+            <button type="button" className="chq-btn chq-btn-secondary" onClick={handleSignOutClick}>
               Sign out
             </button>
           </div>
