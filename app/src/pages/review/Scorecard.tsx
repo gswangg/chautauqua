@@ -48,6 +48,12 @@ export function Scorecard() {
   const [scores, setScores] = useState<EvaluationScores>({});
   const [comment, setComment] = useState('');
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  // DEC-939 (wave-65 amendment): the focus ring paints only once the
+  // reviewer has actually used the keyboard -- `focusedId` itself stays
+  // pre-armed (so a number key still routes to the first rating criterion
+  // with no prior click), but the ring's ink is gated separately so it
+  // never appears on first paint.
+  const [ringArmed, setRingArmed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -246,9 +252,11 @@ export function Scorecard() {
     const action = scorecardKeyAction(e.key, focused, plan.scale);
     if (action.type === 'setRating') {
       e.preventDefault();
+      setRingArmed(true);
       setScores((s) => ({ ...s, [action.criterionId]: action.value }));
     } else if (action.type === 'submitAndAdvance') {
       e.preventDefault();
+      setRingArmed(true);
       void submitAndAdvance();
     }
   }
@@ -321,249 +329,259 @@ export function Scorecard() {
 
   return (
     <div
-      className="chq-page chq-review-page chq-measure"
+      className="chq-page chq-review-page chq-measure-wide"
       style={{ '--chq-review-scale-steps': ratingScaleStepCount } as React.CSSProperties}
       onKeyDown={handleKeyDown}
       tabIndex={-1}
     >
-      <p>
-        <Link to={`/review/plans/${planId}`} className="chq-review-back">
-          &lsaquo; {plan.name} queue
-        </Link>
-      </p>
-
-      <div className="chq-review-scorecard-head">
-        <span className="chq-section-label">{scorecardEyebrow}</span>
-        {/* DEC-939: the same 'N of N done' progress the reviewer queue
-            shows, computed through queueDoneCounts (progress.ts) -- renders
-            nothing until that fetch resolves, and nothing at all for an
-            empty queue (nothing to count). */}
-        {queueProgress && queueProgress.total > 0 && (
-          <p className="chq-review-scoped-progress-caption">{`${queueProgress.completed} of ${queueProgress.total} done`}</p>
-        )}
-        <h1 className="chq-page-title" style={{ fontSize: '27px' }}>
-          {submission.ref} — {submission.title}
-        </h1>
-        {submission.speakers && (
-          <span className="chq-summary">Speakers: {submission.speakers.map((s) => s.name).join(', ')}</span>
-        )}
-        {submission.description && <p className="chq-review-scorecard-abstract">{abstractClamped}</p>}
-        {showAbstractDisclosure && (
-          <button
-            type="button"
-            className="chq-review-abstract-disclosure"
-            aria-expanded={abstractExpanded}
-            onClick={() => setAbstractExpanded((v) => !v)}
-          >
-            {abstractExpanded ? 'Hide the full submission ‹' : 'Read the full submission ›'}
-          </button>
-        )}
-      </div>
-
-      {abstractExpanded && (
-        <>
-          {abstractIsClamped && <p className="chq-review-scorecard-abstract-remainder">{abstractRemainder}</p>}
-
-          {submission.sessionAnswers.length > 0 && (
-            <section className="chq-review-answers">
-              <h2 className="chq-section-label">Submission answers</h2>
-              <dl className="chq-review-answer-list">
-                {submission.sessionAnswers.map((a) => (
-                  <div key={a.fieldId} className="chq-review-answer-row">
-                    <dt>{a.label}</dt>
-                    <dd>{formatAnswerValue(a.value)}</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-          )}
-
-          {submission.speakerAnswers && submission.speakerAnswers.length > 0 && (
-            <section className="chq-review-answers">
-              <h2 className="chq-section-label">Speaker answers</h2>
-              <dl className="chq-review-answer-list">
-                {submission.speakerAnswers.map((a) => (
-                  <div key={a.fieldId} className="chq-review-answer-row">
-                    <dt>{a.label}</dt>
-                    <dd>{formatAnswerValue(a.value)}</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-          )}
-        </>
-      )}
-
-      {submission.myEvaluation && (
-        <p className="chq-review-already-rated">You already rated this submission. Submitting again updates your rating.</p>
-      )}
-
-      {error && (
-        <div className="chq-error" role="alert">
-          {error}
-        </div>
-      )}
-
-      <p className="chq-review-hint">Tip: number keys 1-9 set the focused rating; Enter submits and advances.</p>
-
-      {criteria.map((criterion: EvaluationCriterion) => (
-        <div
-          key={criterion.id}
-          className={`chq-review-criterion${focusedId === criterion.id ? ' chq-focused' : ''}`}
-          onFocus={() => setFocusedId(criterion.id)}
-        >
-          <label className="chq-review-criterion-label">
-            {criterion.label}
-            {criterion.kind === 'text' && !criterion.required && (
-              <span className="chq-review-criterion-optional">{OPTIONAL_SUFFIX}</span>
-            )}
-          </label>
-          {/* DEC-676: guidance renders under the label; nothing when absent. */}
-          {criterion.guidance && <p className="chq-review-criterion-guidance">{criterion.guidance}</p>}
-          {/* DEC-873: weight caption reads the plan editor's own share
-              reader -- criteria with no weight (dropdown/text, or an
-              unweighted rating row) print nothing. */}
-          {criterion.kind === 'rating' && weightShares[criterion.id] !== undefined && (
-            <p className="chq-review-criterion-weight-caption">
-              Weight {criterion.weight} · {weightShares[criterion.id]}%
-            </p>
-          )}
-          {criterion.kind === 'rating' ? (
-            <div
-              role="radiogroup"
-              aria-label={criterion.label}
-              className="chq-review-rating-group"
-            >
-              {ratingScaleValues(plan.scale).map((value) => {
-                const selected = scores[criterion.id] === value;
-                return (
-                  // DEC-939: a single-select scale is a radio group, not a
-                  // set of toggle buttons -- keeps role="radio" +
-                  // aria-checked and refuses aria-pressed (closed, not to
-                  // be re-filed).
-                  <button
-                    key={value}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    className={`chq-review-rating-btn${selected ? ' chq-review-rating-btn-selected' : ''}`}
-                    disabled={!!recusal}
-                    onFocus={() => setFocusedId(criterion.id)}
-                    onClick={() => setScores((s) => ({ ...s, [criterion.id]: value }))}
-                  >
-                    {value}
-                  </button>
-                );
-              })}
-            </div>
-          ) : criterion.kind === 'dropdown' ? (
-            <select
-              className="chq-select"
-              value={typeof scores[criterion.id] === 'string' ? (scores[criterion.id] as string) : ''}
-              disabled={!!recusal}
-              onFocus={() => setFocusedId(criterion.id)}
-              onChange={(e) => setScores((s) => ({ ...s, [criterion.id]: e.target.value }))}
-            >
-              <option value="">Select…</option>
-              {(criterion.options ?? []).map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <textarea
-              className="chq-textarea"
-              aria-label={criterion.label || 'criterion'}
-              value={typeof scores[criterion.id] === 'string' ? (scores[criterion.id] as string) : ''}
-              disabled={!!recusal}
-              onFocus={() => setFocusedId(criterion.id)}
-              onChange={(e) => setScores((s) => ({ ...s, [criterion.id]: e.target.value }))}
-            />
-          )}
-        </div>
-      ))}
-
-      {/* DEC-873: the Overall block is never an input -- it's the same
-          computeWeightedScore the server and plan editor use, printed to
-          one decimal, or an em dash until every rating criterion is
-          scored. */}
-      <section className="chq-review-overall">
-        <h2 className="chq-section-label">Overall</h2>
-        <p className="chq-review-overall-caption">Averaged by weight · not editable</p>
-        {/* DEC-939 reconciliation line: the SAME per-criterion rating
-            values the weighted blend above just read, in criterion order,
-            as a plain (unweighted) mean -- never touches computeWeightedScore's
-            own math, only shows the un-weighted comparison figure. Renders
-            only once overallScore itself is non-null. */}
-        {overallScore !== null && ratingCriteria.length > 0 && (
-          <p className="chq-review-overall-reconciliation">
-            {`A plain average of ${ratingCriteria
-              .map((c) => scores[c.id] as number)
-              .join(', ')} would be ${plainAverage(ratingCriteria.map((c) => scores[c.id] as number)).toFixed(2)}`}
+      {/* DEC-939 (wave-65 amendment, frame 03--01): two work surfaces --
+          the reading column (submission context) on the left, the scoring
+          rail (everything the reviewer writes into) on the right. Below
+          ~1200px the rail drops under the reading column (see
+          scorecard.css's one additive media query). */}
+      <div className="chq-review-scorecard-grid">
+        <div className="chq-review-scorecard-reading">
+          <p>
+            <Link to={`/review/plans/${planId}`} className="chq-review-back">
+              &lsaquo; {plan.name} queue
+            </Link>
           </p>
-        )}
-        <p className="chq-review-overall-value">{overallScore === null ? '—' : overallScore.toFixed(1)}</p>
-      </section>
 
-      <label className="chq-review-field">
-        Comment to the committee
-        <textarea className="chq-textarea" value={comment} disabled={!!recusal} onChange={(e) => setComment(e.target.value)} />
-      </label>
+          <div className="chq-review-scorecard-head">
+            <span className="chq-section-label">{scorecardEyebrow}</span>
+            {/* DEC-939: the same 'N of N done' progress the reviewer queue
+                shows, computed through queueDoneCounts (progress.ts) --
+                renders nothing until that fetch resolves, and nothing at
+                all for an empty queue (nothing to count). */}
+            {queueProgress && queueProgress.total > 0 && (
+              <p className="chq-review-scoped-progress-caption">{`${queueProgress.completed} of ${queueProgress.total} done`}</p>
+            )}
+            <h1 className="chq-page-title" style={{ fontSize: '27px' }}>
+              {submission.ref} — {submission.title}
+            </h1>
+            {submission.speakers && (
+              <span className="chq-summary">Speakers: {submission.speakers.map((s) => s.name).join(', ')}</span>
+            )}
+            {submission.description && <p className="chq-review-scorecard-abstract">{abstractClamped}</p>}
+            {showAbstractDisclosure && (
+              <button
+                type="button"
+                className="chq-review-abstract-disclosure"
+                aria-expanded={abstractExpanded}
+                onClick={() => setAbstractExpanded((v) => !v)}
+              >
+                {abstractExpanded ? 'Hide the full submission ‹' : 'Read the full submission ›'}
+              </button>
+            )}
+          </div>
 
-      {/* DEC-939 (bare recusal amendment): the recusal declaration sits
-          below the work, not above it -- a reviewer shouldn't be asked to
-          declare a conflict before seeing what they'd be conflicted about.
-          It is now a bare checkbox on its own line: no bordered card, no
-          reason field, no separate Declare button -- checking the box IS
-          the declaration and POSTs immediately (existing recusal POST
-          behaviour, reason: null). */}
-      {/* DEC-939 (bare recusal amendment) note: `chq-review-recusal` (the
-          review.css card rule -- padding/border/background) is kept as a
-          class here purely so that shared selector stays a live token
-          (DEC-970 dead-CSS contract); `chq-review-recusal-bare`
-          (scorecard.css, this file's own stylesheet) strips every one of
-          those card properties back to nothing, so the rendered control is
-          visually bare -- no card, no border -- without editing review.css
-          this wave. */}
-      <div className="chq-review-recusal chq-review-recusal-bare">
-        {recusal ? (
-          <>
-            <p>You recused yourself from this submission.</p>
-            <button type="button" className="chq-btn chq-btn-secondary" disabled={undoingRecusal} onClick={() => void handleUndoRecusal()}>
-              Undo
-            </button>
-          </>
-        ) : (
-          <label className="chq-review-checkbox-label">
-            <input
-              type="checkbox"
-              className="chq-check"
-              checked={recusalConfirmed}
-              disabled={recusing}
-              onChange={(e) => {
-                const checked = e.target.checked;
-                setRecusalConfirmed(checked);
-                if (checked) void handleRecuse();
-              }}
-            />
-            Recuse me — conflict of interest
+          {abstractExpanded && (
+            <>
+              {abstractIsClamped && <p className="chq-review-scorecard-abstract-remainder">{abstractRemainder}</p>}
+
+              {submission.sessionAnswers.length > 0 && (
+                <section className="chq-review-answers">
+                  <h2 className="chq-section-label">Submission answers</h2>
+                  <dl className="chq-review-answer-list">
+                    {submission.sessionAnswers.map((a) => (
+                      <div key={a.fieldId} className="chq-review-answer-row">
+                        <dt>{a.label}</dt>
+                        <dd>{formatAnswerValue(a.value)}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </section>
+              )}
+
+              {submission.speakerAnswers && submission.speakerAnswers.length > 0 && (
+                <section className="chq-review-answers">
+                  <h2 className="chq-section-label">Speaker answers</h2>
+                  <dl className="chq-review-answer-list">
+                    {submission.speakerAnswers.map((a) => (
+                      <div key={a.fieldId} className="chq-review-answer-row">
+                        <dt>{a.label}</dt>
+                        <dd>{formatAnswerValue(a.value)}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </section>
+              )}
+            </>
+          )}
+
+          {submission.myEvaluation && (
+            <p className="chq-review-already-rated">You already rated this submission. Submitting again updates your rating.</p>
+          )}
+
+          {error && (
+            <div className="chq-error" role="alert">
+              {error}
+            </div>
+          )}
+        </div>
+
+        <aside className="chq-review-scorecard-rail">
+          {criteria.map((criterion: EvaluationCriterion) => (
+            <div
+              key={criterion.id}
+              className={`chq-review-criterion${ringArmed && focusedId === criterion.id ? ' chq-focused' : ''}`}
+              onFocus={() => setFocusedId(criterion.id)}
+            >
+              <label className="chq-review-criterion-label">
+                {criterion.label}
+                {criterion.kind === 'text' && !criterion.required && (
+                  <span className="chq-review-criterion-optional">{OPTIONAL_SUFFIX}</span>
+                )}
+              </label>
+              {/* DEC-676: guidance renders under the label; nothing when absent. */}
+              {criterion.guidance && <p className="chq-review-criterion-guidance">{criterion.guidance}</p>}
+              {/* DEC-873: weight caption reads the plan editor's own share
+                  reader -- criteria with no weight (dropdown/text, or an
+                  unweighted rating row) print nothing. */}
+              {criterion.kind === 'rating' && weightShares[criterion.id] !== undefined && (
+                <p className="chq-review-criterion-weight-caption">
+                  Weight {criterion.weight} · {weightShares[criterion.id]}%
+                </p>
+              )}
+              {criterion.kind === 'rating' ? (
+                <div
+                  role="radiogroup"
+                  aria-label={criterion.label}
+                  className="chq-review-rating-group"
+                >
+                  {ratingScaleValues(plan.scale).map((value) => {
+                    const selected = scores[criterion.id] === value;
+                    return (
+                      // DEC-939: a single-select scale is a radio group, not
+                      // a set of toggle buttons -- keeps role="radio" +
+                      // aria-checked and refuses aria-pressed (closed, not
+                      // to be re-filed).
+                      <button
+                        key={value}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        className={`chq-review-rating-btn${selected ? ' chq-review-rating-btn-selected' : ''}`}
+                        disabled={!!recusal}
+                        onFocus={() => setFocusedId(criterion.id)}
+                        onClick={() => setScores((s) => ({ ...s, [criterion.id]: value }))}
+                      >
+                        {value}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : criterion.kind === 'dropdown' ? (
+                <select
+                  className="chq-select"
+                  value={typeof scores[criterion.id] === 'string' ? (scores[criterion.id] as string) : ''}
+                  disabled={!!recusal}
+                  onFocus={() => setFocusedId(criterion.id)}
+                  onChange={(e) => setScores((s) => ({ ...s, [criterion.id]: e.target.value }))}
+                >
+                  <option value="">Select…</option>
+                  {(criterion.options ?? []).map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <textarea
+                  className="chq-textarea"
+                  aria-label={criterion.label || 'criterion'}
+                  value={typeof scores[criterion.id] === 'string' ? (scores[criterion.id] as string) : ''}
+                  disabled={!!recusal}
+                  onFocus={() => setFocusedId(criterion.id)}
+                  onChange={(e) => setScores((s) => ({ ...s, [criterion.id]: e.target.value }))}
+                />
+              )}
+            </div>
+          ))}
+
+          {/* DEC-873: the Overall block is never an input -- it's the same
+              computeWeightedScore the server and plan editor use, printed
+              to one decimal, or an em dash until every rating criterion is
+              scored. */}
+          <section className="chq-review-overall">
+            <h2 className="chq-section-label">Overall</h2>
+            <p className="chq-review-overall-caption">Averaged by weight · not editable</p>
+            {/* DEC-939 reconciliation line: the SAME per-criterion rating
+                values the weighted blend above just read, in criterion
+                order, as a plain (unweighted) mean -- never touches
+                computeWeightedScore's own math, only shows the un-weighted
+                comparison figure. Renders only once overallScore itself is
+                non-null. */}
+            {overallScore !== null && ratingCriteria.length > 0 && (
+              <p className="chq-review-overall-reconciliation">
+                {`A plain average of ${ratingCriteria
+                  .map((c) => scores[c.id] as number)
+                  .join(', ')} would be ${plainAverage(ratingCriteria.map((c) => scores[c.id] as number)).toFixed(2)}`}
+              </p>
+            )}
+            <p className="chq-review-overall-value">{overallScore === null ? '—' : overallScore.toFixed(1)}</p>
+          </section>
+
+          <label className="chq-review-field">
+            Comment to the committee
+            <textarea className="chq-textarea" value={comment} disabled={!!recusal} onChange={(e) => setComment(e.target.value)} />
           </label>
-        )}
-      </div>
 
-      <div className="chq-review-editor-actions">
-        <button type="button" className="chq-btn chq-btn-primary" disabled={submitting || !!recusal} onClick={() => void submitAndAdvance()}>
-          Submit and next
-        </button>
-        <button type="button" className="chq-btn chq-btn-secondary" disabled={saving || !!recusal} onClick={() => void saveOnly()}>
-          Save
-        </button>
-        {saved && (
-          <span className="chq-review-saved-confirmation" role="status">
-            Saved
-          </span>
-        )}
+          {/* DEC-939 (bare recusal amendment): the recusal declaration sits
+              below the work, not above it -- a reviewer shouldn't be asked
+              to declare a conflict before seeing what they'd be conflicted
+              about. It is now a bare checkbox on its own line: no bordered
+              card, no reason field, no separate Declare button -- checking
+              the box IS the declaration and POSTs immediately (existing
+              recusal POST behaviour, reason: null). */}
+          {/* DEC-939 (bare recusal amendment) note: `chq-review-recusal`
+              (the review.css card rule -- padding/border/background) is
+              kept as a class here purely so that shared selector stays a
+              live token (DEC-970 dead-CSS contract); `chq-review-recusal-
+              bare` (scorecard.css, this file's own stylesheet) strips every
+              one of those card properties back to nothing, so the rendered
+              control is visually bare -- no card, no border -- without
+              editing review.css this wave. */}
+          <div className="chq-review-recusal chq-review-recusal-bare">
+            {recusal ? (
+              <>
+                <p>You recused yourself from this submission.</p>
+                <button type="button" className="chq-btn chq-btn-secondary" disabled={undoingRecusal} onClick={() => void handleUndoRecusal()}>
+                  Undo
+                </button>
+              </>
+            ) : (
+              <label className="chq-review-checkbox-label">
+                <input
+                  type="checkbox"
+                  className="chq-check"
+                  checked={recusalConfirmed}
+                  disabled={recusing}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setRecusalConfirmed(checked);
+                    if (checked) void handleRecuse();
+                  }}
+                />
+                Recuse me — conflict of interest
+              </label>
+            )}
+          </div>
+
+          <div className="chq-review-editor-actions">
+            <button type="button" className="chq-btn chq-btn-primary" disabled={submitting || !!recusal} onClick={() => void submitAndAdvance()}>
+              Submit and next
+            </button>
+            <button type="button" className="chq-btn chq-btn-secondary" disabled={saving || !!recusal} onClick={() => void saveOnly()}>
+              Save
+            </button>
+            {saved && (
+              <span className="chq-review-saved-confirmation" role="status">
+                Saved
+              </span>
+            )}
+          </div>
+        </aside>
       </div>
     </div>
   );
