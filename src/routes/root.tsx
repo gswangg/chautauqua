@@ -26,7 +26,12 @@ import { formatEventDayRange, formatEventCloseDateLabel, daysUntilCalendarDay } 
 import { setCacheHeaders } from "./public/shell";
 import { countOf } from "../domain/count-copy";
 import { matchesAdminRoute } from "../lib/admin-routes";
-import { NotFoundDocument, resolveNotFoundEyebrow } from "../server/not-found";
+import {
+  ANONYMOUS_NOT_FOUND_LINKS,
+  NotFoundDocument,
+  ORGANIZER_NOT_FOUND_LINKS,
+  resolveNotFoundEyebrow,
+} from "../server/not-found";
 
 export const rootRoutes = new Hono<AppEnv>();
 
@@ -98,10 +103,12 @@ rootRoutes.get("/admin/*", async (c) => {
   const subPath = path.slice("/admin".length) || "/";
   if (!matchesAdminRoute(subPath)) {
     const eyebrow = await resolveNotFoundEyebrow(c.var.db);
+    const links = auth.role === "organizer" ? ORGANIZER_NOT_FOUND_LINKS : ANONYMOUS_NOT_FOUND_LINKS;
     return c.html(
       <NotFoundDocument
         eyebrow={eyebrow}
         body="The link may be old, or the event may have been switched since it was saved."
+        links={links}
       />,
       404,
     );

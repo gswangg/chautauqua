@@ -39,12 +39,32 @@ export async function resolveNotFoundEyebrow(db: Db): Promise<string> {
   return event ? event.name : "Not found";
 }
 
+/** Default anonymous-visitor footer links: home + log in. */
+export const ANONYMOUS_NOT_FOUND_LINKS: ReadonlyArray<{ href: string; label: string }> = [
+  { href: "/", label: "Go to the homepage" },
+  { href: "/login", label: "Log in" },
+];
+
+/** Signed-in organiser footer links (frame 11-02): the two admin landing
+ * points, never the homepage/log-in pair an already-authenticated request
+ * has no use for. */
+export const ORGANIZER_NOT_FOUND_LINKS: ReadonlyArray<{ href: string; label: string }> = [
+  { href: "/overview", label: "Overview" },
+  { href: "/submissions", label: "Submissions" },
+];
+
 /** The ONE 404 card markup for the whole app (DEC-635 amendment): every
  * surface -- the app.notFound() catch-all and the public routes' 404 --
  * renders this exact document, varying only the eyebrow (resolved via
- * resolveNotFoundEyebrow) and the body copy. The card element IS the
- * <main> -- never wrap it in an extra <div>. */
-export function NotFoundDocument(props: { eyebrow: string; body: string }) {
+ * resolveNotFoundEyebrow), the body copy, and the footer links (required so
+ * every call site states its own -- a signed-in organiser gets Overview/
+ * Submissions, per frame 11-02, never the anonymous homepage/log-in pair).
+ * The card element IS the <main> -- never wrap it in an extra <div>. */
+export function NotFoundDocument(props: {
+  eyebrow: string;
+  body: string;
+  links: ReadonlyArray<{ href: string; label: string }>;
+}) {
   return (
     <html lang="en">
       <head>
@@ -56,15 +76,16 @@ export function NotFoundDocument(props: { eyebrow: string; body: string }) {
         <style dangerouslySetInnerHTML={{ __html: AUTH_CSS }} />
       </head>
       <body>
-        <main class="chq-auth-card chq-auth-card-narrow">
-          <div>
+        <main class="chq-auth-card chq-auth-card-narrow chq-auth-card-notice">
+          <div class="chq-auth-titlerow">
             <span class="chq-auth-label">{props.eyebrow}</span>
             <h1 class="chq-auth-title">That page isn't here</h1>
           </div>
           <p class="chq-auth-body">{props.body}</p>
           <div class="chq-auth-footer-links">
-            <a href="/">Go to the homepage &rsaquo;</a>
-            <a href="/login">Log in &rsaquo;</a>
+            {props.links.map((link) => (
+              <a href={link.href}>{link.label} &rsaquo;</a>
+            ))}
           </div>
         </main>
       </body>
@@ -86,10 +107,13 @@ export function registerNotFoundHandler(app: Hono<AppEnv>): void {
       );
     }
     const eyebrow = await resolveNotFoundEyebrow(c.var.db);
+    const links =
+      c.var.auth?.role === "organizer" ? ORGANIZER_NOT_FOUND_LINKS : ANONYMOUS_NOT_FOUND_LINKS;
     return c.html(
       <NotFoundDocument
         eyebrow={eyebrow}
         body="The link may be old, or the event may have been switched since it was saved."
+        links={links}
       />,
       404,
     );

@@ -98,11 +98,12 @@ describe("auth surface card shape (DEC-944)", () => {
 
 describe("AUTH_CSS card metrics (DEC-944/DEC-945 v6 amendment)", () => {
   it("declares the frames' card, narrow-card, title and input numbers", () => {
-    expect(AUTH_CSS).toContain("max-width: 732px");
-    // The plain card's "full 820" is the shared reading measure, spelt as
-    // the token (DEC-989 wave-37 forbids hand-copied 800px+ clamps in src/).
+    // DEC-945 wave-1 amendment: the box is column + 2x padding, not the
+    // column itself -- 820 (732 content + 2*44) for the plain card, 888
+    // (818 content + 2*35) for the narrow variant.
+    expect(AUTH_CSS).toContain("max-width: 820px");
     expect(AUTH_CSS).toMatch(
-      /\.chq-auth-card\.chq-auth-card-narrow\s*\{[^}]*max-width:\s*var\(--chq-measure\)/,
+      /\.chq-auth-card\.chq-auth-card-narrow\s*\{[^}]*max-width:\s*888px/,
     );
     expect(AUTH_CSS).toContain("padding: 35px");
     expect(AUTH_CSS).not.toContain("max-width: 450px");

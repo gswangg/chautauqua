@@ -3,10 +3,12 @@
 // shared `.chq-measure`/`--chq-measure` reading width -- this test carries
 // that same rule to the server-rendered surfaces (every `src/**/*.css.ts`
 // module plus src/views/theme.ts). A page-level clamp of 800px or wider is
-// a hand-copy of the reading measure unless it's the one named exception:
-// home.css.ts's `.chq-home-shell`, which is its own frame width per
-// docs/design/README.md's hub-state frames, not a stand-in for the reading
-// column.
+// a hand-copy of the reading measure unless it's a named exception:
+// home.css.ts's `.chq-home-shell` (its own frame width per docs/design/
+// README.md's hub-state frames, not a stand-in for the reading column), and
+// (DEC-945 wave-1 amendment) auth.css.ts's `.chq-auth-card`/`.chq-auth-
+// card-narrow`, whose max-width is a card BOX (content column + 2x padding)
+// rather than the reading column itself.
 //
 // Every input is ENUMERATED via readdirSync (DEC-808/DEC-937 precedent),
 // never a hand-listed manifest, so a new SSR stylesheet is scanned
@@ -39,6 +41,7 @@ const SCAN_FILES = [...CSS_TS_FILES, THEME_FILE].sort();
 const PORTAL_CSS_FILE = join(SRC, "routes", "portal", "portal.css.ts");
 const CFP_CSS_FILE = join(SRC, "routes", "public", "cfp.css.ts");
 const HOME_CSS_FILE = join(SRC, "routes", "public", "home.css.ts");
+const AUTH_CSS_FILE = join(SRC, "routes", "auth.css.ts");
 const PORTAL_SHARED_FILE = join(SRC, "routes", "portal", "shared.tsx");
 
 /** Strips /* ... *\/ block comments so a decision note quoting CSS-shaped
@@ -110,6 +113,14 @@ const NAMED_EXCEPTIONS: ReadonlyMap<string, string> = new Map([
     "routes/public/home.css.ts::.chq-home-shell",
     "the home hub's own frame width; docs/design/README.md draws all three hub states at 900",
   ],
+  [
+    "routes/auth.css.ts::.chq-auth-card",
+    "DEC-945 wave-1 amendment: the BOX is content column + 2x padding (732 + 2*44), not the reading column itself -- the 820 is a card-frame number, not a hand-copy of --chq-measure",
+  ],
+  [
+    "routes/auth.css.ts::.chq-auth-card.chq-auth-card-narrow",
+    "DEC-945 wave-1 amendment: the BOX is content column + 2x padding (818 + 2*35), not the reading column itself -- the 888 is a card-frame number, not a hand-copy of --chq-measure",
+  ],
 ]);
 
 describe("SSR page-clamp scan (DEC-989 amendment, wave 37)", () => {
@@ -135,14 +146,32 @@ describe("SSR page-clamp scan (DEC-989 amendment, wave 37)", () => {
     ).toEqual([]);
   });
 
-  it("NAMED_EXCEPTIONS holds exactly the one home-hub entry, and its selector still exists", () => {
-    expect([...NAMED_EXCEPTIONS.keys()]).toEqual(["routes/public/home.css.ts::.chq-home-shell"]);
+  it("NAMED_EXCEPTIONS holds exactly the home-hub and auth-card entries, and each selector still exists", () => {
+    expect([...NAMED_EXCEPTIONS.keys()]).toEqual([
+      "routes/public/home.css.ts::.chq-home-shell",
+      "routes/auth.css.ts::.chq-auth-card",
+      "routes/auth.css.ts::.chq-auth-card.chq-auth-card-narrow",
+    ]);
 
     const homeCss = extractCssText(HOME_CSS_FILE);
     const declarations = findMaxWidthDeclarations(homeCss);
     const shellDecl = declarations.find((d) => d.selector === ".chq-home-shell");
     expect(shellDecl, ".chq-home-shell must still declare a max-width in home.css.ts").toBeDefined();
     expect(shellDecl?.px).toBe(900);
+
+    const authCss = extractCssText(AUTH_CSS_FILE);
+    const authDeclarations = findMaxWidthDeclarations(authCss);
+    const cardDecl = authDeclarations.find((d) => d.selector === ".chq-auth-card");
+    expect(cardDecl, ".chq-auth-card must still declare a max-width in auth.css.ts").toBeDefined();
+    expect(cardDecl?.px).toBe(820);
+    const narrowDecl = authDeclarations.find(
+      (d) => d.selector === ".chq-auth-card.chq-auth-card-narrow",
+    );
+    expect(
+      narrowDecl,
+      ".chq-auth-card.chq-auth-card-narrow must still declare a max-width in auth.css.ts",
+    ).toBeDefined();
+    expect(narrowDecl?.px).toBe(888);
   });
 
   it("portal/shared.tsx's <main> carries chq-measure", () => {
