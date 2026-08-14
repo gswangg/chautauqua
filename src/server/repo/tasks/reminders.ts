@@ -3,7 +3,7 @@
 // for contention decomposition (no behavior change) — see repo/tasks.ts's
 // barrel header.
 
-import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
@@ -24,6 +24,7 @@ import { resolvePortalLinks } from "../portal-link";
 import { findAccountUserIds } from "../comms";
 import { effectiveAssignmentDueDate } from "../../../domain/task-due";
 import { ApiError } from "../../http";
+import { zonedMinutesToUtc } from "../../../lib/timezone";
 
 // DEC-319 wave-56 amendment: hard ceiling on the single-event outstanding
 // scan below — a per-event reminder pass should never be reading past this
@@ -45,6 +46,7 @@ interface OutstandingRow {
   eventId: string;
   eventName: string;
   timezone: string;
+  eventEndDate: string;
 }
 
 /** One joined query for every non-complete assignment in the event (or
@@ -78,6 +80,7 @@ export async function listOutstandingForEvent(
       eventId: schema.event.id,
       eventName: schema.event.name,
       timezone: schema.event.timezone,
+      eventEndDate: schema.event.endDate,
       assignmentCreatedAt: schema.taskAssignment.createdAt,
     })
     .from(schema.taskAssignment)
@@ -117,6 +120,7 @@ export async function listOutstandingForEvent(
       eventId: r.eventId,
       eventName: r.eventName,
       timezone: r.timezone,
+      eventEndDate: r.eventEndDate,
     };
   });
 }
@@ -375,6 +379,7 @@ export async function remindNow(
   const plan = planManualReminders({
     assignments: outstanding.map(toReminderAssignment),
     now: now.getTime(),
+    eventEndsAt: null,
   });
   if (plan.groups.length === 0) {
     return { sent: 0, failed: [], skipped: chosen.skipped, remaining: chosen.remaining };
@@ -439,6 +444,7 @@ export async function previewRemindNow(
   const plan = planManualReminders({
     assignments: outstanding.map(toReminderAssignment),
     now: now.getTime(),
+    eventEndsAt: null,
   });
 
   // DEC-530/DEC-397: batched account lookup, then a preview never mints a
@@ -498,6 +504,7 @@ export async function sendDueRemindersForEvent(
   if (outstanding.length === 0) return 0;
   const eventName = outstanding[0]?.eventName ?? "";
   const eventTimezone = outstanding[0]?.timezone ?? "";
+  const eventEndDate = outstanding[0]?.eventEndDate ?? "";
 
   const outstandingByContact = new Map<string, OutstandingRow[]>();
   for (const r of outstanding) {
@@ -506,9 +513,15 @@ export async function sendDueRemindersForEvent(
     outstandingByContact.set(r.contactId, arr);
   }
 
+  // wave-58 amendment (DEC-023): the event's own end-of-day instant, in the
+  // event's timezone, is the cron's terminal gate — an incomplete task never
+  // gets reminded past the event it belongs to.
+  const eventEndsAt = zonedMinutesToUtc(eventEndDate, 24 * 60, eventTimezone).getTime();
+
   const plan = planReminders({
     assignments: outstanding.map(toReminderAssignment),
     now: now.getTime(),
+    eventEndsAt,
   });
   if (plan.groups.length === 0) return 0;
 
@@ -536,12 +549,30 @@ export async function sendDueRemindersForEvent(
 /** All event ids that have at least one non-complete task assignment — the
  * cron's outer loop, so each event's reminder pass stays a small, scoped
  * joined query rather than one unbounded cross-event query. DEC-537: the
- * dedupe is a SQL DISTINCT, not a whole-table scan reduced in JS. */
-export async function listEventIdsWithOutstandingAssignments(db: Db): Promise<string[]> {
+ * dedupe is a SQL DISTINCT, not a whole-table scan reduced in JS.
+ *
+ * wave-58 amendment (DEC-023): also inner-joins schema.event and applies a
+ * COARSE superset pre-filter (event.end_date >= now-2days, a lexicographic
+ * text compare on the ISO YYYY-MM-DD column — 2 days of slack covers every
+ * timezone offset around the true event-local end-of-day instant). This
+ * pre-filter is ONLY a bound on the outer loop so a long-dead event's rows
+ * stop being re-scanned every tick; it is NOT the authoritative terminal
+ * gate — planReminders' per-assignment eventEndsAt check (computed from the
+ * event's actual timezone) inside sendDueRemindersForEvent is. */
+export async function listEventIdsWithOutstandingAssignments(db: Db, now: Date): Promise<string[]> {
+  const cutoffDate = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+  const cutoff = cutoffDate.toISOString().slice(0, 10);
   const rows = await db
     .selectDistinct({ eventId: schema.task.eventId })
     .from(schema.taskAssignment)
     .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
-    .where(and(eq(schema.taskAssignment.status, "pending"), isNull(schema.taskAssignment.completedAt)));
+    .innerJoin(schema.event, eq(schema.task.eventId, schema.event.id))
+    .where(
+      and(
+        eq(schema.taskAssignment.status, "pending"),
+        isNull(schema.taskAssignment.completedAt),
+        gte(schema.event.endDate, cutoff),
+      ),
+    );
   return rows.map((r) => r.eventId);
 }
