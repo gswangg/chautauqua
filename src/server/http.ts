@@ -235,27 +235,33 @@ function safeReferrerPath(referer: string | undefined, requestUrl: string): stri
   }
 }
 
-/** Registers the shared onError handler; call once on the top-level app. */
-export function registerErrorHandler(app: Hono<AppEnv>): void {
-  app.onError((err, c) => {
-    const wantsHtml = c.var.htmlSurface === true || !isApiPath(new URL(c.req.url).pathname);
-    if (err instanceof ApiError) {
-      if (wantsHtml) {
-        return c.html(
-          renderHtmlError(err.message, c.req.header("referer") ?? undefined, c.req.url),
-          err.status as 400 | 401 | 403 | 404 | 409,
-        );
-      }
-      return c.json(errorEnvelope(err), err.status as 400 | 401 | 403 | 404 | 409);
-    }
-    // Fail loudly: unexpected errors are never swallowed, always logged.
-    console.error("unhandled error", err);
+// The one error responder: a sub-app's onError may override headers (e.g.
+// Cache-Control), but never the body shape -- everything renders through
+// this function so HTML vs JSON classification and body construction stay
+// in exactly one place. DEC-841.
+export function errorResponse(c: Context<AppEnv>, err: unknown): Response {
+  const wantsHtml = c.var.htmlSurface === true || !isApiPath(new URL(c.req.url).pathname);
+  if (err instanceof ApiError) {
     if (wantsHtml) {
       return c.html(
-        renderHtmlError("Internal server error", c.req.header("referer") ?? undefined, c.req.url),
-        500,
+        renderHtmlError(err.message, c.req.header("referer") ?? undefined, c.req.url),
+        err.status as 400 | 401 | 403 | 404 | 409,
       );
     }
-    return c.json({ error: { code: "internal", message: "Internal server error" } }, 500);
-  });
+    return c.json(errorEnvelope(err), err.status as 400 | 401 | 403 | 404 | 409);
+  }
+  // Fail loudly: unexpected errors are never swallowed, always logged.
+  console.error("unhandled error", err);
+  if (wantsHtml) {
+    return c.html(
+      renderHtmlError("Internal server error", c.req.header("referer") ?? undefined, c.req.url),
+      500,
+    );
+  }
+  return c.json({ error: { code: "internal", message: "Internal server error" } }, 500);
+}
+
+/** Registers the shared onError handler; call once on the top-level app. */
+export function registerErrorHandler(app: Hono<AppEnv>): void {
+  app.onError((err, c) => errorResponse(c, err));
 }

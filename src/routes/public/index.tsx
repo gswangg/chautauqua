@@ -26,7 +26,7 @@ import {
 import { buildIcsCalendar } from "../../mail/ics";
 import { icsOrganizerEmailOrNull } from "../../server/context";
 import { parseItineraryIds, MAX_ITINERARY_IDS } from "../../lib/itinerary";
-import { ApiError, errorEnvelope } from "../../server/http";
+import { ApiError, errorResponse } from "../../server/http";
 import { publicCacheMiddleware, defaultCache } from "../../server/pubcache";
 import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083, DEC_151, DEC_289, DEC_489, DEC_661, DEC_672 } from "../../decisions";
 import { SURFACES, isSurface, setCacheHeaders, PublicShell, EmbedShell, isValidFrom, measureClassForSurface, navActiveFor, type Surface } from "./shell";
@@ -97,11 +97,7 @@ publicRoutes.use("/embed/*", publicCacheMiddleware(defaultCache));
 // covers thrown errors instead of the explicit 404 path.
 publicRoutes.onError((err, c) => {
   c.header("Cache-Control", "no-store");
-  if (err instanceof ApiError) {
-    return c.json(errorEnvelope(err), err.status as 400 | 401 | 403 | 404 | 409);
-  }
-  console.error("unhandled error", err);
-  return c.json({ error: { code: "internal", message: "Internal server error" } }, 500);
+  return errorResponse(c, err);
 });
 
 // ---------------------------------------------------------------------------
