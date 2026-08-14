@@ -675,7 +675,11 @@ a:hover {
   top: 0;
   right: 0;
   bottom: 0;
-  width: min(420px, 100vw);
+  /* DEC-616 amendment (wave 4): 520px, not 420 — the frame's measured
+     width for the record view once empty rows collapse behind the "Show
+     all fields" disclosure and the action bar keeps its labels on one
+     line. */
+  width: min(520px, 100vw);
   background: var(--chq-paper);
   border-left: 1px solid var(--chq-rule);
   padding: 20px 26px;

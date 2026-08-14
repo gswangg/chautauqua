@@ -654,9 +654,22 @@
   color: var(--chq-muted);
 }
 
+/* DEC-616 amendment (wave 4): action-bar buttons stay on one line each at
+   520px -- nowrap on the row plus per-button nowrap+no-shrink means the bar
+   itself scrolls (contained within its own box) rather than a button's
+   label wrapping to a second line or the drawer picking up horizontal
+   scroll. */
 .chq-contacts-drawer-actions {
   display: flex;
   gap: 9px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.chq-contacts-drawer-actions .chq-btn,
+.chq-contacts-drawer-actions .chq-btn-tertiary {
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* DEC-758's 'Delete this contact' trigger. Layout only (same treatment as
@@ -664,6 +677,17 @@
    and weight stay with .chq-btn-tertiary in styles.css. */
 .chq-contacts-delete-trigger {
   white-space: nowrap;
+}
+
+/* DEC-616 amendment (wave 4): the "Show all fields" disclosure sits inside
+   the record section, its own row (not a label/value grid row) -- reuses
+   the shared .chq-link-button treatment, spaced off the last populated
+   row and the "Add field" control below it. */
+.chq-contacts-show-all {
+  display: block;
+  margin: 10px 0 0;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 /* DEC-992: the merge page's combine-rules block, grouped as ONE unit
