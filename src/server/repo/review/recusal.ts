@@ -1,9 +1,11 @@
 // Recusal (DEC-271, ABS-12): reviewer conflict-of-interest self-exclusion.
 
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
+import { ApiError } from "../../http";
+import { MAX_PLAN_EVALUATION_SCAN } from "./evaluations";
 
 export interface RecusalRecord {
   id: string;
@@ -118,8 +120,35 @@ export async function listRecusalsForReviewer(db: Db, planId: string, userId: st
 }
 
 /** Every recusal on a plan, across all reviewers -- for the organizer
- * progress endpoint's per-reviewer `recused` counts. */
-export async function listRecusalsForPlan(db: Db, planId: string): Promise<RecusalRecord[]> {
-  const rows = await db.select().from(schema.reviewRecusal).where(eq(schema.reviewRecusal.planId, planId));
-  return rows.map(toRecusalRecord);
+ * progress endpoint's per-reviewer `recused` counts, the distribute
+ * preview's existing-coverage math, and the results export's per-submission
+ * recusal count. Narrowed to submissionId + userId (DEC-346 amendment, wave
+ * 62): every caller (src/routes/review/plans-progress.ts:63,179,
+ * src/routes/review/plans-distribute.ts:75, src/routes/review/shared.ts:362)
+ * reads only those two columns, never id/reason/createdAt. Totally ordered
+ * (submissionId asc, id asc) and capped at MAX_PLAN_EVALUATION_SCAN + 1 --
+ * shares evaluations.ts's cap rather than minting a second one, since a
+ * plan's recusal count is bounded by the same submissions x reviewers
+ * surface; refuses loudly rather than silently truncating once crossed. */
+export async function listRecusalsForPlan(
+  db: Db,
+  planId: string,
+): Promise<{ submissionId: string; userId: string }[]> {
+  const rows = await db
+    .select({
+      id: schema.reviewRecusal.id,
+      submissionId: schema.reviewRecusal.submissionId,
+      userId: schema.reviewRecusal.userId,
+    })
+    .from(schema.reviewRecusal)
+    .where(eq(schema.reviewRecusal.planId, planId))
+    .orderBy(asc(schema.reviewRecusal.submissionId), asc(schema.reviewRecusal.id))
+    .limit(MAX_PLAN_EVALUATION_SCAN + 1);
+  if (rows.length > MAX_PLAN_EVALUATION_SCAN) {
+    throw new ApiError(
+      "invalid",
+      `This plan would scan more than ${MAX_PLAN_EVALUATION_SCAN} evaluations -- narrow the plan's track filter first`,
+    );
+  }
+  return rows.map((r) => ({ submissionId: r.submissionId, userId: r.userId }));
 }
