@@ -14,6 +14,7 @@ import { ApiError } from "../../server/http";
 import * as schema from "../../db/schema";
 import { toCsv } from "../../lib/csv";
 import { buildExport, buildShowflowExport, isExportKind, EXPORT_MAX_ROWS } from "../../server/repo/exports";
+import { contentDispositionAttachment } from "../../domain/files";
 import { parseListQuery } from "../../server/repo/submissions/query";
 import { parseContactListQuery } from "../../server/repo/contacts/query";
 import { parseRulesQueryParam } from "./contacts/segments";
@@ -62,7 +63,7 @@ exportsRoutes.get("/api/v1/events/:eventId/exports/showflow.csv", requireOrganiz
   }
   const csv = toCsv([table.header, ...table.rows]);
   c.header("Content-Type", "text/csv; charset=utf-8");
-  c.header("Content-Disposition", 'attachment; filename="showflow.csv"');
+  c.header("Content-Disposition", contentDispositionAttachment("showflow.csv"));
   return c.body(csv);
 });
 
@@ -128,12 +129,12 @@ exportsRoutes.get("/api/v1/events/:eventId/export/:kind", requireOrganizer, asyn
   }
 
   if (format === "json") {
-    c.header("Content-Disposition", `attachment; filename="${kind}.json"`);
+    c.header("Content-Disposition", contentDispositionAttachment(`${kind}.json`));
     return c.json(table.records);
   }
 
   const csv = toCsv([table.header, ...table.rows]);
   c.header("Content-Type", "text/csv; charset=utf-8");
-  c.header("Content-Disposition", `attachment; filename="${kind}.csv"`);
+  c.header("Content-Disposition", contentDispositionAttachment(`${kind}.csv`));
   return c.body(csv);
 });

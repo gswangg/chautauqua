@@ -26,6 +26,7 @@ void DEC_713;
 void DEC_965;
 import {
   FILE_KINDS,
+  contentDispositionAttachment,
   isImageContentType,
   isValidFileKind,
   isValidVersionChain,
@@ -432,7 +433,7 @@ fileApiRoutes.post("/events/:eventId/files/archive", requireOrganizer, csrfJson,
   const built = buildZip(entries);
   return c.body(built, 200, {
     "Content-Type": "application/zip",
-    "Content-Disposition": `attachment; filename="${scope.slug}-files.zip"`,
+    "Content-Disposition": contentDispositionAttachment(`${scope.slug}-files.zip`),
     "X-Content-Type-Options": "nosniff",
   });
 });
@@ -640,8 +641,7 @@ fileServeRoutes.get("/files/:fileId", async (c) => {
     "X-Content-Type-Options": "nosniff",
   };
   if (!isImageContentType(contentType)) {
-    const safeName = scope.filename.replace(/[\r\n"]/g, "");
-    headers["Content-Disposition"] = `attachment; filename="${safeName}"`;
+    headers["Content-Disposition"] = contentDispositionAttachment(scope.filename);
   }
   return c.body(obj.body, 200, headers);
 });

@@ -24,6 +24,7 @@ import {
   getPublicSpeakers,
 } from "../../server/repo/public";
 import { buildIcsCalendar } from "../../mail/ics";
+import { contentDispositionAttachment } from "../../domain/files";
 import { icsOrganizerEmailOrNull } from "../../server/context";
 import { parseItineraryIds, MAX_ITINERARY_IDS } from "../../lib/itinerary";
 import { ApiError, errorEnvelope, errorResponse, wantsHtmlResponse } from "../../server/http";
@@ -386,7 +387,7 @@ publicRoutes.get("/e/:eventSlug/schedule.ics", async (c) => {
   });
   return c.body(ics, 200, {
     "Content-Type": "text/calendar; charset=utf-8",
-    "Content-Disposition": `attachment; filename="${event.slug}-itinerary.ics"`,
+    "Content-Disposition": contentDispositionAttachment(`${event.slug}-itinerary.ics`),
   });
 });
 
@@ -412,7 +413,7 @@ publicRoutes.get("/e/:eventSlug/agenda.ics", async (c) => {
   });
   return c.body(ics, 200, {
     "Content-Type": "text/calendar; charset=utf-8",
-    "Content-Disposition": `attachment; filename="${event.slug}-agenda.ics"`,
+    "Content-Disposition": contentDispositionAttachment(`${event.slug}-agenda.ics`),
   });
 });
 

@@ -4,6 +4,9 @@
 
 // DEC-425: caps attacker-controlled filename length; reuses MAX_NAME_LENGTH.
 import { MAX_NAME_LENGTH } from "../forms/validate";
+import { DEC_425 } from "../decisions";
+
+void DEC_425;
 
 // 'presentation' | 'poster' | 'handout' | 'recording' — DEC-003/DEC-879
 // file.kind literal. DEC-879: a session recording is a deliverable like any
@@ -233,6 +236,63 @@ export function validateUpload(input: UploadInput): ValidateUploadResult {
  * (vs. a Content-Disposition: attachment download). */
 export function isImageContentType(contentType: string): boolean {
   return contentType.startsWith("image/");
+}
+
+// DEC-425 (wave-24 amendment): the C0 control range (+ DEL) stripped from a
+// filename before it can reach any header value.
+const C0_AND_DEL_RE = /[\x00-\x1f\x7f]/g;
+
+// RFC 5987 attr-char excludes these beyond what encodeURIComponent already
+// percent-encodes.
+const EXTRA_ATTR_CHAR_RE = /['()*!]/g;
+
+/**
+ * DEC-425 (wave-24 amendment): the ONE owner of every HTTP
+ * Content-Disposition header value in this repo. Strips C0 controls/DEL,
+ * takes the last path segment (so a path-traversal-shaped name collapses to
+ * its basename), builds an ASCII-only `filename=` fallback (dropping `"`
+ * and `\` — both would let the value escape the quoted string — and
+ * replacing any non-ASCII code point with `_`, defaulting to "download"
+ * when nothing survives), and appends an RFC 6266/5987 `filename*=UTF-8''…`
+ * parameter whenever the (control-stripped, path-stripped) name held any
+ * non-ASCII code point. Asserts the result is pure ASCII before returning —
+ * a header value that isn't would be a bug in this function, not a
+ * defensive fallback for a caller.
+ */
+export function contentDispositionAttachment(filename: string): string {
+  const stripped = filename.replace(C0_AND_DEL_RE, "");
+  const lastSlash = Math.max(stripped.lastIndexOf("/"), stripped.lastIndexOf("\\"));
+  const strippedName = lastSlash >= 0 ? stripped.slice(lastSlash + 1) : stripped;
+
+  let fallback = "";
+  for (const ch of strippedName) {
+    if (ch === '"' || ch === "\\") continue;
+    fallback += ch.codePointAt(0)! > 0x7f ? "_" : ch;
+  }
+  if (fallback.length === 0) fallback = "download";
+
+  let hasNonAscii = false;
+  for (const ch of strippedName) {
+    if (ch.codePointAt(0)! > 0x7f) {
+      hasNonAscii = true;
+      break;
+    }
+  }
+
+  let result = `attachment; filename="${fallback}"`;
+  if (hasNonAscii) {
+    const pct = encodeURIComponent(strippedName).replace(EXTRA_ATTR_CHAR_RE, (c) =>
+      `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+    );
+    result += `; filename*=UTF-8''${pct}`;
+  }
+
+  for (const ch of result) {
+    if (ch.codePointAt(0)! >= 0x80) {
+      throw new Error("contentDispositionAttachment: produced a non-ASCII header value — invariant violated");
+    }
+  }
+  return result;
 }
 
 /** Sanitizes a user-supplied filename for use as an R2 key segment: strips
