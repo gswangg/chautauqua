@@ -66,8 +66,11 @@ export type EmbedKnob = 'trackId' | 'format' | 'roomId' | 'day' | 'q' | 'limit' 
 export const EMBED_KNOBS_BY_SURFACE: Record<EmbedSurface, readonly EmbedKnob[]> = {
   // DEC-774: format/roomId join trackId as sessions-only filter knobs.
   sessions: ['trackId', 'format', 'roomId', 'day', 'q', 'limit', 'fields', 'accent'],
-  speakers: ['q', 'limit', 'accent'],
-  gallery: ['q', 'limit', 'accent'],
+  // DEC-990 (wave-67 amendment): trackId joins q/limit/accent as a real
+  // SQL-level predicate on getPublicSpeakers (mirrors dispatch.tsx's HTML
+  // case) — track is not sessions-only.
+  speakers: ['trackId', 'q', 'limit', 'accent'],
+  gallery: ['trackId', 'q', 'limit', 'accent'],
   // DEC-851: agenda/schedule honour trackId/format/day/q/limit/accent as
   // real SQL-level predicates on getPublicAgenda — no roomId (the grid
   // renders rooms as columns) and no fields (no card-field allowlist on a
