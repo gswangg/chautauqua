@@ -95,15 +95,37 @@ export function buildSurfaceFeed<T>(
   };
 }
 
-// DEC-775: escapes the five XML-significant characters for both attribute
-// values and text nodes (a superset is always safe in either position).
+// DEC-775 (wave-62 amendment): escapes the five XML-significant characters
+// for both attribute values and text nodes (a superset is always safe in
+// either position). Before escaping, strip C0 controls that XML 1.0 forbids
+// outright and for which there is no entity form — same serializer-boundary
+// reasoning as sanitizeIcsText (src/mail/ics.ts:69-79): this text arrives
+// from unauthenticated public CFP text (src/forms/validate.ts:93
+// length-checks only), so one control byte would otherwise make the whole
+// feed unparseable. TAB (0x09), LF (0x0a) and CR (0x0d) are legal in XML
+// content and are kept.
 function escapeXml(value: string): string {
   return value
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&apos;");
+}
+
+// XML 1.0 §2.3 Name production, restricted to the ASCII subset this codebase
+// ever produces keys from. fieldToXml builds element *names* straight from
+// object keys — an illegal key would emit a broken tag with no error, and
+// unlike hostile CFP text (escaped above), an illegal key is OUR bug, not a
+// stranger's input, so it must throw rather than be silently sanitized.
+const XML_NAME_RE = /^[A-Za-z_][A-Za-z0-9._-]*$/;
+
+function assertXmlName(key: string): void {
+  if (!XML_NAME_RE.test(key)) {
+    throw new Error(`invalid XML element name: ${JSON.stringify(key)}`);
+  }
 }
 
 // Recursively renders one item field. Arrays repeat the same child element
@@ -115,11 +137,13 @@ function fieldToXml(key: string, value: unknown): string {
   if (value === null || value === undefined) return "";
   if (Array.isArray(value)) return value.map((entry) => fieldToXml(key, entry)).join("");
   if (typeof value === "object") {
+    assertXmlName(key);
     const inner = Object.entries(value as Record<string, unknown>)
       .map(([k, v]) => fieldToXml(k, v))
       .join("");
     return `<${key}>${inner}</${key}>`;
   }
+  assertXmlName(key);
   return `<${key}>${escapeXml(String(value))}</${key}>`;
 }
 
@@ -150,6 +174,7 @@ export function buildSurfaceFeedXml<T>(
   const items = Array.isArray(feed.items) ? (feed.items as unknown as Record<string, unknown>[]) : [];
   const itemsXml = items.map(itemToXml).join("");
   return (
+    `<?xml version="1.0" encoding="UTF-8"?>` +
     `<feed surface="${escapeXml(feed.surface)}" generatedAt="${escapeXml(feed.generatedAt)}" ` +
     `page="${feed.page}" perPage="${feed.perPage}" total="${feed.total}">` +
     `<event ${eventAttrs}/>` +

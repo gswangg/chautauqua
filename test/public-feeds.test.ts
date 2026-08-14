@@ -690,6 +690,68 @@ describe("buildSurfaceFeedXml (DEC-775)", () => {
   });
 });
 
+describe("buildSurfaceFeedXml well-formedness (DEC-775 wave-62 amendment)", () => {
+  it("strips C0 controls (e.g. \\x0b) before escaping, leaving the significant-character entities intact", () => {
+    const now = new Date("2026-08-11T12:00:00.000Z");
+    const hostileTitle = "Vertical\x0bTab & <angle> \"quote\" 'apos'";
+    const items = [{ id: "sub1", title: hostileTitle }];
+    const xml = buildSurfaceFeedXml(EVENT, "sessions", { items, total: 1, page: 1, perPage: 12 }, now);
+    expect(xml).toContain("&amp;");
+    expect(xml).toContain("&lt;angle&gt;");
+    expect(xml).toContain("&quot;quote&quot;");
+    expect(xml).toContain("&apos;apos&apos;");
+    // eslint-disable-next-line no-control-regex
+    expect(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(xml)).toBe(false);
+  });
+
+  it("returns a string starting with the XML declaration", () => {
+    const now = new Date("2026-08-11T12:00:00.000Z");
+    const items = [{ id: "sub1", title: "Visible Talk" }];
+    const xml = buildSurfaceFeedXml(EVENT, "sessions", { items, total: 1, page: 1, perPage: 12 }, now);
+    expect(xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>')).toBe(true);
+  });
+
+  it("throws when an item field's key (nested or scalar) is not a valid XML Name", () => {
+    const now = new Date("2026-08-11T12:00:00.000Z");
+    const badNested = [{ id: "sub1", title: "Talk", "bad key": { id: "t1" } }];
+    expect(() =>
+      buildSurfaceFeedXml(EVENT, "sessions", { items: badNested, total: 1, page: 1, perPage: 12 }, now),
+    ).toThrow();
+
+    const badScalar = [{ id: "sub1", title: "Talk", "1bad": "x" }];
+    expect(() =>
+      buildSurfaceFeedXml(EVENT, "sessions", { items: badScalar, total: 1, page: 1, perPage: 12 }, now),
+    ).toThrow();
+  });
+
+  it("the real bar: a hostile-titled item's full feed output parses as well-formed XML", () => {
+    const now = new Date("2026-08-11T12:00:00.000Z");
+    const hostileTitle = "\x00\x01\x02Ctrl & <angle> \"quote\" 'apos'\x1f\x7f";
+    const items = [{ id: "sub1", title: hostileTitle, description: "line1\nline2\ttabbed" }];
+    const xml = buildSurfaceFeedXml(EVENT, "sessions", { items, total: 1, page: 1, perPage: 12 }, now);
+
+    const DOMParserCtor = (globalThis as { DOMParser?: new () => { parseFromString: (s: string, t: string) => Document } })
+      .DOMParser;
+    if (DOMParserCtor) {
+      const doc = new DOMParserCtor().parseFromString(xml, "application/xml");
+      expect(doc.getElementsByTagName("parsererror")).toHaveLength(0);
+      return;
+    }
+
+    // No DOMParser in this (node) vitest environment — assert byte-level
+    // well-formedness instead: no illegal-class character survives, and
+    // every element tag name matches the XML Name pattern this module now
+    // enforces via assertXmlName.
+    // eslint-disable-next-line no-control-regex
+    expect(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(xml)).toBe(false);
+    const tagNames = [...xml.matchAll(/<\/?([A-Za-z0-9._-]+)(?:\s[^>]*)?\/?>/g)].map((m) => m[1]);
+    expect(tagNames.length).toBeGreaterThan(0);
+    for (const name of tagNames) {
+      expect(name).toMatch(/^[A-Za-z_][A-Za-z0-9._-]*$/);
+    }
+  });
+});
+
 describe("agendaIcsEvents", () => {
   it("maps agenda items to IcsEventInput with the schedule.ics-identical UID/SEQUENCE fields", () => {
     const now = new Date("2026-08-11T12:00:00.000Z");
