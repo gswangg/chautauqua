@@ -144,10 +144,13 @@ FRAME-FAITHFUL — do not "fix" it.** User flagged login as "mobile-optimized an
 on desktop. Measured at 1440: card box 820 (732 content + 2×44 padding), inputs/submit 732,
 centered — exactly frame 11-account--00 at 1600 (its input column measures 732 with a
 full-column olive Sign in bar). The 03:50 box-math amendment (e8fe9dc4) trued the app UP to
-the frame (content was 644, off-frame, before it). The user's reaction is routed to the
-design agent as a redesign candidate (narrower card); until a new frame lands, 732/820
-stands. Scoping audit of the overnight auth commits (001a7960, 13db6d8c) found them clean —
-top-level additions inert on desktop, phone shells inside the 700px block.
+the frame (content was 644, off-frame, before it). USER RULED (same day): this is a
+DESIGN-side problem — frame 11-account--00 reads as phone grammar scaled to 1600, the
+swarm's frame-matching was CORRECT work, and the user will fix it in the design. Expect a
+redrawn 11-account frame in a future design intake; until it lands, 732/820 stands and no
+build agent touches sign-in geometry. Scoping audit of the overnight auth commits
+(001a7960, 13db6d8c) found them clean — top-level additions inert on desktop, phone shells
+inside the 700px block.
 
 **DESIGN GAP · USER-FILED (2026-08-14) — settings EDIT views on desktop (routed to the
 design brief, NOT swarm work).** Every 09-settings sub-screen frame (Event / Tracks / CFP /
