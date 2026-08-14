@@ -145,11 +145,12 @@ describe("DEC-324: public onError overrides the 60s cache header on non-200s", (
     expect(res.status).toBe(400);
     expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(res.headers.get("Cache-Control")).not.toContain("max-age=60");
-    // DEC-841 (wave 14): the sub-app's onError overrides the header only; the
-    // body comes from the one responder, so an HTML surface gets HTML.
-    expect(res.headers.get("content-type")).toMatch(/text\/html/);
-    const body = await res.text();
-    expect(body).toContain("Too many ids");
+    // DEC-841 (wave 17 amendment): schedule.ics is a FEED path, so its body is
+    // the DEC-013 JSON envelope. The no-store header above is what this
+    // DEC-324 case is actually about, and it holds either way.
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+    const body = (await res.json()) as { error: { code: string; message: string } };
+    expect(body.error.message).toContain("Too many ids");
   });
 
   it("an unexpected repo throw on a public surface is a 500 with Cache-Control: no-store", async () => {

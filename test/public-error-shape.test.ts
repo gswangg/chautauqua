@@ -68,10 +68,23 @@ function eventOnlyDb() {
   } as unknown as AppEnv["Variables"]["db"];
 }
 
-function buildApp() {
+// A db whose only query rejects, so a route on an ordinary HTML public
+// surface throws the given error without needing repo-module mocks.
+function throwingDb(err: unknown) {
+  const chain: any = {
+    from: () => chain,
+    where: () => chain,
+    limit: () => Promise.reject(err),
+  };
+  return {
+    select: () => chain,
+  } as unknown as AppEnv["Variables"]["db"];
+}
+
+function buildApp(db: AppEnv["Variables"]["db"] = eventOnlyDb()) {
   const app = new Hono<AppEnv>();
   app.use("*", async (c, next) => {
-    c.set("db", eventOnlyDb());
+    c.set("db", db);
     await next();
   });
   registerErrorHandler(app);
@@ -82,17 +95,33 @@ function buildApp() {
 describe("public sub-app error shape (DEC-841)", () => {
   it("an ApiError thrown on an HTML public surface (/e/*) renders HTML with no JSON envelope, and keeps no-store", async () => {
     installFakeCaches();
-    const app = buildApp();
-    // schedule.ics throws ApiError('invalid', ...) when over MAX_ITINERARY_IDS
-    // ids are requested — reached before any further DB query.
-    const ids = Array.from({ length: MAX_ITINERARY_IDS + 1 }, (_, i) => `s${i}`).join(",");
-    const res = await app.request(`/e/conf/schedule.ics?ids=${ids}`, {}, TEST_ENV);
+    // DEC-841 (wave 17 amendment): schedule.ics is a FEED path and now answers
+    // with the JSON envelope, so it can no longer stand in for an HTML
+    // surface. Exercise the same ApiError through an ordinary /e/* page by
+    // making its event lookup reject with one.
+    const app = buildApp(throwingDb(new ApiError("invalid", "Too many ids: on purpose")));
+    const res = await app.request("/e/conf/sessions", {}, TEST_ENV);
     expect(res.status).toBe(400);
     expect(res.headers.get("content-type")).toMatch(/text\/html/);
     expect(res.headers.get("cache-control")).toBe("no-store");
     const body = await res.text();
     expect(body).not.toContain('"error"');
     expect(body).toContain("Too many ids");
+  });
+
+  it("a FEED path under the same sub-app gets the JSON envelope, not HTML", async () => {
+    installFakeCaches();
+    const app = buildApp();
+    // schedule.ics throws ApiError('invalid', ...) when over MAX_ITINERARY_IDS
+    // ids are requested — reached before any further DB query.
+    const ids = Array.from({ length: MAX_ITINERARY_IDS + 1 }, (_, i) => `s${i}`).join(",");
+    const res = await app.request(`/e/conf/schedule.ics?ids=${ids}`, {}, TEST_ENV);
+    expect(res.status).toBe(400);
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    const jsonBody = (await res.json()) as { error: { code: string; message: string } };
+    expect(jsonBody.error.code).toBe("invalid");
+    expect(jsonBody.error.message).toContain("Too many ids");
   });
 
   it("the same throw on an /api/v1 path still returns the JSON envelope", async () => {

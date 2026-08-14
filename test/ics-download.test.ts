@@ -81,11 +81,12 @@ describe("GET /e/:slug/schedule.ics (DEC-080 300-id cap)", () => {
     const ids = Array.from({ length: MAX_ITINERARY_IDS + 1 }, (_, i) => `s${i}`).join(",");
     const res = await app.request(`/e/conf/schedule.ics?ids=${ids}`);
     expect(res.status).toBe(400);
-    // DEC-841 (wave 14): /e/:slug/* is an HTML surface, so the cap error is a
-    // rendered page, not a JSON envelope. The 300 in the message is the point.
-    expect(res.headers.get("content-type")).toMatch(/text\/html/);
-    const body = await res.text();
-    expect(body).toContain("300");
+    // DEC-841 (wave 17 amendment): schedule.ics is a FEED path — a machine
+    // surface — so the cap error is the DEC-013 JSON envelope, not a rendered
+    // HTML page. The 300 in the message is still the point.
+    expect(res.headers.get("content-type")).toMatch(/application\/json/);
+    const body = (await res.json()) as { error: { code: string; message: string } };
+    expect(body.error.message).toContain("300");
   });
 
   it("accepts exactly 300 ids", async () => {
