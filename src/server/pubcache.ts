@@ -33,7 +33,7 @@ import type { AppEnv } from "./env";
 import type { KVStore } from "../lib/draft";
 import { DEC_627 } from "../decisions";
 import { executionCtxOf } from "./execution-ctx";
-import { MAX_PUBLIC_QUERY_VALUE_LENGTH } from "./repo/public/bounds";
+import { MAX_PUBLIC_QUERY_VALUE_LENGTH, PUBLIC_CACHE_KEY_PARAMS } from "./repo/public/bounds";
 
 void DEC_627;
 
@@ -68,9 +68,22 @@ export async function readPublicVersion(kv: KVStore): Promise<string> {
   return raw ?? ABSENT_VERSION;
 }
 
-/** Builds the version-salted cache key for a given request URL. */
+/** Builds the version-salted CANONICAL cache key for a given request URL.
+ * DEC-433 amendment (wave 44): the key is origin + pathname + only the
+ * params in PUBLIC_CACHE_KEY_PARAMS (in that fixed order, when present) +
+ * __chqv last — every other query param (tracking params like
+ * ?utm_source=, ?fbclid=, and any caller-supplied __chqv, which is simply
+ * ignored/overwritten) is dropped. This both restores cache hits for
+ * shared/tracked links and closes the unbounded-cache-entry surface an
+ * arbitrary sub-cap param could otherwise open (the exact flooding shape
+ * DEC-433 already clamped ?page= to close). */
 export function versionedCacheKey(url: string, version: string): Request {
-  const keyed = new URL(url);
+  const parsed = new URL(url);
+  const keyed = new URL(parsed.pathname, parsed.origin);
+  for (const name of PUBLIC_CACHE_KEY_PARAMS) {
+    const value = parsed.searchParams.get(name);
+    if (value !== null) keyed.searchParams.set(name, value);
+  }
   keyed.searchParams.set("__chqv", version);
   return new Request(keyed.toString());
 }

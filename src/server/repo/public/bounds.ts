@@ -26,6 +26,31 @@ export const MAX_PUBLIC_ROWS = MAX_PUBLIC_PAGE * PUBLIC_PER_PAGE;
 // parameter and the edge-cache key space are bounded by the same number.
 export const MAX_PUBLIC_QUERY_VALUE_LENGTH = 200;
 
+// DEC-433 amendment (wave 44): the closed set of query-string param names
+// any handler under the two cached prefixes (/e/* and /embed/*, DEC-627)
+// actually reads — src/server/pubcache.ts's versionedCacheKey builds the
+// edge-cache key from exactly these names, in exactly this order, and
+// drops everything else (tracking params like ?utm_source= no longer mint
+// a distinct cache entry). test/pubcache-key-param-derivation.scan.test.ts
+// scans every `c.req.query("<name>")` literal under src/routes/public/**
+// and fails loudly if a name is read but missing here (an unkeyed param
+// that affects rendering would serve the wrong cached page) — the only
+// asserted exclusions are `ids` (schedule.ics; isUncacheableIcsRequest
+// already bypasses the cache for that request shape) and `draft`
+// (submit.tsx, never mounted under /e/* or /embed/*).
+export const PUBLIC_CACHE_KEY_PARAMS: readonly string[] = [
+  "trackId",
+  "page",
+  "q",
+  "day",
+  "limit",
+  "fields",
+  "format",
+  "roomId",
+  "from",
+  "accent",
+];
+
 function assertFiniteIntGte1(n: number, name: string): void {
   if (!Number.isInteger(n) || n < 1) {
     throw new Error(`boundedRowLimit: ${name} must be a finite integer >= 1, got ${n}`);
