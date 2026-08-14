@@ -436,6 +436,12 @@ function stripQueryAndHash(path: string): string {
 const NON_ADMIN_HREF_ALLOWLIST: { prefix: string; reason: string }[] = [
   { prefix: "/portal", reason: "PortalSettingsPanel 'Open as speaker' link into the separate speaker portal app" },
   { prefix: "/files/", reason: "file download/proxy served directly by the Worker, not part of the /admin SPA" },
+  {
+    prefix: "/headshots/",
+    reason:
+      "gated headshot serving route (DEC-067), served directly by the Worker like /files/ -- SpeakerDetailPage's " +
+      "headshot <img> and its Download link both point at it, and neither is an /admin SPA route",
+  },
   { prefix: "/e/", reason: "public event page (agenda view / .ics feed), a separate audience-facing surface" },
   { prefix: "/submit/", reason: "public submission form, a separate audience-facing surface" },
   { prefix: "/api/v1/", reason: "raw API export links (CSV/JSON download), hit the Worker's API directly" },

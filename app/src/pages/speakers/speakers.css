@@ -777,6 +777,19 @@
   font-size: 12px;
 }
 
+/* DEC-930 amendment (wave 26) rail sections: each is a flex child of the
+   fixed 300px .chq-speaker-detail-rail column, so it needs min-width: 0 plus
+   a wrap rule -- a long unbroken string (an email address, an event name)
+   would otherwise set the section's content min-size and push the rail past
+   300px, breaking the 1180 pair. Inner spacing stays on the -body/-list
+   rules below; these three only hold the column in. */
+.chq-speaker-detail-contact,
+.chq-speaker-detail-other-events,
+.chq-speaker-detail-notes {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .chq-speaker-detail-contact-body {
   display: flex;
   flex-direction: column;

@@ -355,6 +355,15 @@
    context cannot resolve are disabled in the picker; this list names the
    blocking token and the one forward path (Comms compose). A note, not a
    control tier — muted, sized with the modal's other helper text. */
+/* Ruling A19 (wave 26): the one-sentence naming of the unavailable
+   templates that sits directly above the list -- same muted helper voice,
+   no margin of its own (the modal's own stack gap does the spacing). */
+.chq-bulk-email-unsendable-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
 .chq-bulk-email-unsendable-templates {
   list-style: none;
   margin: 0;

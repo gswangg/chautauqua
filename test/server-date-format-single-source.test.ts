@@ -57,12 +57,17 @@ const BANNED = ["toLocaleDateString(", "toLocaleTimeString(", "toLocaleString("]
 //     and the cap) to group thousands in the DEC-124 over-length error
 //     copy -- same Number.prototype.toLocaleString as form-render.tsx's
 //     counter above, nothing to do with dates.
+//   - src/routes/tasks.ts: calls `MAX_INSTRUCTIONS_LENGTH.toLocaleString(
+//     "en-US")` on the NUMBER 2000 to group thousands in the DEC-124
+//     over-length field error for task instructions (CNT-01) -- again
+//     Number.prototype.toLocaleString, not a date.
 const NAMED_EXEMPTIONS = new Set(
   [
     join(SRC_DIR, "lib/timezone.ts"),
     join(SRC_DIR, "routes/api/validators.ts"),
     join(SRC_DIR, "views/form-render.tsx"),
     join(SRC_DIR, "routes/public/submit.tsx"),
+    join(SRC_DIR, "routes/tasks.ts"),
   ].map((p) => relative(REPO_ROOT, p)),
 );
 
