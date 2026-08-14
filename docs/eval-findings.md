@@ -149,7 +149,18 @@ through the orchestrator's gate deploys and official sbek runs. This restates th
 rule; the runtime-evidence bar above is a filter on what those orchestrator runs surface,
 not an invitation to probe prod.
 
-REVERT SHAPE (mint a superseding DEC):
+**STATUS (wave 57): REVERT LANDED (a9b85eb7) — with ONE open runtime question.** The swarm's
+implementation keeps the binding but sends `new EmailMessage(from, to, rawMime)` (documented
+Workers contract, lazily imported at the composition root) rather than the Stage-2 rich
+`{to, from, subject, html, text}` object that the user's received mail empirically validated.
+Nobody has runtime-verified the EmailMessage/MIME shape on this zone. Per the runtime-evidence
+rule this gets settled AT THE GATE-4 DEPLOY, not by more analysis: the orchestrator triggers a
+real send to the user's test mailbox from prod and checks (a) email_log status and (b) actual
+receipt. If the MIME shape fails or claims sent without delivery, the rich-shape implementation
+is preserved on branch `mail-rich-shape-fallback` (786642f7) in the chautauqua-qa clone — swap
+same-day. Swarm: no further mailer changes until that verdict.
+
+REVERT SHAPE (as originally directed; superseded by the landed implementation above):
 - Restore `src/mail/email-binding.ts` (EmailBindingMailer) from `9131a53a^` — that version already
   carries the DEC-923 single-writer email_log discipline. Restore its tests likewise.
 - Re-add the `"send_email": [{"name": "EMAIL"}]` block to wrangler.jsonc and the `EMAIL` binding
