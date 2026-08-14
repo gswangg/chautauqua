@@ -58,8 +58,37 @@ const IMAGE_MAX_BYTES = 8 * BYTES_PER_MB;
 // reading reuses the document-tier cap (25 MB) since they're just another
 // flavor of document upload.
 const TEXT_MAX_BYTES = 25 * BYTES_PER_MB;
-// DEC-879: recordings are far larger than any other deliverable — 250 MB cap.
-export const VIDEO_MAX_BYTES = 250 * BYTES_PER_MB;
+
+// Test-only re-exports of the module-private tier caps, so
+// test/files.test.ts can assert every tier stays under
+// WORKERS_REQUEST_BODY_MAX_BYTES without a second hand-typed copy.
+export const DOCUMENT_MAX_BYTES_FOR_TEST = DOCUMENT_MAX_BYTES;
+export const IMAGE_MAX_BYTES_FOR_TEST = IMAGE_MAX_BYTES;
+export const TEXT_MAX_BYTES_FOR_TEST = TEXT_MAX_BYTES;
+
+// DEC-879 (wave-22 amendment): Cloudflare Workers Free/Pro incoming
+// request-body ceiling — a request larger than this 413s at the edge before
+// the Worker ever runs, so no in-Worker validation (including the recording
+// deliverable's own designed over-cap error at
+// src/routes/portal/tasks.tsx:496) is reachable for a request over this size.
+export const WORKERS_REQUEST_BODY_MAX_BYTES = 100 * BYTES_PER_MB;
+
+// Headroom reserved for multipart/form-data framing overhead (field
+// boundaries, headers, the non-file fields riding in the same request) so
+// the raw file bytes plus framing still clear WORKERS_REQUEST_BODY_MAX_BYTES.
+const MULTIPART_FRAMING_HEADROOM_BYTES = 5 * BYTES_PER_MB;
+// Test-only re-export, mirroring the other _FOR_TEST constants above.
+export const MULTIPART_FRAMING_HEADROOM_BYTES_FOR_TEST = MULTIPART_FRAMING_HEADROOM_BYTES;
+
+// DEC-879 (wave-22 amendment): recordings are far larger than any other
+// deliverable, but the cap must be derived from the edge's own ceiling, not
+// guessed — mirroring the ISOLATE_MEMORY_BUDGET_BYTES /
+// ARCHIVE_PEAK_MULTIPLIER / ARCHIVE_MAX_TOTAL_BYTES derivation pattern at
+// src/routes/files.ts:344-359. At 250 MB the edge 413s the request before
+// the Worker runs, making the product's own over-cap error unreachable.
+// VIDEO_MAX_BYTES + MULTIPART_FRAMING_HEADROOM_BYTES <=
+// WORKERS_REQUEST_BODY_MAX_BYTES (see test/files.test.ts).
+export const VIDEO_MAX_BYTES = 95 * BYTES_PER_MB;
 
 const ALL_UPLOAD_EXTENSIONS: readonly string[] = [
   ...Object.keys(DOCUMENT_EXT_CONTENT_TYPE),
@@ -83,16 +112,19 @@ export function allowedUploadExtensions(kind?: FileKind): readonly string[] {
 
 /** Human-readable summary of the upload allowlist + size caps, for form
  * field help text (DEC-020: 25 MB documents/text, 8 MB images; DEC-879:
- * 250 MB for recordings — but only for the 'recording' kind: video is not
- * part of any other kind's tier, so its hint must not advertise a video cap
- * for a field that would reject a video file). Pass `kind` when known (e.g.
- * a field bound to a specific FileKind) so the hint is per-tier honest;
- * omitted, it describes the non-video tiers only. */
+ * VIDEO_MAX_BYTES for recordings, derived from WORKERS_REQUEST_BODY_MAX_BYTES
+ * — but only for the 'recording' kind: video is not part of any other kind's
+ * tier, so its hint must not advertise a video cap for a field that would
+ * reject a video file). Pass `kind` when known (e.g. a field bound to a
+ * specific FileKind) so the hint is per-tier honest; omitted, it describes
+ * the non-video tiers only. The recording size is interpolated from
+ * VIDEO_MAX_BYTES, never hand-typed, so this copy can't drift from the
+ * enforced cap. */
 export function uploadHintText(kind?: FileKind): string {
   const extensions = allowedUploadExtensions(kind);
   const sizeNote =
     kind === "recording"
-      ? "Max 25 MB (8 MB for images, 250 MB for recordings)."
+      ? `Max 25 MB (8 MB for images, ${VIDEO_MAX_BYTES / BYTES_PER_MB} MB for recordings).`
       : "Max 25 MB (8 MB for images).";
   return `Allowed types: ${extensions.map((e) => `.${e}`).join(", ")}. ${sizeNote}`;
 }
@@ -181,7 +213,11 @@ export function validateUpload(input: UploadInput): ValidateUploadResult {
       };
     }
     if (input.sizeBytes > VIDEO_MAX_BYTES) {
-      return { ok: false, message: "File exceeds the 250 MB limit for recordings", fields: { file: "Too large" } };
+      return {
+        ok: false,
+        message: `File exceeds the ${VIDEO_MAX_BYTES / BYTES_PER_MB} MB limit for recordings`,
+        fields: { file: "Too large" },
+      };
     }
     return { ok: true, ext, servedContentType: VIDEO_EXT_CONTENT_TYPE[ext]! };
   }
@@ -253,6 +289,8 @@ const HEADSHOT_EXT_CONTENT_TYPE: Record<string, string> = {
 };
 
 const HEADSHOT_MAX_BYTES = 8 * BYTES_PER_MB;
+// Test-only re-export, mirroring the other _FOR_TEST constants above.
+export const HEADSHOT_MAX_BYTES_FOR_TEST = HEADSHOT_MAX_BYTES;
 
 export interface HeadshotUploadInput {
   filename: string;
