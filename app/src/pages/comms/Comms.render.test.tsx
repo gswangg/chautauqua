@@ -219,6 +219,66 @@ describe('CommsPage head "N sent in the last 7 days" counts what it claims (DEC-
   });
 });
 
+// DEC-518 wave-43 amendment: a failed recent-batches read or a failed
+// DEC-905 seven-day totals read must NAME the failure, not leave the head
+// subtitle / Recent Sends sitting in a permanent loading state or a
+// fabricated "0 sent".
+describe('CommsPage names a failed audit-trail read (DEC-518 wave-43 amendment)', () => {
+  function stubEmailLogFetch(opts: { failBatches?: boolean; failTotals?: boolean }) {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const rawUrl = typeof input === 'string' ? input : input.toString();
+        const url = new URL(rawUrl, 'http://localhost');
+        if (url.pathname === `/api/v1/events/${EVENT_ID}/submissions`) {
+          return new Response(JSON.stringify({ items: [], total: 0, page: 1, perPage: 20 }), { status: 200 });
+        }
+        if (url.pathname === `/api/v1/events/${EVENT_ID}/templates`) {
+          return new Response(JSON.stringify({ items: [], total: 0, page: 1, perPage: 20 }), { status: 200 });
+        }
+        if (url.pathname === `/api/v1/events/${EVENT_ID}/email-log`) {
+          const status = url.searchParams.get('status');
+          if (status === 'sent' || status === 'failed') {
+            if (opts.failTotals) return new Response('boom', { status: 500 });
+            return new Response(JSON.stringify({ items: [], total: 0, page: 1, perPage: 20 }), { status: 200 });
+          }
+          if (opts.failBatches) return new Response('boom', { status: 500 });
+          return new Response(JSON.stringify({ items: [], total: 0, page: 1, perPage: 20 }), { status: 200 });
+        }
+        throw new Error(`unstubbed fetch: ${rawUrl}`);
+      }),
+    );
+  }
+
+  it('names a failed recent-batches read instead of sitting in a permanent loading state', async () => {
+    stubEmailLogFetch({ failBatches: true });
+
+    render(
+      <MemoryRouter>
+        <CommsPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/./);
+    // The head's "N sent in the last 7 days" subtitle never appears -- it
+    // stays gated on batchesLoaded, which this failure never flips to true.
+    expect(screen.queryByText(/sent in the last 7 days/)).not.toBeInTheDocument();
+  });
+
+  it('names a failed seven-day totals read instead of a fabricated "0 sent"', async () => {
+    stubEmailLogFetch({ failTotals: true });
+
+    render(
+      <MemoryRouter>
+        <CommsPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/./);
+    expect(screen.queryByText(/0 sent in the last 7 days/)).not.toBeInTheDocument();
+  });
+});
+
 // DEC-710: the Compose/Templates/History strip reads and writes ?tab= via
 // useSearchParams instead of component state, so the tab is bookmarkable and
 // participates in back/forward.

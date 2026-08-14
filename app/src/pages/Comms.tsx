@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useCurrentEvent } from '../lib/useCurrentEvent';
 import { PageSkeleton } from '../components/PageSkeleton';
-import { apiList } from '../lib/api';
+import { apiList, ApiError } from '../lib/api';
 import { useMutationVersion } from '../lib/mutationSignal';
 import { formatDate } from '../lib/dates';
 import { TemplatesTab } from './comms/TemplatesTab';
@@ -60,6 +60,12 @@ export function CommsPage() {
   // the organizer's last action.
   const mutationVersion = useMutationVersion();
 
+  // DEC-518 wave-43 amendment: the head's send-rhythm subtitle and Recent
+  // Sends both depend on the two fetches below -- a failed read must not
+  // sit silently as a permanent loading state or a permanent "0 sent"; it
+  // is named here, on the one page whose job is the send audit trail.
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   // DEC-751/DEC-905: fed by the same GET .../email-log?groupBy=batch call
   // History uses. Previously gated on tab === 'compose' so the head (which
   // needs the latest batch's date for its subtitle) never saw it while on
@@ -76,7 +82,9 @@ export function CommsPage() {
           setBatchesLoaded(true);
         }
       })
-      .catch(() => undefined);
+      .catch((err) => {
+        if (!cancelled) setLoadError(err instanceof ApiError ? err.message : 'Failed to load recent sends');
+      });
     return () => {
       cancelled = true;
     };
@@ -105,7 +113,9 @@ export function CommsPage() {
           setSentLast7DaysLoaded(true);
         }
       })
-      .catch(() => undefined);
+      .catch((err) => {
+        if (!cancelled) setLoadError(err instanceof ApiError ? err.message : 'Failed to load send totals');
+      });
     return () => {
       cancelled = true;
     };
@@ -188,6 +198,14 @@ export function CommsPage() {
   return (
     <div className={`chq-page chq-comms-page ${pageMeasureClass}`}>
       <div className={phoneEntered ? 'chq-comms-main' : 'chq-comms-main chq-comms-main-landing'}>
+        {/* DEC-518 wave-43 amendment: a failed recent-batches or send-totals
+            read names itself here instead of leaving the head subtitle and
+            Recent Sends sitting in a permanent loading state / "0 sent". */}
+        {loadError && (
+          <div className="chq-error" role="alert">
+            {loadError}
+          </div>
+        )}
         <div className="chq-comms-head">
           <div className="chq-comms-head-titles">
             <h1 className="chq-page-title">Comms</h1>
