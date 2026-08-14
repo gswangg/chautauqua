@@ -15,7 +15,7 @@
 // — and handed down here as props, so this panel and the grid beside it
 // never fall out of sync on an add/remove).
 import { useState } from 'react';
-import { apiDelete, apiPost, ApiError } from '../../lib/api';
+import { apiDelete, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { formatMinutes } from './gridMath';
 import { formatDayLabel } from '../../lib/dates';
@@ -100,6 +100,56 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged }: 
   // path), so the Remove control opens the ONE shared ConfirmDialog rather
   // than firing the DELETE on click.
   const [pendingRemove, setPendingRemove] = useState<ScheduleBreakRow | null>(null);
+  // Inline edit affordance (DEC-022 amendment, wave 71 -- PATCH /api/v1/
+  // breaks/:id): one row editable at a time, mirroring the add form's field
+  // shape so the same parseTimeToMinutes/minutesToTimeInput pair covers
+  // both directions.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState(EMPTY_FORM);
+  const [editFieldErrors, setEditFieldErrors] = useState<BreakFieldErrors>({});
+  const [saving, setSaving] = useState(false);
+
+  function startEdit(b: ScheduleBreakRow) {
+    setEditingId(b.id);
+    setEditForm({
+      label: b.label,
+      location: b.location ?? '',
+      startTime: minutesToTimeInput(b.startMin),
+      durationMin: String(b.durationMin),
+    });
+    setEditFieldErrors({});
+    setError(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditForm(EMPTY_FORM);
+    setEditFieldErrors({});
+  }
+
+  async function handleSaveEdit(id: string) {
+    setError(null);
+    setEditFieldErrors({});
+    setSaving(true);
+    try {
+      await apiPatch(`/breaks/${id}`, {
+        label: editForm.label,
+        location: editForm.location.trim().length > 0 ? editForm.location : null,
+        startMin: parseTimeToMinutes(editForm.startTime),
+        durationMin: editForm.durationMin.trim().length > 0 ? Number(editForm.durationMin) : NaN,
+      });
+      cancelEdit();
+      onChanged();
+    } catch (err) {
+      if (err instanceof ApiError && err.fields) {
+        setEditFieldErrors(err.fields as BreakFieldErrors);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to save break');
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function handleAdd() {
     if (!eventId || !day) return;
@@ -141,6 +191,83 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged }: 
     }
   }
 
+  function renderEditForm(b: ScheduleBreakRow) {
+    return (
+      <div className="chq-breaks-edit-form">
+        <div className="chq-breaks-field">
+          <label htmlFor={`chq-break-edit-label-${b.id}`}>Label</label>
+          <input
+            id={`chq-break-edit-label-${b.id}`}
+            className="chq-input"
+            value={editForm.label}
+            onChange={(e) => setEditForm((prev) => ({ ...prev, label: e.target.value }))}
+          />
+          {editFieldErrors.label && (
+            <span role="alert" className="chq-field-error">
+              {editFieldErrors.label}
+            </span>
+          )}
+        </div>
+        <div className="chq-breaks-field">
+          <label htmlFor={`chq-break-edit-location-${b.id}`}>Location (optional)</label>
+          <input
+            id={`chq-break-edit-location-${b.id}`}
+            className="chq-input"
+            value={editForm.location}
+            onChange={(e) => setEditForm((prev) => ({ ...prev, location: e.target.value }))}
+          />
+        </div>
+        <div className="chq-breaks-field">
+          <label htmlFor={`chq-break-edit-start-${b.id}`}>Start time</label>
+          <input
+            id={`chq-break-edit-start-${b.id}`}
+            className="chq-input"
+            type="time"
+            value={editForm.startTime}
+            onChange={(e) => setEditForm((prev) => ({ ...prev, startTime: e.target.value }))}
+          />
+          {editFieldErrors.startMin && (
+            <span role="alert" className="chq-field-error">
+              {editFieldErrors.startMin}
+            </span>
+          )}
+        </div>
+        <div className="chq-breaks-field">
+          <label htmlFor={`chq-break-edit-duration-${b.id}`}>Duration (min)</label>
+          <input
+            id={`chq-break-edit-duration-${b.id}`}
+            className="chq-input"
+            type="number"
+            min={1}
+            value={editForm.durationMin}
+            onChange={(e) => setEditForm((prev) => ({ ...prev, durationMin: e.target.value }))}
+          />
+          {editFieldErrors.durationMin && (
+            <span role="alert" className="chq-field-error">
+              {editFieldErrors.durationMin}
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          className="chq-btn chq-btn-primary"
+          onClick={() => void handleSaveEdit(b.id)}
+          disabled={saving}
+        >
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+        <button type="button" className="chq-btn chq-btn-tertiary" onClick={cancelEdit} disabled={saving}>
+          Cancel
+        </button>
+        {editFieldErrors.day && (
+          <span role="alert" className="chq-field-error">
+            {editFieldErrors.day}
+          </span>
+        )}
+      </div>
+    );
+  }
+
   // Controls render only when their action is possible (house affordance
   // grammar): with no day selected there is nothing to scope a break list
   // (or an add) to — UNLESS there are outside-window breaks to surface,
@@ -164,24 +291,38 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged }: 
 
           <ul className="chq-breaks-list">
             {breaks.length === 0 && <li className="chq-breaks-empty">No breaks yet.</li>}
-            {breaks.map((b) => (
-              <li key={b.id} className="chq-breaks-row">
-                <span className="chq-breaks-row-time">{formatMinutes(b.startMin)}</span>
-                <span className="chq-breaks-row-meta">
-                  {b.label}
-                  {b.location ? ` · ${b.location}` : ''}
-                  {` · ${b.durationMin} min`}
-                </span>
-                <button
-                  type="button"
-                  className="chq-btn chq-btn-tertiary"
-                  onClick={() => setPendingRemove(b)}
-                  disabled={removingId === b.id}
-                >
-                  Remove
-                </button>
-              </li>
-            ))}
+            {breaks.map((b) =>
+              editingId === b.id ? (
+                <li key={b.id} className="chq-breaks-row chq-breaks-row-editing">
+                  {renderEditForm(b)}
+                </li>
+              ) : (
+                <li key={b.id} className="chq-breaks-row">
+                  <span className="chq-breaks-row-time">{formatMinutes(b.startMin)}</span>
+                  <span className="chq-breaks-row-meta">
+                    {b.label}
+                    {b.location ? ` · ${b.location}` : ''}
+                    {` · ${b.durationMin} min`}
+                  </span>
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-tertiary"
+                    onClick={() => startEdit(b)}
+                    disabled={removingId === b.id}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-tertiary"
+                    onClick={() => setPendingRemove(b)}
+                    disabled={removingId === b.id}
+                  >
+                    Remove
+                  </button>
+                </li>
+              ),
+            )}
           </ul>
         </>
       )}
@@ -202,25 +343,39 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged }: 
             printable programme.
           </p>
           <ul className="chq-breaks-list">
-            {outsideWindow.map((b) => (
-              <li key={b.id} className="chq-breaks-row">
-                <span className="chq-breaks-row-day">{formatDayLabel(b.day)}</span>
-                <span className="chq-breaks-row-time">{formatMinutes(b.startMin)}</span>
-                <span className="chq-breaks-row-meta">
-                  {b.label}
-                  {b.location ? ` · ${b.location}` : ''}
-                  {` · ${b.durationMin} min`}
-                </span>
-                <button
-                  type="button"
-                  className="chq-btn chq-btn-tertiary"
-                  onClick={() => setPendingRemove(b)}
-                  disabled={removingId === b.id}
-                >
-                  Remove
-                </button>
-              </li>
-            ))}
+            {outsideWindow.map((b) =>
+              editingId === b.id ? (
+                <li key={b.id} className="chq-breaks-row chq-breaks-row-editing">
+                  {renderEditForm(b)}
+                </li>
+              ) : (
+                <li key={b.id} className="chq-breaks-row">
+                  <span className="chq-breaks-row-day">{formatDayLabel(b.day)}</span>
+                  <span className="chq-breaks-row-time">{formatMinutes(b.startMin)}</span>
+                  <span className="chq-breaks-row-meta">
+                    {b.label}
+                    {b.location ? ` · ${b.location}` : ''}
+                    {` · ${b.durationMin} min`}
+                  </span>
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-tertiary"
+                    onClick={() => startEdit(b)}
+                    disabled={removingId === b.id}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="chq-btn chq-btn-tertiary"
+                    onClick={() => setPendingRemove(b)}
+                    disabled={removingId === b.id}
+                  >
+                    Remove
+                  </button>
+                </li>
+              ),
+            )}
           </ul>
         </div>
       )}

@@ -19,10 +19,12 @@ import {
   countBreaksForEvent,
   createBreak,
   deleteBreak,
+  getBreakById,
   getBreakForEvent,
   listBreaksForEvent,
   listBreaksOutsideWindow,
   MAX_BREAKS_PER_EVENT,
+  updateBreak,
 } from "../src/server/repo/breaks";
 
 const DDL = `
@@ -117,6 +119,38 @@ describe("src/server/repo/breaks.ts", () => {
     await expect(listBreaksForEvent(db, "event-a")).rejects.toThrow(/more than 200 breaks/);
   });
 
+  // DEC-022 amendment (wave 71): updateBreak's partial write -- only the
+  // supplied keys change, updatedAt always bumps, and the fresh record
+  // comes back.
+  it("updateBreak writes only the supplied fields, bumps updatedAt, and returns the fresh record", async () => {
+    const { db, sqlite } = makeTestDb();
+    seedEvent(sqlite, "event-a", "org-a", "2027-01-01", "2027-01-03");
+    const created = await createBreak(db, "event-a", {
+      day: "2027-01-01",
+      label: "Coffee",
+      location: "Foyer",
+      startMin: 600,
+      durationMin: 15,
+    });
+
+    const updated = await updateBreak(db, created.id, { durationMin: 30 });
+    expect(updated.durationMin).toBe(30);
+    expect(updated.label).toBe("Coffee");
+    expect(updated.location).toBe("Foyer");
+    expect(updated.startMin).toBe(600);
+    expect(updated.day).toBe("2027-01-01");
+    expect(updated.updatedAt).toBeGreaterThanOrEqual(created.updatedAt);
+
+    const fetched = await getBreakById(db, created.id);
+    expect(fetched?.durationMin).toBe(30);
+  });
+
+  it("updateBreak throws not_found when the row is gone", async () => {
+    const { db, sqlite } = makeTestDb();
+    seedEvent(sqlite, "event-a", "org-a", "2027-01-01", "2027-01-03");
+    await expect(updateBreak(db, "nonexistent", { durationMin: 30 })).rejects.toThrow(/not found/i);
+  });
+
   it("getBreakForEvent/deleteBreak round-trip", async () => {
     const { db, sqlite } = makeTestDb();
     seedEvent(sqlite, "event-a", "org-a", "2027-01-01", "2027-01-01");
@@ -197,6 +231,14 @@ function appWithDbAndAuth(db: Db, auth: AuthInfo | undefined) {
 function postRequest(path: string, body: unknown) {
   return new Request(`http://local${path}`, {
     method: "POST",
+    headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+    body: JSON.stringify(body),
+  });
+}
+
+function patchRequest(path: string, body: unknown) {
+  return new Request(`http://local${path}`, {
+    method: "PATCH",
     headers: { "content-type": "application/json", "x-chq-csrf": "1" },
     body: JSON.stringify(body),
   });
@@ -364,6 +406,95 @@ describe("GET /api/v1/events/:eventId/breaks", () => {
     expect(body.total).toBe(1);
     expect(body.page).toBe(1);
     expect(body.perPage).toBe(MAX_BREAKS_PER_EVENT);
+  });
+});
+
+describe("PATCH /api/v1/breaks/:id", () => {
+  it("applies a successful partial edit", async () => {
+    const { db, sqlite } = makeTestDb();
+    seedEvent(sqlite, "event-a", "org-a", "2027-01-01", "2027-01-03");
+    const created = await createBreak(db, "event-a", {
+      day: "2027-01-01",
+      label: "Coffee",
+      location: "Foyer",
+      startMin: 600,
+      durationMin: 15,
+    });
+
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+    const res = await app.request(patchRequest(`/api/v1/breaks/${created.id}`, { label: "Coffee break", durationMin: 30 }));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { label: string; durationMin: number; startMin: number; location: string | null };
+    expect(body.label).toBe("Coffee break");
+    expect(body.durationMin).toBe(30);
+    // Untouched fields keep their stored values.
+    expect(body.startMin).toBe(600);
+    expect(body.location).toBe("Foyer");
+  });
+
+  // Cross-field midnight refusal (DEC-022 amendment, wave 66) must still
+  // fire on a duration-only PATCH -- the shared validator resolves the
+  // omitted startMin against the stored row before running this check.
+  it("refuses a duration-only PATCH that would push the break past midnight", async () => {
+    const { db, sqlite } = makeTestDb();
+    seedEvent(sqlite, "event-a", "org-a", "2027-01-01", "2027-01-03");
+    const created = await createBreak(db, "event-a", {
+      day: "2027-01-01",
+      label: "Coffee",
+      location: null,
+      startMin: 1430,
+      durationMin: 30,
+    });
+
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+    const res = await app.request(patchRequest(`/api/v1/breaks/${created.id}`, { durationMin: 120 }));
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields?.durationMin).toMatch(/midnight/);
+    // A rejected PATCH must never touch the row.
+    const fetched = await getBreakById(db, created.id);
+    expect(fetched?.durationMin).toBe(30);
+  });
+
+  it("refuses an out-of-event-range day", async () => {
+    const { db, sqlite } = makeTestDb();
+    seedEvent(sqlite, "event-a", "org-a", "2027-01-01", "2027-01-03");
+    const created = await createBreak(db, "event-a", {
+      day: "2027-01-01",
+      label: "Coffee",
+      location: null,
+      startMin: 600,
+      durationMin: 15,
+    });
+
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+    const res = await app.request(patchRequest(`/api/v1/breaks/${created.id}`, { day: "2027-02-01" }));
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields?.day).toBeDefined();
+  });
+
+  it("404s on an unknown id, 403s on a break owned by a different org", async () => {
+    const { db, sqlite } = makeTestDb();
+    seedEvent(sqlite, "event-a", "org-a", "2027-01-01", "2027-01-03");
+    const created = await createBreak(db, "event-a", {
+      day: "2027-01-01",
+      label: "Coffee",
+      location: null,
+      startMin: 600,
+      durationMin: 15,
+    });
+
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+    const missing = await app.request(patchRequest("/api/v1/breaks/nonexistent", { label: "New label" }));
+    expect(missing.status).toBe(404);
+
+    const crossOrgApp = appWithDbAndAuth(db, ORGANIZER_B);
+    const forbidden = await crossOrgApp.request(patchRequest(`/api/v1/breaks/${created.id}`, { label: "New label" }));
+    expect(forbidden.status).toBe(403);
+    // Still unchanged -- a rejected cross-org edit must never touch the row.
+    const fetched = await getBreakById(db, created.id);
+    expect(fetched?.label).toBe("Coffee");
   });
 });
 

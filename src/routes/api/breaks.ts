@@ -15,9 +15,12 @@ import {
   countBreaksForEvent,
   createBreak,
   deleteBreak,
+  getBreakById,
   getBreakForEvent,
   listBreaksForEvent,
   MAX_BREAKS_PER_EVENT,
+  updateBreak,
+  type ScheduleBreak,
 } from "../../server/repo/breaks";
 
 export const breaksRoutes = new Hono<AppEnv>();
@@ -55,7 +58,7 @@ breaksRoutes.get("/events/:eventId/breaks", requireOrganizer, async (c) => {
   return c.json({ items, total: items.length, page: 1, perPage: MAX_BREAKS_PER_EVENT });
 });
 
-interface CreateBreakBody {
+interface BreakBody {
   day?: unknown;
   label?: unknown;
   location?: unknown;
@@ -79,6 +82,82 @@ function parseDurationMin(value: unknown, fields: Record<string, string>): numbe
   return value;
 }
 
+interface ResolvedBreakFields {
+  day: string;
+  label: string;
+  location: string | null;
+  startMin: number;
+  durationMin: number;
+}
+
+/** Shared validator for POST create (DEC-022 amendment) and PATCH edit
+ * (DEC-022 amendment, wave 71) break writes. `existing` is null for POST
+ * (every field is required); it's the stored row for PATCH, and any field
+ * absent from `body` resolves against it BEFORE the cross-field midnight
+ * check runs -- so PATCHing only durationMin still catches a break that
+ * would now run past midnight. A present-but-null/malformed value is a
+ * deliberate edit, not an omission (field guide: "submitted blank CLEARS,
+ * absent key is silence"), so it's validated (and can fail) even under
+ * `existing`. */
+function validateBreakWrite(
+  body: BreakBody,
+  event: { startDate: string; endDate: string },
+  existing: ResolvedBreakFields | null,
+): { fields: Record<string, string>; values: ResolvedBreakFields } {
+  const fields: Record<string, string> = {};
+
+  let day = existing?.day ?? "";
+  if (body.day !== undefined || !existing) {
+    // DEC-417: isDayWithinEventRange compares lexically, so it alone would
+    // let an arbitrarily long string through on a multi-day event. isIsoDay
+    // is the shared shape gate (src/server/repo/agenda/days.ts, same one
+    // isValidSlotInput uses) and pins `day` at exactly 10 chars before the
+    // range check runs.
+    if (!isIsoDay(body.day)) {
+      fields.day = "Required (YYYY-MM-DD)";
+    } else if (!isDayWithinEventRange(body.day, event.startDate, event.endDate)) {
+      fields.day = `Outside ${event.startDate}..${event.endDate}`;
+    } else {
+      day = body.day;
+    }
+  }
+
+  let label = existing?.label ?? "";
+  if (body.label !== undefined || !existing) {
+    label = parseBoundedText(body.label, "label", { max: MAX_NAME_LENGTH, required: true });
+  }
+
+  let location = existing?.location ?? null;
+  if (body.location !== undefined || !existing) {
+    location = parseBoundedOptionalText(body.location, "location", { max: MAX_NAME_LENGTH });
+  }
+
+  let startMin = existing?.startMin ?? 0;
+  if (body.startMin !== undefined || !existing) {
+    startMin = parseStartMin(body.startMin, fields);
+  }
+
+  let durationMin = existing?.durationMin ?? 1;
+  if (body.durationMin !== undefined || !existing) {
+    durationMin = parseDurationMin(body.durationMin, fields);
+  }
+
+  // DEC-022 amendment (wave 66): the two per-field checks above validate
+  // startMin and durationMin independently, so {startMin: 1430,
+  // durationMin: 120} passes both yet describes a break ending at 25:50 — a
+  // break cannot run past midnight. Cross-field check runs alongside (not
+  // instead of) the per-field ones, and only overwrites `fields.durationMin`
+  // when both individual fields were themselves valid (an already-invalid
+  // durationMin keeps its own, more specific message). This check always
+  // runs against the RESOLVED startMin/durationMin (stored values folded in
+  // for any field a PATCH omitted), never just the fields present on `body`.
+  if (!fields.startMin && !fields.durationMin && startMin + durationMin > MINUTES_PER_DAY) {
+    fields.durationMin = `startMin + durationMin must not exceed ${MINUTES_PER_DAY} (a break cannot run past midnight)`;
+  }
+
+  return { fields, values: { day, label, location, startMin, durationMin } };
+}
+
 // POST /api/v1/events/:eventId/breaks
 breaksRoutes.post("/events/:eventId/breaks", requireOrganizer, csrfJson, async (c) => {
   const auth = requireAuth(c);
@@ -90,48 +169,37 @@ breaksRoutes.post("/events/:eventId/breaks", requireOrganizer, csrfJson, async (
     throw new ApiError("invalid", `This event already has ${MAX_BREAKS_PER_EVENT} breaks, the maximum allowed`);
   }
 
-  const body = (await c.req.json().catch(() => ({}))) as CreateBreakBody;
-  const fields: Record<string, string> = {};
-
-  const label = parseBoundedText(body.label, "label", { max: MAX_NAME_LENGTH, required: true });
-  const location = parseBoundedOptionalText(body.location, "location", { max: MAX_NAME_LENGTH });
-
-  // DEC-417: isDayWithinEventRange compares lexically, so it alone would let
-  // an arbitrarily long string through on a multi-day event. isIsoDay is the
-  // shared shape gate (src/server/repo/agenda/days.ts, same one isValidSlotInput
-  // uses) and pins `day` at exactly 10 chars before the range check runs.
-  if (!isIsoDay(body.day)) {
-    fields.day = "Required (YYYY-MM-DD)";
-  } else if (!isDayWithinEventRange(body.day, event.startDate, event.endDate)) {
-    fields.day = `Outside ${event.startDate}..${event.endDate}`;
-  }
-
-  const startMin = parseStartMin(body.startMin, fields);
-  const durationMin = parseDurationMin(body.durationMin, fields);
-
-  // DEC-022 amendment (wave 66): the two per-field checks above validate
-  // startMin and durationMin independently, so {startMin: 1430,
-  // durationMin: 120} passes both yet describes a break ending at 25:50 — a
-  // break cannot run past midnight. Cross-field check runs alongside (not
-  // instead of) the per-field ones, and only overwrites `fields.durationMin`
-  // when both individual fields were themselves valid (an already-invalid
-  // durationMin keeps its own, more specific message).
-  if (!fields.startMin && !fields.durationMin && startMin + durationMin > MINUTES_PER_DAY) {
-    fields.durationMin = `startMin + durationMin must not exceed ${MINUTES_PER_DAY} (a break cannot run past midnight)`;
-  }
+  const body = (await c.req.json().catch(() => ({}))) as BreakBody;
+  const { fields, values } = validateBreakWrite(body, event, null);
 
   if (Object.keys(fields).length > 0) {
     throw new ApiError("invalid", "Invalid break input", fields);
   }
 
-  const created = await createBreak(c.var.db, eventId, {
-    day: body.day as string,
-    label,
-    location,
-    startMin,
-    durationMin,
-  });
+  const created = await createBreak(c.var.db, eventId, values);
   return c.json(created, 201);
+});
+
+// PATCH /api/v1/breaks/:id
+breaksRoutes.patch("/breaks/:id", requireOrganizer, csrfJson, async (c) => {
+  const auth = requireAuth(c);
+  const id = c.req.param("id");
+  const ownership = await getBreakForEvent(c.var.db, id);
+  if (!ownership) throw new ApiError("not_found", "Break not found");
+  const event = await assertEventOwnership(c, ownership.eventId, auth);
+
+  const existing = await getBreakById(c.var.db, id);
+  if (!existing) throw new ApiError("not_found", "Break not found");
+
+  const body = (await c.req.json().catch(() => ({}))) as BreakBody;
+  const { fields, values } = validateBreakWrite(body, event, existing as ResolvedBreakFields);
+
+  if (Object.keys(fields).length > 0) {
+    throw new ApiError("invalid", "Invalid break input", fields);
+  }
+
+  const updated: ScheduleBreak = await updateBreak(c.var.db, id, values);
+  return c.json(updated);
 });
 
 // DELETE /api/v1/breaks/:id

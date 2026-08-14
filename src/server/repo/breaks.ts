@@ -176,9 +176,9 @@ export async function createBreak(db: Db, eventId: string, input: CreateBreakInp
   };
 }
 
-/** Event-scoped ownership lookup for the DELETE-by-id route — null if the
- * break doesn't exist. Mirrors getEmbedOwnership's shape (src/server/repo/
- * embeds.ts). */
+/** Event-scoped ownership lookup for the DELETE/PATCH-by-id routes — null
+ * if the break doesn't exist. Mirrors getEmbedOwnership's shape (src/server/
+ * repo/embeds.ts). */
 export async function getBreakForEvent(db: Db, id: string): Promise<{ eventId: string } | null> {
   const rows = await db
     .select({ eventId: schema.scheduleBreak.eventId })
@@ -188,6 +188,42 @@ export async function getBreakForEvent(db: Db, id: string): Promise<{ eventId: s
   return rows[0] ?? null;
 }
 
+/** Full-record lookup by id, used by the PATCH route to resolve fields
+ * omitted from a partial edit before its cross-field midnight check runs
+ * (src/routes/api/breaks.ts's shared validator). */
+export async function getBreakById(db: Db, id: string): Promise<ScheduleBreak | null> {
+  const rows = await db.select().from(schema.scheduleBreak).where(eq(schema.scheduleBreak.id, id)).limit(1);
+  return rows[0] ? toRecord(rows[0]) : null;
+}
+
 export async function deleteBreak(db: Db, id: string): Promise<void> {
   await db.delete(schema.scheduleBreak).where(eq(schema.scheduleBreak.id, id));
+}
+
+export interface UpdateBreakInput {
+  day?: string;
+  label?: string;
+  location?: string | null;
+  startMin?: number;
+  durationMin?: number;
+}
+
+/** Partial write (DEC-022 amendment, wave 71): only the keys present in
+ * `input` are updated; `updatedAt` always bumps. Throws not_found if the
+ * row is gone by the time the update runs (deleted between the route's
+ * ownership check and this call). */
+export async function updateBreak(db: Db, id: string, input: UpdateBreakInput): Promise<ScheduleBreak> {
+  const now = new Date();
+  const values: Record<string, unknown> = { updatedAt: now };
+  if (input.day !== undefined) values.day = input.day;
+  if (input.label !== undefined) values.label = input.label;
+  if (input.location !== undefined) values.location = input.location;
+  if (input.startMin !== undefined) values.startMin = input.startMin;
+  if (input.durationMin !== undefined) values.durationMin = input.durationMin;
+
+  await db.update(schema.scheduleBreak).set(values).where(eq(schema.scheduleBreak.id, id));
+
+  const rows = await db.select().from(schema.scheduleBreak).where(eq(schema.scheduleBreak.id, id)).limit(1);
+  if (!rows[0]) throw new ApiError("not_found", "Break not found");
+  return toRecord(rows[0]);
 }
