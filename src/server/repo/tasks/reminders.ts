@@ -50,6 +50,18 @@ interface OutstandingRow {
   eventEndDate: string;
 }
 
+// DEC-078: taskIds/contactIds arrive via parseBoundedIdArray (routes/tasks.ts),
+// whose ceiling (DEFAULT_BOUNDED_ID_ARRAY_MAX = 1000) is far above D1's
+// bound-parameter budget — a caller-supplied filter list is exactly the
+// "can grow with data" shape DEC-078 targets, so both listOutstandingForEvent
+// and listRemindableContactIds below run one query per (taskId chunk,
+// contactId chunk) pair instead of binding the raw lists directly. When a
+// filter is absent/empty the pair loop degenerates to a single undefined
+// chunk, matching the original unfiltered query.
+function idChunksOrUndefined(ids: string[] | undefined): (string[] | undefined)[] {
+  return ids && ids.length > 0 ? chunkIds(ids) : [undefined];
+}
+
 /** One joined query for every non-complete assignment in the event (or
  * across taskIds, when provided), carrying everything a reminder email
  * needs — no N+1. */
@@ -59,41 +71,60 @@ export async function listOutstandingForEvent(
   taskIds?: string[],
   contactIds?: string[],
 ): Promise<OutstandingRow[]> {
-  const conditions = [
-    eq(schema.task.eventId, eventId),
-    eq(schema.taskAssignment.status, "pending"),
-    chaseableContactExists(eventId),
-  ];
-  if (taskIds && taskIds.length > 0) {
-    conditions.push(inArray(schema.taskAssignment.taskId, taskIds));
+  const rows: {
+    assignmentId: string;
+    taskId: string;
+    taskTitle: string;
+    dueDate: Date | null;
+    status: string;
+    lastRemindedAt: Date | null;
+    contactId: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    eventId: string;
+    eventName: string;
+    timezone: string;
+    eventEndDate: string;
+    assignmentCreatedAt: Date;
+  }[] = [];
+  outer: for (const taskIdChunk of idChunksOrUndefined(taskIds)) {
+    for (const contactIdChunk of idChunksOrUndefined(contactIds)) {
+      const conditions = [
+        eq(schema.task.eventId, eventId),
+        eq(schema.taskAssignment.status, "pending"),
+        chaseableContactExists(eventId),
+      ];
+      if (taskIdChunk) conditions.push(inArray(schema.taskAssignment.taskId, taskIdChunk));
+      if (contactIdChunk) conditions.push(inArray(schema.taskAssignment.contactId, contactIdChunk));
+      const batchRows = await db
+        .select({
+          assignmentId: schema.taskAssignment.id,
+          taskId: schema.task.id,
+          taskTitle: schema.task.title,
+          dueDate: schema.task.dueDate,
+          status: schema.taskAssignment.status,
+          lastRemindedAt: schema.taskAssignment.lastRemindedAt,
+          contactId: schema.contact.id,
+          firstName: schema.contact.firstName,
+          lastName: schema.contact.lastName,
+          email: schema.contact.email,
+          eventId: schema.event.id,
+          eventName: schema.event.name,
+          timezone: schema.event.timezone,
+          eventEndDate: schema.event.endDate,
+          assignmentCreatedAt: schema.taskAssignment.createdAt,
+        })
+        .from(schema.taskAssignment)
+        .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
+        .innerJoin(schema.event, eq(schema.task.eventId, schema.event.id))
+        .innerJoin(schema.contact, eq(schema.taskAssignment.contactId, schema.contact.id))
+        .where(and(...conditions))
+        .limit(MAX_REMINDER_SCAN + 1 - rows.length);
+      rows.push(...batchRows);
+      if (rows.length > MAX_REMINDER_SCAN) break outer;
+    }
   }
-  if (contactIds && contactIds.length > 0) {
-    conditions.push(inArray(schema.taskAssignment.contactId, contactIds));
-  }
-  const rows = await db
-    .select({
-      assignmentId: schema.taskAssignment.id,
-      taskId: schema.task.id,
-      taskTitle: schema.task.title,
-      dueDate: schema.task.dueDate,
-      status: schema.taskAssignment.status,
-      lastRemindedAt: schema.taskAssignment.lastRemindedAt,
-      contactId: schema.contact.id,
-      firstName: schema.contact.firstName,
-      lastName: schema.contact.lastName,
-      email: schema.contact.email,
-      eventId: schema.event.id,
-      eventName: schema.event.name,
-      timezone: schema.event.timezone,
-      eventEndDate: schema.event.endDate,
-      assignmentCreatedAt: schema.taskAssignment.createdAt,
-    })
-    .from(schema.taskAssignment)
-    .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
-    .innerJoin(schema.event, eq(schema.task.eventId, schema.event.id))
-    .innerJoin(schema.contact, eq(schema.taskAssignment.contactId, schema.contact.id))
-    .where(and(...conditions))
-    .limit(MAX_REMINDER_SCAN + 1);
 
   if (rows.length > MAX_REMINDER_SCAN) {
     throw new ApiError(
@@ -144,17 +175,24 @@ export async function listRemindableContactIds(
   eventId: string,
   opts: { taskIds?: string[]; contactIds?: string[]; now: number; dedupeWindowMs: number; max: number },
 ): Promise<{ contactIds: string[]; skipped: number; remaining: number }> {
+  // DEC-078: opts.taskIds/opts.contactIds arrive via parseBoundedIdArray
+  // (max 1000), which exceeds D1's bound-parameter budget. Both filters are
+  // WHERE-clause membership tests over the SAME grouped aggregate (per-
+  // contact max(last_reminded_at)), so naively chunking either dimension
+  // into separate SQL queries would split one contact's aggregate across
+  // queries and silently corrupt the eligible/skipped dedupe decision. When
+  // either filter is present this falls back to a chunked raw-row fetch
+  // (bounded by MAX_REMINDER_SCAN, same ceiling as listOutstandingForEvent)
+  // and does the max/eligible/skipped aggregation in JS instead of SQL —
+  // the unfiltered fast path below (both filters absent) is untouched.
+  if ((opts.taskIds && opts.taskIds.length > 0) || (opts.contactIds && opts.contactIds.length > 0)) {
+    return listRemindableContactIdsFiltered(db, eventId, opts);
+  }
   const conditions = [
     eq(schema.task.eventId, eventId),
     eq(schema.taskAssignment.status, "pending"),
     chaseableContactExists(eventId),
   ];
-  if (opts.taskIds && opts.taskIds.length > 0) {
-    conditions.push(inArray(schema.taskAssignment.taskId, opts.taskIds));
-  }
-  if (opts.contactIds && opts.contactIds.length > 0) {
-    conditions.push(inArray(schema.taskAssignment.contactId, opts.contactIds));
-  }
 
   const cutoff = opts.now - opts.dedupeWindowMs;
   const lastRemindedMax = sql`max(${schema.taskAssignment.lastRemindedAt})`;
@@ -197,6 +235,78 @@ export async function listRemindableContactIds(
   const remaining = Math.max(eligibleTotal - opts.max, 0);
 
   return { contactIds: chosenRows.map((r) => r.contactId), skipped, remaining };
+}
+
+/** DEC-078 chunked fallback for listRemindableContactIds when taskIds/
+ * contactIds is present -- see that function's header. Fetches raw
+ * (contactId, lastRemindedAt) rows per (taskId chunk x contactId chunk)
+ * pair, capped at MAX_REMINDER_SCAN like listOutstandingForEvent, then
+ * reduces to the same per-contact max(last_reminded_at) eligible/skipped
+ * split and ORDER BY contactId ASC LIMIT max the SQL fast path computes. */
+async function listRemindableContactIdsFiltered(
+  db: Db,
+  eventId: string,
+  opts: { taskIds?: string[]; contactIds?: string[]; now: number; dedupeWindowMs: number; max: number },
+): Promise<{ contactIds: string[]; skipped: number; remaining: number }> {
+  const rows: { contactId: string; lastRemindedAt: Date | null }[] = [];
+  outer: for (const taskIdChunk of idChunksOrUndefined(opts.taskIds)) {
+    for (const contactIdChunk of idChunksOrUndefined(opts.contactIds)) {
+      const conditions = [
+        eq(schema.task.eventId, eventId),
+        eq(schema.taskAssignment.status, "pending"),
+        chaseableContactExists(eventId),
+      ];
+      if (taskIdChunk) conditions.push(inArray(schema.taskAssignment.taskId, taskIdChunk));
+      if (contactIdChunk) conditions.push(inArray(schema.taskAssignment.contactId, contactIdChunk));
+      const batchRows = await db
+        .select({ contactId: schema.taskAssignment.contactId, lastRemindedAt: schema.taskAssignment.lastRemindedAt })
+        .from(schema.taskAssignment)
+        .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
+        .where(and(...conditions))
+        .limit(MAX_REMINDER_SCAN + 1 - rows.length);
+      rows.push(...batchRows);
+      if (rows.length > MAX_REMINDER_SCAN) break outer;
+    }
+  }
+  if (rows.length > MAX_REMINDER_SCAN) {
+    throw new ApiError(
+      "invalid",
+      `This reminder pass would scan more than ${MAX_REMINDER_SCAN} outstanding assignments — narrow with taskIds/contactIds first`,
+    );
+  }
+
+  const cutoff = opts.now - opts.dedupeWindowMs;
+  // Mirrors SQL max(last_reminded_at): non-null values win over null
+  // (SQL's max() ignores NULLs), and a contact's aggregate is null only
+  // when EVERY one of its rows is null (never reminded on any matching
+  // assignment).
+  const maxLastRemindedByContact = new Map<string, number | null>();
+  for (const row of rows) {
+    const ts = row.lastRemindedAt ? row.lastRemindedAt.getTime() : null;
+    if (!maxLastRemindedByContact.has(row.contactId)) {
+      maxLastRemindedByContact.set(row.contactId, ts);
+      continue;
+    }
+    const prev = maxLastRemindedByContact.get(row.contactId) ?? null;
+    if (prev === null && ts === null) {
+      maxLastRemindedByContact.set(row.contactId, null);
+    } else {
+      maxLastRemindedByContact.set(row.contactId, Math.max(prev ?? -Infinity, ts ?? -Infinity));
+    }
+  }
+
+  const eligibleContactIds: string[] = [];
+  let skipped = 0;
+  for (const [contactId, lastRemindedAt] of maxLastRemindedByContact) {
+    if (lastRemindedAt === null || lastRemindedAt <= cutoff) eligibleContactIds.push(contactId);
+    else skipped++;
+  }
+  eligibleContactIds.sort();
+  const eligibleTotal = eligibleContactIds.length;
+  const chosen = eligibleContactIds.slice(0, opts.max);
+  const remaining = Math.max(eligibleTotal - opts.max, 0);
+
+  return { contactIds: chosen, skipped, remaining };
 }
 
 function toReminderAssignment(r: OutstandingRow): ReminderAssignment {
