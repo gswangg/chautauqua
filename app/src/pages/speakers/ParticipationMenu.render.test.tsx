@@ -5,6 +5,8 @@
 // the four state items PATCHing the exact body, the fifth action item
 // POSTing to /portal-invites and never touching the PATCH endpoint, and the
 // menu's consequence caption + footer copy.
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -13,6 +15,20 @@ import { OnboardingGrid } from './OnboardingGrid';
 import { mockApi } from '../../test-utils/mockApi';
 import { INVITE_STATUSES, INVITE_STATUS_LABELS, type InviteStatus, type OnboardingGridResponse } from './types';
 import { PARTICIPATION_STATE_CAPTIONS } from './ParticipationMenu';
+
+// DEC-869 (wave-9 amendment): jsdom does not resolve stylesheet cascade, so
+// the "in force" tint and the right-flushed NOW chip are pinned by reading
+// the stylesheet text directly, following the extractRule style already
+// used by the repo's CSS scan tests (e.g. test/auth-card-geometry.test.ts).
+const SPEAKERS_CSS = readFileSync(join(__dirname, 'speakers.css'), 'utf8');
+
+function extractRule(css: string, selector: string): string {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`${escaped}\\s*\\{([^}]*)\\}`);
+  const match = css.match(re);
+  expect(match, `expected to find rule for selector: ${selector}`).not.toBeNull();
+  return match![1]!;
+}
 
 const EVENT_ID = 'evt-participation-menu-render';
 
@@ -239,5 +255,26 @@ describe('ParticipationMenu (DEC-830)', () => {
     const action = menu.getByRole('menuitem', { name: 'Send portal invite' });
     expect(action).not.toHaveAttribute('role', 'menuitemradio');
     expect(action.getAttribute('aria-checked')).toBeNull();
+  });
+
+  // DEC-869 (wave-9 amendment): the state IN FORCE gets a tint distinct from
+  // the panel surface AND the :hover background, so hovering a non-current
+  // row can never read as more "in force" than the current one.
+  it('DEC-869: .is-current sets a background distinct from :hover', () => {
+    const hoverRule = extractRule(SPEAKERS_CSS, '.chq-participation-menu-item:hover');
+    const currentRule = extractRule(SPEAKERS_CSS, '.chq-participation-menu-item.is-current');
+    const hoverBg = hoverRule.match(/background:\s*([^;]+);/)?.[1]?.trim();
+    const currentBg = currentRule.match(/background:\s*([^;]+);/)?.[1]?.trim();
+    expect(currentBg).toBeDefined();
+    expect(hoverBg).toBeDefined();
+    expect(currentBg).not.toBe(hoverBg);
+  });
+
+  // DEC-869 (wave-9 amendment): the NOW chip is the label row's last flex
+  // child pushed to the right edge of the ~260px panel via margin-left:auto,
+  // not sitting inline right after the label text.
+  it('DEC-869: the NOW chip is right-flushed with margin-left: auto', () => {
+    const nowRule = extractRule(SPEAKERS_CSS, '.chq-participation-menu-now');
+    expect(nowRule).toMatch(/margin-left:\s*auto/);
   });
 });
