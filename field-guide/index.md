@@ -20,42 +20,40 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   row cascades on contact delete.
 - FINDINGS w32-49 (DEC-983..999, 001-999 FULL no DEC-1000+, `## Amendment
   (wave N)` on nearest existing DEC): re-probe, grep "no matches" is a fact
-  about that minute only. A DECISION DOC IS EVIDENCE OF A FIX NEVER; MINTING
-  IS IO; boundary fails per RECIPIENT never REQUEST. A CONVENIENCE WRAPPER
-  INVITES THE FOURTH SERIAL LOOP. A CHAIN WALK IS A QUERY PER LINK -- batch
-  the FRONTIER. FIND-OR-CREATE WITHOUT A UNIQUE INDEX IS A DUPLICATE
-  WAITING. LANDING PAGE IS THE SLOWEST READ.
-- FINDINGS w50-54: FAILURE MODES NOT SYMMETRIC -- order by which corpse is
-  worse. THE OPTIONAL BODY IS WHERE THE GUARD FELL OFF. THE UNBOUNDED
-  SURFACE NEVER PAGED -- cap the QUERY not the array. TWO READERS OF ONE
-  STORED ID: VALIDATES != ANSWERS. THE TREE MOVES WHILE YOU PLAN -- re-probe
-  file:line before writing the task. AN EMPTY RESULT IS NOT AN EMPTY
-  PROBLEM -- branch on the SHORTFALL. A MIGRATION THAT CANNOT RUN IS A
-  SCHEMA THAT DOESN'T EXIST (D1 rejects CREATE TEMP TABLE). THE TEST
-  COVERS THE SHAPE THAT ISN'T SHIPPED. A COMMENT CLAIMING A CHECK IS NOT A
-  CHECK.
-- FINDINGS w55: THE PLANNER'S FIRST READ CAN BE STALE -- re-read before you
-  reserve; .git/logs/HEAD shows which lanes MERGED (w54: only `a`, b-f were
-  live branches with zero commits mid-plan). The review-lens list is a
-  HYPOTHESIS not a finding: both w55 hand-offs were already closed
-  upstream. Work comes from opening file:line, not any list. THE WRITE
-  RESPONSE IS A SECOND READER -- a list mapper that resolves names is a
-  lie if the POST feeding it returns raw ids ("(removed)" for a live
-  row). A CONSTRAINT ONE LEVEL DOWN IS STILL MISSING -- fixing
-  task(event_id,title) left form(event_id,title) racing the same way. A
-  DRAG-ONLY MUTATION IS AN INACCESSIBLE ONE: if placing has a click path,
-  removing must too. A CAPABILITY DENIED IN A COMMENT still needs a
-  signpost.
-- FINDINGS w56: THE MANDATE CAN RUN OUT -- the gate-4 blocking set, all four
-  review-lens hand-offs and most S-tier items verified CLOSED by opening
-  file:line (referrer origin check, MAX_PAGE, reviewerInScope, slot-window
-  count-in-SQL, .ics picker, conditional visibility, saved-embed disabled
-  200). When the list is spent, work comes from READING REPOS. A JS CAP OVER
-  AN UNBOUNDED READ was three files this wave (overview accepted ids,
-  contact history, reminder frontier): a population you only COUNT or SLICE
-  must be counted/sliced in SQL, and the FRONTIER (which ids) is a query,
-  not a filter. AN OPTIONAL `page` ARG IS AN UNBOUNDED BRANCH WAITING --
-  delete it when the only caller pages. A NEW UNIQUE INDEX SHARPENS EVERY
-  find-or-create ON THAT TABLE: w55-b's form(event_id,title) turned
-  getOrCreateForm's benign duplicate into a 500 -- sweep every writer of
-  that table the same wave a constraint lands.
+  about that minute only. DECISION DOC != FIX; MINTING IS IO; boundary fails
+  per RECIPIENT never REQUEST. CONVENIENCE WRAPPER INVITES 4TH SERIAL LOOP.
+  CHAIN WALK IS QUERY-PER-LINK -- batch the FRONTIER. FIND-OR-CREATE
+  WITHOUT UNIQUE INDEX IS A DUPLICATE WAITING. LANDING PAGE IS SLOWEST READ.
+- FINDINGS w50-54: FAILURE MODES NOT SYMMETRIC. OPTIONAL BODY IS WHERE THE
+  GUARD FELL OFF. UNBOUNDED SURFACE NEVER PAGED -- cap the QUERY not the
+  array. TWO READERS OF ONE STORED ID: VALIDATES != ANSWERS. TREE MOVES
+  WHILE YOU PLAN -- re-probe file:line before writing task. EMPTY RESULT !=
+  EMPTY PROBLEM -- branch on SHORTFALL. MIGRATION THAT CAN'T RUN IS A
+  SCHEMA THAT DOESN'T EXIST (D1 rejects CREATE TEMP TABLE). TEST COVERS
+  SHAPE THAT ISN'T SHIPPED. COMMENT CLAIMING A CHECK IS NOT A CHECK.
+- FINDINGS w55-56: PLANNER'S FIRST READ CAN BE STALE -- re-read before
+  reserve; .git/logs/HEAD shows which lanes MERGED. The hand-off LIST IS A
+  HYPOTHESIS not a finding -- work comes from opening file:line. THE MANDATE
+  CAN RUN OUT: once the list is spent, work comes from READING REPOS. WRITE
+  RESPONSE IS A SECOND READER -- a list mapper lying if POST returns raw
+  ids. A CONSTRAINT ONE LEVEL DOWN IS STILL MISSING -- sweep every writer of
+  a table the wave a unique index lands on it. DRAG-ONLY MUTATION IS
+  INACCESSIBLE -- click path required too. CAPABILITY DENIED IN A COMMENT
+  still needs a signpost. A JS CAP OVER AN UNBOUNDED READ: a population you
+  only COUNT/SLICE must be counted/sliced in SQL; the FRONTIER (which ids)
+  is a query not a filter. OPTIONAL `page` ARG IS AN UNBOUNDED BRANCH --
+  delete when only caller pages.
+- FINDINGS w57: A REVERT MANDATE IS NOT A REVERT -- DEC-996's mailer swap
+  was still live three waves after the P0 said revert (resend.ts present, no
+  send_email binding, RESEND_API_KEY in env.ts); mandate and scribe commits
+  are not merges, open the file. A DECISION WITH NO CODE HIDES IN THE ORPHAN
+  LIST: DEC-725 (Airtable incremental + backoff) was recorded, never built --
+  but the ratchet's 765 "UNVERIFIED" entries are mostly missing-`void`
+  convention noise, so a recent DEC is only an orphan once you READ its
+  module. THE COUNT YOU ONLY `.size` IS A GROUP BY -- review progress/remind
+  read every reviewer-submission pair of a round to print one integer per
+  reviewer. THE SECOND SCAN IS THE ONE NOBODY CAPS: the plan-filtered load
+  bounded nothing and hydrated tracks with a whole-event join. WHEN TWO
+  SIBLING QUERIES DIFFER, THE YOUNGER ONE IS RIGHT -- airtable's speakers
+  join is order-stable "so automations don't re-fire", its tracks join is
+  not.
