@@ -47,10 +47,15 @@ export const ANONYMOUS_NOT_FOUND_LINKS: ReadonlyArray<{ href: string; label: str
 
 /** Signed-in organiser footer links (frame 11-02): the two admin landing
  * points, never the homepage/log-in pair an already-authenticated request
- * has no use for. */
+ * has no use for. Hrefs are absolute /admin/* paths, not bare /overview or
+ * /submissions -- those are React-Router patterns relative to the SPA's
+ * BrowserRouter basename="/admin" (src/lib/admin-routes.ts), meaningful only
+ * once inside the mounted app. This 404 card is server-rendered HTML hit
+ * before the SPA ever mounts, so a bare path would 404 again at the Worker's
+ * catch-all instead of landing on the SPA route it names. */
 export const ORGANIZER_NOT_FOUND_LINKS: ReadonlyArray<{ href: string; label: string }> = [
-  { href: "/overview", label: "Overview" },
-  { href: "/submissions", label: "Submissions" },
+  { href: "/admin/overview", label: "Overview" },
+  { href: "/admin/submissions", label: "Submissions" },
 ];
 
 /** The ONE 404 card markup for the whole app (DEC-635 amendment): every
