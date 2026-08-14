@@ -69,8 +69,12 @@ describe('MergePage render (DEC-748: struck-empty discards, Labels row, keep-col
       }]),
       'GET /api/v1/contacts/merge/preview': {
         fields: [
+          { key: 'name', label: 'Name', kept: 'Jane Doe', discarded: [], outcome: 'keep' },
+          { key: 'email', label: 'Email', kept: 'jane@example.com', discarded: [], outcome: 'keep' },
           { key: 'company', label: 'Company', kept: 'Acme', discarded: [''], outcome: 'keep' },
-          { key: 'customFields.shirtSize', label: 'shirtSize', kept: 'M', discarded: [], outcome: 'combine' },
+          { key: 'title', label: 'Title', kept: '', discarded: [], outcome: 'keep' },
+          { key: 'labels', label: 'Labels', kept: 'shirtSize M', discarded: [], outcome: 'combine' },
+          { key: 'notes', label: 'Notes', kept: '', discarded: [], outcome: 'keep' },
         ],
       },
     });
@@ -408,13 +412,13 @@ describe('MergePage render (DEC-992: vintage heads, swap control, 3+ group fallb
 });
 
 describe('MergePage render (DEC-992 amendment wave 47: rules block says each rule once, names the deletion)', () => {
-  it('mentions labels exactly once when the preview carries a customFields row, and always states the discarded record is deleted', async () => {
+  it('mentions labels exactly once when the preview carries a non-empty Labels row, and always states the discarded record is deleted', async () => {
     mockApi({
       'GET /api/v1/contacts/duplicates': listEnvelope([GROUP]),
       'GET /api/v1/contacts/merge/preview': {
         fields: [
           ...PREVIEW_FIELDS,
-          { key: 'customFields.shirtSize', label: 'shirtSize', kept: 'M', discarded: [], outcome: 'combine' },
+          { key: 'labels', label: 'Labels', kept: 'shirtSize M', discarded: [], outcome: 'combine' },
         ],
       },
     });

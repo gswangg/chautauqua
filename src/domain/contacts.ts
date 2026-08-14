@@ -6,6 +6,7 @@
 // DEC-467: exactly one normalizeEmail survives in the product (src/domain/email.ts).
 import { normalizeEmail } from "./email";
 import { ACTIVE_INVITE_STATUSES } from "./acceptance";
+import { contactLabels, TRAVEL_KEY } from "./contact-labels";
 import { DEC_800 } from "../decisions";
 
 void DEC_800;
@@ -386,15 +387,33 @@ export interface MergeFieldPreview {
   outcome: "keep" | "fill" | "append" | "combine";
 }
 
-const MERGE_PREVIEW_STANDARD_FIELDS: { key: "firstName" | "lastName" | "email" | "phone" | "company" | "title" | "bio"; label: string }[] = [
-  { key: "firstName", label: "First name" },
-  { key: "lastName", label: "Last name" },
+const MERGE_PREVIEW_STANDARD_FIELDS: { key: "email" | "company" | "title" | "phone" | "bio"; label: string }[] = [
   { key: "email", label: "Email" },
-  { key: "phone", label: "Phone" },
   { key: "company", label: "Company" },
   { key: "title", label: "Title" },
+  { key: "phone", label: "Phone" },
   { key: "bio", label: "Bio" },
 ];
+
+// DEC-748 amendment (wave 2): the six identity rows a merge preview ALWAYS
+// shows, in this fixed order, regardless of whether the fields actually
+// differ -- a pair identical in every field still shows all six ('keep',
+// empty discarded). Name folds firstName+lastName to one row (no separate
+// First/Last rows); Labels folds every customFields.* key through
+// contactLabels (src/domain/contact-labels.ts) into one row -- no raw
+// customFields.* row reaches the client any more.
+const MERGE_PREVIEW_IDENTITY_FIELDS: { key: "name" | "email" | "company" | "title" | "labels" | "notes"; label: string }[] = [
+  { key: "name", label: "Name" },
+  { key: "email", label: "Email" },
+  { key: "company", label: "Company" },
+  { key: "title", label: "Title" },
+  { key: "labels", label: "Labels" },
+  { key: "notes", label: "Notes" },
+];
+
+function fullName(c: ContactRecord): string {
+  return `${(c.firstName ?? "").trim()} ${(c.lastName ?? "").trim()}`.trim();
+}
 
 /**
  * DEC-705: pure preview of what mergeContacts will actually write, computed
@@ -403,18 +422,17 @@ const MERGE_PREVIEW_STANDARD_FIELDS: { key: "firstName" | "lastName" | "email" |
  * becoming the next primary) -- this is the ONLY place that reasons about
  * merge rules besides planMerge itself; it never re-derives them.
  *
- * Reports one entry per field that differs from the running primary or is
- * combined from a duplicate, across all standard fields, notes, and every
- * custom field key touched by any duplicate. `kept` is the field's final
- * value after every fold; `discarded` collects the distinct dropped values
- * (never populated for 'fill'/'append'/'combine' -- nothing is lost there,
- * it's incorporated into `kept`, not thrown away).
+ * DEC-748 amendment (wave 2): the FIRST SIX entries returned are always, in
+ * fixed order, Name/Email/Company/Title/Labels/Notes -- present even when
+ * nothing differs (outcome 'keep', discarded []). Any other differing field
+ * (Phone, Bio) follows after, in the order it's declared above.
  *
- * DEC-748: a duplicate with a BLANK value against a non-blank primary field
- * still emits a row -- outcome 'keep' with a discarded entry of "" (the
- * caller renders that as a struck-through em dash) -- rather than being
- * silently skipped. Only truly identical values (dupVal === beforeVal,
- * including both blank) are suppressed as "nothing changed".
+ * `kept` is the field's final value after every fold; `discarded` collects
+ * the distinct dropped values (never populated for 'fill'/'append'/'combine'
+ * -- nothing is lost there, it's incorporated into `kept`, not thrown away).
+ * A duplicate with a BLANK value against a non-blank primary field still
+ * discards "" rather than being silently skipped -- only truly identical
+ * values (dupVal === beforeVal, including both blank) leave no trace.
  */
 export function previewMerge(primary: ContactRecord, duplicates: ContactRecord[]): MergeFieldPreview[] {
   const outcomeByKey = new Map<string, MergeFieldPreview["outcome"]>();
@@ -425,6 +443,21 @@ export function previewMerge(primary: ContactRecord, duplicates: ContactRecord[]
   for (const duplicate of duplicates) {
     const before = survivor;
     const { merged } = planMerge(before, duplicate);
+
+    // Name: firstName+lastName folded to one row (DEC-748 amendment).
+    labelByKey.set("name", "Name");
+    const beforeName = fullName(before);
+    const dupName = fullName(duplicate);
+    if (dupName !== beforeName) {
+      if (beforeName === "") {
+        if (!outcomeByKey.has("name")) outcomeByKey.set("name", "fill");
+      } else {
+        outcomeByKey.set("name", "keep");
+        const list = discardedByKey.get("name") ?? [];
+        if (!list.includes(dupName)) list.push(dupName);
+        discardedByKey.set("name", list);
+      }
+    }
 
     for (const { key, label } of MERGE_PREVIEW_STANDARD_FIELDS) {
       labelByKey.set(key, label);
@@ -460,29 +493,30 @@ export function previewMerge(primary: ContactRecord, duplicates: ContactRecord[]
       outcomeByKey.set("notes", "keep");
     }
 
-    // Custom fields: union of both sides' keys (DEC-802 -- a keeper-only key
-    // must surface too, not just duplicate-carried keys). Primary wins on
-    // key collision (a 'keep'), a duplicate-only key is added by the union
-    // (a 'combine'), and a keeper-only key emits an empty-discarded 'keep'.
+    // Labels: union of both sides' customFields keys folded into ONE row
+    // through contactLabels (DEC-738/DEC-748 amendment) -- never a raw
+    // customFields.<key> row. TRAVEL_KEY is excluded (it's edited via its
+    // own textarea, never listed as a label). A duplicate-only key upgrades
+    // the row to 'combine'; a colliding key that differs stays 'keep' with
+    // the dropped "key value" pair recorded in discarded.
+    labelByKey.set("labels", "Labels");
     const customFieldKeys = new Set<string>([
       ...Object.keys(before.customFields ?? {}),
       ...Object.keys(duplicate.customFields ?? {}),
     ]);
     for (const fieldKey of customFieldKeys) {
-      const key = `customFields.${fieldKey}`;
-      labelByKey.set(key, fieldKey);
+      if (fieldKey === TRAVEL_KEY) continue;
       const beforeValue = before.customFields?.[fieldKey];
       const hasDupValue = Object.prototype.hasOwnProperty.call(duplicate.customFields ?? {}, fieldKey);
       const dupValue = duplicate.customFields?.[fieldKey];
       if (beforeValue === undefined) {
-        if (hasDupValue && !outcomeByKey.has(key)) outcomeByKey.set(key, "combine");
-      } else if (!hasDupValue) {
-        if (!outcomeByKey.has(key)) outcomeByKey.set(key, "keep");
-      } else if (beforeValue !== dupValue) {
-        outcomeByKey.set(key, "keep");
-        const list = discardedByKey.get(key) ?? [];
-        if (dupValue !== undefined && !list.includes(dupValue)) list.push(dupValue);
-        discardedByKey.set(key, list);
+        if (hasDupValue) outcomeByKey.set("labels", "combine");
+      } else if (hasDupValue && beforeValue !== dupValue) {
+        if (outcomeByKey.get("labels") !== "combine") outcomeByKey.set("labels", "keep");
+        const list = discardedByKey.get("labels") ?? [];
+        const entry = `${fieldKey} ${dupValue ?? ""}`;
+        if (!list.includes(entry)) list.push(entry);
+        discardedByKey.set("labels", list);
       }
     }
 
@@ -490,15 +524,23 @@ export function previewMerge(primary: ContactRecord, duplicates: ContactRecord[]
   }
 
   const keptValue = (key: string): string => {
+    if (key === "name") return fullName(survivor);
     if (key === "notes") return (survivor.notes ?? "").trim();
-    if (key.startsWith("customFields.")) {
-      return survivor.customFields?.[key.slice("customFields.".length)] ?? "";
-    }
+    if (key === "labels") return contactLabels(survivor.customFields ?? {}).join(", ");
     return (survivor[key as keyof ContactRecord] as string | undefined)?.trim() ?? "";
   };
 
-  const out: MergeFieldPreview[] = [];
+  const out: MergeFieldPreview[] = MERGE_PREVIEW_IDENTITY_FIELDS.map(({ key, label }) => ({
+    key,
+    label,
+    kept: keptValue(key),
+    discarded: discardedByKey.get(key) ?? [],
+    outcome: outcomeByKey.get(key) ?? "keep",
+  }));
+
+  const identityKeys = new Set<string>(MERGE_PREVIEW_IDENTITY_FIELDS.map((f) => f.key));
   for (const [key, outcome] of outcomeByKey) {
+    if (identityKeys.has(key)) continue;
     out.push({
       key,
       label: labelByKey.get(key) ?? key,

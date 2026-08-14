@@ -139,16 +139,13 @@ describe("GET /api/v1/contacts/merge/preview (DEC-705)", () => {
     expect(notes!.kept).toBe("Met at PlatformCon.\n\n---\n\nPrefers Tuesday.");
     expect(notes!.discarded).toEqual([]);
 
-    const dietary = byKey.get("customFields.dietary");
-    expect(dietary).toBeDefined();
-    expect(dietary!.outcome).toBe("combine");
-    expect(dietary!.kept).toBe("vegetarian");
-
-    const shirtSize = byKey.get("customFields.shirtSize");
-    expect(shirtSize).toBeDefined();
-    expect(shirtSize!.outcome).toBe("keep");
-    expect(shirtSize!.kept).toBe("M");
-    expect(shirtSize!.discarded).toEqual(["L"]);
+    // DEC-748 amendment (wave 2): dietary/shirtSize no longer surface as raw
+    // customFields.<key> rows -- they fold into the single Labels row.
+    const labels = byKey.get("labels");
+    expect(labels).toBeDefined();
+    expect(labels!.outcome).toBe("combine");
+    expect(labels!.kept).toBe("shirtSize M, dietary vegetarian");
+    expect(labels!.discarded).toEqual(["shirtSize L"]);
 
     // The preview must be identical to what mergeOnePair's own planMerge
     // call would compute and write -- not a second implementation.
