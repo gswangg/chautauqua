@@ -26,32 +26,35 @@ hard 60-line budget, compacting old entries. Injected into every agent.
 - FINDINGS w66-72 (compacted): MANDATE SPENT re-probed CLOSED at file:line;
   work comes from READING A LANDED STACK'S CONSUMERS a wave downstream; A
   FACET IS A CONTRACT; A CONTROL WITHOUT ITS SCRIPT/SAVE IS A PICTURE OR A
-  LIE; A PROJECTION MUST CARRY ITS SOURCE'S LIMITS AND VOCABULARY (and drops
-  the half nobody asked for -- check a batched lookup's second consumer); A
-  DAY LABEL IS NOT AN INSTANT; A HARDCODED SURFACE LIST GOES STALE -- pair
-  with a COUNT assertion; classify by the MOST PUBLIC-REACHING WRITE; ONE
-  SERIALIZER FOLDS, SWEEP EVERY SIBLING; WAVE N-1 MAY STILL BE IN FLIGHT --
-  check .git/logs/HEAD past the last `scribe wave N` for merges AND mandate
-  commits; TWO SUBSYSTEMS READING THE SAME TABLE FOR OPPOSITE PURPOSES IS
-  THE BUG; A PER-INSTANCE Z-FIX IS A CLASS BUG DEFERRED -- name the TIER as
-  a token, pin the z-index DECLARATION COUNT; BLEED BY ABSENCE ONLY REACHES
-  THE PARENT'S CONTENT BOX -- across a PADDED ancestor cancel via the SAME
-  token, never vw/cqw; A DISCLOSURE IS NOT A DELETION -- move behind the
-  shared frame with props byte-identical; A FRAMED PRIMARY WITH NOTHING TO
-  WRITE IS A LIE -- give it the real editable fact, one writer, two screens.
-- FINDINGS w1 (this round; DEC space 001-999 FULL -- every ruling is an
-  `## Amendment (wave N)` on the DEC the code already cites): A CLAMP INSIDE
-  A PADDED ANCESTOR IS NOT THE MEASURE -- .chq-measure-wide is 1180 and the
-  pair still computed 1112/778 because main pads 34px; state the CONTENT
-  column and cancel the padding through the SAME token. APPEARANCE:NONE
-  WITHOUT A CARET IS A CONTROL THAT LIES -- restore the affordance on the
-  ONE shared select rule, not per surface. AN OPTIONAL PROP NOBODY PASSES IS
-  A SECOND READER wearing the first one's clothes (Recent Sends'
-  templatesById): make it required at the first divergence. A CONTROL WHOSE
-  ONLY OUTCOME IS A 400 is the sibling of a primary with nothing to write --
-  disable it, NAME the blocking token, one forward path. A STEP STRIP THAT
-  HIGHLIGHTS A SCREEN NOBODY LEFT is a picture of a flow: unmount the step
-  you claim is done. NO ORDER BY THE USER CAN READ AS TIME MEANS
-  ALPHABETICAL -- a programme is a sequence; one ordering expression, every
-  branch, untimed last. CHECK .git/refs/heads BEFORE PLANNING: a prior
-  round's task-w72-* branches carry ten landed-but-UNMERGED P1 fixes.
+  LIE; A PROJECTION MUST CARRY ITS SOURCE'S LIMITS AND VOCABULARY; A DAY
+  LABEL IS NOT AN INSTANT; A HARDCODED SURFACE LIST GOES STALE; ONE
+  SERIALIZER FOLDS, SWEEP EVERY SIBLING; WAVE N-1 MAY STILL BE IN FLIGHT; TWO
+  SUBSYSTEMS READING THE SAME TABLE FOR OPPOSITE PURPOSES IS THE BUG; A
+  PER-INSTANCE Z-FIX IS A CLASS BUG DEFERRED; BLEED BY ABSENCE ONLY REACHES
+  THE PARENT'S CONTENT BOX; A DISCLOSURE IS NOT A DELETION; A FRAMED PRIMARY
+  WITH NOTHING TO WRITE IS A LIE -- one writer, two screens.
+- FINDINGS w1 (compacted): A CLAMP INSIDE A PADDED ANCESTOR IS NOT THE
+  MEASURE. APPEARANCE:NONE WITHOUT A CARET IS A CONTROL THAT LIES. AN
+  OPTIONAL PROP NOBODY PASSES IS A SECOND READER wearing the first one's
+  clothes. A CONTROL WHOSE ONLY OUTCOME IS A 400 -- disable it, name the
+  blocking token. A STEP STRIP THAT HIGHLIGHTS A SCREEN NOBODY LEFT is a
+  picture of a flow. NO ORDER BY THE USER CAN READ AS TIME MEANS
+  ALPHABETICAL. CHECK .git/refs/heads BEFORE PLANNING.
+- FINDINGS w2 (this round; DEC space FULL -- every ruling is an `##
+  Amendment (wave N)` on the DEC the code already cites): A FIXED CONTRACT
+  BEATS A DIFF -- a compare table that shows only what CHANGED hides the
+  fields the decision is about; emit the identity rows always, extras
+  after, and fold them ONCE server-side. A SECOND MOUNT THAT DROPS A
+  CONTROL IS A SECOND READER (rail duplicates vs the tab): one component,
+  both mounts, dismissal included. AN EMBEDDED TABLE IS A PREVIEW, NOT THE
+  PAGE -- one export owner, no pager in a mount that is not the page, one
+  heading per surface. A SUGGESTION MUST BE CHECKED AGAINST THE SAME SET
+  THE DETECTOR USES: lead-only speaker ids under a co-presenter-aware
+  conflict engine propose slots the grid then flags. A PAGE THAT NAMES
+  WHAT GOES IS THE CONFIRMATION -- a modal stacked on it demotes its own
+  prose. RE-PROBE THE MANDATE BEFORE SPENDING A LANE: type=email, the .ics
+  picker, CFP conditional visibility, the content-note mailer and the Home
+  one-action row were all filed OPEN and are LANDED on main. READ
+  .git/logs/refs/heads/<branch> for what an unmerged branch actually
+  CARRIES -- ten task-w72-* plus five in-flight task-w1-* branches bounded
+  this wave's surface set.
