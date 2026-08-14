@@ -40,6 +40,7 @@ tokensRoutes.get("/api/v1/tokens", requireOrganizer, async (c) => {
       name: schema.apiToken.name,
       tokenPrefix: schema.apiToken.tokenPrefix,
       lastUsedAt: schema.apiToken.lastUsedAt,
+      createdAt: schema.apiToken.createdAt,
     })
     .from(schema.apiToken)
     .where(eq(schema.apiToken.orgId, orgId))
@@ -59,6 +60,7 @@ tokensRoutes.get("/api/v1/tokens", requireOrganizer, async (c) => {
       name: r.name,
       tokenPrefix: r.tokenPrefix,
       lastUsedAt: r.lastUsedAt ? r.lastUsedAt.getTime() : null,
+      createdAt: r.createdAt.getTime(),
     })),
     total,
     page,
