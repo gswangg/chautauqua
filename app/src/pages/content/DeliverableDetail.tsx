@@ -10,7 +10,6 @@ import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { formatDate, formatDayLabel } from '../../lib/dates';
 import { countOf } from '../../lib/plural';
 import {
-  CONTENT_STATUS_LABELS,
   FILE_KINDS,
   DELIVERABLE_LABELS,
   type ContentStatus,
@@ -18,6 +17,7 @@ import {
   type FileKind,
   type FileComment,
 } from './types';
+import { worklistStatusLabel } from './worklist';
 // DEC-761/DEC-998: code that depends on a decision must reference its
 // constant.
 import { DEC_998 } from '../../../../src/decisions';
@@ -341,13 +341,24 @@ export function DeliverableDetail({
           .chq-review-editor-title-row documents in review.css -- so it
           declares NO max-width/side margin of its own, and never reaches
           for 100vw/cqw (.chq-main scrolls INTERNALLY, so viewport units
-          overshoot its own scrollbar gutter). See content.css. */}
+          overshoot its own scrollbar gutter). See content.css.
+
+          DEC-989 amendment (wave 72): the band's copy stacks two lines
+          ("Content status" label over the status value) and the value
+          reads through worklistStatusLabel (worklist.ts) -- the SAME
+          vocabulary the worklist row's status cell uses -- rather than a
+          second label set (CONTENT_STATUS_LABELS). This component has no
+          re-upload signal available from GET /submissions/:id today, so
+          reUploaded is passed as false; a future task that threads that
+          flag through can drop the literal. */}
       <div className="chq-content-status-band">
         <div className="chq-content-status-band-info">
-          <span className="chq-content-status-band-label">Content status</span>
-          <span className={pill === 'changes_requested' ? 'chq-flag' : 'chq-flag chq-content-status-muted'}>
-            {CONTENT_STATUS_LABELS[pill]}
-          </span>
+          <div className="chq-content-status-band-copy">
+            <span className="chq-content-status-band-label">Content status</span>
+            <span className={pill === 'changes_requested' ? 'chq-flag' : 'chq-flag chq-content-status-muted'}>
+              {worklistStatusLabel(pill, false)}
+            </span>
+          </div>
           {headerDetail && (
             <span className="chq-meta">Updated {formatDate(headerDetail.updatedAt)}</span>
           )}

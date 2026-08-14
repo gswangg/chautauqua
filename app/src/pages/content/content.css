@@ -575,7 +575,19 @@
    documents in review.css (app/src/pages/review/review.css:995-1007) --
    so it deliberately carries NO max-width/side margin of its own. Never
    add one here, and never reach for 100vw/cqw either: .chq-main scrolls
-   INTERNALLY so viewport units overshoot its own scrollbar gutter. */
+   INTERNALLY so viewport units overshoot its own scrollbar gutter.
+
+   DEC-989 amendment (wave 72): "no max-width" only reaches .chq-main's own
+   CONTENT box, which stops 26px/34px short of the edge because .chq-main
+   pads itself (styles.css:378, 16px under the phone breakpoint) -- Gate-4
+   measured this band at x34-1406 in a 1440 frame that draws it x0-1440.
+   Bleeding across a padded ancestor means cancelling exactly that padding:
+   --chq-pub-main-pad-x is the ONE token .chq-main's own horizontal padding
+   reads (styles.css), so this band pulls itself out with a negative
+   margin-inline of the SAME token and then restores that value as its own
+   horizontal padding -- one token, two consumers, so they cannot drift.
+   Never vw/cqw here either, same overshoot reason as above. The bottom
+   edge takes --chq-rule (not --chq-hairline) per the same ruling. */
 .chq-content-status-band {
   display: flex;
   align-items: center;
@@ -583,9 +595,10 @@
   gap: 20px;
   flex-wrap: wrap;
   min-height: 79px;
-  padding: 10px 14px;
+  padding: 10px var(--chq-pub-main-pad-x);
+  margin-inline: calc(var(--chq-pub-main-pad-x) * -1);
   border-top: 1px solid var(--chq-ink);
-  border-bottom: 1px solid var(--chq-hairline);
+  border-bottom: 1px solid var(--chq-rule);
   background: var(--chq-surface-sunk);
 }
 
@@ -594,6 +607,12 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.chq-content-status-band-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .chq-content-status-band-actions {
