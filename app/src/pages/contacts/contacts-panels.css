@@ -258,6 +258,83 @@
   flex-wrap: wrap;
 }
 
+/* w40-c: the enroll dialog picks its contact by server search rather than a
+   mount-time full-directory <select>. Same field+Search-button row shape as
+   the submission detail page's co-presenter search (detail.css
+   .chq-detail-copresenter-search) -- the input takes the free space, the
+   button sits on its baseline at the end. */
+.chq-contacts-pipeline-enroll-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.chq-contacts-pipeline-enroll-search .chq-input {
+  flex: 1 1 240px;
+  width: 100%;
+}
+
+/* The three one-line states under the search row -- the pre-search prompt,
+   the no-matches line, and the DEC-468 page-cap bound. All the same muted
+   footnote weight; none of them is an error. */
+.chq-contacts-pipeline-enroll-search-hint,
+.chq-contacts-pipeline-enroll-search-empty,
+.chq-contacts-pipeline-enroll-search-bound {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
+/* Results are a plain list of full-width choose buttons -- capped in height
+   so a full page of matches scrolls inside the dialog instead of pushing the
+   stage/fit rows below the fold. */
+.chq-contacts-pipeline-enroll-search-results {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--chq-hairline);
+  border-radius: var(--chq-r-ctl);
+}
+
+.chq-contacts-pipeline-enroll-result {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  background: none;
+  text-align: left;
+  font-size: 13px;
+  color: var(--chq-ink);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.chq-contacts-pipeline-enroll-result:hover {
+  background: var(--chq-surface-sunk);
+}
+
+/* The chosen row keeps the ink fill the rest of the app uses for a selected
+   chip (styles.css .chq-pill.is-active), so the selection reads at a glance
+   after the list scrolls. */
+.chq-contacts-pipeline-enroll-result.is-selected {
+  background: var(--chq-ink);
+  color: var(--chq-surface);
+}
+
+.chq-contacts-pipeline-enroll-selected {
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--chq-ink);
+  overflow-wrap: anywhere;
+}
+
 /* DEC-468: appears under the board once entries.length < total (the 200-row
    page cap has hidden rows) -- reuses .chq-btn/.chq-btn-secondary sizing
    and focus ring, only self-aligns so it doesn't stretch full width. */
