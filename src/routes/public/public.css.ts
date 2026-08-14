@@ -31,6 +31,7 @@ import { CHROME_CSS } from "./css/chrome.css";
 import { CARDS_CSS } from "./css/cards.css";
 import { AGENDA_CSS } from "./css/agenda.css";
 import { RAIL_CSS } from "./css/rail.css";
+import { EMPTY_CSS } from "./css/empty.css";
 
 void DEC_367;
 void DEC_373;
@@ -40,4 +41,4 @@ void DEC_851;
 
 export { ACCENT_BOUND_CLASSES };
 
-export const PUBLIC_CSS = `${CHROME_CSS}${CARDS_CSS}${AGENDA_CSS}${RAIL_CSS}`;
+export const PUBLIC_CSS = `${CHROME_CSS}${CARDS_CSS}${AGENDA_CSS}${RAIL_CSS}${EMPTY_CSS}`;

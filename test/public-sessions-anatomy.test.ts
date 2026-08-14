@@ -73,8 +73,12 @@ describe("DEC-919 (wave 44): sessions surface stops restating its count", () => 
   });
 
   it("an empty result with no filter active states emptiness without implying a search was run", () => {
+    // DEC-919 (wave 47 amendment): a filter-free zero result is 'fresh' --
+    // PublicEmptyState now names the actual reason (nothing published yet)
+    // instead of the old generic "No sessions to show yet." sentence.
     const html = render({ items: [], total: 0 });
-    expect(html).toContain("No sessions to show yet.");
+    expect(html).toContain("The programme is not out yet.");
+    expect(html).not.toContain("No sessions to show yet.");
   });
 });
 

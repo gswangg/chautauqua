@@ -17,6 +17,7 @@ import { ItineraryScript } from "./agenda";
 import { type CardFields } from "./query";
 import { surfacePath } from "./shell";
 import { PublicSearchBox, PublicFilterSelectForm, PublicActiveFilters } from "./filters";
+import { PublicEmptyState } from "./empty-state";
 import { PUBLIC_PER_PAGE, hasMorePages } from "../../server/repo/public/bounds";
 import { countOf, plural } from "../../domain/count-copy";
 import { DEC_919 } from "../../decisions";
@@ -252,93 +253,116 @@ export function SessionsContent(props: {
   if (activeRoom)
     activeChips.push({ label: roomNameOf.get(activeRoom) ?? "Room", clearHref: `${basePath}${filterQs({ roomId: null })}` });
   if (q) activeChips.push({ label: `“${q}”`, clearHref: `${basePath}${filterQs({ q: null })}` });
+  // DEC-919 (wave 47 amendment): 'fresh' -- no facet in flight AND the
+  // unfiltered total is 0 -- hides the filter bar entirely (there is
+  // nothing to narrow yet) and never offers an escape link (there is no
+  // filter to clear). Any facet in flight with zero matching rows is
+  // 'filtered' instead, even if items.length === 0 too: the bar stays
+  // mounted and the escape clears back to the bare surface path.
+  const anyFilterActive = Boolean(q || activeDay || activeTrackId || activeFmt || activeRoom);
+  const isFresh = !anyFilterActive && grandTotal === 0;
   return (
     <>
       <h1 class="chq-pub-surface-title">Sessions</h1>
       <div class="chq-pub-sessions-layout">
         <div class="chq-pub-sessions-list">
-          {/* EMB-02/DEC-919 (wave 40 amendment): the one .chq-pub-filter-row
-              -- the search box first, then every pill bar for this surface,
-              inline and wrapping instead of three separately ruled rows.
-              Hidden fields preserve the active track/format/room filters so
-              search composes with all three. */}
-          {/* v7 filter bar ("one idiom, four surfaces"): ONE resting row —
-              search at the head, then a compact select per facet. No pill
-              rows ("four selects read as one control group; one pill row
-              plus two selects reads as five things"). Each select is its
-              own auto-submitting GET form carrying the other active params
-              (agenda-controls.tsx idiom). */}
-          <div class="chq-pub-filter-row">
-            <PublicSearchBox
-              action={basePath}
-              q={q}
-              hidden={
-                <>
-                  {activeDay ? <input type="hidden" name="day" value={activeDay} /> : null}
-                  {activeTrackId ? <input type="hidden" name="trackId" value={activeTrackId} /> : null}
-                  {activeFmt ? <input type="hidden" name="format" value={activeFmt} /> : null}
-                  {activeRoom ? <input type="hidden" name="roomId" value={activeRoom} /> : null}
-                  {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
-                </>
-              }
-            />
-            {/* day facet is /e/-site-only: DEC-489's embed rationale
-                survives v7 — day is not an embed knob and must not be
-                advertised there. */}
-            {!embed && eventDays.length > 1 ? (
-              <PublicFilterSelectForm
-                action={basePath}
-                name="day"
-                allLabel="All days"
-                options={eventDays.map((d) => ({ value: d, label: formatDay(d) }))}
-                activeValue={activeDay}
-                hidden={hiddenCarry("day")}
+          {!isFresh ? (
+            <>
+              {/* EMB-02/DEC-919 (wave 40 amendment): the one .chq-pub-filter-row
+                  -- the search box first, then every pill bar for this surface,
+                  inline and wrapping instead of three separately ruled rows.
+                  Hidden fields preserve the active track/format/room filters so
+                  search composes with all three. */}
+              {/* v7 filter bar ("one idiom, four surfaces"): ONE resting row —
+                  search at the head, then a compact select per facet. No pill
+                  rows ("four selects read as one control group; one pill row
+                  plus two selects reads as five things"). Each select is its
+                  own auto-submitting GET form carrying the other active params
+                  (agenda-controls.tsx idiom). */}
+              <div class="chq-pub-filter-row">
+                <PublicSearchBox
+                  action={basePath}
+                  q={q}
+                  hidden={
+                    <>
+                      {activeDay ? <input type="hidden" name="day" value={activeDay} /> : null}
+                      {activeTrackId ? <input type="hidden" name="trackId" value={activeTrackId} /> : null}
+                      {activeFmt ? <input type="hidden" name="format" value={activeFmt} /> : null}
+                      {activeRoom ? <input type="hidden" name="roomId" value={activeRoom} /> : null}
+                      {limit ? <input type="hidden" name="limit" value={String(limit)} /> : null}
+                    </>
+                  }
+                />
+                {/* day facet is /e/-site-only: DEC-489's embed rationale
+                    survives v7 — day is not an embed knob and must not be
+                    advertised there. */}
+                {!embed && eventDays.length > 1 ? (
+                  <PublicFilterSelectForm
+                    action={basePath}
+                    name="day"
+                    allLabel="All days"
+                    options={eventDays.map((d) => ({ value: d, label: formatDay(d) }))}
+                    activeValue={activeDay}
+                    hidden={hiddenCarry("day")}
+                  />
+                ) : null}
+                <PublicFilterSelectForm
+                  action={basePath}
+                  name="trackId"
+                  allLabel="All tracks"
+                  options={tracks.map((t) => ({ value: t.id, label: t.name }))}
+                  activeValue={activeTrackId}
+                  hidden={hiddenCarry("trackId")}
+                />
+                {formatOptions && formatOptions.length > 0 ? (
+                  <PublicFilterSelectForm
+                    action={basePath}
+                    name="format"
+                    allLabel="All formats"
+                    options={formatOptions.map((f) => ({ value: f, label: f }))}
+                    activeValue={activeFmt}
+                    hidden={hiddenCarry("format")}
+                  />
+                ) : null}
+                {rooms && rooms.length > 0 ? (
+                  <PublicFilterSelectForm
+                    action={basePath}
+                    name="roomId"
+                    allLabel="All rooms"
+                    options={rooms.map((r) => ({ value: r.id, label: r.name }))}
+                    activeValue={activeRoom}
+                    hidden={hiddenCarry("roomId")}
+                  />
+                ) : null}
+              </div>
+              <PublicActiveFilters
+                total={total}
+                grandTotal={grandTotal}
+                noun="sessions"
+                chips={activeChips}
+                clearAllHref={`${basePath}${limit ? `?limit=${limit}` : ""}`}
               />
-            ) : null}
-            <PublicFilterSelectForm
-              action={basePath}
-              name="trackId"
-              allLabel="All tracks"
-              options={tracks.map((t) => ({ value: t.id, label: t.name }))}
-              activeValue={activeTrackId}
-              hidden={hiddenCarry("trackId")}
-            />
-            {formatOptions && formatOptions.length > 0 ? (
-              <PublicFilterSelectForm
-                action={basePath}
-                name="format"
-                allLabel="All formats"
-                options={formatOptions.map((f) => ({ value: f, label: f }))}
-                activeValue={activeFmt}
-                hidden={hiddenCarry("format")}
-              />
-            ) : null}
-            {rooms && rooms.length > 0 ? (
-              <PublicFilterSelectForm
-                action={basePath}
-                name="roomId"
-                allLabel="All rooms"
-                options={rooms.map((r) => ({ value: r.id, label: r.name }))}
-                activeValue={activeRoom}
-                hidden={hiddenCarry("roomId")}
-              />
-            ) : null}
-          </div>
-          <PublicActiveFilters
-            total={total}
-            grandTotal={grandTotal}
-            noun="sessions"
-            chips={activeChips}
-            clearAllHref={`${basePath}${limit ? `?limit=${limit}` : ""}`}
-          />
-          {/* DEC-919 (wave 44 amendment): the count lived here AND in the
-              pager below AND in the H1's surface name -- three readers of
-              one number. The pager states it now; this row only ever
-              speaks when there is nothing to page through, so a filter
-              that matches zero sessions still says so instead of
-              rendering a silently empty list. */}
+            </>
+          ) : null}
+          {/* DEC-919 (wave 47 amendment): one zero-state renderer for both
+              the never-published ('fresh') and the zero-matches ('filtered')
+              cases -- replaces the wave-44 single-sentence-no-split row. */}
           {items.length === 0 ? (
-            <p>{q || activeDay || activeTrackId || activeFmt || activeRoom ? "No sessions match your search." : "No sessions to show yet."}</p>
+            isFresh ? (
+              <PublicEmptyState
+                variant="fresh"
+                what="The programme is not out yet."
+                reason="Sessions appear here once the schedule is published."
+              />
+            ) : (
+              <PublicEmptyState
+                variant="filtered"
+                what="No sessions match your search."
+                reason={`Filtered by ${activeChips.map((c) => c.label).join(", ")}.`}
+                escapeHref={basePath}
+                escapeLabel="Clear filters"
+              />
+            )
           ) : null}
           {/* w1-c (DEC-534): with the gutter's day label gone (now start
               time + room only, see SessionSchedule in ./cards), a list that
