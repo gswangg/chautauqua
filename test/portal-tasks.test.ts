@@ -31,6 +31,7 @@ vi.mock("../src/server/repo/portal", async () => {
     })),
     getMyTaskAssignments: vi.fn(async () => []),
     getAssignmentScope: vi.fn(),
+    listDeliverableCandidates: vi.fn(async () => []),
   };
 });
 
@@ -188,6 +189,128 @@ describe("portal tasks page — DEC-953 status pill wording", () => {
       speakerAuth.userId,
       expect.any(Date),
     );
+  });
+});
+
+// DEC-020 amendment (wave 10): a submission-linked re-upload silently
+// reopens content review (see test/task-upload-content.test.ts for the
+// reopenContentReview call itself) — the portal must say so before the
+// upload and confirm it after.
+describe("portal tasks page — DEC-020 amendment: re-upload review notice", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function assignment(overrides: Partial<Record<string, unknown>>) {
+    return {
+      id: "assign-file",
+      taskId: "task-1",
+      eventId: "event-1",
+      kind: "file_request",
+      title: "Upload your slides",
+      description: null,
+      dueDate: null,
+      assignedAt: 0,
+      required: false,
+      status: "pending",
+      formId: null,
+      deliverableKind: null,
+      fileId: null,
+      responseJson: null,
+      timezone: "UTC",
+      completedAt: null,
+      ...overrides,
+    };
+  }
+
+  it("renders the reopen-review notice for a submission-linked (deliverableKind set) file_request assignment", async () => {
+    const { getMyTaskAssignments } = await import("../src/server/repo/portal");
+    vi.mocked(getMyTaskAssignments).mockResolvedValue([
+      assignment({ deliverableKind: "presentation" }) as never,
+    ]);
+
+    const { portalTasksRoutes } = await import("../src/routes/portal/tasks");
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.use("*", async (c, next) => {
+      c.set("auth", speakerAuth);
+      c.set("db", {} as never);
+      await next();
+    });
+    app.route("/portal", portalTasksRoutes);
+
+    const res = await app.request("/portal/tasks");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("sends it back to the producer for review");
+    expect(html).toContain("will not appear on the public schedule");
+  });
+
+  it("renders NO notice for a plain handout (deliverableKind null) file_request assignment", async () => {
+    const { getMyTaskAssignments } = await import("../src/server/repo/portal");
+    vi.mocked(getMyTaskAssignments).mockResolvedValue([assignment({ deliverableKind: null }) as never]);
+
+    const { portalTasksRoutes } = await import("../src/routes/portal/tasks");
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.use("*", async (c, next) => {
+      c.set("auth", speakerAuth);
+      c.set("db", {} as never);
+      await next();
+    });
+    app.route("/portal", portalTasksRoutes);
+
+    const res = await app.request("/portal/tasks");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).not.toContain("sends it back to the producer for review");
+    expect(html).not.toContain("will not appear on the public schedule");
+  });
+
+  it("renders a post-upload receipt naming the assignment when ?uploaded=<id> is present", async () => {
+    const { getMyTaskAssignments } = await import("../src/server/repo/portal");
+    vi.mocked(getMyTaskAssignments).mockResolvedValue([
+      assignment({ id: "assign-file", title: "Upload your slides", deliverableKind: "presentation" }) as never,
+    ]);
+
+    const { portalTasksRoutes } = await import("../src/routes/portal/tasks");
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.use("*", async (c, next) => {
+      c.set("auth", speakerAuth);
+      c.set("db", {} as never);
+      await next();
+    });
+    app.route("/portal", portalTasksRoutes);
+
+    const res = await app.request("/portal/tasks?uploaded=assign-file");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("Received your file");
+    expect(html).toContain("Upload your slides");
+    expect(html).toMatch(/off the public schedule pending the producer/);
+  });
+
+  it("renders no receipt banner without the ?uploaded= flag", async () => {
+    const { getMyTaskAssignments } = await import("../src/server/repo/portal");
+    vi.mocked(getMyTaskAssignments).mockResolvedValue([
+      assignment({ id: "assign-file", title: "Upload your slides", deliverableKind: "presentation" }) as never,
+    ]);
+
+    const { portalTasksRoutes } = await import("../src/routes/portal/tasks");
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.use("*", async (c, next) => {
+      c.set("auth", speakerAuth);
+      c.set("db", {} as never);
+      await next();
+    });
+    app.route("/portal", portalTasksRoutes);
+
+    const res = await app.request("/portal/tasks");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).not.toContain("Received your file");
   });
 });
 
