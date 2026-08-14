@@ -3,16 +3,21 @@
 // label in small caps ('Lunch · Foyer') — real programmes have them, and
 // they explain gaps that would otherwise read as missing data".
 //
-// HARD BOUNDARY: a break is not a submission. It never gets a ref, a
-// speaker, a track, an ics UID, a room, or a row in any .ics/.json/.xml
-// session feed (src/routes/public/feeds.ts never reads this table). It is
-// a purely presentational row: id, event-scoped day/start/duration, a label
-// and an optional location. Every function here is organizer-facing
-// (src/routes/api/breaks.ts) or public-render-facing (src/routes/public/
-// agenda.tsx via listBreaksForEvent) — never wired into agenda conflict
-// detection, auto-schedule, or export machinery.
+// HARD BOUNDARY (amended wave 68 — the prior claim that breaks were "never
+// wired into agenda conflict detection, auto-schedule, or export machinery"
+// went stale as of wave 66): a break is still never a submission. It never
+// gets a ref, a speaker, a track, an ics UID, a room, or a row in any
+// .ics/.json/.xml session feed (src/routes/public/feeds.ts never reads this
+// table). It is a purely presentational row: id, event-scoped day/start/
+// duration, a label and an optional location. What HAS changed: three
+// producer-side consumers now read this table to avoid placing/suggesting
+// sessions on top of a break — src/domain/schedule.ts's autoSchedule/
+// nextFreeSlot (DEC-010 amendment), the run-of-show export, and
+// src/server/repo/overview.ts's placement suggestions (overview.ts:498-509).
+// None of those write back into scheduleBreak or promote a break into a
+// submission-shaped row; the boundary above still holds.
 
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, gt, lt, or, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
@@ -86,6 +91,46 @@ export async function listBreaksForEvent(db: Db, eventId: string, day?: string):
   }
 
   return rows.map(toRecord);
+}
+
+/** DEC-844 amendment (wave 68): the schedule_break twin of
+ * listSlotsOutsideWindow. days.ts's dayOutsideEventRangeCondition is bound
+ * to schema.scheduleSlot and cannot be reused here, so this writes its own
+ * out-of-window predicate against schema.scheduleBreak. Counts in SQL
+ * (count(*)) then runs a second bounded SELECT with `.limit(limit)` — never
+ * scans the table into JS. Ordered day asc, startMin asc, id asc, the same
+ * total order listBreaksForEvent already uses. */
+export async function listBreaksOutsideWindow(
+  db: Db,
+  eventId: string,
+  startDate: string,
+  endDate: string,
+  limit = 20,
+): Promise<{ count: number; breaks: { id: string; day: string; label: string; startMin: number }[] }> {
+  const baseWhere = and(
+    eq(schema.scheduleBreak.eventId, eventId),
+    or(lt(schema.scheduleBreak.day, startDate), gt(schema.scheduleBreak.day, endDate)),
+  );
+
+  const countRows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.scheduleBreak)
+    .where(baseWhere);
+  const count = Number(countRows[0]?.count ?? 0);
+
+  const rows = await db
+    .select({
+      id: schema.scheduleBreak.id,
+      day: schema.scheduleBreak.day,
+      label: schema.scheduleBreak.label,
+      startMin: schema.scheduleBreak.startMin,
+    })
+    .from(schema.scheduleBreak)
+    .where(baseWhere)
+    .orderBy(asc(schema.scheduleBreak.day), asc(schema.scheduleBreak.startMin), asc(schema.scheduleBreak.id))
+    .limit(limit);
+
+  return { count, breaks: rows };
 }
 
 export async function countBreaksForEvent(db: Db, eventId: string): Promise<number> {

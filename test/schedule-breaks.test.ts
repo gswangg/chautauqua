@@ -21,6 +21,7 @@ import {
   deleteBreak,
   getBreakForEvent,
   listBreaksForEvent,
+  listBreaksOutsideWindow,
   MAX_BREAKS_PER_EVENT,
 } from "../src/server/repo/breaks";
 
@@ -127,6 +128,53 @@ describe("src/server/repo/breaks.ts", () => {
     await deleteBreak(db, created.id);
     expect(await getBreakForEvent(db, created.id)).toBeNull();
     expect(await countBreaksForEvent(db, "event-a")).toBe(0);
+  });
+
+  // DEC-844 amendment (wave 68): the schedule_break twin of
+  // listSlotsOutsideWindow -- an event narrowing its window orphans breaks
+  // exactly the way it orphans placed sessions.
+  describe("listBreaksOutsideWindow (DEC-844 amendment, wave 68)", () => {
+    it("counts and lists only breaks whose day falls outside [startDate, endDate], event-scoped", async () => {
+      const { db, sqlite } = makeTestDb();
+      seedEvent(sqlite, "event-a", "org-a", "2027-01-01", "2027-01-10");
+      seedEvent(sqlite, "event-b", "org-a", "2027-01-01", "2027-01-10");
+
+      await createBreak(db, "event-a", { day: "2026-12-31", label: "Before window", location: null, startMin: 600, durationMin: 15 });
+      await createBreak(db, "event-a", { day: "2027-01-05", label: "Inside window", location: null, startMin: 600, durationMin: 15 });
+      await createBreak(db, "event-a", { day: "2027-01-12", label: "After window (late)", location: null, startMin: 700, durationMin: 15 });
+      await createBreak(db, "event-a", { day: "2027-01-11", label: "After window (early)", location: null, startMin: 600, durationMin: 15 });
+      // A different event's out-of-window break must never leak in.
+      await createBreak(db, "event-b", { day: "2027-02-01", label: "Other event", location: null, startMin: 600, durationMin: 15 });
+
+      const result = await listBreaksOutsideWindow(db, "event-a", "2027-01-01", "2027-01-10");
+      expect(result.count).toBe(3);
+      expect(result.breaks.map((b) => b.label)).toEqual([
+        "Before window",
+        "After window (early)",
+        "After window (late)",
+      ]);
+    });
+
+    it("returns count 0 and an empty list when nothing falls outside the window", async () => {
+      const { db, sqlite } = makeTestDb();
+      seedEvent(sqlite, "event-a", "org-a", "2027-01-01", "2027-01-10");
+      await createBreak(db, "event-a", { day: "2027-01-05", label: "Lunch", location: null, startMin: 720, durationMin: 30 });
+
+      const result = await listBreaksOutsideWindow(db, "event-a", "2027-01-01", "2027-01-10");
+      expect(result).toEqual({ count: 0, breaks: [] });
+    });
+
+    it("caps the returned rows at `limit` while the count reflects the true total", async () => {
+      const { db, sqlite } = makeTestDb();
+      seedEvent(sqlite, "event-a", "org-a", "2027-01-01", "2027-01-01");
+      for (let i = 0; i < 5; i++) {
+        await createBreak(db, "event-a", { day: "2027-02-01", label: `Break ${i}`, location: null, startMin: i, durationMin: 1 });
+      }
+
+      const result = await listBreaksOutsideWindow(db, "event-a", "2027-01-01", "2027-01-01", 2);
+      expect(result.count).toBe(5);
+      expect(result.breaks).toHaveLength(2);
+    });
   });
 });
 

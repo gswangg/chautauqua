@@ -32,6 +32,15 @@ interface EventDetail {
     count: number;
     sessions: { submissionId: string; ref: string; title: string; day: string }[];
   };
+  breaksOutsideWindow?: {
+    count: number;
+    breaks: { id: string; day: string; label: string; startMin: number }[];
+  };
+}
+
+interface OutsideWindowNotice {
+  sessions: EventDetail['unscheduledByWindow'] | null;
+  breaks: EventDetail['breaksOutsideWindow'] | null;
 }
 
 function toForm(event: EventDetail): EventSettingsForm {
@@ -79,7 +88,7 @@ export function EventSettingsPanel() {
   const [error, setError] = useState<string | undefined>(undefined);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [unscheduledNotice, setUnscheduledNotice] = useState<EventDetail['unscheduledByWindow'] | null>(null);
+  const [unscheduledNotice, setUnscheduledNotice] = useState<OutsideWindowNotice | null>(null);
   const [mailStatus, setMailStatus] = useState<MailStatus | null>(null);
 
   useEffect(() => {
@@ -128,8 +137,12 @@ export function EventSettingsPanel() {
       setInitial(f);
       setForm(f);
       setSaved(true);
+      const sessionsNotice =
+        updated.unscheduledByWindow && updated.unscheduledByWindow.count > 0 ? updated.unscheduledByWindow : null;
+      const breaksNotice =
+        updated.breaksOutsideWindow && updated.breaksOutsideWindow.count > 0 ? updated.breaksOutsideWindow : null;
       setUnscheduledNotice(
-        updated.unscheduledByWindow && updated.unscheduledByWindow.count > 0 ? updated.unscheduledByWindow : null,
+        sessionsNotice || breaksNotice ? { sessions: sessionsNotice, breaks: breaksNotice } : null,
       );
       closeEdit();
     } catch (err) {
@@ -165,10 +178,22 @@ export function EventSettingsPanel() {
       {eventError || error ? <p role="alert">{eventError ?? error}</p> : null}
       {unscheduledNotice ? (
         <p role="status" className="chq-event-unscheduled-notice">
-          {unscheduledNotice.count} placed {plural(unscheduledNotice.count, 'session')} now fall
-          {unscheduledNotice.count === 1 ? 's' : ''} outside these dates and{' '}
-          {unscheduledNotice.count === 1 ? 'has' : 'have'} been unscheduled:{' '}
-          {unscheduledNotice.sessions.map((s) => s.ref).join(', ')}. <Link to="/agenda">View agenda</Link>
+          {unscheduledNotice.sessions ? (
+            <>
+              {unscheduledNotice.sessions.count} placed {plural(unscheduledNotice.sessions.count, 'session')} now
+              fall{unscheduledNotice.sessions.count === 1 ? 's' : ''} outside these dates and{' '}
+              {unscheduledNotice.sessions.count === 1 ? 'has' : 'have'} been unscheduled:{' '}
+              {unscheduledNotice.sessions.sessions.map((s) => s.ref).join(', ')}.{' '}
+            </>
+          ) : null}
+          {unscheduledNotice.breaks ? (
+            <>
+              {unscheduledNotice.breaks.count} {plural(unscheduledNotice.breaks.count, 'break')} now fall
+              {unscheduledNotice.breaks.count === 1 ? 's' : ''} outside these dates:{' '}
+              {unscheduledNotice.breaks.breaks.map((b) => b.label).join(', ')}.{' '}
+            </>
+          ) : null}
+          <Link to="/agenda">View agenda</Link>
         </p>
       ) : null}
       <SummarySection
