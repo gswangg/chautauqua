@@ -109,6 +109,26 @@ describe("filter-token-loudness scan (DEC-843 amendment, w38)", () => {
       expect(reason.trim().length).toBeGreaterThan(0);
     }
   });
+
+  it("every EXEMPT_SILENT_DROP entry still matches a real silent-drop hit (no stale lines)", () => {
+    // DEC-078 wave-21 amendment: naming an existing file is not enough --
+    // that direction alone would pre-clear a stale exemption forever once
+    // the code it named was fixed (or never regressed). This asserts the
+    // other direction: every exemption key still matches the SAME
+    // hasSilentDropFilterBlockAnywhere hit the generic scan above uses.
+    const stale = Object.keys(EXEMPT_SILENT_DROP).filter((path) => {
+      const abs = join(REPO_ROOT, path);
+      if (!existsSync(abs)) return true;
+      const src = readFileSync(abs, "utf-8");
+      return !hasSilentDropFilterBlockAnywhere(src);
+    });
+    expect(
+      stale,
+      stale
+        .map((path) => `${path}: stale entry -- delete this line (test/filter-token-loudness.scan.test.ts EXEMPT_SILENT_DROP) -- no matching silent-drop .filter( block was found.`)
+        .join("\n"),
+    ).toEqual([]);
+  });
 });
 
 // --- scan helpers -----------------------------------------------------
