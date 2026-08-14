@@ -76,6 +76,7 @@ export function YourDataPanel() {
   const [moreExportsOpen, setMoreExportsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [bundling, setBundling] = useState(false);
+  const [skippedKinds, setSkippedKinds] = useState<{ kind: string; message: string }[] | null>(null);
 
   useEffect(() => {
     if (!eventId) return;
@@ -84,15 +85,55 @@ export function YourDataPanel() {
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load event'));
   }, [eventId]);
 
+  // DEC-815 (wave-41 amendment): 'Everything JSON' fails PER KIND, not per
+  // bundle. Each kind is fetched independently (Promise.allSettled, not a
+  // serial loop that aborts on the first refusal) -- a kind the server
+  // refuses (e.g. an over-cap email-log/evaluations export) is named on
+  // screen with the server's own message and left out of the bundle, but
+  // every kind that succeeded still downloads. Only when EVERY kind fails
+  // does this fall back to today's single-error behaviour (no download).
   async function downloadEverythingJson() {
     if (!eventId) return;
     setBundling(true);
     setError(undefined);
+    setSkippedKinds(null);
     try {
+      const results = await Promise.allSettled(
+        EVERYTHING_KINDS.map((kind) =>
+          apiGet<unknown>(`/events/${eventId}/export/${kind}?format=json`).then((data) => ({ kind, data })),
+        ),
+      );
+
       const bundle: Record<string, unknown> = {};
-      for (const kind of EVERYTHING_KINDS) {
-        bundle[kind] = await apiGet<unknown>(`/events/${eventId}/export/${kind}?format=json`);
+      const present: string[] = [];
+      const skipped: { kind: string; message: string }[] = [];
+
+      results.forEach((result, index) => {
+        const kind: (typeof EVERYTHING_KINDS)[number] = EVERYTHING_KINDS[index]!;
+        if (result.status === 'fulfilled') {
+          bundle[result.value.kind] = result.value.data;
+          present.push(kind);
+        } else {
+          const err = result.reason;
+          skipped.push({ kind, message: err instanceof ApiError ? err.message : 'Failed to export this kind' });
+        }
+      });
+
+      if (present.length === 0) {
+        // Every kind refused: keep today's single-error behaviour (no
+        // download, no per-kind list) rather than the disclose-per-kind
+        // shape below, which only applies once at least one kind survives.
+        setError('Failed to build the combined export');
+        return;
       }
+
+      // Bundle records which kinds are present rather than silently
+      // omitting the ones that failed.
+      bundle._kinds = present;
+      if (skipped.length > 0) {
+        bundle._skipped = skipped;
+      }
+
       const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
@@ -100,8 +141,7 @@ export function YourDataPanel() {
       anchor.download = 'everything.json';
       anchor.click();
       URL.revokeObjectURL(url);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to build the combined export');
+      setSkippedKinds(skipped.length > 0 ? skipped : null);
     } finally {
       setBundling(false);
     }
@@ -128,6 +168,15 @@ export function YourDataPanel() {
         <button type="button" className="chq-pill" disabled={bundling} onClick={() => void downloadEverythingJson()}>
           {bundling ? 'Building…' : 'Everything JSON'}
         </button>
+        {skippedKinds && skippedKinds.length > 0 ? (
+          <div role="status" className="chq-settings-row-note">
+            {skippedKinds.map(({ kind, message }) => (
+              <p key={kind}>
+                {kind}: {message}
+              </p>
+            ))}
+          </div>
+        ) : null}
       </>
     );
   }
