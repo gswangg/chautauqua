@@ -460,10 +460,16 @@ or **unmentioned by any gate-4 report** (tagged). Nothing here is a new finding.
 - **P1 · Conditional field logic not applied on the public form** (CFP): "Show when Format eq
   Workshop" saves and displays in the builder but the public form always shows the field.
 - **P1 · Conflict engine gaps** (AIA): speaker double-booking flagged on one pair but MISSED on
-  another same-slot different-room pair (SES-033/SES-003 vs SES-031); co-presenters
-  (Participants) invisible to the agenda card DISPLAY; conflict label attaches to only one of
-  the two clashing cards. (The engine's co-presenter *visibility* is closed server-side —
-  DEC-974.)
+  another same-slot different-room pair (SES-033/SES-003 vs SES-031) — CLOSED-VERIFIED (wave 11,
+  test/conflicts-cross-room-copresenter.test.ts::findConflicts emits exactly one speaker_overlap
+  naming both submissionIds for a same-slot different-room co-presenter clash); co-presenters
+  (Participants) invisible to the agenda card DISPLAY — CLOSED-VERIFIED (wave 11,
+  test/conflicts-cross-room-copresenter.test.ts::getAgendaPayload carries the conflict AND both
+  sessions' speakers arrays include the co-presenter); conflict label attaches to only one of
+  the two clashing cards — CLOSED-VERIFIED (wave 11,
+  app/src/pages/agenda/SessionCard.conflict.render.test.tsx::renders both cards, in different
+  room columns, as data-conflict="true" with the " (conflict)" accessible-name suffix). (The
+  engine's co-presenter *visibility* is closed server-side — DEC-974.)
 - **P1 · "Remind laggards (N)" 500** — same mailer cause; verify it heals with the boundary
   fix. **"Submission (removed)"** label renders for a live assignment on the who-reviews-what
   list.
