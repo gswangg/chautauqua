@@ -32,6 +32,7 @@ export default defineConfig({
       "app/src/lib/useEscapeKey.test.ts",
       "test/itinerary-script-persistence.test.ts",
       "test/embed-element.test.ts",
+      "test/gate4-residue-closure.test.ts",
     ],
   },
 });
