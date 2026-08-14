@@ -321,8 +321,11 @@ async function countVisibleSubmissions(
   return Number(rows[0]?.count ?? 0);
 }
 
-/** Hydrates a set of submission ids (already visibility-checked by the
- * caller) with their tracks and visible speakers, preserving `ids` order.
+/** Hydrates a set of submission ids with their tracks and visible speakers,
+ * preserving `ids` order. DEC-274 (amendment wave 23): the public visibility
+ * gate (eventId scoping + visibleSessionConditions()) is enforced HERE, at
+ * the submission read itself, as defence in depth — callers are not trusted
+ * to have already filtered.
  * DEC-318: schedule_slot reads are bounded to the event's own date range —
  * a slot dated outside it renders as unscheduled (day/startMin/endMin/
  * roomName null), which the existing card renderer already handles. */
@@ -350,7 +353,9 @@ export async function hydrateSessions(
         icsSequence: schema.submission.icsSequence,
       })
       .from(schema.submission)
-      .where(inArray(schema.submission.id, batch));
+      .where(
+        and(inArray(schema.submission.id, batch), eq(schema.submission.eventId, event.id), visibleSessionConditions()),
+      );
     subRows.push(...batchRows);
   }
   const subById = new Map(subRows.map((r) => [r.id, r]));
