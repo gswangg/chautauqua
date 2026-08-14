@@ -1,12 +1,25 @@
-// DEC-948 amendment (wave 49): a serial per-row D1 write is a SCANNED class,
+// DEC-948 amendment (wave 19): a serial per-row D1 write is a SCANNED class,
 // not a per-wave rediscovery. Waves 46, 47 and 48 each independently found a
 // different loop that batched its READ half but left one write per
 // iteration ("BATCHING LANDS ON THE READ NOT THE WRITE", twice). This scans
-// every for/while under src/routes/** and src/server/repo/** whose body
+// every for/while under src/** (minus EXCLUDED_ROOTS below) whose body
 // awaits db.insert(/db.update(/db.delete(, and classifies each hit as
 // EITHER (a) EXEMPT because the loop iterates a chunk helper (chunkIds /
 // chunkRowsForInsert / chunkRows — the already-correct O(chunks) shape) OR
 // (b) LEDGERED in KNOWN_SERIAL_WRITES below with a one-line reason.
+//
+// Wave 19 finding: the scan previously hard-coded SCAN_DIRS = ["src/routes",
+// "src/server/repo"] and its own describe title advertised that as the
+// class boundary — so src/server/auth-session.ts, src/server/context.ts,
+// src/server/scheduled.ts, src/sync/**, src/domain/**, src/auth/**,
+// src/mail/**, src/lib/** and src/forms/** were never in frame for this
+// guard even though every one of them is inside the pure-core/composition
+// layers that can issue db writes. The fix walks ALL of src/ (see walkSrc
+// below); EXCLUDED_ROOTS is the only escape hatch, and every entry in it
+// must name its reason. A test below asserts every top-level entry under
+// src/ is either walked or named in EXCLUDED_ROOTS, so a future directory
+// added under src/ cannot silently fall outside the guard's claim the way
+// the six directories above did.
 //
 // Two-directional, same shape as test/contact-reference-manifest.test.ts's
 // hand-listed-manifest-that-cannot-desync: an unlisted, unexempt hit fails
@@ -17,15 +30,30 @@
 //
 // Deliberately a lightweight brace-matching text scan (this repo already
 // does text scans of source elsewhere, e.g. test/no-conflict-markers.test.ts)
-// -- no parser dependency added.
+// -- no parser dependency added. Comments (// and /* */) are stripped
+// before matching (see stripComments) so a DEC citation or an example
+// snippet inside a JSDoc block is never counted as a loop or an await hit.
 
 import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const ROOT = join(__dirname, "..");
-const SCAN_DIRS = ["src/routes", "src/server/repo"];
+const SRC_ROOT = join(ROOT, "src");
 const SKIP_DIRS = new Set(["node_modules", "dist", ".wrangler", "build", ".git"]);
+
+// The ONLY sanctioned way to keep a top-level src/ directory out of this
+// scan's walk. Every entry must name why it can never contain a for/while
+// loop awaiting a db write -- "src/routes and src/server/repo scan only
+// those" (the wave-19 bug) is not an acceptable reason.
+const EXCLUDED_ROOTS: { name: string; reason: string }[] = [
+  {
+    name: "decisions-data",
+    reason:
+      "Scribe-maintained constant DEC_* string data (src/decisions.ts registry, regenerated each wave) -- plain string exports, no loops, no db calls.",
+  },
+];
+const EXCLUDED_ROOT_NAMES = new Set(EXCLUDED_ROOTS.map((e) => e.name));
 
 const EXEMPT_CHUNK_HELPERS = ["chunkIds", "chunkRowsForInsert", "chunkRows"];
 
@@ -35,17 +63,75 @@ interface SerialWriteHit {
   functionOrNearestExport: string;
 }
 
-function walk(dir: string, out: string[]): void {
+/** Walks every .ts/.tsx file under src/, skipping SKIP_DIRS everywhere and
+ * EXCLUDED_ROOTS only at depth 0 (a nested directory that happens to share
+ * a name with an excluded root, if one ever exists, is NOT exempted --
+ * exclusion is a top-level-only escape hatch). */
+function walkSrc(dir: string, out: string[], depth: number): void {
   for (const entry of readdirSync(dir)) {
     if (SKIP_DIRS.has(entry)) continue;
+    if (depth === 0 && EXCLUDED_ROOT_NAMES.has(entry)) continue;
     const full = join(dir, entry);
     const stat = statSync(full);
     if (stat.isDirectory()) {
-      walk(full, out);
+      walkSrc(full, out, depth + 1);
     } else if (stat.isFile() && /\.(ts|tsx)$/.test(entry)) {
       out.push(full);
     }
   }
+}
+
+/** Strips `//` line comments and `/* *\/` block comments from `src`,
+ * preserving every newline (so downstream line-number math stays correct)
+ * and preserving the contents of string/template literals (so a URL like
+ * "https://example.com" inside a string is never mistaken for a line
+ * comment). Deliberately simple -- doesn't track `${...}` interpolation
+ * inside template literals as re-entering code, which is fine here since
+ * no loop header or db-write call in this codebase lives inside a template
+ * literal expression. */
+function stripComments(src: string): string {
+  let out = "";
+  let i = 0;
+  const n = src.length;
+  while (i < n) {
+    const c = src[i];
+    const c2 = src[i + 1];
+    if (c === "/" && c2 === "/") {
+      while (i < n && src[i] !== "\n") i++;
+      continue;
+    }
+    if (c === "/" && c2 === "*") {
+      i += 2;
+      while (i < n && !(src[i] === "*" && src[i + 1] === "/")) {
+        out += src[i] === "\n" ? "\n" : " ";
+        i++;
+      }
+      i += 2; // skip closing */
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") {
+      const quote = c;
+      out += c;
+      i++;
+      while (i < n && src[i] !== quote) {
+        if (src[i] === "\\" && i + 1 < n) {
+          out += (src[i] ?? "") + (src[i + 1] ?? "");
+          i += 2;
+          continue;
+        }
+        out += src[i] ?? "";
+        i++;
+      }
+      if (i < n) {
+        out += src[i];
+        i++;
+      }
+      continue;
+    }
+    out += c;
+    i++;
+  }
+  return out;
 }
 
 interface LoopBlock {
@@ -61,7 +147,7 @@ interface LoopBlock {
  * classification below picks the INNERMOST enclosing block per await
  * occurrence rather than flagging every ancestor). Skips any loop whose
  * header isn't followed by a `{` block (no such loops exist in this
- * codebase's repo/route layer; a bare-statement loop would just be
+ * codebase's scanned layers; a bare-statement loop would just be
  * invisible to this scan rather than a false positive). */
 function findLoopBlocks(src: string): LoopBlock[] {
   const out: LoopBlock[] = [];
@@ -108,28 +194,22 @@ function nearestEnclosingFunction(lines: string[], loopLineIdx: number): string 
   return "(module scope)";
 }
 
-/** Walks every .ts/.tsx file under SCAN_DIRS. For every `await db.insert/
- * update/delete(` occurrence, finds its INNERMOST enclosing for/while loop
- * (smallest body span containing it) and, unless that loop's header
- * iterates one of the EXEMPT_CHUNK_HELPERS, records one SerialWriteHit for
- * it (deduped -- a loop with two awaits in its body yields one hit, not
- * two). An await not inside any loop (a one-off write) is not a "serial"
- * write and is skipped. */
+/** Walks every .ts/.tsx file under src/ (minus EXCLUDED_ROOTS). For every
+ * `await db.insert/update/delete(` occurrence (after comment-stripping),
+ * finds its INNERMOST enclosing for/while loop (smallest body span
+ * containing it) and, unless that loop's header iterates one of the
+ * EXEMPT_CHUNK_HELPERS, records one SerialWriteHit for it (deduped -- a
+ * loop with two awaits in its body yields one hit, not two). An await not
+ * inside any loop (a one-off write) is not a "serial" write and is
+ * skipped. */
 function scanForSerialWrites(): SerialWriteHit[] {
   const files: string[] = [];
-  for (const dir of SCAN_DIRS) {
-    const abs = join(ROOT, dir);
-    try {
-      statSync(abs);
-    } catch {
-      continue;
-    }
-    walk(abs, files);
-  }
+  walkSrc(SRC_ROOT, files, 0);
 
   const hits: SerialWriteHit[] = [];
   for (const file of files) {
-    const src = readFileSync(file, "utf8");
+    const raw = readFileSync(file, "utf8");
+    const src = stripComments(raw);
     const lines = src.split("\n");
     const blocks = findLoopBlocks(src);
     const seenBlockStarts = new Set<number>();
@@ -193,14 +273,37 @@ const KNOWN_SERIAL_WRITES: { file: string; functionOrNearestExport: string; reas
   },
 ];
 
-describe("serial per-row D1 write scan (DEC-948 amendment, wave 49)", () => {
-  it("the scan itself finds loop bodies under src/routes and src/server/repo (not vacuous)", () => {
+describe("serial per-row D1 write scan (DEC-948 amendment, wave 19: walks all of src/, not just src/routes + src/server/repo)", () => {
+  it("walks every top-level entry under src/ -- each is either scanned or named in EXCLUDED_ROOTS with a reason", () => {
+    const topLevelEntries = readdirSync(SRC_ROOT).filter((e) => !SKIP_DIRS.has(e));
     const files: string[] = [];
-    for (const dir of SCAN_DIRS) walk(join(ROOT, dir), files);
-    expect(files.length).toBeGreaterThan(0);
+    walkSrc(SRC_ROOT, files, 0);
+    const scannedTopLevel = new Set(files.map((f) => relative(SRC_ROOT, f).split("/")[0]));
+
+    const unaccounted = topLevelEntries.filter((e) => !scannedTopLevel.has(e) && !EXCLUDED_ROOT_NAMES.has(e));
+
+    expect(
+      unaccounted,
+      unaccounted
+        .map(
+          (e) =>
+            `src/${e}: contains no scanned .ts/.tsx files and isn't in EXCLUDED_ROOTS -- either it's dead, or it ` +
+            `needs an EXCLUDED_ROOTS entry naming why it can never contain a serial db-write loop.`,
+        )
+        .join("\n"),
+    ).toEqual([]);
   });
 
-  it("every unexempt for/while loop awaiting a db write is either a chunk-helper iteration or ledgered", () => {
+  it("the scan is not vacuous: walks a large, multi-directory file set and finds at least as many hits as the ledger", () => {
+    const files: string[] = [];
+    walkSrc(SRC_ROOT, files, 0);
+    expect(files.length).toBeGreaterThan(150);
+
+    const hits = scanForSerialWrites();
+    expect(hits.length).toBeGreaterThanOrEqual(KNOWN_SERIAL_WRITES.length);
+  });
+
+  it("every unexempt for/while loop awaiting a db write, anywhere under src/, is either a chunk-helper iteration or ledgered", () => {
     const hits = scanForSerialWrites();
     const offenders = hits.filter(
       (hit) =>
