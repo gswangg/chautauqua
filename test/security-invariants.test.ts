@@ -208,9 +208,10 @@ describe("SPEC §6: unauthenticated write paths are rate limited (DEC-628)", () 
   // shape let N concurrent requests all read the same pre-increment count and
   // all pass — replaced by the atomic checkAndIncrementScopedLimit, issued
   // before the password derivation runs.
-  it("POST /login (auth.tsx) uses checkAndIncrementScopedLimit", () => {
+  it("POST /login (auth.tsx) uses checkAndIncrementScopedLimit (DEC-180 wave-29: consume-then-refund)", () => {
     const slice = sliceForRoute(authSource, "/login");
     expect(slice).toMatch(/\bcheckAndIncrementScopedLimit\b/);
+    expect(slice).toMatch(/\brefundScopedLimit\b/);
   });
 
   it("POST /claim/:token (auth.tsx) uses checkAndIncrementScopedLimit", () => {

@@ -10,7 +10,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DatabaseSync } from "node:sqlite";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
 import * as schema from "../src/db/schema";
-import { checkAndIncrementScopedLimit, resetScopedLimit } from "../src/server/repo/rate-limit";
+import {
+  checkAndIncrementScopedLimit,
+  refundScopedLimit,
+  resetScopedLimit,
+} from "../src/server/repo/rate-limit";
 import { requestIpFromHeaders, scopedRateLimitKey } from "../src/lib/rate-limit";
 import type { Db } from "../src/server/context";
 
@@ -142,7 +146,7 @@ describe("checkAndIncrementScopedLimit (D1, DEC-948)", () => {
   });
 });
 
-describe("DEC-180: resetScopedLimit (D1, DEC-948)", () => {
+describe("DEC-180 (wave-29 amendment): refundScopedLimit / resetScopedLimit (D1, DEC-948)", () => {
   const opts = { windowSeconds: 900, max: 3 };
   let db: Db;
   let sqlite: DatabaseSync;
@@ -153,6 +157,27 @@ describe("DEC-180: resetScopedLimit (D1, DEC-948)", () => {
 
   afterEach(() => {
     sqlite.close();
+  });
+
+  it("refundScopedLimit gives back one unit of a prior atomic spend", async () => {
+    const now = 1_000_000;
+    await checkAndIncrementScopedLimit(db, "login-user", "b@example.com", now, opts);
+    await checkAndIncrementScopedLimit(db, "login-user", "b@example.com", now, opts);
+    await checkAndIncrementScopedLimit(db, "login-user", "b@example.com", now, opts);
+    await refundScopedLimit(db, "login-user", "b@example.com", now, { windowSeconds: opts.windowSeconds });
+    const after = await checkAndIncrementScopedLimit(db, "login-user", "b@example.com", now, opts);
+    expect(after).toEqual({ ok: true, count: 3 });
+  });
+
+  it("refundScopedLimit never drives the counter below zero", async () => {
+    const now = 1_000_000;
+    await refundScopedLimit(db, "login-user", "c@example.com", now, { windowSeconds: opts.windowSeconds });
+    const row = sqlite
+      .prepare("select count from rate_limit where key = ?")
+      .all(scopedRateLimitKey("login-user", "c@example.com", 0));
+    // No row exists yet -- the `count > 0` guard means the update matches
+    // zero rows rather than inserting a negative one.
+    expect(row).toHaveLength(0);
   });
 
   it("resetScopedLimit deletes the current window's counter row", async () => {

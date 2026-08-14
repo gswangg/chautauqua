@@ -175,15 +175,18 @@ accountRoutes.post("/account/password", requireAuthOr302, csrfForm, async (c) =>
 
   const backHref = backHrefForRole(auth.role);
 
-  // DEC-948 (amendment): checked-and-incremented atomically, BEFORE the
+  // DEC-948 / DEC-180 (wave-29 amendment): CONSUME THEN REFUND, keyed on the
+  // authenticated userId (not email/IP) since this route always has a live
+  // session. The budget is checked-and-incremented atomically BEFORE the
   // password derivation runs -- a read-only peek followed by a later
   // increment lets N concurrent requests all read the same pre-increment
   // count and all reach the derivation (the read-then-write race DEC-948
   // forbids). checkAndIncrement is one atomic D1 upsert.
   //
   // DEC-180: a successful change must not consume the budget. Since the
-  // increment now happens up front, a confirmed successful verify clears
-  // the per-userId bucket immediately below.
+  // spend now happens up front, a confirmed successful verify refunds it by
+  // clearing the per-userId bucket immediately below (resetScopedLimit) --
+  // mirrors src/routes/auth.tsx's /login limiter shape.
   const rateLimitNow = Date.now();
   const limitCheck = await checkAndIncrementScopedLimit(db, "password-change", auth.userId, rateLimitNow, {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
@@ -195,6 +198,8 @@ accountRoutes.post("/account/password", requireAuthOr302, csrfForm, async (c) =>
   }
 
   if (!(await verifyPassword(current, user.passwordHash))) {
+    // The budget was already spent at admission above -- no further write
+    // on failure.
     const { token: csrfToken } = ensureCsrfCookie(c);
     return c.html(<PasswordPage csrfToken={csrfToken} backHref={backHref} error="Current password is incorrect." />, 400);
   }

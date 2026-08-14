@@ -38,6 +38,7 @@ import { findAccountUserId } from "../server/repo/comms";
 import { requestIpFromHeaders } from "../lib/rate-limit";
 import {
   checkAndIncrementScopedLimit,
+  refundScopedLimit,
   resetScopedLimit,
 } from "../server/repo/rate-limit";
 import { ThemeStyles } from "../views/theme";
@@ -547,31 +548,54 @@ authRoutes.post("/login", csrfForm, async (c) => {
   // credential stuffing against one account) and a per-IP budget (catches
   // a single source hammering many accounts). Either failing blocks login.
   //
-  // DEC-948 (amendment): the budgets must be checked-and-incremented
-  // atomically, BEFORE the password derivation runs — a read-only peek
-  // followed by a later increment lets N concurrent requests all read the
-  // same pre-increment count and all reach the expensive PBKDF2 derivation
-  // (the exact read-then-write race DEC-948 forbids). checkAndIncrement is
-  // one atomic D1 upsert, so concurrent callers land on distinct counts and
-  // exactly one crosses the cap.
+  // DEC-948 + DEC-180 (wave-29 amendment): CONSUME THEN REFUND. The budgets
+  // are checked-and-incremented atomically, BEFORE the password derivation
+  // runs — a read-only peek followed by a later increment lets N concurrent
+  // requests all read the same pre-increment count and all reach the
+  // expensive PBKDF2 derivation (the exact read-then-write race DEC-948
+  // forbids). checkAndIncrement is one atomic D1 upsert, so concurrent
+  // callers land on distinct counts and exactly one crosses the cap.
   //
   // DEC-180: a successful login must not consume the shared per-email
   // budget. Since the increment now happens up front (before we know the
-  // outcome), a confirmed success clears the per-email bucket afterward
-  // (see resetScopedLimit below) — the per-IP bucket is a source budget and
-  // stays consumed by successes, it is never reset.
+  // outcome), a confirmed success gives the budget back afterward: the
+  // per-identity bucket via resetScopedLimit and the per-IP bucket via the
+  // atomic refundScopedLimit (both below).
+  //
+  // DEC-180 wave-29 corollary (1): the buckets are spent in sequence, not in
+  // parallel, so that when the per-identity bucket ADMITS but the per-IP
+  // bucket DENIES, the identity unit is refunded before the 429 — a request
+  // that never reached verification must not spend the account's budget.
   const ip = requestIpFromHeaders((name) => c.req.header(name));
   const loginNow = Date.now();
-  const userCheck = await checkAndIncrementScopedLimit(db, "login-user", email, loginNow, {
+  const userLimit = await checkAndIncrementScopedLimit(db, "login-user", email, loginNow, {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
     max: AUTH_RATE_LIMIT_MAX,
   });
-  const ipCheck = await checkAndIncrementScopedLimit(db, "login-ip", ip, loginNow, {
+
+  if (!userLimit.ok) {
+    const { token: csrfToken } = ensureCsrfCookie(c);
+    const demoIdentities = await loadDemoIdentitiesIfPresent(db);
+    const singleEvent = await loadSingleEventContext(db);
+    return c.html(
+      <LoginPage
+        csrfToken={csrfToken}
+        error={RATE_LIMIT_ERROR}
+        email={email}
+        demoIdentities={demoIdentities}
+        singleEvent={singleEvent}
+      />,
+      429,
+    );
+  }
+
+  const ipLimit = await checkAndIncrementScopedLimit(db, "login-ip", ip, loginNow, {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
     max: 100,
   });
 
-  if (!userCheck.ok || !ipCheck.ok) {
+  if (!ipLimit.ok) {
+    await refundScopedLimit(db, "login-user", email, loginNow, { windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS });
     const { token: csrfToken } = ensureCsrfCookie(c);
     const demoIdentities = await loadDemoIdentitiesIfPresent(db);
     const singleEvent = await loadSingleEventContext(db);
@@ -594,7 +618,7 @@ authRoutes.post("/login", csrfForm, async (c) => {
   // PBKDF2 cost as a known one — closing the login timing oracle.
   const passwordOk = await verifyPassword(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
   if (!user || !passwordOk) {
-    // Budgets were already incremented atomically above, before the
+    // Budgets were already spent atomically at admission above, before the
     // derivation ran — nothing further to record on failure.
     const { token: csrfToken } = ensureCsrfCookie(c);
     const demoIdentities = await loadDemoIdentitiesIfPresent(db);
@@ -612,6 +636,7 @@ authRoutes.post("/login", csrfForm, async (c) => {
   }
 
   await resetScopedLimit(db, "login-user", email, loginNow, AUTH_RATE_LIMIT_WINDOW_SECONDS);
+  await refundScopedLimit(db, "login-ip", ip, loginNow, { windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS });
 
   const now = new Date();
   const presentedCookies = parseCookies(c.req.header("cookie") ?? null);
@@ -757,19 +782,21 @@ authRoutes.post("/forgot", csrfForm, async (c) => {
   const normalizedEmail = submittedEmail.toLowerCase();
   const now = Date.now();
 
-  // DEC-948 (wave 27 amendment): the SAME check-and-increment-then-reset
-  // shape as /login, keyed on the normalised email — peekScopedLimit keeps
-  // no auth call site. One atomic D1 upsert up front, so N concurrent
-  // requests against one address land on distinct counts and exactly one
-  // crosses the cap. DEC-180's requirement that a success not consume the
-  // budget is preserved by the reset on the account-found branch below.
-  // A 429 here doesn't leak existence (it fires purely off request volume
-  // against one address, known or not).
-  const forgotCheck = await checkAndIncrementScopedLimit(db, "forgot", normalizedEmail, now, {
+  // DEC-948 / DEC-180 (wave-29 amendment): the SAME atomic consume shape as
+  // /login, keyed on the normalised email — the deleted read-only peek
+  // helper keeps no auth call site. One atomic D1 upsert up front, so N
+  // concurrent requests
+  // against one address land on distinct counts and exactly one crosses the
+  // cap. Per DEC-180 wave-29 corollary (2), /forgot CONSUMES ALWAYS AND
+  // NEVER REFUNDS: refunding only when the address exists (or only when it
+  // does not) would make bucket depletion an account-enumeration oracle,
+  // which DEC-004 closes everywhere else. A 429 here doesn't leak existence
+  // (it fires purely off request volume against one address, known or not).
+  const forgotLimit = await checkAndIncrementScopedLimit(db, "forgot", normalizedEmail, now, {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
     max: AUTH_RATE_LIMIT_MAX,
   });
-  if (!forgotCheck.ok) {
+  if (!forgotLimit.ok) {
     const { token: csrfToken } = ensureCsrfCookie(c);
     return c.html(<ForgotPasswordPage csrfToken={csrfToken} email={submittedEmail} error={RATE_LIMIT_ERROR} />, 429);
   }
@@ -813,13 +840,15 @@ authRoutes.post("/forgot", csrfForm, async (c) => {
         console.error("password reset email failed (token still minted):", err);
       }
     }
-
-    await resetScopedLimit(db, "forgot", normalizedEmail, now, AUTH_RATE_LIMIT_WINDOW_SECONDS);
+    // No resetScopedLimit here — the atomic spend above already counted
+    // this request against the budget, and (per DEC-180 wave-29) /forgot
+    // never refunds, existing account or not, so the two branches stay
+    // indistinguishable from the budget's point of view.
   } else {
     // No account: burn a comparable SHA-256 cost to the mint path above
     // (DEC-004-style — never short-circuit past the work a real branch
-    // would do). The budget was already incremented atomically above,
-    // before this branch ran — nothing further to record on failure.
+    // would do). The budget was already spent atomically at admission
+    // above, before this branch ran — nothing further to record.
     await hashResetToken(newResetToken());
   }
 

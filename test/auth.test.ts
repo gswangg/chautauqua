@@ -277,6 +277,30 @@ describe("POST /login rate limiting (DEC-180)", () => {
     return raw && typeof raw === "object" && "value" in (raw as object) ? (raw as { value: unknown }).value : raw;
   }
 
+  // DEC-180 (wave-29 amendment): refundScopedLimit's where clause is
+  // `and(eq(key, ...), gt(count, 0))` -- a nested condition tree, not the
+  // flat eq() shape extractEqValue targets. Recursively hunts for the
+  // `{ name: "key" }` chunk and reads the value two slots later (mirroring
+  // eq()'s own queryChunks layout), so it finds the key regardless of how
+  // deeply the eq clause is nested inside the surrounding and().
+  function findKeyValue(cond: unknown): string | undefined {
+    if (!cond || typeof cond !== "object") return undefined;
+    const chunks = (cond as { queryChunks?: unknown[] }).queryChunks;
+    if (!Array.isArray(chunks)) return undefined;
+    for (let i = 0; i < chunks.length; i++) {
+      const c = chunks[i];
+      if (c && typeof c === "object" && (c as { name?: unknown }).name === "key") {
+        const raw = chunks[i + 2];
+        return raw && typeof raw === "object" && "value" in (raw as object) ? ((raw as { value: unknown }).value as string) : (raw as string);
+      }
+    }
+    for (const c of chunks) {
+      const found = findKeyValue(c);
+      if (found !== undefined) return found;
+    }
+    return undefined;
+  }
+
   async function buildApp() {
     const passwordHash = await hashPassword(PASSWORD);
     const users = [
@@ -359,6 +383,22 @@ describe("POST /login rate limiting (DEC-180)", () => {
               rateLimits.delete(key as string);
             }
             return Promise.resolve();
+          },
+        };
+      },
+      update(table: unknown) {
+        return {
+          set(_patch: unknown) {
+            return {
+              where(cond: unknown) {
+                if (table === schema.rateLimit) {
+                  const key = findKeyValue(cond);
+                  const row = key ? rateLimits.get(key) : undefined;
+                  if (row && row.count > 0) row.count -= 1;
+                }
+                return Promise.resolve();
+              },
+            };
           },
         };
       },
