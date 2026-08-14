@@ -695,6 +695,124 @@ describe('ResultsTable standalone keeps pager + export, one heading (DEC-737)', 
   });
 });
 
+// DEC-633 amendment (wave 25/A27+B8): the expanded reviews band inherits the
+// results table's own column grid -- each evaluation is a real <tr>, so its
+// reviewer-name and score cells land under the Title/Score headers with no
+// hand-copied grid template.
+describe('ResultsTable expanded reviews band inherits the column grid (DEC-633)', () => {
+  it('lines up the reviewer name under Title (2nd td) and the score under Score (5th td)', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([resultsRow()]),
+      [`GET /api/v1/submissions/sub-1/evaluations`]: listEnvelope([
+        {
+          planId: PLAN_ID,
+          planName: 'Track Review',
+          round: 1,
+          reviewerName: 'Priya Patel',
+          scores: { c1: 4 },
+          score: 4,
+          criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+          comment: null,
+          submittedAt: 1700000000000,
+        },
+      ]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /3 reviews/ }));
+
+    expect(await screen.findByText('Priya Patel')).toBeInTheDocument();
+
+    const evaluationRow = screen.getByText('Priya Patel').closest('tr')!;
+    expect(evaluationRow.classList.contains('chq-review-reviews-row')).toBe(true);
+    const cells = Array.from(evaluationRow.querySelectorAll('td'));
+    expect(cells.length).toBe(7);
+    expect(cells[1]!.textContent).toContain('Priya Patel');
+    expect(cells[4]!.textContent).toBe('4.0');
+  });
+
+  it('renders — in the Score cell for a recused/null-score evaluation', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([resultsRow()]),
+      [`GET /api/v1/submissions/sub-1/evaluations`]: listEnvelope([
+        {
+          planId: PLAN_ID,
+          planName: 'Track Review',
+          round: 1,
+          reviewerName: 'Recused Reviewer',
+          scores: {},
+          score: null,
+          criteria: [],
+          comment: null,
+          submittedAt: null,
+        },
+      ]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /3 reviews/ }));
+
+    expect(await screen.findByText('Recused Reviewer')).toBeInTheDocument();
+    const evaluationRow = screen.getByText('Recused Reviewer').closest('tr')!;
+    const cells = Array.from(evaluationRow.querySelectorAll('td'));
+    expect(cells[4]!.textContent).toBe('—');
+  });
+
+  it('renders the recusal footer exactly once when the row has recusals', async () => {
+    mockApi({
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([{ ...resultsRow(), recusals: 2 }]),
+      [`GET /api/v1/submissions/sub-1/evaluations`]: listEnvelope([
+        {
+          planId: PLAN_ID,
+          planName: 'Track Review',
+          round: 1,
+          reviewerName: 'Priya Patel',
+          scores: { c1: 4 },
+          score: 4,
+          criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+          comment: null,
+          submittedAt: 1700000000000,
+        },
+      ]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /3 reviews · 2 recusals/ }));
+
+    expect(await screen.findByText('Priya Patel')).toBeInTheDocument();
+    const footerMatches = screen.getAllByText(/reviewers? recused · their scores are excluded from the mean/);
+    expect(footerMatches).toHaveLength(1);
+    expect(footerMatches[0]!.textContent).toBe('2 reviewers recused · their scores are excluded from the mean');
+  });
+});
+
 describe('ResultsTable sort honesty (DEC-737)', () => {
   function deferred<T>() {
     let resolve!: (value: T) => void;

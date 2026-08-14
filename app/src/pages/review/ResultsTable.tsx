@@ -464,8 +464,10 @@ export function ResultsTable({
                   )}
                 </td>
               </tr>
-              {expanded && (
-                <tr className="chq-review-reviews-row">
+              {expanded && (evaluationsLoadingId === row.submissionId ||
+                (evaluationsError && !evaluations) ||
+                (evaluations && evaluations.length === 0)) && (
+                <tr className="chq-review-reviews-row chq-review-band-row chq-review-band-first chq-review-band-last">
                   <td colSpan={columnCount} className="chq-review-reviews-detail">
                     {evaluationsLoadingId === row.submissionId && <DelayedLoading label="Loading reviews…" />}
                     {evaluationsError && !evaluations && evaluationsLoadingId !== row.submissionId && (
@@ -474,38 +476,58 @@ export function ResultsTable({
                       </div>
                     )}
                     {evaluations && evaluations.length === 0 && <p>No evaluations yet.</p>}
-                    {evaluations && evaluations.length > 0 && (
-                      <ul className="chq-review-reviews-list">
-                        {evaluations.map((ev, i) => (
-                          <li key={`${ev.planId}-${ev.round}-${i}`} className="chq-review-reviews-item">
-                            <div className="chq-review-reviews-item-head">
-                              {/* DEC-736: the server always resolves a
-                                 reviewer name on this organiser-facing
-                                 endpoint -- no '(anonymized)' branch. */}
-                              <span className="chq-review-reviews-reviewer">{ev.reviewerName}</span>
-                              <span className="chq-review-reviews-score-total">
-                                {ev.score !== null ? ev.score.toFixed(1) : '—'}
-                              </span>
-                              <span className="chq-review-reviews-plan-round">
-                                {ev.planName} · Round {ev.round}
-                              </span>
-                            </div>
-                            <div className="chq-review-reviews-scores">
-                              {/* DEC-723: one chip per criterion, labelled
-                                 from the item's own resolved criteria --
-                                 the raw criterionId never appears in the
-                                 DOM. */}
-                              {ev.criteria.map((c) => (
-                                <span key={c.id} className="chq-review-reviews-score-chip">
-                                  {c.label}: {String(ev.scores[c.id] ?? '—')}
-                                </span>
-                              ))}
-                            </div>
-                            {ev.comment && <p className="chq-review-reviews-comment">{ev.comment}</p>}
-                          </li>
+                  </td>
+                </tr>
+              )}
+              {/* DEC-633 amendment (wave 25/A27+B8): each evaluation is its
+                 own real <tr> in the results table so the browser aligns it
+                 to the header columns -- no hand-copied grid template. */}
+              {expanded &&
+                evaluations &&
+                evaluations.length > 0 &&
+                evaluations.map((ev, i) => (
+                  <tr
+                    key={`${ev.planId}-${ev.round}-${i}`}
+                    className={
+                      'chq-review-reviews-row chq-review-band-row' +
+                      (i === 0 ? ' chq-review-band-first' : '') +
+                      (i === evaluations.length - 1 && row.recusals === 0 ? ' chq-review-band-last' : '')
+                    }
+                  >
+                    <td data-label="Rank" className="chq-review-reviews-cell" />
+                    <td data-label="Title" className="chq-review-reviews-cell">
+                      {/* DEC-736: the server always resolves a reviewer name
+                         on this organiser-facing endpoint -- no
+                         '(anonymized)' branch. */}
+                      <span className="chq-review-reviews-reviewer">{ev.reviewerName}</span>
+                    </td>
+                    <td data-label="Speaker" className="chq-review-reviews-cell">
+                      <div className="chq-review-reviews-scores">
+                        {/* DEC-723: one chip per criterion, labelled from the
+                           item's own resolved criteria -- the raw
+                           criterionId never appears in the DOM. */}
+                        {ev.criteria.map((c) => (
+                          <span key={c.id} className="chq-review-reviews-score-chip">
+                            {c.label}: {String(ev.scores[c.id] ?? '—')}
+                          </span>
                         ))}
-                      </ul>
-                    )}
+                      </div>
+                      {ev.comment && <p className="chq-review-reviews-comment">{ev.comment}</p>}
+                    </td>
+                    <td data-label="Track" className="chq-review-reviews-cell" />
+                    <td data-label="Score" className="chq-review-reviews-cell chq-review-reviews-score-total">
+                      {ev.score !== null ? ev.score.toFixed(1) : '—'}
+                    </td>
+                    <td data-label="Reviews" className="chq-review-reviews-cell chq-review-reviews-plan-round">
+                      {ev.planName} · Round {ev.round}
+                    </td>
+                    <td data-label="Decision" className="chq-review-reviews-cell" />
+                  </tr>
+                ))}
+              {expanded && evaluations && evaluations.length > 0 && row.recusals > 0 && (
+                <tr className="chq-review-reviews-row chq-review-band-row chq-review-band-last chq-review-reviews-recusal-footer">
+                  <td colSpan={columnCount} className="chq-review-reviews-detail">
+                    {countOf(row.recusals, 'reviewer')} recused · their scores are excluded from the mean
                   </td>
                 </tr>
               )}
