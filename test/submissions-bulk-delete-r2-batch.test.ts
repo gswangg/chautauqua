@@ -35,6 +35,7 @@ interface State {
   events: Row[];
   submissions: Row[];
   evaluations: Row[];
+  planReviewers: Row[];
   files: Row[];
   taskAssignments: Row[];
   fileComments: Row[];
@@ -58,6 +59,8 @@ function colMap(): Map<unknown, (row: Row) => unknown> {
   m.set(schema.submission.title, (r) => r.title);
   m.set(schema.evaluation.submissionId, (r) => r.submissionId);
   m.set(schema.evaluation.submittedAt, (r) => r.submittedAt);
+  m.set(schema.planReviewer.submissionId, (r) => r.submissionId);
+  m.set(schema.planReviewer.id, (r) => r.id);
   m.set(schema.file.submissionId, (r) => r.submissionId);
   m.set(schema.file.r2Key, (r) => r.r2Key);
   m.set(schema.file.id, (r) => r.id);
@@ -105,6 +108,7 @@ function makeFakeDb(state: State, log: EventLog) {
     [schema.event, "events"],
     [schema.submission, "submissions"],
     [schema.evaluation, "evaluations"],
+    [schema.planReviewer, "planReviewers"],
     [schema.file, "files"],
     [schema.taskAssignment, "taskAssignments"],
     [schema.fileComment, "fileComments"],
@@ -230,6 +234,7 @@ function fixture(): State {
     events: [{ id: "ev1", recordPrefix: "SES", orgId: "org-1" }],
     submissions,
     evaluations: [], // none submitted — every submission is eligible
+    planReviewers: [],
     files,
     taskAssignments: [],
     fileComments: [],

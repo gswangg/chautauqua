@@ -13,7 +13,8 @@
 // Everything a submission owns is removed set-based/chunked (never a query
 // per id, DEC-078's chunkIds): submission_answer, submission_track,
 // participant, schedule_slot, file + file_comment, review_recusal,
-// submission_revision, then the submission row itself. task_assignment rows
+// submission_revision, evaluation, plan_reviewer, then the submission row
+// itself. task_assignment rows
 // completed via one of the submission's files (task_assignment has no
 // submissionId column — its only link to a submission is through
 // task_assignment.file_id) are NEVER deleted by this cascade: a completed
@@ -46,6 +47,13 @@ export interface DeleteCounts {
   recusals: number;
   revisions: number;
   taskResponses: number;
+  // DEC-886 amendment (wave 60): draft evaluation.submissionId rows plus
+  // plan_reviewer.submissionId scope rows, folded into one count — both are
+  // review-side references that would otherwise orphan on a submission
+  // delete. Submitted evaluations already refuse the delete entirely
+  // (see submittedSubmissionIds below), so any evaluation counted here is
+  // necessarily a draft.
+  reviewAssignments: number;
 }
 
 export interface EligibleSubmissionDelete {
@@ -66,7 +74,17 @@ export interface SubmissionDeletePlan {
 }
 
 function emptyCounts(): DeleteCounts {
-  return { files: 0, comments: 0, participants: 0, answers: 0, tracks: 0, recusals: 0, revisions: 0, taskResponses: 0 };
+  return {
+    files: 0,
+    comments: 0,
+    participants: 0,
+    answers: 0,
+    tracks: 0,
+    recusals: 0,
+    revisions: 0,
+    taskResponses: 0,
+    reviewAssignments: 0,
+  };
 }
 
 /**
@@ -91,7 +109,9 @@ async function foldGroupedSubmissionCounts(
     for (const r of rows as unknown as { submissionId: string; count: number }[]) {
       const c = counts.get(r.submissionId);
       if (!c) continue;
-      c[key] = Number(r.count);
+      // Accumulate rather than overwrite: reviewAssignments folds two
+      // tables (evaluation, plan_reviewer) into one key across two calls.
+      c[key] += Number(r.count);
     }
   }
 }
@@ -187,6 +207,11 @@ export async function planSubmissionDelete(db: Db, eventId: string, ids: string[
   await foldGroupedSubmissionCounts(db, eligibleIds, counts, "tracks", schema.submissionTrack);
   await foldGroupedSubmissionCounts(db, eligibleIds, counts, "recusals", schema.reviewRecusal);
   await foldGroupedSubmissionCounts(db, eligibleIds, counts, "revisions", schema.submissionRevision);
+  // DEC-886 amendment: draft evaluations (submitted ones already refused
+  // the whole submission above) and plan_reviewer's per-submission scope
+  // rows both carry submissionId and both fold into the same key.
+  await foldGroupedSubmissionCounts(db, eligibleIds, counts, "reviewAssignments", schema.evaluation);
+  await foldGroupedSubmissionCounts(db, eligibleIds, counts, "reviewAssignments", schema.planReviewer);
 
   // comments/taskResponses hang off file_id, not submission_id — group by
   // file_id over the id set already collected above, then fold into the
@@ -290,6 +315,11 @@ export async function commitSubmissionDelete(db: Db, eventId: string, submission
     await db.delete(schema.scheduleSlot).where(inArray(schema.scheduleSlot.submissionId, chunk));
     await db.delete(schema.reviewRecusal).where(inArray(schema.reviewRecusal.submissionId, chunk));
     await db.delete(schema.submissionRevision).where(inArray(schema.submissionRevision.submissionId, chunk));
+    // DEC-886 amendment: draft evaluations and plan_reviewer's
+    // per-submission scope rows both reference submissionId and both go
+    // before the submission row, alongside every other owned table.
+    await db.delete(schema.evaluation).where(inArray(schema.evaluation.submissionId, chunk));
+    await db.delete(schema.planReviewer).where(inArray(schema.planReviewer.submissionId, chunk));
     await db
       .delete(schema.submission)
       .where(and(eq(schema.submission.eventId, eventId), inArray(schema.submission.id, chunk)));
