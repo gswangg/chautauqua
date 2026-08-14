@@ -5,6 +5,8 @@ import {
   previewMerge,
   matchesSegment,
   mapImportRow,
+  mergedInviteStatus,
+  mergedParticipantVisible,
   type ContactRecord,
   type SegmentRule,
 } from "../src/domain/contacts";
@@ -239,6 +241,45 @@ describe("planMerge", () => {
 
     const primarySame = contact({ id: "p", email: "p@example.com", firstName: "P", lastName: "P", notes: "Shared note." });
     expect(planMerge(primarySame, dup).merged.notes).toBe("Shared note.");
+  });
+});
+
+describe("mergedInviteStatus (DEC-282 amendment)", () => {
+  it("keeps an accepted invite when merged into a declined keeper", () => {
+    expect(mergedInviteStatus("declined", "accepted")).toBe("accepted");
+  });
+
+  it("keeps an accepted invite when the keeper has accepted and the duplicate is declined", () => {
+    expect(mergedInviteStatus("accepted", "declined")).toBe("accepted");
+  });
+
+  it("ranks declined above invited and invited above none", () => {
+    expect(mergedInviteStatus("invited", "declined")).toBe("declined");
+    expect(mergedInviteStatus("none", "invited")).toBe("invited");
+  });
+
+  it("keeps the keeper's value on a tie", () => {
+    expect(mergedInviteStatus("accepted", "accepted")).toBe("accepted");
+  });
+
+  it("never lets an unrecognized literal displace a known status", () => {
+    expect(mergedInviteStatus("accepted", "bogus")).toBe("accepted");
+    expect(mergedInviteStatus("bogus", "none")).toBe("none");
+  });
+});
+
+describe("mergedParticipantVisible (DEC-282 amendment)", () => {
+  it("is visible if either side is visible", () => {
+    expect(mergedParticipantVisible(false, true)).toBe(true);
+    expect(mergedParticipantVisible(true, false)).toBe(true);
+  });
+
+  it("stays hidden only when both sides are hidden", () => {
+    expect(mergedParticipantVisible(false, false)).toBe(false);
+  });
+
+  it("stays visible when both sides are visible", () => {
+    expect(mergedParticipantVisible(true, true)).toBe(true);
   });
 });
 

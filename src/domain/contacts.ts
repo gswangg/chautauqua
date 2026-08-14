@@ -5,6 +5,7 @@
 
 // DEC-467: exactly one normalizeEmail survives in the product (src/domain/email.ts).
 import { normalizeEmail } from "./email";
+import { ACTIVE_INVITE_STATUSES } from "./acceptance";
 import { DEC_800 } from "../decisions";
 
 void DEC_800;
@@ -338,6 +339,43 @@ export function planMerge(primary: ContactRecord, duplicate: ContactRecord): Mer
   if (Object.keys(customFields).length > 0) merged.customFields = customFields;
 
   return { merged, duplicateId: duplicate.id };
+}
+
+// invite_status's full vocabulary is 'none' | 'invited' | 'accepted' |
+// 'declined' (DEC-003); 'accepted'/'none' are restated here from
+// ACTIVE_INVITE_STATUSES (src/domain/acceptance.ts) rather than a second,
+// independently-typed literal union so the two modules can't drift.
+const [INVITE_STATUS_NONE, INVITE_STATUS_ACCEPTED] = ACTIVE_INVITE_STATUSES;
+const INVITE_STATUS_RANK: Record<string, number> = {
+  [INVITE_STATUS_ACCEPTED]: 3,
+  declined: 2,
+  invited: 1,
+  [INVITE_STATUS_NONE]: 0,
+};
+
+/**
+ * DEC-282 amendment: picks the surviving participant.inviteStatus when both
+ * contacts being merged are participants on the same submission. Rank
+ * accepted(3) > declined(2) > invited(1) > none(0) so a genuine acceptance is
+ * never silently discarded by merging the accepted duplicate into a keeper
+ * that only got as far as 'declined' or 'invited' — max wins. An unrecognized
+ * literal ranks lowest (below 'none') and can never displace a known
+ * status; ties keep `a` (the kept contact's own value).
+ */
+export function mergedInviteStatus(a: string, b: string): string {
+  const rankA = INVITE_STATUS_RANK[a] ?? -1;
+  const rankB = INVITE_STATUS_RANK[b] ?? -1;
+  return rankB > rankA ? b : a;
+}
+
+/**
+ * DEC-282 amendment: picks the surviving participant.visible flag when both
+ * contacts being merged are participants on the same submission — logical
+ * OR, so merging a publicly-visible duplicate into a keeper that was hidden
+ * never silently pulls the merged person out of public visibility.
+ */
+export function mergedParticipantVisible(a: boolean, b: boolean): boolean {
+  return a || b;
 }
 
 export interface MergeFieldPreview {

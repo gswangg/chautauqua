@@ -207,6 +207,62 @@ describe("mergeContacts task_assignment dedupe (DEC-282)", () => {
   });
 });
 
+describe("mergeContacts participant dedupe (DEC-282 amendment)", () => {
+  it("accepted survives being merged into a declined keeper", async () => {
+    const { db, updates, deletes } = fakeDb([
+      [KEEP], // findContactById(keepId)
+      [MERGE], // findContactById(mergeId)
+      [], // user rows for keepId
+      [], // user rows for mergeId
+      [], // (b2) DEC-479 email conflict pre-check
+      [{ id: "part-merge", submissionId: "sub-1", inviteStatus: "accepted", visible: true }], // mergeParticipants
+      [{ id: "part-keep", submissionId: "sub-1", inviteStatus: "declined", visible: true }], // keepParticipants
+      [], // task_assignment for mergeId
+      [], // task_assignment for keepId
+      [], // pipelineEntry for keepId
+      [], // pipelineEntry for mergeId
+      [KEEP], // findContactById(keepId) after merge
+    ]);
+
+    await mergeContacts(db, KEEP.id, [MERGE.id]);
+
+    const statusUpdate = updates.find(
+      (u) => u.table === schema.participant && (u.vals as { inviteStatus?: string }).inviteStatus !== undefined,
+    );
+    expect(statusUpdate).toBeDefined();
+    expect((statusUpdate!.vals as { inviteStatus: string }).inviteStatus).toBe("accepted");
+
+    // The kept row is updated in place, never the merged row (which is
+    // deleted) -- deletes must still show exactly one participant delete.
+    expect(deletes.filter((d) => d.table === schema.participant).length).toBe(1);
+  });
+
+  it("visible survives being merged into a hidden keeper", async () => {
+    const { db, updates } = fakeDb([
+      [KEEP], // findContactById(keepId)
+      [MERGE], // findContactById(mergeId)
+      [], // user rows for keepId
+      [], // user rows for mergeId
+      [], // (b2) DEC-479 email conflict pre-check
+      [{ id: "part-merge", submissionId: "sub-1", inviteStatus: "none", visible: true }], // mergeParticipants
+      [{ id: "part-keep", submissionId: "sub-1", inviteStatus: "none", visible: false }], // keepParticipants
+      [], // task_assignment for mergeId
+      [], // task_assignment for keepId
+      [], // pipelineEntry for keepId
+      [], // pipelineEntry for mergeId
+      [KEEP], // findContactById(keepId) after merge
+    ]);
+
+    await mergeContacts(db, KEEP.id, [MERGE.id]);
+
+    const visibleUpdate = updates.find(
+      (u) => u.table === schema.participant && (u.vals as { visible?: boolean }).visible !== undefined,
+    );
+    expect(visibleUpdate).toBeDefined();
+    expect((visibleUpdate!.vals as { visible: boolean }).visible).toBe(true);
+  });
+});
+
 describe("mergeContacts login-account conflict guard (DEC-282)", () => {
   it("both have user rows -> conflict thrown, and no delete/update was issued", async () => {
     const { db, updates, deletes } = fakeDb([

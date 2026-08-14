@@ -22,8 +22,14 @@ const EVERY_PARTICIPANT_AUDIENCE: Record<string, string> = {
     "delete-reference check: lists every submission a contact participates in so a delete refusal can name them, regardless of invite status",
   "src/server/repo/contacts/history.ts":
     "contact detail history panel: lists every submission a contact ever participated in, including declined invites",
-  "src/server/repo/contacts/merge.ts":
-    "write path: counts/reassigns/deletes every participant row for a merged contact, regardless of invite status",
+  // src/server/repo/contacts/merge.ts is deliberately absent (DEC-282
+  // amendment, wave 60): its participant dedupe now selects
+  // schema.participant.inviteStatus (to fold an accepted invite into the
+  // surviving row before the duplicate is deleted), which is itself an
+  // AUDIENCE_MARKERS literal -- the file now "declares an audience" by this
+  // scan's own definition, so an exemption entry here would be the stale
+  // allowance DEC-985 guards against, even though the read is still a
+  // write-path dedupe by contactId, not an eligibility read.
   "src/server/repo/exports/agenda.ts":
     "export surface: reports every participant row on an accepted/placed session",
   "src/server/repo/exports/showflow.ts":
