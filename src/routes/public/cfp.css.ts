@@ -131,6 +131,7 @@ export const CFP_CSS = `
   .chq-cfp-confirm-flag { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--chq-brand); }
   .chq-cfp-confirm h1 { font-family: var(--chq-font-display); font-size: 27px; font-weight: 700; letter-spacing: -0.04em; line-height: 1.08; margin: 0; }
   .chq-cfp-confirm-card { border: 1px solid var(--chq-rule); border-radius: 8px; background: var(--chq-surface); padding: 15px; display: flex; flex-direction: column; gap: 5px; }
+  .chq-cfp-confirm-card-meta { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--chq-muted); }
   .chq-cfp-confirm-body { font-size: 15px; line-height: 1.65; color: var(--chq-ink-2); }
   .chq-cfp-confirm-actions { border-top: 1px solid var(--chq-hairline); padding-top: 16px; display: flex; flex-direction: column; gap: 11px; }
 

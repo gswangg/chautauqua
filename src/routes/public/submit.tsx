@@ -33,7 +33,7 @@ import { commitSubmissionDelete } from "../../server/repo/submission-delete";
 import { validateAnswers } from "../../forms/validate";
 import { makeVisibilityPredicate } from "../../forms/visibility";
 import type { AnswerMap } from "../../forms/types";
-import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, lockedFieldName } from "../../forms/types";
+import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, SESSION_FORMAT_FIELD_ID, lockedFieldName } from "../../forms/types";
 import {
   formWindowState,
   validateTrackChoice,
@@ -657,6 +657,22 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
       ? "fresh"
       : "pending-existing-contact";
 
+  // DEC-098 (wave 8 amendment): the confirmation card states the talk's
+  // track and format, not just its title -- built from what was JUST
+  // persisted, no extra query. The track clause is looked up from the
+  // offered-tracks list already in scope (joined in that list's own order,
+  // ' · '-separated, for the rare multi-select case); the format clause is
+  // the SESSION_FORMAT_FIELD_ID answer's label verbatim (an option's raw
+  // value already carries its own "(N min)" suffix -- see FormatChoices).
+  const selectedTrackNames = tracks.filter((t) => selectedTrackIds.includes(t.id)).map((t) => t.name);
+  const formatAnswer = cleaned[SESSION_FORMAT_FIELD_ID];
+  const formatLabel = typeof formatAnswer === "string" && formatAnswer.trim() !== "" ? formatAnswer : null;
+  const metaParts = [
+    selectedTrackNames.length > 0 ? selectedTrackNames.join(" · ") : null,
+    formatLabel,
+  ].filter((part): part is string => part !== null);
+  const meta = metaParts.length > 0 ? metaParts.join(" · ") : null;
+
   return c.html(
     <ConfirmationPage
       event={event}
@@ -668,6 +684,7 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
       eventSlug={event.slug}
       form={form}
       emailDelivered={confirmationEmailSent}
+      meta={meta}
     />,
   );
 });
