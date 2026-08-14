@@ -93,20 +93,41 @@ export const AUTH_CSS = `
   .chq-auth-card-notice .chq-auth-body { margin-bottom: 26px; }
 
   .chq-auth-titlerow { display: flex; flex-direction: column; gap: 10px; }
+  /* wave-6 (11-account gate-4): /account/password's h1 -> "CURRENT
+     PASSWORD" gap inherits the card's uniform 26px gap, measuring 29.0
+     against the frame's 20.5. Scoped to a titlerow immediately followed by
+     the fields form (only /account/password's PasswordPage shape -- the
+     404 notice card and the expired-claim card both put a <p> next, never
+     a form) so login's own titlerow-free header and the notice card's own
+     margin-bottom:19px override are both untouched. */
+  .chq-auth-titlerow:has(+ .chq-auth-fields) { margin-bottom: -8.5px; }
   .chq-auth-back {
     font-size: 13px;
     font-weight: 700;
     min-height: 44px;
     display: inline-flex;
-    align-items: center;
+    align-items: flex-start;
     align-self: flex-start;
+    /* wave-6: min-height:44 keeps the 44px hit area, but centering the ink
+       inside that box added ~13px of dead lead below the "Back" text (ink
+       bottom -> h1 ink top measured 35.5 against the frame's 22.5) --
+       align-items:flex-start plus this negative margin-bottom pull the
+       following h1 back up by exactly that delta without shrinking the
+       44px tap target itself. */
+    margin-bottom: -13px;
     text-decoration: none;
   }
   .chq-auth-back:hover,
   .chq-auth-back:focus-visible { text-decoration: underline; }
   /* v6: ‹ Back and the h1 share one x -- no margin-left indent. */
 
-  .chq-auth-fields { display: flex; flex-direction: column; gap: 14px; }
+  /* wave-6 (11-account gate-4): .chq-auth-fields is itself a <form>
+     element on both /login and /account/password -- the UA default form
+     margin stacked on top of the card's own 26px gap, measuring 42.0
+     (Sign-in button bottom -> footer divider) against the frame's 26.5.
+     Zeroing it here lands the gap on the card's own gap value, no second
+     source of rhythm. */
+  .chq-auth-fields { display: flex; flex-direction: column; gap: 14px; margin: 0; }
   .chq-auth-label {
     display: block;
     font-size: 11px;
@@ -136,6 +157,12 @@ export const AUTH_CSS = `
     gap: 14px;
     border-top: 1px solid var(--chq-rule);
     padding-top: 18px;
+    /* wave-6: last-input bottom -> divider measured 14.0 (the .chq-auth-
+       fields flex gap alone) against the frame's 20.5 -- .chq-auth-actions
+       is the LAST child inside the .chq-auth-fields form (/account/password
+       only), so this margin-top adds the remaining 6.5px without touching
+       the 14px pitch between the password fields themselves. */
+    margin-top: 6.5px;
   }
   .chq-auth-actions button[type=submit] { width: auto; padding: 0 20px; }
   .chq-auth-hint { font-size: 13px; color: var(--chq-muted); }
@@ -163,6 +190,18 @@ export const AUTH_CSS = `
                              draw. */
     text-decoration: none;
   }
+  /* wave-6: scoped to the /login footer's own links row (never the 404
+     card's -- .chq-auth-card-notice's body->links 26px gap is already
+     frame-exact per DEC-945's wave-1 amendment and must stay untouched).
+     Centering the ink inside the 44px box put half the box's dead lead
+     ABOVE the text (divider -> ink-top measured 35.0 against the frame's
+     17.0) -- flex-start moves the ink flush to the box's top edge so the
+     full 44px hit area survives entirely BELOW the ink instead, with no
+     top padding added (padding above the text would itself become extra
+     rhythm the frame doesn't draw). */
+  .chq-auth-footer .chq-auth-footer-links a {
+    align-items: flex-start;
+  }
   .chq-auth-footer-links a:hover,
   .chq-auth-footer-links a:focus-visible { text-decoration: underline; }
 
@@ -179,15 +218,18 @@ export const AUTH_CSS = `
      still a <button type="button"> (DEMO_PREFILL_SCRIPT delegates on the
      .chq-auth-demo-btn class + click event), just restyled to read as
      tertiary link text. */
+  /* wave-6: takes the card's own link vocabulary (the same numbers as
+     .chq-auth-footer-links a: 14px/700, brand olive ink, no underline at
+     rest) instead of the smaller 13px underlined-at-rest treatment. */
   .chq-auth-demo-buttons .chq-auth-demo-btn {
     all: unset;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
-    color: var(--chq-ink);
-    text-decoration: underline;
+    color: #4E5C31;
+    text-decoration: none;
   }
-  .chq-auth-demo-buttons .chq-auth-demo-btn:hover { color: var(--chq-muted); }
+  .chq-auth-demo-buttons .chq-auth-demo-btn:hover { text-decoration: underline; }
   /* DEC-366: the "all: unset" declaration above also unsets the UA's
      default outline, so without this the demo prefill buttons are the
      only controls on the auth surface with no focus ring at all. Restore
