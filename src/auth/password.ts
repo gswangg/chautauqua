@@ -58,6 +58,16 @@ async function deriveKey(password: string, salt: Uint8Array): Promise<Uint8Array
   return new Uint8Array(derivedBits);
 }
 
+// DEC-004 (wave 58 amendment): a well-formed, literal PBKDF2 hash that no
+// real password can ever match (fixed salt/hash bytes, never produced by
+// hashPassword's random salt generation). Exists solely so callers that
+// don't have a user record can still run exactly one KDF derivation against
+// something — equalizing the cost of the "unknown email" branch with the
+// "known email, wrong password" branch and closing the login timing oracle.
+// Never used to authenticate anything.
+export const DUMMY_PASSWORD_HASH =
+  "pbkdf2$v1$100000$qqqqqqqqqqqqqqqqqqqqqg$VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU";
+
 export async function hashPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
   const derived = await deriveKey(password, salt);
