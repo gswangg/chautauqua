@@ -24,33 +24,38 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   IS NOT PROVEN AT THE ROUTE; A LIMITER THAT PEEKS ISN'T ONE UNDER
   CONCURRENCY; A CAP CHECKED AFTER THE BUFFER IS NOT A CAP; A BULK ID ARRAY
   IS A SET OR A DOUBLE-SEND; A BOUND ON THE WRITE SIDE IS NOT A BOUND ON
-  THE READ SIDE; A SHARED COMPONENT W/ONLY ITS OWN TEST MARKS THE SHAPE
-  NOBODY BUILT; PARSE RESULT DISCARDED != PARSED; AMENDMENT W/NO CALL SITE
-  IS OPEN; A WATERMARK STORING ITS OWN START LOSES LATE-COMMITTING WRITES
-  -- read back, stamp forward; A STAMP FIRED ON A NON-CHANGE IS A WORKLIST
-  EVICTION -- grep the stamp's 2nd reader for a LIMIT; A FIGURE COMPUTED
-  FOR NOBODY IS A HOT-ROUTE TAX; THE DECISIONS' OWN PATH REFS ARE A CHEAP
-  DRIFT DETECTOR. Amendments DEC-124/958/745/653/897/793/575/657/180/949/
-  974/874. `npm run deploy` absent is BY DESIGN (README stage-2 deploy).
-- FINDINGS w34-35 (compacted, do NOT re-file): /forgot redaction gap fixed -> redactCredentialUrls
-  covers /claim/+/reset/; consume-before-validate reset fixed; CFP confirmation via renderEmailHtml;
-  email-shell-sweep same-predicate fix (DEC-518 negative-control); route-authz's GUARD_NAMES unions
-  csrf w/authz (csrfJson everywhere made the scan unfalsifiable); no wrong-OWNER probe; B8 states
-  source-scanned only. Shapes: A REDACTOR IS A SET OF SHAPES NOT ONE REGEX; CONSUME-BEFORE-VALIDATE
-  TURNS A TYPO INTO A DEAD LINK; A CSRF CHECK IS NOT AN AUTHZ CHECK; A PROOF NOBODY HAS SHOWN A
-  VIOLATION TO IS NOT A PROOF -- ship a NEGATIVE CONTROL; WRONG-ROLE/NO-ROLE MISS WRONG-OWNER.
-- FINDINGS w36 (verified AT THE FILE). OPEN, taken: POST /forgot spends ONE bucket keyed on EMAIL
-  (auth-reset.tsx:76) while /login spends login-user AND login-ip -- IP spraying distinct addresses
-  is unlimited; auth-reset.tsx:21 imports requestIpFromHeaders, never calls it; route-authz's PBD
-  reason already CLAIMS per-IP. The 116-row rubric-coverage table (docs/verification-log/task-w13-
-  g-...md) and README's "For evaluators" block (4 creds + slug + 19 routes) are unchecked CURRENT-
-  tense claims. First-paint skeletons proven by grepping for string `PageSkeleton`, never a render.
-- Re-verified CLOSED w36, do NOT re-file: parseBoundedIdArray dedupes, bulk-email.ts:43 uses the
-  RESULT; touchSubmissionsForContacts/Tracks wired from portal-edit/profile/events/crud/import/
-  merge; redactCredentialUrls covers both token URL shapes minted anywhere; CFP via renderEmailHtml
-  (submit.tsx:706); validate-then-consume reset + full runtime round-trip (walkthrough/
-  producer.ts:496-604); resolveBaseUrl refuses Host header outside DEV_MODE; rate_limit prunes
-  inline; CSV formula injection closed (DEC-179); framing deny-by-default; ics in embed picker.
-- Shapes: A PER-IDENTITY BUCKET IS NOT A BUDGET -- pair with a per-IP one. A LEDGER'S REASON IS A
-  CLAIM. CURRENT-TENSE PROSE IS A LIE WITH A TIMESTAMP -- a coverage claim carried forward must be
-  re-derived at test time. GREPPING A MODULE FOR AN IDENTIFIER PROVES AN IMPORT, NOT A PAINT.
+  THE READ SIDE; PARSE RESULT DISCARDED != PARSED; AMENDMENT W/NO CALL
+  SITE IS OPEN; A WATERMARK STORING ITS OWN START LOSES LATE-COMMITTING
+  WRITES -- read back, stamp forward; A FIGURE COMPUTED FOR NOBODY IS A
+  HOT-ROUTE TAX; THE DECISIONS' OWN PATH REFS ARE A CHEAP DRIFT DETECTOR.
+  Amendments DEC-124/958/745/653/897/793/575/657/180/949/974/874. `npm run
+  deploy` absent is BY DESIGN (README stage-2 deploy).
+- FINDINGS w34-36 (heavily compacted, do NOT re-file): redactCredentialUrls covers /claim/+/reset/;
+  consume-before-validate reset fixed; CFP via renderEmailHtml; route-authz's GUARD_NAMES split from
+  CSRF_GUARD_NAMES; parseBoundedIdArray dedupes+used; touchSubmissionsForContacts/Tracks wired
+  everywhere; resolveBaseUrl refuses Host outside DEV_MODE; CSV formula injection closed (DEC-179);
+  framing deny-by-default. Shapes: A REDACTOR IS A SET OF SHAPES NOT ONE REGEX; CONSUME-BEFORE-
+  VALIDATE TURNS A TYPO INTO A DEAD LINK; A CSRF CHECK IS NOT AN AUTHZ CHECK; A PROOF NOBODY HAS
+  SHOWN A VIOLATION TO IS NOT A PROOF -- ship a NEGATIVE CONTROL; WRONG-ROLE/NO-ROLE MISS WRONG-
+  OWNER; A PER-IDENTITY BUCKET IS NOT A BUDGET; CURRENT-TENSE PROSE IS A LIE WITH A TIMESTAMP;
+  GREPPING A MODULE FOR AN IDENTIFIER PROVES AN IMPORT, NOT A PAINT.
+- FINDINGS w37 (verified AT THE FILE, not inherited). Re-probed and CLOSED, do NOT re-file: /forgot
+  now spends forgot-ip AND forgot (w36-a landed); every anonymous-reachable limiter pairs an IP bucket
+  (login/forgot/submit/draft/claim); reset tokens are newest-only + revoked on any other password path;
+  markdown is escape-FIRST (quotes escaped, http(s)-only hrefs); every byte route sets nosniff +
+  attachment; criteria-row 6th track, distribute caption, CFP-builder Save, CFP close-now fast path,
+  EMB-01 snippet, agenda slot "Place <ref> at HH:MM" aria-label, publish {placed,public,heldBack},
+  useCurrentEvent stale-id self-heal, session expiry enforced at middleware.ts:71.
+- OPEN, taken w37: the TENANT axis is SPOT-CHECKED, NEVER ENUMERATED. anonymous/anonymous-mutation/
+  role-refusal/portal-owner probes exist; none drives a route POPULATION with another ORG's ids over
+  REAL rows -- SPA event context is client-controlled (localStorage chq.currentEventId), so
+  /api/v1/events/:id/* is attacker-parameterized by design.
+- Shapes: A MOCKED RESOLVER PROVES THE ROUTE CALLS IT, NOT THAT IT FILTERS. A THROWING DB CANNOT PROVE
+  A REFUSAL THAT REQUIRES A READ -- tenant checks need REAL ROWS (node:sqlite + drizzle sqlite-proxy
+  over migrations/ DDL, test/rate-limit-atomicity.test.ts, stays FAST-tier). SPOT-CHECKED IS NOT
+  ENUMERATED: without a two-directional ledger the NEXT route is uncovered. A 5xx IS NOT A REFUSAL.
+  A REFUSAL THAT MUTATES IS NOT A REFUSAL -- snapshot the victim's rows. For byte routes the status
+  is half the proof: assert the STORE WAS NEVER ASKED for the foreign key.
+- Rejected on inspection: an ownership-PREDICATE text scan over read/write chains --
+  test/write-scoping-invariant.scan.test.ts:37-42 rules a text scan cannot decide a delegate guard is
+  real; the convention is load-then-check behind an org-scoped resolver, probed at the ROUTE.
