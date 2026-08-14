@@ -13,6 +13,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { agendaHtmlContainsBreakLabel, breaksListContainsId, buildCreateBreakBody } from "../walkthrough-lib";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..", "..");
@@ -761,6 +762,85 @@ async function runJ5(organizerJar: CookieJar, eventId: string, eventStartDate: s
 }
 
 // ---------------------------------------------------------------------------
+// J9: break lifecycle end to end (DEC-063 amendment, wave 66) — create,
+// list, render on the public agenda for an anonymous visitor, delete, and
+// confirm it's gone. Walks the full lifecycle rather than just the API,
+// because wave 63 shipped the API + public renderer with no way in and
+// nothing caught it — no persona ever created a break and went looking.
+// ---------------------------------------------------------------------------
+
+async function runJ9(organizerJar: CookieJar, eventId: string, eventStartDate: string, eventEndDate: string): Promise<void> {
+  // A label that cannot collide with the seeded 'Coffee break'/'Lunch' rows.
+  const label = `Walkthrough Break ${Date.now()}`;
+
+  // (a) create.
+  const createRes = await api(
+    organizerJar,
+    "POST",
+    `/api/v1/events/${eventId}/breaks`,
+    buildCreateBreakBody(eventStartDate, label, 600, 20),
+  );
+  assertStatus("J9 POST /breaks", createRes.res, 201, createRes.text);
+  const breakId = createRes.json.id as string;
+  assertTrue("J9 created break has an id", Boolean(breakId), createRes.text);
+
+  // (b) list, filtered to that day, contains it.
+  const listRes = await api(organizerJar, "GET", `/api/v1/events/${eventId}/breaks?day=${eventStartDate}`);
+  assertStatus("J9 GET /breaks?day=", listRes.res, 200, listRes.text);
+  assertTrue(
+    "J9 breaks list contains the created break",
+    breaksListContainsId(listRes.json.items as { id: string }[], breakId),
+    listRes.text,
+  );
+
+  // (c) an anonymous visitor (no cookies at all — a bare fetch, not the
+  // jarFetch/CookieJar machinery the rest of this file uses for logged-in
+  // personas) sees the break's LABEL TEXT on the public agenda. Assert on
+  // label text only — never on a CSS class, element order, or DOM
+  // structure (wave 64-b is rewriting this page's markup underneath us).
+  const anonRes1 = await fetch(`${BASE_URL}/e/${SEEDED_EVENT_SLUG}/agenda?day=${eventStartDate}`);
+  const anonBody1 = await anonRes1.text();
+  assertStatus("J9 anonymous GET /e/.../agenda (break present)", anonRes1, 200, anonBody1);
+  assertTrue(
+    "J9 anonymous agenda page shows the break's label text",
+    agendaHtmlContainsBreakLabel(anonBody1, label),
+    anonBody1.slice(0, 2000),
+  );
+
+  // (e2) refusal leg: a day outside the event's date range 400s with
+  // fields.day set (src/routes/api/breaks.ts:103-107).
+  const outsideDay = "1999-01-01";
+  const rejectedRes = await api(
+    organizerJar,
+    "POST",
+    `/api/v1/events/${eventId}/breaks`,
+    buildCreateBreakBody(outsideDay, `${label} (should be rejected)`),
+  );
+  assertStatus("J9 POST /breaks with day outside event range", rejectedRes.res, 400, rejectedRes.text);
+  assertTrue(
+    "J9 out-of-range day rejection sets fields.day",
+    typeof rejectedRes.json?.error?.fields?.day === "string",
+    rejectedRes.text,
+  );
+  void eventEndDate; // reserved: eventStartDate alone is already outside 1999-01-01's range
+
+  // (d) delete.
+  const deleteRes = await api(organizerJar, "DELETE", `/api/v1/breaks/${breakId}`);
+  assertStatus("J9 DELETE /breaks/:id", deleteRes.res, 200, deleteRes.text);
+
+  // (e) the same anonymous fetch again — the label is gone, and the seed
+  // is left unchanged.
+  const anonRes2 = await fetch(`${BASE_URL}/e/${SEEDED_EVENT_SLUG}/agenda?day=${eventStartDate}`);
+  const anonBody2 = await anonRes2.text();
+  assertStatus("J9 anonymous GET /e/.../agenda (break removed)", anonRes2, 200, anonBody2);
+  assertTrue(
+    "J9 anonymous agenda page no longer shows the break's label text",
+    !agendaHtmlContainsBreakLabel(anonBody2, label),
+    anonBody2.slice(0, 2000),
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Cap-test fixture: 101 single-participant submissions in a throwaway event
 // ---------------------------------------------------------------------------
 
@@ -846,6 +926,10 @@ async function main(): Promise<void> {
   await runJ5(organizerJar, seededEvent.id, seededEvent.startDate, capEventId);
   console.log("  ok");
 
+  console.log("Running J9 (break lifecycle: create -> list -> public agenda -> delete) against devflow-conf-2027...");
+  await runJ9(organizerJar, seededEvent.id, seededEvent.startDate, seededEvent.endDate);
+  console.log("  ok");
+
   void newEventId;
 
   console.log("Running DEC-175 authz probes (unauthenticated requests)...");
@@ -853,7 +937,7 @@ async function main(): Promise<void> {
   console.log("  ok");
 
   console.log("");
-  console.log("producer walkthrough OK (J1, J2, J3, J5)");
+  console.log("producer walkthrough OK (J1, J2, J3, J5, J9)");
 }
 
 main().catch((err) => {
