@@ -56,20 +56,23 @@ agenda ≤700px, 390 plan editor) resumes ONLY after the desktop gate: fleet-cle
 eval composite at target. Mobile-additive-reflow scan-lock stays in force for anything
 already landed.
 
-## ⚠ STRAGGLER CALL-OUT (orchestrator, 17:05) — three ⚡ items are blocking the gate
+## ⚠ STRAGGLER STATUS (orchestrator, 17:55) — 1 of 3 CLOSED, 2 CLAIMED BY ORCHESTRATOR
 
-Wave planners: these three carry more eval weight than any hardening/scan work and are
-the ONLY items still blocking the gate cycle (fleet + deploy + sbek). Pull them into the
-next wave ahead of everything else:
-1. **AIA-04 FIX** — cross-room co-presenter double-booking must produce a conflict
-   indicator + co-presenters on grid cards. The verification seed is already in
-   (DEC-974); the detection fix itself has NOT landed. Runtime-verify against the seeded
-   clash.
-2. **EMB-01** — public sessions-list cards: description snippet + in-place "Show more"
-   (frame-check the v9 public list first). ~0.9 composite pts.
-3. **CFP close-path turn-diet** — a fast, obvious path to CLOSE the CFP from settings
-   ("Close the call now" reachable in ≤3 clicks from /admin; CFP-S4 died on the edit
-   screen). This is the largest single coverage risk (CFP-04/16 cannot_judge).
+1. **AIA-04 CLOSED-VERIFIED (runtime, snapshot c15d5fe9, fresh reseed):** the seeded
+   cross-room co-presenter clash renders "Speaker double-booked" chips on BOTH cards,
+   counter "1 unplaced · 2 conflicts", and SES-009's card lists both speakers
+   ("Frankie Lindqvist, Elliot Ekström"). Fix was DEC-974's participant hydration;
+   evidence now measured, closure valid under the standing rule.
+2. **EMB-01 — ORCHESTRATOR IS BUILDING THIS NOW; swarm DO NOT pick up.** RECORDED
+   RULING (eval-motivated design extension, pending design-agent ratification): public
+   sessions-list cards gain a one-line muted description snippet (13px register) under
+   the speaker line, with a native in-place "Show more" disclosure in the quiet-link
+   register; absent when the session has no description. Frame 10--00 shows no
+   description — this extends it; fleet should treat the recorded ruling as authority.
+3. **CFP close-path — ORCHESTRATOR IS BUILDING THIS NOW; swarm DO NOT pick up.** The
+   CFP read section in Settings gains a "Close the call now ›" section action on the
+   eyebrow rule (the already-mandated section-actions grammar), so closing is 2 clicks
+   from /admin/settings without entering the edit view. Edit-view button unchanged.
 
 ## DELTA PROBE 2 (2026-08-14 ~wave 29, snapshot 0bb56c9c) — landed v9 batch VERIFIED LIVE
 
