@@ -810,3 +810,57 @@ occupied-slot place-anyway. Phone shells: bottom fixed tab bar + inset scroll,
 Submissions triage cards' verbose fields, Settings subscreens as routes, phone CFP
 2-step wizard, phone password fixed footer + Cancel, roster screen, Home footer
 media rule). All under the additive-reflow rule.
+
+## CLOSED-VERIFIED (wave 16)
+
+- Review progress: reviewer with evaluations on a recused/out-of-scope
+  submission reports completed <= assigned (the '37 of 34 evaluations in'
+  finding) — CLOSED-VERIFIED (wave 16,
+  test/review-progress-counts.test.ts::"a reviewer with evaluations on a
+  recused and an out-of-scope submission reports completed <= assigned,
+  never a raw per-plan count", also re-asserted at
+  test/gate4-residue-closure.test.ts::"completed is computed by
+  intersecting evaluated ids against THIS reviewer's assigned set, never a
+  raw count").
+- Plan list's inline progress and the progress panel/editor header read the
+  SAME progressTotals for identical rows — CLOSED-VERIFIED (wave 16,
+  test/gate4-residue-closure.test.ts::"both source files import and call
+  the SAME progressTotals from './progress' (no second definition)" and
+  ::"progressTotals(rows) is pure/deterministic: two independent call
+  sites given identical rows compute identical totals").
+- Public CFP conditional visibility: a ruled field is hidden and its
+  `required` cleared when the trigger answer does not match, executed in a
+  real jsdom document (the 'conditional field logic not applied on the
+  public form' finding) — CLOSED-VERIFIED (wave 16,
+  test/gate4-residue-closure.test.ts::"hides the dependent field and
+  un-requires it when the trigger answer does not match").
+- Segment save under an existing name UPDATES rather than twins, and a
+  name PATCH collision is a 400 — CLOSED-VERIFIED (wave 16,
+  test/segments-upsert.test.ts::"a second save with the same name updates
+  the existing row instead of inserting a twin" and ::"renaming onto an
+  existing name in the same org is a loud 400, not a 500").
+- A comment tagged against a version keeps its number after a SIBLING
+  version is deleted (DEC-818) — CLOSED-VERIFIED (wave 16,
+  test/file-version-identity.test.ts::"keeps v3's own version number 3,
+  preserves comment version tags, and records 'Removed version 2' in the
+  audit note").
+- Deleting a contact that owns task_assignment rows succeeds and leaves no
+  orphan rows (the 'permanent 409 inflates roster stats' finding) —
+  CLOSED-VERIFIED (wave 16,
+  test/gate4-residue-closure.test.ts::"DELETE /api/v1/contacts/:id 204s
+  (not the old permanent 409) and task_assignment/task/contact rows are
+  all gone" and ::"deleteContact called directly (repo layer) leaves zero
+  task_assignment rows for the deleted contact").
+- Organizer 404 card's footer links (ORGANIZER_NOT_FOUND_LINKS) each
+  resolve to a route the Worker actually serves, not a bare SPA pattern —
+  CLOSED-VERIFIED (wave 16, test/gate4-residue-closure.test.ts::""Overview"
+  (/admin/overview) 200s as the admin shell when requested through
+  rootRoutes (real GET /admin/* handler, not just matchesAdminRoute in
+  isolation)" and the sibling "Submissions" case; predicate-level coverage
+  also at test/not-found-links-resolve.test.ts).
+- CFP checkbox coercion agrees with the canonical grammar: 'false'/'off'/
+  'no'/'0' for a REQUIRED checkbox is rejected, never stored as true —
+  CLOSED-VERIFIED (wave 16, test/forms-checkbox-grammar.test.ts::"each
+  falsy spelling stores false and FAILS a required checkbox", also
+  re-asserted at test/gate4-residue-closure.test.ts::"canonicalizeOperand
+  ('checkbox', ...) maps every falsy spelling to false, never true").
