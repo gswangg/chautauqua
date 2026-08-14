@@ -226,7 +226,10 @@ export const AUTH_CSS = `
     cursor: pointer;
     font-size: 14px;
     font-weight: 700;
-    color: #4E5C31;
+    /* DEC-383: brand olive ink through the token, never the literal --
+       var(--chq-brand) IS the theme's #4E5C31 and is what the plain
+       anchor rule these buttons imitate resolves to (theme.ts). */
+    color: var(--chq-brand);
     text-decoration: none;
   }
   .chq-auth-demo-buttons .chq-auth-demo-btn:hover { text-decoration: underline; }

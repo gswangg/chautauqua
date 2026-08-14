@@ -5,7 +5,8 @@
 //  (2) .chq-auth-footer's own footer-links keep the 44px hit area via
 //      align-items: flex-start (not the 404 card's shared selector).
 //  (3) demo prefill buttons take the card's link vocabulary: 14px/700,
-//      #4E5C31, no underline at rest; the landed :focus-visible ring is
+//      brand olive via var(--chq-brand), no underline at rest; the
+//      landed :focus-visible ring is
 //      untouched.
 //  (4) /account/password's head rhythm: .chq-auth-back's own 44px hit
 //      area via align-items: flex-start + a negative margin-bottom; the
@@ -43,7 +44,9 @@ describe("auth card rhythm (DEC-945 wave-6 amendment)", () => {
     const rule = extractRule(AUTH_CSS, ".chq-auth-demo-buttons .chq-auth-demo-btn");
     expect(rule).toMatch(/font-size:\s*14px/);
     expect(rule).toMatch(/font-weight:\s*700/);
-    expect(rule).toMatch(/color:\s*#4E5C31/);
+    // DEC-383 (merge repair): the brand olive arrives through the token,
+    // never a literal hex -- var(--chq-brand) resolves to the same ink.
+    expect(rule).toMatch(/color:\s*var\(--chq-brand\)/);
     expect(rule).toMatch(/text-decoration:\s*none/);
 
     const focusRule = extractRule(AUTH_CSS, ".chq-auth-demo-buttons .chq-auth-demo-btn:focus-visible");

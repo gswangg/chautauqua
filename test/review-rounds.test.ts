@@ -177,6 +177,10 @@ vi.mock("../src/server/repo/review", async () => {
     getTrackNamesByIds: vi.fn(async () => new Map()),
     // DEC-857: no format answers in this fixture set.
     listFormatLabelsBySubmission: vi.fn(async () => new Map()),
+    // DEC-986 (task w6-i): the queue route now also batches the
+    // audience-level answer through this same repo module -- no
+    // audience-level answers in this fixture set.
+    listAudienceLevelLabelsBySubmission: vi.fn(async () => new Map()),
   };
 });
 
