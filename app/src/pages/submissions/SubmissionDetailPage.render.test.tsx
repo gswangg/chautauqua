@@ -41,6 +41,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// DEC-900 (wave 5 amendment): Tracks/Format/Participants live behind the
+// 'Session details ›' disclosure, closed by default -- every test that
+// exercises that capability must open it first.
+async function openSessionDetails() {
+  const trigger = await screen.findByRole('button', { name: /Session details/ });
+  fireEvent.click(trigger);
+}
+
 function renderPage(initialPath = `/submissions/${SUB_ID}`) {
   render(
     <MemoryRouter initialEntries={[initialPath]}>
@@ -473,6 +481,8 @@ describe('SubmissionDetailPage render: editable Tracks section', () => {
 
     renderPage();
 
+    await openSessionDetails();
+
     await waitFor(() => {
       expect(screen.getAllByText('Frontend').length).toBeGreaterThan(0);
     });
@@ -519,6 +529,8 @@ describe('SubmissionDetailPage render: editable Tracks section', () => {
     });
 
     renderPage();
+
+    await openSessionDetails();
 
     await waitFor(() => {
       expect(screen.getAllByText('Frontend').length).toBeGreaterThan(0);
@@ -567,6 +579,8 @@ describe('SubmissionDetailPage render: editable Tracks section', () => {
     });
 
     renderPage();
+
+    await openSessionDetails();
 
     await waitFor(() => {
       expect(screen.getAllByText('Frontend').length).toBeGreaterThan(0);
@@ -627,6 +641,8 @@ describe('SubmissionDetailPage render: unpublished-participant caption (DEC-656)
     });
 
     renderPage();
+
+    await openSessionDetails();
 
     await waitFor(() => {
       expect(screen.getByText('Marcus Okafor')).toBeInTheDocument();
@@ -878,6 +894,7 @@ describe('SubmissionDetailPage render: placement + format (DEC-780)', () => {
     await waitFor(() => {
       expect(screen.getByText('Original description')).toBeInTheDocument();
     });
+    await openSessionDetails();
 
     const select = await screen.findByLabelText('Format');
     expect(select).toBeInTheDocument();
@@ -938,6 +955,7 @@ describe('SubmissionDetailPage render: co-presenter role picker (DEC-784)', () =
     await waitFor(() => {
       expect(screen.getByText('Original description')).toBeInTheDocument();
     });
+    await openSessionDetails();
 
     const roleSelect = screen.getByLabelText('Role') as HTMLSelectElement;
     const optionValues = Array.from(roleSelect.options).map((o) => o.value);
@@ -995,6 +1013,7 @@ describe('SubmissionDetailPage render: co-presenter role picker (DEC-784)', () =
     await waitFor(() => {
       expect(screen.getAllByText('Jamie Speaker').length).toBeGreaterThan(0);
     });
+    await openSessionDetails();
     const table = document.querySelector('.chq-participants-table') as HTMLElement;
     expect(within(table).getByText('Co-presenter')).toBeInTheDocument();
     expect(within(table).queryByText('co-presenter')).not.toBeInTheDocument();
@@ -1060,7 +1079,11 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
     expect(document.querySelector('.chq-detail-eyebrow')).not.toBeInTheDocument();
   });
 
-  it('orders the main column Abstract -> Form Answers -> Reviews -> Session Details, with no Meta heading', async () => {
+  // DEC-900 (wave 5 amendment): Session details is no longer a fourth
+  // numbered section in the resting main column -- it collapses behind a
+  // 'Session details ›' disclosure below Reviews, closed by default, so
+  // the numbered/ruled sections end at Reviews.
+  it('orders the main column Abstract -> Form Answers -> Reviews, with no Meta heading, and collapses Session details behind a closed-by-default disclosure', async () => {
     const detail = baseDetail();
     mockApi({
       [`GET /api/v1/submissions/${SUB_ID}`]: detail,
@@ -1081,14 +1104,90 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
     expect(sectionTitles[0]).toBe('Abstract');
     expect(sectionTitles[1]).toBe('Form answers');
     expect(sectionTitles[2]).toMatch(/^Reviews/);
-    expect(sectionTitles[3]).toBe('Session details');
-    expect(sectionTitles.length).toBe(4);
+    expect(sectionTitles.length).toBe(3);
+
+    // Session details is collapsed by default: its Tracks/Format/
+    // Participants content is not in the DOM until the disclosure opens.
+    expect(screen.queryByRole('heading', { name: 'Session details' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit tracks' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Search contacts')).not.toBeInTheDocument();
+    const trigger = screen.getByRole('button', { name: 'Session details ›' });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
 
     // Meta is gone outright -- neither heading nor its Created/Updated/
     // Accepted lines render anywhere on the page.
     expect(screen.queryByRole('heading', { name: 'Meta' })).not.toBeInTheDocument();
     expect(screen.queryByText(/^Created:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Accepted:/)).not.toBeInTheDocument();
+  });
+
+  it('opens Session details on click, revealing tracks/format/participant editing, and can be closed again', async () => {
+    const detail = baseDetail({
+      trackIds: ['t1'],
+      participants: [
+        {
+          id: 'p1',
+          contactId: 'c1',
+          name: 'Jamie Speaker',
+          email: 'jamie@example.com',
+          title: null,
+          company: null,
+          role: 'speaker',
+          order: 0,
+          visible: true,
+          inviteStatus: 'accepted',
+        },
+      ],
+    });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: {
+        items: [{ id: 't1', name: 'Frontend' }],
+        total: 1,
+        page: 1,
+        perPage: 20,
+      },
+      [`GET /api/v1/events/evt-1/forms`]: {
+        id: 'form-1',
+        fields: [
+          {
+            id: 'field_session_format',
+            section: 'session',
+            kind: 'dropdown',
+            label: 'Format',
+            required: false,
+            position: 1,
+            options: ['Talk', 'Workshop'],
+          },
+        ],
+      },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Original description')).toBeInTheDocument();
+    });
+
+    const trigger = screen.getByRole('button', { name: 'Session details ›' });
+    fireEvent.click(trigger);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Edit tracks' })).toBeInTheDocument();
+    });
+    expect(screen.getByLabelText('Format')).toBeInTheDocument();
+    expect(screen.getByLabelText('Search contacts')).toBeInTheDocument();
+    expect(screen.getAllByText('Jamie Speaker').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Hide session details' })).toHaveAttribute('aria-expanded', 'true');
+
+    // Closing collapses it again.
+    fireEvent.click(screen.getByRole('button', { name: 'Hide session details' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Edit tracks' })).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'Session details ›' })).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('moves History into the rail aside, below Speaker', async () => {
@@ -1214,5 +1313,172 @@ describe('SubmissionDetailPage render: delete entry point (DEC-886)', () => {
     });
     const deleteLink = screen.getByRole('link', { name: 'Delete this session' });
     expect(deleteLink).toHaveAttribute('href', `/submissions/delete?ids=${SUB_ID}`);
+  });
+});
+
+// DEC-900: frame 02 anatomy fixes -- the numbered section counter's spacing
+// (a space between the numeral and the em dash), the back link's glyph
+// (matching '‹ Previous'/'Next ›', never U+2190), and the speaker rail's
+// history line (only the clauses the payload actually carries).
+describe('SubmissionDetailPage render: DEC-900 frame 02 anatomy fixes', () => {
+  it('renders the section counter with a space between the numeral and the em dash', async () => {
+    const detail = baseDetail();
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Original description')).toBeInTheDocument();
+    });
+
+    // jsdom doesn't compute ::before content, so this asserts the source
+    // rule itself carries the numeral/dash/text as three separate literal
+    // pieces (' ', '\2014', ' ') rather than a single glued string -- the
+    // exact bug DEC-900 names ('counter(...) " —"' gluing the dash to the
+    // numeral).
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const cssPath = path.resolve(__dirname, 'detail.css');
+    const css = fs.readFileSync(cssPath, 'utf8');
+    const contentRules = css.match(/content:\s*counter\([^;]+;/g) ?? [];
+    expect(contentRules.length).toBeGreaterThan(0);
+    for (const rule of contentRules) {
+      // The numeral and the em dash must be separate string literals, not
+      // a single "01 —" (or worse, "01—") glued token.
+      expect(rule).toMatch(/counter\([^)]+\)\s+'[^']*'\s+'\\2014'\s+'[^']*'/);
+    }
+  });
+
+  it('uses the ‹ glyph (never U+2190) for every back/all-submissions link on the page', async () => {
+    const detail = baseDetail();
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Original description')).toBeInTheDocument();
+    });
+
+    const backLink = screen.getByRole('link', { name: /All submissions/ });
+    expect(backLink.textContent).toContain('\u2039');
+    expect(backLink.textContent).not.toContain('\u2190');
+    // Sweep the whole page for the old glyph.
+    expect(document.body.textContent).not.toContain('\u2190');
+  });
+
+  it('renders both history-line clauses when the payload carries both', async () => {
+    const detail = baseDetail({
+      participants: [
+        {
+          id: 'p1',
+          contactId: 'c1',
+          name: 'Jamie Speaker',
+          email: 'jamie@example.com',
+          title: null,
+          company: null,
+          role: 'speaker',
+          order: 0,
+          visible: true,
+          inviteStatus: 'accepted',
+          submissionsThisYear: 2,
+          lastSpokeYear: 2023,
+        },
+      ],
+    });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Jamie Speaker').length).toBeGreaterThan(0);
+    });
+    expect(document.querySelector('.chq-detail-speaker-history')?.textContent).toBe(
+      '2 submissions this year · spoke in 2023',
+    );
+  });
+
+  it('renders only the carried clause when just one datum is present, singular noun for 1', async () => {
+    const detail = baseDetail({
+      participants: [
+        {
+          id: 'p1',
+          contactId: 'c1',
+          name: 'Jamie Speaker',
+          email: 'jamie@example.com',
+          title: null,
+          company: null,
+          role: 'speaker',
+          order: 0,
+          visible: true,
+          inviteStatus: 'accepted',
+          submissionsThisYear: 1,
+        },
+      ],
+    });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Jamie Speaker').length).toBeGreaterThan(0);
+    });
+    expect(document.querySelector('.chq-detail-speaker-history')?.textContent).toBe('1 submission this year');
+  });
+
+  it('renders no history line at all when neither datum is present -- never a fabricated figure', async () => {
+    const detail = baseDetail({
+      participants: [
+        {
+          id: 'p1',
+          contactId: 'c1',
+          name: 'Jamie Speaker',
+          email: 'jamie@example.com',
+          title: null,
+          company: null,
+          role: 'speaker',
+          order: 0,
+          visible: true,
+          inviteStatus: 'accepted',
+        },
+      ],
+    });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Jamie Speaker').length).toBeGreaterThan(0);
+    });
+    expect(document.querySelector('.chq-detail-speaker-history')).not.toBeInTheDocument();
   });
 });

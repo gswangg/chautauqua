@@ -160,6 +160,22 @@ function decidedDateLabel(decidedAt: number, timeZone: string | null): string | 
   }
 }
 
+// DEC-900 (frame 02 speaker rail): 'N submissions this year · spoke in
+// YYYY' -- each clause renders only when its own datum is present on the
+// participant payload; never fabricated from other fields (e.g. never
+// inferred from createdAt). null when neither clause has data, so the
+// caller renders nothing rather than an empty line.
+function speakerHistoryLine(speaker: { submissionsThisYear?: number; lastSpokeYear?: number }): string | null {
+  const clauses: string[] = [];
+  if (speaker.submissionsThisYear !== undefined) {
+    clauses.push(`${countOf(speaker.submissionsThisYear, 'submission')} this year`);
+  }
+  if (speaker.lastSpokeYear !== undefined) {
+    clauses.push(`spoke in ${speaker.lastSpokeYear}`);
+  }
+  return clauses.length > 0 ? clauses.join(' · ') : null;
+}
+
 // DEC-761: position within the list the organiser came from, re-derived
 // from the SAME list query the table itself uses -- never handed down
 // through router state, so a reload or a shared link renders identically.
@@ -242,6 +258,12 @@ export function SubmissionDetailPage() {
   const [listPosition, setListPosition] = useState<ListPosition | null>(null);
   const [formatPending, setFormatPending] = useState(false);
   const [formatError, setFormatError] = useState<string | null>(null);
+  // DEC-900 (wave 5 amendment): the unframed Session details block (tracks/
+  // format/participants) is a real capability the frame does not draw --
+  // same answer as the agenda's breaks editor (Agenda.tsx:295): collapse it
+  // behind a quiet section-rule disclosure, closed by default, so frame
+  // 02's main column ends at the last review while the editor stays reachable.
+  const [sessionDetailsOpen, setSessionDetailsOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -582,7 +604,7 @@ export function SubmissionDetailPage() {
     return (
       <div className="chq-page chq-detail-page chq-measure-wide">
         <Link to="/submissions" className="chq-detail-back">
-          &larr; All submissions
+          &lsaquo; All submissions
         </Link>
         <DelayedLoading />
       </div>
@@ -593,7 +615,7 @@ export function SubmissionDetailPage() {
     return (
       <div className="chq-page chq-detail-page chq-measure-wide">
         <Link to="/submissions" className="chq-detail-back">
-          &larr; All submissions
+          &lsaquo; All submissions
         </Link>
         {error && <div className="chq-error-banner">{error}</div>}
         {!error && <p>Submission not found.</p>}
@@ -644,7 +666,7 @@ export function SubmissionDetailPage() {
           location.search so paging survives the round trip. */}
       <div className="chq-detail-ref-row">
         <Link to="/submissions" className="chq-detail-back">
-          &larr; All submissions
+          &lsaquo; All submissions
         </Link>
         {listPosition && (
           <span className="chq-detail-ref-position">
@@ -851,12 +873,27 @@ export function SubmissionDetailPage() {
             </div>
           </section>
 
-          {/* DEC-908: ONE trailing "Session details" section holding today's
-              Tracks/Format/Participants blocks verbatim (every behaviour --
-              optimistic write, loud rollback, co-presenter search, role
-              picker -- unchanged); only their placement moves here. */}
+          {/* DEC-900 (wave 5 amendment): the unframed Session details block
+              (Tracks/Format/Participants) is a real capability frame 02 does
+              not draw -- same answer as the agenda's breaks editor
+              (Agenda.tsx:295, chq-link-button/chq-section-action class
+              vocabulary reused verbatim): a quiet disclosure on the section
+              rule, closed by default, so the main column ends at the last
+              review. Every behaviour underneath (optimistic write, loud
+              rollback, co-presenter search, role picker) is unchanged --
+              only its reachability moves behind the toggle. */}
+          <div className="chq-detail-session-details-disclosure">
+            <button
+              type="button"
+              className="chq-link-button chq-section-action"
+              aria-expanded={sessionDetailsOpen}
+              onClick={() => setSessionDetailsOpen((open) => !open)}
+            >
+              {sessionDetailsOpen ? 'Hide session details' : 'Session details ›'}
+            </button>
+          </div>
+          {sessionDetailsOpen && (
           <section className="chq-detail-section chq-detail-session-details">
-            <h2 className="chq-detail-section-title">Session details</h2>
             <div className="chq-detail-section-body chq-detail-session-details-body">
               <div className="chq-detail-subsection">
                 <h3 className="chq-detail-subsection-title">Tracks</h3>
@@ -1063,6 +1100,7 @@ export function SubmissionDetailPage() {
               </div>
             </div>
           </section>
+          )}
         </div>
 
         {/* DEC-908 rail order: Decision -> Speaker -> History. */}
@@ -1158,6 +1196,13 @@ export function SubmissionDetailPage() {
                   </span>
                 )}
                 <span className="chq-detail-speaker-email">{speaker.email}</span>
+                {/* DEC-900 (frame 02 speaker rail): the history line renders
+                    ONLY the clauses the payload actually carries -- never a
+                    fabricated figure -- and is absent entirely (not a
+                    dangling ' · ') when neither datum is present. */}
+                {speakerHistoryLine(speaker) !== null && (
+                  <span className="chq-detail-speaker-history">{speakerHistoryLine(speaker)}</span>
+                )}
               </div>
             </section>
           )}
