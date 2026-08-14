@@ -42,14 +42,23 @@
   padding: 6px 0;
 }
 
-/* w1-f, DEC-785: PublicPagesPanel's read row -- name (SummarySection's own
-   label cell) | path | state pill | Embed code -- packed into the value
-   cell as a simple flex row rather than a second grid contract. */
+/* w1-f/DEC-785, re-gridded at gate-5: the read row is the frame's 4-col
+   contract — name (SummarySection's label cell) | path | state | Embed
+   code. A flex pack left every column ragged (state at x686-700, action
+   at x812-825, right edges stair-stepping 104px short of the 1130 content
+   edge). The value cell spans the row's remaining width, so a 3-col grid
+   here completes the alignment: path takes the flexible track, state gets
+   a fixed 140px column, the action right-flushes to the content edge. */
 .chq-settings-public-pages-summary-value {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px max-content;
+  align-items: baseline;
+  column-gap: 16px;
+  width: 100%;
+}
+
+.chq-settings-public-pages-summary-value > .chq-link-button {
+  justify-self: end;
 }
 
 .chq-settings-public-pages-summary-path {

@@ -247,7 +247,11 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 10.625px;
-  margin-left: -9px;
+  /* gate-5 PASS-check: -9px pulled the first link's GLYPHS under the
+     wordmark (chautauqua ends x147, Overview ink started x138 — a 9px
+     glyph-on-glyph overlap on every admin page). +13px puts the first
+     link's ink at ~x169 with its own padding, clear of the wordmark. */
+  margin-left: 13px;
   font-size: 13px;
   font-weight: 600;
   line-height: 1;

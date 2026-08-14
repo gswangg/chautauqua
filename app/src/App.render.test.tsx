@@ -573,9 +573,9 @@ describe('Header/nav geometry pinned to the frame (DEC-369 amendment)', () => {
     expect(body).toMatch(/gap:\s*0/);
   });
 
-  it('.chq-nav: item gap trimmed to 10.625px (15px - 4.375px) with a -9px margin closing the wordmark<->nav offset', () => {
+  it(".chq-nav: item gap trimmed to 10.625px; +13px margin clears the wordmark (gate-5: the old -9px pulled the first link's glyphs UNDER 'chautauqua' — a 9px glyph overlap on every admin page)", () => {
     const body = topLevelRuleBody(STYLES_CSS, '.chq-nav');
     expect(body).toMatch(/gap:\s*10\.625px/);
-    expect(body).toMatch(/margin-left:\s*-9px/);
+    expect(body).toMatch(/margin-left:\s*13px/);
   });
 });
