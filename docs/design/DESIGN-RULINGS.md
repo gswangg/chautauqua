@@ -97,7 +97,7 @@ A corollary worth stating, because it caused the sign-in problem: **a centred ca
 | 1 ⚡ | Bulk-communications flow | **RESTYLE — needs frames** (owed; highest leverage). The four steps exist individually; what is missing is the *seam* — how a selection survives step changes, what the back path does to it, and what the send result reports. Spec: keep the four-step rail as the only navigation, make every step's primary the next step (never "Send" until step 4), and end on a result panel that reports `{sent, skipped, remaining}` as three plain lines rather than a toast. |
 | 2 | Breaks editor dialog | **RESTYLE — one line.** A modal in the New-task register: label, location, start, duration as a 2×2 field grid, then the existing breaks as rows with a tertiary Remove. No new vocabulary needed. |
 | 3 | Admin per-speaker detail page | **RESTYLE — needs a frame** (owed). Spec: participation status control in the header (the roster's control, promoted), then four sections — Sessions, Tasks, Files, Notes — at the table measure. |
-| 4 | Review wave lifecycle + reviewer multi-plan landing | **RESTYLE — needs frames** (owed). Two things: "Start a new wave" is a prefilled New-plan form (criteria and reviewers copied from the frozen plan, dates blank), and the reviewer's landing is a plan list, not a queue, when they have more than one — with a single plan it must skip straight to that queue. The review pack's "queue and scorecard, nothing else" stands for the single-plan case; this is the exception it did not cover. |
+| 4 | Review wave lifecycle + reviewer multi-plan landing | **RESTYLE — framed, both widths.** The hub is the same list at the reading measure (820) on desktop and stacked cards at 390 — a plan list is not a different design at width, so the desktop frame is the authority and the phone one derives from it. Two things: "Start a new wave" is a prefilled New-plan form (criteria and reviewers copied from the frozen plan, dates blank), and the reviewer's landing is a plan list, not a queue, when they have more than one — with a single plan it must skip straight to that queue. The review pack's "queue and scorecard, nothing else" stands for the single-plan case; this is the exception it did not cover. |
 | 5 | Import wizard step 3 | **RESTYLE — needs a frame** (owed). Spec: two counts as a heading ("205 new · 9 updated"), then the 9 updates as rows showing which fields change, then the commit. The dedupe outcome is the whole point of the step; do not summarise it as one number. |
 | 6 | Speaker portal on desktop | **RESTYLE — ruled, no frames needed.** The portal is a task list for one person; it does not become a different design at 1600. Centre the existing column at **560px** in the page (not 390 — that is a device width, not a measure), keep the section order, and let the task rows' action buttons shrink from full-width to right-flushed. That is the reflow, in reverse. Everything else — resources, session panel, done list — is unchanged. |
 | 7 | Empty states | **RESTYLE — framed now, at full size in the pages they belong to** — Overview (fresh event), Submissions (before the CFP opens, and triage cleared), Speakers (search found nothing), Contacts (an empty pipeline stage), Comms (nothing sent), and public Sessions (programme not out). Each is a complete 1600 frame with its page's real header, nav and measure, because an empty state is a state *of a page* — drawn in isolation you cannot see whether the filter chrome survived, which is the one decision that matters. Seven rules below. The distinction the spec was missing: **empty because nothing has happened yet** versus **empty because a filter excluded everything**. The first hides the filter chrome entirely (offering a status filter over zero rows is noise) and gets a roomy block with a real primary action; the second keeps its chrome visible above the message, because the fix is in the chrome, and names the excluding facet — "Marcus Okafor is on the roster, but nothing of his is overdue" — with an escape link that clears exactly that one filter. Where the user genuinely cannot act, such as an attendee waiting on a programme, there is **no button at all** rather than a disabled one. Original spec: Three parts and no illustration: what is empty in plain words ("No submissions yet"), why in one clause if the reason is actionable ("The call for papers opens 1 March"), and the one action that changes it — or nothing, when the user cannot act. Never an empty table with headers. The sessions zero-state is the exemplar. |
@@ -178,6 +178,59 @@ All eight owed frames are drawn:
 | Review wave lifecycle (B4) | `Chautauqua Review` — the reviewer's "Your plans" hub, shown only when they hold more than one; with a single open plan the page is skipped and they land in its queue. Closed plans stay listed with a quiet *Read your scores*. |
 | Import step 3 (B5) | `Chautauqua Contacts` — "205 new · 9 updated" as the heading, then each update named with its field-level diff (struck old value → new), a per-row *Skip this row*, and the warning that a bulk import cannot be undone. |
 | HTML email shell (B9) | `Chautauqua Comms` — beside the templates that produce them, not on a page of their own. Comms owns the template list and the send log, so a rendered email is the third view of the same object; a separate file made the emails look like a medium the product does not otherwise touch. |
+
+## Error and validation states
+
+Framed in **eight** places, one per failure shape rather than one per form — the same shape repeated would not teach a developer anything new:
+
+| Frame | Shape | The thing it settles |
+|---|---|---|
+| Public submit, rejected | Multi-field validation | Summary + anchors + per-field messages; "nothing was lost" |
+| Sign in, rejected | Rejected credentials | One message for both causes, so the form cannot enumerate accounts |
+| Speakers, write failed | Optimistic rollback | A silent revert reads as a dead click; the cell says "not saved" |
+| Plan editor, save rejected | Cross-field + empty-collection | A date before its own start; a plan with zero criteria |
+| Import CSV, file rejected | File-level, pre-mapping | 9 rows without email — offer to import the other 205 |
+| Content upload, rejected | Wrong file type | Says which formats and **why**; names what was kept |
+| Compose, send blocked | Pre-flight on an irreversible act | A merge field that will not resolve for 3 of 23 |
+| Scorecard, incomplete | Blocked submit, savable draft | Draft always saves; submit needs every criterion |
+| Settings event, clash | Server-only conflict | A slug already taken — the form could not have known |
+
+**Errors are set in weight and rule, never colour alone.** There is no red in this system, so an invalid field takes a **1px ink border with a 3px ink left edge** and its message in ink at 13px/600 — the same vocabulary overdue uses. That also means the states survive a greyscale print and colour-blind readers, which a red ring would not.
+
+**Nine rules:**
+
+1. **Summarise at the top, fix in place.** A submit rejection opens with "Three things need fixing before this can be sent" and one anchor link per problem, each jumping to its field. Every field also carries its own message — the summary is for orientation, the field message for repair.
+2. **Say what was kept.** "Nothing was lost. Everything you typed is still below." A submitter who has written 1,200 characters fears the reload more than the error.
+3. **Count against the limit, don't just flag it.** "1,412 of 1,200" in the counter and "212 characters over" in the message. A bare "too long" makes the user guess.
+4. **Offer the way out, not just the rule.** Over-length abstract: "Cut it, or paste the long version into notes for reviewers instead" — the field that exists for exactly that.
+5. **Say why the field matters when the cost is invisible.** Bad email on the public form: "we send your portal link here, so a typo means you never get it." That is the consequence a submitter cannot see.
+6. **Required means "pick one", not "required".** "Pick one — a talk needs a track so the right people review it" says what to do and why the form asks.
+7. **Credentials fail with one message for both causes.** "That email and password do not match" — never "no such account" or "wrong password", which between them enumerate accounts. Both fields take the error treatment, since the design does not know which was wrong.
+8. **A rolled-back optimistic write must announce itself.** `toggleCell` and `applyBulkStatus` revert on `ApiError`; a silent revert reads as the click not registering, so the organiser clicks again. The banner names the row, gives the likely cause ("someone else may have edited this speaker"), says where it landed, and offers *Try again* plus *Reload the grid*. The reverted cell itself is marked "Overdue · not saved" until dismissed.
+9. **A draft never validates.** "Saving a draft skips these checks" sits beside Save draft, because a half-written abstract must always be storable — and the reviewer scorecard follows the same split: *Save draft* accepts a partly-scored card, *Submit* does not.
+10. **Offer the partial action when one exists.** Nine bad CSV rows offer "Import the 205 good rows"; three unresolvable merge fields offer "Send to the 20 who have a slot". An all-or-nothing block on a 200-row import is a design decision, not a constraint.
+11. **Name what survived.** "Slides v3 is still the current file. Nothing was replaced." · "Everything else on this page is fine and is still here." A failed write leaves people unsure what state they are in, and that uncertainty costs more than the error.
+12. **Server-only errors are not the form's fault.** A slug clash or a concurrent edit could not have been caught client-side, so the message says what happened out there — "already taken by another event in this org", "someone else may have edited this speaker" — rather than blaming the input.
+13. **Pre-flight the irreversible.** Sending cannot be undone, so unresolvable merge fields are caught at step 3 with a per-recipient list and a *Place on the agenda ›* link out. The caption says why the interruption is worth it: "this is the last point at which it is cheap to fix".
+
+## Password reset
+
+**This is proposed new work — no reset flow exists.** `src/auth/` holds `cookies.ts`, `tokens.ts` (session and API tokens) and `claim.ts`. There is no forgot-password route and no reset token; the comment at `src/server/auth-session.ts:14` treats *claim* and *account password change* as the only password-reset paths, and a claim token is minted for a contact by an organiser's send, not requested by the person who forgot.
+
+The closest precedent, if the token is modelled on it, is `claim.ts`: `CLAIM_TTL_SECONDS` is **30 days**, and `createClaimToken` does not hard-invalidate a prior token — it re-puts it under `SUPERSEDED_GRACE_SECONDS` so a batch send that fails after minting cannot lock someone out. **The frames therefore assert no lifetime and no single-use guarantee.** An earlier draft said "works once and expires in an hour" and "asking twice invalidates the first link" — all three invented, and all three contradicting the one token mechanism that does exist. Whoever builds this decides the TTL and supersede behaviour, and the copy follows the decision.
+
+Four states in `Chautauqua Account`, entered from *Forgot your password?* on the sign-in card, all on that card's 460px measure and vertical centring.
+
+1. **Ask** — one email field. "We will email you a link to set a new one."
+2. **Sent** — the security decision, and the reason this needs a designed screen rather than a toast: the confirmation must read **"If that address has an account, a reset link is on its way."** A screen that says "we've emailed you" confirms the address exists; one that says "no such account" confirms it does not. Either turns the form into an account-enumeration oracle, so the wording is identical both ways and the page never branches.
+3. **Set** — new password twice, reached from the emailed link, **naming the account being changed** so a forwarded link cannot silently reset someone else's. The helper argues for a passphrase rather than reciting character-class rules.
+4. **No longer valid** — any expiring or supersedable token guarantees users meet this state, so it is a designed screen with a *Send a fresh link* primary, never a generic error. Its wording covers both causes without naming a duration: "This link has already been used, or it has been replaced by a newer one."
+
+Related: item 24's `/logout` fix and this flow share the login card's single muted status line — "You have been signed out", "That link has expired" — rather than each inventing its own banner.
+
+## Reviewer plan hub — both widths
+
+Ruled and framed: the hub is **the same list at the reading measure (820)** on desktop and stacked cards at 390. A plan list is not a different design at width, so the desktop frame is the authority and the phone one derives from it. With one open plan the page is skipped entirely and the reviewer lands in that queue.
 
 ## Superseded — frames formerly owed
 

@@ -744,6 +744,59 @@
     </div>
   </div>
 
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">1600</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Compose · send blocked</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">Caught before sending, not after</span>
+    </div>
+
+    <div style="width:1600px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <header style="border-bottom:1px solid #1B1D17; padding:15px 34px; display:flex; align-items:center; gap:22px">
+        <span style="font-family:'Familjen Grotesk', sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.03em">chautauqua</span>
+        <span style="font-size:13px; font-weight:600; color:#565A4B">Comms · Compose · step 3</span>
+        <span style="margin-left:auto; font-size:13px; font-weight:600">DevFlow Conf 2027</span>
+      </header>
+
+      <div style="max-width:1180px; margin:0 auto; width:100%; padding:30px 34px 40px; display:flex; flex-direction:column; gap:22px">
+        <div style="display:flex; align-items:baseline; gap:14px">
+          <h1 style="margin:0; font-family:'Familjen Grotesk', sans-serif; font-size:30px; font-weight:700; letter-spacing:-0.04em; line-height:1">Check before sending</h1>
+          <span style="font-size:13px; color:#565A4B">23 recipients</span>
+        </div>
+
+        <div style="border:1px solid #1B1D17; border-left:4px solid #1B1D17; border-radius:5px; background:#EFEBDF; padding:16px 20px; display:flex; flex-direction:column; gap:5px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:700">One merge field will not resolve for 3 of the 23</span>
+          <span style="font-size:14px; line-height:1.55; color:#3F4237; max-width:64ch">Your body uses {session_time}, and three of these speakers have no slot yet. They would receive the literal text “{session_time}”.</span>
+        </div>
+
+        <div>
+          <div style="display:grid; grid-template-columns:1fr 190px 150px; gap:18px; padding:0 0 9px; border-bottom:2px solid #1B1D17; font-size:10px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">
+            <span>Recipient</span><span>Missing</span><span></span>
+          </div>
+          <sc-for list="{{ unresolved }}" as="u" hint-placeholder-count="3">
+            <div style="display:grid; grid-template-columns:1fr 190px 150px; gap:18px; align-items:baseline; padding:13px 0; border-bottom:1px solid #E1DDCE">
+              <div style="display:flex; flex-direction:column; gap:2px">
+                <span style="font-size:15px; font-weight:600">{{ u.name }}</span>
+                <span style="font-size:12px; color:#565A4B">{{ u.ref }}</span>
+              </div>
+              <span style="font-size:11px; font-weight:800; letter-spacing:0.09em; text-transform:uppercase">No slot yet</span>
+              <a href="#" style="font-size:13px; font-weight:700">Place on the agenda ›</a>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="border-top:1px solid #D3CFC0; padding-top:20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+          <span style="font-size:13px; color:#565A4B; line-height:1.5">Sending cannot be undone, so this is the last point at which it is cheap to fix</span>
+          <div style="margin-left:auto; display:flex; align-items:center; gap:10px">
+            <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Send to the 20 who have a slot</span>
+            <span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Edit the template</span>
+            <span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Place all three first</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </section>
 </x-dc>
 <script type="text/x-dc" data-dc-script>
@@ -886,6 +939,11 @@ class Component extends DCLogic {
       skipped: [
         { name: 'Nadia Ferrone', email: 'nadia@example.com', why: 'Emailed 40 minutes ago by Jordan Alvarez', action: 'Send in 20 minutes' },
         { name: 'Ruth Adeyemi', email: 'ruth@example.com', why: 'Emailed 12 minutes ago by Jordan Alvarez', action: 'Send in 48 minutes' },
+      ],
+      unresolved: [
+        { name: 'Nadia Ferrone', ref: 'DFC-041 · Evaluating Agents' },
+        { name: 'Ruth Adeyemi', ref: 'DFC-047 · Onboarding in 30 Minutes' },
+        { name: 'Dana Whitmore', ref: 'DFC-033 · Docs That Answer Back' },
       ],
       seamRows: [
         { title: 'Taming 40-Minute CI: Incremental Builds at Monorepo Scale', speaker: 'Priya Raman', status: 'Accepted', slot: 'Tue 10:00', slotStyle: SLOT },

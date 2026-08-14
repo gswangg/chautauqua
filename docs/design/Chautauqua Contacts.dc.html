@@ -764,6 +764,44 @@
     </div>
   </div>
 
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-size:11px; font-weight:700; letter-spacing:0.1em; background:#4E5C31; color:#F7F9F0; padding:5px 10px; border-radius:4px">Modal</span>
+      <span style="font-family:'Familjen Grotesk', sans-serif; font-size:19px; font-weight:600">Import CSV · the file will not do</span>
+      <span style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#565A4B">File-level failure, before any mapping</span>
+    </div>
+
+    <div style="width:560px; background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px; overflow:hidden; box-shadow:0 18px 44px rgba(27,29,23,0.13)">
+      <div style="border-bottom:1px solid #1B1D17; padding:20px 26px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px">
+        <div style="display:flex; flex-direction:column; gap:4px">
+          <span style="font-family:'Familjen Grotesk', sans-serif; font-size:23px; font-weight:700; letter-spacing:-0.035em; line-height:1">Nothing was imported</span>
+          <span style="font-size:13px; color:#565A4B">speakers-final.csv · 214 rows read</span>
+        </div>
+        <a href="#" style="font-size:13px; font-weight:700">Close</a>
+      </div>
+      <div style="padding:20px 26px 26px; display:flex; flex-direction:column; gap:18px">
+        <div style="border:1px solid #1B1D17; border-left:4px solid #1B1D17; border-radius:5px; background:#EFEBDF; padding:16px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap">
+          <div style="display:flex; flex-direction:column; gap:5px; max-width:64ch">
+            <span style="font-family:'Familjen Grotesk', sans-serif; font-size:16px; font-weight:700">9 rows have no email address</span>
+            <span style="font-size:14px; line-height:1.55; color:#3F4237">Email is how a contact is matched and how anything reaches them, so a row without one cannot be created.</span>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:9px">
+          <span style="font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#565A4B">The first three</span>
+          <sc-for list="{{ importErrors }}" as="e" hint-placeholder-count="3">
+            <div style="display:grid; grid-template-columns:64px 1fr; gap:14px; align-items:baseline; padding-bottom:10px; border-bottom:1px solid #E1DDCE">
+              <span style="font-family:ui-monospace, monospace; font-size:12px; color:#565A4B">Row {{ e.row }}</span>
+              <span style="font-size:14px; line-height:1.5">{{ e.detail }}</span>
+            </div>
+          </sc-for>
+          <span style="font-size:13px; color:#565A4B; line-height:1.55">Fix them in the file and upload again, or import the 205 rows that are complete and leave these out.</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap"><span style="background:#4E5C31; color:#F7F9F0; border-radius:4px; min-height:46px; display:flex; align-items:center; padding:0 18px; font-size:14px; font-weight:700">Import the 205 good rows</span><span style="border:1px solid #CFC7B7; border-radius:4px; background:#EFEBDF; min-height:46px; display:flex; align-items:center; padding:0 16px; font-size:13px; font-weight:600; color:#2E2A24">Upload a different file</span>
+          <a href="#" style="font-size:13px; font-weight:700; padding:0 6px">Download the 9 rows</a></div>
+      </div>
+    </div>
+  </div>
+
 </section>
 </x-dc>
 <script type="text/x-dc" data-dc-script>
@@ -800,6 +838,9 @@ const MATCHING = [
   { check: '☑', name: 'Priya Raman', email: 'sbek-speaker@example.com', company: 'Latticework Systems', role: 'Principal Engineer', tags: 'role speaker · year 2027' },
   { check: '☐', name: 'Iris Bell', email: 'iris@example.com', company: 'Latticework Systems', role: 'Staff Engineer', tags: 'role speaker · year 2026' },
 ];
+
+const VAL = 'font-size:15px; line-height:1.55; word-break:break-word';
+const VAL_EMPTY = 'font-size:15px; color:#8E8A7A';
 
 class Component extends DCLogic {
   renderVals() {
@@ -869,6 +910,11 @@ class Component extends DCLogic {
         { event: 'DevFlow 2027', what: 'Accepted · Taming 40-Minute CI' },
         { event: 'DevFlow 2026', what: 'Spoke · Build Caches in Anger' },
         { event: 'DevFlow 2025', what: 'Submitted, declined' },
+      ],
+      importErrors: [
+        { row: '14', detail: 'Name and company present, email blank' },
+        { row: '31', detail: 'Email reads "n/a"' },
+        { row: '58', detail: 'Email missing an @ — "priya.example.com"' },
       ],
       importUpdates: [
         { name: 'Priya Raman', email: 'sbek-speaker@example.com', changes: [{ field: 'Title', from: 'Senior Engineer', to: 'Principal Engineer' }] },

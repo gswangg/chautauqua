@@ -43,7 +43,53 @@ different Template columns for identical rows. A file:line read proves intent, n
 Scribes: a CLOSED-VERIFIED entry must cite a measured/exercised check (computed style, HTTP
 round-trip, rendered DOM), or it stays open.
 
-## V8 DESIGN INTAKE (2026-08-14 midday) — NEW AUTHORITY + THE RULINGS RECORD
+## SEQUENCING DIRECTIVE (USER, 2026-08-14 afternoon) — DESKTOP FIDELITY + EVAL BEFORE MOBILE
+
+**The swarm's priority lane is desktop fidelity-to-v9 + the ⚡ eval batch, to 100%, BEFORE
+any further mobile work.** The phone round is deprioritized as of this directive: finish
+only phone tasks already in flight this wave, then the wave planner draws from (in order):
+(1) the ⚡ PRIORITY BUILD BATCH (V8 section below) + password-reset flow (V9), (2) the
+DROPs + /logout must-fix, (3) desktop fidelity to the v9 frames (settings edit views,
+sign-in redraw, error-states standard, B8 interaction states, contact drawer), (4) open
+desktop P1/P2s below. The MOBILE QUEUE (including the former phone-queue P0s: blank phone
+agenda ≤700px, 390 plan editor) resumes ONLY after the desktop gate: fleet-clean vs v9 +
+eval composite at target. Mobile-additive-reflow scan-lock stays in force for anything
+already landed.
+
+## V9 DESIGN INTAKE (2026-08-14 afternoon) — AUTHORITY IS NOW design-frames-v9
+
+**`chautauqua-research/design-frames-v9` (135 frames / 12 sections) supersedes v8** —
+8 sections redrawn on top of v8; overview/submissions/agenda/home carried forward.
+DESIGN-RULINGS.md re-vendored with three new standards. Every v8 OPEN item is closed:
+- **Contact drawer FIXED at source** (VAL bug) — `08-contacts--02` now renders all four
+  groups (Contact/Profile/This event/Notes, "Nothing recorded" disabled ink, Delete far
+  left / Cancel+Save footer). Frame is auditable/buildable again; A20 fully framed.
+- **Reviewer "Your plans" hub framed BOTH widths** (03-review--10 at 1600: same list at
+  the 820 reading measure; --09 at 390 derives from it). Single-plan reviewers skip it.
+- **Password-reset screens delivered** (11-account--05..08: Ask / Sent / Set / No longer
+  valid, all on the 460 card measure): Sent state is non-branching enumeration-safe
+  ("If <email> has an account, a reset link is on its way") — matches the mechanism spec
+  below; Set names the account being changed; No-longer-valid is a designed screen with
+  "Send a fresh link" and duration-free copy ("already been used, or replaced by a newer
+  one") — compatible with our single-use/1h/hashed decision, which STANDS (the frames
+  deliberately assert no TTL; the builder owns it). Swarm: build the FULL flow now.
+
+**ERROR & VALIDATION STATES STANDARD (new, recorded):** nine frames, one per failure
+shape — public submit multi-field · sign-in rejected (one message both causes) · speakers
+optimistic-rollback ("Overdue · not saved" cell + banner naming cause with Try again /
+Reload) · plan-editor cross-field+empty-collection · import file-level ("import the 205
+good rows") · content upload wrong-type · compose pre-flight on irreversible send ·
+scorecard blocked-submit-savable-draft · settings server-only clash. **No red exists in
+this system:** invalid field = 1px ink border + 3px ink left edge + 13px/600 ink message
+(the overdue vocabulary). Rules: summarize at top + fix in place (anchors); say what was
+kept ("Nothing was lost"); count against limits ("212 characters over"); offer the way
+out; say why the field matters; credentials fail with ONE message; rolled-back optimistic
+writes must announce themselves; drafts never validate; offer the partial action; name
+what survived; server-only errors don't blame the input; pre-flight the irreversible.
+This supersedes any improvised error styling; the scorecard draft/submit split and the
+speakers rollback banner are ⚡ eval-relevant.
+
+## V8 DESIGN INTAKE (2026-08-14 midday) — superseded by V9 above; rulings below still stand
 
 **Authority is now `chautauqua-research/design-frames-v8`** (121 frames / 12 sections;
 10 sections redrawn, agenda+home carried from v7) **plus `docs/design/DESIGN-RULINGS.md`**
