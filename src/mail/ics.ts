@@ -11,6 +11,13 @@
 import { DEC_131 } from "../decisions";
 void DEC_131;
 
+// DEC-499 wave-23 amendment: the mailto address half shares ONE sanitizer
+// with src/mail/email-binding.ts's address-header serializer rather than
+// growing its own copy — both files are pure-core (DEC-002: Web APIs only,
+// no node:/cloudflare: imports), and email-binding.ts has no import that
+// would make this circular.
+import { addressValue } from "./email-binding";
+
 /** DEC-947: dev-only placeholder organizer address (DEC-168) used ONLY when
  * DEV_MODE="1" — a real deployment routes through resolveIcsOrganizerEmail
  * (src/server/context.ts), which prefers env.MAIL_FROM_EMAIL and otherwise
@@ -140,12 +147,12 @@ function buildVevent(e: IcsEventInput, opts: IcsOptions): string[] {
     lines.push(`LOCATION:${sanitizeIcsText(e.location)}`);
   }
   if (opts.organizer) {
-    lines.push(`ORGANIZER;CN="${sanitizeCn(opts.organizer.name)}":mailto:${opts.organizer.email}`);
+    lines.push(`ORGANIZER;CN="${sanitizeCn(opts.organizer.name)}":mailto:${addressValue(opts.organizer.email)}`);
   }
   if (opts.method === "REQUEST") {
     const attendee = opts.attendee!;
     lines.push(
-      `ATTENDEE;CN="${sanitizeCn(attendee.name ?? attendee.email)}";ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:${attendee.email}`,
+      `ATTENDEE;CN="${sanitizeCn(attendee.name ?? attendee.email)}";ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:${addressValue(attendee.email)}`,
     );
   }
   lines.push("END:VEVENT");
