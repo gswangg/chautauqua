@@ -1,11 +1,12 @@
 // speakers export (J12, DEC-027).
 
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { parseSocialLinks } from "../profile";
 import { DEC_258 } from "../../../decisions";
+import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
 import { type ExportTable, EXPORT_MAX_ROWS, buildTable } from "./table";
 import { getRecordPrefix } from "./common";
 
@@ -42,7 +43,9 @@ export async function exportSpeakers(db: Db, eventId: string): Promise<ExportTab
       company: schema.participant.orgAtTime,
       title: schema.participant.titleAtTime,
       visible: schema.participant.visible,
+      inviteStatus: schema.participant.inviteStatus,
       status: schema.submission.status,
+      contentStatus: schema.submission.contentStatus,
       seq: schema.submission.seq,
       bio: schema.contact.bio,
       headshotUrl: schema.contact.headshotUrl,
@@ -52,6 +55,11 @@ export async function exportSpeakers(db: Db, eventId: string): Promise<ExportTab
     .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
     .where(eq(schema.submission.eventId, eventId))
+    // DEC-560 amendment: total order (submission.seq asc, then participant id
+    // asc) so the per-contact aggregation below — which keeps the
+    // lowest-seq accepted participant row's company/title — is reproducible
+    // regardless of physical row-return order.
+    .orderBy(asc(schema.submission.seq), asc(schema.participant.id))
     .limit(EXPORT_MAX_ROWS + 1);
 
   // DEC-027 amendment (wave 50): bound on the query — the driving
@@ -68,6 +76,13 @@ export async function exportSpeakers(db: Db, eventId: string): Promise<ExportTab
     email: string;
     company: string | null;
     title: string | null;
+    // Lowest submission.seq seen overall (fallback source for company/title)
+    // and lowest submission.seq seen among ACCEPTED (inviteStatus) rows
+    // (preferred source) — tracked independently of row arrival order so
+    // the aggregate is reproducible under any row shuffle, not just the
+    // SQL ORDER BY above.
+    fallbackSeq: number;
+    acceptedSeq: number | null;
     acceptedSeqs: number[];
     visible: boolean;
     bio: string | null;
@@ -84,6 +99,8 @@ export async function exportSpeakers(db: Db, eventId: string): Promise<ExportTab
       email: r.email,
       company: r.company,
       title: r.title,
+      fallbackSeq: r.seq,
+      acceptedSeq: null,
       acceptedSeqs: [],
       visible: false,
       bio: r.bio,
@@ -91,7 +108,36 @@ export async function exportSpeakers(db: Db, eventId: string): Promise<ExportTab
       socialLinksJson: r.socialLinksJson,
     };
     if (r.status === "accepted") agg.acceptedSeqs.push(r.seq);
-    if (r.visible) agg.visible = true;
+    // Fallback (first-row-overall, by lowest submission.seq) — used only
+    // when the contact has no accepted participant row at all.
+    if (agg.acceptedSeq === null && r.seq < agg.fallbackSeq) {
+      agg.fallbackSeq = r.seq;
+      agg.company = r.company;
+      agg.title = r.title;
+    }
+    // DEC-560 amendment: company/title come from the contact's ACCEPTED
+    // (participant.inviteStatus='accepted') row with the lowest
+    // submission.seq, never "whichever row the driver happened to return
+    // first" — computed by keeping the minimum seq seen so far, order-
+    // independent.
+    if (r.inviteStatus === "accepted" && (agg.acceptedSeq === null || r.seq < agg.acceptedSeq)) {
+      agg.acceptedSeq = r.seq;
+      agg.company = r.company;
+      agg.title = r.title;
+    }
+    // DEC-560 amendment: mirrors src/server/repo/public/gates.ts's
+    // visibleSubmissionConditions() — visible iff at least one participant
+    // row has visible=1 AND inviteStatus in ACTIVE_INVITE_STATUSES on a
+    // submission that is status='accepted' AND contentStatus='approved'.
+    // Diff this block against gates.ts if the two ever appear to disagree.
+    if (
+      r.visible &&
+      (ACTIVE_INVITE_STATUSES as readonly string[]).includes(r.inviteStatus) &&
+      r.status === "accepted" &&
+      r.contentStatus === "approved"
+    ) {
+      agg.visible = true;
+    }
     byContact.set(r.contactId, agg);
   }
 
