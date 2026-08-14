@@ -97,9 +97,9 @@ document.addEventListener('click', function (e) {
 });
 `;
 
-const AUTH_RATE_LIMIT_WINDOW_SECONDS = 900;
-const AUTH_RATE_LIMIT_MAX = 20;
-const RATE_LIMIT_ERROR = "Too many attempts. Try again in a few minutes.";
+export const AUTH_RATE_LIMIT_WINDOW_SECONDS = 900;
+export const AUTH_RATE_LIMIT_MAX = 20;
+export const RATE_LIMIT_ERROR = "Too many attempts. Try again in a few minutes.";
 
 export const authRoutes = new Hono<AppEnv>();
 

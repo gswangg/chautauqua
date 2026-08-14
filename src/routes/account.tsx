@@ -22,8 +22,11 @@ import {
 import { issueSessionRevokingAll } from "../server/auth-session";
 import { ThemeStyles } from "../views/theme";
 import { AUTH_CSS } from "./auth.css";
-import { MIN_PASSWORD_LENGTH } from "./auth";
-import { DEC_740, DEC_994 } from "../decisions";
+import { MIN_PASSWORD_LENGTH, AUTH_RATE_LIMIT_WINDOW_SECONDS, AUTH_RATE_LIMIT_MAX, RATE_LIMIT_ERROR } from "./auth";
+import { peekScopedLimit, incrementScopedLimit, resetScopedLimit } from "../server/repo/rate-limit";
+import { DEC_740, DEC_994, DEC_180 } from "../decisions";
+
+void DEC_180;
 
 void DEC_740;
 void DEC_994;
@@ -171,7 +174,26 @@ accountRoutes.post("/account/password", requireAuthOr302, csrfForm, async (c) =>
 
   const backHref = backHrefForRole(auth.role);
 
+  // DEC-180 (wave-22 amendment): failures-only budget, keyed on the
+  // authenticated userId (not email/IP) since this route always has a live
+  // session. Peek (read-only) before verifying, increment only after a
+  // confirmed wrong-password failure, reset on a successful change --
+  // mirrors src/routes/auth.tsx's /login limiter exactly.
+  const rateLimitNow = Date.now();
+  const limitPeek = await peekScopedLimit(db, "password-change", auth.userId, rateLimitNow, {
+    windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
+    max: AUTH_RATE_LIMIT_MAX,
+  });
+  if (!limitPeek.ok) {
+    const { token: csrfToken } = ensureCsrfCookie(c);
+    return c.html(<PasswordPage csrfToken={csrfToken} backHref={backHref} error={RATE_LIMIT_ERROR} />, 429);
+  }
+
   if (!(await verifyPassword(current, user.passwordHash))) {
+    await incrementScopedLimit(db, "password-change", auth.userId, rateLimitNow, {
+      windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
+      max: AUTH_RATE_LIMIT_MAX,
+    });
     const { token: csrfToken } = ensureCsrfCookie(c);
     return c.html(<PasswordPage csrfToken={csrfToken} backHref={backHref} error="Current password is incorrect." />, 400);
   }
@@ -194,6 +216,8 @@ accountRoutes.post("/account/password", requireAuthOr302, csrfForm, async (c) =>
       400,
     );
   }
+
+  await resetScopedLimit(db, "password-change", auth.userId, rateLimitNow, AUTH_RATE_LIMIT_WINDOW_SECONDS);
 
   const passwordHash = await hashPassword(next);
   const now = new Date();
