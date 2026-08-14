@@ -60,13 +60,10 @@ function renderAt(path: string) {
 describe('MergePage render (DEC-748: struck-empty discards, Labels row, keep-column name, pair counter)', () => {
   it('renders a struck em dash for a field the duplicate left blank, a Labels row combining customFields, the kept name as the column head, and a pair counter', async () => {
     mockApi({
-      'GET /api/v1/contacts/duplicates': listEnvelope([GROUP, {
-        contactIds: ['ct-a', 'ct-b'],
-        contacts: [
-          { id: 'ct-a', firstName: 'Sam', lastName: 'Ng', email: 'sam@example.com', createdAt: CREATED_A },
-          { id: 'ct-b', firstName: 'Sam', lastName: 'Ng', email: 'sam2@example.com', createdAt: CREATED_B },
-        ],
-      }]),
+      // w39-c: server now resolves the ?ids= pair itself -- items carries
+      // only the matched group, position/total report where it sits among
+      // every duplicate group the org has (2 here, this pair is #1).
+      'GET /api/v1/contacts/duplicates': { items: [GROUP], total: 2, page: 1, perPage: 20, position: 1 },
       'GET /api/v1/contacts/merge/preview': {
         fields: [
           { key: 'name', label: 'Name', kept: 'Jane Doe', discarded: [], outcome: 'keep' },
@@ -141,7 +138,7 @@ describe('MergePage render (DEC-834/wave-4 amendment: same-name pair disambiguat
 
   it('gives each column head a company disambiguator when the kept and discarded names are identical, never a shouted uppercased email', async () => {
     mockApi({
-      'GET /api/v1/contacts/duplicates': listEnvelope([SAME_NAME_GROUP]),
+      'GET /api/v1/contacts/duplicates': { items: [SAME_NAME_GROUP], total: 1, page: 1, perPage: 20, position: 1 },
       'GET /api/v1/contacts/merge/preview': { fields: PREVIEW_FIELDS },
     });
 
@@ -179,7 +176,7 @@ describe('MergePage render (DEC-834/wave-4 amendment: same-name pair disambiguat
 
   it('gives each column head a disambiguator when the kept and discarded names differ only by case', async () => {
     mockApi({
-      'GET /api/v1/contacts/duplicates': listEnvelope([CASE_COLLIDE_GROUP]),
+      'GET /api/v1/contacts/duplicates': { items: [CASE_COLLIDE_GROUP], total: 1, page: 1, perPage: 20, position: 1 },
       'GET /api/v1/contacts/merge/preview': { fields: PREVIEW_FIELDS },
     });
 
@@ -209,7 +206,7 @@ describe('MergePage render (DEC-802: honest discard column head and impact line)
 
   it("heads the third column with the discarded record's own name and shows the submissions/tasks impact line", async () => {
     mockApi({
-      'GET /api/v1/contacts/duplicates': listEnvelope([DISTINCT_GROUP]),
+      'GET /api/v1/contacts/duplicates': { items: [DISTINCT_GROUP], total: 1, page: 1, perPage: 20, position: 1 },
       'GET /api/v1/contacts/merge/preview': {
         fields: PREVIEW_FIELDS,
         impact: { submissions: 3, tasks: 1 },
@@ -262,7 +259,7 @@ describe('MergePage render (DEC-684)', () => {
 
   it('renders the field-by-field KEEP/DISCARD comparison from ?ids=, then posts /contacts/merge {keepId, mergeIds} after confirming', async () => {
     const fetchMock = mockApi({
-      'GET /api/v1/contacts/duplicates': listEnvelope([GROUP]),
+      'GET /api/v1/contacts/duplicates': { items: [GROUP], total: 1, page: 1, perPage: 20, position: 1 },
       'GET /api/v1/contacts/merge/preview': { fields: PREVIEW_FIELDS },
       'POST /api/v1/contacts/merge': { id: 'ct-keep', firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com' },
     });
@@ -316,7 +313,7 @@ describe('MergePage render (DEC-684)', () => {
 
   it('DEC-992 amendment (wave 4): the back link is the ONE cancel path -- no second Cancel button in the footer', async () => {
     mockApi({
-      'GET /api/v1/contacts/duplicates': listEnvelope([GROUP]),
+      'GET /api/v1/contacts/duplicates': { items: [GROUP], total: 1, page: 1, perPage: 20, position: 1 },
       'GET /api/v1/contacts/merge/preview': { fields: PREVIEW_FIELDS },
     });
 
@@ -332,7 +329,7 @@ describe('MergePage render (DEC-684)', () => {
 
   it('DEC-734/DEC-770: the footer\'s "Not a duplicate" POSTs the dismissal then navigates back to /contacts with the pair to dismiss, no merge POST', async () => {
     const fetchMock = mockApi({
-      'GET /api/v1/contacts/duplicates': listEnvelope([GROUP]),
+      'GET /api/v1/contacts/duplicates': { items: [GROUP], total: 1, page: 1, perPage: 20, position: 1 },
       'GET /api/v1/contacts/merge/preview': { fields: PREVIEW_FIELDS },
       'POST /api/v1/contacts/duplicates/dismiss': { ok: true },
     });
@@ -373,7 +370,7 @@ describe('MergePage render (DEC-684)', () => {
 describe('MergePage render (DEC-992: vintage heads, swap control, 3+ group fallback)', () => {
   it('"Swap which is kept" flips keepId, re-heads the columns, and re-issues the preview GET with the other keep id', async () => {
     const fetchMock = mockApi({
-      'GET /api/v1/contacts/duplicates': listEnvelope([GROUP]),
+      'GET /api/v1/contacts/duplicates': { items: [GROUP], total: 1, page: 1, perPage: 20, position: 1 },
       'GET /api/v1/contacts/merge/preview': { fields: PREVIEW_FIELDS },
     });
 
@@ -414,7 +411,7 @@ describe('MergePage render (DEC-992: vintage heads, swap control, 3+ group fallb
       ],
     };
     mockApi({
-      'GET /api/v1/contacts/duplicates': listEnvelope([GROUP_OF_THREE]),
+      'GET /api/v1/contacts/duplicates': { items: [GROUP_OF_THREE], total: 1, page: 1, perPage: 20, position: 1 },
       'GET /api/v1/contacts/merge/preview': { fields: PREVIEW_FIELDS },
     });
 
@@ -439,7 +436,7 @@ describe('MergePage render (DEC-992: vintage heads, swap control, 3+ group fallb
 describe('MergePage render (DEC-992 amendment wave 4: one tinted combine-rule box above the compare table, deletion named in the confirm dialog)', () => {
   it('states the combine rule exactly once, in a single tinted box positioned before the compare-head, with no trailing footnote paragraphs', async () => {
     mockApi({
-      'GET /api/v1/contacts/duplicates': listEnvelope([GROUP]),
+      'GET /api/v1/contacts/duplicates': { items: [GROUP], total: 1, page: 1, perPage: 20, position: 1 },
       'GET /api/v1/contacts/merge/preview': {
         fields: [
           ...PREVIEW_FIELDS,
@@ -474,7 +471,7 @@ describe('MergePage render (DEC-992 amendment wave 4: one tinted combine-rule bo
 
   it('states the discarded record is deleted in the confirm dialog body', async () => {
     mockApi({
-      'GET /api/v1/contacts/duplicates': listEnvelope([GROUP]),
+      'GET /api/v1/contacts/duplicates': { items: [GROUP], total: 1, page: 1, perPage: 20, position: 1 },
       'GET /api/v1/contacts/merge/preview': { fields: PREVIEW_FIELDS },
     });
 
@@ -488,5 +485,45 @@ describe('MergePage render (DEC-992 amendment wave 4: one tinted combine-rule bo
 
     const dialog = await screen.findByRole('dialog', { name: 'Merge these records?' });
     expect(within(dialog).getByText(/discarded record is deleted/)).toBeInTheDocument();
+  });
+});
+
+describe('MergePage render (w39-c: server-side pair resolution via ?ids=)', () => {
+  it('requests GET /contacts/duplicates?ids=<ids> and renders "N of M pairs" straight from the envelope, even when the pair sorts past a default page', async () => {
+    const fetchMock = mockApi({
+      // The server reports this pair's TRUE position (251) among a directory
+      // whose duplicates page defaults to a 200-row slice -- proving the
+      // component never re-derives the count from items.length.
+      'GET /api/v1/contacts/duplicates': { items: [GROUP], total: 400, page: 1, perPage: 20, position: 251 },
+      'GET /api/v1/contacts/merge/preview': { fields: PREVIEW_FIELDS },
+    });
+
+    renderAt('/contacts/merge?ids=ct-keep,ct-merge&keep=ct-keep');
+
+    await waitFor(() => {
+      expect(screen.getByText('251 of 400 pairs')).toBeInTheDocument();
+    });
+
+    const dupCall = fetchMock.mock.calls.find(([input]) =>
+      (typeof input === 'string' ? input : input.toString()).includes('/contacts/duplicates?'),
+    );
+    expect(dupCall).toBeDefined();
+    const dupUrl = (dupCall![0] as string).toString();
+    expect(dupUrl).toContain('ids=ct-keep,ct-merge');
+  });
+
+  it('shows the no-longer-duplicates message only when the server answers with an empty items array for this ids set', async () => {
+    mockApi({
+      'GET /api/v1/contacts/duplicates': { items: [], total: 5, page: 1, perPage: 20, position: null },
+    });
+
+    renderAt('/contacts/merge?ids=ct-keep,ct-merge&keep=ct-keep');
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('These records are no longer duplicates — they may already be merged.'),
+      ).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/of \d+ pairs?/)).not.toBeInTheDocument();
   });
 });
