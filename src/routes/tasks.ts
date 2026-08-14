@@ -447,6 +447,13 @@ taskRoutes.post("/tasks/:id/assign", requireOrganizer, csrfJson, async (c) => {
 // PATCH /api/v1/task-assignments/:id
 taskRoutes.patch("/task-assignments/:id", csrfJson, async (c) => {
   const auth = requireAuth(c);
+  // w32-d (role-refusal probe): a reviewer can never own a task assignment
+  // (only organizer/speaker branches below ever grant access) -- refuse
+  // outright before the ownership lookup rather than reading a row this
+  // role can never legitimately act on.
+  if (auth.role !== "organizer" && auth.role !== "speaker") {
+    throw new ApiError("forbidden", "Not authorized to update this task assignment");
+  }
   const assignmentId = c.req.param("id");
   const ownership = await getAssignmentOwnership(c.var.db, assignmentId);
   if (!ownership) throw new ApiError("not_found", "Task assignment not found");
