@@ -7,7 +7,7 @@ import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-li
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { EventSettingsPanel } from './EventSettingsPanel';
-import { mockApi } from '../../test-utils/mockApi';
+import { mockApi, errorEnvelope } from '../../test-utils/mockApi';
 
 const EVENT_ID = 'evt-narrow';
 
@@ -283,5 +283,74 @@ describe('EventSettingsPanel edit view shell (DEC-896)', () => {
     const pair = startInput.closest('.chq-settings-field-pair');
     expect(pair).not.toBeNull();
     expect(within(pair as HTMLElement).getByLabelText('End date')).toBeInTheDocument();
+  });
+});
+
+// w28-d/DEC-897/DEC-124: server-only-conflict shape for the Slug field.
+describe('EventSettingsPanel save-refusal error shape (DEC-897/DEC-124)', () => {
+  it('a field-scoped 409 on slug lands under the Slug control, marks it invalid, and preserves unsaved edits elsewhere -- never the page banner', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}`]: eventDetail,
+      'GET /api/v1/mail-status': { provider: 'none', configured: false, fromEmail: null },
+      [`PATCH /api/v1/events/${EVENT_ID}`]: {
+        status: 409,
+        body: errorEnvelope('conflict', 'slug already in use', { slug: 'taken' }),
+      },
+    });
+    renderPanel();
+
+    const nameInput = await screen.findByLabelText('Name');
+    fireEvent.change(nameInput, { target: { value: 'Edited Name' } });
+    const slugInput = screen.getByLabelText('Slug');
+    fireEvent.change(slugInput, { target: { value: 'taken-slug' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    const fieldError = await screen.findByText('That slug is already taken by another event in this org.');
+    expect(fieldError).toHaveClass('chq-field-error');
+    expect(fieldError.closest('.chq-settings-field')).toBe(slugInput.closest('.chq-settings-field'));
+    expect(fieldError.getAttribute('role')).toBe('alert');
+    expect(screen.getByText('Everything else on this page is fine and is still here.')).toBeInTheDocument();
+
+    expect(slugInput).toHaveClass('chq-field-invalid');
+    expect(slugInput).toHaveAttribute('aria-invalid', 'true');
+
+    // No page banner for a field-scoped refusal, and the raw server
+    // message ('slug already in use') never leaks through -- rule 12
+    // forbids blaming the input, so the fixed copy above is what renders.
+    expect(screen.queryByText('slug already in use')).not.toBeInTheDocument();
+
+    // Never "invalid slug" -- the slug itself was well-formed, it was
+    // simply already claimed.
+    expect(screen.queryByText(/invalid slug/i)).not.toBeInTheDocument();
+
+    // Unsaved edits survive the refusal: no refetch, no reset.
+    expect(screen.getByLabelText('Name')).toHaveValue('Edited Name');
+    expect(screen.getByLabelText('Slug')).toHaveValue('taken-slug');
+  });
+
+  it('a generic 500 still renders the page banner, with no field-level error on Slug', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}`]: eventDetail,
+      'GET /api/v1/mail-status': { provider: 'none', configured: false, fromEmail: null },
+      [`PATCH /api/v1/events/${EVENT_ID}`]: {
+        status: 500,
+        body: errorEnvelope('internal', 'Something went wrong'),
+      },
+    });
+    renderPanel();
+
+    const nameInput = await screen.findByLabelText('Name');
+    fireEvent.change(nameInput, { target: { value: 'Edited Name' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    const banner = await screen.findByRole('alert');
+    expect(banner).toHaveTextContent('Something went wrong');
+
+    const slugInput = screen.getByLabelText('Slug');
+    expect(slugInput).not.toHaveClass('chq-field-invalid');
+    expect(slugInput).not.toHaveAttribute('aria-invalid');
+    expect(
+      screen.queryByText('That slug is already taken by another event in this org.'),
+    ).not.toBeInTheDocument();
   });
 });
