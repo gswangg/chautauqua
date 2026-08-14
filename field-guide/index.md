@@ -17,44 +17,40 @@ hard 60-line budget, compacting old entries. Injected into every agent.
 - FINDINGS w32-54 (DEC-983..999, 001-999 FULL no DEC-1000+, `## Amendment
   (wave N)` on nearest existing DEC, compacted): re-probe, grep "no matches"
   is a fact about that minute only. DECISION DOC != FIX; MINTING IS IO;
-  boundary fails per RECIPIENT never REQUEST; CHAIN WALK IS QUERY-PER-LINK --
-  batch the FRONTIER; FIND-OR-CREATE WITHOUT UNIQUE INDEX IS A DUPLICATE
-  WAITING; FAILURE MODES NOT SYMMETRIC; OPTIONAL BODY IS WHERE THE GUARD FELL
-  OFF; UNBOUNDED SURFACE NEVER PAGED -- cap the QUERY not the array; TREE
-  MOVES WHILE YOU PLAN; MIGRATION THAT CAN'T RUN IS A SCHEMA THAT DOESN'T
-  EXIST; COMMENT CLAIMING A CHECK IS NOT ONE.
+  boundary fails per RECIPIENT never REQUEST; batch the FRONTIER not
+  query-per-link; FIND-OR-CREATE NEEDS A UNIQUE INDEX; UNBOUNDED SURFACE
+  NEVER PAGED -- cap the QUERY not the array; TREE MOVES WHILE YOU PLAN;
+  COMMENT CLAIMING A CHECK IS NOT ONE.
 - FINDINGS w55-63 (compacted): re-read before reserve; mandate can run out ->
   read repos; sweep every writer of a table a unique index lands on; JS cap
-  over unbounded read -> count/slice in SQL; a decision naming its own
-  consumers is a checklist to WALK; a module header listing its own cascade
-  is a checklist -- the guard is not the cascade; MANDATE SPENT repeatedly,
-  re-probed CLOSED at file:line each wave -- read the code, not eval-
-  findings; sibling counts need the SAME predicate; a dry run must model
-  its own collapse; no ORDER BY is nondeterministic; A COUNT FROM
-  `visibleRows` IS A COUNT OF THE PAGE; A WATERMARK ONLY SEES THE COLUMN IT
-  COMPARES -- PARENT ROW IS THE SYNC UNIT.
-- FINDINGS w64: THE HANDOFF IS THE MANDATE NOW -- eval-findings re-probed
-  CLOSED a seventh time (all live at file:line). The open work was in
-  docs/design/ read as a CHECKLIST: public agenda desktop still the
-  room-lane MATRIX the handoff replaced, filter bar still the PILL ROW the
-  handoff killed. A PARAM THE ROUTE PASSES AND THE PAGE HIDES IS A FEATURE
-  NOBODY CAN REACH. A LIST FILTERS, A SCHEDULE HIGHLIGHTS. A WATERMARK
-  BOUNDS THE PARENT SCAN ONLY. WHEN THE DEC SPACE IS FULL, PICK THE
-  DECISION THE CODE ACTUALLY CITES and amend that one -- one DEC file per
-  lane, checked against the in-flight wave's set first.
-- FINDINGS w65: MANDATE SPENT AN EIGHTH TIME (re-probed CLOSED at file:line).
-  Open work came from two VENDORED PACKS read as checklists and one HALF-
-  LANDED STACK. A PACK THAT ARRIVES MID-WAVE IS NOT SELF-APPLYING -- the
-  REVIEW PACK landed w62 and its two desktop P1s (queue row anatomy, two-
-  column scorecard) sat unbuilt through w63/64 because nobody re-read it.
-  A DEC THAT NAMES A MEASUREMENT NAMES THE FRAME IT WAS MEASURED FROM:
-  DEC-874's "full-width button" and DEC-939's "clamps to --chq-measure"
-  were both PHONE frames promoted to rules -- when a desktop frame finally
-  arrives, amend the DEC, don't fight the frame. A FIX CAN CARRY ITS OWN
-  BUG: pre-arming focusedId for number keys re-created the "one criterion
-  styled unlike its siblings" defect DEC-939 killed -- arm the ROUTING,
-  gate the INK. THE WAY IN IS PART OF THE FEATURE: breaks shipped schema +
-  repo + API + mount + docs and zero UI, so the seed is the only writer --
-  grep app/ for the noun before calling a stack landed. NAV MEMBERSHIP IS
-  NOT ROUTE MEMBERSHIP: /gallery keeps its URL/feeds/embed row while
-  leaving the nav; derive the nav list by FILTERING the route list.
+  over unbounded read -> count/slice in SQL; a decision/module-header naming
+  its own consumers/cascade is a checklist to WALK, not a guard itself;
+  MANDATE SPENT repeatedly, re-probed CLOSED at file:line each wave; sibling
+  counts need the SAME predicate; no ORDER BY is nondeterministic; A
+  WATERMARK ONLY SEES THE COLUMN IT COMPARES -- PARENT ROW IS THE SYNC UNIT;
+  eval-findings re-probed CLOSED repeatedly, open work found in docs/design/
+  read as a CHECKLIST; A PARAM THE ROUTE PASSES AND THE PAGE HIDES IS A
+  FEATURE NOBODY CAN REACH; WHEN THE DEC SPACE IS FULL, amend the DECISION
+  THE CODE ACTUALLY CITES; A PACK THAT ARRIVES MID-WAVE IS NOT
+  SELF-APPLYING -- re-read vendored packs, don't trust "landed"; A DEC
+  NAMING A MEASUREMENT NAMES THE FRAME IT WAS MEASURED FROM -- amend when a
+  new frame arrives; A FIX CAN CARRY ITS OWN BUG; THE WAY IN IS PART OF THE
+  FEATURE -- breaks shipped schema/repo/API/docs and zero UI; NAV
+  MEMBERSHIP IS NOT ROUTE MEMBERSHIP -- derive nav by FILTERING routes.
+- FINDINGS w66: MANDATE SPENT A NINTH TIME — re-probed CLOSED at file:line
+  (MIME Date/Message-ID/mixed, conditional minting, MAX_PLAN_*_SCAN, merge
+  Keeping/Discarding + Labels/Notes, create-time dup hint, DateField scan-lock,
+  reviewer-shell 403 skip, pubcache two-list incl. breaks, exports csv+json,
+  clone, cron, fit/rationale, .ics SEQUENCE on every writer). New work came
+  from READING A LANDED STACK'S CONSUMERS, not from the mandate. A STACK
+  LANDS WHERE ITS CONSUMERS LEARN OF IT: breaks shipped schema/repo/API/
+  public render, and the SCHEDULER never heard — autoSchedule and
+  nextFreeSlot share scanForFreeSlot and neither sees a break, so the machine
+  places a keynote at lunch. A BOUNDARY IS ONLY AS WIDE AS ITS REASON:
+  DEC-022's "never in export machinery" was aimed at PUBLIC SESSION FEEDS;
+  the producer's run-of-show is where a break belongs. A LAYOUT CASE NEEDS
+  DATA TO EXIST — the v7 agenda's 1/2/3/4-up auto-fit is undemoable on a seed
+  that places five sessions with no two sharing a start time; seed the
+  concurrency in the same round as the grid. WALK THE LIFECYCLE, NOT THE
+  ROUTE: create -> see it anonymously -> delete would have caught the missing
+  UI a wave earlier; assert on LABEL TEXT when another lane owns the markup.
