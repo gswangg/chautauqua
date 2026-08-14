@@ -9,7 +9,7 @@ import type { AppEnv } from "../../../server/env";
 import { ApiError } from "../../../server/http";
 import { makeFileStore } from "../../../server/context";
 import { getMyResources, getPortalData, getResourceDownloadScope } from "../../../server/repo/portal";
-import { contentDispositionAttachment, isImageContentType } from "../../../domain/files";
+import { assertServedContentTypeHeader, contentDispositionAttachment, isImageContentType } from "../../../domain/files";
 import { requireAuth, ensureCsrfCookie } from "./shared";
 import { ResourcesPage } from "./views";
 
@@ -44,7 +44,7 @@ portalResourcesRoutes.get("/resources/:resourceId/download", async (c) => {
   const obj = await store.get(scope.r2Key);
   if (!obj) throw new ApiError("not_found", "File contents not found");
 
-  const contentType = scope.contentType;
+  const contentType = assertServedContentTypeHeader(scope.contentType);
   const headers: Record<string, string> = {
     "Content-Type": contentType,
     "X-Content-Type-Options": "nosniff",
