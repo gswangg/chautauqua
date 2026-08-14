@@ -161,7 +161,14 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
       return contact;
     });
     if (sessionTitle === undefined) throw new Error("sessionTitle required when eventId is set (checked above)");
-    await repo.pushContactsToEvent(c.var.db, eventId, orgId, toAdd, sessionTitle);
+    // DEC-810 amendment (wave 59): the batch is pushed onto the event as ONE
+    // session with `sessionTitle`, carrying every not-already-on-roster
+    // contact as a participant of that single submission -- never one
+    // session per imported row. `addedToEvent` below is a people count (how
+    // many contacts joined the roster), not a session count.
+    if (toAdd.length > 0) {
+      await repo.pushContactsToEvent(c.var.db, eventId, orgId, toAdd, sessionTitle);
+    }
     const addedToEvent = toAdd.length;
 
     return c.json({ created: result.created, updated: result.updated, skipped: result.skipped, addedToEvent });

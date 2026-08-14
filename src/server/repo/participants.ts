@@ -12,6 +12,7 @@ import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import { DEC_070, DEC_258, DEC_556 } from "../../decisions";
+import { chunkRowsForInsert } from "../../lib/chunk";
 
 // Compile-checked dependency marker: this module implements DEC_070's
 // endpoint contract (invite shape, duplicate rejection, visibility toggle).
@@ -117,6 +118,50 @@ export async function inviteParticipant(
     visible: true,
     inviteStatus: "invited",
   };
+}
+
+/** Set-based active-participant attach (DEC-810 amendment, wave 59): used by
+ * pushContactsToEvent to attach every contact in a batch roster import to
+ * ONE submission as ACTIVE participants (inviteStatus='none', not
+ * 'invited' -- an imported roster member must be active from the start so
+ * DEC-283/DEC-746's onboarding-task expansion picks them up and they can
+ * reach public surfaces once the submission is content-approved; the
+ * 'invited' status inviteParticipant above uses is for a co-presenter who
+ * still needs to accept, which is the wrong state for someone the organizer
+ * just imported directly onto an already-accepted session). One chunked
+ * INSERT (chunkRowsForInsert, DEC-542), not a per-row loop. `order` is the
+ * caller-supplied input index (0 for the lead contact already inserted by
+ * createSubmission, so this is called with the REMAINING contacts starting
+ * at order 1). */
+export async function insertActiveParticipants(
+  db: Db,
+  submissionId: string,
+  contacts: {
+    contactId: string;
+    role: string;
+    order: number;
+    titleAtTime: string | null;
+    orgAtTime: string | null;
+  }[],
+): Promise<void> {
+  if (contacts.length === 0) return;
+  const now = new Date();
+  const rows = contacts.map((c) => ({
+    id: newId(),
+    submissionId,
+    contactId: c.contactId,
+    role: c.role,
+    order: c.order,
+    visible: true,
+    inviteStatus: "none" as const,
+    titleAtTime: c.titleAtTime,
+    orgAtTime: c.orgAtTime,
+    createdAt: now,
+    updatedAt: now,
+  }));
+  for (const chunk of chunkRowsForInsert(rows)) {
+    await db.insert(schema.participant).values(chunk);
+  }
 }
 
 export interface ParticipantScope {
