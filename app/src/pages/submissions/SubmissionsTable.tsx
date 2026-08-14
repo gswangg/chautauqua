@@ -385,13 +385,13 @@ export function SubmissionsTable() {
                   </td>
                   <td className="chq-submissions-table-muted">{formatDate(item.submittedAt)}</td>
                   {shownColumns.map((col) => (
-                    <td key={col.fieldId}>
+                    <td key={col.fieldId} className="chq-submissions-table-custom">
                       {col.fieldId === formatFieldId
                         ? formatFormatLabel(formatAnswerValue(item.answers?.[col.fieldId]), { abbreviate: true })
                         : formatAnswerValue(item.answers?.[col.fieldId])}
                     </td>
                   ))}
-                  <td>
+                  <td className="chq-submissions-table-clone-cell">
                     <button
                       type="button"
                       className="chq-submissions-clone"
