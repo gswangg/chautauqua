@@ -231,6 +231,7 @@ export function CommsPage() {
             <RecentSends
               eventId={eventId}
               batches={recentBatches}
+              batchesLoaded={batchesLoaded}
               limit={COMPOSE_RECENT_SENDS_LIMIT}
               onSeeAll={goToHistory}
               templatesById={templatesById}

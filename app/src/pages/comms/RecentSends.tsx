@@ -166,9 +166,24 @@ export interface RecentSendsProps {
    * caller cannot forget to fetch and pass it -- an empty map just falls
    * back to an em dash / omits the label rather than failing. */
   templatesById: Record<string, string>;
+  /** DEC-678 (wave-36, app/src/admin-first-paint.render.test.tsx): "No emails
+   * sent yet." is an EMPTY STATE, and an empty state is only reachable from a
+   * settled load. `batches=[]` alone cannot tell "this event has never sent
+   * anything" apart from "the batches request has not come back yet", and the
+   * compose mount hits the second case on every first paint -- so the caller
+   * states which one it is rather than this component guessing. */
+  batchesLoaded: boolean;
 }
 
-export function RecentSends({ eventId, batches, limit, onSeeAll, expandBatchKey, templatesById }: RecentSendsProps) {
+export function RecentSends({
+  eventId,
+  batches,
+  limit,
+  onSeeAll,
+  expandBatchKey,
+  templatesById,
+  batchesLoaded,
+}: RecentSendsProps) {
   const [expanded, setExpanded] = useState<string | null>(expandBatchKey ?? null);
   const [recipients, setRecipients] = useState<Record<string, RecipientsState>>({});
 
@@ -236,7 +251,7 @@ export function RecentSends({ eventId, batches, limit, onSeeAll, expandBatchKey,
         )}
       </div>
 
-      {rows.length === 0 && <p className="chq-empty">No emails sent yet.</p>}
+      {batchesLoaded && rows.length === 0 && <p className="chq-empty">No emails sent yet.</p>}
 
       {rows.map((batch) => {
         const isExpanded = expanded === batch.batchKey;

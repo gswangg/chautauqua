@@ -1,6 +1,6 @@
 import type { ContactListItem } from './types';
 import { isPageFullySelected, isPagePartiallySelected, selectionReducer, type SelectionState } from './selection';
-import { DelayedLoading } from '../../components/DelayedLoading';
+import { PageSkeleton } from '../../components/PageSkeleton';
 import { paginationSummary } from '../../lib/pagination-summary';
 
 interface Props {
@@ -74,10 +74,15 @@ export function ContactsTable({
           </tr>
         </thead>
         <tbody>
+          {/* DEC-678 (wave-3/wave-8, proven by app/src/admin-first-paint.
+              render.test.tsx): the directory table is Contacts' main region,
+              so its wait paints shaped placeholder rows on the FIRST frame --
+              a 250ms-withheld DelayedLoading here left column headers over an
+              empty body on every first load. */}
           {loading && (
             <tr>
               <td colSpan={5}>
-                <DelayedLoading />
+                <PageSkeleton variant="table" label="Loading contacts…" />
               </td>
             </tr>
           )}

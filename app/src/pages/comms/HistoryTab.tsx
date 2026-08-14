@@ -90,6 +90,8 @@ export function HistoryTab({ eventId, templatesById }: { eventId: string; templa
         <RecentSends
           eventId={eventId}
           batches={items}
+          // Only mounted from inside `loaded && items.length > 0`.
+          batchesLoaded
           templatesById={templatesById}
           expandBatchKey={expandBatchKey}
         />

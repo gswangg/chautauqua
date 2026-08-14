@@ -154,7 +154,10 @@ const ALLOWED_SUBREGION_HINTS: Record<string, string[]> = {
   // has already painted by the time this section's own fetch resolves.
   'pages/review/PlanList.tsx': ['{loading && <DelayedLoading />}'],
   'pages/submissions/SubmissionDetailPage.tsx': ['Loading history…'],
-  'pages/speakers/SpeakerDetailPage.tsx': ['Loading speaker…'],
+  // wave-36 (DEC-678, admin-first-paint.render.test.tsx): SpeakerDetailPage's
+  // "Loading speaker…" DelayedLoading was a PAGE-level wait, not a sub-region
+  // one -- it painted an empty chq-page div on first frame -- so it is now a
+  // PageSkeleton branch and the file no longer calls DelayedLoading at all.
   'pages/contacts/MergePage.tsx': ['{!previewError && !preview && <DelayedLoading />}'],
   'pages/content/ContentApp.tsx': ['<DelayedLoading label="Loading submission…" />'],
 };

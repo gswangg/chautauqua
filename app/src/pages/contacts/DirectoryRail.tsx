@@ -13,25 +13,38 @@ import { DuplicateRow } from './DuplicateRow';
 import { describeRules } from './segments';
 import type { DuplicateGroup, Segment } from './types';
 
+// DEC-678: "an empty state is only reachable from a settled load". Each of
+// the rail's three lists is fed by its OWN request, so each carries its own
+// settled flag -- an empty ARRAY alone cannot tell "no companies" apart from
+// "the companies request has not come back yet", and rendering the dash/"No
+// saved segments yet."/"No duplicate groups found." row in the second case
+// asserts an absence nobody has measured (caught on first paint by
+// app/src/admin-first-paint.render.test.tsx).
 interface Props {
   topCompanies: { company: string; count: number }[];
+  topCompaniesLoaded: boolean;
   onCompanyClick: (company: string) => void;
   segments: Segment[];
+  segmentsLoaded: boolean;
   onApplySegment: (segmentId: string) => void;
   onSaveCurrentFilters: () => void;
   duplicateCount: number;
   duplicatePreview: DuplicateGroup[];
+  duplicatesLoaded: boolean;
   onKeepBoth: (group: DuplicateGroup) => void;
 }
 
 export function DirectoryRail({
   topCompanies,
+  topCompaniesLoaded,
   onCompanyClick,
   segments,
+  segmentsLoaded,
   onApplySegment,
   onSaveCurrentFilters,
   duplicateCount,
   duplicatePreview,
+  duplicatesLoaded,
   onKeepBoth,
 }: Props) {
   return (
@@ -49,7 +62,9 @@ export function DirectoryRail({
               <span className="chq-contacts-rail-count">{c.count}</span>
             </li>
           ))}
-          {topCompanies.length === 0 && <li className="chq-contacts-rail-row chq-empty">&mdash;</li>}
+          {topCompaniesLoaded && topCompanies.length === 0 && (
+            <li className="chq-contacts-rail-row chq-empty">&mdash;</li>
+          )}
         </ul>
       </section>
 
@@ -72,7 +87,9 @@ export function DirectoryRail({
               <span className="chq-contacts-rail-count">{s.count}</span>
             </li>
           ))}
-          {segments.length === 0 && <li className="chq-contacts-rail-row chq-empty">No saved segments yet.</li>}
+          {segmentsLoaded && segments.length === 0 && (
+            <li className="chq-contacts-rail-row chq-empty">No saved segments yet.</li>
+          )}
         </ul>
       </section>
 
@@ -84,7 +101,9 @@ export function DirectoryRail({
           {duplicatePreview.map((g) => (
             <DuplicateRow key={g.contactIds.join(',')} group={g} onKeepBoth={onKeepBoth} dense />
           ))}
-          {duplicatePreview.length === 0 && <li className="chq-contacts-rail-row chq-empty">No duplicate groups found.</li>}
+          {duplicatesLoaded && duplicatePreview.length === 0 && (
+            <li className="chq-contacts-rail-row chq-empty">No duplicate groups found.</li>
+          )}
         </ul>
       </section>
     </aside>

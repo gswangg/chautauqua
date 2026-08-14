@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { DELIVERABLE_LABELS, FILE_KINDS, type ContentStatus, type ContentSubmissionListItem } from './types';
 import { WORKLIST_TABS, worklistStatusLabel, worklistStatusEmphasisClass, type WorklistTab } from './worklist';
-import { DelayedLoading } from '../../components/DelayedLoading';
+import { PageSkeleton } from '../../components/PageSkeleton';
 import { formatRelativeDays, formatDayLabel } from '../../lib/dates';
 import { paginationSummary } from '../../lib/pagination-summary';
 
@@ -227,10 +227,16 @@ export function SessionList({
           </tr>
         </thead>
         <tbody>
+          {/* DEC-678 (wave-3/wave-8, proven by app/src/admin-first-paint.
+              render.test.tsx): the worklist IS Content's main region, so its
+              wait renders shaped placeholder rows on the FIRST frame. A
+              DelayedLoading here withheld everything for 250ms, which painted
+              column headers over an empty body -- the "blank/heading-only on
+              first load" report -- rather than the shape of what is coming. */}
           {loading && (
             <tr>
               <td colSpan={6}>
-                <DelayedLoading />
+                <PageSkeleton variant="table" label="Loading sessions…" />
               </td>
             </tr>
           )}

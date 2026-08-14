@@ -104,6 +104,11 @@ export function ContactsApp() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [duplicatePreview, setDuplicatePreview] = useState<DuplicateGroup[]>([]);
+  // DEC-678: settled flags for the two rail lists whose emptiness is
+  // otherwise indistinguishable from "not back yet" (stats covers the third:
+  // it is null until GET /contacts/stats settles).
+  const [segmentsLoaded, setSegmentsLoaded] = useState(false);
+  const [duplicatesLoaded, setDuplicatesLoaded] = useState(false);
 
   const [openContactId, setOpenContactId] = useState<string | null>(null);
   // DEC-827: Speakers links into the importer with ?import=1 (the toolbar's
@@ -207,7 +212,8 @@ export function ContactsApp() {
   useEffect(() => {
     apiList<Segment>('/segments')
       .then((res) => setSegments(res.items))
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load segments'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load segments'))
+      .finally(() => setSegmentsLoaded(true));
   }, [refreshKey]);
 
   // DEC-711: the rail's duplicate preview reuses the SAME endpoint the
@@ -216,7 +222,8 @@ export function ContactsApp() {
   useEffect(() => {
     apiList<DuplicateGroup>(`/contacts/duplicates?perPage=${RAIL_DUPLICATE_PREVIEW}`)
       .then((res) => setDuplicatePreview(res.items))
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load duplicates'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load duplicates'))
+      .finally(() => setDuplicatesLoaded(true));
   }, [refreshKey]);
 
   // DEC-734 amendment (wave 2): the rail's Keep both persists the SAME
@@ -393,6 +400,7 @@ export function ContactsApp() {
 
           <DirectoryRail
             topCompanies={stats?.topCompanies ?? []}
+            topCompaniesLoaded={stats !== null}
             onCompanyClick={(company) => {
               // CRM-12 drill-through + DEC-787: the top-companies click
               // ADDS or REPLACES ONLY the company rule, leaving every other
@@ -405,6 +413,7 @@ export function ContactsApp() {
               setPage(1);
             }}
             segments={segments}
+            segmentsLoaded={segmentsLoaded}
             onApplySegment={(next) => {
               setSegmentId(next);
               setPage(1);
@@ -412,6 +421,7 @@ export function ContactsApp() {
             onSaveCurrentFilters={() => setPanel('segments')}
             duplicateCount={stats?.duplicateCount ?? 0}
             duplicatePreview={duplicatePreview}
+            duplicatesLoaded={duplicatesLoaded}
             onKeepBoth={railKeepBoth}
           />
         </div>

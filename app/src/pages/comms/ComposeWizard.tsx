@@ -4,7 +4,7 @@ import { buildSubmissionsQuery } from '../submissions/filters';
 import { DEFAULT_FILTER_STATE, STATUS_LABELS, SUBMISSION_STATUSES, type SubmissionListItem, type SubmissionStatus } from '../submissions/types';
 import { PreviewPane } from './PreviewPane';
 import type { SendResult } from '../../lib/sendResult';
-import { DelayedLoading } from '../../components/DelayedLoading';
+import { PageSkeleton } from '../../components/PageSkeleton';
 import { FormRow } from '../../components/ModalFrame';
 import { COMPOSE_MERGE_FIELDS, type MergeField } from '../../lib/merge-fields';
 import { InsertFieldMenu } from './InsertFieldMenu';
@@ -499,7 +499,13 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             {selectedIds.size > RECIPIENT_CAP ? 'over' : 'under'} the {RECIPIENT_CAP}-recipient cap
           </p>
 
-          {loadingSubmissions && <DelayedLoading label="Loading submissions…" />}
+          {/* DEC-678 (wave-3/wave-8, proven by app/src/admin-first-paint.
+              render.test.tsx): the recipient table is Comms' main region on
+              first load, so its wait paints shaped placeholder rows on the
+              FIRST frame. DelayedLoading withheld for 250ms and left column
+              headers over an empty body -- structure flicker is not the risk
+              DEC-678 opened with, label flicker is. */}
+          {loadingSubmissions && <PageSkeleton variant="table" label="Loading submissions…" />}
           <table className="chq-table chq-comms-compose-table">
             <thead>
               <tr>

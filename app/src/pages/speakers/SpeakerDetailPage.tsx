@@ -14,7 +14,6 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { apiGet, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
-import { DelayedLoading } from '../../components/DelayedLoading';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { formatDateOnly, formatDayLabel } from '../../lib/dates';
 import type { AssignmentStatus, InviteStatus, ReminderDraft } from './types';
@@ -210,6 +209,23 @@ export function SpeakerDetailPage() {
     );
   }
 
+  // DEC-678 (wave-3/wave-8, proven by app/src/admin-first-paint.render.test.
+  // tsx): the speaker-detail fetch occupies this page's ENTIRE main region --
+  // until it settles there is nothing else on the page. It was previously
+  // gated behind DelayedLoading, whose 250ms withholding is correct only for
+  // a sub-region inside an already-structured page; here it painted an empty
+  // chq-page div for the first frames (the common returning-admin path, where
+  // eventLoading is already false because localStorage carries the event id).
+  // The page-level wait therefore renders PageSkeleton on the first frame,
+  // exactly as the eventLoading branch above already does.
+  if (loading) {
+    return (
+      <div className="chq-page chq-speaker-detail-page chq-measure-table">
+        <PageSkeleton variant="detail" label="Loading speaker…" />
+      </div>
+    );
+  }
+
   const files = detail
     ? detail.tasks.filter((t): t is typeof t & { file: NonNullable<typeof t.file> } => t.file !== null)
     : [];
@@ -226,8 +242,6 @@ export function SpeakerDetailPage() {
           </button>
         </div>
       )}
-      {loading && <DelayedLoading label="Loading speaker…" />}
-
       {!loading && detail && (
         <>
           <div className="chq-speaker-detail-head">

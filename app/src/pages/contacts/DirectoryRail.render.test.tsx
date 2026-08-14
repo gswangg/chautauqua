@@ -40,12 +40,15 @@ function renderRail(overrides: Partial<ComponentProps<typeof DirectoryRail>> = {
     <MemoryRouter>
       <DirectoryRail
         topCompanies={TOP_COMPANIES}
+        topCompaniesLoaded
         onCompanyClick={vi.fn()}
         segments={SEGMENTS}
+        segmentsLoaded
         onApplySegment={vi.fn()}
         onSaveCurrentFilters={vi.fn()}
         duplicateCount={DUPLICATE_GROUPS.length}
         duplicatePreview={DUPLICATE_GROUPS}
+        duplicatesLoaded
         onKeepBoth={vi.fn()}
         {...overrides}
       />
@@ -121,5 +124,44 @@ describe('DirectoryRail', () => {
     expect(screen.getByText('No saved segments yet.')).toBeInTheDocument();
     expect(screen.getByText('No duplicate groups found.')).toBeInTheDocument();
     expect(screen.getByText('Possible duplicates · 0')).toBeInTheDocument();
+  });
+
+  // DEC-678: an empty state is only reachable from a SETTLED load. Each rail
+  // list is fed by its own request, so each withholds its own empty row until
+  // its own flag says that request came back -- an empty array before then is
+  // "not measured yet", not "nothing to show".
+  it('withholds every empty state while that section\'s own load is still in flight', () => {
+    renderRail({
+      topCompanies: [],
+      topCompaniesLoaded: false,
+      segments: [],
+      segmentsLoaded: false,
+      duplicatePreview: [],
+      duplicatesLoaded: false,
+      duplicateCount: 0,
+    });
+
+    expect(screen.queryByText('—')).not.toBeInTheDocument();
+    expect(screen.queryByText('No saved segments yet.')).not.toBeInTheDocument();
+    expect(screen.queryByText('No duplicate groups found.')).not.toBeInTheDocument();
+    expect(document.querySelectorAll('.chq-empty')).toHaveLength(0);
+    // The rail's own structure (its three section labels) still paints.
+    expect(screen.getByText('Where they work')).toBeInTheDocument();
+  });
+
+  it('settles one section at a time: a loaded-and-empty section shows its empty state while an unsettled one does not', () => {
+    renderRail({
+      topCompanies: [],
+      topCompaniesLoaded: true,
+      segments: [],
+      segmentsLoaded: false,
+      duplicatePreview: [],
+      duplicatesLoaded: false,
+      duplicateCount: 0,
+    });
+
+    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.queryByText('No saved segments yet.')).not.toBeInTheDocument();
+    expect(screen.queryByText('No duplicate groups found.')).not.toBeInTheDocument();
   });
 });
