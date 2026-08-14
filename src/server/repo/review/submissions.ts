@@ -9,7 +9,16 @@ import { formatRef, parseRef } from "../../../domain/ids";
 import { chunkIds } from "../../../lib/chunk";
 import { SESSION_FORMAT_FIELD_ID } from "../../../forms/types";
 import { visibleParticipantConditions } from "../public/gates";
+import { ApiError } from "../../http";
 import type { PlanRecord } from "./plans";
+
+// DEC-346 amendment (wave 57): the ceiling listPlanFilteredSubmissions'
+// matched-submissions scan refuses past -- mirrors MAX_FILE_LIBRARY_SCAN
+// (src/server/repo/files-library.ts:39). A pathological-data guard set well
+// above SPEC's 2,000-submission scale target, not a functional limit. The
+// query `.limit(MAX_PLAN_SUBMISSION_SCAN + 1)`s and throws rather than
+// silently truncating a plan's submission set once it crosses this.
+export const MAX_PLAN_SUBMISSION_SCAN = 20000;
 
 /** DEC-346: the narrow shape every plan-scoped whole-set load returns --
  * `description` is never selected for these (list/queue/results/progress),
@@ -39,11 +48,12 @@ async function submissionTrackIdsForOne(db: Db, submissionId: string): Promise<s
 
 /** All submissions in the plan's event, optionally narrowed by the plan's
  * filters_json (trackIds) and event record_prefix for ref formatting.
- * Two joined, non-id-list queries (DEC-078/DEC-081): (a) matched submissions
- * — SQL-side track filter via submission_track join, never an `inArray`
- * over submission ids; (b) full trackIds for every submission in the event,
- * joined against submission by eventId (again no id-list binding), grouped
- * in JS against the matched set. */
+ * (a) matched submissions — SQL-side track filter via submission_track join,
+ * never an `inArray` over submission ids, ordered (seq asc, id asc) and
+ * capped at MAX_PLAN_SUBMISSION_SCAN (DEC-346 amendment, wave 57: refuses
+ * loudly rather than truncating past the cap); (b) trackIds for the MATCHED
+ * submissions only, read id-scoped via chunkIds batches over submission_track
+ * — no join against submission, so cost is proportional to the matched set. */
 export async function listPlanFilteredSubmissions(
   db: Db,
   plan: PlanRecord,
@@ -60,7 +70,10 @@ export async function listPlanFilteredSubmissions(
   const filterTracks = plan.filters?.trackIds;
 
   // (a) Matched submissions -- {id, seq, title} only (DEC-346: description
-  // dropped -- no plan-scoped whole-set load needs it).
+  // dropped -- no plan-scoped whole-set load needs it). DEC-346 amendment
+  // (wave 57): ordered deterministically and capped at
+  // MAX_PLAN_SUBMISSION_SCAN + 1 -- refuse loudly rather than silently
+  // truncate once an event's matching submission count crosses the cap.
   let matched: { id: string; seq: number; title: string; status: string }[];
   if (filterTracks && filterTracks.length > 0) {
     // filterTracks is organizer-authored plan config (a handful of track
@@ -75,7 +88,9 @@ export async function listPlanFilteredSubmissions(
       })
       .from(schema.submission)
       .innerJoin(schema.submissionTrack, eq(schema.submissionTrack.submissionId, schema.submission.id))
-      .where(and(eq(schema.submission.eventId, plan.eventId), inArray(schema.submissionTrack.trackId, filterTracks)));
+      .where(and(eq(schema.submission.eventId, plan.eventId), inArray(schema.submissionTrack.trackId, filterTracks)))
+      .orderBy(asc(schema.submission.seq), asc(schema.submission.id))
+      .limit(MAX_PLAN_SUBMISSION_SCAN + 1);
   } else {
     matched = await db
       .select({
@@ -85,27 +100,36 @@ export async function listPlanFilteredSubmissions(
         status: schema.submission.status,
       })
       .from(schema.submission)
-      .where(eq(schema.submission.eventId, plan.eventId));
+      .where(eq(schema.submission.eventId, plan.eventId))
+      .orderBy(asc(schema.submission.seq), asc(schema.submission.id))
+      .limit(MAX_PLAN_SUBMISSION_SCAN + 1);
+  }
+  if (matched.length > MAX_PLAN_SUBMISSION_SCAN) {
+    throw new ApiError(
+      "invalid",
+      `This plan would scan more than ${MAX_PLAN_SUBMISSION_SCAN} submissions -- narrow the plan's track filter first`,
+    );
   }
 
-  // (b) Full trackIds per matched submission, joined by event -- no id
-  // binding at all, grouped against the matched set in JS. Skipped entirely
-  // when withTrackIds is false (DEC-439: callers that never read trackIds
-  // shouldn't pay for this second whole-event scan).
+  // (b) trackIds for the MATCHED submissions only -- an id-scoped,
+  // chunkIds-batched read of submission_track (DEC-346 amendment, wave 57):
+  // no join against submission at all, so cost is proportional to the
+  // matched set, never the whole event. Skipped entirely when withTrackIds
+  // is false (DEC-439: callers that never read trackIds shouldn't pay for
+  // this at all).
   const trackMap = new Map<string, string[]>();
-  if (withTrackIds) {
-    const trackRows = await db
-      .select({ submissionId: schema.submissionTrack.submissionId, trackId: schema.submissionTrack.trackId })
-      .from(schema.submissionTrack)
-      .innerJoin(schema.submission, eq(schema.submission.id, schema.submissionTrack.submissionId))
-      .where(eq(schema.submission.eventId, plan.eventId));
-
-    const matchedIds = new Set(matched.map((m) => m.id));
-    for (const row of trackRows) {
-      if (!matchedIds.has(row.submissionId)) continue;
-      const list = trackMap.get(row.submissionId) ?? [];
-      list.push(row.trackId);
-      trackMap.set(row.submissionId, list);
+  if (withTrackIds && matched.length > 0) {
+    const matchedIds = matched.map((m) => m.id);
+    for (const batch of chunkIds(matchedIds)) {
+      const trackRows = await db
+        .select({ submissionId: schema.submissionTrack.submissionId, trackId: schema.submissionTrack.trackId })
+        .from(schema.submissionTrack)
+        .where(inArray(schema.submissionTrack.submissionId, batch));
+      for (const row of trackRows) {
+        const list = trackMap.get(row.submissionId) ?? [];
+        list.push(row.trackId);
+        trackMap.set(row.submissionId, list);
+      }
     }
   }
 

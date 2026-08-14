@@ -64,10 +64,22 @@ function fakeDb(rows: {
             where() {
               const result: Promise<unknown[]> & {
                 limit?: (n: number) => Promise<unknown[]>;
-                orderBy?: (...args: unknown[]) => Promise<unknown[]>;
+                orderBy?: (
+                  ...args: unknown[]
+                ) => Promise<unknown[]> & { limit?: (n: number) => Promise<unknown[]> };
               } = Promise.resolve(tableRows);
               (result as { limit: (n: number) => Promise<unknown[]> }).limit = async (n: number) => tableRows.slice(0, n);
-              (result as { orderBy: (...args: unknown[]) => Promise<unknown[]> }).orderBy = async () => tableRows;
+              (
+                result as {
+                  orderBy: (...args: unknown[]) => Promise<unknown[]> & { limit?: (n: number) => Promise<unknown[]> };
+                }
+              ).orderBy = (..._args: unknown[]) => {
+                const ordered: Promise<unknown[]> & { limit?: (n: number) => Promise<unknown[]> } =
+                  Promise.resolve(tableRows);
+                (ordered as { limit: (n: number) => Promise<unknown[]> }).limit = async (n: number) =>
+                  tableRows.slice(0, n);
+                return ordered;
+              };
               return result;
             },
           };
