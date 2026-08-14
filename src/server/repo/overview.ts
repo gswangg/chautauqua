@@ -27,7 +27,8 @@ import { formatRef } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
 import { SESSION_FORMAT_FIELD_ID } from "../../forms/types";
 import { loadTrackNamesBySubmission } from "./submission-tracks";
-import { DEFAULT_AUTO_SCHEDULE_PARAMS } from "./agenda";
+import { DEFAULT_AUTO_SCHEDULE_PARAMS, MAX_AGENDA_SCAN } from "./agenda";
+import { ApiError } from "../http";
 import { overdueAssignmentConditions } from "./tasks/crud";
 import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
 import { DEC_370, DEC_531, DEC_704, DEC_772, DEC_776, DEC_895 } from "../../decisions";
@@ -372,7 +373,15 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
       })
       .from(schema.scheduleSlot)
       .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
-      .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")));
+      .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")))
+      .limit(MAX_AGENDA_SCAN + 1);
+
+    if (slotRows.length > MAX_AGENDA_SCAN) {
+      throw new ApiError(
+        "invalid",
+        `This overview read would scan more than ${MAX_AGENDA_SCAN} placed sessions`,
+      );
+    }
 
     for (const s of slotRows) placedSeqTitleById.set(s.submissionId, { seq: s.seq, title: s.title });
 

@@ -3,8 +3,10 @@ import {
   computeDays,
   DEFAULT_AUTO_SCHEDULE_PARAMS,
   getAgendaPayload,
+  getConflictsAndSummary,
   isValidSlotInput,
   listSlotsOutsideWindow,
+  MAX_AGENDA_SCAN,
   runAutoSchedule,
 } from "../src/server/repo/agenda";
 import { formatRef } from "../src/domain/ids";
@@ -447,5 +449,112 @@ describe("listSlotsOutsideWindow (DEC-844 wave 54: SQL count+limit, no JS scan)"
     const result = await listSlotsOutsideWindow(db, "event1", "2026-08-10", "2026-08-11", 20);
     expect(result).toEqual({ count: 0, sessions: [] });
     expect(call).toBe(1);
+  });
+});
+
+// DEC-021 wave-60 amendment: getConflictsAndSummary must no longer read the
+// whole accepted set — it drives off schedule_slot innerJoin submission,
+// bounded by MAX_AGENDA_SCAN, and its {conflicts, summary} must stay
+// byte-identical to what getAgendaPayload reports for the same fixture.
+describe("getConflictsAndSummary (DEC-021 wave-60: bounded placed-only read)", () => {
+  const event = { orgId: "org1", startDate: "2026-08-10", endDate: "2026-08-10", recordPrefix: "EV" };
+
+  // sub-1/sub-2 placed overlapping in different rooms, sharing accepted
+  // speaker c1 (-> one speaker_overlap conflict); sub-3 accepted but never
+  // placed (-> proves unplaced/summary still correct with an unscheduled
+  // accepted session in the mix).
+  const joinedSlotRows = [
+    { submissionId: "sub-1", roomId: "room-a", day: "2026-08-10", startMin: 540, endMin: 600, seq: 1, title: "Talk One" },
+    { submissionId: "sub-2", roomId: "room-b", day: "2026-08-10", startMin: 570, endMin: 630, seq: 2, title: "Talk Two" },
+  ];
+  const participantRows = [
+    { submissionId: "sub-1", contactId: "c1", firstName: "Casey", lastName: "Speaker", order: 0 },
+    { submissionId: "sub-2", contactId: "c1", firstName: "Casey", lastName: "Speaker", order: 0 },
+  ];
+  const roomRows = [
+    { id: "room-a", name: "Room A" },
+    { id: "room-b", name: "Room B" },
+  ];
+
+  function makeConflictsSummaryDb(totalAccepted: number) {
+    let call = 0;
+    const db = {
+      select: () => {
+        call += 1;
+        const thisCall = call;
+        if (thisCall === 1) return makeChain(joinedSlotRows); // scheduleSlot innerJoin submission
+        if (thisCall === 2) return makeChain(participantRows); // participant innerJoin contact
+        if (thisCall === 3) return makeChain(roomRows); // rooms
+        return makeChain([{ count: totalAccepted }]); // totalAccepted count(*)
+      },
+    } as unknown as Db;
+    return db;
+  }
+
+  // Separate fake tailored to getAgendaPayload's own call sequence (rooms,
+  // tracks, submissionRows, trackRows, participantRows, slotRows) so the
+  // same fixture can be replayed through both functions for comparison.
+  function makeAgendaPayloadDb() {
+    const submissions = [
+      { id: "sub-1", seq: 1, title: "Talk One" },
+      { id: "sub-2", seq: 2, title: "Talk Two" },
+      { id: "sub-3", seq: 3, title: "Talk Three" },
+    ];
+    const slots = [
+      { submissionId: "sub-1", roomId: "room-a", day: "2026-08-10", startMin: 540, endMin: 600 },
+      { submissionId: "sub-2", roomId: "room-b", day: "2026-08-10", startMin: 570, endMin: 630 },
+    ];
+    let call = 0;
+    const db = {
+      select: () => {
+        call += 1;
+        const thisCall = call;
+        if (thisCall === 1) return makeChain(roomRows); // rooms
+        if (thisCall === 2) return makeChain([]); // tracks
+        if (thisCall === 3) return makeChain(submissions); // submissionRows
+        if (thisCall === 4) return makeChain([]); // trackRows (submissionTrack)
+        if (thisCall === 5) return makeChain(participantRows); // participantRows
+        return makeChain(slots); // slotRows
+      },
+    } as unknown as Db;
+    return db;
+  }
+
+  it("conflicts + summary match getAgendaPayload for the same fixture (incl. an unscheduled accepted session)", async () => {
+    const summaryResult = await getConflictsAndSummary(makeConflictsSummaryDb(3), "event1", event);
+    const payload = await getAgendaPayload(makeAgendaPayloadDb(), "event1", event);
+
+    expect(payload.unscheduled.map((s) => s.submissionId)).toEqual(["sub-3"]);
+    expect(summaryResult.summary).toEqual(payload.summary);
+    expect(summaryResult.summary).toEqual({ unplaced: 1, conflicts: 1 });
+    expect(summaryResult.conflicts.map((c) => c.detail)).toEqual(payload.conflicts.map((c) => c.detail));
+    expect(summaryResult.conflicts).toEqual(payload.conflicts);
+  });
+
+  it("refuses (never truncates) once the placed-slot scan would exceed MAX_AGENDA_SCAN", async () => {
+    const overflowRows = Array.from({ length: MAX_AGENDA_SCAN + 1 }, (_, i) => ({
+      submissionId: `sub-${i}`,
+      roomId: null,
+      day: "2026-08-10",
+      startMin: 540,
+      endMin: 600,
+      seq: i,
+      title: `Talk ${i}`,
+    }));
+    const db = {
+      select: () => ({
+        from: () => ({
+          innerJoin: () => ({
+            where: () => ({
+              limit: async () => overflowRows,
+            }),
+          }),
+        }),
+      }),
+    } as unknown as Db;
+
+    await expect(getConflictsAndSummary(db, "event1", event)).rejects.toThrow(
+      new RegExp(`${MAX_AGENDA_SCAN}`),
+    );
   });
 });
