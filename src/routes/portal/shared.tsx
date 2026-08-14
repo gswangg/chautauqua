@@ -133,25 +133,27 @@ export function PortalLayout(props: {
         <style dangerouslySetInnerHTML={{ __html: PORTAL_CSS }} />
       </head>
       <body style={`--chq-brandable-accent: ${accent}`}>
-        <header class="chq-header">
-          <span class="chq-eventmark">
-            {props.branding.logoUrl ? <img src={props.branding.logoUrl} alt="" height={40} /> : null}
-            {props.branding.eventName}
-          </span>
-          {props.speakerName ? <span class="chq-portal-header-name">{props.speakerName}</span> : null}
-        </header>
-        <main class="chq-measure">{props.children as any}</main>
-        {/* DEC-154: sign-out control on every /portal/* page, via the
-            shared layout so it's not duplicated per-page. w2-g demotes it
-            to a quiet tertiary footer link — placement only, the POST
-            semantics and CSRF proof (DEC-181) are unchanged. */}
-        <footer class="chq-portal-footer">
-          {props.footerExtra as any}
-          <form method="post" action="/logout" class="chq-portal-signout">
-            <input type="hidden" name="chq_csrf" value={props.csrfToken} />
-            <button type="submit" class="chq-btn chq-btn-tertiary chq-portal-signout-btn">Sign out</button>
-          </form>
-        </footer>
+        <div class="chq-portal-shell">
+          <header class="chq-header">
+            <span class="chq-eventmark">
+              {props.branding.logoUrl ? <img src={props.branding.logoUrl} alt="" height={40} /> : null}
+              {props.branding.eventName}
+            </span>
+            {props.speakerName ? <span class="chq-portal-header-name">{props.speakerName}</span> : null}
+          </header>
+          <main class="chq-measure">{props.children as any}</main>
+          {/* DEC-154: sign-out control on every /portal/* page, via the
+              shared layout so it's not duplicated per-page. w2-g demotes it
+              to a quiet tertiary footer link — placement only, the POST
+              semantics and CSRF proof (DEC-181) are unchanged. */}
+          <footer class="chq-portal-footer">
+            {props.footerExtra as any}
+            <form method="post" action="/logout" class="chq-portal-signout">
+              <input type="hidden" name="chq_csrf" value={props.csrfToken} />
+              <button type="submit" class="chq-btn chq-btn-tertiary chq-portal-signout-btn">Sign out</button>
+            </form>
+          </footer>
+        </div>
       </body>
     </html>
   );

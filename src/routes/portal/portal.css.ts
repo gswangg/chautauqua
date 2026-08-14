@@ -84,12 +84,18 @@ export const PORTAL_CSS = `
   }
   .chq-portal-footer-resources {
     margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
     font-size: 13px;
     font-weight: 600;
     color: var(--chq-ink-2);
     text-decoration: none;
   }
   .chq-portal-footer-profile {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
     font-size: 13px;
     font-weight: 700;
     color: var(--chq-ink);
@@ -333,6 +339,36 @@ export const PORTAL_CSS = `
     .chq-portal-row-head { align-items: flex-start; }
     .chq-portal-actions { flex-direction: column; }
     .chq-portal-actions .chq-btn { width: 100%; }
+
+    /* w13-e: portal frame is the phone app shell -- header/main/footer
+       become a fixed three-region column so .chq-measure is the only
+       scroll surface (docs/design "Chautauqua Public and Portal.dc.html"
+       lines 414-467 / 563-591). No top-level rule for .chq-portal-shell
+       itself -- desktop stays exactly as it was. */
+    .chq-portal-shell {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+    .chq-portal-shell > .chq-header { flex-shrink: 0; }
+    .chq-portal-shell > .chq-measure {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+    .chq-portal-shell > .chq-portal-footer {
+      flex-shrink: 0;
+      border-top: 1px solid var(--chq-ink);
+      background: var(--chq-surface-sunk);
+      padding: 12px 16px 16px;
+    }
+
+    .chq-portal-footer-band {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .chq-portal-footer-band > *:last-child { margin-left: auto; }
   }
 
   /* DEC-696: chq-cfp-option vocabulary shared with src/routes/public/cfp.css.ts
