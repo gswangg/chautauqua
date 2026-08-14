@@ -12,6 +12,7 @@ import { Hono } from "hono";
 import { headshotServeRoutes } from "../src/routes/portal/profile";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
+import { CLIENT_CACHE_CONTROL } from "../src/server/pubcache";
 
 type FileRow = { kind: string; r2Key: string; contentType: string } | null;
 type ContactRow = { id: string; orgId: string } | null;
@@ -70,11 +71,11 @@ const HEADSHOT_ROW: FileRow = { kind: "headshot", r2Key: "headshot/c1/abc.jpg", 
 const CONTACT_ROW: ContactRow = { id: "c1", orgId: "org1" };
 
 describe("GET /headshots/:fileId (DEC-067 gate)", () => {
-  it("serves 200 with the public immutable cache header, unauthenticated, when accepted+approved+visible", async () => {
+  it("serves 200 with the shared public cache contract, unauthenticated, when accepted+approved+visible", async () => {
     const app = appWithDbAndAuth(fakeDb(HEADSHOT_ROW, CONTACT_ROW, true), undefined);
     const res = await request(app, "f1");
     expect(res.status).toBe(200);
-    expect(res.headers.get("Cache-Control")).toBe("public, max-age=31536000, immutable");
+    expect(res.headers.get("Cache-Control")).toBe(CLIENT_CACHE_CONTROL);
   });
 
   it("404s unauthenticated when the speaker isn't publicly visible (pending/hidden)", async () => {
