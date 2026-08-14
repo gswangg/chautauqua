@@ -9,7 +9,7 @@ import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
 import { formatRef } from "../../../domain/ids";
 import { likeContains } from "../like";
-import { overdueAssignmentConditions, rosterParticipantConditions, rosterParticipantExistsForContact } from "./crud";
+import { chaseableContactExistsForTaskEvent, overdueAssignmentConditions, rosterParticipantConditions, rosterParticipantExistsForContact } from "./crud";
 import { ASSIGNED_LATE_GRACE_DAYS } from "../../../domain/task-due";
 
 // DEC-789 closed set (mirrors the participant.invite_status column comment
@@ -374,6 +374,16 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
     .where(rosterParticipantExistsForContact(eventId));
   const speakersCount = Number(speakersCountRows[0]?.count ?? 0);
 
+  // DEC-776 amendment (wave 61): the three header numbers each range over a
+  // DIFFERENT population — `speakers` (above) is the roster itself
+  // (rosterParticipantExistsForContact: every accepted-submission participant,
+  // including 'invited'/'declined'); `outstandingRequired`/`outstandingContacts`
+  // below and `overdue` further down both range over the NARROWER "still owes
+  // something" set (chaseableContactExistsForTaskEvent /
+  // overdueAssignmentConditions: accepted submission AND invite status still
+  // 'none' or 'accepted'), so a contact who declines their invite (or whose
+  // submission left 'accepted') stops inflating any of the three "open work"
+  // counts while still showing up as a roster row.
   const countsRow = await db
     .select({
       outstandingRequired: sql<number>`count(distinct case when ${schema.taskAssignment.status} <> 'complete' and ${schema.task.required} = 1 then ${schema.taskAssignment.id} end)`,
@@ -381,7 +391,7 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
     })
     .from(schema.taskAssignment)
     .innerJoin(schema.task, eq(schema.task.id, schema.taskAssignment.taskId))
-    .where(eq(schema.task.eventId, eventId));
+    .where(and(eq(schema.task.eventId, eventId), chaseableContactExistsForTaskEvent()));
 
   // DEC-776: `overdue` is a separate query (rather than folded into the
   // count above) because it composes overdueAssignmentConditions, which
