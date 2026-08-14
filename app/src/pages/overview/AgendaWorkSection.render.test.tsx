@@ -107,9 +107,10 @@ describe('AgendaWorkSection (DEC-652)', () => {
     expect(screen.getByRole('button', { name: 'Place at 11:00' })).toBeInTheDocument();
     // The old generic link is gone when a concrete suggestion exists.
     expect(screen.queryByRole('link', { name: 'Place it' })).not.toBeInTheDocument();
-    // DEC-652 amendment (wave 2): format renders once and already embeds the
-    // duration parenthetically -- no separate "30 min" segment restating it.
-    expect(screen.getByText(/Talk \(30 min\)/)).toBeInTheDocument();
+    // DEC-652 amendment (wave 2)/DEC-908 (wave-9 amendment): format renders
+    // once, through the session-vocabulary display grammar ('Talk (30 min)'
+    // -> 'Talk, 30 min') -- no separate "30 min" segment restating it.
+    expect(screen.getByText(/Talk, 30 min/)).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/·\s*min\s*·/);
     expect(document.body.textContent).not.toMatch(/null min/);
     expect(document.body.textContent).not.toMatch(/30 min\).*30 min/);

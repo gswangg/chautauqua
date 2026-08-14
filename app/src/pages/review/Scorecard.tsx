@@ -8,10 +8,11 @@ import { formatAnswerValue } from './answerText';
 import { incompleteCriteria, isEvaluationComplete, plainAverage, ratingScaleValues, scorecardKeyAction } from './scorecardLogic';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { planTrackScope } from './PlanList';
-// frame 03--01: the scorecard head's meta line reuses the reviewer queue's
-// own format-label vocabulary (Talk (30 min) -> 'Talk, 30 min') -- never a
-// second label grammar defined in this component.
-import { formatMetaLabel } from './ReviewerQueue';
+// DEC-908 (wave-9 amendment): the scorecard head's meta line reuses the ONE
+// session-shape display vocabulary (Talk (30 min) -> 'Talk, 30 min',
+// Advanced -> 'advanced') -- never a second label grammar defined in this
+// component.
+import { sessionFormatLabel, audienceLevelLabel } from '../../../../src/lib/session-vocabulary';
 // DEC-939: the scorecard header's 'N of N done' counter reads the SAME
 // reader the reviewer queue's own progress caption is built from -- never a
 // second count derived in this component.
@@ -374,15 +375,15 @@ export function Scorecard() {
             </h1>
             {/* frame 03--01: the meta line reads ref · format(, duration) ·
                 audience level, in the frame's lowercase grammar -- reusing
-                the reviewer queue row's own formatMetaLabel (ReviewerQueue.tsx)
+                the ONE session-shape display vocabulary (session-vocabulary.ts)
                 rather than a second label grammar. The ref always renders
                 (it no longer appears in the h1); format/audienceLevel
                 render only when the wire carries them. */}
             <p className="chq-review-scorecard-meta">
               {[
                 submission.ref,
-                submission.format != null ? formatMetaLabel(submission.format) : null,
-                submission.audienceLevel ?? null,
+                submission.format != null ? sessionFormatLabel(submission.format) : null,
+                submission.audienceLevel != null ? audienceLevelLabel(submission.audienceLevel) : null,
               ]
                 .filter((v): v is string => v != null)
                 .join(' · ')}
