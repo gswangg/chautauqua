@@ -355,7 +355,9 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
             </thead>
             <tbody>
               {plan.rows.map((row) => {
-                const decorated = (row.overwrites?.length ?? 0) > 0 || (row.possibleDuplicates?.length ?? 0) > 0;
+                const updateReason = row.action === 'update' ? row.reason : undefined;
+                const decorated =
+                  (row.overwrites?.length ?? 0) > 0 || (row.possibleDuplicates?.length ?? 0) > 0 || Boolean(updateReason);
                 return (
                   <tr key={row.line}>
                     <td>{row.line}</td>
@@ -364,6 +366,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
                       {actionLabel(row)}
                       {decorated && (
                         <ul className="chq-contacts-import-review-detail">
+                          {updateReason && <li>{updateReason}</li>}
                           {(row.overwrites ?? []).map((ow, i) => (
                             <li key={`ow-${i}`}>
                               {ow.field}: "{ow.from}" → "{ow.to}"

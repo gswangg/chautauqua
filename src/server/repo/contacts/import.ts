@@ -368,6 +368,24 @@ export interface ImportPlan {
   skipped: number;
 }
 
+/** DEC-663 amendment (wave 61): merges a resolveImportUpsert patch onto a
+ * ContactRecord for the plan-only byEmail bookkeeping above -- an omitted
+ * patch field leaves the existing value alone, same "absent key is
+ * silence" contract resolveImportUpsert already enforces for the patch
+ * itself. */
+function mergeContactRecord(existing: ContactRecord, patch: Partial<Omit<ContactRecord, "id">>): ContactRecord {
+  return {
+    ...existing,
+    ...(patch.firstName !== undefined ? { firstName: patch.firstName } : {}),
+    ...(patch.lastName !== undefined ? { lastName: patch.lastName } : {}),
+    ...(patch.company !== undefined ? { company: patch.company } : {}),
+    ...(patch.title !== undefined ? { title: patch.title } : {}),
+    ...(patch.phone !== undefined ? { phone: patch.phone } : {}),
+    ...(patch.bio !== undefined ? { bio: patch.bio } : {}),
+    ...(patch.customFields !== undefined ? { customFields: patch.customFields } : {}),
+  };
+}
+
 async function selectContactsWhere(
   db: Db,
   orgId: string,
@@ -415,9 +433,17 @@ export async function planImportRows(
   }
 
   const byEmail = new Map<string, ContactRecord>();
+  // DEC-663 amendment (wave 61): tracks which byEmail keys came from the DB
+  // pre-pass (as opposed to a same-file collapsed row, added below) so the
+  // row loop can tell "updates the SAME record a later row in this file
+  // planned as a create" apart from a genuine pre-existing-contact update.
+  const fromDb = new Set<string>();
   for (const batch of chunkIds([...fileEmails])) {
     const found = await selectContactsWhere(db, orgId, inArray(sql`lower(${schema.contact.email})`, batch));
-    for (const c of found) byEmail.set(normalizeEmail(c.email), c);
+    for (const c of found) {
+      byEmail.set(normalizeEmail(c.email), c);
+      fromDb.add(normalizeEmail(c.email));
+    }
   }
 
   // DEC-663: candidates for findImportDuplicateCandidates — every org
@@ -470,16 +496,33 @@ export async function planImportRows(
         action: "create",
         ...(duplicates.length > 0 ? { possibleDuplicates: duplicates } : {}),
       });
+      // DEC-663 amendment (wave 61): register this create's resolved values
+      // under the normalized email so a LATER row in this same file with
+      // the same email plans an update against them (matching
+      // applyImportRows' byEmail-set-back-in at line ~309) instead of
+      // wrongly planning a second create.
+      byEmail.set(key, { id: "", ...decision.values });
     } else {
       updated++;
       const overwrites = existing ? describeImportOverwrites(existing, decision.patch) : [];
+      // DEC-663 amendment (wave 61): a row that resolves to an update
+      // against a same-file collapsed create (never a real DB row) has no
+      // contact id yet -- state that explicitly instead of a fabricated id.
+      const isSameFileCollapse = !fromDb.has(key);
       planRows.push({
         line,
         email: key,
         action: "update",
-        contactId: decision.id,
+        ...(isSameFileCollapse
+          ? { reason: "same email as an earlier row in this file" }
+          : { contactId: decision.id }),
         ...(overwrites.length > 0 ? { overwrites } : {}),
       });
+      // Keep byEmail current so a THIRD occurrence of the same email in
+      // this file plans against the cumulative patched state, mirroring
+      // applyImportRows' base-chaining (pendingById.get(decision.id) ??
+      // existingById).
+      if (existing) byEmail.set(key, mergeContactRecord(existing, decision.patch));
     }
   }
 
