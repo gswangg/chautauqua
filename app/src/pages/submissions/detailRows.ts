@@ -14,10 +14,22 @@ export interface CfpFormLike {
   fields: FormField[];
 }
 
+export interface AnswerFileLink {
+  href: string;
+  filename: string;
+  sizeBytes: number;
+}
+
 export interface AnswerRow {
   fieldId: string;
   label: string;
   displayValue: string;
+  // DEC-920: present only for a 'file'-kind field whose stored answer id
+  // resolves against SubmissionDetail.answerFiles. When absent, the row
+  // renders displayValue as plain text (unchanged for every other kind);
+  // an unresolvable file id renders displayValue === 'File removed' with
+  // file left undefined — never the bare id.
+  file?: AnswerFileLink;
 }
 
 /**
@@ -50,9 +62,15 @@ export function resolveAnswerFields(form: CfpFormLike | null, formId: string | n
  * field (a stray/orphaned answer -- e.g. from a field since deleted from the
  * form) still gets a row, appended in raw key order, exactly as before.
  */
-export function buildAnswerRows(answers: Record<string, unknown>, fields: FormField[]): AnswerRow[] {
+export function buildAnswerRows(
+  answers: Record<string, unknown>,
+  fields: FormField[],
+  answerFiles: { id: string; filename: string; sizeBytes: number }[] = [],
+): AnswerRow[] {
   const EM_DASH = '—';
+  const FILE_REMOVED = 'File removed';
   const matchedFieldIds = new Set<string>();
+  const filesById = new Map(answerFiles.map((f) => [f.id, f]));
 
   const fieldRows = fields
     .filter((field) => lockedFieldName(field.id) === null)
@@ -60,6 +78,27 @@ export function buildAnswerRows(answers: Record<string, unknown>, fields: FormFi
     .map((field) => {
       matchedFieldIds.add(field.id);
       const hasAnswer = Object.prototype.hasOwnProperty.call(answers, field.id);
+
+      // DEC-920: a 'file'-kind answer stores an opaque file id (DEC-040) --
+      // resolve it against answerFiles instead of the generic formatter, so
+      // the organizer sees a filename/link, never the raw id.
+      if (field.kind === 'file') {
+        if (!hasAnswer) {
+          return { fieldId: field.id, label: field.label, displayValue: EM_DASH };
+        }
+        const rawId = answers[field.id];
+        const resolved = typeof rawId === 'string' ? filesById.get(rawId) : undefined;
+        if (!resolved) {
+          return { fieldId: field.id, label: field.label, displayValue: FILE_REMOVED };
+        }
+        return {
+          fieldId: field.id,
+          label: field.label,
+          displayValue: resolved.filename,
+          file: { href: `/files/${resolved.id}`, filename: resolved.filename, sizeBytes: resolved.sizeBytes },
+        };
+      }
+
       const displayValue = hasAnswer ? formatAnswerValue(answers[field.id]) : '';
       return {
         fieldId: field.id,
