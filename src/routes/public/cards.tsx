@@ -22,13 +22,22 @@ const ALL_FIELDS_ON: CardFields = {
 // grammar (src/domain/color.ts, DEC-371 amendment wave 43) -- anything else
 // (CSS injection, `var(...)`, keywords) emits no custom property.
 
-export function TrackChips(props: { tracks: PublicTrack[] }) {
+export function TrackChips(props: { tracks: PublicTrack[]; highlightTrackId?: string | null }) {
   return (
     <>
       {props.tracks.map((t) => {
         const color = t.color ? normalizeHexColor(t.color) : null;
+        // DEC-851 (wave 64 amendment): on the itinerary surfaces a track is a
+        // HIGHLIGHT, and the chip naming the highlighted track inverts
+        // (filled olive) so the match is legible on a block that still sits
+        // among every other session. Every other surface passes nothing here
+        // and gets the unchanged chip.
+        const inverted = props.highlightTrackId != null && t.id === props.highlightTrackId;
         return (
-          <span class="chq-pub-track-chip" style={color ? `--chq-track-color:${color}` : undefined}>
+          <span
+            class={inverted ? "chq-pub-track-chip chq-pub-track-chip-inverted" : "chq-pub-track-chip"}
+            style={color ? `--chq-track-color:${color}` : undefined}
+          >
             {t.name}
           </span>
         );

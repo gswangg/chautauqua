@@ -112,8 +112,12 @@ export function AgendaDayGrid(props: {
   from: Surface;
   base?: SurfaceBase;
   breaks?: ScheduleBreak[];
+  // DEC-851 (wave 64 amendment): a track HIGHLIGHTS here, it never filters —
+  // the grid renders exactly the same blocks with or without this value and
+  // NEVER reflows; only the per-block classes below change.
+  highlightTrackId?: string | null;
 }) {
-  const { day, items, event, from, base, breaks = [] } = props;
+  const { day, items, event, from, base, breaks = [], highlightTrackId = null } = props;
   const rows = buildDayRows(items, breaks);
 
   return (
@@ -144,13 +148,25 @@ export function AgendaDayGrid(props: {
               <div class="chq-pub-agenda-day-row">
                 <div class="chq-pub-agenda-day-time">{formatMinutes(row.startMin)}</div>
                 <div class="chq-pub-agenda-day-blocks">
-                  {row.items.map((item) => (
+                  {row.items.map((item) => {
+                    // DEC-851 (wave 64 amendment): a block whose session does
+                    // not carry the highlighted track recedes to a muted card
+                    // via ONE extra class on the element already carrying
+                    // .chq-pub-agenda-block — it is still rendered, still
+                    // linked, and its Save control is never dimmed, because
+                    // the reason it stays on screen is that you might still
+                    // take it. No highlight selected => every block matches.
+                    const matches = highlightTrackId == null || item.tracks.some((t) => t.id === highlightTrackId);
+                    return (
                     // DEC-602/DEC-584 (wave 64): the block is a content-sized
                     // card, not a grid-row/grid-column positioned box — no
                     // fixed height math, no lane geometry (single-lane
                     // matrix removed; overlap only mattered when rooms were
                     // columns sharing a row track).
-                    <div class="chq-pub-agenda-block" id={`chq-agenda-${item.submissionId}`}>
+                    <div
+                      class={matches ? "chq-pub-agenda-block" : "chq-pub-agenda-block chq-pub-agenda-block-muted"}
+                      id={`chq-agenda-${item.submissionId}`}
+                    >
                       <div class="chq-pub-agenda-block-head">
                         <span class="chq-pub-agenda-block-room">{publicRoomLabel(item.roomName)}</span>
                         <ItineraryToggle sessionId={item.submissionId} />
@@ -164,11 +180,12 @@ export function AgendaDayGrid(props: {
                         <SpeakerNames speakers={item.speakers} />
                       </div>
                       <div class="chq-pub-agenda-block-meta">
-                        <TrackChips tracks={item.tracks} />
+                        <TrackChips tracks={item.tracks} highlightTrackId={highlightTrackId} />
                         <FormatChip format={item.format} />
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ),

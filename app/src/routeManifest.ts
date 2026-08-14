@@ -157,6 +157,10 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
   { path: `/e/${EVENT_SLUG}/gallery`, role: "public", params: { eventSlug: EVENT_SLUG } },
   { path: `/e/${EVENT_SLUG}/agenda`, role: "public", params: { eventSlug: EVENT_SLUG } },
   { path: `/e/${EVENT_SLUG}/schedule`, role: "public", params: { eventSlug: EVENT_SLUG } },
+  // DEC-683 amendment (wave 65): the printable programme -- a public,
+  // no-login HTML GET like the surfaces above, so the render sweep must
+  // visit it (DEC-679: every composed HTML GET is manifested or excluded).
+  { path: `/e/${EVENT_SLUG}/programme`, role: "public", params: { eventSlug: EVENT_SLUG } },
 
   // --- Public submission form (src/routes/public/submit.tsx) ---
   { path: `/submit/${EVENT_SLUG}`, role: "public", params: { eventSlug: EVENT_SLUG } },

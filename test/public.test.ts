@@ -389,26 +389,29 @@ describe("AgendaContent / ScheduleContent day switcher (EMB-07)", () => {
         selectCall += 1;
         // 1: getPublicEventBySlug
         if (selectCall === 1) return makeChain([EVENT_ROW]);
-        // 2: DEC-804 getPublicTracks (search form's track <select>)
+        // 2: DEC-804 getPublicTracks (the track-HIGHLIGHT <select>)
         if (selectCall === 2) return makeChain([]);
-        // 3: DEC-851 getPublicFormatOptions (search form's format <select>)
-        if (selectCall === 3) return makeChain([]);
-        // 4: DEC-548 getPublicAgenda's total count(*) subquery
-        if (selectCall === 4) return makeChain([{ count: 2 }]);
-        // 5: getPublicAgenda's room lookup
-        if (selectCall === 5) return makeChain([{ id: "room1", name: "Main Hall" }]);
-        // 6: hydrateSessions subRows
-        if (selectCall === 6) {
+        // DEC-851 (wave 64 amendment): format is not an agenda facet at all
+        // any more, so getPublicFormatOptions is NOT called on these two
+        // surfaces -- the sequence goes straight from tracks to the agenda
+        // query (this harness is positional; leaving a slot for the removed
+        // call desyncs every row shape after it and the route 500s).
+        // 3: DEC-548 getPublicAgenda's total count(*) subquery
+        if (selectCall === 3) return makeChain([{ count: 2 }]);
+        // 4: getPublicAgenda's room lookup
+        if (selectCall === 4) return makeChain([{ id: "room1", name: "Main Hall" }]);
+        // 5: hydrateSessions subRows
+        if (selectCall === 5) {
           return makeChain([
             { id: "sub1", seq: 1, title: "Day One Talk", description: null, icsSequence: 0 },
             { id: "sub2", seq: 2, title: "Day Two Talk", description: null, icsSequence: 0 },
           ]);
         }
-        // 7: hydrateSessions trackRows
+        // 6: hydrateSessions trackRows
+        if (selectCall === 6) return makeChain([]);
+        // 7: hydrateSessions speakerRows
         if (selectCall === 7) return makeChain([]);
-        // 8: hydrateSessions speakerRows
-        if (selectCall === 8) return makeChain([]);
-        // 9: hydrateSessions slotRows
+        // 8: hydrateSessions slotRows, 9: getPublicBreaksByDay
         return makeChain([]);
       },
       selectDistinct: () =>

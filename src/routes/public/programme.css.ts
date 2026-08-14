@@ -19,7 +19,7 @@ export const PROGRAMME_CSS = `
   }
   .chq-prog-meta {
     margin: 0 0 32px;
-    color: var(--chq-muted, #555);
+    color: var(--chq-muted);
   }
   .chq-prog-day {
     margin: 0 0 32px;
@@ -27,14 +27,14 @@ export const PROGRAMME_CSS = `
   .chq-prog-day-heading {
     margin: 0 0 8px;
     padding-bottom: 4px;
-    border-bottom: 2px solid #000;
+    border-bottom: 2px solid var(--chq-ink);
     font-size: 1.1rem;
   }
   .chq-prog-row {
     display: flex;
     gap: 12px;
     padding: 8px 0;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid var(--chq-hairline);
   }
   .chq-prog-row-time {
     flex: 0 0 130px;
@@ -47,18 +47,23 @@ export const PROGRAMME_CSS = `
     font-weight: 600;
   }
   .chq-prog-row-sub {
-    color: var(--chq-muted, #555);
+    color: var(--chq-muted);
     font-size: 0.9rem;
   }
   .chq-prog-break {
     font-variant: small-caps;
     letter-spacing: 0.02em;
-    color: var(--chq-muted, #555);
+    color: var(--chq-muted);
   }
+  /* DEC-383 (merge-train fix): print's "white page, black ink" is spelled
+     with the palette's own tokens (--chq-paper / --chq-ink) rather than
+     #fff/#000 -- the palette closure guard admits NO hex literal in a
+     surface sheet, and these two tokens ARE the palette's paper and its
+     darkest ink. */
   @media print {
     body {
-      background: #fff !important;
-      color: #000 !important;
+      background: var(--chq-paper) !important;
+      color: var(--chq-ink) !important;
     }
     .chq-prog-main {
       max-width: none;
@@ -67,7 +72,7 @@ export const PROGRAMME_CSS = `
     .chq-prog-row-sub,
     .chq-prog-meta,
     .chq-prog-break {
-      color: #000 !important;
+      color: var(--chq-ink) !important;
     }
     .chq-prog-day {
       page-break-inside: avoid;

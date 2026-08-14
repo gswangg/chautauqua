@@ -3,6 +3,14 @@
 // table must all read the same enumerated knob set: ['trackId','format',
 // 'day','q','limit','accent'] (no roomId, no fields).
 //
+// DEC-851's wave-64 amendment narrows the ROW-SET half of that claim for the
+// two itinerary surfaces: /agenda and /schedule now HIGHLIGHT by track and
+// ignore ?format= entirely, so their HTML pages render every scheduled row
+// while their .json/.xml twins keep the DEC-851 predicate. The amendment
+// speaks only about the two rendered surfaces, so the feeds are left exactly
+// as DEC-851 ruled and the knob table is unchanged; day/q parity between the
+// page and its twin is unaffected and still asserted below.
+//
 // Repo functions (getPublicSessions/getPublicAgenda) are mocked here to a
 // deterministic in-memory filter — the SQL-level predicate itself is
 // already covered by test/public-format.test.ts, test/public-day-filter.
@@ -193,14 +201,16 @@ describe("DEC-851: one filter contract — HTML dispatch and the .json feed agre
     { surface: "sessions", qs: "?format=talk" },
     { surface: "sessions", qs: "?day=2026-08-10" },
     { surface: "sessions", qs: "?q=talk" },
+    // DEC-851's wave-64 amendment supersedes the parity claim for exactly
+    // two knobs on exactly two surfaces: on /agenda and /schedule `trackId`
+    // is a render-level HIGHLIGHT (never a predicate) and `format` is not an
+    // agenda facet at all, so the HTML page there deliberately renders MORE
+    // rows than the filtered feed. Those four cases are asserted separately
+    // below; day/q/no-knob parity is untouched by the amendment.
     { surface: "agenda", qs: "" },
-    { surface: "agenda", qs: "?trackId=trk-a" },
-    { surface: "agenda", qs: "?format=talk" },
     { surface: "agenda", qs: "?day=2026-08-10" },
     { surface: "agenda", qs: "?q=talk" },
     { surface: "schedule", qs: "" },
-    { surface: "schedule", qs: "?trackId=trk-a" },
-    { surface: "schedule", qs: "?format=talk" },
     { surface: "schedule", qs: "?day=2026-08-10" },
     { surface: "schedule", qs: "?q=talk" },
   ];
@@ -229,14 +239,30 @@ describe("DEC-851: /embed/:slug/agenda.json?trackId= no longer returns the unfil
     expect(filteredTotal).toBe(RAW_SESSIONS.filter((r) => r.trackId === "trk-a").length);
   });
 
-  it("a trackId-filtered .json total matches the HTML page's total for the identical query", async () => {
+  // DEC-851 wave-64 amendment: the HTML page at the SAME query no longer
+  // matches that filtered total — on a schedule, track highlights and never
+  // filters, so every session stays on screen (an attendee following one
+  // track still needs to see what they are giving up at 10:00). The feed is
+  // a data export, not a schedule rendering, and keeps DEC-851's predicate.
+  it("the HTML page at the identical query renders EVERY row (highlight, not filter) while the .json twin stays filtered", async () => {
     installFakeCaches();
     const app = buildApp();
     const htmlRes = await app.request("/e/conf/agenda?trackId=trk-a", {}, TEST_ENV);
     const html = await htmlRes.text();
     installFakeCaches();
     const jsonTotalValue = await jsonTotal(app, "/embed/conf/agenda.json?trackId=trk-a");
-    expect(countHtmlRows(html, "agenda")).toBe(jsonTotalValue);
+    expect(countHtmlRows(html, "agenda")).toBe(RAW_SESSIONS.length);
+    expect(jsonTotalValue).toBe(RAW_SESSIONS.filter((r) => r.trackId === "trk-a").length);
+  });
+
+  it("the HTML page ignores ?format= entirely (not an agenda facet) on both itinerary surfaces", async () => {
+    for (const surface of ["agenda", "schedule"] as const) {
+      installFakeCaches();
+      const app = buildApp();
+      const htmlRes = await app.request(`/e/conf/${surface}?format=talk`, {}, TEST_ENV);
+      const html = await htmlRes.text();
+      expect(countHtmlRows(html, surface)).toBe(RAW_SESSIONS.length);
+    }
   });
 });
 

@@ -124,12 +124,18 @@ back), built entirely from the pure `src/lib/home-hub.ts`. No organizer-only met
 progress, submission counts) reaches any row here (DEC-581) — every field is one a
 competitor could read without leaking anything.
 
-## J10 — Publish to the public site (`/e/:eventSlug/sessions`, `/e/:eventSlug/sessions/:sessionId`, `/e/:eventSlug/speakers`, `/e/:eventSlug/speakers/:speakerId`, `/e/:eventSlug/gallery`, `/e/:eventSlug/agenda`, `/e/:eventSlug/schedule`, `/embed/:eventSlug/sessions`, `/embed/:eventSlug/speakers`, `/embed/:eventSlug/gallery`, `/embed/:eventSlug/agenda`, `/embed/:eventSlug/schedule`, `/embed/:eventSlug/sessions/:sessionId`, `/embed/:eventSlug/speakers/:speakerId`)
+## J10 — Publish to the public site (`/e/:eventSlug/sessions`, `/e/:eventSlug/sessions/:sessionId`, `/e/:eventSlug/speakers`, `/e/:eventSlug/speakers/:speakerId`, `/e/:eventSlug/gallery`, `/e/:eventSlug/agenda`, `/e/:eventSlug/schedule`, `/e/:eventSlug/programme`, `/embed/:eventSlug/sessions`, `/embed/:eventSlug/speakers`, `/embed/:eventSlug/gallery`, `/embed/:eventSlug/agenda`, `/embed/:eventSlug/schedule`, `/embed/:eventSlug/sessions/:sessionId`, `/embed/:eventSlug/speakers/:speakerId`)
 
 Five public, mobile-friendly, no-login surfaces plus their embed twins (iframe
 snippets from `/admin/settings`'s embeds panel). All public queries filter to
 accepted+visible+content-approved server-side (never trust a client-side filter for what
 is public). `/e/:eventSlug/schedule` also serves `.ics`. Built.
+
+**Printable programme (`/e/:eventSlug/programme`, DEC-683 amendment):** a public,
+no-login, print-first one-page rendering of the whole published programme (every day,
+one sequence, sessions and breaks interleaved) with its own minimal shell — no nav, no
+rail, no itinerary controls. A projection of the same visibility-gated reads every other
+public surface uses (`getPublicAgenda` + `getPublicBreaksByDay`), never a new query.
 
 **Capped:** every public list is bounded by `MAX_PUBLIC_PAGE`=100 and `PUBLIC_PER_PAGE`
 (`src/server/repo/public/bounds.ts`) — `MAX_PUBLIC_ROWS = MAX_PUBLIC_PAGE * PUBLIC_PER_PAGE`

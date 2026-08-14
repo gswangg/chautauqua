@@ -95,7 +95,10 @@ describe('BreaksPanel', () => {
     await waitFor(() => expect(apiGetMock).toHaveBeenCalledTimes(2));
   });
 
-  it('Remove DELETEs and the row drops after refetch', async () => {
+  // DEC-941: removing a break is irreversible, so Remove opens the shared
+  // ConfirmDialog first — the DELETE only fires from the dialog's own
+  // destructive control, never straight off the row button.
+  it('Remove asks for confirmation first, then DELETEs and the row drops after refetch', async () => {
     apiGetMock
       .mockResolvedValueOnce({ items: [breakRow()] })
       .mockResolvedValueOnce({ items: [] });
@@ -105,10 +108,24 @@ describe('BreaksPanel', () => {
     expect(await screen.findByRole('button', { name: 'Remove' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    expect(apiDeleteMock).not.toHaveBeenCalled();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove break' }));
 
     await waitFor(() => expect(apiDeleteMock).toHaveBeenCalledWith('/breaks/brk-1'));
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument());
     expect(screen.getByText('No breaks yet.')).toBeInTheDocument();
+  });
+
+  it('cancelling the remove confirmation fires no DELETE and keeps the row', async () => {
+    apiGetMock.mockResolvedValue({ items: [breakRow()] });
+
+    render(<BreaksPanel eventId={EVENT_ID} day={DAY} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
+
+    expect(apiDeleteMock).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
   });
 
   it("a 400 with fields.startMin renders that message beside the start-time input, not a bare banner", async () => {

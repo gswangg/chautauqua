@@ -14,6 +14,7 @@
 // scope this wave.
 import { useEffect, useState } from 'react';
 import { apiDelete, apiGet, apiPost, ApiError } from '../../lib/api';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { formatMinutes } from './gridMath';
 import { DEC_021 } from '../../../../src/decisions';
 
@@ -78,6 +79,10 @@ export function BreaksPanel({ eventId, day }: BreaksPanelProps) {
   const [fieldErrors, setFieldErrors] = useState<BreakFieldErrors>({});
   const [adding, setAdding] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  // DEC-941/DEC-631: removing a break is irreversible (no undo, no restore
+  // path), so the Remove control opens the ONE shared ConfirmDialog rather
+  // than firing the DELETE on click.
+  const [pendingRemove, setPendingRemove] = useState<ScheduleBreakRow | null>(null);
 
   function load() {
     if (!eventId || !day) return;
@@ -127,6 +132,7 @@ export function BreaksPanel({ eventId, day }: BreaksPanelProps) {
       setError(err instanceof ApiError ? err.message : 'Failed to remove break');
     } finally {
       setRemovingId(null);
+      setPendingRemove(null);
     }
   }
 
@@ -160,7 +166,7 @@ export function BreaksPanel({ eventId, day }: BreaksPanelProps) {
             <button
               type="button"
               className="chq-btn chq-btn-tertiary"
-              onClick={() => void handleRemove(b.id)}
+              onClick={() => setPendingRemove(b)}
               disabled={removingId === b.id}
             >
               Remove
@@ -235,6 +241,24 @@ export function BreaksPanel({ eventId, day }: BreaksPanelProps) {
           </span>
         )}
       </div>
+
+      {pendingRemove && (
+        <ConfirmDialog
+          title="Remove this break?"
+          body={
+            <p>
+              {formatMinutes(pendingRemove.startMin)} · {pendingRemove.label}
+              {pendingRemove.location ? ` · ${pendingRemove.location}` : ''} will be removed from this day. This cannot
+              be undone.
+            </p>
+          }
+          confirmLabel="Remove break"
+          destructive
+          pending={removingId === pendingRemove.id}
+          onConfirm={() => void handleRemove(pendingRemove.id)}
+          onCancel={() => setPendingRemove(null)}
+        />
+      )}
     </section>
   );
 }

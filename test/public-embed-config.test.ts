@@ -218,20 +218,22 @@ function buildAgendaApp() {
     select: () => {
       selectCall += 1;
       if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
-      if (selectCall === 2) return makeChain([]); // DEC-804 getPublicTracks (search form's track <select>)
-      if (selectCall === 3) return makeChain([]); // DEC-851 getPublicFormatOptions (search form's format <select>)
-      if (selectCall === 4) {
+      if (selectCall === 2) return makeChain([]); // DEC-804 getPublicTracks (the track-HIGHLIGHT <select>)
+      // DEC-851 (wave 64 amendment): format is not an agenda facet, so
+      // getPublicFormatOptions is no longer called on this surface — this
+      // positional harness must NOT reserve a slot for it.
+      if (selectCall === 3) {
         // DEC-548 getPublicAgenda's total count(*) subquery — reflects
         // whatever ?day= filter the just-built sq's where() captured.
         const filtered = dayFilter ? AGENDA_ROWS.filter((r) => r.day === dayFilter) : AGENDA_ROWS;
         return makeChain([{ count: filtered.length }]);
       }
-      if (selectCall === 5) return makeChain([{ id: "room1", name: "Main Hall" }]); // roomRows
-      if (selectCall === 6) return makeChain(SESSION_ROWS); // hydrateSessions subRows
-      if (selectCall === 7) {
+      if (selectCall === 4) return makeChain([{ id: "room1", name: "Main Hall" }]); // roomRows
+      if (selectCall === 5) return makeChain(SESSION_ROWS); // hydrateSessions subRows
+      if (selectCall === 6) {
         return makeChain(SESSION_ROWS.map((s) => ({ submissionId: s.id, id: "trk1", name: "Track A", color: "#f00" })));
       }
-      if (selectCall === 8) {
+      if (selectCall === 7) {
         return makeChain(
           SESSION_ROWS.map((s) => ({
             submissionId: s.id,
@@ -243,7 +245,7 @@ function buildAgendaApp() {
           })),
         );
       }
-      if (selectCall === 9) return makeChain([]); // hydrateSessions EMB-01 slotRows (unused by the agenda grid itself)
+      if (selectCall === 8) return makeChain([]); // hydrateSessions EMB-01 slotRows (unused by the agenda grid itself)
       return makeChain([]); // hydrateSessions formatRows
     },
     selectDistinct: () => {

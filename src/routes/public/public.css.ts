@@ -792,6 +792,17 @@ export const PUBLIC_CSS = `
   .chq-pub-rail-day-row a { font-size: 14px; font-weight: 600; color: var(--chq-ink); text-decoration: none; }
   .chq-pub-rail-day-count { font-size: 13px; color: var(--chq-muted); }
   .chq-pub-rail-cfp-link { font-size: 14px; font-weight: 700; color: var(--chq-ink); align-self: flex-start; }
+  /* DEC-683 amendment (wave 65): the printable programme's one rail link --
+     same weight/alignment as the CFP link above (both are the rail's
+     "leave this page for that one" affordances), kept visibly underlined so
+     it does not read as body copy in a section of plain day rows. */
+  .chq-pub-rail-programme-link {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--chq-ink);
+    align-self: flex-start;
+    margin-top: 14px;
+  }
 
   /* DEC-683: per-row Save/Saved pill. The checkbox itself is visually
      hidden (never display:none -- that would drop it from the a11y tree)

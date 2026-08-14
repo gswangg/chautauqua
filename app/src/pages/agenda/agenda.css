@@ -947,7 +947,7 @@
   color: var(--chq-muted);
 }
 
-.chq-field-error {
-  font-size: 12px;
-  color: var(--chq-danger, #b91c1c);
-}
+/* NB: .chq-field-error is owned by app/src/styles.css (uppercase micro-label
+   in --chq-ink -- DEC-383's palette has no semantic red, and there is no
+   --chq-danger token). This sheet deliberately re-declares nothing for it;
+   the breaks form's field errors inherit that ONE rule. */
