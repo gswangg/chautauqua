@@ -234,9 +234,13 @@ describe("submission.updated_at covers denormalised contact/track names (DEC-725
     const before1 = submissionUpdatedAt(sqlite, "sub-1");
     const before2 = submissionUpdatedAt(sqlite, "sub-2");
 
+    // resolveImportUpsert reads CAMEL-case keys off `parsed` (the CSV header
+    // mapper has already normalised first_name -> firstName by this point).
+    // Passing snake_case here would leave the patch empty, so nothing would
+    // actually be renamed and this test would assert nothing.
     await applyImportRows(db, ORG_A, [
-      { line: 1, parsed: { email: "c1@x.com", first_name: "RenamedOne", last_name: "Test" } },
-      { line: 2, parsed: { email: "c2@x.com", first_name: "RenamedTwo", last_name: "Test" } },
+      { line: 1, parsed: { email: "c1@x.com", firstName: "RenamedOne", lastName: "Test" } },
+      { line: 2, parsed: { email: "c2@x.com", firstName: "RenamedTwo", lastName: "Test" } },
     ]);
 
     expect(submissionUpdatedAt(sqlite, "sub-1")).toBeGreaterThan(before1);

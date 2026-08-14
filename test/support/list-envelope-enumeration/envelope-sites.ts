@@ -33,9 +33,11 @@ export function findItemsEnvelopeSites(source: string, file: string): EnvelopeSi
 export const ENVELOPE_ALLOWLIST = new Set<string>([
   // Line numbers shifted by the wave-27 B9 email-shell sweep (DEC-037
   // amendment), which added renderEmailHtml imports/calls above both sites.
+  // Shifted again (245 -> 247) by DEC-182's wave-32 fix, which made
+  // validateBulkEmailRequest consume parseBoundedIdArray's deduped result.
   // The exceptions themselves are unchanged.
   "src/routes/comms.ts:525",
-  "src/routes/api/contacts/bulk-email.ts:245",
+  "src/routes/api/contacts/bulk-email.ts:247",
   // NOTE (DEC-840): GET .../assignments/distribute/preview used to be
   // allowlisted here (it was previously `c.json({ items, perReviewer,
   // total, shortfall })`, matching the scanner's `{ items` pattern). The

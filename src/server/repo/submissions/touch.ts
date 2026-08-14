@@ -46,7 +46,7 @@
 // `track.name`, but renaming a contact or a track only ever bumped that
 // contact's/track's own row, never the submission rows whose pushed shape
 // embeds the old string. touchSubmissionsForContacts / touchSubmissionsFor-
-// Tracks close that gap: callers pass the contact/track id(s) whose NAME
+// Tracks close that gap: callers pass the contact/track ids whose NAME
 // just changed (never headshot/notes/other non-serialized fields — see
 // DEC-519's same-string no-op precedent at src/routes/api/events.ts) and
 // this touches every submission that currently embeds that name. DEC-725's

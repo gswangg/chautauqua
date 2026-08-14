@@ -141,6 +141,11 @@ function classify(src: string, callStart: number): Classification {
   if (i < 0) return "statement";
   const c = src[i] ?? "";
   if (c === "(" || c === "," || c === "[" || c === ":") return "consumed";
+  // `?` covers BOTH the then-branch of a ternary (`x = cond ? parse(...) : y`,
+  // the shape every optional query-param parse in src/routes/api uses) and the
+  // right-hand side of `??`. Both positions feed the surrounding expression,
+  // so the result is consumed. (`:` above already covers the else-branch.)
+  if (c === "?") return "consumed";
   if (c === ">" && i > 0 && src[i - 1] === "=") return "consumed"; // arrow function implicit return
   if (c === "=") {
     const prev = i > 0 ? src[i - 1] : "";

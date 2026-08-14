@@ -36,9 +36,15 @@ function isRuleShape(r: unknown): r is SegmentRule {
 
 /** Bounds a single rule's `value` the same way every other admin free-text
  * field is bounded (DEC-417): over-cap is a 400 naming `rules`, never a
- * downstream D1 SQLITE_TOOBIG 500 from an unbounded LIKE bind. */
-function assertRuleValueBounded(value: string): void {
-  parseBoundedText(value, "rules", { max: MAX_NAME_LENGTH, trim: false });
+ * downstream D1 SQLITE_TOOBIG 500 from an unbounded LIKE bind.
+ *
+ * DEC-182: returns the BOUNDED value rather than discarding it, and callers
+ * store what this returned — a parse whose result is thrown away while the
+ * raw input is used anyway is not a parse. (`trim: false` keeps segment rule
+ * values byte-for-byte, so this is the same string, but the plumbing means a
+ * future normalising option cannot silently fail to reach the stored rule.) */
+function boundedRuleValue(value: string): string {
+  return parseBoundedText(value, "rules", { max: MAX_NAME_LENGTH, trim: false });
 }
 
 /** Throws (rather than returning an error) if any rule references a field
@@ -64,13 +70,14 @@ function parseRules(body: Record<string, unknown>, fields: Record<string, string
       fields.rules = "each rule needs field, op (eq|ne|contains), value";
       return undefined;
     }
+    let value: string;
     try {
-      assertRuleValueBounded(r.value);
+      value = boundedRuleValue(r.value);
     } catch (err) {
       fields.rules = err instanceof Error ? err.message : "invalid rule value";
       return undefined;
     }
-    rules.push(r);
+    rules.push({ ...r, value });
   }
   // Fail loudly at creation time rather than at filter time: a bad field
   // name should reject the segment, not silently break every list query
@@ -113,8 +120,7 @@ export function parseRulesQueryParam(raw: string | undefined): SegmentRule[] {
         rules: "each rule needs field, op (eq|ne|contains), value",
       });
     }
-    assertRuleValueBounded(r.value);
-    rules.push(r);
+    rules.push({ ...r, value: boundedRuleValue(r.value) });
   }
   try {
     assertRulesResolvable(rules);

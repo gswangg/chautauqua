@@ -17,7 +17,16 @@ import { loginRoutes } from "./auth-login";
 import { claimRoutes } from "./auth-claim";
 import { resetRoutes } from "./auth-reset";
 
-export const authRoutes = new Hono<AppEnv>().route("/", loginRoutes).route("/", claimRoutes).route("/", resetRoutes);
+// Statement-form mounts, one per line, matching src/routes/review/index.ts --
+// NOT a `new Hono().route(...).route(...)` chain. test/helpers/registered-
+// routes.ts resolves each sub-app's mounted prefix by matching
+// `<parent>.route("<prefix>", <child>)` with a NAMED receiver, so a chained
+// composition leaves every child (loginRoutes/claimRoutes/resetRoutes)
+// looking unmounted and fails the route enumeration guards.
+export const authRoutes = new Hono<AppEnv>();
+authRoutes.route("/", loginRoutes);
+authRoutes.route("/", claimRoutes);
+authRoutes.route("/", resetRoutes);
 
 // Re-exported for callers that reached into this file directly before the
 // split (test/*, src/routes/account.tsx).
