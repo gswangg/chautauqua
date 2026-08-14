@@ -9,6 +9,7 @@ import { FormRow } from '../../components/ModalFrame';
 import { COMPOSE_MERGE_FIELDS, type MergeField } from '../../lib/merge-fields';
 import { InsertFieldMenu } from './InsertFieldMenu';
 import { countOf } from '../../lib/plural';
+import { formatDateTime } from '../../lib/dates';
 import { paginationSummary } from '../../lib/pagination-summary';
 import type { EmailTemplate, RenderedRecipient } from './types';
 import type { EvaluationPlan } from '../review/types';
@@ -856,7 +857,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
           <div className="chq-comms-panel-note">
             <p>Template: {templateName || 'No template'}</p>
             <p>Subject: {resolvedSendSubject}</p>
-            {sentAt !== null && <p>Sent: {new Date(sentAt).toLocaleString()}</p>}
+            {sentAt !== null && <p>Sent: {formatDateTime(sentAt)}</p>}
           </div>
           {sentFailedCount > 0 && (
             <div>

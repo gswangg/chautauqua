@@ -213,6 +213,15 @@
   color: var(--chq-muted);
 }
 
+/* Ruling A12's other half: Remove is now a tertiary button in the editor's
+   action row. Layout only (same precedent as contacts.css's
+   .chq-contacts-delete-trigger) -- the colour and weight of a destructive
+   trigger stay with .chq-btn-tertiary in styles.css, so DEC-379's class
+   vocabulary stays closed without inventing a per-surface treatment. */
+.chq-speakers-task-remove {
+  white-space: nowrap;
+}
+
 /* DEC-934 amendment (wave 4): the ONE caption a not-chasing row (invited or
    mixed invited/declined participation) carries beneath its identity cell --
    the task cells to its right still render (quiet, non-actionable), so this

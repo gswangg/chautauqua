@@ -44,7 +44,12 @@ const files = glob(APP_SRC).filter((f) => !EXCLUDED.has(f));
 // `Sent ${count}` — i.e. the literal word "Sent" immediately followed by
 // an interpolation or concatenation of a count variable, the pattern the
 // pre-DEC-677 ComposeWizard/BulkEmailModal used.
-const HAND_BUILT_SEND_SENTENCE = /Sent\s*\{?\s*\w*\s*\}?\s*email/i;
+//
+// The leading \b matters: without it the "sent" inside "pre-sent-er" made
+// DEC-900's ruled co-presenter copy ("Adding a co-presenter emails them a
+// portal link") read as a violation. The guard is about the WORD "Sent"
+// heading a sentence, never a substring of a longer word.
+const HAND_BUILT_SEND_SENTENCE = /\bSent\s*\{?\s*\w*\s*\}?\s*email/i;
 
 describe("send result has one reporter (DEC-677)", () => {
   it("scanned at least 1 file", () => {

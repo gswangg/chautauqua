@@ -421,6 +421,7 @@ const PUBLIC_BY_DESIGN: LedgerEntry[] = [
   { file: "src/routes/auth.tsx", method: "GET", path: "/login", reason: "renders the login form itself; must be reachable with no session" },
   { file: "src/routes/auth.tsx", method: "POST", path: "/login", reason: "the auth-establishing endpoint; guarded by per-email+per-IP rate limiting (DEC-072/DEC-180), never by session" },
   { file: "src/routes/auth.tsx", method: "POST", path: "/logout", reason: "a no-op for an anonymous caller (deletes only the session row matching the presented cookie, if any); CSRF-protected via csrfFormOrHeader" },
+  { file: "src/routes/auth.tsx", method: "GET", path: "/logout", reason: "DEC-154 (wave 25 amendment): mutates nothing at all -- it exists precisely so a bookmarked/prefetched GET cannot sign anyone out, and redirects to /login. Nothing to guard: it reads no session and touches no row" },
   { file: "src/routes/auth.tsx", method: "GET", path: "/claim/:token", reason: "the 'auth' is possession of an unguessable KV claim token, not a session; this is the account-creation entry point by design" },
   { file: "src/routes/auth.tsx", method: "POST", path: "/claim/:token", reason: "same token-possession model, plus per-IP rate limiting" },
   // src/routes/dev/mailbox.tsx

@@ -113,14 +113,11 @@ const NAMED_EXCEPTIONS: ReadonlyMap<string, string> = new Map([
     "routes/public/home.css.ts::.chq-home-shell",
     "the home hub's own frame width; docs/design/README.md draws all three hub states at 900",
   ],
-  [
-    "routes/auth.css.ts::.chq-auth-card",
-    "DEC-945 wave-1 amendment: the BOX is content column + 2x padding (732 + 2*44), not the reading column itself -- the 820 is a card-frame number, not a hand-copy of --chq-measure",
-  ],
-  [
-    "routes/auth.css.ts::.chq-auth-card.chq-auth-card-narrow",
-    "DEC-945 wave-1 amendment: the BOX is content column + 2x padding (818 + 2*35), not the reading column itself -- the 888 is a card-frame number, not a hand-copy of --chq-measure",
-  ],
+  // The two .chq-auth-card rows that used to sit here (820px and 888px, on
+  // DEC-945's wave-1 box-math) are GONE, not relaxed: DEC-945's wave-25
+  // amendment rebuilds the card to V8 frame 11-account--00 at 460px (520px
+  // narrow), so those selectors no longer clamp at 800px+ and an exception
+  // for them would be a stale row. Asserted below.
 ]);
 
 describe("SSR page-clamp scan (DEC-989 amendment, wave 37)", () => {
@@ -146,11 +143,9 @@ describe("SSR page-clamp scan (DEC-989 amendment, wave 37)", () => {
     ).toEqual([]);
   });
 
-  it("NAMED_EXCEPTIONS holds exactly the home-hub and auth-card entries, and each selector still exists", () => {
+  it("NAMED_EXCEPTIONS holds exactly the home-hub entry, and its selector still exists", () => {
     expect([...NAMED_EXCEPTIONS.keys()]).toEqual([
       "routes/public/home.css.ts::.chq-home-shell",
-      "routes/auth.css.ts::.chq-auth-card",
-      "routes/auth.css.ts::.chq-auth-card.chq-auth-card-narrow",
     ]);
 
     const homeCss = extractCssText(HOME_CSS_FILE);
@@ -158,12 +153,17 @@ describe("SSR page-clamp scan (DEC-989 amendment, wave 37)", () => {
     const shellDecl = declarations.find((d) => d.selector === ".chq-home-shell");
     expect(shellDecl, ".chq-home-shell must still declare a max-width in home.css.ts").toBeDefined();
     expect(shellDecl?.px).toBe(900);
+  });
 
-    const authCss = extractCssText(AUTH_CSS_FILE);
-    const authDeclarations = findMaxWidthDeclarations(authCss);
+  // DEC-945 (wave-25 amendment): the auth card came DOWN under the clamp
+  // rather than being granted a standing exception -- 460px, 520px narrow.
+  // Kept here so a future widening back over 800px fails this scan and not
+  // just the geometry test.
+  it("the auth card needs no exception: both card clamps are well under 800px", () => {
+    const authDeclarations = findMaxWidthDeclarations(extractCssText(AUTH_CSS_FILE));
     const cardDecl = authDeclarations.find((d) => d.selector === ".chq-auth-card");
     expect(cardDecl, ".chq-auth-card must still declare a max-width in auth.css.ts").toBeDefined();
-    expect(cardDecl?.px).toBe(820);
+    expect(cardDecl?.px).toBe(460);
     const narrowDecl = authDeclarations.find(
       (d) => d.selector === ".chq-auth-card.chq-auth-card-narrow",
     );
@@ -171,7 +171,7 @@ describe("SSR page-clamp scan (DEC-989 amendment, wave 37)", () => {
       narrowDecl,
       ".chq-auth-card.chq-auth-card-narrow must still declare a max-width in auth.css.ts",
     ).toBeDefined();
-    expect(narrowDecl?.px).toBe(888);
+    expect(narrowDecl?.px).toBe(520);
   });
 
   it("portal/shared.tsx's <main> carries chq-measure", () => {
