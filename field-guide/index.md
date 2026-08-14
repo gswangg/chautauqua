@@ -24,35 +24,30 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   TEST; WIDTH BEATS MAX-WIDTH; TYPED FILE LIST SCAN MEASURES FILES
   REMEMBERED. max-width 700/900; no overflow-x:hidden; no colour literal
   in surface CSS. Lanes land MID-PLAN, re-open file:line.
-- FINDINGS w16-20 (compacted). Shapes: SCAN BINDS ONE CALL SHAPE MISSES
-  SIBLING; GUARD THAT NARROWS < NONE; SIBLING ATTRIBUTE IS ALSO A ROUTE;
-  HAND-TYPED LIST FORGETS 3RD MEMBER; MINT != DELIVERY; FALLBACK THAT
-  GUESSES IS ATTACKER INPUT; CATCH JUSTIFIED BY COMMENT OUTLIVES PREMISE;
-  PROBE BY HAND MISSES MOUNTS; POLICY IN ONE HOOK ISN'T A POLICY;
-  RECEIVER IS PART OF CALL SHAPE; CAST IS NOT A KEY; ALLOW-LIST REASON
-  NAMING A DELEGATE IS A CLAIM, RESOLVE OR DELETE; TRIPWIRE COUNTING
-  FILES != COUNTING MATCHES; DUPLICATED ENUM MESSAGE DRIFTS BY LAST
-  MEMBER ADDED. REFUSED: no public "create account" CTA on /submit.
-  Amendments DEC-528/837/841/914/048/438/628/635/949/252/547/550/715/
-  745/078/024/678/948/713/098/939/402/908/879.
-- FINDINGS w21-22 (compacted). Shapes: CATCH RETURNING A DEFAULT IS NOT A
-  GUARD; MARKDOWN ENUMERATION PINNED TO ITS SHA; ALLOWLIST W/NO STALE
-  DIRECTION IS PERMISSION; ROLLBACK IS STILL AN ORDERING; SIBLING FIGURES
-  IN ONE FUNCTION DRIFT; A DELETE KEYED ON CLIENT INPUT NEEDS THE OWNER
-  PREDICATE; UNAUTHENTICATED ROUTES GOT THE RATE LIMITS (authenticated !=
-  safe from oracle/CPU-sink); ADVERTISED CAP THE PLATFORM REFUSES IS A
-  LIE; MIDDLEWARE SCOPE IS REGISTRATION ORDER. Amendments DEC-635/713/
-  459/078/432/994/180/879/083.
-- FINDINGS w23 (planner re-verified on main). Wave 21 LANDED (scans all
-  present; submit.tsx rollback row-delete-FIRST, ledger EMPTY). Wave 22
-  STILL IN FLIGHT (auth-session.ts, account.tsx, domain/files.ts, pubcache
-  prefix UNTOUCHED): HANDS OFF. Five review-lens items re-confirmed STALE
-  (origin.ts/tasks.ts/authz probe/claim mint/inArray migration). Shapes:
-  THE SERIALIZER THAT QUOTES MUST STRIP THE QUOTE (ics sanitizeCn strips
-  `"`, MIME addressHeader doesn't -- one file, two answers); SANITIZE THE
-  ADDRESS, NOT JUST THE LABEL (`<${email}>`/`mailto:${email}` raw,
-  isValidEmail admits `<>,;`); A CONTRACT IN THE DOCSTRING IS NOT A GATE
-  (hydrateSessions read by id w/ no gate, "caller already checked" x7);
-  THE INVARIANT SCAN THAT ONLY READS (DEC-451 guards select(), not
-  update()/delete()); ONE THROWING GETTER, TWO HAND-COPIES. Amendments
-  DEC-996/499/451/274/276/775.
+- FINDINGS w16-22 (heavily compacted). Shapes: SCAN BINDS ONE CALL SHAPE
+  MISSES SIBLING; GUARD THAT NARROWS < NONE; HAND-TYPED LIST FORGETS 3RD
+  MEMBER; MINT != DELIVERY; FALLBACK THAT GUESSES IS ATTACKER INPUT;
+  CATCH JUSTIFIED BY COMMENT OUTLIVES PREMISE; POLICY IN ONE HOOK ISN'T A
+  POLICY; ALLOW-LIST REASON NAMING A DELEGATE IS A CLAIM, RESOLVE OR
+  DELETE; CATCH RETURNING A DEFAULT IS NOT A GUARD; ALLOWLIST W/NO STALE
+  DIRECTION IS PERMISSION; A DELETE KEYED ON CLIENT INPUT NEEDS THE OWNER
+  PREDICATE; UNAUTHENTICATED ROUTES GOT THE RATE LIMITS; MIDDLEWARE SCOPE
+  IS REGISTRATION ORDER. Amendments DEC-528/837/841/914/048/438/628/635/
+  949/252/547/550/715/745/078/024/678/948/713/098/939/402/908/879/459/
+  432/994/180/083.
+- FINDINGS w23 (compacted). Wave 21/22 LANDED. Shapes: SERIALIZER THAT
+  QUOTES MUST STRIP THE QUOTE; SANITIZE ADDRESS NOT JUST LABEL; CONTRACT
+  IN DOCSTRING IS NOT A GATE; INVARIANT SCAN THAT ONLY READS; ONE THROWING
+  GETTER, TWO HAND-COPIES. Amendments DEC-996/499/451/274/276/775.
+- FINDINGS w24 (planner re-verified on main). Wave 23 FULLY LANDED: execution-ctx.ts
+  single reader, public-session-gate / serializer-single-source / write-scoping scans,
+  MIME addressValue + folded encoded-words. Mandate residue RE-VERIFIED STALE (do not
+  re-file): criteria 6th track, distribute copy, agenda day pills = ?day=, ics in the
+  embed picker, headshots in the files library (DEC-773), pipeline fit/rationale,
+  per-person remind contactIds, multi-room seed days, origin.ts cron parity, claim
+  supersede grace (DEC-949), authz probe parses index mounts. Shapes: A SANITIZER AT
+  SEND MAKES INTAKE A LIAR (isValidEmail admits what addressValue silently deletes --
+  stored != delivered mailbox); A HEADER VALUE IS ASCII-ONLY (4 Content-Disposition
+  hand-copies strip CR/LF/\" only, RFC 5987 in none); FLAG THE ENCODING OR THE NAME IS
+  CP437 (zip bit 11 clear over UTF-8 bytes); THE THIRD IDENTICAL COPY IS WHERE DRIFT
+  ENTERS (3 escapeHtml). Amendments DEC-425/160/037/454.
