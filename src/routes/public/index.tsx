@@ -26,7 +26,7 @@ import {
 import { buildIcsCalendar } from "../../mail/ics";
 import { icsOrganizerEmailOrNull } from "../../server/context";
 import { parseItineraryIds, MAX_ITINERARY_IDS } from "../../lib/itinerary";
-import { ApiError, errorResponse } from "../../server/http";
+import { ApiError, errorResponse, wantsHtmlResponse } from "../../server/http";
 import { publicCacheMiddleware, defaultCache } from "../../server/pubcache";
 import { DEC_022, DEC_007, DEC_017, DEC_005, DEC_012, DEC_080, DEC_083, DEC_151, DEC_289, DEC_489, DEC_661, DEC_672 } from "../../decisions";
 import { SURFACES, isSurface, setCacheHeaders, PublicShell, EmbedShell, isValidFrom, measureClassForSurface, navActiveFor, type Surface } from "./shell";
@@ -47,7 +47,7 @@ import {
 } from "./query";
 import { buildSurfaceFeed, buildSurfaceFeedXml, agendaIcsEvents, projectCardFields } from "./feeds";
 import type { CardFields } from "./query";
-import { publicNotFound } from "./not-found";
+import { publicNotFound, publicErrorDocument } from "./not-found";
 import { savedEmbedRoutes } from "./saved-embed";
 import { handleProgramme } from "./programme";
 
@@ -95,8 +95,32 @@ publicRoutes.use("/embed/*", publicCacheMiddleware(defaultCache));
 // a successful response. This onError always overwrites Cache-Control to
 // no-store on the way out — mirrors publicNotFound's rationale above, but
 // covers thrown errors instead of the explicit 404 path.
+//
+// DEC-841 (wave 16 amendment): the SAME paths' explicit 404 (publicNotFound)
+// already renders full public chrome; a thrown error used to fall through
+// to http.ts's bare renderHtmlError instead -- fix the chrome, not the
+// envelope. HTML-vs-JSON classification stays the ONE predicate DEC-841
+// established (wantsHtmlResponse, re-exported from http.ts) -- no second
+// classifier here. A feed/file-extension request (schedule.ics, the
+// .json/.xml embed twins) is not a full-page HTML navigation even though it
+// isn't an /api/v1 path either, so it keeps going through errorResponse
+// unchanged (today's behavior, unaffected by this amendment).
+const FEED_EXTENSION_PATH = /\.(ics|xml)$/;
+
 publicRoutes.onError((err, c) => {
   c.header("Cache-Control", "no-store");
+  const pathname = new URL(c.req.url).pathname;
+  if (!FEED_EXTENSION_PATH.test(pathname) && wantsHtmlResponse(c)) {
+    const isApiErr = err instanceof ApiError;
+    if (!isApiErr) {
+      // Fail loudly: unexpected errors are never swallowed, always logged --
+      // mirrors errorResponse's own console.error for the non-HTML/JSON path.
+      console.error("unhandled error", err);
+    }
+    const status = isApiErr ? (err as ApiError).status : 500;
+    const message = isApiErr ? (err as ApiError).message : "Internal server error";
+    return publicErrorDocument(c, message, status as 400 | 401 | 403 | 404 | 409 | 500);
+  }
   return errorResponse(c, err);
 });
 

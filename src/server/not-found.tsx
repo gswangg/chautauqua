@@ -69,14 +69,25 @@ export function NotFoundDocument(props: {
   eyebrow: string;
   body: string;
   links: ReadonlyArray<{ href: string; label: string }>;
+  // DEC-841 (wave 16 amendment): an error page (as opposed to a genuine
+  // 404) reuses this exact same card -- title, heading and all -- but marks
+  // the message paragraph role="alert" and swaps the <title>/<h1> copy so a
+  // thrown 5xx/4xx doesn't read as "That page isn't here". Optional so
+  // every existing 404 call site (unset -> not-found copy, no role) is
+  // unchanged.
+  title?: string;
+  heading?: string;
+  alert?: boolean;
 }) {
+  const title = props.title ?? "Not found - Chautauqua";
+  const heading = props.heading ?? "That page isn't here";
   return (
     <html lang="en">
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="robots" content="noindex" />
-        <title>Not found - Chautauqua</title>
+        <title>{title}</title>
         <ThemeStyles />
         <style dangerouslySetInnerHTML={{ __html: AUTH_CSS }} />
       </head>
@@ -84,9 +95,11 @@ export function NotFoundDocument(props: {
         <main class="chq-auth-card chq-auth-card-narrow chq-auth-card-notice">
           <div class="chq-auth-titlerow">
             <span class="chq-auth-label">{props.eyebrow}</span>
-            <h1 class="chq-auth-title">That page isn't here</h1>
+            <h1 class="chq-auth-title">{heading}</h1>
           </div>
-          <p class="chq-auth-body">{props.body}</p>
+          <p class="chq-auth-body" role={props.alert ? "alert" : undefined}>
+            {props.body}
+          </p>
           <div class="chq-auth-footer-links">
             {props.links.map((link) => (
               <a href={link.href}>{link.label} &rsaquo;</a>
