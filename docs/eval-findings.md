@@ -108,6 +108,61 @@ speaker bios render** (EMB-05 live). Reviews expansion: implemented with the ban
 (DEC-632/633), toggle labelled "Reviews (n)" — FIDELITY NIT for the fleet: frame copy is
 "3 reviews" / "2 reviews · 1 recusal" as the disclosure text.
 
+## GATE-6 SBEK LOSS ANALYSIS (run 22-14-24: composite 87.9 @ 92% — ZERO environmental losses)
+
+**The drops (CFP −5.4, AIA −5.6, CRM −6.0) decompose into: one re-falsified closure, a
+handful of new product defects, and a TURN-CAP EPIDEMIC — 12 of 20 scenarios died at
+exactly 70 turns (~5-6 composite pts sitting in unmeasured, often ALREADY-BUILT work).**
+
+**RE-OPENED (falsified a second time): AIA-04.** The seeded lead-lead clash flags, but a
+RUNTIME-ADDED co-presenter is invisible to the conflict engine AND the grid card ("the
+engine only evaluates the lead speaker... SES-035 card even omits Priya"). DEC-974's
+hydration covers seed-time participants, not the live-add path. Fix + verify with a
+runtime-added co-presenter, not the seed. (~0.8 composite)
+
+**NEW PRODUCT DEFECTS (eval-measured this run):**
+- **P0-class · CFP-11 scorecard:** the SECOND criterion's rating buttons don't commit a
+  value via click-after-scroll, and keyboard (Tab/ArrowRight) can't set them — agent
+  died fighting it. Same lineage as the gate-4 scorecard P0. Runtime-verify a
+  two-criterion mouse+keyboard scoring pass. (≥0.55)
+- **Date-input class:** strict "11 May 2028" grammar rejects "May 1, 2027" and ISO; and
+  the New-task modal SAVES ANYWAY with "No due date" when the format is rejected — a
+  silent drop (fail-loudly violation). Hit in CNT and CFP new-event modal.
+- **Pointer-occlusion class:** public sessions search BUTTON is covered by the input
+  (Enter-only, reproduced twice); AIA "Place SES-003 at 10:00" slot button exists in the
+  a11y tree but is visually covered by the placed card (drag is the only working path).
+- **CNT portal (judge-major, data-loss risk, zero score cost today):** the portal upload
+  session-selector RESETS to SES-001 on every load → silently forks a new version
+  series; comments are scoped per-series so the fork ORPHANED a posted comment.
+- **SPK bulk-email picker "effectively impractical"** (judge major): keyed to
+  submissions, no select-all, full re-render per checkbox. Also blocks CRM-11/CFP-14
+  evidence paths.
+- **EMB cards omit speaker title/company** (~1.3 composite in our best area) · **ABS:**
+  no duplicate-submission detection (seeded twins pollute rankings); "12 total" vs "34
+  talks" inconsistency; results Speaker column drops co-presenters; ABS-10 sort still
+  not discoverable in budget · **SPK:** portal shows placeholder avatar after successful
+  headshot upload; add-speaker first submit silently no-ops on an unlabelled required
+  field · **CRM import:** dedup pre-count says "0 rows match" then Review says "3
+  UPDATED"; same-email duplicates survive import.
+
+**TURN-DIET, now with scenario-path specifics (the #1 lever, again):**
+- CNT lane (~2.3 pts): S3's history/Restore must be operable without scroll-loops; S1
+  burned ~9 turns WANDERING THE NEW SETTINGS EDIT VIEWS hunting task creation (an
+  eval-side echo of fleet CLASS 3 — the B10 rebuild should fix navigation legibility);
+  CNT-12 bulk-approve gate + CNT-14 Download-all are BUILT and earning zero coverage.
+- CFP-S4 (~1.7): the agent never reaches settings — two comms composes (~28 turns) come
+  first. The close-the-call path needs to be FIRST-ACTION obvious; drop the /dev/mailbox
+  detour (404s on prod — route is dev-only; CFP-14 stays pendingManual there).
+- CRM (~1.8): the CSV wizard alone is 19 turns; CRM-03/04/06/09/11 all died queued
+  behind it.
+- AIA-06 (~0.5) conflict-clear demo; ABS residue (~1.4) ABS-08/09/10/13.
+
+**HOLDING UP under live judge evidence:** CFP close control (seen), CNT-S3 seed fix
+(found fast), files library (pass), SESSION DETAILS (pass), bulk-approve gate (visible
+via AIA-07's "8 held back: content not approved"), EMB-01 snippet (works).
+**Harness note:** judge screenshot-attachment pipeline dropped files that exist on disk
+(cost ≤0.12 composite, shaved confidence on ~6 items) — killmysaas-evals side, not ours.
+
 ## GATE-6 FLEET VERDICTS (audited vs design-frames-v9 on boundary a6ac400e; full detail per pair in chautauqua-research/fidelity-gate6/pair*/report.md)
 
 **01:1MAJ · 02:2MAJ · 03:4MAJ · 04:5MAJ · 05:2MAJ · 06:MINOR · 07:7MAJ · 08:7MAJ ·
