@@ -1,10 +1,13 @@
-// DEC-989 Amendment (wave 37), further amended DEC-990 (wave 40): the SSR
-// public surfaces take their container class from the CONTENT. sessions and
-// gallery = wide (1180: sessions' list + rail pair, gallery's six ~184px
-// tiles + gaps); speakers/schedule/session+speaker detail = reading (820);
-// agenda = canvas (no class, its lane count is the room count). EmbedShell
-// never carries a measure class -- an embed fills its host iframe. Mirrors
-// the vi.mock(../src/server/repo/public) pattern from
+// DEC-989 Amendment (wave 37), further amended DEC-990 (wave 40) and DEC-683
+// (wave 67): the SSR public surfaces take their container class from the
+// CONTENT. sessions, gallery and agenda = wide (1180: sessions'/agenda's
+// list + rail pair, gallery's six ~184px tiles + gaps); speakers/schedule/
+// session+speaker detail = reading (820). Agenda's former "canvas" measure
+// (no class, its lane count was the room count) is gone along with the
+// wave-64 desktop room-lane matrix it justified -- agenda is now the same
+// 1180 pair as sessions, with its own rail (AgendaRail). EmbedShell never
+// carries a measure class -- an embed fills its host iframe. Mirrors the
+// vi.mock(../src/server/repo/public) pattern from
 // test/public-page-headings.test.ts.
 
 import { describe, expect, it, vi } from "vitest";
@@ -176,7 +179,7 @@ const SURFACE_CASES: { path: string; expectClasses: string[] }[] = [
   { path: "/e/conf/speakers", expectClasses: ["chq-pub-main", "chq-measure"] },
   { path: "/e/conf/gallery", expectClasses: ["chq-pub-main", "chq-measure-wide"] },
   { path: "/e/conf/schedule", expectClasses: ["chq-pub-main", "chq-measure"] },
-  { path: "/e/conf/agenda", expectClasses: ["chq-pub-main"] },
+  { path: "/e/conf/agenda", expectClasses: ["chq-pub-main", "chq-measure-wide"] },
   { path: "/e/conf/sessions/s1", expectClasses: ["chq-pub-main", "chq-measure"] },
   { path: "/e/conf/speakers/c1", expectClasses: ["chq-pub-main", "chq-measure"] },
 ];
@@ -191,13 +194,8 @@ describe("DEC-989 Amendment (wave 37): every public surface's <main> carries exa
       const classes = mainClasses(html);
       expect(new Set(classes)).toEqual(new Set(expectClasses));
       expect(classes).not.toContain("chq-measure-table");
-      if (path !== "/e/conf/agenda") {
-        // reading or wide, never both
-        expect(classes.includes("chq-measure") && classes.includes("chq-measure-wide")).toBe(false);
-      } else {
-        expect(classes).not.toContain("chq-measure");
-        expect(classes).not.toContain("chq-measure-wide");
-      }
+      // reading or wide, never both
+      expect(classes.includes("chq-measure") && classes.includes("chq-measure-wide")).toBe(false);
     });
   }
 });

@@ -19,6 +19,7 @@ import { AgendaItemList } from "./agenda-list";
 // binding the agenda day-footer's "next day" out-link composes with.
 import { DaySwitcher, ItinerarySearchForm, agendaQs } from "./agenda-controls";
 import { ItineraryScript } from "./agenda-itinerary-script";
+import { AgendaRail } from "./agenda-rail";
 
 export { AgendaDayGrid } from "./agenda-grid";
 export { AgendaItemList } from "./agenda-list";
@@ -129,6 +130,13 @@ export function AgendaContent(props: {
   const nextDay = activeDayIndex >= 0 && activeDayIndex < days.length - 1 ? days[activeDayIndex + 1] : null;
   const lastEndMin = activeDayItems.length > 0 ? Math.max(...activeDayItems.map((i) => i.endMin)) : null;
   const switcherCurrent = { trackId: props.highlightTrackId ?? null, q: props.q ?? null };
+  // DEC-885/DEC-683 (wave 67 amendment): the rail's "Rooms in use today"
+  // section reads the SAME "day in view" rule DaySwitcher already applies
+  // to aria-current -- the ?day= filter when present, else the first
+  // rendered day top-to-bottom -- so the rail's room list never disagrees
+  // with which day's blocks are actually on screen.
+  const effectiveActiveDay = activeDay ?? days[0] ?? null;
+  const railItems = effectiveActiveDay ? (byDay.get(effectiveActiveDay) ?? []) : [];
   return (
     <>
       <div class="chq-pub-title-row chq-pub-agenda-heading-row">
@@ -148,49 +156,61 @@ export function AgendaContent(props: {
           q={props.q}
         />
       </div>
-      <ItinerarySearchForm
-        event={props.event}
-        tracks={props.tracks ?? []}
-        activeTrackId={props.highlightTrackId ?? null}
-        activeDay={props.activeDay ?? null}
-        q={props.q ?? null}
-        basePath={basePath}
-      />
-      {byDay.size === 0 ? (
-        // DEC-768: an honest empty state distinguishes "this day has no
-        // matches for your search" (activeDay is set, the event DOES have a
-        // schedule) from "nothing is scheduled at all" (no activeDay exists
-        // because getPublicScheduleDayCounts came back empty) -- never claim
-        // the event has no schedule just because a search narrowed one day
-        // to zero rows.
-        <p>{activeDay ? `No sessions match your search on ${formatDay(activeDay)}.` : "No sessions scheduled yet."}</p>
-      ) : (
-        <>
-          {props.items.length < props.total ? (
-            <p>
-              Showing the first {props.items.length} of {props.total} scheduled sessions.
-            </p>
-          ) : null}
-          {[...renderedDays].map((day) => (
-            <AgendaDay
-              day={day}
-              items={byDay.get(day) ?? []}
-              event={props.event}
-              from="agenda"
-              base={base}
-              breaks={props.breaksByDay?.get(day) ?? []}
-              highlightTrackId={props.highlightTrackId ?? null}
-              hideHeading={hideDayHeading}
-            />
-          ))}
-          {nextDay && lastEndMin !== null ? (
-            <p class="chq-pub-agenda-day-footer">
-              Last session ends {formatMinutes(lastEndMin)} ·{" "}
-              <a href={`${basePath}${agendaQs(switcherCurrent, { day: nextDay })}`}>{formatDay(nextDay)} ›</a>
-            </p>
-          ) : null}
-        </>
-      )}
+      <div class="chq-pub-agenda-layout">
+        {/* NOT .chq-pub-agenda-list -- that class is already owned by
+            AgendaItemList's phone <ol> (display:none above 700px), so
+            reusing it here would hide the entire agenda on desktop. */}
+        <div class="chq-pub-agenda-col">
+          <ItinerarySearchForm
+            event={props.event}
+            tracks={props.tracks ?? []}
+            activeTrackId={props.highlightTrackId ?? null}
+            activeDay={props.activeDay ?? null}
+            q={props.q ?? null}
+            basePath={basePath}
+          />
+          {byDay.size === 0 ? (
+            // DEC-768: an honest empty state distinguishes "this day has no
+            // matches for your search" (activeDay is set, the event DOES have
+            // a schedule) from "nothing is scheduled at all" (no activeDay
+            // exists because getPublicScheduleDayCounts came back empty) --
+            // never claim the event has no schedule just because a search
+            // narrowed one day to zero rows.
+            <p>{activeDay ? `No sessions match your search on ${formatDay(activeDay)}.` : "No sessions scheduled yet."}</p>
+          ) : (
+            <>
+              {props.items.length < props.total ? (
+                <p>
+                  Showing the first {props.items.length} of {props.total} scheduled sessions.
+                </p>
+              ) : null}
+              {[...renderedDays].map((day) => (
+                <AgendaDay
+                  day={day}
+                  items={byDay.get(day) ?? []}
+                  event={props.event}
+                  from="agenda"
+                  base={base}
+                  breaks={props.breaksByDay?.get(day) ?? []}
+                  highlightTrackId={props.highlightTrackId ?? null}
+                  hideHeading={hideDayHeading}
+                />
+              ))}
+              {nextDay && lastEndMin !== null ? (
+                <p class="chq-pub-agenda-day-footer">
+                  Last session ends {formatMinutes(lastEndMin)} ·{" "}
+                  <a href={`${basePath}${agendaQs(switcherCurrent, { day: nextDay })}`}>{formatDay(nextDay)} ›</a>
+                </p>
+              ) : null}
+            </>
+          )}
+        </div>
+        {/* DEC-672/DEC-683 (wave 67 amendment): the rail is chromeless-
+            closed -- /embed renders none of it (no <aside>, no /submit or
+            /e/ hrefs, no ItineraryScript). */}
+        {!props.embed ? <AgendaRail event={props.event} items={railItems} activeDay={effectiveActiveDay} /> : null}
+      </div>
+      {!props.embed ? <ItineraryScript eventSlug={props.event.slug} /> : null}
     </>
   );
 }

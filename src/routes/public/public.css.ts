@@ -917,4 +917,27 @@ export const PUBLIC_CSS = `
     font-weight: 700;
     margin: 0 0 10px;
   }
+
+  /* ===== task-w67-d (DEC-683 amendment): agenda's own list + rail pair =====
+     Same two-column idiom as .chq-pub-sessions-layout/-list/-rail above
+     (list, then a 300px <aside>, single column below 700px) -- an
+     agenda-named twin rather than reusing the sessions classes directly,
+     since .chq-pub-agenda-col wraps the search form + day switcher + day
+     sections, not a list of cards. (Deliberately NOT .chq-pub-agenda-list:
+     that name is already taken by AgendaItemList's phone <ol>, which is
+     display:none above 700px.) .chq-pub-agenda-rail reuses every
+     .chq-pub-rail-* section/heading/body rule already defined above (no
+     new rules needed there -- AgendaRail's markup emits the same classes
+     ScheduleRailSection/DayIndexRailSection do). */
+  .chq-pub-agenda-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 34px;
+    align-items: start;
+  }
+  .chq-pub-agenda-col { min-width: 0; }
+  .chq-pub-agenda-rail { display: flex; flex-direction: column; gap: 26px; }
+  @media (max-width: 700px) {
+    .chq-pub-agenda-layout { grid-template-columns: 1fr; gap: 20px; }
+  }
 `;
