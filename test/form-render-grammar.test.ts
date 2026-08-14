@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import type { FormFieldDef } from "../src/forms/types";
 import { FormField } from "../src/views/form-render";
 import { MAX_LONG_TEXT_LENGTH } from "../src/forms/validate";
+import { allowedUploadExtensions } from "../src/domain/files";
 
 describe("form-render field grammar (DEC-909)", () => {
   it("a required short-text field carries no marker and no counter", () => {
@@ -82,5 +83,24 @@ describe("form-render field grammar (DEC-909)", () => {
     };
     const html = FormField({ field, value: undefined, visible: true }).toString();
     expect(html).toContain("0 / 1,200");
+  });
+
+  // w10-e (DEC-879 amendment): a CFP file field's accept attribute and its
+  // printed hint text must name the same extensions — both derive from
+  // allowedUploadExtensions(), not two independent lists.
+  it("a file field's accept attribute agrees with the printed hint (no video, CFP files are handout-tier)", () => {
+    const field: FormFieldDef = {
+      id: "slides",
+      section: "session",
+      kind: "file",
+      label: "Slides",
+      required: false,
+      position: 5,
+    };
+    const html = FormField({ field, value: undefined, visible: true }).toString();
+    for (const ext of allowedUploadExtensions()) {
+      expect(html).toContain(`.${ext}`);
+    }
+    expect(html).not.toMatch(/\.(mp4|mov|webm)/);
   });
 });

@@ -6,7 +6,7 @@
 
 import type { FormFieldDef, AnswerMap } from "../forms/types";
 import { lockedFieldName } from "../forms/types";
-import { ALLOWED_UPLOAD_EXTENSIONS, uploadHintText } from "../domain/files";
+import { allowedUploadExtensions, uploadHintText } from "../domain/files";
 import { RULE_MATCH_JS } from "../forms/rule-match";
 import { MAX_LONG_TEXT_LENGTH } from "../forms/validate";
 import { OPTIONAL_SUFFIX } from "../domain/form-copy";
@@ -107,7 +107,7 @@ function FieldControl(props: { field: FormFieldDef; value: unknown }) {
           id={name}
           name={name}
           data-field-id={field.id}
-          accept={ALLOWED_UPLOAD_EXTENSIONS.map((e) => `.${e}`).join(",")}
+          accept={allowedUploadExtensions().map((e) => `.${e}`).join(",")}
         />
       );
     default: {

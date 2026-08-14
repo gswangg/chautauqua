@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from 'react';
-import { validateUpload, uploadHintText, ALLOWED_UPLOAD_EXTENSIONS } from '../../../../src/domain/files';
+import { validateUpload, uploadHintText, allowedUploadExtensions } from '../../../../src/domain/files';
 import type { FileKind } from './types';
 
 interface UploadZoneProps {
@@ -7,8 +7,6 @@ interface UploadZoneProps {
   replacesFileId?: string;
   onUpload: (file: File, kind: FileKind, replacesFileId?: string) => Promise<void>;
 }
-
-const ACCEPT_ATTR = ALLOWED_UPLOAD_EXTENSIONS.map((e) => `.${e}`).join(',');
 
 /** File input + drag-drop upload zone: a single-line dashed strip (w41-a --
  * replaces the old 180px wrapped-sentence box), the accepted-type/size-cap
@@ -68,14 +66,14 @@ export function UploadZone({ kind, replacesFileId, onUpload }: UploadZoneProps) 
           (visually hidden) file input below. */}
       <label htmlFor={inputId} className="chq-content-upload-label">
         <span className="chq-content-upload-prompt">Drop a file to upload for the speaker</span>
-        <span className="chq-upload-caps chq-content-upload-caps">{uploadHintText()}</span>
+        <span className="chq-upload-caps chq-content-upload-caps">{uploadHintText(kind)}</span>
       </label>
       <input
         ref={inputRef}
         id={inputId}
         type="file"
         className="chq-file chq-content-upload-input"
-        accept={ACCEPT_ATTR}
+        accept={allowedUploadExtensions(kind).map((e) => `.${e}`).join(',')}
         aria-label={replacesFileId ? `Replace ${kind}` : `Upload ${kind}`}
         disabled={pending}
         onChange={(e) => void handleFile(e.target.files?.[0])}
