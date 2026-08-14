@@ -52,6 +52,24 @@
 // change added an ungated route, this file's header would say so instead
 // of silently allowlisting it -- it does not, because there wasn't one to
 // report.
+//
+// LIMITATION, worth knowing before trusting a green run here (found in
+// wave 16 integration): env is `{}`, so it carries no KV binding, and
+// publicCacheMiddleware throws "publicCacheMiddleware requires the KV
+// binding" (src/server/pubcache.ts) before ANY /e/* or /embed/* handler
+// body executes. Every public-surface path therefore proves only that the
+// KV-missing throw is db-free, never that the handler behind it is -- what
+// keeps those paths honest is their PUBLIC_BY_DESIGN entries below, not an
+// observed non-touch. The db-touch signal is load-bearing only for routes
+// that are not behind publicCacheMiddleware. This surfaced when DEC-841's
+// wave-16 amendment made publicRoutes.onError render publicErrorDocument
+// (which reads the eyebrow via resolveNotFoundEyebrow(c.var.db)) instead of
+// http.ts's db-free renderHtmlError: 15 public paths began touching the db
+// on the KV-throw error path, and the three bare roots among them
+// (/e/:eventSlug, /embed/:eventSlug, /embed/e/:embedId) had no entry
+// because the `/*` patterns don't match a bare path. They are public by
+// design -- src/routes/docs.tsx's own route table says so -- so they are
+// listed explicitly below rather than the probe being loosened.
 
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
@@ -136,9 +154,24 @@ const PUBLIC_BY_DESIGN: { pattern: string; reason: string }[] = [
       "DEC-022: 'the five public surfaces + embeds + itinerary .ics ... no login/session dependence anywhere in this module' (src/routes/public/index.tsx header comment). Covers every /e/:eventSlug/<surface>, the speaker/session detail pages, and the .ics feeds.",
   },
   {
+    pattern: "/e/:eventSlug",
+    reason:
+      "DEC-661: 'a bare /e/:eventSlug or /embed/:eventSlug (no surface segment) is a guessable root a judge or embedder types by hand -- resolve the event BEFORE redirecting' (src/routes/public/index.tsx comment above the handler). Same no-login module as /e/:eventSlug/* above; the trailing-slash pattern does not cover the bare path.",
+  },
+  {
     pattern: "/embed/:eventSlug/*",
     reason:
       "DEC-022: same public/index.tsx module as /e/:eventSlug/* above -- embeddable widget surfaces, no login/session dependence.",
+  },
+  {
+    pattern: "/embed/:eventSlug",
+    reason:
+      "DEC-661: the bare embed root, redirecting to /embed/<canonical slug>/sessions -- same handler comment and same no-login module as /e/:eventSlug above.",
+  },
+  {
+    pattern: "/embed/e/:embedId",
+    reason:
+      "DEC-785/DEC-822/DEC-839: saved embeds -- 'GET /embed/e/:embedId resolves the embed row ... an intentional blank inside someone else's iframe' (src/routes/public/saved-embed.tsx header comment); src/routes/docs.tsx's own route table lists it as 'public, saved embed'. The saved id IS the capability, no session.",
   },
   {
     pattern: "/headshots/:fileId",
