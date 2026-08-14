@@ -1065,10 +1065,11 @@
   color: var(--chq-muted);
 }
 
-/* NB: .chq-field-error is owned by app/src/styles.css (uppercase micro-label
-   in --chq-ink -- DEC-383's palette has no semantic red, and there is no
-   --chq-danger token). This sheet deliberately re-declares nothing for it;
-   the breaks form's field errors inherit that ONE rule. */
+/* NB: .chq-field-error is owned by app/src/components/error-states.css
+   (13px/600 micro-copy in --chq-ink -- DEC-383's palette has no semantic
+   red, and there is no --chq-danger token). This sheet deliberately
+   re-declares nothing for it; the breaks form's field errors inherit that
+   ONE rule. */
 
 /* ---------------------------------------------------------------------- */
 /* Breaks stranded outside the event window (DEC-021 amendment, wave 69)   */

@@ -50,6 +50,26 @@ describe('ModalFrame: FormRow', () => {
     expect(alert).toHaveTextContent('Title is required');
     // Distinguished by a leading glyph, not colour alone.
     expect(alert.textContent).not.toBe('Title is required');
+    expect(alert.id).toBe('title-field-error');
+  });
+
+  it('marks the .chq-form-row wrapper data-invalid="true" whenever error is truthy', () => {
+    const { container, rerender } = render(
+      <FormRow label="Title" htmlFor="title-field-3" error="Title is required">
+        <input id="title-field-3" className="chq-input" defaultValue="" />
+      </FormRow>,
+    );
+
+    const row = container.querySelector('.chq-form-row');
+    expect(row).toHaveAttribute('data-invalid', 'true');
+
+    rerender(
+      <FormRow label="Title" htmlFor="title-field-3">
+        <input id="title-field-3" className="chq-input" defaultValue="" />
+      </FormRow>,
+    );
+
+    expect(container.querySelector('.chq-form-row')).not.toHaveAttribute('data-invalid');
   });
 
   it('omits the help/error slots entirely when not provided', () => {
