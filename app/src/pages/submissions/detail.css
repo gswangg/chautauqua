@@ -213,10 +213,20 @@
   color: var(--chq-brand-hover);
 }
 
+/* DEC-900 (wave 5 amendment): the Session details disclosure trigger --
+   same quiet .chq-link-button/.chq-section-action register the agenda's
+   'Breaks ›' trigger uses (Agenda.tsx:295), sitting on its own line below
+   the last numbered section (Reviews) rather than inside a numbered rule
+   of its own, so frame 02's main column visually ends at the last review. */
+.chq-detail-session-details-disclosure {
+  padding-top: 4px;
+}
+
 /* DEC-908: 'Session details' trailing section holds its three sub-blocks
    (Tracks/Format/Participants) stacked, each own its own quiet sub-heading
    -- these are NOT counted sections (no border-bottom rule, no numbering)
-   since the wrapping section already carries both. */
+   since the wrapping section already carries both. DEC-900 (wave 5
+   amendment): only mounted at all once the disclosure above is open. */
 .chq-detail-session-details {
   min-width: 0;
 }
@@ -425,6 +435,17 @@
   font-size: 13px;
   color: var(--chq-muted);
   overflow-wrap: anywhere;
+}
+
+/* DEC-900: the speaker rail's history line -- 'N submissions this year ·
+   spoke in YYYY', either clause omitted when its datum is absent
+   (speakerHistoryLine in SubmissionDetailPage.tsx), the whole line omitted
+   when neither is present. Same quiet register as the role/email lines
+   above it. */
+.chq-detail-speaker-history {
+  font-size: 12px;
+  color: var(--chq-muted);
+  margin-top: 2px;
 }
 
 /* Reviews: each evaluation keeps its full comment length (copy rule 6);

@@ -98,6 +98,12 @@ export interface SubmissionDetailParticipant {
   order: number;
   visible: boolean;
   inviteStatus: InviteStatus;
+  // DEC-900 (frame 02 speaker rail): the speaker's history line ("N
+  // submissions this year · spoke in YYYY"). Optional -- no server route
+  // populates these yet -- and each clause renders only when its own datum
+  // is present; neither is ever fabricated from other fields.
+  submissionsThisYear?: number;
+  lastSpokeYear?: number;
 }
 
 // GET /api/v1/submissions/:id/evaluations item (DEC-596).
