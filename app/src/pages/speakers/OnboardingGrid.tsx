@@ -632,21 +632,48 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                           </>
                         )}
                       </div>
-                      {row.contact.participations.map((participation) => (
-                        <ParticipationMenu
-                          key={participation.participantId}
-                          contactName={row.contact.name}
-                          label={row.contact.participations.length > 1 ? participation.ref : undefined}
-                          status={participation.inviteStatus}
-                          company={row.contact.company}
-                          hasAccount={row.contact.hasAccount}
-                          onSelectStatus={(status) =>
-                            setInviteStatus(row.contact.id, participation.submissionId, participation.participantId, status)
-                          }
-                          onSendInvite={() => sendPortalInvite(row.contact.id)}
-                          sendInviteDisabled={invitingContactIds.has(row.contact.id)}
-                        />
-                      ))}
+                      {/* Frame stacks this identity block 4 lines deep: name,
+                          "company · has account", the participation pill(s)
+                          with its Send-portal-invite sibling on one line, then
+                          Remind alone on its own line beneath -- so the
+                          participation menu(s) and the invite control/marker
+                          share a row wrapper instead of flowing inline with
+                          Remind. */}
+                      <div className="chq-speakers-row-participation">
+                        {row.contact.participations.map((participation) => (
+                          <ParticipationMenu
+                            key={participation.participantId}
+                            contactName={row.contact.name}
+                            label={row.contact.participations.length > 1 ? participation.ref : undefined}
+                            status={participation.inviteStatus}
+                            company={row.contact.company}
+                            hasAccount={row.contact.hasAccount}
+                            onSelectStatus={(status) =>
+                              setInviteStatus(row.contact.id, participation.submissionId, participation.participantId, status)
+                            }
+                            onSendInvite={() => sendPortalInvite(row.contact.id)}
+                            sendInviteDisabled={invitingContactIds.has(row.contact.id)}
+                          />
+                        ))}
+                        {/* DEC-805/DEC-934: quiet, conditional — a contact who
+                            already has an account has no use for a claim-link
+                            invite, and a contact already invited has nothing
+                            left for this control to do (the frame's one
+                            question is "who still needs inviting"). */}
+                        {!row.contact.hasAccount && !alreadyInvited(row.contact) && (
+                          <button
+                            type="button"
+                            className="chq-btn chq-btn-tertiary chq-speakers-invite-one"
+                            onClick={() => sendPortalInvite(row.contact.id)}
+                            disabled={invitingContactIds.has(row.contact.id)}
+                          >
+                            Send portal invite
+                          </button>
+                        )}
+                        {!row.contact.hasAccount && alreadyInvited(row.contact) && (
+                          <span className="chq-speakers-invited-marker">REMINDED</span>
+                        )}
+                      </div>
                       {/* DEC-829 amendment: a declined-only row offers no
                           per-row remind action (nothing will ever be sent)
                           and says so with one quiet marker, instead of a
@@ -661,24 +688,6 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                         >
                           Remind {firstNameOf(row.contact.name)}
                         </button>
-                      )}
-                      {/* DEC-805/DEC-934: quiet, conditional — a contact who
-                          already has an account has no use for a claim-link
-                          invite, and a contact already invited has nothing
-                          left for this control to do (the frame's one
-                          question is "who still needs inviting"). */}
-                      {!row.contact.hasAccount && !alreadyInvited(row.contact) && (
-                        <button
-                          type="button"
-                          className="chq-btn chq-btn-tertiary chq-speakers-invite-one"
-                          onClick={() => sendPortalInvite(row.contact.id)}
-                          disabled={invitingContactIds.has(row.contact.id)}
-                        >
-                          Send portal invite
-                        </button>
-                      )}
-                      {!row.contact.hasAccount && alreadyInvited(row.contact) && (
-                        <span className="chq-speakers-invited-marker">EMAILED</span>
                       )}
                     </td>
                     {notChased !== null ? (
@@ -784,7 +793,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       {!loading && grid && (
         <div className="chq-speakers-pager">
           <span className="chq-summary">
-            Showing {rangeStart}-{rangeEnd} of {total}
+            Showing {rangeStart}–{rangeEnd} of {total}
           </span>
           <span className="chq-speakers-grid-caption">Click any status to mark it complete or pending</span>
           <div className="chq-speakers-pager-actions">

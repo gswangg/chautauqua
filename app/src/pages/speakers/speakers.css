@@ -52,6 +52,21 @@
   min-width: 230px;
 }
 
+/* Frame (Chautauqua Speakers.dc.html) sizes every toolbar control --
+   search, the three selects -- to padding:8px 12px / font-size:13px with no
+   forced min-height, not the shared .chq-input/.chq-select 44px tap-target
+   rule (styles.css:578-589). That 44px rule is the PHONE rule (its own
+   @media (max-width:700px) block restates it) and stays untouched; this
+   scopes the shrink to desktop only so the phone target survives. */
+@media (min-width: 701px) {
+  .chq-speakers-toolbar .chq-input,
+  .chq-speakers-toolbar .chq-select {
+    padding: 8px 12px;
+    font-size: 13px;
+    min-height: 0;
+  }
+}
+
 /* DEC-827: Speakers carries a wayfinding LINK into the Contacts importer,
    not a second import capability -- so it reads as a quiet tertiary link in
    the toolbar rather than an action button competing with the title row. */
@@ -415,6 +430,16 @@
   margin-left: 8px;
   padding: 2px 8px;
   font-size: 10px;
+}
+
+/* Frame: the participation pill(s) and the Send-portal-invite control/marker
+   share one row; Remind sits on its own line below (see the block comment at
+   the JSX call site). */
+.chq-speakers-row-participation {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 
 /* Per-speaker reminder action: scoped to the one contact in its row (DEC-694). */
