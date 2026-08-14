@@ -10,9 +10,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { SettingsPage } from './Settings';
 import { listEnvelope, mockApi } from '../test-utils/mockApi';
+
+// MemoryRouter tracks history internally, not via window.location -- this
+// probe reads the router's own current location.search so tests can assert
+// on URL state without relying on the real browser URL.
+function LocationProbe() {
+  const location = useLocation();
+  return <div data-testid="location-search">{location.search}</div>;
+}
 
 const EVENT_ID = 'evt-settings-render';
 
@@ -209,14 +217,17 @@ describe('SettingsPage render smoke', () => {
     expect(within(yourDataSection).getByText(/API token is not implemented in this build/)).toBeInTheDocument();
   });
 
-  // DEC-375: below 700px the rail's section links drill into a single panel
-  // via component state only — no URL change, no history entry, no new
-  // route. The tertiary back control clears the selection.
-  it('drills into a section via the rail and back again without touching the route', async () => {
+  // DEC-375/DEC-728 amendment (wave 13): below 700px the rail's section
+  // links drill into a single panel; the drilled section is now URL state
+  // (`?section=<key>`) so it is bookmarkable and the device Back button can
+  // leave it. The tertiary back control clears the selection AND the URL
+  // param.
+  it('drills into a section via the rail (writing ?section=) and back again clears it', async () => {
     mockAllSections();
 
     render(
       <MemoryRouter>
+        <LocationProbe />
         <SettingsPage />
       </MemoryRouter>,
     );
@@ -225,27 +236,18 @@ describe('SettingsPage render smoke', () => {
       expect(screen.getByText('DevCon 2026')).toBeInTheDocument();
     });
 
-    const pathBefore = window.location.pathname + window.location.search + window.location.hash;
-    const historyLengthBefore = window.history.length;
-
     const rail = screen.getByRole('navigation', { name: 'Settings sections' });
     const peopleLink = within(rail).getByRole('button', { name: 'People and roles' });
     fireEvent.click(peopleLink);
 
     expect(peopleLink).toHaveClass('chq-settings-rail-link-active');
-    expect(
-      window.location.pathname + window.location.search + window.location.hash,
-    ).toBe(pathBefore);
-    expect(window.history.length).toBe(historyLengthBefore);
+    expect(screen.getByTestId('location-search').textContent).toContain('section=people');
 
     const backButton = screen.getByRole('button', { name: '‹ Settings' });
     fireEvent.click(backButton);
 
     expect(peopleLink).not.toHaveClass('chq-settings-rail-link-active');
-    expect(
-      window.location.pathname + window.location.search + window.location.hash,
-    ).toBe(pathBefore);
-    expect(window.history.length).toBe(historyLengthBefore);
+    expect(screen.getByTestId('location-search').textContent).not.toContain('section=');
   });
 
   // DEC-747/DEC-691: rail converges on exactly the mock's seven sections
@@ -379,5 +381,82 @@ describe('SettingsPage render smoke', () => {
     await waitFor(() => {
       expect(screen.getByDisplayValue('DevCon 2026')).toBeInTheDocument();
     });
+  });
+
+  // DEC-728 amendment (wave 13): a settings section URL must render that
+  // section on a phone. /admin/settings?section=cfp&edit=1 is a URL the
+  // product mints (SummarySection's openEdit) and a user can bookmark or be
+  // linked to -- it must drill in on load, not just render the rail.
+  it('seeds the drilled section from ?section= on load', async () => {
+    mockAllSections();
+
+    render(
+      <MemoryRouter initialEntries={['/settings?section=cfp']}>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('DevCon 2026')).toBeInTheDocument();
+    });
+
+    const layout = document.querySelector('.chq-settings-layout') as HTMLElement;
+    expect(layout).toHaveAttribute('data-drilled', 'true');
+    expect(document.getElementById('chq-settings-section-cfp')).toHaveClass('chq-settings-section-active');
+  });
+
+  it('renders undrilled with no ?section= param', async () => {
+    mockAllSections();
+
+    render(
+      <MemoryRouter initialEntries={['/settings']}>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('DevCon 2026')).toBeInTheDocument();
+    });
+
+    const layout = document.querySelector('.chq-settings-layout') as HTMLElement;
+    expect(layout).toHaveAttribute('data-drilled', 'false');
+  });
+
+  it('ignores an unknown ?section= value', async () => {
+    mockAllSections();
+
+    render(
+      <MemoryRouter initialEntries={['/settings?section=nope']}>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('DevCon 2026')).toBeInTheDocument();
+    });
+
+    const layout = document.querySelector('.chq-settings-layout') as HTMLElement;
+    expect(layout).toHaveAttribute('data-drilled', 'false');
+  });
+
+  it('preserves an unrelated existing param when a rail click writes ?section=', async () => {
+    mockAllSections();
+
+    render(
+      <MemoryRouter initialEntries={['/settings?q=x']}>
+        <LocationProbe />
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('DevCon 2026')).toBeInTheDocument();
+    });
+
+    const rail = screen.getByRole('navigation', { name: 'Settings sections' });
+    fireEvent.click(within(rail).getByRole('button', { name: 'Call for papers' }));
+
+    expect(screen.getByTestId('location-search').textContent).toContain('q=x');
+    expect(screen.getByTestId('location-search').textContent).toContain('section=cfp');
   });
 });
