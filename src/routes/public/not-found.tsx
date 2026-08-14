@@ -46,20 +46,31 @@ export async function publicNotFound(c: Context<AppEnv>, message: string): Promi
 // pair. Called from publicRoutes.onError in ./index.tsx for HTML
 // navigations only; feed/file-extension paths (.ics/.xml) and API paths
 // keep going through http.ts's errorResponse unchanged.
+//
+// DEC-635 (wave 17 amendment): unlike publicNotFound above, this document
+// must render with ZERO database reads. It is reached from onError, which
+// means the thrown error MAY BE a database failure itself; awaiting
+// resolveNotFoundEyebrow(c.var.db) here re-issues the same two D1 reads
+// (getHubOrg + listHubEvents) that may have just thrown, so a DB outage
+// turned this card into a rejected promise and the visitor got the
+// runtime's bare 500 instead. The rule: the error document must not depend
+// on the subsystem that may have failed. Its eyebrow is therefore a fixed
+// module-level constant, not a per-request DB read.
+const ERROR_EYEBROW = "Error";
+
 export async function publicErrorDocument(
   c: Context<AppEnv>,
   message: string,
   status: 400 | 401 | 403 | 404 | 409 | 500,
 ): Promise<Response> {
   c.header("Cache-Control", "no-store");
-  const eyebrow = await resolveNotFoundEyebrow(c.var.db);
   const eventSlug = c.req.param("eventSlug");
   const links = eventSlug
     ? [{ href: `/e/${eventSlug}/sessions`, label: "Back to the event" }, ...ANONYMOUS_NOT_FOUND_LINKS]
     : ANONYMOUS_NOT_FOUND_LINKS;
   return await c.html(
     <NotFoundDocument
-      eyebrow={eyebrow}
+      eyebrow={ERROR_EYEBROW}
       title="Error - Chautauqua"
       heading="Something went wrong"
       body={message}
