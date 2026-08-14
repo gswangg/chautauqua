@@ -8,6 +8,7 @@ import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
 import type { SegmentRule } from "../../../domain/contacts";
 import { ApiError } from "../../http";
+import { isUniqueViolation } from "../constraints";
 
 export interface SegmentRow {
   id: string;
@@ -93,7 +94,7 @@ export async function patchSegment(db: Db, id: string, patch: { name?: string; r
       })
       .where(eq(schema.segment.id, id));
   } catch (err) {
-    if (err instanceof Error && /UNIQUE constraint failed/i.test(err.message) && err.message.includes("segment")) {
+    if (isUniqueViolation(err, "segment")) {
       throw new ApiError("invalid", "A segment with this name already exists", { name: "A segment with this name already exists" });
     }
     throw err;
