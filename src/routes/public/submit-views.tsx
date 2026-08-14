@@ -16,6 +16,7 @@ import { FormFieldsSection, FieldRulesScript, fieldInputName, FormField } from "
 import { countOf } from "../../domain/count-copy";
 import { ThemeStyles } from "../../views/theme";
 import { CFP_CSS } from "./cfp.css";
+import { CfpStepsScript } from "./cfp-steps-script";
 import { eventDatesLine, validAccent } from "./shell";
 import { CSRF_COOKIE_NAME } from "../../auth/cookies";
 import type { EventRow, FormRow, TrackRow } from "../../server/repo/submit";
@@ -462,9 +463,28 @@ export function SubmitPage(props: {
         ) : props.hasDraft && props.draftSavedAt !== undefined ? (
           <DraftBanner formId={form.id} savedAt={props.draftSavedAt} timeZone={event.timezone} />
         ) : null}
-        <form id="chq-cfp-submit-form" method="post" action={`/submit/${event.slug}`} enctype="multipart/form-data">
+        <form
+          id="chq-cfp-submit-form"
+          method="post"
+          action={`/submit/${event.slug}`}
+          enctype="multipart/form-data"
+          data-chq-cfp-step="all"
+        >
           <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
-          <section>
+          {/* w14-f (DEC-986): phone-only two-step progress chrome -- inert
+              on desktop (chq-cfp-steps is display:none outside the 700px
+              media query, cfp.css.ts). CfpStepsScript flips
+              data-chq-cfp-step on the form between "1"/"2" and keeps this
+              label/bar in sync; it never runs (leaves "all" in place) when
+              the page already carries a field or form-level error, so a
+              rejected submission always shows every field again. */}
+          <div class="chq-cfp-steps">
+            <span class="chq-cfp-steps-label">Step 1 of 2 &middot; your talk</span>
+            <div class="chq-cfp-steps-bar">
+              <div class="chq-cfp-steps-bar-fill"></div>
+            </div>
+          </div>
+          <section class="chq-cfp-step chq-cfp-step-talk">
             <div class="chq-cfp-section-label">Your talk</div>
             <div class="chq-cfp-fields">
               <FormFieldsSection
@@ -516,7 +536,7 @@ export function SubmitPage(props: {
               />
             </div>
           </section>
-          <section>
+          <section class="chq-cfp-step chq-cfp-step-you">
             <div class="chq-cfp-section-label">You</div>
             <div class="chq-cfp-fields chq-cfp-you-grid">
               <NameField value={nameValue} error={nameError} />
@@ -546,6 +566,15 @@ export function SubmitPage(props: {
               >
                 Save draft
               </button>
+              {/* w14-f: phone-only step navigation -- type="button" so
+                  neither control ever submits the form; CfpStepsScript owns
+                  all step-switching, no validation runs on Next. */}
+              <button type="button" class="chq-btn chq-btn-primary chq-cfp-step-next">
+                Next: about you
+              </button>
+              <button type="button" class="chq-btn chq-btn-secondary chq-cfp-step-back">
+                Back
+              </button>
               <span class="chq-cfp-actions-note">We email a confirmation with a link to your portal</span>
             </div>
           </form>
@@ -556,6 +585,7 @@ export function SubmitPage(props: {
           Already have an account? <a href="/login">Sign in to the speaker portal</a> &rsaquo;
         </p>
         <FieldRulesScript fields={fields} />
+        <CfpStepsScript />
       </div>
     </PageShell>
   );
