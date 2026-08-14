@@ -575,25 +575,31 @@ describe('PipelineBoard: fit edit after enrolment (DEC-980)', () => {
 // not a hand-rolled scrim), with the title/trigger vocabulary aligned and
 // the Starting stage / Fit controls built on the shared .chq-segmented
 // radio-group markup, not a third chip vocabulary.
+//
+// w40-c/DEC-821 amendment: the contact picker is now a server search
+// (`/contacts?q=...&perPage=20`, the SubmissionDetailPage add-co-presenter
+// idiom), not a mount-time `/contacts?perPage=200` fetch rendered as a bare
+// <select> -- past 200 org contacts the old picker silently could not reach
+// most of the directory.
 describe('PipelineBoard: Add to the pipeline dialog (DEC-859)', () => {
   const CONTACT = { id: 'ct9', firstName: 'Rosa', lastName: 'Park', email: 'rosa@example.com', company: null };
 
-  it('opens through the shared ModalFrame with matching title/trigger vocabulary', async () => {
+  async function openDialog() {
     mockApi({
       'GET /api/v1/pipeline': listEnvelope([]),
-      'GET /api/v1/contacts': listEnvelope([CONTACT]),
     });
-
     renderBoard();
     await waitFor(() => expect(screen.getByText('0 people - drag between columns')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Add to the pipeline' }));
+    return screen.findByRole('dialog', { name: 'Add to the pipeline' });
+  }
 
-    const trigger = screen.getByRole('button', { name: 'Add to the pipeline' });
-    fireEvent.click(trigger);
+  it('opens through the shared ModalFrame with matching title/trigger vocabulary', async () => {
+    const dialog = await openDialog();
 
     // The frame's contract: a role="dialog" with the given aria-label,
     // rendered as a portal child of document.body (ModalFrame.render.test's
     // assertions), plus the shared header Close control.
-    const dialog = await screen.findByRole('dialog', { name: 'Add to the pipeline' });
     expect(dialog.parentElement).toBe(document.body);
     expect(within(dialog).getByRole('button', { name: 'Close' })).toBeInTheDocument();
     // Title and trigger read identically.
@@ -603,15 +609,7 @@ describe('PipelineBoard: Add to the pipeline dialog (DEC-859)', () => {
   });
 
   it('exposes Starting stage and Fit as chip rows of aria-pressed buttons, not comboboxes', async () => {
-    mockApi({
-      'GET /api/v1/pipeline': listEnvelope([]),
-      'GET /api/v1/contacts': listEnvelope([CONTACT]),
-    });
-
-    renderBoard();
-    await waitFor(() => expect(screen.getByText('0 people - drag between columns')).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: 'Add to the pipeline' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Add to the pipeline' });
+    const dialog = await openDialog();
 
     const stageGroup = within(dialog).getByRole('group', { name: 'Starting stage' });
     const stageButtons = within(stageGroup).getAllByRole('button');
@@ -633,15 +631,7 @@ describe('PipelineBoard: Add to the pipeline dialog (DEC-859)', () => {
   // w4-c: the footnote moved below the button row (and to lowercase) so it
   // reads as a footnote to the action, not a warning above it.
   it('shows the lowercase consequence sentence below the button row', async () => {
-    mockApi({
-      'GET /api/v1/pipeline': listEnvelope([]),
-      'GET /api/v1/contacts': listEnvelope([CONTACT]),
-    });
-
-    renderBoard();
-    await waitFor(() => expect(screen.getByText('0 people - drag between columns')).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: 'Add to the pipeline' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Add to the pipeline' });
+    const dialog = await openDialog();
 
     const consequence = within(dialog).getByText('adding writes a move to the activity feed · no email is sent');
     const primary = within(dialog).getByRole('button', { name: 'Add to the pipeline' });
@@ -664,10 +654,13 @@ describe('PipelineBoard: Add to the pipeline dialog (DEC-859)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add to the pipeline' }));
     const dialog = await screen.findByRole('dialog', { name: 'Add to the pipeline' });
 
+    fireEvent.change(within(dialog).getByLabelText('Search contacts'), { target: { value: 'Rosa' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Search' }));
+
     await waitFor(() => {
       expect(within(dialog).getByText('Rosa Park — rosa@example.com')).toBeInTheDocument();
     });
-    fireEvent.change(within(dialog).getByLabelText('Contact'), { target: { value: 'ct9' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Rosa Park — rosa@example.com' }));
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add to the pipeline' }));
 
     await waitFor(() => {
@@ -678,6 +671,117 @@ describe('PipelineBoard: Add to the pipeline dialog (DEC-859)', () => {
     const postCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'POST');
     const body = JSON.parse(String((postCall![1] as RequestInit).body));
     expect(body).toMatchObject({ contactId: 'ct9', stage: 'identified', fitScore: null });
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+});
+
+// w40-c/DEC-821 amendment: the enroll picker's own search behaviour --
+// no request on mount, the true-total bound line, exclusion of already-
+// enrolled contacts, and the enroll POST still firing off a selected result.
+describe('PipelineBoard: enroll picker search (w40-c/DEC-821 amendment)', () => {
+  it('issues no /contacts request until a query is entered', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/pipeline': listEnvelope([]),
+    });
+
+    renderBoard();
+    await waitFor(() => expect(screen.getByText('0 people - drag between columns')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Add to the pipeline' }));
+    await screen.findByRole('dialog', { name: 'Add to the pipeline' });
+
+    const contactCalls = fetchMock.mock.calls.filter(([url]) => String(url).includes('/contacts'));
+    expect(contactCalls).toHaveLength(0);
+    expect(screen.getByText('Search by name, email or company')).toBeInTheDocument();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('renders exactly the returned rows plus the "first N of total" line when the envelope reports more', async () => {
+    const items = Array.from({ length: 20 }, (_, i) => ({
+      id: `ct-${i}`,
+      firstName: 'Person',
+      lastName: String(i),
+      email: `person${i}@example.com`,
+      company: null,
+    }));
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([]),
+      'GET /api/v1/contacts': listEnvelope(items, { total: 900 }),
+    });
+
+    renderBoard();
+    await waitFor(() => expect(screen.getByText('0 people - drag between columns')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Add to the pipeline' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Add to the pipeline' });
+
+    fireEvent.change(within(dialog).getByLabelText('Search contacts'), { target: { value: 'Person' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Search' }));
+
+    await waitFor(() => {
+      expect(within(dialog).getAllByRole('listitem').length).toBeGreaterThanOrEqual(20);
+    });
+    const rows = within(dialog)
+      .getAllByRole('button')
+      .filter((b) => b.textContent?.includes('@example.com'));
+    expect(rows).toHaveLength(20);
+    expect(within(dialog).getByText('Showing the first 20 of 900 — narrow your search')).toBeInTheDocument();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('excludes an already-enrolled contact from the search results', async () => {
+    // ENTRY_IDENTIFIED.contactId is 'ct1' -- the same contact returned by
+    // the search must be excluded from the offered results.
+    const already = { id: 'ct1', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', company: null };
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+      'GET /api/v1/contacts': listEnvelope([already]),
+    });
+
+    renderBoard();
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to the pipeline' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Add to the pipeline' });
+
+    fireEvent.change(within(dialog).getByLabelText('Search contacts'), { target: { value: 'Ada' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Search' }));
+
+    await waitFor(() => {
+      expect(within(dialog).getByText('No contacts found.')).toBeInTheDocument();
+    });
+    expect(within(dialog).queryByText(/ada@example\.com/)).not.toBeInTheDocument();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it('selecting a search result and confirming POSTs /pipeline with that contactId', async () => {
+    const CONTACT = { id: 'ct9', firstName: 'Rosa', lastName: 'Park', email: 'rosa@example.com', company: null };
+    const fetchMock = mockApi({
+      'GET /api/v1/pipeline': listEnvelope([]),
+      'GET /api/v1/contacts': listEnvelope([CONTACT]),
+      'POST /api/v1/pipeline': { id: 'entry-9', contactId: 'ct9', stage: 'identified', fitScore: null },
+    });
+
+    renderBoard();
+    await waitFor(() => expect(screen.getByText('0 people - drag between columns')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Add to the pipeline' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Add to the pipeline' });
+
+    fireEvent.change(within(dialog).getByLabelText('Search contacts'), { target: { value: 'Rosa' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Search' }));
+
+    await waitFor(() => within(dialog).getByText('Rosa Park — rosa@example.com'));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Rosa Park — rosa@example.com' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add to the pipeline' }));
+
+    await waitFor(() => {
+      const postCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'POST');
+      expect(postCall).toBeDefined();
+    });
+    const postCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'POST');
+    const body = JSON.parse(String((postCall![1] as RequestInit).body));
+    expect(body).toMatchObject({ contactId: 'ct9' });
 
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
