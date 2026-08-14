@@ -1,11 +1,14 @@
-// DEC-078 (wave-11 amendment, tightened wave-14): src/lib/chunk.ts's header
-// states every inArray(...) over an unbounded id list MUST iterate chunkIds
-// batches. The original version of this scan bound a FILE -- a single
-// chunk-bound inArray( anywhere in a file made every OTHER inArray( call in
-// that same file pass, silently. This version binds a CALL SITE: it reads
-// every *.ts file under src/server/repo/** and src/routes/** as text at run
-// time (not a hand-maintained file list), extracts every `inArray(...)`
-// call's SECOND argument's leading identifier, and requires each one to be:
+// DEC-078 (wave-11 amendment, tightened wave-14, rooted at `src` wave-18):
+// src/lib/chunk.ts's header states every inArray(...) over an unbounded id
+// list MUST iterate chunkIds batches. The original version of this scan
+// bound a FILE -- a single chunk-bound inArray( anywhere in a file made
+// every OTHER inArray( call in that same file pass, silently. This version
+// binds a CALL SITE: it reads every *.ts/*.tsx file under `src` -- the
+// WHOLE tree, not two hand-named subdirectories someone remembered -- as
+// text at run time (not a hand-maintained file list), strips `//` and
+// `/* */` comments first (so a DEC citation inside a JSDoc block is never
+// mistaken for a query), extracts every remaining `inArray(...)` call's
+// SECOND argument's leading identifier, and requires each one to be:
 //   (a) bound by a `for (const <id> of chunkIds(...))` loop in the same file,
 //   (b) a SCREAMING_CASE identifier (a literal enum/constant set),
 //   (c) an inline array literal, or
@@ -15,7 +18,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const REPO_ROOT = join(__dirname, "..");
-const SCAN_ROOTS = ["src/server/repo", "src/routes"];
+const SCAN_ROOTS = ["src"];
 
 // Each entry: [file path relative to repo root, the inArray(...) call's
 // second-argument leading identifier, reason that call site's id list is
@@ -248,11 +251,28 @@ function listTsFiles(dir: string): string[] {
     const st = statSync(full);
     if (st.isDirectory()) {
       out.push(...listTsFiles(full));
-    } else if (entry.endsWith(".ts")) {
+    } else if (entry.endsWith(".ts") || entry.endsWith(".tsx")) {
       out.push(full);
     }
   }
   return out;
+}
+
+/** Strips `//` line comments and `/* ... *\/` block comments from source
+ * text before call-site extraction, so a DEC citation inside a JSDoc block
+ * (e.g. a prose mention of `inArray(...)`) is never mistaken for a real
+ * query. Deliberately naive (no string/template-literal awareness) -- this
+ * codebase never puts `//` or `/*` inside a string on the same line as a
+ * real inArray( call, and a false stripped comment can only make the scan
+ * MISS a site, never wrongly clear one, since a genuinely commented-out
+ * call site would never bind at runtime anyway. */
+function stripComments(src: string): string {
+  // Block comments are replaced by their own newline count (not deleted
+  // outright) so line numbers reported for a real call site AFTER a block
+  // comment stay accurate.
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ""))
+    .replace(/\/\/[^\n]*/g, "");
 }
 
 const scannedFiles = SCAN_ROOTS.flatMap((root) => listTsFiles(join(REPO_ROOT, root))).map((f) =>
@@ -332,6 +352,10 @@ describe("DEC-078 repo-wide inArray/chunkIds scan (per call site)", () => {
     expect(scannedFiles.length).toBeGreaterThan(100);
   });
 
+  it("scanned at least 60 files under the whole `src` tree (tripwire against the root narrowing back to two subdirectories)", () => {
+    expect(scannedFiles.length).toBeGreaterThanOrEqual(60);
+  });
+
   it("every allowlisted BOUNDED_INARRAY_CALLSITES entry is a real file that was actually scanned", () => {
     for (const [file] of BOUNDED_INARRAY_CALLSITES) {
       expect(scannedFiles).toContain(file);
@@ -346,13 +370,18 @@ describe("DEC-078 repo-wide inArray/chunkIds scan (per call site)", () => {
 
   const allSites = scannedFiles.flatMap((relFile) => {
     const absFile = join(REPO_ROOT, relFile);
-    const src = readFileSync(absFile, "utf8");
+    const rawSrc = readFileSync(absFile, "utf8");
+    const src = stripComments(rawSrc);
     if (!src.includes("inArray(")) return [];
     return extractInArraySites(relFile, src).map((site) => ({ site, src }));
   });
 
   it("found at least 20 inArray( call sites -- tripwire against a regex that silently matches nothing", () => {
     expect(allSites.length).toBeGreaterThanOrEqual(20);
+  });
+
+  it("found at least 24 inArray( call sites once the scan is rooted at `src` -- tripwire against the root narrowing back to two subdirectories", () => {
+    expect(allSites.length).toBeGreaterThanOrEqual(24);
   });
 
   for (const { site, src } of allSites) {

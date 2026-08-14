@@ -1,14 +1,17 @@
-// DEC-528 (wave-16 amendment): `.values(rows)` binds one parameter per COLUMN
-// per row, not one per row -- ID_CHUNK_SIZE (sized for inArray's
-// one-bind-per-id) is the wrong budget for a multi-row INSERT. Every
-// `.insert(...).values(...)` call over an unbounded/multi-row set MUST
+// DEC-528 (wave-16 amendment, rooted at `src` wave-18): `.values(rows)` binds
+// one parameter per COLUMN per row, not one per row -- ID_CHUNK_SIZE (sized
+// for inArray's one-bind-per-id) is the wrong budget for a multi-row INSERT.
+// Every `.insert(...).values(...)` call over an unbounded/multi-row set MUST
 // iterate chunkRowsForInsert batches. This scan mirrors
-// test/inarray-chunk-scan.test.ts's shape: it reads every *.ts file under
-// src/server/repo/** and src/routes/** as text at run time (never a
-// hand-maintained file list), extracts every `.values(...)` call that is
-// directly chained off an `.insert(...)` call (never Map#values()/
-// Object.values(), which take zero or one unrelated argument and are not
-// D1 bind sites), and requires each call site's argument to be:
+// test/inarray-chunk-scan.test.ts's shape: it reads every *.ts/*.tsx file
+// under `src` -- the WHOLE tree, not two hand-named subdirectories someone
+// remembered -- as text at run time (never a hand-maintained file list),
+// strips `//` and `/* */` comments first (so a DEC citation inside a JSDoc
+// block is never mistaken for a query), extracts every remaining
+// `.values(...)` call that is directly chained off an `.insert(...)` call
+// (never Map#values()/Object.values(), which take zero or one unrelated
+// argument and are not D1 bind sites), and requires each call site's
+// argument to be:
 //   (a) an inline object literal (`{...}`) -- a single-row insert, exactly
 //       one row's worth of bound params, never unbounded,
 //   (b) an identifier bound by a same-file
@@ -19,7 +22,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const REPO_ROOT = join(__dirname, "..");
-const SCAN_ROOTS = ["src/server/repo", "src/routes"];
+const SCAN_ROOTS = ["src"];
 
 // Each entry: [file path relative to repo root, the .values(...) call's
 // argument's leading identifier, reason that call site's row set is bounded
@@ -108,6 +111,20 @@ function isChunkLoopBound(src: string, identifier: string): boolean {
   return re.test(src);
 }
 
+/** Strips `//` line comments and `/* ... *\/` block comments from source
+ * text before call-site extraction, so a DEC citation inside a JSDoc block
+ * (e.g. a prose mention of `.insert(...).values(...)`) is never mistaken
+ * for a real query. Deliberately naive (no string/template-literal
+ * awareness) -- this codebase never puts `//` or `/*` inside a string on
+ * the same line as a real .values( call, and a false stripped comment can
+ * only make the scan MISS a site, never wrongly clear one, since a
+ * genuinely commented-out call site would never bind at runtime anyway. */
+function stripComments(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ""))
+    .replace(/\/\/[^\n]*/g, "");
+}
+
 function isInlineObjectLiteral(argPreview: string): boolean {
   return argPreview.startsWith("{");
 }
@@ -115,6 +132,10 @@ function isInlineObjectLiteral(argPreview: string): boolean {
 describe("DEC-528 repo-wide .insert(...).values(...)/chunkRowsForInsert scan (per call site)", () => {
   it("scanned at least the wave-11 planning-time file count (tripwire against a vacuous scan)", () => {
     expect(scannedFiles.length).toBeGreaterThan(100);
+  });
+
+  it("scanned at least 60 files under the whole `src` tree (tripwire against the root narrowing back to two subdirectories)", () => {
+    expect(scannedFiles.length).toBeGreaterThanOrEqual(60);
   });
 
   it("every allowlisted BOUNDED_INSERT_CALLSITES entry is a real file that was actually scanned", () => {
@@ -133,12 +154,17 @@ describe("DEC-528 repo-wide .insert(...).values(...)/chunkRowsForInsert scan (pe
 
   const allSites = scannedFiles.flatMap((relFile) => {
     const absFile = join(REPO_ROOT, relFile);
-    const src = readFileSync(absFile, "utf8");
+    const rawSrc = readFileSync(absFile, "utf8");
+    const src = stripComments(rawSrc);
     if (!src.includes(".insert(")) return [];
     return extractInsertValuesSites(relFile, src).map((site) => ({ site, src }));
   });
 
   it("found at least 20 .insert(...).values(...) call sites -- tripwire against a regex that silently matches nothing", () => {
+    expect(allSites.length).toBeGreaterThanOrEqual(20);
+  });
+
+  it("found at least 20 .insert(...).values(...) call sites once the scan is rooted at `src` -- tripwire against the root narrowing back to two subdirectories", () => {
     expect(allSites.length).toBeGreaterThanOrEqual(20);
   });
 
