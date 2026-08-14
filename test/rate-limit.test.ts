@@ -12,8 +12,7 @@ import { drizzle } from "drizzle-orm/sqlite-proxy";
 import * as schema from "../src/db/schema";
 import {
   checkAndIncrementScopedLimit,
-  incrementScopedLimit,
-  peekScopedLimit,
+  refundScopedLimit,
   resetScopedLimit,
 } from "../src/server/repo/rate-limit";
 import { requestIpFromHeaders, scopedRateLimitKey } from "../src/lib/rate-limit";
@@ -147,7 +146,7 @@ describe("checkAndIncrementScopedLimit (D1, DEC-948)", () => {
   });
 });
 
-describe("DEC-180: peekScopedLimit / incrementScopedLimit / resetScopedLimit (D1, DEC-948)", () => {
+describe("DEC-180 (wave-29 amendment): refundScopedLimit / resetScopedLimit (D1, DEC-948)", () => {
   const opts = { windowSeconds: 900, max: 3 };
   let db: Db;
   let sqlite: DatabaseSync;
@@ -160,41 +159,34 @@ describe("DEC-180: peekScopedLimit / incrementScopedLimit / resetScopedLimit (D1
     sqlite.close();
   });
 
-  it("peekScopedLimit never writes and reports ok while under the cap", async () => {
+  it("refundScopedLimit gives back one unit of a prior atomic spend", async () => {
     const now = 1_000_000;
-    const peek1 = await peekScopedLimit(db, "login-user", "a@example.com", now, opts);
-    expect(peek1).toEqual({ ok: true, count: 0 });
-    const peek2 = await peekScopedLimit(db, "login-user", "a@example.com", now, opts);
-    expect(peek2).toEqual({ ok: true, count: 0 });
-    const row = sqlite.prepare("select key from rate_limit where key = ?").all(scopedRateLimitKey("login-user", "a@example.com", 0));
+    await checkAndIncrementScopedLimit(db, "login-user", "b@example.com", now, opts);
+    await checkAndIncrementScopedLimit(db, "login-user", "b@example.com", now, opts);
+    await checkAndIncrementScopedLimit(db, "login-user", "b@example.com", now, opts);
+    await refundScopedLimit(db, "login-user", "b@example.com", now, { windowSeconds: opts.windowSeconds });
+    const after = await checkAndIncrementScopedLimit(db, "login-user", "b@example.com", now, opts);
+    expect(after).toEqual({ ok: true, count: 3 });
+  });
+
+  it("refundScopedLimit never drives the counter below zero", async () => {
+    const now = 1_000_000;
+    await refundScopedLimit(db, "login-user", "c@example.com", now, { windowSeconds: opts.windowSeconds });
+    const row = sqlite
+      .prepare("select count from rate_limit where key = ?")
+      .all(scopedRateLimitKey("login-user", "c@example.com", 0));
+    // No row exists yet -- the `count > 0` guard means the update matches
+    // zero rows rather than inserting a negative one.
     expect(row).toHaveLength(0);
-  });
-
-  it("peekScopedLimit reflects counts written by incrementScopedLimit and rejects at the cap", async () => {
-    const now = 1_000_000;
-    await incrementScopedLimit(db, "login-user", "b@example.com", now, opts);
-    await incrementScopedLimit(db, "login-user", "b@example.com", now, opts);
-    await incrementScopedLimit(db, "login-user", "b@example.com", now, opts);
-    const peek = await peekScopedLimit(db, "login-user", "b@example.com", now, opts);
-    expect(peek).toEqual({ ok: false, count: 3 });
-  });
-
-  it("incrementScopedLimit unconditionally increments even past the cap", async () => {
-    const now = 1_000_000;
-    for (let i = 0; i < 5; i++) {
-      await incrementScopedLimit(db, "login-user", "c@example.com", now, opts);
-    }
-    const peek = await peekScopedLimit(db, "login-user", "c@example.com", now, opts);
-    expect(peek).toEqual({ ok: false, count: 5 });
   });
 
   it("resetScopedLimit deletes the current window's counter row", async () => {
     const now = 1_000_000;
-    await incrementScopedLimit(db, "login-user", "d@example.com", now, opts);
-    await incrementScopedLimit(db, "login-user", "d@example.com", now, opts);
+    await checkAndIncrementScopedLimit(db, "login-user", "d@example.com", now, opts);
+    await checkAndIncrementScopedLimit(db, "login-user", "d@example.com", now, opts);
     await resetScopedLimit(db, "login-user", "d@example.com", now, opts.windowSeconds);
-    const peek = await peekScopedLimit(db, "login-user", "d@example.com", now, opts);
-    expect(peek).toEqual({ ok: true, count: 0 });
+    const after = await checkAndIncrementScopedLimit(db, "login-user", "d@example.com", now, opts);
+    expect(after).toEqual({ ok: true, count: 1 });
   });
 });
 

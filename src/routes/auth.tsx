@@ -31,8 +31,7 @@ import { findAccountUserId } from "../server/repo/comms";
 import { requestIpFromHeaders } from "../lib/rate-limit";
 import {
   checkAndIncrementScopedLimit,
-  peekScopedLimit,
-  incrementScopedLimit,
+  refundScopedLimit,
   resetScopedLimit,
 } from "../server/repo/rate-limit";
 import { ThemeStyles } from "../views/theme";
@@ -542,22 +541,42 @@ authRoutes.post("/login", csrfForm, async (c) => {
   // credential stuffing against one account) and a per-IP budget (catches
   // a single source hammering many accounts). Either failing blocks login.
   //
-  // DEC-180: the counters only advance on FAILED attempts — a successful
-  // login must not consume the shared budget, so we peek (read-only) before
-  // verifying the password, and only increment after a failure is
-  // confirmed. On success the per-email budget is cleared entirely.
+  // DEC-180 (wave-29 amendment): consume-then-refund, not peek-then-
+  // increment — a peek is a read-then-write race (two concurrent requests
+  // can both see "under the cap" before either writes). Each bucket is
+  // spent atomically at admission time; a successful login (or a bucket
+  // that turns out not to be the one at fault) refunds its unit back so a
+  // legitimate user's later attempts aren't penalized for this one.
   const ip = requestIpFromHeaders((name) => c.req.header(name));
   const loginNow = Date.now();
-  const userPeek = await peekScopedLimit(db, "login-user", email, loginNow, {
+  const userLimit = await checkAndIncrementScopedLimit(db, "login-user", email, loginNow, {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
     max: AUTH_RATE_LIMIT_MAX,
   });
-  const ipPeek = await peekScopedLimit(db, "login-ip", ip, loginNow, {
+
+  if (!userLimit.ok) {
+    const { token: csrfToken } = ensureCsrfCookie(c);
+    const demoIdentities = await loadDemoIdentitiesIfPresent(db);
+    const singleEvent = await loadSingleEventContext(db);
+    return c.html(
+      <LoginPage
+        csrfToken={csrfToken}
+        error={RATE_LIMIT_ERROR}
+        email={email}
+        demoIdentities={demoIdentities}
+        singleEvent={singleEvent}
+      />,
+      429,
+    );
+  }
+
+  const ipLimit = await checkAndIncrementScopedLimit(db, "login-ip", ip, loginNow, {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
     max: 100,
   });
 
-  if (!userPeek.ok || !ipPeek.ok) {
+  if (!ipLimit.ok) {
+    await refundScopedLimit(db, "login-user", email, loginNow, { windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS });
     const { token: csrfToken } = ensureCsrfCookie(c);
     const demoIdentities = await loadDemoIdentitiesIfPresent(db);
     const singleEvent = await loadSingleEventContext(db);
@@ -580,14 +599,8 @@ authRoutes.post("/login", csrfForm, async (c) => {
   // PBKDF2 cost as a known one — closing the login timing oracle.
   const passwordOk = await verifyPassword(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
   if (!user || !passwordOk) {
-    await incrementScopedLimit(db, "login-user", email, loginNow, {
-      windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
-      max: AUTH_RATE_LIMIT_MAX,
-    });
-    await incrementScopedLimit(db, "login-ip", ip, loginNow, {
-      windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
-      max: 100,
-    });
+    // The budget was already spent at admission above — no further writes
+    // on failure.
     const { token: csrfToken } = ensureCsrfCookie(c);
     const demoIdentities = await loadDemoIdentitiesIfPresent(db);
     const singleEvent = await loadSingleEventContext(db);
@@ -604,6 +617,7 @@ authRoutes.post("/login", csrfForm, async (c) => {
   }
 
   await resetScopedLimit(db, "login-user", email, loginNow, AUTH_RATE_LIMIT_WINDOW_SECONDS);
+  await refundScopedLimit(db, "login-ip", ip, loginNow, { windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS });
 
   const now = new Date();
   const presentedCookies = parseCookies(c.req.header("cookie") ?? null);
@@ -742,14 +756,17 @@ authRoutes.post("/forgot", csrfForm, async (c) => {
   const normalizedEmail = submittedEmail.toLowerCase();
   const now = Date.now();
 
-  // DEC-180: the SAME peek-then-conditionally-mutate shape as /login,
-  // keyed on the normalised email. A 429 here doesn't leak existence (it
-  // fires purely off request volume against one address, known or not).
-  const peek = await peekScopedLimit(db, "forgot", normalizedEmail, now, {
+  // DEC-180 (wave-29 amendment): consume-then-refund everywhere ELSE, but
+  // /forgot never refunds — refunding only when the address exists (or
+  // only when it doesn't) would make the 429/200 boundary an existence
+  // oracle. One atomic spend per request, unconditionally, keyed on the
+  // normalised email. A 429 here doesn't leak existence (it fires purely
+  // off request volume against one address, known or not).
+  const limit = await checkAndIncrementScopedLimit(db, "forgot", normalizedEmail, now, {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
     max: AUTH_RATE_LIMIT_MAX,
   });
-  if (!peek.ok) {
+  if (!limit.ok) {
     const { token: csrfToken } = ensureCsrfCookie(c);
     return c.html(<ForgotPasswordPage csrfToken={csrfToken} email={submittedEmail} error={RATE_LIMIT_ERROR} />, 429);
   }
@@ -793,17 +810,15 @@ authRoutes.post("/forgot", csrfForm, async (c) => {
         console.error("password reset email failed (token still minted):", err);
       }
     }
-
-    await resetScopedLimit(db, "forgot", normalizedEmail, now, AUTH_RATE_LIMIT_WINDOW_SECONDS);
+    // No resetScopedLimit here — the atomic spend above already counted
+    // this request against the budget, and (per DEC-180 wave-29) /forgot
+    // never refunds, existing account or not, so the two branches stay
+    // indistinguishable from the budget's point of view.
   } else {
     // No account: burn a comparable SHA-256 cost to the mint path above
     // (DEC-004-style — never short-circuit past the work a real branch
-    // would do) and count this as a failed attempt against the budget.
+    // would do). The budget was already spent at admission above.
     await hashResetToken(newResetToken());
-    await incrementScopedLimit(db, "forgot", normalizedEmail, now, {
-      windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
-      max: AUTH_RATE_LIMIT_MAX,
-    });
   }
 
   return c.html(<CheckEmailPage email={submittedEmail} />);

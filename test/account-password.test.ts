@@ -527,7 +527,14 @@ describe("POST /account/password — rate limiting (DEC-180)", () => {
     expect(resWithCorrectPassword.status).toBe(429);
   });
 
-  it("a correct current password never increments the counter (failures-only)", async () => {
+  // DEC-180 (wave-29 amendment): consume-then-refund, not peek-then-
+  // increment. checkAndIncrementScopedLimit spends one unit of budget
+  // atomically at admission, before verifyPassword runs -- only a
+  // COMPLETED change (resetScopedLimit) gives the budget back. A request
+  // that passes the current-password check but fails a later validation
+  // step (confirm mismatch) still spent its unit at admission, same as a
+  // wrong-password request would have.
+  it("a correct current password with a downstream validation failure still spends the admission unit -- AUTH_RATE_LIMIT_MAX such attempts then 429s", async () => {
     const { db, state } = makeFakeDb();
     await seedUser(state);
     const { app, env } = buildApp(db);
@@ -535,11 +542,8 @@ describe("POST /account/password — rate limiting (DEC-180)", () => {
     const loginRes = await login(app, env, OLD_PASSWORD);
     const sessionCookie = sessionCookieFrom(loginRes);
 
-    // Fail once, then succeed with the wrong new-password confirmation
-    // (still hits a 400 after passing the correct-current-password check),
-    // repeated well past AUTH_RATE_LIMIT_MAX to prove correct-current
-    // attempts never consume the failures-only budget.
-    for (let i = 0; i < 25; i++) {
+    const AUTH_RATE_LIMIT_MAX = 20;
+    for (let i = 0; i < AUTH_RATE_LIMIT_MAX; i++) {
       const { csrf, csrfCookie } = await getAccountCsrf(app, env, sessionCookie);
       const res = await postPasswordChange(app, env, sessionCookie, csrf, csrfCookie, {
         current: OLD_PASSWORD,
@@ -555,9 +559,9 @@ describe("POST /account/password — rate limiting (DEC-180)", () => {
       next: NEW_PASSWORD,
       confirm: "does-not-match",
     });
-    expect(finalRes.status).toBe(400);
+    expect(finalRes.status).toBe(429);
     const text = await finalRes.text();
-    expect(text).not.toContain("Too many attempts");
+    expect(text).toContain("Too many attempts");
   });
 
   it("a successful change clears the budget for that user", async () => {

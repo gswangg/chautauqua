@@ -7,13 +7,23 @@
 // rate_limit.count + 1 returning count`), so the increment and the
 // ok/deny decision both happen in the one write.
 //
-// Same four names the callers already use (src/routes/auth.tsx,
-// src/routes/public/submit.tsx), `db: Db` first instead of `kv: KVStore`,
-// identical return shapes. `key` is built by scopedRateLimitKey (still pure,
-// src/lib/rate-limit.ts, DEC-457/DEC-002) so live bucket identity is
-// unchanged across the migration.
+// DEC-180 (wave-29 amendment): the peek-then-conditionally-increment shape
+// (peekScopedLimit + incrementScopedLimit, both deleted here -- no shim,
+// house rule) was itself a get-then-put race: two concurrent requests can
+// both peek under the cap before either increments, admitting N+1. The
+// only atomic shape is CONSUME THEN REFUND -- checkAndIncrementScopedLimit
+// spends one unit of budget unconditionally at admission time (one
+// statement decides ok/deny off the row it just wrote), and callers that
+// want a failures-only budget call refundScopedLimit afterward to give the
+// unit back. A refund is a single `count = count - 1 where count > 0`
+// statement -- never a select-then-write, so it can't itself race.
+//
+// `db: Db` first instead of `kv: KVStore`, identical return shapes. `key`
+// is built by scopedRateLimitKey (still pure, src/lib/rate-limit.ts,
+// DEC-457/DEC-002) so live bucket identity is unchanged across the
+// migration.
 
-import { eq, lte, sql } from "drizzle-orm";
+import { and, eq, gt, lte, sql } from "drizzle-orm";
 import * as schema from "../../db/schema";
 import type { Db } from "../context";
 import { scopedRateLimitKey } from "../../lib/rate-limit";
@@ -38,42 +48,6 @@ function windowBounds(now: number, windowSeconds: number): { windowStart: number
  * write -- never a scan, never a per-key sweep, never a cron. */
 async function pruneExpired(db: Db, now: number): Promise<void> {
   await db.delete(schema.rateLimit).where(lte(schema.rateLimit.expiresAt, now));
-}
-
-/** Read-only peek at the current window's count. Never writes. */
-export async function peekScopedLimit(
-  db: Db,
-  scope: string,
-  id: string,
-  now: number,
-  opts: ScopedLimitOpts,
-): Promise<ScopedRateLimitResult> {
-  const { windowStart } = windowBounds(now, opts.windowSeconds);
-  const key = scopedRateLimitKey(scope, id, windowStart);
-  const rows = await db.select({ count: schema.rateLimit.count }).from(schema.rateLimit).where(eq(schema.rateLimit.key, key)).limit(1);
-  const count = rows[0]?.count ?? 0;
-  return { ok: count < opts.max, count };
-}
-
-/** Unconditionally increments the current window's counter by one, in one
- * atomic upsert statement. */
-export async function incrementScopedLimit(
-  db: Db,
-  scope: string,
-  id: string,
-  now: number,
-  opts: ScopedLimitOpts,
-): Promise<void> {
-  const { windowStart, expiresAt } = windowBounds(now, opts.windowSeconds);
-  const key = scopedRateLimitKey(scope, id, windowStart);
-  await db
-    .insert(schema.rateLimit)
-    .values({ key, count: 1, expiresAt })
-    .onConflictDoUpdate({
-      target: schema.rateLimit.key,
-      set: { count: sql`${schema.rateLimit.count} + 1` },
-    });
-  await pruneExpired(db, now);
 }
 
 /** Deletes the current window's counter row, clearing the budget. */
@@ -107,4 +81,22 @@ export async function checkAndIncrementScopedLimit(
   const count = rows[0]!.count;
   await pruneExpired(db, now);
   return { ok: count <= opts.max, count };
+}
+
+/** Gives back one unit of budget spent by a prior checkAndIncrementScopedLimit
+ * call, in one atomic statement -- never a select first. `count > 0` guards
+ * against driving a row negative if a refund races a prune/rollover. */
+export async function refundScopedLimit(
+  db: Db,
+  scope: string,
+  id: string,
+  now: number,
+  opts: { windowSeconds: number },
+): Promise<void> {
+  const { windowStart } = windowBounds(now, opts.windowSeconds);
+  const key = scopedRateLimitKey(scope, id, windowStart);
+  await db
+    .update(schema.rateLimit)
+    .set({ count: sql`${schema.rateLimit.count} - 1` })
+    .where(and(eq(schema.rateLimit.key, key), gt(schema.rateLimit.count, 0)));
 }

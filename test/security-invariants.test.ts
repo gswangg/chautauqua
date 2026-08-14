@@ -204,10 +204,10 @@ describe("SPEC §6: unauthenticated write paths are rate limited (DEC-628)", () 
     return source.slice(startIdx, nextMatch ? nextMatch.index : source.length);
   }
 
-  it("POST /login (auth.tsx) uses peekScopedLimit and incrementScopedLimit", () => {
+  it("POST /login (auth.tsx) uses checkAndIncrementScopedLimit (DEC-180 wave-29: consume-then-refund)", () => {
     const slice = sliceForRoute(authSource, "/login");
-    expect(slice).toMatch(/\bpeekScopedLimit\b/);
-    expect(slice).toMatch(/\bincrementScopedLimit\b/);
+    expect(slice).toMatch(/\bcheckAndIncrementScopedLimit\b/);
+    expect(slice).toMatch(/\brefundScopedLimit\b/);
   });
 
   it("POST /claim/:token (auth.tsx) uses checkAndIncrementScopedLimit", () => {
