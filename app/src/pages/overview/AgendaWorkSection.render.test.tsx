@@ -68,6 +68,7 @@ function basePayload(): OverviewPayload {
     content: { awaitingApproval: 0 },
     agenda: { unplaced: 1, conflicts: 1 },
     comms: { sentLast7Days: 0, lastSentAt: null },
+    publishedSessionCount: 0,
   };
 }
 

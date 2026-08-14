@@ -355,6 +355,9 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       // queries above, right before the comms aggregate.
       overrides.breaks ?? [],
       overrides.comms ?? [{ sentLast7Days: 0, lastSentAt: null }],
+      // DEC-370 amendment (wave 5): the "Public pages" quiet-row summary
+      // count, one final SQL count query.
+      overrides.publishedSessionCount ?? [{ count: 0 }],
     ];
   }
 
@@ -552,6 +555,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       [], // DEC-895: format-answer rows for the unplaced set {s1} (none -> durationMin null)
       [], // DEC-010 amendment: breaks for the event
       [{ sentLast7Days: 0, lastSentAt: null }], // comms
+      [{ count: 0 }], // DEC-370 amendment (wave 5): publishedSessionCount
     ]);
     const payload = await getOverviewPayload(db, "event-1", now);
     expect(payload.contentApproval.total).toBe(9);
@@ -601,6 +605,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       ], // DEC-895: format-answer rows for the unplaced set {s1, s2}
       [], // DEC-010 amendment: breaks for the event
       [{ sentLast7Days: 0, lastSentAt: null }], // comms
+      [{ count: 0 }], // DEC-370 amendment (wave 5): publishedSessionCount
     ]);
     const payload = await getOverviewPayload(db, "event-1", now);
 
@@ -688,6 +693,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       ], // DEC-895: format-answer rows for {u1, u2}
       [], // DEC-010 amendment: breaks for the event
       [{ sentLast7Days: 0, lastSentAt: null }], // comms
+      [{ count: 0 }], // DEC-370 amendment (wave 5): publishedSessionCount
     ]);
     const payload = await getOverviewPayload(db, "event-1", now);
 

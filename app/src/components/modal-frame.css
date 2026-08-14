@@ -40,6 +40,23 @@
   border-bottom: 1px solid var(--chq-rule);
 }
 
+/* DEC-370 amendment (wave 5): the modal's own head rule + title size are
+   deliberately overridden here, scoped with the extra `.chq-modal` ancestor
+   so this always wins over styles.css's shared `.chq-modal-head`/
+   `.chq-modal-title` regardless of stylesheet load order -- the head rule
+   is near-black (var(--chq-ink)), not the pale --chq-rule tone every other
+   hairline in the app uses, and the title sits at 23px. Scope note: this
+   is the ONE shared ModalFrame stylesheet -- the edit is intentionally
+   confined to these two rules and applies to every ModalFrame-built
+   dialog, not just the New-event modal. */
+.chq-modal .chq-modal-head {
+  border-bottom-color: var(--chq-ink);
+}
+
+.chq-modal .chq-modal-title {
+  font-size: 23px;
+}
+
 .chq-modal-head-titles {
   display: flex;
   flex-direction: column;

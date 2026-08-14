@@ -15,7 +15,7 @@ import type {
   OverviewPayload,
   TriageRow,
 } from './overview/types';
-import { buildDeadlineCells, buildNoActionRows, daysLateLabel, headlineText, joinSegments, pluralize } from './overview/rows';
+import { buildDeadlineCells, buildNoActionRows, daysLateLabel, headlineText, joinSegments, pluralize, spellSmallNumber } from './overview/rows';
 import { AgendaWorkSection } from './overview/AgendaWorkSection';
 import { daysAgo } from '../lib/dates';
 import './overview/overview.css';
@@ -33,20 +33,6 @@ interface EventListItem {
   timezone: string;
 }
 
-// Mirrors src/routes/public/shell.tsx's SURFACES tuple plus the CFP form
-// route (src/routes/public/submit.tsx) — the exhaustive set of public pages
-// an organiser might want to hand out for the current event. DEC-877: the
-// row no longer links each surface individually — it names them in one
-// sentence and links only the event's own public root.
-const PUBLIC_SURFACES: ReadonlyArray<{ label: string }> = [
-  { label: 'Sessions' },
-  { label: 'Speakers' },
-  { label: 'Gallery' },
-  { label: 'Agenda' },
-  { label: 'Schedule' },
-  { label: 'CFP form' },
-];
-
 // DEC-735: a dangling clause with no computed value must never render — this
 // is always computable from the row's own submittedAt, so it's computed,
 // never dropped like the unplaced row's duration (which the server never
@@ -54,6 +40,14 @@ const PUBLIC_SURFACES: ReadonlyArray<{ label: string }> = [
 function waitingDaysLabel(submittedAt: number, now: number): string {
   const days = daysAgo(submittedAt, now);
   return `waiting ${days} ${pluralize(days, 'day')}`;
+}
+
+// DEC-370 amendment (wave 5): §03's meta clause always carries a relative
+// time for its own uploadedAt, so a lone "· re-uploaded" segment is never
+// left dangling with nothing dating it.
+function uploadedAgoLabel(uploadedAt: number, now: number): string {
+  const days = daysAgo(uploadedAt, now);
+  return days === 0 ? 'uploaded today' : `uploaded ${days} ${pluralize(days, 'day')} ago`;
 }
 
 export function OverviewPage() {
@@ -274,7 +268,7 @@ export function OverviewPage() {
               className="chq-overview-section-action chq-overview-remind-all"
               onClick={() => handleRemind(payload.overdueTasks.rows.map((r) => r.taskId))}
             >
-              Remind all {payload.overdueTasks.rows.length}
+              Remind all {spellSmallNumber(payload.overdueTasks.rows.length)}
             </button>
           )}
         </div>
@@ -382,8 +376,8 @@ export function OverviewPage() {
               <div className="chq-overview-row-title chq-overview-row-title-md">
                 {row.title}
               </div>
-              <div className="chq-overview-row-meta">
-                {joinSegments([row.speakerName, row.fileName, row.reuploaded ? 're-uploaded' : null])}
+              <div className="chq-overview-row-meta chq-overview-row-meta-md">
+                {joinSegments([row.speakerName, row.fileName, uploadedAgoLabel(row.uploadedAt, now), row.reuploaded ? 're-uploaded' : null])}
               </div>
             </div>
             <div className="chq-overview-row-actions">
@@ -422,20 +416,19 @@ export function OverviewPage() {
             </span>
           </div>
         ))}
-        {/* DEC-877: Public pages is ONE summary sentence, not a chip per
-            surface — the sentence names every live surface but the event's
-            own public root (`/e/<slug>`) is the only link, matching the
-            frame's convention that a row states its fact in prose and links
-            out exactly once. */}
+        {/* DEC-370 amendment (wave 5): Public pages is ONE summary clause,
+            composed from the same published-count reader the server exposes
+            (publishedSessionCount, backed by visibleSessionConditions()) —
+            never a literal number or an enumerated surface list. The
+            event's own public root (`/e/<slug>`) is the only link. */}
         <div className="chq-overview-row chq-overview-row-quiet">
           <span className="chq-overview-row-title chq-overview-row-title-sm">Public pages</span>
           {eventSlug ? (
             <span className="chq-overview-row-meta chq-overview-row-meta-sm">
-              {joinSegments(PUBLIC_SURFACES.map((s) => s.label))} are live at{' '}
+              {payload.publishedSessionCount} {pluralize(payload.publishedSessionCount, 'session')} live, with speakers and schedule at{' '}
               <a href={`/e/${eventSlug}`} target="_blank" rel="noreferrer" className="chq-overview-link-btn">
                 /e/{eventSlug}
               </a>
-              .
             </span>
           ) : (
             <span className="chq-overview-row-meta chq-overview-row-meta-sm">{slugError ?? 'Resolving link…'}</span>

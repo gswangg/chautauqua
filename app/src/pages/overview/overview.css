@@ -75,10 +75,13 @@
   flex-wrap: nowrap;
 }
 
+/* DEC-370 amendment (wave 5): toolbar buttons pin to 37px tall — vertical
+   padding only shrinks (17px of unclaimed padding was inflating the
+   control to 42.8px measured), horizontal padding is unchanged. */
 .chq-overview-toolbar-btn {
   border: 1px solid var(--chq-border);
   border-radius: 4px;
-  padding: 10px 16px;
+  padding: 7.1px 16px;
   font-size: 13px;
   font-weight: 600;
   font-family: var(--chq-font-ui);
@@ -96,7 +99,7 @@
   background: var(--chq-brand);
   color: var(--chq-on-brand);
   font-weight: 700;
-  padding: 11px 16px;
+  padding: 8.1px 16px;
 }
 
 .chq-overview-section {
@@ -167,8 +170,21 @@
   grid-template-columns: 132px 1fr auto;
 }
 
+/* DEC-370 amendment (wave 5): all three quiet rows ("No action needed"'s
+   Review/Comms rows plus Public pages) share ONE two-column grid -- the
+   same 220.5px value-column offset and the same 14px type size, so a row
+   never grows past what a single-clause summary needs. */
 .chq-overview-row-quiet {
-  grid-template-columns: 200px 1fr;
+  grid-template-columns: 220.5px 1fr;
+  /* DEC-370 amendment (wave 5): the "No action needed" row pitch is 51px
+     (58.4px measured today) — vertical padding only tightens, the shared
+     .chq-overview-row padding stays untouched for every other row shape. */
+  padding: 12.3px 0;
+}
+
+.chq-overview-row-quiet .chq-overview-row-title-sm,
+.chq-overview-row-quiet .chq-overview-row-meta-sm {
+  font-size: 14px;
 }
 
 .chq-overview-row-title {
@@ -197,6 +213,13 @@
 
 .chq-overview-row-meta-sm {
   font-size: 14px;
+}
+
+/* DEC-370 amendment (wave 5): §03's artifact meta (speaker, filename,
+   relative upload time, re-uploaded flag) reads at the same weight as the
+   row's title context rather than the default 12px caption size. */
+.chq-overview-row-meta-md {
+  font-size: 13px;
 }
 
 .chq-overview-row-single {

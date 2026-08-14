@@ -23,6 +23,18 @@ export function pluralize(count: number, singular: string, plural: string = `${s
   return count === 1 ? singular : plural;
 }
 
+const SMALL_NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+
+/** DEC-370 amendment (wave 5): a count from 0-10 is spelled out in a UI
+ * label ("Remind all three"), never a bare numeral — matches the frame's
+ * copy voice. A count above ten falls back to the numeral. */
+export function spellSmallNumber(count: number): string {
+  if (count < 0 || !Number.isInteger(count)) {
+    throw new Error(`spellSmallNumber: expected a non-negative integer, got ${count}`);
+  }
+  return SMALL_NUMBER_WORDS[count] ?? String(count);
+}
+
 /** Section 01 row caption, e.g. "4 days late" / "1 day late". Fails loudly
  * on a negative input — a row that isn't actually late should never reach
  * this helper. */
@@ -110,6 +122,12 @@ export function buildDeadlineCells(
   // DEC-611 amendment (wave 2): the nearest-deadline emphasis is a SET, not
   // an arbitrary first-wins pick — on a tie every cell sharing the minimum
   // non-null value is marked isNearest.
+  //
+  // DEC-370 amendment (wave 5): the tie is measured on the DISPLAYED value,
+  // not the raw ms — formatDeadlineValue collapses every value <= 0 days
+  // away into the same "Today" text, so two cells with different raw
+  // timestamps but the same displayed word must bold together or not at
+  // all (never one of two identical-looking cells).
   let nearestValue: number | null = null;
   for (const cell of cells) {
     if (cell.value === null) continue;
@@ -118,8 +136,9 @@ export function buildDeadlineCells(
     }
   }
   if (nearestValue !== null) {
+    const nearestDisplay = formatDeadlineValue(nearestValue, now, timezone);
     for (let i = 0; i < cells.length; i++) {
-      if (cells[i]!.value === nearestValue) {
+      if (cells[i]!.value !== null && cells[i]!.display === nearestDisplay) {
         cells[i] = { ...cells[i]!, isNearest: true };
       }
     }
@@ -160,7 +179,7 @@ export function buildNoActionRows(payload: OverviewPayload, now: number): NoActi
         ? 'No evaluation plans set up yet.'
         : payload.review.evaluationsExpected === 0
           ? 'No evaluations assigned yet.'
-          : `${joinSegments([`${payload.review.evaluationsSubmitted} of ${payload.review.evaluationsExpected} ${pluralize(payload.review.evaluationsExpected, 'evaluation')} in`])}.`,
+          : joinSegments([`${payload.review.evaluationsSubmitted} of ${payload.review.evaluationsExpected} ${pluralize(payload.review.evaluationsExpected, 'evaluation')} in`]),
   });
 
   const daysSinceSend = payload.comms.lastSentAt !== null ? daysAgo(payload.comms.lastSentAt, now) : null;
@@ -169,10 +188,10 @@ export function buildNoActionRows(payload: OverviewPayload, now: number): NoActi
     title: 'Comms',
     detail:
       payload.comms.sentLast7Days > 0
-        ? `${joinSegments([
+        ? joinSegments([
             `${payload.comms.sentLast7Days} sent in 7 days`,
             daysSinceSend !== null ? `last ${daysSinceSend === 0 ? 'today' : `${daysSinceSend} ${pluralize(daysSinceSend, 'day')} ago`}` : null,
-          ])}.`
+          ])
         : 'No messages sent in the last 7 days.',
   });
 

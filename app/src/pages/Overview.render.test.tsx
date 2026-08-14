@@ -116,6 +116,7 @@ function payload(): OverviewPayload {
     content: { awaitingApproval: 1 },
     agenda: { unplaced: 0, conflicts: 0 },
     comms: { sentLast7Days: 4, lastSentAt: Date.now() - 2 * 86_400_000 },
+    publishedSessionCount: 17,
   };
 }
 
@@ -184,12 +185,18 @@ describe('OverviewPage render smoke (DEC-370)', () => {
     // bespoke `-public` variant — its value column lands on the siblings'
     // column at their type size.
     const publicRow = publicRootLink.closest('.chq-overview-row-quiet')!;
-    expect(publicRow.textContent).toBe(
-      `Public pagesSessions · Speakers · Gallery · Agenda · Schedule · CFP form are live at /e/${EVENT_SLUG}.`,
-    );
+    // DEC-370 amendment (wave 5): the row states its fact in ONE composed
+    // clause (from the server's publishedSessionCount), never an
+    // enumerated surface list.
+    expect(publicRow.textContent).toBe(`Public pages17 sessions live, with speakers and schedule at /e/${EVENT_SLUG}`);
     // Exactly one link in the row — the public root, not a chip per surface.
     expect(publicRow.querySelectorAll('a').length).toBe(1);
     expect(document.querySelectorAll('.chq-overview-row-public').length).toBe(0);
+
+    // DEC-370 amendment (wave 5): all three quiet rows (Review, Comms,
+    // Public pages) share the SAME grid class — one two-column grid, no
+    // per-row layout.
+    expect(document.querySelectorAll('.chq-overview-row-quiet').length).toBe(3);
 
     // DEC-704: the deadlines strip keeps a FIXED reading order (never
     // reshuffles by nearest date) and names its Review wave round.
@@ -263,8 +270,10 @@ describe('OverviewPage render smoke (DEC-370)', () => {
 
     await waitFor(() => expect(screen.getByText('Marcus Okafor')).toBeInTheDocument());
 
-    expect(screen.getByRole('button', { name: 'Remind all 1' })).toBeInTheDocument();
+    // DEC-370 amendment (wave 5): small counts are spelled out.
+    expect(screen.getByRole('button', { name: 'Remind all one' })).toBeInTheDocument();
     expect(screen.queryByText('Remind all 5')).not.toBeInTheDocument();
+    expect(screen.queryByText('Remind all five')).not.toBeInTheDocument();
 
     // DEC-877: overflow is a below-the-list summary line, never a nav link.
     expect(screen.queryByRole('link', { name: '4 more overdue' })).not.toBeInTheDocument();

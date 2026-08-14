@@ -16,6 +16,7 @@ import { mockApi, listEnvelope } from '../test-utils/mockApi';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const EVENT_SWITCHER_CSS = readFileSync(join(HERE, 'event-switcher.css'), 'utf-8');
+const MODAL_FRAME_CSS = readFileSync(join(HERE, 'modal-frame.css'), 'utf-8');
 
 /** Extracts a top-level (not inside an @media block) rule's declaration body by selector. */
 function topLevelRuleBody(css: string, selector: string): string {
@@ -93,6 +94,42 @@ describe('EventSwitcher', () => {
     expect(dialog).toHaveClass('chq-scrim');
     expect(dialog.querySelector('.chq-modal')).toBeInTheDocument();
     expect(screen.getByText('New event')).toHaveClass('chq-modal-title');
+  });
+
+  // DEC-370 amendment (wave 5): modal chrome -- near-black head rule, 23px
+  // title, distinct Starts/Ends placeholders, and Venue drops its
+  // "· optional" suffix + "Optional" placeholder.
+  it('renders the amended modal chrome and field placeholders', async () => {
+    mockApi({
+      'GET /api/v1/me': { userId: 'u-1', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+      'GET /api/v1/events': listEnvelope([{ id: 'ev-1', name: 'Alpha Conf' }]),
+    });
+
+    render(<EventSwitcher />);
+
+    await waitFor(() => screen.getByText('Alpha Conf'));
+    fireEvent.click(screen.getByRole('button', { name: 'Switch event' }));
+    const menu = await screen.findByRole('menu', { name: 'Events' });
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'New event…' }));
+
+    await screen.findByRole('dialog', { name: 'New event' });
+
+    expect(screen.getByLabelText(/^Starts/)).toHaveAttribute('placeholder', '11 May 2028');
+    expect(screen.getByLabelText(/^Ends/)).toHaveAttribute('placeholder', '13 May 2028');
+
+    const venueLabel = screen.getByText('Venue');
+    expect(venueLabel.textContent).toBe('Venue');
+    const venueInput = screen.getByLabelText('Venue');
+    expect(venueInput).not.toHaveAttribute('placeholder', 'Optional');
+
+    expect(screen.getByRole('button', { name: 'Create the event' })).toHaveClass('chq-eventswitcher-create-btn');
+
+    // Pin the modal-frame.css head-rule/title rules and the create button's
+    // width rule directly against the stylesheets (jsdom doesn't apply
+    // external CSS layout).
+    expect(topLevelRuleBody(MODAL_FRAME_CSS, '.chq-modal .chq-modal-head')).toMatch(/border-bottom-color:\s*var\(--chq-ink\)/);
+    expect(topLevelRuleBody(MODAL_FRAME_CSS, '.chq-modal .chq-modal-title')).toMatch(/font-size:\s*23px/);
+    expect(topLevelRuleBody(EVENT_SWITCHER_CSS, '.chq-eventswitcher-create-btn')).toMatch(/width:\s*144px/);
   });
 
   it('a local validation failure renders a FormRow error', async () => {
