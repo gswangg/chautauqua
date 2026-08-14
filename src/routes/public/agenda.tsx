@@ -10,6 +10,7 @@ import { plural } from "../../domain/count-copy";
 import { sessionDetailPath, surfacePath, type Surface, type SurfaceBase } from "./shell";
 import { TrackChips, FormatChip, SpeakerNames, SessionDescription, ItineraryToggle, formatDay, formatMinutes } from "./cards";
 import { PublicSearchBox } from "./filters";
+import { AgendaRail } from "./agenda-rail";
 import { DEC_851, DEC_999 } from "../../decisions";
 
 void DEC_999;
@@ -538,49 +539,65 @@ export function AgendaContent(props: {
   const days = props.allDays ?? [...renderedDays];
   const base: SurfaceBase = props.embed ? "/embed" : "/e";
   const basePath = surfacePath(props.event, "agenda", base);
+  // DEC-885/DEC-683 (wave 67 amendment): the rail's "Rooms in use today"
+  // section reads the SAME "day in view" rule DaySwitcher already applies
+  // to aria-current -- the ?day= filter when present, else the first
+  // rendered day top-to-bottom -- so the rail's room list never disagrees
+  // with which day's blocks are actually on screen.
+  const effectiveActiveDay = props.activeDay ?? days[0] ?? null;
+  const railItems = effectiveActiveDay ? (byDay.get(effectiveActiveDay) ?? []) : [];
   return (
     <>
       <h1 class="chq-pub-surface-title">Agenda</h1>
-      <ItinerarySearchForm
-        event={props.event}
-        tracks={props.tracks ?? []}
-        activeTrackId={props.highlightTrackId ?? null}
-        activeDay={props.activeDay ?? null}
-        q={props.q ?? null}
-        basePath={basePath}
-      />
-      {byDay.size === 0 ? (
-        <p>No sessions scheduled yet.</p>
-      ) : (
-        <>
-          {props.items.length < props.total ? (
-            <p>
-              Showing the first {props.items.length} of {props.total} scheduled sessions.
-            </p>
-          ) : null}
-          <DaySwitcher
-            days={days}
-            renderedDays={renderedDays}
+      <div class="chq-pub-agenda-layout">
+        <div class="chq-pub-agenda-list">
+          <ItinerarySearchForm
             event={props.event}
-            surface="agenda"
-            base={base}
-            activeDay={props.activeDay}
-            trackId={props.highlightTrackId}
-            q={props.q}
+            tracks={props.tracks ?? []}
+            activeTrackId={props.highlightTrackId ?? null}
+            activeDay={props.activeDay ?? null}
+            q={props.q ?? null}
+            basePath={basePath}
           />
-          {[...renderedDays].map((day) => (
-            <AgendaDay
-              day={day}
-              items={byDay.get(day) ?? []}
-              event={props.event}
-              from="agenda"
-              base={base}
-              breaks={props.breaksByDay?.get(day) ?? []}
-              highlightTrackId={props.highlightTrackId ?? null}
-            />
-          ))}
-        </>
-      )}
+          {byDay.size === 0 ? (
+            <p>No sessions scheduled yet.</p>
+          ) : (
+            <>
+              {props.items.length < props.total ? (
+                <p>
+                  Showing the first {props.items.length} of {props.total} scheduled sessions.
+                </p>
+              ) : null}
+              <DaySwitcher
+                days={days}
+                renderedDays={renderedDays}
+                event={props.event}
+                surface="agenda"
+                base={base}
+                activeDay={props.activeDay}
+                trackId={props.highlightTrackId}
+                q={props.q}
+              />
+              {[...renderedDays].map((day) => (
+                <AgendaDay
+                  day={day}
+                  items={byDay.get(day) ?? []}
+                  event={props.event}
+                  from="agenda"
+                  base={base}
+                  breaks={props.breaksByDay?.get(day) ?? []}
+                  highlightTrackId={props.highlightTrackId ?? null}
+                />
+              ))}
+            </>
+          )}
+        </div>
+        {/* DEC-672/DEC-683 (wave 67 amendment): the rail is chromeless-
+            closed -- /embed renders none of it (no <aside>, no /submit or
+            /e/ hrefs, no ItineraryScript). */}
+        {!props.embed ? <AgendaRail event={props.event} items={railItems} activeDay={effectiveActiveDay} /> : null}
+      </div>
+      {!props.embed ? <ItineraryScript eventSlug={props.event.slug} /> : null}
     </>
   );
 }

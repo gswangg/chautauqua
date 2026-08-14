@@ -23,26 +23,30 @@ export function isSurface(value: string): value is Surface {
   return (SURFACES as readonly string[]).includes(value);
 }
 
-/** DEC-989 Amendment (wave 37), further amended DEC-990 (wave 40): the SSR
- * public surfaces take their container class from the CONTENT, not the
- * route. sessions is the WIDE pair (list + 300px rail, the 1180 measure
- * DEC-989 itself names); speakers (the ruled list) and schedule are READING
- * columns; gallery (six ~184px tiles + gaps is ~1180, DEC-990 wave-40
- * amendment) is WIDE too, even though it's the same surface as speakers;
- * agenda is CANVAS (no class -- its lane count is the event's room count).
- * EmbedShell never consumes this: an embed fills its host iframe. */
-export type PublicMeasure = "reading" | "wide" | "canvas";
+/** DEC-989 Amendment (wave 37), further amended DEC-990 (wave 40) and DEC-683
+ * (wave 67, this amendment): the SSR public surfaces take their container
+ * class from the CONTENT, not the route. sessions is the WIDE pair (list +
+ * 300px rail, the 1180 measure DEC-989 itself names); speakers (the ruled
+ * list) and schedule are READING columns; gallery (six ~184px tiles + gaps
+ * is ~1180, DEC-990 wave-40 amendment) is WIDE too, even though it's the
+ * same surface as speakers; agenda is now the SAME 1180 pair as sessions
+ * (list + rail) -- the wave-64 desktop room-lane matrix that justified
+ * CANVAS is gone (DEC-584: agenda is a time-row sequence, not room columns),
+ * and the agenda surface has its own rail (AgendaRail, agenda-rail.tsx) as
+ * of this amendment, so the "canvas" measure has no remaining surface and is
+ * removed rather than left dead. EmbedShell never consumes this: an embed
+ * fills its host iframe. */
+export type PublicMeasure = "reading" | "wide";
 
 export function measureClassForSurface(surface: Surface): PublicMeasure {
   switch (surface) {
     case "sessions":
     case "gallery":
+    case "agenda":
       return "wide";
     case "speakers":
     case "schedule":
       return "reading";
-    case "agenda":
-      return "canvas";
   }
 }
 
