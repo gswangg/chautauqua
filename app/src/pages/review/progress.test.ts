@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { overallCompletion, progressTotals, reviewerDisplayLabel, reviewersNotStarted, reviewersWithIncompleteQueues } from './progress';
+import { overallCompletion, progressTotals, queueDoneCounts, reviewerDisplayLabel, reviewersNotStarted, reviewersWithIncompleteQueues } from './progress';
 import type { ProgressRow } from './types';
 
 const rows: ProgressRow[] = [
@@ -82,5 +82,20 @@ describe('progressTotals', () => {
     const totals = progressTotals(rowsWithOutOfScopeReviewer);
     expect(totals.completed).toBeLessThanOrEqual(totals.assigned);
     expect(totals).toEqual({ completed: 14, assigned: 20 });
+  });
+});
+
+describe('queueDoneCounts', () => {
+  // w40-b: the scorecard header's counter must reflect the envelope's own
+  // total/unscoredTotal (computed server-side over the FULL scope before
+  // any page slice), never items.length/filter -- a reviewer with more
+  // assignments than the queue endpoint's perPage cap would otherwise see a
+  // shrunken "N of N" derived from whatever page happened to load.
+  it('derives completed/total from the envelope, not the loaded page of items', () => {
+    expect(queueDoneCounts({ total: 250, unscoredTotal: 3 })).toEqual({ completed: 247, total: 250 });
+  });
+
+  it('is {0, 0} for an empty envelope', () => {
+    expect(queueDoneCounts({ total: 0, unscoredTotal: 0 })).toEqual({ completed: 0, total: 0 });
   });
 });
