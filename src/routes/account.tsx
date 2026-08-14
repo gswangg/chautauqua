@@ -23,7 +23,7 @@ import { issueSessionRevokingAll } from "../server/auth-session";
 import { ThemeStyles } from "../views/theme";
 import { AUTH_CSS } from "./auth.css";
 import { MIN_PASSWORD_LENGTH, AUTH_RATE_LIMIT_WINDOW_SECONDS, AUTH_RATE_LIMIT_MAX, RATE_LIMIT_ERROR } from "./auth";
-import { peekScopedLimit, incrementScopedLimit, resetScopedLimit } from "../server/repo/rate-limit";
+import { checkAndIncrementScopedLimit, resetScopedLimit } from "../server/repo/rate-limit";
 import { DEC_740, DEC_994, DEC_180 } from "../decisions";
 
 void DEC_180;
@@ -174,29 +174,34 @@ accountRoutes.post("/account/password", requireAuthOr302, csrfForm, async (c) =>
 
   const backHref = backHrefForRole(auth.role);
 
-  // DEC-180 (wave-22 amendment): failures-only budget, keyed on the
-  // authenticated userId (not email/IP) since this route always has a live
-  // session. Peek (read-only) before verifying, increment only after a
-  // confirmed wrong-password failure, reset on a successful change --
-  // mirrors src/routes/auth.tsx's /login limiter exactly.
+  // DEC-948 (amendment): checked-and-incremented atomically, BEFORE the
+  // password derivation runs -- a read-only peek followed by a later
+  // increment lets N concurrent requests all read the same pre-increment
+  // count and all reach the derivation (the read-then-write race DEC-948
+  // forbids). checkAndIncrement is one atomic D1 upsert.
+  //
+  // DEC-180: a successful change must not consume the budget. Since the
+  // increment now happens up front, a confirmed successful verify clears
+  // the per-userId bucket immediately below.
   const rateLimitNow = Date.now();
-  const limitPeek = await peekScopedLimit(db, "password-change", auth.userId, rateLimitNow, {
+  const limitCheck = await checkAndIncrementScopedLimit(db, "password-change", auth.userId, rateLimitNow, {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
     max: AUTH_RATE_LIMIT_MAX,
   });
-  if (!limitPeek.ok) {
+  if (!limitCheck.ok) {
     const { token: csrfToken } = ensureCsrfCookie(c);
     return c.html(<PasswordPage csrfToken={csrfToken} backHref={backHref} error={RATE_LIMIT_ERROR} />, 429);
   }
 
   if (!(await verifyPassword(current, user.passwordHash))) {
-    await incrementScopedLimit(db, "password-change", auth.userId, rateLimitNow, {
-      windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
-      max: AUTH_RATE_LIMIT_MAX,
-    });
     const { token: csrfToken } = ensureCsrfCookie(c);
     return c.html(<PasswordPage csrfToken={csrfToken} backHref={backHref} error="Current password is incorrect." />, 400);
   }
+
+  // Verify succeeded -- clear the budget now, before the (independent) new-
+  // password validation below, so a valid current password never counts
+  // toward the failure budget regardless of what happens next.
+  await resetScopedLimit(db, "password-change", auth.userId, rateLimitNow, AUTH_RATE_LIMIT_WINDOW_SECONDS);
 
   if (next.length < MIN_PASSWORD_LENGTH) {
     const { token: csrfToken } = ensureCsrfCookie(c);
@@ -216,8 +221,6 @@ accountRoutes.post("/account/password", requireAuthOr302, csrfForm, async (c) =>
       400,
     );
   }
-
-  await resetScopedLimit(db, "password-change", auth.userId, rateLimitNow, AUTH_RATE_LIMIT_WINDOW_SECONDS);
 
   const passwordHash = await hashPassword(next);
   const now = new Date();

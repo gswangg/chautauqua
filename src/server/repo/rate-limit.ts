@@ -40,42 +40,6 @@ async function pruneExpired(db: Db, now: number): Promise<void> {
   await db.delete(schema.rateLimit).where(lte(schema.rateLimit.expiresAt, now));
 }
 
-/** Read-only peek at the current window's count. Never writes. */
-export async function peekScopedLimit(
-  db: Db,
-  scope: string,
-  id: string,
-  now: number,
-  opts: ScopedLimitOpts,
-): Promise<ScopedRateLimitResult> {
-  const { windowStart } = windowBounds(now, opts.windowSeconds);
-  const key = scopedRateLimitKey(scope, id, windowStart);
-  const rows = await db.select({ count: schema.rateLimit.count }).from(schema.rateLimit).where(eq(schema.rateLimit.key, key)).limit(1);
-  const count = rows[0]?.count ?? 0;
-  return { ok: count < opts.max, count };
-}
-
-/** Unconditionally increments the current window's counter by one, in one
- * atomic upsert statement. */
-export async function incrementScopedLimit(
-  db: Db,
-  scope: string,
-  id: string,
-  now: number,
-  opts: ScopedLimitOpts,
-): Promise<void> {
-  const { windowStart, expiresAt } = windowBounds(now, opts.windowSeconds);
-  const key = scopedRateLimitKey(scope, id, windowStart);
-  await db
-    .insert(schema.rateLimit)
-    .values({ key, count: 1, expiresAt })
-    .onConflictDoUpdate({
-      target: schema.rateLimit.key,
-      set: { count: sql`${schema.rateLimit.count} + 1` },
-    });
-  await pruneExpired(db, now);
-}
-
 /** Deletes the current window's counter row, clearing the budget. */
 export async function resetScopedLimit(db: Db, scope: string, id: string, now: number, windowSeconds: number): Promise<void> {
   const { windowStart } = windowBounds(now, windowSeconds);

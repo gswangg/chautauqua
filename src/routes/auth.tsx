@@ -30,8 +30,6 @@ import { findAccountUserId } from "../server/repo/comms";
 import { requestIpFromHeaders } from "../lib/rate-limit";
 import {
   checkAndIncrementScopedLimit,
-  peekScopedLimit,
-  incrementScopedLimit,
   resetScopedLimit,
 } from "../server/repo/rate-limit";
 import { ThemeStyles } from "../views/theme";
@@ -343,22 +341,31 @@ authRoutes.post("/login", csrfForm, async (c) => {
   // credential stuffing against one account) and a per-IP budget (catches
   // a single source hammering many accounts). Either failing blocks login.
   //
-  // DEC-180: the counters only advance on FAILED attempts — a successful
-  // login must not consume the shared budget, so we peek (read-only) before
-  // verifying the password, and only increment after a failure is
-  // confirmed. On success the per-email budget is cleared entirely.
+  // DEC-948 (amendment): the budgets must be checked-and-incremented
+  // atomically, BEFORE the password derivation runs — a read-only peek
+  // followed by a later increment lets N concurrent requests all read the
+  // same pre-increment count and all reach the expensive PBKDF2 derivation
+  // (the exact read-then-write race DEC-948 forbids). checkAndIncrement is
+  // one atomic D1 upsert, so concurrent callers land on distinct counts and
+  // exactly one crosses the cap.
+  //
+  // DEC-180: a successful login must not consume the shared per-email
+  // budget. Since the increment now happens up front (before we know the
+  // outcome), a confirmed success clears the per-email bucket afterward
+  // (see resetScopedLimit below) — the per-IP bucket is a source budget and
+  // stays consumed by successes, it is never reset.
   const ip = requestIpFromHeaders((name) => c.req.header(name));
   const loginNow = Date.now();
-  const userPeek = await peekScopedLimit(db, "login-user", email, loginNow, {
+  const userCheck = await checkAndIncrementScopedLimit(db, "login-user", email, loginNow, {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
     max: AUTH_RATE_LIMIT_MAX,
   });
-  const ipPeek = await peekScopedLimit(db, "login-ip", ip, loginNow, {
+  const ipCheck = await checkAndIncrementScopedLimit(db, "login-ip", ip, loginNow, {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
     max: 100,
   });
 
-  if (!userPeek.ok || !ipPeek.ok) {
+  if (!userCheck.ok || !ipCheck.ok) {
     const { token: csrfToken } = ensureCsrfCookie(c);
     const demoIdentities = await loadDemoIdentitiesIfPresent(db);
     const singleEvent = await loadSingleEventContext(db);
@@ -381,14 +388,8 @@ authRoutes.post("/login", csrfForm, async (c) => {
   // PBKDF2 cost as a known one — closing the login timing oracle.
   const passwordOk = await verifyPassword(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
   if (!user || !passwordOk) {
-    await incrementScopedLimit(db, "login-user", email, loginNow, {
-      windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
-      max: AUTH_RATE_LIMIT_MAX,
-    });
-    await incrementScopedLimit(db, "login-ip", ip, loginNow, {
-      windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
-      max: 100,
-    });
+    // Budgets were already incremented atomically above, before the
+    // derivation ran — nothing further to record on failure.
     const { token: csrfToken } = ensureCsrfCookie(c);
     const demoIdentities = await loadDemoIdentitiesIfPresent(db);
     const singleEvent = await loadSingleEventContext(db);
