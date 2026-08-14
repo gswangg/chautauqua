@@ -17,17 +17,16 @@
 // page it links to actually shows; Sessions alone reads counts.sessions,
 // Speakers/Gallery read counts.speakers.
 //
-// DEC-815: the landing view is a read-only summary (SummarySection) --
-// name + live state per surface -- and the full row detail (View link, the
-// embed builder and the saved-embeds list) lives behind the section's
-// 'Change' drill (?section=public-pages&edit=1, DEC-728/DEC-710).
-//
-// w1-f, DEC-785 amendment: the read row is the frame's four columns --
-// name | path | state pill | Embed code -- not just name + state. 'Embed
-// code' at rest is a read-only affordance into the SAME editor (it drills
-// straight to ?section=public-pages&edit=1 with the builder already open)
-// rather than revealing the builder inline, matching 'Change switches to
-// the editor for that list rather than revealing it'.
+// DEC-896 amendment (wave 26, B10 DROP): this panel has NO edit view. The
+// read row already carries every value AND every action -- name, path,
+// state pill, View, Embed code -- so a 'Change' gate that only exposed the
+// SAME row markup underneath was a gate over nothing (docs/design/
+// DESIGN-RULINGS.md B10: "Public pages has no edit view"). There is no
+// SummarySection here, no `?section=public-pages&edit=1` drill, no Back
+// button -- the rows below and SavedEmbedsPanel render their full
+// capability set unconditionally, including Edit/Turn on-off/Delete/Build
+// on saved embeds, which used to be gated behind this panel's own
+// `editing` and now always render.
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
@@ -35,11 +34,8 @@ import { apiGet, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { EmbedsPanel } from './EmbedsPanel';
 import { SavedEmbedsPanel } from './SavedEmbedsPanel';
-import { SummarySection, type SummarySectionRow } from './SummarySection';
 import { PUBLIC_PAGES_STATE_TONE_CLASS } from './publicPagesState';
 import './settings-lists.css';
-
-const SECTION_KEY = 'public-pages';
 
 interface EventSummary {
   id: string;
@@ -90,23 +86,15 @@ function stateTone(state: string): 'live' | 'muted' {
 
 export function PublicPagesPanel() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const editing = searchParams.get('section') === SECTION_KEY && searchParams.get('edit') === '1';
+  const [searchParams] = useSearchParams();
   const [event, setEvent] = useState<EventSummary | null>(null);
   const [counts, setCounts] = useState<PublicSurfaceCounts | null>(null);
   const [form, setForm] = useState<CfpFormSummary | null>(null);
   const [error, setError] = useState<string | undefined>(undefined);
   const [embedOpenState, setEmbedOpenState] = useState(false);
   // DEC-822: SavedEmbedsPanel's Edit link opens the builder at ?embed=<id>
-  // (preserving the drilled ?section=public-pages&edit=1 params) — the
-  // panel must actually be mounted for that link to do anything, not just
-  // sit there as a URL an organizer can't see land anywhere.
-  //
-  // DEC-785 amendment (wave 15): the section drill itself (`editing`) also
-  // opens the builder -- entering ?section=public-pages&edit=1 must render
-  // real form controls, not just the read-only row list, so editing implies
-  // the builder mounts.
-  const embedOpen = embedOpenState || searchParams.get('embed') !== null || editing;
+  // -- the builder must actually be mounted for that link to land anywhere.
+  const embedOpen = embedOpenState || searchParams.get('embed') !== null;
 
   useEffect(() => {
     if (!eventId) return;
@@ -144,51 +132,14 @@ export function PublicPagesPanel() {
       ]
     : [];
 
-  // w1-f, DEC-785: 'Embed code' at rest drills straight into the section's
-  // own edit drill (same URL state SummarySection's 'Change' writes) with
-  // the embed builder already open, rather than revealing it inline here.
-  function openEmbedFromSummary() {
-    setEmbedOpenState(true);
-    setSearchParams((prev) => {
-      const params = new URLSearchParams(prev);
-      params.set('section', SECTION_KEY);
-      params.set('edit', '1');
-      return params;
-    });
-  }
-
-  const summaryRows: SummarySectionRow[] = rows.map((row) => ({
-    label: row.name,
-    value: (
-      <div className="chq-settings-public-pages-summary-value">
-        <span className="chq-settings-public-pages-summary-path">{row.path}</span>
-        {row.state === null ? (
-          <DelayedLoading />
-        ) : (
-          <span
-            className={`chq-settings-public-pages-state ${PUBLIC_PAGES_STATE_TONE_CLASS[stateTone(row.state)]}`}
-          >
-            {row.state}
-          </span>
-        )}
-        <button type="button" className="chq-link-button" onClick={openEmbedFromSummary}>
-          Embed code
-        </button>
-      </div>
-    ),
-  }));
-
   return (
     <>
       {eventLoading ? <DelayedLoading /> : null}
       {eventError || error ? <p role="alert">{eventError ?? error}</p> : null}
-      <SummarySection
-        sectionKey={SECTION_KEY}
-        label="Public pages"
-        rows={summaryRows}
-        actionLabel="Change"
-        editing={editing}
-      >
+      <section className="chq-settings-panel chq-settings-numbered" aria-label="Public pages">
+        <div className="chq-settings-section-head">
+          <h2>Public pages</h2>
+        </div>
         {event ? (
           <ul className="chq-settings-public-pages-list">
             {rows.map((row) => (
@@ -214,18 +165,13 @@ export function PublicPagesPanel() {
             ))}
           </ul>
         ) : null}
-      </SummarySection>
+      </section>
 
-      {/* w4-b/DEC-785 amendment: SavedEmbedsPanel is the SAME component in
-          both the read view and the edit drill -- it is mounted below the
-          public-pages summary/row-detail (whichever SummarySection is
-          currently showing) rather than only appearing once an organizer
-          clicks Change. The embed builder, when open, renders BELOW the
-          saved list (not above it), so the builder reads as subordinate to
-          the list of named records it edits. */}
+      {/* DEC-896 amendment (wave 26): SavedEmbedsPanel always renders its
+          full capability set now -- there is no drill to gate it behind. */}
       {event ? (
         <>
-          <SavedEmbedsPanel onBuild={() => setEmbedOpenState(true)} editing={editing} />
+          <SavedEmbedsPanel onBuild={() => setEmbedOpenState(true)} editing />
 
           {embedOpen ? (
             <div className="chq-settings-public-pages-embed">

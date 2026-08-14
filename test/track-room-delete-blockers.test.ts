@@ -244,7 +244,8 @@ describe("deleteTrack 409 refusal names its blocking rows (DEC-931)", () => {
 describe("deleteRoom 409 refusal names its blocking schedule slots (DEC-931)", () => {
   it("fields.slots names the blocking session as 'REF - Title (weekday day, HH:MM, Room name)' in the OWNING event's timezone", async () => {
     const { db } = fakeDb([
-      [roomRow], // getRoomForEvent
+      [roomRow], // getRoomForEvent row
+      [{ count: 0 }], // getRoomForEvent sessionCount agg (DEC-896 amendment, wave 26)
       [eventRefFields], // getEventRefFields (America/New_York)
       [{ seq: 12, title: "Keynote", day: "2027-05-12", startMin: 10 * 60 }], // scheduleSlot join submission, limit 5
       [{ count: 1 }], // bounded COUNT
@@ -268,6 +269,7 @@ describe("deleteRoom 409 refusal names its blocking schedule slots (DEC-931)", (
     }));
     const { db } = fakeDb([
       [roomRow],
+      [{ count: 0 }], // getRoomForEvent sessionCount agg
       [eventRefFields],
       fiveSlots, // limit 5
       [{ count: 7 }],
@@ -287,6 +289,7 @@ describe("deleteRoom 409 refusal names its blocking schedule slots (DEC-931)", (
   it("deletes cleanly when the room is wholly unreferenced", async () => {
     const { db } = fakeDb([
       [roomRow],
+      [{ count: 0 }], // getRoomForEvent sessionCount agg
       [eventRefFields],
       [], // no schedule_slot refs
     ]);

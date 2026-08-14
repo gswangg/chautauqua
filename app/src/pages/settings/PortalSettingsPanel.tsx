@@ -28,6 +28,7 @@ import { apiGet, apiPut, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { ResourcesPanel } from './ResourcesPanel';
 import { SummarySection } from './SummarySection';
+import { SettingsEditForm, SettingsField } from './SettingsEditForm';
 import { countOf } from '../../lib/plural';
 import {
   buildPortalSettingsPayload,
@@ -86,7 +87,7 @@ function paragraphCount(text: string | null): number {
 
 export function PortalSettingsPanel() {
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const editing = searchParams.get('section') === SECTION_KEY && searchParams.get('edit') === '1';
   const [welcomeMessage, setWelcomeMessage] = useState<string | null>(null);
   const [welcomeLoaded, setWelcomeLoaded] = useState(false);
@@ -116,6 +117,15 @@ export function PortalSettingsPanel() {
       .then((res) => setTaskCount(res.tasks.length))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load onboarding tasks'));
   }, [eventId, loadPortalSettings]);
+
+  function closeEdit() {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.delete('section');
+      params.delete('edit');
+      return params;
+    });
+  }
 
   async function handleSave() {
     const errors = validatePortalSettingsForm(form);
@@ -189,24 +199,34 @@ export function PortalSettingsPanel() {
       {eventLoading ? <DelayedLoading /> : null}
       {eventError || error ? <p role="alert">{eventError ?? error}</p> : null}
       <SummarySection sectionKey={SECTION_KEY} label="Speaker portal" rows={rows} actionLabel="Change" editing={editing}>
-        <div className="chq-settings-row">
-          <label className="chq-settings-row-label" htmlFor="chq-portal-welcome">
-            Welcome note
-          </label>
-          <div className="chq-settings-row-value">
+        <SettingsEditForm
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleSave();
+          }}
+          consequence="Title and abstract stay organiser-only — a speaker editing them after acceptance would change what was accepted."
+          footer={{
+            primary: (
+              <button type="submit" className="chq-btn chq-btn-primary" disabled={saving}>
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            ),
+            secondary: (
+              <button type="button" className="chq-btn chq-btn-secondary" onClick={closeEdit} disabled={saving}>
+                Cancel
+              </button>
+            ),
+          }}
+        >
+          <SettingsField label="Welcome note" htmlFor="chq-portal-welcome" width="full">
             <textarea
               id="chq-portal-welcome"
               className="chq-input"
               value={form.welcomeMessage}
               onChange={(e) => setForm((current) => ({ ...current, welcomeMessage: e.target.value }))}
             />
-          </div>
-        </div>
-        <div className="chq-settings-row">
-          <label className="chq-settings-row-label" htmlFor="chq-portal-logo-url">
-            Logo URL
-          </label>
-          <div className="chq-settings-row-value">
+          </SettingsField>
+          <SettingsField label="Logo URL" htmlFor="chq-portal-logo-url" width="full">
             <input
               id="chq-portal-logo-url"
               className="chq-input"
@@ -214,13 +234,13 @@ export function PortalSettingsPanel() {
               value={form.logoUrl}
               onChange={(e) => setForm((current) => ({ ...current, logoUrl: e.target.value }))}
             />
-          </div>
-        </div>
-        <div className="chq-settings-row">
-          <label className="chq-settings-row-label" htmlFor="chq-portal-accent-color">
-            Accent colour
-          </label>
-          <div className="chq-settings-row-value">
+          </SettingsField>
+          <SettingsField
+            label="Accent colour"
+            htmlFor="chq-portal-accent-color"
+            width="name"
+            hint={formErrors.accentColor ? <span role="alert">{formErrors.accentColor}</span> : undefined}
+          >
             <input
               id="chq-portal-accent-color"
               className="chq-input"
@@ -229,46 +249,24 @@ export function PortalSettingsPanel() {
               value={form.accentColor}
               onChange={(e) => setForm((current) => ({ ...current, accentColor: e.target.value }))}
             />
-            {formErrors.accentColor ? (
-              <span role="alert">{formErrors.accentColor}</span>
-            ) : null}
+          </SettingsField>
+          <SettingsField label="Show resources" htmlFor="chq-portal-show-resources" width="name">
+            <input
+              id="chq-portal-show-resources"
+              className="chq-check"
+              type="checkbox"
+              checked={form.showResources}
+              onChange={(e) => setForm((current) => ({ ...current, showResources: e.target.checked }))}
+            />
+          </SettingsField>
+          {saveError ? <span role="alert">{saveError}</span> : null}
+          <div className="chq-settings-row">
+            <span className="chq-settings-row-label">Resources</span>
+            <div className="chq-settings-row-value chq-settings-portal-resources">
+              <ResourcesPanel />
+            </div>
           </div>
-        </div>
-        <div className="chq-settings-row">
-          <span className="chq-settings-row-label">Show resources</span>
-          <div className="chq-settings-row-value">
-            <label>
-              <input
-                className="chq-check"
-                type="checkbox"
-                checked={form.showResources}
-                onChange={(e) => setForm((current) => ({ ...current, showResources: e.target.checked }))}
-              />
-              Show resources
-            </label>
-          </div>
-        </div>
-        <div className="chq-settings-row">
-          <div className="chq-settings-row-value">
-            <button
-              type="button"
-              className="chq-btn chq-btn-primary"
-              disabled={saving}
-              onClick={() => void handleSave()}
-            >
-              {saving ? 'Saving…' : 'Save'}
-            </button>
-            {saveError ? (
-              <span role="alert">{saveError}</span>
-            ) : null}
-          </div>
-        </div>
-        <div className="chq-settings-row">
-          <span className="chq-settings-row-label">Resources</span>
-          <div className="chq-settings-row-value chq-settings-portal-resources">
-            <ResourcesPanel />
-          </div>
-        </div>
+        </SettingsEditForm>
       </SummarySection>
     </>
   );

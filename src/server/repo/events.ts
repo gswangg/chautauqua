@@ -499,9 +499,15 @@ export interface RoomRecord {
   position: number;
   createdAt: number;
   updatedAt: number;
+  // DEC-896 amendment (wave 26): rides the same list read as tracks'
+  // submissionCount -- one grouped aggregate over schema.scheduleSlot scoped
+  // to this event, matching deleteRoom's own blocking predicate
+  // (schema.scheduleSlot.roomId), so the settings row's proactive disable
+  // and the delete route's reactive refusal can never drift apart.
+  sessionCount: number;
 }
 
-function toRoomRecord(row: typeof schema.room.$inferSelect): RoomRecord {
+function toRoomRecord(row: typeof schema.room.$inferSelect, sessionCount: number): RoomRecord {
   return {
     id: row.id,
     eventId: row.eventId,
@@ -510,6 +516,7 @@ function toRoomRecord(row: typeof schema.room.$inferSelect): RoomRecord {
     position: row.position,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
+    sessionCount,
   };
 }
 
@@ -520,7 +527,19 @@ export async function listRoomsForEvent(db: Db, eventId: string, page?: RepoPage
     .where(eq(schema.room.eventId, eventId))
     .orderBy(asc(schema.room.position), asc(schema.room.id));
   const rows = page ? await base.limit(page.limit).offset(page.offset) : await base;
-  return rows.map(toRoomRecord);
+
+  const countRows = await db
+    .select({
+      roomId: schema.scheduleSlot.roomId,
+      count: sql<number>`count(*)`,
+    })
+    .from(schema.scheduleSlot)
+    .innerJoin(schema.room, eq(schema.room.id, schema.scheduleSlot.roomId))
+    .where(eq(schema.room.eventId, eventId))
+    .groupBy(schema.scheduleSlot.roomId);
+  const counts = new Map(countRows.map((r) => [r.roomId, Number(r.count)]));
+
+  return rows.map((row) => toRoomRecord(row, counts.get(row.id) ?? 0));
 }
 
 export async function countRoomsForEvent(db: Db, eventId: string): Promise<number> {
@@ -560,7 +579,12 @@ export async function getRoomForEvent(db: Db, roomId: string, eventId: string): 
     .where(and(eq(schema.room.id, roomId), eq(schema.room.eventId, eventId)))
     .limit(1);
   const row = rows[0];
-  return row ? toRoomRecord(row) : null;
+  if (!row) return null;
+  const countRows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.scheduleSlot)
+    .where(eq(schema.scheduleSlot.roomId, roomId));
+  return toRoomRecord(row, Number(countRows[0]?.count ?? 0));
 }
 
 export async function updateRoom(

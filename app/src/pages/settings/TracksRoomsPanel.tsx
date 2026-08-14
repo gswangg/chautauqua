@@ -25,6 +25,7 @@ import {
   type TrackFormErrors,
 } from './formState';
 import { SummarySection } from './SummarySection';
+import { SettingsEditForm, SettingsField, SettingsFieldPair } from './SettingsEditForm';
 import { DEC_888 } from '../../../../src/decisions';
 
 // DEC-888: ONE enumeration supplies the swatch picker buttons, the new-
@@ -55,6 +56,10 @@ interface Room {
   id: string;
   name: string;
   capacity: number | null;
+  // DEC-896 amendment (wave 26): rides the /events/:id/rooms list response
+  // (repo/events.ts listRoomsForEvent) so Remove can be disabled proactively
+  // -- never a per-room follow-up request.
+  sessionCount: number;
 }
 
 const EMPTY_TRACK: TrackForm = { name: '', color: TRACK_SWATCHES[0].value };
@@ -314,7 +319,17 @@ export function TracksRoomsPanel() {
         actionLabel="Add"
         editing={editing}
       >
-        <div>
+        <SettingsEditForm
+          onSubmit={(e) => e.preventDefault()}
+          consequence="A track in use cannot be removed — retire it. Seats are advisory: the agenda flags over-capacity but never blocks."
+          footer={{
+            primary: (
+              <button type="button" className="chq-btn chq-btn-primary" onClick={closeEdit}>
+                Done
+              </button>
+            ),
+          }}
+        >
           <h3 className="chq-section-label">Tracks</h3>
           <ul className="chq-settings-edit-list">
             {tracks.map((track) => {
@@ -322,6 +337,9 @@ export function TracksRoomsPanel() {
               const dirty = isTrackDirty(track);
               const rowErrors = trackRowErrors[track.id] ?? {};
               const saving = savingTrackId === track.id;
+              // DEC-896 amendment (wave 26): a track with submissions cannot be
+              // removed -- disabled, not hidden, with the reason on the row.
+              const inUse = track.submissionCount > 0;
               return (
                 <li key={track.id} className="chq-settings-edit-row">
                   <span className="chq-settings-edit-row-value">
@@ -381,10 +399,19 @@ export function TracksRoomsPanel() {
                         </button>
                       </>
                     ) : null}
-                    <button type="button" className="chq-link-button" onClick={() => void deleteTrack(track)}>
-                      Delete
+                    <button
+                      type="button"
+                      className="chq-link-button"
+                      onClick={() => void deleteTrack(track)}
+                      disabled={inUse}
+                      title={inUse ? 'A track in use cannot be removed — retire it instead' : undefined}
+                    >
+                      Remove
                     </button>
                   </span>
+                  {inUse ? (
+                    <p className="chq-settings-row-hint">In use — retire it instead of removing</p>
+                  ) : null}
                   {rowErrors.name ? <span role="alert">{rowErrors.name}</span> : null}
                   {rowErrors.color ? <span role="alert">{rowErrors.color}</span> : null}
                   {Object.entries(trackDeleteBlockers[track.id] ?? {}).map(([key, value]) => (
@@ -401,13 +428,16 @@ export function TracksRoomsPanel() {
               );
             })}
           </ul>
-          <div className="chq-settings-row">
+          <SettingsField label="New track name" htmlFor="chq-new-track-name" width="name">
             <input
+              id="chq-new-track-name"
               className="chq-input"
               placeholder="New track name"
               value={newTrack.name}
               onChange={(e) => setNewTrack({ ...newTrack, name: e.target.value })}
             />
+          </SettingsField>
+          <div className="chq-settings-row">
             <div className="chq-swatch-picker" role="radiogroup" aria-label="Track color">
               {TRACK_SWATCHES.map((swatch) => (
                 <button
@@ -436,6 +466,9 @@ export function TracksRoomsPanel() {
               const dirty = isRoomDirty(room);
               const rowErrors = roomRowErrors[room.id] ?? {};
               const saving = savingRoomId === room.id;
+              // DEC-896 amendment (wave 26): a room with scheduled sessions
+              // cannot be removed -- disabled, not hidden, reason on the row.
+              const inUse = room.sessionCount > 0;
               return (
                 <li key={room.id} className="chq-settings-edit-row">
                   <span className="chq-settings-edit-row-value">
@@ -480,10 +513,19 @@ export function TracksRoomsPanel() {
                         </button>
                       </>
                     ) : null}
-                    <button type="button" className="chq-link-button" onClick={() => void deleteRoom(room)}>
-                      Delete
+                    <button
+                      type="button"
+                      className="chq-link-button"
+                      onClick={() => void deleteRoom(room)}
+                      disabled={inUse}
+                      title={inUse ? 'A room with scheduled sessions cannot be removed' : undefined}
+                    >
+                      Remove
                     </button>
                   </span>
+                  {inUse ? (
+                    <p className="chq-settings-row-hint">Has scheduled sessions — cannot be removed</p>
+                  ) : null}
                   {rowErrors.name ? <span role="alert">{rowErrors.name}</span> : null}
                   {rowErrors.capacity ? <span role="alert">{rowErrors.capacity}</span> : null}
                   {Object.entries(roomDeleteBlockers[room.id] ?? {}).map(([key, value]) => (
@@ -500,30 +542,34 @@ export function TracksRoomsPanel() {
               );
             })}
           </ul>
+          <SettingsFieldPair>
+            <SettingsField label="New room name" htmlFor="chq-new-room-name" width="name">
+              <input
+                id="chq-new-room-name"
+                className="chq-input"
+                placeholder="New room name"
+                value={newRoom.name}
+                onChange={(e) => setNewRoom({ ...newRoom, name: e.target.value })}
+              />
+            </SettingsField>
+            <SettingsField label="Seats" htmlFor="chq-new-room-capacity" width="seats">
+              <input
+                id="chq-new-room-capacity"
+                className="chq-input"
+                placeholder="Capacity"
+                value={newRoom.capacity}
+                onChange={(e) => setNewRoom({ ...newRoom, capacity: e.target.value })}
+              />
+            </SettingsField>
+          </SettingsFieldPair>
           <div className="chq-settings-row">
-            <input
-              className="chq-input"
-              placeholder="New room name"
-              value={newRoom.name}
-              onChange={(e) => setNewRoom({ ...newRoom, name: e.target.value })}
-            />
-            <input
-              className="chq-input"
-              placeholder="Capacity"
-              value={newRoom.capacity}
-              onChange={(e) => setNewRoom({ ...newRoom, capacity: e.target.value })}
-            />
             <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void addRoom()}>
               Add room
             </button>
             {roomFieldErrors.name ? <span role="alert">{roomFieldErrors.name}</span> : null}
             {roomFieldErrors.capacity ? <span role="alert">{roomFieldErrors.capacity}</span> : null}
           </div>
-
-          <button type="button" className="chq-btn chq-btn-tertiary" onClick={closeEdit}>
-            Done
-          </button>
-        </div>
+        </SettingsEditForm>
       </SummarySection>
     </>
   );

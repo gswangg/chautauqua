@@ -55,8 +55,8 @@ function mockTracksRooms(overrides: Record<string, unknown> = {}) {
       { id: 'trk2', name: 'Platform', color: null, submissionCount: 18 },
     ]),
     [`GET /api/v1/events/${EVENT_ID}/rooms`]: listEnvelope([
-      { id: 'rm1', name: 'Main Stage', capacity: 900 },
-      { id: 'rm2', name: 'Workshop Lab', capacity: null },
+      { id: 'rm1', name: 'Main Stage', capacity: 900, sessionCount: 0 },
+      { id: 'rm2', name: 'Workshop Lab', capacity: null, sessionCount: 0 },
     ]),
     ...overrides,
   });
@@ -151,7 +151,7 @@ describe('TracksRoomsPanel', () => {
     const actionsCell = trackRow.querySelector('.chq-settings-edit-row-actions')!;
     expect(valueCell.contains(actionsCell)).toBe(false);
     expect(actionsCell.parentElement).toBe(trackRow);
-    expect(within(actionsCell as HTMLElement).getByRole('button', { name: 'Delete' })).toBeInTheDocument();
+    expect(within(actionsCell as HTMLElement).getByRole('button', { name: 'Remove' })).toBeInTheDocument();
 
     // A room's capacity renders as its own input in the meta column, not a
     // parenthetical in the name.
@@ -298,15 +298,24 @@ describe('TracksRoomsPanel', () => {
     });
   });
 
-  it('a delete refusal renders the fields.submissions list under the failing row (DEC-931)', async () => {
+  // DEC-896 amendment (wave 26): a track with submissions has its Remove
+  // disabled proactively, so this reactive-refusal path (DEC-931) is
+  // exercised through a track with zero submissions that is instead
+  // referenced by an evaluation plan's track filter -- a second, server-only
+  // blocker Remove can't pre-empt client-side.
+  it('a delete refusal renders the fields list under the failing row (DEC-931)', async () => {
     mockTracksRooms({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([
+        { id: 'trk1', name: 'AI Engineering', color: '#4f46e5', submissionCount: 0 },
+        { id: 'trk2', name: 'Platform', color: null, submissionCount: 18 },
+      ]),
       'DELETE /api/v1/tracks/trk1': {
         status: 409,
         body: {
           error: {
             code: 'conflict',
-            message: "Track is referenced by one or more submissions",
-            fields: { submissions: 'TALK-001 - First Talk; TALK-002 - Second Talk' },
+            message: "Track is referenced by an evaluation plan's track filter",
+            fields: { plans: 'AI track review' },
           },
         },
       },
@@ -320,12 +329,70 @@ describe('TracksRoomsPanel', () => {
     const section = await openEdit();
     const trackNameInput = within(section).getByLabelText('Track name for AI Engineering');
     const trackRow = trackNameInput.closest('.chq-settings-edit-row')! as HTMLElement;
-    fireEvent.click(within(trackRow).getByRole('button', { name: 'Delete' }));
+    const removeButton = within(trackRow).getByRole('button', { name: 'Remove' });
+    expect(removeButton).not.toBeDisabled();
+    fireEvent.click(removeButton);
 
     await waitFor(() => {
-      expect(within(trackRow).getByText('TALK-001 - First Talk')).toBeInTheDocument();
+      expect(within(trackRow).getByText('AI track review')).toBeInTheDocument();
     });
-    expect(within(trackRow).getByText('TALK-002 - Second Talk')).toBeInTheDocument();
+  });
+
+  it('Remove is disabled (not hidden), with a visible reason, on a track that has submissions', async () => {
+    mockTracksRooms();
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await openEdit();
+    const trackNameInput = within(section).getByLabelText('Track name for AI Engineering');
+    const trackRow = trackNameInput.closest('.chq-settings-edit-row')! as HTMLElement;
+    const removeButton = within(trackRow).getByRole('button', { name: 'Remove' });
+    expect(removeButton).toBeDisabled();
+    expect(within(trackRow).getByText(/In use/)).toBeInTheDocument();
+  });
+
+  it('Remove is disabled (not hidden), with a visible reason, on a room that has scheduled sessions', async () => {
+    mockTracksRooms({
+      [`GET /api/v1/events/${EVENT_ID}/rooms`]: listEnvelope([
+        { id: 'rm1', name: 'Main Stage', capacity: 900, sessionCount: 3 },
+        { id: 'rm2', name: 'Workshop Lab', capacity: null, sessionCount: 0 },
+      ]),
+    });
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await openEdit();
+    const roomNameInput = within(section).getByLabelText('Room name for Main Stage');
+    const roomRow = roomNameInput.closest('.chq-settings-edit-row')! as HTMLElement;
+    const removeButton = within(roomRow).getByRole('button', { name: 'Remove' });
+    expect(removeButton).toBeDisabled();
+    expect(within(roomRow).getByText(/scheduled sessions/)).toBeInTheDocument();
+
+    const workshopInput = within(section).getByLabelText('Room name for Workshop Lab');
+    const workshopRow = workshopInput.closest('.chq-settings-edit-row')! as HTMLElement;
+    expect(within(workshopRow).getByRole('button', { name: 'Remove' })).not.toBeDisabled();
+  });
+
+  it('renders the consequence line naming what Remove and Seats mean (DEC-896/B10)', async () => {
+    mockTracksRooms();
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    await openEdit();
+    expect(
+      screen.getByText(
+        'A track in use cannot be removed — retire it. Seats are advisory: the agenda flags over-capacity but never blocks.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('Done clears the URL drill state and returns to the read-only summary', async () => {

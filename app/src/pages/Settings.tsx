@@ -164,9 +164,6 @@ export function SettingsPage() {
   return (
     <div className="chq-page chq-settings-page">
       <h1 className="chq-page-title">Settings</h1>
-      <p className="chq-settings-account-link">
-        <a href="/account/password">Change password</a>
-      </p>
       <div className="chq-settings-layout" data-drilled={active !== null}>
         <nav className="chq-rail chq-settings-rail" aria-label="Settings sections">
           {SECTIONS.map((section) => (

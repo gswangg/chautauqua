@@ -214,9 +214,12 @@ describe('PublicPagesPanel per-surface count mapping (DEC-816, row by row)', () 
       expect(within(region).getByText('Sessions')).toBeInTheDocument();
     });
 
+    // DEC-896 amendment (wave 26, B10 DROP): PublicPagesPanel has no
+    // SummarySection/edit-drill any more -- each row is a bare
+    // .chq-settings-public-pages-row, not the shared .chq-settings-row.
     const rowValue = (label: string) => {
-      const row = within(region).getByText(label).closest('.chq-settings-row') as HTMLElement;
-      return row.querySelector('.chq-settings-row-value') as HTMLElement;
+      const row = within(region).getByText(label).closest('.chq-settings-public-pages-row') as HTMLElement;
+      return row;
     };
 
     expect(within(rowValue('Sessions')).getByText('Live · 16 published')).toBeInTheDocument();
@@ -228,7 +231,11 @@ describe('PublicPagesPanel per-surface count mapping (DEC-816, row by row)', () 
 });
 
 describe('DEC-781: every one of the seven sections carries its action on the eyebrow rule', () => {
-  SECTIONS.forEach((section) => {
+  // DEC-896 amendment (wave 26, B10 DROP): public-pages has NO drill action
+  // any more -- its read row already carries every value and action, so
+  // there is nothing for the eyebrow rule to host. Every OTHER section still
+  // carries its one action button on the head row.
+  SECTIONS.filter((section) => section.key !== 'public-pages').forEach((section) => {
     it(`${section.key}: the section head (label + rule) hosts the drill action, right-flushed on the same row`, async () => {
       mockEverySettingsRoute();
       const Panel = section.Panel;
@@ -252,6 +259,78 @@ describe('DEC-781: every one of the seven sections carries its action on the eye
       expect(head).not.toBeNull();
       expect(head!.querySelector('h2')).not.toBeNull();
       expect(head!.querySelector('button')).not.toBeNull();
+    });
+  });
+
+  it('public-pages: the head row carries the label with NO drill action -- the gate is gone', async () => {
+    mockEverySettingsRoute();
+    render(
+      <MemoryRouter initialEntries={['/settings']}>
+        <PublicPagesPanel />
+      </MemoryRouter>,
+    );
+
+    const region = await screen.findByRole('region', { name: 'Public pages' });
+    await waitFor(() => {
+      expect(region.textContent && region.textContent.trim().length).toBeGreaterThan(0);
+    });
+
+    expect(region.className).toContain('chq-settings-numbered');
+    const head = region.querySelector('.chq-settings-section-head');
+    expect(head).not.toBeNull();
+    expect(head!.querySelector('h2')).not.toBeNull();
+    expect(head!.querySelector('button')).toBeNull();
+  });
+});
+
+// DEC-896/B10 scan: every settings edit view built on the shared
+// SettingsEditForm shell renders its footer buttons via the ONE
+// .chq-btn-primary/.chq-btn-secondary vocabulary, never a page-local
+// full-width class -- walked across SECTIONS rather than hand-picked per
+// panel, so a section added later that reintroduces a full-width primary
+// (the single most visible phone tell on a desktop page, per
+// docs/design/DESIGN-RULINGS.md B10) fails this test rather than slipping
+// past review. 'public-pages' has no edit view at all (B10 DROP) and
+// 'your-data' hosts its own sub-panels (Exports/API tokens) rather than one
+// SettingsEditForm, so both are skipped here -- covered instead by each
+// panel's own render test.
+describe('DEC-896/B10 scan: no settings edit view renders a full-width primary', () => {
+  const SHELL_SECTIONS = SECTIONS.filter((s) => s.key !== 'public-pages' && s.key !== 'your-data');
+  // Settings.tsx's rail key drives ONLY the scroll-highlight nav; each
+  // panel owns its own SummarySection drill key independently (DEC-728),
+  // and TracksRoomsPanel's is 'tracks-rooms', not the rail's 'tracks' --
+  // matching FieldList.tsx/FormsPage.tsx's existing '?section=tracks-rooms'
+  // links.
+  const DRILL_KEY: Record<string, string> = { tracks: 'tracks-rooms' };
+
+  SHELL_SECTIONS.forEach((section) => {
+    it(`${section.key}: the edit footer's buttons carry only the shared .chq-btn-* classes, never full-width`, async () => {
+      mockEverySettingsRoute();
+      const Panel = section.Panel;
+      const drillKey = DRILL_KEY[section.key] ?? section.key;
+
+      render(
+        <MemoryRouter initialEntries={[`/settings?section=${drillKey}&edit=1`]}>
+          <Panel />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        const footer = document.querySelector('.chq-settings-edit-footer');
+        expect(footer).not.toBeNull();
+      });
+
+      const footer = document.querySelector('.chq-settings-edit-footer') as HTMLElement;
+      const buttons = Array.from(footer.querySelectorAll('button, a'));
+      expect(buttons.length).toBeGreaterThan(0);
+      for (const button of buttons) {
+        expect(button.className).not.toMatch(/full-width|btn-full|chq-btn-block/);
+      }
+
+      // The footer itself is a row (never a column stack pretending to be
+      // one) -- asserted via the class rather than a computed style, since
+      // jsdom does not apply settings.css layout rules.
+      expect(footer.className).toContain('chq-settings-edit-footer');
     });
   });
 });
