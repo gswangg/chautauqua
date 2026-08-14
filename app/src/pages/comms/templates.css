@@ -39,12 +39,39 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
+  /* w4-g (DEC-890 amendment): row actions never wrap at the templates
+     measure -- Delete must stay on the row's single line. flex-wrap:wrap
+     let a narrow actions column drop Delete onto its own line even at the
+     820px reading measure this tab renders at (Comms.tsx). */
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .chq-btn-small {
   padding: 6px 10px;
   font-size: 12px;
+}
+
+/* w4-g (DEC-890 amendment): the editor eyebrow IS the template's name, with
+   Duplicate beside it -- replaces the old "New template"/"Edit template"
+   generic section label. */
+.chq-comms-editor-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.chq-comms-editor-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-comms-template-row-selected {
+  background: var(--chq-hairline);
 }
 
 @media (max-width: 700px) {

@@ -42,8 +42,8 @@ describe('TemplatesTab', () => {
   it('renders breadcrumb, H1, New template, and "Not used yet" for a template with no lastUsedAt', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([
-        template({ id: 'tpl-1', name: 'Acceptance', lastUsedAt: null }),
-        template({ id: 'tpl-2', name: 'Decline', lastUsedAt: 1700000000000 }),
+        template({ id: 'tpl-1', name: 'Acceptance', subject: 'You are in!', lastUsedAt: null }),
+        template({ id: 'tpl-2', name: 'Decline', subject: 'An update on your submission', lastUsedAt: 1700000000000 }),
       ]),
     });
 
@@ -57,12 +57,22 @@ describe('TemplatesTab', () => {
     expect(screen.getByRole('heading', { name: 'Templates' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'New template' })).toBeInTheDocument();
 
-    await waitFor(() => expect(screen.getByText('Acceptance')).toBeInTheDocument());
-    const declineRow = screen.getByText('Decline').closest('tr') as HTMLElement;
+    // DEC-890 amendment (wave 4): the row's first line is purpose copy, not
+    // the template's own name (that lives on the editor eyebrow once a row
+    // is selected) or the subject line (demoted to secondary meta).
+    await waitFor(() => expect(screen.getByText('You are in!')).toBeInTheDocument());
+    const declineRow = screen.getByText('An update on your submission').closest('tr') as HTMLElement;
     expect(within(declineRow).getByText(/^Last used /)).toBeInTheDocument();
+    expect(within(declineRow).getByText('Used for declined submissions')).toBeInTheDocument();
 
-    const acceptanceRow = screen.getByText('Acceptance').closest('tr') as HTMLElement;
+    const acceptanceRow = screen.getByText('You are in!').closest('tr') as HTMLElement;
     expect(within(acceptanceRow).getByText('Not used yet')).toBeInTheDocument();
+    expect(within(acceptanceRow).getByText('Used for accepted submissions')).toBeInTheDocument();
+
+    // DEC-890 amendment (wave 4): opening Templates preselects the first
+    // template so the right pane is never a blank box, and the editor
+    // eyebrow IS that template's name.
+    expect(screen.getByText('Acceptance', { selector: '.chq-comms-editor-eyebrow' })).toBeInTheDocument();
   });
 
   it('Duplicate POSTs a copy with " (copy)" appended to the name', async () => {
@@ -77,7 +87,11 @@ describe('TemplatesTab', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Duplicate' }));
+    // Acceptance is the only template, so it's preselected -- both the row
+    // and the editor eyebrow carry their own "Duplicate" control. Exercise
+    // the row's.
+    const row = (await screen.findByText('You are in!')).closest('tr') as HTMLElement;
+    fireEvent.click(within(row).getByRole('button', { name: 'Duplicate' }));
 
     await waitFor(() => {
       const postCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit)?.method === 'POST');
@@ -86,6 +100,27 @@ describe('TemplatesTab', () => {
     const postCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit)?.method === 'POST')!;
     const body = JSON.parse((postCall[1] as RequestInit).body as string);
     expect(body).toEqual({ name: 'Acceptance (copy)', subject: 'You are in!', bodyText: 'Hi {speaker_name}' });
+  });
+
+  it('the editor eyebrow carries its own Duplicate control naming the same template', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([template({ id: 'tpl-1', name: 'Acceptance' })]),
+      [`POST /api/v1/events/${EVENT_ID}/templates`]: { status: 201, body: template({ id: 'tpl-2', name: 'Acceptance (copy)' }) },
+    });
+
+    render(
+      <MemoryRouter>
+        <TemplatesTab eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
+
+    const eyebrow = await screen.findByText('Acceptance', { selector: '.chq-comms-editor-eyebrow' });
+    const editorHead = eyebrow.closest('.chq-comms-editor-head') as HTMLElement;
+    fireEvent.click(within(editorHead).getByRole('button', { name: 'Duplicate' }));
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit)?.method === 'POST')).toBe(true);
+    });
   });
 
   it('"Use in a send" links to a compose landing naming the template', async () => {
@@ -99,8 +134,14 @@ describe('TemplatesTab', () => {
       </MemoryRouter>,
     );
 
-    const row = (await screen.findByText('Waitlist')).closest('tr') as HTMLElement;
+    const row = (await screen.findByText('You are in!')).closest('tr') as HTMLElement;
     expect(within(row).getByRole('button', { name: 'Use in a send' })).toBeInTheDocument();
+
+    // DEC-890 amendment (wave 4): the editor footer also offers "Use in a
+    // send" beside Save, for the preselected template.
+    const editorSection = document.querySelector('.chq-comms-editor') as HTMLElement;
+    expect(within(editorSection).getByRole('button', { name: 'Use in a send' })).toBeInTheDocument();
+    expect(within(editorSection).getByRole('button', { name: 'Save' })).toBeInTheDocument();
   });
 
   // DEC-941: deleting a template is irreversible, so Delete must open the

@@ -205,7 +205,13 @@ export function CommsPage() {
             )}
           </div>
           <div className="chq-comms-head-actions" role="tablist">
-            {TABS.map((t) => (
+            {/* w4-g (DEC-890 amendment): Templates is its own page (a
+                breadcrumb back to Comms, not a peer tab) -- the Compose
+                pill is chrome left over from the shared tab strip and has
+                no destination while already on Templates, so it's dropped
+                here. Templates/History stay so the strip can still switch
+                straight to History without detouring through Compose. */}
+            {TABS.filter((t) => tab !== 'templates' || t.id !== 'compose').map((t) => (
               <button
                 key={t.id}
                 type="button"
