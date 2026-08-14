@@ -8,6 +8,7 @@ import { DayGrid, type ArmedAgendaSession } from './agenda/DayGrid';
 import { UnscheduledTray } from './agenda/UnscheduledTray';
 import { PhoneAgenda } from './agenda/PhoneAgenda';
 import { BreaksPanel, type ScheduleBreakRow } from './agenda/BreaksPanel';
+import { ModalFrame } from '../components/ModalFrame';
 import { placeOptimistically, reconcileConflictsSummary, unscheduleOptimistically } from './agenda/state';
 import type { AgendaPayload, DescribedUnplaced, RefreshedConflictsSummary, UnplacedReason } from './agenda/types';
 import { formatDayLabel } from '../lib/dates';
@@ -85,6 +86,11 @@ export function AgendaPage() {
   const [publishing, setPublishing] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [armed, setArmed] = useState<ArmedAgendaSession | null>(null);
+  // DEC-021/DEC-900 amendment (wave 72): the breaks editor is a disclosure
+  // on the head row, not a band that displaces the canvas -- opens the ONE
+  // shared dialog frame (ModalFrame, DEC-651) rather than its own inline
+  // band between the head and the grid.
+  const [breaksOpen, setBreaksOpen] = useState(false);
 
   useEscapeKey(armed !== null, () => setArmed(null));
 
@@ -276,6 +282,19 @@ export function AgendaPage() {
           {` · ${placedPercent(agenda)}% placed`}
         </div>
         <div className="chq-agenda-head-actions">
+          {/* DEC-021/DEC-900 amendment (wave 72): renders whenever the panel
+             itself would have rendered -- a selected day OR a non-empty
+             outside-window set -- so the stranded-break path (DEC-021 w69-c)
+             keeps its way in even with no day selected. */}
+          {(activeDay !== null || outsideWindowBreaks.length > 0) && (
+            <button
+              type="button"
+              className="chq-link-button chq-section-action"
+              onClick={() => setBreaksOpen(true)}
+            >
+              Breaks ›
+            </button>
+          )}
           <button type="button" className="chq-btn chq-btn-secondary" onClick={handleAutoSchedule} disabled={autoScheduling || !agenda}>
             {autoScheduling ? 'Auto-scheduling...' : 'Auto-schedule'}
           </button>
@@ -284,6 +303,18 @@ export function AgendaPage() {
           </button>
         </div>
       </div>
+
+      {breaksOpen && (
+        <ModalFrame title="Breaks" onClose={() => setBreaksOpen(false)}>
+          <BreaksPanel
+            eventId={eventId}
+            day={activeDay}
+            breaks={dayBreaks}
+            outsideWindow={outsideWindowBreaks}
+            onChanged={reloadBreaks}
+          />
+        </ModalFrame>
+      )}
 
       <div className="chq-agenda-armed-bar" role="status" aria-hidden={armed ? undefined : true}>
         {armed && (
@@ -333,16 +364,6 @@ export function AgendaPage() {
             ))}
             <span className="chq-agenda-clash-note">Clashes are flagged, not blocked</span>
           </div>
-
-          {eventId && (
-            <BreaksPanel
-              eventId={eventId}
-              day={activeDay}
-              breaks={dayBreaks}
-              outsideWindow={outsideWindowBreaks}
-              onChanged={reloadBreaks}
-            />
-          )}
 
           {isPhone ? (
             activeDay && (

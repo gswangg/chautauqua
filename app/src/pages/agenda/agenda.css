@@ -58,8 +58,18 @@
   white-space: nowrap;
 }
 
+/* DEC-989 amendment (wave 72): the day-tab row regains the frame's two
+   full-width rules (frame y138/y192) — bleeding by ABSENCE, not escape, per
+   DEC-989's own wave-41 rule: no max-width, no auto side margins, no
+   vw/cqw. The agenda page is the ONE canvas surface (DEC-989) and carries no
+   measure class of its own, so this row is already flush with .chq-main's
+   content box; the two rules just need to be present, same bare-rule idiom
+   as .chq-toolbar/.chq-section-head in styles.css. */
 .chq-agenda-day-tabs {
   align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--chq-hairline);
+  border-bottom: 1px solid var(--chq-hairline);
 }
 
 .chq-agenda-clash-note {
@@ -126,7 +136,15 @@
 /* Day grid: time down the left, rooms across the top                     */
 /* ---------------------------------------------------------------------- */
 
+/* DEC-900 amendment (wave 72): ONE named overlay tier for every element that
+   paints over the grid's cell area (a merged clash card, a placed session
+   card, a break band, and any future overlay) — the armed cell-button
+   lattice below (6 at rest, 7 focus-visible, 8 for its own hover label)
+   stays strictly under this value. Declared once, here, and consumed via
+   var() by every overlay rule so a new overlay must be classified into the
+   tier rather than silently landing below the lattice with its own literal. */
 .chq-day-grid {
+  --chq-z-agenda-overlay: 9;
   display: grid;
   border: 1px solid var(--chq-rule);
   border-radius: var(--chq-r-card);
@@ -380,18 +398,22 @@
      (it renders after the cell grid), but that's fragile against future
      reordering — position + z-index makes the "card sits above the grid
      lines, never cut by them" contract explicit rather than incidental. */
-  /* DEC-900 amendment (wave 39, LATTICE): raised past every armed cell-btn
-     z-index (6 at rest, 7 focus-visible) so the card's own opaque fill sits
-     ABOVE the lattice instead of under it. At z-index 2 the per-15-minute
-     cell-btn stacked over this card regardless of DOM order (a positioned
-     descendant always outranks an unpositioned one), so each row within the
-     card's own span painted its own outline ring across the card, showing
-     as three 1px lines through the title/ref/speaker text — arming the
-     grid must never restyle a card that isn't the drop target. The card
-     stays a real drop target itself (own onDragOver/onDrop/onClick above),
-     so nothing here changes what's clickable, only what paints on top. */
+  /* DEC-900 amendment (wave 39, LATTICE; wave 72 tier): raised past every
+     armed cell-btn z-index (6 at rest, 7 focus-visible) so the card's own
+     opaque fill sits ABOVE the lattice instead of under it. At z-index 2 the
+     per-15-minute cell-btn stacked over this card regardless of DOM order (a
+     positioned descendant always outranks an unpositioned one), so each row
+     within the card's own span painted its own outline ring across the
+     card, showing as three 1px lines through the title/ref/speaker text —
+     arming the grid must never restyle a card that isn't the drop target.
+     The card stays a real drop target itself (own onDragOver/onDrop/onClick
+     above), so nothing here changes what's clickable, only what paints on
+     top. Wave 72: the literal 9 is now the ONE named overlay tier
+     (--chq-z-agenda-overlay, declared on .chq-day-grid above) rather than a
+     per-instance value, so the next overlay is classified into the tier
+     instead of landing below the lattice with its own literal. */
   position: relative;
-  z-index: 9;
+  z-index: var(--chq-z-agenda-overlay);
 }
 
 .chq-day-grid-clash-item {
@@ -468,7 +490,13 @@
   border-bottom: 1px solid var(--chq-rule);
   pointer-events: none;
   position: relative;
-  z-index: 4;
+  /* DEC-900 amendment (wave 72): was a per-instance z-index: 4, which sat
+     UNDER the armed cell-button lattice (z-index 6) and let arming the grid
+     paint 20 slot-button borders straight through the band, slicing its
+     label into strips (gate-4 P0-BROKEN) — the same bug already fixed twice
+     for the clash card and the placed card below, now fixed as the CLASS:
+     every overlay takes the one named tier. */
+  z-index: var(--chq-z-agenda-overlay);
 }
 
 .chq-agenda-break-band-label {
@@ -485,13 +513,14 @@
   align-self: stretch;
   justify-self: start;
   height: 100%;
-  /* DEC-900 amendment (wave 39, LATTICE): same fix as .chq-day-grid-clash-card
-     above — a resting card that is NOT the current armed drop target must
-     keep its own background and sit above the armed lattice's per-row
-     outline, not have three hairlines painted across its title/ref/speaker
-     by the occupied cell-btn stacked beneath it at z-index 6/7. */
+  /* DEC-900 amendment (wave 39, LATTICE; wave 72 tier): same fix as
+     .chq-day-grid-clash-card above — a resting card that is NOT the current
+     armed drop target must keep its own background and sit above the armed
+     lattice's per-row outline, not have three hairlines painted across its
+     title/ref/speaker by the occupied cell-btn stacked beneath it at
+     z-index 6/7. Wave 72: the literal 9 is now the ONE named overlay tier. */
   position: relative;
-  z-index: 9;
+  z-index: var(--chq-z-agenda-overlay);
   /* DEC-759: a short-duration card's content (title + track/speaker meta)
      can need more vertical room than its time-grid row provides — the ROW
      grows to fit it (see .chq-day-grid's `minmax(24px, auto)` row template)
