@@ -25,12 +25,13 @@ import { AUTH_CSS } from "./auth.css";
 import { MIN_PASSWORD_LENGTH, AUTH_RATE_LIMIT_WINDOW_SECONDS, AUTH_RATE_LIMIT_MAX, RATE_LIMIT_ERROR } from "./auth";
 import { checkAndIncrementScopedLimit, resetScopedLimit } from "../server/repo/rate-limit";
 import { revokeResetTokenForUser, type KVStore } from "../auth/password-reset";
-import { DEC_740, DEC_994, DEC_180 } from "../decisions";
+import { DEC_740, DEC_994, DEC_180, DEC_949 } from "../decisions";
 
 void DEC_180;
 
 void DEC_740;
 void DEC_994;
+void DEC_949;
 
 export const accountRoutes = new Hono<AppEnv>();
 
@@ -228,12 +229,11 @@ accountRoutes.post("/account/password", requireAuthOr302, csrfForm, async (c) =>
     );
   }
 
-  // DEC-949 (wave 27 amendment, wired per wave 29): userId is already known
-  // (live session), so revoke any outstanding reset grant BEFORE writing the
-  // new password — if the write then fails, the worst case is a legitimate
-  // link killed early (self-service, instantly re-requestable via /forgot),
-  // never a live takeover link surviving a successful change. Not
-  // best-effort: a KV error propagates.
+  // DEC-949 (wave-29 amendment): recovering the credential through ANY path
+  // settles the claim a password-reset token asserts, so an outstanding
+  // reset grant is revoked FIRST — before the write — so a failed update
+  // never leaves a live one-hour takeover link outstanding. Not best-effort:
+  // a KV error propagates (fail loudly).
   const kv = c.env.KV as unknown as KVStore;
   await revokeResetTokenForUser(kv, auth.userId);
 
