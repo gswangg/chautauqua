@@ -18,8 +18,6 @@ export interface ContactListItem {
 
 export interface ContactStats {
   total: number;
-  eventCount: number;
-  returningSpeakers: number;
   topCompanies: { company: string; count: number }[];
   // DEC-710/DEC-711: figures the title summary and rail render.
   speakerCount: number;

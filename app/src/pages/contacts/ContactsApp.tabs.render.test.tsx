@@ -78,8 +78,6 @@ function baseRoutes() {
   return {
     'GET /api/v1/contacts/stats': {
       total: 2,
-      eventCount: 1,
-      returningSpeakers: 1,
       speakerCount: 1,
       duplicateCount: DUPLICATE_GROUPS.length,
       topCompanies: [{ company: 'Acme', count: 1 }],

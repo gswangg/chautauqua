@@ -256,12 +256,10 @@ export function ContactsApp() {
 
   const selectedIds = [...selection.selectedIds];
 
-  // DEC-711 amendment (wave 4): the title summary falls to THREE clauses —
-  // people, speakers, possible duplicates. returningSpeakers and eventCount
-  // are dropped from the header (a "0 returning speakers" clause reads as a
-  // defect); both figures stay available where they are actually used
-  // (stats.returningSpeakers/eventCount still flow through the `stats`
-  // fetch for any other consumer — no payload change).
+  // DEC-711 amendment (wave 4, fields deleted wave 33): the title summary is
+  // THREE clauses — people, speakers, possible duplicates. returningSpeakers
+  // and eventCount had no renderer anywhere (a "0 returning speakers" clause
+  // reads as a defect) and were removed end-to-end from ContactStats.
   const summary = stats
     ? `${countOf(stats.total, 'person', 'people')} · ${countOf(stats.speakerCount, 'speaker')} · ${countOf(stats.duplicateCount, 'possible duplicate')}`
     : null;
