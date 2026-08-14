@@ -6,6 +6,17 @@
 // into the full create/revoke surface -- it owns its own local
 // summary/edit split. At rest it lists label + last-used per token (never
 // the token/prefix); 'Change' switches to the full table below.
+//
+// DEC-815 amendment (wave 4): YourDataPanel's own SummarySection row (the
+// one before 'Change' is even clicked) also needs the real token rows, not
+// a describing sentence. Rather than a second list renderer, `readOnly`
+// makes this same component serve both: the row-level `readOnly` render is
+// the plain list with no 'Change' control at all (no create/revoke, no
+// nested drill); the default (unset) keeps the existing local
+// summary/edit split used inside YourDataPanel's own edit branch. The
+// GET /tokens response has no createdAt field (DEC-027's shape), so the
+// list stays name + last-used -- adding "created" would be a new API
+// shape, which this task is scoped to avoid.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiList, apiPost, apiDelete, ApiError } from '../../lib/api';
@@ -26,7 +37,7 @@ function formatDate(ms: number | null): string {
   return formatDateTime(ms);
 }
 
-export function ApiTokensPanel() {
+export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
   const [tokens, setTokens] = useState<ApiTokenItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -103,6 +114,27 @@ export function ApiTokensPanel() {
     } finally {
       setDeleting(false);
     }
+  }
+
+  if (readOnly) {
+    return (
+      <>
+        {error && <div className="chq-error" role="alert">{error}</div>}
+        {loading ? (
+          <DelayedLoading />
+        ) : (
+          <ul className="chq-settings-summary-list">
+            {tokens.map((t) => (
+              <li key={t.id} className="chq-settings-summary-row">
+                <span className="chq-settings-summary-row-primary">{t.name}</span>
+                <span className="chq-settings-summary-row-detail">Last used: {formatDate(t.lastUsedAt)}</span>
+              </li>
+            ))}
+            {tokens.length === 0 ? <li className="chq-settings-summary-empty">No API tokens yet.</li> : null}
+          </ul>
+        )}
+      </>
+    );
   }
 
   if (!showEditor) {

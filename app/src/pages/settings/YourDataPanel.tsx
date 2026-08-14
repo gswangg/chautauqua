@@ -36,6 +36,15 @@
 // Sessionboard import wizard) live behind the section's 'Change' drill
 // (?section=your-data&edit=1, DEC-728/DEC-710). The API docs link stays
 // visible in the summary -- it is a passive navigation, not a form.
+//
+// DEC-815 amendment (wave 4): the summary rows for 'Exports' and 'API
+// tokens' used to describe their sets in a sentence instead of listing
+// them. 'Exports' now renders the same real export links/button the edit
+// branch renders (renderExportPills, shared by both so there is only one
+// place that lists the four pills); 'API tokens' now renders ApiTokensPanel
+// in its new `readOnly` mode -- the same component the edit branch already
+// mounts, never a second list renderer, with no create/revoke control at
+// rest.
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { apiGet, ApiError } from '../../lib/api';
@@ -102,12 +111,37 @@ export function YourDataPanel() {
     }
   }
 
+  // The four real export links/button the mock's pills stand for -- shared
+  // between the summary row (read-at-rest) and the edit branch so there is
+  // only one place that renders this list (DEC-815 amendment, wave 4).
+  function renderExportPills() {
+    if (!eventId) return null;
+    return (
+      <>
+        <a className="chq-pill" href={`/api/v1/events/${eventId}/export/submissions?format=csv`}>
+          Submissions CSV
+        </a>
+        <a className="chq-pill" href={`/api/v1/events/${eventId}/export/contacts?format=csv`}>
+          Contacts CSV
+        </a>
+        {event ? (
+          <a className="chq-pill" href={`/e/${event.slug}/agenda.ics`}>
+            Schedule ICS
+          </a>
+        ) : null}
+        <button type="button" className="chq-pill" disabled={bundling} onClick={() => void downloadEverythingJson()}>
+          {bundling ? 'Building…' : 'Everything JSON'}
+        </button>
+      </>
+    );
+  }
+
   const rows = [
     {
       label: 'Exports',
-      value: 'Submissions CSV, Contacts CSV, Schedule ICS, Everything JSON + more',
+      value: <div className="chq-settings-summary-pills">{renderExportPills()}</div>,
     },
-    { label: 'API tokens', value: 'Create and manage bearer API tokens for this event' },
+    { label: 'API tokens', value: <ApiTokensPanel readOnly /> },
     {
       label: 'API docs',
       value: <a href="/docs/api">chautauqua.cc/docs/api</a>,
@@ -123,31 +157,11 @@ export function YourDataPanel() {
         <div className="chq-settings-row">
           <span className="chq-settings-row-label">Exports</span>
           <div className="chq-settings-row-value">
+            {renderExportPills()}
             {eventId ? (
-              <>
-                <a className="chq-pill" href={`/api/v1/events/${eventId}/export/submissions?format=csv`}>
-                  Submissions CSV
-                </a>
-                <a className="chq-pill" href={`/api/v1/events/${eventId}/export/contacts?format=csv`}>
-                  Contacts CSV
-                </a>
-                {event ? (
-                  <a className="chq-pill" href={`/e/${event.slug}/agenda.ics`}>
-                    Schedule ICS
-                  </a>
-                ) : null}
-                <button
-                  type="button"
-                  className="chq-pill"
-                  disabled={bundling}
-                  onClick={() => void downloadEverythingJson()}
-                >
-                  {bundling ? 'Building…' : 'Everything JSON'}
-                </button>
-                <button type="button" className="chq-link-button" onClick={() => setMoreExportsOpen((v) => !v)}>
-                  {moreExportsOpen ? 'Hide more export formats' : 'More export formats'}
-                </button>
-              </>
+              <button type="button" className="chq-link-button" onClick={() => setMoreExportsOpen((v) => !v)}>
+                {moreExportsOpen ? 'Hide more export formats' : 'More export formats'}
+              </button>
             ) : null}
           </div>
         </div>

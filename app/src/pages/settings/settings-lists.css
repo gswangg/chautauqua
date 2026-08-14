@@ -56,3 +56,12 @@
   color: var(--chq-ink-2);
   font-size: 13px;
 }
+
+/* DEC-815 amendment (wave 4): YourDataPanel's Exports row at rest -- the
+   same pills the edit branch renders, packed into the value cell. */
+.chq-settings-summary-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}

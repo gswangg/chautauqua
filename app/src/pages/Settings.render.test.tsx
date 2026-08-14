@@ -124,18 +124,16 @@ describe('SettingsPage render smoke', () => {
     expect(within(publicPagesSection).getByText(`/e/devcon-2026/sessions`)).toBeInTheDocument();
     expect(within(publicPagesSection).queryByRole('link', { name: 'View' })).not.toBeInTheDocument();
 
-    // Speaker portal section — read-only summary (DEC-815); the one real
-    // edit surface (ResourcesPanel) lives behind the section's 'Change',
-    // so the resource titles themselves are not on the landing view.
+    // Speaker portal section — read-only summary (DEC-815); the Resources
+    // row LISTS the real resources at rest (DEC-815 amendment, wave 4) --
+    // only the add/delete surface stays behind the section's 'Change'.
     const portalSection = screen.getByRole('region', { name: 'Speaker portal' });
     expect(within(portalSection).getByRole('heading', { name: 'Speaker portal' })).toBeInTheDocument();
     await waitFor(() => {
       expect(within(portalSection).getByText(/Shown above the task list · 1 paragraph/)).toBeInTheDocument();
     });
-    expect(
-      within(portalSection).getByText('Wiki pages and files speakers can access from their portal'),
-    ).toBeInTheDocument();
-    expect(within(portalSection).queryByText('Travel info')).not.toBeInTheDocument();
+    expect(await within(portalSection).findByText('Travel info')).toBeInTheDocument();
+    expect(within(portalSection).queryByRole('button', { name: 'Add a resource' })).not.toBeInTheDocument();
 
     // People and roles panel — read-only summary (DEC-815) whose rows are
     // now the real per-person rows (w1-f, DEC-785: name + role), not a
@@ -149,16 +147,22 @@ describe('SettingsPage render smoke', () => {
     expect(within(peopleSection).queryByRole('button', { name: 'Invite someone' })).not.toBeInTheDocument();
 
     // Your data section (DEC-747: ONE section -- Exports, API tokens, API
-    // docs and Import from Sessionboard). DEC-815: summary rows on landing;
-    // the export pills, token flow and importer stay reachable behind
-    // 'Change' (FINDINGS w21: chrome fidelity never deletes a capability).
+    // docs and Import from Sessionboard). DEC-815 amendment (wave 4): the
+    // Exports and API tokens rows LIST the real links/rows on landing; the
+    // token create/revoke flow and importer stay reachable behind 'Change'
+    // (FINDINGS w21: chrome fidelity never deletes a capability).
     const yourDataSection = screen.getByRole('region', { name: 'Your data' });
     expect(within(yourDataSection).getByRole('heading', { name: 'Your data' })).toBeInTheDocument();
     expect(within(yourDataSection).getByRole('link', { name: 'chautauqua.cc/docs/api' })).toHaveAttribute(
       'href',
       '/docs/api',
     );
-    expect(within(yourDataSection).queryByRole('link', { name: 'Submissions CSV' })).not.toBeInTheDocument();
+    expect(await within(yourDataSection).findByRole('link', { name: 'Submissions CSV' })).toHaveAttribute(
+      'href',
+      `/api/v1/events/${EVENT_ID}/export/submissions?format=csv`,
+    );
+    expect(await within(yourDataSection).findByText('CI pipeline')).toBeInTheDocument();
+    expect(within(yourDataSection).queryByRole('button', { name: 'New token' })).not.toBeInTheDocument();
 
     fireEvent.click(within(yourDataSection).getByRole('button', { name: 'Change' }));
     await waitFor(() => {

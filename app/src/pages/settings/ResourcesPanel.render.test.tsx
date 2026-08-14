@@ -52,6 +52,39 @@ describe('ResourcesPanel (w1-f, DEC-785)', () => {
   });
 });
 
+describe('ResourcesPanel readOnly prop (DEC-815 amendment, wave 4)', () => {
+  it('renders the real resource rows with no Change control and no add/delete surface, ever', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([resource(), fileResource()]),
+    });
+
+    render(<ResourcesPanel readOnly />);
+
+    expect(await screen.findByText('Speaker FAQ')).toBeInTheDocument();
+    expect(screen.getByText('Wiki page')).toBeInTheDocument();
+    expect(screen.getByText('Handout.pdf')).toBeInTheDocument();
+    expect(screen.getByText(/^File/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Download' })).toHaveAttribute('href', '/files/file-1');
+
+    expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add a resource' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Replace' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Rename' })).not.toBeInTheDocument();
+  });
+
+  it('renders the empty state with no Change control when there are no resources', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([]),
+    });
+
+    render(<ResourcesPanel readOnly />);
+
+    expect(await screen.findByText('No resources yet.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
+  });
+});
+
 describe('ResourcesPanel (DEC-941)', () => {
   it('gates resource delete behind a confirm dialog naming the resource and the consequence, and only DELETEs on confirm', async () => {
     const fetchMock = mockApi({

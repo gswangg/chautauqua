@@ -41,6 +41,35 @@ describe('ApiTokensPanel (w1-f, DEC-785)', () => {
   });
 });
 
+describe('ApiTokensPanel readOnly prop (DEC-815 amendment, wave 4)', () => {
+  it('renders the real token rows with no Change control and no create/revoke surface, ever', async () => {
+    mockApi({
+      'GET /api/v1/tokens': listEnvelope([token()]),
+    });
+
+    render(<ApiTokensPanel readOnly />);
+
+    expect(await screen.findByText('CI pipeline')).toBeInTheDocument();
+    expect(screen.getByText('Last used: Never')).toBeInTheDocument();
+    expect(screen.queryByText(/chq_abc/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'New token' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Revoke' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'API Tokens' })).not.toBeInTheDocument();
+  });
+
+  it('renders the empty state with no Change control when there are no tokens', async () => {
+    mockApi({
+      'GET /api/v1/tokens': listEnvelope([]),
+    });
+
+    render(<ApiTokensPanel readOnly />);
+
+    expect(await screen.findByText('No API tokens yet.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
+  });
+});
+
 describe('ApiTokensPanel (DEC-941)', () => {
   it('gates Revoke behind a confirm dialog naming the token and the consequence, and only DELETEs on confirm', async () => {
     const fetchMock = mockApi({
