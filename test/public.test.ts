@@ -599,10 +599,18 @@ describe("sessionTimeLabel", () => {
     // DEC-782: `day` routes through the card's shared formatDay helper
     // (src/lib/event-time.ts's formatDayLong) — a weekday-named calendar
     // date, never the raw 'YYYY-MM-DD' interpolated directly.
-    // DEC-768 (wave 7 amendment): formatDay now delegates to formatDayLong,
-    // en-GB "Wednesday 12 May" -- not the retired formatEventDay's en-US
-    // "Wed, May 12, 2027".
-    expect(sessionTimeLabel("2027-05-12", 540, 600)).toBe("Wednesday 12 May, 9:00 AM–10:00 AM");
+    // DEC-768 (wave 7 amendment, task w7-a): formatDay now delegates to
+    // formatDayLong, en-GB "Wednesday 12 May" -- not the retired
+    // formatEventDay's en-US "Wed, May 12, 2027".
+    // DEC-768 (task w7-g): ONE CLOCK GRAMMAR -- the range uses the same 24h
+    // formatter (formatStartTime24) the sessions list gutter uses, not 12h
+    // AM/PM. Both amendments land on this one label.
+    expect(sessionTimeLabel("2027-05-12", 540, 600)).toBe("Wednesday 12 May, 9:00-10:00");
+  });
+
+  it("never renders AM/PM in the time range (DEC-768)", () => {
+    const label = sessionTimeLabel("2027-05-12", 540, 600)!;
+    expect(label).not.toMatch(/AM|PM/);
   });
 });
 

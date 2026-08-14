@@ -4,7 +4,7 @@
 
 import type { PublicEvent, PublicSpeakerDetail, PublicSessionDetail } from "../../server/repo/public";
 import { surfacePath, speakerDetailPath, sessionDetailPath, SURFACE_LABELS, type Surface, type SurfaceBase } from "./shell";
-import { TrackChips, FormatChip, SessionDescription, ItineraryToggle, formatDay, formatMinutes } from "./cards";
+import { TrackChips, FormatChip, SessionDescription, ItineraryToggle, formatDay, formatStartTime24 } from "./cards";
 import { ItineraryScript } from "./agenda";
 
 export function BackLink(props: { event: PublicEvent; from: Surface; base?: SurfaceBase }) {
@@ -24,7 +24,10 @@ export function sessionTimeLabel(day: string | null, startMin: number | null, en
   // shared formatter every other public surface's day heading uses
   // (formatDay -> src/lib/event-time.ts) instead of interpolating the ISO
   // string directly.
-  return `${formatDay(day)}, ${formatMinutes(startMin)}–${formatMinutes(endMin)}`;
+  // ONE CLOCK GRAMMAR (DEC-768): use the same 24h formatter the sessions
+  // list gutter uses (formatStartTime24, cards.tsx) instead of the 12h
+  // AM/PM formatMinutes — two clock grammars on the same event was the bug.
+  return `${formatDay(day)}, ${formatStartTime24(startMin)}-${formatStartTime24(endMin)}`;
 }
 
 export function SpeakerDetailContent(props: {
@@ -108,7 +111,6 @@ export function SessionDetailContent(props: {
               <a href={speakerDetailPath(event, s.contactId, from, base)}>
                 {s.firstName} {s.lastName}
               </a>
-              {s.title || s.company ? ` (${[s.title, s.company].filter(Boolean).join(", ")})` : ""}
             </>
           ))}
         </p>
