@@ -13,7 +13,7 @@ import { ApiError, parseBoundedIdArray, readOptionalJsonBody } from "../server/h
 import { MAX_LONG_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { makeFileStore, putThenRecord } from "../server/context";
 import { newId } from "../domain/ids";
-import { buildZip } from "../lib/zip";
+import { buildZip, zipEntryPath } from "../lib/zip";
 import { clampPage, clampPerPage, listPerPage } from "../lib/pagination";
 import { DEC_013, DEC_461, DEC_465, DEC_468, DEC_471, DEC_713, DEC_965 } from "../decisions";
 
@@ -406,7 +406,10 @@ fileApiRoutes.post("/events/:eventId/files/archive", requireOrganizer, csrfJson,
     if (!latest) throw new Error("unreachable: resolveLatestVersions validated every id");
     const seq = index + 1;
     const title = latest.submissionTitle || "submission";
-    return { latest, name: `${seq}-${slugifyTitle(title)}/${latest.filename}` };
+    return {
+      latest,
+      name: zipEntryPath([`${seq}-${slugifyTitle(title)}`, latest.filename]),
+    };
   });
 
   const settled = await Promise.allSettled(

@@ -111,6 +111,43 @@ const utf8 = new TextEncoder();
 const DOS_TIME = 0;
 const DOS_DATE = 0x21; // 1980-01-01
 
+// APPNOTE 4.4.4: general purpose bit flag bit 11 (0x0800) is the
+// language-encoding (EFS) flag — when set, the filename and comment fields
+// MUST be interpreted as UTF-8. Entry names here are always written via
+// TextEncoder (UTF-8), and ASCII is a UTF-8 subset, so this flag is set
+// unconditionally in both the local file header and the central directory.
+// Leaving bit 11 clear (as before) tells a reader "this name is CP437",
+// which is a *wrong* archive for any non-ASCII name (mojibake in Explorer,
+// Archive Utility, 7-Zip), not a merely cosmetic difference.
+const GP_FLAG_UTF8 = 0x0800;
+
+/**
+ * Sanitizes path segments for use as a ZIP entry name: strips C0 control
+ * characters and DEL, strips any `/` or `\` a segment might contain (so a
+ * segment can never introduce an extra path level or escape the join), and
+ * maps a segment that is exactly `.` or `..` -- or becomes empty after
+ * stripping -- to `_` (so it can never mean "this directory" or "parent
+ * directory" to an extracting tool). Segments are then joined with a single
+ * `/`.
+ */
+export function zipEntryPath(segments: string[]): string {
+  return segments
+    .map((segment) => {
+      let stripped = "";
+      for (const ch of segment) {
+        const code = ch.codePointAt(0) ?? 0;
+        if (code <= 0x1f || code === 0x7f) continue; // C0 controls + DEL
+        if (ch === "/" || ch === "\\") continue;
+        stripped += ch;
+      }
+      if (stripped === "" || stripped === "." || stripped === "..") {
+        return "_";
+      }
+      return stripped;
+    })
+    .join("/");
+}
+
 /**
  * Builds an uncompressed (STORE method) ZIP archive from `entries`.
  * Throws if `entries` is empty or contains duplicate `name`s (fail loudly —
@@ -148,7 +185,7 @@ export function buildZip(entries: ZipEntry[]): Uint8Array<ArrayBuffer> {
     // Local file header
     body.u32(0x04034b50);
     body.u16(20); // version needed to extract
-    body.u16(0); // general purpose bit flag
+    body.u16(GP_FLAG_UTF8); // general purpose bit flag: bit 11 = UTF-8 name
     body.u16(0); // compression method: 0 = STORE
     body.u16(DOS_TIME);
     body.u16(DOS_DATE);
@@ -167,7 +204,7 @@ export function buildZip(entries: ZipEntry[]): Uint8Array<ArrayBuffer> {
     central.u32(0x02014b50);
     central.u16(20); // version made by
     central.u16(20); // version needed to extract
-    central.u16(0); // general purpose bit flag
+    central.u16(GP_FLAG_UTF8); // general purpose bit flag: bit 11 = UTF-8 name
     central.u16(0); // compression method: 0 = STORE
     central.u16(DOS_TIME);
     central.u16(DOS_DATE);
