@@ -662,7 +662,6 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
-  max-width: 640px;
 }
 
 .chq-contacts-import-drop {
@@ -720,9 +719,16 @@
   white-space: nowrap;
 }
 
+/* w15-c: minmax(0, 1fr), not a bare 1fr -- a bare 1fr track still carries a
+   min-content floor, and the long "Full name (splits into first / last)"
+   <option> text was that floor, pushing both tracks to ~288px and
+   overflowing the modal's content box (same root cause as the headshot-
+   overflow fix). minmax(0, 1fr) lets each track shrink below its content's
+   natural width; the select itself gets max-width: 100% below so it clips
+   instead of forcing the track wider. */
 .chq-contacts-import-columns {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -734,6 +740,11 @@
   border: 1px solid var(--chq-rule);
   border-radius: var(--chq-r-card, 5px);
   background: var(--chq-surface);
+  min-width: 0;
+}
+
+.chq-contacts-import-column-block select {
+  max-width: 100%;
 }
 
 .chq-contacts-import-column-header {

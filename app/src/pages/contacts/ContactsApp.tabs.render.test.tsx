@@ -282,11 +282,12 @@ describe('ContactsApp: DEC-827 ?import=1 opens the wizard with the current event
     );
 
     const dialog = await screen.findByRole('dialog', { name: 'Import contacts' });
-    // DEC-827: the wizard opens with the event preselected -- it renders
-    // the event-scoped session-title field, which only appears when
-    // eventId is set (ImportWizard's own contract, unchanged here).
+    // DEC-827: the wizard opens with the event preselected. w15-c moved the
+    // event-scoped session-title field into step 2's match panel (it only
+    // appears once eventId is set AND a header row is parsed), so it isn't
+    // present on step 1's file/paste screen -- assert the subtitle instead.
     expect(within(dialog).getByText('Import contacts from CSV')).toBeInTheDocument();
-    expect(within(dialog).getByLabelText(/session title for this batch/i)).toBeInTheDocument();
+    expect(within(dialog).queryByLabelText(/session title for this batch/i)).not.toBeInTheDocument();
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
 

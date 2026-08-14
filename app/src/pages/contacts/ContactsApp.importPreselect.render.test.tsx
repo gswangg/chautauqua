@@ -4,7 +4,7 @@
 // this org's own /events list must fall back to the wizard's normal
 // unselected (CRM-only) state -- never a silent switch to a different event.
 import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { ContactsApp } from './ContactsApp';
@@ -51,6 +51,16 @@ describe('ContactsApp: DEC-662 import wizard event preselect from ?eventId=', ()
       </MemoryRouter>,
     );
 
+    // w15-c: the session-title field moved into step 2's match panel (it
+    // only renders once eventId is set AND a header row is parsed) --
+    // paste CSV text to reach step 2, then find the field.
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Choose a file' })).toBeInTheDocument();
+    });
+    fireEvent.change(screen.getByLabelText('Or paste CSV text'), {
+      target: { value: 'firstName,lastName,email\nA,B,a@example.com' },
+    });
+
     await waitFor(() => {
       expect(screen.getByLabelText('Session title for this batch')).toBeInTheDocument();
     });
@@ -66,9 +76,12 @@ describe('ContactsApp: DEC-662 import wizard event preselect from ?eventId=', ()
       </MemoryRouter>,
     );
 
+    // w15-c: the dialog's h2 now names the current step ("Choose a file");
+    // "Import contacts from CSV" is the ModalFrame subtitle, not a heading.
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Import contacts from CSV' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Choose a file' })).toBeInTheDocument();
     });
+    expect(screen.getByText('Import contacts from CSV')).toBeInTheDocument();
 
     expect(screen.queryByLabelText('Session title for this batch')).not.toBeInTheDocument();
   });

@@ -228,7 +228,11 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
     const commitBtn = await screen.findByRole('button', { name: 'Import 1 row' });
     fireEvent.click(commitBtn);
 
-    await screen.findByText('Import complete');
+    // w15-c: the step title and the Done step's own heading are now both
+    // "Import complete" -- assert there are two, rather than a single
+    // unique match.
+    await screen.findAllByText('Import complete');
+    expect(screen.getAllByText('Import complete')).toHaveLength(2);
     expect(imported).toBe(true);
 
     // Two POSTs to the same route: the dry run, then the commit.
@@ -356,5 +360,39 @@ describe('ImportWizard: w1-i step 2 "Match columns" screen', () => {
     await screen.findByLabelText('Map column Email');
 
     expect(screen.getByRole('button', { name: 'Import 2 rows' })).toBeInTheDocument();
+  });
+});
+
+// w15-c: the dialog title now names the current step, with "Import
+// contacts from CSV" moved down to the ModalFrame subtitle; the frame
+// itself widens to 640px (.is-wide) for the two-column match screen.
+describe('ImportWizard: w15-c step-named title + wide frame', () => {
+  it('step 1 renders the "Choose a file" title, the subtitle, and no session-title field', async () => {
+    render(<ImportWizard onClose={() => {}} onImported={() => {}} eventId="ev-1" />);
+    expect(screen.getByText('Choose a file')).toBeInTheDocument();
+    expect(screen.getByText('Import contacts from CSV')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Session title for this batch')).not.toBeInTheDocument();
+  });
+
+  it('step 2 renders the "Match the columns" title and the session-title field', async () => {
+    render(<ImportWizard onClose={() => {}} onImported={() => {}} eventId="ev-1" />);
+    fireEvent.change(screen.getByLabelText('Or paste CSV text'), { target: { value: CSV } });
+
+    await screen.findByLabelText('Map column Email');
+    expect(screen.getByText('Match the columns')).toBeInTheDocument();
+    expect(screen.getByLabelText('Session title for this batch')).toBeInTheDocument();
+  });
+
+  it('the modal element carries is-wide', async () => {
+    render(<ImportWizard onClose={() => {}} onImported={() => {}} />);
+    const dialog = await screen.findByRole('dialog', { name: 'Import contacts' });
+    const modal = dialog.querySelector('.chq-modal');
+    expect(modal).not.toBeNull();
+    expect(modal).toHaveClass('is-wide');
+  });
+
+  it('the columns grid uses minmax(0, 1fr) tracks so a long option can\'t force overflow', () => {
+    const body = topLevelRuleBody(CSS, '.chq-contacts-import-columns');
+    expect(body).toMatch(/grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   });
 });
