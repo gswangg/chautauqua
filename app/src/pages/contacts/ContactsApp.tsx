@@ -5,7 +5,7 @@ import { loadEventsOnce, useCurrentEvent } from '../../lib/useCurrentEvent';
 import { countOf } from '../../lib/plural';
 import { BulkEmailModal } from './BulkEmailModal';
 import { ContactDrawer } from './ContactDrawer';
-import { ContactsTable } from './ContactsTable';
+import { ContactsTable, type ContactsTableEmpty } from './ContactsTable';
 import { DirectoryRail } from './DirectoryRail';
 import { DuplicatesView } from './DuplicatesView';
 import { FilterRulesPanel } from './FilterRulesPanel';
@@ -272,6 +272,58 @@ export function ContactsApp() {
 
   const selectedIds = [...selection.selectedIds];
 
+  // B7 rule 6 (DEC-678): the directory table is presentational, so THIS page
+  // decides fresh vs. filtered from the facets it already holds. Checked in
+  // a fixed order (search, then segment, then the rail's company rule, then
+  // any other FilterRulesPanel rule) so exactly one reason ever shows, and
+  // its escape clears only that one facet.
+  function computeContactsEmpty(): ContactsTableEmpty {
+    const trimmedQ = q.trim();
+    if (trimmedQ !== '') {
+      return {
+        variant: 'filtered',
+        reason: `Search "${trimmedQ}"`,
+        onClear: () => {
+          setQ('');
+          setPage(1);
+        },
+      };
+    }
+    if (segmentId !== '') {
+      const segmentName = segments.find((s) => s.id === segmentId)?.name;
+      return {
+        variant: 'filtered',
+        reason: segmentName ? `Segment "${segmentName}"` : 'Segment filter',
+        onClear: () => {
+          setSegmentId('');
+          setPage(1);
+        },
+      };
+    }
+    const companyRule = rules.find((r) => r.field === 'company' && r.value.trim() !== '');
+    if (companyRule) {
+      return {
+        variant: 'filtered',
+        reason: `Company "${companyRule.value}"`,
+        onClear: () => {
+          setRules((prev) => prev.filter((r) => r.field !== 'company'));
+          setPage(1);
+        },
+      };
+    }
+    if (activeRules(rules).length > 0) {
+      return {
+        variant: 'filtered',
+        reason: 'Filter rules',
+        onClear: () => {
+          setRules([]);
+          setPage(1);
+        },
+      };
+    }
+    return { variant: 'fresh' };
+  }
+
   // DEC-432/DEC-809: the title summary is `N people · M speakers ·
   // [R returning] · [across E events] · K possible duplicates` — the
   // returning clause renders ONLY when returningSpeakers > 0 and the reach
@@ -411,6 +463,7 @@ export function ContactsApp() {
               perPage={PER_PAGE}
               selection={selection}
               loading={loading}
+              empty={computeContactsEmpty()}
               onChangePage={setPage}
               onSelectionChange={setSelection}
               onOpenContact={setOpenContactId}

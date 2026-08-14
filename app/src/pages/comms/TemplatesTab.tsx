@@ -4,6 +4,7 @@ import { apiDelete, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { COMPOSE_MERGE_FIELDS, type MergeField } from '../../lib/merge-fields';
 import { InsertFieldMenu } from './InsertFieldMenu';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { EmptyState } from '../../components/EmptyState';
 import { formatDate } from '../../lib/dates';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import type { EmailTemplate } from './types';
@@ -195,53 +196,57 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
           <div className="chq-section-head">
             <span className="chq-section-label">Saved &middot; {templates.length}</span>
           </div>
-          <table className="chq-table chq-comms-templates-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Last used</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {templates.map((t) => (
-                <tr key={t.id} className={t.id === editingId ? 'chq-comms-template-row-selected' : undefined}>
-                  {/* DEC-890 amendment (wave 4): purpose copy is the row's
-                      first line, the subject is demoted to secondary meta. */}
-                  <td data-label="Name">
-                    <div className="chq-comms-template-name">{derivePurpose(t)}</div>
-                    <div className="chq-comms-template-detail">{t.subject}</div>
-                  </td>
-                  <td data-label="Last used">
-                    <span className="chq-comms-template-last-used">
-                      {t.lastUsedAt ? `Last used ${formatDate(t.lastUsedAt)}` : 'Not used yet'}
-                    </span>
-                  </td>
-                  <td data-label="Actions">
-                    <div className="chq-comms-template-row-actions">
-                      <button type="button" className="chq-link-button" onClick={() => startEdit(t)}>
-                        Edit
-                      </button>
-                      <button type="button" className="chq-link-button" onClick={() => duplicate(t)}>
-                        Duplicate
-                      </button>
-                      <button type="button" className="chq-btn chq-btn-secondary chq-btn-small" onClick={() => useInSend(t)}>
-                        Use in a send
-                      </button>
-                      <button type="button" className="chq-link-button" onClick={() => setPendingDelete(t)}>
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {loaded && !loading && templates.length === 0 && (
+          {/* B7 rule 6 (DEC-678): Templates has no facet (no search, no
+              filter), so a settled empty list is always the 'fresh' voice —
+              never the live headers over an empty body. The header's own
+              'New template' button stays the collection's one primary, so
+              this EmptyState carries no action of its own. */}
+          {loaded && !loading && templates.length === 0 ? (
+            <EmptyState variant="fresh" what="No templates yet." action={null} />
+          ) : (
+            <table className="chq-table chq-comms-templates-table">
+              <thead>
                 <tr>
-                  <td colSpan={3}>No templates yet.</td>
+                  <th>Name</th>
+                  <th>Last used</th>
+                  <th />
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {templates.map((t) => (
+                  <tr key={t.id} className={t.id === editingId ? 'chq-comms-template-row-selected' : undefined}>
+                    {/* DEC-890 amendment (wave 4): purpose copy is the row's
+                        first line, the subject is demoted to secondary meta. */}
+                    <td data-label="Name">
+                      <div className="chq-comms-template-name">{derivePurpose(t)}</div>
+                      <div className="chq-comms-template-detail">{t.subject}</div>
+                    </td>
+                    <td data-label="Last used">
+                      <span className="chq-comms-template-last-used">
+                        {t.lastUsedAt ? `Last used ${formatDate(t.lastUsedAt)}` : 'Not used yet'}
+                      </span>
+                    </td>
+                    <td data-label="Actions">
+                      <div className="chq-comms-template-row-actions">
+                        <button type="button" className="chq-link-button" onClick={() => startEdit(t)}>
+                          Edit
+                        </button>
+                        <button type="button" className="chq-link-button" onClick={() => duplicate(t)}>
+                          Duplicate
+                        </button>
+                        <button type="button" className="chq-btn chq-btn-secondary chq-btn-small" onClick={() => useInSend(t)}>
+                          Use in a send
+                        </button>
+                        <button type="button" className="chq-link-button" onClick={() => setPendingDelete(t)}>
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </section>
 
         {editingId && (
