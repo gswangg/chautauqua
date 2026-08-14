@@ -101,11 +101,61 @@ describe('PeopleRolesPanel', () => {
     expect(within(section).getAllByRole('button', { name: 'Change' })).toHaveLength(2);
 
     const selfRow = screen.getByText(SELF.email).closest('li')!;
-    expect(selfRow).toHaveTextContent('(you)');
+    expect(within(selfRow).getByRole('button', { name: 'Change' })).toBeDisabled();
+    expect(selfRow).toHaveTextContent('You cannot remove or demote yourself');
     expect(within(selfRow).queryByRole('button', { name: 'Reset password' })).not.toBeInTheDocument();
 
     const otherRow = screen.getByText(OTHER.email).closest('li')!;
     expect(within(otherRow).getByRole('button', { name: 'Reset password' })).toBeInTheDocument();
+  });
+
+  // DEC-896/B10: Remove is disabled (not hidden) on your own row, and the
+  // reason is readable inline, not just a title tooltip.
+  it('disables the role Change control on your own row, with the reason readable on the row', async () => {
+    mockPeople();
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    const selfRow = screen.getByText(SELF.email).closest('li')!;
+    const changeButton = within(selfRow).getByRole('button', { name: 'Change' });
+    expect(changeButton).toBeDisabled();
+    expect(within(selfRow).getByText('You cannot remove or demote yourself')).toBeInTheDocument();
+
+    const otherRow = screen.getByText(OTHER.email).closest('li')!;
+    expect(within(otherRow).getByRole('button', { name: 'Change' })).not.toBeDisabled();
+  });
+
+  // A22: the self-service password-change link now lives beside your own
+  // row instead of at the top of the Settings page.
+  it('carries the change-your-own-password link beside your own row', async () => {
+    mockPeople();
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    const selfRow = screen.getByText(SELF.email).closest('li')!;
+    expect(within(selfRow).getByRole('link', { name: 'Change password' })).toHaveAttribute(
+      'href',
+      '/account/password',
+    );
+  });
+
+  it('renders the B10 consequence line', async () => {
+    mockPeople();
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByText("You cannot remove or demote yourself. A reviewer's scope limits which tracks they are assigned."),
+    ).toBeInTheDocument();
   });
 
   // w15-e/DEC-691: mock's 4-column row (identity, role, scope, Change).

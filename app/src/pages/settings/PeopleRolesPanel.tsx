@@ -29,6 +29,7 @@ import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { useMe } from '../../lib/useMe';
 import { SummarySection } from './SummarySection';
+import { SettingsEditForm } from './SettingsEditForm';
 
 const SECTION_KEY = 'people';
 
@@ -52,7 +53,7 @@ type Role = 'organizer' | 'reviewer';
 
 export function PeopleRolesPanel() {
   const { me } = useMe();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const editing = searchParams.get('section') === SECTION_KEY && searchParams.get('edit') === '1';
   const [users, setUsers] = useState<OrgUser[]>([]);
   const [total, setTotal] = useState(0);
@@ -76,6 +77,15 @@ export function PeopleRolesPanel() {
   const [roleSaving, setRoleSaving] = useState(false);
   const [roleErrors, setRoleErrors] = useState<Record<string, string>>({});
 
+  function closeEdit() {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.delete('section');
+      params.delete('edit');
+      return params;
+    });
+  }
+
   function load() {
     setLoading(true);
     setError(null);
@@ -93,8 +103,8 @@ export function PeopleRolesPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function handleInvite(e: FormEvent) {
-    e.preventDefault();
+  async function handleInvite(e?: FormEvent) {
+    e?.preventDefault();
     if (newEmail.trim().length === 0 || newFirstName.trim().length === 0 || newLastName.trim().length === 0) return;
     setCreating(true);
     setError(null);
@@ -179,6 +189,17 @@ export function PeopleRolesPanel() {
 
   return (
     <SummarySection sectionKey={SECTION_KEY} label="People and roles" rows={rows} actionLabel="Change" editing={editing}>
+      <SettingsEditForm
+        onSubmit={(e) => e.preventDefault()}
+        consequence="You cannot remove or demote yourself. A reviewer's scope limits which tracks they are assigned."
+        footer={{
+          primary: (
+            <button type="button" className="chq-btn chq-btn-primary" onClick={closeEdit}>
+              Close
+            </button>
+          ),
+        }}
+      >
       <div className="chq-settings-section-head">
         <button
           type="button"
@@ -208,7 +229,10 @@ export function PeopleRolesPanel() {
       )}
 
       {inviting && (
-        <form onSubmit={handleInvite} className="chq-settings-row">
+        // A plain div, not a nested <form> -- the whole edit view is already
+        // inside SettingsEditForm's own <form> (DEC-896/B10), and nested
+        // <form> elements are invalid HTML.
+        <div className="chq-settings-row">
           <label htmlFor="people-invite-first-name">
             First name
             <input
@@ -258,8 +282,9 @@ export function PeopleRolesPanel() {
           </label>
           {fieldErrors.role ? <span role="alert">{fieldErrors.role}</span> : null}
           <button
-            type="submit"
+            type="button"
             className="chq-btn chq-btn-primary"
+            onClick={() => void handleInvite()}
             disabled={
               creating ||
               newEmail.trim().length === 0 ||
@@ -269,7 +294,7 @@ export function PeopleRolesPanel() {
           >
             {creating ? 'Inviting…' : 'Send invite'}
           </button>
-        </form>
+        </div>
       )}
 
       {loading ? (
@@ -337,12 +362,19 @@ export function PeopleRolesPanel() {
                           setRoleEditId(user.id);
                           setRoleEditValue(user.role === 'organizer' ? 'organizer' : 'reviewer');
                         }}
+                        disabled={isSelf}
+                        title={isSelf ? 'You cannot remove or demote yourself' : undefined}
                       >
                         Change
                       </button>
                     )}
                     {isSelf ? (
-                      <span>(you)</span>
+                      <>
+                        <span className="chq-settings-row-hint">You cannot remove or demote yourself</span>
+                        <a className="chq-link-button" href="/account/password">
+                          Change password
+                        </a>
+                      </>
                     ) : resetTargetId === user.id ? (
                       <span className="chq-settings-people-confirm">
                         Reset {user.email}&apos;s password?
@@ -373,6 +405,7 @@ export function PeopleRolesPanel() {
           </p>
         </>
       )}
+      </SettingsEditForm>
     </SummarySection>
   );
 }

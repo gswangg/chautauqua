@@ -119,10 +119,9 @@ describe('SettingsPage render smoke', () => {
     expect(within(cfpSection).getByText('1 — Format')).toBeInTheDocument();
     expect(within(cfpSection).queryByDisplayValue('Tell us about your talk.')).not.toBeInTheDocument();
 
-    // Public pages panel — read-only summary (DEC-815) until drilled: one
-    // row per public surface, now the frame's four columns (w1-f, DEC-785:
-    // name, path, state pill, Embed code), with the View link/embed
-    // builder/saved-embeds list behind the section's 'Change'.
+    // Public pages panel — DEC-896 amendment (wave 26, B10 DROP): no edit
+    // view/gate any more -- the full row (name, path, state pill, View,
+    // Embed code) renders immediately.
     const publicPagesSection = screen.getByRole('region', { name: 'Public pages' });
     expect(within(publicPagesSection).getByRole('heading', { name: 'Public pages' })).toBeInTheDocument();
     await waitFor(() => {
@@ -130,7 +129,7 @@ describe('SettingsPage render smoke', () => {
     });
     expect(within(publicPagesSection).getByText('CFP submit page')).toBeInTheDocument();
     expect(within(publicPagesSection).getByText(`/e/devcon-2026/sessions`)).toBeInTheDocument();
-    expect(within(publicPagesSection).queryByRole('link', { name: 'View' })).not.toBeInTheDocument();
+    expect(within(publicPagesSection).getAllByRole('link', { name: 'View' }).length).toBeGreaterThan(0);
 
     // Speaker portal section — read-only summary (DEC-815); the Resources
     // row LISTS the real resources at rest (DEC-815 amendment, wave 4) --

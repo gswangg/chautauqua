@@ -239,4 +239,53 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
     );
     expect(putCalls.length).toBe(0);
   });
+
+  // DEC-896 amendment (wave 26): the shared settings edit shell (B10).
+  describe('edit view shell (DEC-896)', () => {
+    it('renders the footer as secondary-then-primary in DOM order, no full-width buttons, and the portal consequence line', async () => {
+      mockPortal();
+      render(
+        <MemoryRouter initialEntries={['/settings?section=portal&edit=1']}>
+          <PortalSettingsPanel />
+        </MemoryRouter>,
+      );
+
+      await screen.findByLabelText('Welcome note');
+      expect(
+        screen.getByText(
+          'Title and abstract stay organiser-only — a speaker editing them after acceptance would change what was accepted.',
+        ),
+      ).toBeInTheDocument();
+
+      const footer = document.querySelector('.chq-settings-edit-footer') as HTMLElement;
+      expect(footer).not.toBeNull();
+      expect(footer.querySelector('.chq-settings-edit-footer-destructive')).toBeNull();
+      const secondaryButton = within(footer).getByRole('button', { name: 'Cancel' });
+      const primaryButton = within(footer).getByRole('button', { name: 'Save' });
+      const order = Array.from(footer.querySelectorAll('button'));
+      expect(order.indexOf(secondaryButton as HTMLButtonElement)).toBeLessThan(
+        order.indexOf(primaryButton as HTMLButtonElement),
+      );
+      for (const button of order) {
+        expect(button.className).not.toMatch(/full-width|btn-full/);
+      }
+    });
+
+    it('Cancel returns to the read-only summary', async () => {
+      mockPortal();
+      render(
+        <MemoryRouter initialEntries={['/settings?section=portal&edit=1']}>
+          <PortalSettingsPanel />
+        </MemoryRouter>,
+      );
+
+      await screen.findByLabelText('Welcome note');
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Change' })).toBeInTheDocument();
+      });
+      expect(screen.queryByLabelText('Welcome note')).not.toBeInTheDocument();
+    });
+  });
 });

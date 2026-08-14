@@ -72,7 +72,8 @@ const trackPriorSelects: unknown[][] = [
 ];
 
 const roomPriorSelects: unknown[][] = [
-  [roomRow], // getRoomForEvent
+  [roomRow], // getRoomForEvent row
+  [{ count: 0 }], // getRoomForEvent sessionCount agg (DEC-896 amendment, wave 26)
   [eventRefFields], // getEventRefFields
   [], // scheduleSlot join submission, limit 5 -- no refs
 ];
