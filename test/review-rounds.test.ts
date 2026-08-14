@@ -108,11 +108,14 @@ vi.mock("../src/server/repo/review", async () => {
         .filter((e) => e.planId === planId && e.round === round)
         .map((e) => ({ submissionId: e.submissionId, scores: e.scores })),
     ),
-    listCompletedPairsForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
-      store
-        .filter((e) => e.planId === planId && e.round === round)
-        .map((e) => ({ reviewerId: e.reviewerId, submissionId: e.submissionId })),
-    ),
+    countCompletedByReviewerForPlan: vi.fn(async (_db: unknown, planId: string, round: number) => {
+      const counts = new Map<string, number>();
+      for (const e of store) {
+        if (e.planId !== planId || e.round !== round) continue;
+        counts.set(e.reviewerId, (counts.get(e.reviewerId) ?? 0) + 1);
+      }
+      return counts;
+    }),
     // DEC-346: the queue route sources counts/ratedByMe from these SQL
     // aggregates -- backed here by the same in-memory store so the fake stays
     // consistent with listEvaluationsForPlan.
@@ -343,11 +346,12 @@ describe("multi-round lifecycle (task w2-a)", () => {
     await app.request(`/api/v1/plans/${plan.id}/remind`, { method: "POST", headers: { "x-chq-csrf": "1" } });
     // DEC-346: the reviewer queue no longer calls listEvaluationsForPlan --
     // it sources counts/ratedByMe from countEvaluationsBySubmission/
-    // listSubmissionIdsRatedBy instead. DEC-351: /progress and /remind no
-    // longer call listEvaluationsForPlan either -- they source completed
-    // pairs from listCompletedPairsForPlan (asserted below). Only /results
-    // (buildResults, DEC-345/DEC-439) still needs the scored rows, now via
-    // the payload-narrow listEvaluationScoresForPlan.
+    // listSubmissionIdsRatedBy instead. DEC-351/DEC-449: /progress and
+    // /remind no longer call listEvaluationsForPlan either -- they source
+    // per-reviewer completed counts from countCompletedByReviewerForPlan
+    // (asserted below). Only /results (buildResults, DEC-345/DEC-439) still
+    // needs the scored rows, now via the payload-narrow
+    // listEvaluationScoresForPlan.
     const reviewerApp = await buildApp(reviewer);
     await reviewerApp.request(`/api/v1/review/plans/${plan.id}/queue`);
 
@@ -357,12 +361,13 @@ describe("multi-round lifecycle (task w2-a)", () => {
       expect(typeof call[2]).toBe("number");
     }
 
-    // DEC-351: /progress and /remind's replacement call site also carries
-    // the DEC-087 round arg -- narrowing what's fetched must not weaken the
-    // round-scoping assertion (DEC-329).
-    const pairCalls = (repo.listCompletedPairsForPlan as unknown as { mock: { calls: unknown[][] } }).mock.calls;
-    expect(pairCalls.length).toBeGreaterThanOrEqual(2);
-    for (const call of pairCalls) {
+    // DEC-351/DEC-449: /progress and /remind's replacement call site also
+    // carries the DEC-087 round arg -- narrowing what's fetched must not
+    // weaken the round-scoping assertion (DEC-329).
+    const countCalls = (repo.countCompletedByReviewerForPlan as unknown as { mock: { calls: unknown[][] } }).mock
+      .calls;
+    expect(countCalls.length).toBeGreaterThanOrEqual(2);
+    for (const call of countCalls) {
       expect(typeof call[2]).toBe("number");
     }
   });

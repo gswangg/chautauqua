@@ -50,7 +50,7 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, as
   const reviewerRows = await repo.listReviewerRowsForPlan(c.var.db, plan.id);
   const userIds = [...new Set(reviewerRows.map((r) => r.userId))];
   const users = await repo.getUsersByIds(c.var.db, userIds);
-  const evaluations = await repo.listCompletedPairsForPlan(c.var.db, plan.id, round);
+  const completedByReviewer = await repo.countCompletedByReviewerForPlan(c.var.db, plan.id, round);
   // One plan-filtered load + pure assignment resolution (DEC-081): no
   // per-reviewer awaits.
   const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan);
@@ -66,22 +66,13 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, as
     recusedByUser.set(r.userId, set);
   }
 
-  // DEC-345: index completed-submission-ids by reviewerId in one pass
-  // instead of filtering the whole evaluation array per reviewer.
-  const completedByReviewer = new Map<string, Set<string>>();
-  for (const e of evaluations) {
-    const set = completedByReviewer.get(e.reviewerId) ?? new Set<string>();
-    set.add(e.submissionId);
-    completedByReviewer.set(e.reviewerId, set);
-  }
-
   // DEC-708: one batched account->contact resolution for the whole page's
   // reviewer set, never a query per row.
   const nameByUserId = await repo.batchUserDisplayNames(c.var.db, users.map((u) => u.userId));
 
   const items = users.map((user) => {
     const assigned = assignedExcludingRecused(assignments.get(user.userId) ?? [], recusedByUser.get(user.userId) ?? new Set());
-    const completed = completedByReviewer.get(user.userId)?.size ?? 0;
+    const completed = completedByReviewer.get(user.userId) ?? 0;
     return {
       userId: user.userId,
       email: user.email,
@@ -168,7 +159,7 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
   const reviewerRows = await repo.listReviewerRowsForPlan(c.var.db, plan.id);
   const userIds = [...new Set(reviewerRows.map((r) => r.userId))];
   const users = await repo.getUsersByIds(c.var.db, userIds);
-  const evaluations = await repo.listCompletedPairsForPlan(c.var.db, plan.id, plan.currentRound);
+  const completedByReviewer = await repo.countCompletedByReviewerForPlan(c.var.db, plan.id, plan.currentRound);
   // One plan-filtered load + pure assignment resolution (DEC-081): no
   // per-reviewer awaits.
   const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan);
@@ -189,21 +180,12 @@ reviewPlansProgressRoutes.post("/api/v1/plans/:id/remind", requireOrganizer, csr
   // DEC-238 class 2: this is an organizer-triggered batch send -- a single
   // reviewer's mail failure must not 500 the whole reminder run or hide the
   // other reviewers' outcomes. Per-recipient catch, structured summary.
-  // DEC-345: index completed-submission-ids by reviewerId in one pass
-  // instead of filtering the whole evaluation array per reviewer.
-  const completedByReviewer = new Map<string, Set<string>>();
-  for (const e of evaluations) {
-    const set = completedByReviewer.get(e.reviewerId) ?? new Set<string>();
-    set.add(e.submissionId);
-    completedByReviewer.set(e.reviewerId, set);
-  }
-
   // DEC-707: EVERY reviewer's row (not pre-filtered) so selectRemindTargets
   // -- the SAME predicate the SPA's landing-page label counts through -- is
   // the single place that decides who a given scope actually reaches.
   const progressRows = users.map((user) => {
     const assigned = assignedExcludingRecused(assignments.get(user.userId) ?? [], recusedByUser.get(user.userId) ?? new Set());
-    const completed = completedByReviewer.get(user.userId)?.size ?? 0;
+    const completed = completedByReviewer.get(user.userId) ?? 0;
     return { userId: user.userId, email: user.email, assignedCount: assigned.length, assigned: assigned.length, completed };
   });
   const laggards = selectRemindTargets(progressRows, scope);

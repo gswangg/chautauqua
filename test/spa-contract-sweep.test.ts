@@ -95,12 +95,14 @@ async function buildReviewApp() {
           scores: e.scores,
         })),
       ),
-      listCompletedPairsForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
-        EVALUATIONS.filter((e) => e.planId === planId && e.round === round).map((e) => ({
-          reviewerId: e.reviewerId,
-          submissionId: e.submissionId,
-        })),
-      ),
+      countCompletedByReviewerForPlan: vi.fn(async (_db: unknown, planId: string, round: number) => {
+        const counts = new Map<string, number>();
+        for (const e of EVALUATIONS) {
+          if (e.planId !== planId || e.round !== round) continue;
+          counts.set(e.reviewerId, (counts.get(e.reviewerId) ?? 0) + 1);
+        }
+        return counts;
+      }),
       listPlanFilteredSubmissions: vi.fn(async () => SUBMISSIONS),
       // DEC-703: batched speaker/track lookups -- no participant/track
       // fixtures here, so both resolve to empty (still present as [] keys).

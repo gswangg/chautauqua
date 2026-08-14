@@ -140,7 +140,7 @@ describe("GET /api/v1/plans/:id/progress (DEC-466/461(e) bounds)", () => {
         listReviewerRowsForPlan: vi.fn(async () => reviewerRows),
         getUsersByIds: vi.fn(async () => users),
         batchUserDisplayNames: vi.fn(async () => new Map()),
-        listCompletedPairsForPlan: vi.fn(async () => []),
+        countCompletedByReviewerForPlan: vi.fn(async () => new Map()),
         listPlanFilteredSubmissions: vi.fn(async () => []),
         listRecusalsForPlan: vi.fn(async () => []),
       };
