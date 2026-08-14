@@ -13,6 +13,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import { ParticipationMenu } from './ParticipationMenu';
 import { countOf } from '../../lib/plural';
+import { paginationSummary } from '../../lib/pagination-summary';
 import {
   DEFAULT_GRID_FILTERS,
   INVITE_STATUS_LABELS,
@@ -290,7 +291,6 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   const counts = grid?.counts ?? null;
   const visibleRows = grid?.rows ?? [];
   const total = grid?.total ?? 0;
-  const rangeStart = total === 0 ? 0 : (page - 1) * PER_PAGE + 1;
   const rangeEnd = total === 0 ? 0 : Math.min(page * PER_PAGE, total);
 
   async function toggleCell(assignmentId: string, currentStatus: AssignmentStatus) {
@@ -848,9 +848,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
 
       {!loading && grid && (
         <div className="chq-speakers-pager">
-          <span className="chq-summary">
-            Showing {rangeStart}–{rangeEnd} of {total}
-          </span>
+          <span className="chq-summary">{paginationSummary(page, PER_PAGE, total, visibleRows.length)}</span>
           <span className="chq-speakers-grid-caption">Click any status to mark it complete or pending</span>
           <div className="chq-speakers-pager-actions">
             <button

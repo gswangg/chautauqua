@@ -12,6 +12,7 @@ import { formatFormatLabel } from '../../lib/formatLabel';
 import { FilterBar, FilterBarSearchSort } from './FilterBar';
 import { buildSubmissionsQuery } from './filters';
 import { NewSubmissionModal, type NewSubmissionInput } from './NewSubmissionModal';
+import { paginationSummary } from '../../lib/pagination-summary';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { EMPTY_SELECTION, isPageFullySelected, isPagePartiallySelected, selectionReducer } from './selection';
 import {
@@ -42,15 +43,6 @@ export function exportHref(eventId: string, filters: SubmissionsFilterState): st
   params.delete('perPage');
   params.set('format', 'csv');
   return `/api/v1/events/${eventId}/export/submissions?${params.toString()}`;
-}
-
-/** Pure pagination summary text: "Showing {start}-{end} of {total}",
- * replacing the old "Page N · total" copy. Exported for its own unit test. */
-export function paginationSummary(page: number, perPage: number, total: number): string {
-  if (total === 0) return 'Showing 0 of 0';
-  const start = (page - 1) * perPage + 1;
-  const end = Math.min(page * perPage, total);
-  return `Showing ${start}–${end} of ${total}`;
 }
 
 export function SubmissionsTable() {

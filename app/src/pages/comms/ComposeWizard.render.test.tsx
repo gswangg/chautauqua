@@ -57,7 +57,7 @@ describe('ComposeWizard recipient picker', () => {
     render(<ComposeWizard eventId={EVENT_ID} />);
 
     expect(await screen.findByText('Talk number 1')).toBeInTheDocument();
-    expect(screen.getByText('Showing 1-50 of 340')).toBeInTheDocument();
+    expect(screen.getByText('Showing 1–50 of 340')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Next' })).not.toBeDisabled();
     expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled();
   });
