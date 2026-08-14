@@ -16,6 +16,7 @@ import * as schema from "../db/schema";
 import type { Db } from "../server/context";
 import { formatRef } from "../domain/ids";
 import { ACTIVE_INVITE_STATUSES } from "../domain/acceptance";
+import { chunkIds } from "../lib/chunk";
 
 const BATCH = 10;
 const API = "https://api.airtable.com/v0";
@@ -214,64 +215,81 @@ export async function runAirtableSync(
     throw new Error(`airtable sync: submission table exceeds MAX_SYNC_ROWS (${MAX_SYNC_ROWS}) for this org`);
   }
 
-  // DEC-981/DEC-974: only ACTIVE_INVITE_STATUSES participants may be
-  // published to the customer's Airtable base as a speaker — a declined
-  // co-presenter must never appear in the Speakers cell, the same class of
-  // defect DEC-974 closed on the admin agenda. orderBy makes the joined
-  // Speakers string deterministic across runs so an unchanged submission
-  // never re-upserts with a permuted string and fires the customer's
-  // Airtable automations on a non-change.
-  const parts = await db
-    .select({
-      submissionId: schema.participant.submissionId,
-      firstName: schema.contact.firstName,
-      lastName: schema.contact.lastName,
-    })
-    .from(schema.participant)
-    .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
-    .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
-    .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
-    .where(
-      and(
-        eq(schema.event.orgId, orgId),
-        inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
-      ),
-    )
-    .orderBy(asc(schema.participant.order), asc(schema.contact.id))
-    .limit(MAX_SYNC_ROWS + 1);
-  if (parts.length > MAX_SYNC_ROWS) {
-    throw new Error(`airtable sync: participant table exceeds MAX_SYNC_ROWS (${MAX_SYNC_ROWS}) for this org`);
-  }
+  // DEC-450 wave-64 amendment: an incremental tick only reads children (the
+  // participant and submission_track tables) for the submissions this tick
+  // is actually pushing, not org-wide. `subs` above is already the
+  // watermark-scoped set — deriving the pushed id set from it and scoping
+  // both child reads by inArray(..., chunkIds(pushedIds)) means (a) a tick
+  // pushing three changed submissions no longer scans every participant/
+  // submission_track row in the org, and (b) MAX_SYNC_ROWS now measures the
+  // children of the pushed set, not the whole org, so a large org's child
+  // tables no longer make every tick — including empty ticks — throw.
+  const pushedIds = subs.map((s) => s.id);
   const speakersBySub = new Map<string, string[]>();
-  for (const p of parts) {
-    const list = speakersBySub.get(p.submissionId) ?? [];
-    list.push(`${p.firstName} ${p.lastName}`.trim());
-    speakersBySub.set(p.submissionId, list);
-  }
-
-  // DEC-725 amendment: deterministic order (track.position then id) so the
-  // Tracks cell — like the Speakers cell above — never permutes between
-  // runs and re-fires the customer's automations on a non-change.
-  const subTracks = await db
-    .select({
-      submissionId: schema.submissionTrack.submissionId,
-      name: schema.track.name,
-    })
-    .from(schema.submissionTrack)
-    .innerJoin(schema.track, eq(schema.submissionTrack.trackId, schema.track.id))
-    .innerJoin(schema.submission, eq(schema.submissionTrack.submissionId, schema.submission.id))
-    .innerJoin(schema.event, eq(schema.submission.eventId, schema.event.id))
-    .where(eq(schema.event.orgId, orgId))
-    .orderBy(asc(schema.track.position), asc(schema.track.id))
-    .limit(MAX_SYNC_ROWS + 1);
-  if (subTracks.length > MAX_SYNC_ROWS) {
-    throw new Error(`airtable sync: submission_track table exceeds MAX_SYNC_ROWS (${MAX_SYNC_ROWS}) for this org`);
-  }
   const tracksBySub = new Map<string, string[]>();
-  for (const t of subTracks) {
-    const list = tracksBySub.get(t.submissionId) ?? [];
-    list.push(t.name);
-    tracksBySub.set(t.submissionId, list);
+
+  if (pushedIds.length > 0) {
+    // DEC-981/DEC-974: only ACTIVE_INVITE_STATUSES participants may be
+    // published to the customer's Airtable base as a speaker — a declined
+    // co-presenter must never appear in the Speakers cell, the same class of
+    // defect DEC-974 closed on the admin agenda. orderBy makes the joined
+    // Speakers string deterministic across runs so an unchanged submission
+    // never re-upserts with a permuted string and fires the customer's
+    // Airtable automations on a non-change.
+    let partsTotal = 0;
+    for (const batch of chunkIds(pushedIds)) {
+      const parts = await db
+        .select({
+          submissionId: schema.participant.submissionId,
+          firstName: schema.contact.firstName,
+          lastName: schema.contact.lastName,
+        })
+        .from(schema.participant)
+        .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+        .where(
+          and(
+            inArray(schema.participant.submissionId, batch),
+            inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
+          ),
+        )
+        .orderBy(asc(schema.participant.order), asc(schema.contact.id))
+        .limit(MAX_SYNC_ROWS + 1);
+      partsTotal += parts.length;
+      if (partsTotal > MAX_SYNC_ROWS) {
+        throw new Error(`airtable sync: participant table exceeds MAX_SYNC_ROWS (${MAX_SYNC_ROWS}) for this org`);
+      }
+      for (const p of parts) {
+        const list = speakersBySub.get(p.submissionId) ?? [];
+        list.push(`${p.firstName} ${p.lastName}`.trim());
+        speakersBySub.set(p.submissionId, list);
+      }
+    }
+
+    // DEC-725 amendment: deterministic order (track.position then id) so the
+    // Tracks cell — like the Speakers cell above — never permutes between
+    // runs and re-fires the customer's automations on a non-change.
+    let tracksTotal = 0;
+    for (const batch of chunkIds(pushedIds)) {
+      const subTracks = await db
+        .select({
+          submissionId: schema.submissionTrack.submissionId,
+          name: schema.track.name,
+        })
+        .from(schema.submissionTrack)
+        .innerJoin(schema.track, eq(schema.submissionTrack.trackId, schema.track.id))
+        .where(inArray(schema.submissionTrack.submissionId, batch))
+        .orderBy(asc(schema.track.position), asc(schema.track.id))
+        .limit(MAX_SYNC_ROWS + 1);
+      tracksTotal += subTracks.length;
+      if (tracksTotal > MAX_SYNC_ROWS) {
+        throw new Error(`airtable sync: submission_track table exceeds MAX_SYNC_ROWS (${MAX_SYNC_ROWS}) for this org`);
+      }
+      for (const t of subTracks) {
+        const list = tracksBySub.get(t.submissionId) ?? [];
+        list.push(t.name);
+        tracksBySub.set(t.submissionId, list);
+      }
+    }
   }
 
   const contactRecords = contacts.map((c) => contactRecord(c, now));
