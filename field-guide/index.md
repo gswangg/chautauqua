@@ -21,38 +21,40 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   query-per-link; FIND-OR-CREATE NEEDS A UNIQUE INDEX; UNBOUNDED SURFACE
   NEVER PAGED; A WATERMARK ONLY SEES THE COLUMN IT COMPARES -- PARENT ROW
   IS THE SYNC UNIT; NAV != ROUTE.
-- FINDINGS w66-72 (compacted): MANDATE SPENT re-probed CLOSED at file:line;
-  A FACET IS A CONTRACT; A CONTROL WITHOUT ITS SCRIPT/SAVE IS A PICTURE OR
-  A LIE; A PROJECTION MUST CARRY ITS SOURCE'S LIMITS AND VOCABULARY; A
-  HARDCODED SURFACE LIST GOES STALE; ONE SERIALIZER FOLDS, SWEEP EVERY
-  SIBLING; A DISCLOSURE IS NOT A DELETION; A FRAMED PRIMARY WITH NOTHING
-  TO WRITE IS A LIE -- one writer, two screens.
-- FINDINGS w1-6 (heavily compacted; DEC space FULL): RE-PROBE THE MANDATE
-  BEFORE SPENDING A LANE; A DECISION DOC IS NOT A BRANCH (grep `##
-  Amendment (wave N)` first, implement verbatim); THE PAIR REPORTS OUTLIVE
-  THE MANDATE; A FRAME NIT CAN CONTRADICT A LANDED DECISION -- grep
-  decisions/ first; A FRAME "EXTRA" IS USUALLY A CAPABILITY -- restyle/
-  disclose, never delete; A COMMENT CLAIMING A CHECK IS NOT THE CHECK; A
-  MIRROR MUST COPY THE ROLLBACK not just the ordering; A REVIEW LENS CAN
-  BE WRONG ON PURPOSE (demo-credential "leak", DEC-583) -- record refusals
-  so they aren't re-filed.
-- FINDINGS w7 (compacted): ~30 residue clauses re-probed, six survived. A
-  READER WITH NO WRITER IS A LIE THAT RENDERS NOTHING -- grep `unwired|no
-  server route|documented gap`. A STALE EXCUSE OUTLIVES ITS CAUSE. ONE
-  FORMATTER, TWO GRAMMARS. A CHROME LABEL CAN BE ROLE-SCOPED. REFUSALS
-  RECORDED: aria-pressed (DEC-939), "Mean of submitted reviews" (DEC-873),
-  roster Import-CSV link (DEC-662, kept).
-- FINDINGS w8 (compacted): ~25 gate-4/run-4 clauses re-probed at
-  file:line, ALL CLOSED; four survived. A SECOND READER OF THE SAME WRITE
-  INHERITS NONE OF ITS MANNERS: NewContactModal grew the 409 forward path
-  (DEC-788) while RosterPanel's Add-speaker, hitting the SAME /contacts,
-  still prints the refusal and stops -- grep EVERY caller of a route
-  before calling its error handling done. A DELAY POLICY IS NOT A LOADING
-  POLICY: DelayedLoading's 250ms withholding is right for a sub-region,
-  wrong for a page; ten page-level waits, incl. App.tsx's RoleGate +
-  Suspense every route pays, drew nav over an empty main -- use
-  PageSkeleton for MAIN-region waits. A GUESSABLE URL THAT 404s IS A DEAD
-  END (/logout had only POST, pubcache already named it GET-safe). A
-  RECEIPT STATES WHAT WAS RECEIVED: CFP confirmation named the title,
-  dropped the track/format just chosen. DEC space closed -- rulings land
-  as `## Amendment (wave N)` on the EXISTING file at that id.
+- FINDINGS w1-72 (heavily compacted; DEC space FULL, rulings land as `##
+  Amendment (wave N)` on the EXISTING file at that id): RE-PROBE THE
+  MANDATE BEFORE SPENDING A LANE; A DECISION DOC IS NOT A BRANCH -- grep
+  decisions/ first, implement verbatim; A FRAME NIT CAN CONTRADICT A
+  LANDED DECISION; A FRAME "EXTRA" IS USUALLY A CAPABILITY -- restyle/
+  disclose, never delete; A MIRROR MUST COPY THE ROLLBACK not just the
+  ordering; A REVIEW LENS CAN BE WRONG ON PURPOSE (demo-credential
+  "leak", DEC-583) -- record refusals so they aren't re-filed; A READER
+  WITH NO WRITER IS A LIE THAT RENDERS NOTHING; A STALE EXCUSE OUTLIVES
+  ITS CAUSE; ONE FORMATTER, TWO GRAMMARS; A CHROME LABEL CAN BE
+  ROLE-SCOPED; A SECOND READER OF THE SAME WRITE INHERITS NONE OF ITS
+  MANNERS -- grep EVERY caller of a route; A DELAY POLICY IS NOT A
+  LOADING POLICY; A GUESSABLE URL THAT 404s IS A DEAD END; A RECEIPT
+  STATES WHAT WAS RECEIVED; A FACET IS A CONTRACT; A CONTROL WITHOUT ITS
+  SCRIPT/SAVE IS A PICTURE OR A LIE; A PROJECTION MUST CARRY ITS SOURCE'S
+  LIMITS AND VOCABULARY; A HARDCODED SURFACE LIST GOES STALE; A
+  DISCLOSURE IS NOT A DELETION; A FRAMED PRIMARY WITH NOTHING TO WRITE IS
+  A LIE. REFUSALS RECORDED: aria-pressed (DEC-939), "Mean of submitted
+  reviews" (DEC-873), roster Import-CSV link (DEC-662).
+- FINDINGS w9 (compacted): ~65 mandate clauses re-probed at file:line
+  across EVERY area — gate-4 reds, carried residue, SBEK run-3/4 P1/P2s,
+  the SPEC J1-J12 bar — and ALL CLOSED, incl. the four review-lens
+  "security" finds (files.ts:137 refuses reviewer writes; auth-session.ts
+  rotates the PRESENTED token only; portal/tasks.tsx:429 rolls back R2 +
+  rows; demo credentials = the recorded DEC-583 refusal). THE MANDATE IS
+  SPENT — the next wave is verification, not fixes. Three survived, all
+  one shape. A DUPLICATED FORMATTER DRIFTS AT ITS LAST COPY:
+  paginationSummary exists twice byte-identically, inline twice more, and
+  as an ASCII HYPHEN in Comms — DEC-906 said "one shape" and got five.
+  A FIXTURE WRITTEN TO THE ANSWER CANNOT FAIL: ReviewerQueue's test
+  pre-lowercased audienceLevel, so the seed's Title-Case "Advanced"
+  rendering raw survived four waves — drive vocabulary tests from the
+  SEED's own literals, never a hand-shaped fixture. A COMMENT CLAIMING A
+  CHECK IS NOT THE CHECK (that test's comment claimed both clauses ran
+  through formatMetaLabel; only `format` did). A "CANNOT IMPORT" COMMENT
+  OUTLIVES ITS TRUTH: gridMath.ts:65 says app/src can't reach src/lib --
+  its own line 21 does, and four other SPA files do too.
