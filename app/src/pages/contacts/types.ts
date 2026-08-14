@@ -19,9 +19,10 @@ export interface ContactListItem {
 export interface ContactStats {
   total: number;
   topCompanies: { company: string; count: number }[];
-  // DEC-710/DEC-711: figures the title summary and rail render.
+  // DEC-710/DEC-711: figures the title summary renders.
+  // duplicateCount is NOT here (wave 41 amendment): callers source it from
+  // the /contacts/duplicates envelope's `total` instead of a second scan.
   speakerCount: number;
-  duplicateCount: number;
   // DEC-432/DEC-809: a contact holding an active 'speaker' role on more than
   // one of this org's events, and the number of distinct such events — the
   // headline's returning/reach clauses render only when each is "worth

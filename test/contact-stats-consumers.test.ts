@@ -1,8 +1,10 @@
 // DEC-711 wave-33 amendment (durable half): a figure the server computes but
 // no page renders is a hot-route tax with zero payoff (see stats.ts's
-// getContactStats — total/topCompanies/speakerCount/duplicateCount are each
-// endpoint-backed against a real consumer; eventCount and returningSpeakers
-// were deleted because nothing under app/src/** ever read them). This test
+// getContactStats — total/topCompanies/speakerCount are each endpoint-backed
+// against a real consumer; eventCount and returningSpeakers were deleted
+// because nothing under app/src/** ever read them, and duplicateCount was
+// dropped in wave 41 because it duplicated an O(N) org scan already
+// performed by GET /contacts/duplicates for the rail/tab preview). This test
 // scans the OTHER direction from the usual endpoint-shape guard: for every
 // field the app/src/pages/contacts/types.ts ContactStats interface declares,
 // at least one non-test module under app/src/** must reference it by name.

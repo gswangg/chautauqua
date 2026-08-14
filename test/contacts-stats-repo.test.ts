@@ -222,10 +222,6 @@ function makeDb(dataByTag: Record<string, Record<string, unknown>[]>) {
 
 function seed() {
   return {
-    // DEC-711: getContactStats now also runs findDuplicateGroupsForOrg (for
-    // duplicateCount) — email/firstName/lastName are required there
-    // (normalizeEmail reads them), so every seeded contact carries distinct
-    // values that never collide into a duplicate group.
     contact: [
       { id: "c-returning", orgId: "org-1", company: "Acme", email: "returning@example.com", firstName: "Rita", lastName: "Returning" },
       { id: "c-single", orgId: "org-1", company: "Acme", email: "single@example.com", firstName: "Sam", lastName: "Single" },
@@ -276,6 +272,40 @@ function seedControlPlus(caseContact: { id: string }, caseParticipants: Record<s
     ],
   };
 }
+
+// Wave 41 amendment: getContactStats must never scan the whole directory to
+// produce duplicateCount (that field is gone — callers source it from the
+// /contacts/duplicates envelope's own `total`). Proven two ways: (1) stats.ts
+// no longer imports findDuplicateGroupsForOrg at all — a spy on that module
+// throws if it is ever called; (2) getContactStats resolves normally for an
+// org whose contact count EXCEEDS MAX_CONTACT_DIRECTORY_SCAN, a size at
+// which merge.ts's own scan would refuse.
+describe("getContactStats (wave 41: no directory scan for duplicateCount)", () => {
+  it("never calls findDuplicateGroupsForOrg", async () => {
+    const mergeModule = await import("../src/server/repo/contacts/merge");
+    const spy = vi.spyOn(mergeModule, "findDuplicateGroupsForOrg");
+    await getContactStats(makeDb(seed()), "org-1");
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it("returns normally for an org whose contact count exceeds MAX_CONTACT_DIRECTORY_SCAN", async () => {
+    const { MAX_CONTACT_DIRECTORY_SCAN } = await import("../src/server/repo/contacts/rows");
+    const bigCount = MAX_CONTACT_DIRECTORY_SCAN + 1;
+    const contacts = Array.from({ length: bigCount }, (_, i) => ({
+      id: `c-${i}`,
+      orgId: "org-1",
+      company: null,
+      email: `c-${i}@example.com`,
+      firstName: "First",
+      lastName: `Last${i}`,
+    }));
+    const db = makeDb({ contact: contacts, event: [], submission: [], participant: [] });
+    const stats = await getContactStats(db, "org-1");
+    expect(stats.total).toBe(bigCount);
+    expect(stats).not.toHaveProperty("duplicateCount");
+  });
+});
 
 describe("getContactStats (total/topCompanies/speakerCount)", () => {
   it("keeps total/topCompanies computed from the seeded contacts", async () => {

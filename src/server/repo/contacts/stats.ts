@@ -5,23 +5,26 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
-import { findDuplicateGroupsForOrg } from "./merge";
 import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
 import { DEC_432, DEC_711, DEC_809 } from "../../../decisions";
 
-void DEC_711; // speakerCount + duplicateCount: every figure the directory page states is endpoint-backed
+// Amendment (wave 41): duplicateCount dropped from this endpoint.
+// findDuplicateGroupsForOrg is an O(N) org scan; the Duplicates rail/tab
+// already fetch /contacts/duplicates for their own preview and now source
+// the count from that envelope's `total` instead of a second scan here.
+void DEC_711; // speakerCount: every figure this endpoint states is endpoint-backed
 void DEC_432; // returningSpeakers/eventCount: stays on the endpoint whether or not a surface renders it
 void DEC_809; // directory headline states returning speakers + event reach alongside the counts already there
 
 export interface ContactStats {
   total: number;
   topCompanies: { company: string; count: number }[];
-  // DEC-710/DEC-711: figures the directory title summary and rail actually
-  // render — a contact holding a 'speaker' participant role on any of the
-  // org's events, and the group count from findDuplicateGroupsForOrg
-  // (computed once here, not a second time by the caller).
+  // DEC-711: a contact holding a 'speaker' participant role on any of the
+  // org's events — a figure the directory title summary actually renders.
+  // duplicateCount is NOT here (wave 41 amendment): it duplicated an O(N)
+  // org scan already performed by GET /contacts/duplicates for the rail/tab
+  // preview; callers source it from that envelope's `total` instead.
   speakerCount: number;
-  duplicateCount: number;
   // DEC-432/DEC-809: a contact holding an active 'speaker' role on more than
   // one of this org's own events (returningSpeakers), and the number of
   // DISTINCT such events (eventCount) — the same speakerParticipationConditions
@@ -78,11 +81,6 @@ export async function getContactStats(db: Db, orgId: string): Promise<ContactSta
   const speakerCountRows = await db.select({ count: sql<number>`count(*)` }).from(speakerSubquery);
   const speakerCount = Number(speakerCountRows[0]?.count ?? 0);
 
-  // DEC-711: the same group count the Duplicates tab and rail render — one
-  // definition (findDuplicateGroupsForOrg), never a second tally.
-  const duplicateGroups = await findDuplicateGroupsForOrg(db, orgId);
-  const duplicateCount = duplicateGroups.length;
-
   // DEC-432/DEC-809: returningSpeakers — a contact holding an active
   // 'speaker' role on more than one of THIS org's events, over the same
   // speakerParticipationConditions population as speakerCount. A single
@@ -112,5 +110,5 @@ export async function getContactStats(db: Db, orgId: string): Promise<ContactSta
     .where(speakerParticipationConditions(orgId));
   const eventCount = Number(eventCountRows[0]?.count ?? 0);
 
-  return { total, topCompanies, speakerCount, duplicateCount, returningSpeakers, eventCount };
+  return { total, topCompanies, speakerCount, returningSpeakers, eventCount };
 }

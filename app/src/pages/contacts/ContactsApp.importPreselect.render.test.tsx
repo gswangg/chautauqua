@@ -25,7 +25,6 @@ function mockContactsPageApi() {
     'GET /api/v1/contacts/stats': {
       total: 0,
       speakerCount: 0,
-      duplicateCount: 0,
       topCompanies: [],
     },
     'GET /api/v1/segments': listEnvelope([]),
