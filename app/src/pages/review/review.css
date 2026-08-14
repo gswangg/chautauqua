@@ -52,6 +52,8 @@
 
 .chq-review-plan-row.is-active {
   background: var(--chq-surface-sunk);
+  margin-inline: -16px;
+  padding-inline: 16px;
 }
 
 /* DEC-674: the landing page's region two/three wrappers -- each holds a
@@ -306,6 +308,7 @@
 
 .chq-review-reviews-detail {
   background: var(--chq-surface-sunk);
+  padding: 16px;
 }
 
 .chq-review-reviews-list {
@@ -327,10 +330,10 @@
 }
 
 .chq-review-reviews-item-head {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
   gap: 10px;
-  flex-wrap: wrap;
+  align-items: baseline;
   font-size: 12px;
   font-weight: 700;
   color: var(--chq-ink);
@@ -1461,7 +1464,6 @@
    never declare color/background -- shape only. */
 .chq-review-queue-row-action {
   justify-self: end;
-  min-width: 180px;
   max-width: 220px;
   width: auto;
   text-align: center;
