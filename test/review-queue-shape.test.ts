@@ -172,4 +172,29 @@ describe("DEC-239: reviewer queue item wire shape", () => {
     expect(bySubmission.get("sub-1")?.format).toBe("Talk (30 min)");
     expect(bySubmission.get("sub-2")?.format).toBeNull();
   });
+
+  // DEC-874 (wave-72 amendment b): a recused row keeps the same meta-line
+  // fact an actionable row carries -- formatBySubmission is computed over
+  // EVERY scoped id and must not be thrown away for the recused half.
+  it("carries format on recused items too, mirroring the actionable items", async () => {
+    const { listRecusalsForReviewer } = await import("../src/server/repo/review");
+    vi.mocked(listRecusalsForReviewer).mockResolvedValueOnce([
+      { id: "recusal-1", planId: planRecord.id, submissionId: "sub-1", userId: "r1", reason: "Co-author", createdAt: 0 },
+    ]);
+    const app = await buildApp({ userId: "r1", role: "reviewer", orgId: ORG_A });
+    const res = await app.request(`/api/v1/review/plans/${planRecord.id}/queue`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      items: { submissionId: string }[];
+      recused: { submissionId: string; format: string | null; reason: string | null }[];
+    };
+    expect(body.items.map((i) => i.submissionId)).not.toContain("sub-1");
+    const recusedSub1 = body.recused.find((r) => r.submissionId === "sub-1");
+    expect(recusedSub1).toBeDefined();
+    expect(recusedSub1?.format).toBe("Talk (30 min)");
+    expect(recusedSub1?.reason).toBe("Co-author");
+    // sub-2 has no format answer -- carried through as null, not dropped.
+    const recusedSub2 = body.recused.find((r) => r.submissionId === "sub-2");
+    expect(recusedSub2).toBeUndefined();
+  });
 });
