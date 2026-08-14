@@ -263,12 +263,23 @@ export function ContactsApp() {
 
   const selectedIds = [...selection.selectedIds];
 
-  // DEC-711 amendment (wave 4, fields deleted wave 33): the title summary is
-  // THREE clauses — people, speakers, possible duplicates. returningSpeakers
-  // and eventCount had no renderer anywhere (a "0 returning speakers" clause
-  // reads as a defect) and were removed end-to-end from ContactStats.
+  // DEC-432/DEC-809: the title summary is `N people · M speakers ·
+  // [R returning] · [across E events] · K possible duplicates` — the
+  // returning clause renders ONLY when returningSpeakers > 0 and the reach
+  // clause ONLY when eventCount > 1, so a single-event org renders exactly
+  // the three-clause frame while a real multi-event org is told what its
+  // bench is worth. Built with the shared countOf helper, never bespoke
+  // pluralisation.
   const summary = stats
-    ? `${countOf(stats.total, 'person', 'people')} · ${countOf(stats.speakerCount, 'speaker')} · ${countOf(stats.duplicateCount, 'possible duplicate')}`
+    ? [
+        countOf(stats.total, 'person', 'people'),
+        countOf(stats.speakerCount, 'speaker'),
+        stats.returningSpeakers > 0 ? `${countOf(stats.returningSpeakers, 'returning speaker')}` : null,
+        stats.eventCount > 1 ? `across ${countOf(stats.eventCount, 'event')}` : null,
+        countOf(stats.duplicateCount, 'possible duplicate'),
+      ]
+        .filter((clause): clause is string => clause !== null)
+        .join(' · ')
     : null;
 
   return (

@@ -104,6 +104,11 @@ function evalAggregateField(spec: unknown, group: Rec[]): unknown {
   if (isSqlMarker(spec)) {
     const raw = spec.strings.join("￿").trim();
     if (raw === "count(*)") return group.length;
+    const distinctMatch = /^count\(distinct ￿\)$/.exec(raw);
+    if (distinctMatch) {
+      const col = spec.exprs[0];
+      return new Set(group.map((rec) => resolveVal(col, rec))).size;
+    }
     throw new Error(`fake db: unsupported aggregate field ${raw}`);
   }
   return group.length ? resolveVal(spec, group[0]!) : undefined;
@@ -363,5 +368,107 @@ describe("getContactStats (wave-21 amendment: speakerCount's predicate)", () => 
     );
     const stats = await getContactStats(makeDb(seed), "org-1");
     expect(stats.speakerCount).toBe(1); // only c-control (org-1's own event)
+  });
+});
+
+// DEC-432/DEC-809 coverage: returningSpeakers/eventCount are computed by the
+// SAME speakerParticipationConditions(orgId) population as speakerCount --
+// returningSpeakers over a GROUP BY contact.id HAVING count(distinct
+// eventId) > 1, eventCount as the distinct-event count over that population.
+describe("getContactStats (DEC-432/DEC-809: returningSpeakers/eventCount)", () => {
+  it("counts an active speaker on two of this org's events once toward returningSpeakers", async () => {
+    // Base seed(): c-returning is an active speaker on event-1 and event-2;
+    // c-single is an active speaker on event-1 only.
+    const stats = await getContactStats(makeDb(seed()), "org-1");
+    expect(stats.returningSpeakers).toBe(1); // only c-returning
+  });
+
+  // seedControlPlus's own control contact (c-control) is itself an active
+  // speaker on both event-1 and event-2, so it always counts once toward
+  // returningSpeakers -- these cases assert the CASE contact adds nothing
+  // on top of that fixed baseline of 1.
+
+  it("does not count a speaker on exactly one event toward returningSpeakers", async () => {
+    const s = seedControlPlus(
+      { id: "c-single-event" },
+      [{ id: "p-case-1", submissionId: "sub-case-1", contactId: "c-single-event", role: "speaker", inviteStatus: "accepted" }],
+      [{ id: "sub-case-1", eventId: "event-1" }],
+    );
+    const stats = await getContactStats(makeDb(s), "org-1");
+    expect(stats.returningSpeakers).toBe(1); // only c-control
+  });
+
+  it("does not count a non-'speaker' participant role on two events toward returningSpeakers", async () => {
+    const s = seedControlPlus(
+      { id: "c-moderator-twice" },
+      [
+        { id: "p-case-1", submissionId: "sub-case-1", contactId: "c-moderator-twice", role: "moderator", inviteStatus: "accepted" },
+        { id: "p-case-2", submissionId: "sub-case-2", contactId: "c-moderator-twice", role: "moderator", inviteStatus: "accepted" },
+      ],
+      [
+        { id: "sub-case-1", eventId: "event-1" },
+        { id: "sub-case-2", eventId: "event-2" },
+      ],
+    );
+    const stats = await getContactStats(makeDb(s), "org-1");
+    expect(stats.returningSpeakers).toBe(1); // only c-control
+  });
+
+  it("does not count a 'declined'/'invited' participant on two events toward returningSpeakers", async () => {
+    const s = seedControlPlus(
+      { id: "c-declined-twice" },
+      [
+        { id: "p-case-1", submissionId: "sub-case-1", contactId: "c-declined-twice", role: "speaker", inviteStatus: "declined" },
+        { id: "p-case-2", submissionId: "sub-case-2", contactId: "c-declined-twice", role: "speaker", inviteStatus: "invited" },
+      ],
+      [
+        { id: "sub-case-1", eventId: "event-1" },
+        { id: "sub-case-2", eventId: "event-2" },
+      ],
+    );
+    const stats = await getContactStats(makeDb(s), "org-1");
+    expect(stats.returningSpeakers).toBe(1); // only c-control
+  });
+
+  it("does not count a speaker whose two events belong to another org", async () => {
+    const s = seedControlPlus(
+      { id: "c-otherorg-twice" },
+      [
+        { id: "p-case-1", submissionId: "sub-case-1", contactId: "c-otherorg-twice", role: "speaker", inviteStatus: "accepted" },
+        { id: "p-case-2", submissionId: "sub-case-2", contactId: "c-otherorg-twice", role: "speaker", inviteStatus: "accepted" },
+      ],
+      [
+        { id: "sub-case-1", eventId: "event-3" },
+        { id: "sub-case-2", eventId: "event-4" },
+      ],
+      [
+        { id: "event-3", orgId: "org-2" },
+        { id: "event-4", orgId: "org-2" },
+      ],
+    );
+    const stats = await getContactStats(makeDb(s), "org-1");
+    expect(stats.returningSpeakers).toBe(1); // only c-control
+  });
+
+  it("counts DISTINCT events, not participations, toward eventCount", async () => {
+    // Base seed(): c-returning is an active speaker on event-1 and event-2
+    // (two participations, two distinct events); c-single is an active
+    // speaker on event-1 (one more participation on an already-counted
+    // event). eventCount must stay 2, not 3.
+    const stats = await getContactStats(makeDb(seed()), "org-1");
+    expect(stats.eventCount).toBe(2);
+  });
+
+  it("excludes a non-speaker/declined/other-org participation from eventCount", async () => {
+    const s = seedControlPlus(
+      { id: "c-excluded" },
+      [{ id: "p-case-1", submissionId: "sub-case-1", contactId: "c-excluded", role: "moderator", inviteStatus: "accepted" }],
+      [{ id: "sub-case-1", eventId: "event-1" }],
+    );
+    const stats = await getContactStats(makeDb(s), "org-1");
+    // Only the control's two events (event-1, event-2) count; the excluded
+    // moderator's participation on event-1 (already counted by the control)
+    // adds nothing new.
+    expect(stats.eventCount).toBe(2);
   });
 });
