@@ -13,7 +13,7 @@ import type { FormFieldRow } from "../../../server/repo/forms";
 import { makeVisibilityPredicate } from "../../../forms/visibility";
 import type { AnswerMap } from "../../../forms/types";
 import { FormFieldsSection, FieldRulesScript } from "../../../views/form-render";
-import { ALLOWED_UPLOAD_EXTENSIONS, isValidFileKind, uploadHintText } from "../../../domain/files";
+import { allowedUploadExtensions, isValidFileKind, uploadHintText } from "../../../domain/files";
 import { CSRF_COOKIE_NAME } from "../../../auth/cookies";
 import { formatCalendarDate, formatEventDateTime } from "../../../lib/event-time";
 import { effectiveAssignmentDueDate } from "../../../domain/task-due";
@@ -142,6 +142,11 @@ export function TaskRow(props: {
   // effective due date, the same one the organizer's grid and the
   // reminder email already use.
   const effectiveDue = effectiveAssignmentDueDate(t.dueDate, t.assignedAt);
+  // Mirrors src/routes/portal/tasks.tsx's kind fallback (deliverableKind ??
+  // 'handout') so both the upload form and the replace form below advertise
+  // the same tier validateUpload actually enforces for this assignment
+  // (DEC-879 amendment, wave 10: one resolved kind, not two guesses).
+  const uploadKind = isValidFileKind(t.deliverableKind) ? t.deliverableKind : "handout";
   return (
     <div class="chq-portal-row" id={`task-${t.id}`}>
       <div class="chq-portal-row-head">
@@ -183,15 +188,12 @@ export function TaskRow(props: {
             <form method="post" action={`/portal/tasks/${t.id}/upload`} enctype="multipart/form-data">
               <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
               {deliverableChoice ? <DeliverableSelect info={deliverableChoice} /> : null}
-              {/* Mirrors src/routes/portal/tasks.tsx's kind fallback (deliverableKind
-                  ?? 'handout') so the hint's tier matches what validateUpload
-                  actually accepts for this assignment. */}
-              <p class="chq-portal-detail">{uploadHintText(isValidFileKind(t.deliverableKind) ? t.deliverableKind : "handout")}</p>
+              <p class="chq-portal-detail">{uploadHintText(uploadKind)}</p>
               <input
                 type="file"
                 name="file"
                 required
-                accept={ALLOWED_UPLOAD_EXTENSIONS.map((e) => `.${e}`).join(",")}
+                accept={allowedUploadExtensions(uploadKind).map((e) => `.${e}`).join(",")}
               />
               <button type="submit" class="chq-btn chq-btn-primary">Upload</button>
             </form>
@@ -214,12 +216,12 @@ export function TaskRow(props: {
           <form method="post" action={`/portal/tasks/${t.id}/upload`} enctype="multipart/form-data">
             <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
             {deliverableChoice ? <DeliverableSelect info={deliverableChoice} /> : null}
-            <p class="chq-portal-detail">{uploadHintText()}</p>
+            <p class="chq-portal-detail">{uploadHintText(uploadKind)}</p>
             <input
               type="file"
               name="file"
               required
-              accept={ALLOWED_UPLOAD_EXTENSIONS.map((e) => `.${e}`).join(",")}
+              accept={allowedUploadExtensions(uploadKind).map((e) => `.${e}`).join(",")}
             />
             <button type="submit" class="chq-btn chq-btn-secondary">Replace file</button>
           </form>

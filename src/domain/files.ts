@@ -61,15 +61,25 @@ const TEXT_MAX_BYTES = 25 * BYTES_PER_MB;
 // DEC-879: recordings are far larger than any other deliverable — 250 MB cap.
 export const VIDEO_MAX_BYTES = 250 * BYTES_PER_MB;
 
-/** Every extension validateUpload accepts, for UI hints (accept attr, help
- * text) — never used to bypass validateUpload itself, which stays the
- * single source of truth. */
-export const ALLOWED_UPLOAD_EXTENSIONS: readonly string[] = [
+const ALL_UPLOAD_EXTENSIONS: readonly string[] = [
   ...Object.keys(DOCUMENT_EXT_CONTENT_TYPE),
   ...Object.keys(IMAGE_EXT_CONTENT_TYPE),
   ...Object.keys(TEXT_EXT_CONTENT_TYPE),
   ...Object.keys(VIDEO_EXT_CONTENT_TYPE),
 ];
+
+/** Every extension validateUpload accepts for the given kind, for UI hints
+ * (accept attr, help text) — never used to bypass validateUpload itself,
+ * which stays the single source of truth. DEC-879: video is admitted only
+ * for the 'recording' kind — every other kind (and the no-kind-known case)
+ * excludes it, matching the tier validateUpload actually enforces. The ONE
+ * place this per-kind filter is applied (DEC-879 amendment, wave 10) —
+ * uploadHintText derives from this, not a second copy of the rule. */
+export function allowedUploadExtensions(kind?: FileKind): readonly string[] {
+  return kind === "recording"
+    ? ALL_UPLOAD_EXTENSIONS
+    : ALL_UPLOAD_EXTENSIONS.filter((e) => !(e in VIDEO_EXT_CONTENT_TYPE));
+}
 
 /** Human-readable summary of the upload allowlist + size caps, for form
  * field help text (DEC-020: 25 MB documents/text, 8 MB images; DEC-879:
@@ -79,10 +89,7 @@ export const ALLOWED_UPLOAD_EXTENSIONS: readonly string[] = [
  * a field bound to a specific FileKind) so the hint is per-tier honest;
  * omitted, it describes the non-video tiers only. */
 export function uploadHintText(kind?: FileKind): string {
-  const extensions =
-    kind === "recording"
-      ? ALLOWED_UPLOAD_EXTENSIONS
-      : ALLOWED_UPLOAD_EXTENSIONS.filter((e) => !(e in VIDEO_EXT_CONTENT_TYPE));
+  const extensions = allowedUploadExtensions(kind);
   const sizeNote =
     kind === "recording"
       ? "Max 25 MB (8 MB for images, 250 MB for recordings)."

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  ALLOWED_UPLOAD_EXTENSIONS,
+  allowedUploadExtensions,
   extname,
   FILE_KINDS,
   isImageContentType,
@@ -30,6 +30,35 @@ describe("uploadHintText", () => {
     const text = uploadHintText("recording");
     expect(text).toMatch(/mp4/);
     expect(text).toMatch(/250 MB/);
+  });
+});
+
+// w10-e (DEC-879 amendment): the accept attribute and the hint text must be
+// derived from the SAME per-kind filter — never two independent copies of
+// the video-is-recording-only rule.
+describe("allowedUploadExtensions", () => {
+  it("includes the video extensions for kind:'recording'", () => {
+    expect(allowedUploadExtensions("recording")).toEqual(expect.arrayContaining(["mp4", "mov", "webm"]));
+  });
+
+  it("excludes the video extensions for kind:'presentation'", () => {
+    const exts = allowedUploadExtensions("presentation");
+    expect(exts).not.toEqual(expect.arrayContaining(["mp4", "mov", "webm"]));
+  });
+
+  it("excludes the video extensions when no kind is given", () => {
+    const exts = allowedUploadExtensions();
+    expect(exts).not.toEqual(expect.arrayContaining(["mp4", "mov", "webm"]));
+  });
+
+  // Drives the comparison from the actual hint text (parsed), never a
+  // hand-written literal list — a fixture written to the answer cannot fail.
+  it("agrees with uploadHintText's extension list, for every kind and the no-kind case", () => {
+    for (const kind of [undefined, ...FILE_KINDS] as const) {
+      const hint = uploadHintText(kind);
+      const hintExts = Array.from(hint.matchAll(/\.([a-z0-9]+)/g)).map((m) => m[1]);
+      expect(new Set(hintExts)).toEqual(new Set(allowedUploadExtensions(kind)));
+    }
   });
 });
 
@@ -176,9 +205,9 @@ describe("validateUpload — recording (DEC-879)", () => {
     if (result.ok) expect(result.servedContentType).toBe("video/mp4");
   });
 
-  it("FILE_KINDS and ALLOWED_UPLOAD_EXTENSIONS both include the new members, derived not hand-typed", () => {
+  it("FILE_KINDS and allowedUploadExtensions('recording') both include the new members, derived not hand-typed", () => {
     expect(FILE_KINDS).toContain("recording");
-    expect(ALLOWED_UPLOAD_EXTENSIONS).toEqual(expect.arrayContaining(["mp4", "mov", "webm"]));
+    expect(allowedUploadExtensions("recording")).toEqual(expect.arrayContaining(["mp4", "mov", "webm"]));
   });
 
   it("accepts a large (240 MB) mp4 for kind:'recording', under the 250 MB cap", () => {

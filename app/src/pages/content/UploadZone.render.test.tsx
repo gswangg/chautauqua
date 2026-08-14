@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { UploadZone } from './UploadZone';
+import { allowedUploadExtensions } from '../../../../src/domain/files';
 
 afterEach(() => {
   cleanup();
@@ -63,5 +64,18 @@ describe('UploadZone', () => {
     expect(label).not.toBeNull();
     expect(label).toHaveTextContent('Drop a file to upload for the speaker');
     expect(label).toHaveTextContent(/PDF/i);
+  });
+
+  // w10-e (DEC-879 amendment): the accept attribute and the printed caps
+  // text must name the same per-kind extension set -- both derive from the
+  // one src/domain/files.ts filter, never a hand-copied second list.
+  it('the accept attribute and the caps text name the same extensions for kind:recording', () => {
+    render(<UploadZone kind="recording" onUpload={vi.fn()} />);
+    const input = screen.getByLabelText('Upload recording') as HTMLInputElement;
+    const acceptExts = input.accept.split(',').map((e) => e.replace(/^\./, ''));
+    expect(new Set(acceptExts)).toEqual(new Set(allowedUploadExtensions('recording')));
+    expect(input.accept).toContain('.mp4');
+    const caps = screen.getByText(/Allowed types/);
+    expect(caps).toHaveTextContent('.mp4');
   });
 });
