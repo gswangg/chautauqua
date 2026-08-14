@@ -10,6 +10,7 @@ import { TaskModal } from './TaskModal';
 import { ResponseModal } from './ResponseModal';
 import { RemindPreviewModal } from './RemindPreviewModal';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { EmptyState } from '../../components/EmptyState';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import { ParticipationMenu } from './ParticipationMenu';
 import { countOf } from '../../lib/plural';
@@ -345,6 +346,14 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   function handleFiltersChange(next: GridFilterState) {
     setFilters(next);
     setPage(1);
+  }
+
+  // DEC-678 amendment (B7, wave 47): the 'filtered' EmptyState's escape --
+  // resets exactly the four narrowing predicates hasActiveNarrowing reads
+  // (taskId/status/overdueOnly/inviteStatus), leaving free-text `q` alone
+  // since narrowingDescription never named it as a narrowing facet either.
+  function clearNarrowingFacets() {
+    handleFiltersChange({ ...filters, taskId: null, status: null, overdueOnly: false, inviteStatus: null });
   }
 
   const now = Date.now();
@@ -761,7 +770,28 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
 
       {loading && <PageSkeleton variant="table" />}
 
-      {!loading && grid && (
+      {/* DEC-678 amendment (B7, wave 47): a settled, zero-row grid never
+          parks a full <thead> (or the phone card list) over one
+          filtered-voice sentence -- 'filtered' iff hasActiveNarrowing is
+          true, read off the SAME filters/narrowingDescription the caption
+          above uses, so this message and that caption can never disagree.
+          'fresh' (no facet at all -- the roster has never held a row) never
+          claims a filter excluded anything. */}
+      {!loading && grid && visibleRows.length === 0 && (
+        <EmptyState
+          variant={hasActiveNarrowing(filters) ? 'filtered' : 'fresh'}
+          what={hasActiveNarrowing(filters) ? 'No speakers match the current filters.' : 'No speakers on the roster yet.'}
+          reason={
+            hasActiveNarrowing(filters)
+              ? narrowingDescription(filters, grid.tasks)
+              : 'Speakers appear here once a submission is accepted.'
+          }
+          action={null}
+          escape={hasActiveNarrowing(filters) ? { label: 'Clear filters', onClick: clearNarrowingFacets } : null}
+        />
+      )}
+
+      {!loading && grid && visibleRows.length > 0 && (
         <>
           <div className="chq-speakers-grid-wrap">
             <table className="chq-table chq-speakers-grid">
@@ -791,13 +821,6 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                 </tr>
               </thead>
               <tbody>
-                {visibleRows.length === 0 && (
-                  <tr>
-                    <td colSpan={1 + grid.tasks.length} className="chq-empty">
-                      No speakers match the current filters.
-                    </td>
-                  </tr>
-                )}
                 {visibleRows.map((row) => {
                   const notChased = notChasingStatus(row.contact);
                   const declinedOnly = isRowNotChased(row.contact);
@@ -908,7 +931,6 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
           </div>
 
           <div className="chq-speakers-cards">
-            {visibleRows.length === 0 && <p className="chq-empty">No speakers match the current filters.</p>}
             {visibleRows.map((row) => {
               const notChased = notChasingStatus(row.contact);
               const declinedOnly = isRowNotChased(row.contact);
