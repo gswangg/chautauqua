@@ -49,7 +49,7 @@ vi.mock("../src/server/repo/review", async () => {
     ),
     resolveReviewerSubmissions: vi.fn(async () => SUBMISSIONS),
     listEvaluationsForPlan: vi.fn(async () => []),
-    countCompletedByReviewerForPlan: vi.fn(async () => new Map()),
+    listEvaluatedPairsForPlan: vi.fn(async () => []),
     countEvaluationsBySubmission: vi.fn(async () => new Map()),
     listSubmissionIdsRatedBy: vi.fn(async () => new Set<string>()),
     listEvaluationScoresForReviewer: vi.fn(async () => new Map()),

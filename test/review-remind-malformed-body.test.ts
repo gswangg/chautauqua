@@ -47,7 +47,7 @@ vi.mock("../src/server/repo/review", async () => {
     listReviewerRowsForPlan: vi.fn(async () => REVIEWER_ROWS),
     getUsersByIds: vi.fn(async () => USERS),
     batchUserDisplayNames: vi.fn(async () => new Map()),
-    countCompletedByReviewerForPlan: vi.fn(async () => new Map()),
+    listEvaluatedPairsForPlan: vi.fn(async () => []),
     listPlanFilteredSubmissions: vi.fn(async () => []),
   };
 });

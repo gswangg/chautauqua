@@ -42,6 +42,10 @@ export interface ListEnvelope<T> {
   // apiList<T> callers' endpoints don't return these.
   contentStatusCounts?: { pending: number; approved: number; changes_requested: number };
   reuploadedCount?: number;
+  // DEC-745 (wave-72 amendment): present on GET /plans/:id/progress only --
+  // the plan editor's cap row reads its talks/reviews/reviewers summary off
+  // this ONE number rather than re-deriving it client-side.
+  submissionsInScope?: number;
 }
 
 function isApiErrorBody(body: unknown): body is ApiErrorBody {

@@ -89,14 +89,23 @@ function isPlanOpenNow(openAt: number | null, closeAt: number | null, now: numbe
 // preview payload the editor already has, never a second fetch. `talks` is
 // the distinct submissions this run touches (items ∪ shortfall); `reviews`
 // is talks × the plan's own reviews-per-talk setting.
-function distributeSummaryLine(preview: DistributePreview, reviewsPerTalk: number): string {
-  const talkIds = new Set<string>();
-  for (const item of preview.items) talkIds.add(item.submissionId);
-  for (const s of preview.shortfall) talkIds.add(s.submissionId);
-  const talks = talkIds.size;
+// DEC-840 wave-51 / DEC-745 wave-72: the ONE "N talks · M reviews needed at
+// K each · R reviewers" grammar -- both the confirm panel's post-preview
+// summary and the persistent cap row's pre-click summary read through this,
+// never a second wording of the same sentence.
+function distributeSummaryText(talks: number, reviewsPerTalk: number, reviewers: number): string {
   const reviewsNeeded = talks * reviewsPerTalk;
-  const reviewers = preview.perReviewer.length;
   return `${countOf(talks, 'talk')} · ${countOf(reviewsNeeded, 'review')} needed at ${reviewsPerTalk} each · ${countOf(reviewers, 'reviewer')}`;
+}
+
+// DEC-745 (wave-72 amendment): the persistent cap row's summary before any
+// Distribute click -- fed from the progress endpoint's submissionsInScope +
+// the plan's own reviews-per-talk + the reviewer roster already on the
+// page, through the SAME distributeSummaryText grammar. DEC-745 also
+// retires the confirm panel's own copy of this line (it repeated the cap
+// row, DEC-840 wave-51) -- this is now the ONE place the sentence renders.
+function capRowSummaryLine(submissionsInScope: number, reviewsPerTalk: number, reviewerCount: number): string {
+  return distributeSummaryText(submissionsInScope, reviewsPerTalk, reviewerCount);
 }
 
 // DEC-840: a reviewer the run could not use is LISTED with its reason,
@@ -171,6 +180,11 @@ export function PlanEditor() {
   // assigned/completed aggregate ProgressPanel already renders, joined by
   // userId -- never a second count derived here.
   const [progressRows, setProgressRows] = useState<ProgressRow[]>([]);
+  // DEC-745 (wave-72 amendment): the persistent cap row's summary reads off
+  // GET /plans/:id/progress's submissionsInScope -- the SAME plan-filtered
+  // count the server already loads for assignment resolution, never a
+  // client-side re-derivation.
+  const [submissionsInScope, setSubmissionsInScope] = useState<number | null>(null);
 
   // DEC-147: 0 = editing the base criteria; a round number 1..rounds means
   // editing that round's override (or "inherit base" when no override key
@@ -333,7 +347,10 @@ export function PlanEditor() {
         // still loaded, so don't block the page on this failing.
       });
     apiList<ProgressRow>(`/plans/${planId}/progress`)
-      .then((res) => setProgressRows(res.items))
+      .then((res) => {
+        setProgressRows(res.items);
+        setSubmissionsInScope(res.submissionsInScope ?? null);
+      })
       .catch(() => {
         // Same non-blocking treatment -- rows still render with a bare
         // email/no load count if this fails.
@@ -1400,6 +1417,13 @@ export function PlanEditor() {
               >
                 {assignFormOpen ? 'Close' : 'Assign a reviewer'}
               </button>
+            </div>
+            {/* DEC-745 (wave-72 amendment): frame 05's PERSISTENT row --
+                cap input, Distribute (a real button; it opens a preview,
+                which is an action, never a text link), and the run's shape
+                as one summary line -- lives below the section rule so the
+                organiser can read it before ever clicking Distribute. */}
+            <div className="chq-review-cap-row">
               {/* DEC-824: the cap is a parameter of THIS RUN -- typed here,
                   repeated byte-identically on the preview and the apply. */}
               <label className="chq-review-cap-input">
@@ -1413,18 +1437,24 @@ export function PlanEditor() {
                   onChange={(e) => setCapPerReviewerInput(e.target.value)}
                   placeholder="No cap"
                 />
+                <span>talks each</span>
               </label>
               {/* DEC-786: preview-then-confirm, matching the "Assign a
                   reviewer" link pattern -- zero non-GET requests before the
                   explicit confirm below. */}
               <button
                 type="button"
-                className="chq-link-button chq-section-action"
+                className="chq-btn chq-btn-secondary"
                 disabled={distributeLoading}
                 onClick={openDistributePreview}
               >
                 {distributeLoading ? 'Loading…' : 'Distribute the unassigned'}
               </button>
+              {submissionsInScope !== null && (
+                <span className="chq-review-distribute-summary">
+                  {capRowSummaryLine(submissionsInScope, draft.maxEvaluationsPerSubmission ?? 1, reviewers.length)}
+                </span>
+              )}
             </div>
             {/* wave 49/DEC-745 amendment: the split between drafted FIELDS
                 (Save-gated) and immediate ACTIONS is legible right on the
@@ -1491,19 +1521,11 @@ export function PlanEditor() {
                     {distributePreview.totalAssigned === 0 && (
                       <p>This run can't assign any talks.</p>
                     )}
-                    {/* frame 03: the cap row -- CAP PER REVIEWER [n] talks each,
-                        echoing distributePreview.cap (DEC-840 byte-identical
-                        value), never a re-derivation from the live input. */}
-                    <div className="chq-review-distribute-cap-row">
-                      <span className="chq-review-results-eyebrow">Cap per reviewer</span>
-                      <span className="chq-review-distribute-cap-value">
-                        {distributePreview.cap !== null ? distributePreview.cap : 'No cap'}
-                      </span>
-                      {distributePreview.cap !== null && <span>talks each</span>}
-                    </div>
-                    <p className="chq-review-distribute-summary">
-                      {distributeSummaryLine(distributePreview, draft.maxEvaluationsPerSubmission ?? 1)}
-                    </p>
+                    {/* DEC-745 (wave-72 amendment): the cap row and the
+                        summary now live ONCE, in the persistent row above
+                        the section rule -- the confirm panel is not a
+                        second opinion about the run's shape, just the
+                        per-reviewer detail table. */}
                     <table className="chq-review-results-table chq-review-distribute-table">
                       <thead>
                         <tr>

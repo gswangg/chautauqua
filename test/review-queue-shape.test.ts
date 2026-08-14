@@ -54,7 +54,7 @@ vi.mock("../src/server/repo/review", async () => {
     listEvaluationsForPlan: vi.fn(async () => [
       { submissionId: "sub-1", reviewerId: "someone-else", round: 1 },
     ]),
-    countCompletedByReviewerForPlan: vi.fn(async () => new Map([["someone-else", 1]])),
+    listEvaluatedPairsForPlan: vi.fn(async () => [{ reviewerId: "someone-else", submissionId: "sub-x" }]),
     // DEC-346: the queue route now sources counts/ratedByMe from these SQL
     // aggregates instead of listEvaluationsForPlan + a JS reduce.
     countEvaluationsBySubmission: vi.fn(async () => new Map([["sub-1", 1]])),

@@ -923,6 +923,42 @@ describe('PlanEditor render smoke', () => {
     expect(screen.getByText('Name is required.')).toBeInTheDocument();
   });
 
+  // DEC-745 (wave-72 amendment): frame 05's persistent row -- CAP PER
+  // REVIEWER [8] talks each  [Distribute the unassigned]  N talks · M
+  // reviews needed at K each · R reviewers -- renders below the section
+  // rule BEFORE any Distribute click, reading its summary off GET
+  // /plans/:id/progress's submissionsInScope (never a preview payload), and
+  // Distribute is a real button (chq-btn), not a text link.
+  it('renders the persistent cap row with its summary before any Distribute click, and Distribute is a real button', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([
+        { id: 'pr-1', planId: PLAN_ID, userId: 'u1', email: 'ada@example.test', trackId: null, trackName: null, submissionId: null, submissionRef: null, submissionTitle: null },
+      ]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([], { submissionsInScope: 18 }),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Who reviews what')).toBeInTheDocument());
+    // 18 submissions in scope x reviewsPerTalk 1 (plan().maxEvaluations is
+    // null) = 18 reviews needed, at the one reviewer on the roster --
+    // visible with NO click on Distribute.
+    expect(await screen.findByText('18 talks · 18 reviews needed at 1 each · 1 reviewer')).toBeInTheDocument();
+
+    const distributeButton = screen.getByRole('button', { name: 'Distribute the unassigned' });
+    expect(distributeButton.className).toContain('chq-btn');
+    expect(distributeButton.className).not.toContain('chq-link-button');
+  });
+
   it('DEC-840: distribute confirm dialog states the total, each reviewer\'s change, the shortfall sentence naming the constraint and track, and lists an unchanged reviewer with its reason', async () => {
     let distributePosted = false;
     const fetchMock = mockApi({
@@ -962,11 +998,10 @@ describe('PlanEditor render smoke', () => {
     // Zero non-GET requests before confirm (DEC-786). The link is renamed
     // (DEC-840): it fills the unassigned pool, it does not level load.
     fireEvent.click(screen.getByRole('button', { name: 'Distribute the unassigned' }));
-    // frame 03 (w51/DEC-840 amendment): the summary line names talks,
-    // reviews needed and reviewers -- items ∪ shortfall's distinct
-    // submissions (s1, s9) is 2 talks, at the plan's own reviews-per-talk
-    // (unset here, so 1 each).
-    await waitFor(() => expect(screen.getByText('2 talks · 2 reviews needed at 1 each · 2 reviewers')).toBeInTheDocument());
+    // DEC-745 (wave-72 amendment): the summary line now lives ONCE, in the
+    // persistent cap row above the section rule -- the confirm dialog no
+    // longer repeats it.
+    await waitFor(() => expect(screen.getByRole('alertdialog', { name: 'Confirm even distribution' })).toBeInTheDocument());
     expect(distributePosted).toBe(false);
 
     // Each reviewer's change, unchanged reviewers listed with their reason
@@ -997,10 +1032,11 @@ describe('PlanEditor render smoke', () => {
     expect(JSON.parse(applyInit?.body as string)).toEqual({ cap: null });
   });
 
-  // w51/DEC-840 amendment: frame 03's cap row -- CAP PER REVIEWER [n] talks
-  // each -- echoes the preview's own cap, and the zero case still renders
+  // w51/DEC-840 amendment, retired by DEC-745 wave-72: the confirm
+  // dialog's own cap row/summary are gone (they live once, in the
+  // persistent row above the section rule) -- the zero case still renders
   // as a bare sentence with no table.
-  it('renders the cap row with the preview-echoed cap, and the zero case as a bare sentence', async () => {
+  it('renders the zero case as a bare sentence with no table', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/plans/${PLAN_ID}`]: { ...plan(), maxEvaluations: 2 },
@@ -1034,7 +1070,6 @@ describe('PlanEditor render smoke', () => {
       ).toBeInTheDocument(),
     );
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
-    expect(screen.queryByText('talks each')).not.toBeInTheDocument();
   });
 
   // w52/DEC-840 amendment: totalAssigned === 0 with a non-empty shortfall is
@@ -1080,13 +1115,10 @@ describe('PlanEditor render smoke', () => {
       screen.queryByText('Every submission already has enough reviewers -- nothing to distribute.'),
     ).not.toBeInTheDocument();
 
-    // Frame-03 anatomy: cap row, summary line, reviewer table -- same as the
-    // non-empty case. Scoped to the dialog since "Cap per reviewer" also
-    // labels the plan's own cap-input field elsewhere on the page.
+    // DEC-745 (wave-72 amendment): the dialog itself carries only the
+    // per-reviewer table now -- the cap row/summary line live once, in the
+    // persistent row above the section rule.
     const dialog = screen.getByRole('alertdialog', { name: 'Confirm even distribution' });
-    expect(within(dialog).getByText('Cap per reviewer')).toBeInTheDocument();
-    expect(within(dialog).getByText('5')).toBeInTheDocument();
-    expect(within(dialog).getByText('talks each')).toBeInTheDocument();
     expect(within(dialog).getByRole('table')).toBeInTheDocument();
     expect(within(dialog).getByText('Grace Hopper')).toBeInTheDocument();
     expect(within(dialog).getByText('AI Engineering')).toBeInTheDocument();

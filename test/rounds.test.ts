@@ -91,14 +91,11 @@ vi.mock("../src/server/repo/review", async () => {
         .filter((e) => e.planId === planId && e.round === round)
         .map((e) => ({ submissionId: e.submissionId, scores: e.scores })),
     ),
-    countCompletedByReviewerForPlan: vi.fn(async (_db: unknown, planId: string, round: number) => {
-      const counts = new Map<string, number>();
-      for (const e of evaluations) {
-        if (e.planId !== planId || e.round !== round) continue;
-        counts.set(e.reviewerId, (counts.get(e.reviewerId) ?? 0) + 1);
-      }
-      return counts;
-    }),
+    listEvaluatedPairsForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
+      evaluations
+        .filter((e) => e.planId === planId && e.round === round)
+        .map((e) => ({ reviewerId: e.reviewerId, submissionId: e.submissionId })),
+    ),
     // DEC-346: the queue route sources counts/ratedByMe from these SQL
     // aggregates -- derive them from the same fixture list.
     countEvaluationsBySubmission: vi.fn(async (_db: unknown, planId: string, round: number) => {

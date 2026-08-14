@@ -121,7 +121,7 @@ describe("POST /api/v1/plans/:id/remind logs contactId: null (DEC-191)", () => {
         // DEC-526: /remind now excludes recused submissions the same way
         // /progress does (assignedExcludingRecused) -- no recusals here.
         listRecusalsForPlan: vi.fn(async () => []),
-        countCompletedByReviewerForPlan: vi.fn(async () => new Map()),
+        listEvaluatedPairsForPlan: vi.fn(async () => []),
         listPlanFilteredSubmissions: vi.fn(async () => [submission]),
         // DEC-707 (wave-61 amendment): /remind resolves the recipient's
         // display name through the same batched helper /progress uses, so
