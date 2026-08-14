@@ -333,6 +333,12 @@ function AgendaDay(props: {
   // grid's own block markup (owned separately) has the value it needs to
   // apply the highlight/muted class per block. Not consumed here.
   highlightTrackId?: string | null;
+  // DEC-768 (wave 67 amendment): the single-day-default /agenda page now
+  // names the day exactly once, on the page's own <h1> heading row (see
+  // AgendaContent) -- this per-day heading is only still needed on a
+  // multi-day render (e.g. an out-of-scope future caller), so AgendaContent
+  // passes hideHeading=true whenever it renders exactly one day.
+  hideHeading?: boolean;
 }) {
   // DEC-584 (wave 64 amendment): the heading names the day's own density
   // ("<Weekday D Month> · N sessions · M rooms") rather than the bare day
@@ -343,10 +349,14 @@ function AgendaDay(props: {
   return (
     <div id={`chq-day-${props.day}`}>
       {/* DEC-768: the ONE heading for this day, owned here -- neither
-          AgendaDayGrid nor AgendaItemList renders its own anymore. */}
-      <h3>
-        {formatDay(props.day)} · {props.items.length} {plural(props.items.length, "session")} · {roomCount} {plural(roomCount, "room")}
-      </h3>
+          AgendaDayGrid nor AgendaItemList renders its own anymore. Suppressed
+          (wave 67 amendment) when AgendaContent already named the day once on
+          the page's own <h1>. */}
+      {props.hideHeading ? null : (
+        <h3>
+          {formatDay(props.day)} · {props.items.length} {plural(props.items.length, "session")} · {roomCount} {plural(roomCount, "room")}
+        </h3>
+      )}
       <div class="chq-pub-agenda-desktop">
         <AgendaDayGrid {...props} />
       </div>
@@ -538,9 +548,44 @@ export function AgendaContent(props: {
   const days = props.allDays ?? [...renderedDays];
   const base: SurfaceBase = props.embed ? "/embed" : "/e";
   const basePath = surfacePath(props.event, "agenda", base);
+  // DEC-768 (wave 67 amendment): /agenda renders ONE day at a time -- the
+  // dispatch layer already scoped `items`/`total` to `activeDay` (the
+  // requested ?day= or, absent that, the first day with scheduled sessions),
+  // so `renderedDays` here is 0 or 1 entries, never the whole event stacked.
+  const activeDay = props.activeDay ?? null;
+  const activeDayItems = activeDay ? (byDay.get(activeDay) ?? []) : [];
+  // Task spec: M is the count of DISTINCT NON-NULL room names on the active
+  // day (deliberately not AgendaDay's own roomCount, which also counts an
+  // unassigned "tbd" bucket as a room -- the page heading counts only rooms
+  // that actually have a name).
+  const roomCount = new Set(activeDayItems.map((i) => i.roomName).filter((n): n is string => n !== null)).size;
+  // The per-day <h3> AgendaDay renders is redundant once the page names the
+  // day exactly once on this heading row -- suppressed whenever exactly one
+  // day is rendered (always true on the current single-day-default surface).
+  const hideDayHeading = renderedDays.size <= 1;
+  const activeDayIndex = activeDay ? days.indexOf(activeDay) : -1;
+  const nextDay = activeDayIndex >= 0 && activeDayIndex < days.length - 1 ? days[activeDayIndex + 1] : null;
+  const lastEndMin = activeDayItems.length > 0 ? Math.max(...activeDayItems.map((i) => i.endMin)) : null;
+  const switcherCurrent = { trackId: props.highlightTrackId ?? null, q: props.q ?? null };
   return (
     <>
-      <h1 class="chq-pub-surface-title">Agenda</h1>
+      <div class="chq-pub-title-row chq-pub-agenda-heading-row">
+        <h1 class="chq-pub-surface-title">
+          {activeDay
+            ? `${formatDay(activeDay)} · ${activeDayItems.length} ${plural(activeDayItems.length, "session")} · ${roomCount} ${plural(roomCount, "room")}`
+            : "Agenda"}
+        </h1>
+        <DaySwitcher
+          days={days}
+          renderedDays={renderedDays}
+          event={props.event}
+          surface="agenda"
+          base={base}
+          activeDay={props.activeDay}
+          trackId={props.highlightTrackId}
+          q={props.q}
+        />
+      </div>
       <ItinerarySearchForm
         event={props.event}
         tracks={props.tracks ?? []}
@@ -550,7 +595,13 @@ export function AgendaContent(props: {
         basePath={basePath}
       />
       {byDay.size === 0 ? (
-        <p>No sessions scheduled yet.</p>
+        // DEC-768: an honest empty state distinguishes "this day has no
+        // matches for your search" (activeDay is set, the event DOES have a
+        // schedule) from "nothing is scheduled at all" (no activeDay exists
+        // because getPublicScheduleDayCounts came back empty) -- never claim
+        // the event has no schedule just because a search narrowed one day
+        // to zero rows.
+        <p>{activeDay ? `No sessions match your search on ${formatDay(activeDay)}.` : "No sessions scheduled yet."}</p>
       ) : (
         <>
           {props.items.length < props.total ? (
@@ -558,16 +609,6 @@ export function AgendaContent(props: {
               Showing the first {props.items.length} of {props.total} scheduled sessions.
             </p>
           ) : null}
-          <DaySwitcher
-            days={days}
-            renderedDays={renderedDays}
-            event={props.event}
-            surface="agenda"
-            base={base}
-            activeDay={props.activeDay}
-            trackId={props.highlightTrackId}
-            q={props.q}
-          />
           {[...renderedDays].map((day) => (
             <AgendaDay
               day={day}
@@ -577,8 +618,15 @@ export function AgendaContent(props: {
               base={base}
               breaks={props.breaksByDay?.get(day) ?? []}
               highlightTrackId={props.highlightTrackId ?? null}
+              hideHeading={hideDayHeading}
             />
           ))}
+          {nextDay && lastEndMin !== null ? (
+            <p class="chq-pub-agenda-day-footer">
+              Last session ends {formatMinutes(lastEndMin)} ·{" "}
+              <a href={`${basePath}${agendaQs(switcherCurrent, { day: nextDay })}`}>{formatDay(nextDay)} ›</a>
+            </p>
+          ) : null}
         </>
       )}
     </>

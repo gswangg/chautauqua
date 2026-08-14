@@ -11,6 +11,17 @@
 // as DEC-851 ruled and the knob table is unchanged; day/q parity between the
 // page and its twin is unaffected and still asserted below.
 //
+// DEC-768's wave-67 amendment further narrows the /agenda HTML page's own
+// default: it now renders ONE day at a time (the first day with scheduled
+// sessions), while its .json/.xml twins are unchanged and still answer for
+// the WHOLE event unless ?day= is given. So the generic "HTML row count ==
+// .json total" parity claim below no longer holds for /agenda at its
+// no-day-given default (`qs: ""` and `qs: "?q=talk"`) — those two cases are
+// asserted separately, against the day-scoped expectation, with the feed's
+// whole-event `total` kept as a contrasting figure rather than deleted.
+// Every other case (`?day=`, which already pinned a single day pre-
+// amendment, and every `sessions`/`schedule` case) is untouched.
+//
 // Repo functions (getPublicSessions/getPublicAgenda) are mocked here to a
 // deterministic in-memory filter — the SQL-level predicate itself is
 // already covered by test/public-format.test.ts, test/public-day-filter.
@@ -207,9 +218,12 @@ describe("DEC-851: one filter contract — HTML dispatch and the .json feed agre
     // agenda facet at all, so the HTML page there deliberately renders MORE
     // rows than the filtered feed. Those four cases are asserted separately
     // below; day/q/no-knob parity is untouched by the amendment.
-    { surface: "agenda", qs: "" },
+    //
+    // DEC-768's wave-67 amendment further removes `{ surface: "agenda", qs:
+    // "" }` and `{ surface: "agenda", qs: "?q=talk" }` from this generic
+    // loop (see the file-header comment above) — asserted separately below
+    // against the day-scoped expectation instead.
     { surface: "agenda", qs: "?day=2026-08-10" },
-    { surface: "agenda", qs: "?q=talk" },
     { surface: "schedule", qs: "" },
     { surface: "schedule", qs: "?day=2026-08-10" },
     { surface: "schedule", qs: "?q=talk" },
@@ -228,6 +242,44 @@ describe("DEC-851: one filter contract — HTML dispatch and the .json feed agre
   }
 });
 
+// DEC-768 (wave 67 amendment): the two cases the amendment pulled out of the
+// generic loop above — /agenda's no-day-given default now renders only the
+// first day with sessions (2026-08-10: s1 + s2), while the .json twin's
+// `total` stays a whole-event figure (unaffected by the amendment, per its
+// own ruling that only the two HTML surfaces changed). The two totals are
+// deliberately DIFFERENT now; both are asserted so the divergence is pinned
+// rather than silently reintroduced.
+describe("DEC-768 (wave 67 amendment): /agenda's single-day default vs the .json twin's whole-event total", () => {
+  it("qs=\"\" — the HTML page renders only the first day's rows; the .json twin's total stays the whole-event count", async () => {
+    installFakeCaches();
+    const app = buildApp();
+    const htmlRes = await app.request("/e/conf/agenda", {}, TEST_ENV);
+    const html = await htmlRes.text();
+    installFakeCaches();
+    const jsonTotalValue = await jsonTotal(app, "/embed/conf/agenda.json");
+    const firstDayCount = RAW_SESSIONS.filter((r) => r.day === "2026-08-10").length;
+    expect(countHtmlRows(html, "agenda")).toBe(firstDayCount);
+    expect(jsonTotalValue).toBe(RAW_SESSIONS.length);
+    expect(countHtmlRows(html, "agenda")).toBeLessThan(jsonTotalValue);
+  });
+
+  it("qs=\"?q=talk\" — the search narrows the FIRST day's rows (0 matches there), while the .json twin's total searches the whole event (1 match, on the second day)", async () => {
+    installFakeCaches();
+    const app = buildApp();
+    const htmlRes = await app.request("/e/conf/agenda?q=talk", {}, TEST_ENV);
+    const html = await htmlRes.text();
+    installFakeCaches();
+    const jsonTotalValue = await jsonTotal(app, "/embed/conf/agenda.json?q=talk");
+    // "Gamma Talk" (s3) is the only q=talk match, and it lives on
+    // 2026-08-11 — the day AFTER the default first day, so the HTML page
+    // (scoped to 2026-08-10) shows zero matches while the whole-event .json
+    // feed still finds it.
+    expect(countHtmlRows(html, "agenda")).toBe(0);
+    expect(jsonTotalValue).toBe(1);
+    expect(html).toContain("No sessions match your search");
+  });
+});
+
 describe("DEC-851: /embed/:slug/agenda.json?trackId= no longer returns the unfiltered agenda", () => {
   it("a trackId-filtered .json total is strictly less than the unfiltered total", async () => {
     installFakeCaches();
@@ -244,24 +296,36 @@ describe("DEC-851: /embed/:slug/agenda.json?trackId= no longer returns the unfil
   // filters, so every session stays on screen (an attendee following one
   // track still needs to see what they are giving up at 10:00). The feed is
   // a data export, not a schedule rendering, and keeps DEC-851's predicate.
-  it("the HTML page at the identical query renders EVERY row (highlight, not filter) while the .json twin stays filtered", async () => {
+  // DEC-768 wave-67 amendment: /agenda now renders one DAY at a time, so
+  // "every row" means every row of the day in view, not the whole event —
+  // this case pins an explicit ?day= (rather than relying on the default-day
+  // pick) so the highlight-vs-filter claim stays legible regardless of which
+  // day the mocked getPublicScheduleDayCounts would otherwise pick first.
+  it("the HTML page at the identical query renders EVERY row of the day in view (highlight, not filter) while the .json twin stays filtered", async () => {
     installFakeCaches();
     const app = buildApp();
-    const htmlRes = await app.request("/e/conf/agenda?trackId=trk-a", {}, TEST_ENV);
+    const htmlRes = await app.request("/e/conf/agenda?day=2026-08-10&trackId=trk-a", {}, TEST_ENV);
     const html = await htmlRes.text();
     installFakeCaches();
-    const jsonTotalValue = await jsonTotal(app, "/embed/conf/agenda.json?trackId=trk-a");
-    expect(countHtmlRows(html, "agenda")).toBe(RAW_SESSIONS.length);
-    expect(jsonTotalValue).toBe(RAW_SESSIONS.filter((r) => r.trackId === "trk-a").length);
+    const jsonTotalValue = await jsonTotal(app, "/embed/conf/agenda.json?day=2026-08-10&trackId=trk-a");
+    const day10Count = RAW_SESSIONS.filter((r) => r.day === "2026-08-10").length;
+    const day10TrackACount = RAW_SESSIONS.filter((r) => r.day === "2026-08-10" && r.trackId === "trk-a").length;
+    expect(countHtmlRows(html, "agenda")).toBe(day10Count);
+    expect(jsonTotalValue).toBe(day10TrackACount);
+    expect(jsonTotalValue).toBeLessThan(day10Count);
   });
 
   it("the HTML page ignores ?format= entirely (not an agenda facet) on both itinerary surfaces", async () => {
+    // DEC-768 wave-67 amendment: /agenda's default view is scoped to the
+    // first day with sessions (2 of the 3 RAW_SESSIONS, both on
+    // 2026-08-10); /schedule is untouched and still lists every day.
+    const expectedBySurface = { agenda: RAW_SESSIONS.filter((r) => r.day === "2026-08-10").length, schedule: RAW_SESSIONS.length };
     for (const surface of ["agenda", "schedule"] as const) {
       installFakeCaches();
       const app = buildApp();
       const htmlRes = await app.request(`/e/conf/${surface}?format=talk`, {}, TEST_ENV);
       const html = await htmlRes.text();
-      expect(countHtmlRows(html, surface)).toBe(RAW_SESSIONS.length);
+      expect(countHtmlRows(html, surface)).toBe(expectedBySurface[surface]);
     }
   });
 });
