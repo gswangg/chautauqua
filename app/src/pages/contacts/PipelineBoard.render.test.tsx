@@ -6,20 +6,45 @@
 //
 // w2-e redesign note: the board now also renders a phone-width duplicate of
 // each card (CSS-only media-query swap, DEC-375 "client-state swap"), so
-// jsdom (which ignores media queries) sees each entry's name/Move-to select
-// TWICE (phone only, post w2-b -- see below). Queries below are scoped with
-// `within()` to the desktop `.chq-contacts-pipeline-columns` grid to keep
-// single-match assertions meaningful.
+// jsdom (which ignores media queries) sees each entry's name button TWICE
+// (desktop + phone). Queries below are scoped with `within()` to the
+// desktop `.chq-contacts-pipeline-columns` grid to keep single-match
+// assertions meaningful.
 //
 // DEC-157 amendment (w2-b): the desktop card is drag-only -- its per-card
 // stage <select> moved into EntryDetailPanel (still the same moveTo/doMove
-// PATCH path, decline prompt included). The phone strip's per-card select is
-// unchanged and out of scope.
+// PATCH path, decline prompt included).
+//
+// w4-c/DEC-898 amendment (wave 4): the phone strip's own per-card 'Move to'
+// select is gone too -- the card face (desktop and phone) carries no stage
+// control at all now; both name buttons name the person AND their current
+// stage (accessible name), and open the same EntryDetailPanel Stage select.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { PipelineBoard } from './PipelineBoard';
 import { mockApi, listEnvelope, errorEnvelope } from '../../test-utils/mockApi';
+
+// w4-c/DEC-898 amendment: the board's own '‹ Contacts' back link reads/
+// writes the ?tab= URL param (DEC-710), so it needs a Router ancestor --
+// same MemoryRouter-wrapping convention DuplicatesView.render.test.tsx uses
+// for its own react-router-dom Link. LocationProbe surfaces the current
+// search string as text so a click on the back link is observable without
+// reaching into MemoryRouter's private in-memory history.
+function LocationProbe() {
+  const location = useLocation();
+  return <div data-testid="location-search">{location.search}</div>;
+}
+
+function renderBoard() {
+  return render(
+    <MemoryRouter initialEntries={['/contacts?tab=pipeline']}>
+      <LocationProbe />
+      <PipelineBoard />
+    </MemoryRouter>,
+  );
+}
 
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
@@ -72,7 +97,7 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
       'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED, ENTRY_CONTACTED]),
     });
 
-    render(<PipelineBoard />);
+    renderBoard();
 
     await waitFor(() => {
       expect(within(desktopBoard()).getByText('Ada Lovelace')).toBeInTheDocument();
@@ -105,9 +130,9 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
       'PATCH /api/v1/pipeline/entry-1': { ...ENTRY_IDENTIFIED, stage: 'contacted', updatedAt: 3000 },
     });
 
-    render(<PipelineBoard />);
+    renderBoard();
     await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
-    fireEvent.click(within(desktopBoard()).getAllByRole('button', { name: 'Ada Lovelace' })[0]!);
+    fireEvent.click(within(desktopBoard()).getAllByRole('button', { name: /Ada Lovelace/ })[0]!);
 
     const dialog = await screen.findByRole('dialog', { name: 'Pipeline card detail' });
     const select = within(dialog).getByLabelText('Stage') as HTMLSelectElement;
@@ -128,9 +153,9 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
       'PATCH /api/v1/pipeline/entry-1': { status: 409, body: errorEnvelope('conflict', 'Move failed') },
     });
 
-    render(<PipelineBoard />);
+    renderBoard();
     await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
-    fireEvent.click(within(desktopBoard()).getAllByRole('button', { name: 'Ada Lovelace' })[0]!);
+    fireEvent.click(within(desktopBoard()).getAllByRole('button', { name: /Ada Lovelace/ })[0]!);
 
     const dialog = await screen.findByRole('dialog', { name: 'Pipeline card detail' });
     const select = within(dialog).getByLabelText('Stage') as HTMLSelectElement;
@@ -192,10 +217,10 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
       },
     });
 
-    render(<PipelineBoard />);
+    renderBoard();
     await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
 
-    fireEvent.click(within(desktopBoard()).getAllByRole('button', { name: 'Ada Lovelace' })[0]!);
+    fireEvent.click(within(desktopBoard()).getAllByRole('button', { name: /Ada Lovelace/ })[0]!);
 
     await waitFor(() => {
       expect(screen.getByText(/Moved Enrolled/)).toBeInTheDocument();
@@ -236,10 +261,10 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
       },
     });
 
-    render(<PipelineBoard />);
+    renderBoard();
 
     await waitFor(() => {
-      expect(screen.getByText('7 people')).toBeInTheDocument();
+      expect(screen.getByText('7 people - drag between columns')).toBeInTheDocument();
     });
 
     const loadMore = screen.getByRole('button', { name: 'Load more' });
@@ -260,7 +285,7 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
     expect(within(desktopBoard()).getByText('Grace Hopper')).toBeInTheDocument();
     expect(within(desktopBoard()).getByText('Alan Turing')).toBeInTheDocument();
     expect(within(desktopBoard()).getByText('Katherine Johnson')).toBeInTheDocument();
-    expect(screen.getByText('7 people')).toBeInTheDocument();
+    expect(screen.getByText('7 people - drag between columns')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Load more' })).toBeInTheDocument();
 
     expect(consoleErrorSpy).not.toHaveBeenCalled();
@@ -271,10 +296,10 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
       'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED, ENTRY_CONTACTED]),
     });
 
-    render(<PipelineBoard />);
+    renderBoard();
 
     await waitFor(() => {
-      expect(screen.getByText('2 people')).toBeInTheDocument();
+      expect(screen.getByText('2 people - drag between columns')).toBeInTheDocument();
     });
 
     expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
@@ -309,9 +334,9 @@ describe('PipelineBoard render smoke (CRM-07/08)', () => {
       },
     });
 
-    render(<PipelineBoard />);
+    renderBoard();
     await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
-    fireEvent.click(within(desktopBoard()).getAllByRole('button', { name: 'Ada Lovelace' })[0]!);
+    fireEvent.click(within(desktopBoard()).getAllByRole('button', { name: /Ada Lovelace/ })[0]!);
 
     await waitFor(() => {
       expect(screen.getByText('Note: Note 59')).toBeInTheDocument();
@@ -333,7 +358,7 @@ describe('PipelineBoard: withholds unmeasured counts during the first load', () 
       'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED, ENTRY_CONTACTED]),
     });
 
-    render(<PipelineBoard />);
+    renderBoard();
 
     // Synchronously after mount, before the mocked fetch promise resolves:
     // no "people" caption and no stage columns (which would otherwise
@@ -347,7 +372,7 @@ describe('PipelineBoard: withholds unmeasured counts during the first load', () 
     expect(document.querySelector('.chq-contacts-pipeline-column-count')).not.toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByText('2 people')).toBeInTheDocument();
+      expect(screen.getByText('2 people - drag between columns')).toBeInTheDocument();
     });
     expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
 
@@ -364,7 +389,7 @@ describe('PipelineBoard: card age + decline reason (DEC-803)', () => {
       'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED, ENTRY_CONTACTED]),
     });
 
-    render(<PipelineBoard />);
+    renderBoard();
     await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
 
     // ENTRY_IDENTIFIED.stageSince = 1000ms, far in the past relative to
@@ -384,7 +409,7 @@ describe('PipelineBoard: card age + decline reason (DEC-803)', () => {
       'GET /api/v1/pipeline': listEnvelope([declined]),
     });
 
-    render(<PipelineBoard />);
+    renderBoard();
     await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
 
     expect(within(desktopBoard()).getByText('Scheduling conflict')).toBeInTheDocument();
@@ -406,9 +431,9 @@ describe('PipelineBoard: card age + decline reason (DEC-803)', () => {
       }),
     });
 
-    render(<PipelineBoard />);
+    renderBoard();
     await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
-    fireEvent.click(within(desktopBoard()).getAllByRole('button', { name: 'Ada Lovelace' })[0]!);
+    fireEvent.click(within(desktopBoard()).getAllByRole('button', { name: /Ada Lovelace/ })[0]!);
 
     const detailDialog = await screen.findByRole('dialog', { name: 'Pipeline card detail' });
     const select = within(detailDialog).getByLabelText('Stage') as HTMLSelectElement;
@@ -451,7 +476,7 @@ describe('PipelineBoard: fit score + rationale (DEC-821)', () => {
       'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
     });
 
-    render(<PipelineBoard />);
+    renderBoard();
     await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
 
     const identifiedColumn = document.querySelector('[data-stage="identified"]') as HTMLElement;
@@ -466,7 +491,7 @@ describe('PipelineBoard: fit score + rationale (DEC-821)', () => {
       'GET /api/v1/pipeline': listEnvelope([ENTRY_CONTACTED]),
     });
 
-    render(<PipelineBoard />);
+    renderBoard();
     await waitFor(() => within(desktopBoard()).getByText('Grace Hopper'));
 
     const contactedColumn = document.querySelector('[data-stage="contacted"]') as HTMLElement;
@@ -484,7 +509,7 @@ describe('PipelineBoard: fit score + rationale (DEC-821)', () => {
       'GET /api/v1/pipeline': listEnvelope([rated2, unrated, rated5]),
     });
 
-    render(<PipelineBoard />);
+    renderBoard();
     await waitFor(() => within(desktopBoard()).getByText('Amy Five'));
 
     const identifiedColumn = document.querySelector('[data-stage="identified"]') as HTMLElement;
@@ -511,7 +536,7 @@ describe('PipelineBoard: fit edit after enrolment (DEC-980)', () => {
       },
     });
 
-    render(<PipelineBoard />);
+    renderBoard();
     await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
 
     const identifiedColumn = document.querySelector('[data-stage="identified"]') as HTMLElement;
@@ -559,8 +584,8 @@ describe('PipelineBoard: Add to the pipeline dialog (DEC-859)', () => {
       'GET /api/v1/contacts': listEnvelope([CONTACT]),
     });
 
-    render(<PipelineBoard />);
-    await waitFor(() => expect(screen.getByText('0 people')).toBeInTheDocument());
+    renderBoard();
+    await waitFor(() => expect(screen.getByText('0 people - drag between columns')).toBeInTheDocument());
 
     const trigger = screen.getByRole('button', { name: 'Add to the pipeline' });
     fireEvent.click(trigger);
@@ -583,8 +608,8 @@ describe('PipelineBoard: Add to the pipeline dialog (DEC-859)', () => {
       'GET /api/v1/contacts': listEnvelope([CONTACT]),
     });
 
-    render(<PipelineBoard />);
-    await waitFor(() => expect(screen.getByText('0 people')).toBeInTheDocument());
+    renderBoard();
+    await waitFor(() => expect(screen.getByText('0 people - drag between columns')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Add to the pipeline' }));
     const dialog = await screen.findByRole('dialog', { name: 'Add to the pipeline' });
 
@@ -605,22 +630,24 @@ describe('PipelineBoard: Add to the pipeline dialog (DEC-859)', () => {
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 
-  it('shows the consequence sentence above the primary action', async () => {
+  // w4-c: the footnote moved below the button row (and to lowercase) so it
+  // reads as a footnote to the action, not a warning above it.
+  it('shows the lowercase consequence sentence below the button row', async () => {
     mockApi({
       'GET /api/v1/pipeline': listEnvelope([]),
       'GET /api/v1/contacts': listEnvelope([CONTACT]),
     });
 
-    render(<PipelineBoard />);
-    await waitFor(() => expect(screen.getByText('0 people')).toBeInTheDocument());
+    renderBoard();
+    await waitFor(() => expect(screen.getByText('0 people - drag between columns')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Add to the pipeline' }));
     const dialog = await screen.findByRole('dialog', { name: 'Add to the pipeline' });
 
-    const consequence = within(dialog).getByText('Adding writes a move to the activity feed · No email is sent');
+    const consequence = within(dialog).getByText('adding writes a move to the activity feed · no email is sent');
     const primary = within(dialog).getByRole('button', { name: 'Add to the pipeline' });
     const position = consequence.compareDocumentPosition(primary);
     // eslint-disable-next-line no-bitwise
-    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(position & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
 
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
@@ -632,8 +659,8 @@ describe('PipelineBoard: Add to the pipeline dialog (DEC-859)', () => {
       'POST /api/v1/pipeline': { id: 'entry-9', contactId: 'ct9', stage: 'identified', fitScore: null },
     });
 
-    render(<PipelineBoard />);
-    await waitFor(() => expect(screen.getByText('0 people')).toBeInTheDocument());
+    renderBoard();
+    await waitFor(() => expect(screen.getByText('0 people - drag between columns')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Add to the pipeline' }));
     const dialog = await screen.findByRole('dialog', { name: 'Add to the pipeline' });
 
@@ -677,7 +704,7 @@ describe('PipelineBoard: drag-and-drop stage change (DEC-898)', () => {
       'PATCH /api/v1/pipeline/entry-1': { ...ENTRY_IDENTIFIED, stage: 'contacted', updatedAt: 3000 },
     });
 
-    render(<PipelineBoard />);
+    renderBoard();
     await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
 
     const card = within(desktopBoard()).getByText('Ada Lovelace').closest('li') as HTMLElement;
@@ -706,7 +733,7 @@ describe('PipelineBoard: drag-and-drop stage change (DEC-898)', () => {
       'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
     });
 
-    render(<PipelineBoard />);
+    renderBoard();
     await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
 
     const card = within(desktopBoard()).getByText('Ada Lovelace').closest('li') as HTMLElement;
@@ -728,19 +755,34 @@ describe('PipelineBoard: drag-and-drop stage change (DEC-898)', () => {
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 
-  it("the phone card's Move-to select value equals the entry's current stage, never blank", async () => {
-    // Phone strip defaults to the first stage (identified); use an entry in
-    // that stage so its phone card is the one rendered without an extra pill
-    // click (out of scope here -- this is only re-confirming the untouched
-    // phone select, not driving the phone stage filter).
+  // w4-c/DEC-898 amendment: the per-card 'Move to' select left the card
+  // face entirely (phone strip included) -- the keyboard/a11y path is now
+  // the opened-card panel's Stage picker, reached via the card's own name
+  // button, whose accessible name states the person AND their current
+  // stage so the picker isn't mouse-only.
+  it("the phone card's name button names the person and current stage, and opens the Stage picker", async () => {
     mockApi({
       'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+      'GET /api/v1/pipeline/entry-1': {
+        entry: { id: 'entry-1', contactId: 'ct1', stage: 'identified', createdAt: 1000, updatedAt: 1000 },
+        contact: { id: 'ct1', firstName: 'Ada', lastName: 'Lovelace', company: 'Acme', email: 'ada@example.com' },
+        activity: { items: [], total: 0, page: 1, perPage: 200 },
+      },
     });
 
-    render(<PipelineBoard />);
+    renderBoard();
     await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
 
-    const select = screen.getAllByLabelText('Move to')[0] as HTMLSelectElement;
+    // No select on the card face anywhere (desktop or phone).
+    expect(screen.queryAllByLabelText('Move to')).toHaveLength(0);
+    expect(document.querySelector('.chq-contacts-pipeline-phone-card select')).toBeNull();
+
+    const phoneList = document.querySelector('.chq-contacts-pipeline-phone-list') as HTMLElement;
+    const phoneNameButton = within(phoneList).getByRole('button', { name: 'Ada Lovelace, Identified' });
+    fireEvent.click(phoneNameButton);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Pipeline card detail' });
+    const select = within(dialog).getByLabelText('Stage') as HTMLSelectElement;
     expect(select.value).toBe('identified');
 
     expect(consoleErrorSpy).not.toHaveBeenCalled();
@@ -755,7 +797,7 @@ describe('PipelineBoard: desktop card is drag-only (DEC-157 amendment, w2-b)', (
       'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED, ENTRY_CONTACTED]),
     });
 
-    render(<PipelineBoard />);
+    renderBoard();
     await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
 
     expect(within(desktopBoard()).queryByLabelText('Move to')).not.toBeInTheDocument();
@@ -769,7 +811,7 @@ describe('PipelineBoard: desktop card is drag-only (DEC-157 amendment, w2-b)', (
       'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
     });
 
-    render(<PipelineBoard />);
+    renderBoard();
     await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
 
     const card = within(desktopBoard()).getByText('Ada Lovelace').closest('li') as HTMLElement;
@@ -789,9 +831,9 @@ describe('PipelineBoard: desktop card is drag-only (DEC-157 amendment, w2-b)', (
       'PATCH /api/v1/pipeline/entry-1': { ...ENTRY_IDENTIFIED, stage: 'contacted', updatedAt: 3000 },
     });
 
-    render(<PipelineBoard />);
+    renderBoard();
     await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
-    fireEvent.click(within(desktopBoard()).getAllByRole('button', { name: 'Ada Lovelace' })[0]!);
+    fireEvent.click(within(desktopBoard()).getAllByRole('button', { name: /Ada Lovelace/ })[0]!);
 
     const dialog = await screen.findByRole('dialog', { name: 'Pipeline card detail' });
     const select = within(dialog).getByLabelText('Stage') as HTMLSelectElement;
@@ -804,6 +846,63 @@ describe('PipelineBoard: desktop card is drag-only (DEC-157 amendment, w2-b)', (
       const body = JSON.parse(String((patchCall![1] as RequestInit).body));
       expect(body).toMatchObject({ stage: 'contacted' });
     });
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+});
+
+// w4-c/DEC-898 amendment (wave 4): the board header states the card's own
+// affordance now that the card face carries no stage control -- an H1
+// 'Pipeline' with a '‹ Contacts' back link and the 'N people - drag between
+// columns' subtitle, replacing the 'Sourcing pipeline' eyebrow.
+describe('PipelineBoard: header (w4-c/DEC-898 amendment)', () => {
+  it('renders the H1 title, the back link, and the drag-affordance subtitle -- no eyebrow', async () => {
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED, ENTRY_CONTACTED]),
+    });
+
+    renderBoard();
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+
+    expect(screen.getByRole('heading', { name: 'Pipeline', level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '‹ Contacts' })).toBeInTheDocument();
+    expect(screen.getByText('2 people - drag between columns')).toBeInTheDocument();
+    expect(screen.queryByText('Sourcing pipeline')).not.toBeInTheDocument();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+
+  it("the '‹ Contacts' back link clears the ?tab= pipeline param", async () => {
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([]),
+    });
+
+    renderBoard();
+    await waitFor(() => expect(screen.getByText('0 people - drag between columns')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: '‹ Contacts' }));
+
+    await waitFor(() => expect(screen.getByTestId('location-search').textContent).not.toContain('tab=pipeline'));
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+});
+
+// w4-c/DEC-898 amendment: the card face is reachable by keyboard -- its
+// name button carries button semantics plus an accessible name that states
+// the person AND their current stage, so the opened-card panel's Stage
+// picker (the keyboard/a11y path per DEC-898) is never mouse-only.
+describe('PipelineBoard: card face keyboard reachability (w4-c/DEC-898 amendment)', () => {
+  it('the desktop card name is a <button> whose accessible name states the person and stage', async () => {
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+    });
+
+    renderBoard();
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+
+    const nameButton = within(desktopBoard()).getByRole('button', { name: 'Ada Lovelace, Identified' });
+    expect(nameButton.tagName).toBe('BUTTON');
 
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });

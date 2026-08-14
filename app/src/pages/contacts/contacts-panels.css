@@ -34,6 +34,13 @@
   gap: 5px;
 }
 
+/* w4-c/DEC-898 amendment: the '‹ Contacts' back link over the H1 -- same
+   tertiary-button-as-link treatment Settings.tsx's own '‹ Settings' back
+   button uses (chq-settings-back), so the idiom doesn't fork per-page. */
+.chq-contacts-pipeline-back {
+  align-self: flex-start;
+}
+
 .chq-contacts-pipeline-caption {
   font-size: 13px;
   color: var(--chq-muted);
@@ -126,20 +133,22 @@
   color: var(--chq-muted);
 }
 
-/* DEC-803: card age caption -- the bold-caps micro-label class every stale
-   marker in this product uses. `stale` (past 30 days) is signalled by
-   WEIGHT and WORDING only (900 + a literal "Stale" prefix), never colour --
-   this product has no red. */
+/* DEC-803 amendment (w4-c/DEC-898): staleness prints PLAIN at the card foot
+   ("Added 6 days ago") -- the bold-caps micro-label treatment is reserved
+   for the STALE alarm state only now, so a fresh card's age doesn't read
+   with the same visual weight as an actual alert. `stale` (past 30 days) is
+   still signalled by WEIGHT and WORDING only (900 + a literal "Stale"
+   prefix), never colour -- this product has no red. */
 .chq-contacts-pipeline-card-age {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 12px;
   color: var(--chq-muted);
 }
 
 .chq-contacts-pipeline-card-age-stale {
+  font-size: 10px;
   font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .chq-contacts-pipeline-card-age-stale::before {
@@ -161,10 +170,13 @@
 }
 
 /* DEC-980: the fit pill's edit affordance -- a quiet inline link beside the
-   pill, never a second stage control. */
+   pill, never a second stage control. w4-c: the rationale now sits inline
+   in this same row too (beside the fit chip, not its own line below) --
+   wrap so a long rationale still clears the card's edge. */
 .chq-contacts-pipeline-card-fit-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.4em;
 }
 
@@ -178,46 +190,62 @@
   color: var(--chq-muted);
 }
 
-/* DEC-859: rated fit pill takes the same filled-olive treatment as
-   DEC-730's complete state (speakers.css:162-167) -- the same
-   --chq-on-brand/--chq-brand custom properties, never a new hex literal
-   (DEC-383 palette closure). */
+/* DEC-859 amendment (w4-c/DEC-898): rated fit is a PALE outlined pill now,
+   not the solid filled-olive treatment -- the card face is de-emphasised
+   (identity/fit/rationale/staleness only, drag is the primary act), so its
+   own chip drops to the same pale-surface/brand-outline weight the unrated
+   dashed pill already sits at. Still the shared --chq-brand/--chq-surface-
+   sunk custom properties, never a new hex literal (DEC-383 palette
+   closure). */
 .chq-contacts-pipeline-card-fit-rated {
-  color: var(--chq-on-brand);
-  background: var(--chq-brand);
-  border: none;
+  color: var(--chq-brand);
+  background: var(--chq-surface-sunk);
+  border: 1px solid var(--chq-brand);
 }
 
-/* DEC-859: the enroll dialog's consequence sentence, immediately above the
-   primary action -- same caption treatment as other modal footers. */
+/* DEC-859 amendment (w4-c): the enroll dialog's consequence sentence now
+   sits below the button row (inside .chq-modal-actions, after the
+   buttons), lowercase -- flex-basis 100% forces it onto its own line under
+   the wrapped actions row above. */
 .chq-contacts-pipeline-enroll-consequence {
+  flex-basis: 100%;
+  margin: 0;
   font-size: 12px;
   color: var(--chq-muted);
 }
 
+/* w4-c: now an inline span in .chq-contacts-pipeline-card-fit-row, beside
+   the fit chip, rather than its own block-level line below it. */
 .chq-contacts-pipeline-card-rationale {
   font-size: 12px;
+  font-style: italic;
   color: var(--chq-muted);
 }
 
-.chq-contacts-pipeline-card-move {
+/* w4-c: the field-row shell for OptionalFieldRow (Fit / Why them in the
+   Add-to-the-pipeline dialog) -- label left, a lowercase 'optional' helper
+   right-aligned on the same line, replacing FormRow's inline
+   ' · optional' suffix for these two rows only. */
+.chq-contacts-pipeline-field-head {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--chq-muted);
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-.chq-contacts-pipeline-card-move select {
+.chq-contacts-pipeline-field-optional {
+  font-size: 12px;
+  font-weight: 400;
   text-transform: none;
   letter-spacing: normal;
-  font-weight: 500;
-  min-height: 34px;
-  padding: 0 8px;
-  font-size: 12px;
+  color: var(--chq-muted);
+}
+
+/* w4-c: the no-email footnote sits below the button row -- wrap the
+   actions row and give the footnote the full line so it doesn't crowd the
+   buttons onto one line. */
+.chq-contacts-pipeline-enroll-modal .chq-modal-actions {
+  flex-wrap: wrap;
 }
 
 /* DEC-468: appears under the board once entries.length < total (the 200-row
