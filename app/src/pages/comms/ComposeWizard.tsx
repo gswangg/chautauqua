@@ -82,6 +82,12 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   // one line per rejected person is rendered inside the error banner,
   // resolved through the already-loaded submissions rather than raw ids.
   const [missingMergeFieldLines, setMissingMergeFieldLines] = useState<string[] | null>(null);
+  // DEC-793 amendment (wave 28): when the organizer takes the partial-send
+  // path off a blocked banner, the submission ids excluded (unscheduled) are
+  // remembered here so the post-send report can list them under an
+  // "excluded" heading and state the reduced count — never a silent
+  // narrowing of the audience.
+  const [partialExcludedIds, setPartialExcludedIds] = useState<string[] | null>(null);
 
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
   const pendingCaretRef = useRef<number | null>(null);
@@ -161,11 +167,16 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     });
   }
 
-  function composeBody(overrides?: { includeFeedback?: boolean; feedbackPlanId?: string; attachIcs?: boolean }): Record<string, unknown> {
+  function composeBody(overrides?: {
+    includeFeedback?: boolean;
+    feedbackPlanId?: string;
+    attachIcs?: boolean;
+    submissionIds?: string[];
+  }): Record<string, unknown> {
     const effectiveIncludeFeedback = overrides?.includeFeedback ?? includeFeedback;
     const effectiveFeedbackPlanId = overrides?.feedbackPlanId ?? feedbackPlanId;
     const base: Record<string, unknown> = {
-      submissionIds: [...selectedIds],
+      submissionIds: overrides?.submissionIds ?? [...selectedIds],
       includeFeedback: effectiveIncludeFeedback,
       attachIcs: overrides?.attachIcs ?? attachIcs,
     };
@@ -309,15 +320,26 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   // confirmation -- the batch still asks exactly once before it leaves, but
   // that ask is this step's own primary button, not a second dialog on top
   // of it.
-  async function send() {
+  // DEC-793 amendment (wave 28): `excludeIds`, when passed, is the
+  // "Send to the N who have a slot" partial path off a blocked banner — it
+  // actually removes those submission ids from the posted submissionIds
+  // (never a silent narrowing elsewhere) and is remembered in
+  // partialExcludedIds so the post-send report can name who was left out.
+  async function send(options?: { excludeIds?: string[] }) {
     setBusy(true);
     setError(null);
     setIcsUnscheduledIds(null);
     setMissingMergeFieldLines(null);
+    const excludeIds = options?.excludeIds ?? null;
     try {
-      const res = await apiPost<SendResult>(`/events/${eventId}/compose/send`, composeBody());
+      const body =
+        excludeIds && excludeIds.length > 0
+          ? composeBody({ submissionIds: [...selectedIds].filter((id) => !excludeIds.includes(id)) })
+          : composeBody();
+      const res = await apiPost<SendResult>(`/events/${eventId}/compose/send`, body);
       setSendResult(res);
       setSentAt(Date.now());
+      setPartialExcludedIds(excludeIds);
     } catch (err) {
       if (err instanceof ApiError) {
         const unscheduled = extractIcsUnscheduledIds(err);
@@ -357,6 +379,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setCapMessage(null);
     setIcsUnscheduledIds(null);
     setMissingMergeFieldLines(null);
+    setPartialExcludedIds(null);
     setError(null);
   }
 
@@ -385,6 +408,10 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   // prints 'Scheduled'. `scheduled` is rendered unconditionally (DEC-912),
   // so it's the truthful predicate for this caption too.
   const noSlotCount = preview.filter((r) => !r.scheduled).length;
+  // DEC-793 amendment (wave 28): the partial-send count named on the
+  // blocked banner's secondary action — always preview.length minus the
+  // named-blocked ids, never a client-side guess at who's scheduled.
+  const scheduledCount = icsUnscheduledIds ? preview.length - icsUnscheduledIds.length : 0;
   const overflowCount = Math.max(0, preview.length - RECIPIENT_PREVIEW_ROWS);
   const previewClamped = preview.length === 0 ? 0 : Math.min(previewIndex, preview.length - 1);
   const currentPreview = preview[previewClamped];
@@ -735,9 +762,40 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               )}
               {icsUnscheduledIds && (
                 <div className="chq-error-banner" role="alert">
-                  Send blocked: these submissions aren&apos;t scheduled yet:{' '}
-                  {icsUnscheduledIds.map((id) => icsUnscheduledLabel(id, preview)).join(', ')}. Schedule
-                  them first, or uncheck &quot;Attach calendar invite&quot;.
+                  <p>
+                    Send blocked: these submissions aren&apos;t scheduled yet:{' '}
+                    {icsUnscheduledIds.map((id) => icsUnscheduledLabel(id, preview)).join(', ')}. Schedule
+                    them first, or uncheck &quot;Attach calendar invite&quot;.
+                  </p>
+                  <ul className="chq-comms-blocked-list">
+                    {icsUnscheduledIds.map((id) => (
+                      <li key={id}>
+                        {icsUnscheduledLabel(id, preview)}{' '}
+                        <a href="/admin/agenda" className="chq-link-button">
+                          Place on the agenda &rsaquo;
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                  {/* DEC-793 amendment (wave 28): the hard block on the
+                      unmodified Send stays -- this is an additional path,
+                      never a replacement, and it actually reduces the
+                      posted submissionIds rather than silently narrowing
+                      the audience. */}
+                  {scheduledCount > 0 && (
+                    <button
+                      type="button"
+                      className="chq-btn chq-btn-secondary"
+                      disabled={busy}
+                      onClick={() => {
+                        setStep('sent');
+                        void send({ excludeIds: icsUnscheduledIds });
+                      }}
+                    >
+                      Send to the {scheduledCount} who have a slot
+                    </button>
+                  )}
+                  <p className="chq-comms-panel-note">This is the last point at which it is cheap to fix.</p>
                 </div>
               )}
             </div>
@@ -819,9 +877,35 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
           )}
           {icsUnscheduledIds && (
             <div className="chq-error-banner" role="alert">
-              Send blocked: these submissions aren&apos;t scheduled yet:{' '}
-              {icsUnscheduledIds.map((id) => icsUnscheduledLabel(id, preview)).join(', ')}. Schedule
-              them first, or uncheck &quot;Attach calendar invite&quot;.
+              <p>
+                Send blocked: these submissions aren&apos;t scheduled yet:{' '}
+                {icsUnscheduledIds.map((id) => icsUnscheduledLabel(id, preview)).join(', ')}. Schedule
+                them first, or uncheck &quot;Attach calendar invite&quot;.
+              </p>
+              <ul className="chq-comms-blocked-list">
+                {icsUnscheduledIds.map((id) => (
+                  <li key={id}>
+                    {icsUnscheduledLabel(id, preview)}{' '}
+                    <a href="/admin/agenda" className="chq-link-button">
+                      Place on the agenda &rsaquo;
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              {/* DEC-793 amendment (wave 28): same partial path as the
+                  preview step's banner -- the hard block on the unmodified
+                  Send below stays. */}
+              {scheduledCount > 0 && (
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-secondary"
+                  disabled={busy}
+                  onClick={() => void send({ excludeIds: icsUnscheduledIds })}
+                >
+                  Send to the {scheduledCount} who have a slot
+                </button>
+              )}
+              <p className="chq-comms-panel-note">This is the last point at which it is cheap to fix.</p>
             </div>
           )}
           <div className="chq-comms-preview-actions">
@@ -853,12 +937,29 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               a fabricated field is worse than a missing one. */}
           <p className="chq-comms-send-report-headline">
             {sendResult.sent} of {sentTotal} speakers were emailed
+            {partialExcludedIds && partialExcludedIds.length > 0
+              ? ` — ${partialExcludedIds.length} excluded (not yet scheduled)`
+              : ''}
           </p>
           <div className="chq-comms-panel-note">
             <p>Template: {templateName || 'No template'}</p>
             <p>Subject: {resolvedSendSubject}</p>
             {sentAt !== null && <p>Sent: {formatDateTime(sentAt)}</p>}
           </div>
+          {/* DEC-793 amendment (wave 28): the partial-send path never
+              silently shrinks the audience -- every excluded recipient is
+              named here under its own heading, same as the failed list
+              below. */}
+          {partialExcludedIds && partialExcludedIds.length > 0 && (
+            <div className="chq-comms-panel-note">
+              <p>Excluded ({partialExcludedIds.length} not yet scheduled):</p>
+              <ul>
+                {partialExcludedIds.map((id) => (
+                  <li key={id}>{icsUnscheduledLabel(id, preview)}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           {sentFailedCount > 0 && (
             <div>
               {(sendResult.failed ?? []).map((f) => (

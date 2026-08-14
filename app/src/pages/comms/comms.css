@@ -865,3 +865,24 @@
   text-transform: uppercase;
   color: var(--chq-muted);
 }
+
+/* DEC-793 amendment (wave 28): the blocked banner's per-recipient list,
+   each row pairing the named recipient with its own "Place on the agenda"
+   way out, plus the partial-send secondary action and the "cheap to fix"
+   caption below it. */
+.chq-comms-blocked-list {
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.chq-comms-blocked-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
