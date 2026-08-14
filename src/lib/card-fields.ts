@@ -39,22 +39,23 @@ export function parseCardFields(raw: string | undefined): CardFields {
   };
 }
 
-// DEC-968: the sessions LIST row (as opposed to every other surface, which
-// still defaults to all six fields via parseCardFields) drops the abstract
-// by default -- the row shows track/time/room/speaker/format but never the
-// description, which the reader gets by drilling into the session's detail
-// page (or by naming it explicitly with ?fields=...,description).
+// DEC-968, amended by the EMB-01 orchestrator ruling (2026-08-14, recorded
+// in the mandate): the sessions LIST row shows all six fields by default,
+// INCLUDING the description — SessionDescription renders it as a snippet
+// with an in-place "Show more" disclosure, so the row cost is one muted
+// line, and a reader (or an embed consumer) can still drop it with
+// ?fields=... naming everything but description.
 export const SESSION_LIST_DEFAULT_FIELDS: CardFields = {
   track: true,
   time: true,
   room: true,
   speaker: true,
-  description: false,
+  description: true,
   format: true,
 };
 
 /** Same grammar as parseCardFields, but an absent/empty `raw` yields
- * SESSION_LIST_DEFAULT_FIELDS (description off) instead of all six on. */
+ * SESSION_LIST_DEFAULT_FIELDS instead of parseCardFields' all-on. */
 export function parseSessionListFields(raw: string | undefined): CardFields {
   if (!raw || raw.trim().length === 0) return { ...SESSION_LIST_DEFAULT_FIELDS };
   return parseCardFields(raw);
