@@ -11,6 +11,7 @@ import { SESSION_FORMAT_FIELD_ID } from "../../../forms/types";
 import { visibleParticipantConditions } from "../public/gates";
 import { ApiError } from "../../http";
 import type { PlanRecord } from "./plans";
+import { MAX_REVIEWER_SCOPE_ROWS } from "./reviewers";
 
 // DEC-346 amendment (wave 57): the ceiling listPlanFilteredSubmissions'
 // matched-submissions scan refuses past -- mirrors MAX_FILE_LIBRARY_SCAN
@@ -232,10 +233,23 @@ export async function resolveReviewerSubmissions(
   plan: PlanRecord,
   userId: string,
 ): Promise<ReviewerScopedSubmission[]> {
+  // DEC-439 amendment (wave 62): a per-submission reviewer scope writes one
+  // plan_reviewer row per submission -- the same unbounded surface as the
+  // matched-submissions query below. Ordered and capped at
+  // MAX_REVIEWER_SCOPE_ROWS + 1, refusing loudly rather than silently
+  // truncating a reviewer's own scope rows.
   const reviewerRows = await db
     .select({ trackId: schema.planReviewer.trackId, submissionId: schema.planReviewer.submissionId })
     .from(schema.planReviewer)
-    .where(and(eq(schema.planReviewer.planId, plan.id), eq(schema.planReviewer.userId, userId)));
+    .where(and(eq(schema.planReviewer.planId, plan.id), eq(schema.planReviewer.userId, userId)))
+    .orderBy(asc(schema.planReviewer.createdAt), asc(schema.planReviewer.id))
+    .limit(MAX_REVIEWER_SCOPE_ROWS + 1);
+  if (reviewerRows.length > MAX_REVIEWER_SCOPE_ROWS) {
+    throw new ApiError(
+      "invalid",
+      `This reviewer's scope would scan more than ${MAX_REVIEWER_SCOPE_ROWS} plan_reviewer rows -- narrow the reviewer's assignment scope first`,
+    );
+  }
   if (reviewerRows.length === 0) return [];
 
   const unrestricted = reviewerRows.some((r) => r.trackId === null && r.submissionId === null);
@@ -251,10 +265,24 @@ export async function resolveReviewerSubmissions(
     unrestricted ? undefined : { submissionIds: submissionScopes, trackIds: trackScopes },
   );
 
+  // DEC-346 amendment (wave 57), extended here (DEC-439 amendment, wave 62):
+  // ordered deterministically and capped at MAX_PLAN_SUBMISSION_SCAN + 1 --
+  // refuse loudly rather than silently truncate. This reviewer-scoped read's
+  // matched submissions still feed buildReviewerQueue's fewest-ratings-first
+  // JS slice (src/routes/review/reviewer.ts:212-214, DEC-466) -- bounding the
+  // SQL that feeds it is exactly why that JS slice stays legal.
   const matched = await db
     .select({ id: schema.submission.id, seq: schema.submission.seq, title: schema.submission.title })
     .from(schema.submission)
-    .where(and(...conditions));
+    .where(and(...conditions))
+    .orderBy(asc(schema.submission.seq), asc(schema.submission.id))
+    .limit(MAX_PLAN_SUBMISSION_SCAN + 1);
+  if (matched.length > MAX_PLAN_SUBMISSION_SCAN) {
+    throw new ApiError(
+      "invalid",
+      `This plan would scan more than ${MAX_PLAN_SUBMISSION_SCAN} submissions -- narrow the plan's track filter first`,
+    );
+  }
   if (matched.length === 0) return [];
 
   const eventRows = await db

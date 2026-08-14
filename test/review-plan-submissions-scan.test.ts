@@ -31,15 +31,23 @@ vi.mock("drizzle-orm", async (importOriginal) => {
   };
 });
 
-const { listPlanFilteredSubmissions, MAX_PLAN_SUBMISSION_SCAN } = await import(
+const { listPlanFilteredSubmissions, resolveReviewerSubmissions, MAX_PLAN_SUBMISSION_SCAN } = await import(
   "../src/server/repo/review/submissions"
 );
+const { getReviewerScopeTrackId, listPlanIdsForReviewer, MAX_REVIEWER_SCOPE_ROWS } = await import(
+  "../src/server/repo/review/reviewers"
+);
 
-const TABLE_SCHEMAS = { event: schema.event, submission: schema.submission, submissionTrack: schema.submissionTrack };
+const TABLE_SCHEMAS = {
+  event: schema.event,
+  submission: schema.submission,
+  submissionTrack: schema.submissionTrack,
+  planReviewer: schema.planReviewer,
+};
 
-function tableNameOf(table: unknown): "event" | "submission" | "submissionTrack" {
+function tableNameOf(table: unknown): "event" | "submission" | "submissionTrack" | "planReviewer" {
   for (const [name, tbl] of Object.entries(TABLE_SCHEMAS)) {
-    if (tbl === table) return name as "event" | "submission" | "submissionTrack";
+    if (tbl === table) return name as "event" | "submission" | "submissionTrack" | "planReviewer";
   }
   throw new Error("fake db: unexpected table reference");
 }
@@ -88,9 +96,17 @@ interface FixtureTrack {
   submissionId: string;
   trackId: string;
 }
+interface FixtureReviewer {
+  id: string;
+  planId: string;
+  userId: string;
+  trackId: string | null;
+  submissionId: string | null;
+  createdAt: number;
+}
 
 interface FakeCall {
-  table: "event" | "submission" | "submissionTrack";
+  table: "event" | "submission" | "submissionTrack" | "planReviewer";
   joined: boolean;
   distinct: boolean;
   limitN?: number;
@@ -98,7 +114,13 @@ interface FakeCall {
   matchedCount: number;
 }
 
-function makeFakeDb(fixture: { events: FixtureEvent[]; submissions: FixtureSubmission[]; tracks: FixtureTrack[] }) {
+function makeFakeDb(fixture: {
+  events: FixtureEvent[];
+  submissions: FixtureSubmission[];
+  tracks: FixtureTrack[];
+  reviewers?: FixtureReviewer[];
+}) {
+  const reviewers = fixture.reviewers ?? [];
   const calls: FakeCall[] = [];
 
   function builder(proj: Record<string, unknown> | undefined, distinct: boolean) {
@@ -148,6 +170,8 @@ function makeFakeDb(fixture: { events: FixtureEvent[]; submissions: FixtureSubmi
             }
           } else if (tableName === "submissionTrack" && !joinTable) {
             ctxRows = fixture.tracks.map((t) => ({ submissionTrack: t as unknown as Record<string, unknown> }));
+          } else if (tableName === "planReviewer" && !joinTable) {
+            ctxRows = reviewers.map((r) => ({ planReviewer: r as unknown as Record<string, unknown> }));
           } else {
             throw new Error(`fake db: unsupported table/join combo ${tableName}/${String(joinTable)}`);
           }
@@ -160,6 +184,15 @@ function makeFakeDb(fixture: { events: FixtureEvent[]; submissions: FixtureSubmi
               const sb = b.submission as unknown as FixtureSubmission;
               if (sa.seq !== sb.seq) return sa.seq - sb.seq;
               return sa.id < sb.id ? -1 : sa.id > sb.id ? 1 : 0;
+            });
+          }
+
+          if (tableName === "planReviewer") {
+            filtered = [...filtered].sort((a, b) => {
+              const ra = a.planReviewer as unknown as FixtureReviewer;
+              const rb = b.planReviewer as unknown as FixtureReviewer;
+              if (ra.createdAt !== rb.createdAt) return ra.createdAt - rb.createdAt;
+              return ra.id < rb.id ? -1 : ra.id > rb.id ? 1 : 0;
             });
           }
 
@@ -377,4 +410,120 @@ describe("listPlanFilteredSubmissions (DEC-346 amendment, wave 57)", () => {
     const trackCalls = calls.filter((c) => c.table === "submissionTrack");
     expect(trackCalls.length).toBe(2); // 95 ids / 90-per-chunk = 2 batches
   });
+});
+
+function makeUnrestrictedReviewers(planId: string, userId: string, n: number): FixtureReviewer[] {
+  return Array.from({ length: n }, (_, i) => ({
+    id: `pr-${String(i).padStart(6, "0")}`,
+    planId,
+    userId,
+    trackId: null,
+    submissionId: null,
+    createdAt: i,
+  }));
+}
+
+describe("resolveReviewerSubmissions (DEC-439 amendment, wave 62)", () => {
+  const PLAN_ID = "plan-1";
+  const USER_ID = "user-1";
+
+  it("plan_reviewer read is ordered and capped: under-cap read returns rows from a query carrying both limit and order-by", async () => {
+    const submissions = makeSubmissions(3);
+    const reviewers = makeUnrestrictedReviewers(PLAN_ID, USER_ID, 1);
+    const { db, calls } = makeFakeDb({ events: [EVENT], submissions, tracks: [], reviewers });
+    const plan = makePlan({ id: PLAN_ID });
+
+    const result = await resolveReviewerSubmissions(db, plan, USER_ID);
+    expect(result.length).toBe(3);
+
+    const reviewerCall = calls.find((c) => c.table === "planReviewer");
+    expect(reviewerCall).toBeDefined();
+    expect(reviewerCall!.orderByCalled).toBe(true);
+    expect(reviewerCall!.limitN).toBe(MAX_REVIEWER_SCOPE_ROWS + 1);
+
+    const submissionCall = calls.find((c) => c.table === "submission" && !c.joined);
+    expect(submissionCall).toBeDefined();
+    expect(submissionCall!.orderByCalled).toBe(true);
+    expect(submissionCall!.limitN).toBe(MAX_PLAN_SUBMISSION_SCAN + 1);
+  });
+
+  it("plan_reviewer rows over MAX_REVIEWER_SCOPE_ROWS refuse loudly naming the cap", async () => {
+    const submissions = makeSubmissions(1);
+    const reviewers = makeUnrestrictedReviewers(PLAN_ID, USER_ID, MAX_REVIEWER_SCOPE_ROWS + 1);
+    const { db } = makeFakeDb({ events: [EVENT], submissions, tracks: [], reviewers });
+    const plan = makePlan({ id: PLAN_ID });
+
+    await expect(resolveReviewerSubmissions(db, plan, USER_ID)).rejects.toMatchObject({
+      code: "invalid",
+      message: expect.stringContaining(String(MAX_REVIEWER_SCOPE_ROWS)),
+    });
+  }, 30_000);
+
+  it("matched submissions over MAX_PLAN_SUBMISSION_SCAN refuse loudly naming the cap", async () => {
+    const submissions = makeSubmissions(MAX_PLAN_SUBMISSION_SCAN + 1);
+    const reviewers = makeUnrestrictedReviewers(PLAN_ID, USER_ID, 1);
+    const { db } = makeFakeDb({ events: [EVENT], submissions, tracks: [], reviewers });
+    const plan = makePlan({ id: PLAN_ID });
+
+    await expect(resolveReviewerSubmissions(db, plan, USER_ID)).rejects.toMatchObject({
+      code: "invalid",
+      message: expect.stringContaining(String(MAX_PLAN_SUBMISSION_SCAN)),
+    });
+  }, 30_000);
+});
+
+describe("getReviewerScopeTrackId / listPlanIdsForReviewer (DEC-439 amendment, wave 62)", () => {
+  const PLAN_ID = "plan-1";
+  const USER_ID = "user-1";
+
+  it("getReviewerScopeTrackId: under-cap read carries both limit and order-by, returns the single scoped track", async () => {
+    const reviewers: FixtureReviewer[] = [
+      { id: "pr-1", planId: PLAN_ID, userId: USER_ID, trackId: "trk-a", submissionId: null, createdAt: 1 },
+    ];
+    const { db, calls } = makeFakeDb({ events: [EVENT], submissions: [], tracks: [], reviewers });
+
+    const trackId = await getReviewerScopeTrackId(db, PLAN_ID, USER_ID);
+    expect(trackId).toBe("trk-a");
+
+    const reviewerCall = calls.find((c) => c.table === "planReviewer");
+    expect(reviewerCall).toBeDefined();
+    expect(reviewerCall!.orderByCalled).toBe(true);
+    expect(reviewerCall!.limitN).toBe(MAX_REVIEWER_SCOPE_ROWS + 1);
+  });
+
+  it("getReviewerScopeTrackId: over-cap rows refuse loudly naming the cap", async () => {
+    const reviewers = makeUnrestrictedReviewers(PLAN_ID, USER_ID, MAX_REVIEWER_SCOPE_ROWS + 1);
+    const { db } = makeFakeDb({ events: [EVENT], submissions: [], tracks: [], reviewers });
+
+    await expect(getReviewerScopeTrackId(db, PLAN_ID, USER_ID)).rejects.toMatchObject({
+      code: "invalid",
+      message: expect.stringContaining(String(MAX_REVIEWER_SCOPE_ROWS)),
+    });
+  }, 30_000);
+
+  it("listPlanIdsForReviewer: under-cap read carries both limit and order-by, returns distinct plan ids", async () => {
+    const reviewers: FixtureReviewer[] = [
+      { id: "pr-1", planId: "plan-1", userId: USER_ID, trackId: null, submissionId: null, createdAt: 1 },
+      { id: "pr-2", planId: "plan-2", userId: USER_ID, trackId: null, submissionId: null, createdAt: 2 },
+    ];
+    const { db, calls } = makeFakeDb({ events: [EVENT], submissions: [], tracks: [], reviewers });
+
+    const planIds = await listPlanIdsForReviewer(db, USER_ID);
+    expect(planIds.sort()).toEqual(["plan-1", "plan-2"]);
+
+    const reviewerCall = calls.find((c) => c.table === "planReviewer");
+    expect(reviewerCall).toBeDefined();
+    expect(reviewerCall!.orderByCalled).toBe(true);
+    expect(reviewerCall!.limitN).toBe(MAX_REVIEWER_SCOPE_ROWS + 1);
+  });
+
+  it("listPlanIdsForReviewer: over-cap rows refuse loudly naming the cap", async () => {
+    const reviewers = makeUnrestrictedReviewers(PLAN_ID, USER_ID, MAX_REVIEWER_SCOPE_ROWS + 1);
+    const { db } = makeFakeDb({ events: [EVENT], submissions: [], tracks: [], reviewers });
+
+    await expect(listPlanIdsForReviewer(db, USER_ID)).rejects.toMatchObject({
+      code: "invalid",
+      message: expect.stringContaining(String(MAX_REVIEWER_SCOPE_ROWS)),
+    });
+  }, 30_000);
 });

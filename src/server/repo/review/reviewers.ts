@@ -1,11 +1,21 @@
 // Reviewers (plan_reviewer scope rows -- DEC-017): the drizzle-row/domain
 // boundary for who is assigned to review what within a plan.
 
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef, newId } from "../../../domain/ids";
 import { chunkIds, chunkRowsForInsert } from "../../../lib/chunk";
+import { ApiError } from "../../http";
+
+// DEC-439 amendment (wave 62): the ceiling every unbounded plan_reviewer read
+// in this module refuses past -- mirrors MAX_PLAN_SUBMISSION_SCAN
+// (src/server/repo/review/submissions.ts:21). A pathological-data guard, not
+// a functional limit: getReviewerScopeTrackId, listPlanIdsForReviewer, and
+// resolveReviewerSubmissions' plan_reviewer read (submissions.ts) all
+// `.limit(MAX_REVIEWER_SCOPE_ROWS + 1)` and throw rather than silently
+// truncating a reviewer's scope rows once it crosses this.
+export const MAX_REVIEWER_SCOPE_ROWS = 20000;
 
 export interface PlanReviewerRecord {
   id: string;
@@ -155,7 +165,15 @@ export async function getReviewerScopeTrackId(db: Db, planId: string, userId: st
   const rows = await db
     .select({ trackId: schema.planReviewer.trackId, submissionId: schema.planReviewer.submissionId })
     .from(schema.planReviewer)
-    .where(and(eq(schema.planReviewer.planId, planId), eq(schema.planReviewer.userId, userId)));
+    .where(and(eq(schema.planReviewer.planId, planId), eq(schema.planReviewer.userId, userId)))
+    .orderBy(asc(schema.planReviewer.createdAt), asc(schema.planReviewer.id))
+    .limit(MAX_REVIEWER_SCOPE_ROWS + 1);
+  if (rows.length > MAX_REVIEWER_SCOPE_ROWS) {
+    throw new ApiError(
+      "invalid",
+      `This reviewer's scope would scan more than ${MAX_REVIEWER_SCOPE_ROWS} plan_reviewer rows -- narrow the reviewer's assignment scope first`,
+    );
+  }
   if (rows.length === 0) return null;
   const unrestricted = rows.some((r) => r.trackId === null && r.submissionId === null);
   if (unrestricted) return null;
@@ -168,6 +186,14 @@ export async function listPlanIdsForReviewer(db: Db, userId: string): Promise<st
   const rows = await db
     .select({ planId: schema.planReviewer.planId })
     .from(schema.planReviewer)
-    .where(eq(schema.planReviewer.userId, userId));
+    .where(eq(schema.planReviewer.userId, userId))
+    .orderBy(asc(schema.planReviewer.createdAt), asc(schema.planReviewer.id))
+    .limit(MAX_REVIEWER_SCOPE_ROWS + 1);
+  if (rows.length > MAX_REVIEWER_SCOPE_ROWS) {
+    throw new ApiError(
+      "invalid",
+      `This reviewer's scope would scan more than ${MAX_REVIEWER_SCOPE_ROWS} plan_reviewer rows -- narrow the reviewer's assignment scope first`,
+    );
+  }
   return [...new Set(rows.map((r) => r.planId))];
 }

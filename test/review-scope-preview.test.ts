@@ -111,7 +111,11 @@ function makeFakeDb(capturedConditions: unknown[]) {
       if ("trackId" in cols && "submissionId" in cols && !("id" in cols)) {
         // planReviewer select (resolveReviewerSubmissions) -- overridden per
         // test via the wrapper below.
-        return { from: () => ({ where: () => Promise.resolve([]) }) };
+        return {
+          from: () => ({
+            where: () => ({ orderBy: () => ({ limit: () => Promise.resolve([]) }) }),
+          }),
+        };
       }
       return {
         from() {
@@ -162,7 +166,9 @@ describe("DEC-572: countPlanScopedSubmissions agrees with resolveReviewerSubmiss
         if ("trackId" in cols && "submissionId" in cols && !("id" in cols)) {
           return {
             from: () => ({
-              where: () => Promise.resolve([{ trackId: "track-a", submissionId: null }]),
+              where: () => ({
+                orderBy: () => ({ limit: () => Promise.resolve([{ trackId: "track-a", submissionId: null }]) }),
+              }),
             }),
           };
         }
