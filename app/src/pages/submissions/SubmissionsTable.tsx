@@ -8,6 +8,7 @@ import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { BulkActionBar } from './BulkActionBar';
 import { chunkSelection } from './bulk';
 import { deriveColumnsFromFormFields, findFormatField, formatAnswerValue, visibleColumns, type ColumnDef } from './columns';
+import { formatFormatLabel } from '../../lib/formatLabel';
 import { FilterBar, FilterBarSearchSort } from './FilterBar';
 import { buildSubmissionsQuery } from './filters';
 import { NewSubmissionModal, type NewSubmissionInput } from './NewSubmissionModal';
@@ -80,6 +81,11 @@ export function SubmissionsTable() {
 
   const columns: ColumnDef[] = useMemo(() => deriveColumnsFromFormFields(formFields), [formFields]);
   const shownColumns = useMemo(() => visibleColumns(columns, visibleFieldIds), [columns, visibleFieldIds]);
+  // DEC-743 amendment (wave 4): the Format column's raw "Talk (30 min)"
+  // answer runs through the ONE formatLabel formatter (abbreviated, to fit
+  // the table's dense column width) instead of printing the server's
+  // verbatim parenthetical.
+  const formatFieldId = useMemo(() => findFormatField(formFields)?.id, [formFields]);
 
   useEffect(() => {
     if (!eventId) return;
@@ -387,7 +393,11 @@ export function SubmissionsTable() {
                   </td>
                   <td className="chq-submissions-table-muted">{formatDate(item.submittedAt)}</td>
                   {shownColumns.map((col) => (
-                    <td key={col.fieldId}>{formatAnswerValue(item.answers?.[col.fieldId])}</td>
+                    <td key={col.fieldId}>
+                      {col.fieldId === formatFieldId
+                        ? formatFormatLabel(formatAnswerValue(item.answers?.[col.fieldId]), { abbreviate: true })
+                        : formatAnswerValue(item.answers?.[col.fieldId])}
+                    </td>
                   ))}
                   <td>
                     <button

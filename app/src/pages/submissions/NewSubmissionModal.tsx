@@ -135,8 +135,7 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
       </FormRow>
 
       {tracks.length > 0 && (
-        <fieldset className="chq-submissions-modal-field">
-          <legend className="chq-submissions-modal-label">Tracks</legend>
+        <FormRow label="Tracks">
           {tracks.map((track) => (
             <label key={track.id} className="chq-checkbox-label">
               <input
@@ -148,7 +147,7 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
               {track.name}
             </label>
           ))}
-        </fieldset>
+        </FormRow>
       )}
 
       {formatField && (
