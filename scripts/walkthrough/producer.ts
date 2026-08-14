@@ -106,6 +106,22 @@ function resolveScrapedHref(href: string, baseUrl: string): string {
   return resolved.toString();
 }
 
+/** Poll /dev/mailbox until `needle` appears in the listing (mail sends are
+ * best-effort side effects that can land via waitUntil a beat AFTER the
+ * confirming response) — retries for up to ~6s before returning the last
+ * body, so the caller's assertion still fails loudly with real content. */
+async function pollMailboxFor(jar: CookieJar | null, needle: string): Promise<{ res: Response; body: string }> {
+  let res!: Response;
+  let body = "";
+  for (let attempt = 0; attempt < 12; attempt++) {
+    res = jar ? await jarFetch(jar, `${BASE_URL}/dev/mailbox`) : await fetch(`${BASE_URL}/dev/mailbox`);
+    body = await res.text();
+    if (res.status === 200 && body.includes(needle)) return { res, body };
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  return { res, body };
+}
+
 /** GET /login to seed the chq_csrf cookie, then form-POST /login carrying
  * that cookie value (DEC-053 auth contract). Returns the authenticated jar. */
 async function loginAs(email: string, password: string): Promise<CookieJar> {
@@ -317,7 +333,7 @@ async function runJ1(organizerJar: CookieJar): Promise<{ eventId: string; slug: 
   );
   assertTrue(
     "J1 rejected submission did not confirm",
-    !rejectedBody.includes("Thanks for your submission"),
+    !rejectedBody.includes("Submission received"),
     "the not-yet-open POST must not have created a submission",
   );
 
@@ -345,19 +361,44 @@ async function runJ1(organizerJar: CookieJar): Promise<{ eventId: string; slug: 
   submitForm.set("field__description", "A talk about disciplined incremental delivery.");
   submitForm.set(`field__${textField.json.id}`, "Practical lessons from shipping weekly.");
   submitForm.set(`field__${formatFieldId}`, "Talk");
-  submitForm.set("field__first_name", "Priya");
-  submitForm.set("field__last_name", "Narayan");
+  // The public form renders ONE Name control (speaker_name); the POST
+  // handler splits it back into the locked first_name/last_name answers.
+  submitForm.set("speaker_name", "Priya Narayan");
   submitForm.set("field__email", `priya.narayan.${Date.now()}@example.com`);
   submitForm.set("trackIds", trackIds[0]!);
   const fileBlob = new Blob(["outline contents"], { type: "text/plain" });
   submitForm.set(`field__${fileField.json.id}`, fileBlob, "outline.txt");
+
+  // The default form template evolves (it grew a required Name field and an
+  // Audience-level dropdown after this fixture was hand-enumerated) — re-read
+  // the form and fill, by kind, every required field the explicit sets above
+  // missed, so template growth can never silently stale this fixture again.
+  const finalFormRes = await api(organizerJar, "GET", `/api/v1/events/${eventId}/forms`);
+  assertStatus("J1 re-GET form before the happy-path submit", finalFormRes.res, 200, finalFormRes.text);
+  const templateFields = (finalFormRes.json.fields ?? []) as {
+    id: string;
+    kind: string;
+    required: boolean;
+    options?: string[];
+  }[];
+  for (const f of templateFields) {
+    const key = `field__${f.id}`;
+    if (!f.required || submitForm.has(key)) continue;
+    // first_name/last_name never render as their own inputs — the single
+    // speaker_name control above covers them via the handler's name split.
+    if (/(^|:)(first_name|last_name)$/.test(f.id)) continue;
+    if (f.kind === "dropdown") submitForm.set(key, f.options?.[0] ?? "");
+    else if (f.kind === "checkbox") submitForm.set(key, "on");
+    else if (f.kind === "number") submitForm.set(key, "3");
+    else submitForm.set(key, "Walkthrough fixture value");
+  }
 
   const submitRes = await jarFetch(openJar, `${BASE_URL}/submit/${slug}`, { method: "POST", body: submitForm });
   const submitBody = await submitRes.text();
   assertStatus("J1 POST /submit (open, valid)", submitRes, 200, submitBody);
   assertTrue(
     "J1 valid submission confirms",
-    submitBody.includes("Thanks for your submission"),
+    submitBody.includes("Submission received"),
     submitBody.slice(0, 400),
   );
 
@@ -411,8 +452,7 @@ async function runJ2(organizerJar: CookieJar, seededEventId: string): Promise<vo
   const missingForm = new FormData();
   missingForm.set("chq_csrf", csrf!);
   missingForm.set("field__title", "Observability for Platform Teams");
-  missingForm.set("field__first_name", "Morgan");
-  missingForm.set("field__last_name", "Lee");
+  missingForm.set("speaker_name", "Morgan Lee");
   missingForm.set("field__email", "morgan.lee.walkthrough@example.com");
   const missingRes = await jarFetch(jar, `${BASE_URL}/submit/${SEEDED_EVENT_SLUG}`, {
     method: "POST",
@@ -427,7 +467,7 @@ async function runJ2(organizerJar: CookieJar, seededEventId: string): Promise<vo
   );
   assertTrue(
     "J2 missing-field response did not confirm",
-    !missingBody.includes("Thanks for your submission"),
+    !missingBody.includes("Submission received"),
     "an invalid submission must not confirm",
   );
 
@@ -437,8 +477,7 @@ async function runJ2(organizerJar: CookieJar, seededEventId: string): Promise<vo
   fullForm.set("chq_csrf", csrf!);
   fullForm.set("field__title", "Observability for Platform Teams");
   fullForm.set("field__description", "How we instrumented a fleet of internal platform services.");
-  fullForm.set("field__first_name", "Morgan");
-  fullForm.set("field__last_name", "Lee");
+  fullForm.set("speaker_name", "Morgan Lee");
   fullForm.set("field__email", uniqueEmail);
   // Seeded devflow-conf-2027's default form ships custom dropdown fields
   // (session format, audience level) that are required — fill each with its
@@ -450,6 +489,13 @@ async function runJ2(organizerJar: CookieJar, seededEventId: string): Promise<vo
     const optionMatch = optionsBlock.match(/<option value="([^"]+)"/);
     if (optionMatch) fullForm.set(name, optionMatch[1]!);
   }
+  // Dropdown-kind fields render as RADIO GROUPS on the public form (the
+  // single-track radio idiom, DEC-489 family) — fill each group's first
+  // value too, where the select scan above found nothing.
+  for (const match of getBody.matchAll(/<input type="radio" name="(field__field_[a-zA-Z0-9_]+)"[^>]*value="([^"]+)"/g)) {
+    const [, name, value] = match;
+    if (name && value && !fullForm.has(name)) fullForm.set(name, value);
+  }
   const trackMatch = getBody.match(/name="trackIds" value="([^"]+)"/);
   if (trackMatch) fullForm.set("trackIds", trackMatch[1]!);
 
@@ -458,16 +504,19 @@ async function runJ2(organizerJar: CookieJar, seededEventId: string): Promise<vo
   assertStatus("J2 POST /submit full", fullRes, 200, fullBody);
   assertTrue(
     "J2 full submission confirms",
-    fullBody.includes("Thanks for your submission"),
+    fullBody.includes("Submission received"),
     fullBody.slice(0, 400),
   );
   const claimMatch = fullBody.match(/href="([^"]*\/claim\/[^"]+)"/);
   assertTrue("J2 confirmation page has a claim link", Boolean(claimMatch), fullBody.slice(0, 800));
   const claimUrl = resolveScrapedHref(claimMatch![1]!, BASE_URL);
 
-  // Confirmation email appears in /dev/mailbox with the claim link.
-  const mailboxRes = await fetch(`${BASE_URL}/dev/mailbox`);
-  const mailboxBody = await mailboxRes.text();
+  // Confirmation email appears in /dev/mailbox with the claim link (polled:
+  // the send is a waitUntil side effect and can land just after the page;
+  // the mailbox is organizer-authenticated per DEC-546, so the organizer
+  // jar rides along — an unauthenticated fetch silently follows the 302 to
+  // /login and "finds" nothing).
+  const { res: mailboxRes, body: mailboxBody } = await pollMailboxFor(organizerJar, uniqueEmail);
   assertStatus("J2 GET /dev/mailbox", mailboxRes, 200, mailboxBody);
   assertTrue(
     "J2 dev mailbox lists the confirmation email",
@@ -523,8 +572,7 @@ async function runJ2(organizerJar: CookieJar, seededEventId: string): Promise<vo
   // Mailbox listing (organizer-authenticated per DEC-546) carries a row for
   // the reset email addressed to the throwaway account; scrape its detail
   // link the same way the confirmation email's mailbox row was found above.
-  const resetMailboxRes = await jarFetch(organizerJar, `${BASE_URL}/dev/mailbox`);
-  const resetMailboxBody = await resetMailboxRes.text();
+  const { res: resetMailboxRes, body: resetMailboxBody } = await pollMailboxFor(organizerJar, "Set a new password");
   assertStatus("J2 GET /dev/mailbox (reset email)", resetMailboxRes, 200, resetMailboxBody);
   assertTrue(
     "J2 dev mailbox lists the reset email",

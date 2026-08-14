@@ -462,7 +462,7 @@ async function purgeRefreshProbe(organizerJar: CookieJar, eventId: string): Prom
   });
   const submitBody = await submitRes.text();
   assertStatus("step6: POST /submit (probe submission)", submitRes, 200, submitBody);
-  assertTrue("step6: probe submission confirms", submitBody.includes("Thanks for your submission"), submitBody.slice(0, 400));
+  assertTrue("step6: probe submission confirms", submitBody.includes("Submission received"), submitBody.slice(0, 400));
 
   const claimMatch = submitBody.match(/href="([^"]*\/claim\/[^"]+)"/);
   assertTrue("step6: confirmation page has a claim link", Boolean(claimMatch), submitBody.slice(0, 800));
