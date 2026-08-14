@@ -365,9 +365,10 @@ async function flushTrackUpdates(db: Db, rows: TrackUpdateRow[], ts: Date): Prom
 /** Current MAX(seq) among the event's submissions -- the ONE pre-loaded
  * read a batched create pass increments in JS per created row, replacing
  * `submissionSeqSubquery`'s per-row correlated sub-select, which cannot
- * survive a multi-row VALUES insert. Reads the plain `seq` column (not a SQL
- * MAX() aggregate) so this stays the same "select this event's rows, reduce
- * in JS" shape every other loader in this file already uses. The
+ * survive a multi-row VALUES insert. A single-row SQL MAX() aggregate --
+ * DEC-528 wave-58 amendment: an unbounded per-row select-then-reduce over
+ * every submission in the event to learn one integer is a whole-event scan
+ * a dry run paid for nothing. 0 for the empty set (no submissions yet). The
  * UNIQUE (event_id, seq) index (schema.ts) still fails loudly on a
  * concurrent submit landing between this read and the batched insert below
  * -- no retry is added; a Sessionboard import racing a live submission
@@ -375,26 +376,24 @@ async function flushTrackUpdates(db: Db, rows: TrackUpdateRow[], ts: Date): Prom
  * the common case a retry loop would need to paper over.
  */
 async function loadMaxSubmissionSeq(db: Db, eventId: string): Promise<number> {
-  const rows = await db
-    .select({ seq: schema.submission.seq })
+  const [row] = await db
+    .select({ maxSeq: sql<number>`max(${schema.submission.seq})` })
     .from(schema.submission)
     .where(eq(schema.submission.eventId, eventId));
-  let max = 0;
-  for (const r of rows) if (r.seq > max) max = r.seq;
-  return max;
+  return row?.maxSeq == null ? 0 : Number(row.maxSeq);
 }
 
 /** Current MAX(position) among the event's tracks (-1 if none) -- same
  * batching rationale as loadMaxSubmissionSeq, replacing the per-row
- * correlated sub-select the track create path used to issue. */
+ * correlated sub-select the track create path used to issue, and the same
+ * DEC-528 wave-58 amendment: a single-row SQL MAX() aggregate rather than a
+ * whole-event select-then-reduce. */
 async function loadMaxTrackPosition(db: Db, eventId: string): Promise<number> {
-  const rows = await db
-    .select({ position: schema.track.position })
+  const [row] = await db
+    .select({ maxPosition: sql<number>`max(${schema.track.position})` })
     .from(schema.track)
     .where(eq(schema.track.eventId, eventId));
-  let max = -1;
-  for (const r of rows) if (r.position > max) max = r.position;
-  return max;
+  return row?.maxPosition == null ? -1 : Number(row.maxPosition);
 }
 
 export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlansArgs): Promise<SbApplyResult> {
