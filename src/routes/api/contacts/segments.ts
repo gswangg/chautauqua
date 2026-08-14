@@ -5,7 +5,7 @@
 import type { Hono } from "hono";
 import type { AppEnv } from "../../../server/env";
 import { csrfJson } from "../../../server/middleware";
-import { ApiError } from "../../../server/http";
+import { ApiError, parseBoundedText } from "../../../server/http";
 import { MAX_NAME_LENGTH } from "../../../forms/validate"; // DEC-417
 import * as repo from "../../../server/repo/contacts";
 import { matchesSegment, type ContactRecord, type SegmentRule } from "../../../domain/contacts";
@@ -16,6 +16,14 @@ import { currentOrgId, asRecord, checkLen, serializeSegment, requireOwnedSegment
 void DEC_711; // GET /segments `count`: the directory rail's per-segment figure, endpoint-backed
 void DEC_864; // GET /segments counts every segment in ONE bounded directory scan
 
+// DEC-417 (wave-31 amendment): bounds the segment rule set on BOTH the
+// write path (POST/PATCH /segments) and the read path (?rules=), so a
+// stored segment can never exceed what a live query is allowed to send --
+// same constant, one spelling. Deliberately local to this file rather than
+// src/lib/query-bounds.ts (a sibling task's shared home for other routes'
+// caps) to avoid a merge collision within the same wave.
+export const MAX_SEGMENT_RULES = 20;
+
 function isRuleShape(r: unknown): r is SegmentRule {
   return (
     typeof r === "object" &&
@@ -24,6 +32,13 @@ function isRuleShape(r: unknown): r is SegmentRule {
     ["eq", "ne", "contains"].includes((r as Record<string, unknown>).op as string) &&
     typeof (r as Record<string, unknown>).value === "string"
   );
+}
+
+/** Bounds a single rule's `value` the same way every other admin free-text
+ * field is bounded (DEC-417): over-cap is a 400 naming `rules`, never a
+ * downstream D1 SQLITE_TOOBIG 500 from an unbounded LIKE bind. */
+function assertRuleValueBounded(value: string): void {
+  parseBoundedText(value, "rules", { max: MAX_NAME_LENGTH, trim: false });
 }
 
 /** Throws (rather than returning an error) if any rule references a field
@@ -39,10 +54,20 @@ function parseRules(body: Record<string, unknown>, fields: Record<string, string
     fields.rules = "must be an array of {field,op,value}";
     return undefined;
   }
+  if (body.rules.length > MAX_SEGMENT_RULES) {
+    fields.rules = `Max ${MAX_SEGMENT_RULES} rules`;
+    return undefined;
+  }
   const rules: SegmentRule[] = [];
   for (const r of body.rules) {
     if (!isRuleShape(r)) {
       fields.rules = "each rule needs field, op (eq|ne|contains), value";
+      return undefined;
+    }
+    try {
+      assertRuleValueBounded(r.value);
+    } catch (err) {
+      fields.rules = err instanceof Error ? err.message : "invalid rule value";
       return undefined;
     }
     rules.push(r);
@@ -76,6 +101,11 @@ export function parseRulesQueryParam(raw: string | undefined): SegmentRule[] {
   if (!Array.isArray(parsed)) {
     throw new ApiError("invalid", "rules must be a JSON array", { rules: "must be an array of {field,op,value}" });
   }
+  if (parsed.length > MAX_SEGMENT_RULES) {
+    throw new ApiError("invalid", `rules must not exceed ${MAX_SEGMENT_RULES} entries`, {
+      rules: `Max ${MAX_SEGMENT_RULES} rules`,
+    });
+  }
   const rules: SegmentRule[] = [];
   for (const r of parsed) {
     if (!isRuleShape(r)) {
@@ -83,6 +113,7 @@ export function parseRulesQueryParam(raw: string | undefined): SegmentRule[] {
         rules: "each rule needs field, op (eq|ne|contains), value",
       });
     }
+    assertRuleValueBounded(r.value);
     rules.push(r);
   }
   try {
