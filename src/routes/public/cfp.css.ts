@@ -141,9 +141,46 @@ export const CFP_CSS = `
 
   .chq-cfp-links { display: flex; flex-direction: row; flex-wrap: wrap; gap: 18px; font-size: 13px; font-weight: 700; }
 
+  /* w14-f (DEC-986): phone-only two-step CFP wizard chrome. Every class
+     below is inert on desktop (display: none, no other declaration) --
+     phone-block-visibility.test.ts's invariant for a phone-only block --
+     and is switched back on only inside the 700px media query below. The
+     two step <section>s (.chq-cfp-step-talk / .chq-cfp-step-you) carry no
+     rule of their own here: they already render as ordinary sections on
+     every width, and only get hidden per-step via the compound
+     [data-chq-cfp-step="N"] selectors inside the media block. */
+  /* DEC-970 (SSR class contract): the base step marker itself needs no
+     layout rule of its own -- it renders identically at every width, only
+     the two compound [data-chq-cfp-step="N"] selectors above ever hide the
+     section it's attached to. */
+  .chq-cfp-step { display: block; }
+  .chq-cfp-steps { display: none; }
+  .chq-cfp-steps-label { display: none; }
+  .chq-cfp-steps-bar { display: none; }
+  .chq-cfp-steps-bar-fill { display: none; }
+  .chq-cfp-step-next { display: none; }
+  .chq-cfp-step-back { display: none; }
+
   @media (max-width: 700px) {
     .chq-cfp-header, .chq-cfp-body { padding-left: 16px; padding-right: 16px; }
     .chq-cfp-track-format-row,
     .chq-cfp-you-grid.chq-cfp-fields { grid-template-columns: 1fr; }
+
+    /* CfpStepsScript is the only thing that ever changes
+       data-chq-cfp-step away from its markup default of "all" (server-
+       rendered forms carrying a validation error never get a script-set
+       step, so they stay "all" and every rule below simply never matches).
+       DEC-383: no colour literal, tokens only. */
+    .chq-cfp-steps { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
+    .chq-cfp-steps-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--chq-muted); }
+    .chq-cfp-steps-bar { display: block; height: 4px; border-radius: 2px; background: var(--chq-rule); overflow: hidden; }
+    .chq-cfp-steps-bar-fill { display: block; height: 100%; width: 50%; background: var(--chq-brandable-accent); }
+    .chq-cfp-step-next,
+    .chq-cfp-step-back { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; }
+
+    [data-chq-cfp-step="1"] .chq-cfp-step-you { display: none; }
+    [data-chq-cfp-step="2"] .chq-cfp-step-talk { display: none; }
+    [data-chq-cfp-step="1"] .chq-cfp-actions button[type="submit"] { display: none; }
+    [data-chq-cfp-step="2"] .chq-cfp-step-next { display: none; }
   }
 `;
