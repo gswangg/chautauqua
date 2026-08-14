@@ -170,9 +170,12 @@ describe('OnboardingGrid: DEC-291/DEC-662 Response control', () => {
     expect(screen.getAllByText('Grace Hopper').length).toBeGreaterThan(0);
 
     // DEC-662: no email text in the grid row -- emails stay in the contact
-    // drawer, the row meta is company + a Has account pill only.
+    // drawer, the row meta is company + "has account" plain text (wave-4
+    // amendment: the .chq-pill chrome was dropped -- plain lowercase meta).
     expect(screen.queryByText('ada@example.com')).not.toBeInTheDocument();
     expect(screen.queryByText('grace@example.com')).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Acme.*has account/).length).toBeGreaterThan(0);
+    expect(document.querySelector('.chq-pill.chq-speakers-has-account')).not.toBeInTheDocument();
 
     // Ada's task-2 cell is complete -- one "Response" control on the desktop
     // grid and one on the phone card list (toggled by CSS, both in the DOM).
@@ -567,6 +570,70 @@ describe('OnboardingGrid: DEC-830 participation menu', () => {
   });
 });
 
+// DEC-934 amendment (wave 4): "the roster names the filter it is under" --
+// ONE caption under the toolbar, printed only while a taskId/status/
+// overdueOnly/inviteStatus predicate narrows the request, reading its
+// numbers straight off the payload the grid already fetched (never a second
+// query).
+describe('OnboardingGrid: DEC-934 amendment names the active narrowing', () => {
+  it('prints no caption with no filters active, then names overdueOnly once toggled, then goes quiet again once cleared', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    expect(screen.queryByText(/^Showing \d+ of \d+ speakers/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Overdue only' }));
+    await waitFor(() => {
+      expect(screen.getByText('Showing 2 of 2 speakers - overdue')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Overdue only' }));
+    await waitFor(() => {
+      expect(screen.queryByText(/^Showing \d+ of \d+ speakers/)).not.toBeInTheDocument();
+    });
+  });
+
+  it('names a task-status narrowing by the same "at least one <status> task" phrase DEC-934 specifies', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Any task status' }), { target: { value: 'pending' } });
+
+    await waitFor(() => {
+      expect(screen.getByText("Showing 2 of 2 speakers - at least one pending task")).toBeInTheDocument();
+    });
+  });
+
+  it('joins two active filters with "and"', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Overdue only' }));
+    fireEvent.change(screen.getByRole('combobox', { name: 'Any participation' }), { target: { value: 'declined' } });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Showing 2 of 2 speakers - overdue and participation declined'),
+      ).toBeInTheDocument();
+    });
+  });
+});
+
 // DEC-920: the roster's file link names the file (was the literal text
 // "File" with a generic "Has file" label) -- a cell with an uploaded
 // deliverable now reads its accessible name off the filename the server
@@ -855,7 +922,7 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     counts: { speakers: 4, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
   };
 
-  it('renders ONE muted strip (not N blank cells) for an invited-only row, with a live participation control, and the header summary matches the server counts (excluding those rows)', async () => {
+  it('DEC-934 amendment (wave 4): a not-chasing row keeps its cell (quiet, non-actionable), captions itself under the identity cell, and the header summary matches the server counts (excluding those rows)', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: TASK_GRID,
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
@@ -865,21 +932,25 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     await waitFor(() => screen.getAllByText('Marie Curie').length > 0);
 
     const table = within(screen.getByRole('table'));
-    // ct3 (invited-only, no real assignment) still gets the DEC-934 strip.
+    // ct3 (invited-only) carries the not-chasing caption, beneath its
+    // identity cell -- naming the invite state without the old "invite
+    // invited" echo.
     expect(
-      table.getAllByText("Not chasing - invite invited. Set participation to Confirmed to assign this event's tasks."),
+      table.getAllByText("Invited - not confirmed yet. Confirm participation to assign this event's tasks."),
     ).toHaveLength(1);
-    // ct4 (declined-only) no longer gets the strip -- DEC-829 amendment
-    // below covers its individual-cell treatment.
+    // ct4 (declined-only) carries its own DEC-829 muted-cell treatment
+    // instead (covered below), not this caption.
     expect(
-      table.queryByText("Not chasing - invite declined. Set participation to Confirmed to assign this event's tasks."),
+      table.queryByText("Declined. Confirm participation to assign this event's tasks."),
     ).not.toBeInTheDocument();
 
-    // No per-task toggle renders for the invited-only row (no assignment
-    // ever existed to toggle).
+    // ct3's stray assignment still RENDERS (no assign/complete/toggle
+    // affordance: a plain status label, not a button) -- it is not hidden.
     expect(
       table.queryByRole('button', { name: /Toggle Sign speaker agreement for Marie Curie/ }),
     ).not.toBeInTheDocument();
+    const marieRow = table.getByText('Marie Curie').closest('tr')!;
+    expect(within(marieRow).getByText('Pending')).toHaveClass('chq-speakers-status');
 
     // The row's own participation control stays live -- it IS the fix.
     expect(
@@ -1126,8 +1197,9 @@ describe('OnboardingGrid: DEC-730 amendment matrix header names both axes', () =
 
 // DEC-934 amendment: "Send portal invite" only where inviting is still
 // possible -- an account rules it out (DEC-805), and now so does an
-// already-invited row, which renders the quiet 'REMINDED' marker in the same
-// cell instead. The invite state is read straight off
+// already-invited row, which renders NOTHING in that spot (wave-4 amendment:
+// the redundant 'REMINDED' marker was deleted, since the skip caption
+// already names this state). The invite state is read straight off
 // participations[].inviteStatus, the field the roster row model already
 // carries.
 describe('OnboardingGrid: DEC-934 amendment "Send portal invite" gates on not-yet-invited too', () => {
@@ -1198,7 +1270,7 @@ describe('OnboardingGrid: DEC-934 amendment "Send portal invite" gates on not-ye
     expect(table.queryByText('REMINDED')).not.toBeInTheDocument();
   });
 
-  it('no-account, already invited: the quiet REMINDED marker renders, not the control', async () => {
+  it('no-account, already invited: neither the control nor a marker renders (wave-4: the extra EMAILED marker was deleted as redundant with the toolbar skip caption)', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWithRows([
         {
@@ -1221,8 +1293,8 @@ describe('OnboardingGrid: DEC-934 amendment "Send portal invite" gates on not-ye
 
     const table = within(screen.getByRole('table'));
     expect(table.queryByRole('button', { name: 'Send portal invite' })).not.toBeInTheDocument();
-    const marker = table.getByText('REMINDED');
-    expect(marker).toHaveClass('chq-speakers-invited-marker');
+    expect(table.queryByText('REMINDED')).not.toBeInTheDocument();
+    expect(document.querySelector('.chq-speakers-invited-marker')).not.toBeInTheDocument();
   });
 });
 
