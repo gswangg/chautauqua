@@ -66,7 +66,57 @@ function topLevelRuleBodies(withoutMediaCss: string, selector: string): string[]
   return bodies;
 }
 
+/** Extracts the body text of every @media block in the source whose
+ * condition mentions a phone-width max-width breakpoint (700px or 900px,
+ * the two breakpoints used across app/src/**). Mirrors stripMedia's one-
+ * level-of-nesting brace matching, but keeps the block body instead of
+ * discarding it. */
+function extractPhoneMediaBodies(css: string): string {
+  const re = /@media([^{]*)\{((?:[^{}]*\{[^{}]*\}[^{}]*)*)\}/g;
+  let out = '';
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(css))) {
+    const condition = m[1];
+    const body = m[2];
+    if (
+      condition !== undefined &&
+      body !== undefined &&
+      /max-width:\s*(700|900)px/.test(condition)
+    ) {
+      out += `${body}\n`;
+    }
+  }
+  return out;
+}
+
+/** Whether `selector` has at least one rule (standalone, or last in a
+ * comma-separated list) inside `cssText`. Reuses topLevelRuleBodies'
+ * regex shape rather than adding a second parser. */
+function hasRuleFor(cssText: string, selector: string): boolean {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`${escaped}\\s*\\{`);
+  return re.test(cssText);
+}
+
 const PHONE_SELECTOR_RE = /\.[A-Za-z0-9_-]*phone[A-Za-z0-9_-]*/g;
+
+/** Selectors that top-level-hide with `display: none` but genuinely have
+ * no rule of their own inside any phone media query in the same file —
+ * e.g. because their phone-width visibility rule lives on a compound
+ * selector (a parent or sibling) rather than the bare class. Each entry
+ * names the reason so the exemption is reviewable, not a silent escape
+ * hatch. Empty is the preferred/expected state. */
+export const NO_PHONE_RULE_OK: Array<[selector: string, reason: string]> = [
+  [
+    '.chq-comms-phone-landing',
+    'DEC-621: the base selector never gets its own phone-width display rule — ' +
+      'Comms.tsx (line ~251) always renders the element with a second class, ' +
+      "chq-comms-phone-landing-show, added alongside it before the visitor picks a " +
+      'destination; that co-applied class carries the display:flex rule inside the ' +
+      '700px media query. Verified end-to-end in Comms.phone.render.test.tsx.',
+  ],
+];
+const NO_PHONE_RULE_OK_SELECTORS = new Set(NO_PHONE_RULE_OK.map(([selector]) => selector));
 
 interface CssSource {
   file: string;
@@ -104,6 +154,7 @@ describe('phone-block visibility invariant (w6-h)', () => {
     const selectors = new Set(css.match(PHONE_SELECTOR_RE) ?? []);
     if (selectors.size === 0) continue;
     const withoutMedia = stripMedia(css);
+    const phoneMediaBodies = extractPhoneMediaBodies(css);
 
     describe(file, () => {
       for (const selector of selectors) {
@@ -130,6 +181,27 @@ describe('phone-block visibility invariant (w6-h)', () => {
                 `instead of "display: none" — desktop will render this phone-only block`,
             ).toMatch(/^display:\s*none$/);
           }
+        });
+
+        it(`${selector}'s top-level display:none is switched back on inside a phone media query (or allowlisted)`, () => {
+          if (NOT_PHONE_ONLY_SELECTORS.has(selector) || NO_PHONE_RULE_OK_SELECTORS.has(selector)) {
+            return; // exempt: see NOT_PHONE_ONLY / NO_PHONE_RULE_OK
+          }
+          const bodies = topLevelRuleBodies(withoutMedia, selector);
+          const combined = bodies.join('\n');
+          const topLevelHidesIt = /display:\s*none\s*(;|$)/.test(combined);
+          if (!topLevelHidesIt) {
+            return; // nothing to switch back on: no top-level display:none rule
+          }
+          expect(
+            hasRuleFor(phoneMediaBodies, selector),
+            `${file}: ${selector} is display:none at top level but has no rule of its ` +
+              `own inside any phone media query (max-width: 700px|900px) in this file — ` +
+              `it is hidden at every width, not just desktop. Either add its phone-width ` +
+              `rule inside the existing media block, or add a reasoned entry to ` +
+              `NO_PHONE_RULE_OK if its visibility rule genuinely lives on a compound ` +
+              `selector instead.`,
+          ).toBe(true);
         });
       }
     });
