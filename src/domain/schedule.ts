@@ -144,6 +144,31 @@ function intervalsOverlap(
   return a.startMin < b.endMin && b.startMin < a.endMin;
 }
 
+/** DEC-010 amendment (wave 66): an event-defined non-bookable window (a
+ * lunch/coffee break — src/server/repo/breaks.ts) that autoSchedule and
+ * nextFreeSlot must both refuse to place into. Day-scoped, minute-offset
+ * like every other interval in this module. */
+export interface BlockedInterval {
+  day: string;
+  startMin: number;
+  endMin: number;
+}
+
+/** Buckets blocked intervals by day so the candidate-slot scan can test only
+ * the current day's breaks. Absent/empty input yields an empty map — every
+ * caller below already treats a missing bucket as "nothing blocked". */
+export function buildBlockedIndex(
+  blocked: BlockedInterval[],
+): Map<string, { startMin: number; endMin: number }[]> {
+  const index = new Map<string, { startMin: number; endMin: number }[]>();
+  for (const b of blocked) {
+    const bucket = index.get(b.day) ?? [];
+    bucket.push({ startMin: b.startMin, endMin: b.endMin });
+    index.set(b.day, bucket);
+  }
+  return index;
+}
+
 /** DEC-298: fail loudly on any termination-invariant violation shared by
  * every candidate-slot scan below (autoSchedule's grid loop and
  * nextFreeSlot's single-session scan alike). */
@@ -184,6 +209,7 @@ function scanForFreeSlot(
   gridMin: number,
   roomIndex: Map<string, { startMin: number; endMin: number }[]>,
   speakerIndex: Map<string, { startMin: number; endMin: number }[]>,
+  blockedIndex: Map<string, { startMin: number; endMin: number }[]>,
 ): { slot: CandidateSlot | null; sawRoomAvailableCandidate: boolean } {
   if (rooms.length === 0 || session.durationMin > dayEndMin - dayStartMin) {
     return { slot: null, sawRoomAvailableCandidate: false };
@@ -192,6 +218,8 @@ function scanForFreeSlot(
   let sawRoomAvailableCandidate = false;
 
   for (const day of days) {
+    const blockedBucket = blockedIndex.get(day);
+
     for (
       let startMin = dayStartMin;
       startMin + session.durationMin <= dayEndMin;
@@ -199,6 +227,12 @@ function scanForFreeSlot(
     ) {
       const endMin = startMin + session.durationMin;
       const interval = { startMin, endMin };
+
+      // DEC-010 amendment: a break is not a room-availability fact — skip
+      // this start time entirely, without touching sawRoomAvailableCandidate,
+      // so a session that only fits inside a break still reports the
+      // pre-existing "no_free_slot" reason rather than a new one.
+      if (blockedBucket?.some((b) => intervalsOverlap(b, interval))) continue;
 
       for (const roomId of rooms) {
         const roomKey = `${day}|${roomId}`;
@@ -373,6 +407,9 @@ export interface AutoScheduleInput {
   dayEndMin: number;
   gridMin: number;
   existing: PlacedSession[];
+  /** DEC-010 amendment: event-defined breaks (lunch, coffee) autoSchedule
+   * must never place into. Absent is treated as no breaks. */
+  blocked?: BlockedInterval[];
 }
 
 /**
@@ -388,12 +425,14 @@ export function autoSchedule(input: AutoScheduleInput): {
   placed: PlacedSession[];
   unplaced: UnplacedSession[];
 } {
-  const { sessions, rooms, days, dayStartMin, dayEndMin, gridMin, existing } =
+  const { sessions, rooms, days, dayStartMin, dayEndMin, gridMin, existing, blocked } =
     input;
 
   // DEC-298: fail loudly on any termination-invariant violation — see
   // assertScheduleBounds.
   assertScheduleBounds(dayStartMin, dayEndMin, gridMin);
+
+  const blockedIndex = buildBlockedIndex(blocked ?? []);
 
   const ordered = [...sessions].sort((a, b) => {
     if (b.durationMin !== a.durationMin) return b.durationMin - a.durationMin;
@@ -437,6 +476,7 @@ export function autoSchedule(input: AutoScheduleInput): {
       gridMin,
       roomIndex,
       speakerIndex,
+      blockedIndex,
     );
 
     if (!slot) {
@@ -481,6 +521,9 @@ export interface NextFreeSlotInput {
   dayEndMin: number;
   gridMin: number;
   existing: PlacedSession[];
+  /** DEC-010 amendment: event-defined breaks (lunch, coffee) a suggested
+   * slot must never land inside. Absent is treated as no breaks. */
+  blocked?: BlockedInterval[];
 }
 
 /**
@@ -495,11 +538,12 @@ export interface NextFreeSlotInput {
 export function nextFreeSlot(
   input: NextFreeSlotInput,
 ): { day: string; startMin: number; roomId: string } | null {
-  const { session, rooms, days, dayStartMin, dayEndMin, gridMin, existing } = input;
+  const { session, rooms, days, dayStartMin, dayEndMin, gridMin, existing, blocked } = input;
 
   assertScheduleBounds(dayStartMin, dayEndMin, gridMin);
 
   const { roomIndex, speakerIndex } = buildOccupancyIndexes(existing);
+  const blockedIndex = buildBlockedIndex(blocked ?? []);
   const { slot } = scanForFreeSlot(
     session,
     rooms,
@@ -509,6 +553,7 @@ export function nextFreeSlot(
     gridMin,
     roomIndex,
     speakerIndex,
+    blockedIndex,
   );
   if (!slot) return null;
   return { day: slot.day, startMin: slot.startMin, roomId: slot.roomId };

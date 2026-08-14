@@ -3,11 +3,12 @@
 // test/overview-place-suggestion.test.ts. Split out of overview.ts (which
 // grew past 800 lines and became a merge-conflict hotspot).
 
-import type { Conflict, PlacedSession } from "../../../domain/schedule";
+import type { BlockedInterval, Conflict, PlacedSession } from "../../../domain/schedule";
 import { nextFreeSlot } from "../../../domain/schedule";
-import { DEC_652 } from "../../../decisions";
+import { DEC_010, DEC_652 } from "../../../decisions";
 import type { ConflictResolution, ConflictRow, ConflictSessionInfo, NextFreeSlotParams, PlacementSuggestion } from "./types";
 
+void DEC_010;
 void DEC_652;
 
 const ROW_CAP = 5;
@@ -77,6 +78,7 @@ export function buildPlacementSuggestion(
   roomNameById: Map<string, string>,
   params: NextFreeSlotParams,
   durationMin: number = params.defaultDurationMin,
+  blocked: BlockedInterval[] = [],
 ): PlacementSuggestion | null {
   const slot = nextFreeSlot({
     session: {
@@ -89,6 +91,7 @@ export function buildPlacementSuggestion(
     dayEndMin: params.dayEndMin,
     gridMin: params.gridMin,
     existing: placed,
+    blocked,
   });
   if (!slot) return null;
   return {
@@ -127,6 +130,7 @@ export function buildConflictResolutionFor(
   days: string[],
   roomNameById: Map<string, string>,
   params: NextFreeSlotParams,
+  blocked: BlockedInterval[] = [],
 ): ConflictResolution | null {
   const [aId, bId] = conflict.submissionIds;
   const a = sessionById.get(aId);
@@ -150,6 +154,7 @@ export function buildConflictResolutionFor(
     dayEndMin: params.dayEndMin,
     gridMin: params.gridMin,
     existing: placed.filter((p) => p.submissionId !== laterId),
+    blocked,
   });
   if (!slot) return null;
 

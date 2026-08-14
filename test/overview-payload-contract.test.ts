@@ -69,6 +69,7 @@ function emptyResponses() {
     [{ count: 0 }], // unplacedCount (DEC-370 wave-56 amendment)
     [], // unplacedDetail
     [], // slotRows (always fires now)
+    [], // DEC-010 amendment: breaks for the event
     [{ sentLast7Days: 0, lastSentAt: null }], // comms
   ];
 }
@@ -123,6 +124,7 @@ describe("DEC-589 amendment (wave 49): overview Phase 1 queries are concurrent, 
       [{ count: 0 }], // unplacedCount (DEC-370 wave-56 amendment)
       [], // unplacedDetail
       [], // slotRows (always fires now)
+      [], // DEC-010 amendment: breaks for the event
       [{ sentLast7Days: 0, lastSentAt: null }], // comms
     ];
     let cursor = 0;
