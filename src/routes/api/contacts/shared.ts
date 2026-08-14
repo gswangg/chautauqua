@@ -8,6 +8,7 @@ import * as repo from "../../../server/repo/contacts";
 import * as schema from "../../../db/schema";
 import type { Db } from "../../../server/context";
 import type { SegmentRule } from "../../../domain/contacts";
+import { chunkIds } from "../../../lib/chunk";
 
 export function currentOrgId(c: { var: { auth?: { orgId: string } } }): string {
   const auth = c.var.auth;
@@ -73,14 +74,19 @@ export async function requireOwnedContact(db: Db, id: string, orgId: string): Pr
 // singular helper throws -- a foreign or unknown id anywhere in the set
 // still yields zero writes, same as before.
 export async function requireOwnedContacts(db: Db, ids: string[], orgId: string): Promise<Map<string, repo.ContactRow>> {
-  const rows = await db
-    .select()
-    .from(schema.contact)
-    .where(and(inArray(schema.contact.id, ids), eq(schema.contact.orgId, orgId)));
   const byId = new Map<string, repo.ContactRow>();
-  for (const row of rows) {
-    const contact = repo.toRow(row);
-    byId.set(contact.id, contact);
+  // DEC-078: ids is a client-supplied bulk-op id set (merge candidates), not
+  // a bounded enum -- chunk it so a large merge selection never exceeds the
+  // D1 bound-parameter ceiling.
+  for (const batch of chunkIds(ids)) {
+    const rows = await db
+      .select()
+      .from(schema.contact)
+      .where(and(inArray(schema.contact.id, batch), eq(schema.contact.orgId, orgId)));
+    for (const row of rows) {
+      const contact = repo.toRow(row);
+      byId.set(contact.id, contact);
+    }
   }
   for (const id of ids) {
     if (!byId.has(id)) throw new ApiError("not_found", "Contact not found");
