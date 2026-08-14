@@ -1,0 +1,230 @@
+// /forgot and /reset/:token routes extracted from src/routes/auth.tsx
+// (contention decomposition, no behavior change). Mounted at "/" by
+// auth.tsx.
+
+import { Hono } from "hono";
+import { eq } from "drizzle-orm";
+import type { AppEnv } from "../server/env";
+import { csrfForm } from "../server/middleware";
+import * as schema from "../db/schema";
+import { hashPassword } from "../auth/password";
+import { issueSessionRevokingAll } from "../server/auth-session";
+import { isSecureRequest } from "../auth/cookies";
+import { type KVStore } from "../auth/claim";
+import {
+  createResetToken,
+  readResetToken,
+  consumeResetToken,
+  hashResetToken,
+  newResetToken,
+} from "../auth/password-reset";
+import { requestIpFromHeaders } from "../lib/rate-limit";
+import { checkAndIncrementScopedLimit } from "../server/repo/rate-limit";
+import { listEventsForOrg } from "../server/repo/events";
+import { makeMailer } from "../server/context";
+import { resolveBaseUrl } from "../server/origin";
+import { renderEmailHtml } from "../mail/shell";
+import {
+  ForgotPasswordPage,
+  CheckEmailPage,
+  ResetPasswordPage,
+  ExpiredResetPage,
+  MIN_PASSWORD_LENGTH,
+} from "./auth-views";
+import {
+  ensureCsrfCookie,
+  resetEmailText,
+  AUTH_RATE_LIMIT_WINDOW_SECONDS,
+  AUTH_RATE_LIMIT_MAX,
+  RATE_LIMIT_ERROR,
+} from "./auth-helpers";
+import { DEC_994, DEC_014, DEC_180 } from "../decisions";
+
+void DEC_994;
+void DEC_014;
+void DEC_180;
+
+// -----------------------------------------------------------------------
+// Password reset (DEC-014 wave-25 amendment / DEC-154 / DEC-180 / DEC-994).
+// -----------------------------------------------------------------------
+
+export const resetRoutes = new Hono<AppEnv>();
+
+resetRoutes.get("/forgot", async (c) => {
+  const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
+  if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);
+  return c.html(<ForgotPasswordPage csrfToken={csrfToken} />);
+});
+
+resetRoutes.post("/forgot", csrfForm, async (c) => {
+  const db = c.var.db;
+  const body = await c.req.parseBody();
+  const submittedEmail = String(body.email ?? "").trim();
+  const normalizedEmail = submittedEmail.toLowerCase();
+  const now = Date.now();
+
+  // DEC-948 / DEC-180 (wave-29 amendment): the SAME atomic consume shape as
+  // /login, keyed on the normalised email — the deleted read-only peek
+  // helper keeps no auth call site. One atomic D1 upsert up front, so N
+  // concurrent requests
+  // against one address land on distinct counts and exactly one crosses the
+  // cap. Per DEC-180 wave-29 corollary (2), /forgot CONSUMES ALWAYS AND
+  // NEVER REFUNDS: refunding only when the address exists (or only when it
+  // does not) would make bucket depletion an account-enumeration oracle,
+  // which DEC-004 closes everywhere else. A 429 here doesn't leak existence
+  // (it fires purely off request volume against one address, known or not).
+  const forgotLimit = await checkAndIncrementScopedLimit(db, "forgot", normalizedEmail, now, {
+    windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
+    max: AUTH_RATE_LIMIT_MAX,
+  });
+  if (!forgotLimit.ok) {
+    const { token: csrfToken } = ensureCsrfCookie(c);
+    return c.html(<ForgotPasswordPage csrfToken={csrfToken} email={submittedEmail} error={RATE_LIMIT_ERROR} />, 429);
+  }
+
+  // DEC-014 (wave-25 amendment) / DEC-004 (wave-27 amendment): everything
+  // below this line is a server-side side effect (KV writes, a
+  // best-effort email send) that must NEVER change the response — the
+  // exact same <CheckEmailPage> is returned at the bottom of this handler
+  // regardless of which branch below runs.
+  const rows = await db.select().from(schema.user).where(eq(schema.user.email, normalizedEmail)).limit(1);
+  const user = rows[0];
+
+  if (user) {
+    const kv = c.env.KV as unknown as KVStore;
+    const resetToken = await createResetToken(kv, user.id);
+    const origin = resolveBaseUrl(c);
+    const resetUrl = `${origin}/reset/${resetToken}`;
+
+    // email_log.event_id is NOT NULL (DEC-006); a password reset isn't
+    // event-scoped, so — mirroring POST /api/v1/users' welcome-email
+    // anchoring (src/routes/api/users.ts) — the send is logged against
+    // the org's first event when one exists. An org with zero events
+    // still mints and stores the token (the on-screen response is
+    // identical either way) but has no event to log the send against, so
+    // sending is skipped. No design doc covers this gap; narrowest
+    // reading, flagged for the scribe.
+    const orgEvents = await listEventsForOrg(db, user.orgId);
+    const anchorEvent = orgEvents[0];
+    if (anchorEvent) {
+      try {
+        const mailer = makeMailer(db, c.env);
+        const text = resetEmailText({ resetUrl, eventName: anchorEvent.name });
+        const html = renderEmailHtml(text, {
+          eventName: anchorEvent.name,
+          reason: "you requested a password reset for your account.",
+          cta: { label: "Set a new password", href: resetUrl },
+        });
+        await mailer.send({
+          to: { email: user.email, name: user.email },
+          subject: "Set a new password",
+          text,
+          html,
+          eventId: anchorEvent.id,
+          contactId: user.contactId ?? null,
+        });
+      } catch (err) {
+        console.error("password reset email failed (token still minted):", err);
+      }
+    }
+    // No resetScopedLimit here — the atomic spend above already counted
+    // this request against the budget, and (per DEC-180 wave-29) /forgot
+    // never refunds, existing account or not, so the two branches stay
+    // indistinguishable from the budget's point of view.
+  } else {
+    // No account: burn a comparable SHA-256 cost to the mint path above
+    // (DEC-004-style — never short-circuit past the work a real branch
+    // would do). The budget was already spent atomically at admission
+    // above, before this branch ran — nothing further to record.
+    await hashResetToken(newResetToken());
+  }
+
+  return c.html(<CheckEmailPage />);
+});
+
+resetRoutes.get("/reset/:token", async (c) => {
+  const token = c.req.param("token");
+  const kv = c.env.KV as unknown as KVStore;
+  const record = await readResetToken(kv, token);
+  if (!record) {
+    return c.html(<ExpiredResetPage />, 410);
+  }
+
+  const db = c.var.db;
+  const rows = await db.select().from(schema.user).where(eq(schema.user.id, record.userId)).limit(1);
+  const user = rows[0];
+  if (!user) {
+    // A live reset grant with no backing user row is data corruption
+    // (the account was deleted after the token was minted), not a
+    // recoverable 404 — fail loudly.
+    throw new Error(`No user row for reset token userId '${record.userId}'`);
+  }
+
+  const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
+  if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);
+  return c.html(<ResetPasswordPage csrfToken={csrfToken} email={user.email} />);
+});
+
+resetRoutes.post("/reset/:token", csrfForm, async (c) => {
+  const token = c.req.param("token");
+  const kv = c.env.KV as unknown as KVStore;
+
+  // Consume FIRST, before any validation — a replayed POST against an
+  // already-used (or never-valid) token always lands on the 410 card,
+  // rather than re-running the change or leaking whether it was ever
+  // valid.
+  const consumed = await consumeResetToken(kv, token);
+  if (!consumed) {
+    return c.html(<ExpiredResetPage />, 410);
+  }
+
+  const db = c.var.db;
+  const rows = await db.select().from(schema.user).where(eq(schema.user.id, consumed.userId)).limit(1);
+  const user = rows[0];
+  if (!user) {
+    throw new Error(`No user row for reset token userId '${consumed.userId}'`);
+  }
+
+  const body = await c.req.parseBody();
+  const next = String(body.next ?? "");
+  const confirm = String(body.confirm ?? "");
+
+  if (next.length < MIN_PASSWORD_LENGTH) {
+    const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
+    if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);
+    return c.html(
+      <ResetPasswordPage
+        csrfToken={csrfToken}
+        email={user.email}
+        error={`New password must be at least ${MIN_PASSWORD_LENGTH} characters.`}
+      />,
+      400,
+    );
+  }
+  if (next !== confirm) {
+    const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
+    if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);
+    return c.html(
+      <ResetPasswordPage csrfToken={csrfToken} email={user.email} error="New password and confirmation do not match." />,
+      400,
+    );
+  }
+
+  const passwordHash = await hashPassword(next);
+  const now = new Date();
+  await db.update(schema.user).set({ passwordHash, updatedAt: now }).where(eq(schema.user.id, user.id));
+
+  // DEC-994 (wave-27 amendment): a reset asserts the credential was LOST —
+  // the opposite of login's rotate-this-session-only rule — so every
+  // existing session for this user is revoked. Unlike POST /account/password
+  // and POST /claim/:token (both reached from an already-authenticated
+  // browser, or one that just proved control of an inbox mid-session), this
+  // request came from an anonymous browser that only proved control of an
+  // inbox; it does not carry the user back in on the new grant
+  // issueSessionRevokingAll mints — it discards that token and sends them to
+  // /login to sign in with the password they just set, where the status
+  // line names what happened.
+  await issueSessionRevokingAll(db, user.id, now);
+
+  return c.redirect("/login?password-reset=1", 302);
+});

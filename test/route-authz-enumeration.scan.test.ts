@@ -418,14 +418,14 @@ interface LedgerEntry {
 
 const PUBLIC_BY_DESIGN: LedgerEntry[] = [
   // src/routes/auth.tsx
-  { file: "src/routes/auth.tsx", method: "GET", path: "/login", reason: "renders the login form itself; must be reachable with no session" },
-  { file: "src/routes/auth.tsx", method: "POST", path: "/login", reason: "the auth-establishing endpoint; guarded by per-email+per-IP rate limiting (DEC-072/DEC-180), never by session" },
-  { file: "src/routes/auth.tsx", method: "POST", path: "/logout", reason: "a no-op for an anonymous caller (deletes only the session row matching the presented cookie, if any); CSRF-protected via csrfFormOrHeader" },
-  { file: "src/routes/auth.tsx", method: "GET", path: "/logout", reason: "DEC-154 (wave 25 amendment): mutates nothing at all -- it exists precisely so a bookmarked/prefetched GET cannot sign anyone out, and redirects to /login. Nothing to guard: it reads no session and touches no row" },
-  { file: "src/routes/auth.tsx", method: "GET", path: "/claim/:token", reason: "the 'auth' is possession of an unguessable KV claim token, not a session; this is the account-creation entry point by design" },
-  { file: "src/routes/auth.tsx", method: "POST", path: "/claim/:token", reason: "same token-possession model, plus per-IP rate limiting" },
-  { file: "src/routes/auth.tsx", method: "GET", path: "/forgot", reason: "DEC-014 (wave 25 amendment): renders the ask-for-a-link form itself; must be reachable with no session" },
-  { file: "src/routes/auth.tsx", method: "GET", path: "/reset/:token", reason: "DEC-014 (wave 25 amendment): the 'auth' is possession of an unguessable KV reset token, not a session, same model as /claim/:token" },
+  { file: "src/routes/auth-login.tsx", method: "GET", path: "/login", reason: "renders the login form itself; must be reachable with no session" },
+  { file: "src/routes/auth-login.tsx", method: "POST", path: "/login", reason: "the auth-establishing endpoint; guarded by per-email+per-IP rate limiting (DEC-072/DEC-180), never by session" },
+  { file: "src/routes/auth-login.tsx", method: "POST", path: "/logout", reason: "a no-op for an anonymous caller (deletes only the session row matching the presented cookie, if any); CSRF-protected via csrfFormOrHeader" },
+  { file: "src/routes/auth-login.tsx", method: "GET", path: "/logout", reason: "DEC-154 (wave 25 amendment): mutates nothing at all -- it exists precisely so a bookmarked/prefetched GET cannot sign anyone out, and redirects to /login. Nothing to guard: it reads no session and touches no row" },
+  { file: "src/routes/auth-claim.tsx", method: "GET", path: "/claim/:token", reason: "the 'auth' is possession of an unguessable KV claim token, not a session; this is the account-creation entry point by design" },
+  { file: "src/routes/auth-claim.tsx", method: "POST", path: "/claim/:token", reason: "same token-possession model, plus per-IP rate limiting" },
+  { file: "src/routes/auth-reset.tsx", method: "GET", path: "/forgot", reason: "DEC-014 (wave 25 amendment): renders the ask-for-a-link form itself; must be reachable with no session" },
+  { file: "src/routes/auth-reset.tsx", method: "GET", path: "/reset/:token", reason: "DEC-014 (wave 25 amendment): the 'auth' is possession of an unguessable KV reset token, not a session, same model as /claim/:token" },
   // src/routes/dev/mailbox.tsx
   { file: "src/routes/dev/mailbox.tsx", method: "GET", path: "/dev/mailbox", reason: "DEC-005: routes literally don't exist (404) unless DEV_MODE==='1'; single-tenant local dev tooling, no secrets present in Stage 1" },
   { file: "src/routes/dev/mailbox.tsx", method: "GET", path: "/dev/mailbox/:emailId/ics", reason: "same DEV_MODE gate" },
@@ -471,8 +471,8 @@ const PUBLIC_BY_DESIGN: LedgerEntry[] = [
 // carry no csrfJson/csrfForm/csrfFormOrHeader guard.
 // ---------------------------------------------------------------------------
 const CSRF_EXEMPT: LedgerEntry[] = [
-  { file: "src/routes/auth.tsx", method: "POST", path: "/login", reason: "the auth-establishing endpoint itself -- no session/cookie exists yet to double-submit against; protected by rate limiting instead (DEC-072/DEC-180)" },
-  { file: "src/routes/auth.tsx", method: "POST", path: "/claim/:token", reason: "no session exists yet at account-claim time; protected by the unguessable token + per-IP rate limiting instead" },
+  { file: "src/routes/auth-login.tsx", method: "POST", path: "/login", reason: "the auth-establishing endpoint itself -- no session/cookie exists yet to double-submit against; protected by rate limiting instead (DEC-072/DEC-180)" },
+  { file: "src/routes/auth-claim.tsx", method: "POST", path: "/claim/:token", reason: "no session exists yet at account-claim time; protected by the unguessable token + per-IP rate limiting instead" },
   { file: "src/routes/public/submit.tsx", method: "POST", path: "/submit/:eventSlug/save-draft", reason: "anonymous public CFP submitter has no session to double-submit against; protected by rate limiting instead (DEC-072/DEC-422)" },
   { file: "src/routes/public/submit.tsx", method: "POST", path: "/submit/:eventSlug", reason: "anonymous public CFP submitter has no session to double-submit against; protected by rate limiting instead" },
 ];

@@ -583,7 +583,7 @@ describe("insert(schema.authSession) enumeration scan (DEC-994)", () => {
 describe("delete(schema.authSession) owner-predicate scan (DEC-994 wave-22)", () => {
   const LEDGER: Array<{ file: string; reason: string }> = [
     {
-      file: path.join("src", "routes", "auth.tsx"),
+      file: path.join("src", "routes", "auth-login.tsx"),
       reason:
         "POST /logout ends exactly the session presented on this request and resolves no other user's row",
     },
