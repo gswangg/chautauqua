@@ -55,11 +55,39 @@ export function safeExternalUrl(raw: string | null | undefined): string | null {
   }
 }
 
+// Wave-41 amendment (DEC-788): the whitespace class this function collapses
+// is CLOSED and enumerated (not the open Unicode \s class) so a SQL prefilter
+// can be a PROVABLE superset of this collapse rule rather than an
+// approximation — space, tab, CR, LF, FF, VT, and NBSP. Output is otherwise
+// identical to the prior open-\s behavior for every input this product's
+// domain ever produces (contact names never carry other Unicode whitespace,
+// e.g. U+2028/U+3000).
+const CONTACT_NAME_WHITESPACE = /[\t\n\v\f\r\u0020\u00a0]+/g;
+
 export function normalizedContactName(first: string, last: string): string {
   return `${first} ${last}`
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, " ");
+    .replace(CONTACT_NAME_WHITESPACE, " ");
+}
+
+/**
+ * Wave-41 (DEC-788 amendment): same closed whitespace class as
+ * normalizedContactName, but STRIPS rather than collapses — a coarser
+ * transform than normalizedContactName's own collapse-to-single-space, so
+ * two names that normalizedContactName would treat as equal are still equal
+ * under this stripping (whitespace removed entirely is a superset of
+ * whitespace collapsed to one space), AND two names whose first/last SPLIT
+ * differs (e.g. "Mary Jo"/"Smith" vs "Mary"/"Jo Smith") collapse to the same
+ * string here even though normalizedContactName's own `${first} ${last}`
+ * join would not. This asymmetric coarsening is exactly what makes it safe
+ * as a SQL PREFILTER for findDuplicateGroups's own name-bucketing (see
+ * repo/contacts/merge.ts's scanContactsForOrg narrowing): a real match can
+ * never be excluded, only (rarely) over-included, and findDuplicateGroups
+ * remains the sole decider of an actual match.
+ */
+export function stripContactNameWhitespace(s: string): string {
+  return s.toLowerCase().replace(CONTACT_NAME_WHITESPACE, "");
 }
 
 function normalizedCompany(company: string | undefined): string {
