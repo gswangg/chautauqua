@@ -12,6 +12,7 @@
 // set) since the binding's contract is `send(new EmailMessage(from, to,
 // raw))` — a MIME string, not a structured {html, text, attachments} object.
 
+import { ADDRESS_FORBIDDEN_RE } from "../domain/email";
 import type { EmailLogEntry, EmailLogWriter, Mailer, RenderedEmail } from "./types";
 
 /** Structural shape of the Email Service binding (env.EMAIL). */
@@ -121,8 +122,11 @@ function sanitizeMimeFilename(filename: string): string {
 // otherwise render as two comma-separated To addresses — this must be
 // enforced here, at the serializer boundary, not just at intake.
 export function addressValue(email: string): string {
-  // eslint-disable-next-line no-control-regex
-  return email.replace(/[\x00-\x1f\x7f<>,;"\s]/g, "");
+  // ADDRESS_FORBIDDEN_RE has no /g flag (a stateful global regex's .test()
+  // in src/domain/email.ts must not carry lastIndex between calls); build a
+  // fresh global copy here so every forbidden character is stripped, not
+  // just the first.
+  return email.replace(new RegExp(ADDRESS_FORBIDDEN_RE.source, "g"), "");
 }
 
 function addressHeader(email: string, name: string | undefined): string {
