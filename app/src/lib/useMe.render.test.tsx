@@ -1,9 +1,13 @@
-// DEC-024 amendment (wave 14): a 401 from GET /api/v1/me is the same policy
-// the Worker's /admin gate already enforces for an anonymous request --
-// redirect to the login door rather than silently rendering an app frame
-// with no signed-in user. Exercises useMe() via a minimal harness component
-// (this codebase has no renderHook helper -- other lib tests here render a
-// harness instead, see useMenu.test.tsx).
+// DEC-024 amendment (wave 14, superseded by wave-19 amendment): a 401 from
+// GET /api/v1/me is the same policy the Worker's /admin gate already
+// enforces for an anonymous request -- redirect to the login door rather
+// than silently rendering an app frame with no signed-in user. As of the
+// wave-19 amendment the redirect itself is owned by api.ts's request() (see
+// api.unauthorized.render.test.ts), not useMe -- this test now exercises
+// that policy end-to-end through useMe() and asserts it fires exactly once.
+// Exercises useMe() via a minimal harness component (this codebase has no
+// renderHook helper -- other lib tests here render a harness instead, see
+// useMenu.test.tsx).
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -56,5 +60,8 @@ describe('useMe() 401 handling (DEC-024 amendment, wave 14)', () => {
     // setMe(null) still runs, so nothing renders in the frame between the
     // assign() call and the browser unloading for /login.
     expect(screen.getByText('no me')).toBeInTheDocument();
+    // The redirect policy now lives in api.ts's request(), guarded so a
+    // single 401 navigates exactly once.
+    expect(assignSpy).toHaveBeenCalledTimes(1);
   });
 });

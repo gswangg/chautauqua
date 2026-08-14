@@ -12,6 +12,9 @@ import react from "@vitejs/plugin-react";
 // a .test.tsx name (DEC-700).
 // w29-e (DEC-969): useMenu.test.tsx needs the same (render + fireEvent +
 // pointerdown/keydown against document, JSX harness), same treatment.
+// w19-a (DEC-024 amendment): api.unauthorized.render.test.ts needs a real
+// `window.location` to stub/assert against despite its plain .test.ts name
+// (no JSX in this one, just window stubbing), same treatment.
 export default defineConfig({
   plugins: [react()],
   test: {
@@ -36,6 +39,7 @@ export default defineConfig({
       ["app/src/lib/useEscapeKey.test.ts", "jsdom"],
       ["app/src/lib/useNavExceptions.test.tsx", "jsdom"],
       ["app/src/lib/useMenu.test.tsx", "jsdom"],
+      ["app/src/lib/api.unauthorized.render.test.ts", "jsdom"],
     ],
     include: [
       "test/**/*.test.ts",

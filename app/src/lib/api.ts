@@ -48,6 +48,19 @@ export interface ListEnvelope<T> {
   submissionsInScope?: number;
 }
 
+// DEC-024 (wave-19 amendment): a 401 anywhere on the wire is one policy in
+// one place -- the SPA's session has expired/is absent, so the caller is
+// sent to the login door. Guarded so a page hit by several concurrent 401s
+// (e.g. a burst of requests firing when a session expires) only navigates
+// once per page life. A 403 (signed in but no grant) deliberately does NOT
+// redirect here -- see the res.status === 403 branches below.
+let redirecting = false;
+function redirectToLoginOnce(): void {
+  if (redirecting) return;
+  redirecting = true;
+  window.location.assign('/login');
+}
+
 function isApiErrorBody(body: unknown): body is ApiErrorBody {
   return (
     typeof body === 'object' &&
@@ -89,6 +102,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const body = await parseBody(res);
 
   if (!res.ok) {
+    // 403 (signed in, no grant) is left alone -- the forbidden message
+    // renders inline; redirecting there would bounce a legitimately
+    // signed-in user off the page they're looking at.
+    if (res.status === 401) {
+      redirectToLoginOnce();
+    }
     if (isApiErrorBody(body)) {
       throw new ApiError(res.status, body.error.code, body.error.message, body.error.fields);
     }
@@ -160,6 +179,9 @@ export async function apiPostBlob(path: string, body: unknown): Promise<{ blob: 
   });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      redirectToLoginOnce();
+    }
     const parsed = await parseBody(res);
     if (isApiErrorBody(parsed)) {
       throw new ApiError(res.status, parsed.error.code, parsed.error.message, parsed.error.fields);
@@ -192,6 +214,9 @@ export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
   const body = await parseBody(res);
 
   if (!res.ok) {
+    if (res.status === 401) {
+      redirectToLoginOnce();
+    }
     if (isApiErrorBody(body)) {
       throw new ApiError(res.status, body.error.code, body.error.message, body.error.fields);
     }

@@ -30,6 +30,7 @@ export default defineConfig({
     exclude: [
       "**/node_modules/**",
       "app/src/lib/useEscapeKey.test.ts",
+      "app/src/lib/api.unauthorized.render.test.ts",
       "test/itinerary-script-persistence.test.ts",
       "test/embed-element.test.ts",
       "test/gate4-residue-closure.test.ts",

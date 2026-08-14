@@ -31,16 +31,14 @@ export function useMe(): UseMeResult {
       })
       .catch((err) => {
         if (cancelled) return;
-        // Fail loudly: an unauthenticated/broken session should not look
-        // like a silently-empty "no user" state to callers debugging it.
-        // Same policy the Worker's /admin gate already enforces for an
-        // anonymous request: a 401 sends the caller to the login door
-        // rather than rendering an app frame with no signed-in user.
-        // setMe(null) still runs so nothing renders in the frame between
-        // the assign() call and the browser unloading for /login.
+        // DEC-024 (wave-19 amendment): the 401 -> /login redirect is one
+        // policy owned by api.ts's request(), not duplicated here (a
+        // second reader of the same policy). setMe(null) still runs so
+        // nothing renders in the frame between api.ts's assign() call and
+        // the browser unloading for /login. Any other error still fails
+        // loudly rather than looking like a silently-empty "no user" state.
         if (err instanceof ApiError && err.status === 401) {
           setMe(null);
-          window.location.assign('/login');
           return;
         }
         throw err;
