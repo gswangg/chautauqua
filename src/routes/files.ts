@@ -528,6 +528,13 @@ fileApiRoutes.post("/files/:fileId/comments", csrfJson, async (c) => {
 // -----------------------------------------------------------------------
 fileApiRoutes.delete("/files/:fileId", csrfJson, async (c) => {
   const auth = requireAuth(c);
+  // w32-d (role-refusal probe): a reviewer can never own a file version
+  // deletion (only organizer/speaker branches below ever grant access) --
+  // refuse outright before the scope lookup rather than reading a row this
+  // role can never legitimately act on.
+  if (auth.role !== "organizer" && auth.role !== "speaker") {
+    throw new ApiError("forbidden", "Requires organizer or the uploading speaker");
+  }
   const fileId = c.req.param("fileId");
 
   const scope = await getFileDeleteScope(c.var.db, fileId);
@@ -536,7 +543,7 @@ fileApiRoutes.delete("/files/:fileId", csrfJson, async (c) => {
   if (auth.role === "organizer") {
     // DEC-713: an organizer may delete ANY version of a submission in their org.
     if (scope.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
-  } else if (auth.role === "speaker") {
+  } else {
     // DEC-713: a speaker may delete ONLY the latest version of the chain,
     // that they uploaded, while the submission is still pending review.
     if (!auth.contactId || scope.uploadedByContactId !== auth.contactId) {
@@ -555,8 +562,6 @@ fileApiRoutes.delete("/files/:fileId", csrfJson, async (c) => {
       throw new ApiError("not_found", "Submission not found");
     }
     assertSpeakerSubmissionUnlocked({ status: scope.status, formCloseDate: scope.formCloseDate, timezone: scope.timezone });
-  } else {
-    throw new ApiError("forbidden", "Requires organizer or the uploading speaker");
   }
 
   // DEC-713 ordering (amended wave 50): the DB write commits FIRST, then the
