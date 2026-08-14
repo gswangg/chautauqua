@@ -302,46 +302,45 @@
   white-space: nowrap;
 }
 
-.chq-review-reviews-row {
-  background: var(--chq-surface-sunk);
-}
-
 .chq-review-reviews-detail {
-  background: var(--chq-surface-sunk);
   padding: 16px;
-}
-
-.chq-review-reviews-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.chq-review-reviews-item {
-  padding: 10px 0;
-  border-bottom: 1px solid var(--chq-hairline);
-}
-
-.chq-review-reviews-item:last-child {
-  border-bottom: none;
-}
-
-.chq-review-reviews-item-head {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 10px;
-  align-items: baseline;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--chq-ink);
 }
 
 .chq-review-reviews-reviewer {
   color: var(--chq-ink);
+  font-weight: 700;
 }
+
+/* --- w25-d/DEC-633 amendment (A27+B8): expanded reviews band chrome -----
+   Each evaluation is now its own <tr> inheriting the results table's
+   column grid; this block is the band's own visual treatment layered on
+   top of that grid, not a per-surface variant. Keep additions to this
+   file in this clearly separated block (review.css is also touched by
+   w25-g's plan editor work). */
+.chq-review-band-row {
+  background: var(--chq-surface);
+}
+
+.chq-review-band-row > td {
+  padding-top: 16px;
+  padding-bottom: 16px;
+  border-bottom: none;
+}
+
+.chq-review-band-row.chq-review-band-first > td {
+  border-top: 1px solid var(--chq-hairline);
+}
+
+.chq-review-band-row.chq-review-band-last > td {
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-review-reviews-recusal-footer .chq-review-reviews-detail {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--chq-muted);
+}
+/* --- end w25-d/DEC-633 amendment block ---------------------------------- */
 
 /* DEC-723/DEC-737: each evaluation's own blended score, next to the
    reviewer name in the disclosure row. */
