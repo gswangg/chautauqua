@@ -16,6 +16,27 @@ import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 const PLAN_ID = 'plan-scorecard-1';
 const SUBMISSION_ID = 'sub-scorecard-1';
 
+// w40-b: builds a real ReviewerQueueEnvelope (items/total/unscoredTotal/
+// page/perPage/open/recused) -- the queue mocks below need `unscoredTotal`
+// computed server-side over the FULL scope (DEC-845 wave 38 amendment),
+// which the shared listEnvelope() helper (a generic list-envelope shape)
+// doesn't carry, so this test file builds the real shape directly rather
+// than editing the shared mockApi.ts helper (out of this task's scope).
+function queueEnvelope(
+  items: Array<{ submissionId: string; alreadyRatedByMe: boolean; [key: string]: unknown }>,
+  overrides: Partial<{ total: number; unscoredTotal: number }> = {},
+) {
+  return {
+    items,
+    total: overrides.total ?? items.length,
+    unscoredTotal: overrides.unscoredTotal ?? items.filter((i) => !i.alreadyRatedByMe).length,
+    page: 1,
+    perPage: 200,
+    open: true,
+    recused: [],
+  };
+}
+
 function plan() {
   return {
     id: PLAN_ID,
@@ -602,7 +623,7 @@ describe('Scorecard header progress counter (DEC-939)', () => {
         myEvaluation: undefined,
         criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
       },
-      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: listEnvelope([
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: queueEnvelope([
         { submissionId: 'sub-a', ref: 'S-001', title: 'Rated', ratingsCount: 1, alreadyRatedByMe: true, myScore: 4, format: null },
         { submissionId: 'sub-b', ref: 'S-002', title: 'Unrated', ratingsCount: 0, alreadyRatedByMe: false, myScore: null, format: null },
         { submissionId: 'sub-c', ref: 'S-003', title: 'Also rated', ratingsCount: 1, alreadyRatedByMe: true, myScore: 5, format: null },
@@ -641,7 +662,7 @@ describe('Scorecard header progress counter (DEC-939)', () => {
         myEvaluation: undefined,
         criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
       },
-      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: listEnvelope([
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: queueEnvelope([
         { submissionId: 'sub-a', ref: 'S-001', title: 'Rated', ratingsCount: 1, alreadyRatedByMe: true, myScore: 4, format: null },
         { submissionId: 'sub-b', ref: 'S-002', title: 'Unrated', ratingsCount: 0, alreadyRatedByMe: false, myScore: null, format: null },
       ]),
@@ -872,7 +893,7 @@ describe('Scorecard completeness notice and form-field key guard (DEC-939 wave-3
         criteria: twoRatingsAndDropdown(),
       },
       [`PUT /api/v1/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`]: { ok: true },
-      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: listEnvelope([]),
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: queueEnvelope([]),
     });
 
     render(
@@ -1062,5 +1083,157 @@ describe('Scorecard Save draft (DEC-873 wave 27 amendment)', () => {
 
     expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
     expect(screen.getByText('Saving a draft skips these checks')).toBeInTheDocument();
+  });
+});
+
+// w40-b (DEC-845 amendment): the header counter reads the queue envelope's
+// own total/unscoredTotal (computed server-side over the reviewer's FULL
+// scope before any page slice), never the loaded page of items, and
+// "Submit and next" scans for the first not-already-rated, not-current row
+// rather than blindly taking items[0] (which the server deliberately keeps
+// populated with already-rated rows, sorted rated-last).
+describe('Scorecard queue envelope counter and submit-and-next termination (DEC-845 wave 40 amendment)', () => {
+  it('renders the header counter from the envelope total/unscoredTotal, not the 200-row page (test a)', async () => {
+    // 200 items on the page, but the envelope's own total/unscoredTotal
+    // (computed over the reviewer's full scope) say 250/3 -- the header
+    // must print 247 of 250, not a figure derived from the 200-row page.
+    const items = Array.from({ length: 200 }, (_, i) => ({
+      submissionId: `sub-${i}`,
+      ref: `S-${i}`,
+      title: `Submission ${i}`,
+      ratingsCount: 1,
+      alreadyRatedByMe: true,
+      myScore: 4,
+      format: null,
+    }));
+
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+      },
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: queueEnvelope(items, { total: 250, unscoredTotal: 3 }),
+    });
+
+    const headerSlot = document.createElement('div');
+    headerSlot.id = 'chq-header-slot';
+    document.body.appendChild(headerSlot);
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
+    await waitFor(() => expect(within(headerSlot).getByText('247 of 250 done')).toBeInTheDocument());
+    headerSlot.remove();
+  });
+
+  it('lands on the plan route, never a submission route, once unscoredTotal is 0 (test b)', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+      },
+      [`PUT /api/v1/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`]: { ok: true },
+      // Every row is already rated by this reviewer (including the one
+      // just submitted) and unscoredTotal is 0 -- items[0] would be a
+      // scored submission if the old blind-take-first logic survived.
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: queueEnvelope(
+        [
+          { submissionId: SUBMISSION_ID, ref: 'S-010', title: 'A Deeply Nested Talk', ratingsCount: 1, alreadyRatedByMe: true, myScore: 4, format: null },
+          { submissionId: 'sub-other', ref: 'S-011', title: 'Another Talk', ratingsCount: 1, alreadyRatedByMe: true, myScore: 3, format: null },
+        ],
+        { unscoredTotal: 0 },
+      ),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+          <Route path="/review/plans/:planId" element={<div>PLAN ROUTE</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
+
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
+    fireEvent.click(within(qualityGroup).getByRole('radio', { name: '4' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit and next' }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining(`/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`),
+        expect.objectContaining({ method: 'PUT' }),
+      ),
+    );
+    expect(await screen.findByText('PLAN ROUTE')).toBeInTheDocument();
+  });
+
+  it('advances to the first unscored item that is not the current submission (test c)', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+      },
+      [`GET /api/v1/review/submissions/sub-next`]: {
+        id: 'sub-next',
+        ref: 'S-011',
+        title: 'The Next Submission',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+      },
+      [`PUT /api/v1/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`]: { ok: true },
+      // The just-submitted submission is still rated-last in the queue
+      // (server keeps it), and one genuinely unscored row (`sub-next`)
+      // exists -- "Submit and next" must land there, not on itself.
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: queueEnvelope([
+        { submissionId: SUBMISSION_ID, ref: 'S-010', title: 'A Deeply Nested Talk', ratingsCount: 1, alreadyRatedByMe: true, myScore: 4, format: null },
+        { submissionId: 'sub-next', ref: 'S-011', title: 'The Next Submission', ratingsCount: 0, alreadyRatedByMe: false, myScore: null, format: null },
+      ]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
+
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
+    fireEvent.click(within(qualityGroup).getByRole('radio', { name: '4' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit and next' }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining(`/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`),
+        expect.objectContaining({ method: 'PUT' }),
+      ),
+    );
+    expect(await screen.findByRole('heading', { name: 'The Next Submission' })).toBeInTheDocument();
   });
 });

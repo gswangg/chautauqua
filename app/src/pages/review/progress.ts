@@ -2,7 +2,7 @@
 // SINGLE predicate for who a reminder send targets -- imported here (never
 // re-derived) so the SPA's counted label and POST /plans/:id/remind agree.
 import { selectRemindTargets } from '../../../../src/domain/evaluation';
-import type { ProgressRow, ReviewerQueueItem } from './types';
+import type { ProgressRow } from './types';
 
 /** Reviewers whose queue isn't fully rated yet -- the "laggards" a Remind click targets. */
 export function reviewersWithIncompleteQueues(rows: ProgressRow[]): ProgressRow[] {
@@ -40,14 +40,17 @@ export function progressTotals(rows: ProgressRow[]): { completed: number; assign
   };
 }
 
-/** DEC-939: the 'N of N done' completion counter for THIS reviewer's own
- * queue -- the same completed/total pair the reviewer queue's own progress
- * bar and caption compute off a queue envelope's items (ReviewerQueue.tsx),
- * exposed here as the one reader so the scorecard header can show the
- * identical figure without a second count derived in that component. */
-export function queueDoneCounts(items: ReviewerQueueItem[]): { completed: number; total: number } {
+/** DEC-939/DEC-845 (wave 40 amendment): the 'N of N done' completion counter
+ * for THIS reviewer's own queue -- reads the queue envelope's own
+ * total/unscoredTotal (already computed server-side over the FULL scope
+ * before any page slice, see reviewer.ts), never items.length/filter,
+ * which only sees whatever page happens to be loaded (clamped to
+ * MAX_PER_PAGE=200 -- see src/lib/pagination.ts). Exposed here as the one
+ * reader so the scorecard header can show the identical figure ReviewerQueue
+ * derives without a second count derived in that component. */
+export function queueDoneCounts(envelope: { total: number; unscoredTotal: number }): { completed: number; total: number } {
   return {
-    completed: items.filter((i) => i.alreadyRatedByMe).length,
-    total: items.length,
+    completed: envelope.total - envelope.unscoredTotal,
+    total: envelope.total,
   };
 }

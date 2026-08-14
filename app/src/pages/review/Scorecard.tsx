@@ -13,10 +13,16 @@ import { planTrackScope } from './PlanList';
 // Advanced -> 'advanced') -- never a second label grammar defined in this
 // component.
 import { sessionFormatLabel, audienceLevelLabel } from '../../../../src/lib/session-vocabulary';
-// DEC-939: the scorecard header's 'N of N done' counter reads the SAME
-// reader the reviewer queue's own progress caption is built from -- never a
-// second count derived in this component.
+// DEC-939/DEC-845 (wave 40 amendment): the scorecard header's 'N of N done'
+// counter reads the SAME reader the reviewer queue's own progress caption is
+// built from -- never a second count derived in this component.
 import { queueDoneCounts } from './progress';
+// DEC-845 (wave 40 amendment): the queue fetch below requests the full
+// MAX_PER_PAGE page (as ReviewerQueue.tsx does) so the envelope's own
+// total/unscoredTotal -- and submitAndAdvance's own scan for the next
+// unscored item -- see the reviewer's full scope, not a shrunken default
+// page.
+import { MAX_PER_PAGE } from '../../../../src/lib/pagination';
 // DEC-873: the per-criterion weight caption and the "Overall" blend reuse
 // the exact functions the plan editor and server already use, so the
 // reviewer's number and the organizer's number can never disagree.
@@ -27,7 +33,7 @@ import type {
   EvaluationPlan,
   EvaluationScores,
   RecusalRecord,
-  ReviewerQueueItem,
+  ReviewerQueueEnvelope,
   ReviewerSubmissionDetail,
   Track,
 } from './types';
@@ -154,13 +160,13 @@ export function Scorecard() {
     // queueProgress null, which renders no counter rather than a stale or
     // fabricated one.
     if (!planId) return;
-    apiList<ReviewerQueueItem>(`/review/plans/${planId}/queue`)
-      // DEC-518 (wave-39 amendment): `total` is the envelope's res.total, not
-      // items.length -- the queue endpoint truncates items at its perPage
-      // cap (see src/lib/pagination.ts listPerPage), so a reviewer with more
-      // assignments than that cap would otherwise see a shrunken "N of N"
-      // that quietly claims to be exhaustive.
-      .then((res) => setQueueProgress({ completed: queueDoneCounts(res.items).completed, total: res.total }))
+    (apiList(`/review/plans/${planId}/queue?perPage=${MAX_PER_PAGE}`) as Promise<ReviewerQueueEnvelope>)
+      // DEC-845 (wave 40 amendment): queueDoneCounts now reads the envelope's
+      // own total/unscoredTotal directly -- both are computed server-side
+      // over the reviewer's FULL scope before any page slice (see
+      // reviewer.ts), so this figure stays true even past MAX_PER_PAGE
+      // assignments.
+      .then((res) => setQueueProgress(queueDoneCounts(res)))
       .catch(() => setQueueProgress(null));
   }, [planId]);
 
@@ -179,8 +185,19 @@ export function Scorecard() {
     setSaved(false);
     try {
       await apiPut(`/review/plans/${planId}/evaluations/${submissionId}`, { scores, comment });
-      const queue = await apiList<ReviewerQueueItem>(`/review/plans/${planId}/queue`);
-      const next = queue.items[0];
+      // DEC-845 (wave 40 amendment): the queue deliberately keeps already-
+      // rated rows (sorted rated-last, see buildReviewerQueue in
+      // src/domain/evaluation.ts) so items[0] can be a submission the
+      // reviewer already scored -- including the one they just submitted.
+      // "Submit and next" must scan for the first row that is NOT already
+      // rated by this reviewer and is not the submission just submitted,
+      // and fall back to the plan route once unscoredTotal is 0 or no such
+      // row exists, rather than re-opening a scored card forever.
+      const queue = (await apiList(`/review/plans/${planId}/queue?perPage=${MAX_PER_PAGE}`)) as ReviewerQueueEnvelope;
+      const next =
+        queue.unscoredTotal > 0
+          ? queue.items.find((item) => !item.alreadyRatedByMe && item.submissionId !== submissionId)
+          : undefined;
       if (next) {
         navigate(`/review/plans/${planId}/submissions/${next.submissionId}`);
       } else {
