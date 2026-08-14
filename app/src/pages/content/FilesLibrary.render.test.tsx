@@ -14,6 +14,25 @@ import '@testing-library/jest-dom/vitest';
 import { FilesLibrary } from './FilesLibrary';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 
+function makeItem(i: number, overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    rootFileId: `file-${i}`,
+    latestFileId: `file-${i}-latest`,
+    filename: `slides-${i}.pdf`,
+    kind: 'presentation' as const,
+    submissionId: `sub-${i}`,
+    submissionRef: `SES-${i}`,
+    submissionTitle: `Talk ${i}`,
+    speakerName: 'Speaker',
+    uploadedAt: 1700000000000,
+    versionCount: 1,
+    versionNo: 1,
+    sizeBytes: 1000,
+    uploaderName: 'Priya Raman',
+    ...overrides,
+  };
+}
+
 const EVENT_ID = 'evt-files-render-1';
 
 const ALL_ZERO_KIND_COUNTS = {
@@ -236,10 +255,83 @@ describe('FilesLibrary render smoke', () => {
     if (!headerRow) throw new Error('header row not found');
     expect(within(headerRow).getByText('31 files · 412.0 MB')).toBeInTheDocument();
     expect(within(headerRow).getByRole('button', { name: /Content/ })).toBeInTheDocument();
-    // The bulk 'Download all' control leaves the library with the ZIP
-    // selection UI (wave 41 amendment) — the archive endpoint's one
-    // remaining caller is the deliverable detail's own 'Download all'.
-    expect(within(headerRow).queryByRole('button', { name: 'Download all' })).not.toBeInTheDocument();
+    // CNT-14 (DEC-160, wave-26 amendment): a scoped, dialog-free
+    // "Download all" renders on the header block, labelled from the
+    // currently-rendered set (3 rows on this page), never the envelope's
+    // whole-event total (31).
+    expect(within(headerRow).getByRole('button', { name: 'Download all 3 (.zip)' })).toBeInTheDocument();
+  });
+
+  it('CNT-14: "Download all" posts the visible rows\' latestFileId set to the archive endpoint', async () => {
+    const items = Array.from({ length: 3 }, (_, i) => makeItem(i));
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope(items, {
+        kindCounts: { ...ALL_ZERO_KIND_COUNTS, presentation: 3 },
+      }),
+    });
+
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
+
+    const button = await screen.findByRole('button', { name: 'Download all 3 (.zip)' });
+    expect(button).not.toBeDisabled();
+
+    vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:mock'), revokeObjectURL: vi.fn() });
+
+    let capturedBody: unknown = null;
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === 'string' ? input : input.toString();
+        if (url.includes('/files/archive')) {
+          capturedBody = init?.body ? JSON.parse(init.body as string) : null;
+          return Promise.resolve(
+            new Response(new Uint8Array([1, 2, 3]), {
+              status: 200,
+              headers: { 'content-disposition': 'attachment; filename="files.zip"' },
+            }),
+          );
+        }
+        return realFetch(input, init);
+      }),
+    );
+
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(capturedBody).toEqual({ fileIds: ['file-0-latest', 'file-1-latest', 'file-2-latest'] });
+    });
+  });
+
+  it('CNT-14: the "Download all" control does not render for an empty visible set', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope([], { kindCounts: ALL_ZERO_KIND_COUNTS }),
+    });
+
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('No deliverable files yet.')).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('button', { name: /Download all/ })).not.toBeInTheDocument();
+  });
+
+  it('CNT-14: renders disabled with the cap reason once the visible set exceeds MAX_ARCHIVE_FILES', async () => {
+    const items = Array.from({ length: 51 }, (_, i) => makeItem(i));
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope(items, {
+        total: 51,
+        page: 1,
+        perPage: 51,
+        kindCounts: { ...ALL_ZERO_KIND_COUNTS, presentation: 51 },
+      }),
+    });
+
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
+
+    const button = await screen.findByRole('button', { name: 'Download all 51 (.zip)' });
+    expect(button).toBeDisabled();
+    expect(screen.getByText('50 files or 20 MB at a time — narrow the filter')).toBeInTheDocument();
   });
 
   it('renders a Previous/Next pager driven by the envelope total', async () => {

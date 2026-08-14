@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { apiGet, ApiError } from '../../lib/api';
+import { apiGet, apiPostBlob, ApiError } from '../../lib/api';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import {
   LIBRARY_KINDS,
@@ -22,6 +22,15 @@ interface FilesLibraryProps {
 }
 
 const PER_PAGE = 50;
+
+// DEC-160 (wave-26 amendment, CNT-14): the header's scoped "Download all"
+// mirrors the archive endpoint's own caps (src/routes/files.ts
+// MAX_ARCHIVE_FILES / ARCHIVE_MAX_TOTAL_BYTES) so the control can disable
+// itself with a true reason before ever posting, rather than always
+// firing and letting the server bounce it.
+const ARCHIVE_MAX_FILES = 50;
+const ARCHIVE_MAX_TOTAL_BYTES = 20 * 1024 * 1024;
+const ARCHIVE_CAP_MESSAGE = '50 files or 20 MB at a time — narrow the filter';
 
 /** DEC-773: the files library is ONE list — deliverable version chains AND
  * speaker headshots (kind='headshot'), server-paginated and server-filtered
@@ -51,6 +60,7 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [downloadPending, setDownloadPending] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -93,6 +103,34 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
     return `${who} · ${formatDateTime(item.uploadedAt)}`;
   }
 
+  // DEC-160 (wave-26 amendment, CNT-14): scoped to the currently-rendered
+  // set (this page's rows), never the whole-event total — matching
+  // MAX_ARCHIVE_FILES keeps a full page always downloadable in one shot.
+  const visibleTotalBytes = items.reduce((sum, item) => sum + item.sizeBytes, 0);
+  const overCap = items.length > ARCHIVE_MAX_FILES || visibleTotalBytes > ARCHIVE_MAX_TOTAL_BYTES;
+
+  async function handleDownloadAll() {
+    if (!eventId || items.length === 0) return;
+    setDownloadPending(true);
+    setError(null);
+    try {
+      const fileIds = items.map((item) => item.latestFileId);
+      const { blob, filename } = await apiPostBlob(`/events/${eventId}/files/archive`, { fileIds });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof ApiError ? `Download failed: ${err.message}` : 'Download failed');
+    } finally {
+      setDownloadPending(false);
+    }
+  }
+
   return (
     <div className="chq-files-library chq-content-files-library" data-testid="files-library">
       {error && (
@@ -115,6 +153,28 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
           <span className="chq-summary">
             {`${total} ${total === 1 ? 'file' : 'files'} · ${formatBytes(totalSizeBytes)}`}
           </span>
+          {/* CNT-14 (DEC-160, wave-26 amendment): a bordered SECONDARY
+              control scoped to the currently-rendered set, never a filled
+              primary and never a second selection mechanism (the worklist's
+              checkbox bulk-approve bar is a different control entirely).
+              Conditional-and-quiet: absent on an empty set, disabled with a
+              readable reason once the set exceeds the archive endpoint's own
+              caps rather than firing a request the server would reject. */}
+          {items.length > 0 && (
+            <span className="chq-content-files-download-all-wrap">
+              <button
+                type="button"
+                className="chq-btn chq-btn-secondary"
+                disabled={overCap || downloadPending}
+                onClick={() => void handleDownloadAll()}
+              >
+                {downloadPending
+                  ? 'Downloading…'
+                  : `Download all ${items.length} (.zip)`}
+              </button>
+              {overCap && <span className="chq-meta chq-content-files-download-all-cap">{ARCHIVE_CAP_MESSAGE}</span>}
+            </span>
+          )}
         </div>
       </div>
 
