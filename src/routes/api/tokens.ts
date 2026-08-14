@@ -7,7 +7,7 @@ import { Hono } from "hono";
 import { and, eq, sql } from "drizzle-orm";
 import type { AppEnv } from "../../server/env";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
-import { ApiError } from "../../server/http";
+import { ApiError, readJsonBody } from "../../server/http";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import { hashToken, newApiToken, apiTokenDisplayPrefix } from "../../auth/tokens";
@@ -70,8 +70,8 @@ tokensRoutes.post("/api/v1/tokens", requireOrganizer, csrfJson, async (c) => {
   const auth = c.var.auth;
   assertCookieSession(auth);
 
-  const body = await c.req.json().catch(() => null);
-  const name = body && typeof body === "object" ? (body as Record<string, unknown>).name : undefined;
+  const body = await readJsonBody(c);
+  const name = body.name;
   if (typeof name !== "string" || name.trim().length === 0) {
     throw new ApiError("invalid", "name is required", { name: "required" });
   }

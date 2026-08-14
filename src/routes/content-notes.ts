@@ -9,7 +9,7 @@
 import { Hono, type Context } from "hono";
 import type { AppEnv, AuthInfo } from "../server/env";
 import { requireOrganizer, csrfJson } from "../server/middleware";
-import { ApiError } from "../server/http";
+import { ApiError, readOptionalJsonBody } from "../server/http";
 import { MAX_LONG_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { makeMailer } from "../server/context";
 import { resolveBaseUrl } from "../server/origin";
@@ -54,7 +54,7 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, csrfJs
   if (!scope) throw new ApiError("not_found", "Submission not found");
   if (scope.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
 
-  const body = (await c.req.json().catch(() => ({}))) as ContentNoteBody;
+  const body = (await readOptionalJsonBody(c)) as unknown as ContentNoteBody;
 
   if (typeof body.fileId !== "string" || body.fileId.trim() === "") {
     throw new ApiError("invalid", "fileId is required", { fileId: "Required" });

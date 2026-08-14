@@ -6,7 +6,7 @@
 import { Hono, type Context } from "hono";
 import type { AppEnv, AuthInfo } from "../server/env";
 import { requireOrganizer, csrfJson } from "../server/middleware";
-import { ApiError } from "../server/http";
+import { ApiError, readJsonBody, readOptionalJsonBody } from "../server/http";
 import { MINUTES_PER_DAY } from "../domain/schedule";
 import {
   countPubliclyVisible,
@@ -54,7 +54,7 @@ agendaRoutes.put("/submissions/:id/slot", requireOrganizer, csrfJson, async (c) 
     throw new ApiError("invalid", "Only accepted submissions can be scheduled");
   }
 
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c);
   if (!isValidSlotInput(body)) {
     throw new ApiError(
       "invalid",
@@ -172,7 +172,7 @@ agendaRoutes.post("/events/:eventId/agenda/auto-schedule", requireOrganizer, csr
   if (!event) throw new ApiError("not_found", "Event not found");
   if (event.orgId !== auth.orgId) throw new ApiError("forbidden", "Event belongs to a different org");
 
-  const body = ((await c.req.json().catch(() => ({}))) ?? {}) as AutoScheduleBody;
+  const body = (await readOptionalJsonBody(c)) as unknown as AutoScheduleBody;
   const fields: Record<string, string> = {};
   const params = {
     dayStartMin: parseBoundedInt(

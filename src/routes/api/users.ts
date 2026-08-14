@@ -5,7 +5,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
-import { ApiError } from "../../server/http";
+import { ApiError, readJsonBody } from "../../server/http";
 import { makeMailer } from "../../server/context";
 import { textToHtml } from "../../mail/render";
 import { hashPassword } from "../../auth/password";
@@ -62,8 +62,7 @@ usersRoutes.get("/api/v1/users", requireOrganizer, async (c) => {
 
 usersRoutes.post("/api/v1/users", requireOrganizer, csrfJson, async (c) => {
   const auth = currentAuth(c);
-  const body = await c.req.json().catch(() => null);
-  const record = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
+  const record = await readJsonBody(c);
 
   const errors: Record<string, string> = {};
   const email = normalizeEmail(typeof record.email === "string" ? record.email : "");
@@ -143,8 +142,7 @@ usersRoutes.post("/api/v1/users/:id/reset-password", requireOrganizer, csrfJson,
 usersRoutes.patch("/api/v1/users/:id", requireOrganizer, csrfJson, async (c) => {
   const auth = currentAuth(c);
   const userId = c.req.param("id");
-  const body = await c.req.json().catch(() => null);
-  const record = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
+  const record = await readJsonBody(c);
   const role = typeof record.role === "string" ? record.role : "";
   if (!isOrgUserRole(role)) {
     throw new ApiError("invalid", "role must be 'reviewer' or 'organizer'", { role: "invalid" });

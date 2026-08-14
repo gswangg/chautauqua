@@ -6,7 +6,7 @@ import { Hono, type Context } from "hono";
 import type { AppEnv, AuthInfo } from "../../server/env";
 import type { Db } from "../../server/context";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
-import { ApiError, parseBoundedText } from "../../server/http";
+import { ApiError, parseBoundedText, readOptionalJsonBody } from "../../server/http";
 import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-417
 import { getEventOrgId } from "../../server/repo/submissions";
 import { clampPage, listPerPage } from "../../lib/pagination";
@@ -159,7 +159,7 @@ embedsRoutes.post("/events/:eventId/embeds", requireOrganizer, csrfJson, async (
   const eventId = c.req.param("eventId");
   await assertEventOwnership(c.var.db, eventId, auth.orgId);
 
-  const body = (await c.req.json().catch(() => ({}))) as CreateEmbedBody;
+  const body = (await readOptionalJsonBody(c)) as unknown as CreateEmbedBody;
   const name = parseBoundedText(body.name, "name", { max: MAX_NAME_LENGTH, required: true }); // DEC-417
 
   if (typeof body.surface !== "string" || !isSurface(body.surface)) {
@@ -203,7 +203,7 @@ embedsRoutes.patch("/embeds/:id", requireOrganizer, csrfJson, async (c) => {
   if (!ownership) throw new ApiError("not_found", "Embed not found");
   if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Embed belongs to a different org");
 
-  const body = (await c.req.json().catch(() => ({}))) as UpdateEmbedBody;
+  const body = (await readOptionalJsonBody(c)) as unknown as UpdateEmbedBody;
   const patch: { name?: string; surface?: string; format?: string; optionsJson?: string; enabled?: boolean } = {};
   if (body.name !== undefined) {
     patch.name = parseBoundedText(body.name, "name", { max: MAX_NAME_LENGTH, required: true });
