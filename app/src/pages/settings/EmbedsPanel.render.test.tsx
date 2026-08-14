@@ -255,7 +255,11 @@ describe('EmbedsPanel', () => {
   // DEC-851: agenda/schedule now honor trackId too (they no longer belong to
   // the "ignores it" group) — speakers/gallery are the surfaces whose knob
   // table still drops trackId, so this leak check moves to one of those.
-  it('never leaks a stale trackId into the URL after switching to a surface that ignores it', async () => {
+  // DEC-990 (wave-67 amendment): trackId is now a real facet on speakers/
+  // gallery too (not sessions-only), so switching sessions -> speakers must
+  // KEEP a set trackId rather than drop it. roomId remains sessions-only
+  // (DEC-774), so it is the knob that must still be dropped on that switch.
+  it('never leaks a stale roomId into the URL after switching to a surface that ignores it, but keeps trackId', async () => {
     mockEvent();
     renderPanel();
 
@@ -264,15 +268,18 @@ describe('EmbedsPanel', () => {
     });
 
     fireEvent.change(await screen.findByRole('combobox', { name: 'Track' }), { target: { value: 'trk-42' } });
+    fireEvent.change(screen.getByLabelText('Room ID'), { target: { value: 'room-1' } });
     await waitFor(() => {
       expect(screen.getAllByText(/trackId=trk-42/).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/roomId=room-1/).length).toBeGreaterThan(0);
     });
 
     fireEvent.change(screen.getByLabelText('Surface'), { target: { value: 'speakers' } });
     await waitFor(() => {
       expect(screen.getAllByText(/embed\/devcon-2026\/speakers/).length).toBeGreaterThan(0);
     });
-    expect(screen.queryAllByText(/trackId=/).length).toBe(0);
+    expect(screen.queryAllByText(/roomId=/).length).toBe(0);
+    expect(screen.getAllByText(/trackId=trk-42/).length).toBeGreaterThan(0);
   });
 
   it('reflects a q knob in the live URL for sessions', async () => {

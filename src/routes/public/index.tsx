@@ -424,11 +424,16 @@ async function getSurfaceFeedPage(
     }
     case "speakers":
     case "gallery": {
+      // DEC-990 (wave-67 amendment): trackId is a SQL-level predicate on
+      // getPublicSpeakers (mirrors dispatch.tsx's HTML case) — without it
+      // this .json/.xml twin silently ignored ?trackId= while the HTML page
+      // at the same query string returned the filtered set.
+      const trackId = parseTrackId(query.trackId);
       const q = parseNameQuery(query.q);
       const page = parsePage(query.page);
       const perPage = query.limit ?? PUBLIC_PER_PAGE;
       // DEC-516: same real SQL window as the sessions case above.
-      const { items, total } = await getPublicSpeakers(db, event.id, { q, page, perPage, window: true });
+      const { items, total } = await getPublicSpeakers(db, event.id, { q, trackId, page, perPage, window: true });
       return { items, total, page, perPage };
     }
     case "agenda":

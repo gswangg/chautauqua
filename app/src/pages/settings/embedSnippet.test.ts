@@ -107,22 +107,25 @@ describe('buildEmbedUrl knob table (DEC-489/DEC-490)', () => {
     expect(url).toContain('accent=4f46e5');
   });
 
-  it('speakers honors only q, limit and accent, dropping trackId, day, fields', () => {
+  // DEC-990 (wave-67 amendment): speakers/gallery join trackId as a real
+  // SQL-level predicate on getPublicSpeakers (mirrors dispatch.tsx's HTML
+  // case, which has honored it since wave 64) — track is not sessions-only.
+  it('speakers honors trackId, q, limit and accent, dropping day, fields', () => {
     const url = buildEmbedUrl(ORIGIN, SLUG, 'speakers', ALL_OPTS);
+    expect(url).toContain('trackId=trk1');
     expect(url).toContain('q=ai');
     expect(url).toContain('limit=10');
     expect(url).toContain('accent=4f46e5');
-    expect(url).not.toContain('trackId=');
     expect(url).not.toContain('day=');
     expect(url).not.toContain('fields=');
   });
 
-  it('gallery honors only q, limit and accent, dropping trackId, day, fields', () => {
+  it('gallery honors trackId, q, limit and accent, dropping day, fields', () => {
     const url = buildEmbedUrl(ORIGIN, SLUG, 'gallery', ALL_OPTS);
+    expect(url).toContain('trackId=trk1');
     expect(url).toContain('q=ai');
     expect(url).toContain('limit=10');
     expect(url).toContain('accent=4f46e5');
-    expect(url).not.toContain('trackId=');
     expect(url).not.toContain('day=');
     expect(url).not.toContain('fields=');
   });
