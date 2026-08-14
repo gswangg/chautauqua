@@ -574,6 +574,29 @@ export const PUBLIC_CSS = `
     list-style: none;
   }
 
+  /* DEC-768 (wave 67 amendment): the agenda's heading row -- the day-named
+     <h1> at the left, the day switcher right-aligned on the SAME row rather
+     than stacked beneath it (docs/design's "Tuesday 12 May · 9 sessions ·
+     4 rooms" left, "Tue 12 | Wed 13 | Thu 14" right). Reuses
+     .chq-pub-title-row's flex/space-between shape (already shared by the
+     speaker directory's List/Grid toggle row); the day switcher itself
+     keeps its own horizontal-scroll rule below for the phone width where
+     the row wraps. */
+  .chq-pub-agenda-heading-row .chq-pub-day-switcher { flex: 0 0 auto; }
+
+  /* DEC-768 (wave 67 amendment): the single-day agenda's footer line --
+     "Last session ends HH:MM · <next day> ›" -- a quiet hairline-topped
+     hint pointing at the next scheduled day, matching the design handoff's
+     footer rule. */
+  .chq-pub-agenda-day-footer {
+    border-top: 1px solid var(--chq-border);
+    margin-top: 16px;
+    padding-top: 16px;
+    font-size: 13px;
+    color: var(--chq-muted);
+  }
+  .chq-pub-agenda-day-footer a { font-weight: 700; }
+
   .chq-pub-day-switcher { display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
   /* DEC-838: the day pill (agenda + schedule's shared DaySwitcher, agenda.tsx)
      was an unclassed-color <a> before this rule -- it rendered at

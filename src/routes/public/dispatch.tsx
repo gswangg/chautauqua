@@ -171,19 +171,24 @@ export async function renderSurfaceContent(
       // reuse the ONE getPublicTracks repo call (sessions already calls it)
       // rather than adding a second query for the same list.
       const tracks = await getPublicTracks(db, event.id);
-      const { items, total } = await getPublicAgenda(db, event, { day: query.day, q });
-      // DEC-768: ?day= filters `items` down to one day's rows, so the day
-      // switcher can no longer derive its full day list from `items` alone
-      // (that would drop every other day's pill, dead-ending a visitor who
-      // arrived here from the Sessions rail's day index). Fetch the full set
-      // of scheduled days independently so the switcher always shows every
-      // day, with the requested one marked current.
-      const allDays = query.day ? (await getPublicScheduleDayCounts(db, event)).map((d) => d.day) : null;
+      // DEC-768 (wave 67 amendment): /agenda is single-day by default -- the
+      // day-count list is fetched on EVERY request (not only when ?day= is
+      // set) so `allDays` always has the full switcher set AND so the
+      // default day can be derived from it: the FIRST day with scheduled
+      // sessions, deterministic (never a "today" comparison) so the
+      // version-salted cached copy stays correct for any visitor on any
+      // date. `effectiveDay` is null only when the event has nothing
+      // scheduled at all.
+      const dayCounts = await getPublicScheduleDayCounts(db, event);
+      const allDays = dayCounts.map((d) => d.day);
+      const firstDayWithSessions = allDays[0] ?? null;
+      const effectiveDay = query.day ?? firstDayWithSessions;
+      const { items, total } = await getPublicAgenda(db, event, { day: effectiveDay, q });
       // DEC-022 amendment: breaks read through server/repo/public's ONE
       // mockable barrel (getPublicBreaksByDay), which itself reads through
       // the SAME repo function src/routes/api/breaks.ts's GET uses -- never
       // a second, public-only query.
-      const breaksByDay = await getPublicBreaksByDay(db, event, query.day);
+      const breaksByDay = await getPublicBreaksByDay(db, event, effectiveDay);
       return {
         title: `Agenda - ${event.name}`,
         content: (
@@ -194,7 +199,7 @@ export async function renderSurfaceContent(
             total={total}
             embed={query.embed}
             allDays={allDays}
-            activeDay={query.day ?? null}
+            activeDay={effectiveDay}
             highlightTrackId={highlightTrackId}
             q={q}
             breaksByDay={breaksByDay}

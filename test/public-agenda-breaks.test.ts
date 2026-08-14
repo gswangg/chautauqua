@@ -113,9 +113,13 @@ describe("DEC-022 amendment: AgendaContent (desktop grid) break rendering", () =
   });
 
   it("does not count a break as a session or a room in the day heading (a break is not a submission)", () => {
+    // DEC-768 (wave 67 amendment): with exactly one rendered day, the count
+    // now lives on the page's own <h1> (AgendaDay's per-day <h3> is
+    // suppressed) -- pass activeDay so AgendaContent computes it there, same
+    // as the real single-day-default dispatch path does.
     const items: PublicAgendaItem[] = [item({ submissionId: "a", day: "2026-08-10", startMin: 540, endMin: 600 })];
     const breaksByDay = new Map([["2026-08-10", [brk({})]]]);
-    const html = String(AgendaContent({ event: EVENT, items, total: 1, breaksByDay }));
+    const html = String(AgendaContent({ event: EVENT, items, total: 1, activeDay: "2026-08-10", breaksByDay }));
     expect(html).toContain("1 session · 1 room");
     expect(html).not.toContain("2 sessions");
   });
