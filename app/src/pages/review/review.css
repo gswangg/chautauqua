@@ -464,14 +464,25 @@
   flex-shrink: 0;
 }
 
-/* REVIEW PACK frame 03-03: the "Showing 5 of N" / "Show all N" footer under
-   a capped queue list. */
+/* DEC-874 wave-72 amendment: the footer is the QUEUE's own row -- left group
+   "Showing 5 of N" + "Show all N" (still conditional on >5 rows), and the
+   reviewer reassurance ("Your scores stay hidden from other reviewers")
+   right-aligned on that SAME row (DEC-369's amendment: chrome no longer
+   carries a second copy of that sentence). The row itself renders whenever
+   the queue has rows; only the count/show-all group inside it is
+   conditional. */
 .chq-review-queue-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   padding-top: 12px;
+}
+
+.chq-review-queue-footer-count-group {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .chq-review-queue-footer-count {
@@ -488,6 +499,12 @@
   color: var(--chq-ink);
   text-decoration: underline;
   cursor: pointer;
+}
+
+.chq-review-queue-footer-note {
+  font-size: 13px;
+  color: var(--chq-muted);
+  margin-left: auto;
 }
 
 .chq-review-scoped-progress {
@@ -1380,12 +1397,17 @@
    recused row marks itself on the same top line rather than in a trailing
    section. REVIEW PACK 03-03 (DEC-874 wave-65 amendment): the action itself
    moved out of this column and into the row's own grid column 2 -- see
-   .chq-review-queue-row-action below, no longer a full-width button. */
+   .chq-review-queue-row-action below, no longer a full-width button.
+   DEC-874 wave-72 amendment: REF + STATE are ONE paired left eyebrow, ~8px
+   apart -- `justify-content: space-between` used to spread them across the
+   whole row width so they read as two unrelated columns; the pair is now a
+   left-aligned inline group and the action column (grid column 2, untouched
+   by this rule) stays right-aligned. */
 .chq-review-queue-row-top {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-start;
+  gap: 8px;
 }
 
 /* REVIEW PACK frame 03-03 (DEC-874 wave-65 amendment): the row's grid

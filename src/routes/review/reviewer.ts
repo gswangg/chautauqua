@@ -164,11 +164,16 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
     scoped.map((s) => ({ ...s, submissionId: s.id })),
     new Set(recusals.map((r) => r.submissionId)),
   );
+  // DEC-874 (wave 72 amendment): a recused row keeps the same meta line an
+  // actionable row shows -- formatBySubmission is already computed over
+  // EVERY scoped id (above), so carrying it onto the recused half costs no
+  // extra query. A projection must carry its source's vocabulary.
   const recusedOut = recusedScoped.map((s) => ({
     submissionId: s.id,
     ref: s.ref,
     title: s.title,
     reason: recusalBySubmission.get(s.id)?.reason ?? null,
+    format: formatBySubmission.get(s.id) ?? null,
   }));
 
   const queueItems = scopedActionable

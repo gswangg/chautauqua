@@ -215,6 +215,18 @@ function PlanSection({
                 <span className="chq-review-queue-score chq-review-queue-score-recused">RECUSED</span>
               </div>
               <span className="chq-review-queue-title">{item.title}</span>
+              {/* DEC-874 wave-72 amendment: a recused row keeps the same
+                  meta line an actionable row shows -- the server now carries
+                  format (and audienceLevel, when the wire ever populates it)
+                  on recused items too; this is the SAME branch shape as the
+                  actionable row above, not a second component. */}
+              {(item.format != null || item.audienceLevel != null) && (
+                <p className="chq-review-plan-meta">
+                  {[item.format != null ? formatMetaLabel(item.format) : null, item.audienceLevel]
+                    .filter((v): v is string => v != null)
+                    .join(' · ')}
+                </p>
+              )}
               {/* REVIEW PACK 03-03: Undo moves beneath the title as a quiet
                   tertiary control -- the reason itself now lives in the
                   action column (see below), naming what the row actually
@@ -238,16 +250,27 @@ function PlanSection({
           </li>
               ))}
             </ol>
-            {!showAll && totalRows > 5 && (
+            {/* DEC-874 wave-72 amendment (c): the footer is the QUEUE's own
+                row -- the count/Show-all group stays conditional on >5 rows,
+                but the reviewer reassurance now renders on this same row
+                whenever the queue has rows at all. This is the ONLY home
+                for that sentence; the shell chrome no longer mints it
+                (DEC-369's amendment). */}
+            {totalRows > 0 && (
               <div className="chq-review-queue-footer">
-                <span className="chq-review-queue-footer-count">{`Showing 5 of ${totalRows}`}</span>
-                <button
-                  type="button"
-                  className="chq-review-queue-footer-showall"
-                  onClick={() => setShowAll(true)}
-                >
-                  {`Show all ${totalRows}`}
-                </button>
+                {!showAll && totalRows > 5 && (
+                  <span className="chq-review-queue-footer-count-group">
+                    <span className="chq-review-queue-footer-count">{`Showing 5 of ${totalRows}`}</span>
+                    <button
+                      type="button"
+                      className="chq-review-queue-footer-showall"
+                      onClick={() => setShowAll(true)}
+                    >
+                      {`Show all ${totalRows}`}
+                    </button>
+                  </span>
+                )}
+                <span className="chq-review-queue-footer-note">Your scores stay hidden from other reviewers</span>
               </div>
             )}
           </>
@@ -405,10 +428,10 @@ export function ReviewerQueue() {
           </div>
         )}
         <PlanSection planId={routePlanId} onData={setRouteEnvelope} />
-        {/* DEC-369 amendment (wave 42): the "Scores stay hidden from other
-            reviewers" footer now renders once, globally, in the shell
-            chrome (App.tsx Footer) alongside Sign out -- nothing here
-            mints a second copy. */}
+        {/* DEC-369/DEC-874 (wave-72 amendment): the "Scores stay hidden from
+            other reviewers" reassurance now lives ONLY in PlanSection's own
+            footer row, beside the count/Show-all group -- it is no longer
+            minted by the shell chrome (App.tsx Footer). */}
       </div>
     );
   }

@@ -161,7 +161,11 @@ describe('ReviewerQueue desktop row anatomy (REVIEW PACK frame 03-03)', () => {
     expect(screen.queryByText('Showing 5 of 7')).not.toBeInTheDocument();
   });
 
-  it('does not render the footer when the combined count is 5 or fewer', async () => {
+  // DEC-874 wave-72 amendment (c): the footer ROW is the queue's own row and
+  // renders whenever the queue has rows -- the reassurance note is the
+  // footer's permanent content; only the count/Show-all group inside it
+  // stays conditional on >5 rows.
+  it('renders the footer note but not the count/Show-all group when the combined count is 5 or fewer', async () => {
     mockApi({
       [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
         ...listEnvelope([queueItem()]),
@@ -173,8 +177,59 @@ describe('ReviewerQueue desktop row anatomy (REVIEW PACK frame 03-03)', () => {
     renderQueue();
 
     expect(await screen.findByText('A Talk')).toBeInTheDocument();
+    expect(screen.getByText('Your scores stay hidden from other reviewers')).toBeInTheDocument();
     expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Show all/ })).not.toBeInTheDocument();
+  });
+
+  it('renders the reassurance note right-aligned alongside the count/Show-all group when the queue is over 5 rows', async () => {
+    const items = Array.from({ length: 6 }, (_, i) => queueItem({ submissionId: `sub-${i}`, ref: `S-00${i}`, title: `Talk ${i}` }));
+    mockApi({
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...listEnvelope(items),
+        open: true,
+        recused: [],
+      },
+    });
+
+    renderQueue();
+
+    expect(await screen.findByText('Showing 5 of 6')).toBeInTheDocument();
+    expect(screen.getByText('Your scores stay hidden from other reviewers')).toBeInTheDocument();
+  });
+
+  // DEC-874 wave-72 amendment (a): REF + STATE are one left-aligned eyebrow
+  // pair, not spread across the row.
+  it('the row-top eyebrow group is left-aligned with no space-between spread', () => {
+    const css = readFileSync(join(HERE, 'review.css'), 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const rules = css.match(/\.chq-review-queue-row-top\s*\{([^{}]*)\}/);
+    expect(rules).not.toBeNull();
+    expect(rules![1]).not.toMatch(/justify-content:\s*space-between/);
+    expect(rules![1]).toMatch(/gap:\s*8px/);
+  });
+
+  it('a recused row keeps its meta line, exactly like an actionable row', async () => {
+    mockApi({
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...listEnvelope([]),
+        open: true,
+        recused: [
+          {
+            submissionId: 'sub-r1',
+            ref: 'S-020',
+            title: 'Conflicted Talk',
+            reason: 'Personal conflict',
+            format: 'Talk (30 min)',
+            audienceLevel: 'advanced',
+          },
+        ],
+      },
+    });
+
+    renderQueue();
+
+    expect(await screen.findByText('Conflicted Talk')).toBeInTheDocument();
+    expect(screen.getByText('Talk, 30 min · advanced')).toBeInTheDocument();
   });
 });
 

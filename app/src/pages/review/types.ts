@@ -213,6 +213,14 @@ export interface RecusalItem {
   ref: string;
   title: string;
   reason: string | null;
+  // DEC-874 (wave 72 amendment): the same session-shape fact an actionable
+  // row's meta line carries -- a recused row must keep its "Talk, 30 min ·
+  // advanced" meta line, not drop it. The server carries `format` for every
+  // recused row (never stripped); `audienceLevel` mirrors ReviewerQueueItem's
+  // optional/unwired-today convention for symmetry, though the wire does not
+  // populate it yet either.
+  format: string | null;
+  audienceLevel?: string | null;
 }
 
 // POST/DELETE /api/v1/review/plans/:planId/recusals/:submissionId response
