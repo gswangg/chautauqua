@@ -2,7 +2,7 @@
 // Before this wave every outbound HTML body was `html: textToHtml(...)` -- a
 // bare paragraph run with no wordmark, no measure, no reason line. This scan
 // (1) proves no send site still produces its `html:` property from a bare
-// textToHtml call, and (2) enumerates the eight known mailer.send call sites
+// textToHtml call, and (2) enumerates the nine known mailer.send call sites
 // so a future send path added elsewhere cannot silently skip the shell --
 // the closed-set assertion below computes the ACTUAL set of files that call
 // mailer.send with an `html` property and asserts it equals SWEPT_SITES by
@@ -33,7 +33,8 @@ function glob(dir: string, suffixes: string[]): string[] {
 // The eight send sites this wave swept (DEC-037 amendment), and how many
 // `renderEmailHtml(` call expressions each is expected to carry.
 const SWEPT_SITES: { file: string; expectedRenderEmailHtmlCalls: number }[] = [
-  { file: join(SRC_DIR, "routes", "comms.ts"), expectedRenderEmailHtmlCalls: 2 },
+  { file: join(SRC_DIR, "routes", "comms", "send.ts"), expectedRenderEmailHtmlCalls: 1 },
+  { file: join(SRC_DIR, "routes", "comms", "portal-invites.ts"), expectedRenderEmailHtmlCalls: 1 },
   { file: join(SRC_DIR, "routes", "api", "users.ts"), expectedRenderEmailHtmlCalls: 1 },
   { file: join(SRC_DIR, "routes", "api", "contacts", "bulk-email.ts"), expectedRenderEmailHtmlCalls: 1 },
   { file: join(SRC_DIR, "routes", "review", "plans-progress.ts"), expectedRenderEmailHtmlCalls: 1 },

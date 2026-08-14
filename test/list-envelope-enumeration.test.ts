@@ -30,9 +30,9 @@ import { findStrayPerPageConstantDeclarations } from "./support/list-envelope-en
  *     totalAssigned, items, perReviewer, shortfall }` -- cap echoed first
  *     -- so it no longer matches this scanner's `{ items` pattern and needs
  *     no entry):
- *       - src/routes/comms.ts:510 (POST .../compose/preview) returns a
+ *       - src/routes/comms/preview.ts:68 (POST .../compose/preview) returns a
  *         compose-preview render, one row per selected submission, bounded
- *         by the 100-recipient send cap (DEC checked elsewhere in comms.ts)
+ *         by the 100-recipient send cap (DEC checked elsewhere in comms/)
  *         -- a preview payload, not a list GET.
  *       - src/routes/api/contacts/bulk-email.ts:247 (POST
  *         /contacts/bulk-email/preview) is the CRM-11/DEC-150 bulk-email

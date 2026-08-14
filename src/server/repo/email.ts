@@ -36,7 +36,7 @@ export interface EmailLogRow {
 // DEC-949 (wave 34 amendment): LIST_COLUMNS excludes bodyText/bodyHtml
 // entirely, so the history LIST route (GET /api/v1/events/:eventId/email-log)
 // never has a claim/reset URL to redact in the first place — only
-// getEmailLogById's send-detail route (src/routes/comms.ts) needs
+// getEmailLogById's send-detail route (src/routes/comms/email-log.ts) needs
 // redactCredentialUrls (src/auth/credential-urls.ts) applied. If a future
 // change widens EmailLogListRow to include a body field, it must gain the
 // same redaction the detail route has.

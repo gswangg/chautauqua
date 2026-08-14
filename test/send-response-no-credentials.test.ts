@@ -16,7 +16,11 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const commsSrc = readFileSync(join(__dirname, "../src/routes/comms.ts"), "utf8");
+// comms.ts was decomposed (contention-hotspot split, no behavior change)
+// into src/routes/comms/*; the send and preview handlers now live in their
+// own files instead of sharing one commsSrc string.
+const commsSendSrc = readFileSync(join(__dirname, "../src/routes/comms/send.ts"), "utf8");
+const commsPreviewSrc = readFileSync(join(__dirname, "../src/routes/comms/preview.ts"), "utf8");
 const bulkEmailSrc = readFileSync(join(__dirname, "../src/routes/api/contacts/bulk-email.ts"), "utf8");
 
 /**
@@ -36,14 +40,8 @@ function handlerBody(source: string, routeMarker: string, nextMarkers: string[])
 }
 
 describe("send responses never carry rendered bodies or claim tokens", () => {
-  it("comms.ts /compose/send does not reference result.rendered in its response", () => {
-    const handler = handlerBody(
-      commsSrc,
-      '"/api/v1/events/:eventId/compose/send"',
-      ['"/api/v1/events/:eventId/portal-invite', "commsRoutes.post", "commsRoutes.get"].filter(
-        (m) => m !== '"/api/v1/events/:eventId/compose/send"',
-      ),
-    );
+  it("comms/send.ts /compose/send does not reference result.rendered in its response", () => {
+    const handler = handlerBody(commsSendSrc, '"/api/v1/events/:eventId/compose/send"', []);
     // Isolate just the final return statement of the handler. `result.rendered.length`
     // (a count) is fine here -- only the response carrying the rendered array itself
     // (an `items:` key) would leak bodies/claim tokens.
@@ -54,10 +52,8 @@ describe("send responses never carry rendered bodies or claim tokens", () => {
     expect(returnStatement).not.toMatch(/result\.rendered(?!\.length)/);
   });
 
-  it("comms.ts /compose/preview still returns items derived from result.rendered", () => {
-    const handler = handlerBody(commsSrc, '"/api/v1/events/:eventId/compose/preview"', [
-      '"/api/v1/events/:eventId/compose/send"',
-    ]);
+  it("comms/preview.ts /compose/preview still returns items derived from result.rendered", () => {
+    const handler = handlerBody(commsPreviewSrc, '"/api/v1/events/:eventId/compose/preview"', []);
     expect(handler).toContain("result.rendered");
     expect(handler).toMatch(/return c\.json\(\{\s*items\s*\}\);/);
   });
@@ -78,13 +74,7 @@ describe("send responses never carry rendered bodies or claim tokens", () => {
   });
 
   it("documents the exact send response contract: {sent, failed}", () => {
-    const commsHandler = handlerBody(
-      commsSrc,
-      '"/api/v1/events/:eventId/compose/send"',
-      ['"/api/v1/events/:eventId/portal-invite', "commsRoutes.post", "commsRoutes.get"].filter(
-        (m) => m !== '"/api/v1/events/:eventId/compose/send"',
-      ),
-    );
+    const commsHandler = handlerBody(commsSendSrc, '"/api/v1/events/:eventId/compose/send"', []);
     const bulkHandler = handlerBody(bulkEmailSrc, '"/contacts/bulk-email"', ['"/contacts/bulk-email/preview"']);
 
     for (const handler of [commsHandler, bulkHandler]) {
