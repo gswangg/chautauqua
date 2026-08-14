@@ -152,6 +152,7 @@ vi.mock("../src/server/repo/review", async () => {
     getTrackNamesByIds: vi.fn(async () => new Map()),
     // DEC-857: no format answers in this fixture set.
     listFormatLabelsBySubmission: vi.fn(async () => new Map()),
+    listAudienceLevelsBySubmission: vi.fn(async () => new Map()),
   };
 });
 
@@ -294,15 +295,23 @@ describe("DEC-271: reviewer recusal", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       items: { submissionId: string }[];
-      recused: { submissionId: string; ref: string; title: string; reason: string | null; format: string | null }[];
+      recused: {
+        submissionId: string;
+        ref: string;
+        title: string;
+        reason: string | null;
+        format: string | null;
+        audienceLevel: string | null;
+      }[];
     };
     expect(body.items.some((i) => i.submissionId === SUB_1.id)).toBe(false);
     expect(body.items.some((i) => i.submissionId === SUB_2.id)).toBe(true);
-    // `format` per DEC-874's wave-72 amendment: a recused row keeps the same
-    // meta line an actionable row shows, so the recused projection carries
-    // its source's vocabulary. SUB_1 has no format set in this fixture.
+    // `format`/`audienceLevel` per DEC-874's wave-72 amendment and DEC-857
+    // (task w7-b): a recused row keeps the same meta line an actionable row
+    // shows, so the recused projection carries its source's vocabulary.
+    // SUB_1 has no format or audience-level answer set in this fixture.
     expect(body.recused).toEqual([
-      { submissionId: SUB_1.id, ref: SUB_1.ref, title: SUB_1.title, reason: "conflict", format: null },
+      { submissionId: SUB_1.id, ref: SUB_1.ref, title: SUB_1.title, reason: "conflict", format: null, audienceLevel: null },
     ]);
   });
 

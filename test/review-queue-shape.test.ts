@@ -66,6 +66,8 @@ vi.mock("../src/server/repo/review", async () => {
     getTrackNamesByIds: vi.fn(async () => new Map()),
     // DEC-857: sub-1 carries a format answer, sub-2 has none.
     listFormatLabelsBySubmission: vi.fn(async () => new Map([["sub-1", "Talk (30 min)"]])),
+    // DEC-857 (task w7-b): sub-1 carries an audience-level answer, sub-2 has none.
+    listAudienceLevelsBySubmission: vi.fn(async () => new Map([["sub-1", "Intermediate"]])),
   };
 });
 
@@ -196,5 +198,20 @@ describe("DEC-239: reviewer queue item wire shape", () => {
     // sub-2 has no format answer -- carried through as null, not dropped.
     const recusedSub2 = body.recused.find((r) => r.submissionId === "sub-2");
     expect(recusedSub2).toBeUndefined();
+  });
+
+  // DEC-857 (task w7-b): the queue envelope also carries `audienceLevel` --
+  // the stored answer LABEL verbatim, null when the submission has no
+  // audience-level answer.
+  it("carries audienceLevel on each queue item, null when unanswered", async () => {
+    const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
+    const res = await app.request(`/api/v1/review/plans/${planRecord.id}/queue`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      items: { submissionId: string; audienceLevel: string | null }[];
+    };
+    const bySubmission = new Map(body.items.map((i) => [i.submissionId, i]));
+    expect(bySubmission.get("sub-1")?.audienceLevel).toBe("Intermediate");
+    expect(bySubmission.get("sub-2")?.audienceLevel).toBeNull();
   });
 });

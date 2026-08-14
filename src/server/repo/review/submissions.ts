@@ -7,7 +7,7 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef, parseRef } from "../../../domain/ids";
 import { chunkIds } from "../../../lib/chunk";
-import { SESSION_FORMAT_FIELD_ID } from "../../../forms/types";
+import { AUDIENCE_LEVEL_FIELD_ID, SESSION_FORMAT_FIELD_ID } from "../../../forms/types";
 import { visibleParticipantConditions } from "../public/gates";
 import { ApiError } from "../../http";
 import type { PlanRecord } from "./plans";
@@ -694,6 +694,35 @@ export async function listFormatLabelsBySubmission(db: Db, submissionIds: string
         and(
           inArray(schema.submissionAnswer.submissionId, batch),
           eq(schema.submissionAnswer.formFieldId, SESSION_FORMAT_FIELD_ID),
+        ),
+      );
+    for (const row of rows) {
+      const parsed: unknown = JSON.parse(row.valueJson);
+      map.set(row.submissionId, typeof parsed === "string" && parsed.length > 0 ? parsed : null);
+    }
+  }
+  return map;
+}
+
+/** DEC-857: batched AUDIENCE_LEVEL_FIELD_ID answer lookup for the reviewer
+ * queue and scorecard -- exact twin of listFormatLabelsBySubmission above
+ * (same chunkIds batching, ONE query per chunk, never one per submission).
+ * The stored answer LABEL is returned verbatim -- never re-parsed or
+ * reformatted here. Null when a submission has no audience-level answer. */
+export async function listAudienceLevelsBySubmission(db: Db, submissionIds: string[]): Promise<Map<string, string | null>> {
+  const map = new Map<string, string | null>();
+  if (submissionIds.length === 0) return map;
+  for (const batch of chunkIds(submissionIds)) {
+    const rows = await db
+      .select({
+        submissionId: schema.submissionAnswer.submissionId,
+        valueJson: schema.submissionAnswer.valueJson,
+      })
+      .from(schema.submissionAnswer)
+      .where(
+        and(
+          inArray(schema.submissionAnswer.submissionId, batch),
+          eq(schema.submissionAnswer.formFieldId, AUDIENCE_LEVEL_FIELD_ID),
         ),
       );
     for (const row of rows) {

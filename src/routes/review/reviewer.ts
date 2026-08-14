@@ -141,6 +141,12 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
     c.var.db,
     scoped.map((s) => s.id),
   );
+  // DEC-857: same batching for audience level -- also a session-shape fact,
+  // not identity, so also not stripped for an anonymized plan.
+  const audienceLevelBySubmission = await repo.listAudienceLevelsBySubmission(
+    c.var.db,
+    scoped.map((s) => s.id),
+  );
   // DEC-147: blend through the round's resolved criteria, restricted to
   // 'rating' criteria -- computeWeightedScore (src/domain/evaluation.ts) is
   // the single blended-score formula; a plan with no rating criteria has
@@ -174,6 +180,7 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
     title: s.title,
     reason: recusalBySubmission.get(s.id)?.reason ?? null,
     format: formatBySubmission.get(s.id) ?? null,
+    audienceLevel: audienceLevelBySubmission.get(s.id) ?? null,
   }));
 
   const queueItems = scopedActionable
@@ -183,6 +190,7 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
       alreadyRatedByMe: ratedByMe.has(s.id),
       myScore: myScoreFor(s.id),
       format: formatBySubmission.get(s.id) ?? null,
+      audienceLevel: audienceLevelBySubmission.get(s.id) ?? null,
     }))
     .filter((item) => item.alreadyRatedByMe || needsMoreRatings(item, plan.maxEvaluations ?? undefined));
 
@@ -205,6 +213,7 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
         alreadyRatedByMe: ratedByMe.has(id),
         myScore,
         format: formatBySubmission.get(id) ?? null,
+        audienceLevel: audienceLevelBySubmission.get(id) ?? null,
       };
     })
     .filter((item): item is NonNullable<typeof item> => item !== undefined);
@@ -241,10 +250,13 @@ reviewReviewerRoutes.get("/api/v1/review/submissions/:id", async (c) => {
   // frame 03--01: the scorecard head's meta line needs the same
   // SESSION_FORMAT_FIELD_ID reading the queue row already carries (DEC-857)
   // -- reuse listFormatLabelsBySubmission (single-id call) rather than a
-  // second lookup. audienceLevel is left unwired (matches ReviewerQueueItem's
-  // documented gap: no reserved field id for it yet).
+  // second lookup. audienceLevel is wired the same way (single-id call to
+  // listAudienceLevelsBySubmission) and, like format, is NOT stripped for
+  // an anonymized plan: a session-shape fact is not identity.
   const formatBySubmission = await repo.listFormatLabelsBySubmission(c.var.db, [submissionId]);
   const format = formatBySubmission.get(submissionId) ?? null;
+  const audienceLevelBySubmission = await repo.listAudienceLevelsBySubmission(c.var.db, [submissionId]);
+  const audienceLevel = audienceLevelBySubmission.get(submissionId) ?? null;
 
   // DEC-147: the criteria embedded on the submission detail are resolved for
   // the plan's ACTIVE round -- the reviewer's scorecard renders these, not
@@ -269,6 +281,7 @@ reviewReviewerRoutes.get("/api/v1/review/submissions/:id", async (c) => {
     sessionAnswers: answers.filter((a) => a.section === "session"),
     criteria,
     format,
+    audienceLevel,
     ...(myEvaluationRecord ? { myEvaluation: { scores: myEvaluationRecord.scores, comment: myEvaluationRecord.comment } } : {}),
     ...(myRecusalRecord ? { myRecusal: { reason: myRecusalRecord.reason ?? null, createdAt: myRecusalRecord.createdAt } } : {}),
   };
