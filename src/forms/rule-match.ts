@@ -160,6 +160,12 @@ export const RULE_MATCH_CASES: {
     expected: true,
   },
   {
+    kind: "checkbox",
+    answer: "off",
+    rule: { fieldId: "trigger", op: "eq", value: false },
+    expected: true,
+  },
+  {
     kind: "number",
     answer: 5,
     rule: { fieldId: "trigger", op: "eq", value: "5" },

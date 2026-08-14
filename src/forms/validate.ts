@@ -1,7 +1,8 @@
 import { lockedFieldName, type AnswerMap, type FormFieldDef } from "./types";
 import { resolveHiddenFieldIds } from "./visibility";
 import { isValidEmail, normalizeEmail } from "../domain/email";
-import { DEC_124, DEC_454, DEC_455, DEC_718, DEC_842 } from "../decisions";
+import { canonicalizeOperand } from "./rule-match";
+import { DEC_124, DEC_454, DEC_455, DEC_681, DEC_718, DEC_842 } from "../decisions";
 
 // Referenced for compile-checked dependency per DEC-124.
 void DEC_124;
@@ -13,6 +14,10 @@ void DEC_842;
 // Referenced for compile-checked dependency per DEC-718: number answers
 // must be finite, and every accepted answer survives a JSON round trip.
 void DEC_718;
+// Referenced for compile-checked dependency per DEC-681: checkbox answers
+// are canonicalized through the ONE shared grammar (canonicalizeOperand),
+// never re-implemented here.
+void DEC_681;
 
 // DEC-718: the public CFP's <input type="number"> will hand us strings like
 // "1e999" (parses to Infinity), "0x1f" (silently reinterpreted by Number()
@@ -118,7 +123,11 @@ export function validateAnswers(
         break;
       }
       case "checkbox": {
-        const boolValue = Boolean(value);
+        const boolValue = canonicalizeOperand("checkbox", value);
+        if (boolValue === undefined) {
+          errors[field.id] = "must be true or false";
+          continue;
+        }
         if (field.required && boolValue !== true) {
           errors[field.id] = "required";
           continue;
