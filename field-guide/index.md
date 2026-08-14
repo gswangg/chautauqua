@@ -25,36 +25,36 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   ORDER; ASCII-ONLY HEADER (RFC 5987); zip CP437 bit 11. Many amendments,
   ids omitted (see decisions/ git history).
 - FINDINGS w25-26 (heavily compacted). w25 pivots to V8 design intake
-  (docs/design/DESIGN-RULINGS.md authority alongside frames). Shapes: A
-  REVIEW LENS READS A SNAPSHOT, NOT THE TREE; A RENDERER WITH NO SEEDED
-  DATA LOOKS LIKE A MISSING FEATURE; NO RED -- invalid = weight+rule, not
-  colour; A CLOSURE PROVEN AT THE REPO IS NOT PROVEN AT THE ROUTE.
-  Amendments DEC-945/154/014/825/633/900/967/745/662/989/896/616/124/746/
-  160/930/922/782/883/739.
+  (DESIGN-RULINGS.md authority alongside frames). Shapes: A REVIEW LENS
+  READS A SNAPSHOT NOT THE TREE; NO RED -- invalid = weight+rule not
+  colour; A CLOSURE PROVEN AT THE REPO IS NOT PROVEN AT THE ROUTE. Many
+  amendments (see decisions/ git history).
 - FINDINGS w27 (heavily compacted). STILL OPEN taken: password reset, B9
-  email shell, B7 empty states, scorecard draft (submittedAt nullable, only
-  write stamps it), login peek-then-increment, portal 403 bare catch,
-  Airtable Retry-After, embed option bounds. Shapes: "SCHEMA CHANGE" EXCUSE
-  STALE IF READ SIDE ALREADY MODELS STATE; A LIMITER THAT PEEKS ISN'T ONE
-  UNDER CONCURRENCY; CATCH NAMING ONE CAUSE MUST MATCH ONE ERROR TYPE;
-  MINT-REVOKE VS -SUPERSEDE BY WHO CLAIMS THE LOSS; EMAIL CSS HAS NO CUSTOM
-  PROPERTIES. Amendments DEC-949/004/994/037/678/948/180/873/265/839/417/
-  725/029/663.
-- FINDINGS w28 (w27 IN FLIGHT so w28 avoids auth.tsx, styles.css, mailer
-  send sites, scorecard PUT, portal/tasks/shared.ts, airtable, api/embeds,
-  speakers/*, import REVIEW step). RE-VERIFIED
-  CLOSED, do NOT re-file: /logout, sign-out footer, sign-in 460, A1
-  bulk-approve, A5/A27/B1/A18/A19, EMB bio+desc snippet, CFP create-account
-  CTA, per-version Delete, results pager, agenda ?day=, "Add room/track",
-  Venue label, content status band, public gutter, bulk-email placeholders,
-  merge custom-field keys, CNT-04 portal chain (DEC-922 w26).
-  STILL OPEN taken: V9 ERROR-AND-VALIDATION-STATES standard -- 5 of 9
-  shapes unimplemented anywhere (plan editor, content upload, settings
-  clash, compose partial, import file-level). Shapes: FOUR ERROR CLASSES IS
-  NO VOCABULARY (.chq-error box, .chq-field-error 11px caps,
-  .chq-form-row-error, unprefixed class="field-error" in portal); A CLASS
-  NAME IS NOT A DEPENDENCY -- surfaces emit vocabulary + render-test before
-  CSS module lands, so a standard fans out WIDE; A REFUSAL NAMING ONLY THE
-  RULE IS HALF A REFUSAL (say formats, why, what survived); AN
-  ALL-OR-NOTHING BLOCK IS A DESIGN DECISION, NOT A CONSTRAINT. Amendments
-  DEC-124/958/745/653/897/793/575/657.
+  email shell, B7 empty states, scorecard draft, login peek-then-increment,
+  portal 403 bare catch, Airtable Retry-After, embed option bounds. Shapes:
+  "SCHEMA CHANGE" EXCUSE STALE IF READ SIDE ALREADY MODELS STATE; A LIMITER
+  THAT PEEKS ISN'T ONE UNDER CONCURRENCY; CATCH NAMING ONE CAUSE MUST MATCH
+  ONE ERROR TYPE; MINT-REVOKE VS -SUPERSEDE BY WHO CLAIMS THE LOSS. Many
+  amendments (see decisions/ git history).
+- FINDINGS w28 (w27 in flight, so w28 avoided its files). RE-VERIFIED
+  CLOSED set (logout/sign-in/A1/A5/A27/B1/A18/A19/EMB/CFP/pager/agenda/
+  Venue/content-status/gutter/bulk-email/merge-fields/CNT-04) -- do NOT
+  re-file. STILL OPEN: V9 ERROR-AND-VALIDATION-STATES standard, 5 of 9
+  shapes unimplemented. Shapes: FOUR ERROR CLASSES IS NO VOCABULARY; A
+  CLASS NAME IS NOT A DEPENDENCY; A REFUSAL NAMING ONLY THE RULE IS HALF A
+  REFUSAL; AN ALL-OR-NOTHING BLOCK IS A DESIGN DECISION NOT A CONSTRAINT.
+  Amendments DEC-124/958/745/653/897/793/575/657.
+- FINDINGS w29. THE MANDATE IS STALE: ~25 eval-findings items probed against
+  the tree, all but four CLOSED (B10 x5, CFP-S4, CNT-01, tray duration,
+  breaks-in-a-modal, comms 820, public 1180+gutter+accent var, ContactDrawer
+  A20, People invite/reset, perf-seed+smoke, ics SEQUENCE, DEC-417 caps,
+  FilterRulesPanel multi-facet, weighted caption, portal/admin 404 cards,
+  DEC-751 reader, password-reset screens). 3 of 4 first-list review-lens
+  findings were ALREADY FIXED. OPEN FILE BEFORE FILING. Shapes: A DECISION'S
+  OWN DOCSTRING NAMING "OUTSTANDING WORK" IS THE BEST OPEN-ITEM INDEX IN THE
+  REPO; A LIMITER THAT PEEKS ISN'T ONE -- ATOMIC ADMISSION + REFUND IS THE
+  ONLY FAILURES-ONLY SHAPE, AND A REFUND CONDITIONED ON EXISTENCE IS AN
+  ENUMERATION ORACLE; A CONFLICT ENGINE WITH NO SEEDED CLASH LOOKS LIKE A
+  MISSING FEATURE (w11's fixture closure falsified by a judge); A WAVE THAT
+  COPIES THE SHAPE IT AVOIDED SPREADS THE BUG (w27's /forgot cloned /login's
+  peek). w29 avoided w27/w28's in-flight files. Amendments DEC-180/949/974/874.
