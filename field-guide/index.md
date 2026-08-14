@@ -17,45 +17,44 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   FIND-OR-CREATE NEEDS A UNIQUE INDEX; UNBOUNDED SURFACE NEVER PAGED;
   NAV != ROUTE; grep decisions/ first; READER W/NO WRITER RENDERS NOTHING;
   GUESSABLE URL 404 DEAD END; PHONE REFUSING DESKTOP IS DIFFERENT PRODUCT
-  (J9); SUB-APP onError SWALLOWS PARENT'S MANNERS; WIDTH BEATS MAX-WIDTH.
-  max-width 700/900; no overflow-x:hidden; no colour literal in surface CSS.
+  (J9); SUB-APP onError SWALLOWS PARENT'S MANNERS; WIDTH BEATS MAX-WIDTH,
+  700/900; no overflow-x:hidden; no colour literal in surface CSS.
 - FINDINGS w16-24 (heavily compacted). Shapes: SCAN BINDS ONE CALL SHAPE
   MISSES SIBLING; GUARD THAT NARROWS < NONE; MINT != DELIVERY; CATCH
   RETURNING A DEFAULT IS NOT A GUARD; MIDDLEWARE SCOPE IS REGISTRATION
-  ORDER; A HEADER VALUE IS ASCII-ONLY (RFC 5987); ENCODING/NAME CP437 (zip
-  bit 11). Amendments DEC-528/837/841/914/048/438/628/635/949/252/547/550/
-  715/745/078/024/678/948/713/098/939/402/908/879/459/432/994/180/083/996/
-  499/451/274/276/775/425/160/037/454.
-- FINDINGS w25 (wave 24 partial). Security review-lens items handed to w25
-  were ALREADY FIXED -- DO NOT RE-FILE. Shape: A REVIEW LENS READS A
-  SNAPSHOT, NOT THE TREE. w25 pivots to V8 design intake (docs/design/
-  DESIGN-RULINGS.md now authority alongside frames). Amendments DEC-945/
-  154/014/825/633/900/967/745/662/989.
-- FINDINGS w26 (w25 still in flight so w26 avoided auth.tsx, content
-  worklist, review.css, submission detail, portal shell). Shapes: A
-  RENDERER WITH NO SEEDED DATA LOOKS EXACTLY LIKE A MISSING FEATURE (check
-  the writer first); NO RED -- invalid = weight+rule, not colour; A
-  DISABLED CONTROL WITH A REASON TEACHES, A HIDDEN ONE DOESN'T; A CLOSURE
-  PROVEN AT THE REPO IS NOT PROVEN AT THE ROUTE. Amendments DEC-896/616/
-  124/746/160/930/922/782/883/739.
-- FINDINGS w27 (verified on main at HEAD=`scribe wave 26`; w26 IN FLIGHT so
-  w27 avoids settings/*, ContactDrawer, public submit, portal tasks routes,
-  FilesLibrary, SpeakerDetailPage, seed, ComposeWizard). RE-VERIFIED STALE,
-  do NOT re-file: auth-session unscoped delete, resolveBaseUrl Host
-  fallback, /account/password rate limit, VIDEO_MAX_BYTES, /embed/e/*
-  double cache, tasks.ts remindNow catch, content-notes mint-before-send,
-  submit.tsx R2 delete, criteria 6th track, FormsPage Save, breaks modal,
-  templates measure, RecentSends/History one reader, distribute copy,
-  /schedule 10--12, portal 560, 1180 public pair, B8 focus/disabled tokens,
-  reviewer plan hub, PageSkeletons. STILL OPEN and taken this wave: password
-  reset (nothing exists), B9 email shell (7 sites emit bare <p>), B7 empty
-  states (.chq-empty is one line), scorecard draft (submittedAt ALREADY
-  nullable, every READER treats null as draft -- only the write stamps
-  it), login peek-then-increment, portal 403 bare catch, Airtable
-  Retry-After, embed option bounds. Shapes: A READ SIDE THAT ALREADY MODELS
-  THE STATE MEANS "SCHEMA CHANGE" EXCUSE IS STALE; A LIMITER THAT PEEKS IS
-  NOT A LIMITER UNDER CONCURRENCY; A CATCH NAMING ONE CAUSE MUST MATCH ONE
-  ERROR TYPE; MINT-REVOKE VS MINT-SUPERSEDE DECIDED BY WHO CLAIMS THE LOSS;
-  AN EMAIL IS A SURFACE; EMAIL CSS HAS NO CUSTOM PROPERTIES -- the one
-  sanctioned colour-literal file. Amendments DEC-949/004/994/037/678/948/
-  180/873/265/839/417/725/029/663.
+  ORDER; ASCII-ONLY HEADER (RFC 5987); zip CP437 bit 11. Many amendments,
+  ids omitted (see decisions/ git history).
+- FINDINGS w25-26 (heavily compacted). w25 pivots to V8 design intake
+  (docs/design/DESIGN-RULINGS.md authority alongside frames). Shapes: A
+  REVIEW LENS READS A SNAPSHOT, NOT THE TREE; A RENDERER WITH NO SEEDED
+  DATA LOOKS LIKE A MISSING FEATURE; NO RED -- invalid = weight+rule, not
+  colour; A CLOSURE PROVEN AT THE REPO IS NOT PROVEN AT THE ROUTE.
+  Amendments DEC-945/154/014/825/633/900/967/745/662/989/896/616/124/746/
+  160/930/922/782/883/739.
+- FINDINGS w27 (heavily compacted). STILL OPEN taken: password reset, B9
+  email shell, B7 empty states, scorecard draft (submittedAt nullable, only
+  write stamps it), login peek-then-increment, portal 403 bare catch,
+  Airtable Retry-After, embed option bounds. Shapes: "SCHEMA CHANGE" EXCUSE
+  STALE IF READ SIDE ALREADY MODELS STATE; A LIMITER THAT PEEKS ISN'T ONE
+  UNDER CONCURRENCY; CATCH NAMING ONE CAUSE MUST MATCH ONE ERROR TYPE;
+  MINT-REVOKE VS -SUPERSEDE BY WHO CLAIMS THE LOSS; EMAIL CSS HAS NO CUSTOM
+  PROPERTIES. Amendments DEC-949/004/994/037/678/948/180/873/265/839/417/
+  725/029/663.
+- FINDINGS w28 (w27 IN FLIGHT so w28 avoids auth.tsx, styles.css, mailer
+  send sites, scorecard PUT, portal/tasks/shared.ts, airtable, api/embeds,
+  speakers/*, import REVIEW step). RE-VERIFIED
+  CLOSED, do NOT re-file: /logout, sign-out footer, sign-in 460, A1
+  bulk-approve, A5/A27/B1/A18/A19, EMB bio+desc snippet, CFP create-account
+  CTA, per-version Delete, results pager, agenda ?day=, "Add room/track",
+  Venue label, content status band, public gutter, bulk-email placeholders,
+  merge custom-field keys, CNT-04 portal chain (DEC-922 w26).
+  STILL OPEN taken: V9 ERROR-AND-VALIDATION-STATES standard -- 5 of 9
+  shapes unimplemented anywhere (plan editor, content upload, settings
+  clash, compose partial, import file-level). Shapes: FOUR ERROR CLASSES IS
+  NO VOCABULARY (.chq-error box, .chq-field-error 11px caps,
+  .chq-form-row-error, unprefixed class="field-error" in portal); A CLASS
+  NAME IS NOT A DEPENDENCY -- surfaces emit vocabulary + render-test before
+  CSS module lands, so a standard fans out WIDE; A REFUSAL NAMING ONLY THE
+  RULE IS HALF A REFUSAL (say formats, why, what survived); AN
+  ALL-OR-NOTHING BLOCK IS A DESIGN DECISION, NOT A CONSTRAINT. Amendments
+  DEC-124/958/745/653/897/793/575/657.
