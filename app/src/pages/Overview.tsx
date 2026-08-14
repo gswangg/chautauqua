@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCurrentEvent } from '../lib/useCurrentEvent';
-import { DelayedLoading } from '../components/DelayedLoading';
+import { PageSkeleton } from '../components/PageSkeleton';
 import { apiGet, apiList, apiPatch, apiPost, ApiError } from '../lib/api';
 import { describeSendResult, type SendResult } from '../lib/sendResult';
 import type {
@@ -179,7 +179,7 @@ export function OverviewPage() {
   if (eventLoading) {
     return (
       <div className="chq-page chq-measure">
-        <DelayedLoading label="Loading event…" />
+        <PageSkeleton variant="list" label="Loading event…" />
       </div>
     );
   }
@@ -196,7 +196,7 @@ export function OverviewPage() {
     return (
       <div className="chq-page chq-measure">
         {error && <div className="chq-error-banner">{error}</div>}
-        {!error && <DelayedLoading label="Loading overview…" />}
+        {!error && <PageSkeleton variant="list" label="Loading overview…" />}
       </div>
     );
   }

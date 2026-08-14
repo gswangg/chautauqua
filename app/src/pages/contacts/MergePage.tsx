@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiList, apiGet, apiPost, ApiError } from '../../lib/api';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { PageSkeleton } from '../../components/PageSkeleton';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import type { DuplicateGroup } from './types';
 // DEC-858: names that differ only by case are the same name at a merge --
@@ -211,7 +212,7 @@ export function MergePage() {
       <div className="chq-contacts-merge-topbar">{backLink}</div>
       <h1 className="chq-page-title">Merge two records</h1>
 
-      {loading && <DelayedLoading />}
+      {loading && <PageSkeleton variant="detail" />}
       {!loading && error && <div className="chq-error">{error}</div>}
 
       {!loading && group && keepContact && (

@@ -66,6 +66,51 @@ afterEach(() => {
   consoleErrorSpy.mockRestore();
 });
 
+// w15-b/DEC-678: /review/plans/:id/results' first paint must be PageSkeleton
+// structure (the chq-review-page shell + a table-shaped placeholder), not a
+// heading floating over an empty <main> waiting on a delayed label.
+describe('ResultsTable standalone first paint renders PageSkeleton structure (DEC-678)', () => {
+  it('renders the page shell and a chq-skeleton placeholder before the plan/results fetches resolve', async () => {
+    let resolvePlan!: (value: Response) => void;
+    const planPromise = new Promise<Response>((res) => {
+      resolvePlan = res;
+    });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const rawUrl = typeof input === 'string' ? input : input.toString();
+      const url = new URL(rawUrl, 'http://localhost');
+      if (url.pathname === `/api/v1/plans/${PLAN_ID}`) {
+        return planPromise;
+      }
+      if (url.pathname === `/api/v1/plans/${PLAN_ID}/results`) {
+        return new Response(JSON.stringify(listEnvelope([resultsRow()])), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      throw new Error(`unexpected fetch: ${url.pathname}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/results`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/results" element={<ResultsTable />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    // First frame, before the plan fetch resolves: structure, not a delayed label.
+    expect(document.querySelector('.chq-page.chq-review-page')).not.toBeNull();
+    expect(screen.getByRole('heading', { name: 'Results' })).toBeInTheDocument();
+    expect(document.querySelector('.chq-skeleton')).not.toBeNull();
+
+    resolvePlan(
+      new Response(JSON.stringify(plan()), { status: 200, headers: { 'content-type': 'application/json' } }),
+    );
+    expect(await screen.findByText(/A Great Talk/)).toBeInTheDocument();
+  });
+});
+
 describe('ResultsTable phone-card data-label invariant (DEC-390)', () => {
   it('gives every body <td> a data-label matching its column header text', async () => {
     mockApi({
