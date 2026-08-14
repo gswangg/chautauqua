@@ -80,6 +80,20 @@ vi.mock("../src/server/repo/files", async () => {
   };
 });
 
+// B9 (DEC-037 amendment, wave 27): the note-reply route now looks up the
+// owning event's name for the shell's wordmark/footer via getEventForOrg --
+// mocked here since this test's db is a bare `{}` fake (no drizzle behind
+// it).
+vi.mock("../src/server/repo/events", async () => {
+  const actual = await vi.importActual<typeof import("../src/server/repo/events")>("../src/server/repo/events");
+  return {
+    ...actual,
+    getEventForOrg: vi.fn(async (_db: unknown, eventId: string, orgId: string) =>
+      orgId === "org-1" && (eventId === "evt-1" || eventId === "evt-2") ? { id: eventId, name: "The Event" } : null,
+    ),
+  };
+});
+
 vi.mock("../src/server/repo/comms", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/comms")>("../src/server/repo/comms");
   return {

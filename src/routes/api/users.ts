@@ -7,7 +7,7 @@ import type { AppEnv } from "../../server/env";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
 import { ApiError, readJsonBody } from "../../server/http";
 import { makeMailer } from "../../server/context";
-import { textToHtml } from "../../mail/render";
+import { renderEmailHtml } from "../../mail/shell";
 import { hashPassword } from "../../auth/password";
 import * as repo from "../../server/repo/users";
 import { isOrgUserRole } from "../../server/repo/users";
@@ -85,6 +85,7 @@ usersRoutes.post("/api/v1/users", requireOrganizer, csrfJson, async (c) => {
   // account still works. Flagged for the scribe.
   const orgEvents = await listEventsForOrg(c.var.db, auth.orgId);
   const anchorEventId = orgEvents[0]?.id;
+  const anchorEventName = orgEvents[0]?.name ?? null;
   if (anchorEventId) {
     // DEC-238: user creation must succeed even if the best-effort welcome
     // notice fails to send (the account, password, and response body are
@@ -97,7 +98,10 @@ usersRoutes.post("/api/v1/users", requireOrganizer, csrfJson, async (c) => {
         to: { email: created.email, name: created.email },
         subject: "Your account has been created",
         text,
-        html: textToHtml(text),
+        html: renderEmailHtml(text, {
+          eventName: anchorEventName,
+          reason: "an organizer created a reviewer/organizer account for you",
+        }),
         eventId: anchorEventId,
         // DEC-191: this user is not a contact; per-contact email history
         // intentionally excludes rows like this one.

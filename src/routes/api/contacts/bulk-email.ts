@@ -12,7 +12,8 @@ import { getEventForOrg } from "../../../server/repo/events";
 import type { KVStore } from "../../../auth/claim";
 import { preflightRender, type RenderTarget } from "../../../domain/compose";
 import { applyMintedPortalLinks, resolvePortalLinks } from "../../../server/repo/portal-link";
-import { textToHtml, templateUsesMergeField } from "../../../mail/render";
+import { templateUsesMergeField } from "../../../mail/render";
+import { renderEmailHtml } from "../../../mail/shell";
 import type { Db } from "../../../server/context";
 import { resolveBaseUrl } from "../../../server/origin";
 import { currentOrgId, asRecord } from "./shared";
@@ -193,7 +194,10 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
         to: { email: rendered.email, name: rendered.name },
         subject: rendered.subject,
         text: rendered.text,
-        html: textToHtml(rendered.text),
+        html: renderEmailHtml(rendered.text, {
+          eventName: event.name,
+          reason: `an organizer sent a bulk email to contacts of ${event.name}`,
+        }),
         eventId: event.id,
         contactId: rendered.contactId,
         batchId,
