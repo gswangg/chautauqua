@@ -4,7 +4,7 @@ import { apiDelete, apiGet, apiList, apiPost, apiPut, ApiError } from '../../lib
 import './review.css';
 import './scorecard.css';
 import { formatAnswerValue } from './answerText';
-import { isEvaluationComplete, plainAverage, ratingScaleValues, scorecardKeyAction } from './scorecardLogic';
+import { incompleteCriteria, isEvaluationComplete, plainAverage, ratingScaleValues, scorecardKeyAction } from './scorecardLogic';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { planTrackScope } from './PlanList';
 // DEC-939: the scorecard header's 'N of N done' counter reads the SAME
@@ -26,17 +26,16 @@ import type {
   Track,
 } from './types';
 
-// DEC-889: the abstract clamps to its first ~60 words so the scorecard
-// doesn't reprint the whole submission detail above the ratings; the
-// remainder (and the answer lists) live behind a single disclosure.
-const ABSTRACT_WORD_LIMIT = 60;
+// DEC-889 (wave-72 amendment): the reading column IS the frame's body --
+// the abstract prints in full under an ABSTRACT eyebrow, and the session
+// and speaker answers print as label|value rows below it, at rest. The
+// 60-word clamp and the "Read the full submission ›" disclosure are
+// retired entirely (no clamp helper, no expand/collapse state survives).
 
-function clampAbstract(text: string, wordLimit: number = ABSTRACT_WORD_LIMIT): { clamped: string; remainder: string; isClamped: boolean } {
-  const words = text.trim().length === 0 ? [] : text.trim().split(/\s+/);
-  if (words.length <= wordLimit) {
-    return { clamped: text, remainder: '', isClamped: false };
-  }
-  return { clamped: `${words.slice(0, wordLimit).join(' ')}…`, remainder: words.slice(wordLimit).join(' '), isClamped: true };
+function isFormFieldTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
 }
 
 export function Scorecard() {
@@ -77,9 +76,12 @@ export function Scorecard() {
   // rather than a fabricated figure.
   const [queueProgress, setQueueProgress] = useState<{ completed: number; total: number } | null>(null);
 
-  // DEC-889: collapsed by default -- reveals the abstract's remainder and
-  // both answer lists together, in place, when the reviewer opts in.
-  const [abstractExpanded, setAbstractExpanded] = useState(false);
+  // DEC-939 (wave-3 amendment): the incomplete notice is a LIVE derivation
+  // (incompleteCriteria), never a latched string -- `attempted` only gates
+  // WHETHER it renders (a reviewer shouldn't see it before trying once),
+  // and it recomputes on every render so filling the last gap makes it
+  // vanish immediately, with no second submit required to clear it.
+  const [attempted, setAttempted] = useState(false);
 
   // DEC-831: the scorecard's eyebrow names plan · track · round -- the
   // track clause reuses the plan's own filter-scope resolution
@@ -155,16 +157,10 @@ export function Scorecard() {
   // priority over the base plan.criteria.
   const criteria = submission?.criteria ?? plan?.criteria ?? [];
 
-  // DEC-873: the one incomplete-card message, shared by both actions --
-  // there is no partial/draft write (validateEvaluationScores refuses
-  // partial scores by design), so both Submit and Save require every
-  // criterion filled before they'll talk to the server.
-  const INCOMPLETE_MESSAGE = 'Rate every criterion before submitting.';
-
   async function submitAndAdvance() {
     if (!planId || !submissionId || !plan) return;
+    setAttempted(true);
     if (!isEvaluationComplete(criteria, scores)) {
-      setError(INCOMPLETE_MESSAGE);
       return;
     }
     setSubmitting(true);
@@ -193,8 +189,8 @@ export function Scorecard() {
   // would, and simply doesn't advance the reviewer to the next submission.
   async function saveOnly() {
     if (!planId || !submissionId || !plan) return;
+    setAttempted(true);
     if (!isEvaluationComplete(criteria, scores)) {
-      setError(INCOMPLETE_MESSAGE);
       return;
     }
     setSaving(true);
@@ -249,7 +245,11 @@ export function Scorecard() {
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (!plan) return;
     const focused = criteria.find((c) => c.id === focusedId) ?? null;
-    const action = scorecardKeyAction(e.key, focused, plan.scale);
+    // DEC-939 (wave-3 amendment): a page-level key handler must ask who has
+    // focus -- digits and Enter belong to whatever form field the event
+    // actually originated in (the comment textarea, a dropdown), never to
+    // the page, so scorecardKeyAction always yields 'none' for those.
+    const action = scorecardKeyAction(e.key, focused, plan.scale, { fromFormField: isFormFieldTarget(e.target) });
     if (action.type === 'setRating') {
       e.preventDefault();
       setRingArmed(true);
@@ -285,17 +285,17 @@ export function Scorecard() {
   // "Weight N · NN%" caption -- never re-derived here.
   const weightShares = criterionWeightShares(criteria);
 
-  // DEC-889: one clamp, one disclosure -- the disclosure owns both the
-  // abstract's remainder and the two answer lists, so the default view
-  // never shows either. Server-side anonymization (anonymizeForReviewer)
-  // remains the only thing deciding whether speakerAnswers is present at
-  // all; this component never re-derives visibility from role.
-  const { clamped: abstractClamped, remainder: abstractRemainder, isClamped: abstractIsClamped } = clampAbstract(
-    submission.description ?? '',
-  );
-  const hasAnswers =
-    submission.sessionAnswers.length > 0 || (!!submission.speakerAnswers && submission.speakerAnswers.length > 0);
-  const showAbstractDisclosure = abstractIsClamped || hasAnswers;
+  // DEC-889 (wave-72 amendment): the FORM ANSWERS block is the session
+  // answers followed by the speaker answers, as label|value rows, at rest.
+  // anonymizeForReviewer (server-side) remains the ONLY thing deciding
+  // whether speakerAnswers exist at all -- this component never re-derives
+  // visibility from role, it just renders whatever the wire sent.
+  const formAnswers = [...submission.sessionAnswers, ...(submission.speakerAnswers ?? [])];
+  // DEC-939 (wave-3 amendment): the incomplete-criteria notice is a live
+  // derivation of the SAME predicate the rail's per-criterion markers and
+  // the submit/save validators use -- never a second definition.
+  const incomplete = incompleteCriteria(criteria, scores);
+  const showIncompleteNotice = attempted && incomplete.length > 0;
 
   // DEC-873: computeWeightedScore throws on a missing score, so only call
   // it once every rating criterion (weight > 0) has a numeric entry;
@@ -362,51 +362,40 @@ export function Scorecard() {
             {submission.speakers && (
               <span className="chq-summary">Speakers: {submission.speakers.map((s) => s.name).join(', ')}</span>
             )}
-            {submission.description && <p className="chq-review-scorecard-abstract">{abstractClamped}</p>}
-            {showAbstractDisclosure && (
-              <button
-                type="button"
-                className="chq-review-abstract-disclosure"
-                aria-expanded={abstractExpanded}
-                onClick={() => setAbstractExpanded((v) => !v)}
-              >
-                {abstractExpanded ? 'Hide the full submission ‹' : 'Read the full submission ›'}
-              </button>
+            {/* DEC-889 (wave-72 amendment): anonymizeForReviewer already
+                stripped speakers/speakerAnswers server-side when the plan
+                is anonymised -- this is a disclosure of that fact, never a
+                re-derivation of visibility from role. */}
+            {plan.anonymized && (
+              <p className="chq-review-anonymized-notice">
+                {"The speaker's name and company are hidden while this plan is anonymised"}
+              </p>
             )}
           </div>
 
-          {abstractExpanded && (
-            <>
-              {abstractIsClamped && <p className="chq-review-scorecard-abstract-remainder">{abstractRemainder}</p>}
+          {/* DEC-889 (wave-72 amendment): the reading column IS the frame's
+              body -- ABSTRACT eyebrow + rule + the full abstract, at rest
+              (no clamp, no disclosure). */}
+          {submission.description && (
+            <section className="chq-review-scorecard-abstract-section">
+              <h2 className="chq-section-label">Abstract</h2>
+              <hr className="chq-review-scorecard-abstract-rule" />
+              <p className="chq-review-scorecard-abstract">{submission.description}</p>
+            </section>
+          )}
 
-              {submission.sessionAnswers.length > 0 && (
-                <section className="chq-review-answers">
-                  <h2 className="chq-section-label">Submission answers</h2>
-                  <dl className="chq-review-answer-list">
-                    {submission.sessionAnswers.map((a) => (
-                      <div key={a.fieldId} className="chq-review-answer-row">
-                        <dt>{a.label}</dt>
-                        <dd>{formatAnswerValue(a.value)}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </section>
-              )}
-
-              {submission.speakerAnswers && submission.speakerAnswers.length > 0 && (
-                <section className="chq-review-answers">
-                  <h2 className="chq-section-label">Speaker answers</h2>
-                  <dl className="chq-review-answer-list">
-                    {submission.speakerAnswers.map((a) => (
-                      <div key={a.fieldId} className="chq-review-answer-row">
-                        <dt>{a.label}</dt>
-                        <dd>{formatAnswerValue(a.value)}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </section>
-              )}
-            </>
+          {formAnswers.length > 0 && (
+            <section className="chq-review-answers">
+              <h2 className="chq-section-label">Form answers</h2>
+              <dl className="chq-review-answer-list">
+                {formAnswers.map((a) => (
+                  <div key={a.fieldId} className="chq-review-answer-row">
+                    <dt>{a.label}</dt>
+                    <dd>{formatAnswerValue(a.value)}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
           )}
 
           {submission.myEvaluation && (
@@ -424,7 +413,13 @@ export function Scorecard() {
           {criteria.map((criterion: EvaluationCriterion) => (
             <div
               key={criterion.id}
-              className={`chq-review-criterion${ringArmed && focusedId === criterion.id ? ' chq-focused' : ''}`}
+              className={`chq-review-criterion${ringArmed && focusedId === criterion.id ? ' chq-focused' : ''}${
+                // DEC-939 (wave-3 amendment): a quiet marker on each blocking
+                // criterion's row, added only once a submit has been
+                // attempted -- the SAME incompleteCriteria list the notice
+                // above names its blockers from.
+                attempted && incomplete.some((c) => c.id === criterion.id) ? ' chq-review-criterion-missing' : ''
+              }`}
               onFocus={() => setFocusedId(criterion.id)}
             >
               <label className="chq-review-criterion-label">
@@ -567,6 +562,17 @@ export function Scorecard() {
               </label>
             )}
           </div>
+
+          {/* DEC-939 (wave-3 amendment): a LIVE derivation, not a latched
+              error string -- renders only once a submit has been attempted
+              AND blockers remain, and names them, so filling the last gap
+              makes it vanish on the very next render (no second submit
+              needed to clear a message that no longer applies). */}
+          {showIncompleteNotice && (
+            <div className="chq-error chq-review-incomplete-notice" role="alert">
+              {`Rate every criterion before submitting — still needed: ${incomplete.map((c) => c.label).join(', ')}`}
+            </div>
+          )}
 
           <div className="chq-review-editor-actions">
             <button type="button" className="chq-btn chq-btn-primary" disabled={submitting || !!recusal} onClick={() => void submitAndAdvance()}>

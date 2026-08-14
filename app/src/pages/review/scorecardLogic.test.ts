@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clampRating, isEvaluationComplete, plainAverage, scorecardKeyAction } from './scorecardLogic';
+import { clampRating, incompleteCriteria, isEvaluationComplete, plainAverage, scorecardKeyAction } from './scorecardLogic';
 import type { EvaluationCriterion, EvaluationScores } from './types';
 
 const criteria: EvaluationCriterion[] = [
@@ -80,7 +80,7 @@ describe('scorecardKeyAction', () => {
   const dropdownCriterion = criteria[1]!;
 
   it('maps a digit key to a clamped rating on the focused rating criterion', () => {
-    expect(scorecardKeyAction('9', ratingCriterion, scale)).toEqual({
+    expect(scorecardKeyAction('9', ratingCriterion, scale, { fromFormField: false })).toEqual({
       type: 'setRating',
       criterionId: 'quality',
       value: 5,
@@ -88,18 +88,57 @@ describe('scorecardKeyAction', () => {
   });
 
   it('does nothing for a digit key when the focused criterion is a dropdown', () => {
-    expect(scorecardKeyAction('3', dropdownCriterion, scale)).toEqual({ type: 'none' });
+    expect(scorecardKeyAction('3', dropdownCriterion, scale, { fromFormField: false })).toEqual({ type: 'none' });
   });
 
   it('does nothing for a digit key with no focused criterion', () => {
-    expect(scorecardKeyAction('3', null, scale)).toEqual({ type: 'none' });
+    expect(scorecardKeyAction('3', null, scale, { fromFormField: false })).toEqual({ type: 'none' });
   });
 
   it('maps Enter to submit-and-advance regardless of focus', () => {
-    expect(scorecardKeyAction('Enter', null, scale)).toEqual({ type: 'submitAndAdvance' });
+    expect(scorecardKeyAction('Enter', null, scale, { fromFormField: false })).toEqual({ type: 'submitAndAdvance' });
   });
 
   it('ignores non-digit, non-Enter keys', () => {
-    expect(scorecardKeyAction('a', ratingCriterion, scale)).toEqual({ type: 'none' });
+    expect(scorecardKeyAction('a', ratingCriterion, scale, { fromFormField: false })).toEqual({ type: 'none' });
+  });
+
+  // DEC-939 (wave-3 amendment): a page-level key handler never fires from a
+  // form field -- both the digit-to-rating and Enter-to-submit paths must
+  // yield 'none' when the originating event target is a real form control.
+  it('yields none for a digit key when fromFormField is true, even with a focused rating criterion', () => {
+    expect(scorecardKeyAction('4', ratingCriterion, scale, { fromFormField: true })).toEqual({ type: 'none' });
+  });
+
+  it('yields none for Enter when fromFormField is true', () => {
+    expect(scorecardKeyAction('Enter', ratingCriterion, scale, { fromFormField: true })).toEqual({ type: 'none' });
+  });
+});
+
+// DEC-939 (wave-3 amendment): incompleteCriteria is the ONE predicate --
+// isEvaluationComplete is its zero-length case, never a second definition.
+describe('incompleteCriteria', () => {
+  it('lists the criteria with no entry', () => {
+    expect(incompleteCriteria(criteria, { quality: 4 })).toEqual([criteria[1]]);
+  });
+
+  it('lists a dropdown criterion whose value is not one of its options', () => {
+    const scores: EvaluationScores = { quality: 4, fit: 'Maybe' };
+    expect(incompleteCriteria(criteria, scores)).toEqual([criteria[1]]);
+  });
+
+  it('is empty when every criterion has a valid entry', () => {
+    const scores: EvaluationScores = { quality: 4, fit: 'Yes' };
+    expect(incompleteCriteria(criteria, scores)).toEqual([]);
+  });
+
+  it('lists every still-missing criterion, in criteria order', () => {
+    expect(incompleteCriteria(criteria, {})).toEqual([criteria[0], criteria[1]]);
+  });
+
+  it('agrees with isEvaluationComplete: complete iff nothing is incomplete', () => {
+    const scores: EvaluationScores = { quality: 4, fit: 'Yes' };
+    expect(isEvaluationComplete(criteria, scores)).toBe(incompleteCriteria(criteria, scores).length === 0);
+    expect(isEvaluationComplete(criteria, {})).toBe(incompleteCriteria(criteria, {}).length === 0);
   });
 });

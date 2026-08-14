@@ -111,16 +111,9 @@ describe('Scorecard render smoke', () => {
     expect(screen.getByLabelText('Notes')).toBeInTheDocument();
     expect(screen.getByLabelText('Notes').tagName).toBe('TEXTAREA');
 
-    // DEC-889: the answer lists live behind the disclosure -- collapsed by
-    // default, they don't render at all until the reviewer opts in.
-    expect(screen.queryByText('Talk length')).not.toBeInTheDocument();
-    expect(screen.queryByText('45 minutes')).not.toBeInTheDocument();
-    expect(screen.queryByText('AV needs')).not.toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Speaker answers' })).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Read the full submission ›' }));
-
-    // sessionAnswers render as label + formatted value, in delivered order.
+    // DEC-889 (wave-72 amendment): the FORM ANSWERS block is at rest, not
+    // behind a disclosure -- session and speaker answers render immediately.
+    expect(screen.getByRole('heading', { name: 'Form answers' })).toBeInTheDocument();
     expect(screen.getByText('Talk length')).toBeInTheDocument();
     expect(screen.getByText('45 minutes')).toBeInTheDocument();
     expect(screen.getByText('AV needs')).toBeInTheDocument();
@@ -129,8 +122,7 @@ describe('Scorecard render smoke', () => {
     // rather than a single unique match.
     expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2);
 
-    // speakerAnswers render under their own heading.
-    expect(screen.getByRole('heading', { name: 'Speaker answers' })).toBeInTheDocument();
+    // speakerAnswers render in the same block, at rest.
     expect(screen.getByText('Bio')).toBeInTheDocument();
     expect(screen.getByText('Mathematician and writer.')).toBeInTheDocument();
 
@@ -243,15 +235,16 @@ describe('Scorecard render smoke', () => {
   });
 });
 
-// DEC-889: the abstract clamps to its first ~60 words and a single
-// disclosure -- not a second copy of the submission detail -- owns both
-// the clamped remainder and the two answer lists.
-describe('Scorecard abstract clamp and disclosure (DEC-889)', () => {
+// DEC-889 (wave-72 amendment): the reading column IS the frame's body --
+// the full abstract under an ABSTRACT eyebrow, and the session/speaker
+// answers as a FORM ANSWERS block of label|value rows, at rest (no clamp,
+// no disclosure).
+describe('Scorecard reading column at rest (DEC-889 wave-72 amendment)', () => {
   function longDescription(wordCount: number) {
     return Array.from({ length: wordCount }, (_, i) => `word${i}`).join(' ');
   }
 
-  it('collapsed default renders the clamped abstract exactly once and neither answer list', async () => {
+  it('renders the full, un-clamped abstract under an ABSTRACT eyebrow, with no disclosure control', async () => {
     mockApi({
       'GET /api/v1/review/plans': listEnvelope([plan()]),
       [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
@@ -276,73 +269,66 @@ describe('Scorecard abstract clamp and disclosure (DEC-889)', () => {
 
     expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
 
-    // The abstract renders exactly once, clamped to the first 60 words
-    // with a trailing ellipsis -- word60 is the first word cut.
+    // The abstract renders exactly once, in full -- no 60-word clamp, no
+    // trailing ellipsis, word89 (the last word) is present.
     const abstracts = document.querySelectorAll('.chq-review-scorecard-abstract');
     expect(abstracts).toHaveLength(1);
     const abstractText = abstracts[0]!.textContent ?? '';
-    expect(abstractText).toContain('word59');
-    expect(abstractText).not.toContain('word60');
-    expect(abstractText.endsWith('…')).toBe(true);
-    expect(document.body.textContent).not.toContain(longDescription(90));
+    expect(abstractText).toContain('word0');
+    expect(abstractText).toContain('word89');
+    expect(abstractText.endsWith('…')).toBe(false);
+    expect(screen.getByRole('heading', { name: 'Abstract' })).toBeInTheDocument();
 
-    // Neither answer list renders before the disclosure is activated.
-    expect(screen.queryByText('Talk length')).not.toBeInTheDocument();
-    expect(screen.queryByText('Bio')).not.toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Submission answers' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Speaker answers' })).not.toBeInTheDocument();
-
-    const disclosure = screen.getByRole('button', { name: 'Read the full submission ›' });
-    expect(disclosure).toHaveAttribute('aria-expanded', 'false');
-  });
-
-  it('activating the disclosure reveals the abstract remainder and both answer lists', async () => {
-    mockApi({
-      'GET /api/v1/review/plans': listEnvelope([plan()]),
-      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
-        id: SUBMISSION_ID,
-        ref: 'S-010',
-        title: 'A Deeply Nested Talk',
-        description: longDescription(90),
-        sessionAnswers: [{ fieldId: 'f1', label: 'Talk length', kind: 'dropdown', value: '45 minutes' }],
-        speakerAnswers: [{ fieldId: 'f3', label: 'Bio', kind: 'text', value: 'Mathematician and writer.' }],
-        myEvaluation: undefined,
-        criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
-      },
-    });
-
-    render(
-      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
-        <Routes>
-          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Read the full submission ›' }));
-
-    expect(screen.getByRole('button', { name: 'Hide the full submission ‹' })).toHaveAttribute('aria-expanded', 'true');
-    // The remainder (word60 onward) is now visible.
-    expect(document.body.textContent).toContain('word89');
+    // No disclosure control survives -- the answer lists are already
+    // rendered, at rest.
+    expect(screen.queryByRole('button', { name: /read the full submission/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Form answers' })).toBeInTheDocument();
     expect(screen.getByText('Talk length')).toBeInTheDocument();
     expect(screen.getByText('45 minutes')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Submission answers' })).toBeInTheDocument();
     expect(screen.getByText('Bio')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Speaker answers' })).toBeInTheDocument();
+    expect(screen.getByText('Mathematician and writer.')).toBeInTheDocument();
   });
 
-  it('a short abstract renders no clamp ellipsis but still hides the answer lists behind the disclosure', async () => {
+  it('prints the anonymised-plan notice when plan.anonymized is true, and omits it otherwise', async () => {
+    const anonPlan = { ...plan(), anonymized: true };
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([anonPlan]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        description: 'An abstract.',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+        // Server-side anonymizeForReviewer strips speakers/speakerAnswers
+        // entirely -- no key at all -- for an anonymised plan.
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(
+      screen.getByText("The speaker's name and company are hidden while this plan is anonymised"),
+    ).toBeInTheDocument();
+  });
+
+  it('omits the anonymised-plan notice when the plan is not anonymised', async () => {
     mockApi({
       'GET /api/v1/review/plans': listEnvelope([plan()]),
       [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
         id: SUBMISSION_ID,
         ref: 'S-010',
         title: 'A Deeply Nested Talk',
-        description: 'A short abstract about testing scorecards.',
-        sessionAnswers: [{ fieldId: 'f1', label: 'Talk length', kind: 'dropdown', value: '45 minutes' }],
-        speakerAnswers: [],
+        description: 'An abstract.',
+        sessionAnswers: [],
         myEvaluation: undefined,
         criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
       },
@@ -357,17 +343,38 @@ describe('Scorecard abstract clamp and disclosure (DEC-889)', () => {
     );
 
     expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(screen.queryByText(/hidden while this plan is anonymised/)).not.toBeInTheDocument();
+  });
 
-    const abstract = document.querySelector('.chq-review-scorecard-abstract')!;
-    expect(abstract.textContent).toBe('A short abstract about testing scorecards.');
-    expect(abstract.textContent?.endsWith('…')).toBe(false);
+  it('the rail actions render full-width stacked, primary over secondary, with the secondary labelled Save (DEC-873)', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+      },
+    });
 
-    // The disclosure still owns the (non-empty) answer list -- hidden by
-    // default even though the abstract itself didn't clamp.
-    expect(screen.queryByText('Talk length')).not.toBeInTheDocument();
-    const disclosure = screen.getByRole('button', { name: 'Read the full submission ›' });
-    fireEvent.click(disclosure);
-    expect(screen.getByText('Talk length')).toBeInTheDocument();
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(screen.queryByText('Save draft')).not.toBeInTheDocument();
+    const actions = document.querySelector('.chq-review-editor-actions')!;
+    const buttons = Array.from(actions.querySelectorAll('button'));
+    expect(buttons[0]).toHaveTextContent('Submit and next');
+    expect(buttons[0]).toHaveClass('chq-btn-primary');
+    expect(buttons[1]).toHaveTextContent('Save');
+    expect(buttons[1]).toHaveClass('chq-btn-secondary');
   });
 });
 
@@ -794,5 +801,122 @@ describe('Scorecard two-column work surface and armed focus ring (DEC-939 wave-6
 
     const abstract = document.querySelector('.chq-review-scorecard-abstract')!;
     expect(rail.contains(abstract)).toBe(false);
+  });
+});
+
+// DEC-939 (wave-3 amendment): the run-4 ABS killer -- a reviewer who fills
+// every criterion after a first failed submit attempt can actually submit,
+// and typing a comment never gets hijacked by the page-level key handler.
+describe('Scorecard completeness notice and form-field key guard (DEC-939 wave-3 amendment)', () => {
+  function twoRatingsAndDropdown() {
+    return [
+      { id: 'c1', label: 'Relevance', kind: 'rating' as const, weight: 1 },
+      { id: 'c2', label: 'Recommendation', kind: 'rating' as const, weight: 1 },
+      { id: 'c3', label: 'Format fit', kind: 'dropdown' as const, options: ['Yes', 'No'] },
+    ];
+  }
+
+  it('names the missing criteria after a failed attempt, then clears and submits once every control is filled', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: twoRatingsAndDropdown(),
+      },
+      [`PUT /api/v1/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`]: { ok: true },
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+    expect(screen.queryByText(/Rate every criterion before submitting/)).not.toBeInTheDocument();
+
+    // First attempt with nothing filled -- the notice names every blocker.
+    fireEvent.click(screen.getByRole('button', { name: 'Submit and next' }));
+    expect(
+      await screen.findByText('Rate every criterion before submitting — still needed: Relevance, Recommendation, Format fit'),
+    ).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining(`/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`),
+      expect.objectContaining({ method: 'PUT' }),
+    );
+
+    // Fill both ratings and the dropdown -- clicking every control.
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Relevance' })).getByRole('radio', { name: '4' }));
+    // The notice narrows as blockers clear (still recommendation + format fit).
+    expect(
+      await screen.findByText('Rate every criterion before submitting — still needed: Recommendation, Format fit'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Recommendation' })).getByRole('radio', { name: '3' }));
+    fireEvent.change(screen.getByRole('option', { name: 'Yes' }).closest('select')!, { target: { value: 'Yes' } });
+
+    // The notice vanishes the instant the last criterion is answered --
+    // no second submit click required to clear it.
+    await waitFor(() => expect(screen.queryByText(/Rate every criterion before submitting/)).not.toBeInTheDocument());
+    expect(document.querySelector('.chq-review-criterion-missing')).toBeNull();
+
+    // Type a comment, then actually submit -- the PUT fires.
+    fireEvent.change(screen.getByLabelText('Comment to the committee'), { target: { value: 'Strong talk.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Submit and next' }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining(`/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`),
+        expect.objectContaining({ method: 'PUT' }),
+      ),
+    );
+  });
+
+  it('typing "4" then Enter inside the comment textarea neither changes a score nor submits', async () => {
+    const fetchMock = mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: twoRatingsAndDropdown(),
+      },
+      [`PUT /api/v1/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`]: { ok: true },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'S-010 — A Deeply Nested Talk' })).toBeInTheDocument();
+
+    const commentField = screen.getByLabelText('Comment to the committee');
+    fireEvent.keyDown(commentField, { key: '4' });
+    fireEvent.keyDown(commentField, { key: 'Enter' });
+
+    // Neither the focused (first) rating criterion nor any other picked up
+    // a score, and no PUT (submit) fired.
+    const relevanceGroup = screen.getByRole('radiogroup', { name: 'Relevance' });
+    within(relevanceGroup)
+      .getAllByRole('radio')
+      .forEach((r) => expect(r).toHaveAttribute('aria-checked', 'false'));
+    expect(document.querySelector('.chq-focused')).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining(`/review/plans/${PLAN_ID}/evaluations/${SUBMISSION_ID}`),
+      expect.objectContaining({ method: 'PUT' }),
+    );
   });
 });
