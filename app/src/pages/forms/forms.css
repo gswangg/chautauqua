@@ -112,11 +112,14 @@
   color: inherit;
 }
 
+/* DEC-409: the hover/focus border is an ADDITIONAL affordance, never a
+   replacement for the designed 2px olive ring -- no rule here may silence
+   the outline, so the global :focus-visible ring still draws on keyboard
+   focus. */
 .chq-forms-strip-datefield:hover,
 .chq-forms-strip-datefield:focus {
   border-color: var(--chq-rule);
   padding: 2px 4px;
-  outline: none;
 }
 
 .chq-forms-section {
