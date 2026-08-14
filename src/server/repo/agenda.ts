@@ -14,6 +14,7 @@ import { chunkRowsForInsert } from "../../lib/chunk";
 import { bumpIcsSequences } from "./ics-sequence";
 import { visibleSessionConditions } from "./public/gates";
 import { SESSION_FORMAT_FIELD_ID } from "../../forms/types";
+import { ApiError } from "../http";
 import {
   autoSchedule,
   describeConflict,
@@ -219,11 +220,26 @@ interface AcceptedSessionRow {
   slot: { roomId: string | null; day: string; startMin: number; endMin: number } | null;
 }
 
+// DEC-021 wave-60 amendment: hard ceiling on the accepted-session scan below
+// (and on getConflictsAndSummary's/overview.ts's placed-slot scans, which
+// share this constant rather than restating it) — an agenda read should
+// never be scanning past this many rows; refuse rather than silently
+// truncate (tasks/reminders.ts's MAX_REMINDER_SCAN pattern).
+export const MAX_AGENDA_SCAN = 5000;
+
 async function loadAcceptedSessions(db: Db, eventId: string, recordPrefix: string): Promise<AcceptedSessionRow[]> {
   const submissionRows = await db
     .select({ id: schema.submission.id, seq: schema.submission.seq, title: schema.submission.title })
     .from(schema.submission)
-    .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")));
+    .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")))
+    .limit(MAX_AGENDA_SCAN + 1);
+
+  if (submissionRows.length > MAX_AGENDA_SCAN) {
+    throw new ApiError(
+      "invalid",
+      `This agenda read would scan more than ${MAX_AGENDA_SCAN} accepted submissions`,
+    );
+  }
 
   if (submissionRows.length === 0) return [];
   const ids = submissionRows.map((r) => r.id);
@@ -522,37 +538,121 @@ export async function countPubliclyVisible(db: Db, eventId: string, submissionId
 }
 
 /** Refreshed { conflicts, summary } only — used after PUT/DELETE slot writes,
- * which per DEC-010 are NEVER blocked by conflicts. DEC-557/DEC-078: one
- * bounded per-event room-name query (rooms are ~15) so conflicts can be
- * rendered by name here too. */
+ * which per DEC-010 are NEVER blocked by conflicts. DEC-021 wave-60
+ * amendment: unlike getAgendaPayload, this NEVER calls loadAcceptedSessions
+ * (which reads every accepted submission in the event just to filter down to
+ * the placed handful) — it drives straight off schedule_slot innerJoin
+ * submission (eventId + status='accepted'), bounded by the same
+ * MAX_AGENDA_SCAN ceiling, and hydrates only THOSE submission ids' speakers.
+ * Conflicts can only ever involve placed sessions, so this is a strict
+ * subset of loadAcceptedSessions' rows — the returned {conflicts, summary}
+ * shape/prose is unchanged. DEC-557/DEC-078: one bounded per-event
+ * room-name query (rooms are ~15) so conflicts can be rendered by name
+ * here too. */
 export async function getConflictsAndSummary(
   db: Db,
   eventId: string,
   event: Pick<EventInfo, "startDate" | "endDate" | "recordPrefix">,
 ): Promise<{ conflicts: DescribedConflict[]; summary: { unplaced: number; conflicts: number } }> {
-  const accepted = await loadAcceptedSessions(db, eventId, event.recordPrefix);
-  const placedSessions: PlacedSession[] = accepted
-    .filter(
-      (s): s is AcceptedSessionRow & { slot: NonNullable<AcceptedSessionRow["slot"]> } =>
-        s.slot !== null && isDayWithinEventRange(s.slot.day, event.startDate, event.endDate),
-    )
-    .map((s) => ({
-      submissionId: s.submissionId,
-      roomId: s.slot.roomId,
-      day: s.slot.day,
-      startMin: s.slot.startMin,
-      endMin: s.slot.endMin,
-      speakerContactIds: s.speakerContactIds,
-    }));
+  const slotRows = await db
+    .select({
+      submissionId: schema.scheduleSlot.submissionId,
+      roomId: schema.scheduleSlot.roomId,
+      day: schema.scheduleSlot.day,
+      startMin: schema.scheduleSlot.startMin,
+      endMin: schema.scheduleSlot.endMin,
+      seq: schema.submission.seq,
+      title: schema.submission.title,
+    })
+    .from(schema.scheduleSlot)
+    .innerJoin(schema.submission, eq(schema.scheduleSlot.submissionId, schema.submission.id))
+    .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")))
+    .limit(MAX_AGENDA_SCAN + 1);
+
+  if (slotRows.length > MAX_AGENDA_SCAN) {
+    throw new ApiError(
+      "invalid",
+      `This agenda read would scan more than ${MAX_AGENDA_SCAN} placed sessions`,
+    );
+  }
+
+  const withinWindow = slotRows.filter((s) => isDayWithinEventRange(s.day, event.startDate, event.endDate));
+  const placedIds = withinWindow.map((s) => s.submissionId);
+
+  const participantRows: {
+    submissionId: string;
+    contactId: string;
+    firstName: string;
+    lastName: string;
+    order: number;
+  }[] = [];
+  for (const batch of chunkIds(placedIds)) {
+    const batchRows = await db
+      .select({
+        submissionId: schema.participant.submissionId,
+        contactId: schema.participant.contactId,
+        firstName: schema.contact.firstName,
+        lastName: schema.contact.lastName,
+        order: schema.participant.order,
+      })
+      .from(schema.participant)
+      .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+      .where(
+        and(
+          inArray(schema.participant.submissionId, batch),
+          // DEC-974: same active-participant rule as loadAcceptedSessions —
+          // a speaker hidden from the public programme still can't be
+          // double-booked, so ACTIVE_INVITE_STATUSES (not `visible`).
+          inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
+        ),
+      );
+    participantRows.push(...batchRows);
+  }
+
+  const speakersBySubmission = new Map<string, { contactId: string; name: string; order: number }[]>();
+  for (const p of participantRows) {
+    const arr = speakersBySubmission.get(p.submissionId) ?? [];
+    arr.push({ contactId: p.contactId, name: `${p.firstName} ${p.lastName}`.trim(), order: p.order });
+    speakersBySubmission.set(p.submissionId, arr);
+  }
+  for (const arr of speakersBySubmission.values())
+    arr.sort((a, b) => a.order - b.order || (a.contactId < b.contactId ? -1 : a.contactId > b.contactId ? 1 : 0));
+
+  const placedRows: AcceptedSessionRow[] = withinWindow.map((s) => ({
+    submissionId: s.submissionId,
+    ref: formatRef(event.recordPrefix, s.seq),
+    title: s.title,
+    trackIds: [],
+    speakers: (speakersBySubmission.get(s.submissionId) ?? []).map(({ contactId, name }) => ({ contactId, name })),
+    speakerContactIds: (speakersBySubmission.get(s.submissionId) ?? []).map((p) => p.contactId),
+    slot: { roomId: s.roomId, day: s.day, startMin: s.startMin, endMin: s.endMin },
+  }));
+
+  const placedSessions: PlacedSession[] = placedRows.map((s) => ({
+    submissionId: s.submissionId,
+    roomId: s.slot!.roomId,
+    day: s.slot!.day,
+    startMin: s.slot!.startMin,
+    endMin: s.slot!.endMin,
+    speakerContactIds: s.speakerContactIds,
+  }));
   const conflicts = findConflicts(placedSessions);
+
   const roomRows = await db
     .select({ id: schema.room.id, name: schema.room.name })
     .from(schema.room)
     .where(eq(schema.room.eventId, eventId));
-  const labels = buildConflictLabels(roomRows, accepted);
+  const labels = buildConflictLabels(roomRows, placedRows);
+
+  const totalAcceptedRows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.submission)
+    .where(and(eq(schema.submission.eventId, eventId), eq(schema.submission.status, "accepted")));
+  const totalAccepted = Number(totalAcceptedRows[0]?.count ?? 0);
+
   return {
     conflicts: describeConflicts(conflicts, labels),
-    summary: scheduleSummary(placedSessions, accepted.length, conflicts),
+    summary: scheduleSummary(placedSessions, totalAccepted, conflicts),
   };
 }
 
