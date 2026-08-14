@@ -997,3 +997,99 @@ describe('ComposeWizard evaluation-plan select is a parameter of Include reviewe
     expect(screen.getByText('Only submitted, non-recused reviews are merged.')).toBeInTheDocument();
   });
 });
+
+// DEC-793 amendment (wave 28): the blocked banner offers a partial exit --
+// "Send to the N who have a slot" actually shrinks the posted submissionIds
+// (never a silent narrowing), each named blocked recipient gets its own
+// "Place on the agenda" way out, and both banners carry the "cheap to fix"
+// caption.
+describe('ComposeWizard partial-send way out on the blocked banner (DEC-793 amendment)', () => {
+  function recipient(contactId: string, submissionId: string, name: string, ref: string, scheduled: boolean) {
+    return {
+      contactId,
+      submissionId,
+      email: `${contactId}@example.com`,
+      name,
+      ref,
+      scheduled,
+      subject: 'You are in!',
+      text: 'See you there',
+    };
+  }
+
+  it('offers "Send to the 1 who have a slot", names each blocked recipient with an agenda link, and sends only the scheduled subset with a reduced-count report', async () => {
+    const previewItems = [
+      recipient('c1', 'sub-1', 'Priya Raman', 'DFC-014', false),
+      recipient('c2', 'sub-2', 'Nadia Ferrone', 'DFC-041', false),
+      recipient('c3', 'sub-3', 'Owen Clarke', 'DFC-052', true),
+    ];
+
+    let previewCall = 0;
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: () => {
+        previewCall += 1;
+        if (previewCall === 1) return { items: previewItems };
+        return {
+          status: 400,
+          body: {
+            error: {
+              code: 'invalid',
+              message: 'Some submissions are not scheduled',
+              fields: { 'sub-1': 'not scheduled', 'sub-2': 'not scheduled' },
+            },
+          },
+        };
+      },
+      [`POST /api/v1/events/${EVENT_ID}/compose/send`]: { sent: 1, failed: [], items: [] },
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByLabelText('Select Talk number 2'));
+    fireEvent.click(screen.getByLabelText('Select Talk number 3'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(subject, { target: { value: 'Hello' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+    await screen.findByText('Priya Raman');
+
+    fireEvent.click(screen.getByLabelText('Attach calendar invite'));
+
+    const banner = await screen.findByRole('alert');
+    expect(banner.textContent).toContain('DFC-014 — Priya Raman');
+    expect(banner.textContent).toContain('DFC-041 — Nadia Ferrone');
+
+    // Way out: one agenda link per named blocked recipient.
+    const agendaLinks = within(banner).getAllByRole('link', { name: /Place on the agenda/ });
+    expect(agendaLinks).toHaveLength(2);
+    for (const link of agendaLinks) {
+      expect(link).toHaveAttribute('href', '/admin/agenda');
+    }
+
+    // The last-cheap-to-fix caption.
+    expect(within(banner).getByText('This is the last point at which it is cheap to fix.')).toBeInTheDocument();
+
+    // Partial action names the scheduled subset (3 - 2 = 1).
+    const partialButton = within(banner).getByRole('button', { name: 'Send to the 1 who have a slot' });
+    fireEvent.click(partialButton);
+
+    await waitFor(() => {
+      const sendCalls = fetchMock.mock.calls.filter((call) => String(call[0]).includes('/compose/send'));
+      expect(sendCalls.length).toBe(1);
+      const body = JSON.parse(String(sendCalls[0]?.[1]?.body ?? '{}'));
+      expect(body.submissionIds).toEqual(['sub-3']);
+    });
+
+    // Step 4 report: reduced count in the headline, excluded recipients
+    // named under their own heading -- never a silent shrink.
+    expect(await screen.findByText('1 of 1 speakers were emailed — 2 excluded (not yet scheduled)')).toBeInTheDocument();
+    expect(screen.getByText('Excluded (2 not yet scheduled):')).toBeInTheDocument();
+    expect(screen.getByText('DFC-014 — Priya Raman')).toBeInTheDocument();
+    expect(screen.getByText('DFC-041 — Nadia Ferrone')).toBeInTheDocument();
+  });
+});
