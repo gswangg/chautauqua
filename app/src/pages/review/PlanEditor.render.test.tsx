@@ -263,7 +263,14 @@ describe('PlanEditor render smoke', () => {
   it('renders reviewer scope by name, never by ULID, and words a null label as removed', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
-      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      // w28-b/DEC-124: a non-empty criteria list, so this scope-rendering
+      // test carries no validation errors of its own -- otherwise the
+      // ErrorSummary/criteria-empty text concatenated with the adjacent
+      // field labels can coincidentally contain a 26-char alnum run and
+      // falsely trip this test's "no ULID anywhere" assertion below.
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan({
+        criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
+      }),
       [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([
         {
           id: 'pr-track',
@@ -942,7 +949,7 @@ describe('PlanEditor render smoke', () => {
     expect(screen.getByText('A reviewer never sees a talk they are recused from.')).toBeInTheDocument();
   });
 
-  it('new-plan route: Cancel + Create the plan on the title row, the "nothing sent" line, and no name error before touch', async () => {
+  it('new-plan route: Cancel + Create the plan on the title row, the "nothing sent" line, and no name error before the first submit attempt', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       'GET /api/v1/users': listEnvelope([]),
@@ -961,9 +968,15 @@ describe('PlanEditor render smoke', () => {
     expect(screen.getByText('Nothing is sent to reviewers until you open it.')).toBeInTheDocument();
     expect(screen.queryByText('Name is required.')).not.toBeInTheDocument();
 
-    // Touching (blurring) the empty title now surfaces the error.
+    // w28-b/DEC-124 (rule 9: a draft never validates): touching (blurring)
+    // the empty title alone is NOT a submit attempt, so no field error
+    // appears yet -- only a Save/Create click gates every field error in
+    // the form, name included.
     const titleInput = screen.getByPlaceholderText('New evaluation plan');
     fireEvent.blur(titleInput);
+    expect(screen.queryByText('Name is required.')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create the plan' }));
     expect(screen.getByText('Name is required.')).toBeInTheDocument();
   });
 
@@ -1758,7 +1771,7 @@ describe('PlanEditor render smoke', () => {
     const row = container.querySelector('.chq-review-criterion-row') as HTMLElement;
     expect(row).not.toBeNull();
     const nonErrorChildren = Array.from(row.children).filter(
-      (child) => !child.classList.contains('chq-review-field-error'),
+      (child) => !child.classList.contains('chq-field-error'),
     );
     expect(nonErrorChildren.length).toBe(5);
 
@@ -1800,13 +1813,18 @@ describe('PlanEditor render smoke', () => {
       expect(screen.getByText('Criterion label is required.')).toBeInTheDocument(),
     );
     const row = container.querySelector('.chq-review-criterion-row') as HTMLElement;
-    const errorSpan = row.querySelector('.chq-review-field-error') as HTMLElement;
+    // w28-b/DEC-124: the error span now carries the shared error-states.css
+    // .chq-field-error class (typography/role) plus this page-local
+    // .chq-review-criterion-error class (the layout hook below) -- the
+    // vocabulary scan (error-vocabulary.test.ts) forbids re-declaring
+    // .chq-field-error itself outside error-states.css.
+    const errorSpan = row.querySelector('.chq-field-error.chq-review-criterion-error') as HTMLElement;
     expect(errorSpan).not.toBeNull();
     expect(errorSpan.parentElement).toBe(row);
 
-    expect(REVIEW_CSS).toContain('.chq-review-criterion-row > .chq-review-field-error');
+    expect(REVIEW_CSS).toContain('.chq-review-criterion-row > .chq-review-criterion-error');
     expect(REVIEW_CSS).toMatch(
-      /\.chq-review-criterion-row > \.chq-review-field-error\s*\{\s*\n\s*grid-column:\s*1\s*\/\s*-1;/,
+      /\.chq-review-criterion-row > \.chq-review-criterion-error\s*\{\s*\n\s*grid-column:\s*1\s*\/\s*-1;/,
     );
   });
 

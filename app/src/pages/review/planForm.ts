@@ -60,6 +60,12 @@ export function validatePlanDraft(draft: PlanDraft): PlanValidationErrors {
   ) {
     errors.maxEvaluationsPerSubmission = 'Max evaluations must be at least 1, if set.';
   }
+  // DEC-745/DEC-124 (V9 error standard): a cross-field error is worded as a
+  // CONSEQUENCE and attached to the field the reader would actually fix --
+  // the close date, not the open date it conflicts with.
+  if (draft.openAt !== null && draft.closeAt !== null && draft.closeAt < draft.openAt) {
+    errors.closeAt = 'This is before the plan opens, so it would never accept a review. Pick a date after it opens.';
+  }
   Object.assign(errors, validateCriteriaList(draft.criteria));
 
   return errors;
@@ -76,8 +82,10 @@ export function validatePlanDraft(draft: PlanDraft): PlanValidationErrors {
  */
 export function validateCriteriaList(criteria: EvaluationCriterion[]): PlanValidationErrors {
   const errors: PlanValidationErrors = {};
+  // DEC-745/DEC-124 (V9 error standard): the empty-collection error names
+  // WHY the collection can't be empty, not just that it is.
   if (criteria.length === 0) {
-    errors.criteria = 'At least one criterion is required.';
+    errors.criteria = 'A plan needs at least one criterion — reviewers score against them';
   }
   for (const criterion of criteria) {
     if (criterion.label.trim().length === 0) {

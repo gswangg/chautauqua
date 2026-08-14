@@ -682,12 +682,6 @@
   color: var(--chq-muted);
 }
 
-.chq-review-field-error {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--chq-ink);
-}
-
 .chq-review-token-reveal {
   padding: 12px 16px;
   border: 1px solid var(--chq-rule);
@@ -768,13 +762,20 @@
    label/guidance value could push the row wider than its container --
    minmax(0, 1fr) instead. Five explicit tracks (drag, label, guidance,
    kind cell, remove) for the five non-error children this row renders;
-   .chq-review-field-error spans all of them below, never a sixth track. */
+   the error span below (shared error-states.css .chq-field-error register,
+   w28-b/DEC-124, plus this page-local layout hook) spans all of them,
+   never a sixth track. */
 .chq-review-criterion-row,
 .chq-review-criteria-head-row {
   grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) 150px 70px;
 }
 
-.chq-review-criterion-row > .chq-review-field-error {
+/* w28-b/DEC-124: layout-only hook, carrying no typography of its own (the
+   error-vocabulary scan requires .chq-field-error itself be declared
+   nowhere but error-states.css) -- every per-criterion error span below
+   pairs the shared .chq-field-error class with this local class so the row
+   can still span it full-width. */
+.chq-review-criterion-row > .chq-review-criterion-error {
   grid-column: 1 / -1;
 }
 
