@@ -908,7 +908,11 @@ describe('PlanEditor render smoke', () => {
     await waitFor(() => expect(screen.getByDisplayValue('Track Review (copy)')).toBeInTheDocument());
   });
 
-  it('renames "Reviewer assignment" to "Who reviews what", with the recusal footnote and an in-section anonymise checkbox', async () => {
+  // w25-g/DEC-745 amendment (A10): the anonymise toggle moved OUT of this
+  // section into the plan fields block, so this test now checks the
+  // recusal footnote only -- the checkbox's location is covered by its own
+  // "plan fields" test below.
+  it('renames "Reviewer assignment" to "Who reviews what", with the recusal footnote', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
@@ -936,9 +940,6 @@ describe('PlanEditor render smoke', () => {
     expect(screen.getByText('reviewer@example.test')).toBeInTheDocument();
     expect(screen.getByText('6 talks')).toBeInTheDocument();
     expect(screen.getByText('A reviewer never sees a talk they are recused from.')).toBeInTheDocument();
-    expect(
-      screen.getByRole('checkbox', { name: 'Anonymize speaker identity for reviewers' }),
-    ).toBeInTheDocument();
   });
 
   it('new-plan route: Cancel + Create the plan on the title row, the "nothing sent" line, and no name error before touch', async () => {
@@ -1362,7 +1363,7 @@ describe('PlanEditor render smoke', () => {
       );
 
       await waitFor(() => expect(screen.getByDisplayValue('Track Review')).toBeInTheDocument());
-      fireEvent.click(screen.getByRole('checkbox', { name: 'Anonymize speaker identity for reviewers' }));
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Hide speaker names from reviewers' }));
 
       fireEvent.click(screen.getByRole('link', { name: '‹ Review' }));
 
@@ -1375,7 +1376,7 @@ describe('PlanEditor render smoke', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
       expect(screen.queryByText('Leave without saving?')).not.toBeInTheDocument();
       expect(
-        screen.getByRole('checkbox', { name: 'Anonymize speaker identity for reviewers' }),
+        screen.getByRole('checkbox', { name: 'Hide speaker names from reviewers' }),
       ).toBeChecked();
 
       // Leaving again and confirming actually navigates away.
@@ -1441,7 +1442,7 @@ describe('PlanEditor render smoke', () => {
       );
 
       await waitFor(() => expect(screen.getByDisplayValue('Track Review')).toBeInTheDocument());
-      const checkbox = screen.getByRole('checkbox', { name: 'Anonymize speaker identity for reviewers' });
+      const checkbox = screen.getByRole('checkbox', { name: 'Hide speaker names from reviewers' });
       expect(checkbox).toBeChecked();
 
       // Unchecking the box drafts the change -- no confirm and no request yet.
@@ -1582,7 +1583,10 @@ describe('PlanEditor render smoke', () => {
     expect(screen.queryByText(/^3 · 75%$/)).not.toBeInTheDocument();
   });
 
-  it('renders the per-reviewer Reset password and the Delete plan controls as quiet section-rule links, not framed buttons', async () => {
+  // w25-g/DEC-745 amendment (ruling 9): the per-reviewer "Reset password"
+  // control is DROPPED entirely -- credentials live in Settings > People
+  // and roles now, and self-service reset exists (DEC-014 amendment).
+  it('renders no "Reset password" control on any reviewer row', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
@@ -1601,17 +1605,126 @@ describe('PlanEditor render smoke', () => {
       </MemoryRouter>,
     );
 
-    const resetLink = await screen.findByRole('button', { name: 'Reset password' });
-    expect(resetLink.className).toContain('chq-link-button');
-    expect(resetLink.className).not.toContain('chq-btn ');
-    expect(resetLink.className).not.toContain('chq-btn-secondary');
+    await waitFor(() => expect(screen.getByText('reviewer@example.test')).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: 'Reset password' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Reset password')).not.toBeInTheDocument();
+  });
 
-    const deleteLink = screen.getByRole('button', { name: 'Delete plan' });
+  // w25-g/DEC-745 amendment (ruling A9): Delete plan leaves the "Who
+  // reviews what" section head -- it's a tertiary text link in the plan
+  // editor's own footer row, far left.
+  it('renders Delete plan as a tertiary text link in the editor footer, not on the "Who reviews what" section head', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const deleteLink = await screen.findByRole('button', { name: 'Delete plan' });
     expect(deleteLink.className).toContain('chq-link-button');
     expect(deleteLink.className).not.toContain('chq-btn-tertiary');
-    // Delete plan sits on the "Who reviews what" section rule now, not a
-    // standalone footer band.
-    expect(deleteLink.closest('.chq-section-head')).not.toBeNull();
+    // No longer on the "Who reviews what" section rule.
+    expect(deleteLink.closest('.chq-section-head')).toBeNull();
+    expect(deleteLink.closest('.chq-review-editor-footer-row')).not.toBeNull();
+    expect(deleteLink).not.toBeDisabled();
+  });
+
+  // w25-g/DEC-745 amendment (ruling A9): Delete plan disables once any
+  // review has landed (the DEC-213 predicate), and its adjacent copy names
+  // the alternative -- the capability is never removed, only gated.
+  it('disables Delete plan once a review has landed, naming "Start a new wave" as the alternative', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: {
+        ...plan(),
+        criteria: [{ id: 'c1', label: 'Content', kind: 'rating', weight: 1 }],
+        evaluationCountsByRound: { '1': 3 },
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const deleteLink = await screen.findByRole('button', { name: 'Delete plan' });
+    expect(deleteLink).toBeDisabled();
+    expect(screen.getByText(/start a new wave instead/i)).toBeInTheDocument();
+  });
+
+  // w25-g/DEC-745 amendment (ruling A10): the anonymise toggle is a
+  // sibling of Rating scale in the plan fields block, not a standalone row
+  // inside "Who reviews what".
+  it('renders the anonymise toggle as a sibling of Rating scale in the plan fields block', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const checkbox = await screen.findByRole('checkbox', { name: 'Hide speaker names from reviewers' });
+    const scaleField = screen.getByText('Rating scale').closest('.chq-review-field');
+    const anonymizeField = checkbox.closest('.chq-review-field');
+    expect(anonymizeField).not.toBeNull();
+    expect(anonymizeField?.parentElement).toBe(scaleField?.parentElement);
+    expect(anonymizeField?.parentElement?.className).toContain('chq-review-summary-grid');
+    expect(screen.getByText('Reviewers see the abstract and track only')).toBeInTheDocument();
+    expect(checkbox).not.toBeDisabled();
+  });
+
+  // w25-g/DEC-745 amendment (ruling A10): the toggle freezes with the
+  // criteria at the plan's first submitted review, using the SAME
+  // predicate (DEC-213) -- rendered disabled (B8 register), not hidden.
+  it('disables (not hides) the anonymise toggle once the plan has a submitted review', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: {
+        ...plan(),
+        criteria: [{ id: 'c1', label: 'Content', kind: 'rating', weight: 1 }],
+        evaluationCountsByRound: { '1': 3 },
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const checkbox = await screen.findByRole('checkbox', { name: 'Hide speaker names from reviewers' });
+    expect(checkbox).toBeInTheDocument();
+    expect(checkbox).toBeDisabled();
   });
 
   // w18-e/DEC-715 amendment: an editable criterion row renders five
