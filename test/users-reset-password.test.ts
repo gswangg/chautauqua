@@ -280,7 +280,8 @@ function organizerApp(db: AppEnv["Variables"]["db"], auth: AuthInfo) {
     await next();
   });
   app.route("/", usersRoutes);
-  return app;
+  const env = { KV: new InMemoryKV() as unknown as AppEnv["Bindings"]["KV"] };
+  return { app, env };
 }
 
 async function login(app: Hono<AppEnv>, env: { KV: AppEnv["Bindings"]["KV"] }, email: string, password: string) {
@@ -305,8 +306,13 @@ function sessionCookieFrom(res: Response): string {
   return `chq_session=${match[1]}`;
 }
 
-function resetPassword(app: Hono<AppEnv>, targetId: string, headers: Record<string, string> = { "content-type": "application/json", "x-chq-csrf": "1" }) {
-  return app.request(`/api/v1/users/${targetId}/reset-password`, { method: "POST", headers, body: "{}" });
+function resetPassword(
+  app: Hono<AppEnv>,
+  targetId: string,
+  headers: Record<string, string> = { "content-type": "application/json", "x-chq-csrf": "1" },
+  env: { KV: AppEnv["Bindings"]["KV"] } = { KV: new InMemoryKV() as unknown as AppEnv["Bindings"]["KV"] },
+) {
+  return app.request(`/api/v1/users/${targetId}/reset-password`, { method: "POST", headers, body: "{}" }, env);
 }
 
 afterEach(() => {
@@ -318,9 +324,9 @@ describe("POST /api/v1/users/:id/reset-password (DEC-215/DEC-220)", () => {
     const { db, state } = makeFakeDb();
     const target = await seedTargetUser(state);
     const oldHash = target.passwordHash as string;
-    const org = organizerApp(db, { userId: "org-admin", role: "organizer", orgId: ORG_A });
+    const { app: org, env: orgEnv } = organizerApp(db, { userId: "org-admin", role: "organizer", orgId: ORG_A });
 
-    const res = await resetPassword(org, target.id as string);
+    const res = await resetPassword(org, target.id as string, undefined, orgEnv);
     expect(res.status).toBe(200);
     const body = (await res.json()) as { id: string; email: string; role: string; password: string };
     expect(body.id).toBe(target.id);
@@ -348,8 +354,8 @@ describe("POST /api/v1/users/:id/reset-password (DEC-215/DEC-220)", () => {
     const preCheck = await app.request("/api/v1/reviewer-ping", { headers: { cookie: targetSessionCookie } }, env);
     expect(preCheck.status).toBe(200);
 
-    const org = organizerApp(db, { userId: "org-admin", role: "organizer", orgId: ORG_A });
-    const resetRes = await resetPassword(org, "target-user-1");
+    const { app: org, env: orgEnv } = organizerApp(db, { userId: "org-admin", role: "organizer", orgId: ORG_A });
+    const resetRes = await resetPassword(org, "target-user-1", undefined, orgEnv);
     expect(resetRes.status).toBe(200);
     expect(state.sessions).toHaveLength(0);
 
@@ -360,12 +366,12 @@ describe("POST /api/v1/users/:id/reset-password (DEC-215/DEC-220)", () => {
   it("(3) 404s for a cross-org target and an unknown id — existence-hiding, same status either way", async () => {
     const { db, state } = makeFakeDb();
     await seedTargetUser(state, ORG_B);
-    const org = organizerApp(db, { userId: "org-admin", role: "organizer", orgId: ORG_A });
+    const { app: org, env: orgEnv } = organizerApp(db, { userId: "org-admin", role: "organizer", orgId: ORG_A });
 
-    const crossOrgRes = await resetPassword(org, "target-user-1");
+    const crossOrgRes = await resetPassword(org, "target-user-1", undefined, orgEnv);
     expect(crossOrgRes.status).toBe(404);
 
-    const unknownRes = await resetPassword(org, "does-not-exist");
+    const unknownRes = await resetPassword(org, "does-not-exist", undefined, orgEnv);
     expect(unknownRes.status).toBe(404);
   });
 
@@ -373,11 +379,11 @@ describe("POST /api/v1/users/:id/reset-password (DEC-215/DEC-220)", () => {
     const { db, state } = makeFakeDb();
     await seedTargetUser(state);
 
-    const reviewerApp = organizerApp(db, { userId: "u1", role: "reviewer", orgId: ORG_A });
-    expect((await resetPassword(reviewerApp, "target-user-1")).status).toBe(403);
+    const { app: reviewerApp, env: reviewerEnv } = organizerApp(db, { userId: "u1", role: "reviewer", orgId: ORG_A });
+    expect((await resetPassword(reviewerApp, "target-user-1", undefined, reviewerEnv)).status).toBe(403);
 
-    const speakerApp = organizerApp(db, { userId: "u2", role: "speaker", orgId: ORG_A });
-    expect((await resetPassword(speakerApp, "target-user-1")).status).toBe(403);
+    const { app: speakerApp, env: speakerEnv } = organizerApp(db, { userId: "u2", role: "speaker", orgId: ORG_A });
+    expect((await resetPassword(speakerApp, "target-user-1", undefined, speakerEnv)).status).toBe(403);
 
     const anonApp = new Hono<AppEnv>();
     registerErrorHandler(anonApp);
@@ -392,9 +398,9 @@ describe("POST /api/v1/users/:id/reset-password (DEC-215/DEC-220)", () => {
   it("(5) rejects a missing CSRF header", async () => {
     const { db, state } = makeFakeDb();
     await seedTargetUser(state);
-    const org = organizerApp(db, { userId: "org-admin", role: "organizer", orgId: ORG_A });
+    const { app: org, env: orgEnv } = organizerApp(db, { userId: "org-admin", role: "organizer", orgId: ORG_A });
 
-    const res = await resetPassword(org, "target-user-1", { "content-type": "application/json" });
+    const res = await resetPassword(org, "target-user-1", { "content-type": "application/json" }, orgEnv);
     expect(res.status).toBe(400);
   });
 

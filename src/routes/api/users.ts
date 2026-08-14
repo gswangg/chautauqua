@@ -9,6 +9,7 @@ import { ApiError, readJsonBody } from "../../server/http";
 import { makeMailer } from "../../server/context";
 import { renderEmailHtml } from "../../mail/shell";
 import { hashPassword } from "../../auth/password";
+import { revokeResetTokenForUser, type KVStore } from "../../auth/password-reset";
 import * as repo from "../../server/repo/users";
 import { isOrgUserRole } from "../../server/repo/users";
 import { listEventsForOrg } from "../../server/repo/events";
@@ -126,6 +127,11 @@ usersRoutes.post("/api/v1/users/:id/reset-password", requireOrganizer, csrfJson,
   const userId = c.req.param("id");
   const target = await repo.getOrgUserById(c.var.db, userId, auth.orgId);
   if (!target) throw new ApiError("not_found", "User not found");
+
+  // DEC-949 (wave 43 amendment): revoke the target's outstanding reset
+  // grant BEFORE the hash write, since the userId is already known here --
+  // a failed write can then never leave a live takeover link outstanding.
+  await revokeResetTokenForUser(c.env.KV as unknown as KVStore, target.id);
 
   const password = generatePassword();
   const passwordHash = await hashPassword(password);

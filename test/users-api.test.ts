@@ -515,11 +515,15 @@ describe("POST /api/v1/users/:id/reset-password", () => {
     const oldLoginBefore = await login(app, env, TARGET_EMAIL, OLD_PASSWORD);
     expect(oldLoginBefore.status).toBe(302);
 
-    const resetRes = await organizerApp.request(`/api/v1/users/${state.users[0]!.id}/reset-password`, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
-      body: "{}",
-    });
+    const resetRes = await organizerApp.request(
+      `/api/v1/users/${state.users[0]!.id}/reset-password`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+        body: "{}",
+      },
+      env,
+    );
     expect(resetRes.status).toBe(200);
     const body = (await resetRes.json()) as { id: string; email: string; role: string; password: string };
     expect(body.email).toBe(TARGET_EMAIL);
@@ -555,11 +559,15 @@ describe("POST /api/v1/users/:id/reset-password", () => {
     const { usersRoutes: freshUsersRoutes } = await import("../src/routes/api/users");
     organizerApp.route("/", freshUsersRoutes);
 
-    const resetRes = await organizerApp.request(`/api/v1/users/${state.users[0]!.id}/reset-password`, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
-      body: "{}",
-    });
+    const resetRes = await organizerApp.request(
+      `/api/v1/users/${state.users[0]!.id}/reset-password`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+        body: "{}",
+      },
+      env,
+    );
     expect(resetRes.status).toBe(200);
     expect(state.sessions).toHaveLength(0);
 
