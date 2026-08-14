@@ -196,6 +196,38 @@ const SYNTH_ABSTRACTS = [
   "Bolting a vector database onto a product without understanding embedding drift and index staleness leads to search results that quietly get worse over time. This talk covers the retraining cadence, index rebuild strategy, and evaluation harness we built to keep semantic search reliable in production. You'll leave with a checklist for the failure modes vector search introduces that traditional search never had.",
 ];
 
+// Task w26-j / DEC-739 amendment: bios for the synthetic speaker contacts
+// that actually land on a public-visible session (submission.status
+// 'accepted' AND content_status 'approved' AND the participant gate --
+// see APPROVED_ACCEPTED_INDEXES / bumpToAccepted below). Public speaker
+// detail (src/routes/public/detail.tsx) renders contact.bio through
+// SessionDescription's 160-char 'Show more' disclosure, and until this
+// task every synthetic contact carried bio: null, so that reader never had
+// real data to demonstrate against (EMB-05/13). Keyed by the synth loop's
+// `i`, filled in with the contact's own name/company via {name}/{company}
+// tokens below -- real, distinct, talk-topic-specific prose (DEC-702: no
+// seed-announcing language, no lorem), deliberately mixed short/long so
+// both the disclosure and no-disclosure branches are demoable.
+const SYNTH_BIOS: Readonly<Record<number, string>> = {
+  0: "{name} is a software engineer at {company} who has spent the last few years untangling feature-flag sprawl, building the review process and cleanup tooling that keeps release flags from turning into a permanent, unowned second database of business logic.",
+  3: "{name} builds onboarding programs at {company}, focused on getting new engineers shipping real code in their first week instead of reading stale wiki pages.",
+  4: "{name} is a software engineer at {company} who has run point on more incident retros than they'd like to admit, and now spends most of their time on the on-call tooling and severity rubrics that keep pages meaningful instead of exhausting.",
+  5: "{name} designs and reviews public APIs at {company}, with a focus on versioning strategies that don't quietly break a partner's integration.",
+  6: "{name} is a software engineer at {company} who rebuilt a forty-minute test suite the team had learned to skip into one people actually trust again.",
+  7: "{name} works on observability tooling at {company}, moving teams from dashboards nobody trusts to the traces that actually explain an outage.",
+  19: "{name} is a software engineer at {company} who moved their org from ad hoc Friday-afternoon deploys to a fixed-cadence release train, and still argues that a boring release is the highest compliment a pipeline can earn.",
+  20: "{name} consolidates scattered configuration into a single typed, validated source of truth at {company}, so an environment-specific bug stops being a scavenger hunt across three YAML files.",
+  21: "{name} runs chaos experiments against production systems at {company}, on the theory that you don't actually know a system is resilient until you've watched it fail on purpose.",
+  22: "{name} builds developer-productivity metrics at {company} that engineers don't resent, steering the team away from commit counts and toward numbers that hold up in a roadmap conversation.",
+  23: "{name} is a software engineer at {company} who builds the dependency-graph and affected-target tooling that keeps a growing monorepo's CI fast enough that ten teams stop stepping on each other.",
+};
+
+function synthBio(i: number, first: string, last: string, company: string): string | null {
+  const template = SYNTH_BIOS[i];
+  if (!template) return null;
+  return template.replaceAll("{name}", `${first} ${last}`).replaceAll("{company}", company);
+}
+
 const SYNTH_FIRST_NAMES = [
   "Alex", "Bailey", "Casey", "Devon", "Elliot", "Frankie", "Gale", "Harper",
   "Indigo", "Jules", "Kai", "Lane", "Morgan", "Nico", "Oakley", "Parker",
@@ -1151,7 +1183,7 @@ async function main(): Promise<void> {
         phone: null,
         company,
         title: "Software Engineer",
-        bio: null,
+        bio: synthBio(i, first, last, company),
         headshot_url: null,
         social_links_json: null,
         notes: null,
