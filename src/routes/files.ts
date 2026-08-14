@@ -90,8 +90,8 @@ function requireAuth(c: Context<AppEnv>): AuthInfo {
  * file comment endpoints, so a reviewer who can already see a file's
  * comments can also discover that file's id via this listing. Read only —
  * no edit-lock check. Used for GET listing and as the shared base of
- * authzSubmissionWrite (writes explicitly refuse reviewers, see
- * authzFileWrite). */
+ * authzSubmissionWrite, which adds its own outright reviewer refusal on top
+ * (see authzFileWrite for the same pattern). */
 async function authzSubmissionRead(c: Context<AppEnv>, submissionId: string) {
   const auth = requireAuth(c);
   const scope = await getSubmissionScope(c.var.db, submissionId);
@@ -126,10 +126,17 @@ function assertSpeakerSubmissionUnlocked(scope: { status: string; formCloseDate:
 }
 
 /** authzSubmissionRead, plus the DEC-041 edit-lock. Organizers are never
- * locked. */
+ * locked. Reviewers are refused OUTRIGHT here (DEC-170, wave-54 amendment,
+ * corrected wave-72): the read grant (GET the file listing) never implies a
+ * write grant — a reviewer's non-anonymized in-scope plan lets them read,
+ * never upload, and a reviewer-triggered upload would otherwise reopen
+ * content review and drop the session off every public surface. */
 async function authzSubmissionWrite(c: Context<AppEnv>, submissionId: string) {
   const result = await authzSubmissionRead(c, submissionId);
   const { auth, scope } = result;
+  if (auth.role === "reviewer") {
+    throw new ApiError("forbidden", "Reviewers may not modify files");
+  }
   if (auth.role === "speaker") {
     assertSpeakerSubmissionUnlocked(scope);
   }
