@@ -11,6 +11,7 @@ import { PORTAL_CSS } from "./portal.css";
 import { DEC_374, DEC_884, DEC_371, DEC_945 } from "../../decisions";
 import { normalizeHexColor } from "../../domain/color";
 import { matchesPortalRoute } from "../../lib/portal-routes";
+import { CSRF_COOKIE_NAME } from "../../auth/cookies";
 import {
   ANONYMOUS_NOT_FOUND_LINKS,
   NotFoundDocument,
@@ -149,7 +150,7 @@ export function PortalLayout(props: {
           <footer class="chq-portal-footer">
             {props.footerExtra as any}
             <form method="post" action="/logout" class="chq-portal-signout">
-              <input type="hidden" name="chq_csrf" value={props.csrfToken} />
+              <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
               <button type="submit" class="chq-btn chq-btn-tertiary chq-portal-signout-btn">Sign out</button>
             </form>
           </footer>
