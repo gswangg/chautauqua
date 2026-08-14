@@ -5,7 +5,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { ApiError } from "../../http";
-import { chunkIds } from "../../../lib/chunk";
+import { chunkIds, ID_CHUNK_SIZE } from "../../../lib/chunk";
 
 export interface ReviewerUserInfo {
   userId: string;
@@ -63,9 +63,16 @@ export async function batchUserDisplayNames(db: Db, userIds: string[]): Promise<
 
   const needsEmailMatch = users.filter((u) => u.contactId === null || !contactById.has(u.contactId));
   const contactByOrgEmail = new Map<string, { firstName: string; lastName: string }>();
-  if (needsEmailMatch.length > 0) {
-    const orgIds = [...new Set(needsEmailMatch.map((u) => u.orgId))];
-    const emails = [...new Set(needsEmailMatch.map((u) => u.email.toLowerCase()))];
+  // DEC-078: needsEmailMatch can grow with the (already-chunked) userIds
+  // input, so the two id lists it feeds (orgIds, emails) are re-chunked here
+  // at half ID_CHUNK_SIZE each -- both lists are bound in the SAME query, so
+  // halving keeps their combined bind count under the D1 ceiling (mirrors
+  // comms.ts's ACCOUNT_LOOKUP_BATCH_SIZE pattern for the same shape).
+  const EMAIL_MATCH_BATCH_SIZE = Math.floor(ID_CHUNK_SIZE / 2);
+  for (let i = 0; i < needsEmailMatch.length; i += EMAIL_MATCH_BATCH_SIZE) {
+    const matchBatch = needsEmailMatch.slice(i, i + EMAIL_MATCH_BATCH_SIZE);
+    const orgIds = [...new Set(matchBatch.map((u) => u.orgId))];
+    const emails = [...new Set(matchBatch.map((u) => u.email.toLowerCase()))];
     const rows = await db
       .select({
         orgId: schema.contact.orgId,

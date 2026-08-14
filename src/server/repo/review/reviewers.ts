@@ -89,7 +89,10 @@ export async function addReviewers(
     await db.insert(schema.planReviewer).values(batch);
   }
   const ids = rows.map((r) => r.id);
-  const inserted = await db.select().from(schema.planReviewer).where(inArray(schema.planReviewer.id, ids));
+  const inserted: (typeof schema.planReviewer.$inferSelect)[] = [];
+  for (const idChunk of chunkIds(ids)) {
+    inserted.push(...(await db.select().from(schema.planReviewer).where(inArray(schema.planReviewer.id, idChunk))));
+  }
   const byId = new Map(inserted.map((row) => [row.id, toPlanReviewerRecord(row)]));
   return ids.map((id) => {
     const record = byId.get(id);

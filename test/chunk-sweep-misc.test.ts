@@ -70,13 +70,27 @@ describe("DEC-104 chunk sweep — misc lane", () => {
     expect(src).not.toMatch(/\.where\(inArray\(schema\.taskAssignment\.id, assignmentIds\)\)/);
     expect(src).not.toMatch(/\.where\(inArray\(schema\.taskAssignment\.id, sentAssignmentIds\)\)/);
     expect(src).toMatch(/for \(const batch of chunkIds\(sentAssignmentIds\)\) \{[\s\S]*?inArray\(schema\.taskAssignment\.id, batch\)/);
-    // exempt bounded track filter (DEC-104-exempt) still present once.
-    expect((src.match(/inArray\(schema\.taskAssignment\.taskId, taskIds\)/g) ?? []).length).toBe(1);
+    // wave-14 (DEC-078 tightened scan): taskIds/contactIds arrive via
+    // parseBoundedIdArray (max 1000, routes/tasks.ts) -- above D1's bound
+    // budget, so the old "exempt bounded track filter" reading was wrong.
+    // listOutstandingForEvent/listRemindableContactIds now pair-chunk both
+    // filters via idChunksOrUndefined (delegates to chunkIds); the raw
+    // unchunked `inArray(schema.taskAssignment.taskId, taskIds)` form must
+    // no longer appear.
+    expect(src).not.toMatch(/inArray\(schema\.taskAssignment\.taskId, taskIds\)/);
+    expect(src).not.toMatch(/inArray\(schema\.taskAssignment\.contactId, contactIds\)/);
+    expect(src).toMatch(/inArray\(schema\.taskAssignment\.taskId, taskIdChunk\)/);
+    expect(src).toMatch(/inArray\(schema\.taskAssignment\.contactId, contactIdChunk\)/);
   });
 
   it("review/users.ts imports chunkIds", () => {
     const src = readSrc("users.ts");
-    expect(src).toMatch(/import\s*{\s*chunkIds\s*}\s*from\s*"..\/..\/..\/lib\/chunk"/);
+    // wave-14: batchUserDisplayNames also imports ID_CHUNK_SIZE (to derive
+    // EMAIL_MATCH_BATCH_SIZE for its DEC-078 orgIds/emails re-chunk), so
+    // chunkIds is no longer necessarily the only named import from
+    // ../../../lib/chunk -- match chunkIds as ANY named import from that
+    // module, not the sole one.
+    expect(src).toMatch(/import\s*{\s*[^}]*\bchunkIds\b[^}]*}\s*from\s*"..\/..\/..\/lib\/chunk"/);
   });
 
   it("review/users.ts: getUsersByIds no longer passes the raw userIds list to inArray", () => {
