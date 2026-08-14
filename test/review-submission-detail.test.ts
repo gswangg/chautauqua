@@ -214,6 +214,10 @@ vi.mock("../src/server/repo/review", async () => {
     // real implementation issues a drizzle db.select() and this suite's db
     // is `{}` (same stub the queue suites already carry).
     listFormatLabelsBySubmission: vi.fn(async () => new Map<string, string | null>()),
+    // DEC-857 (task w7-b): the scorecard route now batches the audience-level
+    // answer through this same repo module -- same stub reason as format
+    // above, or the route 500s against this suite's `{}` db.
+    listAudienceLevelLabelsBySubmission: vi.fn(async () => new Map<string, string | null>()),
     getEvaluation: vi.fn(async (_db: unknown, planId: string, submissionId: string, reviewerId: string, round: number) => {
       const key = `${planId}:${submissionId}:${reviewerId}:${round}`;
       const row = evaluationStore.get(key);

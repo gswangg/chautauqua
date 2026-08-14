@@ -106,6 +106,9 @@ vi.mock("../src/server/repo/review", async () => {
     // the real implementation issues a drizzle db.select() this suite's
     // `{}` db cannot serve.
     listFormatLabelsBySubmission: vi.fn(async () => new Map<string, string | null>()),
+    // DEC-857 (task w7-b): the scorecard route now batches the audience-level
+    // answer through this same repo module -- same stub reason as format.
+    listAudienceLevelLabelsBySubmission: vi.fn(async () => new Map<string, string | null>()),
     isSubmissionInReviewerScope: vi.fn(async () => true),
     listEvaluationsForPlan: vi.fn(async (_db: unknown, planId: string, round: number) =>
       store.filter((e) => e.planId === planId && e.round === round),

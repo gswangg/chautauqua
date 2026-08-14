@@ -133,6 +133,9 @@ const ALLOWED: Record<string, string[]> = {
   "server/repo/submissions/list.ts": [
     "Hydrates every author of an admin submission-list row, not an eligibility read.",
   ],
+  "server/repo/submissions/detail.ts": [
+    "DEC-900 (wave 7) speaker-rail history read: a contactId-addressed timeline of the submissions this contact ever appeared on in the same org, same class as contacts/history.ts's CRM timeline — the amendment defines submissionsThisYear as 'submissions on which this contact is a participant', with no invite-state qualifier, and lastSpokeYear is narrowed by submission STATUS (accepted-and-scheduled) rather than by invite status. Not an eligibility enumeration and never leaves the product.",
+  ],
   "server/repo/comms.ts": [
     "Reads by an admin-supplied set of explicit contactIds (targeted recipients), not an eligibility enumeration.",
   ],
