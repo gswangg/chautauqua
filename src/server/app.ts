@@ -14,6 +14,7 @@ import { shouldMountDevMailbox } from "../routes/dev/mailbox";
 import { bumpPublicVersionMiddleware } from "./pubcache";
 import { registerFramingHeaders } from "./framing";
 import { ApiError } from "./http";
+import { requestBodyLimit } from "./body-limit";
 import { DEC_546 } from "../decisions";
 
 void DEC_546;
@@ -26,6 +27,12 @@ void DEC_546;
  */
 export function createBaseApp(): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
+
+  // DEC-020 amendment (wave 30): the request-body ceiling MUST run before
+  // anything reads the body -- csrfForm (src/server/middleware.ts) parses
+  // the body in middleware, ahead of every handler, so this has to be the
+  // very first app.use, ahead of even the db setter and sessionLoader.
+  app.use("*", requestBodyLimit);
 
   // Request-scoped db + always-on session loader, ahead of every route.
   app.use("*", async (c, next) => {
