@@ -257,7 +257,6 @@
   cursor: default;
 }
 
-.chq-submissions-empty,
 .chq-submissions-loading {
   padding: 24px 0;
   font-size: 13px;

@@ -14,6 +14,7 @@ import { buildSubmissionsQuery } from './filters';
 import { NewSubmissionModal, type NewSubmissionInput } from './NewSubmissionModal';
 import { paginationSummary } from '../../lib/pagination-summary';
 import { PageSkeleton } from '../../components/PageSkeleton';
+import { EmptyState } from '../../components/EmptyState';
 import { EMPTY_SELECTION, isPageFullySelected, isPagePartiallySelected, selectionReducer } from './selection';
 import {
   DEFAULT_FILTER_STATE,
@@ -32,6 +33,40 @@ function trackNames(trackIds: string[], tracks: Track[]): string {
   if (trackIds.length === 0) return '—';
   const byId = new Map(tracks.map((t) => [t.id, t.name]));
   return trackIds.map((id) => byId.get(id) ?? id).join(', ');
+}
+
+/** DEC-678 amendment (B7, wave 46): which of the query's narrowing facets
+ * (q, status, trackId -- the only facets this filter state carries; a saved
+ * view is just one of these three set from a preset) is the one to blame
+ * for an empty result set, and what clearing exactly that facet (and no
+ * other) looks like. Checked in a fixed priority order -- search first, then
+ * status, then track -- so a query with more than one facet in flight still
+ * names ONE reason and offers ONE escape, never a list. Returns null when no
+ * facet narrows the query at all (the 'fresh' case). */
+function describeActiveFacet(
+  filters: SubmissionsFilterState,
+  tracks: Track[],
+): { reason: string; cleared: SubmissionsFilterState } | null {
+  if (filters.q.trim().length > 0) {
+    return {
+      reason: `Search "${filters.q.trim()}" doesn't match any submissions.`,
+      cleared: { ...filters, q: DEFAULT_FILTER_STATE.q, page: DEFAULT_FILTER_STATE.page },
+    };
+  }
+  if (filters.status.length > 0) {
+    return {
+      reason: 'The selected status filter excludes every submission.',
+      cleared: { ...filters, status: DEFAULT_FILTER_STATE.status, page: DEFAULT_FILTER_STATE.page },
+    };
+  }
+  if (filters.trackId) {
+    const trackName = tracks.find((t) => t.id === filters.trackId)?.name ?? 'this track';
+    return {
+      reason: `No submissions are in ${trackName}.`,
+      cleared: { ...filters, trackId: DEFAULT_FILTER_STATE.trackId, page: DEFAULT_FILTER_STATE.page },
+    };
+  }
+  return null;
 }
 
 /** DEC-649: the CSV export sits beside a filtered table, so it must carry
@@ -225,6 +260,17 @@ export function SubmissionsTable() {
     );
   }
 
+  // DEC-678 amendment (B7, wave 46): a real zero-row state, not the whole
+  // <thead> parked over one message cell. 'filtered' (some facet excluded
+  // every row) keeps the chrome above it; 'fresh' (no facet at all) drops
+  // the chrome, column picker and pager entirely -- the page header's own
+  // persistent "New submission" button already is the collection's one
+  // primary action, so EmptyState renders no `action` of its own here
+  // (a second identical button would break "exactly one primary action").
+  const showEmpty = loaded && !loading && items.length === 0;
+  const activeFacet = showEmpty ? describeActiveFacet(filters, tracks) : null;
+  const showChrome = !showEmpty || activeFacet !== null;
+
   return (
     <div className="chq-page chq-submissions-page chq-measure-table">
       <div className="chq-submissions-head">
@@ -258,35 +304,37 @@ export function SubmissionsTable() {
         />
       )}
 
-      <div className="chq-submissions-toolbar">
-        <div className="chq-submissions-toolbar-row">
-          <ViewTabs
-            eventId={eventId}
+      {showChrome && (
+        <div className="chq-submissions-toolbar">
+          <div className="chq-submissions-toolbar-row">
+            <ViewTabs
+              eventId={eventId}
+              filters={filters}
+              visibleFieldIds={visibleFieldIds}
+              tracks={tracks}
+              formFields={formFields}
+              onApply={applySavedView}
+            />
+            <FilterBarSearchSort filters={filters} onChange={setFilters} />
+          </div>
+          <FilterBar
             filters={filters}
-            visibleFieldIds={visibleFieldIds}
             tracks={tracks}
-            formFields={formFields}
-            onApply={applySavedView}
+            columns={columns}
+            visibleFieldIds={visibleFieldIds}
+            onChange={setFilters}
+            onToggleColumn={(fieldId) => {
+              setPickerInitialized(true);
+              setVisibleFieldIds((prev) => {
+                const next = new Set(prev);
+                if (next.has(fieldId)) next.delete(fieldId);
+                else next.add(fieldId);
+                return next;
+              });
+            }}
           />
-          <FilterBarSearchSort filters={filters} onChange={setFilters} />
         </div>
-        <FilterBar
-          filters={filters}
-          tracks={tracks}
-          columns={columns}
-          visibleFieldIds={visibleFieldIds}
-          onChange={setFilters}
-          onToggleColumn={(fieldId) => {
-            setPickerInitialized(true);
-            setVisibleFieldIds((prev) => {
-              const next = new Set(prev);
-              if (next.has(fieldId)) next.delete(fieldId);
-              else next.add(fieldId);
-              return next;
-            });
-          }}
-        />
-      </div>
+      )}
 
       <BulkActionBar
         selectedCount={selection.selectedIds.size}
@@ -296,6 +344,14 @@ export function SubmissionsTable() {
         onClear={() => setSelection((s) => selectionReducer(s, { type: 'CLEAR' }))}
       />
 
+      {showEmpty ? (
+        <EmptyState
+          variant={activeFacet ? 'filtered' : 'fresh'}
+          what={activeFacet ? 'No submissions match the current filters.' : 'No submissions yet.'}
+          reason={activeFacet?.reason}
+          escape={activeFacet ? { label: 'Clear filter', onClick: () => setFilters(activeFacet.cleared) } : null}
+        />
+      ) : (
       <div className="chq-submissions-table-wrap">
         <table className="chq-table chq-submissions-table">
           <thead>
@@ -330,13 +386,6 @@ export function SubmissionsTable() {
               <tr>
                 <td className="chq-submissions-loading" colSpan={9 + shownColumns.length}>
                   <PageSkeleton variant="table" rows={4} />
-                </td>
-              </tr>
-            )}
-            {loaded && !loading && items.length === 0 && (
-              <tr>
-                <td className="chq-submissions-empty" colSpan={9 + shownColumns.length}>
-                  No submissions match the current filters.
                 </td>
               </tr>
             )}
@@ -428,7 +477,9 @@ export function SubmissionsTable() {
           </tbody>
         </table>
       </div>
+      )}
 
+      {showChrome && (
       <div className="chq-submissions-pagination">
         <span className="chq-submissions-pagination-summary">
           {paginationSummary(filters.page, filters.perPage, total)}
@@ -452,6 +503,7 @@ export function SubmissionsTable() {
           </button>
         </div>
       </div>
+      )}
     </div>
   );
 }
