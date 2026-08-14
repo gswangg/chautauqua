@@ -157,6 +157,26 @@ export function assertContainsVevent(name: string, icsBody: string): void {
 }
 
 /**
+ * Asserts a printable-programme HTML body contains at least `minSections`
+ * `chq-prog-day` sections (DEC-683 amendment, wave 68) — the "public
+ * programme (whole agenda)" probe's correctness check (a 200 with an
+ * empty/single-day body would otherwise pass the timing loop silently).
+ * Throws with the offending name on shortfall, and throws on a
+ * non-positive minSections — there is no sane "at least 0 sections" probe.
+ */
+export function assertMinChqProgDaySections(name: string, htmlBody: string, minSections = 2): void {
+  if (minSections <= 0) {
+    throw new Error("assertMinChqProgDaySections: minSections must be positive");
+  }
+  const matches = htmlBody.match(/class="chq-prog-day"/g) ?? [];
+  if (matches.length < minSections) {
+    throw new Error(
+      `${name}: expected >= ${minSections} chq-prog-day sections, got ${matches.length}`,
+    );
+  }
+}
+
+/**
  * Asserts a CSV export body has at least `minLines` newline-separated
  * non-empty lines (DEC-105's export-size regression net — a 200 with a
  * truncated/empty CSV would otherwise pass the timing loop silently).
