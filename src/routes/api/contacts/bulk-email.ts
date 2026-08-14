@@ -12,7 +12,7 @@ import { getEventForOrg } from "../../../server/repo/events";
 import type { KVStore } from "../../../auth/claim";
 import { preflightRender, type RenderTarget } from "../../../domain/compose";
 import { applyMintedPortalLinks, resolvePortalLinks } from "../../../server/repo/portal-link";
-import { textToHtml } from "../../../mail/render";
+import { textToHtml, templateUsesMergeField } from "../../../mail/render";
 import type { Db } from "../../../server/context";
 import { resolveBaseUrl } from "../../../server/origin";
 import { currentOrgId, asRecord } from "./shared";
@@ -156,7 +156,16 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
       throw new ApiError("invalid", "One or more recipients are missing merge fields (only speaker_name/event_name/portal_link are allowed)", fields);
     }
 
-    await applyMintedPortalLinks(kv, recipients, event.id, origin, targets);
+    // DEC-397 wave-62 amendment (MINT ONLY WHAT THE MESSAGE CARRIES): mint a
+    // claim credential only if the send actually references {portal_link} —
+    // an unused mint is destructive (it revokes/replaces any prior grant)
+    // for no delivery benefit. (Unlike content-notes.ts and reminders.ts,
+    // which always embed the link in their fixed body text, this template
+    // is organizer-authored and may omit it entirely.)
+    const needsPortalLink = templateUsesMergeField(subject, "portal_link") || templateUsesMergeField(bodyText, "portal_link");
+    if (needsPortalLink) {
+      await applyMintedPortalLinks(kv, recipients, event.id, origin, targets);
+    }
     const result = preflightRender(targets, subject, bodyText);
     if (!result.ok) {
       const fields: Record<string, string> = {};

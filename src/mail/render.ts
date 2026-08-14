@@ -106,6 +106,20 @@ export function blockFieldsInTemplate(template: string): MergeField[] {
   return [...found];
 }
 
+// DEC-397 amendment (wave 62): a portal claim credential must be minted only
+// when the outbound message actually carries {portal_link} (or its resolved
+// alias). Scans over the same PLACEHOLDER_RE + canonicalMergeField used by
+// blockFieldsInTemplate/missingMergeFields so the alias resolves in exactly
+// one place.
+export function templateUsesMergeField(template: string, field: MergeField): boolean {
+  for (const match of template.matchAll(PLACEHOLDER_RE)) {
+    const name = match[1];
+    if (name === undefined) continue;
+    if (canonicalMergeField(name) === field) return true;
+  }
+  return false;
+}
+
 // DEC-856: preflight names every merge field a recipient is missing (not
 // just the first), in first-appearance order, deduped — renderTemplate's
 // single-value throw stays as-is for callers that render one value at a
