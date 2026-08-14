@@ -567,8 +567,7 @@
   flex-shrink: 0;
 }
 
-.chq-session-card-speakers,
-.chq-session-card-tracks {
+.chq-session-card-speakers {
   font-size: 11px;
   color: var(--chq-muted);
   overflow: hidden;
@@ -592,8 +591,7 @@
 }
 
 .chq-session-card-conflict .chq-session-card-ref,
-.chq-session-card-conflict .chq-session-card-speakers,
-.chq-session-card-conflict .chq-session-card-tracks {
+.chq-session-card-conflict .chq-session-card-speakers {
   color: var(--chq-on-ink-muted);
 }
 
@@ -669,15 +667,6 @@
   border-left-color: var(--chq-ink);
 }
 
-/* w41: each tray card states its placement duration ("· N min") directly
-   under the card. */
-.chq-unscheduled-tray-duration {
-  font-size: 11px;
-  color: var(--chq-muted);
-  line-height: 1.4;
-  margin: 0 0 0 2px;
-}
-
 /* DEC-615: the reason auto-schedule could not place this session — name
    the constraint, promise nothing. */
 .chq-unscheduled-reason {
@@ -699,9 +688,6 @@
   color: var(--chq-muted);
   line-height: 1.5;
   margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 @media (max-width: 900px) {

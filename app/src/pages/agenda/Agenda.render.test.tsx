@@ -117,7 +117,7 @@ describe('AgendaPage render smoke', () => {
     // Unscheduled tray with its count and the unplaced session. The count
     // is a right-aligned sibling of the "Unscheduled" label (w41), not
     // folded into a single text node.
-    expect(document.querySelector('.chq-unscheduled-tray-header')?.textContent).toBe('Unscheduled (1)');
+    expect(document.querySelector('.chq-unscheduled-tray-header')?.textContent).toBe('Unscheduled1');
     expect(screen.getByText('Unplaced Talk')).toBeInTheDocument();
 
     // DEC-742: a same-room clash of exactly two sessions merges into ONE
@@ -263,7 +263,7 @@ describe('AgendaPage render smoke', () => {
     });
 
     // sub-3 ("Unplaced Talk") starts in the unscheduled tray.
-    expect(document.querySelector('.chq-unscheduled-tray-header')?.textContent).toBe('Unscheduled (1)');
+    expect(document.querySelector('.chq-unscheduled-tray-header')?.textContent).toBe('Unscheduled1');
 
     // Drop it directly onto sub-1's already-placed card element (DEC-742:
     // sub-1/sub-2 overlap in the same room, so sub-1 now renders as one of
@@ -283,7 +283,7 @@ describe('AgendaPage render smoke', () => {
     // The drop must have reached DayGrid's handler and fired the PUT — the
     // tray count drops as sub-3 is optimistically placed.
     await waitFor(() => {
-      expect(document.querySelector('.chq-unscheduled-tray-header')?.textContent).toBe('Unscheduled (0)');
+      expect(document.querySelector('.chq-unscheduled-tray-header')?.textContent).toBe('Unscheduled0');
     });
   });
 
@@ -333,7 +333,7 @@ describe('AgendaPage render smoke', () => {
     fireEvent.click(roomlessButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.chq-unscheduled-tray-header')?.textContent).toBe('Unscheduled (0)');
+      expect(document.querySelector('.chq-unscheduled-tray-header')?.textContent).toBe('Unscheduled0');
     });
     // Placing bar is dismissed after placement.
     expect(screen.queryByText(/Placing S-003/)).toBeNull();
@@ -537,7 +537,7 @@ describe('AgendaPage render smoke', () => {
     fireEvent.click(clashButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.chq-unscheduled-tray-header')?.textContent).toBe('Unscheduled (0)');
+      expect(document.querySelector('.chq-unscheduled-tray-header')?.textContent).toBe('Unscheduled0');
     });
     expect(screen.queryByText(/Placing S-003/)).toBeNull();
   });

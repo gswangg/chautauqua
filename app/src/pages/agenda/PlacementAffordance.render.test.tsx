@@ -41,7 +41,7 @@ describe("agenda placement discoverability", () => {
 
   it("selectable card's accessible name states the select-then-place action", () => {
     render(
-      <SessionCard session={SESSION as never} tracks={[]} conflicts={[]} onSelect={() => {}} />,
+      <SessionCard session={SESSION as never} conflicts={[]} onSelect={() => {}} />,
     );
     expect(
       screen.getByRole("button", { name: /SES-001: Talk One — click to select, then choose a time slot/ }),
@@ -49,13 +49,13 @@ describe("agenda placement discoverability", () => {
   });
 
   it("non-selectable card keeps the plain name", () => {
-    render(<SessionCard session={SESSION as never} tracks={[]} conflicts={[]} />);
+    render(<SessionCard session={SESSION as never} conflicts={[]} />);
     expect(screen.getByRole("button", { name: "SES-001: Talk One" })).toBeTruthy();
   });
 
   it("a placed (grid) card's accessible name says the gesture is a move, not a first placement", () => {
     render(
-      <SessionCard session={SESSION as never} tracks={[]} conflicts={[]} onSelect={() => {}} placed />,
+      <SessionCard session={SESSION as never} conflicts={[]} onSelect={() => {}} placed />,
     );
     expect(
       screen.getByRole("button", { name: /SES-001: Talk One — click to select, then choose a new slot/ }),

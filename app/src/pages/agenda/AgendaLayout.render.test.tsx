@@ -139,7 +139,7 @@ describe('unscheduled tray polish (w41)', () => {
     expect(hint?.textContent).toBe('Click a session, then click a time slot · click Unschedule (or drag back) to remove');
   });
 
-  it('tray card states its duration as "· N min"', () => {
+  it('tray card states its duration inline on the ref line as "REF · N min"', () => {
     const { container } = render(
       <UnscheduledTray
         sessions={[SESSION as never]}
@@ -151,6 +151,7 @@ describe('unscheduled tray polish (w41)', () => {
         onArm={() => {}}
       />,
     );
-    expect(container.querySelector('.chq-unscheduled-tray-duration')?.textContent).toBe('· 30 min');
+    expect(container.querySelector('.chq-session-card-ref')?.textContent).toBe('SES-001 · 30 min');
+    expect(container.querySelector('.chq-unscheduled-tray-duration')).toBeNull();
   });
 });

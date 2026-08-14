@@ -1,13 +1,17 @@
 import type { CSSProperties, DragEvent } from 'react';
-import type { AgendaConflict, AgendaSessionBase, AgendaTrack } from './types';
+import type { AgendaConflict, AgendaSessionBase } from './types';
 import { ConflictChip } from './ConflictChip';
 
 export const AGENDA_DRAG_MIME = 'application/x-chq-submission-id';
 
 interface SessionCardProps {
   session: AgendaSessionBase;
-  tracks: AgendaTrack[];
   conflicts: AgendaConflict[];
+  /** DEC-571 amendment (wave 72): the frame prints duration inline on the
+   * ref line, `DFC-033 · 10 min`, not as a dangling sibling paragraph
+   * beside the card. Optional — placed grid cards don't pass it since the
+   * grid geometry already encodes duration as the card's height. */
+  durationMin?: number;
   style?: CSSProperties;
   className?: string;
   /** Placed cards fully cover the day-grid cells beneath them (DEC-021
@@ -47,9 +51,8 @@ interface SessionCardProps {
  * track NAME rendered as text, never by a track color swatch). Draggable
  * via HTML5 DnD, carrying the submission id as plain text + a scoped MIME
  * type. */
-export function SessionCard({ session, tracks, conflicts, style, className, onDragOver, onDrop, onSelect, selected, placed }: SessionCardProps) {
+export function SessionCard({ session, conflicts, durationMin, style, className, onDragOver, onDrop, onSelect, selected, placed }: SessionCardProps) {
   const conflicted = conflicts.some((c) => c.submissionIds.includes(session.submissionId));
-  const trackNames = tracks.filter((t) => session.trackIds.includes(t.id)).map((t) => t.name);
   // The placement path is click-to-arm (DEC-570), but nothing in the a11y tree
   // said so — both sbek runs never found manual placement (mandate coverage
   // item #1). Selectable cards now state the action in their accessible name.
@@ -85,12 +88,11 @@ export function SessionCard({ session, tracks, conflicts, style, className, onDr
       data-conflict={conflicted ? 'true' : undefined}
     >
       <div className="chq-session-card-head">
-        <div className="chq-session-card-ref">{session.ref}</div>
+        <div className="chq-session-card-ref">
+          {durationMin != null ? `${session.ref} · ${durationMin} min` : session.ref}
+        </div>
       </div>
       <div className="chq-session-card-title">{session.title}</div>
-      {trackNames.length > 0 && (
-        <div className="chq-session-card-tracks">{trackNames.join(', ')}</div>
-      )}
       {session.speakers.length > 0 && (
         <div className="chq-session-card-speakers">
           {session.speakers.map((s) => s.name).join(', ')}

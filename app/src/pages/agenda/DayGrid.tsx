@@ -400,7 +400,6 @@ export function DayGrid({
           <SessionCard
             key={session.submissionId}
             session={session}
-            tracks={tracks}
             conflicts={conflicts}
             className="chq-day-grid-placed-card"
             style={{
