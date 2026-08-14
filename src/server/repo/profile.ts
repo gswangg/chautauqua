@@ -4,12 +4,13 @@
 // drizzle row types (DEC-012); scoping is absolute — every write below is
 // keyed by the speaker's own contact_id (never a request-supplied id).
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import { visibleSubmissionConditions } from "./public";
 import { backfillNullAttribution } from "./attribution";
+import { ACTIVE_INVITE_STATUSES, PROFILE_TASK_TITLE } from "../../domain/acceptance";
 
 // ---------------------------------------------------------------------------
 // Pure helpers (no db/IO) — unit-tested directly.
@@ -171,6 +172,55 @@ export async function setContactHeadshot(db: Db, contactId: string, input: Inser
     .set({ headshotUrl: `/headshots/${fileId}`, updatedAt: now })
     .where(eq(schema.contact.id, contactId));
   return fileId;
+}
+
+/**
+ * DEC-009 amendment (wave 59): closes every pending PROFILE_TASK_TITLE
+ * ("Finalize bio + headshot") assignment for this contact, across every
+ * event of `orgId` where the contact is an ACTIVE_INVITE_STATUSES
+ * participant of an accepted submission (mirrors
+ * tasks/crud.ts's acceptedSpeakerConditions, scoped by orgId since this repo
+ * has no eventId in scope). ONE set-based UPDATE, never a per-row loop or
+ * read-then-write — completion is terminal by construction: only rows still
+ * `status = 'pending'` are touched, so a later field clear (which never
+ * calls this function) cannot reopen an already-closed assignment. Returns
+ * the number of assignment rows closed.
+ */
+export async function completeProfileTaskForContact(
+  db: Db,
+  contactId: string,
+  orgId: string,
+  completedByUserId: string | null,
+): Promise<number> {
+  const now = new Date();
+  const activeStatuses = sql.join(
+    ACTIVE_INVITE_STATUSES.map((s) => sql`${s}`),
+    sql`, `,
+  );
+  const rows = await db
+    .update(schema.taskAssignment)
+    .set({ status: "complete", completedAt: now, completedBy: completedByUserId, updatedAt: now })
+    .where(
+      and(
+        eq(schema.taskAssignment.contactId, contactId),
+        eq(schema.taskAssignment.status, "pending"),
+        sql`${schema.taskAssignment.taskId} in (
+          select ${schema.task.id} from ${schema.task}
+          inner join ${schema.event} on ${schema.event.id} = ${schema.task.eventId}
+          where ${schema.task.title} = ${PROFILE_TASK_TITLE}
+            and ${schema.event.orgId} = ${orgId}
+            and ${schema.event.id} in (
+              select ${schema.submission.eventId} from ${schema.participant}
+              inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId}
+              where ${schema.participant.contactId} = ${contactId}
+                and ${schema.submission.status} = 'accepted'
+                and ${schema.participant.inviteStatus} in (${activeStatuses})
+            )
+        )`,
+      ),
+    )
+    .returning({ id: schema.taskAssignment.id });
+  return rows.length;
 }
 
 export interface HeadshotServeScope {

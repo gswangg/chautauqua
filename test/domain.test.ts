@@ -145,7 +145,7 @@ describe("acceptance planning", () => {
       { title: "Hotel stay requirement form", kind: "form", required: true, dueDaysBeforeEventStart: 30 },
       { title: "Flight reimbursement form", kind: "form", required: true, dueDaysBeforeEventStart: 30 },
       { title: "Finalize talk description", kind: "general", required: false, dueDaysBeforeEventStart: 21 },
-      { title: "Finalize bio + headshot", kind: "file_request", required: false, dueDaysBeforeEventStart: 21 },
+      { title: "Finalize bio + headshot", kind: "general", required: false, dueDaysBeforeEventStart: 21 },
       { title: "Announce participation", kind: "general", required: false, dueDaysBeforeEventStart: 14 },
     ]);
   });

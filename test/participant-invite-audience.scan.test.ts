@@ -34,8 +34,6 @@ const EVERY_PARTICIPANT_AUDIENCE: Record<string, string> = {
     "export surface: reports every participant row on a submission",
   "src/server/repo/import/sessionboard.ts":
     "write path: inserts/updates participant rows during import (id lookup for dedup, not an audience read)",
-  "src/server/repo/profile.ts":
-    "public headshot-serve visibility gate: doesn't exclude a declined participant row from granting public access",
   "src/server/repo/public/counts.ts":
     "public speaker count: counts every participant row on a visible submission, regardless of invite status",
   "src/server/repo/public/detail.ts":

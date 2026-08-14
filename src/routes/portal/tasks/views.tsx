@@ -19,6 +19,7 @@ import { formatCalendarDate, formatEventDateTime } from "../../../lib/event-time
 import { effectiveAssignmentDueDate } from "../../../domain/task-due";
 import { renderMarkdown } from "../../../lib/markdown";
 import type { FileCommentRow } from "../../../server/repo/files";
+import { PROFILE_TASK_TITLE } from "../../../domain/acceptance";
 
 // DEC-242: display data for a completed file_request assignment — the
 // current file's name/version and its comment thread, loaded up front on
@@ -164,7 +165,15 @@ export function TaskRow(props: {
       ) : null}
       {t.status === "complete" ? null : (
         <div class="chq-portal-actions">
-          {t.kind === "general" ? (
+          {/* DEC-009 amendment (wave 59): this task's real completion path is
+              the portal profile save (bio + headshot), never a bare
+              mark-done checkbox or an upload widget — a checkbox here would
+              let a speaker flip the task green with neither field filled
+              in. */}
+          {t.kind === "general" && t.title === PROFILE_TASK_TITLE ? (
+            <a href="/portal/profile" class="chq-btn chq-btn-primary">Update your bio and headshot &rsaquo;</a>
+          ) : null}
+          {t.kind === "general" && t.title !== PROFILE_TASK_TITLE ? (
             <form method="post" action={`/portal/tasks/${t.id}/complete`}>
               <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
               <button type="submit" class="chq-btn chq-btn-primary">Mark complete</button>

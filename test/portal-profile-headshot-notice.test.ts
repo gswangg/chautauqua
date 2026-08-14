@@ -43,6 +43,12 @@ function minimalWebpBytes(width = 100, height = 100): Uint8Array<ArrayBuffer> {
 
 const setContactHeadshotMock = vi.fn(async (..._args: unknown[]) => "file-new");
 const updateContactProfileMock = vi.fn(async (..._args: unknown[]) => undefined);
+// DEC-009 amendment (wave 59): the profile save path now conditionally
+// calls completeProfileTaskForContact when the save leaves both a bio and a
+// headshot in place — this test's fake `db` (an empty object, see buildApp
+// below) doesn't support real drizzle queries, so the real implementation
+// must be replaced here too, same as setContactHeadshot/updateContactProfile.
+const completeProfileTaskForContactMock = vi.fn(async (..._args: unknown[]) => 0);
 
 vi.mock("../src/server/repo/profile", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/profile")>("../src/server/repo/profile");
@@ -51,6 +57,7 @@ vi.mock("../src/server/repo/profile", async () => {
     getContactProfile: vi.fn(async () => currentProfile),
     setContactHeadshot: (...args: unknown[]) => setContactHeadshotMock(...args),
     updateContactProfile: (...args: unknown[]) => updateContactProfileMock(...args),
+    completeProfileTaskForContact: (...args: unknown[]) => completeProfileTaskForContactMock(...args),
   };
 });
 

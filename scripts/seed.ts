@@ -1813,7 +1813,8 @@ async function main(): Promise<void> {
   // three staggered late rows at 4/2/1 days late. Its row titles ("Upload
   // headshot", "Upload final slides", "Sign speaker release") don't map
   // cleanly onto DEFAULT_ONBOARDING_TASKS' titles — only "Finalize bio +
-  // headshot" (the file_request task, index 3) is a plausible match for the
+  // headshot" (index 3, general kind since the DEC-009 wave-59 amendment)
+  // is a plausible match for the
   // mock's 4-days-late headshot row, so we pin that task to -4 and keep the
   // remaining two past offsets (-2, -1) on the next two tasks in
   // DEFAULT_ONBOARDING_TASKS' existing declaration order (index 0, index 1)
@@ -1882,10 +1883,13 @@ async function main(): Promise<void> {
       });
       taskFormFieldsByTaskId.set(taskId, mintedFields);
     }
-    // DEC-240 (task w1-d): the sole file_request default task ("Finalize
-    // bio + headshot") gets deliverable_kind 'presentation' so its uploads
-    // join the content pipeline and the grader sees real Files-library /
-    // worklist counts instead of an unlinked 'handout'.
+    // DEC-240 (task w1-d): a file_request default task would get
+    // deliverable_kind 'presentation' so its uploads join the content
+    // pipeline. DEC-009 amendment (wave 59): none of DEFAULT_ONBOARDING_TASKS
+    // is kind='file_request' any more (the former "Finalize bio + headshot"
+    // task is now 'general', completed via the portal profile save path, not
+    // a deliverable upload) — this stays defensive for any future
+    // file_request default task.
     const deliverableKind = tpl.kind === "file_request" ? "presentation" : null;
     const dueDate = SEED_NOW + dueOffsetDaysFromSeedNow[i]! * DAY_MS;
     if (dueDate >= EVENT_START_MS) {
@@ -2069,6 +2073,19 @@ async function main(): Promise<void> {
         }),
       );
     });
+
+    // DEC-009 amendment (wave 59)/DEC-854 (task w11-e): the pre-amendment
+    // seed got most of its Files-library/worklist coverage from the (now
+    // removed) file_request "Finalize bio + headshot" default task's
+    // completed uploads. That task is kind='general' now and never carries
+    // a deliverable file, so the same >=2/3-of-accepted-submissions file
+    // floor is minted here directly against the submission instead —
+    // preserving the SAME contactIdx%3!==0 distribution the old
+    // taskIdx===3/file_request branch used, so this is a like-for-like
+    // replacement of the coverage source, not a new invented fixture.
+    if (contactIdx % 3 !== 0) {
+      mintTaskDeliverableFile({ contactId: acc.contactId, submissionId: acc.submissionId, deliverableKind: "presentation" });
+    }
   });
 
   // --- schedule slots (DEC-010/DEC-021): roughly two-thirds of accepted
