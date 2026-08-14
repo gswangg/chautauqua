@@ -90,10 +90,16 @@ resetRoutes.post("/forgot", csrfForm, async (c) => {
   const rows = await db.select().from(schema.user).where(eq(schema.user.email, normalizedEmail)).limit(1);
   const user = rows[0];
 
+  // Hoisted above the branch (task-w34-c): resolveBaseUrl(c) must run
+  // identically on both branches. A deployment missing PUBLIC_BASE_URL has
+  // to fail the SAME way for a known and an unknown address — living only
+  // inside `if (user)` would 500 on a real account and 200 on a fake one,
+  // a DEC-004 enumeration oracle.
+  const origin = resolveBaseUrl(c);
+
   if (user) {
     const kv = c.env.KV as unknown as KVStore;
     const resetToken = await createResetToken(kv, user.id);
-    const origin = resolveBaseUrl(c);
     const resetUrl = `${origin}/reset/${resetToken}`;
 
     // email_log.event_id is NOT NULL (DEC-006); a password reset isn't
@@ -106,6 +112,14 @@ resetRoutes.post("/forgot", csrfForm, async (c) => {
     // reading, flagged for the scribe.
     const orgEvents = await listEventsForOrg(db, user.orgId);
     const anchorEvent = orgEvents[0];
+    if (!anchorEvent) {
+      // Mint without delivery (task-w34-c): the token is live but there is
+      // no event to log the send against, so no email goes out. This must
+      // stay silent on the wire — the response below is byte-identical to
+      // every other branch — but a mint with nobody able to receive it is
+      // worth a loud server-side signal.
+      console.error(`password reset minted with no send: no events for org (userId '${user.id}')`);
+    }
     if (anchorEvent) {
       try {
         const mailer = makeMailer(db, c.env);
@@ -169,20 +183,21 @@ resetRoutes.post("/reset/:token", csrfForm, async (c) => {
   const token = c.req.param("token");
   const kv = c.env.KV as unknown as KVStore;
 
-  // Consume FIRST, before any validation — a replayed POST against an
-  // already-used (or never-valid) token always lands on the 410 card,
-  // rather than re-running the change or leaking whether it was ever
-  // valid.
-  const consumed = await consumeResetToken(kv, token);
-  if (!consumed) {
+  // Validate-then-consume (task-w34-c, reordering the prior consume-first
+  // shape): a mismatched confirm or a too-short password re-renders the
+  // SAME form with the SAME token still live, so a mistyped retry doesn't
+  // permanently burn the link. Peek (read-only) here; the actual consume
+  // happens immediately before the write, below.
+  const record = await readResetToken(kv, token);
+  if (!record) {
     return c.html(<ExpiredResetPage />, 410);
   }
 
   const db = c.var.db;
-  const rows = await db.select().from(schema.user).where(eq(schema.user.id, consumed.userId)).limit(1);
+  const rows = await db.select().from(schema.user).where(eq(schema.user.id, record.userId)).limit(1);
   const user = rows[0];
   if (!user) {
-    throw new Error(`No user row for reset token userId '${consumed.userId}'`);
+    throw new Error(`No user row for reset token userId '${record.userId}'`);
   }
 
   const body = await c.req.parseBody();
@@ -208,6 +223,16 @@ resetRoutes.post("/reset/:token", csrfForm, async (c) => {
       <ResetPasswordPage csrfToken={csrfToken} email={user.email} error="New password and confirmation do not match." />,
       400,
     );
+  }
+
+  // Consume immediately before the write — the gate belongs at the write,
+  // not before validation. A null result here is a lost race (another
+  // request consumed the same token between the peek above and this call,
+  // e.g. two tabs racing a valid submission): treat it as expired rather
+  // than proceeding to mutate on a token nobody holds anymore.
+  const consumed = await consumeResetToken(kv, token);
+  if (!consumed) {
+    return c.html(<ExpiredResetPage />, 410);
   }
 
   const passwordHash = await hashPassword(next);
