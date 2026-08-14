@@ -67,6 +67,61 @@ function firstNameOf(fullName: string): string {
   return fullName.trim().split(/\s+/)[0] ?? fullName;
 }
 
+// DEC-265 amendment (error-states rule 8): a rolled-back optimistic write on
+// this page (toggleCell, the response modal's reopen, or a participation
+// change) must announce itself -- a silent-looking revert reads as the
+// click never registering, so the organiser clicks again. The banner NAMES
+// the row (speaker + task title for a cell write; speaker alone for a
+// participation write), gives the likely cause in the server-fault
+// register (never blaming the input), and offers Try again (re-issues
+// exactly the write that failed) and Reload the grid. `assignmentId` is
+// set only for a cell write -- that's what lets the reverted TaskCell keep
+// its 'not saved' marker until the banner clears.
+interface PendingWriteFailure {
+  assignmentId: string | null;
+  // Set only for a participation write -- lets a successful retry clear
+  // exactly the failure it belongs to rather than an unrelated one still
+  // showing assignmentId: null.
+  participantId?: string | null;
+  message: string;
+  retry: () => void;
+}
+
+const WRITE_FAILURE_CAUSE = 'Someone else may have edited this speaker.';
+
+function cellFailureMessage(speakerName: string, taskTitle: string): string {
+  return `${speakerName} · ${taskTitle} didn't save. ${WRITE_FAILURE_CAUSE}`;
+}
+
+function participationFailureMessage(speakerName: string): string {
+  return `${speakerName} didn't save. ${WRITE_FAILURE_CAUSE}`;
+}
+
+// Looks up the row/task naming for a cell write from a known-good grid
+// snapshot (the one taken just before the optimistic flip) -- the cell
+// always exists there because it's the same grid that rendered the button
+// the organiser just clicked. A miss is a bug, not a silent fallback.
+function findCellNaming(
+  source: OnboardingGridResponse,
+  assignmentId: string,
+): { speakerName: string; taskTitle: string } {
+  for (const row of source.rows) {
+    const cell = row.cells.find((c) => c.assignmentId === assignmentId);
+    if (cell) {
+      const task = source.tasks.find((t) => t.id === cell.taskId);
+      if (!task) throw new Error(`findCellNaming: no task ${cell.taskId} for assignment ${assignmentId}`);
+      return { speakerName: row.contact.name, taskTitle: task.title };
+    }
+  }
+  throw new Error(`findCellNaming: no cell for assignment ${assignmentId}`);
+}
+
+function findContactName(source: OnboardingGridResponse, contactId: string): string {
+  const row = source.rows.find((r) => r.contact.id === contactId);
+  if (!row) throw new Error(`findContactName: no row for contact ${contactId}`);
+  return row.contact.name;
+}
+
 /** True when any of the four narrowing predicates the server applies
  * (taskId/status/overdueOnly/inviteStatus) is set. `q` (free-text search)
  * is deliberately excluded -- the caption names a FILTER, not a search
@@ -211,6 +266,11 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   const [removePreview, setRemovePreview] = useState<TaskDeleteImpact | null>(null);
   const [removePreviewLoading, setRemovePreviewLoading] = useState(false);
   const [removePreviewError, setRemovePreviewError] = useState<string | null>(null);
+  // DEC-265 amendment: the one rolled-back write currently announcing
+  // itself via the banner + (for a cell write) the reverted TaskCell's
+  // 'not saved' marker. Null once the write succeeds (first try or Try
+  // again) or the organiser reloads the grid.
+  const [pendingFailure, setPendingFailure] = useState<PendingWriteFailure | null>(null);
 
   function loadGrid(id: string, currentFilters: GridFilterState, currentPage: number) {
     setLoading(true);
@@ -293,12 +353,14 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   const total = grid?.total ?? 0;
   const rangeEnd = total === 0 ? 0 : Math.min(page * PER_PAGE, total);
 
-  async function toggleCell(assignmentId: string, currentStatus: AssignmentStatus) {
-    if (!grid || !eventId) return;
+  // DEC-265 amendment: the shared cell-status write both toggleCell (below)
+  // and its Try again retry issue -- exactly the same PATCH, exactly the
+  // same optimistic flip/rollback, so a retry can never drift from the
+  // click that failed.
+  async function applyCellStatus(assignmentId: string, desired: AssignmentStatus, speakerName: string, taskTitle: string) {
+    if (!grid) return;
     const previous = grid;
-    const desired = nextStatus(currentStatus);
 
-    // Optimistic render with rollback on ApiError (SPEC §7).
     setGrid({
       ...grid,
       rows: grid.rows.map((row) => ({
@@ -314,10 +376,33 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
 
     try {
       await apiPatch(`/task-assignments/${assignmentId}`, { status: desired });
-    } catch (err) {
+      setPendingFailure((prev) => (prev && prev.assignmentId === assignmentId ? null : prev));
+    } catch {
       setGrid(previous);
-      setError(err instanceof ApiError ? `Update failed: ${err.message}` : 'Update failed');
+      setPendingFailure({
+        assignmentId,
+        message: cellFailureMessage(speakerName, taskTitle),
+        retry: () => {
+          void applyCellStatus(assignmentId, desired, speakerName, taskTitle);
+        },
+      });
     }
+  }
+
+  async function toggleCell(assignmentId: string, currentStatus: AssignmentStatus) {
+    if (!grid || !eventId) return;
+    const desired = nextStatus(currentStatus);
+    const { speakerName, taskTitle } = findCellNaming(grid, assignmentId);
+    await applyCellStatus(assignmentId, desired, speakerName, taskTitle);
+  }
+
+  // DEC-265 amendment: reloading refetches the grid from the current
+  // filters/page -- whatever the server now holds wins, and the banner +
+  // any cell marker it was driving clear because pendingFailure resets.
+  async function reloadGridAfterFailure() {
+    if (!eventId) return;
+    setPendingFailure(null);
+    await loadGrid(eventId, filters, page);
   }
 
   // DEC-789/DEC-830: writes the roster row's invite status through
@@ -327,7 +412,13 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   // changeResponseStatus's established pattern on this page). Driven by an
   // explicit menu selection (ParticipationMenu) rather than a click-to-cycle
   // control -- the desired state is chosen, never advanced.
-  async function setInviteStatus(contactId: string, submissionId: string, participantId: string, desired: InviteStatus) {
+  async function applyInviteStatus(
+    contactId: string,
+    submissionId: string,
+    participantId: string,
+    desired: InviteStatus,
+    speakerName: string,
+  ) {
     if (!grid) return;
     const previous = grid;
 
@@ -351,10 +442,24 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
 
     try {
       await apiPatch(`/submissions/${submissionId}/participants/${participantId}`, { inviteStatus: desired });
-    } catch (err) {
+      setPendingFailure((prev) => (prev && prev.participantId === participantId ? null : prev));
+    } catch {
       setGrid(previous);
-      setError(err instanceof ApiError ? `Update failed: ${err.message}` : 'Update failed');
+      setPendingFailure({
+        assignmentId: null,
+        participantId,
+        message: participationFailureMessage(speakerName),
+        retry: () => {
+          void applyInviteStatus(contactId, submissionId, participantId, desired, speakerName);
+        },
+      });
     }
+  }
+
+  async function setInviteStatus(contactId: string, submissionId: string, participantId: string, desired: InviteStatus) {
+    if (!grid) return;
+    const speakerName = findContactName(grid, contactId);
+    await applyInviteStatus(contactId, submissionId, participantId, desired, speakerName);
   }
 
   // SPEC §10 #3 (DEC-441): "Remind all outstanding" no longer sends
@@ -459,7 +564,11 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   // same PATCH /task-assignments/:id status the grid cells write, and
   // reconciles optimistically with loud rollback on ApiError (matching
   // toggleCell) -- the grid row AND the open modal's status must agree.
-  async function changeResponseStatus(assignmentId: string, desired: AssignmentStatus) {
+  // DEC-265 amendment: the rollback now surfaces through the shared
+  // pendingFailure banner (naming the speaker + task) rather than a bare
+  // responseError string, and the reverted grid cell keeps its 'not saved'
+  // marker until the banner clears.
+  async function applyResponseStatus(assignmentId: string, desired: AssignmentStatus, speakerName: string, taskTitle: string) {
     if (!grid) return;
     const previousGrid = grid;
     const previousDetail = responseDetail;
@@ -479,11 +588,24 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
 
     try {
       await apiPatch(`/task-assignments/${assignmentId}`, { status: desired });
-    } catch (err) {
+      setPendingFailure((prev) => (prev && prev.assignmentId === assignmentId ? null : prev));
+    } catch {
       setGrid(previousGrid);
       setResponseDetail(previousDetail);
-      setResponseError(err instanceof ApiError ? `Update failed: ${err.message}` : 'Update failed');
+      setPendingFailure({
+        assignmentId,
+        message: cellFailureMessage(speakerName, taskTitle),
+        retry: () => {
+          void applyResponseStatus(assignmentId, desired, speakerName, taskTitle);
+        },
+      });
     }
+  }
+
+  async function changeResponseStatus(assignmentId: string, desired: AssignmentStatus) {
+    if (!grid) return;
+    const { speakerName, taskTitle } = findCellNaming(grid, assignmentId);
+    await applyResponseStatus(assignmentId, desired, speakerName, taskTitle);
   }
 
   async function handleCreateTask(input: NewTaskInput) {
@@ -551,6 +673,21 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   return (
     <div className="chq-page chq-speakers-page chq-measure-table">
       {error && <div className="chq-error">{error}</div>}
+      {/* DEC-265 amendment: a rolled-back optimistic write's banner --
+          names the row, states the server-fault cause, and offers the two
+          real recovery actions (never a bare dismiss: there's nothing to
+          silently dismiss into). */}
+      {pendingFailure && (
+        <div className="chq-error chq-speakers-write-failure" role="alert">
+          {pendingFailure.message}
+          <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => pendingFailure.retry()}>
+            Try again
+          </button>
+          <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => void reloadGridAfterFailure()}>
+            Reload the grid
+          </button>
+        </div>
+      )}
       {toast && (
         <div className="chq-error" role="status">
           {toast}
@@ -756,6 +893,10 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                           onOpenResponse={openResponse}
                           notChased={declinedOnly}
                           interactive={notChased === null}
+                          notSaved={
+                            pendingFailure?.assignmentId !== null &&
+                            row.cells.some((c) => c.taskId === task.id && c.assignmentId === pendingFailure?.assignmentId)
+                          }
                         />
                       </td>
                     ))}
@@ -831,6 +972,10 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                         onOpenResponse={openResponse}
                         notChased={declinedOnly}
                         interactive={notChased === null}
+                        notSaved={
+                          pendingFailure?.assignmentId !== null &&
+                          row.cells.some((c) => c.taskId === task.id && c.assignmentId === pendingFailure?.assignmentId)
+                        }
                       />
                     </div>
                   ))}

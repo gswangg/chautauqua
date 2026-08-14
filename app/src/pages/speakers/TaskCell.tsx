@@ -97,6 +97,14 @@ interface TaskCellProps {
   // affordance: a plain <span>, never a <button>, with no Response link
   // either. Defaults true (every other caller keeps the live control).
   interactive?: boolean;
+  // DEC-265 amendment (error-states rule 8): true while this cell's last
+  // write is the one a rollback banner names -- the optimistic flip was
+  // reverted but the cell must keep announcing that until the banner is
+  // dismissed (Try again / Reload the grid), never quietly settle back to
+  // its pre-click look (that reads as the click never registering). Reuses
+  // the overdue vocabulary -- weight and rule, never a new colour (DEC-367:
+  // there is no red in this system).
+  notSaved?: boolean;
 }
 
 /** Renders exactly one grid cell's contents -- the em-dash "no assignment"
@@ -112,18 +120,23 @@ export function TaskCell({
   onOpenResponse,
   notChased = false,
   interactive = true,
+  notSaved = false,
 }: TaskCellProps) {
   if (!cell) {
     return <span className="chq-speakers-cell-none">&mdash;</span>;
   }
 
   const overdue = isCellOverdue(cell, task, now);
-  const cellClass = statusCellClass(cell.status, overdue);
+  // DEC-265 amendment: a rolled-back write borrows the overdue class family
+  // too -- weight/rule, never a new colour -- so the reverted cell keeps
+  // announcing itself until the banner is dismissed.
+  const cellClass = statusCellClass(cell.status, overdue || notSaved);
   const effectiveDueDate = effectiveAssignmentDueDate(task.dueDate, cell.assignedAt);
   const overdueTitleText = overdue && effectiveDueDate !== null ? overdueTitle(effectiveDueDate, now) : null;
   const cellTitleText = cellDueTitle(cell.status, overdueTitleText, effectiveDueDate, now);
   const muted = (notChased && cell.status !== 'complete') || !interactive;
-  const label = cell.status === 'complete' ? 'Complete' : overdueTitleText ? OVERDUE_LABEL : 'Pending';
+  const baseLabel = cell.status === 'complete' ? 'Complete' : overdueTitleText ? OVERDUE_LABEL : 'Pending';
+  const label = notSaved ? `${baseLabel} · not saved` : baseLabel;
 
   return (
     <div className={muted ? 'chq-speakers-cell chq-speakers-cell-muted' : 'chq-speakers-cell'}>

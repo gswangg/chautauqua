@@ -299,12 +299,14 @@ describe('OnboardingGrid: DEC-599/DEC-694 reopen from response modal', () => {
     });
 
     // ...then rolls back visibly on the failed PATCH: the modal reverts to
-    // showing 'Reopen this task' again and an error surfaces, not a silent
-    // no-op.
+    // showing 'Reopen this task' again and a banner names the row and the
+    // server-fault cause, not a silent no-op.
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Reopen this task' })).toBeInTheDocument();
     });
-    expect(screen.getByText(/Update failed/)).toBeInTheDocument();
+    expect(
+      screen.getByText("Ada Lovelace · Hotel stay requirement form didn't save. Someone else may have edited this speaker."),
+    ).toBeInTheDocument();
   });
 });
 
@@ -544,11 +546,14 @@ describe('OnboardingGrid: DEC-830 participation menu', () => {
       expect(table.getByRole('button', { name: 'Participation status for Ada Lovelace: Declined' })).toBeInTheDocument();
     });
 
-    // ...rolls back visibly on the failed PATCH, and surfaces the error.
+    // ...rolls back visibly on the failed PATCH, and a banner names the
+    // speaker and the server-fault cause.
     await waitFor(() => {
       expect(table.getByRole('button', { name: 'Participation status for Ada Lovelace: Confirmed' })).toBeInTheDocument();
     });
-    expect(screen.getByText(/Update failed/)).toBeInTheDocument();
+    expect(
+      screen.getByText("Ada Lovelace didn't save. Someone else may have edited this speaker."),
+    ).toBeInTheDocument();
   });
 
   it('joins the invite-status selection into the grid request as an additional query param, composing with other filters', async () => {
@@ -1467,5 +1472,146 @@ describe('OnboardingGrid: DEC-829 amendment muted-cell treatment for a declined-
 
     const pendingBtn = rowScope.getByRole('button', { name: 'Toggle Sign speaker agreement for Otto Base' });
     expect(pendingBtn.closest('.chq-speakers-cell')).not.toHaveClass('chq-speakers-cell-muted');
+  });
+});
+
+// DEC-265 amendment (error-states rule 8): a rolled-back optimistic write on
+// the grid's own cell toggle must announce itself -- a banner naming the row
+// and the server-fault cause, with Try again (reissues the identical PATCH)
+// and Reload the grid (refetches) as the two real recovery actions -- and
+// the reverted cell keeps a 'not saved' marker until the banner clears.
+describe('OnboardingGrid: DEC-265 rolled-back cell write announces itself', () => {
+  it('reverts the cell, renders a banner naming the speaker + task, and marks the cell not saved', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+      'PATCH /api/v1/task-assignments/as3': { status: 500, body: { error: { code: 'internal', message: 'boom' } } },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Grace Hopper').length > 0);
+
+    const table = within(screen.getByRole('table'));
+    const cellBtn = table.getByRole('button', { name: 'Toggle Sign speaker agreement for Grace Hopper' });
+    fireEvent.click(cellBtn);
+
+    // Optimistic flip first: pending -> complete.
+    await waitFor(() => {
+      expect(table.getByRole('button', { name: 'Toggle Sign speaker agreement for Grace Hopper' })).toHaveTextContent('Complete');
+    });
+
+    // Rolls back, banner names the row + task, cause in the server-fault
+    // register (never blaming the input), and the cell carries the 'not
+    // saved' marker (weight/rule, no colour) until the banner clears.
+    await waitFor(() => {
+      expect(table.getByRole('button', { name: 'Toggle Sign speaker agreement for Grace Hopper' })).toHaveTextContent('Pending · not saved');
+    });
+    expect(
+      screen.getByText("Grace Hopper · Sign speaker agreement didn't save. Someone else may have edited this speaker."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reload the grid' })).toBeInTheDocument();
+  });
+
+  it('Try again reissues the identical PATCH and clears both the banner and the marker on success', async () => {
+    let attempt = 0;
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+      'PATCH /api/v1/task-assignments/as3': () => {
+        attempt += 1;
+        if (attempt === 1) {
+          return { status: 500, body: { error: { code: 'internal', message: 'boom' } } };
+        }
+        return { body: {} };
+      },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Grace Hopper').length > 0);
+
+    const table = within(screen.getByRole('table'));
+    fireEvent.click(table.getByRole('button', { name: 'Toggle Sign speaker agreement for Grace Hopper' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    });
+    expect(table.getByRole('button', { name: 'Toggle Sign speaker agreement for Grace Hopper' })).toHaveTextContent('Pending · not saved');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => {
+      expect(table.getByRole('button', { name: 'Toggle Sign speaker agreement for Grace Hopper' })).toHaveTextContent('Complete');
+    });
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/didn't save/),
+    ).not.toBeInTheDocument();
+
+    const patchCalls = fetchMock.mock.calls.filter(([input, init]) => {
+      const url = typeof input === 'string' ? input : (input as Request | URL).toString();
+      return url.includes('/task-assignments/as3') && init?.method === 'PATCH';
+    });
+    expect(patchCalls.length).toBe(2);
+    expect(JSON.parse(patchCalls[0]![1]!.body as string)).toEqual({ status: 'complete' });
+    expect(JSON.parse(patchCalls[1]![1]!.body as string)).toEqual({ status: 'complete' });
+  });
+
+  it('Reload the grid refetches from the current filters/page and clears the banner', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+      'PATCH /api/v1/task-assignments/as3': { status: 500, body: { error: { code: 'internal', message: 'boom' } } },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Grace Hopper').length > 0);
+
+    const table = within(screen.getByRole('table'));
+    fireEvent.click(table.getByRole('button', { name: 'Toggle Sign speaker agreement for Grace Hopper' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Reload the grid' })).toBeInTheDocument();
+    });
+
+    const gridCallsBefore = fetchMock.mock.calls.filter(([input]) =>
+      String(input).includes(`/events/${EVENT_ID}/onboarding`),
+    ).length;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reload the grid' }));
+
+    await waitFor(() => {
+      const gridCallsAfter = fetchMock.mock.calls.filter(([input]) =>
+        String(input).includes(`/events/${EVENT_ID}/onboarding`),
+      ).length;
+      expect(gridCallsAfter).toBe(gridCallsBefore + 1);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Reload the grid' })).not.toBeInTheDocument();
+    });
+    expect(
+      screen.queryByText(/didn't save/),
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders no banner on a successful cell write', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+      'PATCH /api/v1/task-assignments/as3': { body: {} },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Grace Hopper').length > 0);
+
+    const table = within(screen.getByRole('table'));
+    fireEvent.click(table.getByRole('button', { name: 'Toggle Sign speaker agreement for Grace Hopper' }));
+
+    await waitFor(() => {
+      expect(table.getByRole('button', { name: 'Toggle Sign speaker agreement for Grace Hopper' })).toHaveTextContent('Complete');
+    });
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/didn't save/)).not.toBeInTheDocument();
   });
 });

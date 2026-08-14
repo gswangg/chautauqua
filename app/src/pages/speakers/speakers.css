@@ -25,6 +25,16 @@
   flex-wrap: wrap;
 }
 
+/* DEC-265 amendment (error-states rule 8): the rolled-back-write banner --
+   .chq-error's colour/weight/border comes from the shared vocabulary; this
+   only lays out the message plus its two recovery actions on one line. */
+.chq-speakers-write-failure {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .chq-speakers-head-actions {
   display: flex;
   gap: 9px;
