@@ -9,7 +9,22 @@
 import { effectiveAssignmentDueDate } from '../../../../src/domain/task-due';
 import { countOf } from '../../lib/plural';
 import { daysLate, isCellOverdue } from './overdue';
-import type { AssignmentStatus, OnboardingCell, OnboardingTask } from './types';
+import type { AssignmentStatus, InviteStatus, OnboardingCell, OnboardingTask } from './types';
+
+// DEC-829 amendment (wave 59): the ONE place this predicate is written -- a
+// roster row is "not chased" (the reminder set will never include it, per
+// DEC-829's ruling that the chase set is exactly the task-expansion set)
+// when EVERY participation the contact carries has declined. Unlike
+// DEC-934's invited/declined strip (which fires on ANY non-active mix and
+// hides cells wholesale because no assignments exist yet for an
+// invited-only row), a declined row can carry REAL assignment history --
+// tasks assigned while the participant was still active -- so this
+// predicate feeds a muted-cell treatment, not a strip, keeping that history
+// visible (OnboardingGrid composes it for both the row marker/remind gate
+// and this component's per-cell muting).
+export function isRowNotChased(contact: { participations: readonly { inviteStatus: InviteStatus }[] }): boolean {
+  return contact.participations.length > 0 && contact.participations.every((p) => p.inviteStatus === 'declined');
+}
 
 const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -70,13 +85,18 @@ interface TaskCellProps {
   now: number;
   onToggle: (assignmentId: string, status: AssignmentStatus) => void;
   onOpenResponse: (assignmentId: string, contactName: string) => void;
+  // DEC-829 amendment: true for a row whose every participation has
+  // declined (isRowNotChased above) -- an incomplete cell renders muted;
+  // a complete cell is unaffected, because the completion history is real
+  // regardless of whether the product will chase this row further.
+  notChased?: boolean;
 }
 
 /** Renders exactly one grid cell's contents -- the em-dash "no assignment"
  * state, or the status toggle + optional file link + optional Response
  * link. Callers supply their own wrapper (<td> for the pinned table, a
  * labelled <div> for the phone card list). */
-export function TaskCell({ task, cell, contactName, now, onToggle, onOpenResponse }: TaskCellProps) {
+export function TaskCell({ task, cell, contactName, now, onToggle, onOpenResponse, notChased = false }: TaskCellProps) {
   if (!cell) {
     return <span className="chq-speakers-cell-none">&mdash;</span>;
   }
@@ -86,9 +106,10 @@ export function TaskCell({ task, cell, contactName, now, onToggle, onOpenRespons
   const effectiveDueDate = effectiveAssignmentDueDate(task.dueDate, cell.assignedAt);
   const overdueTitleText = overdue && effectiveDueDate !== null ? overdueTitle(effectiveDueDate, now) : null;
   const cellTitleText = cellDueTitle(cell.status, overdueTitleText, effectiveDueDate, now);
+  const muted = notChased && cell.status !== 'complete';
 
   return (
-    <div className="chq-speakers-cell">
+    <div className={muted ? 'chq-speakers-cell chq-speakers-cell-muted' : 'chq-speakers-cell'}>
       <button
         type="button"
         className={cellClass}

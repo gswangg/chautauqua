@@ -195,6 +195,14 @@
   flex-wrap: wrap;
 }
 
+/* DEC-829 amendment (wave 59): a declined-only row's INCOMPLETE cells mute
+   in place (opacity, no new colour per DEC-367) -- a completed cell never
+   gets this class (see TaskCell.tsx's `muted` check), because that history
+   is real regardless of whether the row is still chased. */
+.chq-speakers-cell-muted {
+  opacity: 0.5;
+}
+
 /* One control family for all three onboarding statuses (DEC-730): shared
    box metrics, a hover ring, cursor:pointer -- fill/outline/ink-outline is
    the ONLY difference, so overdue reads as clickable like its siblings. */
@@ -445,6 +453,29 @@
 .chq-speakers-response-link {
   font-size: 11px;
   font-weight: 700;
+}
+
+/* DEC-829 amendment (wave 59): the quiet row-level marker a declined-only
+   row shows in place of the "Remind ‹first name›" control -- same box/type
+   metrics as .chq-speakers-remind-one so the swap never changes the row's
+   pitch (conditional-and-quiet, same affordance-grammar family as
+   .chq-speakers-invited-marker above). */
+.chq-speakers-not-chased-marker {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--chq-muted);
+}
+
+/* DEC-441 amendment (DEC-829): the skipped-recipient line in the remind
+   review dialog -- same quiet register as the draft label, sits above the
+   recipient list. */
+.chq-speakers-remind-skipped {
+  font-size: 12px;
+  color: var(--chq-muted);
+  margin-bottom: 8px;
 }
 
 /* DEC-920: the file link now names the file (was a fixed "File" label) — a

@@ -33,7 +33,15 @@ afterEach(() => {
 describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
   it('shows a loading state before drafts arrive', () => {
     render(
-      <RemindPreviewModal loading={true} error={null} drafts={null} sending={false} onSend={vi.fn()} onCancel={vi.fn()} />,
+      <RemindPreviewModal
+        loading={true}
+        error={null}
+        drafts={null}
+        skipped={0}
+        sending={false}
+        onSend={vi.fn()}
+        onCancel={vi.fn()}
+      />,
     );
     const dialog = screen.getByRole('dialog', { name: 'Review reminders' });
     expect(dialog).toBeInTheDocument();
@@ -47,6 +55,7 @@ describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
         loading={false}
         error={null}
         drafts={DRAFTS}
+        skipped={0}
         sending={false}
         onSend={onSend}
         onCancel={vi.fn()}
@@ -74,6 +83,7 @@ describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
         loading={false}
         error={null}
         drafts={DRAFTS}
+        skipped={0}
         sending={false}
         onSend={onSend}
         onCancel={onCancel}
@@ -91,6 +101,7 @@ describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
         loading={false}
         error="Send failed: mailer outage"
         drafts={DRAFTS}
+        skipped={0}
         sending={false}
         onSend={vi.fn()}
         onCancel={vi.fn()}
@@ -101,8 +112,47 @@ describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
 
   it('disables Send with zero recipients', () => {
     render(
-      <RemindPreviewModal loading={false} error={null} drafts={[]} sending={false} onSend={vi.fn()} onCancel={vi.fn()} />,
+      <RemindPreviewModal
+        loading={false}
+        error={null}
+        drafts={[]}
+        skipped={0}
+        sending={false}
+        onSend={vi.fn()}
+        onCancel={vi.fn()}
+      />,
     );
     expect(screen.getByRole('button', { name: 'Send 0 reminders' })).toBeDisabled();
+  });
+
+  // DEC-829 amendment: the modal prints the server's own skipped figure
+  // verbatim -- never recomputed here -- so it can never claim a different
+  // number than the send actually performs.
+  it('prints the server-supplied skipped count when greater than zero, and omits the line at zero', () => {
+    const { rerender } = render(
+      <RemindPreviewModal
+        loading={false}
+        error={null}
+        drafts={DRAFTS}
+        skipped={3}
+        sending={false}
+        onSend={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('3 contacts skipped — reminded in the last hour')).toBeInTheDocument();
+
+    rerender(
+      <RemindPreviewModal
+        loading={false}
+        error={null}
+        drafts={DRAFTS}
+        skipped={0}
+        sending={false}
+        onSend={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText(/skipped/)).not.toBeInTheDocument();
   });
 });

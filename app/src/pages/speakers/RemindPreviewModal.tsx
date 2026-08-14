@@ -13,12 +13,20 @@ interface RemindPreviewModalProps {
   loading: boolean;
   error: string | null;
   drafts: ReminderDraft[] | null;
+  // DEC-441 amendment (DEC-829): the server's own skipped-recipient count
+  // (dedupe window / declined-only exclusion), printed verbatim -- never
+  // recomputed here, so this dialog can never claim a different number
+  // than the send it previews actually performs.
+  skipped: number;
   sending: boolean;
   onSend: () => void;
   onCancel: () => void;
 }
 
-export function RemindPreviewModal({ loading, error, drafts, sending, onSend, onCancel }: RemindPreviewModalProps) {
+export function RemindPreviewModal({ loading, error, drafts, skipped, sending, onSend, onCancel }: RemindPreviewModalProps) {
+  // DEC-829 amendment: the recipient count IS the server's drafts array
+  // length -- one draft per recipient the send will actually reach -- never
+  // a separately recomputed figure.
   const count = drafts?.length ?? 0;
   const first = drafts && drafts.length > 0 ? drafts[0]! : null;
 
@@ -45,6 +53,9 @@ export function RemindPreviewModal({ loading, error, drafts, sending, onSend, on
 
       {!loading && !error && drafts && (
         <>
+          {skipped > 0 && (
+            <div className="chq-speakers-remind-skipped">{countOf(skipped, 'contact')} skipped &mdash; reminded in the last hour</div>
+          )}
           <ul className="chq-speakers-remind-recipients">
             {drafts.map((d) => (
               <li key={d.contactId}>

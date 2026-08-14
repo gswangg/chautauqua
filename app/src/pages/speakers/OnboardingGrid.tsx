@@ -5,7 +5,7 @@ import { DEC_827 } from '../../../../src/decisions';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { GridFilters } from './GridFilters';
-import { TaskCell, formatDueDate } from './TaskCell';
+import { TaskCell, formatDueDate, isRowNotChased } from './TaskCell';
 import { TaskModal } from './TaskModal';
 import { ResponseModal } from './ResponseModal';
 import { RemindPreviewModal } from './RemindPreviewModal';
@@ -87,9 +87,19 @@ function notChasingStatus(contact: { id: string; participations: readonly { invi
   // DEC-936: the array is never empty (rosterParticipantExistsForContact
   // guarantees at least one) -- a loud throw, never a silent blank row.
   if (!first) throw new Error(`roster row for contact ${contact.id} carries no participations`);
+  // DEC-829 amendment: an all-declined row now composes isRowNotChased's
+  // muted-cell treatment instead of this spanning strip, so real assignment
+  // history (a completed cell) stays visible -- this predicate stays for
+  // the remaining invited/mixed case, where no assignment ever existed.
+  if (isRowNotChased(contact)) return null;
   if (!contact.participations.every((p) => NOT_CHASING_STATUSES.includes(p.inviteStatus))) return null;
   return first.inviteStatus;
 }
+
+// DEC-829 amendment (wave 59): the quiet row-level marker a declined-only
+// row shows beside its participation control -- read alongside
+// isRowNotChased's per-cell muting, never inlined twice.
+const NOT_CHASED_MARKER = 'Not chased';
 
 // DEC-934 amendment: the matrix answers ONE question -- who still needs
 // inviting -- so the standalone "Send portal invite" control (below) must
@@ -131,6 +141,10 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   const [remindPreviewLoading, setRemindPreviewLoading] = useState(false);
   const [remindPreviewError, setRemindPreviewError] = useState<string | null>(null);
   const [remindDrafts, setRemindDrafts] = useState<ReminderDraft[] | null>(null);
+  // DEC-441 amendment (DEC-829): the server's own skipped figure, threaded
+  // through verbatim rather than recomputed client-side, so the modal can
+  // never claim a different number than the send performs.
+  const [remindSkipped, setRemindSkipped] = useState(0);
   const [reminding, setReminding] = useState(false);
   // DEC-694: undefined => "Remind all outstanding" (today's behaviour);
   // a one-element array => the per-row "Remind ‹first name›" quiet control.
@@ -275,12 +289,14 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     setRemindPreviewLoading(true);
     setRemindPreviewError(null);
     setRemindDrafts(null);
+    setRemindSkipped(0);
     try {
       const res = await apiPost<{ drafts: ReminderDraft[]; skipped: number; remaining: number }>(
         `/events/${eventId}/onboarding/remind/preview`,
         contactIds ? { contactIds } : {},
       );
       setRemindDrafts(res.drafts);
+      setRemindSkipped(res.skipped);
     } catch (err) {
       setRemindPreviewError(err instanceof ApiError ? err.message : 'Failed to load reminder preview');
     } finally {
@@ -292,6 +308,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     setReviewingRemind(false);
     setRemindPreviewError(null);
     setRemindDrafts(null);
+    setRemindSkipped(0);
     setRemindContactIds(undefined);
   }
 
@@ -569,6 +586,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                 )}
                 {visibleRows.map((row) => {
                   const notChased = notChasingStatus(row.contact);
+                  const declinedOnly = isRowNotChased(row.contact);
                   return (
                   <tr key={row.contact.id}>
                     <td>
@@ -602,13 +620,21 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                           sendInviteDisabled={invitingContactIds.has(row.contact.id)}
                         />
                       ))}
-                      <button
-                        type="button"
-                        className="chq-btn chq-btn-tertiary chq-speakers-remind-one"
-                        onClick={() => openRemindReview([row.contact.id])}
-                      >
-                        Remind {firstNameOf(row.contact.name)}
-                      </button>
+                      {/* DEC-829 amendment: a declined-only row offers no
+                          per-row remind action (nothing will ever be sent)
+                          and says so with one quiet marker, instead of a
+                          live control nothing will act on. */}
+                      {declinedOnly ? (
+                        <span className="chq-speakers-not-chased-marker">{NOT_CHASED_MARKER}</span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="chq-btn chq-btn-tertiary chq-speakers-remind-one"
+                          onClick={() => openRemindReview([row.contact.id])}
+                        >
+                          Remind {firstNameOf(row.contact.name)}
+                        </button>
+                      )}
                       {/* DEC-805/DEC-934: quiet, conditional — a contact who
                           already has an account has no use for a claim-link
                           invite, and a contact already invited has nothing
@@ -642,6 +668,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                             now={now}
                             onToggle={toggleCell}
                             onOpenResponse={openResponse}
+                            notChased={declinedOnly}
                           />
                         </td>
                       ))
@@ -657,6 +684,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
             {visibleRows.length === 0 && <p className="chq-empty">No speakers match the current filters.</p>}
             {visibleRows.map((row) => {
               const notChased = notChasingStatus(row.contact);
+              const declinedOnly = isRowNotChased(row.contact);
               return (
               <div key={row.contact.id} className="chq-speakers-card">
                 <div className="chq-speakers-card-head">
@@ -687,13 +715,17 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                       sendInviteDisabled={invitingContactIds.has(row.contact.id)}
                     />
                   ))}
-                  <button
-                    type="button"
-                    className="chq-btn chq-btn-tertiary chq-speakers-remind-one"
-                    onClick={() => openRemindReview([row.contact.id])}
-                  >
-                    Remind {firstNameOf(row.contact.name)}
-                  </button>
+                  {declinedOnly ? (
+                    <span className="chq-speakers-not-chased-marker">{NOT_CHASED_MARKER}</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="chq-btn chq-btn-tertiary chq-speakers-remind-one"
+                      onClick={() => openRemindReview([row.contact.id])}
+                    >
+                      Remind {firstNameOf(row.contact.name)}
+                    </button>
+                  )}
                 </div>
                 <div className="chq-speakers-card-tasks">
                   {notChased !== null ? (
@@ -709,6 +741,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                           now={now}
                           onToggle={toggleCell}
                           onOpenResponse={openResponse}
+                          notChased={declinedOnly}
                         />
                       </div>
                     ))
@@ -787,6 +820,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
           loading={remindPreviewLoading}
           error={remindPreviewError}
           drafts={remindDrafts}
+          skipped={remindSkipped}
           sending={reminding}
           onSend={handleRemind}
           onCancel={closeRemindReview}
