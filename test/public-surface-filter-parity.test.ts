@@ -202,6 +202,10 @@ async function jsonTotal(app: Hono<AppEnv>, path: string): Promise<number> {
 // only appears once truncated).
 function countHtmlRows(html: string, surface: "sessions" | "agenda" | "schedule"): number {
   if (surface === "sessions") return (html.match(/id="chq-session-/g) ?? []).length;
+  // task-w1-d (DEC-555 amendment): /schedule renders its own row markup
+  // (data-submission-id="<id>" on .chq-pub-schedule-row), never
+  // AgendaItemList's chq-agenda-list-<id>.
+  if (surface === "schedule") return (html.match(/class="chq-pub-schedule-row"/g) ?? []).length;
   return (html.match(/id="chq-agenda-list-/g) ?? []).length;
 }
 

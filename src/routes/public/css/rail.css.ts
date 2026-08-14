@@ -36,29 +36,11 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
     overflow-wrap: break-word;
   }
 
-  /* EMB-09 w2: /schedule renders the shared item-list markup (.chq-pub-
-     schedule-list) at EVERY width -- never AgendaDayGrid's room-column
-     grid, unlike /agenda which still switches between the two at 700px.
-     Reuses .chq-pub-agenda-list-item/-time/-title/-room/-speakers, so only
-     the list container itself needs an always-visible rule. */
-  .chq-pub-schedule-list {
-    display: block;
-    list-style: none;
-    margin: 0 0 1.5rem;
-    padding: 0;
-  }
-
-  /* EMB-10 w1: 'Show only my picks' toggle + honest empty state, handled by
-     ItineraryScript's applyPicksFilter (agenda.tsx). */
-  .chq-pub-picks-toggle {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 44px;
-    font-size: 13px;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-  }
+  /* task-w1-d (DEC-555 amendment): the honest empty state for /schedule's
+     saved-sessions view (id retargeted from the dropped 'Show only my
+     picks' toggle to #chq-schedule-empty -- see the new frame block below).
+     Shown/hidden by ItineraryScript's applyScheduleView (agenda-itinerary-
+     script.tsx) once localStorage is read. */
   .chq-pub-picks-empty {
     color: var(--chq-muted);
     font-size: 13px;
@@ -222,5 +204,97 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
   .chq-pub-agenda-rail { display: flex; flex-direction: column; gap: 26px; }
   @media (max-width: 700px) {
     .chq-pub-agenda-layout { grid-template-columns: 1fr; gap: 20px; }
+  }
+
+  /* ===== task-w1-d (DEC-555 amendment): /schedule rebuilt to frame 10--12
+     =====
+     The same list+rail column pair idiom as .chq-pub-sessions-layout/
+     .chq-pub-agenda-layout above (list, then a 300px <aside>, single column
+     below 700px) -- named for schedule rather than reused directly since
+     the day-group/row shape here is unique to this surface (Remove control,
+     clash marker, no search form). Server renders every candidate row
+     display:none; ItineraryScript's applyScheduleView (agenda-itinerary-
+     script.tsx) is what reveals the saved subset once localStorage is
+     read -- see agenda.tsx's ScheduleContent for the load-bearing reason. */
+  .chq-pub-schedule-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 34px;
+    align-items: start;
+  }
+  .chq-pub-schedule-col { min-width: 0; }
+  .chq-pub-schedule-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    border-bottom: 1px solid var(--chq-hairline);
+    padding-bottom: 14px;
+    margin-bottom: 18px;
+  }
+  .chq-pub-schedule-subtitle { display: block; font-size: 14px; color: var(--chq-ink-2); margin-top: 5px; }
+  .chq-pub-schedule-browse-link { font-size: 13px; font-weight: 700; color: var(--chq-ink); white-space: nowrap; }
+  .chq-pub-schedule-day-group { padding-top: 22px; }
+  .chq-pub-schedule-day-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    border-bottom: 2px solid var(--chq-ink);
+    padding-bottom: 8px;
+    font-family: var(--chq-font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .chq-pub-schedule-day-count { font-size: 12px; font-weight: 700; color: var(--chq-muted); text-transform: none; letter-spacing: normal; }
+  /* task-w1-d: two-line time/room gutter matching the sessions row's own
+     .chq-pub-session-when shape (cards.tsx's SessionSchedule). */
+  .chq-pub-schedule-row {
+    display: grid;
+    grid-template-columns: 126px 1fr auto;
+    gap: 22px;
+    align-items: baseline;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--chq-hairline);
+  }
+  .chq-pub-schedule-row-gutter { display: flex; flex-direction: column; gap: 2px; }
+  .chq-pub-schedule-row-time { font-family: var(--chq-font-display); font-size: 15px; font-weight: 700; }
+  .chq-pub-schedule-row-room { font-size: 12px; color: var(--chq-ink-2); }
+  .chq-pub-schedule-row-body { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .chq-pub-schedule-row-title {
+    font-family: var(--chq-font-display);
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--chq-ink);
+  }
+  .chq-pub-schedule-row-speakers { font-size: 14px; color: var(--chq-ink-2); }
+  .chq-pub-schedule-row-clash {
+    font-family: var(--chq-font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+  .chq-pub-schedule-remove {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--chq-ink-2);
+    align-self: center;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .chq-pub-schedule-remove input.chq-itinerary-toggle {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    margin: 0;
+  }
+  @media (max-width: 700px) {
+    .chq-pub-schedule-layout { grid-template-columns: 1fr; gap: 20px; }
+    .chq-pub-schedule-row { grid-template-columns: 1fr auto; }
+    .chq-pub-schedule-row-gutter { grid-column: 1 / -1; flex-direction: row; gap: 10px; }
   }
 `;

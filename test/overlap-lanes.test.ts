@@ -2,7 +2,7 @@
 // src/lib/overlap-lanes.ts header for the algorithm/contract).
 
 import { describe, expect, it } from "vitest";
-import { assignLanes } from "../src/lib/overlap-lanes";
+import { assignLanes, computeSavedOverlaps } from "../src/lib/overlap-lanes";
 
 describe("assignLanes", () => {
   it("gives non-overlapping items full width (lane 0, laneCount 1)", () => {
@@ -77,5 +77,51 @@ describe("assignLanes", () => {
     const lanes = result.map((r) => r.lane).sort();
     expect(lanes).toEqual([0, 1, 2]);
     for (const r of result) expect(r.laneCount).toBe(3);
+  });
+});
+
+// DEC-555 amendment (wave 1, task w1-d): /schedule's per-row clash markers +
+// the rail's "N overlaps" total.
+describe("computeSavedOverlaps", () => {
+  it("reports zero overlaps for a non-overlapping saved set", () => {
+    const items = [
+      { id: "a", title: "Talk A", day: "2027-01-01", startMin: 0, endMin: 60 },
+      { id: "b", title: "Talk B", day: "2027-01-01", startMin: 60, endMin: 120 },
+    ];
+    const result = computeSavedOverlaps(items);
+    expect(result.pairCount).toBe(0);
+    expect(result.clashesById).toEqual({});
+  });
+
+  it("names one item overlapping TWO others as two pairs, each side naming the other's title", () => {
+    const items = [
+      { id: "wide", title: "Evaluating Agents", day: "2027-01-01", startMin: 600, endMin: 720 },
+      { id: "a", title: "Taming 40-Minute CI", day: "2027-01-01", startMin: 630, endMin: 660 },
+      { id: "b", title: "Your AI Pair Programmer", day: "2027-01-01", startMin: 660, endMin: 690 },
+    ];
+    const result = computeSavedOverlaps(items);
+    expect(result.pairCount).toBe(2);
+    expect(result.clashesById.wide).toEqual(["Taming 40-Minute CI", "Your AI Pair Programmer"]);
+    expect(result.clashesById.a).toEqual(["Evaluating Agents"]);
+    expect(result.clashesById.b).toEqual(["Evaluating Agents"]);
+  });
+
+  it("boundary-touching intervals (end === start) do not clash", () => {
+    const items = [
+      { id: "a", title: "A", day: "2027-01-01", startMin: 0, endMin: 60 },
+      { id: "b", title: "B", day: "2027-01-01", startMin: 60, endMin: 120 },
+    ];
+    const result = computeSavedOverlaps(items);
+    expect(result.pairCount).toBe(0);
+  });
+
+  it("never clashes items on different days even if minutes coincide", () => {
+    const items = [
+      { id: "a", title: "A", day: "2027-01-01", startMin: 0, endMin: 60 },
+      { id: "b", title: "B", day: "2027-01-02", startMin: 0, endMin: 60 },
+    ];
+    const result = computeSavedOverlaps(items);
+    expect(result.pairCount).toBe(0);
+    expect(result.clashesById).toEqual({});
   });
 });

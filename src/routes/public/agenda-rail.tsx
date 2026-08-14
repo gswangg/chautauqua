@@ -123,3 +123,50 @@ export function AgendaRail(props: { event: PublicEvent; items: PublicAgendaItem[
     </aside>
   );
 }
+
+/** DEC-555 amendment (wave 1, task w1-d): /schedule's own rail -- "Take it
+ * with you" (saved count + Download .ics, the EXACT #chq-ics-count/
+ * #chq-ics-link ids ItineraryScript already drives) and an overlaps block
+ * naming each clash. Both bodies start at the honest zero state and are
+ * filled in by ItineraryScript's applyScheduleView() (agenda-itinerary-
+ * script.tsx) once localStorage is read -- the server never knows which
+ * sessions are saved (DEC-555: picks live client-side only). The overlaps
+ * section starts `hidden` (no clashes known yet) so a no-JS visitor never
+ * sees an empty "0 overlaps" block flash before script runs. */
+export function ScheduleRail(props: { event: PublicEvent; embed?: boolean }) {
+  const { event, embed } = props;
+  return (
+    <aside class="chq-pub-agenda-rail">
+      <section class="chq-pub-rail-section">
+        <h2 class="chq-pub-rail-heading">Take it with you</h2>
+        <div class="chq-pub-rail-body">
+          <span class="chq-pub-rail-caption">
+            <span id="chq-ics-count">0 picked</span> saved in this browser · no account needed
+          </span>
+          {/* DEC-672: the .ics download always targets the real /e/... route
+              (never /embed/...ics, which doesn't exist) -- inside /embed
+              this is the one permitted same-origin exception (DEC-672's own
+              test), so it opens in a new tab instead of breaking the iframe
+              out from under the visitor. */}
+          <a
+            id="chq-ics-link"
+            class="chq-pub-itinerary-cta"
+            href={`/e/${event.slug}/schedule.ics`}
+            aria-disabled="true"
+            target={embed ? "_blank" : undefined}
+            rel={embed ? "noopener" : undefined}
+          >
+            Download .ics
+          </a>
+          <span class="chq-pub-rail-caption">Clearing your browser data clears this list</span>
+        </div>
+      </section>
+      <section class="chq-pub-rail-section" id="chq-schedule-overlaps-section" hidden>
+        <h2 class="chq-pub-rail-heading" id="chq-schedule-overlaps-heading">
+          0 overlaps
+        </h2>
+        <div class="chq-pub-rail-body" id="chq-schedule-overlaps-body" />
+      </section>
+    </aside>
+  );
+}

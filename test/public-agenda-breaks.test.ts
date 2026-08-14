@@ -141,16 +141,15 @@ describe("DEC-022 amendment: AgendaContent (desktop grid) break rendering", () =
   });
 });
 
-describe("DEC-022 amendment: ScheduleContent (phone list) break rendering", () => {
-  it("renders the break as a list row on the day it belongs to, and only that day", () => {
+// task-w1-d (DEC-555 amendment): /schedule was rebuilt to frame 10--12,
+// which lists only the SAVED sessions -- breaks are not itinerary items
+// (DEC-022: "a break is not a session"), so this surface never renders one
+// at all, whether or not breaksByDay is supplied.
+describe("DEC-022 amendment (task w1-d): ScheduleContent never renders a break row", () => {
+  it("a supplied breaksByDay never produces a break row on /schedule", () => {
     const breaksByDay = new Map([["2026-08-10", [brk({})]]]);
-    const html = String(
-      ScheduleContent({ event: EVENT, items: ITEMS, total: 2, breaksByDay }),
-    );
-    const day1Section = html.slice(html.indexOf('id="chq-day-2026-08-10"'), html.indexOf('id="chq-day-2026-08-11"'));
-    const day2Section = html.slice(html.indexOf('id="chq-day-2026-08-11"'));
-    expect(day1Section).toContain('class="chq-pub-agenda-break"');
-    expect(day1Section).toContain("Lunch");
-    expect(day2Section).not.toContain("chq-pub-agenda-break");
+    const html = String(ScheduleContent({ event: EVENT, items: ITEMS, total: 2, breaksByDay }));
+    expect(html).not.toContain("chq-pub-agenda-break");
+    expect(html).not.toContain("Lunch");
   });
 });

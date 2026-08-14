@@ -11,15 +11,16 @@
 import type { PublicAgendaItem, PublicEvent, PublicTrack } from "../../server/repo/public";
 import type { ScheduleBreak } from "../../server/repo/breaks"; // type-only; the public barrel re-exports the read path (getPublicBreaksByDay)
 import { plural } from "../../domain/count-copy";
-import { surfacePath, type Surface, type SurfaceBase } from "./shell";
-import { formatDay, formatMinutes } from "./cards";
+import { surfacePath, sessionDetailPath, type Surface, type SurfaceBase } from "./shell";
+import { formatDay, formatMinutes, SpeakerNames } from "./cards";
+import { publicRoomLabel } from "../../domain/schedule";
 import { AgendaDayGrid } from "./agenda-grid";
 import { AgendaItemList } from "./agenda-list";
 // agendaQs is also re-exported below (barrel); this import is the local
 // binding the agenda day-footer's "next day" out-link composes with.
 import { DaySwitcher, ItinerarySearchForm, agendaQs } from "./agenda-controls";
 import { ItineraryScript } from "./agenda-itinerary-script";
-import { AgendaRail } from "./agenda-rail";
+import { AgendaRail, ScheduleRail } from "./agenda-rail";
 
 export { AgendaDayGrid } from "./agenda-grid";
 export { AgendaItemList } from "./agenda-list";
@@ -221,6 +222,59 @@ export function AgendaContent(props: {
   );
 }
 
+// DEC-555 amendment (wave 1, task w1-d): frame 10--12 (new in pack v7,
+// never previously built) -- the 1180 pair, main column lists the SAVED
+// sessions (Remove, never Save -- every OTHER session-row control on the
+// public surfaces reads Save/Saved, but /schedule's own rows never show an
+// unsaved session at all, so there is nothing for a two-state label to
+// name), "N saved · M overlaps" subtitle, "Browse all sessions ›", a
+// two-line time/room gutter matching the sessions row (cards.tsx's
+// .chq-pub-session-when shape), and the rail carries TAKE IT WITH YOU +
+// an overlaps block (ScheduleRail, agenda-rail.tsx). DROPPED per the frame:
+// the duplicate day-pill row (DaySwitcher), the "Show only my picks"
+// checkbox (this view already shows only picks) and the highlight control
+// (ItinerarySearchForm) -- none of the three appear in the mock.
+//
+// LOAD-BEARING (DEC-555): picks live in localStorage, so the server renders
+// EVERY candidate row (exactly like before) -- ItineraryScript's
+// applyScheduleView() is what hides the unsaved rows, fills the per-row
+// clash marker and the subtitle/rail counts once it reads the stored ids. A
+// day-filtered or row-capped render still never deletes a pick (the merge
+// rule is untouched).
+function ScheduleRow(props: { event: PublicEvent; item: PublicAgendaItem; day: string; base: SurfaceBase }) {
+  const { event, item, day, base } = props;
+  return (
+    <div
+      class="chq-pub-schedule-row"
+      data-submission-id={item.submissionId}
+      data-day={day}
+      data-start-min={item.startMin}
+      data-end-min={item.endMin}
+      style="display:none"
+    >
+      <div class="chq-pub-schedule-row-gutter">
+        <span class="chq-pub-schedule-row-time">
+          {formatMinutes(item.startMin)}–{formatMinutes(item.endMin)}
+        </span>
+        <span class="chq-pub-schedule-row-room">{publicRoomLabel(item.roomName)}</span>
+      </div>
+      <div class="chq-pub-schedule-row-body">
+        <a class="chq-pub-schedule-row-title" href={sessionDetailPath(event, item.submissionId, "schedule", base)}>
+          {item.title}
+        </a>
+        <span class="chq-pub-schedule-row-speakers">
+          <SpeakerNames speakers={item.speakers} />
+        </span>
+        <span class="chq-pub-schedule-row-clash" hidden />
+      </div>
+      <label class="chq-pub-schedule-remove">
+        <input type="checkbox" class="chq-itinerary-toggle" value={item.submissionId} />
+        <span>Remove</span>
+      </label>
+    </div>
+  );
+}
+
 export function ScheduleContent(props: {
   event: PublicEvent;
   tracks?: PublicTrack[];
@@ -230,93 +284,67 @@ export function ScheduleContent(props: {
   allDays?: string[] | null;
   activeDay?: string | null;
   // DEC-851 (wave 64 amendment): render-level highlight, not a filter -- see
-  // the matching comment on AgendaContent above.
+  // the matching comment on AgendaContent above. Unused by this frame (the
+  // highlight control was dropped -- kept on the prop shape so
+  // dispatch.tsx's existing call site needs no change).
   highlightTrackId?: string | null;
   q?: string | null;
   breaksByDay?: Map<string, ScheduleBreak[]>;
 }) {
   const byDay = groupByDay(props.items);
-  const renderedDays = new Set(byDay.keys());
-  const days = props.allDays ?? [...renderedDays];
+  const days = [...byDay.keys()].sort();
   const base: SurfaceBase = props.embed ? "/embed" : "/e";
-  const basePath = surfacePath(props.event, "schedule", base);
+  const sessionsPath = surfacePath(props.event, "sessions", base);
   return (
     <>
-      <h1 class="chq-pub-surface-title">My schedule</h1>
-      <ItinerarySearchForm
-        event={props.event}
-        tracks={props.tracks ?? []}
-        activeTrackId={props.highlightTrackId ?? null}
-        activeDay={props.activeDay ?? null}
-        q={props.q ?? null}
-        basePath={basePath}
-      />
-      <p>
-        Check sessions to build a personal itinerary. Your picks are saved in this browser and survive a reload.{" "}
-        <a
-          id="chq-ics-link"
-          class="chq-pub-itinerary-cta"
-          href={`/e/${props.event.slug}/schedule.ics`}
-          aria-disabled="true"
-          target={props.embed ? "_blank" : undefined}
-          rel={props.embed ? "noopener" : undefined}
-        >
-          Download .ics
-        </a>{" "}
-        (<span id="chq-ics-count">0 picked</span>)
-      </p>
-      {byDay.size === 0 ? (
-        <p>No sessions scheduled yet.</p>
-      ) : (
-        <>
-          {props.items.length < props.total ? (
-            <p>
-              Showing the first {props.items.length} of {props.total} scheduled sessions.
-            </p>
-          ) : null}
-          {/* DEC-602: EMB-09 -- /schedule is the LIST at every width, never
-              the room-column grid AgendaDayGrid renders for /agenda. */}
-          <label class="chq-pub-picks-toggle">
-            <input type="checkbox" id="chq-picks-only" class="chq-pub-picks-only-input" />
-            Show only my picks (<span id="chq-picks-only-count">0</span>)
-          </label>
-          <p id="chq-picks-empty" class="chq-pub-picks-empty" hidden>
-            You have not picked any sessions yet. Check "Save" on a session below to add it.
-          </p>
-          <DaySwitcher
-            days={days}
-            renderedDays={renderedDays}
-            event={props.event}
-            surface="schedule"
-            base={base}
-            activeDay={props.activeDay}
-            trackId={props.highlightTrackId}
-            q={props.q}
-          />
-          {[...renderedDays].map((day) => (
-            <div id={`chq-day-${day}`}>
-              {/* DEC-768: AgendaItemList no longer renders its own heading
-                  (only AgendaDay's grid+list pairing did that before) -- this
-                  wrapper is the sole owner of the day heading here. */}
-              <h2 class="chq-pub-section-title">{formatDay(day)}</h2>
-              <AgendaItemList
-                day={day}
-                items={byDay.get(day) ?? []}
-                event={props.event}
-                from="schedule"
-                itinerary
-                showDescription
-                showDay
-                listClass="chq-pub-schedule-list"
-                sectionClass="chq-pub-agenda-list-wrap chq-pub-schedule-day"
-                base={base}
-                groupByStart
-                breaks={props.breaksByDay?.get(day) ?? []}
-              />
+      <div class="chq-pub-schedule-layout">
+        <div class="chq-pub-schedule-col">
+          <div class="chq-pub-schedule-header">
+            <div>
+              <h1 class="chq-pub-surface-title">My schedule</h1>
+              <span id="chq-schedule-subtitle" class="chq-pub-schedule-subtitle">
+                0 saved · 0 overlaps
+              </span>
             </div>
-          ))}
-        </>
-      )}
+            {/* DEC-838: an out-link off this surface gets the shared accent-
+                bound class, same as the "Show more"/"Back to" links. */}
+            <a class="chq-pub-schedule-browse-link chq-pub-accent-link" href={sessionsPath}>
+              Browse all sessions ›
+            </a>
+          </div>
+          {byDay.size === 0 ? (
+            <p>No sessions scheduled yet.</p>
+          ) : (
+            <>
+              {props.items.length < props.total ? (
+                <p>
+                  Showing the first {props.items.length} of {props.total} scheduled sessions.
+                </p>
+              ) : null}
+              <p id="chq-schedule-empty" class="chq-pub-picks-empty" hidden>
+                You have not saved any sessions yet. Check "Save" on a session to add it here.
+              </p>
+              {days.map((day) => {
+                const sorted = [...(byDay.get(day) ?? [])].sort(
+                  (a, b) => a.startMin - b.startMin || a.submissionId.localeCompare(b.submissionId),
+                );
+                return (
+                  <div class="chq-pub-schedule-day-group" data-day={day} style="display:none">
+                    <div class="chq-pub-schedule-day-heading">
+                      <h2 class="chq-pub-section-title">{formatDay(day)}</h2>
+                      <span class="chq-pub-schedule-day-count">0</span>
+                    </div>
+                    {sorted.map((item) => (
+                      <ScheduleRow event={props.event} item={item} day={day} base={base} />
+                    ))}
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </div>
+        <ScheduleRail event={props.event} embed={props.embed} />
+      </div>
       <ItineraryScript eventSlug={props.event.slug} />
     </>
   );

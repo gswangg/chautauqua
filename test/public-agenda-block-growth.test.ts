@@ -110,7 +110,11 @@ describe("task-w1-e (DEC-768): day switcher survives a ?day= filtered view", () 
     expect(html).toContain('aria-current="page"');
   });
 
-  it("ScheduleContent also keeps the switcher on a filtered view", () => {
+  // task-w1-d (DEC-555 amendment): /schedule dropped the day-pill row
+  // entirely -- frame 10--12's day groups are headed by a plain <h2>, not a
+  // switcher, and every saved day renders in one page (the client-side
+  // filter decides what's visible, never a ?day= narrowing).
+  it("ScheduleContent renders no day switcher at all", () => {
     const items = [item({ submissionId: "s1", day: "2026-08-10" })];
     const html = String(
       ScheduleContent({
@@ -121,7 +125,6 @@ describe("task-w1-e (DEC-768): day switcher survives a ?day= filtered view", () 
         activeDay: "2026-08-10",
       }),
     );
-    expect(html).toContain("chq-pub-day-switcher");
-    expect(html).toContain('href="/e/ev/schedule?day=2026-08-11"');
+    expect(html).not.toContain("chq-pub-day-switcher");
   });
 });

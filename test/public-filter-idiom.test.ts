@@ -135,7 +135,7 @@ function searchForm(html: string): string {
 }
 
 describe("DEC-919: one filter idiom on every public surface", () => {
-  it("sessions, schedule and speakers all emit the same compact-input search-box markup (DEC-919 wave 40 amendment: visually-hidden label/button, one placeholder)", async () => {
+  it("sessions and speakers both emit the same compact-input search-box markup (DEC-919 wave 40 amendment: visually-hidden label/button, one placeholder)", async () => {
     installFakeCaches();
     const sessionsApp = buildSimpleApp([
       [EVENT_ROW], // getPublicEventBySlug
@@ -148,10 +148,6 @@ describe("DEC-919: one filter idiom on every public surface", () => {
     const sessionsHtml = await sessionsRes.text();
 
     installFakeCaches();
-    const scheduleRes = await buildScheduleApp().request("/e/conf/schedule", {}, TEST_ENV);
-    const scheduleHtml = await scheduleRes.text();
-
-    installFakeCaches();
     const speakersApp = buildSimpleApp([
       [EVENT_ROW], // getPublicEventBySlug
       [{ count: 0 }], // total
@@ -161,12 +157,15 @@ describe("DEC-919: one filter idiom on every public surface", () => {
     const speakersHtml = await speakersRes.text();
 
     const sessionsForm = searchForm(sessionsHtml);
-    const scheduleForm = searchForm(scheduleHtml);
     const speakersForm = searchForm(speakersHtml);
 
     // Same visually-hidden label, same compact input shape, same
     // visually-hidden button text, everywhere (DEC-919 wave 40 amendment).
-    for (const form of [sessionsForm, scheduleForm, speakersForm]) {
+    // task-w1-d (DEC-555 amendment): /schedule dropped its search form
+    // entirely (frame 10--12 carries none), so it's no longer part of this
+    // comparison -- see public-agenda-geometry.test.ts for that surface's
+    // own "dropped control" coverage.
+    for (const form of [sessionsForm, speakersForm]) {
       expect(form).toContain('<label class="chq-visually-hidden" for="chq-pub-search-q">Search</label>');
       expect(form).toContain('<input class="chq-pub-search" id="chq-pub-search-q" type="search" name="q"');
       expect(form).toContain('placeholder="Search"');
@@ -174,34 +173,6 @@ describe("DEC-919: one filter idiom on every public surface", () => {
       // DEC-919: the old speakers-only "Search by name" label is gone.
       expect(form).not.toContain("Search by name");
     }
-  });
-
-  // DEC-851 (wave 64 amendment) supersedes this describe's original DEC-919
-  // claim for /schedule specifically: track is a render-level HIGHLIGHT on
-  // /agenda and /schedule now, never a pill-bar filter — the <select> half
-  // of the old ItinerarySearchForm is back (a different control than the
-  // pre-DEC-919 <select>, but a real select nonetheless), and no
-  // .chq-pub-filter-bar/.chq-pub-pill renders for track on these two
-  // surfaces at all.
-  it("/e/:slug/schedule renders a track-highlight <select> with its active value selected (no pill-bar narrowing)", async () => {
-    installFakeCaches();
-    const res = await buildScheduleApp().request("/e/conf/schedule?trackId=trk-a", {}, TEST_ENV);
-    const html = await res.text();
-    expect(html).not.toContain('class="chq-pub-filter-bar"');
-    expect(html).not.toContain('class="chq-pub-pill"');
-    expect(html).toContain('<select class="chq-pub-select" id="chq-pub-highlight-track" name="trackId"');
-    expect(html).toContain('<option value="trk-a" selected="">Track A</option>');
-  });
-
-  it("picking a track on /schedule preserves ?day= and ?q= as hidden fields on the highlight form, and on the Clear link", async () => {
-    installFakeCaches();
-    const res = await buildScheduleApp().request("/e/conf/schedule?day=2026-08-10&q=keynote&trackId=trk-a", {}, TEST_ENV);
-    const html = await res.text();
-    const formMatch = html.match(/<form class="chq-pub-track-highlight"[^>]*>[\s\S]*?<\/form>/);
-    expect(formMatch).not.toBeNull();
-    expect(formMatch![0]).toContain('<input type="hidden" name="day" value="2026-08-10"/>');
-    expect(formMatch![0]).toContain('<input type="hidden" name="q" value="keynote"/>');
-    expect(html).toContain('class="chq-pub-select-clear" href="/e/conf/schedule?day=2026-08-10&amp;q=keynote">Clear</a>');
   });
 });
 

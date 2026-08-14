@@ -70,42 +70,36 @@ describe("DEC-584 (wave 64 amendment): AgendaDayGrid time-row sequence replaces 
   });
 });
 
-describe("DEC-602 (EMB-09 w2): /schedule renders the list at every width, never the grid", () => {
+// task-w1-d (DEC-555 amendment, wave 1): /schedule rebuilt to frame 10--12
+// -- the saved-sessions list (Remove, never Save/Saved -- every row here IS
+// a saved session once revealed) + rail, never the day-grid or the phone
+// list AgendaItemList renders for /agenda.
+describe("DEC-602/DEC-555 (task w1-d): /schedule renders its OWN saved-list markup, never the grid or the day-list", () => {
   it("ScheduleContent's HTML contains no .chq-pub-agenda-day grid markup", () => {
     const html = String(ScheduleContent({ event: EVENT, items: ITEMS, total: ITEMS.length }));
     expect(html).not.toContain('class="chq-pub-agenda-day"');
     expect(html).not.toContain("chq-pub-agenda-desktop");
-    expect(html).toContain("chq-pub-schedule-list");
+    expect(html).toContain("chq-pub-schedule-row");
   });
 
-  it("a schedule card carries TrackChips, title, description, full day + start-end time, room, and speaker company", () => {
+  it("a schedule row carries title, full day, start-end time, room, and speaker name", () => {
     const html = String(ScheduleContent({ event: EVENT, items: ITEMS, total: ITEMS.length }));
-    expect(html).toContain("Track One");
     expect(html).toContain("Opening Talk");
-    expect(html).toContain("A long-form description of the opening talk.");
-    // full day text (formatDay output) alongside the start-end time
+    // full day text (formatDay output) is on the day-group heading
     expect(html).toMatch(/Mon, Aug 10/);
     expect(html).toContain("8:00 AM");
     expect(html).toContain("9:30 AM");
     expect(html).toContain("Alpha Hall");
     expect(html).toContain("Ada");
-    expect(html).toContain("Engineer, Acme");
   });
 
-  it("a schedule card still carries the itinerary checkbox, now naming its Save/Saved state", () => {
+  it("a schedule row carries the itinerary checkbox, labelled Remove", () => {
     const html = String(ScheduleContent({ event: EVENT, items: ITEMS, total: ITEMS.length }));
     expect(html).toContain('class="chq-itinerary-toggle" value="s1"');
-    expect(html).toContain('class="chq-pub-save-off"');
-    expect(html).toContain('class="chq-pub-save-on"');
-    expect(html).toContain("Saved");
-    expect(html).not.toContain("Add to itinerary");
+    expect(html).toContain('<label class="chq-pub-schedule-remove">');
+    expect(html).toContain("Remove");
   });
 
-  // w69-d (DEC-584 amendment): unlike AgendaContent, ScheduleContent's Save
-  // toggle and ItineraryScript are NOT gated on !embed -- /schedule renders
-  // its own inline count and .ics link rather than relying on the rail
-  // (task note: "Do NOT change ScheduleContent"), so /embed/:slug/schedule
-  // keeps both at every width.
   it("/embed carries the itinerary toggle and its script too (unlike /agenda)", () => {
     const html = String(ScheduleContent({ event: EVENT, items: ITEMS, total: ITEMS.length, embed: true }));
     expect(html).toContain('class="chq-itinerary-toggle" value="s1"');
@@ -113,27 +107,28 @@ describe("DEC-602 (EMB-09 w2): /schedule renders the list at every width, never 
   });
 });
 
-describe("DEC-602 (EMB-10 w1): 'Show only my picks' toggle scaffolding", () => {
-  it("renders the toggle, a live count span, and an honest empty state (hidden by default)", () => {
+describe("task-w1-d (DEC-555 amendment): the saved-only view + honest empty state", () => {
+  it("renders every candidate row hidden by default, a subtitle placeholder, and an honest empty state (hidden by default)", () => {
     const html = String(ScheduleContent({ event: EVENT, items: ITEMS, total: ITEMS.length }));
-    expect(html).toContain('id="chq-picks-only"');
-    expect(html).toContain("Show only my picks");
-    expect(html).toContain('id="chq-picks-only-count"');
-    expect(html).toMatch(/id="chq-picks-empty"[^>]*hidden/);
+    expect(html).toContain('id="chq-schedule-subtitle"');
+    expect(html).toContain("0 saved · 0 overlaps");
+    expect(html).toMatch(/id="chq-schedule-empty"[^>]*hidden/);
+    expect(html).toMatch(/class="chq-pub-schedule-row"[^>]*style="display:none"/);
   });
 
-  it("does not render the picks-only filter control on /agenda (that toggle is /schedule's alone)", () => {
-    const html = String(AgendaContent({ event: EVENT, items: ITEMS, total: ITEMS.length }));
-    // DEC-683 amendment (wave 67-d): AgendaContent now DOES emit
-    // ItineraryScript so its Save/Saved toggles actually persist, and that
-    // one shared script body mentions the picks-only ids it drives on
-    // /schedule (getElementById returns null here -- a no-op). So assert on
-    // the CONTROL's own markup, never a bare substring of the script.
-    // (Not the label's copy: ItineraryScript's inlined source carries that
-    // phrase in a source comment, so only the markup is a sound signal.)
+  it("does not render the dropped day-pill row, picks-only checkbox or highlight control on /schedule", () => {
+    const html = String(ScheduleContent({ event: EVENT, items: ITEMS, total: ITEMS.length }));
+    expect(html).not.toContain("chq-pub-day-switcher");
     expect(html).not.toContain('id="chq-picks-only"');
-    expect(html).not.toContain('id="chq-picks-only-count"');
-    expect(html).not.toContain("chq-pub-picks-toggle");
-    expect(html).not.toContain('id="chq-picks-empty"');
+    expect(html).not.toContain('id="chq-pub-highlight-track"');
+  });
+
+  it("/agenda never renders any .chq-pub-schedule-row element (that markup is /schedule's alone)", () => {
+    const html = String(AgendaContent({ event: EVENT, items: ITEMS, total: ITEMS.length }));
+    // The shared ItineraryScript's inlined source mentions the selector as a
+    // no-op query (getElementsByClassName returns empty here), so assert on
+    // the ELEMENT markup, never a bare substring of the script.
+    expect(html).not.toContain('class="chq-pub-schedule-row"');
+    expect(html).not.toContain('id="chq-schedule-empty"');
   });
 });
