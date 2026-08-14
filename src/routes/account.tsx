@@ -24,6 +24,7 @@ import { ThemeStyles } from "../views/theme";
 import { AUTH_CSS } from "./auth.css";
 import { MIN_PASSWORD_LENGTH, AUTH_RATE_LIMIT_WINDOW_SECONDS, AUTH_RATE_LIMIT_MAX, RATE_LIMIT_ERROR } from "./auth";
 import { peekScopedLimit, incrementScopedLimit, resetScopedLimit } from "../server/repo/rate-limit";
+import { revokeResetTokenForUser, type KVStore } from "../auth/password-reset";
 import { DEC_740, DEC_994, DEC_180 } from "../decisions";
 
 void DEC_180;
@@ -218,6 +219,15 @@ accountRoutes.post("/account/password", requireAuthOr302, csrfForm, async (c) =>
   }
 
   await resetScopedLimit(db, "password-change", auth.userId, rateLimitNow, AUTH_RATE_LIMIT_WINDOW_SECONDS);
+
+  // DEC-949 (wave 27 amendment, wired per wave 29): userId is already known
+  // (live session), so revoke any outstanding reset grant BEFORE writing the
+  // new password — if the write then fails, the worst case is a legitimate
+  // link killed early (self-service, instantly re-requestable via /forgot),
+  // never a live takeover link surviving a successful change. Not
+  // best-effort: a KV error propagates.
+  const kv = c.env.KV as unknown as KVStore;
+  await revokeResetTokenForUser(kv, auth.userId);
 
   const passwordHash = await hashPassword(next);
   const now = new Date();
