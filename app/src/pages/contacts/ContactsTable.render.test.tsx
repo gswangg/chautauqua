@@ -76,15 +76,18 @@ describe('ContactsTable render (eval-findings 45+55, DEC-738/DEC-726)', () => {
     expect(screen.queryByLabelText('Segment filter')).not.toBeInTheDocument();
   });
 
-  it('renders one uppercase small-caps chip per label for a contact with two custom fields', () => {
+  // DEC-738 amendment (wave 4): the LABELS cell prints the server-formatted
+  // strings as plain small-caps meta joined by ' - ' -- no bordered-chip
+  // chrome, no per-label list item.
+  it('renders labels as plain small-caps meta joined by \' - \', no chip chrome', () => {
     renderTable();
-    expect(screen.getByText('role speaker')).toBeInTheDocument();
-    expect(screen.getByText('tshirt L')).toBeInTheDocument();
+    expect(screen.getByText('role speaker - tshirt L')).toBeInTheDocument();
+    expect(document.querySelector('.chq-contacts-label-chip')).not.toBeInTheDocument();
   });
 
-  it("renders a chip reading the formatted '`key` `value`' string rather than a bare value", () => {
+  it("renders the formatted '`key` `value`' string rather than a bare value", () => {
     renderTable();
-    expect(screen.getByText('role speaker')).toBeInTheDocument();
+    expect(screen.getByText('role speaker - tshirt L')).toBeInTheDocument();
     expect(screen.queryByText('speaker')).not.toBeInTheDocument();
   });
 
@@ -93,5 +96,19 @@ describe('ContactsTable render (eval-findings 45+55, DEC-738/DEC-726)', () => {
     const openButtons = screen.getAllByRole('button', { name: 'Open' });
     expect(openButtons).toHaveLength(2);
     expect(screen.queryByText(/Add to event/)).not.toBeInTheDocument();
+  });
+
+  // DEC-711 amendment (wave 4): the pager states the matching count as one
+  // left-hand group; Previous/Next sit together on the right.
+  it('groups the "Showing" count on the left and Previous/Next together on the right', () => {
+    renderTable();
+    const pager = document.querySelector('.chq-pager')!;
+    const children = Array.from(pager.children);
+    expect(children).toHaveLength(2);
+    expect(children[0]!.textContent).toMatch(/^Showing/);
+    const nav = children[1]!;
+    expect(nav.className).toContain('chq-contacts-pager-nav');
+    const navButtons = Array.from(nav.querySelectorAll('button')).map((b) => b.textContent);
+    expect(navButtons).toEqual(['Previous', 'Next']);
   });
 });

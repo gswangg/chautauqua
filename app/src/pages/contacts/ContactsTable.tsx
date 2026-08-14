@@ -112,17 +112,13 @@ export function ContactsTable({
                   </div>
                 </td>
                 <td>
-                  {c.labels.length > 0 ? (
-                    <ul className="chq-contacts-label-chips">
-                      {c.labels.map((label) => (
-                        <li key={label} className="chq-contacts-label-chip">
-                          {label}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <span className="chq-meta">—</span>
-                  )}
+                  {/* DEC-738 amendment (wave 4): the server-formatted `key
+                      value` strings render as plain small-caps meta, joined
+                      by ' - ' — the bordered-chip chrome is gone, no
+                      formatting logic moves to the client. */}
+                  <span className="chq-meta chq-contacts-labels-meta">
+                    {c.labels.length > 0 ? c.labels.join(' - ') : '—'}
+                  </span>
                 </td>
                 <td>
                   <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => onOpenContact(c.id)}>
@@ -134,21 +130,28 @@ export function ContactsTable({
         </tbody>
       </table>
 
+      {/* DEC-711 amendment (wave 4): "Showing 1-25 of 39" sits as one
+          left-hand group; [Previous][Next] sit together on the right — the
+          shared .chq-pager's justify-content:space-between (styles.css)
+          spreads these two DOM children (span, then the nav group) to the
+          row's ends without any pager-specific CSS change. */}
       <div className="chq-pager">
-        <button type="button" className="chq-btn chq-btn-secondary" disabled={page <= 1} onClick={() => onChangePage(page - 1)}>
-          Previous
-        </button>
         <span>
           Showing {items.length === 0 ? 0 : (page - 1) * perPage + 1}&ndash;{(page - 1) * perPage + items.length} of {total}
         </span>
-        <button
-          type="button"
-          className="chq-btn chq-btn-secondary"
-          disabled={page * perPage >= total}
-          onClick={() => onChangePage(page + 1)}
-        >
-          Next
-        </button>
+        <div className="chq-contacts-pager-nav">
+          <button type="button" className="chq-btn chq-btn-secondary" disabled={page <= 1} onClick={() => onChangePage(page - 1)}>
+            Previous
+          </button>
+          <button
+            type="button"
+            className="chq-btn chq-btn-secondary"
+            disabled={page * perPage >= total}
+            onClick={() => onChangePage(page + 1)}
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
   );

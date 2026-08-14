@@ -181,15 +181,20 @@ describe('ContactsApp render smoke: two-column directory architecture (DEC-710/D
     // summary and the rail sections remain.
     expect(screen.queryByText('Total contacts')).not.toBeInTheDocument();
     expect(screen.queryByText('Returning speakers')).not.toBeInTheDocument();
-    // DEC-809: the headline states every figure GET /contacts/stats
-    // computes, not just total/speakerCount/duplicateCount.
-    expect(
-      screen.getByText('2 people · 1 speaker · 1 returning speaker · 1 event · 1 possible duplicate'),
-    ).toBeInTheDocument();
+    // DEC-711 amendment (wave 4): the headline falls to THREE clauses --
+    // people, speakers, possible duplicates -- dropping returningSpeakers
+    // and eventCount (a "0 returning speakers" clause reads as a defect).
+    expect(screen.getByText('2 people · 1 speaker · 1 possible duplicate')).toBeInTheDocument();
 
     // Tab chips carry counts.
     expect(screen.getByRole('tab', { name: 'Duplicates · 1' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Segments · 1' })).toBeInTheDocument();
+
+    // DEC-711 amendment (wave 4): the action cluster orders
+    // Import / Export / New.
+    const actions = document.querySelector('.chq-contacts-title-actions')!;
+    const labels = Array.from(actions.children).map((el) => el.textContent);
+    expect(labels).toEqual(['Import CSV', 'Export CSV', 'New contact']);
   });
 
   it('round-trips the active tab through ?tab= URL state (DEC-710)', async () => {

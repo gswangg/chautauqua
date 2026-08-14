@@ -108,9 +108,8 @@ describe('ContactsApp render smoke: directory tab', () => {
     });
 
     // Stable markers: title summary + rail "Where they work" + directory rows.
-    expect(
-      screen.getByText('2 people · 1 speaker · 1 returning speaker · 1 event · 1 possible duplicate'),
-    ).toBeInTheDocument();
+    // DEC-711 amendment (wave 4): the summary states three clauses.
+    expect(screen.getByText('2 people · 1 speaker · 1 possible duplicate')).toBeInTheDocument();
     expect(screen.getByText('Where they work')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Acme' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ada Lovelace' })).toBeInTheDocument();
