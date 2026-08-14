@@ -5,6 +5,7 @@ import { chunk, contactRecord, submissionRecord, runAirtableSync, MAX_SYNC_ROWS,
 import { formatRef } from "../src/domain/ids";
 import * as schema from "../src/db/schema";
 import type { Db } from "../src/server/context";
+import { patchContact } from "../src/server/repo/contacts/crud";
 
 const NOW = new Date("2027-01-01T00:00:00.000Z");
 
@@ -288,8 +289,15 @@ create table contact (
   first_name text,
   last_name text,
   email text,
+  phone text,
   company text,
   title text,
+  bio text,
+  headshot_url text,
+  social_links_json text,
+  notes text,
+  custom_fields_json text,
+  external_ref text,
   created_at integer,
   updated_at integer
 );
@@ -426,6 +434,51 @@ describe("runAirtableSync incremental watermark (DEC-725)", () => {
     expect(r).toEqual({ contacts: 1, submissions: 0 });
     const body = patch.find((p) => p.table === "Contacts")!.body as { records: Array<{ fields: { ChautauquaId: string } }> };
     expect(body.records.map((rec) => rec.fields.ChautauquaId)).toEqual(["c1"]);
+  });
+
+  // DEC-725 (wave-32 amendment): a rename that lands entirely on `contact`
+  // (never touching the submission row directly) must still re-select the
+  // submission on the next incremental tick, via touchSubmissionsForContacts
+  // (src/server/repo/submissions/touch.ts) wired into the real patchContact
+  // writer -- not a hand-simulated `update submission set updated_at=...`.
+  it("renaming a contact (patchContact) re-enters the watermark set on the next tick with the NEW Speakers string", async () => {
+    const { db, sqlite } = makeTestDb();
+    seedOrgEventContact(sqlite, 1_000);
+    sqlite.exec(`
+      insert into submission (id, event_id, seq, title, status, created_at, updated_at)
+        values ('sub-1', 'event-1', 1, 'Talk', 'accepted', 1000, 1000);
+      insert into contact (id, org_id, first_name, last_name, email, created_at, updated_at)
+        values ('c1', 'org-1', 'Original', 'Speaker', 'c1@x.com', 1000, 1000);
+      insert into participant (id, submission_id, contact_id, "order", invite_status, created_at, updated_at)
+        values ('p1', 'sub-1', 'c1', 0, 'accepted', 1000, 1000);
+    `);
+    const kv = makeFakeKv();
+    const env: AirtableSyncEnv = { AIRTABLE_TOKEN: "t", AIRTABLE_BASE_ID: "b", AIRTABLE_ORG_ID: "org-1", KV: kv };
+
+    // First tick: full push, sets the watermark. sub-1 pushed with the
+    // ORIGINAL Speakers string.
+    const patch1: Array<{ table: string; body: unknown }> = [];
+    await runAirtableSync(env, db, fakeFetchCollecting(patch1), new Date(2_000), noSleep);
+    const firstBody = patch1.find((p) => p.table === "Submissions")!.body as {
+      records: Array<{ fields: { ChautauquaId: string; Speakers: string } }>;
+    };
+    expect(firstBody.records.find((r) => r.fields.ChautauquaId === "sub-1")!.fields.Speakers).toBe("Original Speaker");
+
+    // Rename the contact through the real repo writer -- this is what must
+    // bump submission.updated_at so the next tick re-selects sub-1.
+    await patchContact(db, "c1", { firstName: "Renamed" });
+
+    const patch2: Array<{ table: string; body: unknown }> = [];
+    const r2 = await runAirtableSync(env, db, fakeFetchCollecting(patch2), new Date(3_000), noSleep);
+    // The renamed contact itself is also picked up (its own updated_at
+    // changed) -- this test's point is that sub-1 is picked up TOO, via
+    // touchSubmissionsForContacts.
+    expect(r2).toEqual({ contacts: 1, submissions: 1 });
+    const secondBody = patch2.find((p) => p.table === "Submissions")!.body as {
+      records: Array<{ fields: { ChautauquaId: string; Speakers: string } }>;
+    };
+    expect(secondBody.records.map((r) => r.fields.ChautauquaId)).toEqual(["sub-1"]);
+    expect(secondBody.records[0]!.fields.Speakers).toBe("Renamed Speaker");
   });
 
   it("no KV means every tick is a full push (no watermark to read or write)", async () => {

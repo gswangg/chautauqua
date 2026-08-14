@@ -353,9 +353,11 @@ export async function updateTrack(
     })
     .where(eq(schema.track.id, trackId));
 
-  // DEC-725 amendment: track.name feeds the pushed Tracks cell — bump every
-  // submission assigned to this track so a rename reaches Airtable.
-  if (input.name !== undefined) {
+  // DEC-725 (wave-32 amendment): the track name is serialized into every
+  // submission's pushed Tracks cell — bump dependent submissions only when
+  // the name actually changed (a color-only edit is a no-op), mirroring
+  // DEC-519's same-string no-op rule.
+  if (input.name !== undefined && input.name !== existing.name) {
     await touchSubmissionsForTracks(db, [trackId], now);
   }
 

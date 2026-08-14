@@ -285,17 +285,19 @@ export async function saveSubmissionEdits(
   if (Object.keys(contactUpdate).length > 0) {
     contactUpdate.updatedAt = now;
     await db.update(schema.contact).set(contactUpdate).where(eq(schema.contact.id, contactId));
-    // DEC-725 amendment: firstName/lastName/title/company feed the pushed
-    // Speakers cell (or its attribution) — bump every submission this
-    // contact participates in when any of them actually changed.
-    if (
-      contactUpdate.firstName !== undefined ||
-      contactUpdate.lastName !== undefined ||
-      contactUpdate.title !== undefined ||
-      contactUpdate.company !== undefined
-    ) {
-      await touchSubmissionsForContacts(db, [contactId], now);
-    }
+  }
+  // DEC-725 (wave-32 amendment): the submission row being edited is already
+  // unconditionally touched above, but a speaker's name change is a
+  // CONTACT-level rename that also shows up in every OTHER submission this
+  // contact presents on (co-presented talks, other tracks/events) — those
+  // are never touched by the plain submission UPDATE above. Bump only when
+  // the name actually changed, mirroring DEC-519's same-string no-op rule.
+  if (
+    contactBefore &&
+    ((contactUpdate.firstName !== undefined && contactUpdate.firstName !== contactBefore.firstName) ||
+      (contactUpdate.lastName !== undefined && contactUpdate.lastName !== contactBefore.lastName))
+  ) {
+    await touchSubmissionsForContacts(db, [contactId], now);
   }
 
   if (before) {

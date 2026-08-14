@@ -39,6 +39,23 @@
 //   - src/server/repo/overview.ts's producer awaiting-approval worklist,
 //     which orders by `desc(submission.updatedAt)` so a session whose
 //     speaker list just changed moves back to the top.
+//
+// DEC-725 amendment (wave 32): the same watermark blind spot exists one hop
+// further up the graph — org-level renames. src/sync/airtable.ts builds the
+// Speakers cell from `contact.firstName/lastName` and the Tracks cell from
+// `track.name`, but renaming a contact or a track only ever bumped that
+// contact's/track's own row, never the submission rows whose pushed shape
+// embeds the old string. touchSubmissionsForContacts / touchSubmissionsFor-
+// Tracks close that gap: callers pass the contact/track id(s) whose NAME
+// just changed (never headshot/notes/other non-serialized fields — see
+// DEC-519's same-string no-op precedent at src/routes/api/events.ts) and
+// this touches every submission that currently embeds that name. DEC-725's
+// wave-32 amendment is explicit about the SHAPE: the dependent submission
+// ids are resolved BY SUBQUERY inside one chunked set-based UPDATE per chunk
+// ("never a read-then-loop, so a 200-row CSV rename stays one statement per
+// chunk") — not by a SELECT round trip whose ids are then fed back into a
+// second UPDATE. And still never an EXISTS predicate in airtable.ts itself
+// (same DELETE-blindness argument as above).
 
 import { inArray } from "drizzle-orm";
 import type { Db } from "../../context";

@@ -187,14 +187,13 @@ async function flushContactUpdates(db: Db, rows: ContactCommitRow[]): Promise<vo
           updatedAt: sql`excluded.updated_at`,
         },
       });
-    // DEC-725 amendment: an import row may rename firstName/lastName/title/
-    // company on an EXISTING contact — bump every submission the whole
-    // chunk's contacts participate in so the rename reaches Airtable.
-    await touchSubmissionsForContacts(
-      db,
-      chunk.map((r) => r.id),
-      new Date(),
-    );
+    // DEC-725 (wave-32 amendment): the dependent-submission touch is NOT done
+    // here. This flush sees only the post-patch rows, so it cannot tell a real
+    // rename from a same-name re-import, and touching the whole chunk would
+    // make every 200-row CSV re-import reorder the producer's awaiting-approval
+    // worklist (src/server/repo/overview.ts orders by desc(updatedAt)). The
+    // caller compares pre- and post-values and passes only genuinely renamed
+    // contact ids to touchSubmissionsForContacts.
   }
 }
 
@@ -344,12 +343,28 @@ export async function applyImportRows(
 
   const createRows: ContactCommitRow[] = [];
   const updateRows: ContactCommitRow[] = [];
+  // DEC-725 (wave-32 amendment): compare each UPDATE row's final (net, after
+  // any within-file duplicate-email patches collapse onto it) name against
+  // the ORIGINAL pre-import row — never against an intermediate in-memory
+  // patch — so a name change only touches dependent submissions when the
+  // string actually differs from what airtable.ts already pushed, and a
+  // company/title/phone/bio/custom-fields-only row never touches.
+  const renamedContactIds: string[] = [];
   for (const [id, row] of pendingById) {
-    (newIds.has(id) ? createRows : updateRows).push(row);
+    if (newIds.has(id)) {
+      createRows.push(row);
+      continue;
+    }
+    updateRows.push(row);
+    const original = existingById.get(id);
+    if (original && (original.firstName !== row.firstName || original.lastName !== row.lastName)) {
+      renamedContactIds.push(id);
+    }
   }
   if (createRows.length > 0) await flushContactCreates(db, createRows);
   if (updateRows.length > 0) await flushContactUpdates(db, updateRows);
   if (attributionUpdates.length > 0) await backfillNullAttributionMany(db, attributionUpdates);
+  if (renamedContactIds.length > 0) await touchSubmissionsForContacts(db, renamedContactIds, now);
 
   return { created, updated, skipped, contactIds };
 }

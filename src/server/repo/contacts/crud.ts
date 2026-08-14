@@ -107,11 +107,21 @@ export async function createContact(db: Db, orgId: string, input: ContactInput):
  * same-contact re-save of its own address is never mistaken for a
  * conflict. */
 export async function patchContact(db: Db, id: string, patch: ContactPatch): Promise<ContactRow> {
-  if (patch.email !== undefined) {
-    const current = await findContactById(db, id);
+  // DEC-725 (wave-32 amendment): fetch the pre-patch name whenever the
+  // patch touches it, so the write below can bump dependent submissions
+  // only when the serialized string actually changes (never for an
+  // email/phone/company/notes/headshot-only patch) — mirrors DEC-519's
+  // same-string no-op rule. Reuses the existing pre-patch fetch that email
+  // conflict checking already needs, so no duplicate read is added for the
+  // common (email-editing) case.
+  let current: ContactRow | null = null;
+  if (patch.email !== undefined || patch.firstName !== undefined || patch.lastName !== undefined) {
+    current = await findContactById(db, id);
     if (!current) throw new Error(`contact ${id} not found`);
+  }
+  if (patch.email !== undefined) {
     const newEmailLower = patch.email.toLowerCase();
-    if (newEmailLower !== current.email.toLowerCase()) {
+    if (newEmailLower !== current!.email.toLowerCase()) {
       const conflicting = await db
         .select({ id: schema.user.id, contactId: schema.user.contactId })
         .from(schema.user)
@@ -140,14 +150,18 @@ export async function patchContact(db: Db, id: string, patch: ContactPatch): Pro
       updatedAt: patchedAt,
     })
     .where(eq(schema.contact.id, id));
-  // DEC-725 amendment: firstName/lastName/title/company feed the pushed
-  // Speakers cell (or its attribution) — bump every submission this contact
-  // participates in so a rename re-selects them on the next Airtable tick.
+  // DEC-725 (wave-32 amendment): only firstName/lastName feed the SUBMISSION's
+  // pushed Speakers cell — src/sync/airtable.ts builds it from
+  // `${firstName} ${lastName}` alone; company/title are cells on the contact's
+  // OWN pushed record, so patching them does not change any submission's
+  // serialized shape. And because src/server/repo/overview.ts orders the
+  // producer worklist by desc(submission.updatedAt), the touch must fire only
+  // when the name string ACTUALLY changed (DEC-519's same-string no-op rule) —
+  // a same-name resave must not reorder the producer's worklist.
   if (
-    patch.firstName !== undefined ||
-    patch.lastName !== undefined ||
-    patch.title !== undefined ||
-    patch.company !== undefined
+    current &&
+    ((patch.firstName !== undefined && patch.firstName !== current.firstName) ||
+      (patch.lastName !== undefined && patch.lastName !== current.lastName))
   ) {
     await touchSubmissionsForContacts(db, [id], patchedAt);
   }

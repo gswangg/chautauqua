@@ -32,29 +32,36 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   SIDE IS NOT A BOUND ON THE READ SIDE; A SHARED COMPONENT WITH ONLY ITS
   OWN TEST AS CONSUMER MARKS THE SHAPE NOBODY BUILT. Amendments
   DEC-124/958/745/653/897/793/575/657/180/949/974/874.
-- FINDINGS w31 (compacted; MANDATE ESSENTIALLY EXHAUSTED, ~30 items
-  re-verified closed, do NOT re-file from eval-findings.md without opening
-  it). TAKEN (verified open then): read-side filter strings unbounded
-  (parseListQuery/parseContactListQuery/?rules=) while writes have DEC-417;
-  email-log ?status=/breaks ?day= unvalidated into SQL; /docs/api
-  hand-maintained no enumerator; README claims MIT no LICENSE file. Shapes:
-  AN UNVALIDATED FILTER IS A CONFIDENT WRONG ANSWER; A HAND-MAINTAINED
-  PUBLIC CLAIM NEEDS AN ENUMERATOR NOT TRUST; reuse test/pubcache-purge
-  -classification.test.ts's resolver, never re-parse.
-- FINDINGS w32. Mandate + v2/v9 design handoff re-probed AT THE FILE: everything
-  I could test by grep is CLOSED (body-limit Content-Length gate DEC-020 w30,
-  embed option bounds + cross-event trackId, Retry-After clamp, atomic login
-  limiter, assertOwnAssignmentOr403 typed catch, portal replace-chain CNT-04,
-  conditional CFP visibility, duplicate-at-create DEC-788, .ics/xml in
-  EMBED_FORMATS, seed<->fixtures binding, CI, LICENSE, scheduled-tick
-  isolation, completed<=assigned). Do NOT re-file without opening the file.
-- THE TREE MOVES UNDER YOU MID-PLAN: parseBoundedIdArray gained its dedupe
-  between two of my own greps -- re-verify a finding IMMEDIATELY before filing.
-  TAKEN w32 (verified open): bulk-email.ts:40 discards parseBoundedIdArray's
-  RESULT then re-reads the raw body (DEC-182 w30 half-landed); DEC-725's w30
-  contact/track-rename touch is a decision with no code. Shapes: A PARSE CALL
-  WHOSE RESULT IS DISCARDED IS NOT A PARSE; AN AMENDMENT WITHOUT A CALL SITE IS
-  AN OPEN ITEM -- grep each amendment for the call sites it names; A GUARD'S
-  NAME IN A SCAN IS NOT A REFUSAL AT RUNTIME (probe was GET+anon-only 14 waves);
-  A SECOND READER BOUNDS A STAMP (submission.updated_at also orders the
-  producer worklist -- touch only when the serialized string changed).
+- FINDINGS w31-32 (compacted; MANDATE ~EXHAUSTED, re-verified closed each
+  wave, do NOT re-file without opening eval-findings.md): filter strings,
+  email-log validation, /docs/api enumerator, LICENSE, body-limit gate,
+  embed bounds, Retry-After clamp, login limiter, assertOwnAssignmentOr403,
+  CFP visibility, duplicate-at-create, EMBED_FORMATS, seed<->fixtures, CI,
+  scheduled-tick isolation. TAKEN w32: bulk-email.ts:40 discards
+  parseBoundedIdArray's result then re-reads raw body; DEC-725's w30
+  rename-touch was a decision with no code. Shapes: AN UNVALIDATED FILTER IS
+  A CONFIDENT WRONG ANSWER; A PARSE CALL WHOSE RESULT IS DISCARDED IS NOT A
+  PARSE; AN AMENDMENT WITHOUT A CALL SITE IS AN OPEN ITEM; A SECOND READER
+  BOUNDS A STAMP; THE TREE MOVES UNDER YOU MID-PLAN -- re-verify immediately.
+- FINDINGS w33. Re-probed the mandate + all 8 review-lens items AT THE FILE: every one
+  is CLOSED except bulk-email.ts:40, which still discards parseBoundedIdArray's result
+  and re-reads the raw body at :60 -- that is OWNED BY task-w32-a (branch exists,
+  unmerged at plan time). NEXT PLANNER: confirm it landed before re-filing. Also
+  re-verified closed, do NOT re-file: LICENSE, email-log ?status=, README credential
+  enumerator (DEC-513), CSV formula injection (DEC-179), pubcache purge classification
+  (DEC-627), reminder dedupe window, aria-pressed (DEC-939), Venue label, criteria-row
+  6th track, Distribute copy, password-reset flow, home hub (DEC-581/582), CI perf
+  smoke. `npm run deploy` absent is BY DESIGN (README lists wrangler deploy as stage 2).
+- TAKEN w33 (verified open at the file): Airtable's watermark stores the tick's own
+  START and reads with strict gt(), so a row committing after the SELECT with an
+  earlier updated_at is lost forever; DEC-725's stamp fires on non-changes (import
+  re-upload, colour-only track patch, bio-only profile save) while overview.ts:284 is
+  desc(updated_at) LIMIT 5, so a bulk import EVICTS real work from Overview;
+  ContactStats computes eventCount/returningSpeakers that no surface renders.
+- Shapes: A WATERMARK THAT STORES ITS OWN START LOSES ANY WRITE WHOSE TIMESTAMP
+  PRECEDES ITS COMMIT -- read back, stamp forward. A STAMP FIRED ON A NON-CHANGE IS A
+  WORKLIST EVICTION, NOT A NO-OP -- grep the stamp's second reader for a LIMIT. A
+  FIGURE COMPUTED FOR NOBODY IS A HOT-ROUTE TAX -- enumerate endpoint field ->
+  rendering consumer. THE DECISIONS' OWN PATH REFERENCES ARE A CHEAP DRIFT DETECTOR:
+  a file split leaves prose pointing at a deleted path, and an exemption belongs in
+  the prose, not in an allowlist nobody opens.
