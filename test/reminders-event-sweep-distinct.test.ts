@@ -36,7 +36,7 @@ describe("listEventIdsWithOutstandingAssignments (DEC-537)", () => {
       },
     } as unknown as Db;
 
-    const ids = await listEventIdsWithOutstandingAssignments(db);
+    const ids = await listEventIdsWithOutstandingAssignments(db, new Date());
 
     expect(selectDistinctCalled).toBe(true);
     expect(selectCalled).toBe(false);
@@ -49,7 +49,7 @@ describe("listEventIdsWithOutstandingAssignments (DEC-537)", () => {
       selectDistinct: () => makeChain([{ eventId: "ev-1" }, { eventId: "ev-1" }, { eventId: "ev-2" }]),
     } as unknown as Db;
 
-    const ids = await listEventIdsWithOutstandingAssignments(db);
+    const ids = await listEventIdsWithOutstandingAssignments(db, new Date());
 
     // Correctness of the dedupe now belongs to the DB (DISTINCT), which
     // this fake doesn't simulate — the function itself must pass rows

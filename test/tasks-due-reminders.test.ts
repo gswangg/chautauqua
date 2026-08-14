@@ -42,6 +42,7 @@ interface OutstandingRowShape {
   eventId: string;
   eventName: string;
   timezone: string;
+  eventEndDate: string;
   assignmentCreatedAt: Date;
 }
 
@@ -107,6 +108,7 @@ describe("sendDueRemindersForEvent (DEC-023 due-date cron path, invoked per-even
         eventId: "event_1",
         eventName: "DevFlow Conf 2027",
         timezone: "America/Los_Angeles",
+        eventEndDate: "2027-12-31",
         assignmentCreatedAt: new Date(NOW.getTime() - 200 * HOUR),
       },
     ];
@@ -138,6 +140,7 @@ describe("sendDueRemindersForEvent (DEC-023 due-date cron path, invoked per-even
         eventId: "event_1",
         eventName: "DevFlow Conf 2027",
         timezone: "America/Los_Angeles",
+        eventEndDate: "2027-12-31",
         assignmentCreatedAt: new Date(NOW.getTime() - 200 * HOUR),
       },
     ];

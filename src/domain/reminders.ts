@@ -8,6 +8,12 @@ import { formatCalendarDate } from "../lib/event-time";
 const DUE_WINDOW_MS = 72 * 60 * 60 * 1000; // 72h
 const DEDUPE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
 
+// DEC-023 (wave-58 amendment): the cron's automatic reminder gate has a
+// terminal tail -- an assignment more than 7 days past its due date stops
+// being nagged forever. planManualReminders (the organizer's explicit
+// "remind now" action) deliberately does NOT observe this tail.
+export const REMINDER_OVERDUE_TAIL_MS = 7 * 24 * 60 * 60 * 1000;
+
 // DEC-319: manual "remind now" batches are capped and de-duped separately
 // from the cron's DUE_WINDOW/DEDUPE_WINDOW gate above.
 export const MAX_REMINDER_BATCH = 100;
@@ -30,6 +36,7 @@ export interface ReminderAssignment {
 export interface PlanRemindersInput {
   assignments: ReminderAssignment[];
   now: number;
+  eventEndsAt: number | null;
 }
 
 export interface ReminderGroup {
@@ -69,10 +76,17 @@ export interface PlanRemindersResult {
 }
 
 /** True when an assignment is incomplete AND (overdue OR due within 72h) AND
- * (never reminded OR last reminded more than 24h ago) — DEC-023. */
-export function isReminderDue(a: ReminderAssignment, now: number): boolean {
+ * (never reminded OR last reminded more than 24h ago) — DEC-023. Also
+ * terminal: never fires once the owning event has ended, or once the
+ * assignment is more than REMINDER_OVERDUE_TAIL_MS past its due date --
+ * wave-58 amendment, stops the forever drip on an incomplete task nobody
+ * ever completes. */
+export function isReminderDue(a: ReminderAssignment, now: number, eventEndsAt: number | null): boolean {
   if (a.status === "complete") return false;
   if (a.dueDate === null) return false;
+
+  if (eventEndsAt !== null && now > eventEndsAt) return false;
+  if (now > a.dueDate + REMINDER_OVERDUE_TAIL_MS) return false;
 
   const isOverdueOrSoon = a.dueDate <= now + DUE_WINDOW_MS;
   if (!isOverdueOrSoon) return false;
@@ -88,7 +102,7 @@ export function isReminderDue(a: ReminderAssignment, now: number): boolean {
 export function planReminders(input: PlanRemindersInput): PlanRemindersResult {
   const byContact = new Map<string, ReminderAssignment[]>();
   for (const a of input.assignments) {
-    if (!isReminderDue(a, input.now)) continue;
+    if (!isReminderDue(a, input.now, input.eventEndsAt)) continue;
     const arr = byContact.get(a.contactId) ?? [];
     arr.push(a);
     byContact.set(a.contactId, arr);

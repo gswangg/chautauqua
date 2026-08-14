@@ -45,6 +45,7 @@ interface OutstandingRowShape {
   eventId: string;
   eventName: string;
   timezone: string;
+  eventEndDate: string;
   assignmentCreatedAt: Date;
 }
 
@@ -113,6 +114,7 @@ describe("sendDueRemindersForEvent (DEC-238 class 1 cron, partial mailer failure
         eventId: "event_1",
         eventName: "DevFlow Conf 2027",
         timezone: "America/Los_Angeles",
+        eventEndDate: "2027-12-31",
         assignmentCreatedAt: new Date(0),
       },
       {
@@ -129,6 +131,7 @@ describe("sendDueRemindersForEvent (DEC-238 class 1 cron, partial mailer failure
         eventId: "event_1",
         eventName: "DevFlow Conf 2027",
         timezone: "America/Los_Angeles",
+        eventEndDate: "2027-12-31",
         assignmentCreatedAt: new Date(0),
       },
     ];

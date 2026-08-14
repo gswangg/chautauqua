@@ -537,7 +537,7 @@ export async function runDueReminders(env: Bindings): Promise<void> {
   const now = new Date();
   const kv = env.KV as unknown as KVStore;
   const origin = resolveBaseUrlForCron(env);
-  const eventIds = await listEventIdsWithOutstandingAssignments(db);
+  const eventIds = await listEventIdsWithOutstandingAssignments(db, now);
   // DEC-946: per-event isolation stays (DEC-238 class 1) — one bad event
   // must not cost the others their sends — but a swallowed failure here
   // made src/server/scheduled.ts's aggregate-rethrow dead code, since this
