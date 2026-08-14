@@ -65,6 +65,11 @@ vi.mock("../src/server/repo/tasks", async () => {
       perPage: 50,
       counts: { speakers: 0, outstandingRequired: 0, overdue: 0, outstandingContacts: 0 },
     })),
+    // DEC-754 (wave 38 amendment): this suite exercises DEC-120's org-scope
+    // check only -- the roster resolver is mocked to treat every id it's
+    // asked about as ON the roster, so it never masks or interferes with
+    // the org-scope assertions below.
+    filterRosterContactIds: vi.fn(async (_db: unknown, _eventId: string, contactIds: string[]) => new Set(contactIds)),
   };
 });
 

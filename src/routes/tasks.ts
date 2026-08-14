@@ -15,7 +15,7 @@ import { requireOrganizer, csrfJson } from "../server/middleware";
 import { ApiError, parseBoundedIdArray, readOptionalJsonBody } from "../server/http";
 import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { isEpochMs } from "./api/validators"; // DEC-517/DEC-527
-import { DEC_120, DEC_124, DEC_214, DEC_240, DEC_291, DEC_398 } from "../decisions";
+import { DEC_120, DEC_124, DEC_214, DEC_240, DEC_291, DEC_398, DEC_754 } from "../decisions";
 import { FILE_KINDS, isValidFileKind, type FileKind } from "../domain/files";
 import { findFormById } from "../server/repo/forms";
 import {
@@ -23,6 +23,7 @@ import {
   countTaskDeleteImpact,
   createTask,
   deleteTask,
+  filterRosterContactIds,
   getAssignmentOwnership,
   getAssignmentResponseDetail,
   getEventOrgId,
@@ -48,6 +49,9 @@ import { countOf } from "../domain/count-copy";
 // DEC-120: task-assign contact org-scoping is referenced below so this
 // dependency is compile-checked (see decisions.ts).
 void DEC_120;
+// DEC-754 (wave 38 amendment): task assign must range over the event
+// roster (filterRosterContactIds below), not just org membership.
+void DEC_754;
 // DEC-214: speaker-side kind gates on PATCH /api/v1/task-assignments/:id,
 // referenced below so this dependency is compile-checked (see decisions.ts).
 void DEC_214;
@@ -425,6 +429,24 @@ taskRoutes.post("/tasks/:id/assign", requireOrganizer, csrfJson, async (c) => {
     throw new ApiError("invalid", "One or more contacts do not belong to this org", {
       contactIds: `unknown ids: ${missing.join(", ")}`,
     });
+  }
+
+  // DEC-754 amendment (wave 38): assignment ranges over the event ROSTER,
+  // not just org membership -- a contact must be a participant on an
+  // accepted submission of THIS event, matching the grid's base row
+  // predicate (rosterParticipantExistsForContact) and both reminder paths
+  // (chaseableContactExists), so a successful assign never mints a
+  // task_assignment row the grid can't show and no reminder path can chase.
+  const rosterIds = await filterRosterContactIds(c.var.db, ownership.eventId, dedupedContactIds);
+  const notOnRoster = dedupedContactIds.filter((id) => !rosterIds.has(id));
+  if (notOnRoster.length > 0) {
+    throw new ApiError(
+      "invalid",
+      "One or more contacts are not on this event's roster",
+      {
+        contactIds: `not on this event's roster: ${notOnRoster.join(", ")} (the contact must be a participant on an accepted submission of this event -- accept their submission, or add them as a participant first)`,
+      },
+    );
   }
 
   await assignTask(c.var.db, taskId, dedupedContactIds);
