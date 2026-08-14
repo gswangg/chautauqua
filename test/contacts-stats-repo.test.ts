@@ -13,7 +13,8 @@ import type { Db } from "../src/server/context";
 type Marker =
   | { __marker: "eq"; col: unknown; val: unknown }
   | { __marker: "and"; conds: unknown[] }
-  | { __marker: "desc"; of: unknown };
+  | { __marker: "desc"; of: unknown }
+  | { __marker: "inArray"; col: unknown; vals: unknown[] };
 
 type SqlMarker = { __sqlMarker: true; strings: string[]; exprs: unknown[] };
 
@@ -24,6 +25,7 @@ vi.mock("drizzle-orm", async (importOriginal) => {
     eq: (col: unknown, val: unknown): Marker => ({ __marker: "eq", col, val }),
     and: (...conds: unknown[]): Marker => ({ __marker: "and", conds }),
     desc: (of: unknown): Marker => ({ __marker: "desc", of }),
+    inArray: (col: unknown, vals: unknown[]): Marker => ({ __marker: "inArray", col, vals }),
     sql: (strings: TemplateStringsArray, ...exprs: unknown[]): SqlMarker => ({
       __sqlMarker: true,
       strings: Array.from(strings),
@@ -70,6 +72,7 @@ function evalWhereCond(cond: unknown, rec: Rec): boolean {
   const m = cond as Marker;
   if (m.__marker === "eq") return resolveVal(m.col, rec) === m.val;
   if (m.__marker === "and") return m.conds.every((c) => evalWhereCond(c, rec));
+  if (m.__marker === "inArray") return m.vals.includes(resolveVal(m.col, rec));
   throw new Error(`fake db: unsupported where condition ${JSON.stringify(cond)}`);
 }
 
@@ -233,12 +236,39 @@ function seed() {
       { id: "sub-3", eventId: "event-1" },
     ],
     participant: [
-      // c-returning participates in two distinct events -> counts once.
-      { id: "p1", submissionId: "sub-1", contactId: "c-returning" },
-      { id: "p2", submissionId: "sub-2", contactId: "c-returning" },
+      // c-returning participates in two distinct events as an active
+      // speaker -> counts once.
+      { id: "p1", submissionId: "sub-1", contactId: "c-returning", role: "speaker", inviteStatus: "accepted" },
+      { id: "p2", submissionId: "sub-2", contactId: "c-returning", role: "speaker", inviteStatus: "accepted" },
       // c-single participates in exactly one event -> does not count.
-      { id: "p3", submissionId: "sub-3", contactId: "c-single" },
+      { id: "p3", submissionId: "sub-3", contactId: "c-single", role: "speaker", inviteStatus: "accepted" },
       // c-none has zero participant rows -> does not count.
+    ],
+  };
+}
+
+// wave-21 amendment coverage: returningSpeakers shares speakerCount's
+// predicate (role='speaker' AND inviteStatus active) and is scoped to THIS
+// org's own events via the event join, not just contact.orgId. Each case
+// seeds ONLY the control (an active speaker on two org-1 events, who always
+// counts) plus one contact under test, so the assertion isolates that one
+// contact's effect on the returningSpeakers count.
+function seedControlPlus(caseContact: { id: string }, caseParticipants: Record<string, unknown>[], caseSubmissions: Record<string, unknown>[], extraEvents: Record<string, unknown>[] = []) {
+  return {
+    contact: [
+      { id: "c-control", orgId: "org-1", company: null, email: "control@example.com", firstName: "Cara", lastName: "Control" },
+      { id: caseContact.id, orgId: "org-1", company: null, email: `${caseContact.id}@example.com`, firstName: "Case", lastName: caseContact.id },
+    ],
+    event: [{ id: "event-1", orgId: "org-1" }, { id: "event-2", orgId: "org-1" }, ...extraEvents],
+    submission: [
+      { id: "sub-control-1", eventId: "event-1" },
+      { id: "sub-control-2", eventId: "event-2" },
+      ...caseSubmissions,
+    ],
+    participant: [
+      { id: "p-control-1", submissionId: "sub-control-1", contactId: "c-control", role: "speaker", inviteStatus: "accepted" },
+      { id: "p-control-2", submissionId: "sub-control-2", contactId: "c-control", role: "speaker", inviteStatus: "accepted" },
+      ...caseParticipants,
     ],
   };
 }
@@ -290,5 +320,94 @@ describe("getContactStats (DEC-432 SQL-side returningSpeakers)", () => {
     const companyOrderBy = orderByArgsBySelectIndex[4]!;
     expect(companyOrderBy).toHaveLength(2);
     expect((companyOrderBy[0] as Marker).__marker).toBe("desc");
+  });
+});
+
+describe("getContactStats (wave-21 amendment: returningSpeakers shares speakerCount's manners)", () => {
+  it("excludes a non-speaker (e.g. moderator) participant on two events", async () => {
+    const seed = seedControlPlus(
+      { id: "c-nonspeaker" },
+      [
+        { id: "p-case-1", submissionId: "sub-case-1", contactId: "c-nonspeaker", role: "moderator", inviteStatus: "accepted" },
+        { id: "p-case-2", submissionId: "sub-case-2", contactId: "c-nonspeaker", role: "moderator", inviteStatus: "accepted" },
+      ],
+      [
+        { id: "sub-case-1", eventId: "event-1" },
+        { id: "sub-case-2", eventId: "event-2" },
+      ],
+    );
+    const stats = await getContactStats(makeDb(seed), "org-1");
+    expect(stats.returningSpeakers).toBe(1); // only c-control
+  });
+
+  it("counts an active-invite speaker on two org-1 events", async () => {
+    const seed = seedControlPlus(
+      { id: "c-speaker" },
+      [
+        { id: "p-case-1", submissionId: "sub-case-1", contactId: "c-speaker", role: "speaker", inviteStatus: "accepted" },
+        { id: "p-case-2", submissionId: "sub-case-2", contactId: "c-speaker", role: "speaker", inviteStatus: "none" },
+      ],
+      [
+        { id: "sub-case-1", eventId: "event-1" },
+        { id: "sub-case-2", eventId: "event-2" },
+      ],
+    );
+    const stats = await getContactStats(makeDb(seed), "org-1");
+    expect(stats.returningSpeakers).toBe(2); // c-control + c-speaker
+  });
+
+  it("does not count a speaker on only one event", async () => {
+    const seed = seedControlPlus(
+      { id: "c-single-speaker" },
+      [{ id: "p-case-1", submissionId: "sub-case-1", contactId: "c-single-speaker", role: "speaker", inviteStatus: "accepted" }],
+      [{ id: "sub-case-1", eventId: "event-1" }],
+    );
+    const stats = await getContactStats(makeDb(seed), "org-1");
+    expect(stats.returningSpeakers).toBe(1); // only c-control
+  });
+
+  it("excludes a speaker whose invite_status is 'declined' on two events", async () => {
+    const seed = seedControlPlus(
+      { id: "c-declined" },
+      [
+        { id: "p-case-1", submissionId: "sub-case-1", contactId: "c-declined", role: "speaker", inviteStatus: "declined" },
+        { id: "p-case-2", submissionId: "sub-case-2", contactId: "c-declined", role: "speaker", inviteStatus: "declined" },
+      ],
+      [
+        { id: "sub-case-1", eventId: "event-1" },
+        { id: "sub-case-2", eventId: "event-2" },
+      ],
+    );
+    const stats = await getContactStats(makeDb(seed), "org-1");
+    expect(stats.returningSpeakers).toBe(1); // only c-control
+  });
+
+  it("excludes a speaker whose second participation is on another org's event", async () => {
+    const seed = seedControlPlus(
+      { id: "c-otherorg" },
+      [
+        { id: "p-case-1", submissionId: "sub-case-1", contactId: "c-otherorg", role: "speaker", inviteStatus: "accepted" },
+        { id: "p-case-2", submissionId: "sub-case-2", contactId: "c-otherorg", role: "speaker", inviteStatus: "accepted" },
+      ],
+      [
+        { id: "sub-case-1", eventId: "event-1" },
+        { id: "sub-case-2", eventId: "event-3" }, // event-3 belongs to org-2
+      ],
+      [{ id: "event-3", orgId: "org-2" }],
+    );
+    const stats = await getContactStats(makeDb(seed), "org-1");
+    expect(stats.returningSpeakers).toBe(1); // only c-control (org-1's own two events)
+  });
+
+  it("computes speakerCount with the identical shared predicate as returningSpeakers", async () => {
+    const seed = seedControlPlus(
+      { id: "c-nonspeaker" },
+      [{ id: "p-case-1", submissionId: "sub-case-1", contactId: "c-nonspeaker", role: "moderator", inviteStatus: "accepted" }],
+      [{ id: "sub-case-1", eventId: "event-1" }],
+    );
+    const stats = await getContactStats(makeDb(seed), "org-1");
+    // Only c-control (active speaker) counts toward speakerCount; the
+    // moderator does not, mirroring returningSpeakers' exclusion above.
+    expect(stats.speakerCount).toBe(1);
   });
 });
