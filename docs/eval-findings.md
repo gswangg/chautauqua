@@ -56,6 +56,17 @@ agenda ≤700px, 390 plan editor) resumes ONLY after the desktop gate: fleet-cle
 eval composite at target. Mobile-additive-reflow scan-lock stays in force for anything
 already landed.
 
+## DELTA PROBE 2 (2026-08-14 ~wave 29, snapshot 0bb56c9c) — landed v9 batch VERIFIED LIVE
+
+Measured at 1440 on a fresh snapshot: **SESSION DETAILS section live** on submission
+detail (section + PARTICIPANT table + Edit tracks) · **public-pages Change gate GONE**
+(read rows carry View | Embed code, no Change) · **B3 speaker detail live**
+(/admin/speakers/:contactId with SESSIONS/TASKS/FILES) · **files library FIXED** ("21
+files · 9.0 KB" — the 0-count regression dead — plus scoped "Download all") · **public
+speaker bios render** (EMB-05 live). Reviews expansion: implemented with the band grid
+(DEC-632/633), toggle labelled "Reviews (n)" — FIDELITY NIT for the fleet: frame copy is
+"3 reviews" / "2 reviews · 1 recusal" as the disclosure text.
+
 ## EVAL GAP AUDIT (2026-08-14 afternoon) — every non-529 point loss mapped; GAPS FOUND
 
 Full mining of the authoritative runs (gate-4 full run + ABS/AIA re-measure + SPK run 9),
