@@ -17,9 +17,10 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { Hono } from "hono";
 import type { AppEnv } from "../src/server/env";
-import { ROUTE_GROUPS, PUBLIC_ROUTE_GROUPS } from "../src/routes/docs";
+import { ROUTE_GROUPS, PUBLIC_ROUTE_GROUPS, docsRoutes } from "../src/routes/docs";
 import { publicRoutes } from "../src/routes/public";
 import { publicSubmitRoutes } from "../src/routes/public/submit";
+import { rootRoutes } from "../src/routes/root";
 
 const INDEX_PATH = resolve(fileURLToPath(import.meta.url), "../../src/index.ts");
 const INDEX_DIR = dirname(INDEX_PATH);
@@ -170,12 +171,27 @@ describe("docs.tsx ROUTE_GROUPS vs the real mounted /api/v1 routes (derived from
 });
 
 describe("docs.tsx PUBLIC_ROUTE_GROUPS vs the real mounted public GET routes", () => {
-  // src/index.ts mounts both of these at "/" (app.route("/", publicRoutes)
-  // and app.route("/", publicSubmitRoutes)) — mirror that here so the diff
-  // below sees the exact same route table the running server does.
+  // src/index.ts mounts all four of these at "/" (app.route("/",
+  // publicRoutes), app.route("/", publicSubmitRoutes), app.route("/",
+  // docsRoutes), app.route("/", rootRoutes)) — mirror that here so the diff
+  // below sees the exact same route table the running server does. rootRoutes
+  // and docsRoutes carry the instance's own public surfaces (GET / and GET
+  // /docs/api) plus the non-public /admin and /admin/* shell routes, which
+  // are excluded below by name (DEC-056 amendment, wave 71).
   const app = new Hono<AppEnv>();
   app.route("/", publicRoutes);
   app.route("/", publicSubmitRoutes);
+  app.route("/", docsRoutes);
+  app.route("/", rootRoutes);
+
+  // The only two registered GETs on rootRoutes/docsRoutes that are NOT
+  // public, no-login surfaces: the admin SPA shell (auth-gated, redirects
+  // anonymous/speaker callers away) and its catch-all. Length is asserted
+  // below so a third entry can't be slipped in silently.
+  const NON_PUBLIC = new Set(["GET /admin", "GET /admin/*"]);
+  if (NON_PUBLIC.size !== 2) {
+    throw new Error(`NON_PUBLIC exclusion list must contain exactly 2 entries, got ${NON_PUBLIC.size}`);
+  }
 
   /** publicRoutes uses a Hono regex param constraint (e.g.
    * `:surface{[a-z]+\.json}`) for the .json/.xml feed twins so they win the
@@ -197,12 +213,13 @@ describe("docs.tsx PUBLIC_ROUTE_GROUPS vs the real mounted public GET routes", (
   // chromeless embed surfaces it redirects into are already documented.
   const EXCLUDED_UNDOCUMENTED = new Set(["GET /embed/:eventSlug"]);
 
-  it("documents every real public GET (nothing registered is missing from the table)", () => {
+  it("documents every real public GET (nothing registered is missing from the table, or is a named non-public exclusion)", () => {
     const actual = new Set(
       app.routes
         .filter((r) => r.method === "GET")
         .map((r) => `GET ${normalizePublicPath(r.path)}`)
-        .filter((r) => !EXCLUDED_UNDOCUMENTED.has(r)),
+        .filter((r) => !EXCLUDED_UNDOCUMENTED.has(r))
+        .filter((r) => !NON_PUBLIC.has(r)),
     );
     const documented = new Set(PUBLIC_ROUTE_GROUPS.flatMap((g) => g.rows).map((r) => `${r.method} ${r.path}`));
 
@@ -218,5 +235,9 @@ describe("docs.tsx PUBLIC_ROUTE_GROUPS vs the real mounted public GET routes", (
 
     const stale = [...documented].filter((r) => !actual.has(r));
     expect(stale).toEqual([]);
+  });
+
+  it("NON_PUBLIC contains only /admin and /admin/* (no third entry slipped in)", () => {
+    expect([...NON_PUBLIC].sort()).toEqual(["GET /admin", "GET /admin/*"]);
   });
 });

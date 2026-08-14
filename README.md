@@ -21,7 +21,8 @@ event (*DevFlow Conf 2027*). Sign in at [/login](https://chautauqua.cc/login):
 | Reviewer | `sbek-reviewer@example.com` | `SbekTest!2027-rev` | `/admin` (review queue) |
 | Speaker | `sbek-speaker@example.com` | `SbekTest!2027-spk` | `/portal` |
 
-No login needed for the public surfaces: [CFP form](https://chautauqua.cc/submit/devflow-conf-2027) ·
+No login needed for the public surfaces: [event hub](https://chautauqua.cc/) ·
+[CFP form](https://chautauqua.cc/submit/devflow-conf-2027) ·
 [sessions](https://chautauqua.cc/e/devflow-conf-2027/sessions) ·
 [speakers](https://chautauqua.cc/e/devflow-conf-2027/speakers) ·
 [agenda](https://chautauqua.cc/e/devflow-conf-2027/agenda) ·
@@ -182,12 +183,15 @@ else in the document is machine-checked — read it, don't just trust the badge.
 | Admin SPA (organizer/reviewer console) | `/admin` |
 | Login | `/login` |
 | Speaker portal | `/portal` |
+| Public event hub (instance landing page) | `/` |
 | Public CFP submission form | `/submit/<event-slug>` |
 | Public sessions list | `/e/<event-slug>/sessions` |
 | Public speakers list | `/e/<event-slug>/speakers` |
 | Public agenda (day grid) | `/e/<event-slug>/agenda` |
 | Public schedule (personal itinerary + calendar export) | `/e/<event-slug>/schedule` |
 | Calendar export (.ics) | `/e/<event-slug>/schedule.ics` |
+| Whole-agenda calendar feed (.ics) | `/e/<event-slug>/agenda.ics` |
+| Printable programme (print-first, all days) | `/e/<event-slug>/programme` |
 | Public speaker gallery | `/e/<event-slug>/gallery` |
 | Embeddable widget (any surface, chromeless) | `/embed/<event-slug>/<surface>` |
 | Dev mailbox (dev-only email sink — every sent email, including CFP confirmation and onboarding-task reminder emails, is viewable here) | `/dev/mailbox` |

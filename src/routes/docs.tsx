@@ -305,6 +305,17 @@ export const ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
 // would go stale here.
 export const PUBLIC_ROUTE_GROUPS: { title: string; rows: Row[] }[] = [
   {
+    title: "Instance home & docs",
+    rows: [
+      {
+        method: "GET",
+        path: "/",
+        role: "public event hub — the org's events grouped by open CFP / published programme / past; signed-in users are redirected to /admin or /portal",
+      },
+      { method: "GET", path: "/docs/api", role: "this page" },
+    ],
+  },
+  {
     title: "Public event surfaces (HTML)",
     rows: [
       { method: "GET", path: "/e/:eventSlug", role: "public (redirects to /e/:eventSlug/sessions)" },
