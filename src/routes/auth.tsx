@@ -9,7 +9,7 @@ import { csrfForm, csrfFormOrHeader } from "../server/middleware";
 import { ApiError } from "../server/http";
 import * as schema from "../db/schema";
 import { newId } from "../domain/ids";
-import { hashPassword, verifyPassword } from "../auth/password";
+import { DUMMY_PASSWORD_HASH, hashPassword, verifyPassword } from "../auth/password";
 import { hashToken } from "../auth/tokens";
 import { issueSession } from "../server/auth-session";
 import { DEC_994 } from "../decisions";
@@ -350,7 +350,11 @@ authRoutes.post("/login", csrfForm, async (c) => {
 
   const rows = await db.select().from(schema.user).where(eq(schema.user.email, email)).limit(1);
   const user = rows[0];
-  if (!user || !(await verifyPassword(password, user.passwordHash))) {
+  // DEC-004 (wave 58 amendment): always run exactly one derivation, whether
+  // or not the email matched a user, so an unknown email pays the same
+  // PBKDF2 cost as a known one — closing the login timing oracle.
+  const passwordOk = await verifyPassword(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
+  if (!user || !passwordOk) {
     await incrementScopedLimit(db, "login-user", email, loginNow, {
       windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
       max: AUTH_RATE_LIMIT_MAX,
