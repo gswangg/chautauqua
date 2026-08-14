@@ -578,6 +578,15 @@
   overflow-wrap: anywhere;
 }
 
+/* DEC-920: a 'file'-kind answer renders as a filename link followed by its
+   size. The size is a muted annotation, subordinate to the link it trails --
+   it never competes with the filename for the eye. */
+.chq-answer-file-size {
+  font-size: 13px;
+  color: var(--chq-muted);
+  white-space: nowrap;
+}
+
 /* Phone frame (DEC-385): single 700px switch. 900px above stays the
    intermediate one-column collapse; this block layers phone-only
    metrics on top of it. */

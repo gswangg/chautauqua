@@ -164,12 +164,14 @@ describe("POST /api/v1/events/:eventId/submissions — trackIds + format (DEC-75
       [], // participants
       [{ trackId: "t1" }, { trackId: "t2" }], // tracks
       [{ formFieldId: SESSION_FORMAT_FIELD_ID, valueJson: JSON.stringify("Workshop") }], // answers
+      [], // answer files (DEC-920)
       // --- reload GET ---
       [{ eventId: "event-1", orgId: ORG_A }], // getSubmissionOwnership
       [detailRow()], // getSubmissionDetail: submission+event
       [], // participants
       [{ trackId: "t1" }, { trackId: "t2" }], // tracks
       [{ formFieldId: SESSION_FORMAT_FIELD_ID, valueJson: JSON.stringify("Workshop") }], // answers
+      [], // answer files (DEC-920)
     ]);
 
     const app = appWithDbAndAuth(db, ORGANIZER_A);
