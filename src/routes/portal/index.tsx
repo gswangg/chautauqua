@@ -626,7 +626,7 @@ portalRoutes.post("/invitations/:participantId", csrfForm, async (c) => {
   }
 
   const nextStatus = nextInviteStatus(action as InviteAction);
-  await setInviteStatus(c.var.db, participantId, nextStatus);
+  await setInviteStatus(c.var.db, participantId, nextStatus, scope.submissionId);
 
   // DEC-278: accepting an invitation on a submission that is ALREADY
   // 'accepted' never re-fires updateSubmissionStatuses' fireAcceptance

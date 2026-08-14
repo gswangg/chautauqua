@@ -8,6 +8,7 @@ import type { Db } from "../context";
 import { newId } from "../../domain/ids";
 import { chunkRowsForInsert } from "../../lib/chunk";
 import { submissionSeqSubquery } from "./submissions/seq";
+import { touchSubmissions } from "./submissions/touch";
 import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, AnswerMap } from "../../forms/types";
 import { lockedFieldName, projectFieldForAnswers } from "../../forms/types";
 import { DEC_258, DEC_718 } from "../../decisions";
@@ -293,6 +294,12 @@ export async function createSubmissionTracks(
   await db.insert(schema.submissionTrack).values(
     trackIds.map((trackId) => ({ submissionId, trackId, createdAt: now })),
   );
+  // DEC-725 amendment: unlike replaceSubmissionTracks below, this writer is
+  // only ever called immediately after createSubmission (both the public
+  // CFP route and the organizer create route insert the tracks in the same
+  // request that just inserted the submission row itself) — the submission
+  // row's own INSERT already stamped updatedAt to `now` moments earlier, so
+  // there is no stale stamp to correct here. No touchSubmissions call.
 }
 
 /**
@@ -314,6 +321,12 @@ export async function replaceSubmissionTracks(
       trackIds.map((trackId) => ({ submissionId, trackId, createdAt: now })),
     );
   }
+  // DEC-725 amendment: touch even on a delete-to-empty-set — the touch-on-
+  // write shape must fire regardless of the resulting track count so a
+  // watermark tick sees the change (an EXISTS-over-submission_track
+  // predicate could not see a delete-with-nothing-reinserted at all — see
+  // submissions/touch.ts header).
+  await touchSubmissions(db, [submissionId], now);
 }
 
 /** Only custom (non-locked) fields get submission_answer rows — locked

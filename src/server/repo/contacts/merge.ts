@@ -22,6 +22,7 @@ import { toContactRecord, type ContactRow, MAX_CONTACT_DIRECTORY_SCAN } from "./
 import { buildMergeRepointOps, mergedPipelineStage, type PipelineStageLike } from "./query";
 import { newId } from "../../../domain/ids";
 import { DEC_479, DEC_770, DEC_992 } from "../../../decisions";
+import { touchSubmissions } from "../submissions/touch";
 
 void DEC_479;
 void DEC_770;
@@ -407,6 +408,17 @@ async function mergeOnePair(db: Db, keepId: string, mergeId: string): Promise<Co
   const dupeParticipantIds: string[] = [];
   const inviteStatusIdsByTarget = new Map<string, string[]>();
   const makeVisibleIds: string[] = [];
+  // DEC-725 amendment: every submission whose participant composition this
+  // merge touches (dedupe below, or the generic repoint at (f)) must have
+  // its updated_at bumped once, set-based, at the end of this function —
+  // see submissions/touch.ts header. mergeParticipants above is already the
+  // FULL set of participant rows for mergeId (fetched before either branch
+  // runs), so every submissionId in it is affected either way: a shared
+  // submission gets its kept row's status/visibility folded in and the
+  // dupe deleted (below), and a non-shared submission gets its row
+  // repointed onto keepId at (f) — reusing this set avoids a second SELECT
+  // (and the ordering that would otherwise put a query between (e) and (f)).
+  const affectedSubmissionIds = new Set(mergeParticipants.map((p) => p.submissionId));
   for (const mergeParticipant of mergeParticipants) {
     const keepParticipant = keepParticipantBySubmissionId.get(mergeParticipant.submissionId);
     if (!keepParticipant) continue;
@@ -502,7 +514,10 @@ async function mergeOnePair(db: Db, keepId: string, mergeId: string): Promise<Co
     await db.delete(schema.pipelineEntry).where(eq(schema.pipelineEntry.id, mergeEntry.id));
   }
 
-  // (f) Generic FK repoints (DEC-282, CONTACT_FK_TABLES).
+  // (f) Generic FK repoints (DEC-282, CONTACT_FK_TABLES). The participant
+  // rows repointed here are exactly mergeParticipants minus the deduped-away
+  // ids above — already covered by affectedSubmissionIds, built from the
+  // full mergeParticipants set before either branch ran (see comment above).
   const ops = buildMergeRepointOps(keepId, mergeId);
   for (const op of ops) {
     if (op.table === "participant") {
@@ -538,6 +553,10 @@ async function mergeOnePair(db: Db, keepId: string, mergeId: string): Promise<Co
   // contact in isolation -- delete it rather than repoint it onto keepId,
   // immediately before the contact delete it must precede.
   await deleteDismissalsForContact(db, mergeId);
+
+  // DEC-725 amendment: one set-based touch covering every submission whose
+  // Speakers cell composition this merge changed (dedupe (c) + repoint (f)).
+  await touchSubmissions(db, [...affectedSubmissionIds], new Date());
 
   // (g) Delete the merged contact row.
   await db.delete(schema.contact).where(eq(schema.contact.id, mergeId));

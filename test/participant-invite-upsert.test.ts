@@ -70,7 +70,16 @@ function makeFakeDb(opts: { onConflictDoNothingReturns?: Array<Record<string, un
         },
       };
     },
-    update() {
+    update(table: unknown) {
+      // DEC-725 amendment (wave 63): inviteParticipant now also bumps the
+      // owning submission's updated_at (see
+      // src/server/repo/submissions/touch.ts) — a deliberate second write,
+      // never against `participant` itself, so this fake db still throws
+      // for any update() against participant (the read-then-write it must
+      // never do) but allows the submission touch.
+      if (table === schema.submission) {
+        return { set: () => ({ where: () => Promise.resolve() }) };
+      }
       throw new Error("fake db: unexpected update() call — inviteParticipant must not read-then-write");
     },
     delete() {

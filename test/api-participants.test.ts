@@ -287,8 +287,11 @@ describe("PATCH /api/v1/submissions/:id/participants/:participantId (DEC-070 vis
       visible: false,
       inviteStatus: "invited",
     });
-    expect(updates).toHaveLength(1);
+    // DEC-725 amendment: one write to the participant row, one to the
+    // owning submission's updated_at (submissions/touch.ts).
+    expect(updates).toHaveLength(2);
     expect((updates[0] as any).visible).toBe(false);
+    expect((updates[1] as any).updatedAt).toBeInstanceOf(Date);
   });
 
   it("rejects a non-boolean visible field", async () => {
@@ -352,8 +355,11 @@ describe("PATCH /api/v1/submissions/:id/participants/:participantId (DEC-070 vis
     expect(res.status).toBe(200);
     const json = (await res.json()) as any;
     expect(json.inviteStatus).toBe("accepted");
-    expect(updates).toHaveLength(1);
+    // DEC-725 amendment: one write to the participant row, one to the
+    // owning submission's updated_at (submissions/touch.ts).
+    expect(updates).toHaveLength(2);
     expect((updates[0] as any).inviteStatus).toBe("accepted");
+    expect((updates[1] as any).updatedAt).toBeInstanceOf(Date);
   });
 
   it("rejects an inviteStatus outside the closed set with a loud 400 and writes nothing", async () => {

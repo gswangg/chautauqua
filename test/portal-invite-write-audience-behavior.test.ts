@@ -63,6 +63,9 @@ describe("addCoPresenter writes inviteStatus='invited' for an existing-contact m
           return { onConflictDoNothing: () => ({ returning: async () => [{ id: "participant-new" }] }) };
         },
       }),
+      // DEC-725 amendment: addCoPresenter now also bumps the owning
+      // submission's updated_at (submissions/touch.ts).
+      update: () => ({ set: () => ({ where: () => Promise.resolve() }) }),
     } as unknown as Db;
 
     const result = await addCoPresenter(db, {

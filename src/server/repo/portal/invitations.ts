@@ -5,6 +5,7 @@ import { and, eq } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
+import { touchSubmissions } from "../submissions/touch";
 
 export type InviteAction = "accept" | "decline";
 export type InviteStatus = "none" | "invited" | "accepted" | "declined";
@@ -64,6 +65,7 @@ export interface PortalParticipantScope {
   contactId: string;
   inviteStatus: string;
   orgId: string;
+  submissionId: string;
 }
 
 /** Ownership lookup for a single participant row, scoped to the caller's
@@ -75,6 +77,7 @@ export async function getParticipantScope(db: Db, participantId: string): Promis
       contactId: schema.participant.contactId,
       inviteStatus: schema.participant.inviteStatus,
       orgId: schema.event.orgId,
+      submissionId: schema.participant.submissionId,
     })
     .from(schema.participant)
     .innerJoin(schema.submission, eq(schema.participant.submissionId, schema.submission.id))
@@ -84,9 +87,25 @@ export async function getParticipantScope(db: Db, participantId: string): Promis
   return rows[0] ?? null;
 }
 
-export async function setInviteStatus(db: Db, participantId: string, status: "accepted" | "declined"): Promise<void> {
+/** `submissionId` is the participant's owning submission — the caller has
+ * already resolved this via getParticipantScope for its own scope check, so
+ * it's passed in rather than re-derived here (e.g. via `.returning()`),
+ * keeping this one write, not a write-plus-readback. DEC-725 amendment: the
+ * speaker's own accept/decline response changes which speakers the
+ * submission publishes (DEC-981: a declined co-presenter must never appear
+ * in the Speakers cell) — bump the owning submission's updatedAt alongside
+ * the participant row's. See ../submissions/touch.ts's header for the full
+ * dependency list. */
+export async function setInviteStatus(
+  db: Db,
+  participantId: string,
+  status: "accepted" | "declined",
+  submissionId: string,
+): Promise<void> {
+  const now = new Date();
   await db
     .update(schema.participant)
-    .set({ inviteStatus: status, updatedAt: new Date() })
+    .set({ inviteStatus: status, updatedAt: now })
     .where(eq(schema.participant.id, participantId));
+  await touchSubmissions(db, [submissionId], now);
 }
