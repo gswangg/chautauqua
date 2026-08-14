@@ -16,12 +16,14 @@ function fakeDb(seed: {
   task?: unknown[];
   contact?: unknown[];
   formField?: unknown[];
+  file?: unknown[];
 }) {
   const state = {
     taskAssignment: [...(seed.taskAssignment ?? [])] as any[],
     task: [...(seed.task ?? [])] as any[],
     contact: [...(seed.contact ?? [])] as any[],
     formField: [...(seed.formField ?? [])] as any[],
+    file: [...(seed.file ?? [])] as any[],
   };
 
   function stateArrayFor(table: unknown): any[] | undefined {
@@ -29,13 +31,25 @@ function fakeDb(seed: {
     if (table === schema.task) return state.task;
     if (table === schema.contact) return state.contact;
     if (table === schema.formField) return state.formField;
+    if (table === schema.file) return state.file;
     return undefined;
   }
 
-  function makeChain(rows: unknown[]) {
+  let fileSelectCount = 0;
+
+  function makeChain(rows: unknown[], table?: unknown) {
     const chain: any = {
       innerJoin: () => chain,
-      where: () => chain,
+      where: () => {
+        // The `file` batched lookup is the only caller of .where() on this
+        // fake that must actually filter (it drives the "one batched
+        // select" assertion below) — every other table's where() stays a
+        // no-op per the pre-existing convention in this file.
+        if (table === schema.file) {
+          fileSelectCount++;
+        }
+        return chain;
+      },
       limit: () => chain,
       // formField rows are pre-sorted by position in the seed, so a no-op
       // orderBy still yields deterministic field order for this test.
@@ -47,10 +61,10 @@ function fakeDb(seed: {
 
   const db = {
     select: (_cols?: unknown) => ({
-      from: (table: unknown) => makeChain([...(stateArrayFor(table) ?? [])]),
+      from: (table: unknown) => makeChain([...(stateArrayFor(table) ?? [])], table),
     }),
   };
-  return { db: db as unknown as Db };
+  return { db: db as unknown as Db, fileSelectCount: () => fileSelectCount };
 }
 
 const ASSIGNMENT_ID = "assignment-1";
@@ -136,5 +150,38 @@ describe("DEC-291 getAssignmentResponseDetail", () => {
     const { db } = fakeDb({ taskAssignment: [], task: [TASK_ROW], contact: [CONTACT_ROW], formField: [] });
     const detail = await getAssignmentResponseDetail(db, "does-not-exist");
     expect(detail).toBeNull();
+  });
+
+  it("DEC-248 amendment (wave 10): a file-kind field returns {id, filename} via one batched select", async () => {
+    const { db, fileSelectCount } = fakeDb({
+      taskAssignment: [baseTaskAssignmentRow(JSON.stringify({ "f-flight": "file-1", "f-notes": "text answer" }))],
+      task: [TASK_ROW],
+      contact: [CONTACT_ROW],
+      formField: [
+        fieldRow("f-flight", "Flight reimbursement form", "file", 0),
+        fieldRow("f-notes", "Notes", "text", 1),
+      ],
+      file: [{ id: "file-1", filename: "receipt.pdf" }],
+    });
+
+    const detail = await getAssignmentResponseDetail(db, ASSIGNMENT_ID);
+    expect(detail?.fields).toEqual([
+      { label: "Flight reimbursement form", value: "file-1", file: { id: "file-1", filename: "receipt.pdf" } },
+      { label: "Notes", value: "text answer" },
+    ]);
+    expect(fileSelectCount()).toBe(1);
+  });
+
+  it("a file id with no surviving row keeps today's plain string value", async () => {
+    const { db } = fakeDb({
+      taskAssignment: [baseTaskAssignmentRow(JSON.stringify({ "f-flight": "deleted-file" }))],
+      task: [TASK_ROW],
+      contact: [CONTACT_ROW],
+      formField: [fieldRow("f-flight", "Flight reimbursement form", "file", 0)],
+      file: [],
+    });
+
+    const detail = await getAssignmentResponseDetail(db, ASSIGNMENT_ID);
+    expect(detail?.fields).toEqual([{ label: "Flight reimbursement form", value: "deleted-file" }]);
   });
 });

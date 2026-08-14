@@ -200,6 +200,9 @@ describe("POST /portal/tasks/:assignmentId/form — DEC-040 file-kind fields", (
         filename: "receipt.pdf",
         previousFileId: null,
         uploadedByContactId: CONTACT_A,
+        // DEC-248 amendment (wave 10): links the file back to its assignment
+        // so getTaskFileScope can resolve the population and serve it.
+        taskAssignmentId: ASSIGNMENT_ID,
       }),
     );
     // exactly one r2 write for the one file field

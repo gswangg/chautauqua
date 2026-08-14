@@ -2,7 +2,7 @@
 // files.ts (contention decomposition) — no behavior change, files.ts
 // re-exports everything below for existing callers.
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { listPlansForEvent, isSubmissionInReviewerScope } from "./review";
@@ -257,16 +257,22 @@ export interface TaskFileScope {
 }
 
 /** Authz scope for GET /files/:fileId when the file is a task-assignment
- * upload: DEC-248 population is submissionId-null + referenced by
- * task_assignment.fileId, of ANY kind (not restricted to 'handout') —
- * reverse-joined via task_assignment.fileId -> its task -> event, for orgId.
- * Per DEC-549 the discriminator is the uploading task's deliverable_kind at
- * upload time: task.deliverable_kind NULL means the resulting file always
- * has submissionId null and is served here; task.deliverable_kind declared
+ * upload: DEC-248 population is submissionId-null + referenced by a
+ * task_assignment, of ANY kind (not restricted to 'handout'). Two disjoint
+ * links can name that task_assignment: the plain-upload path (~/upload)
+ * writes task_assignment.fileId pointing AT the file, while the kind='form'
+ * onboarding-field path (~/form, DEC-248 amendment wave 10) writes the
+ * file's own task_assignment_id pointing back at its assignment (the field
+ * answer only ever stores the file id inline in response_json, never a
+ * reverse-joinable column on task_assignment). Either link resolves the same
+ * assignment -> task -> event join for orgId. Per DEC-549 the discriminator
+ * for the ~/upload path is the uploading task's deliverable_kind at upload
+ * time: task.deliverable_kind NULL means the resulting file always has
+ * submissionId null and is served here; task.deliverable_kind declared
  * (non-null) means the file links to the uploader's submission and is a
  * disjoint population served through getFileScope, not here. Returns null
- * when no task_assignment row references the file (not this population) —
- * mirrors getResourceFileScope's disjointness with getFileScope. */
+ * when neither link resolves an assignment (not this population) — mirrors
+ * getResourceFileScope's disjointness with getFileScope. */
 export async function getTaskFileScope(db: Db, fileId: string): Promise<TaskFileScope | null> {
   const fileRows = await db
     .select({
@@ -277,6 +283,7 @@ export async function getTaskFileScope(db: Db, fileId: string): Promise<TaskFile
       contentType: schema.file.contentType,
       r2Key: schema.file.r2Key,
       uploadedByContactId: schema.file.uploadedByContactId,
+      taskAssignmentId: schema.file.taskAssignmentId,
     })
     .from(schema.file)
     .where(eq(schema.file.id, fileId))
@@ -292,7 +299,11 @@ export async function getTaskFileScope(db: Db, fileId: string): Promise<TaskFile
     .from(schema.taskAssignment)
     .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
     .innerJoin(schema.event, eq(schema.task.eventId, schema.event.id))
-    .where(eq(schema.taskAssignment.fileId, fileId))
+    .where(
+      fileRow.taskAssignmentId
+        ? or(eq(schema.taskAssignment.fileId, fileId), eq(schema.taskAssignment.id, fileRow.taskAssignmentId))
+        : eq(schema.taskAssignment.fileId, fileId),
+    )
     .limit(1);
   const assignmentRow = assignmentRows[0];
   if (!assignmentRow) return null;

@@ -144,6 +144,9 @@ export const DELIVERABLE_KINDS: readonly DeliverableKind[] = FILE_KINDS;
 export interface AssignmentResponseField {
   label: string;
   value: string;
+  // Present when this field's def kind is 'file' and the answer still names
+  // a surviving `file` row (DEC-248 amendment, wave 10).
+  file?: { id: string; filename: string };
 }
 
 export interface AssignmentResponseDetail {
