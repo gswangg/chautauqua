@@ -21,9 +21,14 @@ function wrapId(fieldId: string): string {
   return `chq-field-wrap-${fieldId}`;
 }
 
-function FieldControl(props: { field: FormFieldDef; value: unknown }) {
-  const { field, value } = props;
+function FieldControl(props: { field: FormFieldDef; value: unknown; error?: string }) {
+  const { field, value, error } = props;
   const name = fieldInputName(field.id);
+  // DEC-124: the no-red invalid vocabulary, applied by class name (defined
+  // once in src/routes/public/cfp.css.ts) plus a real aria-invalid attribute
+  // -- never a colour, and never re-invented per control kind.
+  const invalidClass = (base: string) => (error ? `${base} chq-field-invalid` : base);
+  const ariaInvalid = error ? "true" : undefined;
   switch (field.kind) {
     case "text":
       // DEC-986 (wave 40 amendment): the locked email field gets a real
@@ -31,13 +36,14 @@ function FieldControl(props: { field: FormFieldDef; value: unknown }) {
       return (
         <input
           type={lockedFieldName(field.id) === "email" ? "email" : "text"}
-          class="chq-input"
+          class={invalidClass("chq-input")}
           id={name}
           name={name}
           data-field-id={field.id}
           value={typeof value === "string" ? value : ""}
           required={field.required}
           data-required={field.required ? "true" : "false"}
+          aria-invalid={ariaInvalid}
         />
       );
     case "long_text":
@@ -47,13 +53,14 @@ function FieldControl(props: { field: FormFieldDef; value: unknown }) {
       // field keeps the browser's default textarea sizing.
       return (
         <textarea
-          class="chq-textarea"
+          class={invalidClass("chq-textarea")}
           id={name}
           name={name}
           data-field-id={field.id}
           required={field.required}
           data-required={field.required ? "true" : "false"}
           rows={lockedFieldName(field.id) === "description" ? 5 : undefined}
+          aria-invalid={ariaInvalid}
         >
           {typeof value === "string" ? value : ""}
         </textarea>
@@ -61,12 +68,13 @@ function FieldControl(props: { field: FormFieldDef; value: unknown }) {
     case "dropdown":
       return (
         <select
-          class="chq-select"
+          class={invalidClass("chq-select")}
           id={name}
           name={name}
           data-field-id={field.id}
           required={field.required}
           data-required={field.required ? "true" : "false"}
+          aria-invalid={ariaInvalid}
         >
           <option value="">Select…</option>
           {(field.options ?? []).map((opt) => (
@@ -143,7 +151,7 @@ export function FormField(props: { field: FormFieldDef; value: unknown; error?: 
             </span>
           ) : null}
         </span>
-        <FieldControl field={field} value={value} />
+        <FieldControl field={field} value={value} error={error} />
       </label>
       {field.helpText ? <p class="help">{field.helpText}</p> : null}
       {/* CFP file fields always upload as kind:'handout' (src/routes/public/submit.tsx)

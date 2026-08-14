@@ -119,6 +119,41 @@ void DEC_377;
 // double-submit CSRF token compared later remains the primary defense;
 // some legitimate clients send neither header) -- only a header that is
 // present and names a DIFFERENT host is treated as cross-origin.
+// DEC-124: the no-red error vocabulary's copy rules, applied at the
+// error-assembly boundary rather than inside validateAnswers itself (that
+// file stays out of this task's owned scope, per its own display-only-cap
+// comment above) -- both helpers only ever REWRITE an error string
+// validateAnswers/validateTrackChoice already produced, never change which
+// answers are accepted.
+const TOO_LONG_PATTERN = /^Too long \(max (\d+) characters\)$/;
+
+/** Rewrites validateAnswers' generic "Too long (max N characters)" into
+ * copy naming both numbers -- how much was typed, and how far over the
+ * limit that is -- so the submitter never has to do the subtraction
+ * themselves. Returns null for any other error string (left untouched). */
+export function overLengthErrorMessage(rawError: string | undefined, typedValue: unknown): string | null {
+  if (!rawError) return null;
+  const match = TOO_LONG_PATTERN.exec(rawError);
+  if (!match) return null;
+  const cap = Number(match[1]);
+  const length = typeof typedValue === "string" ? typedValue.length : cap;
+  const over = Math.max(length - cap, 0);
+  return `${length.toLocaleString("en-US")} characters typed — ${over.toLocaleString("en-US")} over the ${cap.toLocaleString("en-US")}-character limit.`;
+}
+
+// DEC-124: "Select a track" (validateTrackChoice's copy for "nothing
+// picked") reads as an instruction with no reason attached -- the public
+// CFP's ONE radio group gets this task's exemplar copy instead. The
+// membership-violation branch ("Selected track is not offered by this
+// form.") is a tamper/stale-form case, not a normal validation state, and
+// is left exactly as validateTrackChoice (shared with the portal edit
+// multi-select) produced it.
+const TRACK_PICK_MESSAGE = "Pick one — a talk needs a track so the right people review it";
+
+export function trackChoiceMessage(rawError: string): string {
+  return rawError === "Select a track" ? TRACK_PICK_MESSAGE : rawError;
+}
+
 function isSameOriginSubmitPost(c: { req: { url: string; header(name: string): string | undefined } }): boolean {
   const candidate = c.req.header("Origin") ?? c.req.header("Referer");
   if (!candidate) return true;
@@ -462,6 +497,15 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
     if (firstNameField && mergedErrors[firstNameField.id] === "required") {
       mergedErrors[firstNameField.id] = NAME_REQUIRED_MESSAGE;
     }
+    // DEC-124: an over-length answer's message names both numbers (what
+    // was typed, and how far over) instead of just saying "too long" --
+    // rewritten here from validateAnswers' generic "Too long (max N
+    // characters)" using the field's own typed answer length, for every
+    // text/long_text field, not just the seeded demo's Abstract.
+    for (const field of fields) {
+      const rewritten = overLengthErrorMessage(mergedErrors[field.id], answers[field.id]);
+      if (rewritten) mergedErrors[field.id] = rewritten;
+    }
     return c.html(
       <SubmitPage
         event={event}
@@ -473,7 +517,7 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
         hasDraft={false}
         csrfToken={(c.req.header("cookie") && parseCookies(c.req.header("cookie") ?? null)[CSRF_COOKIE_NAME]) || newCsrfToken()}
         errors={mergedErrors}
-        trackError={trackResult.ok ? undefined : trackResult.error}
+        trackError={trackResult.ok ? undefined : trackChoiceMessage(trackResult.error)}
       />,
       400,
     );

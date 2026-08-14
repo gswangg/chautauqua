@@ -13,7 +13,7 @@ import { makeVisibilityPredicate } from "../../forms/visibility";
 import { formatEventDateTime, formatEventDayRange } from "../../lib/event-time";
 import { dayLabelEndInstant, dayLabelStartInstant } from "../../lib/timezone";
 import { FormFieldsSection, FieldRulesScript, fieldInputName, FormField } from "../../views/form-render";
-import { countOf } from "../../domain/count-copy";
+import { countOf, plural } from "../../domain/count-copy";
 import { ThemeStyles } from "../../views/theme";
 import { CFP_CSS } from "./cfp.css";
 import { CfpStepsScript } from "./cfp-steps-script";
@@ -37,6 +37,12 @@ const CFP_ABSTRACT_MAX_LENGTH = 1200;
 const CFP_ABSTRACT_HELP_TEXT = "Shown on the public sessions page if your talk is accepted";
 const CFP_BIO_LABEL = "Bio";
 const CFP_BIO_HELP_TEXT = "Shown on the public speakers page if your talk is accepted";
+// DEC-124: the email field's helper states the invisible cost of a typo --
+// the portal link is emailed there and nowhere else is shown on screen.
+const CFP_EMAIL_HELP_TEXT = "We send your portal link here, so a typo means you never get it";
+// DEC-124: id anchored by the top-of-form error summary for the track
+// radio group, which has no FormFieldDef/field id of its own to key off.
+export const TRACK_CHOICES_ID = "chq-cfp-track-choices";
 
 export function branding(event: EventRow): { logoUrl?: string; accentColor?: string } {
   if (!event.brandingJson) return {};
@@ -162,9 +168,14 @@ export function DraftSavedNotice() {
 // row in the field list, just a join-table posted array), so there is no
 // field id to key a `chq-field-wrap-<id>` element or a rule on -- it gets
 // no wrap, per the task's own carve-out.
-export function TrackChoices(props: { tracks: TrackRow[]; selected: string[] }) {
+export function TrackChoices(props: { tracks: TrackRow[]; selected: string[]; error?: string }) {
+  const { error } = props;
   return (
-    <fieldset class="chq-cfp-fieldset">
+    <fieldset
+      id={TRACK_CHOICES_ID}
+      class={error ? "chq-cfp-fieldset chq-field-invalid" : "chq-cfp-fieldset"}
+      aria-invalid={error ? "true" : undefined}
+    >
       {/* DEC-986 (wave 40 amendment): "required" is carried on the input
           itself (this component only renders when tracks.length > 0, which
           is exactly when validateTrackChoice requires a pick) -- never a
@@ -201,7 +212,10 @@ export function FormatChoices(props: { field: FormFieldDef; value: unknown; erro
   const name = fieldInputName(field.id);
   return (
     <div id={`chq-field-wrap-${field.id}`} style={visible ? undefined : "display:none"}>
-      <fieldset class="chq-cfp-fieldset">
+      <fieldset
+        class={error ? "chq-cfp-fieldset chq-field-invalid" : "chq-cfp-fieldset"}
+        aria-invalid={error ? "true" : undefined}
+      >
         <legend>{field.label}</legend>
         {/* w5-c: the generic field.helpText sub-caption ("5 options",
             "Beginner, intermediate, advanced", etc.) is dropped on this
@@ -243,7 +257,10 @@ export function AudienceChoices(props: { field: FormFieldDef; value: unknown; er
   const name = fieldInputName(field.id);
   return (
     <div id={`chq-field-wrap-${field.id}`} style={visible ? undefined : "display:none"}>
-      <fieldset class="chq-cfp-fieldset">
+      <fieldset
+        class={error ? "chq-cfp-fieldset chq-field-invalid" : "chq-cfp-fieldset"}
+        aria-invalid={error ? "true" : undefined}
+      >
         <legend>{field.label}</legend>
         {/* w5-c: same drop as FormatChoices above -- no generic-helpText
             sub-caption on the pill segment. */}
@@ -280,22 +297,23 @@ export function AudienceChoices(props: { field: FormFieldDef; value: unknown; er
 // input on this form any more. Mirrors FormField's markup (label row +
 // input + inline error) so it reads identically to every other field on
 // the page.
-export function NameField(props: { value: string; error?: string }) {
-  const { value, error } = props;
+export function NameField(props: { value: string; error?: string; fieldId?: string }) {
+  const { value, error, fieldId } = props;
   return (
-    <div class="chq-field">
+    <div id={fieldId ? `chq-field-wrap-${fieldId}` : undefined} class="chq-field">
       <label>
         <span class="chq-field-label-row">
           <span class="chq-field-label">Name</span>
         </span>
         <input
           type="text"
-          class="chq-input"
+          class={error ? "chq-input chq-field-invalid" : "chq-input"}
           id="speaker_name"
           name="speaker_name"
           autocomplete="name"
           value={value}
           required
+          aria-invalid={error ? "true" : undefined}
         />
       </label>
       {error ? (
@@ -303,6 +321,36 @@ export function NameField(props: { value: string; error?: string }) {
           {error}
         </p>
       ) : null}
+    </div>
+  );
+}
+
+// DEC-124: the top-of-form error summary -- one block, "N things need
+// fixing before this can be sent", one anchor per problem (href-ing the
+// offending field's own rendered id), and the reassurance copy that
+// nothing typed was lost. The field itself keeps its own inline
+// .chq-field-error message too (the summary orients, the field repairs).
+export type ErrorSummaryProblem = { id: string; label: string; message: string };
+
+export function ErrorSummary(props: { problems: ErrorSummaryProblem[] }) {
+  const { problems } = props;
+  if (problems.length === 0) return null;
+  const n = problems.length;
+  return (
+    <div class="chq-error-summary" role="alert">
+      <h2>
+        {countOf(n, "thing")} {plural(n, "needs", "need")} fixing before this can be sent
+      </h2>
+      <p>Nothing was lost. Everything you typed is still below.</p>
+      <ul>
+        {problems.map((p) => (
+          <li>
+            <a class="chq-error-summary-link" href={`#${p.id}`}>
+              {p.label}: {p.message}
+            </a>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -339,6 +387,9 @@ export function SubmitPage(props: {
     }
     if (lockedFieldName(f.id) === "bio") {
       return { ...f, label: CFP_BIO_LABEL, helpText: CFP_BIO_HELP_TEXT };
+    }
+    if (lockedFieldName(f.id) === "email") {
+      return { ...f, helpText: CFP_EMAIL_HELP_TEXT };
     }
     return f;
   });
@@ -405,6 +456,25 @@ export function SubmitPage(props: {
   const lastNameValue = typeof answers[lastNameField?.id ?? ""] === "string" ? (answers[lastNameField!.id] as string) : "";
   const nameValue = [firstNameValue, lastNameValue].filter((part) => part.length > 0).join(" ");
   const nameError = firstNameField ? errors?.[firstNameField.id] : undefined;
+  // DEC-124: the top-of-form error summary is built from the SAME `errors`
+  // record every field below renders inline -- one entry per key, labeled
+  // by that field's own displayed label (the single Name control, not the
+  // locked first_name field it posts under), href-ing the wrap id each
+  // field/fieldset below already carries (`chq-field-wrap-<fieldId>`, or
+  // NameField's own matching wrap id, or TRACK_CHOICES_ID for the track
+  // radio group, which has no FormFieldDef of its own).
+  const fieldLabelById = new Map(displayFields.map((f) => [f.id, f.label] as const));
+  if (firstNameField) fieldLabelById.set(firstNameField.id, "Name");
+  const summaryProblems: ErrorSummaryProblem[] = errors
+    ? Object.entries(errors).map(([id, message]) => ({
+        id: `chq-field-wrap-${id}`,
+        label: fieldLabelById.get(id) ?? "This field",
+        message,
+      }))
+    : [];
+  if (trackError) {
+    summaryProblems.push({ id: TRACK_CHOICES_ID, label: "Track", message: trackError });
+  }
   // DEC-986 (wave 40 amendment): the header's date·venue eyebrow traces to
   // the event's own startDate/endDate/location (never illustrative copy) --
   // guarded because those columns, while NOT NULL in the schema, aren't
@@ -463,6 +533,7 @@ export function SubmitPage(props: {
         ) : props.hasDraft && props.draftSavedAt !== undefined ? (
           <DraftBanner formId={form.id} savedAt={props.draftSavedAt} timeZone={event.timezone} />
         ) : null}
+        <ErrorSummary problems={summaryProblems} />
         <form
           id="chq-cfp-submit-form"
           method="post"
@@ -503,7 +574,7 @@ export function SubmitPage(props: {
                     only relaxes the "must pick one" requirement, so an
                     empty required-looking block would be unactionable and
                     misleading. */}
-                {tracks.length > 0 ? <TrackChoices tracks={tracks} selected={selectedTrackIds} /> : null}
+                {tracks.length > 0 ? <TrackChoices tracks={tracks} selected={selectedTrackIds} error={trackError} /> : null}
                 {formatField ? (
                   <FormatChoices
                     field={formatField}
@@ -539,7 +610,7 @@ export function SubmitPage(props: {
           <section class="chq-cfp-step chq-cfp-step-you">
             <div class="chq-cfp-section-label">You</div>
             <div class="chq-cfp-fields chq-cfp-you-grid">
-              <NameField value={nameValue} error={nameError} />
+              <NameField value={nameValue} error={nameError} fieldId={firstNameField?.id} />
               {renderSpeakerField(emailField)}
               {renderSpeakerField(companyField)}
               {renderSpeakerField(jobTitleField)}
