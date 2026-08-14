@@ -8,6 +8,17 @@
 // client-side nav memory to fall back on, just a 404 (field guide:
 // "GUESSABLE URL 404 IS DEAD END").
 //
+// DEC-914 (Amendment, wave 17): the wave-16 scan's root was src/routes/**
+// only -- that left src/server/not-found.tsx (which owns
+// ORGANIZER_NOT_FOUND_LINKS, the exact hrefs this guard exists to police)
+// and src/views/form-render.tsx OUTSIDE the guard entirely, and it read
+// only `href`, leaving every `action`/`formaction` on a <form> unchecked
+// even though a dead form action loses typed data, not just a click. This
+// wave widens both: the root is now a walk of ALL of src/**/*.tsx (dropping
+// *.test.tsx), and action/formaction attributes are collected and matched
+// against the registered route table for the enclosing <form>'s OWN method
+// (GET vs POST), not always the GET table.
+//
 // Route table: rather than hand-listing every sub-app's mount prefix (which
 // has drifted from src/index.ts before -- see field guide w27-29 and
 // test/docs-route-coverage.test.ts's DEC-518 rationale), this reuses that
@@ -43,7 +54,7 @@ import { describe, expect, it, beforeAll } from "vitest";
 import type { AppEnv } from "../src/server/env";
 
 const REPO_ROOT = join(__dirname, "..");
-const ROUTES_DIR = join(REPO_ROOT, "src", "routes");
+const SOURCE_DIR = join(REPO_ROOT, "src");
 const INDEX_PATH = resolve(fileURLToPath(import.meta.url), "../../src/index.ts");
 const INDEX_DIR = dirname(INDEX_PATH);
 
@@ -119,6 +130,7 @@ function patternMatches(patternSegs: string[], hrefSegs: string[]): boolean {
 }
 
 let registeredPatterns: string[] = [];
+let registeredPostPatterns: string[] = [];
 
 beforeAll(async () => {
   const source = readFileSync(INDEX_PATH, "utf-8");
@@ -168,6 +180,11 @@ beforeAll(async () => {
       app.routes.filter((r) => r.method === "GET" || r.method === "ALL").map((r) => r.path),
     ),
   ];
+  registeredPostPatterns = [
+    ...new Set(
+      app.routes.filter((r) => r.method === "POST" || r.method === "ALL").map((r) => r.path),
+    ),
+  ];
 });
 
 // ---------------------------------------------------------------------------
@@ -189,7 +206,11 @@ function glob(dir: string, suffixes: string[]): string[] {
   return out;
 }
 
-const sourceFiles = glob(ROUTES_DIR, [".tsx"]).filter((f) => !f.includes(".test."));
+// Every server-rendered .tsx in src/** (not just src/routes/**) -- see the
+// wave-17 amendment header comment above: src/server/not-found.tsx (owner of
+// ORGANIZER_NOT_FOUND_LINKS) and src/views/form-render.tsx are both outside
+// src/routes and were previously unscanned.
+const sourceFiles = glob(SOURCE_DIR, [".tsx"]).filter((f) => !f.endsWith(".test.tsx"));
 
 interface HrefHit {
   file: string;
@@ -263,6 +284,89 @@ function collectHrefs(file: string, text: string): HrefHit[] {
 const allHrefs: HrefHit[] = sourceFiles.flatMap((f) => collectHrefs(f, readFileSync(f, "utf-8")));
 
 // ---------------------------------------------------------------------------
+// Literal action/formaction, method-aware (wave 17 amendment): a <form>'s
+// action is a route too, and a dead one loses typed data, not just a click.
+// ---------------------------------------------------------------------------
+
+interface ActionHit extends HrefHit {
+  method: "GET" | "POST";
+  attr: "action" | "formaction";
+}
+
+/** Finds the nearest preceding `<form` opening tag before `index` and reads
+ * its `method` attribute (absent or "get" -> GET, "post" -> POST,
+ * case-insensitive). A `formaction` on a submit button inherits its
+ * enclosing form's method the same way -- the backward scan for `<form`
+ * lands on the right tag regardless of which attribute (`action` or
+ * `formaction`) triggered the search, since a `formaction` only ever
+ * appears nested inside a `<form>`. Fails loudly (rather than defaulting)
+ * if no enclosing `<form` is found at all -- an action/formaction attribute
+ * outside any form is a scan bug, not a valid case to silently skip. */
+function resolveEnclosingFormMethod(file: string, text: string, index: number): "GET" | "POST" {
+  const formIdx = text.lastIndexOf("<form", index);
+  if (formIdx === -1) {
+    throw new Error(
+      `${relative(REPO_ROOT, file)}: found an action/formaction attribute with no enclosing <form -- the scan's ` +
+        "backward search assumption is broken for this file.",
+    );
+  }
+  // The first '>' after `<form` is that opening tag's own close -- for a
+  // plain `action` on the <form> itself, `index` falls BEFORE it (the
+  // attribute is inside the tag); for a `formaction` on a nested <button>,
+  // `index` falls AFTER it (the button comes later, once the form's
+  // opening tag has already closed). Both orderings are legitimate; only
+  // "no '>' at all" is a broken assumption.
+  const tagEnd = text.indexOf(">", formIdx);
+  if (tagEnd === -1) {
+    throw new Error(
+      `${relative(REPO_ROOT, file)}: could not find the closing '>' of the <form tag starting at index ${formIdx}.`,
+    );
+  }
+  const tagText = text.slice(formIdx, tagEnd);
+  const methodMatch = /\bmethod\s*=\s*"([^"]*)"|\bmethod\s*=\s*'([^']*)'/i.exec(tagText);
+  const methodVal = (methodMatch ? (methodMatch[1] ?? methodMatch[2] ?? "") : "get").trim().toLowerCase();
+  return methodVal === "post" ? "POST" : "GET";
+}
+
+// Matches `action="..."` / `action='...'` / `action={\`...\`}` and their
+// `formaction` twin, using a negative lookbehind on a preceding letter so
+// "formaction=" is never also double-counted as a bare "action=" hit (the
+// latter is a literal substring of the former).
+const ACTION_RE =
+  /(?<![A-Za-z])(form)?action="([^"]*)"|(?<![A-Za-z])(form)?action='([^']*)'|(?<![A-Za-z])(form)?action=\{`([^`]*)`\}/g;
+
+function collectActions(file: string, text: string): ActionHit[] {
+  const hits: ActionHit[] = [];
+  let m: RegExpExecArray | null;
+  ACTION_RE.lastIndex = 0;
+  while ((m = ACTION_RE.exec(text))) {
+    if (isInsideLineComment(text, m.index)) continue;
+    const isFormAttr = m[1] !== undefined || m[3] !== undefined || m[5] !== undefined;
+    const isTemplate = m[6] !== undefined;
+    const raw = m[2] ?? m[4] ?? m[6] ?? "";
+    const line = findLine(text, m.index);
+    const attr: "action" | "formaction" = isFormAttr ? "formaction" : "action";
+    const method = resolveEnclosingFormMethod(file, text, m.index);
+    if (!isTemplate) {
+      const pathPart = raw.split(/[?#]/)[0]!;
+      hits.push({ file, line, raw, pathPart, partial: false, method, attr });
+      continue;
+    }
+    const dollarIdx = raw.indexOf("${");
+    const staticPrefix = dollarIdx === -1 ? raw : raw.slice(0, dollarIdx);
+    const qIdx = staticPrefix.search(/[?#]/);
+    if (qIdx !== -1) {
+      hits.push({ file, line, raw, pathPart: staticPrefix.slice(0, qIdx), partial: false, method, attr });
+    } else {
+      hits.push({ file, line, raw, pathPart: staticPrefix, partial: dollarIdx !== -1, method, attr });
+    }
+  }
+  return hits;
+}
+
+const allActions: ActionHit[] = sourceFiles.flatMap((f) => collectActions(f, readFileSync(f, "utf-8")));
+
+// ---------------------------------------------------------------------------
 // Allowlist: legitimate non-route targets, each with a reason.
 // ---------------------------------------------------------------------------
 
@@ -305,11 +409,11 @@ function isAllowlisted(literal: string): AllowRule | undefined {
   return ALLOW_RULES.find((rule) => rule.test(literal));
 }
 
-/** Does some registered route pattern's path start with exactly these
- * literal segments and then continue with at least one more segment (to be
- * filled by the interpolation this href's static prefix stopped short of)? */
-function someRegisteredPatternStartsWith(completeSegs: string[]): boolean {
-  return registeredPatterns.some((p) => {
+/** Does some pattern in `patterns` start with exactly these literal segments
+ * and then continue with at least one more segment (to be filled by the
+ * interpolation this href/action's static prefix stopped short of)? */
+function someRegisteredPatternStartsWith(completeSegs: string[], patterns: string[] = registeredPatterns): boolean {
+  return patterns.some((p) => {
     const patternSegs = segmentsOf(p);
     if (patternSegs.length <= completeSegs.length) return false;
     for (let i = 0; i < completeSegs.length; i++) {
@@ -359,6 +463,45 @@ describe("server-rendered hrefs land on a registered route (DEC-914 amendment, w
       throw new Error(
         `${failures.length} server-rendered href(s) don't resolve to a registered route -- a visitor following ` +
           `one gets a 404 with no nav memory to recover with:\n${failures.join("\n")}`,
+      );
+    }
+  });
+});
+
+describe("server-rendered form actions land on a registered route for their own method (DEC-914 amendment, wave 17)", () => {
+  it("parsed at least the expected floor of action/formaction attributes and POST route patterns", () => {
+    expect(allActions.length).toBeGreaterThanOrEqual(15);
+    expect(registeredPostPatterns.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it("every literal internal action/formaction resolves to a registered route pattern for its form's method (or is allowlisted)", () => {
+    const failures: string[] = [];
+    for (const hit of allActions) {
+      if (!hit.pathPart.startsWith("/")) {
+        if (!isAllowlisted(hit.pathPart) && hit.pathPart !== "") {
+          failures.push(
+            `${relative(REPO_ROOT, hit.file)}:${hit.line}: ${hit.attr}="${hit.raw}" (method ${hit.method}) is ` +
+              `neither an internal path nor allowlisted -- extend ALLOW_RULES with a reason or fix the ${hit.attr}.`,
+          );
+        }
+        continue;
+      }
+      const patterns = hit.method === "POST" ? registeredPostPatterns : registeredPatterns;
+      const matched = hit.partial
+        ? someRegisteredPatternStartsWith(segmentsOf(hit.pathPart), patterns)
+        : patterns.some((p) => patternMatches(segmentsOf(p), segmentsOf(hit.pathPart)));
+      if (!matched) {
+        failures.push(
+          `${relative(REPO_ROOT, hit.file)}:${hit.line}: ${hit.attr}="${hit.raw}" (path "${hit.pathPart}", method ` +
+            `${hit.method}${hit.partial ? ", partial -- more path text follows an interpolation" : ""}) does not ` +
+            `resolve to any registered ${hit.method} route pattern.`,
+        );
+      }
+    }
+    if (failures.length > 0) {
+      throw new Error(
+        `${failures.length} server-rendered action/formaction(s) don't resolve to a registered route for their ` +
+          `form's method -- a visitor submitting one loses the data they typed:\n${failures.join("\n")}`,
       );
     }
   });
