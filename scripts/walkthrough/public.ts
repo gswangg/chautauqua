@@ -14,6 +14,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { agendaHtmlContainsBreakLabel, buildCreateBreakBody, extractProgrammeDayIds } from "../walkthrough-lib";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..", "..");
@@ -525,6 +526,66 @@ async function main(): Promise<void> {
       assert(cacheControl.includes("max-age=60"), `expected DEC-022 bounded 60s Cache-Control, got '${cacheControl}'`);
     });
   }
+
+  // wave 65 landed two more public surfaces that the SURFACES loops above
+  // never visit: the printable programme (src/routes/public/programme.tsx)
+  // and the anonymous event hub at GET / (src/routes/root.tsx, DEC-582).
+
+  await check(`J10 /e/${EVENT_SLUG}/programme renders the whole programme`, async () => {
+    // Seed a break of our own: producer.ts's J9 run creates-then-deletes its
+    // own break fixture, so nothing guarantees a break survives into this
+    // module's run — create one on this event's first day so the label
+    // assertion below is never a false negative on an empty-breaks event.
+    const label = `Wk Programme Break ${Date.now()}`;
+    const { status: createStatus, json: createJson } = await apiJson<{ id: string }>(
+      cookies,
+      "POST",
+      `/api/v1/events/${eventId}/breaks`,
+      buildCreateBreakBody(day, label, 615, 15),
+    );
+    assert(createStatus === 201, `POST /api/v1/events/${eventId}/breaks -> ${createStatus}`);
+    assert(createJson.id, `POST /api/v1/events/${eventId}/breaks did not return an id`);
+
+    const { status: breaksStatus, json: breaksJson } = await apiJson<{ items: { label: string }[] }>(
+      cookies,
+      "GET",
+      `/api/v1/events/${eventId}/breaks`,
+    );
+    assert(breaksStatus === 200, `GET /api/v1/events/${eventId}/breaks -> ${breaksStatus}`);
+    assert(breaksJson.items.length > 0, `GET /api/v1/events/${eventId}/breaks -> 0 items, expected at least the break just created`);
+    const found = breaksJson.items.find((b) => b.label === label);
+    assert(found, `GET /api/v1/events/${eventId}/breaks -> did not include the break just created (label '${label}')`);
+
+    const url = `${BASE_URL}/e/${EVENT_SLUG}/programme`;
+    const res = await fetch(url);
+    assert(res.status === 200, `GET ${url} -> ${res.status}`);
+    const html = await res.text();
+    const cacheControl = res.headers.get("cache-control") ?? "";
+    assert(cacheControl.includes("max-age=60"), `GET ${url} -> 200 but Cache-Control '${cacheControl}' missing DEC-022 bounded max-age=60`);
+    const dayIds = new Set(extractProgrammeDayIds(html));
+    assert(dayIds.size >= 2, `GET ${url} -> 200 but only found ${dayIds.size} distinct chq-prog-day- section id(s): ${[...dayIds].join(", ")}`);
+    assert(
+      agendaHtmlContainsBreakLabel(html, label),
+      `GET ${url} -> 200 but break label '${label}' not found in the rendered programme body`,
+    );
+  });
+
+  await check("J10 GET / is the anonymous event hub and redirects a signed-in user", async () => {
+    const anonUrl = `${BASE_URL}/`;
+    const anonRes = await fetch(anonUrl);
+    assert(anonRes.status === 200, `GET ${anonUrl} (anonymous) -> ${anonRes.status}`);
+    const anonHtml = await anonRes.text();
+    assert(anonHtml.includes("chq-home-org"), `GET ${anonUrl} (anonymous) -> 200 but no 'chq-home-org' organisation name found`);
+    assert(
+      anonHtml.includes(`/e/${EVENT_SLUG}/sessions`) || anonHtml.includes(`/submit/${EVENT_SLUG}`),
+      `GET ${anonUrl} (anonymous) -> 200 but no link to /e/${EVENT_SLUG}/sessions or /submit/${EVENT_SLUG} found`,
+    );
+
+    const orgRes = await fetch(anonUrl, { headers: { cookie: cookieHeader(cookies) }, redirect: "manual" });
+    assert(orgRes.status === 302, `GET ${anonUrl} (organizer session) -> ${orgRes.status}, expected 302 (DEC-582)`);
+    const location = orgRes.headers.get("location") ?? "";
+    assert(location === "/admin", `GET ${anonUrl} (organizer session) -> 302 but Location '${location}' != '/admin' (DEC-582)`);
+  });
 
   await check("J10 Settings embed-generator snippet URLs match live /embed routes", async () => {
     // The embed URL builder was decomposed out of Settings.tsx (DEC-289):

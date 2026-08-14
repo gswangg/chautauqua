@@ -10,6 +10,7 @@ import {
   dropdownCriterionExcludedFromAverage,
   duplicatePairStillOpen,
   eventFilesContainsUpload,
+  extractProgrammeDayIds,
   findEventBySlug,
   formatAreaPass,
   formatFailureMessage,
@@ -340,5 +341,24 @@ describe("agendaHtmlContainsBreakLabel (w66-d)", () => {
 
   it("returns false when the label text is not present", () => {
     expect(agendaHtmlContainsBreakLabel("<div>Lunch · 60 min</div>", "Walkthrough Snack Break")).toBe(false);
+  });
+});
+
+describe("extractProgrammeDayIds (w68-d)", () => {
+  it("extracts every chq-prog-day-<day> section id in document order", () => {
+    const html =
+      '<section class="chq-prog-day" id="chq-prog-day-2027-05-12"><h2>Day 1</h2></section>' +
+      '<section class="chq-prog-day" id="chq-prog-day-2027-05-13"><h2>Day 2</h2></section>';
+    expect(extractProgrammeDayIds(html)).toEqual(["chq-prog-day-2027-05-12", "chq-prog-day-2027-05-13"]);
+  });
+
+  it("returns an empty array when no day sections are present", () => {
+    expect(extractProgrammeDayIds("<main>No sessions scheduled yet.</main>")).toEqual([]);
+  });
+
+  it("does not match a differently-prefixed id", () => {
+    expect(extractProgrammeDayIds('<div id="chq-prog-day-heading-2027-05-12"></div>')).toEqual([
+      "chq-prog-day-heading-2027-05-12",
+    ]);
   });
 });

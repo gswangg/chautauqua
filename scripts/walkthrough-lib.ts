@@ -226,3 +226,24 @@ export function breaksListContainsId(items: readonly { id: string }[], breakId: 
 export function agendaHtmlContainsBreakLabel(html: string, label: string): boolean {
   return html.includes(label);
 }
+
+// ---------------------------------------------------------------------------
+// w68-d: J10 printable programme + anonymous event hub (DEC-063 amendment,
+// wave 68) — pure markup helper, kept dependency-free per DEC-062.
+// ---------------------------------------------------------------------------
+
+/** Extracts every `id="chq-prog-day-<day>"` section id out of the printable
+ * programme's HTML (src/routes/public/programme.tsx ProgrammeDay), in
+ * document order, duplicates included — callers that only care about
+ * distinctness should wrap the result in a Set. Matches on the id attribute
+ * text only, never on surrounding markup, so a concurrently-landing style
+ * rewrite of the programme surface can't break this check. */
+export function extractProgrammeDayIds(html: string): string[] {
+  const out: string[] = [];
+  const re = /id="(chq-prog-day-[^"]*)"/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    out.push(m[1]!);
+  }
+  return out;
+}
