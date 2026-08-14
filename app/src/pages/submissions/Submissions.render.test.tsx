@@ -291,7 +291,24 @@ describe('SubmissionsPage render smoke', () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { id: 'form-1', fields: [] },
-      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+      // DEC-678 B7 (wave 46): a real row keeps the ViewTabs chrome (and its
+      // "Save current as view" action) on screen -- with zero rows and no
+      // facet, the page now renders the 'fresh' zero-row state instead,
+      // which drops the chrome by design. This test is about the save-view
+      // dialog, not the empty state, so it seeds one row.
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([
+        {
+          id: 'sub-1',
+          ref: 'S-001',
+          title: 'A Talk About Testing',
+          status: 'pending',
+          contentStatus: 'pending',
+          speakers: [{ contactId: 'c1', name: 'Ada Lovelace' }],
+          trackIds: [],
+          submittedAt: null,
+          createdAt: 1700000000000,
+        },
+      ]),
       [`GET /api/v1/events/${EVENT_ID}/views`]: listEnvelope([]),
       [`POST /api/v1/events/${EVENT_ID}/views`]: { id: 'view-1', name: 'My saved view', config: {} },
     });
@@ -489,5 +506,106 @@ describe('ViewTabs pure helpers (DEC-648)', () => {
       updatedAt: 0,
     };
     expect(activeViewKey(filters, new Set(), [savedView], NO_FORMAT_FIELDS)).toBe('view-1');
+  });
+});
+
+// DEC-678 amendment (B7, wave 46): the worklist's real zero-row state --
+// no <thead>/no table at all once there are no rows, split into a
+// 'filtered' variant (a facet excluded everything, chrome stays, an escape
+// clears exactly that facet) and a 'fresh' variant (nothing has ever been
+// submitted, chrome is gone, the page header's persistent "New submission"
+// button is the collection's one primary action).
+describe('SubmissionsTable zero-row state (DEC-678 B7)', () => {
+  it('filtered: a status facet that excludes every row drops the table (no columnheader/<thead>), names the facet, keeps chrome, and its escape restores the unfiltered query', async () => {
+    let submissionsItems: unknown[] = [
+      {
+        id: 'sub-1',
+        ref: 'S-001',
+        title: 'A Talk About Testing',
+        status: 'pending',
+        contentStatus: 'pending',
+        speakers: [{ contactId: 'c1', name: 'Ada Lovelace' }],
+        trackIds: [],
+        submittedAt: null,
+        createdAt: 1700000000000,
+      },
+    ];
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/events/${EVENT_ID}/views`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: () => listEnvelope(submissionsItems),
+    });
+
+    const { container } = render(
+      <MemoryRouter>
+        <SubmissionsPage />
+      </MemoryRouter>,
+    );
+
+    // Starts with a real row -- chrome (the status pills) is on screen.
+    await waitFor(() => {
+      expect(screen.getByText('A Talk About Testing')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('combobox', { name: 'Filter by track' })).toBeInTheDocument();
+
+    // Applying the "Pending" status facet turns the next fetch's result set
+    // empty (simulated here since mockApi's routing ignores query strings).
+    submissionsItems = [];
+    fireEvent.click(screen.getByRole('button', { name: 'Pending' }));
+
+    expect(await screen.findByText('No submissions match the current filters.')).toBeInTheDocument();
+    expect(screen.getByText('The selected status filter excludes every submission.')).toBeInTheDocument();
+
+    // No table at all -- not just an empty tbody.
+    expect(screen.queryAllByRole('columnheader')).toHaveLength(0);
+    expect(container.querySelector('thead')).toBeNull();
+    expect(container.querySelector('table')).toBeNull();
+
+    // Chrome stays rendered above the block.
+    expect(screen.getByRole('combobox', { name: 'Filter by track' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Filter by status' })).toBeInTheDocument();
+
+    // Never a primary action on 'filtered' -- only the escape link.
+    const escape = screen.getByRole('button', { name: 'Clear filter' });
+
+    fireEvent.click(escape);
+
+    // The facet is cleared back to DEFAULT_FILTER_STATE -- with no other
+    // facet in flight the query is now unfiltered, and since the mocked
+    // list is still empty this resolves to the 'fresh' zero-row state.
+    expect(await screen.findByText('No submissions yet.')).toBeInTheDocument();
+  });
+
+  it('fresh: no facet in flight drops the filter chrome and renders exactly one primary action', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/events/${EVENT_ID}/views`]: listEnvelope([]),
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter>
+        <SubmissionsPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('No submissions yet.')).toBeInTheDocument();
+
+    // Filter chrome (ViewTabs + FilterBarSearchSort + FilterBar), column
+    // picker and pager are all gone.
+    expect(screen.queryByRole('combobox', { name: 'Filter by track' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Filter by status' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Saved views' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('searchbox', { name: 'Search submissions' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+
+    // Exactly one primary action -- the page header's existing "New
+    // submission" button, which already opens NewSubmissionModal. 'fresh'
+    // never renders `escape`, and EmptyState throws if a caller tries.
+    expect(screen.getAllByRole('button', { name: 'New submission' })).toHaveLength(1);
   });
 });
