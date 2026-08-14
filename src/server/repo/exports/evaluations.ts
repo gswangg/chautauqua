@@ -1,11 +1,12 @@
 // evaluations export (J12, DEC-027, DEC-529).
 
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { computeWeightedScore } from "../../../domain/evaluation";
 import { DEC_529 } from "../../../decisions";
+import { ApiError } from "../../http";
 import { resolveReviewerIdentity } from "../../../domain/review-identity";
 import { type ExportTable, EXPORT_MAX_ROWS, buildTable, nameCustomColumns } from "./table";
 import { getRecordPrefix } from "./common";
@@ -121,8 +122,30 @@ export function shapeEvaluationsExport(
   return buildTable(header, outRows);
 }
 
-export async function exportEvaluations(db: Db, eventId: string): Promise<ExportTable> {
+export interface EvaluationsExportParams {
+  /** Must be a plan of THIS event -- a foreign/unknown planId is a loud
+   * ApiError naming the field, never a silently empty CSV (w41-a). */
+  planId?: string;
+  round?: number;
+}
+
+export async function exportEvaluations(db: Db, eventId: string, params?: EvaluationsExportParams): Promise<ExportTable> {
   const recordPrefix = await getRecordPrefix(db, eventId);
+
+  if (params?.planId !== undefined) {
+    const planRows = await db
+      .select({ id: schema.evaluationPlan.id })
+      .from(schema.evaluationPlan)
+      .where(and(eq(schema.evaluationPlan.id, params.planId), eq(schema.evaluationPlan.eventId, eventId)))
+      .limit(1);
+    if (planRows.length === 0) {
+      throw new ApiError("invalid", `planId '${params.planId}' is not a plan of this event`, { planId: "unknown" });
+    }
+  }
+
+  const conditions = [eq(schema.evaluationPlan.eventId, eventId)];
+  if (params?.planId !== undefined) conditions.push(eq(schema.evaluationPlan.id, params.planId));
+  if (params?.round !== undefined) conditions.push(eq(schema.evaluation.round, params.round));
 
   const rows = await db
     .select({
@@ -142,7 +165,7 @@ export async function exportEvaluations(db: Db, eventId: string): Promise<Export
     .innerJoin(schema.evaluationPlan, eq(schema.evaluation.planId, schema.evaluationPlan.id))
     .innerJoin(schema.submission, eq(schema.evaluation.submissionId, schema.submission.id))
     .innerJoin(schema.user, eq(schema.evaluation.reviewerId, schema.user.id))
-    .where(eq(schema.evaluationPlan.eventId, eventId))
+    .where(and(...conditions))
     .orderBy(asc(schema.submission.seq), asc(schema.evaluation.reviewerId), asc(schema.evaluation.round), asc(schema.evaluation.id))
     .limit(EXPORT_MAX_ROWS + 1);
 
