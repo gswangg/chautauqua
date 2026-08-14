@@ -98,14 +98,17 @@
   position: relative;
 }
 
+/* DEC-743 amendment (wave 4): matches the sibling status/filter pills
+   (.chq-pill, submissions.css's neighbour .chq-status-pills) -- a 26px r99
+   pill, not the old 44px r4 box. The phone media block below restores a
+   44px tap target at phone width; leave that rule untouched. */
 .chq-submissions-columnpicker > summary {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
-  padding: 0 13px;
+  padding: 5px 12px;
   border: 1px solid var(--chq-border);
-  border-radius: var(--chq-r-ctl, 4px);
-  font-size: 13px;
+  border-radius: var(--chq-r-pill);
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   list-style: none;
@@ -344,21 +347,6 @@
   display: none;
 }
 
-/* Modal form fields */
-.chq-submissions-modal-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.chq-submissions-modal-label {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--chq-muted);
-}
-
 /* DEC-651's optional dialog subtitle. Page-scoped rather than a new shared
    `chq-modal-*` name: the shared header contract enforces only the title
    and the Close control, so the Save-this-view caption stays local to this
@@ -480,6 +468,13 @@
   .chq-submissions-columnpicker-panel {
     max-width: calc(100vw - 32px);
     box-sizing: border-box;
+  }
+
+  /* Phone tap-target floor (DEC-393/DEC-394): the desktop 26px pill grows
+     back to a 44px target here -- this rule is untouched by the wave-4
+     pill conversion above. */
+  .chq-submissions-columnpicker > summary {
+    min-height: 44px;
   }
 
   /* Per-row triage cell: full-width own line, buttons wrap to a shared
