@@ -26,6 +26,7 @@ import {
   SESSION_COOKIE_NAME,
 } from "../auth/cookies";
 import { consumeClaimToken, readClaimToken, type KVStore } from "../auth/claim";
+import { createResetToken, readResetToken, consumeResetToken, hashResetToken, newResetToken } from "../auth/password-reset";
 import { findAccountUserId } from "../server/repo/comms";
 import { requestIpFromHeaders } from "../lib/rate-limit";
 import {
@@ -39,10 +40,17 @@ import { AUTH_CSS } from "./auth.css";
 import { DEMO_IDENTITIES, type DemoIdentity } from "../lib/demo-identities";
 import { demoIdentitiesPresent } from "../server/repo/demo";
 import { getHubOrg, listHubEvents } from "../server/repo/public/home";
-import { DEC_583, DEC_740 } from "../decisions";
+import { listEventsForOrg } from "../server/repo/events";
+import { makeMailer } from "../server/context";
+import { resolveBaseUrl } from "../server/origin";
+import { escapeHtml } from "../lib/html-escape";
+import { DEC_583, DEC_740, DEC_014, DEC_154, DEC_180 } from "../decisions";
 
 void DEC_583;
 void DEC_740;
+void DEC_014;
+void DEC_154;
+void DEC_180;
 
 // DEC-740: the sign-in card names the deployment's single event when there
 // is exactly one, and offers both public doors -- reusing the SAME
@@ -162,6 +170,9 @@ export function loginStatusLine(url: string): string | null {
   const query = url.includes("?") ? url.slice(url.indexOf("?")) : "";
   const params = new URLSearchParams(query);
   if (params.get("signed-out") === "1") return "You have been signed out.";
+  // task-w25-b (DEC-014 wave-25 amendment): POST /reset/:token redirects
+  // here with ?reset=done on success.
+  if (params.get("reset") === "done") return "Your password has been changed. Sign in with it.";
   return null;
 }
 
@@ -217,6 +228,9 @@ function LoginPage(props: {
               <input className="chq-input" type="password" name="password" required />
             </label>
             <div className="chq-auth-submitrow">
+              <a className="chq-auth-tertiary" href="/forgot">
+                Forgot your password?
+              </a>
               <button type="submit" id="chq-login-submit" className="chq-btn-primary">
                 Sign in
               </button>
@@ -312,6 +326,191 @@ function ExpiredClaimPage() {
       </body>
     </html>
   );
+}
+
+// -----------------------------------------------------------------------
+// Password reset (DEC-014 wave-25 amendment, DEC-154, DEC-180, DEC-994).
+// Frame-exact copy from docs/design/Chautauqua Account.dc.html:186-285
+// ("Reset · ask for a link" / "Reset · link sent" / "Reset · choose a new
+// one" / "Reset · link no longer valid").
+// -----------------------------------------------------------------------
+
+function ForgotPasswordPage(props: { csrfToken: string; email?: string; error?: string }) {
+  return (
+    <html lang="en">
+      <AuthHead title="Reset your password - Chautauqua" />
+      <body>
+        <main className="chq-auth-card">
+          <div>
+            <h1 className="chq-auth-title">Reset your password</h1>
+            <div className="chq-auth-subtitle">We will email you a link to set a new one.</div>
+          </div>
+          {props.error ? (
+            <p className="chq-auth-error" role="alert">
+              {props.error}
+            </p>
+          ) : null}
+          <form className="chq-auth-fields" method="post" action="/forgot">
+            <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
+            <label>
+              <span className="chq-auth-label">Email</span>
+              <input
+                className="chq-input"
+                type="email"
+                name="email"
+                placeholder="you@example.com"
+                value={props.email ?? undefined}
+                required
+                autofocus
+              />
+            </label>
+            <div className="chq-auth-submitrow">
+              <a className="chq-auth-tertiary" href="/login">
+                &lsaquo; Back to sign in
+              </a>
+              <button type="submit" className="chq-btn-primary">
+                Email me a link
+              </button>
+            </div>
+          </form>
+        </main>
+      </body>
+    </html>
+  );
+}
+
+function CheckEmailPage(props: { email: string }) {
+  return (
+    <html lang="en">
+      <AuthHead title="Check your email - Chautauqua" />
+      <body>
+        <main className="chq-auth-card">
+          <div>
+            <h1 className="chq-auth-title">Check your email</h1>
+            <div className="chq-auth-subtitle">
+              If {props.email} has an account, a reset link is on its way.
+            </div>
+          </div>
+          <div className="chq-auth-footer">
+            <span className="chq-auth-hint">Nothing arrived? Check spam, then try again.</span>
+          </div>
+          <div className="chq-auth-submitrow">
+            <a className="chq-auth-tertiary" href="/forgot">
+              Use a different address
+            </a>
+            <a className="chq-btn chq-btn-primary" href="/login">
+              Back to sign in
+            </a>
+          </div>
+        </main>
+      </body>
+    </html>
+  );
+}
+
+function ResetPasswordPage(props: { csrfToken: string; email: string; error?: string }) {
+  return (
+    <html lang="en">
+      <AuthHead title="Choose a new password - Chautauqua" />
+      <body>
+        <main className="chq-auth-card">
+          <div>
+            <h1 className="chq-auth-title">Choose a new password</h1>
+            <div className="chq-auth-subtitle">Signing in as {props.email}.</div>
+          </div>
+          {props.error ? (
+            <p className="chq-auth-error" role="alert">
+              {props.error}
+            </p>
+          ) : null}
+          <form className="chq-auth-fields" method="post">
+            <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
+            <label>
+              <span className="chq-auth-label">New password</span>
+              <input
+                className="chq-input"
+                type="password"
+                name="next"
+                minlength={MIN_PASSWORD_LENGTH}
+                placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+                required
+              />
+              <span className="chq-auth-hint">A passphrase of three or four words beats a short scramble</span>
+            </label>
+            <label>
+              <span className="chq-auth-label">New password again</span>
+              <input className="chq-input" type="password" name="confirm" minlength={MIN_PASSWORD_LENGTH} required />
+            </label>
+            <div className="chq-auth-submitrow">
+              <button type="submit" className="chq-btn-primary">
+                Save and sign in
+              </button>
+            </div>
+          </form>
+        </main>
+      </body>
+    </html>
+  );
+}
+
+function ExpiredResetPage() {
+  return (
+    <html lang="en">
+      <AuthHead title="Link expired - Chautauqua" />
+      <body>
+        <main className="chq-auth-card">
+          <div>
+            <h1 className="chq-auth-title">That link has expired</h1>
+            <div className="chq-auth-subtitle">
+              This link has already been used, or it has been replaced by a newer one.
+            </div>
+          </div>
+          <div className="chq-auth-submitrow">
+            <a className="chq-auth-tertiary" href="/login">
+              &lsaquo; Back to sign in
+            </a>
+            <a className="chq-btn chq-btn-primary" href="/forgot">
+              Send a fresh link
+            </a>
+          </div>
+        </main>
+      </body>
+    </html>
+  );
+}
+
+/** DEC-014 (wave-25 amendment) / B9 shell: the emailed reset link's HTML,
+ * a self-contained 560px-measure paper card matching the SSR auth-card
+ * vocabulary (olive #4E5C31 button, no other colour), inline-styled since
+ * email clients don't load an external stylesheet. Every dynamic value is
+ * escapeHtml'd (DEC-037: outbound email HTML never embeds raw user/merge-
+ * field content unescaped). `eventName` is the deployment's single event
+ * when resolvable (DEC-740's loadSingleEventContext), else a generic
+ * "your Chautauqua account" footer line -- there is no other candidate
+ * name to attribute the send to. */
+function resetEmailHtml(opts: { resetUrl: string; eventName: string | null }): string {
+  const safeUrl = escapeHtml(opts.resetUrl);
+  const reasonLine = opts.eventName
+    ? `You're receiving this because you have an account for ${escapeHtml(opts.eventName)}.`
+    : "You're receiving this because you have a Chautauqua account.";
+  return [
+    '<div style="max-width:560px;margin:0 auto;font-family:sans-serif;color:#1B1D17;">',
+    '<div style="border:1px solid #D3CFC0;border-radius:8px;padding:32px;background:#FAF8F2;">',
+    '<h1 style="font-size:20px;margin:0 0 12px;">Reset your password</h1>',
+    '<p style="font-size:15px;line-height:1.6;margin:0 0 24px;">Click the button below to choose a new password. This link expires in one hour and works once.</p>',
+    `<a href="${safeUrl}" style="display:inline-block;background:#4E5C31;color:#F7F9F0;border-radius:4px;padding:12px 22px;font-size:14px;font-weight:700;text-decoration:none;">Set a new password</a>`,
+    `<p style="font-size:13px;line-height:1.6;color:#565A4B;margin:24px 0 0;">If the button does not work, copy this link: ${safeUrl}</p>`,
+    "</div>",
+    `<p style="font-size:12px;color:#565A4B;margin:16px 0 0;">${reasonLine} If you did not request this, you can ignore this email.</p>`,
+    "</div>",
+  ].join("");
+}
+
+function resetEmailText(opts: { resetUrl: string; eventName: string | null }): string {
+  const reasonLine = opts.eventName
+    ? `You're receiving this because you have an account for ${opts.eventName}.`
+    : "You're receiving this because you have a Chautauqua account.";
+  return `Reset your password\n\nUse this link to choose a new password (expires in one hour, works once):\n${opts.resetUrl}\n\n${reasonLine} If you did not request this, you can ignore this email.\n`;
 }
 
 authRoutes.get("/login", async (c) => {
@@ -524,4 +723,171 @@ authRoutes.post("/claim/:token", csrfForm, async (c) => {
 
   c.header("Set-Cookie", buildSessionCookie(sessionToken, { secure: isSecureRequest(c.req.url) }));
   return c.redirect("/portal", 302);
+});
+
+// -----------------------------------------------------------------------
+// Password reset (DEC-014 wave-25 amendment / DEC-154 / DEC-180 / DEC-994).
+// -----------------------------------------------------------------------
+
+authRoutes.get("/forgot", async (c) => {
+  const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
+  if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);
+  return c.html(<ForgotPasswordPage csrfToken={csrfToken} />);
+});
+
+authRoutes.post("/forgot", csrfForm, async (c) => {
+  const db = c.var.db;
+  const body = await c.req.parseBody();
+  const submittedEmail = String(body.email ?? "").trim();
+  const normalizedEmail = submittedEmail.toLowerCase();
+  const now = Date.now();
+
+  // DEC-180: the SAME peek-then-conditionally-mutate shape as /login,
+  // keyed on the normalised email. A 429 here doesn't leak existence (it
+  // fires purely off request volume against one address, known or not).
+  const peek = await peekScopedLimit(db, "forgot", normalizedEmail, now, {
+    windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
+    max: AUTH_RATE_LIMIT_MAX,
+  });
+  if (!peek.ok) {
+    const { token: csrfToken } = ensureCsrfCookie(c);
+    return c.html(<ForgotPasswordPage csrfToken={csrfToken} email={submittedEmail} error={RATE_LIMIT_ERROR} />, 429);
+  }
+
+  // DEC-014 (wave-25 amendment): everything below this line is a
+  // server-side side effect (KV writes, the rate-limit counter, a
+  // best-effort email send) that must NEVER change the response — the
+  // exact same <CheckEmailPage> is returned at the bottom of this handler
+  // regardless of which branch below runs.
+  const rows = await db.select().from(schema.user).where(eq(schema.user.email, normalizedEmail)).limit(1);
+  const user = rows[0];
+
+  if (user) {
+    const kv = c.env.KV as unknown as KVStore;
+    const resetToken = await createResetToken(kv, user.id);
+    const origin = resolveBaseUrl(c);
+    const resetUrl = `${origin}/reset/${resetToken}`;
+
+    // email_log.event_id is NOT NULL (DEC-006); a password reset isn't
+    // event-scoped, so — mirroring POST /api/v1/users' welcome-email
+    // anchoring (src/routes/api/users.ts) — the send is logged against
+    // the org's first event when one exists. An org with zero events
+    // still mints and stores the token (the on-screen response is
+    // identical either way) but has no event to log the send against, so
+    // sending is skipped. No design doc covers this gap; narrowest
+    // reading, flagged for the scribe.
+    const orgEvents = await listEventsForOrg(db, user.orgId);
+    const anchorEvent = orgEvents[0];
+    if (anchorEvent) {
+      try {
+        const mailer = makeMailer(db, c.env);
+        await mailer.send({
+          to: { email: user.email, name: user.email },
+          subject: "Reset your password",
+          text: resetEmailText({ resetUrl, eventName: anchorEvent.name }),
+          html: resetEmailHtml({ resetUrl, eventName: anchorEvent.name }),
+          eventId: anchorEvent.id,
+          contactId: user.contactId ?? null,
+        });
+      } catch (err) {
+        console.error("password reset email failed (token still minted):", err);
+      }
+    }
+
+    await resetScopedLimit(db, "forgot", normalizedEmail, now, AUTH_RATE_LIMIT_WINDOW_SECONDS);
+  } else {
+    // No account: burn a comparable SHA-256 cost to the mint path above
+    // (DEC-004-style — never short-circuit past the work a real branch
+    // would do) and count this as a failed attempt against the budget.
+    await hashResetToken(newResetToken());
+    await incrementScopedLimit(db, "forgot", normalizedEmail, now, {
+      windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
+      max: AUTH_RATE_LIMIT_MAX,
+    });
+  }
+
+  return c.html(<CheckEmailPage email={submittedEmail} />);
+});
+
+authRoutes.get("/reset/:token", async (c) => {
+  const token = c.req.param("token");
+  const kv = c.env.KV as unknown as KVStore;
+  const record = await readResetToken(kv, token);
+  if (!record) {
+    return c.html(<ExpiredResetPage />, 410);
+  }
+
+  const db = c.var.db;
+  const rows = await db.select().from(schema.user).where(eq(schema.user.id, record.userId)).limit(1);
+  const user = rows[0];
+  if (!user) {
+    // A live reset grant with no backing user row is data corruption
+    // (the account was deleted after the token was minted), not a
+    // recoverable 404 — fail loudly.
+    throw new Error(`No user row for reset token userId '${record.userId}'`);
+  }
+
+  const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
+  if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);
+  return c.html(<ResetPasswordPage csrfToken={csrfToken} email={user.email} />);
+});
+
+authRoutes.post("/reset/:token", csrfForm, async (c) => {
+  const token = c.req.param("token");
+  const kv = c.env.KV as unknown as KVStore;
+
+  // Consume FIRST, before any validation — a replayed POST against an
+  // already-used (or never-valid) token always lands on the 410 card,
+  // rather than re-running the change or leaking whether it was ever
+  // valid.
+  const consumed = await consumeResetToken(kv, token);
+  if (!consumed) {
+    return c.html(<ExpiredResetPage />, 410);
+  }
+
+  const db = c.var.db;
+  const rows = await db.select().from(schema.user).where(eq(schema.user.id, consumed.userId)).limit(1);
+  const user = rows[0];
+  if (!user) {
+    throw new Error(`No user row for reset token userId '${consumed.userId}'`);
+  }
+
+  const body = await c.req.parseBody();
+  const next = String(body.next ?? "");
+  const confirm = String(body.confirm ?? "");
+
+  if (next.length < MIN_PASSWORD_LENGTH) {
+    const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
+    if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);
+    return c.html(
+      <ResetPasswordPage
+        csrfToken={csrfToken}
+        email={user.email}
+        error={`New password must be at least ${MIN_PASSWORD_LENGTH} characters.`}
+      />,
+      400,
+    );
+  }
+  if (next !== confirm) {
+    const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
+    if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew);
+    return c.html(
+      <ResetPasswordPage csrfToken={csrfToken} email={user.email} error="New password and confirmation do not match." />,
+      400,
+    );
+  }
+
+  const passwordHash = await hashPassword(next);
+  const now = new Date();
+  await db.update(schema.user).set({ passwordHash, updatedAt: now }).where(eq(schema.user.id, user.id));
+
+  // DEC-994: a reset asserts the credential was LOST — the opposite of
+  // login's rotate-this-session-only rule — so every existing session for
+  // this user is revoked, and a fresh one is minted for this browser
+  // (mirrors POST /account/password and POST /claim/:token exactly).
+  const sessionToken = await issueSessionRevokingAll(db, user.id, now);
+  c.header("Set-Cookie", buildSessionCookie(sessionToken, { secure: isSecureRequest(c.req.url) }));
+
+  const dest = user.role === "speaker" ? "/portal" : "/admin";
+  return c.redirect(dest, 302);
 });

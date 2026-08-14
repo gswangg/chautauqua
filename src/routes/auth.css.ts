@@ -154,6 +154,19 @@ export const AUTH_CSS = `
   .chq-auth-submitrow:has(.chq-auth-tertiary) {
     justify-content: space-between;
   }
+  /* task-w25-b: same 13px/700 link vocabulary as .chq-auth-back (frame's
+     '‹ Back to sign in' / 'Forgot your password?' links) -- a submitrow
+     tertiary link, not a footer link, so it does not inherit
+     .chq-auth-footer-links' 44px tap-target sizing. */
+  .chq-auth-tertiary {
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .chq-auth-tertiary:hover,
+  .chq-auth-tertiary:focus-visible {
+    text-decoration: underline;
+  }
 
   .chq-auth-error {
     font-size: 14px;
