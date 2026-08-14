@@ -14,7 +14,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
-import { isEpochMs, isIsoDate, MIN_EPOCH_MS, MAX_EPOCH_MS } from "../src/routes/api/validators";
+import { isEpochMs, MIN_EPOCH_MS, MAX_EPOCH_MS } from "../src/routes/api/validators";
+import { isIsoDate } from "../src/domain/iso-date";
 
 // ---------------------------------------------------------------------
 // (i) predicate units

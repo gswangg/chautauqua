@@ -4,6 +4,7 @@
 
 import { gt, lt, or } from "drizzle-orm";
 import * as schema from "../../../db/schema";
+import { isIsoDate } from "../../../domain/iso-date";
 
 /** Inclusive list of 'YYYY-MM-DD' days from event.startDate..endDate. */
 export function computeDays(startDate: string, endDate: string): string[] {
@@ -19,16 +20,20 @@ export function computeDays(startDate: string, endDate: string): string[] {
   return days;
 }
 
-/** The ONE day-shape gate for request bodies: a zero-padded ISO
- * `YYYY-MM-DD`, and nothing else. isDayWithinEventRange below compares
+/** The ONE day-shape gate for request bodies: a zero-padded, calendar-valid
+ * ISO `YYYY-MM-DD`, and nothing else. isDayWithinEventRange below compares
  * LEXICALLY, so it accepts any string that sorts between the two bounds --
  * `"2027-01-02" + 1MB of junk` sorts inside a multi-day event and would
  * reach the DB (the DEC-417 SQLITE_TOOBIG class). Pinning the shape here
  * bounds the value at exactly 10 chars for every caller. Used by
  * isValidSlotInput (./slots) and by src/routes/api/breaks.ts (DEC-022
- * amendment) -- never re-spelled per route. */
+ * amendment) -- never re-spelled per route. DEC-510 (wave 46 amendment):
+ * delegates entirely to src/domain/iso-date.ts's isIsoDate -- ONE grammar
+ * for the value, shared with event.startDate/endDate, so a calendar-invalid
+ * day like '2027-02-30' is refused here exactly as it is at the event
+ * boundary, instead of merely being shape-matched and persisted. */
 export function isIsoDay(value: unknown): value is string {
-  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+  return isIsoDate(value);
 }
 
 /** True iff `day` (YYYY-MM-DD) falls within [startDate, endDate] inclusive,

@@ -2,6 +2,8 @@
 // onboarding tasks a newly-accepted submission should create. Callers persist
 // the returned descriptors; this module performs no I/O and no email.
 
+import { isIsoDate } from "./iso-date";
+
 export type TaskKind = "general" | "file_request" | "form";
 
 export interface OnboardingTaskTemplate {
@@ -36,8 +38,6 @@ export const DEFAULT_ONBOARDING_TASKS: readonly OnboardingTaskTemplate[] = [
   { title: "Announce participation", kind: "general", required: false, dueDaysBeforeEventStart: 14 },
 ];
 
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
 /**
  * DEC-520/DEC-522: computes an onboarding task's due date as a UTC-midnight
  * DAY LABEL (not an event-local instant) — `dueDaysBeforeEventStart` days
@@ -45,9 +45,13 @@ const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
  * 'YYYY-MM-DD' string that round-trips through Date.UTC; anything else
  * throws rather than silently producing a wrong or NaN due date. A result
  * that already lies in the past is returned as-is (no clamping — DEC-520c).
+ *
+ * DEC-510 (wave 46 amendment): the shape+round-trip check delegates to
+ * src/domain/iso-date.ts's isIsoDate — the ONE grammar for YYYY-MM-DD,
+ * rather than a second hand-rolled regex.
  */
 export function onboardingTaskDueDate(eventStartDate: string, dueDaysBeforeEventStart: number): number {
-  if (!ISO_DATE_RE.test(eventStartDate)) {
+  if (!isIsoDate(eventStartDate)) {
     throw new Error(`onboardingTaskDueDate: malformed event start date "${eventStartDate}"`);
   }
   const parts = eventStartDate.split("-").map(Number);
@@ -55,14 +59,6 @@ export function onboardingTaskDueDate(eventStartDate: string, dueDaysBeforeEvent
   const month = parts[1]!;
   const day = parts[2]!;
   const ms = Date.UTC(year, month - 1, day);
-  const roundTrip = new Date(ms);
-  if (
-    roundTrip.getUTCFullYear() !== year ||
-    roundTrip.getUTCMonth() !== month - 1 ||
-    roundTrip.getUTCDate() !== day
-  ) {
-    throw new Error(`onboardingTaskDueDate: malformed event start date "${eventStartDate}"`);
-  }
   return ms - dueDaysBeforeEventStart * 86_400_000;
 }
 

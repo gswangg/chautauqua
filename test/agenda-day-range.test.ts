@@ -140,4 +140,27 @@ describe("PUT /submissions/:id/slot rejects an out-of-range day (DEC-277)", () =
     expect(body.error.fields?.day).toBeTruthy();
     expect(wasWritten()).toBe(false);
   });
+
+  // DEC-510 (wave 46 amendment): isIsoDay (the shape gate isValidSlotInput
+  // calls) used to be a bare regex, so a calendar-invalid day lexically
+  // inside the event's range ('2027-02-30' sorts inside 2027-02-01..
+  // 2027-03-05) passed the shape gate and would have persisted. It now
+  // delegates to isIsoDate and fails the shape gate itself, before the
+  // event's range is even loaded.
+  it("returns 400 for a calendar-invalid day and never writes the slot (DEC-510 amendment)", async () => {
+    const { app, wasWritten } = appWithDb([[{ eventId: "event1", orgId: "org1", status: "accepted" }]]);
+
+    const res = await app.request(
+      "/api/v1/submissions/sub1/slot",
+      {
+        method: "PUT",
+        headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+        body: JSON.stringify({ day: "2027-02-30", startMin: 540, endMin: 600 }),
+      },
+      {} as unknown as AppEnv["Bindings"],
+    );
+
+    expect(res.status).toBe(400);
+    expect(wasWritten()).toBe(false);
+  });
 });
