@@ -48,6 +48,15 @@ export function reUploadedSql() {
   return sql`coalesce(${latestDeliverableVersionNoSql()} > 1, 0)`;
 }
 
+/** DEC-879 (wave-20 amendment): the deliverable vocabulary is spoken from
+ * FILE_KINDS, all four members — not a hand-typed subset. Zero-fills every
+ * kind so the SPA's Record<FileKind, number> contract (app/src/pages/content/
+ * types.ts) never sees a missing key on a submission with no (or partial)
+ * deliverable files. */
+function zeroDeliverableCounts(): Record<FileKind, number> {
+  return Object.fromEntries(FILE_KINDS.map((k) => [k, 0])) as Record<FileKind, number>;
+}
+
 export interface SubmissionSpeaker {
   contactId: string;
   name: string;
@@ -63,7 +72,7 @@ export interface SubmissionListItem {
   trackIds: string[];
   submittedAt: number | null;
   createdAt: number;
-  deliverableCounts: { presentation: number; poster: number; handout: number };
+  deliverableCounts: Record<FileKind, number>;
   latestFile: { filename: string; kind: FileKind; versionCount: number; uploadedAt: number } | null;
   // DEC-881: latest deliverable file's stored version_no (DEC-818 identity,
   // not a chain-length count), and the single re-uploaded predicate derived
@@ -420,9 +429,7 @@ export async function listSubmissions(
   const deliverableCountsBySubmission = new Map<string, Record<FileKind, number>>();
   for (const d of deliverableRows) {
     if (!d.submissionId) continue;
-    const existing =
-      deliverableCountsBySubmission.get(d.submissionId) ??
-      ({ presentation: 0, poster: 0, handout: 0 } as Record<FileKind, number>);
+    const existing = deliverableCountsBySubmission.get(d.submissionId) ?? zeroDeliverableCounts();
     existing[d.kind as FileKind] = Number(d.count);
     deliverableCountsBySubmission.set(d.submissionId, existing);
   }
@@ -472,8 +479,7 @@ export async function listSubmissions(
       trackIds,
       submittedAt: r.createdAt.getTime(),
       createdAt: r.createdAt.getTime(),
-      deliverableCounts:
-        deliverableCountsBySubmission.get(r.id) ?? { presentation: 0, poster: 0, handout: 0 },
+      deliverableCounts: deliverableCountsBySubmission.get(r.id) ?? zeroDeliverableCounts(),
       latestFile: latestFileBySubmission.get(r.id) ?? null,
       latestFileVersionNo,
       latestFileByKind: latestFileByKindBySubmission.get(r.id) ?? {},
