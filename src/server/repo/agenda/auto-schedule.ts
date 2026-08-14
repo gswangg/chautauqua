@@ -12,6 +12,7 @@ import {
   type AutoScheduleSessionInput,
   type PlacedSession,
   type UnplacedLabels,
+  type UnplacedSession,
 } from "../../../domain/schedule";
 import { computeDays } from "./days";
 import { listBreaksForEvent } from "../breaks";
@@ -96,10 +97,15 @@ export async function runAutoSchedule(
   });
 
   const now = new Date();
-  const newPlacements = result
-    .filter((placement) => !existingIds.has(placement.submissionId))
-    .slice(0, MAX_AUTO_SCHEDULE_PLACEMENTS);
+  const allNewPlacements = result.filter((placement) => !existingIds.has(placement.submissionId));
+  // DEC-492 (wave 46 amendment): the write-burst bound stays, but the tail
+  // past the cap is a placement autoSchedule already SUCCEEDED at computing
+  // — it must be reported, not silently dropped, so it is appended below to
+  // unplacedFromRun under 'write_cap_reached' rather than discarded here.
+  const newPlacements = allNewPlacements.slice(0, MAX_AUTO_SCHEDULE_PLACEMENTS);
+  const cappedPlacements = allNewPlacements.slice(MAX_AUTO_SCHEDULE_PLACEMENTS);
 
+  const writtenSubmissionIds: string[] = [];
   if (newPlacements.length > 0) {
     const rows = newPlacements.map((placement) => ({
       id: newId(),
@@ -112,12 +118,22 @@ export async function runAutoSchedule(
       updatedAt: now,
     }));
     for (const chunk of chunkRowsForInsert(rows)) {
-      await db.insert(schema.scheduleSlot).values(chunk);
+      // DEC-552/DEC-492: one atomic statement per chunk -- a slot that
+      // appeared for a submission between the read (autoSchedule's snapshot
+      // above) and this write is left alone, never overwritten.
+      const written = await db
+        .insert(schema.scheduleSlot)
+        .values(chunk)
+        .onConflictDoNothing({ target: schema.scheduleSlot.submissionId })
+        .returning({ submissionId: schema.scheduleSlot.submissionId });
+      for (const w of written) writtenSubmissionIds.push(w.submissionId);
     }
-    await bumpIcsSequences(
-      db,
-      newPlacements.map((p) => p.submissionId),
-    );
+    if (writtenSubmissionIds.length > 0) {
+      // DEC-492: bump ONLY the ids this run actually wrote -- a SEQUENCE
+      // bump naming a row this run did not write is a lie to every
+      // subscribed calendar.
+      await bumpIcsSequences(db, writtenSubmissionIds);
+    }
   }
 
   const payload = await getAgendaPayload(db, eventId, event);
@@ -132,7 +148,14 @@ export async function runAutoSchedule(
     for (const speaker of s.speakers) speakerNameByContactId.set(speaker.contactId, speaker.name);
   }
   const unplacedLabels: UnplacedLabels = { titleBySubmissionId, speakerNameByContactId };
-  const unplacedReasons: DescribedUnplaced[] = unplacedFromRun.map((u) => {
+  // DEC-492 (wave 46 amendment): placements autoSchedule succeeded at but
+  // that fell past MAX_AUTO_SCHEDULE_PLACEMENTS are reported here with their
+  // real duration, never dropped without explanation.
+  const cappedUnplaced: UnplacedSession[] = cappedPlacements.map((p) => ({
+    submissionId: p.submissionId,
+    reason: "write_cap_reached" as const,
+  }));
+  const unplacedReasons: DescribedUnplaced[] = [...unplacedFromRun, ...cappedUnplaced].map((u) => {
     const durationMin = placedDurationMinBySubmissionId.get(u.submissionId) ?? params.defaultDurationMin;
     const sessionForCopy = { submissionId: u.submissionId, durationMin };
     return {

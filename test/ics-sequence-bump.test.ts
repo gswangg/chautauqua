@@ -56,8 +56,17 @@ function makeFakeDb(opts: { rooms: string[]; submissionIds: string[] }) {
       return chain;
     },
     insert: (table: unknown) => ({
-      values: async (rows: unknown) => {
-        insertCalls.push({ table, rows: Array.isArray(rows) ? rows : [rows] });
+      values: (rows: unknown) => {
+        const arr = Array.isArray(rows) ? rows : [rows];
+        insertCalls.push({ table, rows: arr });
+        return {
+          onConflictDoNothing: () => ({
+            returning: async () =>
+              table === schema.scheduleSlot
+                ? (arr as { submissionId: string }[]).map((r) => ({ submissionId: r.submissionId }))
+                : [],
+          }),
+        };
       },
     }),
     update: (table: unknown) => ({

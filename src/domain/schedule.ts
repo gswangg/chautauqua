@@ -82,7 +82,12 @@ export type UnplacedReason =
   | "no_rooms_configured"
   | "duration_exceeds_day"
   | "no_free_slot"
-  | "speaker_double_booked";
+  | "speaker_double_booked"
+  // DEC-492 (wave 46 amendment): the placer found a slot for this session,
+  // but the run's per-request write-burst cap (MAX_AUTO_SCHEDULE_PLACEMENTS)
+  // was already exhausted by earlier placements — the tail is reported
+  // here instead of silently discarded.
+  | "write_cap_reached";
 
 export interface UnplacedSession {
   submissionId: string;
@@ -115,6 +120,8 @@ export function describeUnplaced(
       return `"${title}" not placed: no free ${session.durationMin}-minute slot in any room on any day`;
     case "speaker_double_booked":
       return `"${title}" not placed: every open slot conflicts with a speaker already booked elsewhere`;
+    case "write_cap_reached":
+      return `"${title}" not placed: this run's write cap was reached — re-run auto-schedule to place the rest`;
   }
 }
 

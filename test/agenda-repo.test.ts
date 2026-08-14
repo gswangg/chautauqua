@@ -272,14 +272,22 @@ describe("DEC-974 declined participants are excluded from the agenda speaker set
         return chain;
       },
       insert: (table: unknown) => ({
-        values: async (rows: unknown) => {
+        values: (rows: unknown) => {
           const arr = Array.isArray(rows) ? rows : [rows];
           insertCalls.push({ table, rows: arr });
-          if (table === schema.scheduleSlot) {
-            for (const r of arr as { submissionId: string; roomId: string | null; day: string; startMin: number; endMin: number }[]) {
-              persistedSlots.push({ submissionId: r.submissionId, roomId: r.roomId, day: r.day, startMin: r.startMin, endMin: r.endMin });
-            }
-          }
+          return {
+            onConflictDoNothing: () => ({
+              returning: async () => {
+                if (table === schema.scheduleSlot) {
+                  for (const r of arr as { submissionId: string; roomId: string | null; day: string; startMin: number; endMin: number }[]) {
+                    persistedSlots.push({ submissionId: r.submissionId, roomId: r.roomId, day: r.day, startMin: r.startMin, endMin: r.endMin });
+                  }
+                  return (arr as { submissionId: string }[]).map((r) => ({ submissionId: r.submissionId }));
+                }
+                return [];
+              },
+            }),
+          };
         },
       }),
       update: () => ({
