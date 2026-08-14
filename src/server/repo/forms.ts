@@ -136,6 +136,24 @@ const LOCKED_SPEAKER_KIND: Record<string, "text" | "long_text"> = {
   bio: "long_text",
 };
 
+// Wave-39 (DEC-020 amendment): LOCKED_SESSION_LABELS / LOCKED_SPEAKER_LABELS
+// / LOCKED_SPEAKER_KIND are plain object literals — a lookup keyed by a
+// prototype name like `constructor`/`toString` would return a function
+// instead of falling back to the documented default (the fieldId itself, or
+// "text" for kind). Own-property lookup only, matching src/domain/files.ts's
+// allowedContentType shape. One reader for the whole module's lookup family.
+function ownProperty<T>(map: Record<string, T>, key: string): T | null {
+  return Object.prototype.hasOwnProperty.call(map, key) ? map[key]! : null;
+}
+
+// Test-only re-exports (test/lookup-table-own-property.test.ts) so the
+// own-property fix can be asserted directly against these module-private
+// tables without a db-backed createDefaultForm harness.
+export const LOCKED_SESSION_LABELS_FOR_TEST = LOCKED_SESSION_LABELS;
+export const LOCKED_SPEAKER_LABELS_FOR_TEST = LOCKED_SPEAKER_LABELS;
+export const LOCKED_SPEAKER_KIND_FOR_TEST = LOCKED_SPEAKER_KIND;
+export const ownPropertyForTest = ownProperty;
+
 /**
  * Creates the default CFP form (locked built-ins + empty custom set) for an
  * event that doesn't have one yet, per DEC-008.
@@ -196,7 +214,7 @@ export async function createDefaultForm(db: Db, eventId: string): Promise<{ form
         formId: row.id,
         section: "session",
         kind: fieldId === "description" ? "long_text" : "text",
-        label: LOCKED_SESSION_LABELS[fieldId] ?? fieldId,
+        label: ownProperty(LOCKED_SESSION_LABELS, fieldId) ?? fieldId,
         required: true,
         position: position++,
         locked: true,
@@ -209,8 +227,8 @@ export async function createDefaultForm(db: Db, eventId: string): Promise<{ form
         id: lockedFieldId(row.id, fieldId),
         formId: row.id,
         section: "speaker",
-        kind: LOCKED_SPEAKER_KIND[fieldId] ?? "text",
-        label: LOCKED_SPEAKER_LABELS[fieldId] ?? fieldId,
+        kind: ownProperty(LOCKED_SPEAKER_KIND, fieldId) ?? "text",
+        label: ownProperty(LOCKED_SPEAKER_LABELS, fieldId) ?? fieldId,
         required: !OPTIONAL_LOCKED_SPEAKER_FIELDS.has(fieldId),
         position: position++,
         locked: true,
