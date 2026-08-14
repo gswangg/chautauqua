@@ -32,6 +32,7 @@ interface DeletePlanCounts {
   recusals: number;
   revisions: number;
   taskResponses: number;
+  reviewAssignments: number;
 }
 
 interface DeletePlanEligible {
@@ -72,6 +73,9 @@ function blastRadiusParts(item: DeletePlanEligible): string[] {
   if (item.counts.revisions > 0) parts.push(countPhrase(item.counts.revisions, 'revision', 'revisions'));
   if (item.counts.recusals > 0) {
     parts.push(countPhrase(item.counts.recusals, 'reviewer recusal', 'reviewer recusals'));
+  }
+  if (item.counts.reviewAssignments > 0) {
+    parts.push(countPhrase(item.counts.reviewAssignments, 'review assignment', 'review assignments'));
   }
   if (item.scheduled) parts.push('leaves the agenda');
   if (item.counts.taskResponses > 0) {

@@ -2,11 +2,12 @@
 // SUBMITTED evaluation refuses the submission, a cross-event id is refused
 // (never a whole-batch throw), the cascade removes every table the
 // submission owns (including its schedule_slot — an orphaned slot makes
-// deleteRoom refuse forever), a completed task_assignment survives the
-// cascade reopened to 'pending' rather than deleted, planSubmissionDelete's
-// blast-radius counts come from one grouped query per table (never a query
-// per submission), and the delete-plan route never leaks the internal
-// fileR2Keys field onto the wire.
+// deleteRoom refuse forever — and, per the DEC-886 amendment, its draft
+// evaluation and submission-scoped plan_reviewer rows), a completed
+// task_assignment survives the cascade reopened to 'pending' rather than
+// deleted, planSubmissionDelete's blast-radius counts come from one grouped
+// query per table (never a query per submission), and the delete-plan route
+// never leaks the internal fileR2Keys field onto the wire.
 //
 // This repo has no local sqlite/D1 test driver (see test/files-delete.test.ts's
 // sibling comment). Rather than hand-interpreting drizzle-orm's internal SQL
@@ -47,6 +48,7 @@ interface State {
   events: Row[];
   submissions: Row[];
   evaluations: Row[];
+  planReviewers: Row[];
   files: Row[];
   taskAssignments: Row[];
   fileComments: Row[];
@@ -70,6 +72,8 @@ function colMap(): Map<unknown, (row: Row) => unknown> {
   m.set(schema.submission.title, (r) => r.title);
   m.set(schema.evaluation.submissionId, (r) => r.submissionId);
   m.set(schema.evaluation.submittedAt, (r) => r.submittedAt);
+  m.set(schema.planReviewer.submissionId, (r) => r.submissionId);
+  m.set(schema.planReviewer.id, (r) => r.id);
   m.set(schema.file.submissionId, (r) => r.submissionId);
   m.set(schema.file.r2Key, (r) => r.r2Key);
   m.set(schema.file.id, (r) => r.id);
@@ -112,6 +116,7 @@ function makeFakeDb(state: State, selectCallsByTable: Map<keyof State, number>) 
     [schema.event, "events"],
     [schema.submission, "submissions"],
     [schema.evaluation, "evaluations"],
+    [schema.planReviewer, "planReviewers"],
     [schema.file, "files"],
     [schema.taskAssignment, "taskAssignments"],
     [schema.fileComment, "fileComments"],
@@ -249,6 +254,14 @@ function fixture(): State {
       { id: "eval1", submissionId: "s3", submittedAt: 12345 },
       { id: "eval2", submissionId: "s4", submittedAt: null }, // draft only, not submitted
     ],
+    planReviewers: [
+      // submission-scoped assignment on s4 (DEC-886 amendment: orphans on
+      // delete, PlanEditor renders "Submission (removed)" forever).
+      { id: "pr1", planId: "plan1", userId: "u1", trackId: null, submissionId: "s4" },
+      // plan/track-wide assignment (submissionId null) — never touched by
+      // the submission-delete cascade.
+      { id: "pr2", planId: "plan1", userId: "u2", trackId: "tr1", submissionId: null },
+    ],
     files: [
       { id: "f1", submissionId: "s4", r2Key: "sub/s4/f1.pdf" },
       { id: "f2", submissionId: "s4", r2Key: "sub/s4/f2.pdf" },
@@ -312,6 +325,7 @@ describe("planSubmissionDelete (DEC-886)", () => {
       recusals: 1,
       revisions: 1,
       taskResponses: 1, // only ta1 (fileId f1); ta2 is on an unrelated file
+      reviewAssignments: 2, // draft eval2 + submission-scoped plan_reviewer pr1
     });
     expect(plan.eligible[0]?.scheduled).toBe(true);
   });
@@ -328,6 +342,7 @@ describe("planSubmissionDelete (DEC-886)", () => {
       recusals: 0,
       revisions: 0,
       taskResponses: 0,
+      reviewAssignments: 0,
     });
     expect(plan.eligible[0]?.scheduled).toBe(false);
   });
@@ -345,6 +360,11 @@ describe("planSubmissionDelete (DEC-886)", () => {
     expect(selectCallsByTable.get("reviewRecusals")).toBe(1);
     expect(selectCallsByTable.get("submissionRevisions")).toBe(1);
     expect(selectCallsByTable.get("fileComments")).toBe(1);
+    // evaluation is queried twice: once for the SUBMITTED refusal check,
+    // once for the reviewAssignments fold — both grouped/set-based, never
+    // per submission.
+    expect(selectCallsByTable.get("evaluations")).toBe(2);
+    expect(selectCallsByTable.get("planReviewers")).toBe(1);
     expect(selectCallsByTable.get("taskAssignments")).toBe(1);
     expect(selectCallsByTable.get("scheduleSlots")).toBe(1);
   });
@@ -365,6 +385,13 @@ describe("commitSubmissionDelete (DEC-886/921 cascade)", () => {
     expect(state.participants).toEqual([]);
     expect(state.reviewRecusals).toEqual([]);
     expect(state.submissionRevisions).toEqual([]);
+
+    // DEC-886 amendment: s4's draft evaluation (eval2) is gone; the
+    // submitted one for s3 is untouched.
+    expect(state.evaluations.map((r) => r.id)).toEqual(["eval1"]);
+    // The submission-scoped plan_reviewer row (pr1) is gone; the
+    // plan/track-wide row (pr2, submissionId null) is untouched.
+    expect(state.planReviewers.map((r) => r.id)).toEqual(["pr2"]);
 
     // schedule_slot for s4 is gone (DEC-921: an orphan slot 409s deleteRoom
     // forever) — no schedule_slot rows are left referencing s4.
@@ -396,6 +423,20 @@ describe("commitSubmissionDelete (DEC-886/921 cascade)", () => {
     const deleted = await commitSubmissionDelete(db, "ev1", []);
     expect(deleted).toBe(0);
     expect(state.submissions).toHaveLength(4);
+  });
+
+  it("DEC-886: a submission with a SUBMITTED evaluation is refused by the plan and nothing is deleted", async () => {
+    const state = fixture();
+    const db = makeFakeDb(state, new Map());
+
+    const plan = await planSubmissionDelete(db, "ev1", ["s3"]);
+    expect(plan.eligible).toEqual([]);
+    expect(plan.refused).toEqual([{ id: "s3", ref: "SES-003", reason: "Has at least one submitted evaluation" }]);
+
+    // The caller never invokes commitSubmissionDelete for a refused id, so
+    // s3's row and its submitted evaluation both survive untouched.
+    expect(state.submissions.some((r) => r.id === "s3")).toBe(true);
+    expect(state.evaluations.some((r) => r.id === "eval1")).toBe(true);
   });
 });
 
@@ -490,6 +531,7 @@ describe("GET /events/:eventId/submissions/delete-plan route (DEC-921)", () => {
       recusals: 1,
       revisions: 1,
       taskResponses: 1,
+      reviewAssignments: 2,
     });
     expect(body.refused).toEqual([]);
   });

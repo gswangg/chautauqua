@@ -151,7 +151,17 @@ const ELIGIBLE = [
 ];
 
 function emptyCounts() {
-  return { files: 0, comments: 0, participants: 0, answers: 0, tracks: 0, recusals: 0, revisions: 0, taskResponses: 0 };
+  return {
+    files: 0,
+    comments: 0,
+    participants: 0,
+    answers: 0,
+    tracks: 0,
+    recusals: 0,
+    revisions: 0,
+    taskResponses: 0,
+    reviewAssignments: 0,
+  };
 }
 
 const PLAN: SubmissionDeletePlan = { eligible: ELIGIBLE, refused: [] };

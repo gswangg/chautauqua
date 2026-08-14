@@ -37,9 +37,9 @@ selected ids travel in the query string. `POST /api/v1/events/:eventId/submissio
 (`src/server/repo/submission-delete.ts`) refuses any submission carrying at least one
 SUBMITTED evaluation, and refuses (never 500s) an id belonging to another event; every
 other id's submission_answer, submission_track, participant, file-request task
-assignments, files (and their R2 objects), file_comment, review_recusal, and revision
-rows are removed, then the submission row itself. `email_log` rows are historical fact
-and are never touched.
+assignments, files (and their R2 objects), file_comment, review_recusal, revision,
+evaluation, and plan_reviewer rows are removed, then the submission row itself.
+`email_log` rows are historical fact and are never touched.
 
 ## J4 — Committee review (`/admin/review`, `/admin/review/plans/new`, `/admin/review/plans/:planId`, `/admin/review/plans/:planId/progress`, `/admin/review/plans/:planId/results`, `/admin/review/plans/:planId/submissions/:submissionId`)
 
