@@ -106,10 +106,13 @@ SES-001. The agent burned ~10+ turns searching. Align the seed to fixture expect
   and the files library reports "0 files · 0 B" while files exist — a broken page in the
   judges' path (regression of "closed" DEC-773; runtime-verify this time).
 
-**DECISION ITEM (user): CNT-14 bulk export** (~1.0 coverage): the skip list forbids the
-Sessionboard ZIP-grouping dialog; if turn-diet gets judges to bulk export, it converts to
-not_found. Option: a skip-list-compliant plain "Download all files (.zip)" control with
-no grouping dialog. Needs a ruling before building.
+**CNT-14 bulk export — compliant variant BUILT (65bce94b), user ratification pending:**
+the swarm landed the skip-list-compliant option ahead of the ruling — a dialog-free
+scoped "Download all N (.zip)" in the files-library header (POSTs visible rows to the
+existing archive endpoint; absent on empty set; cap-aware disable). NO grouping dialog,
+so the skip rationale is respected. If the user rules against it, revert 65bce94b;
+otherwise it stands and CNT-14's ~1.0 coverage converts from guaranteed-not_found to
+satisfiable.
 
 **Recorded forfeit (unchanged, deliberate): ABS-14 AI-triage** (~0.7 pts) — we never
 claim AI in the UI.
