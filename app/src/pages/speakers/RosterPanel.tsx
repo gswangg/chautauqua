@@ -5,11 +5,28 @@
 // page). RosterPanel is a controlled panel: `mode` says which body (if any)
 // is open, `onClose` collapses it (Cancel / successful add / wizard close),
 // `onChanged` tells the page to reload the grid.
-import { useState } from 'react';
-import { apiPost, ApiError } from '../../lib/api';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { apiGet, apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { ImportWizard } from '../contacts/ImportWizard';
 import { FormRow, ModalFrame } from '../../components/ModalFrame';
+import { DuplicateEmailNotice } from '../contacts/DuplicateEmailNotice';
+
+interface DuplicateCandidateMatch {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  company: string | null;
+  reason: 'email' | 'name';
+}
+
+// DEC-788: fields settle 400ms after the last keystroke before the
+// create-time duplicate check fires -- the same debounce NewContactModal
+// uses, reusing its query-param shape verbatim so the two surfaces cannot
+// drift.
+const DUPLICATE_CHECK_DEBOUNCE_MS = 400;
 
 interface NewSpeakerForm {
   firstName: string;
@@ -45,17 +62,50 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
   const [form, setForm] = useState<NewSpeakerForm>(EMPTY_FORM);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [conflict, setConflict] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [duplicateMatch, setDuplicateMatch] = useState<DuplicateCandidateMatch | null>(null);
 
   function updateField<K extends keyof NewSpeakerForm>(key: K, value: NewSpeakerForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
+
+  // DEC-788: warn about a possible duplicate as the name/company/email
+  // fields settle, using GET /contacts/duplicates/check -- the same
+  // pair-matching predicate the Duplicates tab uses. This NEVER blocks Add;
+  // it's a quiet hint above the submit row.
+  useEffect(() => {
+    if (form.firstName.trim() === '' && form.lastName.trim() === '' && form.email.trim() === '') {
+      setDuplicateMatch(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams();
+      params.set('firstName', form.firstName);
+      params.set('lastName', form.lastName);
+      params.set('email', form.email);
+      if (form.company.trim() !== '') params.set('company', form.company);
+      apiGet<{ items: DuplicateCandidateMatch[] }>(`/contacts/duplicates/check?${params.toString()}`)
+        .then((res) => {
+          if (!cancelled) setDuplicateMatch(res.items[0] ?? null);
+        })
+        .catch(() => {
+          if (!cancelled) setDuplicateMatch(null);
+        });
+    }, DUPLICATE_CHECK_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [form.firstName, form.lastName, form.email, form.company]);
 
   async function handleAddSpeaker(e: React.FormEvent) {
     e.preventDefault();
     if (!eventId) return;
     setAdding(true);
     setError(null);
+    setConflict(false);
     try {
       await apiPost('/contacts', {
         firstName: form.firstName,
@@ -77,6 +127,9 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
       if (err instanceof ApiError) {
         const fieldDetail = err.fields ? Object.values(err.fields).join(' · ') : '';
         setError(fieldDetail ? `${err.message} — ${fieldDetail}` : err.message);
+        if (err.code === 'conflict') {
+          setConflict(true);
+        }
       } else {
         setError('Failed to add speaker');
       }
@@ -135,6 +188,20 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
           }
         >
           {error && <div className="chq-error">{error}</div>}
+          {conflict && (
+            <DuplicateEmailNotice
+              email={form.email}
+              addToEvent={{
+                eventId,
+                sessionTitle: form.sessionTitle,
+                onAdded: (name) => {
+                  setToast(`Added ${name}.`);
+                  onChanged();
+                  onClose();
+                },
+              }}
+            />
+          )}
           <FormRow label="First name" htmlFor="roster-first-name">
             <input
               id="roster-first-name"
@@ -206,6 +273,18 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
               onChange={(e) => updateField('bio', e.target.value)}
             />
           </FormRow>
+          {duplicateMatch && (
+            <p className="chq-speakers-roster-duplicate-hint" role="status">
+              Possible duplicate:{' '}
+              {/* DEC-834 / DEC-837: the router's basename is already '/admin' -- a
+                  `to` starting with '/admin/contacts' resolves to
+                  '/admin/admin/contacts' and 404s. */}
+              <Link to={`/contacts?openContact=${duplicateMatch.id}`}>
+                {duplicateMatch.firstName} {duplicateMatch.lastName}
+                {duplicateMatch.company ? `, ${duplicateMatch.company}` : ''}
+              </Link>
+            </p>
+          )}
         </ModalFrame>
       )}
 
