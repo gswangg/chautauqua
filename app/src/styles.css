@@ -98,6 +98,11 @@
   --chq-measure: 820px;
   --chq-measure-wide: 1180px;
   --chq-measure-table: 1440px;
+  /* DEC-683 amendment (wave 1, task w1-a): the SAME left/right padding
+     .chq-main declares below -- named as a token (DEC-367/372 shared
+     vocabulary, mirrored in THEME_CSS) so a padded-ancestor clamp fix can
+     reference it instead of a hand-copied 34px. */
+  --chq-pub-main-pad-x: 34px;
 }
 
 * {
@@ -365,7 +370,7 @@ a:hover {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 26px 34px 34px;
+  padding: 26px var(--chq-pub-main-pad-x) 34px;
 }
 
 .chq-measure {

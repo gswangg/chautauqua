@@ -90,6 +90,17 @@ export const THEME_CSS = `
        these vars. */
     --chq-measure: 820px;
     --chq-measure-wide: 1180px;
+    /* DEC-683 amendment (wave 1, task w1-a): the PUBLIC PAIR contract is
+       820 (list) + 60 (gap) + 300 (rail) = 1180 of CONTENT at a 1440
+       viewport. --chq-measure-wide alone only clamps a rule's max-width;
+       when the clamped element is ALSO the padded ancestor (main.chq-pub-
+       main, src/routes/public/css/chrome.css.ts), box-sizing:border-box
+       eats that padding out of the 1180 instead of adding it, landing at
+       1112 of content. --chq-pub-main-pad-x is the SAME left/right padding
+       value main.chq-pub-main declares, named here so chrome.css.ts's
+       wide-main override can cancel it back out via calc() -- never a
+       vw/cqw guess. */
+    --chq-pub-main-pad-x: 34px;
   }
 
   @font-face {

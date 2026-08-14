@@ -44,13 +44,17 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
   /* DEC-584 (wave 64): at public density (<=10 sessions/day over 1-4
      rooms) the blocks sharing a start time wrap into a fluid grid rather
      than reserving a fixed column per room -- most rows have exactly one
-     block, which fills the row at 1fr. */
+     block, which fills the row at 1fr. DEC-683 amendment (wave 1, task
+     w1-a): gap 8 -> 16, matching the PUBLIC PAIR spacing move elsewhere in
+     this wave -- still three 228px+ tracks across the 820px list column
+     (repeat(auto-fit, minmax(228px, 1fr)) with a 16px gap fits 3 without a
+     degenerate 0px track). */
   .chq-pub-agenda-day-blocks {
     flex: 1 1 auto;
     min-width: 0;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(228px, 1fr));
-    gap: 8px;
+    gap: 16px;
   }
   /* DEC-999: a block is a content-sized card -- column flexbox so
      head/title/speakers/chips stack and the box's own height is the

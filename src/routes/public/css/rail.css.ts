@@ -66,11 +66,15 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
 
   /* ===== task-w14-d (DEC-683): sessions list + rail =====
      Two-column grid (list, then a 300px <aside>) above 700px, single column
-     below it — same breakpoint the rest of this stylesheet already uses. */
+     below it — same breakpoint the rest of this stylesheet already uses.
+     DEC-683 amendment (wave 1, task w1-a): the PUBLIC PAIR contract is
+     820 (list) + 60 (gap) + 300 (rail) = 1180 of content -- 1fr already
+     resolves to 820 once the 1180-wide ancestor's own padding is cancelled
+     (theme.ts/chrome.css.ts), so only the gap moves, 34 -> 60. */
   .chq-pub-sessions-layout {
     display: grid;
     grid-template-columns: 1fr 300px;
-    gap: 34px;
+    gap: 60px;
     align-items: start;
   }
   .chq-pub-sessions-rail { display: flex; flex-direction: column; gap: 26px; }
@@ -211,11 +215,13 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
      display:none above 700px.) .chq-pub-agenda-rail reuses every
      .chq-pub-rail-* section/heading/body rule already defined above (no
      new rules needed there -- AgendaRail's markup emits the same classes
-     ScheduleRailSection/DayIndexRailSection do). */
+     ScheduleRailSection/DayIndexRailSection do).
+     DEC-683 amendment (wave 1, task w1-a): same PUBLIC PAIR gap move as
+     .chq-pub-sessions-layout above, 34 -> 60. */
   .chq-pub-agenda-layout {
     display: grid;
     grid-template-columns: 1fr 300px;
-    gap: 34px;
+    gap: 60px;
     align-items: start;
   }
   .chq-pub-agenda-col { min-width: 0; }
