@@ -26,6 +26,7 @@ import type { PlanRecord } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
 import { DEC_239, DEC_460, DEC_461, DEC_466, DEC_831, DEC_857 } from "../../decisions";
 import { currentAuth, requireReviewerOrOrganizer, requireAssignedPlan } from "./shared";
+import { lockedFieldName } from "../../forms/types";
 
 export const reviewReviewerRoutes = new Hono<AppEnv>();
 void DEC_239; // /review/plans/:id/queue: shaped {submissionId,ref,title,ratingsCount,alreadyRatedByMe} below
@@ -247,7 +248,15 @@ reviewReviewerRoutes.get("/api/v1/review/submissions/:id", async (c) => {
   const summary = await repo.getSubmissionSummaryInEvent(c.var.db, submissionId, plan.eventId);
   if (!summary) throw new ApiError("not_found", "Submission not found");
 
-  const answers = await repo.listAnswersForSubmission(c.var.db, submissionId);
+  // DEC-908/DEC-016: locked built-ins (title, description, first_name,
+  // email, ...) already surface through their own SubmissionDetail columns
+  // (summary fields above / speakers) -- they must never also ride along in
+  // the generic answers list, or the scorecard double-renders them (and, on
+  // a non-anonymized plan, leaks raw speaker PII through a reading column
+  // that isn't supposed to carry it). Filter BEFORE the speaker/session
+  // split so neither branch can reintroduce a locked key.
+  const rawAnswers = await repo.listAnswersForSubmission(c.var.db, submissionId);
+  const answers = rawAnswers.filter((a) => lockedFieldName(a.fieldId) === null);
   const speakers = await repo.listSpeakersForSubmission(c.var.db, submissionId);
   // frame 03--01: the scorecard head's meta line needs the same
   // SESSION_FORMAT_FIELD_ID reading the queue row already carries (DEC-857)
