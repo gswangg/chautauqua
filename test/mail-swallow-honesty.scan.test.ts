@@ -163,7 +163,7 @@ function scanForMailSwallows(): SwallowHit[] {
 const KNOWN_SWALLOWS: { file: string; functionOrNearestExport: string; reason: string }[] = [
   {
     file: "src/routes/api/users.ts",
-    functionOrNearestExport: "(route handler near line 63)",
+    functionOrNearestExport: "(route handler near line 64)",
     reason:
       "POST /api/v1/users: the welcome-email send failure is caught and logged, but the 201 response already returns the freshly generated one-time password on screen -- nothing is claimed that did not happen (the account creation itself succeeded; the welcome notice is a best-effort courtesy copy of information the caller already has in hand).",
   },
