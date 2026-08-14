@@ -44,10 +44,21 @@ export interface PublicSpeakersPage {
 export async function getPublicSpeakers(
   db: Db,
   eventId: string,
-  opts: { q?: string | null; page: number; perPage: number; window?: boolean },
+  opts: { q?: string | null; trackId?: string | null; page: number; perPage: number; window?: boolean },
 ): Promise<PublicSpeakersPage> {
   const conditions = [eq(schema.submission.eventId, eventId), visibleSubmissionConditions()];
   const q = opts.q?.trim();
+  // DEC-990 amendment (wave 64): the ONE track facet, enforced in SQL as an
+  // EXISTS over submission_track scoped to the same submission this
+  // speaker's participant row joins to — applied to BOTH the distinct-id
+  // query and the count below (never one and not the other, or the pager
+  // and the total disagree).
+  const trackId = opts.trackId?.trim() || null;
+  if (trackId) {
+    conditions.push(
+      sql`exists (select 1 from ${schema.submissionTrack} where ${schema.submissionTrack.submissionId} = ${schema.submission.id} and ${schema.submissionTrack.trackId} = ${trackId})`,
+    );
+  }
   if (q) {
     // DEC-506: escape via likeContains + pair with ESCAPE '\\' so a
     // literal `%`/`_` in the query string can't widen into a wildcard
