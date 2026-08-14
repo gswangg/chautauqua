@@ -33,7 +33,7 @@ const ARCHIVE_MAX_FILES = 50;
 const ARCHIVE_MAX_TOTAL_BYTES = 20 * 1024 * 1024;
 const ARCHIVE_CAP_MESSAGE = '50 files or 20 MB at a time — narrow the filter';
 
-// DEC-678 amendment (B7): names the exact facet(s) narrowing an empty
+// DEC-678 amendment (B7): names each exact facet narrowing an empty
 // result set — search text and/or the active kind chip — so the reason
 // line never reads as a generic "try something else".
 function filesFilterReason(q: string, kind: LibraryKind | ''): string {
