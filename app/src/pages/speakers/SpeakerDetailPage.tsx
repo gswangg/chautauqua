@@ -8,6 +8,7 @@ import { Link, useParams } from 'react-router-dom';
 import { apiGet, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { PageSkeleton } from '../../components/PageSkeleton';
 import { formatDateOnly, formatDayLabel } from '../../lib/dates';
 import { INVITE_STATUS_LABELS } from './types';
 import { participationStatusClass } from './ParticipationMenu';
@@ -77,7 +78,7 @@ export function SpeakerDetailPage() {
   if (eventLoading) {
     return (
       <div className="chq-page chq-speaker-detail-page chq-measure-table">
-        <DelayedLoading label="Loading event…" />
+        <PageSkeleton variant="detail" label="Loading event…" />
       </div>
     );
   }

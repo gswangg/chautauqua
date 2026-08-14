@@ -6,6 +6,7 @@ import { DeliverableDetail } from './DeliverableDetail';
 import { FilesLibrary } from './FilesLibrary';
 import { SessionList } from './SessionList';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { PageSkeleton } from '../../components/PageSkeleton';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { type ContentStatus, type ContentSubmissionListItem } from './types';
 import { WORKLIST_TAB_CONTENT_STATUS, WORKLIST_TABS, type WorklistTab } from './worklist';
@@ -306,7 +307,7 @@ export function ContentApp() {
     return (
       <div className="chq-page chq-measure-table">
         <h1 className="chq-page-title">Content</h1>
-        <DelayedLoading label="Loading event…" />
+        <PageSkeleton variant="table" label="Loading event…" />
       </div>
     );
   }

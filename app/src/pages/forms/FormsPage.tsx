@@ -6,7 +6,7 @@ import { copyText } from '../../lib/clipboard';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DateField } from '../../components/DateField';
-import { DelayedLoading } from '../../components/DelayedLoading';
+import { PageSkeleton } from '../../components/PageSkeleton';
 import { FieldList } from './FieldList';
 import { FieldModal, type FieldModalInput } from './FieldModal';
 import { guardEditableField, moveId } from './logic';
@@ -208,7 +208,7 @@ export function FormsPage() {
     return (
       <div className="chq-page chq-measure">
         <h1>Forms</h1>
-        <DelayedLoading />
+        <PageSkeleton variant="list" />
       </div>
     );
   }
