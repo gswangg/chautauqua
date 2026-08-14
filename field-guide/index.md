@@ -20,40 +20,41 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   W/NO WRITER RENDERS NOTHING; SECOND READER INHERITS NO MANNERS;
   GUESSABLE URL 404 DEAD END; PHONE REFUSING DESKTOP IS DIFFERENT PRODUCT
   (J9); HIDDEN W/NO OVERRIDE NEVER RENDERS; DOM ORDER IS POSITION; SUB-APP
-  onError SWALLOWS PARENT'S MANNERS; SCAN OF IMPORTS != CALL SITES; DEAD
-  DUPLICATE KEPT ALIVE BY OWN TEST; WIDTH BEATS MAX-WIDTH; `1fr` HAS
-  MIN-CONTENT FLOOR; TYPED FILE LIST SCAN MEASURES FILES REMEMBERED.
-  max-width 700/900; no overflow-x:hidden; no colour literal in surface
-  CSS. Lanes land MID-PLAN, re-open file:line.
-- FINDINGS w16-19 (compacted). Shapes: SCAN BINDS ONE CALL SHAPE MISSES
-  SIBLING; GUARD THAT NARROWS < NONE; SCAN'S ROOT IS PART OF ITS CLAIM;
-  SIBLING ATTRIBUTE IS ALSO A ROUTE; HAND-TYPED LIST FORGETS 3RD MEMBER;
-  MINT != DELIVERY; FALLBACK THAT GUESSES IS ATTACKER INPUT; CATCH
-  JUSTIFIED BY COMMENT OUTLIVES PREMISE; PROBE BY HAND MISSES MOUNTS;
-  GRID DECLARES ONE TRACK/CHILD; POLICY IN ONE HOOK ISN'T A POLICY;
-  RECEIVER IS PART OF CALL SHAPE. REFUSED: no public "create account"
-  CTA on /submit. Amendments DEC-528/837/841/914/048/438/628/635/949/
-  252/547/550/715/745/078/024/678/948/713/098.
-- FINDINGS w20 (compacted). Mandate exhausted 7th time, ~25 items
-  re-verified. Shapes: CAST IS NOT A KEY; ALLOW-LIST REASON NAMING A
-  DELEGATE IS A CLAIM, RESOLVE OR DELETE; GUARD BOUND TO ELEMENT NOT
-  ATTRIBUTE SPELLING; TRIPWIRE COUNTING FILES != COUNTING MATCHES;
-  SECOND READER INHERITS NO MANNERS AGAIN; DUPLICATED ENUM MESSAGE
-  DRIFTS BY LAST MEMBER ADDED. Amendments DEC-939/678/402/908/879.
+  onError SWALLOWS PARENT'S MANNERS; DEAD DUPLICATE KEPT ALIVE BY OWN
+  TEST; WIDTH BEATS MAX-WIDTH; TYPED FILE LIST SCAN MEASURES FILES
+  REMEMBERED. max-width 700/900; no overflow-x:hidden; no colour literal
+  in surface CSS. Lanes land MID-PLAN, re-open file:line.
+- FINDINGS w16-20 (compacted). Shapes: SCAN BINDS ONE CALL SHAPE MISSES
+  SIBLING; GUARD THAT NARROWS < NONE; SIBLING ATTRIBUTE IS ALSO A ROUTE;
+  HAND-TYPED LIST FORGETS 3RD MEMBER; MINT != DELIVERY; FALLBACK THAT
+  GUESSES IS ATTACKER INPUT; CATCH JUSTIFIED BY COMMENT OUTLIVES PREMISE;
+  PROBE BY HAND MISSES MOUNTS; POLICY IN ONE HOOK ISN'T A POLICY;
+  RECEIVER IS PART OF CALL SHAPE; CAST IS NOT A KEY; ALLOW-LIST REASON
+  NAMING A DELEGATE IS A CLAIM, RESOLVE OR DELETE; TRIPWIRE COUNTING
+  FILES != COUNTING MATCHES; DUPLICATED ENUM MESSAGE DRIFTS BY LAST
+  MEMBER ADDED. REFUSED: no public "create account" CTA on /submit.
+  Amendments DEC-528/837/841/914/048/438/628/635/949/252/547/550/715/
+  745/078/024/678/948/713/098/939/402/908/879.
 - FINDINGS w21 (planner re-verified on main; review-lens items 3+4 --
-  public onError JSON envelope, signOut res.ok -- were ALREADY FIXED, as
-  were the origin/tasks/claim/probe items: VERIFY BEFORE FILING). Mandate
-  open list still exhausted; wave-21 work is guards weaker than the
-  decisions they cite. Shapes: A CATCH THAT RETURNS A DEFAULT IS NOT A
-  GUARD (DEC-635 said ".catch that THROWS"; scan only checked `.catch(`
-  existed and its own message recommended `() => ({})` -- 28 sites
-  answered a malformed body with 200/{}); A MARKDOWN ENUMERATION IS
-  PINNED TO ITS SHA (157-route authz inventory is prose at d034a9e0, its
-  runtime twin probes 3 files and says "representative" -- re-derive the
-  population at TEST TIME); AN ALLOWLIST WITH NO STALE DIRECTION IS
-  PERMISSION (inarray/insert scans verify only that the named FILE
-  exists, pre-clearing future reuses of the pair); A ROLLBACK IS STILL
-  AN ORDERING (submit.tsx deleted R2 objects before the row-delete,
-  ledgered "deserves its own wave"); SIBLING FIGURES IN ONE FUNCTION
-  DRIFT (speakerCount filters role+invite+org, returningSpeakers
-  filtered none of the three). Amendments DEC-635/713/459/078/432.
+  public onError JSON envelope, signOut res.ok -- ALREADY FIXED, as were
+  origin/tasks/claim/probe items: VERIFY BEFORE FILING). Shapes: CATCH
+  RETURNING A DEFAULT IS NOT A GUARD (DEC-635 wanted ".catch that
+  THROWS"; 28 sites answered malformed body with 200/{}); MARKDOWN
+  ENUMERATION PINNED TO ITS SHA (re-derive population at TEST TIME, not
+  prose); ALLOWLIST W/NO STALE DIRECTION IS PERMISSION; ROLLBACK IS
+  STILL AN ORDERING (submit.tsx deleted R2 before row-delete); SIBLING
+  FIGURES IN ONE FUNCTION DRIFT. Amendments DEC-635/713/459/078/432.
+- FINDINGS w22 (planner re-verified on main; mandate open list exhausted
+  8th time, ~12 P1/P2s already landed). TWO of four review-lens items were
+  STALE: content-notes "minting destroys live grant" is FALSE since DEC-949
+  wave-18 (grant re-put w/ 48h grace); "/embed/e/* cached twice" is FALSE --
+  Hono compose advances only on next(), a use() after a sub-app mount never
+  wraps it; that registration is LOAD-BEARING. Shapes: A DELETE KEYED ON
+  CLIENT INPUT NEEDS THE OWNER PREDICATE (issueSession deleted by tokenHash
+  alone let login-with-another's-cookie revoke THEIR session); THE
+  UNAUTHENTICATED ROUTES GOT THE RATE LIMITS (login/claim/submit metered,
+  /account/password ran unmetered 100k-PBKDF2 -- authenticated != safe from
+  oracle/CPU-sink); AN ADVERTISED CAP THE PLATFORM REFUSES IS A LIE (250 MB
+  recordings vs 100 MB Workers body ceiling -- derive caps from a named
+  platform limit); MIDDLEWARE SCOPE IS REGISTRATION ORDER -- COUNT THE
+  PASSES, DON'T READ THE use() LINES. Amendments DEC-994/180/879/083.
