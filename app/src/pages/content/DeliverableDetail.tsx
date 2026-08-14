@@ -324,14 +324,33 @@ export function DeliverableDetail({
             </Link>
           </p>
         </div>
+        {/* w5-i: "Download all" moves onto the header block (title row),
+            alongside the breadcrumb/H1, rather than sharing the status
+            band's own row with Approve -- the status band states a fact
+            (current status) plus the one action that changes it; a
+            page-level export action belongs with the page's own header, the
+            same anatomy FilesLibrary already uses. */}
+        <div className="chq-content-detail-head-actions">
+          <button
+            type="button"
+            className="chq-btn chq-btn-secondary"
+            disabled={downloadPending || !eventId}
+            onClick={() => void handleDownloadAll()}
+          >
+            {downloadPending ? 'Downloading…' : 'Download all'}
+          </button>
+        </div>
       </div>
 
       {/* DEC-901 amendment (wave 41): sunk CONTENT STATUS band -- states the
-          current status and when it changed, and now also carries the
-          Approve/"Download all" actions that used to sit in their own
-          .chq-content-status-bar next to the title column (deleted --
-          an element that only ever held these two actions and nothing else
-          is chrome, not a second box). Content-status writes always bump
+          current status and when it changed, and carries the Approve
+          action that used to sit in its own .chq-content-status-bar next
+          to the title column (deleted -- an element that only ever held
+          this action and nothing else is chrome, not a second box).
+          w5-i amendment: "Download all" moved OFF this band onto the
+          header block above (chq-content-detail-head-actions) -- an export
+          action is not a fact about the current status, it belongs beside
+          the page's own H1. Content-status writes always bump
           the submission's own updatedAt
           (src/server/repo/files-content-status.ts sets both in the same
           UPDATE), the same "truthful for every status" precedent
@@ -391,14 +410,6 @@ export function DeliverableDetail({
               Approve
             </button>
           )}
-          <button
-            type="button"
-            className="chq-btn chq-btn-secondary"
-            disabled={downloadPending || !eventId}
-            onClick={() => void handleDownloadAll()}
-          >
-            {downloadPending ? 'Downloading…' : 'Download all'}
-          </button>
         </div>
       </div>
 

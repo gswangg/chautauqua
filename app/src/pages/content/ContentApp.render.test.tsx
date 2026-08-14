@@ -150,6 +150,8 @@ describe('ContentApp worklist latest file column (DEC-686 page-scoped hydration)
           // list payload ships alongside latestFile — never the chain length in
           // latestFile.versionCount.
           latestFileVersionNo: 2,
+          // w5-i: per-kind version map the Latest file column's summary reads.
+          latestFileByKind: { presentation: 2 },
         },
       ]),
     });
@@ -165,8 +167,10 @@ describe('ContentApp worklist latest file column (DEC-686 page-scoped hydration)
     const row = container.querySelector('tr.chq-content-row');
     if (!row) throw new Error('worklist row not found');
 
+    // w5-i: the Latest file column is a per-kind summary ("Slides v2"), not
+    // the raw filename+version.
     const latestFileCell = row.querySelector('.chq-content-row-latest-file');
-    expect(latestFileCell).toHaveTextContent('slides-v2.pdf · v2');
+    expect(latestFileCell).toHaveTextContent('Slides v2');
   });
 
   it("renders the honest 'No files yet' empty cell for a submission with no uploads", async () => {

@@ -30,26 +30,29 @@ function file(overrides: Partial<DeliverableFile> = {}): DeliverableFile {
 }
 
 describe('VersionList', () => {
-  it('labels a single chain Latest/v1', () => {
+  it('labels a single chain NEWEST/v1', () => {
     const v1 = file({ id: 'v1', filename: 'slides-v1.pdf', createdAt: 100, previousFileId: null, versionNo: 1 });
     const v2 = file({ id: 'v2', filename: 'slides-v2.pdf', createdAt: 200, previousFileId: 'v1', versionNo: 2 });
     render(<VersionList versions={[v2, v1]} onDeleted={() => {}} />);
     const items = screen.getAllByRole('listitem');
-    expect(items[0]).toHaveTextContent('Latest');
+    expect(items[0]).toHaveTextContent('NEWEST');
     expect(items[1]).toHaveTextContent('v1');
   });
 
-  // DEC-901: the newest row must name its version NUMBER as well as the
-  // marker (never the marker alone), and the version it replaced carries
-  // REPLACED.
-  it('labels the newest row "v<N> · Latest" and the version it replaced REPLACED', () => {
+  // DEC-901/w5-i: the newest row must name its version NUMBER as well as
+  // the marker (never the marker alone) -- the marker itself is now a
+  // separate right-aligned "NEWEST" badge, not appended inline to the tag.
+  // The version it replaced carries REPLACED.
+  it('labels the newest row "v<N>" plus a right-aligned NEWEST badge, and the version it replaced REPLACED', () => {
     const v1 = file({ id: 'v1', filename: 'slides-v1.pdf', createdAt: 100, previousFileId: null, versionNo: 1 });
     const v2 = file({ id: 'v2', filename: 'slides-v2.pdf', createdAt: 200, previousFileId: 'v1', versionNo: 2 });
     render(<VersionList versions={[v2, v1]} onDeleted={() => {}} />);
     const items = screen.getAllByRole('listitem');
-    expect(items[0]).toHaveTextContent('v2 · Latest');
+    expect(items[0]).toHaveTextContent('v2');
+    expect(items[0]!.querySelector('.chq-content-version-newest')).toHaveTextContent('NEWEST');
     expect(items[0]).not.toHaveTextContent('REPLACED');
     expect(items[1]).toHaveTextContent('v1');
+    expect(items[1]!.querySelector('.chq-content-version-newest')).toHaveTextContent('');
     expect(items[1]).toHaveTextContent('REPLACED');
   });
 
@@ -95,13 +98,13 @@ describe('VersionList', () => {
     render(<VersionList versions={[orgNew, orgOld, taskNew, taskOld]} onDeleted={() => {}} />);
     const items = screen.getAllByRole('listitem');
     expect(items).toHaveLength(4);
-    // Only the single overall-newest file is "Latest".
-    expect(items[0]).toHaveTextContent('Latest');
+    // Only the single overall-newest file carries the NEWEST badge.
+    expect(items[0]!.querySelector('.chq-content-version-newest')).toHaveTextContent('NEWEST');
     expect(items[1]).toHaveTextContent('v1');
     // The unrelated older chain gets its OWN v2/v1 numbering, never v3/v4
     // (which would wrongly imply it's a continuation of the newer chain).
     expect(items[2]).toHaveTextContent('v2');
-    expect(items[2]).not.toHaveTextContent('Latest');
+    expect(items[2]!.querySelector('.chq-content-version-newest')).toHaveTextContent('');
     expect(items[3]).toHaveTextContent('v1');
   });
 
@@ -113,7 +116,8 @@ describe('VersionList', () => {
     const v3 = file({ id: 'v3', filename: 'slides-v3.pdf', createdAt: 300, previousFileId: 'v1', versionNo: 3 });
     render(<VersionList versions={[v3, v1]} onDeleted={() => {}} />);
     const items = screen.getAllByRole('listitem');
-    expect(items[0]).toHaveTextContent('v3 · Latest');
+    expect(items[0]).toHaveTextContent('v3');
+    expect(items[0]!.querySelector('.chq-content-version-newest')).toHaveTextContent('NEWEST');
     expect(items[1]).toHaveTextContent('v1');
     expect(screen.queryByText('v2')).not.toBeInTheDocument();
   });

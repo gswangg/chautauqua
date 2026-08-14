@@ -207,10 +207,10 @@ describe('DeliverableDetail render smoke', () => {
       </MemoryRouter>,
     );
 
-    const chip = await screen.findByRole('tab', { name: 'Presentation · 3 versions' });
+    const chip = await screen.findByRole('tab', { name: 'Slides · 3 versions' });
     expect(chip).toBeInTheDocument();
     // No stray per-version or per-upload-group chip for the same kind.
-    expect(screen.queryAllByRole('tab', { name: /Presentation/ })).toHaveLength(1);
+    expect(screen.queryAllByRole('tab', { name: /Slides/ })).toHaveLength(1);
   });
 
   it('renders one chip (no filename suffix) for a kind with a single 2-file chain', async () => {
@@ -228,9 +228,9 @@ describe('DeliverableDetail render smoke', () => {
       </MemoryRouter>,
     );
 
-    const presentationChip = await screen.findByRole('tab', { name: 'Presentation · 2 versions' });
+    const presentationChip = await screen.findByRole('tab', { name: 'Slides · 2 versions' });
     expect(presentationChip).toBeInTheDocument();
-    expect(screen.queryByText(/Presentation · 2 versions ·/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Slides · 2 versions ·/)).not.toBeInTheDocument();
   });
 
   it('renders two chips (each filename-suffixed) for a kind with two independent chains, and selecting the second scopes its own version and thread', async () => {
@@ -248,8 +248,8 @@ describe('DeliverableDetail render smoke', () => {
       </MemoryRouter>,
     );
 
-    const chipA = await screen.findByRole('tab', { name: 'Presentation · 1 version · keynote-a.pdf' });
-    const chipB = screen.getByRole('tab', { name: 'Presentation · 1 version · keynote-b.pdf' });
+    const chipA = await screen.findByRole('tab', { name: 'Slides · 1 version · keynote-a.pdf' });
+    const chipB = screen.getByRole('tab', { name: 'Slides · 1 version · keynote-b.pdf' });
     expect(chipA).toHaveClass('is-active');
     expect(chipB).not.toHaveClass('is-active');
     expect(screen.getByText('keynote-a.pdf')).toBeInTheDocument();
@@ -284,7 +284,7 @@ describe('DeliverableDetail render smoke', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByRole('tab', { name: 'Presentation · 2 versions' });
+    await screen.findByRole('tab', { name: 'Slides · 2 versions' });
     expect(screen.queryByRole('tab', { name: /Recording/ })).not.toBeInTheDocument();
   });
 
@@ -306,12 +306,12 @@ describe('DeliverableDetail render smoke', () => {
       </MemoryRouter>,
     );
 
-    const presentationChip = await screen.findByRole('tab', { name: 'Presentation · 2 versions' });
+    const presentationChip = await screen.findByRole('tab', { name: 'Slides · 2 versions' });
     const posterChip = screen.getByRole('tab', { name: 'Poster · 1 version' });
     expect(presentationChip).toHaveClass('is-active');
     expect(posterChip).not.toHaveClass('is-active');
     expect(screen.getByText('Versions and notes below are for the selected deliverable')).toBeInTheDocument();
-    expect(screen.getByText('Notes on the presentation')).toBeInTheDocument();
+    expect(screen.getByText('Notes on the slides')).toBeInTheDocument();
     expect(screen.getByText('slides-v2.pdf')).toBeInTheDocument();
     expect(screen.queryByText('poster.pdf')).not.toBeInTheDocument();
 
@@ -509,9 +509,12 @@ describe('DeliverableDetail render smoke', () => {
     expect(speakerLink.closest('p')).not.toHaveTextContent(/Ada Lovelace · S-042 ·/);
   });
 
-  // w41-a (DEC-901 amendment): Approve and "Download all" moved out of the
-  // title column's own status bar (deleted) into the CONTENT STATUS band.
-  it('carries both Approve and "Download all" inside the status band, and drops Approve once approved', async () => {
+  // w41-a (DEC-901 amendment): Approve moved out of the title column's own
+  // status bar (deleted) into the CONTENT STATUS band.
+  // w5-i amendment: "Download all" moved OFF the status band onto the
+  // header block (chq-content-detail-head-actions) -- it's a page-level
+  // export action, not a fact about the current status.
+  it('carries Approve inside the status band and "Download all" on the header block, and drops Approve once approved', async () => {
     mockBase();
 
     const { container } = render(
@@ -533,7 +536,11 @@ describe('DeliverableDetail render smoke', () => {
     const approveInBand = Array.from(band!.querySelectorAll('button')).find((b) => b.textContent === 'Approve');
     const downloadInBand = Array.from(band!.querySelectorAll('button')).find((b) => b.textContent === 'Download all');
     expect(approveInBand).toBeDefined();
-    expect(downloadInBand).toBeDefined();
+    // "Download all" no longer lives in the status band at all.
+    expect(downloadInBand).toBeUndefined();
+    const headActions = container.querySelector('.chq-content-detail-head-actions');
+    expect(headActions).not.toBeNull();
+    expect(Array.from(headActions!.querySelectorAll('button')).find((b) => b.textContent === 'Download all')).toBeDefined();
     // the old parallel .chq-content-status-bar box is gone entirely.
     expect(container.querySelector('.chq-content-status-bar')).toBeNull();
 
@@ -553,7 +560,8 @@ describe('DeliverableDetail render smoke', () => {
     await screen.findByText('slides-v2.pdf');
     const approvedBand = approvedContainer.querySelector('.chq-content-status-band');
     expect(Array.from(approvedBand!.querySelectorAll('button')).find((b) => b.textContent === 'Approve')).toBeUndefined();
-    expect(Array.from(approvedBand!.querySelectorAll('button')).find((b) => b.textContent === 'Download all')).toBeDefined();
+    const approvedHeadActions = approvedContainer.querySelector('.chq-content-detail-head-actions');
+    expect(Array.from(approvedHeadActions!.querySelectorAll('button')).find((b) => b.textContent === 'Download all')).toBeDefined();
   });
 
   // DEC-989 amendment (wave 41, widened wave 72): the band is chrome -- no
@@ -676,6 +684,6 @@ describe('DeliverableDetail render smoke', () => {
     expect(filesCol!.firstElementChild?.tagName).toBe('H2');
     expect(filesCol!.firstElementChild?.textContent).toBe('Deliverables');
     expect(commentsCol!.firstElementChild?.tagName).toBe('H3');
-    expect(commentsCol!.firstElementChild?.textContent).toBe('Notes on the presentation');
+    expect(commentsCol!.firstElementChild?.textContent).toBe('Notes on the slides');
   });
 });

@@ -35,6 +35,7 @@ const baseItem: ContentSubmissionListItem = {
   deliverableCounts: { presentation: 2, poster: 0, handout: 1, recording: 0 },
   latestFile: { filename: 'slides.pdf', kind: 'presentation', versionCount: 2, uploadedAt: 1700000000000 },
   latestFileVersionNo: 2,
+  latestFileByKind: { presentation: 2 },
   reuploaded: true,
   scheduled: null,
 };
@@ -215,15 +216,22 @@ describe('SessionList: Session cell subtitle carries the placed schedule slot (w
     expect(speakerCell).toHaveTextContent('Ada Lovelace +1');
   });
 
-  // DEC-965: the Latest file cell prints the STORED version_no
-  // (latestFileVersionNo), never versionCount -- a deleted middle version
-  // would leave a stale versionCount that no longer matches the true
-  // identity of the newest surviving row.
-  it('renders the stored latestFileVersionNo, never versionCount, in the Latest file cell', () => {
+  // w5-i: the Latest file cell prints the STORED per-kind version_no
+  // (latestFileByKind), never a stale versionCount -- a deleted middle
+  // version would leave a stale versionCount that no longer matches the
+  // true identity of the newest surviving row.
+  it('renders the stored latestFileByKind version, never versionCount, in the Latest file cell', () => {
     const { container } = render(
       <SessionList
         {...SELECTION_PROPS}
-        items={[{ ...baseItem, latestFile: { ...baseItem.latestFile!, versionCount: 2 }, latestFileVersionNo: 3 }]}
+        items={[
+          {
+            ...baseItem,
+            latestFile: { ...baseItem.latestFile!, versionCount: 2 },
+            latestFileVersionNo: 3,
+            latestFileByKind: { presentation: 3 },
+          },
+        ]}
         tab="all"
         onTabChange={noop}
         onSelect={noop}
@@ -268,7 +276,11 @@ describe('SessionList: Session cell subtitle carries the placed schedule slot (w
     expect(speakerCell).toHaveTextContent('No speakers');
   });
 
-  it('renders the latest file name, version and date', () => {
+  // w5-i (DEC-020 amendment): the Latest file cell is a per-kind summary
+  // ("Slides v2"), not the raw filename+version -- filename identity moved
+  // to the deliverable detail page, this column states what stage each
+  // kind is at.
+  it('renders a per-kind summary (kind + version), not the raw filename, in the Latest file cell', () => {
     const { container } = render(
       <SessionList
         {...SELECTION_PROPS}
@@ -289,7 +301,35 @@ describe('SessionList: Session cell subtitle carries the placed schedule slot (w
     );
 
     const cell = container.querySelector('.chq-content-row-latest-file');
-    expect(cell).toHaveTextContent('slides.pdf · v2');
+    expect(cell).toHaveTextContent('Slides v2');
+    expect(cell).not.toHaveTextContent('slides.pdf');
+  });
+
+  // w5-i: a session with a re-uploaded deck AND a first-time recording
+  // names BOTH kinds ("Slides v2 · Recording v1"), never collapsing to only
+  // the most-recently-touched kind.
+  it('names every kind with files, not just the most-recently-touched one', () => {
+    const { container } = render(
+      <SessionList
+        {...SELECTION_PROPS}
+        items={[{ ...baseItem, latestFileByKind: { presentation: 2, recording: 1 } }]}
+        tab="all"
+        onTabChange={noop}
+        onSelect={noop}
+        loading={false}
+        loaded={true}
+        onContentStatusChange={noop}
+        total={1}
+        page={1}
+        perPage={20}
+        onPageChange={noop}
+        now={1700000200000}
+        counts={NO_COUNTS}
+      />,
+    );
+
+    const cell = container.querySelector('.chq-content-row-latest-file');
+    expect(cell).toHaveTextContent('Slides v2 · Recording v1');
   });
 
   it("renders an honest 'No files yet' empty state when latestFile is null", () => {

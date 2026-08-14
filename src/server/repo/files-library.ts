@@ -409,7 +409,16 @@ export async function listEventDeliverableFiles(
     ...deliverableRoots.map((r) => ({ id: r.id, createdAt: r.createdAt, deliverable: r, headshot: null })),
     ...headshotRoots.map((r) => ({ id: r.id, createdAt: r.createdAt, deliverable: null, headshot: r })),
   ];
+  // w5-i: deliverable chains sort ahead of headshots as a whole (each tier
+  // still newest-first within itself) rather than one flat date-desc merge
+  // -- a headshot uploaded during speaker signup otherwise floats to page 1
+  // ahead of every real deliverable purely because signup predates content
+  // review, which reads as "the library is full of headshots" on an
+  // unfiltered load. The SPA still explains an empty SESSION cell (never
+  // renders it blank) for whichever headshot rows do land on a page.
   merged.sort((a, b) => {
+    if (a.headshot !== null && b.headshot === null) return 1;
+    if (a.headshot === null && b.headshot !== null) return -1;
     const diff = b.createdAt.getTime() - a.createdAt.getTime();
     if (diff !== 0) return diff;
     return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;

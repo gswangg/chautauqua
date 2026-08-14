@@ -492,6 +492,13 @@ a:hover {
   font-size: 12px;
 }
 
+/* w5-i: a headshot's SESSION cell states its absence rather than rendering
+   blank (chq-meta already carries the muted tone; this just matches the
+   file cell's 12px scale for a consistent row rhythm). */
+.chq-content-file-no-session {
+  font-size: 12px;
+}
+
 /* Lateness/clash/"not reviewed" — type only, never colour (DEC-367). */
 .chq-flag {
   font-size: 10px;

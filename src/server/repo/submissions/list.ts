@@ -70,6 +70,14 @@ export interface SubmissionListItem {
   // from it — null/false when the submission has no deliverable files yet.
   latestFileVersionNo: number | null;
   reuploaded: boolean;
+  // w5-i (DEC-708 amendment scope): a per-kind latest version_no, so the
+  // worklist's Latest file column can print a per-kind summary ("Slides v3 ·
+  // Recording v1") instead of collapsing to the single globally-newest
+  // upload's filename+version -- a submission with both a re-uploaded deck
+  // AND a first-time recording otherwise hides the recording entirely.
+  // Batched off the same latestFileCandidateRows query below, never a
+  // second per-kind fetch.
+  latestFileByKind: Partial<Record<FileKind, number>>;
   answers?: Record<string, unknown>;
   // w41-b: the worklist SESSION cell's subtitle (DEC-902 amendment) --
   // batched off schedule_slot/room the same way deliverableCounts/latestFile
@@ -330,6 +338,10 @@ export async function listSubmissions(
   // DEC-881: latest deliverable file's stored version_no, keyed the same as
   // latestFileBySubmission above — read off the identical "newest" row.
   const latestFileVersionNoBySubmission = new Map<string, number | null>();
+  // w5-i: highest version_no seen per (submission, kind) -- the newest row
+  // FOR THAT KIND, not the globally-newest row across kinds, so a kind that
+  // isn't the most-recently-touched one still reports its own true version.
+  const latestFileByKindBySubmission = new Map<string, Partial<Record<FileKind, number>>>();
   {
     const byId = new Map(latestFileCandidateRows.map((f) => [f.id, f]));
     // The globally-newest file row for a submission is, by construction of
@@ -349,6 +361,16 @@ export async function listSubmissions(
       const arr = chainsByRoot.get(root) ?? [];
       arr.push(f);
       chainsByRoot.set(root, arr);
+    }
+    // w5-i: per (submission, kind) newest version_no -- max version_no among
+    // that kind's candidate rows for the submission (a chain's head always
+    // carries the chain's highest version_no, DEC-965 identity).
+    for (const f of latestFileCandidateRows) {
+      const byKind = latestFileByKindBySubmission.get(f.submissionId) ?? {};
+      const kind = f.kind as FileKind;
+      const existingNo = byKind[kind] ?? 0;
+      if ((f.versionNo ?? 0) > existingNo) byKind[kind] = f.versionNo ?? existingNo;
+      latestFileByKindBySubmission.set(f.submissionId, byKind);
     }
     for (const [submissionId, newest] of newestBySubmission) {
       const root = findRoot(newest.id, byId);
@@ -454,6 +476,7 @@ export async function listSubmissions(
         deliverableCountsBySubmission.get(r.id) ?? { presentation: 0, poster: 0, handout: 0 },
       latestFile: latestFileBySubmission.get(r.id) ?? null,
       latestFileVersionNo,
+      latestFileByKind: latestFileByKindBySubmission.get(r.id) ?? {},
       reuploaded: latestFileVersionNo !== null && latestFileVersionNo > 1,
       scheduled: scheduledBySubmission.get(r.id) ?? null,
       ...(params.includeAnswers ? { answers: answersBySubmission.get(r.id) ?? {} } : {}),

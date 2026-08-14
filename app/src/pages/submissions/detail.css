@@ -260,7 +260,10 @@
 
 .chq-submission-history-row {
   display: grid;
-  grid-template-columns: 96px 1fr;
+  /* w5-i: widened from 96px -- the "when" cell now carries a time as well
+     as a date ("16 Aug, 14:32", DEC-708 amendment), which wrapped
+     mid-token at the old width. */
+  grid-template-columns: 118px 1fr;
   gap: 12px;
   align-items: baseline;
   overflow-wrap: anywhere;
