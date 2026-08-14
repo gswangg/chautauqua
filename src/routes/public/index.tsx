@@ -86,6 +86,21 @@ export { sessionTimeLabel } from "./detail";
 // src/server/app.ts). setCacheHeaders below and its 60s client-facing
 // max-age are unchanged — the long-TTL edge copy is an implementation
 // detail behind that same client contract.
+// DEC-083 wave-22 amendment: this `/embed/*` registration does NOT cover
+// /embed/e/:embedId -- that path is claimed by savedEmbedRoutes (mounted at
+// line 61, ABOVE this point, via publicRoutes.route("/", savedEmbedRoutes))
+// before this line is even reached. Hono's compose() (node_modules/hono/
+// dist/compose.js:22, 37) matches and advances through handlers strictly in
+// registration order, with no second pass over routes already consumed by
+// an earlier match -- so once the saved-embed sub-app's own `/embed/e/*`
+// middleware (saved-embed.tsx) has run for that request, this `/embed/*`
+// use() never runs for it too. It is NOT a redundant second cache layer for
+// that path; each of the two registrations owns a disjoint request set. If
+// saved-embed.tsx's own middleware line were ever deleted on the theory that
+// "this one already covers it", /embed/e/:embedId would fall out of the
+// cache entirely (0 passes), not gain a duplicate. Proven at runtime in
+// test/pubcache-prefix-coverage.test.ts (mounts the real publicRoutes
+// sub-app, counts kv.get(PUBVER_KEY)/cache.match per request per shape).
 publicRoutes.use("/e/*", publicCacheMiddleware(defaultCache));
 publicRoutes.use("/embed/*", publicCacheMiddleware(defaultCache));
 
