@@ -17,7 +17,9 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { Hono } from "hono";
 import type { AppEnv } from "../src/server/env";
-import { ROUTE_GROUPS } from "../src/routes/docs";
+import { ROUTE_GROUPS, PUBLIC_ROUTE_GROUPS } from "../src/routes/docs";
+import { publicRoutes } from "../src/routes/public";
+import { publicSubmitRoutes } from "../src/routes/public/submit";
 
 const INDEX_PATH = resolve(fileURLToPath(import.meta.url), "../../src/index.ts");
 const INDEX_DIR = dirname(INDEX_PATH);
@@ -161,6 +163,58 @@ describe("docs.tsx ROUTE_GROUPS vs the real mounted /api/v1 routes (derived from
     const documented = new Set(
       ROUTE_GROUPS.flatMap((g) => g.rows).map((r) => `${r.method} ${r.path.split("?")[0]}`),
     );
+
+    const stale = [...documented].filter((r) => !actual.has(r));
+    expect(stale).toEqual([]);
+  });
+});
+
+describe("docs.tsx PUBLIC_ROUTE_GROUPS vs the real mounted public GET routes", () => {
+  // src/index.ts mounts both of these at "/" (app.route("/", publicRoutes)
+  // and app.route("/", publicSubmitRoutes)) — mirror that here so the diff
+  // below sees the exact same route table the running server does.
+  const app = new Hono<AppEnv>();
+  app.route("/", publicRoutes);
+  app.route("/", publicSubmitRoutes);
+
+  /** publicRoutes uses a Hono regex param constraint (e.g.
+   * `:surface{[a-z]+\.json}`) for the .json/.xml feed twins so they win the
+   * route-match ahead of the plain `:surface` HTML route. Normalize both the
+   * actual route table and docs.tsx's friendlier `:surface.json` spelling to
+   * the same string so they compare equal. */
+  function normalizePublicPath(path: string): string {
+    return path.replace(/:([a-zA-Z0-9_]+)(\{[^}]*\})?/g, (_match, name: string, brace?: string) => {
+      if (!brace) return `:${name}`;
+      if (brace.includes("\\.json")) return `:${name}.json`;
+      if (brace.includes("\\.xml")) return `:${name}.xml`;
+      return `:${name}`;
+    });
+  }
+
+  // Deliberately undocumented: a bare-redirect twin of /e/:eventSlug that
+  // exists only so an embedder who guesses /embed/:eventSlug (no surface
+  // segment) lands somewhere sane. It carries no content of its own — the
+  // chromeless embed surfaces it redirects into are already documented.
+  const EXCLUDED_UNDOCUMENTED = new Set(["GET /embed/:eventSlug"]);
+
+  it("documents every real public GET (nothing registered is missing from the table)", () => {
+    const actual = new Set(
+      app.routes
+        .filter((r) => r.method === "GET")
+        .map((r) => `GET ${normalizePublicPath(r.path)}`)
+        .filter((r) => !EXCLUDED_UNDOCUMENTED.has(r)),
+    );
+    const documented = new Set(PUBLIC_ROUTE_GROUPS.flatMap((g) => g.rows).map((r) => `${r.method} ${r.path}`));
+
+    const undocumented = [...actual].filter((r) => !documented.has(r));
+    expect(undocumented).toEqual([]);
+  });
+
+  it("never documents a public route that isn't actually mounted (no stale entries)", () => {
+    const actual = new Set(
+      app.routes.filter((r) => r.method === "GET").map((r) => `GET ${normalizePublicPath(r.path)}`),
+    );
+    const documented = new Set(PUBLIC_ROUTE_GROUPS.flatMap((g) => g.rows).map((r) => `${r.method} ${r.path}`));
 
     const stale = [...documented].filter((r) => !actual.has(r));
     expect(stale).toEqual([]);

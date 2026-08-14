@@ -12,10 +12,10 @@ import type { PublicAgendaItem, PublicEvent, PublicTrack } from "../../server/re
 import type { ScheduleBreak } from "../../server/repo/breaks"; // type-only; the public barrel re-exports the read path (getPublicBreaksByDay)
 import { plural } from "../../domain/count-copy";
 import { surfacePath, type Surface, type SurfaceBase } from "./shell";
-import { formatDay } from "./cards";
+import { formatDay, formatMinutes } from "./cards";
 import { AgendaDayGrid } from "./agenda-grid";
 import { AgendaItemList } from "./agenda-list";
-import { DaySwitcher, ItinerarySearchForm } from "./agenda-controls";
+import { DaySwitcher, ItinerarySearchForm, agendaQs } from "./agenda-controls";
 import { ItineraryScript } from "./agenda-itinerary-script";
 
 export { AgendaDayGrid } from "./agenda-grid";
