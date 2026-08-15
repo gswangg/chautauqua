@@ -190,8 +190,11 @@ function latestOf(chain: DeliverableFileRow[]): DeliverableFileRow {
   return latest;
 }
 
-function buildDeliverableWhere(eventId: string, deliverableKinds: string[], q: string | null): SQL {
-  const conditions = [isNull(schema.file.previousFileId), eq(schema.submission.eventId, eventId)];
+/** Shared by buildDeliverableWhere (root test) and buildDeliverableTipWhere
+ * (chain-tip test) -- event scope + kind + q, everything EXCEPT which single
+ * file per chain the query is selecting. */
+function buildDeliverableCommonConditions(eventId: string, deliverableKinds: string[], q: string | null): SQL[] {
+  const conditions = [eq(schema.submission.eventId, eventId)];
   if (deliverableKinds.length > 0) {
     conditions.push(inArray(schema.file.kind, deliverableKinds));
   }
@@ -209,13 +212,41 @@ function buildDeliverableWhere(eventId: string, deliverableKinds: string[], q: s
       conditions.push(and(...tokenConditions)!);
     }
   }
-  return and(...conditions)!;
+  return conditions;
 }
 
-const HEADSHOT_JOIN = sql`${schema.contact.headshotUrl} = '/headshots/' || ${schema.file.id}`;
+function buildDeliverableWhere(eventId: string, deliverableKinds: string[], q: string | null): SQL {
+  return and(isNull(schema.file.previousFileId), ...buildDeliverableCommonConditions(eventId, deliverableKinds, q))!;
+}
+
+// DEC-773 amendment (w29-b): the chain-TIP test (no later file points back
+// at this one via previous_file_id) rather than the chain-ROOT test
+// (previous_file_id IS NULL) above -- used ONLY by the totalSizeBytes
+// aggregate, which needs each chain's LATEST version's sizeBytes, never its
+// root's. kind is invariant across a chain (files-versions.ts's
+// getReplacesTarget/DEC-020 enforce a new version's kind matches what it
+// replaces), so filtering the tip's kind is equivalent to filtering the
+// root's.
+function buildDeliverableTipWhere(eventId: string, deliverableKinds: string[], q: string | null): SQL {
+  const tipTest = sql`not exists (select 1 from ${schema.file} as chq_tip_check where chq_tip_check.previous_file_id = ${schema.file.id})`;
+  return and(tipTest, ...buildDeliverableCommonConditions(eventId, deliverableKinds, q))!;
+}
+
+// DEC-773 amendment (w29-b, supersedes the headshotUrl string-concatenation
+// join): contact.headshot_file_id is the FK mirror of headshotUrl's own
+// `/headshots/<fileId>` shape (set together everywhere headshotUrl is
+// written -- repo/profile.ts's setContactHeadshot, repo/contacts/merge.ts's
+// merge write), an indexable equality the old
+// `headshotUrl = '/headshots/' || file.id` predicate could never be (no
+// index can serve a computed string concatenation) -- measured as the
+// files library's dominant cost (~460ms of ~500ms) at perf-seed scale.
+// headshot_url itself is untouched: it stays the served path, and
+// profile.ts's getHeadshotServeScope keeps its own unrelated reverse
+// headshot_url lookup.
+const HEADSHOT_JOIN = eq(schema.contact.headshotFileId, schema.file.id);
 
 function buildHeadshotWhere(eventId: string, q: string | null): SQL {
-  const conditions = [acceptedSpeakerConditions(eventId), isNotNull(schema.contact.headshotUrl)];
+  const conditions = [acceptedSpeakerConditions(eventId), isNotNull(schema.contact.headshotFileId)];
   if (q) {
     const tokens = q.split(/\s+/).filter((t) => t.length > 0);
     const tokenConditions = tokens.map((token) => {
@@ -296,14 +327,14 @@ interface HeadshotRootRow {
 /** DEC-773: the files library is ONE list — deliverable version chains AND
  * speaker headshots (kind='headshot', submissionId null, attributed to
  * their contact) merged by createdAt desc/id asc. Never a SQL UNION (the
- * two populations join through entirely different tables); instead each
- * branch fetches every MATCHING root once — totalSizeBytes has to visit
- * every matching chain's latest version regardless (DEC-773), so there's no
- * bounded-page-only fetch left to preserve on top of it — and total, the
- * merge candidates, and totalSizeBytes are all derived from that same one
- * fetch per branch, never a page-derived tally. Per-page hydration
- * (lead speaker names, uploader names) stays scoped to just the page's
- * rows (DEC-344). */
+ * two populations join through entirely different tables); each branch
+ * fetches every MATCHING root once (bounded by MAX_FILE_LIBRARY_SCAN),
+ * giving `total` and the merge candidates directly. totalSizeBytes is a
+ * SEPARATE aggregate statement per branch, over the SAME predicates
+ * buildDeliverableWhere/buildHeadshotWhere compose (DEC-773 amendment,
+ * w29-b) -- never a chain materialization purely to sum a number. Per-page
+ * hydration (lead speaker names, uploader names, and now the deliverable
+ * chains themselves) stays scoped to just the page's rows (DEC-344). */
 export async function listEventDeliverableFiles(
   db: Db,
   eventId: string,
@@ -325,7 +356,7 @@ export async function listEventDeliverableFiles(
   const wantsHeadshots = params.kinds.length === 0 || params.kinds.includes(HEADSHOT_KIND);
 
   let deliverableRoots: DeliverableRootRow[] = [];
-  let deliverableChains = new Map<string, DeliverableFileRow[]>();
+  let deliverableSizeBytes = 0;
   if (wantsDeliverables) {
     const deliverableWhere = buildDeliverableWhere(eventId, deliverableKinds, params.q);
     deliverableRoots = await db
@@ -347,8 +378,18 @@ export async function listEventDeliverableFiles(
         `This files library filter would scan more than ${MAX_FILE_LIBRARY_SCAN} deliverable files — narrow with the search box first (the q filter runs in SQL and composes with the kind filter)`,
       );
     }
-    const submissionIds = [...new Set(deliverableRoots.map((r) => r.submissionId).filter((id): id is string => !!id))];
-    deliverableChains = await loadDeliverableChains(db, submissionIds);
+
+    // DEC-773 amendment (w29-b): the chain-tip sum, never a chain
+    // materialization -- ONE aggregate over the same event/kind/q
+    // predicates as the root scan above, just testing the chain's TIP
+    // (buildDeliverableTipWhere) instead of its ROOT.
+    const deliverableTipWhere = buildDeliverableTipWhere(eventId, deliverableKinds, params.q);
+    const deliverableSizeRows = await db
+      .select({ sum: sql<number>`coalesce(sum(${schema.file.sizeBytes}), 0)` })
+      .from(schema.file)
+      .innerJoin(schema.submission, eq(schema.submission.id, schema.file.submissionId))
+      .where(deliverableTipWhere);
+    deliverableSizeBytes = Number(deliverableSizeRows[0]?.sum ?? 0);
   }
 
   let headshotRoots: HeadshotRootRow[] = [];
@@ -389,14 +430,7 @@ export async function listEventDeliverableFiles(
 
   const total = deliverableRoots.length + headshotRoots.length;
 
-  let totalSizeBytes = 0;
-  for (const root of deliverableRoots) {
-    const chain = deliverableChains.get(root.id);
-    if (!chain || chain.length === 0) {
-      throw new Error(`listEventDeliverableFiles: chain root ${root.id} not resolved`);
-    }
-    totalSizeBytes += latestOf(chain).sizeBytes;
-  }
+  let totalSizeBytes = deliverableSizeBytes;
   for (const root of headshotRoots) totalSizeBytes += root.sizeBytes;
 
   interface Candidate {
@@ -468,6 +502,18 @@ export async function listEventDeliverableFiles(
       }
     }
   }
+
+  // DEC-773 amendment (w29-b): chains are loaded HERE, scoped to just the
+  // page's own submissions -- never the full matching population
+  // (loadDeliverableChains was previously called eagerly over every
+  // matching deliverableRoot's submissionId purely so totalSizeBytes could
+  // sum each chain's latest version; that sum is now the SQL aggregate
+  // above, so this per-page load is the only chain materialization left,
+  // matching DEC-344's bounded-cost rule for real).
+  const pageSubmissionIds = [
+    ...new Set(deliverablePage.map((c) => c.deliverable!.submissionId).filter((id): id is string => !!id)),
+  ];
+  const deliverableChains = await loadDeliverableChains(db, pageSubmissionIds);
 
   // Uploader/owner names, batched across BOTH branches' page rows in ONE
   // lookup (never per-row, DEC-601).

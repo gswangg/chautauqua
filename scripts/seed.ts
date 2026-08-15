@@ -2926,7 +2926,7 @@ async function main(): Promise<void> {
       }),
     );
     statements.push(
-      `UPDATE contact SET "headshot_url" = ${sqlQuote(`/headshots/${fileId}`)} WHERE "id" = ${sqlQuote(contactId)};`,
+      `UPDATE contact SET "headshot_url" = ${sqlQuote(`/headshots/${fileId}`)}, "headshot_file_id" = ${sqlQuote(fileId)} WHERE "id" = ${sqlQuote(contactId)};`,
     );
   }
   seedHeadshot(speakerContactId, 1);

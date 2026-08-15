@@ -157,11 +157,20 @@ function evalLikeOperand(expr: string, row: Record<string, unknown>): string {
 }
 
 /** Evaluates the sql`` shapes this module emits: a plain `<operand> like ?
- * escape '\'`, or the correlated EXISTS over participant/contact for
- * speaker-name matching, against a fully-joined row (file+submission
- * fields) plus the full participant/contact seed for the EXISTS case. */
+ * escape '\'`, the correlated EXISTS over participant/contact for
+ * speaker-name matching, or (DEC-773 amendment, w29-b) the chain-TIP `not
+ * exists (select 1 from file ... where previous_file_id = <this row's own
+ * file id>)` test buildDeliverableTipWhere composes — against a
+ * fully-joined row (file+submission fields) plus the full participant/
+ * contact/file seed. */
 function evalSqlNode(node: { queryChunks: unknown[] }, row: Record<string, unknown>, seed: Seed): boolean {
   const { text, params } = renderSql(node);
+  // Checked BEFORE the plain "exists (select 1 from" branch below, since
+  // "not exists (select 1 from" contains that substring too.
+  if (text.startsWith("not exists (select 1 from")) {
+    const fileId = row["id"];
+    return !seed.file.some((f) => f.previousFileId === fileId);
+  }
   if (text.includes("exists (select 1 from")) {
     const like = params[0] as string;
     // The merged file+submission row keeps file's own "id" on collision
@@ -216,18 +225,12 @@ function resolveJoinOperand(col: unknown, sRow: Record<string, unknown>, jRow: R
   return key in jRow ? jRow[key] : sRow[key];
 }
 
-/** The headshot join's `${contact.headshotUrl} = '/headshots/' || ${file.id}`
- * predicate — the only sql`` join condition this module ever emits. */
-function evalJoinSqlNode(node: { queryChunks: unknown[] }, sRow: Record<string, unknown>, jRow: Record<string, unknown>): boolean {
-  const colChunks = node.queryChunks.filter((c) => isColumnRef(c));
-  if (colChunks.length !== 2) throw new Error("fake db: unsupported join sql node");
-  const left = resolveJoinOperand(colChunks[0], sRow, jRow);
-  const right = resolveJoinOperand(colChunks[1], sRow, jRow);
-  return left === `/headshots/${String(right)}`;
-}
-
+// DEC-773 amendment (w29-b): the headshot join used to be a sql`` predicate
+// (`contact.headshot_url = '/headshots/' || file.id`, no index can serve a
+// computed string concatenation) — it's now a plain `eq(contact.headshot_
+// file_id, file.id)` marker like every other join in this module, so this
+// fake db no longer needs a sql``-join evaluator at all.
 function evalJoinCond(cond: unknown, sRow: Record<string, unknown>, jRow: Record<string, unknown>): boolean {
-  if (isSqlNode(cond)) return evalJoinSqlNode(cond, sRow, jRow);
   const m = cond as Marker;
   if (m.__marker !== "eq") throw new Error("fake db: only eq join predicates supported");
   const left = resolveJoinOperand(m.col, sRow, jRow);
@@ -276,6 +279,17 @@ function isCountStarFields(fields: Record<string, unknown> | undefined): boolean
 function isCountDistinctFields(fields: Record<string, unknown> | undefined): { col: unknown } | null {
   if (!fields || Object.keys(fields).length !== 1) return null;
   const node = fields.count;
+  if (!isSqlNode(node)) return null;
+  const colChunks = node.queryChunks.filter((c) => isColumnRef(c));
+  if (colChunks.length !== 1) return null;
+  return { col: colChunks[0] };
+}
+
+/** DEC-773 amendment (w29-b): `coalesce(sum(<col>), 0)` — the totalSizeBytes
+ * chain-tip aggregate buildDeliverableTipWhere feeds. */
+function isSumFields(fields: Record<string, unknown> | undefined): { col: unknown } | null {
+  if (!fields || Object.keys(fields).length !== 1) return null;
+  const node = fields.sum;
   if (!isSqlNode(node)) return null;
   const colChunks = node.queryChunks.filter((c) => isColumnRef(c));
   if (colChunks.length !== 1) return null;
@@ -337,6 +351,11 @@ function makeFakeFilesDb(seed: Seed) {
         return [{ count: new Set(matched.map((r) => getColValue(r, countDistinct.col))).size }];
       }
       if (isCountStarFields(fields)) return [{ count: matched.length }];
+      const sumFields = isSumFields(fields);
+      if (sumFields) {
+        const sum = matched.reduce((acc, r) => acc + (Number(getColValue(r, sumFields.col)) || 0), 0);
+        return [{ sum }];
+      }
       let filtered = matched;
       if (orderByArg) {
         filtered = filtered.slice().sort((a, b) => {
@@ -692,7 +711,7 @@ describe("kindCounts (DEC-902): one grouped query, matching the filtered list's 
     // the join through participant produces TWO rows (one per submission)
     // for the SAME file id; a regression to join-row counting would report
     // 2 here instead of 1.
-    (seed.contact[0] as unknown as { headshotUrl: string }).headshotUrl = "/headshots/file-headshot";
+    (seed.contact[0] as unknown as { headshotFileId: string }).headshotFileId = "file-headshot";
     seed.file.push({
       id: "file-headshot",
       submissionId: null,
@@ -719,7 +738,7 @@ describe("kindCounts (DEC-902): one grouped query, matching the filtered list's 
   it("sorts every deliverable chain ahead of every headshot, even when the headshot is newest by created_at", async () => {
     const seed = seedWithTwoKinds();
     for (const s of seed.submission) (s as unknown as { status: string }).status = "accepted";
-    (seed.contact[0] as unknown as { headshotUrl: string }).headshotUrl = "/headshots/file-headshot";
+    (seed.contact[0] as unknown as { headshotFileId: string }).headshotFileId = "file-headshot";
     seed.file.push({
       id: "file-headshot",
       submissionId: null,

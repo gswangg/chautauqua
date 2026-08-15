@@ -108,15 +108,29 @@ function renderSql(node: { queryChunks: unknown[] }): { text: string; params: un
   return { text, params };
 }
 
-function evalCond(cond: unknown, row: Record<string, unknown>): boolean {
-  if (isSqlNode(cond)) throw new Error("fake db: sql`` where conditions unused by this test's queries");
+// DEC-773 amendment (w29-b): the ONE sql`` where condition this file's
+// queries now emit -- buildDeliverableTipWhere's chain-tip test (no later
+// file points back at this row via previous_file_id) -- feeding
+// totalSizeBytes's SUM aggregate, evaluated structurally against the full
+// seeded file population rather than the (join-scoped) `row` alone.
+function evalSqlWhereNode(node: { queryChunks: unknown[] }, row: Record<string, unknown>, allFiles: Record<string, unknown>[]): boolean {
+  const { text } = renderSql(node);
+  if (text.startsWith("not exists (select 1 from")) {
+    const fileId = row["id"];
+    return !allFiles.some((f) => f.previousFileId === fileId);
+  }
+  throw new Error(`fake db: unsupported sql\`\` where condition: ${text}`);
+}
+
+function evalCond(cond: unknown, row: Record<string, unknown>, allFiles: Record<string, unknown>[] = []): boolean {
+  if (isSqlNode(cond)) return evalSqlWhereNode(cond, row, allFiles);
   const m = cond as Marker;
   if (m.__marker === "eq") {
     const right = isColumnRef(m.val) ? row[colKey(m.val)] : m.val;
     return row[colKey(m.col)] === right;
   }
-  if (m.__marker === "and") return m.conds.every((c) => evalCond(c, row));
-  if (m.__marker === "or") return m.conds.some((c) => evalCond(c, row));
+  if (m.__marker === "and") return m.conds.every((c) => evalCond(c, row, allFiles));
+  if (m.__marker === "or") return m.conds.some((c) => evalCond(c, row, allFiles));
   if (m.__marker === "inArray") return m.vals.includes(row[colKey(m.col)]);
   if (m.__marker === "isNull") return row[colKey(m.col)] == null;
   if (m.__marker === "isNotNull") return row[colKey(m.col)] != null;
@@ -167,6 +181,17 @@ function isCountDistinctFields(fields: Record<string, unknown> | undefined): { c
   return { col: colChunks[0] };
 }
 
+/** DEC-773 amendment (w29-b): `coalesce(sum(<col>), 0)` — the totalSizeBytes
+ * chain-tip aggregate buildDeliverableTipWhere feeds. */
+function isSumFields(fields: Record<string, unknown> | undefined): { col: unknown } | null {
+  if (!fields || Object.keys(fields).length !== 1) return null;
+  const node = fields.sum;
+  if (!isSqlNode(node)) return null;
+  const colChunks = node.queryChunks.filter((c) => isColumnRef(c));
+  if (colChunks.length !== 1) return null;
+  return { col: colChunks[0] };
+}
+
 interface ParticipantSeedRow {
   submissionId: string;
   contactId: string;
@@ -211,7 +236,7 @@ function makeFakeDb(seed: Seed) {
     let offsetN = 0;
     let groupByCols: unknown[] | null = null;
     const run = () => {
-      const matched = whereCond ? source.filter((r) => evalCond(whereCond, r)) : source.slice();
+      const matched = whereCond ? source.filter((r) => evalCond(whereCond, r, seed.file)) : source.slice();
       if (groupByCols && groupByCols.length > 0) {
         const keys = groupByCols.map((c) => colKey(c));
         const groups = new Map<string, Record<string, unknown>[]>();
@@ -238,6 +263,12 @@ function makeFakeDb(seed: Seed) {
         return [{ count: new Set(matched.map((r) => r[key])).size }];
       }
       if (isCountStarFields(fields)) return [{ count: matched.length }];
+      const sumFields = isSumFields(fields);
+      if (sumFields) {
+        const key = colKey(sumFields.col);
+        const sum = matched.reduce((acc, r) => acc + (Number(r[key]) || 0), 0);
+        return [{ sum }];
+      }
       let filtered = matched;
       if (orderByArg) {
         filtered = filtered.slice().sort((a, b) => {

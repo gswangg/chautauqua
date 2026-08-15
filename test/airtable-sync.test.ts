@@ -302,6 +302,7 @@ create table contact (
   title text,
   bio text,
   headshot_url text,
+  headshot_file_id text,
   social_links_json text,
   notes text,
   custom_fields_json text,
