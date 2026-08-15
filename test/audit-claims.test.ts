@@ -6,6 +6,21 @@
 // mentioned in AUDIT.md or be listed in the EXCLUDED set below with a
 // comment explaining why not. Hand-listed manifests desync — this test is
 // what keeps the document honest as routes are added/removed.
+//
+// DEC-618 wave-30 amendment: a second, independent direction below (see
+// "cap claims vs live constants") parses every `` `NAME`=<number> `` cap
+// claim in docs/AUDIT.md and checks it two ways: every claim whose NAME is
+// a known constant must equal that constant's live value (catches a number
+// going stale), and every known constant must be named at least once in the
+// document (catches a claim being quietly deleted instead of corrected).
+// What this direction does NOT check: prose describing HOW a cap is
+// enforced (e.g. "before the true cap runs on the expanded list") is read
+// by a human, not this test — only the literal `` `NAME`=<number> `` pairs
+// are mechanically verified. A constant this test doesn't know about (one
+// not added to CAP_CONSTANTS below) is invisible to it; adding a new cap
+// claim to AUDIT.md without also adding its constant here will not fail
+// loudly, which is why every constant AUDIT.md's own "No total that was not
+// counted" bullet lists is imported and checked in both directions.
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
@@ -15,6 +30,13 @@ import { describe, expect, it } from "vitest";
 import { ROUTE_MANIFEST, type RouteManifestEntry } from "../app/src/routeManifest";
 import { app as composedApp } from "../src/index";
 import { EXPORT_KINDS } from "../src/server/repo/exports/kinds";
+import { DEFAULT_PER_PAGE, MAX_PER_PAGE } from "../src/lib/pagination";
+import { MAX_REMINDER_BATCH } from "../src/domain/reminders";
+import { MAX_COMPOSE_RECIPIENTS } from "../src/domain/compose";
+import { MAX_AUTO_SCHEDULE_PLACEMENTS } from "../src/server/repo/agenda/auto-schedule";
+import { MAX_PUBLIC_PAGE } from "../src/server/repo/public/bounds";
+import { MAX_CONTACT_DIRECTORY_SCAN } from "../src/server/repo/contacts/rows";
+import { MAX_IMPORT_ROWS } from "../src/server/repo/contacts/import";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const AUDIT_PATH = resolve(REPO_ROOT, "docs/AUDIT.md");
@@ -449,5 +471,104 @@ describe("every registered GET route that renders HTML is in ROUTE_MANIFEST or H
   it("every HTML_ROUTE_EXCLUDED entry still matches a currently-registered GET pattern (no stale exclusion)", () => {
     const stale = HTML_ROUTE_EXCLUDED.filter((e) => !composedPatterns.includes(e.pattern)).map((e) => e.pattern);
     expect(stale).toEqual([]);
+  });
+});
+
+// DEC-618 wave-30 amendment (DEC-618, this wave's ruling): every
+// `` `NAME`=<number> `` cap claim in docs/AUDIT.md is checked against the
+// real constant it names, mechanically — not restated from memory and not
+// left to drift silently when a claim is deleted instead of corrected. See
+// the file header above for exactly what this direction does and does not
+// check.
+
+type CapClaim = { name: string; value: number };
+
+/** Every `` `NAME`=<number> `` occurrence anywhere in `markdown`, e.g.
+ * `` `MAX_PER_PAGE`=200 ``. NAME is whatever backtick-wrapped identifier
+ * immediately precedes a bare `=<integer>` — this is deliberately not
+ * anchored to any one section, so a cap claim restated or moved elsewhere
+ * in the document is still caught. */
+function extractCapClaims(markdown: string): CapClaim[] {
+  const claims: CapClaim[] = [];
+  const re = /`([A-Z][A-Z0-9_]*)`=(\d+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(markdown))) {
+    claims.push({ name: m[1]!, value: Number(m[2]) });
+  }
+  return claims;
+}
+
+// `ROW_CAP` (src/server/repo/overview.ts) is a deliberately unexported
+// module-private const -- no other file in this codebase reaches across
+// that boundary to read it, and this test does not add a new one. Its live
+// value is instead read the same way this file's own routeExists/
+// symbolExists checks already read source facts they can't import: a plain
+// text scan of the declaring file, anchored to the literal `const ROW_CAP =`
+// declaration so a future rename or value edit is still caught.
+function readRowCapFromSource(): number {
+  const path = resolve(REPO_ROOT, "src/server/repo/overview.ts");
+  const text = readFileSync(path, "utf-8");
+  const m = /const ROW_CAP = (\d+);/.exec(text);
+  if (!m) {
+    throw new Error(`could not find "const ROW_CAP = <number>;" in ${path} (declaration moved or renamed?)`);
+  }
+  return Number(m[1]);
+}
+
+// The full set of cap constants this test knows how to check live, keyed by
+// the exact `NAME` docs/AUDIT.md uses in backticks. Every entry here must
+// also be named at least once in docs/AUDIT.md as a literal `` `NAME`=<n> ``
+// claim (checked below) -- this is not a one-directional "claims must match
+// constants" test, it is also "constants must still be claimed". Note:
+// `MAX_PUBLIC_ROWS` is deliberately NOT included here -- docs/AUDIT.md
+// states it as the formula `MAX_PUBLIC_ROWS = MAX_PUBLIC_PAGE *
+// PUBLIC_PER_PAGE`, never as a literal `` `MAX_PUBLIC_ROWS`=<number> ``
+// claim, so it is outside this direction's `NAME`=<number> pattern by
+// construction (its factors, `MAX_PUBLIC_PAGE` and `PUBLIC_PER_PAGE`, are
+// what would need their own literal claims to be checked this way).
+const CAP_CONSTANTS: Record<string, number> = {
+  DEFAULT_PER_PAGE,
+  MAX_PER_PAGE,
+  MAX_REMINDER_BATCH,
+  ROW_CAP: readRowCapFromSource(),
+  MAX_COMPOSE_RECIPIENTS,
+  MAX_AUTO_SCHEDULE_PLACEMENTS,
+  MAX_PUBLIC_PAGE,
+  MAX_CONTACT_DIRECTORY_SCAN,
+  MAX_IMPORT_ROWS,
+};
+
+describe("docs/AUDIT.md cap claims vs live constants (DEC-618 wave-30 amendment)", () => {
+  const auditText = readFileSync(AUDIT_PATH, "utf-8");
+  const lines = auditText.split("\n");
+  const claims = extractCapClaims(auditText);
+
+  /** 1-based line number of the first cap claim found for `name`, for a
+   * useful failure message (a bare "value mismatch" with no line number
+   * would send a reader hunting through a 350-line document). */
+  function lineOf(name: string, value: number): number {
+    const needle = `\`${name}\`=${value}`;
+    const idx = lines.findIndex((l) => l.includes(needle));
+    return idx === -1 ? -1 : idx + 1;
+  }
+
+  it("parses at least 6 cap claims (tripwire: a regex change must not silently swallow the population)", () => {
+    expect(claims.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it("every cap claim whose NAME is a known constant equals that constant's live value", () => {
+    const mismatches = claims
+      .filter((c) => c.name in CAP_CONSTANTS)
+      .filter((c) => c.value !== CAP_CONSTANTS[c.name])
+      .map((c) => `docs/AUDIT.md:${lineOf(c.name, c.value)} claims \`${c.name}\`=${c.value}, live value is ${CAP_CONSTANTS[c.name]}`);
+    expect(mismatches).toEqual([]);
+  });
+
+  it("every known cap constant is named at least once in docs/AUDIT.md (a deleted claim goes stale silently otherwise)", () => {
+    const claimedNames = new Set(claims.map((c) => c.name));
+    const unclaimed = Object.keys(CAP_CONSTANTS).filter((name) => !claimedNames.has(name));
+    expect(unclaimed, `constant(s) never named as a \`NAME\`=<number> claim in docs/AUDIT.md: ${unclaimed.join(", ")}`).toEqual(
+      [],
+    );
   });
 });

@@ -245,9 +245,14 @@ org-scoped (DEC-546). The recipient-controlled HTML body renders inside a sandbo
 Every list endpoint shares one pagination shape (`page?: { limit, offset }`, `count*`,
 `id asc` tiebreak). The general default/ceiling is `DEFAULT_PER_PAGE`=50,
 `MAX_PER_PAGE`=200 (`src/lib/pagination.ts`). Public surfaces use their own, smaller
-ceiling — see J10 above. `/admin/comms` recipient composition additionally caps at
-`MAX_PER_PAGE`=200 selected submissions *before* the true cap runs on the expanded
-recipient list (a submission can carry more than one active-invite co-speaker).
+ceiling — see J10 above. `/admin/comms` recipient composition additionally caps the
+selected `submissionIds` array itself at `MAX_COMPOSE_RECIPIENTS`=100
+(`src/domain/compose.ts`, enforced via `parseBoundedIdArray` in
+`src/routes/comms/compose-core.ts`) *before* the same 100-recipient cap
+(`expandRecipients`, `src/domain/compose.ts`) runs again on the expanded recipient
+list — a submission can carry more than one active-invite co-speaker, so the first
+check narrows submissions, not the eventual recipient count, and the second check is
+what actually enforces the 100-recipient ceiling.
 
 ## The 100-contact reminder cap
 
@@ -341,15 +346,22 @@ and adapter swaps that a deploying operator does, not code gaps:
 
 - **No total that was not counted.** Every cap named above (`ROW_CAP`, `MAX_REMINDER_BATCH`,
   `MAX_AUTO_SCHEDULE_PLACEMENTS`, `MAX_PUBLIC_PAGE`/`MAX_PUBLIC_ROWS`,
-  `MAX_CONTACT_DIRECTORY_SCAN`, `MAX_IMPORT_ROWS`, `MAX_PER_PAGE`) is read live from its
-  source constant, not restated from memory — if the constant changes, this document is
-  wrong until edited, which is exactly why `test/audit-claims.test.ts` exists: to catch
-  drift in the things it *can* check mechanically — route paths (DEC-618) and the
-  "Deliberately not built" section's absence markers (DEC-642) — forcing a human to
-  re-read the rest at review time.
+  `MAX_CONTACT_DIRECTORY_SCAN`, `MAX_IMPORT_ROWS`, `MAX_PER_PAGE`, `DEFAULT_PER_PAGE`,
+  `MAX_COMPOSE_RECIPIENTS`) is read live from its source constant, not restated from
+  memory — if the constant changes, this document is wrong until edited, which is
+  exactly why `test/audit-claims.test.ts` exists: to catch drift in the things it *can*
+  check mechanically — route paths (DEC-618), every `` `NAME`=<number> `` cap claim
+  against its live constant, and the "Deliberately not built" section's absence markers
+  (DEC-642) — forcing a human to re-read the rest at review time.
 - **No slug that was not read.** Route paths above are patterns copied from
   `app/src/routeManifest.ts`, not typed from memory — the test enforces this for every
   path in backticks.
-- **Status changes never auto-email.** Stated once above (J5) and true everywhere: no
-  route that changes a submission's or task's status also sends mail as a side effect;
-  sending is always a distinct, explicit action the producer takes.
+- **Status changes never auto-email, with one sanctioned exception.** Stated once above
+  (J5): sending is always a distinct, explicit action the producer takes, not an
+  automatic side effect of a status write. The one exception is by design, not drift —
+  `POST /admin/content-notes` (`src/routes/content-notes.ts`) is the single route that
+  both moves `content_status` to `changes_requested` and mails the submission's
+  participants in the same request, because the note *is* the change-request notice
+  (DEC-720/DEC-741). This is true regardless of whether that route's mail send is
+  atomic with or best-effort alongside the status write — the exception is the route
+  existing at all, not how its send outcome is reported.
