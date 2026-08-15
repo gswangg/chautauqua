@@ -133,15 +133,14 @@ function renderSql(node: { queryChunks: unknown[] }): { text: string; cols: unkn
   return { text, cols, params };
 }
 
+// DEC-773 amendment (w29-b): the headshot join used to be a sql`` predicate
+// (`contact.headshot_url = '/headshots/' || file.id`) evaluated here as a
+// " || "+" = " text match -- it's now a plain `eq(contact.headshot_file_id,
+// file.id)` marker like every other join in this module (see evalCond's
+// generic "eq" branch), so no sql-node join shape is left for evalSqlNode
+// to special-case.
 function evalSqlNode(node: { queryChunks: unknown[] }, row: JoinedRow): boolean {
   const { text, cols, params } = renderSql(node);
-  if (text.includes(" || ") && text.includes(" = ")) {
-    // The headshot join predicate: contact.headshot_url = '/headshots/' || file.id
-    const [leftCol, rightCol] = cols;
-    const leftVal = resolveVal(leftCol, row);
-    const rightVal = resolveVal(rightCol, row);
-    return leftVal === `/headshots/${String(rightVal)}`;
-  }
   if (text.includes(" like ")) {
     const like = params[0] as string;
     if (cols.length === 2) {
@@ -172,7 +171,7 @@ interface Seed {
   event: { id: string; orgId: string; slug: string; recordPrefix: string }[];
   participant: { submissionId: string; contactId: string; order: number; role: string; inviteStatus: string }[];
   submission: { id: string; eventId: string; status: string; seq?: number; title?: string }[];
-  contact: { id: string; firstName: string; lastName: string; company: string | null; headshotUrl: string | null }[];
+  contact: { id: string; firstName: string; lastName: string; company: string | null; headshotFileId: string | null }[];
   file: { id: string; filename: string; sizeBytes: number; contentType: string; r2Key?: string; createdAt: Date; uploadedByContactId?: string | null }[];
 }
 
@@ -337,9 +336,9 @@ function baseSeed(): Seed {
       { id: "sub-2", eventId: "event-1", status: "submitted" },
     ],
     contact: [
-      { id: "contact-priya", firstName: "Priya", lastName: "Raman", company: "Acme Corp", headshotUrl: "/headshots/file-hs-priya" },
-      { id: "contact-other", firstName: "Someone", lastName: "Else", company: null, headshotUrl: null },
-      { id: "contact-declined", firstName: "Not", lastName: "Accepted", company: null, headshotUrl: "/headshots/file-hs-declined" },
+      { id: "contact-priya", firstName: "Priya", lastName: "Raman", company: "Acme Corp", headshotFileId: "file-hs-priya" },
+      { id: "contact-other", firstName: "Someone", lastName: "Else", company: null, headshotFileId: null },
+      { id: "contact-declined", firstName: "Not", lastName: "Accepted", company: null, headshotFileId: "file-hs-declined" },
     ],
     file: [
       {
@@ -408,7 +407,7 @@ describe("listEventDeliverableFiles kinds:['headshot'] (DEC-773)", () => {
 
   it("returns items, total, and totalSizeBytes from the same where clause for an event with no eligible contacts", async () => {
     const seed = baseSeed();
-    seed.contact[0]!.headshotUrl = null; // Priya no longer has a headshot
+    seed.contact[0]!.headshotFileId = null; // Priya no longer has a headshot
     const db = makeFakeHeadshotsDb(seed);
     const result = await listEventDeliverableFiles(db, "event-1", { page: 1, perPage: 50, kinds: ["headshot"], q: null });
     expect(result).toEqual({
@@ -445,7 +444,7 @@ function manySpeakerSeed(n: number): Seed {
       firstName: "Speaker",
       lastName: String(i).padStart(3, "0"),
       company: null,
-      headshotUrl: `/headshots/${fileId}`,
+      headshotFileId: fileId,
     });
     file.push({
       id: fileId,

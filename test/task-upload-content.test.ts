@@ -329,14 +329,50 @@ function isSqlNode(x: unknown): x is { queryChunks: unknown[] } {
   return typeof x === "object" && x !== null && "queryChunks" in (x as Record<string, unknown>);
 }
 
-function evalCond(cond: unknown, row: Record<string, unknown>): boolean {
+function isStringChunk(x: unknown): x is { value: string[] } {
+  return (
+    typeof x === "object" &&
+    x !== null &&
+    x.constructor?.name === "StringChunk" &&
+    Array.isArray((x as { value: unknown }).value)
+  );
+}
+
+/** Renders just enough of a sql`` node's literal text to recognize DEC-773's
+ * (w29-b) chain-tip test -- the only sql`` WHERE condition this file's
+ * queries emit. */
+function renderSqlText(node: { queryChunks: unknown[] }): string {
+  let text = "";
+  for (const chunk of node.queryChunks) {
+    if (isStringChunk(chunk)) text += chunk.value.join("");
+    else if (isSqlNode(chunk)) text += renderSqlText(chunk);
+    else text += "?";
+  }
+  return text;
+}
+
+/** DEC-773 amendment (w29-b): buildDeliverableTipWhere's chain-tip test (no
+ * later file points back at this row via previous_file_id) -- feeds
+ * totalSizeBytes's SUM aggregate. Evaluated against the full seeded file
+ * population, not just the (join-scoped) `row`. */
+function evalSqlWhereNode(node: { queryChunks: unknown[] }, row: Record<string, unknown>, allFiles: Record<string, unknown>[]): boolean {
+  const text = renderSqlText(node);
+  if (text.startsWith("not exists (select 1 from")) {
+    const fileId = row["id"];
+    return !allFiles.some((f) => f.previousFileId === fileId);
+  }
+  throw new Error(`fake db: unsupported sql\`\` where condition: ${text}`);
+}
+
+function evalCond(cond: unknown, row: Record<string, unknown>, allFiles: Record<string, unknown>[] = []): boolean {
+  if (isSqlNode(cond)) return evalSqlWhereNode(cond, row, allFiles);
   const m = cond as Marker;
   if (m.__marker === "eq") {
     const right = isColumnRef(m.val) ? row[colKey(m.val)] : m.val;
     return row[colKey(m.col)] === right;
   }
-  if (m.__marker === "and") return m.conds.every((c) => evalCond(c, row));
-  if (m.__marker === "or") return m.conds.some((c) => evalCond(c, row));
+  if (m.__marker === "and") return m.conds.every((c) => evalCond(c, row, allFiles));
+  if (m.__marker === "or") return m.conds.some((c) => evalCond(c, row, allFiles));
   if (m.__marker === "inArray") return m.vals.includes(row[colKey(m.col)]);
   if (m.__marker === "isNull") return row[colKey(m.col)] == null;
   if (m.__marker === "isNotNull") return row[colKey(m.col)] != null;
@@ -353,18 +389,11 @@ function resolveJoinOperand(col: unknown, sRow: Record<string, unknown>, jRow: R
   return key in jRow ? jRow[key] : sRow[key];
 }
 
-/** The headshot join's `${contact.headshotUrl} = '/headshots/' || ${file.id}`
- * predicate — the only sql`` join condition this module ever emits. */
-function evalJoinSqlNode(node: { queryChunks: unknown[] }, sRow: Record<string, unknown>, jRow: Record<string, unknown>): boolean {
-  const colChunks = node.queryChunks.filter((c) => isColumnRef(c));
-  if (colChunks.length !== 2) throw new Error("fake db: unsupported join sql node");
-  const left = resolveJoinOperand(colChunks[0], sRow, jRow);
-  const right = resolveJoinOperand(colChunks[1], sRow, jRow);
-  return left === `/headshots/${String(right)}`;
-}
-
+// DEC-773 amendment (w29-b): the headshot join is now a plain
+// `eq(contact.headshot_file_id, file.id)` marker like every other join in
+// this module (no more sql`` string-concatenation predicate), so no
+// sql``-join shape is left for this fake db to special-case.
 function evalJoinCond(cond: unknown, sRow: Record<string, unknown>, jRow: Record<string, unknown>): boolean {
-  if (isSqlNode(cond)) return evalJoinSqlNode(cond, sRow, jRow);
   const m = cond as Marker;
   if (m.__marker !== "eq") throw new Error("fake db: only eq join predicates supported");
   const left = resolveJoinOperand(m.col, sRow, jRow);
@@ -383,6 +412,17 @@ function project(row: Record<string, unknown>, fields: Record<string, unknown>) 
 function isCountStarFields(fields: Record<string, unknown> | undefined): boolean {
   if (!fields || Object.keys(fields).length !== 1) return false;
   return isSqlNode(fields.count);
+}
+
+/** DEC-773 amendment (w29-b): `coalesce(sum(<col>), 0)` — the totalSizeBytes
+ * chain-tip aggregate buildDeliverableTipWhere feeds. */
+function isSumFields(fields: Record<string, unknown> | undefined): { col: unknown } | null {
+  if (!fields || Object.keys(fields).length !== 1) return null;
+  const node = fields.sum;
+  if (!isSqlNode(node)) return null;
+  const colChunks = node.queryChunks.filter((c) => isColumnRef(c));
+  if (colChunks.length !== 1) return null;
+  return { col: colChunks[0] };
 }
 
 function makeFakeDb(seed: {
@@ -408,7 +448,7 @@ function makeFakeDb(seed: {
     let offsetN = 0;
     let groupByCols: unknown[] | null = null;
     const run = () => {
-      const matched = whereCond ? source.filter((r) => evalCond(whereCond, r)) : source.slice();
+      const matched = whereCond ? source.filter((r) => evalCond(whereCond, r, seed.file)) : source.slice();
       // DEC-902: `group by <col[, col...]>` — one output row per distinct
       // combination of the grouped columns, with a plain `sql\`count(*)\``
       // field (if present) resolved to that group's own row count. Used by
@@ -435,6 +475,12 @@ function makeFakeDb(seed: {
         return rows;
       }
       if (isCountStarFields(fields)) return [{ count: matched.length }];
+      const sumFields = isSumFields(fields);
+      if (sumFields) {
+        const key = colKey(sumFields.col);
+        const sum = matched.reduce((acc, r) => acc + (Number(r[key]) || 0), 0);
+        return [{ sum }];
+      }
       let filtered = matched;
       if (orderDesc) {
         filtered = filtered.slice().sort((a, b) => {

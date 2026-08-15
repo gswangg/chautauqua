@@ -48,6 +48,7 @@ function makeRealDb(rows: RawContact[]): Db {
     `CREATE TABLE contact (
       id TEXT PRIMARY KEY, org_id TEXT, first_name TEXT, last_name TEXT, email TEXT,
       phone TEXT, company TEXT, title TEXT, bio TEXT, headshot_url TEXT,
+      headshot_file_id TEXT,
       social_links_json TEXT, notes TEXT, custom_fields_json TEXT,
       created_at INTEGER, updated_at INTEGER
     )`,

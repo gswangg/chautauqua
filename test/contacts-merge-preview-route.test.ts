@@ -42,6 +42,7 @@ function contactRaw(fields: {
     title: null,
     bio: null,
     headshotUrl: null,
+    headshotFileId: null,
     socialLinksJson: null,
     notes: fields.notes ?? null,
     customFieldsJson: fields.customFieldsJson ?? null,

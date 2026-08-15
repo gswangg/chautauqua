@@ -184,7 +184,10 @@ export async function setContactHeadshot(db: Db, contactId: string, input: Inser
   });
   await db
     .update(schema.contact)
-    .set({ headshotUrl: `/headshots/${fileId}`, updatedAt: now })
+    // DEC-773 amendment (w29-b): headshotFileId mirrors headshotUrl's
+    // fileId for files-library.ts's indexable join -- both always point at
+    // the same fileId, set together.
+    .set({ headshotUrl: `/headshots/${fileId}`, headshotFileId: fileId, updatedAt: now })
     .where(eq(schema.contact.id, contactId));
   return fileId;
 }

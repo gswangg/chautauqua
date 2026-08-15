@@ -235,10 +235,11 @@ describe("DEC-562: JS re-aggregation sorts gain the contact-id tiebreak (byte-id
         [{ recordPrefix: "SES" }], // event prefix
         [], // DEC-902 kindCounts: deliverable `group by kind` — unseeded here (not asserted)
         [], // DEC-902 kindCounts: headshot dedupe-by-id group — unseeded here (not asserted)
-        [pageRow], // ALL matching deliverable chain roots (DEC-773: totalSizeBytes needs every match, not just a page)
-        [fileRow], // per-submission file rows (chain resolution)
+        [pageRow], // matching deliverable chain roots (bounded scan)
+        [{ sum: 0 }], // DEC-773 amendment (w29-b): totalSizeBytes chain-tip SUM aggregate — unseeded here (not asserted)
         [], // ALL matching headshot roots — kinds:[] queries both branches; none seeded here
-        leadRows, // lead-speaker candidate rows
+        leadRows, // lead-speaker candidate rows (per-page)
+        [fileRow], // per-page chain resolution (loadDeliverableChains, now page-scoped)
       ]);
       return listEventDeliverableFiles(db, EVENT_ID, { page: 1, perPage: 20, kinds: [], q: null });
     }

@@ -49,6 +49,7 @@ function contactRaw(id: string, email: string, firstName: string, lastName: stri
     title: null,
     bio: null,
     headshotUrl: null,
+    headshotFileId: null,
     socialLinksJson: null,
     notes: null,
     customFieldsJson: null,

@@ -64,6 +64,12 @@ export const contact = sqliteTable(
     title: text("title"),
     bio: text("bio"),
     headshotUrl: text("headshot_url"),
+    // DEC-773 amendment (w29-b): FK mirror of headshotUrl's
+    // `/headshots/<fileId>` pattern -- headshotUrl stays the served path
+    // (route/authz behavior unchanged), but files-library.ts's headshot
+    // join predicate needs an indexable equality instead of the
+    // string-concatenation predicate no index can serve.
+    headshotFileId: text("headshot_file_id"),
     socialLinksJson: text("social_links_json"),
     notes: text("notes"),
     customFieldsJson: text("custom_fields_json"),
@@ -88,5 +94,7 @@ export const contact = sqliteTable(
       t.orgId,
       t.externalRef,
     ),
+    // DEC-773 amendment (w29-b): the files library's headshot join predicate.
+    contact_headshot_file_id_idx: index("contact_headshot_file_id_idx").on(t.headshotFileId),
   }),
 );

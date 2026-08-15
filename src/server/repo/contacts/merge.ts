@@ -422,6 +422,18 @@ async function mergeOnePair(db: Db, keepId: string, mergeId: string): Promise<Co
     throw new ApiError("conflict", "That email already belongs to another account");
   }
 
+  // DEC-773 amendment (w29-b): headshotFileId must stay derived from
+  // whichever headshotUrl planMerge kept -- the string shape is exactly
+  // repo/profile.ts's setContactHeadshot's own `/headshots/<fileId>`, so
+  // this mirrors the migration 0040 backfill's parsing rather than
+  // preserving either input row's now possibly-stale headshotFileId.
+  const mergedHeadshotUrl = merged.headshotUrl ?? null;
+  const headshotPrefix = "/headshots/";
+  const mergedHeadshotFileId =
+    mergedHeadshotUrl && mergedHeadshotUrl.startsWith(headshotPrefix)
+      ? mergedHeadshotUrl.slice(headshotPrefix.length)
+      : null;
+
   await db
     .update(schema.contact)
     .set({
@@ -432,7 +444,8 @@ async function mergeOnePair(db: Db, keepId: string, mergeId: string): Promise<Co
       title: merged.title ?? null,
       phone: merged.phone ?? null,
       bio: merged.bio ?? null,
-      headshotUrl: merged.headshotUrl ?? null,
+      headshotUrl: mergedHeadshotUrl,
+      headshotFileId: mergedHeadshotFileId,
       notes: merged.notes ?? null,
       socialLinksJson: merged.socialLinks ? serializeSocialLinks(merged.socialLinks) : null,
       customFieldsJson: merged.customFields ? JSON.stringify(merged.customFields) : null,
