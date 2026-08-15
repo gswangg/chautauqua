@@ -3,56 +3,58 @@ Owned by the swarm. Scribe appends lessons each wave, keeps this under a
 hard 60-line budget, compacting old entries. Injected into every agent.
 - SPEC.md is source of truth (J1-J12 bar, sbek rubric IDs=verification hooks,
   §2 principles). docs/ precedence: clarifications.md overrides all;
-  decisions/DEC-*.md binding, src/decisions.ts compile-checked (never hand-
-  edit). House invariants: fail loudly; status changes never auto-email; authz
-  every route, server-side visibility.
+  decisions/DEC-*.md binding, src/decisions.ts compile-checked (never
+  hand-edit). Invariants: fail loudly; status changes never auto-email;
+  authz every route, server-side visibility.
 - STAGE1-16 + FINDINGS w1-33 (DEC-002..999, space FULL no DEC-1000+, rulings
   land as `## Amendment (wave N)` on nearest EXISTING DEC): pure-core no
   node:/cf; Hono sub-apps, errors {error:{code,message,fields?}}; bulk ops
-  set-based; D1 PRIMITIVES; dates via event-time.ts OWNING EVENT's tz;
-  pagination ONE shape+count*+id asc; atomic SQL > read-then-write;
-  uniqueIndex CONTRACT; MINTING IS IO; UNBOUNDED SURFACE NEVER PAGED;
-  GUARD THAT NARROWS < NONE; MINT != DELIVERY.
-- FINDINGS w2-69 (all LANDED, compacted): DateField/search, caps unified to
-  src/domain, logout, CSV dup, compose step-4, canEditSubmission, reviewer
-  scope null->LIST, evaluation lattice, date grammars, error vocabulary (V9),
-  locked-field/minutes/score/clock single sources. w69: SWARM REBOOTED at
-  gate-7. Shapes: A CAP ONLY IN THE SPA IS A SUGGESTION.
-- FINDINGS w8-13 (all LANDED/SWEPT, heavily compacted): session-card/compose/
-  history-pager/edit-lock/icsChip/trackIds/plan-window/saved-view caps, .ics
-  SEQUENCE, write caps (schedule.ics ?ids=, distribute, addReviewers, saved-
-  embed, compose-100, acceptance back-fill DEC-932), contact merge keepId,
-  bearer-token CSRF exemption, audienceLevel/role PATCH (DONE by w13-a).
-  Shapes: A HANDOFF THAT DROPS THE SELECTION ASKS THE SAME QUESTION TWICE. A
-  FAN-OUT WITH NO PRE-WRITE CAP IS A HALF-WRITE. A KNOB TABLE THAT DRIFTS BY
-  COMMENT IS PROSE, NOT A CONTRACT. A KEY THE CLIENT SENDS AND NO ROUTE
-  PARSES IS A BUTTON THAT 400s.
-- TOOL TRAP (cost a planner an hour): Grep -C output silently drops some `/`
-  characters — `"/api/v1/forms/:formId"` rendered as `"/api/v1/forms:formId"` and
-  leading `//` as `/`. NEVER file a defect off a Grep excerpt alone; Read the
-  exact lines before believing a missing slash, a missing token, or a typo.
-- FINDINGS w14-16 (compacted, LANDED): bulk-email dedupe, breaks accumulation,
-  onConflictDoNothing, mail envelope addressValue, trackIds dedupe, reviewer
-  plan-window/file authz, saved-view cap. VERIFIED BUILT: Home hub/auth
-  redirects, saved-embed ?embed + DEC-822 empty-200, password reset 4 states,
-  /logout POST, per-version delete, content-note mailer, distribute preview,
-  files-library column swap. Shapes: A CAP AT TWO OF FOUR DOORS IS A
-  SUGGESTION. A RULE ENFORCED AT THE HEADER AND NOT THE ENVELOPE IS NOT A
-  RULE. TWO HARNESS LANES SHARING A PORT MEASURE EACH OTHER.
-- FINDINGS w17 (planned by READING .git at tip 9b21309c, not inheriting). REF TRUTH
-  CORRECTION: w16's "task-w14-d + w15-a..-e all UNMERGED" was FALSE — reflog shows
-  merges for w14-d, w15-a/-b/-c/-d/-e/-f and w16-a; those refs are deleted. w16-b
-  (6aed4fe0) and w16-e (bdaf3997) have commits, UNMERGED, still owned. w16-c and
-  w16-d BOTH point at c557cff9 = main's PARENT: zero commits, so walkthrough and
-  perf-smoke NEVER RAN; w16-f never got a ref. DISMISSED after re-verification, do
-  NOT re-file: bulk-email dedupe (bulk-email.ts:214-250), createUser onConflict
-  (users.ts:106-124), breaks accumulation (breaks.ts:130-166), send.ts ics bump
-  (send.ts:243-258, deliberate), MAX_PARTICIPANTS at ALL FOUR doors (submissions.ts:598,
-  portal-edit.ts:487, contacts/import.ts:194, sessionboard.ts:622), envelope addressValue
-  (email-binding.ts:236-240). ALSO CLOSED while sweeping: hasActiveNarrowing includes q
-  (OnboardingGrid.tsx:128-135), no localhost:PORT literal in app/src, no TBD on
-  src/routes/public (ruling A25), pubcache two-list closed enumeration + scan test.
-  REAL DEFECT FOUND AND OWNED (w17-f): ENVELOPE_ALLOWLIST keys on path:line
-  (envelope-sites.ts:33-73), drifted 5x. Shapes: A BRANCH WHOSE REF EQUALS ITS BASE
-  MEASURED NOTHING. A LINE NUMBER IS NOT AN IDENTITY. A STALE MANDATE COSTS MORE THAN
-  NO MANDATE. AN EXEMPTION THAT MATCHES NOTHING MUST FAIL LOUDLY, NOT PASS QUIETLY.
+  set-based; D1 PRIMITIVES; dates via event-time.ts; pagination ONE
+  shape+count*+id asc; atomic SQL > read-then-write; uniqueIndex CONTRACT;
+  MINTING IS IO; UNBOUNDED SURFACE NEVER PAGED; GUARD THAT NARROWS < NONE.
+- FINDINGS w2-13 (all LANDED/SWEPT, heavily compacted): DateField/search, caps
+  unified to src/domain, logout, CSV dup, compose step-4, canEditSubmission,
+  reviewer scope null->LIST, evaluation lattice, date grammars, error
+  vocabulary (V9), locked-field/minutes/score/clock single sources,
+  session-card/history-pager/edit-lock/icsChip/trackIds/plan-window/
+  saved-view caps, .ics SEQUENCE, write caps (distribute, addReviewers,
+  saved-embed, compose-100), contact merge keepId, CSRF exemption,
+  audienceLevel/role PATCH. w69: SWARM REBOOTED at gate-7. Shapes: A CAP ONLY
+  IN THE SPA IS A SUGGESTION. A HANDOFF THAT DROPS THE SELECTION ASKS THE
+  SAME QUESTION TWICE. A FAN-OUT WITH NO PRE-WRITE CAP IS A HALF-WRITE. A
+  KNOB TABLE THAT DRIFTS BY COMMENT IS PROSE, NOT A CONTRACT.
+- TOOL TRAP: Grep -C drops some `/` chars (e.g. `//` -> `/`). NEVER file a
+  defect off a Grep excerpt alone; Read exact lines first.
+- FINDINGS w14-17 (all LANDED/DISMISSED, compacted): bulk-email dedupe, breaks
+  accumulation, onConflictDoNothing, mail envelope addressValue, trackIds
+  dedupe, reviewer plan-window/file authz, saved-view cap, ENVELOPE_ALLOWLIST
+  path:line drift (envelope-sites.ts, -> w18-g), mandate rebase (-> w18-h).
+  VERIFIED BUILT: Home hub/auth redirects, saved-embed empty-200, password
+  reset 4 states, /logout POST, per-version delete, distribute preview.
+  w16-c/-d, w17-a/-b all = their base: FOUR runtime lanes, ZERO commits ->
+  DEC-119 wave-18 amendment bans server-booting worker lanes. Shapes: A CAP
+  AT TWO OF FOUR DOORS IS A SUGGESTION. A LINE NUMBER IS NOT AN IDENTITY. A
+  STALE MANDATE COSTS MORE THAN NO MANDATE.
+- FINDINGS w18 (READ .git at tip 62685d2e, not inherited). REF TRUTH: w17
+  committed NOTHING (task-w17-a/-b both = 5fc3db38, main's parent). RULE
+  (DEC-119 amendment): no worker lane boots a server; merge train's own
+  full-suite + build via scripts/with-test-lock.sh is the measurement.
+  Branch names REUSED across generations — only refs + log tail are
+  evidence. LANDED as amendments (space CLOSED, no new DEC ids): DEC-340
+  onboarding grid unknown filter token now 400s not silent no-filter
+  (tasks.ts:156-172); DEC-346 isSubmissionInReviewerScope shares sibling's
+  cap/order/refusal (submissions.ts:396 vs :241); DEC-967 compose defaults
+  statusFilter=['accepted'] only, not accepted+declined union
+  (ComposeWizard.tsx:32-35); DEC-317 ics-unscheduled refusal hoisted to a
+  wizard-level banner on every step, not just preview (:399-419 vs :1056);
+  DEC-902 files-library table-layout:fixed + explicit actions width, File is
+  sole remainder col (content.css:818-822); DEC-989 Content page per-view
+  measure class on chq-page root, mirrors Comms; DEC-890 Templates rows
+  carry only name, Delete moves to editor panel (TemplatesTab.tsx:232-247);
+  DEC-603 History gets head + Export CSV link onto existing email-log export
+  (exports.ts:120-147). DISMISSED: answerFieldRoleCondition missing event
+  join (form-roles.ts:16 — answer-set-scoped by contract, joining would
+  blank non-default-form answers). Shapes: A REFUSAL THAT RENDERS ON A STEP
+  YOU CANNOT REACH IS A DEAD END. A CAPABILITY WITH NO DOOR IS NOT SHIPPED.
+  TWO UNWIDTHED COLUMNS MEANS THE LAST ONE EATS THE MEASURE. A DEFAULT THAT
+  UNIONS TWO DECISIONS SENDS THE WRONG MAIL ON THE SHORTEST PATH.
