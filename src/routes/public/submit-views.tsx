@@ -20,6 +20,10 @@ import { CfpStepsScript } from "./cfp-steps-script";
 import { eventDatesLine, validAccent } from "./shell";
 import { CSRF_COOKIE_NAME } from "../../auth/cookies";
 import type { EventRow, FormRow, TrackRow } from "../../server/repo/submit";
+import { safeImageSrc } from "../../domain/brand-url";
+import { DEC_322 } from "../../decisions";
+
+void DEC_322;
 
 // w5-c (frame 10--14 copy batch): the bio field's caption is a display-only
 // override applied to the locked bio FormFieldDef at render time -- the
@@ -41,7 +45,9 @@ export const TRACK_CHOICES_ID = "chq-cfp-track-choices";
 export function branding(event: EventRow): { logoUrl?: string; accentColor?: string } {
   if (!event.brandingJson) return {};
   const parsed = JSON.parse(event.brandingJson) as { logoUrl?: string; accentColor?: string };
-  return { logoUrl: parsed.logoUrl, accentColor: parsed.accentColor };
+  // DEC-322 wave-30 amendment: sanitize at the read so a legacy stored value
+  // (written before this gate existed) can never reach an <img src>.
+  return { logoUrl: safeImageSrc(parsed.logoUrl) ?? undefined, accentColor: parsed.accentColor };
 }
 
 // DEC-371/DEC-374: THEME_CSS (tokens/resets, shared by every SSR surface)

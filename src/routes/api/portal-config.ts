@@ -28,8 +28,11 @@ import {
   upsertPortalSettings,
 } from "../../server/repo/portal-config";
 import { isValidHexColor, normalizeHexColor } from "../../domain/color";
+import { safeImageSrc } from "../../domain/brand-url";
 import { clampPage, listPerPage } from "../../lib/pagination";
-import { DEC_523 } from "../../decisions";
+import { DEC_523, DEC_322 } from "../../decisions";
+
+void DEC_322;
 
 // Compile-checked dependency marker: the explicit route-shape middleware
 // below (replacing the forbidden `/events/*` wildcard) implements DEC-523.
@@ -98,10 +101,23 @@ portalConfigRoutes.put("/events/:eventId/portal-settings", csrfJson, async (c) =
   const fields: Record<string, string> = {};
 
   const logoUrl = body.logoUrl;
+  // DEC-322 wave-30 amendment: gate the logo URL at the write door so an
+  // unsafe value can never reach storage (and, from there, an <img src>). A
+  // null/blank value clears the logo and stays legal.
+  let sanitizedLogoUrl: string | null | undefined = undefined;
   if (logoUrl !== undefined && logoUrl !== null && typeof logoUrl !== "string") {
     fields.logoUrl = "Must be a string";
   } else if (typeof logoUrl === "string" && logoUrl.length > MAX_TEXT_LENGTH) {
     fields.logoUrl = overCapFieldMessage(logoUrl.length, MAX_TEXT_LENGTH); // DEC-417
+  } else if (logoUrl === null) {
+    sanitizedLogoUrl = null;
+  } else if (typeof logoUrl === "string") {
+    const safe = safeImageSrc(logoUrl);
+    if (logoUrl.trim() !== "" && safe === null) {
+      fields.logoUrl = "Must be an http(s) URL or a path starting with /";
+    } else {
+      sanitizedLogoUrl = safe;
+    }
   }
 
   const accentColor = body.accentColor;
@@ -128,7 +144,7 @@ portalConfigRoutes.put("/events/:eventId/portal-settings", csrfJson, async (c) =
   }
 
   const updated = await upsertPortalSettings(c.var.db, eventId, {
-    logoUrl: logoUrl === undefined ? undefined : (logoUrl as string | null),
+    logoUrl: logoUrl === undefined ? undefined : sanitizedLogoUrl,
     // DEC-371 amendment (wave 43): normalize on WRITE so a reader (SSR
     // shells, embed query parser) can never disagree with the writer that
     // accepted the value — '#abc' is stored as '#aabbcc'.

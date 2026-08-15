@@ -41,10 +41,13 @@ import { isDateOrderValid, isValidSlug, isValidTimezone } from "./validators";
 import { isIsoDate } from "../../domain/iso-date";
 import { listSlotsOutsideWindow } from "../../server/repo/agenda";
 import { listBreaksOutsideWindow } from "../../server/repo/breaks";
-import { DEC_519, DEC_844 } from "../../decisions";
+import { DEC_519, DEC_844, DEC_322 } from "../../decisions";
 // DEC-371 amendment (wave 43): the hex-colour grammar (isValidHexColor,
 // normalizeHexColor) lives ONE place, src/domain/color.ts.
 import { isValidHexColor, normalizeHexColor } from "../../domain/color";
+import { safeImageSrc } from "../../domain/brand-url";
+
+void DEC_322;
 
 // Compile-checked dependency marker: the room-rename ics_sequence bump
 // below implements DEC-519.
@@ -137,7 +140,16 @@ function parseBranding(body: Record<string, unknown>, fields: Record<string, str
     } else if (b.logoUrl.length > MAX_TEXT_LENGTH) {
       fields["branding.logoUrl"] = overCapFieldMessage(b.logoUrl.length, MAX_TEXT_LENGTH); // DEC-417
     } else {
-      out.logoUrl = b.logoUrl;
+      // DEC-322 wave-30 amendment: gate the logo URL at the write door so an
+      // unsafe value can never reach storage (and, from there, an <img src>).
+      // A blank value clears the logo and stays legal; a non-blank value
+      // that fails the contract is rejected.
+      const safe = safeImageSrc(b.logoUrl);
+      if (b.logoUrl.trim() !== "" && safe === null) {
+        fields["branding.logoUrl"] = "Must be an http(s) URL or a path starting with /";
+      } else {
+        out.logoUrl = safe ?? "";
+      }
     }
   }
   if (b.accentColor !== undefined) {
