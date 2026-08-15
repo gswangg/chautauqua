@@ -16,45 +16,43 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   UNBOUNDED SURFACE NEVER PAGED; GUARD THAT NARROWS < NONE; MINT !=
   DELIVERY; A REVIEW LENS READS A SNAPSHOT NOT THE TREE; PARSE RESULT
   DISCARDED != PARSED.
-- FINDINGS w34-68 (all LANDED, heavily compacted, do NOT re-file): tenant
+- FINDINGS w34-69 (all LANDED, heavily compacted, do NOT re-file): tenant
   axis, evaluation lattice, date grammars, B7 zero-states, DateField,
-  error vocabulary (V9 nine-shape standard), FormFieldDef.maximum
-  narrowing validateAnswers, locked-field caps unified (title 200/abstract
-  1200), minutes/score/clock single sources, redactIdentity anchoring,
-  headshot allowlist, err.fields readers on major SPA panels, login-
-  rate-limit keying, slot roomId tri-state, plan-evaluation scan cap,
-  files.ts MB constants unified, MAX_FORM_FIELDS/MAX_BREAKS_PER_EVENT
-  relocated to src/domain, parseTrackIdsField constant-sourced. Shapes: A
-  SCAN'S POPULATION IS BLIND TO THE HELPER IT DIDN'T ENUMERATE; A
-  COMPONENT THAT EXISTS AND ISN'T CALLED IS A RULE THAT ISN'T ENFORCED; A
-  FIELD PARSED AND NEVER READ IS THE CAP NOBODY IS TOLD ABOUT; TWO CAPS ON
-  ONE COLUMN SPLIT BY ROLE IS TWO DEAD ENDS: DIFF THE WRITERS; A DOC-
-  COMMENT SWEARING "NEVER HAND-TYPED" IS USUALLY IN THE SAME SENTENCE AS
-  THE HAND-TYPED NUMBER; A CONSTANT EXPORTED ONLY AS *_FOR_TEST IS A
-  NUMBER WITH NO SURFACE; A CAP ENFORCED AT EVERY HAND-TYPED FORM IS STILL
-  A LIE IF THE BULK IMPORTER WRITES THE SAME COLUMN; A PARSER THAT
-  DEGRADES TO NULL NEEDS A CONTROL THAT CANNOT PRODUCE THE VALUE.
-- FINDINGS w69 (SWARM REBOOTED at gate-7; branch prefix reset to task-w1-*).
-  LEDGER: w67-a/b/c/d LANDED (projectFieldForAnswers stamps all six locked
-  fields; files.ts derives MB from BYTES_PER_MB; EmbedsPanel reads
-  err.fields; batch caps in src/domain). w67-e HALF-LANDED (http.ts:104
-  still hand-types 64). ALL of w68 is on main NOWHERE — old branches died
-  with the reboot; w68-a..d RE-FILED as w1-c/d/e/f. eval-findings.md,
-  design/README.md STALE (spot-checked, already fixed). NEW: (1) form-
-  render.tsx has no maxlength on text/long_text/number, counter gated on
-  long_text alone — six locked fields' caps invisible until submit; (2)
-  FIVE over-cap grammars over ~40 sites, overBudgetBy has TWO callers,
-  submit-messages.ts:11 REGEX-PARSES validate.ts's English; (3)
-  mapImportRow caps nothing per field; (4) 35 of 40 app/src maxLength hits
-  live in the one directory the scan walks; (5) PublicSearchBox can
-  produce the value parseNameQuery drops; (6) four refusals print raw
-  ULIDs; (7) ResourcesPanel never names the markdown grammar it applies.
-  NEXT: per-COLUMN cap-parity scan (needs w1-b/c/d merged, else red).
-  Shapes: A VALIDATOR THAT REFUSES A VALUE THE CONTROL WAS HAPPY TO
-  PRODUCE IS THE SURFACE LYING BY OMISSION. A HELPER WITH TWO CALLERS AND
-  FORTY CANDIDATES IS A RULE WITH A NAME AND NO ENFORCEMENT. A REGEX THAT
-  PARSES A SIBLING MODULE'S ERROR PROSE BREAKS ON THE FIRST COPY
-  IMPROVEMENT. A MODEL FIELD WITH ONE WRITER AND FOUR READERS HAS DEAD
-  `?? DEFAULT` BRANCHES THAT READ LIKE CONFIGURABILITY. A SWARM REBOOT
-  VOIDS EVERY IN-FLIGHT BRANCH: CHECK .git/refs/heads AGAINST main's
-  FILES, ASSUME THE PRIOR WAVE LANDED NOTHING.
+  error vocabulary (V9), FormFieldDef.maximum narrowing validateAnswers,
+  locked-field caps unified, minutes/score/clock single sources,
+  redactIdentity anchoring, headshot allowlist, err.fields readers on
+  major SPA panels, login-rate-limit keying, files.ts MB constants
+  unified, MAX_FORM_FIELDS/MAX_BREAKS_PER_EVENT relocated to src/domain.
+  w69: SWARM REBOOTED at gate-7 (branch prefix task-w1-*), w67 landed,
+  w68 was nowhere on main and re-filed as w1-c..f. Shapes: A SCAN'S
+  POPULATION IS BLIND TO THE HELPER IT DIDN'T ENUMERATE; A FIELD PARSED
+  AND NEVER READ IS THE CAP NOBODY IS TOLD ABOUT; A DOC-COMMENT SWEARING
+  "NEVER HAND-TYPED" IS USUALLY IN THE SAME SENTENCE AS THE HAND-TYPED
+  NUMBER; A CAP ENFORCED AT EVERY HAND-TYPED FORM IS STILL A LIE IF THE
+  BULK IMPORTER WRITES THE SAME COLUMN; A VALIDATOR THAT REFUSES A VALUE
+  THE CONTROL WAS HAPPY TO PRODUCE IS THE SURFACE LYING BY OMISSION; A
+  SWARM REBOOT VOIDS EVERY IN-FLIGHT BRANCH: CHECK .git/refs/heads
+  AGAINST main's FILES, ASSUME THE PRIOR WAVE LANDED NOTHING.
+- FINDINGS w2 (wave-1 train was MID-FLIGHT when planned: only w1-a on
+  main; w1-b..e branches unmerged; w1-f/g had no refs. Verified, do not
+  re-file): eval-findings.md STALE on three items checked -- DateField
+  silent date drop FIXED, public search Enter-only occlusion FIXED, "EMB
+  cards omit title/company" is a RECORDED RULING (DEC-968), not a defect.
+  NEW class, five instances + one inversion: (1) password.ts hashes an
+  unbounded password at an anonymous, failures-only-rate-limited surface;
+  (2) builder.ts bounds each option but not the option COUNT, never
+  type/length-checks rule.value for a text trigger; (3) review/shared.ts
+  parseCriteriaList bounds nothing while PlanEditor.tsx:156 hand-declares
+  `MAX_CRITERIA = 7` -- a cap living ONLY in the browser; (4)
+  contacts/crud.ts's `if (typeof value === 'string') checkLen(...)` SKIPS
+  the non-string into the DB; (5) views.ts's isValidSavedViewConfig
+  accepts q/columns/trackId of any size, no cap on views per event; (6)
+  form-render.tsx's number `max` declared a bound validate.ts never read.
+  Shapes: A SCAN THAT POLICES WHERE CAPS LIVE IS BLIND TO THE COLLECTION
+  THAT HAS NO CAP AT ALL. A CAP THAT EXISTS ONLY IN THE SPA IS A
+  SUGGESTION -- DIFF THE CONTROL'S CONSTANT AGAINST THE VALIDATOR'S. A
+  TYPEOF GUARD IN FRONT OF A CHECK IS A SKIP BRANCH UNTIL YOU MAKE IT A
+  REFUSAL BRANCH. AN EXCLUSION WRITTEN AS TEMPORARY BECOMES POLICY THE
+  WAVE AFTER IT IS WRITTEN. NEXT: collection-cap LEDGER scan over every
+  Array.isArray/Object.entries body parse (needs w2-c..f merged, else
+  red); per-COLUMN cap-parity scan still needs w1-b/c/d.
