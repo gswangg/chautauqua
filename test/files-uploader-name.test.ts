@@ -59,7 +59,7 @@ vi.mock("../src/server/repo/files", async () => {
     ...actual,
     getSubmissionScope: vi.fn(async (_db: unknown, submissionId: string) =>
       submissionId === SUBMISSION_ID
-        ? { submissionId, eventId: EVENT_ID, orgId: ORG_A, participantContactIds: [] }
+        ? { submissionId, eventId: EVENT_ID, orgId: ORG_A, readParticipantContactIds: [], activeParticipantContactIds: [] }
         : null,
     ),
     listSubmissionFiles: vi.fn(async (_db: unknown, submissionId: string) =>

@@ -107,7 +107,7 @@ describe("reviewerCanAccessSubmissionFile / canAccessFile — DEC-170 anonymized
     // — never defaulting to true for role 'reviewer'.
     const denied = canAccessFile(
       { role: "reviewer", orgId: "org1" },
-      { orgId: "org1", uploadedByContactId: null, participantContactIds: [] },
+      { orgId: "org1", uploadedByContactId: null, readParticipantContactIds: [] },
       { reviewerInScope: inScope },
     );
     expect(denied).toBe(false);
@@ -127,7 +127,7 @@ describe("reviewerCanAccessSubmissionFile / canAccessFile — DEC-170 anonymized
 
     const allowed = canAccessFile(
       { role: "reviewer", orgId: "org1" },
-      { orgId: "org1", uploadedByContactId: null, participantContactIds: [] },
+      { orgId: "org1", uploadedByContactId: null, readParticipantContactIds: [] },
       { reviewerInScope: inScope },
     );
     expect(allowed).toBe(true);
@@ -158,7 +158,7 @@ describe("reviewerCanAccessSubmissionFile / canAccessFile — DEC-170 anonymized
   });
 
   it("canAccessFile never defaults reviewerInScope to true when opts/reviewerInScope is omitted", () => {
-    const scope = { orgId: "org1", uploadedByContactId: null, participantContactIds: [] as string[] };
+    const scope = { orgId: "org1", uploadedByContactId: null, readParticipantContactIds: [] as string[] };
 
     expect(canAccessFile({ role: "reviewer", orgId: "org1" }, scope)).toBe(false);
     expect(canAccessFile({ role: "reviewer", orgId: "org1" }, scope, {})).toBe(false);

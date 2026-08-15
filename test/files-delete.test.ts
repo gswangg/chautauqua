@@ -32,6 +32,7 @@ function collectLiteralValues(node: unknown, seen = new Set<unknown>(), out: Set
 
 interface FileRow {
   id: string;
+  kind: string;
   submissionId: string | null;
   filename: string;
   r2Key: string;
@@ -250,9 +251,9 @@ function makeFakeDb(state: {
 function chain() {
   // v1 (root) -> v2 (middle) -> v3 (latest)
   const files: FileRow[] = [
-    { id: "v1", submissionId: "sub1", filename: "deck-v1.pdf", r2Key: "sub/sub1/v1.pdf", previousFileId: null, versionNo: 1, uploadedByContactId: "c1" },
-    { id: "v2", submissionId: "sub1", filename: "deck-v2.pdf", r2Key: "sub/sub1/v2.pdf", previousFileId: "v1", versionNo: 2, uploadedByContactId: "c1" },
-    { id: "v3", submissionId: "sub1", filename: "deck-v3.pdf", r2Key: "sub/sub1/v3.pdf", previousFileId: "v2", versionNo: 3, uploadedByContactId: "c1" },
+    { id: "v1", kind: "presentation", submissionId: "sub1", filename: "deck-v1.pdf", r2Key: "sub/sub1/v1.pdf", previousFileId: null, versionNo: 1, uploadedByContactId: "c1" },
+    { id: "v2", kind: "presentation", submissionId: "sub1", filename: "deck-v2.pdf", r2Key: "sub/sub1/v2.pdf", previousFileId: "v1", versionNo: 2, uploadedByContactId: "c1" },
+    { id: "v3", kind: "presentation", submissionId: "sub1", filename: "deck-v3.pdf", r2Key: "sub/sub1/v3.pdf", previousFileId: "v2", versionNo: 3, uploadedByContactId: "c1" },
   ];
   const comments: CommentRow[] = [
     { id: "cm1", fileId: "v2", authorUserId: "u1", authorContactId: null, body: "looks good", createdAt: new Date(1000) },
@@ -324,7 +325,7 @@ describe("deleteFileVersion (DEC-713)", () => {
 
   it("removes comments along with the file when it is the sole version in its chain", async () => {
     const files: FileRow[] = [
-      { id: "solo", submissionId: "sub2", filename: "solo.pdf", r2Key: "sub/sub2/solo.pdf", previousFileId: null, versionNo: 1, uploadedByContactId: "c2" },
+      { id: "solo", kind: "presentation", submissionId: "sub2", filename: "solo.pdf", r2Key: "sub/sub2/solo.pdf", previousFileId: null, versionNo: 1, uploadedByContactId: "c2" },
     ];
     const comments: CommentRow[] = [
       { id: "cmA", fileId: "solo", authorUserId: "u1", authorContactId: null, body: "hello", createdAt: new Date(1000) },
@@ -370,7 +371,7 @@ describe("deleteFileVersion (DEC-713)", () => {
 
   it("reopens the linked task_assignment when the sole version in the chain is deleted", async () => {
     const files: FileRow[] = [
-      { id: "solo", submissionId: "sub2", filename: "solo.pdf", r2Key: "sub/sub2/solo.pdf", previousFileId: null, versionNo: 1, uploadedByContactId: "c2" },
+      { id: "solo", kind: "presentation", submissionId: "sub2", filename: "solo.pdf", r2Key: "sub/sub2/solo.pdf", previousFileId: null, versionNo: 1, uploadedByContactId: "c2" },
     ];
     const assignments: AssignmentRow[] = [
       { id: "asgSolo", status: "complete", completedAt: new Date(5000), completedBy: "c2", fileId: "solo" },
@@ -415,5 +416,30 @@ describe("getFileDeleteScope (DEC-713)", () => {
   it("returns null for an unknown file id", async () => {
     const { db } = makeFakeDb(chain());
     expect(await getFileDeleteScope(db, "nope")).toBeNull();
+  });
+
+  // DEC-713: version deletion's population is submission DELIVERABLES only
+  // (FILE_KINDS) — a kind='attachment' CFP form-answer upload (whose id is
+  // stored inline in submission_answer.value_json, insertAttachmentFile in
+  // submit.ts) must never resolve a delete scope, or DELETE /api/v1/files/
+  // :fileId would delete a row a form answer still points at.
+  it("returns null for a kind='attachment' file — disjoint from the deliverable-version population", async () => {
+    const fixture = chain();
+    fixture.files.push({
+      id: "attach-1",
+      kind: "attachment",
+      submissionId: "sub1",
+      filename: "receipt.pdf",
+      r2Key: "sub/sub1/attach-1-receipt.pdf",
+      previousFileId: null,
+      versionNo: 1,
+      uploadedByContactId: "c1",
+    });
+    const { db } = makeFakeDb(fixture);
+
+    expect(await getFileDeleteScope(db, "attach-1")).toBeNull();
+    // the deliverable population is unaffected by the presence of an
+    // attachment-kind row elsewhere in the same submission.
+    expect(await getFileDeleteScope(db, "v3")).not.toBeNull();
   });
 });

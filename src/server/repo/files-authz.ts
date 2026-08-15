@@ -2,11 +2,19 @@
 // files.ts (contention decomposition) — no behavior change, files.ts
 // re-exports everything below for existing callers.
 
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { listPlansForEvent, isSubmissionInReviewerScope } from "./review";
-import { ACTIVE_INVITE_STATUSES } from "../../domain/acceptance";
+import { PORTAL_VISIBLE_INVITE_STATUSES, isActiveParticipant } from "../../domain/acceptance";
+
+/** DEC-317: read=not-declined (PORTAL_VISIBLE_INVITE_STATUSES), write=active
+ * (ACTIVE_INVITE_STATUSES) — participation is only-in-passing filtered here
+ * since PORTAL_VISIBLE_INVITE_STATUSES is a superset of ACTIVE_INVITE_STATUSES;
+ * the active set is always a subset of the read set. */
+function isPortalVisibleParticipant(inviteStatus: string): boolean {
+  return (PORTAL_VISIBLE_INVITE_STATUSES as readonly string[]).includes(inviteStatus);
+}
 
 // ---------------------------------------------------------------------------
 // Ownership / authz lookups
@@ -16,8 +24,12 @@ export interface SubmissionScope {
   submissionId: string;
   eventId: string;
   orgId: string;
-  /** contact ids of every participant on the submission — for speaker IDOR checks. */
-  participantContactIds: string[];
+  /** DEC-317 read population: not-declined participants (may SEE the
+   * submission while an invite is outstanding) — for speaker IDOR read checks. */
+  readParticipantContactIds: string[];
+  /** DEC-317 write population: active participants only (may upload/comment/
+   * delete) — a strict subset of readParticipantContactIds. */
+  activeParticipantContactIds: string[];
   /** submission status — feeds canEditSubmission (DEC-041 edit-lock). */
   status: string;
   /** DAY LABEL close date in epoch ms, or null when the submission has no
@@ -49,21 +61,26 @@ export async function getSubmissionScope(db: Db, submissionId: string): Promise<
   const sub = subRows[0];
   if (!sub) return null;
 
+  // ONE query selecting contactId + inviteStatus, partitioned in TS into the
+  // DEC-317 read/write populations — never two round trips.
   const participantRows = await db
-    .select({ contactId: schema.participant.contactId })
+    .select({ contactId: schema.participant.contactId, inviteStatus: schema.participant.inviteStatus })
     .from(schema.participant)
-    .where(
-      and(
-        eq(schema.participant.submissionId, submissionId),
-        inArray(schema.participant.inviteStatus, ACTIVE_INVITE_STATUSES),
-      ),
-    );
+    .where(eq(schema.participant.submissionId, submissionId));
+
+  const readParticipantContactIds: string[] = [];
+  const activeParticipantContactIds: string[] = [];
+  for (const row of participantRows) {
+    if (isPortalVisibleParticipant(row.inviteStatus)) readParticipantContactIds.push(row.contactId);
+    if (isActiveParticipant(row.inviteStatus)) activeParticipantContactIds.push(row.contactId);
+  }
 
   return {
     submissionId,
     eventId: sub.eventId,
     orgId: sub.orgId,
-    participantContactIds: participantRows.map((r) => r.contactId),
+    readParticipantContactIds,
+    activeParticipantContactIds,
     status: sub.status,
     formCloseDate: sub.formCloseDate ? sub.formCloseDate.getTime() : null,
     timezone: sub.timezone,
@@ -76,7 +93,9 @@ export interface FileScope {
   eventId: string;
   orgId: string;
   uploadedByContactId: string | null;
-  participantContactIds: string[];
+  /** DEC-317 read/write split — see SubmissionScope. */
+  readParticipantContactIds: string[];
+  activeParticipantContactIds: string[];
   filename: string;
   contentType: string;
   r2Key: string;
@@ -117,7 +136,8 @@ export async function getFileScope(db: Db, fileId: string): Promise<FileScope | 
     eventId: scope.eventId,
     orgId: scope.orgId,
     uploadedByContactId: fileRow.uploadedByContactId,
-    participantContactIds: scope.participantContactIds,
+    readParticipantContactIds: scope.readParticipantContactIds,
+    activeParticipantContactIds: scope.activeParticipantContactIds,
     filename: fileRow.filename,
     contentType: fileRow.contentType,
     r2Key: fileRow.r2Key,
@@ -134,7 +154,7 @@ export async function getFileScope(db: Db, fileId: string): Promise<FileScope | 
  * precomputed boolean in `opts`, never defaulting to true. */
 export function canAccessFile(
   auth: { role: string; orgId: string; contactId?: string },
-  scope: { orgId: string; uploadedByContactId: string | null; participantContactIds: readonly string[] },
+  scope: { orgId: string; uploadedByContactId: string | null; readParticipantContactIds: readonly string[] },
   opts?: { reviewerInScope?: boolean },
 ): boolean {
   if (auth.role === "organizer") {
@@ -142,7 +162,9 @@ export function canAccessFile(
   }
   if (auth.role === "speaker") {
     if (!auth.contactId) return false;
-    return scope.uploadedByContactId === auth.contactId || scope.participantContactIds.includes(auth.contactId);
+    // DEC-317: the self-upload clause is untouched — an uploader may always
+    // read their own upload regardless of invite status.
+    return scope.uploadedByContactId === auth.contactId || scope.readParticipantContactIds.includes(auth.contactId);
   }
   if (auth.role === "reviewer") {
     return opts?.reviewerInScope === true;
