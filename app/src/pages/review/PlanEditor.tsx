@@ -1970,17 +1970,17 @@ export function PlanEditor() {
                     <table className="chq-table chq-review-results-table chq-review-distribute-table">
                       <thead>
                         <tr>
-                          <th>Name</th>
-                          <th>Track</th>
-                          <th>Talks</th>
+                          <th className="chq-review-distribute-col-name">Name</th>
+                          <th className="chq-review-distribute-col-track">Track</th>
+                          <th className="chq-review-distribute-col-talks">Talks</th>
                         </tr>
                       </thead>
                       <tbody>
                         {distributePreview.perReviewer.map((pr) => (
                           <tr key={pr.userId}>
-                            <td data-label="Name">{pr.name}</td>
-                            <td data-label="Track">{pr.trackName ?? 'All submissions'}</td>
-                            <td data-label="Talks">{distributeReviewerCell(pr)}</td>
+                            <td data-label="Name" className="chq-review-distribute-col-name">{pr.name}</td>
+                            <td data-label="Track" className="chq-review-distribute-col-track">{pr.trackName ?? 'All submissions'}</td>
+                            <td data-label="Talks" className="chq-review-distribute-col-talks">{distributeReviewerCell(pr)}</td>
                           </tr>
                         ))}
                       </tbody>
