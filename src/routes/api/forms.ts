@@ -242,12 +242,31 @@ formsRoutes.patch("/api/v1/fields/:fieldId", requireOrganizer, csrfJson, async (
   // refused outright — the producer must delete and re-create the question
   // instead (mirrors DEC-300's field-delete confirm, but kind changes have
   // no cascade option since the stored answer shape wouldn't fit the new kind).
-  if (typeof body.kind === "string" && body.kind !== field.kind) {
+  //
+  // Amendment (wave 54): this OVERRULES DEC-505's original "section is pure
+  // grouping" clause. Section is not pure grouping — it is the anonymisation
+  // boundary DEC-a-later-decision reads (speaker-section answers are
+  // stripped from what an anonymised reviewer sees; session-section answers
+  // are not). So a section change with collected answers is refused with the
+  // same conflict shape as a kind change, for the same reason: moving
+  // answers between sections would change what anonymised reviewers can
+  // see for data already collected. Both guards read ONE
+  // describeFieldDependents call — never issue the query twice.
+  const kindChanging = typeof body.kind === "string" && body.kind !== field.kind;
+  const sectionChanging = typeof body.section === "string" && body.section !== field.section;
+  if (kindChanging || sectionChanging) {
     const { answerCount } = await repo.describeFieldDependents(c.var.db, field.formId, fieldId);
     if (answerCount > 0) {
+      if (kindChanging) {
+        throw new ApiError(
+          "conflict",
+          `"${field.label}" has ${countOf(answerCount, "collected answer")}; changing its kind would orphan them. Delete and re-create the question instead.`,
+          { answers: String(answerCount) },
+        );
+      }
       throw new ApiError(
         "conflict",
-        `"${field.label}" has ${countOf(answerCount, "collected answer")}; changing its kind would orphan them. Delete and re-create the question instead.`,
+        `"${field.label}" has ${countOf(answerCount, "collected answer")}; moving it between the speaker and session sections would change what anonymised reviewers can see. Delete and re-create the question instead.`,
         { answers: String(answerCount) },
       );
     }
