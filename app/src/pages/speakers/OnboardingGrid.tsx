@@ -1104,7 +1104,6 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                 : `${removePreview.assigned} speakers are assigned this task and ${removePreview.completed} have completed it. Their uploaded files stay in the files library; their form responses do not — ${countOf(removePreview.responses, 'response')} will be deleted.`
           }
           confirmLabel="Remove"
-          destructive
           pending={removingBusy}
           confirmDisabled={removePreviewLoading || !!removePreviewError || !removePreview}
           onConfirm={confirmRemoveTask}

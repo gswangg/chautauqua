@@ -759,7 +759,6 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
             )
           }
           confirmLabel="Delete"
-          destructive
           pending={deleting}
           onConfirm={confirmDelete}
           onCancel={() => setShowDeleteConfirm(false)}

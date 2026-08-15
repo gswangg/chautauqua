@@ -15,13 +15,3 @@
   color: var(--chq-ink-2);
   white-space: pre-wrap;
 }
-
-.chq-confirm-btn-danger {
-  background: #7a2a1e;
-  color: var(--chq-on-brand);
-  font-weight: 700;
-}
-
-.chq-confirm-btn-danger:hover {
-  background: #5f2016;
-}

@@ -475,7 +475,6 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged }: 
             </p>
           }
           confirmLabel="Remove break"
-          destructive
           pending={removingId === pendingRemove.id}
           onConfirm={() => void handleRemove(pendingRemove.id)}
           onCancel={() => setPendingRemove(null)}

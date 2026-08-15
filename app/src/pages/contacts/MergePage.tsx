@@ -352,7 +352,6 @@ export function MergePage() {
               title="Merge these records?"
               body="History from the other record moves onto the kept record. The discarded record is deleted. This can't be undone."
               confirmLabel="Merge"
-              destructive
               pending={busy}
               onConfirm={doMerge}
               onCancel={() => setConfirmOpen(false)}

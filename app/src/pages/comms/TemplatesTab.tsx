@@ -330,7 +330,6 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
           title="Delete this template?"
           body={`Sends already made keep their copy of "${pendingDelete.name}"'s text. This cannot be undone.`}
           confirmLabel="Delete"
-          destructive
           pending={deleting}
           onConfirm={() => void confirmRemove()}
           onCancel={() => setPendingDelete(null)}

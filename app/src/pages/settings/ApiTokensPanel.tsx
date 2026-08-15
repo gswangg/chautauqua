@@ -274,7 +274,6 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
           title="Revoke this token?"
           body={`Any script or embed still using ${pendingDelete.name} stops working immediately. This cannot be undone.`}
           confirmLabel="Revoke"
-          destructive
           pending={deleting}
           onConfirm={() => void confirmDelete()}
           onCancel={() => setPendingDelete(null)}
