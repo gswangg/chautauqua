@@ -27,34 +27,33 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   FAN-OUT WITH NO PRE-WRITE CAP IS A HALF-WRITE. A KNOB TABLE THAT DRIFTS BY
   COMMENT IS PROSE, NOT A CONTRACT. A KEY THE CLIENT SENDS AND NO ROUTE
   PARSES IS A BUTTON THAT 400s.
-- FINDINGS w14 (all LANDED except task-w14-d unmerged .chq-field-invalid
-  specificity, do NOT re-file; task-w13-b/-c refs still UNMERGED, stay owned).
-  RULED DELIBERATE: send.ts's unconditional ics_sequence bump. Shapes: A CLASS
-  THAT LOSES TO A TYPE SELECTOR IS A RULE NOBODY DRAWS. AN ACCUMULATOR WITH A
-  THROWING HELPER REPORTS THE FIRST PROBLEM AND FORGETS THE REST. A PRE-CHECK
-  IS NOT A CONSTRAINT. A SAVE BUTTON OUTSIDE A FORM COSTS A MOUSE TRIP/EDIT.
+- FINDINGS w14 pre-notes: task-w13-b/-c refs UNMERGED, stay owned. RULED
+  DELIBERATE: send.ts's unconditional ics_sequence bump. Shapes: A CLASS THAT
+  LOSES TO A TYPE SELECTOR IS A RULE NOBODY DRAWS. A PRE-CHECK IS NOT A
+  CONSTRAINT. A SAVE BUTTON OUTSIDE A FORM COSTS A MOUSE TRIP/EDIT.
 - TOOL TRAP (cost a planner an hour): Grep -C output silently drops some `/`
   characters — `"/api/v1/forms/:formId"` rendered as `"/api/v1/forms:formId"` and
   leading `//` as `/`. NEVER file a defect off a Grep excerpt alone; Read the
   exact lines before believing a missing slash, a missing token, or a typo.
-- FINDINGS w15 (planned by reading main while the w14 merge train ran; main MOVED
-  mid-planning). CORRECTION to the w14 note: w14-a/-b/-c ALL LANDED (bulk-email.ts:214
-  intra-batch+window dedupe, breaks.ts:132 collectBoundedText accumulation, users.ts:106
-  + events.ts:185 onConflictDoNothing). task-w14-d (.chq-field-invalid specificity) has
-  a ref and is UNMERGED -- do NOT re-file. task-w14-e NEVER EXISTED (no ref); CNT-S3 was
-  unowned and is taken here as w15-a. RE-VERIFIED CLOSED this wave, do NOT re-file:
-  `q` IS in hasActiveNarrowing (OnboardingGrid.tsx:130); results head is single
-  (ResultsTable.tsx:285,327); public agenda never renders TBD (ruling A25); public
-  session-detail HAS the itinerary toggle (detail.tsx:124, ruling A26); toCsv neutralizes
-  formula injection (lib/csv.ts:150); submission seq is an atomic subquery; import
-  contactIds ARE deduped (import.ts:272 addContactId); reviewer file authz excludes
-  anonymized + closed plans (files-authz.ts:205-210); dev mailbox is mount-gated.
-  VERIFIED OPEN and filed: send.ts has the DEC-238 WINDOW but no intra-batch collapse
-  (its sibling's comment claims parity it does not have); MAX_PARTICIPANTS_PER_SUBMISSION
-  is enforced at 2 of 4 doors (CSV roster import + Sessionboard import bypass it);
-  updateEvent guards event_slug_idx with isSlugTaken and no catch (500, not the 400 the
-  route documents 170 lines above); the mail envelope recipient skips addressValue while
-  its own To: header does not; the submission-detail editors are divs (only 6 <form>
-  elements exist in the entire SPA). Shapes: A COMMENT THAT CLAIMS PARITY IS NOT PARITY.
-  A CAP AT TWO OF FOUR DOORS IS A SUGGESTION. AN INSERT GUARD IS NOT AN UPDATE GUARD.
-  THE ONE CALL SITE THAT SKIPS THE SANITIZER IS THE ONE THAT MATTERS.
+- FINDINGS w14/w15 (compacted): w14-a/-b/-c LANDED (bulk-email dedupe, breaks
+  accumulation, onConflictDoNothing); task-w14-d (.chq-field-invalid specificity) has a
+  ref, UNMERGED, do NOT re-file. w15 re-verified closed prior suspects (q narrowing,
+  results head, public agenda/session-detail, CSV formula neutralize, import dedupe,
+  reviewer file authz, dev mailbox gate) and filed real gaps: send.ts window w/o intra-
+  batch collapse, MAX_PARTICIPANTS enforced at 2 of 4 doors, updateEvent 500 not 400,
+  mail envelope skips addressValue. Shapes: A CAP AT TWO OF FOUR DOORS IS A SUGGESTION.
+- FINDINGS w16 (VERIFICATION WAVE; planned by reading main c0b14342). REF TRUTH at
+  planning: task-w14-d AND task-w15-a/-b/-c/-d/-e all have refs and are ALL UNMERGED
+  (updateEvent still unguarded events.ts:215-243; send.ts:112-139 window but no
+  intra-batch collapse; sessionboard.ts:500-660 no participant cap). task-w15-f NEVER
+  EXISTED; its scope (mail envelope) taken as w16-a. DISMISSED after re-verification, do
+  NOT re-file: trackIds dedupe (submissions.ts:127-131, submit-body.ts:71-79); reviewer
+  plan-window on read (reviewer.ts:283-290) and file authz (files-authz.ts:191-210);
+  saved-view cap IS authorship (views.ts:82-97 -> repo/views.ts:129-143). ALSO VERIFIED
+  BUILT while hunting: Home hub + auth redirects, saved-embed ?embed resolver w/
+  DEC-822 empty-200, password reset 4 states, /logout POST + ?signed-out=1, per-version
+  delete w/ newest-confirms, content-note mailer, distribute preview, phone triage cards,
+  files-library column swap + orphan row. Shapes: A RULE ENFORCED AT THE HEADER AND NOT
+  THE ENVELOPE IS NOT A RULE. A RESEARCH-RENDER PIXEL NEVER OUTRANKS THE VENDORED WIDTH
+  RULE (1372@114 IS 1440+34 at 1600). TWO HARNESS LANES SHARING A PORT MEASURE EACH
+  OTHER. WHEN NOTHING IS LEFT TO BUILD, THE RISK IS UNMEASURED, NOT UNBUILT.
