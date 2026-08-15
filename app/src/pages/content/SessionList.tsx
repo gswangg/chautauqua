@@ -5,6 +5,7 @@ import { PageSkeleton } from '../../components/PageSkeleton';
 import { EmptyState } from '../../components/EmptyState';
 import { formatRelativeDays, formatDayLabel } from '../../lib/dates';
 import { paginationSummary } from '../../lib/pagination-summary';
+import { publicRoomLabel } from '../../lib/room-label';
 
 // w5-i (DEC-020 amendment quoted mock text, eval-findings.md STILL-PRESENT
 // residue): the Latest file column names EVERY kind that has files ("Slides
@@ -26,8 +27,6 @@ function formatClockTime(minutesFromMidnight: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-const ROOM_TBA_LABEL = 'To be announced';
-
 /** w41-b (DEC-902 amendment): the worklist SESSION cell's subtitle --
  * 'REF · <day> <start>, <room>' once placed on the agenda, or the bare ref
  * (no '· ,' residue) when the submission hasn't been scheduled yet. */
@@ -35,7 +34,7 @@ function formatSessionSubtitle(item: ContentSubmissionListItem): string {
   if (!item.scheduled) return item.ref;
   const dayLabel = formatDayLabel(item.scheduled.day);
   const timeLabel = formatClockTime(item.scheduled.startMin);
-  const roomLabel = item.scheduled.roomName ?? ROOM_TBA_LABEL;
+  const roomLabel = publicRoomLabel(item.scheduled.roomName);
   return `${item.ref} · ${dayLabel} ${timeLabel}, ${roomLabel}`;
 }
 

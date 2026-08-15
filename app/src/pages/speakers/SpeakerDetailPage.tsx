@@ -24,6 +24,7 @@ import { STATUS_LABELS } from '../submissions/types';
 import { CONTENT_STATUS_LABELS } from '../content/types';
 import { EmptyState } from '../../components/EmptyState';
 import { formatBytes } from '../content/format';
+import { publicRoomLabel } from '../../lib/room-label';
 import { DEC_930 } from '../../../../src/decisions';
 import type { SpeakerDetailResponse, SpeakerDetailTaskStatus } from './speakerDetail';
 import './speakers.css';
@@ -64,7 +65,7 @@ function formatClockTime(minutesFromMidnight: number): string {
 function scheduledLabel(scheduled: SpeakerDetailResponse['sessions'][number]['scheduled']): string {
   if (!scheduled) return 'Not placed';
   const slot = `${formatDayLabel(scheduled.day)} ${formatClockTime(scheduled.startMin)}–${formatClockTime(scheduled.endMin)}`;
-  return `${slot}, ${scheduled.roomName ?? 'To be announced'}`;
+  return `${slot}, ${publicRoomLabel(scheduled.roomName)}`;
 }
 
 export function SpeakerDetailPage() {
