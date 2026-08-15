@@ -776,4 +776,83 @@ describe('DeliverableDetail render smoke', () => {
     expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('Status update failed: boom');
   });
+
+  // DEC-020 wave-58 amendment: the organizer's own upload can reopen content
+  // review exactly like the speaker portal's upload does — the 201 must be
+  // disclosed with a plain status line, gated strictly on the 201's own
+  // contentReviewReopened flag (never on a re-derivation from the refetched
+  // pill, which is also 'pending' for a submission that was already pending
+  // before this upload).
+  it('renders the reopen disclosure line when the upload 201 reports contentReviewReopened:true', async () => {
+    mockApi({
+      [`GET /api/v1/submissions/${SUBMISSION_ID}/files`]: listEnvelope(files),
+      [`GET /api/v1/submissions/${SUBMISSION_ID}`]: submissionDetail({ contentStatus: 'pending', reuploaded: true }),
+      [`GET /api/v1/files/file-slides-v2/comments`]: listEnvelope([]),
+      [`GET /api/v1/files/file-recording-v1/comments`]: listEnvelope([]),
+      [`POST /api/v1/submissions/${SUBMISSION_ID}/files`]: { id: 'file-slides-v3', contentReviewReopened: true, contentStatus: 'pending' },
+      'GET /api/v1/me': { userId: 'user-1', email: 'org@example.com', name: 'Org User', role: 'organizer', orgId: 'org-1' },
+    });
+
+    render(
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="approved"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('slides-v2.pdf');
+    expect(screen.queryByText(/back with review/)).not.toBeInTheDocument();
+
+    const input = screen.getByLabelText('Replace presentation') as HTMLInputElement;
+    const file = new File(['x'], 'slides-v3.pdf', { type: 'application/pdf' });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    const notice = await screen.findByText(
+      'The new version is back with review and the session is off the public schedule until it is approved again.',
+    );
+    expect(notice).toHaveAttribute('role', 'status');
+  });
+
+  it('renders no reopen disclosure line when the upload 201 reports contentReviewReopened:false', async () => {
+    mockApi({
+      [`GET /api/v1/submissions/${SUBMISSION_ID}/files`]: listEnvelope(files),
+      [`GET /api/v1/submissions/${SUBMISSION_ID}`]: submissionDetail({ contentStatus: 'pending', reuploaded: true }),
+      [`GET /api/v1/files/file-slides-v2/comments`]: listEnvelope([]),
+      [`GET /api/v1/files/file-recording-v1/comments`]: listEnvelope([]),
+      [`POST /api/v1/submissions/${SUBMISSION_ID}/files`]: { id: 'file-slides-v3', contentReviewReopened: false },
+      'GET /api/v1/me': { userId: 'user-1', email: 'org@example.com', name: 'Org User', role: 'organizer', orgId: 'org-1' },
+    });
+
+    render(
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="pending"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('slides-v2.pdf');
+
+    const input = screen.getByLabelText('Replace presentation') as HTMLInputElement;
+    const file = new File(['x'], 'slides-v3.pdf', { type: 'application/pdf' });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Uploading…')).not.toBeInTheDocument();
+    });
+    expect(
+      screen.queryByText(
+        'The new version is back with review and the session is off the public schedule until it is approved again.',
+      ),
+    ).not.toBeInTheDocument();
+  });
 });

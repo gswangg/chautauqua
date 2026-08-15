@@ -122,7 +122,7 @@ vi.mock("../src/server/repo/files", async () => {
     insertFileComment: vi.fn(async () => "new-comment-id"),
     listSubmissionFiles: vi.fn(async () => ({})),
     listFileComments: vi.fn(async () => []),
-    reopenContentReview: vi.fn(async () => {}),
+    reopenContentReview: vi.fn(async () => ({ reopened: false })),
   };
 });
 

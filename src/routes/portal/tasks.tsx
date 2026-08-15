@@ -615,6 +615,10 @@ portalTasksRoutes.post("/tasks/:assignmentId/upload", csrfForm, async (c) => {
   // submissionId is null for a plain 'handout' task (no submission link) —
   // reopen only when this upload is a real, submission-linked deliverable.
   // kind is already narrowed to FILE_KINDS above (never HEADSHOT_KIND).
+  // DEC-020 wave-58 amendment: reopenContentReview now returns
+  // `{ reopened }` — this route's own disclosure is unconditional on
+  // submissionId (see the redirect below), not on that flag, so the value
+  // is intentionally unused here.
   if (submissionId) {
     await reopenContentReview(c.var.db, submissionId);
   }

@@ -92,7 +92,7 @@ vi.mock("../src/server/repo/files", async () => {
     batchContactNames: vi.fn(async () => new Map()),
     insertFile: vi.fn(async () => "new-file-id"),
     insertFileComment: vi.fn(async () => "new-comment-id"),
-    reopenContentReview: vi.fn(async () => {}),
+    reopenContentReview: vi.fn(async () => ({ reopened: false })),
     deleteFileVersion: vi.fn(async () => {}),
   };
 });
