@@ -430,8 +430,20 @@ export async function buildResults(
   // DEC-439: buildResults never reads trackIds, so skip the second
   // whole-event submission_track scan; DEC-440: only submission_id +
   // scores_json are read from evaluation, not whole rows.
-  const submissions = await repo.listPlanFilteredSubmissions(c.var.db, plan, { withTrackIds: false });
-  const evaluations = await repo.listEvaluationScoresForPlan(c.var.db, plan.id, round);
+  //
+  // DEC-338 (wave-31 amendment): the plan/round-scoped reads below share no
+  // dependency on one another (submissions, evaluations, recusals are each
+  // keyed only by planId/round), so they fire as one Promise.all wave
+  // instead of a four-deep sequential waterfall. Promise.all still rejects
+  // with the first read's own ApiError unchanged -- no error is swallowed
+  // or replaced.
+  const [submissions, evaluations, planRecusals] = await Promise.all([
+    repo.listPlanFilteredSubmissions(c.var.db, plan, { withTrackIds: false }),
+    repo.listEvaluationScoresForPlan(c.var.db, plan.id, round),
+    // w42-h/DEC-366 amendment: one plan-scoped recusal read, indexed by
+    // submissionId -- never a per-row query.
+    repo.listRecusalsForPlan(c.var.db, plan.id),
+  ]);
   // DEC-147: results aggregate against THIS round's full criteria list -- a
   // round override can drop/add/reweight criteria relative to the base plan.
   const roundCriteria = criteriaForRound(plan.criteria, roundCriteriaJsonOf(plan), round);
@@ -451,13 +463,14 @@ export async function buildResults(
   // DEC-703: SPEAKER and TRACK for the results row -- ONE batched query
   // each, keyed to this call's own submission id set (never a per-row read,
   // never an unscoped full-table scan). Shared by both the paginated JSON
-  // response and the CSV export, so the two never disagree.
+  // response and the CSV export, so the two never disagree. Both depend
+  // only on submissionIds (available once the first wave resolves), and
+  // not on each other, so they fire as their own Promise.all wave.
   const submissionIds = submissions.map((sub) => sub.id);
-  const speakersBySubmission = await repo.listSpeakerNamesForSubmissions(c.var.db, submissionIds);
-  const trackNamesBySubmission = await repo.listTrackNamesForSubmissions(c.var.db, submissionIds);
-  // w42-h/DEC-366 amendment: one plan-scoped recusal read, indexed by
-  // submissionId -- never a per-row query.
-  const planRecusals = await repo.listRecusalsForPlan(c.var.db, plan.id);
+  const [speakersBySubmission, trackNamesBySubmission] = await Promise.all([
+    repo.listSpeakerNamesForSubmissions(c.var.db, submissionIds),
+    repo.listTrackNamesForSubmissions(c.var.db, submissionIds),
+  ]);
   const recusalCountsBySubmission = new Map<string, number>();
   for (const r of planRecusals) {
     recusalCountsBySubmission.set(r.submissionId, (recusalCountsBySubmission.get(r.submissionId) ?? 0) + 1);
