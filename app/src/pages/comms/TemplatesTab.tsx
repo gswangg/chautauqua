@@ -216,11 +216,13 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
               <tbody>
                 {templates.map((t) => (
                   <tr key={t.id} className={t.id === editingId ? 'chq-comms-template-row-selected' : undefined}>
-                    {/* DEC-890 amendment (wave 4): purpose copy is the row's
-                        first line, the subject is demoted to secondary meta. */}
+                    {/* DEC-890 amendment (wave 3, w3-e): the stored name is
+                        the only handle the organizer typed, so it is the
+                        row's first line. Purpose copy + subject are demoted
+                        to secondary meta, joined plainly with " · ". */}
                     <td data-label="Name">
-                      <div className="chq-comms-template-name">{derivePurpose(t)}</div>
-                      <div className="chq-comms-template-detail">{t.subject}</div>
+                      <div className="chq-comms-template-name">{t.name}</div>
+                      <div className="chq-comms-template-detail">{derivePurpose(t)} &middot; {t.subject}</div>
                     </td>
                     <td data-label="Last used">
                       <span className="chq-comms-template-last-used">

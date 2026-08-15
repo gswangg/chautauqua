@@ -57,17 +57,19 @@ describe('TemplatesTab', () => {
     expect(screen.getByRole('heading', { name: 'Templates' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'New template' })).toBeInTheDocument();
 
-    // DEC-890 amendment (wave 4): the row's first line is purpose copy, not
-    // the template's own name (that lives on the editor eyebrow once a row
-    // is selected) or the subject line (demoted to secondary meta).
-    await waitFor(() => expect(screen.getByText('You are in!')).toBeInTheDocument());
-    const declineRow = screen.getByText('An update on your submission').closest('tr') as HTMLElement;
+    // DEC-890 amendment (wave 3, w3-e): the row's first line is the stored
+    // name -- the only handle the organizer typed -- and the second line
+    // carries the derived purpose joined with the subject as muted meta.
+    await waitFor(() =>
+      expect(screen.getByText('Acceptance', { selector: '.chq-comms-template-name' })).toBeInTheDocument(),
+    );
+    const declineRow = screen.getByText('Decline', { selector: '.chq-comms-template-name' }).closest('tr') as HTMLElement;
     expect(within(declineRow).getByText(/^Last used /)).toBeInTheDocument();
-    expect(within(declineRow).getByText('Used for declined submissions')).toBeInTheDocument();
+    expect(within(declineRow).getByText('Used for declined submissions · An update on your submission')).toBeInTheDocument();
 
-    const acceptanceRow = screen.getByText('You are in!').closest('tr') as HTMLElement;
+    const acceptanceRow = screen.getByText('Acceptance', { selector: '.chq-comms-template-name' }).closest('tr') as HTMLElement;
     expect(within(acceptanceRow).getByText('Not used yet')).toBeInTheDocument();
-    expect(within(acceptanceRow).getByText('Used for accepted submissions')).toBeInTheDocument();
+    expect(within(acceptanceRow).getByText('Used for accepted submissions · You are in!')).toBeInTheDocument();
 
     // DEC-890 amendment (wave 4): opening Templates preselects the first
     // template so the right pane is never a blank box, and the editor
@@ -129,7 +131,9 @@ describe('TemplatesTab', () => {
     // Acceptance is the only template, so it's preselected -- both the row
     // and the editor eyebrow carry their own "Duplicate" control. Exercise
     // the row's.
-    const row = (await screen.findByText('You are in!')).closest('tr') as HTMLElement;
+    const row = (
+      await screen.findByText('Acceptance', { selector: '.chq-comms-template-name' })
+    ).closest('tr') as HTMLElement;
     fireEvent.click(within(row).getByRole('button', { name: 'Duplicate' }));
 
     await waitFor(() => {
@@ -173,7 +177,9 @@ describe('TemplatesTab', () => {
       </MemoryRouter>,
     );
 
-    const row = (await screen.findByText('You are in!')).closest('tr') as HTMLElement;
+    const row = (
+      await screen.findByText('Waitlist', { selector: '.chq-comms-template-name' })
+    ).closest('tr') as HTMLElement;
     expect(within(row).getByRole('button', { name: 'Use in a send' })).toBeInTheDocument();
 
     // DEC-890 amendment (wave 4): the editor footer also offers "Use in a
