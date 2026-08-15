@@ -391,6 +391,12 @@ async function main(): Promise<void> {
         // guard (task-w16-d).
         version_no: spec.versionIndex + 1,
         previous_file_id: previousFileId,
+        // DEC-818: version_no is the row's own stored chain-position
+        // identity, set at INSERT time by every writer (never recomputed
+        // from chain position later) — spec.versionIndex is already the
+        // 0-based per-chain position (matches the `v${versionIndex + 1}`
+        // filename above), so the stored value is 1-based.
+        version_no: spec.versionIndex + 1,
         uploaded_by_contact_id: contactId,
         created_at: nextTs(),
         updated_at: ts,
@@ -514,6 +520,13 @@ async function main(): Promise<void> {
   // reusing a contact twice across all PERF_TASK_COUNT tasks; `default`
   // (800 > acceptedContactIds.length 300) falls through unchanged
   // (bit-for-bit) to the original contactIds pool head.
+  //
+  // task-w17-b reached the same conclusion independently and expressed the
+  // gate as `contactsPerTaskCount >= PERF_CONTACT_COUNT ? contactIds :
+  // [...new Set([...acceptedContactIds, ...contactIds])]`; that is
+  // element-for-element identical to the form kept here on both shipped
+  // profiles (default -> contactIds; aie -> the first contactsPerTaskCount
+  // acceptedContactIds), so the merge keeps main's already-validated form.
   const taskAssignmentContactIds =
     contactsPerTaskCount <= acceptedContactIds.length ? acceptedContactIds : contactIds;
   const overdueCount = overdueAssignmentCount(PERF_TASK_ASSIGNMENT_TOTAL, PERF_OVERDUE_TASK_FRACTION);
