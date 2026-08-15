@@ -152,7 +152,10 @@ describe('CommsPage render smoke', () => {
     const row = await screen.findByText('You are in!');
     const batchButton = row.closest('.chq-comms-batch-row') as HTMLElement;
     expect(within(batchButton).getByText('3 sent')).toBeInTheDocument();
-    expect(screen.getByText('1 total')).toBeInTheDocument();
+    // DEC-603 amendment (findings wave 8): History's batch count now prints
+    // through the shared pager summary (DEC-906 "Showing {start}–{end} of
+    // {total}"), not the bare "{total} total" line it replaced.
+    expect(screen.getByText('Showing 1–1 of 1')).toBeInTheDocument();
 
     // DEC-732 (eval-findings 59): expansion is an explicit bordered
     // control, not the whole row silently doubling as a toggle.
