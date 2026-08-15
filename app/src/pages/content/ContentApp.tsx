@@ -309,15 +309,24 @@ export function ContentApp() {
   // DeliverableDetail owns the <h1>.
   const showOwnHeading = submissionId ? !selected : view !== 'files';
 
-  // w18-d (DEC-989 amendment): worklist and files are table/row-and-column
-  // layouts at the 1440 table measure; once submissionId resolves to a
-  // DeliverableDetail (a reading surface), the page clamps to the 1180
-  // reading measure instead -- on this SAME chq-page root, never an inner
-  // wrapper (that mistake has been filed three times in this repo).
-  const pageMeasureClass = submissionId && selected ? 'chq-measure-wide' : 'chq-measure-table';
+  // w18-d (DEC-989 amendment, superseded wave 23 -- see DEC-989 amendment
+  // below): worklist and files are table/row-and-column layouts at the
+  // 1440 table measure and keep chq-measure-table on this chq-page root.
+  //
+  // DEC-989 amendment (wave 23): the DeliverableDetail state used to clamp
+  // this SAME root to chq-measure-wide (1180), which left the status band
+  // (content.css's .chq-content-status-band) unable to bleed past that
+  // clamp with its own margin-inline trick -- cancelling .chq-main's
+  // padding only reaches .chq-main's own content box, never a narrower
+  // clamp sitting inside it. The detail state now carries NO measure token
+  // on chq-page at all; DeliverableDetail delegates the 1180 measure to a
+  // .chq-content-page-content sibling wrapped around everything below the
+  // header/status band chrome, so that chrome can bleed genuinely full
+  // width while the reading body still clamps.
+  const pageMeasureClass = submissionId && selected ? '' : 'chq-measure-table';
 
   return (
-    <div className={`chq-page chq-content-page ${pageMeasureClass}`}>
+    <div className={`chq-page chq-content-page ${pageMeasureClass}`.trim()}>
       {(showOwnHeading || !submissionId) && (
         <div className="chq-content-summary-row">
           {showOwnHeading && <h1 className="chq-page-title">Content</h1>}

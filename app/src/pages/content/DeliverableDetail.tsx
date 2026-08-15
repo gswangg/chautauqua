@@ -400,13 +400,19 @@ export function DeliverableDetail({
           left off rather than fabricated; a future task needs a
           content-status audit column/table to fill that in honestly.
 
-          DEC-989 amendment (wave 41): this band is chrome sitting on the
-          page root's own box (ContentApp wraps DeliverableDetail in
-          chq-page chq-measure-table) -- the same bare-rule idiom
-          .chq-review-editor-title-row documents in review.css -- so it
-          declares NO max-width/side margin of its own, and never reaches
-          for 100vw/cqw (.chq-main scrolls INTERNALLY, so viewport units
-          overshoot its own scrollbar gutter). See content.css.
+          DEC-989 amendment (wave 41, corrected wave 23): this band is
+          chrome sitting on the page root's own box -- the same bare-rule
+          idiom .chq-review-editor-title-row documents in review.css -- so
+          it declares NO max-width of its own, and never reaches for
+          100vw/cqw (.chq-main scrolls INTERNALLY, so viewport units
+          overshoot its own scrollbar gutter). It DOES declare a negative
+          margin-inline (content.css) to bleed past .chq-main's own
+          padding; ContentApp puts NO measure token at all on the chq-page
+          root in this state (not chq-measure-table -- that was itself the
+          wave-41 defect DEC-989 corrects here), so this band and the
+          header block above it are the page's only unclamped children --
+          everything below them is wrapped in .chq-content-page-content,
+          which delegates the 1180 measure instead. See content.css.
 
           DEC-989 amendment (wave 72): the band's copy stacks two lines
           ("Content status" label over the status value) and the value
@@ -451,6 +457,13 @@ export function DeliverableDetail({
         </div>
       </div>
 
+      {/* DEC-989 amendment (wave 23): everything below the status band is
+          the reading body -- it delegates the page's 1180 measure here
+          rather than the (now measure-less) chq-page root, so the header
+          block and status band above stay unclamped chrome while this
+          stays a clamped, centred reading column. content.css declares
+          the clamp; this div adds no padding/margin of its own. */}
+      <div className="chq-content-page-content">
       {downloadStatus && (
         <p className="chq-meta chq-content-download-status" role="status">
           {downloadStatus}
@@ -553,6 +566,7 @@ export function DeliverableDetail({
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
