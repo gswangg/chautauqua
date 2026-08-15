@@ -4,6 +4,7 @@ import {
   DOCUMENT_MAX_BYTES_FOR_TEST,
   extname,
   FILE_KINDS,
+  formatBytes,
   HEADSHOT_MAX_BYTES_FOR_TEST,
   IMAGE_MAX_BYTES_FOR_TEST,
   isImageContentType,
@@ -319,5 +320,37 @@ describe("isValidVersionChain", () => {
   it("is invalid when the target is a different kind", () => {
     const target = { submissionId: "s1", kind: "poster" };
     expect(isValidVersionChain(target, { submissionId: "s1", kind: "presentation" })).toBe(false);
+  });
+});
+
+// DEC-020 (wave-55 amendment): the ONE human byte-size renderer in this
+// codebase.
+describe("formatBytes", () => {
+  it("renders 0 bytes as a whole-number byte count", () => {
+    expect(formatBytes(0)).toBe("0 B");
+  });
+
+  it("renders 1023 bytes (just under the KB tier) as a whole-number byte count", () => {
+    expect(formatBytes(1023)).toBe("1023 B");
+  });
+
+  it("renders 1024 bytes (exactly the KB tier) with one decimal place", () => {
+    expect(formatBytes(1024)).toBe("1.0 KB");
+  });
+
+  it("renders 1 MB with one decimal place", () => {
+    expect(formatBytes(1024 * 1024)).toBe("1.0 MB");
+  });
+
+  it("renders 1 GB with one decimal place", () => {
+    expect(formatBytes(1024 * 1024 * 1024)).toBe("1.0 GB");
+  });
+
+  it("throws on a negative input", () => {
+    expect(() => formatBytes(-1)).toThrow();
+  });
+
+  it("throws on a non-finite input (NaN)", () => {
+    expect(() => formatBytes(NaN)).toThrow();
   });
 });

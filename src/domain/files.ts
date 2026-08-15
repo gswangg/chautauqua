@@ -272,7 +272,28 @@ export const ARCHIVE_MAX_TOTAL_BYTES = 20 * 1024 * 1024;
 /** DEC-160/DEC-353 wave-53: the ONE sentence describing the archive's two
  * caps, so a client surface never hand-assembles its own copy. */
 export function archiveCapMessage(): string {
-  return `${ARCHIVE_MAX_FILES} files or ${ARCHIVE_MAX_TOTAL_BYTES / 1024 / 1024} MB at a time — narrow the filter`;
+  return `${ARCHIVE_MAX_FILES} files or ${formatBytes(ARCHIVE_MAX_TOTAL_BYTES)} at a time — narrow the filter`;
+}
+
+// DEC-020 (wave-55 amendment): the ONE human byte-size renderer in this
+// codebase. Below 1024 bytes renders as a whole-number byte count; at or
+// above 1024, one decimal place and a single space before the KB/MB/GB
+// unit. Fails loudly on a non-finite or negative input rather than
+// silently coercing it (house invariant) — a caller passing a corrupted
+// sizeBytes wants to know, not see "NaN B".
+export function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) {
+    throw new Error(`formatBytes: bytes must be a finite non-negative number, got ${bytes}`);
+  }
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB"];
+  let value = bytes / 1024;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  return `${value.toFixed(1)} ${units[unitIndex]}`;
 }
 
 /** Whether a served content type should be presented as an inline image
