@@ -492,6 +492,64 @@ export function formatFontFloorSummary(results: readonly FontFloorResult[]): str
 // them, so they never fail the gate.
 // ---------------------------------------------------------------------------
 
+// DEC-620 wave-25 amendment: `scrollHeight > clientHeight` alone is not a
+// clip — it's only correct-by-construction as an offender when something
+// actually clips it. The in-page probe (scripts/render-sweep.ts's
+// measureClipOffenders) measures raw geometry/context per candidate element
+// and hands the array here; the PASS/FAIL decision itself is this pure,
+// unit-testable predicate so it never needs a browser to verify. An element
+// is a genuine clip offender only when all three hold:
+//   (i)   it or an ancestor establishes a real clipping context (computed
+//         overflow-x/y is hidden|scroll|auto, or a clipping clip/clip-path)
+//   (ii)  it is not the deliberate visually-hidden collapse
+//         (clientHeight <= CLIP_VISUALLY_HIDDEN_MAX_PX)
+//   (iii) the overflowing content is not a replaced-content crop (an img/
+//         video element, or an element that declares object-fit)
+export const CLIP_VISUALLY_HIDDEN_MAX_PX = 1;
+
+/** Raw per-element measurement the in-page probe collects — geometry plus
+ * the two boolean facts (clipping context present / overflowing content is
+ * a replaced-content crop) the DEC-620 wave-25 amendment predicate needs.
+ * Deliberately carries no text content (DEC-401). */
+export interface ClipCandidate {
+  descriptor: string;
+  scrollHeight: number;
+  clientHeight: number;
+  hasClippingContext: boolean;
+  isReplacedContentCrop: boolean;
+}
+
+/** DEC-620 wave-25 amendment predicate: true only when `candidate` is a
+ * genuine clip (satisfies all three conditions above). Pure — no DOM, so
+ * it's directly unit-testable. */
+export function isGenuineClipOffender(candidate: ClipCandidate, tolerancePx: number): boolean {
+  if (candidate.scrollHeight <= candidate.clientHeight + tolerancePx) return false;
+  if (!candidate.hasClippingContext) return false;
+  if (candidate.clientHeight <= CLIP_VISUALLY_HIDDEN_MAX_PX) return false;
+  if (candidate.isReplacedContentCrop) return false;
+  return true;
+}
+
+/** Formats one genuine offender the same way the pre-amendment probe did:
+ * `${descriptor} clip=${N}px (scrollHeight ${sh} > clientHeight ${ch})`. */
+export function formatClipOffender(candidate: ClipCandidate): string {
+  const clip = candidate.scrollHeight - candidate.clientHeight;
+  return `${candidate.descriptor} clip=${Math.round(clip)}px (scrollHeight ${Math.round(candidate.scrollHeight)} > clientHeight ${Math.round(
+    candidate.clientHeight,
+  )})`;
+}
+
+/** Filters `candidates` down to genuine clip offenders (isGenuineClipOffender),
+ * worst-first by clip size, capped at `cap`, formatted for display. */
+export function selectClipOffenders(candidates: readonly ClipCandidate[], tolerancePx: number, cap: number): string[] {
+  return candidates
+    .filter((c) => isGenuineClipOffender(c, tolerancePx))
+    .slice()
+    .sort((a, b) => b.scrollHeight - b.clientHeight - (a.scrollHeight - a.clientHeight))
+    .slice(0, cap)
+    .map(formatClipOffender);
+}
+
 /** Filters clipOffenders collected for `path` against KNOWN_CLIP_EXCEPTIONS
  * (keyed `${path}::${selector}`, selector = the offender string's leading
  * "tag.class.class" token before " clip="). Pure so it stays unit-testable

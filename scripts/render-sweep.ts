@@ -70,8 +70,10 @@ import {
   OVERVIEW_TYPE_ROLES,
   PAGE_EVALUATE_KEEPNAMES_SHIM,
   routeErrorResult,
+  selectClipOffenders,
   TYPE_ROLE_BLOCKING,
   typeRoleSummaryLine,
+  type ClipCandidate,
   type FontFloorResult,
   type InteractionStateEntry,
   type InteractionStateResult,
@@ -558,48 +560,89 @@ async function measureInteractionStatesForRoute(
   }
 }
 
-// DEC-620: walks every visible element, keeping those whose scrollHeight
-// exceeds their clientHeight by more than 2px while their own computed
-// overflow-y is visible|hidden — a deliberate scroll container
-// (overflow-y: auto|scroll, the fix this pass expects for a real offender)
-// is excluded by that condition itself, same convention as the DEC-424
-// horizontal-overflow probe excluding overflow-x scrollers. Returns up to 5
-// structural (never text-content, DEC-401) offender descriptors, worst-first.
-// Must only be called on a page that already had PAGE_EVALUATE_KEEPNAMES_SHIM
-// applied via addInitScript (DEC-411).
+// DEC-620 wave-25 amendment: the in-page probe now measures raw geometry +
+// clip-relevant context per candidate element (scrollHeight > clientHeight,
+// whether a real clipping context exists on self/ancestor, whether the
+// overflowing content is a replaced-content crop) and hands the array back
+// to node; the PASS/FAIL decision itself is the pure, unit-testable
+// isGenuineClipOffender/selectClipOffenders predicate in render-sweep-lib.ts
+// (see its comment there for the exact three-part rule). Must only be
+// called on a page that already had PAGE_EVALUATE_KEEPNAMES_SHIM applied via
+// addInitScript (DEC-411).
 const CLIP_TOLERANCE_PX = 2;
 const MAX_CLIP_OFFENDERS = 5;
 
 async function measureClipOffenders(page: Page): Promise<string[]> {
-  return page.evaluate(
-    ({ tolerance, cap }: { tolerance: number; cap: number }) => {
-      const describe = (el: Element): string => {
-        const tag = el.tagName.toLowerCase();
-        const classes = Array.from(el.classList).slice(0, 3);
-        return classes.length > 0 ? `${tag}.${classes.join(".")}` : tag;
-      };
+  const candidates: ClipCandidate[] = await page.evaluate(({ tolerance }: { tolerance: number }) => {
+    const describe = (el: Element): string => {
+      const tag = el.tagName.toLowerCase();
+      const classes = Array.from(el.classList).slice(0, 3);
+      return classes.length > 0 ? `${tag}.${classes.join(".")}` : tag;
+    };
 
-      const allElements = Array.from(document.querySelectorAll("*")) as HTMLElement[];
-      const visibleElements = allElements.filter((el) => el.offsetParent !== null); // visible only (not display:none)
-
-      const clipped: { el: HTMLElement; sh: number; ch: number; clip: number }[] = [];
-      for (const el of visibleElements) {
-        const sh = el.scrollHeight;
-        const ch = el.clientHeight;
-        if (sh <= ch + tolerance) continue;
-        const overflowY = getComputedStyle(el).overflowY;
-        // A deliberate scroll container is not a bug.
-        if (overflowY === "auto" || overflowY === "scroll") continue;
-        if (overflowY !== "visible" && overflowY !== "hidden") continue;
-        clipped.push({ el, sh, ch, clip: sh - ch });
+    // DEC-620 wave-25 amendment (i): a real clipping context is overflow-x/y
+    // hidden|scroll|auto, or a clipping clip/clip-path — walking self up
+    // through every ancestor (an element clipped by a grandparent container
+    // is still clipped).
+    const establishesClippingContext = (el: Element): boolean => {
+      const style = getComputedStyle(el);
+      if (["hidden", "scroll", "auto"].includes(style.overflowX)) return true;
+      if (["hidden", "scroll", "auto"].includes(style.overflowY)) return true;
+      if (style.clipPath && style.clipPath !== "none") return true;
+      if (style.clip && style.clip !== "auto") return true;
+      return false;
+    };
+    const hasClippingContext = (el: Element): boolean => {
+      let node: Element | null = el;
+      while (node) {
+        if (establishesClippingContext(node)) return true;
+        node = node.parentElement;
       }
-      clipped.sort((a, b) => b.clip - a.clip);
-      return clipped
-        .slice(0, cap)
-        .map(({ el, sh, ch, clip }) => `${describe(el)} clip=${Math.round(clip)}px (scrollHeight ${Math.round(sh)} > clientHeight ${Math.round(ch)})`);
-    },
-    { tolerance: CLIP_TOLERANCE_PX, cap: MAX_CLIP_OFFENDERS },
-  );
+      return false;
+    };
+
+    // DEC-620 wave-25 amendment (iii): the overflowing content is a
+    // replaced-content crop when the element itself (or an immediate child,
+    // the usual "wrapper clips an <img>" shape) is an img/video, or declares
+    // a non-default object-fit.
+    const isReplacedContentCrop = (el: Element): boolean => {
+      const isCropTag = (node: Element): boolean => node.tagName === "IMG" || node.tagName === "VIDEO";
+      const declaresObjectFit = (node: Element): boolean => {
+        const fit = getComputedStyle(node).objectFit;
+        return fit !== "" && fit !== "fill";
+      };
+      if (isCropTag(el) || declaresObjectFit(el)) return true;
+      for (const child of Array.from(el.children)) {
+        if (isCropTag(child) || declaresObjectFit(child)) return true;
+      }
+      return false;
+    };
+
+    const allElements = Array.from(document.querySelectorAll("*")) as HTMLElement[];
+    const visibleElements = allElements.filter((el) => el.offsetParent !== null); // visible only (not display:none)
+
+    const candidates: {
+      descriptor: string;
+      scrollHeight: number;
+      clientHeight: number;
+      hasClippingContext: boolean;
+      isReplacedContentCrop: boolean;
+    }[] = [];
+    for (const el of visibleElements) {
+      const sh = el.scrollHeight;
+      const ch = el.clientHeight;
+      if (sh <= ch + tolerance) continue;
+      candidates.push({
+        descriptor: describe(el),
+        scrollHeight: sh,
+        clientHeight: ch,
+        hasClippingContext: hasClippingContext(el),
+        isReplacedContentCrop: isReplacedContentCrop(el),
+      });
+    }
+    return candidates;
+  }, { tolerance: CLIP_TOLERANCE_PX });
+  return selectClipOffenders(candidates, CLIP_TOLERANCE_PX, MAX_CLIP_OFFENDERS);
 }
 
 // DEC-426: walks every rendered element, keeping only those with a non-empty
