@@ -1126,40 +1126,37 @@ a:hover {
   background: var(--chq-surface-sunk);
 }
 
-.chq-contacts-table {
-  width: 100%;
-}
-
 /* w20-c (DEC-902 amendment): docs/design/Chautauqua Contacts.dc.html:97/101
    give the directory table an exact track list -- 26px 1fr 130px 118px auto
    -- but table-layout:auto left every column unwidthed and handed the
    remainder to whichever column the fleet happened to measure widest.
    table-layout:fixed plus a width on every column but one makes 'Name and
-   email' the SOLE remainder column, matching the frame. Scoped to
-   min-width:701px so the phone card reflow (contacts.css, tbody/tr/td
-   flattened to display:block) is untouched -- under that reflow the
-   table's own table-layout is moot. */
-@media (min-width: 701px) {
-  .chq-contacts-table {
-    table-layout: fixed;
-  }
+   email' the SOLE remainder column, matching the frame. Declared
+   unconditionally: DEC-385 makes this codebase single-direction (max-width
+   only, never min-width), and the phone card reflow needs no override --
+   contacts.css's max-width:700px block flattens table/tbody/tr/td to
+   display:block (where table-layout is moot) and hides thead, which is
+   where these column classes live. */
+.chq-contacts-table {
+  width: 100%;
+  table-layout: fixed;
+}
 
-  .chq-contacts-table .chq-contacts-col-select {
-    width: 26px;
-  }
+.chq-contacts-table .chq-contacts-col-select {
+  width: 26px;
+}
 
-  .chq-contacts-table .chq-contacts-col-company {
-    width: 130px;
-  }
+.chq-contacts-table .chq-contacts-col-company {
+  width: 130px;
+}
 
-  .chq-contacts-table .chq-contacts-col-labels {
-    width: 118px;
-  }
+.chq-contacts-table .chq-contacts-col-labels {
+  width: 118px;
+}
 
-  .chq-contacts-table .chq-contacts-col-actions {
-    width: 1px;
-    white-space: nowrap;
-  }
+.chq-contacts-table .chq-contacts-col-actions {
+  width: 1px;
+  white-space: nowrap;
 }
 
 .chq-contacts-add-to-event-modal,

@@ -193,74 +193,74 @@
    triage <th> both unwidthed, the triage column (empty on every row except
    'pending' ones) could claim the remainder instead of Title. fixed makes
    every column's width explicit so Title (the one <th> below with no width
-   class) is the SOLE remainder column. Scoped to >700px: the phone media
-   block below turns this table into a display:block card stack, where
-   table-layout has no effect and thead (holding these classes) is
-   display:none -- so this scoping is belt-and-suspenders, not load-bearing. */
-@media (min-width: 701px) {
-  .chq-submissions-table {
-    table-layout: fixed;
-  }
+   class) is the SOLE remainder column. Declared unconditionally: DEC-385
+   makes this codebase single-direction (narrow overrides wide via max-width
+   only, never min-width), and no phone override is needed because the
+   max-width:700px block below turns this table into a display:block card
+   stack where table-layout has no effect and thead -- which carries these
+   classes -- is display:none. */
+.chq-submissions-table {
+  table-layout: fixed;
+}
 
-  /* docs/design/Chautauqua Submissions.dc.html:103/107 nine-track grid:
-     select 28 | Ref 74 | Title 1fr | Speakers 150 | Track 130 | Status 108 |
-     Sent 92 | custom column 118 (the frame's 'Format' track) | Clone 64.
-     Title deliberately carries no width declaration below -- it is the
-     remainder column that absorbs whatever the other columns don't claim
-     (this empty-of-width rule only exists so css-contract.scan.test.ts's
-     DEC-976 "every className has a matching rule" check has one to find). */
-  .chq-submissions-col-title {
-    text-align: left;
-  }
+/* docs/design/Chautauqua Submissions.dc.html:103/107 nine-track grid:
+   select 28 | Ref 74 | Title 1fr | Speakers 150 | Track 130 | Status 108 |
+   Sent 92 | custom column 118 (the frame's 'Format' track) | Clone 64.
+   Title deliberately carries no width declaration below -- it is the
+   remainder column that absorbs whatever the other columns don't claim
+   (this empty-of-width rule only exists so css-contract.scan.test.ts's
+   DEC-976 "every className has a matching rule" check has one to find). */
+.chq-submissions-col-title {
+  text-align: left;
+}
 
-  .chq-submissions-col-select {
-    width: 28px;
-  }
+.chq-submissions-col-select {
+  width: 28px;
+}
 
-  .chq-submissions-col-ref {
-    width: 74px;
-  }
+.chq-submissions-col-ref {
+  width: 74px;
+}
 
-  .chq-submissions-col-speakers {
-    width: 150px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+.chq-submissions-col-speakers {
+  width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
-  .chq-submissions-col-track {
-    width: 130px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+.chq-submissions-col-track {
+  width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
-  .chq-submissions-col-status {
-    width: 108px;
-  }
+.chq-submissions-col-status {
+  width: 108px;
+}
 
-  .chq-submissions-col-sent {
-    width: 92px;
-  }
+.chq-submissions-col-sent {
+  width: 92px;
+}
 
-  /* Every custom column (the ColumnPicker can add any number of them at
-     runtime) shares this one class and width -- there is no frame
-     counterpart for more than one, so each gets the frame's single
-     'Format' track width. */
-  .chq-submissions-col-custom {
-    width: 118px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+/* Every custom column (the ColumnPicker can add any number of them at
+   runtime) shares this one class and width -- there is no frame
+   counterpart for more than one, so each gets the frame's single
+   'Format' track width. */
+.chq-submissions-col-custom {
+  width: 118px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
-  .chq-submissions-col-clone {
-    width: 64px;
-  }
+.chq-submissions-col-clone {
+  width: 64px;
+}
 
-  /* The build's tenth <th> (the phone-only triage cell's desktop column)
-     has no frame counterpart -- give it width:1px so it hugs its empty
-     content instead of stealing space from Title. */
-  .chq-submissions-col-end {
-    width: 1px;
-  }
+/* The build's tenth <th> (the phone-only triage cell's desktop column)
+   has no frame counterpart -- give it width:1px so it hugs its empty
+   content instead of stealing space from Title. */
+.chq-submissions-col-end {
+  width: 1px;
 }
 
 .chq-submissions-table thead th {

@@ -179,14 +179,16 @@ describe('ContactsTable column allocation (w20-c, DEC-902)', () => {
     expect(headers[4]).toHaveClass('chq-contacts-col-actions');
   });
 
-  it('declares table-layout:fixed and the four column widths inside a min-width:701px block, leaving the phone reflow untouched', () => {
+  it('declares table-layout:fixed and the four column widths unconditionally, leaving the phone reflow untouched', () => {
     const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../../styles.css'), 'utf-8');
 
-    const desktopBlockMatch = css.match(/@media \(min-width: 701px\) \{([\s\S]*?)\n\}\n/);
-    expect(desktopBlockMatch).not.toBeNull();
-    const desktopBlock = desktopBlockMatch![1]!;
+    // DEC-385: single-direction stylesheets -- narrow overrides wide via
+    // max-width only, never min-width. So the desktop allocation is the
+    // unconditional base layer, not a min-width block.
+    expect(css).not.toMatch(/@media[^{]*min-width/);
+    const desktopBlock = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
 
-    expect(desktopBlock).toMatch(/\.chq-contacts-table\s*\{\s*table-layout:\s*fixed;\s*\}/);
+    expect(desktopBlock).toMatch(/\.chq-contacts-table\s*\{[^}]*table-layout:\s*fixed;/);
     expect(desktopBlock).toMatch(/\.chq-contacts-table \.chq-contacts-col-select\s*\{\s*width:\s*26px;\s*\}/);
     expect(desktopBlock).toMatch(/\.chq-contacts-table \.chq-contacts-col-company\s*\{\s*width:\s*130px;\s*\}/);
     expect(desktopBlock).toMatch(/\.chq-contacts-table \.chq-contacts-col-labels\s*\{\s*width:\s*118px;\s*\}/);

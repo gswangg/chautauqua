@@ -20,17 +20,19 @@ function phoneBlockBody(css: string): string {
   return body;
 }
 
-/** Extracts the body text of the (single) 701px-and-up desktop column block. */
-function desktopColumnBlockBody(css: string): string {
-  const match = css.match(/@media \(min-width: 701px\) \{([\s\S]*?)\n\}\n/);
-  const body = match?.[1];
-  if (body === undefined) throw new Error('no 701px desktop column block found');
-  return body;
+/**
+ * Everything OUTSIDE any media query. DEC-385 makes this codebase
+ * single-direction (narrow overrides wide via max-width only, never
+ * min-width), so the desktop column allocation is the unconditional base
+ * layer and the phone block overrides it -- not the other way round.
+ */
+function topLevelCss(css: string): string {
+  return css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
 }
 
 describe('submissions.css table column allocation (DEC-902, task w20-b)', () => {
   const css = readFileSync(CSS_PATH, 'utf-8');
-  const desktop = desktopColumnBlockBody(css);
+  const desktop = topLevelCss(css);
   const phone = phoneBlockBody(css);
 
   it('declares table-layout: fixed on .chq-submissions-table', () => {
@@ -61,10 +63,10 @@ describe('submissions.css table column allocation (DEC-902, task w20-b)', () => 
     expect(desktop).toMatch(/\.chq-submissions-col-end\s*\{[^}]*width:\s*1px/);
   });
 
-  it('the desktop column-width block is scoped to >700px and does not appear at top level', () => {
-    const outsideMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
-    expect(outsideMedia).not.toMatch(/table-layout:\s*fixed/);
-    expect(outsideMedia).not.toMatch(/\.chq-submissions-col-select\s*\{/);
+  it('declares the allocation unconditionally, never behind a min-width query (DEC-385)', () => {
+    // DEC-385: "this codebase is single-direction -- narrow overrides wide
+    // via max-width only, never min-width" (test/breakpoint-conformance).
+    expect(css).not.toMatch(/@media[^{]*min-width/);
   });
 
   it('leaves the phone (<=700px) card-stack block untouched by the new fixed-layout rules', () => {
