@@ -28,6 +28,7 @@ import {
   loadDemoIdentitiesIfPresent,
   loadSingleEventContext,
   loginStatusLine,
+  loginIdentityKey,
   AUTH_RATE_LIMIT_WINDOW_SECONDS,
   AUTH_RATE_LIMIT_MAX,
   RATE_LIMIT_ERROR,
@@ -68,6 +69,14 @@ loginRoutes.post("/login", csrfForm, async (c) => {
   // credential stuffing against one account) and a per-IP budget (catches
   // a single source hammering many accounts). Either failing blocks login.
   //
+  // DEC-072 wave-54 amendment: the per-identity budget is keyed on
+  // email+IP (loginIdentityKey in ./auth-helpers), not the bare email — a
+  // bare-email key let a stranger who merely knows a valid organizer
+  // address exhaust that address's shared budget from anywhere and lock
+  // the real owner out with no unlock path. Keying on email|ip confines
+  // the exhaustion to the attacker's own IP; the victim's own IP still
+  // admits their attempts.
+  //
   // DEC-948 + DEC-180 (wave-29 amendment): CONSUME THEN REFUND. The budgets
   // are checked-and-incremented atomically, BEFORE the password derivation
   // runs — a read-only peek followed by a later increment lets N concurrent
@@ -87,8 +96,9 @@ loginRoutes.post("/login", csrfForm, async (c) => {
   // bucket DENIES, the identity unit is refunded before the 429 — a request
   // that never reached verification must not spend the account's budget.
   const ip = requestIpFromHeaders((name) => c.req.header(name));
+  const identityKey = loginIdentityKey(email, ip);
   const loginNow = Date.now();
-  const userLimit = await checkAndIncrementScopedLimit(db, "login-user", email, loginNow, {
+  const userLimit = await checkAndIncrementScopedLimit(db, "login-user", identityKey, loginNow, {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
     max: AUTH_RATE_LIMIT_MAX,
   });
@@ -115,7 +125,7 @@ loginRoutes.post("/login", csrfForm, async (c) => {
   });
 
   if (!ipLimit.ok) {
-    await refundScopedLimit(db, "login-user", email, loginNow, { windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS });
+    await refundScopedLimit(db, "login-user", identityKey, loginNow, { windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS });
     const { token: csrfToken } = ensureCsrfCookie(c);
     const demoIdentities = await loadDemoIdentitiesIfPresent(db);
     const singleEvent = await loadSingleEventContext(db);
@@ -155,7 +165,7 @@ loginRoutes.post("/login", csrfForm, async (c) => {
     );
   }
 
-  await resetScopedLimit(db, "login-user", email, loginNow, AUTH_RATE_LIMIT_WINDOW_SECONDS);
+  await resetScopedLimit(db, "login-user", identityKey, loginNow, AUTH_RATE_LIMIT_WINDOW_SECONDS);
   await refundScopedLimit(db, "login-ip", ip, loginNow, { windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS });
 
   const now = new Date();
