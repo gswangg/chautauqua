@@ -527,6 +527,17 @@
   margin-bottom: 8px;
 }
 
+/* DEC-441 amendment (w52-a): the batch-cap remainder line -- the eligible
+   contacts past MAX_REMINDER_BATCH this send will not reach. Stacks directly
+   under .chq-speakers-remind-skipped above the recipient list and carries the
+   same quiet metrics, so the two conditional lines share one pitch however
+   many of them the preview happens to show. */
+.chq-speakers-remind-remaining {
+  font-size: 12px;
+  color: var(--chq-muted);
+  margin-bottom: 8px;
+}
+
 /* DEC-920: the file link now names the file (was a fixed "File" label) — a
    long filename must not widen the 27px-tall cell or wrap the row. */
 .chq-speakers-file-link {
