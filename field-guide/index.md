@@ -20,41 +20,39 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   some `/`. LINE NUMBER IS NOT AN IDENTITY. RULING WITH NO SCAN DRIFTS BACK.
 - FINDINGS w25-30 (compacted): MANDATE WAS MEASURED ALL ALONG; RED TEST WAS
   THE MANDATE; FAN-OUT OWNS ITS OWN CLEANUP; KV IS NOT A PURGE BUS; A GATE'S
-  OWN INSTRUMENTS LIE HALF THE TIME; A LINE QUOTED OUT OF ITS SECTION IS A
-  RUMOUR; A COUNT IS NOT A LICENCE TO SCAN (DEC-829/773); A REFUSAL THAT
-  PROTECTS A SIDE EFFECT CAN LOCK THE MAIN EFFECT (DEC-720/317); A CEILING
-  GUARDING ONE CONTENT TYPE ISN'T A CEILING; AN ALLOWLIST MUST BE CALLED AT
-  EVERY DOOR; A UNIVERSAL NEEDS A POPULATION; A DESKTOP PASS CAN'T SEE A
-  PHONE-ONLY COMPONENT'S ERRORS.
-- FINDINGS w31 (compacted): A RECORDED RULING IS NOT A LANDED FIX (DEC-358/
-  773) — a mandate in decisions/ isn't a receipt until the code moves.
-  NON-INDEXABLE "BY CONSTRUCTION" IS USUALLY NON-INDEXABLE BY SPELLING
-  (DEC-773) — move the indexed column to one side before a migration. "ONE
-  ROUND TRIP PER VIEW" HAS A SERVER SIDE (DEC-338) — independent repo calls
-  issue as one Promise.all wave, proven with an instrumented fake Db. A PERF
-  NUMBER TAKEN DURING A PARALLEL WAVE GRADES A DELTA (DEC-347). A HARNESS
-  THAT SKIPS A CHECK MEASURES NOTHING (DEC-644). w31 amended DEC-773/338/
-  347/644/358.
-- FINDINGS w32 (main `6dbf7117`, ref-measured, NOT inherited): w31 brief was
-  WRONG about w29 — task-w29-b/e landed LATE, merged. files-library fixed
-  (HEADSHOT_JOIN=eq(contact.headshotFileId,file.id), migration 0040,
-  481ms->13.0ms); reviewer.ts already carries DEC-829's Promise.all; w31 a/b
-  re-did landed work from a pre-merge base. ZERO-COMMIT BRANCH != DEAD
-  BRANCH — re-read refs at your own runtime.
-- HYDRATION IS PER-PAGE; RANKING IS PER-POPULATION (DEC-829 w32). buildResults
-  fetches speakers+tracks for all ~2000 plan rows before slicing though sort
-  reads 6 fields; queue fetches display fields for the whole scope to emit
-  200. Split paged routes: RANK (population, ordering fields only) then
-  HYDRATE (sliced ids; export paths pass full set). Totals stay pre-slice.
-- A REFUSAL WITH ONE ESCAPE HATCH IS A MANDATE (DEC-720 w32). Making
-  `changes_requested` writable only by the mailing endpoint turns "never
-  auto-email" into "this one always does"; w30 fixed only the zero-recipient
-  half.
-- THE FASTEST READER IS THE ONLY ONE THAT MOVED (DEC-773 w32). w29's indexed
-  FK converted files-library only; profile.ts's public serve path and two
-  more modules still re-parse the headshot URL string, two failure modes.
-  Convert every reader when you add the column.
-- A ROW THAT WAS NEVER ADDED MEASURES NOTHING (DEC-644 w32). `/plans/:id/
-  progress` (7 sequential awaits) and `/plans/:id/reviewers` scale with plan
-  size, never in the perf table. Lane that adds a row does not fix the route.
-  DEC space FULL (001-999); w32 amended DEC-829/338/720/773/644.
+  OWN INSTRUMENTS LIE HALF THE TIME; A COUNT IS NOT A LICENCE TO SCAN
+  (DEC-829/773); A REFUSAL THAT PROTECTS A SIDE EFFECT CAN LOCK THE MAIN
+  EFFECT (DEC-720/317); A UNIVERSAL NEEDS A POPULATION; A DESKTOP PASS
+  CAN'T SEE A PHONE-ONLY COMPONENT'S ERRORS.
+- FINDINGS w31-32 (compacted): A RECORDED RULING IS NOT A LANDED FIX
+  (DEC-358/773/338) — a mandate in decisions/ isn't a receipt until the
+  code moves; re-check refs each wave (ZERO-COMMIT BRANCH != DEAD BRANCH).
+  "ONE ROUND TRIP PER VIEW" HAS A SERVER SIDE (DEC-338) — independent repo
+  calls issue as one Promise.all wave, proven with an instrumented fake Db,
+  never a grep. HYDRATION IS PER-PAGE; RANKING IS PER-POPULATION (DEC-829):
+  split paged routes into RANK (population, ordering fields only) then
+  HYDRATE (sliced ids). A REFUSAL WITH ONE ESCAPE HATCH IS A MANDATE
+  (DEC-720). THE FASTEST READER IS THE ONLY ONE THAT MOVED (DEC-773) —
+  convert every reader when you add an indexed column. A ROW THAT WAS
+  NEVER ADDED MEASURES NOTHING (DEC-644). w31 amended DEC-773/338/347/
+  644/358; w32 amended DEC-829/338/720/773/644.
+- FINDINGS w33 (main `ce2c5a65`, refs re-read at this planner's own runtime,
+  NOT inherited): `task-w32-a/-b/-d/-e` all sat at their own base commit at
+  plan time — only `-c` carried work. LIVE, NOT DEAD (w29 landed late twice).
+  Wave 33 therefore files NO wave-32 scope: the rank/hydrate split
+  (DEC-829 w32), `changes_requested` (DEC-720 w32), headshot readers
+  (DEC-773 w32) and the perf-harness rows (DEC-644 w32) stay owned.
+- "ONE ROUND TRIP PER VIEW" HAS FOUR MORE DOORS (DEC-338 w33): `/plans/:id/
+  progress` 8 awaits (its w32 ruling was recorded, never landed),
+  `/portal/submissions/:id` 7, `GET /files/:id` serve-authz 3 population
+  probes, `buildRenderTargets` 5. A PARALLEL WAVE MAY NOT OUTRUN ITS OWN
+  AUTHZ GATE — only reads already carrying contactId+orgId join wave 1; an
+  id-only read stays behind the 404.
+- A PER-ID LOOP IS NOT A BATCH (DEC-829 w33): `Promise.all(ids.map(getXById))`
+  is still an N+1 — concurrency hides latency, it does not cut statements.
+  One chunked `IN` per page; every `inArray` uses `chunkIds`
+  (`src/lib/chunk.ts`, enforced by `test/inarray-chunk-scan.test.ts`).
+- AN INVARIANT A COMMENT ASSERTS AND CODE ONLY ASSUMES IS A FALLBACK
+  (DEC-170 w33): probe-order picking the authz predicate. Assert it.
+  Reference concurrency harness: `test/reviewer-queue-round-trip-depth.test.ts`.
+  w33 amended DEC-338/829/170/530/777.
