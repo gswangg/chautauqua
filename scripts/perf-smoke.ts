@@ -18,6 +18,7 @@ import { fileURLToPath } from "node:url";
 import { PERF_PROFILES, PERF_TOPICS, slotPlacementForAccepted } from "./perf-seed-lib";
 import { MAX_PUBLIC_PAGE, MAX_PUBLIC_ROWS } from "../src/server/repo/public/bounds";
 import { DEFAULT_BOUNDED_ID_ARRAY_MAX } from "../src/server/http";
+import { MAX_ITINERARY_IDS } from "../src/lib/itinerary";
 import {
   PERF_P95_BUDGET_MS,
   alternateByIteration,
@@ -297,29 +298,41 @@ async function main(): Promise<void> {
   const isDefaultProfile = PERF_PROFILE.name === "default";
   const skippedChecks: string[] = [];
 
-  // DEC-089 one-shot untimed assertion: 301 ids on the public, unauthenticated
-  // schedule.ics route must be rejected with exactly 400 (DEC-080 cap). Uses
-  // its own 301-id fetch (independent of the 150-id set the timed check below
-  // uses) so this probe doesn't depend on check ordering.
+  // DEC-089 one-shot untimed assertion: MAX_ITINERARY_IDS + 1 ids on the
+  // public, unauthenticated schedule.ics route must be rejected with
+  // exactly 400 (DEC-080 cap — a fixed route constant, independent of any
+  // profile's seeded accepted count). Uses its own fetch (independent of
+  // the 150-id set the timed check below uses) so this probe doesn't
+  // depend on check ordering.
   //
-  // DEC-094: the DEC-088 seed has exactly 300 accepted submissions, so 301
-  // real ids don't exist to fetch. The raw ?ids= length check fires before
-  // any hydration/lookup (src/routes/public.tsx:580-583), so a 301st
-  // syntactically-valid-but-nonexistent id still exercises the cap
-  // predicate correctly.
-  const capRealIds = await fetchAcceptedSubmissionIds(headers, 300);
-  const capIds = [...capRealIds, "sub_cap_probe_nonexistent_0001"];
+  // DEC-094: the `default` profile's seed has exactly MAX_ITINERARY_IDS
+  // (300) accepted submissions, so 301 real ids don't exist to fetch there
+  // either. The raw ?ids= length check fires before any hydration/lookup
+  // (src/routes/public/index.tsx:365-366), so padding with
+  // syntactically-valid-but-nonexistent ids still exercises the cap
+  // predicate correctly — profile-resolved so `aie` (only 250 accepted)
+  // pads the remainder instead of failing to fetch MAX_ITINERARY_IDS real
+  // ids that don't exist at that profile's scale.
+  const capAcceptedCount = PERF_PROFILE.statusCounts.accepted;
+  if (capAcceptedCount === undefined) {
+    throw new Error(`perf-smoke: profile '${PERF_PROFILE.name}' has no statusCounts.accepted`);
+  }
+  const capRealIds = await fetchAcceptedSubmissionIds(headers, Math.min(capAcceptedCount, MAX_ITINERARY_IDS));
+  const capPadCount = MAX_ITINERARY_IDS + 1 - capRealIds.length;
+  const capPadIds = Array.from({ length: capPadCount }, (_, i) => `sub_cap_probe_nonexistent_${String(i + 1).padStart(4, "0")}`);
+  const capIds = [...capRealIds, ...capPadIds];
   const capRes = await fetch(`${PERF_URL}/e/${PERF_EVENT_SLUG}/schedule.ics?ids=${joinIcsIds(capIds)}`);
   if (capRes.status !== 400) {
     throw new Error(
-      `DEC-080 cap assertion failed: schedule.ics with 301 ids expected 400, got ${capRes.status}`,
+      `DEC-080 cap assertion failed: schedule.ics with ${capIds.length} ids expected 400, got ${capRes.status}`,
     );
   }
   await capRes.arrayBuffer();
 
   // DEC-105 one-shot untimed export size probes: exercise the CSV export
-  // endpoints against the DEC-088 seed scale (2,000 submissions / 300
-  // accepted, all scheduled), independent of the timed loop below.
+  // endpoints against this profile's own seed scale (PERF_PROFILE.
+  // submissionCount submissions / acceptedCount accepted, all scheduled),
+  // independent of the timed loop below.
   const submissionsCsvRes = await fetch(
     `${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/export/submissions?format=csv`,
     { headers },
@@ -327,7 +340,7 @@ async function main(): Promise<void> {
   if (submissionsCsvRes.status !== 200) {
     throw new Error(`export submissions.csv: expected 200, got ${submissionsCsvRes.status}`);
   }
-  assertMinCsvLines("export submissions.csv", await submissionsCsvRes.text(), 2001);
+  assertMinCsvLines("export submissions.csv", await submissionsCsvRes.text(), PERF_PROFILE.submissionCount + 1);
 
   const showflowCsvRes = await fetch(`${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/exports/showflow.csv`, {
     headers,
@@ -335,7 +348,7 @@ async function main(): Promise<void> {
   if (showflowCsvRes.status !== 200) {
     throw new Error(`showflow.csv: expected 200, got ${showflowCsvRes.status}`);
   }
-  assertMinCsvLines("showflow.csv", await showflowCsvRes.text(), 301);
+  assertMinCsvLines("showflow.csv", await showflowCsvRes.text(), capAcceptedCount + 1);
 
   const icsIds = await fetchAcceptedSubmissionIds(headers, 150);
   const icsQuery = joinIcsIds(icsIds);

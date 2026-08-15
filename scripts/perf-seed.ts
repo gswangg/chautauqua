@@ -383,6 +383,12 @@ async function main(): Promise<void> {
         size_bytes: 102400,
         content_type: "application/pdf",
         previous_file_id: previousFileId,
+        // DEC-818: version_no is the row's own stored chain-position
+        // identity, set at INSERT time by every writer (never recomputed
+        // from chain position later) — spec.versionIndex is already the
+        // 0-based per-chain position (matches the `v${versionIndex + 1}`
+        // filename above), so the stored value is 1-based.
+        version_no: spec.versionIndex + 1,
         uploaded_by_contact_id: contactId,
         created_at: nextTs(),
         updated_at: ts,
@@ -488,6 +494,17 @@ async function main(): Promise<void> {
   // contacts are seeded deliberately pending+overdue (`default`'s
   // overdueTaskFraction is 0, so this is bit-for-bit unchanged there). ---
   const contactsPerTaskCount = contactsPerTask(PERF_TASK_ASSIGNMENT_TOTAL, PERF_TASK_COUNT);
+  // Pool of contacts assigned tasks below. The onboarding grid only
+  // surfaces accepted-submission speakers, so when contactsPerTaskCount is
+  // far smaller than the full contact pool (aie: 80 of 6000, vs. default's
+  // 800 of 800), task assignments must be biased toward acceptedContactIds
+  // or the grid gets zero rows to show. Default's contactsPerTaskCount
+  // already equals PERF_CONTACT_COUNT (every contact gets assignments, so
+  // this dedupe/reorder would be a no-op set-wise but would still change
+  // per-contact completion status by shuffling contactIdx order) — gated
+  // so default's historical bit-for-bit output is unchanged.
+  const taskAssignmentContactIds =
+    contactsPerTaskCount >= PERF_CONTACT_COUNT ? contactIds : [...new Set([...acceptedContactIds, ...contactIds])];
   const overdueCount = overdueAssignmentCount(PERF_TASK_ASSIGNMENT_TOTAL, PERF_OVERDUE_TASK_FRACTION);
   // Fixed, well-in-the-past anchor (not BASE_TS, which sits after "today" —
   // see the BASE_TS comment above) so seeded overdue assignments read as
@@ -520,7 +537,7 @@ async function main(): Promise<void> {
     const taskId = taskIds[taskIdx]!;
     for (let contactIdx = 0; contactIdx < contactsPerTaskCount; contactIdx++) {
       taskAssignmentCounter += 1;
-      const contactId = contactIds[contactIdx]!;
+      const contactId = taskAssignmentContactIds[contactIdx]!;
       const deliberatelyOverdue = isDeliberatelyOverdueAssignment(taskIdx, contactIdx, overdueCount);
       const isComplete = deliberatelyOverdue ? false : isTaskAssignmentComplete(taskIdx, contactIdx);
       statements.push(
