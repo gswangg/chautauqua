@@ -32,7 +32,7 @@ import {
   updateSubmissionFields,
   updateSubmissionStatuses,
 } from "../../server/repo/submissions";
-import { isRouteSettableContentStatus, updateContentStatuses } from "../../server/repo/files-content-status";
+import { isValidContentStatus, updateContentStatuses } from "../../server/repo/files-content-status";
 import { isActiveParticipant } from "../../domain/acceptance";
 import { plural } from "../../domain/count-copy";
 import { overCapCountMessage, participantCapRefusalMessage } from "../../domain/cap-copy";
@@ -821,11 +821,11 @@ submissionsRoutes.post(
 
     const body = (await readOptionalJsonBody(c)) as unknown as ContentStatusUpdateBody;
     const ids = parseBoundedIdArray(body.ids, "ids"); // DEC-182
-    if (!isRouteSettableContentStatus(body.contentStatus)) {
+    if (!isValidContentStatus(body.contentStatus)) {
       throw new ApiError(
         "invalid",
-        "contentStatus must be 'pending' or 'approved' — changes_requested is set by POST /api/v1/submissions/:id/content-note, which also sends the note to the speakers",
-        { contentStatus: "Use the content-note endpoint" },
+        "contentStatus must be 'pending', 'approved' or 'changes_requested'",
+        { contentStatus: "Invalid contentStatus" },
       );
     }
 

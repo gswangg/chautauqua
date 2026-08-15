@@ -79,7 +79,11 @@ interface SessionListProps {
   // button is gone: two olive primaries with different scopes (every
   // eligible row on the page vs. the ticked rows) left a user unable to
   // tell which one they were pressing.
-  onBulkApprove: () => void | Promise<void>;
+  // DEC-720 wave-32 amendment: 'Request changes'/'Pending' join 'Approve'
+  // as secondary actions in the same bar — all three are silent
+  // content-status writes (no mail), so onBulkContentStatus takes the
+  // target status rather than being hardwired to 'approved'.
+  onBulkContentStatus: (status: ContentStatus) => void | Promise<void>;
   bulkPending: boolean;
 }
 
@@ -99,7 +103,7 @@ export function SessionList({
   counts,
   selectedIds,
   onSelectionChange,
-  onBulkApprove,
+  onBulkContentStatus,
   bulkPending,
 }: SessionListProps) {
   const visible = items;
@@ -173,10 +177,35 @@ export function SessionList({
       {selectedIds.size > 0 && (
         <div className="chq-bulkbar" role="toolbar" aria-label="Bulk content actions">
           <span className="chq-bulkbar-count">{selectedIds.size} selected</span>
-          <span className="chq-bulkbar-note">Approving sends nothing · the speaker sees it in their portal</span>
+          <span className="chq-bulkbar-note">Sends nothing · the speaker sees it in their portal</span>
           <div className="chq-bulkbar-actions">
-            <button type="button" className="chq-btn chq-btn-primary" disabled={bulkPending} onClick={onBulkApprove}>
+            <button
+              type="button"
+              className="chq-btn chq-btn-primary"
+              disabled={bulkPending}
+              onClick={() => onBulkContentStatus('approved')}
+            >
               Approve {selectedIds.size}
+            </button>
+            {/* DEC-720 wave-32 amendment: 'Request changes' is now reachable
+                at volume from the bulk bar, silently (no note, no mail) —
+                the deliberate note+email path stays the per-submission
+                content-note composer, which is a distinct action. */}
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              disabled={bulkPending}
+              onClick={() => onBulkContentStatus('changes_requested')}
+            >
+              Request changes {selectedIds.size}
+            </button>
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              disabled={bulkPending}
+              onClick={() => onBulkContentStatus('pending')}
+            >
+              Pending {selectedIds.size}
             </button>
             <button
               type="button"

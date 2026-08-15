@@ -1,11 +1,14 @@
-// DEC-720 (wave 53 amendment): `changes_requested` has exactly one writer —
-// POST /api/v1/submissions/:id/content-note. Both bare content-status routes
-// (single: src/routes/files.ts, bulk: src/routes/api/submissions.ts) must
-// refuse a `changes_requested` write with a 400 naming the content-note
-// endpoint, and must still accept 'pending'/'approved'. content-notes.ts
-// keeps writing 'changes_requested' directly via updateContentStatus (the
-// full CONTENT_STATUSES vocabulary), never through the narrowed ROUTE
-// predicate (isRouteSettableContentStatus).
+// DEC-720 (wave-32 amendment): `changes_requested` no longer has exactly one
+// writer. The prior ROUTE_SETTABLE_CONTENT_STATUSES / isRouteSettableContentStatus
+// predicate forced every 'changes_requested' transition through POST
+// /api/v1/submissions/:id/content-note, which unconditionally mails — that
+// inverted DEC-009 ("status changes never auto-email") for the one content
+// status that matters most at volume. Both bare content-status routes
+// (single: src/routes/files.ts, bulk: src/routes/api/submissions.ts) now
+// validate against isValidContentStatus (the DB-VALUE predicate) and accept
+// 'pending'/'approved'/'changes_requested' with no mail sent.
+// content-notes.ts remains a SEPARATE, deliberate action: it posts a note,
+// optionally flips content-status, and optionally mails — untouched here.
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DatabaseSync } from "node:sqlite";
@@ -18,10 +21,7 @@ import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import { newId } from "../src/domain/ids";
 import type { Db } from "../src/server/context";
-import {
-  ROUTE_SETTABLE_CONTENT_STATUSES,
-  isRouteSettableContentStatus,
-} from "../src/server/repo/files-content-status";
+import { isValidContentStatus } from "../src/server/repo/files-content-status";
 
 const MIGRATIONS_DIR = join(__dirname, "..", "migrations");
 
@@ -128,17 +128,12 @@ async function buildSubmissionsApp(db: Db) {
   return app;
 }
 
-const CONTENT_NOTE_ENDPOINT_MESSAGE =
-  "contentStatus must be 'pending' or 'approved' — changes_requested is set by POST /api/v1/submissions/:id/content-note, which also sends the note to the speakers";
-const CONTENT_NOTE_ENDPOINT_FIELDS = { contentStatus: "Use the content-note endpoint" };
-
-describe("ROUTE_SETTABLE_CONTENT_STATUSES / isRouteSettableContentStatus", () => {
-  it("only pending and approved are route-settable writes", () => {
-    expect(ROUTE_SETTABLE_CONTENT_STATUSES).toEqual(["pending", "approved"]);
-    expect(isRouteSettableContentStatus("pending")).toBe(true);
-    expect(isRouteSettableContentStatus("approved")).toBe(true);
-    expect(isRouteSettableContentStatus("changes_requested")).toBe(false);
-    expect(isRouteSettableContentStatus("bogus")).toBe(false);
+describe("isValidContentStatus", () => {
+  it("accepts all three DB values", () => {
+    expect(isValidContentStatus("pending")).toBe(true);
+    expect(isValidContentStatus("approved")).toBe(true);
+    expect(isValidContentStatus("changes_requested")).toBe(true);
+    expect(isValidContentStatus("bogus")).toBe(false);
   });
 });
 
@@ -155,7 +150,7 @@ describe("POST /api/v1/submissions/:id/content-status (single route)", () => {
     sqlite.close();
   });
 
-  it("400s on changes_requested, names the content-note endpoint, and writes nothing", async () => {
+  it("200s on changes_requested and writes the row", async () => {
     seedSubmission(sqlite, "sub-1", 1, "pending");
     const app = await buildFilesApp(db);
     const res = await app.request(
@@ -165,15 +160,11 @@ describe("POST /api/v1/submissions/:id/content-status (single route)", () => {
         body: JSON.stringify({ contentStatus: "changes_requested" }),
       }),
     );
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: { code: string; message: string; fields?: Record<string, string> } };
-    expect(body.error.code).toBe("invalid");
-    expect(body.error.message).toBe(CONTENT_NOTE_ENDPOINT_MESSAGE);
-    expect(body.error.fields).toEqual(CONTENT_NOTE_ENDPOINT_FIELDS);
-    expect(readContentStatus(sqlite, "sub-1")).toBe("pending");
+    expect(res.status).toBe(200);
+    expect(readContentStatus(sqlite, "sub-1")).toBe("changes_requested");
   });
 
-  it("400s on an unrelated invalid value, naming the two settable values", async () => {
+  it("400s on an unrelated invalid value, naming all three settable values", async () => {
     seedSubmission(sqlite, "sub-2", 2, "pending");
     const app = await buildFilesApp(db);
     const res = await app.request(
@@ -185,7 +176,7 @@ describe("POST /api/v1/submissions/:id/content-status (single route)", () => {
     );
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { message: string } };
-    expect(body.error.message).toContain("contentStatus must be 'pending' or 'approved'");
+    expect(body.error.message).toContain("contentStatus must be 'pending', 'approved' or 'changes_requested'");
     expect(readContentStatus(sqlite, "sub-2")).toBe("pending");
   });
 
@@ -231,7 +222,7 @@ describe("POST /api/v1/events/:eventId/submissions/content-status (bulk route)",
     sqlite.close();
   });
 
-  it("400s on changes_requested, names the content-note endpoint, and writes nothing", async () => {
+  it("200s on changes_requested for the batch", async () => {
     seedSubmission(sqlite, "sub-b1", 1, "pending");
     const app = await buildSubmissionsApp(db);
     const res = await app.request(
@@ -241,12 +232,9 @@ describe("POST /api/v1/events/:eventId/submissions/content-status (bulk route)",
         body: JSON.stringify({ ids: ["sub-b1"], contentStatus: "changes_requested" }),
       }),
     );
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: { code: string; message: string; fields?: Record<string, string> } };
-    expect(body.error.code).toBe("invalid");
-    expect(body.error.message).toBe(CONTENT_NOTE_ENDPOINT_MESSAGE);
-    expect(body.error.fields).toEqual(CONTENT_NOTE_ENDPOINT_FIELDS);
-    expect(readContentStatus(sqlite, "sub-b1")).toBe("pending");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ updated: 1 });
+    expect(readContentStatus(sqlite, "sub-b1")).toBe("changes_requested");
   });
 
   it("200s on approved for the batch", async () => {
@@ -280,17 +268,13 @@ describe("POST /api/v1/events/:eventId/submissions/content-status (bulk route)",
   });
 });
 
-// content-notes.ts (the one endpoint that MAY write changes_requested) must
-// keep writing through updateContentStatus (the full CONTENT_STATUSES
-// vocabulary), never through the narrowed route predicate — otherwise
-// nothing could ever reach 'changes_requested' again. Confirmed at the
-// source level here; the end-to-end behavior (note posted, status flips,
-// speakers mailed) is exercised in test/content-note.test.ts.
+// content-notes.ts stays a separate, deliberate action: it posts a note,
+// optionally flips content-status, and optionally mails, via
+// updateContentStatus directly. This is unchanged by this task.
 const contentNotesSource = readFileSync(join(__dirname, "..", "src", "routes", "content-notes.ts"), "utf8");
 
-describe("content-notes.ts stays the single changes_requested writer", () => {
-  it("writes via updateContentStatus, not the narrowed route predicate", () => {
+describe("content-notes.ts is untouched", () => {
+  it("writes via updateContentStatus", () => {
     expect(contentNotesSource).toMatch(/updateContentStatus\(c\.var\.db, submissionId, "changes_requested"\)/);
-    expect(contentNotesSource).not.toMatch(/isRouteSettableContentStatus/);
   });
 });

@@ -257,12 +257,14 @@ export function ContentApp() {
 
   // DEC-825 amendment (wave 25, ruling A1): set-based bulk content-approval
   // across every selected row in one round trip (DEC-568's bulk write).
-  // ONE verb — 'approved' is the only status this bar can set; "Ask for
-  // changes" and "Reset to pending" already exist per-row on the
-  // deliverable detail. Loud failure surfaced the same way
+  // DEC-720 wave-32 amendment: all three ContentStatus values are now
+  // route-settable (files-content-status.ts's isValidContentStatus), so the
+  // bar can set 'changes_requested'/'pending' too, not just 'approved' —
+  // every write here is silent (no mail), same as the single-row
+  // requestContentStatus below. Loud failure surfaced the same way
   // requestContentStatus's single-row rollback does; no optimistic update
   // here since a failed preflight leaves every row untouched server-side.
-  async function bulkContentStatus(status: Extract<ContentStatus, 'approved'>) {
+  async function bulkContentStatus(status: ContentStatus) {
     if (!eventId || selectedIds.size === 0) return;
     setError(null);
     setBulkPending(true);
@@ -407,10 +409,11 @@ export function ContentApp() {
           counts={counts}
           selectedIds={selectedIds}
           onSelectionChange={setSelectedIds}
-          // DEC-825 amendment (wave 25, ruling A1): ONE bulk-approve primary,
-          // scoped to the ticked rows — the bar itself renders inside
-          // SessionList now, between the chipstrip and the table.
-          onBulkApprove={() => bulkContentStatus('approved')}
+          // DEC-825 amendment (wave 25, ruling A1): the bar itself renders
+          // inside SessionList now, between the chipstrip and the table.
+          // DEC-720 wave-32 amendment: the bar now offers all three
+          // content-status writes, scoped to the ticked rows.
+          onBulkContentStatus={bulkContentStatus}
           bulkPending={bulkPending}
         />
       )}

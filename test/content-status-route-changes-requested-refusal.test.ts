@@ -1,14 +1,14 @@
-// DEC-720 wave-53 amendment: `changes_requested` gets exactly one writer —
-// POST /api/v1/submissions/:id/content-note (src/routes/content-notes.ts),
-// which posts the thread note, moves the status, and mails the speakers.
-// The bare content-status route (POST /api/v1/submissions/:id/content-status,
-// mounted from src/routes/files.ts) must NOT be able to write
-// `changes_requested` with no note and no email: it validates against the
-// narrower isRouteSettableContentStatus predicate ('pending'|'approved'
-// only) rather than isValidContentStatus (the DB-VALUE predicate, which
-// legitimately still accepts all three and stays the predicate used by the
-// content-note path — see test/files-repo.test.ts:63 and
-// test/content-note.test.ts).
+// DEC-720 wave-32 amendment: `changes_requested` no longer has exactly one
+// writer. The prior narrower isRouteSettableContentStatus predicate forced
+// every 'changes_requested' transition through POST
+// /api/v1/submissions/:id/content-note (src/routes/content-notes.ts), which
+// unconditionally mails — that inverted DEC-009 ("status changes never
+// auto-email"). The bare content-status route (POST
+// /api/v1/submissions/:id/content-status, mounted from src/routes/files.ts)
+// now validates against isValidContentStatus (the DB-VALUE predicate) and
+// accepts 'changes_requested' with no note and no email — see
+// test/files-repo.test.ts:63 and test/content-note.test.ts for the separate
+// content-note path, which remains a deliberate note+email action.
 
 import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
@@ -59,16 +59,23 @@ function post(app: Hono<AppEnv>, contentStatus: string) {
   });
 }
 
-describe("POST /api/v1/submissions/:id/content-status (DEC-720 wave-53 amendment)", () => {
-  it("400s on 'changes_requested' — that write belongs to /content-note", async () => {
+describe("POST /api/v1/submissions/:id/content-status (DEC-720 wave-32 amendment)", () => {
+  it("200s on 'changes_requested' — no note, no email required", async () => {
     const { updateContentStatus } = await import("../src/server/repo/files");
     const app = await buildApp(ORGANIZER);
     const res = await post(app, "changes_requested");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ id: "sub-1", contentStatus: "changes_requested" });
+    expect(updateContentStatus).toHaveBeenCalledWith(expect.anything(), "sub-1", "changes_requested");
+  });
+
+  it("400s on an unrelated invalid value", async () => {
+    const app = await buildApp(ORGANIZER);
+    const res = await post(app, "bogus");
     expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
+    const body = (await res.json()) as { error: { code: string; message: string } };
     expect(body.error.code).toBe("invalid");
-    expect(body.error.fields).toEqual({ contentStatus: "Use the content-note endpoint" });
-    expect(updateContentStatus).not.toHaveBeenCalled();
+    expect(body.error.message).toContain("contentStatus must be 'pending', 'approved' or 'changes_requested'");
   });
 
   it("still 200s on 'pending'", async () => {
