@@ -443,7 +443,7 @@ export function SubmissionDetailPage() {
     } catch (err) {
       // Loud rollback: restore prior state and surface the failure. DEC-958
       // (wave 64 amendment): a refusal carrying a named-field map marks the
-      // offending control(s) via ErrorSummary instead of collapsing to the
+      // each offending control via ErrorSummary instead of collapsing to the
       // top-line message alone -- the draft text stays in the form.
       setDetail(previous);
       if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
