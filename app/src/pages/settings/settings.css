@@ -1021,8 +1021,7 @@
 
 .chq-settings-edit-row {
   display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 12px;
+  gap: 16px;
   align-items: center;
   padding: 12px 0;
   border-bottom: 1px solid var(--chq-hairline);
@@ -1030,6 +1029,18 @@
 
 .chq-settings-edit-row:last-child {
   border-bottom: none;
+}
+
+/* w22-c/DEC-896: per-entity width hooks -- tracks and rooms carry
+   different column counts (frame: tracks `1fr 150px auto`, rooms
+   `1fr 110px 150px auto`; the leading 20px drag column is not
+   reproduced, there is no reorder endpoint). */
+.chq-settings-track-edit-row {
+  grid-template-columns: minmax(0, 1fr) 150px auto;
+}
+
+.chq-settings-room-edit-row {
+  grid-template-columns: minmax(0, 1fr) 110px 150px auto;
 }
 
 .chq-settings-edit-row-value {
@@ -1040,6 +1051,12 @@
 }
 
 .chq-settings-edit-row-meta {
+  font-size: 12px;
+  color: var(--chq-ink-2);
+  white-space: nowrap;
+}
+
+.chq-settings-edit-row-seats {
   font-size: 12px;
   color: var(--chq-ink-2);
   white-space: nowrap;

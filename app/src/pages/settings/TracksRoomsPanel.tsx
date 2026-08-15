@@ -422,7 +422,7 @@ export function TracksRoomsPanel() {
                 rowErrors.color ? { anchorId: `chq-track-color-${track.id}`, label: rowErrors.color } : null,
               ].filter((p): p is { anchorId: string; label: string } => p !== null);
               return (
-                <li key={track.id} className="chq-settings-edit-row">
+                <li key={track.id} className="chq-settings-edit-row chq-settings-track-edit-row">
                   {rowSummaryProblems.length > 0 ? (
                     <ErrorSummary
                       heading={countHeading(rowSummaryProblems.length, 'before this track can be saved')}
@@ -613,7 +613,7 @@ export function TracksRoomsPanel() {
                 rowErrors.capacity ? { anchorId: `chq-room-capacity-${room.id}`, label: rowErrors.capacity } : null,
               ].filter((p): p is { anchorId: string; label: string } => p !== null);
               return (
-                <li key={room.id} className="chq-settings-edit-row">
+                <li key={room.id} className="chq-settings-edit-row chq-settings-room-edit-row">
                   {rowSummaryProblems.length > 0 ? (
                     <ErrorSummary
                       heading={countHeading(rowSummaryProblems.length, 'before this room can be saved')}
@@ -633,7 +633,7 @@ export function TracksRoomsPanel() {
                       maxLength={MAX_NAME_LENGTH}
                     />
                   </span>
-                  <span className="chq-settings-edit-row-meta">
+                  <span className="chq-settings-edit-row-seats">
                     <input
                       id={`chq-room-capacity-${room.id}`}
                       className={rowErrors.capacity ? 'chq-input chq-field-invalid' : 'chq-input'}
@@ -646,6 +646,7 @@ export function TracksRoomsPanel() {
                       aria-invalid={rowErrors.capacity ? 'true' : undefined}
                     />
                   </span>
+                  <span className="chq-settings-edit-row-meta" />
                   <span className="chq-settings-edit-row-actions">
                     {dirty ? (
                       <>
