@@ -15,46 +15,46 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   IS IO; UNBOUNDED SURFACE NEVER PAGED; GUARD THAT NARROWS < NONE.
 - FINDINGS w2-30 (heavily compacted): DateField/search/CSV/compose/reviewer-
   scope/error-vocab/locked-field/write caps unified; contact merge, CSRF,
-  bulk-email dedupe, table-layout, sub-pixel geometry, role="cell" wraps not
-  replaces, bleed-vs-clamp, citations must quote. TOOL TRAP: Grep -C drops
-  some `/`. LINE NUMBER IS NOT AN IDENTITY. A COUNT IS NOT A LICENCE TO
-  SCAN (DEC-829/773); A REFUSAL THAT PROTECTS A SIDE EFFECT CAN LOCK THE
-  MAIN EFFECT (DEC-720/317); A UNIVERSAL NEEDS A POPULATION; A DESKTOP
-  PASS CAN'T SEE A PHONE-ONLY COMPONENT'S ERRORS.
-- FINDINGS w31-34 (compacted): A RECORDED RULING IS NOT A LANDED FIX
-  (DEC-358/773/338) — re-check refs each wave. "ONE ROUND TRIP PER VIEW"
-  HAS A SERVER+PUBLIC+WRITE SIDE (DEC-338/774/155/598): indep. repo calls
-  as one Promise.all wave, proven w/ instrumented fake Db; doors incl.
-  `/plans/:id/progress`, `/portal/submissions/:id`, `dispatch.tsx`,
-  agenda GET, portal `/tasks`, submission validators. PROMISE.ALL CHANGES
-  WHICH ERROR WINS: `allSettled` + re-throw SOURCE order. HYDRATION IS
-  PER-PAGE; RANKING IS PER-POPULATION (DEC-829). A PER-ID LOOP IS NOT A
-  BATCH — `chunkIds` (`src/lib/chunk.ts`). AN INVARIANT A COMMENT ASSERTS
-  AND CODE ONLY ASSUMES IS A FALLBACK (DEC-170). A CHECK WITH A SHAPE
-  HOLE IS WHY THE DOC DRIFTED (DEC-618, `audit-claims`). A GUARD
-  JUSTIFIED BY A FALSE MECHANISM INVITES ITS OWN REMOVAL (DEC-060: Hono
-  DOES merge mount prefix) — real enforcement = `role-refusal-
-  probe.test.ts`. STALE-ON-MEASUREMENT, do not re-file: chunked-
-  urlencoded body limit, `logoUrl` XSS (`safeImageSrc`), content-note
-  zero-recipient 400, AUDIT compose cap (100), acceptance task fan-out
-  (DEC-932 DELIBERATE), `.chq-review-checkbox-label` contrast 3.09
-  EXEMPT-BY-RULE (DEC-426), mobile console-error collection landed
-  (DEC-253), `task-w27-g-fidelity-recheck-ceda66f2.md` DOES exist.
-- FINDINGS w35 (main `c9532d9a` = "merge task-w34-b"): ALL w32+w33
-  lanes MERGED and deleted; only `task-w34-b` (Vary: Cookie) is in the
-  tree — `task-w34-a/-c/-d/-e` sat at `e0b02a45` (zero-commit), w35
-  files none of their scope.
-- A BRANCH-LOCAL PASS IS NOT A CLOSURE (DEC-644 w35): w32-a measured
-  `plan results` PASS w/ reviewer.ts unfixed; w32-b measured `reviewer
-  queue` PASS w/ shared.ts unfixed — two readings, zero of the shipped
-  tree. A row closes only at a boundary carrying every fix credited
-  with closing it. Same for w29-c/-d's sweep rows.
-- AN ABSENCE IS A MEASUREMENT (DEC-358 w35): re-glob every "file X
-  does not exist" claim before carrying it; unre-globbed, delete it.
-  `.git/packed-refs` can hold a STALE `refs/heads/main` — loose wins.
-- ONE DOOR IS NOT A POPULATION (DEC-099 w35): `setCacheHeaders` is ~15
-  hand-placed calls; universal needs route-table enumeration w/ negative
-  control. A NAMED SET IN SPEC IS A POPULATION (DEC-063 w35): §9's four
-  invariants live in one greppable file. A SURFACE WITH NO PERF ROW IS
-  OPTIMISED BLIND (DEC-338 w35): portal took two scheduling rewrites
-  (w33, w34) w/ zero rows and no speaker session in `perf-smoke.ts`.
+  bulk-email dedupe, table-layout, sub-pixel geometry, bleed-vs-clamp,
+  citations must quote. TOOL TRAP: Grep -C drops some `/`. LINE NUMBER IS
+  NOT AN IDENTITY. A COUNT IS NOT A LICENCE TO SCAN (DEC-829/773); A
+  UNIVERSAL NEEDS A POPULATION; A DESKTOP PASS CAN'T SEE A PHONE-ONLY
+  COMPONENT'S ERRORS.
+- FINDINGS w31-34 (heavily compacted): A RECORDED RULING IS NOT A LANDED
+  FIX (DEC-358/773/338) — re-check refs each wave. "ONE ROUND TRIP PER
+  VIEW" HAS SERVER+PUBLIC+WRITE SIDES (DEC-338/774/155/598): Promise.all
+  wave, `allSettled`+re-throw SOURCE order. RANKING IS PER-POPULATION
+  (DEC-829); PER-ID LOOP IS NOT A BATCH (`chunkIds`); COMMENT-ONLY
+  INVARIANT IS A FALLBACK (DEC-170); FALSE-MECHANISM GUARD INVITES ITS
+  OWN REMOVAL (DEC-060, Hono DOES merge mount prefix — enforcement =
+  `role-refusal-probe.test.ts`).
+- FINDINGS w35 (compacted): all w32/w33 lanes merged+deleted; w34-b Vary:
+  Cookie fix landed. A BRANCH-LOCAL PASS IS NOT A CLOSURE (DEC-644 w35):
+  row closes only at a boundary carrying every fix credited (w32-a/b,
+  w29-c/d). AN ABSENCE IS A MEASUREMENT (DEC-358 w35): re-glob every
+  "does not exist" claim; packed-refs can be stale, loose wins. ONE
+  DOOR IS NOT A POPULATION (DEC-099 w35): universal needs route-table
+  enumeration + negative control. NAMED SET IN SPEC IS A POPULATION
+  (DEC-063 w35). SURFACE W/ NO PERF ROW IS OPTIMISED BLIND (DEC-338 w35).
+- FINDINGS w36 (main moved 0db68e36 -> 10e628aa DURING planning): ALL SIX
+  w35 lanes produced work — `-b` render-sweep (green, exit 0), `-c` DEC-099
+  cacheability enumeration (+ a real src fix: no-store responses were still
+  carrying `Vary: Cookie`), `-d` /portal perf rows + perf speaker, `-a` perf
+  reading, `-e` SPEC §9 four invariants, `-f` findings rebase. Read
+  `.git/logs/refs/heads/<branch>` — the branch reflog names each lane's
+  COMMIT MESSAGE, the cheapest way to learn what a live lane owns.
+- A SNAPSHOT IS NOT A STATE (DEC-069 w36): merge train runs while you plan;
+  re-read refs at the END of planning. A GATE INSIDE A CODE WAVE CAN
+  NEVER QUALIFY (DEC-069 w36): w28-g graded 0/5, w35-a's perf reading was
+  voided by sibling w35-c before merge. Wave 36 freezes src/app/migrations/
+  package.json so five receipts share one product sha; findings FILED
+  with file:line + owner, never fixed by the lane that measured them.
+- A RECEIPT NAMES THREE SHAS (DEC-644 w36): HEAD, newest product-bearing
+  first-parent sha, `merge-base --is-ancestor` per live sibling ref. A row
+  closes only if credited fixes are proven ancestors.
+- A CREDITED ROW FOR A SELECTOR THE INSTRUMENT NEVER ENUMERATES IS AN
+  INSTRUMENT GAP (DEC-426 w36): `.chq-participation-menu-caret` was FAILed
+  by w28-d, "fixed" by w29-d and "PASSed" by w29-c — and w35-b proved no
+  such check exists. Verification-log sections are appended as NEW files
+  under `docs/verification-log/index/` (`--next-seq`), then assembled;
+  never hand-edit docs/verification-log.md.
