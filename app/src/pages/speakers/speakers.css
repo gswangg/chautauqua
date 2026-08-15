@@ -369,6 +369,18 @@
   cursor: pointer;
 }
 
+/* DEC-830 (wave-19 amendment, DESIGN-RULINGS B8): the caret is its own
+   element at the trigger's right edge in muted ink, 6px clear of the label
+   -- the trigger is already an inline-flex row (.chq-speakers-status), so
+   only the caret itself needs styling. Reference shape:
+   EventSwitcher.tsx's .chq-eventswitcher-caret. */
+.chq-participation-menu-caret {
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--chq-muted);
+  line-height: 1;
+}
+
 .chq-participation-menu-panel {
   position: absolute;
   z-index: 20;

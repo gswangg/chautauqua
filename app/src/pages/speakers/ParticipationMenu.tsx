@@ -95,7 +95,10 @@ export function ParticipationMenu({
         aria-label={`Participation status for ${identity}: ${INVITE_STATUS_LABELS[status]}`}
         onClick={() => setOpen((v) => !v)}
       >
-        {INVITE_STATUS_LABELS[status]} <span aria-hidden="true">▾</span>
+        <span>{INVITE_STATUS_LABELS[status]}</span>
+        <span className="chq-participation-menu-caret" aria-hidden="true">
+          ▾
+        </span>
       </button>
 
       {open && (
