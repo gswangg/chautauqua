@@ -12,7 +12,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { capitalizeFirst, countOf, plural } from "../src/domain/count-copy";
+import { capitalizeFirst, countOf, overBudgetBy, plural } from "../src/domain/count-copy";
 
 const REPO_ROOT = join(__dirname, "..");
 
@@ -99,5 +99,17 @@ describe("one count grammar across the app/ boundary (DEC-957)", () => {
 
   it("capitalizeFirst is a no-op on an empty string", () => {
     expect(capitalizeFirst("")).toBe("");
+  });
+
+  // DEC-422 (amendment): overBudgetBy is the ONE overage-phrase helper for
+  // every field-length refusal, singular and plural.
+  it("overBudgetBy pluralizes correctly for 1 vs many characters over", () => {
+    expect(overBudgetBy(201, 200)).toBe("1 character over");
+    expect(overBudgetBy(234, 200)).toBe("34 characters over");
+  });
+
+  it("overBudgetBy throws when the value does not exceed the max", () => {
+    expect(() => overBudgetBy(200, 200)).toThrow();
+    expect(() => overBudgetBy(100, 200)).toThrow();
   });
 });

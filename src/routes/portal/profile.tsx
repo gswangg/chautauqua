@@ -12,8 +12,8 @@ import { makeFileStore, putThenRecord } from "../../server/context";
 import { assertSpeakerContactId, getPortalData } from "../../server/repo/portal";
 import { DEC_067, DEC_084, DEC_894 } from "../../decisions";
 import { readImageDims, MAX_HEADSHOT_EDGE_PX } from "../../lib/image-dims";
-import { MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate";
-import { countOf } from "../../domain/count-copy";
+import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate";
+import { overBudgetBy } from "../../domain/count-copy";
 void DEC_067; // DEC-067: /headshots/:fileId gate — see headshotServeRoutes below.
 void DEC_084; // DEC-084: server-side PNG/JPEG dimension gate on headshot upload — see below.
 void DEC_894; // DEC-894: the dimension gate covers webp too — see below.
@@ -179,19 +179,19 @@ function ProfilePage(props: {
           <div class="chq-section-label">Details</div>
           <div class="chq-portal-field">
             <label class="chq-portal-field-label" for="firstName">First name</label>
-            <input class="chq-input" type="text" id="firstName" name="firstName" value={profile.firstName} maxLength={MAX_TEXT_LENGTH} required />
+            <input class="chq-input" type="text" id="firstName" name="firstName" value={profile.firstName} maxLength={MAX_NAME_LENGTH} required />
           </div>
           <div class="chq-portal-field">
             <label class="chq-portal-field-label" for="lastName">Last name</label>
-            <input class="chq-input" type="text" id="lastName" name="lastName" value={profile.lastName} maxLength={MAX_TEXT_LENGTH} required />
+            <input class="chq-input" type="text" id="lastName" name="lastName" value={profile.lastName} maxLength={MAX_NAME_LENGTH} required />
           </div>
           <div class="chq-portal-field">
             <label class="chq-portal-field-label" for="title">Title</label>
-            <input class="chq-input" type="text" id="title" name="title" value={profile.title ?? ""} maxLength={MAX_TEXT_LENGTH} />
+            <input class="chq-input" type="text" id="title" name="title" value={profile.title ?? ""} maxLength={MAX_NAME_LENGTH} />
           </div>
           <div class="chq-portal-field">
             <label class="chq-portal-field-label" for="company">Company</label>
-            <input class="chq-input" type="text" id="company" name="company" value={profile.company ?? ""} maxLength={MAX_TEXT_LENGTH} />
+            <input class="chq-input" type="text" id="company" name="company" value={profile.company ?? ""} maxLength={MAX_NAME_LENGTH} />
           </div>
           <div class="chq-portal-field">
             <label class="chq-portal-field-label" for="bio">Bio</label>
@@ -315,10 +315,10 @@ portalProfileRoutes.post("/profile", csrfForm, async (c) => {
   // (portal profile had no length limit at all — an unbounded write to
   // `contact` could otherwise hit SQLITE_TOOBIG as a 500).
   const capped: Array<[string, string, number]> = [
-    ["First name", firstName, MAX_TEXT_LENGTH],
-    ["Last name", lastName, MAX_TEXT_LENGTH],
-    ["Title", title, MAX_TEXT_LENGTH],
-    ["Company", company, MAX_TEXT_LENGTH],
+    ["First name", firstName, MAX_NAME_LENGTH],
+    ["Last name", lastName, MAX_NAME_LENGTH],
+    ["Title", title, MAX_NAME_LENGTH],
+    ["Company", company, MAX_NAME_LENGTH],
     ["Twitter", socialLinks.twitter, MAX_TEXT_LENGTH],
     ["LinkedIn", socialLinks.linkedin, MAX_TEXT_LENGTH],
     ["GitHub", socialLinks.github, MAX_TEXT_LENGTH],
@@ -327,8 +327,7 @@ portalProfileRoutes.post("/profile", csrfForm, async (c) => {
   ];
   for (const [label, value, max] of capped) {
     if (value.length > max) {
-      const over = value.length - max;
-      return renderError(`${label} is ${countOf(over, "character")} over the limit. Nothing else was saved.`);
+      return renderError(`${label} is ${overBudgetBy(value.length, max)} the limit. Nothing else was saved.`);
     }
   }
 

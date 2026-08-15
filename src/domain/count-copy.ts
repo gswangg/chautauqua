@@ -21,6 +21,24 @@ export function countOf(n: number, singular: string, pluralForm?: string): strin
   return `${n} ${plural(n, singular, pluralForm)}`;
 }
 
+// DEC-422 (amendment): the ONE overage-phrase helper -- every field-length
+// refusal ("N characters over the limit") goes through here instead of
+// hand-composing its own count phrase, so pluralization stays
+// single-sourced through countOf/plural above.
+
+/** e.g. '1 character over' or '34 characters over' (noun pluralized via
+ * countOf above), for a value that exceeds `max` by `length - max`.
+ * Callers embed this in their own sentence (e.g. `${label} is
+ * ${overBudgetBy(value.length, max)} the limit.`). Throws if `length` does
+ * not actually exceed `max` -- this is a refusal-composition helper, not a
+ * defensive length check. */
+export function overBudgetBy(length: number, max: number): string {
+  if (length <= max) {
+    throw new Error(`overBudgetBy: length ${length} does not exceed max ${max}`);
+  }
+  return `${countOf(length - max, "character")} over`;
+}
+
 // DEC-925 (amendment, wave 52): the ONE spelled-number word list. Every
 // module that needs a prose count ("three tracks", not "3 tracks") imports
 // this instead of hand-copying its own array -- three private copies had
