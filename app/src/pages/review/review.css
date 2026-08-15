@@ -1483,29 +1483,11 @@
   border-bottom: 1px solid var(--chq-hairline);
 }
 
-.chq-reviewer-plan-row-link {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 4px;
-  padding: 15px 0;
-  color: inherit;
-  text-decoration: none;
-}
-
-/* DEC-874 (wave-29 amendment): a closed plan's row keeps its scope meta
-   but trades the scoped-queue link's primary weight for a quiet tertiary
-   "Read your scores" action -- a count you cannot act on is noise, but the
-   scores themselves are still worth a link into the same scoped route. */
-.chq-reviewer-plan-row-read-scores {
-  flex-shrink: 0;
-  align-self: center;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--chq-muted);
-  text-decoration: none;
-  white-space: nowrap;
-}
+/* The wave-29 amendment's two-element row (a full-row link + a trailing
+   "Read your scores" tertiary action) is gone: the DEC-874 findings-wave-5
+   row stacks name-line / pill / bar / action instead, so
+   .chq-reviewer-plan-row-link and .chq-reviewer-plan-row-read-scores were
+   deleted here rather than left as dead rules (DEC-970). */
 
 .chq-reviewer-plan-row-name {
   font-family: var(--chq-font-display);

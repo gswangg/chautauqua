@@ -271,6 +271,14 @@
   font-size: 15px;
 }
 
+/* The skipped block is one of the report's stacked sections: the grid above
+   already draws the rule beneath itself, so this wrapper only opens the
+   space that separates the two. */
+.chq-comms-send-report-skipped {
+  display: block;
+  margin-top: 28px;
+}
+
 .chq-comms-send-report-skipped-head {
   border-bottom: 2px solid var(--chq-ink);
   padding-bottom: 8px;

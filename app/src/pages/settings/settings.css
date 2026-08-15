@@ -734,12 +734,6 @@
   font-weight: 700;
 }
 
-/* w5-e/DEC-691 amendment: the undeletable self row's actions read in the
-   disabled ink rather than the tertiary-link color. */
-.chq-settings-people-actions .chq-settings-row-hint {
-  color: var(--chq-disabled);
-}
-
 @media (max-width: 700px) {
   .chq-settings-public-pages-row {
     display: flex;
@@ -1091,6 +1085,17 @@
   margin: 0;
   text-align: right;
   white-space: nowrap;
+}
+
+/* w5-e/DEC-691 amendment: the undeletable self row's actions read in the
+   disabled ink rather than the tertiary-link color. Deliberately placed
+   AFTER the base .chq-settings-row-hint rule above -- it is an override, and
+   the CSS-contract test helpers read a rule body by first match of the
+   selector text, so a descendant rule that precedes its own base rule masks
+   that base from every `topLevelRuleBody(css, '.chq-settings-row-hint')`
+   assertion in the suite. */
+.chq-settings-people-actions .chq-settings-row-hint {
+  color: var(--chq-disabled);
 }
 
 @media (max-width: 700px) {
