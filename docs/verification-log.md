@@ -4844,3 +4844,42 @@ RESULT: PASS (build clean, 1084/1084 test files and 11898/11898 tests
 green, bundle 69.20 kB gzip vs 300 kB budget) at f5783479, all three live
 w3*-glob sibling refs confirmed ANCESTOR.
 OPEN ITEMS: 0
+## 2026-08-15 task-w36-d — spec-audit @ f5783479
+
+QUALIFYING
+
+INVALIDATED BY: src/** app/src/** migrations/** package.json
+
+DEC-644 wave-36 three-sha boundary: HEAD `f5783479`; newest product-bearing
+first-parent sha `3a041507` (`merge task-w35-c`); live `task-w3*` sibling
+refs — `task-w36-a` ANCESTOR (identical to HEAD), `task-w36-b`
+NOT-ANCESTOR (advanced past HEAD, its work is `MEASURED-WITHOUT
+(task-w36-b)`), `task-w36-c` ANCESTOR (identical to HEAD), `task-w36-e`
+ANCESTOR (identical to HEAD). §8/§9 (DEC-063 wave-27): one-line citations,
+nine-consecutive-PASS retirement; SPEC §9's four named cheap invariants
+(DEC-063 wave-35) cited as the closed population `test/spec9-invariants
+.test.ts`, all four `describe(` blocks confirmed present (`task-w35-e`'s
+merge, `4a016110`, is an ancestor of this HEAD, so this is a confirmed
+citation, not PENDING-OWNED). Five §6/§7 static checks (DEC-063 wave-27):
+(1) FK-index cross-check — schema/migrations diff since `c6dbdb7c` is
+non-empty (`migrations/0040-0042`, `src/db/schema/org.ts`,
+`src/db/schema/review.ts`); re-derived the delta and found the new
+`contact.headshotFileId` column and both new `evaluation` composite
+indexes are each covering-indexed in the same commit — zero gaps, table
+extended not just carried forward; `(event_id,status)` /
+`(event_id,slug)` unchanged. (2) `app/src/App.tsx` code-split by route —
+unchanged, every page still `lazy(pageLoaders.X)`. (3) `< 300 KB gz` —
+NOT re-run per this task's brief (`task-w36-a` owns the number); most
+recent ancestor reading is `c6dbdb7c`'s 69.19 kB gz, 126 commits stale —
+recorded PENDING-OWNED(task-w36-a), not inferred PASS. (4) parameterized
+queries only — zero raw-SQL string-concatenation hits outside the Drizzle
+`sql` tag. (5) no HTML content type served — `assertServedContentTypeHeader`
+(`src/domain/files.ts:546-548`) unchanged, still called before every
+served response. `docs/eval-rubric/*.yaml` coverage: 116 IDs total,
+identical per-file breakdown to every prior audit since `task-w25-e` (no
+rubric file added/removed/ID-modified); testability breakdown tabulated
+per file in the companion doc. Full detail:
+`docs/verification-log/task-w36-d-spec-audit-f5783479.md`.
+
+RESULT: QUALIFYING
+OPEN ITEMS: 1
