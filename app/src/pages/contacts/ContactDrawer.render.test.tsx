@@ -337,11 +337,17 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
     expect(body).toMatch(/outline-offset:\s*2px/);
   });
 
-  // DEC-616 amendment (wave 4): the reserved travel custom field's row is
-  // labelled DIETARY, the word the frame and the speaker-facing form use.
-  it('labels the reserved travel custom-field row Dietary, inside "This event"', async () => {
+  // DEC-292 amendment (findings wave 5): "This event" records three
+  // reserved fields -- Dietary, Travel, Accessibility -- each in its own
+  // labelled row; travel_logistics content renders under Travel, never
+  // under Dietary.
+  it('renders Dietary, Travel, and Accessibility as three distinct rows inside "This event"', async () => {
     mockApi({
-      'GET /api/v1/contacts/ct1': { ...CONTACT, bio: null, customFields: { travel_logistics: 'Vegetarian' } },
+      'GET /api/v1/contacts/ct1': {
+        ...CONTACT,
+        bio: null,
+        customFields: { dietary: 'Vegetarian', travel_logistics: 'Arrival May 11, aisle seat' },
+      },
     });
 
     render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
@@ -351,16 +357,27 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
       expect(within(dialog).getByText('Priya Raman')).toBeInTheDocument();
     });
 
-    expect(within(dialog).getByText('Dietary')).toBeInTheDocument();
-    expect(within(dialog).queryByText('Travel & logistics')).not.toBeInTheDocument();
-    const dietaryRow = within(dialog).getByText('Dietary').closest('.chq-contacts-record-row');
-    expect(within(dietaryRow as HTMLElement).getByText('Vegetarian')).toBeInTheDocument();
-
-    // Dietary lives inside the "This event" group.
+    // All three live inside the "This event" group.
     const thisEventGroup = within(dialog)
       .getByText('This event')
       .closest('.chq-contacts-record-group') as HTMLElement;
     expect(within(thisEventGroup).getByText('Dietary')).toBeInTheDocument();
+    expect(within(thisEventGroup).getByText('Travel')).toBeInTheDocument();
+    expect(within(thisEventGroup).getByText('Accessibility')).toBeInTheDocument();
+
+    // Dietary value renders under Dietary, not Travel.
+    const dietaryRow = within(thisEventGroup).getByText('Dietary').closest('.chq-contacts-record-row') as HTMLElement;
+    expect(within(dietaryRow).getByText('Vegetarian')).toBeInTheDocument();
+
+    // travel_logistics content renders under Travel, not Dietary.
+    const travelRow = within(thisEventGroup).getByText('Travel').closest('.chq-contacts-record-row') as HTMLElement;
+    expect(within(travelRow).getByText('Arrival May 11, aisle seat')).toBeInTheDocument();
+
+    // Accessibility has nothing recorded here.
+    const accessibilityRow = within(thisEventGroup)
+      .getByText('Accessibility')
+      .closest('.chq-contacts-record-row') as HTMLElement;
+    expect(within(accessibilityRow).getByText('Nothing recorded')).toBeInTheDocument();
   });
 
   // DEC-616 amendment (wave 15): the drawer states its own save mechanism

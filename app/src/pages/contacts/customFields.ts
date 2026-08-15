@@ -1,13 +1,20 @@
-// DEC-292: contact custom fields are edited as key/value rows plus a
-// reserved `travel_logistics` field surfaced as a labeled textarea. This
-// module owns the pure serialize/deserialize rules so they are testable
-// without a DOM and shared by ContactDrawer.
+// DEC-292: contact custom fields are edited as key/value rows plus three
+// reserved fields (dietary, travel/logistics, accessibility -- amendment
+// findings wave 5) surfaced as labeled textareas. This module owns the pure
+// serialize/deserialize rules so they are testable without a DOM and shared
+// by ContactDrawer.
 
-// DEC-738/DEC-726: TRAVEL_KEY is owned by src/domain/contact-labels.ts
-// (the server-importable Labels formatter) -- imported here rather than
-// re-declared, so the reserved key string has exactly one source.
-import { TRAVEL_KEY } from '../../../../src/domain/contact-labels';
-export { TRAVEL_KEY };
+// DEC-738/DEC-726: the reserved keys are owned by
+// src/domain/contact-labels.ts (the server-importable Labels formatter) --
+// imported here rather than re-declared, so the reserved key strings have
+// exactly one source.
+import {
+  RESERVED_CUSTOM_FIELD_KEYS,
+  RESERVED_CUSTOM_FIELD_LABELS,
+} from '../../../../src/domain/contact-labels';
+export { RESERVED_CUSTOM_FIELD_KEYS, RESERVED_CUSTOM_FIELD_LABELS };
+
+const RESERVED_KEY_SET: Set<string> = new Set(Object.values(RESERVED_CUSTOM_FIELD_KEYS));
 
 export interface CustomFieldRow {
   key: string;
@@ -15,32 +22,38 @@ export interface CustomFieldRow {
 }
 
 /**
- * Splits a customFields map into the travel textarea value and the
- * remaining key/value rows, in stable key order.
+ * Splits a customFields map into the three reserved fields' textarea
+ * values plus the remaining key/value rows, in stable key order.
  */
 export function toRows(fields: Record<string, string>): CustomFieldRow[] {
   return Object.keys(fields)
-    .filter((key) => key !== TRAVEL_KEY)
+    .filter((key) => !RESERVED_KEY_SET.has(key))
     .map((key) => ({ key, value: fields[key] ?? '' }));
 }
 
-export function travelValue(fields: Record<string, string>): string {
-  return fields[TRAVEL_KEY] ?? '';
+export function reservedValue(
+  fields: Record<string, string>,
+  key: (typeof RESERVED_CUSTOM_FIELD_KEYS)[keyof typeof RESERVED_CUSTOM_FIELD_KEYS],
+): string {
+  return fields[key] ?? '';
 }
 
 export type FromRowsResult = { fields: Record<string, string> } | { error: string };
 
 /**
- * Reassembles the customFields map from the travel textarea value and the
- * key/value rows, implementing DEC-292's validation rules:
+ * Reassembles the customFields map from the three reserved textarea values
+ * and the key/value rows, implementing DEC-292's validation rules:
  * - keys are trimmed
  * - a row blank in both key and value is dropped
  * - a blank key with a non-blank value is an error
  * - duplicate trimmed keys is an error naming the key
- * - a hand-typed `travel_logistics` key is an error pointing at the labeled field
- * - the travel key is included only when the travel text is non-blank
+ * - a hand-typed reserved key is an error pointing at the labeled field
+ * - each reserved key is included only when its text is non-blank
  */
-export function fromRows(travel: string, rows: CustomFieldRow[]): FromRowsResult {
+export function fromRows(
+  reserved: { dietary: string; travel: string; accessibility: string },
+  rows: CustomFieldRow[],
+): FromRowsResult {
   const fields: Record<string, string> = {};
   const seen = new Set<string>();
 
@@ -55,9 +68,10 @@ export function fromRows(travel: string, rows: CustomFieldRow[]): FromRowsResult
     if (key === '' && !valueBlank) {
       return { error: 'Custom field rows with a value must also have a key.' };
     }
-    if (key === TRAVEL_KEY) {
+    if (RESERVED_KEY_SET.has(key)) {
+      const label = RESERVED_CUSTOM_FIELD_LABELS[key as keyof typeof RESERVED_CUSTOM_FIELD_LABELS];
       return {
-        error: `"${TRAVEL_KEY}" is reserved for the Travel & logistics field above — use that field instead.`,
+        error: `"${key}" is reserved for the ${label} field above — use that field instead.`,
       };
     }
     if (seen.has(key)) {
@@ -67,8 +81,14 @@ export function fromRows(travel: string, rows: CustomFieldRow[]): FromRowsResult
     fields[key] = value;
   }
 
-  if (travel.trim() !== '') {
-    fields[TRAVEL_KEY] = travel;
+  if (reserved.dietary.trim() !== '') {
+    fields[RESERVED_CUSTOM_FIELD_KEYS.dietary] = reserved.dietary;
+  }
+  if (reserved.travel.trim() !== '') {
+    fields[RESERVED_CUSTOM_FIELD_KEYS.travel] = reserved.travel;
+  }
+  if (reserved.accessibility.trim() !== '') {
+    fields[RESERVED_CUSTOM_FIELD_KEYS.accessibility] = reserved.accessibility;
   }
 
   return { fields };

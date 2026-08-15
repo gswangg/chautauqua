@@ -3,9 +3,13 @@ import { Link } from 'react-router-dom';
 import { apiDelete, apiGet, apiPatch, apiUpload, ApiError } from '../../lib/api';
 import { formatDateTime } from '../../lib/dates';
 import type { ContactDetail, ContactListItem } from './types';
-import { fromRows, toRows, travelValue, type CustomFieldRow } from './customFields';
+import { fromRows, toRows, reservedValue, type CustomFieldRow } from './customFields';
 import { countOf } from '../../lib/plural';
-import { contactLabels } from '../../../../src/domain/contact-labels';
+import {
+  contactLabels,
+  RESERVED_CUSTOM_FIELD_KEYS,
+  RESERVED_CUSTOM_FIELD_LABELS,
+} from '../../../../src/domain/contact-labels';
 import {
   HEADSHOT_EXTENSIONS,
   HEADSHOT_DOWNSCALE_EDGE_PX,
@@ -178,7 +182,9 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
   const [phone, setPhone] = useState('');
   const [notes, setNotes] = useState('');
   const [bio, setBio] = useState('');
+  const [dietary, setDietary] = useState('');
   const [travel, setTravel] = useState('');
+  const [accessibility, setAccessibility] = useState('');
   const [customFieldRows, setCustomFieldRows] = useState<CustomFieldRow[]>([]);
 
   const [twitter, setTwitter] = useState('');
@@ -209,7 +215,9 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
         setPhone(c.phone ?? '');
         setNotes(c.notes ?? '');
         setBio(c.bio ?? '');
-        setTravel(travelValue(c.customFields ?? {}));
+        setDietary(reservedValue(c.customFields ?? {}, RESERVED_CUSTOM_FIELD_KEYS.dietary));
+        setTravel(reservedValue(c.customFields ?? {}, RESERVED_CUSTOM_FIELD_KEYS.travel));
+        setAccessibility(reservedValue(c.customFields ?? {}, RESERVED_CUSTOM_FIELD_KEYS.accessibility));
         setCustomFieldRows(toRows(c.customFields ?? {}));
         setTwitter(c.socialLinks?.twitter ?? '');
         setLinkedin(c.socialLinks?.linkedin ?? '');
@@ -223,7 +231,7 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
   }, [contactId]);
 
   async function save() {
-    const result = fromRows(travel, customFieldRows);
+    const result = fromRows({ dietary, travel, accessibility }, customFieldRows);
     if ('error' in result) {
       setError(result.error);
       return;
@@ -667,13 +675,25 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
 
               <FieldGroup title="This event">
                 {labelsNode}
-                {/* DEC-616 amendment (wave 4): the reserved travel custom
-                    field is labelled DIETARY — the word the frame and the
-                    speaker-facing form use — even though its storage key
-                    stays `travel_logistics`. */}
-                {textField('travel', 'Dietary', travel, setTravel, {
+                {/* DEC-292 amendment (findings wave 5): the "This event"
+                    group records three reserved fields, each in its own
+                    labelled textarea, in frame order (Chautauqua
+                    Contacts.dc.html :899-904) Dietary -> Travel ->
+                    Accessibility. The travel field's storage key stays
+                    `travel_logistics` (DEC-616 amendment wave 4). */}
+                {textField(RESERVED_CUSTOM_FIELD_KEYS.dietary, RESERVED_CUSTOM_FIELD_LABELS[RESERVED_CUSTOM_FIELD_KEYS.dietary], dietary, setDietary, {
                   multiline: true,
-                  placeholder: 'Flight details, hotel, dietary needs...',
+                  placeholder: 'Vegetarian, gluten-free...',
+                  maxLength: MAX_TEXT_LENGTH,
+                })}
+                {textField(RESERVED_CUSTOM_FIELD_KEYS.travel, RESERVED_CUSTOM_FIELD_LABELS[RESERVED_CUSTOM_FIELD_KEYS.travel], travel, setTravel, {
+                  multiline: true,
+                  placeholder: 'Flight details, hotel...',
+                  maxLength: MAX_TEXT_LENGTH,
+                })}
+                {textField(RESERVED_CUSTOM_FIELD_KEYS.accessibility, RESERVED_CUSTOM_FIELD_LABELS[RESERVED_CUSTOM_FIELD_KEYS.accessibility], accessibility, setAccessibility, {
+                  multiline: true,
+                  placeholder: 'Mobility, hearing, or other access needs...',
                   maxLength: MAX_TEXT_LENGTH,
                 })}
                 {customFieldNodes}

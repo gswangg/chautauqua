@@ -67,7 +67,7 @@ const DUP = contactRaw({
   lastName: "Doe",
   company: "Acme Corp",
   notes: "Prefers Tuesday.",
-  customFieldsJson: JSON.stringify({ shirtSize: "L", dietary: "vegetarian" }),
+  customFieldsJson: JSON.stringify({ shirtSize: "L", talkTitle: "Keynote" }),
 });
 
 function makeChain(rows: unknown[]) {
@@ -139,12 +139,12 @@ describe("GET /api/v1/contacts/merge/preview (DEC-705)", () => {
     expect(notes!.kept).toBe("Met at PlatformCon.\n\n---\n\nPrefers Tuesday.");
     expect(notes!.discarded).toEqual([]);
 
-    // DEC-748 amendment (wave 2): dietary/shirtSize no longer surface as raw
-    // customFields.<key> rows -- they fold into the single Labels row.
+    // DEC-748 amendment (wave 2): shirtSize/talkTitle no longer surface as
+    // raw customFields.<key> rows -- they fold into the single Labels row.
     const labels = byKey.get("labels");
     expect(labels).toBeDefined();
     expect(labels!.outcome).toBe("combine");
-    expect(labels!.kept).toBe("shirtSize M, dietary vegetarian");
+    expect(labels!.kept).toBe("shirtSize M, talkTitle Keynote");
     expect(labels!.discarded).toEqual(["shirtSize L"]);
 
     // The preview must be identical to what mergeOnePair's own planMerge
