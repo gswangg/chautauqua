@@ -97,9 +97,9 @@ const ORG_A = "org-a";
 const SUBMISSION_ORG_A = { eventId: "event-1", orgId: ORG_A };
 const ORGANIZER_A: AuthInfo = { userId: "u-organizer-a", role: "organizer", orgId: ORG_A };
 
-const AUDIENCE_LEVEL_FIELD_ID = "field_audience_level";
+const AUDIENCE_FIELD_ID = "field_audience_level";
 const AUDIENCE_LEVEL_OPTIONS_ROW = { optionsJson: JSON.stringify(["Beginner", "Intermediate"]) };
-const AUDIENCE_LEVEL_FIELD_ID_ROW = { id: AUDIENCE_LEVEL_FIELD_ID };
+const AUDIENCE_FIELD_ID_ROW = { id: AUDIENCE_FIELD_ID };
 
 const DETAIL_ROW = {
   id: "sub-1",
@@ -126,11 +126,11 @@ describe("PATCH /api/v1/submissions/:id audienceLevel (DEC-900 amendment, findin
       [SUBMISSION_ORG_A], // getSubmissionOwnership
       [AUDIENCE_LEVEL_OPTIONS_ROW], // parseAudienceLevelField -> getFieldOptionsByRole
       [{ title: "T", description: "D" }], // getSubmissionContent (before)
-      [AUDIENCE_LEVEL_FIELD_ID_ROW], // writeRoleAnswer -> getEventFieldIdByRole
+      [AUDIENCE_FIELD_ID_ROW], // writeRoleAnswer -> getEventFieldIdByRole
       [DETAIL_ROW], // getSubmissionDetail: submission+event
       [], // participants
       [], // tracks
-      [{ formFieldId: AUDIENCE_LEVEL_FIELD_ID, valueJson: JSON.stringify("Intermediate") }], // answers
+      [{ formFieldId: AUDIENCE_FIELD_ID, valueJson: JSON.stringify("Intermediate") }], // answers
       [], // answer files (DEC-920)
     ]);
 
@@ -140,7 +140,7 @@ describe("PATCH /api/v1/submissions/:id audienceLevel (DEC-900 amendment, findin
 
     expect(res.status).toBe(200);
     const json = (await res.json()) as any;
-    expect(json.answers[AUDIENCE_LEVEL_FIELD_ID]).toBe("Intermediate");
+    expect(json.answers[AUDIENCE_FIELD_ID]).toBe("Intermediate");
     const answerInsert = inserts.find((i) => i.table === schema.submissionAnswer);
     expect(answerInsert).toBeDefined();
   });
@@ -151,7 +151,7 @@ describe("PATCH /api/v1/submissions/:id audienceLevel (DEC-900 amendment, findin
       // parseAudienceLevelField short-circuits on raw === null -- no
       // getFieldOptionsByRole select is issued.
       [{ title: "T", description: "D" }], // getSubmissionContent (before)
-      [AUDIENCE_LEVEL_FIELD_ID_ROW], // writeRoleAnswer -> getEventFieldIdByRole
+      [AUDIENCE_FIELD_ID_ROW], // writeRoleAnswer -> getEventFieldIdByRole
       [DETAIL_ROW], // getSubmissionDetail: submission+event
       [], // participants
       [], // tracks
@@ -188,11 +188,11 @@ describe("PATCH /api/v1/submissions/:id audienceLevel (DEC-900 amendment, findin
       [SUBMISSION_ORG_A],
       [AUDIENCE_LEVEL_OPTIONS_ROW],
       [{ title: "T", description: "D" }],
-      [AUDIENCE_LEVEL_FIELD_ID_ROW],
+      [AUDIENCE_FIELD_ID_ROW],
       [DETAIL_ROW],
       [],
       [],
-      [{ formFieldId: AUDIENCE_LEVEL_FIELD_ID, valueJson: JSON.stringify("Beginner") }],
+      [{ formFieldId: AUDIENCE_FIELD_ID, valueJson: JSON.stringify("Beginner") }],
       [],
     ]);
 

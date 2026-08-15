@@ -78,6 +78,7 @@ const ALLOWED: Record<string, string[]> = {
   ],
   "server/repo/participants.ts": [
     "getParticipantOwnership looks up a single participant row by participantId before a write — ownership check, not eligibility.",
+    "getSubmissionLeadParticipantId (DEC-900 amendment, wave 13) resolves ONE submission's lead participant id to refuse retargeting it in the role-PATCH route. It must mirror the SPA rail's rule exactly — the rail picks role==='speaker' (else first by order asc) out of detail.participants, which is the admin detail list and is itself unfiltered by invite status — so filtering this by eligibility would make the server's lead disagree with the lead the organizer is looking at, and would let the displayed lead be demoted the moment it declined. Addressed by submissionId; returns an id used only as a write guard, never serialized.",
     "getParticipantCount (DEC-422 wave-67 / DEC-604 amendment, wave 12) is the MAX_PARTICIPANTS_PER_SUBMISSION count that closes the organizer door, the exact mirror of portal-edit.ts's cap count below: a per-submission cap over EVERY participant row, not an eligibility read. Filtering it by invite status would be a defect, not a fix — a declined or withdrawn co-presenter still occupies its slot (same reasoning as import/sessionboard.ts's MAX(order) read), so an eligibility-filtered count would let a submission be pushed past the cap by re-inviting into declined rows.",
   ],
   "server/repo/contacts/history.ts": [
