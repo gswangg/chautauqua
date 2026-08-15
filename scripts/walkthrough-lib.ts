@@ -219,6 +219,126 @@ export function breaksListContainsId(items: readonly { id: string }[], breakId: 
   return items.some((b) => b.id === breakId);
 }
 
+// ---------------------------------------------------------------------------
+// w37-d: PUBLIC_BASE_URL / --url origin pre-flight (DEC-296, DEC-069).
+//
+// src/server/origin.ts's resolveBaseUrl (:104-133) only applies DEC-296's
+// dev-loopback exception when a loopback origin is observable ON THE
+// REQUEST (firstLoopbackCandidate, :152-163) — request URL origin, `Origin`
+// header, or `Referer`. A scripted fetch against `wrangler dev` with
+// wrangler.jsonc route shadowing presents none of the three, so a
+// gitignored `.dev.vars` PUBLIC_BASE_URL default (commonly the
+// .dev.vars.example loopback default, http://localhost:8787) wins outright
+// while the gate drives a per-worktree port via --url. This has cost two
+// walkthrough gates a full run each (see
+// docs/verification-log/index/0163-...-walkthrough-73f380f2.md and
+// 0190-...-task-w36-b-walkthrough-f5783479.md, both aborting at
+// producer/J2 on an off-origin scraped reset link). These helpers catch
+// the mismatch in five seconds instead of forty steps in; the underlying
+// origin.ts gap is NOT fixed here (frozen wave, scripts/**+test/**+docs/**
+// only) — filed as an open item for wave-38.
+//
+// Kept dependency-free (no node: imports) per this file's header
+// convention; scripts/walkthrough.ts does the actual node:fs reads and
+// passes the resulting text/value in here.
+// ---------------------------------------------------------------------------
+
+/** Same loopback-hostname set as src/server/origin.ts's LOOPBACK_HOSTNAMES
+ * (deliberately re-declared, not imported — that module is not node:-free
+ * and this file must stay pure/dependency-free for plain-vitest testing). */
+const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+
+function isLoopbackOriginString(origin: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(origin);
+  } catch {
+    return false;
+  }
+  return LOOPBACK_HOSTNAMES.has(url.hostname);
+}
+
+/**
+ * Parses ONLY the `PUBLIC_BASE_URL=` line out of a `.dev.vars`-format text
+ * blob (KEY=VALUE per line, `#`-prefixed comment lines ignored). Returns
+ * null if the key is absent. Must never return or log any other key's
+ * value: scripts/ensure-dev-vars.ts forbids reading/logging `.dev.vars`
+ * contents generally; DEC-296's wave-37 amendment sanctions exactly this
+ * one key for exactly this pre-flight purpose.
+ */
+export function extractPublicBaseUrl(devVarsText: string): string | null {
+  for (const rawLine of devVarsText.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (line.length === 0 || line.startsWith("#")) continue;
+    const match = line.match(/^PUBLIC_BASE_URL=(.*)$/);
+    if (match && match[1] !== undefined) {
+      const value = match[1].trim();
+      return value.length > 0 ? value : null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Compares a configured PUBLIC_BASE_URL against the walkthrough's --url
+ * target and reports a DEC-296 dev-loopback mismatch, or null if there is
+ * none. Per resolveBaseUrl's precedence (src/server/origin.ts:104-118), a
+ * configured NON-loopback PUBLIC_BASE_URL always wins outright regardless
+ * of the request — that is correct/intended behavior, not a mismatch, so
+ * this only flags the case that actually poisons a dev-mode run: a
+ * loopback-configured value whose origin differs from --url's origin.
+ * Returns null (not a mismatch) if `configured` is null, not a parseable
+ * absolute URL, non-loopback, or already matches `targetUrl`'s origin.
+ */
+export function baseUrlMismatch(
+  configured: string | null,
+  targetUrl: string,
+): { configuredOrigin: string; targetOrigin: string } | null {
+  if (configured === null) return null;
+
+  let configuredOrigin: string;
+  try {
+    configuredOrigin = new URL(configured).origin;
+  } catch {
+    return null;
+  }
+
+  if (!isLoopbackOriginString(configuredOrigin)) return null;
+
+  let targetOrigin: string;
+  try {
+    targetOrigin = new URL(targetUrl).origin;
+  } catch {
+    return null;
+  }
+
+  if (configuredOrigin === targetOrigin) return null;
+
+  return { configuredOrigin, targetOrigin };
+}
+
+/**
+ * Renders the pre-flight failure message: names both origins and the
+ * exact remediation (set PUBLIC_BASE_URL, wipe .wrangler/state, re-migrate
+ * + re-seed, restart the server) — the same fix already applied by hand at
+ * docs/verification-log/index/0163-... and 0190-...-task-w36-b-....
+ */
+export function formatBaseUrlMismatchMessage(m: { configuredOrigin: string; targetOrigin: string }): string {
+  return [
+    `walkthrough pre-flight: PUBLIC_BASE_URL mismatch (DEC-296).`,
+    `  configured origin (.dev.vars / wrangler.jsonc): ${m.configuredOrigin}`,
+    `  --url target origin:                            ${m.targetOrigin}`,
+    `resolveBaseUrl's dev-loopback exception (src/server/origin.ts:104-133) only`,
+    `fires when a loopback origin is observable on the request; a scripted fetch`,
+    `against route-shadowed wrangler dev has none, so the configured origin above`,
+    `wins outright and every mailed link (e.g. /claim/<token>) will point at`,
+    `${m.configuredOrigin} instead of ${m.targetOrigin} — producer/J2 will scrape an`,
+    `off-origin link and abort.`,
+    `Fix: set PUBLIC_BASE_URL=${m.targetOrigin} in .dev.vars, wipe .wrangler/state,`,
+    `re-migrate + re-seed, and restart the server, then re-run the walkthrough.`,
+  ].join("\n");
+}
+
 /** Does the anonymous /e/:slug/agenda?day=... HTML contain this break's
  * rendered label text? Assert on the label text only — never on a CSS
  * class, element order, or DOM structure (a concurrently-landing markup
