@@ -33,7 +33,14 @@ import { accountRoutes } from "../src/routes/account";
 import { hashPassword } from "../src/auth/password";
 import * as schema from "../src/db/schema";
 import { CSRF_COOKIE_NAME } from "../src/auth/cookies";
+import { loginIdentityKey } from "../src/routes/auth-helpers";
 import type { AppEnv } from "../src/server/env";
+
+// DEC-072 wave-54 amendment: no request in this file sets cf-connecting-ip
+// or x-forwarded-for, so requestIpFromHeaders resolves every request's IP
+// to "unknown" -- the identity bucket key is loginIdentityKey(EMAIL,
+// "unknown"), not the bare EMAIL.
+const TEST_IP = "unknown";
 
 type Row = Record<string, unknown>;
 
@@ -378,7 +385,9 @@ describe("DEC-948 amendment: POST /login rate budget is atomic under concurrency
     // shapes (see file header); only this concurrent fan-out can.
     expect(non429).toBe(AUTH_RATE_LIMIT_MAX);
 
-    const userBucket = state.rateLimits.find((r) => (r.key as string).startsWith(`ratelimit:login-user:${EMAIL}:`));
+    const userBucket = state.rateLimits.find((r) =>
+      (r.key as string).startsWith(`ratelimit:login-user:${loginIdentityKey(EMAIL, TEST_IP)}:`),
+    );
     expect(userBucket).toBeDefined();
     // Every one of the N concurrent requests incremented exactly once —
     // the atomic upsert never lets two callers land on the same count.
@@ -401,7 +410,9 @@ describe("DEC-948 amendment: POST /login rate budget is atomic under concurrency
     const success = await postLogin(app, env, csrf, cookie, { email: EMAIL, password: PASSWORD });
     expect(success.status).toBe(302);
 
-    const userBucket = state.rateLimits.find((r) => (r.key as string).startsWith(`ratelimit:login-user:${EMAIL}:`));
+    const userBucket = state.rateLimits.find((r) =>
+      (r.key as string).startsWith(`ratelimit:login-user:${loginIdentityKey(EMAIL, TEST_IP)}:`),
+    );
     expect(userBucket).toBeUndefined();
 
     // DEC-948 amendment: the per-IP bucket is a source budget, not a

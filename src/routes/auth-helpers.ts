@@ -17,6 +17,19 @@ export const AUTH_RATE_LIMIT_WINDOW_SECONDS = 900;
 export const AUTH_RATE_LIMIT_MAX = 20;
 export const RATE_LIMIT_ERROR = "Too many attempts. Try again in a few minutes.";
 
+// DEC-072 wave-54 amendment: the per-identity login budget is keyed on
+// email+IP together, not the bare email -- a bare-email key lets a stranger
+// who knows (or guesses) a valid organizer address exhaust that address's
+// budget from ANY source and lock the real owner out permanently (no
+// unlock path exists). Keying on email|ip means only the ATTACKER'S OWN
+// IP gets rate-limited against that email; the victim signing in from
+// their own IP is unaffected. This is the ONE place the "login-user"
+// scope key is assembled -- every touch of that bucket (admission,
+// refund on the per-IP deny path, reset on success) must call this.
+export function loginIdentityKey(email: string, ip: string): string {
+  return `${email}|${ip}`;
+}
+
 export interface LoginFooterEvent {
   name: string;
   slug: string;

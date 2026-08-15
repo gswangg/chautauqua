@@ -30,6 +30,7 @@ import { hashPassword } from "../src/auth/password";
 import { authRoutes } from "../src/routes/auth";
 import { registerErrorHandler } from "../src/server/http";
 import { CSRF_COOKIE_NAME } from "../src/auth/cookies";
+import { loginIdentityKey } from "../src/routes/auth-helpers";
 import type { AppEnv } from "../src/server/env";
 import type { KVStore } from "../src/auth/claim";
 
@@ -274,7 +275,7 @@ describe("POST /login: consume-then-refund leaves the expected bucket counts", (
     const { app, env, rateLimits } = await buildApp();
     const res = await postLogin(app, env, { email: EMAIL, password: PASSWORD });
     expect(res.status).toBe(302);
-    expect(bucketCount(rateLimits, "login-user", EMAIL)).toBe(0);
+    expect(bucketCount(rateLimits, "login-user", loginIdentityKey(EMAIL, "unknown"))).toBe(0);
     expect(bucketCount(rateLimits, "login-ip", "unknown")).toBe(0);
   });
 
@@ -282,7 +283,7 @@ describe("POST /login: consume-then-refund leaves the expected bucket counts", (
     const { app, env, rateLimits } = await buildApp();
     const res = await postLogin(app, env, { email: EMAIL, password: "wrong" });
     expect(res.status).toBe(401);
-    expect(bucketCount(rateLimits, "login-user", EMAIL)).toBe(1);
+    expect(bucketCount(rateLimits, "login-user", loginIdentityKey(EMAIL, "unknown"))).toBe(1);
     expect(bucketCount(rateLimits, "login-ip", "unknown")).toBe(1);
   });
 
@@ -299,7 +300,7 @@ describe("POST /login: consume-then-refund leaves the expected bucket counts", (
 
     const res = await postLogin(app, env, { email: EMAIL, password: "wrong" });
     expect(res.status).toBe(429);
-    expect(bucketCount(rateLimits, "login-user", EMAIL)).toBe(0);
+    expect(bucketCount(rateLimits, "login-user", loginIdentityKey(EMAIL, "unknown"))).toBe(0);
   });
 });
 
