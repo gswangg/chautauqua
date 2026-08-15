@@ -85,7 +85,7 @@ export function EmptyState({ variant, what, reason, action, escape, secondary }:
               </button>
             ))}
           {secondary && (
-            <Link to={secondary.to} className="chq-btn chq-btn-tertiary chq-empty-secondary">
+            <Link to={secondary.to} className="chq-btn chq-btn-tertiary">
               {secondary.label}
             </Link>
           )}
