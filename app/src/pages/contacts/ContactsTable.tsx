@@ -132,13 +132,13 @@ export function ContactsTable({
                       <span className="chq-meta">{c.email}</span>
                     </div>
                   </td>
-                  <td>
+                  <td data-label="Company">
                     <div className="chq-contacts-company-cell">
                       <span>{c.company ?? '—'}</span>
                       <span className="chq-meta">{c.title ?? '—'}</span>
                     </div>
                   </td>
-                  <td>
+                  <td data-label="Labels">
                     {/* DEC-738 amendment (wave 4): the server-formatted `key
                         value` strings render as plain small-caps meta, joined
                         by ' - ' — the bordered-chip chrome is gone, no

@@ -521,27 +521,24 @@
     order: 3;
   }
 
-  .chq-contacts-table tbody td:nth-child(3)::before {
-    content: 'Company';
-    display: block;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--chq-muted);
-    margin-bottom: 3px;
-  }
-
   .chq-contacts-table tbody td:nth-child(4) {
     order: 4;
     font-size: 13px;
     color: var(--chq-ink-2);
   }
 
-  .chq-contacts-table tbody td:nth-child(4)::before {
-    content: 'Labels: ';
-    font-weight: 600;
+  /* DEC-937 amendment (wave 24): the phone card's label is sourced from
+     the cell's own data-label (mirrored from its <th>), never from column
+     position -- a column change can no longer silently mislabel the card. */
+  .chq-contacts-table tbody td[data-label]::before {
+    content: attr(data-label) ': ';
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     color: var(--chq-muted);
+    margin-bottom: 3px;
   }
 
   .chq-contacts-table tbody td:nth-child(5) {
