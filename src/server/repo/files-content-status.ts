@@ -19,6 +19,20 @@ export function isValidContentStatus(value: unknown): value is ContentStatus {
   return typeof value === "string" && (CONTENT_STATUSES as readonly string[]).includes(value);
 }
 
+// DEC-720 (wave 53 amendment): `changes_requested` has exactly one writer —
+// POST /submissions/:id/content-note, which posts the note, moves status and
+// mails the speakers. The bare content-status routes (single + bulk) stay
+// mailer-free per DEC-720's original ruling, so they may only WRITE the two
+// values that carry no notification obligation. content-notes.ts continues
+// to write via updateContentStatus directly using the full CONTENT_STATUSES
+// vocabulary above — this narrower guard is for the two bare routes only.
+export const BARE_CONTENT_STATUS_WRITES = ["pending", "approved"] as const;
+export type BareContentStatusWrite = (typeof BARE_CONTENT_STATUS_WRITES)[number];
+
+export function isValidBareContentStatusWrite(value: unknown): value is BareContentStatusWrite {
+  return typeof value === "string" && (BARE_CONTENT_STATUS_WRITES as readonly string[]).includes(value);
+}
+
 // DEC-713: the one status a speaker may still delete their own latest
 // version under — imported by the delete route rather than re-listing the
 // "pending" literal.

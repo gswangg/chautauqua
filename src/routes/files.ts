@@ -52,7 +52,7 @@ import {
   HEADSHOT_KIND,
   insertFile,
   insertFileComment,
-  isValidContentStatus,
+  isValidBareContentStatusWrite,
   listEventDeliverableFiles,
   listFileComments,
   listSubmissionFiles,
@@ -277,8 +277,15 @@ fileApiRoutes.post("/submissions/:id/content-status", requireOrganizer, csrfJson
   if (scope.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
 
   const body = (await readOptionalJsonBody(c)) as unknown as { contentStatus?: unknown };
-  if (!isValidContentStatus(body.contentStatus)) {
-    throw new ApiError("invalid", "contentStatus must be one of pending, approved, changes_requested", {
+  if (body.contentStatus === "changes_requested") {
+    throw new ApiError(
+      "invalid",
+      "changes_requested is set by POST /api/v1/submissions/:id/content-note, which posts the note and emails the speakers",
+      { contentStatus: "Invalid value" },
+    );
+  }
+  if (!isValidBareContentStatusWrite(body.contentStatus)) {
+    throw new ApiError("invalid", "contentStatus must be one of pending, approved", {
       contentStatus: "Invalid value",
     });
   }

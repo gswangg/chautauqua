@@ -33,7 +33,7 @@ import {
   updateSubmissionFields,
   updateSubmissionStatuses,
 } from "../../server/repo/submissions";
-import { isValidContentStatus, updateContentStatuses } from "../../server/repo/files-content-status";
+import { isValidBareContentStatusWrite, updateContentStatuses } from "../../server/repo/files-content-status";
 import { isActiveParticipant } from "../../domain/acceptance";
 import { plural } from "../../domain/count-copy";
 import {
@@ -675,8 +675,15 @@ submissionsRoutes.post(
 
     const body = (await readOptionalJsonBody(c)) as unknown as ContentStatusUpdateBody;
     const ids = parseBoundedIdArray(body.ids, "ids"); // DEC-182
-    if (!isValidContentStatus(body.contentStatus)) {
-      throw new ApiError("invalid", "contentStatus must be one of pending, approved, changes_requested", {
+    if (body.contentStatus === "changes_requested") {
+      throw new ApiError(
+        "invalid",
+        "changes_requested is set by POST /api/v1/submissions/:id/content-note, which posts the note and emails the speakers",
+        { contentStatus: "Invalid value" },
+      );
+    }
+    if (!isValidBareContentStatusWrite(body.contentStatus)) {
+      throw new ApiError("invalid", "contentStatus must be one of pending, approved", {
         contentStatus: "Invalid value",
       });
     }
