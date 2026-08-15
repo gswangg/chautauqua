@@ -54,6 +54,7 @@ export {
 export {
   applyImportRows,
   planImportRows,
+  lookupContactIdsByEmail,
   MAX_IMPORT_ROWS,
   type ImportSkip,
   type ImportResult,

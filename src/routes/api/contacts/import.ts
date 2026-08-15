@@ -15,10 +15,12 @@ import {
   importFieldCapViolations,
   MAX_IMPORT_CSV_BYTES as DOMAIN_MAX_IMPORT_CSV_BYTES,
 } from "../../../domain/contacts"; // DEC-422 (amendment, wave 59)
-import { DEC_290, DEC_810 } from "../../../decisions";
+import { DEC_290, DEC_604, DEC_810 } from "../../../decisions";
 import { currentOrgId, asRecord, isPlainObject } from "./shared";
 import { MAX_NAME_LENGTH } from "../../../forms/validate"; // DEC-417
 import { overCapFieldMessage, overCapCountMessage } from "../../../domain/cap-copy";
+import { isValidEmail, normalizeEmail } from "../../../domain/email"; // DEC-604 amendment (wave 15)
+import { MAX_PARTICIPANTS_PER_SUBMISSION } from "../../../domain/participant-roles";
 
 // Compile-checked dependency marker: the optional eventId on POST
 // /contacts/import (roster-scoped import) implements DEC-290.
@@ -28,6 +30,12 @@ void DEC_290;
 // any import row -- the whole batch shares one session title, never an
 // invented per-row 'Invited: <name>' fallback (DEC-810).
 void DEC_810;
+// Compile-checked dependency marker: POST /contacts/import below refuses
+// (before any write, and before the dryRun branch so the Review step
+// discloses it too) a roster import whose distinct not-already-on-the-event
+// contacts would exceed MAX_PARTICIPANTS_PER_SUBMISSION on the batch's one
+// shared session (DEC-604 amendment, findings wave 15).
+void DEC_604;
 
 // DEC-417/DEC-422 (amendment, wave 59): the cap itself lives ONE place,
 // src/domain/contacts.ts, matching this route's own MAX_IMPORT_ROWS
@@ -158,6 +166,40 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
       throw new ApiError("invalid", err instanceof Error ? err.message : "Invalid column mapping", {
         mapping: err instanceof Error ? err.message : "invalid",
       });
+    }
+
+    // DEC-604 amendment (findings wave 15): a roster import's whole batch
+    // lands on ONE shared submission (DEC-810) -- refuse BEFORE any write
+    // (and before the dryRun branch, so the Review step discloses this too)
+    // when the distinct not-already-on-the-event-roster contacts in the
+    // file would exceed MAX_PARTICIPANTS_PER_SUBMISSION on that one
+    // session. Closes the door pushContactsToEvent -> insertActiveParticipants
+    // otherwise left open (a 200-row roster CSV writing 199 participants
+    // onto one submission against a cap of 6).
+    if (eventId !== undefined) {
+      const fileEmails = new Set<string>();
+      for (const { parsed } of rows) {
+        const email = typeof parsed.email === "string" ? parsed.email : undefined;
+        if (!email || email.trim() === "" || !isValidEmail(email)) continue;
+        fileEmails.add(normalizeEmail(email));
+      }
+      const existingByEmail = await repo.lookupContactIdsByEmail(c.var.db, orgId, [...fileEmails]);
+      const alreadyOnRosterForCap = new Set(await listAcceptedContactIds(c.var.db, eventId));
+      let toAddCount = 0;
+      for (const email of fileEmails) {
+        const contactId = existingByEmail.get(email);
+        if (contactId && alreadyOnRosterForCap.has(contactId)) continue;
+        toAddCount++;
+      }
+      if (toAddCount > MAX_PARTICIPANTS_PER_SUBMISSION) {
+        throw new ApiError(
+          "invalid",
+          `Importing this file onto one event session would add ${toAddCount} participants, which exceeds the ${MAX_PARTICIPANTS_PER_SUBMISSION}-participant-per-submission cap.`,
+          {
+            eventId: `${overCapCountMessage(toAddCount, MAX_PARTICIPANTS_PER_SUBMISSION, "participant")} -- import without choosing an event, then add speakers to sessions individually`,
+          },
+        );
+      }
     }
 
     if (dryRun) {
