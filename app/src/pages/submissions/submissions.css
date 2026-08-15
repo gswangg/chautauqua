@@ -203,7 +203,9 @@
   table-layout: fixed;
 }
 
-/* docs/design/Chautauqua Submissions.dc.html:103/107 nine-track grid:
+/* docs/design/Chautauqua Submissions.dc.html:103/107
+   `grid-template-columns:28px 74px 1fr 150px 130px 108px 92px 118px 64px`
+   nine-track grid:
    select 28 | Ref 74 | Title 1fr | Speakers 150 | Track 130 | Status 108 |
    Sent 92 | custom column 118 (the frame's 'Format' track) | Clone 64.
    Title deliberately carries no width declaration below -- it is the

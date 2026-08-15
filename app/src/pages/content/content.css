@@ -867,7 +867,8 @@
 }
 
 /* Session gets a fixed share of the grid (docs/design/Chautauqua
-   Content.dc.html:311 -- 1fr 190px 108px 92px auto). */
+   Content.dc.html:311 `grid-template-columns:1fr 190px 108px 92px auto`
+   -- 1fr 190px 108px 92px auto). */
 .chq-content-files-table .chq-content-files-col-session {
   width: 190px;
 }
@@ -883,7 +884,8 @@
    same shared .chq-content-table vocabulary class as the files table
    (w21's "shared vocabulary class is not a width hook" finding), so its
    fixed-layout tracks hang off this worklist-only class instead. Frame:
-   docs/design/Chautauqua Content.dc.html:81/85 --
+   docs/design/Chautauqua Content.dc.html:81/85
+   `grid-template-columns:26px 1fr 168px 200px 152px auto; gap:18px` --
    grid-template-columns:26px 1fr 168px 200px 152px auto; gap:18px --
    select / Session / Speaker / Latest file / Status / actions. */
 .chq-content-worklist-table {

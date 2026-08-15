@@ -122,7 +122,8 @@
   --chq-pub-main-pad-x: 34px;
   /* DEC-534 amendment (wave 4, task w4-g): the ONE time/room gutter width
      for the two-line time-over-room stack, per docs/design's "Public and
-     Portal" sheet (.dc.html:67 -- 126px). Consumed by BOTH
+     Portal" sheet (.dc.html:67 `grid-template-columns:126px 1fr auto`
+     -- 126px). Consumed by BOTH
      .chq-pub-session-row (cards.css.ts) and .chq-pub-schedule-row
      (rail.css.ts) so the two renderings of one stack can't drift again.
      Mirrored in THEME_CSS (DEC-367/372 shared vocabulary). */
@@ -190,7 +191,8 @@ a:hover {
 /* DEC-369 amendment (wave 22): the fitted 10.65px vertical padding and
    zeroed gap chased a gate-4/gate-5 render measurement that has since been
    superseded. The vendored frame (every admin header, e.g. docs/design/
-   Chautauqua Overview.dc.html:33; docs/design/README.md:149) declares
+   Chautauqua Overview.dc.html:33 `padding:15px 34px; display:flex;
+   align-items:center; gap:22px`; docs/design/README.md:149) declares
    padding: 15px 34px and gap: 22px -- restored below. */
 .chq-header {
   flex-shrink: 0;
@@ -254,7 +256,7 @@ a:hover {
 
 /* DEC-369 amendment (wave 22): the fitted 10.625px gap and +13px margin-left
    chased a gate-4/gate-5 render measurement now superseded. The frame
-   (docs/design/Chautauqua Overview.dc.html:35) declares gap: 15px; the
+   (docs/design/Chautauqua Overview.dc.html:35 `gap:15px`) declares gap: 15px; the
    wordmark<->nav separation is now the header's own 22px gap, so the
    margin-left glyph-overlap correction is moot and dropped. */
 .chq-nav {
@@ -1118,7 +1120,8 @@ a:hover {
 }
 
 /* w20-c (DEC-902 amendment): docs/design/Chautauqua Contacts.dc.html:97/101
-   give the directory table an exact track list -- 26px 1fr 130px 118px auto
+   `grid-template-columns:26px 1fr 130px 118px auto` give the directory
+   table an exact track list -- 26px 1fr 130px 118px auto
    -- but table-layout:auto left every column unwidthed and handed the
    remainder to whichever column the fleet happened to measure widest.
    table-layout:fixed plus a width on every column but one makes 'Name and

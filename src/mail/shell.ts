@@ -11,7 +11,12 @@
 // Gmail/Outlook/etc.), so the surface-CSS "no colour literal" scan does not
 // (and must not) cover mail markup. This licenses LITERALS, not arbitrary
 // colours -- every literal below is transcribed from the vendored frame
-// (docs/design/Chautauqua Comms.dc.html:699-741) and DESIGN-RULINGS.md B9,
+// (docs/design/Chautauqua Comms.dc.html:710-738
+// `max-width:560px; background:#F4F1E8; border:1px solid #D3CFC0;
+// border-radius:4px`, the 560px email card nested inside the frame's own
+// wider preview chrome; corrected from a prior wave's 699-741, which cited
+// the OUTER 620px preview-frame wrapper, not the email card itself) and
+// DESIGN-RULINGS.md B9,
 // and is enumerated in test/mail-shell-frame.test.ts's
 // PERMITTED_MAIL_COLOURS scan so a future literal outside this set fails
 // loudly. Do not copy these literals elsewhere.

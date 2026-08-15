@@ -17,7 +17,8 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
     display: grid;
     /* w4-g (DEC-534 amendment): the time-over-room stack draws two lines
        (start time, then room) per docs/design's "Public and Portal" sheet
-       (.dc.html:67), at a single shared gutter measure -- see
+       (.dc.html:67 \`grid-template-columns:126px 1fr auto\`), at a single
+       shared gutter measure -- see
        --chq-pub-when-gutter (declared once in app/src/styles.css /
        src/views/theme.ts, also consumed by .chq-pub-schedule-row in
        rail.css.ts so the two renderings of one stack can't drift). */

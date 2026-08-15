@@ -3,7 +3,8 @@
 // link to /portal, which speakerGate (./shared.tsx) redirects every
 // non-speaker session away from, so the action an organizer actually had was
 // none at all. This route builds the smallest honest version of the frame's
-// intent (docs/design/Chautauqua Settings.dc.html:175): a read-only preview
+// intent (docs/design/Chautauqua Settings.dc.html:175 `Open as a
+// speaker`): a read-only preview
 // of the producer's OWN portal configuration — branding, welcome message,
 // resources — never a person's data (no submissions, no task assignments,
 // no files scoped to a contact) and never a mutating control.

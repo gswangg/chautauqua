@@ -28,7 +28,8 @@ export interface AuthBandCopy {
   detail?: string;
 }
 
-// Frame copy: docs/design/Chautauqua Account.dc.html:302-305 ("Sign in ·
+// Frame copy: docs/design/Chautauqua Account.dc.html:303
+// `That email and password do not match` ("Sign in ·
 // rejected" / "One message for both wrong email and wrong password").
 export const LOGIN_REJECTED: AuthBandCopy = {
   headline: "That email and password do not match",
