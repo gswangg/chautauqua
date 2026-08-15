@@ -195,6 +195,6 @@ describe("DEC-829 (wave-32 amendment): reviewer queue hydrates emitted rows, not
         audienceLevel: "audience-sub-5",
       },
     ]);
-    expect(body.items[0].title).toBe("Talk One");
+    expect(body.items[0]?.title).toBe("Talk One");
   });
 });
