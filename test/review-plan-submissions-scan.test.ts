@@ -1,14 +1,16 @@
-// DEC-346 amendment (wave 57) coverage: listPlanFilteredSubmissions
-// (src/server/repo/review/submissions.ts) must (1) return byte-identical
-// refs/titles/trackIds to the pre-fix shape for both the filterTracks and
-// plain branches below MAX_PLAN_SUBMISSION_SCAN, (2) refuse loudly with an
-// ApiError('invalid') naming the cap once the matched-submission count
-// crosses it (never silently truncate), and (3) hydrate trackIds with
-// queries scoped to the MATCHED submission ids only -- never a
-// submission-joined, event-scoped scan. Exercised against an in-memory fake
-// DB that evaluates the actual drizzle where/join conditions the repo
-// builds, pattern copied from test/contacts-segment-scan-bounds.test.ts (no
-// D1 test harness exists in this repo).
+// DEC-346 amendment (wave 57) + DEC-829 amendment (wave 39) coverage:
+// listPlanFilteredSubmissions (src/server/repo/review/submissions.ts) must
+// (1) return byte-identical refs/titles/trackIds to the pre-fix shape for
+// both the filterTracks and plain branches below MAX_PLAN_SUBMISSION_SCAN,
+// (2) refuse loudly with an ApiError('invalid') naming the cap once the
+// matched-submission count (or, wave 39, the raw joined submission_track row
+// count) crosses it (never silently truncate), and (3) wave 39: hydrate
+// trackIds with ONE LEFT JOIN query over the matched set -- never a
+// chunkIds-batched `inArray` fan-out over submission_track. Exercised
+// against an in-memory fake DB that evaluates the actual drizzle
+// where/join/exists conditions the repo builds, pattern copied from
+// test/contacts-segment-scan-bounds.test.ts (no D1 test harness exists in
+// this repo).
 
 import { describe, expect, it, vi } from "vitest";
 import * as schema from "../src/db/schema";
@@ -19,7 +21,8 @@ import type { PlanRecord } from "../src/server/repo/review/plans";
 type Marker =
   | { __marker: "eq"; col: unknown; val: unknown }
   | { __marker: "and"; conds: unknown[] }
-  | { __marker: "inArray"; col: unknown; vals: unknown[] };
+  | { __marker: "inArray"; col: unknown; vals: unknown[] }
+  | { __marker: "exists"; whereExpr: unknown };
 
 vi.mock("drizzle-orm", async (importOriginal) => {
   const actual = await importOriginal<typeof import("drizzle-orm")>();
@@ -28,12 +31,22 @@ vi.mock("drizzle-orm", async (importOriginal) => {
     eq: (col: unknown, val: unknown): Marker => ({ __marker: "eq", col, val }),
     and: (...conds: unknown[]): Marker => ({ __marker: "and", conds }),
     inArray: (col: unknown, vals: unknown[]): Marker => ({ __marker: "inArray", col, vals }),
+    // DEC-829 (wave 39): exists() is called with the fake db's own chain
+    // object (db.select(...).from(...).where(...)) -- captures that chain's
+    // `__whereExpr` (set synchronously by .where(), read before the
+    // subquery is ever `.then()`-resolved) so evalExpr can evaluate the
+    // correlated EXISTS purely against the fixture, with no real SQL ever
+    // built.
+    exists: (subquery: { __whereExpr: unknown }): Marker => ({ __marker: "exists", whereExpr: subquery.__whereExpr }),
   };
 });
 
-const { listPlanFilteredSubmissions, resolveReviewerSubmissions, MAX_PLAN_SUBMISSION_SCAN } = await import(
-  "../src/server/repo/review/submissions"
-);
+const {
+  listPlanFilteredSubmissions,
+  resolveReviewerSubmissions,
+  MAX_PLAN_SUBMISSION_SCAN,
+  MAX_PLAN_SUBMISSION_TRACK_JOIN_SCAN,
+} = await import("../src/server/repo/review/submissions");
 const { getReviewerScopeTrackIds, listPlanIdsForReviewer, MAX_REVIEWER_SCOPE_ROWS } = await import(
   "../src/server/repo/review/reviewers"
 );
@@ -67,15 +80,33 @@ function resolveVal(x: unknown, ctx: Record<string, Record<string, unknown>>): u
   return x;
 }
 
-function evalExpr(marker: unknown, ctx: Record<string, Record<string, unknown>>): boolean {
+// DEC-829 (wave 39): exists's whereExpr correlates the subquery's own table
+// (submissionTrack) against the OUTER row (submission.id) -- so evaluating
+// it means trying each of THAT submission's own track rows (via the
+// submissionId -> tracks index, not a full fixture.tracks scan -- an O(n*m)
+// scan is what made the >20k-row overcap tests here take minutes) as the
+// inner context merged onto the outer ctx, asking whether any satisfies the
+// subquery's where.
+function evalExpr(
+  marker: unknown,
+  ctx: Record<string, Record<string, unknown>>,
+  tracksBySubmission: Map<string, FixtureTrack[]>,
+): boolean {
   const m = marker as Marker;
   switch (m.__marker) {
     case "eq":
       return resolveVal(m.col, ctx) === resolveVal(m.val, ctx);
     case "and":
-      return m.conds.every((c) => evalExpr(c, ctx));
+      return m.conds.every((c) => evalExpr(c, ctx, tracksBySubmission));
     case "inArray":
       return m.vals.includes(resolveVal(m.col, ctx));
+    case "exists": {
+      const subId = (ctx.submission as { id?: string } | undefined)?.id;
+      const candidates = subId !== undefined ? (tracksBySubmission.get(subId) ?? []) : [];
+      return candidates.some((t) =>
+        evalExpr(m.whereExpr, { ...ctx, submissionTrack: t as unknown as Record<string, unknown> }, tracksBySubmission),
+      );
+    }
     default:
       throw new Error(`fake db: unhandled marker ${(m as { __marker: string }).__marker}`);
   }
@@ -108,6 +139,7 @@ interface FixtureReviewer {
 interface FakeCall {
   table: "event" | "submission" | "submissionTrack" | "planReviewer";
   joined: boolean;
+  joinKind: "inner" | "left" | null;
   distinct: boolean;
   limitN?: number;
   orderByCalled: boolean;
@@ -122,18 +154,35 @@ function makeFakeDb(fixture: {
 }) {
   const reviewers = fixture.reviewers ?? [];
   const calls: FakeCall[] = [];
+  // Perf: index tracks by submissionId so both the join-row builder and the
+  // exists() correlation below are O(1)-per-submission, not an O(n*m) scan
+  // -- large-fixture tests (e.g. the 20k+1-submission overcap cases) would
+  // otherwise take minutes.
+  const tracksBySubmission = new Map<string, FixtureTrack[]>();
+  for (const t of fixture.tracks) {
+    const list = tracksBySubmission.get(t.submissionId) ?? [];
+    list.push(t);
+    tracksBySubmission.set(t.submissionId, list);
+  }
 
   function builder(proj: Record<string, unknown> | undefined, distinct: boolean) {
     return {
       from(table: unknown) {
         const tableName = tableNameOf(table);
         let joinTable: "submissionTrack" | null = null;
+        let joinKind: "inner" | "left" | null = null;
         let whereExpr: unknown;
         let orderByCalled = false;
         let limitN: number | undefined;
         const chain = {
           innerJoin(table2: unknown, _expr: unknown) {
             joinTable = tableNameOf(table2) as "submissionTrack";
+            joinKind = "inner";
+            return chain;
+          },
+          leftJoin(table2: unknown, _expr: unknown) {
+            joinTable = tableNameOf(table2) as "submissionTrack";
+            joinKind = "left";
             return chain;
           },
           where(expr: unknown) {
@@ -148,6 +197,13 @@ function makeFakeDb(fixture: {
             limitN = n;
             return chain;
           },
+          // DEC-829 (wave 39): exists()'s mock reads this synchronously off
+          // the subquery chain (db.select(...).from(...).where(...)) -- no
+          // `.then()` is ever called on the subquery itself, so its own
+          // projection/table never needs to resolve.
+          get __whereExpr() {
+            return whereExpr;
+          },
           then(resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) {
             return resolveNow().then(resolve, reject);
           },
@@ -161,10 +217,21 @@ function makeFakeDb(fixture: {
           } else if (tableName === "submission" && joinTable === "submissionTrack") {
             ctxRows = [];
             for (const s of fixture.submissions) {
-              for (const t of fixture.tracks.filter((t) => t.submissionId === s.id)) {
+              const matches = tracksBySubmission.get(s.id) ?? [];
+              if (matches.length > 0) {
+                for (const t of matches) {
+                  ctxRows.push({
+                    submission: s as unknown as Record<string, unknown>,
+                    submissionTrack: t as unknown as Record<string, unknown>,
+                  });
+                }
+              } else if (joinKind === "left") {
+                // No matching track row -- a LEFT JOIN still yields one row
+                // for this submission, with a null trackId (never present in
+                // an INNER JOIN).
                 ctxRows.push({
                   submission: s as unknown as Record<string, unknown>,
-                  submissionTrack: t as unknown as Record<string, unknown>,
+                  submissionTrack: { submissionId: s.id, trackId: null } as unknown as Record<string, unknown>,
                 });
               }
             }
@@ -176,7 +243,7 @@ function makeFakeDb(fixture: {
             throw new Error(`fake db: unsupported table/join combo ${tableName}/${String(joinTable)}`);
           }
 
-          let filtered = whereExpr ? ctxRows.filter((ctx) => evalExpr(whereExpr, ctx)) : ctxRows;
+          let filtered = whereExpr ? ctxRows.filter((ctx) => evalExpr(whereExpr, ctx, tracksBySubmission)) : ctxRows;
 
           if (tableName === "submission") {
             filtered = [...filtered].sort((a, b) => {
@@ -199,6 +266,7 @@ function makeFakeDb(fixture: {
           calls.push({
             table: tableName,
             joined: joinTable !== null,
+            joinKind,
             distinct,
             limitN,
             orderByCalled,
@@ -340,17 +408,30 @@ describe("listPlanFilteredSubmissions (DEC-346 amendment, wave 57)", () => {
     expect(calls.some((c) => c.table === "submissionTrack")).toBe(false);
   });
 
-  it("matched-submission query is ordered and capped at MAX_PLAN_SUBMISSION_SCAN + 1", async () => {
+  it("withTrackIds:false matched-submission query is ordered and capped at MAX_PLAN_SUBMISSION_SCAN + 1", async () => {
+    const submissions = makeSubmissions(5);
+    const { db, calls } = makeFakeDb({ events: [EVENT], submissions, tracks: [] });
+    const plan = makePlan();
+
+    await listPlanFilteredSubmissions(db, plan, { withTrackIds: false });
+
+    const submissionCall = calls.find((c) => c.table === "submission" && !c.joined);
+    expect(submissionCall).toBeDefined();
+    expect(submissionCall!.orderByCalled).toBe(true);
+    expect(submissionCall!.limitN).toBe(MAX_PLAN_SUBMISSION_SCAN + 1);
+  });
+
+  it("withTrackIds:true (default) joined query is ordered and capped at MAX_PLAN_SUBMISSION_TRACK_JOIN_SCAN + 1", async () => {
     const submissions = makeSubmissions(5);
     const { db, calls } = makeFakeDb({ events: [EVENT], submissions, tracks: [] });
     const plan = makePlan();
 
     await listPlanFilteredSubmissions(db, plan);
 
-    const submissionCall = calls.find((c) => c.table === "submission" && !c.joined);
-    expect(submissionCall).toBeDefined();
-    expect(submissionCall!.orderByCalled).toBe(true);
-    expect(submissionCall!.limitN).toBe(MAX_PLAN_SUBMISSION_SCAN + 1);
+    const joinedCall = calls.find((c) => c.table === "submission" && c.joined);
+    expect(joinedCall).toBeDefined();
+    expect(joinedCall!.orderByCalled).toBe(true);
+    expect(joinedCall!.limitN).toBe(MAX_PLAN_SUBMISSION_TRACK_JOIN_SCAN + 1);
   });
 
   it("exactly-cap matched rows passes; cap+1 refuses loudly naming the cap, for both branches", async () => {
@@ -380,36 +461,74 @@ describe("listPlanFilteredSubmissions (DEC-346 amendment, wave 57)", () => {
     // full-suite CPU contention, so it needs more than the 5s default timeout.
   }, 30_000);
 
-  it("trackIds hydration is id-scoped to the matched set -- never joins submission, never event-scoped", async () => {
-    const submissions = makeSubmissions(3);
-    const tracks: FixtureTrack[] = [
-      { submissionId: submissions[0]!.id, trackId: "trk-a" },
-      { submissionId: submissions[1]!.id, trackId: "trk-b" },
-    ];
-    const { db, calls } = makeFakeDb({ events: [EVENT], submissions, tracks });
-    const plan = makePlan();
-
-    await listPlanFilteredSubmissions(db, plan);
-
-    const trackCalls = calls.filter((c) => c.table === "submissionTrack");
-    expect(trackCalls.length).toBe(1); // 3 matched ids, well under ID_CHUNK_SIZE (90) -- one chunk
-    expect(trackCalls[0]!.joined).toBe(false); // never joined against submission
-    expect(trackCalls[0]!.matchedCount).toBe(2); // only the 2 rows for the 3 matched ids, not a whole-event scan
-  });
-
-  it("trackIds hydration issues one chunked call per ID_CHUNK_SIZE(90) matched ids, never a single unbounded scan", async () => {
-    const submissions = makeSubmissions(95);
+  // DEC-829 (wave 39): trackIds hydration is now ONE LEFT JOIN query over the
+  // matched set, never a chunkIds-batched inArray fan-out over
+  // submission_track. This is the landing-evidence regression: it must fail
+  // against the pre-fix (chunked) implementation.
+  it("trackIds hydration issues exactly ONE joined submission_track query, never a chunked fan-out, for a 2,000-submission plan", async () => {
+    const submissions = makeSubmissions(2000);
     const tracks: FixtureTrack[] = submissions.map((s) => ({ submissionId: s.id, trackId: "trk-a" }));
     const { db, calls } = makeFakeDb({ events: [EVENT], submissions, tracks });
     const plan = makePlan();
 
     const result = await listPlanFilteredSubmissions(db, plan);
-    expect(result.length).toBe(95);
+    expect(result.length).toBe(2000);
     expect(result.every((r) => r.trackIds.length === 1)).toBe(true);
 
-    const trackCalls = calls.filter((c) => c.table === "submissionTrack");
-    expect(trackCalls.length).toBe(2); // 95 ids / 90-per-chunk = 2 batches
+    // Old (chunked) implementation issued ~23 separate submissionTrack
+    // queries (ID_CHUNK_SIZE=90, 2000/90); the fix issues submission_track
+    // access only via the ONE joined submission query below.
+    const bareTrackCalls = calls.filter((c) => c.table === "submissionTrack" && !c.joined);
+    expect(bareTrackCalls.length).toBe(0);
+    const joinedCalls = calls.filter((c) => c.table === "submission" && c.joined);
+    expect(joinedCalls.length).toBe(1);
+    expect(joinedCalls[0]!.joinKind).toBe("left");
   });
+
+  it("the joined query's WHERE is the SAME predicate that determines the matched set (event_id + filters_json track EXISTS)", async () => {
+    const submissions = makeSubmissions(4);
+    const tracks: FixtureTrack[] = [
+      { submissionId: submissions[0]!.id, trackId: "trk-a" },
+      { submissionId: submissions[1]!.id, trackId: "trk-b" },
+      { submissionId: submissions[2]!.id, trackId: "trk-a" },
+    ];
+    const { db } = makeFakeDb({ events: [EVENT], submissions, tracks });
+    const plan = makePlan({ filters: { trackIds: ["trk-a"] } });
+
+    const result = await listPlanFilteredSubmissions(db, plan);
+    // Only submissions 0 and 2 carry trk-a; each result's trackIds is the
+    // FULL per-submission set, not narrowed to the filter.
+    expect(result.map((r) => r.id)).toEqual([submissions[0]!.id, submissions[2]!.id]);
+    expect(result.map((r) => r.trackIds)).toEqual([["trk-a"], ["trk-a"]]);
+  });
+
+  it("submissions with no tracks at all still come back once, with an empty trackIds array (LEFT not INNER join)", async () => {
+    const submissions = makeSubmissions(2);
+    const { db } = makeFakeDb({ events: [EVENT], submissions, tracks: [] });
+    const plan = makePlan();
+
+    const result = await listPlanFilteredSubmissions(db, plan);
+    expect(result.length).toBe(2);
+    expect(result.every((r) => r.trackIds.length === 0)).toBe(true);
+  });
+
+  it("joined row count over MAX_PLAN_SUBMISSION_TRACK_JOIN_SCAN refuses loudly naming the cap", async () => {
+    // One submission with more joined submission_track rows than the cap --
+    // exercises the raw-joined-row ceiling independently of the
+    // distinct-submission ceiling.
+    const submissions = makeSubmissions(1);
+    const tracks: FixtureTrack[] = Array.from({ length: MAX_PLAN_SUBMISSION_TRACK_JOIN_SCAN + 1 }, (_, i) => ({
+      submissionId: submissions[0]!.id,
+      trackId: `trk-${i}`,
+    }));
+    const { db } = makeFakeDb({ events: [EVENT], submissions, tracks });
+    const plan = makePlan();
+
+    await expect(listPlanFilteredSubmissions(db, plan)).rejects.toMatchObject({
+      code: "invalid",
+      message: expect.stringContaining(String(MAX_PLAN_SUBMISSION_TRACK_JOIN_SCAN)),
+    });
+  }, 30_000);
 });
 
 function makeUnrestrictedReviewers(planId: string, userId: string, n: number): FixtureReviewer[] {
