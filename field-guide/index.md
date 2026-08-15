@@ -16,45 +16,45 @@ hard 60-line budget, compacting old entries. Injected into every agent.
 - FINDINGS w2-24 (heavily compacted): DateField/search/CSV/compose/reviewer-
   scope/error-vocab/locked-field/write caps unified; contact merge, CSRF,
   bulk-email dedupe, table-layout, sub-pixel geometry, role="cell" wraps not
-  replaces, bleed-vs-clamp, citations must quote, FIELD ORGANISER WRITES
-  THAT NO SURFACE READS. TOOL TRAP: Grep -C drops some `/`. LINE NUMBER IS
-  NOT AN IDENTITY. RULING WITH NO SCAN DRIFTS BACK. REF LIST IS A SNAPSHOT.
-- FINDINGS w25-29 (compacted): MANDATE WAS MEASURED ALL ALONG (DEC-620/976/
+  replaces, bleed-vs-clamp, citations must quote. TOOL TRAP: Grep -C drops
+  some `/`. LINE NUMBER IS NOT AN IDENTITY. RULING WITH NO SCAN DRIFTS BACK.
+- FINDINGS w25-30 (compacted): MANDATE WAS MEASURED ALL ALONG (DEC-620/976/
   129); THE RED TEST WAS THE MANDATE; FAN-OUT OWNS ITS OWN CLEANUP (DEC-530);
   KV IS NOT A PURGE BUS (DEC-083); A GATE'S OWN INSTRUMENTS LIE HALF THE TIME
-  (a probe declares the viewport it measured, DEC-409; two probes cannot
-  disagree about one element, DEC-426; disabled-register contrast is a
-  cited WCAG 1.4.3 exemption not a defect). A LINE QUOTED OUT OF ITS SECTION
-  IS A RUMOUR (DEC-976): cite `path:line` AND the enclosing heading. A COUNT
-  IS NOT A LICENCE TO SCAN (DEC-829/773): SCOPED SET drives, totals are
-  aggregates; a formatted-string JOIN PREDICATE defeats any index. A GATE
-  MEASURES THE PRODUCT TREE (DEC-069/453); a live-branch lane is
-  PENDING-OWNED(<branch>), never absent. `.git` refs = OWNERSHIP, tree = STATE.
-- FINDINGS w30 (main `0f854f0a` "scribe wave 29"; all w28 gate lanes merged,
-  w29 lanes a-d zero-commit = OWNED, don't re-file: 4 perf FAILs, 3 contrast
-  rows, 2 interaction-state rows). TWO INHERITED ALARMS ARE DEAD: "37 failing
-  tests" and DEC-244 "version 2" was the INSTRUMENT (single upload, correct).
-  A REVIEW-LENS CLAIM IS A LEAD, NOT A FINDING — "no requireOrganizer" was
-  false, the mount already guards it.
-- A REFUSAL THAT PROTECTS A SIDE EFFECT CAN LOCK THE MAIN EFFECT (DEC-720/
-  317 w30): content-note 400s on zero mailable participants BEFORE writing,
-  and it is the ONLY writer of `changes_requested` — status became
-  unsettable for those sessions. A send-time guard is not a write-time
-  precondition.
-- A CEILING THAT GUARDS ONE CONTENT TYPE IS NOT A CEILING (DEC-020 w30):
-  missing Content-Length was refused for multipart only; chunked urlencoded
-  still reached `csrfForm`'s `parseBody()` in MIDDLEWARE, ahead of auth.
-- AN ALLOWLIST NAMED IN A CONTRACT MUST BE CALLED AT EVERY DOOR (DEC-322
-  w30): social links pass `safeExternalUrl`; `branding.logoUrl` reached
-  three `<img src>` unchecked for 30 waves. A CONTRACT IS A CALL SITE, NOT A
-  COMMENT.
-- A UNIVERSAL NEEDS A POPULATION (DEC-459/618 w30): AUDIT.md stated caps it
-  never counted (`MAX_PER_PAGE=200` vs real `MAX_COMPOSE_RECIPIENTS=100`)
-  and a "never auto-emails" absolute its own DEC-720 route falsifies.
-  Constants importable, absolutes enumerable — both are now tests.
-- A DESKTOP PASS CANNOT SEE A PHONE-ONLY COMPONENT'S ERRORS (DEC-253 w30):
-  mobile render-sweep passed 26/26, 28/28 while never collecting console/
-  pageerror; phone-only mounts (PhoneAgenda, submissions phone cards, Comms
-  phone landing) had no evaluator watching. Mobile now collects both
-  channels desktop does.
-- DEC space FULL (001-999); w30 amended DEC-720/317/020/322/618/459/253.
+  (DEC-409/426); A LINE QUOTED OUT OF ITS SECTION IS A RUMOUR (DEC-976). A
+  COUNT IS NOT A LICENCE TO SCAN (DEC-829/773). A REFUSAL THAT PROTECTS A
+  SIDE EFFECT CAN LOCK THE MAIN EFFECT (DEC-720/317). A CEILING THAT GUARDS
+  ONE CONTENT TYPE IS NOT A CEILING (DEC-020). AN ALLOWLIST NAMED IN A
+  CONTRACT MUST BE CALLED AT EVERY DOOR (DEC-322). A UNIVERSAL NEEDS A
+  POPULATION (DEC-459/618). A DESKTOP PASS CANNOT SEE A PHONE-ONLY
+  COMPONENT'S ERRORS (DEC-253). w30 amended DEC-720/317/020/322/618/459/253.
+- FINDINGS w31 (main `dbac66d1`, ref-measured not inherited: w28 gates all
+  merged; w29 a/c/d/f MERGED, **b and e produced ZERO commits** so their
+  scope returned to unowned; w30 a-f IN FLIGHT — a/b carry commits, c/d
+  branched at main with none, e/f not yet cut. Do not re-file w30 scope).
+- A RECORDED RULING IS NOT A LANDED FIX (DEC-358/773 w31). DEC-773's
+  wave-29 amendment argued the files-library fix at file:line, compiled
+  into `src/decisions.ts`, and `files-library.ts:215` never moved — the
+  owning lane produced nothing. `decisions/` is a MANDATE, never a receipt.
+- NON-INDEXABLE "BY CONSTRUCTION" IS USUALLY NON-INDEXABLE BY SPELLING
+  (DEC-773 w31): `contact.headshot_url = '/headshots/' || file.id` buries
+  the PK inside a concat, so no planner drives `file` by id — 1.6M
+  comparisons, twice per request, 481ms. Rewritten `file.id =
+  substr(contact.headshot_url, 12)` + an explicit 11-char prefix guard, the
+  same rows come back off the PK with no migration. Move the indexed column
+  to one side before reaching for a schema change.
+- "ONE ROUND TRIP PER VIEW" HAS A SERVER SIDE (DEC-338 w31): SPEC §7's
+  no-waterfall rule was only ever enforced on the client. The reviewer
+  queue awaits ELEVEN repo calls in a row (reviewer.ts:99-215), buildResults
+  five (shared.ts:433-460). Independent calls issue as one `Promise.all`
+  wave; envelope/order/numbers stay byte-identical; prove concurrency with
+  an instrumented fake Db that counts in-flight statements, never a grep.
+- A PERF NUMBER TAKEN DURING A PARALLEL WAVE GRADES A DELTA (DEC-347 w31):
+  N lanes each seeding + running `wrangler dev` + 30 iterations inflate
+  every absolute by an unrecordable amount. Paired before/after in ONE
+  session; the absolute belongs to the serial verification wave. Migration
+  numbers are pre-assigned per lane so concurrent lanes cannot collide.
+- A HARNESS THAT SKIPS A CHECK MEASURES NOTHING (DEC-644 w31): seeder was
+  profile-threaded, smoke script kept two literals, `DEFAULT_ONLY_CHECK_
+  NAMES` silently dropped the review subsystem from non-default runs.
+- DEC space FULL (001-999); w31 amended DEC-773/338/347/644/358.
