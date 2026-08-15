@@ -262,20 +262,26 @@ export interface HeadshotServeScope {
  * reuses repo/public.ts's visibleSubmissionConditions() verbatim so the
  * gate can never drift from the public speakers/sessions surfaces. */
 export async function getHeadshotServeScope(db: Db, fileId: string): Promise<HeadshotServeScope | null> {
-  const fileRows = await db
-    .select({ kind: schema.file.kind, r2Key: schema.file.r2Key, contentType: schema.file.contentType })
-    .from(schema.file)
-    .where(eq(schema.file.id, fileId))
-    .limit(1);
+  const [fileRows, contactRows] = await Promise.all([
+    db
+      .select({ kind: schema.file.kind, r2Key: schema.file.r2Key, contentType: schema.file.contentType })
+      .from(schema.file)
+      .where(eq(schema.file.id, fileId))
+      .limit(1),
+    // DEC-773 amendment (w32-e): indexed lookup via contact_headshot_file_id_idx
+    // instead of an unindexed headshotUrl string scan -- headshotFileId is
+    // written together with headshotUrl at every writer (setContactHeadshot,
+    // contacts/merge.ts, scripts/seed.ts), so this stays semantically
+    // identical: a superseded upload still 404s.
+    db
+      .select({ id: schema.contact.id, orgId: schema.contact.orgId })
+      .from(schema.contact)
+      .where(eq(schema.contact.headshotFileId, fileId))
+      .limit(1),
+  ]);
   const fileRow = fileRows[0];
   if (!fileRow || fileRow.kind !== "headshot") return null;
 
-  const headshotUrl = `/headshots/${fileId}`;
-  const contactRows = await db
-    .select({ id: schema.contact.id, orgId: schema.contact.orgId })
-    .from(schema.contact)
-    .where(eq(schema.contact.headshotUrl, headshotUrl))
-    .limit(1);
   const contactRow = contactRows[0];
   if (!contactRow) return null;
 

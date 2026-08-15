@@ -90,6 +90,7 @@ function contactRow(opts: Partial<Record<string, unknown>> = {}) {
     phone: null,
     notes: null,
     headshotUrl: null,
+    headshotFileId: null,
     userId: null,
     ...opts,
   };
@@ -203,9 +204,9 @@ describe("DEC-930 getSpeakerDetail", () => {
     });
   });
 
-  it("parses headshotFileId out of contact.headshotUrl's /headshots/<fileId> shape", async () => {
+  it("reads headshotFileId straight off contact.headshot_file_id (DEC-773 amendment, w32-e)", async () => {
     const { db } = fakeDb({
-      contact: [contactRow({ headshotUrl: "/headshots/file-abc" })],
+      contact: [contactRow({ headshotUrl: "/headshots/file-abc", headshotFileId: "file-abc" })],
       event: [eventRow()],
       participant: [participantRow("sub-1", 1)],
     });
@@ -213,13 +214,13 @@ describe("DEC-930 getSpeakerDetail", () => {
     expect(detail?.contact.headshotFileId).toBe("file-abc");
   });
 
-  it("throws loudly on a malformed stored headshotUrl rather than guessing a file id", async () => {
+  it("throws loudly when headshotUrl is set but headshotFileId is null (single-home invariant violated)", async () => {
     const { db } = fakeDb({
-      contact: [contactRow({ headshotUrl: "not-a-headshot-path" })],
+      contact: [contactRow({ headshotUrl: "/headshots/file-abc", headshotFileId: null })],
       event: [eventRow()],
       participant: [participantRow("sub-1", 1)],
     });
-    await expect(getSpeakerDetail(db, EVENT_ID, CONTACT_ID)).rejects.toThrow(/headshotUrl/);
+    await expect(getSpeakerDetail(db, EVENT_ID, CONTACT_ID)).rejects.toThrow(/headshotFileId/);
   });
 
   it("carries phone/notes straight through from the contact row", async () => {

@@ -263,7 +263,19 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     // reads as decoration, not as a record. headshotUrl is `/headshots/:fileId`.
     let headshotFile: { filename: string; uploadedAt: number } | null = null;
     if (contact.headshotUrl) {
-      const fileId = contact.headshotUrl.split("/").pop()!;
+      // DEC-773 amendment (w32-e): headshotFileId is the single home for the
+      // file id -- headshotUrl and headshotFileId are always written together
+      // (profile.ts's setContactHeadshot, contacts/merge.ts, scripts/seed.ts),
+      // so a non-null url with a null fk means that invariant was violated.
+      const [fkRow] = await c.var.db
+        .select({ headshotFileId: schema.contact.headshotFileId })
+        .from(schema.contact)
+        .where(eq(schema.contact.id, contact.id))
+        .limit(1);
+      if (!fkRow?.headshotFileId) {
+        throw new Error(`Contact ${contact.id} has headshotUrl but no headshotFileId`);
+      }
+      const fileId = fkRow.headshotFileId;
       const [row] = await c.var.db
         .select({ filename: schema.file.filename, createdAt: schema.file.createdAt })
         .from(schema.file)
