@@ -57,6 +57,10 @@ vi.mock("../src/server/repo/embeds", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/embeds")>("../src/server/repo/embeds");
   return {
     ...actual,
+    // DEC-822 cap: POST now counts existing embeds before creating. The
+    // fake db here has no .select, so this must be mocked like every other
+    // repo call this file already stubs.
+    countEmbeds: vi.fn(async () => store.size),
     createEmbed: vi.fn(
       async (_db: unknown, orgId: string, eventId: string, name: string, surface: string, format: string, optionsJson: string) => {
         const id = `emb-${nextId++}`;
