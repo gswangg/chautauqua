@@ -25,8 +25,19 @@ import {
 // appends, so calling this last wins. Without this, a stale "not found"
 // page (e.g. before an organizer approves a session) could be cached by a
 // browser/proxy for up to max-age=60 after the underlying data changes.
+//
+// DEC-099 wave-35 amendment: setCacheHeaders(c) also sets Vary: Cookie
+// earlier in the same handler, and c.header() only overwrites the header it
+// names -- Cache-Control: no-store above does NOT clear a Vary: Cookie set
+// moments earlier, so without the line below this response would carry both
+// "never cache this" and "cache-key on Cookie", violating the closed rule
+// test/public-cacheability-enumeration.test.ts asserts (a response carrying
+// Vary: Cookie must be cacheable). c.header(name, undefined) deletes the
+// header (src/../node_modules/hono/dist/context.js) rather than setting it
+// to an empty string.
 export async function publicNotFound(c: Context<AppEnv>, message: string): Promise<Response> {
   c.header("Cache-Control", "no-store");
+  c.header("Vary", undefined);
   const eyebrow = await resolveNotFoundEyebrow(c.var.db);
   return await c.html(
     <NotFoundDocument eyebrow={eyebrow} body={message} links={ANONYMOUS_NOT_FOUND_LINKS} />,
@@ -64,6 +75,10 @@ export async function publicErrorDocument(
   status: 400 | 401 | 403 | 404 | 409 | 500,
 ): Promise<Response> {
   c.header("Cache-Control", "no-store");
+  // DEC-099 wave-35 amendment: see publicNotFound above -- clears a
+  // Vary: Cookie set earlier in the same handler by setCacheHeaders(c) so a
+  // forced-no-store response never also carries the cache-key hint.
+  c.header("Vary", undefined);
   const eventSlug = c.req.param("eventSlug");
   const links = eventSlug
     ? [{ href: `/e/${eventSlug}/sessions`, label: "Back to the event" }, ...ANONYMOUS_NOT_FOUND_LINKS]
