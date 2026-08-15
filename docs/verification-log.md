@@ -4748,46 +4748,6 @@ RESULT: PASS (reviewer queue, all 3 runs) / PASS (plan results (page 1),
 all 3 runs) at a0b8501b, both mandate rows read at a boundary carrying
 both DEC-644-referenced review-side fixes simultaneously.
 OPEN ITEMS: 1
-## 2026-08-15 task-w36-a — build+test+bundle @ f5783479
-
-QUALIFYING
-
-INVALIDATED BY: src/** app/src/** migrations/** package.json
-
-DEC-644 wave-36 boundary. `git rev-parse HEAD` at
-f5783479c7a1b8c96ef1506c3cfff1661fd6e338 (task-w36-a tip). Newest
-product-bearing sha on the first-parent line
-(`git log --first-parent -1 --format=%H -- src/ app/src/ migrations/
-package.json`): 3a041507287b2dca3abeda3e0648a41ddeba9707. Every live ref
-matching `task-w3*` in `git for-each-ref refs/heads`, each checked via
-`git merge-base --is-ancestor <ref> HEAD`: task-w35-a ANCESTOR (exit 0),
-task-w35-e ANCESTOR (exit 0), task-w35-f ANCESTOR (exit 0), task-w36-a
-ANCESTOR (exit 0, self).
-
-`npm run build` (worker `tsc --noEmit`, app `tsc --noEmit -p
-app/tsconfig.json`, then `vite build --config app/vite.config.ts`): clean,
-no errors.
-
-Full suite via the sanctioned entrypoint `sh scripts/with-test-lock.sh
-npx vitest run`:
-
-```
- Test Files  1084 passed (1084)
-      Tests  11898 passed (11898)
-```
-
-No failures.
-
-`npm run bundle:check`: `Entry bundle: index-9Qx35kD0.js +
-index-DpG2gFFa.css = 69.20 kB gzip (budget 300.00 kB)` — `bundle:check
-PASSED`. 69.20 kB gzip vs SPEC §7's 300 kB budget.
-
-Full detail: docs/verification-log/task-w36-a-build-test-f5783479.md.
-
-RESULT: PASS (build clean, 1084/1084 test files and 11898/11898 tests
-green, bundle 69.20 kB gzip vs 300 kB budget) at f5783479, all three live
-w3*-glob sibling refs confirmed ANCESTOR.
-OPEN ITEMS: 0
 ## 2026-08-15 task-w36-b — walkthrough @ f5783479
 
 QUALIFYING
@@ -4844,6 +4804,85 @@ including the break-lifecycle, printable-programme, and anonymous-hub
 sections, after correcting a gitignored env-config mismatch (not a
 product defect).
 OPEN ITEMS: 0
+## 2026-08-15 task-w36-a — build+test+bundle @ f5783479
+
+QUALIFYING
+
+INVALIDATED BY: src/** app/src/** migrations/** package.json
+
+DEC-644 wave-36 boundary. `git rev-parse HEAD` at
+f5783479c7a1b8c96ef1506c3cfff1661fd6e338 (task-w36-a tip). Newest
+product-bearing sha on the first-parent line
+(`git log --first-parent -1 --format=%H -- src/ app/src/ migrations/
+package.json`): 3a041507287b2dca3abeda3e0648a41ddeba9707. Every live ref
+matching `task-w3*` in `git for-each-ref refs/heads`, each checked via
+`git merge-base --is-ancestor <ref> HEAD`: task-w35-a ANCESTOR (exit 0),
+task-w35-e ANCESTOR (exit 0), task-w35-f ANCESTOR (exit 0), task-w36-a
+ANCESTOR (exit 0, self).
+
+`npm run build` (worker `tsc --noEmit`, app `tsc --noEmit -p
+app/tsconfig.json`, then `vite build --config app/vite.config.ts`): clean,
+no errors.
+
+Full suite via the sanctioned entrypoint `sh scripts/with-test-lock.sh
+npx vitest run`:
+
+```
+ Test Files  1084 passed (1084)
+      Tests  11898 passed (11898)
+```
+
+No failures.
+
+`npm run bundle:check`: `Entry bundle: index-9Qx35kD0.js +
+index-DpG2gFFa.css = 69.20 kB gzip (budget 300.00 kB)` — `bundle:check
+PASSED`. 69.20 kB gzip vs SPEC §7's 300 kB budget.
+
+Full detail: docs/verification-log/task-w36-a-build-test-f5783479.md.
+
+RESULT: PASS (build clean, 1084/1084 test files and 11898/11898 tests
+green, bundle 69.20 kB gzip vs 300 kB budget) at f5783479, all three live
+w3*-glob sibling refs confirmed ANCESTOR.
+OPEN ITEMS: 0
+## 2026-08-15 task-w36-d — spec-audit @ f5783479
+
+QUALIFYING
+
+INVALIDATED BY: src/** app/src/** migrations/** package.json
+
+DEC-644 wave-36 three-sha boundary: HEAD `f5783479`; newest product-bearing
+first-parent sha `3a041507` (`merge task-w35-c`); live `task-w3*` sibling
+refs — `task-w36-a` ANCESTOR (identical to HEAD), `task-w36-b`
+NOT-ANCESTOR (advanced past HEAD, its work is `MEASURED-WITHOUT
+(task-w36-b)`), `task-w36-c` ANCESTOR (identical to HEAD), `task-w36-e`
+ANCESTOR (identical to HEAD). §8/§9 (DEC-063 wave-27): one-line citations,
+nine-consecutive-PASS retirement; SPEC §9's four named cheap invariants
+(DEC-063 wave-35) cited as the closed population `test/spec9-invariants
+.test.ts`, all four `describe(` blocks confirmed present (`task-w35-e`'s
+merge, `4a016110`, is an ancestor of this HEAD, so this is a confirmed
+citation, not PENDING-OWNED). Five §6/§7 static checks (DEC-063 wave-27):
+(1) FK-index cross-check — schema/migrations diff since `c6dbdb7c` is
+non-empty (`migrations/0040-0042`, `src/db/schema/org.ts`,
+`src/db/schema/review.ts`); re-derived the delta and found the new
+`contact.headshotFileId` column and both new `evaluation` composite
+indexes are each covering-indexed in the same commit — zero gaps, table
+extended not just carried forward; `(event_id,status)` /
+`(event_id,slug)` unchanged. (2) `app/src/App.tsx` code-split by route —
+unchanged, every page still `lazy(pageLoaders.X)`. (3) `< 300 KB gz` —
+NOT re-run per this task's brief (`task-w36-a` owns the number); most
+recent ancestor reading is `c6dbdb7c`'s 69.19 kB gz, 126 commits stale —
+recorded PENDING-OWNED(task-w36-a), not inferred PASS. (4) parameterized
+queries only — zero raw-SQL string-concatenation hits outside the Drizzle
+`sql` tag. (5) no HTML content type served — `assertServedContentTypeHeader`
+(`src/domain/files.ts:546-548`) unchanged, still called before every
+served response. `docs/eval-rubric/*.yaml` coverage: 116 IDs total,
+identical per-file breakdown to every prior audit since `task-w25-e` (no
+rubric file added/removed/ID-modified); testability breakdown tabulated
+per file in the companion doc. Full detail:
+`docs/verification-log/task-w36-d-spec-audit-f5783479.md`.
+
+RESULT: QUALIFYING
+OPEN ITEMS: 1
 ## 2026-08-15 task-w36-c — perf-smoke @ f5783479 [QUALIFYING]
 
 INVALIDATED BY: src/** app/src/** migrations/** package.json
@@ -4919,45 +4958,6 @@ boundary) at f5783479c7a1b8c96ef1506c3cfff1661fd6e338. `files library (page
 submission detail` all PASS but reachable only via this lane's
 measurement-only local D1 workaround, not the documented recipe.
 OPEN ITEMS: 4
-## 2026-08-15 task-w36-d — spec-audit @ f5783479
-
-QUALIFYING
-
-INVALIDATED BY: src/** app/src/** migrations/** package.json
-
-DEC-644 wave-36 three-sha boundary: HEAD `f5783479`; newest product-bearing
-first-parent sha `3a041507` (`merge task-w35-c`); live `task-w3*` sibling
-refs — `task-w36-a` ANCESTOR (identical to HEAD), `task-w36-b`
-NOT-ANCESTOR (advanced past HEAD, its work is `MEASURED-WITHOUT
-(task-w36-b)`), `task-w36-c` ANCESTOR (identical to HEAD), `task-w36-e`
-ANCESTOR (identical to HEAD). §8/§9 (DEC-063 wave-27): one-line citations,
-nine-consecutive-PASS retirement; SPEC §9's four named cheap invariants
-(DEC-063 wave-35) cited as the closed population `test/spec9-invariants
-.test.ts`, all four `describe(` blocks confirmed present (`task-w35-e`'s
-merge, `4a016110`, is an ancestor of this HEAD, so this is a confirmed
-citation, not PENDING-OWNED). Five §6/§7 static checks (DEC-063 wave-27):
-(1) FK-index cross-check — schema/migrations diff since `c6dbdb7c` is
-non-empty (`migrations/0040-0042`, `src/db/schema/org.ts`,
-`src/db/schema/review.ts`); re-derived the delta and found the new
-`contact.headshotFileId` column and both new `evaluation` composite
-indexes are each covering-indexed in the same commit — zero gaps, table
-extended not just carried forward; `(event_id,status)` /
-`(event_id,slug)` unchanged. (2) `app/src/App.tsx` code-split by route —
-unchanged, every page still `lazy(pageLoaders.X)`. (3) `< 300 KB gz` —
-NOT re-run per this task's brief (`task-w36-a` owns the number); most
-recent ancestor reading is `c6dbdb7c`'s 69.19 kB gz, 126 commits stale —
-recorded PENDING-OWNED(task-w36-a), not inferred PASS. (4) parameterized
-queries only — zero raw-SQL string-concatenation hits outside the Drizzle
-`sql` tag. (5) no HTML content type served — `assertServedContentTypeHeader`
-(`src/domain/files.ts:546-548`) unchanged, still called before every
-served response. `docs/eval-rubric/*.yaml` coverage: 116 IDs total,
-identical per-file breakdown to every prior audit since `task-w25-e` (no
-rubric file added/removed/ID-modified); testability breakdown tabulated
-per file in the companion doc. Full detail:
-`docs/verification-log/task-w36-d-spec-audit-f5783479.md`.
-
-RESULT: QUALIFYING
-OPEN ITEMS: 1
 ## 2026-08-15 task-w36-e — render-sweep @ f5783479
 
 QUALIFYING (advisory to the DEC-069 predicate)
