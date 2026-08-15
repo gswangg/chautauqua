@@ -126,6 +126,22 @@ export async function countSavedViews(db: Db, eventId: string, viewerUserId: str
   return Number(rows[0]?.count ?? 0);
 }
 
+/** DEC-422 wave-10 amendment: the per-event saved-view CAP predicate, kept
+ * deliberately separate from visibleToViewer/countSavedViews above. The cap
+ * is authorship, not visibility -- counting shared rows authored by other
+ * organisers here would let a handful of colleagues who like `shared: true`
+ * permanently lock everyone else in the org out of creating a view (nobody
+ * can create past the cap, nobody can delete someone else's row). Legacy
+ * rows with createdByUserId === null are pre-DEC-904 org-owned rows and are
+ * NOT counted against any individual author. */
+export async function countSavedViewsCreatedBy(db: Db, eventId: string, createdByUserId: string): Promise<number> {
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.savedView)
+    .where(and(eq(schema.savedView.eventId, eventId), eq(schema.savedView.createdByUserId, createdByUserId)));
+  return Number(rows[0]?.count ?? 0);
+}
+
 export async function createSavedView(
   db: Db,
   eventId: string,
