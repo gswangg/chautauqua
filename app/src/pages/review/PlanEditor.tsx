@@ -42,7 +42,11 @@ import {
 // DEC-676: the plan editor's weighted-share display and new-plan defaults
 // are computed by the same pure domain functions the server uses -- no
 // re-derivation of the weight-share math client-side.
-import { criterionWeightShares, DEFAULT_PLAN_CRITERIA } from '../../../../src/domain/evaluation';
+import {
+  criterionWeightShares,
+  DEFAULT_PLAN_CRITERIA,
+  MAX_CRITERION_GUIDANCE_LENGTH,
+} from '../../../../src/domain/evaluation';
 import { DEC_745, DEC_786, DEC_824, DEC_882, DEC_715, DEC_213, DEC_124 } from '../../../../src/decisions';
 import { countOf } from '../../lib/plural';
 // w40-e/DEC-745 amendment: the reviewer roster is the ONE place an
@@ -1506,6 +1510,7 @@ export function PlanEditor() {
                       aria-label={`${criterion.label || 'criterion'} guidance`}
                       value={criterion.guidance ?? ''}
                       disabled={activeRoundIsLocked}
+                      maxLength={MAX_CRITERION_GUIDANCE_LENGTH}
                       onChange={(e) =>
                         setEditingCriteria((c) => updateCriterion(c, criterion.id, { guidance: e.target.value }))
                       }

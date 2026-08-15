@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { PlanEditor } from './PlanEditor';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 import { guardedNavigate } from '../../lib/useNavExceptions';
+import { MAX_CRITERION_GUIDANCE_LENGTH } from '../../../../src/domain/evaluation';
 
 const EVENT_ID = 'evt-plan-editor';
 const PLAN_ID = 'plan-1';
@@ -518,6 +519,7 @@ describe('PlanEditor render smoke', () => {
     // Each default carries its own one-line guidance.
     const guidanceInputs = screen.getAllByPlaceholderText('Guidance (optional, one line)') as HTMLInputElement[];
     expect(guidanceInputs.every((el) => el.value.length > 0)).toBe(true);
+    expect(guidanceInputs.every((el) => el.maxLength === MAX_CRITERION_GUIDANCE_LENGTH)).toBe(true);
   });
 
   // DEC-676: weights are relative and plan-wide; the editor renders the

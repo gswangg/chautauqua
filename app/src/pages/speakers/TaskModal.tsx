@@ -11,6 +11,10 @@ import {
 import { DateField } from '../../components/DateField';
 import { FormRow, ModalFrame } from '../../components/ModalFrame';
 import { dateInputToMs, msToDateInput } from '../../lib/dates';
+// The instructions textarea reads the SAME cap the server enforces
+// (src/routes/tasks.ts's parseInstructions) so the control can never drift
+// from the rule that actually validates it.
+import { MAX_TASK_INSTRUCTIONS_LENGTH } from '../../../../src/domain/task-copy';
 
 interface TaskModalProps {
   onCancel: () => void;
@@ -184,6 +188,7 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = nul
             value={instructions}
             onChange={(e) => setInstructions(e.target.value)}
             placeholder="16:9, under 20 MB, PDF or Keynote"
+            maxLength={MAX_TASK_INSTRUCTIONS_LENGTH}
             rows={3}
           />
         </FormRow>

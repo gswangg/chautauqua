@@ -17,6 +17,7 @@ import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from "../forms/validate"; // DE
 import { isEpochMs } from "./api/validators"; // DEC-517/DEC-527
 import { DEC_120, DEC_124, DEC_214, DEC_240, DEC_291, DEC_398, DEC_754 } from "../decisions";
 import { FILE_KINDS, isValidFileKind, type FileKind } from "../domain/files";
+import { MAX_TASK_INSTRUCTIONS_LENGTH } from "../domain/task-copy";
 import { findFormById } from "../server/repo/forms";
 import {
   assignTask,
@@ -64,7 +65,7 @@ void DEC_291;
 // DEC-398: a form task's formId must resolve to a form on the task's own
 // event -- validated below on both create and patch.
 void DEC_398;
-// DEC-124: instructions is capped server-side at MAX_INSTRUCTIONS_LENGTH with
+// DEC-124: instructions is capped server-side at MAX_TASK_INSTRUCTIONS_LENGTH with
 // the same field-level "Too long (max N characters)" grammar
 // validateAnswers uses for form text answers, referenced below so this
 // dependency is compile-checked (see decisions.ts).
@@ -75,16 +76,11 @@ export const taskRoutes = new Hono<AppEnv>();
 const TASK_KINDS = new Set(["general", "file_request", "form"]);
 const ASSIGNMENT_STATUSES = new Set<TaskAssignmentStatus>(["pending", "complete"]);
 
-// CNT-01: a task's instructions is a free-text brief for the assignee,
-// distinct from `description`. Capped separately from MAX_LONG_TEXT_LENGTH
-// per this task's spec (2,000 chars, not 20,000).
-const MAX_INSTRUCTIONS_LENGTH = 2000;
-
 /** Trims `body.instructions`, treats an empty (post-trim) string as null,
- * and caps it at MAX_INSTRUCTIONS_LENGTH with the DEC-124 field-level error
- * grammar -- a loud 400, never a silent truncation. Returns undefined (with
- * `fields.instructions` set) on a validation failure; the caller must check
- * `fields` before trusting the return value. */
+ * and caps it at MAX_TASK_INSTRUCTIONS_LENGTH with the DEC-124 field-level
+ * error grammar -- a loud 400, never a silent truncation. Returns undefined
+ * (with `fields.instructions` set) on a validation failure; the caller must
+ * check `fields` before trusting the return value. */
 function parseInstructions(
   body: Record<string, unknown>,
   fields: Record<string, string>,
@@ -97,10 +93,10 @@ function parseInstructions(
   }
   const trimmed = body.instructions.trim();
   if (trimmed.length === 0) return null;
-  if (trimmed.length > MAX_INSTRUCTIONS_LENGTH) {
+  if (trimmed.length > MAX_TASK_INSTRUCTIONS_LENGTH) {
     // DEC-124 grammar, comma-formatted to match the ruling's exact wording
     // ("Too long (max 2,000 characters)").
-    fields.instructions = `Too long (max ${MAX_INSTRUCTIONS_LENGTH.toLocaleString("en-US")} characters)`;
+    fields.instructions = `Too long (max ${MAX_TASK_INSTRUCTIONS_LENGTH.toLocaleString("en-US")} characters)`;
     return undefined;
   }
   return trimmed;
