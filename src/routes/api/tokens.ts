@@ -6,7 +6,7 @@
 import { Hono } from "hono";
 import { and, eq, sql } from "drizzle-orm";
 import type { AppEnv } from "../../server/env";
-import { requireOrganizer, csrfJson } from "../../server/middleware";
+import { requireOrganizer, requireCookieSession, csrfJson } from "../../server/middleware";
 import { ApiError, readJsonBody } from "../../server/http";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
@@ -20,17 +20,9 @@ void DEC_027;
 
 export const tokensRoutes = new Hono<AppEnv>();
 
-function assertCookieSession(auth: { viaBearer?: boolean } | undefined): void {
-  if (!auth) throw new ApiError("unauthorized", "Login required");
-  if (auth.viaBearer) {
-    throw new ApiError("forbidden", "API tokens cannot be managed with a bearer token");
-  }
-}
-
-tokensRoutes.get("/api/v1/tokens", requireOrganizer, async (c) => {
-  const auth = c.var.auth;
-  assertCookieSession(auth);
-  const orgId = auth!.orgId;
+tokensRoutes.get("/api/v1/tokens", requireOrganizer, requireCookieSession, async (c) => {
+  const auth = c.var.auth!;
+  const orgId = auth.orgId;
 
   const page = clampPage(c.req.query("page"));
   const perPage = listPerPage(c.req.query("perPage")); // DEC-465
@@ -69,9 +61,8 @@ tokensRoutes.get("/api/v1/tokens", requireOrganizer, async (c) => {
   });
 });
 
-tokensRoutes.post("/api/v1/tokens", requireOrganizer, csrfJson, async (c) => {
-  const auth = c.var.auth;
-  assertCookieSession(auth);
+tokensRoutes.post("/api/v1/tokens", requireOrganizer, requireCookieSession, csrfJson, async (c) => {
+  const auth = c.var.auth!;
 
   const body = await readJsonBody(c);
   const name = body.name;
@@ -88,11 +79,11 @@ tokensRoutes.post("/api/v1/tokens", requireOrganizer, csrfJson, async (c) => {
 
   await c.var.db.insert(schema.apiToken).values({
     id: newId(),
-    orgId: auth!.orgId,
+    orgId: auth.orgId,
     name: name.trim(),
     tokenHash,
     tokenPrefix: apiTokenDisplayPrefix(plaintext),
-    createdByUserId: auth!.userId,
+    createdByUserId: auth.userId,
     createdAt: now,
     updatedAt: now,
   });
@@ -102,9 +93,8 @@ tokensRoutes.post("/api/v1/tokens", requireOrganizer, csrfJson, async (c) => {
   return c.json({ token: plaintext }, 201);
 });
 
-tokensRoutes.delete("/api/v1/tokens/:id", requireOrganizer, csrfJson, async (c) => {
-  const auth = c.var.auth;
-  assertCookieSession(auth);
+tokensRoutes.delete("/api/v1/tokens/:id", requireOrganizer, requireCookieSession, csrfJson, async (c) => {
+  const auth = c.var.auth!;
   const id = c.req.param("id");
 
   const rows = await c.var.db
@@ -113,10 +103,10 @@ tokensRoutes.delete("/api/v1/tokens/:id", requireOrganizer, csrfJson, async (c) 
     .where(eq(schema.apiToken.id, id))
     .limit(1);
   const row = rows[0];
-  if (!row || row.orgId !== auth!.orgId) {
+  if (!row || row.orgId !== auth.orgId) {
     throw new ApiError("not_found", "Token not found");
   }
 
-  await c.var.db.delete(schema.apiToken).where(and(eq(schema.apiToken.id, id), eq(schema.apiToken.orgId, auth!.orgId)));
+  await c.var.db.delete(schema.apiToken).where(and(eq(schema.apiToken.id, id), eq(schema.apiToken.orgId, auth.orgId)));
   return c.json({ ok: true });
 });
