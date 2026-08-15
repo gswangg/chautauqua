@@ -273,6 +273,113 @@ describe("POST /api/v1/pipeline (enroll)", () => {
     expect(res.status).toBe(403);
     expect(inserts).toHaveLength(0);
   });
+
+  // DEC-803 (wave-55 amendment): enrolling straight into 'declined' must
+  // carry a reason, exactly as a PATCH move into it does -- rejected before
+  // any write, not left to a hard-coded null in the 201 body.
+  it("400s enrolling straight into 'declined' with no reason, writing NO row", async () => {
+    const { db, inserts } = fakeDb([[CONTACT_ORG_A]]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("POST", "/api/v1/pipeline", { contactId: "contact-1", stage: "declined" }),
+    );
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as any;
+    expect(json.error.code).toBe("invalid");
+    expect(json.error.fields?.reason).toBeTruthy();
+    expect(inserts).toHaveLength(0);
+  });
+
+  it("400s enrolling into 'declined' with a blank reason, writing NO row", async () => {
+    const { db, inserts } = fakeDb([[CONTACT_ORG_A]]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("POST", "/api/v1/pipeline", { contactId: "contact-1", stage: "declined", reason: "   " }),
+    );
+    expect(res.status).toBe(400);
+    expect(inserts).toHaveLength(0);
+  });
+
+  it("201s enrolling into 'declined' with a reason, echoing it and writing the reason onto the move activity", async () => {
+    const { db, inserts } = fakeDb([
+      [CONTACT_ORG_A], // findContactForOrg
+      [ORGANIZER_USER], // resolveAuthorName
+      [{ ...ENTRY_ROW, stage: "declined" }], // findEntryById after insert
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("POST", "/api/v1/pipeline", {
+        contactId: "contact-1",
+        stage: "declined",
+        reason: "Not a fit for this event",
+      }),
+    );
+    expect(res.status).toBe(201);
+    const json = (await res.json()) as any;
+    expect(json.stage).toBe("declined");
+    expect(json.declineReason).toBe("Not a fit for this event");
+
+    expect(inserts).toHaveLength(2);
+    const activityInsert = inserts[1]!.vals as any;
+    expect(activityInsert.kind).toBe("move");
+    expect(activityInsert.toStage).toBe("declined");
+    expect(activityInsert.body).toBe("Not a fit for this event");
+  });
+
+  // A follow-up read (GET /pipeline/:id list serialization path exercised
+  // via GET /pipeline) surfaces the same reason the enroll echoed --
+  // exercised at the repo level since GET /pipeline hydrates declineReason
+  // from the newest move-to-declined activity, same table this write hit.
+  it("a follow-up GET /pipeline read returns the same reason the enroll echoed", async () => {
+    const declinedEntry = { ...ENTRY_ROW, stage: "declined" };
+    const { db } = fakeDb([
+      [declinedEntry], // listPipelineForOrg: pipeline_entry rows
+      [{ count: 1 }], // countPipelineForOrg
+      [CONTACT_ORG_A], // contact batch
+      [{ entryId: "entry-1", body: "Not a fit for this event", createdAt: new Date(2000) }], // declineReason activity batch
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(new Request("http://local/api/v1/pipeline"));
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { items: any[] };
+    expect(json.items[0]).toMatchObject({ stage: "declined", declineReason: "Not a fit for this event" });
+  });
+
+  it("a non-declined enroll is unaffected -- still answers declineReason null with no reason required", async () => {
+    const { db, inserts } = fakeDb([[CONTACT_ORG_A], [ORGANIZER_USER], [ENTRY_ROW]]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("POST", "/api/v1/pipeline", { contactId: "contact-1", stage: "identified" }),
+    );
+    expect(res.status).toBe(201);
+    const json = (await res.json()) as any;
+    expect(json.declineReason).toBeNull();
+    const activityInsert = inserts[1]!.vals as any;
+    expect(activityInsert.body).toBeNull();
+  });
+
+  it("400s an over-length reason when enrolling into 'declined'", async () => {
+    const { db, inserts } = fakeDb([[CONTACT_ORG_A]]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      jsonRequest("POST", "/api/v1/pipeline", {
+        contactId: "contact-1",
+        stage: "declined",
+        reason: "x".repeat(5000),
+      }),
+    );
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as any;
+    expect(json.error.code).toBe("invalid");
+    expect(json.error.fields?.reason).toBeTruthy();
+    expect(inserts).toHaveLength(0);
+  });
 });
 
 describe("PATCH /api/v1/pipeline/:id (move)", () => {
