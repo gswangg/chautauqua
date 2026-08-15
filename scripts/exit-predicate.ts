@@ -30,6 +30,15 @@ export interface LogSection {
   sha: string;
   result: string | null;
   openItems: number | null;
+  // DEC-069 w28 amendment's human `QUALIFYING` label. NOTE (DEC-099 w46
+  // re-derivation): this field IS currently a required grading input --
+  // DEC-099 w45's instrument repair (see gradePredicate below, the
+  // `section.qualifying && classifyScope(...) === slot` filter) made
+  // `section.qualifying === true` mandatory for a section to be a
+  // candidate for any slot at all. A section without a `QUALIFYING` body
+  // line -- which is every pre-w28 section in the corpus -- can never
+  // decide a gate slot, by design: promoting an un-labeled section to
+  // "eligible by default" would silently readmit the whole early corpus.
   qualifying: boolean;
 }
 
@@ -139,8 +148,13 @@ export const REQUIRED_SCOPES: readonly RequiredScope[] = [
  *
  * DEC-099 (w45 instrument repair): each canonical slot name must match as
  * a WHOLE TOKEN, not a bare substring -- "perf" alone (e.g. "onboarding
- * grid TIER-0 perf", "files library headshot join perf") does NOT
- * classify to perf-smoke; only "perf-smoke"/"perf smoke" does. Likewise
+ * grid TIER-0 perf", "files library headshot join perf", "files library
+ * perf fix") does NOT classify to perf-smoke; only an explicit
+ * "perf-smoke" / "perf smoke" / "perf:smoke" / "perf_smoke" literal does
+ * (DEC-099 w46 sharpening: the w45 fix already required the two-word
+ * phrase, but only recognized the hyphen/space separators -- this widens
+ * the separator class to also accept `:` and `_` without loosening the
+ * requirement that both words appear together). Likewise
  * triage-closure/triage closure and spec-audit/spec audit require the
  * full two-word phrase, walkthrough requires the whole word, and
  * build-test-bundle requires "build" and "test" to each appear as whole
@@ -155,7 +169,7 @@ export function classifyScope(scope: string): RequiredScope | null {
   const s = scope.toLowerCase();
   if (/\btriage[-\s]closure\b/.test(s)) return "triage-closure";
   if (/\bspec[-\s]audit\b/.test(s)) return "spec-audit";
-  if (/\bperf[-\s]smoke\b/.test(s)) return "perf-smoke";
+  if (/\bperf[-\s:_]smoke\b/.test(s)) return "perf-smoke";
   if (/\bwalkthrough\b/.test(s)) return "walkthrough";
   if (/\bbuild\b/.test(s) && /\btest\b/.test(s)) return "build-test-bundle";
   return null;
@@ -215,6 +229,13 @@ export interface PredicateRow {
  * neither a PASS/FAIL verdict nor a `sawStaleVerdict` VOID -- so a
  * non-qualifying section can never decide a gate slot no matter how its
  * scope text reads.
+ *
+ * (DEC-099 w46 re-derivation note: `qualifying` IS a grading input here,
+ * deliberately, per the w45 repair above -- not merely parsed-and-
+ * discarded. This is called out explicitly because a section without the
+ * `QUALIFYING` label is every pre-w28 section in the real corpus, and
+ * changing this filter would silently void or readmit that entire early
+ * population; see `LogSection.qualifying`'s own comment.)
  */
 export function gradePredicate(
   sections: readonly LogSection[],
@@ -289,6 +310,54 @@ export function formatPredicateTable(rows: readonly PredicateRow[]): string {
     .join("\n");
 }
 
+/**
+ * Maps the outcome of a single `git merge-base --is-ancestor` invocation
+ * (performed by `runGitCheck`, which throws on any non-zero git exit) onto
+ * a boolean ancestry verdict. Factored out of the CLI's `isAncestor` so it
+ * is unit-testable without a real git subprocess (DEC-099 w46 instrument
+ * repair -- see module-level history in the CLI block below for the
+ * defect this replaces).
+ *
+ * git exit 0: ancestorSha IS an ancestor of (or equal to) descendantSha --
+ * true.
+ *
+ * git exit 1: both shas resolved; ancestry does not hold -- false.
+ *
+ * git exit 128 ("Not a valid object name" or similar): one or both shas
+ * are unresolvable in this checkout (e.g. an ancient verification-log
+ * header sha that has aged out of packed-refs). An unresolvable sha can
+ * never be PROVEN an ancestor, so this degrades to false -- loud (exactly
+ * one `console.warn` naming both shas) but survivable, so the caller
+ * (gradePredicate, via the CLI's cached isAncestor) still grades every
+ * other slot instead of the whole run aborting before any slot is graded.
+ *
+ * Any other exit status (git missing, permissions failure, etc.) is a
+ * genuinely unexpected failure and rethrows.
+ */
+export function gitAncestorResult(
+  runGitCheck: () => void,
+  ancestorSha: string,
+  descendantSha: string,
+): boolean {
+  try {
+    runGitCheck();
+    return true;
+  } catch (err) {
+    const status = (err as { status?: number }).status;
+    if (status === 1) {
+      return false;
+    }
+    if (status === 128) {
+      console.warn(
+        `exit-predicate: unresolvable git object while checking ancestry of ` +
+          `${ancestorSha} in ${descendantSha} -- treating as NOT an ancestor.`,
+      );
+      return false;
+    }
+    throw err;
+  }
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   const flagIdx = process.argv.indexOf("--product-sha");
   if (flagIdx === -1 || !process.argv[flagIdx + 1]) {
@@ -308,21 +377,15 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     const key = `${ancestorSha}:${descendantSha}`;
     const cached = ancestorCache.get(key);
     if (cached !== undefined) return cached;
-    let result: boolean;
-    try {
-      execFileSync("git", ["merge-base", "--is-ancestor", ancestorSha, descendantSha], {
-        cwd: REPO_ROOT,
-        stdio: "pipe",
-      });
-      result = true;
-    } catch (err) {
-      const status = (err as { status?: number }).status;
-      if (status === 1) {
-        result = false;
-      } else {
-        throw err;
-      }
-    }
+    const result = gitAncestorResult(
+      () =>
+        execFileSync("git", ["merge-base", "--is-ancestor", ancestorSha, descendantSha], {
+          cwd: REPO_ROOT,
+          stdio: "pipe",
+        }),
+      ancestorSha,
+      descendantSha,
+    );
     ancestorCache.set(key, result);
     return result;
   }
