@@ -1081,3 +1081,27 @@
   gap: 8px;
   flex-wrap: wrap;
 }
+
+/* ---------------------------------------------------------------------- */
+/* History tab (DEC-603 amendment, wave 18): task-w18-f                   */
+/* ---------------------------------------------------------------------- */
+
+.chq-comms-history-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.chq-comms-history-titles {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.chq-comms-history-breadcrumb {
+  font-size: 13px;
+}
