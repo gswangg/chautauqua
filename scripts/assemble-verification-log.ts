@@ -46,6 +46,85 @@ function entryFiles(): string[] {
     .sort();
 }
 
+// Mirrors scripts/exit-predicate.ts:36's HEADER_RE exactly (EM DASH U+2014,
+// anchored `@ (\S+)\s*$`). Duplicated rather than imported: exit-predicate.ts
+// does not export it, and this task's overlap note says never edit
+// exit-predicate.ts beyond importing from it. Used here only to detect
+// whether an index file's first line already conforms -- if it does, the
+// file is emitted byte-unchanged; DEC-068 wave-46 amendment.
+const HEADER_RE = /^## (\d{4}-\d{2}-\d{2}) (\S+) — (.+) @ (\S+)\s*$/;
+
+// DEC-068 wave-46: index filenames encode
+// `NNNN-YYYY-MM-DD-<branch>-<scope-words>-<sha>.md` positionally -- the
+// trailing hyphen-segment before `.md` IS the sha field (whatever string it
+// is; HEADER_RE's own `@ (\S+)` does not require it to look like a hex git
+// sha, and several real headers already in this log are not one either), and
+// the branch is the `task-w<N>-<letter>` token immediately after the date.
+// This is intentionally NOT hex-validated: an earlier draft of this fix
+// required the trailing token to look like a hex sha and found 14 files
+// under docs/verification-log/index/ (wave 12-21 vintage, e.g. `0143`,
+// `0146`) whose filenames were either truncated at 80 chars or never carried
+// a sha at all -- hex-validating would throw on all of them and break
+// `npm run verification-log:assemble` outright. The header contract itself
+// (`HEADER_RE` above) never validates the sha's shape either, so taking the
+// filename's trailing segment verbatim is not a relaxation of the contract,
+// just a refusal to invent a stricter one than the contract already has.
+const FILENAME_RE = /^\d{4}-(\d{4}-\d{2}-\d{2})-(task-w\d+-[a-z]+)-(.+)\.md$/;
+
+/**
+ * Derives a synthetic, HEADER_RE-conforming header line from an index
+ * filename, per DEC-068's wave-46 amendment: `## <date> <branch> —
+ * <scope words> @ <sha>`, with `<sha>` being the filename's trailing
+ * hyphen-segment and `<scope words>` every segment between the branch and
+ * the sha, hyphens replaced with spaces. Throws loudly if the filename does
+ * not even match the base `NNNN-YYYY-MM-DD-task-w<N>-<letter>-...md` shape,
+ * or if there is no segment left over to serve as sha/scope after the
+ * branch (i.e. nothing between the branch and `.md`).
+ */
+export function deriveSyntheticHeader(filename: string): string {
+  const m = FILENAME_RE.exec(filename);
+  if (!m) {
+    throw new Error(
+      `assemble-verification-log: cannot synthesize a header for ${filename} -- filename does not match the NNNN-YYYY-MM-DD-<branch>-<scope-words>-<sha>.md contract (DEC-068 wave-46 amendment).`,
+    );
+  }
+  const date = m[1] as string;
+  const branch = m[2] as string;
+  const tail = m[3] as string;
+  const tokens = tail.split("-").filter((t) => t.length > 0);
+  if (tokens.length < 1) {
+    throw new Error(
+      `assemble-verification-log: cannot synthesize a header for ${filename} -- nothing between branch "${branch}" and ".md" to serve as scope-words/sha (DEC-068 wave-46 amendment).`,
+    );
+  }
+  const sha = tokens[tokens.length - 1] as string;
+  const scopeWords = tokens.slice(0, -1).join(" ");
+  if (scopeWords.length === 0) {
+    throw new Error(
+      `assemble-verification-log: cannot synthesize a header for ${filename} -- only a trailing sha-like segment "${sha}" and no scope words (DEC-068 wave-46 amendment).`,
+    );
+  }
+  return `## ${date} ${branch} — ${scopeWords} @ ${sha}`;
+}
+
+/**
+ * Emits one entry file's assembled contents. If the file's first line
+ * already conforms to HEADER_RE, the file is returned byte-unchanged (the
+ * conforming path stays byte-identical, DEC-068 wave-46 amendment
+ * acceptance). Otherwise a synthetic header (see `deriveSyntheticHeader`) is
+ * prepended and the file's ORIGINAL first line is kept as the section's
+ * first body line, so nothing published is lost -- never by editing the
+ * index file itself.
+ */
+export function assembleEntry(filename: string, content: string): string {
+  const firstLine = content.split("\n")[0] ?? "";
+  if (HEADER_RE.test(firstLine)) {
+    return content;
+  }
+  const synthetic = deriveSyntheticHeader(filename);
+  return `${synthetic}\n${content}`;
+}
+
 // DEC-068 wave-37 amendment: nextSeq() mints one past the HIGHEST existing
 // prefix, so every concurrent lane in a wave gets the same number by
 // construction -- wave 35's merge train hand-renumbered a silent 0188
@@ -152,7 +231,7 @@ function assemble(): string {
   assertNoDuplicateSequences(files);
   const parts = [PREAMBLE];
   for (const f of files) {
-    parts.push(readFileSync(join(INDEX_DIR, f), "utf8"));
+    parts.push(assembleEntry(f, readFileSync(join(INDEX_DIR, f), "utf8")));
   }
   return parts.join("");
 }
