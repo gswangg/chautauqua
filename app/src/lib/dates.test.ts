@@ -299,4 +299,28 @@ describe('parseDayInput (DEC-146 amendment)', () => {
   it('rejects an unknown month name', () => {
     expect(parseDayInput('11 Zzz 2028')).toBeNull();
   });
+
+  it('parses "May 1, 2027" (month-first with comma)', () => {
+    expect(parseDayInput('May 1, 2027')).toBe('2027-05-01');
+  });
+
+  it('parses "May 1 2027" (month-first without comma)', () => {
+    expect(parseDayInput('May 1 2027')).toBe('2027-05-01');
+  });
+
+  it('parses "Sep 01 2026" (month-first, zero-padded day)', () => {
+    expect(parseDayInput('Sep 01 2026')).toBe('2026-09-01');
+  });
+
+  it('parses "december 25, 2029" (month-first, lowercase full month name)', () => {
+    expect(parseDayInput('december 25, 2029')).toBe('2029-12-25');
+  });
+
+  it('rejects a month-first out-of-range calendar date', () => {
+    expect(parseDayInput('Feb 30, 2028')).toBeNull();
+  });
+
+  it('still rejects an all-numeric slash form as ambiguous', () => {
+    expect(parseDayInput('05/01/2028')).toBeNull();
+  });
 });
