@@ -572,25 +572,13 @@ export function EmbedsPanel() {
               {saved ? 'Saved' : null}
             </div>
 
-            <p>
-              <strong>URL</strong>
-            </p>
+            {/* w19-c/DEC-785 amendment: the frame draws ONE boxed snippet
+                readout (docs/design/Chautauqua Settings.dc.html :1082-1090),
+                not a separate URL block stacked above a Snippet block. Copy
+                URL survives as a tertiary link inside the shared action row
+                rather than a block of its own. */}
             <div className="chq-embeds-output-block">
-              <code>{url}</code>
-              <div className="chq-embeds-output-actions">
-                <button
-                  type="button"
-                  className="chq-btn chq-btn-secondary"
-                  onClick={() => void handleCopy('url', url)}
-                >
-                  {copyResult?.target === 'url' && copyResult.ok ? 'Copied!' : 'Copy URL'}
-                </button>
-              </div>
-            </div>
-            <p>
-              <strong>Snippet</strong>
-            </p>
-            <div className="chq-embeds-output-block">
+              <span className="chq-settings-eyebrow">Snippet</span>
               <code>{snippet}</code>
               <div className="chq-embeds-output-actions">
                 <button
@@ -600,14 +588,25 @@ export function EmbedsPanel() {
                 >
                   {copyResult?.target === 'snippet' && copyResult.ok ? 'Copied!' : 'Copy snippet'}
                 </button>
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-tertiary"
+                  onClick={() => void handleCopy('url', url)}
+                >
+                  {copyResult?.target === 'url' && copyResult.ok ? 'Copied!' : 'Copy URL'}
+                </button>
                 {/* w41-h/DEC-785: Preview opens the SAME url the snippet embeds
                     (built above via buildEmbedUrl) -- never a second URL
                     builder, so the preview can never drift from what the
                     snippet/Copy URL actually point at. */}
-                <a className="chq-btn chq-btn-secondary" href={url} target="_blank" rel="noreferrer">
+                <a className="chq-btn chq-btn-tertiary" href={url} target="_blank" rel="noreferrer">
                   Preview
                 </a>
               </div>
+              <span className="chq-embeds-note">
+                The URL carries the embed&apos;s name, so changing these settings updates every page it is
+                pasted on
+              </span>
             </div>
             <div role="status" aria-live="polite" className="chq-copy-status">
               {copyResult

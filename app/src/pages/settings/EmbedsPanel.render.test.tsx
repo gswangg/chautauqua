@@ -67,11 +67,11 @@ describe('EmbedsPanel', () => {
     expect(screen.getByRole('combobox', { name: 'Track' })).toHaveClass('chq-select');
   });
 
-  // User-filed (gate-5 cycle): the URL/Snippet code readouts flowed INLINE
-  // with their Copy/Preview buttons, so the buttons floated mid-text wherever
-  // the code wrapped. Each readout is a block (code box, then an actions row)
-  // and the buttons live in the actions row, never in the code's text flow.
-  it('boxes each code readout with its actions in a separate row', async () => {
+  // w19-c/DEC-785 amendment: the frame draws ONE boxed snippet readout
+  // (eyebrow + snippet + one action row), not a separate URL block stacked
+  // above a Snippet block. Copy snippet/Copy URL/Preview all live in the
+  // same readout box and the same action row.
+  it('boxes the snippet readout with all three actions in one row, inside one block', async () => {
     mockEvent();
     renderPanel();
 
@@ -79,15 +79,48 @@ describe('EmbedsPanel', () => {
       expect(screen.getByText(/^<iframe/)).toBeInTheDocument();
     });
 
+    const snippetCode = screen.getByText(/^<iframe/);
+    expect(snippetCode.tagName).toBe('CODE');
+    const block = snippetCode.closest('.chq-embeds-output-block');
+    expect(block).not.toBeNull();
+
+    // Exactly one readout block on the page -- no separate URL block.
+    expect(document.querySelectorAll('.chq-embeds-output-block').length).toBe(1);
+
     for (const name of ['Copy URL', 'Copy snippet']) {
       const btn = screen.getByRole('button', { name });
       expect(btn.closest('.chq-embeds-output-actions')).not.toBeNull();
-      expect(btn.closest('.chq-embeds-output-block')).not.toBeNull();
+      expect(btn.closest('.chq-embeds-output-block')).toBe(block);
     }
-    expect(screen.getByRole('link', { name: 'Preview' }).closest('.chq-embeds-output-actions')).not.toBeNull();
-    const snippetCode = screen.getByText(/^<iframe/);
-    expect(snippetCode.tagName).toBe('CODE');
-    expect(snippetCode.closest('.chq-embeds-output-block')).not.toBeNull();
+    const previewLink = screen.getByRole('link', { name: 'Preview' });
+    expect(previewLink.closest('.chq-embeds-output-actions')).not.toBeNull();
+    expect(previewLink.closest('.chq-embeds-output-block')).toBe(block);
+
+    expect(screen.getByRole('button', { name: 'Copy URL' })).toHaveClass('chq-btn-tertiary');
+    expect(previewLink).toHaveClass('chq-btn-tertiary');
+
+    // The eyebrow label reuses the shared settings eyebrow class.
+    expect(screen.getByText('Snippet', { selector: '.chq-settings-eyebrow' })).toBeInTheDocument();
+  });
+
+  it('Copy URL copies the same string buildEmbedUrl produces', async () => {
+    mockEvent();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    renderPanel();
+
+    await waitFor(() => {
+      expect(screen.getByText(/^<iframe/)).toBeInTheDocument();
+    });
+
+    const preview = screen.getByRole('link', { name: 'Preview' });
+    const expectedUrl = preview.getAttribute('href');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy URL' }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(expectedUrl);
+    });
   });
 
   it('announces a successful copy via the live status region (DEC-607)', async () => {
@@ -215,8 +248,12 @@ describe('EmbedsPanel', () => {
     const preview = screen.getByRole('link', { name: 'Preview' });
     expect(preview).toHaveAttribute('target', '_blank');
     expect(preview).toHaveAttribute('rel', 'noreferrer');
-    const [urlText] = screen.getAllByText(/embed\/devcon-2026\/sessions/);
-    expect(preview.getAttribute('href')).toBe(urlText!.textContent);
+    // w19-c/DEC-785 amendment: there is no longer a standalone URL readout --
+    // the URL only appears embedded inside the snippet's <iframe src="...">.
+    // Preview's href must still be the exact string the snippet embeds.
+    const snippetText = screen.getByText(/^<iframe/).textContent!;
+    expect(preview.getAttribute('href')).not.toBeNull();
+    expect(snippetText).toContain(`src="${preview.getAttribute('href')}"`);
   });
 
   it('offers ics only for agenda/schedule surfaces', async () => {
