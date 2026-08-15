@@ -1,4 +1,4 @@
-## QUALIFYING (task-w31-c)
+## 2026-08-15 task-w31-c — plan results perf (DEC-338/DEC-347 wave-31 amendments) @ 7581aa3b
 
 Plan results (DEC-338/DEC-347 wave-31 amendments), tip `7581aa3b`: collapsed
 buildResults' (src/routes/review/shared.ts) 5-deep sequential waterfall

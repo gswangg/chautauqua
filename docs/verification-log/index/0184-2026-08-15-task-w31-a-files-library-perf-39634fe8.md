@@ -1,4 +1,4 @@
-## task-w31-a: files library headshot join perf (DEC-773 w31 amendment 3b)
+## 2026-08-15 task-w31-a — files library headshot join perf (DEC-773 w31 amendment 3b) @ 39634fe8
 
 QUALIFYING: SOLE OWNER of src/server/repo/files-library.ts; UNOWNED at main
 `dbac66d1` (w29-b produced zero commits). Rewrote HEADSHOT_JOIN off a

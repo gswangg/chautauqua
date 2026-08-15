@@ -1,4 +1,4 @@
-## task-w29-a: onboarding grid TIER-0 perf (DEC-829/DEC-773)
+## 2026-08-15 task-w29-a — onboarding grid TIER-0 perf (DEC-829/DEC-773) @ 1d274c8b
 
 QUALIFYING
 INVALIDATED BY: src/server/repo/tasks/**, migrations/**

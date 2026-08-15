@@ -147,9 +147,59 @@ export function planRenumber(files: readonly string[]): Array<{ from: string; to
   return plan;
 }
 
+// DEC-068 header contract, deliberately mirrored (not imported -- task-w45-g
+// owns scripts/exit-predicate.ts this wave) from
+// scripts/exit-predicate.ts:36's HEADER_RE. A section's first line must read
+// `## <date> <branch> — <scope> @ <sha>` (EM DASH U+2014) with nothing
+// trailing the sha. exit-predicate.ts's parseLogSections only starts a new
+// LogSection on a line matching this regex -- any index file whose first
+// line does not match is invisible as its own section AND silently donates
+// its body's RESULT:/OPEN ITEMS: lines to whichever PRECEDING conforming
+// section's body it falls into, overwriting that section's verdict
+// (task-w45-f finding).
+const HEADER_RE = /^## (\d{4}-\d{2}-\d{2}) (\S+) — (.+) @ (\S+)\s*$/;
+
+export function nonConformingHeaders(
+  entries: ReadonlyArray<{ file: string; firstLine: string }>,
+): string[] {
+  return entries.filter((e) => !HEADER_RE.test(e.firstLine)).map((e) => e.file);
+}
+
+// task-w45-f (DEC-068 wave-45 ruling (a)) originally landed this as a hard
+// throw, in the same shape as assertNoDuplicateSequences. Running it against
+// the CURRENT index surfaced a blast radius the ruling's "at least six"
+// framing did not anticipate: 24 files fail the header contract, not 7 --
+// and 15 of them (0140-0157, dated 2026-08-12, pre-dating DEC-068's own
+// wave-37 introduction) carry NO sha anywhere in their filename or body, so
+// "date/branch/sha from the filename" repair is impossible without
+// fabricating data. Throwing unconditionally here would make EVERY future
+// `npm run verification-log:assemble` / `--check` fail repo-wide over
+// legacy debt this task does not own and cannot repair (ONE FILE ONE OWNER
+// PER WAVE). Per this task's own DEC-099 abort-condition escape hatch
+// ("make the header check --check-only report that does NOT throw, and
+// FILE the finding"), this is downgraded to a non-throwing report; see the
+// task-w45-f verification-log section for the full before/after evidence
+// and the filed wave-46+ finding (owner TBD: needs a design ruling on
+// whether pre-DEC-068 sha-less entries are grandfathered or backfilled).
+function reportNonConformingHeaders(files: readonly string[]): void {
+  const entries = files.map((f) => ({
+    file: f,
+    firstLine: readFileSync(join(INDEX_DIR, f), "utf8").split("\n")[0] ?? "",
+  }));
+  const offenders = nonConformingHeaders(entries);
+  if (offenders.length > 0) {
+    console.error(
+      `assemble-verification-log: first line does not match the DEC-068 header contract (\`## <date> <branch> — <scope> @ <sha>\`, EM DASH U+2014, nothing after the sha) in: ${offenders.join(
+        ", ",
+      )} -- a non-conforming first line is invisible as its own section and silently donates its RESULT:/OPEN ITEMS: lines to the preceding conforming section, overwriting that section's verdict (task-w45-f finding; downgraded to report-only, see docs/verification-log.md task-w45-f section).`,
+    );
+  }
+}
+
 function assemble(): string {
   const files = entryFiles();
   assertNoDuplicateSequences(files);
+  reportNonConformingHeaders(files);
   const parts = [PREAMBLE];
   for (const f of files) {
     parts.push(readFileSync(join(INDEX_DIR, f), "utf8"));

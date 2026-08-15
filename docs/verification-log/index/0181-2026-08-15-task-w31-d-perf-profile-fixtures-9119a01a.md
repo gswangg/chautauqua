@@ -1,4 +1,4 @@
-## task-w31-d: perf-smoke profile-resolved plan/reviewer fixtures (DEC-644 w31, DEC-645)
+## 2026-08-15 task-w31-d — perf-smoke profile-resolved plan/reviewer fixtures (DEC-644 w31, DEC-645) @ 9119a01a
 Tip `9119a01a`. PERF_PLAN_ID/PERF_REVIEWER_EMAIL/PERF_REVIEWER_PASSWORD now
 resolve from PERF_PROFILE via perf-seed-lib's perfPlanId/perfReviewerEmail
 (default byte-identical, asserted by test); deleted isDefaultProfile/
