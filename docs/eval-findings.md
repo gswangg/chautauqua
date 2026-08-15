@@ -119,6 +119,16 @@ rules 5/6 incomplete) · /account/password lost its card but is NOT the bare-820
 inputs 188px, H1 28px at x=643 (fleet fix: fields at the full 820, H1 ~36, content
 x≈390). CLASS 4 is part-landed; finish the measure.
 
+## GATE 7 IN FLIGHT (2026-08-15 ~03:50, boundary ea2a5543 DEPLOYED, version 798a1e52)
+
+Full runbook clean (no new migrations; 775-statement D1 reseed; 35 R2 objects; smoke 200).
+**CFP-16 CLOSED-VERIFIED at RUNTIME on prod**: call closed → accepted speaker's read view
+drops Edit, edit route renders "Editing closed" with no form, uploads remain; closeDate
+restored to 2026-09-02 after. Official-cap sbek running (runs/2026-08-15T07-46-32);
+6-pair re-verdict fleet vs v9 in parallel (closure-focused on the gate-6 46 MAJORs);
+swarm REBOOTED fresh at the boundary. This is the number-of-record run for the ~93.8
+ceiling thesis: turn-diets + CFP-16 + fleet-class fixes all aboard.
+
 ## 140-TURN DIAGNOSTIC (run 02-24-33, DIAGNOSTIC ONLY — never a trend number; official cap is 70)
 
 **The five capped areas at double turn budget: 94.3 @ 97% coverage** — ABS 96.4@100 ·
