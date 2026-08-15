@@ -43,25 +43,31 @@ describe("auth card geometry (DEC-945 V8 amendment, wave 25)", () => {
   // DEC-945 wave-25 amendment: the V8 intake redrew 11-account--00 ("a card,
   // not a stretched phone") and explicitly supersedes the pair-6 box-math
   // ruling that trued the boxes up to 820/888.
-  it("declares the two V8 card max-widths: 460px and 520px", () => {
+  it("declares the V8 credential-card max-width (460px) plus the bare-page shell (820px, DEC-945 wave-48 amendment)", () => {
     const cardRule = extractRule(AUTH_CSS, ".chq-auth-card");
     expect(cardRule).toMatch(/max-width:\s*460px/);
     expect(cardRule).toMatch(/padding:\s*36px 34px 32px/);
     expect(cardRule).toMatch(/gap:\s*22px/);
 
-    // extractRule escapes its argument, so pass the selector verbatim.
-    const narrowRule = extractRule(AUTH_CSS, ".chq-auth-card.chq-auth-card-narrow");
-    expect(narrowRule).toMatch(/max-width:\s*520px/);
+    // DEC-945 wave-48 amendment: .chq-auth-card-narrow is deleted; the
+    // three non-credential dead-ends compose .chq-bare-page (820px, no
+    // border/background/radius) instead.
+    expect(AUTH_CSS).not.toContain("chq-auth-card-narrow");
+    const bareRule = extractRule(AUTH_CSS, ".chq-bare-page");
+    expect(bareRule).toMatch(/max-width:\s*820px/);
+    expect(bareRule).not.toMatch(/border/);
+    expect(bareRule).not.toMatch(/background/);
+    expect(bareRule).not.toMatch(/border-radius/);
 
     expect(THEME_CSS).toMatch(/--chq-measure:\s*820px/);
 
-    // every stale box-math measure must be fully gone from the card rule.
-    expect(AUTH_CSS).not.toContain("max-width: 640px");
-    expect(AUTH_CSS).not.toContain("max-width: 732px");
-    expect(AUTH_CSS).not.toContain("max-width: 820px");
-    expect(AUTH_CSS).not.toContain("max-width: 818px");
-    expect(AUTH_CSS).not.toContain("max-width: 888px");
-    expect(AUTH_CSS).not.toContain("max-width: 450px");
+    // every stale box-math measure must be fully gone from the credential
+    // card rule itself.
+    expect(cardRule).not.toMatch(/max-width:\s*640px/);
+    expect(cardRule).not.toMatch(/max-width:\s*732px/);
+    expect(cardRule).not.toMatch(/max-width:\s*818px/);
+    expect(cardRule).not.toMatch(/max-width:\s*888px/);
+    expect(cardRule).not.toMatch(/max-width:\s*450px/);
   });
 
   it("the submit control is intrinsic-width, not a full-column bar", () => {
@@ -95,7 +101,9 @@ describe("auth card geometry (DEC-945 V8 amendment, wave 25)", () => {
   // directly, with the UA <p> margin zeroed so it never stacks on top of
   // either. Untouched by the wave-25 box resize.
   it("the notice card (404) states its own tighter title/body/links rhythm", () => {
-    const noticeCardRule = extractRule(AUTH_CSS, ".chq-auth-card.chq-auth-card-notice");
+    // DEC-945 wave-48 amendment: the notice card now sits in
+    // .chq-bare-page rather than .chq-auth-card.
+    const noticeCardRule = extractRule(AUTH_CSS, ".chq-bare-page.chq-auth-card-notice");
     expect(noticeCardRule).toMatch(/gap:\s*0/);
 
     const bodyRule = extractRule(AUTH_CSS, ".chq-auth-body");

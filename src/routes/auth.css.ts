@@ -14,6 +14,7 @@
 // value-free module constant, never interpolated with request/user data.
 
 import { DEC_367, DEC_373, DEC_374, DEC_944, DEC_945 } from "../decisions";
+import { BARE_PAGE_CSS } from "../views/bare-page.css";
 
 void DEC_367;
 void DEC_373;
@@ -26,9 +27,16 @@ void DEC_945;
 // that trued the box up to 820/888 (732/818 content + 2x padding). The
 // card is small and content-hugging, not a reading column padded inward:
 // .chq-auth-card is 460px max-width with a 1px --chq-rule border, paper
-// fill and 8px radius; .chq-auth-card-narrow is 520px. Its submit control
-// is intrinsic-width (never width:100%) inside a footer row -- full-column
-// buttons are phone anatomy, not a desktop card.
+// fill and 8px radius. Its submit control is intrinsic-width (never
+// width:100%) inside a footer row -- full-column buttons are phone
+// anatomy, not a desktop card.
+//
+// DEC-945 (wave 48 amendment): .chq-auth-card-narrow (520px, same border/
+// fill/radius) is DELETED. The three non-credential dead-ends that wore it
+// (404 notice, /account/password, expired-claim) now use .chq-bare-page
+// (src/views/bare-page.css.ts) -- an 820px reading column with no card
+// chrome at all. Only /login, /forgot and /reset keep the small bordered
+// .chq-auth-card (a credential prompt is deliberately a small card).
 export const AUTH_CSS = `
   body { display: flex; justify-content: center; align-items: flex-start; padding: 40px 20px; }
 
@@ -43,10 +51,6 @@ export const AUTH_CSS = `
     flex-direction: column;
     gap: 22px;
   }
-  .chq-auth-card.chq-auth-card-narrow {
-    max-width: 520px;
-  }
-
   .chq-auth-wordmark {
     font-family: 'Familjen Grotesk', system-ui, sans-serif;
     font-size: 28px;
@@ -72,7 +76,10 @@ export const AUTH_CSS = `
      UA <p> margin this file never zeroed used to stack on top of it.
      .chq-auth-card-notice turns the card's own gap off and states the
      frame's own numbers explicitly: h1->body ~19px, body->links ~26px. */
-  .chq-auth-card.chq-auth-card-notice { gap: 0; }
+  /* wave 48 amendment: the 404 notice card no longer wears .chq-auth-card
+     (it now sits in .chq-bare-page, DEC-945's bare reading-page shell) --
+     this selector follows it there. */
+  .chq-bare-page.chq-auth-card-notice { gap: 0; }
   .chq-auth-card-notice .chq-auth-titlerow { margin-bottom: 19px; }
   .chq-auth-card-notice .chq-auth-body { margin-bottom: 26px; }
 
@@ -284,7 +291,12 @@ export const AUTH_CSS = `
       border-radius: 0;
       padding: 28px 20px 20px;
     }
-    .chq-auth-card.chq-auth-card-narrow {
+    /* wave 48 amendment: the full-height/scrollable-fieldstack phone
+       treatment used to key off the deleted narrow card modifier -- only
+       /account/password's form shape needs it (the notice and
+       expired-claim bare pages hold no .chq-auth-fields form), so this
+       re-scopes to a .chq-bare-page that actually contains one. */
+    .chq-bare-page:has(.chq-auth-fields) {
       min-height: 100dvh;
       display: flex;
       flex-direction: column;
@@ -304,4 +316,4 @@ export const AUTH_CSS = `
     .chq-auth-cancel { display: inline-flex; }
     .chq-auth-hint { display: none; }
   }
-`;
+${BARE_PAGE_CSS}`;

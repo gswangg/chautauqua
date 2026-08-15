@@ -42,6 +42,7 @@ const PORTAL_CSS_FILE = join(SRC, "routes", "portal", "portal.css.ts");
 const CFP_CSS_FILE = join(SRC, "routes", "public", "cfp.css.ts");
 const HOME_CSS_FILE = join(SRC, "routes", "public", "home.css.ts");
 const AUTH_CSS_FILE = join(SRC, "routes", "auth.css.ts");
+const BARE_PAGE_CSS_FILE = join(SRC, "views", "bare-page.css.ts");
 const PORTAL_SHARED_FILE = join(SRC, "routes", "portal", "shared.tsx");
 
 /** Strips /* ... *\/ block comments so a decision note quoting CSS-shaped
@@ -118,6 +119,10 @@ const NAMED_EXCEPTIONS: ReadonlyMap<string, string> = new Map([
   // amendment rebuilds the card to V8 frame 11-account--00 at 460px (520px
   // narrow), so those selectors no longer clamp at 800px+ and an exception
   // for them would be a stale row. Asserted below.
+  [
+    "views/bare-page.css.ts::.chq-bare-page",
+    "DEC-945 (wave-48 amendment): the bare reading-page shell IS the reading measure (820px, no card chrome) -- not a hand-copy of it",
+  ],
 ]);
 
 describe("SSR page-clamp scan (DEC-989 amendment, wave 37)", () => {
@@ -143,9 +148,10 @@ describe("SSR page-clamp scan (DEC-989 amendment, wave 37)", () => {
     ).toEqual([]);
   });
 
-  it("NAMED_EXCEPTIONS holds exactly the home-hub entry, and its selector still exists", () => {
+  it("NAMED_EXCEPTIONS holds exactly the home-hub and bare-page entries, and their selectors still exist", () => {
     expect([...NAMED_EXCEPTIONS.keys()]).toEqual([
       "routes/public/home.css.ts::.chq-home-shell",
+      "views/bare-page.css.ts::.chq-bare-page",
     ]);
 
     const homeCss = extractCssText(HOME_CSS_FILE);
@@ -153,25 +159,26 @@ describe("SSR page-clamp scan (DEC-989 amendment, wave 37)", () => {
     const shellDecl = declarations.find((d) => d.selector === ".chq-home-shell");
     expect(shellDecl, ".chq-home-shell must still declare a max-width in home.css.ts").toBeDefined();
     expect(shellDecl?.px).toBe(900);
+
+    const bareCss = extractCssText(BARE_PAGE_CSS_FILE);
+    const bareDeclarations = findMaxWidthDeclarations(bareCss);
+    const bareDecl = bareDeclarations.find((d) => d.selector === ".chq-bare-page");
+    expect(bareDecl, ".chq-bare-page must still declare a max-width in bare-page.css.ts").toBeDefined();
+    expect(bareDecl?.px).toBe(820);
   });
 
   // DEC-945 (wave-25 amendment): the auth card came DOWN under the clamp
-  // rather than being granted a standing exception -- 460px, 520px narrow.
-  // Kept here so a future widening back over 800px fails this scan and not
-  // just the geometry test.
-  it("the auth card needs no exception: both card clamps are well under 800px", () => {
+  // rather than being granted a standing exception -- 460px. Kept here so a
+  // future widening back over 800px fails this scan and not just the
+  // geometry test. (wave-48 amendment: .chq-auth-card-narrow is deleted --
+  // the non-credential dead-ends it once sized now use .chq-bare-page,
+  // asserted above as its own named exception.)
+  it("the auth card needs no exception: its clamp is well under 800px", () => {
     const authDeclarations = findMaxWidthDeclarations(extractCssText(AUTH_CSS_FILE));
     const cardDecl = authDeclarations.find((d) => d.selector === ".chq-auth-card");
     expect(cardDecl, ".chq-auth-card must still declare a max-width in auth.css.ts").toBeDefined();
     expect(cardDecl?.px).toBe(460);
-    const narrowDecl = authDeclarations.find(
-      (d) => d.selector === ".chq-auth-card.chq-auth-card-narrow",
-    );
-    expect(
-      narrowDecl,
-      ".chq-auth-card.chq-auth-card-narrow must still declare a max-width in auth.css.ts",
-    ).toBeDefined();
-    expect(narrowDecl?.px).toBe(520);
+    expect(authDeclarations.some((d) => d.selector.includes("chq-auth-card-narrow"))).toBe(false);
   });
 
   it("portal/shared.tsx's <main> carries chq-measure", () => {

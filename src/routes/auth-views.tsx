@@ -191,7 +191,7 @@ export function ExpiredClaimPage() {
     <html lang="en">
       <AuthHead title="Link expired - Chautauqua" />
       <body>
-        <main className="chq-auth-card chq-auth-card-narrow">
+        <main className="chq-bare-page">
           <div className="chq-auth-titlerow">
             <span className="chq-auth-label">Link expired</span>
             <h1 className="chq-auth-title">This link has expired</h1>

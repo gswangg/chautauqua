@@ -92,7 +92,7 @@ export function NotFoundDocument(props: {
         <style dangerouslySetInnerHTML={{ __html: AUTH_CSS }} />
       </head>
       <body>
-        <main class="chq-auth-card chq-auth-card-narrow chq-auth-card-notice">
+        <main class="chq-bare-page chq-auth-card-notice">
           <div class="chq-auth-titlerow">
             <span class="chq-auth-label">{props.eyebrow}</span>
             <h1 class="chq-auth-title">{heading}</h1>

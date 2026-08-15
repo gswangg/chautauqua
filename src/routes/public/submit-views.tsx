@@ -87,7 +87,7 @@ export function PageShell(props: { title: string; accentColor?: string; header?:
 export function ClosedPage(props: { event: EventRow; form: FormRow }) {
   return (
     <PageShell title={`Submissions closed - ${props.event.name}`} accentColor={branding(props.event).accentColor}>
-      <div class="chq-cfp-closed">
+      <div class="chq-cfp-closed chq-bare-page">
         <span class="chq-cfp-meta">{props.event.name}</span>
         <h1>The call for papers has closed</h1>
         <p role="alert" class="chq-cfp-closed-body">
@@ -112,7 +112,7 @@ export function ClosedPage(props: { event: EventRow; form: FormRow }) {
 export function NotYetOpenPage(props: { event: EventRow; form: FormRow }) {
   return (
     <PageShell title={`Submissions not yet open - ${props.event.name}`} accentColor={branding(props.event).accentColor}>
-      <div class="chq-cfp-closed">
+      <div class="chq-cfp-closed chq-bare-page">
         <span class="chq-cfp-meta">{props.event.name}</span>
         <h1>Submissions aren't open yet</h1>
         <p role="alert" class="chq-cfp-closed-body">
