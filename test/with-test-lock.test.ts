@@ -29,7 +29,7 @@ function freshLockDir(prefix: string): string {
 // lock directory. Strip it, so each test starts from an un-nested process tree
 // and the nesting under test is the one the test itself creates.
 function outerEnv(lockDir: string): NodeJS.ProcessEnv {
-  const env = { ...process.env, CHQ_TEST_LOCK_DIR: lockDir };
+  const env: NodeJS.ProcessEnv = { ...process.env, CHQ_TEST_LOCK_DIR: lockDir };
   delete env.CHQ_TEST_LOCK_HELD;
   return env;
 }
