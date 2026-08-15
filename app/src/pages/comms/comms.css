@@ -267,6 +267,33 @@
   margin: 0;
 }
 
+/* DEC-037: the preview renders the exact HTML shell send() delivers, inside a
+   sandboxed iframe. The frame is the primary view; the plain-text/feedback
+   rendering moves under a disclosure beneath it. */
+.chq-comms-preview-frame {
+  display: block;
+  width: 100%;
+  min-height: 420px;
+  border: 0;
+  border-bottom: 1px solid var(--chq-hairline);
+  background: var(--chq-surface);
+}
+
+.chq-comms-preview-plaintext-disclosure {
+  border-bottom: 1px solid var(--chq-hairline);
+  padding: 14px 18px;
+  font-size: 13px;
+}
+
+.chq-comms-preview-plaintext-disclosure > summary {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+  cursor: pointer;
+}
+
 .chq-comms-preview-ics {
   border-left: 3px solid var(--chq-brand);
   padding: 2px 0 2px 13px;

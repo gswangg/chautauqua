@@ -35,8 +35,11 @@ export const ENVELOPE_ALLOWLIST = new Set<string>([
   // amendment), which added renderEmailHtml imports/calls above both sites.
   // Shifted again (245 -> 247) by DEC-182's wave-32 fix, which made
   // validateBulkEmailRequest consume parseBoundedIdArray's deduped result.
+  // Shifted again (68 -> 74) by the wave-49 DEC-037 amendment, which routes
+  // the preview's `html` through the shared composeEmailShellOptions helper
+  // and adds the comment block above the `items` map.
   // The exceptions themselves are unchanged.
-  "src/routes/comms/preview.ts:68",
+  "src/routes/comms/preview.ts:74",
   "src/routes/api/contacts/bulk-email.ts:247",
   // NOTE (DEC-840): GET .../assignments/distribute/preview used to be
   // allowlisted here (it was previously `c.json({ items, perReviewer,
@@ -53,6 +56,6 @@ export const ENVELOPE_ALLOWLIST = new Set<string>([
   // DEC-924: POST /plans/:id/reviewers's array form answers the set of rows
   // it just wrote (bounded by the request's own parseBoundedIdArray cap),
   // never a paginated read -- same shape-exception class as the compose
-  // preview above (comms/preview.ts:68).
+  // preview above (comms/preview.ts:74).
   "src/routes/review/plans-reviewers.ts:111",
 ]);
