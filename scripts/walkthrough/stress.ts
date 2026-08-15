@@ -224,6 +224,14 @@ async function gatherAutoSchedule320(organizerJar: CookieJar, eventId: string): 
   assertStatus("autoSchedule320: POST auto-schedule", res.res, 200, res.text);
   const unplacedTotal = res.json.summary.unplaced as number;
   const reasons = (res.json.unplacedReasons as { detail: string }[]).map((r) => r.detail);
+  // DEC-615 (wave 43 amendment): runAutoSchedule now asserts this equality
+  // server-side and throws on divergence, but the scale gate must fail
+  // loudly too rather than silently reporting a mismatched pair of numbers.
+  assertTrue(
+    "autoSchedule320: unplacedTotal accounts for every unplacedReasons entry",
+    unplacedTotal === reasons.length,
+    `unplacedTotal=${unplacedTotal} reasons.length=${reasons.length} delta=${unplacedTotal - reasons.length}`,
+  );
   return { unplacedTotal, reasons };
 }
 

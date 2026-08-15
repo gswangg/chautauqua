@@ -52,10 +52,14 @@ export interface AgendaPayload {
   unscheduled: UnscheduledAgendaSession[];
   conflicts: DescribedConflict[];
   /** DEC-615: per-item reasons from the most recent auto-schedule run —
-   * only runAutoSchedule populates this (getAgendaPayload's plain GET has
-   * never run the placer, so it has no reasons to report). summary.unplaced
-   * always counts ALL unplaced accepted sessions (DEC-021), a superset of
-   * this list whenever a session has never been through auto-schedule. */
+   * only runAutoSchedule populates this (getAgendaPayload's plain GET
+   * returns unplacedReasons: [], so summary.unplaced is a superset of the
+   * (empty) list there, since the placer has never run). DEC-615 (wave 43
+   * amendment): after runAutoSchedule, this list is NOT a superset relation
+   * — it is exactly equal in length to summary.unplaced, because both derive
+   * from the same loadAcceptedSessions read and the same
+   * isDayWithinEventRange predicate (runAutoSchedule asserts this equality
+   * and throws on divergence). */
   unplacedReasons: DescribedUnplaced[];
   summary: { unplaced: number; conflicts: number };
 }

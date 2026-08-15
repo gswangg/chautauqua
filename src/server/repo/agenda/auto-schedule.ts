@@ -15,6 +15,7 @@ import {
   type UnplacedSession,
 } from "../../../domain/schedule";
 import { eventDays } from "../../../domain/event-days";
+import { isDayWithinEventRange } from "./days";
 import { listBreaksForEvent } from "../breaks";
 import { loadAcceptedSessions, loadDurationMinBySubmission, type AcceptedSessionRow, type EventInfo } from "./rows";
 import { getAgendaPayload } from "./payload";
@@ -55,17 +56,35 @@ export async function runAutoSchedule(
   // an organizer-defined break window.
   const breaks = await listBreaksForEvent(db, eventId);
 
-  const existing: PlacedSession[] = accepted
-    .filter((s): s is AcceptedSessionRow & { slot: NonNullable<AcceptedSessionRow["slot"]> } => s.slot !== null)
-    .map((s) => ({
-      submissionId: s.submissionId,
-      roomId: s.slot.roomId,
-      day: s.slot.day,
-      startMin: s.slot.startMin,
-      endMin: s.slot.endMin,
-      speakerContactIds: s.speakerContactIds,
-    }));
+  // DEC-615 (wave 43 amendment): a session with a persisted slot classifies
+  // as "existing" for the placer ONLY when getAgendaPayload would also count
+  // it as placed -- both sides now share isDayWithinEventRange so an
+  // out-of-range slot can never be existing-for-the-placer and
+  // unplaced-for-the-payload at once.
+  const slotted = accepted.filter(
+    (s): s is AcceptedSessionRow & { slot: NonNullable<AcceptedSessionRow["slot"]> } => s.slot !== null,
+  );
+  const inRangeSlotted = slotted.filter((s) => isDayWithinEventRange(s.slot.day, event.startDate, event.endDate));
+  const outOfRangeSlotted = slotted.filter((s) => !isDayWithinEventRange(s.slot.day, event.startDate, event.endDate));
+
+  const existing: PlacedSession[] = inRangeSlotted.map((s) => ({
+    submissionId: s.submissionId,
+    roomId: s.slot.roomId,
+    day: s.slot.day,
+    startMin: s.slot.startMin,
+    endMin: s.slot.endMin,
+    speakerContactIds: s.speakerContactIds,
+  }));
   const existingIds = new Set(existing.map((s) => s.submissionId));
+
+  // DEC-615 (wave 43 amendment): an out-of-range slot is NEVER handed to the
+  // placer -- re-placing it would need to overwrite an existing
+  // schedule_slot row, which onConflictDoNothing (below) deliberately
+  // forbids per DEC-552/DEC-492. It is named as unplaced instead.
+  const outOfRangeUnplaced: UnplacedSession[] = outOfRangeSlotted.map((s) => ({
+    submissionId: s.submissionId,
+    reason: "slot_outside_event_range" as const,
+  }));
 
   const unscheduledAccepted = accepted.filter((s) => s.slot === null);
   // DEC-772: a session's block length is its own format's duration, not the
@@ -155,15 +174,28 @@ export async function runAutoSchedule(
     submissionId: p.submissionId,
     reason: "write_cap_reached" as const,
   }));
-  const unplacedReasons: DescribedUnplaced[] = [...unplacedFromRun, ...cappedUnplaced].map((u) => {
-    const durationMin = placedDurationMinBySubmissionId.get(u.submissionId) ?? params.defaultDurationMin;
-    const sessionForCopy = { submissionId: u.submissionId, durationMin };
-    return {
-      ...u,
-      durationMin,
-      detail: describeUnplaced(u.reason, unplacedLabels, sessionForCopy),
-    };
-  });
+  const unplacedReasons: DescribedUnplaced[] = [...unplacedFromRun, ...cappedUnplaced, ...outOfRangeUnplaced].map(
+    (u) => {
+      const durationMin = placedDurationMinBySubmissionId.get(u.submissionId) ?? params.defaultDurationMin;
+      const sessionForCopy = { submissionId: u.submissionId, durationMin };
+      return {
+        ...u,
+        durationMin,
+        detail: describeUnplaced(u.reason, unplacedLabels, sessionForCopy),
+      };
+    },
+  );
+
+  // DEC-615 (wave 43 amendment): both unplacedReasons and payload.summary
+  // unplaced now derive from the SAME loadAcceptedSessions read and the SAME
+  // isDayWithinEventRange predicate, so after a run they must agree exactly
+  // -- a divergence is a bug, not a display quirk. Fail loudly.
+  if (unplacedReasons.length !== payload.summary.unplaced) {
+    throw new Error(
+      `runAutoSchedule: unplacedReasons.length (${unplacedReasons.length}) !== ` +
+        `payload.summary.unplaced (${payload.summary.unplaced}) -- reason accounting has diverged from payload classification`,
+    );
+  }
 
   return { ...payload, unplacedReasons };
 }
