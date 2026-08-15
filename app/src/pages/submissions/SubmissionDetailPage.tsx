@@ -6,6 +6,7 @@ import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { apiGet, apiList, apiPatch, apiPost, apiDelete, ApiError } from '../../lib/api';
 import { formatDate as formatTimestamp, formatDateTime, epochDayIndex } from '../../lib/dates';
 import { formatEventDate } from '../../../../src/lib/event-time';
+import { formatScore } from '../../../../src/domain/score-copy';
 import {
   SESSION_FORMAT_FIELD_ID,
   AUDIENCE_LEVEL_FIELD_ID,
@@ -900,7 +901,7 @@ export function SubmissionDetailPage() {
                               reviewed -- never render 'Anonymous reviewer',
                               even for an anonymized plan. */}
                           <strong>{ev.reviewerName}</strong>
-                          <span className="chq-review-entry-score">{ev.score !== null ? ev.score.toFixed(1) : '—'}</span>
+                          <span className="chq-review-entry-score">{formatScore(ev.score)}</span>
                           <span className="chq-review-entry-plan">{formatTimestamp(ev.submittedAt)}</span>
                         </div>
                         {/* Copy rule 6: sentences are for people -- the full

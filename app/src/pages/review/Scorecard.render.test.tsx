@@ -608,7 +608,10 @@ describe('Scorecard reconciliation line (DEC-939)', () => {
 
     await waitFor(() =>
       expect(document.querySelector('.chq-review-overall-caption')?.textContent).toBe(
-        'Averaged by weight, not editable — a plain average of 5, 4, 4 would be 4.33',
+        // DEC-147 amendment (w62-d): the caption's plain-average hint now
+        // goes through formatScore too (one decimal, same grammar as the
+        // Overall value above it), not a bare .toFixed(2).
+        'Averaged by weight, not editable — a plain average of 5, 4, 4 would be 4.3',
       ),
     );
   });

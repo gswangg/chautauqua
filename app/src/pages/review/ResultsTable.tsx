@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
 import './review.css';
 import { buildResultsCsvHref } from './resultsCsv';
+import { formatScore } from '../../../../src/domain/score-copy';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { paginationSummary } from '../../lib/pagination-summary';
 import { PageSkeleton } from '../../components/PageSkeleton';
@@ -423,7 +424,7 @@ export function ResultsTable({
                 <td data-label="Speaker">{row.speakers.length > 0 ? row.speakers.join(', ') : '—'}</td>
                 <td data-label="Track">{row.trackNames.length > 0 ? row.trackNames.join(', ') : '—'}</td>
                 <td className="chq-review-results-score" data-label="Score">
-                  {row.average.toFixed(1)}
+                  {formatScore(row.average)}
                 </td>
                 <td data-label="Reviews">
                   {/* w5-f: the landing's embedded preview is a glance, not a
@@ -530,7 +531,7 @@ export function ResultsTable({
                     </td>
                     <td data-label="Track" className="chq-review-reviews-cell" />
                     <td data-label="Score" className="chq-review-reviews-cell chq-review-reviews-score-total">
-                      {ev.score !== null ? ev.score.toFixed(1) : '—'}
+                      {formatScore(ev.score)}
                     </td>
                     <td data-label="Reviews" className="chq-review-reviews-cell chq-review-reviews-plan-round">
                       {ev.planName} · Round {ev.round}
