@@ -19,7 +19,7 @@ import { formatDateOnly, formatDayLabel } from '../../lib/dates';
 import type { AssignmentStatus, InviteStatus, ReminderDraft } from './types';
 import { ParticipationMenu } from './ParticipationMenu';
 import { RemindPreviewModal } from './RemindPreviewModal';
-import { describeSendResult, type SendResult } from '../../lib/sendResult';
+import { describeSendResult, failureLines, type SendResult } from '../../lib/sendResult';
 import { STATUS_LABELS } from '../submissions/types';
 import { CONTENT_STATUS_LABELS } from '../content/types';
 import { EmptyState } from '../../components/EmptyState';
@@ -119,7 +119,8 @@ export function SpeakerDetailPage() {
     if (!eventId || !detail) return;
     try {
       const res = await apiPost<SendResult>(`/events/${eventId}/portal-invites`, { contactIds: [detail.contact.id] });
-      setToast(describeSendResult(res, { one: 'contact', many: 'contacts' }));
+      const lines = failureLines(res);
+      setToast(`${describeSendResult(res, { one: 'contact', many: 'contacts' })}${lines ? ` ${lines}.` : ''}`);
     } catch (err) {
       setError(err instanceof ApiError ? `Send failed: ${err.message}` : 'Send failed');
     }
@@ -182,7 +183,8 @@ export function SpeakerDetailPage() {
     setError(null);
     try {
       const res = await apiPost<SendResult>(`/events/${eventId}/onboarding/remind`, { contactIds: [detail.contact.id] });
-      setToast(describeSendResult(res, { one: 'contact', many: 'contacts' }));
+      const lines = failureLines(res);
+      setToast(`${describeSendResult(res, { one: 'contact', many: 'contacts' })}${lines ? ` ${lines}.` : ''}`);
       closeRemindReview();
       const refreshed = await apiGet<SpeakerDetailResponse>(`/events/${eventId}/speakers/${detail.contact.id}`);
       setDetail(refreshed);

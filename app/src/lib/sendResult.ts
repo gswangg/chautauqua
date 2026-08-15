@@ -44,3 +44,16 @@ export function describeSendResult(result: SendResult, noun: { one: string; many
 
   return parts.join(' ');
 }
+
+/** DEC-664 (wave 59 amendment): the ONE send-failure reporter for toast/
+ * inline-string contexts that can't render <SendFailures> (see
+ * ../components/SendFailures.tsx for the list-of-rows equivalent). Joins
+ * each failure's server-computed reason -- never the bare address -- so a
+ * single-recipient failure reads "Ada Lovelace has no email address on
+ * file" rather than a restated count. Returns '' when there is nothing to
+ * report, so callers can append it unconditionally. */
+export function failureLines(result: SendResult): string {
+  const failed = result.failed ?? [];
+  if (failed.length === 0) return '';
+  return failed.map((f) => f.message).join('; ');
+}

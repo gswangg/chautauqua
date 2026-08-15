@@ -3,6 +3,7 @@ import { formatRelative } from '../../lib/dates';
 import { useMe } from '../../lib/useMe';
 import { countOf } from '../../lib/plural';
 import { EmptyState } from '../../components/EmptyState';
+import { SendFailures } from '../../components/SendFailures';
 import { MAX_COMMENT_BODY_LENGTH } from '../../lib/file-caps';
 import type { FileComment } from './types';
 
@@ -118,8 +119,8 @@ export function CommentThread({ comments, onSend }: CommentThreadProps) {
       )}
       {summary && summary.failed.length > 0 && (
         <div className="chq-error" role="alert">
-          Sent to {countOf(summary.sent, 'recipient')}; failed for{' '}
-          {summary.failed.map((f) => f.email).join(', ')}.
+          <p>Sent to {countOf(summary.sent, 'recipient')}; failed for:</p>
+          <SendFailures failed={summary.failed} />
         </div>
       )}
       {summary && summary.failed.length === 0 && (

@@ -1,0 +1,39 @@
+/* DEC-664 (wave 59 amendment): the ONE send-failure reporter. Mirrors
+   pages/comms/comms.css's .chq-comms-recipient-row/-name/-meta anatomy --
+   same grid, same hairline, same muted meta colour, no new palette entry --
+   so every send-like surface (bulk email, portal invite, content note)
+   renders one failure per row with its server-computed reason, never a
+   bare address list. */
+.chq-send-failures {
+  margin: 4px 0;
+}
+
+.chq-send-failure-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: baseline;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-send-failure-row:last-child {
+  border-bottom: none;
+}
+
+.chq-send-failure-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chq-send-failure-meta {
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
+/* When there's no address (a recipient with no email on file, e.g. a
+   single-target portal invite), the message alone fills the row rather
+   than leaving an empty first column. */
+.chq-send-failure-row--no-address {
+  grid-template-columns: 1fr;
+}
