@@ -943,6 +943,16 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             </label>
           )}
 
+          {/* Gate-8 P0: the wizard's one error banner renders at the very
+              top, off-viewport from this scrolled step — a preview refusal
+              (e.g. an unknown merge field in an edited body) read as a
+              silent dead-end at the button. The refusal repeats HERE, at
+              the control that produced it (DEC-856 grammar). */}
+          {error ? (
+            <p className="chq-field-error" role="alert">
+              {error}
+            </p>
+          ) : null}
           <div className="chq-comms-template-actions">
             <button type="button" className="chq-btn chq-btn-secondary" onClick={() => setStep('select')}>
               Back
