@@ -403,24 +403,37 @@
   padding: 0;
 }
 
-.chq-settings-people-list li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 13px 0;
-  border-bottom: 1px solid var(--chq-hairline);
-}
-
-.chq-settings-people-list li:last-child {
+.chq-settings-people-row:last-child {
   border-bottom: none;
 }
 
-.chq-settings-people-role {
-  font-size: 12px;
-  font-weight: 700;
+/* w5-e/DEC-691 amendment: PERSON / ROLE / SCOPE / (empty) header row over
+   the same four-track grid as each .chq-settings-people-row below it. */
+.chq-settings-people-header-row {
+  display: grid;
+  grid-template-columns: 1fr 170px 190px auto;
+  gap: 18px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--chq-rule);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--chq-ink-2);
+  color: var(--chq-muted);
+}
+
+/* The select rendered in the ROLE cell at rest -- w5-e/DEC-691 amendment. */
+.chq-settings-people-role-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chq-settings-people-role {
+  min-height: 46px;
+  border: 1px solid var(--chq-border);
+  border-radius: 4px;
+  background: var(--chq-surface);
 }
 
 .chq-settings-people-confirm {
@@ -434,6 +447,13 @@
   font-size: 12px;
   color: var(--chq-muted, var(--chq-ink-2));
   margin: 10px 0 0;
+}
+
+/* w5-e/DEC-691 amendment: the muted closing line under the list. */
+.chq-settings-people-closing-note {
+  font-size: 12px;
+  color: var(--chq-muted, var(--chq-ink-2));
+  margin: 6px 0 0;
 }
 
 /* DEC-402: page-prefixed second classes so each table is addressable by
@@ -666,13 +686,15 @@
   }
 }
 
-/* w15-e/DEC-691: People and roles -- mock lines 190-204 4-column row
-   (identity, role, scope, Change). */
+/* w15-e/DEC-691, w5-e amendment: People and roles -- Chautauqua Settings.dc.html
+   :978-1001 4-track row (identity, role, scope, actions). */
 .chq-settings-people-row {
   display: grid;
-  grid-template-columns: 1fr 150px 190px auto;
-  gap: 16px;
+  grid-template-columns: 1fr 170px 190px auto;
+  gap: 18px;
   align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--chq-hairline);
 }
 
 .chq-settings-people-identity {
@@ -683,8 +705,11 @@
 
 /* task-w35-e/DEC-757: a teammate is a person, so the identity cell leads with
    the account's name and demotes the address to a second, quieter line (the
-   email line is only rendered when a name exists). */
+   email line is only rendered when a name exists). w5-e amendment: 15px/600
+   name over a 12px muted email that breaks on any character rather than
+   overflowing the identity column. */
 .chq-settings-people-name {
+  font-size: 15px;
   font-weight: 600;
   color: var(--chq-ink);
 }
@@ -692,6 +717,7 @@
 .chq-settings-people-email {
   font-size: 12px;
   color: var(--chq-ink-2);
+  word-break: break-all;
 }
 
 .chq-settings-people-scope {
@@ -704,6 +730,14 @@
   align-items: center;
   gap: 10px;
   justify-self: end;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* w5-e/DEC-691 amendment: the undeletable self row's actions read in the
+   disabled ink rather than the tertiary-link color. */
+.chq-settings-people-actions .chq-settings-row-hint {
+  color: var(--chq-disabled);
 }
 
 @media (max-width: 700px) {
