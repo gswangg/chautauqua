@@ -18,6 +18,7 @@
     "walkthrough": "tsx scripts/walkthrough.ts",
     "gate:render-sweep": "tsx scripts/render-sweep.ts",
     "gate:scale": "tsx scripts/walkthrough/stress.ts",
+    "verification-log:assemble": "tsx scripts/assemble-verification-log.ts",
     "deploy": "wrangler d1 migrations apply chautauqua --remote && wrangler deploy",
     "test": "sh scripts/with-test-lock.sh vitest run",
     "test:fast": "vitest run --config vitest.fast.config.ts",
