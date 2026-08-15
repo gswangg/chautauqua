@@ -82,6 +82,33 @@ CLOSED, not owned/in-flight:
 
 ### DISMISSED-VERIFIED-CLOSED (carried, wave 24 boundary `39ac22d0`, not re-checked this wave beyond ref presence)
 
+- **`task-w29-f` — "speakers toolbar right-cluster" (wave-28 gate's one
+  surviving OPEN ITEM, `docs/verification-log.md:3877-3884`) — VOID,
+  DISMISSED-VERIFIED-CLOSED.** The wave-28 gate quoted
+  `docs/design/README.md:350` (a row in the mock table `Speakers
+  [Search speakers…] [All tracks ▾] [List | Grid]`) but that quote lives
+  under the enclosing heading **`docs/design/README.md:343` "Public filter
+  bar — one idiom, four surfaces"** (heading body confirms at `:345`: "the
+  1180 pair layout['s] ... 820px content column" shared by "Sessions, agenda
+  and speakers" — i.e. the PUBLIC surfaces), not the admin toolbar. The gate
+  then searched `app/src/pages/speakers/GridFilters.tsx` (the admin
+  onboarding-grid toolbar) and found no toggle there, which is correct but
+  irrelevant — that file was never named by the quoted line. The controls
+  the heading actually names are already built on the PUBLIC speakers
+  surface: `SpeakerViewToggle` (the `List`/`Grid` two-half segmented control,
+  `aria-current="page"` on the active half) at
+  `src/routes/public/speakers.tsx:20-58`, and `TrackFacetSelect` (the `All
+  tracks ▾` select) at `:72-103`, both mounted on `SpeakersContent`
+  (`:216-269`) and its gallery twin `GalleryContent` (`:271-348`); `q`,
+  `trackId` and `limit` all carry forward across the toggle (`:32-38`).
+  Verified with a new render test,
+  `test/public-speakers-filter-bar.render.test.ts`, which renders both
+  `SpeakersContent` and `GalleryContent` directly and asserts the search
+  box, the `All tracks` select and the `List`/`Grid` toggle are all present,
+  that the active half carries `aria-current="page"`, and that switching
+  halves preserves an active `q`/`trackId`. Do not re-file; do not touch
+  `app/src/pages/speakers/**` on this basis — that surface never claimed to
+  have this control and is out of scope for this clause.
 - **`src/routes/tasks.ts` onboarding-grid `status`/`inviteStatus`** REFUSE an
   unrecognised token, accumulated into one fields map —
   `parseOnboardingGridQuery`, `src/routes/tasks.ts:164-209` (DEC-340
@@ -341,9 +368,12 @@ rather than trust either this note or the brief's guessed pattern.
      `task-w24-c` two waves ago; `submit-views.tsx:421-431` per DEC-976
      wave-25 amendment already renders `form.description` as lede with
      computed fallback — likely CLOSED, not independently re-read this
-     task). Remaining clauses ("active-filter ink chip", "speakers toolbar
-     right-cluster", "underlined initials", "blue avatars", "Add-track
-     tertiary", "saved-embed single-card anatomy") — VERIFIED-OPEN-NOT-RECHECKED.
+     task). Remaining clauses ("active-filter ink chip", "underlined
+     initials", "blue avatars", "Add-track tertiary", "saved-embed
+     single-card anatomy") — VERIFIED-OPEN-NOT-RECHECKED. "speakers toolbar
+     right-cluster" moved to TIER 0 DISMISSED-VERIFIED-CLOSED this wave
+     (`task-w29-f`, DEC-976 wave-29 amendment) — the wave-28 gate's carry of
+     this item was itself mis-attributed; see that entry.
 
 **CFP-16 — RECORDED DELIBERATE FORFEIT** (DEC-041): accepted speakers keep
 editing past close per `docs/clarifications.md:39` + `SPEC.md:297-298` +

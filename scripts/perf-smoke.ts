@@ -10,6 +10,18 @@
 // Scripts/ tooling (not src/ pure-core), so node: imports and reading the
 // fixture file directly (like scripts/seed.ts does for the same organizer
 // credentials) are both fine here.
+//
+// ORDERED RECIPE (w27-d GAP FLAGGED, closed w29-f): the organizer identity
+// this harness logs in as (`fixture.identities.organizer`, read from
+// docs/fixtures/sample-data.json below) is a row created by the demo seed
+// (`npm run seed` / scripts/seed.ts) -- `npm run perf:seed`/`perf-seed.ts`
+// only adds perf-scale rows on top of an already-seeded org and never
+// creates that organizer user itself. Running `perf:seed` then `perf:smoke`
+// against a DB that skipped `npm run seed` fails fast inside `login()` below
+// with `POST /login failed: expected 302, got 401`. Always run, in order:
+// `npm run seed` -> `npm run perf:seed[:aie]` -> `npm run dev` (separate
+// terminal) -> `npm run perf:smoke[:aie]`. See README.md's "Dev: perf smoke
+// / scale gate -- ordered recipe" section for the full command block.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";

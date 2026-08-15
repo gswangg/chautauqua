@@ -156,13 +156,33 @@ the admin mobile pass now blocks the gate. Route list:
 the manifest and the advisory constant live alongside the public mobile pass's
 tests in `test/render-sweep-lib.test.ts`.
 
+### Dev: perf smoke / scale gate — ordered recipe
+
+`npm run perf:smoke` (and `gate:scale`, below) both log in as the seeded
+**organizer** identity read from `docs/fixtures/sample-data.json`. That user
+row is created by the demo seed (`npm run seed`/`scripts/seed.ts`), not by
+`perf-seed.ts` — `perf:seed`/`perf:seed:aie` add perf-scale rows (2k+
+submissions/contacts, a reviewer user of their own) on top of an
+already-seeded org, they never create the organizer user themselves. Running
+`perf:seed` against a fresh/unseeded DB skips straight to a login 401
+(`POST /login failed: expected 302, got 401`) because that organizer login
+doesn't exist yet. The ordered recipe, always:
+
+```sh
+npm run seed        # creates the organizer identity perf:smoke logs in as
+npm run perf:seed   # or perf:seed:aie — adds the perf-scale rows
+npm run dev          # in another terminal, migrated + running
+npm run perf:smoke  # or perf:smoke:aie / gate:scale
+```
+
 ### Dev: scale gate
 
 `npm run gate:scale` turns docs/mandates/scale-mandate.md's "Functional
 bars" section into an executable check against the `aie` perf profile
 (2,500 submissions / 6,000 contacts / 280 accepted sessions — see
 `PERF_PROFILES.aie` in `scripts/perf-seed-lib.ts`). It does NOT reseed
-itself; run these two steps first:
+itself, and depends on the ordered recipe above (`npm run seed` before
+`npm run perf:seed:aie`); run these two steps first:
 
 ```sh
 npm run perf:seed:aie
