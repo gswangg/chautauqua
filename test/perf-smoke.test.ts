@@ -17,6 +17,7 @@ import {
   planPerfPages,
   resolvePerfProfileName,
 } from "../scripts/perf-smoke-lib";
+import { PERF_PROFILES, perfPlanId, perfReviewerEmail } from "../scripts/perf-seed-lib";
 
 describe("computeP95", () => {
   it("computes the 95th percentile via nearest-rank on a sorted sample", () => {
@@ -372,24 +373,16 @@ describe("perf-smoke.ts write-class coverage (DEC-644 amendment, wave 46)", () =
     });
   }
 
-  it("at least one write-class check name is absent from DEFAULT_ONLY_CHECK_NAMES (runs on every profile)", () => {
-    const defaultOnlyMatch = source.match(/DEFAULT_ONLY_CHECK_NAMES = new Set\(\[([\s\S]*?)\]\);/);
-    expect(defaultOnlyMatch).not.toBeNull();
-    const defaultOnlyBlock = defaultOnlyMatch![1]!;
-
+  it("names every write check unconditionally (DEC-644 wave-31 amendment: no profile-conditional filter remains)", () => {
     const newWriteCheckNames = [
       "contacts bulk-email preview (50 recipients)",
       "onboarding remind preview (all outstanding)",
       "submission PATCH (description edit)",
       "pipeline stage move",
     ];
-    const everyProfileNames = newWriteCheckNames.filter((name) => !defaultOnlyBlock.includes(`"${name}"`));
-    expect(everyProfileNames.length).toBeGreaterThanOrEqual(1);
-
-    // task DEC-644 amendment text: "at minimum (c) [submission PATCH] and
-    // (d) [pipeline stage move] must not be default-only".
-    expect(defaultOnlyBlock).not.toContain('"submission PATCH (description edit)"');
-    expect(defaultOnlyBlock).not.toContain('"pipeline stage move"');
+    for (const name of newWriteCheckNames) {
+      expect(source).toContain(`name: "${name}"`);
+    }
   });
 
   // w51-c: the three SPEC §7 high-frequency actions the perf smoke never
@@ -402,12 +395,9 @@ describe("perf-smoke.ts write-class coverage (DEC-644 amendment, wave 46)", () =
     });
   }
 
-  it("none of the w51-c write checks are DEFAULT_ONLY (they run on every profile)", () => {
-    const defaultOnlyMatch = source.match(/DEFAULT_ONLY_CHECK_NAMES = new Set\(\[([\s\S]*?)\]\);/);
-    expect(defaultOnlyMatch).not.toBeNull();
-    const defaultOnlyBlock = defaultOnlyMatch![1]!;
+  it("none of the w51-c write checks are gated behind a profile filter (they run on every profile)", () => {
     for (const name of newWriteCheckNames) {
-      expect(defaultOnlyBlock).not.toContain(`"${name}"`);
+      expect(source).toContain(`name: "${name}"`);
     }
   });
 
@@ -461,5 +451,41 @@ describe("perf-smoke.ts public GET coverage (DEC-683 amendment, wave 68)", () =>
     expect(block).toContain("chq-home-");
     // No `headers` (the organizer cookie header) passed to this fetch call.
     expect(block).not.toMatch(/fetch\(`\$\{PERF_URL\}\/`,\s*\{\s*headers/);
+  });
+});
+
+// w31-d: DEC-644's wave-31 amendment / DEC-645 — the last un-profiled fixture
+// pair (PERF_PLAN_ID/PERF_REVIEWER_EMAIL/PERF_REVIEWER_PASSWORD) is now
+// resolved from PERF_PROFILE through perf-seed-lib's helpers, and the
+// isDefaultProfile/DEFAULT_ONLY_CHECK_NAMES/skippedChecks suppression path
+// is deleted outright (house rule: no compatibility shims) so every check
+// runs unconditionally on every profile.
+describe("perf-smoke.ts profile-resolved plan/reviewer fixtures (DEC-644 wave-31 amendment, DEC-645)", () => {
+  const PERF_SMOKE_PATH = resolve(fileURLToPath(import.meta.url), "../../scripts/perf-smoke.ts");
+  const source = readFileSync(PERF_SMOKE_PATH, "utf-8");
+
+  it("(a) contains no profile-conditional check filter: isDefaultProfile/DEFAULT_ONLY_CHECK_NAMES/skippedChecks are entirely gone", () => {
+    expect(source).not.toContain("isDefaultProfile");
+    expect(source).not.toContain("DEFAULT_ONLY_CHECK_NAMES");
+    expect(source).not.toContain("skippedChecks");
+    expect(source).not.toContain("SKIPPED");
+  });
+
+  it("(a) resolves PERF_PLAN_ID/PERF_REVIEWER_EMAIL/PERF_REVIEWER_PASSWORD from PERF_PROFILE via perf-seed-lib helpers, not hardcoded literals", () => {
+    expect(source).toContain("perfPlanId(PERF_PROFILE.planId, 1)");
+    expect(source).toContain("perfReviewerEmail(1, PERF_PROFILE.reviewerEmailPrefix)");
+    expect(source).toContain("PERF_PROFILE.reviewerPassword");
+  });
+
+  it("(b) the default profile still resolves the exact prior literals: seed_perf_plan_0001 / perf.reviewer.1@example-perf.test / PerfReviewer!2027", () => {
+    const defaultProfile = PERF_PROFILES.default;
+    expect(perfPlanId(defaultProfile.planId, 1)).toBe("seed_perf_plan_0001");
+    expect(perfReviewerEmail(1, defaultProfile.reviewerEmailPrefix)).toBe("perf.reviewer.1@example-perf.test");
+    expect(defaultProfile.reviewerPassword).toBe("PerfReviewer!2027");
+  });
+
+  it("reviewerHeaders is built and used unconditionally (no `!` non-null assertion left over from the deleted `| null` type)", () => {
+    expect(source).not.toContain("reviewerHeaders!");
+    expect(source).toContain("const reviewerHeaders = { cookie: cookieHeader(await login(PERF_REVIEWER_EMAIL, PERF_REVIEWER_PASSWORD)) };");
   });
 });
