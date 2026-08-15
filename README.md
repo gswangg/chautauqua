@@ -60,6 +60,17 @@ it watch-rebuilds the Vite bundle that `wrangler dev` serves as static assets.
 
 Run the test suite with `npm test`.
 
+### Deploying
+
+`npm run deploy` (`wrangler d1 migrations apply chautauqua --remote && wrangler
+deploy`) applies any pending D1 migrations to the remote database before
+deploying the Worker — one idempotent command, safe to re-run. It is
+**operator-run only**: no CI job invokes it (see `.github/workflows/ci.yml`,
+which never calls `wrangler deploy`), and it targets the real resources
+declared in `wrangler.jsonc` (D1 database, KV namespace, `chautauqua-files`
+R2 bucket, the `send_email` binding, the `chautauqua.cc` custom domain), so it
+must never run from an untrusted context.
+
 Test policy: workers run targeted tests (`npm run test:targeted -- <paths>`); the full suite is serialized through `scripts/with-test-lock.sh` (`npm test`).
 
 `.dev.vars.example` (copied to your gitignored `.dev.vars` on first `predev`
@@ -238,19 +249,33 @@ screen(s) below are where it lives.
 
 ## Stage 2 (deferred platform wiring)
 
-Everything below sits behind a port today and runs with local, zero-secret
-implementations in stage 1; stage 2 is swapping in the real adapters and
-provisioning a live deployment:
+Stage-2 platform wiring has **landed** on `main`: `wrangler.jsonc` carries a
+real D1 `database_id`, a real KV `id`, the `chautauqua-files` R2 bucket, the
+`send_email` Email Service binding, `MAIL_FROM_EMAIL`/`PUBLIC_BASE_URL` vars,
+the `chautauqua.cc` custom domain, a `*/15 * * * *` cron trigger, and
+`placement: { mode: "smart" }`. `src/mail/email-binding.ts`
+(`EmailBindingMailer`) sends real mail through that binding — no dev-sink
+fallback in production — and the composition root
+(`src/server/context.ts`) selects it whenever the `EMAIL` binding and
+`MAIL_FROM_EMAIL` are present; `src/mail/dev-sink.ts`'s `DevSinkMailer` stays
+the local/CI implementation (`/dev/mailbox`), and `src/mail/unconfigured.ts`'s
+`UnconfiguredMailer` is the fail-loud fallback if neither is wired. Deploys
+are **operator-run**, not CI-run: `npm run deploy` (see "Deploying" above)
+applies migrations then deploys; no job in `.github/workflows/ci.yml` calls
+`wrangler deploy`.
 
-- Cloudflare account provisioning (real D1/R2 resources) and `wrangler deploy`
-  to a live Worker.
-- Cloudflare Email Service `send_email` binding adapter for the mailer port,
-  replacing the dev-sink email implementation (`/dev/mailbox`).
-- Airtable one-way sync (contacts/sessions → base). Requires
-  `AIRTABLE_TOKEN` + `AIRTABLE_BASE_ID` + `AIRTABLE_ORG_ID`; one base serves
-  exactly one org, so a configured sync without `AIRTABLE_ORG_ID` throws
-  rather than syncing unscoped.
-- Custom domains and CI-driven deploys.
+What is genuinely still unwired:
+
+- **Airtable one-way sync** (`src/sync/airtable.ts`, `runAirtableSync`) —
+  secret-gated and off by default. It requires `AIRTABLE_TOKEN` +
+  `AIRTABLE_BASE_ID` (absence is a valid, non-error "off" state) and, once
+  those are set, `AIRTABLE_ORG_ID` (one Airtable base serves exactly one org;
+  a configured-but-unscoped sync throws rather than pushing one tenant's rows
+  into another tenant's base). None of the three is present in
+  `wrangler.jsonc` today, so the cron tick that would call it is a no-op.
+- **Sessionboard-API importer** — see Roadmap below; it needs a Sessionboard
+  API key Chautauqua does not have, so it isn't buildable yet, let alone
+  wired.
 
 ## Roadmap
 
