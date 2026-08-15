@@ -13,6 +13,7 @@ import { PageSkeleton } from '../../components/PageSkeleton';
 import './review.css';
 import type { EvaluationPlan, ProgressRow, Track } from './types';
 import { countOf } from '../../lib/plural';
+import { isPlanOpen } from '../../../../src/domain/evaluation';
 
 /** Presentational-only window state derived from openDate/closeDate — never
  * stored server-side, so it must never be asserted as more than "now vs.
@@ -23,23 +24,32 @@ import { countOf } from '../../lib/plural';
  * (a future state, not yet actionable) is an outlined pill, and CLOSED stays
  * bare text since a closed plan is not a state anyone acts on. `kind` drives
  * which review-scoped pill modifier (if any) PlanList applies; `label` is
- * the same three-way text this always rendered. */
+ * the same three-way text this always rendered.
+ *
+ * DEC-674 (wave-58 amendment): the window read delegates to the SAME
+ * isPlanOpen the server uses (src/domain/evaluation.ts), which expands the
+ * day-label openDate/closeDate through the plan's own event timezone --
+ * never a bare `< now`/`> now` comparison against a day label here. */
 function planState(plan: EvaluationPlan, now: number): { kind: 'open' | 'opens' | 'closed'; label: string } {
-  if (plan.closeDate !== null && plan.closeDate < now) return { kind: 'closed', label: 'Closed' };
-  if (plan.openDate !== null && plan.openDate > now) {
+  // Past the open boundary (or unbounded on that side) iff isPlanOpen would
+  // accept `now` when the close bound is ignored -- the same call as below,
+  // just with closeDate dropped, so "not yet open" is never a second
+  // hand-written `> now` comparison against the day label.
+  if (!isPlanOpen(plan.openDate, null, now, plan.timezone)) {
     return { kind: 'opens', label: `Opens ${formatDateOnly(plan.openDate)}` };
   }
-  return { kind: 'open', label: 'Open now' };
+  if (isPlanOpen(plan.openDate, plan.closeDate, now, plan.timezone)) {
+    return { kind: 'open', label: 'Open now' };
+  }
+  return { kind: 'closed', label: 'Closed' };
 }
 
-/** DEC-674: a plan's window is "open" iff now falls inside [openDate,
- * closeDate], treating a null bound as unbounded on that side -- the same
- * three-state read as planState()'s 'Open now' branch, factored out so the
- * landing page's default selection uses exactly this rule. */
+/** DEC-674: a plan's window is "open" iff isPlanOpen (the shared domain
+ * predicate, zone-aware) says so -- the same read as planState()'s 'Open
+ * now'/'Opens N' branches, factored out so the landing page's default
+ * selection uses exactly this rule. */
 function isWindowOpen(plan: EvaluationPlan, now: number): boolean {
-  if (plan.closeDate !== null && plan.closeDate < now) return false;
-  if (plan.openDate !== null && plan.openDate > now) return false;
-  return true;
+  return isPlanOpen(plan.openDate, plan.closeDate, now, plan.timezone);
 }
 
 function planWindow(plan: EvaluationPlan): string {

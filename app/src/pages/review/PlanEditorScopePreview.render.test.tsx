@@ -32,6 +32,7 @@ function plan() {
     roundCriteria: null,
     maxEvaluations: null,
     createdAt: 1700000000000,
+    timezone: 'UTC',
   };
 }
 

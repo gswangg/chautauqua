@@ -45,6 +45,7 @@ import {
 import {
   criterionWeightShares,
   DEFAULT_PLAN_CRITERIA,
+  isPlanOpen,
   MAX_CRITERION_GUIDANCE_LENGTH,
 } from '../../../../src/domain/evaluation';
 import { DEC_745, DEC_786, DEC_824, DEC_882, DEC_715, DEC_213, DEC_124 } from '../../../../src/decisions';
@@ -143,13 +144,12 @@ function moveCriterion(criteria: EvaluationCriterion[], id: string, delta: numbe
   return next;
 }
 
-// DEC-674 (mirrored from PlanList's isWindowOpen): a plan's window is "open"
-// iff now falls inside [openAt, closeAt], treating a null bound as
-// unbounded on that side.
-function isPlanOpenNow(openAt: number | null, closeAt: number | null, now: number): boolean {
-  if (closeAt !== null && closeAt < now) return false;
-  if (openAt !== null && openAt > now) return false;
-  return true;
+// DEC-674 (wave-58 amendment, mirrored from PlanList's isWindowOpen): a
+// plan's window is "open" iff the shared domain isPlanOpen (which expands
+// the day-label openAt/closeAt through the event's own timezone) says so --
+// never a bare `< now`/`> now` comparison against a day label here.
+function isPlanOpenNow(openAt: number | null, closeAt: number | null, now: number, timeZone: string): boolean {
+  return isPlanOpen(openAt, closeAt, now, timeZone);
 }
 
 // DEC-840: a non-empty shortfall renders as a sentence naming the
@@ -229,6 +229,12 @@ export function PlanEditor() {
   // TracksRoomsPanel.tsx's trackBaseline/isTrackDirty pair, never
   // re-derived from the server mid-edit.
   const [pristineDraft, setPristineDraft] = useState<PlanDraft>(draft);
+  // DEC-674 (wave-58 amendment): the loaded plan's own event timezone,
+  // needed to delegate isPlanOpenNow to the shared isPlanOpen domain
+  // predicate -- kept alongside the draft it loads with, never re-fetched. A
+  // brand-new plan (isNew) has no saved timezone and never calls
+  // isPlanOpenNow, so this starts null and stays unread on that path.
+  const [planTimeZone, setPlanTimeZone] = useState<string | null>(null);
   // DEC-676: recorded-evaluation count per round (GET /plans/:id only) --
   // read-only server truth, never re-derived from draft state.
   const [evaluationCountsByRound, setEvaluationCountsByRound] = useState<Record<string, number>>({});
@@ -387,7 +393,7 @@ export function PlanEditor() {
   // DEC-882: the page header's "Open · N of M reviews in" reads the SAME
   // progress aggregate ProgressPanel/PlanList already read (progressRows via
   // progressTotals) -- never a second count derived in this component.
-  const planIsOpen = !isNew && isPlanOpenNow(draft.openAt, draft.closeAt, Date.now());
+  const planIsOpen = !isNew && planTimeZone !== null && isPlanOpenNow(draft.openAt, draft.closeAt, Date.now(), planTimeZone);
   const { completed: reviewsCompleted, assigned: reviewsAssigned } = progressTotals(progressRows);
 
   // DateField only ever calls onChange with '' or an already-parsed
@@ -431,6 +437,7 @@ export function PlanEditor() {
         setDraft(loaded);
         setPristineDraft(loaded);
         setEvaluationCountsByRound(plan.evaluationCountsByRound ?? {});
+        setPlanTimeZone(plan.timezone);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load plan'))
       .finally(() => setLoading(false));
