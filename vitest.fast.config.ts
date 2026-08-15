@@ -31,6 +31,11 @@ export default defineConfig({
       "**/node_modules/**",
       "app/src/lib/useEscapeKey.test.ts",
       "app/src/lib/api.unauthorized.render.test.ts",
+      // w64-a (DEC-958 wave-64 amendment): plain-.test.ts name (mirroring
+      // compose-refusal-shapes.test.ts) but jsdom-environment in
+      // vitest.config.ts, so the derived predicate in test/test-tiers.test.ts
+      // calls it SLOW -- same shape as the two entries above.
+      "app/src/pages/review/planEditor-refusal-shapes.test.ts",
       "test/itinerary-script-persistence.test.ts",
       "test/embed-element.test.ts",
       "test/gate4-residue-closure.test.ts",
