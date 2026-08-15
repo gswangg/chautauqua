@@ -46,6 +46,7 @@ function makePlan(n: number): PlanRecord {
     rounds: 1,
     currentRound: 1,
     roundCriteria: null,
+    roundMeta: null,
     maxEvaluations: null,
     createdAt: n,
     updatedAt: n,

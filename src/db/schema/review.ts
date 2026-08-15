@@ -37,6 +37,11 @@ export const evaluationPlan = sqliteTable(
     // round 1 by convention) fall back to criteriaJson -- resolved ONLY via
     // src/domain/evaluation.ts's criteriaForRound(). migrations/0010_round_criteria.sql.
     roundCriteriaJson: text("round_criteria_json"),
+    // DEC-147 amendment (wave 8, task w8-c): nullable map of round ->
+    // {name?, opensAt?, closesAt?} -- a round's own name and open/close
+    // window, mirroring roundCriteriaJson's shape exactly. Resolved ONLY
+    // via src/domain/evaluation.ts's roundMetaFor(). migrations/0037_round_meta.sql.
+    roundMetaJson: text("round_meta_json"),
     maxEvaluations: integer("max_evaluations"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

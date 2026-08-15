@@ -22,6 +22,7 @@ import {
   parseScale,
   parseCriteria,
   parseRoundCriteria,
+  parseRoundMeta,
   parseRounds,
   parseMaxEvaluations,
   parseEpochMs,
@@ -73,6 +74,9 @@ reviewPlansCrudRoutes.post("/api/v1/events/:eventId/plans", requireOrganizer, cs
   const criteria = parseCriteria(body, errors);
   const rounds = body.rounds !== undefined ? parseRounds(body, errors) : 1;
   const roundCriteria = parseRoundCriteria(body, errors, rounds);
+  // DEC-147 amendment (wave 8, task w8-c): validated next to roundCriteria,
+  // same rules (bounded key range, bounded name, ms-epoch-or-null dates).
+  const roundMeta = parseRoundMeta(body, errors, rounds);
   // DEC-509: maxEvaluations/openDate/closeDate validated at the route --
   // a bad value must 400, never coerce to null and open the plan silently.
   const maxEvaluations = parseMaxEvaluations(body, errors);
@@ -94,6 +98,7 @@ reviewPlansCrudRoutes.post("/api/v1/events/:eventId/plans", requireOrganizer, cs
     criteria: criteria!,
     rounds: rounds!,
     roundCriteria: roundCriteria ?? null,
+    roundMeta: roundMeta ?? null,
     maxEvaluations: maxEvaluations ?? null,
   });
   return c.json(created, 201);
@@ -123,6 +128,11 @@ reviewPlansCrudRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, asy
   const rounds = body.rounds !== undefined ? parseRounds(body, errors, plan.currentRound) : undefined;
   const roundCriteria =
     body.roundCriteria !== undefined ? parseRoundCriteria(body, errors, rounds ?? plan.rounds) : undefined;
+  // DEC-147 amendment (wave 8, task w8-c): round meta is NOT frozen by the
+  // per-round criteria lock (DEC-213) -- a name/window is not a scoring
+  // input, so it stays editable on a round with recorded evaluations. No
+  // DEC-213-style freeze guard below for roundMeta.
+  const roundMeta = body.roundMeta !== undefined ? parseRoundMeta(body, errors, rounds ?? plan.rounds) : undefined;
   // DEC-509: same validation as POST -- PATCH previously did `as number`
   // casts with no check at all, letting `maxEvaluations: 0` (or a date
   // string) through verbatim.
@@ -206,6 +216,7 @@ reviewPlansCrudRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, asy
     criteria,
     rounds,
     roundCriteria,
+    roundMeta,
     maxEvaluations,
   });
   return c.json(updated);

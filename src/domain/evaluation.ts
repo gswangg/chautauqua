@@ -31,6 +31,8 @@ export {
   DEFAULT_PLAN_CRITERIA,
   aggregateDropdownCriterion,
   criteriaForRound,
+  roundMetaFor,
+  roundLabel,
 } from "./evaluation/criteria";
 export type {
   RatingCriterionDef,
@@ -39,6 +41,8 @@ export type {
   EvaluationCriterionDef,
   EvaluationScoreValue,
   EvaluationErrors,
+  RoundMetaEntry,
+  RoundMeta,
 } from "./evaluation/criteria";
 
 export { isPlanOpen } from "./evaluation/plan-window";

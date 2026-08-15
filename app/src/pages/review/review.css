@@ -923,6 +923,14 @@
   padding-bottom: 14px;
 }
 
+/* DEC-147 amendment (wave 8, task w8-c): the active round's own Name/Opens/
+   Closes fields, in the same grid rhythm as the plan-wide summary grid
+   above -- this rule only adds the bottom spacing chq-review-summary-grid
+   itself doesn't carry when reused mid-section. */
+.chq-review-round-meta-fields {
+  padding-bottom: 14px;
+}
+
 .chq-review-reviewer-row {
   display: grid;
   grid-template-columns: 1fr 190px auto auto;

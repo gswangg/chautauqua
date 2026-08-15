@@ -360,6 +360,28 @@ export function PlanEditor() {
   }
 
   const activeRoundIsCustomized = activeRound !== 0 && roundOverride !== null;
+
+  // DEC-147 amendment (wave 8, task w8-c): the active round's own name and
+  // open/close window -- mirrors editingCriteria's shape exactly (0 = no
+  // round selected -> no fields render at all; a round with no roundMeta
+  // entry yet reads as all-blank inputs, not the resolved `Round ${n}`
+  // fallback -- that fallback is a DISPLAY concern (roundLabel/roundMetaFor)
+  // the editor's own inputs never pre-fill with a value the organizer never
+  // typed). Round meta is NOT frozen by the criteria lock (DEC-213/DEC-676)
+  // -- a name is not a scoring input, so these fields stay editable even on
+  // a locked round.
+  const activeRoundMeta = activeRound === 0 ? null : (draft.roundMeta?.[String(activeRound)] ?? null);
+
+  function setActiveRoundMetaField(field: 'name' | 'opensAt' | 'closesAt', value: string | number | null) {
+    if (activeRound === 0) return;
+    setDraft((d) => ({
+      ...d,
+      roundMeta: {
+        ...(d.roundMeta ?? {}),
+        [String(activeRound)]: { ...(d.roundMeta?.[String(activeRound)] ?? {}), [field]: value },
+      },
+    }));
+  }
   const criteriaErrors = validateCriteriaList(editingCriteria);
   // DEC-709: the new-row kind picker is a segmented control (Rating /
   // Dropdown / Text), never a native <select> -- toggled open by the ONE
@@ -467,6 +489,7 @@ export function PlanEditor() {
           criteria: plan.criteria,
           rounds: plan.rounds,
           roundCriteria: plan.roundCriteria ?? null,
+          roundMeta: plan.roundMeta ?? null,
           maxEvaluationsPerSubmission: plan.maxEvaluations ?? undefined,
         };
         setDraft(loaded);
@@ -523,6 +546,7 @@ export function PlanEditor() {
     criteria: 'Scoring criteria',
     rounds: 'Rounds',
     roundCriteria: 'Round criteria',
+    roundMeta: 'Round names/dates',
     maxEvaluationsPerSubmission: 'Reviews per talk',
   };
 
@@ -631,6 +655,7 @@ export function PlanEditor() {
       criteria: draft.criteria,
       rounds: draft.rounds,
       roundCriteria: draft.roundCriteria,
+      roundMeta: draft.roundMeta,
     };
     try {
       if (isNew) {
@@ -1395,6 +1420,47 @@ export function PlanEditor() {
                     Customize round {activeRound} (inherits base until then)
                   </button>
                 ))}
+            </div>
+          )}
+
+          {/* DEC-147 amendment (wave 8, task w8-c): a round is a named
+              window -- name/opens/closes for the round tab currently being
+              edited, in the same field rhythm as the plan-wide Opens/Closes
+              summary grid above. Never frozen by activeRoundIsLocked (a
+              name/window is not a scoring input, unlike the criteria rows
+              below). */}
+          {activeRound !== 0 && (
+            <div className="chq-review-round-meta-fields chq-review-summary-grid">
+              <label className="chq-review-field" htmlFor="round-meta-name">
+                {`Round ${activeRound} name`}
+                <input
+                  id="round-meta-name"
+                  type="text"
+                  className="chq-input"
+                  placeholder={`Round ${activeRound}`}
+                  maxLength={MAX_NAME_LENGTH}
+                  value={activeRoundMeta?.name ?? ''}
+                  onChange={(e) => setActiveRoundMetaField('name', e.target.value)}
+                />
+              </label>
+              <label className="chq-review-field" htmlFor="round-meta-opens-at">
+                Opens
+                <DateField
+                  id="round-meta-opens-at"
+                  className="chq-input chq-date-input"
+                  value={msToDateInput(activeRoundMeta?.opensAt ?? null)}
+                  onChange={(value) => setActiveRoundMetaField('opensAt', dateInputToMs(value))}
+                />
+              </label>
+              <label className="chq-review-field" htmlFor="round-meta-closes-at">
+                Closes
+                <DateField
+                  id="round-meta-closes-at"
+                  className="chq-input chq-date-input"
+                  value={msToDateInput(activeRoundMeta?.closesAt ?? null)}
+                  onChange={(value) => setActiveRoundMetaField('closesAt', dateInputToMs(value))}
+                />
+              </label>
             </div>
           )}
 

@@ -21,6 +21,7 @@ import {
   partitionRecused,
   computeWeightedScore,
   formatReviewerScopeLabel,
+  roundMetaFor,
 } from "../../domain/evaluation";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";
@@ -121,6 +122,13 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
       planName: plan.name,
       scopeTrackName,
       closeDate: plan.closeDate,
+      // DEC-147 amendment (wave 8, task w8-c): the ACTIVE round's own
+      // resolved name/window, so the queue head can print it via roundLabel
+      // instead of a bare "round N" -- resolved server-side, never
+      // re-derived client-side from a raw overrides map.
+      rounds: plan.rounds,
+      currentRound: plan.currentRound,
+      roundMeta: roundMetaFor(plan, plan.roundMeta, plan.currentRound),
     });
 
   if (!isPlanOpen(plan.openDate, plan.closeDate, Date.now(), plan.timezone)) {
