@@ -9,6 +9,7 @@ import { DelayedLoading } from '../../components/DelayedLoading';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { formatDate, formatDayLabel } from '../../lib/dates';
 import { countOf } from '../../lib/plural';
+import { publicRoomLabel } from '../../lib/room-label';
 import {
   FILE_KINDS,
   DELIVERABLE_LABELS,
@@ -65,8 +66,6 @@ interface DeliverableHeaderDetail {
   contentStatus: ContentStatus;
 }
 
-const ROOM_TBA_LABEL = 'To be announced';
-
 function formatClockTime(minutesFromMidnight: number): string {
   const h = Math.floor(minutesFromMidnight / 60);
   const m = minutesFromMidnight % 60;
@@ -82,7 +81,7 @@ function formatDetailTrailer(detail: DeliverableHeaderDetail): string {
   const parts = [detail.ref];
   if (detail.slot) {
     const slotLabel = `${formatDayLabel(detail.slot.day)} ${formatClockTime(detail.slot.startMin)}–${formatClockTime(detail.slot.endMin)}`;
-    parts.push(`${slotLabel}, ${detail.slot.roomName ?? ROOM_TBA_LABEL}`);
+    parts.push(`${slotLabel}, ${publicRoomLabel(detail.slot.roomName)}`);
   }
   return parts.join(' · ');
 }

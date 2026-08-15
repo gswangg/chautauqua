@@ -8,6 +8,7 @@
 // announced" wording (DEC-666: an internal shorthand is not public prose) -- never a
 // dash -- so the organiser sees the same honest label a visitor would see.
 import { formatDayLabel } from '../../lib/dates';
+import { publicRoomLabel } from '../../lib/room-label';
 
 export interface SubmissionScheduleSlot {
   day: string;
@@ -15,8 +16,6 @@ export interface SubmissionScheduleSlot {
   endMin: number;
   roomName: string | null;
 }
-
-const ROOM_TBA_LABEL = 'To be announced';
 
 /** Render minutes-from-midnight as a zero-padded HH:MM clock time. */
 function formatClockTime(minutesFromMidnight: number): string {
@@ -28,6 +27,6 @@ function formatClockTime(minutesFromMidnight: number): string {
 export function formatSubmissionScheduleLine(slot: SubmissionScheduleSlot): string {
   const dayLabel = formatDayLabel(slot.day);
   const timeLabel = `${formatClockTime(slot.startMin)}–${formatClockTime(slot.endMin)}`;
-  const roomLabel = slot.roomName ?? ROOM_TBA_LABEL;
+  const roomLabel = publicRoomLabel(slot.roomName);
   return `${dayLabel} · ${timeLabel} · ${roomLabel}`;
 }

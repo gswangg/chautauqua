@@ -125,7 +125,8 @@ describe("GET /portal/submissions/:id scoping (DEC-729)", () => {
 });
 
 // DEC-777: block-level rows, event-timezone placement (never raw
-// detail.day/toISOString), an honest "Room to be announced" fallback, and no
+// detail.day/toISOString), an honest "To be announced" fallback (DEC-666:
+// the one room-absence vocabulary), and no
 // Participants/Answers dump on this READ view (both stay reachable via
 // /portal/submissions/:id/edit, which this task doesn't touch).
 describe("GET /portal/submissions/:id — DEC-777 detail rebuild", () => {
@@ -158,7 +159,7 @@ describe("GET /portal/submissions/:id — DEC-777 detail rebuild", () => {
     expect(html).not.toContain("2027-05-12");
     expect(html).toContain("May");
     expect(html).toContain("10:00");
-    expect(html).toContain("Room to be announced");
+    expect(html).toContain("To be announced");
   });
 
   it("never renders the Participants heading — that capability lives at /portal/submissions/:id/edit instead", async () => {

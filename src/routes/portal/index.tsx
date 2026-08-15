@@ -12,6 +12,7 @@ import { PublicEmptyState } from "../public/empty-state";
 import { formatCalendarDate, formatDayMedium, formatEventDate, formatScheduleSlotLabel } from "../../lib/event-time";
 import { effectiveAssignmentDueDate } from "../../domain/task-due";
 import { countOf } from "../../domain/count-copy";
+import { publicRoomLabel } from "../../domain/schedule";
 import { sessionFormatLabel } from "../../lib/session-vocabulary";
 import { csrfForm } from "../../server/middleware";
 import { ApiError } from "../../server/http";
@@ -369,18 +370,18 @@ function minutesToClock(min: number | null): string {
 // same "Tue 12 May" the design handoff and the agenda day-switcher family
 // use), start time via the already-local startMin (schedule_slot stores
 // minutes-from-midnight IN the event's own timezone — DEC-010 — so no
-// further zone conversion applies), and an honest "Room to be announced"
-// instead of silently omitting the room. scheduledSubline composes this
-// same function rather than hand-assembling day/time/room a second time.
+// further zone conversion applies), and an honest room-absence label
+// (DEC-666: the ONE room-absence vocabulary, publicRoomLabel) instead of
+// silently omitting the room. scheduledSubline composes this same function
+// rather than hand-assembling day/time/room a second time.
 function formatPlacement(day: string, startMin: number, roomName: string | null): string {
-  const room = roomName ?? "Room to be announced";
-  return `${formatDayMedium(day)}, ${minutesToClock(startMin)} · ${room}`;
+  return `${formatDayMedium(day)}, ${minutesToClock(startMin)} · ${publicRoomLabel(roomName)}`;
 }
 
 // DEC-777 (w2-f rebuild): docs/design "Portal · Your session" frame — status
 // badge, title and back link EACH their own block-level row (never sharing
 // an inline line), "REF · format · track" as its own line, a placement line
-// (event-timezone, honest "Room to be announced" when unplaced) only when
+// (event-timezone, honest room-absence label when unplaced, DEC-666) only when
 // the session has actually landed on the schedule, Abstract, then a Slides
 // card carrying real file metadata (filename/version/size/"Shared with the
 // organisers") plus — ONLY when a file_request task exists for this speaker
