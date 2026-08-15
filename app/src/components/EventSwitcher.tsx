@@ -21,6 +21,7 @@ import {
   type NewEventForm,
   type NewEventFormErrors,
 } from './eventSwitcherState';
+import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from '../lib/text-caps';
 import './event-switcher.css';
 
 const STORAGE_KEY = 'chq.currentEventId';
@@ -95,6 +96,7 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
         <input
           id="new-event-name"
           className="chq-input"
+          maxLength={MAX_NAME_LENGTH}
           value={form.name}
           onChange={(e) => setField('name', e.target.value)}
           placeholder="DevFlow Conf 2028"
@@ -105,6 +107,7 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
         <input
           id="new-event-slug"
           className="chq-input"
+          maxLength={MAX_NAME_LENGTH}
           value={form.slug}
           onChange={(e) => setField('slug', e.target.value)}
           placeholder="devflow-conf-2028"
@@ -140,6 +143,7 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
         <input
           id="new-event-timezone"
           className="chq-input"
+          maxLength={MAX_NAME_LENGTH}
           value={form.timezone}
           onChange={(e) => setField('timezone', e.target.value)}
           placeholder="America/Chicago"
@@ -154,6 +158,7 @@ function NewEventModal({ onCancel, onCreated }: { onCancel: () => void; onCreate
         <input
           id="new-event-location"
           className="chq-input"
+          maxLength={MAX_TEXT_LENGTH}
           value={form.location}
           onChange={(e) => setField('location', e.target.value)}
           placeholder="Ferry Building, San Francisco"

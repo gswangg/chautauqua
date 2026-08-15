@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { apiGet, apiPost, ApiError } from '../../lib/api';
 import { FormRow, ModalFrame } from '../../components/ModalFrame';
 import { DuplicateEmailNotice } from './DuplicateEmailNotice';
+import { MAX_NAME_LENGTH } from '../../lib/text-caps';
 
 interface Props {
   onClose: () => void;
@@ -138,6 +139,7 @@ export function NewContactModal({ onClose, onCreated }: Props) {
         <input
           id="new-contact-first-name"
           className="chq-input"
+          maxLength={MAX_NAME_LENGTH}
           value={firstName}
           onChange={(e) => setFirstName(e.target.value)}
           placeholder="Priya"
@@ -147,6 +149,7 @@ export function NewContactModal({ onClose, onCreated }: Props) {
         <input
           id="new-contact-last-name"
           className="chq-input"
+          maxLength={MAX_NAME_LENGTH}
           value={lastName}
           onChange={(e) => setLastName(e.target.value)}
           placeholder="Raman"
@@ -157,6 +160,7 @@ export function NewContactModal({ onClose, onCreated }: Props) {
           id="new-contact-email"
           className="chq-input"
           type="email"
+          maxLength={MAX_NAME_LENGTH}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="priya.raman@example.com"
@@ -166,6 +170,7 @@ export function NewContactModal({ onClose, onCreated }: Props) {
         <input
           id="new-contact-company"
           className="chq-input"
+          maxLength={MAX_NAME_LENGTH}
           value={company}
           onChange={(e) => setCompany(e.target.value)}
           placeholder="Latticework Systems"
@@ -175,6 +180,7 @@ export function NewContactModal({ onClose, onCreated }: Props) {
         <input
           id="new-contact-title"
           className="chq-input"
+          maxLength={MAX_NAME_LENGTH}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Principal Engineer"

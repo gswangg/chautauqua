@@ -24,6 +24,7 @@ import { PIPELINE_RATIONALE_MAX_LEN, sortByFit } from '../../../../src/domain/pi
 import type { ContactListItem, PipelineActivity, PipelineEntry, PipelineEntryDetail, PipelineStage } from './types';
 import { PIPELINE_STAGES, PIPELINE_STAGE_LABELS } from './types';
 import { DEC_856 } from '../../../../src/decisions';
+import { MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from '../../lib/text-caps';
 import './contacts-panels.css';
 
 // DEC-856 (wave 65-d amendment): the pipeline's four writers -- move (PATCH
@@ -464,6 +465,7 @@ function DeclineReasonDialog({ entry, onCancel, onConfirm }: DeclineReasonDialog
         <textarea
           id="pipeline-decline-reason"
           className="chq-textarea"
+          maxLength={MAX_TEXT_LENGTH}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="Went with another speaker"
@@ -1161,6 +1163,7 @@ function EntryDetailPanel({ entryId, entry, moveError, onClose, onChanged, onMov
               <textarea
                 id="pipeline-detail-note"
                 className="chq-textarea"
+                maxLength={MAX_LONG_TEXT_LENGTH}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Followed up by phone, waiting on their reply"

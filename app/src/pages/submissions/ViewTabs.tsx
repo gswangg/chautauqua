@@ -13,6 +13,7 @@ import { sortLabel } from './FilterBar';
 import { serializeView, type SavedView, type SavedViewConfig } from './views';
 import { findFormatField } from './columns';
 import { STATUS_LABELS, type FormField, type SubmissionsFilterState, type Track } from './types';
+import { MAX_NAME_LENGTH } from '../../lib/text-caps';
 
 export interface BuiltInView {
   key: string;
@@ -159,6 +160,7 @@ function SaveViewDialog({ filters, tracks, pending, onCancel, onSave }: SaveView
         <input
           id="save-view-name"
           className="chq-input"
+          maxLength={MAX_NAME_LENGTH}
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="AI track, unread"

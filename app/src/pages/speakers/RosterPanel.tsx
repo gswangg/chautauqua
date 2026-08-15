@@ -13,6 +13,7 @@ import { ImportWizard } from '../contacts/ImportWizard';
 import { FormRow, ModalFrame } from '../../components/ModalFrame';
 import { DuplicateEmailNotice } from '../contacts/DuplicateEmailNotice';
 import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
+import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from '../../lib/text-caps';
 
 // DEC-958 (wave 58): every wire key POST /contacts's crud.ts validator can
 // name on this form's own submitted body (src/routes/api/contacts/crud.ts
@@ -273,6 +274,7 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
               id="roster-first-name"
               className={fieldClassName('firstName', 'chq-input')}
               type="text"
+              maxLength={MAX_NAME_LENGTH}
               required
               aria-invalid={fieldAriaInvalid('firstName')}
               value={form.firstName}
@@ -284,6 +286,7 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
               id="roster-last-name"
               className={fieldClassName('lastName', 'chq-input')}
               type="text"
+              maxLength={MAX_NAME_LENGTH}
               required
               aria-invalid={fieldAriaInvalid('lastName')}
               value={form.lastName}
@@ -300,6 +303,7 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
               id="roster-session-title"
               className={fieldClassName('sessionTitle', 'chq-input')}
               type="text"
+              maxLength={MAX_NAME_LENGTH}
               required
               placeholder="e.g. Scaling Kubernetes at 2am"
               aria-invalid={fieldAriaInvalid('sessionTitle')}
@@ -312,6 +316,7 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
               id="roster-email"
               className={fieldClassName('email', 'chq-input')}
               type="email"
+              maxLength={MAX_NAME_LENGTH}
               required
               aria-invalid={fieldAriaInvalid('email')}
               value={form.email}
@@ -323,6 +328,7 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
               id="roster-title"
               className={fieldClassName('title', 'chq-input')}
               type="text"
+              maxLength={MAX_NAME_LENGTH}
               aria-invalid={fieldAriaInvalid('title')}
               value={form.title}
               onChange={(e) => updateField('title', e.target.value)}
@@ -333,6 +339,7 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
               id="roster-company"
               className={fieldClassName('company', 'chq-input')}
               type="text"
+              maxLength={MAX_NAME_LENGTH}
               aria-invalid={fieldAriaInvalid('company')}
               value={form.company}
               onChange={(e) => updateField('company', e.target.value)}
@@ -342,6 +349,7 @@ export function RosterPanel({ mode, onClose, onChanged }: RosterPanelProps) {
             <textarea
               id="roster-bio"
               className={fieldClassName('bio', 'chq-textarea')}
+              maxLength={MAX_LONG_TEXT_LENGTH}
               aria-invalid={fieldAriaInvalid('bio')}
               value={form.bio}
               onChange={(e) => updateField('bio', e.target.value)}

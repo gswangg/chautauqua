@@ -16,6 +16,7 @@ import { ApiError } from '../../lib/api';
 // (src/routes/tasks.ts's parseInstructions) so the control can never drift
 // from the rule that actually validates it.
 import { MAX_TASK_INSTRUCTIONS_LENGTH } from '../../../../src/domain/task-copy';
+import { MAX_NAME_LENGTH } from '../../lib/text-caps';
 
 interface TaskModalProps {
   onCancel: () => void;
@@ -186,6 +187,7 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = nul
             id="task-title"
             className="chq-input"
             type="text"
+            maxLength={MAX_NAME_LENGTH}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Submit your slides"

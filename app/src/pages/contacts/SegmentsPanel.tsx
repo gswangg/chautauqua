@@ -10,6 +10,7 @@ import type { Segment } from './types';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { EmptyState } from '../../components/EmptyState';
 import { DEC_856 } from '../../../../src/decisions';
+import { MAX_NAME_LENGTH } from '../../lib/text-caps';
 import './contacts-panels.css';
 
 // DEC-856 (wave 65 amendment): POST/PATCH /segments throws "Validation
@@ -100,6 +101,7 @@ export function SegmentsPanel({ segments, activeFilters, activeSegmentId, onChan
           Save current filter as segment
           <input
             className={fieldErrors.name ? 'chq-input chq-field-invalid' : 'chq-input'}
+            maxLength={MAX_NAME_LENGTH}
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Segment name"

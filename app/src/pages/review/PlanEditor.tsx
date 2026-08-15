@@ -19,6 +19,7 @@ import {
 } from './planForm';
 import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
 import { OPTIONAL_SUFFIX } from '../../../../src/domain/form-copy';
+import { MAX_NAME_LENGTH } from '../../lib/text-caps';
 import { plural } from '../../lib/plural';
 // DEC-708: the same name-or-email resolver ProgressPanel uses -- a plan
 // reviewer row names a person by their resolved contact, never a
@@ -1560,6 +1561,7 @@ export function PlanEditor() {
                           ? 'chq-input chq-field-invalid'
                           : 'chq-input'
                       }
+                      maxLength={MAX_NAME_LENGTH}
                       placeholder="Label"
                       aria-label="Criterion label"
                       aria-invalid={

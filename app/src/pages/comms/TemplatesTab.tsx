@@ -9,6 +9,7 @@ import { formatDate } from '../../lib/dates';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import type { EmailTemplate } from './types';
 import { DEC_993 } from '../../../../src/decisions';
+import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from '../../lib/text-caps';
 import './templates.css';
 
 void DEC_993;
@@ -269,6 +270,7 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
                 <span className="chq-comms-editor-label">Name</span>
                 <input
                   className="chq-input"
+                  maxLength={MAX_NAME_LENGTH}
                   value={draft.name}
                   onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
                 />
@@ -278,6 +280,7 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
               <span className="chq-comms-editor-label">Subject</span>
               <input
                 className="chq-input"
+                maxLength={MAX_TEXT_LENGTH}
                 value={draft.subject}
                 onChange={(e) => setDraft((d) => ({ ...d, subject: e.target.value }))}
               />
@@ -288,6 +291,7 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
                 className="chq-textarea"
                 rows={8}
                 ref={bodyRef}
+                maxLength={MAX_RICH_TEXT_LENGTH}
                 value={draft.bodyText}
                 onChange={(e) => setDraft((d) => ({ ...d, bodyText: e.target.value }))}
               />

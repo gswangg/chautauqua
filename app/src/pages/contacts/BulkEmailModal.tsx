@@ -11,6 +11,7 @@ import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import { SendFailures } from '../../components/SendFailures';
 import { countOf, plural } from '../../lib/plural';
 import { DEC_793, DEC_856, DEC_967 } from '../../../../src/decisions';
+import { MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from '../../lib/text-caps';
 
 void DEC_793;
 void DEC_856;
@@ -351,6 +352,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
             <input
               id="bulk-email-subject"
               className="chq-input"
+              maxLength={MAX_TEXT_LENGTH}
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder="A quick question about your {event_name} session"
@@ -372,6 +374,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
               id="bulk-email-body"
               className="chq-textarea"
               rows={8}
+              maxLength={MAX_LONG_TEXT_LENGTH}
               value={bodyText}
               onChange={(e) => setBodyText(e.target.value)}
               placeholder="Hi {speaker_name}, ..."

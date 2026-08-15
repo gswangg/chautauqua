@@ -29,6 +29,7 @@ import { MAX_PER_PAGE } from '../../../../src/lib/pagination';
 // reviewer's number and the organizer's number can never disagree.
 import { computeWeightedScore, criterionWeightShares } from '../../../../src/domain/evaluation';
 import { OPTIONAL_SUFFIX } from '../../../../src/domain/form-copy';
+import { MAX_LONG_TEXT_LENGTH } from '../../lib/text-caps';
 import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
 import type {
   EvaluationCriterion,
@@ -663,6 +664,7 @@ export function Scorecard() {
                 <textarea
                   className="chq-textarea"
                   aria-label={criterion.label || 'criterion'}
+                  maxLength={MAX_LONG_TEXT_LENGTH}
                   value={typeof scores[criterion.id] === 'string' ? (scores[criterion.id] as string) : ''}
                   disabled={!!recusal}
                   onFocus={() => setFocusedId(criterion.id)}
@@ -708,6 +710,7 @@ export function Scorecard() {
             <textarea
               id={COMMENT_FIELD_ANCHOR_ID}
               className="chq-textarea"
+              maxLength={MAX_LONG_TEXT_LENGTH}
               value={comment}
               disabled={!!recusal}
               onChange={(e) => setComment(e.target.value)}
