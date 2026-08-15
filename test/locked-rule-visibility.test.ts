@@ -117,12 +117,15 @@ describe("projectFieldForAnswers (DEC-475/DEC-486)", () => {
     expect(projectFieldForAnswers(def).maximum).not.toBe(LOCKED_ABSTRACT_MAX_LENGTH);
   });
 
-  it("DEC-124 (wave 61): a field that is neither locked title nor locked description is not stamped at all", () => {
+  it("DEC-124 (wave 61): a field that is neither locked title, description, nor a locked contact-identity field is not stamped at all", () => {
+    // DEC-417 (wave 67 amendment) added first_name/last_name/job_title/
+    // company to the stamped set, so bio is the remaining unstamped locked
+    // speaker field this case exercises.
     const def: FormFieldDef = {
-      id: "form-1:job_title",
+      id: "form-1:bio",
       section: "speaker",
-      kind: "text",
-      label: "Job title",
+      kind: "long_text",
+      label: "Bio",
       required: false,
       position: 0,
     };

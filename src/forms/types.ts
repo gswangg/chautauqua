@@ -51,6 +51,18 @@ export const LOCKED_ABSTRACT_MAX_LENGTH = 1200;
 // by every writer of a locked session title (routes + SPA inline edit form).
 export const LOCKED_TITLE_MAX_LENGTH = 200;
 
+// DEC-417 (wave 67 amendment): the locked contact-identity fields
+// (first_name/last_name/job_title/company) mint contact rows, and the CRM's
+// own writers (src/routes/api/contacts/crud.ts, portal/profile.tsx,
+// portal-edit.ts's addCoPresenter) cap those same columns at
+// src/forms/validate.ts's MAX_NAME_LENGTH (200). This constant is that
+// number's twin on the forms side, enforced server-side via
+// projectFieldForAnswers below. Kept as a separate literal rather than an
+// import of validate.ts to avoid a cycle (validate.ts already imports this
+// module); test/contact-identity-cap-parity.test.ts pins the two values
+// equal so they can't drift apart.
+export const LOCKED_CONTACT_TEXT_MAX_LENGTH = 200;
+
 // Answers keyed by fieldId. Values are unvalidated/untrusted input until
 // passed through validateAnswers.
 export type AnswerMap = Record<string, unknown>;
@@ -127,5 +139,11 @@ export function projectFieldForAnswers(def: FormFieldDef): FormFieldDef {
       : {}),
     ...(name === "description" ? { maximum: def.maximum ?? LOCKED_ABSTRACT_MAX_LENGTH } : {}),
     ...(name === "title" ? { maximum: def.maximum ?? LOCKED_TITLE_MAX_LENGTH } : {}),
+    ...(name === "first_name" ||
+    name === "last_name" ||
+    name === "job_title" ||
+    name === "company"
+      ? { maximum: def.maximum ?? LOCKED_CONTACT_TEXT_MAX_LENGTH }
+      : {}),
   };
 }

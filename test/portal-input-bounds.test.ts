@@ -6,13 +6,21 @@
 // (POST /portal/submissions/:id/participants, end-to-end through Hono) — an
 // oversized value must produce a 400 field error naming the field, never a
 // 500, and must never reach db.insert.
+//
+// DEC-417 (wave 67 amendment): ONE CAP PER CONTACT IDENTITY COLUMN tightened
+// addCoPresenter's firstName/lastName bound from the generic
+// MAX_TEXT_LENGTH (2000) down to the CRM's own MAX_NAME_LENGTH (200) -- the
+// CRM could never re-save a co-presenter minted above its own
+// contact.firstName/lastName cap. See
+// test/contact-identity-cap-parity.test.ts for the cross-surface parity
+// coverage.
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import { addCoPresenter } from "../src/server/repo/portal-edit";
-import { MAX_TEXT_LENGTH } from "../src/forms/validate";
+import { MAX_NAME_LENGTH } from "../src/forms/validate";
 import * as schema from "../src/db/schema";
 
 function makeChain(rows: unknown[]) {
@@ -56,7 +64,7 @@ function fakeDb(selectQueue: unknown[][]) {
   return { db: db as unknown as AppEnv["Variables"]["db"], inserts };
 }
 
-const OVERSIZED = "x".repeat(MAX_TEXT_LENGTH + 1);
+const OVERSIZED = "x".repeat(MAX_NAME_LENGTH + 1);
 
 describe("addCoPresenter repo layer bounds firstName/lastName (DEC-997)", () => {
   it("rejects an oversized firstName with a field error, never touching the db", async () => {
@@ -71,7 +79,7 @@ describe("addCoPresenter repo layer bounds firstName/lastName (DEC-997)", () => 
     });
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("unreachable");
-    expect(result.errors.firstName).toBe(`Max ${MAX_TEXT_LENGTH}`);
+    expect(result.errors.firstName).toBe(`Max ${MAX_NAME_LENGTH}`);
     expect(inserts.length).toBe(0);
   });
 
@@ -87,12 +95,12 @@ describe("addCoPresenter repo layer bounds firstName/lastName (DEC-997)", () => 
     });
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("unreachable");
-    expect(result.errors.lastName).toBe(`Max ${MAX_TEXT_LENGTH}`);
+    expect(result.errors.lastName).toBe(`Max ${MAX_NAME_LENGTH}`);
     expect(inserts.length).toBe(0);
   });
 
   it("accepts a name exactly at the cap", async () => {
-    const AT_CAP = "x".repeat(MAX_TEXT_LENGTH);
+    const AT_CAP = "x".repeat(MAX_NAME_LENGTH);
     // select order: [0] participant count, [1] findContactByEmail -> no match
     const { db } = fakeDb([[{ count: 1 }], []]);
     const result = await addCoPresenter(db, {
@@ -198,7 +206,7 @@ describe("POST /portal/submissions/:id/participants bounds free text end-to-end 
     });
     expect(res.status).toBe(400);
     const html = await res.text();
-    expect(html).toContain(`Max ${MAX_TEXT_LENGTH}`);
+    expect(html).toContain(`Max ${MAX_NAME_LENGTH}`);
     expect(inserts.length).toBe(0);
   });
 
@@ -213,7 +221,7 @@ describe("POST /portal/submissions/:id/participants bounds free text end-to-end 
     });
     expect(res.status).toBe(400);
     const html = await res.text();
-    expect(html).toContain(`Max ${MAX_TEXT_LENGTH}`);
+    expect(html).toContain(`Max ${MAX_NAME_LENGTH}`);
     expect(inserts.length).toBe(0);
   });
 });
