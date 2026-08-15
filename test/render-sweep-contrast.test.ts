@@ -4,6 +4,7 @@ import {
   CONTRAST_BLOCKING,
   CONTRAST_MIN_RATIO,
   CONTRAST_MIN_RATIO_LARGE,
+  NAMED_CONTRAST_SELECTOR,
   allContrastPassed,
   contrastErrorResult,
   contrastRatio,
@@ -78,6 +79,54 @@ describe("evaluateContrast", () => {
     const result = evaluateContrast(ENTRY, { minRatio: null, offenders: [], exempted: [] });
     expect(result.ok).toBe(true);
     expect(result.minRatio).toBeNull();
+  });
+});
+
+// task-w36-e: closes the task-w35-b instrument gap (docs/verification-log/
+// index/0188-2026-08-15-task-w35-b-render-sweep-a0b8501b.md:29-39) — the
+// NAMED_CONTRAST_SELECTOR pair is now enumerated explicitly and published
+// as its own row, independent of the route's global minRatio.
+describe("evaluateContrast namedPair (task-w36-e)", () => {
+  it("PASSes and publishes a namedPairNote when the named pair clears threshold", () => {
+    const descriptor = `span.chq-participation-menu-caret ratio=6.28 fg=rgb(244,241,232) bg=rgb(139,148,49)`;
+    const result = evaluateContrast(ENTRY, {
+      minRatio: 6.28,
+      offenders: [],
+      exempted: [],
+      namedPair: { descriptor, ratio: 6.28, ok: true },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.namedPairNote).toContain(NAMED_CONTRAST_SELECTOR);
+    expect(result.namedPairNote).toContain(descriptor);
+    expect(result.namedPairNote).toContain("PASS");
+  });
+
+  it("FAILs the route when the named pair is under threshold", () => {
+    const descriptor = `span.chq-participation-menu-caret ratio=1.02 fg=rgb(86,90,75) bg=rgb(78,92,49)`;
+    const result = evaluateContrast(ENTRY, {
+      minRatio: 1.02,
+      offenders: [],
+      exempted: [],
+      namedPair: { descriptor, ratio: 1.02, ok: false },
+    });
+    expect(result.ok).toBe(false);
+    expect(result.failureReason).toContain(NAMED_CONTRAST_SELECTOR);
+    expect(result.failureReason).toContain(descriptor);
+    expect(result.namedPairNote).toContain("FAIL");
+  });
+
+  it("omits namedPairNote when the selector isn't present on the route", () => {
+    const result = evaluateContrast(ENTRY, { minRatio: 10, offenders: [], exempted: [], namedPair: null });
+    expect(result.namedPairNote).toBeUndefined();
+  });
+
+  it("formatContrastTable includes the NAMED-PAIR note", () => {
+    const descriptor = `span.chq-participation-menu-caret ratio=6.28 fg=rgb(244,241,232) bg=rgb(139,148,49)`;
+    const results = [
+      evaluateContrast(ENTRY, { minRatio: 6.28, offenders: [], exempted: [], namedPair: { descriptor, ratio: 6.28, ok: true } }),
+    ];
+    expect(formatContrastTable(results)).toContain("NAMED-PAIR");
+    expect(formatContrastTable(results)).toContain(NAMED_CONTRAST_SELECTOR);
   });
 });
 

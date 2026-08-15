@@ -33,6 +33,15 @@
  * to true. */
 export const CONTRAST_BLOCKING = true;
 
+/** DEC-426 wave-36 amendment (task-w36-e, closing the task-w35-b instrument
+ * gap): the specific selector task-w29-d credited a contrast PASS to
+ * (app/src/pages/speakers/speakers.css:405) but that no run of this gate
+ * ever enumerated by name — every route's contrast measurement now checks
+ * for this selector explicitly and publishes its own ratio/PASS-FAIL as a
+ * `NAMED-PAIR` note, independent of whether it happens to be that route's
+ * global-minimum offender. */
+export const NAMED_CONTRAST_SELECTOR = ".chq-participation-menu-caret";
+
 /** WCAG AA minimum contrast ratio for normal text. */
 export const CONTRAST_MIN_RATIO = 4.5;
 
@@ -82,6 +91,15 @@ export interface ContrastObservation {
    * OUT of `offenders` (so it never fails the gate) but never silently
    * dropped either — evaluateContrast records it as its own exemption row. */
   exempted: string[];
+  /** DEC-426 wave-36 amendment (task-w36-e): the `.chq-participation-menu-
+   * caret` pair (DEC-830 wave-29's `color: inherit` fix,
+   * app/src/pages/speakers/speakers.css:405) named by task-w29-d but never
+   * enumerated by this instrument (task-w35-b found zero selector
+   * references) — measured explicitly, independent of whether it happens
+   * to be this route's global-minimum offender, so its ratio is always
+   * published when the element is present. `null` when the selector isn't
+   * on the page at all. */
+  namedPair?: { descriptor: string; ratio: number; ok: boolean } | null;
 }
 
 export interface ContrastResult {
@@ -94,6 +112,10 @@ export interface ContrastResult {
    * one exempted (disabled-token) pair — printed regardless of `ok`, so an
    * exemption is always recorded, never a silent pass and never a FAIL. */
   exemptNote?: string;
+  /** DEC-426 wave-36 amendment (task-w36-e): `.chq-participation-menu-caret`
+   * ratio + PASS/FAIL, printed whenever the element is present on the
+   * route regardless of the route's overall `ok`. */
+  namedPairNote?: string;
 }
 
 /** Evaluates one route's contrast observation. A page with no measurable
@@ -113,6 +135,14 @@ export function evaluateContrast(entry: ContrastRouteEntry, observed: ContrastOb
     observed.exempted.length > 0
       ? `EXEMPT-BY-RULE (WCAG 2.1 SC 1.4.3, inactive component): ${observed.exempted.join(" | ")}`
       : undefined;
+  let namedPairNote: string | undefined;
+  if (observed.namedPair) {
+    const mark = observed.namedPair.ok ? "PASS" : "FAIL";
+    namedPairNote = `NAMED-PAIR ${NAMED_CONTRAST_SELECTOR}: ${observed.namedPair.descriptor} ${mark}`;
+    if (!observed.namedPair.ok) {
+      reasons.push(`named pair ${NAMED_CONTRAST_SELECTOR} below WCAG AA threshold — ${observed.namedPair.descriptor}`);
+    }
+  }
   return {
     path: entry.path,
     role: entry.role,
@@ -120,6 +150,7 @@ export function evaluateContrast(entry: ContrastRouteEntry, observed: ContrastOb
     ok: reasons.length === 0,
     failureReason: reasons.length > 0 ? reasons.join("; ") : undefined,
     exemptNote,
+    namedPairNote,
   };
 }
 
@@ -153,8 +184,11 @@ export function formatContrastTable(results: readonly ContrastResult[]): string 
     const mark = r.ok ? "PASS" : "FAIL";
     const detail = r.ok ? "" : `  (${r.failureReason})`;
     const exemptDetail = r.exemptNote ? `  [${r.exemptNote}]` : "";
+    const namedPairDetail = r.namedPairNote ? `  [${r.namedPairNote}]` : "";
     const ratioStr = r.minRatio === null ? "-" : r.minRatio.toFixed(2);
-    lines.push(`${r.path.padEnd(pathWidth)}  ${r.role.padEnd(roleWidth)}  ${ratioStr.padStart(8)}  ${mark}${detail}${exemptDetail}`);
+    lines.push(
+      `${r.path.padEnd(pathWidth)}  ${r.role.padEnd(roleWidth)}  ${ratioStr.padStart(8)}  ${mark}${detail}${exemptDetail}${namedPairDetail}`,
+    );
   }
   return lines.join("\n");
 }
