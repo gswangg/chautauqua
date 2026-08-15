@@ -136,59 +136,55 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
   }
 
   const scoped = await repo.resolveReviewerSubmissions(c.var.db, plan, auth.userId);
-  // DEC-082/DEC-346/DEC-439: queue counts/marks only the plan's current
-  // round -- earlier rounds' evaluations don't count toward this round's
-  // cap or "already rated" state. SQL aggregates replace the whole-round
-  // evaluation load + JS reduce. countEvaluationsBySubmission takes no id
-  // list -- it returns the whole plan+round map in one D1 round trip
-  // (DEC-449), grouped by submission id, not scoped to this reviewer. It
-  // leaks nothing because this route only ever reads the map via `.get(id)`
-  // for ids already in this reviewer's own scoped set from
-  // resolveReviewerSubmissions above -- the map's size, not this route's
-  // read pattern, is what's bounded, and that bound is
-  // MAX_PLAN_SUBMISSION_SCAN (DEC-346 amendment, wave 22-e): the grouped
-  // query returns one row per submission, so it shares submissions' cap,
-  // not evaluations'.
-  const countsBySubmission = await repo.countEvaluationsBySubmission(c.var.db, plan.id, plan.currentRound);
-  const ratedByMe = await repo.listSubmissionIdsRatedBy(c.var.db, plan.id, plan.currentRound, auth.userId);
-  // DEC-831: this reviewer's own scores for the queue's `myScore` column,
-  // read alongside listSubmissionIdsRatedBy rather than a second pass.
-  const myScoresBySubmission = await repo.listEvaluationScoresForReviewer(
-    c.var.db,
-    plan.id,
-    plan.currentRound,
-    auth.userId,
-  );
-  // DEC-857: the queue row's own format meta -- batched over the scoped
-  // submission ids, chunked exactly like loadDurationMinBySubmission
-  // (src/server/repo/agenda.ts:316-330). Not stripped for an anonymized
-  // plan: format is a session-shape fact, not identity.
-  const formatBySubmission = await repo.listFormatLabelsBySubmission(
-    c.var.db,
-    scoped.map((s) => s.id),
-  );
-  // DEC-857/DEC-986: the queue row's audience-level meta -- same batching as
-  // formatBySubmission above, over the same scoped id set. A session-shape
-  // fact (the field lives on the CFP's session section), so it is never
-  // stripped for an anonymized plan, exactly like format.
-  const audienceLevelBySubmission = await repo.listAudienceLevelLabelsBySubmission(
-    c.var.db,
-    scoped.map((s) => s.id),
-  );
-  // DEC-018 (wave-57 amendment): the queue's own title field leaks speaker
-  // identity the same way the submission detail's title/description do
-  // (line ~318 below) -- loaded once for the full scoped id set, alongside
-  // the batches above, and used to mask both the actionable queueItems'
-  // titles and the recusedOut rows' titles when the plan is anonymized.
-  // listSpeakerIdentitiesForSubmissions carries NO inviteStatus filter, so
-  // it is a superset of the display-scoped speaker lists used elsewhere on
-  // this route.
-  const identitiesBySubmission = plan.anonymized
-    ? await repo.listSpeakerIdentitiesForSubmissions(
-        c.var.db,
-        scoped.map((s) => s.id),
-      )
-    : new Map<string, repo.SpeakerIdentity[]>();
+  const scopedIds = scoped.map((s) => s.id);
+  // DEC-082/DEC-346/DEC-439/DEC-829 (wave-29 amendment, task w29-e): queue
+  // counts/marks only the plan's current round -- earlier rounds' evaluations
+  // don't count toward this round's cap or "already rated" state. SQL
+  // aggregates replace the whole-round evaluation load + JS reduce, and the
+  // GROUP BY is itself scoped to THIS reviewer's own already-resolved
+  // submission ids (`scoped`, from resolveReviewerSubmissions above) rather
+  // than the plan's whole population -- the driving relation is the
+  // reviewer's own scope, never a wider table (DEC-829's ruling, applied
+  // here). A reviewer scoped to one track of a large plan no longer pays for
+  // every OTHER reviewer's/track's evaluations to compute their own counts.
+  //
+  // DEC-829 (wave-29 amendment, task w29-e): every one of these reads
+  // depends only on `plan`/`scopedIds`/`auth`, never on each other's result
+  // -- Promise.all replaces N sequential round trips with N concurrent ones,
+  // same reasoning as the concurrent-chunkIds-batch amendment inside each of
+  // these repo functions.
+  const [countsBySubmission, ratedByMe, myScoresBySubmission, formatBySubmission, audienceLevelBySubmission, identitiesBySubmission, recusals] =
+    await Promise.all([
+      repo.countEvaluationsBySubmission(c.var.db, plan.id, plan.currentRound, scopedIds),
+      repo.listSubmissionIdsRatedBy(c.var.db, plan.id, plan.currentRound, auth.userId),
+      // DEC-831: this reviewer's own scores for the queue's `myScore` column.
+      repo.listEvaluationScoresForReviewer(c.var.db, plan.id, plan.currentRound, auth.userId),
+      // DEC-857: the queue row's own format meta -- batched over the scoped
+      // submission ids, chunked exactly like loadDurationMinBySubmission
+      // (src/server/repo/agenda.ts:316-330). Not stripped for an anonymized
+      // plan: format is a session-shape fact, not identity.
+      repo.listFormatLabelsBySubmission(c.var.db, scopedIds),
+      // DEC-857/DEC-986: the queue row's audience-level meta -- same batching
+      // as formatBySubmission above, over the same scoped id set. A
+      // session-shape fact (the field lives on the CFP's session section), so
+      // it is never stripped for an anonymized plan, exactly like format.
+      repo.listAudienceLevelLabelsBySubmission(c.var.db, scopedIds),
+      // DEC-018 (wave-57 amendment): the queue's own title field leaks
+      // speaker identity the same way the submission detail's title/
+      // description do (line ~318 below) -- loaded once for the full scoped
+      // id set, alongside the batches above, and used to mask both the
+      // actionable queueItems' titles and the recusedOut rows' titles when
+      // the plan is anonymized. listSpeakerIdentitiesForSubmissions carries
+      // NO inviteStatus filter, so it is a superset of the display-scoped
+      // speaker lists used elsewhere on this route.
+      plan.anonymized
+        ? repo.listSpeakerIdentitiesForSubmissions(c.var.db, scopedIds)
+        : Promise.resolve(new Map<string, repo.SpeakerIdentity[]>()),
+      // DEC-271: recused submissions are dropped from the actionable queue
+      // and surfaced separately in the `recused` envelope key instead --
+      // this reviewer's own recusal set, independent of every read above.
+      repo.listRecusalsForReviewer(c.var.db, plan.id, auth.userId),
+    ]);
   const identitiesFor = (submissionId: string): string[] =>
     (identitiesBySubmission.get(submissionId) ?? []).flatMap((s) =>
       [s.name, s.email, s.company].filter((v): v is string => !!v && v.trim().length > 0),
@@ -211,8 +207,8 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
   // DEC-271: recused submissions are dropped from the actionable queue and
   // surfaced separately in the `recused` envelope key instead. partitionRecused
   // (pure core, src/domain/evaluation.ts) does the set split; this route just
-  // shapes the two output lists.
-  const recusals = await repo.listRecusalsForReviewer(c.var.db, plan.id, auth.userId);
+  // shapes the two output lists. `recusals` was already loaded in the
+  // Promise.all group above.
   const recusalBySubmission = new Map(recusals.map((r) => [r.submissionId, r]));
   const { kept: scopedActionable, recused: recusedScoped } = partitionRecused(
     scoped.map((s) => ({ ...s, submissionId: s.id })),

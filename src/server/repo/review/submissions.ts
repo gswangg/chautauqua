@@ -648,22 +648,34 @@ export async function listSpeakersForSubmission(db: Db, submissionId: string): P
 export async function listSpeakerNamesForSubmissions(db: Db, submissionIds: string[]): Promise<Map<string, string[]>> {
   const map = new Map<string, string[]>();
   if (submissionIds.length === 0) return map;
-  for (const batch of chunkIds(submissionIds)) {
-    const rows = await db
-      .select({
-        submissionId: schema.participant.submissionId,
-        firstName: schema.contact.firstName,
-        lastName: schema.contact.lastName,
-      })
-      .from(schema.participant)
-      .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
-      .where(
-        and(
-          inArray(schema.participant.submissionId, batch),
-          inArray(schema.participant.inviteStatus, [...SCHEDULING_PARTICIPANT_STATUSES]),
-        ),
-      )
-      .orderBy(asc(schema.participant.order), asc(schema.contact.id));
+  // DEC-829 (wave-29 amendment, applied to review by task w29-e): the
+  // chunkIds batches over this already-scoped submission id set are
+  // INDEPENDENT queries (disjoint id sets, no shared mutable server-side
+  // state) -- issuing them concurrently via Promise.all instead of one
+  // sequential await per batch cuts wall-clock latency roughly N-fold for a
+  // results page's full-plan id set (e.g. ~23 batches at 2,000 submissions)
+  // without scanning a single extra row; the driving relation stays exactly
+  // this function's own submissionIds, just no longer serialized.
+  const batches = await Promise.all(
+    chunkIds(submissionIds).map((batch) =>
+      db
+        .select({
+          submissionId: schema.participant.submissionId,
+          firstName: schema.contact.firstName,
+          lastName: schema.contact.lastName,
+        })
+        .from(schema.participant)
+        .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+        .where(
+          and(
+            inArray(schema.participant.submissionId, batch),
+            inArray(schema.participant.inviteStatus, [...SCHEDULING_PARTICIPANT_STATUSES]),
+          ),
+        )
+        .orderBy(asc(schema.participant.order), asc(schema.contact.id)),
+    ),
+  );
+  for (const rows of batches) {
     for (const row of rows) {
       const list = map.get(row.submissionId) ?? [];
       list.push(`${row.firstName} ${row.lastName}`.trim());
@@ -725,16 +737,25 @@ export async function listSpeakerIdentitiesForSubmissions(
 export async function listTrackNamesForSubmissions(db: Db, submissionIds: string[]): Promise<Map<string, string[]>> {
   const map = new Map<string, string[]>();
   if (submissionIds.length === 0) return map;
-  for (const batch of chunkIds(submissionIds)) {
-    const rows = await db
-      .select({
-        submissionId: schema.submissionTrack.submissionId,
-        name: schema.track.name,
-      })
-      .from(schema.submissionTrack)
-      .innerJoin(schema.track, eq(schema.submissionTrack.trackId, schema.track.id))
-      .where(inArray(schema.submissionTrack.submissionId, batch))
-      .orderBy(asc(schema.track.position), asc(schema.track.id));
+  // DEC-829 (wave-29 amendment, applied to review by task w29-e): same
+  // concurrent-batch shape as listSpeakerNamesForSubmissions above -- disjoint
+  // id sets per batch, no ordering dependency ACROSS batches, so Promise.all
+  // replaces N sequential round trips with N concurrent ones over the exact
+  // same already-scoped submissionIds.
+  const batches = await Promise.all(
+    chunkIds(submissionIds).map((batch) =>
+      db
+        .select({
+          submissionId: schema.submissionTrack.submissionId,
+          name: schema.track.name,
+        })
+        .from(schema.submissionTrack)
+        .innerJoin(schema.track, eq(schema.submissionTrack.trackId, schema.track.id))
+        .where(inArray(schema.submissionTrack.submissionId, batch))
+        .orderBy(asc(schema.track.position), asc(schema.track.id)),
+    ),
+  );
+  for (const rows of batches) {
     for (const row of rows) {
       const list = map.get(row.submissionId) ?? [];
       list.push(row.name);
@@ -753,19 +774,27 @@ export async function listTrackNamesForSubmissions(db: Db, submissionIds: string
 export async function listFormatLabelsBySubmission(db: Db, submissionIds: string[]): Promise<Map<string, string | null>> {
   const map = new Map<string, string | null>();
   if (submissionIds.length === 0) return map;
-  for (const batch of chunkIds(submissionIds)) {
-    const rows = await db
-      .select({
-        submissionId: schema.submissionAnswer.submissionId,
-        valueJson: schema.submissionAnswer.valueJson,
-      })
-      .from(schema.submissionAnswer)
-      .where(
-        and(
-          inArray(schema.submissionAnswer.submissionId, batch),
-          answerFieldRoleCondition("session_format"),
+  // DEC-829 (wave-29 amendment, applied to review by task w29-e): concurrent
+  // batches, same reasoning as listSpeakerNamesForSubmissions -- each
+  // submission's own answer row lives in exactly one batch, so merge order
+  // across batches is immaterial.
+  const batches = await Promise.all(
+    chunkIds(submissionIds).map((batch) =>
+      db
+        .select({
+          submissionId: schema.submissionAnswer.submissionId,
+          valueJson: schema.submissionAnswer.valueJson,
+        })
+        .from(schema.submissionAnswer)
+        .where(
+          and(
+            inArray(schema.submissionAnswer.submissionId, batch),
+            answerFieldRoleCondition("session_format"),
+          ),
         ),
-      );
+    ),
+  );
+  for (const rows of batches) {
     for (const row of rows) {
       const parsed: unknown = JSON.parse(row.valueJson);
       map.set(row.submissionId, typeof parsed === "string" && parsed.length > 0 ? parsed : null);
@@ -789,19 +818,25 @@ export async function listAudienceLevelLabelsBySubmission(
 ): Promise<Map<string, string | null>> {
   const map = new Map<string, string | null>();
   if (submissionIds.length === 0) return map;
-  for (const batch of chunkIds(submissionIds)) {
-    const rows = await db
-      .select({
-        submissionId: schema.submissionAnswer.submissionId,
-        valueJson: schema.submissionAnswer.valueJson,
-      })
-      .from(schema.submissionAnswer)
-      .where(
-        and(
-          inArray(schema.submissionAnswer.submissionId, batch),
-          answerFieldRoleCondition("audience_level"),
+  // DEC-829 (wave-29 amendment, applied to review by task w29-e): concurrent
+  // batches, same reasoning as listFormatLabelsBySubmission above.
+  const batches = await Promise.all(
+    chunkIds(submissionIds).map((batch) =>
+      db
+        .select({
+          submissionId: schema.submissionAnswer.submissionId,
+          valueJson: schema.submissionAnswer.valueJson,
+        })
+        .from(schema.submissionAnswer)
+        .where(
+          and(
+            inArray(schema.submissionAnswer.submissionId, batch),
+            answerFieldRoleCondition("audience_level"),
+          ),
         ),
-      );
+    ),
+  );
+  for (const rows of batches) {
     for (const row of rows) {
       const parsed: unknown = JSON.parse(row.valueJson);
       map.set(row.submissionId, typeof parsed === "string" && parsed.length > 0 ? parsed : null);
