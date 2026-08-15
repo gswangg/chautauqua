@@ -76,6 +76,11 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
   const [plan, setPlan] = useState<ImportPlan | null>(null);
   const [plannedRequest, setPlannedRequest] = useState<PlannedRequest | null>(null);
   const [skipLines, setSkipLines] = useState<Set<number>>(new Set());
+  // w49-f: the review table renders only the rows where something is lost
+  // or ambiguous by default -- this flips it to show every row (still
+  // sorted updates-first, still skippable). Reset on every fresh preview so
+  // a re-run starts filtered again.
+  const [showAllRows, setShowAllRows] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -144,13 +149,13 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [header.join('\u0000')]);
 
-  // Match-columns dedupe footer: a client-side approximation ("N rows share
-  // an email with an earlier row in THIS file") computed from data already
-  // on the page -- not a query against existing contacts, which only the
-  // server's dry run (POST .../import { dryRun: true }, see runPreview
-  // below) can answer. Real cross-file dedupe/update counts are shown on
-  // the Review step once that dry run returns; this step's number is a
-  // best-effort preview of the same idea using only what's parsed so far.
+  // Match-columns dedupe footer (DEC-663 amendment, w49-f): counts rows
+  // that repeat an EARLIER ROW'S email WITHIN THIS FILE -- it is not, and
+  // has never been, a query against existing contacts (only the server's
+  // dry run answers that; see the Review step's "matched by email" clause,
+  // sourced from plan.updated). The footer below must say only what this
+  // number measured -- an in-file collision, last row wins -- and stay
+  // silent when there isn't one.
   const dedupeCount = useMemo(() => {
     const seen = new Set<string>();
     let dupes = 0;
@@ -162,6 +167,25 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
     }
     return dupes;
   }, [dataRows, mapping, header]);
+
+  // B5: update rows -- the only rows where something is lost -- come first.
+  // Array.prototype.sort is stable, so within each group (update vs.
+  // everything else) rows keep the dry run's original line order.
+  const sortedPlanRows = useMemo(() => {
+    if (!plan) return [];
+    return [...plan.rows].sort((a, b) => (a.action === 'update' ? 0 : 1) - (b.action === 'update' ? 0 : 1));
+  }, [plan]);
+
+  // w49-f: by default the review table shows only the rows where something
+  // is lost or ambiguous -- an update, an overwrite, or a possible
+  // duplicate -- so a 205-row "everything's fine" plan doesn't bury the 9
+  // rows that need a decision. The rest are reachable behind "Show all N
+  // rows" (showAllRows), never dropped, always skippable once shown.
+  function isLosingRow(row: ImportPlanRow): boolean {
+    return row.action === 'update' || (row.overwrites?.length ?? 0) > 0 || (row.possibleDuplicates?.length ?? 0) > 0;
+  }
+  const visiblePlanRows = showAllRows ? sortedPlanRows : sortedPlanRows.filter(isLosingRow);
+  const hiddenRowCount = sortedPlanRows.length - visiblePlanRows.length;
 
   // Step strip (mock "Import CSV · step 3 of 4"): 1 = choose a file, 2 =
   // map columns, 3 = review the dry run, 4 = done. Display-only -- does
@@ -233,6 +257,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
       setPlan(res);
       setPlannedRequest(request);
       setSkipLines(new Set());
+      setShowAllRows(false);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Preview failed');
     } finally {
@@ -467,9 +492,15 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
             })}
           </div>
 
-          <p className="chq-contacts-import-dedupe">
-            {countOf(dedupeCount, 'row')} match existing contacts by email · they will be updated
-          </p>
+          {/* w49-f: conditional-and-quiet -- names the in-file collision it
+              actually counted (an earlier row in THIS file with the same
+              email), and renders nothing at zero rather than a false "0
+              rows match existing contacts". */}
+          {dedupeCount > 0 && (
+            <p className="chq-contacts-import-dedupe">
+              Same-file email repeat: {countOf(dedupeCount, 'row')} · the later row wins
+            </p>
+          )}
         </div>
       )}
 
@@ -486,6 +517,14 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
           <h3 className="chq-section-label">
             {countOf(plan.created, 'new', 'new')} · {countOf(plan.updated, 'updated', 'updated')}
           </h3>
+          {/* w49-f: the existing-contacts claim moved here from the match
+              step's dedupe footer -- sourced straight from the dry run's
+              own plan.updated, never re-derived from the rows array. */}
+          {plan.updated > 0 && (
+            <p className="chq-contacts-import-matched">
+              {countOf(plan.updated, 'row')} matched an existing contact by email · they will be updated
+            </p>
+          )}
           <table className="chq-table chq-contacts-import-review-table">
             <thead>
               <tr>
@@ -496,13 +535,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
               </tr>
             </thead>
             <tbody>
-              {/* B5: update rows -- the only rows where something is lost --
-                  come first. Array.prototype.sort is stable, so within each
-                  group (update vs. everything else) rows keep the dry run's
-                  original line order. */}
-              {[...plan.rows]
-                .sort((a, b) => (a.action === 'update' ? 0 : 1) - (b.action === 'update' ? 0 : 1))
-                .map((row) => {
+              {visiblePlanRows.map((row) => {
                 const updateReason = row.action === 'update' ? row.reason : undefined;
                 const decorated =
                   (row.overwrites?.length ?? 0) > 0 || (row.possibleDuplicates?.length ?? 0) > 0 || Boolean(updateReason);
@@ -546,6 +579,20 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
               })}
             </tbody>
           </table>
+
+          {/* w49-f: the rows hidden by default are the clean creates --
+              plan.created's own count, never re-derived -- reachable
+              without losing Skip on any of them. */}
+          {!showAllRows && hiddenRowCount > 0 && (
+            <div className="chq-contacts-import-review-disclosure">
+              <button type="button" className="chq-btn chq-btn-tertiary" onClick={() => setShowAllRows(true)}>
+                Show all {countOf(sortedPlanRows.length, 'row')}
+              </button>
+              <p className="chq-contacts-import-review-caption">
+                {countOf(plan.created, 'new contact', 'new contacts')} not shown here — nothing to review
+              </p>
+            </div>
+          )}
 
           <p className="chq-contacts-pipeline-caption">{countOf(skipLines.size, 'row')} marked to skip.</p>
 

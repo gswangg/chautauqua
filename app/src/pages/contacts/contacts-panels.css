@@ -916,6 +916,28 @@
   width: 100%;
 }
 
+/* w49-f: the existing-contacts claim on the review step, sourced from the
+   dry run's own plan.updated -- same quiet register as the match step's
+   dedupe footer it replaced. */
+.chq-contacts-import-matched {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+/* w49-f: the "Show all N rows" disclosure that reveals the plain-create
+   rows hidden by default under the review table. */
+.chq-contacts-import-review-disclosure {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.chq-contacts-import-review-caption {
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
 .chq-contacts-import-review-detail {
   margin: 6px 0 0;
   padding-left: 16px;

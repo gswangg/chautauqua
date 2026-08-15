@@ -116,12 +116,13 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
     expect(body.dryRun).toBe(true);
     expect(body.csvText).toContain('john@example.com');
 
-    const rows = screen.getAllByRole('row');
-    // rows[0] is the header row.
+    // w49-f: john (update) is a "losing" row and visible by default; jane
+    // (plain create) is not -- reveal it via the disclosure before
+    // asserting DEC-858's every-row-skippable guarantee.
+    let rows = screen.getAllByRole('row');
     const johnRow = rows.find((r) => within(r).queryByText('john@example.com'));
-    const janeRow = rows.find((r) => within(r).queryByText('jane@example.com'));
     expect(johnRow).toBeDefined();
-    expect(janeRow).toBeDefined();
+    expect(screen.queryByText('jane@example.com')).not.toBeInTheDocument();
 
     expect(within(johnRow!).getByText(/Update/)).toBeInTheDocument();
     expect(within(johnRow!).getByText('OldCo')).toBeInTheDocument();
@@ -129,6 +130,10 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
     expect(within(johnRow!).getByText('Acme', { selector: '.chq-contacts-import-overwrite-new' })).toBeInTheDocument();
     expect(within(johnRow!).getByRole('checkbox', { name: 'Skip line 2' })).not.toBeChecked();
 
+    fireEvent.click(screen.getByRole('button', { name: 'Show all 2 rows' }));
+    rows = screen.getAllByRole('row');
+    const janeRow = rows.find((r) => within(r).queryByText('jane@example.com'));
+    expect(janeRow).toBeDefined();
     expect(within(janeRow!).getByText('Create')).toBeInTheDocument();
     // DEC-858: skipping is possible on every row, including a plain create
     // with no overwrites/duplicates to decorate it.
@@ -148,6 +153,10 @@ describe('ImportWizard: DEC-663 dry-run review step', () => {
     mockApi({ 'POST /api/v1/contacts/import': plainPlan });
     await pasteCsvAndPreview();
     await screen.findByText('2 new · 0 updated');
+
+    // w49-f: both rows are plain creates -- neither is a "losing" row, so
+    // both start behind the disclosure.
+    fireEvent.click(screen.getByRole('button', { name: 'Show all 2 rows' }));
 
     expect(screen.getByRole('checkbox', { name: 'Skip line 2' })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: 'Skip line 3' })).toBeInTheDocument();
@@ -305,6 +314,10 @@ describe('ImportWizard: B5 review step (DEC-663 amendment)', () => {
     mockApi({ 'POST /api/v1/contacts/import': MIXED_PLAN });
     await pasteCsvAndPreview();
     await screen.findByText('205 new · 9 updated');
+
+    // w49-f: jane (plain create) starts behind the disclosure; open it to
+    // see both rows in document order.
+    fireEvent.click(screen.getByRole('button', { name: 'Show all 2 rows' }));
 
     const rows = screen.getAllByRole('row');
     // rows[0] is the header row; the plan lists the create row (jane) before
