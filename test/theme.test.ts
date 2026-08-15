@@ -61,7 +61,11 @@ describe("THEME_CSS native control coverage (DEC-585)", () => {
   });
 
   it("styles input[type=date] with the same box metrics as the text inputs", () => {
-    expect(THEME_CSS).toMatch(/input\[type=date\]\s*\{[^}]*min-height:\s*44px[^}]*\}/s);
+    // DEC-367 amendment (wave 48): the 44px tap floor is PHONE-scoped per the
+    // vendored README ("desktop rows use padding"), so it no longer sits in
+    // the base input[type=date] rule -- it's re-asserted for the same
+    // selector inside THEME_CSS's @media (max-width: 700px) block instead.
+    expect(THEME_CSS).toMatch(/@media \(max-width: 700px\) \{[^]*input\[type=date\]\s*\{[^}]*min-height:\s*44px[^}]*\}[^]*\}/);
     expect(THEME_CSS).toMatch(/input\[type=date\]\s*\{[^}]*border:\s*1px solid var\(--chq-border\)[^}]*\}/s);
     expect(THEME_CSS).toMatch(/input\[type=date\]\s*\{[^}]*border-radius:\s*4px[^}]*\}/s);
   });

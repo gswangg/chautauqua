@@ -165,7 +165,6 @@ export const THEME_CSS = `
   input[type=url], input[type=password], select, textarea {
     max-width: 100%;
     box-sizing: border-box;
-    min-height: 44px;
     font-size: 1rem;
     font-family: inherit;
     color: var(--chq-ink);
@@ -177,7 +176,6 @@ export const THEME_CSS = `
   .chq-input, .chq-select, .chq-textarea {
     max-width: 100%;
     box-sizing: border-box;
-    min-height: 44px;
     font-size: 1rem;
     font-family: inherit;
     color: var(--chq-ink);
@@ -194,7 +192,6 @@ export const THEME_CSS = `
   input[type=date] {
     max-width: 100%;
     box-sizing: border-box;
-    min-height: 44px;
     font-size: 1rem;
     font-family: inherit;
     color: var(--chq-ink);
@@ -207,7 +204,6 @@ export const THEME_CSS = `
   input[type=file] {
     max-width: 100%;
     box-sizing: border-box;
-    min-height: 44px;
     font-size: 1rem;
     font-family: inherit;
     color: var(--chq-ink-2);
@@ -221,7 +217,6 @@ export const THEME_CSS = `
      button on the frozen palette. */
   input[type=file]::file-selector-button,
   input[type=file]::-webkit-file-upload-button {
-    min-height: 44px;
     margin-right: 0.75rem;
     padding: 0.5rem 1rem;
     font-size: 1rem;
@@ -263,7 +258,6 @@ export const THEME_CSS = `
     -moz-appearance: none;
     max-width: 100%;
     box-sizing: border-box;
-    min-height: 44px;
     font-size: 1rem;
     font-family: inherit;
     color: var(--chq-ink);
@@ -287,7 +281,6 @@ export const THEME_CSS = `
   }
 
   button, input[type=submit], .chq-btn {
-    min-height: 44px;
     padding: 0.5rem 1rem;
     font-size: 1rem;
     font-family: 'Figtree', system-ui, sans-serif;
@@ -369,7 +362,6 @@ export const THEME_CSS = `
   .chq-nav a {
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
     padding: 4px 0;
     color: var(--chq-ink-2);
     text-decoration: none;
@@ -494,6 +486,45 @@ export const THEME_CSS = `
     }
     .chq-phone-actionbar-secondary {
       min-height: 48px;
+    }
+  }
+
+  /* DEC-367 amendment (wave 48): the >=44px tap floor is a PHONE rule, not a
+     desktop one -- README's Controls section: "Every interactive element is
+     >=44px on phone (44px minimum height plus centred flex, not padding).
+     Desktop rows use padding:8-10px 14-18px." Each selector group below
+     mirrors one of the base rules above (minus their own min-height), so on
+     phone every text input, .chq-input/.chq-select/.chq-textarea, date
+     input, file input, its file-selector button, native select, submit
+     button/.chq-btn and .chq-nav link still lands at the 44px floor; on
+     desktop they fall back to the padding-only box the base rule already
+     sets (~34px for fields, ~36px for buttons). */
+  @media (max-width: 700px) {
+    input[type=search], input[type=text], input[type=email], input[type=tel],
+    input[type=url], input[type=password], select, textarea {
+      min-height: 44px;
+    }
+    .chq-input, .chq-select, .chq-textarea {
+      min-height: 44px;
+    }
+    input[type=date] {
+      min-height: 44px;
+    }
+    input[type=file] {
+      min-height: 44px;
+    }
+    input[type=file]::file-selector-button,
+    input[type=file]::-webkit-file-upload-button {
+      min-height: 44px;
+    }
+    select {
+      min-height: 44px;
+    }
+    button, input[type=submit], .chq-btn {
+      min-height: 44px;
+    }
+    .chq-nav a {
+      min-height: 44px;
     }
   }
 `;
