@@ -44,6 +44,9 @@ const FIELD_ROWS = [
   { id: "description", section: "session", kind: "long_text", label: "Description", helpText: "Old help text", required: true, position: 1, optionsJson: null, ruleJson: null },
   {
     id: "field_session_format",
+    // DEC-592/DEC-755: role -- not the id -- is what pulls this field out of
+    // FormFieldsSection into FormatChoices (DEC-986).
+    role: "session_format",
     section: "session",
     kind: "dropdown",
     label: "Session format",

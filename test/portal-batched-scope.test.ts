@@ -85,10 +85,20 @@ function evalWhereCond(cond: unknown, rec: Rec, data: DataByTag): boolean {
     return m.vals.includes(rec[info.tag]?.[info.key]);
   }
   if (m.__marker === "sql") {
-    // fileSubmissionOwnedByContact(contactId, orgId): every interpolated
-    // value that ISN'T a known table/column is one of the two literal
-    // strings passed by the caller, in call order.
+    // Every interpolated value that ISN'T a known table/column is a literal
+    // string passed by the caller, in call order. TWO distinct sql``
+    // predicates reach this fake:
     const literals = m.values.filter((v) => tryColInfo(v) === null && !TABLE_TAG.has(v as object));
+    // (a) DEC-592/DEC-755 answerFieldRoleCondition(role) — an EXISTS over
+    // form_field matching submission_answer.form_field_id to a field
+    // carrying the given ROLE (never the old global-PK literal id).
+    // Recognised by form_field.role among the interpolated expressions.
+    if (m.values.some((v) => v === schema.formField.role)) {
+      const [role] = literals as [string];
+      const answerFieldId = rec.submissionAnswer?.formFieldId;
+      return (data.formField ?? []).some((f) => f.id === answerFieldId && f.role === role);
+    }
+    // (b) DEC-962 fileSubmissionOwnedByContact(contactId, orgId).
     const [contactId, orgId] = literals as [string, string];
     const fileSubmissionId = rec.file?.submissionId;
     const participants = data.participant ?? [];
@@ -217,6 +227,12 @@ function buildTwoOrgFixture(): DataByTag {
         sizeBytes: 100,
         createdAt: now,
       },
+    ],
+    // DEC-592/DEC-755: session format is resolved through the field's ROLE,
+    // so the form must actually carry a role-tagged field for any answer to
+    // resolve. The id is incidental — only `role` matches.
+    formField: [
+      { id: "field_session_format", formId: "form-1", role: "session_format", section: "session", kind: "dropdown" },
     ],
     submissionAnswer: [],
   };

@@ -883,6 +883,7 @@ describe('SubmissionDetailPage render: placement + format (DEC-780)', () => {
         fields: [
           {
             id: 'field_session_format',
+            role: 'session_format',
             section: 'session',
             kind: 'dropdown',
             label: 'Format',
@@ -1068,7 +1069,24 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
         page: 1,
         perPage: 20,
       },
-      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      // DEC-592/DEC-755: the eyebrow's format resolves through the
+      // session_format-ROLE field, so the form must carry it -- an event
+      // whose form has no such field renders no format at all.
+      [`GET /api/v1/events/evt-1/forms`]: {
+        id: 'form-1',
+        fields: [
+          {
+            id: 'field_session_format',
+            role: 'session_format',
+            section: 'session',
+            kind: 'dropdown',
+            label: 'Format',
+            required: false,
+            position: 1,
+            options: ['Lightning talk', 'Talk', 'Workshop'],
+          },
+        ],
+      },
       [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
       [`GET /api/v1/events/evt-1/submissions`]: { items: [], total: 0, page: 1, perPage: 20 },
     });
@@ -1199,6 +1217,7 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
         fields: [
           {
             id: 'field_session_format',
+            role: 'session_format',
             section: 'session',
             kind: 'dropdown',
             label: 'Format',
@@ -1208,6 +1227,7 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
           },
           {
             id: 'field_audience_level',
+            role: 'audience_level',
             section: 'session',
             kind: 'dropdown',
             label: 'Audience level',
@@ -1799,6 +1819,7 @@ describe('SubmissionDetailPage: the other six writers read refusals by shape (DE
         fields: [
           {
             id: 'field_session_format',
+            role: 'session_format',
             section: 'session',
             kind: 'dropdown',
             label: 'Format',
@@ -1838,6 +1859,7 @@ describe('SubmissionDetailPage: the other six writers read refusals by shape (DE
         fields: [
           {
             id: 'field_audience_level',
+            role: 'audience_level',
             section: 'session',
             kind: 'dropdown',
             label: 'Audience level',

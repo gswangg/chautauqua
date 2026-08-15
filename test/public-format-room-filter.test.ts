@@ -99,10 +99,14 @@ describe("getPublicSessions (DEC-774): format/roomId are EXISTS predicates on th
     // visibility gate still present
     expect(tokens).toContain('val:"accepted"');
     expect(tokens).toContain('val:"approved"');
-    // format predicate: field_session_format + the exact JSON-encoded value
+    // DEC-592/DEC-755: the format predicate joins form_field and matches the
+    // session_format ROLE -- never the old global-PK literal id, which only
+    // the seed could ever satisfy -- plus the exact JSON-encoded value
     // (submission_answer.value_json stores JSON.stringify(format), so the
     // bound param itself is the quoted string '"Workshop"').
-    expect(tokens.some((t) => t.includes("field_session_format"))).toBe(true);
+    expect(tokens).toContain("col:role");
+    expect(tokens.some((t) => t.includes("session_format"))).toBe(true);
+    expect(tokens.some((t) => t.includes("field_session_format"))).toBe(false);
     expect(tokens.some((t) => t.includes("Workshop"))).toBe(true);
   });
 
