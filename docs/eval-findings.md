@@ -1,17 +1,16 @@
-# Eval findings — rebased 2026-08-15 (wave 16)
+# Eval findings — rebased 2026-08-15 (wave 17)
 
-Verified against `main` sha `c557cff9f0e5bcd68d0d7815956d83a94eb9dc4e` (this
-wave's own boundary — the planning-time boundary cited in the wave-16 brief,
-`c0b14342`, is now 8 commits behind `main`; every citation below was re-run
-against the newer sha, per the standing rule that a mandate item moves tier
-only on a citation against *current* `main`, not an inherited planning-time
-snapshot). The prior
-generation of this file (1,505 lines, written against `chautauqua-research/design-
-frames-v7/v8/v9` — a pack not vendored in this repo, plus a long series of dead
-gate-N fleet/sbek verdicts and snapshot shas) is archived verbatim, never deleted,
-at `docs/mandates/findings-archive-2026-08-15.md`. Line references inside the
-archive do not resolve against the current tree; nothing there is authoritative
-until someone re-verifies it and moves it into a tier below.
+Verified against `main` sha `9b21309c7240cfb6622dcea0f15ebe981060dcd6` (merge
+task-w16-a — this wave's own planning boundary). Every citation below was
+either re-cited against this sha directly or, where noted, inherited from a
+prior wave's own re-verification against its own boundary sha and not
+re-derived this wave. The prior generation of this file (1,505 lines, written
+against `chautauqua-research/design-frames-v7/v8/v9` — a pack not vendored in
+this repo, plus a long series of dead gate-N fleet/sbek verdicts and snapshot
+shas) is archived verbatim, never deleted, at
+`docs/mandates/findings-archive-2026-08-15.md`. Line references inside the
+archive do not resolve against the current tree; nothing there is
+authoritative until someone re-verifies it and moves it into a tier below.
 
 ## Standing rules (still bind)
 
@@ -49,6 +48,17 @@ until someone re-verifies it and moves it into a tier below.
   re-verify, not a fact to propagate (see the `task-w8-c`/`task-w8-d`
   correction below — the swarm has now gotten this wrong in both
   directions across two waves).
+- **A verification lane's branch that equals its base measured nothing, and
+  IN FLIGHT is written from `.git` ref state, never from a wave note**
+  (DEC-069 wave-17 amendment). Two branches this wave (`task-w16-c`,
+  `task-w16-d`) each pointed at `c557cff9` — main's own parent at their
+  branch-point — meaning zero commits were ever made on them: their intended
+  gates (walkthrough, perf-smoke) never ran, and a wave note claiming they
+  "completed" or "found nothing" would have been reporting on an empty diff,
+  not a real check. The corollary: the IN FLIGHT section of this file is
+  built by walking `git for-each-ref` / `git merge-base --is-ancestor`
+  against the boundary sha in this file's own header, never copied forward
+  from a previous wave's prose describing what it believed was merged.
 
 ## TIER 0 — re-verified, already correct, do not re-file
 
@@ -72,6 +82,36 @@ triage, not a fresh finding.
   (DEC-694) that scopes the reminder to exactly those contacts, identically
   on both endpoints, falling back to "every outstanding contact" only when
   omitted.
+
+### DO-NOT-RE-FILE (wave 17, re-verified against `main 9b21309c`)
+
+Each item below was cited by the planner directly against this wave's
+boundary sha and landed here without re-derivation. Filing any of these
+again without new runtime evidence is a regression of this triage:
+
+- **Bulk-email two-stage dedupe** — `src/routes/api/contacts/bulk-email.ts:214-250`
+  (DEC-238 wave-14): the collapse-then-window shape is in place and closed.
+- **`createUser` insert-then-select with `onConflictDoNothing`** —
+  `src/server/repo/users.ts:106-124` (DEC-552 wave-14).
+- **Breaks validation accumulates instead of throwing** —
+  `src/routes/api/breaks.ts:130-166`, via `collectBoundedText`/
+  `collectBoundedOptionalText`, with the DEC-022 midnight cross-check still
+  reached at `:162` (i.e. accumulation doesn't short-circuit the later
+  cross-field check).
+- **`send.ts`'s unconditional `bumpIcsSequences`** —
+  `src/routes/comms/send.ts:243-258` — RULED DELIBERATE in-code; re-filing
+  this as a defect is a regression of this triage, not a fresh finding.
+- **`MAX_PARTICIPANTS_PER_SUBMISSION` now binds all FOUR participant-writer
+  doors** — `src/routes/api/submissions.ts:598`,
+  `src/server/repo/portal-edit.ts:487`,
+  `src/routes/api/contacts/import.ts:194`,
+  `src/server/repo/import/sessionboard.ts:622` — plus the repo-level
+  pre-write guards at `src/server/repo/participants.ts:105` and `:191`. The
+  "two of four doors" finding (previously carried in this file / the field
+  guide) is CLOSED — all four are now covered.
+- **Mail envelope goes through `addressValue`** —
+  `src/mail/email-binding.ts:236-240`, guarded by
+  `test/mail-envelope-address.test.ts`.
 
 ### Re-verified this wave (w9-e, 2026-08-15) — moved out of TIER 1 item 4
 
@@ -150,23 +190,67 @@ so the next mobile-lane sweep doesn't re-derive them:
 
 ## IN FLIGHT — owned by a branch, do not re-file
 
-### Rewritten this wave (w16-b, 2026-08-15) — the w14/w15 set has landed
+### REF TRUTH, rewritten this wave (w17-e, 2026-08-15) against boundary `main 9b21309c`
+
+Per the new standing rule above, this block is built from `.git` ref state
+(`git for-each-ref refs/heads`, `git merge-base --is-ancestor <ref>
+9b21309c`) at this wave's own boundary sha, not inherited from a prior
+wave's prose:
+
+- **`task-w14-d` and `task-w15-a`/`-b`/`-c`/`-d`/`-e`/`-f` are ALL MERGED** —
+  merge commits are present in `main`'s reflog and the source branches'
+  refs are deleted post-merge (the standard pattern for a landed lane in
+  this repo). The wave-16 field-guide note that read these as "all
+  UNMERGED" was FALSE at the time it was read and must not be repeated —
+  see the wave-16 rewrite below (kept for its citations, corrected here)
+  for the specific file:line evidence of each merge.
+- **`task-w16-a` is MERGED** — it is this wave's own boundary commit:
+  `main`'s tip at `9b21309c` IS "merge task-w16-a" (`git show -s 9b21309c`:
+  `Merge: c557cff9 8cc08b91`). The wave-16 rewrite below, which read
+  `task-w16-a` as "confirmed UNMERGED," was accurate at ITS OWN boundary
+  (`c557cff9`, 8 commits earlier) but is now stale — the mail-envelope-
+  `addressValue` test-coverage item it was tracking is CLOSED, see the
+  DO-NOT-RE-FILE block in TIER 0 above.
+- **`task-w16-b` (ref `6aed4fe0`) and `task-w16-e` (ref `bdaf3997`) have real
+  commits and are UNMERGED as of `9b21309c`** — still owned, do not re-file
+  their scopes: `task-w16-b` is a findings-rewrite lane (it produced the
+  wave-16 version of this very file, at ITS boundary `c557cff9`), and
+  `task-w16-e` is a spec-audit lane (`DEC-063: spec-audit gate for J1-J12,
+  §5 invariants, §6 security`). Neither branch's scope should be
+  re-launched as a fresh task while these refs are still live and unmerged
+  at this boundary.
+- **`task-w16-c` and `task-w16-d` each point at `c557cff9`, which is `main`'s
+  own PARENT at this boundary** — both produced ZERO commits (branch tip ==
+  branch base), so their intended gates (walkthrough and perf-smoke) NEVER
+  RAN, and their scope was UNOWNED until this wave. `task-w17-a` and
+  `task-w17-b` now hold that scope (walkthrough gate, perf-smoke gate,
+  respectively) — do not treat `task-w16-c`/`task-w16-d` as having verified
+  anything.
+- **`task-w16-f` never got a ref this wave** — no branch by that name exists
+  at this boundary; its scope (per the field-guide note) belongs to
+  whichever wave actually opened a ref for it, not `task-w16-c`/`-d`'s
+  empty-branch pattern above.
+
+### Wave-16 rewrite (2026-08-15, boundary `main c557cff9`) — citations kept, status corrected above
 
 The wave-16 brief's REF TRUTH ("task-w14-d and task-w15-a/-b/-c/-d/-e are all
 unmerged as of planning, main `c0b14342`") was accurate at planning time and
-is now stale — the merge train advanced 8 commits past that boundary before
-this task ran. Re-run this wave against `main c557cff9`:
-`git for-each-ref refs/heads` lists only `task-w15-b`, `task-w15-e`,
-`task-w16-a`, and this task's own `task-w16-b` in the w14–w16 range (`task-
-w14-d`, `task-w15-a`, `task-w15-c`, `task-w15-d` have no ref at all — deleted
+was stale by the time that wave ran — the merge train advanced 8 commits past
+that boundary first. The wave-16 task re-ran the check against its own
+boundary (`c557cff9`) and found:
+`git for-each-ref refs/heads` listed only `task-w15-b`, `task-w15-e`,
+`task-w16-a`, and that task's own `task-w16-b` in the w14–w16 range (`task-
+w14-d`, `task-w15-a`, `task-w15-c`, `task-w15-d` had no ref at all — deleted
 post-merge, same pattern documented below for `task-w8-a`/`task-w10-b`).
 `git merge-base --is-ancestor <ref> main` was run against every ref that
-still exists:
+still existed at that boundary:
 
 - **`task-w14-d`, `task-w15-a`, `task-w15-b`, `task-w15-c`, `task-w15-d`,
-  `task-w15-e` — ALL SIX MERGED.** No branch in the w14–w15 range that this
-  wave's brief named is still in flight. Confirmed by symbol citation, not
-  just ref-ancestry, for the three the brief specifically doubted:
+  `task-w15-e` — ALL SIX MERGED (confirmed again at this wave's later
+  boundary `9b21309c`, see REF TRUTH above).** No branch in the w14–w15
+  range that the wave-16 brief named was still in flight. Confirmed by
+  symbol citation, not just ref-ancestry, for the three the brief
+  specifically doubted:
   - `task-w14-d` (AUTH_CSS `.chq-field-invalid` cascade) — MERGED
     (`c15b8ca3` "merge task-w14-d"). `app/src/components/error-states.css:31`
     and `src/views/error-states.css.ts:46` both now read
@@ -195,21 +279,22 @@ still exists:
     `seenInBatch`/`dedupeKey` stage BEFORE `loadRecentlySent` (DEC-238
     wave-15 amendment, mirrors `bulk-email.ts`'s two-stage shape) — the
     window query no longer runs without an intra-batch collapse first.
-- **`task-w15-f` never existed as a ref this wave** — no branch by that name
-  is in `refs/heads` today (the merge-log entries reading "merge task-w15-f"
-  belong to an unrelated, much older recurring generic-audit lane name reused
-  many times across this repo's history — e.g. `f577a756` "task-w15-f: DEC-196
-  spec-audit", `8fdd49fa` "task-w15-f: triage-closure gate", both pre-dating
-  this wave by a wide margin — not this wave's mail-envelope scope). The mail-
-  envelope-`addressValue` scope for this wave is `task-w16-a`
-  (`8cc08b91` "task-w16-a: add named mail-envelope-address test file (DEC-499
-  amendment wave 16)"), branched from this wave's `main c557cff9` and
-  confirmed **UNMERGED** (`git merge-base --is-ancestor task-w16-a main`
-  exits 1) — still IN FLIGHT, owned, do not re-file the mail-envelope-
-  `addressValue` item. Note the underlying fix this test exercises
+- **`task-w15-f` never existed as a ref that wave** — no branch by that name
+  was in `refs/heads` at boundary `c557cff9` (the merge-log entries reading
+  "merge task-w15-f" belong to an unrelated, much older recurring
+  generic-audit lane name reused many times across this repo's history —
+  e.g. `f577a756` "task-w15-f: DEC-196 spec-audit", `8fdd49fa` "task-w15-f:
+  triage-closure gate", both pre-dating that wave by a wide margin — not
+  that wave's mail-envelope scope). The mail-envelope-`addressValue` scope
+  for wave 16 was `task-w16-a` (`8cc08b91` "task-w16-a: add named
+  mail-envelope-address test file (DEC-499 amendment wave 16)"), branched
+  from `main c557cff9` and, at THAT boundary, confirmed UNMERGED — this is
+  the status now SUPERSEDED per the REF TRUTH block above: `task-w16-a` is
+  merged as of `9b21309c` and the item is CLOSED (see DO-NOT-RE-FILE in
+  TIER 0). Note the underlying fix this test exercises
   (`src/mail/email-binding.ts`, "envelope from/to skipped addressValue at the
   messageFactory boundary") already landed on `main` in an earlier, unrelated
-  wave (`152757d9`) — `task-w16-a` is adding coverage, not re-fixing a live
+  wave (`152757d9`) — `task-w16-a` added coverage, not a re-fix of a live
   gap.
 
 ### Carried forward from wave 12 (still true, not re-checked this wave beyond ref presence)
@@ -258,7 +343,7 @@ still exists:
 
 ### DISMISSED review-lens claims (wave 16)
 
-Four reviewer-lens findings re-verified this wave as ALREADY CORRECT on
+Four reviewer-lens findings re-verified as ALREADY CORRECT against boundary
 `main c557cff9` — filing any of these again without new runtime evidence is
 a regression of this triage, not a fresh finding:
 
@@ -340,9 +425,9 @@ misplaced.
    future wave.
 3. **Gate-7 fleet remaining MAJORs** (measured `2026-08-15` morning against
    boundary `ea2a5543`, per-pair detail in `fidelity-gate7/pair*/report.md`).
-   Walked sub-item by sub-item this wave against current `main` + the
-   vendored `docs/design/*.dc.html`/README pack. Nothing is deleted — a
-   closed item keeps its citation so the next wave doesn't re-derive it:
+   Walked sub-item by sub-item against current `main` + the vendored
+   `docs/design/*.dc.html`/README pack. Nothing is deleted — a closed item
+   keeps its citation so the next wave doesn't re-derive it:
 
    - **12-home chrome at 46px gutters + 732 body** — SUPERSEDED-BY-VENDORED-
      PACK. The `46px`/`732` figures are a `chautauqua-research` render
@@ -381,11 +466,37 @@ misplaced.
      1180/32 container".
    - **04 participation panel 420 + speaker-detail grid/theads + reminders
      modal (prints localhost:8799) + write-failed banner anatomy + search
-     excluded from hasActiveNarrowing** — VERIFIED-OPEN, not re-checked this
-     wave beyond a keyword grep that found no `420px participation-panel`
-     rule under that name (`app/src/pages/comms/comms.css:444` is an
-     unrelated `min-height: 420px` on a different component). Carried
-     forward as-is, not re-checked wave 16.
+     excluded from hasActiveNarrowing** — SPLIT this wave (w17-e, boundary
+     `9b21309c`):
+     - **"search excluded from hasActiveNarrowing" — CLOSED.**
+       `app/src/pages/speakers/OnboardingGrid.tsx:128-135`
+       `hasActiveNarrowing` reads `filters.q.trim()` as one of its five
+       narrowing predicates (DEC-678 amendment, w3-d, comment at `:121-127`
+       explains why: `q` can empty the roster on its own, so a search miss
+       must render the FILTERED empty state, not the fresh one), and the
+       "filtered" empty-state escape link at `:375`
+       (`clearNarrowingFacets`) resets `q` along with every other predicate.
+     - **"reminders modal prints localhost:8799" — CLOSED, with a caveat.**
+       No `localhost:<port>` literal exists in any application SOURCE file
+       under `app/src` (no component, no reminders-modal module hardcodes a
+       dev host:port string). The ONE `localhost:<port>` string anywhere
+       under `app/src` is `app/src/pages/forms/FormsPage.render.test.tsx:140`
+       — a test assertion on the FORMS page's public-submit-link footer
+       (`Public link · <host/path> · Copy`, item 51/gate-3), asserting the
+       value the component renders from the actual computed public URL in
+       the test environment, not a hardcoded literal in the component
+       itself. This is a different surface (Forms footer, not the reminders
+       modal) and a different kind (test's expected-value string, not a
+       component-source literal) than the gate-7 "reminders modal prints
+       localhost:8799" complaint — closing the specific complaint, not
+       asserting the substring never appears anywhere in the tree.
+     - Remaining sub-clauses — "participation panel 420", "speaker-detail
+       grid/theads", "write-failed banner anatomy" — NOT re-checked this
+       wave beyond the earlier keyword grep that found no `420px
+       participation-panel` rule under that name (`app/src/pages/comms/
+       comms.css:444` is an unrelated `min-height: 420px` on a different
+       component). Carried forward VERIFIED-OPEN, split from the now-closed
+       clauses above.
    - **CLASS 1 admin measure 1372@114 + topbar 59 (everywhere)** — CLOSED
      (re-verified wave 16, same SUPERSEDED-BY-VENDORED-PACK pattern as
      "12-home" above). `docs/design/README.md:407-417` (`## Widths`) states
@@ -416,17 +527,17 @@ misplaced.
      re-open on a citation that a live admin page deviates from the three
      README-vendored tokens, which `page-measure.test.ts` continuously
      guards against.
-   - **11 AUTH_CSS .chq-field-invalid cascade inert** — CLOSED (see IN
-     FLIGHT above: `task-w14-d` MERGED, `c15b8ca3`).
-     `app/src/components/error-states.css:31` and `src/views/error-
-     states.css.ts:46` both now use `.chq-field-invalid.chq-field-invalid`
-     (specificity `(0,2,0)`, DEC-124 wave-14 amendment), which outranks
-     `theme.ts`'s base `input[type=...], select, textarea` group
-     (`(0,1,1)`) regardless of source order — the single-class selector
-     that used to lose the cascade is gone from both stylesheets.
-     `test/error-invalid-outranks-base.test.ts` computes CSS specificity
-     arithmetic on both files and fails if the selector ever reverts to a
-     single class.
+   - **11 AUTH_CSS .chq-field-invalid cascade inert** — CLOSED (`task-w14-d`
+     MERGED, confirmed again this wave against boundary `9b21309c` — see IN
+     FLIGHT REF TRUTH above). `app/src/components/error-states.css:31` and
+     `src/views/error-states.css.ts:46` both now use
+     `.chq-field-invalid.chq-field-invalid` (specificity `(0,2,0)`, DEC-124
+     wave-14 amendment), which outranks `theme.ts`'s base
+     `input[type=...], select, textarea` group (`(0,1,1)`) regardless of
+     source order — the single-class selector that used to lose the cascade
+     is gone from both stylesheets. `test/error-invalid-outranks-base.test.ts`
+     computes CSS specificity arithmetic on both files and fails if the
+     selector ever reverts to a single class.
    - **02 SESSION DETAILS label-left grid + participant chips** — CLOSED
      (re-verified wave 16). `app/src/pages/submissions/
      SubmissionDetailPage.tsx:1197-1205` renders "Session details" as a real
@@ -456,17 +567,24 @@ misplaced.
    - **09 Add-track tertiary + CFP-edit intro/description binding +
      saved-embed single-card anatomy**, **10 active-filter ink chip + TBD
      room on public (ruling A25) + speakers toolbar right-cluster +
-     underlined initials + blue avatars** — NOT re-checked against current
-     `main` this wave; carried forward unchanged as VERIFIED-OPEN, not
-     re-checked wave 16. Per the standing rule, neither may move tier on
-     inheritance alone — the next wave that touches either needs its own
-     file:line or exercised citation. Partial note on "10", carried from a
-     prior wave: `PhoneAgenda.tsx:34,42` still has a `TBD` string fallback
-     for room name (admin phone agenda, not the public surface the sub-item
-     names) and `Agenda.render.test.tsx:366-368` asserts desktop agenda
-     never renders literal "TBD" — the public-surface claim in "10" was not
-     confirmed either way; do not read the admin-phone `TBD` literal as
-     evidence for or against the public claim.
+     underlined initials + blue avatars** — the "TBD room on public (ruling
+     A25)" clause of item 10 is CLOSED this wave (boundary `9b21309c`): no
+     `TBD` or `No room yet` string exists anywhere under `src/routes/public`
+     (`git grep -n "TBD" -- src/routes/public` and `git grep -n "No room
+     yet" -- src/routes/public` both return no matches). Note, carried from
+     a prior wave, on a DIFFERENT surface: `PhoneAgenda.tsx:34,42` still has
+     a `TBD` string fallback for room name on the ADMIN phone agenda (not
+     the public surface this sub-item names), and
+     `Agenda.render.test.tsx:366-368` asserts the desktop agenda never
+     renders literal "TBD" — neither is evidence for or against the
+     public-surface closure just recorded. The rest of item 9 and the rest
+     of item 10 (active-filter ink chip, speakers toolbar right-cluster,
+     underlined initials, blue avatars, Add-track tertiary, CFP-edit
+     intro/description binding, saved-embed single-card anatomy) were NOT
+     re-checked against current `main` this wave; carried forward unchanged
+     as VERIFIED-OPEN. Per the standing rule, none of these may move tier on
+     inheritance alone — the next wave that touches any of them needs its
+     own file:line or exercised citation.
 
 **CFP-16 is a RECORDED DELIBERATE FORFEIT** (DEC-041 findings-wave-6 amendment):
 accepted speakers keep editing past close per docs/clarifications.md:39 (swyx,
@@ -520,7 +638,7 @@ as its own section, per the archive's "Mobile queue (NEXT ROUND)" note:
   phone password screen's fixed footer + Cancel — DONE, cited above
   (STRUCTURAL: `src/routes/auth.css.ts:318-336`), Home footer media rule —
   DONE, cited above (STRUCTURAL: `src/routes/public/home.css.ts:72-76`)).
-  Two more items closed this wave (w16-b):
+  Two more items closed wave 16 (w16-b):
   - **Settings subscreens are URL state, not path routes — DELIBERATE, not
     a gap.** `app/src/pages/Settings.tsx:13-30` (DEC-728): the desktop rail
     is a static one-document scroll (no drill, no route change); below
