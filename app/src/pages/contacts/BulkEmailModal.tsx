@@ -8,7 +8,7 @@ import {
   missingMergeFields,
 } from '../../lib/merge-fields';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
-import { countOf } from '../../lib/plural';
+import { countOf, plural } from '../../lib/plural';
 import { DEC_793, DEC_856, DEC_967 } from '../../../../src/decisions';
 
 void DEC_793;
@@ -251,8 +251,8 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
               names.length === 1
                 ? names[0]
                 : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-            const verb = names.length === 1 ? 'needs' : 'need';
-            const pronoun = names.length === 1 ? 'it is' : 'they are';
+            const verb = plural(names.length, 'needs', 'need');
+            const pronoun = plural(names.length, 'it is', 'they are');
             return (
               <>
                 <p className="chq-bulk-email-unsendable-note">

@@ -4,6 +4,8 @@
 // ./error-states.css, mirroring src/routes/public/cfp.css.ts's block so
 // the public CFP builder and the admin SPA share one visual contract.
 
+import { plural } from '../lib/plural';
+
 const ONES = [
   'Zero',
   'One',
@@ -26,7 +28,7 @@ const ONES = [
  */
 export function countHeading(n: number, tail: string): string {
   const word = n >= 1 && n <= 10 ? ONES[n] : String(n);
-  const noun = n === 1 ? 'thing needs' : 'things need';
+  const noun = plural(n, 'thing needs', 'things need');
   return `${word} ${noun} fixing ${tail}`;
 }
 

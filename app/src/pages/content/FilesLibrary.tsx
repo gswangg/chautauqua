@@ -12,6 +12,7 @@ import {
 } from './types';
 import { formatDateTime } from '../../lib/dates';
 import { formatBytes } from './format';
+import { countOf } from '../../lib/plural';
 
 interface FilesLibraryProps {
   eventId: string;
@@ -162,7 +163,7 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
         </div>
         <div className="chq-content-files-header-actions">
           <span className="chq-summary">
-            {`${total} ${total === 1 ? 'file' : 'files'} · ${formatBytes(totalSizeBytes)}`}
+            {`${countOf(total, 'file')} · ${formatBytes(totalSizeBytes)}`}
           </span>
           {/* CNT-14 (DEC-160, wave-26 amendment): a bordered SECONDARY
               control scoped to the currently-rendered set, never a filled
