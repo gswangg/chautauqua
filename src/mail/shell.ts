@@ -67,7 +67,7 @@ export function renderEmailHtml(text: string, opts: EmailShellOptions): string {
       : `sent with <span style="font-weight:700;">Chautauqua</span>`;
 
   return `<!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
