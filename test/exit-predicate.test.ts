@@ -117,7 +117,15 @@ describe("classifyScope", () => {
     ["J1-J12 persona walkthrough (`npm run walkthrough`), stage-1 close", "walkthrough"],
     ["walkthrough confirm", "walkthrough"],
     ["perf-smoke", "perf-smoke"],
-    ["perf:smoke", "perf-smoke"],
+    ["perf smoke", "perf-smoke"],
+    // DEC-099 w45: only the whole-token "perf-smoke"/"perf smoke" forms
+    // classify -- a colon separator is not a canonical form and a bare
+    // "perf" substring (e.g. real "onboarding grid TIER-0 perf" /
+    // "files library headshot join perf" corpus scopes) must NOT claim
+    // the slot.
+    ["perf:smoke", null],
+    ["onboarding grid TIER-0 perf", null],
+    ["files library headshot join perf", null],
     ["perf-smoke + render-sweep", "perf-smoke"],
     ["spec-audit §6/§7/§8/§9", "spec-audit"],
     ["spec audit confirm", "spec-audit"],
@@ -148,7 +156,10 @@ describe("gradePredicate", () => {
       sha: "0000000",
       result: null,
       openItems: null,
-      qualifying: false,
+      // Default to a QUALIFYING candidate: these fixtures exercise ranking
+      // (staleness/ancestry/append-order), not the DEC-099 w45 qualifying
+      // gate itself, which has its own dedicated tests below.
+      qualifying: true,
       ...overrides,
     };
   }
@@ -339,6 +350,48 @@ describe("gradePredicate", () => {
     );
     expect(missingRow?.status).toBe("MISSING");
     expect(missingRow?.section).toBeUndefined();
+  });
+
+  // DEC-099 w45 instrument repair: a section must be BOTH `qualifying`
+  // AND whole-token-classified to decide a slot. Either test alone,
+  // fixed shape, real corpus-derived scopes.
+
+  it("a non-QUALIFYING section with a perfect scope match must not decide the slot (MISSING, not FAIL)", () => {
+    const sections: LogSection[] = [
+      section({ scope: "perf-smoke", sha: "aaa", result: "FAIL — noise", qualifying: false }),
+    ];
+    const row = gradePredicate(sections, PRODUCT, () => true).find(
+      (r) => r.slot === "perf-smoke",
+    );
+    expect(row?.status).toBe("MISSING");
+    expect(row?.section).toBeUndefined();
+  });
+
+  it("a QUALIFYING section scoped 'onboarding grid TIER-0 perf' must not claim perf-smoke (real corpus shape, task-w29-a)", () => {
+    const sections: LogSection[] = [
+      section({
+        scope: "onboarding grid TIER-0 perf",
+        sha: "bbb",
+        result: "PASS",
+        qualifying: true,
+      }),
+    ];
+    const row = gradePredicate(sections, PRODUCT, () => true).find(
+      (r) => r.slot === "perf-smoke",
+    );
+    expect(row?.status).toBe("MISSING");
+    expect(row?.section).toBeUndefined();
+  });
+
+  it("a QUALIFYING section scoped exactly 'perf-smoke' must claim the slot", () => {
+    const sections: LogSection[] = [
+      section({ scope: "perf-smoke", sha: "ccc", result: "PASS", qualifying: true }),
+    ];
+    const row = gradePredicate(sections, PRODUCT, () => true).find(
+      (r) => r.slot === "perf-smoke",
+    );
+    expect(row?.status).toBe("PASS");
+    expect(row?.section?.sha).toBe("ccc");
   });
 });
 

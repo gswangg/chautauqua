@@ -153,7 +153,7 @@ describe("negative controls (DEC-099 w40): the contract must actually bite", () 
       sha: "abc1234",
       result: "QUALIFYING",
       openItems: null,
-      qualifying: false,
+      qualifying: true,
     };
     const rows = gradePredicate([section], "product-sha", () => true);
     const row = rows.find((r) => r.slot === "build-test-bundle");
