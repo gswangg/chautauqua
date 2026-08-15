@@ -228,6 +228,7 @@ export function ExpiredClaimPage() {
 // -----------------------------------------------------------------------
 // Password reset (DEC-014 wave-25 amendment, DEC-154, DEC-180, DEC-994).
 // Frame-exact copy from docs/design/Chautauqua Account.dc.html:186-285
+// `background:#F4F1E8; border:1px solid #D3CFC0; border-radius:6px`
 // ("Reset · ask for a link" / "Reset · link sent" / "Reset · choose a new
 // one" / "Reset · link no longer valid").
 // -----------------------------------------------------------------------

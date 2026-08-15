@@ -27,7 +27,9 @@ void DEC_919;
 
 // DEC-919 (wave 44 amendment): the day rail heading spells its own count
 // ("Three days") instead of the bare noun the mock's <sc-for> placeholder
-// implied -- see docs/design/Chautauqua Public and Portal.dc.html:91. Zero
+// implied -- see docs/design/Chautauqua Public and Portal.dc.html:103
+// `Three days` (corrected from a prior wave's :91, which pointed at the
+// aside's opening <section>, not the heading it introduces). Zero
 // through ten get a spelled-out word (DEC-925: the shared
 // src/domain/count-copy.ts spellCount, capitalized for a sentence head);
 // anything longer falls back to the numeral.

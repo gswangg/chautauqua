@@ -187,7 +187,9 @@
 
 /* DEC-369 amendment (wave 22): the fitted 11.5px vertical padding chased a
    gate-4 render measurement now superseded; restored to the frame's row
-   pitch (docs/design/Chautauqua Overview.dc.html:79). */
+   pitch (docs/design/Chautauqua Overview.dc.html:79
+   `grid-template-columns:1fr 1.15fr auto; gap:20px; align-items:baseline;
+   padding:16px 0`). */
 .chq-overview-row-overdue {
   grid-template-columns: 1fr 1.15fr auto;
   padding: 16px 0;
@@ -207,7 +209,9 @@
    never grows past what a single-clause summary needs. */
 /* DEC-369 amendment (wave 22): the fitted 220.5px column and 8.6px vertical
    padding chased a gate-4 render measurement now superseded; restored to
-   the frame (docs/design/Chautauqua Overview.dc.html:172). */
+   the frame (docs/design/Chautauqua Overview.dc.html:172
+   `grid-template-columns:200px 1fr; gap:20px; align-items:baseline;
+   padding:14px 0`). */
 .chq-overview-row-quiet {
   grid-template-columns: 200px 1fr;
   padding: 14px 0;

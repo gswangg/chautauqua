@@ -123,7 +123,8 @@ export const THEME_CSS = `
     --chq-pub-main-pad-x: 34px;
     /* DEC-534 amendment (wave 4, task w4-g): the ONE time/room gutter width
        for the two-line time-over-room stack, per docs/design's "Public and
-       Portal" sheet (.dc.html:67 -- 126px). Cited that way, not by the
+       Portal" sheet (.dc.html:67 \`grid-template-columns:126px 1fr auto\`
+       -- 126px). Cited that way, not by the
        doc's product-name-bearing filename: inlined CSS comments ship to the
        browser, and the sibling copy of this note in cards.css.ts lands
        inside GET /'s <style>, where test/root.test.ts forbids the name
