@@ -16,13 +16,52 @@ import { useSearchParams } from 'react-router-dom';
 import { apiGet, apiList, apiPost, apiPatch, ApiError } from '../../lib/api';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { EmptyState } from '../../components/EmptyState';
+import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
 import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import { formatDateTime } from '../../lib/dates';
 import { pipelineCardAge } from './pipeline-age';
 import { PIPELINE_RATIONALE_MAX_LEN, sortByFit } from '../../../../src/domain/pipeline-fit';
 import type { ContactListItem, PipelineActivity, PipelineEntry, PipelineEntryDetail, PipelineStage } from './types';
 import { PIPELINE_STAGES, PIPELINE_STAGE_LABELS } from './types';
+import { DEC_856 } from '../../../../src/decisions';
 import './contacts-panels.css';
+
+// DEC-856 (wave 65-d amendment): the pipeline's four writers -- move (PATCH
+// /pipeline/:id with `stage`), enroll (POST /pipeline), save fit (PATCH
+// /pipeline/:id with fitScore/rationale, no stage) and save note (POST
+// /pipeline/:id/notes) -- each keep their OWN field-error state (never one
+// shared map: a rejected note must never mark the fit form, and a rejected
+// card move marks the card it came from, not the column). A key the surface
+// doesn't own still renders, labelled "<key>: <message>", never folded into
+// a bare "Validation failed" string. `void DEC_856` keeps this citation
+// compile-checked against src/decisions.ts (never hand-edited).
+void DEC_856;
+
+type FieldErrors = Record<string, string>;
+
+/** ErrorSummary problems for a whole fieldErrors map: known keys resolve to
+ * their control's short label + real id; unmatched keys resolve to a
+ * synthesized `${idPrefix}-${key}` anchor and a self-labelling
+ * "<key>: <message>" link text, per DEC-856 rule 4. */
+function fieldErrorProblems(
+  fieldErrors: FieldErrors,
+  labels: Record<string, string>,
+  ids: Record<string, string>,
+  idPrefix: string,
+): Array<{ anchorId: string; label: string }> {
+  return Object.entries(fieldErrors).map(([key, message]) => {
+    const label = labels[key];
+    if (label && ids[key]) return { anchorId: ids[key], label };
+    return { anchorId: `${idPrefix}-${key}`, label: `${key}: ${message}` };
+  });
+}
+
+/** The keys of a fieldErrors map that this surface has no dedicated control
+ * for -- rendered as their own labelled `.chq-field-error` span rather than
+ * dropped, per DEC-856 rule 4. */
+function unmatchedFieldErrors(fieldErrors: FieldErrors, labels: Record<string, string>): Array<[string, string]> {
+  return Object.entries(fieldErrors).filter(([key]) => !labels[key]);
+}
 
 // w4-c/DEC-898 amendment (wave 4): the header names the board's own
 // affordance ('drag between columns') now that the card itself carries no
@@ -61,6 +100,10 @@ export function PipelineBoard() {
   // via a fit-only PATCH that never carries a stage (so it never forges a
   // move or bumps stageSince).
   const [fitEditEntry, setFitEditEntry] = useState<PipelineEntry | null>(null);
+  // DEC-856: move refusals, keyed by the entry id that was moved -- a
+  // rejected move attaches to the CARD it came from, never a shared banner
+  // that would mark every card in the column.
+  const [moveErrors, setMoveErrors] = useState<Record<string, FieldErrors>>({});
   const backToDirectory = useBackToDirectory();
 
   function reload() {
@@ -101,13 +144,34 @@ export function PipelineBoard() {
     // Optimistic update.
     setEntries((prev) => prev.map((e) => (e.id === entry.id ? { ...e, stage } : e)));
     setError(null);
+    // DEC-856: clear only THIS card's prior refusal at the start of the
+    // attempt -- never the whole moveErrors map.
+    setMoveErrors((prev) => {
+      if (!(entry.id in prev)) return prev;
+      const next = { ...prev };
+      delete next[entry.id];
+      return next;
+    });
     try {
       const updated = await apiPatch<PipelineEntry>(`/pipeline/${entry.id}`, { stage, reason });
       setEntries((prev) => prev.map((e) => (e.id === entry.id ? updated : e)));
+      setMoveErrors((prev) => {
+        if (!(entry.id in prev)) return prev;
+        const next = { ...prev };
+        delete next[entry.id];
+        return next;
+      });
     } catch (err) {
-      // Loud rollback: restore the pre-move board state and surface the error.
+      // Loud rollback: restore the pre-move board state and surface the
+      // error -- the board never silently keeps the optimistic position
+      // without saying so.
       setEntries(previous);
-      setError(err instanceof ApiError ? err.message : 'Failed to move card');
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setMoveErrors((prev) => ({ ...prev, [entry.id]: err.fields! }));
+        setError(`Could not move ${entry.firstName} ${entry.lastName}.`);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to move card');
+      }
     }
   }
 
@@ -222,6 +286,7 @@ export function PipelineBoard() {
                         <PipelineCard
                           key={entry.id}
                           entry={entry}
+                          moveError={moveErrors[entry.id]}
                           onOpen={() => setOpenEntryId(entry.id)}
                           onEditFit={() => setFitEditEntry(entry)}
                         />
@@ -265,6 +330,7 @@ export function PipelineBoard() {
               .filter((e) => e.stage === phoneStage)
               .map((entry) => {
                 const age = pipelineCardAge(entry.stage, entry.stageSince, Date.now());
+                const entryMoveError = moveErrors[entry.id];
                 return (
                 <li key={entry.id} className="chq-contacts-pipeline-phone-card">
                   <div className="chq-contacts-pipeline-phone-card-body">
@@ -287,6 +353,16 @@ export function PipelineBoard() {
                     </div>
                     {entry.stage === 'declined' && entry.declineReason && (
                       <div className="chq-contacts-pipeline-card-decline-reason">{entry.declineReason}</div>
+                    )}
+                    {/* DEC-856: same per-card attach as the desktop board. */}
+                    {entryMoveError && Object.keys(entryMoveError).length > 0 && (
+                      <div className="chq-contacts-pipeline-card-move-error">
+                        {moveErrorMessages(entryMoveError).map(({ key, text }) => (
+                          <span key={key} role="alert" className="chq-field-error">
+                            {text}
+                          </span>
+                        ))}
+                      </div>
                     )}
                   </div>
                 </li>
@@ -313,6 +389,7 @@ export function PipelineBoard() {
           <EntryDetailPanel
             entryId={openEntryId}
             entry={openEntry}
+            moveError={moveErrors[openEntry.id]}
             onClose={() => setOpenEntryId(null)}
             onChanged={reload}
             onMove={(stage) => moveTo(openEntry, stage)}
@@ -397,8 +474,27 @@ function DeclineReasonDialog({ entry, onCancel, onConfirm }: DeclineReasonDialog
   );
 }
 
+// DEC-856: the move writer's own known-field labels -- `stage`/`reason` map
+// to their message with a short prefix; `patch` (the form-level "must
+// change stage, fitScore, or rationale" refusal, unreachable from any
+// current caller but never silently dropped if the route ever adds one)
+// falls through the fieldErrorProblems/unmatchedFieldErrors fallback and
+// renders labelled "patch: <message>" like any other unmatched key.
+const MOVE_FIELD_LABELS: Record<string, string> = {
+  stage: 'Stage',
+  reason: 'Decline reason',
+};
+
+function moveErrorMessages(fields: FieldErrors): Array<{ key: string; text: string }> {
+  return Object.entries(fields).map(([key, message]) => {
+    const label = MOVE_FIELD_LABELS[key];
+    return { key, text: label ? `${label}: ${message}` : `${key}: ${message}` };
+  });
+}
+
 interface PipelineCardProps {
   entry: PipelineEntry;
+  moveError?: FieldErrors;
   onOpen: () => void;
   onEditFit: () => void;
 }
@@ -407,7 +503,7 @@ interface PipelineCardProps {
 // control that used to live here moved into EntryDetailPanel, which calls
 // the SAME moveTo/doMove path (PATCH /pipeline/:id) so the decline prompt
 // and optimistic-update/rollback behaviour are unchanged.
-function PipelineCard({ entry, onOpen, onEditFit }: PipelineCardProps) {
+function PipelineCard({ entry, moveError, onOpen, onEditFit }: PipelineCardProps) {
   const age = pipelineCardAge(entry.stage, entry.stageSince, Date.now());
   // DEC-898: reuses the agenda DayGrid drag contract verbatim -- the
   // dragged entry's id in `text/plain`, effectAllowed 'move'.
@@ -435,6 +531,18 @@ function PipelineCard({ entry, onOpen, onEditFit }: PipelineCardProps) {
       </div>
       {entry.stage === 'declined' && entry.declineReason && (
         <div className="chq-contacts-pipeline-card-decline-reason">{entry.declineReason}</div>
+      )}
+      {/* DEC-856: a rejected move attaches to the card it came from -- the
+          rollback above already restored its prior stage, and this names
+          why, rather than leaving the reversion unexplained. */}
+      {moveError && Object.keys(moveError).length > 0 && (
+        <div className="chq-contacts-pipeline-card-move-error">
+          {moveErrorMessages(moveError).map(({ key, text }) => (
+            <span key={key} role="alert" className="chq-field-error">
+              {text}
+            </span>
+          ))}
+        </div>
       )}
       {/* DEC-821: fit is a visible state, never blank -- an unrated card
           still says so, rather than implying a zero. DEC-980: fit is
@@ -499,6 +607,24 @@ interface EnrollDialogProps {
 // (`/contacts?q=...`), never a second contacts-search predicate.
 const PIPELINE_ENROLL_SEARCH_LIMIT = 20;
 
+// DEC-856: the enroll writer's own known-field labels/anchors -- contactId,
+// stage, fitScore, rationale all have a real control; `reason` (declining
+// requires one, POST /pipeline validates it, but this dialog collects no
+// reason control) and any other server-added key fall through to
+// unmatchedFieldErrors and render labelled, in the summary, per rule 4.
+const ENROLL_FIELD_LABELS: Record<string, string> = {
+  contactId: 'Contact',
+  stage: 'Starting stage',
+  fitScore: 'Fit',
+  rationale: 'Why them',
+};
+const ENROLL_FIELD_IDS: Record<string, string> = {
+  contactId: 'pipeline-enroll-contact-search',
+  stage: 'pipeline-enroll-stage-group',
+  fitScore: 'pipeline-enroll-fit-group',
+  rationale: 'pipeline-enroll-rationale',
+};
+
 function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: EnrollDialogProps) {
   const [contactId, setContactId] = useState('');
   const [selectedContact, setSelectedContact] = useState<ContactListItem | null>(null);
@@ -508,6 +634,9 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
   const [fitScore, setFitScore] = useState('');
   const [rationale, setRationale] = useState('');
   const [error, setError] = useState<string | null>(null);
+  // DEC-856: the enroll writer's OWN field-error state -- never shared with
+  // move/save-fit/save-note.
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [busy, setBusy] = useState(false);
 
   const [query, setQuery] = useState('');
@@ -553,6 +682,8 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
     if (!contactId) return;
     setBusy(true);
     setError(null);
+    // DEC-856: cleared at the start of every attempt.
+    setFieldErrors({});
     try {
       await apiPost('/pipeline', {
         contactId,
@@ -562,11 +693,17 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
       });
       onEnrolled();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to enroll contact');
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setFieldErrors(err.fields);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to enroll contact');
+      }
     } finally {
       setBusy(false);
     }
   }
+
+  const enrollProblems = fieldErrorProblems(fieldErrors, ENROLL_FIELD_LABELS, ENROLL_FIELD_IDS, 'pipeline-enroll-field');
 
   return (
     <ModalFrame
@@ -592,6 +729,18 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
       }
     >
       {error && <div className="chq-error">{error}</div>}
+      {/* DEC-856: this dialog owns 4+ possible controls (Contact/Starting
+          stage/Fit/Why them), so a refusal also gets the ONE ErrorSummary --
+          one anchor per problem, unmatched keys (e.g. `reason` -- declining
+          straight into 'declined' requires one, but this dialog collects no
+          reason control) still listed, never dropped. */}
+      {enrollProblems.length > 0 && (
+        <ErrorSummary
+          heading={countHeading(enrollProblems.length, 'before this contact can be added to the pipeline')}
+          kept="Nothing was lost. Your typed values are still below."
+          problems={enrollProblems}
+        />
+      )}
       <FormRow label="Contact" htmlFor="pipeline-enroll-contact-search">
         <div className="chq-contacts-pipeline-enroll-search">
           <input
@@ -654,12 +803,17 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
             Selected: {selectedContact.firstName} {selectedContact.lastName} — {selectedContact.email}
           </p>
         )}
+        {fieldErrors.contactId && (
+          <span role="alert" className="chq-field-error">
+            {fieldErrors.contactId}
+          </span>
+        )}
       </FormRow>
       <FormRow label="Starting stage">
         {/* w4-c: full pills, near-black selected fill -- the same
             .chq-pill/.is-active treatment the phone stage strip already
             uses (styles.css), not the segmented-button chip. */}
-        <div className="chq-chipstrip" role="group" aria-label="Starting stage">
+        <div id="pipeline-enroll-stage-group" className="chq-chipstrip" role="group" aria-label="Starting stage">
           {PIPELINE_STAGES.map((st) => (
             <button
               key={st}
@@ -672,9 +826,14 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
             </button>
           ))}
         </div>
+        {fieldErrors.stage && (
+          <span role="alert" className="chq-field-error">
+            {fieldErrors.stage}
+          </span>
+        )}
       </FormRow>
       <OptionalFieldRow label="Fit">
-        <div className="chq-segmented" role="group" aria-label="Fit">
+        <div id="pipeline-enroll-fit-group" className="chq-segmented" role="group" aria-label="Fit">
           <button
             type="button"
             className={fitScore === '' ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
@@ -695,6 +854,11 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
             </button>
           ))}
         </div>
+        {fieldErrors.fitScore && (
+          <span role="alert" className="chq-field-error">
+            {fieldErrors.fitScore}
+          </span>
+        )}
       </OptionalFieldRow>
       <OptionalFieldRow label="Why them" htmlFor="pipeline-enroll-rationale">
         <input
@@ -706,7 +870,20 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
           placeholder="Keynoted a similar event last year"
           maxLength={PIPELINE_RATIONALE_MAX_LEN}
         />
+        {fieldErrors.rationale && (
+          <span role="alert" className="chq-field-error">
+            {fieldErrors.rationale}
+          </span>
+        )}
       </OptionalFieldRow>
+      {/* DEC-856: a key this dialog owns no control for (e.g. `reason` --
+          declining straight into 'declined' needs one, but nothing here
+          collects it) still renders, labelled, never dropped. */}
+      {unmatchedFieldErrors(fieldErrors, ENROLL_FIELD_LABELS).map(([key, message]) => (
+        <span key={key} id={`pipeline-enroll-field-${key}`} role="alert" className="chq-field-error">
+          {`${key}: ${message}`}
+        </span>
+      ))}
     </ModalFrame>
   );
 }
@@ -717,6 +894,17 @@ interface FitEditDialogProps {
   onSave: (fitScore: number | null, rationale: string | null) => Promise<void>;
 }
 
+// DEC-856: the save-fit writer's own known-field labels/anchors -- two
+// controls, so per rule 3 it also gets the ONE ErrorSummary.
+const FIT_FIELD_LABELS: Record<string, string> = {
+  fitScore: 'Fit',
+  rationale: 'Why them',
+};
+const FIT_FIELD_IDS: Record<string, string> = {
+  fitScore: 'pipeline-fit-edit-fit-group',
+  rationale: 'pipeline-fit-edit-rationale',
+};
+
 // DEC-980: fit is editable after enrolment — the SAME two controls the
 // enrol dialog uses (fit 1-5, optional; one-line 'Why them'), but this
 // dialog never carries a stage control: it submits a fit-only PATCH
@@ -725,18 +913,29 @@ function FitEditDialog({ entry, onClose, onSave }: FitEditDialogProps) {
   const [fitScore, setFitScore] = useState(entry.fitScore !== null ? String(entry.fitScore) : '');
   const [rationale, setRationale] = useState(entry.rationale ?? '');
   const [error, setError] = useState<string | null>(null);
+  // DEC-856: the save-fit writer's OWN field-error state -- never shared
+  // with move/enroll/save-note.
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [busy, setBusy] = useState(false);
 
   async function save() {
     setBusy(true);
     setError(null);
+    // DEC-856: cleared at the start of every attempt.
+    setFieldErrors({});
     try {
       await onSave(fitScore === '' ? null : Number(fitScore), rationale.trim() === '' ? null : rationale.trim());
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to save fit');
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setFieldErrors(err.fields);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to save fit');
+      }
       setBusy(false);
     }
   }
+
+  const fitProblems = fieldErrorProblems(fieldErrors, FIT_FIELD_LABELS, FIT_FIELD_IDS, 'pipeline-fit-edit-field');
 
   return (
     <ModalFrame
@@ -756,8 +955,20 @@ function FitEditDialog({ entry, onClose, onSave }: FitEditDialogProps) {
       }
     >
       {error && <div className="chq-error">{error}</div>}
+      {/* DEC-856: two controls (Fit + Why them), so a refusal also gets the
+          ONE ErrorSummary -- unmatched keys (e.g. `patch`, the form-level
+          "must change stage, fitScore, or rationale" refusal, unreachable
+          from this dialog since it always sends both) rendered labelled,
+          never dropped. */}
+      {fitProblems.length > 0 && (
+        <ErrorSummary
+          heading={countHeading(fitProblems.length, 'before this fit can be saved')}
+          kept="Nothing was lost. Your typed values are still below."
+          problems={fitProblems}
+        />
+      )}
       <FormRow label="Fit" optional>
-        <div className="chq-segmented" role="group" aria-label="Fit">
+        <div id="pipeline-fit-edit-fit-group" className="chq-segmented" role="group" aria-label="Fit">
           <button
             type="button"
             className={fitScore === '' ? 'chq-btn chq-btn-primary' : 'chq-btn chq-btn-secondary'}
@@ -778,6 +989,11 @@ function FitEditDialog({ entry, onClose, onSave }: FitEditDialogProps) {
             </button>
           ))}
         </div>
+        {fieldErrors.fitScore && (
+          <span role="alert" className="chq-field-error">
+            {fieldErrors.fitScore}
+          </span>
+        )}
       </FormRow>
       <FormRow label="Why them" htmlFor="pipeline-fit-edit-rationale" optional>
         <input
@@ -789,7 +1005,19 @@ function FitEditDialog({ entry, onClose, onSave }: FitEditDialogProps) {
           placeholder="Keynoted a similar event last year"
           maxLength={PIPELINE_RATIONALE_MAX_LEN}
         />
+        {fieldErrors.rationale && (
+          <span role="alert" className="chq-field-error">
+            {fieldErrors.rationale}
+          </span>
+        )}
       </FormRow>
+      {/* DEC-856: a key this dialog owns no control for (e.g. `patch`)
+          still renders, labelled, never dropped. */}
+      {unmatchedFieldErrors(fieldErrors, FIT_FIELD_LABELS).map(([key, message]) => (
+        <span key={key} id={`pipeline-fit-edit-field-${key}`} role="alert" className="chq-field-error">
+          {`${key}: ${message}`}
+        </span>
+      ))}
     </ModalFrame>
   );
 }
@@ -797,21 +1025,30 @@ function FitEditDialog({ entry, onClose, onSave }: FitEditDialogProps) {
 interface EntryDetailPanelProps {
   entryId: string;
   entry: PipelineEntry;
+  moveError?: FieldErrors;
   onClose: () => void;
   onChanged: () => void;
   onMove: (stage: PipelineStage) => void;
 }
+
+// DEC-856: the note writer's own known-field label -- a single-control form
+// (just `body`), so per DEC-856 rule 3 it gets an inline field error, never
+// an ErrorSummary (that's reserved for forms with two or more controls).
+const NOTE_FIELD_LABELS: Record<string, string> = { body: 'Note' };
 
 // DEC-157 amendment (w2-b): the stage control lives here now, not on the
 // desktop card -- `entry` is the board's live PipelineEntry (kept current by
 // PipelineBoard's own setEntries on every move) so the select always shows
 // the latest confirmed/optimistic stage without this panel duplicating the
 // PATCH request itself.
-function EntryDetailPanel({ entryId, entry, onClose, onChanged, onMove }: EntryDetailPanelProps) {
+function EntryDetailPanel({ entryId, entry, moveError, onClose, onChanged, onMove }: EntryDetailPanelProps) {
   const [detail, setDetail] = useState<PipelineEntryDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  // DEC-856: the note writer's OWN field-error state -- a rejected note
+  // never marks the fit form or the move control above it.
+  const [noteFieldErrors, setNoteFieldErrors] = useState<FieldErrors>({});
   // DEC-468/w56-e: the activity feed's own page cap -- distinct state so
   // "Load more" can append without refetching the whole entry+contact.
   const [activityItems, setActivityItems] = useState<PipelineActivity[]>([]);
@@ -853,13 +1090,19 @@ function EntryDetailPanel({ entryId, entry, onClose, onChanged, onMove }: EntryD
     if (note.trim() === '') return;
     setBusy(true);
     setError(null);
+    // DEC-856: cleared at the start of every attempt.
+    setNoteFieldErrors({});
     try {
       await apiPost(`/pipeline/${entryId}/notes`, { body: note.trim() });
       setNote('');
       await reload();
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to save note');
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setNoteFieldErrors(err.fields);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to save note');
+      }
     } finally {
       setBusy(false);
     }
@@ -899,17 +1142,38 @@ function EntryDetailPanel({ entryId, entry, onClose, onChanged, onMove }: EntryD
               ))}
             </select>
           </label>
+          {/* DEC-856: the same per-card move refusal, also attached to the
+              real control that would carry it when the card's own detail
+              panel is open. */}
+          {moveError && Object.keys(moveError).length > 0 && (
+            <div id="pipeline-detail-stage-error" className="chq-contacts-pipeline-move-error">
+              {moveErrorMessages(moveError).map(({ key, text }) => (
+                <span key={key} role="alert" className="chq-field-error">
+                  {text}
+                </span>
+              ))}
+            </div>
+          )}
 
           <div className="chq-contacts-pipeline-notes">
-            <label className="chq-contacts-import-field">
+            <label className="chq-contacts-import-field" htmlFor="pipeline-detail-note">
               Add a note
               <textarea
+                id="pipeline-detail-note"
                 className="chq-textarea"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Followed up by phone, waiting on their reply"
               />
             </label>
+            {/* DEC-856: the note writer's own field-error state -- a single
+                control, so an inline span, never an ErrorSummary. Unmatched
+                keys still render, labelled. */}
+            {Object.entries(noteFieldErrors).map(([key, message]) => (
+              <span key={key} id={`pipeline-detail-note-error-${key}`} role="alert" className="chq-field-error">
+                {NOTE_FIELD_LABELS[key] ? `${NOTE_FIELD_LABELS[key]}: ${message}` : `${key}: ${message}`}
+              </span>
+            ))}
             <button type="button" className="chq-btn chq-btn-secondary" disabled={busy || note.trim() === ''} onClick={saveNote}>
               Save note
             </button>
