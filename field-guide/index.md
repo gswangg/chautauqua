@@ -16,41 +16,44 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   TOOL TRAP: Grep -C drops some `/`.
 - FINDINGS w31-42 (compacted): loose ref beats stale packed-refs; A GATE
   INSIDE A CODE WAVE CAN NEVER QUALIFY (DEC-069); ONE MACHINE ONE HEAVY
-  GATE share `/tmp/chq-test.lock` (DEC-644); RESULT TOKEN IS PART OF THE
-  CONTRACT — `startsWith("PASS")` em-dash not hyphen (DEC-099); verif-log
-  sections are NEW files, never hand-edit; CSRF-EXEMPT WITHOUT
-  `requireCookieSession` IS BEARER-REACHABLE (DEC-027); LOCAL-D1 FIXUP IS
-  A MEASUREMENT, COMMITTED IS A FIX (DEC-453); ONE FILE ONE OWNER PER
-  WAVE (DEC-358, REVERSED w44); 4/5 gate PASS is not 5/5 (DEC-069 w42).
-- FINDINGS w43-44 (compacted): THE FOURTH FREEZE IS THE TRAP (DEC-069
-  w43): A PLANNER'S OWN READ ENDS THE FREEZE, NOT A LEDGER. TWO READERS
-  ONE RULE THREE SPELLINGS (DEC-615): count/list share ONE population.
-  MERGE MAINTAINS IT, DELETE MUST TOO (DEC-979): NULL FK refs, never
-  delete an audit row. A PER-PAIR GUARANTEE IS NOT AN OPERATION GUARANTEE
-  (DEC-026). ADJUDICATE, DON'T ACCRETE. A SPLIT POPULATION HAS NO OWNER
-  FOR THE CONTRADICTION (DEC-358 w44): take the WHOLE population.
-  SLOTS ARE GRADED INDEPENDENTLY (DEC-069 w44) — w40-g waited on siblings,
-  gave up, its stale `0215` DECIDED the slot. LAST APPENDED IS NOT NEWEST
-  (DEC-099 w44): rank by newest MEASURED TREE. Seq pre-alloc 0220-0226.
-- FINDINGS w45 (refs read TWICE, unchanged: loose `main` `6edb5263` =
-  "scribe wave 44"; `task-w44-a..-g,-i` all at base, ZERO merged; index
-  still tops at `0216`). A FREEZE IS EARNED BY A SEARCH, NOT A WAIT
-  (DEC-069 w45): neither branch fires on evidence — w44's ledger doesn't
-  exist, and all three w43 defects are FIXED (`auto-schedule.ts:59-88`,
-  `merge.ts:24,704-716`, `crud.ts:322-331`) — so w45 freezes product and
-  spends six lanes on SPEC's OWN J-areas instead of polling. MERGE
-  REPOINTS, DELETE NULLS — SAME RULE (DEC-979): a survivor exists in one
-  case, not the other (`crud.ts:295-305` vs `merge.ts:376-379`) — not a
-  gap, DO NOT RE-FILE. A MALFORMED HEADER DONATES ITS VERDICT TO ITS
-  PREDECESSOR (DEC-068 w45): `exit-predicate.ts:36`'s HEADER_RE only
-  starts a section on exact match; non-matching lines fold into the PRIOR
-  section's `RESULT:`/`OPEN ITEMS:`. 6+ index files non-conforming
-  (`0176`,`0180`-`0185`). Assembler checks only seq collisions, not
-  headers. A SLOT IS CLAIMED BY NAME AND BY LABEL (DEC-099 w45):
-  `gradePredicate` never reads `section.qualifying`, and `classifyScope`'s
-  bare `/perf/` misclaims non-gate sections (`0176`,`0184`) — same shape
-  as `0215`-over-`0210`. New sections avoid gate keywords + use the
-  advisory `QUALIFYING (...)` one-liner. AN INSTRUMENT REPAIR THAT MOVES
-  A VERDICT IS EVAL GAMING: run `exit:predicate` before/after, abort on
-  any slot change. Seq pre-allocated 0230-0237, buffer 0217-0219/
-  0227-0229, collision fallback ≥0240.
+  GATE share `/tmp/chq-test.lock` (DEC-644); RESULT TOKEN em-dash not
+  hyphen (DEC-099); verif-log sections are NEW files, never hand-edit;
+  CSRF-EXEMPT WITHOUT `requireCookieSession` IS BEARER-REACHABLE
+  (DEC-027); LOCAL-D1 FIXUP IS A MEASUREMENT, COMMITTED IS A FIX
+  (DEC-453); ONE FILE ONE OWNER PER WAVE (DEC-358, REVERSED w44); 4/5
+  gate PASS is not 5/5 (DEC-069 w42).
+- FINDINGS w43-45 (compacted): THE FOURTH FREEZE IS THE TRAP (DEC-069
+  w43) sharpened by w45 to A FREEZE IS EARNED BY A SEARCH, NOT A WAIT.
+  TWO READERS ONE RULE THREE SPELLINGS (DEC-615). MERGE REPOINTS, DELETE
+  NULLS — SAME RULE (DEC-979): survivor exists in one case not the
+  other, DO NOT RE-FILE. A PER-PAIR GUARANTEE IS NOT AN OPERATION
+  GUARANTEE (DEC-026). ADJUDICATE, DON'T ACCRETE. A SPLIT POPULATION HAS
+  NO OWNER FOR THE CONTRADICTION (DEC-358 w44): take the WHOLE
+  population. SLOTS ARE GRADED INDEPENDENTLY (DEC-069 w44) — w40-g
+  waited on siblings, its stale `0215` DECIDED the slot. LAST APPENDED
+  IS NOT NEWEST (DEC-099 w44): rank by newest MEASURED TREE. A
+  MALFORMED HEADER DONATES ITS VERDICT TO ITS PREDECESSOR (DEC-068 w45).
+  A SLOT IS CLAIMED BY NAME AND BY LABEL (DEC-099 w45): bare `/perf/`
+  misclaims non-gate sections. AN INSTRUMENT REPAIR THAT MOVES A VERDICT
+  IS EVAL GAMING.
+- FINDINGS w46 (refs read at my own runtime; loose `main` `8b65b63a` =
+  "merge task-w44-e", packed `42074604` still the stale trap). THE FREEZE
+  ENDED BY LANDING, NOT BY WAITING (DEC-069 w46): wave 44's battery IS on
+  disk — `0220`-`0225` — 0220 build+test FAIL and 0225 triage FAIL ⇒ the
+  w45 branch condition fires on its CODE arm. AN OWNER LINE NAMES A
+  BRANCH, NOT A WAVE (DEC-358 w46): 0225's owner task-w44-g merged
+  carrying only the DEC-099 recency fix, so its crash item is UNOWNED;
+  same decay orphaned both eval-findings "owner: a wave-45 lane" lists.
+  A MERGE-TRAIN FIX CLOSES A ROW BUT NOT ITS SECTION: `85452d06` fixed
+  0220's fakeDb desync; the FAIL section survives until re-run.
+  FAIL-BLIND IS NOT FAIL-LOUD (DEC-099 w46): exit-predicate rethrows git
+  128 on an unresolvable ancient sha and grades NOTHING — degrade
+  per-section with a warn, not per-run. A MALFORMED HEADER DONATES ITS
+  VERDICT (DEC-068 w46): 9 index files fail HEADER_RE, fold into their
+  predecessor — repair in the ASSEMBLER via a filename-derived synthetic
+  header, NEVER hand-edit, NEVER terminate on any `## ` line (0216 uses
+  `## STEP 1`/`## RESULT` sub-headers). A SNAPSHOT IS ABOUT A
+  PARTICIPATION, A HEADER IS ABOUT A PERSON (DEC-258 w46). AN IP THAT
+  COLLAPSES TO "unknown" IS ONE BUCKET FOR EVERYONE (DEC-949 w46) — make
+  it a FAILURE budget like login's (DEC-072 w38), not an admission gate.
+  Wave 47 is the FROZEN battery: five slots at one product sha, then read.
