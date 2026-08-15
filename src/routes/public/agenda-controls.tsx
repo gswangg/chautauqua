@@ -134,6 +134,12 @@ export function ItinerarySearchForm(props: {
           </>
         }
       />
+      {/* DEC-433 (wave 69 audit note): the track-highlight <select>'s
+          options are the surface's own PublicTrack[] (server-built, a closed
+          set), same as PublicFilterSelectForm's — no free-text value here
+          for parseTrackId to silently degrade against, so no maxlength. The
+          `q` field above goes through PublicSearchBox, which does carry the
+          bound. */}
       <form class="chq-pub-track-highlight" method="get" action={basePath}>
         <label class="chq-visually-hidden" for="chq-pub-highlight-track">
           Highlight a track
