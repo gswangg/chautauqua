@@ -242,4 +242,49 @@ describe('HistoryTab', () => {
     expect(screen.queryByText('Recent sends')).not.toBeInTheDocument();
     expect(document.querySelector('.chq-comms-batch-row')).toBeNull();
   });
+
+  // B7 (DEC-678 amendment): a search that excludes every send renders the
+  // filtered EmptyState (not the retired `chq-empty` one-line register),
+  // keeps the search input above it, and its escape clears the query.
+  it('shows the filtered empty state with an escape when a search returns nothing, and the escape clears the query', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: (() => {
+        let calls = 0;
+        return () => {
+          calls += 1;
+          return calls === 1 ? listEnvelope([batch()]) : listEnvelope([]);
+        };
+      })(),
+    });
+
+    render(
+      <MemoryRouter>
+        <HistoryTab eventId={EVENT_ID} templatesById={{}} />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('You are in!');
+
+    const searchInput = screen.getByLabelText('Search email history');
+    fireEvent.change(searchInput, { target: { value: 'zzz-no-match' } });
+
+    expect(await screen.findByText('No sends match your search.')).toBeInTheDocument();
+    expect(screen.getByText('No sends match “zzz-no-match”.')).toBeInTheDocument();
+    const escapeButton = screen.getByRole('button', { name: 'Clear the search' });
+    expect(escapeButton).toBeInTheDocument();
+
+    // Search chrome (the input) stays visible above the filtered empty state.
+    expect(screen.getByLabelText('Search email history')).toBeInTheDocument();
+    // No batch table over the filtered zero rows either.
+    expect(document.querySelector('.chq-comms-batch-row')).toBeNull();
+    // '0 total' never prints under an empty state.
+    expect(screen.queryByText(/total$/)).not.toBeInTheDocument();
+
+    fireEvent.click(escapeButton);
+    await waitFor(() => {
+      expect((searchInput as HTMLInputElement).value).toBe('');
+    });
+
+    void fetchMock;
+  });
 });
