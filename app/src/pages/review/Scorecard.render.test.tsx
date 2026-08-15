@@ -1237,3 +1237,118 @@ describe('Scorecard queue envelope counter and submit-and-next termination (DEC-
     expect(await screen.findByRole('heading', { name: 'The Next Submission' })).toBeInTheDocument();
   });
 });
+
+// DEC-939 amendment (CFP-11 P0 lineage): the rating radiogroup honours the
+// standard radio keyboard contract -- roving tabindex, arrow/Home/End move
+// focus AND set the score in the same store the pills and submit validator
+// share, and the handler swallows the event before it reaches the
+// page-level number-key handler (ruling A11).
+describe('Scorecard rating group keyboard contract (DEC-939 amendment)', () => {
+  function twoRatingCriteria() {
+    return [
+      { id: 'c1', label: 'Quality', kind: 'rating' as const, weight: 1 },
+      { id: 'c2', label: 'Depth', kind: 'rating' as const, weight: 1 },
+    ];
+  }
+
+  async function renderTwoGroups() {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([plan()]),
+      [`GET /api/v1/review/submissions/${SUBMISSION_ID}`]: {
+        id: SUBMISSION_ID,
+        ref: 'S-010',
+        title: 'A Deeply Nested Talk',
+        sessionAnswers: [],
+        myEvaluation: undefined,
+        criteria: twoRatingCriteria(),
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}/submissions/${SUBMISSION_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId/submissions/:submissionId" element={<Scorecard />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
+    const overallValue = () => document.querySelector('.chq-review-overall-value')!;
+    return { overallValue };
+  }
+
+  it('clicking a pill in the SECOND group commits its value; the Overall blend (the completed-count signal both groups feed) only resolves once both are set', async () => {
+    const { overallValue } = await renderTwoGroups();
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
+    const depthGroup = screen.getByRole('radiogroup', { name: 'Depth' });
+
+    // Nothing scored yet -> em dash.
+    expect(overallValue().textContent).toBe('—');
+
+    fireEvent.click(within(qualityGroup).getByRole('radio', { name: '4' }));
+    expect(within(qualityGroup).getByRole('radio', { name: '4' })).toHaveAttribute('aria-checked', 'true');
+    // Depth still unscored -> still an em dash.
+    expect(overallValue().textContent).toBe('—');
+
+    fireEvent.click(within(depthGroup).getByRole('radio', { name: '2' }));
+    expect(within(depthGroup).getByRole('radio', { name: '2' })).toHaveAttribute('aria-checked', 'true');
+    // Both groups committed -> the Overall blend resolves, proving the
+    // second group's click landed in the SAME scores store the first did.
+    await waitFor(() => expect(overallValue().textContent).toBe('3.0'));
+    // First group's selection is untouched by the second group's click.
+    expect(within(qualityGroup).getByRole('radio', { name: '4' })).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('ArrowRight from a focused pill selects the next value and moves focus to it', async () => {
+    await renderTwoGroups();
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
+    const first = within(qualityGroup).getByRole('radio', { name: '1' });
+    first.focus();
+    fireEvent.keyDown(qualityGroup, { key: 'ArrowRight' });
+
+    const second = within(qualityGroup).getByRole('radio', { name: '2' });
+    expect(second).toHaveAttribute('aria-checked', 'true');
+    expect(second).toHaveFocus();
+  });
+
+  it('ArrowLeft wraps from the first value to the last', async () => {
+    await renderTwoGroups();
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
+    const first = within(qualityGroup).getByRole('radio', { name: '1' });
+    first.focus();
+    fireEvent.keyDown(qualityGroup, { key: 'ArrowLeft' });
+
+    const last = within(qualityGroup).getByRole('radio', { name: '5' });
+    expect(last).toHaveAttribute('aria-checked', 'true');
+    expect(last).toHaveFocus();
+  });
+
+  it('Home and End reach the first and last values', async () => {
+    await renderTwoGroups();
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
+    within(qualityGroup).getByRole('radio', { name: '3' }).focus();
+    fireEvent.keyDown(qualityGroup, { key: 'End' });
+    const last = within(qualityGroup).getByRole('radio', { name: '5' });
+    expect(last).toHaveAttribute('aria-checked', 'true');
+    expect(last).toHaveFocus();
+
+    fireEvent.keyDown(qualityGroup, { key: 'Home' });
+    const firstAgain = within(qualityGroup).getByRole('radio', { name: '1' });
+    expect(firstAgain).toHaveAttribute('aria-checked', 'true');
+    expect(firstAgain).toHaveFocus();
+  });
+
+  it('the group exposes exactly one tab stop, and it tracks the selected value', async () => {
+    await renderTwoGroups();
+    const qualityGroup = screen.getByRole('radiogroup', { name: 'Quality' });
+    const radios = within(qualityGroup).getAllByRole('radio');
+
+    // Nothing selected yet -> the first pill is the one tab stop.
+    expect(radios.filter((r) => r.getAttribute('tabindex') === '0')).toHaveLength(1);
+    expect(radios[0]).toHaveAttribute('tabindex', '0');
+
+    fireEvent.click(within(qualityGroup).getByRole('radio', { name: '3' }));
+    const radiosAfter = within(qualityGroup).getAllByRole('radio');
+    expect(radiosAfter.filter((r) => r.getAttribute('tabindex') === '0')).toHaveLength(1);
+    expect(within(qualityGroup).getByRole('radio', { name: '3' })).toHaveAttribute('tabindex', '0');
+  });
+});
