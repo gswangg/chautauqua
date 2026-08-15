@@ -76,6 +76,9 @@ vi.mock("../src/server/repo/portal", async () => {
       tasks: [],
     })),
     listDeliverableCandidates: vi.fn(async () => []),
+    // DEC-891 (wave 34 amendment): loadTasksPageData now reads candidates
+    // via the batched-over-event-ids form, not once per event.
+    listDeliverableCandidatesForEvents: vi.fn(async () => new Map()),
   };
 });
 
