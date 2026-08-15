@@ -15,6 +15,10 @@ import react from "@vitejs/plugin-react";
 // w19-a (DEC-024 amendment): api.unauthorized.render.test.ts needs a real
 // `window.location` to stub/assert against despite its plain .test.ts name
 // (no JSX in this one, just window stubbing), same treatment.
+// w64-a (DEC-958 amendment): planEditor-refusal-shapes.test.ts renders
+// PlanEditor via React.createElement (no JSX, plain .test.ts name to mirror
+// compose-refusal-shapes.test.ts) but still needs a real DOM/window for its
+// render assertions, same treatment.
 export default defineConfig({
   plugins: [react()],
   test: {
@@ -40,6 +44,7 @@ export default defineConfig({
       ["app/src/lib/useNavExceptions.test.tsx", "jsdom"],
       ["app/src/lib/useMenu.test.tsx", "jsdom"],
       ["app/src/lib/api.unauthorized.render.test.ts", "jsdom"],
+      ["app/src/pages/review/planEditor-refusal-shapes.test.ts", "jsdom"],
     ],
     include: [
       "test/**/*.test.ts",
