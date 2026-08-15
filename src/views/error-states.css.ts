@@ -17,10 +17,15 @@ void DEC_657;
 
 export const ERROR_STATES_CSS = `
   /* Errors are typographic, never colour (DEC-367/DEC-124: no semantic
-     red) -- weight + a leading marker distinguish an error from ordinary
-     help text without a colour channel. */
+     red) -- weight alone distinguishes an error from ordinary help text
+     without a colour channel. The vendored ERROR & VALIDATION STATES
+     STANDARD names exactly three properties for an invalid field (1px ink
+     border, 3px ink left edge, 13px/600 ink message) and no glyph -- the
+     non-colour signal is the 3px edge on .chq-field-invalid plus the
+     role="alert"/aria-describedby wiring, not a leading "!" (wave-50
+     amendment, DEC-124: dropped the ::before marker the frames never
+     drew). */
   .chq-field-error { font-size: 13px; font-weight: 600; margin: 0; color: var(--chq-ink); }
-  .chq-field-error::before { content: "! "; }
 
   /* DEC-124: the no-red error vocabulary, defined ONCE here and reused by
      class name everywhere a control or a page needs to flag a validation

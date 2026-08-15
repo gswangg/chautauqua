@@ -2,8 +2,11 @@
    needs to flag a validation problem imports './error-states.css' (via
    main.tsx, immediately after styles.css) and reuses these classes by
    name -- never re-declared per page/dialog. Errors are typographic, never
-   colour (no semantic red): weight + a leading marker/border distinguish
-   an error from ordinary text without a colour channel. */
+   colour (no semantic red): weight + a border distinguish an error from
+   ordinary text without a colour channel. Mirrors the SSR vocabulary at
+   src/views/error-states.css.ts (composed into AUTH_CSS/PORTAL_CSS/
+   CFP_CSS) property-for-property on every shared selector --
+   test/error-vocabulary-parity.scan.test.ts asserts the two stay bound. */
 
 /* DEC-124: an invalid control gets a 1px ink border plus a 3px ink LEFT
    edge, which replaces (not adds to) 3px of the control's own left
@@ -88,9 +91,15 @@
    11px/700/uppercase/tracked treatment (text-transform + letter-spacing
    removed) so an inline field error reads as a sentence, matching the
    error-summary's own body type instead of a shouted label. */
+/* margin: 0 matches the SSR module's reset (src/views/error-states.css.ts)
+   so a shared selector doesn't inherit ambient <p>/<div> margin on one
+   side only -- picked over dropping it from both because the SPA's own
+   FormRow/ModalFrame layout relies on the message sitting flush under its
+   control with no default block margin. */
 .chq-field-error,
 .chq-form-row-error {
   font-size: 13px;
   font-weight: 600;
+  margin: 0;
   color: var(--chq-ink);
 }
