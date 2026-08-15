@@ -118,16 +118,18 @@ describe('SpeakerDetailPage render smoke', () => {
 
     // Deliverable named by its own filename in the Files section -- never
     // the word 'File' -- with a separate Download action beside it.
-    // DEC-930 wave-22 amendment: this anchor also carries role="cell" (it's
-    // the row's last table cell), which overrides its implicit link role.
+    // DEC-930 wave-24 amendment: the row's role="cell" lands on a wrapper
+    // <span>, never on the anchor itself, so the anchor keeps its implicit
+    // link role and stays reachable by role.
     expect(screen.getByText('slides-final.pdf')).toBeInTheDocument();
-    const fileLink = screen.getAllByRole('cell', { name: 'Download' }).find((a) => a.getAttribute('href') === '/files/file-1');
+    const fileLink = screen.getAllByRole('link', { name: 'Download' }).find((a) => a.getAttribute('href') === '/files/file-1');
     expect(fileLink).toBeDefined();
 
     // Session row links to /admin/submissions/:submissionId (basename-free
     // in this render, since SpeakerDetailPage is rendered without App's
-    // <BrowserRouter basename="/admin">). It too carries role="cell".
-    const sessionLink = screen.getByRole('cell', { name: /Analytical Engines/ });
+    // <BrowserRouter basename="/admin">). It too keeps its link role -- the
+    // structural cell role lives on the wrapper <span>, not the control.
+    const sessionLink = screen.getByRole('link', { name: /Analytical Engines/ });
     expect(sessionLink).toHaveAttribute('href', '/submissions/sub-1');
 
     // Counts printed on the page agree with the payload's own arrays.
@@ -349,9 +351,8 @@ describe('SpeakerDetailPage render smoke', () => {
 
     expect(screen.getByRole('button', { name: 'Remind Ada' })).toBeInTheDocument();
     // Only the pending row's link renders -- the completed row's does not.
-    // DEC-930 wave-22 amendment: this per-row control also carries
-    // role="cell" (it's the row's last table cell), which overrides its
-    // implicit button role for the accessibility tree -- query by cell.
-    expect(screen.getAllByRole('cell', { name: 'Remind this task' })).toHaveLength(1);
+    // DEC-930 wave-24 amendment: the row's cell role lives on a wrapper
+    // <span>, so this per-row control keeps its implicit button role.
+    expect(screen.getAllByRole('button', { name: 'Remind this task' })).toHaveLength(1);
   });
 });

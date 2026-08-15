@@ -331,9 +331,11 @@ export function SpeakerDetailPage() {
                   <div role="table" aria-label="Sessions">
                     {detail.sessions.map((session) => (
                       <div className="chq-speaker-detail-sessions-row" role="row" key={session.submissionId}>
-                        <Link to={`/submissions/${session.submissionId}`} role="cell">
-                          {session.ref} &middot; {session.title}
-                        </Link>
+                        <span role="cell">
+                          <Link to={`/submissions/${session.submissionId}`}>
+                            {session.ref} &middot; {session.title}
+                          </Link>
+                        </span>
                         <span role="cell">{scheduledLabel(session.scheduled)}</span>
                         <span role="cell" className={neutralStatusClass()}>
                           {STATUS_LABELS[session.status]} &middot; {CONTENT_STATUS_LABELS[session.contentStatus]}
@@ -369,27 +371,29 @@ export function SpeakerDetailPage() {
                           {task.required && <span className="chq-speaker-detail-required"> Required</span>}
                         </span>
                         <span role="cell">{formatDateOnly(task.dueDate)}</span>
-                        <button
-                          type="button"
-                          role="cell"
-                          className={taskStatusClass(task.status)}
-                          onClick={() => toggleTaskStatus(task.assignmentId, task.status)}
-                          aria-label={`Toggle ${task.title} for ${detail.contact.name}`}
-                        >
-                          {TASK_STATUS_LABELS[task.status]}
-                        </button>
+                        <span role="cell">
+                          <button
+                            type="button"
+                            className={taskStatusClass(task.status)}
+                            onClick={() => toggleTaskStatus(task.assignmentId, task.status)}
+                            aria-label={`Toggle ${task.title} for ${detail.contact.name}`}
+                          >
+                            {TASK_STATUS_LABELS[task.status]}
+                          </button>
+                        </span>
                         {/* DEC-829 amendment (w61-e): quiet on an
                             already-complete task row -- nothing this send
                             would ever reach for that assignment. */}
                         {task.status !== 'complete' ? (
-                          <button
-                            type="button"
-                            role="cell"
-                            className="chq-link-button chq-speaker-detail-task-remind"
-                            onClick={openRemindReview}
-                          >
-                            Remind this task
-                          </button>
+                          <span role="cell">
+                            <button
+                              type="button"
+                              className="chq-link-button chq-speaker-detail-task-remind"
+                              onClick={openRemindReview}
+                            >
+                              Remind this task
+                            </button>
+                          </span>
                         ) : (
                           <span role="cell" />
                         )}
@@ -415,16 +419,17 @@ export function SpeakerDetailPage() {
                         </span>
                         <span role="cell">{task.file.filename}</span>
                         <span role="cell">{formatBytes(task.file.sizeBytes)}</span>
-                        <a
-                          href={`/files/${task.file.id}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          role="cell"
-                          className="chq-speakers-file-link"
-                          title={task.file.filename}
-                        >
-                          Download
-                        </a>
+                        <span role="cell">
+                          <a
+                            href={`/files/${task.file.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="chq-speakers-file-link"
+                            title={task.file.filename}
+                          >
+                            Download
+                          </a>
+                        </span>
                       </div>
                     ))}
                   </div>
