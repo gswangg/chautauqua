@@ -100,6 +100,16 @@ export const evaluation = sqliteTable(
       t.reviewerId,
       t.round,
     ),
+    // DEC-338 (wave-31 amendment)/DEC-347 (wave-31 amendment, migration
+    // 0041): the reviewer queue's plan+round reads filter (plan_id, round)
+    // and order by (submission_id, id) -- evaluation_plan_id_idx alone
+    // leaves the round predicate and the ordering unindexed.
+    evaluation_plan_round_submission_idx: index("evaluation_plan_round_submission_idx").on(
+      t.planId,
+      t.round,
+      t.submissionId,
+      t.id,
+    ),
   }),
 );
 
