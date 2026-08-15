@@ -1,0 +1,51 @@
+/* DEC-653 (findings wave 5 amendment): the "Upload rejected" modal
+   (docs/design/Chautauqua Content.dc.html :431-457). ModalFrame owns the
+   scrim/header/actions chrome -- this file only styles the body. */
+
+.chq-upload-rejected-modal {
+  display: flex;
+  flex-direction: column;
+}
+
+/* The error band: 1px ink border, 4px ink left edge, sunk fill, 5px radius. */
+.chq-upload-rejected-band {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border: 1px solid var(--chq-ink);
+  border-left: 4px solid var(--chq-ink);
+  border-radius: 5px;
+  background: var(--chq-surface-sunk);
+  padding: 16px 20px;
+}
+
+.chq-upload-rejected-band-headline {
+  font-family: var(--chq-font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--chq-ink);
+}
+
+.chq-upload-rejected-band-why {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--chq-ink-2);
+  max-width: 64ch;
+}
+
+.chq-upload-rejected-kept {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 18px;
+}
+
+.chq-upload-rejected-kept-label {
+  color: var(--chq-muted);
+}
+
+.chq-upload-rejected-kept-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--chq-ink-2);
+}

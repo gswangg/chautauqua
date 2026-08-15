@@ -265,6 +265,37 @@ describe("validateUpload — recording (DEC-879)", () => {
   }
 });
 
+// DEC-879 (findings wave 5 amendment): a zip archive is a workshop-pack
+// deliverable, admitted only for kind:'handout' — mirroring the
+// video/'recording' tier above.
+describe("validateUpload — zip (DEC-879 findings wave 5 amendment)", () => {
+  it("accepts a zip under the document cap for kind:'handout'", () => {
+    const result = validateUpload({ filename: "workshop.zip", sizeBytes: 1024, kind: "handout" });
+    expect(result).toEqual({ ok: true, ext: "zip", servedContentType: "application/zip" });
+  });
+
+  it("agrees with allowedUploadExtensions('handout') including zip", () => {
+    expect(allowedUploadExtensions("handout")).toEqual(expect.arrayContaining(["zip"]));
+  });
+
+  it("excludes zip from allowedUploadExtensions for every other kind and the no-kind case", () => {
+    for (const kind of [undefined, ...FILE_KINDS.filter((k) => k !== "handout")] as const) {
+      expect(allowedUploadExtensions(kind)).not.toEqual(expect.arrayContaining(["zip"]));
+    }
+  });
+
+  for (const kind of FILE_KINDS.filter((k) => k !== "handout")) {
+    it(`rejects a .zip for kind:'${kind}' (zip tier is handout-only)`, () => {
+      const result = validateUpload({ filename: "deck.zip", sizeBytes: 1024, kind });
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.message).toBe("Zip archives are only accepted for a handout deliverable");
+        expect(result.fields?.file).toBe("Unsupported file type for this kind");
+      }
+    });
+  }
+});
+
 // w42-a: the document/image/text tiers are unaffected by the kind-gated
 // video tier — still accept/reject purely on extension + size for every kind.
 describe("validateUpload — document tier is unchanged across kinds (w42-a)", () => {

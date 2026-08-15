@@ -537,7 +537,7 @@ export function DeliverableDetail({
                   approved again.
                 </p>
               )}
-              <UploadZone kind={activeKind} replacesFileId={activeLatest?.id} onUpload={handleUpload} />
+              <UploadZone kind={activeKind} sessionTitle={title} replacesFileId={activeLatest?.id} onUpload={handleUpload} />
             </div>
             <div className="chq-content-comments-col">
               <h3 className="chq-section-label chq-content-notes-label">
