@@ -11,7 +11,12 @@ import { csrfJson, requireOrganizer } from "../../server/middleware";
 import { ApiError, readOptionalJsonBody } from "../../server/http";
 import * as repo from "../../server/repo/review";
 import { DEC_786, DEC_824 } from "../../decisions";
-import { distributeAssignments, type DistributeReviewerScope } from "../../domain/review-distribute";
+import {
+  distributeAssignments,
+  maxSubmissionsForDistribute,
+  MAX_DISTRIBUTE_ASSIGNMENT_WRITES,
+  type DistributeReviewerScope,
+} from "../../domain/review-distribute";
 import { resolveAssignments, type ReviewerScopeRow } from "../../domain/evaluation";
 import { requireOwnedPlan } from "./shared";
 
@@ -80,9 +85,21 @@ async function computeDistribution(
     submissions.map((s) => ({ id: s.id, trackIds: s.trackIds })),
     reviewerRows,
   );
+  // w11-b: de-duplicate on userId|submissionId before this reaches
+  // distributeAssignments/buildPerReviewer -- the defensive read-side twin of
+  // task-w11-c's writer-side onConflictDoNothing fix. resolveAssignments folds
+  // a reviewer's rows into coverage already, but a duplicate plan_reviewer row
+  // (e.g. a repeat POST /reviewers, DEC-786 §addReviewers) must not inflate a
+  // reviewer's `before` count or let a duplicate pair spend their cap twice.
+  const existingKeys = new Set<string>();
   const existing: { userId: string; submissionId: string }[] = [];
   for (const [userId, subs] of resolved) {
-    for (const s of subs) existing.push({ userId, submissionId: s.id });
+    for (const s of subs) {
+      const key = `${userId}::${s.id}`;
+      if (existingKeys.has(key)) continue;
+      existingKeys.add(key);
+      existing.push({ userId, submissionId: s.id });
+    }
   }
   const recused = recusals.map((r) => ({ userId: r.userId, submissionId: r.submissionId }));
   const reviewsPerSubmission = plan.maxEvaluations ?? 1;
@@ -148,12 +165,17 @@ reviewPlansDistributeRoutes.get("/api/v1/plans/:id/assignments/distribute/previe
     trackNameById,
   });
 
+  // w11-b/DEC-840: preview and apply must never disagree -- a preview whose
+  // pairs the apply would refuse to write must say so, computed from the
+  // SAME created.length the apply checks against MAX_DISTRIBUTE_ASSIGNMENT_WRITES.
   return c.json({
     cap: capPerReviewer,
     totalAssigned,
     items,
     perReviewer,
     shortfall: shortfallItems,
+    writeCap: MAX_DISTRIBUTE_ASSIGNMENT_WRITES,
+    writeCapExceeded: created.length > MAX_DISTRIBUTE_ASSIGNMENT_WRITES,
   });
 });
 
@@ -246,7 +268,25 @@ reviewPlansDistributeRoutes.post("/api/v1/plans/:id/assignments/distribute", req
   // valid (uncapped), matching /remind's optional-body convention.
   const bodyRecord = await readOptionalJsonBody(c);
   const capPerReviewer = parseCapPerReviewer(bodyRecord.cap);
-  const { created } = await computeDistribution(c, plan, capPerReviewer);
+  const { created, reviewsPerSubmission } = await computeDistribution(c, plan, capPerReviewer);
+  // w11-b: pre-write refusal on the plan_reviewer fan-out -- at SPEC's stated
+  // scale (up to 5,000 submissions/event, maxEvaluations 3) the unbounded
+  // set could be ~15,000 inserts in one request, exhausting D1's per-request
+  // statement budget mid-write with no transaction to roll back, leaving the
+  // plan half-distributed. Refuse BEFORE any write (mirrors DEC-079/DEC-528's
+  // task-assignment fan-out and agenda's MAX_AUTO_SCHEDULE_PLACEMENTS), and
+  // name a forward path derived from the same cap the message quotes, never
+  // a bare internal number.
+  if (created.length > MAX_DISTRIBUTE_ASSIGNMENT_WRITES) {
+    const maxSubmissions = maxSubmissionsForDistribute(reviewsPerSubmission);
+    throw new ApiError(
+      "invalid",
+      `Distributing this plan would create ${created.length} reviewer assignments, over the cap of ${MAX_DISTRIBUTE_ASSIGNMENT_WRITES} — narrow the plan's track filters to at most ${maxSubmissions} submissions, or lower \`cap\``,
+      {
+        cap: `${created.length} exceeds cap ${MAX_DISTRIBUTE_ASSIGNMENT_WRITES}; narrow the plan's track filters to at most ${maxSubmissions} submissions, or lower cap`,
+      },
+    );
+  }
   // DEC-924 (amendment, wave 47): one set-based insert instead of a
   // per-assignment loop -- addReviewers chunks through chunkRowsForInsert
   // (DEC-528) and returns [] for an empty input, so the empty-set case still
