@@ -65,9 +65,9 @@ reviewReviewerRoutes.get("/api/v1/review/plans", async (c) => {
     const planIds = [...(await repo.listPlanIdsForReviewer(c.var.db, auth.userId))].sort();
     total = planIds.length;
     const pagedIds = planIds.slice((page - 1) * perPage, (page - 1) * perPage + perPage);
-    plans = (await Promise.all(pagedIds.map((id) => repo.getPlanById(c.var.db, id)))).filter(
-      (p): p is PlanRecord => p !== null,
-    );
+    // DEC-829 (wave-33 amendment, task w33-b): one chunked `inArray` batch
+    // read replaces the former per-id Promise.all(getPlanById) fan-out.
+    plans = await repo.listPlansByIds(c.var.db, pagedIds);
   }
   return c.json({ items: plans, total, page, perPage });
 });

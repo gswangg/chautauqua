@@ -2,12 +2,13 @@
 // drizzle row types (DEC-012) for evaluation_plan. Converts to/from the pure
 // src/domain/evaluation.ts shapes.
 
-import { and, eq, gte, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
 import type { EvaluationCriterionDef, RoundMetaEntry } from "../../../domain/evaluation";
 import { ApiError } from "../../http";
+import { chunkIds } from "../../../lib/chunk";
 
 export interface PlanRecord {
   id: string;
@@ -166,6 +167,34 @@ export async function getPlanById(db: Db, planId: string): Promise<PlanRecord | 
     .limit(1);
   const row = rows[0];
   return row ? toPlanRecord(row.plan, row.timezone) : null;
+}
+
+/** DEC-829 (wave-33 amendment, task w33-b): batch resolve of a page of plan
+ * ids for the reviewer landing screen (GET /api/v1/review/plans) -- replaces
+ * a Promise.all(ids.map(getPlanById)) fan-out (up to MAX_PER_PAGE=200
+ * statements) with one chunked `inArray` per ID_CHUNK_SIZE batch (see
+ * src/lib/chunk.ts). Returns rows in the INPUT id order, with any id that
+ * does not resolve to a plan silently omitted (mirroring the fan-out's prior
+ * `.filter(p => p !== null)` behavior). */
+export async function listPlansByIds(db: Db, planIds: string[]): Promise<PlanRecord[]> {
+  const byId = new Map<string, PlanRecord>();
+  for (const chunk of chunkIds(planIds)) {
+    if (chunk.length === 0) continue;
+    const rows = await db
+      .select({ plan: schema.evaluationPlan, timezone: schema.event.timezone })
+      .from(schema.evaluationPlan)
+      .innerJoin(schema.event, eq(schema.evaluationPlan.eventId, schema.event.id))
+      .where(inArray(schema.evaluationPlan.id, chunk));
+    for (const row of rows) {
+      byId.set(row.plan.id, toPlanRecord(row.plan, row.timezone));
+    }
+  }
+  const out: PlanRecord[] = [];
+  for (const id of planIds) {
+    const plan = byId.get(id);
+    if (plan) out.push(plan);
+  }
+  return out;
 }
 
 /** Ownership check: does this plan belong to the given org (via its event)? */
