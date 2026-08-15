@@ -22,7 +22,7 @@ import {
   type PortalParticipant,
 } from "../../server/repo/portal-edit";
 import { canEditSubmission, canEditTracks } from "../../domain/edit-lock";
-import { validateAnswers } from "../../forms/validate";
+import { validateAnswers, MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from "../../forms/validate";
 import { makeVisibilityPredicate } from "../../forms/visibility";
 import type { AnswerMap } from "../../forms/types";
 import { lockedFieldName } from "../../forms/types";
@@ -268,7 +268,7 @@ function ParticipantsSection(props: {
         <label class="chq-portal-field-label" for="cp-first-name">
           First name
         </label>
-        <input id="cp-first-name" type="text" name="firstName" value={values?.firstName ?? ""} />
+        <input id="cp-first-name" type="text" name="firstName" value={values?.firstName ?? ""} maxLength={MAX_NAME_LENGTH} />
         {errors?.firstName ? (
           <p role="alert" class="chq-field-error">
             {errors.firstName}
@@ -277,7 +277,7 @@ function ParticipantsSection(props: {
         <label class="chq-portal-field-label" for="cp-last-name">
           Last name
         </label>
-        <input id="cp-last-name" type="text" name="lastName" value={values?.lastName ?? ""} />
+        <input id="cp-last-name" type="text" name="lastName" value={values?.lastName ?? ""} maxLength={MAX_NAME_LENGTH} />
         {errors?.lastName ? (
           <p role="alert" class="chq-field-error">
             {errors.lastName}
@@ -286,7 +286,7 @@ function ParticipantsSection(props: {
         <label class="chq-portal-field-label" for="cp-email">
           Email
         </label>
-        <input id="cp-email" type="email" name="email" value={values?.email ?? ""} />
+        <input id="cp-email" type="email" name="email" value={values?.email ?? ""} maxLength={MAX_TEXT_LENGTH} />
         {errors?.email ? (
           <p role="alert" class="chq-field-error">
             {errors.email}
