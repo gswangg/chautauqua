@@ -53,6 +53,12 @@ export interface SubmissionListItem {
   submittedAt: number | null;
   createdAt: number;
   answers?: Record<string, unknown>;
+  // w8-d (DEC-051/DEC-780 amendment, findings wave 8): the same slot shape
+  // SubmissionDetail.slot carries -- null when the session hasn't been
+  // placed on the agenda yet. Lets Compose step 1 (ComposeWizard.tsx) show
+  // the fact that decides whether a calendar invite can be attached before
+  // the organizer chooses an audience, rather than first refusing at step 3.
+  slot: { day: string; startMin: number; endMin: number; roomName: string | null } | null;
 }
 
 export interface Track {

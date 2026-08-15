@@ -10,7 +10,9 @@ import { eventYear } from "../../../lib/event-time";
 // DEC-881: the detail read's `reuploaded` flag composes the SAME predicate
 // the worklist row/header use (reUploadedSql, submissions/list.ts) — never a
 // second derivation that could disagree on which submissions are re-uploaded.
-import { reUploadedSql } from "./list";
+// DEC-780: SubmissionDetailSlot is defined canonically in list.ts (the LIST
+// payload's `slot` field reuses this exact shape) and re-exported here.
+import { reUploadedSql, type SubmissionDetailSlot } from "./list";
 
 export interface SubmissionDetailParticipant {
   id: string;
@@ -33,12 +35,7 @@ export interface SubmissionDetailParticipant {
   lastSpokeYear?: number;
 }
 
-export interface SubmissionDetailSlot {
-  day: string;
-  startMin: number;
-  endMin: number;
-  roomName: string | null;
-}
+export type { SubmissionDetailSlot };
 
 export interface SubmissionDetail {
   id: string;

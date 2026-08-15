@@ -17,7 +17,8 @@ import { FormRow } from '../../components/ModalFrame';
 import { COMPOSE_MERGE_FIELDS, MAX_COMPOSE_RECIPIENTS, type MergeField } from '../../lib/merge-fields';
 import { InsertFieldMenu } from './InsertFieldMenu';
 import { countOf, capitalizeFirst, plural, spellCount } from '../../lib/plural';
-import { isoToMs } from '../../lib/dates';
+import { isoToMs, formatDayLabel } from '../../lib/dates';
+import { clockHHMM } from '../../lib/clock';
 import { paginationSummary } from '../../lib/pagination-summary';
 import type { ComposeSendResult, EmailTemplate, RenderedRecipient } from './types';
 import type { EvaluationPlan } from '../review/types';
@@ -674,6 +675,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                   <th>Title</th>
                   <th>Speakers</th>
                   <th>Status</th>
+                  <th>Slot</th>
                 </tr>
               </thead>
               <tbody>
@@ -691,6 +693,20 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                     <td data-label="Title">{s.title}</td>
                     <td data-label="Speakers">{s.speakers.map((sp) => sp.name).join(', ')}</td>
                     <td data-label="Status">{STATUS_LABELS[s.status]}</td>
+                    {/* DEC-051/DEC-780 amendment (findings wave 8): the fact
+                        that decides whether a calendar invite can be
+                        attached moves here, from step 3's icsUnscheduledIds
+                        refusal -- step 1 informs, it never gates or
+                        pre-filters. 'No slot yet' in the ink micro-label
+                        register (chq-flag, DEC-367 type-only), never a
+                        dash. */}
+                    <td data-label="Slot">
+                      {s.slot ? (
+                        `${formatDayLabel(s.slot.day)} ${clockHHMM(s.slot.startMin)}`
+                      ) : (
+                        <span className="chq-flag">No slot yet</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -727,14 +743,19 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             </div>
           )}
 
-          <button
-            type="button"
-            className="chq-btn chq-btn-primary"
-            disabled={selection.selectedIds.size === 0}
-            onClick={() => setStep('template')}
-          >
-            Next: choose template ({countOf(selection.selectedIds.size, 'submission')} selected)
-          </button>
+          {/* w8-d (DEC-051/DEC-780 amendment): the step-1 primary moves into
+              a footer row, matching step 2/3's chq-comms-*-actions rows,
+              instead of sitting loose under the pager. */}
+          <div className="chq-comms-select-actions">
+            <button
+              type="button"
+              className="chq-btn chq-btn-primary"
+              disabled={selection.selectedIds.size === 0}
+              onClick={() => setStep('template')}
+            >
+              Next: choose template ({countOf(selection.selectedIds.size, 'submission')} selected)
+            </button>
+          </div>
         </section>
       )}
 

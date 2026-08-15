@@ -362,6 +362,69 @@ describe("listSubmissions: one paginated statement for q+trackId (DEC-333/335)",
     expect(placed?.scheduled).toEqual({ day: "2026-05-12", startMin: 600, endMin: 660, roomName: "Room 2A" });
     expect(unplaced?.scheduled).toBeNull();
   });
+
+  // w8-d (DEC-051/DEC-780 amendment, findings wave 8): the LIST payload's
+  // `slot` field reuses the SAME batched schedule_slot/room enrichment as
+  // `scheduled` above -- verbatim shape, no second join, no per-row lookup.
+  // Compose step 1 reads this so the .ics-attach fact is visible before an
+  // audience is chosen (never first refused at step 3).
+  it("populates `slot` (DEC-780 shape) from the SAME batched schedule_slot/room enrichment as `scheduled`, null for an unscheduled submission", async () => {
+    const EVENT_ID = "event-1";
+    const placedRow = {
+      id: "sub-1",
+      title: "Placed Talk",
+      seq: 1,
+      createdAt: new Date(2026, 0, 1),
+      updatedAt: new Date(2026, 0, 1),
+      eventId: EVENT_ID,
+      description: null,
+      formId: null,
+      trackId: null,
+      additionalTrackIdsJson: null,
+      status: "accepted",
+      contentStatus: "pending",
+      acceptedAt: null,
+      icsSequence: 0,
+    };
+    const unplacedRow = { ...placedRow, id: "sub-2", title: "Unplaced Talk", seq: 2 };
+
+    const responses = [
+      [{ recordPrefix: "SES" }], // 1: event prefix lookup
+      [{ count: 2 }], // 2: count
+      [{ contentStatus: "pending", count: 2, reuploaded: 0 }], // 3: DEC-913 grouped counts
+      [placedRow, unplacedRow], // 4: page
+      [], // 5: participant enrichment
+      [], // 6: submission_track enrichment
+      [], // 7: deliverable-count enrichment (DEC-341)
+      [], // 8: latestFile candidate enrichment (w15-f)
+      [
+        { submissionId: "sub-1", day: "2026-05-12", startMin: 600, endMin: 660, roomName: "Room 2A" },
+      ], // 9: w41-b/w8-d scheduled+slot enrichment -- only sub-1 has a schedule_slot row
+    ];
+    const db = makeFakeDb(responses);
+
+    const result = await listSubmissions(db, EVENT_ID, {
+      page: 1,
+      perPage: 50,
+      q: null,
+      status: [],
+      contentStatus: [],
+      trackId: null,
+      sort: "newest",
+      includeAnswers: false,
+      reuploaded: null,
+    });
+
+    // No extra round trip: still exactly 9 db.select() calls (4 core + 5
+    // enrichment batches) -- `slot` rides the same batch `scheduled` does.
+    expect(db.calls.length).toBe(9);
+
+    const placed = result.items.find((i) => i.id === "sub-1");
+    const unplaced = result.items.find((i) => i.id === "sub-2");
+    expect(placed?.slot).toEqual({ day: "2026-05-12", startMin: 600, endMin: 660, roomName: "Room 2A" });
+    expect(placed?.slot).toEqual(placed?.scheduled);
+    expect(unplaced?.slot).toBeNull();
+  });
 });
 
 // DEC-913: GET .../submissions serves the grouped contentStatusCounts +

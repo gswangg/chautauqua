@@ -100,6 +100,14 @@
   color: var(--chq-ink-2);
 }
 
+/* w8-d (DEC-051/DEC-780 amendment): step 1's primary moves into a footer
+   row, same shape as chq-comms-template-actions (step 2). */
+.chq-comms-select-actions {
+  display: flex;
+  gap: 9px;
+  padding-top: 14px;
+}
+
 .chq-comms-template-label {
   display: flex;
   flex-direction: column;
