@@ -146,7 +146,7 @@ function parseBranding(body: Record<string, unknown>, fields: Record<string, str
       // that fails the contract is rejected.
       const safe = safeImageSrc(b.logoUrl);
       if (b.logoUrl.trim() !== "" && safe === null) {
-        fields["branding.logoUrl"] = "Must be an http(s) URL or a path starting with /";
+        fields["branding.logoUrl"] = "Must be an http or https URL, or a path starting with /";
       } else {
         out.logoUrl = safe ?? "";
       }

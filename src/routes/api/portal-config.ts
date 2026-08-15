@@ -114,7 +114,7 @@ portalConfigRoutes.put("/events/:eventId/portal-settings", csrfJson, async (c) =
   } else if (typeof logoUrl === "string") {
     const safe = safeImageSrc(logoUrl);
     if (logoUrl.trim() !== "" && safe === null) {
-      fields.logoUrl = "Must be an http(s) URL or a path starting with /";
+      fields.logoUrl = "Must be an http or https URL, or a path starting with /";
     } else {
       sanitizedLogoUrl = safe;
     }
