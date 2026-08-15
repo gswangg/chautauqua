@@ -21,30 +21,41 @@ import { findStrayPerPageConstantDeclarations } from "./support/list-envelope-en
  *
  * (a) Every `return c.json({ items ...` site under src/routes/**\/*.{ts,tsx}
  *     must carry `total`, `page`, and `perPage` in the same returned object
- *     literal -- the DEC-461(a) list-envelope contract. Three sites are
- *     deliberately not list-GET envelopes and are named exceptions, each
- *     read at file:line before being allowlisted (a fourth,
- *     src/routes/review/plans.ts's GET .../assignments/distribute/preview,
- *     used to be allowlisted here under the old `{ items, perReviewer,
- *     total, shortfall }` shape; DEC-840 reordered its envelope to `{ cap,
- *     totalAssigned, items, perReviewer, shortfall }` -- cap echoed first
- *     -- so it no longer matches this scanner's `{ items` pattern and needs
- *     no entry):
- *       - src/routes/comms/preview.ts:82 (POST .../compose/preview) returns a
+ *     literal -- the DEC-461(a) list-envelope contract. Four sites are
+ *     deliberately not list-GET envelopes and are named exceptions in
+ *     ENVELOPE_ALLOWLIST (test/support/list-envelope-enumeration/envelope-
+ *     sites.ts), keyed by `${relativePath}#${METHOD} ${routePath}` -- the
+ *     nearest preceding route registration, not a line number, since a line
+ *     number is not a handler's identity (DEC-480 wave-17 amendment: this
+ *     replaced a file:line keying scheme that drifted five times as
+ *     unrelated code was added above these sites, each drift breaking
+ *     someone else's test run). One further site, src/routes/review/
+ *     plans.ts's GET .../assignments/distribute/preview, used to be
+ *     allowlisted here under the old `{ items, perReviewer, total,
+ *     shortfall }` shape; DEC-840 reordered its envelope to `{ cap,
+ *     totalAssigned, items, perReviewer, shortfall }` -- cap echoed first --
+ *     so it no longer matches this scanner's `{ items` pattern and needs no
+ *     entry:
+ *       - POST .../compose/preview (src/routes/comms/preview.ts) returns a
  *         compose-preview render, one row per selected submission, bounded
  *         by the 100-recipient send cap (DEC checked elsewhere in comms/)
  *         -- a preview payload, not a list GET.
- *       - src/routes/api/contacts/bulk-email.ts:321 (POST
- *         /contacts/bulk-email/preview) is the CRM-11/DEC-150 bulk-email
- *         preview: it slices to `previewContacts = contacts.slice(0,
- *         BULK_EMAIL_PREVIEW_LIMIT)` (5) before rendering, so it is bounded
- *         by that constant, not by a page/perPage query param -- a preview
- *         payload, not a list GET.
- *       - src/routes/api/contacts/duplicates.ts:32 (GET
- *         /contacts/duplicates/check, DEC-788) is a bounded (cap 5),
- *         deterministically-ordered near-duplicate lookup for a
+ *       - POST /contacts/bulk-email/preview
+ *         (src/routes/api/contacts/bulk-email.ts) is the CRM-11/DEC-150
+ *         bulk-email preview: it slices to `previewContacts =
+ *         contacts.slice(0, BULK_EMAIL_PREVIEW_LIMIT)` (5) before
+ *         rendering, so it is bounded by that constant, not by a
+ *         page/perPage query param -- a preview payload, not a list GET.
+ *       - GET /contacts/duplicates/check
+ *         (src/routes/api/contacts/duplicates.ts, DEC-788) is a bounded
+ *         (cap 5), deterministically-ordered near-duplicate lookup for a
  *         not-yet-created contact: no page/perPage query param feeds it and
  *         the cap is a constant -- a lookup payload, not a list GET.
+ *       - POST /api/v1/plans/:id/reviewers
+ *         (src/routes/review/plans-reviewers.ts) answers the set of rows it
+ *         just wrote (bounded by the request's own parseBoundedIdArray
+ *         cap), never a paginated read -- same shape-exception class as the
+ *         compose preview above.
  *
  * (b) src/lib/pagination.ts must be the ONLY file under src/routes/** or
  *     src/server/repo/** that declares a constant named like
@@ -83,7 +94,7 @@ describe("DEC-480: list-envelope enumeration (executable, not prose)", () => {
     for (const file of routeFiles) {
       const source = readFileSync(file, "utf8");
       for (const site of findItemsEnvelopeSites(source, file)) {
-        const key = `${relativePath(REPO_ROOT, site.file)}:${site.line}`;
+        const key = `${relativePath(REPO_ROOT, site.file)}#${site.route}`;
         if (ENVELOPE_ALLOWLIST.has(key)) continue;
         const hasAll = /\btotal\b/.test(site.body) && /\bpage\b/.test(site.body) && /\bperPage\b/.test(site.body);
         if (!hasAll) {
@@ -106,13 +117,14 @@ describe("DEC-480: list-envelope enumeration (executable, not prose)", () => {
     for (const file of routeFiles) {
       const source = readFileSync(file, "utf8");
       for (const site of findItemsEnvelopeSites(source, file)) {
-        seen.add(`${relativePath(REPO_ROOT, site.file)}:${site.line}`);
+        seen.add(`${relativePath(REPO_ROOT, site.file)}#${site.route}`);
       }
     }
     for (const entry of ENVELOPE_ALLOWLIST) {
-      expect(seen.has(entry), `allowlisted site ${entry} no longer exists at that file:line -- remove the stale entry`).toBe(
-        true,
-      );
+      expect(
+        seen.has(entry),
+        `allowlisted site ${entry} no longer exists (no c.json({ items ... site under that route) -- remove the stale entry`,
+      ).toBe(true);
     }
   });
 
