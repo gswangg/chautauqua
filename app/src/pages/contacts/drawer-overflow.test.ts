@@ -23,3 +23,18 @@ describe("contact drawer cannot overflow horizontally (gate-4 BROKEN fix)", () =
     expect(upload).toContain("min-width: 0");
   });
 });
+
+// User-filed (gate-6 cycle): the sticky action bar is a flex item of the
+// column-flex drawer scroll container — without flex-shrink:0 it compressed
+// below its own buttons' height (37px vs 44px buttons), the buttons
+// overflowed the painted band, and scrolled rows showed through around
+// them. The sticky mechanics live in app/src/styles.css.
+describe("drawer sticky action bar cannot be flex-squeezed", () => {
+  it("the styles.css sticky rule declares flex-shrink: 0", () => {
+    const shared = readFileSync(join(__dirname, "..", "..", "styles.css"), "utf8");
+    const rule = shared.match(/\.chq-contacts-drawer-actions \{[\s\S]*?\}/)?.[0] ?? "";
+    expect(rule).toContain("position: sticky");
+    expect(rule).toContain("flex-shrink: 0");
+    expect(rule).toContain("background: var(--chq-paper)");
+  });
+});
