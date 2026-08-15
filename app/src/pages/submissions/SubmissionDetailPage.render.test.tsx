@@ -1532,3 +1532,48 @@ describe('SubmissionDetailPage render: DEC-900 frame 02 anatomy fixes', () => {
     expect(document.querySelector('.chq-detail-speaker-history')).not.toBeInTheDocument();
   });
 });
+
+// DEC-958 (wave 64 amendment): the title/abstract editor's PATCH refusal
+// renders the server's named-field map instead of collapsing to the
+// top-line message alone -- the offending control is marked, and the
+// draft text stays in the form (never reset on a refusal).
+describe('SubmissionDetailPage: title/abstract edit refusal (DEC-958 wave 64)', () => {
+  it('marks the Title control when the server refuses with a title-too-long field error', async () => {
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: baseDetail(),
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`PATCH /api/v1/submissions/${SUB_ID}`]: {
+        status: 400,
+        body: errorEnvelope('invalid', 'Validation failed', { title: 'Max 200 characters' }),
+      },
+    });
+
+    renderPage(`/submissions/${SUB_ID}?edit=1`);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Title')).toBeInTheDocument();
+    });
+
+    const titleInput = screen.getByLabelText('Title');
+    fireEvent.change(titleInput, { target: { value: 'A'.repeat(201) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Max 200 characters')).toBeInTheDocument();
+    });
+
+    expect(titleInput).toHaveAttribute('aria-invalid', 'true');
+    // The ErrorSummary anchors at the top of the form to the SAME control.
+    const summary = document.querySelector('.chq-error-summary');
+    expect(summary).not.toBeNull();
+    expect(within(summary as HTMLElement).getByRole('link', { name: 'Title' })).toHaveAttribute(
+      'href',
+      '#submission-edit-title',
+    );
+    // The draft the user typed is never cleared on a refusal.
+    expect((titleInput as HTMLInputElement).value).toBe('A'.repeat(201));
+  });
+});
