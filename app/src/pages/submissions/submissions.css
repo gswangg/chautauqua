@@ -554,6 +554,15 @@
     flex-shrink: 0;
   }
 
+  /* Tap-target floor (DEC-253 amendment, DEC-367): the desktop chip height
+     these two controls share with .chq-pill (26px, see the comment at their
+     definition above) falls well under the 44px minimum for a touch target.
+     Raised here, phone-only -- the desktop 26px value is untouched. */
+  .chq-submissions-filterbar-search,
+  .chq-submissions-filterbar-select {
+    min-height: 44px;
+  }
+
   .chq-submissions-pagination {
     flex-wrap: wrap;
     row-gap: 10px;

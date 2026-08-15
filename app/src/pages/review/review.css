@@ -1511,6 +1511,15 @@
   border-color: var(--chq-brand);
 }
 
+/* Tap-target floor (DEC-253 amendment, DEC-367): the desktop 40px segment
+   height sits just under the 44px minimum for a touch target. Raised
+   here, phone-only -- the desktop 40px value is untouched. */
+@media (max-width: 700px) {
+  .chq-review-rating-btn {
+    height: 44px;
+  }
+}
+
 .chq-review-criterion-weight-caption {
   margin: -2px 0 0;
   font-size: 12px;
