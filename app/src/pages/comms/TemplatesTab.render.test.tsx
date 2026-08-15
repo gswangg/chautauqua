@@ -116,6 +116,50 @@ describe('TemplatesTab', () => {
     await screen.findByText('No templates yet.');
   });
 
+  // DEC-890 amendment (wave 18): the row carries no verbs of its own -- the
+  // NAME is the row's one control. A saved row exposes exactly one button
+  // (the name) and no Delete.
+  it('a saved row exposes exactly one button (the name) and no Delete', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([template({ id: 'tpl-1', name: 'Acceptance' })]),
+    });
+
+    render(
+      <MemoryRouter>
+        <TemplatesTab eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
+
+    const row = (
+      await screen.findByText('Acceptance', { selector: '.chq-comms-template-name' })
+    ).closest('tr') as HTMLElement;
+    expect(within(row).getAllByRole('button')).toHaveLength(1);
+    expect(within(row).queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+  });
+
+  it('clicking the row name selects that template into the editor', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([
+        template({ id: 'tpl-1', name: 'Acceptance' }),
+        template({ id: 'tpl-2', name: 'Decline' }),
+      ]),
+    });
+
+    render(
+      <MemoryRouter>
+        <TemplatesTab eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
+
+    // Acceptance preselects first; click Decline's row name to switch.
+    await screen.findByText('Acceptance', { selector: '.chq-comms-editor-eyebrow' });
+    fireEvent.click(await screen.findByText('Decline', { selector: '.chq-comms-template-name' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Decline', { selector: '.chq-comms-editor-eyebrow' })).toBeInTheDocument();
+    });
+  });
+
   it('Duplicate POSTs a copy with " (copy)" appended to the name', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([template({ id: 'tpl-1', name: 'Acceptance' })]),
@@ -128,13 +172,11 @@ describe('TemplatesTab', () => {
       </MemoryRouter>,
     );
 
-    // Acceptance is the only template, so it's preselected -- both the row
-    // and the editor eyebrow carry their own "Duplicate" control. Exercise
-    // the row's.
-    const row = (
-      await screen.findByText('Acceptance', { selector: '.chq-comms-template-name' })
-    ).closest('tr') as HTMLElement;
-    fireEvent.click(within(row).getByRole('button', { name: 'Duplicate' }));
+    // Acceptance is the only template, so it's preselected -- Duplicate now
+    // lives only in the editor head.
+    const eyebrow = await screen.findByText('Acceptance', { selector: '.chq-comms-editor-eyebrow' });
+    const editorHead = eyebrow.closest('.chq-comms-editor-head') as HTMLElement;
+    fireEvent.click(within(editorHead).getByRole('button', { name: 'Duplicate' }));
 
     await waitFor(() => {
       const postCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit)?.method === 'POST');
@@ -177,21 +219,18 @@ describe('TemplatesTab', () => {
       </MemoryRouter>,
     );
 
-    const row = (
-      await screen.findByText('Waitlist', { selector: '.chq-comms-template-name' })
-    ).closest('tr') as HTMLElement;
-    expect(within(row).getByRole('button', { name: 'Use in a send' })).toBeInTheDocument();
-
-    // DEC-890 amendment (wave 4): the editor footer also offers "Use in a
-    // send" beside Save, for the preselected template.
+    // "Use in a send" no longer lives in the row -- it's an editor-only
+    // control, alongside Save, for the preselected template.
+    await screen.findByText('Waitlist', { selector: '.chq-comms-template-name' });
     const editorSection = document.querySelector('.chq-comms-editor') as HTMLElement;
     expect(within(editorSection).getByRole('button', { name: 'Use in a send' })).toBeInTheDocument();
     expect(within(editorSection).getByRole('button', { name: 'Save' })).toBeInTheDocument();
   });
 
-  // DEC-941: deleting a template is irreversible, so Delete must open the
-  // shared ConfirmDialog and only DELETE after an explicit confirm.
-  it('gates template delete behind a confirm dialog naming the template, and only DELETEs on confirm', async () => {
+  // DEC-890 amendment (wave 18): Delete now lives only in the editor's
+  // action row -- present for a saved template, absent for a never-saved
+  // 'new' draft -- and still gates behind the shared ConfirmDialog.
+  it('Delete is present in the editor for a saved template, opens the confirm dialog, and DELETEs on confirm', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([template({ id: 'tpl-1', name: 'Acceptance' })]),
       'DELETE /api/v1/templates/tpl-1': { status: 200, body: {} },
@@ -203,7 +242,9 @@ describe('TemplatesTab', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
+    await screen.findByText('Acceptance', { selector: '.chq-comms-editor-eyebrow' });
+    const editorSection = document.querySelector('.chq-comms-editor') as HTMLElement;
+    fireEvent.click(within(editorSection).getByRole('button', { name: 'Delete' }));
 
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('Delete this template?')).toBeInTheDocument();
@@ -225,6 +266,23 @@ describe('TemplatesTab', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
+  });
+
+  it('Delete is absent from the editor for a never-saved "new" draft', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter>
+        <TemplatesTab eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'New template' }));
+
+    const editorSection = document.querySelector('.chq-comms-editor') as HTMLElement;
+    expect(within(editorSection).queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
   });
 });
 
