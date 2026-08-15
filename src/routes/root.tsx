@@ -399,8 +399,8 @@ function HubPage(props: { orgName: string; sections: HubSections; state: HubStat
 // DEC-918/DEC-022 amendment (wave 69): GET / gets the same 60s public cache
 // contract as every other anonymous public GET (setCacheHeaders is imported
 // from ./public/shell rather than re-declared, so the header value can never
-// drift from theirs) plus `Vary: Cookie` -- but is deliberately NOT mounted
-// under publicCacheMiddleware. That middleware answers from a stored KV copy
+// drift from theirs) -- but is deliberately NOT mounted under
+// publicCacheMiddleware. That middleware answers from a stored KV copy
 // before the handler runs at all, which would serve a cached anonymous hub
 // straight to a signed-in organiser hitting "/" (the auth-redirect branch
 // above would never even execute). Every row on this page is also
@@ -411,6 +411,10 @@ function HubPage(props: { orgName: string; sections: HubSections; state: HubStat
 // no purge-keyed cache to go wrong. setCacheHeaders also sets
 // Access-Control-Allow-Origin: * (DEC-553), which is fine here too -- this
 // page is already fully anonymous, nothing behind it is scoped by origin.
+// DEC-099 wave-34 amendment: setCacheHeaders now sets Vary: Cookie itself
+// (this route's serving path branches on the session cookie via the
+// auth-redirect above, which is exactly what that header is for) -- no
+// second `c.header("Vary", "Cookie")` call is needed here.
 rootRoutes.get("/", async (c) => {
   const auth = c.var.auth;
   if (auth) {
@@ -420,7 +424,6 @@ rootRoutes.get("/", async (c) => {
   }
 
   setCacheHeaders(c);
-  c.header("Vary", "Cookie");
 
   const nowMs = Date.now();
   const org = await getHubOrg(c.var.db);

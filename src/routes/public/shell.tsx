@@ -90,9 +90,20 @@ export function navActiveFor(surface: Surface): Surface {
 // stores in caches.default too, so cache hits carry it. A simple
 // cross-origin GET never preflights, so no OPTIONS handler / Allow-
 // Credentials / Allow-Headers is needed.
+//
+// DEC-099 wave-34 amendment: also sets Vary: Cookie. Every serving path this
+// header covers branches on the chq_session cookie (publicCacheMiddleware
+// skips both cache.match and cache.put for any cookie-carrying request — see
+// pubcache.ts), so a shared/proxy cache downstream of this response must key
+// on Cookie too or it can hand a signed-in organiser's dynamic render to the
+// next anonymous visitor (or vice versa). This is the ONE door for that
+// header on every public/embed GET; servePublicGet strips it back off the
+// stored (anonymous-only-by-construction) copy in caches.default and restores
+// it on every cache-hit response — see pubcache.ts's servePublicGet.
 export function setCacheHeaders(c: { header(name: string, value: string): void }): void {
   c.header("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
   c.header("Access-Control-Allow-Origin", "*");
+  c.header("Vary", "Cookie");
 }
 
 export function branding(event: PublicEvent): { logoUrl?: string; accentColor?: string } {

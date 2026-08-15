@@ -189,6 +189,11 @@ export async function servePublicGet(
     // must be a fresh Response rather than a mutation of `hit`.)
     const restored = new Response(hit.clone().body, hit);
     restored.headers.set("Cache-Control", CLIENT_CACHE_CONTROL);
+    // DEC-099 wave-34 amendment: restore Vary: Cookie on every cache-hit
+    // response, same idiom as the Cache-Control override immediately above
+    // -- the stored copy has it stripped (see the `stored` branch below), so
+    // it must be put back here rather than assumed to survive the copy.
+    restored.headers.set("Vary", "Cookie");
     return restored;
   }
 
@@ -196,6 +201,13 @@ export async function servePublicGet(
   if (response.status === 200) {
     const stored = new Response(response.clone().body, response);
     stored.headers.set("Cache-Control", CLIENT_CACHE_CONTROL_OVERRIDE);
+    // DEC-099 wave-34 amendment: the stored copy is anonymous-only by
+    // construction (publicCacheMiddleware skips both cache.match and
+    // cache.put for any cookie-carrying request), so Vary: Cookie would only
+    // ever fragment the shared edge entry into two identical copies keyed on
+    // the same cookie-less value -- strip it before cache.put and restore it
+    // on every read-through above instead (both restored and hit paths).
+    stored.headers.delete("Vary");
     // wave 15 (DEC-083 amendment): the edge-store write is not on the
     // visitor's critical path. When a waitUntil is supplied (the Workers
     // execution context — see publicCacheMiddleware), the put runs after

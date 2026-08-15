@@ -122,18 +122,29 @@ describe("servePublicGet", () => {
   it("overrides the stored response's Cache-Control to a long max-age", async () => {
     const cache = fakeCache();
     const kv = fakeKv();
-    const next = async () => new Response("ok", { status: 200, headers: { "Cache-Control": "public, max-age=60, stale-while-revalidate=300" } });
+    const next = async () => new Response("ok", { status: 200, headers: { "Cache-Control": "public, max-age=60, stale-while-revalidate=300", Vary: "Cookie" } });
 
     await servePublicGet(cache, kv, new Request("https://x.test/e/foo/sessions"), next);
     const stored = [...cache.store.values()][0]!;
     expect(stored.headers.get("Cache-Control")).toBe("public, max-age=86400");
   });
 
+  it("DEC-099 wave-34 amendment: the object handed to cache.put carries NO Vary, even when the handler's response had one", async () => {
+    const cache = fakeCache();
+    const kv = fakeKv();
+    const next = async () =>
+      new Response("ok", { status: 200, headers: { "Cache-Control": "public, max-age=60, stale-while-revalidate=300", Vary: "Cookie" } });
+
+    await servePublicGet(cache, kv, new Request("https://x.test/e/foo/sessions"), next);
+    const stored = [...cache.store.values()][0]!;
+    expect(stored.headers.get("Vary")).toBeNull();
+  });
+
   it("DEC-099: a hit is re-served with the client-facing Cache-Control, not the stored 86400 override", async () => {
     const cache = fakeCache();
     const kv = fakeKv();
     const next = async () =>
-      new Response("hello", { status: 200, headers: { "Cache-Control": "public, max-age=60, stale-while-revalidate=300" } });
+      new Response("hello", { status: 200, headers: { "Cache-Control": "public, max-age=60, stale-while-revalidate=300", Vary: "Cookie" } });
 
     const req = () => new Request("https://x.test/e/foo/sessions");
     const miss = await servePublicGet(cache, kv, req(), next);
@@ -142,10 +153,17 @@ describe("servePublicGet", () => {
     const hit = await servePublicGet(cache, kv, req(), next);
     expect(await hit.text()).toBe("hello");
     expect(hit.headers.get("Cache-Control")).toBe(CLIENT_CACHE_CONTROL);
+    // DEC-099 wave-34 amendment: a cache-hit response carries both the
+    // client-facing Cache-Control override AND Vary: Cookie, restored fresh
+    // on every hit (the stored copy itself has neither the 86400 override
+    // nor Vary — see the two assertions below and the sibling "carries NO
+    // Vary" test above).
+    expect(hit.headers.get("Vary")).toBe("Cookie");
 
     // the copy inside the cache itself is untouched — still the internal 86400 override
     const stored = [...cache.store.values()][0]!;
     expect(stored.headers.get("Cache-Control")).toBe("public, max-age=86400");
+    expect(stored.headers.get("Vary")).toBeNull();
   });
 
   it("DEC-083 amendment (wave 10): two consecutive identical GETs against the same cache instance both get the full body and client-facing Cache-Control, even when the CacheLike returns the same Response object on repeat match()", async () => {
@@ -166,13 +184,19 @@ describe("servePublicGet", () => {
     expect(second.headers.get("Cache-Control")).toBe(CLIENT_CACHE_CONTROL);
   });
 
-  it("does not cache non-200 responses", async () => {
+  it("does not cache non-200 responses, and does not add Vary to a 404/no-store path it never touches", async () => {
     const cache = fakeCache();
     const kv = fakeKv();
-    const next = async () => new Response("not found", { status: 404 });
+    const next = async () => new Response("not found", { status: 404, headers: { "Cache-Control": "no-store" } });
 
-    await servePublicGet(cache, kv, new Request("https://x.test/e/missing/sessions"), next);
+    const response = await servePublicGet(cache, kv, new Request("https://x.test/e/missing/sessions"), next);
     expect(cache.store.size).toBe(0);
+    // DEC-099 wave-34 amendment: servePublicGet never adds Vary itself — it
+    // only strips/restores whatever the caller's handler already set (via
+    // setCacheHeaders). A 404 handler that never calls setCacheHeaders
+    // (public.tsx's own not-found branches don't) is unaffected either way.
+    expect(response.headers.get("Vary")).toBeNull();
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
   });
 
   it("a version bump invalidates a previously-cached key (new cache entry, next() called again)", async () => {
