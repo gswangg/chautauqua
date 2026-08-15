@@ -447,6 +447,12 @@ describe('ContentApp: Files-library drill-in fetches an out-of-page submission (
           speakerName: 'Priya Raman',
           uploadedAt: 1700000000000,
           versionCount: 2,
+          // EventFileChainItem requires these three: the real endpoint always
+          // sends them, and formatBytes (DEC-020 wave-55) throws rather than
+          // rendering "NaN B", so an incomplete fixture fails loudly here.
+          versionNo: 2,
+          sizeBytes: 2048,
+          uploaderName: null,
         },
       ]),
       [`GET /api/v1/submissions/sub-99`]: {
