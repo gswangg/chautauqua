@@ -90,6 +90,7 @@ export function SpeakerDetailPage() {
   const [remindPreviewError, setRemindPreviewError] = useState<string | null>(null);
   const [remindDrafts, setRemindDrafts] = useState<ReminderDraft[] | null>(null);
   const [remindSkipped, setRemindSkipped] = useState(0);
+  const [remindRemaining, setRemindRemaining] = useState(0);
   const [reminding, setReminding] = useState(false);
 
   useEffect(() => {
@@ -154,6 +155,7 @@ export function SpeakerDetailPage() {
     setRemindPreviewError(null);
     setRemindDrafts(null);
     setRemindSkipped(0);
+    setRemindRemaining(0);
     try {
       const res = await apiPost<{ drafts: ReminderDraft[]; skipped: number; remaining: number }>(
         `/events/${eventId}/onboarding/remind/preview`,
@@ -161,6 +163,7 @@ export function SpeakerDetailPage() {
       );
       setRemindDrafts(res.drafts);
       setRemindSkipped(res.skipped);
+      setRemindRemaining(res.remaining);
     } catch (err) {
       setRemindPreviewError(err instanceof ApiError ? err.message : 'Failed to load reminder preview');
     } finally {
@@ -173,6 +176,7 @@ export function SpeakerDetailPage() {
     setRemindPreviewError(null);
     setRemindDrafts(null);
     setRemindSkipped(0);
+    setRemindRemaining(0);
   }
 
   async function handleRemindSend() {
@@ -482,6 +486,7 @@ export function SpeakerDetailPage() {
           error={remindPreviewError}
           drafts={remindDrafts}
           skipped={remindSkipped}
+          remaining={remindRemaining}
           sending={reminding}
           onSend={handleRemindSend}
           onCancel={closeRemindReview}
