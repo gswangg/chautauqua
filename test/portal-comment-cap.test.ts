@@ -147,7 +147,7 @@ describe("POST /portal/tasks/:assignmentId/comments — DEC-244 amendment (wave 
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain(oversized);
-    expect(html).toContain(MAX_COMMENT_BODY_LENGTH.toLocaleString());
+    expect(html).toContain(MAX_COMMENT_BODY_LENGTH.toLocaleString("en-US"));
     expect(html).toContain("chq-field-error");
     expect(insertFileComment).not.toHaveBeenCalled();
   });

@@ -696,7 +696,7 @@ portalTasksRoutes.post("/tasks/:assignmentId/comments", csrfForm, async (c) => {
   }
   if (trimmed.length > MAX_COMMENT_BODY_LENGTH) {
     return reRenderWithCommentError(
-      `Reply is too long — keep it to ${MAX_COMMENT_BODY_LENGTH.toLocaleString()} characters or fewer.`,
+      `Reply is too long — keep it to ${MAX_COMMENT_BODY_LENGTH.toLocaleString("en-US")} characters or fewer.`,
     );
   }
 

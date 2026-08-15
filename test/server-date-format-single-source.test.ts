@@ -61,6 +61,14 @@ const BANNED = ["toLocaleDateString(", "toLocaleTimeString(", "toLocaleString("]
 //     "en-US")` on the NUMBER 2000 to group thousands in the DEC-124
 //     over-length field error for task instructions (CNT-01) -- again
 //     Number.prototype.toLocaleString, not a date.
+//   - src/routes/portal/tasks.tsx: calls `MAX_COMMENT_BODY_LENGTH
+//     .toLocaleString("en-US")` on the NUMBER 4000 to group thousands in the
+//     DEC-244 over-cap speaker-comment error copy -- again
+//     Number.prototype.toLocaleString, not a date.
+//   - src/routes/portal/tasks/views.tsx: calls the same
+//     `MAX_COMMENT_BODY_LENGTH.toLocaleString("en-US")` NUMBER in the reply
+//     textarea's quiet "Up to 4,000 characters." helper line (DEC-244) --
+//     same Number.prototype.toLocaleString, nothing to do with dates.
 const NAMED_EXEMPTIONS = new Set(
   [
     join(SRC_DIR, "lib/timezone.ts"),
@@ -68,6 +76,8 @@ const NAMED_EXEMPTIONS = new Set(
     join(SRC_DIR, "views/form-render.tsx"),
     join(SRC_DIR, "routes/public/submit.tsx"),
     join(SRC_DIR, "routes/tasks.ts"),
+    join(SRC_DIR, "routes/portal/tasks.tsx"),
+    join(SRC_DIR, "routes/portal/tasks/views.tsx"),
   ].map((p) => relative(REPO_ROOT, p)),
 );
 

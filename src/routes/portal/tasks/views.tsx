@@ -118,7 +118,7 @@ export function CommentThread(props: {
         <textarea name="body" class="chq-textarea" required maxLength={MAX_COMMENT_BODY_LENGTH}>
           {draftBody ?? ""}
         </textarea>
-        <p class="chq-portal-sub">Up to {MAX_COMMENT_BODY_LENGTH.toLocaleString()} characters.</p>
+        <p class="chq-portal-sub">Up to {MAX_COMMENT_BODY_LENGTH.toLocaleString("en-US")} characters.</p>
         <button type="submit" class="chq-btn chq-btn-secondary">Reply</button>
       </form>
     </section>
