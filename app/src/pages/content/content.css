@@ -804,6 +804,15 @@
   flex: 0 1 340px;
 }
 
+/* w18-d (DEC-902 amendment): table-layout:auto handed the remainder to the
+   LAST unwidthed column, not the first -- with both File and the trailing
+   actions <th> unwidthed, the fleet measured File at 127px and Actions at
+   923px. table-layout:fixed makes every column's width explicit, so File
+   (the only column with no width class) is the SOLE remainder column. */
+.chq-content-files-table {
+  table-layout: fixed;
+}
+
 /* Fixed-width size column so numerals align (DEC-902). */
 .chq-content-files-table .chq-content-files-col-size {
   width: 92px;
@@ -815,13 +824,17 @@
   white-space: nowrap;
 }
 
-/* w4-c (DEC-902 amendment): Session gets a fixed share of the grid
-   (docs/design/Chautauqua Content.dc.html:311 -- 1fr 190px 108px 92px auto)
-   so auto table layout stops handing it the File column's room, which was
-   wrapping filenames mid-token. File carries no width class -- it takes
-   the remainder (the `1fr`). */
+/* Session gets a fixed share of the grid (docs/design/Chautauqua
+   Content.dc.html:311 -- 1fr 190px 108px 92px auto). */
 .chq-content-files-table .chq-content-files-col-session {
   width: 190px;
+}
+
+/* Trailing actions column hugs its content (Download link) instead of
+   claiming the remainder now that table-layout is fixed. */
+.chq-content-files-table .chq-content-files-col-actions {
+  width: 1px;
+  white-space: nowrap;
 }
 
 /* w5-i: bold accent caps -- "v3" reads as "V3" in the brand ink, matching

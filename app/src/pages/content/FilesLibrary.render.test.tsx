@@ -177,6 +177,67 @@ describe('FilesLibrary render smoke', () => {
     expect(sizeMatch![1]).toMatch(/width:\s*92px/);
   });
 
+  // w18-d (DEC-902 amendment): under table-layout:auto the remainder went
+  // to the LAST unwidthed column -- the trailing actions <th>/<td>, not
+  // File -- so the fleet measured File at 127px and Actions at 923px. The
+  // actions column now carries its own hug-width class, leaving File as
+  // the sole remainder column.
+  it('pins the trailing actions header and cell to the hug-width class (w18-d, DEC-902)', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope(
+        [
+          {
+            rootFileId: 'file-v1',
+            latestFileId: 'file-v2',
+            filename: 'slides.pdf',
+            kind: 'presentation',
+            submissionId: 'sub-1',
+            submissionRef: 'SES-014',
+            submissionTitle: 'Scaling Vector Search',
+            speakerName: 'Priya Raman',
+            uploadedAt: 1700000000000,
+            versionCount: 2,
+            versionNo: 2,
+            sizeBytes: 1234567,
+            uploaderName: 'Priya Raman',
+          },
+        ],
+        { kindCounts: { ...ALL_ZERO_KIND_COUNTS, presentation: 1 } },
+      ),
+    });
+
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('files-library')).toBeInTheDocument();
+    });
+    await screen.findByText('slides.pdf');
+
+    const table = screen.getByRole('table');
+    const headers = within(table).getAllByRole('columnheader');
+    const actionsHeader = headers[headers.length - 1]!;
+    expect(actionsHeader).toHaveClass('chq-content-files-col-actions');
+
+    const rows = within(table).getAllByRole('row');
+    const dataRow = rows[1]!;
+    const cells = within(dataRow).getAllByRole('cell');
+    const actionsCell = cells[cells.length - 1]!;
+    expect(actionsCell).toHaveClass('chq-content-files-col-actions');
+  });
+
+  // w18-d (DEC-902 amendment): table-layout:fixed makes every column's
+  // width explicit so the browser stops handing the remainder to whichever
+  // unwidthed column happens to be last.
+  it('the files table declares table-layout:fixed and the actions column hugs its content (w18-d, DEC-902)', () => {
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'content.css'), 'utf-8');
+    const tableMatch = css.match(/\.chq-content-files-table\s*\{([^}]*)\}/);
+    const actionsMatch = css.match(/\.chq-content-files-table \.chq-content-files-col-actions\s*\{([^}]*)\}/);
+    expect(tableMatch).not.toBeNull();
+    expect(actionsMatch).not.toBeNull();
+    expect(tableMatch![1]).toMatch(/table-layout:\s*fixed/);
+    expect(actionsMatch![1]).toMatch(/width:\s*1px/);
+    expect(actionsMatch![1]).toMatch(/white-space:\s*nowrap/);
+  });
+
   it('renders a headshot row as a plain filename with its own version number', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {
       throw new Error('console.error called during render');

@@ -309,8 +309,15 @@ export function ContentApp() {
   // DeliverableDetail owns the <h1>.
   const showOwnHeading = submissionId ? !selected : view !== 'files';
 
+  // w18-d (DEC-989 amendment): worklist and files are table/row-and-column
+  // layouts at the 1440 table measure; once submissionId resolves to a
+  // DeliverableDetail (a reading surface), the page clamps to the 1180
+  // reading measure instead -- on this SAME chq-page root, never an inner
+  // wrapper (that mistake has been filed three times in this repo).
+  const pageMeasureClass = submissionId && selected ? 'chq-measure-wide' : 'chq-measure-table';
+
   return (
-    <div className="chq-page chq-content-page chq-measure-table">
+    <div className={`chq-page chq-content-page ${pageMeasureClass}`}>
       {(showOwnHeading || !submissionId) && (
         <div className="chq-content-summary-row">
           {showOwnHeading && <h1 className="chq-page-title">Content</h1>}

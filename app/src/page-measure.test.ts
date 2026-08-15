@@ -317,6 +317,37 @@ describe('page measure (DEC-744/DEC-808/DEC-989)', () => {
     expect(content).toMatch(/className=\{`chq-page chq-comms-page \$\{pageMeasureClass\}`\}/);
   });
 
+  // w18-d (DEC-989 amendment): ContentApp.tsx is per-view, not a flat
+  // chq-measure-table literal like the other table-class pages above --
+  // worklist/files (row-and-column layouts) stay at the 1440 table measure,
+  // but once submissionId resolves to a DeliverableDetail (a reading
+  // surface) the page clamps to the 1180 chq-measure-wide instead, on the
+  // SAME chq-page root every other view uses (not an inner body wrapper).
+  // The two early-return (event-loading/no-event) literals stay on the flat
+  // table-measure literal and are still covered by the enumerating scan
+  // above and by the table-class-pages case.
+  it('ContentApp.tsx clamps a resolved DeliverableDetail at chq-measure-wide and every other view at chq-measure-table, on the page root', () => {
+    const content = readFileSync(join(PAGES_ROOT, 'content/ContentApp.tsx'), 'utf-8');
+
+    // The two early-return (loading/no-event) literals still carry the flat
+    // table-measure literal, and are covered by the enumerating scan.
+    const literals = content.match(/className="chq-page[^"]*"/g) ?? [];
+    const rootLiterals = literals.filter((l) => l.slice('className="'.length, -1).split(/\s+/).includes('chq-page'));
+    expect(rootLiterals.length).toBeGreaterThan(0);
+    for (const literal of rootLiterals) {
+      expect(literal).toContain('chq-measure-table');
+    }
+
+    // The main-render page root is a per-view template literal, not a fixed
+    // className="..." literal -- assert on the ternary that computes it
+    // directly, both that it exists and that it maps exactly
+    // resolved-detail->chq-measure-wide, everything else->chq-measure-table.
+    expect(content).toMatch(
+      /const pageMeasureClass = submissionId && selected \? 'chq-measure-wide' : 'chq-measure-table';/,
+    );
+    expect(content).toMatch(/className=\{`chq-page chq-content-page \$\{pageMeasureClass\}`\}/);
+  });
+
   it('Agenda carries no measure class (the one canvas)', () => {
     const content = readFileSync(join(PAGES_ROOT, 'Agenda.tsx'), 'utf-8');
     const literals = content.match(/className="chq-page[^"]*"/g) ?? [];
