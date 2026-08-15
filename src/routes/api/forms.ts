@@ -10,7 +10,8 @@ import { ApiError } from "../../server/http";
 import { MAX_LONG_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
 import { overCapCountMessage } from "../../domain/cap-copy";
 import { validateFieldDefInput, isPermutation, type FieldDefInput } from "../../forms/builder";
-import type { FormFieldDef, FormFieldRule } from "../../forms/types";
+import type { FormFieldDef, FormFieldRole, FormFieldRule } from "../../forms/types";
+import { FORM_FIELD_ROLES } from "../../forms/types";
 import * as repo from "../../server/repo/forms";
 import type { FormFieldRow } from "../../server/repo/forms";
 import { listTracksForEvent } from "../../server/repo/events";
@@ -233,6 +234,67 @@ formsRoutes.patch("/api/v1/fields/:fieldId", requireOrganizer, csrfJson, async (
     });
   }
 
+  // DEC-592 (findings wave 13): role is a two-way door -- null clears it, a
+  // FORM_FIELD_ROLES member grants it. Anything else is a 400 keyed `role`.
+  if (body.role !== undefined && body.role !== null && !FORM_FIELD_ROLES.includes(body.role as FormFieldRole)) {
+    throw new ApiError("invalid", "Validation failed", {
+      role: `must be one of ${FORM_FIELD_ROLES.join(", ")}, or null`,
+    });
+  }
+  const grantingRole = body.role !== undefined && body.role !== null;
+
+  // Locked built-in fields can never be given a role (they're already
+  // resolved by their own id/kind, and DEC-592's role-tagged fields are
+  // always minted non-locked precisely so they can be reconfigured).
+  if (grantingRole && field.locked) {
+    throw new ApiError("invalid", "Locked built-in fields cannot be given a role", {
+      role: "Not allowed on a locked field",
+    });
+  }
+
+  // A field that carries or is being given a role must be a session-section
+  // dropdown -- that's the shape every role-keyed reader (getFieldOptionsByRole,
+  // the New-submission Format select, auto-schedule's duration fallback)
+  // assumes.
+  if (grantingRole) {
+    const effectiveKind = typeof body.kind === "string" ? body.kind : field.kind;
+    const effectiveSection = typeof body.section === "string" ? body.section : field.section;
+    if (effectiveKind !== "dropdown" || effectiveSection !== "session") {
+      throw new ApiError("invalid", "A role can only be granted to a session-section dropdown field", {
+        role: "must be a session-section dropdown field",
+      });
+    }
+  }
+
+  // A kind/section change is refused while the field already carries a role
+  // -- same refusal shape as the locked-field kind/section guard above; a
+  // role-tagged field must clear its role first (via this same route) before
+  // its kind or section can change.
+  if (field.role != null) {
+    const roleKindSectionErrors: Record<string, string> = {};
+    if (body.kind !== undefined && body.kind !== field.kind) {
+      roleKindSectionErrors.kind = "cannot be changed while the field carries a role";
+    }
+    if (body.section !== undefined && body.section !== field.section) {
+      roleKindSectionErrors.section = "cannot be changed while the field carries a role";
+    }
+    if (Object.keys(roleKindSectionErrors).length > 0) {
+      throw new ApiError("invalid", "Role-tagged fields' kind and section cannot be changed", roleKindSectionErrors);
+    }
+  }
+
+  // DEC-592 (findings wave 13): at most one field per (form, role) -- a
+  // grant that would create a second 400s naming the field that already
+  // holds it.
+  if (grantingRole) {
+    const incumbent = await repo.findFieldByRole(c.var.db, field.formId, body.role as FormFieldRole);
+    if (incumbent && incumbent.id !== fieldId) {
+      throw new ApiError("invalid", `"${incumbent.label}" (${incumbent.id}) already has this role`, {
+        role: `already granted to "${incumbent.label}" (${incumbent.id})`,
+      });
+    }
+  }
+
   const siblings = (await repo.listFields(c.var.db, field.formId)).filter((f) => f.id !== fieldId);
   const siblingDefs = toDefList(siblings);
   const result = validateFieldDefInput(body, siblingDefs, { id: fieldId, kind: field.kind });
@@ -304,6 +366,7 @@ formsRoutes.patch("/api/v1/fields/:fieldId", requireOrganizer, csrfJson, async (
     rule: body.rule !== undefined ? (body.rule === null ? null : (body.rule as FormFieldRule)) : undefined,
     section: typeof body.section === "string" ? (body.section as FormFieldDef["section"]) : undefined,
     kind: typeof body.kind === "string" ? (body.kind as FormFieldDef["kind"]) : undefined,
+    role: body.role !== undefined ? (body.role === null ? null : (body.role as FormFieldRole)) : undefined,
   });
 
   return c.json(toPublicField(updated));
@@ -319,6 +382,17 @@ formsRoutes.delete("/api/v1/fields/:fieldId", requireOrganizer, csrfJson, async 
 
   if (field.locked) {
     throw new ApiError("invalid", "Locked built-in fields cannot be removed");
+  }
+
+  // DEC-592 (findings wave 13): a role-tagged field is the ONE resolution
+  // site every role-keyed reader depends on -- deleting it out from under
+  // them would silently kill the public ?format= facet, the reviewer
+  // queue's format, auto-schedule's duration fallback and the submissions
+  // format/audienceLevel contract. Refuse and say what to do instead.
+  if (field.role != null) {
+    throw new ApiError("invalid", `"${field.label}" is used to resolve this event's ${field.role} answers; clear its role first, then delete it.`, {
+      role: "clear its role first",
+    });
   }
 
   const { dependentLabels, answerCount } = await repo.describeFieldDependents(c.var.db, field.formId, fieldId);

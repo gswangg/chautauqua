@@ -30,6 +30,7 @@ export interface FieldDefInput {
   required?: unknown;
   options?: unknown;
   rule?: unknown;
+  role?: unknown;
 }
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {

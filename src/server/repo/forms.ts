@@ -399,6 +399,9 @@ export interface FieldPatch {
   rule?: FormFieldRule | null;
   section?: FormFieldDef["section"];
   kind?: FormFieldDef["kind"];
+  // DEC-592 (findings wave 13): undefined = untouched, null = clear the
+  // role, a FormFieldRole = grant it.
+  role?: FormFieldRole | null;
 }
 
 export async function patchField(db: Db, fieldId: string, patch: FieldPatch): Promise<FormFieldRow> {
@@ -423,12 +426,27 @@ export async function patchField(db: Db, fieldId: string, patch: FieldPatch): Pr
             ? null
             : undefined,
       ruleJson: patch.rule !== undefined ? (patch.rule ? JSON.stringify(patch.rule) : null) : undefined,
+      role: patch.role !== undefined ? patch.role : undefined,
       updatedAt: new Date(),
     })
     .where(eq(schema.formField.id, fieldId));
   const updated = await findFieldById(db, fieldId);
   if (!updated) throw new Error(`field ${fieldId} not found after update`);
   return updated;
+}
+
+/** DEC-592 (findings wave 13): the field, if any, already holding `role` on
+ * `formId` -- read before a grant so the route can 400 naming the incumbent
+ * instead of the DB silently ending up with two. Set-based (one query, no
+ * per-field loop). */
+export async function findFieldByRole(db: Db, formId: string, role: FormFieldRole): Promise<FormFieldRow | null> {
+  const rows = await db
+    .select()
+    .from(schema.formField)
+    .where(and(eq(schema.formField.formId, formId), eq(schema.formField.role, role)))
+    .limit(1);
+  const row = rows[0];
+  return row ? toFieldRow(row) : null;
 }
 
 /** DEC-300: what would silently break if `fieldId` were deleted right now —
