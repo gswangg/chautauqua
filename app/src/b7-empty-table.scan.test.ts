@@ -101,6 +101,44 @@ const TD_RE = /<td\b([^>]*)>([\s\S]*?)<\/td>/g;
 const NO_NOTHING_RE = /\b(No|Nothing)\b/;
 const PERMITTED_CONTENT_RE = /<(PageSkeleton|DelayedLoading)\b/;
 
+// Second fingerprint (DEC-678 amendment, w51-b): the `<td className="chq-
+// empty">` shape only catches the retired pattern when it's still inside a
+// table. B7's filtered-vs-fresh split is load-bearing outside <td> too --
+// e.g. a bare `<p className="chq-empty">No sends match "{q}".</p>` sitting
+// beside a search input. That line carries the SAME offense (the flat,
+// escape-less `chq-empty` register standing in for EmptyState's 'filtered'
+// variant) without ever being a <td>.
+//
+// This fingerprint is deliberately narrow: it fires only on an element
+// whose className tokens include the EXACT token `chq-empty` (never the
+// `chq-empty-block`/`chq-empty-what`/... family EmptyState itself renders --
+// those are the fix, not the offense) AND whose JSX children interpolate a
+// search/filter identifier (`{q`, `{query`, `{search`, `{filter`). A lone,
+// unparameterised `chq-empty` line (a rail's or sub-list's one-line "nothing
+// here" message) is explicitly blessed -- see the comment at the top of
+// app/src/components/EmptyState.tsx -- and is NOT flagged; only the
+// filtered-search voice is retired.
+const CHQ_EMPTY_ELEMENT_RE = /<(\w+)\b([^>]*\bclassName=(?:"[^"]*"|'[^']*')[^>]*)>([\s\S]*?)<\/\1>/g;
+const FILTER_IDENTIFIER_RE = /\{(q|query|search|filter)\b/;
+
+function scanFilteredEmptyProse(relFile: string, source: string): Offense[] {
+  const offenses: Offense[] = [];
+  let m: RegExpExecArray | null;
+  CHQ_EMPTY_ELEMENT_RE.lastIndex = 0;
+  while ((m = CHQ_EMPTY_ELEMENT_RE.exec(source))) {
+    const tag = m[1];
+    if (tag === 'td') continue; // covered by the first fingerprint above
+    const attrs = m[2] ?? '';
+    const content = m[3] ?? '';
+    const tokens = classTokens(attrs);
+    if (!tokens.has('chq-empty')) continue;
+    if (!FILTER_IDENTIFIER_RE.test(content)) continue;
+    const line = lineOf(source, m.index);
+    offenses.push({ file: relFile, line, text: stripJsxExpressions(content).replace(/\s+/g, ' ').trim() });
+  }
+  return offenses;
+}
+
 function scanFile(relFile: string, source: string): Offense[] {
   const offenses: Offense[] = [];
   let m: RegExpExecArray | null;
@@ -125,6 +163,7 @@ function scanFile(relFile: string, source: string): Offense[] {
       offenses.push({ file: relFile, line, text: literalText });
     }
   }
+  offenses.push(...scanFilteredEmptyProse(relFile, source));
   return offenses;
 }
 
@@ -150,4 +189,47 @@ describe('DEC-678 B7 rule 6: a loaded, empty row set never renders as a bare <td
       ).toEqual([]);
     });
   }
+
+  describe('second fingerprint: a filtered chq-empty line outside a <td> (negative control on a synthetic source)', () => {
+    it('flags a non-<td> element carrying chq-empty and interpolating the search query', () => {
+      const source = `
+        function C() {
+          return <p className="chq-empty">No sends match &ldquo;{q.trim()}&rdquo;.</p>;
+        }
+      `;
+      const offenses = scanFilteredEmptyProse('synthetic.tsx', source);
+      expect(offenses).toHaveLength(1);
+    });
+
+    it('does NOT flag an unparameterised one-line chq-empty message (blessed rail/sub-list voice)', () => {
+      const source = `
+        function C() {
+          return <p className="chq-empty">No duplicate groups found.</p>;
+        }
+      `;
+      expect(scanFilteredEmptyProse('synthetic.tsx', source)).toEqual([]);
+    });
+
+    it('does NOT flag EmptyState\'s own chq-empty-block/-what family, even alongside a filter identifier', () => {
+      const source = `
+        function C() {
+          return (
+            <div className="chq-empty-block chq-empty-block-filtered">
+              <p className="chq-empty-what">No sends match {q}.</p>
+            </div>
+          );
+        }
+      `;
+      expect(scanFilteredEmptyProse('synthetic.tsx', source)).toEqual([]);
+    });
+
+    it('does NOT re-flag a <td className="chq-empty"> (already covered by the first fingerprint)', () => {
+      const source = `
+        function C() {
+          return <td className="chq-empty">No matches for {q}.</td>;
+        }
+      `;
+      expect(scanFilteredEmptyProse('synthetic.tsx', source)).toEqual([]);
+    });
+  });
 });

@@ -72,8 +72,18 @@ export function HistoryTab({ eventId, templatesById }: { eventId: string; templa
       </div>
 
       {loading && <DelayedLoading />}
+      {/* B7 (DEC-678 amendment): a search that excludes every send keeps the
+          search chrome above it, names the query as the excluding facet, and
+          offers an escape that clears exactly that facet -- never the
+          `chq-empty` one-line register, which is the retired flat message
+          B7 rule 6 targets. */}
       {!loading && loaded && items.length === 0 && q.trim() !== '' && (
-        <p className="chq-empty">No sends match &ldquo;{q.trim()}&rdquo;.</p>
+        <EmptyState
+          variant="filtered"
+          what="No sends match your search."
+          reason={`No sends match “${q.trim()}”.`}
+          escape={{ label: 'Clear the search', onClick: () => setQ('') }}
+        />
       )}
       {/* B7 (DEC-678 amendment): totally fresh (never sent anything, no
           search applied) REPLACES the batch table entirely -- it never
@@ -97,7 +107,7 @@ export function HistoryTab({ eventId, templatesById }: { eventId: string; templa
         />
       )}
 
-      <p className="chq-summary">{total} total</p>
+      {items.length > 0 && <p className="chq-summary">{total} total</p>}
     </div>
   );
 }
