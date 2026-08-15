@@ -390,10 +390,16 @@ describe("GET / — published row matches the authoritative frame (w28-a)", () =
 });
 
 describe("HOME_CSS — desktop frame values (w28-a)", () => {
-  it("shell background is var(--chq-paper)", () => {
+  // DEC-582 Amendment (wave 48): the shell is full bleed and no longer
+  // carries its own background/border/max-width -- the paper ground shows
+  // through it (see test/public-home-full-bleed.test.ts for the full
+  // shell/header/body/footer coverage).
+  it("shell carries no background, border or max-width of its own", () => {
     const shellRule = HOME_CSS.split("}").find((r) => r.includes(".chq-home-shell {"));
     expect(shellRule).toBeDefined();
-    expect(shellRule).toContain("var(--chq-paper)");
+    expect(shellRule).not.toContain("var(--chq-paper)");
+    expect(shellRule).not.toMatch(/\bborder\s*:/);
+    expect(shellRule).not.toMatch(/max-width\s*:/);
   });
 
   it("body gap is 34px", () => {

@@ -14,13 +14,19 @@ void DEC_373;
 void DEC_374;
 void DEC_582;
 
+// Chrome is always full bleed (docs/design/README.md §Widths): the shell
+// itself carries no max-width/border/background -- header, body and footer
+// rules run edge to edge while their content sits in a shared 820px centred
+// measure via padding-inline.
+const HOME_MEASURE = "padding-inline: max(34px, calc((100% - 820px) / 2));";
+
 export const HOME_CSS = `
-  .chq-home-shell { max-width: 900px; margin: 0 auto; background: var(--chq-paper); border: 1px solid var(--chq-rule); border-radius: 6px; overflow: hidden; }
-  .chq-home-header { border-bottom: 1px solid var(--chq-ink); padding: 15px 44px; display: flex; align-items: center; gap: 20px; }
+  .chq-home-shell { display: flex; flex-direction: column; }
+  .chq-home-header { border-bottom: 1px solid var(--chq-ink); padding-block: 15px; ${HOME_MEASURE} display: flex; align-items: center; gap: 20px; }
   .chq-home-org { font-family: var(--chq-font-display); font-size: 20px; font-weight: 700; letter-spacing: -0.03em; }
   .chq-home-signin { margin-left: auto; font-size: 13px; font-weight: 700; text-decoration: none; }
 
-  .chq-home-body { padding: 36px 44px 40px; display: flex; flex-direction: column; gap: 34px; }
+  .chq-home-body { padding-block: 36px 40px; ${HOME_MEASURE} display: flex; flex-direction: column; gap: 34px; }
   .chq-home-hero { display: flex; flex-direction: column; gap: 10px; }
   .chq-home-hero h1 { margin: 0; font-family: var(--chq-font-display); font-size: 44px; font-weight: 700; letter-spacing: -0.042em; line-height: 1.2; }
   .chq-home-hero p { margin: 0; font-size: 16px; line-height: 1.65; color: var(--chq-ink-2); max-width: 54ch; }
@@ -41,7 +47,7 @@ export const HOME_CSS = `
   .chq-home-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
   .chq-home-action-primary { background: var(--chq-brand); color: var(--chq-on-brand); border-radius: var(--chq-r-ctl); min-height: 48px; display: flex; align-items: center; padding: 0 20px; font-size: 15px; font-weight: 700; white-space: nowrap; text-decoration: none; }
   .chq-home-action-secondary { border: 1px solid var(--chq-border-strong); border-radius: var(--chq-r-ctl); background: var(--chq-surface-sunk); min-height: 46px; display: flex; align-items: center; padding: 0 18px; font-size: 14px; font-weight: 600; color: var(--chq-ink-strong); white-space: nowrap; text-decoration: none; }
-  .chq-home-action-quiet { font-size: 13px; font-weight: 700; white-space: nowrap; min-height: 44px; display: flex; align-items: center; }
+  .chq-home-action-quiet { font-size: 13px; font-weight: 700; white-space: nowrap; display: flex; align-items: center; }
 
   .chq-home-row-published { padding: 18px 0; }
   .chq-home-row-published .chq-home-name { font-size: 21px; letter-spacing: -0.025em; line-height: 1.25; }
@@ -54,7 +60,7 @@ export const HOME_CSS = `
 
   .chq-home-signin-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 
-  .chq-home-footer { border-top: 1px solid var(--chq-rule); background: var(--chq-surface-sunk); padding: 18px 44px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .chq-home-footer { border-top: 1px solid var(--chq-rule); background: var(--chq-surface-sunk); padding-block: 18px; ${HOME_MEASURE} display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
   .chq-home-footer-text { font-size: 12px; color: var(--chq-muted); line-height: 1.5; }
   /* Inline flow, not inline-flex: a flex link takes its baseline from the
      SVG's bottom edge, floating the whole "mark + name" above the sentence's
@@ -64,10 +70,10 @@ export const HOME_CSS = `
   .chq-home-github-mark { vertical-align: -2px; margin-right: 5px; }
 
   @media (max-width: 700px) {
-    .chq-home-header { padding: 14px 16px; }
-    .chq-home-body { padding: 20px 16px; gap: 24px; }
+    .chq-home-header { padding-block: 14px; padding-inline: 16px; }
+    .chq-home-body { padding-block: 20px; padding-inline: 16px; gap: 24px; }
     .chq-home-hero h1 { font-size: 30px; }
-    .chq-home-footer { padding: 12px 16px 16px; }
+    .chq-home-footer { padding-block: 12px 16px; padding-inline: 16px; }
 
     .chq-home-row {
       grid-template-columns: 1fr;
