@@ -45,15 +45,19 @@
   grid-template-columns: 1fr 150px 190px 210px auto;
   gap: 20px;
   align-items: center;
-  padding: 16px 0;
+  padding: 16px 0 16px 16px;
   border-bottom: 1px solid var(--chq-hairline);
   cursor: pointer;
 }
 
+/* B8 selected-row edge (DEC-745 amendment, w4-a; see styles.css for the
+   shared pattern this follows): the band inherits the page's column grid
+   -- no negative margin-inline bleed. The 3px olive edge replaces 3px of
+   the row's own 16px left padding so selecting a row shifts nothing. */
 .chq-review-plan-row.is-active {
   background: var(--chq-surface-sunk);
-  margin-inline: -16px;
-  padding-inline: 16px;
+  border-left: 3px solid var(--chq-brand);
+  padding-left: 13px;
 }
 
 /* DEC-674: the landing page's region two/three wrappers -- each holds a

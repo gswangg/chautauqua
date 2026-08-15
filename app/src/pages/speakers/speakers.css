@@ -434,10 +434,16 @@
 /* DEC-869 (wave-9 amendment): the item in force gets its own tint, distinct
    from BOTH the panel surface (--chq-surface) and the :hover background
    above (--chq-hairline), so hovering a non-current row can never read as
-   more "in force" than the row actually in force. */
+   more "in force" than the row actually in force.
+   B8 selected-row edge (DEC-745 amendment, w4-a; see styles.css for the
+   shared pattern): the fill alone read as flat, so the item in force
+   also gets the 3px olive left edge, giving back 3px of its own 8px
+   left padding so the label doesn't shift. */
 .chq-participation-menu-item.is-current {
   font-weight: 700;
   background: var(--chq-surface-sunk);
+  border-left: 3px solid var(--chq-brand);
+  padding-left: 5px;
 }
 
 .chq-participation-menu-item-label {

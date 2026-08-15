@@ -870,8 +870,16 @@ a:hover {
   font-weight: 500;
 }
 
+/* B8 selected-row edge (DEC-745 amendment, w4-a): the current step's fill
+   alone read as flat next to the other steps' 1px column-separator
+   border-left -- give it the same 3px olive left edge every other
+   selected/current row in the app now carries, reducing its own
+   padding-left by 2 to compensate for the border growing from the
+   separator's 1px to 3px. */
 .chq-step.is-current {
   background: var(--chq-surface-sunk);
+  border-left: 3px solid var(--chq-brand);
+  padding-left: 14px;
 }
 
 .chq-step.is-current .chq-step-num {
@@ -1691,3 +1699,36 @@ a:hover {
   flex-wrap: wrap;
   padding-top: 6px;
 }
+
+/* ---------------------------------------------------------------------
+   B8 selected-row edge (DEC-745 amendment, w4-a) -- shared declaration
+   set for any list row that carries a 'currently selected/viewed' state
+   (`.is-active` / `.is-current`) painted with `var(--chq-surface-sunk)`.
+   Per DESIGN-RULINGS.md B8: "a selected band inherits its parent's
+   column grid ... content insets 16px from the band edge" -- the band
+   must NOT escape the page's reading measure via a negative
+   margin-inline bleed. Instead:
+     - the row's UNSELECTED state reserves the full 16px inset as
+       ordinary `padding-left: 16px` (no `margin-inline`);
+     - the row's SELECTED state paints `background:
+       var(--chq-surface-sunk)` plus a 3px olive left edge
+       (`border-left: 3px solid var(--chq-brand)`), and gives back
+       exactly 3px of that padding (`padding-left: 13px`) so selecting
+       a row shifts none of its content -- 3px border + 13px padding
+       == the row's own 16px inset.
+   This is a documented pattern, not a single reusable class, because
+   each consuming stylesheet (review.css, speakers.css, ...) owns a
+   row selector with its own grid/box-model; apply the two rules below
+   verbatim against that selector and its `.is-active`/`.is-current`
+   modifier:
+
+     .your-row-selector {
+       padding-left: 16px;
+     }
+
+     .your-row-selector.is-active {  (or .is-current, whichever the row uses)
+       background: var(--chq-surface-sunk);
+       border-left: 3px solid var(--chq-brand);
+       padding-left: 13px;
+     }
+   ----------------------------------------------------------------------- */
