@@ -22,8 +22,11 @@ import { registerBulkEmailRoutes } from "./bulk-email";
 export const contactsRoutes = new Hono<AppEnv>();
 
 // NOTE: see events.ts for why a blanket `.use("*", requireOrganizer)` is
-// unsafe once mounted under /api/v1 alongside sibling sub-apps — scope to
-// this router's own path prefixes instead (DEC-060 w8-d finding).
+// unsafe once mounted under /api/v1 alongside sibling sub-apps — Hono DOES
+// rewrite "*" with the mount prefix, but "/api/v1/*" still matches every
+// sibling sub-app's routes too, not just this router's own. Scope to this
+// router's own path prefixes instead (DEC-060 wave-34 amendment), enforced
+// by test/role-refusal-probe.test.ts (DEC-459 wave-32).
 contactsRoutes.use("/contacts", requireOrganizer);
 contactsRoutes.use("/contacts/*", requireOrganizer);
 contactsRoutes.use("/segments", requireOrganizer);

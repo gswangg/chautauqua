@@ -379,14 +379,21 @@ function patternMatchesManifestPath(pattern: string, concretePath: string): bool
   return pSegs.every((seg, i) => seg.startsWith(":") || seg === cSegs[i]);
 }
 
-/** Every registered GET route pattern in the composed app, deduped. */
-function enumerateComposedGetPatterns(): string[] {
+/** Every registered route pattern in the composed app for `method`, deduped.
+ * Generalized (DEC-618 wave-34 amendment) so the `METHOD /path` direction
+ * below reuses this same enumeration technique instead of writing a second
+ * one. */
+function enumerateComposedPatterns(method: string): string[] {
   const patterns = new Set<string>();
   for (const route of composedApp.routes) {
-    if (route.method !== "GET") continue;
+    if (route.method !== method) continue;
     patterns.add(route.path);
   }
   return Array.from(patterns).sort();
+}
+
+function enumerateComposedGetPatterns(): string[] {
+  return enumerateComposedPatterns("GET");
 }
 
 // Routes this test deliberately does not require a ROUTE_MANIFEST entry
@@ -570,5 +577,71 @@ describe("docs/AUDIT.md cap claims vs live constants (DEC-618 wave-30 amendment)
     expect(unclaimed, `constant(s) never named as a \`NAME\`=<number> claim in docs/AUDIT.md: ${unclaimed.join(", ")}`).toEqual(
       [],
     );
+  });
+});
+
+// DEC-618 wave-34 amendment: extractBacktickRoutePaths above only extracts a
+// backtick span STARTING with '/', so a `` `METHOD /path` `` span (e.g.
+// `` `POST /admin/content-notes` ``) was never checked against anything —
+// a claim naming a route that plain doesn't exist could sit in the document
+// undetected. This is a second, independent direction: every backtick span
+// of the shape `METHOD /path` is resolved against the COMPOSED app's own
+// registered route table (composedApp.routes, via enumerateComposedPatterns
+// above — the same enumeration technique the DEC-679 direction already
+// uses, not a second hand-written one), with dynamic segments normalized so
+// a claim's param NAME need not match the route file's param name (":id"
+// and ":eventId" both just mean "some dynamic segment" here, same
+// reasoning as patternMatchesManifestPath above).
+
+type MethodRouteClaim = { method: string; path: string; raw: string };
+
+const METHOD_ROUTE_RE = /`(GET|POST|PUT|PATCH|DELETE) (\/[^`]*)`/g;
+
+/** Every `` `METHOD /path` `` backtick span in `markdown`. */
+function extractMethodRouteClaims(markdown: string): MethodRouteClaim[] {
+  const claims: MethodRouteClaim[] = [];
+  let m: RegExpExecArray | null;
+  const re = new RegExp(METHOD_ROUTE_RE);
+  while ((m = re.exec(markdown))) {
+    claims.push({ method: m[1]!, path: m[2]!, raw: m[0]! });
+  }
+  return claims;
+}
+
+/** Replaces every dynamic Hono segment (one starting with ":") with a
+ * single normalized marker, so ":id" and ":eventId" compare equal. */
+function normalizeDynamicSegments(path: string): string {
+  return path
+    .split("/")
+    .map((seg) => (seg.startsWith(":") ? ":param" : seg))
+    .join("/");
+}
+
+describe("docs/AUDIT.md `METHOD /path` claims resolve against the composed app (DEC-618 wave-34 amendment)", () => {
+  const auditText = readFileSync(AUDIT_PATH, "utf-8");
+  const claims = extractMethodRouteClaims(auditText);
+  const auditLines = auditText.split("\n");
+
+  const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
+  const composedByMethod = new Map<string, Set<string>>(
+    METHODS.map((method) => [
+      method,
+      new Set(enumerateComposedPatterns(method).map(normalizeDynamicSegments)),
+    ]),
+  );
+
+  it("parses at least 5 `METHOD /path` claims (tripwire: this direction would be vacuous otherwise)", () => {
+    expect(claims.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it("every `METHOD /path` claim resolves against a registered route in the composed app", () => {
+    const unresolved = claims
+      .filter((c) => !composedByMethod.get(c.method)!.has(normalizeDynamicSegments(c.path)))
+      .map((c) => {
+        const lineIdx = auditLines.findIndex((l) => l.includes(c.raw));
+        const line = lineIdx === -1 ? "?" : lineIdx + 1;
+        return `docs/AUDIT.md:${line} claims \`${c.raw}\`, but no such route is registered in the composed app`;
+      });
+    expect(unresolved).toEqual([]);
   });
 });

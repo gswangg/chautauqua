@@ -56,13 +56,17 @@ void DEC_519;
 export const eventsRoutes = new Hono<AppEnv>();
 
 // NOTE: a blanket `.use("*", requireOrganizer)` here is unsafe once this
-// sub-app is mounted via app.route("/api/v1", eventsRoutes) in
-// src/index.ts: Hono does not rewrite a bare "*" pattern with the mount
-// prefix, so it ends up matching every request against the FULLY
-// COMPOSED app (i.e. also every other sub-app mounted under /api/v1,
-// like /api/v1/me and /api/v1/review/*), not just this router's own
-// routes. Scope the middleware to this router's own path prefixes
-// instead (found live in the w8-d walkthrough, DEC-060).
+// sub-app is mounted via app.route("/api/v1", eventsRoutes) in src/index.ts.
+// Hono DOES rewrite "*" with the mount prefix (mergePath in
+// node_modules/hono/dist/hono-base.js merges "/api/v1" + "*" into
+// "/api/v1/*"), but that is exactly the problem: "/api/v1/*" still matches
+// every sibling sub-app mounted under /api/v1 too (e.g. /api/v1/me and
+// /api/v1/review/*), not just this router's own routes. Scope the
+// middleware to this router's own path prefixes instead (DEC-060 wave-34
+// amendment). test/role-refusal-probe.test.ts (DEC-459 wave-32) is the
+// enforcement this reasoning rests on: it probes every /api/v1 registration
+// as a speaker and a reviewer and fails if either actor reaches a route it
+// shouldn't.
 //
 // DEC-141: GET /events (the bare list route) is the one exception — it must
 // stay reachable by reviewers too, so it is intentionally left off this
