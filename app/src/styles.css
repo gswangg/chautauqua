@@ -1350,7 +1350,11 @@ a:hover {
   display: block;
   width: 100%;
   box-sizing: border-box;
-  font-family: ui-monospace, monospace;
+  /* Merge-train repair (w19-c): the frame writes `ui-monospace, monospace`,
+     but DEC-937 (E) names the ONE bare `monospace` code face as the only
+     literal-family exemption -- "a literal family list is a fork of the type
+     system". Same face the sibling code readout already uses (:1436). */
+  font-family: monospace;
   font-size: 12px;
   line-height: 1.7;
   word-break: break-all;

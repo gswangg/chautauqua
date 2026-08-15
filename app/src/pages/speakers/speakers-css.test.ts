@@ -82,16 +82,23 @@ describe('speakers.css participation chip vs. trigger reset (DEC-880/DEC-940)', 
   });
 });
 
-// DEC-730 amendment (wave 39): matrix header inverts the frame's emphasis --
-// task TITLE gets sentence-case ink at ~15px, the DUE/REQUIRED second line
-// keeps the shared 11px uppercase-muted register, and the header row closes
-// with a 2px ink rule (docs/design/README.md: "one 2px rule per section").
-describe('speakers.css matrix header register (DEC-730 amendment, wave 39)', () => {
+// DEC-730 amendment (wave 39, revised wave 19): matrix header inverts the
+// frame's emphasis -- task TITLE gets sentence-case ink, the DUE/REQUIRED
+// second line keeps the shared 11px uppercase-muted register, and the header
+// row closes with a 2px ink rule (docs/design/README.md: "one 2px rule per
+// section"). The wave-39 note read the title as "~15px"; DEC-730's wave-19
+// amendment corrects that against the vendored frame -- Chautauqua
+// Speakers.dc.html:80 is 12px/700/line-height:1.25, and "a header row whose
+// titles run 25% larger than the pack eats vertical space in the one row
+// whose job is labelling".
+describe('speakers.css matrix header register (DEC-730 amendment, wave 39/19)', () => {
   const css = readFileSync(CSS_PATH, 'utf-8');
 
-  it('the task title is sentence-case ink at ~15px, not uppercase-muted', () => {
+  it('the task title is sentence-case ink at the frame 12px, not uppercase-muted', () => {
     const body = topLevelRuleBody(css, '.chq-speakers-task-title');
-    expect(body).toMatch(/font-size:\s*15px/);
+    expect(body).toMatch(/font-size:\s*12px/);
+    expect(body).toMatch(/font-weight:\s*700/);
+    expect(body).toMatch(/line-height:\s*1\.25/);
     expect(body).toMatch(/text-transform:\s*none/);
     expect(body).toMatch(/color:\s*var\(--chq-ink\)/);
   });
