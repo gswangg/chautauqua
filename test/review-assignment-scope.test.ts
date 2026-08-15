@@ -181,7 +181,14 @@ describe("DEC-354: isSubmissionInReviewerScope per-submission branch is event-bo
           where: () => {
             call += 1;
             if (call === 1) {
-              return Promise.resolve(planReviewerRows);
+              // DEC-346 amendment (wave 18): isSubmissionInReviewerScope's
+              // own plan_reviewer read is now ordered+capped like its
+              // sibling resolveReviewerSubmissions.
+              return {
+                orderBy: () => ({
+                  limit: () => Promise.resolve(planReviewerRows),
+                }),
+              };
             }
             // Bounded existence check: submission "sub-foreign" does NOT
             // belong to planRecord.eventId, so this returns empty.

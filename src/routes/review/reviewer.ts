@@ -139,8 +139,12 @@ reviewReviewerRoutes.get("/api/v1/review/plans/:id/queue", async (c) => {
   // DEC-082/DEC-346/DEC-439: queue counts/marks only the plan's current
   // round -- earlier rounds' evaluations don't count toward this round's
   // cap or "already rated" state. SQL aggregates replace the whole-round
-  // evaluation load + JS reduce, restricted to this reviewer's already-
-  // scoped submission ids so the counts query scales with the slice too.
+  // evaluation load + JS reduce. countEvaluationsBySubmission takes no id
+  // list and returns the whole plan+round map in one D1 round trip
+  // (DEC-449); it leaks nothing because this route only reads it via
+  // `.get(id)` for ids already in this reviewer's own scoped set from
+  // resolveReviewerSubmissions above. The map itself is now bounded by
+  // MAX_PLAN_EVALUATION_SCAN (DEC-346 amendment, wave 18).
   const countsBySubmission = await repo.countEvaluationsBySubmission(c.var.db, plan.id, plan.currentRound);
   const ratedByMe = await repo.listSubmissionIdsRatedBy(c.var.db, plan.id, plan.currentRound, auth.userId);
   // DEC-831: this reviewer's own scores for the queue's `myScore` column,

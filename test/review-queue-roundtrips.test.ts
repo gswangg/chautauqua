@@ -73,7 +73,9 @@ function makeCountingDb(matchedSubmissionCount: number): { db: Db; queryCount: (
             const hasGroupByShape = "count" in cols;
             if (hasGroupByShape) {
               return {
-                groupBy: () => Promise.resolve(submissionRows.map((s) => ({ submissionId: s.id, count: 1 }))),
+                groupBy: () => ({
+                  limit: () => Promise.resolve(submissionRows.map((s) => ({ submissionId: s.id, count: 1 }))),
+                }),
               };
             }
             return Promise.resolve(submissionRows.map((s) => ({ submissionId: s.id })));

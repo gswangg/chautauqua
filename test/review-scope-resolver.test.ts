@@ -149,12 +149,12 @@ function makeFakeDb() {
               const rows = CURRENT_PLAN_REVIEWER_ROWS.filter((r) =>
                 evalCond(tag, r as unknown as Record<string, unknown>),
               );
-              // resolveReviewerSubmissions selects {trackId, submissionId}
-              // (aliased); isSubmissionInReviewerScope calls bare
-              // `db.select()` (no column map -- cols is undefined), which in
-              // real drizzle returns the FULL row shaped by camelCase schema
-              // property names. Cover both shapes explicitly rather than
-              // shapeRow()'ing an undefined cols map.
+              // resolveReviewerSubmissions and isSubmissionInReviewerScope
+              // (DEC-346 amendment, wave 18) both now select the aliased
+              // {trackId, submissionId} column map -- cover the bare
+              // `db.select()` (no column map -- cols is undefined) shape too,
+              // matching what real drizzle returns when no cols are given,
+              // rather than shapeRow()'ing an undefined cols map.
               if (cols) {
                 return chainable(rows.map((r) => shapeRow(r as unknown as Record<string, unknown>, cols)), tag);
               }
@@ -316,6 +316,59 @@ describe("DEC-655: isSubmissionInReviewerScope and resolveReviewerSubmissions ne
       }
     }
   }
+});
+
+// ---------------------------------------------------------------------------
+// DEC-346 amendment (wave 18): isSubmissionInReviewerScope's own plan_reviewer
+// read now shares resolveReviewerSubmissions' bound -- capped at
+// MAX_REVIEWER_SCOPE_ROWS + 1, refusing loudly (same literal message) once a
+// single reviewer's plan_reviewer rows for this plan cross the cap.
+// ---------------------------------------------------------------------------
+
+describe("DEC-346 amendment (wave 18): isSubmissionInReviewerScope shares resolveReviewerSubmissions' cap", () => {
+  it("refuses once this reviewer's plan_reviewer rows for the plan exceed MAX_REVIEWER_SCOPE_ROWS", async () => {
+    const { isSubmissionInReviewerScope } = await vi.importActual<
+      typeof import("../src/server/repo/review/submissions")
+    >("../src/server/repo/review/submissions");
+    const { MAX_REVIEWER_SCOPE_ROWS } = await vi.importActual<typeof import("../src/server/repo/review/reviewers")>(
+      "../src/server/repo/review/reviewers",
+    );
+
+    // One extra trackT2 row per iteration beyond the cap -- none of them
+    // grant scope over sub-S, so absent the cap this would resolve false
+    // rather than refuse.
+    CURRENT_PLAN_REVIEWER_ROWS = Array.from({ length: MAX_REVIEWER_SCOPE_ROWS + 1 }, () => ({
+      plan_id: PLAN_ID,
+      user_id: REVIEWER,
+      track_id: "T2",
+      submission_id: null,
+    }));
+    CURRENT_TRACK_ROWS = trackRowsFor("T1");
+    const plan = planRecord(undefined);
+    const db = makeFakeDb();
+
+    await expect(isSubmissionInReviewerScope(db as never, plan as never, REVIEWER, "sub-S")).rejects.toThrow(
+      `This reviewer's scope would scan more than ${MAX_REVIEWER_SCOPE_ROWS} plan_reviewer rows -- narrow the reviewer's assignment scope first`,
+    );
+  });
+
+  it("a within-cap scope still resolves true/false correctly (no false refusal below the cap)", async () => {
+    const { isSubmissionInReviewerScope } = await vi.importActual<
+      typeof import("../src/server/repo/review/submissions")
+    >("../src/server/repo/review/submissions");
+
+    CURRENT_PLAN_REVIEWER_ROWS = [reviewerRowFor("submissionS")];
+    CURRENT_TRACK_ROWS = trackRowsFor("T1");
+    const plan = planRecord(undefined);
+
+    const inScope = await isSubmissionInReviewerScope(makeFakeDb() as never, plan as never, REVIEWER, "sub-S");
+    expect(inScope).toBe(true);
+
+    const outOfScopeRows: PlanReviewerRow[] = [{ plan_id: PLAN_ID, user_id: REVIEWER, track_id: "T2", submission_id: null }];
+    CURRENT_PLAN_REVIEWER_ROWS = outOfScopeRows;
+    const notInScope = await isSubmissionInReviewerScope(makeFakeDb() as never, plan as never, REVIEWER, "sub-S");
+    expect(notInScope).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------

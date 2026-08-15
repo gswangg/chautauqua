@@ -394,9 +394,17 @@ export async function isSubmissionInReviewerScope(
   submissionId: string,
 ): Promise<boolean> {
   const rows = await db
-    .select()
+    .select({ trackId: schema.planReviewer.trackId, submissionId: schema.planReviewer.submissionId })
     .from(schema.planReviewer)
-    .where(and(eq(schema.planReviewer.planId, plan.id), eq(schema.planReviewer.userId, userId)));
+    .where(and(eq(schema.planReviewer.planId, plan.id), eq(schema.planReviewer.userId, userId)))
+    .orderBy(asc(schema.planReviewer.createdAt), asc(schema.planReviewer.id))
+    .limit(MAX_REVIEWER_SCOPE_ROWS + 1);
+  if (rows.length > MAX_REVIEWER_SCOPE_ROWS) {
+    throw new ApiError(
+      "invalid",
+      `This reviewer's scope would scan more than ${MAX_REVIEWER_SCOPE_ROWS} plan_reviewer rows -- narrow the reviewer's assignment scope first`,
+    );
+  }
   if (rows.length === 0) return false;
 
   const filterTracks = plan.filters?.trackIds;
