@@ -741,7 +741,7 @@ describe("DEC-199 email case normalization + login regression", () => {
               };
               return {
                 onConflictDoNothing: () => settle(),
-                then: (resolve: (v: undefined) => void, reject?: (e: unknown) => void) => settle().then(resolve, reject),
+                then: (resolve: (v: void) => void, reject?: (e: unknown) => void) => settle().then(resolve, reject),
               };
             } else if (table === schema.authSession) {
               sessions.push({ ...row });
