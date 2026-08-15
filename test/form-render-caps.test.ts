@@ -22,6 +22,16 @@ const longTextField: FormFieldDef = {
   position: 1,
 };
 
+const numberField: FormFieldDef = {
+  id: "headcount",
+  section: "session",
+  kind: "number",
+  label: "Headcount",
+  required: false,
+  position: 2,
+  maximum: 50,
+};
+
 function render(field: FormFieldDef, value: unknown): string {
   return FormField({ field, value, visible: true }).toString();
 }
@@ -56,4 +66,9 @@ describe("form-render caps (DEC-124 amendment)", () => {
       }
     });
   }
+
+  it("renders no max attribute for a number field, even when field.maximum is set (w2-c, DEC-124 amendment: unbacked cap deleted)", () => {
+    const html = render(numberField, "");
+    expect(html).not.toContain("max=");
+  });
 });

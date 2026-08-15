@@ -5,3 +5,4 @@
 // ../../../src/domain/form-copy or ../../../src/domain/schedule.
 export { MAX_FORM_FIELDS } from '../../../src/domain/form-copy';
 export { MAX_BREAKS_PER_EVENT } from '../../../src/domain/schedule';
+export { MAX_FIELD_OPTIONS } from '../../../src/domain/form-copy';

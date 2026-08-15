@@ -5,6 +5,7 @@
 import type { FormFieldDef, FormFieldKind, FormFieldRule, FormFieldRuleOp } from "./types";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from "./validate"; // DEC-417
 import { canonicalizeOperand } from "./rule-match"; // DEC-681
+import { MAX_FIELD_OPTIONS } from "../domain/form-copy"; // w2-c
 
 export const FIELD_KINDS: readonly FormFieldKind[] = [
   "text",
@@ -64,6 +65,9 @@ export function validateRuleReference(
   if (rule.op === "in" && !Array.isArray(rule.value)) {
     return "rule.value must be an array for op 'in'";
   }
+  if (rule.op === "in" && Array.isArray(rule.value) && rule.value.length > MAX_FIELD_OPTIONS) {
+    return `rule.value must have at most ${MAX_FIELD_OPTIONS} entries for op 'in'`; // w2-c
+  }
 
   // DEC-681: a rule's value is typed by its TRIGGER field's kind. Reject
   // rules that can never match against that kind, at write time, rather
@@ -85,6 +89,13 @@ export function validateRuleReference(
     const options = target.options ?? [];
     if (values.some((v) => typeof v !== "string" || !options.includes(v))) {
       return "rule.value must be one of the trigger field's options";
+    }
+  } else if (target.kind === "text" || target.kind === "long_text") {
+    // w2-c: a text/long_text trigger's rule.value was not validated at all
+    // (any type, any length) before landing in rule_json and being
+    // serialized into the public CFP's inline rule JSON.
+    if (values.some((v) => typeof v !== "string" || v.length > MAX_NAME_LENGTH)) {
+      return `rule.value must be a string of at most ${MAX_NAME_LENGTH} characters for a text trigger`;
     }
   }
 
@@ -145,6 +156,8 @@ export function validateFieldDefInput(
       const options = input.options;
       if (!Array.isArray(options) || options.length === 0 || !options.every((o) => typeof o === "string")) {
         errors.options = "dropdown fields require a non-empty string array of options";
+      } else if (options.length > MAX_FIELD_OPTIONS) {
+        errors.options = `Max ${MAX_FIELD_OPTIONS} options`; // w2-c
       } else if (options.some((o) => (o as string).length > MAX_NAME_LENGTH)) {
         errors.options = `each option must be at most ${MAX_NAME_LENGTH} characters`; // DEC-417
       }
