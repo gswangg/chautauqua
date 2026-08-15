@@ -464,6 +464,141 @@ describe('OverviewPage render smoke (DEC-370)', () => {
     expect(screen.getByText('No action needed')).toBeInTheDocument();
   });
 
+  // DEC-694 amendment (w53-a): the per-row Remind must narrow to exactly
+  // that row's contactId and taskId, never a bare taskIds-only payload.
+  it('posts the row-scoped contactId and taskId when reminding a single row', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/overview`]: payload(),
+      'GET /api/v1/events': eventsListEnvelope(),
+      [`POST /api/v1/events/${EVENT_ID}/onboarding/remind`]: { sent: 1, skipped: 0, failed: [] },
+    });
+
+    render(
+      <MemoryRouter>
+        <OverviewPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Marcus Okafor')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remind' }));
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(([input]) => {
+        const url = typeof input === 'string' ? input : (input as Request).toString();
+        return url.includes('/onboarding/remind');
+      });
+      expect(call).toBeTruthy();
+    });
+
+    const call = fetchMock.mock.calls.find(([input]) => {
+      const url = typeof input === 'string' ? input : (input as Request).toString();
+      return url.includes('/onboarding/remind');
+    })!;
+    const body = JSON.parse((call[1] as RequestInit).body as string);
+    expect(body).toEqual({ taskIds: ['task-1'], contactIds: ['c-1'] });
+  });
+
+  // DEC-694 amendment (w53-a): the section action must post the deduped
+  // contactIds of the listed rows, and its label must spell that count
+  // (the distinct people reached), not the row count.
+  it('posts the deduped contactIds of the listed rows for the section-level Remind all, and labels it with that count', async () => {
+    const p = payload();
+    p.overdueTasks = {
+      total: 2,
+      rows: [
+        p.overdueTasks.rows[0]!,
+        {
+          assignmentId: 'as-2',
+          contactId: 'c-1',
+          contactName: 'Marcus Okafor',
+          company: 'Cloudreach Labs',
+          taskId: 'task-2',
+          taskTitle: 'Confirm bio',
+          dueDate: Date.now() - 2 * 86_400_000,
+          daysLate: 2,
+        },
+      ],
+    };
+
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/overview`]: p,
+      'GET /api/v1/events': eventsListEnvelope(),
+      [`POST /api/v1/events/${EVENT_ID}/onboarding/remind`]: { sent: 1, skipped: 0, failed: [] },
+    });
+
+    render(
+      <MemoryRouter>
+        <OverviewPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getAllByText('Marcus Okafor').length).toBe(2));
+
+    // Both rows belong to the same contact (c-1), so the label spells one
+    // even though there are two rows.
+    const remindAllButton = screen.getByRole('button', { name: 'Remind all one' });
+    fireEvent.click(remindAllButton);
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(([input]) => {
+        const url = typeof input === 'string' ? input : (input as Request).toString();
+        return url.includes('/onboarding/remind');
+      });
+      expect(call).toBeTruthy();
+    });
+
+    const call = fetchMock.mock.calls.find(([input]) => {
+      const url = typeof input === 'string' ? input : (input as Request).toString();
+      return url.includes('/onboarding/remind');
+    })!;
+    const body = JSON.parse((call[1] as RequestInit).body as string);
+    expect(body.contactIds).toEqual(['c-1']);
+    expect(new Set(body.taskIds)).toEqual(new Set(['task-1', 'task-2']));
+  });
+
+  // DEC-720 amendment (w53-a): §03's silent 'Ask for changes' column-flip
+  // button is gone, replaced by a quiet link to the session's own content
+  // screen. Approve keeps posting its explicit content-status decision.
+  it('has no "Ask for changes" button; §03 renders an Open link to the content screen, and Approve still posts approved', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/overview`]: payload(),
+      'GET /api/v1/events': eventsListEnvelope(),
+      [`POST /api/v1/submissions/sub-2/content-status`]: { updated: 1 },
+    });
+
+    render(
+      <MemoryRouter>
+        <OverviewPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Taming 40-Minute CI')).toBeInTheDocument());
+
+    expect(screen.queryByRole('button', { name: 'Ask for changes' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Ask for changes')).not.toBeInTheDocument();
+
+    const openLink = screen.getByRole('link', { name: 'Open' });
+    expect(openLink).toHaveAttribute('href', '/content/sub-2');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(([input]) => {
+        const url = typeof input === 'string' ? input : (input as Request).toString();
+        return url.includes('/content-status');
+      });
+      expect(call).toBeTruthy();
+    });
+
+    const call = fetchMock.mock.calls.find(([input]) => {
+      const url = typeof input === 'string' ? input : (input as Request).toString();
+      return url.includes('/content-status');
+    })!;
+    const body = JSON.parse((call[1] as RequestInit).body as string);
+    expect(body).toEqual({ contentStatus: 'approved' });
+  });
+
   it('rolls back loudly when an action fails', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/overview`]: payload(),
