@@ -8,7 +8,7 @@ import { MemoryRouter } from 'react-router-dom';
 import '@testing-library/jest-dom/vitest';
 import { FieldList } from './FieldList';
 import { MAX_LONG_TEXT_LENGTH } from '../../../../src/forms/validate';
-import { SESSION_FORMAT_FIELD_ID, LOCKED_ABSTRACT_MAX_LENGTH } from '../../../../src/forms/types';
+import { LOCKED_ABSTRACT_MAX_LENGTH } from '../../../../src/forms/types';
 import type { FormField } from './types';
 
 afterEach(() => {
@@ -184,10 +184,10 @@ describe('FieldList row anatomy (DEC-715)', () => {
     expect(formatDelete).not.toBeDisabled();
   });
 
-  it('renders the seeded session-format field (DEC-762) as "Format", derived from its shared id', () => {
+  it('renders the seeded session-format field (DEC-762) as "Format", derived from its role', () => {
     renderList([
       {
-        id: SESSION_FORMAT_FIELD_ID,
+        id: 'field-anything',
         section: 'session',
         kind: 'dropdown',
         label: 'Session format',
@@ -195,6 +195,7 @@ describe('FieldList row anatomy (DEC-715)', () => {
         position: 0,
         locked: false,
         options: ['Talk', 'Workshop'],
+        role: 'session_format',
       },
     ]);
     expect(screen.getByText('Format')).toBeInTheDocument();

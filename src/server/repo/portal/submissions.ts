@@ -12,7 +12,7 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import type { SubmissionStatus } from "../../../domain/status";
-import { SESSION_FORMAT_FIELD_ID } from "../../../forms/types";
+import { answerFieldRoleCondition } from "../form-roles";
 import { speakerStatusLabel, type SpeakerStatusLabel } from "./shared";
 import { loadTrackNamesBySubmission } from "../submission-tracks";
 
@@ -63,7 +63,7 @@ export async function getMySubmissions(db: Db, contactId: string, orgId: string)
       .where(
         and(
           inArray(schema.submissionAnswer.submissionId, ids),
-          eq(schema.submissionAnswer.formFieldId, SESSION_FORMAT_FIELD_ID),
+          answerFieldRoleCondition("session_format"),
           eq(schema.participant.contactId, contactId),
           eq(schema.event.orgId, orgId),
         ),

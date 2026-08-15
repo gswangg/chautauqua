@@ -13,11 +13,11 @@ export type FormFieldKind =
 
 export type FormFieldRuleOp = "eq" | "ne" | "in";
 
-// DEC-592 amendment (wave 10, task w10-a): the role tag a form_field row can
+// DEC-592/DEC-755 (wave 10, task w10-b): the role tag a form_field row can
 // carry so the two well-known CFP fields (session format, audience level)
-// can be resolved by role instead of a global-PK literal id. See
-// SESSION_FORMAT_FIELD_ID / AUDIENCE_LEVEL_FIELD_ID below -- both still
-// stand this wave (w10-b owns converting read sites and retiring them).
+// are resolved by role via src/server/repo/form-roles.ts, not a global-PK
+// literal id. The literal ids (SESSION_FORMAT_FIELD_ID / AUDIENCE_LEVEL_
+// FIELD_ID) have been deleted -- role is the ONE matcher.
 export const FORM_FIELD_ROLES = ["session_format", "audience_level"] as const;
 export type FormFieldRole = (typeof FORM_FIELD_ROLES)[number];
 
@@ -95,21 +95,6 @@ export const LOCKED_SPEAKER_FIELDS = [
 ] as const;
 
 const ALL_LOCKED_NAMES = new Set<string>([...LOCKED_SESSION_FIELDS, ...LOCKED_SPEAKER_FIELDS]);
-
-// DEC-592: the ONE id for the "Session format" custom field the seed and
-// public-surface hydration both key on (submission_answer.form_field_id).
-// Not a locked field (organizers may rename/remove it) — but its id is a
-// named constant, not a hand-copied literal, so seed and repo code can't
-// drift apart on the string.
-export const SESSION_FORMAT_FIELD_ID = "field_session_format";
-
-// DEC-986 (wave 40 amendment): same pattern as SESSION_FORMAT_FIELD_ID above
-// -- the seed's "Audience level" dropdown field id, named here so the public
-// CFP's excludeIds pull-out (submit-views.tsx) and the seed can't drift
-// apart on the string. Not a locked field; an event whose audience-level
-// field carries a different id (hand-added via the builder) simply falls
-// back to the generic <select> rendering.
-export const AUDIENCE_LEVEL_FIELD_ID = "field_audience_level";
 
 // DEC-050: locked form_field rows get a per-form PK (`${formId}:${name}`)
 // so a second event's default form doesn't collide with the first event's

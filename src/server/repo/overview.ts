@@ -25,7 +25,7 @@ import * as schema from "../../db/schema";
 import { findConflicts, parseFormatDurationMin, type BlockedInterval, type PlacedSession } from "../../domain/schedule";
 import { formatRef } from "../../domain/ids";
 import { chunkIds } from "../../lib/chunk";
-import { SESSION_FORMAT_FIELD_ID } from "../../forms/types";
+import { answerFieldRoleCondition } from "./form-roles";
 import { loadTrackNamesBySubmission } from "./submission-tracks";
 import { DEFAULT_AUTO_SCHEDULE_PARAMS, MAX_AGENDA_SCAN } from "./agenda";
 import { listBreaksForEvent } from "./breaks";
@@ -483,7 +483,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
         }
         return map;
       })(),
-      // --- DEC-895: each unplaced row's own SESSION_FORMAT_FIELD_ID answer,
+      // --- DEC-895: each unplaced row's own session_format-role answer,
       // batched exactly like loadDurationMinBySubmission (./agenda) — but
       // this reader returns the raw label, never a defaulted duration, so a
       // row whose format is absent or unparseable can say so (durationMin:
@@ -501,7 +501,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number, t
               .where(
                 and(
                   inArray(schema.submissionAnswer.submissionId, batch),
-                  eq(schema.submissionAnswer.formFieldId, SESSION_FORMAT_FIELD_ID),
+                  answerFieldRoleCondition("session_format"),
                 ),
               );
             rows.push(...batchRows);

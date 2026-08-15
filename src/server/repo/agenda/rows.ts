@@ -9,7 +9,7 @@ import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { SCHEDULING_PARTICIPANT_STATUSES } from "../../../domain/acceptance";
 import { chunkIds } from "../../../lib/chunk";
-import { SESSION_FORMAT_FIELD_ID } from "../../../forms/types";
+import { answerFieldRoleCondition } from "../form-roles";
 import { ApiError } from "../../http";
 import { parseFormatDurationMin } from "../../../domain/schedule";
 import type { AgendaSpeaker } from "./types";
@@ -200,7 +200,7 @@ export async function loadAcceptedSessions(db: Db, eventId: string, recordPrefix
 
 /** DEC-772: batches ONE query over submission_answer (chunked exactly like
  * src/server/repo/public/sessions.ts's format hydration) for each id's
- * SESSION_FORMAT_FIELD_ID answer, parses the "(N min)" suffix via
+ * session_format-role answer, parses the "(N min)" suffix via
  * parseFormatDurationMin, and falls back to defaultDurationMin whenever the
  * session has no format answer or its label carries no parseable duration.
  * `eventId` documents the caller's scope — `submissionIds` must already be
@@ -226,7 +226,7 @@ export async function loadDurationMinBySubmission(
       .where(
         and(
           inArray(schema.submissionAnswer.submissionId, batch),
-          eq(schema.submissionAnswer.formFieldId, SESSION_FORMAT_FIELD_ID),
+          answerFieldRoleCondition("session_format"),
         ),
       );
     formatRows.push(...batchRows);

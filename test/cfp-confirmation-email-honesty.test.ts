@@ -62,9 +62,10 @@ const FIELD_ROWS = [
   { id: "email", section: "speaker", kind: "text", label: "Email", helpText: null, required: true, position: 4, optionsJson: null, ruleJson: null },
 ];
 
-// DEC-098 (wave 8 amendment): FIELD_ROWS with the Session-format field added
-// (SESSION_FORMAT_FIELD_ID = "field_session_format"), so the confirmation
-// card's track/format meta line can be exercised end to end.
+// DEC-098 (wave 8 amendment)/DEC-592/DEC-755 (wave 10 amendment): FIELD_ROWS
+// with the role-tagged session-format field added, so the confirmation
+// card's track/format meta line can be exercised end to end -- role, not the
+// id, is what submit-post.tsx matches on.
 const FIELD_ROWS_WITH_FORMAT = [
   ...FIELD_ROWS,
   {
@@ -77,6 +78,7 @@ const FIELD_ROWS_WITH_FORMAT = [
     position: 5,
     optionsJson: JSON.stringify(["Talk (45 min)", "Workshop (90 min)"]),
     ruleJson: null,
+    role: "session_format",
   },
 ];
 

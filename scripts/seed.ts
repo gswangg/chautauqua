@@ -22,7 +22,6 @@ import { MERGE_FIELDS, renderTemplate } from "../src/mail/render";
 import { formatCalendarDate, formatEventDayRange } from "../src/lib/event-time";
 import { DEFAULT_ONBOARDING_TASKS, FORM_TASK_FIELD_SPECS } from "../src/domain/acceptance";
 import type { FormTaskFieldKind } from "../src/domain/acceptance";
-import { SESSION_FORMAT_FIELD_ID } from "../src/forms/types";
 import { MAX_LONG_TEXT_LENGTH } from "../src/forms/validate";
 import { PIPELINE_STAGES } from "../src/server/repo/pipeline";
 import * as schema from "../src/db/schema";
@@ -476,7 +475,10 @@ async function main(): Promise<void> {
   }> = [
     { id: "title", section: "session", kind: "text", label: "Title", helpText: "Shown on every public page", required: true, position: 0, options: null, locked: true },
     { id: "description", section: "session", kind: "long_text", label: "Abstract", helpText: `Up to ${MAX_LONG_TEXT_LENGTH.toLocaleString("en-US")} characters`, required: true, position: 1, options: null, locked: true },
-    { id: SESSION_FORMAT_FIELD_ID, section: "session", kind: "dropdown", label: "Format", helpText: `${fixture.event.session_formats.length} options`, required: true, position: 2, options: fixture.event.session_formats, locked: false, role: "session_format" },
+    // DEC-592/DEC-755 (wave 10, task w10-b): this id is a seed-local
+    // literal, not a shared constant -- role ("session_format") is the ONE
+    // matcher repo code resolves this field by (src/server/repo/form-roles.ts).
+    { id: "field_session_format", section: "session", kind: "dropdown", label: "Format", helpText: `${fixture.event.session_formats.length} options`, required: true, position: 2, options: fixture.event.session_formats, locked: false, role: "session_format" },
     { id: "field_audience_level", section: "session", kind: "dropdown", label: "Audience level", helpText: "Beginner, intermediate, advanced", required: false, position: 3, options: audienceLevels, locked: false, role: "audience_level" },
     { id: "field_notes_for_reviewers", section: "session", kind: "long_text", label: "Notes for reviewers", helpText: "Never shown publicly", required: false, position: 4, options: null, locked: false },
     { id: "field_accessibility_needs", section: "session", kind: "text", label: "Accessibility needs", helpText: "Passed to the venue team only", required: false, position: 5, options: null, locked: false },

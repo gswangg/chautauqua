@@ -8,7 +8,7 @@ import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import type { SubmissionStatus } from "../../../domain/status";
 import { PORTAL_VISIBLE_INVITE_STATUSES } from "../../../domain/acceptance";
-import { SESSION_FORMAT_FIELD_ID } from "../../../forms/types";
+import { answerFieldRoleCondition } from "../form-roles";
 import { isOwnedByContact, speakerStatusLabel, type SpeakerStatusLabel } from "./shared";
 import { loadTrackNamesBySubmission } from "../submission-tracks";
 
@@ -246,7 +246,7 @@ export async function getPortalSubmissionDetail(
     .where(
       and(
         eq(schema.submissionAnswer.submissionId, submissionId),
-        eq(schema.submissionAnswer.formFieldId, SESSION_FORMAT_FIELD_ID),
+        answerFieldRoleCondition("session_format"),
       ),
     )
     .limit(1);

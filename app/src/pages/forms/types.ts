@@ -4,6 +4,10 @@
 export type FormFieldSection = 'session' | 'speaker';
 export type FormFieldKind = 'text' | 'long_text' | 'dropdown' | 'checkbox' | 'number' | 'file';
 export type FormFieldRuleOp = 'eq' | 'ne' | 'in';
+// DEC-592/DEC-755 (wave 10, task w10-b): the role tag a form_field row can
+// carry, mirroring src/forms/types.ts's FormFieldRole -- the ONE matcher for
+// the two well-known CFP fields (session format, audience level).
+export type FormFieldRole = 'session_format' | 'audience_level';
 
 export interface FormFieldRule {
   fieldId: string;
@@ -22,6 +26,7 @@ export interface FormField {
   options?: string[];
   rule?: FormFieldRule;
   locked: boolean;
+  role?: FormFieldRole | null;
 }
 
 export interface CfpForm {

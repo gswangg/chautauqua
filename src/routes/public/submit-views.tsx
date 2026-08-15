@@ -8,7 +8,7 @@
 // confirmation copy).
 
 import type { AnswerMap, FormFieldDef } from "../../forms/types";
-import { AUDIENCE_LEVEL_FIELD_ID, SESSION_FORMAT_FIELD_ID, lockedFieldName } from "../../forms/types";
+import { lockedFieldName } from "../../forms/types";
 import { makeVisibilityPredicate } from "../../forms/visibility";
 import { formatEventDateTime, formatEventDayRange } from "../../lib/event-time";
 import { dayLabelEndInstant, dayLabelStartInstant } from "../../lib/timezone";
@@ -192,7 +192,7 @@ export function TrackChoices(props: { tracks: TrackRow[]; selected: string[]; er
 }
 
 // DEC-986: the Session-format dropdown draws as a radio-card group on this
-// surface only, scoped by SESSION_FORMAT_FIELD_ID -- FormFieldsSection's
+// surface only, scoped by role === "session_format" -- FormFieldsSection's
 // default <select> control (src/views/form-render.tsx) stays for every
 // other dropdown-kind field, including this same field on /portal/edit.
 // Reuses the chq-cfp-option chrome for the same reason TrackChoices does:
@@ -240,7 +240,7 @@ export function FormatChoices(props: { field: FormFieldDef; value: unknown; erro
 }
 
 // DEC-986 (wave 40 amendment): the Audience-level dropdown, when the default
-// form defines it (AUDIENCE_LEVEL_FIELD_ID), is pulled out of
+// form defines it (role === "audience_level"), is pulled out of
 // FormFieldsSection's normal <select> rendering the same way FormatChoices
 // pulls Session-format -- but drawn as a horizontal three-pill segment
 // (.chq-cfp-segment) rather than FormatChoices'/TrackChoices' one-column
@@ -394,10 +394,10 @@ export function SubmitPage(props: {
   // DEC-986: the Session-format field, when the default form defines it, is
   // pulled out of FormFieldsSection's normal <select> rendering and drawn
   // as a radio-card group instead (FormatChoices, below).
-  const formatField = displayFields.find((f) => f.id === SESSION_FORMAT_FIELD_ID);
-  // DEC-986 (wave 40 amendment): same pull-out, scoped to
-  // AUDIENCE_LEVEL_FIELD_ID, drawn as a pill segment (AudienceChoices).
-  const audienceField = displayFields.find((f) => f.id === AUDIENCE_LEVEL_FIELD_ID);
+  const formatField = displayFields.find((f) => f.role === "session_format");
+  // DEC-986 (wave 40 amendment): same pull-out, scoped to the
+  // audience_level-role field, drawn as a pill segment (AudienceChoices).
+  const audienceField = displayFields.find((f) => f.role === "audience_level");
   // The two locked session fields (Title, Abstract) render first via the
   // generic renderer; everything else in the session section (Notes for
   // reviewers, Accessibility needs, and any producer-added custom field)

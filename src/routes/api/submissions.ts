@@ -52,11 +52,12 @@ import { listSubmissionHistory } from "../../server/repo/submissions/history";
 import { isValidEmail, normalizeEmail } from "../../domain/email";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import { bumpIcsSequences } from "../../server/repo/ics-sequence";
-import { getEventTracks, replaceSubmissionTracks, upsertSubmissionAnswers } from "../../server/repo/submit";
+import { deleteSubmissionAnswer, getEventTracks, replaceSubmissionTracks, upsertSubmissionAnswers } from "../../server/repo/submit";
 import { getFormatFieldOptions } from "../../server/repo/forms";
+import { getEventFieldIdByRole } from "../../server/repo/form-roles";
 import { MAX_SUBMISSION_TRACK_IDS } from "../../domain/ids";
 import { MAX_FILTER_ID_LENGTH } from "../../lib/query-bounds";
-import { SESSION_FORMAT_FIELD_ID, LOCKED_TITLE_MAX_LENGTH, LOCKED_ABSTRACT_MAX_LENGTH } from "../../forms/types";
+import { LOCKED_TITLE_MAX_LENGTH, LOCKED_ABSTRACT_MAX_LENGTH } from "../../forms/types";
 import { commitSubmissionDelete, planSubmissionDelete } from "../../server/repo/submission-delete";
 import { makeFileStore } from "../../server/context";
 import { DEC_460, DEC_461, DEC_462, DEC_519, DEC_598, DEC_755, DEC_757, DEC_886 } from "../../decisions";
@@ -140,11 +141,16 @@ async function parseTrackIdsField(db: Db, eventId: string, raw: unknown): Promis
 }
 
 // DEC-755: format has no submission column — it's a submission_answer keyed
-// by SESSION_FORMAT_FIELD_ID. A supplied value must match one of the
-// event's default-form format field's own options; if the event's form has
-// no such field, a supplied format is a 400, never a silent drop. Shared by
-// POST (create) and PATCH so both routes enforce the same rule.
-async function parseFormatField(db: Db, eventId: string, raw: unknown): Promise<string> {
+// by the session_format-role field (src/server/repo/form-roles.ts). A
+// supplied value must match one of the event's default-form format field's
+// own options; if the event's form has no such field, a supplied format is
+// a 400, never a silent drop. Shared by POST (create) and PATCH so both
+// routes enforce the same rule.
+// DEC-755 amendment (wave 10, task w10-b): `raw === null` is a request to
+// CLEAR the answer, not an invalid value — returns null rather than 400ing,
+// and the caller deletes the submission_answer row instead of upserting.
+async function parseFormatField(db: Db, eventId: string, raw: unknown): Promise<string | null> {
+  if (raw === null) return null;
   if (typeof raw !== "string" || raw.length === 0) {
     throw new ApiError("invalid", "format must be a non-empty string", { format: "Invalid format" });
   }
@@ -158,6 +164,23 @@ async function parseFormatField(db: Db, eventId: string, raw: unknown): Promise<
     throw new ApiError("invalid", "format must be one of the field's options", { format: "Invalid option" });
   }
   return raw;
+}
+
+// DEC-755 amendment (wave 10, task w10-b): resolves the event's default
+// form's session_format-role field id and either upserts `format` onto it or,
+// when `format` is null, deletes the answer row -- the ONE write path shared
+// by POST create and PATCH below. `format` is `undefined` when the caller
+// didn't touch the field at all (no-op); parseFormatField above has already
+// 400'd when the event's form has no such field, so a non-null resolveId
+// here is guaranteed whenever format !== undefined.
+async function writeFormatAnswer(db: Db, eventId: string, submissionId: string, format: string | null): Promise<void> {
+  const fieldId = await getEventFieldIdByRole(db, eventId, "session_format");
+  if (!fieldId) throw new ApiError("invalid", "This event's form has no session format field", { format: "Not configured" });
+  if (format === null) {
+    await deleteSubmissionAnswer(db, submissionId, fieldId);
+  } else {
+    await upsertSubmissionAnswers(db, submissionId, { [fieldId]: format });
+  }
 }
 
 // GET /api/v1/events/:eventId/submissions
@@ -247,7 +270,7 @@ submissionsRoutes.post("/events/:eventId/submissions", requireOrganizer, csrfJso
     await replaceSubmissionTracks(c.var.db, id, trackIds);
   }
   if (format !== undefined) {
-    await upsertSubmissionAnswers(c.var.db, id, { [SESSION_FORMAT_FIELD_ID]: format });
+    await writeFormatAnswer(c.var.db, eventId, id, format);
   }
 
   const detail = await getSubmissionDetail(c.var.db, id);
@@ -351,9 +374,9 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
   }
 
   // DEC-755: format has no submission column — the same submission_answer
-  // writer POST create uses.
+  // writer POST create uses (writeFormatAnswer deletes the row on null).
   if (format !== undefined) {
-    await upsertSubmissionAnswers(c.var.db, id, { [SESSION_FORMAT_FIELD_ID]: format });
+    await writeFormatAnswer(c.var.db, ownership.eventId, id, format);
   }
 
   const detail = await getSubmissionDetail(c.var.db, id);

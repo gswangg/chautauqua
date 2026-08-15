@@ -8,7 +8,6 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
-import { AUDIENCE_LEVEL_FIELD_ID } from "../src/forms/types";
 import { listAudienceLevelLabelsBySubmission } from "../src/server/repo/review/submissions";
 import type { Db } from "../src/server/context";
 import { registerErrorHandler } from "../src/server/http";
@@ -65,38 +64,28 @@ describe("listAudienceLevelLabelsBySubmission (DEC-857)", () => {
     expect(map.has("sub-1")).toBe(false);
   });
 
-  it("filters on AUDIENCE_LEVEL_FIELD_ID (field_audience_level), not the session-format field", async () => {
-    let capturedFieldId: unknown;
+  it("filters on the audience_level role, not the session-format role", async () => {
+    // DEC-592/DEC-755 (wave 10, task w10-b): the role condition
+    // (answerFieldRoleCondition, src/server/repo/form-roles.ts) is a raw
+    // drizzle `sql` tag EXISTS subquery, not a plain eq()-column tree --
+    // its role literal binds as a top-level string in queryChunks, so a
+    // stringify of the whole composed condition is the simplest reliable
+    // way to assert on it (a bounded-depth column-tree walk, as the old
+    // eq()-based predicate needed, no longer applies here).
+    let capturedJson: string | undefined;
     const db = {
       select: () => ({
         from: () => ({
           where: (condition: unknown) => {
-            // drizzle's `and(...)` composes a tree of SQL objects; walk it
-            // (bounded depth, guarded against the circular column<->table
-            // refs) collecting every string literal it binds, and assert the
-            // field-id literal is among them.
-            const seen = new Set<unknown>();
-            const strings: string[] = [];
-            const walk = (node: unknown, depth: number): void => {
-              if (depth > 6 || node === null || typeof node !== "object") return;
-              if (seen.has(node)) return;
-              seen.add(node);
-              for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
-                if (key === "table") continue; // circular column<->table back-ref
-                if (typeof value === "string") strings.push(value);
-                else if (Array.isArray(value)) value.forEach((v) => walk(v, depth + 1));
-                else if (typeof value === "object") walk(value, depth + 1);
-              }
-            };
-            walk(condition, 0);
-            capturedFieldId = strings;
+            capturedJson = JSON.stringify(condition, (key, value) => (key === "table" ? undefined : value));
             return Promise.resolve([]);
           },
         }),
       }),
     } as unknown as Db;
     await listAudienceLevelLabelsBySubmission(db, ["sub-1"]);
-    expect(capturedFieldId).toContain(AUDIENCE_LEVEL_FIELD_ID);
+    expect(capturedJson).toContain("audience_level");
+    expect(capturedJson).not.toContain("session_format");
   });
 });
 
