@@ -117,13 +117,18 @@ describe('DirectoryRail', () => {
     expect(onKeepBoth).toHaveBeenCalledWith(DUPLICATE_GROUPS[0]);
   });
 
-  it('renders an honest empty state for each section when there is nothing to show', () => {
+  it('renders an honest EmptyState for each section when there is nothing to show, in the fresh voice (no filter axis on these rail lists)', () => {
     renderRail({ topCompanies: [], segments: [], duplicatePreview: [], duplicateCount: 0 });
 
-    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.getByText('No companies on file yet.')).toBeInTheDocument();
     expect(screen.getByText('No saved segments yet.')).toBeInTheDocument();
     expect(screen.getByText('No duplicate groups found.')).toBeInTheDocument();
     expect(screen.getByText('Possible duplicates · 0')).toBeInTheDocument();
+
+    // The bare, escape-less line DEC-678 retired is gone from this file.
+    expect(document.querySelectorAll('.chq-empty')).toHaveLength(0);
+    // EmptyState's own family renders in its place, three times over.
+    expect(document.querySelectorAll('.chq-empty-block-fresh')).toHaveLength(3);
   });
 
   // DEC-678: an empty state is only reachable from a SETTLED load. Each rail
@@ -160,7 +165,7 @@ describe('DirectoryRail', () => {
       duplicateCount: 0,
     });
 
-    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.getByText('No companies on file yet.')).toBeInTheDocument();
     expect(screen.queryByText('No saved segments yet.')).not.toBeInTheDocument();
     expect(screen.queryByText('No duplicate groups found.')).not.toBeInTheDocument();
   });

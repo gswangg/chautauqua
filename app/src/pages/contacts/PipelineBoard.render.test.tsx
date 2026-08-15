@@ -1012,6 +1012,40 @@ describe('PipelineBoard: card face keyboard reachability (w4-c/DEC-898 amendment
   });
 });
 
+// DEC-678 (w55-b): a card's activity feed has no filter/search axis of its
+// own -- it is the entry's whole move+note history -- so a zero-row settle
+// renders the shared EmptyState in the 'fresh' voice, never the old bare
+// escape-less line.
+describe('PipelineBoard: empty activity feed (DEC-678, w55-b)', () => {
+  it('renders the shared EmptyState for a card with no activity yet, and drops the old bare chq-empty line', async () => {
+    mockApi({
+      'GET /api/v1/pipeline': listEnvelope([ENTRY_IDENTIFIED]),
+      'GET /api/v1/pipeline/entry-1': detailStubForActivityTest(),
+    });
+
+    renderBoard();
+    await waitFor(() => within(desktopBoard()).getByText('Ada Lovelace'));
+    fireEvent.click(within(desktopBoard()).getAllByRole('button', { name: /Ada Lovelace/ })[0]!);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Pipeline card detail' });
+    await waitFor(() => {
+      expect(within(dialog).getByText('No activity yet.')).toBeInTheDocument();
+    });
+    expect(dialog.querySelector('.chq-empty')).toBeNull();
+    expect(dialog.querySelector('.chq-empty-block-fresh')).not.toBeNull();
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  });
+});
+
+function detailStubForActivityTest() {
+  return {
+    entry: { id: 'entry-1', contactId: 'ct1', stage: 'identified', createdAt: 1000, updatedAt: 1000 },
+    contact: { id: 'ct1', firstName: 'Ada', lastName: 'Lovelace', company: 'Acme', email: 'ada@example.com' },
+    activity: { items: [], total: 0, page: 1, perPage: 200 },
+  };
+}
+
 // B7 (DEC-678 amendment): an empty stage column names the stage via the
 // shared EmptyState 'filtered' variant -- the column's own name/count
 // header stays visible above it, and no button/action renders (moving a

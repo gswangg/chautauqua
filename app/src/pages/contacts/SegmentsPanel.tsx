@@ -8,6 +8,7 @@ import { apiDelete, apiPost, ApiError } from '../../lib/api';
 import { buildSegmentRulesFromFilters, describeRules, type ActiveFilters } from './segments';
 import type { Segment } from './types';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { EmptyState } from '../../components/EmptyState';
 import './contacts-panels.css';
 
 interface Props {
@@ -89,25 +90,31 @@ export function SegmentsPanel({ segments, activeFilters, activeSegmentId, onChan
         </div>
       </div>
 
-      <ul className="chq-contacts-segment-list">
-        {segments.map((seg) => (
-          <li key={seg.id} className="chq-contacts-segment-row">
-            <div className="chq-contacts-segment-row-main">
-              <span className="chq-contacts-segment-name">{seg.name}</span>
-              <span className="chq-contacts-segment-rule">{describeRules(seg.rules)}</span>
-            </div>
-            <button
-              type="button"
-              className="chq-btn chq-btn-secondary"
-              disabled={busy}
-              onClick={() => setPendingDelete(seg)}
-            >
-              Delete
-            </button>
-          </li>
-        ))}
-        {segments.length === 0 && <li className="chq-empty">No saved segments yet.</li>}
-      </ul>
+      {/* DEC-678: this panel's list carries no facet of its own to clear --
+          it is the account's whole saved-segment set -- so a zero-row
+          settle is always the 'fresh' voice, never 'filtered'. */}
+      {segments.length === 0 ? (
+        <EmptyState variant="fresh" what="No saved segments yet." action={null} />
+      ) : (
+        <ul className="chq-contacts-segment-list">
+          {segments.map((seg) => (
+            <li key={seg.id} className="chq-contacts-segment-row">
+              <div className="chq-contacts-segment-row-main">
+                <span className="chq-contacts-segment-name">{seg.name}</span>
+                <span className="chq-contacts-segment-rule">{describeRules(seg.rules)}</span>
+              </div>
+              <button
+                type="button"
+                className="chq-btn chq-btn-secondary"
+                disabled={busy}
+                onClick={() => setPendingDelete(seg)}
+              >
+                Delete
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {pendingDelete && (
         <ConfirmDialog

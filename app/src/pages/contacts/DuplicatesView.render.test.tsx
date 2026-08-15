@@ -188,6 +188,27 @@ describe('DuplicatesView render (DEC-684: merge moved to its own page)', () => {
     });
   });
 
+  // DEC-678 (w55-b): a zero-row settle here is always the 'fresh' voice --
+  // this list has no filter/search axis of its own to name and clear.
+  it('DEC-678: renders the shared EmptyState (fresh, no escape) when settled with zero groups, and drops the old bare chq-empty line', async () => {
+    mockApi({
+      'GET /api/v1/contacts/duplicates': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <DuplicatesView onMerged={() => {}} />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('No duplicate groups found.')).toBeInTheDocument();
+    });
+    expect(document.querySelector('.chq-empty')).not.toBeInTheDocument();
+    expect(document.querySelector('.chq-empty-block-fresh')).not.toBeNull();
+    expect(document.querySelector('.chq-empty-escape')).not.toBeInTheDocument();
+  });
+
   it('DEC-734: reads a one-shot initialDismissPairIds (from MergePage\'s "Not a duplicate" footer) and drops that pair on mount', async () => {
     mockApi({
       'GET /api/v1/contacts/duplicates': listEnvelope([GROUP, SECOND_GROUP]),

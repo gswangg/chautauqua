@@ -42,16 +42,16 @@ const SOURCE_FILES = allSourceFiles(SRC_ROOT);
 // with a one-line reason -- these are the task's own scope and get a real
 // non-collection justification.
 //
-// The remaining entries are PRE-EXISTING `.chq-empty` collection zero-states
-// this scan's full-tree enumeration (per its own design, "every non-test
-// .tsx under app/src", not a hand-picked subset) turns up outside w52-d's
-// six named surfaces -- contacts rail/duplicate/segment/pipeline lists and
-// the speaker detail page's five sub-collections. Converting THOSE is DEC-
-// 678 work too, but it is out of this task's stated scope (w52-d names
-// exactly six conversions); allowlisting them here, with an honest reason
-// instead of a false "not a collection" claim, keeps this scan truthful
-// (fail loudly, not fail silently by narrowing what it looks at) while
-// still catching any FUTURE bare `chq-empty` this tree doesn't already have.
+// The collection zero-states this scan's full-tree enumeration turned up
+// outside w52-d's six named surfaces have since been converted in wave 55:
+// w55-c took the speaker detail page's four sub-collections (sessions,
+// tasks, files, other events) and the file-versions list in VersionList.tsx;
+// w55-b took the six contacts-group lists (DirectoryRail x3, DuplicatesView,
+// PipelineBoard, SegmentsPanel). Both files therefore left the ALLOWLIST
+// entirely, and SpeakerDetailPage's entry dropped 5 -> 1: only its
+// non-collection notes field survives. Every entry below is now a genuine
+// non-collection site with a real justification -- no "left for a future
+// wave" placeholders remain.
 const ALLOWLIST: Record<string, { count: number; reason: string }> = {
   'pages/review/ReviewerQueue.tsx': {
     count: 1,
@@ -73,30 +73,10 @@ const ALLOWLIST: Record<string, { count: number; reason: string }> = {
     reason:
       "the <p className=\"chq-empty\"> here wraps the boundary's own retry/back action row, reusing the class for spacing, not to state a zero-row result.",
   },
-  'pages/contacts/DirectoryRail.tsx': {
-    count: 3,
-    reason:
-      'top-companies/segments/duplicates rail lists are genuine zero-row collections under section labels -- a real DEC-678 violation, but outside w52-d\'s six named conversions; left for a future wave.',
-  },
-  'pages/contacts/DuplicatesView.tsx': {
-    count: 1,
-    reason:
-      "the duplicate-groups list's zero-row state is a genuine DEC-678 violation, outside w52-d's scope; left for a future wave.",
-  },
   'pages/contacts/MergePage.tsx': {
     count: 1,
     reason:
       "'Pick two or more duplicate records...' is an instruction for a page handed no selection, same shape as DeleteSubmissionsPage's -- not a collection, but not in w52-d's named scope to convert either.",
-  },
-  'pages/contacts/PipelineBoard.tsx': {
-    count: 1,
-    reason:
-      "the per-contact activity list's zero-row state is a genuine DEC-678 violation, outside w52-d's scope; left for a future wave.",
-  },
-  'pages/contacts/SegmentsPanel.tsx': {
-    count: 1,
-    reason:
-      "the saved-segments list's zero-row state is a genuine DEC-678 violation, outside w52-d's scope; left for a future wave.",
   },
   'pages/speakers/SpeakerDetailPage.tsx': {
     count: 1,

@@ -914,23 +914,29 @@ function EntryDetailPanel({ entryId, entry, onClose, onChanged, onMove }: EntryD
           </div>
 
           <h4 className="chq-section-label">Activity</h4>
-          <ul className="chq-contacts-pipeline-activity">
-            {activityItems.map((a, i) => (
-              <li key={i}>
-                {a.kind === 'move' ? (
-                  <span>
-                    Moved {a.fromStage ? PIPELINE_STAGE_LABELS[a.fromStage] : 'Enrolled'} &rarr;{' '}
-                    {a.toStage ? PIPELINE_STAGE_LABELS[a.toStage] : ''}
-                  </span>
-                ) : (
-                  <span>Note: {a.body}</span>
-                )}
-                {' — '}
-                {a.authorName}, {formatDateTime(a.createdAt)}
-              </li>
-            ))}
-            {activityItems.length === 0 && <li className="chq-empty">No activity yet.</li>}
-          </ul>
+          {/* DEC-678: a card's activity feed has no filter/search axis of
+              its own -- it is the entry's whole move+note history -- so a
+              zero-row settle is always the 'fresh' voice. */}
+          {activityItems.length === 0 ? (
+            <EmptyState variant="fresh" what="No activity yet." action={null} />
+          ) : (
+            <ul className="chq-contacts-pipeline-activity">
+              {activityItems.map((a, i) => (
+                <li key={i}>
+                  {a.kind === 'move' ? (
+                    <span>
+                      Moved {a.fromStage ? PIPELINE_STAGE_LABELS[a.fromStage] : 'Enrolled'} &rarr;{' '}
+                      {a.toStage ? PIPELINE_STAGE_LABELS[a.toStage] : ''}
+                    </span>
+                  ) : (
+                    <span>Note: {a.body}</span>
+                  )}
+                  {' — '}
+                  {a.authorName}, {formatDateTime(a.createdAt)}
+                </li>
+              ))}
+            </ul>
+          )}
 
           {/* DEC-468/w56-e: state the shortfall rather than silently showing
               a partial feed once the entry's activity outgrows one page. */}
