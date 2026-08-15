@@ -190,7 +190,7 @@ describe('TracksRoomsPanel', () => {
       ),
     ).toBeInTheDocument();
     expect(
-      within(mainStageRow.querySelector('.chq-settings-edit-row-meta') as HTMLElement).getByDisplayValue('900'),
+      within(mainStageRow.querySelector('.chq-settings-edit-row-seats') as HTMLElement).getByDisplayValue('900'),
     ).toBeInTheDocument();
 
     // The existing AI Engineering row's own radiogroup reflects its loaded
@@ -523,6 +523,43 @@ describe('TracksRoomsPanel', () => {
   it('hosts the tracks-and-rooms grid inside a .chq-settings-row that itself collapses to one full-width column (DEC-747/DEC-781)', () => {
     const fullRowBody = topLevelRuleBody(SETTINGS_CSS, '.chq-settings-row-full');
     expect(fullRowBody).toMatch(/grid-template-columns:\s*1fr/);
+  });
+
+  // w22-c/DEC-896: tracks and rooms edit rows carry different column
+  // counts, so the shared .chq-settings-edit-row class no longer owns a
+  // grid-template-columns of its own -- each entity gets its own width hook.
+  it('.chq-settings-edit-row declares no grid-template-columns of its own (shared chrome only)', () => {
+    const rowBody = topLevelRuleBody(SETTINGS_CSS, '.chq-settings-edit-row');
+    expect(rowBody).toMatch(/display:\s*grid/);
+    expect(rowBody).not.toMatch(/grid-template-columns/);
+  });
+
+  it('.chq-settings-track-edit-row reproduces the frame\'s tracks columns minus the non-functional drag handle (1fr 150px auto)', () => {
+    const body = topLevelRuleBody(SETTINGS_CSS, '.chq-settings-track-edit-row');
+    expect(body).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)\s*150px\s*auto/);
+  });
+
+  it('.chq-settings-room-edit-row reproduces the frame\'s rooms columns minus the non-functional drag handle (1fr 110px 150px auto)', () => {
+    const body = topLevelRuleBody(SETTINGS_CSS, '.chq-settings-room-edit-row');
+    expect(body).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)\s*110px\s*150px\s*auto/);
+  });
+
+  it('applies the track and room width hooks alongside the shared row class', async () => {
+    mockTracksRooms();
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await openEdit();
+    const trackNameInput = within(section).getByLabelText('Track name for AI Engineering');
+    const trackRow = trackNameInput.closest('.chq-settings-edit-row')!;
+    expect(trackRow).toHaveClass('chq-settings-track-edit-row');
+
+    const roomNameInput = within(section).getByLabelText('Room name for Main Stage');
+    const roomRow = roomNameInput.closest('.chq-settings-edit-row')!;
+    expect(roomRow).toHaveClass('chq-settings-room-edit-row');
   });
 });
 
