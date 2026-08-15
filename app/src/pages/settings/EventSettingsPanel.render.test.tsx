@@ -309,7 +309,7 @@ describe('EventSettingsPanel save-refusal error shape (DEC-897/DEC-124)', () => 
     expect(fieldError).toHaveClass('chq-field-error');
     expect(fieldError.closest('.chq-settings-field')).toBe(slugInput.closest('.chq-settings-field'));
     expect(fieldError.getAttribute('role')).toBe('alert');
-    expect(screen.getByText('Everything else on this page is fine and is still here.')).toBeInTheDocument();
+    expect(screen.getByText('Nothing was lost. Your edits are still below.')).toBeInTheDocument();
 
     expect(slugInput).toHaveClass('chq-field-invalid');
     expect(slugInput).toHaveAttribute('aria-invalid', 'true');
@@ -352,5 +352,78 @@ describe('EventSettingsPanel save-refusal error shape (DEC-897/DEC-124)', () => 
     expect(
       screen.queryByText('That slug is already taken by another event in this org.'),
     ).not.toBeInTheDocument();
+  });
+
+  // w56-d/DEC-124 amendment: the server's fields map is read in full, not
+  // just fields.slug -- every offending control gets its own inline
+  // message and the ErrorSummary anchors to it, while every other field's
+  // unsaved edit is left exactly as typed.
+  it('a PATCH rejection carrying fields {slug, endDate, timezone} renders three inline messages, three summary anchors at real control ids, and preserves every typed value', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}`]: eventDetail,
+      'GET /api/v1/mail-status': { provider: 'none', configured: false, fromEmail: null },
+      [`PATCH /api/v1/events/${EVENT_ID}`]: {
+        status: 409,
+        body: errorEnvelope('invalid', 'Invalid event', {
+          slug: 'Already in use',
+          endDate: 'Must be on or after startDate',
+          timezone: 'Must be a valid IANA timezone',
+        }),
+      },
+    });
+    renderPanel();
+
+    const nameInput = await screen.findByLabelText('Name');
+    fireEvent.change(nameInput, { target: { value: 'Edited Name' } });
+    const slugInput = screen.getByLabelText('Slug');
+    fireEvent.change(slugInput, { target: { value: 'taken-slug' } });
+    const timezoneInput = screen.getByLabelText('Time zone');
+    fireEvent.change(timezoneInput, { target: { value: 'America/Denver' } });
+    const locationInput = screen.getByLabelText('Venue');
+    fireEvent.change(locationInput, { target: { value: 'Edited Venue' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    // Three inline field-scoped messages, each role="alert".
+    const slugMessage = await screen.findByText('That slug is already taken by another event in this org.');
+    const endDateMessage = await screen.findByText('The end date must be on or after the start date.');
+    const timezoneMessage = await screen.findByText('Must be a valid IANA timezone');
+    for (const el of [slugMessage, endDateMessage, timezoneMessage]) {
+      expect(el).toHaveClass('chq-field-error');
+      expect(el.getAttribute('role')).toBe('alert');
+    }
+    expect(slugMessage.closest('.chq-settings-field')).toBe(slugInput.closest('.chq-settings-field'));
+    expect(timezoneMessage.closest('.chq-settings-field')).toBe(timezoneInput.closest('.chq-settings-field'));
+
+    // Every other server-message key not in this refusal renders nothing,
+    // and the raw server text for slug/endDate never leaks through.
+    expect(screen.queryByText('Already in use')).not.toBeInTheDocument();
+    expect(screen.queryByText('Must be on or after startDate')).not.toBeInTheDocument();
+
+    // ONE ErrorSummary, three anchors pointing at real control ids.
+    const summary = screen.getByText('Three things need fixing before these settings can be saved').closest(
+      '.chq-error-summary',
+    ) as HTMLElement;
+    expect(summary).not.toBeNull();
+    expect(summary.getAttribute('role')).toBe('alert');
+    expect(screen.getByText('Nothing was lost. Your edits are still below.')).toBeInTheDocument();
+    const links = within(summary).getAllByRole('link');
+    expect(links).toHaveLength(3);
+    const startId = screen.getByLabelText('Start date').id;
+    expect(startId).not.toBe('');
+    for (const link of links) {
+      const targetId = (link.getAttribute('href') ?? '').replace('#', '');
+      expect(targetId).not.toBe('');
+      expect(document.getElementById(targetId)).not.toBeNull();
+    }
+
+    // No page banner for a field-scoped refusal.
+    expect(screen.queryByText('Invalid event')).not.toBeInTheDocument();
+
+    // Every typed value -- including the untouched Location field's -- is
+    // preserved: no refetch, no reset.
+    expect(screen.getByLabelText('Name')).toHaveValue('Edited Name');
+    expect(screen.getByLabelText('Slug')).toHaveValue('taken-slug');
+    expect(screen.getByLabelText('Time zone')).toHaveValue('America/Denver');
+    expect(screen.getByLabelText('Venue')).toHaveValue('Edited Venue');
   });
 });
