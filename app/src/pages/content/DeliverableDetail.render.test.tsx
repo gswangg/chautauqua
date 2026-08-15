@@ -601,6 +601,67 @@ describe('DeliverableDetail render smoke', () => {
     expect(phoneMainMatch![1]).toMatch(/--chq-pub-main-pad-x:\s*16px/);
   });
 
+  // DEC-989 amendment (wave 23): the status band's bleed trick above only
+  // reaches the true edge if nothing narrower clamps an ancestor -- the
+  // defect this wave fixes was ContentApp's chq-page root itself carrying
+  // chq-measure-wide (1180) in this state, which the band's margin-inline
+  // trick could cancel .chq-main's padding against but never that 1180
+  // clamp. DeliverableDetail now wraps everything BELOW the header/band in
+  // a .chq-content-page-content sibling that owns the 1180 clamp instead,
+  // so the band and header block stay OUTSIDE it -- this asserts that DOM
+  // shape directly, not just the band's own bare CSS rule (which would
+  // stay green even if a clamped ancestor crept back in above it).
+  it('the header block and status band sit OUTSIDE .chq-content-page-content, which wraps only the reading body below them', async () => {
+    mockBase();
+    const { container } = render(
+      <MemoryRouter>
+        <DeliverableDetail
+          submissionId={SUBMISSION_ID}
+          title="A talk"
+          contentStatus="pending"
+          onBack={() => {}}
+          onContentStatusChange={() => {}}
+        />
+      </MemoryRouter>,
+    );
+    await screen.findByText('slides-v2.pdf');
+
+    const pageContent = container.querySelector('.chq-content-page-content');
+    expect(pageContent).not.toBeNull();
+
+    const topbar = container.querySelector('.chq-content-detail-topbar');
+    const head = container.querySelector('.chq-content-detail-head');
+    const band = container.querySelector('.chq-content-status-band');
+    expect(topbar).not.toBeNull();
+    expect(head).not.toBeNull();
+    expect(band).not.toBeNull();
+    expect(pageContent!.contains(topbar!)).toBe(false);
+    expect(pageContent!.contains(head!)).toBe(false);
+    expect(pageContent!.contains(band!)).toBe(false);
+
+    // The reading body (deliverables/comments columns) IS inside the
+    // delegated-measure sibling.
+    const body = container.querySelector('.chq-content-detail-body');
+    expect(body).not.toBeNull();
+    expect(pageContent!.contains(body!)).toBe(true);
+
+    // content.css: the sibling clamps at the wide (1180) reading measure,
+    // never a hard-coded px, and the header block carries the SAME
+    // margin-inline/padding bleed treatment as the band (so both flush to
+    // the same true edge, not just the band alone).
+    const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'content.css'), 'utf-8');
+    const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+    const pageContentBody = withoutMedia.match(/\.chq-content-page-content\s*\{([^}]*)\}/)?.[1];
+    expect(pageContentBody).toBeDefined();
+    expect(pageContentBody).toMatch(/max-width:\s*var\(--chq-measure-wide\)/);
+    expect(pageContentBody).not.toMatch(/max-width:\s*\d+px/);
+
+    const headBody = withoutMedia.match(/\.chq-content-detail-head\s*\{([^}]*)\}/)?.[1];
+    expect(headBody).toMatch(/margin-inline:\s*calc\(var\(--chq-pub-main-pad-x\)\s*\*\s*-1\)/);
+    const topbarBody = withoutMedia.match(/\.chq-content-detail-topbar\s*\{([^}]*)\}/)?.[1];
+    expect(topbarBody).toMatch(/margin-inline:\s*calc\(var\(--chq-pub-main-pad-x\)\s*\*\s*-1\)/);
+  });
+
   // DEC-989 amendment (wave 72): the band's copy stacks two lines and reads
   // the status value through worklistStatusLabel -- the ONE vocabulary the
   // worklist row already uses -- rather than a second label set.

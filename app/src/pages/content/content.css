@@ -159,12 +159,20 @@
   gap: 18px;
 }
 
+/* DEC-989 amendment (wave 23): the header block bleeds through .chq-main's
+   own padding by the SAME margin-inline/padding trick .chq-content-status-
+   band already uses (below) -- both are unclamped chrome siblings of the
+   1180-clamped .chq-content-page-content, and must flush to the identical
+   edge the band does, not stop short at .chq-main's own padded content
+   box. */
 .chq-content-detail-head {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 20px;
   flex-wrap: wrap;
+  padding-inline: var(--chq-pub-main-pad-x);
+  margin-inline: calc(var(--chq-pub-main-pad-x) * -1);
 }
 
 .chq-content-detail-title {
@@ -618,8 +626,14 @@
 /* block, at the end, to keep that merge hunk small.                       */
 /* ---------------------------------------------------------------------- */
 
+/* DEC-989 amendment (wave 23): same bleed treatment as .chq-content-
+   detail-head immediately below -- the back link sits above the title in
+   its own row, and both rows must flush to the same left edge as the
+   status band, not the title alone. */
 .chq-content-detail-topbar {
   display: flex;
+  padding-inline: var(--chq-pub-main-pad-x);
+  margin-inline: calc(var(--chq-pub-main-pad-x) * -1);
 }
 
 .chq-content-detail-back {
@@ -665,7 +679,18 @@
    margin-inline of the SAME token and then restores that value as its own
    horizontal padding -- one token, two consumers, so they cannot drift.
    Never vw/cqw here either, same overshoot reason as above. The bottom
-   edge takes --chq-rule (not --chq-hairline) per the same ruling. */
+   edge takes --chq-rule (not --chq-hairline) per the same ruling.
+
+   DEC-989 amendment (wave 23): the page root wave-72 measured this
+   against (ContentApp's chq-page chq-measure-table) was itself wrong for
+   this state -- DeliverableDetail's page root carried chq-measure-wide
+   (1180), not chq-measure-table, and no bleed trick cancels a narrower
+   ancestor CLAMP, only a padded ancestor's padding. ContentApp now puts
+   NO measure token on chq-page at all while a DeliverableDetail is open;
+   .chq-content-page-content (below) delegates the 1180 measure to a
+   sibling wrapped around everything BELOW this band instead, so this
+   band's existing bleed trick now reaches the true edge with nothing left
+   to cancel it. */
 .chq-content-status-band {
   display: flex;
   align-items: center;
@@ -705,6 +730,23 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--chq-muted);
+}
+
+/* DEC-989 (wave 23): everything below the header block/status band wraps
+   in this sibling, which delegates the page's 1180 reading measure here
+   instead of the chq-page root (see ContentApp.tsx and the amendment on
+   .chq-content-status-band above) -- so the chrome above stays genuinely
+   full bleed while the deliverables/comments body stays a centred,
+   1180-wide reading column, matching docs/design/Chautauqua Content.dc.
+   html:133's max-width:1180px sibling of its own header/status chrome. No
+   padding of its own: the reading body's internal spacing already comes
+   from .chq-content-detail-body / .chq-content-group-body's own gaps and
+   .chq-main's own horizontal padding, which this element does not cancel
+   (unlike the header block/band above, which deliberately bleed past it). */
+.chq-content-page-content {
+  width: 100%;
+  max-width: var(--chq-measure-wide);
+  margin-inline: auto;
 }
 
 /* w41-a: "Deliverables"/"Notes on the <kind>" -- PEER headings, each ruled

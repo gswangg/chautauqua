@@ -255,6 +255,36 @@ describe('page measure (DEC-744/DEC-808/DEC-989)', () => {
     expect(checkedAtLeastOne).toBe(true);
   });
 
+  // DEC-989 amendment (wave 23): ContentApp.tsx's DeliverableDetail state is
+  // a THIRD kind of exemption from the enumerating scan above, distinct
+  // from Agenda/Settings -- not a named-exemption page whose className
+  // literal is skipped outright, but a page whose className is built from a
+  // template string (`` `chq-page chq-content-page ${pageMeasureClass}` ``)
+  // rather than a static `className="chq-page..."` literal, so the regex
+  // scan never sees it either way. That is not an accident to leave
+  // unexplained: in this ONE state (submissionId && selected), the root
+  // deliberately carries NO measure token at all, because the measure is
+  // delegated to a `.chq-content-page-content` sibling DeliverableDetail
+  // wraps around everything below its header/status-band chrome --
+  // CONTAINER_SELECTOR above already admits the `-page-content` suffix as a
+  // container, so that sibling is caught (and required to clamp with a
+  // var(--chq-measure*), never a hard-coded px) by the general "every
+  // page/content container clamp" scan a few tests up. This test pins both
+  // halves of that delegation directly, so the exemption cannot silently
+  // rot back into a stray literal max-width the way DEC-989's own history
+  // (wave 41's chq-measure-wide-on-chq-page defect this wave corrects) shows
+  // it can.
+  it('ContentApp.tsx delegates the DeliverableDetail state measure to a .chq-content-page-content sibling, never a token on chq-page itself', () => {
+    const contentApp = readFileSync(join(PAGES_ROOT, 'content/ContentApp.tsx'), 'utf-8');
+    expect(contentApp).toMatch(/pageMeasureClass\s*=\s*submissionId\s*&&\s*selected\s*\?\s*''\s*:\s*'chq-measure-table'/);
+
+    const contentCss = readFileSync(join(PAGES_ROOT, 'content/content.css'), 'utf-8');
+    const pageContentBody = topLevelRuleBody(contentCss, '.chq-content-page-content');
+    expect(pageContentBody).toMatch(MEASURE_VAR_RE);
+    expect(pageContentBody).toMatch(/max-width:\s*var\(--chq-measure-wide\)/);
+    expect(pageContentBody).not.toMatch(/max-width:\s*\d+px/);
+  });
+
   it('SubmissionDetailPage is capped at chq-measure-wide (README "Changed since the previous handoff" #7)', () => {
     const content = readFileSync(join(PAGES_ROOT, 'submissions/SubmissionDetailPage.tsx'), 'utf-8');
     const literals = content.match(/className="chq-page[^"]*"/g) ?? [];
@@ -317,16 +347,21 @@ describe('page measure (DEC-744/DEC-808/DEC-989)', () => {
     expect(content).toMatch(/className=\{`chq-page chq-comms-page \$\{pageMeasureClass\}`\}/);
   });
 
-  // w18-d (DEC-989 amendment): ContentApp.tsx is per-view, not a flat
-  // chq-measure-table literal like the other table-class pages above --
-  // worklist/files (row-and-column layouts) stay at the 1440 table measure,
-  // but once submissionId resolves to a DeliverableDetail (a reading
-  // surface) the page clamps to the 1180 chq-measure-wide instead, on the
-  // SAME chq-page root every other view uses (not an inner body wrapper).
-  // The two early-return (event-loading/no-event) literals stay on the flat
-  // table-measure literal and are still covered by the enumerating scan
-  // above and by the table-class-pages case.
-  it('ContentApp.tsx clamps a resolved DeliverableDetail at chq-measure-wide and every other view at chq-measure-table, on the page root', () => {
+  // w18-d (DEC-989 amendment, superseded wave 23): ContentApp.tsx is
+  // per-view, not a flat chq-measure-table literal like the other
+  // table-class pages above -- worklist/files (row-and-column layouts)
+  // stay at the 1440 table measure. A resolved DeliverableDetail (a
+  // reading surface) used to clamp this SAME chq-page root at the 1180
+  // chq-measure-wide instead; wave 23 found that defeated the status
+  // band's own full-bleed trick (a narrower ancestor CLAMP is not
+  // something a margin-inline cancel can reach), so the root now carries
+  // NO measure token in that state at all, and DeliverableDetail delegates
+  // the 1180 measure to a `.chq-content-page-content` sibling instead (see
+  // the dedicated delegation test above and DeliverableDetail.render.test
+  // .tsx). The two early-return (event-loading/no-event) literals stay on
+  // the flat table-measure literal and are still covered by the
+  // enumerating scan above and by the table-class-pages case.
+  it('ContentApp.tsx leaves the page root unclamped for a resolved DeliverableDetail and clamps every other view at chq-measure-table', () => {
     const content = readFileSync(join(PAGES_ROOT, 'content/ContentApp.tsx'), 'utf-8');
 
     // The two early-return (loading/no-event) literals still carry the flat
@@ -341,11 +376,11 @@ describe('page measure (DEC-744/DEC-808/DEC-989)', () => {
     // The main-render page root is a per-view template literal, not a fixed
     // className="..." literal -- assert on the ternary that computes it
     // directly, both that it exists and that it maps exactly
-    // resolved-detail->chq-measure-wide, everything else->chq-measure-table.
+    // resolved-detail->no measure token, everything else->chq-measure-table.
     expect(content).toMatch(
-      /const pageMeasureClass = submissionId && selected \? 'chq-measure-wide' : 'chq-measure-table';/,
+      /const pageMeasureClass = submissionId && selected \? '' : 'chq-measure-table';/,
     );
-    expect(content).toMatch(/className=\{`chq-page chq-content-page \$\{pageMeasureClass\}`\}/);
+    expect(content).toMatch(/className=\{`chq-page chq-content-page \$\{pageMeasureClass\}`\.trim\(\)\}/);
   });
 
   it('Agenda carries no measure class (the one canvas)', () => {
