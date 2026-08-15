@@ -315,7 +315,7 @@
     border-bottom: none;
   }
 
-  .chq-review-results-table td::before {
+  .chq-review-results-table td[data-label]::before {
     content: attr(data-label);
     display: block;
     font-size: 10px;
