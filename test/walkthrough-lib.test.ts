@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   WALKTHROUGH_AREAS,
   agendaHtmlContainsBreakLabel,
+  baseUrlMismatch,
   breaksListContainsId,
   buildContactsMergeBody,
   buildCreateBreakBody,
@@ -11,8 +12,10 @@ import {
   duplicatePairStillOpen,
   eventFilesContainsUpload,
   extractProgrammeDayIds,
+  extractPublicBaseUrl,
   findEventBySlug,
   formatAreaPass,
+  formatBaseUrlMismatchMessage,
   formatFailureMessage,
   formatMissingModulesMessage,
   formatSummaryTable,
@@ -360,5 +363,73 @@ describe("extractProgrammeDayIds (w68-d)", () => {
     expect(extractProgrammeDayIds('<div id="chq-prog-day-heading-2027-05-12"></div>')).toEqual([
       "chq-prog-day-heading-2027-05-12",
     ]);
+  });
+});
+
+describe("extractPublicBaseUrl (w37-d)", () => {
+  it("parses the PUBLIC_BASE_URL= line out of a .dev.vars-format blob", () => {
+    const text = "DEV_MODE=1\nPUBLIC_BASE_URL=http://localhost:8787\n";
+    expect(extractPublicBaseUrl(text)).toBe("http://localhost:8787");
+  });
+
+  it("returns null when the key is absent (no-.dev.vars case delegates here with '')", () => {
+    expect(extractPublicBaseUrl("DEV_MODE=1\n")).toBeNull();
+    expect(extractPublicBaseUrl("")).toBeNull();
+  });
+
+  it("ignores comment lines and only reads the PUBLIC_BASE_URL key, never any other value", () => {
+    const text =
+      "# comment mentioning PUBLIC_BASE_URL=http://should-not-match.example\n" +
+      "SOME_SECRET=super-secret-value\n" +
+      "PUBLIC_BASE_URL=http://localhost:8971\n";
+    expect(extractPublicBaseUrl(text)).toBe("http://localhost:8971");
+  });
+
+  it("trims surrounding whitespace and treats an empty value as absent", () => {
+    expect(extractPublicBaseUrl("PUBLIC_BASE_URL=  http://localhost:9000  \n")).toBe("http://localhost:9000");
+    expect(extractPublicBaseUrl("PUBLIC_BASE_URL=\n")).toBeNull();
+  });
+});
+
+describe("baseUrlMismatch (w37-d, DEC-296)", () => {
+  it("returns null when configured is null (no .dev.vars / no wrangler.jsonc vars entry)", () => {
+    expect(baseUrlMismatch(null, "http://localhost:8971")).toBeNull();
+  });
+
+  it("returns null when the configured loopback origin matches --url's origin", () => {
+    expect(baseUrlMismatch("http://localhost:8971", "http://localhost:8971")).toBeNull();
+    expect(baseUrlMismatch("http://localhost:8971/", "http://localhost:8971")).toBeNull();
+  });
+
+  it("flags a loopback-configured origin that differs from --url's origin", () => {
+    expect(baseUrlMismatch("http://localhost:8787", "http://localhost:8971")).toEqual({
+      configuredOrigin: "http://localhost:8787",
+      targetOrigin: "http://localhost:8971",
+    });
+  });
+
+  it("never flags a configured NON-loopback origin — it always wins outright per resolveBaseUrl's precedence", () => {
+    expect(baseUrlMismatch("https://chautauqua.cc", "http://localhost:8971")).toBeNull();
+  });
+
+  it("returns null when configured is not a parseable absolute URL", () => {
+    expect(baseUrlMismatch("not-a-url", "http://localhost:8971")).toBeNull();
+  });
+});
+
+describe("formatBaseUrlMismatchMessage (w37-d)", () => {
+  it("names both origins and the exact remediation", () => {
+    const message = formatBaseUrlMismatchMessage({
+      configuredOrigin: "http://localhost:8787",
+      targetOrigin: "http://localhost:8971",
+    });
+    expect(message).toContain("http://localhost:8787");
+    expect(message).toContain("http://localhost:8971");
+    expect(message).toContain("PUBLIC_BASE_URL=http://localhost:8971");
+    expect(message).toContain(".dev.vars");
+    expect(message).toContain(".wrangler/state");
+    expect(message).toContain("re-migrate");
+    expect(message).toContain("re-seed");
+    expect(message).toContain("restart the server");
   });
 });

@@ -11,7 +11,7 @@
 // formatting) live in scripts/walkthrough-lib.ts for unit testing without
 // node: imports; see test/walkthrough-lib.test.ts.
 
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { dirname } from "node:path";
@@ -19,8 +19,11 @@ import { fileURLToPath } from "node:url";
 
 import {
   WALKTHROUGH_AREAS,
+  baseUrlMismatch,
   buildSpawnArgs,
+  extractPublicBaseUrl,
   formatAreaPass,
+  formatBaseUrlMismatchMessage,
   formatFailureMessage,
   formatMissingModulesMessage,
   formatSummaryTable,
@@ -32,8 +35,39 @@ import {
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..");
 
+/**
+ * w37-d pre-flight (DEC-296, DEC-069): reads the configured PUBLIC_BASE_URL
+ * without logging any other .dev.vars content — `.dev.vars` wins when
+ * present (wrangler dev auto-loads it), else falls back to wrangler.jsonc's
+ * `vars.PUBLIC_BASE_URL`. Returns null if neither file sets it.
+ */
+function readConfiguredPublicBaseUrl(): string | null {
+  const devVarsPath = join(REPO_ROOT, ".dev.vars");
+  if (existsSync(devVarsPath)) {
+    return extractPublicBaseUrl(readFileSync(devVarsPath, "utf8"));
+  }
+  const wranglerPath = join(REPO_ROOT, "wrangler.jsonc");
+  if (existsSync(wranglerPath)) {
+    const match = readFileSync(wranglerPath, "utf8").match(/"PUBLIC_BASE_URL"\s*:\s*"([^"]*)"/);
+    return match ? match[1] : null;
+  }
+  return null;
+}
+
 function main(): void {
   const url = parseUrlArg(process.argv.slice(2), "http://localhost:8787");
+
+  // w37-d pre-flight: catch a loopback PUBLIC_BASE_URL / --url origin
+  // mismatch here (five seconds) instead of forty steps into a producer/J2
+  // scraped-link failure. A configured non-loopback PUBLIC_BASE_URL always
+  // wins per resolveBaseUrl's precedence and is never a mismatch.
+  const configuredBaseUrl = readConfiguredPublicBaseUrl();
+  const mismatch = baseUrlMismatch(configuredBaseUrl, url);
+  if (mismatch) {
+    console.error(formatBaseUrlMismatchMessage(mismatch));
+    process.exitCode = 1;
+    return;
+  }
 
   const missing = WALKTHROUGH_AREAS.map((area) => modulePath(area)).filter(
     (rel) => !existsSync(join(REPO_ROOT, rel)),
