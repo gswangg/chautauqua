@@ -182,10 +182,11 @@ message a lie (DEC-478), so this is the only place it is defined.
 
 ## J12 — Exports (`/docs/api`)
 
-CSV/JSON exports for submissions, speakers, sessions, show-flow (final titles, speaker
-lists, intro text, deck locations — SPEC §10 #7, built) all live under the bearer-token
-REST API (mounted at `api/v1`); `/docs/api` is the public docs page for it (SPEC §10 #6,
-built).
+CSV/JSON exports cover every kind in `EXPORT_KINDS` (`src/server/repo/exports/kinds.ts`):
+`submissions`, `speakers`, `evaluations`, `agenda`, `email-log`, `contacts` — all live
+under the bearer-token REST API (mounted at `api/v1`); `/docs/api` is the public docs page
+for it (SPEC §10 #6, built). Show-flow (final titles, speaker lists, intro text, deck
+locations — SPEC §10 #7, built) is a separate route, not one of the `EXPORT_KINDS`.
 Cross-org access returns 404, never 403, so an attacker can't distinguish "not yours" from
 "doesn't exist" (`test/exports-cross-org.test.ts`). Bearer tokens cannot mint further
 tokens (DEC-027).
@@ -196,12 +197,13 @@ Session login, self-service password change (any authenticated role), and the SP
 catch-all (`/admin/*`) that every unmatched admin path resolves through (DEC-154) rather than a
 blank screen. Built.
 
-`/logout` (`src/routes/auth.tsx`, DEC-154 amendment wave 8) is the GET twin of the sign-out
-POST: a typed or bookmarked sign-out URL lands on a real confirmation card, not the 404 it
-used to hit. Anonymous visitors have nothing to end and are redirected to `/login`; a
-signed-in visitor gets a confirm form carrying the double-submit CSRF token (DEC-181) plus a
-role-scoped "Stay signed in" link. The session itself only ends on the POST, so the GET is
-idempotent. Built.
+`/logout` (`src/routes/auth-login.tsx`, DEC-154 wave-25 amendment) has no confirmation
+screen: `GET /logout` mutates nothing and redirects straight to `/login` — a bookmarked or
+typed sign-out URL, or a stray `<img src="/logout">`, can never end a session, closing the
+CSRF hole a bare-GET side effect would open. `POST /logout` keeps its CSRF guard
+(`csrfFormOrHeader`, DEC-181), deletes the session, and redirects to `/login` with a
+`signed-out=1` query flag, where `loginStatusLine` (`src/routes/auth-helpers.ts`) renders
+the single muted status line on the sign-in card. Built.
 
 `/forgot` (`src/routes/auth.tsx`, DEC-014 amendment wave 25) is the password-reset request
 form, and its `POST /reset/:token` sibling completes the change. The grant is a hashed,
@@ -219,7 +221,7 @@ excluded from the idempotent render sweep. Built.
 The mailer port's local sink: every "send" (status-change notification, reminder,
 compose, .ics invite) writes an `email_log` row and is viewable, full rendered message
 included, at `/dev/mailbox` — deliberately **not mounted in production** (see README).
-Real delivery (Resend) is stage-2 wiring, listed below.
+Production delivery, via the Cloudflare `send_email` binding adapter, is listed below.
 
 `/dev/mailbox/:emailId` (`src/server/repo/email.ts`, guarded by `guardDevMailbox` in
 `src/server/app.ts`) is the single logged message's own rendered view — same guard as the
@@ -312,13 +314,18 @@ and adapter swaps that a deploying operator does, not code gaps:
 - **`wrangler deploy` / Cloudflare provisioning** — D1/R2/KV bindings, cron triggers,
   `custom_domain`/DNS. Local dev already emulates all of it via Miniflare.
 - **Production email delivery** — the mailer is a port (`src/server/repo/email.ts` /
-  `src/routes/*mailbox*`); Resend is the stage-2 adapter behind it. Local dev writes to
-  `email_log` + `/dev/mailbox` instead, and that route is deliberately unmounted in
-  production.
+  `src/routes/*mailbox*`); the adapter behind it (`src/mail/email-binding.ts`, DEC-996) is
+  already written, against the Cloudflare Workers `send_email` binding, not Resend. What's
+  left is the operator's own account/domain provisioning (the binding + a verified sending
+  domain), not a code gap. Local dev writes to `email_log` + `/dev/mailbox` instead, and
+  that route stays deliberately unmounted in production.
 - **Airtable one-way sync** — the push adapter is written (`src/sync/airtable.ts`, cron-
   invoked from `src/server/scheduled.ts`) and is a no-op unless both `AIRTABLE_TOKEN` and
-  `AIRTABLE_BASE_ID` are configured; absence is a valid state, not an error. No account is
-  wired up in this repo, by design (stage 1 has no secrets).
+  `AIRTABLE_BASE_ID` are configured; absence is a valid state, not an error. Once those two
+  are set, a missing `AIRTABLE_ORG_ID` throws rather than syncing unscoped — one Airtable
+  base serves exactly one org, so a configured-but-unscoped sync would push one tenant's
+  rows into another tenant's base. No account is wired up in this repo, by design (stage 1
+  has no secrets).
 - **Resend delivery-tracking webhooks → `email_log`** (SPEC §10 #8). Depends on the same
   external Resend account as production email above; not built.
 

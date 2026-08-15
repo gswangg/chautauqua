@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 
 import { ROUTE_MANIFEST, type RouteManifestEntry } from "../app/src/routeManifest";
 import { app as composedApp } from "../src/index";
+import { EXPORT_KINDS } from "../src/server/repo/exports/kinds";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const AUDIT_PATH = resolve(REPO_ROOT, "docs/AUDIT.md");
@@ -96,6 +97,52 @@ describe("docs/AUDIT.md route claims vs app/src/routeManifest.ts (DEC-618)", () 
   it("EXCLUDED only lists real ROUTE_MANIFEST patterns (no typo'd exclusion)", () => {
     const bogus = [...EXCLUDED].filter((p) => !manifestPatterns.has(p));
     expect(bogus).toEqual([]);
+  });
+});
+
+// DEC-618 amendment (wave 7): the J12 section's export-kind list drifted
+// from EXPORT_KINDS (src/server/repo/exports/kinds.ts) more than once —
+// hand-listing the kinds in prose desyncs the same way route claims did.
+// This asserts the J12 section names every kind in backticks and no
+// backticked kind-shaped token that isn't actually in EXPORT_KINDS.
+
+describe("docs/AUDIT.md J12 export-kind claims vs EXPORT_KINDS (DEC-618 amendment)", () => {
+  const auditText = readFileSync(AUDIT_PATH, "utf-8");
+  const lines = auditText.split("\n");
+  const startIdx = lines.findIndex((l) => l.trim().startsWith("## J12"));
+  if (startIdx === -1) {
+    throw new Error('docs/AUDIT.md has no "## J12" section');
+  }
+  const rest = lines.slice(startIdx + 1);
+  const endIdx = rest.findIndex((l) => l.startsWith("## "));
+  const j12Section = (endIdx === -1 ? rest : rest.slice(0, endIdx)).join("\n");
+
+  // Every backtick span in the section that is exactly one of EXPORT_KINDS,
+  // or that LOOKS like a kind token (a bare lowercase-hyphen word, no
+  // slashes/spaces) but isn't a real kind -- the latter is what catches a
+  // stale/typo'd kind name.
+  const backtickTokens = [...j12Section.matchAll(/`([^`]+)`/g)].map((m) => m[1]!);
+  const kindShapedTokens = backtickTokens.filter((t) => /^[a-z][a-z-]*$/.test(t));
+
+  it("EXPORT_KINDS is non-empty (sanity: these checks would be vacuous otherwise)", () => {
+    expect(EXPORT_KINDS.length).toBeGreaterThan(0);
+  });
+
+  it("every EXPORT_KINDS value is named in backticks in the J12 section", () => {
+    const missing = EXPORT_KINDS.filter((k) => !backtickTokens.includes(k));
+    expect(
+      missing,
+      `docs/AUDIT.md's J12 section does not name export kind(s) in backticks: ${missing.join(", ")}`,
+    ).toEqual([]);
+  });
+
+  it("no backticked kind-shaped token in the J12 section names a kind absent from EXPORT_KINDS", () => {
+    const bogus = kindShapedTokens.filter((t) => !(EXPORT_KINDS as readonly string[]).includes(t));
+    expect(
+      bogus,
+      `docs/AUDIT.md's J12 section names backticked token(s) that look like export kinds but ` +
+        `are not in EXPORT_KINDS (src/server/repo/exports/kinds.ts): ${bogus.join(", ")}`,
+    ).toEqual([]);
   });
 });
 
