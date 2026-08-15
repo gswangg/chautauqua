@@ -494,33 +494,79 @@ export function Scorecard() {
               {/* DEC-676: guidance renders under the label; nothing when absent. */}
               {criterion.guidance && <p className="chq-review-criterion-guidance">{criterion.guidance}</p>}
               {criterion.kind === 'rating' ? (
-                <div
-                  role="radiogroup"
-                  aria-label={criterion.label}
-                  className="chq-review-rating-group"
-                >
-                  {ratingScaleValues(plan.scale).map((value) => {
-                    const selected = scores[criterion.id] === value;
-                    return (
-                      // DEC-939: a single-select scale is a radio group, not
-                      // a set of toggle buttons -- keeps role="radio" +
-                      // aria-checked and refuses aria-pressed (closed, not
-                      // to be re-filed).
-                      <button
-                        key={value}
-                        type="button"
-                        role="radio"
-                        aria-checked={selected}
-                        className={`chq-review-rating-btn${selected ? ' chq-review-rating-btn-selected' : ''}`}
-                        disabled={!!recusal}
-                        onFocus={() => setFocusedId(criterion.id)}
-                        onClick={() => setScores((s) => ({ ...s, [criterion.id]: value }))}
-                      >
-                        {value}
-                      </button>
-                    );
-                  })}
-                </div>
+                (() => {
+                  const scaleValues = ratingScaleValues(plan.scale);
+                  const currentValue = scores[criterion.id];
+                  const currentIndex = scaleValues.findIndex((v) => v === currentValue);
+                  // DEC-939 (amendment): roving tabindex -- the selected
+                  // pill is the group's one tab stop; with nothing selected
+                  // yet, the first pill is (same contract every native
+                  // radiogroup follows).
+                  const rovingIndex = currentIndex >= 0 ? currentIndex : 0;
+                  function moveTo(nextIndex: number, groupEl: HTMLDivElement) {
+                    // nextIndex is always produced by moduloing into
+                    // [0, scaleValues.length) or clamping to an end, so the
+                    // lookup is always in range.
+                    const nextValue = scaleValues[nextIndex] as number;
+                    setScores((s) => ({ ...s, [criterion.id]: nextValue }));
+                    setFocusedId(criterion.id);
+                    const btn = groupEl.querySelectorAll<HTMLButtonElement>('[role="radio"]')[nextIndex];
+                    btn?.focus();
+                  }
+                  function handleGroupKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+                    if (recusal) return;
+                    const groupEl = e.currentTarget;
+                    let nextIndex: number | null = null;
+                    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                      nextIndex = (rovingIndex + 1) % scaleValues.length;
+                    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                      nextIndex = (rovingIndex - 1 + scaleValues.length) % scaleValues.length;
+                    } else if (e.key === 'Home') {
+                      nextIndex = 0;
+                    } else if (e.key === 'End') {
+                      nextIndex = scaleValues.length - 1;
+                    }
+                    if (nextIndex === null) return;
+                    // DEC-939: this handler owns arrow/Home/End for the
+                    // group -- preventDefault + stopPropagation so it never
+                    // reaches the page-level number-key handler (ruling
+                    // A11, Scorecard.tsx handleKeyDown).
+                    e.preventDefault();
+                    e.stopPropagation();
+                    moveTo(nextIndex, groupEl);
+                  }
+                  return (
+                    <div
+                      role="radiogroup"
+                      aria-label={criterion.label}
+                      className="chq-review-rating-group"
+                      onKeyDown={handleGroupKeyDown}
+                    >
+                      {scaleValues.map((value, i) => {
+                        const selected = scores[criterion.id] === value;
+                        return (
+                          // DEC-939: a single-select scale is a radio group, not
+                          // a set of toggle buttons -- keeps role="radio" +
+                          // aria-checked and refuses aria-pressed (closed, not
+                          // to be re-filed).
+                          <button
+                            key={value}
+                            type="button"
+                            role="radio"
+                            aria-checked={selected}
+                            tabIndex={i === rovingIndex ? 0 : -1}
+                            className={`chq-review-rating-btn${selected ? ' chq-review-rating-btn-selected' : ''}`}
+                            disabled={!!recusal}
+                            onFocus={() => setFocusedId(criterion.id)}
+                            onClick={() => setScores((s) => ({ ...s, [criterion.id]: value }))}
+                          >
+                            {value}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })()
               ) : criterion.kind === 'dropdown' ? (
                 <select
                   className="chq-select"
