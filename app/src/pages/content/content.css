@@ -192,6 +192,14 @@
   margin: 8px 0 0;
 }
 
+/* DEC-020 wave-58 amendment: the after-the-fact disclosure that THIS upload
+   reopened content review. It is a live region that appears between the
+   version list and the upload zone, so it takes no margin of its own -- the
+   files column's own 14px gap spaces it from both neighbours. */
+.chq-content-upload-reopened-notice {
+  margin: 0;
+}
+
 /* w41-a (DEC-901 amendment): "Deliverables"/"Notes on the <kind>" are now
    PEERS living inside their own column here -- each column's heading is its
    first child, so both headings share one top edge (grid items start-align
@@ -421,6 +429,7 @@
   border-radius: var(--chq-r-card);
   min-height: 50px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   position: relative;
 }
@@ -464,6 +473,19 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* DEC-020 wave-58 amendment: the standing "posting a new version sends it
+   back for review" notice, stated BEFORE the organizer drops a file (the
+   twin of the portal's ReuploadReviewNotice). The zone is otherwise a
+   single-line strip, so the notice claims a full basis and wraps the
+   click/drop label onto its own line beneath it -- the strip keeps its
+   one-line shape, the notice just sits above it inside the same dashed
+   frame, sharing the label's 16px inset. */
+.chq-content-upload-notice {
+  flex: 1 1 100%;
+  margin: 0;
+  padding: 10px 16px 0;
 }
 
 /* Visually hidden, never display:none -- stays in the tab order and
