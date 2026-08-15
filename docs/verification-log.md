@@ -4844,6 +4844,81 @@ including the break-lifecycle, printable-programme, and anonymous-hub
 sections, after correcting a gitignored env-config mismatch (not a
 product defect).
 OPEN ITEMS: 0
+## 2026-08-15 task-w36-c — perf-smoke @ f5783479 [QUALIFYING]
+
+INVALIDATED BY: src/** app/src/** migrations/** package.json
+
+TIER-0 MEASUREMENT LANE, LOG-ONLY (DEC-644 wave-36 amendment, DEC-453,
+DEC-069 wave-36 amendment). FROZEN-PRODUCT lane: no change under src/,
+app/src/, migrations/, or package.json. Fixed nothing under those paths.
+
+Three-sha boundary (DEC-644 wave-36 amendment): HEAD
+`f5783479c7a1b8c96ef1506c3cfff1661fd6e338`; product sha (`git log
+--first-parent -1 --format=%H -- src/ app/src/ migrations/ package.json`)
+`3a041507287b2dca3abeda3e0648a41ddeba9707`; every live `task-w3*` ref
+(`task-w35-a`, `task-w35-e`, `task-w35-f`, `task-w36-a`, `task-w36-b`) is a
+proven ANCESTOR of HEAD. `task-w35-d` (the DEC-338 wave-35 /portal-row
+lane) no longer has a live ref but is confirmed present by content grep
+(the three portal checks in `scripts/perf-smoke.ts`, the `PERF_SPEAKER_*`
+exports in `scripts/perf-seed-lib.ts`) — **task-w35-d IS an ancestor**.
+
+Sequence run in order: `npm run build` (green) -> `npm run db:migrate` (43
+migrations) -> `npm run seed` -> `npm run perf:seed` (perf-2k) -> `npx
+wrangler dev --port 8972 --local` (confirmed up) -> `PERF_URL=
+http://localhost:8972 npm run perf:smoke`, three times, re-seeding between
+each run (measured passes write state). Full three-run verbatim table,
+grading, and two logged findings about a real gap this lane hit and worked
+around for measurement purposes only:
+docs/verification-log/task-w36-c-perf-smoke-f5783479.md.
+
+BLOCKING DEFECT (logged, not fixed — this lane does not touch scripts/,
+DEC-331/DEC-453): `scripts/perf-seed.ts` never calls any of
+`scripts/perf-seed-lib.ts`'s `PERF_SPEAKER_*` minting helpers, so the
+documented recipe alone cannot even reach the timed checks — `login()`
+throws `POST /login failed: expected 302, got 401` for the perf speaker
+before any row is measured. Worked around this run only via a
+measurement-only local D1 fixup (not committed, not touching any tracked
+file) inserting the missing perf-speaker `user`/`contact`/`participant`/
+`task_assignment` rows so the mandate rows could be measured at all. A
+second finding: the fixup's first attempt used seed order
+(`_1501..1505`), reproducing a `portal submission detail` 404 — the admin
+submissions list's actual page-1 order is descending
+(`_1800..1796`), which the eventual `scripts/perf-seed.ts` fix must use.
+
+Mandate grading, by name, at this boundary:
+- `reviewer queue`: run1 raw 54.2/adj 51.5ms FAIL, run2 raw 36.5/adj
+  34.1ms PASS, run3 raw 58.5/adj 55.3ms FAIL — 1 of 3 PASS vs the 50ms read
+  budget. **NOT closed**: task-w32-b's credited fix
+  (`src/routes/review/reviewer.ts`) is a proven ancestor, yet this reading
+  is markedly less stable than task-w35-a's 3-of-3 PASS at the identical
+  fix set. FINDING: `src/routes/review/reviewer.ts`'s `GET
+  /api/v1/review/plans/:id/queue` handler now straddles the 50ms budget
+  line.
+- `plan results (page 1)`: run1 adj 30.6ms, run2 adj 19.5ms, run3 adj
+  25.7ms — 3 of 3 PASS vs the 50ms read budget. **Closed**: task-w32-a's
+  credited fix (`src/routes/review/shared.ts`,
+  `src/routes/review/plans-progress.ts`) is a proven ancestor, consistent
+  with task-w35-a's own 3-of-3 PASS.
+- `files library (page 1)`: 3 of 3 PASS (adj 16.8/12.0/15.7ms). Closed
+  (task-w29-b/task-w31-a, both ancestors).
+- `onboarding grid (800 speakers x 5 tasks)`: 3 of 3 PASS (adj
+  38.0/24.0/37.7ms). Closed (task-w29-a, ancestor).
+- `portal home` / `portal tasks` / `portal submission detail` (task-w35-d,
+  an ancestor): 3 of 3 PASS each, but only reachable via this lane's
+  measurement-only D1 fixup — unreachable via the documented recipe alone
+  until the blocking-defect finding above lands.
+
+Non-mandate finding, logged only: `plan progress (page 1)` unstable
+(FAIL/PASS/FAIL, same pattern task-w35-a already logged), owner
+`src/routes/review/plans-progress.ts`.
+
+RESULT: FAIL (`reviewer queue`, 1 of 3 PASS, row stays OPEN at this
+boundary) / PASS (`plan results (page 1)`, 3 of 3 PASS, row CLOSED at this
+boundary) at f5783479c7a1b8c96ef1506c3cfff1661fd6e338. `files library (page
+1)` and `onboarding grid` both closed. `portal home`/`portal tasks`/`portal
+submission detail` all PASS but reachable only via this lane's
+measurement-only local D1 workaround, not the documented recipe.
+OPEN ITEMS: 4
 ## 2026-08-15 task-w36-d — spec-audit @ f5783479
 
 QUALIFYING
