@@ -25,6 +25,7 @@ import { apiList, apiPost, apiDelete, ApiError } from '../../lib/api';
 import { formatDateTime } from '../../lib/dates';
 import { copyText } from '../../lib/clipboard';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { MAX_NAME_LENGTH } from '../../../../src/forms/validate';
 import './settings-lists.css';
 
 interface ApiTokenItem {
@@ -220,6 +221,7 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder="e.g. CI pipeline"
+          maxLength={MAX_NAME_LENGTH}
         />
         <button type="submit" className="chq-btn chq-btn-primary" disabled={creating || newName.trim().length === 0}>
           {creating ? 'Creating…' : 'New token'}

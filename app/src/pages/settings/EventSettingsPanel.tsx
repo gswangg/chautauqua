@@ -19,6 +19,7 @@ import { plural } from '../../lib/plural';
 import { dateInputToMs, daysUntil } from '../../lib/dates';
 import { formatEventDayRange } from '../../../../src/lib/event-time';
 import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
+import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from '../../../../src/forms/validate';
 
 const SECTION_KEY = 'event';
 
@@ -360,6 +361,7 @@ export function EventSettingsPanel() {
               value={form.name}
               onChange={(e) => update('name', e.target.value)}
               aria-invalid={fieldAriaInvalid('name')}
+              maxLength={MAX_NAME_LENGTH}
             />
           </SettingsField>
           <SettingsField
@@ -374,6 +376,7 @@ export function EventSettingsPanel() {
               value={form.slug}
               onChange={(e) => update('slug', e.target.value)}
               aria-invalid={fieldAriaInvalid('slug')}
+              maxLength={MAX_NAME_LENGTH}
             />
           </SettingsField>
           <SettingsFieldPair>
@@ -409,6 +412,7 @@ export function EventSettingsPanel() {
               value={form.location}
               onChange={(e) => update('location', e.target.value)}
               aria-invalid={fieldAriaInvalid('location')}
+              maxLength={MAX_TEXT_LENGTH}
             />
           </SettingsField>
           <SettingsField
@@ -423,16 +427,29 @@ export function EventSettingsPanel() {
               value={form.timezone}
               onChange={(e) => update('timezone', e.target.value)}
               aria-invalid={fieldAriaInvalid('timezone')}
+              maxLength={MAX_NAME_LENGTH}
             />
           </SettingsField>
           <SettingsField label="Record prefix" width="name">
-            <input className="chq-input" value={form.recordPrefix} readOnly disabled />
+            <input
+              id="event-settings-record-prefix"
+              className="chq-input"
+              value={form.recordPrefix}
+              readOnly
+              disabled
+            />
           </SettingsField>
           <SettingsField label="Logo URL" width="full">
-            <input className="chq-input" value={form.logoUrl} onChange={(e) => update('logoUrl', e.target.value)} />
+            <input
+              className="chq-input"
+              value={form.logoUrl}
+              onChange={(e) => update('logoUrl', e.target.value)}
+              maxLength={MAX_TEXT_LENGTH}
+            />
           </SettingsField>
           <SettingsField label="Accent color" width="name">
             <input
+              id="event-settings-accent-color"
               className="chq-input"
               value={form.accentColor}
               onChange={(e) => update('accentColor', e.target.value)}

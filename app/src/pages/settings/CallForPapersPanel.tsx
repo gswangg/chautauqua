@@ -21,6 +21,7 @@ import { SettingsEditForm, SettingsField, SettingsFieldPair } from './SettingsEd
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { countOf } from '../../lib/plural';
 import { DEC_888 } from '../../../../src/decisions';
+import { MAX_LONG_TEXT_LENGTH } from '../../../../src/forms/validate';
 
 void DEC_888;
 
@@ -375,6 +376,7 @@ export function CallForPapersPanel() {
                 setIntro(e.target.value);
                 setSaved(false);
               }}
+              maxLength={MAX_LONG_TEXT_LENGTH}
             />
           </SettingsField>
           {event && editWindowState ? (
