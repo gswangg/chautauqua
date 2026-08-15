@@ -824,14 +824,15 @@
 /* Two fields on one line (Start date / End date): the pair's grid gives
    each field its column width, so a paired field's own fixed width token
    is overridden back to 100% of that column. */
+/* B10 ruling: field width follows content, not the column -- a paired
+   field (e.g. two dates, or seats + a date) keeps its own
+   .chq-settings-field-<width> token width instead of stretching to fill
+   the pair's half of the 820px column. */
 .chq-settings-field-pair {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: auto auto;
+  justify-content: start;
   gap: 18px;
-}
-
-.chq-settings-field-pair .chq-settings-field {
-  width: 100%;
 }
 
 /* The B10 consequence line -- right-aligned, one per edit view, naming

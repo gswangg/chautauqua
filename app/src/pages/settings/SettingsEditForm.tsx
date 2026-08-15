@@ -78,8 +78,13 @@ export function SettingsField({ label, htmlFor, width, optional, hint, children 
   );
 }
 
-// Two fields side by side, 1fr 1fr at 18px gap -- the ONLY sanctioned way
-// to place two SettingsFields on one line (e.g. Start date / End date).
+// Two fields side by side, each keeping its own content width (B10: field
+// width follows content, not the column) at 18px gap -- the ONLY sanctioned
+// way to place two SettingsFields on one line (e.g. Start date / End date).
+// Neither member stretches to fill half the pair's track; grid-template-
+// columns is auto auto, justify-content:start, so a paired date renders at
+// --chq-field-w-date (200px) and a paired seats field at --chq-field-w-seats
+// (110px), not at ~401px each.
 export function SettingsFieldPair({ children }: { children: ReactNode }) {
   return <div className="chq-settings-field-pair">{children}</div>;
 }
