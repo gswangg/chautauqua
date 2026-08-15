@@ -9,6 +9,7 @@ import { type DemoIdentity } from "../lib/demo-identities";
 import type { LoginFooterEvent } from "./auth-helpers";
 import { DEC_583 } from "../decisions";
 import { MIN_PASSWORD_LENGTH } from "../domain/auth-copy";
+import { MAX_TEXT_LENGTH } from "../forms/validate";
 
 void DEC_583;
 
@@ -101,6 +102,7 @@ export function LoginPage(props: {
                 name="email"
                 placeholder="you@example.com"
                 value={props.email ?? undefined}
+                maxLength={MAX_TEXT_LENGTH}
                 required
                 autofocus
               />
@@ -255,6 +257,7 @@ export function ForgotPasswordPage(props: { csrfToken: string; email?: string; e
                 name="email"
                 placeholder="you@example.com"
                 value={props.email ?? undefined}
+                maxLength={MAX_TEXT_LENGTH}
                 required
                 autofocus
               />
