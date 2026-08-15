@@ -134,6 +134,32 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
       .catch(() => undefined);
   }, [eventId]);
 
+  // DEC-967 amendment (findings wave 8, w8-b): DECIDE -> NOTIFY handoff.
+  // BulkActionBar hands off the decided selection as `?ids=<comma-joined>` --
+  // parsed ONCE per mount, bounded (garbage/over-long entries dropped rather
+  // than thrown on) and capped at MAX_COMPOSE_RECIPIENTS, same cap the
+  // step-1 bulkbar states. Feeds the existing selectionReducer via the same
+  // 'SET' action the reducer already exposes, and (only when the hydrated
+  // selection is non-empty) opens the wizard straight at step 2 -- arrival
+  // must never start by going backwards through an already-decided
+  // selection. A ?ids= that parses to nothing leaves the wizard on step 1,
+  // same as no ?ids= at all.
+  const appliedIdsParam = useRef(false);
+  useEffect(() => {
+    if (appliedIdsParam.current) return;
+    appliedIdsParam.current = true;
+    const raw = new URLSearchParams(window.location.search).get('ids');
+    if (!raw) return;
+    const ids = raw
+      .split(',')
+      .map((id) => id.trim())
+      .filter((id) => id.length > 0 && id.length <= 64)
+      .slice(0, MAX_COMPOSE_RECIPIENTS);
+    if (ids.length === 0) return;
+    dispatchSelection({ type: 'SET', ids });
+    setStep('template');
+  }, []);
+
   // DEC-890 (Templates "Use in a send"): a ?template=<id> landing preselects
   // that template exactly as the template <select>'s own onChange does --
   // prefill subject/body from the template. DEC-846 amendment (wave 3):
@@ -143,6 +169,11 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   // location.search directly (this component isn't otherwise router-aware)
   // once templates have loaded, and only once per mount (a later template
   // list refresh must not re-fire it).
+  // DEC-967 amendment (findings wave 8, w8-b): the landing step is now ONE
+  // rule shared with the ?ids= handoff above -- a ?template= with no
+  // hydrated ids applies the template but stays on step 1 (there is nothing
+  // to compose FOR yet); a non-empty selection (from ?ids=, regardless of
+  // whether ?template= is also present) opens straight at step 2.
   const appliedTemplateParam = useRef(false);
   useEffect(() => {
     if (appliedTemplateParam.current || templates.length === 0) return;
@@ -155,7 +186,6 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setSubject(found.subject);
     setBodyText(found.bodyText);
     setTemplateId(found.id);
-    setStep('template');
   }, [templates]);
 
   useEffect(() => {

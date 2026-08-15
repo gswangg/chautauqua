@@ -4,8 +4,10 @@
 // "Delete..." control is dropped rather than kept alongside it.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import '@testing-library/jest-dom/vitest';
 import { BulkActionBar } from './BulkActionBar';
+import { MAX_COMPOSE_RECIPIENTS } from '../../lib/merge-fields';
 
 afterEach(() => {
   cleanup();
@@ -14,13 +16,16 @@ afterEach(() => {
 describe('BulkActionBar', () => {
   it('renders the status-move buttons and Clear, but no Delete control', () => {
     render(
-      <BulkActionBar
-        selectedCount={3}
-        pending={false}
-        statusFilter={null}
-        onApply={vi.fn()}
-        onClear={vi.fn()}
-      />,
+      <MemoryRouter>
+        <BulkActionBar
+          selectedCount={3}
+          pending={false}
+          statusFilter={null}
+          onApply={vi.fn()}
+          onClear={vi.fn()}
+          selectedIds={['a', 'b', 'c']}
+        />
+      </MemoryRouter>,
     );
 
     expect(screen.getByRole('toolbar', { name: 'Bulk actions' })).toBeInTheDocument();
@@ -30,5 +35,67 @@ describe('BulkActionBar', () => {
     // No "Delete" control of any kind exists in the bulk bar.
     expect(screen.queryByRole('button', { name: /Delete/ })).not.toBeInTheDocument();
     expect(screen.queryByText(/Delete/)).not.toBeInTheDocument();
+  });
+
+  // w8-b: DECIDE -> NOTIFY handoff. The bar's "Email these N submissions"
+  // link carries the decided selection straight into Comms rather than
+  // asking the organizer to re-select the same rows.
+  it('links "Email these N submissions" to /comms?tab=compose&ids=<selection>', () => {
+    render(
+      <MemoryRouter>
+        <BulkActionBar
+          selectedCount={2}
+          pending={false}
+          statusFilter={null}
+          onApply={vi.fn()}
+          onClear={vi.fn()}
+          selectedIds={['id-1', 'id-2']}
+        />
+      </MemoryRouter>,
+    );
+
+    const link = screen.getByRole('link', { name: 'Email these 2 submissions' });
+    expect(link).toHaveAttribute('href', '/comms?tab=compose&ids=id-1,id-2');
+  });
+
+  it('caps the link at MAX_COMPOSE_RECIPIENTS ids and states the overage, never truncating silently', () => {
+    const ids = Array.from({ length: MAX_COMPOSE_RECIPIENTS + 5 }, (_, i) => `id-${i}`);
+    render(
+      <MemoryRouter>
+        <BulkActionBar
+          selectedCount={ids.length}
+          pending={false}
+          statusFilter={null}
+          onApply={vi.fn()}
+          onClear={vi.fn()}
+          selectedIds={ids}
+        />
+      </MemoryRouter>,
+    );
+
+    const link = screen.getByRole('link', { name: `Email these ${MAX_COMPOSE_RECIPIENTS} submissions` });
+    const expectedIds = ids.slice(0, MAX_COMPOSE_RECIPIENTS).join(',');
+    expect(link).toHaveAttribute('href', `/comms?tab=compose&ids=${expectedIds}`);
+    expect(
+      screen.getByText(`first ${MAX_COMPOSE_RECIPIENTS} of ${ids.length} · a send is capped at ${MAX_COMPOSE_RECIPIENTS}`),
+    ).toBeInTheDocument();
+  });
+
+  it('renders nothing (no link, no bar) when nothing is selected', () => {
+    render(
+      <MemoryRouter>
+        <BulkActionBar
+          selectedCount={0}
+          pending={false}
+          statusFilter={null}
+          onApply={vi.fn()}
+          onClear={vi.fn()}
+          selectedIds={[]}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByRole('toolbar', { name: 'Bulk actions' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Email these/ })).not.toBeInTheDocument();
   });
 });

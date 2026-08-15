@@ -1,3 +1,6 @@
+import { Link } from 'react-router-dom';
+import { countOf } from '../../lib/plural';
+import { MAX_COMPOSE_RECIPIENTS } from '../../lib/merge-fields';
 import type { SubmissionStatus } from './types';
 
 interface BulkActionBarProps {
@@ -6,6 +9,11 @@ interface BulkActionBarProps {
   statusFilter: SubmissionStatus | null;
   onApply: (status: SubmissionStatus) => void;
   onClear: () => void;
+  // DEC-967 (findings wave 8, w8-b): the ids backing selectedCount, in
+  // stable selection order -- carried into Comms via the "Email these N
+  // submissions" link so decide -> notify never asks for the same
+  // selection twice.
+  selectedIds: string[];
 }
 
 interface BulkMove {
@@ -39,8 +47,15 @@ function movesFor(statusFilter: SubmissionStatus | null): BulkMove[] {
   ];
 }
 
-export function BulkActionBar({ selectedCount, pending, statusFilter, onApply, onClear }: BulkActionBarProps) {
+export function BulkActionBar({ selectedCount, pending, statusFilter, onApply, onClear, selectedIds }: BulkActionBarProps) {
   if (selectedCount === 0) return null;
+
+  // DEC-967 (findings wave 8, w8-b): the compose link carries at most
+  // MAX_COMPOSE_RECIPIENTS ids, in the selection's own (stable) order --
+  // never a silent truncation, the over-cap case gets its own sentence
+  // below instead.
+  const emailIds = selectedIds.slice(0, MAX_COMPOSE_RECIPIENTS);
+  const overCap = selectedIds.length > MAX_COMPOSE_RECIPIENTS;
 
   return (
     <div className="chq-submissions-bulkbar" role="toolbar" aria-label="Bulk actions">
@@ -58,10 +73,21 @@ export function BulkActionBar({ selectedCount, pending, statusFilter, onApply, o
             {move.label}
           </button>
         ))}
+        <Link
+          to={`/comms?tab=compose&ids=${emailIds.join(',')}`}
+          className="chq-btn chq-btn-secondary"
+        >
+          Email these {countOf(emailIds.length, 'submission')}
+        </Link>
         <button type="button" className="chq-btn chq-btn-tertiary" disabled={pending} onClick={onClear}>
           Clear
         </button>
       </div>
+      {overCap && (
+        <span className="chq-submissions-bulkbar-note">
+          first {MAX_COMPOSE_RECIPIENTS} of {selectedIds.length} · a send is capped at {MAX_COMPOSE_RECIPIENTS}
+        </span>
+      )}
     </div>
   );
 }

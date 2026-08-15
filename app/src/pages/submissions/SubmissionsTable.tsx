@@ -343,6 +343,7 @@ export function SubmissionsTable() {
         statusFilter={filters.status.length === 1 ? (filters.status[0] ?? null) : null}
         onApply={applyBulkStatus}
         onClear={() => setSelection((s) => selectionReducer(s, { type: 'CLEAR' }))}
+        selectedIds={[...selection.selectedIds]}
       />
 
       {showEmpty ? (

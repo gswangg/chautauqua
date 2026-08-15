@@ -5,6 +5,10 @@
 // templateId itself IS recorded from this landing (provenance, not
 // authority) and posted on preview/send -- but subject/bodyText remain the
 // composer's own text, so an edit after the landing still wins.
+// DEC-967 amendment (findings wave 8, w8-b): a ?template= landing with no
+// ?ids= no longer jumps to step 2 -- there is nothing to compose FOR yet,
+// so it prefills subject/body/templateId and stays on step 1 (the rail's
+// own "Template" row shows the preselected name).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -29,7 +33,7 @@ afterEach(() => {
 });
 
 describe('ComposeWizard ?template= landing', () => {
-  it('preselects the named template, prefilling subject/body and landing on the template step', async () => {
+  it('preselects the named template, prefilling subject/body, but stays on step 1 (no selection to compose for)', async () => {
     window.history.pushState({}, '', '/comms?tab=compose&template=tpl-9');
 
     mockApi({
@@ -41,20 +45,15 @@ describe('ComposeWizard ?template= landing', () => {
 
     render(<ComposeWizard eventId={EVENT_ID} />);
 
-    const subjectInput = await waitFor(() => screen.getByLabelText('Subject') as HTMLInputElement);
-    expect(subjectInput.value).toBe('Waitlist subject');
-    const bodyInput = screen.getByLabelText('Body') as HTMLTextAreaElement;
-    expect(bodyInput.value).toBe('Hi {speaker_name}, still waitlisted.');
-
-    // DEC-846 amendment (wave 3): the landing records templateId as
-    // provenance -- the dropdown shows the seeded template selected rather
-    // than reverting to "Write from scratch".
-    const select = screen.getByLabelText(/Template/) as HTMLSelectElement;
-    expect(select.value).toBe('tpl-9');
+    // Rail's own "Template" row names the preselected template without the
+    // wizard having advanced to it.
+    await waitFor(() => expect(screen.getByText('From "Waitlist"')).toBeInTheDocument());
+    expect(screen.getByText('1. Pick submissions')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Subject')).not.toBeInTheDocument();
   });
 
-  it('posts templateId on the send after a ?template= landing, alongside the (possibly edited) subject/bodyText', async () => {
-    window.history.pushState({}, '', '/comms?tab=compose&template=tpl-9');
+  it('posts templateId on the send after a ?template=+?ids= landing, alongside the (possibly edited) subject/bodyText', async () => {
+    window.history.pushState({}, '', '/comms?tab=compose&template=tpl-9&ids=sub-1');
 
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope([]),
