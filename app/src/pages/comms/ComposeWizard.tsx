@@ -22,17 +22,20 @@ import { clockHHMM } from '../../lib/clock';
 import { paginationSummary } from '../../lib/pagination-summary';
 import type { ComposeSendResult, EmailTemplate, RenderedRecipient } from './types';
 import type { EvaluationPlan } from '../review/types';
-import { DEC_793, DEC_967, DEC_993 } from '../../../../src/decisions';
+import { DEC_317, DEC_793, DEC_967, DEC_993 } from '../../../../src/decisions';
 import { MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from '../../lib/text-caps';
 
+void DEC_317;
 void DEC_793;
 void DEC_967;
 void DEC_993;
 
-// J5's decide != notify: the picker defaults to the two decided statuses so
-// organizers compose against the submissions they've already ruled on, but
-// any status can be selected (this is a filter, not a hard restriction).
-const DECIDED_STATUSES: SubmissionStatus[] = ['accepted', 'declined'];
+// DEC-967 amendment (wave 18): the picker defaults to Accepted alone -- the
+// shortest path (arrive, Next, Next) must compose against the talks that
+// are actually going forward, never accepted+declined unioned into one
+// message. Declined stays a reachable filter (organizers do mail declines),
+// it's simply not pre-checked.
+const DECIDED_STATUSES: SubmissionStatus[] = ['accepted'];
 
 const PER_PAGE = 50;
 const RECIPIENT_PREVIEW_ROWS = 5;
@@ -247,7 +250,16 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   }, [eventId]);
 
   function toggleStatus(status: SubmissionStatus) {
-    setStatusFilter((prev) => (prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]));
+    setStatusFilter((prev) => {
+      // Deselecting the last remaining status is a no-op — an empty status
+      // filter is unreachable, same contract as before this wave's default
+      // change.
+      if (prev.includes(status)) {
+        if (prev.length === 1) return prev;
+        return prev.filter((s) => s !== status);
+      }
+      return [...prev, status];
+    });
     setPage(1);
   }
 
@@ -633,6 +645,49 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
       {capMessage && (
         <div className="chq-error-banner" role="alert">
           {capMessage} Narrow your submission selection to {MAX_COMPOSE_RECIPIENTS} or fewer recipients and try again.
+        </div>
+      )}
+      {/* DEC-317 amendment (wave 18): the ics-unscheduled refusal fires from
+          runPreview, which can be called off step 2's "Next: preview"
+          button (attachIcs was toggled on back on step 3, then the
+          organizer went Back and edited the body) -- when it does, the
+          wizard stays on the step that issued the request instead of
+          advancing, so this refusal has to be visible there too, not only
+          inside the preview/sent panels below. Same named list, same
+          escape affordances (schedule them / send without them) as the
+          preview-step panel -- no press through this wizard can be a
+          silent no-op. */}
+      {icsUnscheduledIds && step !== 'preview' && step !== 'sent' && (
+        <div className="chq-error-banner" role="alert">
+          <p>
+            Send blocked: these submissions aren&apos;t scheduled yet:{' '}
+            {icsUnscheduledIds.map((id) => submissionLabel(id, preview)).join(', ')}. Schedule
+            them first, or uncheck &quot;Attach calendar invite&quot;.
+          </p>
+          <ul className="chq-comms-blocked-list">
+            {icsUnscheduledIds.map((id) => (
+              <li key={id}>
+                {submissionLabel(id, preview)}{' '}
+                <Link to="/agenda" className="chq-link-button">
+                  Place on the agenda &rsaquo;
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {scheduledCount > 0 && (
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              disabled={busy}
+              onClick={() => {
+                setStep('sent');
+                void send({ excludeIds: icsUnscheduledIds });
+              }}
+            >
+              Send to the {scheduledCount} who have a slot
+            </button>
+          )}
+          <p className="chq-comms-panel-note">This is the last point at which it is cheap to fix.</p>
         </div>
       )}
 

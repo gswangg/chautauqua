@@ -52,4 +52,39 @@ describe('ComposeWizard resolves every compose-route fields-map refusal shape by
       expect(body).toContain('extractNoRecipientRefs(err)');
     }
   });
+
+  // DEC-317 amendment (wave 18): a named branch existing somewhere in the
+  // source isn't enough -- runPreview can be called from step 'template'
+  // (the "Next: preview" button), so a refusal it can throw must render on
+  // a surface mounted on every step from which that call can be issued, not
+  // only inside the step === 'preview' / step === 'sent' panels.
+  it('missing-merge-fields and no-eligible-recipients render inside the top error banner, mounted on every step', () => {
+    const topBannerRegion = composeWizardSource.slice(
+      composeWizardSource.indexOf('return (\n    <div className="chq-compose-wizard"'),
+      composeWizardSource.indexOf("{step === 'select' &&"),
+    );
+    // The top banner (keyed on {error}, itself gated on no `step ===`
+    // condition) is where both shapes render -- reachable regardless of
+    // which step issued the request.
+    expect(topBannerRegion).toContain('missingMergeFieldLines');
+    expect(topBannerRegion).toContain('noRecipientRefs');
+    expect(topBannerRegion).not.toMatch(/step === 'select'|step === 'template'|step === 'preview'|step === 'sent'/);
+  });
+
+  it('the ics-unscheduled refusal renders a surface outside the preview/sent-only panels, reachable from the step that issued the request', () => {
+    const topBannerRegion = composeWizardSource.slice(
+      composeWizardSource.indexOf('return (\n    <div className="chq-compose-wizard"'),
+      composeWizardSource.indexOf("{step === 'select' &&"),
+    );
+    expect(topBannerRegion).toContain('icsUnscheduledIds');
+    // Gated on "not on the two steps that already have their own panel for
+    // it" -- never narrowed to a single specific step, since runPreview can
+    // fire this refusal from 'select' (via ?ids= handoff) or 'template'.
+    expect(topBannerRegion).toMatch(/step !== 'preview' && step !== 'sent'/);
+    // Carries the same escape affordances as the preview-step panel: named
+    // via submissionLabel, and a partial-send escape when some recipients
+    // are still eligible.
+    expect(topBannerRegion).toContain('submissionLabel(id, preview)');
+    expect(topBannerRegion).toContain('scheduledCount > 0');
+  });
 });

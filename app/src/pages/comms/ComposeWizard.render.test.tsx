@@ -159,7 +159,9 @@ describe('ComposeWizard recipient picker', () => {
     );
 
     expect(await screen.findByText('No submissions match the selected statuses.')).toBeInTheDocument();
-    expect(screen.getByText(/Filtered by status: Accepted, Declined/)).toBeInTheDocument();
+    // DEC-967 amendment (wave 18): the default is Accepted alone, not
+    // Accepted+Declined.
+    expect(screen.getByText(/Filtered by status: Accepted$/)).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     // The status controls stay visible above the message -- 'filtered' never
     // hides the chrome that produced the empty result.
@@ -171,9 +173,16 @@ describe('ComposeWizard recipient picker', () => {
     expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
     expect(screen.getByText('Showing 0 of 0')).toBeInTheDocument();
 
-    // Narrow further (uncheck Accepted) so the facet actually changes, then
-    // take the escape -- it must restore the DEFAULT status selection
-    // (accepted + declined), not "every status" literally.
+    // Deselecting the last remaining status is a no-op -- an empty status
+    // filter is unreachable.
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Accepted' }));
+    expect(screen.getByRole('checkbox', { name: 'Accepted' })).toBeChecked();
+
+    // Narrow further (check Declined, then uncheck Accepted) so the facet
+    // actually changes, then take the escape -- it must restore the
+    // DEFAULT status selection (Accepted alone), not "every status"
+    // literally.
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Declined' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Accepted' }));
     expect(screen.getByRole('checkbox', { name: 'Accepted' })).not.toBeChecked();
 
@@ -183,7 +192,7 @@ describe('ComposeWizard recipient picker', () => {
     await waitFor(() => {
       expect(screen.getByRole('checkbox', { name: 'Accepted' })).toBeChecked();
     });
-    expect(screen.getByRole('checkbox', { name: 'Declined' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Declined' })).not.toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Pending' })).not.toBeChecked();
   });
 
