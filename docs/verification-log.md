@@ -4455,3 +4455,4 @@ measurement) — DELTA is this lane's grade per DEC-347. DECLARED OVERLAP
 with lanes a/c/d and w31-c (src/db/schema/review.ts, additive index only).
 
 INVALIDATED BY: src/routes/review/reviewer.ts, src/server/repo/review/**, migrations/**
+
