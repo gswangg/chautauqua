@@ -837,6 +837,41 @@
   white-space: nowrap;
 }
 
+/* w21-c (DEC-902 amendment): the worklist is a SECOND table wearing the
+   same shared .chq-content-table vocabulary class as the files table
+   (w21's "shared vocabulary class is not a width hook" finding), so its
+   fixed-layout tracks hang off this worklist-only class instead. Frame:
+   docs/design/Chautauqua Content.dc.html:81/85 --
+   grid-template-columns:26px 1fr 168px 200px 152px auto; gap:18px --
+   select / Session / Speaker / Latest file / Status / actions. */
+.chq-content-worklist-table {
+  table-layout: fixed;
+}
+
+.chq-content-worklist-table .chq-content-worklist-col-select {
+  width: 26px;
+}
+
+.chq-content-worklist-table .chq-content-worklist-col-speaker {
+  width: 168px;
+}
+
+.chq-content-worklist-table .chq-content-worklist-col-latest-file {
+  width: 200px;
+}
+
+.chq-content-worklist-table .chq-content-worklist-col-status {
+  width: 152px;
+}
+
+/* Trailing actions column hugs its content (Approve/Open) instead of
+   claiming the remainder now that table-layout is fixed; Session (no
+   width class) is the sole remainder column. */
+.chq-content-worklist-table .chq-content-worklist-col-actions {
+  width: 1px;
+  white-space: nowrap;
+}
+
 /* w5-i: bold accent caps -- "v3" reads as "V3" in the brand ink, matching
    the library's other identity marks rather than sinking to body-text
    weight. */
