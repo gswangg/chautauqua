@@ -13,6 +13,7 @@ import { ThemeStyles } from "../../views/theme";
 import { PROGRAMME_CSS } from "./programme.css";
 import { eventDatesLine, setCacheHeaders } from "./shell";
 import { formatDay, formatStartTime24, SpeakerNames } from "./cards";
+import { PublicEmptyState } from "./empty-state";
 import { publicNotFound } from "./not-found";
 import { publicRoomLabel } from "../../domain/schedule";
 import { DEC_683, DEC_768 } from "../../decisions";
@@ -126,7 +127,11 @@ export function ProgrammeDocument(props: {
             </p>
           ) : null}
           {days.length === 0 ? (
-            <p>No sessions scheduled yet.</p>
+            <PublicEmptyState
+              variant="fresh"
+              what="No sessions scheduled yet."
+              reason="The programme has not been published."
+            />
           ) : (
             days.map((day) => <ProgrammeDay day={day} items={byDay.get(day) ?? []} breaks={breaksByDay.get(day) ?? []} />)
           )}

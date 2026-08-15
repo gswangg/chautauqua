@@ -76,7 +76,11 @@ export function CommentThread(props: { assignmentId: string; comments: FileComme
     <section aria-label="Comments">
       <h4>Comments</h4>
       {comments.length === 0 ? (
-        <p>No comments yet.</p>
+        <PublicEmptyState
+          variant="fresh"
+          what="No comments yet."
+          reason="Your organiser can leave notes on this file here."
+        />
       ) : (
         <ul>
           {comments.map((cm) => (
@@ -437,7 +441,11 @@ export function ResourcesPage(props: {
       <PortalBackLink to="/portal" />
       <h1 class="chq-portal-hero">Resources</h1>
       {groups.length === 0 ? (
-        <p>No resources yet.</p>
+        <PublicEmptyState
+          variant="fresh"
+          what="No resources yet."
+          reason="Your organiser has not shared any speaker resources."
+        />
       ) : (
         groups.map((group) => (
           <section aria-label={group.eventName} class="chq-section">

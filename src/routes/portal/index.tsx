@@ -324,7 +324,11 @@ function PortalPage(props: {
       <section aria-label="Your submissions" class="chq-section">
         <div class="chq-section-label">Your submissions</div>
         {submissions.length === 0 ? (
-          <p>No submissions yet.</p>
+          <PublicEmptyState
+            variant="fresh"
+            what="No submissions yet."
+            reason="Anything you send to a call for papers shows up here."
+          />
         ) : (
           submissions.map((s) => <SubmissionRow submission={s} />)
         )}
@@ -336,7 +340,11 @@ function PortalPage(props: {
       <section aria-label="Your session" class="chq-section">
         <div class="chq-section-label">Your session</div>
         {sessions.length === 0 ? (
-          <p>No accepted sessions yet.</p>
+          <PublicEmptyState
+            variant="fresh"
+            what="No accepted sessions yet."
+            reason="When a session of yours is accepted it appears here with its schedule."
+          />
         ) : (
           sessions.map((s) => (
             <SessionCard session={s} deliverable={deliverables.get(s.submissionId) ?? null} />
@@ -478,7 +486,11 @@ function SubmissionsListPage(props: {
       <PortalBackLink to="/portal" />
       <h1 class="chq-portal-hero">Your submissions</h1>
       {submissions.length === 0 ? (
-        <p>No submissions yet.</p>
+        <PublicEmptyState
+          variant="fresh"
+          what="No submissions yet."
+          reason="Anything you send to a call for papers shows up here."
+        />
       ) : (
         submissions.map((s) => <SubmissionRow submission={s} />)
       )}
