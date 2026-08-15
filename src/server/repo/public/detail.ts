@@ -12,9 +12,10 @@ import { visibleSessionConditions, visibleSubmissionConditions, slotWithinEventR
 import type { PublicEvent, PublicTrack } from "./event";
 import { hydrateSessions, type PublicSpeaker } from "./sessions";
 
-// Compile-checked dependency marker: every speaker title/company read below
-// comes from participant.title_at_time/org_at_time (DEC-258's frozen
-// snapshot), never the live contact — no fallback.
+// Compile-checked dependency marker: DEC-258's frozen participant snapshot
+// (title_at_time/org_at_time) still governs per-session attribution
+// elsewhere (sessions.ts); this module's page-level header instead reads
+// the live contact per DEC-258's wave-46 amendment — see getPublicSpeakerDetail.
 void DEC_258;
 
 /** Schedule placement (day/startMin/endMin/room) for a batch of submission
@@ -103,8 +104,8 @@ export async function getPublicSpeakerDetail(
       contactId: schema.contact.id,
       firstName: schema.contact.firstName,
       lastName: schema.contact.lastName,
-      title: schema.participant.titleAtTime,
-      company: schema.participant.orgAtTime,
+      contactTitle: schema.contact.title,
+      contactCompany: schema.contact.company,
       bio: schema.contact.bio,
       headshotUrl: schema.contact.headshotUrl,
       socialLinksJson: schema.contact.socialLinksJson,
@@ -163,8 +164,8 @@ export async function getPublicSpeakerDetail(
     contactId: first.contactId,
     firstName: first.firstName,
     lastName: first.lastName,
-    title: first.title,
-    company: first.company,
+    title: first.contactTitle,
+    company: first.contactCompany,
     bio: first.bio,
     headshotUrl: first.headshotUrl,
     socialLinks,
