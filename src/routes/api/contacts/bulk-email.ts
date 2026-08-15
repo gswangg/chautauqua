@@ -12,7 +12,7 @@ import { getEventForOrg } from "../../../server/repo/events";
 import type { KVStore } from "../../../auth/claim";
 import { preflightRender, type RenderTarget } from "../../../domain/compose";
 import { applyMintedPortalLinks, resolvePortalLinks } from "../../../server/repo/portal-link";
-import { templateUsesMergeField } from "../../../mail/render";
+import { templateUsesMergeField, BULK_EMAIL_MERGE_FIELDS } from "../../../mail/render";
 import { renderEmailHtml } from "../../../mail/shell";
 import type { Db } from "../../../server/context";
 import { resolveBaseUrl } from "../../../server/origin";
@@ -121,6 +121,40 @@ async function renderBulkEmailTargets(
   return { targets, recipients, result };
 }
 
+/** DEC-856 (wave 60 amendment): the fields map must name the person, not
+ * their opaque contactId — keyed by the recipient's EMAIL (the identifier
+ * the organizer actually recognizes) with a value naming them and every
+ * missing placeholder. Resolves name+email from `targets` (already loaded
+ * by renderBulkEmailTargets — no extra D1 query). The ApiError's own
+ * message leads with the count and the missing token(s) so a client that
+ * only reads err.message (never err.fields) still gets a usable refusal. */
+function bulkEmailMergeFieldError(
+  missing: { contactId: string; fields: string[] }[],
+  targets: RenderTarget[],
+  totalRecipients: number,
+): ApiError {
+  const fields: Record<string, string> = {};
+  const allTokens = new Set<string>();
+  for (const m of missing) {
+    const target = targets.find((t) => t.contactId === m.contactId);
+    const name = target?.name || target?.email || m.contactId;
+    const tokens = m.fields.map((f) => `{${f}}`).join(", ");
+    const key = target?.email ?? m.contactId;
+    fields[key] = `${name} is missing ${tokens}`;
+    for (const f of m.fields) allTokens.add(f);
+  }
+  const tokenList = [...allTokens].map((f) => `{${f}}`).join(", ");
+  const allowed = BULK_EMAIL_MERGE_FIELDS.map((f) => `{${f}}`);
+  const allowedList = allowed.length > 1
+    ? `${allowed.slice(0, -1).join(", ")} and ${allowed[allowed.length - 1]}`
+    : allowed.join(", ");
+  return new ApiError(
+    "invalid",
+    `${missing.length} of ${totalRecipients} recipients are missing ${tokenList} — only ${allowedList} can be merged in a bulk email.`,
+    fields,
+  );
+}
+
 const BULK_EMAIL_PREVIEW_LIMIT = 5;
 
 export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
@@ -154,9 +188,7 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
       bodyText,
     );
     if (!preflightResult.ok) {
-      const fields: Record<string, string> = {};
-      for (const m of preflightResult.missing) fields[m.contactId] = `missing merge fields: ${m.fields.join(", ")}`;
-      throw new ApiError("invalid", "One or more recipients are missing merge fields (only speaker_name/event_name/portal_link are allowed)", fields);
+      throw bulkEmailMergeFieldError(preflightResult.missing, targets, targets.length);
     }
 
     // DEC-397 wave-62 amendment (MINT ONLY WHAT THE MESSAGE CARRIES): mint a
@@ -171,9 +203,7 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
     }
     const result = preflightRender(targets, subject, bodyText);
     if (!result.ok) {
-      const fields: Record<string, string> = {};
-      for (const m of result.missing) fields[m.contactId] = `missing merge fields: ${m.fields.join(", ")}`;
-      throw new ApiError("invalid", "One or more recipients are missing merge fields (only speaker_name/event_name/portal_link are allowed)", fields);
+      throw bulkEmailMergeFieldError(result.missing, targets, targets.length);
     }
 
     const { makeMailer } = await import("../../../server/context");
@@ -237,11 +267,9 @@ export function registerBulkEmailRoutes(contactsRoutes: Hono<AppEnv>): void {
 
     // DEC-397: preview never mints credentials — renderBulkEmailTargets
     // always resolves links with mintClaimTokens=false now.
-    const { result } = await renderBulkEmailTargets(c.var.db, kv, origin, event, previewContacts, subject, bodyText);
+    const { targets: previewTargets, result } = await renderBulkEmailTargets(c.var.db, kv, origin, event, previewContacts, subject, bodyText);
     if (!result.ok) {
-      const fields: Record<string, string> = {};
-      for (const m of result.missing) fields[m.contactId] = `missing merge fields: ${m.fields.join(", ")}`;
-      throw new ApiError("invalid", "One or more recipients are missing merge fields (only speaker_name/event_name/portal_link are allowed)", fields);
+      throw bulkEmailMergeFieldError(result.missing, previewTargets, previewTargets.length);
     }
 
     return c.json({
