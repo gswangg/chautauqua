@@ -6,6 +6,7 @@ import { cleanup, render, screen, fireEvent, waitFor, within } from '@testing-li
 import '@testing-library/jest-dom/vitest';
 import { ResourcesPanel } from './ResourcesPanel';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+import { allowedUploadExtensions, uploadHintText } from '../../../../src/domain/files';
 
 const EVENT_ID = 'evt-resources-render';
 
@@ -117,6 +118,62 @@ describe('ResourcesPanel (DEC-941)', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
+  });
+});
+
+describe('ResourcesPanel file upload discloses caps up front (w63-c)', () => {
+  it('sets accept to the handout allowlist and renders the caps hint, derived from the domain module', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([]),
+    });
+
+    render(<ResourcesPanel />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
+
+    const fileInput = document.querySelector('input[type="file"]');
+    expect(fileInput).not.toBeNull();
+    const expectedAccept = allowedUploadExtensions('handout')
+      .map((e) => `.${e}`)
+      .join(',');
+    expect(fileInput).toHaveAttribute('accept', expectedAccept);
+
+    expect(screen.getByText(uploadHintText('handout'))).toBeInTheDocument();
+  });
+
+  it('refuses a wrong-extension pick client-side, names the allowed types, keeps the typed Title, and never calls apiUpload', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([]),
+    });
+
+    render(<ResourcesPanel />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
+
+    const titleInputs = screen.getAllByPlaceholderText('Title');
+    const fileTitleInput = titleInputs[titleInputs.length - 1]!;
+    fireEvent.change(fileTitleInput, { target: { value: 'My Slides' } });
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const badFile = new File(['x'], 'malware.exe', { type: 'application/octet-stream' });
+    fireEvent.change(fileInput, { target: { files: [badFile] } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Upload file' }));
+
+    const alert = await screen.findByRole('alert');
+    for (const ext of allowedUploadExtensions('handout')) {
+      expect(alert.textContent).toContain(ext);
+    }
+    expect(alert.textContent).toContain('Title is kept');
+
+    const titleInputsAfter = screen.getAllByPlaceholderText('Title');
+    expect((titleInputsAfter[titleInputsAfter.length - 1] as HTMLInputElement).value).toBe('My Slides');
+
+    expect(
+      fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'POST'),
+    ).toBe(false);
   });
 });
 

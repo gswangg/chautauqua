@@ -30,6 +30,7 @@ import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiDelete, apiList, apiPatch, apiPost, apiUpload, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { validateResourceForm, validateResourceTitleForm, type ResourceForm, type ResourceFormErrors } from './formState';
+import { validateUpload, uploadHintText, allowedUploadExtensions } from '../../../../src/domain/files';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { countOf } from '../../lib/plural';
 import './settings-lists.css';
@@ -115,6 +116,11 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
     }
     if (!fileToUpload) {
       setFileError('File is required');
+      return;
+    }
+    const check = validateUpload({ filename: fileToUpload.name, sizeBytes: fileToUpload.size, kind: 'handout' });
+    if (!check.ok) {
+      setFileError(`${check.message} ${uploadHintText('handout')} The typed Title is kept; nothing was uploaded.`);
       return;
     }
     setFileError(undefined);
@@ -331,7 +337,13 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
             value={fileTitle}
             onChange={(e) => setFileTitle(e.target.value)}
           />
-          <input className="chq-file" type="file" onChange={(e) => setFileToUpload(e.target.files?.[0] ?? null)} />
+          <input
+            className="chq-file"
+            type="file"
+            accept={allowedUploadExtensions('handout').map((e) => `.${e}`).join(',')}
+            onChange={(e) => setFileToUpload(e.target.files?.[0] ?? null)}
+          />
+          <span className="chq-upload-caps">{uploadHintText('handout')}</span>
           {fileError ? <span role="alert">{fileError}</span> : null}
           <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void uploadFileResource()}>
             Upload file
