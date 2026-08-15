@@ -15,6 +15,8 @@ import { updateSubmissionStatuses } from "../submissions/status";
 import { touchSubmissionsForContacts, touchSubmissionsForTracks } from "../submissions/touch";
 import type { SubmissionStatus } from "../../../domain/status";
 import { DEC_612, DEC_717 } from "../../../decisions";
+import { ApiError } from "../../http";
+import { isUniqueViolation } from "../constraints";
 
 void DEC_717; // submission.status is written ONLY through updateSubmissionStatuses -- never a raw insert/update column -- so the J6 acceptance auto-creation always fires.
 void DEC_612; // wave-54 amendment: contact identity resolves by normalized email BEFORE falling back to create, since a Sessionboard roster import and the CFP form both mint contacts and a ref-less CFP contact must not be duplicated. The (org_id, external_ref) uniqueIndex this decision names is a contract -- a ref is adopted by an email match only when the matched contact's own ref is null and no other row in this batch has already claimed it.
@@ -945,13 +947,34 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
   }
 
   if (!dryRun) {
+    // DEC-111 amendment (findings wave 15): the refMap dedup above is an
+    // application-level pre-read, not the gate -- a concurrent import run
+    // against the same org/event can land its own create between that read
+    // and these inserts. Each loop below is the authority: a raw D1 unique-
+    // constraint failure on the entity's external_ref index is caught and
+    // translated into a fail-loud ApiError rather than surfacing as a 500 --
+    // anything else rethrows unchanged.
     for (const chunk of chunkRowsForInsert(contactCreateRows)) {
       if (chunk.length === 0) continue;
-      await db.insert(schema.contact).values(chunk);
+      try {
+        await db.insert(schema.contact).values(chunk);
+      } catch (err) {
+        if (isUniqueViolation(err, "contact.external_ref")) {
+          throw new ApiError("conflict", "A contact with this external reference already exists");
+        }
+        throw err;
+      }
     }
     for (const chunk of chunkRowsForInsert(submissionCreateRows)) {
       if (chunk.length === 0) continue;
-      await db.insert(schema.submission).values(chunk);
+      try {
+        await db.insert(schema.submission).values(chunk);
+      } catch (err) {
+        if (isUniqueViolation(err, "submission.external_ref")) {
+          throw new ApiError("conflict", "A submission with this external reference already exists");
+        }
+        throw err;
+      }
     }
     for (const chunk of chunkRowsForInsert(submissionTrackCreateRows)) {
       if (chunk.length === 0) continue;
@@ -959,7 +982,14 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
     }
     for (const chunk of chunkRowsForInsert(trackCreateRows)) {
       if (chunk.length === 0) continue;
-      await db.insert(schema.track).values(chunk);
+      try {
+        await db.insert(schema.track).values(chunk);
+      } catch (err) {
+        if (isUniqueViolation(err, "track.external_ref")) {
+          throw new ApiError("conflict", "A track with this external reference already exists");
+        }
+        throw err;
+      }
     }
 
     await flushContactUpdates(db, contactUpdateRows, rowTs);
