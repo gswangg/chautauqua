@@ -1,4 +1,24 @@
-# Eval findings — rebased 2026-08-15 (wave 18, task-w18-h)
+# Eval findings — rebased 2026-08-15 (wave 24, task-w24-f)
+
+Verified against `main` sha `39ac22d0a4b9e751fa37ff6a7865d80d0c78a47a` ("Merge
+repair: gutter guard scans declarations, not DEC-976 citations" — this
+wave's own planning boundary, re-derived by running `git rev-parse main`,
+`git log --oneline -20 main`, `git for-each-ref refs/heads` and
+`git merge-base --is-ancestor <ref> main` for every `task-w*` ref live in
+the worktree AT THE TIME THIS TASK RAN, per the standing rule below and the
+field guide's "A STALE MANDATE COSTS MORE THAN NO MANDATE" note). This sha
+is six commits ahead of the `173a4a41` ("merge task-w23-a") tip a prior
+planning brief cited for this rebase — waves 23-b through 23-e plus the
+wave-24 scribe pass landed between that brief being written and this task
+running, so (same trap, recurring one layer up, exactly as the wave-18
+header below already documented for its own predecessor) this rewrite reads
+`.git/refs/heads/*` and `main`'s own log tail directly rather than trusting
+the brief's `173a4a41` boundary. See the wave-24 REF TRUTH block under IN
+FLIGHT below for the full ref-by-ref measurement. The wave-18 header
+immediately below is SUPERSEDED by this one — kept verbatim, never deleted,
+for its own citations against its own `956fe263` boundary.
+
+## Wave 18 header (superseded, kept for citation)
 
 Verified against `main` sha `956fe263f5f223ef81ffc2ab2ebf63a0fdad956b` ("merge
 task-w17-b" — this wave's own planning boundary, per DEC-358's wave-17
@@ -71,6 +91,73 @@ authoritative until someone re-verifies it and moves it into a tier below.
   from a previous wave's prose describing what it believed was merged.
 
 ## TIER 0 — re-verified, already correct, do not re-file
+
+### DISMISSED-VERIFIED-CLOSED (wave 24, task-w24-f, boundary `main 39ac22d0`)
+
+Five review-lens claims, each re-checked directly against this wave's
+boundary with a live file:line read (not inherited) and closed. Re-filing
+any of these without new runtime evidence is a regression of this triage:
+
+- **`src/routes/tasks.ts` onboarding-grid `status`/`inviteStatus` REFUSE an
+  unrecognised token, accumulated into one fields map** —
+  `parseOnboardingGridQuery`, `src/routes/tasks.ts:164-205` (DEC-340
+  wave-18 amendment): a present-but-unrecognised `status` or `inviteStatus`
+  value is pushed into a `fields` map (`fields.status = "Must be one of
+  'pending', 'complete'"`, `fields.inviteStatus = "Must be one of 'none',
+  'invited', 'accepted', 'declined'"`) and `parseOnboardingGridQuery` throws
+  `new ApiError("invalid", "Invalid onboarding grid filter", fields)` at
+  `:207-209` once any field is populated — a single bad request with two bad
+  tokens names both in one refusal. CLOSED.
+- **`countEvaluationsBySubmission` caps on `MAX_PLAN_SUBMISSION_SCAN + 1`,
+  with a documented reason the evaluation-row constant would be wrong** —
+  `src/server/repo/review/evaluations.ts:158-200`: the header comment at
+  `:169-176` explains the `GROUP BY submission_id` result is one row per
+  SUBMISSION (not one row per evaluation), so the scan is bounded by
+  `MAX_PLAN_SUBMISSION_SCAN` (mirroring `listSubmissionsForPlan`'s cap on
+  the same population) rather than `MAX_PLAN_EVALUATION_SCAN` — using the
+  evaluation-row constant here "would never fire, silently disabling the
+  guard" per the comment's own words. The function (`:178-200`) queries
+  with `.limit(MAX_PLAN_SUBMISSION_SCAN + 1)` and throws `ApiError` if
+  `rows.length > MAX_PLAN_SUBMISSION_SCAN`. CLOSED.
+- **`isSubmissionInReviewerScope` carries the SAME `MAX_REVIEWER_SCOPE_ROWS
+  + 1` cap and refusal as `resolveReviewerSubmissions`** —
+  `src/server/repo/review/submissions.ts:396-407` (`isSubmissionInReviewerScope`)
+  vs `:241-252` (the equivalent block inside the plan's whole-scope
+  resolver): both query `schema.planReviewer` filtered by `planId`/`userId`,
+  both order by `asc(createdAt), asc(id)`, both `.limit(MAX_REVIEWER_SCOPE_ROWS
+  + 1)`, and both throw the identical-shaped `ApiError("invalid", ...
+  "narrow the reviewer's assignment scope first")` when `rows.length >
+  MAX_REVIEWER_SCOPE_ROWS`. No asymmetry between the whole-scope resolver
+  and the single-submission membership check. CLOSED.
+- **`clearSessionCookie` appends `Secure` on https exactly like
+  `buildSessionCookie`** — `src/auth/cookies.ts:31-42`
+  (`clearSessionCookie`): after building the base attribute list
+  (`SESSION_COOKIE_NAME=`, `HttpOnly`, `SameSite=Lax`, `Path=/`,
+  `Max-Age=0`), it runs `if (options.secure) { attributes.push("Secure"); }`
+  — the identical conditional (`:26-28`) `buildSessionCookie` runs on the
+  same `options.secure` flag. Clear and set are symmetric. CLOSED.
+- **The public sessions LIST hydrates speakers through
+  `visibleParticipantConditions()`** — `src/server/repo/public/sessions.ts:405-417`:
+  the speaker-row query joins `schema.participant` to `schema.contact` and
+  filters `.where(and(inArray(schema.participant.submissionId, batch),
+  visibleParticipantConditions()))` — the same visibility gate is re-applied
+  at the submission read (`visibleSessionConditions()` at `:357`, one level
+  up). The `participant.visible=0` byline claim (a hidden participant's name
+  leaking into a public session card) does not reproduce at this tip: the
+  gate runs on the exact query that hydrates the speaker rows returned to
+  the public LIST endpoint. CLOSED.
+
+### DELIBERATE ruling, not a defect (re-affirmed wave 24)
+
+- **`isSlugTaken` has no `orgId` predicate, by construction** —
+  `src/server/repo/events.ts:141-147`: the query filters only on
+  `eq(schema.event.slug, slug)`, no organisation scoping. This is
+  DELIBERATE: `/e/:slug` is a single global namespace (every event's public
+  URL lives under one flat path, not org-prefixed), so slug uniqueness is
+  necessarily org-agnostic — two different organisations cannot both claim
+  the same slug, and the refusal this function backs names no owner because
+  ownership is not the axis being checked. Do not re-file this as a
+  cross-tenant authorization oracle or a missing-scope defect.
 
 These three families recur across the archived history as open/uncertain
 findings. Each was re-checked against current `main` this wave and is closed;
@@ -241,7 +328,126 @@ so the next mobile-lane sweep doesn't re-derive them:
 
 ## IN FLIGHT — owned by a branch, do not re-file
 
-### REF TRUTH, rewritten this wave (w18-h, 2026-08-15) against boundary `main 956fe263`
+### REF TRUTH, rewritten this wave (w24-f, 2026-08-15) against boundary `main 39ac22d0`
+
+Read directly from `git for-each-ref refs/heads` and `git merge-base
+--is-ancestor <ref> main` run AT THIS TASK'S OWN RUNTIME (not at planning
+time — the planning brief handed to this task cited `main 173a4a41` "merge
+task-w23-a" with task-w23-b..e "in flight"; by the time this task actually
+ran, `main` had advanced six more commits: `c0fe6948` merge task-w23-e,
+`dcdfc45d` frame-citation audit, `107e4ad8` scribe wave 24, `39ac22d0` merge
+repair — so every `task-w23-*` ref the brief called unmerged needed
+re-checking, and did not all come back the same way). This supersedes the
+wave-18 REF TRUTH block below (kept for its own `956fe263` citations, not
+for current status):
+
+- **`task-w23-e` IS MERGED** — `git merge-base --is-ancestor task-w23-e
+  main` succeeds; `main`'s log tail carries `c0fe6948 "merge task-w23-e"`
+  directly behind `dcdfc45d "Frame-citation audit: quote every
+  docs/design/*.dc.html:<line> reference (DEC-976, DEC-808)"`, its own
+  commit. Its scope (frame-citation quoting audit) is CLOSED; do not
+  re-file.
+- **`task-w23-f` (ref `a0420f00`) is a real, UNMERGED commit** — "w23-f:
+  DEC-902 column contract scan + DEC-937 review phone label guard." Not
+  previously tracked in this file's IN FLIGHT block (the field guide names
+  four members of the "unwidthed-table family CLOSED" and a first DEC-937
+  phone-label fix at w23, but this ref's own scope — a scan/guard, not a
+  fix — was not separately ref-checked before). Owned, do not re-launch
+  this scope; flagging so a future wave doesn't re-derive it.
+- **`task-w17-i` (ref `7b78d8b6`) is STILL a real, UNMERGED commit** —
+  unchanged status from the wave-18 block below ("Sign-in page names the
+  event and its open CFP (DEC-716)," touching `src/routes/auth.tsx`). Six
+  waves later and still not merged — flagging the staleness explicitly:
+  this branch is now many commits behind `main` and, per the standing rule
+  on stale-but-harmless branches, needs a fresh boundary before its scope
+  is re-attempted, not a merge of this old diff. Do not re-file the
+  underlying scope as unowned.
+- **`task-w24-a` (ref `2dc88cce`), `task-w24-b` (`a93134cd`), `task-w24-c`
+  (`219b0cad`), `task-w24-d` (`ef5d6e95`) are all real, UNMERGED commits**
+  with live product-code diffs against `39ac22d0` — respectively: contacts
+  phone-card labels sourced from the cell not the column index (DEC-937 w24
+  amendment), the `SpeakerDetailPage` structure-role-never-lands-on-a-control
+  fix (DEC-930), the public CFP page rendering the organiser-authored intro
+  (DEC-986 w24 amendment), and the SSR `FieldControl` invalid-vocabulary
+  unification across all six kinds (DEC-124 wave-24 amendment). All four are
+  owned scopes this wave — do not re-file; see the wave-24 IN FLIGHT lane
+  entries immediately below for detail.
+- **`task-w24-e` (ref `39ac22d0`) points EXACTLY at `main`'s own tip —
+  ZERO commits, per the DEC-069 wave-17 amendment rule** ("a verification
+  lane's branch that equals its base measured nothing"). This directly
+  contradicts the field guide's own prose ("Every emitted document declares
+  `lang` — except mail/shell.ts, the one that leaves the app, now scanned
+  (DEC-037 w24)"), which reads as already-landed. Measured directly instead
+  of trusting that prose: `grep -n "lang" src/mail/shell.ts` returns no
+  match, and `src/mail/shell.ts:70` still emits a bare `<html>` with no
+  `lang` attribute. The scope this lane is meant to own (declare `lang` on
+  the mail shell) is REAL and OPEN, not yet started on this branch —
+  filing this as its own IN FLIGHT lane entry below rather than trusting
+  the field guide's "now scanned" claim, which was itself a wave-24 note
+  written before this ref was actually advanced.
+- **`task-w17-b`, `task-w18-b/c/d/e/f/g` are all MERGED** — every ref named
+  UNMERGED in the wave-18 block below (`task-w18-b` at `af729b28`,
+  `task-w18-c` at `35931a2f`, `task-w18-d`/`task-w18-e` at `675e73ae`,
+  `task-w18-f` at `7a61085d`, `task-w18-g` at `4d26ee44`) no longer exists
+  as a live `refs/heads` entry — `git for-each-ref refs/heads` at this
+  boundary lists no `task-w18-*` branch at all, the standard pattern in
+  this repo for a landed-and-deleted lane (same pattern the wave-17 block
+  documents for `task-w14-d`/`task-w15-*`). Their scopes are folded into
+  `main`'s history between `956fe263` and `39ac22d0`; not independently
+  re-verified item-by-item this wave beyond ref presence (DOCS ONLY, no
+  code touched) — carried forward as MERGED on ref-absence evidence, per
+  the same standard this file already applies to earlier landed waves.
+- **Every other `task-w*` ref present in the worktree today** (`mail-rich-
+  shape-fallback`, `manual-qa`, `task-custodian-w68-4`, `task-w68-b/c/d/e`,
+  `task-w71-a/c/d/e`, `task-w72-a` through `task-w72-j`) uses wave numbers
+  far ahead of this file's own wave-24 sequence — an already-established
+  pattern in this repo (the wave-17 REF TRUTH block below notes the same
+  thing for `task-w68-*`/`task-w71-*`/`task-w72-*` at ITS boundary). Ran
+  `git merge-base --is-ancestor` on each: `task-w68-d`, `task-w71-c`,
+  `task-w71-d`, `task-w71-e` are MERGED; `task-w68-b`, `task-w68-c`,
+  `task-w68-e`, `task-w71-a`, and all ten `task-w72-*` refs are UNMERGED
+  with live commits. None of these are re-triaged here — they belong to
+  waves ahead of/adjacent to wave 24's own scope; their presence is neither
+  evidence for nor against any wave-24-or-earlier claim in this file.
+
+### Wave 24's own lanes (w24-a through w24-e), owned — do not re-derive
+
+- **`task-w24-a` — contacts phone-card labels sourced from the cell, not
+  the column index** (DEC-937 w24, ref `2dc88cce`). Fixes the same defect
+  class the field guide names for the desktop contacts table
+  (`contacts.css` keyed `'Company'`/`'Labels: '` to `td:nth-child(3)/(4)`)
+  on the phone card surface. UNMERGED, owned.
+- **`task-w24-b` — a structure role never lands on a control, applied to
+  `SpeakerDetailPage`** (DEC-930 w24, ref `a93134cd`). Same defect class as
+  the field guide's `role="cell"`-on-a-`<Link>` note; `PeopleRolesPanel`
+  remains the reference implementation. UNMERGED, owned.
+- **`task-w24-c` — public CFP page renders the organiser-authored intro**
+  (DEC-986 w24 amendment, ref `219b0cad`). This is the fix for the field
+  guide's "a field the organiser can write that no surface reads" defect
+  class: `form.description`, edited in Settings and validated server-side
+  as "intro shown on the public CFP form," was rendered as a computed lede
+  instead by `submit-views.tsx`. **This lane OWNS and closes TIER 1 item 9's
+  "CFP-edit intro/description binding" clause** (see the re-tier note under
+  TIER 1 below) — do not re-file that clause as unowned once this lane
+  lands. UNMERGED, owned.
+- **`task-w24-d` — one invalid vocabulary for every SSR `FieldControl`
+  kind** (DEC-124 wave-24 amendment, ref `ef5d6e95`). Fixes the field
+  guide's "one vocabulary, all kinds" defect: three of six `FieldControl`
+  kinds skipped `aria-invalid` + `.chq-field-invalid`, the rule was stated
+  in a header comment but not run by every branch of the switch. UNMERGED,
+  owned.
+- **`task-w24-e` — declare `lang` on `src/mail/shell.ts`** (DEC-037 w24,
+  ref `39ac22d0` = `main`'s own tip, zero commits). Per the REF TRUTH
+  measurement above, this is NOT yet done despite the field guide's "now
+  scanned" phrasing — that phrasing describes the INTENT of this lane, not
+  its landed state as of this boundary. `src/mail/shell.ts:70` still emits
+  `<html>` with no `lang` attribute; `test/email-shell-sweep.scan.test.ts`
+  exists as the presumed scan harness but was not re-read for content this
+  wave (DOCS ONLY). Scope OWNED by `task-w24-e`, OPEN, not yet landed —
+  flagging precisely so the next wave neither re-derives the scope nor
+  assumes it is already closed.
+
+### REF TRUTH, rewritten wave 18 (w18-h, 2026-08-15) against boundary `main 956fe263` — superseded above, kept for citation
 
 Read directly from `.git/refs/heads/*` and `git merge-base --is-ancestor <ref>
 main` at this wave's own boundary, superseding every REF TRUTH block below
@@ -772,12 +978,18 @@ misplaced.
      renders literal "TBD" — neither is evidence for or against the
      public-surface closure just recorded. The rest of item 9 and the rest
      of item 10 (active-filter ink chip, speakers toolbar right-cluster,
-     underlined initials, blue avatars, Add-track tertiary, CFP-edit
-     intro/description binding, saved-embed single-card anatomy) were NOT
-     re-checked against current `main` this wave; carried forward unchanged
-     as VERIFIED-OPEN. Per the standing rule, none of these may move tier on
-     inheritance alone — the next wave that touches any of them needs its
-     own file:line or exercised citation.
+     underlined initials, blue avatars, Add-track tertiary, saved-embed
+     single-card anatomy) were NOT re-checked against current `main` this
+     wave; carried forward unchanged as VERIFIED-OPEN. Per the standing
+     rule, none of these may move tier on inheritance alone — the next wave
+     that touches any of them needs its own file:line or exercised
+     citation. **Re-tiered this wave (w24-f, boundary `main 39ac22d0`): the
+     "CFP-edit intro/description binding" clause of item 9 is now OWNED by
+     `task-w24-c`** (ref `219b0cad`, "Public CFP renders organiser-authored
+     intro (DEC-986 w24 amendment)") — see the wave-24 IN FLIGHT lane entry
+     above for detail. Not yet MERGED as of this boundary; do not re-file
+     this specific clause as unowned while `task-w24-c` is live, and verify
+     against its landed state (not this file's prose) before closing it.
 
 **CFP-16 is a RECORDED DELIBERATE FORFEIT** (DEC-041 findings-wave-6 amendment):
 accepted speakers keep editing past close per docs/clarifications.md:39 (swyx,
