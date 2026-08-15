@@ -7,6 +7,7 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { TaskModal } from './TaskModal';
 import type { EventForm, OnboardingTask } from './types';
+import { MAX_TASK_INSTRUCTIONS_LENGTH } from '../../../../src/domain/task-copy';
 
 const FORMS: EventForm[] = [{ id: 'form-default', title: 'Speaker agreement form', isDefault: true }];
 
@@ -34,6 +35,7 @@ describe('TaskModal: CNT-01 instructions field', () => {
     expect(field).toBeInTheDocument();
     expect(field.value).toBe('');
     expect(field.placeholder).toMatch(/16:9/);
+    expect(field.maxLength).toBe(MAX_TASK_INSTRUCTIONS_LENGTH);
   });
 
   it('renders an Instructions field prefilled with the task value in edit mode', () => {

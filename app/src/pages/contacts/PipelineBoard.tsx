@@ -19,7 +19,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import { formatDateTime } from '../../lib/dates';
 import { pipelineCardAge } from './pipeline-age';
-import { sortByFit } from '../../../../src/domain/pipeline-fit';
+import { PIPELINE_RATIONALE_MAX_LEN, sortByFit } from '../../../../src/domain/pipeline-fit';
 import type { ContactListItem, PipelineActivity, PipelineEntry, PipelineEntryDetail, PipelineStage } from './types';
 import { PIPELINE_STAGES, PIPELINE_STAGE_LABELS } from './types';
 import './contacts-panels.css';
@@ -704,6 +704,7 @@ function EnrollDialog({ alreadyEnrolledContactIds, onClose, onEnrolled }: Enroll
           value={rationale}
           onChange={(e) => setRationale(e.target.value)}
           placeholder="Keynoted a similar event last year"
+          maxLength={PIPELINE_RATIONALE_MAX_LEN}
         />
       </OptionalFieldRow>
     </ModalFrame>
@@ -786,6 +787,7 @@ function FitEditDialog({ entry, onClose, onSave }: FitEditDialogProps) {
           value={rationale}
           onChange={(e) => setRationale(e.target.value)}
           placeholder="Keynoted a similar event last year"
+          maxLength={PIPELINE_RATIONALE_MAX_LEN}
         />
       </FormRow>
     </ModalFrame>

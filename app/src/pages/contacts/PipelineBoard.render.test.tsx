@@ -25,6 +25,7 @@ import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { PipelineBoard } from './PipelineBoard';
 import { mockApi, listEnvelope, errorEnvelope } from '../../test-utils/mockApi';
+import { PIPELINE_RATIONALE_MAX_LEN } from '../../../../src/domain/pipeline-fit';
 
 // w4-c/DEC-898 amendment: the board's own '‹ Contacts' back link reads/
 // writes the ?tab= URL param (DEC-710), so it needs a Router ancestor --
@@ -546,7 +547,9 @@ describe('PipelineBoard: fit edit after enrolment (DEC-980)', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'Rate fit' });
     fireEvent.click(within(dialog).getByRole('button', { name: '3' }));
-    fireEvent.change(within(dialog).getByLabelText(/Why them/), {
+    const rationaleInput = within(dialog).getByLabelText(/Why them/) as HTMLInputElement;
+    expect(rationaleInput.maxLength).toBe(PIPELINE_RATIONALE_MAX_LEN);
+    fireEvent.change(rationaleInput, {
       target: { value: 'Solid keynote track record' },
     });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
