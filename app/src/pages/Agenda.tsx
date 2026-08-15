@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { apiDelete, apiGet, apiPost, apiPut, ApiError } from '../lib/api';
 import { useCurrentEvent } from '../lib/useCurrentEvent';
 import { useIsPhone } from '../lib/useIsPhone';
@@ -392,9 +393,9 @@ export function AgendaPage() {
                   // rooms/tracks always need attention.
                   <div className="chq-agenda-empty-state">
                     <p>No rooms configured yet — add one to start placing sessions.</p>
-                    <a href="/settings#chq-settings-section-tracks" className="chq-toolbar-link">
+                    <Link to="/admin/settings?section=tracks-rooms" className="chq-toolbar-link">
                       Add a room or track
-                    </a>
+                    </Link>
                   </div>
                 ) : (
                   activeDay && (

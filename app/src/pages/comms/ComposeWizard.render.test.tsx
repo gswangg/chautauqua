@@ -6,6 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { ComposeWizard } from './ComposeWizard';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 
@@ -54,7 +55,11 @@ describe('ComposeWizard recipient picker', () => {
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     expect(await screen.findByText('Talk number 1')).toBeInTheDocument();
     expect(screen.getByText('Showing 1–50 of 340')).toBeInTheDocument();
@@ -68,7 +73,11 @@ describe('ComposeWizard recipient picker', () => {
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
@@ -93,7 +102,11 @@ describe('ComposeWizard recipient picker', () => {
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
@@ -111,7 +124,11 @@ describe('ComposeWizard recipient picker', () => {
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     await screen.findByText('Talk number 1');
     fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'testing' } });
@@ -135,7 +152,11 @@ describe('ComposeWizard recipient picker', () => {
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     expect(await screen.findByText('No submissions match the selected statuses.')).toBeInTheDocument();
     expect(screen.getByText(/Filtered by status: Accepted, Declined/)).toBeInTheDocument();
@@ -176,7 +197,11 @@ describe('ComposeWizard recipient picker', () => {
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     await screen.findByText('Talk number 1');
 
@@ -207,7 +232,11 @@ describe('ComposeWizard recipient picker', () => {
       },
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
@@ -238,7 +267,11 @@ describe('ComposeWizard recipient picker', () => {
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
@@ -265,7 +298,11 @@ describe('ComposeWizard body merge-field menu (DEC-793, DEC-993)', () => {
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
@@ -326,7 +363,11 @@ describe('ComposeWizard body merge-field menu (DEC-793, DEC-993)', () => {
       [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
@@ -372,7 +413,11 @@ describe('ComposeWizard missing-merge-field errors (DEC-856)', () => {
       },
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
@@ -418,7 +463,11 @@ describe('ComposeWizard no-eligible-recipients errors (DEC-317 amendment wave 60
       },
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
@@ -452,7 +501,11 @@ describe('ComposeWizard template selection copies text, edits win (DEC-832)', ()
       [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
@@ -490,7 +543,11 @@ describe('ComposeWizard feedback plan picker (DEC-682)', () => {
   }
 
   async function goToPreview(fetchMock: ReturnType<typeof mockApi>) {
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
     fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
@@ -560,7 +617,11 @@ describe('ComposeWizard include-feedback toggle reachability (DEC-883)', () => {
   }
 
   async function goToPreview(fetchMock: ReturnType<typeof mockApi>) {
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
     fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
@@ -656,7 +717,11 @@ describe('ComposeWizard sends edited body, not the template id (DEC-846)', () =>
       [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
@@ -712,7 +777,11 @@ describe('ComposeWizard recipient rows name the talk and state the slot (DEC-912
       [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items },
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
     fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
@@ -755,7 +824,11 @@ describe('ComposeWizard recipient rows name the talk and state the slot (DEC-912
       }),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
     fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
@@ -804,7 +877,11 @@ describe('ComposeWizard: Send moves to step 4 (ruling B1)', () => {
   }
 
   async function goToPreviewWith(fetchMock: ReturnType<typeof mockApi>) {
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
     fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
@@ -891,7 +968,11 @@ describe('ComposeWizard skipped (already-sent-recently) report (DEC-238 amendmen
       },
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
@@ -937,7 +1018,11 @@ describe('ComposeWizard skipped (already-sent-recently) report (DEC-238 amendmen
       [`POST /api/v1/events/${EVENT_ID}/compose/send`]: { sent: 1, failed: [] },
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
@@ -976,7 +1061,11 @@ describe('ComposeWizard send report frame (DEC-238 amendment, findings wave 5)',
       [`POST /api/v1/events/${EVENT_ID}/compose/send`]: { sent: 1, failed: [] },
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
 
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
@@ -1066,7 +1155,11 @@ describe('ComposeWizard ICS slot predicate and blocked-send (DEC-954)', () => {
       ...extra,
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
     fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
@@ -1119,7 +1212,11 @@ describe('ComposeWizard ICS slot predicate and blocked-send (DEC-954)', () => {
       })(),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
     fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
@@ -1161,7 +1258,11 @@ describe('ComposeWizard {feedback} companion plan picker (DEC-955)', () => {
       ...extra,
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
     fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
@@ -1176,7 +1277,11 @@ describe('ComposeWizard {feedback} companion plan picker (DEC-955)', () => {
       [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
     fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
@@ -1223,7 +1328,11 @@ describe('ComposeWizard step-1 selection-survives-filters seam line', () => {
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
     await screen.findByText('Talk number 1');
 
     expect(screen.queryByText(/Kept as you change filters/)).not.toBeInTheDocument();
@@ -1250,7 +1359,11 @@ describe('ComposeWizard evaluation-plan select is a parameter of Include reviewe
       [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
     fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
@@ -1318,7 +1431,11 @@ describe('ComposeWizard partial-send way out on the blocked banner (DEC-793 amen
       [`POST /api/v1/events/${EVENT_ID}/compose/send`]: { sent: 1, failed: [], items: [] },
     });
 
-    render(<ComposeWizard eventId={EVENT_ID} />);
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
     await screen.findByText('Talk number 1');
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
     fireEvent.click(screen.getByLabelText('Select Talk number 2'));

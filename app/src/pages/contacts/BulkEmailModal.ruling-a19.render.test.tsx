@@ -6,6 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { BulkEmailModal } from './BulkEmailModal';
 import { mockApi, listEnvelope } from '../../test-utils/mockApi';
 
@@ -22,7 +23,11 @@ describe('Ruling A19: BulkEmailModal template picker copy', () => {
       ]),
     });
 
-    render(<BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} onClose={() => {}} />);
+    render(
+      <MemoryRouter>
+        <BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} onClose={() => {}} />
+      </MemoryRouter>,
+    );
 
     const select = (await screen.findByLabelText(/Template/)) as HTMLSelectElement;
     expect(select).toBeInTheDocument();

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { apiGet, apiList, apiPost, ApiError } from '../../lib/api';
 import { FormRow, ModalFrame } from '../../components/ModalFrame';
 import type { ContactDetail, ContactListItem } from './types';
@@ -196,7 +197,7 @@ export function AddToEventModal({ contact, onClose }: Props) {
           <p>
             {contact.firstName} {contact.lastName} was added as an accepted {participantRoleLabel(role).toLowerCase()}.
           </p>
-          <a href="/admin/speakers">View in Speakers</a>
+          <Link to="/admin/speakers">View in Speakers</Link>
         </div>
       )}
     </ModalFrame>

@@ -7,6 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { AgendaPage } from '../Agenda';
 import { mockApi } from '../../test-utils/mockApi';
 
@@ -104,7 +105,11 @@ describe('AgendaPage render smoke', () => {
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
 
     expect(await screen.findByRole('heading', { name: 'Agenda' })).toBeInTheDocument();
 
@@ -138,7 +143,11 @@ describe('AgendaPage render smoke', () => {
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -181,7 +190,11 @@ describe('AgendaPage render smoke', () => {
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: payload,
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -203,10 +216,14 @@ describe('AgendaPage render smoke', () => {
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: payload,
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       const link = screen.getByRole('link', { name: 'Add a room or track' });
-      expect(link).toHaveAttribute('href', '/settings#chq-settings-section-tracks');
+      expect(link).toHaveAttribute('href', '/admin/settings?section=tracks-rooms');
     });
 
     expect(document.querySelector('.chq-day-grid')).toBeNull();
@@ -217,7 +234,11 @@ describe('AgendaPage render smoke', () => {
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -259,7 +280,11 @@ describe('AgendaPage render smoke', () => {
       'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 2 } } },
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -296,7 +321,11 @@ describe('AgendaPage render smoke', () => {
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -314,7 +343,11 @@ describe('AgendaPage render smoke', () => {
       'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 1 } } },
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -353,7 +386,11 @@ describe('AgendaPage render smoke', () => {
       'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 1 } } },
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -375,7 +412,11 @@ describe('AgendaPage render smoke', () => {
       'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 2 } } },
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -397,7 +438,11 @@ describe('AgendaPage render smoke', () => {
       'DELETE /api/v1/submissions/sub-1/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 2, conflicts: 0 } } },
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -423,7 +468,11 @@ describe('AgendaPage render smoke', () => {
       [`POST /api/v1/events/${EVENT_ID}/agenda/publish`]: { placed: 14, public: 12, heldBack: 2 },
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -441,7 +490,11 @@ describe('AgendaPage render smoke', () => {
       [`POST /api/v1/events/${EVENT_ID}/agenda/publish`]: { placed: 14, public: 14, heldBack: 0 },
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -469,7 +522,11 @@ describe('AgendaPage render smoke', () => {
       },
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -498,7 +555,11 @@ describe('AgendaPage render smoke', () => {
       },
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -521,7 +582,11 @@ describe('AgendaPage render smoke', () => {
       'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 3 } } },
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -571,7 +636,11 @@ describe('AgendaPage render smoke', () => {
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: payload,
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -627,7 +696,11 @@ describe('AgendaPage render smoke', () => {
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: payload,
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -646,7 +719,11 @@ describe('AgendaPage render smoke', () => {
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -663,7 +740,11 @@ describe('AgendaPage render smoke', () => {
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -688,7 +769,11 @@ describe('AgendaPage render smoke', () => {
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -710,7 +795,11 @@ describe('AgendaPage render smoke', () => {
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -734,7 +823,11 @@ describe('AgendaPage render smoke', () => {
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -802,7 +895,11 @@ describe('AgendaPage armed self-clash and top-layer click-to-place (DEC-769)', (
       'PUT /api/v1/submissions/sub-1/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 1 } } },
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Solo Talk A')).toBeInTheDocument();
     });
@@ -837,7 +934,11 @@ describe('AgendaPage armed self-clash and top-layer click-to-place (DEC-769)', (
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: twoRoomPayload(),
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Solo Talk A')).toBeInTheDocument();
     });
@@ -867,7 +968,11 @@ describe('AgendaPage armed self-clash and top-layer click-to-place (DEC-769)', (
       },
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Solo Talk A')).toBeInTheDocument();
     });
@@ -898,7 +1003,11 @@ describe('AgendaPage click/keyboard unschedule (DEC-021 amendment)', () => {
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -923,7 +1032,11 @@ describe('AgendaPage click/keyboard unschedule (DEC-021 amendment)', () => {
       'DELETE /api/v1/submissions/sub-1/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 2, conflicts: 0 } } },
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -951,7 +1064,11 @@ describe('AgendaPage click/keyboard unschedule (DEC-021 amendment)', () => {
       'DELETE /api/v1/submissions/sub-1/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 2, conflicts: 0 } } },
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -982,7 +1099,11 @@ describe('AgendaPage breaks disclosure (DEC-021/DEC-900 amendment, wave 72)', ()
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -1003,7 +1124,11 @@ describe('AgendaPage breaks disclosure (DEC-021/DEC-900 amendment, wave 72)', ()
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -1024,7 +1149,11 @@ describe('AgendaPage breaks disclosure (DEC-021/DEC-900 amendment, wave 72)', ()
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -1065,7 +1194,11 @@ describe('AgendaPage phone tap-to-place (DEC-380)', () => {
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: agendaPayload(),
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -1090,7 +1223,11 @@ describe('AgendaPage phone tap-to-place (DEC-380)', () => {
       'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 1 } } },
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -1143,7 +1280,11 @@ describe('AgendaPage phone tap-to-place (DEC-380)', () => {
       [`GET /api/v1/events/${EVENT_ID}/agenda`]: payload,
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
@@ -1164,7 +1305,11 @@ describe('AgendaPage phone tap-to-place (DEC-380)', () => {
       'PUT /api/v1/submissions/sub-3/slot': { status: 200, body: { conflicts: [], summary: { unplaced: 0, conflicts: 2 } } },
     });
 
-    render(<AgendaPage />);
+    render(
+      <MemoryRouter>
+        <AgendaPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => {
       expect(screen.getByText('Overlapping Talk A')).toBeInTheDocument();
     });
