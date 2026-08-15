@@ -79,9 +79,11 @@ async function openMenu() {
 }
 
 describe('ParticipationMenu (DEC-830)', () => {
+  // DEC-869 (wave-50 amendment): the menu offers exactly three SELECTABLE
+  // states -- 'invited' is never one of them; Send portal invite occupies
+  // that slot as an action.
   it.each<[InviteStatus, string]>([
     ['none', 'Not invited'],
-    ['invited', 'Invited'],
     ['accepted', 'Confirmed'],
     ['declined', 'Declined'],
   ])('the %s item PATCHes { inviteStatus: %s }', async (status) => {
@@ -135,8 +137,54 @@ describe('ParticipationMenu (DEC-830)', () => {
     });
     const menu = await openMenu();
     expect(
-      menu.getByText('Only Send portal invite sends anything — the other three record what you already know'),
+      menu.getByText('Only Send portal invite sends anything — the other two record what you already know'),
     ).toBeInTheDocument();
+  });
+
+  // DEC-869 (wave-50 amendment): "Send portal invite" occupies the Invited
+  // slot -- the menu never offers a fourth, activatable radio named
+  // 'Invited'.
+  it('offers exactly three activatable menuitemradios and never one named "Invited"', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWith('none'),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+    const menu = await openMenu();
+    const radios = menu.getAllByRole('menuitemradio');
+    expect(radios).toHaveLength(3);
+    for (const radio of radios) {
+      expect(radio).not.toBeDisabled();
+    }
+    expect(menu.queryByRole('menuitemradio', { name: /^Invited/ })).not.toBeInTheDocument();
+  });
+
+  // DEC-869 (wave-50 amendment): when the participation IS currently
+  // 'invited', that row still renders so the organiser can see where they
+  // are -- same anatomy, aria-checked, NOW marker -- but it is disabled/
+  // non-activatable; only "Send portal invite" can act on it.
+  it('renders the current-state "Invited" row disabled with the NOW marker, and it never fires onSelectStatus', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWith('invited'),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+    const table = within(screen.getByRole('table'));
+    fireEvent.click(table.getByRole('button', { name: 'Participation status for Ada Lovelace: Invited' }));
+    const menu = within(table.getByRole('menu', { name: 'Participation status for Ada Lovelace' }));
+
+    const invitedRow = menu.getByRole('menuitemradio', { name: /^Invited/ });
+    expect(invitedRow).toBeDisabled();
+    expect(invitedRow).toHaveAttribute('aria-checked', 'true');
+    expect(within(invitedRow).getByText('NOW')).toBeInTheDocument();
+
+    fireEvent.click(invitedRow);
+    expect(screen.queryByRole('menu')).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false);
+
+    const radios = menu.getAllByRole('menuitemradio');
+    expect(radios).toHaveLength(4);
+    expect(radios.filter((r) => !r.hasAttribute('disabled'))).toHaveLength(3);
   });
 
   it('names the speaker in an identity header above the state items', async () => {
@@ -171,16 +219,19 @@ describe('ParticipationMenu (DEC-830)', () => {
     expect(menu.getByText('Acme · has account')).toBeInTheDocument();
   });
 
-  it.each(INVITE_STATUSES)('the %s item is a menuitemradio rendering its Record caption', async (candidate) => {
+  it.each(INVITE_STATUSES.filter((candidate) => candidate !== 'invited'))(
+    'the %s item is a menuitemradio rendering its Record caption',
+    async (candidate) => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWith('none'),
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
     });
     const menu = await openMenu();
-    const item = menu.getByRole('menuitemradio', { name: new RegExp(INVITE_STATUS_LABELS[candidate]) });
-    expect(item).toBeInTheDocument();
-    expect(within(item).getByText(PARTICIPATION_STATE_CAPTIONS[candidate])).toBeInTheDocument();
-  });
+      const item = menu.getByRole('menuitemradio', { name: new RegExp(INVITE_STATUS_LABELS[candidate]) });
+      expect(item).toBeInTheDocument();
+      expect(within(item).getByText(PARTICIPATION_STATE_CAPTIONS[candidate])).toBeInTheDocument();
+    },
+  );
 
   it('marks exactly one item as checked (the current state) and gives it the NOW badge', async () => {
     mockApi({
