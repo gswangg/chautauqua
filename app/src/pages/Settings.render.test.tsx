@@ -160,10 +160,12 @@ describe('SettingsPage render smoke', () => {
     // (FINDINGS w21: chrome fidelity never deletes a capability).
     const yourDataSection = screen.getByRole('region', { name: 'Your data' });
     expect(within(yourDataSection).getByRole('heading', { name: 'Your data' })).toBeInTheDocument();
-    expect(within(yourDataSection).getByRole('link', { name: 'chautauqua.cc/docs/api' })).toHaveAttribute(
-      'href',
-      '/docs/api',
-    );
+    // DEC-296 amendment (w7-d): the API-docs row's display text is derived
+    // from this instance's own host, not a hard-coded 'chautauqua.cc'. The
+    // href stays root-relative.
+    expect(
+      within(yourDataSection).getByRole('link', { name: `${window.location.host}/docs/api` }),
+    ).toHaveAttribute('href', '/docs/api');
     expect(await within(yourDataSection).findByRole('link', { name: 'Submissions CSV' })).toHaveAttribute(
       'href',
       `/api/v1/events/${EVENT_ID}/export/submissions?format=csv`,

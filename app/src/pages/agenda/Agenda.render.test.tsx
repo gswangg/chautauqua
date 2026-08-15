@@ -223,7 +223,11 @@ describe('AgendaPage render smoke', () => {
     );
     await waitFor(() => {
       const link = screen.getByRole('link', { name: 'Add a room or track' });
-      expect(link).toHaveAttribute('href', '/admin/settings?section=tracks-rooms');
+      // DEC-834 / DEC-837: the app mounts under <BrowserRouter basename="/admin">,
+      // so the in-app `to` is basename-relative and renders that way here (this
+      // MemoryRouter has no basename); a '/admin/...' target would double the
+      // prefix to /admin/admin/settings in the real app.
+      expect(link).toHaveAttribute('href', '/settings?section=tracks-rooms');
     });
 
     expect(document.querySelector('.chq-day-grid')).toBeNull();

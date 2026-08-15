@@ -167,6 +167,21 @@ export const PORTAL_CSS = `
     color: var(--chq-muted);
     line-height: 1.5;
   }
+  /* DEC-747 (findings wave 7 amendment): the read-only banner on
+     /portal/preview. Reads as a standing notice, not a transient alert --
+     a tinted rule-bordered strip above the previewed content, so an
+     organizer can never mistake the preview for a speaker's own portal. */
+  .chq-portal-preview-banner {
+    margin: 0 0 16px;
+    padding: 10px 12px;
+    border: 1px solid var(--chq-border);
+    border-left: 3px solid var(--chq-accent, var(--chq-ink));
+    border-radius: 6px;
+    background: var(--chq-surface-2, transparent);
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--chq-muted);
+  }
   /* CNT-01: a task's instructions is a real brief, not a muted footnote --
      plain body ink (var(--chq-ink), the surface's default text colour),
      never behind a disclosure. */

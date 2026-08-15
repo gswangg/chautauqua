@@ -393,7 +393,10 @@ export function AgendaPage() {
                   // rooms/tracks always need attention.
                   <div className="chq-agenda-empty-state">
                     <p>No rooms configured yet — add one to start placing sessions.</p>
-                    <Link to="/admin/settings?section=tracks-rooms" className="chq-toolbar-link">
+                    {/* DEC-834 / DEC-837: the router's basename is already '/admin' -- a
+                        `to` starting with '/admin/settings' resolves to
+                        '/admin/admin/settings' and 404s. */}
+                    <Link to="/settings?section=tracks-rooms" className="chq-toolbar-link">
                       Add a room or track
                     </Link>
                   </div>

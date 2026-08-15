@@ -108,9 +108,12 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
     // DEC-837: the sent-result "View in Comms history" link must land on
     // the History tab (?tab=history), not fall through to Comms.tsx's
     // compose fallback when ?tab= is absent.
+    // DEC-834 / DEC-837: basename-relative target (the router's basename is
+    // already '/admin'), so it renders without the prefix under this
+    // basename-less MemoryRouter.
     expect(screen.getByRole('link', { name: 'View in Comms history' })).toHaveAttribute(
       'href',
-      '/admin/comms?tab=history',
+      '/comms?tab=history',
     );
   });
 
@@ -214,7 +217,7 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
     expect(badOption.textContent).toContain('{talk_title}');
 
     const forwardLink = screen.getByRole('link', { name: /Use in Comms compose/ });
-    expect(forwardLink).toHaveAttribute('href', '/admin/comms?tab=compose&template=tpl-bad');
+    expect(forwardLink).toHaveAttribute('href', '/comms?tab=compose&template=tpl-bad');
 
     // The sendable template is still usable end to end: selecting it fills
     // subject/body.

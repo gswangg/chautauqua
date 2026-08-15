@@ -913,7 +913,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                     {icsUnscheduledIds.map((id) => (
                       <li key={id}>
                         {submissionLabel(id, preview)}{' '}
-                        <Link to="/admin/agenda" className="chq-link-button">
+                        <Link to="/agenda" className="chq-link-button">
                           Place on the agenda &rsaquo;
                         </Link>
                       </li>
@@ -1028,7 +1028,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                 {icsUnscheduledIds.map((id) => (
                   <li key={id}>
                     {submissionLabel(id, preview)}{' '}
-                    <Link to="/admin/agenda" className="chq-link-button">
+                    <Link to="/agenda" className="chq-link-button">
                       Place on the agenda &rsaquo;
                     </Link>
                   </li>
@@ -1084,7 +1084,10 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                   : ''}
               </h1>
             </div>
-            <Link to="/admin/comms?tab=history" className="chq-comms-send-report-all-history">
+            {/* DEC-834 / DEC-837: the router's basename is already '/admin' -- a
+                `to` starting with '/admin/comms' resolves to
+                '/admin/admin/comms' and 404s. */}
+            <Link to="/comms?tab=history" className="chq-comms-send-report-all-history">
               All history &rsaquo;
             </Link>
           </div>
@@ -1163,7 +1166,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               <button type="button" className="chq-btn chq-btn-secondary" onClick={reset}>
                 Compose another
               </button>
-              <Link to="/admin/comms" className="chq-btn chq-btn-primary">
+              <Link to="/comms" className="chq-btn chq-btn-primary">
                 Back to Comms
               </Link>
             </div>

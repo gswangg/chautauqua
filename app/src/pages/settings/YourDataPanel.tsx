@@ -57,12 +57,6 @@ import { SummarySection } from './SummarySection';
 
 const SECTION_KEY = 'your-data';
 
-// Host-derived display text, not a hard-coded deployment hostname (DEC-296
-// amendment, w7-d): this instance's actual host, same pattern as
-// FormsPage.tsx's submission-URL display text. The anchors' href stays
-// root-relative ("/docs/api") in both call sites below.
-const apiDocsDisplay = `${window.location.host}/docs/api`;
-
 interface EventSummary {
   id: string;
   slug: string;
@@ -74,6 +68,15 @@ interface EventSummary {
 const EVERYTHING_KINDS = ['submissions', 'speakers', 'evaluations', 'agenda', 'email-log', 'contacts'] as const;
 
 export function YourDataPanel() {
+  // Host-derived display text, not a hard-coded deployment hostname (DEC-296
+  // amendment, w7-d): this instance's actual host, same pattern as
+  // FormsPage.tsx's submission-URL display text. Computed in the component
+  // body (render time), NOT at module scope -- a module-level
+  // `window.location` read crashes every node-environment test that merely
+  // imports this module (e.g. section-key-parity.scan.test.ts, which parses
+  // Settings.tsx's panel graph). The anchors' href stays root-relative
+  // ("/docs/api") at both call sites below.
+  const apiDocsDisplay = `${window.location.host}/docs/api`;
   const { eventId, loading: eventLoading, error: eventError } = useCurrentEvent();
   const [searchParams] = useSearchParams();
   const editing = searchParams.get('section') === SECTION_KEY && searchParams.get('edit') === '1';

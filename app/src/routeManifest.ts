@@ -141,6 +141,16 @@ export const ROUTE_MANIFEST: readonly RouteManifestEntry[] = [
 
   // --- Speaker portal (src/routes/portal/*.tsx, mounted at /portal) ---
   { path: "/portal", role: "speaker" },
+  // DEC-747 (findings wave 7 amendment): the organizer-only read-only portal
+  // preview (src/routes/portal/preview.tsx). The real page needs an
+  // ?eventId= query, which ROUTE_MANIFEST paths cannot carry (audit-claims
+  // matches a row's path against the route PATTERN segment by segment, and
+  // no row anywhere in this manifest has a query string), so the bare path
+  // is what the sweep visits — and the bare path's honest destination IS the
+  // 404 card, the same one PortalSettingsPanel's link produces when no event
+  // is selected. The populated preview is covered by test/portal-preview.test.ts,
+  // not by the render sweep.
+  { path: "/portal/preview", role: "organizer", expectedStatus: 404 },
   // DEC-729: the speaker's own submission list (every submission they own,
   // pending and declined included) — a static path, like /portal/tasks.
   { path: "/portal/submissions", role: "speaker" },

@@ -434,7 +434,6 @@ function stripQueryAndHash(path: string): string {
 // an explicit, reviewable allowlist (each with a one-line reason) rather
 // than silently falling out of the "/admin"-prefix filter unnoticed.
 const NON_ADMIN_HREF_ALLOWLIST: { prefix: string; reason: string }[] = [
-  { prefix: "/portal", reason: "PortalSettingsPanel 'Open as speaker' link into the separate speaker portal app" },
   { prefix: "/files/", reason: "file download/proxy served directly by the Worker, not part of the /admin SPA" },
   {
     prefix: "/headshots/",
@@ -447,13 +446,6 @@ const NON_ADMIN_HREF_ALLOWLIST: { prefix: string; reason: string }[] = [
   { prefix: "/api/v1/", reason: "raw API export links (CSV/JSON download), hit the Worker's API directly" },
   { prefix: "/docs/api", reason: "external API documentation page" },
   { prefix: "/account/password", reason: "account/password change page, outside admin SPA routing" },
-  {
-    prefix: "/settings",
-    reason:
-      "Agenda.tsx's 'Add a room or track' anchor (`/settings#chq-settings-section-tracks`) is a plain <a>, not a " +
-      "<Link>, and is written without the /admin basename -- a real full-page nav, so it is out of this scan's " +
-      "scope (whether it SHOULD instead be an in-SPA link is a separate question this rule doesn't answer).",
-  },
 ];
 
 function matchesAllowlistEntry(href: string, prefix: string): boolean {

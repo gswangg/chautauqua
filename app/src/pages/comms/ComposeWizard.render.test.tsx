@@ -1091,7 +1091,9 @@ describe('ComposeWizard send report frame (DEC-238 amendment, findings wave 5)',
     expect(screen.getByText('Send complete')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '1 of 1 speakers were emailed' })).toBeInTheDocument();
     const historyLink = screen.getByRole('link', { name: /All history/ });
-    expect(historyLink).toHaveAttribute('href', '/admin/comms?tab=history');
+    // DEC-834 / DEC-837: basename-relative target (the router's basename is
+    // already '/admin'), so it renders without the prefix here.
+    expect(historyLink).toHaveAttribute('href', '/comms?tab=history');
   });
 
   it('renders the Template / Subject they saw / Sent definition grid', async () => {
@@ -1115,7 +1117,7 @@ describe('ComposeWizard send report frame (DEC-238 amendment, findings wave 5)',
     const composeAnother = screen.getByRole('button', { name: 'Compose another' });
     expect(composeAnother).toHaveClass('chq-btn-secondary');
     const backToComms = screen.getByRole('link', { name: 'Back to Comms' });
-    expect(backToComms).toHaveAttribute('href', '/admin/comms');
+    expect(backToComms).toHaveAttribute('href', '/comms');
     expect(backToComms).toHaveClass('chq-btn-primary');
   });
 
@@ -1458,7 +1460,7 @@ describe('ComposeWizard partial-send way out on the blocked banner (DEC-793 amen
     const agendaLinks = within(banner).getAllByRole('link', { name: /Place on the agenda/ });
     expect(agendaLinks).toHaveLength(2);
     for (const link of agendaLinks) {
-      expect(link).toHaveAttribute('href', '/admin/agenda');
+      expect(link).toHaveAttribute('href', '/agenda');
     }
 
     // The last-cheap-to-fix caption.

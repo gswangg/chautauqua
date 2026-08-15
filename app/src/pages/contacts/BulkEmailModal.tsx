@@ -342,7 +342,10 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
                 <ul className="chq-bulk-email-unsendable-templates">
                   {unavailable.map((t) => (
                     <li key={t.id}>
-                      <Link to={`/admin/comms?tab=compose&template=${t.id}`}>Use in Comms compose</Link>
+                      {/* DEC-834 / DEC-837: the router's basename is already '/admin' -- a
+                          `to` starting with '/admin/comms' resolves to
+                          '/admin/admin/comms' and 404s. */}
+                      <Link to={`/comms?tab=compose&template=${t.id}`}>Use in Comms compose</Link>
                     </li>
                   ))}
                 </ul>
@@ -407,7 +410,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
         <div className="chq-bulk-email-result">
           <p>{describeSendResult(sendResult, { one: 'email', many: 'emails' })}</p>
           <SendFailures failed={sendResult.failed ?? []} />
-          <Link to="/admin/comms?tab=history">View in Comms history</Link>
+          <Link to="/comms?tab=history">View in Comms history</Link>
         </div>
       )}
 

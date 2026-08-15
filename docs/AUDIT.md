@@ -73,7 +73,7 @@ onboarding-progress dashboard are built. `/admin/speakers` is the accepted-speak
 carrying that speaker's sessions and task assignments, each row linking to its own submission
 or deliverable. See the reminder cap and Overview row cap below.
 
-## J7 — Speaker self-serve portal (`/portal`, `/portal/profile`, `/portal/submissions`, `/portal/submissions/:id`, `/portal/submissions/:id/edit`, `/portal/tasks`, `/portal/tasks/:assignmentId/form`, `/portal/resources`)
+## J7 — Speaker self-serve portal (`/portal`, `/portal/profile`, `/portal/submissions`, `/portal/submissions/:id`, `/portal/submissions/:id/edit`, `/portal/tasks`, `/portal/tasks/:assignmentId/form`, `/portal/resources`, `/portal/preview`)
 
 Branded portal (logo/accent from event settings), submission edit within the organizer's
 open-edit window, profile, and per-task forms/uploads. Built. `/portal/submissions` lists
@@ -84,7 +84,15 @@ accepted (DEC-729). `MAX_PARTICIPANTS_PER_SUBMISSION`=6
 submission from the portal. `/portal/resources` (DEC-029, `src/routes/portal/tasks/resources.tsx`,
 `src/server/repo/portal/resources.ts`) lists wiki notes and files, grouped by every event the
 signed-in speaker participates in — scoped by contact id, never a query param, so a speaker
-never sees another event's or another speaker's resources.
+never sees another event's or another speaker's resources. `/portal/preview` (DEC-747
+findings-wave-7 amendment, `src/routes/portal/preview.tsx`) is the one route in this section
+that is NOT a speaker's page: it is the organizer-only, read-only preview behind the Speaker
+portal settings section's "Open as a speaker" row, showing that event's own portal branding,
+welcome message and resources and nothing scoped to a person (no submissions, tasks or
+files). It does not use `speakerGate` — its guard is the inverse (organizer only), and every
+other session (anonymous, reviewer, speaker) gets a 404, never a redirect, so the route is
+invisible to the roles it is not for. Without an `?eventId=` belonging to the caller's org it
+renders that same 404.
 
 ## J8 — Collect/review/approve content (`/admin/content`, `/admin/content/:submissionId`)
 

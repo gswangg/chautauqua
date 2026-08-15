@@ -27,6 +27,7 @@ import {
   ORGANIZER_NOT_FOUND_LINKS,
   resolveNotFoundEyebrow,
 } from "../../server/not-found";
+import { PublicEmptyState } from "../public/empty-state";
 import { ensureCsrfCookie } from "./tasks/shared";
 import { DEC_747 } from "../../decisions";
 
@@ -49,8 +50,16 @@ function PreviewResourceRow(props: { resource: ResourceRecord }) {
 }
 
 function PreviewPage(props: { branding: PortalBrandingChrome; resources: ResourceRecord[]; csrfToken: string }) {
+  // DEC-820: every PortalLayout call site names who is signed in, so no
+  // portal page can ship anonymous. This page is the one call site whose
+  // viewer is NOT a speaker -- an organizer previewing their own portal
+  // config -- and it has no speaker's account to name, so the identity slot
+  // says exactly that instead of borrowing a person's name it does not have.
+  // (Open question for the frame: whether the slot should instead carry the
+  // ORGANIZER'S own name; DEC-747's amendment doesn't say, so this states
+  // the truth the banner already states.)
   return (
-    <PortalLayout branding={props.branding} csrfToken={props.csrfToken}>
+    <PortalLayout branding={props.branding} csrfToken={props.csrfToken} speakerName="Preview (no speaker)">
       {/* Below this point: no form, no button, no link that mutates
           anything, and nothing scoped to a contact. PortalLayout's own
           footer sign-out control is standard /portal/* chrome (DEC-154,
@@ -65,7 +74,10 @@ function PreviewPage(props: { branding: PortalBrandingChrome; resources: Resourc
       <section aria-label="Resources" class="chq-section">
         <div class="chq-section-label">Resources</div>
         {props.resources.length === 0 ? (
-          <p class="chq-portal-detail">No resources yet.</p>
+          // DEC-919: an SSR zero-collection branch renders PublicEmptyState,
+          // never a bare <p> -- 'fresh' because a preview has no filter to
+          // clear, so it takes no escape link.
+          <PublicEmptyState variant="fresh" what="No resources yet." />
         ) : (
           props.resources.map((resource) => <PreviewResourceRow resource={resource} />)
         )}
@@ -86,7 +98,24 @@ portalPreviewRoutes.get("/preview", async (c) => {
   // renders the SAME 404 card shared.tsx's speakerGate already builds for an
   // unknown /portal/* path — a 404, never a redirect, so the route is
   // invisible to roles it is not for.
-  if (!auth || auth.role !== "organizer") {
+  //
+  // DEC-550: an ANONYMOUS request must be turned away strictly before any db
+  // access, so the no-auth branch is split out and uses the db-free default
+  // eyebrow ("Not found" — exactly what resolveNotFoundEyebrow itself returns
+  // for a non-single-event hub) instead of reading the org/event name. An
+  // authenticated non-organizer has already paid for a session lookup, so it
+  // still gets the branded eyebrow.
+  if (!auth) {
+    return c.html(
+      <NotFoundDocument
+        eyebrow="Not found"
+        body="The link may be old, or the event may have been switched since it was saved."
+        links={ANONYMOUS_NOT_FOUND_LINKS}
+      />,
+      404,
+    );
+  }
+  if (auth.role !== "organizer") {
     const { eyebrow, links } = await renderNotFound(c);
     return c.html(
       <NotFoundDocument
