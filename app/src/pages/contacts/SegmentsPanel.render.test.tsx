@@ -185,4 +185,52 @@ describe('ContactsApp + SegmentsPanel: deleting the applied segment (w1-c P3, DE
     expect(document.querySelector('.chq-empty-block-fresh')).not.toBeNull();
     expect(document.querySelector('.chq-empty-escape')).not.toBeInTheDocument();
   });
+
+  // DEC-856 (wave 65 amendment): POST /segments' `rules` fields-map key has
+  // no editable control of its own (rules come from the active directory
+  // filters) -- it must still render, beside the "Rules: ..." summary line,
+  // never dropped or collapsed to a bare err.message.
+  it('a save refusal naming `rules` renders that message beside the Rules line', async () => {
+    mockApi({
+      'GET /api/v1/contacts/stats': {
+        total: 1,
+        speakerCount: 0,
+        topCompanies: [],
+      },
+      'GET /api/v1/segments': () => listEnvelope([]),
+      'GET /api/v1/contacts': listEnvelope(CONTACTS),
+      'GET /api/v1/contacts/duplicates': listEnvelope([]),
+      'POST /api/v1/segments': {
+        status: 400,
+        body: { error: { code: 'invalid', message: 'Validation failed', fields: { rules: 'Max 20 rules' } } },
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <ContactsApp />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Ada Lovelace' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('tab', { name: /^Segments/ }));
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Segment name')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText('Segment name'), { target: { value: 'Too many rules' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save segment' }));
+
+    const rulesLine = await screen.findByText(/^Rules:/);
+    await waitFor(() => {
+      expect(screen.getByText('Max 20 rules')).toBeInTheDocument();
+    });
+    // Beside the Rules line, not the generic banner (which is dropped in
+    // favour of the per-field reading per DEC-856).
+    expect(rulesLine.nextElementSibling).toHaveTextContent('Max 20 rules');
+    expect(screen.queryByText('Validation failed')).not.toBeInTheDocument();
+  });
 });

@@ -26,8 +26,27 @@ import {
 } from './formState';
 import { SummarySection } from './SummarySection';
 import { SettingsEditForm, SettingsField, SettingsFieldPair } from './SettingsEditForm';
-import { DEC_888 } from '../../../../src/decisions';
+import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
+import { DEC_856, DEC_888 } from '../../../../src/decisions';
 import { MAX_NAME_LENGTH } from '../../../../src/forms/validate';
+
+// DEC-856 (wave 65 amendment): a refusal's fields map is read by SHAPE --
+// name/color/capacity are the keys this panel's own controls own (the
+// server's "Invalid track"/"Invalid room" vocabulary, src/routes/api/
+// events.ts:416-536); any other key still renders, labelled "<key>:
+// <message>", rather than being dropped or collapsed into err.message.
+void DEC_856;
+const TRACK_FIELD_KEYS: readonly string[] = ['name', 'color'];
+const ROOM_FIELD_KEYS: readonly string[] = ['name', 'capacity'];
+
+function unownedFieldEntries(
+  errors: Record<string, string | undefined>,
+  known: readonly string[],
+): Array<[string, string]> {
+  return Object.entries(errors).filter(
+    (entry): entry is [string, string] => entry[1] !== undefined && !known.includes(entry[0]),
+  );
+}
 
 // DEC-888: ONE enumeration supplies the swatch picker buttons, the new-
 // track default (its first entry), and the .chq-color-swatch preview --
@@ -182,9 +201,17 @@ export function TracksRoomsPanel() {
         color: newTrack.color || null,
       });
       setNewTrack(EMPTY_TRACK);
+      setTrackFieldErrors({});
       reload(eventId);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to add track');
+      // DEC-856: a fields map is never collapsed to err.message -- name/
+      // color route to their own control below, anything else renders
+      // labelled beside the form.
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setTrackFieldErrors(err.fields as TrackFormErrors);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to add track');
+      }
     }
   }
 
@@ -198,9 +225,16 @@ export function TracksRoomsPanel() {
     setSavingTrackId(track.id);
     try {
       await apiPatch(`/tracks/${track.id}`, { name: draft.name, color: draft.color || null });
+      setTrackRowErrors((prev) => ({ ...prev, [track.id]: {} }));
       reload(eventId);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to save track');
+      // DEC-856: keyed by row id, so a refusal editing track N never marks
+      // another row.
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setTrackRowErrors((prev) => ({ ...prev, [track.id]: err.fields as TrackFormErrors }));
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to save track');
+      }
     } finally {
       setSavingTrackId(null);
     }
@@ -237,9 +271,17 @@ export function TracksRoomsPanel() {
         capacity: newRoom.capacity.trim().length > 0 ? Number(newRoom.capacity) : null,
       });
       setNewRoom(EMPTY_ROOM);
+      setRoomFieldErrors({});
       reload(eventId);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to add room');
+      // DEC-856: a fields map is never collapsed to err.message -- name/
+      // capacity route to their own control below, anything else renders
+      // labelled beside the form.
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setRoomFieldErrors(err.fields as RoomFormErrors);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to add room');
+      }
     }
   }
 
@@ -256,9 +298,16 @@ export function TracksRoomsPanel() {
         name: draft.name,
         capacity: draft.capacity.trim().length > 0 ? Number(draft.capacity) : null,
       });
+      setRoomRowErrors((prev) => ({ ...prev, [room.id]: {} }));
       reload(eventId);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to save room');
+      // DEC-856: keyed by row id, so a refusal editing room N never marks
+      // another row.
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setRoomRowErrors((prev) => ({ ...prev, [room.id]: err.fields as RoomFormErrors }));
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to save room');
+      }
     } finally {
       setSavingRoomId(null);
     }
@@ -309,6 +358,18 @@ export function TracksRoomsPanel() {
     </div>
   );
 
+  const trackAddSummaryProblems = [
+    trackFieldErrors.name ? { anchorId: 'chq-new-track-name', label: trackFieldErrors.name } : null,
+    trackFieldErrors.color ? { anchorId: 'chq-new-track-color', label: trackFieldErrors.color } : null,
+  ].filter((p): p is { anchorId: string; label: string } => p !== null);
+  const trackAddUnowned = unownedFieldEntries(trackFieldErrors, TRACK_FIELD_KEYS);
+
+  const roomAddSummaryProblems = [
+    roomFieldErrors.name ? { anchorId: 'chq-new-room-name', label: roomFieldErrors.name } : null,
+    roomFieldErrors.capacity ? { anchorId: 'chq-new-room-capacity', label: roomFieldErrors.capacity } : null,
+  ].filter((p): p is { anchorId: string; label: string } => p !== null);
+  const roomAddUnowned = unownedFieldEntries(roomFieldErrors, ROOM_FIELD_KEYS);
+
   return (
     <>
       {eventLoading ? <DelayedLoading /> : null}
@@ -341,8 +402,19 @@ export function TracksRoomsPanel() {
               // DEC-896 amendment (wave 26): a track with submissions cannot be
               // removed -- disabled, not hidden, with the reason on the row.
               const inUse = track.submissionCount > 0;
+              const rowUnowned = unownedFieldEntries(rowErrors, TRACK_FIELD_KEYS);
+              const rowSummaryProblems = [
+                rowErrors.name ? { anchorId: `chq-track-name-${track.id}`, label: rowErrors.name } : null,
+                rowErrors.color ? { anchorId: `chq-track-color-${track.id}`, label: rowErrors.color } : null,
+              ].filter((p): p is { anchorId: string; label: string } => p !== null);
               return (
                 <li key={track.id} className="chq-settings-edit-row">
+                  {rowSummaryProblems.length > 0 ? (
+                    <ErrorSummary
+                      heading={countHeading(rowSummaryProblems.length, 'before this track can be saved')}
+                      problems={rowSummaryProblems}
+                    />
+                  ) : null}
                   <span className="chq-settings-edit-row-value">
                     <span
                       className="chq-color-swatch"
@@ -350,15 +422,18 @@ export function TracksRoomsPanel() {
                       aria-hidden="true"
                     />
                     <input
-                      className="chq-input"
+                      id={`chq-track-name-${track.id}`}
+                      className={rowErrors.name ? 'chq-input chq-field-invalid' : 'chq-input'}
                       value={draft.name}
                       onChange={(e) =>
                         setTrackDrafts((prev) => ({ ...prev, [track.id]: { ...draft, name: e.target.value } }))
                       }
                       aria-label={`Track name for ${track.name}`}
+                      aria-invalid={rowErrors.name ? 'true' : undefined}
                       maxLength={MAX_NAME_LENGTH}
                     />
                     <div
+                      id={`chq-track-color-${track.id}`}
                       className="chq-swatch-picker"
                       role="radiogroup"
                       aria-label={`Track color for ${track.name}`}
@@ -414,8 +489,21 @@ export function TracksRoomsPanel() {
                   {inUse ? (
                     <p className="chq-settings-row-hint">In use — retire it instead of removing</p>
                   ) : null}
-                  {rowErrors.name ? <span role="alert">{rowErrors.name}</span> : null}
-                  {rowErrors.color ? <span role="alert">{rowErrors.color}</span> : null}
+                  {rowErrors.name ? (
+                    <span role="alert" className="chq-field-error">
+                      {rowErrors.name}
+                    </span>
+                  ) : null}
+                  {rowErrors.color ? (
+                    <span role="alert" className="chq-field-error">
+                      {rowErrors.color}
+                    </span>
+                  ) : null}
+                  {rowUnowned.map(([key, message]) => (
+                    <span key={key} role="alert" className="chq-field-error">
+                      {`${key}: ${message}`}
+                    </span>
+                  ))}
                   {Object.entries(trackDeleteBlockers[track.id] ?? {}).map(([key, value]) => (
                     <div key={key} role="alert" className="chq-settings-delete-blockers">
                       <p>Can&apos;t delete — referenced by {key}:</p>
@@ -430,18 +518,25 @@ export function TracksRoomsPanel() {
               );
             })}
           </ul>
+          {trackAddSummaryProblems.length > 0 ? (
+            <ErrorSummary
+              heading={countHeading(trackAddSummaryProblems.length, 'before this track can be added')}
+              problems={trackAddSummaryProblems}
+            />
+          ) : null}
           <SettingsField label="New track name" htmlFor="chq-new-track-name" width="name">
             <input
               id="chq-new-track-name"
-              className="chq-input"
+              className={trackFieldErrors.name ? 'chq-input chq-field-invalid' : 'chq-input'}
               placeholder="New track name"
               value={newTrack.name}
               onChange={(e) => setNewTrack({ ...newTrack, name: e.target.value })}
+              aria-invalid={trackFieldErrors.name ? 'true' : undefined}
               maxLength={MAX_NAME_LENGTH}
             />
           </SettingsField>
           <div className="chq-settings-row">
-            <div className="chq-swatch-picker" role="radiogroup" aria-label="Track color">
+            <div id="chq-new-track-color" className="chq-swatch-picker" role="radiogroup" aria-label="Track color">
               {TRACK_SWATCHES.map((swatch) => (
                 <button
                   key={swatch.value}
@@ -458,8 +553,21 @@ export function TracksRoomsPanel() {
             <button type="button" className="chq-btn chq-btn-primary" onClick={() => void addTrack()}>
               Add track
             </button>
-            {trackFieldErrors.name ? <span role="alert">{trackFieldErrors.name}</span> : null}
-            {trackFieldErrors.color ? <span role="alert">{trackFieldErrors.color}</span> : null}
+            {trackFieldErrors.name ? (
+              <span role="alert" className="chq-field-error">
+                {trackFieldErrors.name}
+              </span>
+            ) : null}
+            {trackFieldErrors.color ? (
+              <span role="alert" className="chq-field-error">
+                {trackFieldErrors.color}
+              </span>
+            ) : null}
+            {trackAddUnowned.map(([key, message]) => (
+              <span key={key} role="alert" className="chq-field-error">
+                {`${key}: ${message}`}
+              </span>
+            ))}
           </div>
 
           <h3 className="chq-section-label">Rooms</h3>
@@ -472,28 +580,43 @@ export function TracksRoomsPanel() {
               // DEC-896 amendment (wave 26): a room with scheduled sessions
               // cannot be removed -- disabled, not hidden, reason on the row.
               const inUse = room.sessionCount > 0;
+              const rowUnowned = unownedFieldEntries(rowErrors, ROOM_FIELD_KEYS);
+              const rowSummaryProblems = [
+                rowErrors.name ? { anchorId: `chq-room-name-${room.id}`, label: rowErrors.name } : null,
+                rowErrors.capacity ? { anchorId: `chq-room-capacity-${room.id}`, label: rowErrors.capacity } : null,
+              ].filter((p): p is { anchorId: string; label: string } => p !== null);
               return (
                 <li key={room.id} className="chq-settings-edit-row">
+                  {rowSummaryProblems.length > 0 ? (
+                    <ErrorSummary
+                      heading={countHeading(rowSummaryProblems.length, 'before this room can be saved')}
+                      problems={rowSummaryProblems}
+                    />
+                  ) : null}
                   <span className="chq-settings-edit-row-value">
                     <input
-                      className="chq-input"
+                      id={`chq-room-name-${room.id}`}
+                      className={rowErrors.name ? 'chq-input chq-field-invalid' : 'chq-input'}
                       value={draft.name}
                       onChange={(e) =>
                         setRoomDrafts((prev) => ({ ...prev, [room.id]: { ...draft, name: e.target.value } }))
                       }
                       aria-label={`Room name for ${room.name}`}
+                      aria-invalid={rowErrors.name ? 'true' : undefined}
                       maxLength={MAX_NAME_LENGTH}
                     />
                   </span>
                   <span className="chq-settings-edit-row-meta">
                     <input
-                      className="chq-input"
+                      id={`chq-room-capacity-${room.id}`}
+                      className={rowErrors.capacity ? 'chq-input chq-field-invalid' : 'chq-input'}
                       placeholder="Capacity"
                       value={draft.capacity}
                       onChange={(e) =>
                         setRoomDrafts((prev) => ({ ...prev, [room.id]: { ...draft, capacity: e.target.value } }))
                       }
                       aria-label={`Capacity for ${room.name}`}
+                      aria-invalid={rowErrors.capacity ? 'true' : undefined}
                     />
                   </span>
                   <span className="chq-settings-edit-row-actions">
@@ -530,8 +653,21 @@ export function TracksRoomsPanel() {
                   {inUse ? (
                     <p className="chq-settings-row-hint">Has scheduled sessions — cannot be removed</p>
                   ) : null}
-                  {rowErrors.name ? <span role="alert">{rowErrors.name}</span> : null}
-                  {rowErrors.capacity ? <span role="alert">{rowErrors.capacity}</span> : null}
+                  {rowErrors.name ? (
+                    <span role="alert" className="chq-field-error">
+                      {rowErrors.name}
+                    </span>
+                  ) : null}
+                  {rowErrors.capacity ? (
+                    <span role="alert" className="chq-field-error">
+                      {rowErrors.capacity}
+                    </span>
+                  ) : null}
+                  {rowUnowned.map(([key, message]) => (
+                    <span key={key} role="alert" className="chq-field-error">
+                      {`${key}: ${message}`}
+                    </span>
+                  ))}
                   {Object.entries(roomDeleteBlockers[room.id] ?? {}).map(([key, value]) => (
                     <div key={key} role="alert" className="chq-settings-delete-blockers">
                       <p>Can&apos;t delete — referenced by {key}:</p>
@@ -546,24 +682,32 @@ export function TracksRoomsPanel() {
               );
             })}
           </ul>
+          {roomAddSummaryProblems.length > 0 ? (
+            <ErrorSummary
+              heading={countHeading(roomAddSummaryProblems.length, 'before this room can be added')}
+              problems={roomAddSummaryProblems}
+            />
+          ) : null}
           <SettingsFieldPair>
             <SettingsField label="New room name" htmlFor="chq-new-room-name" width="name">
               <input
                 id="chq-new-room-name"
-                className="chq-input"
+                className={roomFieldErrors.name ? 'chq-input chq-field-invalid' : 'chq-input'}
                 placeholder="New room name"
                 value={newRoom.name}
                 onChange={(e) => setNewRoom({ ...newRoom, name: e.target.value })}
+                aria-invalid={roomFieldErrors.name ? 'true' : undefined}
                 maxLength={MAX_NAME_LENGTH}
               />
             </SettingsField>
             <SettingsField label="Seats" htmlFor="chq-new-room-capacity" width="seats">
               <input
                 id="chq-new-room-capacity"
-                className="chq-input"
+                className={roomFieldErrors.capacity ? 'chq-input chq-field-invalid' : 'chq-input'}
                 placeholder="Capacity"
                 value={newRoom.capacity}
                 onChange={(e) => setNewRoom({ ...newRoom, capacity: e.target.value })}
+                aria-invalid={roomFieldErrors.capacity ? 'true' : undefined}
               />
             </SettingsField>
           </SettingsFieldPair>
@@ -571,8 +715,21 @@ export function TracksRoomsPanel() {
             <button type="button" className="chq-btn chq-btn-secondary" onClick={() => void addRoom()}>
               Add room
             </button>
-            {roomFieldErrors.name ? <span role="alert">{roomFieldErrors.name}</span> : null}
-            {roomFieldErrors.capacity ? <span role="alert">{roomFieldErrors.capacity}</span> : null}
+            {roomFieldErrors.name ? (
+              <span role="alert" className="chq-field-error">
+                {roomFieldErrors.name}
+              </span>
+            ) : null}
+            {roomFieldErrors.capacity ? (
+              <span role="alert" className="chq-field-error">
+                {roomFieldErrors.capacity}
+              </span>
+            ) : null}
+            {roomAddUnowned.map(([key, message]) => (
+              <span key={key} role="alert" className="chq-field-error">
+                {`${key}: ${message}`}
+              </span>
+            ))}
           </div>
         </SettingsEditForm>
       </SummarySection>
