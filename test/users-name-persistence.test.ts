@@ -19,7 +19,11 @@ afterEach(() => {
 function mockCommonRoutes() {
   vi.doMock("../src/server/repo/events", async () => {
     const actual = await vi.importActual<typeof import("../src/server/repo/events")>("../src/server/repo/events");
-    return { ...actual, listEventsForOrg: vi.fn(async () => []) };
+    // DEC-013 (wave 26): the route resolves its email_log anchor via the
+    // owned single-row getAnchorEventForOrg, not a listEventsForOrg page --
+    // undefined here means "org with no event", so no welcome mail is sent
+    // and the account + one-time password still come back 201.
+    return { ...actual, getAnchorEventForOrg: vi.fn(async () => undefined) };
   });
   vi.doMock("../src/server/context", async () => {
     const actual = await vi.importActual<typeof import("../src/server/context")>("../src/server/context");

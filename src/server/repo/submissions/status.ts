@@ -491,7 +491,7 @@ export interface UpdateStatusesResult {
  * setsAcceptedAt=false` (re-plan, no re-stamp). Each row is therefore
  * routed by two independent checks into up to two of three disjoint id
  * lists — planIds, stampIds, restIds — every requested id lands in
- * exactly one stamp/no-stamp UPDATE regardless of which list(s) it was
+ * exactly one stamp/no-stamp UPDATE regardless of which lists it was
  * added to.
  *
  * DEC-079 wave-26 amendment: the planning call and the two chunked UPDATE
@@ -537,7 +537,6 @@ export async function updateSubmissionStatuses(
   const restIds: string[] = [];
   const planIds: string[] = [];
   const stampIds: string[] = [];
-  let stampedAcceptedAt: number | null = null;
 
   for (const row of rows) {
     const currentStatus = isValidStatusLiteral(row.status) ? row.status : "pending";
@@ -562,8 +561,11 @@ export async function updateSubmissionStatuses(
       routed = true;
     }
     if (result.setsAcceptedAt) {
+      // changeStatus was called with now.getTime(), so a row that stamps
+      // always yields result.acceptedAt === now.getTime() — the stamp UPDATE
+      // below writes `now` itself rather than reconstructing a Date from a
+      // loop-carried scalar (which would be last-write-wins across the batch).
       stampIds.push(row.id);
-      stampedAcceptedAt = result.acceptedAt;
       routed = true;
     }
     if (!routed) {
@@ -597,7 +599,7 @@ export async function updateSubmissionStatuses(
     if (idChunk.length === 0) continue;
     await db
       .update(schema.submission)
-      .set({ status, acceptedAt: new Date(stampedAcceptedAt as number), updatedAt: now })
+      .set({ status, acceptedAt: now, updatedAt: now })
       .where(and(eq(schema.submission.eventId, eventId), inArray(schema.submission.id, idChunk)));
   }
 

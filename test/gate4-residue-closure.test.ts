@@ -348,6 +348,7 @@ create table user (
   email text,
   password_hash text,
   role text,
+  name text,
   contact_id text,
   created_at integer,
   updated_at integer
