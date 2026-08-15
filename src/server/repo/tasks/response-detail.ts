@@ -9,6 +9,7 @@ import * as schema from "../../../db/schema";
 import { listFields } from "../forms";
 import type { AnswerMap } from "../../../forms/types";
 import { chunkIds } from "../../../lib/chunk";
+import { answerDisplayText } from "../../../domain/answer-text";
 
 export interface AssignmentResponseField {
   label: string;
@@ -27,13 +28,6 @@ export interface AssignmentResponseDetail {
   status: string;
   completedAt: number | null;
   fields: AssignmentResponseField[];
-}
-
-function answerToString(value: unknown): string {
-  if (value === undefined || value === null) return "";
-  if (Array.isArray(value)) return value.map((v) => String(v)).join(", ");
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-  return String(value);
 }
 
 /** Organizer-facing view of a kind='form' task_assignment's saved answers
@@ -97,7 +91,7 @@ export async function getAssignmentResponseDetail(
       f.kind === "file" && typeof answer === "string" && fileMap.has(answer) ? fileMap.get(answer) : undefined;
     return {
       label: f.label,
-      value: answerToString(answer),
+      value: answerDisplayText(answer),
       ...(file ? { file } : {}),
     };
   });

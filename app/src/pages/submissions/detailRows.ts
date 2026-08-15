@@ -3,7 +3,7 @@
 // display-ready rows labeled via the event's CFP form fields. Locked
 // built-in fields (title/description/...) never appear here — they arrive
 // as real SubmissionDetail columns per DEC-016, not in `answers`.
-import { formatAnswerValue } from './columns';
+import { answerDisplayText } from '../../../../src/domain/answer-text';
 import type { FormField } from './types';
 // DEC-908: the ONE test for "is this answer key a locked built-in field" --
 // never a new hand-written id list beside this one.
@@ -99,7 +99,7 @@ export function buildAnswerRows(
         };
       }
 
-      const displayValue = hasAnswer ? formatAnswerValue(answers[field.id]) : '';
+      const displayValue = hasAnswer ? answerDisplayText(answers[field.id]) : '';
       return {
         fieldId: field.id,
         label: field.label,
@@ -112,7 +112,7 @@ export function buildAnswerRows(
     .map(([fieldId, value]) => ({
       fieldId,
       label: fieldId,
-      displayValue: formatAnswerValue(value),
+      displayValue: answerDisplayText(value),
     }))
     .filter((row) => row.displayValue.trim() !== '')
     .sort((a, b) => a.fieldId.localeCompare(b.fieldId));

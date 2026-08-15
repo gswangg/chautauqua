@@ -77,7 +77,7 @@ describe('SubmissionsPage render smoke', () => {
     expect(screen.getByRole('combobox', { name: 'Filter by track' })).toBeInTheDocument();
   });
 
-  it('renders track names (not a count) and formatAnswerValue output for a toggled-on custom column', async () => {
+  it('renders track names (not a count) and answerDisplayText output for a toggled-on custom column', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([{ id: 'trk1', name: 'Keynotes', color: '#4f46e5' }]),
       [`GET /api/v1/events/${EVENT_ID}/forms`]: {
@@ -124,7 +124,7 @@ describe('SubmissionsPage render smoke', () => {
     });
 
     // The custom "Level" column is off by default; toggling it on in the
-    // picker must render formatAnswerValue(item.answers['f-level']) in the
+    // picker must render answerDisplayText(item.answers['f-level']) in the
     // cell -- the production symptom was that this toggle appeared to do
     // nothing.
     expect(screen.queryByRole('columnheader', { name: 'Level' })).not.toBeInTheDocument();

@@ -15,6 +15,7 @@ import type { ParsedListQuery } from "../submissions/query";
 // from the dynamic custom-field export columns.
 import { lockedFieldName } from "../../../forms/types";
 import { DEC_017, DEC_027 } from "../../../decisions";
+import { answerExportCell } from "../../../domain/answer-text";
 import { type ExportTable, type CustomFieldColumn, EXPORT_MAX_ROWS, buildTable, nameCustomColumns } from "./table";
 import { getRecordPrefix } from "./common";
 
@@ -53,16 +54,6 @@ export interface SubmissionExportInput {
  * export column, ordered/deduped by the caller (exportSubmissions). */
 export type SubmissionCustomFieldColumn = CustomFieldColumn;
 
-/** Renders one answer value as a CSV/JSON cell string: arrays (checkbox
- * multi-select) '; '-joined like every other list column in this file,
- * booleans as 'true'/'false', missing/null as ''. */
-function renderAnswerCell(value: unknown): string {
-  if (value === null || value === undefined) return "";
-  if (Array.isArray(value)) return value.map((v) => String(v)).join("; ");
-  if (typeof value === "boolean") return value ? "true" : "false";
-  return String(value);
-}
-
 // The full set of fixed (non-dynamic) submissions export columns — a custom
 // field's label collides with one of these iff it would silently shadow a
 // fixed column in JSON records (buildTable keys records by header string).
@@ -84,7 +75,7 @@ export function shapeSubmissionsExport(
     s.speakerEmails.join("; "),
     s.createdAt,
     s.description,
-    ...customFields.map((f) => renderAnswerCell(s.answers[f.fieldId])),
+    ...customFields.map((f) => answerExportCell(s.answers[f.fieldId])),
   ]);
   return buildTable(header, rows);
 }

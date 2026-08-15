@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deriveColumnsFromFormFields, findFormatField, formatAnswerValue, visibleColumns } from './columns';
+import { deriveColumnsFromFormFields, findFormatField, visibleColumns } from './columns';
 import type { FormField } from './types';
 
 const fields: FormField[] = [
@@ -67,26 +67,5 @@ describe('findFormatField', () => {
 
   it('returns undefined for an empty field list', () => {
     expect(findFormatField([])).toBeUndefined();
-  });
-});
-
-describe('formatAnswerValue', () => {
-  it('renders null/undefined as empty string', () => {
-    expect(formatAnswerValue(null)).toBe('');
-    expect(formatAnswerValue(undefined)).toBe('');
-  });
-
-  it('renders booleans as Yes/No', () => {
-    expect(formatAnswerValue(true)).toBe('Yes');
-    expect(formatAnswerValue(false)).toBe('No');
-  });
-
-  it('joins arrays with a comma', () => {
-    expect(formatAnswerValue(['a', 'b'])).toBe('a, b');
-  });
-
-  it('stringifies other values', () => {
-    expect(formatAnswerValue(42)).toBe('42');
-    expect(formatAnswerValue('hi')).toBe('hi');
   });
 });

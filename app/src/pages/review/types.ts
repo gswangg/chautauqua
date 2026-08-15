@@ -269,8 +269,8 @@ export interface MyEvaluation {
 }
 
 // A single CFP custom-answer entry, session or speaker side. DEC-561:
-// `value` is rendered through formatAnswerValue -- never assumed to be a
-// string.
+// `value` is rendered through src/domain/answer-text.ts's answerDisplayText
+// -- never assumed to be a string.
 export interface SubmissionAnswer {
   fieldId: string;
   label: string;
