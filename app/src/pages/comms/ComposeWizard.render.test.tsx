@@ -390,6 +390,55 @@ describe('ComposeWizard missing-merge-field errors (DEC-856)', () => {
   });
 });
 
+// DEC-317 amendment (wave 60): the third fields-map refusal shape (a
+// submission whose active-invite participants all declined/never accepted)
+// must name the blocked sessions, resolved through submissionLabel -- never
+// a raw submission id -- exactly like the other two refusal shapes above.
+describe('ComposeWizard no-eligible-recipients errors (DEC-317 amendment wave 60)', () => {
+  it('names both blocked sessions by REF — title, in an alert banner, with no raw ULID', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(
+        [{ ...submission(1) }, { ...submission(2) }],
+        { total: 2, page: 1, perPage: 50 },
+      ),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: {
+        status: 400,
+        body: {
+          error: {
+            code: 'invalid',
+            message:
+              '2 of 2 selected sessions have no eligible recipients — every speaker on them has declined or has not been invited yet.',
+            fields: {
+              'sub-1': 'no eligible recipients',
+              'sub-2': 'no eligible recipients',
+            },
+          },
+        },
+      },
+    });
+
+    render(<ComposeWizard eventId={EVENT_ID} />);
+
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByLabelText('Select Talk number 2'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(subject, { target: { value: 'Hello' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+
+    const banner = await screen.findByRole('alert');
+    expect(banner.textContent).toContain('2 of 2 selected sessions have no eligible recipients');
+    expect(banner.textContent).toContain('S-001 — Talk number 1');
+    expect(banner.textContent).toContain('S-002 — Talk number 2');
+    expect(banner.textContent).not.toContain('sub-1');
+    expect(banner.textContent).not.toContain('sub-2');
+  });
+});
+
 // DEC-832: selecting a template copies its text into the composer's own
 // fields and clears the selection -- an edit to the body after picking a
 // template is what actually gets posted, never the stored template text.
