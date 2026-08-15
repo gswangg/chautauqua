@@ -15,6 +15,7 @@ import {
 } from "../src/server/repo/overview";
 import { getOnboardingGrid } from "../src/server/repo/tasks";
 import { overdueAssignmentConditions } from "../src/server/repo/tasks/crud";
+import { assignmentDaysLate } from "../src/domain/task-due";
 import { findConflicts, type PlacedSession } from "../src/domain/schedule";
 import type { Db } from "../src/server/context";
 import { asc, desc } from "drizzle-orm";
@@ -86,12 +87,15 @@ describe("minNonNull (DEC-370 deadlines strip)", () => {
   });
 });
 
-// DEC-370 overdueTasks rows: daysLate maths.
-describe("buildOverdueTaskRows (DEC-370 section 01)", () => {
+// DEC-370/DEC-801 overdueTasks rows: daysLate maths, now timezone-aware via
+// assignmentDaysLate (wave 63 amendment) — agrees with the
+// overdueAssignmentConditions predicate that selected the row, so it can
+// never print 0/"Due today" on a row already selected as overdue.
+describe("buildOverdueTaskRows (DEC-370 section 01, DEC-801 wave-63 amendment)", () => {
   const DAY_MS = 24 * 60 * 60 * 1000;
-  const now = 10 * DAY_MS;
+  const now = Date.UTC(2026, 0, 20); // 2026-01-20 00:00 UTC
 
-  it("computes whole days late from now - dueDate", () => {
+  it("computes whole event-local calendar days late (UTC event)", () => {
     const rows = buildOverdueTaskRows(
       [
         {
@@ -101,7 +105,7 @@ describe("buildOverdueTaskRows (DEC-370 section 01)", () => {
           company: "Acme",
           taskId: "t1",
           taskTitle: "Upload slides",
-          taskDueDate: now - 2 * DAY_MS - 1, // just past 2 full days late
+          taskDueDate: now - 2 * DAY_MS, // day label 2 days before now's day
           assignedAt: 0,
         },
         {
@@ -111,17 +115,18 @@ describe("buildOverdueTaskRows (DEC-370 section 01)", () => {
           company: null,
           taskId: "t2",
           taskTitle: "Confirm bio",
-          taskDueDate: now - 12 * 60 * 60 * 1000, // 12h overdue -> 0 whole days
+          taskDueDate: now, // due "today" (now's own day label) — day hasn't elapsed yet
           assignedAt: 0,
         },
       ],
       now,
+      "UTC",
     );
     expect(rows[0]!.daysLate).toBe(2);
     expect(rows[1]!.daysLate).toBe(0);
   });
 
-  it("clamps daysLate at zero even if dueDate is not actually in the past", () => {
+  it("never returns 0 for a row already flagged overdue — clamps to 1, never 0", () => {
     const rows = buildOverdueTaskRows(
       [
         {
@@ -131,11 +136,12 @@ describe("buildOverdueTaskRows (DEC-370 section 01)", () => {
           company: null,
           taskId: "t1",
           taskTitle: "Upload slides",
-          taskDueDate: now + DAY_MS,
+          taskDueDate: now + DAY_MS, // due in the future — not overdue
           assignedAt: 0,
         },
       ],
       now,
+      "UTC",
     );
     expect(rows[0]!.daysLate).toBe(0);
   });
@@ -164,12 +170,41 @@ describe("buildOverdueTaskRows (DEC-370 section 01)", () => {
         },
       ],
       now,
+      "UTC",
     );
     // effective due date = assignedAt + 7-day grace (ASSIGNED_LATE_GRACE_DAYS)
     const expectedEffectiveDue = assignedAt + 7 * DAY_MS;
     expect(rows[0]!.dueDate).toBe(expectedEffectiveDue);
     expect(rows[0]!.daysLate).toBe(2);
     expect(rows[0]!.daysLate).not.toBe(Math.floor((now - taskDueDate) / DAY_MS));
+  });
+
+  // w63-b headline case: America/Tokyo, due day label 1 Aug, now = 1 Aug
+  // 23:00Z (still 1 Aug UTC, but already 2 Aug locally in Tokyo — the row IS
+  // overdue by the timezone-aware predicate). The old UTC-bare
+  // Math.floor((now - dueDate)/DAY_MS) read 0, which fed the literal string
+  // "Due today" on an already-overdue row (app/src/pages/overview/rows.ts).
+  it("Asia/Tokyo: never 0 for a row overdueAssignmentConditions would already select", () => {
+    const dueDayLabel = Date.UTC(2026, 7, 1); // day label "1 Aug"
+    const tokyoNow = Date.UTC(2026, 7, 1, 23, 0, 0); // 1 Aug 23:00Z == 2 Aug 08:00 JST
+    const rows = buildOverdueTaskRows(
+      [
+        {
+          assignmentId: "a1",
+          contactId: "c1",
+          contactName: "Ada Lovelace",
+          company: null,
+          taskId: "t1",
+          taskTitle: "Upload slides",
+          taskDueDate: dueDayLabel,
+          assignedAt: Date.UTC(2026, 6, 1),
+        },
+      ],
+      tokyoNow,
+      "Asia/Tokyo",
+    );
+    expect(rows[0]!.daysLate).toBeGreaterThanOrEqual(1);
+    expect(rows[0]!.daysLate).not.toBe(0);
   });
 });
 
@@ -443,9 +478,10 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
         taskId: "t1",
         taskTitle: "Upload slides",
         dueDate: overdueDueDate.getTime(),
-        daysLate: 2,
+        daysLate: assignmentDaysLate(overdueDueDate.getTime(), assignedAt.getTime(), now, "America/New_York"),
       },
     ]);
+    expect(payload.overdueTasks.rows[0]!.daysLate).toBeGreaterThanOrEqual(1);
   });
 
   // DEC-826: an assignment created AFTER its task's raw due date must be
@@ -487,9 +523,11 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
         taskId: "t1",
         taskTitle: "Confirm bio",
         dueDate: expectedEffectiveDue,
-        daysLate: 2,
+        daysLate: assignmentDaysLate(rawTaskDueDate.getTime(), assignedAt.getTime(), now, "America/New_York"),
       },
     ]);
+    expect(payload.overdueTasks.rows[0]!.daysLate).toBeGreaterThanOrEqual(1);
+    expect(payload.overdueTasks.rows[0]!.daysLate).not.toBe(Math.floor((now - rawTaskDueDate.getTime()) / (24 * 60 * 60 * 1000)));
   });
 
   it("triage.total can exceed the 5-row cap while rows stay capped", async () => {

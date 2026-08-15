@@ -53,6 +53,45 @@ export function isAssignmentOverdue(
   return now > assignmentCreatedAt + GRACE_MS;
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** DEC-801 (wave 63 amendment): the days-late COUNT that agrees with
+ * isAssignmentOverdue's own predicate — the w63-b fix for the pair of
+ * hand-rolled, UTC-only "daysLate" copies (server aggregate.ts's
+ * `Math.floor((now - dueDate) / DAY_MS)` and the SPA's
+ * `Math.max(1, daysAgo(dueDate, now))`) that could both disagree with the
+ * timezone-aware predicate that selected the row as overdue in the first
+ * place (see src/lib/event-time.ts's daysUntilCalendarDay for the same
+ * calendar-day-vs-instant discipline). Returns 0 when taskDueDate is null
+ * or the assignment is not overdue by isAssignmentOverdue's own rule (so a
+ * caller can call this unconditionally without re-deriving the predicate).
+ * Otherwise counts WHOLE EVENT-LOCAL CALENDAR DAYS between the deadline's
+ * calendar day and now's calendar day, mirroring isAssignmentOverdue's own
+ * two branches so the two functions can never disagree about WHICH rows are
+ * overdue while giving a different answer for HOW overdue:
+ *   - day-label branch (taskDueDate >= assignmentCreatedAt): the raw
+ *     taskDueDate is already a day-label instant, so it is diffed directly
+ *     against dayLabelOfInstant(now, timeZone) in day-label space.
+ *   - grace branch: both sides are collapsed to day labels via
+ *     dayLabelOfInstant before diffing, since assignmentCreatedAt + GRACE_MS
+ *     is a real instant, not a day label.
+ * Never below 1 once isAssignmentOverdue is true — the row is by definition
+ * at least one calendar day past its deadline. */
+export function assignmentDaysLate(
+  taskDueDate: number | null,
+  assignmentCreatedAt: number,
+  now: number,
+  timeZone: string,
+): number {
+  if (!isAssignmentOverdue(taskDueDate, assignmentCreatedAt, now, timeZone)) return 0;
+  const nowDayLabel = dayLabelOfInstant(now, timeZone);
+  if (taskDueDate! >= assignmentCreatedAt) {
+    return Math.max(1, Math.round((nowDayLabel - taskDueDate!) / DAY_MS));
+  }
+  const graceDayLabel = dayLabelOfInstant(assignmentCreatedAt + GRACE_MS, timeZone);
+  return Math.max(1, Math.round((nowDayLabel - graceDayLabel) / DAY_MS));
+}
+
 /** DEC-801 (wave 58 amendment): the SQL-friendly form of the day-label-end
  * comparison used by isAssignmentOverdue's first branch — the day label
  * (UTC-midnight stand-in) of `now`'s calendar date in `timeZone`. A task's

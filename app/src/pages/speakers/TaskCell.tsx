@@ -6,9 +6,9 @@
 // this single component; wrapping markup (a bare <td> vs. a labelled
 // .chq-speakers-card-task) stays with the caller, since it differs by
 // breakpoint.
-import { effectiveAssignmentDueDate } from '../../../../src/domain/task-due';
+import { assignmentDaysLate, effectiveAssignmentDueDate } from '../../../../src/domain/task-due';
 import { countOf } from '../../lib/plural';
-import { daysLate, isCellOverdue } from './overdue';
+import { isCellOverdue } from './overdue';
 import type { AssignmentStatus, InviteStatus, OnboardingCell, OnboardingTask } from './types';
 
 // DEC-829 amendment (wave 59): the ONE place this predicate is written -- a
@@ -49,10 +49,12 @@ export function formatDueDate(dueDate: number, now: number): string {
  * overdueTitle below, so no information is lost, just not shown inline. */
 const OVERDUE_LABEL = 'OVERDUE';
 
-function overdueTitle(dueDate: number, now: number): string {
+function overdueTitle(task: OnboardingTask, cell: OnboardingCell, now: number, timezone: string): string {
   // DEC-925: the count phrase goes through the ONE plural helper, never a
-  // hand-copied singular/plural ternary.
-  return `${countOf(daysLate(dueDate, now), 'day')} late`;
+  // hand-copied singular/plural ternary. DEC-801 (wave 63 amendment): the
+  // count comes from assignmentDaysLate, the ONE days-late reader that
+  // agrees with isCellOverdue's own timezone-aware predicate.
+  return `${countOf(assignmentDaysLate(task.dueDate, cell.assignedAt, now, timezone), 'day')} late`;
 }
 
 /** The cell button's title/accessible-name suffix (DEC-852): an overdue
@@ -134,7 +136,7 @@ export function TaskCell({
   // announcing itself until the banner is dismissed.
   const cellClass = statusCellClass(cell.status, overdue || notSaved);
   const effectiveDueDate = effectiveAssignmentDueDate(task.dueDate, cell.assignedAt);
-  const overdueTitleText = overdue && effectiveDueDate !== null ? overdueTitle(effectiveDueDate, now) : null;
+  const overdueTitleText = overdue && effectiveDueDate !== null ? overdueTitle(task, cell, now, timezone) : null;
   const cellTitleText = cellDueTitle(cell.status, overdueTitleText, effectiveDueDate, now);
   const muted = (notChased && cell.status !== 'complete') || !interactive;
   const baseLabel = cell.status === 'complete' ? 'Complete' : overdueTitleText ? OVERDUE_LABEL : 'Pending';
