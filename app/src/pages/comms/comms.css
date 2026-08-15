@@ -869,6 +869,26 @@
 }
 
 /* ------------------------------------------------------------------ */
+/* DEC-902 wave-23 amendment (task-w23-a): saved-templates list (Name /   */
+/* Last used) takes the frame's column allocation instead of falling      */
+/* back to plain .chq-table auto-layout, which was handing the whole      */
+/* remainder to wherever the longest 'Last used <date>' string landed.    */
+/* Matches docs/design/Chautauqua Comms.dc.html:239's                     */
+/* `1fr auto` track list -- Name is the single unwidthed remainder        */
+/* column. Reset to auto below in the 700px card-reflow query (existing   */
+/* thead/tr/td block already covers this table).                         */
+/* ------------------------------------------------------------------ */
+
+.chq-comms-templates-table {
+  table-layout: fixed;
+}
+
+.chq-comms-templates-table .chq-comms-templates-col-last-used {
+  width: 1px;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ */
 /* Phone landing (DEC-621): names the three things Comms does instead   */
 /* of dropping straight into compose step 1. Hidden at desktop by       */
 /* default (top-level display:none, verified below by conformance       */
@@ -972,6 +992,15 @@
   .chq-comms-templates-table td {
     padding: 2px 0;
     border: none;
+  }
+
+  .chq-comms-templates-table td[data-label]::before {
+    content: attr(data-label) ': ';
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--chq-muted);
   }
 
   /* Compose step-1 submission picker: same CSS-only table-to-card treatment

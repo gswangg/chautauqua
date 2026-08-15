@@ -209,7 +209,7 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
               <thead>
                 <tr>
                   <th>Name</th>
-                  <th>Last used</th>
+                  <th className="chq-comms-templates-col-last-used">Last used</th>
                 </tr>
               </thead>
               <tbody>
@@ -226,7 +226,7 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
                       </button>
                       <div className="chq-comms-template-detail">{derivePurpose(t)} &middot; {t.subject}</div>
                     </td>
-                    <td data-label="Last used">
+                    <td data-label="Last used" className="chq-comms-templates-col-last-used">
                       <span className="chq-comms-template-last-used">
                         {t.lastUsedAt ? `Last used ${formatDate(t.lastUsedAt)}` : 'Not used yet'}
                       </span>
