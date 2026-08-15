@@ -277,11 +277,14 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
     text-transform: uppercase;
   }
   .chq-pub-schedule-day-count { font-size: 12px; font-weight: 700; color: var(--chq-muted); text-transform: none; letter-spacing: normal; }
-  /* task-w1-d: two-line time/room gutter matching the sessions row's own
-     .chq-pub-session-when shape (cards.tsx's SessionSchedule). */
+  /* task-w1-d / w4-g (DEC-534 amendment): two-line time/room gutter
+     matching the sessions row's own .chq-pub-session-when shape (cards.tsx's
+     SessionSchedule) -- shares --chq-pub-when-gutter with
+     .chq-pub-session-row in cards.css.ts so the two renderings of one
+     stack can't drift. */
   .chq-pub-schedule-row {
     display: grid;
-    grid-template-columns: 126px 1fr auto;
+    grid-template-columns: var(--chq-pub-when-gutter) 1fr auto;
     gap: 22px;
     align-items: baseline;
     padding: 18px 0;

@@ -9,11 +9,13 @@
 export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
   .chq-pub-session-row {
     display: grid;
-    /* w1-c (DEC-534): gutter widened ~126px -> ~268px now that it carries
-       two lines (start time, then room) instead of the old three-line
-       wrapping time-range + date + room cell -- the day moved out to a
-       per-day heading (see .chq-pub-sessions-day-heading below). */
-    grid-template-columns: 268px 1fr auto;
+    /* w4-g (DEC-534 amendment): the time-over-room stack draws two lines
+       (start time, then room) per docs/design/Chautauqua Public and
+       Portal.dc.html:67, at a single shared gutter measure -- see
+       --chq-pub-when-gutter (declared once in app/src/styles.css /
+       src/views/theme.ts, also consumed by .chq-pub-schedule-row in
+       rail.css.ts so the two renderings of one stack can't drift). */
+    grid-template-columns: var(--chq-pub-when-gutter) 1fr auto;
     gap: 22px;
     align-items: baseline;
     padding: 20px 0;
@@ -21,8 +23,8 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
   }
   /* DEC-698: the /embed field toggles can drop the time field entirely --
      the row then carries no .chq-pub-session-when cell at all, so the
-     268px gutter column must not exist either or the body lands in it
-     and wraps word-per-word. */
+     --chq-pub-when-gutter column must not exist either or the body lands
+     in it and wraps word-per-word. */
   .chq-pub-session-row-notime { grid-template-columns: 1fr auto; }
   .chq-pub-session-when { display: flex; flex-direction: column; gap: 2px; }
   .chq-pub-session-time { font-family: var(--chq-font-display); font-size: 15px; font-weight: 700; color: var(--chq-ink); }

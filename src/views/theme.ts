@@ -121,6 +121,13 @@ export const THEME_CSS = `
        wide-main override can cancel it back out via calc() -- never a
        vw/cqw guess. */
     --chq-pub-main-pad-x: 34px;
+    /* DEC-534 amendment (wave 4, task w4-g): the ONE time/room gutter width
+       for the two-line time-over-room stack, per docs/design/Chautauqua
+       Public and Portal.dc.html:67 (126px). Consumed by BOTH
+       .chq-pub-session-row (cards.css.ts) and .chq-pub-schedule-row
+       (rail.css.ts) so the two renderings of one stack can't drift again.
+       Mirrored in app/src/styles.css. */
+    --chq-pub-when-gutter: 126px;
   }
 
   @font-face {
