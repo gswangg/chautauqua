@@ -21,38 +21,37 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   POPULATION IS BLIND TO THE HELPER IT DIDN'T ENUMERATE; A FIELD PARSED
   AND NEVER READ IS THE CAP NOBODY IS TOLD ABOUT; A SWARM REBOOT VOIDS
   EVERY IN-FLIGHT BRANCH: CHECK .git/refs/heads AGAINST main's FILES.
-- FINDINGS w2 (verified, do not re-file): DateField/search fixes;
-  "EMB cards omit title/company" is RULING DEC-968 not a defect. NEW
-  class: password.ts unbounded hash at anon surface; builder.ts caps
-  option not COUNT; PlanEditor MAX_CRITERIA=7 browser-only; contacts
-  typeof-string guard skips non-string; views.ts no cap/event;
-  form-render `max` never read by validate.ts. Shapes: A CAP THAT
-  EXISTS ONLY IN THE SPA IS A SUGGESTION; A TYPEOF GUARD IN FRONT OF A
-  CHECK IS A SKIP BRANCH UNTIL YOU MAKE IT A REFUSAL BRANCH.
-- FINDINGS w3 (wave-2 train MID-FLIGHT when planned: w2-a..d branches
-  exist unmerged, w2-e/f/g had no refs; scripts/with-test-lock.sh IS on
-  main so w1-a landed). Verified STALE in eval-findings.md, do NOT
-  re-file: /logout (GET redirects, POST signs out, ?signed-out=1 -
-  DONE); portal upload session-selector reset (DEC-891's pickPreselected
-  - DONE); CSV import same-email duplicates (DEC-663 wave-61 in-batch
-  byEmail - DONE); results Speaker column co-presenters (row.speakers is
-  an array - DONE); CFP edit intro->name data bug (intro is its own
-  column end to end); AUTH_CSS .chq-field-invalid cascade (ERROR_STATES_
-  CSS is at the TAIL of AUTH_CSS, which loads after ThemeStyles - it
-  wins). Verified OPEN and filed as w3-a..h: settings rail key 'tracks'
-  vs panel 'tracks-rooms' (a test's DRILL_KEY map was DOCUMENTING the
-  bug); .chq-bare-page max-width with no width inside a flex body;
-  five SSR `chq-btn-primary` with no `chq-btn`; .chq-empty-what 15px;
-  hasActiveNarrowing omitting `q`; TemplatesTab Name column bound to
-  derivePurpose; compose never posts templateId (root cause of BOTH
-  "history shows TEMPLATE —" and the phantom "Recent Sends vs History
-  two readers" - RecentSends is one component mounted twice, fed a
-  null); compose/send has no dedupe window; `· optional` uppercased by
-  its parent label. Shapes: A TEST THAT TRANSLATES BETWEEN TWO SPELLINGS
-  OF ONE IDENTIFIER IS DOCUMENTING A BUG, NOT PINNING A CONTRACT. A
-  SCAN THAT POLICES THE STRING IS BLIND TO THE STYLESHEET THAT REWRITES
-  IT. max-width WITHOUT width IS A SUGGESTION TO A FLEX ITEM. A ZERO
-  STATE THAT PICKS ITS VOICE FROM A SUBSET OF ITS OWN QUERY WILL
-  EVENTUALLY TELL THE USER THEIR DATA IS GONE. A FACE CLASS WITHOUT ITS
-  BOX CLASS IS PAINT WITH NO GEOMETRY. TWO QUESTIONS, ONE ANSWER: "what
-  went out" AND "where did it come from" ARE NOT THE SAME FIELD.
+- FINDINGS w2-w3 (compacted, all filed/landed): DateField/search fixes;
+  EMB cards is RULING not defect; password.ts hash cap, builder.ts caps,
+  PlanEditor MAX_CRITERIA browser-only, typeof-string guard skip,
+  form-render `max` unread; logout, portal reselect, CSV dup, results
+  co-presenters, CFP intro/name, AUTH_CSS cascade; settings rail key
+  mismatch, .chq-bare-page max-width w/o width, SSR primaries missing
+  chq-btn, hasActiveNarrowing missing q, compose templateId dedupe.
+  Shapes: A CAP ONLY IN THE SPA IS A SUGGESTION. A TYPEOF GUARD IS A
+  SKIP UNTIL IT'S A REFUSAL. A TEST TRANSLATING TWO SPELLINGS OF ONE
+  IDENTIFIER DOCUMENTS A BUG, NOT A CONTRACT. max-width WITHOUT width
+  IS A SUGGESTION TO A FLEX ITEM. A FACE CLASS WITHOUT ITS BOX CLASS IS
+  PAINT WITH NO GEOMETRY.
+- FINDINGS w4 (planned against main, wave-3 a..e in flight, f/g/h not
+  re-filed). Verified STALE, do NOT re-file: "admin measure 1372@114"
+  CONTRADICTS README §Widths (table=1440, authority over frame packs);
+  reminders-modal leak (gone); dup ranked-results head; per-version
+  Delete; matrix header Edit; roster Import-CSV; contact drawer groups;
+  API-token shown-once; scorecard role=radio pills; import dedupe
+  rename; public search button hidden by design; TBD room filter;
+  portal B6; Overview/programme empty states. Filed w4-a..g (OPEN): B8
+  selected-row edge missing + bleeds measure (margin-inline:-16px) on
+  .chq-review-plan-row.is-active / .chq-participation-menu-item
+  .is-current; portal EDIT drops "what speakers may edit" pills READ
+  shows; files-library FILE/SESSION unpinned starves filename; .chq-
+  settings-field-pair .chq-settings-field{width:100%} overrides every
+  --chq-field-w-* token; TracksRooms "Add track" 2nd olive primary;
+  public filters at 99px pill radius + outlined active chip (want 4px
+  ctl radius + ink-fill chip); two gutters (268 vs 126) for one
+  time/room stack. Shapes: AN EXTERNAL FRAME MEASUREMENT LOSES TO
+  README.md ON CONFLICT. width:100% ON A TOKENISED FIELD DEFEATS THE
+  TOKEN SYSTEM IT LIVES INSIDE. TWO SURFACES, TWO WIDTHS = THE MEASURE
+  WAS NEVER A TOKEN. A PHONE FRAME'S FULL-WIDTH BAR IS NOT THE DESKTOP
+  ADD AFFORDANCE. A STATE PAINTING THE FILL BUT NOT THE EDGE IS HALF A
+  STANDARD.
