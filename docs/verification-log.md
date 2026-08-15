@@ -4748,3 +4748,63 @@ RESULT: PASS (reviewer queue, all 3 runs) / PASS (plan results (page 1),
 all 3 runs) at a0b8501b, both mandate rows read at a boundary carrying
 both DEC-644-referenced review-side fixes simultaneously.
 OPEN ITEMS: 1
+## 2026-08-15 task-w36-e — render-sweep @ f5783479
+
+QUALIFYING (advisory to the DEC-069 predicate)
+
+INVALIDATED BY: src/** app/src/** scripts/** test/** migrations/** package.json
+
+CLOSES the task-w35-b instrument gap
+(`docs/verification-log/index/0188-2026-08-15-task-w35-b-render-sweep-a0b8501b.md:29-39`):
+`.chq-participation-menu-caret` — credited a contrast PASS by task-w29-d
+but enumerated by zero selector reference under `scripts/` (task-w35-b's
+finding) — is now measured explicitly. `app/src/pages/speakers/
+ParticipationMenu.tsx:99` renders the span with direct text `▾`
+(reachable by `hasNonEmptyDirectText`, `aria-hidden` not excluded); it is
+present on both named routes (`/admin/speakers` via
+`OnboardingGrid.tsx:878,980`, `/admin/speakers/seed_contact_0001` via
+`SpeakerDetailPage.tsx:291`). Extended `scripts/render-sweep-contrast.ts`
+(new `NAMED_CONTRAST_SELECTOR` export, `namedPair`/`namedPairNote`
+fields — FAILing pairs fold into `reasons`, blocking, same as `offenders`)
+and `scripts/render-sweep.ts`'s in-page `measureContrast` callback (queries
+the named selector on every route, independent of the page's global-min
+offender) to publish it as a row whenever present. This is the only
+wave-36 lane permitted to touch `scripts/` (DEC-069 wave-28 amendment
+allow-lists instrument repair); `src/` and `app/src/` untouched.
+
+DEC-644 wave-36 three-sha boundary: HEAD = branch `task-w36-e` tip (this
+commit); newest product-bearing first-parent sha on `main` = `3a041507`
+(`merge task-w35-c`, confirmed via `git log --oneline --first-parent
+0db68e36..main -- src app migrations package.json`); `merge-base
+--is-ancestor f5783479 <sibling>` confirmed ANCESTOR for all four live
+wave-36 siblings (`task-w36-a`, `task-w36-c`, `task-w36-d`, `task-w36-f`).
+
+Re-ran the full sequence: `npx tsx scripts/ensure-dev-vars.ts` (no output,
+vars already present) -> `npm run build` (`vite build --config
+app/vite.config.ts`, green) -> `npm run db:migrate` (43 migrations) ->
+`npm run seed` (D1+R2, clean) -> `npm run gate:render-sweep`. Exit code
+**0**. Full seven-pass score lines: desktop `60/60`,
+public-mobile `26/26`, admin-mobile `28/28` (advisory), font-floor
+`114/114` (advisory), type-role `7/7` (advisory), contrast `60/60`
+(advisory), interaction-state `3/3` (advisory). Zero FAIL rows.
+`/admin/speakers` and `/admin/speakers/seed_contact_0001` both now carry
+`[NAMED-PAIR .chq-participation-menu-caret: span.chq-participation-menu-
+caret ratio=6.82 fg=rgb(247,249,240) bg=rgb(78,92,49) PASS]` — 6.82:1
+clears WCAG AA's 4.5:1 normal-text minimum with margin, the seeded
+contact carrying `.chq-speakers-status-complete` (the exact DEC-830
+wave-29 `color: inherit` fix case, `app/src/pages/speakers/
+speakers.css:405`). No CSS defect found; DOM evidence confirms the pair
+renders and reaches the sampler, and its ratio PASSes at runtime, not
+merely by source inspection. Targeted tests only:
+`npx vitest run test/render-sweep-contrast.test.ts` (18/18 passed),
+`npx vitest related scripts/render-sweep-contrast.ts` (136/136 passed
+across 5 files) — full suite NOT run (task-w36-a's mandate).
+
+Full per-row contrast table and instrument-change detail:
+`docs/verification-log/task-w36-e-render-sweep-f5783479.md`.
+
+RESULT: PASS — exit code 0, all seven passes 100% clean; task-w35-b's
+instrument gap CLOSED (pair now enumerated, ratio=6.82 PASS on both named
+routes, measured not asserted); no CSS defect, gate stays green,
+CONTRAST_BLOCKING unchanged.
+OPEN ITEMS: 0

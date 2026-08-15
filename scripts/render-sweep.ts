@@ -91,6 +91,7 @@ import {
   evaluateContrast,
   formatContrastSummary,
   formatContrastTable,
+  NAMED_CONTRAST_SELECTOR,
   type ContrastResult,
 } from "./render-sweep-contrast";
 import { ensureDevVars } from "./ensure-dev-vars";
@@ -769,9 +770,24 @@ async function measureClipOffenders(page: Page): Promise<string[]> {
 // page.evaluate callback rather than a helper serialised across the
 // boundary (DEC-411) — must only be called on a page that already had
 // PAGE_EVALUATE_KEEPNAMES_SHIM applied via addInitScript.
-async function measureContrast(page: Page): Promise<{ minRatio: number | null; offenders: string[]; exempted: string[] }> {
+async function measureContrast(
+  page: Page,
+): Promise<{
+  minRatio: number | null;
+  offenders: string[];
+  exempted: string[];
+  namedPair: { descriptor: string; ratio: number; ok: boolean } | null;
+}> {
   return page.evaluate(
-    ({ minRatioNormal, minRatioLarge }: { minRatioNormal: number; minRatioLarge: number }) => {
+    ({
+      minRatioNormal,
+      minRatioLarge,
+      namedSelector,
+    }: {
+      minRatioNormal: number;
+      minRatioLarge: number;
+      namedSelector: string;
+    }) => {
       const hasNonEmptyDirectText = (el: Element): boolean => {
         for (const node of Array.from(el.childNodes)) {
           if (node.nodeType === Node.TEXT_NODE && (node.textContent ?? "").trim().length > 0) return true;
@@ -870,9 +886,35 @@ async function measureContrast(page: Page): Promise<{ minRatio: number | null; o
       exempt.sort((a, b) => a.ratio - b.ratio);
       const offenders = under.slice(0, 3).map(({ el, ratio: r, fg, bg }) => describe(el, r, fg, bg));
       const exempted = exempt.slice(0, 3).map(({ el, ratio: r, fg, bg }) => describe(el, r, fg, bg));
-      return { minRatio, offenders, exempted };
+
+      // task-w36-e: the named selector (DEC-830, task-w29-d's credited-but-
+      // never-enumerated PASS) measured explicitly, independent of whether
+      // it happens to be this route's global-minimum offender.
+      let namedPair: { descriptor: string; ratio: number; ok: boolean } | null = null;
+      const namedEl = document.querySelector(namedSelector);
+      if (namedEl) {
+        if (!hasNonEmptyDirectText(namedEl) || namedEl.getBoundingClientRect().width <= 0 || namedEl.getBoundingClientRect().height <= 0) {
+          namedPair = { descriptor: `${namedSelector} present but not reachable by sampler (no direct text or zero rect)`, ratio: -1, ok: true };
+        } else {
+          const style = getComputedStyle(namedEl);
+          const fgParsed = parseColor(style.color);
+          if (fgParsed) {
+            const fg = fgParsed.rgb;
+            const bg = backgroundFor(namedEl);
+            const r = ratio(fg, bg);
+            const fontSize = parseFloat(style.fontSize);
+            const fontWeight = parseInt(style.fontWeight, 10) || 400;
+            const isLarge = fontSize >= 24 || (fontSize >= 18.66 && fontWeight >= 700);
+            const threshold = isLarge ? minRatioLarge : minRatioNormal;
+            namedPair = { descriptor: describe(namedEl, r, fg, bg), ratio: r, ok: r >= threshold };
+          } else {
+            namedPair = { descriptor: `${namedSelector} present, computed color unparseable (${style.color})`, ratio: -1, ok: true };
+          }
+        }
+      }
+      return { minRatio, offenders, exempted, namedPair };
     },
-    { minRatioNormal: CONTRAST_MIN_RATIO, minRatioLarge: CONTRAST_MIN_RATIO_LARGE },
+    { minRatioNormal: CONTRAST_MIN_RATIO, minRatioLarge: CONTRAST_MIN_RATIO_LARGE, namedSelector: NAMED_CONTRAST_SELECTOR },
   );
 }
 
@@ -955,8 +997,8 @@ async function visitRoute(
   // lets an instrument failure fail the desktop render-sweep pass above.
   if (contrastResults) {
     try {
-      const { minRatio, offenders, exempted } = await measureContrast(page);
-      contrastResults.push(evaluateContrast(entry, { minRatio, offenders, exempted }));
+      const { minRatio, offenders, exempted, namedPair } = await measureContrast(page);
+      contrastResults.push(evaluateContrast(entry, { minRatio, offenders, exempted, namedPair }));
     } catch (err) {
       contrastResults.push(contrastErrorResult(entry, err instanceof Error ? err.message : String(err)));
     }
