@@ -27,7 +27,15 @@ import {
   type SocialLinks,
 } from "../../server/repo/profile";
 import { CLIENT_CACHE_CONTROL } from "../../server/pubcache";
-import { assertServedContentTypeHeader, sanitizeFilenameForKey, validateHeadshotUpload } from "../../domain/files";
+import {
+  assertServedContentTypeHeader,
+  sanitizeFilenameForKey,
+  validateHeadshotUpload,
+  HEADSHOT_EXTENSIONS,
+  HEADSHOT_DOWNSCALE_EDGE_PX,
+  HEADSHOT_DOWNSCALE_QUALITY,
+  headshotHintText,
+} from "../../domain/files";
 import { newId } from "../../domain/ids";
 import {
   CSRF_COOKIE_NAME,
@@ -46,8 +54,7 @@ export const portalProfileRoutes = new Hono<AppEnv>();
 portalProfileRoutes.use("/profile", speakerGate);
 portalProfileRoutes.use("/profile/*", speakerGate);
 
-const HEADSHOT_HELP_TEXT =
-  "PNG, JPG, JPEG, or WEBP, up to 8 MB. Images are automatically downscaled to 512px on the longest edge before upload.";
+const HEADSHOT_HELP_TEXT = `Images are automatically downscaled to ${HEADSHOT_DOWNSCALE_EDGE_PX}px on the longest edge before upload.`;
 
 // DEC-059: framework-free, ES5-safe inline script — downscales oversized
 // headshots client-side (max edge 512px) before they hit the wire, so the
@@ -56,7 +63,7 @@ const HEADSHOT_HELP_TEXT =
 // decode error, etc.) it leaves the original file input untouched and
 // lets the server-side cap be the sole authority.
 const HEADSHOT_DOWNSCALE_JS = `(function(){
-  var MAX_EDGE = 512;
+  var MAX_EDGE = ${HEADSHOT_DOWNSCALE_EDGE_PX};
   var input = document.querySelector('input[name="headshot"]');
   if (!input) return;
   function toJpegFile(blob, originalName) {
@@ -93,7 +100,7 @@ const HEADSHOT_DOWNSCALE_JS = `(function(){
           } catch (e) {
             // Leave the original file in place; server-side cap decides.
           }
-        }, 'image/jpeg', 0.85);
+        }, 'image/jpeg', ${HEADSHOT_DOWNSCALE_QUALITY});
       } catch (e) {
         URL.revokeObjectURL(url);
       }
@@ -169,8 +176,9 @@ function ProfilePage(props: {
             {!profile.headshotUrl ? <p>No headshot uploaded yet.</p> : null}
             <label>
               Upload a new headshot
-              <input type="file" name="headshot" accept=".png,.jpg,.jpeg,.webp" />
+              <input type="file" name="headshot" accept={HEADSHOT_EXTENSIONS.map((e) => `.${e}`).join(",")} />
             </label>
+            <p class="chq-portal-detail">{headshotHintText()}</p>
             <p class="chq-portal-sub">{HEADSHOT_HELP_TEXT}</p>
           </div>
         </section>

@@ -6,6 +6,12 @@ import type { ContactDetail, ContactListItem } from './types';
 import { fromRows, toRows, travelValue, type CustomFieldRow } from './customFields';
 import { countOf } from '../../lib/plural';
 import { contactLabels } from '../../../../src/domain/contact-labels';
+import {
+  HEADSHOT_EXTENSIONS,
+  HEADSHOT_DOWNSCALE_EDGE_PX,
+  HEADSHOT_DOWNSCALE_QUALITY,
+  headshotHintText,
+} from '../../../../src/domain/files';
 import { BulkEmailModal } from './BulkEmailModal';
 import { AddToEventModal } from './AddToEventModal';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -224,15 +230,17 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
     setEditingField(`custom-${customFieldRows.length}`);
   }
 
-  // DEC-894: downscale to a 512px longest edge via canvas/toBlob at 0.85
-  // JPEG quality before POSTing — same numbers as the portal's inline
-  // downscale script (src/routes/portal/profile.tsx HEADSHOT_DOWNSCALE_JS).
+  // DEC-894: downscale to HEADSHOT_DOWNSCALE_EDGE_PX longest edge via
+  // canvas/toBlob at HEADSHOT_DOWNSCALE_QUALITY JPEG quality before
+  // POSTing — src/domain/files.ts is the single source for these numbers,
+  // read by both this drawer and the portal's inline downscale script
+  // (src/routes/portal/profile.tsx HEADSHOT_DOWNSCALE_JS).
   // Leaves the original file in place if the browser cannot do it (no
   // canvas/Image support, decode failure, etc.) — the server-side dimension
   // gate is the sole authority in that case.
   async function downscaleHeadshot(file: File): Promise<File> {
     try {
-      const MAX_EDGE = 512;
+      const MAX_EDGE = HEADSHOT_DOWNSCALE_EDGE_PX;
       const bitmap = await createImageBitmap(file);
       const { width, height } = bitmap;
       if (width <= MAX_EDGE && height <= MAX_EDGE) return file;
@@ -245,7 +253,9 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
       const ctx = canvas.getContext('2d');
       if (!ctx) return file;
       ctx.drawImage(bitmap, 0, 0, targetW, targetH);
-      const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+      const blob: Blob | null = await new Promise((resolve) =>
+        canvas.toBlob(resolve, 'image/jpeg', HEADSHOT_DOWNSCALE_QUALITY),
+      );
       if (!blob) return file;
       const base = file.name.replace(/\.[^.]+$/, '');
       return new File([blob], `${base}.jpg`, { type: 'image/jpeg' });
@@ -401,13 +411,14 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
             id="chq-contact-headshot-upload"
             className="chq-file"
             type="file"
-            accept=".png,.jpg,.jpeg,.webp"
+            accept={HEADSHOT_EXTENSIONS.map((e) => `.${e}`).join(',')}
             ref={headshotInputRef}
             onChange={uploadHeadshot}
             disabled={headshotUploading}
             placeholder="headshot.jpg"
           />
         </label>
+        <p className="chq-portal-detail">{headshotHintText()}</p>
         {headshotUploading && <p>Uploading...</p>}
         {headshotError && <div className="chq-error">{headshotError}</div>}
       </div>

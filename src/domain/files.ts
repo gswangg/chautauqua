@@ -420,9 +420,25 @@ const HEADSHOT_EXT_CONTENT_TYPE: Record<string, string> = {
   webp: "image/webp",
 };
 
-const HEADSHOT_MAX_BYTES = 8 * BYTES_PER_MB;
-// Test-only re-export, mirroring the other _FOR_TEST constants above.
-export const HEADSHOT_MAX_BYTES_FOR_TEST = HEADSHOT_MAX_BYTES;
+export const HEADSHOT_MAX_BYTES = 8 * BYTES_PER_MB;
+
+/** Every extension validateHeadshotUpload accepts, for UI hints (accept
+ * attr, help text) — derived from HEADSHOT_EXT_CONTENT_TYPE, never a second
+ * hand-typed list, matching allowedUploadExtensions' shape above. */
+export const HEADSHOT_EXTENSIONS: readonly string[] = Object.keys(HEADSHOT_EXT_CONTENT_TYPE);
+
+/** Client-side downscale contract for headshot uploads: longest edge and
+ * JPEG/WEBP quality, single-sourced here so both file pickers (portal
+ * profile, contacts drawer) interpolate the same numbers instead of
+ * hand-typing them into their downscale scripts. */
+export const HEADSHOT_DOWNSCALE_EDGE_PX = 512;
+export const HEADSHOT_DOWNSCALE_QUALITY = 0.85;
+
+/** Human-readable summary of the headshot allowlist + size cap, matching
+ * uploadHintText's grammar shape, for both file pickers' help text. */
+export function headshotHintText(): string {
+  return `Allowed types: ${HEADSHOT_EXTENSIONS.map((e) => `.${e}`).join(", ")}. Max ${HEADSHOT_MAX_BYTES / BYTES_PER_MB} MB.`;
+}
 
 export interface HeadshotUploadInput {
   filename: string;
