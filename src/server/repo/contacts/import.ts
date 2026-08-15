@@ -375,6 +375,27 @@ export async function applyImportRows(
   return { created, updated, skipped, contactIds };
 }
 
+/** Chunked lower(email) -> contactId lookup for the caller's org, reusing
+ * applyImportRows' own byEmail pre-pass idiom (DEC-356: cost proportional to
+ * the file's distinct emails, never a whole-org scan). `emails` must already
+ * be normalized (normalizeEmail). Exposed so
+ * routes/api/contacts/import.ts's pre-write MAX_PARTICIPANTS_PER_SUBMISSION
+ * check (DEC-604 amendment, findings wave 15) can resolve which file emails
+ * already have an org contact without duplicating this query inline. */
+export async function lookupContactIdsByEmail(db: Db, orgId: string, emails: string[]): Promise<Map<string, string>> {
+  const byEmail = new Map<string, string>();
+  for (const batch of chunkIds(emails)) {
+    const existing = await db
+      .select({ id: schema.contact.id, email: schema.contact.email })
+      .from(schema.contact)
+      .where(and(eq(schema.contact.orgId, orgId), inArray(sql`lower(${schema.contact.email})`, batch)));
+    for (const row of existing as { id: string; email: string }[]) {
+      byEmail.set(normalizeEmail(row.email), row.id);
+    }
+  }
+  return byEmail;
+}
+
 export interface ImportPlanOverwrite {
   field: "firstName" | "lastName" | "company" | "title" | "phone" | "bio";
   from: string;

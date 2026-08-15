@@ -11,10 +11,12 @@ import { asc, eq, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
-import { DEC_070, DEC_258, DEC_556 } from "../../decisions";
+import { DEC_070, DEC_258, DEC_556, DEC_604 } from "../../decisions";
 import { chunkRowsForInsert } from "../../lib/chunk";
 import { touchSubmissions } from "./submissions/touch";
 import { MAX_PARTICIPANTS_PER_SUBMISSION } from "../../domain/participant-roles";
+import { participantCapRefusalMessage } from "../../domain/cap-copy";
+import { ApiError } from "../http";
 
 // Compile-checked dependency marker: this module implements DEC_070's
 // endpoint contract (invite shape, duplicate rejection, visibility toggle).
@@ -27,6 +29,12 @@ void DEC_258;
 // below is a single INSERT ... ON CONFLICT DO NOTHING, never a
 // select-then-insert.
 void DEC_556;
+// DEC-604 amendment (findings wave 15, task-w15-b): insertActiveParticipants
+// below asserts MAX_PARTICIPANTS_PER_SUBMISSION BEFORE writing, closing the
+// CSV-roster-import door (src/server/repo/contacts/push.ts's
+// pushContactsToEvent) against the cap the organizer-invite and
+// add-co-presenter doors already enforced.
+void DEC_604;
 
 /** Sentinel returned by inviteParticipant when the (submissionId, contactId)
  * pair already has a participant row — callers surface this as an
@@ -153,7 +161,20 @@ export async function inviteParticipant(
  * INSERT (chunkRowsForInsert, DEC-542), not a per-row loop. `order` is the
  * caller-supplied input index (0 for the lead contact already inserted by
  * createSubmission, so this is called with the REMAINING contacts starting
- * at order 1). */
+ * at order 1).
+ *
+ * DEC-604 amendment (findings wave 15, task-w15-b): reads the submission's
+ * current participant count and throws ApiError('invalid', ...) BEFORE any
+ * write if `existing + contacts.length` would exceed
+ * MAX_PARTICIPANTS_PER_SUBMISSION -- this is the batch-roster-import
+ * counterpart to inviteParticipant's OVER_CAP check above and
+ * portal-edit.ts's addCoPresenter check, so a 200-row roster CSV can no
+ * longer land 199 participants on one submission against a cap of 6. Callers
+ * (routes/api/contacts/import.ts) also pre-check the same cap before any
+ * write is attempted, so a route-level refusal fires first in the normal
+ * request path; this assertion is the repo-level backstop that makes the cap
+ * a property of insertActiveParticipants itself, not just of its one
+ * caller's pre-check. */
 export async function insertActiveParticipants(
   db: Db,
   submissionId: string,
@@ -166,6 +187,12 @@ export async function insertActiveParticipants(
   }[],
 ): Promise<void> {
   if (contacts.length === 0) return;
+  const existingCount = await getParticipantCount(db, submissionId);
+  if (existingCount + contacts.length > MAX_PARTICIPANTS_PER_SUBMISSION) {
+    throw new ApiError("invalid", participantCapRefusalMessage(existingCount, MAX_PARTICIPANTS_PER_SUBMISSION), {
+      submissionId: participantCapRefusalMessage(existingCount, MAX_PARTICIPANTS_PER_SUBMISSION),
+    });
+  }
   const now = new Date();
   const rows = contacts.map((c) => ({
     id: newId(),
