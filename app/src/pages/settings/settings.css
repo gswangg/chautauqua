@@ -1187,3 +1187,18 @@
    error text. The error text itself is the shared .chq-field-error /
    .chq-field-invalid vocabulary from error-states.css, so this page needs
    no local layout rule for it. */
+
+/* DEC-896 amendment (wave 20): the Public pages section head's
+   right-flushed consequence micro-label -- "Unpublishing returns 404 to
+   anyone holding the link" (docs/design/Chautauqua Settings.dc.html:131).
+   No existing settings.css/settings-lists.css eyebrow class matches this
+   register (11px/600/uppercase/.04em, muted), so this is appended here per
+   task instructions rather than widening an unrelated class. */
+.chq-settings-section-head-consequence {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}

@@ -196,15 +196,13 @@ describe('SettingsPage render smoke', () => {
     });
 
     // The full multi-kind export table stays reachable, not deleted, behind
-    // a "More export formats" drill (FINDINGS w21) -- ExportsPanel owns its
-    // own local read/edit split (w1-f, DEC-785), so a second 'Change'
-    // reveals the download table.
+    // a "More export formats" drill (FINDINGS w21). DEC-032 amendment
+    // (wave 20, B10): ExportsPanel no longer owns a local read/edit split
+    // of its own -- exports are actions, not settings -- so the drill
+    // reveals the download table directly, with no second 'Change'.
     expect(within(yourDataSection).queryByRole('heading', { name: 'Exports' })).not.toBeInTheDocument();
     fireEvent.click(within(yourDataSection).getByRole('button', { name: 'More export formats' }));
-    const exportsSubsection = within(yourDataSection)
-      .getByRole('heading', { name: 'Exports' })
-      .closest('section') as HTMLElement;
-    fireEvent.click(within(exportsSubsection).getByRole('button', { name: 'Change' }));
+    expect(within(yourDataSection).getByRole('heading', { name: 'Exports' })).toBeInTheDocument();
     expect(within(yourDataSection).getAllByRole('link', { name: 'Download CSV' })[0]).toHaveAttribute(
       'href',
       `/api/v1/events/${EVENT_ID}/export/submissions?format=csv`,

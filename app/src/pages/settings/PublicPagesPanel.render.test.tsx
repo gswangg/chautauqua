@@ -4,6 +4,9 @@
 // code), so there is no 'Change'/'Back' gate anywhere in this panel, and
 // SavedEmbedsPanel renders its full capability set (Edit/Turn on-off/
 // Delete/Build) unconditionally instead of behind a drill.
+//
+// DEC-896 amendment (wave 20): the section head also carries the frame's
+// consequence micro-label right-flushed on the h2's rule.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -197,5 +200,19 @@ describe('PublicPagesPanel', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Embeds' })).toBeInTheDocument();
     });
+  });
+
+  // DEC-896 amendment (wave 20): the section head names the consequence of
+  // unpublishing, right-flushed on the same rule as the h2.
+  it('renders the unpublishing consequence caption on the section head', async () => {
+    mockEvent();
+    render(
+      <MemoryRouter>
+        <PublicPagesPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await screen.findByRole('region', { name: 'Public pages' });
+    expect(within(section).getByText('Unpublishing returns 404 to anyone holding the link')).toBeInTheDocument();
   });
 });
