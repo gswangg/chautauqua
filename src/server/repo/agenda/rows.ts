@@ -95,73 +95,87 @@ export async function loadAcceptedSessions(db: Db, eventId: string, recordPrefix
   if (submissionRows.length === 0) return [];
   const ids = submissionRows.map((r) => r.id);
 
-  const trackRows: { submissionId: string; trackId: string }[] = [];
-  for (const batch of chunkIds(ids)) {
-    const batchRows = await db
-      .select({ submissionId: schema.submissionTrack.submissionId, trackId: schema.submissionTrack.trackId })
-      .from(schema.submissionTrack)
-      .where(inArray(schema.submissionTrack.submissionId, batch));
-    trackRows.push(...batchRows);
-  }
-
-  const participantRows: {
-    submissionId: string;
-    contactId: string;
-    firstName: string;
-    lastName: string;
-    order: number;
-  }[] = [];
-  for (const batch of chunkIds(ids)) {
-    const batchRows = await db
-      .select({
-        submissionId: schema.participant.submissionId,
-        contactId: schema.participant.contactId,
-        firstName: schema.contact.firstName,
-        lastName: schema.contact.lastName,
-        order: schema.participant.order,
-      })
-      .from(schema.participant)
-      .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
-      .where(
-        and(
-          inArray(schema.participant.submissionId, batch),
-          // DEC-974: the admin agenda's speaker set is the NOT-DECLINED
-          // participants (SCHEDULING_PARTICIPANT_STATUSES: 'none'/'invited'/
-          // 'accepted'), not ACTIVE_INVITE_STATUSES — an organiser-added
-          // co-presenter is minted at 'invited' and must still be visible to
-          // the conflict engine and the card. This is also deliberately NOT
-          // `participant.visible` — `visible` is a public-display flag
-          // composed only for public surfaces (see
-          // visibleParticipantConditions); a speaker hidden from the public
-          // programme, or still pending their invite, is still a person who
-          // cannot be double-booked, so they must still count for conflict
-          // detection.
-          inArray(schema.participant.inviteStatus, [...SCHEDULING_PARTICIPANT_STATUSES]),
-        ),
-      );
-    participantRows.push(...batchRows);
-  }
-
-  const slotRows: {
-    submissionId: string;
-    roomId: string | null;
-    day: string;
-    startMin: number;
-    endMin: number;
-  }[] = [];
-  for (const batch of chunkIds(ids)) {
-    const batchRows = await db
-      .select({
-        submissionId: schema.scheduleSlot.submissionId,
-        roomId: schema.scheduleSlot.roomId,
-        day: schema.scheduleSlot.day,
-        startMin: schema.scheduleSlot.startMin,
-        endMin: schema.scheduleSlot.endMin,
-      })
-      .from(schema.scheduleSlot)
-      .where(inArray(schema.scheduleSlot.submissionId, batch));
-    slotRows.push(...batchRows);
-  }
+  // DEC-155 wave-34 amendment: these three chunked batch readers each
+  // consume only `ids` (nothing from one another), so they issue as one
+  // Promise.all wave rather than three strictly-sequential chunked loops.
+  // Each chunked loop over `ids` still counts as ONE read and stays a
+  // chunked loop internally.
+  const [trackRows, participantRows, slotRows] = await Promise.all([
+    (async () => {
+      const rows: { submissionId: string; trackId: string }[] = [];
+      for (const batch of chunkIds(ids)) {
+        const batchRows = await db
+          .select({ submissionId: schema.submissionTrack.submissionId, trackId: schema.submissionTrack.trackId })
+          .from(schema.submissionTrack)
+          .where(inArray(schema.submissionTrack.submissionId, batch));
+        rows.push(...batchRows);
+      }
+      return rows;
+    })(),
+    (async () => {
+      const rows: {
+        submissionId: string;
+        contactId: string;
+        firstName: string;
+        lastName: string;
+        order: number;
+      }[] = [];
+      for (const batch of chunkIds(ids)) {
+        const batchRows = await db
+          .select({
+            submissionId: schema.participant.submissionId,
+            contactId: schema.participant.contactId,
+            firstName: schema.contact.firstName,
+            lastName: schema.contact.lastName,
+            order: schema.participant.order,
+          })
+          .from(schema.participant)
+          .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+          .where(
+            and(
+              inArray(schema.participant.submissionId, batch),
+              // DEC-974: the admin agenda's speaker set is the NOT-DECLINED
+              // participants (SCHEDULING_PARTICIPANT_STATUSES: 'none'/'invited'/
+              // 'accepted'), not ACTIVE_INVITE_STATUSES — an organiser-added
+              // co-presenter is minted at 'invited' and must still be visible to
+              // the conflict engine and the card. This is also deliberately NOT
+              // `participant.visible` — `visible` is a public-display flag
+              // composed only for public surfaces (see
+              // visibleParticipantConditions); a speaker hidden from the public
+              // programme, or still pending their invite, is still a person who
+              // cannot be double-booked, so they must still count for conflict
+              // detection.
+              inArray(schema.participant.inviteStatus, [...SCHEDULING_PARTICIPANT_STATUSES]),
+            ),
+          );
+        rows.push(...batchRows);
+      }
+      return rows;
+    })(),
+    (async () => {
+      const rows: {
+        submissionId: string;
+        roomId: string | null;
+        day: string;
+        startMin: number;
+        endMin: number;
+      }[] = [];
+      for (const batch of chunkIds(ids)) {
+        const batchRows = await db
+          .select({
+            submissionId: schema.scheduleSlot.submissionId,
+            roomId: schema.scheduleSlot.roomId,
+            day: schema.scheduleSlot.day,
+            startMin: schema.scheduleSlot.startMin,
+            endMin: schema.scheduleSlot.endMin,
+          })
+          .from(schema.scheduleSlot)
+          .where(inArray(schema.scheduleSlot.submissionId, batch));
+        rows.push(...batchRows);
+      }
+      return rows;
+    })(),
+  ]);
 
   const tracksBySubmission = new Map<string, string[]>();
   for (const t of trackRows) {

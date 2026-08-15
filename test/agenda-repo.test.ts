@@ -484,6 +484,12 @@ describe("getConflictsAndSummary (DEC-021 wave-60: bounded placed-only read)", (
     { id: "room-b", name: "Room B" },
   ];
 
+  // DEC-155 wave-34 amendment: getConflictsAndSummary now issues slotRows,
+  // roomRows and totalAcceptedRows as one Promise.all wave (all three
+  // consume nothing from the slot chain) — their db.select() calls are
+  // still made synchronously in that source order before any awaits, so
+  // calls 1-3 below map to that wave and call 4 is the (still-sequential,
+  // dependent-on-slotRows) participantRows batch.
   function makeConflictsSummaryDb(totalAccepted: number) {
     let call = 0;
     const db = {
@@ -491,9 +497,9 @@ describe("getConflictsAndSummary (DEC-021 wave-60: bounded placed-only read)", (
         call += 1;
         const thisCall = call;
         if (thisCall === 1) return makeChain(joinedSlotRows); // scheduleSlot innerJoin submission
-        if (thisCall === 2) return makeChain(participantRows); // participant innerJoin contact
-        if (thisCall === 3) return makeChain(roomRows); // rooms
-        return makeChain([{ count: totalAccepted }]); // totalAccepted count(*)
+        if (thisCall === 2) return makeChain(roomRows); // rooms
+        if (thisCall === 3) return makeChain([{ count: totalAccepted }]); // totalAccepted count(*)
+        return makeChain(participantRows); // participant innerJoin contact
       },
     } as unknown as Db;
     return db;
@@ -549,16 +555,21 @@ describe("getConflictsAndSummary (DEC-021 wave-60: bounded placed-only read)", (
       seq: i,
       title: `Talk ${i}`,
     }));
+    // DEC-155 wave-34 amendment: slotRows now issues alongside roomRows/
+    // totalAcceptedRows in one Promise.all wave, so every db.select() call
+    // (not just the innerJoin'd one) needs a chainable, awaitable fake —
+    // the other two waves' rows are irrelevant, only slotRows' overflow
+    // length drives the assertion below.
+    function overflowChain(): unknown {
+      const chain: Record<string, unknown> = {};
+      for (const method of ["from", "innerJoin", "where", "limit"]) {
+        chain[method] = () => chain;
+      }
+      chain.then = (resolve: (v: unknown) => void) => resolve(overflowRows);
+      return chain;
+    }
     const db = {
-      select: () => ({
-        from: () => ({
-          innerJoin: () => ({
-            where: () => ({
-              limit: async () => overflowRows,
-            }),
-          }),
-        }),
-      }),
+      select: () => overflowChain(),
     } as unknown as Db;
 
     await expect(getConflictsAndSummary(db, "event1", event)).rejects.toThrow(
