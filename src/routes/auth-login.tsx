@@ -68,30 +68,37 @@ loginRoutes.post("/login", csrfForm, async (c) => {
   // DEC-072: key by identity, not just IP — a shared-bucket per-IP counter
   // lets one attacker lock out every account behind that IP (e.g. NAT,
   // office network), and lets an attacker rotate x-forwarded-for to bypass
-  // a per-account cap. Three independent checks, spent IN ORDER: a
-  // spoof-proof per-account budget (bare email — the only bucket that
-  // satisfies rate-limit.ts's own "MUST key on a stable identity value"
-  // doc-comment, since the other two are functions of a header the client
-  // controls), a per-(email,ip) pair budget (catches credential stuffing
-  // from one source against one account), and a per-IP budget (catches a
-  // single source hammering many accounts). Any one failing blocks login.
+  // a per-account cap. Two hard, spoof-proof-adjacent checks plus one soft
+  // account-wide budget, spent IN ORDER: a per-(email,ip) pair budget
+  // (catches credential stuffing from one source against one account), a
+  // per-IP budget (catches a single source hammering many accounts), and
+  // an account-wide budget (bare email — the only bucket keyed purely on a
+  // stable identity value per rate-limit.ts's own doc-comment, since the
+  // other two are functions of a header the client controls).
   //
-  // DEC-072 wave-66 amendment: the account budget (loginAccountKey, bare
-  // email, max AUTH_ACCOUNT_RATE_LIMIT_MAX=50) returns beside the wave-54
-  // pair budget rather than replacing it — the pair budget alone left NO
-  // bucket keyed purely on identity, so rotating x-forwarded-for bought
-  // unlimited guesses against a known address. The account bucket's wider
-  // window (50 vs 20) means an honest owner mistyping their password from
-  // their own IP cannot reach it before the tighter pair bucket already
-  // would.
+  // DEC-072 wave-38 amendment: the account-wide budget (loginAccountKey,
+  // bare email, max AUTH_ACCOUNT_RATE_LIMIT_MAX=50) is STILL checked and
+  // incremented atomically first (DEC-948 forbids turning this into a
+  // read-then-write peek), but exhausting it no longer hard-denies the
+  // request with a 429. A bare-email key is attacker-rotatable
+  // (x-forwarded-for), which means a stranger who merely knows a victim's
+  // address can drive this bucket to its cap from anywhere -- and unlike
+  // the pair/IP buckets there is NO unlock path (the victim's own correct
+  // password comes from their own IP, which this key ignores), so a hard
+  // 429 here locked the real owner out of their own account with no
+  // recourse. The bucket's exhaustion is now recorded in `accountExhausted`
+  // and consulted only AFTER password verification: a WRONG password while
+  // exhausted still returns 429 (the budget still throttles brute force),
+  // but the CORRECT password always succeeds. See decisions/DEC-072.md
+  // wave-38 amendment for the full ruling and the account.tsx precedent.
   //
-  // DEC-072 wave-54 amendment: the per-identity pair budget is keyed on
-  // email+IP (loginIdentityKey in ./auth-helpers), not the bare email — a
-  // bare-email key let a stranger who merely knows a valid organizer
-  // address exhaust that address's shared budget from anywhere and lock
-  // the real owner out with no unlock path. Keying on email|ip confines
-  // the exhaustion to the attacker's own IP; the victim's own IP still
-  // admits their attempts.
+  // The wave-54 pair budget (loginIdentityKey, email+IP) is keyed on
+  // email+IP together, not the bare email — a bare-email key let a
+  // stranger who merely knows a valid organizer address exhaust that
+  // address's shared budget from anywhere and lock the real owner out with
+  // no unlock path. Keying on email|ip confines the exhaustion to the
+  // attacker's own IP; the victim's own IP still admits their attempts.
+  // This bucket keeps its existing HARD pre-verification 429.
   //
   // DEC-948 + DEC-180 (wave-29 amendment): CONSUME THEN REFUND. The budgets
   // are checked-and-incremented atomically, BEFORE the password derivation
@@ -111,7 +118,11 @@ loginRoutes.post("/login", csrfForm, async (c) => {
   // in sequence, not in parallel, so that when an earlier bucket ADMITS but
   // a later bucket DENIES, every unit already spent in this request is
   // refunded before the 429 — a request that never reached verification
-  // must not spend any account's budget.
+  // must not spend any account's budget. The account bucket is still
+  // refunded here on a later HARD deny (pair or IP), even though its own
+  // exhaustion is no longer a hard deny -- a request that never reached
+  // verification must not leave the account bucket advanced regardless of
+  // which kind of check ultimately rejected it.
   const ip = requestIpFromHeaders((name) => c.req.header(name));
   const accountKey = loginAccountKey(email);
   const identityKey = loginIdentityKey(email, ip);
@@ -121,22 +132,7 @@ loginRoutes.post("/login", csrfForm, async (c) => {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
     max: AUTH_ACCOUNT_RATE_LIMIT_MAX,
   });
-
-  if (!accountLimit.ok) {
-    const { token: csrfToken } = ensureCsrfCookie(c);
-    const demoIdentities = await loadDemoIdentitiesIfPresent(db);
-    const singleEvent = await loadSingleEventContext(db);
-    return c.html(
-      <LoginPage
-        csrfToken={csrfToken}
-        error={RATE_LIMIT_BAND}
-        email={email}
-        demoIdentities={demoIdentities}
-        singleEvent={singleEvent}
-      />,
-      429,
-    );
-  }
+  const accountExhausted = !accountLimit.ok;
 
   const userLimit = await checkAndIncrementScopedLimit(db, "login-user", identityKey, loginNow, {
     windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
@@ -191,19 +187,24 @@ loginRoutes.post("/login", csrfForm, async (c) => {
   const passwordOk = await verifyPassword(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
   if (!user || !passwordOk) {
     // Budgets were already spent atomically at admission above, before the
-    // derivation ran — nothing further to record on failure.
+    // derivation ran — nothing further to record on failure. The pair/IP
+    // buckets already hard-denied above; the account-wide bucket's
+    // exhaustion is only consulted now (DEC-072 wave-38 amendment) so a
+    // stranger who never supplies the correct password still gets
+    // throttled by it, but the real owner is never blocked before their
+    // correct password can be checked.
     const { token: csrfToken } = ensureCsrfCookie(c);
     const demoIdentities = await loadDemoIdentitiesIfPresent(db);
     const singleEvent = await loadSingleEventContext(db);
     return c.html(
       <LoginPage
         csrfToken={csrfToken}
-        error={LOGIN_REJECTED}
+        error={accountExhausted ? RATE_LIMIT_BAND : LOGIN_REJECTED}
         email={email}
         demoIdentities={demoIdentities}
         singleEvent={singleEvent}
       />,
-      401,
+      accountExhausted ? 429 : 401,
     );
   }
 
