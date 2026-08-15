@@ -9,7 +9,7 @@ import * as schema from "../../../db/schema";
 import { chunkIds } from "../../../lib/chunk";
 import { formatRef } from "../../../domain/ids";
 import { likeContains } from "../like";
-import { chaseableContactExistsForTaskEvent, overdueAssignmentConditions, rosterParticipantConditions, rosterParticipantExistsForContact } from "./crud";
+import { chaseableContactExistsForTaskEvent, overdueAssignmentConditions, rosterParticipantConditions } from "./crud";
 import { ASSIGNED_LATE_GRACE_DAYS, overdueDayCutoff } from "../../../domain/task-due";
 
 // DEC-789 closed set (mirrors the participant.invite_status column comment
@@ -62,7 +62,7 @@ export interface GridRow {
     hasAccount: boolean;
     // DEC-936: EVERY participation this contact covers on this roster row,
     // ordered by submission seq -- not a lowest-id pick. Always non-empty:
-    // rosterParticipantExistsForContact (this row's base condition,
+    // rosterParticipantConditions (this row's base condition,
     // DEC-829) guarantees at least one matching participant exists,
     // whatever its invite status.
     participations: GridParticipation[];
@@ -113,7 +113,7 @@ export interface OnboardingGrid {
  * app/src/pages/speakers/rowFilters.ts's now-deleted "one cell matching all
  * filters" semantics, preserved exactly per DEC-340). Per DEC-754/DEC-829
  * this is now an ADDITIONAL condition ANDed onto the base row condition
- * (rosterParticipantExistsForContact) rather than the base condition itself —
+ * (rosterParticipantConditions) rather than the base condition itself —
  * an unfiltered grid must list the whole roster even for participants with
  * zero assignments, which no task_assignment-anchored EXISTS can express. */
 function onboardingMatchExists(
@@ -201,23 +201,29 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
     return { tasks: [], rows: [], total: 0, page: params.page, perPage: params.perPage, counts: emptyCounts, timezone };
   }
 
-  // DEC-829 (widens DEC-754): the base row condition is the roster
-  // predicate — accepted-submission participants regardless of invite
-  // status (contact-only EXISTS, no join to `contact`) — answering "who is
-  // a row on this roster", which is now a WIDER question than "who does
-  // createTask/assignToAllAccepted expand assignments over"
+  // DEC-829 (widens DEC-754), wave-29 TIER-0 amendment: the base row
+  // condition used to be a correlated EXISTS against `contact` (this is the
+  // defect docs/verification-log.md:3750-3759 measured — it forces the
+  // outer relation to be every contact in the org). It is now
+  // rosterParticipantConditions, applied as a real JOIN condition below
+  // (participant -> submission scoped to submission.eventId), so the
+  // driving relation is the event's own participant/submission rows, not
+  // the org contact directory — `contact` is joined by id only for
+  // name/company/search/ordering. Semantics unchanged: accepted-submission
+  // participants regardless of invite status — still a WIDER question than
+  // "who does createTask/assignToAllAccepted expand assignments over"
   // (acceptedSpeakerExistsForContact, still exact for that narrower
   // question). A taskId/status/overdueOnly filter is an ADDITIONAL
   // condition, active only when requested, so an unfiltered grid lists
   // every roster participant (assignments or not) while a filtered grid
   // narrows to those with a matching cell.
   const filterActive = params.taskId !== null || params.status !== null || params.overdueOnly;
-  const conditions = [rosterParticipantExistsForContact(eventId)];
+  const conditions = [rosterParticipantConditions(eventId)];
   if (filterActive) {
     conditions.push(onboardingMatchExists(eventId, params.taskId, params.status, params.overdueOnly, params.now, timezone));
   }
   // DEC-789/DEC-829: the invite-status filter is a SEPARATE predicate from
-  // the base rosterParticipantExistsForContact condition above (which now
+  // the base rosterParticipantConditions condition above (which now
   // ranges over ALL four invite statuses, not just ACTIVE_INVITE_STATUSES)
   // -- ANDed here, on the same row query and composing the same
   // rosterParticipantConditions as the base condition, so a filter pill
@@ -237,14 +243,27 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
   }
   const whereExpr = and(...conditions);
 
+  // DEC-829 wave-29: driving relation is participant JOIN submission
+  // (scoped by rosterParticipantConditions's submission.eventId/status
+  // conditions above), never `contact` alone — `contact` is joined by id
+  // only to read name/company/search/ordering columns. `count(distinct
+  // contact.id)` collapses the (rare, DEC-936) case of a contact holding
+  // more than one accepted participation on this event to one roster row,
+  // matching the page SELECT's GROUP BY below.
   const totalRows = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(schema.contact)
+    .select({ count: sql<number>`count(distinct ${schema.contact.id})` })
+    .from(schema.participant)
+    .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
+    .innerJoin(schema.contact, eq(schema.contact.id, schema.participant.contactId))
     .where(whereExpr);
   const total = Number(totalRows[0]?.count ?? 0);
 
   const offset = (params.page - 1) * params.perPage;
 
+  // Same driving relation as totalRows, GROUP BY contact.id so a contact
+  // with more than one accepted participation on this event still yields
+  // exactly one page row (the non-grouped columns are all functionally
+  // dependent on contact.id, which SQLite's bare-column GROUP BY allows).
   const contactRows = await db
     .select({
       id: schema.contact.id,
@@ -254,9 +273,12 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
       company: schema.contact.company,
       userId: schema.user.id,
     })
-    .from(schema.contact)
+    .from(schema.participant)
+    .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
+    .innerJoin(schema.contact, eq(schema.contact.id, schema.participant.contactId))
     .leftJoin(schema.user, eq(schema.user.contactId, schema.contact.id))
     .where(whereExpr)
+    .groupBy(schema.contact.id)
     .orderBy(sql`lower(${schema.contact.lastName}) asc, lower(${schema.contact.firstName}) asc, ${schema.contact.id} asc`)
     .limit(params.perPage)
     .offset(offset);
@@ -321,7 +343,7 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
     }
   }
 
-  // rosterParticipantExistsForContact (this row set's base condition,
+  // rosterParticipantConditions (this row set's base condition,
   // DEC-829) guarantees at least one matching participant per contact —
   // fail loudly instead of silently rendering an impossible empty roster
   // control if that invariant is ever violated.
@@ -382,20 +404,24 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
 
   // Event-wide aggregate, filter- and page-independent (DEC-333/334): SQL
   // COUNT forms, never materialized rows. DEC-754/DEC-829: `speakers` is
-  // the size of the roster itself (the SAME rosterParticipantExistsForContact
+  // the size of the roster itself (the SAME rosterParticipantConditions
   // predicate the base row condition above composes — that surface's own
   // predicate), NOT count(distinct taskAssignment.contactId) — a roster
   // participant with zero assignments, or an 'invited'/'declined' one, is
-  // still one of the `speakers` this grid counts.
+  // still one of the `speakers` this grid counts. Wave-29: driven from
+  // participant JOIN submission (never `contact` alone), same as
+  // totalRows/contactRows above.
   const speakersCountRows = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(schema.contact)
-    .where(rosterParticipantExistsForContact(eventId));
+    .select({ count: sql<number>`count(distinct ${schema.contact.id})` })
+    .from(schema.participant)
+    .innerJoin(schema.submission, eq(schema.submission.id, schema.participant.submissionId))
+    .innerJoin(schema.contact, eq(schema.contact.id, schema.participant.contactId))
+    .where(rosterParticipantConditions(eventId));
   const speakersCount = Number(speakersCountRows[0]?.count ?? 0);
 
   // DEC-776 amendment (wave 61): the three header numbers each range over a
   // DIFFERENT population — `speakers` (above) is the roster itself
-  // (rosterParticipantExistsForContact: every accepted-submission participant,
+  // (rosterParticipantConditions: every accepted-submission participant,
   // including 'invited'/'declined'); `outstandingRequired`/`outstandingContacts`
   // below and `overdue` further down both range over the NARROWER "still owes
   // something" set (chaseableContactExistsForTaskEvent /
