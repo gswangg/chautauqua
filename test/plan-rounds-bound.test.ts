@@ -14,7 +14,8 @@ import { join } from "node:path";
 import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
-import { MAX_PLAN_ROUNDS, parseRounds, parseRoundCriteria } from "../src/routes/review/shared";
+import { parseRounds, parseRoundCriteria } from "../src/routes/review/shared";
+import { MAX_PLAN_ROUNDS } from "../src/domain/evaluation";
 
 describe("parseRounds bound (DEC-082 wave-43)", () => {
   it("accepts the boundary values 1 and 10", () => {

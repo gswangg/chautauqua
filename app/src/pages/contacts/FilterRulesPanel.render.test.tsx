@@ -14,6 +14,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { FilterRulesPanel, FILTER_RULE_FIELDS } from './FilterRulesPanel';
+import { MAX_SEGMENT_RULES } from '../../../../src/domain/contacts';
 import type { SegmentRule } from './types';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -164,6 +165,33 @@ describe('FilterRulesPanel (DEC-868)', () => {
     render(<FilterRulesPanel rules={rules} onChange={noop} matchCount={41} totalCount={null} onSaveAsSegment={noop} />);
     expect(screen.getByText('41 match')).toBeInTheDocument();
     expect(screen.queryByText(/of.*match/)).not.toBeInTheDocument();
+  });
+
+  // DEC-422 (amendment, wave 59): MAX_SEGMENT_RULES now lives in
+  // src/domain/contacts.ts, and this panel declares the cap on its own
+  // "Add a rule" affordance -- disabled at the cap, with a quiet line
+  // naming it, rather than letting the array grow past what GET
+  // /contacts?rules= will actually accept.
+  it('"Add a rule" stays enabled and no cap line shows below the rule cap', () => {
+    const rules: SegmentRule[] = Array.from({ length: MAX_SEGMENT_RULES - 1 }, () => ({
+      field: 'company' as const,
+      op: 'eq' as const,
+      value: 'Acme',
+    }));
+    render(<FilterRulesPanel rules={rules} onChange={noop} matchCount={1} totalCount={10} onSaveAsSegment={noop} />);
+    expect(screen.getByRole('button', { name: 'Add a rule' })).not.toBeDisabled();
+    expect(screen.queryByText(`Up to ${MAX_SEGMENT_RULES} rules.`)).not.toBeInTheDocument();
+  });
+
+  it('"Add a rule" disables at MAX_SEGMENT_RULES and shows a quiet cap line naming it', () => {
+    const rules: SegmentRule[] = Array.from({ length: MAX_SEGMENT_RULES }, () => ({
+      field: 'company' as const,
+      op: 'eq' as const,
+      value: 'Acme',
+    }));
+    render(<FilterRulesPanel rules={rules} onChange={noop} matchCount={1} totalCount={10} onSaveAsSegment={noop} />);
+    expect(screen.getByRole('button', { name: 'Add a rule' })).toBeDisabled();
+    expect(screen.getByText(`Up to ${MAX_SEGMENT_RULES} rules.`)).toBeInTheDocument();
   });
 
   it('"Add a rule" renders as a tertiary link, not a bordered button', () => {

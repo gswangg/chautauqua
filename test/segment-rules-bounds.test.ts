@@ -16,7 +16,8 @@
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { contactsRoutes } from "../src/routes/api/contacts";
-import { parseRulesQueryParam, MAX_SEGMENT_RULES } from "../src/routes/api/contacts/segments";
+import { parseRulesQueryParam } from "../src/routes/api/contacts/segments";
+import { MAX_SEGMENT_RULES } from "../src/domain/contacts";
 import { registerErrorHandler, ApiError } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 
