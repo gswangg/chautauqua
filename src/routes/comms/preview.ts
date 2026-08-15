@@ -7,6 +7,7 @@ import { csrfJson, requireOrganizer } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import * as repo from "../../server/repo/comms";
 import { preflightRender } from "../../domain/compose";
+import { renderEmailHtml } from "../../mail/shell";
 import { requireOwnedEvent } from "./shared";
 import {
   requireFullMatch,
@@ -16,6 +17,7 @@ import {
   icsPreviewInfoFor,
   buildRenderTargets,
   missingToFields,
+  composeEmailShellOptions,
 } from "./compose-core";
 
 export const previewRoutes = new Hono<AppEnv>();
@@ -59,8 +61,12 @@ previewRoutes.post("/api/v1/events/:eventId/compose/preview", requireOrganizer, 
   // -- never re-deriving or re-fetching it -- so the wire payload carries it
   // alongside the rendered text (preview only; /compose/send never does this).
   const feedbackByTarget = new Map(targets.map((t) => [`${t.contactId}:${t.submissionId}`, t.vars.feedback]));
+  // DEC-037 amendment: the preview's `html` field renders through the exact
+  // same shell (composeEmailShellOptions) that /compose/send wraps every
+  // body in — preview-only, never returned by /compose/send (DEC-949).
   const items = result.rendered.map((r) => {
-    const withIcs = icsMap ? { ...r, ics: icsPreviewInfoFor(icsMap.get(r.submissionId)!, event) } : r;
+    const withHtml = { ...r, html: renderEmailHtml(r.text, composeEmailShellOptions(event)) };
+    const withIcs = icsMap ? { ...withHtml, ics: icsPreviewInfoFor(icsMap.get(r.submissionId)!, event) } : withHtml;
     const feedback = feedbackByTarget.get(`${r.contactId}:${r.submissionId}`);
     return feedback !== undefined ? { ...withIcs, vars: { feedback } } : withIcs;
   });

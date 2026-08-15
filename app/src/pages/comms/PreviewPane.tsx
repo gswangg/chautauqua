@@ -63,7 +63,22 @@ export function PreviewPane({ item, attachIcs = false }: { item: RenderedRecipie
         <span className="chq-comms-preview-field-label">Subject</span>
         <span className="chq-comms-preview-subject">{item.subject}</span>
       </div>
-      {renderBody(item)}
+      {item.html ? (
+        <>
+          <iframe
+            className="chq-comms-preview-frame"
+            title="Rendered email"
+            sandbox=""
+            srcDoc={item.html}
+          />
+          <details className="chq-comms-preview-plaintext-disclosure">
+            <summary>Plain text</summary>
+            {renderBody(item)}
+          </details>
+        </>
+      ) : (
+        renderBody(item)
+      )}
       {attachIcs && item.ics && (
         <div className="chq-comms-preview-field chq-comms-preview-ics" role="note">
           Calendar invite: {formatIcsChip(item.ics)}

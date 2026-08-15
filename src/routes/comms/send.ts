@@ -26,6 +26,7 @@ import {
   preflightIcsSchedule,
   buildRenderTargets,
   missingToFields,
+  composeEmailShellOptions,
 } from "./compose-core";
 
 export const sendRoutes = new Hono<AppEnv>();
@@ -137,10 +138,7 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJs
         to: { email: rendered.email, name: rendered.name },
         subject: rendered.subject,
         text: rendered.text,
-        html: renderEmailHtml(rendered.text, {
-          eventName: event.name,
-          reason: `you're a participant in a submission at ${event.name}`,
-        }),
+        html: renderEmailHtml(rendered.text, composeEmailShellOptions(event)),
         ics,
         templateId,
         eventId,
