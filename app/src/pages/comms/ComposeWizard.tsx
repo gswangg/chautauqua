@@ -96,6 +96,11 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   // "excluded" heading and state the reduced count — never a silent
   // narrowing of the audience.
   const [partialExcludedIds, setPartialExcludedIds] = useState<string[] | null>(null);
+  // DEC-317 amendment (wave 60): the third fields-map refusal shape
+  // (`no eligible recipients`) resolved to labels through submissionLabel,
+  // exactly like icsUnscheduledIds -- never rendered as a raw id, and never
+  // left to fall into the generic error banner unnamed.
+  const [noRecipientRefs, setNoRecipientRefs] = useState<string[] | null>(null);
 
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
   const pendingCaretRef = useRef<number | null>(null);
@@ -198,9 +203,14 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   // through the already-loaded preview rather than the raw id -- a 409/400
   // that counts rows still refuses to name them otherwise. Falls back to
   // the raw id only when the row isn't in the (possibly stale) preview.
-  function icsUnscheduledLabel(submissionId: string, rows: RenderedRecipient[]): string {
+  function submissionLabel(submissionId: string, rows: RenderedRecipient[]): string {
     const row = rows.find((r) => r.submissionId === submissionId);
-    return row ? `${row.ref} — ${row.name}` : submissionId;
+    if (row) return `${row.ref} — ${row.name}`;
+    // A no-eligible-recipients refusal names submissions that never rendered
+    // a preview row (they have zero eligible participants), so fall back to
+    // the already-loaded submission list before giving up to a raw id.
+    const submission = submissions.find((s) => s.id === submissionId);
+    return submission ? `${submission.ref} — ${submission.title}` : submissionId;
   }
 
   // DEC-051: pulls the { <submissionId>: 'not scheduled' } field errors out
@@ -224,6 +234,20 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     const end = el?.selectionEnd ?? bodyText.length;
     pendingCaretRef.current = start + token.length;
     setBodyText(bodyText.slice(0, start) + token + bodyText.slice(end));
+  }
+
+  // DEC-317 amendment (wave 60): pulls the { <submissionId>: 'no eligible
+  // recipients' } field errors out of an ApiError -- the third fields-map
+  // refusal shape the compose routes can emit, alongside 'not scheduled'
+  // (extractIcsUnscheduledIds) and 'missing merge fields: …'
+  // (extractMissingMergeFieldLines). Every entry is resolved through
+  // submissionLabel before rendering, never a raw id.
+  function extractNoRecipientRefs(err: ApiError): string[] | null {
+    if (!err.fields) return null;
+    const ids = Object.entries(err.fields)
+      .filter(([, message]) => message === 'no eligible recipients')
+      .map(([submissionId]) => submissionId);
+    return ids.length > 0 ? ids : null;
   }
 
   // DEC-856: the server rejects recipients with fields keyed
@@ -259,6 +283,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setCapMessage(null);
     setIcsUnscheduledIds(null);
     setMissingMergeFieldLines(null);
+    setNoRecipientRefs(null);
     try {
       const res = await apiPost<{ items: RenderedRecipient[] }>(`/events/${eventId}/compose/preview`, composeBody(overrides));
       setPreview(res.items);
@@ -268,6 +293,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
       if (err instanceof ApiError && err.code === 'invalid') {
         const unscheduled = extractIcsUnscheduledIds(err);
         const missingMergeFields = extractMissingMergeFieldLines(err);
+        const noRecipients = extractNoRecipientRefs(err);
         if (unscheduled) {
           setIcsUnscheduledIds(unscheduled);
         } else if (/exceeds the .*-recipient cap/i.test(err.message)) {
@@ -275,6 +301,9 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
         } else if (missingMergeFields) {
           setError(err.message);
           setMissingMergeFieldLines(missingMergeFields);
+        } else if (noRecipients) {
+          setError(err.message);
+          setNoRecipientRefs(noRecipients);
         } else {
           setError(err.message);
         }
@@ -329,6 +358,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setError(null);
     setIcsUnscheduledIds(null);
     setMissingMergeFieldLines(null);
+    setNoRecipientRefs(null);
     const excludeIds = options?.excludeIds ?? null;
     try {
       const body =
@@ -343,11 +373,15 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
       if (err instanceof ApiError) {
         const unscheduled = extractIcsUnscheduledIds(err);
         const missingMergeFields = extractMissingMergeFieldLines(err);
+        const noRecipients = extractNoRecipientRefs(err);
         if (unscheduled) {
           setIcsUnscheduledIds(unscheduled);
         } else if (missingMergeFields) {
           setError(err.message);
           setMissingMergeFieldLines(missingMergeFields);
+        } else if (noRecipients) {
+          setError(err.message);
+          setNoRecipientRefs(noRecipients);
         } else {
           setError(err.message);
         }
@@ -379,6 +413,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setIcsUnscheduledIds(null);
     setMissingMergeFieldLines(null);
     setPartialExcludedIds(null);
+    setNoRecipientRefs(null);
     setError(null);
   }
 
@@ -437,6 +472,17 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             <ul>
               {missingMergeFieldLines.map((line) => (
                 <li key={line}>{line}</li>
+              ))}
+            </ul>
+          )}
+          {/* DEC-317 amendment (wave 60): the third refusal shape --
+              'no eligible recipients' -- names each blocked submission the
+              same way the merge-field list above does, resolved through
+              submissionLabel, beside the recipient selection it refuses. */}
+          {noRecipientRefs && noRecipientRefs.length > 0 && (
+            <ul className="chq-comms-blocked-list">
+              {noRecipientRefs.map((id) => (
+                <li key={id}>{submissionLabel(id, preview)}</li>
               ))}
             </ul>
           )}
@@ -828,13 +874,13 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                 <div className="chq-error-banner" role="alert">
                   <p>
                     Send blocked: these submissions aren&apos;t scheduled yet:{' '}
-                    {icsUnscheduledIds.map((id) => icsUnscheduledLabel(id, preview)).join(', ')}. Schedule
+                    {icsUnscheduledIds.map((id) => submissionLabel(id, preview)).join(', ')}. Schedule
                     them first, or uncheck &quot;Attach calendar invite&quot;.
                   </p>
                   <ul className="chq-comms-blocked-list">
                     {icsUnscheduledIds.map((id) => (
                       <li key={id}>
-                        {icsUnscheduledLabel(id, preview)}{' '}
+                        {submissionLabel(id, preview)}{' '}
                         <a href="/admin/agenda" className="chq-link-button">
                           Place on the agenda &rsaquo;
                         </a>
@@ -943,13 +989,13 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             <div className="chq-error-banner" role="alert">
               <p>
                 Send blocked: these submissions aren&apos;t scheduled yet:{' '}
-                {icsUnscheduledIds.map((id) => icsUnscheduledLabel(id, preview)).join(', ')}. Schedule
+                {icsUnscheduledIds.map((id) => submissionLabel(id, preview)).join(', ')}. Schedule
                 them first, or uncheck &quot;Attach calendar invite&quot;.
               </p>
               <ul className="chq-comms-blocked-list">
                 {icsUnscheduledIds.map((id) => (
                   <li key={id}>
-                    {icsUnscheduledLabel(id, preview)}{' '}
+                    {submissionLabel(id, preview)}{' '}
                     <a href="/admin/agenda" className="chq-link-button">
                       Place on the agenda &rsaquo;
                     </a>
@@ -1019,7 +1065,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               <p>Excluded ({partialExcludedIds.length} not yet scheduled):</p>
               <ul>
                 {partialExcludedIds.map((id) => (
-                  <li key={id}>{icsUnscheduledLabel(id, preview)}</li>
+                  <li key={id}>{submissionLabel(id, preview)}</li>
                 ))}
               </ul>
             </div>

@@ -54,7 +54,13 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJs
   // participants left to notify.
   const noRecipients = noRecipientFields(submissions, input.submissionIds);
   if (Object.keys(noRecipients).length > 0) {
-    throw new ApiError("invalid", "Some selected sessions have no eligible recipients", noRecipients);
+    // wave 60 amendment (DEC-317): same named count as compose/preview.
+    const blockedCount = Object.keys(noRecipients).length;
+    throw new ApiError(
+      "invalid",
+      `${blockedCount} of ${input.submissionIds.length} selected sessions have no eligible recipients — every speaker on them has declined or has not been invited yet.`,
+      noRecipients,
+    );
   }
 
   const icsMap = input.attachIcs ? await preflightIcsSchedule(c.var.db, event, input.submissionIds) : undefined;
