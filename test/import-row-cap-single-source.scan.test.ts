@@ -4,6 +4,10 @@
 // app/src/pages/contacts/ImportWizard.tsx can disclose the cap where the
 // file is chosen, not only in the 400 the server returns at the end.
 //
+// Structure-custodian decomposition (contacts.ts contention hotspot):
+// contacts.ts is now a re-export barrel over src/domain/contacts-parts/*;
+// the literal declaration lives in domain/contacts-parts/import.ts.
+//
 // This scan walks every non-test .ts/.tsx file under src/ and fails if more
 // than one of them declares `const MAX_IMPORT_ROWS = <number>` -- a
 // `const MAX_IMPORT_ROWS = someIdentifier` re-export (e.g.
@@ -46,7 +50,9 @@ describe('MAX_IMPORT_ROWS is declared exactly once, in pure core (DEC-478, amend
       if (DECL_RE.test(src)) declaring.push(path);
     }
     const relPaths = declaring.map((p) => relative(SRC_ROOT, p));
-    expect(relPaths, `MAX_IMPORT_ROWS declared in: ${relPaths.join(', ')}`).toEqual(['domain/contacts.ts']);
+    expect(relPaths, `MAX_IMPORT_ROWS declared in: ${relPaths.join(', ')}`).toEqual([
+      'domain/contacts-parts/import.ts',
+    ]);
   });
 
   // Negative control: the repo module's `export { MAX_IMPORT_ROWS };`
