@@ -9,7 +9,7 @@ import { csrfJson } from "../../server/middleware";
 import { ApiError, readOptionalJsonBody } from "../../server/http";
 import * as repo from "../../server/repo/review";
 import { DEC_271, DEC_425 } from "../../decisions";
-import { MAX_RECUSAL_REASON_LENGTH } from "../../domain/evaluation";
+import { MAX_RECUSAL_REASON_LENGTH, isPlanOpen } from "../../domain/evaluation";
 import { currentAuth, requireReviewerOrOrganizer, asRecord, requireAssignedPlan, toRecusalOut } from "./shared";
 
 export const reviewRecusalRoutes = new Hono<AppEnv>();
@@ -26,6 +26,13 @@ reviewRecusalRoutes.post("/api/v1/review/plans/:planId/recusals/:submissionId", 
   // enforced before any role-scope check.
   const inEvent = await repo.getSubmissionSummaryInEvent(c.var.db, submissionId, plan.eventId);
   if (!inEvent) throw new ApiError("not_found", "Submission not found");
+
+  // DEC-018 (wave-10 amendment): a recusal is a write into the plan's round
+  // -- gate it on the same open/close window as the score PUT, non-organizer
+  // only.
+  if (auth.role !== "organizer" && !isPlanOpen(plan.openDate, plan.closeDate, Date.now(), plan.timezone)) {
+    throw new ApiError("conflict", "This review plan is not currently open");
+  }
 
   if (auth.role !== "organizer") {
     const inScope = await repo.isSubmissionInReviewerScope(c.var.db, plan, auth.userId, submissionId);
@@ -55,6 +62,11 @@ reviewRecusalRoutes.delete("/api/v1/review/plans/:planId/recusals/:submissionId"
 
   const inEvent = await repo.getSubmissionSummaryInEvent(c.var.db, submissionId, plan.eventId);
   if (!inEvent) throw new ApiError("not_found", "Submission not found");
+
+  // DEC-018 (wave-10 amendment): same write-window gate as POST above.
+  if (auth.role !== "organizer" && !isPlanOpen(plan.openDate, plan.closeDate, Date.now(), plan.timezone)) {
+    throw new ApiError("conflict", "This review plan is not currently open");
+  }
 
   if (auth.role !== "organizer") {
     const inScope = await repo.isSubmissionInReviewerScope(c.var.db, plan, auth.userId, submissionId);
