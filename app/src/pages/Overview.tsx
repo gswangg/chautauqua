@@ -22,7 +22,7 @@ import { daysAgo } from '../lib/dates';
 import './overview/overview.css';
 
 type SubmissionStatus = 'accepted' | 'accept_queue' | 'declined';
-type ContentDecision = 'approved' | 'changes_requested';
+type ContentDecision = 'approved';
 
 // DEC-611: Overview names the public surfaces it produces and links to them
 // by the event's own slug, never a guessed slugification of the name. The
@@ -160,6 +160,7 @@ export function OverviewPage() {
     }
   }
 
+
   async function handleMarkComplete(row: OverdueTaskRow) {
     if (!payload) return;
     const previous = payload;
@@ -188,11 +189,13 @@ export function OverviewPage() {
     }
   }
 
-  async function handleRemind(taskIds: string[]) {
+  async function handleRemind(rows: OverdueTaskRow[]) {
     if (!eventId) return;
     setError(null);
     try {
-      const res = await apiPost<SendResult>(`/events/${eventId}/onboarding/remind`, { taskIds });
+      const taskIds = [...new Set(rows.map((r) => r.taskId))];
+      const contactIds = [...new Set(rows.map((r) => r.contactId))];
+      const res = await apiPost<SendResult>(`/events/${eventId}/onboarding/remind`, { taskIds, contactIds });
       setRemindToast(describeSendResult(res, { one: 'contact', many: 'contacts' }));
     } catch (err) {
       setError(describeApiError(err, 'Could not send reminders'));
@@ -310,9 +313,9 @@ export function OverviewPage() {
             <button
               type="button"
               className="chq-overview-section-action chq-overview-remind-all"
-              onClick={() => handleRemind(payload.overdueTasks.rows.map((r) => r.taskId))}
+              onClick={() => handleRemind(payload.overdueTasks.rows)}
             >
-              Remind all {spellSmallNumber(payload.overdueTasks.rows.length)}
+              Remind all {spellSmallNumber(new Set(payload.overdueTasks.rows.map((r) => r.contactId)).size)}
             </button>
           )}
         </div>
@@ -333,7 +336,7 @@ export function OverviewPage() {
               <div className="chq-overview-row-late">{daysLateLabel(row.daysLate)}</div>
             </div>
             <div className="chq-overview-row-actions">
-              <button type="button" className="chq-overview-link-btn" onClick={() => handleRemind([row.taskId])}>
+              <button type="button" className="chq-overview-link-btn" onClick={() => handleRemind([row])}>
                 Remind
               </button>
               <button
@@ -432,13 +435,9 @@ export function OverviewPage() {
               >
                 Approve
               </button>
-              <button
-                type="button"
-                className="chq-overview-btn"
-                onClick={() => handleContentAction(row, 'changes_requested')}
-              >
-                Ask for changes
-              </button>
+              <Link className="chq-overview-link-btn" to={`/content/${row.submissionId}`}>
+                Open
+              </Link>
             </div>
           </div>
         ))}
