@@ -27,6 +27,23 @@ function makeFakeDb(opts: { rooms: string[]; submissionIds: string[] }) {
   const updateCalls: { table: unknown; setValue: unknown; where: unknown }[] = [];
 
   const submissionRows = opts.submissionIds.map((id, i) => ({ id, seq: i + 1, title: `Talk ${i + 1}` }));
+  const submissionById = new Map(submissionRows.map((r) => [r.id, r]));
+
+  // Persisted schedule_slot rows. runAutoSchedule re-reads the agenda through
+  // getAgendaPayload AFTER its inserts and (DEC-615 wave-43) asserts its own
+  // per-item unplaced reasons agree exactly with that payload's unplaced
+  // count — so this fake must round-trip writes like the real D1 does. A
+  // write-only recorder would report every just-placed session as still
+  // unplaced and trip that invariant.
+  const slotRows: {
+    submissionId: string;
+    roomId: string | null;
+    day: string;
+    startMin: number;
+    endMin: number;
+    seq: number;
+    title: string;
+  }[] = [];
 
   function rowsFor(table: unknown): unknown[] {
     if (table === schema.room) return opts.rooms.map((id) => ({ id }));
@@ -34,7 +51,7 @@ function makeFakeDb(opts: { rooms: string[]; submissionIds: string[] }) {
     if (table === schema.submission) return submissionRows;
     if (table === schema.submissionTrack) return [];
     if (table === schema.participant) return [];
-    if (table === schema.scheduleSlot) return [];
+    if (table === schema.scheduleSlot) return slotRows;
     return [];
   }
 
@@ -61,10 +78,34 @@ function makeFakeDb(opts: { rooms: string[]; submissionIds: string[] }) {
         insertCalls.push({ table, rows: arr });
         return {
           onConflictDoNothing: () => ({
-            returning: async () =>
-              table === schema.scheduleSlot
-                ? (arr as { submissionId: string }[]).map((r) => ({ submissionId: r.submissionId }))
-                : [],
+            returning: async () => {
+              if (table !== schema.scheduleSlot) return [];
+              // Mirror onConflictDoNothing({ target: submissionId }): a row
+              // whose submission already holds a slot is skipped and NOT
+              // returned, so only genuinely written ids get an ics bump.
+              const written: { submissionId: string }[] = [];
+              for (const r of arr as {
+                submissionId: string;
+                roomId: string | null;
+                day: string;
+                startMin: number;
+                endMin: number;
+              }[]) {
+                if (slotRows.some((s) => s.submissionId === r.submissionId)) continue;
+                const sub = submissionById.get(r.submissionId);
+                slotRows.push({
+                  submissionId: r.submissionId,
+                  roomId: r.roomId,
+                  day: r.day,
+                  startMin: r.startMin,
+                  endMin: r.endMin,
+                  seq: sub?.seq ?? 0,
+                  title: sub?.title ?? "",
+                });
+                written.push({ submissionId: r.submissionId });
+              }
+              return written;
+            },
           }),
         };
       },
