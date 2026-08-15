@@ -215,6 +215,41 @@ describe('ComposeWizard recipient picker', () => {
     }
   });
 
+  // w8-d (DEC-051/DEC-780 amendment, findings wave 8): the fact that decides
+  // whether a calendar invite can be attached moves to step 1, where it is
+  // still cheap to fix -- a scheduled row prints its event-local day+start
+  // time, an unscheduled row prints 'No slot yet' in the ink micro-label
+  // register (chq-flag), never a dash. The step primary sits in a footer
+  // row, not loose under the table.
+  it('renders the Slot column: event-local day+time for a scheduled row, "No slot yet" (chq-flag) for an unscheduled row, and moves the primary into a footer row', async () => {
+    const rows = [
+      { ...submission(1), slot: { day: '2026-08-18', startMin: 600, endMin: 660, roomName: 'Room 2A' } },
+      { ...submission(2), slot: null },
+    ];
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(rows, { total: 2, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('Talk number 1');
+
+    expect(screen.getByRole('columnheader', { name: 'Slot' })).toBeInTheDocument();
+    expect(screen.getByText('Tue 18 Aug 10:00')).toBeInTheDocument();
+
+    const noSlot = screen.getByText('No slot yet');
+    expect(noSlot).toBeInTheDocument();
+    expect(noSlot).toHaveClass('chq-flag');
+
+    const primary = screen.getByRole('button', { name: /Next: choose template/ });
+    expect(primary.closest('.chq-comms-select-actions')).not.toBeNull();
+  });
+
   // Ruling B1 (DEC-967 amendment, wave 25): Send moves to step 4, and step
   // 4 post-send is a report ABOUT RECIPIENTS -- headline audience count,
   // then each failed recipient named individually as a row (not a bare

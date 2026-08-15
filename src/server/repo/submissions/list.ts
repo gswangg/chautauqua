@@ -10,7 +10,15 @@ import { FILE_KINDS, type FileKind } from "../../../domain/files";
 import { chunkIds, type ParsedListQuery, type SortOrder } from "./query";
 import { likeContains } from "../like";
 import { findRoot, type DeliverableFileRow } from "../files-library";
-import { DEC_692, DEC_881, DEC_913 } from "../../../decisions";
+import { DEC_692, DEC_780, DEC_881, DEC_913 } from "../../../decisions";
+
+// DEC-780 (DEC-051 amendment, findings wave 8): the submission LIST payload
+// gains the slot the submission DETAIL payload already carries — same shape,
+// reused verbatim (SubmissionDetailSlot is defined here, canonically, and
+// re-exported for detail.ts to import — detail.ts already imports
+// reUploadedSql from this module, so the dependency direction was already
+// list.ts -> detail.ts-free; keeping the shared type here avoids a cycle).
+void DEC_780;
 
 // DEC-692: a worklist row names the session, the speaker, the LATEST
 // artefact and its status — latestFile is that artefact, computed here.
@@ -62,6 +70,16 @@ export interface SubmissionSpeaker {
   name: string;
 }
 
+// DEC-780: the one slot shape shared by the submission LIST and DETAIL
+// payloads. Defined here (list.ts) and imported by detail.ts, which already
+// depends on this module for reUploadedSql.
+export interface SubmissionDetailSlot {
+  day: string;
+  startMin: number;
+  endMin: number;
+  roomName: string | null;
+}
+
 export interface SubmissionListItem {
   id: string;
   ref: string;
@@ -92,7 +110,15 @@ export interface SubmissionListItem {
   // batched off schedule_slot/room the same way deliverableCounts/latestFile
   // are, never a per-row fetch. null for a submission not yet placed on the
   // agenda.
-  scheduled: { day: string; startMin: number; endMin: number; roomName: string | null } | null;
+  scheduled: SubmissionDetailSlot | null;
+  // w8-d (DEC-051/DEC-780 amendment, findings wave 8): the same slot the
+  // submission DETAIL payload carries, reused verbatim so there is one slot
+  // shape in the SPA -- Compose step 1 renders this so the fact that decides
+  // whether a calendar invite can be attached is visible before an audience
+  // is chosen and a message is written, not first refused at step 3. Sourced
+  // from the same schedule_slot/room batch as `scheduled` above -- never a
+  // second per-row lookup.
+  slot: SubmissionDetailSlot | null;
 }
 
 export interface SubmissionContentStatusCounts {
@@ -485,6 +511,7 @@ export async function listSubmissions(
       latestFileByKind: latestFileByKindBySubmission.get(r.id) ?? {},
       reuploaded: latestFileVersionNo !== null && latestFileVersionNo > 1,
       scheduled: scheduledBySubmission.get(r.id) ?? null,
+      slot: scheduledBySubmission.get(r.id) ?? null,
       ...(params.includeAnswers ? { answers: answersBySubmission.get(r.id) ?? {} } : {}),
     };
   });
