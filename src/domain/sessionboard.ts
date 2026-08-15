@@ -17,9 +17,37 @@ export const SESSIONBOARD_SOURCE = "sessionboard";
 // drifts the moment either module changes.
 import { SUBMISSION_STATUSES } from "./status";
 import { PARTICIPANT_ROLE_OPTIONS } from "./participant-roles";
+// DEC-417 (amendment): the sessionboard importer writes the same
+// schema.contact/schema.submission columns the hand-typed editors write
+// (src/routes/api/contacts/crud.ts, src/routes/api/contacts/import.ts:107)
+// -- capped here at plan time with the SAME constants, never a locally
+// hand-typed number.
+import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from "../forms/validate";
 
 const SUBMISSION_STATUS_SET = new Set<string>(SUBMISSION_STATUSES);
 const PARTICIPANT_ROLE_SET = new Set<string>(PARTICIPANT_ROLE_OPTIONS.map((o) => o.value));
+
+/** DEC-417 (amendment): per-column caps for the sessionboard importer's
+ * mapped fields -- the SAME caps every hand-typed writer of these columns
+ * enforces (src/domain/contacts.ts's importFieldCapViolations for the
+ * contacts entity, MAX_NAME_LENGTH for submission title matching
+ * src/routes/api/contacts/import.ts:107's sessionTitle check). Entities/
+ * fields absent from this map are uncapped by this pass (out of this
+ * task's scope). */
+const SB_FIELD_CAPS: Partial<Record<SbEntity, Record<string, number>>> = {
+  contacts: {
+    email: MAX_NAME_LENGTH,
+    firstName: MAX_NAME_LENGTH,
+    lastName: MAX_NAME_LENGTH,
+    company: MAX_NAME_LENGTH,
+    title: MAX_NAME_LENGTH,
+    phone: MAX_NAME_LENGTH,
+    bio: MAX_LONG_TEXT_LENGTH,
+  },
+  submissions: {
+    title: MAX_NAME_LENGTH,
+  },
+};
 
 /** Normalizes a status cell for vocabulary matching: trim, lowercase,
  * collapse whitespace/hyphens to underscores (e.g. "Accept Queue" ->
@@ -163,6 +191,26 @@ export function planSessionboardRows(
         continue;
       }
       values[target] = value;
+    }
+
+    // DEC-417 (amendment): a mapped value over the same cap the hand-typed
+    // editor enforces for that column is refused HERE, at plan time -- the
+    // key is dropped (never truncated) and an issue names the row+field, so
+    // the dry run never mints a value the field's own drawer would then
+    // refuse to re-save.
+    const fieldCaps = SB_FIELD_CAPS[entity];
+    if (fieldCaps) {
+      for (const [field, max] of Object.entries(fieldCaps)) {
+        const value = values[field];
+        if (value !== undefined && value.length > max) {
+          issues.push({
+            row: rowNumber,
+            field,
+            message: `${field} exceeds ${max} characters -- dropped`,
+          });
+          delete values[field];
+        }
+      }
     }
 
     // DEC-675: validate against the product's own vocabularies HERE, in the

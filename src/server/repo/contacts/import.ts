@@ -36,6 +36,15 @@ export interface ImportResult {
 
 export { MAX_IMPORT_ROWS };
 
+/** DEC-417 (amendment): renders a capViolations map (target -> overBudgetBy
+ * message, from src/domain/contacts.ts's importFieldCapViolations) into one
+ * skip/reason string naming every offending target -- so a row over cap on
+ * more than one field states all of them, not just the first. */
+function describeCapViolations(capViolations: Record<string, string>): string {
+  const parts = Object.entries(capViolations).map(([field, message]) => `${field}: ${message}`);
+  return `over the field length cap (${parts.join(", ")})`;
+}
+
 /** DEC-491 amendment (wave 47): a Cloudflare Workers request may issue on
  * the order of 1000 subrequests, and each D1 statement (including each
  * statement inside a chunked batch) counts as one. This is the ceiling the
@@ -197,7 +206,7 @@ async function flushContactUpdates(db: Db, rows: ContactCommitRow[]): Promise<vo
 export async function applyImportRows(
   db: Db,
   orgId: string,
-  rows: { line: number; parsed: Record<string, unknown> }[],
+  rows: { line: number; parsed: Record<string, unknown>; capViolations?: Record<string, string> }[],
   opts?: { skipLines?: number[] },
 ): Promise<ImportResult> {
   if (rows.length > MAX_IMPORT_ROWS) {
@@ -280,9 +289,16 @@ export async function applyImportRows(
   const newIds = new Set<string>();
   const attributionUpdates: { contactId: string; title: string | null; company: string | null }[] = [];
 
-  for (const { line, parsed } of rows) {
+  for (const { line, parsed, capViolations } of rows) {
     if (skipLineSet.has(line)) {
       skipped.push({ line, reason: "skipped by organizer" });
+      continue;
+    }
+    // DEC-417 (amendment): the same rows planImportRows flagged over-cap at
+    // dry-run time are refused here too -- applyImportRows never writes a
+    // row its own plan marked as a rejection.
+    if (capViolations && Object.keys(capViolations).length > 0) {
+      skipped.push({ line, reason: describeCapViolations(capViolations) });
       continue;
     }
     const email = typeof parsed.email === "string" ? parsed.email : undefined;
@@ -373,6 +389,13 @@ export interface ImportPlanRow {
   contactId?: string;
   overwrites?: ImportPlanOverwrite[];
   possibleDuplicates?: ContactRecord[];
+  /** DEC-417 (amendment): target -> overBudgetBy message, from
+   * importFieldCapViolations -- present (action: "skip") whenever this row
+   * would mint/patch a contact over a per-column cap the hand-typed drawer
+   * also enforces. The ImportWizard Review step surfaces this the same way
+   * it surfaces possibleDuplicates/overwrites, so the offending field is
+   * named before the organizer commits the import (not only at apply). */
+  capViolations?: Record<string, string>;
 }
 
 export interface ImportPlan {
@@ -425,7 +448,7 @@ async function selectContactsWhere(
 export async function planImportRows(
   db: Db,
   orgId: string,
-  rows: { line: number; parsed: Record<string, unknown> }[],
+  rows: { line: number; parsed: Record<string, unknown>; capViolations?: Record<string, string> }[],
 ): Promise<ImportPlan> {
   if (rows.length > MAX_IMPORT_ROWS) {
     throw new ApiError(
@@ -476,8 +499,23 @@ export async function planImportRows(
   let updated = 0;
   let skippedCount = 0;
 
-  for (const { line, parsed } of rows) {
+  for (const { line, parsed, capViolations } of rows) {
     const email = typeof parsed.email === "string" ? parsed.email : undefined;
+    // DEC-417 (amendment): a row over a per-column cap is planned as a skip
+    // (never a create/update) so it surfaces on the dry-run Review step --
+    // applyImportRows refuses this exact same line for the exact same
+    // reason, never truncating the value to fit.
+    if (capViolations && Object.keys(capViolations).length > 0) {
+      planRows.push({
+        line,
+        email: email ?? "",
+        action: "skip",
+        reason: describeCapViolations(capViolations),
+        capViolations,
+      });
+      skippedCount++;
+      continue;
+    }
     if (!email || email.trim() === "") {
       planRows.push({ line, email: "", action: "skip", reason: "missing email" });
       skippedCount++;
