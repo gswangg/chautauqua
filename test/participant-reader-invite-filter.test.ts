@@ -78,6 +78,7 @@ const ALLOWED: Record<string, string[]> = {
   ],
   "server/repo/participants.ts": [
     "getParticipantOwnership looks up a single participant row by participantId before a write — ownership check, not eligibility.",
+    "getParticipantCount (DEC-422 wave-67 / DEC-604 amendment, wave 12) is the MAX_PARTICIPANTS_PER_SUBMISSION count that closes the organizer door, the exact mirror of portal-edit.ts's cap count below: a per-submission cap over EVERY participant row, not an eligibility read. Filtering it by invite status would be a defect, not a fix — a declined or withdrawn co-presenter still occupies its slot (same reasoning as import/sessionboard.ts's MAX(order) read), so an eligibility-filtered count would let a submission be pushed past the cap by re-inviting into declined rows.",
   ],
   "server/repo/contacts/history.ts": [
     "CRM contact-history timeline lists every submission the contact ever touched, not an eligibility read.",
