@@ -232,7 +232,7 @@ describe("DEC-271: reviewer recusal", () => {
     expect(body.recusal.reason).toBeNull();
   });
 
-  it("POST rejects a reason over 500 chars", async () => {
+  it("POST rejects a reason one character over MAX_RECUSAL_REASON_LENGTH, naming the cap in the message", async () => {
     const app = await buildApp(reviewer);
     const res = await app.request(`/api/v1/review/plans/${plan.id}/recusals/${SUB_1.id}`, {
       method: "POST",
@@ -240,6 +240,11 @@ describe("DEC-271: reviewer recusal", () => {
       body: JSON.stringify({ reason: "x".repeat(501) }),
     });
     expect(res.status).toBe(400);
+    // DEC-425 wave-67 amendment: MAX_RECUSAL_REASON_LENGTH is now a named
+    // constant (src/domain/evaluation.ts), and the refusal message
+    // interpolates it rather than hand-typing 500.
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields?.reason).toBe("must be a string of at most 500 characters");
   });
 
   it("DELETE removes an existing recusal (204)", async () => {

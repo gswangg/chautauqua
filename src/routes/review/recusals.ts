@@ -8,11 +8,13 @@ import type { AppEnv } from "../../server/env";
 import { csrfJson } from "../../server/middleware";
 import { ApiError, readOptionalJsonBody } from "../../server/http";
 import * as repo from "../../server/repo/review";
-import { DEC_271 } from "../../decisions";
+import { DEC_271, DEC_425 } from "../../decisions";
+import { MAX_RECUSAL_REASON_LENGTH } from "../../domain/evaluation";
 import { currentAuth, requireReviewerOrOrganizer, asRecord, requireAssignedPlan, toRecusalOut } from "./shared";
 
 export const reviewRecusalRoutes = new Hono<AppEnv>();
 void DEC_271; // recusal endpoints below: POST/DELETE .../recusals/:submissionId, queue exclusion, 409 on scoring, progress math
+void DEC_425; // MAX_RECUSAL_REASON_LENGTH single-sourced in src/domain/evaluation.ts
 
 reviewRecusalRoutes.post("/api/v1/review/plans/:planId/recusals/:submissionId", csrfJson, async (c) => {
   requireReviewerOrOrganizer(c);
@@ -33,8 +35,10 @@ reviewRecusalRoutes.post("/api/v1/review/plans/:planId/recusals/:submissionId", 
   const body = asRecord(await readOptionalJsonBody(c));
   let reason: string | null = null;
   if (body.reason !== undefined && body.reason !== null) {
-    if (typeof body.reason !== "string" || body.reason.length > 500) {
-      throw new ApiError("invalid", "Invalid recusal", { reason: "must be a string of at most 500 characters" });
+    if (typeof body.reason !== "string" || body.reason.length > MAX_RECUSAL_REASON_LENGTH) {
+      throw new ApiError("invalid", "Invalid recusal", {
+        reason: `must be a string of at most ${MAX_RECUSAL_REASON_LENGTH} characters`,
+      });
     }
     reason = body.reason;
   }

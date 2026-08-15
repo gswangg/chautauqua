@@ -178,6 +178,46 @@ describe("PATCH /api/v1/submissions/:id trackIds (DEC-598, closes CNT-D6)", () =
     expect(inserts).toHaveLength(0);
   });
 
+  // DEC-425 wave-67 amendment: MAX_FILTER_ID_LENGTH (64) and
+  // MAX_SUBMISSION_TRACK_IDS (1000) are now named constants imported by
+  // parseTrackIdsField, not hand-typed literals -- both refusal messages
+  // interpolate the constant's value.
+  it("400s a track id one character over MAX_FILTER_ID_LENGTH, naming the cap in the message", async () => {
+    const { db, deletes, inserts } = fakeDb([
+      [SUBMISSION_ORG_A], // getSubmissionOwnership
+    ]);
+
+    const tooLongId = "a".repeat(65);
+    const res = await appWithDbAndAuth(db, ORGANIZER_A).request(
+      patchRequest("/api/v1/submissions/sub-1", { trackIds: [tooLongId] }),
+    );
+
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as any;
+    expect(json.error.message).toContain("1-64 chars");
+    expect(json.error.fields.trackIds).toContain("64");
+    expect(deletes).toHaveLength(0);
+    expect(inserts).toHaveLength(0);
+  });
+
+  it("400s a trackIds array one entry over MAX_SUBMISSION_TRACK_IDS, naming the cap in the message", async () => {
+    const { db, deletes, inserts } = fakeDb([
+      [SUBMISSION_ORG_A], // getSubmissionOwnership
+    ]);
+
+    const tooManyIds = Array.from({ length: 1001 }, (_, i) => `t${i}`);
+    const res = await appWithDbAndAuth(db, ORGANIZER_A).request(
+      patchRequest("/api/v1/submissions/sub-1", { trackIds: tooManyIds }),
+    );
+
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as any;
+    expect(json.error.message).toContain("1000");
+    expect(json.error.fields.trackIds).toBe("Max 1000");
+    expect(deletes).toHaveLength(0);
+    expect(inserts).toHaveLength(0);
+  });
+
   it("404s a cross-org caller before ever touching tracks (existence-hiding, never 403)", async () => {
     const { db, deletes, inserts } = fakeDb([
       [{ eventId: "event-1", orgId: "org-b" }], // getSubmissionOwnership — belongs to a different org
