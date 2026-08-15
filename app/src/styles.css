@@ -1329,37 +1329,44 @@ a:hover {
   font-size: 12px;
 }
 
-/* User-filed (gate-5 cycle): the URL/Snippet readouts flowed INLINE with
-   their Copy/Preview buttons, so the buttons floated mid-text wherever the
-   code happened to wrap. Each readout is a block: the code gets its own
-   full-width box, the actions sit in a row beneath it. */
+/* w19-c/DEC-785 amendment: the frame (Chautauqua Settings.dc.html :1082-1090)
+   draws ONE boxed snippet readout -- a rule on the sunk surface holding the
+   eyebrow, the snippet, and its action row -- not a code box floated inside
+   a second outer block. */
 .chq-embeds-output-block {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
+  gap: 9px;
   margin-bottom: 4px;
+  border: 1px solid var(--chq-rule);
+  border-radius: 5px;
+  background: var(--chq-surface-sunk);
+  padding: 14px 16px;
+  box-sizing: border-box;
 }
 
 .chq-embeds-output-block code {
   display: block;
   width: 100%;
   box-sizing: border-box;
-  padding: 8px 10px;
-  background: var(--chq-surface);
-  border: 1px solid var(--chq-rule);
-  border-radius: var(--chq-r-card);
-  overflow-wrap: anywhere;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  word-break: break-all;
 }
 
 .chq-embeds-output-actions {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .chq-embeds-note {
   font-size: 12px;
   color: var(--chq-muted);
+  line-height: 1.5;
 }
 
 /* DEC-607: the live region every copy-to-clipboard control announces
