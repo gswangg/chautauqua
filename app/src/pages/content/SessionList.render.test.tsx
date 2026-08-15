@@ -796,6 +796,11 @@ describe('SessionList: B7 zero-row states render no <table> (DEC-678 amendment)'
 
     expect(screen.queryAllByRole('columnheader')).toHaveLength(0);
     expect(screen.getByText(/Filtered by the "Approved" tab/)).toBeInTheDocument();
+    // DEC-678 amendment (B7 rule 5, wave 53): a FILTERED zero-state keeps
+    // the pager -- chrome is how a filter gets undone.
+    expect(document.querySelector('.chq-content-pager')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Previous' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
     const escape = screen.getByRole('button', { name: 'View all accepted sessions' });
     escape.click();
     expect(onTabChange).toHaveBeenCalledWith('all');
@@ -824,6 +829,12 @@ describe('SessionList: B7 zero-row states render no <table> (DEC-678 amendment)'
     expect(screen.queryAllByRole('columnheader')).toHaveLength(0);
     expect(screen.getByText('No accepted sessions yet.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /View all accepted sessions/ })).not.toBeInTheDocument();
+    // DEC-678 amendment (B7 rule 5, wave 53): a FRESH zero-state (the
+    // unfiltered 'all' tab) hides the pager -- chrome over a worklist that
+    // has never held a row.
+    expect(document.querySelector('.chq-content-pager')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
   });
 
   it('still renders a <table> with columnheaders while loading, even with zero items', () => {

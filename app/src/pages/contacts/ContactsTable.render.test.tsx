@@ -127,6 +127,11 @@ describe('ContactsTable empty states (B7 rule 6, DEC-678)', () => {
     renderTable({ items: [], total: 0, empty: { variant: 'fresh' } });
     expect(screen.getByText('No contacts yet.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Clear filter' })).not.toBeInTheDocument();
+    // DEC-678 amendment (B7 rule 5, wave 53): a FRESH zero-state hides the
+    // pager -- chrome over a directory that has never held a row.
+    expect(document.querySelector('.chq-pager')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
   });
 
   it('renders the filtered voice with an escape naming the facet when one is in flight', () => {
@@ -139,6 +144,11 @@ describe('ContactsTable empty states (B7 rule 6, DEC-678)', () => {
     expect(screen.getByText('No contacts match the current search/filter.')).toBeInTheDocument();
     expect(screen.getByText('Search "ada"')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Clear filter' })).toBeInTheDocument();
+    // DEC-678 amendment (B7 rule 5, wave 53): a FILTERED zero-state keeps
+    // the pager -- chrome is how a filter gets undone.
+    expect(document.querySelector('.chq-pager')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Previous' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
   });
 
   it('still paints the loading skeleton and no EmptyState while loading', () => {

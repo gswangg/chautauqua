@@ -143,6 +143,12 @@ describe('ComposeWizard recipient picker', () => {
     // The status controls stay visible above the message -- 'filtered' never
     // hides the chrome that produced the empty result.
     expect(screen.getByRole('checkbox', { name: 'Pending' })).toBeInTheDocument();
+    // DEC-678 amendment (B7 rule 5, wave 53): this step-1 zero-state is
+    // always 'filtered' (the status set is always the facet), never fresh
+    // -- the pager stays, because chrome is how a filter gets undone.
+    expect(screen.getByRole('button', { name: 'Previous' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
+    expect(screen.getByText('Showing 0 of 0')).toBeInTheDocument();
 
     // Narrow further (uncheck Accepted) so the facet actually changes, then
     // take the escape -- it must restore the DEFAULT status selection

@@ -163,22 +163,28 @@ export function ContactsTable({
           shared .chq-pager's justify-content:space-between (styles.css)
           spreads these two DOM children (span, then the nav group) to the
           row's ends without any pager-specific CSS change. */}
-      <div className="chq-pager">
-        <span>{paginationSummary(page, perPage, total, items.length)}</span>
-        <div className="chq-contacts-pager-nav">
-          <button type="button" className="chq-btn chq-btn-secondary" disabled={page <= 1} onClick={() => onChangePage(page - 1)}>
-            Previous
-          </button>
-          <button
-            type="button"
-            className="chq-btn chq-btn-secondary"
-            disabled={page * perPage >= total}
-            onClick={() => onChangePage(page + 1)}
-          >
-            Next
-          </button>
+      {/* DEC-678 amendment (B7 rule 5, wave 53): a FRESH zero-state hides
+          the pager -- 'Showing 0 of 0' with Prev/Next under a block that
+          says the directory has never held a row is chrome over nothing. A
+          FILTERED zero-state keeps it: chrome is how a filter gets undone. */}
+      {!(settledEmpty && empty.variant === 'fresh') && (
+        <div className="chq-pager">
+          <span>{paginationSummary(page, perPage, total, items.length)}</span>
+          <div className="chq-contacts-pager-nav">
+            <button type="button" className="chq-btn chq-btn-secondary" disabled={page <= 1} onClick={() => onChangePage(page - 1)}>
+              Previous
+            </button>
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              disabled={page * perPage >= total}
+              onClick={() => onChangePage(page + 1)}
+            >
+              Next
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

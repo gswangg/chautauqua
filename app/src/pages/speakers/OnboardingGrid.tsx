@@ -1013,7 +1013,12 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
         </>
       )}
 
-      {!loading && grid && (
+      {/* DEC-678 amendment (B7 rule 5, wave 53): a FRESH zero-state (no
+          narrowing facet active) hides the pager -- 'Showing 0 of 0' with
+          Prev/Next under a block that says the roster has never held a row
+          is chrome over nothing. A FILTERED zero-state keeps it: chrome is
+          how a filter gets undone. */}
+      {!loading && grid && !(visibleRows.length === 0 && !hasActiveNarrowing(filters)) && (
         <div className="chq-speakers-pager">
           <span className="chq-summary">{paginationSummary(page, PER_PAGE, total, visibleRows.length)}</span>
           <span className="chq-speakers-grid-caption">Click any status to mark it complete or pending</span>
