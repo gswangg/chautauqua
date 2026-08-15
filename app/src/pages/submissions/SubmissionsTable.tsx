@@ -358,7 +358,7 @@ export function SubmissionsTable() {
         <table className="chq-table chq-submissions-table">
           <thead>
             <tr>
-              <th>
+              <th className="chq-submissions-col-select">
                 <input
                   type="checkbox"
                   className="chq-check"
@@ -370,17 +370,19 @@ export function SubmissionsTable() {
                   onChange={() => setSelection((s) => selectionReducer(s, { type: 'TOGGLE_PAGE', pageIds }))}
                 />
               </th>
-              <th>Ref</th>
-              <th>Title</th>
-              <th>Speakers</th>
-              <th>Track</th>
-              <th>Status</th>
-              <th>Sent</th>
+              <th className="chq-submissions-col-ref">Ref</th>
+              <th className="chq-submissions-col-title">Title</th>
+              <th className="chq-submissions-col-speakers">Speakers</th>
+              <th className="chq-submissions-col-track">Track</th>
+              <th className="chq-submissions-col-status">Status</th>
+              <th className="chq-submissions-col-sent">Sent</th>
               {shownColumns.map((col) => (
-                <th key={col.fieldId}>{col.label}</th>
+                <th key={col.fieldId} className="chq-submissions-col-custom">
+                  {col.label}
+                </th>
               ))}
-              <th></th>
-              <th></th>
+              <th className="chq-submissions-col-clone"></th>
+              <th className="chq-submissions-col-end"></th>
             </tr>
           </thead>
           <tbody>
