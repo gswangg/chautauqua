@@ -118,12 +118,16 @@ async function parseTrackIdsField(db: Db, eventId: string, raw: unknown): Promis
       trackIds: `Invalid id (max ${MAX_FILTER_ID_LENGTH} chars)`,
     });
   }
-  if (raw.length > MAX_SUBMISSION_TRACK_IDS) {
+  // DEC-598 (wave-10 amendment): trackIds are a SET at every boundary — dedupe
+  // BEFORE the cap check so the cap counts DISTINCT ids (a repeated id must
+  // never inflate someone past the cap, or worse, reach the writer and raise
+  // SQLITE_CONSTRAINT on the [submissionId, trackId] primary key).
+  const trackIds = Array.from(new Set(raw as string[]));
+  if (trackIds.length > MAX_SUBMISSION_TRACK_IDS) {
     throw new ApiError("invalid", `trackIds must not exceed ${MAX_SUBMISSION_TRACK_IDS} entries`, {
-      trackIds: overCapCountMessage(raw.length, MAX_SUBMISSION_TRACK_IDS, "track"),
+      trackIds: overCapCountMessage(trackIds.length, MAX_SUBMISSION_TRACK_IDS, "track"),
     });
   }
-  const trackIds = raw as string[];
   const eventTracks = await getEventTracks(db, eventId);
   const validTrackIds = new Set(eventTracks.map((t) => t.id));
   const unknown = trackIds.filter((t) => !validTrackIds.has(t));

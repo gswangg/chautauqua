@@ -4,7 +4,8 @@
 // submit lives in src/lib/rate-limit.ts's checkAndIncrementScopedLimit
 // (DEC-057). Web APIs only (DEC-002) — no node:/cloudflare/drizzle imports.
 
-import { formatRef } from "../domain/ids";
+import { formatRef, MAX_SUBMISSION_TRACK_IDS } from "../domain/ids";
+import { overCapCountMessage } from "../domain/cap-copy";
 import { dayLabelEndInstant, dayLabelStartInstant } from "./timezone";
 
 /** CFP-04 / DEC-522: past form.close_date rejects new submissions. A
@@ -57,7 +58,13 @@ export type TrackChoiceResult = { ok: true } | { ok: false; error: string };
  * tracks cannot require one — every new event ships a default 'General'
  * track, so a truly empty availableTrackIds only happens if a producer
  * deletes every track, and submissions must not dead-end in that case
- * either. */
+ * either.
+ *
+ * DEC-598 (wave-10 amendment): trackIds are a SET at every boundary — the
+ * count cap (MAX_SUBMISSION_TRACK_IDS) is enforced here too, so the
+ * anonymous public CFP and the portal edit share the ONE cap from the ONE
+ * place, in the shared cap-copy grammar (never a bare number). The
+ * unknown-track membership check still runs first and wins over the cap. */
 export function validateTrackChoice(
   selectedTrackIds: string[],
   availableTrackIds: string[],
@@ -66,6 +73,9 @@ export function validateTrackChoice(
   const hasUnknown = selectedTrackIds.some((id) => !available.has(id));
   if (hasUnknown) {
     return { ok: false, error: "Selected track is not offered by this form." };
+  }
+  if (selectedTrackIds.length > MAX_SUBMISSION_TRACK_IDS) {
+    return { ok: false, error: overCapCountMessage(selectedTrackIds.length, MAX_SUBMISSION_TRACK_IDS, "track") };
   }
   if (availableTrackIds.length === 0) {
     return { ok: true };

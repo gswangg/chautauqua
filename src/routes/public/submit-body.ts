@@ -68,9 +68,13 @@ export function applyNameSplit(fields: FormFieldDef[], body: Record<string, unkn
   if (lastNameField) answers[lastNameField.id] = lastName;
 }
 
+// DEC-598 (wave-10 amendment): trackIds are a SET at every boundary — a
+// repeated id here must not become two submission_track rows downstream
+// (createSubmissionTracks/replaceSubmissionTracks primary-key on
+// [submissionId, trackId]), so this boundary dedupes before returning.
 export function extractTrackIds(body: Record<string, unknown>): string[] {
   const raw = body.trackIds;
   if (raw === undefined) return [];
-  if (Array.isArray(raw)) return raw.map(String);
-  return [String(raw)];
+  const list = Array.isArray(raw) ? raw.map(String) : [String(raw)];
+  return Array.from(new Set(list));
 }
