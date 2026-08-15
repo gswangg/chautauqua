@@ -190,8 +190,15 @@ function computeVerdictViolations(): string[] {
 // repair surfaces, not a new one it introduces. task-w45-f only fixed
 // FIRST LINES (per its task's scope) so these two are added here rather
 // than silently swallowed again.
+//
+// wave-45 merge train: task-w45-g narrowed classifyScope() so each slot name
+// must match as a WHOLE TOKEN (`\btriage[-\s]closure\b`, not a bare `triage`
+// substring). 0002's scope is "commit-body triage", which is NOT a
+// triage-closure section, so the "triage-closure must carry OPEN ITEMS:"
+// rule no longer applies to it and it drops out of this ratchet -- the
+// permitted shrink direction. 0098/0117/0129, whose scope really is
+// "triage-closure", still classify and remain below.
 const LEGACY_VERDICT_VIOLATIONS: readonly string[] = [
-  "docs/verification-log/index/0002-2026-08-10-task-w12-c-commit-body-triage-f6e3422.md",
   "docs/verification-log/index/0098-2026-08-10-task-w8-g-triage-closure-38860f9.md",
   "docs/verification-log/index/0117-2026-08-10-task-w13-f-triage-closure-7f7477e.md",
   "docs/verification-log/index/0129-2026-08-10-task-w20-f-triage-closure-6807b67.md",
@@ -244,10 +251,17 @@ describe("negative controls (fixture strings)", () => {
     expect(parseLogSections(md)).toHaveLength(0);
   });
 
+  // wave-45 merge train: task-w45-g made `section.qualifying === true` a
+  // precondition for a section to be a gate candidate at all, so this
+  // fixture carries the bare `QUALIFYING` body line -- without it the
+  // section is skipped entirely and the slot reads MISSING rather than
+  // exercising the verdict logic this control is here to prove.
   it("a section ending RESULT: QUALIFYING grades FAIL through gradePredicate", () => {
-    const md = "## 2026-08-15 task-fixture — spec-audit @ abc1234\nRESULT: QUALIFYING\n";
+    const md =
+      "## 2026-08-15 task-fixture — spec-audit @ abc1234\nQUALIFYING\nRESULT: QUALIFYING\n";
     const [section] = parseLogSections(md);
     expect(section?.result).toBe("QUALIFYING");
+    expect(section?.qualifying).toBe(true);
     const rows = gradePredicate(parseLogSections(md), "product-sha", () => true);
     const row = rows.find((r) => r.slot === "spec-audit");
     expect(row?.status).toBe("FAIL");

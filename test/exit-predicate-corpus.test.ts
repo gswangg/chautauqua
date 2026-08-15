@@ -45,6 +45,13 @@ function firstLine(file: string): string {
 // (e.g. a future lane that types an ASCII hyphen instead of an em dash, or
 // omits the trailing `@ <sha>`) must fail this test at merge time -- do not
 // add entries here to make a new file pass; fix the file's header instead.
+//
+// wave-45 merge train: task-w45-f repaired the first line of 0176 and
+// 0180-0185 (7 files, DEC-068 wave-45 ruling (b)), so the ratchet shrinks by
+// exactly those 7 entries -- the permitted direction. The remaining entries
+// are the 2026-08-12 legacy set that carries no sha anywhere in filename or
+// body and so is not repairable by the "date/branch/sha from the filename"
+// method; task-w45-f filed those as a separate wave-46+ finding.
 const FROZEN_NON_CONFORMANT: readonly string[] = [
   "0140-2026-08-12-task-w12-a-render-sweep-mobile-overflow-instrument-correction.md",
   "0142-2026-08-12-task-w13-c-j1-j12-persona-walkthrough-npm-run-walkthrough-sta.md",
@@ -66,15 +73,8 @@ const FROZEN_NON_CONFORMANT: readonly string[] = [
   "0166-2026-08-15-task-w27-d-perf-smoke-render-sweep-ceda66f2-diagnostic.md",
   "0167-2026-08-15-task-w27-c-walkthrough-ceda66f2-diagnostic.md",
   "0168-2026-08-15-task-w27-g-tier-1-fidelity-re-check-ceda66f2-diagnostic.md",
-  "0176-2026-08-15-task-w29-a-onboarding-grid-perf-1d274c8b.md",
   "0177-2026-08-15-task-w29-f-void-gate-finding-f62af3ce.md",
   "0178-2026-08-15-task-w29-c-render-sweep-6aa4a438.md",
-  "0180-2026-08-15-task-w29-e-review-perf-b7060152.md",
-  "0181-2026-08-15-task-w31-d-perf-profile-fixtures-9119a01a.md",
-  "0182-2026-08-15-task-w31-b-reviewer-queue-perf-66123630.md",
-  "0183-2026-08-15-task-w31-c-plan-results-perf-7581aa3b.md",
-  "0184-2026-08-15-task-w31-a-files-library-perf-39634fe8.md",
-  "0185-2026-08-15-task-w32-c-perf-coverage-e5774e56.md",
   "0187-2026-08-15-task-w32-b-reviewer-queue-hydration-74c6377a.md",
   "0193-2026-08-15-task-w36-c-perf-smoke-f5783479.md",
 ];
