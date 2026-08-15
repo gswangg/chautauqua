@@ -9,7 +9,7 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { chunkIds } from "../../../lib/chunk";
-import { DEC_055, DEC_022 } from "../../../decisions";
+import { DEC_055, DEC_022, DEC_818 } from "../../../decisions";
 import { type ExportTable, EXPORT_MAX_ROWS, buildTable } from "./table";
 import { clockHHMM } from "../../../domain/clock";
 import { getRecordPrefix } from "./common";
@@ -17,6 +17,7 @@ import { listBreaksForEvent } from "../breaks";
 
 void DEC_055;
 void DEC_022;
+void DEC_818;
 
 export const SHOWFLOW_HEADER = [
   "ref",
@@ -98,29 +99,46 @@ export function shapeShowflowExport(inputs: ShowflowExportInput[]): ExportTable 
 }
 
 /** Given every file row of kind 'presentation' for a set of submissions,
- * returns the latest version's { fileId, filename, versionNumber } per
- * submission — mirrors app/src/pages/content/version-chain.ts's
- * newest-first + `v${count}` numbering convention (DEC-020), without
- * reimplementing the chain walk: presentation files for a submission form
- * one chain in practice, so newest createdAt is the head and the group's
- * size is its version number. */
+ * returns the latest chain's HEAD { fileId, filename, versionNumber } per
+ * submission — DEC-818 (wave 64 amendment): a version number is the file's
+ * own stored version_no, not the size of the flat group. Two files sharing a
+ * kind are NOT necessarily versions of the same document (see
+ * app/src/pages/content/version-chain.ts's doc-comment), so this picks the
+ * chain HEAD (a row no other row in the submission's set points at via
+ * previousFileId) rather than counting rows — matching orderVersionChains:
+ * heads ordered newest createdAt first, tiebroken by id (DEC-560). The count
+ * of rows across every chain is never a version number. */
 function latestDeckBySubmission(
-  files: { submissionId: string | null; id: string; filename: string; createdAt: Date }[],
+  files: {
+    submissionId: string | null;
+    id: string;
+    filename: string;
+    createdAt: Date;
+    versionNo: number | null;
+    previousFileId: string | null;
+  }[],
 ): Map<string, { fileId: string; filename: string; versionNumber: number }> {
-  const bySubmission = new Map<string, { id: string; filename: string; createdAt: Date }[]>();
+  const bySubmission = new Map<string, typeof files>();
   for (const f of files) {
     if (!f.submissionId) continue;
     const arr = bySubmission.get(f.submissionId) ?? [];
-    arr.push({ id: f.id, filename: f.filename, createdAt: f.createdAt });
+    arr.push(f);
     bySubmission.set(f.submissionId, arr);
   }
   const result = new Map<string, { fileId: string; filename: string; versionNumber: number }>();
   for (const [submissionId, arr] of bySubmission) {
+    const referencedAsPrevious = new Set(
+      arr.map((f) => f.previousFileId).filter((id): id is string => id !== null),
+    );
+    const heads = arr.filter((f) => !referencedAsPrevious.has(f.id));
     // DEC-560: createdAt tiebroken by file id so "latest" is deterministic
-    // even when two versions share a timestamp.
-    arr.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-    const latest = arr[0]!;
-    result.set(submissionId, { fileId: latest.id, filename: latest.filename, versionNumber: arr.length });
+    // even when two heads share a timestamp.
+    heads.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    const head = heads[0]!;
+    if (head.versionNo === null || head.versionNo === undefined) {
+      throw new Error(`latestDeckBySubmission: file ${head.id} has no stored version_no — data corruption`);
+    }
+    result.set(submissionId, { fileId: head.id, filename: head.filename, versionNumber: head.versionNo });
   }
   return result;
 }
@@ -222,7 +240,14 @@ export async function buildShowflowExport(db: Db, eventId: string): Promise<Expo
     participantRows.push(...batchRows);
   }
 
-  const presentationFiles: { submissionId: string | null; id: string; filename: string; createdAt: Date }[] = [];
+  const presentationFiles: {
+    submissionId: string | null;
+    id: string;
+    filename: string;
+    createdAt: Date;
+    versionNo: number | null;
+    previousFileId: string | null;
+  }[] = [];
   for (const batch of chunkIds(ids)) {
     const batchRows = await db
       .select({
@@ -230,6 +255,8 @@ export async function buildShowflowExport(db: Db, eventId: string): Promise<Expo
         id: schema.file.id,
         filename: schema.file.filename,
         createdAt: schema.file.createdAt,
+        versionNo: schema.file.versionNo,
+        previousFileId: schema.file.previousFileId,
       })
       .from(schema.file)
       .where(and(inArray(schema.file.submissionId, batch), eq(schema.file.kind, "presentation")));
