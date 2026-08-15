@@ -128,7 +128,7 @@ async function renderBulkEmailTargets(
  * the organizer actually recognizes) with a value naming them and every
  * missing placeholder. Resolves name+email from `targets` (already loaded
  * by renderBulkEmailTargets — no extra D1 query). The ApiError's own
- * message leads with the count and the missing token(s) so a client that
+ * message leads with the count and the missing tokens so a client that
  * only reads err.message (never err.fields) still gets a usable refusal. */
 function bulkEmailMergeFieldError(
   missing: { contactId: string; fields: string[] }[],

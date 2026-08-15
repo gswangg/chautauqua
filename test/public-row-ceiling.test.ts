@@ -11,11 +11,18 @@ import { SessionsContent } from "../src/routes/public/sessions";
 import { SpeakersContent, GalleryContent } from "../src/routes/public/speakers";
 import type { PublicEvent, PublicSession, PublicSpeakerWithSessions } from "../src/server/repo/public";
 
+// DEC-277 (wave 60 amendment): src/domain/event-days.ts is now the ONE owner
+// of "which calendar days does this event span?" and it THROWS on a malformed
+// range rather than degrading to []. A real event row is isIsoDate-gated at
+// write time, so this partial fixture has to carry a real startDate/endDate —
+// the row-ceiling assertions below are about pagination, not day parsing.
 const EVENT: PublicEvent = {
   id: "e1",
   slug: "ev",
   name: "Ev",
   timezone: "UTC",
+  startDate: "2026-05-01",
+  endDate: "2026-05-03",
 } as unknown as PublicEvent;
 
 function session(i: number): PublicSession {

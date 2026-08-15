@@ -42,7 +42,11 @@ export const ENVELOPE_ALLOWLIST = new Set<string>([
   // blocked-session count in the no-eligible-recipients refusal above.
   // The exceptions themselves are unchanged.
   "src/routes/comms/preview.ts:82",
-  "src/routes/api/contacts/bulk-email.ts:249",
+  // bulk-email.ts's preview site shifted again (249 -> 277) by DEC-856's
+  // wave-60 amendment, which adds the bulkEmailMergeFieldError helper (and
+  // its comment block) above the preview handler. The exception itself is
+  // unchanged.
+  "src/routes/api/contacts/bulk-email.ts:277",
   // NOTE (DEC-840): GET .../assignments/distribute/preview used to be
   // allowlisted here (it was previously `c.json({ items, perReviewer,
   // total, shortfall })`, matching the scanner's `{ items` pattern). The
