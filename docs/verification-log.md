@@ -6417,6 +6417,61 @@ RESULT: PASS — all six walkthrough areas pass at product sha `6edb5263`
 (no product edits made; frozen wave per this task's brief, docs/**
 only).
 OPEN ITEMS: 0
+## 2026-08-15 task-w44-c — perf-smoke @ 6edb5263
+
+QUALIFYING
+
+INVALIDATED BY: src/** app/src/** migrations/** package.json
+
+TIER-0 MEASUREMENT LANE, LOG-ONLY (DEC-644, DEC-453, DEC-069), sequence 0222
+(pre-allocated, DEC-068 wave-44 — `--next-seq` not run). FROZEN GATE LANE.
+STEP 0: `git merge --no-edit main` at worktree creation reported "Already up
+to date" (worktree cut at `main` tip `6edb5263`). `npx tsx scripts/ref-state.ts`
+confirmed every live `task-w43-*` ref (`task-w43-c`) an ancestor of HEAD via
+`git merge-base --is-ancestor` on the first check — zero retries needed. Full
+receipt below. STEP 0b precondition: `grep -c PERF_SPEAKER
+scripts/perf-seed.ts` = 13 (inserts at lines 608, 627, 643, 659) — the
+documented recipe alone reaches every check including the three portal rows;
+no local-D1 fixup needed. Re-synced with `main` immediately before naming
+this receipt's sha: `git merge --no-edit main` again reported "Already up to
+date" (no drift), first-parent product sha `14da2921a5be66408057712be877bc44c19de6c4`
+unchanged before and after.
+
+### Ref-state receipt (verbatim)
+
+DEC-644 three-sha boundary: HEAD `6edb526323f8ce3af8f8e71d791a722a7b1a69ad`;
+newest first-parent product-code-bearing sha
+`14da2921a5be66408057712be877bc44c19de6c4`; every live ref (`main`,
+`manual-qa`, `task-custodian-w68-4`, `task-w43-c`, `task-w44-a`, `task-w44-c`,
+`task-w44-d`, `task-w44-f`, `task-w68-d`, `task-w71-c`, `task-w71-d`,
+`task-w71-e`) confirmed an ancestor of HEAD via `git merge-base
+--is-ancestor`. NON-ancestor refs (NOT confirmed via `git merge-base
+--is-ancestor`): `mail-rich-shape-fallback`, `task-w17-i`, `task-w44-b`,
+`task-w68-b`, `task-w68-c`, `task-w68-e`, `task-w71-a`, `task-w72-a`,
+`task-w72-b`, `task-w72-c`, `task-w72-d`, `task-w72-e`, `task-w72-f`,
+`task-w72-g`, `task-w72-h`, `task-w72-i`, `task-w72-j`.
+
+### Three-run result
+
+**117/117 check-rows PASS in all three runs (39 rows x 3 runs), zero FAIL.**
+Named rows (adjusted p95, budget(read)=50ms unless noted), run1/run2/run3:
+`reviewer queue` (`src/routes/review/reviewer.ts`) 24.1/20.2/25.1ms — 3/3
+PASS. `plan progress (page 1)` (`src/routes/review/plans-progress.ts`, the
+row 0213 flagged ADVISORY/marginal) 29.5/29.8/27.0ms — 3/3 PASS, well under
+the 50ms budget on a fresh measurement (no regression). `plan results (page
+1)` 20.9/19.6/20.3ms, 3/3 PASS. `files library (page 1)` 34.3/12.2/12.7ms,
+3/3 PASS. `onboarding grid` 20.8/19.6/24.5ms, 3/3 PASS. Three portal rows
+(`portal home`/`portal tasks`/`portal submission detail`) 14.9/14.8/16.9ms,
+9.0/11.2/8.6ms, 30.0/12.6/14.7ms — all 3/3 PASS, reached via the documented
+recipe alone (no local D1 fixup needed).
+
+Full detail: docs/verification-log/task-w44-c-perf-smoke-6edb5263.md.
+
+RESULT: PASS — every one of 117 check-rows under budget across all three
+runs at `6edb5263`; `plan progress (page 1)` (0213's flagged marginal row)
+measures 27.0-29.8ms adjusted, comfortably under the 50ms read budget in
+all three runs — no regression found on fresh measurement.
+OPEN ITEMS: 0
 ## 2026-08-15 task-w44-d — spec-audit @ 6edb5263
 
 QUALIFYING
