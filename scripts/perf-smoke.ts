@@ -27,7 +27,15 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { PERF_PROFILES, PERF_TOPICS, perfPlanId, perfReviewerEmail, slotPlacementForAccepted } from "./perf-seed-lib";
+import {
+  PERF_PROFILES,
+  PERF_SPEAKER_EMAIL,
+  PERF_SPEAKER_PASSWORD,
+  PERF_TOPICS,
+  perfPlanId,
+  perfReviewerEmail,
+  slotPlacementForAccepted,
+} from "./perf-seed-lib";
 import { MAX_PUBLIC_PAGE, MAX_PUBLIC_ROWS } from "../src/server/repo/public/bounds";
 import { DEFAULT_BOUNDED_ID_ARRAY_MAX } from "../src/server/http";
 import { MAX_ITINERARY_IDS } from "../src/lib/itinerary";
@@ -369,6 +377,18 @@ async function main(): Promise<void> {
   const patchSubmissionId = icsIds[1]!;
 
   const reviewerHeaders = { cookie: cookieHeader(await login(PERF_REVIEWER_EMAIL, PERF_REVIEWER_PASSWORD)) };
+
+  // DEC-338 (wave-35 amendment): a second authenticated session for the
+  // singleton perf speaker (scripts/perf-seed-lib.ts's PERF_SPEAKER_EMAIL/
+  // PASSWORD), so /portal/* is measurable — previously this harness only
+  // ever logged in as the organizer and the reviewer, leaving the speaker
+  // portal entirely untimed.
+  const speakerHeaders = { cookie: cookieHeader(await login(PERF_SPEAKER_EMAIL, PERF_SPEAKER_PASSWORD)) };
+  // DEC-338 (wave-35 amendment) / DEC-644 wave-31 amendment: the profile-
+  // resolved accepted-submission id the perf speaker fixture is seeded to
+  // own (perfSpeakerAcceptedIndexes always includes index 0) — the same
+  // id icsIds[0]/ratingSubmissionId above resolves, never a hardcoded id.
+  const portalSubmissionId = icsIds[0]!;
 
   // DEC-644 amendment (wave 46): a real recipient set drawn from the perf
   // contact pool (800/6000-contact, profile-sized), the same q=perf filter
@@ -746,6 +766,34 @@ async function main(): Promise<void> {
       name: "reviewer queue",
       cls: "read",
       run: () => fetch(`${PERF_URL}/api/v1/review/plans/${PERF_PLAN_ID}/queue`, { headers: reviewerHeaders }),
+    },
+    {
+      // DEC-338 (wave-35 amendment): the speaker portal home
+      // (src/routes/portal/index.tsx, GET /portal) — one of DEC-338's three
+      // hot admin/speaker screens nobody measures, previously unreachable
+      // because this harness never logged in as a speaker.
+      name: "portal home",
+      cls: "read",
+      run: () => fetch(`${PERF_URL}/portal`, { headers: speakerHeaders }),
+    },
+    {
+      // DEC-338 (wave-35 amendment): the speaker onboarding worklist
+      // (src/routes/portal/tasks.tsx, GET /portal/tasks) — wave 34's
+      // rewrite of this route was previously unmeasurable by this harness.
+      name: "portal tasks",
+      cls: "read",
+      run: () => fetch(`${PERF_URL}/portal/tasks`, { headers: speakerHeaders }),
+    },
+    {
+      // DEC-338/DEC-777 (wave-35 amendment): the speaker submission detail
+      // page (src/routes/portal/index.tsx, GET /portal/submissions/:id) —
+      // wave 33's two-wave Promise.all split (DEC-777) was previously
+      // unmeasurable by this harness. portalSubmissionId is profile-resolved
+      // (icsIds[0], the same id the "rating PUT" check above already uses),
+      // never a hardcoded demo id.
+      name: "portal submission detail",
+      cls: "read",
+      run: () => fetch(`${PERF_URL}/portal/submissions/${portalSubmissionId}`, { headers: speakerHeaders }),
     },
     {
       // task-w32-c: DEC-644 wave-32 amendment — the review-round progress
