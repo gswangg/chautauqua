@@ -7,22 +7,39 @@
 
 import { zonedMinutesToUtc, dayLabelEndInstant } from "./timezone";
 
+/** Builds "Weekday D Mon YYYY" (en-GB day-before-month order, no comma
+ * between the parts, DEC-918: one customer-facing date grammar) from a
+ * date-parts-only Intl.DateTimeFormat's formatToParts output. Internal to
+ * formatEventDateTime/formatEventDate below. */
+function joinDateParts(parts: Intl.DateTimeFormatPart[]): string {
+  const byType: Record<string, string> = {};
+  for (const part of parts) if (part.type !== "literal") byType[part.type] = part.value;
+  return `${byType.weekday} ${byType.day} ${byType.month} ${byType.year}`;
+}
+
 /** Formats a UTC instant (epoch ms) as a human-readable string in the given
- * IANA timeZone, e.g. "Mon, 01 Mar 2027, 11:59 PM PST". Throws if `timeZone`
- * is empty or not a valid IANA zone identifier — there is no UTC fallback
- * (DEC-408). */
+ * IANA timeZone, e.g. "Sun 1 Mar 2027, 23:59 PST" (DEC-918: en-GB
+ * day-before-month date order, no comma between weekday/day/month/year,
+ * comma before the 24h time, zone abbreviation kept per DEC-408 — a deadline
+ * without its zone is wrong for every speaker outside it). Throws if
+ * `timeZone` is empty or not a valid IANA zone identifier — there is no UTC
+ * fallback (DEC-408). */
 export function formatEventDateTime(ms: number, timeZone: string): string {
   if (!timeZone) {
     throw new Error("formatEventDateTime: timeZone must not be empty");
   }
-  let formatter: Intl.DateTimeFormat;
+  let dateFormatter: Intl.DateTimeFormat;
+  let timeFormatter: Intl.DateTimeFormat;
   try {
-    formatter = new Intl.DateTimeFormat("en-US", {
+    dateFormatter = new Intl.DateTimeFormat("en-GB", {
       timeZone,
       weekday: "short",
-      day: "2-digit",
+      day: "numeric",
       month: "short",
       year: "numeric",
+    });
+    timeFormatter = new Intl.DateTimeFormat("en-US", {
+      timeZone,
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
@@ -31,56 +48,62 @@ export function formatEventDateTime(ms: number, timeZone: string): string {
   } catch (err) {
     throw new Error(`formatEventDateTime: invalid timeZone '${timeZone}': ${(err as Error).message}`);
   }
-  return formatter.format(new Date(ms));
+  const date = new Date(ms);
+  const datePart = joinDateParts(dateFormatter.formatToParts(date));
+  const timeParts: Record<string, string> = {};
+  for (const part of timeFormatter.formatToParts(date)) if (part.type !== "literal") timeParts[part.type] = part.value;
+  return `${datePart}, ${timeParts.hour}:${timeParts.minute} ${timeParts.timeZoneName}`;
 }
 
 /** Formats a UTC instant (epoch ms) as a date-only string (no time-of-day)
- * in the given IANA timeZone, e.g. "Tue, 02 Mar 2027" — DEC-413: the speaker
- * portal renders every date in the owning event's timezone, not UTC. Throws
- * if `timeZone` is empty or not a valid IANA zone identifier — there is no
- * UTC fallback, same contract as formatEventDateTime (DEC-408). */
+ * in the given IANA timeZone, e.g. "Tue 2 Mar 2027" (DEC-918: en-GB
+ * day-before-month order, no comma) — DEC-413: the speaker portal renders
+ * every date in the owning event's timezone, not UTC. Throws if `timeZone`
+ * is empty or not a valid IANA zone identifier — there is no UTC fallback,
+ * same contract as formatEventDateTime (DEC-408). */
 export function formatEventDate(ms: number, timeZone: string): string {
   if (!timeZone) {
     throw new Error("formatEventDate: timeZone must not be empty");
   }
   let formatter: Intl.DateTimeFormat;
   try {
-    formatter = new Intl.DateTimeFormat("en-US", {
+    formatter = new Intl.DateTimeFormat("en-GB", {
       timeZone,
       weekday: "short",
-      day: "2-digit",
+      day: "numeric",
       month: "short",
       year: "numeric",
     });
   } catch (err) {
     throw new Error(`formatEventDate: invalid timeZone '${timeZone}': ${(err as Error).message}`);
   }
-  return formatter.format(new Date(ms));
+  return joinDateParts(formatter.formatToParts(new Date(ms)));
 }
 
 /** Formats a UTC-midnight day label (epoch ms) as a date-only string, e.g.
- * "Sun, Mar 01, 2027" (en-US weekday/month-abbrev/day/year order) — DEC-522:
- * a date-only value (task due date, etc.) is a CALENDAR DAY, not an
- * instant. It must render as the same day everywhere,
- * regardless of viewer or event timezone, so this takes NO timezone
- * parameter and always reads the UTC calendar fields of `ms` (the value is
- * expected to already be UTC-midnight for that day). Use this ONLY for day
- * labels. True instants (createdAt, sentAt, submittedAt, uploadedAt) must
- * keep using formatEventDate/formatEventDateTime, which render in the
- * owning event's IANA timezone. Throws on a NaN/non-finite `ms`, matching
- * the fail-loudly contract of its neighbours above. */
+ * "Sun 1 Mar 2027" (DEC-918: en-GB day-before-month order, no comma between
+ * weekday/day/month/year — same customer-facing grammar as
+ * formatEventDate/formatEventDateTime) — DEC-522: a date-only value (task
+ * due date, etc.) is a CALENDAR DAY, not an instant. It must render as the
+ * same day everywhere, regardless of viewer or event timezone, so this
+ * takes NO timezone parameter and always reads the UTC calendar fields of
+ * `ms` (the value is expected to already be UTC-midnight for that day). Use
+ * this ONLY for day labels. True instants (createdAt, sentAt, submittedAt,
+ * uploadedAt) must keep using formatEventDate/formatEventDateTime, which
+ * render in the owning event's IANA timezone. Throws on a NaN/non-finite
+ * `ms`, matching the fail-loudly contract of its neighbours above. */
 export function formatCalendarDate(ms: number): string {
   if (!Number.isFinite(ms)) {
     throw new Error("formatCalendarDate: ms must be a finite number");
   }
-  const formatter = new Intl.DateTimeFormat("en-US", {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
     timeZone: "UTC",
     weekday: "short",
-    day: "2-digit",
+    day: "numeric",
     month: "short",
     year: "numeric",
   });
-  return formatter.format(new Date(ms));
+  return joinDateParts(formatter.formatToParts(new Date(ms)));
 }
 
 /** Short day label for the agenda day-switcher's segmented control, e.g.

@@ -192,8 +192,8 @@ describe("reminder email due dates (DEC-522: formatCalendarDate per-task, no agg
 
     expect(result.sent).toBe(1);
     expect(sent).toHaveLength(1);
-    expect(sent[0]?.text).toContain("Tue, Mar 02, 2027");
-    expect(sent[0]?.text).not.toContain("Mon, Mar 01, 2027");
+    expect(sent[0]?.text).toContain("Tue 2 Mar 2027");
+    expect(sent[0]?.text).not.toContain("Mon 1 Mar 2027");
   });
 
   it("gives a contact with two different-due-date tasks both dates, each on its own line", async () => {
@@ -241,8 +241,8 @@ describe("reminder email due dates (DEC-522: formatCalendarDate per-task, no agg
     expect(result.sent).toBe(1);
     expect(sent).toHaveLength(1);
     const text = sent[0]?.text ?? "";
-    expect(text).toContain("- Bio form — due Tue, Mar 02, 2027");
-    expect(text).toContain("- Headshot upload — due Thu, Apr 15, 2027");
+    expect(text).toContain("- Bio form — due Tue 2 Mar 2027");
+    expect(text).toContain("- Headshot upload — due Thu 15 Apr 2027");
   });
 
   it("renders 'No due date' for a task with a null due date", async () => {

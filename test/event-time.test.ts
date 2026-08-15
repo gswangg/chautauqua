@@ -73,14 +73,14 @@ describe("formatCalendarDate (DEC-522)", () => {
         results.add(formatCalendarDate(DAY_MS));
       }
       expect(results.size).toBe(1);
-      expect([...results][0]).toBe("Mon, Mar 01, 2027");
+      expect([...results][0]).toBe("Mon 1 Mar 2027");
     } finally {
       process.env.TZ = originalTz;
     }
   });
 
   it("matches formatEventDate(ms, 'UTC') byte-for-byte (same shape, UTC-anchored)", () => {
-    expect(formatCalendarDate(DAY_MS)).toBe("Mon, Mar 01, 2027");
+    expect(formatCalendarDate(DAY_MS)).toBe("Mon 1 Mar 2027");
   });
 
   it("does not shift the day for a late-UTC label the way a Pacific-timezone re-interpretation would", () => {
@@ -89,7 +89,7 @@ describe("formatCalendarDate (DEC-522)", () => {
     // formatCalendarDate must name Tue, Mar 02 — the same day the stored
     // label represents — because it never re-interprets into a timezone.
     const ms = Date.UTC(2027, 2, 2, 0, 0, 0);
-    expect(formatCalendarDate(ms)).toBe("Tue, Mar 02, 2027");
+    expect(formatCalendarDate(ms)).toBe("Tue 2 Mar 2027");
   });
 
   it("throws on a NaN input", () => {
