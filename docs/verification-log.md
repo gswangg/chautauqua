@@ -4688,7 +4688,6 @@ Full per-row tables, quoted log lines, and source citations:
 
 RESULT: PASS — exit code 0, all seven passes 100% clean, one expected EXEMPT-BY-RULE row; claims (i) and (iii) confirmed, claim (ii) falsified (gate has no check for that selector).
 OPEN ITEMS: 1
-
 ## 2026-08-15 task-w35-a — perf-smoke @ a0b8501b
 
 INVALIDATED BY: src/** app/src/** migrations/** package.json
