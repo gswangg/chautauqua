@@ -25,7 +25,7 @@ import {
   listBreaksOutsideWindow,
   updateBreak,
 } from "../src/server/repo/breaks";
-import { MAX_BREAKS_PER_EVENT } from "../src/domain/schedule";
+import { MAX_BREAKS_PER_EVENT, MINUTES_PER_DAY } from "../src/domain/schedule";
 
 const DDL = `
 create table event (
@@ -349,6 +349,32 @@ describe("POST /api/v1/events/:eventId/breaks", () => {
     expect(body.error.fields?.durationMin).toBeDefined();
   });
 
+  // DEC-417 (amendment, wave 14): validateBreakWrite accumulates every
+  // per-field problem into one `fields` map instead of throwing on the
+  // first bounded-text failure it reaches (label), so a request with
+  // several independent problems is reported all at once.
+  it("accumulates day, label, startMin, and durationMin problems into one 400", async () => {
+    const { db, sqlite } = makeTestDb();
+    seedEvent(sqlite, "event-a", "org-a", "2027-01-01", "2027-01-03");
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(
+      postRequest("/api/v1/events/event-a/breaks", {
+        day: "not-a-day",
+        label: "",
+        startMin: -1,
+        durationMin: MINUTES_PER_DAY + 1,
+      }),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields?.day).toBeDefined();
+    expect(body.error.fields?.label).toBeDefined();
+    expect(body.error.fields?.startMin).toBeDefined();
+    expect(body.error.fields?.durationMin).toBeDefined();
+    expect(await countBreaksForEvent(db, "event-a")).toBe(0);
+  });
+
   it("refuses once the event is already at MAX_BREAKS_PER_EVENT", async () => {
     const { db, sqlite } = makeTestDb();
     seedEvent(sqlite, "event-a", "org-a", "2027-01-01", "2027-01-01");
@@ -474,6 +500,34 @@ describe("PATCH /api/v1/breaks/:id", () => {
     const body = (await res.json()) as { error: { fields?: Record<string, string> } };
     expect(body.error.fields?.durationMin).toMatch(/midnight/);
     // A rejected PATCH must never touch the row.
+    const fetched = await getBreakById(db, created.id);
+    expect(fetched?.durationMin).toBe(30);
+  });
+
+  // DEC-417 (amendment, wave 14): a PATCH that supplies an invalid label
+  // (a bounded-text field) alongside a durationMin that pushes the
+  // RESOLVED (stored startMin + new durationMin) past midnight must still
+  // name durationMin -- proving the cross-field check keeps running rather
+  // than stopping at the first accumulated problem.
+  it("names durationMin for a resolved-value midnight overrun even when label is also invalid", async () => {
+    const { db, sqlite } = makeTestDb();
+    seedEvent(sqlite, "event-a", "org-a", "2027-01-01", "2027-01-03");
+    const created = await createBreak(db, "event-a", {
+      day: "2027-01-01",
+      label: "Coffee",
+      location: null,
+      startMin: 1430,
+      durationMin: 30,
+    });
+
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+    const res = await app.request(
+      patchRequest(`/api/v1/breaks/${created.id}`, { label: "", durationMin: 120 }),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields?.label).toBeDefined();
+    expect(body.error.fields?.durationMin).toMatch(/midnight/);
     const fetched = await getBreakById(db, created.id);
     expect(fetched?.durationMin).toBe(30);
   });

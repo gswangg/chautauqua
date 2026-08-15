@@ -7,7 +7,7 @@
 import { Hono, type Context } from "hono";
 import type { AppEnv, AuthInfo } from "../../server/env";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
-import { ApiError, parseBoundedText, parseBoundedOptionalText, readOptionalJsonBody } from "../../server/http";
+import { ApiError, collectBoundedText, collectBoundedOptionalText, readOptionalJsonBody } from "../../server/http";
 import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-417
 import { MAX_BREAKS_PER_EVENT, MINUTES_PER_DAY } from "../../domain/schedule";
 import { getEventInfo, isDayWithinEventRange, isIsoDay } from "../../server/repo/agenda"; // DEC-318
@@ -129,12 +129,15 @@ function validateBreakWrite(
 
   let label = existing?.label ?? "";
   if (body.label !== undefined || !existing) {
-    label = parseBoundedText(body.label, "label", { max: MAX_NAME_LENGTH, required: true });
+    // DEC-417 (amendment, wave 14): collect, don't throw -- so an invalid
+    // label doesn't short-circuit the day/startMin/durationMin checks below.
+    label = collectBoundedText(body.label, "label", { max: MAX_NAME_LENGTH, required: true }, fields);
   }
 
   let location = existing?.location ?? null;
   if (body.location !== undefined || !existing) {
-    location = parseBoundedOptionalText(body.location, "location", { max: MAX_NAME_LENGTH });
+    // DEC-417 (amendment, wave 14): collect, don't throw -- same rationale as label above.
+    location = collectBoundedOptionalText(body.location, "location", { max: MAX_NAME_LENGTH }, fields);
   }
 
   let startMin = existing?.startMin ?? 0;
