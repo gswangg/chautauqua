@@ -636,6 +636,11 @@ a:hover {
   min-height: 88px;
 }
 
+/* tap-floor-exempt: native checkbox visual (18px, browser-rendered) --
+   enlarging the checkbox itself to 44px is a system-wide visual redesign
+   touching every table/form checkbox in the product (header select-all
+   cells, row selection, field-modal option lists) and is out of scope for
+   the additive w25-d fix; tracked as a follow-up rather than resized here. */
 .chq-check {
   width: 18px;
   height: 18px;
@@ -1447,6 +1452,10 @@ a:hover {
   margin: 0 0 8px;
 }
 
+/* tap-floor-exempt: swatch grid in the branding/tracks-rooms color picker --
+   enlarging each swatch to 44px would reflow the whole palette grid's
+   spacing and is a distinct visual-redesign task, out of scope for the
+   additive w25-d fix; tracked as a follow-up rather than resized here. */
 .chq-color-swatch {
   width: 22px;
   height: 22px;
