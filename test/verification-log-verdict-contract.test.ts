@@ -61,6 +61,12 @@ function firstLine(content: string): string {
 // removed (by fixing the header), never added to.
 // ---------------------------------------------------------------------
 
+// task-w45-f (DEC-068 wave-45 ruling (b)) fixed the first line of 0176,
+// 0180-0185 (7 files) -- shrinking this ratchet by exactly those 7 entries.
+// A broader legacy set (15 files dated 2026-08-12, pre-dating DEC-068's own
+// wave-37 introduction, e.g. 0140-0157) carries no sha anywhere in filename
+// or body and is NOT repairable by the "date/branch/sha from the filename"
+// method; those remain here, unfixed, filed as a separate wave-46+ finding.
 const LEGACY_HEADER_VIOLATIONS: readonly string[] = [
   "docs/verification-log/index/0140-2026-08-12-task-w12-a-render-sweep-mobile-overflow-instrument-correction.md",
   "docs/verification-log/index/0142-2026-08-12-task-w13-c-j1-j12-persona-walkthrough-npm-run-walkthrough-sta.md",
@@ -82,15 +88,8 @@ const LEGACY_HEADER_VIOLATIONS: readonly string[] = [
   "docs/verification-log/index/0166-2026-08-15-task-w27-d-perf-smoke-render-sweep-ceda66f2-diagnostic.md",
   "docs/verification-log/index/0167-2026-08-15-task-w27-c-walkthrough-ceda66f2-diagnostic.md",
   "docs/verification-log/index/0168-2026-08-15-task-w27-g-tier-1-fidelity-re-check-ceda66f2-diagnostic.md",
-  "docs/verification-log/index/0176-2026-08-15-task-w29-a-onboarding-grid-perf-1d274c8b.md",
   "docs/verification-log/index/0177-2026-08-15-task-w29-f-void-gate-finding-f62af3ce.md",
   "docs/verification-log/index/0178-2026-08-15-task-w29-c-render-sweep-6aa4a438.md",
-  "docs/verification-log/index/0180-2026-08-15-task-w29-e-review-perf-b7060152.md",
-  "docs/verification-log/index/0181-2026-08-15-task-w31-d-perf-profile-fixtures-9119a01a.md",
-  "docs/verification-log/index/0182-2026-08-15-task-w31-b-reviewer-queue-perf-66123630.md",
-  "docs/verification-log/index/0183-2026-08-15-task-w31-c-plan-results-perf-7581aa3b.md",
-  "docs/verification-log/index/0184-2026-08-15-task-w31-a-files-library-perf-39634fe8.md",
-  "docs/verification-log/index/0185-2026-08-15-task-w32-c-perf-coverage-e5774e56.md",
   "docs/verification-log/index/0187-2026-08-15-task-w32-b-reviewer-queue-hydration-74c6377a.md",
   "docs/verification-log/index/0193-2026-08-15-task-w36-c-perf-smoke-f5783479.md",
 ] as const;
@@ -180,6 +179,17 @@ function computeVerdictViolations(): string[] {
 // re-derived by computeVerdictViolations() above and asserted for exact set
 // equality below, so no NEW violation can land un-noticed -- only removal
 // (by fixing the offending file's RESULT:/OPEN ITEMS: line) shrinks it.
+// task-w45-f repaired 7 of LEGACY_HEADER_VIOLATIONS's entries' first lines
+// (DEC-068 wave-45 ruling (b)), which makes each fixed file parse to its
+// OWN section here for the first time. Two of them (0176, 0184) turn out to
+// already carry a pre-existing RESULT: line whose first token is not
+// PASS/FAIL (`RESULT: onboarding grid PASS (was FAIL); ...` and
+// `RESULT: files library (page 1) BEFORE ... FAIL -> AFTER ... PASS`,
+// exactly the 0184 defect DEC-068's wave-45 amendment already named) --
+// a genuine, previously-invisible verdict-contract defect the header
+// repair surfaces, not a new one it introduces. task-w45-f only fixed
+// FIRST LINES (per its task's scope) so these two are added here rather
+// than silently swallowed again.
 const LEGACY_VERDICT_VIOLATIONS: readonly string[] = [
   "docs/verification-log/index/0002-2026-08-10-task-w12-c-commit-body-triage-f6e3422.md",
   "docs/verification-log/index/0098-2026-08-10-task-w8-g-triage-closure-38860f9.md",
@@ -187,6 +197,8 @@ const LEGACY_VERDICT_VIOLATIONS: readonly string[] = [
   "docs/verification-log/index/0129-2026-08-10-task-w20-f-triage-closure-6807b67.md",
   "docs/verification-log/index/0156-2026-08-12-task-w21-f-stage-1-completion-ledger-889dffc.md",
   "docs/verification-log/index/0162-2026-08-15-task-w25-a-render-sweep-clip-probe-1950921d.md",
+  "docs/verification-log/index/0176-2026-08-15-task-w29-a-onboarding-grid-perf-1d274c8b.md",
+  "docs/verification-log/index/0184-2026-08-15-task-w31-a-files-library-perf-39634fe8.md",
   "docs/verification-log/index/0192-2026-08-15-task-w36-d-spec-audit-f5783479.md",
   "docs/verification-log/index/0195-2026-08-15-task-w36-f-aie-scale-3b3b56c7.md",
 ] as const;

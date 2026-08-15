@@ -1,4 +1,4 @@
-## task-w31-b: reviewer queue TIER-0 perf (DEC-338/DEC-347 wave-31 amendments)
+## 2026-08-15 task-w31-b — reviewer queue TIER-0 perf (DEC-338/DEC-347 wave-31 amendments) @ 66123630
 
 Full receipt: docs/verification-log/task-w31-b-reviewer-queue-perf-66123630.md.
 Boundary `66123630` off `main` `87c545f6`. Collapsed the queue's 11
