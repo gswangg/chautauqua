@@ -4,7 +4,7 @@
 
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
-import { requireOrganizer, csrfJson } from "../../server/middleware";
+import { requireOrganizer, requireCookieSession, csrfJson } from "../../server/middleware";
 import { ApiError, readJsonBody, collectBoundedOptionalText } from "../../server/http";
 import { makeMailer } from "../../server/context";
 import { renderEmailHtml } from "../../mail/shell";
@@ -64,7 +64,7 @@ usersRoutes.get("/api/v1/users", requireOrganizer, async (c) => {
   return c.json({ items, total, page, perPage });
 });
 
-usersRoutes.post("/api/v1/users", requireOrganizer, csrfJson, async (c) => {
+usersRoutes.post("/api/v1/users", requireOrganizer, requireCookieSession, csrfJson, async (c) => {
   const auth = currentAuth(c);
   const record = await readJsonBody(c);
 
@@ -135,7 +135,7 @@ usersRoutes.post("/api/v1/users", requireOrganizer, csrfJson, async (c) => {
 // travel over email, only the account-creation notice does, and that notice
 // omits the password too). The organizer is responsible for relaying it to
 // the user out of band.
-usersRoutes.post("/api/v1/users/:id/reset-password", requireOrganizer, csrfJson, async (c) => {
+usersRoutes.post("/api/v1/users/:id/reset-password", requireOrganizer, requireCookieSession, csrfJson, async (c) => {
   const auth = currentAuth(c);
   const userId = c.req.param("id");
   const target = await repo.getOrgUserById(c.var.db, userId, auth.orgId);
@@ -165,7 +165,7 @@ usersRoutes.post("/api/v1/users/:id/reset-password", requireOrganizer, csrfJson,
 // caller targeting themselves (409 -- privilege changes are not self-service),
 // and demoting the org's last remaining organizer (409). Sessions are NOT
 // revoked -- a role change is not a compromise.
-usersRoutes.patch("/api/v1/users/:id", requireOrganizer, csrfJson, async (c) => {
+usersRoutes.patch("/api/v1/users/:id", requireOrganizer, requireCookieSession, csrfJson, async (c) => {
   const auth = currentAuth(c);
   const userId = c.req.param("id");
   const record = await readJsonBody(c);

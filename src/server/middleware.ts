@@ -260,6 +260,26 @@ export const requireOrganizer = requireRole("organizer");
 export const requireReviewer = requireRole("reviewer");
 export const requireSpeaker = requireRole("speaker");
 
+/** DEC-027 wave-38 amendment: closes the bearer-token privilege escalation
+ * on org-user credential routes (account creation, password reset/reissue,
+ * role change, API token management). A bearer-authenticated request
+ * (auth.viaBearer) can authenticate as an organizer but must never be able
+ * to mint credentials for itself or others — CSRF exemption for bearer
+ * clients (see csrfJson below) makes that path CSRF-immune too, so a
+ * missing session check here is a full escalation, not just a CSRF gap.
+ * This is the ONE assembler of that refusal: every credential-bearing route
+ * places this immediately after requireOrganizer (or the relevant role
+ * guard) rather than re-implementing the check inline. */
+export const requireCookieSession: MiddlewareHandler<AppEnv> = async (c, next) => {
+  if (!c.var.auth) {
+    throw new ApiError("unauthorized", "Login required");
+  }
+  if (c.var.auth.viaBearer) {
+    throw new ApiError("forbidden", "This action requires a signed-in session, not an API token");
+  }
+  await next();
+};
+
 /** JSON mutations under /api/v1: header 'x-chq-csrf: 1' per DEC-004.
  * Exempt when auth.viaBearer (DEC-027): CSRF protects cookie sessions
  * (ambient browser credentials); bearer clients present the token
