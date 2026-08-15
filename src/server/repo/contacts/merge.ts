@@ -21,10 +21,12 @@ import { ApiError } from "../../http";
 import { findContactById } from "./crud";
 import { toContactRecord, type ContactRow, MAX_CONTACT_DIRECTORY_SCAN } from "./rows";
 import { buildMergeRepointOps, mergedPipelineStage, type PipelineStageLike } from "./query";
+import { planMergeFold, detectMergeConflicts } from "./merge-preflight";
 import { newId } from "../../../domain/ids";
-import { DEC_479, DEC_770, DEC_992 } from "../../../decisions";
+import { DEC_026, DEC_479, DEC_770, DEC_992 } from "../../../decisions";
 import { touchSubmissions, touchSubmissionsForContacts } from "../submissions/touch";
 
+void DEC_026;
 void DEC_479;
 void DEC_770;
 void DEC_992;
@@ -354,19 +356,15 @@ export function emailConflictsWithOtherAccount(
 
 /** Applies DEC-026/DEC-101/DEC-282/DEC-456/DEC-479 merge, in this exact
  * load-bearing order:
- *  (a) BEFORE any write, load both contacts' user rows; if both have a
- *      login account, throw a conflict (no partial merge — a merge that
- *      silently orphaned one login would be worse than refusing it).
+ *  (a) both-logins and (b2) email-taken are no longer checked HERE — DEC-026
+ *      wave-43 amendment: mergeContacts now runs a whole-operation preflight
+ *      (planMergeFold + detectMergeConflicts) over the FULL id list before
+ *      any pair's fold begins, so by the time mergeOnePair runs for any
+ *      pair, both conditions are already proven impossible for the WHOLE
+ *      operation, not just this pair. The two checks below are kept as
+ *      fail-loud invariants (same thrown shape) so a bug in the preflight
+ *      surfaces immediately instead of silently letting a bad merge through.
  *  (b) planMerge onto the kept contact row.
- *  (b2) DEC-479: before any write, re-run DEC-456's own conflict pre-check
- *      against merged.email — if some OTHER user row (not keepId's, not
- *      mergeId's) already owns that address, throw a conflict. user_email_
- *      idx is a UNIQUE index (src/db/schema.ts), so this must run before
- *      the write below, not after. DEC-565: this must be evaluated in JS,
- *      not as a `contact_id NOT IN (...)` SQL predicate — organizer/reviewer
- *      logins are created with contactId NULL (src/server/repo/users.ts),
- *      and SQLite's NOT IN evaluates to NULL (not TRUE) whenever the column
- *      is NULL, so a staff login's email silently passed the old check.
  *  (c) dedupe participant rows the two contacts share a submission on
  *      (deleting mergeId's duplicate row rather than repointing it into a
  *      UNIQUE-violating dupe).
@@ -387,7 +385,11 @@ async function mergeOnePair(db: Db, keepId: string, mergeId: string): Promise<Co
   if (!keepRow) throw new Error(`merge: keep contact ${keepId} not found`);
   if (!mergeRow) throw new Error(`merge: merge contact ${mergeId} not found`);
 
-  // (a) Login-account conflict check, before any write.
+  // (a) DEC-026 wave-43 amendment: mergeContacts' whole-operation preflight
+  // already proved no more than one contact in the FULL id list has a login
+  // — this recheck of just this pair can never fire; kept as a fail-loud
+  // invariant (same thrown shape) rather than deleted, so a preflight bug
+  // surfaces as a loud error instead of a silently-orphaned login.
   const keepUserRows = await db
     .select({ id: schema.user.id })
     .from(schema.user)
@@ -405,10 +407,13 @@ async function mergeOnePair(db: Db, keepId: string, mergeId: string): Promise<Co
   // (b) planMerge onto the kept row.
   const { merged } = planMerge(toContactRecord(keepRow), toContactRecord(mergeRow));
 
-  // (b2) DEC-479/DEC-456/DEC-565: before any write, reject if merged.email
-  // already belongs to some other login account (neither keepId's nor
-  // mergeId's). Evaluated in JS via emailConflictsWithOtherAccount rather
-  // than a SQL `contact_id NOT IN (...)` predicate — see DEC-565 note above
+  // (b2) DEC-026 wave-43 amendment: mergeContacts' whole-operation preflight
+  // already proved every intermediate merged email (planMergeFold, same fold
+  // order) is unowned or owned by a contact within the FULL id list — this
+  // recheck of just this pair's own merged.email can never fire; kept as a
+  // fail-loud invariant (same thrown shape), not deleted, for the same
+  // reason as (a) above. Evaluated in JS via emailConflictsWithOtherAccount,
+  // never a SQL `contact_id NOT IN (...)` predicate — see DEC-565 note above
   // the function docstring for why NOT IN silently skipped NULL contactId
   // rows (staff logins).
   const mergedEmailLower = merged.email.toLowerCase();
@@ -694,17 +699,72 @@ export async function countMergeImpact(
   return { submissions, tasks };
 }
 
-/** DEC-629: set-based merge. Dedupes mergeIds, drops keepId if present (a
- * no-op to merge a contact into itself), and folds each remaining id
- * through mergeOnePair in order — the survivor of each fold becomes the
- * keep row for the next fold — returning the single final survivor. Both
- * keepId and every id in mergeIds must already be verified org-scoped by
- * the caller. */
+/** DEC-629/DEC-026 wave-43 amendment: set-based, ALL-OR-NOTHING merge.
+ * Dedupes mergeIds, drops keepId if present (a no-op to merge a contact into
+ * itself), then runs a whole-operation preflight BEFORE any write:
+ *  1. planMergeFold cumulatively folds planMerge over the full id list, in
+ *     the exact order the fold below will apply it, producing every
+ *     intermediate merged email (not just the final one).
+ *  2. one chunked select of user rows whose contactId is in the full
+ *     [keepId, ...toMerge] set (which of them hold a login);
+ *  3. one chunked select of user rows whose lower(email) is in the set of
+ *     intermediate merged emails (who owns each candidate email);
+ *  4. detectMergeConflicts judges both cumulatively over the WHOLE list —
+ *     see its own docstring for why a per-pair check can miss a conflict a
+ *     whole-operation check cannot (DEC-026 wave-43 amendment / DEC-069).
+ * Only once the preflight passes clean does the fold run, unchanged, one
+ * mergeOnePair call per id — so a refusal always means ZERO writes, never a
+ * write of contacts 1..k-1 followed by a 409 on contact k. Both keepId and
+ * every id in mergeIds must already be verified org-scoped by the caller. */
 export async function mergeContacts(db: Db, keepId: string, mergeIds: string[]): Promise<ContactRow> {
   const toMerge = Array.from(new Set(mergeIds)).filter((id) => id !== keepId);
   if (toMerge.length === 0) {
     throw new ApiError("invalid", "mergeIds must contain at least one id other than keepId");
   }
+
+  const allIds = [keepId, ...toMerge];
+
+  const keepRow = await findContactById(db, keepId);
+  if (!keepRow) throw new Error(`merge: keep contact ${keepId} not found`);
+  const mergeRows: ContactRow[] = [];
+  for (const mergeId of toMerge) {
+    const row = await findContactById(db, mergeId);
+    if (!row) throw new Error(`merge: merge contact ${mergeId} not found`);
+    mergeRows.push(row);
+  }
+  const { steps } = planMergeFold(
+    toContactRecord(keepRow),
+    mergeRows.map((row) => toContactRecord(row)),
+  );
+
+  const contactIdsWithLogin = new Set<string>();
+  for (const chunk of chunkIds(allIds)) {
+    const rows = await db
+      .select({ contactId: schema.user.contactId })
+      .from(schema.user)
+      .where(inArray(schema.user.contactId, chunk));
+    for (const row of rows) {
+      if (row.contactId) contactIdsWithLogin.add(row.contactId);
+    }
+  }
+
+  const intermediateEmails = Array.from(new Set(steps.map((s) => s.mergedEmail.toLowerCase())));
+  const emailOwners = new Map<string, string | null>();
+  for (const chunk of chunkIds(intermediateEmails)) {
+    const rows = await db
+      .select({ email: schema.user.email, contactId: schema.user.contactId })
+      .from(schema.user)
+      .where(inArray(sql`lower(${schema.user.email})`, chunk));
+    for (const row of rows) {
+      emailOwners.set(row.email.toLowerCase(), row.contactId);
+    }
+  }
+
+  const conflict = detectMergeConflicts({ keepId, mergeIds: toMerge, contactIdsWithLogin, emailOwners, steps });
+  if (conflict) {
+    throw new ApiError("conflict", conflict.message);
+  }
+
   let survivor: ContactRow | undefined;
   for (const mergeId of toMerge) {
     survivor = await mergeOnePair(db, keepId, mergeId);

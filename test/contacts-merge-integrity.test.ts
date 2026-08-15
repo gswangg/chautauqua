@@ -125,18 +125,22 @@ describe("mergedPipelineStage (DEC-282)", () => {
 describe("mergeContacts pipeline reconciliation (DEC-282)", () => {
   it("merged contact enrolled, kept contact not -> exactly one pipeline_entry survives, pointing at keepId", async () => {
     const { db, updates, deletes } = fakeDb([
-      [KEEP], // findContactById(keepId)
-      [MERGE], // findContactById(mergeId)
-      [], // user rows for keepId
-      [], // user rows for mergeId
-      [], // (b2) DEC-479 email conflict pre-check
+      [KEEP], // preflight (DEC-026 wave-43): findContactById(keepId)
+      [MERGE], // preflight: findContactById(mergeId)
+      [], // preflight: login chunk (nobody has an account)
+      [], // preflight: email-owner chunk (nobody else owns the merged email)
+      [KEEP], // fold: findContactById(keepId)
+      [MERGE], // fold: findContactById(mergeId)
+      [], // fold: user rows for keepId
+      [], // fold: user rows for mergeId
+      [], // fold: (b2) DEC-479 email conflict pre-check
       [], // mergeParticipants
       [], // keepParticipants
-      [], // task_assignment rows for mergeId
-      [], // task_assignment rows for keepId
-      [], // pipelineEntry for keepId (not enrolled)
-      [{ id: "entry-merge", stage: "contacted" }], // pipelineEntry for mergeId
-      [KEEP], // findContactById(keepId) after merge
+      [], // fold: task_assignment rows for mergeId
+      [], // fold: task_assignment rows for keepId
+      [], // fold: pipelineEntry for keepId (not enrolled)
+      [{ id: "entry-merge", stage: "contacted" }], // fold: pipelineEntry for mergeId
+      [KEEP], // fold: findContactById(keepId) after merge
     ]);
 
     await mergeContacts(db, KEEP.id, [MERGE.id]);
@@ -153,18 +157,22 @@ describe("mergeContacts pipeline reconciliation (DEC-282)", () => {
 
   it("both enrolled -> pipeline_activity repointed to the kept entry, kept entry's stage is the further-along one, merged entry deleted", async () => {
     const { db, updates, deletes } = fakeDb([
-      [KEEP], // findContactById(keepId)
-      [MERGE], // findContactById(mergeId)
-      [], // user rows for keepId
-      [], // user rows for mergeId
-      [], // (b2) DEC-479 email conflict pre-check
+      [KEEP], // preflight (DEC-026 wave-43): findContactById(keepId)
+      [MERGE], // preflight: findContactById(mergeId)
+      [], // preflight: login chunk (nobody has an account)
+      [], // preflight: email-owner chunk (nobody else owns the merged email)
+      [KEEP], // fold: findContactById(keepId)
+      [MERGE], // fold: findContactById(mergeId)
+      [], // fold: user rows for keepId
+      [], // fold: user rows for mergeId
+      [], // fold: (b2) DEC-479 email conflict pre-check
       [], // mergeParticipants
       [], // keepParticipants
-      [], // task_assignment rows for mergeId
-      [], // task_assignment rows for keepId
-      [{ id: "entry-keep", stage: "contacted" }], // pipelineEntry for keepId
-      [{ id: "entry-merge", stage: "declined" }], // pipelineEntry for mergeId
-      [KEEP], // findContactById(keepId) after merge
+      [], // fold: task_assignment rows for mergeId
+      [], // fold: task_assignment rows for keepId
+      [{ id: "entry-keep", stage: "contacted" }], // fold: pipelineEntry for keepId
+      [{ id: "entry-merge", stage: "declined" }], // fold: pipelineEntry for mergeId
+      [KEEP], // fold: findContactById(keepId) after merge
     ]);
 
     await mergeContacts(db, KEEP.id, [MERGE.id]);
@@ -185,18 +193,22 @@ describe("mergeContacts pipeline reconciliation (DEC-282)", () => {
 describe("mergeContacts task_assignment dedupe (DEC-282)", () => {
   it("both assigned the same task, merged row complete + kept row pending -> exactly one assignment row survives and it is the completed one", async () => {
     const { db, deletes } = fakeDb([
-      [KEEP], // findContactById(keepId)
-      [MERGE], // findContactById(mergeId)
-      [], // user rows for keepId
-      [], // user rows for mergeId
-      [], // (b2) DEC-479 email conflict pre-check
+      [KEEP], // preflight (DEC-026 wave-43): findContactById(keepId)
+      [MERGE], // preflight: findContactById(mergeId)
+      [], // preflight: login chunk (nobody has an account)
+      [], // preflight: email-owner chunk (nobody else owns the merged email)
+      [KEEP], // fold: findContactById(keepId)
+      [MERGE], // fold: findContactById(mergeId)
+      [], // fold: user rows for keepId
+      [], // fold: user rows for mergeId
+      [], // fold: (b2) DEC-479 email conflict pre-check
       [], // mergeParticipants
       [], // keepParticipants
-      [{ id: "assign-merge", taskId: "task-1", status: "complete" }], // task_assignment for mergeId
-      [{ id: "assign-keep", taskId: "task-1", status: "pending" }], // task_assignment for keepId
-      [], // pipelineEntry for keepId
-      [], // pipelineEntry for mergeId
-      [KEEP], // findContactById(keepId) after merge
+      [{ id: "assign-merge", taskId: "task-1", status: "complete" }], // fold: task_assignment for mergeId
+      [{ id: "assign-keep", taskId: "task-1", status: "pending" }], // fold: task_assignment for keepId
+      [], // fold: pipelineEntry for keepId
+      [], // fold: pipelineEntry for mergeId
+      [KEEP], // fold: findContactById(keepId) after merge
     ]);
 
     await mergeContacts(db, KEEP.id, [MERGE.id]);
@@ -211,18 +223,22 @@ describe("mergeContacts task_assignment dedupe (DEC-282)", () => {
 describe("mergeContacts participant dedupe (DEC-282 amendment)", () => {
   it("accepted survives being merged into a declined keeper", async () => {
     const { db, updates, deletes } = fakeDb([
-      [KEEP], // findContactById(keepId)
-      [MERGE], // findContactById(mergeId)
-      [], // user rows for keepId
-      [], // user rows for mergeId
-      [], // (b2) DEC-479 email conflict pre-check
+      [KEEP], // preflight (DEC-026 wave-43): findContactById(keepId)
+      [MERGE], // preflight: findContactById(mergeId)
+      [], // preflight: login chunk (nobody has an account)
+      [], // preflight: email-owner chunk (nobody else owns the merged email)
+      [KEEP], // fold: findContactById(keepId)
+      [MERGE], // fold: findContactById(mergeId)
+      [], // fold: user rows for keepId
+      [], // fold: user rows for mergeId
+      [], // fold: (b2) DEC-479 email conflict pre-check
       [{ id: "part-merge", submissionId: "sub-1", inviteStatus: "accepted", visible: true }], // mergeParticipants
       [{ id: "part-keep", submissionId: "sub-1", inviteStatus: "declined", visible: true }], // keepParticipants
-      [], // task_assignment for mergeId
-      [], // task_assignment for keepId
-      [], // pipelineEntry for keepId
-      [], // pipelineEntry for mergeId
-      [KEEP], // findContactById(keepId) after merge
+      [], // fold: task_assignment for mergeId
+      [], // fold: task_assignment for keepId
+      [], // fold: pipelineEntry for keepId
+      [], // fold: pipelineEntry for mergeId
+      [KEEP], // fold: findContactById(keepId) after merge
     ]);
 
     await mergeContacts(db, KEEP.id, [MERGE.id]);
@@ -240,18 +256,22 @@ describe("mergeContacts participant dedupe (DEC-282 amendment)", () => {
 
   it("visible survives being merged into a hidden keeper", async () => {
     const { db, updates } = fakeDb([
-      [KEEP], // findContactById(keepId)
-      [MERGE], // findContactById(mergeId)
-      [], // user rows for keepId
-      [], // user rows for mergeId
-      [], // (b2) DEC-479 email conflict pre-check
+      [KEEP], // preflight (DEC-026 wave-43): findContactById(keepId)
+      [MERGE], // preflight: findContactById(mergeId)
+      [], // preflight: login chunk (nobody has an account)
+      [], // preflight: email-owner chunk (nobody else owns the merged email)
+      [KEEP], // fold: findContactById(keepId)
+      [MERGE], // fold: findContactById(mergeId)
+      [], // fold: user rows for keepId
+      [], // fold: user rows for mergeId
+      [], // fold: (b2) DEC-479 email conflict pre-check
       [{ id: "part-merge", submissionId: "sub-1", inviteStatus: "none", visible: true }], // mergeParticipants
       [{ id: "part-keep", submissionId: "sub-1", inviteStatus: "none", visible: false }], // keepParticipants
-      [], // task_assignment for mergeId
-      [], // task_assignment for keepId
-      [], // pipelineEntry for keepId
-      [], // pipelineEntry for mergeId
-      [KEEP], // findContactById(keepId) after merge
+      [], // fold: task_assignment for mergeId
+      [], // fold: task_assignment for keepId
+      [], // fold: pipelineEntry for keepId
+      [], // fold: pipelineEntry for mergeId
+      [KEEP], // fold: findContactById(keepId) after merge
     ]);
 
     await mergeContacts(db, KEEP.id, [MERGE.id]);
@@ -266,11 +286,15 @@ describe("mergeContacts participant dedupe (DEC-282 amendment)", () => {
 
 describe("mergeContacts login-account conflict guard (DEC-282)", () => {
   it("both have user rows -> conflict thrown, and no delete/update was issued", async () => {
+    // DEC-026 wave-43 amendment: this is now caught by mergeContacts' own
+    // whole-operation preflight (planMergeFold + detectMergeConflicts),
+    // before the fold (mergeOnePair) ever runs -- so the fold's own selects
+    // never happen.
     const { db, updates, deletes } = fakeDb([
-      [KEEP], // findContactById(keepId)
-      [MERGE], // findContactById(mergeId)
-      [{ id: "user-keep" }], // user rows for keepId
-      [{ id: "user-merge" }], // user rows for mergeId
+      [KEEP], // preflight: findContactById(keepId)
+      [MERGE], // preflight: findContactById(mergeId)
+      [{ contactId: KEEP.id }, { contactId: MERGE.id }], // preflight: login chunk (both have accounts)
+      [], // preflight: email-owner chunk (unused once (a) already conflicts, but still queried)
     ]);
 
     let caught: unknown;
@@ -292,18 +316,22 @@ describe("mergeContacts user.email cascade (DEC-479)", () => {
     const keep = contactRaw("contact-keep", "a@example.com", "Jane", "Doe");
     const merge = contactRaw("contact-merge", "b@example.com", "Jane", "Doe");
     const { db, updates } = fakeDb([
-      [keep], // findContactById(keepId)
-      [merge], // findContactById(mergeId)
-      [], // user rows for keepId (no account)
-      [{ id: "user-merge" }], // user rows for mergeId (has account)
-      [], // (b2) email conflict pre-check
+      [keep], // preflight: findContactById(keepId)
+      [merge], // preflight: findContactById(mergeId)
+      [{ contactId: merge.id }], // preflight: login chunk (merge has an account)
+      [], // preflight: email-owner chunk (nobody else owns the merged email)
+      [keep], // fold: findContactById(keepId)
+      [merge], // fold: findContactById(mergeId)
+      [], // fold: user rows for keepId (no account)
+      [{ id: "user-merge" }], // fold: user rows for mergeId (has account)
+      [], // fold: (b2) email conflict pre-check
       [], // mergeParticipants
       [], // keepParticipants
-      [], // task_assignment for mergeId
-      [], // task_assignment for keepId
-      [], // pipelineEntry for keepId
-      [], // pipelineEntry for mergeId
-      [keep], // findContactById(keepId) after merge
+      [], // fold: task_assignment for mergeId
+      [], // fold: task_assignment for keepId
+      [], // fold: pipelineEntry for keepId
+      [], // fold: pipelineEntry for mergeId
+      [keep], // fold: findContactById(keepId) after merge
     ]);
 
     await mergeContacts(db, keep.id, [merge.id]);
@@ -324,18 +352,22 @@ describe("mergeContacts user.email cascade (DEC-479)", () => {
     const keep = contactRaw("contact-keep", "a@example.com", "Jane", "Doe");
     const merge = contactRaw("contact-merge", "b@example.com", "Jane", "Doe");
     const { db, updates } = fakeDb([
-      [keep], // findContactById(keepId)
-      [merge], // findContactById(mergeId)
-      [{ id: "user-keep" }], // user rows for keepId (has account)
-      [], // user rows for mergeId (no account)
-      [], // (b2) email conflict pre-check
+      [keep], // preflight: findContactById(keepId)
+      [merge], // preflight: findContactById(mergeId)
+      [{ contactId: keep.id }], // preflight: login chunk (keep has an account)
+      [], // preflight: email-owner chunk (nobody else owns the merged email)
+      [keep], // fold: findContactById(keepId)
+      [merge], // fold: findContactById(mergeId)
+      [{ id: "user-keep" }], // fold: user rows for keepId (has account)
+      [], // fold: user rows for mergeId (no account)
+      [], // fold: (b2) email conflict pre-check
       [], // mergeParticipants
       [], // keepParticipants
-      [], // task_assignment for mergeId
-      [], // task_assignment for keepId
-      [], // pipelineEntry for keepId
-      [], // pipelineEntry for mergeId
-      [keep], // findContactById(keepId) after merge
+      [], // fold: task_assignment for mergeId
+      [], // fold: task_assignment for keepId
+      [], // fold: pipelineEntry for keepId
+      [], // fold: pipelineEntry for mergeId
+      [keep], // fold: findContactById(keepId) after merge
     ]);
 
     await mergeContacts(db, keep.id, [merge.id]);
@@ -351,18 +383,22 @@ describe("mergeContacts user.email cascade (DEC-479)", () => {
     const keep = contactRaw("contact-keep", "a@x.com", "Jane", "Doe");
     const merge = contactRaw("contact-merge", "b@x.com", "Jane", "Doe");
     const { db, updates } = fakeDb([
-      [keep], // findContactById(keepId)
-      [merge], // findContactById(mergeId)
-      [], // user rows for keepId (no account)
-      [{ id: "user-merge" }], // user rows for mergeId (has account)
-      [], // (b2) email conflict pre-check
+      [keep], // preflight: findContactById(keepId)
+      [merge], // preflight: findContactById(mergeId)
+      [{ contactId: merge.id }], // preflight: login chunk (merge has an account)
+      [], // preflight: email-owner chunk (nobody else owns the merged email)
+      [keep], // fold: findContactById(keepId)
+      [merge], // fold: findContactById(mergeId)
+      [], // fold: user rows for keepId (no account)
+      [{ id: "user-merge" }], // fold: user rows for mergeId (has account)
+      [], // fold: (b2) email conflict pre-check
       [], // mergeParticipants
       [], // keepParticipants
-      [], // task_assignment for mergeId
-      [], // task_assignment for keepId
-      [], // pipelineEntry for keepId
-      [], // pipelineEntry for mergeId
-      [keep], // findContactById(keepId) after merge
+      [], // fold: task_assignment for mergeId
+      [], // fold: task_assignment for keepId
+      [], // fold: pipelineEntry for keepId
+      [], // fold: pipelineEntry for mergeId
+      [keep], // fold: findContactById(keepId) after merge
       [{ id: "user-merge" }], // findAccountUserId select below
     ]);
 
@@ -387,14 +423,15 @@ describe("mergeContacts user.email cascade (DEC-479)", () => {
   });
 
   it("some OTHER user already owns merged.email -> conflict thrown before any write", async () => {
+    // DEC-026 wave-43 amendment: this is now caught by the whole-operation
+    // preflight's email-owner chunk, before the fold ever runs.
     const keep = contactRaw("contact-keep", "a@example.com", "Jane", "Doe");
     const merge = contactRaw("contact-merge", "b@example.com", "Jane", "Doe");
     const { db, updates, deletes } = fakeDb([
-      [keep], // findContactById(keepId)
-      [merge], // findContactById(mergeId)
-      [], // user rows for keepId
-      [], // user rows for mergeId
-      [{ id: "user-other", contactId: "contact-other" }], // (b2) conflict: a third contact already owns merged.email
+      [keep], // preflight: findContactById(keepId)
+      [merge], // preflight: findContactById(mergeId)
+      [], // preflight: login chunk (nobody has an account)
+      [{ email: "a@example.com", contactId: "contact-other" }], // preflight: email-owner chunk -- a third contact already owns the merged email
     ]);
 
     let caught: unknown;
@@ -442,11 +479,10 @@ describe("mergeContacts email conflict guard vs. a staff login (DEC-565)", () =>
     const keep = contactRaw("contact-keep", "a@example.com", "Jane", "Doe");
     const merge = contactRaw("contact-merge", "a@example.com", "Jane", "Doe");
     const { db, updates, deletes } = fakeDb([
-      [keep], // findContactById(keepId)
-      [merge], // findContactById(mergeId)
-      [], // user rows for keepId
-      [], // user rows for mergeId
-      [{ id: "user-staff", contactId: null }], // (b2) email lookup: a staff login, no contact
+      [keep], // preflight: findContactById(keepId)
+      [merge], // preflight: findContactById(mergeId)
+      [], // preflight: login chunk (nobody has an account)
+      [{ email: "a@example.com", contactId: null }], // preflight: email-owner chunk -- a staff login, no contact
     ]);
 
     let caught: unknown;
@@ -477,6 +513,13 @@ describe("mergeContacts set-based merge (DEC-629)", () => {
     const dup2 = { ...contactRaw("contact-dup2", "a@example.com", "Jane", "Doe"), company: "Acme Corp" };
 
     const { db, updates, deletes } = fakeDb([
+      // Whole-operation preflight (DEC-026 wave-43), before any fold runs.
+      [keep], // preflight: findContactById(keepId)
+      [dup1], // preflight: findContactById(mergeIds[0])
+      [dup2], // preflight: findContactById(mergeIds[1])
+      [], // preflight: login chunk (nobody has an account)
+      [], // preflight: email-owner chunk (nobody else owns the merged email)
+
       // Fold 1: mergeOnePair(keep, dup1)
       [keep], // findContactById(keepId)
       [dup1], // findContactById(mergeId)
@@ -523,18 +566,22 @@ describe("mergeContacts set-based merge (DEC-629)", () => {
     const dup1 = contactRaw("contact-dup1", "a@example.com", "Jane", "Doe");
 
     const { db, deletes } = fakeDb([
-      [keep], // findContactById(keepId)
-      [dup1], // findContactById(mergeId)
-      [], // user rows for keepId
-      [], // user rows for mergeId
-      [], // (b2) email conflict pre-check
+      [keep], // preflight: findContactById(keepId)
+      [dup1], // preflight: findContactById(mergeId)
+      [], // preflight: login chunk (nobody has an account)
+      [], // preflight: email-owner chunk (nobody else owns the merged email)
+      [keep], // fold: findContactById(keepId)
+      [dup1], // fold: findContactById(mergeId)
+      [], // fold: user rows for keepId
+      [], // fold: user rows for mergeId
+      [], // fold: (b2) email conflict pre-check
       [], // mergeParticipants
       [], // keepParticipants
-      [], // task_assignment for mergeId
-      [], // task_assignment for keepId
-      [], // pipelineEntry for keepId
-      [], // pipelineEntry for mergeId
-      [keep], // findContactById(keepId) after merge
+      [], // fold: task_assignment for mergeId
+      [], // fold: task_assignment for keepId
+      [], // fold: pipelineEntry for keepId
+      [], // fold: pipelineEntry for mergeId
+      [keep], // fold: findContactById(keepId) after merge
     ]);
 
     // mergeIds contains keepId (a no-op self-reference) and dup1.id twice.

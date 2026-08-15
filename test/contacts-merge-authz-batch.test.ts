@@ -170,18 +170,22 @@ describe("contact merge ownership proof is set-based (DEC-629 amendment, wave 49
   it("POST /contacts/merge: happy path issues exactly ONE ownership select before the merge writes", async () => {
     const { db, selectCallCount } = fakeDb([
       [KEEP, MERGE], // requireOwnedContacts([keepId, mergeId]) -- one set-based select
-      [KEEP], // mergeContacts: findContactById(keepId)
-      [MERGE], // mergeContacts: findContactById(mergeId)
-      [], // mergeContacts: user rows for keepId (none)
-      [], // mergeContacts: user rows for mergeId (none)
-      [], // mergeContacts: (b2) DEC-479 email conflict pre-check (none)
+      [KEEP], // mergeContacts preflight (DEC-026 wave-43): findContactById(keepId)
+      [MERGE], // mergeContacts preflight: findContactById(mergeId)
+      [], // mergeContacts preflight: login chunk (nobody has an account)
+      [], // mergeContacts preflight: email-owner chunk (nobody else owns the merged email)
+      [KEEP], // mergeContacts fold: findContactById(keepId)
+      [MERGE], // mergeContacts fold: findContactById(mergeId)
+      [], // mergeContacts fold: user rows for keepId (none)
+      [], // mergeContacts fold: user rows for mergeId (none)
+      [], // mergeContacts fold: (b2) DEC-479 email conflict pre-check (none)
       [], // mergeParticipants (none)
       [], // keepParticipants (none)
-      [], // mergeContacts: task_assignment rows for mergeId (none)
-      [], // mergeContacts: task_assignment rows for keepId (none)
-      [], // mergeContacts: pipelineEntry for keepId (none)
-      [], // mergeContacts: pipelineEntry for mergeId (none)
-      [KEEP], // mergeContacts: findContactById(keepId) after merge
+      [], // mergeContacts fold: task_assignment rows for mergeId (none)
+      [], // mergeContacts fold: task_assignment rows for keepId (none)
+      [], // mergeContacts fold: pipelineEntry for keepId (none)
+      [], // mergeContacts fold: pipelineEntry for mergeId (none)
+      [KEEP], // mergeContacts fold: findContactById(keepId) after merge
     ]);
     const app = appWithDbAndAuth(db, ORGANIZER_A);
 
@@ -190,8 +194,10 @@ describe("contact merge ownership proof is set-based (DEC-629 amendment, wave 49
     );
     expect(res.status).toBe(200);
     // Exactly one select is the ownership proof; every subsequent select
-    // belongs to mergeContacts, not to a second ownership check.
-    expect(selectCallCount()).toBe(13);
+    // belongs to mergeContacts (its DEC-026 wave-43 whole-operation
+    // preflight, 4 selects, then the fold's 12), not to a second ownership
+    // check.
+    expect(selectCallCount()).toBe(17);
   });
 
   it("GET /contacts/merge/preview: a foreign id in ids 404s", async () => {

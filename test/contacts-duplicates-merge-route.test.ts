@@ -137,18 +137,22 @@ describe("POST /api/v1/contacts/merge roundtrip from a duplicates response (DEC-
     // 2) Merge, using exactly the ids the duplicates endpoint returned.
     const { db: mergeDb, updates, deletes } = fakeDb([
       [KEEP, MERGE], // requireOwnedContacts([keepId, mergeId]) -- one set-based select
-      [KEEP.id === keepId ? KEEP : MERGE], // mergeContacts: findContactById(keepId)
-      [KEEP.id === mergeId ? KEEP : MERGE], // mergeContacts: findContactById(mergeId)
-      [], // mergeContacts: user rows for keepId (none)
-      [], // mergeContacts: user rows for mergeId (none)
-      [], // mergeContacts: (b2) DEC-479 email conflict pre-check (none)
+      [KEEP.id === keepId ? KEEP : MERGE], // mergeContacts preflight (DEC-026 wave-43): findContactById(keepId)
+      [KEEP.id === mergeId ? KEEP : MERGE], // mergeContacts preflight: findContactById(mergeId)
+      [], // mergeContacts preflight: login chunk (nobody has an account)
+      [], // mergeContacts preflight: email-owner chunk (nobody else owns the merged email)
+      [KEEP.id === keepId ? KEEP : MERGE], // mergeContacts fold: findContactById(keepId)
+      [KEEP.id === mergeId ? KEEP : MERGE], // mergeContacts fold: findContactById(mergeId)
+      [], // mergeContacts fold: user rows for keepId (none)
+      [], // mergeContacts fold: user rows for mergeId (none)
+      [], // mergeContacts fold: (b2) DEC-479 email conflict pre-check (none)
       [], // mergeParticipants (none)
       [], // keepParticipants (none)
-      [], // mergeContacts: task_assignment rows for mergeId (none)
-      [], // mergeContacts: task_assignment rows for keepId (none)
-      [], // mergeContacts: pipelineEntry for keepId (none)
-      [], // mergeContacts: pipelineEntry for mergeId (none)
-      [KEEP.id === keepId ? KEEP : MERGE], // mergeContacts: findContactById(keepId) after merge
+      [], // mergeContacts fold: task_assignment rows for mergeId (none)
+      [], // mergeContacts fold: task_assignment rows for keepId (none)
+      [], // mergeContacts fold: pipelineEntry for keepId (none)
+      [], // mergeContacts fold: pipelineEntry for mergeId (none)
+      [KEEP.id === keepId ? KEEP : MERGE], // mergeContacts fold: findContactById(keepId) after merge
     ]);
     const mergeApp = appWithDbAndAuth(mergeDb, ORGANIZER_A);
     const mergeRes = await mergeApp.request(
