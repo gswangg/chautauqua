@@ -744,6 +744,19 @@
 .chq-insert-field-menu-trigger {
   appearance: none;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* DEC-993 (wave-19 amendment, DESIGN-RULINGS B8): the caret is its own
+   element at the control's right edge in muted ink, never the last glyph
+   of the trigger label -- see EventSwitcher's .chq-eventswitcher-caret for
+   the reference shape. */
+.chq-insert-field-menu-caret {
+  font-size: 11px;
+  color: var(--chq-muted);
+  line-height: 1;
 }
 
 .chq-insert-field-menu-panel {

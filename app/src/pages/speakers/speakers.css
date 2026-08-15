@@ -382,6 +382,18 @@
   cursor: pointer;
 }
 
+/* DEC-830 (wave-19 amendment, DESIGN-RULINGS B8): the caret is its own
+   element at the trigger's right edge in muted ink, 6px clear of the label
+   -- the trigger is already an inline-flex row (.chq-speakers-status), so
+   only the caret itself needs styling. Reference shape:
+   EventSwitcher.tsx's .chq-eventswitcher-caret. */
+.chq-participation-menu-caret {
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--chq-muted);
+  line-height: 1;
+}
+
 /* DEC-830 wave-19 amendment: the panel is a fixed-width three-band card
    (identity header / body / footer) rather than a padded+gapped list --
    frame Chautauqua Speakers.dc.html:296-317. Each band owns its own

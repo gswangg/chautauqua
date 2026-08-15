@@ -32,7 +32,10 @@ export function InsertFieldMenu({ fields, onInsert, label }: InsertFieldMenuProp
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        {triggerLabel} <span aria-hidden="true">▾</span>
+        <span>{triggerLabel}</span>
+        <span className="chq-insert-field-menu-caret" aria-hidden="true">
+          ▾
+        </span>
       </button>
       {/* The count is computed from the SAME `fields` list the panel below
           renders — never a hardcoded numeral — so growing/shrinking the
