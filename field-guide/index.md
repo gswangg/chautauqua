@@ -12,49 +12,49 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   set-based; D1 PRIMITIVES; dates via event-time.ts; pagination ONE
   shape+count*+id asc; atomic SQL > read-then-write; uniqueIndex CONTRACT;
   MINTING IS IO; UNBOUNDED SURFACE NEVER PAGED; GUARD THAT NARROWS < NONE.
-- FINDINGS w2-18 (all LANDED/SWEPT/DISMISSED, heavily compacted): DateField/
-  search/CSV/compose/reviewer-scope/error-vocab/locked-field caps unified to
-  src/domain; write caps, contact merge keepId, CSRF exemption, bulk-email
-  dedupe; DEC-340/346/967/317/902/989/890/603. DEC-119 w18: no worker lane
-  boots a server, merge train's full-suite+build is the measurement. Branch
-  names REUSED across generations. w69: SWARM REBOOTED at gate-7. Shapes: A
-  CAP ONLY IN THE SPA IS A SUGGESTION. A LINE NUMBER IS NOT AN IDENTITY. TWO
-  UNWIDTHED COLUMNS MEANS THE LAST ONE EATS THE MEASURE.
-- TOOL TRAP: Grep -C drops some `/` chars (e.g. `//` -> `/`). Read exact
-  lines before filing a defect. SPEC CLOSED, J1-J12+§5+§6 GREEN (w16-e);
-  remaining work is FRAME FIDELITY vs docs/design/*.dc.html.
-- FINDINGS w19 (main 4522f480): DEC-830 participation menu 420px 3-band;
-  DEC-930 speaker-detail 1fr/320px grid; DEC-785 saved-embed ONE boxed
-  readout; DEC-874 reviewer hub desktop 4-col grid; DEC-730 task-column
-  fixed 230px; DEC-993 select caret own element. Shapes: A COMPONENT DRAWN
-  FROM THE PHONE FRAME'S DATA BLOCK IS PHONE ANATOMY AT DESKTOP. A RULING
-  WITH NO SCAN DRIFTS BACK.
-- FINDINGS w20 (IN FLIGHT is a snapshot, never a fact — refs move mid-plan).
-  Landed as amendments: src/mail/shell.ts OFF-PALETTE literals, not exempt
-  (DEC-037); .chq-submissions-table/.chq-contacts-table zero-width tables
-  (DEC-902 w20); ExportsPanel gate-over-nothing, public-pages missing
-  caption (DEC-032/896). Re-verified CLOSED, do not re-file: eventId scope,
-  tasks.ts 400s, compose step-2/default, sessionboard pairKey, auth/email
-  sweeps, B7/A15/A22/A26/double-booking/embed-200/self-hosted-fonts BUILT.
-  Shapes: AN EXEMPTION FOR LITERALS IS NOT AN EXEMPTION FOR THE PALETTE. A
-  TABLE WITH NO WIDTHS STILL HAS ONE COLUMN THAT EATS THE REST. A GATE OVER
-  AN ACTION IS A GATE OVER NOTHING.
-- FINDINGS w21 (main 7cf384fb "scribe wave 20"; w18-a..h + w19-a/-b/-c/-e ALL
-  MERGED — the w20 note's "eleven unmerged branches" is stale). IN FLIGHT, no
-  re-file: w19-d (reviewer hub 4-col), w20-a (mail shell), w20-b/-c
-  (submissions/contacts tables), w20-d (exports/public-pages; ref==main,
-  owned anyway). Re-verified CLOSED, do not re-file: isSubmissionInReview-
-  erScope capped (w18-b); focus-ring/no-red/hex-literal guards cover
-  app/src/pages/**.css and src/routes/**.css.ts (src/mail is w20-a's); B10
-  lines, A9/A10/A18/A19/A20/B5/B7, agenda highlight, compose step-4, content
-  status-band bleed all BUILT.
-- The wave-20 defect class has more members than w20 counted: `.chq-table`
-  (styles.css:652) declares NO table-layout, so EVERY admin table is
-  auto-layout until its page sheet pins it. Only files-library (w18-d) and
-  w20-b/-c's two are pinned. w21 pins compose step-1, review results and the
-  content worklist (DEC-902 w21). Shapes: A SHARED VOCABULARY CLASS IS NOT A
-  WIDTH HOOK (`.chq-content-table` is worn by BOTH content tables — hang
-  widths off a table-specific class or you restyle the neighbour). AN
-  EXPANDED BAND WITH ITS OWN GRID IS A SECOND TABLE (DEC-751 w21). A FRAME
-  TRACK LIST IS A CONTRACT, A CSS COMMENT ABOUT IT IS NOT (review.css's
-  criteria comment explains a drag column it then sizes `auto`).
+- FINDINGS w2-19 (all LANDED/SWEPT/DISMISSED, heavily compacted): DateField/
+  search/CSV/compose/reviewer-scope/error-vocab/locked-field caps unified;
+  write caps, contact merge, CSRF exemption, bulk-email dedupe;
+  DEC-340/346/967/317/902/989/890/603/830/930/785/874/730/993. TOOL TRAP:
+  Grep -C drops some `/` (e.g. `//`->`/`) — read exact lines. SPEC CLOSED,
+  J1-J12+§5+§6 GREEN; remaining work is FRAME FIDELITY vs docs/design/*.dc.
+  html. Shapes: A CAP ONLY IN THE SPA IS A SUGGESTION. A LINE NUMBER IS NOT
+  AN IDENTITY. A COMPONENT DRAWN FROM THE PHONE FRAME'S DATA BLOCK IS PHONE
+  ANATOMY AT DESKTOP. A RULING WITH NO SCAN DRIFTS BACK.
+- FINDINGS w20-21 (compacted): `.chq-table` (styles.css:652) has NO
+  table-layout — every admin table is auto-layout until its page sheet pins
+  it; fixed by w18-d/w20-b/-c/w21 across files-library, submissions,
+  contacts, compose step-1, review results, content worklist (DEC-902).
+  Also landed: mail-shell off-palette literals (DEC-037); exports/public-
+  pages gate+caption (DEC-032/896). Shapes: A SHARED VOCABULARY CLASS IS NOT
+  A WIDTH HOOK (`.chq-content-table` worn by two tables). AN EXPANDED BAND
+  WITH ITS OWN GRID IS A SECOND TABLE. A FRAME TRACK LIST IS A CONTRACT, A
+  CSS COMMENT ABOUT IT IS NOT. AN EXEMPTION FOR LITERALS IS NOT AN EXEMPTION
+  FOR THE PALETTE. A GATE OVER AN ACTION IS A GATE OVER NOTHING.
+- FINDINGS w22 (verified by reading main, not inherited): w20-b/-c and
+  w21-a/-b/-c/-d/-e ALL LANDED (styles.css:1142, submissions.css:203,
+  comms.css:843, content.css:848, review.css:181/1107, cards.css.ts:149) —
+  a "just planned" handoff was stale within the wave. A REF LIST IS A
+  SNAPSHOT; A RULE IN THE STYLESHEET IS A FACT.
+- New defect class: FITTED SUB-PIXEL GEOMETRY (DEC-369 w22). styles.css:
+  201/267 shave the frames' `padding:15px 34px`/`gap:15px` to 10.65/
+  10.625px to hit a superseded fleet measurement. Same method in
+  overview.css/agenda.css/auth.css.ts. Shapes: A FRACTION IS THE SIGNATURE
+  OF A FIT. WHEN CONTENT IS TALLER THAN THE FRAME, FIX THE CONTENT — THE
+  BOX IS DECLARED. A TEST THAT PINS A FITTED VALUE IS ON THE WRONG SIDE OF
+  THE STANDING RULE.
+- More unwidthed-column members (w22): `.chq-settings-tokens-table` (FIVE
+  unwidthed cols) and `.chq-review-queue-row` (`1fr auto` vs frame `1fr
+  176px`). `.chq-settings-edit-row` is ONE class over TWO column counts
+  (tracks vs rooms) — the `.chq-content-table` shape again. w21-e's landed
+  criteria rule cites frame lines 132/62 but declares 150/70 — A CITATION IS
+  NOT A TRANSCRIPTION, re-read the cited line.
+- A ROW GRID THAT REPLACED A TABLE MUST CARRY THE TABLE'S SEMANTICS
+  (DEC-930 w22): speaker-detail dropped `<table>` with no role=table/row/
+  cell; PeopleRolesPanel has an orphaned role="row" outside any table.
+  Asserting the ABSENCE of `<thead>` is not an a11y test.
+- Re-verified CLOSED, do not re-file: tasks.ts 400s; isSubmissionInReview-
+  erScope capped; public sessions-list byline gated (sessions.ts:419);
+  /logout POST+redirect; password reset; content-note emails; compose
+  step-3 partial send; portal 560; Home hub. DISMISSED: isSlugTaken without
+  orgId (slug globally unique + public, no oracle).
