@@ -210,40 +210,26 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
                 <tr>
                   <th>Name</th>
                   <th>Last used</th>
-                  <th />
                 </tr>
               </thead>
               <tbody>
                 {templates.map((t) => (
                   <tr key={t.id} className={t.id === editingId ? 'chq-comms-template-row-selected' : undefined}>
-                    {/* DEC-890 amendment (wave 3, w3-e): the stored name is
-                        the only handle the organizer typed, so it is the
-                        row's first line. Purpose copy + subject are demoted
-                        to secondary meta, joined plainly with " · ". */}
+                    {/* DEC-890 amendment (wave 18): the row carries no verbs
+                        of its own -- the NAME is the row's one control,
+                        selecting the template into the editor where Delete,
+                        Duplicate and "Use in a send" live. Purpose copy +
+                        subject stay demoted secondary meta. */}
                     <td data-label="Name">
-                      <div className="chq-comms-template-name">{t.name}</div>
+                      <button type="button" className="chq-link-button chq-comms-template-name" onClick={() => startEdit(t)}>
+                        {t.name}
+                      </button>
                       <div className="chq-comms-template-detail">{derivePurpose(t)} &middot; {t.subject}</div>
                     </td>
                     <td data-label="Last used">
                       <span className="chq-comms-template-last-used">
                         {t.lastUsedAt ? `Last used ${formatDate(t.lastUsedAt)}` : 'Not used yet'}
                       </span>
-                    </td>
-                    <td data-label="Actions">
-                      <div className="chq-comms-template-row-actions">
-                        <button type="button" className="chq-link-button" onClick={() => startEdit(t)}>
-                          Edit
-                        </button>
-                        <button type="button" className="chq-link-button" onClick={() => duplicate(t)}>
-                          Duplicate
-                        </button>
-                        <button type="button" className="chq-btn chq-btn-secondary chq-btn-small" onClick={() => useInSend(t)}>
-                          Use in a send
-                        </button>
-                        <button type="button" className="chq-link-button" onClick={() => setPendingDelete(t)}>
-                          Delete
-                        </button>
-                      </div>
                     </td>
                   </tr>
                 ))}
@@ -318,6 +304,20 @@ export function TemplatesTab({ eventId }: { eventId: string }) {
               ) : (
                 <button type="button" className="chq-btn chq-btn-secondary" disabled={saving} onClick={() => setEditingId(null)}>
                   Cancel
+                </button>
+              )}
+              {/* DEC-890 amendment (wave 18): Delete moves into the editor's
+                  action row as a tertiary link -- never a bordered button
+                  (DESIGN-RULINGS 3, 20) -- and only renders once there is a
+                  saved template to delete; a never-saved 'new' draft has
+                  nothing to delete. */}
+              {selectedTemplate && (
+                <button
+                  type="button"
+                  className="chq-link-button chq-comms-editor-delete"
+                  onClick={() => setPendingDelete(selectedTemplate)}
+                >
+                  Delete
                 </button>
               )}
             </div>
