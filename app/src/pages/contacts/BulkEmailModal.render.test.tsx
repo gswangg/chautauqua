@@ -203,4 +203,38 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
       expect(subjectInput.value).toBe('Hi {speaker_name}');
     });
   });
+
+  // DEC-856 (wave 60 amendment): the preview refusal must name the
+  // recipient and the offending token -- never just the sentence, and
+  // never their opaque contactId.
+  it('names the recipient and the missing token on a preview refusal, with no ULID in the DOM', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      'POST /api/v1/contacts/bulk-email/preview': {
+        status: 400,
+        body: {
+          error: {
+            code: 'invalid',
+            message:
+              '1 of 1 recipients are missing {talk_title} — only {speaker_name}, {event_name} and {portal_link} can be merged in a bulk email.',
+            fields: {
+              'ada@example.com': 'Ada Lovelace is missing {talk_title}',
+            },
+          },
+        },
+      },
+    });
+
+    render(<BulkEmailModal contactIds={['ct-01hqzxyzabc123']} eventId={EVENT_ID} onClose={() => {}} />);
+
+    fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'Hi {talk_title}' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+
+    expect(await screen.findByText('Ada Lovelace is missing {talk_title}')).toBeInTheDocument();
+    expect(
+      screen.getByText(/1 of 1 recipients are missing \{talk_title\}/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/ct-01hqzxyzabc123/)).not.toBeInTheDocument();
+  });
 });

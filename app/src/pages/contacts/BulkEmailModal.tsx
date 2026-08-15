@@ -70,6 +70,9 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
   const [step, setStep] = useState<Step>('compose');
   const [preview, setPreview] = useState<PreviewItem[]>([]);
   const [sendResult, setSendResult] = useState<SendResult | null>(null);
+  // DEC-856 (wave 60 amendment): keyed by email -> "Name is missing {token}"
+  // -- the server's own vocabulary, never re-derived client-side.
+  const [missingMergeFieldLines, setMissingMergeFieldLines] = useState<string[] | null>(null);
   // DEC-967: an email batch asks once before it leaves -- the terminal Send
   // opens this confirmation instead of posting directly.
   const [confirmingSend, setConfirmingSend] = useState(false);
@@ -103,6 +106,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
     }
     setBusy(true);
     setError(null);
+    setMissingMergeFieldLines(null);
     try {
       const res = await apiPost<{ items: PreviewItem[] }>('/contacts/bulk-email/preview', {
         contactIds,
@@ -113,7 +117,12 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
       setPreview(res.items);
       setStep('preview');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Preview failed');
+      if (err instanceof ApiError) {
+        setError(err.message);
+        setMissingMergeFieldLines(err.fields ? Object.values(err.fields) : null);
+      } else {
+        setError('Preview failed');
+      }
     } finally {
       setBusy(false);
     }
@@ -134,6 +143,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
     if (!eventId) return;
     setBusy(true);
     setError(null);
+    setMissingMergeFieldLines(null);
     try {
       const res = await apiPost<SendResult>('/contacts/bulk-email', {
         contactIds,
@@ -144,7 +154,12 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
       setSendResult(res);
       setStep('sent');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Bulk email failed');
+      if (err instanceof ApiError) {
+        setError(err.message);
+        setMissingMergeFieldLines(err.fields ? Object.values(err.fields) : null);
+      } else {
+        setError('Bulk email failed');
+      }
     } finally {
       setBusy(false);
     }
@@ -205,7 +220,18 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
       modalClassName="chq-contacts-bulk-email-modal"
       actions={actions}
     >
-      {error && <div className="chq-error">{error}</div>}
+      {error && (
+        <div className="chq-error" role="alert">
+          {error}
+          {missingMergeFieldLines && missingMergeFieldLines.length > 0 && (
+            <ul>
+              {missingMergeFieldLines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {step === 'compose' && (
         <>
