@@ -18,8 +18,44 @@ import { SettingsEditForm, SettingsField, SettingsFieldPair } from './SettingsEd
 import { plural } from '../../lib/plural';
 import { dateInputToMs, daysUntil } from '../../lib/dates';
 import { formatEventDayRange } from '../../../../src/lib/event-time';
+import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
 
 const SECTION_KEY = 'event';
+
+// DEC-124 amendment (wave 56): every control PATCH /api/v1/events/:id can
+// refuse (src/routes/api/events.ts:317-355) gets a stable id, a display
+// label for the ErrorSummary anchor list, and its own entry in the field
+// order below (form layout order, used so the summary's problem list reads
+// top-to-bottom the same way the form does).
+const FIELD_ORDER = ['name', 'slug', 'startDate', 'endDate', 'timezone', 'location'] as const;
+type EventPatchField = (typeof FIELD_ORDER)[number];
+
+const FIELD_IDS: Record<EventPatchField, string> = {
+  name: 'event-settings-name',
+  slug: 'event-settings-slug',
+  startDate: 'event-settings-start-date',
+  endDate: 'event-settings-end-date',
+  timezone: 'event-settings-timezone',
+  location: 'event-settings-location',
+};
+
+const FIELD_LABELS: Record<EventPatchField, string> = {
+  name: 'Name',
+  slug: 'Slug',
+  startDate: 'Start date',
+  endDate: 'End date',
+  timezone: 'Time zone',
+  location: 'Venue',
+};
+
+// Rule 12: never blame the input for a refusal the input didn't cause. The
+// slug and end-date refusals are the two cases where the server's own
+// message would read as if the value the user typed were malformed --
+// every other key's server message renders verbatim.
+const FIELD_ERROR_COPY: Partial<Record<EventPatchField, string>> = {
+  slug: 'That slug is already taken by another event in this org.',
+  endDate: 'The end date must be on or after the start date.',
+};
 
 interface EventDetail {
   id: string;
@@ -110,11 +146,12 @@ export function EventSettingsPanel() {
   const [error, setError] = useState<string | undefined>(undefined);
   // DEC-897/DEC-124 server-only-conflict shape: a save refusal the server
   // attributes to a specific field (fields map, or a conflict/409 code --
-  // on this form the slug is the only field a server-side uniqueness check
-  // can refuse) renders under that field's own control instead of the page
+  // when the server sends no fields map at all the only server-side
+  // uniqueness check on this form is the slug, so a bare conflict still
+  // marks Slug) renders under that field's own control instead of the page
   // banner, and never resets/refetches the form -- the user's unsaved edits
   // in every other field survive the refusal untouched.
-  const [slugError, setSlugError] = useState<string | undefined>(undefined);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [unscheduledNotice, setUnscheduledNotice] = useState<OutsideWindowNotice | null>(null);
@@ -160,7 +197,7 @@ export function EventSettingsPanel() {
     }
     setSaving(true);
     setError(undefined);
-    setSlugError(undefined);
+    setFieldErrors({});
     try {
       const updated = await apiPatch<EventDetail>(`/events/${eventId}`, patch);
       const f = toForm(updated);
@@ -176,15 +213,24 @@ export function EventSettingsPanel() {
       );
       closeEdit();
     } catch (err) {
-      // DEC-897/DEC-124: a field-scoped refusal (fields.slug, or a bare
-      // conflict/409 -- the only server-side uniqueness check on this form
-      // is the slug) renders under the Slug control instead of the page
-      // banner, and the copy names what's wrong without blaming the input
-      // (rule 12: never "invalid slug" -- the slug the user typed may be
-      // perfectly well-formed, it's simply already claimed). No refetch, no
-      // reset: `form` and `initial` are left exactly as the user had them.
-      if (err instanceof ApiError && (err.fields?.slug !== undefined || err.code === 'conflict')) {
-        setSlugError('That slug is already taken by another event in this org.');
+      // DEC-897/DEC-124: a field-scoped refusal (the server's `fields` map,
+      // populated in full -- every key it names renders inline under that
+      // key's own control) or a bare conflict/409 with no fields map at all
+      // (the only server-side uniqueness check on this form is the slug,
+      // so that case still marks Slug) renders under the offending
+      // control(s) instead of the page banner. No refetch, no reset: `form`
+      // and `initial` are left exactly as the user had them.
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        const serverFields = err.fields;
+        const mapped: Record<string, string> = {};
+        for (const key of Object.keys(serverFields)) {
+          const serverMessage = serverFields[key];
+          if (serverMessage === undefined) continue;
+          mapped[key] = FIELD_ERROR_COPY[key as EventPatchField] ?? serverMessage;
+        }
+        setFieldErrors(mapped);
+      } else if (err instanceof ApiError && err.code === 'conflict') {
+        setFieldErrors({ slug: FIELD_ERROR_COPY.slug! });
       } else {
         setError(err instanceof ApiError ? err.message : 'Failed to save event settings');
       }
@@ -192,6 +238,34 @@ export function EventSettingsPanel() {
       setSaving(false);
     }
   }
+
+  // The error copy renders through `hint`, i.e. as a sibling AFTER
+  // </label> rather than inside children (which sit inside the <label>) --
+  // text inside a <label> becomes part of the control's accessible name,
+  // which would silently break every getByLabelText(...) lookup (and any
+  // real screen reader's field announcement) the moment an error appears.
+  function fieldErrorHint(key: EventPatchField) {
+    const message = fieldErrors[key];
+    if (!message) return undefined;
+    return (
+      <span className="chq-field-error" role="alert">
+        {message}
+      </span>
+    );
+  }
+
+  function fieldInputClassName(key: EventPatchField) {
+    return fieldErrors[key] ? 'chq-input chq-field-invalid' : 'chq-input';
+  }
+
+  function fieldAriaInvalid(key: EventPatchField) {
+    return fieldErrors[key] ? 'true' : undefined;
+  }
+
+  const errorSummaryProblems = FIELD_ORDER.filter((key) => fieldErrors[key] !== undefined).map((key) => ({
+    anchorId: FIELD_IDS[key],
+    label: FIELD_LABELS[key],
+  }));
 
   const rows = form
     ? [
@@ -270,59 +344,84 @@ export function EventSettingsPanel() {
             ),
           }}
         >
-          <SettingsField label="Name" width="name">
-            <input className="chq-input" value={form.name} onChange={(e) => update('name', e.target.value)} />
+          {errorSummaryProblems.length > 0 ? (
+            <ErrorSummary
+              heading={countHeading(errorSummaryProblems.length, 'before these settings can be saved')}
+              kept="Nothing was lost. Your edits are still below."
+              problems={errorSummaryProblems}
+            />
+          ) : null}
+          <SettingsField label="Name" htmlFor={FIELD_IDS.name} width="name" hint={fieldErrorHint('name')}>
+            <input
+              id={FIELD_IDS.name}
+              className={fieldInputClassName('name')}
+              value={form.name}
+              onChange={(e) => update('name', e.target.value)}
+              aria-invalid={fieldAriaInvalid('name')}
+            />
           </SettingsField>
           <SettingsField
             label="Slug"
+            htmlFor={FIELD_IDS.slug}
             width="slug"
-            // The error/survival copy renders through `hint`, i.e. as a
-            // sibling AFTER </label> rather than inside children (which sit
-            // inside the <label>) -- text inside a <label> becomes part of
-            // the control's accessible name, which would silently break
-            // every getByLabelText('Slug') lookup (and any real screen
-            // reader's field announcement) the moment an error appears.
-            hint={
-              slugError ? (
-                <span className="chq-settings-field-error-row">
-                  <span className="chq-field-error" role="alert">
-                    {slugError}
-                  </span>
-                  <span className="chq-settings-field-survival">
-                    Everything else on this page is fine and is still here.
-                  </span>
-                </span>
-              ) : undefined
-            }
+            hint={fieldErrorHint('slug') ?? 'Used in every public URL'}
           >
             <input
-              className={slugError ? 'chq-input chq-field-invalid' : 'chq-input'}
+              id={FIELD_IDS.slug}
+              className={fieldInputClassName('slug')}
               value={form.slug}
               onChange={(e) => update('slug', e.target.value)}
-              aria-invalid={slugError ? 'true' : undefined}
+              aria-invalid={fieldAriaInvalid('slug')}
             />
           </SettingsField>
           <SettingsFieldPair>
-            <SettingsField label="Start date" htmlFor="event-settings-start-date" width="date">
+            <SettingsField
+              label="Start date"
+              htmlFor={FIELD_IDS.startDate}
+              width="date"
+              hint={fieldErrorHint('startDate')}
+            >
               <DateField
-                id="event-settings-start-date"
+                id={FIELD_IDS.startDate}
                 value={form.startDate}
                 onChange={(next) => update('startDate', next)}
               />
             </SettingsField>
-            <SettingsField label="End date" htmlFor="event-settings-end-date" width="date">
+            <SettingsField
+              label="End date"
+              htmlFor={FIELD_IDS.endDate}
+              width="date"
+              hint={fieldErrorHint('endDate')}
+            >
               <DateField
-                id="event-settings-end-date"
+                id={FIELD_IDS.endDate}
                 value={form.endDate}
                 onChange={(next) => update('endDate', next)}
               />
             </SettingsField>
           </SettingsFieldPair>
-          <SettingsField label="Venue" width="name">
-            <input className="chq-input" value={form.location} onChange={(e) => update('location', e.target.value)} />
+          <SettingsField label="Venue" htmlFor={FIELD_IDS.location} width="name" hint={fieldErrorHint('location')}>
+            <input
+              id={FIELD_IDS.location}
+              className={fieldInputClassName('location')}
+              value={form.location}
+              onChange={(e) => update('location', e.target.value)}
+              aria-invalid={fieldAriaInvalid('location')}
+            />
           </SettingsField>
-          <SettingsField label="Time zone" width="name">
-            <input className="chq-input" value={form.timezone} onChange={(e) => update('timezone', e.target.value)} />
+          <SettingsField
+            label="Time zone"
+            htmlFor={FIELD_IDS.timezone}
+            width="name"
+            hint={fieldErrorHint('timezone')}
+          >
+            <input
+              id={FIELD_IDS.timezone}
+              className={fieldInputClassName('timezone')}
+              value={form.timezone}
+              onChange={(e) => update('timezone', e.target.value)}
+              aria-invalid={fieldAriaInvalid('timezone')}
+            />
           </SettingsField>
           <SettingsField label="Record prefix" width="name">
             <input className="chq-input" value={form.recordPrefix} readOnly disabled />
