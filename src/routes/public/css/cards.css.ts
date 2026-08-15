@@ -6,12 +6,18 @@
 // CARDS_CSS is a fixed, value-free module constant, exactly like the
 // PUBLIC_CSS it composes into (DEC-374) -- never interpolated with
 // request/user data.
+//
+// GOTCHA: PUBLIC_CSS is inlined verbatim into GET /'s <style> (root.tsx),
+// and test/root.test.ts asserts that everything above .chq-home-footer
+// never spells the product name -- only the GitHub attribution footer may.
+// COMMENTS SHIP. Cite design docs as docs/design's "<sheet>" sheet rather
+// than by their product-name-bearing filename.
 export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
   .chq-pub-session-row {
     display: grid;
     /* w4-g (DEC-534 amendment): the time-over-room stack draws two lines
-       (start time, then room) per docs/design/Chautauqua Public and
-       Portal.dc.html:67, at a single shared gutter measure -- see
+       (start time, then room) per docs/design's "Public and Portal" sheet
+       (.dc.html:67), at a single shared gutter measure -- see
        --chq-pub-when-gutter (declared once in app/src/styles.css /
        src/views/theme.ts, also consumed by .chq-pub-schedule-row in
        rail.css.ts so the two renderings of one stack can't drift). */

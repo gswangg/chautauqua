@@ -122,8 +122,12 @@ export const THEME_CSS = `
        vw/cqw guess. */
     --chq-pub-main-pad-x: 34px;
     /* DEC-534 amendment (wave 4, task w4-g): the ONE time/room gutter width
-       for the two-line time-over-room stack, per docs/design/Chautauqua
-       Public and Portal.dc.html:67 (126px). Consumed by BOTH
+       for the two-line time-over-room stack, per docs/design's "Public and
+       Portal" sheet (.dc.html:67 -- 126px). Cited that way, not by the
+       doc's product-name-bearing filename: inlined CSS comments ship to the
+       browser, and the sibling copy of this note in cards.css.ts lands
+       inside GET /'s <style>, where test/root.test.ts forbids the name
+       above .chq-home-footer. Kept in sync here. Consumed by BOTH
        .chq-pub-session-row (cards.css.ts) and .chq-pub-schedule-row
        (rail.css.ts) so the two renderings of one stack can't drift again.
        Mirrored in app/src/styles.css. */
