@@ -108,6 +108,17 @@ speaker bios render** (EMB-05 live). Reviews expansion: implemented with the ban
 (DEC-632/633), toggle labelled "Reviews (n)" — FIDELITY NIT for the fleet: frame copy is
 "3 reviews" / "2 reviews · 1 recusal" as the disclosure text.
 
+## DELTA PROBE 3 (2026-08-14 ~wave 50, snapshot 0d9ddb12) — gate-6 class fixes, measured
+
+VERIFIED LIVE: 12-home shell full-bleed (1600 wide, no border/max-width — MAJOR closed) ·
+speakers search-empty drops its thead + shows the message (B7 half-landed) · public
+control heights 44 → 40 (target 35-39; closer, not there) · date/portal/preview fixes
+landed per commits. RESIDUE (still open, file against the same items): speakers empty
+state still renders the PAGER ("Showing 0") and has NO facet-naming escape link (B7
+rules 5/6 incomplete) · /account/password lost its card but is NOT the bare-820 page —
+inputs 188px, H1 28px at x=643 (fleet fix: fields at the full 820, H1 ~36, content
+x≈390). CLASS 4 is part-landed; finish the measure.
+
 ## GATE-6 SBEK LOSS ANALYSIS (run 22-14-24: composite 87.9 @ 92% — ZERO environmental losses)
 
 **The drops (CFP −5.4, AIA −5.6, CRM −6.0) decompose into: one re-falsified closure, a
