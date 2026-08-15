@@ -266,34 +266,34 @@ export async function buildRenderTargets(
   const kv = c.env.KV as unknown as KVStore;
   const origin = resolveBaseUrl(c);
 
-  // DEC-530: resolve the feedback-comment and account-identity lookups once
-  // for the whole expanded recipient set instead of per-recipient — at the
-  // DEC-019 100-recipient cap this collapses up to 200 sequential D1
-  // round trips into 2. DEC-682: feedback is scoped to exactly the
-  // composing plan+round — never the submission's entire comment history.
-  const submissionIds = [...new Set(expanded.recipients.map((r) => r.submissionId))];
-  const feedbackMap = feedback
-    ? await repo.listFeedbackCommentsForSubmissions(c.var.db, submissionIds, feedback)
-    : new Map<string, string[]>();
-  const accountMap = await repo.findAccountUserIds(
-    c.var.db,
-    expanded.recipients.map((r) => ({ contactId: r.contactId, email: r.email })),
-  );
-
-  // DEC-792/DEC-530: one batched outstanding-task query for the whole
-  // expanded recipient set (never per-recipient), grouped by contactId, so
+  // DEC-530 wave-33 amendment: the four batch reads below (feedback
+  // comments, account identities, outstanding tasks, ics schedule data)
+  // each depend only on `expanded`/`event`/`submissionIds`, all resolved
+  // purely before the first await — so they run as a single WAVE 1
+  // Promise.all instead of four sequential round trips. At the DEC-019
+  // 100-recipient cap this collapses what was already down to 4 sequential
+  // D1 round trips into 1 concurrent wave. DEC-682: feedback is scoped to
+  // exactly the composing plan+round — never the submission's entire
+  // comment history. DEC-792: outstanding tasks are grouped by contactId so
   // the {task_list}/{due_date} merge fields cost one extra round trip
-  // regardless of recipient count.
+  // regardless of recipient count. DEC-912: 'ref'/'scheduled' are populated
+  // on EVERY rendered recipient, unconditionally — never gated on
+  // attachIcs, which only governs the `ics` attachment payload computed at
+  // the callsite below. `resolvePortalLinks` below is the only genuine
+  // sequential dependency (it needs `accountMap`), so it stays as WAVE 2.
+  const submissionIds = [...new Set(expanded.recipients.map((r) => r.submissionId))];
   const contactIds = [...new Set(expanded.recipients.map((r) => r.contactId))];
-  const outstandingRows = await listOutstandingForEvent(c.var.db, event.id, undefined, contactIds);
-
-  // DEC-912: 'ref' (talk display code) and 'scheduled' (whether a
-  // schedule_slot exists) are populated on EVERY rendered recipient,
-  // unconditionally — never gated on attachIcs, which only governs the
-  // `ics` attachment payload computed at the callsite below. One batched
-  // schedule-data query for the whole expanded submission set (never
-  // per-recipient), mirroring the feedback/account/task batching above.
-  const icsScheduleMap = await repo.loadIcsScheduleData(c.var.db, event, submissionIds);
+  const [feedbackMap, accountMap, outstandingRows, icsScheduleMap] = await Promise.all([
+    feedback
+      ? repo.listFeedbackCommentsForSubmissions(c.var.db, submissionIds, feedback)
+      : Promise.resolve(new Map<string, string[]>()),
+    repo.findAccountUserIds(
+      c.var.db,
+      expanded.recipients.map((r) => ({ contactId: r.contactId, email: r.email })),
+    ),
+    listOutstandingForEvent(c.var.db, event.id, undefined, contactIds),
+    repo.loadIcsScheduleData(c.var.db, event, submissionIds),
+  ]);
   const outstandingByContact = new Map<string, ReminderAssignment[]>();
   for (const row of outstandingRows) {
     const arr = outstandingByContact.get(row.contactId) ?? [];
