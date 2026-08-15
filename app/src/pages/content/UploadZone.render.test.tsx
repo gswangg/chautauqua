@@ -19,78 +19,94 @@ function makeFile(name: string, sizeBytes: number, type = 'application/octet-str
   return file;
 }
 
+const SESSION_TITLE = 'Taming 40-Minute CI';
+
 describe('UploadZone', () => {
   it('accepts a 12 MB .md file (server 25 MB text/document cap, not the old 8 MB SPA mirror)', async () => {
     const onUpload = vi.fn().mockResolvedValue(undefined);
-    render(<UploadZone kind="handout" onUpload={onUpload} />);
+    render(<UploadZone kind="handout" sessionTitle={SESSION_TITLE} onUpload={onUpload} />);
     const input = screen.getByLabelText('Upload handout') as HTMLInputElement;
     const file = makeFile('notes.md', 12 * 1024 * 1024);
     fireEvent.change(input, { target: { files: [file] } });
     await vi.waitFor(() => expect(onUpload).toHaveBeenCalledWith(file, 'handout', undefined));
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('rejects a 30 MB .pdf with the server validateUpload message verbatim', async () => {
+  // w28-c / DEC-653 findings-wave-5 amendment: a validateUpload refusal opens
+  // the framed "Upload rejected" modal (not an inline .chq-field-error span)
+  // with all four parts -- header naming the session + deliverable kind, the
+  // error band's refusal + why-these-formats sentence, the "What was kept"
+  // survival line, and the Choose another file / Cancel footer.
+  it('a refused file opens the "Upload rejected" modal with all four parts', async () => {
     const onUpload = vi.fn().mockResolvedValue(undefined);
-    render(<UploadZone kind="presentation" onUpload={onUpload} />);
-    const input = screen.getByLabelText('Upload presentation') as HTMLInputElement;
-    const file = makeFile('deck.pdf', 30 * 1024 * 1024);
-    fireEvent.change(input, { target: { files: [file] } });
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('File exceeds the 25 MB limit for this type');
-    expect(onUpload).not.toHaveBeenCalled();
-  });
-
-  // w28-c (DEC-653, DEC-124): the field-error standard -- refusal, format+why,
-  // and survival clauses, plus the field register (chq-field-invalid on the
-  // input, aria-invalid, chq-field-error on the message), clearing on a
-  // subsequent valid pick.
-  it('a wrong-extension upload states the refusal, the accepted-format reason, and what survived, and marks the input invalid', async () => {
-    const onUpload = vi.fn().mockResolvedValue(undefined);
-    render(<UploadZone kind="handout" onUpload={onUpload} />);
+    render(<UploadZone kind="handout" sessionTitle={SESSION_TITLE} onUpload={onUpload} />);
     const input = screen.getByLabelText('Upload handout') as HTMLInputElement;
     const file = makeFile('notes.exe', 1024);
     fireEvent.change(input, { target: { files: [file] } });
-    const alert = await screen.findByRole('alert');
-    // what was refused (pure core's own message)
-    expect(alert).toHaveTextContent("File type '.exe' isn't allowed");
-    // which formats are accepted and why -- derived from uploadHintText, not
-    // a second hand-written list
-    expect(alert).toHaveTextContent('Allowed types:');
-    expect(alert).toHaveTextContent('.pdf');
-    // what survived -- no replacesFileId, so nothing was uploaded
-    expect(alert).toHaveTextContent('Nothing was uploaded.');
-    expect(alert).toHaveClass('chq-field-error');
-    expect(input).toHaveClass('chq-field-invalid');
-    expect(input).toHaveAttribute('aria-invalid', 'true');
+
+    const dialog = await screen.findByRole('dialog');
+    // header: title + session/kind subtitle
+    expect(dialog).toHaveTextContent('That file was not uploaded');
+    expect(dialog).toHaveTextContent(`${SESSION_TITLE} · handout`);
+    // error band: filename + the pure core's own refusal message, plus the
+    // why-these-formats sentence derived from uploadHintText -- never a
+    // second hand-written format list.
+    expect(dialog).toHaveTextContent("notes.exe File type '.exe' isn't allowed");
+    expect(dialog).toHaveTextContent('Allowed types:');
+    expect(dialog).toHaveTextContent('.pdf');
+    // "What was kept" micro-label + the survival sentence (no
+    // replacesFileId, so nothing was uploaded)
+    expect(dialog).toHaveTextContent('What was kept');
+    expect(dialog).toHaveTextContent('Nothing was uploaded.');
+    // footer
+    expect(screen.getByRole('button', { name: 'Choose another file' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+
     expect(onUpload).not.toHaveBeenCalled();
   });
 
   it('states the replace-scoped survival clause when replacesFileId is set', async () => {
-    render(<UploadZone kind="handout" replacesFileId="file-1" onUpload={vi.fn()} />);
+    render(<UploadZone kind="handout" sessionTitle={SESSION_TITLE} replacesFileId="file-1" onUpload={vi.fn()} />);
     const input = screen.getByLabelText('Replace handout') as HTMLInputElement;
     fireEvent.change(input, { target: { files: [makeFile('notes.exe', 1024)] } });
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('The current file is unchanged. Nothing was replaced.');
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveTextContent('The current file is unchanged. Nothing was replaced.');
   });
 
-  it('clears the invalid state and message once a valid file is subsequently chosen', async () => {
+  it('Cancel closes the modal without calling onUpload; a subsequent valid pick still uploads', async () => {
     const onUpload = vi.fn().mockResolvedValue(undefined);
-    render(<UploadZone kind="handout" onUpload={onUpload} />);
+    render(<UploadZone kind="handout" sessionTitle={SESSION_TITLE} onUpload={onUpload} />);
     const input = screen.getByLabelText('Upload handout') as HTMLInputElement;
     fireEvent.change(input, { target: { files: [makeFile('notes.exe', 1024)] } });
-    await screen.findByRole('alert');
-    expect(input).toHaveClass('chq-field-invalid');
+    await screen.findByRole('dialog');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
     fireEvent.change(input, { target: { files: [makeFile('notes.md', 1024)] } });
     await vi.waitFor(() => expect(onUpload).toHaveBeenCalled());
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(input).not.toHaveClass('chq-field-invalid');
-    expect(input).not.toHaveAttribute('aria-invalid');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  // A server/network failure on onUpload (as opposed to a validateUpload
+  // field-level refusal) keeps its existing inline treatment -- it is a
+  // retryable failure of the act, not a refusal of the file, so it must NOT
+  // open the modal (DEC-653 findings-wave-5 amendment).
+  it('an onUpload server failure renders inline, not the "Upload rejected" modal', async () => {
+    const onUpload = vi.fn().mockRejectedValue(new Error('Network error'));
+    render(<UploadZone kind="handout" sessionTitle={SESSION_TITLE} onUpload={onUpload} />);
+    const input = screen.getByLabelText('Upload handout') as HTMLInputElement;
+    const file = makeFile('notes.md', 1024);
+    fireEvent.change(input, { target: { files: [file] } });
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Network error');
+    expect(alert).toHaveClass('chq-error');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('carries a non-empty accept attribute agreeing with the server allowlist', () => {
-    render(<UploadZone kind="poster" onUpload={vi.fn()} />);
+    render(<UploadZone kind="poster" sessionTitle={SESSION_TITLE} onUpload={vi.fn()} />);
     const input = screen.getByLabelText('Upload poster') as HTMLInputElement;
     expect(input.accept).not.toBe('');
     expect(input.accept).toContain('.pdf');
@@ -102,7 +118,7 @@ describe('UploadZone', () => {
   // same line, the native input reachable but visually hidden behind a
   // <label>, still keyboard-focusable via that label's `for`.
   it('renders the drop prompt and the CNT-06 caps text in one line, with the input reachable via a label', () => {
-    render(<UploadZone kind="handout" onUpload={vi.fn()} />);
+    render(<UploadZone kind="handout" sessionTitle={SESSION_TITLE} onUpload={vi.fn()} />);
     expect(screen.getByText('Drop a file to upload for the speaker')).toBeInTheDocument();
     const input = screen.getByLabelText('Upload handout') as HTMLInputElement;
     expect(input).toHaveAttribute('type', 'file');
@@ -118,7 +134,7 @@ describe('UploadZone', () => {
   // text must name the same per-kind extension set -- both derive from the
   // one src/domain/files.ts filter, never a hand-copied second list.
   it('the accept attribute and the caps text name the same extensions for kind:recording', () => {
-    render(<UploadZone kind="recording" onUpload={vi.fn()} />);
+    render(<UploadZone kind="recording" sessionTitle={SESSION_TITLE} onUpload={vi.fn()} />);
     const input = screen.getByLabelText('Upload recording') as HTMLInputElement;
     const acceptExts = input.accept.split(',').map((e) => e.replace(/^\./, ''));
     expect(new Set(acceptExts)).toEqual(new Set(allowedUploadExtensions('recording')));

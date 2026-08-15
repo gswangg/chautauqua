@@ -1,11 +1,25 @@
 import { useId, useRef, useState } from 'react';
 import { validateUpload, uploadHintText, allowedUploadExtensions } from '../../../../src/domain/files';
 import type { FileKind } from './types';
+import { UploadRejectedModal } from './UploadRejectedModal';
 
 interface UploadZoneProps {
   kind: FileKind;
+  /** The session this deliverable belongs to, for the rejected-upload
+   * modal's subtitle (DEC-901: passed in, never fetched here). */
+  sessionTitle: string;
   replacesFileId?: string;
   onUpload: (file: File, kind: FileKind, replacesFileId?: string) => Promise<void>;
+}
+
+/** A validateUpload field-level refusal, held for the "Upload rejected"
+ * modal (DEC-653 findings-wave-5 amendment) -- distinct from `message`
+ * below, which stays the onUpload network/server-failure surface. */
+interface Refusal {
+  filename: string;
+  refusalMessage: string;
+  hintText: string;
+  survives: string;
 }
 
 /** File input + drag-drop upload zone: a single-line dashed strip (w41-a --
@@ -19,13 +33,16 @@ interface UploadZoneProps {
  * dashed box's own click/drag affordance is layered on top of that same
  * input via the label, not a second parallel control. Validated by the
  * same pure-core rule (src/domain/files.ts) the server enforces. */
-export function UploadZone({ kind, replacesFileId, onUpload }: UploadZoneProps) {
+export function UploadZone({ kind, sessionTitle, replacesFileId, onUpload }: UploadZoneProps) {
   const [dragOver, setDragOver] = useState(false);
+  // onUpload network/server-failure surface only (DEC-653, DEC-124) -- a
+  // validateUpload field-level refusal is handled entirely by `refusal`
+  // below, never this state, since the wave-5 amendment moved it into a
+  // modal rather than the inline .chq-error/.chq-field-error treatment.
   const [message, setMessage] = useState<string | null>(null);
-  // V9 error standard (DEC-653, DEC-124): true only for a validation refusal
-  // on the file input itself (never for an onUpload network/server failure,
-  // which is a different failure surface, not a field-level refusal).
-  const [invalid, setInvalid] = useState(false);
+  // DEC-653 (findings wave 5 amendment): a validateUpload refusal opens the
+  // framed "Upload rejected" modal instead of setting an inline field error.
+  const [refusal, setRefusal] = useState<Refusal | null>(null);
   const [pending, setPending] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
@@ -33,18 +50,20 @@ export function UploadZone({ kind, replacesFileId, onUpload }: UploadZoneProps) 
   async function handleFile(file: File | undefined) {
     if (!file) return;
     setMessage(null);
-    setInvalid(false);
     const check = validateUpload({ filename: file.name, sizeBytes: file.size, kind });
     if (!check.ok) {
-      // Three clauses -- what was refused (the pure core's own message),
-      // which formats are accepted and why (derived from
-      // allowedUploadExtensions/uploadHintText, never a second hand-written
-      // list), and what survived.
+      // What survived -- replace vs a fresh upload -- computed here once and
+      // handed to the modal, never recomputed there.
       const survives = replacesFileId
         ? 'The current file is unchanged. Nothing was replaced.'
         : 'Nothing was uploaded.';
-      setMessage(`${check.message} ${uploadHintText(kind)} ${survives}`);
-      setInvalid(true);
+      setRefusal({
+        filename: file.name,
+        refusalMessage: check.message,
+        hintText: uploadHintText(kind),
+        survives,
+      });
+      if (inputRef.current) inputRef.current.value = '';
       return;
     }
     setPending(true);
@@ -97,28 +116,32 @@ export function UploadZone({ kind, replacesFileId, onUpload }: UploadZoneProps) 
         ref={inputRef}
         id={inputId}
         type="file"
-        className={
-          invalid
-            ? 'chq-file chq-content-upload-input chq-field-invalid'
-            : 'chq-file chq-content-upload-input'
-        }
+        className="chq-file chq-content-upload-input"
         accept={allowedUploadExtensions(kind).map((e) => `.${e}`).join(',')}
         aria-label={replacesFileId ? `Replace ${kind}` : `Upload ${kind}`}
-        aria-invalid={invalid ? 'true' : undefined}
         disabled={pending}
         onChange={(e) => void handleFile(e.target.files?.[0])}
       />
       {pending && <span>Uploading…</span>}
-      {invalid && message ? (
-        <span className="chq-field-error" role="alert">
+      {message && (
+        <span className="chq-error" role="alert">
           {message}
         </span>
-      ) : (
-        message && (
-          <span className="chq-error" role="alert">
-            {message}
-          </span>
-        )
+      )}
+      {refusal && (
+        <UploadRejectedModal
+          sessionTitle={sessionTitle}
+          kind={kind}
+          filename={refusal.filename}
+          refusalMessage={refusal.refusalMessage}
+          hintText={refusal.hintText}
+          survives={refusal.survives}
+          onClose={() => setRefusal(null)}
+          onChooseAnother={() => {
+            setRefusal(null);
+            inputRef.current?.click();
+          }}
+        />
       )}
     </div>
   );

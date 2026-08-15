@@ -30,6 +30,14 @@ const DOCUMENT_EXT_CONTENT_TYPE: Record<string, string> = {
   pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   key: "application/octet-stream",
   odp: "application/vnd.oasis.opendocument.presentation",
+};
+
+// DEC-879 (findings wave 5 amendment): a zip archive is a workshop-pack
+// deliverable, not a slide/poster/recording — admitted only for the
+// 'handout' kind, using the same shape as the VIDEO_EXT_CONTENT_TYPE /
+// 'recording' tier below (a single-extension map + a kind check inside
+// validateUpload, rather than folding zip into the generic document tier).
+const ZIP_EXT_CONTENT_TYPE: Record<string, string> = {
   zip: "application/zip",
 };
 
@@ -102,19 +110,23 @@ const ALL_UPLOAD_EXTENSIONS: readonly string[] = [
   ...Object.keys(IMAGE_EXT_CONTENT_TYPE),
   ...Object.keys(TEXT_EXT_CONTENT_TYPE),
   ...Object.keys(VIDEO_EXT_CONTENT_TYPE),
+  ...Object.keys(ZIP_EXT_CONTENT_TYPE),
 ];
 
 /** Every extension validateUpload accepts for the given kind, for UI hints
  * (accept attr, help text) — never used to bypass validateUpload itself,
  * which stays the single source of truth. DEC-879: video is admitted only
- * for the 'recording' kind — every other kind (and the no-kind-known case)
- * excludes it, matching the tier validateUpload actually enforces. The ONE
- * place this per-kind filter is applied (DEC-879 amendment, wave 10) —
- * uploadHintText derives from this, not a second copy of the rule. */
+ * for the 'recording' kind, and (findings wave 5 amendment) zip is admitted
+ * only for the 'handout' kind — every other kind (and the no-kind-known
+ * case) excludes each, matching the tier validateUpload actually enforces.
+ * The ONE place this per-kind filter is applied (DEC-879 amendment, wave
+ * 10) — uploadHintText derives from this, not a second copy of the rule. */
 export function allowedUploadExtensions(kind?: FileKind): readonly string[] {
-  return kind === "recording"
-    ? ALL_UPLOAD_EXTENSIONS
-    : ALL_UPLOAD_EXTENSIONS.filter((e) => allowedContentType(VIDEO_EXT_CONTENT_TYPE, e) === null);
+  return ALL_UPLOAD_EXTENSIONS.filter((e) => {
+    if (allowedContentType(VIDEO_EXT_CONTENT_TYPE, e) !== null) return kind === "recording";
+    if (allowedContentType(ZIP_EXT_CONTENT_TYPE, e) !== null) return kind === "handout";
+    return true;
+  });
 }
 
 /** Human-readable summary of the upload allowlist + size caps, for form
@@ -244,6 +256,28 @@ export function validateUpload(input: UploadInput): ValidateUploadResult {
       };
     }
     return { ok: true, ext, servedContentType: videoType };
+  }
+
+  const zipType = allowedContentType(ZIP_EXT_CONTENT_TYPE, ext);
+  if (zipType !== null) {
+    // DEC-879 (findings wave 5 amendment): the zip tier is admitted only
+    // for a 'handout' deliverable — every other kind rejects a zip
+    // extension outright, never sizing it, mirroring the video tier above.
+    if (input.kind !== "handout") {
+      return {
+        ok: false,
+        message: "Zip archives are only accepted for a handout deliverable",
+        fields: { file: "Unsupported file type for this kind" },
+      };
+    }
+    if (input.sizeBytes > DOCUMENT_MAX_BYTES) {
+      return {
+        ok: false,
+        message: `File exceeds the ${DOCUMENT_MAX_BYTES / BYTES_PER_MB} MB limit for this type`,
+        fields: { file: "Too large" },
+      };
+    }
+    return { ok: true, ext, servedContentType: zipType };
   }
 
   return {
