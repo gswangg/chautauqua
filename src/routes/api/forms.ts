@@ -8,6 +8,7 @@ import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import { MAX_LONG_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
+import { overCapCountMessage } from "../../domain/cap-copy";
 import { validateFieldDefInput, isPermutation, type FieldDefInput } from "../../forms/builder";
 import type { FormFieldDef, FormFieldRule } from "../../forms/types";
 import * as repo from "../../server/repo/forms";
@@ -169,7 +170,7 @@ formsRoutes.post("/api/v1/forms/:formId/fields", requireOrganizer, csrfJson, asy
   const existing = await repo.listFields(c.var.db, formId);
   if (existing.length >= MAX_FORM_FIELDS) {
     throw new ApiError("invalid", `This form already has the maximum of ${MAX_FORM_FIELDS} questions.`, {
-      label: `Max ${MAX_FORM_FIELDS} fields per form`,
+      label: overCapCountMessage(existing.length + 1, MAX_FORM_FIELDS, "field"),
     });
   }
   const existingDefs = toDefList(existing);

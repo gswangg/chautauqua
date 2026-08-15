@@ -18,6 +18,7 @@ import {
 import { DEC_290, DEC_810 } from "../../../decisions";
 import { currentOrgId, asRecord, isPlainObject } from "./shared";
 import { MAX_NAME_LENGTH } from "../../../forms/validate"; // DEC-417
+import { overCapFieldMessage, overCapCountMessage } from "../../../domain/cap-copy";
 
 // Compile-checked dependency marker: the optional eventId on POST
 // /contacts/import (roster-scoped import) implements DEC-290.
@@ -53,9 +54,10 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
       throw new ApiError("invalid", "Validation failed", { csvText: "required" });
     }
     // DEC-417: bound the raw CSV payload BEFORE parseCsv touches it.
-    if (new TextEncoder().encode(body.csvText).length > MAX_IMPORT_CSV_BYTES) {
+    const csvByteLength = new TextEncoder().encode(body.csvText).length;
+    if (csvByteLength > MAX_IMPORT_CSV_BYTES) {
       throw new ApiError("invalid", `csvText must be at most ${MAX_IMPORT_CSV_BYTES} bytes`, {
-        csvText: `Max ${MAX_IMPORT_CSV_BYTES} bytes`,
+        csvText: overCapCountMessage(csvByteLength, MAX_IMPORT_CSV_BYTES, "byte"),
       });
     }
     if (!isPlainObject(body.mapping)) {
@@ -108,7 +110,7 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
         });
       }
       if (body.sessionTitle.length > MAX_NAME_LENGTH) {
-        throw new ApiError("invalid", "Validation failed", { sessionTitle: `Max ${MAX_NAME_LENGTH}` }); // DEC-417
+        throw new ApiError("invalid", "Validation failed", { sessionTitle: overCapFieldMessage(body.sessionTitle.length, MAX_NAME_LENGTH) }); // DEC-417
       }
       sessionTitle = body.sessionTitle.trim();
     }
@@ -128,7 +130,7 @@ export function registerImportRoutes(contactsRoutes: Hono<AppEnv>): void {
     // DEC-417: bound row count after parsing, before mapImportRow/applyImportRows.
     if (dataRows.length > MAX_IMPORT_ROWS) {
       throw new ApiError("invalid", `csvText must have at most ${MAX_IMPORT_ROWS} data rows`, {
-        csvText: `Max ${MAX_IMPORT_ROWS} rows`,
+        csvText: overCapCountMessage(dataRows.length, MAX_IMPORT_ROWS, "row"),
       });
     }
 

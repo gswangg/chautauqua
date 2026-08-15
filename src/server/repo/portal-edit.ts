@@ -24,6 +24,7 @@ import { newId } from "../../domain/ids";
 import { isValidEmail, normalizeEmail } from "../../domain/email";
 import { isCoPresenterRoleValue, participantRoleLabel, MAX_PARTICIPANTS_PER_SUBMISSION } from "../../domain/participant-roles";
 import { MAX_NAME_LENGTH } from "../../forms/validate";
+import { overCapFieldMessage } from "../../domain/cap-copy";
 import { DEC_604, DEC_656, DEC_842, DEC_866, DEC_997 } from "../../decisions";
 import { touchSubmissions, touchSubmissionsForContacts } from "./submissions/touch";
 
@@ -471,9 +472,9 @@ export async function addCoPresenter(db: Db, input: AddCoPresenterInput): Promis
   const email = normalizeEmail(input.email);
   const errors: Record<string, string> = {};
   if (!firstName) errors.firstName = "First name is required";
-  else if (firstName.length > MAX_NAME_LENGTH) errors.firstName = `Max ${MAX_NAME_LENGTH}`;
+  else if (firstName.length > MAX_NAME_LENGTH) errors.firstName = overCapFieldMessage(firstName.length, MAX_NAME_LENGTH);
   if (!lastName) errors.lastName = "Last name is required";
-  else if (lastName.length > MAX_NAME_LENGTH) errors.lastName = `Max ${MAX_NAME_LENGTH}`;
+  else if (lastName.length > MAX_NAME_LENGTH) errors.lastName = overCapFieldMessage(lastName.length, MAX_NAME_LENGTH);
   if (!isValidEmail(email)) errors.email = "Enter a valid email address";
   if (!isCoPresenterRoleValue(input.role)) errors.role = "Choose a role";
   if (Object.keys(errors).length > 0) return { ok: false, errors };

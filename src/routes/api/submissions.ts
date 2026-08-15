@@ -35,6 +35,7 @@ import {
 import { isRouteSettableContentStatus, updateContentStatuses } from "../../server/repo/files-content-status";
 import { isActiveParticipant } from "../../domain/acceptance";
 import { plural } from "../../domain/count-copy";
+import { overCapCountMessage } from "../../domain/cap-copy";
 import {
   DUPLICATE_PARTICIPANT,
   getParticipantOwnership,
@@ -119,7 +120,7 @@ async function parseTrackIdsField(db: Db, eventId: string, raw: unknown): Promis
   }
   if (raw.length > MAX_SUBMISSION_TRACK_IDS) {
     throw new ApiError("invalid", `trackIds must not exceed ${MAX_SUBMISSION_TRACK_IDS} entries`, {
-      trackIds: `Max ${MAX_SUBMISSION_TRACK_IDS}`,
+      trackIds: overCapCountMessage(raw.length, MAX_SUBMISSION_TRACK_IDS, "track"),
     });
   }
   const trackIds = raw as string[];

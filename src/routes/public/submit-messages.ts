@@ -5,24 +5,16 @@
 // DEC-124: the no-red error vocabulary's copy rules, applied at the
 // error-assembly boundary rather than inside validateAnswers itself (that
 // file stays out of this task's owned scope, per its own display-only-cap
-// comment above) -- both helpers only ever REWRITE an error string
-// validateAnswers/validateTrackChoice already produced, never change which
-// answers are accepted.
-const TOO_LONG_PATTERN = /^Too long \(max (\d+) characters\)$/;
-
-/** Rewrites validateAnswers' generic "Too long (max N characters)" into
- * copy naming both numbers -- how much was typed, and how far over the
- * limit that is -- so the submitter never has to do the subtraction
- * themselves. Returns null for any other error string (left untouched). */
-export function overLengthErrorMessage(rawError: string | undefined, typedValue: unknown): string | null {
-  if (!rawError) return null;
-  const match = TOO_LONG_PATTERN.exec(rawError);
-  if (!match) return null;
-  const cap = Number(match[1]);
-  const length = typeof typedValue === "string" ? typedValue.length : cap;
-  const over = Math.max(length - cap, 0);
-  return `${length.toLocaleString("en-US")} characters typed — ${over.toLocaleString("en-US")} over the ${cap.toLocaleString("en-US")}-character limit.`;
-}
+// comment above) -- this helper only ever REWRITES an error string
+// validateTrackChoice already produced, never changes which answers are
+// accepted.
+//
+// DEC-422 (amendment): the over-length rewrite (overLengthErrorMessage)
+// that used to live here was DELETED -- it recovered "how much over" by
+// regex-matching validateAnswers' generic "Too long (max N characters)"
+// prose, which broke the instant that prose changed. validateAnswers now
+// emits the rich sentence directly via overCapSentence
+// (src/domain/cap-copy.ts), so there is nothing left to rewrite.
 
 // DEC-124: "Select a track" (validateTrackChoice's copy for "nothing
 // picked") reads as an instruction with no reason attached -- the public

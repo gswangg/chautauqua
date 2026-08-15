@@ -6,6 +6,7 @@
 import type { Context, Hono } from "hono";
 import type { AppEnv } from "./env";
 import { escapeHtml } from "../lib/html-escape";
+import { overCapFieldMessage, overCapCountMessage } from "../domain/cap-copy";
 
 // DEC-841: the one place the "/api/v1 vs everything else" rule lives. Both
 // the notFound handler (not-found.tsx) and the onError handler below
@@ -68,6 +69,10 @@ export function errorEnvelope(err: ApiError): {
  * scripts/perf-smoke.ts's bulk status change probe) can size a batch off
  * the real enforced cap instead of hardcoding a second copy of 1000. */
 export const DEFAULT_BOUNDED_ID_ARRAY_MAX = 1000;
+// The per-item length ceiling for parseBoundedIdArray -- ids are ULIDs/UUIDs
+// (26-36 chars) but this stays generous rather than coupling to one id
+// scheme; the message below cites this constant, not a hand-typed '64'.
+export const BOUNDED_ID_ARRAY_ITEM_MAX_LENGTH = 64;
 
 /**
  * Validates and returns a bounded array of non-empty string ids.
@@ -97,12 +102,12 @@ export function parseBoundedIdArray(
   }
   if (value.length > maxCount) {
     throw new ApiError("invalid", `${field} must not exceed ${maxCount} entries`, {
-      [field]: `Max ${maxCount}`,
+      [field]: overCapCountMessage(value.length, maxCount, "entry"),
     });
   }
   for (const item of value) {
-    if (typeof item !== "string" || item.length === 0 || item.length > 64) {
-      throw new ApiError("invalid", `${field} must be an array of id strings (1-64 chars)`, {
+    if (typeof item !== "string" || item.length === 0 || item.length > BOUNDED_ID_ARRAY_ITEM_MAX_LENGTH) {
+      throw new ApiError("invalid", `${field} must be an array of id strings (1-${BOUNDED_ID_ARRAY_ITEM_MAX_LENGTH} chars)`, {
         [field]: "Invalid id",
       });
     }
@@ -131,7 +136,7 @@ export function parseBoundedText(
   }
   if (result.length > opts.max) {
     throw new ApiError("invalid", `${field} must be at most ${opts.max} characters`, {
-      [field]: `Max ${opts.max}`,
+      [field]: overCapFieldMessage(result.length, opts.max),
     });
   }
   return result;

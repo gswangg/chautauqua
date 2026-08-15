@@ -7,6 +7,7 @@ import type { AppEnv } from "../../../server/env";
 import { csrfJson } from "../../../server/middleware";
 import { ApiError, parseBoundedIdArray } from "../../../server/http";
 import { MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../../forms/validate"; // DEC-417
+import { overCapFieldMessage } from "../../../domain/cap-copy";
 import * as repo from "../../../server/repo/contacts";
 import { getEventForOrg } from "../../../server/repo/events";
 import type { KVStore } from "../../../auth/claim";
@@ -50,13 +51,13 @@ async function validateBulkEmailRequest(db: Db, orgId: string, body: Record<stri
     throw new ApiError("invalid", "Validation failed", { subject: "required" });
   }
   if (body.subject.length > MAX_TEXT_LENGTH) {
-    throw new ApiError("invalid", "Validation failed", { subject: `Max ${MAX_TEXT_LENGTH}` }); // DEC-417
+    throw new ApiError("invalid", "Validation failed", { subject: overCapFieldMessage(body.subject.length, MAX_TEXT_LENGTH) }); // DEC-417
   }
   if (typeof body.bodyText !== "string" || body.bodyText.trim() === "") {
     throw new ApiError("invalid", "Validation failed", { bodyText: "required" });
   }
   if (body.bodyText.length > MAX_LONG_TEXT_LENGTH) {
-    throw new ApiError("invalid", "Validation failed", { bodyText: `Max ${MAX_LONG_TEXT_LENGTH}` }); // DEC-417
+    throw new ApiError("invalid", "Validation failed", { bodyText: overCapFieldMessage(body.bodyText.length, MAX_LONG_TEXT_LENGTH) }); // DEC-417
   }
 
   const event = await getEventForOrg(db, body.eventId, orgId);

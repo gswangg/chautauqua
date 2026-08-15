@@ -8,6 +8,7 @@ import { requireOrganizer, csrfJson } from "../../server/middleware";
 import type { AuthInfo } from "../../server/env";
 import { ApiError, readJsonBody } from "../../server/http";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
+import { overCapFieldMessage } from "../../domain/cap-copy";
 import * as schema from "../../db/schema";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import {
@@ -102,7 +103,7 @@ function requireString(
     return undefined;
   }
   if (value.length > maxLen) {
-    fields[field] = `Max ${maxLen}`;
+    fields[field] = overCapFieldMessage(value.length, maxLen);
     return undefined;
   }
   return value;
@@ -116,7 +117,7 @@ function checkOptionalStringLen(
   maxLen: number,
 ): void {
   if (typeof value === "string" && value.length > maxLen) {
-    fields[field] = `Max ${maxLen}`;
+    fields[field] = overCapFieldMessage(value.length, maxLen);
   }
 }
 
@@ -134,7 +135,7 @@ function parseBranding(body: Record<string, unknown>, fields: Record<string, str
     if (typeof b.logoUrl !== "string") {
       fields["branding.logoUrl"] = "Must be a string";
     } else if (b.logoUrl.length > MAX_TEXT_LENGTH) {
-      fields["branding.logoUrl"] = `Max ${MAX_TEXT_LENGTH}`; // DEC-417
+      fields["branding.logoUrl"] = overCapFieldMessage(b.logoUrl.length, MAX_TEXT_LENGTH); // DEC-417
     } else {
       out.logoUrl = b.logoUrl;
     }

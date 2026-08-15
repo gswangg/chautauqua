@@ -5,6 +5,7 @@
 // DEC-425: caps attacker-controlled filename length; reuses MAX_NAME_LENGTH.
 import { MAX_NAME_LENGTH } from "../forms/validate";
 import { DEC_425 } from "../decisions";
+import { overCapFieldMessage, overCapSentence } from "./cap-copy";
 
 void DEC_425;
 
@@ -183,7 +184,7 @@ export function validateUpload(input: UploadInput): ValidateUploadResult {
   // DEC-425: reject an oversized filename before type/extension checks so
   // the message is about length, not type.
   if (input.filename.length > MAX_NAME_LENGTH) {
-    return { ok: false, message: `Filename is too long (max ${MAX_NAME_LENGTH} characters)`, fields: { file: `Max ${MAX_NAME_LENGTH}` } };
+    return { ok: false, message: overCapSentence("Filename", input.filename.length, MAX_NAME_LENGTH), fields: { file: overCapFieldMessage(input.filename.length, MAX_NAME_LENGTH) } };
   }
 
   const ext = extname(input.filename);
@@ -465,7 +466,7 @@ export function validateHeadshotUpload(input: HeadshotUploadInput): ValidateUplo
   // DEC-425: reject an oversized filename before type/extension checks so
   // the message is about length, not type.
   if (input.filename.length > MAX_NAME_LENGTH) {
-    return { ok: false, message: `Filename is too long (max ${MAX_NAME_LENGTH} characters)`, fields: { headshot: `Max ${MAX_NAME_LENGTH}` } };
+    return { ok: false, message: overCapSentence("Filename", input.filename.length, MAX_NAME_LENGTH), fields: { headshot: overCapFieldMessage(input.filename.length, MAX_NAME_LENGTH) } };
   }
   const ext = extname(input.filename);
   const headshotType = allowedContentType(HEADSHOT_EXT_CONTENT_TYPE, ext);

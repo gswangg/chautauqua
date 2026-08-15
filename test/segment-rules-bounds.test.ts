@@ -18,6 +18,7 @@ import { Hono } from "hono";
 import { contactsRoutes } from "../src/routes/api/contacts";
 import { parseRulesQueryParam } from "../src/routes/api/contacts/segments";
 import { MAX_SEGMENT_RULES } from "../src/domain/contacts";
+import { overCapCountMessage } from "../src/domain/cap-copy";
 import { registerErrorHandler, ApiError } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 
@@ -109,7 +110,7 @@ describe("MAX_SEGMENT_RULES bounds the segment rule set (DEC-417 wave-31 amendme
       expect(err).toBeInstanceOf(ApiError);
       const apiErr = err as ApiError;
       expect(apiErr.code).toBe("invalid");
-      expect(apiErr.fields).toEqual({ rules: `Max ${MAX_SEGMENT_RULES} rules` });
+      expect(apiErr.fields).toEqual({ rules: overCapCountMessage(MAX_SEGMENT_RULES + 1, MAX_SEGMENT_RULES, "rule") });
     }
   });
 
@@ -141,7 +142,7 @@ describe("MAX_SEGMENT_RULES bounds the segment rule set (DEC-417 wave-31 amendme
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
     expect(body.error.code).toBe("invalid");
-    expect(body.error.fields).toEqual({ rules: `Max ${MAX_SEGMENT_RULES} rules` });
+    expect(body.error.fields).toEqual({ rules: overCapCountMessage(MAX_SEGMENT_RULES + 1, MAX_SEGMENT_RULES, "rule") });
   });
 
   it("GET /api/v1/contacts?rules=<20 rules matching field 'any'/'ada'> 200s and still filters", async () => {
@@ -178,6 +179,6 @@ describe("MAX_SEGMENT_RULES bounds the segment rule set (DEC-417 wave-31 amendme
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
     expect(body.error.code).toBe("invalid");
-    expect(body.error.fields?.rules).toBe(`Max ${MAX_SEGMENT_RULES} rules`);
+    expect(body.error.fields?.rules).toBe(overCapCountMessage(MAX_SEGMENT_RULES + 1, MAX_SEGMENT_RULES, "rule"));
   });
 });

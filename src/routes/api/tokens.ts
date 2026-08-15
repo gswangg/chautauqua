@@ -13,6 +13,7 @@ import { newId } from "../../domain/ids";
 import { hashToken, newApiToken, apiTokenDisplayPrefix } from "../../auth/tokens";
 import { DEC_027 } from "../../decisions";
 import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-425
+import { overCapFieldMessage } from "../../domain/cap-copy";
 import { clampPage, listPerPage } from "../../lib/pagination";
 
 void DEC_027;
@@ -78,7 +79,7 @@ tokensRoutes.post("/api/v1/tokens", requireOrganizer, csrfJson, async (c) => {
     throw new ApiError("invalid", "name is required", { name: "required" });
   }
   if (name.length > MAX_NAME_LENGTH) {
-    throw new ApiError("invalid", "name is too long", { name: `Max ${MAX_NAME_LENGTH}` });
+    throw new ApiError("invalid", "name is too long", { name: overCapFieldMessage(name.length, MAX_NAME_LENGTH) });
   }
 
   const plaintext = newApiToken();

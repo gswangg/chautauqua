@@ -70,4 +70,4 @@ publicSubmitRoutes.route("/", publicSubmitPostRoutes);
 // Re-exported for callers that imported the DEC-124 error-copy rewriters (or
 // the same-origin/rate-limit guards) directly off submit.tsx before the
 // split — no behavior change, same names, same signatures.
-export { overLengthErrorMessage, trackChoiceMessage } from "./submit-messages";
+export { trackChoiceMessage } from "./submit-messages";

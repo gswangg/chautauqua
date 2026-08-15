@@ -15,6 +15,7 @@ import {
 import { validateAnswers } from "../src/forms/validate";
 import { MAX_NAME_LENGTH } from "../src/forms/validate";
 import { addCoPresenter } from "../src/server/repo/portal-edit";
+import { overCapFieldMessage, overCapSentence } from "../src/domain/cap-copy";
 import * as schema from "../src/db/schema";
 import type { AppEnv } from "../src/server/env";
 
@@ -51,7 +52,7 @@ describe("projectFieldForAnswers stamps a 200 cap on locked contact identity fie
       const bad = validateAnswers([def], { [name]: "a".repeat(201) });
       expect(bad.ok).toBe(false);
       if (bad.ok) throw new Error("unreachable");
-      expect(bad.errors[name]).toBe("Too long (max 200 characters)");
+      expect(bad.errors[name]).toBe(overCapSentence(name, 201, 200));
     });
   }
 
@@ -61,7 +62,7 @@ describe("projectFieldForAnswers stamps a 200 cap on locked contact identity fie
     const bad = validateAnswers([def], { first_name: "a".repeat(51) });
     expect(bad.ok).toBe(false);
     if (bad.ok) throw new Error("unreachable");
-    expect(bad.errors.first_name).toBe("Too long (max 50 characters)");
+    expect(bad.errors.first_name).toBe(overCapSentence("first_name", 51, 50));
   });
 
   it("does not stamp a maximum on bio or email", () => {
@@ -118,7 +119,7 @@ describe("addCoPresenter refuses a 201-char first name (DEC-417 wave 67)", () =>
     });
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("unreachable");
-    expect(result.errors.firstName).toBe(`Max ${MAX_NAME_LENGTH}`);
+    expect(result.errors.firstName).toBe(overCapFieldMessage(201, MAX_NAME_LENGTH));
   });
 });
 

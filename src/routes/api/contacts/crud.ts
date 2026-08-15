@@ -9,6 +9,7 @@ import * as schema from "../../../db/schema";
 import { csrfJson } from "../../../server/middleware";
 import { ApiError, parseBoundedIdArray } from "../../../server/http";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../../forms/validate"; // DEC-417
+import { overCapFieldMessage } from "../../../domain/cap-copy";
 import { isValidEmail, normalizeEmail } from "../../../domain/email"; // DEC-454
 import * as repo from "../../../server/repo/contacts";
 import { findContactByEmail } from "../../../server/repo/submit";
@@ -142,7 +143,7 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
         });
       }
       if (body.sessionTitle.length > MAX_NAME_LENGTH) {
-        throw new ApiError("invalid", "Validation failed", { sessionTitle: `Max ${MAX_NAME_LENGTH}` }); // DEC-417
+        throw new ApiError("invalid", "Validation failed", { sessionTitle: overCapFieldMessage(body.sessionTitle.length, MAX_NAME_LENGTH) }); // DEC-417
       }
       sessionTitle = body.sessionTitle.trim();
     }
@@ -486,7 +487,7 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
       throw new ApiError("invalid", "Validation failed", { title: "required" });
     }
     if (body.title.length > MAX_NAME_LENGTH) {
-      throw new ApiError("invalid", "Validation failed", { title: `Max ${MAX_NAME_LENGTH}` }); // DEC-417
+      throw new ApiError("invalid", "Validation failed", { title: overCapFieldMessage(body.title.length, MAX_NAME_LENGTH) }); // DEC-417
     }
     const title = body.title;
 

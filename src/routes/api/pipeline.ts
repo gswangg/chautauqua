@@ -14,6 +14,7 @@ import { findContactForOrg } from "../../server/repo/contacts";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import { PIPELINE_FIT_MIN, PIPELINE_FIT_MAX, PIPELINE_RATIONALE_MAX_LEN } from "../../domain/pipeline-fit";
 import { MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
+import { overCapFieldMessage } from "../../domain/cap-copy";
 
 export const pipelineRoutes = new Hono<AppEnv>();
 
@@ -64,7 +65,7 @@ function validateDeclineReason(body: Record<string, unknown>, requiresReason: bo
     throw new ApiError("invalid", "Validation failed", { reason: "required when declining" });
   }
   if (reason.length > MAX_TEXT_LENGTH) {
-    throw new ApiError("invalid", "Validation failed", { reason: `Max ${MAX_TEXT_LENGTH}` }); // DEC-417
+    throw new ApiError("invalid", "Validation failed", { reason: overCapFieldMessage(reason.length, MAX_TEXT_LENGTH) }); // DEC-417
   }
   return reason;
 }
@@ -306,7 +307,7 @@ pipelineRoutes.post("/pipeline/:id/notes", csrfJson, async (c) => {
     throw new ApiError("invalid", "Validation failed", { body: "required" });
   }
   if (body.body.length > MAX_LONG_TEXT_LENGTH) {
-    throw new ApiError("invalid", "Validation failed", { body: `Max ${MAX_LONG_TEXT_LENGTH}` }); // DEC-417
+    throw new ApiError("invalid", "Validation failed", { body: overCapFieldMessage(body.body.length, MAX_LONG_TEXT_LENGTH) }); // DEC-417
   }
 
   const authorName = await repo.resolveAuthorName(c.var.db, auth.userId);

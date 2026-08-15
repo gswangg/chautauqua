@@ -6,6 +6,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { registerErrorHandler } from "../src/server/http";
+import { overCapFieldMessage } from "../src/domain/cap-copy";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 
 const EVENT_ID = "event-1";
@@ -115,7 +116,7 @@ describe("CNT-01: task instructions", () => {
     );
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { fields?: Record<string, string> } };
-    expect(body.error.fields?.instructions).toBe("Too long (max 2,000 characters)");
+    expect(body.error.fields?.instructions).toBe(overCapFieldMessage(2001, 2000));
     expect(createTaskCalls).toHaveLength(0);
   });
 
@@ -144,7 +145,7 @@ describe("CNT-01: task instructions", () => {
     const res = await app.request(patchTask({ instructions: "y".repeat(2001) }));
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { fields?: Record<string, string> } };
-    expect(body.error.fields?.instructions).toBe("Too long (max 2,000 characters)");
+    expect(body.error.fields?.instructions).toBe(overCapFieldMessage(2001, 2000));
     expect(updateTaskCalls).toHaveLength(0);
   });
 
