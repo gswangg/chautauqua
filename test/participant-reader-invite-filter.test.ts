@@ -152,6 +152,10 @@ const ALLOWED: Record<string, string[]> = {
   "server/repo/submissions/touch.ts": [
     "touchSubmissionsForContacts resolves participant.contactId -> participant.submissionId to find which submissions to re-stamp after a contact rename -- every participant row denormalizes the same contact name into the pushed Speakers cell regardless of invite status, not an eligibility read.",
   ],
+  "server/repo/tasks/grid.ts": [
+    "getOnboardingGrid's total COUNT (DEC-829 wave-29 TIER-0): the driving relation became `participant JOIN submission` precisely so the grid stops scanning the whole org contact directory, and it IS eligibility-filtered — by rosterParticipantConditions(eventId), pushed into the local `conditions` array and ANDed into `whereExpr` a few lines above, an indirection this scanner's regex does not follow (same class as files-library.ts's `headshotWhere` and public/speakers.ts's `conditions`). Not an unfiltered enumeration.",
+    "getOnboardingGrid's page SELECT filters via the SAME `whereExpr` variable built from rosterParticipantConditions(eventId) — same predicate, same variable indirection; it must range over exactly the population the COUNT above totals or the pagination would disagree with its own total.",
+  ],
   "server/repo/files-library.ts": [
     "Headshot-count read filters via the local `headshotWhere` variable, built from buildHeadshotWhere()'s acceptedSpeakerConditions(eventId) — same predicate, indirected through a variable this scanner's regex doesn't follow.",
     "Headshot-list read filters via the same local `headshotWhere` variable built from acceptedSpeakerConditions(eventId) — same predicate, indirected through a variable.",

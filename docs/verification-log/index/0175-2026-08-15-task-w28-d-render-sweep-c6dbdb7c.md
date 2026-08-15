@@ -54,3 +54,4 @@ Full per-row tables, quoted log lines, and source citations:
 
 RESULT: FAIL — exit code 1, driven entirely by 3 pre-existing contrast rows (CONTRAST_BLOCKING=true); all three of (i)/(ii)/(iii) repairs confirmed landed, (iv)/(v)/(vi) remain genuinely open (not instrument defects).
 OPEN ITEMS: 3
+
