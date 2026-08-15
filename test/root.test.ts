@@ -235,12 +235,13 @@ describe("GET / — anonymous hub (DEC-581)", () => {
     expect(body).toContain('href="/login"');
   });
 
-  // DEC-918/DEC-022 amendment (wave 69): GET / gets the same public cache
-  // contract as every other anonymous public GET (setCacheHeaders, imported
-  // from ./public/shell so the value can't drift) plus Vary: Cookie -- but
-  // is NOT mounted under publicCacheMiddleware (see the header comment on
-  // the route for why: it's a now-derived page with no purge hook, and the
-  // middleware answers before the auth-redirect branch could ever run).
+  // DEC-918/DEC-022 amendment (wave 69), DEC-099 wave-34 amendment: GET /
+  // gets the same public cache contract as every other anonymous public GET
+  // (setCacheHeaders, imported from ./public/shell so the value can't drift,
+  // now also sets Vary: Cookie itself) -- but is NOT mounted under
+  // publicCacheMiddleware (see the header comment on the route for why: it's
+  // a now-derived page with no purge hook, and the middleware answers before
+  // the auth-redirect branch could ever run).
   it("anonymous GET / carries the 60s public cache contract and Vary: Cookie", async () => {
     const app = buildApp({ queue: buildQueue({ events: [] }) });
     const res = await app.request("/", {}, { ASSETS: fakeAssets() });
