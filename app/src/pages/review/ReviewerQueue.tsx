@@ -3,6 +3,7 @@ import { Link, Navigate, useParams } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, ApiError } from '../../lib/api';
 import './review.css';
 import type { EvaluationPlan, RecusalItem, ReviewerQueueEnvelope, ReviewerQueueItem } from './types';
+import { formatScore } from '../../../../src/domain/score-copy';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { EmptyState } from '../../components/EmptyState';
@@ -207,7 +208,7 @@ function PlanSection({
                   }`}
                 >
                   {item.alreadyRatedByMe
-                    ? `SCORED ${typeof item.myScore === 'number' ? item.myScore.toFixed(1) : '—'}`
+                    ? `SCORED ${formatScore(item.myScore)}`
                     : 'NOT SCORED'}
                 </span>
               </div>

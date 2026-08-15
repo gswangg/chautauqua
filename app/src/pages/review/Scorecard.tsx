@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiDelete, apiGet, apiList, apiPost, apiPut, ApiError } from '../../lib/api';
 import './review.css';
+import { formatScore } from '../../../../src/domain/score-copy';
 import './scorecard.css';
 import { answerDisplayText } from '../../../../src/domain/answer-text';
 import { incompleteCriteria, isEvaluationComplete, plainAverage, ratingScaleValues, scorecardKeyAction } from './scorecardLogic';
@@ -608,13 +609,13 @@ export function Scorecard() {
           <section className="chq-review-overall">
             <p className="chq-review-overall-line">
               <span className="chq-section-label">Overall</span>
-              <span className="chq-review-overall-value">{overallScore === null ? '—' : overallScore.toFixed(1)}</span>
+              <span className="chq-review-overall-value">{formatScore(overallScore)}</span>
             </p>
             <p className="chq-review-overall-caption">
               {overallScore !== null && ratingCriteria.length > 0
                 ? `Averaged by weight, not editable — a plain average of ${ratingCriteria
                     .map((c) => scores[c.id] as number)
-                    .join(', ')} would be ${plainAverage(ratingCriteria.map((c) => scores[c.id] as number)).toFixed(2)}`
+                    .join(', ')} would be ${formatScore(plainAverage(ratingCriteria.map((c) => scores[c.id] as number)))}`
                 : 'Averaged by weight, not editable'}
             </p>
           </section>

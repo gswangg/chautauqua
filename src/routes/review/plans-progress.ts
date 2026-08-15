@@ -176,6 +176,10 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/results", requireOrganizer, asy
       r.trackNames.join("; "),
       r.status,
       r.count,
+      // DEC-147 amendment (w62-d): deliberately NOT src/domain/score-copy's
+      // formatScore -- that module owns copy for a human screen (one
+      // decimal, em dash for null). This CSV is data, not copy: it keeps
+      // its own two-decimal-precision numeric value, unrounded further.
       Number(r.average.toFixed(2)),
       ...criteria.map((cr) => Number((r.perCriterion[cr.id] ?? 0).toFixed(2))),
       ...dropdownColumns.map(({ dc, option }) => r.perDropdown[dc.id]?.counts[option] ?? 0),
