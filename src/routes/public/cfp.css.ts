@@ -102,7 +102,7 @@ export const CFP_CSS = `
   .chq-field-label { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--chq-muted); }
   /* Required fields carry no marker; optional fields append this span --
      same weight/case as the label it trails, not a separate legend. */
-  .chq-field-optional { font-weight: 800; }
+  .chq-field-optional { font-weight: 800; text-transform: none; }
   .chq-field-counter { font-size: 12px; color: var(--chq-muted); white-space: nowrap; }
   .chq-cfp-fields .help { font-size: 12px; color: var(--chq-muted); margin: 0; }
 
