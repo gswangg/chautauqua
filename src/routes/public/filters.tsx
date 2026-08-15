@@ -6,6 +6,16 @@
 // surface now renders PublicSearchBox for its keyword search and
 // PublicFilterBar for each pill-narrowable axis; neither writes its own copy.
 
+// DEC-433 amendment (wave 69): PublicSearchBox is the ONE `?q=` search
+// control (also reused, via ItinerarySearchForm, on the agenda/schedule
+// surfaces) — parseNameQuery/trimOrNullBounded (src/routes/public/query.ts)
+// silently degrade any value over MAX_PUBLIC_QUERY_VALUE_LENGTH to null, so
+// the box itself must declare that same cap via `maxlength` or an over-cap
+// search submits, silently un-filters the list, and looks like a bug in the
+// list rather than a rejected search. Sourced from the same bounds.ts the
+// parser reads (never a copied number).
+import { MAX_PUBLIC_QUERY_VALUE_LENGTH } from "../../server/repo/public/bounds";
+
 /** The one keyword-search markup (DEC-919 amendment, wave 40): one compact
  * input at the head of the surface's single .chq-pub-filter-row, with no
  * visible label and no visible submit button — the row reads as one
@@ -25,7 +35,15 @@ export function PublicSearchBox(props: { action: string; q: string | null; hidde
       <label class="chq-visually-hidden" for="chq-pub-search-q">
         Search
       </label>
-      <input class="chq-pub-search" id="chq-pub-search-q" type="search" name="q" value={q ?? ""} placeholder="Search" />
+      <input
+        class="chq-pub-search"
+        id="chq-pub-search-q"
+        type="search"
+        name="q"
+        value={q ?? ""}
+        placeholder="Search"
+        maxlength={MAX_PUBLIC_QUERY_VALUE_LENGTH}
+      />
       {hidden as any}
       <button class="chq-visually-hidden" type="submit">
         Search
@@ -33,6 +51,11 @@ export function PublicSearchBox(props: { action: string; q: string | null; hidde
     </form>
   );
 }
+
+// DEC-433 (wave 69 audit note): PublicFilterSelectForm has no free-text
+// input to bound — `options` is a server-built closed set (track/format/room
+// ids the repo layer already knows about), so there is no client-suppliable
+// string here for a parser to silently degrade against. No maxlength needed.
 
 /** v7 filter bar (design-pack v7, "Public filter bar — one idiom, four
  * surfaces"): a compact narrowing SELECT, one per facet, sitting beside the
