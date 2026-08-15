@@ -3,9 +3,10 @@
 // participant and no warning), and stops advertising the eval harness's
 // organizer login as a speaker's email placeholder.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, within, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { NewSubmissionModal } from './NewSubmissionModal';
+import { ApiError } from '../../lib/api';
 
 afterEach(() => {
   cleanup();
@@ -94,5 +95,61 @@ describe('NewSubmissionModal (DEC-863)', () => {
       expect(placeholder.toLowerCase()).not.toContain('sbek');
       expect(value.toLowerCase()).not.toContain('sbek');
     });
+  });
+
+  // DEC-958 (wave 64 amendment): a refusal carrying a named-field map marks
+  // the offending control(s) instead of collapsing to the (often
+  // placeholder) top-line message -- 'Validation failed' with the real
+  // information in err.fields alone never renders as just that placeholder.
+  it('marks the Speaker email control on a "contact.email" field refusal, printing the field\'s own text under the bare message "Validation failed"', async () => {
+    const onCreate = vi.fn().mockRejectedValue(
+      new ApiError(400, 'invalid', 'Validation failed', { 'contact.email': 'must be a valid email address' }),
+    );
+    render(<NewSubmissionModal tracks={[]} onCancel={vi.fn()} onCreate={onCreate} />);
+
+    fillTitle();
+    fireEvent.change(screen.getByLabelText(/Speaker email/), { target: { value: 'abc@invalid' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create it' }));
+
+    await screen.findByText('must be a valid email address');
+
+    const emailInput = screen.getByLabelText(/Speaker email/);
+    expect(emailInput).toHaveAttribute('aria-invalid', 'true');
+    const row = emailInput.closest('.chq-form-row');
+    expect(row).not.toBeNull();
+    expect(within(row as HTMLElement).getByText('must be a valid email address')).toBeInTheDocument();
+
+    // The bare top-line message never renders standalone -- the field map
+    // carried all the information.
+    expect(screen.queryByText('Validation failed')).not.toBeInTheDocument();
+
+    // The ErrorSummary anchors to the SAME control.
+    const summary = document.querySelector('.chq-error-summary');
+    expect(summary).not.toBeNull();
+    expect(within(summary as HTMLElement).getByRole('link', { name: 'Speaker email' })).toHaveAttribute(
+      'href',
+      '#new-submission-email',
+    );
+
+    // The typed value survives the refusal.
+    expect((emailInput as HTMLInputElement).value).toBe('abc@invalid');
+  });
+
+  it('still renders an unrecognized field-error key, labelled by its own key, rather than dropping it', async () => {
+    const onCreate = vi.fn().mockRejectedValue(
+      new ApiError(400, 'invalid', 'Validation failed', { somethingUnexpected: 'This field is not allowed' }),
+    );
+    render(<NewSubmissionModal tracks={[]} onCancel={vi.fn()} onCreate={onCreate} />);
+
+    fillTitle();
+    fireEvent.click(screen.getByRole('button', { name: 'Create it' }));
+
+    await waitFor(() => {
+      expect(document.querySelector('.chq-error-summary')).not.toBeNull();
+    });
+
+    const errorSummary = document.querySelector('.chq-error-summary') as HTMLElement;
+    expect(within(errorSummary).getByText(/somethingUnexpected/)).toBeInTheDocument();
+    expect(within(errorSummary).getByText(/This field is not allowed/)).toBeInTheDocument();
   });
 });

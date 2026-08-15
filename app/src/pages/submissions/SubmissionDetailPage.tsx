@@ -20,6 +20,7 @@ import { formatBytes } from '../content/format';
 import { formatSubmissionScheduleLine } from './schedule';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { PageSkeleton } from '../../components/PageSkeleton';
+import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
 import { buildSubmissionsQuery, parseSubmissionsQuery } from './filters';
 import { countOf } from '../../lib/plural';
 import './detail.css';
@@ -53,6 +54,19 @@ void DEC_998;
 // worklist), never from this per-submission decision panel. 'pending' is
 // the rail's starting point, not a choosable status -- the only way back to
 // it from a decided state is the single quiet 'Back to pending' link.
+// DEC-958 (wave 64 amendment): the title/abstract edit form's own two
+// refusable wire keys (src/routes/api/submissions.ts's parseBoundedText
+// title/description cap messages, plus the shared 'Provide title,
+// description, trackIds, or format' catch-all keyed 'title') get a stable
+// anchor id + label here, exactly like EventSettingsPanel/PlanEditor's own
+// ErrorSummary tables -- scoped to this ONE write path (status/tracks/
+// format/audience level/participants/contact search/history restore all
+// keep their existing bare-message handling, out of scope this wave).
+const EDIT_FIELD_ANCHORS: Record<string, { anchorId: string; label: string }> = {
+  title: { anchorId: 'submission-edit-title', label: 'Title' },
+  description: { anchorId: 'submission-edit-description', label: 'Abstract' },
+};
+
 const DECIDABLE_STATUSES = ['accepted', 'declined', 'waitlisted'] as const;
 type DecidableStatus = (typeof DECIDABLE_STATUSES)[number];
 
@@ -227,6 +241,11 @@ export function SubmissionDetailPage() {
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+  // DEC-958 (wave 64 amendment): the WHOLE err.fields map from a saveEdit
+  // refusal, keyed by the server's own wire keys -- never just the joined
+  // values. The draft text in editTitle/editDescription is never cleared
+  // on a refusal.
+  const [editFieldErrors, setEditFieldErrors] = useState<Record<string, string>>({});
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyEntries, setHistoryEntries] = useState<HistoryTimelineEntry[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -303,6 +322,14 @@ export function SubmissionDetailPage() {
   // startEditing does today, once detail has loaded -- the button click path
   // still prefills synchronously via startEditing itself, so this effect is
   // a no-op there (same values).
+  //
+  // DEC-958 (wave 64 amendment): keyed on detail?.id + the edit flag, NOT
+  // the whole `detail` object -- saveEdit's own optimistic-write/loud-
+  // rollback cycle replaces `detail` with a new object while editing stays
+  // open, and re-running this prefill on THAT change was overwriting the
+  // organiser's still-open draft with the (reverted) server value the
+  // instant a refusal came back, silently discarding exactly the text the
+  // refusal was supposed to let them fix.
   useEffect(() => {
     if (!detail) return;
     if (searchParams.get('edit') === '1') {
@@ -310,7 +337,7 @@ export function SubmissionDetailPage() {
       setEditDescription(detail.description ?? '');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detail]);
+  }, [detail?.id, searchParams.get('edit')]);
 
   // DEC-998: a direct `?history=1` link opens AND loads the history
   // timeline -- the same effect fires when the Show/Hide toggle flips the
@@ -376,6 +403,7 @@ export function SubmissionDetailPage() {
     if (!detail) return;
     setEditTitle(detail.title);
     setEditDescription(detail.description ?? '');
+    setEditFieldErrors({});
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev);
       params.set('edit', '1');
@@ -384,6 +412,7 @@ export function SubmissionDetailPage() {
   }
 
   function closeEditing() {
+    setEditFieldErrors({});
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev);
       params.delete('edit');
@@ -401,6 +430,7 @@ export function SubmissionDetailPage() {
     const previous = detail;
     setSavingEdit(true);
     setError(null);
+    setEditFieldErrors({});
     // Optimistic update.
     setDetail({ ...detail, title, description: editDescription });
     try {
@@ -411,9 +441,16 @@ export function SubmissionDetailPage() {
       setDetail(updated);
       closeEditing();
     } catch (err) {
-      // Loud rollback: restore prior state and surface the failure.
+      // Loud rollback: restore prior state and surface the failure. DEC-958
+      // (wave 64 amendment): a refusal carrying a named-field map marks the
+      // offending control(s) via ErrorSummary instead of collapsing to the
+      // top-line message alone -- the draft text stays in the form.
       setDetail(previous);
-      setError(err instanceof ApiError ? `Edit failed: ${err.message}` : 'Edit failed');
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setEditFieldErrors(err.fields);
+      } else {
+        setError(err instanceof ApiError ? `Edit failed: ${err.message}` : 'Edit failed');
+      }
     } finally {
       setSavingEdit(false);
     }
@@ -806,27 +843,44 @@ export function SubmissionDetailPage() {
                 detail.description && <p className="chq-detail-abstract">{detail.description}</p>
               ) : (
                 <div className="chq-detail-edit-form">
-                  <label>
+                  {Object.keys(editFieldErrors).length > 0 && (
+                    <ErrorSummary
+                      heading={countHeading(Object.keys(editFieldErrors).length, 'before this edit can be saved')}
+                      kept="Nothing was lost. Your draft is still below."
+                      problems={Object.keys(editFieldErrors).map(
+                        (key) => EDIT_FIELD_ANCHORS[key] ?? { anchorId: key, label: key },
+                      )}
+                    />
+                  )}
+                  <label htmlFor="submission-edit-title">
                     Title
                     <input
+                      id="submission-edit-title"
                       type="text"
-                      className="chq-input"
+                      className={editFieldErrors.title ? 'chq-input chq-field-invalid' : 'chq-input'}
                       value={editTitle}
                       disabled={savingEdit}
                       maxLength={LOCKED_TITLE_MAX_LENGTH}
                       onChange={(e) => setEditTitle(e.target.value)}
+                      aria-invalid={editFieldErrors.title ? 'true' : undefined}
                     />
                   </label>
-                  <label>
+                  {editFieldErrors.title && <div className="chq-form-row-error" role="alert">{editFieldErrors.title}</div>}
+                  <label htmlFor="submission-edit-description">
                     Abstract
                     <textarea
-                      className="chq-textarea"
+                      id="submission-edit-description"
+                      className={editFieldErrors.description ? 'chq-textarea chq-field-invalid' : 'chq-textarea'}
                       value={editDescription}
                       disabled={savingEdit}
                       maxLength={LOCKED_ABSTRACT_MAX_LENGTH}
                       onChange={(e) => setEditDescription(e.target.value)}
+                      aria-invalid={editFieldErrors.description ? 'true' : undefined}
                     />
                   </label>
+                  {editFieldErrors.description && (
+                    <div className="chq-form-row-error" role="alert">{editFieldErrors.description}</div>
+                  )}
                   <div className="chq-detail-edit-form-actions">
                     <button type="button" className="chq-btn chq-btn-primary" disabled={savingEdit} onClick={saveEdit}>
                       Save

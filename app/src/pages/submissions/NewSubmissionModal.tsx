@@ -18,7 +18,24 @@
 
 import { useState, type FormEvent } from 'react';
 import { FormRow, ModalFrame } from '../../components/ModalFrame';
+import { ApiError } from '../../lib/api';
+import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
 import type { FormField, Track } from './types';
+
+// DEC-958 (wave 64 amendment): every wire key POST /api/v1/events/:eventId/
+// submissions's validator can name on this modal's own submitted body
+// (src/routes/api/submissions.ts -- title/description/trackIds/format plus
+// the nested 'contact.email') gets a stable anchor id and a display label
+// for the ErrorSummary anchor list. A key the map below doesn't recognize
+// still renders in the summary, labelled by its own raw wire key, rather
+// than being dropped.
+const KNOWN_FIELD_ANCHORS: Record<string, { anchorId: string; label: string }> = {
+  title: { anchorId: 'new-submission-title', label: 'Title' },
+  description: { anchorId: 'new-submission-description', label: 'Abstract' },
+  trackIds: { anchorId: 'new-submission-tracks', label: 'Tracks' },
+  format: { anchorId: 'new-submission-format', label: 'Format' },
+  'contact.email': { anchorId: 'new-submission-email', label: 'Speaker email' },
+};
 
 export interface NewSubmissionInput {
   title: string;
@@ -58,6 +75,10 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
   const [format, setFormat] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
+  // DEC-958 (wave 64 amendment): the WHOLE err.fields map, keyed by the
+  // server's own wire keys -- never just the joined values. Seeded fresh on
+  // every refusal; the typed values above are never cleared on a refusal.
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
 
   function toggleTrack(trackId: string) {
@@ -83,14 +104,36 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
     setPending(true);
     setError(null);
     setEmailError(null);
+    setFieldErrors({});
     try {
       await onCreate({ title: trimmedTitle, description: description.trim(), contact, trackIds, format });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create submission');
+      // DEC-958 (wave 64 amendment): a refusal carrying a named-field map
+      // marks each offending control instead of collapsing to the (often
+      // placeholder) top-line message -- 'Validation failed' with the real
+      // information in err.fields never renders as just that placeholder.
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setFieldErrors(err.fields);
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to create submission');
+      }
     } finally {
       setPending(false);
     }
   }
+
+  function fieldAriaInvalid(hasError: boolean): 'true' | undefined {
+    return hasError ? 'true' : undefined;
+  }
+
+  const errorSummaryProblems = Object.keys(fieldErrors).map((key) => {
+    const meta = KNOWN_FIELD_ANCHORS[key];
+    // An unmatched key has no control to blame -- it still renders,
+    // labelled by its own raw wire key (plus the server's message, since
+    // there is no FormRow for it to print the message next to) rather than
+    // being silently dropped.
+    return meta ?? { anchorId: key, label: `${key}: ${fieldErrors[key]}` };
+  });
 
   return (
     <ModalFrame
@@ -114,7 +157,15 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
     >
       {error && <div className="chq-error">{error}</div>}
 
-      <FormRow label="Title" htmlFor="new-submission-title">
+      {errorSummaryProblems.length > 0 && (
+        <ErrorSummary
+          heading={countHeading(errorSummaryProblems.length, 'before this submission can be created')}
+          kept="Nothing was lost. Your typed values are still below."
+          problems={errorSummaryProblems}
+        />
+      )}
+
+      <FormRow label="Title" htmlFor="new-submission-title" error={fieldErrors.title}>
         <input
           id="new-submission-title"
           className="chq-input"
@@ -122,37 +173,48 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Opening Keynote"
           required
+          aria-invalid={fieldAriaInvalid(!!fieldErrors.title)}
         />
       </FormRow>
-      <FormRow label="Abstract" htmlFor="new-submission-description" optional>
+      <FormRow label="Abstract" htmlFor="new-submission-description" optional error={fieldErrors.description}>
         <textarea
           id="new-submission-description"
           className="chq-textarea"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Optional — you can fill this in later"
+          aria-invalid={fieldAriaInvalid(!!fieldErrors.description)}
         />
       </FormRow>
 
       {tracks.length > 0 && (
-        <FormRow label="Tracks">
-          {tracks.map((track) => (
-            <label key={track.id} className="chq-checkbox-label">
-              <input
-                className="chq-check"
-                type="checkbox"
-                checked={trackIds.includes(track.id)}
-                onChange={() => toggleTrack(track.id)}
-              />
-              {track.name}
-            </label>
-          ))}
+        <FormRow label="Tracks" htmlFor="new-submission-tracks" error={fieldErrors.trackIds}>
+          <div id="new-submission-tracks">
+            {tracks.map((track) => (
+              <label key={track.id} className="chq-checkbox-label">
+                <input
+                  className="chq-check"
+                  type="checkbox"
+                  checked={trackIds.includes(track.id)}
+                  onChange={() => toggleTrack(track.id)}
+                  aria-invalid={fieldAriaInvalid(!!fieldErrors.trackIds)}
+                />
+                {track.name}
+              </label>
+            ))}
+          </div>
         </FormRow>
       )}
 
       {formatField && (
-        <FormRow label={formatField.label} htmlFor="new-submission-format" optional>
-          <select id="new-submission-format" className="chq-select" value={format} onChange={(e) => setFormat(e.target.value)}>
+        <FormRow label={formatField.label} htmlFor="new-submission-format" optional error={fieldErrors.format}>
+          <select
+            id="new-submission-format"
+            className="chq-select"
+            value={format}
+            onChange={(e) => setFormat(e.target.value)}
+            aria-invalid={fieldAriaInvalid(!!fieldErrors.format)}
+          >
             <option value="">Select...</option>
             {(formatField.options ?? []).map((option) => (
               <option key={option} value={option}>
@@ -172,7 +234,12 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
           placeholder="Jordan Alvarez"
         />
       </FormRow>
-      <FormRow label="Speaker email" htmlFor="new-submission-email" optional error={emailError}>
+      <FormRow
+        label="Speaker email"
+        htmlFor="new-submission-email"
+        optional
+        error={emailError ?? fieldErrors['contact.email']}
+      >
         <input
           id="new-submission-email"
           className="chq-input"
@@ -183,6 +250,7 @@ export function NewSubmissionModal({ tracks, formatField, onCancel, onCreate }: 
             if (emailError) setEmailError(null);
           }}
           placeholder="jordan.alvarez@example.com"
+          aria-invalid={fieldAriaInvalid(!!(emailError ?? fieldErrors['contact.email']))}
         />
       </FormRow>
     </ModalFrame>
