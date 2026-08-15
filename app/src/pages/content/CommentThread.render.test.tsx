@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { CommentThread } from './CommentThread';
+import { MAX_COMMENT_BODY_LENGTH } from '../../lib/file-caps';
 import type { FileComment } from './types';
 
 vi.mock('../../lib/useMe', () => ({
@@ -118,5 +119,19 @@ describe('CommentThread', () => {
     expect(document.querySelector('.chq-empty-block-fresh')).toBeInTheDocument();
     expect(document.querySelector('.chq-empty-actions')).not.toBeInTheDocument();
     expect(document.querySelector('.chq-comment-list')).toBeNull();
+  });
+
+  // DEC-244 wave-58 amendment: the composer's own textarea declares the
+  // MAX_COMMENT_BODY_LENGTH cap (4000, imported through lib/file-caps, the
+  // named DEC-660 crossing into src/domain/files) and states it in a
+  // caption, matching the portal's src/routes/portal/tasks/views.tsx caption
+  // register.
+  it('declares MAX_COMMENT_BODY_LENGTH as the textarea maxLength and states it in a caption', () => {
+    render(<CommentThread comments={[]} onSend={noopSend} />);
+    const textarea = screen.getByPlaceholderText(
+      'Write a note — sent with the decision, and kept on the thread',
+    ) as HTMLTextAreaElement;
+    expect(textarea.maxLength).toBe(MAX_COMMENT_BODY_LENGTH);
+    expect(screen.getByText('Up to 4,000 characters.')).toBeInTheDocument();
   });
 });

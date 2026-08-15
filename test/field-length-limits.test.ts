@@ -398,7 +398,11 @@ describe("src/routes/review/plans.ts", () => {
 });
 
 describe("src/routes/files.ts", () => {
-  it("POST /files/:fileId/comments rejects an over-cap body", async () => {
+  // DEC-244 wave-58 amendment: the comments route caps a reply at
+  // MAX_COMMENT_BODY_LENGTH (4000, src/domain/files.ts) -- not
+  // forms/validate's MAX_LONG_TEXT_LENGTH (20000), which is for form
+  // answers, not this deliverable reply thread.
+  it("POST /files/:fileId/comments rejects an over-cap body, counting the overage and marking fields.body", async () => {
     const scope = {
       fileId: "f1",
       submissionId: "sub-1",
@@ -425,8 +429,14 @@ describe("src/routes/files.ts", () => {
     });
     app.route("/api/v1", fileApiRoutes);
 
-    const res = await app.request(jsonPost("/api/v1/files/f1/comments", { body: "x".repeat(MAX_LONG_TEXT_LENGTH + 1) }));
-    await expectInvalid(res, "body");
+    const { MAX_COMMENT_BODY_LENGTH } = await import("../src/domain/files");
+    const res = await app.request(jsonPost("/api/v1/files/f1/comments", { body: "x".repeat(MAX_COMMENT_BODY_LENGTH + 1) }));
+    expect(res.status).toBe(400);
+    const parsed = (await res.json()) as { error: { code: string; message: string; fields?: Record<string, string> } };
+    expect(parsed.error.code).toBe("invalid");
+    expect(parsed.error.fields).toHaveProperty("body");
+    expect(parsed.error.message).toContain("1");
+    expect(parsed.error.message).toContain(MAX_COMMENT_BODY_LENGTH.toLocaleString("en-US"));
   });
 });
 
