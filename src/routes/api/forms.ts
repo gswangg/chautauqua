@@ -272,6 +272,28 @@ formsRoutes.patch("/api/v1/fields/:fieldId", requireOrganizer, csrfJson, async (
     }
   }
 
+  // DEC-505: removing an option that submissions have already answered would
+  // orphan those answers — validate.ts refuses any stored answer whose value
+  // is no longer in field.options, so the speaker's next save on an
+  // untouched field would 409. Refuse the removal outright instead, naming
+  // each blocked option and its answer count, before patchField runs.
+  if (Array.isArray(body.options) && field.options != null) {
+    const incoming = new Set(body.options as string[]);
+    const removed = field.options.filter((opt) => !incoming.has(opt));
+    if (removed.length > 0) {
+      const optionCounts = await repo.countAnswersByOptionValue(c.var.db, fieldId);
+      const blocked = removed.filter((opt) => (optionCounts.get(opt) ?? 0) > 0);
+      if (blocked.length > 0) {
+        const detail = blocked.map((opt) => `"${opt}" (${countOf(optionCounts.get(opt) ?? 0, "answer")})`).join(", ");
+        throw new ApiError(
+          "conflict",
+          `${countOf(blocked.length, "option")} still has collected answers: ${detail}. Nothing was changed — delete and re-create the question to drop it, or leave the option in place.`,
+          { options: String(blocked.length) },
+        );
+      }
+    }
+  }
+
   const updated = await repo.patchField(c.var.db, fieldId, {
     label: typeof body.label === "string" ? body.label : undefined,
     helpText: body.helpText !== undefined ? (body.helpText === null ? null : String(body.helpText)) : undefined,
