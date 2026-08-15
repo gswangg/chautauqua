@@ -5,6 +5,7 @@ import './review.css';
 import type { EvaluationPlan, RecusalItem, ReviewerQueueEnvelope, ReviewerQueueItem } from './types';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { PageSkeleton } from '../../components/PageSkeleton';
+import { EmptyState } from '../../components/EmptyState';
 import { countOf } from '../../lib/plural';
 // DEC-522/DEC-831: "closes in N days" is computed via the ONE days-until
 // reader (dates.ts daysUntil), through the owning event's own timezone --
@@ -167,7 +168,7 @@ function PlanSection({
       */}
       {!open && !error && <p className="chq-empty">This review plan is not currently open.</p>}
       {open && items.length === 0 && recused.length === 0 && !error && (
-        <p className="chq-empty">Nothing left in your queue. Nicely done.</p>
+        <EmptyState variant="fresh" what="Nothing left in your queue. Nicely done." action={null} />
       )}
       {/* DEC-874: recused submissions render INLINE in this same ordered
           list -- marked and carrying the reason plus the existing Undo --
@@ -578,7 +579,9 @@ export function ReviewerQueue() {
           {error}
         </div>
       )}
-      {plans && plans.length === 0 && !error && <p className="chq-empty">You have no assigned evaluation plans yet.</p>}
+      {plans && plans.length === 0 && !error && (
+        <EmptyState variant="fresh" what="You have no assigned evaluation plans yet." action={null} />
+      )}
     </div>
   );
 }

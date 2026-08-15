@@ -108,4 +108,15 @@ describe('CommentThread', () => {
     // eslint-disable-next-line no-bitwise
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
+
+  // w52-d (DEC-678 amendment): a zero-comment thread renders through the
+  // shared EmptyState 'fresh' block, never a bare `<li className="chq-
+  // empty">` inside an otherwise-empty `<ul>`.
+  it('renders the shared EmptyState fresh block for zero comments, with no empty <ul>', () => {
+    render(<CommentThread comments={[]} onSend={noopSend} />);
+    expect(screen.getByText('No comments yet.')).toBeInTheDocument();
+    expect(document.querySelector('.chq-empty-block-fresh')).toBeInTheDocument();
+    expect(document.querySelector('.chq-empty-actions')).not.toBeInTheDocument();
+    expect(document.querySelector('.chq-comment-list')).toBeNull();
+  });
 });

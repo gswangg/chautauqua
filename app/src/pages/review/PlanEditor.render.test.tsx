@@ -64,6 +64,32 @@ async function openAssignForm() {
 }
 
 describe('PlanEditor render smoke', () => {
+  // w52-d (DEC-678 amendment): an empty roster renders through the shared
+  // EmptyState 'fresh' block, never a bare `<p className="chq-empty">` --
+  // no action prop (the "Assign a reviewer" control already sits on the
+  // section head, so nothing for the block to duplicate).
+  it('renders the shared EmptyState fresh block for an empty roster, with no duplicate action', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('No reviewers assigned yet.')).toBeInTheDocument();
+    expect(document.querySelector('.chq-empty-block-fresh')).toBeInTheDocument();
+    expect(document.querySelector('.chq-empty-actions')).not.toBeInTheDocument();
+  });
+
   it('renders reviewer options keyed on `id` (not `userId`) from the GET /api/v1/users wire shape', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),

@@ -414,6 +414,35 @@ describe('"Score the next one" plan-scoped title-row shortcut (REVIEW PACK frame
     expect(await screen.findByRole('heading', { name: 'Nothing left in your queue. Nicely done.' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Score the next one' })).not.toBeInTheDocument();
   });
+
+  // w52-d (DEC-678 amendment): a genuinely empty queue (no actionable items
+  // AND no recused rows) renders the section's own "nothing left" line
+  // through the shared EmptyState 'fresh' block, never a bare `.chq-empty`
+  // line -- distinct from the congratulatory title-row h1 above, which
+  // fires even when the queue is empty only because everything already
+  // scored.
+  it('renders the shared EmptyState fresh block when the queue and recusals are both empty', async () => {
+    mockApi({
+      [`GET /api/v1/review/plans/${PLAN_ID}/queue`]: {
+        ...queueEnvelope([]),
+        open: true,
+        recused: [],
+      },
+    });
+
+    renderQueue();
+
+    // Both the title-row h1 (scoreLeft === 0) and the section's own
+    // EmptyState body share this exact sentence -- assert the block
+    // directly rather than by text, which would be ambiguous here.
+    await waitFor(() => {
+      expect(document.querySelector('.chq-empty-block-fresh')).toBeInTheDocument();
+    });
+    expect(document.querySelector('.chq-empty-block-fresh .chq-empty-what')).toHaveTextContent(
+      'Nothing left in your queue. Nicely done.',
+    );
+    expect(document.querySelector('.chq-empty-actions')).not.toBeInTheDocument();
+  });
 });
 
 // DEC-845 amendment (wave 38): a reviewer scope of 250 actionable

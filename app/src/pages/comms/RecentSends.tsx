@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { apiGet, apiList, ApiError } from '../../lib/api';
 import { formatDateTime, formatDateTimeWeekday } from '../../lib/dates';
 import { DelayedLoading } from '../../components/DelayedLoading';
+import { EmptyState } from '../../components/EmptyState';
 import type { EmailBatchRow, EmailLogDetail, EmailLogRow } from './types';
 
 // w41-g: seven days, matching Comms.tsx's own "N sent in the last 7 days"
@@ -251,7 +252,9 @@ export function RecentSends({
         )}
       </div>
 
-      {batchesLoaded && rows.length === 0 && <p className="chq-empty">No emails sent yet.</p>}
+      {batchesLoaded && rows.length === 0 && (
+        <EmptyState variant="fresh" what="No emails sent yet." action={null} />
+      )}
 
       {rows.map((batch) => {
         const isExpanded = expanded === batch.batchKey;

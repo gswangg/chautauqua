@@ -8,6 +8,7 @@ import { copyText } from '../../lib/clipboard';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DateField } from '../../components/DateField';
 import { PageSkeleton } from '../../components/PageSkeleton';
+import { EmptyState } from '../../components/EmptyState';
 import {
   addCriterion,
   removeCriterion,
@@ -1783,7 +1784,9 @@ export function PlanEditor() {
                 </div>
               );
             })}
-            {reviewers.length === 0 && <p className="chq-empty">No reviewers assigned yet.</p>}
+            {reviewers.length === 0 && (
+              <EmptyState variant="fresh" what="No reviewers assigned yet." action={null} />
+            )}
             {/* w40-e/DEC-745 amendment: the roster is the ONE place an
                 assignment can be Removed -- past the page-1 MAX_PER_PAGE
                 rows this states the true bound and lets every remaining
