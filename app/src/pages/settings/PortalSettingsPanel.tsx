@@ -138,7 +138,18 @@ export function PortalSettingsPanel() {
       await apiPut(`/events/${eventId}/portal-settings`, buildPortalSettingsPayload(form));
       loadPortalSettings();
     } catch (err) {
-      setSaveError(err instanceof ApiError ? err.message : 'Failed to save portal settings');
+      // DEC-958: mirrors RosterPanel.tsx/EventSettingsPanel.tsx -- a
+      // fields-map refusal (src/routes/api/portal-config.ts's wire keys:
+      // logoUrl, accentColor, welcomeMessage, showResources) merges into
+      // the SAME formErrors state the client-side validator already
+      // populates, so client and server errors merge rather than
+      // replace each other. saveError stays reserved for the fields-less
+      // case.
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setFormErrors((current) => ({ ...current, ...err.fields }));
+      } else {
+        setSaveError(err instanceof ApiError ? err.message : 'Failed to save portal settings');
+      }
     } finally {
       setSaving(false);
     }
@@ -218,7 +229,12 @@ export function PortalSettingsPanel() {
             ),
           }}
         >
-          <SettingsField label="Welcome note" htmlFor="chq-portal-welcome" width="full">
+          <SettingsField
+            label="Welcome note"
+            htmlFor="chq-portal-welcome"
+            width="full"
+            hint={formErrors.welcomeMessage ? <span role="alert">{formErrors.welcomeMessage}</span> : undefined}
+          >
             <textarea
               id="chq-portal-welcome"
               className="chq-input"
@@ -226,7 +242,12 @@ export function PortalSettingsPanel() {
               onChange={(e) => setForm((current) => ({ ...current, welcomeMessage: e.target.value }))}
             />
           </SettingsField>
-          <SettingsField label="Logo URL" htmlFor="chq-portal-logo-url" width="full">
+          <SettingsField
+            label="Logo URL"
+            htmlFor="chq-portal-logo-url"
+            width="full"
+            hint={formErrors.logoUrl ? <span role="alert">{formErrors.logoUrl}</span> : undefined}
+          >
             <input
               id="chq-portal-logo-url"
               className="chq-input"
@@ -258,6 +279,7 @@ export function PortalSettingsPanel() {
               checked={form.showResources}
               onChange={(e) => setForm((current) => ({ ...current, showResources: e.target.checked }))}
             />
+            {formErrors.showResources ? <span role="alert">{formErrors.showResources}</span> : null}
           </SettingsField>
           {saveError ? <span role="alert">{saveError}</span> : null}
           <div className="chq-settings-row">

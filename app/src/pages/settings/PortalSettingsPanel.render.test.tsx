@@ -9,7 +9,7 @@ import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-li
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { PortalSettingsPanel } from './PortalSettingsPanel';
-import { listEnvelope, mockApi } from '../../test-utils/mockApi';
+import { errorEnvelope, listEnvelope, mockApi } from '../../test-utils/mockApi';
 import { buildPortalSettingsPayload } from './formState';
 
 const EVENT_ID = 'evt-portal';
@@ -238,6 +238,44 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
       ([, init]) => (init as RequestInit | undefined)?.method === 'PUT',
     );
     expect(putCalls.length).toBe(0);
+  });
+
+  // DEC-958: the server's fields map merges into formErrors (the SAME
+  // state the client-side validator populates) instead of collapsing into
+  // the single top-of-form saveError sentence -- each named field renders
+  // its own message.
+  it('merges a server fields-map refusal into the named field hints, not the generic banner', async () => {
+    const fetchMock = mockPortal({
+      [`PUT /api/v1/events/${EVENT_ID}/portal-settings`]: {
+        status: 400,
+        body: errorEnvelope('validation_error', 'Invalid portal settings', {
+          accentColor: 'Must be a hex color like #336699',
+          welcomeMessage: 'Max 20000 characters',
+        }),
+      },
+    });
+    render(
+      <MemoryRouter initialEntries={['/settings?section=portal&edit=1']}>
+        <PortalSettingsPanel />
+      </MemoryRouter>,
+    );
+
+    const welcome = await screen.findByLabelText('Welcome note');
+    fireEvent.change(welcome, { target: { value: 'Hello there' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      const putCalls = fetchMock.mock.calls.filter(
+        ([, init]) => (init as RequestInit | undefined)?.method === 'PUT',
+      );
+      expect(putCalls.length).toBe(1);
+    });
+
+    expect(await screen.findByText('Must be a hex color like #336699')).toBeInTheDocument();
+    expect(screen.getByText('Max 20000 characters')).toBeInTheDocument();
+    // The generic banner never fires alongside a fields-map refusal --
+    // there is no third "Invalid portal settings" sentence rendered.
+    expect(screen.queryByText('Invalid portal settings')).not.toBeInTheDocument();
   });
 
   // DEC-896 amendment (wave 26): the shared settings edit shell (B10).

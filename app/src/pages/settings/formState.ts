@@ -56,8 +56,18 @@ export function isValidHexColorOrEmpty(value: string): boolean {
   return value.trim().length === 0 || isValidHexColor(value);
 }
 
+// DEC-958: the client validator only ever produces accentColor, but the
+// server's fields map (src/routes/api/portal-config.ts:97-127) can name any
+// of its wire keys -- logoUrl and welcomeMessage included -- so the type
+// carries all four the panel's own hint slots render, plus an index
+// signature so a fields map merge (`{...current, ...err.fields}`) type-checks
+// without narrowing away a key the caller didn't render yet.
 export interface PortalSettingsFormErrors {
+  logoUrl?: string;
   accentColor?: string;
+  welcomeMessage?: string;
+  showResources?: string;
+  [key: string]: string | undefined;
 }
 
 export function validatePortalSettingsForm(form: PortalSettingsForm): PortalSettingsFormErrors {
