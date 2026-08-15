@@ -85,7 +85,7 @@ describe("DEC-400: overview payload wire keys pinned against the client contract
   it("Object.keys(payload) is exactly the twelve DEC-370 keys, byte-for-byte", async () => {
     const now = 1_735_999_999_999;
     const db = makeFakeDb(emptyResponses());
-    const payload = await getOverviewPayload(db, "event-1", now);
+    const payload = await getOverviewPayload(db, "event-1", now, "America/New_York");
 
     expect(Object.keys(payload).sort()).toEqual(
       [
@@ -164,7 +164,7 @@ describe("DEC-589 amendment (wave 49): overview Phase 1 queries are concurrent, 
     }
     const db = { select: () => chain() } as any;
 
-    await getOverviewPayload(db, "event-1", now);
+    await getOverviewPayload(db, "event-1", now, "America/New_York");
 
     // The first 10 responses queued above are exactly Phase 1's queries
     // (event, statusRows, planCount, evaluationsAgg, planClose, formClose,

@@ -137,3 +137,31 @@ export function dayLabelEndInstant(dayLabelMs: number, timeZone: string): number
   const day = dayLabelToYmd(dayLabelMs);
   return zonedMinutesToUtc(day, 1440, timeZone).getTime() - 1;
 }
+
+/** DEC-801 (wave 58 amendment, J6): the UTC-midnight day-label instant of the
+ * calendar date `instantMs` falls on when viewed wall-clock-wise in
+ * `timeZone`. Uses Intl.DateTimeFormat to read the zone's local
+ * year/month/day at `instantMs`, then Date.UTC to mint the day-label instant
+ * — never toISOString (standing ban). This is the inverse-ish counterpart to
+ * dayLabelStartInstant/dayLabelEndInstant: those expand a day label to an
+ * event-local instant range; this collapses an arbitrary instant back down
+ * to its event-local day label, so overdue predicates can compare day labels
+ * to day labels instead of a UTC-midnight label to an instant. */
+export function dayLabelOfInstant(instantMs: number, timeZone: string): number {
+  if (!timeZone) {
+    throw new Error("dayLabelOfInstant requires a non-empty timeZone");
+  }
+  if (!Number.isFinite(instantMs) || instantMs < MIN_EPOCH_MS || instantMs > MAX_EPOCH_MS) {
+    throw new Error(`Invalid instant '${instantMs}' — expected a finite epoch-ms value within [${MIN_EPOCH_MS}, ${MAX_EPOCH_MS}]`);
+  }
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const parts = dtf.formatToParts(new Date(instantMs));
+  const map: Record<string, string> = {};
+  for (const part of parts) map[part.type] = part.value;
+  return Date.UTC(Number(map.year), Number(map.month) - 1, Number(map.day));
+}

@@ -11,7 +11,7 @@ import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
 import { ApiError } from "../../http";
 import { isUniqueViolation } from "../constraints";
 import { DEC_528, DEC_556, DEC_801 } from "../../../decisions";
-import { ASSIGNED_LATE_GRACE_DAYS } from "../../../domain/task-due";
+import { ASSIGNED_LATE_GRACE_DAYS, overdueDayCutoff } from "../../../domain/task-due";
 import type { FileKind } from "../../../domain/files";
 
 void DEC_801; // overdueAssignmentConditions below composes the DEC-801 grace window.
@@ -163,27 +163,38 @@ export function rosterParticipantExistsForContact(eventId: string) {
   return sql`exists (select 1 from ${schema.participant} inner join ${schema.submission} on ${schema.submission.id} = ${schema.participant.submissionId} where ${schema.participant.contactId} = ${schema.contact.id} and ${rosterParticipantConditions(eventId)})`;
 }
 
-/** DEC-776: the ONE overdue-assignment predicate — a task_assignment is
- * "overdue" iff its task belongs to `eventId`, its status is not 'complete'
- * (matching every non-complete status a status enum might grow, not just
- * 'pending'), its EFFECTIVE due date (DEC-801: task.dueDate, or, when the
- * assignment was created after that date, assignment.createdAt plus
- * ASSIGNED_LATE_GRACE_DAYS — the SQL form of
- * ../../../domain/task-due.ts's effectiveAssignmentDueDate, since a
- * correlated WHERE can't call back into JS) is in the past relative to
- * `now`, AND its contact is currently an accepted speaker on the event
- * (composing acceptedSpeakerExistsForContact so this can never drift from
- * the onboarding roster). Callers must join task_assignment -> task (on
+/** DEC-776 (narrowed by DEC-801 wave-58 amendment, J6): the ONE
+ * overdue-assignment predicate — a task_assignment is "overdue" iff its task
+ * belongs to `eventId`, its status is not 'complete' (matching every
+ * non-complete status a status enum might grow, not just 'pending'), it is
+ * overdue per ../../../domain/task-due.ts's isAssignmentOverdue, AND its
+ * contact is currently an accepted speaker on the event (composing
+ * acceptedSpeakerExistsForContact so this can never drift from the
+ * onboarding roster). Callers must join task_assignment -> task (on
  * task.id = task_assignment.task_id) -> contact (on contact.id =
  * task_assignment.contact_id) before applying this in a WHERE clause, since
- * acceptedSpeakerExistsForContact correlates against schema.contact.id. */
-export function overdueAssignmentConditions(eventId: string, now: number) {
+ * acceptedSpeakerExistsForContact correlates against schema.contact.id.
+ *
+ * DEC-801 wave-58: task.dueDate is a DAY LABEL (a UTC-midnight stand-in for
+ * a calendar date), not an instant — comparing it directly to `now` (the
+ * pre-amendment behavior) flags a task overdue as soon as UTC midnight
+ * passes, up to ~16 hours before the due day even begins in the event's own
+ * timezone. `timeZone` must be the OWNING EVENT's timezone (event-time.ts
+ * convention). The CASE mirrors isAssignmentOverdue: when the task's own
+ * due date holds (>= assignment.createdAt), overdue means the due date's day
+ * label is strictly before `now`'s day label in `timeZone` (overdueDayCutoff
+ * — the SQL-comparable twin of dayLabelEndInstant's boundary); otherwise
+ * (the grace-window branch) the effective due date is already a real
+ * instant (assignment.createdAt + grace), so it's compared to `now`
+ * directly, no timezone expansion needed. */
+export function overdueAssignmentConditions(eventId: string, now: number, timeZone: string) {
   const graceMs = ASSIGNED_LATE_GRACE_DAYS * 24 * 60 * 60 * 1000;
-  const effectiveDueDate = sql`(case when ${schema.task.dueDate} >= ${schema.taskAssignment.createdAt} then ${schema.task.dueDate} else ${schema.taskAssignment.createdAt} + ${graceMs} end)`;
+  const cutoff = overdueDayCutoff(now, timeZone);
+  const isOverdue = sql`(case when ${schema.task.dueDate} >= ${schema.taskAssignment.createdAt} then ${schema.task.dueDate} < ${cutoff} else ${schema.taskAssignment.createdAt} + ${graceMs} < ${now} end)`;
   return and(
     eq(schema.task.eventId, eventId),
     sql`${schema.taskAssignment.status} <> 'complete'`,
-    sql`${schema.task.dueDate} is not null and ${effectiveDueDate} < ${now}`,
+    sql`${schema.task.dueDate} is not null and ${isOverdue}`,
     acceptedSpeakerExistsForContact(eventId),
   )!;
 }

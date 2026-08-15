@@ -10,7 +10,7 @@ import { chunkIds } from "../../../lib/chunk";
 import { formatRef } from "../../../domain/ids";
 import { likeContains } from "../like";
 import { chaseableContactExistsForTaskEvent, overdueAssignmentConditions, rosterParticipantConditions, rosterParticipantExistsForContact } from "./crud";
-import { ASSIGNED_LATE_GRACE_DAYS } from "../../../domain/task-due";
+import { ASSIGNED_LATE_GRACE_DAYS, overdueDayCutoff } from "../../../domain/task-due";
 
 // DEC-789 closed set (mirrors the participant.invite_status column comment
 // in db/schema.ts and the app/src/pages/speakers/types.ts InviteStatus type
@@ -100,6 +100,10 @@ export interface OnboardingGrid {
   page: number;
   perPage: number;
   counts: OnboardingGridCounts;
+  // DEC-801 (wave 58 amendment): the owning event's IANA timezone, so the
+  // SPA can apply the same day-label overdue rule the server used to build
+  // `counts.overdue`/the overdueOnly filter (w58-f consumes this).
+  timezone: string;
 }
 
 /** The correlated EXISTS predicate a matching contact must satisfy WHEN a
@@ -118,19 +122,21 @@ function onboardingMatchExists(
   status: "pending" | "complete" | null,
   overdueOnly: boolean,
   now: number,
+  timeZone: string,
 ) {
   const inner = [sql`${schema.task.eventId} = ${eventId}`];
   if (taskId) inner.push(sql`${schema.taskAssignment.taskId} = ${taskId}`);
   if (status) inner.push(sql`${schema.taskAssignment.status} = ${status}`);
   if (overdueOnly) {
-    // DEC-801: the same effective-due-date computation as
-    // overdueAssignmentConditions in ./crud (this file's counts.overdue),
-    // so the overdueOnly row filter and the count it filters against can
-    // never disagree.
+    // DEC-801 (wave 58 amendment, J6): the same day-label overdue
+    // computation as overdueAssignmentConditions in ./crud (this file's
+    // counts.overdue), so the overdueOnly row filter and the count it
+    // filters against can never disagree.
     const graceMs = ASSIGNED_LATE_GRACE_DAYS * 24 * 60 * 60 * 1000;
-    const effectiveDueDate = sql`(case when ${schema.task.dueDate} >= ${schema.taskAssignment.createdAt} then ${schema.task.dueDate} else ${schema.taskAssignment.createdAt} + ${graceMs} end)`;
+    const cutoff = overdueDayCutoff(now, timeZone);
+    const isOverdue = sql`(case when ${schema.task.dueDate} >= ${schema.taskAssignment.createdAt} then ${schema.task.dueDate} < ${cutoff} else ${schema.taskAssignment.createdAt} + ${graceMs} < ${now} end)`;
     inner.push(
-      sql`${schema.task.dueDate} is not null and ${schema.taskAssignment.status} <> 'complete' and ${effectiveDueDate} < ${now}`,
+      sql`${schema.task.dueDate} is not null and ${schema.taskAssignment.status} <> 'complete' and ${isOverdue}`,
     );
   }
   const innerWhere = sql.join(inner, sql` and `);
@@ -173,8 +179,26 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
     outstandingContacts: 0,
   };
 
+  // DEC-801 (wave 58 amendment): the event row is resolved ONCE here (never
+  // a second query, never per row) — this file's own comment at the old
+  // DEC-936 fetch site below used to run this same select a second time,
+  // after contactIdsInOrder was known; both recordPrefix (DEC-936, for
+  // formatRef) and timezone (DEC-801, for the overdue day-label predicates
+  // below, which fire BEFORE that later point in the function) come from
+  // this one row.
+  const eventRows = await db
+    .select({ recordPrefix: schema.event.recordPrefix, timezone: schema.event.timezone })
+    .from(schema.event)
+    .where(eq(schema.event.id, eventId))
+    .limit(1);
+  const recordPrefix = eventRows[0]?.recordPrefix;
+  const timezone = eventRows[0]?.timezone;
+  if (recordPrefix === undefined || timezone === undefined) {
+    throw new Error(`onboarding grid: event ${eventId} has no record prefix/timezone`);
+  }
+
   if (tasks.length === 0) {
-    return { tasks: [], rows: [], total: 0, page: params.page, perPage: params.perPage, counts: emptyCounts };
+    return { tasks: [], rows: [], total: 0, page: params.page, perPage: params.perPage, counts: emptyCounts, timezone };
   }
 
   // DEC-829 (widens DEC-754): the base row condition is the roster
@@ -190,7 +214,7 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
   const filterActive = params.taskId !== null || params.status !== null || params.overdueOnly;
   const conditions = [rosterParticipantExistsForContact(eventId)];
   if (filterActive) {
-    conditions.push(onboardingMatchExists(eventId, params.taskId, params.status, params.overdueOnly, params.now));
+    conditions.push(onboardingMatchExists(eventId, params.taskId, params.status, params.overdueOnly, params.now, timezone));
   }
   // DEC-789/DEC-829: the invite-status filter is a SEPARATE predicate from
   // the base rosterParticipantExistsForContact condition above (which now
@@ -269,16 +293,6 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
   // seq so a contact with more than one accepted participation lists them
   // in a stable, meaningful order.
   if (contactIdsInOrder.length > 0) {
-    const eventRows = await db
-      .select({ recordPrefix: schema.event.recordPrefix })
-      .from(schema.event)
-      .where(eq(schema.event.id, eventId))
-      .limit(1);
-    const recordPrefix = eventRows[0]?.recordPrefix;
-    if (recordPrefix === undefined) {
-      throw new Error(`onboarding grid: event ${eventId} has no record prefix`);
-    }
-
     for (const batch of chunkIds(contactIdsInOrder)) {
       const participationRows = await db
         .select({
@@ -409,7 +423,7 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
     .from(schema.taskAssignment)
     .innerJoin(schema.task, eq(schema.task.id, schema.taskAssignment.taskId))
     .innerJoin(schema.contact, eq(schema.contact.id, schema.taskAssignment.contactId))
-    .where(overdueAssignmentConditions(eventId, params.now));
+    .where(overdueAssignmentConditions(eventId, params.now, timezone));
   const overdueCount = Number(overdueCountRows[0]?.count ?? 0);
 
   const counts: OnboardingGridCounts = countsRow[0]
@@ -421,5 +435,5 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
       }
     : { ...emptyCounts, speakers: speakersCount, overdue: overdueCount };
 
-  return { tasks, rows, total, page: params.page, perPage: params.perPage, counts };
+  return { tasks, rows, total, page: params.page, perPage: params.perPage, counts, timezone };
 }

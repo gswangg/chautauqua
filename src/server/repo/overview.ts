@@ -56,7 +56,7 @@ const ROW_CAP = 5;
 // I/O: builds the full payload from joined/grouped queries.
 // ---------------------------------------------------------------------------
 
-export async function getOverviewPayload(db: Db, eventId: string, now: number): Promise<OverviewPayloadV2> {
+export async function getOverviewPayload(db: Db, eventId: string, now: number, timeZone: string): Promise<OverviewPayloadV2> {
   // --- Phase 1 (w49-d, DEC-589 amendment): every query below takes ONLY
   // eventId/now as input — none reads another query's result — so they
   // fire as ONE Promise.all wave instead of ~10 sequential round trips.
@@ -147,7 +147,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
       .from(schema.taskAssignment)
       .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
       .innerJoin(schema.contact, eq(schema.contact.id, schema.taskAssignment.contactId))
-      .where(overdueAssignmentConditions(eventId, now)),
+      .where(overdueAssignmentConditions(eventId, now, timeZone)),
     // --- Overdue task rows (DEC-370 section 01): capped detail rows for the
     // same overdue set the speakers aggregate above already counted
     // (overdueTasks.total reuses speakers.overdueAssignments — no second
@@ -169,7 +169,7 @@ export async function getOverviewPayload(db: Db, eventId: string, now: number): 
       .from(schema.taskAssignment)
       .innerJoin(schema.task, eq(schema.taskAssignment.taskId, schema.task.id))
       .innerJoin(schema.contact, eq(schema.contact.id, schema.taskAssignment.contactId))
-      .where(overdueAssignmentConditions(eventId, now))
+      .where(overdueAssignmentConditions(eventId, now, timeZone))
       .orderBy(asc(schema.task.dueDate), asc(schema.taskAssignment.id))
       .limit(ROW_CAP),
     // --- Triage queue rows (DEC-370 section 02): oldest-first, capped.

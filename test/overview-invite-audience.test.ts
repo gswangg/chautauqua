@@ -80,7 +80,7 @@ describe("getOverviewPayload: participant invite-audience (DEC-512)", () => {
       },
     } as any;
 
-    const payload = await getOverviewPayload(db, "event-1", now);
+    const payload = await getOverviewPayload(db, "event-1", now, "America/New_York");
     // Sanity: the payload actually ran the branches under test (a placed
     // session + an unplaced row with a resolved lead speaker name).
     expect(payload.agendaWork.unplaced).toHaveLength(1);

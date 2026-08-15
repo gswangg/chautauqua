@@ -100,7 +100,10 @@ function otherEventRow(eventId: string, name: string, startDate: string) {
 }
 
 function eventRow() {
-  return { recordPrefix: "SES" };
+  // DEC-801 (wave 58 amendment): getSpeakerDetail's event lookup now also
+  // resolves the owning event's timezone for the day-label-aware overdue
+  // predicate (overdueAssignmentConditions).
+  return { recordPrefix: "SES", timezone: "America/New_York" };
 }
 
 function participantRow(submissionId: string, seq: number, opts: Partial<Record<string, unknown>> = {}) {
