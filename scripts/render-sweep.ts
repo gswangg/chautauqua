@@ -418,16 +418,34 @@ async function measureTypeRoles(
 // consts above).
 const INTERACTION_STATE_PLAN_ID = "seed_evaluation_plan_0001";
 
+// DEC-409 wave-29 amendment: the desktop context's default Playwright
+// viewport (browser.newContext() with no viewport option, same as the
+// primary "public"/"organizer"/"reviewer" contexts set up below).
+const DESKTOP_VIEWPORT = { width: 1280, height: 720 };
+// DEC-253's 390x844 phone viewport — declared here (rather than solely at
+// its original call sites further down) because INTERACTION_STATE_ENTRIES
+// below needs it before those declarations run.
+const MOBILE_VIEWPORT = { width: 390, height: 844 };
+
 export const INTERACTION_STATE_ENTRIES: readonly InteractionStateEntry[] = [
   // FOCUS: the public CFP form's step-1 primary button (button.chq-btn.
   // chq-btn-primary.chq-cfp-step-next — src/routes/public/submit-views.tsx),
   // the global `:focus-visible { outline: 2px solid var(--chq-brand);
   // outline-offset: 2px }` rule (src/views/theme.ts) applies here.
+  // DEC-409 wave-29 amendment: this control is `display: none` above
+  // 700px width (src/routes/public/cfp.css.ts:181, inline-flex only inside
+  // `@media (max-width: 700px)` at :202-203) — it is the phone-only
+  // two-step wizard's "Continue" button (src/routes/public/submit-
+  // views.tsx:648-653), so it must be measured at the 390x844 viewport, not
+  // desktop. No number of keyboard Tab presses at desktop could ever reach
+  // an element the cascade never displays there.
   {
     kind: "focus",
     path: `/submit/${EVENT_SLUG}`,
     selector: ".chq-cfp-step-next",
     role: "cfp-primary-focus",
+    viewport: MOBILE_VIEWPORT,
+    personaRole: "public",
     expected: { outlineWidthPx: 2, outlineStyle: "solid", outlineColorHex: "#4E5C31", outlineOffsetPx: 2 },
   },
   // HOVER: an /admin/content worklist row (.chq-content-row — app/src/pages/
@@ -437,17 +455,31 @@ export const INTERACTION_STATE_ENTRIES: readonly InteractionStateEntry[] = [
     path: "/admin/content",
     selector: ".chq-content-row",
     role: "content-row-hover",
+    viewport: DESKTOP_VIEWPORT,
+    personaRole: "organizer",
     expected: { backgroundColorHex: "#EFEBDF", noLayoutShift: true },
   },
   // DISABLED: the review plan editor's anonymise checkbox label, frozen once
   // the plan has a submitted review (planHasSubmittedReview — app/src/pages/
   // review/PlanEditor.tsx; seed_evaluation_plan_0001 has 31 seeded
   // evaluations, scripts/seed.ts, so this is true for the seeded plan).
+  // DEC-426 wave-29 amendment: `/admin/review/plans/:id` is one PATH shared
+  // by TWO structurally different manifest rows (app/src/routeManifest.ts
+  // :114 role "organizer" -> PlanEditor, :132 role "reviewer" ->
+  // ReviewerQueue, app/src/pages/Review.tsx:47-56 — "the two views never
+  // mount at once"). Matching this check by path alone (as before) also
+  // fired it against the reviewer-role visit, where
+  // `.chq-review-field-disabled .chq-review-checkbox-label` can never
+  // resolve BY CONSTRUCTION (PlanEditor never mounts there) — an instrument
+  // defect masquerading as "selector never resolved". personaRole pins this
+  // check to the one visit where the element can actually exist.
   {
     kind: "disabled",
     path: `/admin/review/plans/${INTERACTION_STATE_PLAN_ID}`,
     selector: ".chq-review-field-disabled .chq-review-checkbox-label",
     role: "review-anonymize-disabled",
+    viewport: DESKTOP_VIEWPORT,
+    personaRole: "organizer",
     // --chq-disabled on --chq-disabled-bg. DEC-436's wave-25 amendment
     // darkened the ink token #8E8A7A -> #7D7869 (app/src/styles.css,
     // src/views/theme.ts); the fill is unchanged, so only colorHex moves.
@@ -575,33 +607,61 @@ async function measureDisabledState(
   }, selector);
 }
 
-/** Runs whichever INTERACTION_STATE_ENTRIES entry(ies) match `entry.path`,
- * pushing PASS/FAIL/instrument-blocked rows onto `results` — same
- * "advisory, never lets an instrument failure fail the desktop render-sweep
- * pass above" convention as measureTypeRoles' call site. */
+/** Runs whichever INTERACTION_STATE_ENTRIES entry(ies) match BOTH `path` and
+ * `personaRole` (DEC-426 wave-29 amendment — a path can be shared by two
+ * structurally different component trees per persona, so path alone is not
+ * a safe match), pushing PASS/FAIL/instrument-blocked rows onto `results` —
+ * same "advisory, never lets an instrument failure fail the desktop
+ * render-sweep pass above" convention as measureTypeRoles' call site.
+ *
+ * DEC-409 wave-29 amendment: each entry now names its own required
+ * `viewport`. When it equals `page`'s current viewport, `page` itself is
+ * reused (same page/session as before). When it differs (the CFP focus
+ * check needs 390x844 while its route's primary desktop visit is
+ * 1280x720), a fresh page is opened in the SAME already-authenticated
+ * BrowserContext (`page.context()` — no re-login needed) at the required
+ * viewport, navigated to `stateEntry.path`, measured, and closed. */
 async function measureInteractionStatesForRoute(
+  baseUrl: string,
   page: Page,
   path: string,
+  personaRole: RouteManifestEntry["role"],
   results: InteractionStateResult[],
 ): Promise<void> {
   for (const stateEntry of INTERACTION_STATE_ENTRIES) {
-    if (stateEntry.path !== path) continue;
+    if (stateEntry.path !== path || stateEntry.personaRole !== personaRole) continue;
+    const currentViewport = page.viewportSize();
+    const needsOwnViewport =
+      !currentViewport ||
+      currentViewport.width !== stateEntry.viewport.width ||
+      currentViewport.height !== stateEntry.viewport.height;
+    let statePage = page;
+    let ownPage: Page | undefined;
     try {
+      if (needsOwnViewport) {
+        ownPage = await page.context().newPage();
+        await ownPage.setViewportSize(stateEntry.viewport);
+        await ownPage.addInitScript({ content: PAGE_EVALUATE_KEEPNAMES_SHIM });
+        await ownPage.goto(`${baseUrl}${stateEntry.path}`, { waitUntil: "networkidle" });
+        statePage = ownPage;
+      }
       if (stateEntry.kind === "focus") {
-        const observed = await measureFocusState(page, stateEntry.selector);
+        const observed = await measureFocusState(statePage, stateEntry.selector);
         if (!observed) throw new Error(`selector never resolved: ${stateEntry.selector}`);
         results.push(evaluateInteractionState(stateEntry, observed));
       } else if (stateEntry.kind === "hover") {
-        const observed = await measureHoverState(page, stateEntry.selector);
+        const observed = await measureHoverState(statePage, stateEntry.selector);
         if (!observed) throw new Error(`selector never resolved: ${stateEntry.selector}`);
         results.push(evaluateInteractionState(stateEntry, observed));
       } else {
-        const observed = await measureDisabledState(page, stateEntry.selector);
+        const observed = await measureDisabledState(statePage, stateEntry.selector);
         if (!observed) throw new Error(`selector never resolved: ${stateEntry.selector}`);
         results.push(evaluateInteractionState(stateEntry, observed));
       }
     } catch (err) {
       results.push(interactionStateErrorResult(stateEntry, err instanceof Error ? err.message : String(err)));
+    } finally {
+      if (ownPage) await ownPage.close();
     }
   }
 }
@@ -709,7 +769,7 @@ async function measureClipOffenders(page: Page): Promise<string[]> {
 // page.evaluate callback rather than a helper serialised across the
 // boundary (DEC-411) — must only be called on a page that already had
 // PAGE_EVALUATE_KEEPNAMES_SHIM applied via addInitScript.
-async function measureContrast(page: Page): Promise<{ minRatio: number | null; offenders: string[] }> {
+async function measureContrast(page: Page): Promise<{ minRatio: number | null; offenders: string[]; exempted: string[] }> {
   return page.evaluate(
     ({ minRatioNormal, minRatioLarge }: { minRatioNormal: number; minRatioLarge: number }) => {
       const hasNonEmptyDirectText = (el: Element): boolean => {
@@ -762,9 +822,26 @@ async function measureContrast(page: Page): Promise<{ minRatio: number | null; o
           .join(",")})`;
       };
 
+      // DEC-426 wave-29 amendment: an element under threshold whose fg/bg
+      // pair is the --chq-disabled / --chq-disabled-bg token pair (#7D7869
+      // on #DDD8C8) is an inactive component — WCAG 2.1 SC 1.4.3 exempts
+      // "Inactive User Interface Components" from the contrast requirement.
+      // Kept inline (DEC-411, no helper closure across the page.evaluate
+      // boundary) rather than imported from render-sweep-contrast.ts.
+      const DISABLED_INK_RGB: [number, number, number] = [125, 120, 105]; // #7D7869
+      const DISABLED_BG_RGB: [number, number, number] = [221, 216, 200]; // #DDD8C8
+      const RGB_MATCH_TOLERANCE = 2;
+      const closeEnough = (a: [number, number, number], b: [number, number, number]): boolean =>
+        Math.abs(a[0] - b[0]) <= RGB_MATCH_TOLERANCE &&
+        Math.abs(a[1] - b[1]) <= RGB_MATCH_TOLERANCE &&
+        Math.abs(a[2] - b[2]) <= RGB_MATCH_TOLERANCE;
+      const isDisabledTokenPair = (fg: [number, number, number], bg: [number, number, number]): boolean =>
+        closeEnough(fg, DISABLED_INK_RGB) && closeEnough(bg, DISABLED_BG_RGB);
+
       const elements = Array.from(document.querySelectorAll("*"));
       let minRatio: number | null = null;
       const under: { el: Element; ratio: number; fg: [number, number, number]; bg: [number, number, number] }[] = [];
+      const exempt: { el: Element; ratio: number; fg: [number, number, number]; bg: [number, number, number] }[] = [];
       for (const el of elements) {
         if (!hasNonEmptyDirectText(el)) continue;
         const rect = el.getBoundingClientRect();
@@ -781,11 +858,19 @@ async function measureContrast(page: Page): Promise<{ minRatio: number | null; o
         const fontWeight = parseInt(style.fontWeight, 10) || 400;
         const isLarge = fontSize >= 24 || (fontSize >= 18.66 && fontWeight >= 700);
         const threshold = isLarge ? minRatioLarge : minRatioNormal;
-        if (r < threshold) under.push({ el, ratio: r, fg, bg });
+        if (r < threshold) {
+          if (isDisabledTokenPair(fg, bg)) {
+            exempt.push({ el, ratio: r, fg, bg });
+          } else {
+            under.push({ el, ratio: r, fg, bg });
+          }
+        }
       }
       under.sort((a, b) => a.ratio - b.ratio);
+      exempt.sort((a, b) => a.ratio - b.ratio);
       const offenders = under.slice(0, 3).map(({ el, ratio: r, fg, bg }) => describe(el, r, fg, bg));
-      return { minRatio, offenders };
+      const exempted = exempt.slice(0, 3).map(({ el, ratio: r, fg, bg }) => describe(el, r, fg, bg));
+      return { minRatio, offenders, exempted };
     },
     { minRatioNormal: CONTRAST_MIN_RATIO, minRatioLarge: CONTRAST_MIN_RATIO_LARGE },
   );
@@ -870,8 +955,8 @@ async function visitRoute(
   // lets an instrument failure fail the desktop render-sweep pass above.
   if (contrastResults) {
     try {
-      const { minRatio, offenders } = await measureContrast(page);
-      contrastResults.push(evaluateContrast(entry, { minRatio, offenders }));
+      const { minRatio, offenders, exempted } = await measureContrast(page);
+      contrastResults.push(evaluateContrast(entry, { minRatio, offenders, exempted }));
     } catch (err) {
       contrastResults.push(contrastErrorResult(entry, err instanceof Error ? err.message : String(err)));
     }
@@ -916,14 +1001,12 @@ async function visitRoute(
   // render-sweep pass above. Only the routes named in
   // INTERACTION_STATE_ENTRIES do anything (see measureInteractionStatesForRoute).
   if (interactionStateResults) {
-    await measureInteractionStatesForRoute(page, entry.path, interactionStateResults);
+    await measureInteractionStatesForRoute(baseUrl, page, entry.path, entry.role, interactionStateResults);
   }
 
   await page.close();
   return evaluateRoute(entry, { status, bodyText, consoleErrors, pageErrors, clipOffenders, landedPath });
 }
-
-const MOBILE_VIEWPORT = { width: 390, height: 844 };
 
 /** DEC-253: visits one mobile-manifest route in a 390x844 context and
  * measures page-level horizontal overflow + the shortest primary control. */
