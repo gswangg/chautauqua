@@ -60,6 +60,39 @@ interface PreviewItem {
 
 type Step = 'compose' | 'preview' | 'sent';
 
+// DEC-856: modelled verbatim on the sibling splitter in ComposeWizard.tsx
+// (extractMissingMergeFieldLines) -- the bulk-email routes' merge-field
+// refusal (bulkEmailMergeFieldError) keys its fields map by the recipient's
+// EMAIL with the value "<Name> is missing {token}[, {token}...]", already
+// naming the person. Every OTHER fields-map entry (validateBulkEmailRequest's
+// eventId/subject/bodyText 'required'/'Max <n>') is a per-control refusal
+// that must be shown beside its own control, never dumped as an anonymous
+// bullet.
+function extractMissingMergeFieldLines(err: ApiError): string[] | null {
+  if (!err.fields) return null;
+  const lines: string[] = [];
+  for (const message of Object.values(err.fields)) {
+    if (/^(.+) is missing (\{.+)$/.test(message)) {
+      lines.push(message);
+    }
+  }
+  return lines.length > 0 ? lines : null;
+}
+
+// The complement of extractMissingMergeFieldLines: every fields-map entry
+// that is NOT a merge-field refusal, keyed by its own field name so the
+// caller can route subject/bodyText inline and render anything else as a
+// labelled '<key>: <message>' line -- never an unlabelled bullet.
+function extractFieldErrors(err: ApiError): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!err.fields) return out;
+  for (const [key, message] of Object.entries(err.fields)) {
+    if (/^(.+) is missing (\{.+)$/.test(message)) continue;
+    out[key] = message;
+  }
+  return out;
+}
+
 export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
   const [subject, setSubject] = useState('');
   const [bodyText, setBodyText] = useState('');
@@ -73,6 +106,12 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
   // DEC-856 (wave 60 amendment): keyed by email -> "Name is missing {token}"
   // -- the server's own vocabulary, never re-derived client-side.
   const [missingMergeFieldLines, setMissingMergeFieldLines] = useState<string[] | null>(null);
+  // DEC-856 (wave 63 amendment): every fields-map entry that is NOT a
+  // merge-field refusal (validateBulkEmailRequest's eventId/subject/bodyText
+  // 'required'/'Max <n>'), keyed by field name -- fed to subject/bodyText's
+  // own FormRow and any other key as a labelled line, never an anonymous
+  // bullet.
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   // DEC-967: an email batch asks once before it leaves -- the terminal Send
   // opens this confirmation instead of posting directly.
   const [confirmingSend, setConfirmingSend] = useState(false);
@@ -107,6 +146,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
     setBusy(true);
     setError(null);
     setMissingMergeFieldLines(null);
+    setFieldErrors({});
     try {
       const res = await apiPost<{ items: PreviewItem[] }>('/contacts/bulk-email/preview', {
         contactIds,
@@ -119,7 +159,8 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
-        setMissingMergeFieldLines(err.fields ? Object.values(err.fields) : null);
+        setMissingMergeFieldLines(extractMissingMergeFieldLines(err));
+        setFieldErrors(extractFieldErrors(err));
       } else {
         setError('Preview failed');
       }
@@ -144,6 +185,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
     setBusy(true);
     setError(null);
     setMissingMergeFieldLines(null);
+    setFieldErrors({});
     try {
       const res = await apiPost<SendResult>('/contacts/bulk-email', {
         contactIds,
@@ -156,7 +198,8 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
-        setMissingMergeFieldLines(err.fields ? Object.values(err.fields) : null);
+        setMissingMergeFieldLines(extractMissingMergeFieldLines(err));
+        setFieldErrors(extractFieldErrors(err));
       } else {
         setError('Bulk email failed');
       }
@@ -230,6 +273,15 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
               ))}
             </ul>
           )}
+          {Object.entries(fieldErrors).filter(([key]) => key !== 'subject' && key !== 'bodyText').length > 0 && (
+            <ul>
+              {Object.entries(fieldErrors)
+                .filter(([key]) => key !== 'subject' && key !== 'bodyText')
+                .map(([key, message]) => (
+                  <li key={key}>{`${key}: ${message}`}</li>
+                ))}
+            </ul>
+          )}
         </div>
       )}
 
@@ -295,18 +347,20 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
               </>
             );
           })()}
-          <FormRow label="Subject" htmlFor="bulk-email-subject">
+          <FormRow label="Subject" htmlFor="bulk-email-subject" error={fieldErrors.subject}>
             <input
               id="bulk-email-subject"
               className="chq-input"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder="A quick question about your {event_name} session"
+              aria-invalid={fieldErrors.subject ? true : undefined}
             />
           </FormRow>
           <FormRow
             label="Body"
             htmlFor="bulk-email-body"
+            error={fieldErrors.bodyText}
             help={
               <>
                 Sent one at a time · logged in Comms history · merge fields:{' '}
@@ -321,6 +375,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
               value={bodyText}
               onChange={(e) => setBodyText(e.target.value)}
               placeholder="Hi {speaker_name}, ..."
+              aria-invalid={fieldErrors.bodyText ? true : undefined}
             />
           </FormRow>
         </>

@@ -237,4 +237,94 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/ct-01hqzxyzabc123/)).not.toBeInTheDocument();
   });
+
+  // w63-a (DEC-856): the fields map must be read by shape, not dumped --
+  // one bullet per RECIPIENT (naming them), never an unlabelled bullet for
+  // a per-control refusal like `subject: 'Max <n>'`.
+  it('renders one bullet per recipient naming them on a merge-field refusal', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      'POST /api/v1/contacts/bulk-email/preview': {
+        status: 400,
+        body: {
+          error: {
+            code: 'invalid',
+            message: '2 of 2 recipients are missing {talk_title} — only {speaker_name}, {event_name} and {portal_link} can be merged in a bulk email.',
+            fields: {
+              'ada@example.com': 'Ada Lovelace is missing {talk_title}',
+              'bob@example.com': 'Bob Jones is missing {talk_title}',
+            },
+          },
+        },
+      },
+    });
+
+    render(<BulkEmailModal contactIds={['ct1', 'ct2']} eventId={EVENT_ID} onClose={() => {}} />);
+
+    fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'Hi {talk_title}' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+
+    expect(await screen.findByText('Ada Lovelace is missing {talk_title}')).toBeInTheDocument();
+    expect(screen.getByText('Bob Jones is missing {talk_title}')).toBeInTheDocument();
+  });
+
+  // w63-a (DEC-856): a subject-length refusal marks the Subject control
+  // inline and NEVER renders as a bare list item ('Max 2000').
+  it('marks the Subject control inline on a subject-length refusal, never as a bare bullet', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      'POST /api/v1/contacts/bulk-email/preview': {
+        status: 400,
+        body: {
+          error: {
+            code: 'invalid',
+            message: 'Validation failed',
+            fields: { subject: 'Max 2000' },
+          },
+        },
+      },
+    });
+
+    render(<BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} onClose={() => {}} />);
+
+    fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'Hi' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+
+    const subjectInput = await screen.findByLabelText('Subject');
+    await waitFor(() => {
+      expect(subjectInput).toHaveAttribute('aria-invalid', 'true');
+    });
+    expect(screen.getByText('Max 2000')).toBeInTheDocument();
+    // Never rendered as a bare, unlabelled bullet.
+    const bareBullets = screen.queryAllByRole('listitem').filter((li) => li.textContent === 'Max 2000');
+    expect(bareBullets).toHaveLength(0);
+  });
+
+  // w63-a (DEC-856): an unrecognised fields-map key renders as a labelled
+  // '<key>: <message>' line, never a bare bullet.
+  it('renders an unrecognised fields-map key as a labelled line', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      'POST /api/v1/contacts/bulk-email/preview': {
+        status: 400,
+        body: {
+          error: {
+            code: 'invalid',
+            message: 'Validation failed',
+            fields: { eventId: 'required' },
+          },
+        },
+      },
+    });
+
+    render(<BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} onClose={() => {}} />);
+
+    fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'Hi' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+
+    expect(await screen.findByText('eventId: required')).toBeInTheDocument();
+  });
 });
