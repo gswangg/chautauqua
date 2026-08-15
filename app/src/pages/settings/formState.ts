@@ -117,9 +117,15 @@ export interface TrackForm {
   color: string;
 }
 
+// DEC-856 (wave 65 amendment): the client validator only ever produces
+// name/color, but the server's fields map (src/routes/api/events.ts:416-536,
+// "Invalid track") can in principle name any wire key -- the index
+// signature lets a caller merge `err.fields` in directly and render any key
+// it doesn't own as a labelled "<key>: <message>" line rather than drop it.
 export interface TrackFormErrors {
   name?: string;
   color?: string;
+  [key: string]: string | undefined;
 }
 
 export function validateTrackForm(form: TrackForm): TrackFormErrors {
@@ -134,9 +140,14 @@ export interface RoomForm {
   capacity: string;
 }
 
+// DEC-856 (wave 65 amendment): same rationale as TrackFormErrors -- the
+// server's "Invalid room" fields map (events.ts:416-536) is merged in
+// directly, so an index signature is needed for any key this panel doesn't
+// name below.
 export interface RoomFormErrors {
   name?: string;
   capacity?: string;
+  [key: string]: string | undefined;
 }
 
 export function validateRoomForm(form: RoomForm): RoomFormErrors {

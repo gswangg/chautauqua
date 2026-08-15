@@ -9,7 +9,19 @@ import { buildSegmentRulesFromFilters, describeRules, type ActiveFilters } from 
 import type { Segment } from './types';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { EmptyState } from '../../components/EmptyState';
+import { DEC_856 } from '../../../../src/decisions';
 import './contacts-panels.css';
+
+// DEC-856 (wave 65 amendment): POST/PATCH /segments throws "Validation
+// failed" with a fields map keyed `name` and/or `rules`
+// (src/routes/api/contacts/segments.ts:104-193) -- read by shape, never
+// collapsed to err.message. `name` routes to the save form's own control;
+// `rules` has no editable control of its own (it is derived from the
+// active directory filters), so it renders labelled beside the "Rules: ..."
+// summary line instead. Any other key (none today) renders labelled
+// "<key>: <message>" rather than being dropped.
+void DEC_856;
+const SEGMENT_FIELD_KEYS: readonly string[] = ['name', 'rules'];
 
 interface Props {
   segments: Segment[];
@@ -26,6 +38,7 @@ interface Props {
 export function SegmentsPanel({ segments, activeFilters, activeSegmentId, onChanged, onDeletedActiveSegment }: Props) {
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   // Delete is destructive and irreversible, so it goes through the shared
   // ConfirmDialog contract (DEC-631) naming the view being removed, rather
@@ -38,12 +51,20 @@ export function SegmentsPanel({ segments, activeFilters, activeSegmentId, onChan
     if (name.trim() === '') return;
     setBusy(true);
     setError(null);
+    setFieldErrors({});
     try {
       await apiPost('/segments', { name: name.trim(), rules });
       setName('');
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to save segment');
+      // DEC-856: a fields map is never collapsed to err.message -- `name`
+      // routes to the save control, `rules` renders beside the rules
+      // summary line, anything else renders labelled.
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setFieldErrors(err.fields);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to save segment');
+      }
     } finally {
       setBusy(false);
     }
@@ -67,6 +88,8 @@ export function SegmentsPanel({ segments, activeFilters, activeSegmentId, onChan
     }
   }
 
+  const unownedFieldErrors = Object.entries(fieldErrors).filter(([key]) => !SEGMENT_FIELD_KEYS.includes(key));
+
   return (
     <div className="chq-contacts-segments">
       <h2 className="chq-section-label">Segments</h2>
@@ -76,13 +99,29 @@ export function SegmentsPanel({ segments, activeFilters, activeSegmentId, onChan
         <label className="chq-contacts-filter-rules-field">
           Save current filter as segment
           <input
-            className="chq-input"
+            className={fieldErrors.name ? 'chq-input chq-field-invalid' : 'chq-input'}
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Segment name"
+            aria-invalid={fieldErrors.name ? 'true' : undefined}
           />
         </label>
+        {fieldErrors.name ? (
+          <span role="alert" className="chq-field-error">
+            {fieldErrors.name}
+          </span>
+        ) : null}
         <p className="chq-contacts-segments-rule">Rules: {describeRules(rules)}</p>
+        {fieldErrors.rules ? (
+          <span role="alert" className="chq-field-error">
+            {fieldErrors.rules}
+          </span>
+        ) : null}
+        {unownedFieldErrors.map(([key, message]) => (
+          <span key={key} role="alert" className="chq-field-error">
+            {`${key}: ${message}`}
+          </span>
+        ))}
         <div>
           <button type="button" className="chq-btn chq-btn-primary" disabled={busy || name.trim() === ''} onClick={save}>
             Save segment

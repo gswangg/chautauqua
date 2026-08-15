@@ -395,6 +395,74 @@ describe('TracksRoomsPanel', () => {
     ).toBeInTheDocument();
   });
 
+  // DEC-856 (wave 65 amendment): a track/room refusal's fields map is read
+  // by shape -- name/color/capacity route to their OWN control, keyed by
+  // the row being edited, so a refusal on one row never marks a sibling.
+  it('a track save refusal marks only the row being edited, not a sibling row', async () => {
+    mockTracksRooms({
+      'PATCH /api/v1/tracks/trk1': {
+        status: 400,
+        body: {
+          error: {
+            code: 'invalid',
+            message: 'Invalid track',
+            fields: { color: 'Must be a hex color like #336699' },
+          },
+        },
+      },
+    });
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await openEdit();
+    const trackNameInput = within(section).getByLabelText('Track name for AI Engineering');
+    fireEvent.change(trackNameInput, { target: { value: 'AI Engineering Pro' } });
+    const trackRow = trackNameInput.closest('.chq-settings-edit-row')! as HTMLElement;
+    fireEvent.click(within(trackRow).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(within(trackRow).getAllByText('Must be a hex color like #336699').length).toBeGreaterThan(0);
+    });
+    // The color control on the failing row is marked invalid...
+    const colorGroup = within(trackRow).getByRole('radiogroup', { name: 'Track color for AI Engineering' });
+    expect(colorGroup).toHaveAttribute('id', 'chq-track-color-trk1');
+
+    // ...and the sibling row (Platform) carries no error at all.
+    const platformInput = within(section).getByLabelText('Track name for Platform');
+    const platformRow = platformInput.closest('.chq-settings-edit-row')! as HTMLElement;
+    expect(within(platformRow).queryByText('Must be a hex color like #336699')).not.toBeInTheDocument();
+  });
+
+  it('a "Required" refusal on the add-room form marks the name input and anchors from the ErrorSummary', async () => {
+    mockTracksRooms({
+      'POST /api/v1/events/evt-tracks-rooms/rooms': {
+        status: 400,
+        body: { error: { code: 'invalid', message: 'Invalid room', fields: { name: 'Required' } } },
+      },
+    });
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await openEdit();
+    fireEvent.click(within(section).getByRole('button', { name: 'Add room' }));
+
+    await waitFor(() => {
+      expect(within(section).getAllByText('Required').length).toBeGreaterThan(0);
+    });
+    const nameInput = within(section).getByPlaceholderText('New room name');
+    expect(nameInput).toHaveAttribute('id', 'chq-new-room-name');
+    expect(nameInput).toHaveClass('chq-field-invalid');
+
+    const summaryLink = within(section).getByRole('link', { name: 'Required' });
+    expect(summaryLink).toHaveAttribute('href', '#chq-new-room-name');
+  });
+
   it('Done clears the URL drill state and returns to the read-only summary', async () => {
     mockTracksRooms();
     render(
