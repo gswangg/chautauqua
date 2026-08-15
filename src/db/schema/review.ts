@@ -92,6 +92,18 @@ export const evaluation = sqliteTable(
   },
   (t) => ({
     evaluation_plan_id_idx: index("evaluation_plan_id_idx").on(t.planId),
+    // DEC-338 (wave-31 amendment) + migrations/0042_review_results_indexes.sql:
+    // listEvaluationScoresForPlan (src/server/repo/review/evaluations.ts)
+    // filters (planId, round) and orders by (submissionId, id) -- the old
+    // plan_id-only index left round-filtering and the whole sort to a scan
+    // over every row for the plan. This composite covers both the WHERE and
+    // the ORDER BY off the index, no separate sort step.
+    evaluation_plan_id_round_submission_id_id_idx: index("evaluation_plan_id_round_submission_id_id_idx").on(
+      t.planId,
+      t.round,
+      t.submissionId,
+      t.id,
+    ),
     evaluation_submission_id_idx: index("evaluation_submission_id_idx").on(t.submissionId),
     evaluation_reviewer_id_idx: index("evaluation_reviewer_id_idx").on(t.reviewerId),
     evaluation_plan_submission_reviewer_round_idx: uniqueIndex("evaluation_plan_submission_reviewer_round_idx").on(

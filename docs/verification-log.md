@@ -4456,3 +4456,18 @@ with lanes a/c/d and w31-c (src/db/schema/review.ts, additive index only).
 
 INVALIDATED BY: src/routes/review/reviewer.ts, src/server/repo/review/**, migrations/**
 
+## QUALIFYING (task-w31-c)
+
+Plan results (DEC-338/DEC-347 wave-31 amendments), tip `7581aa3b`: collapsed
+buildResults' (src/routes/review/shared.ts) 5-deep sequential waterfall
+into two Promise.all waves + added migrations/0042_review_results_indexes.sql
+(evaluation plan_id/round/submission_id/id composite, EXPLAIN QUERY PLAN
+confirms selection). Full receipt: docs/verification-log/task-w31-c-plan-
+results-perf-7581aa3b.md. BEFORE (main 87c545f6) adjusted p95 68.7ms; AFTER
+two runs 89.5ms/72.7ms -- inconclusive under acknowledged concurrent
+sibling-lane wrangler-dev load (task-w29-b :8892, main checkout :8799,
+unrelated sandbox :8878, all live during measurement). Mechanism verified
+independently: EXPLAIN QUERY PLAN + a concurrency unit test (max in-flight
+>1). Declared overlap with lanes a/b/d at this file's tail per instructions.
+
+INVALIDATED BY: src/routes/review/shared.ts, src/db/schema/review.ts, migrations/0042_review_results_indexes.sql
