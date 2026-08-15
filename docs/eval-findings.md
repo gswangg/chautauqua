@@ -119,6 +119,22 @@ rules 5/6 incomplete) · /account/password lost its card but is NOT the bare-820
 inputs 188px, H1 28px at x=643 (fleet fix: fields at the full 820, H1 ~36, content
 x≈390). CLASS 4 is part-landed; finish the measure.
 
+## GATE-7 SBEK RESULT (official cap, run 07-46-32): 89.0 @ 94.2% — NEW RECORD
+
+AIA **100.0 perfect** · ABS 98.1 · CRM 88.9 · CFP 88.7@82 · SPK 84.4 · EMB 82.9 · CNT
+82.8. CFP-16 close-lock verified in build but UNMEASURED by the run (both CFP scenarios
+capped before closing the call — again). Post-gate priorities, in order:
+1. **⚡ EMB session-card speaker title/company** (~1.3 composite; dinged twice EMB-01/09;
+   data exists on the speaker record — render "Name · Title, Company" second line in the
+   muted register; also add the description to AGENDA-style cards per EMB-09).
+2. **⚡ COMPOSE-FLOW TURN DIET is the CFP-04/16 + SPK blocker** — the compose steps
+   precede the close-the-call step in the eval scripts and eat the budget (S1+S4 capped
+   again). Fewer clicks per step, default-forward selections, no dead ends. This is now
+   the single highest-leverage eval item left.
+3. CNT-S3 still caps at the session-edit step — cheapen the edit-save-reload loop.
+4. Everything in the GATE-7 FLEET RE-VERDICT below (five one-liners partly landed
+   already; finish the classes).
+
 ## GATE-7 FLEET RE-VERDICT (vs v9 on ea2a5543; details in fidelity-gate7/pair*/report.md)
 
 **14 gate-6 MAJORs measured CLOSED · ~49 remaining (incl. re-splits + new).** The pervasive
