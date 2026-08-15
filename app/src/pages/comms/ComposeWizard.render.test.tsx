@@ -1520,3 +1520,122 @@ describe('ComposeWizard partial-send way out on the blocked banner (DEC-793 amen
     expect(screen.getByText('DFC-041 — Nadia Ferrone')).toBeInTheDocument();
   });
 });
+
+// w12-c (DEC-967 amendment, turn diet): step 2 arrives already composed from
+// the server's first template, disclosed in a panel note, and every step
+// advances on Enter via its own existing primary -- step 4's Send stays
+// click-only.
+describe('ComposeWizard turn diet (w12-c, DEC-967 amendment)', () => {
+  it('auto-applies the first template on arrival at step 2, discloses it, and Next is enabled without typing', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([
+        { id: 'tpl-1', eventId: EVENT_ID, name: 'Acceptance', subject: 'You are in', bodyText: 'Congrats {speaker_name}' },
+        { id: 'tpl-2', eventId: EVENT_ID, name: 'Waitlist', subject: 'Waitlisted', bodyText: 'Still waitlisted' },
+      ]),
+    });
+
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    // The server's order is the order -- templates[0] (Acceptance), never
+    // re-sorted by name.
+    await waitFor(() => expect(subject).toHaveValue('You are in'));
+    expect(screen.getByLabelText('Body')).toHaveValue('Congrats {speaker_name}');
+
+    // Disclosed, not hidden.
+    expect(screen.getByText(/Applied "Acceptance" automatically/)).toBeInTheDocument();
+
+    expect(screen.getByRole('button', { name: 'Next: preview' })).not.toBeDisabled();
+  });
+
+  it('leaves the composer blank with Next disabled when there are zero templates', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    expect(subject).toHaveValue('');
+    expect(screen.getByLabelText('Body')).toHaveValue('');
+    expect(screen.queryByText(/Applied .* automatically/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next: preview' })).toBeDisabled();
+  });
+
+  it('Enter on step 2 (subject field) reaches the preview step', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([
+        { id: 'tpl-1', eventId: EVENT_ID, name: 'Acceptance', subject: 'You are in', bodyText: 'Congrats {speaker_name}' },
+      ]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
+    });
+
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    await waitFor(() => expect(subject).toHaveValue('You are in'));
+
+    fireEvent.keyDown(subject, { key: 'Enter' });
+
+    expect(await screen.findByText('Attachments')).toBeInTheDocument();
+  });
+
+  it('Enter on step 4 does NOT send -- a deliberate send stays a deliberate click', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([
+        { id: 'tpl-1', eventId: EVENT_ID, name: 'Acceptance', subject: 'You are in', bodyText: 'Congrats {speaker_name}' },
+      ]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
+      [`POST /api/v1/events/${EVENT_ID}/compose/send`]: { sent: 0, failed: [] },
+    });
+
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+    await waitFor(() => expect(screen.getByLabelText('Subject')).toHaveValue('You are in'));
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+
+    await screen.findByText('Attachments');
+    fireEvent.click(screen.getByRole('button', { name: 'Next: send ›' }));
+
+    const sendButton = await screen.findByRole('button', { name: /^Send \d+ emails?$/ });
+    fireEvent.keyDown(sendButton, { key: 'Enter' });
+
+    const sendCalls = fetchMock.mock.calls.filter((call) => String(call[0]).includes('/compose/send'));
+    expect(sendCalls.length).toBe(0);
+  });
+});
