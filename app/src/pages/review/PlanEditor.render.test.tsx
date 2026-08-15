@@ -1319,7 +1319,16 @@ describe('PlanEditor render smoke', () => {
     );
 
     await waitFor(() => expect(screen.getByText('Criterion')).toBeInTheDocument());
-    expect(screen.getByText('Guidance for reviewers · Optional')).toBeInTheDocument();
+    // w48-b: the suffix is now its own <span> (OPTIONAL_SUFFIX, DEC-917) so
+    // the head cell's own text and the suffix live in separate nodes --
+    // match on the head cell's combined textContent, and independently
+    // assert the suffix reads lowercase (never '· OPTIONAL', which its
+    // uppercasing container used to force before the w48-b CSS override).
+    const guidanceHeadCell = screen
+      .getAllByText((_, el) => el?.className === 'chq-review-criteria-head-cell')
+      .find((el) => el.textContent?.includes('Guidance for reviewers'));
+    expect(guidanceHeadCell).toBeDefined();
+    expect(guidanceHeadCell?.textContent?.replace(/\s+/g, ' ').trim()).toBe('Guidance for reviewers · optional');
     expect(screen.getByText('Weight')).toBeInTheDocument();
   });
 

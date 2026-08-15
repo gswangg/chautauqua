@@ -20,6 +20,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { formatMinutes } from './gridMath';
 import { formatDayLabel } from '../../lib/dates';
 import { DEC_021 } from '../../../../src/decisions';
+import { OPTIONAL_SUFFIX } from '../../../../src/domain/form-copy';
 
 void DEC_021;
 
@@ -209,7 +210,10 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged }: 
           )}
         </div>
         <div className="chq-breaks-field">
-          <label htmlFor={`chq-break-edit-location-${b.id}`}>Location (optional)</label>
+          <label htmlFor={`chq-break-edit-location-${b.id}`}>
+            Location
+            <span className="chq-review-criterion-optional">{OPTIONAL_SUFFIX}</span>
+          </label>
           <input
             id={`chq-break-edit-location-${b.id}`}
             className="chq-input"
@@ -398,7 +402,10 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged }: 
           )}
         </div>
         <div className="chq-breaks-field">
-          <label htmlFor="chq-break-location">Location (optional)</label>
+          <label htmlFor="chq-break-location">
+            Location
+            <span className="chq-review-criterion-optional">{OPTIONAL_SUFFIX}</span>
+          </label>
           <input
             id="chq-break-location"
             className="chq-input"

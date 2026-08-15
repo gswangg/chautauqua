@@ -660,6 +660,16 @@
   color: var(--chq-muted);
 }
 
+/* w48-b: the criteria table head cell uppercases its label
+   (.chq-review-criteria-head-cell below) -- the optionality suffix must
+   stay immune to that container so it keeps rendering lowercase per
+   rulings A7/A21, not "· OPTIONAL". */
+.chq-review-criteria-head-cell .chq-review-criterion-optional {
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+
 /* DEC-676 */
 .chq-review-criterion-guidance {
   margin: -4px 0 0;

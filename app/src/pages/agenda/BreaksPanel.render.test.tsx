@@ -84,7 +84,9 @@ describe('BreaksPanel', () => {
     render(<BreaksPanel eventId={EVENT_ID} day={DAY} breaks={[]} outsideWindow={[]} onChanged={onChanged} />);
 
     fireEvent.change(screen.getByLabelText('Label'), { target: { value: 'Coffee' } });
-    fireEvent.change(screen.getByLabelText('Location (optional)'), { target: { value: 'Lobby' } });
+    // w48-b: the label suffix is now the shared OPTIONAL_SUFFIX (' · optional')
+    // rather than the hand-typed '(optional)' literal (DEC-917 amendment).
+    fireEvent.change(screen.getByLabelText('Location · optional'), { target: { value: 'Lobby' } });
     fireEvent.change(screen.getByLabelText('Start time'), { target: { value: '10:15' } });
     fireEvent.change(screen.getByLabelText('Duration (min)'), { target: { value: '15' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add a break' }));

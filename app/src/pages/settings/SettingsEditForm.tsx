@@ -8,6 +8,7 @@
 // (SummarySection.tsx:86 already swaps rows for children when `editing`
 // is true) -- this file never touches SummarySection itself.
 import type { ReactNode } from 'react';
+import { OPTIONAL_SUFFIX } from '../../../../src/domain/form-copy';
 
 export type SettingsFieldWidth = 'date' | 'seats' | 'name' | 'slug' | 'full';
 
@@ -68,7 +69,7 @@ export function SettingsField({ label, htmlFor, width, optional, hint, children 
       <label htmlFor={htmlFor}>
         <span className="chq-settings-field-label-text">
           {label}
-          {optional ? <span className="chq-settings-field-optional"> (optional)</span> : null}
+          {optional ? <span className="chq-settings-field-optional">{OPTIONAL_SUFFIX}</span> : null}
         </span>
         {children}
       </label>
