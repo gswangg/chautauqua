@@ -130,7 +130,7 @@ seeded speaker). For each route it asserts:
 - zero page-level horizontal overflow
   (`document.scrollingElement.scrollWidth <= window.innerWidth + 1px`)
 - every primary nav/filter/submit control (surface nav, search/track-filter
-  forms, submit/save-draft/sign-out buttons) measures >= 40px tall (tap-target
+  forms, submit/save-draft/sign-out buttons) measures >= 44px tall (tap-target
   size)
 
 It prints its own PASS/FAIL table + summary and fails the gate (non-zero
@@ -144,14 +144,14 @@ it re-visits every organizer + reviewer entry of `app/src/routeManifest.ts`
 (`ROUTE_MANIFEST`) — the `/admin/*` catch-all excluded — at the same 390x844
 viewport, logged in as the seeded organizer and reviewer personas. It reuses
 the same `evaluateMobileRoute` pass criteria (zero horizontal overflow, every
-primary control >= 40px tall) but with the redesign's own control selector
+primary control >= 44px tall) but with the redesign's own control selector
 (`.chq-tabbar a`, `.chq-tabbar button`, `.chq-btn`, `.chq-input`,
 `.chq-select`, `header nav a`, visible only). It prints its own PASS/FAIL
-table + summary, but this pass is **advisory**: its failures never flip the
-gate's exit code unless `ADMIN_MOBILE_PASS_BLOCKING` (in
-`scripts/render-sweep-lib.ts`) is `true`. That constant lands `false` — the
-flip rule (documented verbatim on the constant) is that it becomes `true` in
-the wave after this pass first reads all-PASS. Route list:
+table + summary; whether this pass's failures flip the gate's exit code is
+governed by `ADMIN_MOBILE_PASS_BLOCKING` (in `scripts/render-sweep-lib.ts`).
+That constant lands `true` today — the flip rule (documented verbatim on the
+constant) fired the wave after this pass first read all-PASS (DEC-431), so
+the admin mobile pass now blocks the gate. Route list:
 `ADMIN_MOBILE_ROUTE_MANIFEST` in `scripts/render-sweep.ts`; unit tests for
 the manifest and the advisory constant live alongside the public mobile pass's
 tests in `test/render-sweep-lib.test.ts`.
