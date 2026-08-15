@@ -17,14 +17,19 @@ import { formatDayLong } from "../../lib/event-time";
 import { publicRoomLabel } from "../../domain/schedule";
 import { AgendaDayGrid } from "./agenda-grid";
 import { AgendaItemList } from "./agenda-list";
-import { DEC_768 } from "../../decisions";
+import { DEC_768, DEC_919 } from "../../decisions";
 
 void DEC_768;
+// DEC-919 (wave 51 amendment): the agenda/schedule fresh-vs-filtered empty
+// states below are rendered through the shared PublicEmptyState component,
+// same as every other public list surface.
+void DEC_919;
 // agendaQs is also re-exported below (barrel); this import is the local
 // binding the agenda day-footer's "next day" out-link composes with.
 import { DaySwitcher, ItinerarySearchForm, agendaQs } from "./agenda-controls";
 import { ItineraryScript } from "./agenda-itinerary-script";
 import { AgendaRail, ScheduleRail, realRoomsInUse } from "./agenda-rail";
+import { PublicEmptyState } from "./empty-state";
 
 export { AgendaDayGrid } from "./agenda-grid";
 export { AgendaItemList } from "./agenda-list";
@@ -186,13 +191,39 @@ export function AgendaContent(props: {
             basePath={basePath}
           />
           {byDay.size === 0 ? (
-            // DEC-768: an honest empty state distinguishes "this day has no
-            // matches for your search" (activeDay is set, the event DOES have
-            // a schedule) from "nothing is scheduled at all" (no activeDay
-            // exists because getPublicScheduleDayCounts came back empty) --
-            // never claim the event has no schedule just because a search
-            // narrowed one day to zero rows.
-            <p>{activeDay ? `No sessions match your search on ${formatDay(activeDay)}.` : "No sessions scheduled yet."}</p>
+            // DEC-768/DEC-919 (wave 51 amendment): "this day has no matches
+            // for your search" (activeDay is set AND a facet -- q or the
+            // track highlight -- is in flight) is a DIFFERENT state from
+            // "nothing is scheduled at all" (no activeDay exists because
+            // getPublicScheduleDayCounts came back empty, or the active day
+            // has no facet applied) -- never claim the event has no
+            // schedule just because a search narrowed one day to zero rows,
+            // and never offer an escape link where there is nothing to
+            // clear. `q` is the only real filter predicate on this surface
+            // (highlightTrackId is render-level only, DEC-851), but it is
+            // still named here so a future filter-widening of the track
+            // control degrades to the correct copy instead of a stale one.
+            activeDay && (props.q || props.highlightTrackId) ? (
+              props.q ? (
+                <PublicEmptyState
+                  variant="filtered"
+                  what={`No sessions match your search on ${formatDay(activeDay)}.`}
+                  reason={`Filtered by search for "${props.q}".`}
+                  escapeHref={`${basePath}${agendaQs({ trackId: props.highlightTrackId ?? null, q: props.q ?? null, day: activeDay }, { q: null })}`}
+                  escapeLabel="Clear the search"
+                />
+              ) : (
+                <PublicEmptyState
+                  variant="filtered"
+                  what={`No sessions match your search on ${formatDay(activeDay)}.`}
+                  reason="Filtered by the track highlight."
+                  escapeHref={`${basePath}${agendaQs({ trackId: props.highlightTrackId ?? null, q: props.q ?? null, day: activeDay }, { trackId: null })}`}
+                  escapeLabel="Show every track"
+                />
+              )
+            ) : (
+              <PublicEmptyState variant="fresh" what="No sessions scheduled yet." />
+            )
           ) : (
             <>
               {props.items.length < props.total ? (
@@ -331,7 +362,11 @@ export function ScheduleContent(props: {
             </a>
           </div>
           {byDay.size === 0 ? (
-            <p>No sessions scheduled yet.</p>
+            // DEC-919 (wave 51 amendment): the schedule has no facets of its
+            // own to clear (picks live in localStorage, not a server-side
+            // filter) -- this branch only fires when the event has nothing
+            // scheduled at all, so it is always 'fresh', never 'filtered'.
+            <PublicEmptyState variant="fresh" what="Nothing is on the schedule yet." />
           ) : (
             <>
               {props.items.length < props.total ? (
@@ -339,9 +374,18 @@ export function ScheduleContent(props: {
                   Showing the first {props.items.length} of {props.total} scheduled sessions.
                 </p>
               ) : null}
-              <p id="chq-schedule-empty" class="chq-pub-picks-empty" hidden>
-                You have not saved any sessions yet. Check "Save" on a session to add it here.
-              </p>
+              {/* DEC-919 (wave 51 amendment): the JS-revealed "no picks saved"
+                  state (agenda-itinerary-script.tsx toggles `hidden` on this
+                  element once it has read localStorage) carries the SAME
+                  block anatomy as the SSR PublicEmptyState above -- one
+                  fresh-state class pair, no invented classes -- so the
+                  server-rendered and client-revealed empty states read as
+                  one component even though this one can't be the component
+                  itself (it must exist in the DOM pre-hydration for the
+                  script to find by id). */}
+              <div id="chq-schedule-empty" class="chq-pub-empty-block chq-pub-empty-block-fresh" hidden>
+                <p class="chq-pub-empty-what">You have not saved any sessions yet. Check "Save" on a session to add it here.</p>
+              </div>
               {days.map((day) => {
                 const sorted = [...(byDay.get(day) ?? [])].sort(
                   (a, b) => a.startMin - b.startMin || a.submissionId.localeCompare(b.submissionId),
