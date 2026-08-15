@@ -81,7 +81,7 @@ export function ContactsTable({
         <table className="chq-table chq-contacts-table">
           <thead>
             <tr>
-              <th>
+              <th className="chq-contacts-col-select">
                 <input
                   className="chq-check"
                   type="checkbox"
@@ -94,9 +94,9 @@ export function ContactsTable({
                 />
               </th>
               <th>Name and email</th>
-              <th>Company</th>
-              <th>Labels</th>
-              <th></th>
+              <th className="chq-contacts-col-company">Company</th>
+              <th className="chq-contacts-col-labels">Labels</th>
+              <th className="chq-contacts-col-actions"></th>
             </tr>
           </thead>
           <tbody>
