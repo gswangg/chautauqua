@@ -3,8 +3,8 @@ import { apiPost, ApiError } from '../../lib/api';
 import { expandFullNameMapping, mapImportRow, parseCsv, suggestMapping, toCsv, FULL_NAME_TARGET, STANDARD_IMPORT_FIELDS } from './csv';
 import { ModalFrame, FormRow } from '../../components/ModalFrame';
 import type { ImportPlan, ImportPlanRow, ImportResult } from './types';
-import { DEC_810, DEC_575, DEC_124, DEC_478 } from '../../../../src/decisions';
-import { countOf, plural } from '../../lib/plural';
+import { DEC_810, DEC_575, DEC_124, DEC_478, DEC_856 } from '../../../../src/decisions';
+import { countOf, plural, thingsNeedFixingHeading } from '../../lib/plural';
 import { MAX_IMPORT_ROWS, MAX_IMPORT_CSV_BYTES } from '../../../../src/domain/contacts';
 import { formatBytes } from '../../../../src/domain/files';
 import './contacts-panels.css';
@@ -29,6 +29,14 @@ void DEC_124;
 // MAX_IMPORT_ROWS/MAX_IMPORT_CSV_BYTES below, imported from the ONE
 // pure-core home so the SPA's cap always agrees with the server's.
 void DEC_478;
+// DEC-856 (sibling shape, wave 65): the seven named refusals POST
+// /contacts/import can throw (csvText/mapping/dryRun/skipLines/eventId/
+// sessionTitle, plus the row-cap refusal reusing the csvText key) each
+// route to the step and control that produced them -- never a bare
+// "Validation failed" at the end of the multi-step ritual. Anything the
+// wizard doesn't recognize renders labelled in one top-of-form
+// ErrorSummary instead of being silently dropped.
+void DEC_856;
 
 interface Props {
   onClose: () => void;
@@ -93,6 +101,17 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
   const [result, setResult] = useState<ImportResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // DEC-856: the server's fields map from the last preview/commit refusal,
+  // read once per matcher below instead of re-parsed per render. Cleared
+  // whenever the control that produced the offending key is edited, so a
+  // stale message never survives the fix.
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null);
+  // DEC-856: a csvText refusal (required / over-byte / over-row) can arrive
+  // from runPreview even though header.length > 0 already (the full-name
+  // expansion in runPreview can push an already-parsed file over the byte
+  // cap) -- this forces the wizard back to step 1 rather than leaving the
+  // organizer stranded on the match-columns screen with a file-level error.
+  const [forceStep1, setForceStep1] = useState(false);
   // DEC-575 (wave 28 amendment): true once the organizer has accepted the
   // file-level "N rows have no email address" block and asked to proceed
   // with only the usable rows. Reset by resetToChooseFile so a fresh
@@ -206,11 +225,30 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
   const visiblePlanRows = showAllRows ? sortedPlanRows : sortedPlanRows.filter(isLosingRow);
   const hiddenRowCount = sortedPlanRows.length - visiblePlanRows.length;
 
+  // DEC-856: one matcher per named refusal key POST /contacts/import can
+  // throw, routed to the step/control that produced it -- csvText to the
+  // file/paste step, mapping (and the column-mapping message, which already
+  // names the offending column -- see the route's `{ mapping: err.message }`)
+  // to the match-columns step, eventId/sessionTitle to the add-to-event
+  // controls (the session-title field, the only add-to-event control this
+  // wizard renders), skipLines to the skip-rows control on the review step.
+  // Anything else (dryRun, or a key this wizard has never seen) renders
+  // labelled in the top-of-form ErrorSummary below instead of being dropped.
+  const MATCHED_FIELD_KEYS = ['csvText', 'mapping', 'eventId', 'sessionTitle', 'skipLines'] as const;
+  const csvTextFieldError = fieldErrors?.csvText ?? null;
+  const mappingFieldError = fieldErrors?.mapping ?? null;
+  const eventFieldError = fieldErrors?.sessionTitle ?? fieldErrors?.eventId ?? null;
+  const skipLinesFieldError = fieldErrors?.skipLines ?? null;
+  const unmatchedFieldEntries = fieldErrors
+    ? Object.entries(fieldErrors).filter(([key]) => !MATCHED_FIELD_KEYS.includes(key as (typeof MATCHED_FIELD_KEYS)[number]))
+    : [];
+
   // Step strip (mock "Import CSV · step 3 of 4"): 1 = choose a file, 2 =
   // map columns, 3 = review the dry run, 4 = done. Display-only -- does
   // not gate the real flow, which stays driven by
-  // csvText/header/plan/result exactly as before.
-  const step = result ? 4 : plan ? 3 : header.length > 0 && !showSizeRefusal ? 2 : 1;
+  // csvText/header/plan/result exactly as before. `forceStep1` overrides a
+  // csvText refusal that arrives after header.length > 0 (DEC-856 above).
+  const step = forceStep1 ? 1 : result ? 4 : plan ? 3 : header.length > 0 && !showSizeRefusal ? 2 : 1;
 
   // w15-c: the dialog title names the current step; "Import contacts from
   // CSV" moves down to the ModalFrame subtitle so it stays visible across
@@ -224,8 +262,39 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
           ? 'Match the columns'
           : 'Choose a file';
 
+  // DEC-856: one entry point for both preview and commit refusals. A
+  // fields map routes the wizard back to the step/control that produced the
+  // offending key (see MATCHED_FIELD_KEYS above) instead of leaving the
+  // generic `error` state (rendered once, at the top, for shapes with no
+  // fields map at all) as the only signal.
+  function handleImportApiError(err: unknown, fallback: string) {
+    if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+      setFieldErrors(err.fields);
+      setError(null);
+      if (err.fields.csvText) {
+        // A csvText refusal can arrive from runPreview even once
+        // header.length > 0 (full-name expansion can push an
+        // already-parsed file over the byte cap) -- send the organizer
+        // back to step 1 rather than stranding them on step 2/3.
+        setForceStep1(true);
+      }
+      if (err.fields.mapping || err.fields.eventId || err.fields.sessionTitle || err.fields.csvText) {
+        // Any of these means the plan (if any) was built from a request
+        // the server has now rejected -- never show a stale Review step.
+        setPlan(null);
+        setPlannedRequest(null);
+      }
+    } else {
+      setFieldErrors(null);
+      setForceStep1(false);
+      setError(err instanceof ApiError ? err.message : fallback);
+    }
+  }
+
   function handleFile(file: File) {
     setFileName(file.name);
+    setFieldErrors(null);
+    setForceStep1(false);
     const reader = new FileReader();
     reader.onload = () => setCsvText(String(reader.result ?? ''));
     reader.readAsText(file);
@@ -240,10 +309,13 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
     setFileName(null);
     setMapping({});
     setWarningAcknowledged(false);
+    setFieldErrors(null);
+    setForceStep1(false);
     lastAutoMappedHeader.current = null;
   }
 
   function setColumnMapping(col: string, value: string) {
+    setFieldErrors(null);
     setMapping((prev) => {
       const next = { ...prev };
       if (value === '') {
@@ -262,6 +334,8 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
     }
     setBusy(true);
     setError(null);
+    setFieldErrors(null);
+    setForceStep1(false);
     try {
       // Split any full-name-mapped column into first/last before the
       // server ever sees it (see expandFullNameMapping in ./csv.ts).
@@ -278,7 +352,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
       setSkipLines(new Set());
       setShowAllRows(false);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Preview failed');
+      handleImportApiError(err, 'Preview failed');
     } finally {
       setBusy(false);
     }
@@ -300,6 +374,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
     if (!plannedRequest) return;
     setBusy(true);
     setError(null);
+    setFieldErrors(null);
     try {
       const res = await apiPost<ImportResult>('/contacts/import', {
         ...plannedRequest,
@@ -308,7 +383,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
       setResult(res);
       onImported();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Import failed');
+      handleImportApiError(err, 'Import failed');
     } finally {
       setBusy(false);
     }
@@ -386,6 +461,28 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
 
       {error && <div className="chq-error">{error}</div>}
 
+      {/* DEC-856: refusal keys this wizard doesn't route to a specific
+          control (e.g. a key added to the route after this wizard was
+          last touched) render labelled here instead of being dropped --
+          the whole batch was refused, so `kept` says nothing was
+          imported, unlike the DEC-575 file-level warning above which keeps
+          the file loaded. */}
+      {unmatchedFieldEntries.length > 0 && (
+        <div className="chq-error-summary" role="alert">
+          <p className="chq-error-summary-heading">
+            {thingsNeedFixingHeading(unmatchedFieldEntries.length, 'before this import can run')}
+          </p>
+          <ul className="chq-error-summary-rows">
+            {unmatchedFieldEntries.map(([key, message]) => (
+              <li key={key}>
+                {key}: {message}
+              </li>
+            ))}
+          </ul>
+          <p className="chq-error-summary-kept">Nothing was imported.</p>
+        </div>
+      )}
+
       {/* DEC-478 (amendment, wave 62): a file-level, pre-mapping refusal for
           a file over either cap -- rendered above the step content, in the
           same error-vocabulary grammar as the DEC-575 email-warning block
@@ -431,7 +528,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
           column-matching UI. Stays mounted for an oversize file
           (showSizeRefusal) so "Choose a different file" has controls to
           come back to. */}
-      {(header.length === 0 || showSizeRefusal) && !plan && !result && (
+      {(forceStep1 || header.length === 0 || showSizeRefusal) && !plan && !result && (
         <div className="chq-contacts-import-drop">
           <FormRow label="Upload a CSV file" htmlFor="import-csv-file">
             <input
@@ -446,13 +543,21 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
               placeholder="contacts.csv"
             />
           </FormRow>
-          <FormRow label="Or paste CSV text" htmlFor="import-csv-text">
+          {/* DEC-856: csvText is the raw text either control produces --
+              the required/over-byte/over-row refusals all attach here,
+              beside the control that actually holds the value the server
+              rejected. */}
+          <FormRow label="Or paste CSV text" htmlFor="import-csv-text" error={csvTextFieldError}>
             <textarea
               id="import-csv-text"
               className="chq-textarea"
               rows={8}
               value={csvText}
-              onChange={(e) => setCsvText(e.target.value)}
+              onChange={(e) => {
+                setCsvText(e.target.value);
+                setFieldErrors(null);
+                setForceStep1(false);
+              }}
               placeholder="firstName,lastName,email..."
             />
           </FormRow>
@@ -473,7 +578,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
           column" affordance. Does not touch the dry-run/commit contract
           (DEC-663): mapping state feeds the same runPreview() call as
           before, unchanged below. */}
-      {header.length > 0 && !plan && !result && !showSizeRefusal && !showFileWarning && (
+      {!forceStep1 && header.length > 0 && !plan && !result && !showSizeRefusal && !showFileWarning && (
         <div className="chq-contacts-import-match">
           <div className="chq-contacts-import-match-head">
             <span className="chq-contacts-import-match-filename">{fileName ?? 'Pasted CSV'}</span>
@@ -481,6 +586,16 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
           </div>
 
           {parseError && <div className="chq-error">{parseError}</div>}
+
+          {/* DEC-856: a required/invalid `mapping` refusal (including the
+              column-mapping-invalid shape, whose message already names the
+              offending column) attaches here, above the per-column grid it
+              describes. */}
+          {mappingFieldError && (
+            <div className="chq-error" id="import-mapping-error" role="alert">
+              {mappingFieldError}
+            </div>
+          )}
 
           {/* DEC-810: the session title is collected here, in the match
               panel, once the event is already chosen (eventId) and a
@@ -491,12 +606,16 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
               label="Session title for this batch"
               htmlFor="import-session-title"
               help="Every contact added to this event by this import joins ONE accepted session with this title."
+              error={eventFieldError}
             >
               <input
                 id="import-session-title"
                 className="chq-input"
                 value={sessionTitle}
-                onChange={(e) => setSessionTitle(e.target.value)}
+                onChange={(e) => {
+                  setSessionTitle(e.target.value);
+                  setFieldErrors(null);
+                }}
                 placeholder="e.g. Lightning talks"
                 required
               />
@@ -644,6 +763,15 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
           )}
 
           <p className="chq-contacts-pipeline-caption">{countOf(skipLines.size, 'row')} marked to skip.</p>
+
+          {/* DEC-856: a `skipLines` refusal (malformed skip-row selection)
+              attaches beside the control it describes rather than only the
+              generic top-of-form error. */}
+          {skipLinesFieldError && (
+            <div className="chq-error" id="import-skip-lines-error" role="alert">
+              {skipLinesFieldError}
+            </div>
+          )}
 
           {/* B5: an irreversibility line, immediately above the commit
               action -- ModalFrame renders `children` then the actions div
