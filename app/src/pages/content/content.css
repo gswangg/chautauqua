@@ -534,6 +534,14 @@
   flex-wrap: wrap;
 }
 
+/* DEC-244: the quiet "Up to 4,000 characters." line under the textarea —
+   the organizer twin of the portal reply form's helper, sitting tight to the
+   control it describes (the caption below keeps its own larger gap). */
+.chq-content-comment-limit {
+  margin: 0;
+  color: var(--chq-muted);
+}
+
 /* DEC-741: the composer's standing caption — the note is always emailed to
    the session's active speakers, so the promise reads as the legend for the
    choice above rather than a caption on the textarea. */

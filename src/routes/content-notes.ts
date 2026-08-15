@@ -11,6 +11,7 @@ import type { AppEnv, AuthInfo } from "../server/env";
 import { requireOrganizer, csrfJson } from "../server/middleware";
 import { ApiError, readOptionalJsonBody } from "../server/http";
 import { MAX_COMMENT_BODY_LENGTH } from "../domain/files"; // DEC-244
+import { plural } from "../domain/count-copy"; // DEC-925/DEC-987
 import { makeMailer } from "../server/context";
 import { resolveBaseUrl } from "../server/origin";
 import { renderEmailHtml } from "../mail/shell";
@@ -68,8 +69,8 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, csrfJs
     const overBy = noteText.length - MAX_COMMENT_BODY_LENGTH;
     throw new ApiError(
       "invalid",
-      `Note is too long by ${overBy.toLocaleString("en-US")} character${overBy === 1 ? "" : "s"} — keep it to ${MAX_COMMENT_BODY_LENGTH.toLocaleString("en-US")} characters or fewer.`,
-      { body: `Too long by ${overBy.toLocaleString("en-US")} character${overBy === 1 ? "" : "s"}` },
+      `Note is too long by ${overBy.toLocaleString("en-US")} ${plural(overBy, "character")} — keep it to ${MAX_COMMENT_BODY_LENGTH.toLocaleString("en-US")} characters or fewer.`,
+      { body: `Too long by ${overBy.toLocaleString("en-US")} ${plural(overBy, "character")}` },
     ); // DEC-244
   }
 

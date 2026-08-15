@@ -12,6 +12,7 @@ import { requireOrganizer, csrfJson } from "../server/middleware";
 import { ApiError, parseBoundedIdArray, readOptionalJsonBody } from "../server/http";
 import { makeFileStore, putThenRecord } from "../server/context";
 import { newId } from "../domain/ids";
+import { plural } from "../domain/count-copy"; // DEC-925/DEC-987
 import { buildZip, zipEntryPath } from "../lib/zip";
 import { clampPage, clampPerPage, listPerPage } from "../lib/pagination";
 import { DEC_013, DEC_461, DEC_465, DEC_468, DEC_471, DEC_713, DEC_965 } from "../decisions";
@@ -520,8 +521,8 @@ fileApiRoutes.post("/files/:fileId/comments", csrfJson, async (c) => {
     const overBy = text.length - MAX_COMMENT_BODY_LENGTH;
     throw new ApiError(
       "invalid",
-      `Reply is too long by ${overBy.toLocaleString("en-US")} character${overBy === 1 ? "" : "s"} — keep it to ${MAX_COMMENT_BODY_LENGTH.toLocaleString("en-US")} characters or fewer.`,
-      { body: `Too long by ${overBy.toLocaleString("en-US")} character${overBy === 1 ? "" : "s"}` },
+      `Reply is too long by ${overBy.toLocaleString("en-US")} ${plural(overBy, "character")} — keep it to ${MAX_COMMENT_BODY_LENGTH.toLocaleString("en-US")} characters or fewer.`,
+      { body: `Too long by ${overBy.toLocaleString("en-US")} ${plural(overBy, "character")}` },
     ); // DEC-244
   }
 
