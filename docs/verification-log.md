@@ -4425,33 +4425,39 @@ read budget, with high run-to-run variance on this machine noted honestly.
 RESULT: FAIL (both checks, improved) — LOGGED PRODUCT FINDING: further
 reduction on plan results would require revisiting DEC-440's foreclosure of
 SQL-aggregate scoring math, not a call this task makes unilaterally.
+## 2026-08-15 task-w32-b — reviewer queue: hydrate emitted rows, not the scope @ 74c6377a [QUALIFYING]
 
-## task-w31-d: perf-smoke profile-resolved plan/reviewer fixtures (DEC-644 w31, DEC-645)
-Tip `9119a01a`. PERF_PLAN_ID/PERF_REVIEWER_EMAIL/PERF_REVIEWER_PASSWORD now
-resolve from PERF_PROFILE via perf-seed-lib's perfPlanId/perfReviewerEmail
-(default byte-identical, asserted by test); deleted isDefaultProfile/
-DEFAULT_ONLY_CHECK_NAMES/skippedChecks outright — every check runs on
-every profile. vitest test/perf-smoke.test.ts 80/80 green; build green.
-Live proof port 8897, `--profile=aie`: "rating PUT" PASS; "reviewer queue"
-and "plan results (page 1)" newly FAIL at aie scale — logged findings per
-DEC-347(3), owned by w31-b (src/routes/review/reviewer.ts) / w31-c
-(src/routes/review/shared.ts), not this lane's scope. SOLE OWNER of both
-touched files (no overlap declared). Detail:
-docs/verification-log/task-w31-d-perf-profile-fixtures-9119a01a.md.
+Owned `src/routes/review/reviewer.ts`. Constrained by DEC-829 (wave-32
+amendment). Closed the `reviewer queue` perf FAIL logged in
+docs/verification-log/index/0180-2026-08-15-task-w29-e-review-perf-b7060152.md
+(adjusted p95 69.7/66.6/76.1ms across three runs vs the 50ms `read`
+budget) — `listFormatLabelsBySubmission`, `listAudienceLevelLabelsBySubmission`,
+and `listSpeakerIdentitiesForSubmissions` are display-only (neither
+`needsMoreRatings`, `buildReviewerQueue`'s ordering, nor `unscoredTotal`
+reads them) yet ran over the reviewer's whole scoped id set. Moved them
+into a second `Promise.all` issued after ordering + the page slice, over
+exactly `pagedIds UNION recusedIds` — bounded by `perPage + recused.length`
+instead of scope size. Population-wide reads ordering/counting genuinely
+need stayed in the first wave, unchanged. Envelope shape, ordering,
+redaction, and refusal caps byte-identical (full suite + new targeted test
+green). Full detail + before/after table:
+docs/verification-log/task-w32-b-reviewer-queue-hydration-74c6377a.md.
 
-INVALIDATED BY: scripts/perf-smoke.ts, test/perf-smoke.test.ts, scripts/perf-seed-lib.ts
+TESTS: `npx vitest related src/routes/review/reviewer.ts --run` (51
+files/389 tests) + `npx vitest run --root . review` (80 files/702 tests) —
+all PASS. `npm run build` green. Added
+`test/reviewer-queue-hydration-scope.test.ts` (instrumented fake `Db` +
+spies proving the hydration wave's id-array length is bounded by
+`perPage + recused.length`, not scope size; anonymized-plan redaction on
+both halves).
 
-## task-w31-b: reviewer queue TIER-0 perf (DEC-338/DEC-347 wave-31 amendments)
-
-Full receipt: docs/verification-log/task-w31-b-reviewer-queue-perf-66123630.md.
-Boundary `66123630` off `main` `87c545f6`. Collapsed the queue's 11
-sequential D1 reads into 2 dependency-ordered `Promise.all` waves
-(DEC-338); added migrations/0041_evaluation_plan_round_submission_idx.sql
-(number pre-assigned by DEC-347). Envelope/order/numbers pinned unchanged;
-concurrency proven behaviourally (instrumented fake Db, max in-flight >
-1), never a grep. One-session before/after: adjusted p95 78.0ms -> 56.3ms
-(28% reduction, still over the 50ms budget at this noisy-machine
-measurement) — DELTA is this lane's grade per DEC-347. DECLARED OVERLAP
-with lanes a/c/d and w31-c (src/db/schema/review.ts, additive index only).
-
-INVALIDATED BY: src/routes/review/reviewer.ts, src/server/repo/review/**, migrations/**
+MEASURED (default profile, `npm run db:migrate && npm run seed` ->
+`npm run perf:seed` -> `npx wrangler dev --port 8902 --local` ->
+`PERF_URL=... npm run perf:smoke`, re-seeded between runs, server killed
+after use): three runs at 74c6377a measured `reviewer queue` at
+48.7/32.2/38.9ms adj — all PASS against the 50ms budget (was FAIL at
+69.7/66.6/76.1ms adj before this task, per task-w29-e's log).
+RESULT: PASS (reviewer queue). `plan results (page 1)` remains a
+pre-existing, out-of-scope FAIL (72.9/50.3/57.3ms adj across the same
+three runs), unowned and unchanged by this task — DEC-440-foreclosed from
+a SQL-aggregate rewrite.
