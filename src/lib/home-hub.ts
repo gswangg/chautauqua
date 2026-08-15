@@ -80,7 +80,13 @@ export function groupHubEvents(events: HubEvent[], nowMs: number): HubSections {
     // against the day-label ms, or the event archives itself at 00:01 UTC
     // on its own final day.
     if (dayLabelEndInstant(event.endDate, event.timezone) < nowMs) {
-      past.push(event);
+      // DEC-581: an ended event with zero publicly visible sessions has no
+      // programme to show — docs/design/README.md forbids a hub row whose
+      // only action links a stranger to an empty page. It is dropped from
+      // EVERY section, not reassigned to openCfp even if cfpOpen is still
+      // (staler) true.
+      if (event.publishedSessionCount > 0) past.push(event);
+      continue;
     } else if (event.cfpOpen) {
       openCfp.push(event);
     } else {

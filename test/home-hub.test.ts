@@ -136,6 +136,41 @@ describe("groupHubEvents — past boundary uses dayLabelEndInstant, not the raw 
   });
 });
 
+describe("groupHubEvents — an ended event with no programme is dropped entirely (w11-a)", () => {
+  it("a past event with cfpOpen true but zero published sessions appears in NO section", () => {
+    const event = makeEvent({
+      id: "e1",
+      cfpOpen: true,
+      publishedSessionCount: 0,
+      startDate: Date.UTC(2026, 0, 1),
+      endDate: Date.UTC(2026, 0, 3),
+    });
+    const sections = groupHubEvents([event], NOW);
+    expect(sections.past).toEqual([]);
+    expect(sections.openCfp).toEqual([]);
+    expect(sections.published).toEqual([]);
+  });
+
+  it("a past event WITH published sessions still archives, ordering unchanged", () => {
+    const a = makeEvent({
+      id: "a",
+      cfpOpen: true,
+      publishedSessionCount: 2,
+      startDate: Date.UTC(2025, 0, 1),
+      endDate: Date.UTC(2025, 0, 1),
+    });
+    const b = makeEvent({
+      id: "b",
+      cfpOpen: false,
+      publishedSessionCount: 1,
+      startDate: Date.UTC(2025, 5, 1),
+      endDate: Date.UTC(2025, 5, 1),
+    });
+    const sections = groupHubEvents([a, b], NOW);
+    expect(sections.past.map((e) => e.id)).toEqual(["b", "a"]);
+  });
+});
+
 describe("groupHubEvents — grouping", () => {
   it("buckets an ended event as past regardless of a still-open CFP window", () => {
     const event = makeEvent({
@@ -386,6 +421,17 @@ describe("GET / — published row matches the authoritative frame (w28-a)", () =
     expect([...body.matchAll(/<footer[\s>]/g)].length).toBe(1);
     expect([...body.matchAll(/<\/footer>/g)].length).toBe(1);
     expect([...body.matchAll(/<h1[\s>]/g)].length).toBe(1);
+  });
+});
+
+describe("GET / — unseeded deployment (w11-a)", () => {
+  it("returns 200 with the fresh state instead of 500ing when no org row exists", async () => {
+    const app = buildApp([[]]); // getHubOrg's select resolves to an empty row set
+    const res = await app.request("/", {}, { ASSETS: fakeAssets() });
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain('<span class="chq-home-org">Chautauqua</span>');
+    expect(body).toContain("<h1>Nothing here yet</h1>");
   });
 });
 

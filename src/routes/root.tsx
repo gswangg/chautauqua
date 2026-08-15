@@ -425,7 +425,19 @@ rootRoutes.get("/", async (c) => {
   const nowMs = Date.now();
   const org = await getHubOrg(c.var.db);
   if (!org) {
-    throw new ApiError("internal", "No org row exists -- run the seed/migration before serving GET /.");
+    // w11-a: an unseeded deployment (migrations/ never INSERTs an org row,
+    // and `npm run deploy` never seeds) has no org to name or query events
+    // for -- render the `fresh` empty state with the product wordmark as
+    // the masthead name instead of 500ing. No further DB read here.
+    return c.html(
+      <HubPage
+        orgName="Chautauqua"
+        sections={{ openCfp: [], published: [], past: [] }}
+        state="fresh"
+        nowMs={nowMs}
+        capped={false}
+      />,
+    );
   }
   const page = await listHubEvents(c.var.db, org.id, nowMs);
   const sections = groupHubEvents(page.items, nowMs);
