@@ -236,7 +236,7 @@ describe("negative controls (fixture strings)", () => {
     const md = "## 2026-08-15 task-fixture — spec-audit @ abc1234\nRESULT: QUALIFYING\n";
     const [section] = parseLogSections(md);
     expect(section?.result).toBe("QUALIFYING");
-    const rows = gradePredicate(parseLogSections(md), () => true);
+    const rows = gradePredicate(parseLogSections(md), "product-sha", () => true);
     const row = rows.find((r) => r.slot === "spec-audit");
     expect(row?.status).toBe("FAIL");
   });
@@ -244,7 +244,7 @@ describe("negative controls (fixture strings)", () => {
   it("scope 'stage-1 exit ledger' returns null from classifyScope, leaving its slot MISSING", () => {
     expect(classifyScope("stage-1 exit ledger")).toBeNull();
     const md = "## 2026-08-15 task-fixture — stage-1 exit ledger @ abc1234\nRESULT: PASS\n";
-    const rows = gradePredicate(parseLogSections(md), () => true);
+    const rows = gradePredicate(parseLogSections(md), "product-sha", () => true);
     // Nothing classifies to any of the five required slots, so all remain MISSING.
     expect(rows.every((r) => r.status === "MISSING")).toBe(true);
   });
