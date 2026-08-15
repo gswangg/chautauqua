@@ -110,16 +110,24 @@ export async function resolveComposeInput(
 
   let subjectTemplate: string;
   let bodyTemplate: string;
-  // DEC-832: the composer copies a template's text into its own fields and
-  // clears the selection client-side, so a request naming BOTH templateId
-  // and subject/bodyText names an ambiguous instruction — reject it loudly
-  // instead of picking a silent precedence rule between them.
-  if (b.templateId !== undefined && (b.subject !== undefined || b.bodyText !== undefined)) {
+  const hasSubject = typeof b.subject === "string";
+  const hasBodyText = typeof b.bodyText === "string";
+  // DEC-846 wave-3 amendment: templateId is PROVENANCE, not authority — the
+  // composer always posts its own visible subject/bodyText, and may ALSO
+  // post templateId naming the template it was seeded from (send.ts
+  // validates that id belongs to this event and stores it for audit; this
+  // function never reads content off it in that case). DEC-832's original
+  // "ambiguous instruction" guard is narrowed to the genuinely ambiguous
+  // shape: templateId with exactly ONE of subject/bodyText set (neither the
+  // legacy templateId-only mode nor the full-override mode this amendment
+  // adds).
+  if (b.templateId !== undefined && hasSubject !== hasBodyText) {
     throw new ApiError("invalid", "Provide either templateId or subject/bodyText, not both", {
-      templateId: "cannot be combined with subject/bodyText",
+      templateId: "cannot be combined with only one of subject/bodyText",
     });
   }
-  if (b.templateId !== undefined) {
+  if (b.templateId !== undefined && !hasSubject && !hasBodyText) {
+    // Legacy content-selection mode: templateId alone, no override text.
     const auth = c.var.auth;
     if (!auth) throw new ApiError("unauthorized", "Login required");
     const template = await repo.findTemplateForOrg(c.var.db, b.templateId, auth.orgId);
@@ -127,24 +135,24 @@ export async function resolveComposeInput(
     subjectTemplate = template.subject;
     bodyTemplate = template.bodyText;
   } else {
-    if (typeof b.subject !== "string" || typeof b.bodyText !== "string") {
+    if (!hasSubject || !hasBodyText) {
       throw new ApiError("invalid", "Validation failed", {
         templateId: "provide templateId, or both subject and bodyText",
       });
     }
     // DEC-417
-    if (b.subject.length > MAX_TEXT_LENGTH) {
+    if (b.subject!.length > MAX_TEXT_LENGTH) {
       throw new ApiError("invalid", `subject must be at most ${MAX_TEXT_LENGTH} characters`, {
-        subject: overCapFieldMessage(b.subject.length, MAX_TEXT_LENGTH),
+        subject: overCapFieldMessage(b.subject!.length, MAX_TEXT_LENGTH),
       });
     }
-    if (b.bodyText.length > MAX_RICH_TEXT_LENGTH) {
+    if (b.bodyText!.length > MAX_RICH_TEXT_LENGTH) {
       throw new ApiError("invalid", `bodyText must be at most ${MAX_RICH_TEXT_LENGTH} characters`, {
-        bodyText: overCapFieldMessage(b.bodyText.length, MAX_RICH_TEXT_LENGTH),
+        bodyText: overCapFieldMessage(b.bodyText!.length, MAX_RICH_TEXT_LENGTH),
       });
     }
-    subjectTemplate = b.subject;
-    bodyTemplate = b.bodyText;
+    subjectTemplate = b.subject!;
+    bodyTemplate = b.bodyText!;
   }
 
   // DEC-847: a subject is one line. task_list/feedback render as multi-line

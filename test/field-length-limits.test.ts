@@ -634,6 +634,12 @@ export const UNBOUNDED_STRING_FIELDS: Array<{ file: string; field: string; reaso
     field: "eventId",
     reason: "an id looked up against the DB, not free text",
   },
+  {
+    file: "comms/send.ts",
+    field: "templateId",
+    reason:
+      "an id looked up against the DB (DEC-846 wave-3 amendment provenance validation) — a foreign/unknown value 404/400s via findTemplateById, not free text",
+  },
 ];
 
 function listAllSourceFiles(dir: string): string[] {

@@ -73,20 +73,27 @@ describe("send responses never carry rendered bodies or claim tokens", () => {
     expect(handler).toContain("bodyText: r.text");
   });
 
-  it("documents the exact send response contract: {sent, failed}", () => {
+  it("documents the exact send response contract: comms/send.ts is {sent, skipped, failed} (DEC-238 wave-3 amendment); bulk-email.ts stays {sent, failed}", () => {
     const commsHandler = handlerBody(commsSendSrc, '"/api/v1/events/:eventId/compose/send"', []);
     const bulkHandler = handlerBody(bulkEmailSrc, '"/contacts/bulk-email"', ['"/contacts/bulk-email/preview"']);
 
-    for (const handler of [commsHandler, bulkHandler]) {
+    function keysOf(handler: string): string[] {
       const returnMatch = handler.match(/return c\.json\(\{([^}]*)\}\);/s);
       expect(returnMatch).not.toBeNull();
       const captured = returnMatch![1] ?? "";
-      const keys = captured
+      return captured
         .split(",")
         .map((part) => part.trim())
         .filter(Boolean)
-        .map((part) => (part.split(":")[0] ?? "").trim());
-      expect(keys.sort()).toEqual(["failed", "sent"]);
+        .map((part) => (part.split(":")[0] ?? "").trim())
+        .sort();
     }
+
+    // DEC-238 wave-3 amendment: compose/send is the highest-consequence
+    // fan-out and now carries a `skipped` dedupe report; bulk-email.ts is a
+    // separate route this wave does not touch, and keeps its original
+    // {sent, failed} shape.
+    expect(keysOf(commsHandler)).toEqual(["failed", "sent", "skipped"]);
+    expect(keysOf(bulkHandler)).toEqual(["failed", "sent"]);
   });
 });
