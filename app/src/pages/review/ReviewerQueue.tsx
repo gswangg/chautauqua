@@ -391,31 +391,31 @@ function ReviewerPlanRow({
   // offer exactly one action even when its decoration is missing.
   const isClosed = envelope !== null && envelope !== undefined && !isOpen;
   const actionLabel = isClosed ? 'Read your scores' : unscoredTotal < total && total > 0 ? 'Score the next one' : 'Start scoring';
-  const actionClass = isClosed ? 'chq-btn chq-btn-secondary' : 'chq-btn chq-btn-primary';
 
   // frame progress bar: width is the scored fraction of `total`, 0% when
   // there's nothing to score yet (or the envelope never arrived).
   const barWidth = envelope && total > 0 ? Math.round(((total - unscoredTotal) / total) * 100) : 0;
 
+  // DEC-874 wave-19 amendment (frame :756-774, the 1600 desktop hub): a
+  // four-column row -- name+meta / state pill / progress bar / action --
+  // not the earlier stacked-card shape. The pill and bar cells always
+  // render (even with an empty pill label when the envelope never
+  // arrived) so every row keeps the same four grid tracks as the header.
   return (
     <li className="chq-reviewer-plan-row">
       <div className="chq-reviewer-plan-row-name-line">
         <span className="chq-reviewer-plan-row-name">{plan.name}</span>
-        {envelope != null && (
-          <span
-            className={`chq-reviewer-plan-row-pill ${isOpen ? 'is-open' : 'is-closed'}`}
-          >
-            {isOpen ? 'Open' : 'Closed'}
-          </span>
-        )}
+        {metaLine.length > 0 && <span className="chq-review-plan-meta">{metaLine}</span>}
       </div>
-      {metaLine.length > 0 && <p className="chq-review-plan-meta">{metaLine}</p>}
+      <span className={`chq-reviewer-plan-row-pill ${envelope != null ? (isOpen ? 'is-open' : 'is-closed') : ''}`}>
+        {envelope != null ? (isOpen ? 'Open' : 'Closed') : ''}
+      </span>
       {/* DEC-368: reuse the shell's own .chq-bar/.chq-bar-fill (styles.css)
           rather than a page sheet redefining a second progress-bar rule. */}
       <div className="chq-bar chq-reviewer-plan-row-bar">
         <div className="chq-bar-fill" style={{ width: `${barWidth}%` }} />
       </div>
-      <Link to={`/review/plans/${plan.id}`} className={`${actionClass} chq-reviewer-plan-row-action`}>
+      <Link to={`/review/plans/${plan.id}`} className="chq-reviewer-plan-row-action">
         {actionLabel}
       </Link>
     </li>
@@ -654,17 +654,30 @@ export function ReviewerQueue() {
         )}
         {allEnvelopesResolved && (
           <>
+            {/* DEC-874 wave-19 amendment: the 1600 desktop hub (frame
+                :756-759) is a four-column LIST with its own head row --
+                Plan/State/Your progress/(blank action column) -- sharing
+                .chq-reviewer-plan-row's own grid so the columns line up,
+                same discipline as .chq-review-criteria-head-row. */}
+            <div className="chq-reviewer-plan-head-row">
+              <span>Plan</span>
+              <span>State</span>
+              <span>Your progress</span>
+              <span></span>
+            </div>
             <ul className="chq-reviewer-plan-list">
               {plans.map((plan) => (
                 <ReviewerPlanRow key={plan.id} plan={plan} envelope={envelopes[plan.id]} />
               ))}
             </ul>
-            {/* frame :925-939 closing line: with exactly one OPEN plan this
-                whole hub is skipped (the single-plan-list branch above
-                handles the truly-one-plan-total case; this line documents
-                that behaviour for the reviewer reading a 2+ plan hub). */}
+            {/* frame :775 (the 1600 desktop hub's own closing line) carries
+                both sentences -- with exactly one OPEN plan this whole hub
+                is skipped (the single-plan-list branch above handles the
+                truly-one-plan-total case), and scores stay hidden from
+                other reviewers even while more than one plan is open. */}
             <p className="chq-reviewer-plans-footnote">
-              With one open plan this page is skipped — you land straight in its queue.
+              With one open plan this page is skipped — you land straight in its queue. Scores stay hidden from other
+              reviewers.
             </p>
           </>
         )}
