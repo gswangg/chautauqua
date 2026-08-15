@@ -618,7 +618,14 @@ export function SubmissionDetailPage() {
     // DEC-592/DEC-755 (wave 10, task w10-b): role, not a global-PK literal
     // id, is the ONE matcher for the event's session-format field.
     const fieldId = form?.fields.find((f) => f.role === 'session_format')?.id;
-    if (!fieldId) return;
+    // DEC-958 (findings wave 13 amendment): the select renders DISABLED at
+    // RENDER time whenever no session_format-role field exists (see
+    // formatField below), so this handler is unreachable in that state --
+    // a missing fieldId here is an invariant violation, not a legal path
+    // to silently swallow (fail loudly, house rule).
+    if (!fieldId) {
+      throw new Error('changeFormat fired with no session_format field on the form; the control should be disabled');
+    }
     const previous = detail;
     setFormatPending(true);
     setFormatError(null);
@@ -650,7 +657,14 @@ export function SubmissionDetailPage() {
     // DEC-900/DEC-592 (wave 10, task w10-b): same role-matched resolution as
     // changeFormat above.
     const fieldId = form?.fields.find((f) => f.role === 'audience_level')?.id;
-    if (!fieldId) return;
+    // DEC-958 (findings wave 13 amendment): same disabled-at-render-time
+    // contract as changeFormat above -- unreachable when audienceField is
+    // absent, so a missing fieldId here asserts rather than swallowing.
+    if (!fieldId) {
+      throw new Error(
+        'changeAudienceLevel fired with no audience_level field on the form; the control should be disabled',
+      );
+    }
     const previous = detail;
     setAudienceLevelPending(true);
     setAudienceLevelError(null);
@@ -1266,24 +1280,30 @@ export function SubmissionDetailPage() {
                     knownMap={FORMAT_FIELD_ANCHORS}
                     headingTail="before the format can be saved"
                   />
-                  {formatField ? (
-                    <select
-                      id="submission-format"
-                      className="chq-select"
-                      aria-label="Format"
-                      value={currentFormat}
-                      disabled={formatPending}
-                      onChange={(e) => changeFormat(e.target.value)}
-                    >
-                      <option value="">Not set</option>
-                      {(formatField.options ?? []).map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <p>This event's form has no session format field.</p>
+                  {/* DEC-958 (findings wave 13 amendment): the row is NEVER
+                      omitted -- an absent role field renders this same
+                      select in the disabled treatment (B8: #8E8A7A text on
+                      #DDD8C8 border) rather than swapping it for inert
+                      prose, so the row can't be mistaken for a bug. */}
+                  <select
+                    id="submission-format"
+                    className="chq-select"
+                    aria-label="Format"
+                    value={currentFormat}
+                    disabled={!formatField || formatPending}
+                    onChange={(e) => changeFormat(e.target.value)}
+                  >
+                    <option value="">Not set</option>
+                    {(formatField?.options ?? []).map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  {!formatField && (
+                    <p className="chq-detail-session-details-reason">
+                      This event's call for papers has no Format question
+                    </p>
                   )}
                   {formatFieldErrors.format && (
                     <div className="chq-form-row-error" role="alert">
@@ -1310,24 +1330,27 @@ export function SubmissionDetailPage() {
                     knownMap={AUDIENCE_LEVEL_FIELD_ANCHORS}
                     headingTail="before the audience level can be saved"
                   />
-                  {audienceField ? (
-                    <select
-                      id="submission-audience-level"
-                      className="chq-select"
-                      aria-label="Audience level"
-                      value={currentAudienceLevel}
-                      disabled={audienceLevelPending}
-                      onChange={(e) => changeAudienceLevel(e.target.value)}
-                    >
-                      <option value="">Not set</option>
-                      {(audienceField.options ?? []).map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <p>This event's form has no session audience level field.</p>
+                  {/* DEC-958 (findings wave 13 amendment): same never-omit,
+                      disabled+reason treatment as Format above. */}
+                  <select
+                    id="submission-audience-level"
+                    className="chq-select"
+                    aria-label="Audience level"
+                    value={currentAudienceLevel}
+                    disabled={!audienceField || audienceLevelPending}
+                    onChange={(e) => changeAudienceLevel(e.target.value)}
+                  >
+                    <option value="">Not set</option>
+                    {(audienceField?.options ?? []).map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  {!audienceField && (
+                    <p className="chq-detail-session-details-reason">
+                      This event's call for papers has no Audience level question
+                    </p>
                   )}
                   {audienceLevelFieldErrors.audienceLevel && (
                     <div className="chq-form-row-error" role="alert">

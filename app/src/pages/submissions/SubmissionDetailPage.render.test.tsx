@@ -2025,3 +2025,119 @@ describe('SubmissionDetailPage: the other six writers read refusals by shape (DE
     expect(screen.queryByText('Failed to add co-presenter')).not.toBeInTheDocument();
   });
 });
+
+// DEC-958 (findings wave 13 amendment, task w13-c): the Format/Audience
+// level selects are never silently inert -- when the event's form carries
+// no field of the matching role, the row still renders (never omitted),
+// disabled, with a reason line naming the repair.
+describe('SubmissionDetailPage render: DEC-958 (findings wave 13 amendment) Format/Audience level dead-click fix', () => {
+  it('renders both selects ENABLED with no reason line when the form carries both role fields', async () => {
+    const detail = baseDetail({ answers: { field_session_format: 'Talk', field_audience_level: 'Beginner' } });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: {
+        id: 'form-1',
+        fields: [
+          {
+            id: 'field_session_format',
+            role: 'session_format',
+            section: 'session',
+            kind: 'dropdown',
+            label: 'Format',
+            required: false,
+            position: 1,
+            options: ['Talk', 'Workshop'],
+          },
+          {
+            id: 'field_audience_level',
+            role: 'audience_level',
+            section: 'session',
+            kind: 'dropdown',
+            label: 'Audience level',
+            required: false,
+            position: 2,
+            options: ['Beginner', 'Advanced'],
+          },
+        ],
+      },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+    await openSessionDetails();
+
+    const formatSelect = screen.getByLabelText('Format') as HTMLSelectElement;
+    const audienceSelect = screen.getByLabelText('Audience level') as HTMLSelectElement;
+    expect(formatSelect).not.toBeDisabled();
+    expect(audienceSelect).not.toBeDisabled();
+    expect(formatSelect.value).toBe('Talk');
+    expect(audienceSelect.value).toBe('Beginner');
+    expect(screen.queryByText("This event's call for papers has no Format question")).not.toBeInTheDocument();
+    expect(screen.queryByText("This event's call for papers has no Audience level question")).not.toBeInTheDocument();
+  });
+
+  it('renders both selects DISABLED with their own reason line, never absent, when the form carries neither role field', async () => {
+    const detail = baseDetail();
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+    await openSessionDetails();
+
+    // Never absent: the row (select + label) is always in the DOM.
+    const formatSelect = screen.getByLabelText('Format') as HTMLSelectElement;
+    const audienceSelect = screen.getByLabelText('Audience level') as HTMLSelectElement;
+    expect(formatSelect).toBeDisabled();
+    expect(audienceSelect).toBeDisabled();
+    // The stored answer (none resolvable without a role field on the form)
+    // still renders bound to the control rather than the row vanishing --
+    // the select keeps its normal 'Not set' value, never swapped for prose.
+    expect(formatSelect.value).toBe('');
+    expect(audienceSelect.value).toBe('');
+    expect(screen.getByText("This event's call for papers has no Format question")).toBeInTheDocument();
+    expect(screen.getByText("This event's call for papers has no Audience level question")).toBeInTheDocument();
+  });
+
+  it('renders Format disabled+reasoned and Audience level enabled when the form carries only the audience_level field', async () => {
+    const detail = baseDetail({ answers: { field_audience_level: 'Advanced' } });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: {
+        id: 'form-1',
+        fields: [
+          {
+            id: 'field_audience_level',
+            role: 'audience_level',
+            section: 'session',
+            kind: 'dropdown',
+            label: 'Audience level',
+            required: false,
+            position: 1,
+            options: ['Beginner', 'Advanced'],
+          },
+        ],
+      },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+    await openSessionDetails();
+
+    const formatSelect = screen.getByLabelText('Format') as HTMLSelectElement;
+    const audienceSelect = screen.getByLabelText('Audience level') as HTMLSelectElement;
+    expect(formatSelect).toBeDisabled();
+    expect(audienceSelect).not.toBeDisabled();
+    expect(audienceSelect.value).toBe('Advanced');
+    expect(screen.getByText("This event's call for papers has no Format question")).toBeInTheDocument();
+    expect(screen.queryByText("This event's call for papers has no Audience level question")).not.toBeInTheDocument();
+  });
+});
