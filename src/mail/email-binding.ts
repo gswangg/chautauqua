@@ -227,7 +227,17 @@ export class EmailBindingMailer implements Mailer {
     const now = this.clock.now();
     try {
       const raw = buildRawMime(this.from, m, now);
-      const message = await this.messageFactory(this.from.email, m.to.email, raw);
+      // DEC-996-adjacent hygiene: the envelope from/to passed to the binding's
+      // message factory is a second address position that must not skip the
+      // same sanitizer the From/To HEADERS above (addressHeader) apply — a
+      // stored-valid address admitting ADDRESS_FORBIDDEN_RE chars (see
+      // src/domain/email.ts's EMAIL_PATTERN comment) must not reach the
+      // envelope unstripped while the header above it is clean.
+      const message = await this.messageFactory(
+        addressValue(this.from.email),
+        addressValue(m.to.email),
+        raw,
+      );
       await this.binding.send(message);
     } catch (err) {
       status = "failed";

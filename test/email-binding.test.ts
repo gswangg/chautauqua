@@ -3,8 +3,10 @@
 // the message factory are injected, so no `cloudflare:email` import is
 // needed to test this.
 
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { EmailBindingMailer } from "../src/mail/email-binding";
+import { EmailBindingMailer, addressValue } from "../src/mail/email-binding";
 import { DevSinkMailer, InMemoryEmailLog } from "../src/mail/dev-sink";
 import { mailConfigStatus } from "../src/server/env";
 import type { RenderedEmail } from "../src/mail/types";
@@ -305,6 +307,100 @@ describe("EmailBindingMailer", () => {
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
     expect(new TextDecoder().decode(bytes)).toBe(icsContent);
+  });
+
+  it("strips every ADDRESS_FORBIDDEN_RE char from the envelope to/from addresses passed to the message factory, identical to the To: header (task-w15-f)", async () => {
+    const calls: Array<{ from: string; to: string; raw: string }> = [];
+    const binding = {
+      send: async (message: unknown) => {
+        calls.push(message as { from: string; to: string; raw: string });
+      },
+    };
+    const log = new InMemoryEmailLog();
+    const dirtyFrom = 'hel<lo>@ch,au;taua"."cc';
+    const dirtyTo = 'a,b@c.com';
+    const mailer = new EmailBindingMailer(
+      binding,
+      log,
+      { email: dirtyFrom, name: "Chautauqua" },
+      identityFactory,
+    );
+
+    await mailer.send(baseMsg({ to: { email: dirtyTo, name: "Someone" } }));
+
+    const call = calls[0]!;
+    // Every forbidden char (control/DEL, <, >, ",", ";", DQUOTE, backslash,
+    // whitespace) must be gone from the envelope arguments...
+    expect(call.from).toBe(addressValue(dirtyFrom));
+    expect(call.to).toBe(addressValue(dirtyTo));
+    // ...and must be identical to what the To:/From: HEADERS carry above it,
+    // so there is exactly one stripped answer for the value, not two.
+    expect(call.raw).toContain(`<${call.from}>`);
+    expect(call.raw).toContain(`<${call.to}>`);
+  });
+
+  it("scan: every email interpolated into an address position in email-binding.ts and ics.ts is wrapped in addressValue (task-w15-f, pins the class)", () => {
+    const emailBindingPath = fileURLToPath(new URL("../src/mail/email-binding.ts", import.meta.url));
+    const icsPath = fileURLToPath(new URL("../src/mail/ics.ts", import.meta.url));
+    const emailBindingSrc = readFileSync(emailBindingPath, "utf-8");
+    const icsSrc = readFileSync(icsPath, "utf-8");
+
+    // Address positions: `<${...}>` and `mailto:${...}` template interpolations.
+    // The interpolated expression must either be a direct `addressValue(...)`
+    // call, or a local identifier that was itself assigned from
+    // `addressValue(...)` (e.g. `const safeEmail = addressValue(email);` then
+    // `<${safeEmail}>`) -- resolving that one level of aliasing lets the test
+    // still catch a future call site that interpolates a raw `.email` field
+    // directly, which is exactly the class of bug this file exists to close.
+    const addressPositionRe = /(?:<\$\{([^}]+)\}>|mailto:\$\{([^}]+)\})/g;
+
+    function safeIdentifiers(src: string): Set<string> {
+      const ids = new Set<string>();
+      const assignRe = /const\s+(\w+)\s*=\s*addressValue\(/g;
+      let m: RegExpExecArray | null;
+      while ((m = assignRe.exec(src)) !== null) ids.add(m[1]!);
+      return ids;
+    }
+
+    // Strip `//`-comment lines before scanning — this file's own prose
+    // (deliberately) mentions `<${email}>` and `mailto:${email}` as examples
+    // of the pattern being guarded against, which would otherwise false-
+    // positive as an unwrapped call site.
+    function stripLineComments(src: string): string {
+      return src
+        .split("\n")
+        .map((line) => line.replace(/\/\/.*$/, ""))
+        .join("\n");
+    }
+
+    function assertAllWrapped(rawSrc: string, label: string) {
+      const src = stripLineComments(rawSrc);
+      const aliases = safeIdentifiers(src);
+      let match: RegExpExecArray | null;
+      let found = 0;
+      while ((match = addressPositionRe.exec(src)) !== null) {
+        const expr = (match[1] ?? match[2])!.trim();
+        found += 1;
+        const isDirectCall = expr.startsWith("addressValue(");
+        const isSafeAlias = aliases.has(expr);
+        if (!isDirectCall && !isSafeAlias) {
+          throw new Error(`${label}: interpolated address expression "${expr}" is neither a direct addressValue(...) call nor an addressValue-derived alias`);
+        }
+      }
+      expect(found).toBeGreaterThan(0);
+    }
+
+    assertAllWrapped(emailBindingSrc, "email-binding.ts");
+    assertAllWrapped(icsSrc, "ics.ts");
+
+    // The messageFactory call itself is not a template interpolation (it's a
+    // function call), so assert directly that both of its address arguments
+    // are addressValue(...)-wrapped and not the raw `.email` field.
+    const factoryCallMatch = /this\.messageFactory\(\s*([^,]+),\s*([^,]+),/.exec(emailBindingSrc);
+    expect(factoryCallMatch).not.toBeNull();
+    const [, fromArg, toArg] = factoryCallMatch!;
+    expect(fromArg!.trim().startsWith("addressValue(")).toBe(true);
+    expect(toArg!.trim().startsWith("addressValue(")).toBe(true);
   });
 });
 
