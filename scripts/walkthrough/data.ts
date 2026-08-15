@@ -33,10 +33,23 @@ interface FixtureData {
   identities: {
     organizer: { email: string; password: string };
     speaker: { email: string; password: string };
+    speaker2?: { email: string; password: string };
+    reviewer?: { email: string; password: string };
   };
 }
 
 const fixture: FixtureData = JSON.parse(readFileSync(FIXTURE_PATH, "utf-8"));
+
+// Load-bearing walkthrough identities (organizer/speaker/speaker2/reviewer
+// login accounts) must never be picked as the merge-test's throwaway
+// "seeded contact with history" subject below — merging one away deletes
+// its user row (contact.id is the user's FK) and 401s every later login
+// as that identity, in this module and any that run after it.
+const PROTECTED_IDENTITY_EMAILS = new Set(
+  Object.values(fixture.identities)
+    .filter((identity): identity is { email: string; password: string } => Boolean(identity))
+    .map((identity) => identity.email),
+);
 
 // ---------------------------------------------------------------------------
 // Cookie jar + auth helpers (DEC-053 conventions)
@@ -234,11 +247,14 @@ async function main(): Promise<void> {
     headers: orgHeaders(orgCookies, false),
   });
   assertStatus(listRes, 200, "GET /api/v1/contacts?perPage=100");
-  const listBody = (await asJson(listRes)) as { items: { id: string }[] };
+  const listBody = (await asJson(listRes)) as { items: { id: string; email: string }[] };
 
   let historyContactId: string | null = null;
   let historyPayload: { history: { submissions: unknown[]; emails: unknown[]; events: string[] } } | null = null;
   for (const c of listBody.items) {
+    // Never pick a load-bearing walkthrough login identity as the
+    // merge-test's throwaway subject (see PROTECTED_IDENTITY_EMAILS above).
+    if (PROTECTED_IDENTITY_EMAILS.has(c.email)) continue;
     const detailRes = await fetch(`${BASE_URL}/api/v1/contacts/${c.id}`, { headers: orgHeaders(orgCookies, false) });
     assertStatus(detailRes, 200, `GET /api/v1/contacts/${c.id}`);
     const detail = (await asJson(detailRes)) as {
@@ -462,7 +478,11 @@ async function main(): Promise<void> {
   assertStatus(showflowRes, 200, "GET .../exports/showflow.csv");
   const showflowText = await showflowRes.text();
   const showflowHeaderLine = showflowText.split("\n")[0]?.trim() ?? "";
-  const expectedShowflowHeader = "ref,title,description,day,start,end,room,tracks,speakers,deck_file,deck_url";
+  // DEC-022 (wave 66 amendment): breaks are interleaved into showflow as
+  // clearly-typed non-session rows via an explicit 'kind' marker column,
+  // appended last (src/server/repo/exports/showflow.ts SHOWFLOW_HEADER).
+  const expectedShowflowHeader =
+    "ref,title,description,day,start,end,room,tracks,speakers,deck_file,deck_url,kind";
   if (showflowHeaderLine !== expectedShowflowHeader) {
     fail(`showflow.csv header mismatch:\n  expected: ${expectedShowflowHeader}\n  actual:   ${showflowHeaderLine}`);
   }

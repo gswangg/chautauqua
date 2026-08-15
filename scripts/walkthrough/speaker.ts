@@ -457,7 +457,10 @@ async function main(): Promise<void> {
     assert(res.status === 302, `POST task complete expected 302, got ${res.status}`);
 
     const tasksPage = await speaker1.getText("/portal/tasks");
-    assert(tasksPage.body.includes("Completed"), "task list does not show the task as Completed after marking it");
+    // DEC-366: on-screen wording is frozen as "Done"/"To do" (never
+    // "Completed"/"Pending") — the underlying status value stays
+    // pending|complete, but only the .chq-flag label text renders.
+    assert(tasksPage.body.includes("Done"), "task list does not show the task as Done after marking it");
   });
 
   // -------------------------------------------------------------------------
@@ -547,13 +550,14 @@ async function main(): Promise<void> {
         !tasksPage.body.includes(`/portal/tasks/${assignmentId}/form`),
         `'${taskTitle}' still shows a 'Fill out form' link after completion`,
       );
+      // DEC-366: on-screen wording is frozen as "Done"/"To do".
       const rowMatch = tasksPage.body.match(
-        new RegExp(`${escapeRegex(taskTitle)}(?:(?!${NEXT_TASK_ROW})[\\s\\S])*?(Completed|Pending)`),
+        new RegExp(`${escapeRegex(taskTitle)}(?:(?!${NEXT_TASK_ROW})[\\s\\S])*?(Done|To do)`),
       );
       assert(rowMatch, `could not find the '${taskTitle}' row on /portal/tasks after submission`);
       assert(
-        rowMatch![1] === "Completed",
-        `'${taskTitle}' assignment status is '${rowMatch![1]}', expected 'Completed' after submission`,
+        rowMatch![1] === "Done",
+        `'${taskTitle}' assignment status is '${rowMatch![1]}', expected 'Done' after submission`,
       );
     });
   }
@@ -688,16 +692,26 @@ async function main(): Promise<void> {
   // wave 56).
   // -------------------------------------------------------------------------
 
+  // DEC-009 amendment (wave 59) / DEC-739: 'Finalize bio + headshot' was
+  // repurposed to a kind='general' profile-completion task (see
+  // src/domain/acceptance.ts PROFILE_TASK_TITLE) that completes via the
+  // portal profile save, never an upload form. The file_request onboarding
+  // task is now the event-specific 'Upload your slide deck' task minted in
+  // scripts/seed.ts's DEC-739 loop. Also: the stale `</li>` row-boundary
+  // sentinel never appears in the current chq-portal-row markup (it never
+  // bounded anything), so the match previously ran on past 'Finalize bio +
+  // headshot' into an unrelated row's upload form — re-pinned to the
+  // correct title and the real NEXT_TASK_ROW boundary used elsewhere here.
   const bioAssignmentId = await check(
-    "find my 'Finalize bio + headshot' file_request task's assignment id via /portal/tasks",
+    "find my 'Upload your slide deck' file_request task's assignment id via /portal/tasks",
     async () => {
       const tasksPage = await speaker1.getText("/portal/tasks");
       const match = tasksPage.body.match(
-        /Finalize bio \+ headshot(?:(?!<\/li>)[\s\S])*?action="\/portal\/tasks\/([\w-]+)\/upload"/,
+        new RegExp(`Upload your slide deck(?:(?!${NEXT_TASK_ROW})[\\s\\S])*?action="\\/portal\\/tasks\\/([\\w-]+)\\/upload"`),
       );
       assert(
         match,
-        "could not find the 'Finalize bio + headshot' task's upload form action (task already completed by a prior run? re-seed the dev DB)",
+        "could not find the 'Upload your slide deck' task's upload form action (task already completed by a prior run? re-seed the dev DB)",
       );
       return match![1]!;
     },
@@ -707,19 +721,30 @@ async function main(): Promise<void> {
     const form = new FormData();
     form.set("chq_csrf", speaker1.cookies.chq_csrf ?? "");
     form.set("file", new File([new Uint8Array([0xff, 0xd8, 0xff, 0xdb])], "walkthrough-bio-photo.jpg", { type: "image/jpeg" }));
+    // DEC-891 ("conditional-and-quiet"): once the speaker has 2+ eligible
+    // sessions for this file_request task, the real form grows a required
+    // <select name="submissionId"> (src/routes/portal/tasks/views.tsx
+    // DeliverableSelect) — scrape and echo its first <option value> the same
+    // way a browser submit would, rather than assuming the lone-candidate
+    // (no-select) case that only holds when the speaker has one session.
+    const uploadPage = await speaker1.getText("/portal/tasks");
+    const selectMatch = uploadPage.body.match(
+      new RegExp(`action="/portal/tasks/${bioAssignmentId}/upload"[\\s\\S]*?<select name="submissionId"[\\s\\S]*?<option value="([\\w-]+)"`),
+    );
+    if (selectMatch) form.set("submissionId", selectMatch[1]!);
     const res = await speaker1.postMultipart(`/portal/tasks/${bioAssignmentId}/upload`, form);
     assert(res.status === 302, `POST /portal/tasks/:assignmentId/upload expected 302, got ${res.status}: ${JSON.stringify(res.body)}`);
   });
 
   await check(
-    "GET /portal/tasks shows the DEC-244 deliverable panel for the completed 'Finalize bio + headshot' assignment",
+    "GET /portal/tasks shows the DEC-244 deliverable panel for the completed 'Upload your slide deck' assignment",
     async () => {
       const tasksPage = await speaker1.getText("/portal/tasks");
       assert(tasksPage.status === 200, `GET /portal/tasks returned ${tasksPage.status}`);
       const rowMatch = tasksPage.body.match(
-        new RegExp(`Finalize bio \\+ headshot(?:(?!${NEXT_TASK_ROW})[\\s\\S])*`),
+        new RegExp(`Upload your slide deck(?:(?!${NEXT_TASK_ROW})[\\s\\S])*`),
       );
-      assert(rowMatch, "could not find the 'Finalize bio + headshot' task row on /portal/tasks");
+      assert(rowMatch, "could not find the 'Upload your slide deck' task row on /portal/tasks");
       const row = rowMatch![0]!;
       // DEC-412 repair: the redesign added a 'chq-card' class to this
       // section for styling (src/routes/portal/tasks.tsx TaskRow), so the
@@ -727,7 +752,13 @@ async function main(): Promise<void> {
       // stable aria-label token rather than the full opening tag.
       assert(row.includes('aria-label="Uploaded file"'), "row is missing the Uploaded file section");
       assert(row.includes("walkthrough-bio-photo.jpg"), "row is missing the uploaded filename");
-      assert(row.includes("version 1"), "row is missing 'version 1'");
+      // scripts/seed.ts's DEC-739 loop pre-completes this task (with a real
+      // minted file at version_no=1) for every contactIdx % 3 === 0 speaker,
+      // which includes the DEC-172-pinned primary seeded speaker (Priya,
+      // contactIdx 0) this walkthrough logs in as — so our upload above is a
+      // REPLACE onto an already-complete assignment and lands at version 2,
+      // not version 1.
+      assert(row.includes("version 2"), "row is missing 'version 2'");
       assert(
         new RegExp(`href="\\/portal\\/tasks\\/${escapeRegex(bioAssignmentId)}\\/file"`).test(row),
         "row is missing a download link to /portal/tasks/:assignmentId/file",
@@ -771,7 +802,13 @@ async function main(): Promise<void> {
         body: oversized,
       });
       assert(res.status === 200, `expected 200 (inline re-render) for an over-length comment body, got ${res.status}`);
-      assert(res.body.includes("too long"), "expected the named-cap refusal message on the re-rendered page");
+      // DEC-422: the one over-cap refusal grammar (src/domain/cap-copy.ts
+      // overCapSentence) reads "Reply is 4,001 characters — 1 over the
+      // 4,000-character limit." — never the literal words "too long".
+      assert(
+        res.body.includes("over the 4,000-character limit"),
+        "expected the DEC-422 named-cap refusal message on the re-rendered page",
+      );
       assert(res.body.includes(oversized), "expected the typed draft body to be kept in the re-rendered textarea");
     },
   );
@@ -1067,8 +1104,14 @@ async function main(): Promise<void> {
       github: "",
       website: "",
     });
-    assert(res.status === 200, `POST /portal/profile expected 200 (re-rendered page), got ${res.status}`);
-    assert(res.body.includes("Profile saved."), "profile save did not confirm success");
+    // src/routes/portal/profile.tsx: a successful save now does PRG
+    // (POST-redirect-GET) to /portal/profile?saved=1, not a 200 re-render
+    // with the body inline — the confirmation text only appears on the
+    // follow-up GET.
+    assert(res.status === 302, `POST /portal/profile expected 302 (PRG), got ${res.status}`);
+    const savedPage = await speaker1.getText("/portal/profile?saved=1");
+    assert(savedPage.status === 200, `GET /portal/profile?saved=1 returned ${savedPage.status}`);
+    assert(savedPage.body.includes("Profile saved."), "profile save did not confirm success");
   });
 
   await check("the bio change appears on the organizer's contact record via /api/v1", async () => {
@@ -1107,8 +1150,14 @@ async function main(): Promise<void> {
 
   try {
     await check("organizer sets the form close date to the past", async () => {
+      // src/lib/submit-core.ts: closeDate is a DAY LABEL expanded to
+      // event-local END-OF-DAY before comparison, not a raw instant — 'now
+      // minus 1 hour' is still today's day label in most timezones, whose
+      // end-of-day instant is still in the future, so the form never reads
+      // as closed. Go back 3 full days so the day label is unambiguously in
+      // the past regardless of the event's timezone offset.
       const { status } = await organizer.patchJson<FormRow>(`/api/v1/forms/${formId}`, {
-        closeDate: Date.now() - 60 * 60 * 1000,
+        closeDate: Date.now() - 3 * 24 * 60 * 60 * 1000,
       });
       assert(status === 200, `PATCH form closeDate returned ${status}`);
     });

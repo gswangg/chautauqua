@@ -433,7 +433,11 @@ async function main(): Promise<void> {
     // redesign renamed the class to 'chq-pub-session-row'
     // (src/routes/public/cards.tsx SessionCard) — behavior unchanged.
     assert(sessionsHtml.includes('class="chq-pub-session-row"'), "no session cards found");
-    assert(sessionsHtml.includes("Track filters"), "no track filter nav found");
+    // DEC-919 (wave 40 amendment, "v7 filter bar"): the pill-row nav labeled
+    // "Track filters" was replaced by a single auto-submitting <select
+    // name="trackId"> per src/routes/public/sessions.tsx — probe for that
+    // control instead of the retired pill-row copy.
+    assert(sessionsHtml.includes('name="trackId"'), "no track filter nav found");
   });
 
   await check("J10 /speakers: alphabetical by surname, headshot/title/company", async () => {
@@ -590,22 +594,23 @@ async function main(): Promise<void> {
   await check("J10 Settings embed-generator snippet URLs match live /embed routes", async () => {
     // The embed URL builder was decomposed out of Settings.tsx (DEC-289):
     // app/src/pages/settings/embedSnippet.ts now owns buildEmbedUrl, and
-    // app/src/pages/settings/EmbedsPanel.tsx renders it. DEC-412 repair:
-    // the redesign (DEC-375) turned Settings.tsx's rail of literal
-    // `<XPanel />` mounts into a `SECTIONS: {key,label,Panel}[]` config
-    // array rendered as `<Panel />` inside a shared `.map()` — EmbedsPanel
-    // is still imported and still mounted (as `Panel = section.Panel`
-    // where `section.key === 'embeds'`), just never spelled `<EmbedsPanel`
-    // as a JSX tag anymore. Re-pinned to the still-stable importing/wiring
-    // tokens instead of the literal (now-gone) tag spelling.
-    const settingsSrc = readFileSync(join(REPO_ROOT, "app", "src", "pages", "Settings.tsx"), "utf-8");
-    assert(
-      settingsSrc.includes("import { EmbedsPanel } from './settings/EmbedsPanel'"),
-      "Settings.tsx no longer imports EmbedsPanel",
+    // app/src/pages/settings/EmbedsPanel.tsx renders it. Settings.tsx's
+    // SECTIONS config no longer has a standalone 'embeds' key at all —
+    // EmbedsPanel is imported/mounted one level down, inside
+    // app/src/pages/settings/PublicPagesPanel.tsx (which IS the
+    // 'public-pages' SECTIONS entry), alongside SavedEmbedsPanel. Re-pinned
+    // to that current wiring location.
+    const publicPagesPanelSrc = readFileSync(
+      join(REPO_ROOT, "app", "src", "pages", "settings", "PublicPagesPanel.tsx"),
+      "utf-8",
     );
     assert(
-      /\{\s*key:\s*'embeds',\s*label:\s*'Embeds',\s*Panel:\s*EmbedsPanel\s*\}/.test(settingsSrc),
-      "Settings.tsx no longer wires EmbedsPanel into its SECTIONS config",
+      publicPagesPanelSrc.includes("import { EmbedsPanel } from './EmbedsPanel'"),
+      "PublicPagesPanel.tsx no longer imports EmbedsPanel",
+    );
+    assert(
+      /<EmbedsPanel\s*\/>/.test(publicPagesPanelSrc),
+      "PublicPagesPanel.tsx no longer mounts <EmbedsPanel />",
     );
 
     const embedSnippetSrc = readFileSync(
