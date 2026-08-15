@@ -116,7 +116,7 @@ describe('ParticipationMenu (DEC-830)', () => {
     });
 
     const menu = await openMenu();
-    fireEvent.click(menu.getByRole('menuitem', { name: 'Send portal invite' }));
+    fireEvent.click(menu.getByRole('menuitem', { name: /^Send portal invite/ }));
 
     await waitFor(() => {
       const call = fetchMock.mock.calls.find(([input]) =>
@@ -304,9 +304,23 @@ describe('ParticipationMenu (DEC-830)', () => {
       [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
     });
     const menu = await openMenu();
-    const action = menu.getByRole('menuitem', { name: 'Send portal invite' });
+    const action = menu.getByRole('menuitem', { name: /^Send portal invite/ });
     expect(action).not.toHaveAttribute('role', 'menuitemradio');
     expect(action.getAttribute('aria-checked')).toBeNull();
+  });
+
+  // Wave-19 (frame :296-317): the action row gets the same two-line anatomy
+  // as the state rows -- a label line plus a detail line naming its
+  // consequence, not a bare "Send portal invite" label.
+  it('renders the "Send portal invite" action row with its consequence as a detail line', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: gridWith('none'),
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+    });
+    const menu = await openMenu();
+    const action = menu.getByRole('menuitem', { name: /^Send portal invite/ });
+    expect(within(action).getByText('Send portal invite')).toBeInTheDocument();
+    expect(within(action).getByText('Emails a claim link and sets this to Invited')).toBeInTheDocument();
   });
 
   // DEC-869 (wave-9 amendment): the state IN FORCE gets a tint distinct from
@@ -328,5 +342,19 @@ describe('ParticipationMenu (DEC-830)', () => {
   it('DEC-869: the NOW chip is right-flushed with margin-left: auto', () => {
     const nowRule = extractRule(SPEAKERS_CSS, '.chq-participation-menu-now');
     expect(nowRule).toMatch(/margin-left:\s*auto/);
+  });
+
+  // Wave-19 (DEC-830 amendment, frame :296): the panel is a fixed 420px
+  // card, not an auto-sized min-width:260px list.
+  it('DEC-830 wave-19: the panel is a fixed 420px width', () => {
+    const panelRule = extractRule(SPEAKERS_CSS, '.chq-participation-menu-panel');
+    expect(panelRule).toMatch(/width:\s*420px/);
+  });
+
+  // Wave-19 (DEC-730 amendment, frame :80): the grid's task-column title is
+  // 12px/700, not the earlier 15px override.
+  it('DEC-730 wave-19: the task-column title is 12px', () => {
+    const titleRule = extractRule(SPEAKERS_CSS, '.chq-speakers-task-title');
+    expect(titleRule).toMatch(/font-size:\s*12px/);
   });
 });

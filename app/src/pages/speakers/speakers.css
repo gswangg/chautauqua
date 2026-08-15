@@ -174,16 +174,29 @@
      so it sits at the table measure and scrolls horizontally below its own
      minimum rather than gaining width forever. */
   min-width: 1060px;
+  /* DEC-730 wave-19 amendment: frame :76 fixes the speaker/participation
+     column at 230px with the task columns splitting the remainder evenly
+     (grid-template-columns:230px repeat(6, 1fr)). This is a real <table>,
+     not a CSS grid, so the equivalent is table-layout:fixed plus a first-
+     column width -- the browser then distributes the rest equally, same as
+     the frame's repeat(6, 1fr). */
+  table-layout: fixed;
 }
 
-/* DEC-730 amendment (wave 39): the shared .chq-table th register (11px
-   uppercase-muted) is right for the second line -- due/required -- but wrong
-   for the task TITLE, which the frame gives sentence-case ink at ~15px. This
-   overrides the title only; .chq-speakers-task-due keeps the shared register
-   unchanged. */
+.chq-speakers-grid th:first-child,
+.chq-speakers-grid td:first-child {
+  width: 230px;
+}
+
+/* DEC-730 amendment (wave 39, revised wave 19): the shared .chq-table th
+   register (11px uppercase-muted) is wrong for the task TITLE, which the
+   frame gives sentence-case ink -- wave-19 correction: frame :80 sizes it
+   12px/700/line-height:1.25, not 15px. This overrides the title only;
+   .chq-speakers-task-due keeps the shared register unchanged. */
 .chq-speakers-task-title {
-  font-size: 15px;
+  font-size: 12px;
   font-weight: 700;
+  line-height: 1.25;
   letter-spacing: normal;
   text-transform: none;
   color: var(--chq-ink);
@@ -369,49 +382,62 @@
   cursor: pointer;
 }
 
+/* DEC-830 wave-19 amendment: the panel is a fixed-width three-band card
+   (identity header / body / footer) rather than a padded+gapped list --
+   frame Chautauqua Speakers.dc.html:296-317. Each band owns its own
+   padding; the panel itself carries none. */
 .chq-participation-menu-panel {
   position: absolute;
   z-index: 20;
   top: calc(100% + 4px);
   left: 0;
-  min-width: 260px;
+  width: 420px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 8px;
   background: var(--chq-surface);
   border: 1px solid var(--chq-border);
   border-radius: 6px;
   box-shadow: inset 0 0 0 1px var(--chq-hairline);
 }
 
+/* Identity band: name + company/account line, closed by a 1px ink hairline
+   (frame :297-300 uses #1B1D17, i.e. --chq-ink, not the lighter
+   --chq-hairline the rest of the panel uses). */
 .chq-participation-menu-identity,
-.chq-participation-menu-identity-sub,
-.chq-participation-menu-footer {
+.chq-participation-menu-identity-sub {
   margin: 0;
-  padding: 2px 6px;
-  font-size: 11px;
-  color: var(--chq-muted);
 }
 
 .chq-participation-menu-identity {
-  font-weight: 700;
+  padding: 16px 20px 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   color: var(--chq-ink);
 }
 
-/* DEC-694 (wave-48 amendment c): the company / portal-account line is the
-   SECOND line of one two-line panel header, so the header's hairline divider
-   sits below this line rather than between it and the name above. */
 .chq-participation-menu-identity-sub {
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--chq-hairline);
-  margin-bottom: 4px;
+  padding: 0 20px 16px;
+  font-size: 12px;
+  color: var(--chq-muted);
+  border-bottom: 1px solid var(--chq-ink);
 }
 
+/* Body band: 8px 0 around edge-to-edge rows. */
+.chq-participation-menu-body {
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Footer band: top rule, sunk background, its own padding. */
 .chq-participation-menu-footer {
-  border-top: 1px solid var(--chq-hairline);
-  padding-top: 6px;
-  margin-top: 2px;
+  margin: 0;
+  padding: 14px 20px;
+  font-size: 12px;
+  color: var(--chq-muted);
+  border-top: 1px solid var(--chq-rule);
+  background: var(--chq-surface-sunk);
 }
 
 .chq-participation-menu-item {
@@ -419,11 +445,10 @@
   flex-direction: column;
   gap: 2px;
   text-align: left;
-  padding: 6px 8px;
+  padding: 11px 20px;
   border: none;
   background: none;
-  border-radius: 4px;
-  font-size: 13px;
+  font-size: 15px;
   cursor: pointer;
 }
 
@@ -437,13 +462,14 @@
    more "in force" than the row actually in force.
    B8 selected-row edge (DEC-745 amendment, w4-a; see styles.css for the
    shared pattern): the fill alone read as flat, so the item in force
-   also gets the 3px olive left edge, giving back 3px of its own 8px
-   left padding so the label doesn't shift. */
+   also gets the 3px olive left edge, giving back 3px of its own 20px
+   left padding so the label doesn't shift (wave-19: padding widened from
+   8px to 20px, the given-back amount stays 3px). */
 .chq-participation-menu-item.is-current {
   font-weight: 700;
   background: var(--chq-surface-sunk);
   border-left: 3px solid var(--chq-brand);
-  padding-left: 5px;
+  padding-left: 17px;
 }
 
 .chq-participation-menu-item-label {
@@ -454,20 +480,21 @@
 }
 
 .chq-participation-menu-item-caption {
-  font-size: 11px;
+  font-size: 12px;
+  line-height: 1.45;
   font-weight: 400;
   color: var(--chq-muted);
 }
 
+/* Frame :309 -- the NOW marker is plain text pushed to the row's right edge,
+   not a filled pill. */
 .chq-participation-menu-now {
   margin-left: auto;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  padding: 1px 5px;
-  border-radius: 3px;
-  color: var(--chq-on-brand);
-  background: var(--chq-brand);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--chq-brand);
 }
 
 .chq-participation-menu-action {
