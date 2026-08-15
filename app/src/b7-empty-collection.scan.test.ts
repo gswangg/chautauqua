@@ -73,30 +73,10 @@ const ALLOWLIST: Record<string, { count: number; reason: string }> = {
     reason:
       "the <p className=\"chq-empty\"> here wraps the boundary's own retry/back action row, reusing the class for spacing, not to state a zero-row result.",
   },
-  'pages/contacts/DirectoryRail.tsx': {
-    count: 3,
-    reason:
-      'top-companies/segments/duplicates rail lists are genuine zero-row collections under section labels -- a real DEC-678 violation, but outside w52-d\'s six named conversions; left for a future wave.',
-  },
-  'pages/contacts/DuplicatesView.tsx': {
-    count: 1,
-    reason:
-      "the duplicate-groups list's zero-row state is a genuine DEC-678 violation, outside w52-d's scope; left for a future wave.",
-  },
   'pages/contacts/MergePage.tsx': {
     count: 1,
     reason:
       "'Pick two or more duplicate records...' is an instruction for a page handed no selection, same shape as DeleteSubmissionsPage's -- not a collection, but not in w52-d's named scope to convert either.",
-  },
-  'pages/contacts/PipelineBoard.tsx': {
-    count: 1,
-    reason:
-      "the per-contact activity list's zero-row state is a genuine DEC-678 violation, outside w52-d's scope; left for a future wave.",
-  },
-  'pages/contacts/SegmentsPanel.tsx': {
-    count: 1,
-    reason:
-      "the saved-segments list's zero-row state is a genuine DEC-678 violation, outside w52-d's scope; left for a future wave.",
   },
   'pages/content/VersionList.tsx': {
     count: 1,

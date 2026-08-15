@@ -150,4 +150,39 @@ describe('ContactsApp + SegmentsPanel: deleting the applied segment (w1-c P3, DE
       ),
     ).toBe(false);
   });
+
+  // DEC-678 (w55-b): the saved-segments list carries no facet of its own to
+  // clear, so a zero-row settle is always the shared EmptyState's 'fresh'
+  // voice -- never the old bare, escape-less `chq-empty` line.
+  it('renders the shared EmptyState (fresh, no escape) when the account has no saved segments', async () => {
+    mockApi({
+      'GET /api/v1/contacts/stats': {
+        total: 1,
+        speakerCount: 0,
+        topCompanies: [],
+      },
+      'GET /api/v1/segments': () => listEnvelope([]),
+      'GET /api/v1/contacts': listEnvelope(CONTACTS),
+      'GET /api/v1/contacts/duplicates': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/contacts']}>
+        <ContactsApp />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Ada Lovelace' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('tab', { name: /^Segments/ }));
+
+    await waitFor(() => {
+      expect(screen.getByText('No saved segments yet.')).toBeInTheDocument();
+    });
+    expect(document.querySelector('.chq-empty')).not.toBeInTheDocument();
+    expect(document.querySelector('.chq-empty-block-fresh')).not.toBeNull();
+    expect(document.querySelector('.chq-empty-escape')).not.toBeInTheDocument();
+  });
 });

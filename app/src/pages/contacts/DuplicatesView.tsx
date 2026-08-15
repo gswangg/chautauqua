@@ -21,6 +21,7 @@ import { apiList, apiPost, ApiError } from '../../lib/api';
 import type { ListEnvelope } from '../../lib/api';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { DuplicateRow } from './DuplicateRow';
+import { EmptyState } from '../../components/EmptyState';
 import type { DuplicateGroup } from './types';
 import { MAX_PER_PAGE, MAX_PAGE } from '../../../../src/lib/pagination';
 import './contacts-panels.css';
@@ -161,13 +162,21 @@ export function DuplicatesView({ onMerged, initialNotice, initialDismissPairIds 
         </div>
       )}
       {loading && <DelayedLoading />}
-      {!loading && visibleGroups.length === 0 && <p className="chq-empty">No duplicate groups found.</p>}
+      {/* DEC-678: this list carries no filter/search axis of its own -- it
+          is the org's whole duplicate-detection pass minus this session's
+          own dismissals -- so a zero-row settle is always the 'fresh'
+          voice, never 'filtered'. */}
+      {!loading && visibleGroups.length === 0 && (
+        <EmptyState variant="fresh" what="No duplicate groups found." action={null} />
+      )}
 
-      <ul className="chq-contacts-duplicate-groups">
-        {visibleGroups.map((g, i) => (
-          <DuplicateRow key={i} group={g} onKeepBoth={keepBoth} />
-        ))}
-      </ul>
+      {!loading && visibleGroups.length > 0 && (
+        <ul className="chq-contacts-duplicate-groups">
+          {visibleGroups.map((g, i) => (
+            <DuplicateRow key={i} group={g} onKeepBoth={keepBoth} />
+          ))}
+        </ul>
+      )}
 
       {/* DEC-711 amendment (wave 40)/DEC-845: past 200 groups the loaded
           page and the stated total disagree unless every group is reachable
