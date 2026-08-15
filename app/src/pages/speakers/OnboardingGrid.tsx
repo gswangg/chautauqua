@@ -120,12 +120,19 @@ function findContactName(source: OnboardingGridResponse, contactId: string): str
   return row.contact.name;
 }
 
-/** True when any of the four narrowing predicates the server applies
- * (taskId/status/overdueOnly/inviteStatus) is set. `q` (free-text search)
- * is deliberately excluded -- the caption names a FILTER, not a search
- * term already visible in the search box itself. */
+/** True when any of the five narrowing predicates the server applies
+ * (q/taskId/status/overdueOnly/inviteStatus) is set. `q` (free-text search)
+ * IS a narrowing predicate -- buildGridQuery sends it to the server and it
+ * can empty the roster on its own (DEC-678 amendment, w3-d), so a search
+ * miss must render the FILTERED empty state, not the fresh one. */
 function hasActiveNarrowing(filters: GridFilterState): boolean {
-  return !!(filters.taskId || filters.status || filters.overdueOnly || filters.inviteStatus);
+  return !!(
+    filters.q.trim() ||
+    filters.taskId ||
+    filters.status ||
+    filters.overdueOnly ||
+    filters.inviteStatus
+  );
 }
 
 /** Prose naming what's currently narrowing the roster -- read straight off
@@ -133,6 +140,7 @@ function hasActiveNarrowing(filters: GridFilterState): boolean {
  * never name a predicate the request didn't actually apply. */
 function narrowingDescription(filters: GridFilterState, tasks: OnboardingTask[]): string {
   const parts: string[] = [];
+  if (filters.q.trim()) parts.push(`matching "${filters.q.trim()}"`);
   if (filters.taskId) {
     const task = tasks.find((t) => t.id === filters.taskId);
     parts.push(task ? `task "${task.title}"` : 'a specific task');
@@ -357,12 +365,15 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     setPage(1);
   }
 
-  // DEC-678 amendment (B7, wave 47): the 'filtered' EmptyState's escape --
-  // resets exactly the four narrowing predicates hasActiveNarrowing reads
-  // (taskId/status/overdueOnly/inviteStatus), leaving free-text `q` alone
-  // since narrowingDescription never named it as a narrowing facet either.
+  // DEC-678 amendment (B7, wave 47; w3-d): the 'filtered' EmptyState's
+  // escape -- resets every narrowing predicate hasActiveNarrowing reads
+  // (q/taskId/status/overdueOnly/inviteStatus). `q` is included: it's a
+  // narrowing predicate like the rest, and leaving it set left the escape
+  // link unable to actually restore the full roster it claims to restore.
+  // The search input is bound straight to filters.q (GridFilters), so
+  // clearing it here clears the box too -- no separate DOM state to sync.
   function clearNarrowingFacets() {
-    handleFiltersChange({ ...filters, taskId: null, status: null, overdueOnly: false, inviteStatus: null });
+    handleFiltersChange({ ...filters, q: '', taskId: null, status: null, overdueOnly: false, inviteStatus: null });
   }
 
   const now = Date.now();
