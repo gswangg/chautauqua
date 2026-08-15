@@ -17,7 +17,7 @@ import { FormFieldsSection, FieldRulesScript } from "../../../views/form-render"
 import { allowedUploadExtensions, isValidFileKind, MAX_COMMENT_BODY_LENGTH, uploadHintText } from "../../../domain/files";
 import { CSRF_COOKIE_NAME } from "../../../auth/cookies";
 import { formatCalendarDate, formatEventDateTime } from "../../../lib/event-time";
-import { effectiveAssignmentDueDate } from "../../../domain/task-due";
+import { effectiveAssignmentDueDayLabel } from "../../../domain/task-due";
 import { renderMarkdown } from "../../../lib/markdown";
 import type { FileCommentRow } from "../../../server/repo/files";
 import { PROFILE_TASK_TITLE } from "../../../domain/acceptance";
@@ -218,7 +218,7 @@ export function TaskRow(props: {
   // DEC-826: a task cannot be late before it was assigned — print the
   // effective due date, the same one the organizer's grid and the
   // reminder email already use.
-  const effectiveDue = effectiveAssignmentDueDate(t.dueDate, t.assignedAt);
+  const effectiveDue = effectiveAssignmentDueDayLabel(t.dueDate, t.assignedAt, t.timezone);
   // Mirrors src/routes/portal/tasks.tsx's kind fallback (deliverableKind ??
   // 'handout') so both the upload form and the replace form below advertise
   // the same tier validateUpload actually enforces for this assignment
@@ -447,9 +447,9 @@ export function TasksPage(props: {
                 </span>
                 <span class="chq-flag">To do</span>
               </div>
-              {effectiveAssignmentDueDate(t.dueDate, t.assignedAt) ? (
+              {effectiveAssignmentDueDayLabel(t.dueDate, t.assignedAt, t.timezone) ? (
                 <span class="chq-portal-due">
-                  Due {formatCalendarDate(effectiveAssignmentDueDate(t.dueDate, t.assignedAt)!)}
+                  Due {formatCalendarDate(effectiveAssignmentDueDayLabel(t.dueDate, t.assignedAt, t.timezone)!)}
                 </span>
               ) : null}
               <div class="chq-portal-actions">

@@ -26,7 +26,7 @@ import {
 import type { KVStore } from "../../../auth/claim";
 import { resolvePortalLinks } from "../portal-link";
 import { findAccountUserIds } from "../comms";
-import { ASSIGNED_LATE_GRACE_DAYS, effectiveAssignmentDueDate } from "../../../domain/task-due";
+import { ASSIGNED_LATE_GRACE_DAYS, effectiveAssignmentDueDayLabel } from "../../../domain/task-due";
 import { ApiError } from "../../http";
 import { zonedMinutesToUtc } from "../../../lib/timezone";
 import { chaseableContactExists } from "./crud";
@@ -139,12 +139,16 @@ export async function listOutstandingForEvent(
   // DEC-801: dueDate reported on each row is the assignment's EFFECTIVE due
   // date, not the raw task.dueDate — so reminder emails and compose's
   // {due_date} agree with the grid badge/cell, which judge against the same
-  // effectiveAssignmentDueDate. The row SHAPE (dueDate: Date | null) is
-  // unchanged, only the value.
+  // day-label rule. The row SHAPE (dueDate: Date | null) is unchanged, only
+  // the value. DEC-801 (wave 38 amendment): the grace branch is expanded via
+  // effectiveAssignmentDueDayLabel into the event-local calendar day, not
+  // the raw UTC instant — this is a reader-facing due date, never the
+  // private instant form.
   return rows.map((r): OutstandingRow => {
-    const effective = effectiveAssignmentDueDate(
+    const effective = effectiveAssignmentDueDayLabel(
       r.dueDate ? r.dueDate.getTime() : null,
       r.assignmentCreatedAt.getTime(),
+      r.timezone,
     );
     return {
       assignmentId: r.assignmentId,

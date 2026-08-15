@@ -6,7 +6,7 @@
 // this single component; wrapping markup (a bare <td> vs. a labelled
 // .chq-speakers-card-task) stays with the caller, since it differs by
 // breakpoint.
-import { assignmentDaysLate, effectiveAssignmentDueDate } from '../../../../src/domain/task-due';
+import { assignmentDaysLate, effectiveAssignmentDueDayLabel } from '../../../../src/domain/task-due';
 import { countOf } from '../../lib/plural';
 import { isCellOverdue } from './overdue';
 import type { AssignmentStatus, InviteStatus, OnboardingCell, OnboardingTask } from './types';
@@ -135,7 +135,7 @@ export function TaskCell({
   // too -- weight/rule, never a new colour -- so the reverted cell keeps
   // announcing itself until the banner is dismissed.
   const cellClass = statusCellClass(cell.status, overdue || notSaved);
-  const effectiveDueDate = effectiveAssignmentDueDate(task.dueDate, cell.assignedAt);
+  const effectiveDueDate = effectiveAssignmentDueDayLabel(task.dueDate, cell.assignedAt, timezone);
   const overdueTitleText = overdue && effectiveDueDate !== null ? overdueTitle(task, cell, now, timezone) : null;
   const cellTitleText = cellDueTitle(cell.status, overdueTitleText, effectiveDueDate, now);
   const muted = (notChased && cell.status !== 'complete') || !interactive;

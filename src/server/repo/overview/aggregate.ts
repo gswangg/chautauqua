@@ -4,7 +4,7 @@
 
 import type { PlacedSession } from "../../../domain/schedule";
 import { findConflicts } from "../../../domain/schedule";
-import { assignmentDaysLate, effectiveAssignmentDueDate } from "../../../domain/task-due";
+import { assignmentDaysLate, effectiveAssignmentDueDayLabel } from "../../../domain/task-due";
 import type {
   OverviewPayload,
   FileRowForPick,
@@ -55,8 +55,9 @@ export function minNonNull(values: (number | null | undefined)[]): number | null
 }
 
 /** DEC-370/DEC-826 overdueTasks rows: derives the effective due date
- * (effectiveAssignmentDueDate — a task can't be late before it was
- * assigned) and attaches `daysLate` (DEC-801 wave 63 amendment:
+ * (effectiveAssignmentDueDayLabel — a task can't be late before it was
+ * assigned, and a reader-facing due date is always a day label, never the
+ * private instant form) and attaches `daysLate` (DEC-801 wave 63 amendment:
  * assignmentDaysLate, the ONE count that agrees with the timezone-aware
  * isAssignmentOverdue predicate that selected this set — never the old
  * UTC-bare `Math.floor((now - dueDate) / DAY_MS)`, which could disagree
@@ -64,7 +65,7 @@ export function minNonNull(values: (number | null | undefined)[]): number | null
  * already selected as overdue). */
 export function buildOverdueTaskRows(rows: OverdueTaskInputRow[], now: number, timeZone: string): OverdueTaskRow[] {
   return rows.map(({ taskDueDate, assignedAt, ...rest }) => {
-    const dueDate = effectiveAssignmentDueDate(taskDueDate, assignedAt)!;
+    const dueDate = effectiveAssignmentDueDayLabel(taskDueDate, assignedAt, timeZone)!;
     return {
       ...rest,
       dueDate,

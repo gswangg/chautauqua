@@ -1,24 +1,66 @@
 import { describe, expect, it } from "vitest";
-import { ASSIGNED_LATE_GRACE_DAYS, assignmentDaysLate, effectiveAssignmentDueDate, isAssignmentOverdue } from "../src/domain/task-due";
+import {
+  ASSIGNED_LATE_GRACE_DAYS,
+  assignmentDaysLate,
+  effectiveAssignmentDueDayLabel,
+  isAssignmentOverdue,
+} from "../src/domain/task-due";
+import { dayLabelOfInstant } from "../src/lib/timezone";
 
 const GRACE_MS = ASSIGNED_LATE_GRACE_DAYS * 24 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-describe("effectiveAssignmentDueDate (DEC-801)", () => {
+// DEC-801 (wave 38 amendment): effectiveAssignmentDueDayLabel is the ONE
+// reader-facing conversion — every surface that displays or emails a due
+// date must call it, never the private instant helper directly.
+describe("effectiveAssignmentDueDayLabel (DEC-801 wave-38 amendment)", () => {
   it("null taskDueDate stays null", () => {
-    expect(effectiveAssignmentDueDate(null, 1_000_000)).toBeNull();
+    expect(effectiveAssignmentDueDayLabel(null, 1_000_000, "UTC")).toBeNull();
   });
 
-  it("a due date at or after assignment creation is returned unchanged", () => {
-    expect(effectiveAssignmentDueDate(1_000_000, 1_000_000)).toBe(1_000_000);
-    expect(effectiveAssignmentDueDate(2_000_000, 1_000_000)).toBe(2_000_000);
+  it("NEGATIVE CONTROL: a due date at or after assignment creation is returned unchanged (not re-zoned)", () => {
+    expect(effectiveAssignmentDueDayLabel(1_000_000, 1_000_000, "America/Los_Angeles")).toBe(1_000_000);
+    expect(effectiveAssignmentDueDayLabel(2_000_000, 1_000_000, "Asia/Tokyo")).toBe(2_000_000);
+    // The raw taskDueDate is already a day label — a timezone that would
+    // shift the instant's own calendar day must NOT change the result.
+    const dueDayLabel = Date.UTC(2026, 0, 15); // UTC-midnight day label
+    expect(effectiveAssignmentDueDayLabel(dueDayLabel, dueDayLabel, "Asia/Tokyo")).toBe(dueDayLabel);
+    expect(effectiveAssignmentDueDayLabel(dueDayLabel, dueDayLabel, "America/Los_Angeles")).toBe(dueDayLabel);
   });
 
-  it("a due date before assignment creation shifts to assignedAt + grace days", () => {
-    const assignedAt = 1_000_000;
-    const graceMs = ASSIGNED_LATE_GRACE_DAYS * 24 * 60 * 60 * 1000;
-    expect(effectiveAssignmentDueDate(assignedAt - 1, assignedAt)).toBe(assignedAt + graceMs);
-    expect(effectiveAssignmentDueDate(0, assignedAt)).toBe(assignedAt + graceMs);
+  it.each(["America/Los_Angeles", "UTC", "Asia/Tokyo"])(
+    "grace branch: returns a UTC-midnight day-label value for %s",
+    (tz) => {
+      const assignedAt = Date.UTC(2026, 0, 1, 20, 0, 0);
+      const result = effectiveAssignmentDueDayLabel(assignedAt - 1, assignedAt, tz);
+      expect(result).not.toBeNull();
+      expect(result! % 86_400_000).toBe(0);
+    },
+  );
+
+  it.each(["America/Los_Angeles", "UTC", "Asia/Tokyo"])(
+    "grace branch equals dayLabelOfInstant(assignedAt + GRACE_MS, tz) for %s",
+    (tz) => {
+      const assignedAt = Date.UTC(2026, 0, 1, 20, 0, 0);
+      const result = effectiveAssignmentDueDayLabel(assignedAt - 1, assignedAt, tz);
+      expect(result).toBe(dayLabelOfInstant(assignedAt + GRACE_MS, tz));
+    },
+  );
+
+  it("reminders/grid agreement: a late-assigned task's effective due day renders the event-local calendar day, not the UTC day the raw instant falls in", () => {
+    // Assignment created 2026-01-10 20:00 America/Los_Angeles (PST, UTC-8)
+    // == 2026-01-11 04:00 UTC. The task's own due date predates the
+    // assignment, so the grace branch fires.
+    const assignedAt = Date.UTC(2026, 0, 11, 4, 0, 0);
+    const staleDueDate = assignedAt - DAY_MS;
+    const result = effectiveAssignmentDueDayLabel(staleDueDate, assignedAt, "America/Los_Angeles");
+    // assignedAt + GRACE_MS = 2026-01-18 04:00 UTC == 2026-01-17 20:00 PST,
+    // so the event-local calendar day is Jan 17 -- one day EARLIER than the
+    // UTC calendar day (Jan 18) the raw instant falls in.
+    const rawInstant = assignedAt + GRACE_MS;
+    expect(dayLabelOfInstant(rawInstant, "UTC")).toBe(Date.UTC(2026, 0, 18));
+    expect(result).toBe(Date.UTC(2026, 0, 17));
+    expect(result).not.toBe(dayLabelOfInstant(rawInstant, "UTC"));
   });
 });
 

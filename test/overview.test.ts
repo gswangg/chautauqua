@@ -16,6 +16,7 @@ import {
 import { getOnboardingGrid } from "../src/server/repo/tasks";
 import { overdueAssignmentConditions } from "../src/server/repo/tasks/crud";
 import { assignmentDaysLate } from "../src/domain/task-due";
+import { dayLabelOfInstant } from "../src/lib/timezone";
 import { findConflicts, type PlacedSession } from "../src/domain/schedule";
 import type { Db } from "../src/server/context";
 import { asc, desc } from "drizzle-orm";
@@ -493,7 +494,13 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     const now = 60 * 24 * 60 * 60 * 1000;
     const rawTaskDueDate = new Date(now - 42 * 24 * 60 * 60 * 1000); // 42 days "late" by the raw date
     const assignedAt = new Date(now - 9 * 24 * 60 * 60 * 1000); // assigned after the raw due date
-    const expectedEffectiveDue = assignedAt.getTime() + 7 * 24 * 60 * 60 * 1000; // ASSIGNED_LATE_GRACE_DAYS
+    // DEC-801 (wave 38 amendment): the effective due date is a reader-facing
+    // day label, not the raw grace-window instant — it must be collapsed
+    // into the event-local calendar day via dayLabelOfInstant.
+    const expectedEffectiveDue = dayLabelOfInstant(
+      assignedAt.getTime() + 7 * 24 * 60 * 60 * 1000, // ASSIGNED_LATE_GRACE_DAYS
+      "America/New_York",
+    );
     const db = makeFakeDb(
       emptyResponses({
         speakerAgg: [{ outstandingContacts: 1, nextDue: rawTaskDueDate.getTime() }],
