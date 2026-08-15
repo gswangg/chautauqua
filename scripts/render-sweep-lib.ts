@@ -168,10 +168,14 @@ export function formatSummary(results: readonly RouteResult[]): string {
 
 // ---------------------------------------------------------------------------
 // DEC-253 mobile pass (390x844): a second sweep over the no-login/portal
-// surfaces asserting zero page-level horizontal overflow and a minimum
-// tap-target height on primary nav/filter/submit controls. Kept separate
-// from RouteResult/evaluateRoute above since the observations are different
-// (viewport geometry, not console/pageerror events) — same PASS/FAIL table
+// surfaces asserting zero page-level horizontal overflow, a minimum
+// tap-target height on primary nav/filter/submit controls, and (wave-30
+// amendment) zero collected console/pageerror events. Kept as a parallel
+// evaluator to RouteResult/evaluateRoute above (rather than reusing it
+// outright) because a desktop pass CANNOT see a phone-only component's
+// errors: components like PhoneAgenda mount only at this 390px viewport,
+// so their console/pageerror events never reach the desktop sweep — the
+// mobile pass is the only observer for that surface, same PASS/FAIL table
 // + summary shape for a consistent gate report.
 // ---------------------------------------------------------------------------
 
@@ -223,6 +227,14 @@ export interface MobileObservation {
    * as overflowOffenders excluding overflow-x scrollers). Already filtered
    * against KNOWN_CLIP_EXCEPTIONS by the caller. */
   clipOffenders: string[];
+  /** DEC-253 wave-30 amendment: collected console 'error' events for this
+   * mobile-viewport page load, same convention as RouteResult.consoleErrors
+   * above — phone-only components (e.g. PhoneAgenda) mount only at this
+   * viewport width, so the desktop pass never sees their console errors. */
+  consoleErrors: string[];
+  /** DEC-253 wave-30 amendment: collected uncaught page 'pageerror' events,
+   * same convention as RouteResult.pageErrors. */
+  pageErrors: string[];
 }
 
 export interface MobileRouteResult {
@@ -232,6 +244,13 @@ export interface MobileRouteResult {
   viewportWidth: number;
   overflowPx: number;
   minControlHeight: number | null;
+  /** DEC-253 wave-30 amendment: console errors that survived
+   * filterExpectedStatusConsoleNoise, printed in the failure reason and
+   * available to the report the same way RouteResult.consoleErrors is. */
+  consoleErrors: string[];
+  /** DEC-253 wave-30 amendment: uncaught page errors observed at this
+   * viewport, same convention as RouteResult.pageErrors. */
+  pageErrors: string[];
   ok: boolean;
   failureReason?: string;
 }
@@ -268,6 +287,17 @@ export function evaluateMobileRoute(entry: MobileRouteEntry, observed: MobileObs
   if (observed.clipOffenders.length > 0) {
     reasons.push(`${observed.clipOffenders.length} vertical clip offender(s): ${observed.clipOffenders.join(" | ")}`);
   }
+  // DEC-253 wave-30 amendment: same expected-status noise filter as the
+  // desktop pass — a mobile row with a deliberate non-200 expectedStatus
+  // (e.g. /portal/preview's existence-hiding 404) legitimately logs the
+  // browser's own failed top-level navigation console error.
+  const consoleErrors = filterExpectedStatusConsoleNoise(entry, observed.consoleErrors);
+  if (consoleErrors.length > 0) {
+    reasons.push(`${consoleErrors.length} console error(s): ${consoleErrors.join(" | ")}`);
+  }
+  if (observed.pageErrors.length > 0) {
+    reasons.push(`${observed.pageErrors.length} pageerror(s): ${observed.pageErrors.join(" | ")}`);
+  }
   return {
     entry,
     status: observed.status,
@@ -275,6 +305,8 @@ export function evaluateMobileRoute(entry: MobileRouteEntry, observed: MobileObs
     viewportWidth: observed.viewportWidth,
     overflowPx,
     minControlHeight: observed.minControlHeight,
+    consoleErrors,
+    pageErrors: observed.pageErrors,
     ok: reasons.length === 0,
     failureReason: reasons.length > 0 ? reasons.join("; ") : undefined,
   };
@@ -290,6 +322,8 @@ export function mobileErrorResult(entry: MobileRouteEntry, message: string): Mob
     viewportWidth: 0,
     overflowPx: 0,
     minControlHeight: null,
+    consoleErrors: [],
+    pageErrors: [],
     ok: false,
     failureReason: message,
   };
@@ -306,6 +340,8 @@ export const EMPTY_MOBILE_OBSERVATION: MobileObservation = {
   overflowOffenders: [],
   minControlSelector: null,
   clipOffenders: [],
+  consoleErrors: [],
+  pageErrors: [],
 };
 
 /** True if every mobile route result passed. */

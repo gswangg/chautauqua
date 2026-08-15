@@ -458,6 +458,76 @@ describe("evaluateMobileRoute (DEC-253)", () => {
       "span.chq-foo spill=25px (scrollWidth 415 > clientWidth 390)",
     );
   });
+
+  // DEC-253 wave-30 amendment: mobile pass now carries its own console/
+  // pageerror channel (previously only the desktop pass had one) — a
+  // phone-only component (e.g. PhoneAgenda) mounts only at this 390px
+  // viewport, so the desktop sweep can never observe its errors.
+  it("(DEC-253 w30) passes with the new console/pageerror fields empty", () => {
+    const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
+      status: 200,
+      scrollWidth: 390,
+      viewportWidth: 390,
+      minControlHeight: 44,
+      consoleErrors: [],
+      pageErrors: [],
+    });
+    expect(result.ok).toBe(true);
+    expect(result.consoleErrors).toEqual([]);
+    expect(result.pageErrors).toEqual([]);
+    expect(result.failureReason).toBeUndefined();
+  });
+
+  it("(DEC-253 w30) a console error fails the row with the desktop-shaped reason", () => {
+    const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
+      status: 200,
+      scrollWidth: 390,
+      viewportWidth: 390,
+      minControlHeight: 44,
+      consoleErrors: ["TypeError: cannot read property 'x' of undefined"],
+      pageErrors: [],
+    });
+    expect(result.ok).toBe(false);
+    expect(result.consoleErrors).toEqual(["TypeError: cannot read property 'x' of undefined"]);
+    expect(result.failureReason).toMatch(
+      /1 console error\(s\): TypeError: cannot read property 'x' of undefined/,
+    );
+  });
+
+  it("(DEC-253 w30) a page error fails the row", () => {
+    const result = evaluateMobileRoute(ENTRY, {
+      ...EMPTY_MOBILE_OBSERVATION,
+      status: 200,
+      scrollWidth: 390,
+      viewportWidth: 390,
+      minControlHeight: 44,
+      consoleErrors: [],
+      pageErrors: ["Uncaught ReferenceError: foo is not defined"],
+    });
+    expect(result.ok).toBe(false);
+    expect(result.pageErrors).toEqual(["Uncaught ReferenceError: foo is not defined"]);
+    expect(result.failureReason).toMatch(
+      /1 pageerror\(s\): Uncaught ReferenceError: foo is not defined/,
+    );
+  });
+
+  it("(DEC-253 w30) a non-200 expectedStatus route still passes when its only console noise is the expected-status noise the desktop filter drops", () => {
+    const entry: MobileRouteEntry = { path: "/portal/preview", role: "speaker", expectedStatus: 404 };
+    const result = evaluateMobileRoute(entry, {
+      ...EMPTY_MOBILE_OBSERVATION,
+      status: 404,
+      scrollWidth: 390,
+      viewportWidth: 390,
+      minControlHeight: 44,
+      consoleErrors: ["Failed to load resource: the server responded with a status of 404 (Not Found)"],
+      pageErrors: [],
+    });
+    expect(result.ok).toBe(true);
+    expect(result.consoleErrors).toEqual([]);
+    expect(result.failureReason).toBeUndefined();
+  });
 });
 
 describe("allMobilePassed / formatMobileSummary / formatMobileResultsTable", () => {

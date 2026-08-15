@@ -1020,12 +1020,24 @@ async function visitMobileRoute(
   const page = await context.newPage();
   // DEC-411: must run before the in-page evaluation below.
   await page.addInitScript({ content: PAGE_EVALUATE_KEEPNAMES_SHIM });
+  // DEC-253 wave-30 amendment: same console/pageerror collectors as the
+  // desktop pass (visitRoute above) — a phone-only component (e.g.
+  // PhoneAgenda) mounts only at this 390px viewport, so the desktop pass
+  // never observes its console/pageerror events.
+  const consoleErrors: string[] = [];
+  const pageErrors: string[] = [];
+  page.on("console", (msg: ConsoleMessage) => {
+    if (msg.type() === "error") consoleErrors.push(msg.text());
+  });
+  page.on("pageerror", (err: Error) => {
+    pageErrors.push(err.message);
+  });
   let status = 0;
   try {
     const res = await page.goto(`${baseUrl}${entry.path}`, { waitUntil: "networkidle" });
     status = res ? res.status() : 0;
-  } catch {
-    status = 0;
+  } catch (err) {
+    pageErrors.push(err instanceof Error ? err.message : String(err));
   }
 
   const measured = await page.evaluate((selector: string) => {
@@ -1125,7 +1137,7 @@ async function visitMobileRoute(
   }
 
   await page.close();
-  return evaluateMobileRoute(entry, { status, ...measured, clipOffenders });
+  return evaluateMobileRoute(entry, { status, ...measured, clipOffenders, consoleErrors, pageErrors });
 }
 
 async function main(): Promise<void> {
