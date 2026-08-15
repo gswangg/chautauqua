@@ -4632,3 +4632,63 @@ RESULT: PASS (reviewer queue). `plan results (page 1)` remains a
 pre-existing, out-of-scope FAIL (72.9/50.3/57.3ms adj across the same
 three runs), unowned and unchanged by this task — DEC-440-foreclosed from
 a SQL-aggregate rewrite.
+## 2026-08-15 task-w35-a — perf-smoke @ a0b8501b
+
+INVALIDATED BY: src/** app/src/** migrations/** package.json
+
+TIER-0 MEASUREMENT LANE, LOG-ONLY (DEC-644 wave-35 amendment, DEC-453).
+Fixed nothing under src/, app/src/, scripts/, test/, migrations/, or
+package.json. `git rev-parse HEAD` at a0b8501b2e3cc6e57d6525d41ba1554c5943c483,
+first command run. Took the first perf reading at a boundary carrying
+BOTH review-side fixes merged together: task-w32-a's `plan results (page
+1)` fix (`src/routes/review/shared.ts` `rankPlanResults`/
+`hydrateResultsRows`, `src/routes/review/plans-progress.ts`) and
+task-w32-b's `reviewer queue` fix (`src/routes/review/reviewer.ts`'s
+post-slice hydration wave over `pagedIds UNION recusedIds`) — grep-
+confirmed both present in the tree at this sha. Each prior reading
+(docs/verification-log.md:4590-4596 for task-w32-a, :4625-4634 for
+task-w32-b) was taken with the *other* lane's fix absent (task-w32-a
+measured with its diff stashed in/out on top of pre-w32-b code;
+task-w32-b's own log states `plan results (page 1)` remained a FAIL
+"out-of-scope" and "unchanged" — implying reviewer.ts's fix wasn't yet
+merged onto shared.ts's fix, or vice versa, at either measurement).
+
+Sequence run in order: `npm run build` (green) -> `npm run db:migrate`
+(43 migrations, all clean) -> `npm run seed` (writes the demo organizer
+credentials `scripts/perf-smoke.ts`'s `login()` reads from
+`docs/fixtures/sample-data.json` — required, per the omission trap at
+docs/verification-log.md:3943-3949) -> `npm run perf:seed` (perf-2k:
+2000 submissions, 800 contacts) -> `npx wrangler dev --port 8951
+--local` (confirmed up, `200` on `GET /`) -> `PERF_URL=http://localhost:8951
+npm run perf:smoke`, three times, re-seeding (`npm run seed` -> `npm run
+perf:seed` -> restart server) between each run since the measured pass
+itself writes state (bulk status change, submission PATCH, etc.) and a
+bare re-run against the same D1 state errors outright rather than
+producing a comparable number. Server killed after each run and after
+the final run. Full per-row, three-run table plus overhead-floor/raw-
+ceiling columns: docs/verification-log/task-w35-a-perf-smoke-a0b8501b.md.
+
+MANDATE ROWS AT a0b8501b (33 checks total, matching perf-smoke.ts's
+~33 registered rows):
+- `reviewer queue`: run1 46.4/44.2ms adj PASS, run2 44.0/40.0ms adj PASS,
+  run3 45.1/42.1ms adj PASS — all 3 PASS vs 50ms read budget, with the
+  `plan results` fix simultaneously present (not stashed out).
+- `plan results (page 1)`: run1 26.1/23.9ms adj PASS, run2 24.9/20.9ms
+  adj PASS, run3 30.3/27.4ms adj PASS — all 3 PASS vs 50ms read budget,
+  with the `reviewer queue` fix simultaneously present (not stashed out).
+This is the first reading of either row taken at a boundary carrying
+both fixes together; the open branch-local-only status flagged at
+docs/verification-log.md:4590-4596 and :4625-4634 is now closed for both
+rows at this sha.
+
+NON-MANDATE FINDING (logged only, not fixed — outside this lane's
+DEC-644 mandate of exactly these two rows): `plan progress (page 1)` (a
+distinct row served by `GET /api/v1/plans/:id/progress`, also touched by
+task-w32-a's Promise.all collapse) is unstable at a0b8501b: FAIL 55.3/
+53.1ms (run1), PASS 47.1/43.2ms (run2), FAIL 60.0/57.0ms (run3), all vs
+the 50ms read budget. All other 31 non-mandate rows PASS all 3 runs.
+
+RESULT: PASS (reviewer queue, all 3 runs) / PASS (plan results (page 1),
+all 3 runs) at a0b8501b, both mandate rows read at a boundary carrying
+both DEC-644-referenced review-side fixes simultaneously.
+OPEN ITEMS: 1
