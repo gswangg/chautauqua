@@ -593,8 +593,8 @@ export function SubmissionDetailPage() {
       // Loud rollback: refetch the server's actual set rather than trusting
       // the pre-write snapshot, which may itself be stale. DEC-958 (wave 66
       // amendment): a named-field refusal (trackIds: 'Max 1000' / 'Unknown
-      // track id(s): ...') marks the track editor instead of the bare
-      // sentence alone.
+      // track ids: ...', the server's plural()-built message) marks the track
+      // editor instead of the bare sentence alone.
       setDetail(previous);
       if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
         setTracksFieldErrors(err.fields);
@@ -1192,7 +1192,7 @@ export function SubmissionDetailPage() {
               ) : (
                 <div className="chq-detail-track-editor" id="submission-track-editor">
                   {/* DEC-958 (wave 66 amendment): a named-field trackIds
-                      refusal (trackIds:'Max 1000'|'Unknown track id(s): ...')
+                      refusal (trackIds:'Max 1000'|'Unknown track ids: ...')
                       marks the editor instead of collapsing to tracksError's
                       bare sentence alone. */}
                   <SectionFieldErrors
