@@ -10,7 +10,7 @@ import type { AppEnv } from "../../server/env";
 import { speakerGate, PortalLayout, PortalBackLink } from "./shared";
 import { PublicEmptyState } from "../public/empty-state";
 import { formatCalendarDate, formatDayMedium, formatEventDate, formatScheduleSlotLabel } from "../../lib/event-time";
-import { effectiveAssignmentDueDate } from "../../domain/task-due";
+import { effectiveAssignmentDueDate, isAssignmentOverdue } from "../../domain/task-due";
 import { countOf } from "../../domain/count-copy";
 import { publicRoomLabel } from "../../domain/schedule";
 import { sessionFormatLabel } from "../../lib/session-vocabulary";
@@ -130,7 +130,7 @@ function WorklistTaskRow(props: { task: PortalTaskAssignment; now: number }) {
   // date and the overdue mark both use the effective due date, the same
   // one the organizer's grid and the reminder email already use.
   const effectiveDue = effectiveAssignmentDueDate(t.dueDate, t.assignedAt);
-  const overdue = effectiveDue !== null && effectiveDue < now;
+  const overdue = isAssignmentOverdue(t.dueDate, t.assignedAt, now, t.timezone);
   return (
     <div class="chq-portal-row">
       <div class="chq-portal-row-head">

@@ -917,6 +917,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                           cell={row.cells.find((c) => c.taskId === task.id)}
                           contactName={row.contact.name}
                           now={now}
+                          timezone={grid.timezone}
                           onToggle={toggleCell}
                           onOpenResponse={openResponse}
                           notChased={declinedOnly}
@@ -995,6 +996,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                         cell={row.cells.find((c) => c.taskId === task.id)}
                         contactName={row.contact.name}
                         now={now}
+                        timezone={grid.timezone}
                         onToggle={toggleCell}
                         onOpenResponse={openResponse}
                         notChased={declinedOnly}

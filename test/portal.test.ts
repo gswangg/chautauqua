@@ -175,6 +175,43 @@ describe("portal worklist due date (DEC-826 effective date)", () => {
     const rowEnd = html.indexOf("chq-portal-actions", rowStart);
     expect(html.slice(rowStart, rowEnd)).not.toContain("Overdue");
   });
+
+  // DEC-801 (wave 58 amendment, J6): task.dueDate is a UTC-midnight day
+  // label, not an instant. A raw compare flags a task overdue as soon as
+  // UTC midnight of the due day passes — hours before that calendar day
+  // has actually elapsed in a non-UTC event's own timezone. The due day is
+  // "16 Jan" (day label = Jan 16 00:00 UTC); this request happens later
+  // that same UTC day (Jan 16 18:00 UTC), which the old raw `dueDate < now`
+  // compare would already call overdue, but the event's own timezone
+  // (America/Los_Angeles, PST/UTC-8) doesn't finish 16 Jan locally until
+  // Jan 17 08:00 UTC — so the worklist must not mark it overdue yet.
+  it("does not mark a task overdue before its due day has elapsed in the event's own (non-UTC) timezone", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(Date.UTC(2026, 0, 16, 18, 0, 0));
+    try {
+      const dueDate = Date.UTC(2026, 0, 16);
+      const assignedAt = Date.UTC(2026, 0, 1);
+      mockTasks = [
+        taskFixture({
+          id: "a1",
+          title: "Submit slides",
+          status: "pending",
+          dueDate,
+          assignedAt,
+          timezone: "America/Los_Angeles",
+        }),
+      ];
+      mockInvitations = [];
+      const app = await buildPortalApp();
+      const res = await app.request("/portal");
+      const html = await res.text();
+      const rowStart = html.indexOf("Submit slides");
+      const rowEnd = html.indexOf("chq-portal-actions", rowStart);
+      expect(html.slice(rowStart, rowEnd)).not.toContain("Overdue");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("portal home rebuild to the mock (w15-b)", () => {

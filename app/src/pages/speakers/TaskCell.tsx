@@ -83,6 +83,7 @@ interface TaskCellProps {
   cell: OnboardingCell | undefined;
   contactName: string;
   now: number;
+  timezone: string;
   onToggle: (assignmentId: string, status: AssignmentStatus) => void;
   onOpenResponse: (assignmentId: string, contactName: string) => void;
   // DEC-829 amendment: true for a row whose every participation has
@@ -116,6 +117,7 @@ export function TaskCell({
   cell,
   contactName,
   now,
+  timezone,
   onToggle,
   onOpenResponse,
   notChased = false,
@@ -126,7 +128,7 @@ export function TaskCell({
     return <span className="chq-speakers-cell-none">&mdash;</span>;
   }
 
-  const overdue = isCellOverdue(cell, task, now);
+  const overdue = isCellOverdue(cell, task, now, timezone);
   // DEC-265 amendment: a rolled-back write borrows the overdue class family
   // too -- weight/rule, never a new colour -- so the reverted cell keeps
   // announcing itself until the banner is dismissed.

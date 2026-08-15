@@ -40,6 +40,7 @@ const GRID: OnboardingGridResponse = {
   page: 1,
   perPage: 50,
   counts: { speakers: 2, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
+      timezone: 'UTC',
 };
 
 const DETAIL: AssignmentResponseDetail = {
@@ -92,6 +93,7 @@ describe('OnboardingGrid: DEC-730 one status-control family', () => {
       page: 1,
       perPage: 50,
       counts: { speakers: 2, outstandingRequired: 1, overdue: 1, outstandingContacts: 1 },
+      timezone: 'UTC',
     };
 
     mockApi({
@@ -415,6 +417,7 @@ describe('OnboardingGrid: DEC-852 due-date visibility', () => {
       page: 1,
       perPage: 50,
       counts: { speakers: 1, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
+      timezone: 'UTC',
     };
 
     mockApi({
@@ -449,6 +452,7 @@ describe('OnboardingGrid: DEC-852 due-date visibility', () => {
       page: 1,
       perPage: 50,
       counts: { speakers: 1, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
+      timezone: 'UTC',
     };
 
     mockApi({
@@ -494,6 +498,7 @@ describe('OnboardingGrid: DEC-852 due-date visibility', () => {
       page: 1,
       perPage: 50,
       counts: { speakers: 1, outstandingRequired: 2, overdue: 0, outstandingContacts: 1 },
+      timezone: 'UTC',
     };
 
     mockApi({
@@ -738,6 +743,7 @@ describe('OnboardingGrid: DEC-920 file link names the file', () => {
       page: 1,
       perPage: 50,
       counts: { speakers: 1, outstandingRequired: 0, overdue: 0, outstandingContacts: 0 },
+      timezone: 'UTC',
     };
 
     mockApi({
@@ -792,6 +798,7 @@ describe('OnboardingGrid: DEC-920 file link names the file', () => {
       page: 1,
       perPage: 50,
       counts: { speakers: 1, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
+      timezone: 'UTC',
     };
 
     mockApi({
@@ -839,6 +846,7 @@ describe('OnboardingGrid: one participation menu per session (DEC-936)', () => {
       page: 1,
       perPage: 50,
       counts: { speakers: 1, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
+      timezone: 'UTC',
     };
 
     const fetchMock = mockApi({
@@ -902,6 +910,7 @@ describe('OnboardingGrid: one participation menu per session (DEC-936)', () => {
       page: 1,
       perPage: 50,
       counts: { speakers: 1, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
+      timezone: 'UTC',
     };
 
     mockApi({
@@ -938,6 +947,7 @@ describe('OnboardingGrid: one participation menu per session (DEC-936)', () => {
       page: 1,
       perPage: 50,
       counts: { speakers: 1, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
+      timezone: 'UTC',
     };
 
     mockApi({
@@ -994,6 +1004,7 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
     // from acceptedSpeakerExistsForContact) -- outstandingRequired counts
     // only ct1's pending required assignment, NOT ct3's stray one.
     counts: { speakers: 4, outstandingRequired: 1, overdue: 0, outstandingContacts: 1 },
+      timezone: 'UTC',
   };
 
   it('DEC-934 amendment (wave 4): a not-chasing row keeps its cell (quiet, non-actionable), captions itself under the identity cell, and the header summary matches the server counts (excluding those rows)', async () => {
@@ -1138,6 +1149,7 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
         taskId: 'task-1',
         title: 'Sign speaker agreement',
         counts: { assigned: 812, completed: 401, responses: 118, files: 5 },
+      timezone: 'UTC',
       },
       'DELETE /api/v1/tasks/task-1': { ok: true },
     });
@@ -1227,6 +1239,7 @@ describe('OnboardingGrid: DEC-933/DEC-934 task Edit/Remove + not-chasing rows', 
           taskId: 'task-1',
           title: 'Sign speaker agreement',
           counts: { assigned: 4, completed: 1, responses: 0, files: 0 },
+      timezone: 'UTC',
         }),
         { status: 200, headers: { 'content-type': 'application/json' } },
       ),
@@ -1310,6 +1323,7 @@ describe('OnboardingGrid: DEC-934 amendment "Send portal invite" gates on not-ye
       page: 1,
       perPage: 50,
       counts: { speakers: rows.length, outstandingRequired: rows.length, overdue: 0, outstandingContacts: rows.length },
+      timezone: 'UTC',
     };
   }
 
@@ -1414,6 +1428,7 @@ describe('OnboardingGrid: DEC-829 amendment muted-cell treatment for a declined-
       page: 1,
       perPage: 50,
       counts: { speakers: rows.length, outstandingRequired: 0, overdue: 0, outstandingContacts: 0 },
+      timezone: 'UTC',
     };
   }
 
@@ -1653,6 +1668,7 @@ const EMPTY_GRID: OnboardingGridResponse = {
   page: 1,
   perPage: 50,
   counts: { speakers: 0, outstandingRequired: 0, overdue: 0, outstandingContacts: 0 },
+      timezone: 'UTC',
 };
 
 describe('OnboardingGrid: B7 empty states (DEC-678 amendment, wave 47)', () => {
