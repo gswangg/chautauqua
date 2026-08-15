@@ -4,23 +4,16 @@
 // ./error-states.css, mirroring src/routes/public/cfp.css.ts's block so
 // the public CFP builder and the admin SPA share one visual contract.
 
-import { plural, spellCount } from '../lib/plural';
-
-function capitalizeFirst(s: string): string {
-  return s.length === 0 ? s : `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
-}
+import { thingsNeedFixingHeading } from '../lib/plural';
 
 /**
- * Spells 0-10 ('Zero' .. 'Ten'), falls back to digits above 10 (DEC-925: the
- * shared src/domain/count-copy.ts spellCount, capitalized for a sentence
- * head). Pairs the count with the correct singular/plural verb+noun -- 'One
- * thing needs fixing', 'Three things need fixing' -- and appends `tail`
- * (e.g. 'before this can be sent').
+ * The top-of-form error summary heading -- 'One thing needs fixing before
+ * this can be sent', 'Three things need fixing ...' (DEC-925/DEC-957: the
+ * shared src/domain/count-copy.ts thingsNeedFixingHeading). `tail` is
+ * appended after 'fixing ' (e.g. 'before this can be sent').
  */
 export function countHeading(n: number, tail: string): string {
-  const word = capitalizeFirst(spellCount(n));
-  const noun = `${plural(n, 'thing')} ${plural(n, 'needs', 'need')}`;
-  return `${word} ${noun} fixing ${tail}`;
+  return thingsNeedFixingHeading(n, tail);
 }
 
 export function ErrorSummary(props: {
