@@ -162,13 +162,27 @@ export interface PredicateRow {
  * Grades each of the five DEC-069 slots against `sections` (assumed to
  * be in document order, i.e. append order -- the log is append-only).
  *
- * `isAncestorOfProductSha(sha)` answers: "does the tree measured at
- * `sha` already include the current product sha's changes?" -- i.e. is
- * the product sha an ancestor of (or equal to) `sha`, equivalent to
- * `git merge-base --is-ancestor <productSha> <sha>`. A section only
- * counts toward its slot if this holds; otherwise later product code
- * has landed since that section ran and it is stale (VOID) rather than
- * counted.
+ * `isAncestor(ancestorSha, descendantSha)` answers: "is `ancestorSha` an
+ * ancestor of (or equal to) `descendantSha`?", equivalent to
+ * `git merge-base --is-ancestor <ancestorSha> <descendantSha>`. It is
+ * used two ways here:
+ *
+ *   1. Ancestry validity: a section only counts toward its slot if
+ *      `isAncestor(productSha, section.sha)` holds -- i.e. the tree it
+ *      measured already includes the current product sha's changes.
+ *      Otherwise later product code has landed since that section ran
+ *      and it is stale.
+ *
+ *   2. Staleness among valid candidates (DEC-099 w44 instrument
+ *      repair): among the ancestry-valid, verdict-bearing candidates
+ *      for a slot, any candidate whose sha is a PROPER ancestor of
+ *      another candidate's sha measured a strictly older tree and is
+ *      discarded, even though it is individually ancestry-valid --
+ *      last-appended-by-itself is not enough; a section that reran an
+ *      older commit after a newer one already qualified must not win
+ *      just because it appears later in the log. This is
+ *      content-independent and direction-independent: it demotes a
+ *      stale PASS exactly as readily as a stale FAIL.
  *
  * For every slot except triage-closure, the section's own `result`
  * line decides PASS vs FAIL (a line starting "PASS" is PASS, anything
@@ -177,34 +191,55 @@ export interface PredicateRow {
  * n > 0 is FAIL, no OPEN ITEMS line at all does not count as a verdict.
  *
  * Sections with no usable verdict line are skipped without deciding
- * VOID vs MISSING by themselves; the most recent verdict-bearing,
- * ancestry-valid section for a slot wins. If every verdict-bearing
- * section for a slot is ancestry-stale, the slot is VOID. If no
- * section classifies to the slot at all (or none carries a verdict),
- * the slot is MISSING.
+ * VOID vs MISSING by themselves. Among the surviving (ancestry-valid,
+ * non-stale) verdict-bearing sections for a slot, the most recent
+ * (last-appended) one wins. If every verdict-bearing section for a
+ * slot is ancestry-stale relative to `productSha`, the slot is VOID.
+ * If no section classifies to the slot at all (or none carries a
+ * verdict), the slot is MISSING.
  */
 export function gradePredicate(
   sections: readonly LogSection[],
-  isAncestorOfProductSha: (sha: string) => boolean,
+  productSha: string,
+  isAncestor: (ancestorSha: string, descendantSha: string) => boolean,
 ): PredicateRow[] {
   return REQUIRED_SCOPES.map((slot) => {
     const candidates = sections
-      .filter((s) => classifyScope(s.scope) === slot)
-      .slice()
-      .reverse(); // most recent (last-appended) first
+      .map((section, index) => ({ section, index }))
+      .filter(({ section }) => classifyScope(section.scope) === slot);
 
     let sawStaleVerdict = false;
+    const valid: { section: LogSection; index: number; outcome: "PASS" | "FAIL" }[] = [];
 
-    for (const section of candidates) {
+    for (const { section, index } of candidates) {
       const outcome = slotOutcome(section, slot);
       if (outcome === null) continue; // no usable verdict on this section
-      if (isAncestorOfProductSha(section.sha)) {
-        return { slot, status: outcome, section };
+      if (isAncestor(productSha, section.sha)) {
+        valid.push({ section, index, outcome });
+      } else {
+        sawStaleVerdict = true;
       }
-      sawStaleVerdict = true;
     }
 
-    return { slot, status: sawStaleVerdict ? "VOID" : "MISSING" } as PredicateRow;
+    if (valid.length === 0) {
+      return { slot, status: sawStaleVerdict ? "VOID" : "MISSING" } as PredicateRow;
+    }
+
+    // Discard any candidate whose sha is a proper ancestor of another
+    // surviving candidate's sha -- it measured a strictly older tree.
+    const survivors = valid.filter(
+      (candidate) =>
+        !valid.some(
+          (other) =>
+            other.section.sha !== candidate.section.sha &&
+            isAncestor(candidate.section.sha, other.section.sha),
+        ),
+    );
+
+    // Among survivors, the last-appended (highest document-order index) wins.
+    const winner = survivors.reduce((best, cur) => (cur.index > best.index ? cur : best));
+
+    return { slot, status: winner.outcome, section: winner.section };
   });
 }
 
@@ -251,12 +286,13 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const sections = parseLogSections(markdown);
 
   const ancestorCache = new Map<string, boolean>();
-  function isAncestorOfProductSha(sha: string): boolean {
-    const cached = ancestorCache.get(sha);
+  function isAncestor(ancestorSha: string, descendantSha: string): boolean {
+    const key = `${ancestorSha}:${descendantSha}`;
+    const cached = ancestorCache.get(key);
     if (cached !== undefined) return cached;
     let result: boolean;
     try {
-      execFileSync("git", ["merge-base", "--is-ancestor", productSha, sha], {
+      execFileSync("git", ["merge-base", "--is-ancestor", ancestorSha, descendantSha], {
         cwd: REPO_ROOT,
         stdio: "pipe",
       });
@@ -269,11 +305,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         throw err;
       }
     }
-    ancestorCache.set(sha, result);
+    ancestorCache.set(key, result);
     return result;
   }
 
-  const rows = gradePredicate(sections, isAncestorOfProductSha);
+  const rows = gradePredicate(sections, productSha, isAncestor);
   console.log(formatPredicateTable(rows));
 
   const allPass = rows.every((r) => r.status === "PASS");
