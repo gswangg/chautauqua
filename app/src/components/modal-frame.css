@@ -121,6 +121,7 @@
 .chq-form-row-optional {
   color: var(--chq-muted);
   font-size: var(--chq-type-section-label-size);
+  text-transform: none;
 }
 
 @media (max-width: 700px) {

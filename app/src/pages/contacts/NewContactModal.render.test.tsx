@@ -1,12 +1,18 @@
 // DEC-788: NewContactModal fires the create-time duplicate check as the
 // name/company/email fields settle (debounced) and renders a quiet inline
 // hint above the submit row that never blocks Create.
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { NewContactModal } from './NewContactModal';
 import { mockApi, errorEnvelope, listEnvelope } from '../../test-utils/mockApi';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const MODAL_FRAME_CSS = readFileSync(join(HERE, '..', '..', 'components', 'modal-frame.css'), 'utf-8');
 
 afterEach(() => {
   cleanup();
@@ -50,6 +56,27 @@ describe('NewContactModal fields render as FormRow (DEC-950)', () => {
 
     const firstNameRow = rows.find((row) => row.textContent?.startsWith('First name'));
     expect(firstNameRow?.querySelector('.chq-form-row-optional')).toBeNull();
+  });
+
+  // w3-h/DEC-917 amendment: .chq-form-row-label (ModalFrame's FormRow label)
+  // sets text-transform: uppercase; before this fix .chq-form-row-optional
+  // never reset it, so this modal's "Company" / "Title" rows painted
+  // ' · OPTIONAL' instead of the ruled-on lowercase ' · optional'
+  // (DESIGN-RULINGS #7/#21). Pin both the class's presence and the CSS rule
+  // that keeps it lowercase, so a future ancestor rewrite can't silently
+  // re-uppercase it.
+  it('renders .chq-form-row-optional with a stylesheet rule that resets the label ancestor\'s uppercase', () => {
+    mockApi({});
+    renderModal();
+
+    const rows = Array.from(document.querySelectorAll('.chq-form-row'));
+    const companyRow = rows.find((row) => row.textContent?.includes('Company'));
+    const optionalSpan = companyRow?.querySelector('.chq-form-row-optional');
+    expect(optionalSpan).not.toBeNull();
+    expect(optionalSpan?.closest('.chq-form-row-label')).not.toBeNull();
+
+    const match = MODAL_FRAME_CSS.match(/\.chq-form-row-optional\s*\{([^}]*)\}/);
+    expect(match?.[1]).toContain('text-transform: none');
   });
 });
 

@@ -95,3 +95,51 @@ describe('DEC-917 (w48-b): no hand-typed variant of the optionality suffix survi
     expect(offenders).toEqual([]);
   });
 });
+
+// w3-h/DEC-917 amendment: the LITERAL scan above only ever proved the source
+// says ' · optional' -- it says nothing about what the DOM paints. Every
+// optional-suffix class above renders inside a label whose stylesheet sets
+// text-transform: uppercase somewhere in the app (ModalFrame's
+// .chq-form-row-label, the shared .chq-field-label used by both the CFP page
+// and the portal edit forms). Ruling text (DESIGN-RULINGS #7 and #21) says
+// the suffix reads lowercase; an ancestor's uppercase cascades onto any
+// descendant that doesn't reset it. This block reads the stylesheets that
+// actually style each suffix class and asserts text-transform: none is
+// present, so a future ancestor rewrite can't silently re-uppercase the
+// suffix the way modal-frame.css did before this fix.
+import { readFileSync as readFileSyncForCss } from 'node:fs';
+import { join as joinForCss } from 'node:path';
+
+/** Extracts a top-level (not inside an @media block) rule's declaration
+ * body by selector -- same helper as TracksRoomsPanel.render.test.tsx. */
+function topLevelRuleBody(css: string, selector: string): string {
+  const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = withoutMedia.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
+  const body = match?.[1];
+  if (body === undefined) throw new Error(`no top-level rule found for ${selector}`);
+  return body;
+}
+
+describe('DEC-917 (w3-h): the paint, not just the literal -- every uppercased ancestor of the optionality suffix is reset', () => {
+  const CASES: Array<{ file: string; selector: string }> = [
+    {
+      file: joinForCss(APP_SRC, 'components', 'modal-frame.css'),
+      selector: '.chq-form-row-optional',
+    },
+    {
+      file: joinForCss(APP_SRC, '..', '..', 'src', 'routes', 'public', 'cfp.css.ts'),
+      selector: '.chq-field-optional',
+    },
+    {
+      file: joinForCss(APP_SRC, '..', '..', 'src', 'routes', 'portal', 'portal.css.ts'),
+      selector: '.chq-field-optional',
+    },
+  ];
+
+  it.each(CASES)('$selector in $file declares text-transform: none', ({ file, selector }) => {
+    const css = readFileSyncForCss(file, 'utf8');
+    const body = topLevelRuleBody(css, selector);
+    expect(body).toContain('text-transform: none');
+  });
+});

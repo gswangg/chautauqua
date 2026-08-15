@@ -311,6 +311,9 @@ export const PORTAL_CSS = `
     color: var(--chq-muted);
     min-width: 0;
   }
+  .chq-field-optional {
+    text-transform: none;
+  }
   .chq-field .chq-input,
   .chq-field .chq-select,
   .chq-field .chq-textarea {
