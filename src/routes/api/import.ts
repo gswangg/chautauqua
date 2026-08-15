@@ -18,7 +18,11 @@ import { overCapCountMessage } from "../../domain/cap-copy";
 export const importRoutes = new Hono<AppEnv>();
 
 // See events.ts/contacts/index.ts for why a blanket `.use("*", ...)` is
-// unsafe once mounted under /api/v1 alongside sibling sub-apps.
+// unsafe once mounted under /api/v1 alongside sibling sub-apps — Hono DOES
+// rewrite "*" with the mount prefix, but "/api/v1/*" still matches every
+// sibling sub-app's routes too, not just this router's own. Scope to this
+// router's own path prefix instead (DEC-060 wave-34 amendment), enforced by
+// test/role-refusal-probe.test.ts (DEC-459 wave-32).
 importRoutes.use("/events/:eventId/import/sessionboard", requireOrganizer);
 
 const SB_ENTITIES: readonly SbEntity[] = ["contacts", "submissions", "tracks", "participants"];

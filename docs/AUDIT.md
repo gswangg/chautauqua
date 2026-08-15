@@ -359,7 +359,7 @@ and adapter swaps that a deploying operator does, not code gaps:
 - **Status changes never auto-email, with one sanctioned exception.** Stated once above
   (J5): sending is always a distinct, explicit action the producer takes, not an
   automatic side effect of a status write. The one exception is by design, not drift —
-  `POST /admin/content-notes` (`src/routes/content-notes.ts`) is the single route that
+  `POST /api/v1/submissions/:id/content-note` (`src/routes/content-notes.ts`) is the single route that
   both moves `content_status` to `changes_requested` and mails the submission's
   participants in the same request, because the note *is* the change-request notice
   (DEC-720/DEC-741). This is true regardless of whether that route's mail send is
