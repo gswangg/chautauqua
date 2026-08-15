@@ -384,6 +384,47 @@ describe("DEC-346 amendment (wave 62): listEvaluationScoresForPlan cap", () => {
   });
 });
 
+describe("DEC-346 amendment (wave 66): listEvaluatedPairsForPlan cap", () => {
+  it("MAX_PLAN_EVALUATION_SCAN + 1 rows: throws an ApiError naming the cap", async () => {
+    const { listEvaluatedPairsForPlan, MAX_PLAN_EVALUATION_SCAN } = await import(
+      "../src/server/repo/review/evaluations"
+    );
+    const { db } = makeCappedFakeDb(MAX_PLAN_EVALUATION_SCAN + 1, (i) => ({
+      reviewerId: `rev-${i}`,
+      submissionId: `sub-${i}`,
+      id: `eval-${i}`,
+    }));
+
+    await expect(listEvaluatedPairsForPlan(db, "plan-1", 1)).rejects.toMatchObject({
+      code: "invalid",
+      message: expect.stringContaining(String(MAX_PLAN_EVALUATION_SCAN)),
+    });
+    await expect(listEvaluatedPairsForPlan(db, "plan-1", 1)).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it("a normal-sized read returns its rows, and the issued query carries both a limit and an order-by", async () => {
+    const { listEvaluatedPairsForPlan, MAX_PLAN_EVALUATION_SCAN } = await import(
+      "../src/server/repo/review/evaluations"
+    );
+    const { db, calls } = makeCappedFakeDb(3, (i) => ({
+      reviewerId: `rev-${i}`,
+      submissionId: `sub-${i}`,
+      id: `eval-${i}`,
+    }));
+
+    const result = await listEvaluatedPairsForPlan(db, "plan-1", 1);
+
+    expect(result).toEqual([
+      { reviewerId: "rev-0", submissionId: "sub-0" },
+      { reviewerId: "rev-1", submissionId: "sub-1" },
+      { reviewerId: "rev-2", submissionId: "sub-2" },
+    ]);
+    expect(calls.length).toBe(1);
+    expect(calls[0]!.limitN).toBe(MAX_PLAN_EVALUATION_SCAN + 1);
+    expect(calls[0]!.orderByCalled).toBe(true);
+  });
+});
+
 describe("DEC-346 amendment (wave 62): listRecusalsForPlan cap", () => {
   it("MAX_PLAN_EVALUATION_SCAN + 1 rows: throws an ApiError naming the cap", async () => {
     const { listRecusalsForPlan } = await import("../src/server/repo/review/recusal");

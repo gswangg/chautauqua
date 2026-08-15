@@ -251,14 +251,23 @@ export async function listEvaluationScoresForReviewer(
  * `completed` can never exceed `assigned` (the '37 of 34' bug: the prior
  * countCompletedByReviewerForPlan counted every evaluation row regardless of
  * whether the submission was still in that reviewer's scope). Mirrors
- * listEvaluationScoresForPlan's shape (submissionId + reviewerId only). */
+ * listEvaluationScoresForPlan's shape (submissionId + reviewerId only).
+ * DEC-346 amendment (wave 66): this is the SAME plan+round,
+ * submittedEvaluationCondition() WHERE as listEvaluationScoresForPlan, so it
+ * gets the same treatment -- totally ordered (submissionId asc, id asc) and
+ * capped at MAX_PLAN_EVALUATION_SCAN + 1, refusing loudly rather than
+ * pulling an unbounded plan-wide evaluation table into the isolate. */
 export async function listEvaluatedPairsForPlan(
   db: Db,
   planId: string,
   round: number,
 ): Promise<{ reviewerId: string; submissionId: string }[]> {
-  return db
-    .select({ reviewerId: schema.evaluation.reviewerId, submissionId: schema.evaluation.submissionId })
+  const rows = await db
+    .select({
+      reviewerId: schema.evaluation.reviewerId,
+      submissionId: schema.evaluation.submissionId,
+      id: schema.evaluation.id,
+    })
     .from(schema.evaluation)
     .where(
       and(
@@ -269,7 +278,16 @@ export async function listEvaluatedPairsForPlan(
         // recorded pair.
         submittedEvaluationCondition(),
       ),
+    )
+    .orderBy(asc(schema.evaluation.submissionId), asc(schema.evaluation.id))
+    .limit(MAX_PLAN_EVALUATION_SCAN + 1);
+  if (rows.length > MAX_PLAN_EVALUATION_SCAN) {
+    throw new ApiError(
+      "invalid",
+      `This plan would scan more than ${MAX_PLAN_EVALUATION_SCAN} evaluations -- narrow the plan's track filter first`,
     );
+  }
+  return rows.map((r) => ({ reviewerId: r.reviewerId, submissionId: r.submissionId }));
 }
 
 export interface SubmissionEvaluationRow {
