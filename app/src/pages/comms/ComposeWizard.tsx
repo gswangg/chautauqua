@@ -65,6 +65,11 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   const [templateName, setTemplateName] = useState<string>('');
   const [subject, setSubject] = useState('');
   const [bodyText, setBodyText] = useState('');
+  // w12-c: names the template the turn-diet effect (below) applied on its
+  // own, so the disclosure line can say exactly which one -- cleared the
+  // moment the organizer touches the template picker themselves, manual
+  // picks disclose nothing (the dropdown itself is the disclosure).
+  const [autoAppliedTemplateName, setAutoAppliedTemplateName] = useState<string | null>(null);
   const [includeFeedback, setIncludeFeedback] = useState(false);
   // DEC-682: a decision mailer must never invent/leak another plan's or
   // round's feedback -- the organizer names exactly which plan (and,
@@ -113,6 +118,12 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
 
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
   const pendingCaretRef = useRef<number | null>(null);
+  // w12-c: Enter-to-advance and focus-on-arrival need a handle on each
+  // step's own existing primary -- never a synthesized action, so a
+  // disabled primary silently blocks Enter exactly as it blocks a click.
+  const selectPrimaryRef = useRef<HTMLButtonElement | null>(null);
+  const templatePrimaryRef = useRef<HTMLButtonElement | null>(null);
+  const previewPrimaryRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (pendingCaretRef.current !== null && bodyRef.current) {
@@ -197,6 +208,37 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setBodyText(found.bodyText);
     setTemplateId(found.id);
   }, [templates]);
+
+  // w12-c (DEC-967 amendment, turn diet): step 2 must not arrive blank when
+  // there's an obvious starting point -- the server's own first template.
+  // Keyed on the loaded template list (not the ?ids=/?template= arrival
+  // effects above, which own their own lines and never re-sort `templates`
+  // either): once templates have loaded and the wizard is sitting on step 2
+  // with nothing typed or picked yet, apply templates[0] through the exact
+  // path the <select>'s onChange already runs. Guarded by a ref so it only
+  // ever fires once -- an organizer who clears the fields back to blank by
+  // hand must not have them silently refilled.
+  const appliedDefaultTemplateRef = useRef(false);
+  useEffect(() => {
+    if (appliedDefaultTemplateRef.current) return;
+    // The ?template= arrival effect above runs first in this same commit
+    // (declaration order) and flips its own ref the instant it applies a
+    // template -- reading it here (rather than subject/bodyText, which
+    // won't reflect that effect's setState until the next render) is what
+    // stops this effect from clobbering an explicit ?template= landing back
+    // to blank.
+    if (appliedTemplateParam.current) return;
+    if (step !== 'template') return;
+    if (subject !== '' || bodyText !== '') return;
+    const found = templates[0];
+    if (!found) return;
+    appliedDefaultTemplateRef.current = true;
+    setTemplateName(found.name);
+    setSubject(found.subject);
+    setBodyText(found.bodyText);
+    setTemplateId('');
+    setAutoAppliedTemplateName(found.name);
+  }, [templates, step, subject, bodyText]);
 
   useEffect(() => {
     apiList<EvaluationPlan>(`/events/${eventId}/plans`)
@@ -458,6 +500,35 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     }
   }
 
+  // w12-c: primary receives focus on arrival at steps 2 and 3 -- step 1
+  // never steals focus on mount (nothing to arrive AT), step 4's Send is a
+  // deliberate click, never a focus-then-Enter reflex.
+  useEffect(() => {
+    if (step === 'template') templatePrimaryRef.current?.focus();
+    else if (step === 'preview') previewPrimaryRef.current?.focus();
+  }, [step]);
+
+  // w12-c (DEC-967 amendment): Enter advances steps 1-3 via each step's own
+  // existing primary -- .click() on a disabled <button> is a no-op, so this
+  // never bypasses a step's own disabled gate. A textarea's Enter is left
+  // alone (it inserts a newline in the message body, it never submits).
+  // Step 4's Send is explicitly excluded -- a deliberate send stays a
+  // deliberate click.
+  function handleStepEnterKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== 'Enter') return;
+    if ((e.target as HTMLElement).tagName === 'TEXTAREA') return;
+    if (step === 'select') {
+      e.preventDefault();
+      selectPrimaryRef.current?.click();
+    } else if (step === 'template') {
+      e.preventDefault();
+      templatePrimaryRef.current?.click();
+    } else if (step === 'preview') {
+      e.preventDefault();
+      previewPrimaryRef.current?.click();
+    }
+  }
+
   function reset() {
     setStep('select');
     dispatchSelection({ type: 'CLEAR' });
@@ -535,7 +606,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   const skippedRecipients = sendResult?.skipped ?? [];
 
   return (
-    <div className="chq-compose-wizard">
+    <div className="chq-compose-wizard" onKeyDown={handleStepEnterKeyDown}>
       {error && (
         <div className="chq-error-banner" role="alert">
           {error}
@@ -758,6 +829,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
           <div className="chq-comms-select-actions">
             <button
               type="button"
+              ref={selectPrimaryRef}
               className="chq-btn chq-btn-primary"
               disabled={selection.selectedIds.size === 0}
               onClick={() => setStep('template')}
@@ -786,6 +858,11 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               onChange={(e) => {
                 const id = e.target.value;
                 const found = templates.find((t) => t.id === id);
+                // w12-c: a manual pick (or an explicit "Write from scratch")
+                // supersedes the turn-diet auto-apply -- the disclosure line
+                // names what got applied automatically, not what the
+                // organizer just chose themselves.
+                setAutoAppliedTemplateName(null);
                 if (found) {
                   // DEC-832: copy the template's text into the composer's
                   // own fields, then clear the selection — the dropdown
@@ -809,6 +886,14 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               ))}
             </select>
           </FormRow>
+          {/* w12-c (DEC-967 amendment, turn diet): the effect above applied
+              templates[0] without asking -- this line is the disclosure,
+              never hidden behind the dropdown's own state. */}
+          {autoAppliedTemplateName && (
+            <p className="chq-comms-panel-note">
+              Applied &quot;{autoAppliedTemplateName}&quot; automatically &mdash; change it above or edit freely.
+            </p>
+          )}
           <FormRow label="Subject" htmlFor="compose-subject">
             <input id="compose-subject" className="chq-input" maxLength={MAX_TEXT_LENGTH} value={subject} onChange={(e) => setSubject(e.target.value)} />
           </FormRow>
@@ -864,6 +949,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
             </button>
             <button
               type="button"
+              ref={templatePrimaryRef}
               className="chq-btn chq-btn-primary"
               disabled={busy || !subject || !bodyText}
               onClick={() => runPreview()}
@@ -1040,6 +1126,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                   attachments toggle that produced it. */}
               <button
                 type="button"
+                ref={previewPrimaryRef}
                 className="chq-btn chq-btn-primary"
                 disabled={busy || icsUnscheduledIds !== null}
                 onClick={() => setStep('sent')}
