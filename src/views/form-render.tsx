@@ -8,7 +8,7 @@ import type { FormFieldDef, AnswerMap } from "../forms/types";
 import { lockedFieldName } from "../forms/types";
 import { allowedUploadExtensions, uploadHintText } from "../domain/files";
 import { RULE_MATCH_JS } from "../forms/rule-match";
-import { MAX_LONG_TEXT_LENGTH } from "../forms/validate";
+import { resolvedTextCap } from "../forms/validate";
 import { OPTIONAL_SUFFIX } from "../domain/form-copy";
 
 export const FIELD_NAME_PREFIX = "field__";
@@ -44,6 +44,7 @@ function FieldControl(props: { field: FormFieldDef; value: unknown; error?: stri
           required={field.required}
           data-required={field.required ? "true" : "false"}
           aria-invalid={ariaInvalid}
+          maxlength={resolvedTextCap(field)}
         />
       );
     case "long_text":
@@ -61,6 +62,7 @@ function FieldControl(props: { field: FormFieldDef; value: unknown; error?: stri
           data-required={field.required ? "true" : "false"}
           rows={lockedFieldName(field.id) === "description" ? 5 : undefined}
           aria-invalid={ariaInvalid}
+          maxlength={resolvedTextCap(field)}
         >
           {typeof value === "string" ? value : ""}
         </textarea>
@@ -96,6 +98,10 @@ function FieldControl(props: { field: FormFieldDef; value: unknown; error?: stri
         />
       );
     case "number":
+      // NOTE (w1-a): validate.ts's number branch does NOT read field.maximum
+      // (no writer stamps it for number-kind fields either) -- this `max`
+      // attribute is progressive-enhancement only, not backed by a server
+      // check. Wiring that up is out of scope for this task.
       return (
         <input
           type="number"
@@ -106,6 +112,7 @@ function FieldControl(props: { field: FormFieldDef; value: unknown; error?: stri
           value={typeof value === "number" ? String(value) : ""}
           required={field.required}
           data-required={field.required ? "true" : "false"}
+          max={field.maximum !== undefined ? field.maximum : undefined}
         />
       );
     case "file":
@@ -135,7 +142,8 @@ export function FormField(props: { field: FormFieldDef; value: unknown; error?: 
   // DEC-909: a long-text field with a budget carries a live counter, seeded
   // here with the initial (prefilled) length; the inline script keeps it in
   // sync with the DOM as the submitter types.
-  const counterMax = field.kind === "long_text" ? field.maximum ?? MAX_LONG_TEXT_LENGTH : undefined;
+  const counterMax =
+    field.kind === "text" || field.kind === "long_text" ? resolvedTextCap(field) : undefined;
   const initialCount = typeof value === "string" ? value.length : 0;
   return (
     <div id={wrapId(field.id)} class="chq-field" style={visible ? undefined : "display:none"}>

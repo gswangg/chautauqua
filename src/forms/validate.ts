@@ -33,6 +33,16 @@ export const MAX_LONG_TEXT_LENGTH = 20000;
 export const MAX_NAME_LENGTH = 200;
 export const MAX_RICH_TEXT_LENGTH = 100000;
 
+// DEC-124 (wave 69 amendment): the ONE resolver for a text/long_text
+// field's effective cap -- a field's own `maximum` (stamped by
+// projectFieldForAnswers) may only NARROW the shared kind cap, never widen
+// it. src/views/form-render.tsx calls this too, so the rendered
+// maxlength/counter and the server-side refusal always agree on one number.
+export function resolvedTextCap(field: FormFieldDef): number {
+  const kindCap = field.kind === "text" ? MAX_TEXT_LENGTH : MAX_LONG_TEXT_LENGTH;
+  return field.maximum !== undefined ? Math.min(field.maximum, kindCap) : kindCap;
+}
+
 export type ValidateResult =
   | { ok: true; cleaned: AnswerMap; hiddenFieldIds: string[]; clearedFieldIds: string[] }
   | { ok: false; errors: Record<string, string> };
@@ -98,8 +108,7 @@ export function validateAnswers(
         // DEC-124 (wave 59 amendment): a field's own `maximum` (stamped by
         // projectFieldForAnswers, e.g. the locked abstract field's 1,200
         // budget) may only NARROW the shared kind cap, never widen it.
-        const kindCap = field.kind === "text" ? MAX_TEXT_LENGTH : MAX_LONG_TEXT_LENGTH;
-        const cap = field.maximum !== undefined ? Math.min(field.maximum, kindCap) : kindCap;
+        const cap = resolvedTextCap(field);
         if (value.length > cap) {
           errors[field.id] = `Too long (max ${cap} characters)`;
           continue;

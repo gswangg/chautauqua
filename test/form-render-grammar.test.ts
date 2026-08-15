@@ -9,7 +9,10 @@ import { MAX_LONG_TEXT_LENGTH } from "../src/forms/validate";
 import { allowedUploadExtensions } from "../src/domain/files";
 
 describe("form-render field grammar (DEC-909)", () => {
-  it("a required short-text field carries no marker and no counter", () => {
+  // w1-a (DEC-124 amendment): the counter was widened from long_text-only
+  // to text+long_text so a text field's cap (e.g. the locked title's
+  // MAX_TEXT_LENGTH/maximum) is visible before submit, not just on refusal.
+  it("a required short-text field carries no marker but does carry a counter", () => {
     const field: FormFieldDef = {
       id: "title",
       section: "session",
@@ -21,10 +24,10 @@ describe("form-render field grammar (DEC-909)", () => {
     const html = FormField({ field, value: "My talk", visible: true }).toString();
     expect(html).not.toContain(" *");
     expect(html).not.toContain("chq-field-optional");
-    expect(html).not.toContain("chq-field-counter");
+    expect(html).toContain("chq-field-counter");
   });
 
-  it("an optional short-text field appends ' · optional' and carries no counter", () => {
+  it("an optional short-text field appends ' · optional' and still carries a counter", () => {
     const field: FormFieldDef = {
       id: "notes",
       section: "session",
@@ -36,7 +39,7 @@ describe("form-render field grammar (DEC-909)", () => {
     const html = FormField({ field, value: undefined, visible: true }).toString();
     expect(html).toContain("chq-field-optional");
     expect(html).toContain(" · optional");
-    expect(html).not.toContain("chq-field-counter");
+    expect(html).toContain("chq-field-counter");
   });
 
   it("a long-text field renders a live counter with the formatted default max and initial count", () => {
