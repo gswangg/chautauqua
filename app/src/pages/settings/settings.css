@@ -461,9 +461,37 @@
    which already cover both tables' desktop and phone-card treatment via
    the generic `.chq-settings-panel .chq-table` selectors. Purely additive
    markers -- no new visual rule needed. */
-.chq-settings-exports-table,
+.chq-settings-exports-table {
+  margin-top: 0;
+}
+
+/* w22-b/DEC-902 amendment: frame's four fixed tracks (Chautauqua Settings.dc.
+   html:1144/1148) -- `1fr 150px 150px auto`. Name and prefix is the sole
+   unwidthed remainder column; the other three are pinned so the table
+   doesn't drift under auto-layout. Moot inside the phone reflow above,
+   which turns the table into display:block cards -- no table-layout there. */
 .chq-settings-tokens-table {
   margin-top: 0;
+  table-layout: fixed;
+}
+
+.chq-settings-tokens-table .chq-settings-tokens-col-created {
+  width: 150px;
+}
+
+.chq-settings-tokens-table .chq-settings-tokens-col-last-used {
+  width: 150px;
+}
+
+.chq-settings-tokens-table .chq-settings-tokens-col-actions {
+  width: 1px;
+  white-space: nowrap;
+}
+
+.chq-settings-tokens-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 /* task-w5-c: Sessionboard import panel (DEC-613/614). */

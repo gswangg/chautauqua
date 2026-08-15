@@ -4,6 +4,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { ApiTokensPanel } from './ApiTokensPanel';
 import { formatDateTime } from '../../lib/dates';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
@@ -116,6 +118,79 @@ describe('ApiTokensPanel Created column + NEVER USED mark (DEC-027 wave-47 amend
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const position2 = factTwo.compareDocumentPosition(table);
     expect(position2 & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+describe('ApiTokensPanel table columns (w22-b, DEC-902 amendment)', () => {
+  it('renders a four-cell head with the merged Name and prefix label, and name+prefix in the same data cell', async () => {
+    mockApi({
+      'GET /api/v1/tokens': listEnvelope([token()]),
+    });
+
+    render(<ApiTokensPanel />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+
+    const table = await screen.findByRole('table');
+    const headerRow = within(table).getAllByRole('row')[0]!;
+    const headCells = within(headerRow).getAllByRole('columnheader');
+    expect(headCells).toHaveLength(4);
+    expect(headCells[0]).toHaveTextContent('Name and prefix');
+
+    const rows = within(table).getAllByRole('row');
+    const dataRow = rows[1]!;
+    const nameCell = within(dataRow).getAllByRole('cell')[0]!;
+    expect(within(nameCell).getByText('CI pipeline')).toBeInTheDocument();
+    expect(within(nameCell).getByText(/chq_abc/)).toBeInTheDocument();
+  });
+});
+
+describe('ApiTokensPanel tokens table CSS (w22-b, DEC-902 amendment)', () => {
+  const css = readFileSync(join(__dirname, 'settings.css'), 'utf8');
+
+  function extractRule(selector: string): string {
+    const idx = css.indexOf(selector);
+    expect(idx).toBeGreaterThanOrEqual(0);
+    const close = css.indexOf('}', idx);
+    return css.slice(idx, close + 1);
+  }
+
+  it('declares table-layout: fixed on the tokens table with exactly one unwidthed column', () => {
+    const tokensRule = extractRule('.chq-settings-tokens-table {');
+    expect(tokensRule).toContain('table-layout: fixed;');
+
+    // Exactly one column class (name) is left without a `width` rule; the
+    // other three (created, last-used, actions) each get one.
+    const widthedCols = ['created', 'last-used', 'actions'];
+    for (const col of widthedCols) {
+      const rule = extractRule(`.chq-settings-tokens-table .chq-settings-tokens-col-${col} {`);
+      expect(rule).toMatch(/width:/);
+    }
+    expect(css).not.toContain('.chq-settings-tokens-col-name {');
+  });
+
+  it('declares no table-layout for the tokens table inside the phone reflow media block', () => {
+    const mediaStart = css.indexOf('@media (max-width: 700px) {');
+    expect(mediaStart).toBeGreaterThanOrEqual(0);
+    // Brace-count from the media query's opening `{` to find its matching
+    // close, since the block contains many nested rules of its own.
+    let depth = 0;
+    let i = mediaStart;
+    let mediaEnd = -1;
+    for (; i < css.length; i++) {
+      if (css[i] === '{') depth++;
+      else if (css[i] === '}') {
+        depth--;
+        if (depth === 0) {
+          mediaEnd = i;
+          break;
+        }
+      }
+    }
+    expect(mediaEnd).toBeGreaterThan(mediaStart);
+    const mediaBlock = css.slice(mediaStart, mediaEnd + 1);
+    expect(mediaBlock).not.toContain('chq-settings-tokens');
+    expect(mediaBlock).not.toContain('table-layout');
   });
 });
 
