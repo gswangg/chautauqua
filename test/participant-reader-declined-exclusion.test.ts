@@ -379,4 +379,31 @@ describe("review/submissions.ts listSpeakerNamesForSubmissions excludes a declin
     const result = await listSpeakerNamesForSubmissions(db, ["sub-2"]);
     expect(result.get("sub-2")).toEqual(["Solo Speaker"]);
   });
+
+  // DEC-974 amendment (w49-a): an organiser-added co-presenter is minted at
+  // inviteStatus 'invited' (participants.ts) and this reader gates an
+  // ORGANISER-ONLY results page/export — so unlike the public-facing
+  // visibleParticipantConditions() this used to call, an 'invited'
+  // participant must be included (they DID speak on the session for
+  // results purposes), while 'declined' is still excluded.
+  it("includes an 'invited' co-presenter's name (organiser results page/export, DEC-974)", async () => {
+    const participants: ParticipantSeedRow[] = [
+      { submissionId: "sub-3", contactId: "contact-primary", order: 0, role: "speaker", inviteStatus: "accepted", visible: true },
+      { submissionId: "sub-3", contactId: "contact-invited", order: 1, role: "speaker", inviteStatus: "invited", visible: false },
+      { submissionId: "sub-3", contactId: "contact-declined3", order: 2, role: "speaker", inviteStatus: "declined", visible: true },
+    ];
+    const contacts: ContactSeedRow[] = [
+      { id: "contact-primary", firstName: "Primary", lastName: "Speaker" },
+      { id: "contact-invited", firstName: "Invited", lastName: "CoPresenter" },
+      { id: "contact-declined3", firstName: "Still", lastName: "Declined" },
+    ];
+    const seed: Seed = { event: [], submission: [], file: [], participant: participants, contact: contacts };
+    const db = makeFakeDb(seed);
+    const result = await listSpeakerNamesForSubmissions(db, ["sub-3"]);
+    // Fake db harness doesn't implement participant.order sorting (real SQL
+    // does, via ORDER BY), so assert set membership rather than order here.
+    expect(result.get("sub-3")).toHaveLength(2);
+    expect(new Set(result.get("sub-3"))).toEqual(new Set(["Primary Speaker", "Invited CoPresenter"]));
+    expect(result.get("sub-3")).not.toContain("Still Declined");
+  });
 });

@@ -7,7 +7,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
-import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
+import { SCHEDULING_PARTICIPANT_STATUSES } from "../../../domain/acceptance";
 import { chunkIds } from "../../../lib/chunk";
 import { SESSION_FORMAT_FIELD_ID } from "../../../forms/types";
 import { ApiError } from "../../http";
@@ -125,13 +125,18 @@ export async function loadAcceptedSessions(db: Db, eventId: string, recordPrefix
       .where(
         and(
           inArray(schema.participant.submissionId, batch),
-          // DEC-974: the admin agenda's speaker set is the ACTIVE participants
-          // (not-declined). This is deliberately NOT `participant.visible` —
-          // `visible` is a public-display flag composed only for public
-          // surfaces (see visibleParticipantConditions); a speaker hidden
-          // from the public programme is still a person who cannot be
-          // double-booked, so they must still count for conflict detection.
-          inArray(schema.participant.inviteStatus, [...ACTIVE_INVITE_STATUSES]),
+          // DEC-974: the admin agenda's speaker set is the NOT-DECLINED
+          // participants (SCHEDULING_PARTICIPANT_STATUSES: 'none'/'invited'/
+          // 'accepted'), not ACTIVE_INVITE_STATUSES — an organiser-added
+          // co-presenter is minted at 'invited' and must still be visible to
+          // the conflict engine and the card. This is also deliberately NOT
+          // `participant.visible` — `visible` is a public-display flag
+          // composed only for public surfaces (see
+          // visibleParticipantConditions); a speaker hidden from the public
+          // programme, or still pending their invite, is still a person who
+          // cannot be double-booked, so they must still count for conflict
+          // detection.
+          inArray(schema.participant.inviteStatus, [...SCHEDULING_PARTICIPANT_STATUSES]),
         ),
       );
     participantRows.push(...batchRows);
