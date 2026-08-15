@@ -63,40 +63,92 @@ export async function countReviewerRowsForPlan(db: Db, planId: string): Promise<
   return Number(rows[0]?.count ?? 0);
 }
 
+/** Canonical scope key for a plan_reviewer input/row -- `${userId}|${trackId
+ * ?? ""}|${submissionId ?? ""}` -- the identity addReviewers de-duplicates
+ * and pre-reads on. No unique index backs this: SQLite treats NULLs as
+ * distinct so an index would miss the `(userId, null, null)` broad-scope
+ * repeat, the likeliest duplicate in practice. */
+function reviewerScopeKey(input: { userId: string; trackId?: string | null; submissionId?: string | null }): string {
+  return `${input.userId}|${input.trackId ?? ""}|${input.submissionId ?? ""}`;
+}
+
 /** DEC-924 (amendment, wave 47): the set-based twin below -- inserts every row from
  * `inputs` (order preserved in the returned array) through
  * chunkRowsForInsert (DEC-528: chunked only for the D1 bound-parameter
  * ceiling, never a per-row insert loop), then ONE select keyed to the newly
  * generated ids. Callers that need all-or-nothing semantics must validate
- * every input BEFORE calling this -- there is no rollback here. */
+ * every input BEFORE calling this -- there is no rollback here.
+ *
+ * Idempotent (w11-c): `plan_reviewer` has no unique index (see
+ * reviewerScopeKey), so a repeat POST of the same {userId, trackId} or
+ * {userId, submissionId} -- or two array inputs that resolve to the same
+ * submission (DEC-623 ref/id aliasing) -- used to write a second identical
+ * row. Inputs are de-duplicated on their canonical scope key (first-seen
+ * order kept), then checked against this plan's EXISTING rows for those
+ * userIds in one chunked pre-read; an input whose key already exists is
+ * dropped from the insert and its existing row is returned in its place, so
+ * callers that `if (!created) throw` on a single-pair repeat still get a
+ * row back instead of an error. */
 export async function addReviewers(
   db: Db,
   planId: string,
   inputs: { userId: string; trackId?: string | null; submissionId?: string | null }[],
 ): Promise<PlanReviewerRecord[]> {
   if (inputs.length === 0) return [];
+
+  const dedupedByKey = new Map<string, { userId: string; trackId: string | null; submissionId: string | null }>();
+  for (const input of inputs) {
+    const key = reviewerScopeKey(input);
+    if (!dedupedByKey.has(key)) {
+      dedupedByKey.set(key, {
+        userId: input.userId,
+        trackId: input.trackId ?? null,
+        submissionId: input.submissionId ?? null,
+      });
+    }
+  }
+
+  const userIds = [...new Set([...dedupedByKey.values()].map((v) => v.userId))];
+  const existingRows: (typeof schema.planReviewer.$inferSelect)[] = [];
+  for (const idChunk of chunkIds(userIds)) {
+    existingRows.push(
+      ...(await db
+        .select()
+        .from(schema.planReviewer)
+        .where(and(eq(schema.planReviewer.planId, planId), inArray(schema.planReviewer.userId, idChunk)))),
+    );
+  }
+  const existingByKey = new Map(existingRows.map((row) => [reviewerScopeKey(row), toPlanReviewerRecord(row)]));
+
   const now = new Date();
-  const rows = inputs.map((input) => ({
-    id: newId(),
-    planId,
-    userId: input.userId,
-    trackId: input.trackId ?? null,
-    submissionId: input.submissionId ?? null,
-    createdAt: now,
-    updatedAt: now,
-  }));
-  for (const batch of chunkRowsForInsert(rows)) {
+  const toInsert: (typeof schema.planReviewer.$inferInsert)[] = [];
+  for (const [, input] of dedupedByKey) {
+    const key = reviewerScopeKey(input);
+    if (existingByKey.has(key)) continue;
+    const id = newId();
+    toInsert.push({
+      id,
+      planId,
+      userId: input.userId,
+      trackId: input.trackId,
+      submissionId: input.submissionId,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+  for (const batch of chunkRowsForInsert(toInsert)) {
     await db.insert(schema.planReviewer).values(batch);
   }
-  const ids = rows.map((r) => r.id);
+  const insertedIds = toInsert.map((r) => r.id);
   const inserted: (typeof schema.planReviewer.$inferSelect)[] = [];
-  for (const idChunk of chunkIds(ids)) {
+  for (const idChunk of chunkIds(insertedIds)) {
     inserted.push(...(await db.select().from(schema.planReviewer).where(inArray(schema.planReviewer.id, idChunk))));
   }
-  const byId = new Map(inserted.map((row) => [row.id, toPlanReviewerRecord(row)]));
-  return ids.map((id) => {
-    const record = byId.get(id);
-    if (!record) throw new Error("addReviewers: insert did not persist row " + id);
+  const byKeyInserted = new Map(inserted.map((row) => [reviewerScopeKey(row), toPlanReviewerRecord(row)]));
+
+  return [...dedupedByKey.keys()].map((key) => {
+    const record = existingByKey.get(key) ?? byKeyInserted.get(key);
+    if (!record) throw new Error("addReviewers: insert did not persist row for key " + key);
     return record;
   });
 }

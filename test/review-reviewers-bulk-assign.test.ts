@@ -166,6 +166,23 @@ describe("DEC-924: POST /api/v1/plans/:id/reviewers submissionIds[] array form",
     expect(vi.mocked(addReviewers).mock.calls.length).toBe(1);
   });
 
+  it("w11-c: a ref and its internal id resolving to the same submission dedupe to one write", async () => {
+    const app = await buildApp(organizer);
+    const res = await app.request(`/api/v1/plans/${plan.id}/reviewers`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      // "SES-1" and "sub-1" both resolve to submission sub-1 (DEC-623).
+      body: JSON.stringify({ userId: "rev-1", submissionIds: ["SES-1", "sub-1"] }),
+    });
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { items: unknown[]; total: number };
+    expect(body.total).toBe(1);
+    expect(body.items.length).toBe(1);
+    expect(writtenRows).toEqual([{ userId: "rev-1", trackId: null, submissionId: "sub-1" }]);
+    const { addReviewers } = await import("../src/server/repo/review");
+    expect(vi.mocked(addReviewers).mock.calls.length).toBe(1);
+  });
+
   it("refuses the entire request on an unknown id -- zero writes", async () => {
     const app = await buildApp(organizer);
     const res = await app.request(`/api/v1/plans/${plan.id}/reviewers`, {
