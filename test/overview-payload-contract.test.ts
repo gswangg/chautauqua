@@ -29,31 +29,10 @@ void _clientKeysSubsetOfServer;
 // than the top-level key check above — it also catches nested-field
 // mismatches (e.g. a field one side types nullable and the other doesn't).
 // Both directions must compile for the wire contract to be honored.
-//
-// Scoped by one documented Omit: agendaWork.conflicts[].roomName is
-// server-typed `string | null` (ConflictRow) but client-typed `string`
-// (AgendaConflict) — a genuine, PRE-EXISTING nullability mismatch,
-// unrelated to this task's DEC-908/DEC-400 session-format sweep (which is
-// what TriageRow.format was: also nullable on the server, non-nullable on
-// the client, now fixed at app/src/pages/overview/types.ts:31). Flagged as
-// an open gap for a future task rather than silently fixed here or
-// silently hidden by omitting the whole `agendaWork` key.
-type ServerConflictRow = ServerOverviewPayload["agendaWork"]["conflicts"][number];
-type ClientAgendaConflict = ClientOverviewPayload["agendaWork"]["conflicts"][number];
-type ServerPayloadScoped = Omit<ServerOverviewPayload, "agendaWork"> & {
-  agendaWork: Omit<ServerOverviewPayload["agendaWork"], "conflicts"> & {
-    conflicts: Omit<ServerConflictRow, "roomName">[];
-  };
-};
-type ClientPayloadScoped = Omit<ClientOverviewPayload, "agendaWork"> & {
-  agendaWork: Omit<ClientOverviewPayload["agendaWork"], "conflicts"> & {
-    conflicts: Omit<ClientAgendaConflict, "roomName">[];
-  };
-};
-function _serverPayloadAssignableToClient(server: ServerPayloadScoped): ClientPayloadScoped {
+function _serverPayloadAssignableToClient(server: ServerOverviewPayload): ClientOverviewPayload {
   return server;
 }
-function _clientPayloadAssignableToServer(client: ClientPayloadScoped): ServerPayloadScoped {
+function _clientPayloadAssignableToServer(client: ClientOverviewPayload): ServerOverviewPayload {
   return client;
 }
 void _serverPayloadAssignableToClient;

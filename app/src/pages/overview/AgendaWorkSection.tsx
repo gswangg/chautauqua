@@ -12,6 +12,7 @@ import { formatDayLabel } from '../../lib/dates';
 import { conflictKindLabel } from '../agenda/ConflictChip';
 import { joinSegments } from './rows';
 import { plural } from '../../lib/plural';
+import { publicRoomLabel } from '../../lib/room-label';
 import type { OverviewPayload } from './types';
 // DEC-908 (wave-9 amendment): the ONE session-shape display vocabulary --
 // format's trailing-parenthetical reshaping ('Talk (30 min)' -> 'Talk, 30
@@ -97,7 +98,7 @@ export function AgendaWorkSection({ payload, setPayload, setError, refetch }: Ag
             <div className="chq-overview-row-title chq-overview-row-title-sm">
               {formatDayLabel(conflict.day)}, {formatClockTime(conflict.startMin)}
             </div>
-            <div className="chq-overview-row-meta">{conflict.roomName}</div>
+            <div className="chq-overview-row-meta">{publicRoomLabel(conflict.roomName)}</div>
           </div>
           <div>
             <div className="chq-overview-row-late">{conflictKindLabel(conflict.kind, conflict.entries.length)}</div>
