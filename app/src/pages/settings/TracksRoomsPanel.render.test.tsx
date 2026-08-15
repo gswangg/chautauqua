@@ -114,7 +114,7 @@ describe('TracksRoomsPanel', () => {
     expect(body).toMatch(/grid-template-columns:\s*1fr\s*;/);
   });
 
-  it('drills into the existing add/rename/delete form via the Add action', async () => {
+  it('drills into the existing add/rename/delete form via the Add action, with the add rows revealed from each section head', async () => {
     mockTracksRooms();
     render(
       <MemoryRouter>
@@ -123,9 +123,36 @@ describe('TracksRoomsPanel', () => {
     );
 
     const section = await openEdit();
-    expect(within(section).getByPlaceholderText('New track name')).toBeInTheDocument();
-    expect(within(section).getByPlaceholderText('New room name')).toBeInTheDocument();
     expect(within(section).queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
+
+    // w4-e/DEC-815: the add form isn't open by default -- it's revealed by
+    // a tertiary action on each section's own head.
+    expect(within(section).queryByPlaceholderText('New track name')).not.toBeInTheDocument();
+    expect(within(section).queryByPlaceholderText('New room name')).not.toBeInTheDocument();
+
+    fireEvent.click(within(section).getByRole('button', { name: 'Add a track' }));
+    expect(within(section).getByPlaceholderText('New track name')).toBeInTheDocument();
+
+    fireEvent.click(within(section).getByRole('button', { name: 'Add a room' }));
+    expect(within(section).getByPlaceholderText('New room name')).toBeInTheDocument();
+  });
+
+  it('gives each section a head with its live count and exactly one filled primary in the whole edit view (DEC-815 amendment)', async () => {
+    mockTracksRooms();
+    render(
+      <MemoryRouter>
+        <TracksRoomsPanel />
+      </MemoryRouter>,
+    );
+
+    const section = await openEdit();
+    expect(within(section).getByText('Tracks · 2')).toBeInTheDocument();
+    expect(within(section).getByText('Rooms · 2')).toBeInTheDocument();
+    expect(within(section).getByRole('button', { name: 'Add a track' })).toBeInTheDocument();
+    expect(within(section).getByRole('button', { name: 'Add a room' })).toBeInTheDocument();
+
+    expect(section.querySelectorAll('.chq-btn-primary')).toHaveLength(1);
+    expect(within(section).getByRole('button', { name: 'Done' })).toHaveClass('chq-btn-primary');
   });
 
   it('renders the edit view with the settings vocabulary: no browser bullets, actions never inside a value cell, and a swatch-picker default matching TRACK_SWATCHES[0]', async () => {
@@ -450,6 +477,7 @@ describe('TracksRoomsPanel', () => {
     );
 
     const section = await openEdit();
+    fireEvent.click(within(section).getByRole('button', { name: 'Add a room' }));
     fireEvent.click(within(section).getByRole('button', { name: 'Add room' }));
 
     await waitFor(() => {
