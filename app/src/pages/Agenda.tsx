@@ -13,7 +13,7 @@ import { placeOptimistically, reconcileConflictsSummary, unscheduleOptimisticall
 import type { AgendaPayload, DescribedUnplaced, RefreshedConflictsSummary, UnplacedReason } from './agenda/types';
 import { formatDayLabel } from '../lib/dates';
 import { countOf } from '../lib/plural';
-import { formatMinutes } from './agenda/gridMath';
+import { clockHHMM } from '../lib/clock';
 import './agenda/agenda.css';
 
 const DAY_START_MIN = 540;
@@ -165,7 +165,7 @@ export function AgendaPage() {
       const clashDelta = refreshed.summary.conflicts - previous.summary.conflicts;
       const clashClause =
         clashDelta > 0 ? ` ${countOf(clashDelta, 'new clash', 'new clashes')} — flagged, not blocked.` : '';
-      setToast(`Placed ${ref} in ${roomName} at ${formatMinutes(startMin)}.${clashClause}`);
+      setToast(`Placed ${ref} in ${roomName} at ${clockHHMM(startMin)}.${clashClause}`);
     } catch (err) {
       setAgenda(previous);
       setError(err instanceof ApiError ? `Placement failed: ${err.message}` : 'Placement failed');

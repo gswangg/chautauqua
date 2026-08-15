@@ -18,16 +18,11 @@ import type { OverviewPayload } from './types';
 // format's trailing-parenthetical reshaping ('Talk (30 min)' -> 'Talk, 30
 // min').
 import { sessionFormatLabel } from '../../../../src/lib/session-vocabulary';
-
-// DEC-828 (schedule.ts): render minutes-from-midnight as a zero-padded
-// HH:MM clock time — never a raw ISO string, never Intl's browser-locale
-// default. A conflict's day/startMin are already event-local at the schema
-// level (schedule_slot), so no timezone conversion happens here.
-function formatClockTime(minutesFromMidnight: number): string {
-  const h = Math.floor(minutesFromMidnight / 60);
-  const m = minutesFromMidnight % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
+// DEC-900 amendment (wave 60): minutes-from-midnight -> zero-padded HH:MM
+// clock time via the single owner. A conflict's day/startMin are already
+// event-local at the schema level (schedule_slot), so no timezone
+// conversion happens here.
+import { clockHHMM } from '../../lib/clock';
 
 // DEC-877: §04's overflow — unplaced rows and conflict rows the payload
 // truncated (server total exceeds the rows actually sent) — collapsed into
@@ -96,7 +91,7 @@ export function AgendaWorkSection({ payload, setPayload, setError, refetch }: Ag
             {/* DEC-877: a raw ISO day with no time never renders — weekday +
                 day-of-month, then the start time, then the room (below). */}
             <div className="chq-overview-row-title chq-overview-row-title-sm">
-              {formatDayLabel(conflict.day)}, {formatClockTime(conflict.startMin)}
+              {formatDayLabel(conflict.day)}, {clockHHMM(conflict.startMin)}
             </div>
             <div className="chq-overview-row-meta">{publicRoomLabel(conflict.roomName)}</div>
           </div>

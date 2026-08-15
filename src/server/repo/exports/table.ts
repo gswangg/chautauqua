@@ -1,7 +1,10 @@
 // Shared pure row-shaping primitives used by every export kind in this
 // directory (DEC-027): the ExportTable shape, the buildTable/buildTable's
-// records-view helper, minutesToClock, and the dynamic-custom-column naming
-// helper shared by submissions.ts and evaluations.ts (DEC-529).
+// records-view helper, and the dynamic-custom-column naming helper shared
+// by submissions.ts and evaluations.ts (DEC-529). Clock formatting
+// (formerly minutesToClock here) moved to the single owner,
+// src/domain/clock.ts (DEC-900 amendment, wave 60) -- import clockHHMM
+// directly.
 
 // DEC-027 amendment (wave 50): the bound lives on the QUERY, not on a check
 // after rows are already in memory. Derivation, modelled on DEC-353's
@@ -44,13 +47,6 @@ export function buildTable(header: string[], rows: string[][], truncated = false
   return { header, rows, records, truncated };
 }
 
-export function minutesToClock(min: number): string {
-  const h = Math.floor(min / 60)
-    .toString()
-    .padStart(2, "0");
-  const m = (min % 60).toString().padStart(2, "0");
-  return `${h}:${m}`;
-}
 
 /** A custom (non-locked-built-in) form field / criterion to render as its
  * own dynamic export column, ordered/deduped by the caller. */

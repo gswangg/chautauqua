@@ -6,7 +6,8 @@ import type { PublicAgendaItem, PublicEvent } from "../../server/repo/public";
 import type { ScheduleBreak } from "../../server/repo/breaks"; // type-only; the public barrel re-exports the read path (getPublicBreaksByDay)
 import { publicRoomLabel } from "../../domain/schedule";
 import { sessionDetailPath, type Surface, type SurfaceBase } from "./shell";
-import { TrackChips, FormatChip, SpeakerNames, SessionDescription, ItineraryToggle, formatDay, formatStartTime24 } from "./cards";
+import { TrackChips, FormatChip, SpeakerNames, SessionDescription, ItineraryToggle, formatDay } from "./cards";
+import { clockHMM } from "../../domain/clock";
 import { formatBreakLabel } from "./agenda-grid";
 import { DEC_768 } from "../../decisions";
 
@@ -80,7 +81,7 @@ export function AgendaItemList(props: {
             return (
               <li class="chq-pub-agenda-break" aria-label={`Break: ${formatBreakLabel(b)}`}>
                 {showDay ? `${formatDay(day)} · ` : ""}
-                {formatStartTime24(b.startMin)} · {formatBreakLabel(b)}
+                {clockHMM(b.startMin)} · {formatBreakLabel(b)}
               </li>
             );
           }
@@ -91,13 +92,13 @@ export function AgendaItemList(props: {
             <>
               {isNewGroup ? (
                 <li class="chq-pub-schedule-time-subhead" aria-hidden="true">
-                  {formatStartTime24(item.startMin)}
+                  {clockHMM(item.startMin)}
                 </li>
               ) : null}
               <li class="chq-pub-agenda-list-item" id={`chq-agenda-list-${item.submissionId}`} data-submission-id={item.submissionId}>
             <div class="chq-pub-agenda-list-time">
               {showDay ? `${formatDay(day)} · ` : ""}
-              {formatStartTime24(item.startMin)}–{formatStartTime24(item.endMin)}
+              {clockHMM(item.startMin)}–{clockHMM(item.endMin)}
             </div>
             <div>
               <strong>

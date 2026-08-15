@@ -23,7 +23,7 @@
 import type { PublicAgendaItem, PublicEvent, PublicTrack } from "../../server/repo/public";
 import { publicRoomLabel } from "../../domain/schedule";
 import { countOf } from "../../domain/count-copy";
-import { formatStartTime24 } from "./cards";
+import { clockHMM } from "../../domain/clock";
 import { DEC_768 } from "../../decisions";
 
 void DEC_768;
@@ -157,7 +157,7 @@ function TrackHighlightRailSection(props: { items: PublicAgendaItem[]; trackId: 
         {matches.map((item) => (
           <div class="chq-pub-rail-day-row">
             <a href={`#chq-agenda-${item.submissionId}`}>
-              {publicRoomLabel(item.roomName)} · {formatStartTime24(item.startMin)}
+              {publicRoomLabel(item.roomName)} · {clockHMM(item.startMin)}
             </a>
           </div>
         ))}

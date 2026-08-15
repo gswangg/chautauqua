@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { AgendaConflict, AgendaRoom, PlacedAgendaSession, UnscheduledAgendaSession } from './types';
 import { buildPhoneSlots } from './phoneSlots';
-import { formatMinutes } from './gridMath';
+import { clockHHMM } from '../../lib/clock';
 import { useEscapeKey } from '../../lib/useEscapeKey';
 import { countOf } from '../../lib/plural';
 
@@ -154,7 +154,7 @@ export function PhoneAgenda({
             const sess = slot.sessions[0]!;
             return (
               <div key={key} className="chq-phone-slot">
-                <span className="chq-phone-slot-time">{formatMinutes(slot.startMin)}</span>
+                <span className="chq-phone-slot-time">{clockHHMM(slot.startMin)}</span>
                 <button type="button" className="chq-phone-slot-card" onClick={() => armFromPlaced(sess)}>
                   <span className="chq-phone-slot-card-meta">
                     {sess.ref} &middot; {lengthLabel}
@@ -181,7 +181,7 @@ export function PhoneAgenda({
           if (slot.kind === 'clash') {
             return (
               <div key={key} className="chq-phone-slot">
-                <span className="chq-phone-slot-time">{formatMinutes(slot.startMin)}</span>
+                <span className="chq-phone-slot-time">{clockHHMM(slot.startMin)}</span>
                 <div className="chq-panel chq-phone-slot-clash">
                   <span className="chq-flag">{countOf(slot.sessions.length, 'session')} in this slot</span>
                   {slot.sessions.map((sess, idx) => (
@@ -214,7 +214,7 @@ export function PhoneAgenda({
           if (!armed) return null;
           return (
             <div key={key} className="chq-phone-slot">
-              <span className="chq-phone-slot-time">{formatMinutes(slot.startMin)}</span>
+              <span className="chq-phone-slot-time">{clockHHMM(slot.startMin)}</span>
               <button type="button" className="chq-phone-slot-free" onClick={() => placeArmedAt(slot.startMin)}>
                 <span className="chq-phone-slot-free-label">Place here</span>
                 <span className="chq-phone-slot-free-length">{lengthLabel} free</span>

@@ -13,6 +13,7 @@ import { formatCalendarDate, formatDayMedium, formatEventDate, formatScheduleSlo
 import { effectiveAssignmentDueDate, isAssignmentOverdue } from "../../domain/task-due";
 import { countOf } from "../../domain/count-copy";
 import { publicRoomLabel } from "../../domain/schedule";
+import { clockHHMM } from "../../domain/clock";
 import { sessionFormatLabel } from "../../lib/session-vocabulary";
 import { csrfForm } from "../../server/middleware";
 import { ApiError } from "../../server/http";
@@ -364,13 +365,12 @@ function PortalPage(props: {
   );
 }
 
+// DEC-900 amendment (wave 60): minutes-from-midnight -> zero-padded HH:MM
+// via the single clock owner; the `null -> ''` guard stays at this call
+// site (the owner never takes null).
 function minutesToClock(min: number | null): string {
   if (min === null) return "";
-  const h = Math.floor(min / 60)
-    .toString()
-    .padStart(2, "0");
-  const m = (min % 60).toString().padStart(2, "0");
-  return `${h}:${m}`;
+  return clockHHMM(min);
 }
 
 // DEC-777/w13-d: "<day>, <HH:MM> · <room>" — THE ONE portal placement

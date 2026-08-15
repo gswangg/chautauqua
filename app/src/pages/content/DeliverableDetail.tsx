@@ -10,6 +10,7 @@ import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { formatDate, formatDayLabel } from '../../lib/dates';
 import { countOf } from '../../lib/plural';
 import { publicRoomLabel } from '../../lib/room-label';
+import { clockHHMM } from '../../lib/clock';
 import {
   FILE_KINDS,
   DELIVERABLE_LABELS,
@@ -66,21 +67,15 @@ interface DeliverableHeaderDetail {
   contentStatus: ContentStatus;
 }
 
-function formatClockTime(minutesFromMidnight: number): string {
-  const h = Math.floor(minutesFromMidnight / 60);
-  const m = minutesFromMidnight % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
 /** '<CODE> · <slot>, <Room>' (DEC-901) -- the leading speaker clause is
  * rendered separately (DEC-998: the shown speaker name is a link to their
  * contact record), and the slot/room clause is omitted entirely (not
  * printed as an empty '· ,') when the session hasn't been placed on the
- * agenda yet. */
+ * agenda yet. Time is zero-padded HH:MM via the single clock owner (DEC-900). */
 function formatDetailTrailer(detail: DeliverableHeaderDetail): string {
   const parts = [detail.ref];
   if (detail.slot) {
-    const slotLabel = `${formatDayLabel(detail.slot.day)} ${formatClockTime(detail.slot.startMin)}–${formatClockTime(detail.slot.endMin)}`;
+    const slotLabel = `${formatDayLabel(detail.slot.day)} ${clockHHMM(detail.slot.startMin)}–${clockHHMM(detail.slot.endMin)}`;
     parts.push(`${slotLabel}, ${publicRoomLabel(detail.slot.roomName)}`);
   }
   return parts.join(' · ');

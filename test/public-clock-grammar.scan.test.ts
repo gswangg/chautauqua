@@ -94,10 +94,15 @@ describe("public clock grammar scan (DEC-768 wave 48 amendment)", () => {
     expect(hits, hits.map((h) => `${h.file}:${h.line}: ${h.text}`).join("\n") || "no offender found").toHaveLength(0);
   });
 
-  it("cards.tsx exports exactly one clock formatter (formatStartTime24, not formatMinutes)", () => {
+  it("cards.tsx declares no clock formatter of its own — the single owner is src/domain/clock.ts (DEC-900 amendment, wave 60)", () => {
     const src = readFileSync(join(PUBLIC_ROOT, "cards.tsx"), "utf8");
     const exportedFormatters = [...src.matchAll(/export function (format\w*(?:Time|Minutes)\w*)\(/g)].map((m) => m[1]);
-    expect(exportedFormatters).toEqual(["formatStartTime24"]);
+    expect(exportedFormatters).toEqual([]);
     expect(src.includes("formatMinutes")).toBe(false);
+    expect(src.includes("formatStartTime24")).toBe(false);
+    // Every public surface reads the 24h clock grammar through the one
+    // owner's unpadded formatter.
+    const owner = readFileSync(join(ROOT, "src", "domain", "clock.ts"), "utf8");
+    expect(owner.includes("export function clockHMM(")).toBe(true);
   });
 });

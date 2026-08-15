@@ -5,7 +5,8 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { chunkIds } from "../../../lib/chunk";
-import { type ExportTable, EXPORT_MAX_ROWS, buildTable, minutesToClock } from "./table";
+import { type ExportTable, EXPORT_MAX_ROWS, buildTable } from "./table";
+import { clockHHMM } from "../../../domain/clock";
 import { getRecordPrefix } from "./common";
 
 export const AGENDA_HEADER = ["day", "start", "end", "room", "ref", "title", "speakers", "tracks"] as const;
@@ -41,8 +42,8 @@ export function shapeAgendaExport(inputs: AgendaExportInput[]): ExportTable {
   const sorted = [...inputs].sort(compareAgendaRows);
   const rows = sorted.map((s) => [
     s.day,
-    minutesToClock(s.startMin),
-    minutesToClock(s.endMin),
+    clockHHMM(s.startMin),
+    clockHHMM(s.endMin),
     s.room ?? "",
     s.ref,
     s.title,
