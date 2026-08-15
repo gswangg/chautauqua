@@ -457,7 +457,7 @@
   padding: 15px 0;
   border-bottom: 1px solid var(--chq-hairline);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 176px;
   align-items: center;
   gap: 12px;
 }
@@ -815,10 +815,10 @@
    (a "Weight" label vs. a full number input) drifted out of alignment
    between the header and the body rows even though both declared the
    same template. */
-/* DEC-745 (wave-21 amendment): docs/design/Chautauqua Review.dc.html:470
+/* DEC-745 (wave-22 amendment): docs/design/Chautauqua Review.dc.html:470
    (head) / :474 (rows) give this row the frame's exact five tracks -- drag
-   20px / Criterion (remainder) / Guidance 260px / Weight 150px / Remove
-   70px, gap 16. The drag column is a pinned 20px, not `auto`: an `auto`
+   20px / Criterion (remainder) / Guidance 260px / Weight 132px / Remove
+   62px, gap 16. The drag column is a pinned 20px, not `auto`: an `auto`
    track sizes from that row's OWN content, and a locked row's blank handle
    cell differs in content from an unlocked row's handle button, which is
    exactly the drift this column exists to prevent (see the paragraph
@@ -827,7 +827,7 @@
    share this one declaration so they cannot drift apart. */
 .chq-review-criterion-row,
 .chq-review-criteria-head-row {
-  grid-template-columns: 20px minmax(0, 1fr) 260px 150px 70px;
+  grid-template-columns: 20px minmax(0, 1fr) 260px 132px 62px;
 }
 
 /* w28-b/DEC-124: layout-only hook, carrying no typography of its own (the
@@ -1604,14 +1604,17 @@
   gap: 8px;
 }
 
-/* REVIEW PACK frame 03-03 (DEC-874 wave-65 amendment): the row's grid
-   column-2 action -- intrinsic width, clamped and right-aligned within the
-   column, never the earlier phone-frame full-width button. This class is
-   shared by .chq-btn-primary/.chq-btn-secondary action links AND the
-   recused row's disabled reason control, so (DEC-939 amendment) it must
-   never declare color/background -- shape only. */
+/* REVIEW PACK frame 03-03 (DEC-874 wave-65 amendment; DEC-745 wave-22
+   amendment): the row's grid column-2 action fills its fixed 176px track
+   (docs/design/Chautauqua Review.dc.html:363) -- the frame's button spans
+   the column rather than sizing from its own label, which is what let
+   'Score' vs 'Continue' vs the recusal reason stagger the queue's right
+   edge under the earlier `auto` track. This class is shared by
+   .chq-btn-primary/.chq-btn-secondary action links AND the recused row's
+   disabled reason control, so (DEC-939 amendment) it must never declare
+   color/background -- shape only. */
 .chq-review-queue-row-action {
-  justify-self: end;
+  justify-self: stretch;
   max-width: 220px;
   width: auto;
   text-align: center;
