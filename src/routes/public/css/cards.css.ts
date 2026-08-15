@@ -226,4 +226,11 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
   @media (max-width: 700px) {
     .chq-pub-view-toggle-option { min-height: 44px; }
   }
+
+  /* w9-b: SpeakerDetailContent's headshot/fallback box (detail.tsx) -- the
+     shared .chq-pub-headshot-fallback rule above already supplies
+     aspect-ratio/border-radius/centering, so this rule only fixes the
+     width both the <img> and the fallback <div> share, replacing the old
+     inline style="width:160px" that only applied to the fallback branch. */
+  .chq-pub-detail-headshot { width: 160px; }
 `;

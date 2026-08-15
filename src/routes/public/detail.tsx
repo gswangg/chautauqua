@@ -4,7 +4,7 @@
 
 import type { PublicEvent, PublicSpeakerDetail, PublicSessionDetail } from "../../server/repo/public";
 import { surfacePath, speakerDetailPath, sessionDetailPath, SURFACE_LABELS, type Surface, type SurfaceBase } from "./shell";
-import { TrackChips, FormatChip, SessionDescription, ItineraryToggle, formatDay } from "./cards";
+import { TrackChips, FormatChip, SessionDescription, ItineraryToggle, formatDay, speakerInitials } from "./cards";
 import { clockHMM } from "../../domain/clock";
 import { ItineraryScript } from "./agenda";
 
@@ -44,14 +44,27 @@ export function SpeakerDetailContent(props: {
       <BackLink event={event} from={from} base={base} />
       <div class="chq-card">
         {speaker.headshotUrl ? (
-          <img src={speaker.headshotUrl} alt={`${speaker.firstName} ${speaker.lastName}`} width={160} />
+          <img
+            src={speaker.headshotUrl}
+            alt={`${speaker.firstName} ${speaker.lastName}`}
+            class="chq-pub-detail-headshot"
+          />
         ) : (
-          <div class="chq-pub-headshot-fallback" style="width:160px" />
+          // DEC-885: same drawn hatch + initials placeholder the list/grid
+          // fallback uses (SpeakerHeadshotLink, speakers.tsx) -- never an
+          // empty sunk box. aria-hidden since the <h1> beside it already
+          // carries the speaker's full name.
+          <div class="chq-pub-headshot-fallback chq-pub-detail-headshot" aria-hidden="true">
+            {speakerInitials(speaker.firstName, speaker.lastName)}
+          </div>
         )}
         <h1 class="chq-pub-surface-title">
           {speaker.firstName} {speaker.lastName}
         </h1>
-        <p>{[speaker.title, speaker.company].filter(Boolean).join(", ")}</p>
+        {(() => {
+          const affiliation = [speaker.title, speaker.company].filter(Boolean).join(", ");
+          return affiliation ? <p>{affiliation}</p> : null;
+        })()}
         {speaker.bio ? <SessionDescription description={speaker.bio} /> : null}
         {speaker.socialLinks.length > 0 ? (
           <ul>
