@@ -1777,6 +1777,67 @@ describe('SubmissionDetailPage: title/abstract editor turn diet (findings wave 1
     expect(summary).not.toBeNull();
     expect((titleInput as HTMLInputElement).value).toBe('A'.repeat(201));
   });
+
+  it('Escape while editing returns to the read view without issuing a request', async () => {
+    const fetchMock = mockApi(editRoutes({ status: 200, body: baseDetail() }));
+
+    renderPage(`/submissions/${SUB_ID}?edit=1`);
+
+    const titleInput = await screen.findByLabelText('Title');
+    fireEvent.change(titleInput, { target: { value: 'Should not be saved' } });
+    fireEvent.keyDown(titleInput, { key: 'Escape', code: 'Escape' });
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText('Title')).not.toBeInTheDocument();
+    });
+    expect(screen.getByText('Original description')).toBeInTheDocument();
+
+    const patchCalls = fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH');
+    expect(patchCalls).toHaveLength(0);
+  });
+});
+
+// findings wave 15 amendment (task-w15-a) to DEC-967: the tracks editor is
+// also a real <form> so Enter commits saveTracks without a click on Save.
+describe('SubmissionDetailPage: tracks editor turn diet (findings wave 15 amendment to DEC-967)', () => {
+  it('pressing Enter inside the tracks editor commits the edit with exactly one PATCH', async () => {
+    const updated = baseDetail({ trackIds: ['t1'] });
+    const fetchMock = mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: baseDetail({ trackIds: [] }),
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: {
+        items: [{ id: 't1', name: 'Frontend' }],
+        total: 1,
+        page: 1,
+        perPage: 20,
+      },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`PATCH /api/v1/submissions/${SUB_ID}`]: { status: 200, body: updated },
+    });
+
+    renderPage();
+    await openSessionDetails();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit tracks' }));
+
+    const editor = document.getElementById('submission-track-editor') as HTMLElement;
+    const checkbox = within(editor).getByRole('checkbox', { name: 'Frontend' });
+    fireEvent.click(checkbox);
+    fireEvent.keyDown(editor, { key: 'Enter', code: 'Enter' });
+    // jsdom does not implement native implicit-submission-on-Enter, so the
+    // keyDown is paired with the same submit event the browser's default
+    // action would raise on this <form>.
+    fireEvent.submit(editor);
+
+    await waitFor(() => {
+      const patchCalls = fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH');
+      expect(patchCalls).toHaveLength(1);
+    });
+
+    const patchCalls = fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH');
+    const body = JSON.parse(patchCalls[0]![1]!.body as string);
+    expect(body.trackIds).toEqual(['t1']);
+  });
 });
 
 // DEC-958 (wave 66 amendment): the page's other six write paths -- status,
