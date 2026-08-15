@@ -39,6 +39,7 @@ import {
   type PortalTaskAssignment,
 } from "../../server/repo/portal";
 import { getFileVersionNumber } from "../../server/repo/files";
+import { formatBytes } from "../../domain/files";
 import { DEC_729, DEC_777, DEC_884 } from "../../decisions";
 
 void DEC_729;
@@ -373,26 +374,6 @@ function formatPlacement(day: string, startMin: number, roomName: string | null)
   return `${formatDayMedium(day)}, ${minutesToClock(startMin)} · ${room}`;
 }
 
-const BYTE_UNITS = ["B", "KB", "MB", "GB"];
-
-/** formatBytes-equivalent (DEC-777's Slides card needs a human file size —
- * no such helper exists yet elsewhere in the codebase, so this is scoped
- * locally rather than growing a new shared lib entry point for one call
- * site). */
-function formatFileSize(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes < 0) {
-    throw new Error(`formatFileSize: bytes must be a finite non-negative number, got ${bytes}`);
-  }
-  let value = bytes;
-  let unitIndex = 0;
-  while (value >= 1024 && unitIndex < BYTE_UNITS.length - 1) {
-    value /= 1024;
-    unitIndex += 1;
-  }
-  const rounded = unitIndex === 0 ? value.toString() : value.toFixed(1);
-  return `${rounded} ${BYTE_UNITS[unitIndex]}`;
-}
-
 // DEC-777 (w2-f rebuild): docs/design "Portal · Your session" frame — status
 // badge, title and back link EACH their own block-level row (never sharing
 // an inline line), "REF · format · track" as its own line, a placement line
@@ -458,7 +439,7 @@ function SubmissionDetailPage(props: {
         <div class="chq-portal-row">
           <span class="chq-portal-row-title">{deliverable.filename}</span>
           <span class="chq-portal-due">
-            v{deliverableVersion ?? 1} · {formatFileSize(deliverable.sizeBytes)} · Shared with the organisers
+            v{deliverableVersion ?? 1} · {formatBytes(deliverable.sizeBytes)} · Shared with the organisers
           </span>
           {/* DEC-777: never a button with nowhere to go — the upload link
               only renders when this speaker actually has a file_request

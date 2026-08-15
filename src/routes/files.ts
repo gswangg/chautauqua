@@ -32,6 +32,7 @@ import {
   FILE_KINDS,
   assertServedContentTypeHeader,
   contentDispositionAttachment,
+  formatBytes,
   isImageContentType,
   isValidFileKind,
   isValidVersionChain,
@@ -389,11 +390,9 @@ fileApiRoutes.post("/events/:eventId/files/archive", requireOrganizer, csrfJson,
     totalBytes += latest.sizeBytes;
   }
   if (totalBytes > ARCHIVE_MAX_TOTAL_BYTES) {
-    const totalMb = (totalBytes / (1024 * 1024)).toFixed(1);
-    const capMb = (ARCHIVE_MAX_TOTAL_BYTES / (1024 * 1024)).toFixed(0);
     throw new ApiError(
       "invalid",
-      `Requested files total ${totalMb}MB, which exceeds the ${capMb}MB archive limit. Select fewer files.`,
+      `Requested files total ${formatBytes(totalBytes)}, which exceeds the ${formatBytes(ARCHIVE_MAX_TOTAL_BYTES)} archive limit. Select fewer files.`,
       { fileIds: "Too large" },
     );
   }

@@ -105,8 +105,8 @@ describe("POST /api/v1/events/:eventId/files/archive total-byte budget (DEC-353)
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { code: string; message: string; fields?: Record<string, string> } };
     expect(body.error.code).toBe("invalid");
-    expect(body.error.message).toMatch(/30\.0MB/);
-    expect(body.error.message).toMatch(/20MB/);
+    expect(body.error.message).toMatch(/30\.0 MB/);
+    expect(body.error.message).toMatch(/20\.0 MB/);
     expect(body.error.fields).toEqual({ fileIds: "Too large" });
     expect(getCount.count).toBe(0);
   });

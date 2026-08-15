@@ -22,6 +22,7 @@ import { RemindPreviewModal } from './RemindPreviewModal';
 import { describeSendResult, type SendResult } from '../../lib/sendResult';
 import { STATUS_LABELS } from '../submissions/types';
 import { CONTENT_STATUS_LABELS } from '../content/types';
+import { formatBytes } from '../content/format';
 import { DEC_930 } from '../../../../src/decisions';
 import type { SpeakerDetailResponse, SpeakerDetailTaskStatus } from './speakerDetail';
 import './speakers.css';
@@ -51,12 +52,6 @@ function neutralStatusClass(): string {
 // directly rather than the neutral one above.
 function taskStatusClass(status: SpeakerDetailTaskStatus): string {
   return `chq-speakers-status chq-speakers-status-${status}`;
-}
-
-function formatBytes(sizeBytes: number): string {
-  if (sizeBytes < 1024) return `${sizeBytes} B`;
-  if (sizeBytes < 1024 * 1024) return `${(sizeBytes / 1024).toFixed(1)} KB`;
-  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function formatClockTime(minutesFromMidnight: number): string {

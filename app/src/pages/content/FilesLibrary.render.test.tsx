@@ -331,7 +331,7 @@ describe('FilesLibrary render smoke', () => {
 
     const button = await screen.findByRole('button', { name: 'Download all 51 (.zip)' });
     expect(button).toBeDisabled();
-    expect(screen.getByText('50 files or 20 MB at a time — narrow the filter')).toBeInTheDocument();
+    expect(screen.getByText('50 files or 20.0 MB at a time — narrow the filter')).toBeInTheDocument();
   });
 
   it('renders a Previous/Next pager driven by the envelope total', async () => {
