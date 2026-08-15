@@ -48,7 +48,7 @@ import {
   isPlanOpen,
   MAX_CRITERION_GUIDANCE_LENGTH,
 } from '../../../../src/domain/evaluation';
-import { DEC_745, DEC_786, DEC_824, DEC_882, DEC_715, DEC_213, DEC_124 } from '../../../../src/decisions';
+import { DEC_745, DEC_786, DEC_824, DEC_882, DEC_715, DEC_213, DEC_124, DEC_958 } from '../../../../src/decisions';
 import { countOf } from '../../lib/plural';
 // w40-e/DEC-745 amendment: the reviewer roster is the ONE place an
 // assignment can be Removed, so it must request/page through the site-wide
@@ -81,6 +81,35 @@ void DEC_213;
 // .chq-field-error/chq-field-invalid pair on every offending control, never
 // a page-local error style.
 void DEC_124;
+
+// DEC-958 (wave-64 amendment): POST /plans/:id/reviewers throws SIX distinct
+// refusals from three call sites (assign-one, assign-all-in-track,
+// assign-chosen) that all share the top-level message "Invalid reviewer
+// assignment" -- the fields-map KEY is the only thing that distinguishes
+// them. A per-key matcher (not a per-message one) below renders every known
+// key against the control that owns it and any UNKNOWN key by its own name,
+// so a seventh shape lands as `<key>: <message>` rather than falling
+// through to the generic four-word top-level message.
+void DEC_958;
+const REVIEWER_ASSIGN_FIELD_LABELS: Record<string, { anchorId: string; label: string }> = {
+  userId: { anchorId: 'plan-reviewer-select', label: 'Reviewer' },
+  trackId: { anchorId: 'plan-reviewer-track-select', label: 'Track' },
+  submissionId: { anchorId: 'plan-reviewer-submission-select', label: 'Submission' },
+  submissionIds: { anchorId: 'plan-reviewer-choose-submissions', label: 'Submissions' },
+};
+
+/** Walks the WHOLE err.fields map (never a single named key) and renders a
+ * problem per key -- known keys anchor to the control that owns them,
+ * unknown keys anchor to their own key name rather than being dropped. */
+function reviewerAssignProblems(err: ApiError): { anchorId: string; label: string }[] {
+  if (!err.fields) return [];
+  return Object.entries(err.fields).map(([key, message]) => {
+    const known = REVIEWER_ASSIGN_FIELD_LABELS[key];
+    return known
+      ? { anchorId: known.anchorId, label: `${known.label}: ${message}` }
+      : { anchorId: key, label: `${key}: ${message}` };
+  });
+}
 
 // w28-b/DEC-745/DEC-124: fields the summary can anchor to. 'rounds' has no
 // editable control in this editor (rounds only advances via "Start a new
@@ -252,6 +281,14 @@ export function PlanEditor() {
   const [saving, setSaving] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // DEC-958 (wave-64 amendment): the reviewer-assignment panel's own
+  // ErrorSummary problems, built from the WHOLE err.fields map via
+  // reviewerAssignProblems -- null when the assign call hasn't failed, or
+  // when it failed with no fields (the generic `error` banner above still
+  // carries that case, exactly as before this amendment).
+  const [reviewerAssignErrors, setReviewerAssignErrors] = useState<{ anchorId: string; label: string }[] | null>(
+    null,
+  );
   // w28-b/DEC-124 (rule 9: a draft never validates): generalised from the
   // old name-only "touched" gate -- NO field error anywhere in this form
   // (name, dates, scale, criteria) renders before the first Save/Create
@@ -908,6 +945,7 @@ export function PlanEditor() {
       return;
     }
     setError(null);
+    setReviewerAssignErrors(null);
     try {
       const body: { userId: string; trackId?: string; submissionId?: string } = { userId: reviewerUserId.trim() };
       if (reviewerScope === 'submission' && reviewerSubmissionId.trim()) body.submissionId = reviewerSubmissionId.trim();
@@ -915,9 +953,14 @@ export function PlanEditor() {
       setReviewerUserId('');
       setReviewerSubmissionId('');
     } catch (err) {
-      // Surface the server's field-specific message verbatim (e.g. the
-      // DEC-623 unknown-ref hint) over the generic top-level message.
-      setError(err instanceof ApiError ? (err.fields?.submissionId ?? err.message) : 'Failed to assign reviewer');
+      // DEC-958 (wave-64 amendment): the WHOLE fields map, each key anchored
+      // to the control that owns it -- never just err.fields.submissionId,
+      // which silently dropped the userId="required" shape.
+      if (err instanceof ApiError && err.fields) {
+        setReviewerAssignErrors(reviewerAssignProblems(err));
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to assign reviewer');
+      }
     }
   }
 
@@ -926,6 +969,7 @@ export function PlanEditor() {
   async function confirmAssignAllInTrack() {
     if (!planId || !reviewerUserId.trim() || !reviewerTrackId) return;
     setError(null);
+    setReviewerAssignErrors(null);
     setAssigningBatch(true);
     try {
       await postReviewerAssignment({ userId: reviewerUserId.trim(), trackId: reviewerTrackId });
@@ -933,7 +977,15 @@ export function PlanEditor() {
       resetScopeConfirm();
       setScopePreview(null);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to assign reviewer');
+      // DEC-958 (wave-64 amendment): this is the ONLY path that sends
+      // trackId, and it used to read nothing but err.message -- a
+      // { trackId: "unknown track for this event" } refusal rendered the
+      // same four words as every other shape.
+      if (err instanceof ApiError && err.fields) {
+        setReviewerAssignErrors(reviewerAssignProblems(err));
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to assign reviewer');
+      }
     } finally {
       setAssigningBatch(false);
     }
@@ -947,6 +999,7 @@ export function PlanEditor() {
   async function confirmAssignChosen() {
     if (!planId || !reviewerUserId.trim() || chosenSubmissionIds.size === 0) return;
     setError(null);
+    setReviewerAssignErrors(null);
     setAssigningBatch(true);
     try {
       const { items } = await apiPost<{ items: PlanReviewer[]; total: number }>(`/plans/${planId}/reviewers`, {
@@ -962,7 +1015,14 @@ export function PlanEditor() {
       resetScopeConfirm();
       setScopePreview(null);
     } catch (err) {
-      setError(err instanceof ApiError ? (err.fields?.submissionIds ?? err.message) : 'Failed to assign reviewer');
+      // DEC-958 (wave-64 amendment): walk the whole fields map -- the
+      // parseBoundedIdArray refusal ("Required"/"must not exceed…") shares
+      // the same submissionIds key as the two route-thrown shapes below it.
+      if (err instanceof ApiError && err.fields) {
+        setReviewerAssignErrors(reviewerAssignProblems(err));
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to assign reviewer');
+      }
     } finally {
       setAssigningBatch(false);
     }
@@ -1947,8 +2007,24 @@ export function PlanEditor() {
               </div>
             )}
 
+            {/* DEC-958 (wave-64 amendment): summarizes the WHOLE err.fields
+                map from any of the three assign call sites, anchored to the
+                control each key owns -- the operator's typed selection is
+                never cleared on a refusal. */}
+            {reviewerAssignErrors && reviewerAssignErrors.length > 0 && (
+              <ErrorSummary
+                heading={countHeading(reviewerAssignErrors.length, 'before this reviewer can be assigned')}
+                problems={reviewerAssignErrors}
+              />
+            )}
             <div className="chq-review-reviewer-form">
-              <select className="chq-select" aria-label="Reviewer" value={reviewerUserId} onChange={(e) => setReviewerUserId(e.target.value)}>
+              <select
+                id="plan-reviewer-select"
+                className="chq-select"
+                aria-label="Reviewer"
+                value={reviewerUserId}
+                onChange={(e) => setReviewerUserId(e.target.value)}
+              >
                 <option value="">Select a reviewer…</option>
                 {reviewerOptions.map((r) => {
                   // w35-e/DEC-757: name leads, email is the quiet secondary --
@@ -1984,7 +2060,13 @@ export function PlanEditor() {
                 <option value="submission">One submission</option>
               </select>
               {reviewerScope === 'track' && (
-                <select className="chq-select" aria-label="Track" value={reviewerTrackId} onChange={(e) => setReviewerTrackId(e.target.value)}>
+                <select
+                  id="plan-reviewer-track-select"
+                  className="chq-select"
+                  aria-label="Track"
+                  value={reviewerTrackId}
+                  onChange={(e) => setReviewerTrackId(e.target.value)}
+                >
                   <option value="">Select a track…</option>
                   {tracks.map((t) => (
                     <option key={t.id} value={t.id}>
@@ -1998,7 +2080,13 @@ export function PlanEditor() {
                   {/* DEC-572: the submission picker is fed by the scope-preview
                       endpoint, which requires a trackId -- reusing the same
                       track select as scope 'track' rather than a free-text id. */}
-                  <select className="chq-select" aria-label="Track" value={reviewerTrackId} onChange={(e) => setReviewerTrackId(e.target.value)}>
+                  <select
+                    id="plan-reviewer-track-select"
+                    className="chq-select"
+                    aria-label="Track"
+                    value={reviewerTrackId}
+                    onChange={(e) => setReviewerTrackId(e.target.value)}
+                  >
                     <option value="">Select a track…</option>
                     {tracks.map((t) => (
                       <option key={t.id} value={t.id}>
@@ -2007,6 +2095,7 @@ export function PlanEditor() {
                     ))}
                   </select>
                   <select
+                    id="plan-reviewer-submission-select"
                     className="chq-select"
                     aria-label="Submission"
                     value={reviewerSubmissionId}
@@ -2074,7 +2163,7 @@ export function PlanEditor() {
                     </button>
                   </div>
                 ) : (
-                  <div className="chq-review-scope-choose">
+                  <div id="plan-reviewer-choose-submissions" className="chq-review-scope-choose">
                     {scopePreview.items.map((item) => (
                       <label key={item.id} className="chq-review-checkbox-label">
                         <input
