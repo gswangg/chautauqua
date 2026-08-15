@@ -24,7 +24,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DelayedLoading } from '../../components/DelayedLoading';
-import { apiGet, apiPut, ApiError } from '../../lib/api';
+import { apiGet, apiList, apiPut, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { ResourcesPanel } from './ResourcesPanel';
 import { SummarySection } from './SummarySection';
@@ -80,6 +80,23 @@ const SPEAKER_EDIT_FIELDS: { label: string; editable: boolean }[] = [
   { label: 'Abstract', editable: false },
 ];
 
+// w4-b: the SAME array renders in both the read row and the edit form's
+// 'What speakers may edit' section -- never a second list.
+function SpeakerEditPills() {
+  return (
+    <div className="chq-settings-portal-pills">
+      {SPEAKER_EDIT_FIELDS.map((field) => (
+        <span
+          key={field.label}
+          className={field.editable ? 'chq-pill chq-pill-static is-active' : 'chq-pill chq-pill-static'}
+        >
+          {field.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function paragraphCount(text: string | null): number {
   const trimmed = (text ?? '').trim();
   if (trimmed.length === 0) return 0;
@@ -93,6 +110,7 @@ export function PortalSettingsPanel() {
   const [welcomeMessage, setWelcomeMessage] = useState<string | null>(null);
   const [welcomeLoaded, setWelcomeLoaded] = useState(false);
   const [taskCount, setTaskCount] = useState<number | null>(null);
+  const [resourceCount, setResourceCount] = useState<number | null>(null);
   const [error, setError] = useState<string | undefined>(undefined);
 
   const [form, setForm] = useState<PortalSettingsForm>(EMPTY_FORM);
@@ -117,6 +135,9 @@ export function PortalSettingsPanel() {
     apiGet<OnboardingSummary>(`/events/${eventId}/onboarding?page=1&perPage=1`)
       .then((res) => setTaskCount(res.tasks.length))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load onboarding tasks'));
+    apiList<{ id: string }>(`/events/${eventId}/resources`)
+      .then((res) => setResourceCount(res.total))
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load resources'));
   }, [eventId, loadPortalSettings]);
 
   function closeEdit() {
@@ -169,18 +190,7 @@ export function PortalSettingsPanel() {
     },
     {
       label: 'Speakers can edit',
-      value: (
-        <div className="chq-settings-portal-pills">
-          {SPEAKER_EDIT_FIELDS.map((field) => (
-            <span
-              key={field.label}
-              className={field.editable ? 'chq-pill chq-pill-static is-active' : 'chq-pill chq-pill-static'}
-            >
-              {field.label}
-            </span>
-          ))}
-        </div>
-      ),
+      value: <SpeakerEditPills />,
     },
     {
       label: 'Onboarding tasks',
@@ -216,7 +226,6 @@ export function PortalSettingsPanel() {
             e.preventDefault();
             void handleSave();
           }}
-          consequence="Title and abstract stay organiser-only — a speaker editing them after acceptance would change what was accepted."
           footer={{
             primary: (
               <button type="submit" className="chq-btn chq-btn-primary" disabled={saving}>
@@ -285,12 +294,20 @@ export function PortalSettingsPanel() {
             {formErrors.showResources ? <span role="alert">{formErrors.showResources}</span> : null}
           </SettingsField>
           {saveError ? <span role="alert">{saveError}</span> : null}
-          <div className="chq-settings-row">
-            <span className="chq-settings-row-label">Resources</span>
-            <div className="chq-settings-row-value chq-settings-portal-resources">
-              <ResourcesPanel />
-            </div>
+
+          <div className="chq-settings-section-head">
+            <h3 className="chq-section-label">What speakers may edit</h3>
           </div>
+          <SpeakerEditPills />
+          <p className="chq-settings-edit-consequence">
+            Title and abstract stay organiser-only — a speaker editing them after acceptance would change what was
+            accepted.
+          </p>
+
+          <div className="chq-settings-section-head">
+            <h3 className="chq-section-label">{`Resources · ${resourceCount ?? 0}`}</h3>
+          </div>
+          <ResourcesPanel />
         </SettingsEditForm>
       </SummarySection>
     </>

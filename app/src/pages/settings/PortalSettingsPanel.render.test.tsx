@@ -295,6 +295,16 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
         ),
       ).toBeInTheDocument();
 
+      // w4-b: the edit form's own 'What speakers may edit' section renders
+      // the SAME pill array as the read row -- Bio/Headshot/Links active,
+      // Session title/Abstract inactive.
+      expect(screen.getByText('What speakers may edit')).toBeInTheDocument();
+      expect(screen.getByText('Bio')).toHaveClass('is-active');
+      expect(screen.getByText('Headshot')).toHaveClass('is-active');
+      expect(screen.getByText('Links')).toHaveClass('is-active');
+      expect(screen.getByText('Session title')).not.toHaveClass('is-active');
+      expect(screen.getByText('Abstract')).not.toHaveClass('is-active');
+
       const footer = document.querySelector('.chq-settings-edit-footer') as HTMLElement;
       expect(footer).not.toBeNull();
       expect(footer.querySelector('.chq-settings-edit-footer-destructive')).toBeNull();
