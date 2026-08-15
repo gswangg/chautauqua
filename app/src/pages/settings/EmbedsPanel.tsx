@@ -114,6 +114,25 @@ export function EmbedsPanel() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | undefined>(undefined);
   const [saved, setSaved] = useState(false);
+  // DEC-856 (wave 67 amendment): POST/PATCH /events/:eventId/embeds |
+  // /embeds/:id throws a fields map keyed by name/surface/format/trackId/
+  // sessionFormat/roomId/day/q/limit/fields/accent/options -- every one of
+  // those has a dedicated control on this form. A key this form has no
+  // control for still renders, labelled, never dropped.
+  const [saveFieldErrors, setSaveFieldErrors] = useState<Record<string, string>>({});
+  const KNOWN_SAVE_FIELDS: readonly string[] = [
+    'name',
+    'surface',
+    'format',
+    'trackId',
+    'sessionFormat',
+    'roomId',
+    'day',
+    'q',
+    'limit',
+    'fields',
+    'accent',
+  ];
 
   const [surface, setSurface] = useState<EmbedSurface>('sessions');
   const [format, setFormat] = useState<EmbedFormat>('iframe');
@@ -197,6 +216,7 @@ export function EmbedsPanel() {
     if (!eventId || !name.trim()) return;
     setSaving(true);
     setSaveError(undefined);
+    setSaveFieldErrors({});
     const options: StoredEmbedOptions = {
       trackId: trackId || undefined,
       sessionFormat: sessionFormat || undefined,
@@ -222,11 +242,20 @@ export function EmbedsPanel() {
       setSaved(true);
       window.setTimeout(() => setSaved(false), 2000);
     } catch (err) {
-      setSaveError(err instanceof ApiError ? err.message : 'Failed to save embed');
+      // DEC-856: a fields map is never collapsed to err.message -- each
+      // named key routes to its own control below; an unmatched key still
+      // renders labelled ("<key>: <message>"), never dropped.
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setSaveFieldErrors(err.fields as Record<string, string>);
+      } else {
+        setSaveError(err instanceof ApiError ? err.message : 'Failed to save embed');
+      }
     } finally {
       setSaving(false);
     }
   }
+
+  const saveUnownedErrors = Object.entries(saveFieldErrors).filter(([key]) => !KNOWN_SAVE_FIELDS.includes(key));
 
   useEffect(() => {
     if (copyResult && !copyResult.ok) {
@@ -284,6 +313,11 @@ export function EmbedsPanel() {
                 maxLength={MAX_NAME_LENGTH}
               />
             </label>
+            {saveFieldErrors.name ? (
+              <span role="alert" className="chq-field-error">
+                {saveFieldErrors.name}
+              </span>
+            ) : null}
 
             <label>
               Surface
@@ -299,6 +333,11 @@ export function EmbedsPanel() {
                 ))}
               </select>
             </label>
+            {saveFieldErrors.surface ? (
+              <span role="alert" className="chq-field-error">
+                {saveFieldErrors.surface}
+              </span>
+            ) : null}
           </div>
 
           <div className="chq-settings-embed-field-pair">
@@ -316,88 +355,135 @@ export function EmbedsPanel() {
                 ))}
               </select>
             </label>
+            {saveFieldErrors.format ? (
+              <span role="alert" className="chq-field-error">
+                {saveFieldErrors.format}
+              </span>
+            ) : null}
 
             {knobs.includes('trackId') ? (
-              <label>
-                Track
-                <select
-                  className="chq-select"
-                  value={trackId}
-                  onChange={(e) => setTrackId(e.target.value)}
-                >
-                  <option value="">(all tracks)</option>
-                  {tracks.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <>
+                <label>
+                  Track
+                  <select
+                    className="chq-select"
+                    value={trackId}
+                    onChange={(e) => setTrackId(e.target.value)}
+                  >
+                    <option value="">(all tracks)</option>
+                    {tracks.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {saveFieldErrors.trackId ? (
+                  <span role="alert" className="chq-field-error">
+                    {saveFieldErrors.trackId}
+                  </span>
+                ) : null}
+              </>
             ) : null}
           </div>
 
           {knobs.includes('format') ? (
-            <label>
-              Session format
-              <input
-                className="chq-input"
-                type="text"
-                value={sessionFormat}
-                onChange={(e) => setSessionFormat(e.target.value)}
-                placeholder="(all formats)"
-                maxLength={MAX_NAME_LENGTH}
-              />
-            </label>
+            <>
+              <label>
+                Session format
+                <input
+                  className="chq-input"
+                  type="text"
+                  value={sessionFormat}
+                  onChange={(e) => setSessionFormat(e.target.value)}
+                  placeholder="(all formats)"
+                  maxLength={MAX_NAME_LENGTH}
+                />
+              </label>
+              {saveFieldErrors.sessionFormat ? (
+                <span role="alert" className="chq-field-error">
+                  {saveFieldErrors.sessionFormat}
+                </span>
+              ) : null}
+            </>
           ) : null}
 
           {knobs.includes('roomId') ? (
-            <label>
-              Room ID
-              <input
-                className="chq-input"
-                type="text"
-                value={roomId}
-                onChange={(e) => setRoomId(e.target.value)}
-                placeholder="(all rooms)"
-                maxLength={MAX_NAME_LENGTH}
-              />
-            </label>
+            <>
+              <label>
+                Room ID
+                <input
+                  className="chq-input"
+                  type="text"
+                  value={roomId}
+                  onChange={(e) => setRoomId(e.target.value)}
+                  placeholder="(all rooms)"
+                  maxLength={MAX_NAME_LENGTH}
+                />
+              </label>
+              {saveFieldErrors.roomId ? (
+                <span role="alert" className="chq-field-error">
+                  {saveFieldErrors.roomId}
+                </span>
+              ) : null}
+            </>
           ) : null}
 
           {knobs.includes('day') ? (
-            <label htmlFor="embed-day">
-              Day
-              <DateField id="embed-day" value={day} onChange={setDay} placeholder={dayPlaceholder(event)} />
-            </label>
+            <>
+              <label htmlFor="embed-day">
+                Day
+                <DateField id="embed-day" value={day} onChange={setDay} placeholder={dayPlaceholder(event)} />
+              </label>
+              {saveFieldErrors.day ? (
+                <span role="alert" className="chq-field-error">
+                  {saveFieldErrors.day}
+                </span>
+              ) : null}
+            </>
           ) : null}
 
           {knobs.includes('q') ? (
-            <label>
-              Search
-              <input
-                className="chq-input"
-                type="text"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="(no search)"
-                maxLength={MAX_NAME_LENGTH}
-              />
-            </label>
+            <>
+              <label>
+                Search
+                <input
+                  className="chq-input"
+                  type="text"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="(no search)"
+                  maxLength={MAX_NAME_LENGTH}
+                />
+              </label>
+              {saveFieldErrors.q ? (
+                <span role="alert" className="chq-field-error">
+                  {saveFieldErrors.q}
+                </span>
+              ) : null}
+            </>
           ) : null}
 
           {knobs.includes('limit') ? (
-            <label>
-              Limit
-              <input
-                className="chq-input"
-                type="number"
-                min={1}
-                max={100}
-                value={limit}
-                onChange={(e) => setLimit(e.target.value)}
-                placeholder="(no limit)"
-              />
-            </label>
+            <>
+              <label>
+                Limit
+                <input
+                  className="chq-input"
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={limit}
+                  onChange={(e) => setLimit(e.target.value)}
+                  placeholder="(no limit)"
+                />
+              </label>
+              {saveFieldErrors.limit ? (
+                <span role="alert" className="chq-field-error">
+                  {saveFieldErrors.limit}
+                </span>
+              ) : null}
+            </>
           ) : null}
 
           {knobs.includes('fields') ? (
@@ -428,6 +514,11 @@ export function EmbedsPanel() {
                   </button>
                 ))}
               </div>
+              {saveFieldErrors.fields ? (
+                <span role="alert" className="chq-field-error">
+                  {saveFieldErrors.fields}
+                </span>
+              ) : null}
             </div>
           ) : null}
 
@@ -442,6 +533,11 @@ export function EmbedsPanel() {
               placeholder={`#${DEFAULT_ACCENT_PLACEHOLDER}`}
             />
           </label>
+          {saveFieldErrors.accent ? (
+            <span role="alert" className="chq-field-error">
+              {saveFieldErrors.accent}
+            </span>
+          ) : null}
 
           <div className="chq-embeds-output">
             <button
@@ -455,6 +551,15 @@ export function EmbedsPanel() {
             {saveError ? (
               <div className="chq-error" role="alert">
                 {saveError}
+              </div>
+            ) : null}
+            {saveUnownedErrors.length > 0 ? (
+              <div className="chq-error" role="alert">
+                {saveUnownedErrors.map(([key, message]) => (
+                  <p key={key} className="chq-field-error">
+                    {`${key}: ${message}`}
+                  </p>
+                ))}
               </div>
             ) : null}
             <div role="status" aria-live="polite" className="chq-save-status">
