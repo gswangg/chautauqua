@@ -33,9 +33,15 @@ export function isNonEmptyText(text: string): boolean {
  * allowlist) so an intentionally-non-200 row can still satisfy the
  * zero-console-errors rule; any OTHER console error on the same page (a
  * broken image, a script exception) still fails the row.
+ *
+ * DEC-253/DEC-643 w25-e: typed structurally on `{ expectedStatus? }` rather
+ * than RouteManifestEntry specifically so the same filter is reusable by
+ * evaluateMobileRoute's MobileRouteEntry (which now also carries an
+ * expectedStatus for deliberately-non-200 mobile rows like
+ * /portal/preview's existence-hiding 404).
  */
 export function filterExpectedStatusConsoleNoise(
-  entry: RouteManifestEntry,
+  entry: { readonly expectedStatus?: number },
   consoleErrors: readonly string[],
 ): string[] {
   const expectedStatus = entry.expectedStatus ?? 200;
@@ -172,6 +178,12 @@ export function formatSummary(results: readonly RouteResult[]): string {
 export interface MobileRouteEntry {
   readonly path: string;
   readonly role: "organizer" | "reviewer" | "speaker" | "public";
+  /** DEC-253/DEC-747/DEC-945 w25-e: mirrors RouteManifestEntry.expectedStatus
+   * — a route that deliberately renders a non-200 (e.g. /portal/preview's
+   * existence-hiding 404 with no ?eventId=) must carry that expectation
+   * through to the mobile pass too, the same way the desktop pass already
+   * does, rather than reading a permanent FAIL against a fixed 200. */
+  readonly expectedStatus?: number;
 }
 
 export interface MobileObservation {
@@ -236,8 +248,9 @@ export function evaluateMobileRoute(entry: MobileRouteEntry, observed: MobileObs
   // ancestor's overflow:hidden can widen the visible page without moving
   // document.scrollingElement.scrollWidth.
   const overflowPx = Math.round(Math.max(observed.scrollWidth, observed.maxElementRight) - observed.viewportWidth);
+  const expectedStatus = entry.expectedStatus ?? 200;
   const reasons: string[] = [];
-  if (observed.status !== 200) reasons.push(`status ${observed.status} !== 200`);
+  if (observed.status !== expectedStatus) reasons.push(`status ${observed.status} !== expected ${expectedStatus}`);
   if (overflowPx > OVERFLOW_TOLERANCE_PX) {
     let reason = `horizontal overflow ${overflowPx}px (scrollWidth ${observed.scrollWidth} > viewport ${observed.viewportWidth})`;
     if (observed.overflowOffenders.length > 0) {
@@ -597,23 +610,67 @@ export function evaluateTypeRoleResult(
   return { ok: reasons.length === 0, failureReason: reasons.length > 0 ? reasons.join("; ") : undefined };
 }
 
+/** One measured `.chq-overview-deadline-value` cell: its observed
+ * font-weight and its rendered text (`cell.display` from
+ * app/src/pages/overview/rows.ts — "Today" / "N day(s)" / the unset em
+ * dash "—"). */
+export interface DeadlineNearestCell {
+  readonly weight: number;
+  readonly value: string;
+}
+
+/** Parses a `formatDeadlineValue` display string back into a comparable
+ * rank: 0 for "Today", N for "N day"/"N days", null for the unset "—".
+ * Mirrors the ONE ranking rows.ts's buildDeadlineCells actually uses (raw
+ * ms, DEC-370 amendment: ties are measured on the DISPLAYED value) closely
+ * enough that two cells with the same rank are exactly the cells rows.ts
+ * would mark isNearest together. */
+function parseDeadlineRank(value: string): number | null {
+  if (value === "—") return null;
+  if (value === "Today") return 0;
+  const m = /^(\d+) days?$/.exec(value);
+  if (m) return Number(m[1]);
+  return null;
+}
+
 /** The Overview §01 deadline-strip note: "the nearest deadline is weight
  * 700, the rest 400" — a group rule across the strip's 4 cells that a
- * single-selector check can't express. Fails if the count of 700-weight
- * cells isn't exactly 1, or if any non-700 cell isn't 400. */
-export function evaluateDeadlineNearestWeights(weights: readonly number[]): {
+ * single-selector check can't express. DEC-611's wave-2 amendment made
+ * nearest-deadline emphasis a SET: a tie marks every cell sharing the
+ * minimum displayed value, never an arbitrary first-wins pick (see
+ * app/src/pages/overview/rows.test.ts:180-189). So this evaluator ranks
+ * every cell's displayed value (parseDeadlineRank) and requires: every
+ * cell at the minimum rank reads weight 700, every cell NOT at the
+ * minimum rank reads weight 400 (700 only allowed exactly at the tied
+ * minimum — a cell at 700 that isn't at the minimum still fails), and
+ * when no cell has a set value at all, no cell may read 700. */
+export function evaluateDeadlineNearestWeights(cells: readonly DeadlineNearestCell[]): {
   ok: boolean;
   failureReason?: string;
 } {
-  const nearestCount = weights.filter((w) => w === 700).length;
   const reasons: string[] = [];
-  if (nearestCount !== 1) {
-    reasons.push(`expected exactly 1 cell at weight 700, observed ${nearestCount} (weights: ${weights.join(",")})`);
+  const ranks = cells.map((c) => parseDeadlineRank(c.value));
+  const setRanks = ranks.filter((r): r is number => r !== null);
+  const minRank = setRanks.length > 0 ? Math.min(...setRanks) : null;
+
+  const nearestCount = cells.filter((c) => c.weight === 700).length;
+  if (minRank === null && nearestCount > 0) {
+    reasons.push(`no deadline is set, expected 0 cells at weight 700, observed ${nearestCount}`);
   }
-  const stray = weights.filter((w) => w !== 700 && w !== 400);
-  if (stray.length > 0) {
-    reasons.push(`non-nearest cells must read weight 400, observed [${weights.join(",")}]`);
+  if (minRank !== null && nearestCount === 0) {
+    reasons.push(`expected at least 1 cell at weight 700 (minimum deadline value present), observed 0`);
   }
+
+  cells.forEach((c, i) => {
+    const isAtMinimum = minRank !== null && ranks[i] === minRank;
+    if (isAtMinimum && c.weight !== 700) {
+      reasons.push(`cell at the minimum deadline value ("${c.value}") reads weight ${c.weight} !== expected 700`);
+    }
+    if (!isAtMinimum && c.weight !== 400) {
+      reasons.push(`non-minimum cell ("${c.value}", weight ${c.weight}) must read weight 400${c.weight === 700 ? " (a non-nearest cell must not read 700)" : ""}`);
+    }
+  });
+
   return { ok: reasons.length === 0, failureReason: reasons.length > 0 ? reasons.join("; ") : undefined };
 }
 
