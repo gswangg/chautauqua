@@ -8,7 +8,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { SubmissionDetailPage } from './SubmissionDetailPage';
-import { mockApi, errorEnvelope } from '../../test-utils/mockApi';
+import { mockApi, errorEnvelope, type MockRouteHandler } from '../../test-utils/mockApi';
 import { PARTICIPANT_ROLE_OPTIONS } from '../../../../src/domain/participant-roles';
 
 const SUB_ID = 'sub-render-1';
@@ -1676,6 +1676,105 @@ describe('SubmissionDetailPage: title/abstract edit refusal (DEC-958 wave 64)', 
       '#submission-edit-title',
     );
     // The draft the user typed is never cleared on a refusal.
+    expect((titleInput as HTMLInputElement).value).toBe('A'.repeat(201));
+  });
+});
+
+// findings wave 14 amendment to DEC-998: the title/abstract editor is a real
+// <form> so Enter in the title field (or Cmd/Ctrl+Enter in the abstract
+// textarea) commits saveEdit without a click on Save; a bare Enter in the
+// textarea stays a newline.
+describe('SubmissionDetailPage: title/abstract editor turn diet (findings wave 14 amendment to DEC-998)', () => {
+  function editRoutes(patchHandler: MockRouteHandler) {
+    return {
+      [`GET /api/v1/submissions/${SUB_ID}`]: baseDetail(),
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`PATCH /api/v1/submissions/${SUB_ID}`]: patchHandler,
+    };
+  }
+
+  it('pressing Enter in the title input commits the edit with exactly one PATCH, no click on Save', async () => {
+    const updated = baseDetail({ title: 'New Title' });
+    const fetchMock = mockApi(editRoutes({ status: 200, body: updated }));
+
+    renderPage(`/submissions/${SUB_ID}?edit=1`);
+
+    const titleInput = await screen.findByLabelText('Title');
+    fireEvent.change(titleInput, { target: { value: 'New Title' } });
+    fireEvent.keyDown(titleInput, { key: 'Enter', code: 'Enter' });
+    // jsdom does not implement the browser's native implicit-submission-on-
+    // Enter form behaviour, so the keyDown above is paired with the same
+    // submit event a real browser's default action would raise on this
+    // <form> -- the assertion is on saveEdit firing exactly once, not on
+    // simulating the browser's own spec'd behaviour.
+    fireEvent.submit((titleInput as HTMLInputElement).closest('form') as HTMLFormElement);
+
+    await waitFor(() => {
+      const patchCalls = fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH');
+      expect(patchCalls).toHaveLength(1);
+    });
+
+    const patchCalls = fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH');
+    const body = JSON.parse(patchCalls[0]![1]!.body as string);
+    expect(body.title).toBe('New Title');
+  });
+
+  it('a bare Enter in the abstract textarea inserts a newline and issues no request', async () => {
+    const fetchMock = mockApi(editRoutes({ status: 200, body: baseDetail() }));
+
+    renderPage(`/submissions/${SUB_ID}?edit=1`);
+
+    const abstractField = await screen.findByLabelText('Abstract');
+    fireEvent.keyDown(abstractField, { key: 'Enter', code: 'Enter' });
+
+    const patchCalls = fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH');
+    expect(patchCalls).toHaveLength(0);
+  });
+
+  it('Cmd/Ctrl+Enter in the abstract textarea commits the edit', async () => {
+    const updated = baseDetail({ description: 'New description' });
+    const fetchMock = mockApi(editRoutes({ status: 200, body: updated }));
+
+    renderPage(`/submissions/${SUB_ID}?edit=1`);
+
+    const abstractField = await screen.findByLabelText('Abstract');
+    fireEvent.change(abstractField, { target: { value: 'New description' } });
+    fireEvent.keyDown(abstractField, { key: 'Enter', code: 'Enter', ctrlKey: true });
+
+    await waitFor(() => {
+      const patchCalls = fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH');
+      expect(patchCalls).toHaveLength(1);
+    });
+
+    const patchCalls = fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH');
+    const body = JSON.parse(patchCalls[0]![1]!.body as string);
+    expect(body.description).toBe('New description');
+  });
+
+  it('a refusal via Enter still renders through ErrorSummary and keeps the draft text', async () => {
+    mockApi(
+      editRoutes({
+        status: 400,
+        body: errorEnvelope('invalid', 'Validation failed', { title: 'Max 200 characters' }),
+      }),
+    );
+
+    renderPage(`/submissions/${SUB_ID}?edit=1`);
+
+    const titleInput = await screen.findByLabelText('Title');
+    fireEvent.change(titleInput, { target: { value: 'A'.repeat(201) } });
+    fireEvent.keyDown(titleInput, { key: 'Enter', code: 'Enter' });
+    fireEvent.submit((titleInput as HTMLInputElement).closest('form') as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(screen.getByText('Max 200 characters')).toBeInTheDocument();
+    });
+
+    const summary = document.querySelector('.chq-error-summary');
+    expect(summary).not.toBeNull();
     expect((titleInput as HTMLInputElement).value).toBe('A'.repeat(201));
   });
 });
