@@ -466,7 +466,11 @@ describe('ComposeWizard missing-merge-field errors (DEC-856)', () => {
 
     expect(await screen.findByText(/Speaker 1.*missing \{speaker_name\}, \{talk_title\}/)).toBeInTheDocument();
     expect(screen.getByText(/Speaker 2.*missing \{speaker_name\}/)).toBeInTheDocument();
-    expect(screen.getByRole('alert')).toBeInTheDocument();
+    // Gate-8 P0: the refusal announces at the top banner AND repeats at the
+    // template step's action row, so a scrolled step never dead-ends.
+    const alerts = screen.getAllByRole('alert');
+    expect(alerts.some((el) => el.classList.contains('chq-error-banner'))).toBe(true);
+    expect(alerts.some((el) => el.classList.contains('chq-field-error'))).toBe(true);
   });
 });
 
@@ -514,7 +518,11 @@ describe('ComposeWizard no-eligible-recipients errors (DEC-317 amendment wave 60
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
 
-    const banner = await screen.findByRole('alert');
+    // Gate-8 P0: the refusal may announce at TWO alerts (top banner + the
+    // at-control repeat on the template step) — assert on the banner.
+    const banner = (await screen.findAllByRole('alert')).find((el) =>
+      el.classList.contains('chq-error-banner'),
+    )!;
     expect(banner.textContent).toContain('2 of 2 selected sessions have no eligible recipients');
     expect(banner.textContent).toContain('S-001 — Talk number 1');
     expect(banner.textContent).toContain('S-002 — Talk number 2');
@@ -1312,7 +1320,11 @@ describe('ComposeWizard ICS slot predicate and blocked-send (DEC-954)', () => {
 
     fireEvent.click(screen.getByLabelText('Attach calendar invite'));
 
-    const banner = await screen.findByRole('alert');
+    // Gate-8 P0: the refusal may announce at TWO alerts (top banner + the
+    // at-control repeat on the template step) — assert on the banner.
+    const banner = (await screen.findAllByRole('alert')).find((el) =>
+      el.classList.contains('chq-error-banner'),
+    )!;
     expect(banner.textContent).toContain('DFC-014 — Priya Raman');
     expect(banner.textContent).not.toContain('sub-1');
 
@@ -1533,7 +1545,11 @@ describe('ComposeWizard partial-send way out on the blocked banner (DEC-793 amen
 
     fireEvent.click(screen.getByLabelText('Attach calendar invite'));
 
-    const banner = await screen.findByRole('alert');
+    // Gate-8 P0: the refusal may announce at TWO alerts (top banner + the
+    // at-control repeat on the template step) — assert on the banner.
+    const banner = (await screen.findAllByRole('alert')).find((el) =>
+      el.classList.contains('chq-error-banner'),
+    )!;
     expect(banner.textContent).toContain('DFC-014 — Priya Raman');
     expect(banner.textContent).toContain('DFC-041 — Nadia Ferrone');
 
