@@ -1024,6 +1024,12 @@ export function SubmissionDetailPage() {
                     e.preventDefault();
                     void saveEdit();
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      e.preventDefault();
+                      closeEditing();
+                    }
+                  }}
                 >
                   {Object.keys(editFieldErrors).length > 0 && (
                     <ErrorSummary
@@ -1228,7 +1234,20 @@ export function SubmissionDetailPage() {
                   )}
                 </>
               ) : (
-                <div className="chq-detail-track-editor" id="submission-track-editor">
+                <form
+                  className="chq-detail-track-editor"
+                  id="submission-track-editor"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void saveTracks();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      e.preventDefault();
+                      setEditingTracks(false);
+                    }
+                  }}
+                >
                   {/* DEC-958 (wave 66 amendment): a named-field trackIds
                       refusal (trackIds:'Max 1000'|'Unknown track ids: ...')
                       marks the editor instead of collapsing to tracksError's
@@ -1264,7 +1283,7 @@ export function SubmissionDetailPage() {
                     </ul>
                   )}
                   <div className="chq-detail-edit-form-actions">
-                    <button type="button" className="chq-btn chq-btn-primary" disabled={savingTracks} onClick={saveTracks}>
+                    <button type="submit" className="chq-btn chq-btn-primary" disabled={savingTracks}>
                       Save
                     </button>
                     <button
@@ -1276,7 +1295,7 @@ export function SubmissionDetailPage() {
                       Cancel
                     </button>
                   </div>
-                </div>
+                </form>
               )}
               </div>
 
