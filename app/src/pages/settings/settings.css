@@ -1132,19 +1132,10 @@
   gap: 0;
 }
 
-/* w28-d/DEC-897/DEC-124: server-only-conflict shape for a settings field
-   (Event > Slug). The .chq-field-error / .chq-field-invalid vocabulary
-   itself is wave 28's error-states.css standard -- this rule only lays the
-   error text and its survival note out BESIDE each other on the same line
-   (page-local layout, not a redefinition of the shared error classes). */
-.chq-settings-field-error-row {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.chq-settings-field-survival {
-  font-size: 11px;
-  color: var(--chq-ink-2);
-}
+/* The per-field error-row/survival-note pair that used to live here
+   (w28-d) is gone: the DEC-124 amendment moved Event settings onto the
+   shared ErrorSummary, which carries the "nothing was lost" survival copy
+   once at the top of the form instead of repeating it beside each field's
+   error text. The error text itself is the shared .chq-field-error /
+   .chq-field-invalid vocabulary from error-states.css, so this page needs
+   no local layout rule for it. */

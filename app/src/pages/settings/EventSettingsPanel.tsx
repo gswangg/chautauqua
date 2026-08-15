@@ -217,8 +217,8 @@ export function EventSettingsPanel() {
       // populated in full -- every key it names renders inline under that
       // key's own control) or a bare conflict/409 with no fields map at all
       // (the only server-side uniqueness check on this form is the slug,
-      // so that case still marks Slug) renders under the offending
-      // control(s) instead of the page banner. No refetch, no reset: `form`
+      // so that case still marks Slug) renders under each offending
+      // control instead of the page banner. No refetch, no reset: `form`
       // and `initial` are left exactly as the user had them.
       if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
         const serverFields = err.fields;
@@ -254,10 +254,12 @@ export function EventSettingsPanel() {
     );
   }
 
-  function fieldInputClassName(key: EventPatchField) {
-    return fieldErrors[key] ? 'chq-input chq-field-invalid' : 'chq-input';
-  }
-
+  // The chq-input/chq-field-invalid ternary is written inline on each
+  // control (the PlanEditor.tsx spelling) rather than hoisted into a
+  // helper: DEC-406's guard is a source regex, so it only sees class
+  // literals that appear in the JSX itself. A helper call also hides the
+  // class from it AND feeds the helper's own string argument in as a bogus
+  // token, so `className={f('name')}` reads as the class `name` and fails.
   function fieldAriaInvalid(key: EventPatchField) {
     return fieldErrors[key] ? 'true' : undefined;
   }
@@ -354,7 +356,7 @@ export function EventSettingsPanel() {
           <SettingsField label="Name" htmlFor={FIELD_IDS.name} width="name" hint={fieldErrorHint('name')}>
             <input
               id={FIELD_IDS.name}
-              className={fieldInputClassName('name')}
+              className={fieldErrors.name ? 'chq-input chq-field-invalid' : 'chq-input'}
               value={form.name}
               onChange={(e) => update('name', e.target.value)}
               aria-invalid={fieldAriaInvalid('name')}
@@ -368,7 +370,7 @@ export function EventSettingsPanel() {
           >
             <input
               id={FIELD_IDS.slug}
-              className={fieldInputClassName('slug')}
+              className={fieldErrors.slug ? 'chq-input chq-field-invalid' : 'chq-input'}
               value={form.slug}
               onChange={(e) => update('slug', e.target.value)}
               aria-invalid={fieldAriaInvalid('slug')}
@@ -403,7 +405,7 @@ export function EventSettingsPanel() {
           <SettingsField label="Venue" htmlFor={FIELD_IDS.location} width="name" hint={fieldErrorHint('location')}>
             <input
               id={FIELD_IDS.location}
-              className={fieldInputClassName('location')}
+              className={fieldErrors.location ? 'chq-input chq-field-invalid' : 'chq-input'}
               value={form.location}
               onChange={(e) => update('location', e.target.value)}
               aria-invalid={fieldAriaInvalid('location')}
@@ -417,7 +419,7 @@ export function EventSettingsPanel() {
           >
             <input
               id={FIELD_IDS.timezone}
-              className={fieldInputClassName('timezone')}
+              className={fieldErrors.timezone ? 'chq-input chq-field-invalid' : 'chq-input'}
               value={form.timezone}
               onChange={(e) => update('timezone', e.target.value)}
               aria-invalid={fieldAriaInvalid('timezone')}
