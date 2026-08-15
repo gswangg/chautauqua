@@ -25,6 +25,7 @@ import {
   type EvaluationScores,
   type ResultsSortKey,
   type SortDirection,
+  type RoundMetaEntry,
 } from "../../domain/evaluation";
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
@@ -190,6 +191,73 @@ export function parseRoundCriteria(
     const parsed = parseCriteriaList(value, errors, `roundCriteria.${key}`);
     if (parsed === undefined) return undefined;
     out[String(roundNum)] = parsed;
+  }
+  return out;
+}
+
+/** DEC-147 amendment (wave 8, task w8-c): parses the optional `roundMeta`
+ * map ({"<round>": {name?, opensAt?, closesAt?}}) on plan create/PATCH --
+ * mirrors parseRoundCriteria's shape/placement exactly (round keys must be
+ * integers within [1, rounds] when `rounds` is known; `null` body value
+ * clears all overrides, `undefined` means "unchanged" and is never called
+ * by the caller). name is bounded like every other short name field;
+ * opensAt/closesAt are ms-epoch integers or null (unset), and when both are
+ * present on the same entry, open must be <= close. */
+export function parseRoundMeta(
+  body: Record<string, unknown>,
+  errors: Record<string, string>,
+  rounds: number | undefined,
+): Record<string, RoundMetaEntry> | null | undefined {
+  const raw = body.roundMeta;
+  if (raw === null) return null;
+  if (raw === undefined) return undefined;
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    errors.roundMeta = "must be an object keyed by round number";
+    return undefined;
+  }
+  const out: Record<string, RoundMetaEntry> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    const roundNum = Number(key);
+    if (!Number.isInteger(roundNum) || roundNum < 1 || (rounds !== undefined && roundNum > rounds)) {
+      errors.roundMeta = `round key "${key}" must be an integer between 1 and ${rounds ?? "rounds"}`;
+      return undefined;
+    }
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      errors.roundMeta = `round meta for "${key}" must be an object`;
+      return undefined;
+    }
+    const entry = value as Record<string, unknown>;
+    const parsedEntry: RoundMetaEntry = {};
+    if (entry.name !== undefined) {
+      if (typeof entry.name !== "string" || entry.name.length > MAX_NAME_LENGTH) {
+        errors.roundMeta = `round "${key}" name must be a string of at most ${MAX_NAME_LENGTH} characters`; // DEC-417
+        return undefined;
+      }
+      parsedEntry.name = entry.name;
+    }
+    if (entry.opensAt !== undefined) {
+      if (entry.opensAt !== null && !isEpochMs(entry.opensAt)) {
+        errors.roundMeta = `round "${key}" opensAt must be a ms-epoch integer, or null`;
+        return undefined;
+      }
+      parsedEntry.opensAt = entry.opensAt as number | null;
+    }
+    if (entry.closesAt !== undefined) {
+      if (entry.closesAt !== null && !isEpochMs(entry.closesAt)) {
+        errors.roundMeta = `round "${key}" closesAt must be a ms-epoch integer, or null`;
+        return undefined;
+      }
+      parsedEntry.closesAt = entry.closesAt as number | null;
+    }
+    if (
+      parsedEntry.opensAt !== undefined &&
+      parsedEntry.closesAt !== undefined &&
+      !isEpochOrderValid(parsedEntry.opensAt, parsedEntry.closesAt)
+    ) {
+      errors.roundMeta = `round "${key}" opensAt must be before or equal to closesAt`;
+      return undefined;
+    }
+    out[String(roundNum)] = parsedEntry;
   }
   return out;
 }

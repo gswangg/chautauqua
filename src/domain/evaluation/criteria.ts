@@ -293,3 +293,74 @@ export function criteriaForRound(
   const forRound = parsed[String(round)];
   return forRound ?? base;
 }
+
+/** DEC-147 amendment (wave 8, task w8-c): a round is a NAMED WINDOW, not a
+ * bare integer -- ABS-01 (docs/eval-rubric/02-abstract-management.yaml) asks
+ * each round for its own name, open/close dates, and its own scorecard; the
+ * scorecard already exists (criteriaForRound above), this is the other two.
+ * `overrides` is evaluation_plan.round_meta_json ALREADY PARSED (mirrors
+ * roundCriteria on PlanRecord, never the raw JSON string here -- callers at
+ * the JSON boundary, e.g. the repo layer's toPlanRecord, do that parse and
+ * must let a malformed JSON string throw there too). Round 1 and any round
+ * absent from the overrides map fall back to `Round ${round}` and the
+ * plan's own open/close dates -- the SAME fallback shape isPlanOpen's
+ * window already uses, just per-round instead of plan-wide. A present but
+ * malformed entry (wrong types) is a data-integrity violation and throws
+ * (fail loudly) rather than silently returning the fallback -- unlike
+ * criteriaForRound's `?? base`, this function is told to distrust its input
+ * by the task, so it validates every field it reads. */
+export interface RoundMetaEntry {
+  name?: string;
+  opensAt?: number | null;
+  closesAt?: number | null;
+}
+
+export interface RoundMeta {
+  name: string;
+  opensAt: number | null;
+  closesAt: number | null;
+}
+
+export function roundMetaFor(
+  plan: { name: string; openDate: number | null; closeDate: number | null },
+  overrides: Record<string, RoundMetaEntry> | null,
+  round: number,
+): RoundMeta {
+  const fallback: RoundMeta = { name: `Round ${round}`, opensAt: plan.openDate, closesAt: plan.closeDate };
+  if (!overrides) return fallback;
+  const entry = overrides[String(round)];
+  if (entry === undefined) return fallback;
+  if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+    throw new Error(`roundMetaFor: malformed round meta entry for round ${round}`);
+  }
+  if (entry.name !== undefined && typeof entry.name !== "string") {
+    throw new Error(`roundMetaFor: round ${round} meta.name must be a string`);
+  }
+  if (entry.opensAt !== undefined && entry.opensAt !== null && typeof entry.opensAt !== "number") {
+    throw new Error(`roundMetaFor: round ${round} meta.opensAt must be a number or null`);
+  }
+  if (entry.closesAt !== undefined && entry.closesAt !== null && typeof entry.closesAt !== "number") {
+    throw new Error(`roundMetaFor: round ${round} meta.closesAt must be a number or null`);
+  }
+  const name = typeof entry.name === "string" && entry.name.trim().length > 0 ? entry.name : fallback.name;
+  return {
+    name,
+    opensAt: entry.opensAt !== undefined ? entry.opensAt : fallback.opensAt,
+    closesAt: entry.closesAt !== undefined ? entry.closesAt : fallback.closesAt,
+  };
+}
+
+/** DEC-147 amendment (wave 8, task w8-c): the ONLY place a round becomes
+ * display copy -- every caller that needs to print a round (reviewer queue
+ * head, scorecard eyebrow) reads through here instead of composing
+ * `Round ${n}` inline, so a named round's own name actually shows up.
+ * `planName` is accepted for signature parity with call sites that resolve
+ * a plan and a round together (and for a future surface that shows a round
+ * label with no plan name nearby); today's two callers already render the
+ * plan's own name as a separate, adjacent segment, so this returns just the
+ * round's resolved name to avoid printing the plan name twice. */
+export function roundLabel(planName: string, round: number, meta: { name: string }): string {
+  void planName;
+  void round;
+  return meta.name;
+}

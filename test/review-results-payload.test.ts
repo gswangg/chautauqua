@@ -107,6 +107,7 @@ function makePlan(overrides: Partial<PlanRecord> = {}): PlanRecord {
     rounds: 1,
     currentRound: 1,
     roundCriteria: null,
+    roundMeta: null,
     maxEvaluations: null,
     createdAt: 0,
     updatedAt: 0,

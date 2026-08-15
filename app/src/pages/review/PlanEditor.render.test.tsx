@@ -2129,3 +2129,83 @@ describe('rejected save (DEC-124 amendment)', () => {
     expect(screen.queryByText('No criteria yet')).not.toBeInTheDocument();
   });
 });
+
+// DEC-147 amendment (wave 8, task w8-c): a round is a named window -- the
+// round tab's own Name/Opens/Closes fields round-trip into the PATCH body
+// under `roundMeta`, keyed by round number exactly like `roundCriteria`.
+describe('PlanEditor round meta (DEC-147 amendment, task w8-c)', () => {
+  it('typing the round-tab Name/Opens/Closes fields posts them under roundMeta on Save', async () => {
+    const patchSpy = vi.fn(() => plan({ rounds: 2 }));
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: {
+        ...plan({ rounds: 2 }),
+        criteria: [{ id: 'c1', label: 'Content', kind: 'rating', weight: 1 }],
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+      [`PATCH /api/v1/plans/${PLAN_ID}`]: patchSpy,
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByDisplayValue('Track Review')).toBeInTheDocument());
+
+    // Base ("Editing criteria for") never shows round-meta fields -- switch
+    // to round 2's tab first.
+    fireEvent.change(screen.getByLabelText(/Editing criteria for/), { target: { value: '2' } });
+
+    fireEvent.change(screen.getByLabelText('Round 2 name'), { target: { value: 'Final round' } });
+    const opensInput = screen.getByLabelText('Opens', { selector: '#round-meta-opens-at' });
+    fireEvent.change(opensInput, { target: { value: '2026-09-01' } });
+    fireEvent.blur(opensInput);
+    const closesInput = screen.getByLabelText('Closes', { selector: '#round-meta-closes-at' });
+    fireEvent.change(closesInput, { target: { value: '2026-09-15' } });
+    fireEvent.blur(closesInput);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(patchSpy).toHaveBeenCalledTimes(1));
+
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    const patchCall = fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'PATCH');
+    expect(patchCall).toBeDefined();
+    const body = JSON.parse((patchCall![1] as RequestInit).body as string);
+    expect(body.roundMeta).toEqual({
+      '2': { name: 'Final round', opensAt: Date.parse('2026-09-01T00:00:00.000Z'), closesAt: Date.parse('2026-09-15T00:00:00.000Z') },
+    });
+  });
+
+  it('switching to a round with no roundMeta entry yet renders blank fields, not the resolved Round N fallback', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: {
+        ...plan({ rounds: 2 }),
+        criteria: [{ id: 'c1', label: 'Content', kind: 'rating', weight: 1 }],
+      },
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByDisplayValue('Track Review')).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText(/Editing criteria for/), { target: { value: '2' } });
+
+    expect((screen.getByLabelText('Round 2 name') as HTMLInputElement).value).toBe('');
+    expect((screen.getByLabelText('Round 2 name') as HTMLInputElement).placeholder).toBe('Round 2');
+  });
+});

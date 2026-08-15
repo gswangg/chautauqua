@@ -27,7 +27,7 @@ import { MAX_PER_PAGE } from '../../../../src/lib/pagination';
 // DEC-873: the per-criterion weight caption and the "Overall" blend reuse
 // the exact functions the plan editor and server already use, so the
 // reviewer's number and the organizer's number can never disagree.
-import { computeWeightedScore, criterionWeightShares } from '../../../../src/domain/evaluation';
+import { computeWeightedScore, criterionWeightShares, roundLabel, roundMetaFor } from '../../../../src/domain/evaluation';
 import { OPTIONAL_SUFFIX } from '../../../../src/domain/form-copy';
 import { MAX_LONG_TEXT_LENGTH } from '../../lib/text-caps';
 import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
@@ -403,10 +403,14 @@ export function Scorecard() {
   // runs more than one) -- the track clause reuses planTrackScope so it can
   // never drift from the queue header's own scope wording.
   const trackNameById = new Map(tracks.map((t) => [t.id, t.name]));
+  // DEC-147 amendment (wave 8, task w8-c): the round segment now reads the
+  // round's own resolved name (roundMetaFor + roundLabel, the ONE place a
+  // round becomes copy) instead of composing "Round N" inline.
+  const roundMeta = roundMetaFor(plan, plan.roundMeta ?? null, plan.currentRound);
   const scorecardEyebrow = [
     plan.name,
     planTrackScope(plan, trackNameById),
-    plan.rounds > 1 ? `Round ${plan.currentRound} of ${plan.rounds}` : null,
+    plan.rounds > 1 ? roundLabel(plan.name, plan.currentRound, roundMeta) : null,
   ]
     .filter((v): v is string => v !== null)
     .join(' · ');

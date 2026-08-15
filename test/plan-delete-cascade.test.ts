@@ -30,6 +30,7 @@ create table evaluation_plan (
   rounds integer,
   current_round integer,
   round_criteria_json text,
+  round_meta_json text,
   max_evaluations integer,
   created_at integer,
   updated_at integer

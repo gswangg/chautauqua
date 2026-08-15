@@ -6,7 +6,7 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { newId } from "../../../domain/ids";
-import type { EvaluationCriterionDef } from "../../../domain/evaluation";
+import type { EvaluationCriterionDef, RoundMetaEntry } from "../../../domain/evaluation";
 import { ApiError } from "../../http";
 
 export interface PlanRecord {
@@ -27,6 +27,12 @@ export interface PlanRecord {
   // effective criteria list ONLY via src/domain/evaluation.ts's
   // criteriaForRound() -- never re-derive the round-1/fallback logic here.
   roundCriteria: Record<string, EvaluationCriterionDef[]> | null;
+  // DEC-147 amendment (wave 8, task w8-c): parsed round -> {name?, opensAt?,
+  // closesAt?} override map (round_meta_json), or null when the plan has no
+  // round-specific naming/window overrides. Resolve ONLY via
+  // src/domain/evaluation.ts's roundMetaFor() -- never re-derive the
+  // `Round ${n}` / plan-dates fallback here.
+  roundMeta: Record<string, RoundMetaEntry> | null;
   maxEvaluations: number | null;
   // DEC-799: when `anonymized` last transitioned false -> true (null if
   // never anonymized, or legitimately switched off since). The ratchet
@@ -65,6 +71,11 @@ function toPlanRecord(row: typeof schema.evaluationPlan.$inferSelect, timezone: 
     roundCriteria: row.roundCriteriaJson
       ? (JSON.parse(row.roundCriteriaJson) as Record<string, EvaluationCriterionDef[]>)
       : null,
+    // DEC-147 amendment (wave 8, task w8-c): the JSON boundary this task's
+    // house rule points at -- a malformed round_meta_json throws here
+    // (JSON.parse itself throws on bad JSON; roundMetaFor throws on a
+    // well-formed-JSON-but-wrong-shape entry when a caller resolves a round).
+    roundMeta: row.roundMetaJson ? (JSON.parse(row.roundMetaJson) as Record<string, RoundMetaEntry>) : null,
     maxEvaluations: row.maxEvaluations,
     anonymizedAt: row.anonymizedAt ? row.anonymizedAt.getTime() : null,
     createdAt: row.createdAt.getTime(),
@@ -84,6 +95,7 @@ export interface PlanInput {
   criteria: EvaluationCriterionDef[];
   rounds?: number;
   roundCriteria?: Record<string, EvaluationCriterionDef[]> | null;
+  roundMeta?: Record<string, RoundMetaEntry> | null;
   maxEvaluations?: number | null;
 }
 
@@ -135,6 +147,7 @@ export async function createPlan(db: Db, eventId: string, input: PlanInput): Pro
     criteriaJson: JSON.stringify(input.criteria),
     rounds: input.rounds ?? 1,
     roundCriteriaJson: input.roundCriteria ? JSON.stringify(input.roundCriteria) : null,
+    roundMetaJson: input.roundMeta ? JSON.stringify(input.roundMeta) : null,
     maxEvaluations: input.maxEvaluations ?? null,
     createdAt: now,
     updatedAt: now,
@@ -179,6 +192,7 @@ export interface PlanPatch {
   criteria?: EvaluationCriterionDef[];
   rounds?: number;
   roundCriteria?: Record<string, EvaluationCriterionDef[]> | null;
+  roundMeta?: Record<string, RoundMetaEntry> | null;
   maxEvaluations?: number | null;
 }
 
@@ -213,6 +227,8 @@ export async function updatePlan(db: Db, planId: string, patch: PlanPatch): Prom
       rounds: patch.rounds,
       roundCriteriaJson:
         patch.roundCriteria !== undefined ? (patch.roundCriteria ? JSON.stringify(patch.roundCriteria) : null) : undefined,
+      roundMetaJson:
+        patch.roundMeta !== undefined ? (patch.roundMeta ? JSON.stringify(patch.roundMeta) : null) : undefined,
       maxEvaluations: patch.maxEvaluations !== undefined ? patch.maxEvaluations : undefined,
       updatedAt: new Date(),
     })

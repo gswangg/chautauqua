@@ -26,6 +26,9 @@ import { dayLabelEndInstant } from '../../../../src/lib/timezone';
 // reshaping both live in this single pure-core module, imported by every
 // reader instead of each defining (or re-defining) its own grammar.
 import { sessionFormatLabel, audienceLevelLabel } from '../../../../src/lib/session-vocabulary';
+// DEC-147 amendment (wave 8, task w8-c): the ONE place a round becomes
+// display copy -- never compose "Round N" inline.
+import { roundLabel } from '../../../../src/domain/evaluation';
 // DEC-845 amendment (wave 38): the queue fetch must always ask for the
 // site-wide page cap, not the 50-row apiList default -- a track scope above
 // MAX_PER_PAGE=200 rows needs "Show all N" to keep paging past row 200, and
@@ -496,7 +499,17 @@ export function ReviewerQueue() {
     const scope = routeEnvelope ? routeEnvelope.scopeTrackName ?? 'All tracks' : null;
     const closesLabel =
       routeEnvelope && routeTimezone ? closesInDaysLabel(routeEnvelope.closeDate, routeTimezone) : null;
-    const subtitle = scope ? [scope, closesLabel].filter((v): v is string => v !== null).join(' · ') : null;
+    // DEC-147 amendment (wave 8, task w8-c): only worth naming when the
+    // plan actually runs more than one round -- mirrors Scorecard's own
+    // `plan.rounds > 1` gate exactly, so a single-round plan's head reads
+    // no differently than before this task.
+    const roundName =
+      routeEnvelope && routeEnvelope.rounds > 1
+        ? roundLabel(routeEnvelope.planName, routeEnvelope.currentRound, routeEnvelope.roundMeta)
+        : null;
+    const subtitle = scope
+      ? [scope, roundName, closesLabel].filter((v): v is string => v !== null).join(' · ')
+      : null;
 
     return (
       <div className="chq-page chq-review-page chq-measure">

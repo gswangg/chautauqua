@@ -7,6 +7,17 @@
 // required, and never weighs into aggregation (like 'dropdown').
 export type CriterionKind = 'rating' | 'dropdown' | 'text';
 
+// DEC-147 amendment (wave 8, task w8-c): a round's own name and open/close
+// window, keyed by round number as a string on EvaluationPlan.roundMeta --
+// mirrors `roundCriteria`'s shape exactly. Every field optional: an absent
+// field falls back to `Round ${n}` / the plan's own dates server-side (see
+// roundMetaFor in src/domain/evaluation.ts).
+export interface RoundMetaEntry {
+  name?: string;
+  opensAt?: number | null;
+  closesAt?: number | null;
+}
+
 export interface EvaluationCriterion {
   id: string;
   label: string;
@@ -47,6 +58,12 @@ export interface EvaluationPlan {
   // string ("2", "3", ...). A round absent from this map (including round 1
   // by convention) uses `criteria` above. null/undefined = no overrides.
   roundCriteria?: Record<string, EvaluationCriterion[]> | null;
+  // DEC-147 amendment (wave 8, task w8-c): round -> {name?, opensAt?,
+  // closesAt?} override map, keyed by round number as a string. A round
+  // absent from this map (including round 1 by convention) reads as
+  // `Round ${n}` with the plan's own open/close dates. null/undefined = no
+  // overrides.
+  roundMeta?: Record<string, RoundMetaEntry> | null;
   maxEvaluations: number | null;
   // DEC-522: the owning event's IANA timezone, joined in server-side so a
   // plan's open/close window/relative "closes in N days" reads correctly
@@ -74,6 +91,7 @@ export interface PlanDraft {
   criteria: EvaluationCriterion[];
   rounds: number;
   roundCriteria?: Record<string, EvaluationCriterion[]> | null;
+  roundMeta?: Record<string, RoundMetaEntry> | null;
   maxEvaluationsPerSubmission?: number;
 }
 
@@ -88,6 +106,7 @@ export const DEFAULT_PLAN_DRAFT: PlanDraft = {
   criteria: [],
   rounds: 1,
   roundCriteria: null,
+  roundMeta: null,
   maxEvaluationsPerSubmission: undefined,
 };
 
@@ -258,6 +277,15 @@ export interface ReviewerQueueEnvelope {
   planName: string;
   scopeTrackName: string | null;
   closeDate: number | null;
+  // DEC-147 amendment (wave 8, task w8-c): the plan's own round facts, so
+  // the queue head can print the ACTIVE round's own name (via roundLabel)
+  // instead of a bare "round N" -- rounds/currentRound gate whether a round
+  // even shows (a single-round plan shows none), roundMeta is this round's
+  // resolved {name, opensAt, closesAt} (server-resolved via roundMetaFor,
+  // never re-derived client-side).
+  rounds: number;
+  currentRound: number;
+  roundMeta: { name: string; opensAt: number | null; closesAt: number | null };
 }
 
 // PUT /api/v1/review/plans/:planId/evaluations/:submissionId body/response.
