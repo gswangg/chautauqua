@@ -89,7 +89,7 @@ usersRoutes.post("/api/v1/users", requireOrganizer, csrfJson, async (c) => {
   // account + one-time password in the response — no design doc covers this
   // gap, so we take the narrowest reading: no event, no email row, but the
   // account still works. Flagged for the scribe.
-  const orgEvents = await listEventsForOrg(c.var.db, auth.orgId);
+  const orgEvents = await listEventsForOrg(c.var.db, auth.orgId, { limit: 1, offset: 0 });
   const anchorEventId = orgEvents[0]?.id;
   const anchorEventName = orgEvents[0]?.name ?? null;
   if (anchorEventId) {

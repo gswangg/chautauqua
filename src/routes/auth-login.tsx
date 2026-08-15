@@ -239,6 +239,6 @@ loginRoutes.post("/logout", csrfFormOrHeader, async (c) => {
     const tokenHash = await hashToken(token);
     await c.var.db.delete(schema.authSession).where(eq(schema.authSession.tokenHash, tokenHash));
   }
-  c.header("Set-Cookie", clearSessionCookie());
+  c.header("Set-Cookie", clearSessionCookie({ secure: isSecureRequest(c.req.url) }));
   return c.redirect("/login?signed-out=1", 302);
 });

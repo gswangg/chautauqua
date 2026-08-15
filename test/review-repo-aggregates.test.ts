@@ -17,6 +17,8 @@ import {
   type PlanSubmissionRef,
   type SubmissionSummary,
 } from "../src/server/repo/review";
+import { MAX_PLAN_SUBMISSION_SCAN } from "../src/server/repo/review/submissions";
+import { ApiError } from "../src/server/http";
 import type { Db } from "../src/server/context";
 
 // ---------------------------------------------------------------------------
@@ -169,5 +171,25 @@ describe("DEC-346: listSubmissionIdsRatedBy", () => {
 
     const rev2Round2 = await listSubmissionIdsRatedBy(db, "plan-1", 2, "rev-2");
     expect(rev2Round2).toEqual(new Set(["sub-1"]));
+  });
+});
+
+describe("DEC-346 (wave 22-e): countEvaluationsBySubmission's cap is a submission cap, not an evaluation cap", () => {
+  it("refuses past MAX_PLAN_SUBMISSION_SCAN distinct submissions, in submission vocabulary", async () => {
+    // One evaluation per submission is enough to exceed the group cap --
+    // proves the guard bounds distinct SUBMISSIONS (one row per group),
+    // not raw evaluation rows (which would need reviewers x submissions to
+    // trip the old, wrong constant).
+    const bigFixture: FakeEvaluationRow[] = Array.from({ length: MAX_PLAN_SUBMISSION_SCAN + 1 }, (_, i) => ({
+      planId: "plan-big",
+      submissionId: `sub-${i}`,
+      reviewerId: "rev-1",
+      round: 1,
+    }));
+    const db = makeFakeDb(bigFixture);
+    await expect(countEvaluationsBySubmission(db, "plan-big", 1)).rejects.toBeInstanceOf(ApiError);
+    await expect(countEvaluationsBySubmission(db, "plan-big", 1)).rejects.toMatchObject({
+      message: expect.stringContaining(`more than ${MAX_PLAN_SUBMISSION_SCAN} submissions`),
+    });
   });
 });

@@ -5,6 +5,8 @@ import { Hono } from "hono";
 import {
   buildCsrfCookie,
   buildDraftCookie,
+  buildSessionCookie,
+  clearSessionCookie,
   isSecureRequest,
   CSRF_COOKIE_NAME,
 } from "../src/auth/cookies";
@@ -66,6 +68,27 @@ describe("buildDraftCookie", () => {
     expect(cookie).toBe(
       "chq_draft_abc=tok456; HttpOnly; Path=/submit; SameSite=Lax; Secure",
     );
+  });
+});
+
+describe("clearSessionCookie", () => {
+  it("emits HttpOnly + Path=/ + SameSite=Lax + Max-Age=0 without Secure when insecure", () => {
+    const cookie = clearSessionCookie({ secure: false });
+    expect(cookie).toBe("chq_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0");
+    expect(cookie).not.toMatch(/Secure/);
+  });
+
+  it("appends Secure when secure:true", () => {
+    const cookie = clearSessionCookie({ secure: true });
+    expect(cookie).toBe("chq_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0; Secure");
+  });
+
+  it("mirrors buildSessionCookie's attribute order (minus the token/Max-Age value)", () => {
+    const built = buildSessionCookie("tok123", { secure: true });
+    const cleared = clearSessionCookie({ secure: true });
+    const attrNames = (cookie: string) =>
+      cookie.split("; ").map((part) => part.split("=")[0]);
+    expect(attrNames(cleared)).toEqual(attrNames(built));
   });
 });
 

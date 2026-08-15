@@ -89,7 +89,7 @@ describe("cookies", () => {
   });
 
   it("clearSessionCookie expires the cookie", () => {
-    const cookie = clearSessionCookie();
+    const cookie = clearSessionCookie({ secure: false });
     expect(cookie).toContain("chq_session=");
     expect(cookie).toContain("Max-Age=0");
     expect(cookie).toContain("HttpOnly");
