@@ -28,6 +28,22 @@ until someone re-verifies it and moves it into a tier below.
 - **No eval gaming.** `docs/eval-rubric/` and `docs/fixtures/` inform what to
   build; product code never references fixture values, persona names, or
   rubric IDs. Fixture data lives only in the seed script.
+- **The vendored `docs/design/*.dc.html` pack outranks a research-repo render
+  measurement.** Where a fleet/sbek report cites a pixel value from a
+  `chautauqua-research` render and `docs/design/README.md` states a
+  different rule for the same surface, the vendored README rule wins — it is
+  the spec the swarm is building against, the research render is a prior
+  gate's snapshot of a prior draft. See TIER 1 item 3 below (`12-home`) for
+  a worked example.
+- **A mandate item moves tier only on a citation against current `main`.**
+  Not on a code read of an old diff, not on inheriting a prior wave's
+  verdict, and not on a task brief's restated claim — re-run the check
+  (`git merge-base --is-ancestor`, `grep`/read the live file) and cite
+  file:line or ref-state before changing an item's tier. A brief that
+  asserts a branch is unmerged or a symbol doesn't exist is a claim to
+  re-verify, not a fact to propagate (see the `task-w8-c`/`task-w8-d`
+  correction below — the swarm has now gotten this wrong in both
+  directions across two waves).
 
 ## TIER 0 — re-verified, already correct, do not re-file
 
@@ -129,27 +145,32 @@ so the next mobile-lane sweep doesn't re-derive them:
 
 ## IN FLIGHT — owned by a branch, do not re-file
 
-Corrected this wave against actual branch/main state (see notes below —
-two of the branches named in this task's brief are already merged, not
-in-flight; recorded accurately here rather than as given):
+Rewritten this wave (w12-e, 2026-08-15) from actual ref/main state, not
+inherited from the prior wave's write-up. Method: `git for-each-ref
+refs/heads` enumerated every `task-w*` ref that exists today, then `git
+merge-base --is-ancestor <ref> main` was run against each. **Result: as of
+this wave, there is no unmerged branch in the w8–w11 range at all** — every
+named lane below has landed. The prior wave's IN FLIGHT entry for
+`task-w8-c`/`task-w8-d` (UNMERGED, `roundLabel`/`roundMeta` "do not exist in
+main's ReviewerQueue.tsx") was already false when it was written: the merge
+commits (`6f86b89` "merge task-w8-c", `2f0d2f13` "merge task-w8-d") are both
+in `main`'s history today, and neither ref exists anymore (deleted post-merge,
+same pattern as `task-w8-a` below) — so the ancestor check the prior wave
+cited as failing cannot be re-run against those ref names; it was checked
+against a stale/wrong ref state or never actually run. Both are confirmed
+landed by symbol/behavior citation instead:
 
-- **`task-w8-d`** (compose step-1 slot column + footer) — UNMERGED
-  (`git merge-base --is-ancestor task-w8-d main` fails). Owns
-  `app/src/pages/comms/ComposeWizard.tsx` step-1 table. Note: this branch's
-  diff against current `main` is wide (touches `HistoryTab.tsx`,
-  `BulkActionBar.tsx`, `Agenda.tsx`) because it was cut before `task-w8-b`
-  and `task-w8-e` merged — it needs a rebase onto current `main`, not a
-  plain merge, or it will revert already-landed work.
-- **`task-w8-c`** (review round name + window) — UNMERGED
-  (`git merge-base --is-ancestor task-w8-c main` fails; `roundLabel`/
-  `roundMeta` do not exist in `main`'s
-  `app/src/pages/review/ReviewerQueue.tsx`). This wave's task brief asserted
-  w8-c had landed at `ReviewerQueue.tsx:502-512` — re-checked and that is
-  NOT true against current `main`; correcting the record here rather than
-  propagating the stale claim. Owns the plan-scoped queue header subtitle.
-
-Already landed, NOT in flight (corrected from this wave's task brief):
-
+- **`task-w8-c`** (review round name + window) — MERGED. `roundLabel`/
+  `roundMeta` DO exist in `main`'s `app/src/pages/review/ReviewerQueue.tsx`:
+  `import { roundLabel } from '../../../../src/domain/evaluation';` at line 31,
+  used at line 508 (`roundLabel(routeEnvelope.planName,
+  routeEnvelope.currentRound, routeEnvelope.roundMeta)`). The plan-scoped
+  queue header subtitle is built and live.
+- **`task-w8-d`** (compose step-1 slot column + footer) — MERGED.
+  `app/src/pages/comms/ComposeWizard.tsx:713-716` renders the slot column
+  (`s.slot ? formatDayLabel(...)+clockHHMM(...) : "No slot yet"`); the
+  footer row is present at `:1226-1230`
+  (`chq-comms-send-report-footer[-note|-actions]`).
 - **`task-w8-b`** (Submissions→Comms `?ids=` handoff + ComposeWizard
   entry-effects landing rule) — MERGED (`git merge-base --is-ancestor
   task-w8-b main` succeeds; commit `6b5ae238` "merge task-w8-b" is in
@@ -159,11 +180,27 @@ Already landed, NOT in flight (corrected from this wave's task brief):
   task-w8-e" is in `main`'s history). STRUCTURAL:
   `app/src/pages/comms/HistoryTab.tsx:42-160` renders `page`/`perPage` state
   wired to a real pager (prev/next, `paginationSummary`).
-- **`task-w8-a`** as named in this wave's brief (public session-card
+- **`task-w8-a`** as named in an earlier wave's brief (public session-card
   speaker title/company, EMB-01/09) — no branch by that name currently
   exists (the `task-w8-a` name is reused from an earlier, unrelated wave's
   submission-detail-page task, already merged and gone). The EMB-01/09 work
   itself is done on `main` — see the TIER 0 closure above.
+- **`task-w10-b`** — has a ref (`git for-each-ref refs/heads` lists it) AND
+  is MERGED (`git merge-base --is-ancestor task-w10-b main` succeeds;
+  `main`'s current tip commit is literally `988d8be0 merge task-w10-b`).
+  This corrects the field guide's carried note ("w10-b DEAD, no ref, no
+  merge") — that was accurate when written but is stale now. Flagging
+  explicitly because this wave's brief tells `task-w12-d` to adopt
+  `task-w10-b`'s scope "under a verify-or-implement guard": the verify path
+  should find the work already done and skip re-implementation, not treat
+  the lane as dead and rebuild it.
+- Every other `task-w*` ref present in the worktree today (`task-w12-a/b/c`,
+  `task-w17-i`, `task-w68-*`, `task-w71-*`, `task-w72-*`, `mail-rich-shape-
+  fallback`, `manual-qa`, `task-custodian-w68-4`) is either already merged
+  (`task-w12-a/b`, `task-w68-d`, `task-w71-c/d/e`) or belongs to waves ahead
+  of/adjacent to this one and outside this task's w8–w11 scope — not
+  re-triaged here; do not read their presence as evidence either way about
+  the w8–w11 claims above.
 
 ## TIER 1 — re-verified open items (orchestrator promotion, 2026-08-15 morning)
 
@@ -179,27 +216,78 @@ misplaced.
    scenarios capped with the compose steps eating the budget before the
    close-the-call step. Fewer clicks per compose step, default-forward selections.
    (Step-4 anatomy + dedupe landed post-boundary, and the `?ids=` handoff/step-1
-   slot-column structural fixes are w8-b (landed)/w8-d (in flight, see IN
-   FLIGHT above) — the DIET half itself, beyond those structural fixes,
-   remains open.)
+   slot-column structural fixes are w8-b/w8-d, both now MERGED — see the IN
+   FLIGHT correction above — the DIET half itself, beyond those structural
+   fixes, remains open.) **Carried forward, owned this wave**: `task-w12-c`
+   is taking the compose-diet half of this item this wave (`compose: turn
+   diet — step 2 arrives composed, Enter advances 1-3`, DEC-967, commit
+   `647a61b4`) — a future planner should verify against `task-w12-c`'s
+   landed state before re-filing this item as untouched.
 2. **CNT-S3 session-edit loop**: capped at the session-edit step again today
-   (CNT-10 cannot_judge) — cheapen edit-save-reload on the admin session detail.
-3. **Gate-7 fleet remaining MAJORs** (measured today, per-pair detail in
-   fidelity-gate7/pair*/report.md; several already converted post-boundary —
-   re-verify against current main before re-filing as closed; four sub-items
-   closed this wave, see TIER 0 above): 07 comms step-1 SLOT/footer +
-   templates-grid overlap + history-tab chrome · 05 files-library
-   column swap + orphan row + upload-reject modal + content-detail 1180/32
-   container · 04 participation panel 420 + speaker-detail grid/theads + reminders
-   modal (prints localhost:8799) + write-failed banner anatomy + search excluded
-   from hasActiveNarrowing · 02 SESSION DETAILS label-left grid + participant
-   chips · 09 Add-track tertiary + CFP-edit intro/description binding +
-   saved-embed single-card anatomy · CLASS 1 admin
-   measure 1372@114 + topbar 59 (everywhere) · 12-home chrome at 46px gutters +
-   732 body · 10 active-filter ink chip + TBD room on public (ruling A25) +
-   speakers toolbar right-cluster + underlined initials + blue avatars · 11
-   AUTH_CSS .chq-field-invalid cascade inert · 03 duplicated results head +
-   FORM ANSWERS stacked + plan-editor draft footer.
+   (CNT-10 cannot_judge) — cheapen edit-save-reload on the admin session
+   detail. **Carried forward, not owned this wave** — no branch in this
+   wave's set (`task-w12-a/b/c/d/e`) claims this item; still open for a
+   future wave.
+3. **Gate-7 fleet remaining MAJORs** (measured `2026-08-15` morning against
+   boundary `ea2a5543`, per-pair detail in `fidelity-gate7/pair*/report.md`).
+   Walked sub-item by sub-item this wave against current `main` + the
+   vendored `docs/design/*.dc.html`/README pack. Nothing is deleted — a
+   closed item keeps its citation so the next wave doesn't re-derive it:
+
+   - **12-home chrome at 46px gutters + 732 body** — SUPERSEDED-BY-VENDORED-
+     PACK. The `46px`/`732` figures are a `chautauqua-research` render
+     measurement of a prior draft, not the current spec. The vendored pack
+     states, and current `main` implements, a different rule: `docs/design/
+     README.md:407-417` (`## Widths`) fixes Home in the "Reading measure"
+     class at **820px, centred**, and `docs/design/README.md:78` fixes
+     "Desktop frame padding `26–34px`" generally. `src/routes/public/
+     home.css.ts:21` implements exactly this —
+     `padding-inline: max(34px, calc((100% - 820px) / 2))` — 820px content
+     measure, 34px minimum gutter, both inside the vendored 26-34px/820px
+     range. This item does not re-open on the research-repo number; it
+     would only re-open on a citation that `home.css.ts` deviates from the
+     README rule, which it does not.
+   - **07 comms step-1 SLOT/footer** — CLOSED (see IN FLIGHT above:
+     `task-w8-d` MERGED; `ComposeWizard.tsx:713-716` slot column,
+     `:1226-1230` footer). The remaining two clauses of this sub-item —
+     "templates-grid overlap" and "history-tab chrome" — were NOT
+     independently re-verified this wave (no citation found or refuted in
+     the time budget); VERIFIED-OPEN, carried forward split from the
+     now-closed slot/footer clause so a future wave doesn't have to re-walk
+     the whole "07" bundle to find the two still-open clauses.
+   - **05 files-library column swap + orphan row + upload-reject modal +
+     content-detail 1180/32 container** — VERIFIED-OPEN, partially. An
+     `UploadRejectedModal.tsx` component exists (`app/src/pages/content/
+     UploadRejectedModal.tsx`), so "upload-reject modal" as a bare presence
+     claim is not a gap — but the fleet report's complaint was about
+     anatomy/fidelity, not existence, and that was not re-measured this
+     wave. "column swap", "orphan row", and "content-detail 1180/32
+     container" were not re-checked. Carried forward as-is, not re-tiered.
+   - **04 participation panel 420 + speaker-detail grid/theads + reminders
+     modal (prints localhost:8799) + write-failed banner anatomy + search
+     excluded from hasActiveNarrowing** — VERIFIED-OPEN, not re-checked this
+     wave beyond a keyword grep that found no `420px participation-panel`
+     rule under that name (`app/src/pages/comms/comms.css:444` is an
+     unrelated `min-height: 420px` on a different component). Carried
+     forward as-is.
+   - **02 SESSION DETAILS label-left grid + participant chips**,
+     **09 Add-track tertiary + CFP-edit intro/description binding +
+     saved-embed single-card anatomy**, **CLASS 1 admin measure 1372@114 +
+     topbar 59 (everywhere)**, **10 active-filter ink chip + TBD room on
+     public (ruling A25) + speakers toolbar right-cluster + underlined
+     initials + blue avatars**, **11 AUTH_CSS .chq-field-invalid cascade
+     inert**, **03 duplicated results head + FORM ANSWERS stacked +
+     plan-editor draft footer** — NOT re-checked against current `main`
+     this wave (task budget spent on the two proof items above); carried
+     forward unchanged as VERIFIED-OPEN. Per the standing rule added this
+     wave, none of these may move tier on inheritance alone — the next
+     wave that touches one needs its own file:line or exercised citation.
+     Partial note on "10": `PhoneAgenda.tsx:34,42` still has a `TBD` string
+     fallback for room name (admin phone agenda, not the public surface the
+     sub-item names) and `Agenda.render.test.tsx:366-368` asserts desktop
+     agenda never renders literal "TBD" — the public-surface claim in "10"
+     was not confirmed either way; do not read the admin-phone `TBD`
+     literal as evidence for or against the public claim.
 
 **CFP-16 is a RECORDED DELIBERATE FORFEIT** (DEC-041 findings-wave-6 amendment):
 accepted speakers keep editing past close per docs/clarifications.md:39 (swyx,
