@@ -52,7 +52,10 @@ export const CFP_CSS = `
      document flow between the form's two top-level <section>s carried no
      explicit rule before (a bare ~15px fell out of surrounding margins). */
   .chq-cfp-body form section + section { margin-top: 54px; }
-  .chq-cfp-intro h1 { font-family: var(--chq-font-display); font-size: 34px; font-weight: 700; letter-spacing: -0.04em; line-height: 1.08; margin: 0; }
+  /* task-w49-h (DEC-990 amendment): font-size/weight/letter-spacing moved
+     to the shared .chq-pub-surface-title register (README's page-title
+     row, 36px/700/-0.04em) -- this selector keeps only its own layout. */
+  .chq-cfp-intro h1 { font-family: var(--chq-font-display); line-height: 1.08; margin: 0; }
   .chq-cfp-intro p { margin: 0; font-size: 16px; line-height: 1.7; color: var(--chq-ink-2); }
   .chq-cfp-section-label { font-family: var(--chq-font-display); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; border-bottom: 2px solid var(--chq-ink); padding-bottom: 8px; }
   .chq-cfp-fields { padding: 18px 0 0; display: flex; flex-direction: column; gap: 20px; max-width: 760px; min-width: 0; }
@@ -133,7 +136,8 @@ export const CFP_CSS = `
 
   .chq-cfp-confirm { max-width: 660px; margin: 0 auto; padding: 26px 20px; display: flex; flex-direction: column; gap: 16px; }
   .chq-cfp-confirm-flag { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--chq-brand); }
-  .chq-cfp-confirm h1 { font-family: var(--chq-font-display); font-size: 27px; font-weight: 700; letter-spacing: -0.04em; line-height: 1.08; margin: 0; }
+  /* task-w49-h (DEC-990 amendment): see .chq-cfp-intro h1 above. */
+  .chq-cfp-confirm h1 { font-family: var(--chq-font-display); line-height: 1.08; margin: 0; }
   .chq-cfp-confirm-card { border: 1px solid var(--chq-rule); border-radius: 8px; background: var(--chq-surface); padding: 15px; display: flex; flex-direction: column; gap: 5px; }
   .chq-cfp-confirm-card-meta { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--chq-muted); }
   .chq-cfp-confirm-body { font-size: 15px; line-height: 1.65; color: var(--chq-ink-2); }
@@ -142,8 +146,18 @@ export const CFP_CSS = `
   /* DEC-945 (wave 48 amendment): .chq-cfp-closed no longer draws its own
      card frame -- it inherits .chq-bare-page's 820px reading-column shell
      (no border, no fill, no radius) and keeps only its own type rules. */
-  .chq-cfp-closed h1 { font-family: var(--chq-font-display); font-size: 29px; font-weight: 700; letter-spacing: -0.04em; line-height: 1.08; margin: 0; }
+  /* task-w49-h (DEC-990 amendment): see .chq-cfp-intro h1 above. */
+  .chq-cfp-closed h1 { font-family: var(--chq-font-display); line-height: 1.08; margin: 0; }
   .chq-cfp-closed-body { font-size: 15px; line-height: 1.65; color: var(--chq-ink-2); }
+
+  /* task-w49-h (DEC-990 amendment): the shared public page-title register
+     -- docs/design/README.md's typography table states exactly two
+     customer-facing h1 registers (page title 36px/700/-0.04em desktop;
+     overview headline 44px, untouched -- see home.css.ts). Applied here
+     (rather than inherited from src/routes/public/css/rail.css.ts, which
+     this stylesheet does not compose) to every CFP-family h1 above that
+     now carries this class in its markup. */
+  .chq-pub-surface-title { font-family: var(--chq-font-display); font-size: 36px; font-weight: 700; letter-spacing: -0.04em; }
 
   .chq-cfp-links { display: flex; flex-direction: row; flex-wrap: wrap; gap: 18px; font-size: 13px; font-weight: 700; }
 

@@ -13,9 +13,24 @@ export const PROGRAMME_CSS = `
     margin: 0 auto;
     padding: 24px 16px 64px;
   }
+  /* task-w49-h (DEC-990 amendment): font-size moved to the shared
+     .chq-pub-surface-title register below -- this selector keeps only its
+     own layout. */
   .chq-prog-title {
     margin: 0 0 4px;
-    font-size: 1.6rem;
+  }
+  /* task-w49-h (DEC-990 amendment): the shared public page-title register
+     -- docs/design/README.md's typography table states exactly two
+     customer-facing h1 registers (page title 36px/700/-0.04em desktop;
+     overview headline 44px, untouched -- see home.css.ts). Applied here
+     (rather than inherited from src/routes/public/css/rail.css.ts, which
+     this print-first stylesheet does not compose) since PROGRAMME_CSS is
+     its own module. */
+  .chq-pub-surface-title {
+    font-family: var(--chq-font-display);
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
   }
   .chq-prog-meta {
     margin: 0 0 32px;

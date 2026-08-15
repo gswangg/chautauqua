@@ -130,6 +130,9 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
 
   @media (max-width: 700px) {
     .chq-pub-sessions-layout { grid-template-columns: 1fr; gap: 20px; }
+    /* task-w49-h (DEC-990 amendment): README's page-title phone register
+       (25-27px/700/-0.04em) inside the surface's own ≤700px breakpoint. */
+    .chq-pub-surface-title { font-size: 26px; }
   }
 
   /* ===== task-w1-i: itinerary label flip on /schedule + /agenda's list row,
@@ -182,11 +185,16 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
      page. These two classes pin the same sizes the former headings
      already rendered at (the browser UA default for those tags), so the
      tag change is invisible. */
+  /* task-w49-h (DEC-990 amendment): promoted to the shared public
+     page-title register -- docs/design/README.md's typography table states
+     exactly two customer-facing h1 registers (page title 36px/700/-0.04em
+     desktop, 25-27px/phone; overview headline 44px, untouched here). This
+     class now carries that register for every surface that uses it. */
   .chq-pub-surface-title {
     font-family: var(--chq-font-display);
-    font-size: 24px;
+    font-size: 36px;
     font-weight: 700;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.04em;
     margin: 0 0 18px;
   }
   .chq-pub-section-title {
