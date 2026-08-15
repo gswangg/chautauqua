@@ -362,14 +362,14 @@ describe("POST /api/v1/events/:eventId/breaks", () => {
     expect(res.status).toBe(400);
   });
 
-  it("refuses a cross-org event (object-level ownership check)", async () => {
+  it("404s a cross-org event (object-level ownership check, existence-hiding, never 403)", async () => {
     const { db, sqlite } = makeTestDb();
     seedEvent(sqlite, "event-a", "org-a", "2027-01-01", "2027-01-03");
     const app = appWithDbAndAuth(db, ORGANIZER_B);
     const res = await app.request(
       postRequest("/api/v1/events/event-a/breaks", { day: "2027-01-01", label: "Lunch", startMin: 720, durationMin: 60 }),
     );
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
   });
 
   it("401s with no session, and requires the csrf header", async () => {
@@ -496,7 +496,7 @@ describe("PATCH /api/v1/breaks/:id", () => {
     expect(body.error.fields?.day).toBeDefined();
   });
 
-  it("404s on an unknown id, 403s on a break owned by a different org", async () => {
+  it("404s on an unknown id, 404s on a break owned by a different org (existence-hiding, never 403)", async () => {
     const { db, sqlite } = makeTestDb();
     seedEvent(sqlite, "event-a", "org-a", "2027-01-01", "2027-01-03");
     const created = await createBreak(db, "event-a", {
@@ -513,7 +513,7 @@ describe("PATCH /api/v1/breaks/:id", () => {
 
     const crossOrgApp = appWithDbAndAuth(db, ORGANIZER_B);
     const forbidden = await crossOrgApp.request(patchRequest(`/api/v1/breaks/${created.id}`, { label: "New label" }));
-    expect(forbidden.status).toBe(403);
+    expect(forbidden.status).toBe(404);
     // Still unchanged -- a rejected cross-org edit must never touch the row.
     const fetched = await getBreakById(db, created.id);
     expect(fetched?.label).toBe("Coffee");
@@ -534,7 +534,7 @@ describe("DELETE /api/v1/breaks/:id", () => {
     expect(await getBreakForEvent(db, created.id)).toBeNull();
   });
 
-  it("404s on an unknown id, 403s on a break owned by a different org", async () => {
+  it("404s on an unknown id, 404s on a break owned by a different org (existence-hiding, never 403)", async () => {
     const { db, sqlite } = makeTestDb();
     seedEvent(sqlite, "event-a", "org-a", "2027-01-01", "2027-01-03");
     const created = await createBreak(db, "event-a", { day: "2027-01-01", label: "Coffee", location: null, startMin: 600, durationMin: 15 });
@@ -549,7 +549,7 @@ describe("DELETE /api/v1/breaks/:id", () => {
     const forbidden = await crossOrgApp.request(
       new Request(`http://local/api/v1/breaks/${created.id}`, { method: "DELETE", headers: { "x-chq-csrf": "1" } }),
     );
-    expect(forbidden.status).toBe(403);
+    expect(forbidden.status).toBe(404);
     // Still there -- a rejected cross-org delete must never touch the row.
     expect(await getBreakForEvent(db, created.id)).not.toBeNull();
   });

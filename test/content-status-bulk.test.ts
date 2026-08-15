@@ -217,7 +217,7 @@ describe("POST /api/v1/events/:eventId/submissions/content-status (DEC-568/DEC-8
     expect(res.status).toBe(404);
   });
 
-  it("403s when the event belongs to a different org", async () => {
+  it("404s when the event belongs to a different org (existence-hiding, never 403)", async () => {
     const { db } = fakeRouteDb([[{ orgId: "org-1" }]]); // getEventOrgId
     const app = await buildApp(db, ORGANIZER_B);
     const res = await app.request("/api/v1/events/event-1/submissions/content-status", {
@@ -225,9 +225,9 @@ describe("POST /api/v1/events/:eventId/submissions/content-status (DEC-568/DEC-8
       headers: { "content-type": "application/json", "x-chq-csrf": "1" },
       body: JSON.stringify({ ids: ["s1"], contentStatus: "approved" }),
     });
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
     const body = (await res.json()) as { error: { message: string } };
-    expect(body.error.message).toBe("Event belongs to a different org");
+    expect(body.error.message).toBe("Event not found");
   });
 
   it("400s with an invalid contentStatus literal", async () => {

@@ -131,7 +131,7 @@ function requireAuth(c: Context<AppEnv>): AuthInfo {
 async function assertEventOwnership(db: Db, eventId: string, orgId: string) {
   const eventOrgId = await getEventOrgId(db, eventId);
   if (!eventOrgId) throw new ApiError("not_found", "Event not found");
-  if (eventOrgId !== orgId) throw new ApiError("forbidden", "Event belongs to a different org");
+  if (eventOrgId !== orgId) throw new ApiError("not_found", "Event not found");
 }
 
 // GET /api/v1/events/:eventId/embeds
@@ -204,7 +204,7 @@ embedsRoutes.patch("/embeds/:id", requireOrganizer, csrfJson, async (c) => {
   const id = c.req.param("id");
   const ownership = await getEmbedOwnership(c.var.db, id);
   if (!ownership) throw new ApiError("not_found", "Embed not found");
-  if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Embed belongs to a different org");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Embed not found");
 
   const body = (await readOptionalJsonBody(c)) as unknown as UpdateEmbedBody;
   const patch: { name?: string; surface?: string; format?: string; optionsJson?: string; enabled?: boolean } = {};
@@ -244,7 +244,7 @@ embedsRoutes.delete("/embeds/:id", requireOrganizer, csrfJson, async (c) => {
   const id = c.req.param("id");
   const ownership = await getEmbedOwnership(c.var.db, id);
   if (!ownership) throw new ApiError("not_found", "Embed not found");
-  if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Embed belongs to a different org");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Embed not found");
 
   await deleteEmbed(c.var.db, id);
   return c.json({ deleted: true });

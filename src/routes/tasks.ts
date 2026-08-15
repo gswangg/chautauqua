@@ -139,7 +139,7 @@ function requireAuth(c: Context<AppEnv>): AuthInfo {
 async function assertEventOwnership(db: Db, eventId: string, orgId: string): Promise<void> {
   const eventOrgId = await getEventOrgId(db, eventId);
   if (!eventOrgId) throw new ApiError("not_found", "Event not found");
-  if (eventOrgId !== orgId) throw new ApiError("forbidden", "Event belongs to a different org");
+  if (eventOrgId !== orgId) throw new ApiError("not_found", "Event not found");
 }
 
 function asRecord(body: unknown): Record<string, unknown> {
@@ -292,7 +292,7 @@ taskRoutes.patch("/tasks/:id", requireOrganizer, csrfJson, async (c) => {
   const taskId = c.req.param("id");
   const ownership = await getTaskOwnership(c.var.db, taskId);
   if (!ownership) throw new ApiError("not_found", "Task not found");
-  if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Task belongs to a different org");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Task not found");
 
   const body = asRecord(await readOptionalJsonBody(c));
   const fields: Record<string, string> = {};
@@ -386,7 +386,7 @@ taskRoutes.get("/tasks/:id/delete-preview", requireOrganizer, async (c) => {
   const taskId = c.req.param("id");
   const ownership = await getTaskOwnership(c.var.db, taskId);
   if (!ownership) throw new ApiError("not_found", "Task not found");
-  if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Task belongs to a different org");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Task not found");
 
   const counts = await countTaskDeleteImpact(c.var.db, taskId);
   return c.json({ taskId, title: ownership.title, counts });
@@ -398,7 +398,7 @@ taskRoutes.delete("/tasks/:id", requireOrganizer, csrfJson, async (c) => {
   const taskId = c.req.param("id");
   const ownership = await getTaskOwnership(c.var.db, taskId);
   if (!ownership) throw new ApiError("not_found", "Task not found");
-  if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Task belongs to a different org");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Task not found");
 
   await deleteTask(c.var.db, taskId);
   return c.body(null, 204);
@@ -414,7 +414,7 @@ taskRoutes.post("/tasks/:id/assign", requireOrganizer, csrfJson, async (c) => {
   const taskId = c.req.param("id");
   const ownership = await getTaskOwnership(c.var.db, taskId);
   if (!ownership) throw new ApiError("not_found", "Task not found");
-  if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Task belongs to a different org");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Task not found");
 
   const body = asRecord(await readOptionalJsonBody(c));
   const contactIds = parseBoundedIdArray(body.contactIds, "contactIds"); // DEC-182

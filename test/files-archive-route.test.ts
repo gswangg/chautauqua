@@ -163,14 +163,14 @@ describe("POST /api/v1/events/:eventId/files/archive (DEC-160)", () => {
     expect([bytes[0], bytes[1], bytes[2], bytes[3]]).toEqual([0x50, 0x4b, 0x03, 0x04]);
   });
 
-  it("403s an organizer from a different org", async () => {
+  it("404s an organizer from a different org (existence-hiding, never 403)", async () => {
     const app = await buildArchiveApp(OTHER_ORG_ORGANIZER, new Uint8Array());
     const res = await app.request("/api/v1/events/event-1/files/archive", {
       method: "POST",
       headers: { "content-type": "application/json", "x-chq-csrf": "1" },
       body: JSON.stringify({ fileIds: ["file-v1"] }),
     });
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
   });
 
   it("400s over the 50-id cap", async () => {

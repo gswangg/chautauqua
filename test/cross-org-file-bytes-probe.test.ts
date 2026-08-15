@@ -486,9 +486,9 @@ const LEDGER: LedgerEntry[] = [
     path: "/api/v1/events/:eventId/files/archive",
     actor: ORGANIZER_B,
     params: { eventId: EVENT_A },
-    expectedStatus: 403,
+    expectedStatus: 404,
     reason:
-      "getEventFilesScope loads the event's real org and the handler compares it to auth.orgId before parsing fileIds or making the first store.get call.",
+      "getEventFilesScope loads the event's real org and the handler compares it to auth.orgId before parsing fileIds or making the first store.get call, refusing not_found per DEC-005 (existence-hiding, never 403).",
   },
   {
     method: "GET",

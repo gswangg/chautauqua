@@ -137,10 +137,10 @@ describe("DELETE /api/v1/files/:fileId (DEC-713)", () => {
     expect(deleteSpy).toHaveBeenCalledWith("sub/sub-1/mid-file-deck-v2.pdf");
   });
 
-  it("403s an organizer from a different org", async () => {
+  it("404s an organizer from a different org (existence-hiding, never 403)", async () => {
     const app = await buildApp(OTHER_ORG_ORGANIZER);
     const res = await del(app, "mid-file");
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
   });
 
   it("lets a speaker delete their own latest version while pending", async () => {

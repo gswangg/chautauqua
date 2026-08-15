@@ -178,7 +178,7 @@ describe("PATCH /api/v1/submissions/:id trackIds (DEC-598, closes CNT-D6)", () =
     expect(inserts).toHaveLength(0);
   });
 
-  it("403s a cross-org caller before ever touching tracks", async () => {
+  it("404s a cross-org caller before ever touching tracks (existence-hiding, never 403)", async () => {
     const { db, deletes, inserts } = fakeDb([
       [{ eventId: "event-1", orgId: "org-b" }], // getSubmissionOwnership — belongs to a different org
     ]);
@@ -187,7 +187,7 @@ describe("PATCH /api/v1/submissions/:id trackIds (DEC-598, closes CNT-D6)", () =
       patchRequest("/api/v1/submissions/sub-1", { trackIds: ["t1"] }),
     );
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
     expect(deletes).toHaveLength(0);
     expect(inserts).toHaveLength(0);
   });

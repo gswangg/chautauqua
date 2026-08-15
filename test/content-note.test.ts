@@ -224,10 +224,10 @@ describe("POST /api/v1/submissions/:id/content-note (DEC-720/DEC-741)", () => {
     expect(res.status).toBe(400);
   });
 
-  it("403s an organizer from a different org", async () => {
+  it("404s an organizer from a different org (existence-hiding, never 403)", async () => {
     const app = await buildApp(OTHER_ORG_ORGANIZER);
     const res = await postNote(app, "sub-2", { fileId: "file-1", body: "hi", requestChanges: false });
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
   });
 
   it("403s a speaker (organizer-only endpoint)", async () => {

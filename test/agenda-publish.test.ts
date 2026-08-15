@@ -117,10 +117,10 @@ describe("POST /events/:eventId/agenda/publish (AIA-07, DEC-155)", () => {
     expect(res.status).toBe(404);
   });
 
-  it("403s when the event belongs to a different org", async () => {
+  it("404s when the event belongs to a different org (existence-hiding, never 403)", async () => {
     const harness = appWithDb(organizer, [[{ ...eventRow, orgId: "org-other" }]]);
     const res = await postPublish(harness);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
   });
 
   it("403s for a reviewer (organizer-only)", async () => {

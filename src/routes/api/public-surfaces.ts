@@ -25,7 +25,7 @@ publicSurfacesRoutes.get("/events/:eventId/public-surfaces", requireOrganizer, a
 
   const eventOrgId = await getEventOrgId(c.var.db, eventId);
   if (!eventOrgId) throw new ApiError("not_found", "Event not found");
-  if (eventOrgId !== auth.orgId) throw new ApiError("forbidden", "Event belongs to a different org");
+  if (eventOrgId !== auth.orgId) throw new ApiError("not_found", "Event not found");
 
   const counts = await getPublicSurfaceCounts(c.var.db, eventId);
   return c.json(counts);

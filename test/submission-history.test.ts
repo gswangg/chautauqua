@@ -176,11 +176,11 @@ describe("GET /api/v1/submissions/:id/history (DEC-892)", () => {
     expect(res.status).toBe(404);
   });
 
-  it("403s cross-org access", async () => {
+  it("404s cross-org access (existence-hiding, never 403)", async () => {
     const db = fakeDb([[{ eventId: "event-1", orgId: "org-b" }]]);
     const res = await appWithDbAndAuth(db, ORGANIZER_A).request(
       new Request("http://local/api/v1/submissions/sub-1/history"),
     );
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
   });
 });

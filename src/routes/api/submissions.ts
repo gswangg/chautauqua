@@ -99,7 +99,7 @@ function requireAuth(c: Context<AppEnv>): AuthInfo {
 async function assertEventOwnership(db: Db, eventId: string, orgId: string) {
   const eventOrgId = await getEventOrgId(db, eventId);
   if (!eventOrgId) throw new ApiError("not_found", "Event not found");
-  if (eventOrgId !== orgId) throw new ApiError("forbidden", "Event belongs to a different org");
+  if (eventOrgId !== orgId) throw new ApiError("not_found", "Event not found");
 }
 
 // DEC-598/DEC-755: the ONE trackIds validation rule — array of 1-64-char
@@ -183,7 +183,7 @@ submissionsRoutes.get("/submissions/:id", requireOrganizer, async (c) => {
   const id = c.req.param("id");
   const ownership = await getSubmissionOwnership(c.var.db, id);
   if (!ownership) throw new ApiError("not_found", "Submission not found");
-  if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
 
   const detail = await getSubmissionDetail(c.var.db, id);
   if (!detail) throw new ApiError("not_found", "Submission not found");
@@ -248,7 +248,7 @@ submissionsRoutes.post("/submissions/:id/clone", requireOrganizer, csrfJson, asy
   const id = c.req.param("id");
   const ownership = await getSubmissionOwnership(c.var.db, id);
   if (!ownership) throw new ApiError("not_found", "Submission not found");
-  if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
 
   const newId = await cloneSubmission(c.var.db, id);
   const detail = await getSubmissionDetail(c.var.db, newId);
@@ -277,7 +277,7 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
   const id = c.req.param("id");
   const ownership = await getSubmissionOwnership(c.var.db, id);
   if (!ownership) throw new ApiError("not_found", "Submission not found");
-  if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
 
   const body = (await readOptionalJsonBody(c)) as unknown as UpdateSubmissionBody;
   const fields: { title?: string; description?: string | null } = {};
@@ -355,7 +355,7 @@ submissionsRoutes.get("/submissions/:id/revisions", requireOrganizer, async (c) 
   const id = c.req.param("id");
   const ownership = await getSubmissionOwnership(c.var.db, id);
   if (!ownership) throw new ApiError("not_found", "Submission not found");
-  if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
 
   const page = clampPage(c.req.query("page"));
   const perPage = listPerPage(c.req.query("perPage")); // DEC-465
@@ -377,7 +377,7 @@ submissionsRoutes.get("/submissions/:id/history", requireOrganizer, async (c) =>
   const id = c.req.param("id");
   const ownership = await getSubmissionOwnership(c.var.db, id);
   if (!ownership) throw new ApiError("not_found", "Submission not found");
-  if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
 
   const entries = await listSubmissionHistory(c.var.db, id);
   const items = entries.map((e) => ({ id: e.id, at: e.at.getTime(), kind: e.kind, label: e.label, detail: e.detail }));
@@ -398,7 +398,7 @@ submissionsRoutes.post(
     const revisionId = c.req.param("revisionId");
     const ownership = await getSubmissionOwnership(c.var.db, id);
     if (!ownership) throw new ApiError("not_found", "Submission not found");
-    if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
+    if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
 
     const revision = await getRevision(c.var.db, id, revisionId);
     if (!revision) throw new ApiError("not_found", "Revision not found");
@@ -441,7 +441,7 @@ submissionsRoutes.post("/submissions/:id/participants", requireOrganizer, csrfJs
   const id = c.req.param("id");
   const ownership = await getSubmissionOwnership(c.var.db, id);
   if (!ownership) throw new ApiError("not_found", "Submission not found");
-  if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
+  if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
 
   const body = (await readOptionalJsonBody(c)) as unknown as InviteParticipantBody;
   const contactId = typeof body.contactId === "string" ? body.contactId.trim() : "";
@@ -513,7 +513,7 @@ submissionsRoutes.patch(
     const participantId = c.req.param("participantId");
     const ownership = await getSubmissionOwnership(c.var.db, id);
     if (!ownership) throw new ApiError("not_found", "Submission not found");
-    if (ownership.orgId !== auth.orgId) throw new ApiError("forbidden", "Submission belongs to a different org");
+    if (ownership.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
 
     const scope = await getParticipantOwnership(c.var.db, participantId);
     if (!scope || scope.submissionId !== id) {

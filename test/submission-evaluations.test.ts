@@ -188,10 +188,10 @@ describe("DEC-596/DEC-723/DEC-736: GET /api/v1/submissions/:id/evaluations", () 
     expect(res.status).toBe(404);
   });
 
-  it("403s when the submission belongs to a different org", async () => {
+  it("404s when the submission belongs to a different org (existence-hiding, never 403)", async () => {
     const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_B });
     const res = await app.request(`/api/v1/submissions/${SUBMISSION_ID}/evaluations`);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
   });
 
   it("DEC-763: ?planId= scopes the disclosure -- plan B's row is absent when scoped, present unscoped", async () => {
