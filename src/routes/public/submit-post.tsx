@@ -56,7 +56,7 @@ import {
 } from "./submit-views";
 import { extractAnswers, extractTrackIds, applyNameSplit } from "./submit-body";
 import { emailBudgetOk, isSameOriginSubmitPost } from "./submit-guards";
-import { overLengthErrorMessage, trackChoiceMessage } from "./submit-messages";
+import { trackChoiceMessage } from "./submit-messages";
 
 export const publicSubmitPostRoutes = new Hono<AppEnv>();
 
@@ -242,15 +242,10 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
     if (firstNameField && mergedErrors[firstNameField.id] === "required") {
       mergedErrors[firstNameField.id] = NAME_REQUIRED_MESSAGE;
     }
-    // DEC-124: an over-length answer's message names both numbers (what
-    // was typed, and how far over) instead of just saying "too long" --
-    // rewritten here from validateAnswers' generic "Too long (max N
-    // characters)" using the field's own typed answer length, for every
-    // text/long_text field, not just the seeded demo's Abstract.
-    for (const field of fields) {
-      const rewritten = overLengthErrorMessage(mergedErrors[field.id], answers[field.id]);
-      if (rewritten) mergedErrors[field.id] = rewritten;
-    }
+    // DEC-124/DEC-422 (amendment): an over-length answer's message already
+    // names both numbers (what was typed, and how far over) -- validateAnswers
+    // emits the rich sentence directly via overCapSentence, so there is no
+    // rewrite step here anymore.
     return c.html(
       <SubmitPage
         event={event}

@@ -13,6 +13,7 @@ import { parseCsv } from "../../lib/csv";
 import { autoMapSessionboardColumns, planSessionboardRows, type SbEntity } from "../../domain/sessionboard";
 import { MAX_IMPORT_CSV_BYTES, MAX_IMPORT_ROWS } from "./contacts/import";
 import { currentOrgId, asRecord, isPlainObject } from "./contacts/shared";
+import { overCapCountMessage } from "../../domain/cap-copy";
 
 export const importRoutes = new Hono<AppEnv>();
 
@@ -43,9 +44,10 @@ importRoutes.post("/events/:eventId/import/sessionboard", csrfJson, async (c) =>
   }
   // DEC-417 pattern, DEC-613: bound the raw CSV payload before parseCsv
   // touches it, using the CRM importer's caps (never re-declared).
-  if (new TextEncoder().encode(body.csvText).length > MAX_IMPORT_CSV_BYTES) {
+  const csvByteLength = new TextEncoder().encode(body.csvText).length;
+  if (csvByteLength > MAX_IMPORT_CSV_BYTES) {
     throw new ApiError("invalid", `csvText must be at most ${MAX_IMPORT_CSV_BYTES} bytes`, {
-      csvText: `Max ${MAX_IMPORT_CSV_BYTES} bytes`,
+      csvText: overCapCountMessage(csvByteLength, MAX_IMPORT_CSV_BYTES, "byte"),
     });
   }
   if (!isSbEntity(body.entity)) {
@@ -77,7 +79,7 @@ importRoutes.post("/events/:eventId/import/sessionboard", csrfJson, async (c) =>
   // DEC-417/DEC-613: bound row count after parsing, before planning/applying.
   if (dataRows.length > MAX_IMPORT_ROWS) {
     throw new ApiError("invalid", `csvText must have at most ${MAX_IMPORT_ROWS} data rows`, {
-      csvText: `Max ${MAX_IMPORT_ROWS} rows`,
+      csvText: overCapCountMessage(dataRows.length, MAX_IMPORT_ROWS, "row"),
     });
   }
 

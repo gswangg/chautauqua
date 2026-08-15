@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { submissionsRoutes } from "../src/routes/api/submissions";
 import { registerErrorHandler } from "../src/server/http";
+import { overCapCountMessage } from "../src/domain/cap-copy";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 
 function makeChain(rows: unknown[]) {
@@ -213,7 +214,7 @@ describe("PATCH /api/v1/submissions/:id trackIds (DEC-598, closes CNT-D6)", () =
     expect(res.status).toBe(400);
     const json = (await res.json()) as any;
     expect(json.error.message).toContain("1000");
-    expect(json.error.fields.trackIds).toBe("Max 1000");
+    expect(json.error.fields.trackIds).toBe(overCapCountMessage(1001, 1000, "track"));
     expect(deletes).toHaveLength(0);
     expect(inserts).toHaveLength(0);
   });

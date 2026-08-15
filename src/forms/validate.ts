@@ -3,6 +3,7 @@ import { resolveHiddenFieldIds } from "./visibility";
 import { isValidEmail, normalizeEmail } from "../domain/email";
 import { canonicalizeOperand } from "./rule-match";
 import { DEC_124, DEC_454, DEC_455, DEC_681, DEC_718, DEC_842 } from "../decisions";
+import { overCapSentence } from "../domain/cap-copy";
 
 // Referenced for compile-checked dependency per DEC-124.
 void DEC_124;
@@ -101,7 +102,13 @@ export function validateAnswers(
         const kindCap = field.kind === "text" ? MAX_TEXT_LENGTH : MAX_LONG_TEXT_LENGTH;
         const cap = field.maximum !== undefined ? Math.min(field.maximum, kindCap) : kindCap;
         if (value.length > cap) {
-          errors[field.id] = `Too long (max ${cap} characters)`;
+          // DEC-422 (amendment): the rich refusal (what was typed, how far
+          // over, the limit) is emitted HERE, at the source, instead of a
+          // terse "Too long (max N characters)" that a downstream caller
+          // (the public CFP) used to re-parse via a regex matching this
+          // exact prose -- see submit-messages.ts's deleted
+          // overLengthErrorMessage for the history.
+          errors[field.id] = overCapSentence(field.label, value.length, cap);
           continue;
         }
         // DEC-454: the locked email field is validated/normalized here so

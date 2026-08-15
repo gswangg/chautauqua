@@ -5,6 +5,7 @@ import {
   validateAnswers,
 } from "../src/forms/validate";
 import type { FormFieldDef } from "../src/forms/types";
+import { overCapSentence } from "../src/domain/cap-copy";
 
 // DEC-124: server-side answer length caps. Both public submit (submit.tsx)
 // and portal edit (portal/edit.tsx) call validateAnswers directly, so
@@ -81,9 +82,7 @@ describe("validateAnswers — DEC-124 answer length caps", () => {
     const result = validateAnswers([textField], { [textField.id]: value });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.errors[textField.id]).toBe(
-        `Too long (max ${MAX_TEXT_LENGTH} characters)`,
-      );
+      expect(result.errors[textField.id]).toBe(overCapSentence(textField.label, value.length, MAX_TEXT_LENGTH));
     }
   });
 
@@ -101,9 +100,7 @@ describe("validateAnswers — DEC-124 answer length caps", () => {
     const result = validateAnswers([longTextField], { [longTextField.id]: value });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.errors[longTextField.id]).toBe(
-        `Too long (max ${MAX_LONG_TEXT_LENGTH} characters)`,
-      );
+      expect(result.errors[longTextField.id]).toBe(overCapSentence(longTextField.label, value.length, MAX_LONG_TEXT_LENGTH));
     }
   });
 
@@ -112,9 +109,7 @@ describe("validateAnswers — DEC-124 answer length caps", () => {
     const result = validateAnswers([longTextField], { [longTextField.id]: value });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.errors[longTextField.id]).toBe(
-        `Too long (max ${MAX_LONG_TEXT_LENGTH} characters)`,
-      );
+      expect(result.errors[longTextField.id]).toBe(overCapSentence(longTextField.label, value.length, MAX_LONG_TEXT_LENGTH));
     }
   });
 
@@ -126,7 +121,7 @@ describe("validateAnswers — DEC-124 answer length caps", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(Object.keys(result.errors)).toEqual([textField.id]);
-      expect(result.errors[textField.id]).toContain("Too long");
+      expect(result.errors[textField.id]).toContain("over");
     }
   });
 
@@ -168,7 +163,7 @@ describe("validateAnswers — DEC-124 answer length caps", () => {
       const result = validateAnswers([abstractField], { [abstractField.id]: value });
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.errors[abstractField.id]).toBe("Too long (max 1200 characters)");
+        expect(result.errors[abstractField.id]).toBe(overCapSentence(abstractField.label, value.length, 1200));
       }
     });
 
@@ -178,7 +173,7 @@ describe("validateAnswers — DEC-124 answer length caps", () => {
       const result = validateAnswers([widerField], { [widerField.id]: value });
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.errors[widerField.id]).toBe(`Too long (max ${MAX_TEXT_LENGTH} characters)`);
+        expect(result.errors[widerField.id]).toBe(overCapSentence(widerField.label, value.length, MAX_TEXT_LENGTH));
       }
     });
 

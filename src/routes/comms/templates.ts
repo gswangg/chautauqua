@@ -8,6 +8,7 @@ import { ApiError } from "../../server/http";
 import * as repo from "../../server/repo/comms";
 import { listTemplateLastUsedAt } from "../../server/repo/email";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
+import { overCapFieldMessage } from "../../domain/cap-copy";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import { requireOwnedEvent } from "./shared";
 
@@ -42,11 +43,11 @@ templatesRoutes.post("/api/v1/events/:eventId/templates", requireOrganizer, csrf
 
   const errors: Record<string, string> = {};
   if (typeof body.name !== "string" || body.name.trim() === "") errors.name = "required";
-  else if (body.name.length > MAX_NAME_LENGTH) errors.name = `Max ${MAX_NAME_LENGTH}`; // DEC-417
+  else if (body.name.length > MAX_NAME_LENGTH) errors.name = overCapFieldMessage(body.name.length, MAX_NAME_LENGTH); // DEC-417
   if (typeof body.subject !== "string" || body.subject.trim() === "") errors.subject = "required";
-  else if (body.subject.length > MAX_TEXT_LENGTH) errors.subject = `Max ${MAX_TEXT_LENGTH}`; // DEC-417
+  else if (body.subject.length > MAX_TEXT_LENGTH) errors.subject = overCapFieldMessage(body.subject.length, MAX_TEXT_LENGTH); // DEC-417
   if (typeof body.bodyText !== "string" || body.bodyText.trim() === "") errors.bodyText = "required";
-  else if (body.bodyText.length > MAX_RICH_TEXT_LENGTH) errors.bodyText = `Max ${MAX_RICH_TEXT_LENGTH}`; // DEC-417
+  else if (body.bodyText.length > MAX_RICH_TEXT_LENGTH) errors.bodyText = overCapFieldMessage(body.bodyText.length, MAX_RICH_TEXT_LENGTH); // DEC-417
   if (Object.keys(errors).length > 0) throw new ApiError("invalid", "Validation failed", errors);
 
   const created = await repo.createTemplate(c.var.db, eventId, {
@@ -72,17 +73,17 @@ templatesRoutes.patch("/api/v1/templates/:templateId", requireOrganizer, csrfJso
   const patch: repo.TemplatePatch = {};
   if (body.name !== undefined) {
     if (typeof body.name !== "string" || body.name.trim() === "") errors.name = "must be a non-empty string";
-    else if (body.name.length > MAX_NAME_LENGTH) errors.name = `Max ${MAX_NAME_LENGTH}`; // DEC-417
+    else if (body.name.length > MAX_NAME_LENGTH) errors.name = overCapFieldMessage(body.name.length, MAX_NAME_LENGTH); // DEC-417
     else patch.name = body.name;
   }
   if (body.subject !== undefined) {
     if (typeof body.subject !== "string" || body.subject.trim() === "") errors.subject = "must be a non-empty string";
-    else if (body.subject.length > MAX_TEXT_LENGTH) errors.subject = `Max ${MAX_TEXT_LENGTH}`; // DEC-417
+    else if (body.subject.length > MAX_TEXT_LENGTH) errors.subject = overCapFieldMessage(body.subject.length, MAX_TEXT_LENGTH); // DEC-417
     else patch.subject = body.subject;
   }
   if (body.bodyText !== undefined) {
     if (typeof body.bodyText !== "string" || body.bodyText.trim() === "") errors.bodyText = "must be a non-empty string";
-    else if (body.bodyText.length > MAX_RICH_TEXT_LENGTH) errors.bodyText = `Max ${MAX_RICH_TEXT_LENGTH}`; // DEC-417
+    else if (body.bodyText.length > MAX_RICH_TEXT_LENGTH) errors.bodyText = overCapFieldMessage(body.bodyText.length, MAX_RICH_TEXT_LENGTH); // DEC-417
     else patch.bodyText = body.bodyText;
   }
   if (Object.keys(errors).length > 0) throw new ApiError("invalid", "Validation failed", errors);

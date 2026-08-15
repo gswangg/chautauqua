@@ -8,6 +8,7 @@ import type { AppEnv } from "../../server/env";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
 import { ApiError, readJsonBody } from "../../server/http";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
+import { overCapFieldMessage } from "../../domain/cap-copy";
 import { makeFileStore, putThenRecord } from "../../server/context";
 import { newId } from "../../domain/ids";
 import { sanitizeFilenameForKey, validateUpload } from "../../domain/files";
@@ -100,7 +101,7 @@ portalConfigRoutes.put("/events/:eventId/portal-settings", csrfJson, async (c) =
   if (logoUrl !== undefined && logoUrl !== null && typeof logoUrl !== "string") {
     fields.logoUrl = "Must be a string";
   } else if (typeof logoUrl === "string" && logoUrl.length > MAX_TEXT_LENGTH) {
-    fields.logoUrl = `Max ${MAX_TEXT_LENGTH}`; // DEC-417
+    fields.logoUrl = overCapFieldMessage(logoUrl.length, MAX_TEXT_LENGTH); // DEC-417
   }
 
   const accentColor = body.accentColor;
@@ -114,7 +115,7 @@ portalConfigRoutes.put("/events/:eventId/portal-settings", csrfJson, async (c) =
   if (welcomeMessage !== undefined && welcomeMessage !== null && typeof welcomeMessage !== "string") {
     fields.welcomeMessage = "Must be a string";
   } else if (typeof welcomeMessage === "string" && welcomeMessage.length > MAX_LONG_TEXT_LENGTH) {
-    fields.welcomeMessage = `Max ${MAX_LONG_TEXT_LENGTH}`; // DEC-417
+    fields.welcomeMessage = overCapFieldMessage(welcomeMessage.length, MAX_LONG_TEXT_LENGTH); // DEC-417
   }
 
   const showResources = body.showResources;
@@ -189,7 +190,7 @@ async function createFileResourceHandler(c: Context<AppEnv>, eventId: string) {
   if (typeof title !== "string" || title.trim().length === 0) {
     fields.title = "Required";
   } else if (title.length > MAX_NAME_LENGTH) {
-    fields.title = `Max ${MAX_NAME_LENGTH}`; // DEC-417
+    fields.title = overCapFieldMessage(title.length, MAX_NAME_LENGTH); // DEC-417
   }
   if (!(file instanceof File)) {
     fields.file = "Required";
@@ -247,13 +248,13 @@ portalConfigRoutes.post("/events/:eventId/resources", csrfJson, async (c) => {
   if (typeof title !== "string" || title.trim().length === 0) {
     fields.title = "Required";
   } else if (title.length > MAX_NAME_LENGTH) {
-    fields.title = `Max ${MAX_NAME_LENGTH}`; // DEC-417
+    fields.title = overCapFieldMessage(title.length, MAX_NAME_LENGTH); // DEC-417
   }
   const content = body.content;
   if (typeof content !== "string" || content.trim().length === 0) {
     fields.content = "Required";
   } else if (content.length > MAX_RICH_TEXT_LENGTH) {
-    fields.content = `Max ${MAX_RICH_TEXT_LENGTH}`; // DEC-417
+    fields.content = overCapFieldMessage(content.length, MAX_RICH_TEXT_LENGTH); // DEC-417
   }
   const position = body.position;
   if (position !== undefined && (typeof position !== "number" || !Number.isInteger(position) || position < 0)) {
@@ -288,13 +289,13 @@ portalConfigRoutes.patch("/resources/:resourceId", csrfJson, async (c) => {
   if (title !== undefined && (typeof title !== "string" || title.trim().length === 0)) {
     fields.title = "Must be a non-empty string";
   } else if (typeof title === "string" && title.length > MAX_NAME_LENGTH) {
-    fields.title = `Max ${MAX_NAME_LENGTH}`; // DEC-417
+    fields.title = overCapFieldMessage(title.length, MAX_NAME_LENGTH); // DEC-417
   }
   const content = body.content;
   if (content !== undefined && (typeof content !== "string" || content.trim().length === 0)) {
     fields.content = "Must be a non-empty string";
   } else if (typeof content === "string" && content.length > MAX_RICH_TEXT_LENGTH) {
-    fields.content = `Max ${MAX_RICH_TEXT_LENGTH}`; // DEC-417
+    fields.content = overCapFieldMessage(content.length, MAX_RICH_TEXT_LENGTH); // DEC-417
   }
   const position = body.position;
   if (position !== undefined && (typeof position !== "number" || !Number.isInteger(position) || position < 0)) {

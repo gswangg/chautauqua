@@ -21,6 +21,7 @@ import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import { addCoPresenter } from "../src/server/repo/portal-edit";
 import { MAX_NAME_LENGTH } from "../src/forms/validate";
+import { overCapFieldMessage } from "../src/domain/cap-copy";
 import * as schema from "../src/db/schema";
 
 function makeChain(rows: unknown[]) {
@@ -79,7 +80,7 @@ describe("addCoPresenter repo layer bounds firstName/lastName (DEC-997)", () => 
     });
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("unreachable");
-    expect(result.errors.firstName).toBe(`Max ${MAX_NAME_LENGTH}`);
+    expect(result.errors.firstName).toBe(overCapFieldMessage(OVERSIZED.length, MAX_NAME_LENGTH));
     expect(inserts.length).toBe(0);
   });
 
@@ -95,7 +96,7 @@ describe("addCoPresenter repo layer bounds firstName/lastName (DEC-997)", () => 
     });
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("unreachable");
-    expect(result.errors.lastName).toBe(`Max ${MAX_NAME_LENGTH}`);
+    expect(result.errors.lastName).toBe(overCapFieldMessage(OVERSIZED.length, MAX_NAME_LENGTH));
     expect(inserts.length).toBe(0);
   });
 
@@ -206,7 +207,7 @@ describe("POST /portal/submissions/:id/participants bounds free text end-to-end 
     });
     expect(res.status).toBe(400);
     const html = await res.text();
-    expect(html).toContain(`Max ${MAX_NAME_LENGTH}`);
+    expect(html).toContain(overCapFieldMessage(OVERSIZED.length, MAX_NAME_LENGTH));
     expect(inserts.length).toBe(0);
   });
 
@@ -221,7 +222,7 @@ describe("POST /portal/submissions/:id/participants bounds free text end-to-end 
     });
     expect(res.status).toBe(400);
     const html = await res.text();
-    expect(html).toContain(`Max ${MAX_NAME_LENGTH}`);
+    expect(html).toContain(overCapFieldMessage(OVERSIZED.length, MAX_NAME_LENGTH));
     expect(inserts.length).toBe(0);
   });
 });

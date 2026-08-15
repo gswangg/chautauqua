@@ -25,6 +25,7 @@ import { formatCalendarDate } from "../../lib/event-time";
 import { formatRef } from "../../domain/ids";
 import { DEC_122 } from "../../decisions";
 import { MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
+import { overCapFieldMessage } from "../../domain/cap-copy";
 import { resolveBaseUrl } from "../../server/origin";
 import type { EmailShellOptions } from "../../mail/shell";
 
@@ -132,12 +133,12 @@ export async function resolveComposeInput(
     // DEC-417
     if (b.subject.length > MAX_TEXT_LENGTH) {
       throw new ApiError("invalid", `subject must be at most ${MAX_TEXT_LENGTH} characters`, {
-        subject: `Max ${MAX_TEXT_LENGTH}`,
+        subject: overCapFieldMessage(b.subject.length, MAX_TEXT_LENGTH),
       });
     }
     if (b.bodyText.length > MAX_RICH_TEXT_LENGTH) {
       throw new ApiError("invalid", `bodyText must be at most ${MAX_RICH_TEXT_LENGTH} characters`, {
-        bodyText: `Max ${MAX_RICH_TEXT_LENGTH}`,
+        bodyText: overCapFieldMessage(b.bodyText.length, MAX_RICH_TEXT_LENGTH),
       });
     }
     subjectTemplate = b.subject;

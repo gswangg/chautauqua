@@ -9,6 +9,7 @@ import type { AppEnv } from "../../server/env";
 import { csrfJson, requireOrganizer } from "../../server/middleware";
 import { ApiError, readJsonBody } from "../../server/http";
 import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
+import { overCapFieldMessage } from "../../domain/cap-copy";
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
 import * as eventsRepo from "../../server/repo/events";
@@ -64,9 +65,9 @@ reviewPlansCrudRoutes.post("/api/v1/events/:eventId/plans", requireOrganizer, cs
   const body = await readJsonBody(c);
   const errors: Record<string, string> = {};
   if (typeof body.name !== "string" || body.name.trim().length === 0) errors.name = "required";
-  else if (body.name.length > MAX_NAME_LENGTH) errors.name = `Max ${MAX_NAME_LENGTH}`; // DEC-417
+  else if (body.name.length > MAX_NAME_LENGTH) errors.name = overCapFieldMessage(body.name.length, MAX_NAME_LENGTH); // DEC-417
   if (typeof body.instructions === "string" && body.instructions.length > MAX_LONG_TEXT_LENGTH) {
-    errors.instructions = `Max ${MAX_LONG_TEXT_LENGTH}`; // DEC-417
+    errors.instructions = overCapFieldMessage(body.instructions.length, MAX_LONG_TEXT_LENGTH); // DEC-417
   }
   const scale = parseScale(body, errors);
   const criteria = parseCriteria(body, errors);
@@ -112,10 +113,10 @@ reviewPlansCrudRoutes.patch("/api/v1/plans/:id", requireOrganizer, csrfJson, asy
   const errors: Record<string, string> = {};
 
   if (body.name !== undefined && typeof body.name === "string" && body.name.length > MAX_NAME_LENGTH) {
-    errors.name = `Max ${MAX_NAME_LENGTH}`; // DEC-417
+    errors.name = overCapFieldMessage(body.name.length, MAX_NAME_LENGTH); // DEC-417
   }
   if (body.instructions !== undefined && typeof body.instructions === "string" && body.instructions.length > MAX_LONG_TEXT_LENGTH) {
-    errors.instructions = `Max ${MAX_LONG_TEXT_LENGTH}`; // DEC-417
+    errors.instructions = overCapFieldMessage(body.instructions.length, MAX_LONG_TEXT_LENGTH); // DEC-417
   }
   const scale = body.scale !== undefined ? parseScale(body, errors) : undefined;
   const criteria = body.criteria !== undefined ? parseCriteria(body, errors) : undefined;

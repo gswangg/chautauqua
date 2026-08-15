@@ -39,6 +39,7 @@ import { csrfForm } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import { makeFileStore, putThenRecord } from "../../server/context";
 import { newId } from "../../domain/ids";
+import { overCapSentence } from "../../domain/cap-copy";
 import { updateAssignmentStatus } from "../../server/repo/tasks";
 import {
   getReplacesTarget,
@@ -699,9 +700,7 @@ portalTasksRoutes.post("/tasks/:assignmentId/comments", csrfForm, async (c) => {
     return reRenderWithCommentError("A reply can't be empty.");
   }
   if (trimmed.length > MAX_COMMENT_BODY_LENGTH) {
-    return reRenderWithCommentError(
-      `Reply is too long — keep it to ${MAX_COMMENT_BODY_LENGTH.toLocaleString("en-US")} characters or fewer.`,
-    );
+    return reRenderWithCommentError(overCapSentence("Reply", trimmed.length, MAX_COMMENT_BODY_LENGTH));
   }
 
   const latest = await resolveTaskFileChainLatest(c.var.db, scope.fileId);

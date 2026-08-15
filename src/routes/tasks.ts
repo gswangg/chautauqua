@@ -46,6 +46,7 @@ import { clampPage, clampPerPage, DEFAULT_PER_PAGE } from "../lib/pagination";
 import { resolveBaseUrl, resolveBaseUrlForCron } from "../server/origin";
 import type { KVStore } from "../auth/claim";
 import { countOf } from "../domain/count-copy";
+import { overCapFieldMessage } from "../domain/cap-copy";
 
 // DEC-120: task-assign contact org-scoping is referenced below so this
 // dependency is compile-checked (see decisions.ts).
@@ -94,9 +95,7 @@ function parseInstructions(
   const trimmed = body.instructions.trim();
   if (trimmed.length === 0) return null;
   if (trimmed.length > MAX_TASK_INSTRUCTIONS_LENGTH) {
-    // DEC-124 grammar, comma-formatted to match the ruling's exact wording
-    // ("Too long (max 2,000 characters)").
-    fields.instructions = `Too long (max ${MAX_TASK_INSTRUCTIONS_LENGTH.toLocaleString("en-US")} characters)`;
+    fields.instructions = overCapFieldMessage(trimmed.length, MAX_TASK_INSTRUCTIONS_LENGTH);
     return undefined;
   }
   return trimmed;
@@ -215,7 +214,7 @@ taskRoutes.post("/events/:eventId/tasks", requireOrganizer, csrfJson, async (c) 
 
   const title = typeof body.title === "string" ? body.title.trim() : "";
   if (!title) fields.title = "Required";
-  else if (title.length > MAX_NAME_LENGTH) fields.title = `Max ${MAX_NAME_LENGTH}`; // DEC-417
+  else if (title.length > MAX_NAME_LENGTH) fields.title = overCapFieldMessage(title.length, MAX_NAME_LENGTH); // DEC-417
 
   const description = body.description === undefined || body.description === null
     ? null
@@ -224,7 +223,7 @@ taskRoutes.post("/events/:eventId/tasks", requireOrganizer, csrfJson, async (c) 
       : undefined;
   if (description === undefined) fields.description = "Must be a string";
   else if (description !== null && description.length > MAX_LONG_TEXT_LENGTH) {
-    fields.description = `Max ${MAX_LONG_TEXT_LENGTH}`; // DEC-417
+    fields.description = overCapFieldMessage(description.length, MAX_LONG_TEXT_LENGTH); // DEC-417
   }
 
   let dueDate: number | null | undefined = null;
@@ -298,7 +297,7 @@ taskRoutes.patch("/tasks/:id", requireOrganizer, csrfJson, async (c) => {
     if (typeof body.title !== "string" || body.title.trim().length === 0) {
       fields.title = "Must be a non-empty string";
     } else if (body.title.trim().length > MAX_NAME_LENGTH) {
-      fields.title = `Max ${MAX_NAME_LENGTH}`; // DEC-417
+      fields.title = overCapFieldMessage(body.title.trim().length, MAX_NAME_LENGTH); // DEC-417
     } else {
       input.title = body.title.trim();
     }
@@ -307,7 +306,7 @@ taskRoutes.patch("/tasks/:id", requireOrganizer, csrfJson, async (c) => {
     if (body.description !== null && typeof body.description !== "string") {
       fields.description = "Must be a string or null";
     } else if (body.description !== null && body.description.length > MAX_LONG_TEXT_LENGTH) {
-      fields.description = `Max ${MAX_LONG_TEXT_LENGTH}`; // DEC-417
+      fields.description = overCapFieldMessage(body.description.length, MAX_LONG_TEXT_LENGTH); // DEC-417
     } else {
       input.description = body.description;
     }

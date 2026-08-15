@@ -7,6 +7,7 @@ import type { AppEnv } from "../../../server/env";
 import { csrfJson } from "../../../server/middleware";
 import { ApiError, parseBoundedText } from "../../../server/http";
 import { MAX_NAME_LENGTH } from "../../../forms/validate"; // DEC-417
+import { overCapCountMessage } from "../../../domain/cap-copy";
 import * as repo from "../../../server/repo/contacts";
 import { matchesSegment, MAX_SEGMENT_RULES, type ContactRecord, type SegmentRule } from "../../../domain/contacts";
 import { clampPage, listPerPage } from "../../../lib/pagination";
@@ -59,7 +60,7 @@ function parseRules(body: Record<string, unknown>, fields: Record<string, string
     return undefined;
   }
   if (body.rules.length > MAX_SEGMENT_RULES) {
-    fields.rules = `Max ${MAX_SEGMENT_RULES} rules`;
+    fields.rules = overCapCountMessage(body.rules.length, MAX_SEGMENT_RULES, "rule");
     return undefined;
   }
   const rules: SegmentRule[] = [];
@@ -108,7 +109,7 @@ export function parseRulesQueryParam(raw: string | undefined): SegmentRule[] {
   }
   if (parsed.length > MAX_SEGMENT_RULES) {
     throw new ApiError("invalid", `rules must not exceed ${MAX_SEGMENT_RULES} entries`, {
-      rules: `Max ${MAX_SEGMENT_RULES} rules`,
+      rules: overCapCountMessage(parsed.length, MAX_SEGMENT_RULES, "rule"),
     });
   }
   const rules: SegmentRule[] = [];

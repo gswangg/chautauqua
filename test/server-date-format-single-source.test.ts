@@ -52,46 +52,25 @@ const BANNED = ["toLocaleDateString(", "toLocaleTimeString(", "toLocaleString("]
 //     Number.prototype.toLocaleString shares a name with the banned
 //     Date methods but has nothing to do with DEC-918's calendar-day
 //     grammar.
-//   - src/routes/public/submit-messages.ts: overLengthErrorMessage() calls
-//     `.toLocaleString("en-US")` on three NUMBERS (typed length, overage,
-//     and the cap) to group thousands in the DEC-124 over-length error
-//     copy -- same Number.prototype.toLocaleString as form-render.tsx's
-//     counter above, nothing to do with dates. (Split out of
-//     src/routes/public/submit.tsx purely to reduce merge contention on
-//     that file; same function, same behavior.)
-//   - src/routes/tasks.ts: calls `MAX_INSTRUCTIONS_LENGTH.toLocaleString(
-//     "en-US")` on the NUMBER 2000 to group thousands in the DEC-124
-//     over-length field error for task instructions (CNT-01) -- again
-//     Number.prototype.toLocaleString, not a date.
-//   - src/routes/portal/tasks.tsx: calls `MAX_COMMENT_BODY_LENGTH
-//     .toLocaleString("en-US")` on the NUMBER 4000 to group thousands in the
-//     DEC-244 over-cap speaker-comment error copy -- again
-//     Number.prototype.toLocaleString, not a date.
-//   - src/routes/portal/tasks/views.tsx: calls the same
+//   - src/routes/portal/tasks/views.tsx: calls
 //     `MAX_COMMENT_BODY_LENGTH.toLocaleString("en-US")` NUMBER in the reply
 //     textarea's quiet "Up to 4,000 characters." helper line (DEC-244) --
 //     same Number.prototype.toLocaleString, nothing to do with dates.
-//   - src/routes/files.ts: POST /files/:fileId/comments calls
-//     `.toLocaleString("en-US")` on two NUMBERS (the overage and
-//     MAX_COMMENT_BODY_LENGTH) for the DEC-244 over-cap reply error copy --
-//     the organizer-side twin of portal/tasks.tsx's message, and again
-//     Number.prototype.toLocaleString, not a date.
-//   - src/routes/content-notes.ts: POST /submissions/:id/content-note calls
-//     the same two NUMBERS through `.toLocaleString("en-US")` for the
-//     DEC-244 over-cap note error copy -- it writes the very same
-//     file_comment row files.ts does, so it shares that grammar; again
+//   - src/domain/cap-copy.ts: DEC-422 (amendment)'s ONE over-cap refusal
+//     grammar calls `.toLocaleString("en-US")` on NUMBERS (typed
+//     length/count, overage, and the cap) to group thousands in every
+//     field-length/field-count refusal across the codebase -- the single
+//     home the former per-caller exemptions below (submit-messages.ts,
+//     routes/tasks.ts, routes/portal/tasks.tsx, routes/files.ts,
+//     routes/content-notes.ts) collapsed into; again
 //     Number.prototype.toLocaleString, not a date.
 const NAMED_EXEMPTIONS = new Set(
   [
     join(SRC_DIR, "lib/timezone.ts"),
     join(SRC_DIR, "routes/api/validators.ts"),
     join(SRC_DIR, "views/form-render.tsx"),
-    join(SRC_DIR, "routes/public/submit-messages.ts"),
-    join(SRC_DIR, "routes/tasks.ts"),
-    join(SRC_DIR, "routes/portal/tasks.tsx"),
     join(SRC_DIR, "routes/portal/tasks/views.tsx"),
-    join(SRC_DIR, "routes/files.ts"),
-    join(SRC_DIR, "routes/content-notes.ts"),
+    join(SRC_DIR, "domain/cap-copy.ts"),
   ].map((p) => relative(REPO_ROOT, p)),
 );
 

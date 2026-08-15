@@ -4,6 +4,7 @@
 // DEC-425: caps the last uncapped free-text write paths; reuses the
 // existing MAX_LONG_TEXT_LENGTH constant rather than introducing a new one.
 import { MAX_LONG_TEXT_LENGTH } from "../forms/validate";
+import { overCapFieldMessage } from "./cap-copy";
 // DEC-522: openDate/closeDate are day labels (UTC midnight of the intended
 // calendar day), not instants -- expand through the owning event's timezone
 // at this hard gate, same class of fix as the CFP open/close window.
@@ -270,7 +271,7 @@ export function validateEvaluationScores(
       }
       // DEC-425: cap free-text criterion values.
       if (value.length > MAX_LONG_TEXT_LENGTH) {
-        errors[criterion.id] = `Max ${MAX_LONG_TEXT_LENGTH}`;
+        errors[criterion.id] = overCapFieldMessage(value.length, MAX_LONG_TEXT_LENGTH);
       }
     }
   }

@@ -9,6 +9,7 @@ import type { AppEnv } from "../../server/env";
 import { csrfJson } from "../../server/middleware";
 import { ApiError, readJsonBody } from "../../server/http";
 import { MAX_LONG_TEXT_LENGTH } from "../../forms/validate"; // DEC-425
+import { overCapFieldMessage } from "../../domain/cap-copy";
 import {
   buildReviewerQueue,
   needsMoreRatings,
@@ -408,7 +409,7 @@ reviewReviewerRoutes.put("/api/v1/review/plans/:planId/evaluations/:submissionId
 
   // DEC-425: cap the comment free-text field.
   if (typeof body.comment === "string" && body.comment.length > MAX_LONG_TEXT_LENGTH) {
-    throw new ApiError("invalid", "Invalid comment", { comment: `Max ${MAX_LONG_TEXT_LENGTH}` });
+    throw new ApiError("invalid", "Invalid comment", { comment: overCapFieldMessage(body.comment.length, MAX_LONG_TEXT_LENGTH) });
   }
 
   const saved = await repo.upsertEvaluation(c.var.db, {
