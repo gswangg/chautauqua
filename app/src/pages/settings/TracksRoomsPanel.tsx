@@ -27,6 +27,7 @@ import {
 import { SummarySection } from './SummarySection';
 import { SettingsEditForm, SettingsField, SettingsFieldPair } from './SettingsEditForm';
 import { DEC_888 } from '../../../../src/decisions';
+import { MAX_NAME_LENGTH } from '../../../../src/forms/validate';
 
 // DEC-888: ONE enumeration supplies the swatch picker buttons, the new-
 // track default (its first entry), and the .chq-color-swatch preview --
@@ -355,6 +356,7 @@ export function TracksRoomsPanel() {
                         setTrackDrafts((prev) => ({ ...prev, [track.id]: { ...draft, name: e.target.value } }))
                       }
                       aria-label={`Track name for ${track.name}`}
+                      maxLength={MAX_NAME_LENGTH}
                     />
                     <div
                       className="chq-swatch-picker"
@@ -435,6 +437,7 @@ export function TracksRoomsPanel() {
               placeholder="New track name"
               value={newTrack.name}
               onChange={(e) => setNewTrack({ ...newTrack, name: e.target.value })}
+              maxLength={MAX_NAME_LENGTH}
             />
           </SettingsField>
           <div className="chq-settings-row">
@@ -479,6 +482,7 @@ export function TracksRoomsPanel() {
                         setRoomDrafts((prev) => ({ ...prev, [room.id]: { ...draft, name: e.target.value } }))
                       }
                       aria-label={`Room name for ${room.name}`}
+                      maxLength={MAX_NAME_LENGTH}
                     />
                   </span>
                   <span className="chq-settings-edit-row-meta">
@@ -550,6 +554,7 @@ export function TracksRoomsPanel() {
                 placeholder="New room name"
                 value={newRoom.name}
                 onChange={(e) => setNewRoom({ ...newRoom, name: e.target.value })}
+                maxLength={MAX_NAME_LENGTH}
               />
             </SettingsField>
             <SettingsField label="Seats" htmlFor="chq-new-room-capacity" width="seats">

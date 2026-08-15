@@ -31,6 +31,7 @@ import { useMe } from '../../lib/useMe';
 import { SummarySection } from './SummarySection';
 import { SettingsEditForm } from './SettingsEditForm';
 import { capitalizeFirst } from '../../lib/plural';
+import { MAX_EMAIL_LENGTH } from '../../../../src/domain/email';
 
 const SECTION_KEY = 'people';
 
@@ -266,6 +267,7 @@ export function PeopleRolesPanel() {
               type="email"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
+              maxLength={MAX_EMAIL_LENGTH}
             />
           </label>
           {fieldErrors.email ? <span role="alert">{fieldErrors.email}</span> : null}

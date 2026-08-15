@@ -33,6 +33,7 @@ import { validateResourceForm, validateResourceTitleForm, type ResourceForm, typ
 import { validateUpload, uploadHintText, allowedUploadExtensions } from '../../../../src/domain/files';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { countOf } from '../../lib/plural';
+import { MAX_NAME_LENGTH, MAX_RICH_TEXT_LENGTH } from '../../../../src/forms/validate';
 import './settings-lists.css';
 
 interface Resource {
@@ -262,6 +263,7 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
                     onChange={(e) =>
                       setEditing((prev) => ({ ...prev, [resource.id]: { ...editForm, title: e.target.value } }))
                     }
+                    maxLength={MAX_NAME_LENGTH}
                   />
                   {resource.kind === 'wiki' ? (
                     <textarea
@@ -270,6 +272,7 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
                       onChange={(e) =>
                         setEditing((prev) => ({ ...prev, [resource.id]: { ...editForm, content: e.target.value } }))
                       }
+                      maxLength={MAX_RICH_TEXT_LENGTH}
                     />
                   ) : null}
                   {fieldErrors.title ? <span role="alert">{fieldErrors.title}</span> : null}
@@ -317,6 +320,7 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
             placeholder="Title"
             value={newResource.title}
             onChange={(e) => setNewResource({ ...newResource, title: e.target.value })}
+            maxLength={MAX_NAME_LENGTH}
           />
           {fieldErrors.title ? <span role="alert">{fieldErrors.title}</span> : null}
           <textarea
@@ -324,6 +328,7 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
             placeholder="Content"
             value={newResource.content}
             onChange={(e) => setNewResource({ ...newResource, content: e.target.value })}
+            maxLength={MAX_RICH_TEXT_LENGTH}
           />
           {fieldErrors.content ? <span role="alert">{fieldErrors.content}</span> : null}
           <button type="button" className="chq-btn chq-btn-primary" onClick={() => void addResource()}>
@@ -336,6 +341,7 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
             placeholder="Title"
             value={fileTitle}
             onChange={(e) => setFileTitle(e.target.value)}
+            maxLength={MAX_NAME_LENGTH}
           />
           <input
             className="chq-file"

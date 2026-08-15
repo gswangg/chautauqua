@@ -36,6 +36,7 @@ import {
   type PortalSettingsForm,
   type PortalSettingsFormErrors,
 } from './formState';
+import { MAX_LONG_TEXT_LENGTH, MAX_TEXT_LENGTH } from '../../../../src/forms/validate';
 
 const SECTION_KEY = 'portal';
 
@@ -240,6 +241,7 @@ export function PortalSettingsPanel() {
               className="chq-input"
               value={form.welcomeMessage}
               onChange={(e) => setForm((current) => ({ ...current, welcomeMessage: e.target.value }))}
+              maxLength={MAX_LONG_TEXT_LENGTH}
             />
           </SettingsField>
           <SettingsField
@@ -254,6 +256,7 @@ export function PortalSettingsPanel() {
               type="text"
               value={form.logoUrl}
               onChange={(e) => setForm((current) => ({ ...current, logoUrl: e.target.value }))}
+              maxLength={MAX_TEXT_LENGTH}
             />
           </SettingsField>
           <SettingsField

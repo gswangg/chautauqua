@@ -23,6 +23,7 @@ import {
   type EmbedFormat,
   type EmbedSurface,
 } from './embedSnippet';
+import { MAX_NAME_LENGTH } from '../../../../src/forms/validate';
 
 // DEC-822/DEC-839: the shape a saved embed row comes back as from GET
 // /events/:eventId/embeds (src/server/repo/embeds.ts's EmbedRecord,
@@ -280,6 +281,7 @@ export function EmbedsPanel() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Homepage sessions widget"
+                maxLength={MAX_NAME_LENGTH}
               />
             </label>
 
@@ -343,6 +345,7 @@ export function EmbedsPanel() {
                 value={sessionFormat}
                 onChange={(e) => setSessionFormat(e.target.value)}
                 placeholder="(all formats)"
+                maxLength={MAX_NAME_LENGTH}
               />
             </label>
           ) : null}
@@ -356,6 +359,7 @@ export function EmbedsPanel() {
                 value={roomId}
                 onChange={(e) => setRoomId(e.target.value)}
                 placeholder="(all rooms)"
+                maxLength={MAX_NAME_LENGTH}
               />
             </label>
           ) : null}
@@ -376,6 +380,7 @@ export function EmbedsPanel() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="(no search)"
+                maxLength={MAX_NAME_LENGTH}
               />
             </label>
           ) : null}
@@ -426,9 +431,10 @@ export function EmbedsPanel() {
             </div>
           ) : null}
 
-          <label>
+          <label htmlFor="embed-accent-color">
             Accent color
             <input
+              id="embed-accent-color"
               className="chq-input"
               type="text"
               value={accent}
@@ -501,6 +507,7 @@ export function EmbedsPanel() {
             </div>
             {copyResult && !copyResult.ok ? (
               <input
+                id="embed-copy-fallback"
                 ref={failedCopyRef}
                 className="chq-input"
                 readOnly
