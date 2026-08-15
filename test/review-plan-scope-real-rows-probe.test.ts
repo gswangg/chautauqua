@@ -159,6 +159,7 @@ create table form_field (
   options_json text,
   rule_json text,
   locked integer,
+  role text,
   created_at integer,
   updated_at integer
 );

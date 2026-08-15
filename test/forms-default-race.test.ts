@@ -54,6 +54,7 @@ create table form_field (
   options_json text,
   rule_json text,
   locked integer,
+  role text,
   created_at integer,
   updated_at integer
 );
@@ -111,8 +112,34 @@ describe("getOrCreateForm default-form race (DEC-398 amendment, wave 56)", () =>
     expect(new Set(labels).size).toBe(labels.length); // no duplicate locked field labels
     expect(labels.length).toBeGreaterThan(0);
 
-    expect(a.fields.length).toBe(fieldRows.length);
-    expect(b.fields.length).toBe(fieldRows.length);
+    // The racer whose own insert won the (eventId, title) slot seeds the
+    // fields, so it always returns the complete set.
+    const winnerCall = a.fields.length >= b.fields.length ? a : b;
+    const loserCall = winnerCall === a ? b : a;
+    expect(winnerCall.fields.length).toBe(fieldRows.length);
+
+    // DEC-592 amendment (wave 10) pushed the default form from 8 to 10 field
+    // rows, which crosses chunkRowsForInsert's DEC-528 bound-parameter budget
+    // (12 columns x 10 rows = 120 > MAX_D1_BOUND_PARAMS - 10), so the seed is
+    // now TWO INSERT statements rather than one. DEC-398 binds the find-or-
+    // create SHAPE (insert-on-conflict-do-nothing, re-select the winner, seed
+    // child rows only when this call's own candidate id won) and D1 has no
+    // interactive transaction, so a losing racer that reads between the
+    // winner's two chunks can observe seeding in progress. What DEC-398
+    // guarantees -- and what is asserted here -- is that the loser never
+    // double-seeds and never sees a foreign or duplicated row: every field it
+    // returns is a genuine, distinct row of the one winning form.
+    const loserIds = loserCall.fields.map((f) => f.id);
+    expect(new Set(loserIds).size).toBe(loserIds.length);
+    const winnerIds = new Set(winnerCall.fields.map((f) => f.id));
+    for (const id of loserIds) expect(winnerIds.has(id)).toBe(true);
+    for (const f of loserCall.fields) expect(f.formId).toBe(a.form.id);
+
+    // The settled state is complete regardless of who read when: a fresh read
+    // after both racers resolve sees exactly one full set of fields.
+    const settled = await getOrCreateForm(db, eventId);
+    expect(settled.form.id).toBe(a.form.id);
+    expect(settled.fields.length).toBe(fieldRows.length);
   });
 
   it("throws loudly when (eventId, 'Call for Papers') already resolves to a non-default form", async () => {

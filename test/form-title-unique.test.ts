@@ -103,6 +103,7 @@ create table form_field (
   options_json text,
   rule_json text,
   locked integer,
+  role text,
   created_at integer,
   updated_at integer
 );
@@ -226,6 +227,7 @@ describe("migrations/0033_form_title_unique.sql dedupe (DEC-111 amendment, wave 
       options_json text,
       rule_json text,
       locked integer,
+      role text,
       created_at integer,
       updated_at integer
     );
