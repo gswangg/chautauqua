@@ -80,9 +80,10 @@ export function LoginPage(props: {
           </div>
           {props.statusLine ? <p className="chq-auth-status">{props.statusLine}</p> : null}
           {props.error ? (
-            <p className="chq-auth-error" role="alert">
-              {props.error}
-            </p>
+            <div className="chq-error-summary" role="alert">
+              <h2>{props.error}</h2>
+              <p>Check your email and password, then try again.</p>
+            </div>
           ) : null}
           <form
             className="chq-auth-fields"
@@ -94,7 +95,7 @@ export function LoginPage(props: {
             <label>
               <span className="chq-auth-label">Email</span>
               <input
-                className="chq-input"
+                className={props.error ? "chq-input chq-field-invalid" : "chq-input"}
                 type="email"
                 name="email"
                 placeholder="you@example.com"
@@ -105,7 +106,12 @@ export function LoginPage(props: {
             </label>
             <label>
               <span className="chq-auth-label">Password</span>
-              <input className="chq-input" type="password" name="password" required />
+              <input
+                className={props.error ? "chq-input chq-field-invalid" : "chq-input"}
+                type="password"
+                name="password"
+                required
+              />
             </label>
             <div className="chq-auth-submitrow">
               <a className="chq-auth-tertiary" href="/forgot">
@@ -164,15 +170,22 @@ export function ClaimPage(props: { csrfToken: string; error?: string }) {
             <div className="chq-auth-subtitle">Create a password to track your submission</div>
           </div>
           {props.error ? (
-            <p className="chq-auth-error" role="alert">
-              {props.error}
-            </p>
+            <div className="chq-error-summary" role="alert">
+              <h2>{props.error}</h2>
+              <p>Fix the password below, then try again.</p>
+            </div>
           ) : null}
           <form className="chq-auth-fields" method="post">
             <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
             <label>
               <span className="chq-auth-label">Password</span>
-              <input className="chq-input" type="password" name="password" minlength={MIN_PASSWORD_LENGTH} required />
+              <input
+                className={props.error ? "chq-input chq-field-invalid" : "chq-input"}
+                type="password"
+                name="password"
+                minlength={MIN_PASSWORD_LENGTH}
+                required
+              />
             </label>
             <div className="chq-auth-submitrow">
               <button type="submit" className="chq-btn-primary">
@@ -226,9 +239,10 @@ export function ForgotPasswordPage(props: { csrfToken: string; email?: string; e
             <div className="chq-auth-subtitle">We will email you a link to set a new one.</div>
           </div>
           {props.error ? (
-            <p className="chq-auth-error" role="alert">
-              {props.error}
-            </p>
+            <div className="chq-error-summary" role="alert">
+              <h2>{props.error}</h2>
+              <p>Try again in a few minutes.</p>
+            </div>
           ) : null}
           <form className="chq-auth-fields" method="post" action="/forgot">
             <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
@@ -303,16 +317,17 @@ export function ResetPasswordPage(props: { csrfToken: string; email: string; err
             <div className="chq-auth-subtitle">Signing in as {props.email}.</div>
           </div>
           {props.error ? (
-            <p className="chq-auth-error" role="alert">
-              {props.error}
-            </p>
+            <div className="chq-error-summary" role="alert">
+              <h2>{props.error}</h2>
+              <p>Fix the password fields below, then try again.</p>
+            </div>
           ) : null}
           <form className="chq-auth-fields" method="post">
             <input type="hidden" name={CSRF_COOKIE_NAME} value={props.csrfToken} />
             <label>
               <span className="chq-auth-label">New password</span>
               <input
-                className="chq-input"
+                className={props.error ? "chq-input chq-field-invalid" : "chq-input"}
                 type="password"
                 name="next"
                 minlength={MIN_PASSWORD_LENGTH}
@@ -323,7 +338,13 @@ export function ResetPasswordPage(props: { csrfToken: string; email: string; err
             </label>
             <label>
               <span className="chq-auth-label">New password again</span>
-              <input className="chq-input" type="password" name="confirm" minlength={MIN_PASSWORD_LENGTH} required />
+              <input
+                className={props.error ? "chq-input chq-field-invalid" : "chq-input"}
+                type="password"
+                name="confirm"
+                minlength={MIN_PASSWORD_LENGTH}
+                required
+              />
             </label>
             <div className="chq-auth-submitrow">
               <button type="submit" className="chq-btn-primary">

@@ -13,13 +13,15 @@
 // any quoted font-family name or url(). AUTH_CSS must stay a fixed,
 // value-free module constant, never interpolated with request/user data.
 
-import { DEC_367, DEC_373, DEC_374, DEC_944, DEC_945 } from "../decisions";
+import { DEC_367, DEC_373, DEC_374, DEC_944, DEC_945, DEC_124 } from "../decisions";
+import { ERROR_STATES_CSS } from "../views/error-states.css";
 
 void DEC_367;
 void DEC_373;
 void DEC_374;
 void DEC_944;
 void DEC_945;
+void DEC_124;
 
 // DEC-945 amendment (wave 25): the V8 intake redrew 11-account--00 ("a
 // card, not a stretched phone") and SUPERSEDES the pair-6 box-math ruling
@@ -168,12 +170,6 @@ export const AUTH_CSS = `
     text-decoration: underline;
   }
 
-  .chq-auth-error {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--chq-ink);
-  }
-
   /* wave 25 (DEC-154 amendment): a muted one-line status, never a banner or
      a coloured box -- the single owner of both the /logout and (task-w25-b)
      password-reset status text, keyed off loginStatusLine(). */
@@ -304,4 +300,4 @@ export const AUTH_CSS = `
     .chq-auth-cancel { display: inline-flex; }
     .chq-auth-hint { display: none; }
   }
-`;
+${ERROR_STATES_CSS}`;
