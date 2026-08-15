@@ -17,6 +17,7 @@ import {
   type PlanValidationErrors,
 } from './planForm';
 import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
+import { OPTIONAL_SUFFIX } from '../../../../src/domain/form-copy';
 // DEC-708: the same name-or-email resolver ProgressPanel uses -- a plan
 // reviewer row names a person by their resolved contact, never a
 // fabricated name, falling back to the bare email.
@@ -1371,7 +1372,10 @@ export function PlanEditor() {
             {/* DEC-715: the drag-handle column has no header label of its own. */}
             <span> </span>
             <span className="chq-review-criteria-head-cell">Criterion </span>
-            <span className="chq-review-criteria-head-cell">Guidance for reviewers · Optional </span>
+            <span className="chq-review-criteria-head-cell">
+              Guidance for reviewers
+              <span className="chq-review-criterion-optional">{OPTIONAL_SUFFIX}</span>
+            </span>
             {/* w5-e: the KIND column (rating/dropdown) is dropped -- it read
                 as internal plumbing between Guidance and Weight, not
                 information the frame names. */}
