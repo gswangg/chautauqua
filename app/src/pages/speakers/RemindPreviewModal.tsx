@@ -18,12 +18,17 @@ interface RemindPreviewModalProps {
   // recomputed here, so this dialog can never claim a different number
   // than the send it previews actually performs.
   skipped: number;
+  // DEC-441 amendment (w52-a): the server's batch-cap remainder (eligible
+  // recipients past MAX_REMINDER_BATCH), printed verbatim in the same
+  // sentence family sendResult.ts uses -- never recomputed here -- so the
+  // review dialog names the part of the batch this send will NOT reach.
+  remaining: number;
   sending: boolean;
   onSend: () => void;
   onCancel: () => void;
 }
 
-export function RemindPreviewModal({ loading, error, drafts, skipped, sending, onSend, onCancel }: RemindPreviewModalProps) {
+export function RemindPreviewModal({ loading, error, drafts, skipped, remaining, sending, onSend, onCancel }: RemindPreviewModalProps) {
   // DEC-829 amendment: the recipient count IS the server's drafts array
   // length -- one draft per recipient the send will actually reach -- never
   // a separately recomputed figure.
@@ -55,6 +60,9 @@ export function RemindPreviewModal({ loading, error, drafts, skipped, sending, o
         <>
           {skipped > 0 && (
             <div className="chq-speakers-remind-skipped">{countOf(skipped, 'contact')} skipped &mdash; reminded in the last hour</div>
+          )}
+          {remaining > 0 && (
+            <div className="chq-speakers-remind-remaining">{countOf(remaining, 'contact')} still outstanding &mdash; run it again to continue.</div>
           )}
           <ul className="chq-speakers-remind-recipients">
             {drafts.map((d) => (

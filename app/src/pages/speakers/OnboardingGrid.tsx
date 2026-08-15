@@ -241,6 +241,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
   // through verbatim rather than recomputed client-side, so the modal can
   // never claim a different number than the send performs.
   const [remindSkipped, setRemindSkipped] = useState(0);
+  const [remindRemaining, setRemindRemaining] = useState(0);
   const [reminding, setReminding] = useState(false);
   // DEC-694: undefined => "Remind all outstanding" (today's behaviour);
   // a one-element array => the per-row "Remind ‹first name›" quiet control.
@@ -482,6 +483,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     setRemindPreviewError(null);
     setRemindDrafts(null);
     setRemindSkipped(0);
+    setRemindRemaining(0);
     try {
       const res = await apiPost<{ drafts: ReminderDraft[]; skipped: number; remaining: number }>(
         `/events/${eventId}/onboarding/remind/preview`,
@@ -489,6 +491,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
       );
       setRemindDrafts(res.drafts);
       setRemindSkipped(res.skipped);
+      setRemindRemaining(res.remaining);
     } catch (err) {
       setRemindPreviewError(err instanceof ApiError ? err.message : 'Failed to load reminder preview');
     } finally {
@@ -501,6 +504,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
     setRemindPreviewError(null);
     setRemindDrafts(null);
     setRemindSkipped(0);
+    setRemindRemaining(0);
     setRemindContactIds(undefined);
   }
 
@@ -1085,6 +1089,7 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
           error={remindPreviewError}
           drafts={remindDrafts}
           skipped={remindSkipped}
+          remaining={remindRemaining}
           sending={reminding}
           onSend={handleRemind}
           onCancel={closeRemindReview}

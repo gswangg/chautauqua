@@ -38,6 +38,7 @@ describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
         error={null}
         drafts={null}
         skipped={0}
+        remaining={0}
         sending={false}
         onSend={vi.fn()}
         onCancel={vi.fn()}
@@ -56,6 +57,7 @@ describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
         error={null}
         drafts={DRAFTS}
         skipped={0}
+        remaining={0}
         sending={false}
         onSend={onSend}
         onCancel={vi.fn()}
@@ -84,6 +86,7 @@ describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
         error={null}
         drafts={DRAFTS}
         skipped={0}
+        remaining={0}
         sending={false}
         onSend={onSend}
         onCancel={onCancel}
@@ -102,6 +105,7 @@ describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
         error="Send failed: mailer outage"
         drafts={DRAFTS}
         skipped={0}
+        remaining={0}
         sending={false}
         onSend={vi.fn()}
         onCancel={vi.fn()}
@@ -117,6 +121,7 @@ describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
         error={null}
         drafts={[]}
         skipped={0}
+        remaining={0}
         sending={false}
         onSend={vi.fn()}
         onCancel={vi.fn()}
@@ -135,6 +140,7 @@ describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
         error={null}
         drafts={DRAFTS}
         skipped={3}
+        remaining={0}
         sending={false}
         onSend={vi.fn()}
         onCancel={vi.fn()}
@@ -148,11 +154,46 @@ describe('RemindPreviewModal (SPEC §10 #3, DEC-441)', () => {
         error={null}
         drafts={DRAFTS}
         skipped={0}
+        remaining={0}
         sending={false}
         onSend={vi.fn()}
         onCancel={vi.fn()}
       />,
     );
     expect(screen.queryByText(/skipped/)).not.toBeInTheDocument();
+  });
+
+  // DEC-441 amendment (w52-a): the review dialog names the batch-cap
+  // remainder in the same sentence family the send toast (sendResult.ts)
+  // uses, so the organizer knows the preview does not cover the whole
+  // outstanding population before they click Send.
+  it('prints the server-supplied remaining count when greater than zero, and omits the line at zero', () => {
+    const { rerender } = render(
+      <RemindPreviewModal
+        loading={false}
+        error={null}
+        drafts={DRAFTS}
+        skipped={0}
+        remaining={4}
+        sending={false}
+        onSend={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('4 contacts still outstanding — run it again to continue.')).toBeInTheDocument();
+
+    rerender(
+      <RemindPreviewModal
+        loading={false}
+        error={null}
+        drafts={DRAFTS}
+        skipped={0}
+        remaining={0}
+        sending={false}
+        onSend={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText(/still outstanding/)).not.toBeInTheDocument();
   });
 });

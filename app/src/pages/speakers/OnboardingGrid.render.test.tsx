@@ -362,6 +362,33 @@ describe('OnboardingGrid: DEC-694 per-row remind', () => {
   });
 });
 
+// DEC-441 amendment (w52-a): the review dialog opened by "Remind all
+// outstanding" must surface the server's batch-cap remainder, not drop it
+// on the way from the preview response into RemindPreviewModal's props.
+describe('OnboardingGrid: DEC-441 amendment surfaces the preview batch-cap remainder', () => {
+  it('renders the "N still outstanding" sentence when the preview response carries remaining: 4', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/onboarding`]: GRID,
+      [`GET /api/v1/events/${EVENT_ID}/forms`]: { forms: [] },
+      [`POST /api/v1/events/${EVENT_ID}/onboarding/remind/preview`]: {
+        drafts: [{ contactId: 'ct1', email: 'ada@example.com', name: 'Ada Lovelace', subject: 'Action needed', text: 'body' }],
+        skipped: 0,
+        remaining: 4,
+      },
+    });
+
+    render(<MemoryRouter><OnboardingGrid onAddSpeaker={vi.fn()} /></MemoryRouter>);
+    await waitFor(() => screen.getAllByText('Ada Lovelace').length > 0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remind all outstanding' }));
+
+    await screen.findByRole('dialog', { name: 'Review reminders' });
+    await waitFor(() => {
+      expect(screen.getByText('4 contacts still outstanding — run it again to continue.')).toBeInTheDocument();
+    });
+  });
+});
+
 // DEC-852: a grace-shifted deadline must be visible before it bites (not
 // only once overdue), and a far-dated header column must not read as "this
 // year" when it isn't.
