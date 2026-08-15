@@ -472,11 +472,12 @@ async function main(): Promise<void> {
     position: number;
     options: string[] | null;
     locked: boolean;
+    role?: "session_format" | "audience_level";
   }> = [
     { id: "title", section: "session", kind: "text", label: "Title", helpText: "Shown on every public page", required: true, position: 0, options: null, locked: true },
     { id: "description", section: "session", kind: "long_text", label: "Abstract", helpText: `Up to ${MAX_LONG_TEXT_LENGTH.toLocaleString("en-US")} characters`, required: true, position: 1, options: null, locked: true },
-    { id: SESSION_FORMAT_FIELD_ID, section: "session", kind: "dropdown", label: "Format", helpText: `${fixture.event.session_formats.length} options`, required: true, position: 2, options: fixture.event.session_formats, locked: false },
-    { id: "field_audience_level", section: "session", kind: "dropdown", label: "Audience level", helpText: "Beginner, intermediate, advanced", required: false, position: 3, options: audienceLevels, locked: false },
+    { id: SESSION_FORMAT_FIELD_ID, section: "session", kind: "dropdown", label: "Format", helpText: `${fixture.event.session_formats.length} options`, required: true, position: 2, options: fixture.event.session_formats, locked: false, role: "session_format" },
+    { id: "field_audience_level", section: "session", kind: "dropdown", label: "Audience level", helpText: "Beginner, intermediate, advanced", required: false, position: 3, options: audienceLevels, locked: false, role: "audience_level" },
     { id: "field_notes_for_reviewers", section: "session", kind: "long_text", label: "Notes for reviewers", helpText: "Never shown publicly", required: false, position: 4, options: null, locked: false },
     { id: "field_accessibility_needs", section: "session", kind: "text", label: "Accessibility needs", helpText: "Passed to the venue team only", required: false, position: 5, options: null, locked: false },
     { id: "first_name", section: "speaker", kind: "text", label: "First name", helpText: null, required: true, position: 0, options: null, locked: true },
@@ -502,6 +503,7 @@ async function main(): Promise<void> {
         options_json: field.options ? JSON.stringify(field.options) : null,
         rule_json: null,
         locked: field.locked,
+        role: field.role ?? null,
         created_at: nextTs(),
         updated_at: ts,
       }),

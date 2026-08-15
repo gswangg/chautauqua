@@ -13,6 +13,14 @@ export type FormFieldKind =
 
 export type FormFieldRuleOp = "eq" | "ne" | "in";
 
+// DEC-592 amendment (wave 10, task w10-a): the role tag a form_field row can
+// carry so the two well-known CFP fields (session format, audience level)
+// can be resolved by role instead of a global-PK literal id. See
+// SESSION_FORMAT_FIELD_ID / AUDIENCE_LEVEL_FIELD_ID below -- both still
+// stand this wave (w10-b owns converting read sites and retiring them).
+export const FORM_FIELD_ROLES = ["session_format", "audience_level"] as const;
+export type FormFieldRole = (typeof FORM_FIELD_ROLES)[number];
+
 export interface FormFieldRule {
   fieldId: string;
   op: FormFieldRuleOp;
@@ -29,6 +37,9 @@ export interface FormFieldDef {
   position: number;
   options?: string[];
   rule?: FormFieldRule;
+  // DEC-592 amendment (wave 10): role tag, when this field is one of the
+  // two well-known CFP fields. Absent/null on ordinary custom fields.
+  role?: FormFieldRole | null;
   // DEC-909: a long-text field's own character budget, when it carries one.
   // Absent means the renderer's counter AND src/forms/validate.ts's cap fall
   // back to the shared MAX_LONG_TEXT_LENGTH/MAX_TEXT_LENGTH. When present

@@ -75,6 +75,12 @@ export const formField = sqliteTable(
     // locked built-ins (session Title/Description, speaker first/last/email)
     // are required + non-removable
     locked: integer("locked", { mode: "boolean" }).notNull().default(false),
+    // DEC-592 amendment (wave 10): 'session_format' | 'audience_level' | NULL
+    // -- the role matcher that lets the two well-known CFP fields be
+    // resolved without depending on a global-PK literal id (migrations/
+    // 0038_form_field_role.sql). Nullable; ordinary custom fields carry no
+    // role.
+    role: text("role"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

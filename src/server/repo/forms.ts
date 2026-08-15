@@ -5,12 +5,14 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
-import type { FormFieldDef, FormFieldRule } from "../../forms/types";
+import type { FormFieldDef, FormFieldRole, FormFieldRule } from "../../forms/types";
 import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, SESSION_FORMAT_FIELD_ID, lockedFieldId } from "../../forms/types";
-import { DEC_050, DEC_398 } from "../../decisions";
+import { DEC_050, DEC_398, DEC_592 } from "../../decisions";
 import { chunkRowsForInsert } from "../../lib/chunk";
 
 void DEC_050; // per-form locked field ids ('<formId>:<name>') — see createDefaultForm below
+void DEC_592; // wave-10 amendment: createDefaultForm mints the two role-tagged
+// session_format/audience_level fields below, per src/db/schema/event.ts's role column.
 void DEC_398; // createDefaultForm's insert-on-conflict-do-nothing-then-select below resolves two
 // concurrent getOrCreateForm racers to exactly one default ('Call for Papers', isDefault:true)
 // form -- the same find-or-create shape getOrCreateFormTaskForm (submissions/status.ts) uses
@@ -19,6 +21,9 @@ void DEC_398; // createDefaultForm's insert-on-conflict-do-nothing-then-select b
 export interface FormFieldRow extends FormFieldDef {
   formId: string;
   locked: boolean;
+  // role inherited from FormFieldDef (optional: FormFieldRole | null | undefined)
+  // so pre-existing test fixtures that construct FormFieldRow literals without
+  // it keep compiling -- toFieldRow below always stamps it explicitly.
 }
 
 export interface FormRow {
@@ -46,6 +51,7 @@ function toFieldRow(row: typeof schema.formField.$inferSelect): FormFieldRow {
     options: row.optionsJson ? (JSON.parse(row.optionsJson) as string[]) : undefined,
     rule: row.ruleJson ? (JSON.parse(row.ruleJson) as FormFieldRule) : undefined,
     locked: row.locked,
+    role: (row.role as FormFieldRole | null) ?? null,
   };
 }
 
@@ -217,11 +223,47 @@ export async function createDefaultForm(db: Db, eventId: string): Promise<{ form
         label: ownProperty(LOCKED_SESSION_LABELS, fieldId) ?? fieldId,
         required: true,
         position: position++,
+        optionsJson: null,
         locked: true,
+        role: null,
         createdAt: now,
         updatedAt: now,
       });
     }
+    // DEC-592 amendment (wave 10, DEC-755): role-tagged Format/Audience
+    // level dropdowns, minted with ordinary (non-locked) ids so organizers
+    // can still rename/remove them -- the role column, not the id, is what
+    // read sites resolve on going forward (w10-b). Placed between the
+    // locked session fields and the locked speaker fields; the shared
+    // `position` counter keeps running, so speaker fields shift by two.
+    fieldValues.push({
+      id: newId(),
+      formId: row.id,
+      section: "session",
+      kind: "dropdown",
+      label: "Format",
+      required: false,
+      position: position++,
+      optionsJson: JSON.stringify(["Keynote (45 min)", "Talk (30 min)", "Lightning talk (10 min)", "Workshop (90 min)", "Panel (45 min)"]),
+      locked: false,
+      role: "session_format",
+      createdAt: now,
+      updatedAt: now,
+    });
+    fieldValues.push({
+      id: newId(),
+      formId: row.id,
+      section: "session",
+      kind: "dropdown",
+      label: "Audience level",
+      required: false,
+      position: position++,
+      optionsJson: JSON.stringify(["Beginner", "Intermediate", "Advanced"]),
+      locked: false,
+      role: "audience_level",
+      createdAt: now,
+      updatedAt: now,
+    });
     for (const fieldId of LOCKED_SPEAKER_FIELDS) {
       fieldValues.push({
         id: lockedFieldId(row.id, fieldId),
@@ -231,12 +273,14 @@ export async function createDefaultForm(db: Db, eventId: string): Promise<{ form
         label: ownProperty(LOCKED_SPEAKER_LABELS, fieldId) ?? fieldId,
         required: !OPTIONAL_LOCKED_SPEAKER_FIELDS.has(fieldId),
         position: position++,
+        optionsJson: null,
         locked: true,
+        role: null,
         createdAt: now,
         updatedAt: now,
       });
     }
-    // DEC-528: 8 locked-field rows x 10 columns = 80 bound params today,
+    // DEC-528: 10 field rows (8 locked + 2 role-tagged) x 12 columns = 120
     // against chunkRowsForInsert's own MAX_D1_BOUND_PARAMS-10 budget —
     // chunked by bound-parameter budget (columns-per-row derived), never a
     // hand-declared count that drifts silently when a column is added.
