@@ -136,6 +136,12 @@ export function isFeedPath(pathname: string): boolean {
 
 publicRoutes.onError((err, c) => {
   c.header("Cache-Control", "no-store");
+  // DEC-099 wave-35 amendment: same fix as publicNotFound/publicErrorDocument
+  // (./not-found.tsx) -- setCacheHeaders(c) may have already set
+  // Vary: Cookie earlier in the handler that threw, and c.header() only
+  // overwrites the header it names, so clear Vary here too rather than
+  // shipping a forced-no-store response that still carries it.
+  c.header("Vary", undefined);
   const pathname = new URL(c.req.url).pathname;
   if (isFeedPath(pathname)) {
     const isApiErr = err instanceof ApiError;
