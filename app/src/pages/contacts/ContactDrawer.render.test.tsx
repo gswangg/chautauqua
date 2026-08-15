@@ -54,6 +54,7 @@ const CONTACT: ContactDetail = {
     ],
     submissionsTotal: 1,
     emails: [{ id: 'em1', subject: 'Welcome', toEmail: 'priya@example.com', sentAt: 1735689600000 }],
+    emailsTotal: 1,
     events: ['DevCon 2025'],
   },
 };
@@ -163,6 +164,38 @@ describe('ContactDrawer render (DEC-616 record view)', () => {
     expect(within(history).getByText(/Scaling caches \(SUB-1\) — accepted/)).toBeInTheDocument();
     expect(within(history).getByText(/Welcome → priya@example.com/)).toBeInTheDocument();
     expect(within(history).getByText('DevCon 2025')).toBeInTheDocument();
+  });
+
+  it('states the emails bound above the cap, mirroring the submissions line (w52-f)', async () => {
+    const CAPPED_CONTACT: ContactDetail = {
+      ...CONTACT,
+      history: { ...CONTACT.history, emailsTotal: 300 },
+    };
+    mockApi({ 'GET /api/v1/contacts/ct1': CAPPED_CONTACT });
+
+    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
+    const history = await within(dialog).findByRole('region', { name: 'Across your events' });
+
+    await waitFor(() => {
+      expect(within(history).getByText('Showing 1 of 300 emails')).toBeInTheDocument();
+    });
+  });
+
+  it('is silent about the emails bound when emailsTotal is at or below emails.length', async () => {
+    mockApi({ 'GET /api/v1/contacts/ct1': CONTACT });
+
+    render(<ContactDrawer contactId="ct1" onClose={() => {}} onSaved={() => {}} onContactChanged={() => {}} />);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Contact detail' });
+    const history = await within(dialog).findByRole('region', { name: 'Across your events' });
+
+    await waitFor(() => {
+      expect(within(history).getByText('DevCon 2026')).toBeInTheDocument();
+    });
+
+    expect(within(history).queryByText(/of .* emails?$/)).not.toBeInTheDocument();
   });
 
   it('exposes Save / Email / Add to event / Cancel as real buttons in one action bar', async () => {

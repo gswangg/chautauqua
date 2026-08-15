@@ -215,3 +215,80 @@ describe("getContactHistory bounds submissions and reports the full total (w56-c
     expect(history.events).toHaveLength(3);
   });
 });
+
+// w52-f (DEC-026 amendment): the emails list is capped at
+// MAX_CONTACT_HISTORY_EMAILS exactly as submissions is capped at
+// MAX_CONTACT_HISTORY_SUBMISSIONS -- emailsTotal is its own count(*) over
+// the same predicate as the row query, never emailRows.length, so capping
+// the list can never shrink it or silently hide the true total.
+describe("getContactHistory bounds emails and reports the full total (w52-f)", () => {
+  it("caps emails at MAX_CONTACT_HISTORY_EMAILS, reports the true emailsTotal, and never shrinks events/submissionsTotal", async () => {
+    const { db, sqlite } = makeTestDb();
+
+    sqlite
+      .prepare(
+        `insert into contact (id, org_id, first_name, last_name, email, created_at, updated_at) values (?, 'org-1', 'Priya', 'Raman', 'priya@example.com', ?, ?)`,
+      )
+      .run("contact-1", NOW, NOW);
+
+    sqlite
+      .prepare(
+        `insert into event (id, org_id, name, slug, start_date, end_date, timezone, record_prefix, created_at, updated_at)
+         values ('event-1', 'org-1', 'DevFlow Conf 2027', 'slug-e1', '2027-01-01', '2027-01-02', 'UTC', 'SUB', ?, ?)`,
+      )
+      .run(NOW, NOW);
+
+    sqlite
+      .prepare(
+        `insert into submission (id, event_id, seq, title, status, content_status, ics_sequence, created_at, updated_at)
+         values ('sub-1', 'event-1', 1, 'Scaling caches', 'accepted', 'approved', 0, ?, ?)`,
+      )
+      .run(NOW, NOW);
+    sqlite
+      .prepare(
+        `insert into participant (id, submission_id, contact_id, role, "order", visible, created_at, updated_at)
+         values (?, 'sub-1', 'contact-1', 'speaker', 0, 1, ?, ?)`,
+      )
+      .run(newId(), NOW, NOW);
+
+    // 30 emails logged for this contact -- more than the cap of 20.
+    for (let i = 0; i < 30; i++) {
+      sqlite
+        .prepare(
+          `insert into email_log (id, event_id, contact_id, to_email, subject, body_text, status, sent_at, created_at, updated_at)
+           values (?, 'event-1', 'contact-1', 'priya@example.com', ?, 'body', 'sent', ?, ?, ?)`,
+        )
+        .run(`email-${i}`, `Subject ${i}`, NOW + i, NOW + i, NOW + i);
+    }
+
+    const history = await getContactHistory(db, "contact-1");
+    expect(history.emails).toHaveLength(20);
+    expect(history.emailsTotal).toBe(30);
+    // capping the emails list must never shrink the OTHER collections.
+    expect(history.submissionsTotal).toBe(1);
+    expect(history.events).toEqual(["DevFlow Conf 2027"]);
+  });
+
+  it("reports emailsTotal equal to emails.length when at or below the cap", async () => {
+    const { db, sqlite } = makeTestDb();
+
+    sqlite
+      .prepare(
+        `insert into contact (id, org_id, first_name, last_name, email, created_at, updated_at) values (?, 'org-1', 'Priya', 'Raman', 'priya@example.com', ?, ?)`,
+      )
+      .run("contact-1", NOW, NOW);
+
+    for (let i = 0; i < 3; i++) {
+      sqlite
+        .prepare(
+          `insert into email_log (id, event_id, contact_id, to_email, subject, body_text, status, sent_at, created_at, updated_at)
+           values (?, null, 'contact-1', 'priya@example.com', ?, 'body', 'sent', ?, ?, ?)`,
+        )
+        .run(`email-${i}`, `Subject ${i}`, NOW + i, NOW + i, NOW + i);
+    }
+
+    const history = await getContactHistory(db, "contact-1");
+    expect(history.emails).toHaveLength(3);
+    expect(history.emailsTotal).toBe(3);
+  });
+});

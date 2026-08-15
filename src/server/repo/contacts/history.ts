@@ -15,6 +15,12 @@ import { formatRef } from "../../../domain/ids";
 // the FULL join so capping the list can never shrink either.
 export const MAX_CONTACT_HISTORY_SUBMISSIONS = 20;
 
+// w52-f: same cap, now named, mirroring MAX_CONTACT_HISTORY_SUBMISSIONS --
+// the emails list is a slice of the ordered log, never the population;
+// emailsTotal (a separate count(*) over the same predicate) is the source of
+// truth for "how many total", exactly as submissionsTotal is for submissions.
+export const MAX_CONTACT_HISTORY_EMAILS = 20;
+
 export interface ContactHistorySubmission {
   id: string;
   ref: string;
@@ -39,6 +45,9 @@ export interface ContactHistory {
   submissions: ContactHistorySubmission[];
   submissionsTotal: number;
   emails: ContactHistoryEmail[];
+  // w52-f: total email-log count across ALL events, distinct from
+  // emails.length once the list is capped -- mirrors submissionsTotal.
+  emailsTotal: number;
   events: string[];
 }
 
@@ -95,9 +104,15 @@ export async function getContactHistory(db: Db, contactId: string): Promise<Cont
     // DEC-534: sentAt alone is not unique — tiebreak on id so "last 20
     // emails" is a stable 20 rather than an arbitrary subset.
     .orderBy(desc(schema.emailLog.sentAt), asc(schema.emailLog.id))
-    .limit(20);
+    .limit(MAX_CONTACT_HISTORY_EMAILS);
 
   const emails: ContactHistoryEmail[] = emailRows.map((r) => ({ ...r, sentAt: r.sentAt.getTime() }));
+
+  const [emailsTotalRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.emailLog)
+    .where(eq(schema.emailLog.contactId, contactId));
+  const emailsTotal = emailsTotalRow?.count ?? 0;
 
   // w56-c: its OWN distinct query over the full join — capping the
   // submissions list above must never shrink "Across your events".
@@ -110,5 +125,5 @@ export async function getContactHistory(db: Db, contactId: string): Promise<Cont
     .orderBy(asc(schema.event.name));
   const events = eventRows.map((r) => r.eventName);
 
-  return { submissions, submissionsTotal, emails, events };
+  return { submissions, submissionsTotal, emails, emailsTotal, events };
 }

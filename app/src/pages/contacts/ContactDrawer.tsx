@@ -4,6 +4,7 @@ import { apiDelete, apiGet, apiPatch, apiUpload, ApiError } from '../../lib/api'
 import { formatDateTime } from '../../lib/dates';
 import type { ContactDetail, ContactListItem } from './types';
 import { fromRows, toRows, travelValue, type CustomFieldRow } from './customFields';
+import { countOf } from '../../lib/plural';
 import { contactLabels } from '../../../../src/domain/contact-labels';
 import { BulkEmailModal } from './BulkEmailModal';
 import { AddToEventModal } from './AddToEventModal';
@@ -574,6 +575,11 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
               {contact.history.submissionsTotal > contact.history.submissions.length && (
                 <p className="chq-meta">
                   Showing {contact.history.submissions.length} of {contact.history.submissionsTotal} submissions
+                </p>
+              )}
+              {contact.history.emailsTotal > contact.history.emails.length && (
+                <p className="chq-meta">
+                  Showing {contact.history.emails.length} of {countOf(contact.history.emailsTotal, 'email')}
                 </p>
               )}
               {historyRows.map((row) => (
