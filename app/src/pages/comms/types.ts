@@ -14,8 +14,12 @@ export interface ComposeSkippedRecipient {
   email: string;
   name: string;
   submissionId: string;
-  reason: 'already_sent_recently';
-  retryAtIso: string;
+  // DEC-238 wave-15 amendment: 'duplicate_in_batch' is the intra-batch stage
+  // (mirrors bulk-email.ts) — two renders of the same message inside ONE
+  // call. It has no retryAtIso: there is no window to wait out, the second
+  // occurrence is simply not resent.
+  reason: 'already_sent_recently' | 'duplicate_in_batch';
+  retryAtIso?: string;
 }
 
 export type ComposeSendResult = Omit<SendResult, 'skipped'> & {

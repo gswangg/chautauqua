@@ -107,23 +107,48 @@ sendRoutes.post("/api/v1/events/:eventId/compose/send", requireOrganizer, csrfJs
   // emailed again. This runs BEFORE the send loop so a skip is decided from
   // one consistent snapshot of email_log, not interleaved with this call's
   // own sends.
+  //
+  // DEC-238 wave-15 amendment: mirrors bulk-email.ts's two-stage shape.
+  // Stage 1 (intra-batch) runs FIRST, BEFORE loadRecentlySent, so the window
+  // query never asks about entries this call has already collapsed. Unlike
+  // bulk-email (one subject for the whole batch, so stage 1 keys on address
+  // alone), compose renders a PER-SUBMISSION subject — a speaker with two
+  // accepted talks legitimately gets two different messages to one address —
+  // so stage 1 here keys on dedupeKey(email, subject) exactly like stage 2,
+  // not on address alone.
   void DEC_238;
   const now = new Date();
-  const recentlySent = await repo.loadRecentlySent(
-    c.var.db,
-    eventId,
-    result.rendered.map((r) => ({ email: r.email, subject: r.subject })),
-    dedupeCutoff(now.getTime()),
-  );
   const skipped: {
     email: string;
     name: string;
     submissionId: string;
-    reason: "already_sent_recently";
-    retryAtIso: string;
+    reason: "already_sent_recently" | "duplicate_in_batch";
+    retryAtIso?: string;
   }[] = [];
-  const toSend: typeof result.rendered = [];
+  const seenInBatch = new Set<string>();
+  const afterIntraBatch: typeof result.rendered = [];
   for (const rendered of result.rendered) {
+    const key = dedupeKey(rendered.email, rendered.subject);
+    if (seenInBatch.has(key)) {
+      skipped.push({
+        email: rendered.email,
+        name: rendered.name,
+        submissionId: rendered.submissionId,
+        reason: "duplicate_in_batch",
+      });
+      continue;
+    }
+    seenInBatch.add(key);
+    afterIntraBatch.push(rendered);
+  }
+  const recentlySent = await repo.loadRecentlySent(
+    c.var.db,
+    eventId,
+    afterIntraBatch.map((r) => ({ email: r.email, subject: r.subject })),
+    dedupeCutoff(now.getTime()),
+  );
+  const toSend: typeof result.rendered = [];
+  for (const rendered of afterIntraBatch) {
     const lastSentAt = recentlySent.get(dedupeKey(rendered.email, rendered.subject));
     if (lastSentAt !== undefined) {
       skipped.push({
