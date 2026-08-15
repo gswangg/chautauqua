@@ -28,7 +28,7 @@ export interface TriageRow {
   title: string;
   speakerName: string;
   trackName: string | null;
-  format: string;
+  format: string | null;
   submittedAt: number;
 }
 

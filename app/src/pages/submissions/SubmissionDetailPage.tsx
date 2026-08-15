@@ -7,7 +7,7 @@ import { apiGet, apiList, apiPatch, apiPost, apiDelete, ApiError } from '../../l
 import { formatDate as formatTimestamp, formatDateTime, epochDayIndex } from '../../lib/dates';
 import { formatEventDate } from '../../../../src/lib/event-time';
 import { SESSION_FORMAT_FIELD_ID, AUDIENCE_LEVEL_FIELD_ID } from '../../../../src/forms/types';
-import { parseFormatDurationMin } from '../../../../src/domain/schedule';
+import { sessionFormatLabel } from '../../../../src/lib/session-vocabulary';
 import type { CfpForm } from '../forms/types';
 import { buildAnswerRows, resolveAnswerFields } from './detailRows';
 import { formatBytes } from '../content/format';
@@ -112,20 +112,6 @@ interface SubmissionReviewItem {
   score: number | null;
   comment: string | null;
   submittedAt: number | null;
-}
-
-// DEC-908 (wave 42 amendment): the eyebrow's session-format grammar reads
-// 'Talk, 30m' -- a comma and a bare 'Nm' suffix -- never the raw CFP option
-// label's '(N min)' parenthetical. Reuses parseFormatDurationMin (the same
-// minute-extraction rule the scheduler already trusts) rather than a second
-// regex, so the two readings of one label cannot drift apart; a label the
-// parser can't read (no parenthesised duration) renders unchanged rather
-// than inventing a length.
-function formatSessionFormatGrammar(rawLabel: string): string {
-  const minutes = parseFormatDurationMin(rawLabel);
-  if (minutes === null) return rawLabel;
-  const name = rawLabel.replace(/\s*\(\d+\s*(?:min|mins|minutes)\)\s*$/i, '').trim();
-  return `${name}, ${minutes}m`;
 }
 
 // Whole calendar days between createdAt and now, both read in the event's
@@ -703,7 +689,7 @@ export function SubmissionDetailPage() {
   // either half omitted when absent, the whole line omitted when both are.
   const eyebrowTrackNames = trackNames.join(' · ');
   const eyebrowFormat = typeof detail.answers[SESSION_FORMAT_FIELD_ID] === 'string'
-    ? formatSessionFormatGrammar((detail.answers[SESSION_FORMAT_FIELD_ID] as string).trim())
+    ? sessionFormatLabel((detail.answers[SESSION_FORMAT_FIELD_ID] as string).trim())
     : '';
   const eyebrowParts = [eyebrowTrackNames, eyebrowFormat].filter((part) => part !== '');
   const eyebrowText = eyebrowParts.length > 0 ? eyebrowParts.join(' · ') : null;

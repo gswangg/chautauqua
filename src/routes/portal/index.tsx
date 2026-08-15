@@ -12,6 +12,7 @@ import { PublicEmptyState } from "../public/empty-state";
 import { formatCalendarDate, formatDayMedium, formatEventDate, formatScheduleSlotLabel } from "../../lib/event-time";
 import { effectiveAssignmentDueDate } from "../../domain/task-due";
 import { countOf } from "../../domain/count-copy";
+import { sessionFormatLabel } from "../../lib/session-vocabulary";
 import { csrfForm } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import {
@@ -235,7 +236,9 @@ function DoneRow(props: { task: PortalTaskAssignment }) {
 // page. No participants/answers here; that's the detail page's job.
 function SubmissionRow(props: { submission: PortalSubmissionListItem }) {
   const { submission: s } = props;
-  const metaParts = [s.ref, s.format, s.trackName].filter((p): p is string => p !== null && p.length > 0);
+  const metaParts = [s.ref, s.format !== null ? sessionFormatLabel(s.format) : null, s.trackName].filter(
+    (p): p is string => p !== null && p.length > 0,
+  );
   return (
     <a href={`/portal/submissions/${s.id}`} class="chq-portal-row chq-portal-submission-row">
       <div class="chq-portal-row-head">
