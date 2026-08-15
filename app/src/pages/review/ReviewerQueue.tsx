@@ -31,6 +31,10 @@ import { sessionFormatLabel, audienceLevelLabel } from '../../../../src/lib/sess
 // MAX_PER_PAGE=200 rows needs "Show all N" to keep paging past row 200, and
 // hand-typing 200 here would drift from the server's own clamp.
 import { MAX_PER_PAGE, MAX_PAGE } from '../../../../src/lib/pagination';
+// DEC-874 (findings wave 5 amendment): the hub's H1/subline spell their
+// counts through this ONE word list -- declaring a second spelled-number
+// array anywhere else fails test/count-grammar.scan.test.ts.
+import { spellCount, plural } from '../../../../src/domain/count-copy';
 
 // DEC-831/w42-h: 'closes in N days' while the window is still open; a plan
 // whose close date has already passed reads in the past tense ('closed N
@@ -338,62 +342,79 @@ function PlanSection({
   );
 }
 
-// DEC-874: a row in the 2+ plan landing list. Name and scope come off the
-// same queue envelope the scoped route itself reads (scopeTrackName), so
-// this row can never disagree with the page it links into; "N left to
-// score" is rendered only once that fetch resolves ("when known" -- the
-// row never blocks on it, and a failed background fetch just leaves the
-// count/scope absent rather than failing the whole list).
-function ReviewerPlanRow({ plan }: { plan: EvaluationPlan }) {
-  const [envelope, setEnvelope] = useState<ReviewerQueueEnvelope | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    // DEC-845 amendment (wave 38): this row only needs unscoredTotal/scope/
-    // closeDate meta, not a page of items -- ?perPage=1 avoids downloading
-    // up to MAX_PER_PAGE=200 rows per plan just to read that one number.
-    (apiList(`/review/plans/${plan.id}/queue?perPage=1`) as Promise<ReviewerQueueEnvelope>)
-      .then((res) => {
-        if (!cancelled) setEnvelope(res);
-      })
-      .catch(() => {
-        // Scope/count are decoration on this row -- the row itself still
-        // links into the scoped queue, which does its own error handling.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [plan.id]);
-
-  const scope = envelope ? envelope.scopeTrackName ?? 'All tracks' : null;
-  // DEC-845 amendment (wave 38): read the envelope's own unscoredTotal --
-  // never derive "left to score" from envelope.items, which is only a
-  // ?perPage=1 preview page here and would undercount past row 1.
-  const left = envelope ? envelope.unscoredTotal : null;
-  // DEC-874 (wave-29 amendment): closed-ness comes off the SAME
-  // closesInDaysLabel helper the scoped header already uses to render
-  // 'closes in N days' vs 'closed N days ago' -- one reader, one rule,
-  // rather than a second closed/open predicate against envelope.closeDate.
+// DEC-874 (findings wave 5 amendment): a row in the 2+ plan landing list.
+// The hub now hoists the ?perPage=1 fetch out of this row so ONE reader
+// (ReviewerQueue below) owns every envelope -- this component is a pure
+// renderer of whatever it's handed. `envelope` is `undefined` while the
+// hub's fetch for this plan is still in flight, `null` when that fetch
+// rejected (the row still renders and still links; the decoration is
+// optional, the destination is not) and the resolved envelope once loaded.
+function ReviewerPlanRow({
+  plan,
+  envelope,
+}: {
+  plan: EvaluationPlan;
+  envelope: ReviewerQueueEnvelope | null | undefined;
+}) {
+  // DEC-874 (wave-29 amendment)/(findings wave 5): closed-ness comes off
+  // the envelope's own `open` flag directly now -- the frame's state pill
+  // reads Open/Closed off this same boolean, so the row's every other
+  // closed/open branch shares the one source instead of re-deriving it
+  // from the days-label string.
+  const isOpen = envelope ? envelope.open : null;
+  const total = envelope ? envelope.total : 0;
+  const unscoredTotal = envelope ? envelope.unscoredTotal : 0;
+  // DEC-522/DEC-831: the days-label still reads through the ONE zone-aware
+  // helper the scoped header uses, via the plan's own timezone.
   const closesLabel = envelope ? closesInDaysLabel(envelope.closeDate, plan.timezone) : null;
-  const isClosed = closesLabel !== null && closesLabel.startsWith('closed ');
 
-  // A closed plan's "N left to score" count is noise (nothing left to
-  // act on) -- the row keeps its scope meta and drops the count.
-  const meta = [scope, !isClosed && left !== null ? `${left} left to score` : null].filter(
-    (v): v is string => v !== null,
-  );
+  // frame :695-733/:736-760: '<total> assigned · <unscoredTotal> left ·
+  // <closes label>' -- the 'left' clause drops on a closed plan (nothing
+  // left to act on); every clause is optional decoration when the
+  // envelope itself never arrived (fetch still pending, or rejected).
+  const metaParts = [
+    envelope ? `${total} assigned` : null,
+    envelope && isOpen ? `${unscoredTotal} left` : null,
+    closesLabel,
+  ].filter((v): v is string => v != null);
+  const metaLine = metaParts.join(' · ');
+
+  // frame :925-939: three closed-vocabulary action labels -- a closed plan
+  // reads the quiet secondary "Read your scores"; an open plan with
+  // nothing scored yet reads "Start scoring"; an open plan with some
+  // progress reads "Score the next one". An envelope that never arrived
+  // (still loading, or its fetch rejected) falls back to the same "Start
+  // scoring" primary the never-started case uses -- the row must still
+  // offer exactly one action even when its decoration is missing.
+  const isClosed = envelope !== null && envelope !== undefined && !isOpen;
+  const actionLabel = isClosed ? 'Read your scores' : unscoredTotal < total && total > 0 ? 'Score the next one' : 'Start scoring';
+  const actionClass = isClosed ? 'chq-btn chq-btn-secondary' : 'chq-btn chq-btn-primary';
+
+  // frame progress bar: width is the scored fraction of `total`, 0% when
+  // there's nothing to score yet (or the envelope never arrived).
+  const barWidth = envelope && total > 0 ? Math.round(((total - unscoredTotal) / total) * 100) : 0;
 
   return (
     <li className="chq-reviewer-plan-row">
-      <Link to={`/review/plans/${plan.id}`} className="chq-reviewer-plan-row-link">
+      <div className="chq-reviewer-plan-row-name-line">
         <span className="chq-reviewer-plan-row-name">{plan.name}</span>
-        {meta.length > 0 && <span className="chq-review-plan-meta">{meta.join(' · ')}</span>}
+        {envelope != null && (
+          <span
+            className={`chq-reviewer-plan-row-pill ${isOpen ? 'is-open' : 'is-closed'}`}
+          >
+            {isOpen ? 'Open' : 'Closed'}
+          </span>
+        )}
+      </div>
+      {metaLine.length > 0 && <p className="chq-review-plan-meta">{metaLine}</p>}
+      {/* DEC-368: reuse the shell's own .chq-bar/.chq-bar-fill (styles.css)
+          rather than a page sheet redefining a second progress-bar rule. */}
+      <div className="chq-bar chq-reviewer-plan-row-bar">
+        <div className="chq-bar-fill" style={{ width: `${barWidth}%` }} />
+      </div>
+      <Link to={`/review/plans/${plan.id}`} className={`${actionClass} chq-reviewer-plan-row-action`}>
+        {actionLabel}
       </Link>
-      {isClosed && (
-        <Link to={`/review/plans/${plan.id}`} className="chq-reviewer-plan-row-read-scores">
-          Read your scores &rsaquo;
-        </Link>
-      )}
     </li>
   );
 }
@@ -414,6 +435,12 @@ export function ReviewerQueue() {
   // from the single PlanSection instance below rather than a second fetch.
   const [routeEnvelope, setRouteEnvelope] = useState<ReviewerQueueEnvelope | null>(null);
   const [routePlanError, setRoutePlanError] = useState<string | null>(null);
+  // DEC-874 (findings wave 5 amendment): the hub's per-plan ?perPage=1
+  // fetches are hoisted HERE -- one reader owns every envelope, so the H1's
+  // summed "N left to score" and each row's five elements both read off
+  // this single map. Keyed by plan id; a key absent from the map means that
+  // plan's fetch is still in flight, `null` means it rejected.
+  const [envelopes, setEnvelopes] = useState<Record<string, ReviewerQueueEnvelope | null>>({});
 
   useEffect(() => {
     // A deep link to a single plan (/review/plans/:planId) shows that plan
@@ -432,6 +459,30 @@ export function ReviewerQueue() {
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load your plans'))
       .finally(() => setLoading(false));
   }, [routePlanId]);
+
+  useEffect(() => {
+    // Only the 2+ plan hub needs a per-plan envelope; the zero/one-plan
+    // branches below never render ReviewerPlanRow.
+    if (!plans || plans.length <= 1) return;
+    let cancelled = false;
+    setEnvelopes({});
+    plans.forEach((plan) => {
+      // DEC-845 amendment (wave 38): ?perPage=1 avoids downloading up to
+      // MAX_PER_PAGE=200 rows per plan just to read total/unscoredTotal.
+      (apiList(`/review/plans/${plan.id}/queue?perPage=1`) as Promise<ReviewerQueueEnvelope>)
+        .then((res) => {
+          if (!cancelled) setEnvelopes((prev) => ({ ...prev, [plan.id]: res }));
+        })
+        .catch(() => {
+          // A row whose fetch rejects still renders and still links -- the
+          // decoration is optional, the destination is not.
+          if (!cancelled) setEnvelopes((prev) => ({ ...prev, [plan.id]: null }));
+        });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [plans]);
 
   if (routePlanId) {
     const routeQueueItems = routeEnvelope?.items ?? null;
@@ -555,19 +606,55 @@ export function ReviewerQueue() {
   // queues on one page, because a page that is several pages at once has
   // no header that is true.
   if (plans && plans.length > 1) {
+    // DEC-874 (findings wave 5 amendment): the H1 sums unscoredTotal across
+    // OPEN plans only (a closed plan has nothing left to count); the count
+    // stays wrong (and unrendered) until every plan's envelope has resolved
+    // -- an in-flight fetch that never arrives (rejected) still counts as
+    // "resolved" here (key present, value null), it just contributes zero.
+    const allEnvelopesResolved = plans.every((plan) => envelopes[plan.id] !== undefined);
+    const openEnvelopes = plans
+      .map((plan) => envelopes[plan.id])
+      .filter((e): e is ReviewerQueueEnvelope => e != null && e.open);
+    const leftTotal = openEnvelopes.reduce((sum, e) => sum + e.unscoredTotal, 0);
+    const openCount = openEnvelopes.length;
+
     return (
       <div className="chq-page chq-review-page chq-measure">
-        <h1 className="chq-page-title">Your plans</h1>
+        {!allEnvelopesResolved ? (
+          <>
+            <h1 className="chq-page-title">Your plans</h1>
+            <PageSkeleton variant="list" />
+          </>
+        ) : (
+          <>
+            <h1 className="chq-page-title">{`${leftTotal} left to score`}</h1>
+            <p className="chq-reviewer-plans-subline">{`Across ${spellCount(openCount)} open ${plural(
+              openCount,
+              'plan',
+            )}`}</p>
+          </>
+        )}
         {error && (
           <div className="chq-error" role="alert">
             {error}
           </div>
         )}
-        <ul className="chq-reviewer-plan-list">
-          {plans.map((plan) => (
-            <ReviewerPlanRow key={plan.id} plan={plan} />
-          ))}
-        </ul>
+        {allEnvelopesResolved && (
+          <>
+            <ul className="chq-reviewer-plan-list">
+              {plans.map((plan) => (
+                <ReviewerPlanRow key={plan.id} plan={plan} envelope={envelopes[plan.id]} />
+              ))}
+            </ul>
+            {/* frame :925-939 closing line: with exactly one OPEN plan this
+                whole hub is skipped (the single-plan-list branch above
+                handles the truly-one-plan-total case; this line documents
+                that behaviour for the reviewer reading a 2+ plan hub). */}
+            <p className="chq-reviewer-plans-footnote">
+              With one open plan this page is skipped — you land straight in its queue.
+            </p>
+          </>
+        )}
       </div>
     );
   }

@@ -1629,3 +1629,62 @@
   color: var(--chq-disabled);
   cursor: not-allowed;
 }
+
+/* task-w5-a/DEC-874 (findings wave 5 amendment): the reviewer plans hub's
+   H1 subline ("Across two open plans") and the row's five frame elements
+   (name-line + state pill, meta line, progress bar, single action). The
+   progress bar itself reuses the shell's shared .chq-bar/.chq-bar-fill
+   (styles.css) per DEC-368 -- this block only sizes the wrapper within the
+   row, never redefines the bar's own height/radius/colors. */
+
+.chq-reviewer-plans-subline {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+.chq-reviewer-plan-row-name-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* DEC-730 micro-label family: state carried by wording, not colour --
+   this pill has no distinct is-open/is-closed color treatment, only the
+   text itself ("Open"/"Closed") differs. */
+.chq-reviewer-plan-row-pill {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--chq-muted);
+}
+
+.chq-reviewer-plan-row-bar {
+  margin-top: 8px;
+}
+
+.chq-reviewer-plan-row-action {
+  margin-top: 10px;
+  align-self: flex-start;
+}
+
+.chq-reviewer-plans-footnote {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
+/* Overrides the earlier .chq-reviewer-plan-row rule (this file, ~line
+   1478): that rule laid the row out as a single flex ROW (name+meta on the
+   left, a lone "Read your scores" link on the right) for the two-element
+   row this task replaces. The frame's row stacks five elements vertically
+   -- source order (this rule lands later in the cascade, same
+   specificity) makes this the row's real layout now. */
+.chq-reviewer-plan-row {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 15px 0;
+}

@@ -680,18 +680,18 @@ describe('ReviewPage render smoke: reviewer', () => {
     expect(screen.queryByText('Alpha First')).not.toBeInTheDocument();
     expect(screen.queryByText('Beta Recused')).not.toBeInTheDocument();
 
-    // Each row's scope + "N left to score" resolves from its own queue
-    // envelope once known.
+    // DEC-874 (findings wave 5 amendment): each row's meta (assigned/left/
+    // closes) resolves from its own hub-owned queue envelope once known.
+    const rowA = await screen.findByText('Plan A').then((el) => el.closest('li')!);
     await waitFor(() => {
-      expect(screen.getByText(/Main Stage/)).toBeInTheDocument();
+      expect(rowA.textContent).toMatch(/2 assigned · 1 left/);
     });
-    expect(screen.getAllByText(/1 left to score/).length).toBe(2);
+    const rowB = screen.getByText('Plan B').closest('li')!;
+    expect(rowB.textContent).toMatch(/1 assigned · 1 left/);
 
-    // Rows link into the scoped queue route.
-    const planALink = screen.getByRole('link', { name: /Plan A/ });
-    expect(planALink).toHaveAttribute('href', '/review/plans/plan-a');
-    const planBLink = screen.getByRole('link', { name: /Plan B/ });
-    expect(planBLink).toHaveAttribute('href', '/review/plans/plan-b');
+    // Rows link into the scoped queue route via their single action.
+    expect(rowA.querySelector('a[href="/review/plans/plan-a"]')).not.toBeNull();
+    expect(rowB.querySelector('a[href="/review/plans/plan-b"]')).not.toBeNull();
   });
 });
 

@@ -311,10 +311,11 @@ describe('ReviewerQueue progress caption (gate-4 03-review still-present finding
   });
 });
 
-// DEC-874 (wave-29 amendment): a closed plan stays listed in the 2+ plan
-// hub with a quiet 'Read your scores' link instead of an unactionable
-// 'N left to score' count.
-describe('ReviewerQueue hub row: closed plan reads "Read your scores" (DEC-874 wave-29 amendment)', () => {
+// DEC-874 (findings wave 5 amendment): the reviewer plans hub -- H1 sums
+// unscoredTotal across OPEN plans, subline spells the open-plan count, and
+// every row renders the frame's five elements (name + state pill, meta
+// line, progress bar, one action) off a hub-owned envelope map.
+describe('ReviewerQueue hub row (DEC-874 findings wave 5 amendment)', () => {
   function renderHub() {
     return render(
       <MemoryRouter initialEntries={['/review']}>
@@ -325,51 +326,100 @@ describe('ReviewerQueue hub row: closed plan reads "Read your scores" (DEC-874 w
     );
   }
 
-  it('shows exactly one "Read your scores" link, pointing at the closed plan, and drops its "left to score" count while keeping the open row unchanged', async () => {
-    const openPlan = { id: 'plan-open', eventId: 'evt-1', name: 'Open Plan', timezone: 'America/New_York' };
-    const closedPlan = { id: 'plan-closed', eventId: 'evt-1', name: 'Closed Plan', timezone: 'America/New_York' };
+  const openPlan = { id: 'plan-open', eventId: 'evt-1', name: 'Open Plan', timezone: 'America/New_York' };
+  const closedPlan = { id: 'plan-closed', eventId: 'evt-1', name: 'Closed Plan', timezone: 'America/New_York' };
+  const openPlan2 = { id: 'plan-open-2', eventId: 'evt-1', name: 'Second Open Plan', timezone: 'America/New_York' };
 
+  it('H1 sums unscoredTotal across open plans only, with a spelled-count subline, and every row renders its five elements', async () => {
     mockApi({
-      'GET /api/v1/review/plans': listEnvelope([openPlan, closedPlan]),
+      'GET /api/v1/review/plans': listEnvelope([openPlan, closedPlan, openPlan2]),
       'GET /api/v1/review/plans/plan-open/queue': {
-        ...queueEnvelope([queueItem({ submissionId: 'open-1', alreadyRatedByMe: false })]),
+        ...queueEnvelope([queueItem({ submissionId: 'open-1', alreadyRatedByMe: false })], { total: 6, unscoredTotal: 5 }),
         open: true,
         recused: [],
         planName: 'Open Plan',
-        scopeTrackName: 'Main Stage',
-        closeDate: null,
+        scopeTrackName: null,
+        closeDate: Date.now() + 19 * 24 * 60 * 60 * 1000,
       },
       'GET /api/v1/review/plans/plan-closed/queue': {
-        ...queueEnvelope([queueItem({ submissionId: 'closed-1', alreadyRatedByMe: true, myScore: 4 })]),
-        open: true,
+        ...queueEnvelope([queueItem({ submissionId: 'closed-1', alreadyRatedByMe: true, myScore: 4 })], { total: 3, unscoredTotal: 0 }),
+        open: false,
         recused: [],
         planName: 'Closed Plan',
-        scopeTrackName: 'Side Stage',
+        scopeTrackName: null,
         closeDate: Date.now() - 10 * 24 * 60 * 60 * 1000,
+      },
+      'GET /api/v1/review/plans/plan-open-2/queue': {
+        ...queueEnvelope([], { total: 4, unscoredTotal: 4 }),
+        open: true,
+        recused: [],
+        planName: 'Second Open Plan',
+        scopeTrackName: null,
+        closeDate: null,
       },
     });
 
     renderHub();
 
-    expect(await screen.findByText('Open Plan')).toBeInTheDocument();
-    expect(screen.getByText('Closed Plan')).toBeInTheDocument();
+    // 5 (Open Plan) + 4 (Second Open Plan) = 9; Closed Plan is excluded
+    // from the sum entirely because it isn't open.
+    expect(await screen.findByRole('heading', { name: '9 left to score' })).toBeInTheDocument();
+    expect(screen.getByText('Across two open plans')).toBeInTheDocument();
 
-    // Exactly one "Read your scores" link, on the closed row.
-    const readScoresLinks = await screen.findAllByRole('link', { name: /Read your scores/ });
-    expect(readScoresLinks.length).toBe(1);
-    expect(readScoresLinks[0]).toHaveAttribute('href', '/review/plans/plan-closed');
-
-    // The closed row's meta keeps scope but drops "left to score".
-    const closedRow = screen.getByText('Closed Plan').closest('li')!;
-    expect(closedRow.textContent).toContain('Side Stage');
-    expect(closedRow.textContent).not.toMatch(/left to score/);
-
-    // The open row is unchanged: scope + count, no "Read your scores" link.
+    // Open Plan row: name, Open pill, meta (assigned/left/closes), bar,
+    // "Score the next one" action (5 of 6 left -> some already scored).
     const openRow = screen.getByText('Open Plan').closest('li')!;
-    await waitFor(() => expect(openRow.textContent).toContain('Main Stage'));
-    expect(openRow.textContent).toMatch(/left to score/);
-    expect(openRow.querySelector('a[href="/review/plans/plan-open"]')).not.toBeNull();
-    expect(openRow.textContent).not.toMatch(/Read your scores/);
+    expect(openRow.textContent).toContain('Open');
+    expect(openRow.textContent).toMatch(/6 assigned · 5 left · closes in \d+ days?/);
+    expect(openRow.querySelector('.chq-bar-fill')).not.toBeNull();
+    const openAction = openRow.querySelector('a.chq-btn') as HTMLAnchorElement;
+    expect(openAction.textContent).toBe('Score the next one');
+    expect(openAction).toHaveClass('chq-btn-primary');
+
+    // Closed Plan row: Closed pill, meta drops the "left" clause, action
+    // reads "Read your scores" as the secondary face.
+    const closedRow = screen.getByText('Closed Plan').closest('li')!;
+    expect(closedRow.textContent).toContain('Closed');
+    expect(closedRow.textContent).toContain('3 assigned');
+    expect(closedRow.textContent).not.toMatch(/\bleft\b/);
+    const closedAction = closedRow.querySelector('a.chq-btn') as HTMLAnchorElement;
+    expect(closedAction.textContent).toBe('Read your scores');
+    expect(closedAction).toHaveClass('chq-btn-secondary');
+    expect(closedAction).not.toHaveClass('chq-btn-primary');
+
+    // Second Open Plan row: nothing scored yet (0 of 4) -> "Start scoring".
+    const openRow2 = screen.getByText('Second Open Plan').closest('li')!;
+    const openAction2 = openRow2.querySelector('a.chq-btn') as HTMLAnchorElement;
+    expect(openAction2.textContent).toBe('Start scoring');
+    expect(openAction2).toHaveClass('chq-btn-primary');
+
+    // Closing muted line.
+    expect(
+      screen.getByText('With one open plan this page is skipped — you land straight in its queue.'),
+    ).toBeInTheDocument();
+  });
+
+  it('a row whose per-plan envelope fetch rejects still renders its name and still links into its queue', async () => {
+    mockApi({
+      'GET /api/v1/review/plans': listEnvelope([openPlan, closedPlan]),
+      'GET /api/v1/review/plans/plan-open/queue': {
+        ...queueEnvelope([], { total: 2, unscoredTotal: 1 }),
+        open: true,
+        recused: [],
+        planName: 'Open Plan',
+        scopeTrackName: null,
+        closeDate: null,
+      },
+      'GET /api/v1/review/plans/plan-closed/queue': { status: 500, body: { error: { code: 'internal', message: 'boom' } } },
+    });
+
+    renderHub();
+
+    expect(await screen.findByText('Closed Plan')).toBeInTheDocument();
+    const closedRow = screen.getByText('Closed Plan').closest('li')!;
+    expect(closedRow.querySelector('a[href="/review/plans/plan-closed"]')).not.toBeNull();
+    // Still exactly one action control, even with no envelope to read.
+    expect(closedRow.querySelectorAll('a.chq-btn').length).toBe(1);
   });
 });
 
