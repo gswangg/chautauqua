@@ -2216,13 +2216,13 @@ describe('PlanEditor round meta (DEC-147 amendment, task w8-c)', () => {
 // assertions rather than layout measurement (jsdom does not compute grid
 // track sizes), matching the existing criterion-row test's approach above.
 describe('criteria/reviewer/distribute row tracks (DEC-745 wave-21 amendment)', () => {
-  it('gives the criterion row/head-row the frame five-track grid, shared by one rule', () => {
+  it('gives the criterion row/head-row the frame five-track grid, shared by one rule (Chautauqua Review.dc.html:470/:474)', () => {
     const ruleMatch = REVIEW_CSS.match(
       /\.chq-review-criterion-row,\s*\n\.chq-review-criteria-head-row\s*\{\s*\n\s*grid-template-columns:\s*([^;]+);/,
     );
     expect(ruleMatch).not.toBeNull();
     expect((ruleMatch![1] as string).trim()).toBe(
-      '20px minmax(0, 1fr) 260px 150px 70px',
+      '20px minmax(0, 1fr) 260px 132px 62px',
     );
   });
 
