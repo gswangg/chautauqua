@@ -19,6 +19,7 @@ import type {
 import { buildDeadlineCells, buildNoActionRows, daysLateLabel, headlineText, joinSegments, pluralize, spellSmallNumber } from './overview/rows';
 import { AgendaWorkSection } from './overview/AgendaWorkSection';
 import { daysAgo } from '../lib/dates';
+import { sessionFormatLabel } from '../../../src/lib/session-vocabulary';
 import './overview/overview.css';
 
 type SubmissionStatus = 'accepted' | 'accept_queue' | 'declined';
@@ -376,7 +377,7 @@ export function OverviewPage() {
                 {row.title}
               </div>
               <div className="chq-overview-row-meta">
-                {joinSegments([row.speakerName, row.trackName ?? row.format, row.ref, waitingDaysLabel(row.submittedAt, now)])}
+                {joinSegments([row.speakerName, row.trackName ?? (row.format != null ? sessionFormatLabel(row.format) : null), row.ref, waitingDaysLabel(row.submittedAt, now)])}
               </div>
               <div className="chq-overview-row-actions-inline">
                 <button

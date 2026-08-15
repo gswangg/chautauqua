@@ -15,22 +15,49 @@ import type { OverviewPayload as ClientOverviewPayload } from "../app/src/pages/
 
 // Compile-time mutual TOP-LEVEL key-set check (against OverviewPayloadV2,
 // the full shape getOverviewPayload actually returns — the bare exported
-// OverviewPayload interface is only the v1 aggregate subset). This is
-// scoped to DEC-400's actual concern, the eleven wire *keys*: a full deep
-// assignability check (`const x: ClientOverviewPayload = server value`)
-// also fails today on pre-existing, DEC-400-unrelated nested-field
-// differences the two lanes chose independently — e.g. client TriageRow.
-// format is `string` where the server's is `string | null` (an
-// intentionally flagged open gap, see TriageQueueRow above). That is not a
-// wire-key mismatch, and fixing it is out of this task's scope.
-// `KeysMatch` below fails to compile if either side
-// gains, loses, or renames a top-level key relative to the other, in
-// either direction.
+// OverviewPayload interface is only the v1 aggregate subset). `KeysMatch`
+// below fails to compile if either side gains, loses, or renames a
+// top-level key relative to the other, in either direction.
 type KeysMatch<A, B> = [keyof A] extends [keyof B] ? ([keyof B] extends [keyof A] ? true : false) : false;
 const _serverKeysSubsetOfClient: KeysMatch<ServerOverviewPayload, ClientOverviewPayload> = true;
 const _clientKeysSubsetOfServer: KeysMatch<ClientOverviewPayload, ServerOverviewPayload> = true;
 void _serverKeysSubsetOfClient;
 void _clientKeysSubsetOfServer;
+
+// Real deep structural assignability, both directions: a server-shaped
+// payload must satisfy the client's type, and vice versa. This is stricter
+// than the top-level key check above — it also catches nested-field
+// mismatches (e.g. a field one side types nullable and the other doesn't).
+// Both directions must compile for the wire contract to be honored.
+//
+// Scoped by one documented Omit: agendaWork.conflicts[].roomName is
+// server-typed `string | null` (ConflictRow) but client-typed `string`
+// (AgendaConflict) — a genuine, PRE-EXISTING nullability mismatch,
+// unrelated to this task's DEC-908/DEC-400 session-format sweep (which is
+// what TriageRow.format was: also nullable on the server, non-nullable on
+// the client, now fixed at app/src/pages/overview/types.ts:31). Flagged as
+// an open gap for a future task rather than silently fixed here or
+// silently hidden by omitting the whole `agendaWork` key.
+type ServerConflictRow = ServerOverviewPayload["agendaWork"]["conflicts"][number];
+type ClientAgendaConflict = ClientOverviewPayload["agendaWork"]["conflicts"][number];
+type ServerPayloadScoped = Omit<ServerOverviewPayload, "agendaWork"> & {
+  agendaWork: Omit<ServerOverviewPayload["agendaWork"], "conflicts"> & {
+    conflicts: Omit<ServerConflictRow, "roomName">[];
+  };
+};
+type ClientPayloadScoped = Omit<ClientOverviewPayload, "agendaWork"> & {
+  agendaWork: Omit<ClientOverviewPayload["agendaWork"], "conflicts"> & {
+    conflicts: Omit<ClientAgendaConflict, "roomName">[];
+  };
+};
+function _serverPayloadAssignableToClient(server: ServerPayloadScoped): ClientPayloadScoped {
+  return server;
+}
+function _clientPayloadAssignableToServer(client: ClientPayloadScoped): ServerPayloadScoped {
+  return client;
+}
+void _serverPayloadAssignableToClient;
+void _clientPayloadAssignableToServer;
 
 // Same fake-db response-queue pattern as test/overview.test.ts.
 function makeFakeDb(responses: unknown[]) {
