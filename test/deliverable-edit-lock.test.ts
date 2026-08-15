@@ -1,5 +1,7 @@
-// DEC-041 amendment: a speaker's deliverable writes (upload/replace a file,
-// post a comment) must obey the same server-side edit lock the portal
+// DEC-041 (wave 6: canUploadDeliverables deleted as a duplicate of
+// canEditSubmission — same accepted-status exception, one predicate).
+// A speaker's deliverable writes (upload/replace a file, post a comment)
+// must obey the same server-side edit lock the portal
 // enforces (src/domain/edit-lock.ts canEditSubmission) — not just org/
 // participant membership. Separately, POST /files/:fileId/comments must be
 // gated by a WRITE predicate (authzFileWrite), never the READ predicate
