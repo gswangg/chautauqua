@@ -280,6 +280,15 @@ reviewReviewerRoutes.get("/api/v1/review/submissions/:id", async (c) => {
   if (!planId) throw new ApiError("invalid", "planId query param is required");
   const plan = await requireAssignedPlan(c, planId);
 
+  // DEC-018 (wave-10 amendment): the review-plan window that already gates
+  // the queue and the score PUT must also gate a lone submission read -- a
+  // closed (or not-yet-open) plan means a reviewer can't see scope-checked
+  // detail either. Organizers are exempt (same as the queue). Checked before
+  // the scope lookup so a closed plan never does scope work.
+  if (auth.role !== "organizer" && !isPlanOpen(plan.openDate, plan.closeDate, Date.now(), plan.timezone)) {
+    throw new ApiError("conflict", "This review plan is not currently open");
+  }
+
   if (auth.role !== "organizer") {
     const inScope = await repo.isSubmissionInReviewerScope(c.var.db, plan, auth.userId, submissionId);
     if (!inScope) throw new ApiError("not_found", "Submission not found");

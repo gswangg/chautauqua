@@ -7,6 +7,7 @@ import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { listPlansForEvent, isSubmissionInReviewerScope } from "./review";
 import { PORTAL_VISIBLE_INVITE_STATUSES, isActiveParticipant } from "../../domain/acceptance";
+import { isPlanOpen } from "../../domain/evaluation";
 
 /** DEC-317: read=not-declined (PORTAL_VISIBLE_INVITE_STATUSES), write=active
  * (ACTIVE_INVITE_STATUSES) — participation is only-in-passing filtered here
@@ -187,6 +188,10 @@ export async function reviewerCanAccessSubmissionFile(
   userId: string,
   eventId: string,
   submissionId: string,
+  // DEC-018 (wave-10 amendment): a closed (or not-yet-open) plan can't
+  // authorise a download either -- default is a call-site-transparent
+  // Date.now(), overridable for tests.
+  now: number = Date.now(),
 ): Promise<boolean> {
   const assignedRows = await db
     .select({ planId: schema.planReviewer.planId })
@@ -197,7 +202,12 @@ export async function reviewerCanAccessSubmissionFile(
   if (assignedPlanIds.size === 0) return false;
 
   const plans = await listPlansForEvent(db, eventId);
-  const candidatePlans = plans.filter((p) => assignedPlanIds.has(p.id) && p.anonymized === false);
+  const candidatePlans = plans.filter(
+    (p) =>
+      assignedPlanIds.has(p.id) &&
+      p.anonymized === false &&
+      isPlanOpen(p.openDate, p.closeDate, now, p.timezone),
+  );
 
   for (const plan of candidatePlans) {
     if (await isSubmissionInReviewerScope(db, plan, userId, submissionId)) return true;
