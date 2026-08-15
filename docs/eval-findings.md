@@ -1,12 +1,22 @@
-# Eval findings — rebased 2026-08-15 (wave 17)
+# Eval findings — rebased 2026-08-15 (wave 18, task-w18-h)
 
-Verified against `main` sha `9b21309c7240cfb6622dcea0f15ebe981060dcd6` (merge
-task-w16-a — this wave's own planning boundary). Every citation below was
-either re-cited against this sha directly or, where noted, inherited from a
-prior wave's own re-verification against its own boundary sha and not
-re-derived this wave. The prior generation of this file (1,505 lines, written
-against `chautauqua-research/design-frames-v7/v8/v9` — a pack not vendored in
-this repo, plus a long series of dead gate-N fleet/sbek verdicts and snapshot
+Verified against `main` sha `956fe263f5f223ef81ffc2ab2ebf63a0fdad956b` ("merge
+task-w17-b" — this wave's own planning boundary, per DEC-358's wave-17
+amendment: rebase per-item cited, dismissals recorded not deleted). This sha
+is itself several commits AHEAD of the `62685d2e` ("merge task-w16-f") tip a
+prior brief cited for this rebase — the merge train did not pause between
+that brief being written and this task running, so this rewrite reads
+`.git/refs/heads/*` and `main`'s own log tail directly rather than trusting
+any inherited or briefed sha (see the REF TRUTH block below; this is the
+exact trap DEC-069's wave-17 amendment and the field guide's "A STALE
+MANDATE COSTS MORE THAN NO MANDATE" note both warn about, now recurring one
+layer up — the mandate handed to THIS task was itself already stale by the
+time it was read). Every citation below was either re-cited against
+`956fe263` directly or, where noted, inherited from a prior wave's own
+re-verification against its own boundary sha and not re-derived this wave.
+The prior generation of this file (1,505 lines, written against
+`chautauqua-research/design-frames-v7/v8/v9` — a pack not vendored in this
+repo, plus a long series of dead gate-N fleet/sbek verdicts and snapshot
 shas) is archived verbatim, never deleted, at
 `docs/mandates/findings-archive-2026-08-15.md`. Line references inside the
 archive do not resolve against the current tree; nothing there is
@@ -113,6 +123,47 @@ again without new runtime evidence is a regression of this triage:
   `src/mail/email-binding.ts:236-240`, guarded by
   `test/mail-envelope-address.test.ts`.
 
+### DO-NOT-RE-FILE (wave 18, task-w18-h) — carries forward field-guide/index.md's w16/17 dismissals plus this wave's two
+
+The field guide's FINDINGS w14-17 and w18 entries record dismissals not yet
+folded into this file; carried here verbatim (citations, not deleted) plus
+this wave's own two new dismissals so this file, not the field guide, is
+the durable per-item record:
+
+- **Bulk-email dedupe, breaks accumulation, `onConflictDoNothing`, mail
+  envelope `addressValue`, `trackIds` dedupe, reviewer plan-window/file
+  authz, saved-view cap** — already carried above (wave-17 block) or in
+  TIER 0 proper; re-listed here only as a pointer so a reader of this
+  section doesn't re-derive them from the field guide.
+- **`ENVELOPE_ALLOWLIST` path:line drift** — the field guide's own citations
+  for `envelope-sites.ts` were line-number pointers that drifted; the fix
+  (extract stale-allowlist-entry detection so the check no longer depends
+  on a line number) is owned by `task-w18-g` (ref `4d26ee44`, UNMERGED as
+  of `956fe263` — see REF TRUTH above). Not yet landed; do not re-file the
+  underlying drift complaint, it is owned.
+- **`answerFieldRoleCondition` missing event join**
+  (`src/server/repo/form-roles.ts:16`) — DISMISSED, DEC-592's wave-18
+  amendment: every one of its eight call sites hands it an answer set
+  already scoped to specific submission ids of one event, a submission's
+  answers reference only its own form's fields, and DEC-592 already
+  enforces at most one field per (form, role) at the write door
+  (`src/routes/api/forms.ts:286-293`) — so the per-submission result is
+  single-valued without the join. Adding the join would scope resolution
+  to the event's DEFAULT form only, which is a regression: a submission
+  made through a non-default form would lose its format/audience-level
+  label entirely on public cards, agenda, review and portal. No code
+  change; do not re-file.
+- **`countEvaluationsBySubmission`'s whole-plan map** — DISMISSED as a
+  defect, DEC-449-deliberate: the function's `WHERE` already scopes by
+  plan+round (a `count(*) ... group by` population-you-only-count shape
+  DEC-449 explicitly blesses, most recently reaffirmed by its own wave-57
+  amendment for the sibling `listCompletedPairsForPlan` case). `task-w18-b`
+  (ref `af729b28`, UNMERGED) is BOUNDING the map — removing the now-dead
+  `submissionIds` parameter and its round-trip loop per DEC-449's own text
+  — not chunking or restructuring it into a paged read. Do not re-file this
+  as "the queue reads too much" once `task-w18-b` lands; the plan+round
+  scoping is the DEC-449-sanctioned shape, not a gap.
+
 ### Re-verified this wave (w9-e, 2026-08-15) — moved out of TIER 1 item 4
 
 Each closed on a STRUCTURAL citation (file:line read against current `main`);
@@ -190,7 +241,90 @@ so the next mobile-lane sweep doesn't re-derive them:
 
 ## IN FLIGHT — owned by a branch, do not re-file
 
-### REF TRUTH, rewritten this wave (w17-e, 2026-08-15) against boundary `main 9b21309c`
+### REF TRUTH, rewritten this wave (w18-h, 2026-08-15) against boundary `main 956fe263`
+
+Read directly from `.git/refs/heads/*` and `git merge-base --is-ancestor <ref>
+main` at this wave's own boundary, superseding every REF TRUTH block below
+(kept for their own-boundary citations, not for current status). The task
+brief handed to this rewrite asserted specific ref facts (main tip
+`62685d2e`; `task-w16-c`/`task-w16-d` both at `c557cff9`; `task-w17-a`/
+`task-w17-b` both at `5fc3db38`) that were true when that brief was written
+but are now stale — the merge train advanced past that boundary before this
+task ran. Re-derived facts, current as of `956fe263`:
+
+- **`task-w16-c` and `task-w16-d` no longer have refs at all** (deleted
+  post-merge — the standard pattern for a landed lane in this repo, per the
+  "wave-16 rewrite" block below). Their scope (walkthrough gate, perf-smoke
+  gate) DID eventually run: `main`'s log tail carries `bc736e3b
+  "task-w16-c: DEC-063/DEC-060 walkthrough gate — repair stale harness
+  assertions"` and `8458c509 "task-w16-d: perf-smoke gate at tip against
+  2k-row seed (DEC-063/DEC-060)"`, both merged (`1894b908 "merge
+  task-w16-c"`, `5805b5ea "merge task-w16-d"`). Do not read the two branch
+  names as "produced zero commits" going forward — that was only ever true
+  at the `c557cff9` boundary a now-superseded brief cited.
+- **`task-w17-a` (ref `41eef829`) is a real, UNMERGED commit** — "walkthrough
+  gate PASS at tip 5fc3db38, repair own harness only," explicitly "no
+  product code touched, no product defect found." It is stale relative to
+  `956fe263` (many commits behind) but harmless to leave unmerged: it never
+  claimed a product fix, only a harness repair plus a clean walkthrough
+  receipt at its own old boundary. Do not re-launch its scope; if a fresh
+  walkthrough receipt is needed, it needs a fresh boundary, not a merge of
+  this stale one.
+- **`task-w17-b` (ref `b9a9f949`) IS MERGED** — `git merge-base
+  --is-ancestor task-w17-b main` succeeds, and `main`'s own log tail carries
+  `b9a9f949 "perf-smoke gate: fix perf-seed/perf-smoke harness bugs, run
+  both profiles"` immediately behind the tip merge commit `956fe263 "merge
+  task-w17-b"`. This directly contradicts the now-superseded claim (both a
+  prior brief's and DEC-119's own wave-18 amendment prose) that
+  `task-w17-a`/`task-w17-b` "both point at `5fc3db38`, main's parent" — that
+  was accurate at the `62685d2e` boundary DEC-119's amendment was written
+  against, and has since changed. Its scope (perf-seed/perf-smoke harness
+  bugs) is CLOSED; do not re-file it.
+- **`task-w17-i` (ref `7b78d8b6`) is a real, UNMERGED commit with live
+  product code** — "Sign-in page names the event and its open CFP
+  (DEC-716)," touching `src/routes/auth.tsx` (LoginPage) plus three
+  fake-db test fixtures. Not previously tracked in this file's IN FLIGHT
+  block; flagging now so a future wave doesn't re-derive or re-launch this
+  scope. Owned, do not re-file.
+- **`task-w18-b` (ref `af729b28`), `task-w18-c` (`35931a2f`), `task-w18-f`
+  (`7a61085d`), `task-w18-g` (`4d26ee44`) are all real, UNMERGED commits**
+  with live product-code diffs against `956fe263` — respectively:
+  `countEvaluationsBySubmission`/`isSubmissionInReviewerScope` bounding
+  (DEC-346/DEC-449 amendment), the compose default-filter + step-2 ics-
+  refusal fix (DEC-967/DEC-317), the History tab head/Export door
+  (DEC-603), and the `ENVELOPE_ALLOWLIST` stale-entry extraction (DEC-480
+  wave-17 amendment). All four are owned scopes this wave — do not re-file.
+- **`task-w18-d` and `task-w18-e` both currently point at `675e73ae`**
+  ("merge: compose P0 at-control refusal repeat (orchestrator hotfix)"),
+  which IS an ancestor of `main` — i.e. both refs currently sit at a
+  commit already merged, carrying no diff of their own yet beyond `main`.
+  Their intended scopes (files-library column allocation; templates
+  Delete-unreachable subtractive fix) are CONFIRMED STILL OPEN by direct
+  file:line re-read this wave (`content.css` has no `table-layout` rule and
+  the actions `<th>` at `FilesLibrary.tsx` carries no width class;
+  `TemplatesTab.tsx`'s row `<td data-label="Actions">` still renders all
+  four buttons inline) — see the re-tiered GATE-8 block below for citations.
+  Do not read "ref equals an ancestor of main" here as "produced zero
+  commits and the scope is unowned": these two branches simply have not
+  been advanced past that hotfix merge yet; the scope itself is still real
+  and still open, and is re-tiered to `task-w18-d`/`task-w18-e` below.
+- **The runtime battery (walkthrough/perf-smoke/render-sweep/full-suite
+  server-booting worker lanes) produced ZERO commits across waves 16-17**:
+  four lanes, four refs equal to their own base at the boundary each was
+  measured against (`task-w16-c`/`task-w16-d` at `c557cff9`,
+  `task-w17-a`/`task-w17-b` at `5fc3db38`, per DEC-119's wave-18
+  amendment). Per that same amendment, the runtime battery is **not a
+  worker lane in wave 18**: regression measurement is the merge train's own
+  full-suite + build pass through `scripts/with-test-lock.sh` (present in
+  the tree at `scripts/with-test-lock.sh`), not a dispatched lane that
+  boots a server. Note the correction above, though: `task-w17-b` did in
+  fact land real work by the time THIS wave's boundary (`956fe263`) was
+  read — the "zero commits" fact is true and worth keeping as the reason
+  DEC-119's wave-18 amendment exists, but it is a snapshot of the
+  `62685d2e` boundary, not a claim that no runtime-battery-shaped work has
+  landed since.
+
+### REF TRUTH, rewritten wave 17 (w17-e, 2026-08-15) against boundary `main 9b21309c` — superseded above, kept for citation
 
 Per the new standing rule above, this block is built from `.git` ref state
 (`git for-each-ref refs/heads`, `git merge-base --is-ancestor <ref>
@@ -396,6 +530,65 @@ content-detail still chq-measure-table (ContentApp.tsx:313) vs 1180/32.
 Settings: dates 200px CLOSED, add-track CLOSED + 2 more; 8 remain (fidelity-gate8/
 09-settings.md). **Process note:** gate-7 fleet agents wrote probes but never their
 report.md files — gate-8 reports ARE on disk under chautauqua-research/fidelity-gate8/.
+
+### GATE-8 FINAL FLEET — re-tiered by owner (wave 18, w18-h, boundary `main 956fe263`)
+
+The raw fix-now dump above is kept verbatim (nothing above this sub-section
+is deleted) but its items now carry per-item ownership, confirmed by direct
+file:line re-read this wave rather than inherited:
+
+- **P0 compose step-2 dead-end** — this was the gate-8-era "editing the body
+  leaves Next: preview non-functional" regression; the item that PERSISTS
+  on `main` today under the same surface is the *different* but adjacent
+  ics-unscheduled-refusal placement gap: the refusal only renders on the
+  preview step, not repeated at the step-2 action row a wizard user
+  actually clicks. Owner: **`task-w18-c`** (confirmed still open,
+  `ComposeWizard.tsx:404-405` builds the refusal state but only the
+  preview-step banner at `:1056`/`:1172` renders it — no step-2 echo).
+- **P1 compose default recipient filter (Accepted AND Declined)** — owner:
+  **`task-w18-c`** (confirmed still open, `ComposeWizard.tsx:32-35`:
+  `DECIDED_STATUSES: SubmissionStatus[] = ['accepted', 'declined']` is
+  still the default-checked pair; DEC-967's wave-18 amendment calls for
+  `statusFilter=['accepted']` only).
+- **P1 files-library column allocation (FILE 127px / ACTIONS 923px)** —
+  owner: **`task-w18-d`** (confirmed still open,
+  `content.css:800-826` has fixed widths for `.chq-content-files-col-size`
+  (92px) and `.chq-content-files-col-version` (108px) and
+  `.chq-content-files-col-session` (190px) but no `table-layout: fixed`
+  rule on `.chq-content-files-table` and no width on the actions column;
+  `FilesLibrary.tsx:256,302` both render the trailing `<th></th>` with no
+  width class — the remainder-column-eats-the-measure bug the gate-8 note
+  describes is still live).
+- **P1 templates rows' Delete unreachable** — owner: **`task-w18-e`**
+  (confirmed still open, `TemplatesTab.tsx:232-247` still renders all four
+  buttons — Edit/Duplicate/"Use in a send"/Delete — inline in the row's
+  `<td data-label="Actions">`, not moved to the editor panel per DEC-890).
+- **History tab still missing chrome (heads/chips/Export/H1)** — owner:
+  **`task-w18-f`** (confirmed still open, `HistoryTab.tsx:84-100` renders
+  only a toolbar + search input, no breadcrumb/title/count line and no
+  Export CSV door; the export itself already exists server-side at
+  `src/routes/api/exports.ts:120-147` (`kind === "email-log"` branch) — the
+  gap is the UI door onto an already-built capability, per DEC-603).
+- **content-detail still chq-measure-table vs 1180/32** — owner:
+  **`task-w18-d`** (grouped with the files-library item above since both
+  are Content-page measure/layout gaps; not independently re-read this
+  wave beyond the file:line the gate-8 note already carries —
+  `ContentApp.tsx:313`).
+- **content-status band not full-bleed** ((vw-1440)/2-34 gap; padding half
+  fixed, margin half not) — **VERIFIED-OPEN-NOT-RECHECKED**: no owning
+  branch claims this scope this wave and it was not re-read against
+  `956fe263` in this task's time budget (DOCS ONLY, no code touched);
+  carried forward unchanged so the citation isn't lost.
+- **Settings remainder** (8 items per `fidelity-gate8/09-settings.md`,
+  beyond the two already CLOSED — dates 200px, add-track) —
+  **VERIFIED-OPEN-NOT-RECHECKED**: same reason, no owning branch this wave,
+  not re-read this task.
+- **The "07" bundle's still-open clauses** ("templates-grid overlap",
+  "history-tab chrome" — the latter now double-owned with the History item
+  above via `task-w18-f`, the former not otherwise claimed) —
+  **VERIFIED-OPEN-NOT-RECHECKED** for "templates-grid overlap" specifically
+  (no branch claims it, not re-read this task); "history-tab chrome" is the
+  same gap as the History-tab item above, not a separate open count.
 
 ## TIER 1 — re-verified open items (orchestrator promotion, 2026-08-15 morning)
 
