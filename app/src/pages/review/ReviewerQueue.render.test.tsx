@@ -366,15 +366,23 @@ describe('ReviewerQueue hub row (DEC-874 findings wave 5 amendment)', () => {
     expect(await screen.findByRole('heading', { name: '9 left to score' })).toBeInTheDocument();
     expect(screen.getByText('Across two open plans')).toBeInTheDocument();
 
+    // DEC-874 wave-19 amendment: the hub's own column-header row, above the
+    // list, sharing the row's own grid.
+    const headRow = document.querySelector('.chq-reviewer-plan-head-row')!;
+    expect(headRow.textContent).toContain('Plan');
+    expect(headRow.textContent).toContain('State');
+    expect(headRow.textContent).toContain('Your progress');
+
     // Open Plan row: name, Open pill, meta (assigned/left/closes), bar,
-    // "Score the next one" action (5 of 6 left -> some already scored).
+    // "Score the next one" action (5 of 6 left -> some already scored) --
+    // a right-flushed tertiary link, not a filled .chq-btn.
     const openRow = screen.getByText('Open Plan').closest('li')!;
     expect(openRow.textContent).toContain('Open');
     expect(openRow.textContent).toMatch(/6 assigned · 5 left · closes in \d+ days?/);
     expect(openRow.querySelector('.chq-bar-fill')).not.toBeNull();
-    const openAction = openRow.querySelector('a.chq-btn') as HTMLAnchorElement;
+    const openAction = openRow.querySelector('.chq-reviewer-plan-row-action') as HTMLAnchorElement;
     expect(openAction.textContent).toBe('Score the next one');
-    expect(openAction).toHaveClass('chq-btn-primary');
+    expect(openAction).not.toHaveClass('chq-btn');
 
     // Closed Plan row: Closed pill, meta drops the "left" clause, action
     // reads "Read your scores" as the secondary face.
@@ -382,20 +390,20 @@ describe('ReviewerQueue hub row (DEC-874 findings wave 5 amendment)', () => {
     expect(closedRow.textContent).toContain('Closed');
     expect(closedRow.textContent).toContain('3 assigned');
     expect(closedRow.textContent).not.toMatch(/\bleft\b/);
-    const closedAction = closedRow.querySelector('a.chq-btn') as HTMLAnchorElement;
+    const closedAction = closedRow.querySelector('.chq-reviewer-plan-row-action') as HTMLAnchorElement;
     expect(closedAction.textContent).toBe('Read your scores');
-    expect(closedAction).toHaveClass('chq-btn-secondary');
-    expect(closedAction).not.toHaveClass('chq-btn-primary');
+    expect(closedAction).not.toHaveClass('chq-btn');
 
     // Second Open Plan row: nothing scored yet (0 of 4) -> "Start scoring".
     const openRow2 = screen.getByText('Second Open Plan').closest('li')!;
-    const openAction2 = openRow2.querySelector('a.chq-btn') as HTMLAnchorElement;
+    const openAction2 = openRow2.querySelector('.chq-reviewer-plan-row-action') as HTMLAnchorElement;
     expect(openAction2.textContent).toBe('Start scoring');
-    expect(openAction2).toHaveClass('chq-btn-primary');
 
-    // Closing muted line.
+    // Closing muted line -- both sentences from frame :775.
     expect(
-      screen.getByText('With one open plan this page is skipped — you land straight in its queue.'),
+      screen.getByText(
+        'With one open plan this page is skipped — you land straight in its queue. Scores stay hidden from other reviewers.',
+      ),
     ).toBeInTheDocument();
   });
 
@@ -419,7 +427,12 @@ describe('ReviewerQueue hub row (DEC-874 findings wave 5 amendment)', () => {
     const closedRow = screen.getByText('Closed Plan').closest('li')!;
     expect(closedRow.querySelector('a[href="/review/plans/plan-closed"]')).not.toBeNull();
     // Still exactly one action control, even with no envelope to read.
-    expect(closedRow.querySelectorAll('a.chq-btn').length).toBe(1);
+    expect(closedRow.querySelectorAll('.chq-reviewer-plan-row-action').length).toBe(1);
+    // Still exposes its name/pill/bar/action columns even though the
+    // envelope for this row rejected.
+    expect(closedRow.querySelector('.chq-reviewer-plan-row-name')).not.toBeNull();
+    expect(closedRow.querySelector('.chq-reviewer-plan-row-pill')).not.toBeNull();
+    expect(closedRow.querySelector('.chq-bar-fill')).not.toBeNull();
   });
 });
 

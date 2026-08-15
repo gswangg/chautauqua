@@ -1483,11 +1483,17 @@
   flex-direction: column;
 }
 
+/* DEC-874 wave-19 amendment (frame :756-774, the 1600 desktop hub): a
+   four-column grid row -- name+meta / state pill / progress bar / action --
+   sharing the head row's own template so the columns line up. The earlier
+   stacked-column shape survives only under the narrow (<=700px) override
+   below (DEC-385: narrow overrides wide via max-width only). */
 .chq-reviewer-plan-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: 1fr 150px 190px auto;
+  gap: 20px;
+  align-items: center;
+  padding: 16px 0;
   border-bottom: 1px solid var(--chq-hairline);
 }
 
@@ -1620,9 +1626,9 @@
   cursor: not-allowed;
 }
 
-/* task-w5-a/DEC-874 (findings wave 5 amendment): the reviewer plans hub's
-   H1 subline ("Across two open plans") and the row's five frame elements
-   (name-line + state pill, meta line, progress bar, single action). The
+/* task-w5-a/DEC-874 (findings wave 5 amendment, wave-19 amendment): the
+   reviewer plans hub's H1 subline ("Across two open plans") and the row's
+   four grid columns (name+meta / state pill / progress bar / action). The
    progress bar itself reuses the shell's shared .chq-bar/.chq-bar-fill
    (styles.css) per DEC-368 -- this block only sizes the wrapper within the
    row, never redefines the bar's own height/radius/colors. */
@@ -1633,18 +1639,33 @@
   color: var(--chq-muted);
 }
 
+/* DEC-874 wave-19 amendment (frame :757-759): the hub's own column-header
+   row, closed by a 2px ink rule -- same grid template as
+   .chq-reviewer-plan-row so PLAN/STATE/YOUR PROGRESS sit over their
+   columns, same discipline as .chq-review-criteria-head-row. */
+.chq-reviewer-plan-head-row {
+  display: grid;
+  grid-template-columns: 1fr 150px 190px auto;
+  gap: 20px;
+  padding: 0 0 9px;
+  border-bottom: 2px solid var(--chq-ink);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
 .chq-reviewer-plan-row-name-line {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
+  gap: 3px;
 }
 
 /* DEC-730 micro-label family: state carried by wording, not colour --
    this pill has no distinct is-open/is-closed color treatment, only the
    text itself ("Open"/"Closed") differs. */
 .chq-reviewer-plan-row-pill {
-  flex-shrink: 0;
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
@@ -1653,12 +1674,17 @@
 }
 
 .chq-reviewer-plan-row-bar {
-  margin-top: 8px;
+  width: 100%;
 }
 
+/* DEC-874 wave-19 amendment (frame :772): the action is a right-flushed
+   tertiary text link -- no .chq-btn fill -- so a row scans as data, not a
+   row of buttons. */
 .chq-reviewer-plan-row-action {
-  margin-top: 10px;
-  align-self: flex-start;
+  justify-self: end;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .chq-reviewer-plans-footnote {
@@ -1667,14 +1693,32 @@
   color: var(--chq-muted);
 }
 
-/* Overrides the earlier .chq-reviewer-plan-row rule (this file, ~line
-   1478): that rule laid the row out as a single flex ROW (name+meta on the
-   left, a lone "Read your scores" link on the right) for the two-element
-   row this task replaces. The frame's row stacks five elements vertically
-   -- source order (this rule lands later in the cascade, same
-   specificity) makes this the row's real layout now. */
-.chq-reviewer-plan-row {
-  flex-direction: column;
-  align-items: stretch;
-  padding: 15px 0;
+/* DEC-385: narrow overrides wide via max-width only -- below the reading
+   measure this list reverts to the earlier stacked card shape (frame
+   :712-726, the 390 phone hub) instead of the four-column grid above. */
+@media (max-width: 700px) {
+  .chq-reviewer-plan-row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 15px 0;
+  }
+
+  .chq-reviewer-plan-row-name-line {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .chq-reviewer-plan-row-bar {
+    margin-top: 8px;
+  }
+
+  .chq-reviewer-plan-row-action {
+    margin-top: 10px;
+    align-self: flex-start;
+    justify-self: auto;
+  }
 }
