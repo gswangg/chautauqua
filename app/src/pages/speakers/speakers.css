@@ -527,6 +527,18 @@
   margin-bottom: 8px;
 }
 
+/* DEC-829 amendment (wave 61): the zero-recipient sentence the remind review
+   dialog shows in place of a header over an empty recipient list -- it names
+   which of the three reasons applies, so it is the dialog's whole body and
+   carries the shell's .chq-empty register (14px/muted) rather than the 12px
+   conditional-line metrics of .chq-speakers-remind-skipped below. Padding is
+   dropped because ModalFrame already owns the body inset. */
+.chq-speakers-remind-empty {
+  margin: 0;
+  font-size: 14px;
+  color: var(--chq-muted);
+}
+
 /* DEC-441 amendment (w52-a): the batch-cap remainder line -- the eligible
    contacts past MAX_REMINDER_BATCH this send will not reach. Stacks directly
    under .chq-speakers-remind-skipped above the recipient list and carries the
