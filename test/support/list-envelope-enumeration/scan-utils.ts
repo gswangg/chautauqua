@@ -50,3 +50,14 @@ export function findCallEnd(source: string, openParenIndex: number): number {
   }
   return j;
 }
+
+/** Returns every entry of `allowlist` that matches nothing in `seen` --
+ * i.e. an allowlist key naming a site that no longer exists in the current
+ * scan. DEC-480 (wave-17 amendment): the enumeration must fail loudly on a
+ * stale exemption rather than silently keep exempting nothing. Pulled out
+ * of the test body so it can be exercised directly against a synthetic
+ * allowlist/seen pair (proving the mechanism itself, not just today's real
+ * inputs). */
+export function findStaleAllowlistEntries(allowlist: Set<string>, seen: Set<string>): string[] {
+  return [...allowlist].filter((entry) => !seen.has(entry));
+}
