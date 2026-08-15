@@ -287,6 +287,10 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
+  /* The sticky action bar (styles.css) supplies the drawer's bottom inset
+     with its own padding; keeping the shared .chq-drawer 20px here as well
+     left a see-through strip below the pinned bar (user-filed). */
+  padding-bottom: 0;
 }
 
 .chq-contacts-drawer-section-title {

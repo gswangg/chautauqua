@@ -36,5 +36,11 @@ describe("drawer sticky action bar cannot be flex-squeezed", () => {
     expect(rule).toContain("position: sticky");
     expect(rule).toContain("flex-shrink: 0");
     expect(rule).toContain("background: var(--chq-paper)");
+    // Sticky pins the margin box: a negative bottom margin leaves a
+    // see-through strip below the pinned bar. The drawer zeroes its own
+    // bottom padding instead (contacts.css), and the bar's margin ends 0.
+    expect(rule).toContain("margin: 0 -26px 0;");
+    const drawer = css.match(/\.chq-contacts-drawer \{[\s\S]*?\}/)?.[0] ?? "";
+    expect(drawer).toContain("padding-bottom: 0");
   });
 });

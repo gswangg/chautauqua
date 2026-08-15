@@ -755,7 +755,12 @@ a:hover {
      height, the buttons overflow the painted band, and scrolled rows show
      through around them (user-filed, gate-6 cycle). */
   flex-shrink: 0;
-  margin: 0 -26px -20px;
+  /* No negative bottom margin: sticky pins the margin box, so a -20px
+     bottom margin left a 20px see-through strip between the pinned band
+     and the drawer edge (user-filed, same report). The drawer's own
+     bottom padding is zeroed below and the band's 20px padding-bottom
+     supplies the resting inset instead. */
+  margin: 0 -26px 0;
   padding: 16px 26px 20px;
   background: var(--chq-paper);
   border-top: 1px solid var(--chq-rule);
