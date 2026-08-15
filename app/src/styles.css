@@ -1586,6 +1586,17 @@ a:hover {
   margin: 4px 0;
 }
 
+/* DEC-894 amendment: the accepted-types/size hint under the upload control.
+   Always printed (unlike -meta, which needs a stored file); matches the
+   portal's .chq-portal-detail so both surfaces state the contract alike. */
+.chq-contacts-headshot-hint {
+  font-family: var(--chq-font-ui);
+  font-size: 13px;
+  color: var(--chq-muted);
+  line-height: 1.5;
+  margin: 4px 0;
+}
+
 /* input[type=date]: same border/radius/height/typography as .chq-input
    (already applied via that shared class); this only tunes the native
    calendar indicator so it doesn't sit as an unstyled browser-blue glyph. */

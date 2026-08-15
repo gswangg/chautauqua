@@ -418,7 +418,11 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
             placeholder="headshot.jpg"
           />
         </label>
-        <p className="chq-portal-detail">{headshotHintText()}</p>
+        {/* chq-portal-detail is portal-only CSS (src/routes/portal/portal.css.ts),
+            which the admin SPA never loads. This hint is also NOT the stored-file
+            meta line (chq-contacts-headshot-meta renders only when a headshot
+            exists), so it carries its own class. */}
+        <p className="chq-contacts-headshot-hint">{headshotHintText()}</p>
         {headshotUploading && <p>Uploading...</p>}
         {headshotError && <div className="chq-error">{headshotError}</div>}
       </div>
