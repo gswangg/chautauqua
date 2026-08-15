@@ -15,42 +15,45 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   SURFACE NEVER PAGED. TOOL TRAP: Grep -C drops some `/`. LINE NUMBER IS
   NOT AN IDENTITY. A UNIVERSAL NEEDS A POPULATION (DEC-829/773).
 - FINDINGS w31-36 (heavily compacted): A RECORDED RULING IS NOT A LANDED
-  FIX (DEC-358/773/338) — re-check refs each wave. RANKING IS
-  PER-POPULATION (DEC-829); PER-ID LOOP IS NOT A BATCH (`chunkIds`).
-  AN ABSENCE IS A MEASUREMENT (DEC-358 w35): re-glob every "does not
-  exist" claim; packed-refs can be stale, loose wins. ONE DOOR IS NOT A
-  POPULATION (DEC-099 w35): universal needs route-table enumeration +
-  negative control. A SNAPSHOT IS NOT A STATE (DEC-069 w36): merge train
-  runs while you plan; re-read refs at END of planning. A GATE INSIDE A
-  CODE WAVE CAN NEVER QUALIFY (DEC-069 w36): w28-g graded 0/5, w35-a's
-  perf reading voided by sibling w35-c before merge — wave 36 froze
-  src/app/migrations/package.json so five receipts share one product sha.
-  A RECEIPT NAMES THREE SHAS (DEC-644 w36): HEAD, newest product-bearing
-  sha, `merge-base --is-ancestor` per live sibling ref. A CREDITED ROW
-  FOR A SELECTOR THE INSTRUMENT NEVER ENUMERATES IS AN INSTRUMENT GAP
-  (DEC-426 w36). Verification-log sections are appended as NEW files
-  under `docs/verification-log/index/` (`--next-seq`), then assembled;
-  never hand-edit docs/verification-log.md.
-- FINDINGS w37 (main `3b3b56c7` = merge task-w36-b @ f5783479): w36-a/-d
-  COMMITTED-UNMERGED, -b MERGED (walkthrough PASS, 0 open, product sha
-  3a041507), -c/-e AT BASE AND STILL RUNNING when planned. A BRANCH MINUTES
-  OLD AT ITS BASE IS RUNNING, NOT DEAD (DEC-069 w37) — re-filing its scope
-  duplicates the wave. WAVE 37 IS THE SECOND FROZEN WAVE: no src/, app/src/,
-  migrations/, package.json — a fix landed beside the ledger voids the
-  battery the ledger grades.
-- THE ASSEMBLER MINTS COLLIDING SEQS BY CONSTRUCTION (DEC-068 w37):
-  `nextSeq()` reads only the highest prefix, so every concurrent lane gets
-  the same number (w35's silent 0188->0189 rewrite). docs/verification-log.md
-  is GENERATED — on conflict take NEITHER side, re-run
-  `tsx scripts/assemble-verification-log.ts`.
-- A UNIVERSAL WITH NO FAILING CASE IS NOT A MEASUREMENT (DEC-099 w37): every
-  derived population ships a NEGATIVE CONTROL; known violations go in a
-  RATCHET (red when fixed too), never an allowlist. A CLOSED ROW NAMES ITS
-  FALSIFYING CHECK (DEC-358 w37) or is labelled UNFALSIFIABLE + owner.
-- A RECEIPT BLOCK IS GENERATED (DEC-644 w37): `scripts/ref-state.ts`. Read
-  refs via `git for-each-ref` — globbing .git/refs/heads misses PACKED refs;
-  .git/packed-refs' `refs/heads/main` is stale, the loose ref wins.
-- DEC-296 w37: resolveBaseUrl's dev-loopback exception needs a loopback
-  origin ON THE REQUEST; a scripted fetch under route-shadowed `wrangler dev`
-  has none, so any non-default port poisons every mailed link — two
-  walkthrough gates lost a full run each. Walkthrough now pre-flights.
+  FIX (DEC-358/773/338); AN ABSENCE IS A MEASUREMENT (DEC-358 w35, loose
+  ref beats stale packed-refs); ONE DOOR IS NOT A POPULATION (DEC-099 w35,
+  needs enumeration + negative control); RANKING IS PER-POPULATION
+  (DEC-829); A SNAPSHOT IS NOT A STATE (DEC-069 w36, re-read refs at END of
+  planning); A GATE INSIDE A CODE WAVE CAN NEVER QUALIFY (DEC-069 w36) —
+  wave 36 froze src/app/migrations/package.json so receipts share one
+  product sha; A RECEIPT NAMES THREE SHAS (DEC-644 w36); A CREDITED ROW FOR
+  A SELECTOR THE INSTRUMENT NEVER ENUMERATES IS AN INSTRUMENT GAP (DEC-426
+  w36). Verification-log sections are appended as NEW files under
+  `docs/verification-log/index/` (`--next-seq`), then assembled; never
+  hand-edit docs/verification-log.md.
+- FINDINGS w37 (compacted): A BRANCH MINUTES OLD AT ITS BASE IS RUNNING,
+  NOT DEAD (DEC-069 w37). WAVE 37 WAS THE SECOND FROZEN WAVE (docs/scripts
+  only). THE ASSEMBLER MINTS COLLIDING SEQS BY CONSTRUCTION (DEC-068 w37):
+  `nextSeq()` reads only the highest prefix; on conflict take NEITHER side,
+  re-run `tsx scripts/assemble-verification-log.ts`. A UNIVERSAL WITH NO
+  FAILING CASE IS NOT A MEASUREMENT (DEC-099 w37): every derived population
+  ships a NEGATIVE CONTROL; known violations go in a RATCHET, never an
+  allowlist. A RECEIPT BLOCK IS GENERATED (DEC-644 w37): `scripts/ref-state.ts`,
+  read refs via `git for-each-ref`. DEC-296 w37: dev-loopback exception
+  needs loopback evidence ON THE REQUEST; walkthrough now pre-flights.
+- FINDINGS w38 (main `494b6c01` = scribe wave 37; w37-a/-c COMMITTED-UNMERGED,
+  w37-b/-d/-e AT BASE AND RUNNING — scope NOT re-filed; `scripts/exit-predicate.ts`/
+  `ref-state.ts` still absent, theirs). WAVE 38 IS A CODE WAVE AND VOIDS THE
+  BATTERY IT INHERITS (DEC-069 w38): four tree-verified defects beat one
+  preserved gate reading; wave 39 must re-run all four gates FROZEN. No
+  code lane writes `docs/verification-log/**`.
+- A BUDGET KEYED ON A VICTIM IS A WEAPON AIMED AT THE VICTIM (DEC-072 w38):
+  w54/w66 flip-flopped bare-email vs email|ip because BOTH hard
+  pre-verification denials lock the owner out. Settled: the account bucket
+  is a FAILURE budget — never skip verification, refuse only a failed one.
+  Precedent already in-tree: `src/routes/account.tsx:202-221`.
+- A DAY-LABEL FIELD FED AN INSTANT IS A TYPE ERROR THE COMPILER CANNOT SEE
+  (DEC-801/DEC-522 w38): six surfaces piped `effectiveAssignmentDueDate`'s
+  grace INSTANT into `formatCalendarDate`/`dayLabelEndInstant`. Fix is
+  structural — UN-EXPORT the instant form; a comment about which callers
+  must convert is the fragile shape.
+- A CSRF-EXEMPT CREDENTIAL IS AN ESCALATION (DEC-027 w38): `csrfJson` is
+  bearer-exempt, so every route without `requireCookieSession` is
+  bearer-reachable — `POST /api/v1/users` + `/reset-password` returned
+  plaintext passwords to a bearer client while `tokens.ts` kept the correct
+  guard PRIVATE. A guard that lives in one file guards one file.
