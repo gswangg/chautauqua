@@ -4472,6 +4472,22 @@ independently: EXPLAIN QUERY PLAN + a concurrency unit test (max in-flight
 
 INVALIDATED BY: src/routes/review/shared.ts, src/db/schema/review.ts, migrations/0042_review_results_indexes.sql
 
+MERGE NOTE (merge train, `merge task-w31-c`): migration 0042's
+`evaluation_plan_id_round_submission_id_id_idx` is column-for-column
+IDENTICAL to migration 0041's `evaluation_plan_round_submission_idx`
+(task-w31-b) — both are `evaluation (plan_id, round, submission_id, id)`,
+differing only in name. DEC-347's wave-31 amendment pre-assigned the
+migration NUMBERS (0041 reviewer-queue, 0042 plan-results) to avoid a
+filename collision, but did not anticipate that both lanes would need the
+same composite index; the two lanes independently diagnosed the same missing
+index from two different endpoints. Both were kept at merge (each is a
+sanctioned, receipted migration and both apply cleanly — SQLite permits
+duplicate-column indexes under distinct names), so this is correct but
+redundant: two identical b-trees maintained on every evaluation write. NOT
+resolved here, because dropping one is a design call about which name
+survives and would invalidate a landed lane's receipt. FLAGGED for a
+follow-up lane to collapse to one index.
+
 ## task-w31-a: files library headshot join perf (DEC-773 w31 amendment 3b)
 
 QUALIFYING: SOLE OWNER of src/server/repo/files-library.ts; UNOWNED at main
