@@ -10,6 +10,20 @@
 # on why it does not `exec`).
 #
 # Usage: sh scripts/with-test-lock.sh <command> [args...]
+#
+# Re-entrancy (DEC-644 wave-41 amendment): package.json:27,29 define both
+# `test` and `test:full` AS this wrapper (`sh scripts/with-test-lock.sh
+# vitest run`). If a gate lane wraps `npm test`/`npm run test:full` inside
+# ANOTHER invocation of this script (e.g. `sh scripts/with-test-lock.sh sh
+# -c 'npm test'`), the inner invocation would acquire-spin against the
+# outer invocation's own lock for up to the 45-minute stale window. To
+# make correct use inferable from the interface rather than from a memo,
+# this script exports CHQ_TEST_LOCK_HELD=1 once it holds the lock; if a
+# nested invocation finds that marker already set, it runs the wrapped
+# command inline WITHOUT acquiring and WITHOUT installing the release
+# trap. It must not install the trap in this case: an inner release would
+# free the lock while the outer heavy phase is still running, which is
+# worse than the deadlock this guard fixes.
 
 set -eu
 
@@ -21,6 +35,15 @@ POLL_SECONDS=2
 if [ "$#" -eq 0 ]; then
   echo "with-test-lock.sh: no command given" >&2
   exit 2
+fi
+
+if [ "${CHQ_TEST_LOCK_HELD:-}" = "1" ]; then
+  echo "with-test-lock.sh: WARNING: lock already held by this process tree (CHQ_TEST_LOCK_HELD=1); running inline without re-acquiring" >&2
+  set +e
+  "$@"
+  status=$?
+  set -e
+  exit "$status"
 fi
 
 acquired=0
@@ -48,6 +71,9 @@ while [ "$acquired" -eq 0 ]; do
 done
 
 trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT INT TERM
+
+CHQ_TEST_LOCK_HELD=1
+export CHQ_TEST_LOCK_HELD
 
 # Note: we deliberately do NOT `exec` the wrapped command here, since
 # `exec` replaces this shell's process image and would discard the EXIT
