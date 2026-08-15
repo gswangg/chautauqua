@@ -13,8 +13,9 @@ import { clampPage, listPerPage } from "../../lib/pagination";
 import { isSurface } from "../public/shell";
 import { EMBED_FORMATS } from "../../lib/embed-formats";
 import { ALL_CARD_FIELDS } from "../../lib/card-fields";
+import { knobsForSurface, type EmbedKnob, type EmbedSurface } from "../../lib/embed-knobs";
 import { parseTrackId, parseDay, parseNameQuery, parseLimit, parseCardFields, parseAccent, parseFormat, parseRoomId } from "../public/query";
-import { DEC_785, DEC_822, DEC_839 } from "../../decisions";
+import { DEC_785, DEC_822, DEC_839, DEC_490 } from "../../decisions";
 import { MAX_SAVED_EMBEDS_PER_EVENT } from "../../domain/embeds";
 import { overCapCountMessage } from "../../domain/cap-copy";
 import {
@@ -32,18 +33,55 @@ import {
 void DEC_785;
 void DEC_822;
 void DEC_839;
+void DEC_490;
+
+// DEC-490 (wave-12 amendment): every option KEY parseEmbedOptionsInput
+// accepts maps 1:1 onto an EmbedKnob from DEC-489's table -- `sessionFormat`
+// carries the server's `format` query param (see embedSnippet.ts's
+// EmbedOptions for why it can't be named `format` there), everything else
+// shares its name with the knob it is.
+const OPTION_KEY_TO_KNOB: Record<string, EmbedKnob> = {
+  trackId: "trackId",
+  sessionFormat: "format",
+  roomId: "roomId",
+  day: "day",
+  q: "q",
+  limit: "limit",
+  fields: "fields",
+  accent: "accent",
+};
 
 /** DEC-839: every option key the API accepts is validated through the SAME
  * parsers the live public route runs (src/routes/public/query.ts) -- an
  * unparseable value is a loud 400 naming the field, never silently dropped
  * or stored as junk the renderer will later ignore. Shared by POST and
- * PATCH so the two routes cannot drift. */
-async function parseEmbedOptionsInput(db: Db, eventId: string, raw: unknown): Promise<EmbedOptions> {
+ * PATCH so the two routes cannot drift.
+ *
+ * DEC-490 (wave-12 amendment): `surface` is now required -- any option key
+ * present whose knob DEC-489's table does not list for THIS surface is
+ * refused with a 400 naming the key and the surface, rather than silently
+ * persisted into a recipe the published embed will ignore. */
+async function parseEmbedOptionsInput(
+  db: Db,
+  eventId: string,
+  surface: EmbedSurface,
+  raw: unknown,
+): Promise<EmbedOptions> {
   if (raw === undefined || raw === null) return {};
   if (typeof raw !== "object" || Array.isArray(raw)) {
     throw new ApiError("invalid", "options must be an object", { options: "Invalid options" });
   }
   const input = raw as Record<string, unknown>;
+  const allowedKnobs = knobsForSurface(surface);
+  for (const key of Object.keys(input)) {
+    if (input[key] === undefined) continue;
+    const knob = OPTION_KEY_TO_KNOB[key];
+    if (knob === undefined || !allowedKnobs.includes(knob)) {
+      throw new ApiError("invalid", `${key} is not supported on the ${surface} surface`, {
+        [key]: `Not supported on the ${surface} surface`,
+      });
+    }
+  }
   const out: EmbedOptions = {};
 
   if (input.trackId !== undefined) {
@@ -173,7 +211,7 @@ embedsRoutes.post("/events/:eventId/embeds", requireOrganizer, csrfJson, async (
   if (typeof body.format !== "string" || !(EMBED_FORMATS as readonly string[]).includes(body.format)) {
     throw new ApiError("invalid", "format must be a known embed format", { format: "Unknown format" });
   }
-  const options = await parseEmbedOptionsInput(c.var.db, eventId, body.options);
+  const options = await parseEmbedOptionsInput(c.var.db, eventId, body.surface, body.options);
 
   // DEC-822: event-wide cap (see src/domain/embeds.ts's scoping contract --
   // an embed has no per-organiser ownership, so this counts every embed on
@@ -237,8 +275,30 @@ embedsRoutes.patch("/embeds/:id", requireOrganizer, csrfJson, async (c) => {
     }
     patch.format = body.format;
   }
-  if (body.options !== undefined) {
-    patch.optionsJson = JSON.stringify(await parseEmbedOptionsInput(c.var.db, ownership.eventId, body.options));
+  // DEC-490 (wave-12 amendment): the EFFECTIVE surface (patched ?? stored)
+  // and the EFFECTIVE options (stored optionsJson merged with the patch --
+  // patched keys win, unpatched stored keys survive) are validated
+  // together whenever EITHER surface or options is part of this PATCH, so
+  // changing `surface` alone can never leave a stale, now-unsupported
+  // filter silently persisted (it is refused with a 400 naming the key and
+  // the surface instead).
+  const effectiveSurface = (patch.surface ?? ownership.surface) as EmbedSurface;
+  if (body.options !== undefined || body.surface !== undefined) {
+    // Only a genuine plain object is safe to spread-merge onto the stored
+    // options -- anything else (a string, an array, null) is passed through
+    // AS-IS so parseEmbedOptionsInput's own "options must be an object"
+    // check still fires (spreading a string would silently fan its
+    // characters out into numeric keys instead).
+    const isPlainObject = typeof body.options === "object" && body.options !== null && !Array.isArray(body.options);
+    const optionsSource: unknown =
+      body.options === undefined
+        ? ownership.options
+        : isPlainObject
+          ? { ...(ownership.options as unknown as Record<string, unknown>), ...(body.options as Record<string, unknown>) }
+          : body.options;
+    patch.optionsJson = JSON.stringify(
+      await parseEmbedOptionsInput(c.var.db, ownership.eventId, effectiveSurface, optionsSource),
+    );
   }
   if (body.enabled !== undefined) {
     if (typeof body.enabled !== "boolean") {

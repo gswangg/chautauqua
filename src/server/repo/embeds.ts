@@ -147,13 +147,23 @@ export async function createEmbed(
  * trackId/roomId supplied in `options` belongs to THIS embed's own event
  * (DEC-839 amendment — a cross-event id would silently desync the DEC-931
  * delete guard, which only scans embeds whose eventId matches). */
-export async function getEmbedOwnership(db: Db, id: string): Promise<{ orgId: string; eventId: string } | null> {
+export async function getEmbedOwnership(
+  db: Db,
+  id: string,
+): Promise<{ orgId: string; eventId: string; surface: string; options: EmbedOptions } | null> {
   const rows = await db
-    .select({ orgId: schema.embed.orgId, eventId: schema.embed.eventId })
+    .select({
+      orgId: schema.embed.orgId,
+      eventId: schema.embed.eventId,
+      surface: schema.embed.surface,
+      optionsJson: schema.embed.optionsJson,
+    })
     .from(schema.embed)
     .where(eq(schema.embed.id, id))
     .limit(1);
-  return rows[0] ?? null;
+  const row = rows[0];
+  if (!row) return null;
+  return { orgId: row.orgId, eventId: row.eventId, surface: row.surface, options: parseStoredEmbedOptions(row.optionsJson) };
 }
 
 /** DEC-839 amendment: existence checks for the trackId/roomId embed options
