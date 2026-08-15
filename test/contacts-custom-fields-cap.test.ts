@@ -17,6 +17,10 @@ import * as schema from "../src/db/schema";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import { MAX_NAME_LENGTH } from "../src/forms/validate";
 import { MAX_CONTACT_CUSTOM_FIELDS } from "../src/domain/contact-labels";
+// DEC-422 amendment: refusal copy is single-sourced -- assert against the
+// shared grammar helpers, never a hand-typed "Max N" string.
+import { overCapCountMessage } from "../src/domain/cap-copy";
+import { overBudgetBy } from "../src/domain/count-copy";
 
 const ORG_A = "org-a";
 
@@ -159,7 +163,7 @@ describe("customFields refuses instead of skipping invalid entries (DEC-417 amen
       );
       expect(res.status).toBe(400);
       const body = (await res.json()) as { error: { fields?: Record<string, string> } };
-      expect(body.error.fields?.[`customFields.${longKey}`]).toBe(`Max ${MAX_NAME_LENGTH}`);
+      expect(body.error.fields?.[`customFields.${longKey}`]).toBe(overBudgetBy(longKey.length, MAX_NAME_LENGTH));
       expect(inserts.find((i) => i.table === schema.contact)).toBeUndefined();
     });
 
@@ -176,7 +180,9 @@ describe("customFields refuses instead of skipping invalid entries (DEC-417 amen
       );
       expect(res.status).toBe(400);
       const body = (await res.json()) as { error: { fields?: Record<string, string> } };
-      expect(body.error.fields?.customFields).toBe(`Max ${MAX_CONTACT_CUSTOM_FIELDS} custom fields`);
+      expect(body.error.fields?.customFields).toBe(
+        overCapCountMessage(MAX_CONTACT_CUSTOM_FIELDS + 1, MAX_CONTACT_CUSTOM_FIELDS, "custom field"),
+      );
       expect(inserts.find((i) => i.table === schema.contact)).toBeUndefined();
     });
 
@@ -224,7 +230,7 @@ describe("customFields refuses instead of skipping invalid entries (DEC-417 amen
       );
       expect(res.status).toBe(400);
       const body = (await res.json()) as { error: { fields?: Record<string, string> } };
-      expect(body.error.fields?.[`customFields.${longKey}`]).toBe(`Max ${MAX_NAME_LENGTH}`);
+      expect(body.error.fields?.[`customFields.${longKey}`]).toBe(overBudgetBy(longKey.length, MAX_NAME_LENGTH));
       expect(updates).toHaveLength(0);
     });
 
@@ -238,7 +244,9 @@ describe("customFields refuses instead of skipping invalid entries (DEC-417 amen
       );
       expect(res.status).toBe(400);
       const body = (await res.json()) as { error: { fields?: Record<string, string> } };
-      expect(body.error.fields?.customFields).toBe(`Max ${MAX_CONTACT_CUSTOM_FIELDS} custom fields`);
+      expect(body.error.fields?.customFields).toBe(
+        overCapCountMessage(MAX_CONTACT_CUSTOM_FIELDS + 1, MAX_CONTACT_CUSTOM_FIELDS, "custom field"),
+      );
       expect(updates).toHaveLength(0);
     });
 

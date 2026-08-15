@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 import type { FormFieldDef } from "../src/forms/types";
 import { MAX_FIELD_OPTIONS } from "../src/domain/form-copy";
+import { overCapCountMessage } from "../src/domain/cap-copy";
 import { MAX_NAME_LENGTH } from "../src/forms/validate";
 import { validateFieldDefInput, validateRuleReference } from "../src/forms/builder";
 
@@ -38,7 +39,10 @@ describe("validateFieldDefInput dropdown option count cap", () => {
     const result = validateFieldDefInput({ kind: "dropdown", label: "Format", options }, [titleField]);
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.errors.options).toBe(`Max ${MAX_FIELD_OPTIONS} options`);
+      // DEC-422 amendment: the ONE over-cap grammar (states submitted count,
+      // overage, and the limit) -- not the deleted bare `Max N` value.
+      expect(result.errors.options).toBe(overCapCountMessage(MAX_FIELD_OPTIONS + 1, MAX_FIELD_OPTIONS, "option"));
+      expect(result.errors.options).toContain(String(MAX_FIELD_OPTIONS + 1));
     }
   });
 });

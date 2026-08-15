@@ -9,7 +9,7 @@ import * as schema from "../../../db/schema";
 import { csrfJson } from "../../../server/middleware";
 import { ApiError, parseBoundedIdArray } from "../../../server/http";
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../../forms/validate"; // DEC-417
-import { overCapFieldMessage } from "../../../domain/cap-copy";
+import { overCapFieldMessage, overCapCountMessage } from "../../../domain/cap-copy";
 import { isValidEmail, normalizeEmail } from "../../../domain/email"; // DEC-454
 import * as repo from "../../../server/repo/contacts";
 import { findContactByEmail } from "../../../server/repo/submit";
@@ -121,13 +121,13 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
       // instead. Same for a key longer than MAX_NAME_LENGTH, and for the key
       // COUNT itself (previously unbounded).
       if (entries.length > MAX_CONTACT_CUSTOM_FIELDS) {
-        fields.customFields = `Max ${MAX_CONTACT_CUSTOM_FIELDS} custom fields`;
+        fields.customFields = overCapCountMessage(entries.length, MAX_CONTACT_CUSTOM_FIELDS, "custom field"); // DEC-422 grammar
       }
       for (const [key, value] of entries) {
         if (typeof value !== "string") {
           fields[`customFields.${key}`] = "must be a string";
         } else if (key.length > MAX_NAME_LENGTH) {
-          fields[`customFields.${key}`] = `Max ${MAX_NAME_LENGTH}`;
+          checkLen(key, `customFields.${key}`, MAX_NAME_LENGTH, fields); // DEC-417/DEC-422: key length shares the value grammar
         } else {
           checkLen(value, `customFields.${key}`, MAX_TEXT_LENGTH, fields); // DEC-417
         }
@@ -326,13 +326,13 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
         // DEC-417 amendment (wave 2): same refuse-not-skip rules as POST
         // /contacts above.
         if (entries.length > MAX_CONTACT_CUSTOM_FIELDS) {
-          fields.customFields = `Max ${MAX_CONTACT_CUSTOM_FIELDS} custom fields`;
+          fields.customFields = overCapCountMessage(entries.length, MAX_CONTACT_CUSTOM_FIELDS, "custom field"); // DEC-422 grammar
         }
         for (const [key, value] of entries) {
           if (typeof value !== "string") {
             fields[`customFields.${key}`] = "must be a string";
           } else if (key.length > MAX_NAME_LENGTH) {
-            fields[`customFields.${key}`] = `Max ${MAX_NAME_LENGTH}`;
+            checkLen(key, `customFields.${key}`, MAX_NAME_LENGTH, fields); // DEC-417/DEC-422: key length shares the value grammar
           } else {
             checkLen(value, `customFields.${key}`, MAX_TEXT_LENGTH, fields); // DEC-417
           }

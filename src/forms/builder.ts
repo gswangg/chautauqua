@@ -6,6 +6,7 @@ import type { FormFieldDef, FormFieldKind, FormFieldRule, FormFieldRuleOp } from
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from "./validate"; // DEC-417
 import { canonicalizeOperand } from "./rule-match"; // DEC-681
 import { MAX_FIELD_OPTIONS } from "../domain/form-copy"; // w2-c
+import { overCapCountMessage } from "../domain/cap-copy"; // DEC-422 amendment
 
 export const FIELD_KINDS: readonly FormFieldKind[] = [
   "text",
@@ -157,7 +158,7 @@ export function validateFieldDefInput(
       if (!Array.isArray(options) || options.length === 0 || !options.every((o) => typeof o === "string")) {
         errors.options = "dropdown fields require a non-empty string array of options";
       } else if (options.length > MAX_FIELD_OPTIONS) {
-        errors.options = `Max ${MAX_FIELD_OPTIONS} options`; // w2-c
+        errors.options = overCapCountMessage(options.length, MAX_FIELD_OPTIONS, "option"); // w2-c, DEC-422 grammar
       } else if (options.some((o) => (o as string).length > MAX_NAME_LENGTH)) {
         errors.options = `each option must be at most ${MAX_NAME_LENGTH} characters`; // DEC-417
       }
