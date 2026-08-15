@@ -929,6 +929,27 @@
 
 .chq-contacts-import-review-table {
   width: 100%;
+  table-layout: fixed;
+}
+
+/* w23-b (DEC-902): docs/design/Chautauqua Contacts.dc.html:690's update row
+   is `190px 1fr auto` -- Email is the frame's identity track. Line is real
+   data the mock's name-over-email layout lacked, so it hugs its content
+   rather than being folded away; Action is the sole unwidthed remainder
+   (no class hook, matching .chq-comms-compose-col-title's precedent); Skip
+   this row hugs its single checkbox. */
+.chq-contacts-import-review-col-line {
+  width: 1px;
+  white-space: nowrap;
+}
+
+.chq-contacts-import-review-col-email {
+  width: 190px;
+}
+
+.chq-contacts-import-review-col-skip {
+  width: 1px;
+  white-space: nowrap;
 }
 
 /* w49-f: the existing-contacts claim on the review step, sourced from the

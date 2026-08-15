@@ -698,10 +698,10 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
           <table className="chq-table chq-contacts-import-review-table">
             <thead>
               <tr>
-                <th>Line</th>
-                <th>Email</th>
+                <th className="chq-contacts-import-review-col-line">Line</th>
+                <th className="chq-contacts-import-review-col-email">Email</th>
                 <th>Action</th>
-                <th>Skip this row</th>
+                <th className="chq-contacts-import-review-col-skip">Skip this row</th>
               </tr>
             </thead>
             <tbody>
@@ -711,8 +711,8 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
                   (row.overwrites?.length ?? 0) > 0 || (row.possibleDuplicates?.length ?? 0) > 0 || Boolean(updateReason);
                 return (
                   <tr key={row.line}>
-                    <td>{row.line}</td>
-                    <td>{row.email}</td>
+                    <td className="chq-contacts-import-review-col-line">{row.line}</td>
+                    <td className="chq-contacts-import-review-col-email">{row.email}</td>
                     <td>
                       {actionLabel(row)}
                       {decorated && (
@@ -733,7 +733,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
                         </ul>
                       )}
                     </td>
-                    <td>
+                    <td className="chq-contacts-import-review-col-skip">
                       <label className="chq-contacts-import-review-skip">
                         <input
                           className="chq-check"
