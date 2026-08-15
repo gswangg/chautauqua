@@ -54,9 +54,25 @@ describe("checkRequestBody", () => {
     }
   });
 
-  it("allows an absent Content-Length for a non-multipart request", () => {
+  it("refuses an absent Content-Length when content-type is application/x-www-form-urlencoded (DEC-020 wave-30 amendment)", () => {
+    const result = checkRequestBody("POST", "application/x-www-form-urlencoded", null);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message.toLowerCase()).toContain("content-length");
+    }
+  });
+
+  it("tolerates content-type parameters on both refused shapes (case-insensitive)", () => {
+    const multipart = checkRequestBody("POST", "Multipart/Form-Data; boundary=xyz", null);
+    expect(multipart.ok).toBe(false);
+    const urlencoded = checkRequestBody("POST", "APPLICATION/X-WWW-FORM-URLENCODED; charset=utf-8", null);
+    expect(urlencoded.ok).toBe(false);
+  });
+
+  it("allows an absent Content-Length for a non-buffered-before-auth request (JSON, unknown, none)", () => {
     expect(checkRequestBody("POST", "application/json", null)).toEqual({ ok: true });
     expect(checkRequestBody("POST", null, null)).toEqual({ ok: true });
+    expect(checkRequestBody("POST", "text/plain", null)).toEqual({ ok: true });
   });
 });
 
@@ -107,6 +123,43 @@ describe("requestBodyLimit middleware", () => {
       body: "{}",
     });
     expect(res.status).toBe(200);
+  });
+});
+
+// Middleware-order: a chunked (no Content-Length) application/x-www-form-
+// urlencoded POST /login must be refused by requestBodyLimit's 413 BEFORE
+// csrfForm ever runs its parseBody()/cookie comparison -- proving the
+// buffer-before-auth path this ceiling exists to close (module header,
+// src/server/body-limit.ts:1-9) is actually closed for the real route, not
+// just the pure predicate. requestBodyLimit is registered first in
+// src/server/app.ts (line 35), ahead of every route including auth-login's
+// csrfForm-guarded POST /login (src/routes/auth-login.tsx:62). No db/env
+// context is provided -- if the handler or csrfForm ran at all, it would
+// throw for missing context long before producing a CSRF-mismatch error.
+// POST /login is not under /api/v1, so DEC-841's wantsHtmlResponse renders
+// the ApiError as the HTML error surface (src/server/http.ts:316-325) --
+// this asserts the 413 status and that the visible message names
+// Content-Length (the payload_too_large message), never a CSRF-mismatch
+// message ("CSRF token mismatch"/"Missing CSRF cookie"), proving csrfForm's
+// cookie comparison never ran.
+describe("POST /login is refused by requestBodyLimit before csrfForm parses anything", () => {
+  it("responds 413 for a chunked (no Content-Length) urlencoded POST, never reaching csrfForm", async () => {
+    const { loginRoutes } = await import("../src/routes/auth-login");
+    const app = new Hono<AppEnv>();
+    registerErrorHandler(app);
+    app.use("*", requestBodyLimit);
+    app.route("/", loginRoutes);
+
+    const res = await app.request("/login", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: "email=a@b.com&password=x",
+    });
+
+    expect(res.status).toBe(413);
+    const text = await res.text();
+    expect(text.toLowerCase()).toContain("content-length");
+    expect(text.toLowerCase()).not.toContain("csrf");
   });
 });
 

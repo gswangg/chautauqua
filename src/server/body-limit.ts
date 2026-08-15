@@ -35,11 +35,21 @@ export type BodyCheckResult = { ok: true } | { ok: false; message: string };
  * - A parseable Content-Length over MAX_REQUEST_BODY_BYTES: refused, naming
  *   both the ceiling and the declared size.
  * - A non-numeric (unparseable) Content-Length: refused.
- * - An absent Content-Length: refused ONLY when the content-type declares a
- *   multipart/form-data body (chunked/streamed multipart uploads are exactly
- *   the case parseBody() will buffer whole with no size check otherwise);
- *   any other absent-Content-Length request (e.g. a small JSON POST relying
- *   on chunked transfer-encoding) is left to the handler.
+ * - An absent Content-Length: refused when the content-type declares a body
+ *   shape that this app buffers whole BEFORE auth runs -- multipart/
+ *   form-data (file uploads) AND application/x-www-form-urlencoded (every
+ *   plain HTML form post: csrfForm's c.req.parseBody() at
+ *   src/server/middleware.ts:283 runs in MIDDLEWARE on the unauthenticated
+ *   POST /login, POST /forgot, POST /claim/:token and POST
+ *   /submit/:eventSlug paths, ahead of any requireRole/csrfJson check).
+ *   Content-type parameters (e.g. `; charset=utf-8`, `; boundary=...`) are
+ *   tolerated -- only the prefix before the first `;` is matched, case-
+ *   insensitively. Any other absent-Content-Length request (JSON and
+ *   everything else) is left to the handler: JSON bodies are only ever read
+ *   inside handlers behind requireRole/csrfJson (never in middleware ahead
+ *   of auth), and refusing chunked JSON here would break legitimate
+ *   streaming API clients that never abuse the buffer-before-auth path this
+ *   ceiling exists to close.
  * - Everything else: ok.
  */
 export function checkRequestBody(
@@ -52,10 +62,17 @@ export function checkRequestBody(
   }
 
   if (contentLength === null) {
-    if (contentType !== null && contentType.toLowerCase().startsWith("multipart/form-data")) {
+    const bareType = ((contentType ?? "").toLowerCase().split(";")[0] ?? "").trim();
+    if (bareType === "multipart/form-data") {
       return {
         ok: false,
         message: "Request is missing a Content-Length header required for multipart uploads",
+      };
+    }
+    if (bareType === "application/x-www-form-urlencoded") {
+      return {
+        ok: false,
+        message: "Request is missing a Content-Length header required for form submissions",
       };
     }
     return { ok: true };
