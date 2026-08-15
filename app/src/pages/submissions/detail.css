@@ -213,19 +213,24 @@
   color: var(--chq-brand-hover);
 }
 
-/* DEC-900 (wave 25 amendment): 'Session details' is a real FOURTH numbered
-   section after Reviews -- V8 draws it, so the wave-5 disclosure premise is
-   gone. Its eyebrow ('EDITABLE UNTIL THE SCHEDULE IS PUBLISHED') sits below
-   the numbered title, in the SAME muted-eyebrow register as the heading's
-   own track/format eyebrow -- an 8px top gap keeps it off the title rule. */
-.chq-detail-session-details-eyebrow {
-  margin-top: 8px;
+/* DEC-908 (findings wave 5 amendment): the 'Editable until the schedule is
+   published' caption moves ONTO the section rule as a right-flushed
+   companion to the label, sharing the .chq-detail-section-title-row layout
+   already used by History's action row -- never a paragraph below the
+   title (that shape, and its now-deleted -eyebrow class, is gone). */
+.chq-detail-session-details-caption {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+  white-space: nowrap;
 }
 
-/* DEC-908: 'Session details' holds its three sub-blocks (Tracks/Format+
-   Audience level/Participants) stacked, each with its own quiet
-   sub-heading -- these are NOT counted sections (no border-bottom rule, no
-   numbering) since the wrapping section already carries both. */
+/* DEC-908: 'Session details' holds a Tracks/Format/Audience level
+   definition grid plus a Participants block stacked below it -- neither
+   is a counted section (no border-bottom rule, no numbering) since the
+   wrapping section already carries both. */
 .chq-detail-session-details {
   min-width: 0;
 }
@@ -236,17 +241,36 @@
   gap: 26px;
 }
 
-/* DEC-900 (wave 25 amendment): Format and Audience level sit side by side
-   as two narrow selects -- same subsection register, laid out in a row. */
-.chq-detail-format-audience-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 32px;
+/* DEC-908 (findings wave 5 amendment): Tracks/Format/Audience level render
+   as ONE label-left definition grid -- a 150px muted-label column beside a
+   1fr value column, replacing the three stacked h3 sub-headings. */
+.chq-detail-session-details-fields {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 16px 20px;
+  align-items: center;
 }
 
-.chq-detail-format-audience-field {
-  flex: 1 1 200px;
+.chq-detail-subsection-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-detail-session-details-value {
   min-width: 0;
+}
+
+/* Format and Audience level size to their content, not the full grid
+   column -- the frame's two narrow selects, never a full-width control. */
+.chq-detail-session-details-fields #submission-format {
+  max-width: 280px;
+}
+
+.chq-detail-session-details-fields #submission-audience-level {
+  max-width: 200px;
 }
 
 /* Per-row participant actions: quiet tertiary links, never a
@@ -254,6 +278,16 @@
 .chq-detail-participant-row-actions {
   display: flex;
   gap: 12px;
+}
+
+.chq-detail-participant-row-actions .chq-link-button {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--chq-muted);
+}
+
+.chq-detail-participant-row-actions .chq-link-button:hover {
+  color: var(--chq-ink);
 }
 
 .chq-detail-copresenter-note {
@@ -264,15 +298,6 @@
 
 .chq-detail-subsection {
   min-width: 0;
-}
-
-.chq-detail-subsection-title {
-  margin: 0 0 12px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--chq-muted);
 }
 
 /* History rows: the frame's 96px/1fr 'when | what' grid IS the separator --
@@ -577,6 +602,116 @@
   color: var(--chq-muted);
 }
 
+/* DEC-908 (findings wave 5 amendment): the participants table is a real
+   grid -- header and body rows share ONE 1fr 150px 210px auto column set
+   (Participant/Role/Email/actions), never the bare-text role column the
+   frame refuses. th/td padding is zeroed since the grid's own 18px gap
+   carries the spacing; .chq-table's shared padding/border rules are
+   overridden here at page-lane specificity, never redefined globally
+   (DEC-368). */
+.chq-detail-page .chq-participants-table {
+  border-collapse: separate;
+}
+
+.chq-detail-page .chq-participants-table thead tr,
+.chq-detail-page .chq-participants-table tbody tr {
+  display: grid;
+  grid-template-columns: 1fr 150px 210px auto;
+  gap: 18px;
+  align-items: center;
+}
+
+.chq-detail-page .chq-participants-table th,
+.chq-detail-page .chq-participants-table td {
+  padding: 0;
+  border-top: none;
+  text-align: left;
+}
+
+.chq-detail-page .chq-participants-table thead th {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--chq-hairline);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--chq-muted);
+}
+
+.chq-detail-page .chq-participants-table tbody td {
+  padding: 13px 0;
+  border-bottom: 1px solid var(--chq-hairline);
+}
+
+.chq-detail-page .chq-participants-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* The row-error tr is a single full-width cell, never the 4-column grid
+   its data rows use. */
+.chq-detail-page .chq-participants-table .chq-detail-participant-error-row {
+  display: block;
+}
+
+.chq-participant-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chq-participant-name-link {
+  font-family: var(--chq-font-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--chq-ink);
+}
+
+.chq-participant-company {
+  font-size: 12px;
+  color: var(--chq-muted);
+}
+
+.chq-participant-email-cell {
+  font-size: 13px;
+  color: var(--chq-muted);
+  word-break: break-all;
+}
+
+/* DEC-908 (findings wave 5 amendment): the Role cell is always a chip,
+   never bare text -- LEAD filled --chq-brand/on-brand, CO-PRESENTER
+   outlined --chq-border, same radius (frame :665-666). */
+.chq-role-chip {
+  display: inline-block;
+  border-radius: 3px;
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  justify-self: start;
+}
+
+.chq-role-chip-lead {
+  background: var(--chq-brand);
+  color: var(--chq-on-brand);
+  font-weight: 800;
+  padding: 3px 8px;
+}
+
+.chq-role-chip-co {
+  border: 1px solid var(--chq-border);
+  color: var(--chq-ink-2);
+  font-weight: 600;
+  padding: 2px 8px;
+}
+
+.chq-detail-participant-actions-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .chq-track-chips {
   display: flex;
   flex-wrap: wrap;
@@ -586,12 +721,30 @@
   list-style: none;
 }
 
+/* DEC-908 (findings wave 5 amendment): the first assigned track reads as
+   the filled primary chip (ink fill, paper text); every other track is the
+   outlined variant -- .chq-track-chip is the outline default, applied to
+   every chip except the one carrying -primary. */
 .chq-track-chip {
   border: 1px solid var(--chq-border);
   border-radius: 999px;
-  padding: 4px 12px;
-  font-size: 12px;
+  padding: 5px 13px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--chq-ink-2);
+}
+
+.chq-track-chip-primary {
+  border: none;
+  background: var(--chq-ink);
+  color: var(--chq-paper);
+  padding: 6px 13px;
   font-weight: 600;
+}
+
+.chq-track-chips-edit {
+  display: flex;
+  align-items: center;
 }
 
 /* Tracks section editor (DEC-638): multi-select checkbox list, not radios

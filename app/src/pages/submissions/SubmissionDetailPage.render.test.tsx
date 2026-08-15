@@ -47,7 +47,10 @@ afterEach(() => {
 // it now just waits for the section's own heading to confirm the section
 // has mounted before interacting with its controls.
 async function openSessionDetails() {
-  await screen.findByRole('heading', { name: 'Session details' });
+  // DEC-908 (findings wave 5 amendment): the section's h2 now also carries
+  // the right-flushed caption text, so the accessible name is matched with
+  // a prefix regex rather than an exact string.
+  await screen.findByRole('heading', { name: /^Session details/ });
 }
 
 function renderPage(initialPath = `/submissions/${SUB_ID}`) {
@@ -1129,18 +1132,21 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
     expect(sectionTitles[0]).toBe('Abstract');
     expect(sectionTitles[1]).toBe('Form answers');
     expect(sectionTitles[2]).toMatch(/^Reviews/);
-    expect(sectionTitles[3]).toBe('Session details');
+    // DEC-908 (findings wave 5 amendment): the caption now shares the same
+    // h2 head row as the label, so the h2's textContent carries both --
+    // matched with a prefix regex, same shape as Reviews' own count suffix.
+    expect(sectionTitles[3]).toMatch(/^Session details/);
     expect(sectionTitles.length).toBe(4);
 
     // Session details renders WITHOUT any expand click: its Tracks/Format/
     // Participants content is already in the DOM, and there is no trigger
     // button to click.
-    expect(screen.getByRole('heading', { name: 'Session details' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^Session details/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Edit tracks' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Session details/ })).not.toBeInTheDocument();
 
-    // Eyebrow micro-label.
-    expect(screen.getByText('EDITABLE UNTIL THE SCHEDULE IS PUBLISHED')).toBeInTheDocument();
+    // Caption sits on the section head, right-flushed beside the label.
+    expect(screen.getByText('Editable until the schedule is published')).toBeInTheDocument();
 
     // Meta is gone outright -- neither heading nor its Created/Updated/
     // Accepted lines render anywhere on the page.
@@ -1238,6 +1244,82 @@ describe('SubmissionDetailPage render: DEC-908 frame anatomy', () => {
     expect(
       screen.getByText('Adding a co-presenter emails them a portal link · the lead presenter is not changed'),
     ).toBeInTheDocument();
+  });
+
+  // DEC-908 (findings wave 5 amendment): Session details reads as a
+  // label-left definition grid (TRACKS/FORMAT/AUDIENCE LEVEL, never h3
+  // sub-headings) with the caption sharing the section head, and the
+  // Participants ROLE column is always a chip.
+  it('renders the caption on the section head, TRACKS/FORMAT/AUDIENCE LEVEL as grid labels, and role chips for lead + co-presenter', async () => {
+    const detail = baseDetail({
+      trackIds: ['t1'],
+      participants: [
+        {
+          id: 'p1',
+          contactId: 'c1',
+          name: 'Jamie Speaker',
+          email: 'jamie@example.com',
+          title: null,
+          company: 'Fieldnote Docs',
+          role: 'speaker',
+          order: 0,
+          visible: true,
+          inviteStatus: 'accepted',
+        },
+        {
+          id: 'p2',
+          contactId: 'c2',
+          name: 'Riley Moderator',
+          email: 'riley@example.com',
+          title: null,
+          company: null,
+          role: 'moderator',
+          order: 1,
+          visible: true,
+          inviteStatus: 'none',
+        },
+      ],
+    });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: {
+        items: [{ id: 't1', name: 'Frontend' }],
+        total: 1,
+        page: 1,
+        perPage: 20,
+      },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+    });
+
+    renderPage();
+    await openSessionDetails();
+
+    // The caption sits on the section's own head, beside the label -- not
+    // in a paragraph below it.
+    const sectionHead = document.querySelector('.chq-detail-session-details > .chq-detail-section-title') as HTMLElement;
+    expect(within(sectionHead).getByText('Session details')).toBeInTheDocument();
+    expect(within(sectionHead).getByText('Editable until the schedule is published')).toBeInTheDocument();
+
+    // TRACKS/FORMAT/AUDIENCE LEVEL render as grid labels, never headings.
+    await waitFor(() => {
+      expect(screen.getByText('Tracks')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Tracks').tagName).not.toBe('H3');
+    expect(screen.getByText('Format').tagName).not.toBe('H3');
+    expect(screen.getByText('Audience level').tagName).not.toBe('H3');
+    expect(screen.queryByRole('heading', { name: 'Tracks' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Format' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Audience level' })).not.toBeInTheDocument();
+
+    // A lead and a co-presenter each render a role chip in the ROLE column.
+    const table = screen.getByRole('table');
+    const rows = within(table).getAllByRole('row').slice(1);
+    const leadChip = within(rows[0]!).getByText('LEAD');
+    expect(leadChip).toHaveClass('chq-role-chip', 'chq-role-chip-lead');
+    const coChip = within(rows[1]!).getByText('CO-PRESENTER');
+    expect(coChip).toHaveClass('chq-role-chip', 'chq-role-chip-co');
   });
 
   it('moves History into the rail aside, below Speaker', async () => {
