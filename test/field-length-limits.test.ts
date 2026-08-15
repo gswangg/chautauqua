@@ -607,6 +607,11 @@ export const UNBOUNDED_STRING_FIELDS: Array<{ file: string; field: string; reaso
     reason: "enum validated against the closed INVITE_STATUS_VALUES set",
   },
   {
+    file: "api/submissions.ts",
+    field: "role",
+    reason: "enum validated against the closed PARTICIPANT_ROLE_OPTIONS set (DEC-900 amendment, findings wave 13)",
+  },
+  {
     file: "review/plans-reviewers.ts",
     field: "userId",
     reason: "an id looked up against the DB, not free text",
