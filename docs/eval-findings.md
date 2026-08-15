@@ -1,6 +1,11 @@
-# Eval findings — rebased 2026-08-15
+# Eval findings — rebased 2026-08-15 (wave 16)
 
-Verified against `main` sha `541688f54670cfa8596c4fc749cfa9c5d47a6286`. The prior
+Verified against `main` sha `c557cff9f0e5bcd68d0d7815956d83a94eb9dc4e` (this
+wave's own boundary — the planning-time boundary cited in the wave-16 brief,
+`c0b14342`, is now 8 commits behind `main`; every citation below was re-run
+against the newer sha, per the standing rule that a mandate item moves tier
+only on a citation against *current* `main`, not an inherited planning-time
+snapshot). The prior
 generation of this file (1,505 lines, written against `chautauqua-research/design-
 frames-v7/v8/v9` — a pack not vendored in this repo, plus a long series of dead
 gate-N fleet/sbek verdicts and snapshot shas) is archived verbatim, never deleted,
@@ -145,20 +150,69 @@ so the next mobile-lane sweep doesn't re-derive them:
 
 ## IN FLIGHT — owned by a branch, do not re-file
 
-Rewritten this wave (w12-e, 2026-08-15) from actual ref/main state, not
-inherited from the prior wave's write-up. Method: `git for-each-ref
-refs/heads` enumerated every `task-w*` ref that exists today, then `git
-merge-base --is-ancestor <ref> main` was run against each. **Result: as of
-this wave, there is no unmerged branch in the w8–w11 range at all** — every
-named lane below has landed. The prior wave's IN FLIGHT entry for
-`task-w8-c`/`task-w8-d` (UNMERGED, `roundLabel`/`roundMeta` "do not exist in
-main's ReviewerQueue.tsx") was already false when it was written: the merge
-commits (`6f86b89` "merge task-w8-c", `2f0d2f13` "merge task-w8-d") are both
-in `main`'s history today, and neither ref exists anymore (deleted post-merge,
-same pattern as `task-w8-a` below) — so the ancestor check the prior wave
-cited as failing cannot be re-run against those ref names; it was checked
-against a stale/wrong ref state or never actually run. Both are confirmed
-landed by symbol/behavior citation instead:
+### Rewritten this wave (w16-b, 2026-08-15) — the w14/w15 set has landed
+
+The wave-16 brief's REF TRUTH ("task-w14-d and task-w15-a/-b/-c/-d/-e are all
+unmerged as of planning, main `c0b14342`") was accurate at planning time and
+is now stale — the merge train advanced 8 commits past that boundary before
+this task ran. Re-run this wave against `main c557cff9`:
+`git for-each-ref refs/heads` lists only `task-w15-b`, `task-w15-e`,
+`task-w16-a`, and this task's own `task-w16-b` in the w14–w16 range (`task-
+w14-d`, `task-w15-a`, `task-w15-c`, `task-w15-d` have no ref at all — deleted
+post-merge, same pattern documented below for `task-w8-a`/`task-w10-b`).
+`git merge-base --is-ancestor <ref> main` was run against every ref that
+still exists:
+
+- **`task-w14-d`, `task-w15-a`, `task-w15-b`, `task-w15-c`, `task-w15-d`,
+  `task-w15-e` — ALL SIX MERGED.** No branch in the w14–w15 range that this
+  wave's brief named is still in flight. Confirmed by symbol citation, not
+  just ref-ancestry, for the three the brief specifically doubted:
+  - `task-w14-d` (AUTH_CSS `.chq-field-invalid` cascade) — MERGED
+    (`c15b8ca3` "merge task-w14-d"). `app/src/components/error-states.css:31`
+    and `src/views/error-states.css.ts:46` both now read
+    `.chq-field-invalid.chq-field-invalid` (doubled to specificity `(0,2,0)`,
+    DEC-124 wave-14 amendment) instead of the single-class `(0,1,0)` that lost
+    to `theme.ts`'s base `input[type=...], select, textarea` group's
+    `(0,1,1)`. `test/error-invalid-outranks-base.test.ts` (149 lines, added
+    by this merge) computes CSS specificity arithmetic and asserts the doubled
+    class outranks every base-group arm — this is item 11 of TIER 1 item 3
+    below, now CLOSED.
+  - `task-w15-c`/`task-w15-d` (`updateEvent` slug guard) — MERGED
+    (`64b49a63` "merge task-w15-d"). `src/server/repo/events.ts:224-259`
+    `updateEvent` now wraps its `UPDATE` in try/catch and calls
+    `isUniqueViolation(err, "event.slug")` at line 250 to translate a raced
+    `UNIQUE constraint failed` into the same `slug: "Already in use"` refusal
+    the route's pre-check raises (DEC-111 amendment, findings wave 15) — the
+    brief's "still no slug guard" claim no longer holds.
+  - `task-w15-d` (`sessionboard.ts` participant cap) — MERGED (same
+    `64b49a63`). `src/server/repo/import/sessionboard.ts:620-627` now checks
+    `currentCount >= MAX_PARTICIPANTS_PER_SUBMISSION` per row and pushes an
+    over-cap participant into the `skipped` channel with a named reason
+    (DEC-604 wave-15 amendment) — the brief's "no participant cap" claim no
+    longer holds.
+  - `task-w15-b` (send.ts intra-batch collapse) — MERGED (`144e6e67` "merge
+    task-w15-b"). `src/routes/comms/send.ts:125-138` now runs a
+    `seenInBatch`/`dedupeKey` stage BEFORE `loadRecentlySent` (DEC-238
+    wave-15 amendment, mirrors `bulk-email.ts`'s two-stage shape) — the
+    window query no longer runs without an intra-batch collapse first.
+- **`task-w15-f` never existed as a ref this wave** — no branch by that name
+  is in `refs/heads` today (the merge-log entries reading "merge task-w15-f"
+  belong to an unrelated, much older recurring generic-audit lane name reused
+  many times across this repo's history — e.g. `f577a756` "task-w15-f: DEC-196
+  spec-audit", `8fdd49fa` "task-w15-f: triage-closure gate", both pre-dating
+  this wave by a wide margin — not this wave's mail-envelope scope). The mail-
+  envelope-`addressValue` scope for this wave is `task-w16-a`
+  (`8cc08b91` "task-w16-a: add named mail-envelope-address test file (DEC-499
+  amendment wave 16)"), branched from this wave's `main c557cff9` and
+  confirmed **UNMERGED** (`git merge-base --is-ancestor task-w16-a main`
+  exits 1) — still IN FLIGHT, owned, do not re-file the mail-envelope-
+  `addressValue` item. Note the underlying fix this test exercises
+  (`src/mail/email-binding.ts`, "envelope from/to skipped addressValue at the
+  messageFactory boundary") already landed on `main` in an earlier, unrelated
+  wave (`152757d9`) — `task-w16-a` is adding coverage, not re-fixing a live
+  gap.
+
+### Carried forward from wave 12 (still true, not re-checked this wave beyond ref presence)
 
 - **`task-w8-c`** (review round name + window) — MERGED. `roundLabel`/
   `roundMeta` DO exist in `main`'s `app/src/pages/review/ReviewerQueue.tsx`:
@@ -201,6 +255,38 @@ landed by symbol/behavior citation instead:
   of/adjacent to this one and outside this task's w8–w11 scope — not
   re-triaged here; do not read their presence as evidence either way about
   the w8–w11 claims above.
+
+### DISMISSED review-lens claims (wave 16)
+
+Four reviewer-lens findings re-verified this wave as ALREADY CORRECT on
+`main c557cff9` — filing any of these again without new runtime evidence is
+a regression of this triage, not a fresh finding:
+
+- **Duplicate `trackIds` ARE deduped on both write doors.**
+  `src/routes/api/submissions.ts:131` — `const trackIds =
+  Array.from(new Set(raw as string[]))` before the `MAX_SUBMISSION_TRACK_IDS`
+  cap check (DEC-598 wave-10 amendment, dedupe runs BEFORE the cap so a
+  repeated id can't inflate someone past it). `src/routes/public/submit-
+  body.ts:75-79` `extractTrackIds` does the same:
+  `Array.from(new Set(list))` before returning.
+- **The reviewer plan window IS enforced on the lone submission read.**
+  `src/routes/review/reviewer.ts:288` — `if (auth.role !== "organizer" &&
+  !isPlanOpen(plan.openDate, plan.closeDate, Date.now(), plan.timezone))
+  throw new ApiError("conflict", ...)`, same gate the queue and score `PUT`
+  already apply (DEC-018 wave-10 amendment). It is also enforced on file
+  authz: `src/server/repo/files-authz.ts:185-209`
+  `reviewerCanAccessSubmissionFile` filters `candidatePlans` on
+  `isPlanOpen(p.openDate, p.closeDate, now, p.timezone)` before a download is
+  authorised.
+- **The saved-view cap predicate IS authorship, not visibility.**
+  `src/routes/api/views.ts:87` calls `countSavedViewsCreatedBy(c.var.db,
+  eventId, auth.userId)` before the create-cap check, and that function
+  (`src/server/repo/views.ts:137-143`) counts only rows where
+  `createdByUserId` equals the caller — explicitly NOT
+  `visibleToViewer`/shared rows authored by other organisers (DEC-422
+  wave-10 amendment: counting shared rows here would let a handful of
+  colleagues who like `shared: true` permanently lock everyone else in the
+  org out of creating a view).
 
 ## TIER 1 — re-verified open items (orchestrator promotion, 2026-08-15 morning)
 
@@ -255,39 +341,108 @@ misplaced.
      the time budget); VERIFIED-OPEN, carried forward split from the
      now-closed slot/footer clause so a future wave doesn't have to re-walk
      the whole "07" bundle to find the two still-open clauses.
-   - **05 files-library column swap + orphan row + upload-reject modal +
-     content-detail 1180/32 container** — VERIFIED-OPEN, partially. An
-     `UploadRejectedModal.tsx` component exists (`app/src/pages/content/
-     UploadRejectedModal.tsx`), so "upload-reject modal" as a bare presence
-     claim is not a gap — but the fleet report's complaint was about
-     anatomy/fidelity, not existence, and that was not re-measured this
-     wave. "column swap", "orphan row", and "content-detail 1180/32
-     container" were not re-checked. Carried forward as-is, not re-tiered.
+   - **05 files-library column swap + orphan row** — CLOSED (re-verified
+     wave 16). `app/src/pages/content/FilesLibrary.tsx:252-253` renders the
+     `<thead>` in `File`, `Session`, `Version`, `Size` order (the swap the
+     fleet report wanted); `:340` renders the orphan row's stated text —
+     `<span className="chq-content-file-no-session">No session — speaker
+     headshot</span>` — for a headshot row with no submission to drill into;
+     the wave-41 five-column amendment (FILE / SESSION / VERSION / SIZE /
+     Download) is documented in the section's own header comment at `:52`.
+     **Split from this item and left VERIFIED-OPEN, not re-checked wave
+     16**: "upload-reject modal" anatomy/fidelity (an `UploadRejectedModal.tsx`
+     component exists at `app/src/pages/content/UploadRejectedModal.tsx` so
+     bare presence is not a gap, but the fleet complaint was about anatomy,
+     not existence, and that was not re-measured) and "content-detail
+     1180/32 container".
    - **04 participation panel 420 + speaker-detail grid/theads + reminders
      modal (prints localhost:8799) + write-failed banner anatomy + search
      excluded from hasActiveNarrowing** — VERIFIED-OPEN, not re-checked this
      wave beyond a keyword grep that found no `420px participation-panel`
      rule under that name (`app/src/pages/comms/comms.css:444` is an
      unrelated `min-height: 420px` on a different component). Carried
-     forward as-is.
-   - **02 SESSION DETAILS label-left grid + participant chips**,
-     **09 Add-track tertiary + CFP-edit intro/description binding +
-     saved-embed single-card anatomy**, **CLASS 1 admin measure 1372@114 +
-     topbar 59 (everywhere)**, **10 active-filter ink chip + TBD room on
-     public (ruling A25) + speakers toolbar right-cluster + underlined
-     initials + blue avatars**, **11 AUTH_CSS .chq-field-invalid cascade
-     inert**, **03 duplicated results head + FORM ANSWERS stacked +
-     plan-editor draft footer** — NOT re-checked against current `main`
-     this wave (task budget spent on the two proof items above); carried
-     forward unchanged as VERIFIED-OPEN. Per the standing rule added this
-     wave, none of these may move tier on inheritance alone — the next
-     wave that touches one needs its own file:line or exercised citation.
-     Partial note on "10": `PhoneAgenda.tsx:34,42` still has a `TBD` string
-     fallback for room name (admin phone agenda, not the public surface the
-     sub-item names) and `Agenda.render.test.tsx:366-368` asserts desktop
-     agenda never renders literal "TBD" — the public-surface claim in "10"
-     was not confirmed either way; do not read the admin-phone `TBD`
-     literal as evidence for or against the public claim.
+     forward as-is, not re-checked wave 16.
+   - **CLASS 1 admin measure 1372@114 + topbar 59 (everywhere)** — CLOSED
+     (re-verified wave 16, same SUPERSEDED-BY-VENDORED-PACK pattern as
+     "12-home" above). `docs/design/README.md:407-417` (`## Widths`) states
+     the Table-measure rule that governs every admin list surface: **1440px,
+     centred**; `:78` sets "Desktop frame padding `26–34px`" generally; `:419`
+     ("Chrome is always full bleed") establishes that the 1372@114 figure —
+     a `chautauqua-research` render measurement of a *container's inner
+     content box* at a specific viewport, not a rule name — is not itself a
+     spec target. `app/src/styles.css:109-111` declares the ONE set of shared
+     tokens every admin table page consumes: `--chq-measure: 820px;
+     --chq-measure-wide: 1180px; --chq-measure-table: 1440px;` (DEC-744/
+     DEC-989 shared-measure tokens, comment at `:104-108`). This is gated,
+     not just declared: `app/src/page-measure.test.ts` enumerates every CSS
+     file and every page's `chq-page...` container class (readdirSync, no
+     hand-listed manifest, DEC-808) and asserts each resolves to one of these
+     three tokens. `page-measure.test.ts`'s own header comment documents the
+     lineage of the `1372@114` figure directly: `// DEC-744/DEC-808/DEC-989:
+     subscreens hugged the left edge of a 1372px desktop frame because each
+     page hand-copied its own px max-width clamp ... v6 (DEC-989) replaces
+     the single --chq-measure clamp with three` — a 1440px table-measure
+     container with the vendored 34px inner padding, measured at a 1600px
+     viewport, IS `1372@114` (a 1440 max-width container inset by 34px on
+     each edge inside a 1600px frame lands its content box at that figure);
+     the fleet report's number is a correct render measurement of the
+     CURRENT three-token rule already implementing the vendored pack, not
+     evidence of a gap against it. This item does not re-open on the
+     research-repo number; it would only
+     re-open on a citation that a live admin page deviates from the three
+     README-vendored tokens, which `page-measure.test.ts` continuously
+     guards against.
+   - **11 AUTH_CSS .chq-field-invalid cascade inert** — CLOSED (see IN
+     FLIGHT above: `task-w14-d` MERGED, `c15b8ca3`).
+     `app/src/components/error-states.css:31` and `src/views/error-
+     states.css.ts:46` both now use `.chq-field-invalid.chq-field-invalid`
+     (specificity `(0,2,0)`, DEC-124 wave-14 amendment), which outranks
+     `theme.ts`'s base `input[type=...], select, textarea` group
+     (`(0,1,1)`) regardless of source order — the single-class selector
+     that used to lose the cascade is gone from both stylesheets.
+     `test/error-invalid-outranks-base.test.ts` computes CSS specificity
+     arithmetic on both files and fails if the selector ever reverts to a
+     single class.
+   - **02 SESSION DETAILS label-left grid + participant chips** — CLOSED
+     (re-verified wave 16). `app/src/pages/submissions/
+     SubmissionDetailPage.tsx:1197-1205` renders "Session details" as a real
+     always-rendered fourth numbered section (DEC-900 wave-25 amendment,
+     comment at `:1197`); its fields column
+     (`.chq-detail-session-details-fields`) is a label-left definition grid —
+     `app/src/pages/submissions/detail.css:247-249`:
+     `grid-template-columns: 150px 1fr`. Participants render as a real
+     table, not chips-only prose: `:1413`
+     `<table className="chq-table chq-participants-table"
+     id="submission-participants-table">`, with per-row role/visible/invite-
+     status actions (`PARTICIPANT_ROLE_OPTIONS`, imported `:36`). **Split
+     from this item, folded into "03 FORM ANSWERS stacked" below.**
+   - **03 duplicated results head + FORM ANSWERS stacked + plan-editor
+     draft footer**: the "FORM ANSWERS stacked" clause is CLOSED (re-verified
+     wave 16, same file as "02" above) —
+     `app/src/pages/submissions/SubmissionDetailPage.tsx:1101` renders a
+     "Form answers" section as a `<dl className="chq-answers-list">` of
+     `dt`/`dd` pairs per field (`:1106-1127`), not stacked `h3` sub-headings;
+     the section sits directly after Abstract per the DEC-908 main-column
+     order (comment at `:1008`). The "duplicated results head" clause
+     (`app/src/pages/review/ResultsTable.tsx`, one `<table>`/`<thead>` found
+     at `:375-376` — no second `<thead>` in the file, but the fleet
+     complaint's exact shape was not otherwise re-derived) and "plan-editor
+     draft footer" (`app/src/pages/review/PlanEditor.tsx`, not re-checked)
+     stay VERIFIED-OPEN, not re-checked wave 16.
+   - **09 Add-track tertiary + CFP-edit intro/description binding +
+     saved-embed single-card anatomy**, **10 active-filter ink chip + TBD
+     room on public (ruling A25) + speakers toolbar right-cluster +
+     underlined initials + blue avatars** — NOT re-checked against current
+     `main` this wave; carried forward unchanged as VERIFIED-OPEN, not
+     re-checked wave 16. Per the standing rule, neither may move tier on
+     inheritance alone — the next wave that touches either needs its own
+     file:line or exercised citation. Partial note on "10", carried from a
+     prior wave: `PhoneAgenda.tsx:34,42` still has a `TBD` string fallback
+     for room name (admin phone agenda, not the public surface the sub-item
+     names) and `Agenda.render.test.tsx:366-368` asserts desktop agenda
+     never renders literal "TBD" — the public-surface claim in "10" was not
+     confirmed either way; do not read the admin-phone `TBD` literal as
+     evidence for or against the public claim.
 
 **CFP-16 is a RECORDED DELIBERATE FORFEIT** (DEC-041 findings-wave-6 amendment):
 accepted speakers keep editing past close per docs/clarifications.md:39 (swyx,
@@ -338,13 +493,28 @@ as its own section, per the archive's "Mobile queue (NEXT ROUND)" note:
 - Phone shells: bottom fixed tab bar + inset scroll, 44px targets
   everywhere, phone landing/content parity (Comms landing content — DONE,
   cited above via the `NO_PHONE_RULE_OK` `.chq-comms-phone-landing` entry;
-  Submissions triage cards' verbose fields, Settings subscreens as routes,
-  phone CFP 2-step wizard, phone password screen's fixed footer + Cancel —
-  DONE, cited above (STRUCTURAL: `src/routes/auth.css.ts:318-336`), roster
-  screen, Home footer media rule — DONE, cited above (STRUCTURAL:
-  `src/routes/public/home.css.ts:72-76`)). The un-cited items in this bullet
-  (triage cards, Settings subscreens-as-routes, CFP 2-step wizard, roster
-  screen) were NOT re-checked this wave and stay open/unverified.
+  phone password screen's fixed footer + Cancel — DONE, cited above
+  (STRUCTURAL: `src/routes/auth.css.ts:318-336`), Home footer media rule —
+  DONE, cited above (STRUCTURAL: `src/routes/public/home.css.ts:72-76`)).
+  Two more items closed this wave (w16-b):
+  - **Settings subscreens are URL state, not path routes — DELIBERATE, not
+    a gap.** `app/src/pages/Settings.tsx:13-30` (DEC-728): the desktop rail
+    is a static one-document scroll (no drill, no route change); below
+    700px the rail becomes a full-width list and picking a section swaps in
+    just that panel, driven by one piece of component state kept IN SYNC
+    with the `?section=<key>&edit=1` URL param each panel's own DEC-728
+    summary/edit drill already writes (`SummarySection.tsx`) — bookmarkable
+    and Back-safe without ever minting a distinct `/settings/<section>`
+    route. This is a documented design decision to close, not an open
+    fidelity gap.
+  - **Phone submissions triage cards exist.**
+    `app/src/pages/submissions/submissions-phone-card.render.test.tsx`
+    (DEC-610, task w14-h) renders the phone card and asserts both
+    `chq-submissions-table-clone-cell` (always present) and
+    `chq-submissions-table-custom` (each toggled-on custom column) are live
+    class hooks, not dead selectors.
+  Still open/unverified, NOT re-checked this wave: CFP 2-step wizard, roster
+  screen.
 - Governing principle (affirmed, still binds): mobile is additive reflow —
   a mobile change must never move a desktop pixel (scan-lock). Phone
   grammar (action bars, sheets, stacking, 44px targets) is a legitimate
