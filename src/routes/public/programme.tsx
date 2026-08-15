@@ -12,7 +12,8 @@ import type { ScheduleBreak } from "../../server/repo/breaks";
 import { ThemeStyles } from "../../views/theme";
 import { PROGRAMME_CSS } from "./programme.css";
 import { eventDatesLine, setCacheHeaders } from "./shell";
-import { formatDay, formatStartTime24, SpeakerNames } from "./cards";
+import { formatDay, SpeakerNames } from "./cards";
+import { clockHMM } from "../../domain/clock";
 import { PublicEmptyState } from "./empty-state";
 import { publicNotFound } from "./not-found";
 import { publicRoomLabel } from "../../domain/schedule";
@@ -69,13 +70,13 @@ function ProgrammeDay(props: { day: string; items: PublicAgendaItem[]; breaks: S
       {rows.map((row) =>
         row.kind === "break" ? (
           <div class="chq-prog-row chq-prog-break">
-            <div class="chq-prog-row-time">{formatStartTime24(row.brk.startMin)}</div>
+            <div class="chq-prog-row-time">{clockHMM(row.brk.startMin)}</div>
             <div class="chq-prog-row-body">{formatBreakLabel(row.brk)}</div>
           </div>
         ) : (
           <div class="chq-prog-row">
             <div class="chq-prog-row-time">
-              {formatStartTime24(row.item.startMin)}–{formatStartTime24(row.item.endMin)}
+              {clockHMM(row.item.startMin)}–{clockHMM(row.item.endMin)}
             </div>
             <div class="chq-prog-row-body">
               <div class="chq-prog-row-title">{row.item.title}</div>

@@ -25,6 +25,7 @@ import { CONTENT_STATUS_LABELS } from '../content/types';
 import { EmptyState } from '../../components/EmptyState';
 import { formatBytes } from '../content/format';
 import { publicRoomLabel } from '../../lib/room-label';
+import { clockHHMM } from '../../lib/clock';
 import { DEC_930 } from '../../../../src/decisions';
 import type { SpeakerDetailResponse, SpeakerDetailTaskStatus } from './speakerDetail';
 import './speakers.css';
@@ -56,15 +57,9 @@ function taskStatusClass(status: SpeakerDetailTaskStatus): string {
   return `chq-speakers-status chq-speakers-status-${status}`;
 }
 
-function formatClockTime(minutesFromMidnight: number): string {
-  const h = Math.floor(minutesFromMidnight / 60);
-  const m = minutesFromMidnight % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
 function scheduledLabel(scheduled: SpeakerDetailResponse['sessions'][number]['scheduled']): string {
   if (!scheduled) return 'Not placed';
-  const slot = `${formatDayLabel(scheduled.day)} ${formatClockTime(scheduled.startMin)}–${formatClockTime(scheduled.endMin)}`;
+  const slot = `${formatDayLabel(scheduled.day)} ${clockHHMM(scheduled.startMin)}–${clockHHMM(scheduled.endMin)}`;
   return `${slot}, ${publicRoomLabel(scheduled.roomName)}`;
 }
 

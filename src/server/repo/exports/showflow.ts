@@ -10,7 +10,8 @@ import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { chunkIds } from "../../../lib/chunk";
 import { DEC_055, DEC_022 } from "../../../decisions";
-import { type ExportTable, EXPORT_MAX_ROWS, buildTable, minutesToClock } from "./table";
+import { type ExportTable, EXPORT_MAX_ROWS, buildTable } from "./table";
+import { clockHHMM } from "../../../domain/clock";
 import { getRecordPrefix } from "./common";
 import { listBreaksForEvent } from "../breaks";
 
@@ -83,8 +84,8 @@ export function shapeShowflowExport(inputs: ShowflowExportInput[]): ExportTable 
     s.title,
     s.description,
     s.day ?? "",
-    s.startMin !== null ? minutesToClock(s.startMin) : "",
-    s.endMin !== null ? minutesToClock(s.endMin) : "",
+    s.startMin !== null ? clockHHMM(s.startMin) : "",
+    s.endMin !== null ? clockHHMM(s.endMin) : "",
     s.room ?? "",
     s.tracks.join("; "),
     s.speakers.join("; "),

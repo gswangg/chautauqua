@@ -5,25 +5,15 @@
 
 import type { BlockedInterval, Conflict, PlacedSession } from "../../../domain/schedule";
 import { nextFreeSlot } from "../../../domain/schedule";
-import { DEC_010, DEC_652 } from "../../../decisions";
+import { clockHMM } from "../../../domain/clock";
+import { DEC_010, DEC_652, DEC_900 } from "../../../decisions";
 import type { ConflictResolution, ConflictRow, ConflictSessionInfo, NextFreeSlotParams, PlacementSuggestion } from "./types";
 
 void DEC_010;
 void DEC_652;
+void DEC_900;
 
 const ROW_CAP = 5;
-
-/** DEC-652: "10:00" / "11:30" — the plain (unpadded-hour, zero-padded
- * minute) 24h clock label the mock uses for §04's suggestion/resolution
- * buttons. Distinct from src/routes/public/cards.tsx's 12h AM/PM formatter
- * (a different surface's convention) and app/src/pages/agenda/gridMath.ts's
- * 12h am/pm formatter (the grid's own convention) — each rendering context
- * owns its own clock format per this file's existing per-context pattern. */
-export function formatClockLabel(min: number): string {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return `${h}:${String(m).padStart(2, "0")}`;
-}
 
 /** DEC-370 agendaWork.conflicts rows: one row per findConflicts() pair
  * (never re-derives conflicts itself), capped to ROW_CAP, resolved against
@@ -99,7 +89,7 @@ export function buildPlacementSuggestion(
     startMin: slot.startMin,
     roomId: slot.roomId,
     roomName: roomNameById.get(slot.roomId) ?? slot.roomId,
-    label: `Place at ${formatClockLabel(slot.startMin)}`,
+    label: `Place at ${clockHMM(slot.startMin)}`,
   };
 }
 
@@ -165,6 +155,6 @@ export function buildConflictResolutionFor(
     startMin: slot.startMin,
     roomId: slot.roomId,
     roomName: roomNameById.get(slot.roomId) ?? slot.roomId,
-    label: `Move ${laterInfo.ref} to ${formatClockLabel(slot.startMin)}`,
+    label: `Move ${laterInfo.ref} to ${clockHMM(slot.startMin)}`,
   };
 }

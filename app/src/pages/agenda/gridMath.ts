@@ -37,30 +37,12 @@ export function gridRowEnd(endMin: number, dayStartMin: number, gridMin: number)
   return minutesToGridRow(endMin, dayStartMin, gridMin);
 }
 
-/** Formats minutes-from-midnight as zero-padded 24-hour 'HH:MM' — the single
- * time grammar for the admin agenda (DEC-900 amendment, wave 39): the row
- * rail, card times, every placement aria-label and every toast all route
- * through this one function so the surface never mixes a '1:00pm' meridiem
- * form with a stripped, placeless '1:00'. */
-export function formatMinutes(minutes: number): string {
-  const h24 = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return `${String(h24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
-/** Formats minutes-from-midnight as unpadded 24-hour 'H:MM' — the single
- * grammar for the day grid's own left gutter rail (DEC-021 amendment,
- * w6-f): the frame reads `9:00 / 9:30 / 10:00`, never a zero-padded
- * `09:00`. This is the ONE formatter behind both the gutter's visible text
- * and its aria-label, so the two can never drift into two different time
- * grammars on the same rail. Distinct from formatMinutes above, which stays
- * zero-padded for card times, break bands and placement toasts/aria — the
- * gutter rail is the only surface reading the unpadded 'H:MM' form. */
-export function formatGutterTime(minutes: number): string {
-  const h24 = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return `${h24}:${String(m).padStart(2, '0')}`;
-}
+// DEC-900 amendment (wave 60): minutes-from-midnight clock formatting moved
+// to the single owner, src/domain/clock.ts, crossed here via
+// app/src/lib/clock.ts. What was formatMinutes (zero-padded, card
+// times/aria/toasts) is now clockHHMM; what was formatGutterTime (unpadded,
+// the gutter rail) is now clockHMM — import them from '../../lib/clock'
+// directly at each call site.
 
 // DEC-140 side-by-side lane assignment, reimplemented locally: the SPA
 // bundle (app/src, its own tsconfig `include`/vite root) can't reach across

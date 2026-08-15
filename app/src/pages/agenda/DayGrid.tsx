@@ -5,13 +5,12 @@ import { SessionCard } from './SessionCard';
 import { clusterConflictCaption } from './ConflictChip';
 import {
   assignLanes,
-  formatGutterTime,
-  formatMinutes,
   gridRowEnd,
   minutesToGridRow,
   snapToGrid,
   totalGridRows,
 } from './gridMath';
+import { clockHHMM, clockHMM } from '../../lib/clock';
 import { countOf } from '../../lib/plural';
 import type { ScheduleBreakRow } from './BreaksPanel';
 
@@ -299,9 +298,9 @@ export function DayGrid({
             key={`label-${minutes}`}
             className="chq-day-grid-time-label"
             style={{ gridColumn: 1, gridRow: rowIdx + 2 }}
-            aria-label={formatGutterTime(minutes)}
+            aria-label={clockHMM(minutes)}
           >
-            {formatGutterTime(minutes)}
+            {clockHMM(minutes)}
           </div>
         ) : null,
       )}
@@ -332,7 +331,7 @@ export function DayGrid({
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, roomId, minutes)}
                   onClick={() => handleCellPlace(roomId, minutes)}
-                  aria-label={`Place ${armed.ref} at ${formatMinutes(minutes)} in ${roomName}`}
+                  aria-label={`Place ${armed.ref} at ${clockHHMM(minutes)} in ${roomName}`}
                   data-room-id={colId}
                   data-start-min={minutes}
                 >
@@ -355,7 +354,7 @@ export function DayGrid({
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, roomId, minutes)}
                 onClick={() => handleCellPlace(roomId, minutes)}
-                aria-label={`Place ${armed.ref} at ${formatMinutes(minutes)} in ${roomName} — will clash with ${countOf(clashCount, 'session')}`}
+                aria-label={`Place ${armed.ref} at ${clockHHMM(minutes)} in ${roomName} — will clash with ${countOf(clashCount, 'session')}`}
                 data-room-id={colId}
                 data-start-min={minutes}
               />
@@ -396,7 +395,7 @@ export function DayGrid({
             style={{ gridColumn: `2 / span ${columns.length}`, gridRow: `${rowStart} / ${rowEnd}` }}
           >
             <span className="chq-agenda-break-band-label">
-              {`${formatMinutes(brk.startMin)} · ${brk.label}${brk.location ? ` · ${brk.location}` : ''} · ${brk.durationMin} min`}
+              {`${clockHHMM(brk.startMin)} · ${brk.label}${brk.location ? ` · ${brk.location}` : ''} · ${brk.durationMin} min`}
             </span>
           </div>
         );

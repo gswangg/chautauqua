@@ -21,7 +21,7 @@ import { type ExportTable } from "./table";
 
 export { EXPORT_KINDS, type ExportKind, isExportKind } from "./kinds";
 export { type ExportTable } from "./table";
-export { minutesToClock, EXPORT_MAX_ROWS } from "./table";
+export { EXPORT_MAX_ROWS } from "./table";
 export {
   SUBMISSIONS_HEADER,
   type SubmissionExportInput,

@@ -7,7 +7,6 @@ import { autoSchedule, findConflicts, nextFreeSlot, type PlacedSession } from ".
 import {
   buildConflictResolutionFor,
   buildPlacementSuggestion,
-  formatClockLabel,
   pickLaterConflictEntry,
   type ConflictSessionInfo,
 } from "../src/server/repo/overview";
@@ -139,14 +138,6 @@ describe("nextFreeSlot (DEC-652)", () => {
     });
 
     expect(viaNextFree).toEqual({ day: viaAuto!.day, startMin: viaAuto!.startMin, roomId: viaAuto!.roomId });
-  });
-});
-
-describe("formatClockLabel (DEC-652)", () => {
-  it("renders an unpadded-hour, zero-padded-minute 24h clock", () => {
-    expect(formatClockLabel(600)).toBe("10:00");
-    expect(formatClockLabel(690)).toBe("11:30");
-    expect(formatClockLabel(540)).toBe("9:00");
   });
 });
 

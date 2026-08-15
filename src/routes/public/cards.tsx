@@ -8,6 +8,7 @@ import type { CardFields } from "./query";
 import { formatDayLong } from "../../lib/event-time";
 import { normalizeHexColor } from "../../domain/color";
 import { publicRoomLabel } from "../../domain/schedule";
+import { clockHMM } from "../../domain/clock";
 // DEC-908 (wave-9 amendment): the ONE session-shape display vocabulary --
 // format's trailing-parenthetical reshaping ('Talk (30 min)' -> 'Talk, 30
 // min'), swept onto the public cards' own format readers so
@@ -130,17 +131,14 @@ export function speakerInitials(firstName: string, lastName: string): string {
   return `${f}${l}`.toUpperCase();
 }
 
-// DEC-768 (wave 48 amendment): ONE public clock grammar. A 12-hour
-// AM/PM formatter used to live here alongside this 24h formatter,
-// letting the same session print two clocks depending on which surface
-// rendered it (agenda/programme vs. sessions-list/detail). Every public
-// caller now uses this 24h formatter; a start-end range is
-// `${formatStartTime24(a)}–${formatStartTime24(b)}`.
-export function formatStartTime24(min: number): string {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return `${h}:${String(m).padStart(2, "0")}`;
-}
+// DEC-768 (wave 48 amendment): ONE public clock grammar. A 12-hour AM/PM
+// formatter used to live here alongside a 24h formatter, letting the same
+// session print two clocks depending on which surface rendered it
+// (agenda/programme vs. sessions-list/detail). DEC-900 amendment (wave 60)
+// moved the 24h formatter itself to the single clock owner,
+// src/domain/clock.ts (clockHMM, unpadded 24h 'H:MM'); every public caller
+// imports it from there directly, so this file no longer declares a clock
+// formatter at all.
 
 const DESCRIPTION_SNIPPET_LEN = 160;
 
@@ -187,7 +185,7 @@ export function SessionSchedule(props: { session: PublicSession; fields?: CardFi
   }
   return (
     <div class="chq-pub-session-when">
-      <span class="chq-pub-session-time">{formatStartTime24(session.startMin)}</span>
+      <span class="chq-pub-session-time">{clockHMM(session.startMin)}</span>
       {fields.room ? <span class="chq-pub-session-room">{publicRoomLabel(session.roomName)}</span> : null}
     </div>
   );

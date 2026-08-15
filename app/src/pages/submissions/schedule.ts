@@ -9,6 +9,9 @@
 // dash -- so the organiser sees the same honest label a visitor would see.
 import { formatDayLabel } from '../../lib/dates';
 import { publicRoomLabel } from '../../lib/room-label';
+// DEC-900 amendment (wave 60): minutes-from-midnight -> zero-padded HH:MM
+// clock time via the single owner.
+import { clockHHMM } from '../../lib/clock';
 
 export interface SubmissionScheduleSlot {
   day: string;
@@ -17,16 +20,9 @@ export interface SubmissionScheduleSlot {
   roomName: string | null;
 }
 
-/** Render minutes-from-midnight as a zero-padded HH:MM clock time. */
-function formatClockTime(minutesFromMidnight: number): string {
-  const h = Math.floor(minutesFromMidnight / 60);
-  const m = minutesFromMidnight % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
 export function formatSubmissionScheduleLine(slot: SubmissionScheduleSlot): string {
   const dayLabel = formatDayLabel(slot.day);
-  const timeLabel = `${formatClockTime(slot.startMin)}–${formatClockTime(slot.endMin)}`;
+  const timeLabel = `${clockHHMM(slot.startMin)}–${clockHHMM(slot.endMin)}`;
   const roomLabel = publicRoomLabel(slot.roomName);
   return `${dayLabel} · ${timeLabel} · ${roomLabel}`;
 }

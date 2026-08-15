@@ -9,7 +9,6 @@ import {
   shapeSubmissionsExport,
   shapeAgendaExport,
   shapeShowflowExport,
-  minutesToClock,
   type SubmissionExportInput,
   type AgendaExportInput,
   type ShowflowExportInput,
@@ -24,15 +23,6 @@ describe("isExportKind", () => {
     expect(isExportKind("sponsors")).toBe(false);
     expect(isExportKind("")).toBe(false);
     expect(isExportKind(undefined)).toBe(false);
-  });
-});
-
-describe("minutesToClock", () => {
-  it("formats minutes-from-midnight as zero-padded HH:MM", () => {
-    expect(minutesToClock(0)).toBe("00:00");
-    expect(minutesToClock(9 * 60)).toBe("09:00");
-    expect(minutesToClock(9 * 60 + 5)).toBe("09:05");
-    expect(minutesToClock(23 * 60 + 59)).toBe("23:59");
   });
 });
 

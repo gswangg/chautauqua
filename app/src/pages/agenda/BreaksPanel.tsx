@@ -17,7 +17,7 @@
 import { useState } from 'react';
 import { apiDelete, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { formatMinutes } from './gridMath';
+import { clockHHMM } from '../../lib/clock';
 import { formatDayLabel } from '../../lib/dates';
 import { DEC_021 } from '../../../../src/decisions';
 import { OPTIONAL_SUFFIX } from '../../../../src/domain/form-copy';
@@ -80,10 +80,11 @@ function parseTimeToMinutes(value: string): number {
   return hours * 60 + minutes;
 }
 
+// DEC-900 amendment (wave 60): same zero-padded HH:MM grammar as clockHHMM
+// (the `<input type="time">` value shape happens to match the display
+// grammar exactly), so this delegates rather than re-deriving it.
 function minutesToTimeInput(startMin: number): string {
-  const hours = Math.floor(startMin / 60);
-  const minutes = startMin % 60;
-  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  return clockHHMM(startMin);
 }
 
 const EMPTY_FORM = { label: '', location: '', startTime: '', durationMin: '' };
@@ -302,7 +303,7 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged }: 
                 </li>
               ) : (
                 <li key={b.id} className="chq-breaks-row">
-                  <span className="chq-breaks-row-time">{formatMinutes(b.startMin)}</span>
+                  <span className="chq-breaks-row-time">{clockHHMM(b.startMin)}</span>
                   <span className="chq-breaks-row-meta">
                     {b.label}
                     {b.location ? ` · ${b.location}` : ''}
@@ -355,7 +356,7 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged }: 
               ) : (
                 <li key={b.id} className="chq-breaks-row">
                   <span className="chq-breaks-row-day">{formatDayLabel(b.day)}</span>
-                  <span className="chq-breaks-row-time">{formatMinutes(b.startMin)}</span>
+                  <span className="chq-breaks-row-time">{clockHHMM(b.startMin)}</span>
                   <span className="chq-breaks-row-meta">
                     {b.label}
                     {b.location ? ` · ${b.location}` : ''}
@@ -461,7 +462,7 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged }: 
           title="Remove this break?"
           body={
             <p>
-              {formatMinutes(pendingRemove.startMin)} · {pendingRemove.label}
+              {clockHHMM(pendingRemove.startMin)} · {pendingRemove.label}
               {pendingRemove.location ? ` · ${pendingRemove.location}` : ''} will be removed from this day. This cannot
               be undone.
             </p>

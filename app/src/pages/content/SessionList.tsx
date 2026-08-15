@@ -6,6 +6,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { formatRelativeDays, formatDayLabel } from '../../lib/dates';
 import { paginationSummary } from '../../lib/pagination-summary';
 import { publicRoomLabel } from '../../lib/room-label';
+import { clockHHMM } from '../../lib/clock';
 
 // w5-i (DEC-020 amendment quoted mock text, eval-findings.md STILL-PRESENT
 // residue): the Latest file column names EVERY kind that has files ("Slides
@@ -19,21 +20,14 @@ function latestFileSummary(item: ContentSubmissionListItem): string {
     .join(' · ');
 }
 
-/** Render minutes-from-midnight as a zero-padded HH:MM clock time (same
- * grammar as DeliverableDetail.tsx / submissions/schedule.ts). */
-function formatClockTime(minutesFromMidnight: number): string {
-  const h = Math.floor(minutesFromMidnight / 60);
-  const m = minutesFromMidnight % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
 /** w41-b (DEC-902 amendment): the worklist SESSION cell's subtitle --
  * 'REF · <day> <start>, <room>' once placed on the agenda, or the bare ref
- * (no '· ,' residue) when the submission hasn't been scheduled yet. */
+ * (no '· ,' residue) when the submission hasn't been scheduled yet. Time is
+ * zero-padded HH:MM via the single clock owner (DEC-900). */
 function formatSessionSubtitle(item: ContentSubmissionListItem): string {
   if (!item.scheduled) return item.ref;
   const dayLabel = formatDayLabel(item.scheduled.day);
-  const timeLabel = formatClockTime(item.scheduled.startMin);
+  const timeLabel = clockHHMM(item.scheduled.startMin);
   const roomLabel = publicRoomLabel(item.scheduled.roomName);
   return `${item.ref} · ${dayLabel} ${timeLabel}, ${roomLabel}`;
 }
