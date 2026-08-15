@@ -23,9 +23,9 @@ import {
   getBreakForEvent,
   listBreaksForEvent,
   listBreaksOutsideWindow,
-  MAX_BREAKS_PER_EVENT,
   updateBreak,
 } from "../src/server/repo/breaks";
+import { MAX_BREAKS_PER_EVENT } from "../src/domain/schedule";
 
 const DDL = `
 create table event (

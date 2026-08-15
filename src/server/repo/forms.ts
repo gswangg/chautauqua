@@ -325,10 +325,6 @@ export interface CreateFieldInput {
   rule?: FormFieldRule;
 }
 
-// Per-form question ceiling AND the write/echo burst bound for
-// reorderFields below (it issues one UPDATE per field).
-export const MAX_FORM_FIELDS = 200;
-
 export async function createField(db: Db, formId: string, input: CreateFieldInput): Promise<FormFieldRow> {
   const existing = await listFields(db, formId);
   const maxPosition = existing.reduce((max, f) => Math.max(max, f.position), -1);

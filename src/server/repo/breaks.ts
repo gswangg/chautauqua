@@ -23,6 +23,7 @@ import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
 import { ApiError } from "../http";
 import { DEC_022 } from "../../decisions";
+import { MAX_BREAKS_PER_EVENT } from "../../domain/schedule";
 
 void DEC_022;
 
@@ -61,14 +62,6 @@ function toRecord(row: {
     updatedAt: row.updatedAt.getTime(),
   };
 }
-
-// DEC-022 amendment: an event should never accumulate more than this many
-// break rows — a break is a small, organizer-curated set (coffee/lunch per
-// day), never a bulk-imported table. Bounded scan + loud refusal rather than
-// a silent truncation (field guide: "a JS cap over unbounded read -> count/
-// slice in SQL" — this is the SQL-side twin, matching src/server/repo/
-// agenda.ts's MAX_AGENDA_SCAN `.limit(N + 1)` + throw pattern).
-export const MAX_BREAKS_PER_EVENT = 200;
 
 /** Ordered day asc, start_min asc, id asc (field guide: pagination ONE
  * shape + `id asc` deterministic tiebreak). `day` narrows to a single day

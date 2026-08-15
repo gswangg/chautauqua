@@ -21,6 +21,7 @@ import { clockHHMM } from '../../lib/clock';
 import { formatDayLabel } from '../../lib/dates';
 import { DEC_021 } from '../../../../src/decisions';
 import { OPTIONAL_SUFFIX } from '../../../../src/domain/form-copy';
+import { MAX_BREAKS_PER_EVENT } from '../../lib/batch-caps';
 
 void DEC_021;
 
@@ -449,6 +450,7 @@ export function BreaksPanel({ eventId, day, breaks, outsideWindow, onChanged }: 
         <button type="button" className="chq-btn chq-btn-primary" onClick={() => void handleAdd()} disabled={adding}>
           {adding ? 'Adding…' : 'Add a break'}
         </button>
+        <span className="chq-breaks-cap-hint">Up to {MAX_BREAKS_PER_EVENT} breaks per event</span>
         {fieldErrors.day && (
           <span role="alert" className="chq-field-error">
             {fieldErrors.day}

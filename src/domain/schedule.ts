@@ -28,6 +28,13 @@ export function parseFormatDurationMin(label: string | null | undefined): number
  * the two bounds cannot drift apart. */
 export const MINUTES_PER_DAY = 1440;
 
+// DEC-422 (wave-67 amendment): the per-event schedule-break ceiling --
+// moved out of src/server/repo/breaks.ts (a drizzle-importing repo module
+// the SPA cannot import) so BreaksPanel's add-break control can disclose
+// it. Bounded scan + loud refusal on the read side (breaks.ts) is
+// unchanged; only the declaration moved.
+export const MAX_BREAKS_PER_EVENT = 200;
+
 export interface PlacedSession {
   submissionId: string;
   roomId: string | null;
