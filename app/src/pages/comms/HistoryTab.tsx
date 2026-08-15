@@ -5,7 +5,7 @@ import { DelayedLoading } from '../../components/DelayedLoading';
 import { EmptyState } from '../../components/EmptyState';
 import { RecentSends } from './RecentSends';
 import { paginationSummary } from '../../lib/pagination-summary';
-import type { SendRhythm } from './sendRhythm';
+import { formatSendRhythm, type SendRhythm } from './sendRhythm';
 import type { EmailBatchRow } from './types';
 
 // DEC-603 amendment (findings wave 8): GET /email-log pages like every list
@@ -81,8 +81,41 @@ export function HistoryTab({
       });
   }, [eventId, q, page]);
 
+  // DEC-603 amendment (wave 18): the head mirrors TemplatesTab's exactly --
+  // a breadcrumb back to Compose, the page title, and a count/rhythm line --
+  // plus a plain cookie-authed Export CSV anchor onto the SAME email-log
+  // export the row-level exports already ship (src/routes/api/exports.ts,
+  // kind=email-log), carrying only the filter this tab actually has (q).
+  // NOTE: Comms.tsx already renders its own "Comms" h1 unconditionally, and
+  // TemplatesTab already renders a second, page-scoped "Templates" h1 while
+  // mounted alongside it (see app/src/pages/comms/TemplatesTab.tsx:185) --
+  // there is no single-h1 rule on this page to reconcile with, so History
+  // follows the same two-h1 precedent rather than inventing a third pattern.
+  const countLine = rhythm
+    ? `${total} send${total === 1 ? '' : 's'} · ${formatSendRhythm(rhythm)}`
+    : `${total} send${total === 1 ? '' : 's'}`;
+  const exportParams = new URLSearchParams();
+  exportParams.set('format', 'csv');
+  if (q.trim()) exportParams.set('q', q.trim());
+  const exportHref = `/api/v1/events/${eventId}/export/email-log?${exportParams.toString()}`;
+
   return (
     <div className="chq-comms-history-tab">
+      <div className="chq-comms-history-head">
+        <div className="chq-comms-history-titles">
+          <button type="button" className="chq-link-button chq-comms-history-breadcrumb" onClick={goToCompose}>
+            &lsaquo; Comms
+          </button>
+          <h1 className="chq-page-title">History</h1>
+          <p className="chq-comms-head-subtitle">{countLine}</p>
+        </div>
+        {/* Plain cookie-authed anchor, same idiom as
+            app/src/pages/settings/ExportsPanel.tsx:87 -- no fetch, no blob. */}
+        <a className="chq-btn chq-btn-secondary chq-comms-history-export" href={exportHref}>
+          Export CSV
+        </a>
+      </div>
+
       {error && <div className="chq-error-banner">{error}</div>}
 
       <div className="chq-toolbar">

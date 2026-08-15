@@ -86,6 +86,68 @@ afterEach(() => {
 });
 
 describe('HistoryTab', () => {
+  // DEC-603 amendment (wave 18): the head mirrors TemplatesTab's -- a
+  // breadcrumb, an h1, and a count/rhythm line built from `total` + the
+  // `rhythm` prop -- plus an Export CSV anchor onto the existing email-log
+  // export (src/routes/api/exports.ts, kind=email-log) carrying only q.
+  it('renders the head with a count line built from total + rhythm, and an Export CSV anchor scoped to email-log + the live q', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([batch()], { total: 57 }),
+    });
+
+    render(
+      <MemoryRouter>
+        <HistoryTab
+          eventId={EVENT_ID}
+          templatesById={{}}
+          rhythm={{ sentLast7Days: 4, failedLast7Days: 0, lastSentAt: 1700000000000 }}
+        />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('You are in!');
+
+    expect(screen.getByRole('heading', { name: 'History' })).toBeInTheDocument();
+    const countLine = document.querySelector('.chq-comms-history-titles .chq-comms-head-subtitle')!;
+    expect(countLine).toHaveTextContent('57 sends');
+    expect(countLine).toHaveTextContent('4 sent in the last 7 days');
+
+    const exportLink = screen.getByRole('link', { name: 'Export CSV' });
+    const hrefBefore = new URL(exportLink.getAttribute('href')!, 'http://x');
+    expect(hrefBefore.pathname).toBe(`/api/v1/events/${EVENT_ID}/export/email-log`);
+    expect(hrefBefore.searchParams.get('q')).toBeNull();
+
+    const searchInput = screen.getByLabelText('Search email history');
+    fireEvent.change(searchInput, { target: { value: 'welcome' } });
+
+    await waitFor(() => {
+      const hrefAfter = new URL(screen.getByRole('link', { name: 'Export CSV' }).getAttribute('href')!, 'http://x');
+      expect(hrefAfter.searchParams.get('q')).toBe('welcome');
+    });
+
+    void fetchMock;
+  });
+
+  // Zero-state rule (this task's chosen behaviour): the Export CSV anchor
+  // stays present even with zero sends -- an export of an empty batch is
+  // harmless (the server returns a header-only CSV), and hiding the control
+  // would make the head disappear along with the batch table, which the
+  // fresh EmptyState's own "Compose" action already covers as the escape.
+  it('keeps the Export CSV anchor present (harmless) in the fresh empty state', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([]),
+    });
+
+    render(
+      <MemoryRouter>
+        <HistoryTab eventId={EVENT_ID} templatesById={{}} />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Nothing has been sent yet')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Export CSV' })).toBeInTheDocument();
+  });
+
   it('opens a recipient row with exactly one GET to the detail endpoint, and a second row shows its own body', async () => {
     const fetchMock = mockApi({
       [`GET /api/v1/events/${EVENT_ID}/email-log`]: (() => {
