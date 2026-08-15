@@ -1,4 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { apiList, apiPost, ApiError } from '../../lib/api';
 import { buildSubmissionsQuery } from '../submissions/filters';
 import { DEFAULT_FILTER_STATE, STATUS_LABELS, SUBMISSION_STATUSES, type SubmissionListItem, type SubmissionStatus } from '../submissions/types';
@@ -912,9 +913,9 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                     {icsUnscheduledIds.map((id) => (
                       <li key={id}>
                         {submissionLabel(id, preview)}{' '}
-                        <a href="/admin/agenda" className="chq-link-button">
+                        <Link to="/admin/agenda" className="chq-link-button">
                           Place on the agenda &rsaquo;
-                        </a>
+                        </Link>
                       </li>
                     ))}
                   </ul>
@@ -1027,9 +1028,9 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                 {icsUnscheduledIds.map((id) => (
                   <li key={id}>
                     {submissionLabel(id, preview)}{' '}
-                    <a href="/admin/agenda" className="chq-link-button">
+                    <Link to="/admin/agenda" className="chq-link-button">
                       Place on the agenda &rsaquo;
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -1083,9 +1084,9 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                   : ''}
               </h1>
             </div>
-            <a href="/admin/comms?tab=history" className="chq-comms-send-report-all-history">
+            <Link to="/admin/comms?tab=history" className="chq-comms-send-report-all-history">
               All history &rsaquo;
-            </a>
+            </Link>
           </div>
 
           <div className="chq-comms-send-report-grid">
@@ -1162,9 +1163,9 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               <button type="button" className="chq-btn chq-btn-secondary" onClick={reset}>
                 Compose another
               </button>
-              <a href="/admin/comms" className="chq-btn chq-btn-primary">
+              <Link to="/admin/comms" className="chq-btn chq-btn-primary">
                 Back to Comms
-              </a>
+              </Link>
             </div>
           </div>
         </section>

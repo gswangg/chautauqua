@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { apiList, apiPost, ApiError } from '../../lib/api';
 import { FormRow, ModalFrame } from '../../components/ModalFrame';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -341,7 +342,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
                 <ul className="chq-bulk-email-unsendable-templates">
                   {unavailable.map((t) => (
                     <li key={t.id}>
-                      <a href={`/admin/comms?tab=compose&template=${t.id}`}>Use in Comms compose</a>
+                      <Link to={`/admin/comms?tab=compose&template=${t.id}`}>Use in Comms compose</Link>
                     </li>
                   ))}
                 </ul>
@@ -406,7 +407,7 @@ export function BulkEmailModal({ contactIds, eventId, onClose }: Props) {
         <div className="chq-bulk-email-result">
           <p>{describeSendResult(sendResult, { one: 'email', many: 'emails' })}</p>
           <SendFailures failed={sendResult.failed ?? []} />
-          <a href="/admin/comms?tab=history">View in Comms history</a>
+          <Link to="/admin/comms?tab=history">View in Comms history</Link>
         </div>
       )}
 

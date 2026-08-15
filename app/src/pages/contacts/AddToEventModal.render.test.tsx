@@ -10,6 +10,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { AddToEventModal } from './AddToEventModal';
 import { mockApi, listEnvelope } from '../../test-utils/mockApi';
 import { PARTICIPANT_ROLE_OPTIONS } from '../../../../src/domain/participant-roles';
@@ -44,7 +45,11 @@ describe('AddToEventModal (DEC-714/DEC-734)', () => {
       'GET /api/v1/contacts/ct-1': NO_HISTORY,
     });
 
-    render(<AddToEventModal contact={CONTACT} onClose={() => {}} />);
+    render(
+      <MemoryRouter>
+        <AddToEventModal contact={CONTACT} onClose={() => {}} />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(screen.getByRole('option', { name: 'DevFlow Conf 2027' })).toBeInTheDocument();
@@ -67,7 +72,11 @@ describe('AddToEventModal (DEC-714/DEC-734)', () => {
       'GET /api/v1/contacts/ct-1': NO_HISTORY,
     });
 
-    render(<AddToEventModal contact={CONTACT} onClose={() => {}} />);
+    render(
+      <MemoryRouter>
+        <AddToEventModal contact={CONTACT} onClose={() => {}} />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(screen.getByRole('option', { name: 'DevFlow Conf 2027' })).toBeInTheDocument();
@@ -94,7 +103,11 @@ describe('AddToEventModal (DEC-714/DEC-734)', () => {
       'POST /api/v1/contacts/ct-1/add-to-event': { status: 201, body: { submissionId: 'sub-1' } },
     });
 
-    render(<AddToEventModal contact={CONTACT} onClose={() => {}} />);
+    render(
+      <MemoryRouter>
+        <AddToEventModal contact={CONTACT} onClose={() => {}} />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(screen.getByRole('option', { name: 'DevFlow Conf 2027' })).toBeInTheDocument();
@@ -130,7 +143,11 @@ describe('AddToEventModal defaults to the event in context (DEC-795)', () => {
       'GET /api/v1/contacts/ct-1': NO_HISTORY,
     });
 
-    render(<AddToEventModal contact={CONTACT} onClose={() => {}} />);
+    render(
+      <MemoryRouter>
+        <AddToEventModal contact={CONTACT} onClose={() => {}} />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect((screen.getByLabelText('Event') as HTMLSelectElement).value).toBe('ev-2');
@@ -147,7 +164,11 @@ describe('AddToEventModal defaults to the event in context (DEC-795)', () => {
       'GET /api/v1/contacts/ct-1': NO_HISTORY,
     });
 
-    render(<AddToEventModal contact={CONTACT} onClose={() => {}} />);
+    render(
+      <MemoryRouter>
+        <AddToEventModal contact={CONTACT} onClose={() => {}} />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect((screen.getByLabelText('Event') as HTMLSelectElement).value).toBe('ev-1');
@@ -166,7 +187,11 @@ describe('AddToEventModal advisory when the contact already has a submission on 
       ]),
     });
 
-    render(<AddToEventModal contact={CONTACT} onClose={() => {}} />);
+    render(
+      <MemoryRouter>
+        <AddToEventModal contact={CONTACT} onClose={() => {}} />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(screen.getByText(/Priya Raman is already on this event.*2 sessions/)).toBeInTheDocument();
@@ -185,7 +210,11 @@ describe('AddToEventModal advisory when the contact already has a submission on 
       'GET /api/v1/contacts/ct-1': NO_HISTORY,
     });
 
-    render(<AddToEventModal contact={CONTACT} onClose={() => {}} />);
+    render(
+      <MemoryRouter>
+        <AddToEventModal contact={CONTACT} onClose={() => {}} />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(screen.getByRole('option', { name: 'DevFlow Conf 2027' })).toBeInTheDocument();
@@ -206,7 +235,11 @@ describe('AddToEventModal advisory when the contact already has a submission on 
       ]),
     });
 
-    render(<AddToEventModal contact={CONTACT} onClose={() => {}} />);
+    render(
+      <MemoryRouter>
+        <AddToEventModal contact={CONTACT} onClose={() => {}} />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(screen.getByText(/already on this event.*1 session/)).toBeInTheDocument();

@@ -6,6 +6,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { BulkEmailModal } from './BulkEmailModal';
 import { mockApi, listEnvelope } from '../../test-utils/mockApi';
 
@@ -28,7 +29,11 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
       },
     });
 
-    render(<BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} onClose={() => {}} />);
+    render(
+      <MemoryRouter>
+        <BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} onClose={() => {}} />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Template')).toBeInTheDocument();
@@ -79,7 +84,11 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
       },
     });
 
-    render(<BulkEmailModal contactIds={['ct1', 'ct2']} eventId={EVENT_ID} onClose={() => {}} />);
+    render(
+      <MemoryRouter>
+        <BulkEmailModal contactIds={['ct1', 'ct2']} eventId={EVENT_ID} onClose={() => {}} />
+      </MemoryRouter>,
+    );
 
     fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'Hi' } });
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body' } });
@@ -116,7 +125,11 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
       'POST /api/v1/contacts/bulk-email': { sent: 1, failed: [] },
     });
 
-    render(<BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} onClose={() => {}} />);
+    render(
+      <MemoryRouter>
+        <BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} onClose={() => {}} />
+      </MemoryRouter>,
+    );
 
     fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'Hi' } });
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body' } });
@@ -159,7 +172,11 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
     });
 
-    render(<BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} onClose={() => {}} />);
+    render(
+      <MemoryRouter>
+        <BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} onClose={() => {}} />
+      </MemoryRouter>,
+    );
 
     const subjectInput = (await screen.findByLabelText('Subject')) as HTMLInputElement;
     const bodyInput = screen.getByLabelText('Body') as HTMLTextAreaElement;
@@ -182,7 +199,11 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
       ]),
     });
 
-    render(<BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} onClose={() => {}} />);
+    render(
+      <MemoryRouter>
+        <BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} onClose={() => {}} />
+      </MemoryRouter>,
+    );
 
     const select = (await screen.findByLabelText(/Template/)) as HTMLSelectElement;
     const okOption = within(select).getByRole('option', { name: 'Welcome' }) as HTMLOptionElement;
@@ -225,7 +246,11 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
       },
     });
 
-    render(<BulkEmailModal contactIds={['ct-01hqzxyzabc123']} eventId={EVENT_ID} onClose={() => {}} />);
+    render(
+      <MemoryRouter>
+        <BulkEmailModal contactIds={['ct-01hqzxyzabc123']} eventId={EVENT_ID} onClose={() => {}} />
+      </MemoryRouter>,
+    );
 
     fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'Hi {talk_title}' } });
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body' } });
@@ -259,7 +284,11 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
       },
     });
 
-    render(<BulkEmailModal contactIds={['ct1', 'ct2']} eventId={EVENT_ID} onClose={() => {}} />);
+    render(
+      <MemoryRouter>
+        <BulkEmailModal contactIds={['ct1', 'ct2']} eventId={EVENT_ID} onClose={() => {}} />
+      </MemoryRouter>,
+    );
 
     fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'Hi {talk_title}' } });
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body' } });
@@ -286,7 +315,11 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
       },
     });
 
-    render(<BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} onClose={() => {}} />);
+    render(
+      <MemoryRouter>
+        <BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} onClose={() => {}} />
+      </MemoryRouter>,
+    );
 
     fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'Hi' } });
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body' } });
@@ -319,7 +352,11 @@ describe('BulkEmailModal render smoke (CRM-11 template + preview)', () => {
       },
     });
 
-    render(<BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} onClose={() => {}} />);
+    render(
+      <MemoryRouter>
+        <BulkEmailModal contactIds={['ct1']} eventId={EVENT_ID} onClose={() => {}} />
+      </MemoryRouter>,
+    );
 
     fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'Hi' } });
     fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body' } });
