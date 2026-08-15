@@ -1164,30 +1164,41 @@ export function SubmissionDetailPage() {
           {/* DEC-900 (wave 25 amendment): V8 draws Session details as a real
               FOURTH numbered section -- always rendered, no disclosure. */}
           <section className="chq-detail-section chq-detail-session-details">
-            <h2 className="chq-detail-section-title">Session details</h2>
-            <p className="chq-detail-eyebrow chq-detail-session-details-eyebrow">
-              EDITABLE UNTIL THE SCHEDULE IS PUBLISHED
-            </p>
+            <h2 className="chq-detail-section-title chq-detail-section-title-row">
+              <span className="chq-detail-section-title-text">Session details</span>
+              <span className="chq-detail-session-details-caption">Editable until the schedule is published</span>
+            </h2>
             <div className="chq-detail-section-body chq-detail-session-details-body">
-              <div className="chq-detail-subsection">
-                <h3 className="chq-detail-subsection-title">Tracks</h3>
+              <div className="chq-detail-session-details-fields">
+                <span className="chq-detail-subsection-label">Tracks</span>
+                <div className="chq-detail-session-details-value">
               {tracksError && <div className="chq-error-banner">{tracksError}</div>}
               {!editingTracks ? (
                 <>
                   {trackNames.length === 0 ? (
-                    <p>No tracks assigned.</p>
+                    <>
+                      <p>No tracks assigned.</p>
+                      <button type="button" className="chq-btn chq-btn-tertiary" onClick={startEditingTracks}>
+                        Edit tracks
+                      </button>
+                    </>
                   ) : (
                     <ul className="chq-track-chips">
                       {trackNames.map((name, i) => (
-                        <li key={detail.trackIds[i]} className="chq-track-chip">
+                        <li
+                          key={detail.trackIds[i]}
+                          className={i === 0 ? 'chq-track-chip chq-track-chip-primary' : 'chq-track-chip'}
+                        >
                           {name}
                         </li>
                       ))}
+                      <li className="chq-track-chips-edit">
+                        <button type="button" className="chq-btn chq-btn-tertiary" onClick={startEditingTracks}>
+                          Edit tracks
+                        </button>
+                      </li>
                     </ul>
                   )}
-                  <button type="button" className="chq-btn chq-btn-tertiary" onClick={startEditingTracks}>
-                    Edit tracks
-                  </button>
                 </>
               ) : (
                 <div className="chq-detail-track-editor" id="submission-track-editor">
@@ -1242,9 +1253,8 @@ export function SubmissionDetailPage() {
               )}
               </div>
 
-              <div className="chq-detail-subsection chq-detail-format-audience-row">
-                <div className="chq-detail-format-audience-field">
-                  <h3 className="chq-detail-subsection-title">Format</h3>
+                <span className="chq-detail-subsection-label">Format</span>
+                <div className="chq-detail-session-details-value">
                   {formatError && <div className="chq-error-banner">{formatError}</div>}
                   {/* DEC-958 (wave 66 amendment): a named-field refusal
                       (format:'Invalid format'|'Not configured'|'Invalid
@@ -1285,8 +1295,8 @@ export function SubmissionDetailPage() {
                     imported form-field list formatField comes from --
                     reuses Format's optimistic-write + loud-rollback shape,
                     never a second write pattern. */}
-                <div className="chq-detail-format-audience-field">
-                  <h3 className="chq-detail-subsection-title">Audience level</h3>
+                <span className="chq-detail-subsection-label">Audience level</span>
+                <div className="chq-detail-session-details-value">
                   {audienceLevelError && <div className="chq-error-banner">{audienceLevelError}</div>}
                   {/* DEC-958 (wave 66 amendment): the route currently names
                       no dedicated audienceLevel field (it falls into the
@@ -1327,7 +1337,6 @@ export function SubmissionDetailPage() {
               </div>
 
               <div className="chq-detail-subsection">
-                <h3 className="chq-detail-subsection-title">Participants</h3>
               {participantsError && <div className="chq-error-banner">{participantsError}</div>}
               {detail.participants.length === 0 ? (
                 <p>No participants.</p>
@@ -1349,11 +1358,9 @@ export function SubmissionDetailPage() {
                   <table className="chq-table chq-participants-table" id="submission-participants-table">
                   <thead>
                     <tr>
-                      <th>Name</th>
-                      <th>Email</th>
+                      <th>Participant</th>
                       <th>Role</th>
-                      <th>Visible</th>
-                      <th>Invite status</th>
+                      <th>Email</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -1377,57 +1384,64 @@ export function SubmissionDetailPage() {
                       return (
                         <Fragment key={p.id}>
                           <tr>
-                            <td>{p.name}</td>
-                            <td>{p.email}</td>
-                            <td>{isLead ? 'LEAD' : 'CO-PRESENTER'}</td>
                             <td>
-                              <label className="chq-visible-toggle">
-                                <input
-                                  type="checkbox"
-                                  className="chq-check"
-                                  checked={p.visible}
-                                  disabled={visiblePending === p.id}
-                                  onChange={() => toggleParticipantVisible(p)}
-                                  aria-label={`Visible: ${p.name}`}
-                                />
-                              </label>
+                              <div className="chq-participant-name-cell">
+                                <span className="chq-participant-name-link">{p.name}</span>
+                                {p.company && <span className="chq-participant-company">{p.company}</span>}
+                              </div>
                             </td>
                             <td>
-                              <InviteStatusChip status={p.inviteStatus} />
+                              <span className={isLead ? 'chq-role-chip chq-role-chip-lead' : 'chq-role-chip chq-role-chip-co'}>
+                                {isLead ? 'LEAD' : 'CO-PRESENTER'}
+                              </span>
                             </td>
+                            <td className="chq-participant-email-cell">{p.email}</td>
                             <td>
-                              {!isLead && (
-                                <div className="chq-detail-participant-row-actions">
-                                  {/* DEC-900 (wave 25 amendment): a
-                                      participant already stored as
-                                      'co-presenter' has nothing left to
-                                      normalize onto -- only a moderator/
-                                      panelist row offers the link. */}
-                                  {p.role !== 'co-presenter' && (
+                              <div className="chq-detail-participant-actions-cell">
+                                <label className="chq-visible-toggle">
+                                  <input
+                                    type="checkbox"
+                                    className="chq-check"
+                                    checked={p.visible}
+                                    disabled={visiblePending === p.id}
+                                    onChange={() => toggleParticipantVisible(p)}
+                                    aria-label={`Visible: ${p.name}`}
+                                  />
+                                </label>
+                                <InviteStatusChip status={p.inviteStatus} />
+                                {!isLead && (
+                                  <div className="chq-detail-participant-row-actions">
+                                    {/* DEC-900 (wave 25 amendment): a
+                                        participant already stored as
+                                        'co-presenter' has nothing left to
+                                        normalize onto -- only a moderator/
+                                        panelist row offers the link. */}
+                                    {p.role !== 'co-presenter' && (
+                                      <button
+                                        type="button"
+                                        className="chq-link-button"
+                                        disabled={makingCoPresenterId === p.id}
+                                        onClick={() => makeCoPresenter(p)}
+                                      >
+                                        Make co-presenter
+                                      </button>
+                                    )}
                                     <button
                                       type="button"
                                       className="chq-link-button"
-                                      disabled={makingCoPresenterId === p.id}
-                                      onClick={() => makeCoPresenter(p)}
+                                      disabled={removingParticipantId === p.id}
+                                      onClick={() => removeParticipant(p)}
                                     >
-                                      Make co-presenter
+                                      Remove
                                     </button>
-                                  )}
-                                  <button
-                                    type="button"
-                                    className="chq-link-button"
-                                    disabled={removingParticipantId === p.id}
-                                    onClick={() => removeParticipant(p)}
-                                  >
-                                    Remove
-                                  </button>
-                                </div>
-                              )}
+                                  </div>
+                                )}
+                              </div>
                             </td>
                           </tr>
                           {Object.keys(rowFieldErrors).length > 0 && (
-                            <tr>
-                              <td colSpan={6}>
+                            <tr className="chq-detail-participant-error-row">
+                              <td colSpan={4}>
                                 {Object.keys(rowFieldErrors).length > 1 && (
                                   <SectionFieldErrors
                                     fields={rowFieldErrors}
