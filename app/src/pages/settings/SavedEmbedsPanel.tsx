@@ -63,6 +63,11 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
   const [codeOpenId, setCodeOpenId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<SavedEmbed | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // DEC-856 (wave 67 amendment): PATCH /embeds/:id's only named key on this
+  // panel's writers is `enabled` (the toggle) -- any other key the server
+  // ever throws here has no control on this row and renders labelled,
+  // never dropped and never collapsed into `error`.
+  const [rowFieldErrors, setRowFieldErrors] = useState<Record<string, Record<string, string>>>({});
 
   function load() {
     if (!eventId) return;
@@ -88,21 +93,33 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
   }
 
   async function handleToggle(embed: SavedEmbed) {
+    setRowFieldErrors((prev) => ({ ...prev, [embed.id]: {} }));
     try {
       await apiPatch(`/embeds/${embed.id}`, { enabled: !embed.enabled });
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to update saved embed');
+      // DEC-856: a fields map is never collapsed to err.message -- `enabled`
+      // routes to the toggle control itself, anything else renders labelled.
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setRowFieldErrors((prev) => ({ ...prev, [embed.id]: err.fields as Record<string, string> }));
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to update saved embed');
+      }
     }
   }
 
   async function handleDelete(embed: SavedEmbed) {
     setDeleting(true);
+    setRowFieldErrors((prev) => ({ ...prev, [embed.id]: {} }));
     try {
       await apiDelete(`/embeds/${embed.id}`);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to delete saved embed');
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setRowFieldErrors((prev) => ({ ...prev, [embed.id]: err.fields as Record<string, string> }));
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to delete saved embed');
+      }
     } finally {
       setDeleting(false);
       setPendingDelete(null);
@@ -153,6 +170,11 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
               options: embed.options,
               trackName: embed.options.trackId ? (trackNameById[embed.options.trackId] ?? null) : null,
             });
+            // DEC-856 (wave 67 amendment): `enabled` is the only key this
+            // row's own control (the toggle) owns -- any other key the
+            // server ever throws renders labelled, never dropped.
+            const embedErrors = rowFieldErrors[embed.id] ?? {};
+            const embedUnownedErrors = Object.entries(embedErrors).filter(([key]) => key !== 'enabled');
             return (
               <li key={embed.id} className="chq-settings-saved-embed-row">
                 {/* w41-h/DEC-785: name + path stack in ONE fixed-width cell
@@ -194,6 +216,16 @@ export function SavedEmbedsPanel({ onBuild, editing = false }: Props) {
                       </button>
                     </>
                   ) : null}
+                  {embedErrors.enabled ? (
+                    <span role="alert" className="chq-field-error">
+                      {embedErrors.enabled}
+                    </span>
+                  ) : null}
+                  {embedUnownedErrors.map(([key, message]) => (
+                    <span key={key} role="alert" className="chq-field-error">
+                      {`${key}: ${message}`}
+                    </span>
+                  ))}
                 </span>
                 {codeOpenId === embed.id ? (
                   <code className="chq-settings-saved-embed-snippet">{snippet}</code>
