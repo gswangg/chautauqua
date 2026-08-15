@@ -24,6 +24,7 @@ import {
   resolveReviewerScopeTrackId,
 } from "../../domain/evaluation";
 import { toCsv } from "../../lib/csv";
+import { contentDispositionAttachment } from "../../domain/files";
 import { clampPage, clampPerPage, listPerPage } from "../../lib/pagination";
 import * as repo from "../../server/repo/review";
 import { roundCriteriaJsonOf } from "../../server/repo/review";
@@ -185,7 +186,10 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/results", requireOrganizer, asy
       ...dropdownColumns.map(({ dc, option }) => r.perDropdown[dc.id]?.counts[option] ?? 0),
     ]);
     const csv = toCsv([header, ...dataRows]);
-    return c.body(csv, 200, { "Content-Type": "text/csv; charset=utf-8" });
+    return c.body(csv, 200, {
+      "Content-Type": "text/csv; charset=utf-8",
+      "Content-Disposition": contentDispositionAttachment("results.csv"),
+    });
   }
 
   const page = clampPage(c.req.query("page"));
