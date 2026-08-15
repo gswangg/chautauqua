@@ -202,6 +202,30 @@ landed by symbol/behavior citation instead:
   re-triaged here; do not read their presence as evidence either way about
   the w8–w11 claims above.
 
+## ⚠ GATE-8 FINAL FLEET (2026-08-15 ~09:30, measured on c0b14342 — fix-now lane)
+
+**P0 · COMPOSE STEP-2 DEAD-END (NEW REGRESSION, measured):** editing the compose BODY
+leaves "Next: preview" enabled but non-functional — click registers, wizard never
+advances, zero message. Unedited body advances fine. Eval scenarios EDIT the body; the
+final run is executing against this build. Isolation incomplete (edit-vs-unknown-merge-
+field confound; ready-to-run matrix at chautauqua-research/fidelity-gate8/g8-07/r18.mjs).
+FIX FIRST — a post-run hotfix deploy is planned the moment scoring completes.
+**P1 · compose default recipient filter pre-checks Accepted AND Declined** — the shortest
+path sends "accepted" mail to declined talks. Frame: single-select pills defaulting to
+Accepted.
+**P1 · files-library column allocation half-fix regressed the visual:** SESSION/VERSION/
+SIZE now exact (190/108/92) but FILE gets 127px while the ACTIONS column absorbs 923px
+(auto-table remainder goes to the LAST unwidthed column — content.css:818's assumption is
+false). One-line fix: table-layout:fixed + width on FILE (or width:1px on actions).
+**P1 · templates rows' four per-row buttons make Delete UNREACHABLE** (elementFromPoint
+hits the editor) — frame gives rows NO actions (they live in the editor panel); fix is
+subtractive. · History tab still missing chrome (heads/chips/Export/H1) · content-status
+band not full-bleed ((vw-1440)/2-34 gap; padding half fixed, margin half not) ·
+content-detail still chq-measure-table (ContentApp.tsx:313) vs 1180/32.
+Settings: dates 200px CLOSED, add-track CLOSED + 2 more; 8 remain (fidelity-gate8/
+09-settings.md). **Process note:** gate-7 fleet agents wrote probes but never their
+report.md files — gate-8 reports ARE on disk under chautauqua-research/fidelity-gate8/.
+
 ## TIER 1 — re-verified open items (orchestrator promotion, 2026-08-15 morning)
 
 The gate-7 evidence is NOT archive-stale — it was MEASURED TODAY against boundary
