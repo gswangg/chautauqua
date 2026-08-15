@@ -13,48 +13,48 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   pagination ONE shape+count*+id asc; atomic SQL > read-then-write;
   uniqueIndex CONTRACT; MINTING IS IO; UNBOUNDED SURFACE NEVER PAGED;
   GUARD THAT NARROWS < NONE; MINT != DELIVERY.
-- FINDINGS w2-69 (all LANDED, heavily compacted): DateField/search, EMB
-  cards, caps unified to src/domain, logout, CSV dup, settings rail,
-  compose step-4, canEditSubmission, reviewer scope null->LIST, acceptance
-  back-fill dense, portal preview read-only, tenant axis, evaluation
-  lattice, date grammars, B7 zero-states, error vocabulary (V9), locked-
-  field/minutes/score/clock single sources. w69: SWARM REBOOTED at gate-7.
-  Shapes: A CAP ONLY IN THE SPA IS A SUGGESTION. A FIELD PARSED AND NEVER
-  READ IS THE CAP NOBODY IS TOLD ABOUT.
-- FINDINGS w8-11 (all LANDED, heavily compacted): session-card, compose
-  step-1/footer, history pager, edit-lock, icsChip, field-width tokens,
-  perf budgets, focus-ring/tap-target/type-scale, trackIds dedup+cap,
-  plan window on detail/recusal/files-authz, saved-view cap lockout,
-  /logout POST, unsendable-template disable (DEC-856), reviewer single-
-  plan skip (DEC-874), track HIGHLIGHT-not-filter (DEC-851), password
-  reset, changes_requested mail, pubcache bump, .ics SEQUENCE, showflow
-  export, AUTH_CSS order, no TBD room, parseBoundedIdArray dedupe,
-  acceptance/auto-schedule write caps, CI full suite. VERIFIED OPEN
-  carried to w12: hub `past` inherits cfpOpen; GET / 500s unseeded;
-  distribute fans out plan_reviewer no pre-write cap; addReviewers
-  duplicates; ComposeWizard 100-cap silent; saved embeds no creation cap.
-  OWNED: w9-d, w10-a/c/d/e; w10-b DEAD (no ref, no merge). Shapes: A
-  HANDOFF THAT DROPS THE SELECTION ASKS THE SAME QUESTION TWICE. A
-  CONSTANT ONLY THE SEED SATISFIES IS A DEMO. A BUCKET INHERITS A
-  PREDICATE IT HAS NO ACTION FOR. A FAN-OUT WITH NO PRE-WRITE CAP IS A
-  HALF-WRITE. A WRITER THAT CANNOT SAY 'ALREADY' WRITES TWICE.
-- FINDINGS w12 (planned on main, every claim re-read against the tree;
-  w9-d/w10-a/c/d/e MERGED, w10-f+w11-a..e OWNED, task-w10-b NO ref/merge
-  = DEAD lane). SWEPT CLEAN, do NOT re-file: schedule.ics whole-agenda vs
-  ?ids=, expandRecipients cap, deleteTrack/Room 409 incl. saved embeds,
-  conditional-visibility fixed point, saved-view authorship cap, plan-
-  window detail+files-authz, breaks cross-field midnight, CSV/import
-  caps, prefetch-on-hover, optimistic+rollback, home 820/34px (matches
-  vendored §Widths; "46px/732" fleet item superseded). VERIFIED OPEN and
-  filed: EMBED_KNOBS_BY_SURFACE claims format+limit on agenda/schedule
-  dispatch.tsx never parses (embedSnippet:66-81 vs dispatch.tsx:174-259);
-  saved-embed POST/PATCH surface-blind, surface-only PATCH keeps old
-  recipe; MAX_PARTICIPANTS_PER_SUBMISSION portal-door-only, refusal can
-  say "12 of the maximum 6"; compose step 2 arrives blank, Next disabled
-  (3 turns); session_format/audience_level key on seed-only literal at
-  ~14 sites, form-roles.ts unused. Shapes: A KNOB TABLE THAT DRIFTS BY
-  COMMENT IS PROSE, NOT A CONTRACT. A SAVED FILTER THE SURFACE DOES NOT
-  APPLY IS A PROMISE THE EMBED BREAKS ELSEWHERE. A CAP ON ONE DOOR IS A
-  COUNTDOWN THE OTHER DOOR SPENDS. A REFUSAL THAT COUNTS PAST ITS OWN CAP
-  IS ARITHMETIC NONSENSE. A MECHANISM WITH NO READ SITE IS A DEAD LANE,
-  NOT A QUEUED ONE.
+- FINDINGS w2-69 (all LANDED, compacted): DateField/search, caps unified
+  to src/domain, logout, CSV dup, compose step-4, canEditSubmission,
+  reviewer scope null->LIST, evaluation lattice, date grammars, error
+  vocabulary (V9), locked-field/minutes/score/clock single sources. w69:
+  SWARM REBOOTED at gate-7. Shapes: A CAP ONLY IN THE SPA IS A
+  SUGGESTION. A FIELD PARSED AND NEVER READ IS THE CAP NOBODY IS TOLD
+  ABOUT.
+- FINDINGS w8-11 (all LANDED, heavily compacted): session-card, compose,
+  history pager, edit-lock, icsChip, trackIds dedup+cap, plan window,
+  saved-view cap lockout, /logout POST, unsendable-template (DEC-856),
+  reviewer single-plan skip (DEC-874), track HIGHLIGHT-not-filter
+  (DEC-851), .ics SEQUENCE, acceptance/auto-schedule write caps, CI full
+  suite. Shapes: A HANDOFF THAT DROPS THE SELECTION ASKS THE SAME
+  QUESTION TWICE. A CONSTANT ONLY THE SEED SATISFIES IS A DEMO. A
+  FAN-OUT WITH NO PRE-WRITE CAP IS A HALF-WRITE.
+- FINDINGS w12 (SWEPT CLEAN, compacted): schedule.ics whole-agenda vs
+  ?ids=, expandRecipients cap, deleteTrack/Room 409, conditional-
+  visibility fixed point, saved-view authorship cap, breaks cross-field
+  midnight, CSV/import caps, home 820/34px. Shapes: A KNOB TABLE THAT
+  DRIFTS BY COMMENT IS PROSE, NOT A CONTRACT. A CAP ON ONE DOOR IS A
+  COUNTDOWN THE OTHER DOOR SPENDS.
+- FINDINGS w13 (planned by reading main + .git refs, not a report; w12-a/b/c/e
+  are OWNED branches with refs and NO merge — knob table, saved-embed surface,
+  participant cap, role conversion follow-ups — and w12-d/f had no ref yet: do
+  NOT re-file any of them). w10-b LANDED late (last reflog entry): role is now
+  the ONE matcher, literals deleted, createDefaultForm + seed both stamp role.
+  SWEPT CLEAN this wave, do NOT re-file: hub `past` inherits cfpOpen (fixed),
+  GET / unseeded 500 (w11-a fresh-state branch), distribute pre-write cap
+  (w11-b MAX_DISTRIBUTE_ASSIGNMENT_WRITES + preview writeCapExceeded),
+  addReviewers duplicates (w11-c), saved-embed creation cap (DEC-822), compose
+  100-cap (domain/compose.ts), acceptance back-fill fan-out (DEC-932 wave-6
+  amendment: DENSE ON PURPOSE), reviewer multi-track label, npm run deploy,
+  contact merge keepId, bearer-token CSRF exemption, file-version chain
+  repoint, hasActiveNarrowing incl. q, createDefaultForm's role-tagged
+  Format/Audience fields. VERIFIED OPEN and filed: PATCH /submissions/:id
+  never parses `audienceLevel`, PATCH .../participants/:pid never parses
+  `role` — both SPA controls 400 today, refusal names WRONG field;
+  form_field.role has one minting site, no repair path (deletable, not
+  restorable); role selects silently no-op when field absent; two retired
+  constants still cited in ~10 comments (reviewer re-derived a closed
+  finding from them). Shapes: A KEY THE CLIENT SENDS AND NO ROUTE PARSES IS
+  A BUTTON THAT 400s. A REFUSAL KEYED ON A FIELD NOBODY SENT PAINTS THE
+  WRONG CONTROL. A ROLE WITH ONE MINTING SITE AND NO REPAIR PATH IS A TRAP.
+  `if (!x) return;` IS A DEAD CLICK. A COMMENT CITING A DELETED SYMBOL IS A
+  CITATION NOBODY CAN CHECK.
