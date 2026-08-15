@@ -1673,6 +1673,12 @@ describe('OnboardingGrid: B7 empty states (DEC-678 amendment, wave 47)', () => {
     expect(screen.queryByText(/match the current filters/)).not.toBeInTheDocument();
     // 'fresh' never renders an escape link -- there is no filter to clear.
     expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument();
+    // DEC-678 amendment (B7 rule 5, wave 53): a FRESH zero-state hides the
+    // pager -- 'Showing 0 of 0' with Prev/Next under a block that has never
+    // held a row is chrome over nothing.
+    expect(screen.queryByRole('button', { name: 'Previous' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Click any status to mark it complete or pending')).not.toBeInTheDocument();
   });
 
   it('renders the filtered EmptyState, names the active facet, offers the escape, and keeps the filter row mounted', async () => {
@@ -1699,6 +1705,11 @@ describe('OnboardingGrid: B7 empty states (DEC-678 amendment, wave 47)', () => {
 
     // Filter row stays mounted underneath the empty state.
     expect(screen.getByRole('button', { name: 'Overdue only' })).toBeInTheDocument();
+
+    // DEC-678 amendment (B7 rule 5, wave 53): a FILTERED zero-state keeps
+    // the pager -- chrome is how a filter gets undone.
+    expect(screen.getByRole('button', { name: 'Previous' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
 
     const escape = screen.getByRole('button', { name: 'Clear filters' });
     expect(escape).toBeInTheDocument();

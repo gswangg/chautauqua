@@ -380,22 +380,28 @@ export function SessionList({
         </table>
       )}
 
-      <div className="chq-content-pager">
-        <button type="button" className="chq-btn chq-btn-secondary" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
-          Previous
-        </button>
-        <span>
-          {paginationSummary(page, perPage, total)}
-        </span>
-        <button
-          type="button"
-          className="chq-btn chq-btn-secondary"
-          disabled={page * perPage >= total}
-          onClick={() => onPageChange(page + 1)}
-        >
-          Next
-        </button>
-      </div>
+      {/* DEC-678 amendment (B7 rule 5, wave 53): a FRESH zero-state (the
+          unfiltered 'all' tab, never held a row) hides the pager -- chrome
+          over nothing. A FILTERED zero-state (needs_decision / any other
+          tab) keeps it: chrome is how a filter gets undone. */}
+      {!(loaded && visible.length === 0 && tab === 'all') && (
+        <div className="chq-content-pager">
+          <button type="button" className="chq-btn chq-btn-secondary" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+            Previous
+          </button>
+          <span>
+            {paginationSummary(page, perPage, total)}
+          </span>
+          <button
+            type="button"
+            className="chq-btn chq-btn-secondary"
+            disabled={page * perPage >= total}
+            onClick={() => onPageChange(page + 1)}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }

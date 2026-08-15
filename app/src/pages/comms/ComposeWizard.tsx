@@ -549,69 +549,75 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               }}
             />
           ) : (
-            <>
-              <table className="chq-table chq-comms-compose-table">
-                <thead>
-                  <tr>
-                    <th>
+            <table className="chq-table chq-comms-compose-table">
+              <thead>
+                <tr>
+                  <th>
+                    <input
+                      type="checkbox"
+                      className="chq-check"
+                      checked={isPageFullySelected(selection, pageIds)}
+                      ref={(el) => {
+                        if (el) el.indeterminate = isPagePartiallySelected(selection, pageIds);
+                      }}
+                      onChange={() => dispatchSelection({ type: 'TOGGLE_PAGE', pageIds })}
+                      aria-label="Select every submission on this page"
+                    />
+                  </th>
+                  <th>Title</th>
+                  <th>Speakers</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {submissions.map((s) => (
+                  <tr key={s.id}>
+                    <td data-label="Select">
                       <input
                         type="checkbox"
                         className="chq-check"
-                        checked={isPageFullySelected(selection, pageIds)}
-                        ref={(el) => {
-                          if (el) el.indeterminate = isPagePartiallySelected(selection, pageIds);
-                        }}
-                        onChange={() => dispatchSelection({ type: 'TOGGLE_PAGE', pageIds })}
-                        aria-label="Select every submission on this page"
+                        checked={selection.selectedIds.has(s.id)}
+                        onChange={() => dispatchSelection({ type: 'TOGGLE_ROW', id: s.id })}
+                        aria-label={`Select ${s.title}`}
                       />
-                    </th>
-                    <th>Title</th>
-                    <th>Speakers</th>
-                    <th>Status</th>
+                    </td>
+                    <td data-label="Title">{s.title}</td>
+                    <td data-label="Speakers">{s.speakers.map((sp) => sp.name).join(', ')}</td>
+                    <td data-label="Status">{STATUS_LABELS[s.status]}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {submissions.map((s) => (
-                    <tr key={s.id}>
-                      <td data-label="Select">
-                        <input
-                          type="checkbox"
-                          className="chq-check"
-                          checked={selection.selectedIds.has(s.id)}
-                          onChange={() => dispatchSelection({ type: 'TOGGLE_ROW', id: s.id })}
-                          aria-label={`Select ${s.title}`}
-                        />
-                      </td>
-                      <td data-label="Title">{s.title}</td>
-                      <td data-label="Speakers">{s.speakers.map((sp) => sp.name).join(', ')}</td>
-                      <td data-label="Status">{STATUS_LABELS[s.status]}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                ))}
+              </tbody>
+            </table>
+          )}
 
-              <div className="chq-pager">
-                <span>
-                  {paginationSummary(page, PER_PAGE, total)}
-                </span>
-                <button
-                  type="button"
-                  className="chq-btn chq-btn-secondary"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                >
-                  Previous
-                </button>
-                <button
-                  type="button"
-                  className="chq-btn chq-btn-secondary"
-                  onClick={() => setPage((p) => p + 1)}
-                  disabled={page * PER_PAGE >= total}
-                >
-                  Next
-                </button>
-              </div>
-            </>
+          {/* DEC-678 amendment (B7 rule 5, wave 53): this step-1 result is
+              NEVER fresh -- the selected status set is always the facet
+              narrowing it (see the EmptyState above), so unlike a true
+              fresh zero-state the pager is never chrome over a collection
+              that has never held a row; it stays, because chrome is how a
+              filter gets undone. */}
+          {!loadingSubmissions && (
+            <div className="chq-pager">
+              <span>
+                {paginationSummary(page, PER_PAGE, total)}
+              </span>
+              <button
+                type="button"
+                className="chq-btn chq-btn-secondary"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                className="chq-btn chq-btn-secondary"
+                onClick={() => setPage((p) => p + 1)}
+                disabled={page * PER_PAGE >= total}
+              >
+                Next
+              </button>
+            </div>
           )}
 
           <button
