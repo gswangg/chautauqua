@@ -978,9 +978,10 @@ describe('ComposeWizard {feedback} companion plan picker (DEC-955)', () => {
 });
 
 // Step-1 seam line: the selection already survives filter changes (DEC-350)
-// -- this line just says so, and it reads the live selection count.
+// -- the selection bar (DEC-350 amendment, ruling A1) carries the same fact,
+// but only renders once the selection is non-empty.
 describe('ComposeWizard step-1 selection-survives-filters seam line', () => {
-  it('renders the live selection count against the recipient cap', async () => {
+  it('renders the live selection count against the recipient cap, hidden while nothing is selected', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
       [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
@@ -989,7 +990,7 @@ describe('ComposeWizard step-1 selection-survives-filters seam line', () => {
     render(<ComposeWizard eventId={EVENT_ID} />);
     await screen.findByText('Talk number 1');
 
-    expect(screen.getByText(/Kept as you change filters · 0 is under the 100-recipient cap/)).toBeInTheDocument();
+    expect(screen.queryByText(/Kept as you change filters/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText('Select Talk number 1'));
 
