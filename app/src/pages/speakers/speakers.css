@@ -383,14 +383,29 @@
 }
 
 /* DEC-830 (wave-19 amendment, DESIGN-RULINGS B8): the caret is its own
-   element at the trigger's right edge in muted ink, 6px clear of the label
-   -- the trigger is already an inline-flex row (.chq-speakers-status), so
-   only the caret itself needs styling. Reference shape:
-   EventSwitcher.tsx's .chq-eventswitcher-caret. */
+   element at the trigger's right edge, 6px clear of the label -- the
+   trigger is already an inline-flex row (.chq-speakers-status), so only
+   the caret itself needs styling. Reference shape: EventSwitcher.tsx's
+   .chq-eventswitcher-caret.
+   DEC-830 (wave-29 amendment): unlike the EventSwitcher trigger (which
+   never repaints its own background), .chq-speakers-status-complete fills
+   its trigger olive (var(--chq-brand)) and repaints its own ink
+   (var(--chq-on-brand)) while the pending/overdue/none/neutral modifiers
+   stay outline-only -- a hard-coded var(--chq-muted) caret followed the
+   label into the fill and read 1.02:1 fg rgb(86,90,75) on bg
+   rgb(78,92,49) (docs/verification-log/task-w27-d-perf-rendersweep-
+   ceda66f2.md:127-133). `color: inherit` fixes the complete case (caret
+   picks up var(--chq-on-brand)) and is a no-op on the four outline
+   modifiers, none of which sets `color` on the trigger's .chq-speakers-
+   status-* class independent of the shared .chq-speakers-status default
+   inherited chain -- each modifier still declares its own `color`
+   (var(--chq-muted) or var(--chq-ink)) on the trigger, which the caret
+   now inherits instead of re-declaring, reproducing today's rendered
+   colour exactly on -pending/-overdue/-none/-neutral. */
 .chq-participation-menu-caret {
   margin-left: 6px;
   font-size: 11px;
-  color: var(--chq-muted);
+  color: inherit;
   line-height: 1;
 }
 

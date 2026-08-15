@@ -58,6 +58,17 @@
   cursor: pointer;
 }
 
+/* DEC-830 wave-29 amendment exemption: unlike .chq-participation-menu-caret's
+   trigger (.chq-speakers-status-complete), .chq-eventswitcher-menu-btn never
+   repaints its own background/ink -- it stays `background: none` (hover/
+   expanded swap to var(--chq-surface-sunk), still a light neutral) with a
+   fixed var(--chq-ink) label colour, so this caret never sits on a resting
+   fill the way the participation-menu caret did. Hard-coded var(--chq-muted)
+   (#565a4b) on var(--chq-surface-sunk) (#efebdf) and on transparent
+   (effectively the page background) both clear WCAG AA comfortably, so this
+   is the exempt case, not the defect: kept as the reference *shape* (element
+   position/metrics) for .chq-participation-menu-caret, not as a colour
+   reference. */
 .chq-eventswitcher-caret {
   font-size: 11px;
   color: var(--chq-muted);

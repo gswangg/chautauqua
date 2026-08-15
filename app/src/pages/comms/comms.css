@@ -759,7 +759,14 @@
 /* DEC-993 (wave-19 amendment, DESIGN-RULINGS B8): the caret is its own
    element at the control's right edge in muted ink, never the last glyph
    of the trigger label -- see EventSwitcher's .chq-eventswitcher-caret for
-   the reference shape. */
+   the reference shape.
+   DEC-830 wave-29 amendment exemption: the trigger is .chq-btn-secondary
+   (background: var(--chq-surface-sunk) #efebdf, color: var(--chq-ink-
+   strong)) with no filled/complete modifier that repaints it, unlike
+   .chq-speakers-status-complete -- the resting background this caret is
+   measured against is always var(--chq-surface-sunk), never a brand fill,
+   so the hard-coded var(--chq-muted) ink stays legible and is not the
+   DEC-830 defect. */
 .chq-insert-field-menu-caret {
   font-size: 11px;
   color: var(--chq-muted);
