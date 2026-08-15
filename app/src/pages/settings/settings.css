@@ -80,6 +80,13 @@
   align-self: flex-start;
 }
 
+/* DEC-728 amendment (wave 49): a settings section opened via ?section=&
+   edit=1 is a screen -- reveal the same tertiary back control at desktop
+   too, without touching the phone rule below (data-drilled) at all. */
+.chq-settings-layout[data-editing='true'] .chq-settings-back {
+  display: inline-flex;
+}
+
 /* DEC-844: persistent notice naming placed sessions a window-narrowing save
    unscheduled. Not a toast/alert — stays until the next save overwrites or
    clears it. */
