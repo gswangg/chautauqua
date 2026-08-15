@@ -7,7 +7,7 @@
 // source-scan test in test/api-participants.test.ts (DEC-009-style
 // tripwire).
 
-import { eq, sql } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
@@ -253,6 +253,47 @@ export async function setParticipantInviteStatus(
   await db
     .update(schema.participant)
     .set({ inviteStatus, updatedAt: now })
+    .where(eq(schema.participant.id, participantId));
+  await touchSubmissions(db, [submissionId], now);
+}
+
+/** DEC-900 amendment (findings wave 13): resolves the submission's LEAD
+ * participant id — the same rule the SPA's speaker rail already applies
+ * (app/src/pages/submissions/SubmissionDetailPage.tsx:917): the participant
+ * with role==='speaker', falling back to the first participant by order asc
+ * (contactId asc as the tie-break, matching getSubmissionDetail's ordering)
+ * when no row carries that role. Null when the submission has no
+ * participants at all. Used by the role-PATCH route below to refuse
+ * retargeting the lead. */
+export async function getSubmissionLeadParticipantId(db: Db, submissionId: string): Promise<string | null> {
+  const rows = await db
+    .select({ id: schema.participant.id, role: schema.participant.role })
+    .from(schema.participant)
+    .where(eq(schema.participant.submissionId, submissionId))
+    .orderBy(asc(schema.participant.order), asc(schema.participant.contactId));
+  const first = rows[0];
+  if (!first) return null;
+  const speaker = rows.find((r) => r.role === "speaker");
+  return speaker ? speaker.id : first.id;
+}
+
+/** DEC-900 amendment (findings wave 13): organizer-only participant-role
+ * write ("Make co-presenter" and any future role-change control), validated
+ * by the caller against PARTICIPANT_ROLE_OPTIONS (and the lead-protection
+ * rule) before this function is reached. Same shape as
+ * setParticipantVisible/setParticipantInviteStatus above: bumps the
+ * participant row's updatedAt AND the owning submission's updatedAt, since a
+ * role change can change the submission's published Speakers cell. */
+export async function setParticipantRole(
+  db: Db,
+  participantId: string,
+  role: string,
+  submissionId: string,
+): Promise<void> {
+  const now = new Date();
+  await db
+    .update(schema.participant)
+    .set({ role, updatedAt: now })
     .where(eq(schema.participant.id, participantId));
   await touchSubmissions(db, [submissionId], now);
 }

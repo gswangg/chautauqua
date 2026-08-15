@@ -42,8 +42,10 @@ import {
   getParticipantCount,
   getParticipantOwnership,
   getParticipantRow,
+  getSubmissionLeadParticipantId,
   inviteParticipant,
   setParticipantInviteStatus,
+  setParticipantRole,
   setParticipantVisible,
 } from "../../server/repo/participants";
 import { PARTICIPANT_ROLE_OPTIONS, MAX_PARTICIPANTS_PER_SUBMISSION } from "../../domain/participant-roles";
@@ -56,7 +58,8 @@ import { clampPage, listPerPage } from "../../lib/pagination";
 import { bumpIcsSequences } from "../../server/repo/ics-sequence";
 import { deleteSubmissionAnswer, getEventTracks, replaceSubmissionTracks, upsertSubmissionAnswers } from "../../server/repo/submit";
 import { getFormatFieldOptions } from "../../server/repo/forms";
-import { getEventFieldIdByRole } from "../../server/repo/form-roles";
+import { getEventFieldIdByRole, getFieldOptionsByRole } from "../../server/repo/form-roles";
+import type { FormFieldRole } from "../../forms/types";
 import { MAX_SUBMISSION_TRACK_IDS } from "../../domain/ids";
 import { MAX_FILTER_ID_LENGTH } from "../../lib/query-bounds";
 import { LOCKED_TITLE_MAX_LENGTH, LOCKED_ABSTRACT_MAX_LENGTH } from "../../forms/types";
@@ -168,20 +171,56 @@ async function parseFormatField(db: Db, eventId: string, raw: unknown): Promise<
   return raw;
 }
 
-// DEC-755 amendment (wave 10, task w10-b): resolves the event's default
-// form's session_format-role field id and either upserts `format` onto it or,
-// when `format` is null, deletes the answer row -- the ONE write path shared
-// by POST create and PATCH below. `format` is `undefined` when the caller
-// didn't touch the field at all (no-op); parseFormatField above has already
-// 400'd when the event's form has no such field, so a non-null resolveId
-// here is guaranteed whenever format !== undefined.
-async function writeFormatAnswer(db: Db, eventId: string, submissionId: string, format: string | null): Promise<void> {
-  const fieldId = await getEventFieldIdByRole(db, eventId, "session_format");
-  if (!fieldId) throw new ApiError("invalid", "This event's form has no session format field", { format: "Not configured" });
-  if (format === null) {
+// DEC-900 amendment (findings wave 13): audienceLevel has no submission
+// column either -- it's a submission_answer keyed by the audience_level-role
+// field, mirroring parseFormatField above EXACTLY (same CLEAR-on-null
+// semantics, same "no such field" and "not one of the options" 400s, just
+// keyed `audienceLevel`). Shared by POST (create) and PATCH.
+async function parseAudienceLevelField(db: Db, eventId: string, raw: unknown): Promise<string | null> {
+  if (raw === null) return null;
+  if (typeof raw !== "string" || raw.length === 0) {
+    throw new ApiError("invalid", "audienceLevel must be a non-empty string", { audienceLevel: "Invalid audience level" });
+  }
+  const options = await getFieldOptionsByRole(db, eventId, "audience_level");
+  if (options === null) {
+    throw new ApiError("invalid", "This event's form has no audience level field", {
+      audienceLevel: "Not configured",
+    });
+  }
+  if (!options.includes(raw)) {
+    throw new ApiError("invalid", "audienceLevel must be one of the field's options", {
+      audienceLevel: "Invalid option",
+    });
+  }
+  return raw;
+}
+
+// DEC-755 amendment (wave 10, task w10-b) / DEC-900 amendment (findings wave
+// 13): resolves the event's default form's `role`-tagged field id and either
+// upserts `value` onto it or, when `value` is null, deletes the answer row --
+// the ONE write path shared by format and audienceLevel, POST create and
+// PATCH below. `value` is `undefined` when the caller didn't touch the field
+// at all (no-op); parseFormatField/parseAudienceLevelField above have
+// already 400'd when the event's form has no such field, so a non-null
+// resolved fieldId here is guaranteed whenever value !== undefined.
+async function writeRoleAnswer(
+  db: Db,
+  eventId: string,
+  submissionId: string,
+  role: FormFieldRole,
+  value: string | null,
+): Promise<void> {
+  const fieldId = await getEventFieldIdByRole(db, eventId, role);
+  if (!fieldId) {
+    const key = role === "session_format" ? "format" : "audienceLevel";
+    throw new ApiError("invalid", `This event's form has no ${role.replace("_", " ")} field`, {
+      [key]: "Not configured",
+    });
+  }
+  if (value === null) {
     await deleteSubmissionAnswer(db, submissionId, fieldId);
   } else {
-    await upsertSubmissionAnswers(db, submissionId, { [fieldId]: format });
+    await upsertSubmissionAnswers(db, submissionId, { [fieldId]: value });
   }
 }
 
@@ -233,6 +272,7 @@ interface CreateSubmissionBody {
   contact?: { email?: unknown; firstName?: unknown; lastName?: unknown } | null;
   trackIds?: unknown;
   format?: unknown;
+  audienceLevel?: unknown;
 }
 
 // POST /api/v1/events/:eventId/submissions
@@ -262,6 +302,10 @@ submissionsRoutes.post("/events/:eventId/submissions", requireOrganizer, csrfJso
   // format value never leaves a half-created submission behind.
   const trackIds = body.trackIds !== undefined ? await parseTrackIdsField(c.var.db, eventId, body.trackIds) : undefined;
   const format = body.format !== undefined ? await parseFormatField(c.var.db, eventId, body.format) : undefined;
+  // DEC-900 amendment (findings wave 13): kept symmetric with format above —
+  // the create route accepts audienceLevel iff it accepts format.
+  const audienceLevel =
+    body.audienceLevel !== undefined ? await parseAudienceLevelField(c.var.db, eventId, body.audienceLevel) : undefined;
 
   const id = await createSubmission(c.var.db, eventId, auth.orgId, { title, description, contact });
 
@@ -272,7 +316,10 @@ submissionsRoutes.post("/events/:eventId/submissions", requireOrganizer, csrfJso
     await replaceSubmissionTracks(c.var.db, id, trackIds);
   }
   if (format !== undefined) {
-    await writeFormatAnswer(c.var.db, eventId, id, format);
+    await writeRoleAnswer(c.var.db, eventId, id, "session_format", format);
+  }
+  if (audienceLevel !== undefined) {
+    await writeRoleAnswer(c.var.db, eventId, id, "audience_level", audienceLevel);
   }
 
   const detail = await getSubmissionDetail(c.var.db, id);
@@ -297,6 +344,7 @@ interface UpdateSubmissionBody {
   description?: unknown;
   trackIds?: unknown;
   format?: unknown;
+  audienceLevel?: unknown;
 }
 
 // PATCH /api/v1/submissions/:id — organizer-only edit of title/description/
@@ -337,11 +385,26 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
   // as the POST create route.
   const format =
     body.format !== undefined ? await parseFormatField(c.var.db, ownership.eventId, body.format) : undefined;
+  // DEC-900 amendment (findings wave 13): audienceLevel mirrors format
+  // exactly — same field-options validation, same CLEAR-on-null semantics.
+  const audienceLevel =
+    body.audienceLevel !== undefined
+      ? await parseAudienceLevelField(c.var.db, ownership.eventId, body.audienceLevel)
+      : undefined;
 
-  if (Object.keys(fields).length === 0 && trackIds === undefined && format === undefined) {
-    throw new ApiError("invalid", "At least one of title, description, trackIds, or format is required", {
-      title: "Provide title, description, trackIds, or format",
-    });
+  if (
+    Object.keys(fields).length === 0 &&
+    trackIds === undefined &&
+    format === undefined &&
+    audienceLevel === undefined
+  ) {
+    throw new ApiError(
+      "invalid",
+      "At least one of title, description, trackIds, format, or audienceLevel is required",
+      {
+        title: "Provide title, description, trackIds, format, or audienceLevel",
+      },
+    );
   }
 
   // DEC-158 (CNT-11): snapshot the pre-edit content so we can tell whether
@@ -376,9 +439,14 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
   }
 
   // DEC-755: format has no submission column — the same submission_answer
-  // writer POST create uses (writeFormatAnswer deletes the row on null).
+  // writer POST create uses (writeRoleAnswer deletes the row on null).
   if (format !== undefined) {
-    await writeFormatAnswer(c.var.db, ownership.eventId, id, format);
+    await writeRoleAnswer(c.var.db, ownership.eventId, id, "session_format", format);
+  }
+  // DEC-900 amendment (findings wave 13): audienceLevel through the same
+  // generalized writer, keyed on the audience_level-role field.
+  if (audienceLevel !== undefined) {
+    await writeRoleAnswer(c.var.db, ownership.eventId, id, "audience_level", audienceLevel);
   }
 
   const detail = await getSubmissionDetail(c.var.db, id);
@@ -548,6 +616,7 @@ submissionsRoutes.post("/submissions/:id/participants", requireOrganizer, csrfJs
 interface ParticipantVisibilityBody {
   visible?: unknown;
   inviteStatus?: unknown;
+  role?: unknown;
 }
 
 // DEC-789 write half: the closed invite-status vocabulary the roster UI
@@ -575,8 +644,8 @@ submissionsRoutes.patch(
     }
 
     const body = (await readOptionalJsonBody(c)) as unknown as ParticipantVisibilityBody;
-    if (body.visible === undefined && body.inviteStatus === undefined) {
-      throw new ApiError("invalid", "visible or inviteStatus is required", { visible: "Required" });
+    if (body.visible === undefined && body.inviteStatus === undefined && body.role === undefined) {
+      throw new ApiError("invalid", "visible, inviteStatus or role is required", { visible: "Required" });
     }
     if (body.visible !== undefined) {
       if (typeof body.visible !== "boolean") {
@@ -594,6 +663,29 @@ submissionsRoutes.patch(
         });
       }
       await setParticipantInviteStatus(c.var.db, participantId, body.inviteStatus, scope.submissionId);
+    }
+    if (body.role !== undefined) {
+      // DEC-900 amendment (findings wave 13): same closed vocabulary the
+      // POST invite sibling validates against at :491-497 above.
+      if (typeof body.role !== "string" || !PARTICIPANT_ROLE_OPTIONS.some((opt) => opt.value === body.role)) {
+        throw new ApiError("invalid", "Unknown participant role", { role: "Invalid role" });
+      }
+      // DEC-900 amendment (findings wave 13): the LEAD is never retargeted
+      // from this route -- refuse both a request naming the lead row and a
+      // request whose new value is the lead role ('speaker'), since either
+      // would silently change who this submission's lead is.
+      const leadId = await getSubmissionLeadParticipantId(c.var.db, scope.submissionId);
+      if (participantId === leadId) {
+        throw new ApiError("invalid", "The lead participant's role cannot be changed from this route", {
+          role: "Cannot change the lead's role",
+        });
+      }
+      if (body.role === "speaker") {
+        throw new ApiError("invalid", "speaker is reserved for the lead participant", {
+          role: "Cannot make a co-presenter the lead",
+        });
+      }
+      await setParticipantRole(c.var.db, participantId, body.role, scope.submissionId);
     }
     const row = await getParticipantRow(c.var.db, participantId);
     // DEC-278/DEC-813: the Speakers grid's toggleInviteStatus control (this
