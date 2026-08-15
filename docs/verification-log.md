@@ -5421,3 +5421,47 @@ detail: `docs/verification-log/task-w40-d-spec-audit-14db7b30.md`.
 
 RESULT: PASS
 OPEN ITEMS: 0
+## 2026-08-15 task-w40-c — perf-smoke @ 2e99b272
+
+QUALIFYING
+
+INVALIDATED BY: src/** app/src/** migrations/** package.json
+
+TIER-0 MEASUREMENT LANE, LOG-ONLY (DEC-644, DEC-453, DEC-069). Closing
+measurement for wave 39's two SPEC §7 read-budget fixes. `git merge --no-edit
+main` at worktree creation: already up to date at `14db7b30`; `npm run
+ref-state` receipt confirmed every live ref an ancestor (no `task-w39-*` ref
+remains live — all merged). Precondition (STEP 0b): `grep -c PERF_SPEAKER
+scripts/perf-seed.ts` = 13, so RECIPE-BLOCKED mode was not needed — the
+documented recipe alone reaches every check including the three portal
+rows. Ran the whole phase inside one `with-test-lock.sh` acquisition:
+`db:migrate` -> `predev` -> three cycles of (`seed` -> `perf:seed` ->
+`wrangler dev` health-polled -> `perf:smoke`), reseeding and restarting the
+server between runs (task-w35-a/task-w36-c precedent — the pass itself
+writes state, e.g. `bulk status change` leaves its 1000-id batch in
+`accept_queue` after an odd 35-call warmup+measured count, so a bare re-run
+without reseeding throws `expected at least 1000 pending submissions, got
+200` before a single check runs, as first observed and discarded before
+adopting the reseed-between-runs methodology). Re-synced with `main`
+immediately before naming this receipt's sha (fast-forward `14db7b30` ->
+`2e99b272`, three sibling gate receipts + a test file, docs/test-only,
+first-parent product sha `ed5c679e...` unchanged before/after).
+
+Three-run result: **144/144 check-rows PASS, zero FAIL, in all three runs.**
+Named rows: `reviewer queue` (`src/routes/review/reviewer.ts`) 22.9/23.0/
+24.8ms adjusted — the wave-37 exit ledger's 1-of-3 row now **3 of 3 PASS,
+CLOSED**. `plan progress (page 1)` (`src/routes/review/plans-progress.ts`)
+23.2/27.6/22.2ms adjusted — the wave-37 exit ledger's other 1-of-3 row now
+**3 of 3 PASS, CLOSED**. `plan results (page 1)` 20.3/19.9/30.1ms adjusted,
+3/3 PASS. `files library (page 1)` 11.7/11.8/10.7ms adjusted, 3/3 PASS.
+`onboarding grid` 20.0/20.0/21.2ms adjusted, 3/3 PASS. Three portal rows
+(`portal home`/`portal tasks`/`portal submission detail`) all 3/3 PASS,
+reached via the documented recipe alone (no local D1 fixup needed).
+
+Full detail: docs/verification-log/task-w40-c-perf-smoke-2e99b272.md.
+
+RESULT: PASS — every check under budget in all three runs; both wave-37
+exit-ledger OPEN rows (reviewer queue, plan progress (page 1)) close at 3-of-3
+PASS at `2e99b272ef26a3a0bd57150441a97670b15a3ed8`, confirming wave 39's two
+SPEC §7 read-budget fixes.
+OPEN ITEMS: 0
