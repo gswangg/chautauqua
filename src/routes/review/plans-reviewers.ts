@@ -98,13 +98,19 @@ reviewPlansReviewersRoutes.post("/api/v1/plans/:id/reviewers", requireOrganizer,
         });
       }
     }
+    // Dedupe on the RESOLVED submission id (not the raw input) -- DEC-623
+    // lets a caller name the same submission twice via its ref AND its
+    // internal id (e.g. ["SES-014", "<internal id>"]), which would
+    // otherwise resolve to two identical addReviewers inputs and double up
+    // the 201 body even though addReviewers itself now writes one row.
+    const resolvedSubmissionIds = [...new Set(inputs.map((input) => resolvedByInput.get(input) as string))];
     const created = await repo.addReviewers(
       c.var.db,
       plan.id,
-      inputs.map((input) => ({
+      resolvedSubmissionIds.map((submissionId) => ({
         userId: body.userId as string,
         trackId: null,
-        submissionId: resolvedByInput.get(input) as string,
+        submissionId,
       })),
     );
     const items = await decorateReviewerRows(c.var.db, created);
