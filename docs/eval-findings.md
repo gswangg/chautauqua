@@ -119,6 +119,63 @@ rules 5/6 incomplete) · /account/password lost its card but is NOT the bare-820
 inputs 188px, H1 28px at x=643 (fleet fix: fields at the full 820, H1 ~36, content
 x≈390). CLASS 4 is part-landed; finish the measure.
 
+## GATE-7 FLEET RE-VERDICT (vs v9 on ea2a5543; details in fidelity-gate7/pair*/report.md)
+
+**14 gate-6 MAJORs measured CLOSED · ~49 remaining (incl. re-splits + new).** The pervasive
+pattern: fixes hit the MECHANISM but miss the MEASURED anatomy. Big real closures: B7
+empty-state sweep (submissions/speakers/contacts/public/agenda), overview brand-new-event
+state (verbatim), home full-bleed chrome, bare-page card removal, error vocabulary on plan
+editor + settings + import refusal (exact 1px/3px ink match), step-3 B9 mail preview,
+public register (H1 36px, 24h times, tap targets gone), drawer Delete border, import
+step-3 diffs, import file-refusal.
+
+**⚡ FIVE ONE-LINE ROOT CAUSES the fleet pinpointed — fix these FIRST, each closes a class:**
+1. **Settings.tsx:58 registers 'tracks' vs TracksRoomsPanel's SECTION_KEY 'tracks-rooms'**
+   — the one unconverted B10 edit screen + a broken bookmarkable URL.
+2. **auth.css.ts:43 `body{display:flex;justify-content:center}` shrink-wraps
+   .chq-bare-page** — /account/password renders 354px-wide fields instead of the 820
+   column (and the 404 at 553). Give the bare page flex-grow/width:100%.
+3. **AUTH_CSS cascade order makes .chq-field-invalid INERT on every auth form**
+   (theme.ts:176 .chq-input wins) — sign-in/forgot/reset/change-password field error
+   treatment never renders. (Works under CFP_CSS — order-only bug.)
+4. **The shared EmptyState type scale is ~2/3 of frame** (.chq-empty-what 15px/600 vs
+   framed ~24-25px display register; reason 14 vs 16-17) — one component fix re-scales
+   every zero-state in the app.
+5. **`.chq-form-row-optional` inherits text-transform:uppercase** — DEC-917's lowercase
+   '· optional' still PAINTS as '· OPTIONAL' across 02/04/08 modals (rulings A7/A21).
+   (And 03-N2: the criteria editor flipped the ONE context frames draw as caps — swap.)
+
+**NEW REGRESSIONS (fleet-found, user-visible):** /account/password 'Change it' button
+broken (19px tall, label overflows fill; footer hairline wider than the 188px fields) ·
+comms templates list binds DESCRIPTION into the NAME column (template names never shown)
+· wizard sends drop template attribution (history shows TEMPLATE '—') · **comms dedupe
+window DOES NOT EXIST at runtime** — resending the same template to the same recipients
+40s later emailed both again, 0 skipped (A14's EMAILED/dedupe claim + step-4's skip
+anatomy both depend on it; eval-relevant).
+
+**Remaining per-section (top items):** 03: duplicated ranked-results head · is-active
+edge STILL absent (pixel-identical to gate 6) · Your-plans hub still missing all 5 framed
+row elements · plan-editor draft footer absent · FORM ANSWERS stacked · 07 (worst):
+step-1 SLOT column + footer, templates grid overflow/overlap, history tab chrome, step-4
+report anatomy + unreachable skip block, pre-flight still at step 2 · 05: files-library
+columns STILL swapped + orphan row + zip policy DEC needed; upload-reject modal absent;
+content-detail needs its own 1180/32 container · 04: participation panel 260 vs 420;
+speaker-detail grid + theads; reminders modal unchanged (still prints localhost:8799!);
+write-failed banner anatomy; NEW: free-text search excluded from hasActiveNarrowing so
+search-empty shows FRESH copy · 02: SESSION DETAILS label-left grid + participant chips ·
+09: field widths (dates 401 vs 200, seats 178 vs 110), no destructive-far-left footer
+anywhere, olive Add-track bar persists, people-and-roles grid (broken first row), portal
+what-speakers-may-edit toggles missing, CFP-edit intro bound to description column (data
+bug) + FORM NAME/TIME ZONE/QUESTIONS missing, saved-embed still two stacked blocks ·
+CLASS 1 admin measure (1372@114, topbar 59) untouched everywhere · 12-home: chrome
+content pinned to reading measure vs 46px gutters; body 820 vs 732 (three values in
+home.css.ts) · 10: active-filter chip still a pill vs ink fill; TBD room STILL public
+(ruling A25); speakers toolbar still distributed; underlined initials; blue avatars.
+
+**RULING NEEDED (user):** '· optional' paint case — in-code DEC-917 says match-the-label,
+rulings A7/A21 say lowercase, frames 03--05/07/08 show caps in the criteria context.
+**BLESS candidates (fleet):** agenda 'Breaks ›' control; event-switcher caret.
+
 ## GATE 7 IN FLIGHT (2026-08-15 ~03:50, boundary ea2a5543 DEPLOYED, version 798a1e52)
 
 Full runbook clean (no new migrations; 775-statement D1 reseed; 35 R2 objects; smoke 200).
