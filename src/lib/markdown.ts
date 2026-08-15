@@ -15,6 +15,15 @@
 
 import { escapeHtml } from "./html-escape";
 
+/** DEC-747 amendment: the plain-language statement of the closed allow-list
+ * below, placed immediately beside it so the two cannot drift. Any editor
+ * that lets an organizer type a wiki resource body (renderMarkdown's input)
+ * must show this hint next to the input -- it names exactly the syntax that
+ * survives renderMarkdown and nothing else (no raw HTML, no single-newline
+ * line breaks, no other Markdown construct). */
+export const MARKDOWN_SYNTAX_HINT =
+  "Supports ## and ### headings, blank-line-separated paragraphs, - lists, **bold**, *italic*, and [text](https://...) links. Raw HTML and other Markdown syntax are not supported and will show up as plain text.";
+
 /** Allow-listed link schemes: only http/https — javascript:, data:, and every
  * other scheme are rejected and rendered as plain (escaped) text instead of
  * a link. */
