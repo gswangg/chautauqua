@@ -16,7 +16,7 @@ import { revokeResetTokenForUser } from "../auth/password-reset";
 import { findAccountUserId } from "../server/repo/comms";
 import { requestIpFromHeaders } from "../lib/rate-limit";
 import { checkAndIncrementScopedLimit } from "../server/repo/rate-limit";
-import { ClaimPage, ExpiredClaimPage, MIN_PASSWORD_LENGTH } from "./auth-views";
+import { ClaimPage, ExpiredClaimPage, MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "./auth-views";
 import { ensureCsrfCookie, AUTH_RATE_LIMIT_WINDOW_SECONDS, AUTH_RATE_LIMIT_MAX, RATE_LIMIT_ERROR } from "./auth-helpers";
 import { DEC_949, DEC_014 } from "../decisions";
 
@@ -63,6 +63,11 @@ claimRoutes.post("/claim/:token", csrfForm, async (c) => {
   if (password.length < MIN_PASSWORD_LENGTH) {
     throw new ApiError("invalid", `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`, {
       password: "Too short",
+    });
+  }
+  if (password.length > MAX_PASSWORD_LENGTH) {
+    throw new ApiError("invalid", `Password must be at most ${MAX_PASSWORD_LENGTH} characters.`, {
+      password: "Too long",
     });
   }
 

@@ -22,7 +22,7 @@ import {
 import { issueSessionRevokingAll } from "../server/auth-session";
 import { ThemeStyles } from "../views/theme";
 import { AUTH_CSS } from "./auth.css";
-import { MIN_PASSWORD_LENGTH, AUTH_RATE_LIMIT_WINDOW_SECONDS, AUTH_RATE_LIMIT_MAX, RATE_LIMIT_ERROR } from "./auth";
+import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH, AUTH_RATE_LIMIT_WINDOW_SECONDS, AUTH_RATE_LIMIT_MAX, RATE_LIMIT_ERROR } from "./auth";
 import { checkAndIncrementScopedLimit, resetScopedLimit } from "../server/repo/rate-limit";
 import { revokeResetTokenForUser, type KVStore } from "../auth/password-reset";
 import { DEC_740, DEC_994, DEC_180, DEC_949 } from "../decisions";
@@ -66,7 +66,9 @@ function backHrefForRole(role: "organizer" | "reviewer" | "speaker"): string {
   return role === "speaker" ? "/portal" : "/admin";
 }
 
-function PasswordPage(props: {
+// Exported so test/password-length-bound.test.ts can render it directly to
+// assert the maxlength bound without standing up the whole session/db stack.
+export function PasswordPage(props: {
   csrfToken: string;
   backHref: string;
   error?: string;
@@ -113,13 +115,21 @@ function PasswordPage(props: {
                   type="password"
                   name="next"
                   minlength={MIN_PASSWORD_LENGTH}
+                  maxlength={MAX_PASSWORD_LENGTH}
                   placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
                   required
                 />
               </label>
               <label>
                 <span className="chq-auth-label">New password again</span>
-                <input className="chq-input" type="password" name="confirm" minlength={MIN_PASSWORD_LENGTH} required />
+                <input
+                  className="chq-input"
+                  type="password"
+                  name="confirm"
+                  minlength={MIN_PASSWORD_LENGTH}
+                  maxlength={MAX_PASSWORD_LENGTH}
+                  required
+                />
               </label>
             </div>
             <div className="chq-phone-actionbar chq-auth-actions">
@@ -217,6 +227,17 @@ accountRoutes.post("/account/password", requireAuthOr302, csrfForm, async (c) =>
         csrfToken={csrfToken}
         backHref={backHref}
         error={`New password must be at least ${MIN_PASSWORD_LENGTH} characters.`}
+      />,
+      400,
+    );
+  }
+  if (next.length > MAX_PASSWORD_LENGTH) {
+    const { token: csrfToken } = ensureCsrfCookie(c);
+    return c.html(
+      <PasswordPage
+        csrfToken={csrfToken}
+        backHref={backHref}
+        error={`New password must be at most ${MAX_PASSWORD_LENGTH} characters.`}
       />,
       400,
     );

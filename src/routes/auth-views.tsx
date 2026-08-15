@@ -8,11 +8,11 @@ import { AUTH_CSS } from "./auth.css";
 import { type DemoIdentity } from "../lib/demo-identities";
 import type { LoginFooterEvent } from "./auth-helpers";
 import { DEC_583 } from "../decisions";
-import { MIN_PASSWORD_LENGTH } from "../domain/auth-copy";
+import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "../domain/auth-copy";
 
 void DEC_583;
 
-export { MIN_PASSWORD_LENGTH };
+export { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH };
 
 // DEC-583: prefill-only, never auto-submitted. One event-delegated click
 // handler reads data-demo-email/data-demo-password off whichever
@@ -185,6 +185,7 @@ export function ClaimPage(props: { csrfToken: string; error?: string }) {
                 type="password"
                 name="password"
                 minlength={MIN_PASSWORD_LENGTH}
+                maxlength={MAX_PASSWORD_LENGTH}
                 required
               />
             </label>
@@ -332,6 +333,7 @@ export function ResetPasswordPage(props: { csrfToken: string; email: string; err
                 type="password"
                 name="next"
                 minlength={MIN_PASSWORD_LENGTH}
+                maxlength={MAX_PASSWORD_LENGTH}
                 placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
                 required
               />
@@ -344,6 +346,7 @@ export function ResetPasswordPage(props: { csrfToken: string; email: string; err
                 type="password"
                 name="confirm"
                 minlength={MIN_PASSWORD_LENGTH}
+                maxlength={MAX_PASSWORD_LENGTH}
                 required
               />
             </label>

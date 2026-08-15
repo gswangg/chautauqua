@@ -8,3 +8,12 @@
 // auth-views.tsx/auth-reset.tsx/auth-claim.tsx/account.tsx all key off this
 // single minimum.
 export const MIN_PASSWORD_LENGTH = 12;
+
+// DEC-740 (amendment): no path bounded a caller-supplied password -- the
+// anonymous /login surface's rate limiter counts failures only (DEC-180), so
+// an unbounded password could be posted repeatedly at no cost to an
+// attacker. This ceiling is enforced inside src/auth/password.ts (the one
+// chokepoint every hashPassword/verifyPassword caller goes through) and
+// pre-checked by every user-facing form so the refusal is disclosed before
+// submit.
+export const MAX_PASSWORD_LENGTH = 128;

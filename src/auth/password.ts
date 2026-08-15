@@ -7,6 +7,17 @@
 // self-describes iterations, so verification honors whatever a stored hash
 // declares — but stored hashes must stay <= 100k to be verifiable in prod.
 // Pure Web Crypto only (DEC-002) — no node:/cloudflare imports.
+//
+// DEC-740 (amendment): MAX_PASSWORD_LENGTH is enforced HERE, the one
+// chokepoint every caller goes through, rather than trusted to be re-checked
+// at each call site. hashPassword throws over the ceiling (a write path must
+// never truncate or silently accept a credential); verifyPassword returns
+// false without hashing (an anonymous verify path must refuse, not 500 —
+// closing the same cost-asymmetry gap DUMMY_PASSWORD_HASH closes below).
+// Consequence accepted on purpose: an existing password longer than the
+// ceiling becomes unusable — the reset flow is the way out, not a bug.
+
+import { MAX_PASSWORD_LENGTH } from "../domain/auth-copy";
 
 const ALGORITHM = "pbkdf2";
 const VERSION = "v1";
@@ -69,6 +80,9 @@ export const DUMMY_PASSWORD_HASH =
   "pbkdf2$v1$100000$qqqqqqqqqqqqqqqqqqqqqg$VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU";
 
 export async function hashPassword(password: string): Promise<string> {
+  if (password.length > MAX_PASSWORD_LENGTH) {
+    throw new Error(`Password exceeds maximum length of ${MAX_PASSWORD_LENGTH} characters`);
+  }
   const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
   const derived = await deriveKey(password, salt);
   return `${ALGORITHM}$${VERSION}$${ITERATIONS}$${toBase64Url(salt)}$${toBase64Url(derived)}`;
@@ -86,6 +100,9 @@ function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
 }
 
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  if (password.length > MAX_PASSWORD_LENGTH) {
+    return false;
+  }
   const parts = stored.split("$");
   if (parts.length !== 5) {
     throw new Error(`Malformed password hash: expected 5 fields, got ${parts.length}`);
