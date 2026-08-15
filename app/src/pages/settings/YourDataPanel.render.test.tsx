@@ -55,10 +55,9 @@ describe('YourDataPanel', () => {
     expect(within(section).getByRole('heading', { name: 'Your data' })).toBeInTheDocument();
     expect(within(section).getByText('Exports')).toBeInTheDocument();
     expect(within(section).getByText('API tokens')).toBeInTheDocument();
-    expect(within(section).getByRole('link', { name: 'chautauqua.cc/docs/api' })).toHaveAttribute(
-      'href',
-      '/docs/api',
-    );
+    expect(
+      within(section).getByRole('link', { name: `${window.location.host}/docs/api` }),
+    ).toHaveAttribute('href', '/docs/api');
     expect(within(section).getByText('Import from Sessionboard')).toBeInTheDocument();
 
     expect(within(section).getByRole('link', { name: 'Submissions CSV' })).toHaveAttribute(

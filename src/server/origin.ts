@@ -1,6 +1,6 @@
 // DEC-252: the ONLY source of absolute link bases for user-facing links
 // (emailed claim/portal links etc). Under local `wrangler dev`,
-// wrangler.jsonc's `routes`/`custom_domain: chautauqua.cc` entry (human
+// wrangler.jsonc's `routes`/`custom_domain` entry (the operator's own host; human
 // stage-2 wiring, untouchable) makes `new URL(c.req.url).origin` resolve to
 // the LIVE production host rather than the local dev server, so a naive
 // `origin` computation poisons emailed links in dev. Fix lives entirely in

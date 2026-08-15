@@ -247,7 +247,7 @@ export function FormsPage() {
   const offeredTrackIds = form.tracks && form.tracks.length > 0 ? new Set(form.tracks) : null;
   const offeredTracks = offeredTrackIds ? tracks.filter((t) => offeredTrackIds.has(t.id)) : tracks;
   // Frame grammar: the footer row displays host+path with the protocol
-  // stripped ('chautauqua.cc/submit/...'); Copy still copies the absolute
+  // stripped ('<host>/submit/...'); Copy still copies the absolute
   // URL below.
   const publicLinkDisplay = `${window.location.host}/submit/${event.slug}`;
 

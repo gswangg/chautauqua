@@ -57,6 +57,12 @@ import { SummarySection } from './SummarySection';
 
 const SECTION_KEY = 'your-data';
 
+// Host-derived display text, not a hard-coded deployment hostname (DEC-296
+// amendment, w7-d): this instance's actual host, same pattern as
+// FormsPage.tsx's submission-URL display text. The anchors' href stays
+// root-relative ("/docs/api") in both call sites below.
+const apiDocsDisplay = `${window.location.host}/docs/api`;
+
 interface EventSummary {
   id: string;
   slug: string;
@@ -189,7 +195,7 @@ export function YourDataPanel() {
     { label: 'API tokens', value: <ApiTokensPanel readOnly /> },
     {
       label: 'API docs',
-      value: <a href="/docs/api">chautauqua.cc/docs/api</a>,
+      value: <a href="/docs/api">{apiDocsDisplay}</a>,
     },
     { label: 'Import from Sessionboard', value: 'Import speakers and sessions from a Sessionboard export' },
   ];
@@ -217,7 +223,7 @@ export function YourDataPanel() {
         <div className="chq-settings-row">
           <span className="chq-settings-row-label">API docs</span>
           <div className="chq-settings-row-value">
-            <a href="/docs/api">chautauqua.cc/docs/api</a>
+            <a href="/docs/api">{apiDocsDisplay}</a>
           </div>
         </div>
 
