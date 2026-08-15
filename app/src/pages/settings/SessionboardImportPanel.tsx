@@ -25,6 +25,8 @@ import { DelayedLoading } from '../../components/DelayedLoading';
 import { apiPost, ApiError } from '../../lib/api';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { parseCsv } from '../contacts/csv';
+import { MAX_IMPORT_CSV_BYTES } from '../../../../src/domain/contacts';
+import { formatBytes } from '../../../../src/domain/files';
 
 export type SessionboardEntity = 'contacts' | 'submissions' | 'tracks' | 'participants';
 
@@ -97,11 +99,18 @@ export function SessionboardImportPanel() {
   }
 
   function handleFile(file: File) {
+    if (file.size > MAX_IMPORT_CSV_BYTES) {
+      setError(
+        `${file.name} is ${formatBytes(file.size)}, over the ${formatBytes(MAX_IMPORT_CSV_BYTES)} limit by ${formatBytes(file.size - MAX_IMPORT_CSV_BYTES)}.`,
+      );
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       setCsvText(String(reader.result ?? ''));
       setDryRunReport(null);
       setFinalReport(null);
+      setError(null);
     };
     reader.readAsText(file);
   }
@@ -120,8 +129,19 @@ export function SessionboardImportPanel() {
     setFinalReport(null);
   }
 
+  function csvByteOverage(): string | null {
+    const byteLength = new TextEncoder().encode(csvText).length;
+    if (byteLength <= MAX_IMPORT_CSV_BYTES) return null;
+    return `The pasted CSV is ${formatBytes(byteLength)}, over the ${formatBytes(MAX_IMPORT_CSV_BYTES)} limit by ${formatBytes(byteLength - MAX_IMPORT_CSV_BYTES)}.`;
+  }
+
   async function runDryRun() {
     if (!eventId) return;
+    const overage = csvByteOverage();
+    if (overage) {
+      setError(overage);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -142,6 +162,11 @@ export function SessionboardImportPanel() {
 
   async function runImport() {
     if (!eventId) return;
+    const overage = csvByteOverage();
+    if (overage) {
+      setError(overage);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -228,6 +253,10 @@ export function SessionboardImportPanel() {
               ))}
             </div>
           </fieldset>
+
+          <p className="chq-settings-sessionboard-size-hint">
+            Up to {formatBytes(MAX_IMPORT_CSV_BYTES)} of CSV.
+          </p>
 
           <div className="chq-settings-row">
             <label className="chq-settings-sessionboard-field">

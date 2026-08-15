@@ -10,6 +10,8 @@ import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-li
 import '@testing-library/jest-dom/vitest';
 import { SessionboardImportPanel } from './SessionboardImportPanel';
 import { mockApi } from '../../test-utils/mockApi';
+import { MAX_IMPORT_CSV_BYTES } from '../../../../src/domain/contacts';
+import { formatBytes } from '../../../../src/domain/files';
 
 const EVENT_ID = 'evt-sbimport-render';
 const ENDPOINT = `POST /api/v1/events/${EVENT_ID}/import/sessionboard`;
@@ -128,6 +130,43 @@ describe('SessionboardImportPanel', () => {
     // total beyond created+updated on the confirm button, which is gone
     // once the real run's report has replaced the dry-run report.
     expect(screen.queryByRole('button', { name: /Import \d+ rows/ })).not.toBeInTheDocument();
+  });
+
+  it('states the byte budget from formatBytes(MAX_IMPORT_CSV_BYTES)', () => {
+    render(<SessionboardImportPanel />);
+    expect(screen.getByText(`Up to ${formatBytes(MAX_IMPORT_CSV_BYTES)} of CSV.`)).toBeInTheDocument();
+  });
+
+  it('refuses an over-cap file before reading or posting, naming the overage', () => {
+    const fetchMock = mockApi({ [ENDPOINT]: { dryRun: true, entity: 'contacts', created: 0, updated: 0, skipped: [], issues: [] } });
+    render(<SessionboardImportPanel />);
+
+    const oversized = new File([new Uint8Array(MAX_IMPORT_CSV_BYTES + 1000)], 'export.csv', { type: 'text/csv' });
+    const fileInput = screen.getByLabelText('Upload the Sessionboard export') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [oversized] } });
+
+    const alert = screen.getByRole('alert');
+    expect(alert.textContent).toContain(formatBytes(MAX_IMPORT_CSV_BYTES));
+    expect(alert.textContent).toContain(formatBytes(1000));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it('refuses over-cap pasted text before requesting, naming the overage', () => {
+    const fetchMock = mockApi({ [ENDPOINT]: { dryRun: true, entity: 'contacts', created: 0, updated: 0, skipped: [], issues: [] } });
+    render(<SessionboardImportPanel />);
+
+    const oversizedText = 'a'.repeat(MAX_IMPORT_CSV_BYTES + 500);
+    fireEvent.change(screen.getByLabelText(/Or paste the exported CSV text/), {
+      target: { value: oversizedText },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Preview import (dry run)' }));
+
+    const alert = screen.getByRole('alert');
+    expect(alert.textContent).toContain(formatBytes(MAX_IMPORT_CSV_BYTES));
+    expect(alert.textContent).toContain(formatBytes(500));
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('switching entity resets the mapping and any prior report', async () => {
