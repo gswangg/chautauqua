@@ -24,7 +24,7 @@ import { newId } from "../../domain/ids";
 import { isValidEmail, normalizeEmail } from "../../domain/email";
 import { isCoPresenterRoleValue, participantRoleLabel, MAX_PARTICIPANTS_PER_SUBMISSION } from "../../domain/participant-roles";
 import { MAX_NAME_LENGTH } from "../../forms/validate";
-import { overCapFieldMessage } from "../../domain/cap-copy";
+import { overCapFieldMessage, participantCapRefusalMessage } from "../../domain/cap-copy";
 import { DEC_604, DEC_656, DEC_842, DEC_866, DEC_997 } from "../../decisions";
 import { touchSubmissions, touchSubmissionsForContacts } from "./submissions/touch";
 
@@ -485,14 +485,17 @@ export async function addCoPresenter(db: Db, input: AddCoPresenterInput): Promis
     .where(eq(schema.participant.submissionId, input.submissionId));
   const count = countRows[0]?.count ?? 0;
   if (count >= MAX_PARTICIPANTS_PER_SUBMISSION) {
-    // Names the real total (MAX_PARTICIPANTS_PER_SUBMISSION) and the row
-    // count already read, never a hard-typed "(5)" -- an organizer-invited
-    // participant already counts toward this submission's total, so the
-    // true remaining co-presenter headroom can be less than 5.
+    // Names the real total (MAX_PARTICIPANTS_PER_SUBMISSION) via the one
+    // cap grammar (participantCapRefusalMessage, src/domain/cap-copy.ts) --
+    // an organizer-invited participant already counts toward this
+    // submission's total, so the true remaining co-presenter headroom can
+    // be less than MAX_PARTICIPANTS_PER_SUBMISSION - 1, and a count read
+    // above the cap (the organizer door has no pre-write check of its own)
+    // must never be presented as a position inside a remaining allowance.
     return {
       ok: false,
       errors: {
-        role: `This submission already has ${count} of the maximum ${MAX_PARTICIPANTS_PER_SUBMISSION} participants allowed -- no more co-presenters can be added`,
+        role: participantCapRefusalMessage(count, MAX_PARTICIPANTS_PER_SUBMISSION),
       },
     };
   }

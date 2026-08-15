@@ -41,9 +41,14 @@ export function participantRoleLabel(role: string): string {
 }
 
 // DEC-422 (wave-67 amendment) / DEC-604: 1 original submitter + up to 5
-// self-added co-presenters -- a submission may never carry more than this
-// many participant rows added through the speaker's own add-co-presenter
-// path. Moved out of src/server/repo/portal-edit.ts (a drizzle-importing
-// repo module the SPA cannot import) so the add-co-presenter form can
-// disclose the real remaining headroom.
+// more -- a submission may never carry more than this many participant
+// rows in total, PERIOD. This is a property of the SUBMISSION, enforced at
+// BOTH doors that can add a participant row: the organizer's invite
+// endpoint (POST /api/v1/submissions/:id/participants ->
+// src/server/repo/participants.ts:inviteParticipant) and the speaker
+// portal's add-co-presenter form (src/server/repo/portal-edit.ts:
+// addCoPresenter) -- not a portal-path-only rule. Moved out of
+// src/server/repo/portal-edit.ts (a drizzle-importing repo module the SPA
+// cannot import) so the add-co-presenter form can disclose the real
+// remaining headroom.
 export const MAX_PARTICIPANTS_PER_SUBMISSION = 6;

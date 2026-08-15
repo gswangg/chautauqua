@@ -15,6 +15,7 @@ import { Hono } from "hono";
 import { submissionsRoutes } from "../src/routes/api/submissions";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
+import { MAX_PARTICIPANTS_PER_SUBMISSION } from "../src/domain/participant-roles";
 
 const ORG_A = "org-a";
 const SUBMISSION_ORG_A = { eventId: "event-1", orgId: ORG_A };
@@ -247,6 +248,34 @@ describe("POST /api/v1/submissions/:id/participants (DEC-070 invite)", () => {
     const json = (await res.json()) as any;
     expect(json.error.code).toBe("invalid");
     expect(json.error.fields.role).toBeTruthy();
+    expect(inserts).toHaveLength(0);
+  });
+
+  // DEC-422/DEC-604 amendment (w12-b): closes the gap where this organizer
+  // door had no cap check at all -- a 7th participant (the submission
+  // already carries MAX_PARTICIPANTS_PER_SUBMISSION rows) is a named 400,
+  // and inviteParticipant's pre-write COUNT means no insert is ever
+  // attempted.
+  it("rejects a 7th organiser invite once the submission is already at MAX_PARTICIPANTS_PER_SUBMISSION, writing nothing", async () => {
+    const { db, inserts } = fakeDb([
+      [SUBMISSION_ORG_A], // getSubmissionOwnership
+      [CONTACT_ORG_A], // findContactForOrg
+      [{ count: MAX_PARTICIPANTS_PER_SUBMISSION }], // inviteParticipant's pre-write COUNT
+      [{ count: MAX_PARTICIPANTS_PER_SUBMISSION }], // route's post-refusal getParticipantCount (message only)
+    ]);
+    const app = appWithDbAndAuth(db, ORGANIZER_A);
+
+    const res = await app.request(jsonRequest("/api/v1/submissions/sub-1/participants", { contactId: "contact-1" }));
+
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as any;
+    expect(json.error.code).toBe("invalid");
+    expect(json.error.fields.contactId).toBeTruthy();
+    // Never a stored-count-as-position phrasing (e.g. "already has 6 of
+    // the maximum 6 participants") -- the message names the would-be total.
+    expect(json.error.fields.contactId).not.toMatch(
+      new RegExp(`already has ${MAX_PARTICIPANTS_PER_SUBMISSION} of the maximum`),
+    );
     expect(inserts).toHaveLength(0);
   });
 });
