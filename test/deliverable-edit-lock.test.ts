@@ -24,7 +24,8 @@ interface FakeSubmission {
   submissionId: string;
   eventId: string;
   orgId: string;
-  participantContactIds: string[];
+  readParticipantContactIds: string[];
+  activeParticipantContactIds: string[];
   status: string;
   formCloseDate: number | null;
   timezone: string;
@@ -35,7 +36,8 @@ const submissions: Record<string, FakeSubmission> = {
     submissionId: "sub-accepted-closed",
     eventId: "event-1",
     orgId: ORG_A,
-    participantContactIds: [SPEAKER_CONTACT],
+    readParticipantContactIds: [SPEAKER_CONTACT],
+    activeParticipantContactIds: [SPEAKER_CONTACT],
     status: "accepted",
     formCloseDate: CLOSED_DATE,
     timezone: TZ,
@@ -44,7 +46,8 @@ const submissions: Record<string, FakeSubmission> = {
     submissionId: "sub-declined-closed",
     eventId: "event-1",
     orgId: ORG_A,
-    participantContactIds: [SPEAKER_CONTACT],
+    readParticipantContactIds: [SPEAKER_CONTACT],
+    activeParticipantContactIds: [SPEAKER_CONTACT],
     status: "declined",
     formCloseDate: CLOSED_DATE,
     timezone: TZ,
@@ -53,7 +56,8 @@ const submissions: Record<string, FakeSubmission> = {
     submissionId: "sub-pending-open",
     eventId: "event-1",
     orgId: ORG_A,
-    participantContactIds: [SPEAKER_CONTACT],
+    readParticipantContactIds: [SPEAKER_CONTACT],
+    activeParticipantContactIds: [SPEAKER_CONTACT],
     status: "pending",
     formCloseDate: OPEN_DATE,
     timezone: TZ,
@@ -67,7 +71,8 @@ const fileScopeForSubmission: Record<string, unknown> = {
     eventId: "event-1",
     orgId: ORG_A,
     uploadedByContactId: null,
-    participantContactIds: [SPEAKER_CONTACT],
+    readParticipantContactIds: [SPEAKER_CONTACT],
+    activeParticipantContactIds: [SPEAKER_CONTACT],
     filename: "deck.pdf",
     contentType: "application/pdf",
     r2Key: "sub/deck.pdf",
@@ -78,7 +83,8 @@ const fileScopeForSubmission: Record<string, unknown> = {
     eventId: "event-1",
     orgId: ORG_A,
     uploadedByContactId: null,
-    participantContactIds: [SPEAKER_CONTACT],
+    readParticipantContactIds: [SPEAKER_CONTACT],
+    activeParticipantContactIds: [SPEAKER_CONTACT],
     filename: "deck.pdf",
     contentType: "application/pdf",
     r2Key: "sub/deck.pdf",
@@ -89,7 +95,8 @@ const fileScopeForSubmission: Record<string, unknown> = {
     eventId: "event-1",
     orgId: ORG_A,
     uploadedByContactId: null,
-    participantContactIds: [SPEAKER_CONTACT],
+    readParticipantContactIds: [SPEAKER_CONTACT],
+    activeParticipantContactIds: [SPEAKER_CONTACT],
     filename: "deck.pdf",
     contentType: "application/pdf",
     r2Key: "sub/deck.pdf",

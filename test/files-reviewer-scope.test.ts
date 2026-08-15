@@ -28,12 +28,13 @@ const ANON_ONLY_SUB = "sub-3";
 
 const ASSIGNED_REVIEWER = "rev-assigned";
 
-const submissionScopes: Record<string, { submissionId: string; eventId: string; orgId: string; participantContactIds: string[]; status: string; formCloseDate: number | null; timezone: string }> = {
+const submissionScopes: Record<string, { submissionId: string; eventId: string; orgId: string; readParticipantContactIds: string[]; activeParticipantContactIds: string[]; status: string; formCloseDate: number | null; timezone: string }> = {
   [IN_SCOPE_SUB]: {
     submissionId: IN_SCOPE_SUB,
     eventId: EVENT_ID,
     orgId: ORG_A,
-    participantContactIds: ["contact-speaker"],
+    readParticipantContactIds: ["contact-speaker"],
+    activeParticipantContactIds: ["contact-speaker"],
     status: "accepted",
     formCloseDate: null,
     timezone: "UTC",
@@ -42,7 +43,8 @@ const submissionScopes: Record<string, { submissionId: string; eventId: string; 
     submissionId: CROSS_TRACK_SUB,
     eventId: EVENT_ID,
     orgId: ORG_A,
-    participantContactIds: ["contact-speaker-2"],
+    readParticipantContactIds: ["contact-speaker-2"],
+    activeParticipantContactIds: ["contact-speaker-2"],
     status: "accepted",
     formCloseDate: null,
     timezone: "UTC",
@@ -51,7 +53,8 @@ const submissionScopes: Record<string, { submissionId: string; eventId: string; 
     submissionId: ANON_ONLY_SUB,
     eventId: EVENT_ID,
     orgId: ORG_A,
-    participantContactIds: ["contact-speaker-3"],
+    readParticipantContactIds: ["contact-speaker-3"],
+    activeParticipantContactIds: ["contact-speaker-3"],
     status: "accepted",
     formCloseDate: null,
     timezone: "UTC",
@@ -60,7 +63,7 @@ const submissionScopes: Record<string, { submissionId: string; eventId: string; 
 
 const fileScopesById: Record<
   string,
-  { fileId: string; submissionId: string | null; eventId: string; orgId: string; uploadedByContactId: string | null; participantContactIds: string[]; filename: string; contentType: string; r2Key: string }
+  { fileId: string; submissionId: string | null; eventId: string; orgId: string; uploadedByContactId: string | null; readParticipantContactIds: string[]; activeParticipantContactIds: string[]; filename: string; contentType: string; r2Key: string }
 > = {
   "file-in-scope": {
     fileId: "file-in-scope",
@@ -68,7 +71,8 @@ const fileScopesById: Record<
     eventId: EVENT_ID,
     orgId: ORG_A,
     uploadedByContactId: "contact-speaker",
-    participantContactIds: ["contact-speaker"],
+    readParticipantContactIds: ["contact-speaker"],
+    activeParticipantContactIds: ["contact-speaker"],
     filename: "slides.pdf",
     contentType: "application/pdf",
     r2Key: "sub/sub-1/slides.pdf",
@@ -79,7 +83,8 @@ const fileScopesById: Record<
     eventId: EVENT_ID,
     orgId: ORG_A,
     uploadedByContactId: "contact-speaker-2",
-    participantContactIds: ["contact-speaker-2"],
+    readParticipantContactIds: ["contact-speaker-2"],
+    activeParticipantContactIds: ["contact-speaker-2"],
     filename: "deck.pdf",
     contentType: "application/pdf",
     r2Key: "sub/sub-2/deck.pdf",
@@ -90,7 +95,8 @@ const fileScopesById: Record<
     eventId: EVENT_ID,
     orgId: ORG_A,
     uploadedByContactId: "contact-speaker-3",
-    participantContactIds: ["contact-speaker-3"],
+    readParticipantContactIds: ["contact-speaker-3"],
+    activeParticipantContactIds: ["contact-speaker-3"],
     filename: "notes.pdf",
     contentType: "application/pdf",
     r2Key: "sub/sub-3/notes.pdf",

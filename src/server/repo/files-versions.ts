@@ -6,7 +6,7 @@ import { asc, desc, eq, inArray } from "drizzle-orm";
 import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId } from "../../domain/ids";
-import type { FileKind } from "../../domain/files";
+import { FILE_KINDS, type FileKind } from "../../domain/files";
 import { chunkIds } from "../../lib/chunk";
 import { DEC_244, DEC_713, DEC_818, DEC_965 } from "../../decisions";
 
@@ -625,6 +625,7 @@ export async function getFileDeleteScope(db: Db, fileId: string): Promise<FileDe
   const fileRows = await db
     .select({
       id: schema.file.id,
+      kind: schema.file.kind,
       submissionId: schema.file.submissionId,
       filename: schema.file.filename,
       r2Key: schema.file.r2Key,
@@ -636,6 +637,13 @@ export async function getFileDeleteScope(db: Db, fileId: string): Promise<FileDe
     .limit(1);
   const fileRow = fileRows[0];
   if (!fileRow) return null;
+  // DEC-713: version deletion's population is submission DELIVERABLES only
+  // (FILE_KINDS: presentation/poster/handout/recording) — disjoint from
+  // kind='attachment' (a CFP form-answer upload, id stored inline in
+  // submission_answer.value_json, insertAttachmentFile in submit.ts) and
+  // kind='resource'/'headshot'/task-linked uploads, mirroring
+  // getResourceFileScope/getTaskFileScope's own disjoint-population guards.
+  if (!(FILE_KINDS as readonly string[]).includes(fileRow.kind)) return null;
 
   let orgId: string | null = null;
   let eventId: string | null = null;

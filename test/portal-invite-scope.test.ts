@@ -235,11 +235,12 @@ describe("DEC-317 portal invite-state gating", () => {
 
     const scope = await getSubmissionScope(db, "sub-1");
     expect(scope).not.toBeNull();
-    expect(scope!.participantContactIds).not.toContain("contact-1");
+    expect(scope!.readParticipantContactIds).not.toContain("contact-1");
+    expect(scope!.activeParticipantContactIds).not.toContain("contact-1");
     expect(canAccessFile({ role: "speaker", orgId: "org-1", contactId: "contact-1" }, { ...scope!, uploadedByContactId: null })).toBe(false);
   });
 
-  it("invited participant: can READ the submission but gets null from loadEditableSubmission (write requires active)", async () => {
+  it("invited participant: can READ the submission (and its files) but gets null from loadEditableSubmission (write requires active)", async () => {
     const db = makeDb(seedFor("invited"));
 
     const detail = await getPortalSubmissionDetail(db, "sub-1", "contact-1", "org-1");
@@ -256,8 +257,11 @@ describe("DEC-317 portal invite-state gating", () => {
     expect(eventIds).toEqual(["event-1"]);
 
     const scope = await getSubmissionScope(db, "sub-1");
-    expect(scope!.participantContactIds).not.toContain("contact-1");
-    expect(canAccessFile({ role: "speaker", orgId: "org-1", contactId: "contact-1" }, { ...scope!, uploadedByContactId: null })).toBe(false);
+    // DEC-317: 'invited' is in the READ population (files GET is allowed)
+    // but not the ACTIVE (write) population.
+    expect(scope!.readParticipantContactIds).toContain("contact-1");
+    expect(scope!.activeParticipantContactIds).not.toContain("contact-1");
+    expect(canAccessFile({ role: "speaker", orgId: "org-1", contactId: "contact-1" }, { ...scope!, uploadedByContactId: null })).toBe(true);
   });
 
   for (const status of ["none", "accepted"] as const) {
@@ -277,7 +281,8 @@ describe("DEC-317 portal invite-state gating", () => {
       expect(eventIds).toEqual(["event-1"]);
 
       const scope = await getSubmissionScope(db, "sub-1");
-      expect(scope!.participantContactIds).toContain("contact-1");
+      expect(scope!.readParticipantContactIds).toContain("contact-1");
+      expect(scope!.activeParticipantContactIds).toContain("contact-1");
       expect(canAccessFile({ role: "speaker", orgId: "org-1", contactId: "contact-1" }, { ...scope!, uploadedByContactId: null })).toBe(true);
     });
   }

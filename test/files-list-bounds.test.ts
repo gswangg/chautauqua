@@ -46,7 +46,7 @@ vi.mock("../src/server/repo/files", async () => {
     ...actual,
     getSubmissionScope: vi.fn(async (_db: unknown, submissionId: string) =>
       submissionId === SUBMISSION_ID
-        ? { submissionId, eventId: "event-1", orgId: ORG_A, participantContactIds: [] }
+        ? { submissionId, eventId: "event-1", orgId: ORG_A, readParticipantContactIds: [], activeParticipantContactIds: [] }
         : null,
     ),
     listSubmissionFiles: vi.fn(async (_db: unknown, submissionId: string) =>
@@ -64,7 +64,8 @@ vi.mock("../src/server/repo/files", async () => {
             eventId: "event-1",
             orgId: ORG_A,
             uploadedByContactId: "contact-1",
-            participantContactIds: [],
+            readParticipantContactIds: [],
+            activeParticipantContactIds: [],
             filename: "slides.pdf",
             contentType: "application/pdf",
             r2Key: "k",

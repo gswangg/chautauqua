@@ -236,7 +236,7 @@ describe("DEC-239/DEC-247: GET /api/v1/submissions/:id/files vs DeliverableFile"
       return {
         ...actual,
         getSubmissionScope: vi.fn(async (_db: unknown, submissionId: string) =>
-          submissionId === "sub-1" ? { orgId: ORG_A, participantContactIds: [] } : null,
+          submissionId === "sub-1" ? { orgId: ORG_A, readParticipantContactIds: [], activeParticipantContactIds: [] } : null,
         ),
         listSubmissionFiles: vi.fn(async () => ({
           presentation: [

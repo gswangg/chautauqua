@@ -5,7 +5,7 @@ import * as schema from "../src/db/schema";
 import type { Db } from "../src/server/context";
 
 describe("canAccessFile", () => {
-  const scope = { orgId: "org1", uploadedByContactId: "c1", participantContactIds: ["c1", "c2"] };
+  const scope = { orgId: "org1", uploadedByContactId: "c1", readParticipantContactIds: ["c1", "c2"] };
 
   it("allows an organizer in the same org", () => {
     expect(canAccessFile({ role: "organizer", orgId: "org1" }, scope)).toBe(true);
@@ -20,7 +20,7 @@ describe("canAccessFile", () => {
   });
 
   it("allows a speaker who is the uploader even if not currently a participant", () => {
-    expect(canAccessFile({ role: "speaker", orgId: "org1", contactId: "c1" }, { ...scope, participantContactIds: [] })).toBe(
+    expect(canAccessFile({ role: "speaker", orgId: "org1", contactId: "c1" }, { ...scope, readParticipantContactIds: [] })).toBe(
       true,
     );
   });

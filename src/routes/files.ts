@@ -103,7 +103,9 @@ async function authzSubmissionRead(c: Context<AppEnv>, submissionId: string) {
     return { auth, scope };
   }
   if (auth.role === "speaker") {
-    if (!auth.contactId || !scope.participantContactIds.includes(auth.contactId)) {
+    // DEC-317: read = not-declined — an 'invited' participant may still see
+    // the submission and its files while the invite is outstanding.
+    if (!auth.contactId || !scope.readParticipantContactIds.includes(auth.contactId)) {
       throw new ApiError("forbidden", "Not a participant on this submission");
     }
     return { auth, scope };
@@ -114,6 +116,10 @@ async function authzSubmissionRead(c: Context<AppEnv>, submissionId: string) {
   }
   throw new ApiError("forbidden", "Requires organizer or participant speaker");
 }
+
+/** DEC-317: the single declaration of the "not an active participant" write
+ * refusal — thrown by authzSubmissionWrite's speaker branch. */
+const NOT_ACTIVE_PARTICIPANT_ERROR = "Not authorized to modify this submission's files";
 
 /** DEC-041 edit-lock, in ONE place: throws when a speaker's submission-scoped
  * write (upload, comment, or delete a version) falls outside the
@@ -140,6 +146,11 @@ async function authzSubmissionWrite(c: Context<AppEnv>, submissionId: string) {
     throw new ApiError("forbidden", "Reviewers may not modify files");
   }
   if (auth.role === "speaker") {
+    // DEC-317: write = active only — an 'invited' (not yet accepted)
+    // participant can read but not upload/comment/delete.
+    if (!auth.contactId || !scope.activeParticipantContactIds.includes(auth.contactId)) {
+      throw new ApiError("forbidden", NOT_ACTIVE_PARTICIPANT_ERROR);
+    }
     assertSpeakerSubmissionUnlocked(scope);
   }
   return result;
@@ -488,6 +499,10 @@ async function authzFileWrite(c: Context<AppEnv>, fileId: string) {
     if (!scope.submissionId) throw new ApiError("forbidden", "Not authorized for this file");
     const subScope = await getSubmissionScope(c.var.db, scope.submissionId);
     if (!subScope) throw new ApiError("not_found", "Submission not found");
+    // DEC-317: write = active only, same rule as authzSubmissionWrite.
+    if (!auth.contactId || !subScope.activeParticipantContactIds.includes(auth.contactId)) {
+      throw new ApiError("forbidden", NOT_ACTIVE_PARTICIPANT_ERROR);
+    }
     assertSpeakerSubmissionUnlocked(subScope);
   }
   return result;
@@ -538,6 +553,10 @@ fileApiRoutes.delete("/files/:fileId", csrfJson, async (c) => {
   }
   const fileId = c.req.param("fileId");
 
+  // DEC-713: getFileDeleteScope's population is FILE_KINDS deliverables only
+  // — a kind='attachment' CFP form-answer upload (or any other non-FILE_KINDS
+  // row) resolves null here and 404s, exactly as the disjoint
+  // getResourceFileScope/getTaskFileScope populations do for GET /files/:fileId.
   const scope = await getFileDeleteScope(c.var.db, fileId);
   if (!scope || !scope.submissionId || !scope.orgId) throw new ApiError("not_found", "File not found");
 
