@@ -382,6 +382,14 @@ async function main(): Promise<void> {
         r2_key: r2Key,
         size_bytes: 102400,
         content_type: "application/pdf",
+        // DEC-818/migration 0025: version_no is a stored identity, set at
+        // INSERT time — spec.versionIndex is 0-based within each file's own
+        // chain (previous_file_id chain root = versionIndex 0 = version_no
+        // 1), matching the migration's backfill formula (root=1, each
+        // successor=predecessor+1). Missing here meant every perf-seeded
+        // file had a NULL version_no, tripping showflow.ts's fail-loudly
+        // guard (task-w16-d).
+        version_no: spec.versionIndex + 1,
         previous_file_id: previousFileId,
         uploaded_by_contact_id: contactId,
         created_at: nextTs(),
@@ -488,6 +496,26 @@ async function main(): Promise<void> {
   // contacts are seeded deliberately pending+overdue (`default`'s
   // overdueTaskFraction is 0, so this is bit-for-bit unchanged there). ---
   const contactsPerTaskCount = contactsPerTask(PERF_TASK_ASSIGNMENT_TOTAL, PERF_TASK_COUNT);
+  // task-w16-d: onboarding is a speaker-facing surface (the grid at
+  // src/routes/tasks.ts's GET .../onboarding only lists contacts with a
+  // participant row), but the raw `contactIds` pool head (indices
+  // 0..contactsPerTaskCount-1) is NOT the same window as the accepted-
+  // submission speaker contacts (`acceptedContactIds`, drawn from
+  // contactIndexForSubmission's window elsewhere in this file). For
+  // `default` those windows happen to fully overlap (contactsPerTaskCount
+  // is 800 -- every contact in the 800-contact pool -- so every assignment
+  // lands on some contact, all of whom are also union-of-speaker/non-
+  // speaker; grid still shows plenty). For `aie` they do NOT overlap
+  // (contactsPerTaskCount 80 vs a 250-wide speaker window elsewhere in the
+  // 6,000-contact pool), so the onboarding grid never surfaces a single one
+  // of the 400 seeded assignments (task-w16-d perf-smoke:aie FAIL). Draw
+  // assignment contacts from the real speaker pool (acceptedContactIds)
+  // whenever it's large enough to cover contactsPerTaskCount without
+  // reusing a contact twice across all PERF_TASK_COUNT tasks; `default`
+  // (800 > acceptedContactIds.length 300) falls through unchanged
+  // (bit-for-bit) to the original contactIds pool head.
+  const taskAssignmentContactIds =
+    contactsPerTaskCount <= acceptedContactIds.length ? acceptedContactIds : contactIds;
   const overdueCount = overdueAssignmentCount(PERF_TASK_ASSIGNMENT_TOTAL, PERF_OVERDUE_TASK_FRACTION);
   // Fixed, well-in-the-past anchor (not BASE_TS, which sits after "today" —
   // see the BASE_TS comment above) so seeded overdue assignments read as
@@ -520,7 +548,7 @@ async function main(): Promise<void> {
     const taskId = taskIds[taskIdx]!;
     for (let contactIdx = 0; contactIdx < contactsPerTaskCount; contactIdx++) {
       taskAssignmentCounter += 1;
-      const contactId = contactIds[contactIdx]!;
+      const contactId = taskAssignmentContactIds[contactIdx]!;
       const deliberatelyOverdue = isDeliberatelyOverdueAssignment(taskIdx, contactIdx, overdueCount);
       const isComplete = deliberatelyOverdue ? false : isTaskAssignmentComplete(taskIdx, contactIdx);
       statements.push(
