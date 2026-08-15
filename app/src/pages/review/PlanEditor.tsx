@@ -56,6 +56,7 @@ import { countOf } from '../../lib/plural';
 // cap like ReviewerQueue.tsx's own "Show all N" affordance, never silently
 // truncate at listPerPage's default.
 import { MAX_PER_PAGE, MAX_PAGE } from '../../../../src/lib/pagination';
+import { MAX_PLAN_CRITERIA } from '../../lib/batch-caps';
 
 void DEC_745; // v4 shell: title-row NAME/Duplicate/Save, 2x2 field grid, "Who reviews what" below
 void DEC_786; // "Distribute evenly" link below: preview-then-confirm, zero non-GET requests before confirm
@@ -151,10 +152,6 @@ function planErrorSummaryProblems(errors: PlanValidationErrors): { anchorId: str
   }
   return problems;
 }
-
-// DEC-676: soft cap on the criteria list -- Add disables with an honest
-// caption once reached, never a silent no-op.
-const MAX_CRITERIA = 7;
 
 function defaultDraftCriteria(): EvaluationCriterion[] {
   return DEFAULT_PLAN_CRITERIA.map((c) => ({ ...c }));
@@ -1460,7 +1457,7 @@ export function PlanEditor() {
             // DEC-676: shares are computed over the whole editing list --
             // dropdown/text rows have no weight and get no share entry.
             const shares = criterionWeightShares(editingCriteria);
-            const atCap = editingCriteria.length >= MAX_CRITERIA;
+            const atCap = editingCriteria.length >= MAX_PLAN_CRITERIA;
             if (activeRoundIsLocked) {
               // DEC-882: a locked round reads as TEXT, not disabled inputs --
               // zero form controls render for its criteria. w41-f: the
@@ -1740,7 +1737,7 @@ export function PlanEditor() {
                     </div>
                   )}
                   <span className="chq-review-criteria-cap-notice">
-                    {editingCriteria.length} of about {MAX_CRITERIA} · more than that and reviewers rush the last ones
+                    {editingCriteria.length} of about {MAX_PLAN_CRITERIA} · more than that and reviewers rush the last ones
                   </span>
                 </div>
               </>

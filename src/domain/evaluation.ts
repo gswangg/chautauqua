@@ -24,6 +24,21 @@ void DEC_676;
  * and results pages. */
 export const MAX_PLAN_ROUNDS = 10;
 
+// DEC-422 (amendment, wave 2): the plan editor's criteria list soft cap --
+// previously hand-declared ONLY as `MAX_CRITERIA = 7` in
+// app/src/pages/review/PlanEditor.tsx, with the server-side
+// parseCriteriaList (src/routes/review/shared.ts) enforcing nothing. Single-
+// sourced here so the SPA's Add-disable/caption and the server's refusal
+// read the same number. Applies to both the plan's base `criteria` array and
+// every `roundCriteria` override array (DEC-147) -- a round override is not
+// a separate cap.
+export const MAX_PLAN_CRITERIA = 7;
+
+// DEC-422 (amendment, wave 2): a dropdown criterion's options list was
+// bounded by the CFP builder's own control but not here -- capped at the
+// same order of magnitude as other bounded option lists in the codebase.
+export const MAX_CRITERION_OPTIONS = 20;
+
 export interface EvaluationCriterion {
   id: string;
   label: string;
