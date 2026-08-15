@@ -498,7 +498,14 @@ export function formatFontFloorSummary(results: readonly FontFloorResult[]): str
 // measureClipOffenders) measures raw geometry/context per candidate element
 // and hands the array here; the PASS/FAIL decision itself is this pure,
 // unit-testable predicate so it never needs a browser to verify. An element
-// is a genuine clip offender only when all three hold:
+// is a genuine clip offender only when all four hold:
+//   (0)   it is not itself a deliberate scroll container (own computed
+//         overflow-y is auto|scroll) — an element that resolves its own
+//         overflow with a scrollbar loses nothing; this is the pre-existing
+//         rule the original DEC-620 probe already applied (`.chq-main`,
+//         app/src/styles.css:404-409, is exactly this shape: `overflow-y:
+//         auto`, "the ONLY [scrolling region]" per styles.css:179) and the
+//         wave-25 amendment does not repeal it
 //   (i)   it or an ancestor establishes a real clipping context (computed
 //         overflow-x/y is hidden|scroll|auto, or a clipping clip/clip-path)
 //   (ii)  it is not the deliberate visually-hidden collapse
@@ -508,13 +515,15 @@ export function formatFontFloorSummary(results: readonly FontFloorResult[]): str
 export const CLIP_VISUALLY_HIDDEN_MAX_PX = 1;
 
 /** Raw per-element measurement the in-page probe collects — geometry plus
- * the two boolean facts (clipping context present / overflowing content is
- * a replaced-content crop) the DEC-620 wave-25 amendment predicate needs.
- * Deliberately carries no text content (DEC-401). */
+ * the three boolean facts (self is its own deliberate scroll container /
+ * clipping context present / overflowing content is a replaced-content
+ * crop) the DEC-620 wave-25 amendment predicate needs. Deliberately carries
+ * no text content (DEC-401). */
 export interface ClipCandidate {
   descriptor: string;
   scrollHeight: number;
   clientHeight: number;
+  isSelfScrollContainer: boolean;
   hasClippingContext: boolean;
   isReplacedContentCrop: boolean;
 }
@@ -524,6 +533,7 @@ export interface ClipCandidate {
  * it's directly unit-testable. */
 export function isGenuineClipOffender(candidate: ClipCandidate, tolerancePx: number): boolean {
   if (candidate.scrollHeight <= candidate.clientHeight + tolerancePx) return false;
+  if (candidate.isSelfScrollContainer) return false;
   if (!candidate.hasClippingContext) return false;
   if (candidate.clientHeight <= CLIP_VISUALLY_HIDDEN_MAX_PX) return false;
   if (candidate.isReplacedContentCrop) return false;

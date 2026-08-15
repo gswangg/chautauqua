@@ -954,6 +954,7 @@ describe("isGenuineClipOffender (DEC-620 wave-25 amendment)", () => {
     descriptor: "label.chq-visually-hidden",
     scrollHeight: 19,
     clientHeight: 1,
+    isSelfScrollContainer: false,
     hasClippingContext: true, // overflow:hidden IS a real clipping context
     isReplacedContentCrop: false,
   };
@@ -964,6 +965,7 @@ describe("isGenuineClipOffender (DEC-620 wave-25 amendment)", () => {
     descriptor: "div.chq-pub-speaker-list-photo",
     scrollHeight: 84,
     clientHeight: 80,
+    isSelfScrollContainer: false,
     hasClippingContext: true, // the photo wrapper itself clips (overflow:hidden)
     isReplacedContentCrop: true,
   };
@@ -974,7 +976,20 @@ describe("isGenuineClipOffender (DEC-620 wave-25 amendment)", () => {
     descriptor: "h1.chq-auth-wordmark",
     scrollHeight: 31,
     clientHeight: 28,
+    isSelfScrollContainer: false,
     hasClippingContext: false,
+    isReplacedContentCrop: false,
+  };
+
+  const selfScrollContainer: ClipCandidate = {
+    // .chq-main — flex:1; min-height:0; overflow-y:auto (app/src/styles.css:
+    // 404-409), "the ONLY [scrolling region]" per styles.css:179. Resolves
+    // its own overflow with a scrollbar; nothing is lost to the user.
+    descriptor: "main.chq-main",
+    scrollHeight: 2305,
+    clientHeight: 645,
+    isSelfScrollContainer: true,
+    hasClippingContext: true, // overflow-y:auto IS a clipping-context value
     isReplacedContentCrop: false,
   };
 
@@ -985,6 +1000,7 @@ describe("isGenuineClipOffender (DEC-620 wave-25 amendment)", () => {
     descriptor: "div.chq-some-summary-box",
     scrollHeight: 140,
     clientHeight: 60,
+    isSelfScrollContainer: false,
     hasClippingContext: true,
     isReplacedContentCrop: false,
   };
@@ -1001,7 +1017,11 @@ describe("isGenuineClipOffender (DEC-620 wave-25 amendment)", () => {
     expect(isGenuineClipOffender(noClippingContext, TOLERANCE)).toBe(false);
   });
 
-  it("still FAILs a genuine clip: real clipping context, not the hidden collapse, not a replaced-content crop", () => {
+  it("exempts a deliberate self-scroll container (own overflow-y auto|scroll) even though overflow-y:auto counts as a clipping-context value", () => {
+    expect(isGenuineClipOffender(selfScrollContainer, TOLERANCE)).toBe(false);
+  });
+
+  it("still FAILs a genuine clip: real clipping context, not the hidden collapse, not a replaced-content crop, not self-scrolling", () => {
     expect(isGenuineClipOffender(genuineClip, TOLERANCE)).toBe(true);
   });
 
@@ -1012,21 +1032,45 @@ describe("isGenuineClipOffender (DEC-620 wave-25 amendment)", () => {
 });
 
 describe("selectClipOffenders (DEC-620 wave-25 amendment)", () => {
-  it("drops the three exemption shapes and keeps only the genuine clip, formatted and sorted", () => {
+  it("drops the four exemption shapes and keeps only the genuine clip, formatted and sorted", () => {
     const candidates: ClipCandidate[] = [
-      { descriptor: "label.chq-visually-hidden", scrollHeight: 19, clientHeight: 1, hasClippingContext: true, isReplacedContentCrop: false },
+      {
+        descriptor: "label.chq-visually-hidden",
+        scrollHeight: 19,
+        clientHeight: 1,
+        isSelfScrollContainer: false,
+        hasClippingContext: true,
+        isReplacedContentCrop: false,
+      },
       {
         descriptor: "div.chq-pub-speaker-list-photo",
         scrollHeight: 84,
         clientHeight: 80,
+        isSelfScrollContainer: false,
         hasClippingContext: true,
         isReplacedContentCrop: true,
       },
-      { descriptor: "h1.chq-auth-wordmark", scrollHeight: 31, clientHeight: 28, hasClippingContext: false, isReplacedContentCrop: false },
+      {
+        descriptor: "h1.chq-auth-wordmark",
+        scrollHeight: 31,
+        clientHeight: 28,
+        isSelfScrollContainer: false,
+        hasClippingContext: false,
+        isReplacedContentCrop: false,
+      },
+      {
+        descriptor: "main.chq-main",
+        scrollHeight: 2305,
+        clientHeight: 645,
+        isSelfScrollContainer: true,
+        hasClippingContext: true,
+        isReplacedContentCrop: false,
+      },
       {
         descriptor: "div.chq-some-summary-box",
         scrollHeight: 140,
         clientHeight: 60,
+        isSelfScrollContainer: false,
         hasClippingContext: true,
         isReplacedContentCrop: false,
       },
@@ -1037,9 +1081,30 @@ describe("selectClipOffenders (DEC-620 wave-25 amendment)", () => {
 
   it("caps at `cap` and sorts worst-first among multiple genuine offenders", () => {
     const candidates: ClipCandidate[] = [
-      { descriptor: "div.small", scrollHeight: 70, clientHeight: 60, hasClippingContext: true, isReplacedContentCrop: false },
-      { descriptor: "div.big", scrollHeight: 200, clientHeight: 60, hasClippingContext: true, isReplacedContentCrop: false },
-      { descriptor: "div.mid", scrollHeight: 130, clientHeight: 60, hasClippingContext: true, isReplacedContentCrop: false },
+      {
+        descriptor: "div.small",
+        scrollHeight: 70,
+        clientHeight: 60,
+        isSelfScrollContainer: false,
+        hasClippingContext: true,
+        isReplacedContentCrop: false,
+      },
+      {
+        descriptor: "div.big",
+        scrollHeight: 200,
+        clientHeight: 60,
+        isSelfScrollContainer: false,
+        hasClippingContext: true,
+        isReplacedContentCrop: false,
+      },
+      {
+        descriptor: "div.mid",
+        scrollHeight: 130,
+        clientHeight: 60,
+        isSelfScrollContainer: false,
+        hasClippingContext: true,
+        isReplacedContentCrop: false,
+      },
     ];
     const selected = selectClipOffenders(candidates, 2, 2);
     expect(selected).toEqual([

@@ -625,6 +625,7 @@ async function measureClipOffenders(page: Page): Promise<string[]> {
       descriptor: string;
       scrollHeight: number;
       clientHeight: number;
+      isSelfScrollContainer: boolean;
       hasClippingContext: boolean;
       isReplacedContentCrop: boolean;
     }[] = [];
@@ -632,10 +633,18 @@ async function measureClipOffenders(page: Page): Promise<string[]> {
       const sh = el.scrollHeight;
       const ch = el.clientHeight;
       if (sh <= ch + tolerance) continue;
+      // Pre-existing DEC-620 rule the wave-25 amendment doesn't repeal: an
+      // element that resolves its own vertical overflow with a scrollbar
+      // (own computed overflow-y auto|scroll) is not clipped — it's
+      // scrollable. `.chq-main` (app/src/styles.css:404-409) is exactly
+      // this shape.
+      const selfOverflowY = getComputedStyle(el).overflowY;
+      const isSelfScrollContainer = selfOverflowY === "auto" || selfOverflowY === "scroll";
       candidates.push({
         descriptor: describe(el),
         scrollHeight: sh,
         clientHeight: ch,
+        isSelfScrollContainer,
         hasClippingContext: hasClippingContext(el),
         isReplacedContentCrop: isReplacedContentCrop(el),
       });
