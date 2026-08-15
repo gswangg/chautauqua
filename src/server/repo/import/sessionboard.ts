@@ -14,9 +14,10 @@ import { SESSIONBOARD_SOURCE, externalRef, type SbEntity, type SbRowPlan } from 
 import { updateSubmissionStatuses } from "../submissions/status";
 import { touchSubmissionsForContacts, touchSubmissionsForTracks } from "../submissions/touch";
 import type { SubmissionStatus } from "../../../domain/status";
-import { DEC_717 } from "../../../decisions";
+import { DEC_612, DEC_717 } from "../../../decisions";
 
 void DEC_717; // submission.status is written ONLY through updateSubmissionStatuses -- never a raw insert/update column -- so the J6 acceptance auto-creation always fires.
+void DEC_612; // wave-54 amendment: contact identity resolves by normalized email BEFORE falling back to create, since a Sessionboard roster import and the CFP form both mint contacts and a ref-less CFP contact must not be duplicated. The (org_id, external_ref) uniqueIndex this decision names is a contract -- a ref is adopted by an email match only when the matched contact's own ref is null and no other row in this batch has already claimed it.
 
 // DEC-675: the planner (src/domain/sessionboard.ts) is the ONE place that
 // validates a submission status / participant order against the product's
@@ -190,13 +191,15 @@ async function loadExistingParticipantPairs(db: Db, submissionIds: string[]): Pr
  * rule, `normalizeEmail` -- never a second ad-hoc lower/trim), scoped to
  * orgId. Chunked over the distinct normalized emails this batch actually
  * references. Mirrors loadContactsByRef's shape so the row loop below never
- * awaits a lookup -- it only reads this map. */
+ * awaits a lookup -- it only reads this map. Also carries `externalRef`
+ * (null-or-string) -- the contacts row loop (DEC-612 wave-54 amendment)
+ * needs it to decide whether an email match may adopt the file row's ref. */
 async function loadContactsByEmail(
   db: Db,
   orgId: string,
   emails: string[],
-): Promise<Map<string, { id: string; title: string | null; company: string | null }>> {
-  const out = new Map<string, { id: string; title: string | null; company: string | null }>();
+): Promise<Map<string, { id: string; title: string | null; company: string | null; externalRef: string | null }>> {
+  const out = new Map<string, { id: string; title: string | null; company: string | null; externalRef: string | null }>();
   if (emails.length === 0) return out;
   for (const batch of chunkIds(emails)) {
     const rows = await db
@@ -205,11 +208,12 @@ async function loadContactsByEmail(
         email: schema.contact.email,
         title: schema.contact.title,
         company: schema.contact.company,
+        externalRef: schema.contact.externalRef,
       })
       .from(schema.contact)
       .where(and(eq(schema.contact.orgId, orgId), inArray(sql`lower(${schema.contact.email})`, batch)));
     for (const r of rows) {
-      out.set(normalizeEmail(r.email), { id: r.id, title: r.title, company: r.company });
+      out.set(normalizeEmail(r.email), { id: r.id, title: r.title, company: r.company, externalRef: r.externalRef });
     }
   }
   return out;
@@ -307,6 +311,10 @@ type ContactUpdateRow = {
   company?: string | null;
   title?: string | null;
   bio?: string | null;
+  // DEC-612 wave-54 amendment: set only when an email-matched contact's own
+  // external_ref is null and this batch hasn't already claimed the file
+  // row's ref for a different contact -- see the row loop below.
+  externalRef?: string;
 };
 
 /** DEC-725 (wave-32 amendment): among `rows` that carry a firstName/lastName
@@ -458,6 +466,25 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
   const refs = [...new Set(plans.map((p) => p.externalRef).filter((r): r is string => r !== null))];
   const refMap = await loadExistingRefs(db, entity, orgId, eventId, refs);
   const trackNameMap = entity === "submissions" ? await loadTrackNameMap(db, eventId) : null;
+
+  // DEC-612 (wave-54 amendment): contacts entity resolves identity by
+  // normalized email BEFORE it is allowed to create -- a Sessionboard
+  // roster import must chain onto a ref-less contact the CFP form already
+  // created rather than duplicating it. Pre-loaded ONE batched map (no
+  // per-row await) over the distinct normalized emails of rows whose
+  // externalRef did not resolve against refMap as loaded above; the row
+  // loop below never awaits this lookup, it only reads/mutates this map.
+  let contactEmailMap: Map<string, { id: string; title: string | null; company: string | null; externalRef: string | null }> | null =
+    null;
+  if (entity === "contacts") {
+    const emailFallbackSet = new Set<string>();
+    for (const plan of plans) {
+      if (!plan.externalRef || refMap.has(plan.externalRef)) continue;
+      const email = plan.values.email;
+      if (email && isValidEmail(email)) emailFallbackSet.add(normalizeEmail(email));
+    }
+    contactEmailMap = await loadContactsByEmail(db, orgId, [...emailFallbackSet]);
+  }
 
   let created = 0;
   let updated = 0;
@@ -716,8 +743,49 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
       // never re-checks these -- only the fields actually present in the
       // file are patched).
       if (entity === "contacts") {
-        const { firstName, lastName, email } = plan.values;
-        if (!firstName || !lastName || !email) {
+        // DEC-612 (wave-54 amendment): an unresolved external_ref does not
+        // mean "create" -- try the normalized-email identity first. A match
+        // is an UPDATE through the same present-fields-only patch the
+        // ref-match branch below applies (counted as `updated`, in BOTH
+        // dryRun and apply, so the preview can never disagree with the
+        // result). The match adopts this row's external_ref only when its
+        // own ref is null and no other row in this batch has already
+        // claimed it -- contactEmailMap's `externalRef` field is mutated in
+        // place below the moment a ref is adopted, so a later row matching
+        // the SAME email (or, via refMap, the SAME ref) reads that adoption
+        // and never tries to re-claim it. This mirrors
+        // src/server/repo/contacts/import.ts's in-batch chaining -- a
+        // second file row with the same email lands on the same contact
+        // instead of creating a second one.
+        const email = plan.values.email;
+        const emailKey = email && isValidEmail(email) ? normalizeEmail(email) : null;
+        const emailMatch = emailKey ? contactEmailMap?.get(emailKey) : undefined;
+        if (emailMatch) {
+          const v = plan.values;
+          const adoptRef = emailMatch.externalRef === null;
+          if (!dryRun) {
+            contactUpdateRows.push({
+              id: emailMatch.id,
+              ...(v.firstName !== undefined ? { firstName: v.firstName } : {}),
+              ...(v.lastName !== undefined ? { lastName: v.lastName } : {}),
+              ...(v.email !== undefined ? { email: v.email } : {}),
+              ...(v.phone !== undefined ? { phone: v.phone } : {}),
+              ...(v.company !== undefined ? { company: v.company } : {}),
+              ...(v.title !== undefined ? { title: v.title } : {}),
+              ...(v.bio !== undefined ? { bio: v.bio } : {}),
+              ...(adoptRef ? { externalRef: plan.externalRef } : {}),
+            });
+          }
+          if (adoptRef) {
+            refMap.set(plan.externalRef, emailMatch.id);
+            emailMatch.externalRef = plan.externalRef;
+          }
+          updated++;
+          continue;
+        }
+
+        const { firstName, lastName, email: newEmail } = plan.values;
+        if (!firstName || !lastName || !newEmail) {
           skipped.push({ row: plan.row, reason: "Missing required fields: firstName, lastName, email" });
           continue;
         }
@@ -728,7 +796,7 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
             orgId,
             firstName,
             lastName,
-            email,
+            email: newEmail,
             phone: plan.values.phone ?? null,
             company: plan.values.company ?? null,
             title: plan.values.title ?? null,
@@ -739,6 +807,19 @@ export async function applySessionboardPlans(db: Db, args: ApplySessionboardPlan
           });
         }
         refMap.set(plan.externalRef, id);
+        // Keep the email map current too (DEC-612 wave-54 amendment): a
+        // later row in this same batch carrying a DIFFERENT external_ref
+        // but the SAME email must chain onto this just-created contact
+        // (src/server/repo/contacts/import.ts's in-batch chaining), not
+        // create a second one -- contactEmailMap was pre-loaded only from
+        // rows existing in the database before this call, so a fresh
+        // in-batch create has to register itself here.
+        contactEmailMap?.set(normalizeEmail(newEmail), {
+          id,
+          title: plan.values.title ?? null,
+          company: plan.values.company ?? null,
+          externalRef: plan.externalRef,
+        });
         created++;
         continue;
       }
