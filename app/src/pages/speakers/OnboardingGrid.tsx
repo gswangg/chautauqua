@@ -15,6 +15,7 @@ import { describeSendResult, failureLines, type SendResult } from '../../lib/sen
 import { ParticipationMenu } from './ParticipationMenu';
 import { countOf } from '../../lib/plural';
 import { paginationSummary } from '../../lib/pagination-summary';
+import { firstNameOf } from '../../lib/identity';
 import {
   DEFAULT_GRID_FILTERS,
   INVITE_STATUS_LABELS,
@@ -62,10 +63,6 @@ function buildGridQuery(filters: GridFilterState, page: number): string {
   if (filters.overdueOnly) params.set('overdueOnly', '1');
   if (filters.inviteStatus) params.set('inviteStatus', filters.inviteStatus);
   return params.toString();
-}
-
-function firstNameOf(fullName: string): string {
-  return fullName.trim().split(/\s+/)[0] ?? fullName;
 }
 
 // DEC-265 amendment (error-states rule 8): a rolled-back optimistic write on
@@ -196,6 +193,17 @@ function notChasingStatus(contact: { id: string; participations: readonly { invi
 // row shows beside its participation control -- read alongside
 // isRowNotChased's per-cell muting, never inlined twice.
 const NOT_CHASED_MARKER = 'Not chased';
+
+// DEC-829 amendment (w61-e): a second, independent reason the per-row
+// Remind control goes quiet -- a fully-complete row (every assigned cell
+// already 'complete') has nothing outstanding to chase, even when the
+// participation is fully active. This does NOT replace declinedOnly above;
+// the two conditions are checked separately and a row with no cell for a
+// given task is never itself "outstanding" (only an existing 'pending'
+// cell counts).
+function hasOutstandingWork(row: { cells: readonly { status: AssignmentStatus }[] }): boolean {
+  return row.cells.some((c) => c.status !== 'complete');
+}
 
 // DEC-934 amendment: the matrix answers ONE question -- who still needs
 // inviting -- so the standalone "Send portal invite" control (below) must
@@ -893,13 +901,15 @@ export function OnboardingGrid({ onAddSpeaker }: OnboardingGridProps) {
                       {declinedOnly ? (
                         <span className="chq-speakers-not-chased-marker">{NOT_CHASED_MARKER}</span>
                       ) : (
-                        <button
-                          type="button"
-                          className="chq-btn chq-btn-tertiary chq-speakers-remind-one"
-                          onClick={() => openRemindReview([row.contact.id])}
-                        >
-                          Remind {firstNameOf(row.contact.name)}
-                        </button>
+                        hasOutstandingWork(row) && (
+                          <button
+                            type="button"
+                            className="chq-btn chq-btn-tertiary chq-speakers-remind-one"
+                            onClick={() => openRemindReview([row.contact.id])}
+                          >
+                            Remind {firstNameOf(row.contact.name)}
+                          </button>
+                        )
                       )}
                       {/* DEC-934 amendment (wave 4): the not-chasing sentence
                           is the row's caption, beneath the identity cell --

@@ -15,6 +15,16 @@ export function initialsForm(name: string): string {
   return `${first.toUpperCase()} ${last.charAt(0).toUpperCase()}.`;
 }
 
+/** "Jordan Alvarez" -> "Jordan"; a padded or mononym name still resolves to
+ * one non-empty token (falls back to the raw trimmed input on the empty
+ * string, so this never renders blank given a non-empty name). The one
+ * source every "Remind {first}"-style control reads, so a padded or
+ * mononym name can't render two different labels on two surfaces. */
+export function firstNameOf(fullName: string): string {
+  const trimmed = fullName.trim();
+  return trimmed.split(/\s+/)[0] ?? trimmed;
+}
+
 /** The email's local-part (before '@'), uppercased — the no-name fallback. */
 export function emailLocalPart(email: string): string {
   const at = email.indexOf('@');
