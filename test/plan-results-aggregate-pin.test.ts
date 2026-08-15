@@ -18,7 +18,7 @@
 
 import { describe, expect, it } from "vitest";
 import * as schema from "../src/db/schema";
-import { buildResults } from "../src/routes/review/shared";
+import { rankPlanResults, hydrateResultsRows } from "../src/routes/review/shared";
 import type { PlanRecord } from "../src/server/repo/review";
 import type { Db } from "../src/server/context";
 
@@ -147,7 +147,10 @@ describe("task w31-c: plan-results aggregate pin (Promise.all wave collapse move
       reviewRecusal: [{ id: "recusal-1", submissionId: "sub-3", userId: "reviewer-1" }],
     });
 
-    const rows = await buildResults({ var: { db } }, plan, 1);
+    // DEC-829 w32 amendment split buildResults into rank + hydrate; the pin
+    // is on the COMPOSED pipeline, which must still produce byte-identical
+    // rows to the pre-split sequential code.
+    const rows = await hydrateResultsRows({ var: { db } }, plan, await rankPlanResults({ var: { db } }, plan, 1));
 
     expect(rows).toEqual([
       {
@@ -247,7 +250,7 @@ function makeConcurrencyDb(rowsByTable: Map<unknown, unknown[]>, delayMs: number
   } as unknown as Db;
 }
 
-describe("task w31-c: buildResults issues its independent reads as a concurrent Promise.all wave (DEC-338 wave-31 amendment)", () => {
+describe("task w31-c: the plan-results read issues its independent reads as a concurrent Promise.all wave (DEC-338 wave-31 amendment)", () => {
   it("has more than one statement in flight at once, not a strictly sequential waterfall", async () => {
     const plan = makePlan();
     const tracker = { inFlight: 0, max: 0 };
@@ -264,7 +267,10 @@ describe("task w31-c: buildResults issues its independent reads as a concurrent 
       tracker,
     );
 
-    const rows = await buildResults({ var: { db } }, plan, 1);
+    // Post-DEC-829-w32 the wave lives in rankPlanResults (submissions +
+    // evaluations); hydration's own wave is covered by
+    // test/review-results-hydration-scope.test.ts.
+    const rows = await rankPlanResults({ var: { db } }, plan, 1);
 
     expect(rows).toHaveLength(1);
     expect(tracker.max).toBeGreaterThan(1);
