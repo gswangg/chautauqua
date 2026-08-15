@@ -30,12 +30,20 @@ export interface FormFieldDef {
   options?: string[];
   rule?: FormFieldRule;
   // DEC-909: a long-text field's own character budget, when it carries one.
-  // Absent means the renderer's counter falls back to the shared
-  // MAX_LONG_TEXT_LENGTH (src/forms/validate.ts) -- no field defines its own
-  // today, so this is currently always undefined, but the hook is named so
-  // a future per-field cap doesn't require a second grammar.
+  // Absent means the renderer's counter AND src/forms/validate.ts's cap fall
+  // back to the shared MAX_LONG_TEXT_LENGTH/MAX_TEXT_LENGTH. When present
+  // this is an ENFORCED narrowing, not a display hint -- validate.ts's
+  // text/long_text branch takes `Math.min(field.maximum, kindCap)`, so a
+  // field.maximum can only tighten the shared kind cap, never widen it.
+  // projectFieldForAnswers (DEC-124 amendment, wave 59) is the one place
+  // that stamps the locked abstract field's maximum.
   maximum?: number;
 }
+
+// DEC-124 (wave 59 amendment): the locked abstract (description) field's
+// character budget, both displayed ("N / 1,200" counter) and enforced
+// server-side via projectFieldForAnswers below.
+export const LOCKED_ABSTRACT_MAX_LENGTH = 1200;
 
 // Answers keyed by fieldId. Values are unvalidated/untrusted input until
 // passed through validateAnswers.
@@ -104,11 +112,13 @@ export function lockedFieldName(id: string): string | null {
 // again. Callers must build the FormFieldDef with RAW ids/rule.fieldId and
 // pass it through this function, never call lockedFieldName inline on id.
 export function projectFieldForAnswers(def: FormFieldDef): FormFieldDef {
+  const name = lockedFieldName(def.id);
   return {
     ...def,
-    id: lockedFieldName(def.id) ?? def.id,
+    id: name ?? def.id,
     ...(def.rule
       ? { rule: { ...def.rule, fieldId: lockedFieldName(def.rule.fieldId) ?? def.rule.fieldId } }
       : {}),
+    ...(name === "description" ? { maximum: def.maximum ?? LOCKED_ABSTRACT_MAX_LENGTH } : {}),
   };
 }

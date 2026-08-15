@@ -8,10 +8,11 @@ import { AUTH_CSS } from "./auth.css";
 import { type DemoIdentity } from "../lib/demo-identities";
 import type { LoginFooterEvent } from "./auth-helpers";
 import { DEC_583 } from "../decisions";
+import { MIN_PASSWORD_LENGTH } from "../domain/auth-copy";
 
 void DEC_583;
 
-export const MIN_PASSWORD_LENGTH = 12;
+export { MIN_PASSWORD_LENGTH };
 
 // DEC-583: prefill-only, never auto-submitted. One event-delegated click
 // handler reads data-demo-email/data-demo-password off whichever

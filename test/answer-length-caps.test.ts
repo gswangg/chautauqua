@@ -149,4 +149,43 @@ describe("validateAnswers — DEC-124 answer length caps", () => {
     const result = validateAnswers([fileField], { [fileField.id]: "file_abc123" });
     expect(result.ok).toBe(true);
   });
+
+  // DEC-124 (wave 59 amendment): a field's own `maximum` narrows the kind
+  // cap. Exercised directly against validateAnswers here (rather than only
+  // via projectFieldForAnswers) so the enforcement is proven independent of
+  // the projection that stamps it.
+  describe("field.maximum narrows the kind cap", () => {
+    const abstractField: FormFieldDef = { ...longTextField, maximum: 1200 };
+
+    it("accepts exactly the field maximum", () => {
+      const value = "a".repeat(1200);
+      const result = validateAnswers([abstractField], { [abstractField.id]: value });
+      expect(result.ok).toBe(true);
+    });
+
+    it("rejects one over the field maximum with the narrowed cap in the message", () => {
+      const value = "a".repeat(1201);
+      const result = validateAnswers([abstractField], { [abstractField.id]: value });
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.errors[abstractField.id]).toBe("Too long (max 1200 characters)");
+      }
+    });
+
+    it("a maximum GREATER than the kind cap does not widen it", () => {
+      const widerField: FormFieldDef = { ...textField, maximum: MAX_TEXT_LENGTH + 500 };
+      const value = "a".repeat(MAX_TEXT_LENGTH + 1);
+      const result = validateAnswers([widerField], { [widerField.id]: value });
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.errors[widerField.id]).toBe(`Too long (max ${MAX_TEXT_LENGTH} characters)`);
+      }
+    });
+
+    it("a long_text field with no maximum still allows up to MAX_LONG_TEXT_LENGTH (20000)", () => {
+      const value = "a".repeat(20000);
+      const result = validateAnswers([longTextField], { [longTextField.id]: value });
+      expect(result.ok).toBe(true);
+    });
+  });
 });

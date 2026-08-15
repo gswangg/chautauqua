@@ -95,7 +95,11 @@ export function validateAnswers(
           errors[field.id] = "must be a string";
           continue;
         }
-        const cap = field.kind === "text" ? MAX_TEXT_LENGTH : MAX_LONG_TEXT_LENGTH;
+        // DEC-124 (wave 59 amendment): a field's own `maximum` (stamped by
+        // projectFieldForAnswers, e.g. the locked abstract field's 1,200
+        // budget) may only NARROW the shared kind cap, never widen it.
+        const kindCap = field.kind === "text" ? MAX_TEXT_LENGTH : MAX_LONG_TEXT_LENGTH;
+        const cap = field.maximum !== undefined ? Math.min(field.maximum, kindCap) : kindCap;
         if (value.length > cap) {
           errors[field.id] = `Too long (max ${cap} characters)`;
           continue;

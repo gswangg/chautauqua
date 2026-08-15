@@ -14,12 +14,17 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const ROUTES_ROOT = join(HERE, '..', 'src', 'routes');
 const DOMAIN_ROOT = join(HERE, '..', 'src', 'domain');
 
-/** Every .ts file under `root`, excluding test files. */
+/**
+ * Every .ts/.tsx file under `root`, excluding test files. `.tsx` is
+ * included alongside `.ts` because a cap can be hand-declared in a route's
+ * SSR view/render module (a `.tsx` file) just as easily as in its handler
+ * (DEC-124, w59-a) -- a `.ts`-only walker made that shape invisible.
+ */
 function allSourceFiles(root: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(root, { withFileTypes: true, recursive: true })) {
     if (!entry.isFile()) continue;
-    if (!entry.name.endsWith('.ts')) continue;
+    if (!entry.name.endsWith('.ts') && !entry.name.endsWith('.tsx')) continue;
     if (entry.name.includes('.test.')) continue;
     out.push(join(entry.parentPath, entry.name));
   }
@@ -73,5 +78,17 @@ describe('no src/routes/**/*.ts module hand-declares a text-length cap literal (
 
     const clean = `import { MAX_WIDGET_LENGTH } from '../domain/widget';\nfunction f() { return MAX_WIDGET_LENGTH; }`;
     expect(findLocalTextCapDeclarations(clean)).toEqual([]);
+  });
+
+  // Control: a synthetic offender planted in a `.tsx` file under
+  // src/routes IS picked up by allSourceFiles -- the walker isn't
+  // silently `.ts`-only (that's exactly how CFP_ABSTRACT_MAX_LENGTH sat
+  // undetected in submit-views.tsx for this long, DEC-124 w59-a).
+  it('allSourceFiles finds a synthetic .tsx offender under src/routes', () => {
+    const tsxFiles = ROUTE_FILES.filter((p) => p.endsWith('.tsx'));
+    expect(tsxFiles.length).toBeGreaterThan(0);
+
+    const violating = `const CFP_WIDGET_MAX_LEN = 1200;\nfunction f() { return CFP_WIDGET_MAX_LEN; }`;
+    expect(findLocalTextCapDeclarations(violating)).toEqual(['const CFP_WIDGET_MAX_LEN = 1']);
   });
 });

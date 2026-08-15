@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
-import { projectFieldForAnswers, type FormFieldDef } from "../src/forms/types";
+import { LOCKED_ABSTRACT_MAX_LENGTH, projectFieldForAnswers, type FormFieldDef } from "../src/forms/types";
 import { isVisible, resolveHiddenFieldIds } from "../src/forms/visibility";
 import { validateAnswers } from "../src/forms/validate";
 import { publicSubmitRoutes } from "../src/routes/public/submit";
@@ -68,6 +68,43 @@ describe("projectFieldForAnswers (DEC-475/DEC-486)", () => {
       rule: { fieldId: "form-1:email", op: "ne", value: "" },
     };
     expect(projectFieldForAnswers(def).rule?.fieldId).toBe("email");
+  });
+
+  it("DEC-124 (wave 59): stamps the locked abstract field's maximum when it carries none of its own", () => {
+    const def: FormFieldDef = {
+      id: "form-1:description",
+      section: "session",
+      kind: "long_text",
+      label: "Description",
+      required: true,
+      position: 1,
+    };
+    expect(projectFieldForAnswers(def).maximum).toBe(LOCKED_ABSTRACT_MAX_LENGTH);
+  });
+
+  it("DEC-124 (wave 59): does not clobber an explicit maximum the field row already carries", () => {
+    const def: FormFieldDef = {
+      id: "form-1:description",
+      section: "session",
+      kind: "long_text",
+      label: "Description",
+      required: true,
+      position: 1,
+      maximum: 500,
+    };
+    expect(projectFieldForAnswers(def).maximum).toBe(500);
+  });
+
+  it("DEC-124 (wave 59): a non-description locked field is not stamped with the abstract cap", () => {
+    const def: FormFieldDef = {
+      id: "form-1:title",
+      section: "session",
+      kind: "text",
+      label: "Title",
+      required: true,
+      position: 0,
+    };
+    expect(projectFieldForAnswers(def).maximum).toBeUndefined();
   });
 });
 
