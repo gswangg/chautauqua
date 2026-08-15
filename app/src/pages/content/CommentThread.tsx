@@ -3,7 +3,16 @@ import { formatRelative } from '../../lib/dates';
 import { useMe } from '../../lib/useMe';
 import { countOf } from '../../lib/plural';
 import { EmptyState } from '../../components/EmptyState';
+import { MAX_COMMENT_BODY_LENGTH } from '../../lib/file-caps';
 import type { FileComment } from './types';
+
+/** Thousands-grouped integer, e.g. 4000 -> "4,000". A plain regex rather
+ * than toLocaleString/Intl (banned outside lib/dates.ts, DEC-963) -- this
+ * is a character-count grouping, not a locale-sensitive date/number (same
+ * idiom as forms/FieldList.tsx's local formatThousands). */
+function formatThousands(n: number): string {
+  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
 
 interface SendResult {
   sent: number;
@@ -74,7 +83,11 @@ export function CommentThread({ comments, onSend }: CommentThreadProps) {
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Write a note — sent with the decision, and kept on the thread"
           disabled={pending}
+          maxLength={MAX_COMMENT_BODY_LENGTH}
         />
+        <p className="chq-meta chq-content-comment-limit">
+          Up to {formatThousands(MAX_COMMENT_BODY_LENGTH)} characters.
+        </p>
         <div className="chq-content-comment-actions">
           <button
             type="button"

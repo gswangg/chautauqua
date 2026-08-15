@@ -10,7 +10,6 @@ import { Hono, type Context } from "hono";
 import type { AppEnv, AuthInfo } from "../server/env";
 import { requireOrganizer, csrfJson } from "../server/middleware";
 import { ApiError, parseBoundedIdArray, readOptionalJsonBody } from "../server/http";
-import { MAX_LONG_TEXT_LENGTH } from "../forms/validate"; // DEC-417
 import { makeFileStore, putThenRecord } from "../server/context";
 import { newId } from "../domain/ids";
 import { buildZip, zipEntryPath } from "../lib/zip";
@@ -30,6 +29,7 @@ import {
   ARCHIVE_PEAK_MULTIPLIER,
   ISOLATE_MEMORY_BUDGET_BYTES,
   FILE_KINDS,
+  MAX_COMMENT_BODY_LENGTH, // DEC-244
   assertServedContentTypeHeader,
   contentDispositionAttachment,
   formatBytes,
@@ -516,10 +516,13 @@ fileApiRoutes.post("/files/:fileId/comments", csrfJson, async (c) => {
   const body = (await readOptionalJsonBody(c)) as unknown as { body?: unknown };
   const text = typeof body.body === "string" ? body.body.trim() : "";
   if (!text) throw new ApiError("invalid", "body is required", { body: "Required" });
-  if (text.length > MAX_LONG_TEXT_LENGTH) {
-    throw new ApiError("invalid", `body must be at most ${MAX_LONG_TEXT_LENGTH} characters`, {
-      body: `Max ${MAX_LONG_TEXT_LENGTH}`,
-    }); // DEC-417
+  if (text.length > MAX_COMMENT_BODY_LENGTH) {
+    const overBy = text.length - MAX_COMMENT_BODY_LENGTH;
+    throw new ApiError(
+      "invalid",
+      `Reply is too long by ${overBy.toLocaleString("en-US")} character${overBy === 1 ? "" : "s"} — keep it to ${MAX_COMMENT_BODY_LENGTH.toLocaleString("en-US")} characters or fewer.`,
+      { body: `Too long by ${overBy.toLocaleString("en-US")} character${overBy === 1 ? "" : "s"}` },
+    ); // DEC-244
   }
 
   const commentId = await insertFileComment(c.var.db, {

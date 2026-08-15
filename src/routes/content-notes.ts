@@ -10,7 +10,7 @@ import { Hono, type Context } from "hono";
 import type { AppEnv, AuthInfo } from "../server/env";
 import { requireOrganizer, csrfJson } from "../server/middleware";
 import { ApiError, readOptionalJsonBody } from "../server/http";
-import { MAX_LONG_TEXT_LENGTH } from "../forms/validate"; // DEC-417
+import { MAX_COMMENT_BODY_LENGTH } from "../domain/files"; // DEC-244
 import { makeMailer } from "../server/context";
 import { resolveBaseUrl } from "../server/origin";
 import { renderEmailHtml } from "../mail/shell";
@@ -64,10 +64,13 @@ contentNoteRoutes.post("/submissions/:id/content-note", requireOrganizer, csrfJs
 
   const noteText = typeof body.body === "string" ? body.body.trim() : "";
   if (!noteText) throw new ApiError("invalid", "body is required", { body: "Required" });
-  if (noteText.length > MAX_LONG_TEXT_LENGTH) {
-    throw new ApiError("invalid", `body must be at most ${MAX_LONG_TEXT_LENGTH} characters`, {
-      body: `Max ${MAX_LONG_TEXT_LENGTH}`,
-    }); // DEC-417
+  if (noteText.length > MAX_COMMENT_BODY_LENGTH) {
+    const overBy = noteText.length - MAX_COMMENT_BODY_LENGTH;
+    throw new ApiError(
+      "invalid",
+      `Note is too long by ${overBy.toLocaleString("en-US")} character${overBy === 1 ? "" : "s"} — keep it to ${MAX_COMMENT_BODY_LENGTH.toLocaleString("en-US")} characters or fewer.`,
+      { body: `Too long by ${overBy.toLocaleString("en-US")} character${overBy === 1 ? "" : "s"}` },
+    ); // DEC-244
   }
 
   if (typeof body.requestChanges !== "boolean") {

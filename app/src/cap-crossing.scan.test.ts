@@ -49,7 +49,13 @@ const ALLOWED_CROSSINGS = new Set<string>([
 // Known server-enforced bound export names -- if one of these is imported
 // straight from src/domain/** by a file other than its named crossing, the
 // crossing has been bypassed.
-const BOUND_EXPORT_NAMES = ['MAX_COMPOSE_RECIPIENTS', 'ARCHIVE_MAX_FILES', 'ARCHIVE_MAX_TOTAL_BYTES', 'ARCHIVE_PEAK_MULTIPLIER'];
+const BOUND_EXPORT_NAMES = [
+  'MAX_COMPOSE_RECIPIENTS',
+  'ARCHIVE_MAX_FILES',
+  'ARCHIVE_MAX_TOTAL_BYTES',
+  'ARCHIVE_PEAK_MULTIPLIER',
+  'MAX_COMMENT_BODY_LENGTH',
+];
 
 const DOMAIN_IMPORT_RE = /import\s+(?:type\s+)?\{([^}]*)\}\s+from\s+['"][^'"]*\/src\/domain\/[^'"]*['"]/g;
 

@@ -244,4 +244,21 @@ describe("POST /api/v1/submissions/:id/content-note (DEC-720/DEC-741)", () => {
     const res = await postNote(app, "sub-missing", { fileId: "file-1", body: "hi", requestChanges: false });
     expect(res.status).toBe(404);
   });
+
+  // DEC-244 wave-58 amendment: the content-note body writes to the SAME
+  // file_comment row /files/:fileId/comments POST writes, so it shares that
+  // route's MAX_COMMENT_BODY_LENGTH (4000) cap, not forms/validate's
+  // MAX_LONG_TEXT_LENGTH (20000).
+  it("400s a body over MAX_COMMENT_BODY_LENGTH, counting the overage and marking fields.body", async () => {
+    const { MAX_COMMENT_BODY_LENGTH } = await import("../src/domain/files");
+    const app = await buildApp(ORGANIZER);
+    const overBody = "x".repeat(MAX_COMMENT_BODY_LENGTH + 1);
+    const res = await postNote(app, "sub-1", { fileId: "file-1", body: overBody, requestChanges: false });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { message: string; fields?: Record<string, string> } };
+    expect(body.error.message).toContain("1");
+    expect(body.error.message).toContain(MAX_COMMENT_BODY_LENGTH.toLocaleString("en-US"));
+    expect(body.error.fields?.body).toBeDefined();
+    expect(insertFileCommentCalls).toHaveLength(0);
+  });
 });
