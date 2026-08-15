@@ -62,5 +62,8 @@ export const ENVELOPE_ALLOWLIST = new Set<string>([
   // it just wrote (bounded by the request's own parseBoundedIdArray cap),
   // never a paginated read -- same shape-exception class as the compose
   // preview above (comms/preview.ts:82).
-  "src/routes/review/plans-reviewers.ts:111",
+  // Shifted (111 -> 117) by DEC-623's wave-11 dedupe-on-resolved-id block
+  // (the `resolvedSubmissionIds` Set plus its comment) inserted directly
+  // above this return. The exception itself is unchanged.
+  "src/routes/review/plans-reviewers.ts:117",
 ]);
