@@ -281,7 +281,28 @@ export async function listContactReferenceRows(db: Db, contactId: string): Promi
  * previously made them permanently undeletable). Set-based and chunked:
  * select this contact's pipeline_entry ids, delete their pipeline_activity
  * rows (chunked by entryId), delete the pipeline_entry rows, delete this
- * contact's task_assignment rows, then delete the contact row itself. */
+ * contact's task_assignment rows, then delete the contact row itself.
+ *
+ * DEC-979 (wave-43 amendment): every member of CONTACT_FK_TABLES
+ * (src/server/repo/contacts/query.ts) falls into exactly one of three
+ * classes here, and this function must account for all seven:
+ *   - REFUSED-BEFORE (user, participant): the route refuses on these refs
+ *     before deleteContact is ever reached — see
+ *     test/contact-delete-refusal-rows.test.ts.
+ *   - CASCADE-DELETED (task_assignment, pipeline_entry): JOIN rows, not
+ *     documents, deleted above along with pipeline_entry's
+ *     pipeline_activity feed.
+ *   - NULLED, never deleted (email_log.contact_id, file.uploaded_by_contact_id,
+ *     file_comment.author_contact_id): these are durable audit/provenance
+ *     records whose row must survive the contact's deletion. DEC-006
+ *     stores an email_log row's rendered subject/body inline alongside
+ *     to_email, so the row stays fully self-describing with contact_id
+ *     NULL -- deleting it instead would erase J5's per-recipient send
+ *     history. All three columns are already nullable, so NULLing them is
+ *     schema-safe and mirrors mergeContacts' repoint (merge.ts), which
+ *     points these same three FKs at the surviving contact instead of
+ *     deleting them -- here there is no survivor, so NULL is the closest
+ *     equivalent that still keeps the audit row intact. */
 export async function deleteContact(db: Db, contactId: string): Promise<void> {
   const entryRows = await db
     .select({ id: schema.pipelineEntry.id })
@@ -298,6 +319,15 @@ export async function deleteContact(db: Db, contactId: string): Promise<void> {
   // delete it too (never repoint, there is no survivor to repoint it onto),
   // before the contact row itself is gone.
   await deleteDismissalsForContact(db, contactId);
+  // DEC-979 (wave-43 amendment): NULL (never delete) the three audit/
+  // provenance FKs so email_log/file/file_comment rows survive the
+  // contact's deletion instead of dangling on an unresolvable id.
+  await db.update(schema.emailLog).set({ contactId: null }).where(eq(schema.emailLog.contactId, contactId));
+  await db.update(schema.file).set({ uploadedByContactId: null }).where(eq(schema.file.uploadedByContactId, contactId));
+  await db
+    .update(schema.fileComment)
+    .set({ authorContactId: null })
+    .where(eq(schema.fileComment.authorContactId, contactId));
   await db.delete(schema.contact).where(eq(schema.contact.id, contactId));
 }
 

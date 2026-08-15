@@ -130,6 +130,47 @@ create table contact_duplicate_dismissal (
   created_at integer,
   unique (org_id, contact_id_a, contact_id_b)
 );
+create table email_log (
+  id text primary key,
+  event_id text,
+  template_id text,
+  contact_id text,
+  batch_id text,
+  to_email text,
+  subject text,
+  body_text text,
+  body_html text,
+  ics_text text,
+  ics_filename text,
+  provider text,
+  status text,
+  sent_at integer,
+  created_at integer
+);
+create table file (
+  id text primary key,
+  submission_id text,
+  kind text,
+  filename text,
+  r2_key text,
+  size_bytes integer,
+  content_type text,
+  previous_file_id text,
+  version_no integer,
+  uploaded_by_contact_id text,
+  task_assignment_id text,
+  created_at integer,
+  updated_at integer
+);
+create table file_comment (
+  id text primary key,
+  file_id text,
+  author_contact_id text,
+  author_user_id text,
+  body text,
+  created_at integer,
+  updated_at integer
+);
 `;
 
 function makeTestDb(): { db: Db; sqlite: DatabaseSync } {
