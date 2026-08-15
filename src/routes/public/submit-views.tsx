@@ -418,6 +418,17 @@ export function SubmitPage(props: {
   if (formatCount > 0) ledeParts.push(countOf(formatCount, "format"));
   ledeParts.push("no account needed");
   const introLede = `${ledeParts.join(", ")} — submit in a few minutes and we'll email you a link to finish or edit later.`;
+  // DEC-986 (wave 24 amendment): the organiser's own CFP intro
+  // (form.description, authored/validated in Settings via PATCH
+  // /api/v1/forms) takes over the lede when present -- the computed
+  // track/format sentence above is a fallback for forms that never set
+  // one, not a permanent stand-in for authored copy. Split on blank
+  // lines into one <p> per paragraph; Hono JSX escapes text children by
+  // default, so authored HTML/script never executes.
+  const authoredIntroParagraphs = (form.description ?? "")
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter((block) => block.length > 0);
   // DEC-986 (wave 45 amendment): the YOU section pairs Name|Email, then
   // Company|Job title, then Bio full-width -- a layout FormFieldsSection's
   // generic per-kind flow can't express, so the locked speaker fields are
@@ -502,7 +513,9 @@ export function SubmitPage(props: {
               formats, no signup step) rather than duplicating the
               "already have an account" identity note, which now renders
               exactly once, at the bottom of the page (below). */}
-          <p>{introLede}</p>
+          {authoredIntroParagraphs.length > 0
+            ? authoredIntroParagraphs.map((block) => <p>{block}</p>)
+            : <p>{introLede}</p>}
           {/* DEC-986 (wave 45 amendment): copy still follows the mechanism
               (docs/design/README.md's copy rule) -- it is *set a password*
               on an emailed claim link after submitting, never a public
