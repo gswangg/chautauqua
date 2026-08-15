@@ -70,18 +70,25 @@ export const CHROME_CSS = `
   .chq-pub-activefilters-count {
     color: var(--chq-muted);
   }
+  /* DEC-919 amendment (wave 4, task-w4-f): the active-filter chip is the
+     SELECTED treatment (docs/design/Chautauqua Public and Portal.dc.html
+     line 61) -- ink fill, paper text, its remove glyph muted-on-ink -- not
+     an outlined chip on the surface tint the filter-bar controls use. */
   .chq-pub-activefilters-chip {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    border: 1px solid var(--chq-border);
+    border: none;
     border-radius: var(--chq-r-pill);
-    background: var(--chq-surface);
-    padding: 3px 12px;
+    background: var(--chq-ink);
+    padding: 6px 13px;
     font-size: 13px;
     font-weight: 600;
-    color: var(--chq-ink);
+    color: var(--chq-paper);
     text-decoration: none;
+  }
+  .chq-pub-activefilters-chip span {
+    color: var(--chq-on-ink-muted);
   }
   .chq-pub-activefilters-clear {
     font-weight: 700;
@@ -93,11 +100,17 @@ export const CHROME_CSS = `
      select below now declare a fixed width instead of sizing to content, so
      the row's worst case (all five controls present) sums to
      190 + 4*140 + 40 = 790, under 820 with margin. */
+  /* DEC-919 amendment (wave 4, task-w4-f): the filter-bar controls (search
+     input + every .chq-pub-select) share ONE control vocabulary with the
+     rest of the frame -- var(--chq-r-ctl) radius, 1px var(--chq-border),
+     var(--chq-surface) fill -- never the pill radius, which is reserved for
+     the SELECTED state (.chq-pub-activefilters-chip below). */
   .chq-pub-search {
     width: 190px;
     height: 40px;
     border: 1px solid var(--chq-border);
-    border-radius: var(--chq-r-pill);
+    border-radius: var(--chq-r-ctl);
+    background-color: var(--chq-surface);
     padding: 0 14px;
     font-size: 13px;
     color: var(--chq-ink);
