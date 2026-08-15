@@ -103,6 +103,13 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   // exactly like icsUnscheduledIds -- never rendered as a raw id, and never
   // left to fall into the generic error banner unnamed.
   const [noRecipientRefs, setNoRecipientRefs] = useState<string[] | null>(null);
+  // w11-d: the receiving side of the DECIDE->NOTIFY handoff states its own
+  // truncation. `idsArrivedCount` is the non-empty comma-separated entries
+  // BEFORE filtering; `idsKeptCount` is what actually got dispatched into
+  // the selection. Both null until a non-empty ?ids= is hydrated (no ?ids=
+  // at all renders nothing, same as counts agreeing).
+  const [idsArrivedCount, setIdsArrivedCount] = useState<number | null>(null);
+  const [idsKeptCount, setIdsKeptCount] = useState<number | null>(null);
 
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
   const pendingCaretRef = useRef<number | null>(null);
@@ -151,12 +158,14 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     appliedIdsParam.current = true;
     const raw = new URLSearchParams(window.location.search).get('ids');
     if (!raw) return;
-    const ids = raw
+    const arrived = raw
       .split(',')
       .map((id) => id.trim())
-      .filter((id) => id.length > 0 && id.length <= 64)
-      .slice(0, MAX_COMPOSE_RECIPIENTS);
+      .filter((id) => id.length > 0);
+    const ids = arrived.filter((id) => id.length <= 64).slice(0, MAX_COMPOSE_RECIPIENTS);
     if (ids.length === 0) return;
+    setIdsArrivedCount(arrived.length);
+    setIdsKeptCount(ids.length);
     dispatchSelection({ type: 'SET', ids });
     setStep('template');
   }, []);
@@ -764,6 +773,11 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
           <div className="chq-section-head">
             <span className="chq-section-label">2. Pick or edit a template</span>
           </div>
+          {idsKeptCount !== null && idsArrivedCount !== null && idsKeptCount < idsArrivedCount && (
+            <p className="chq-comms-panel-note">
+              {idsKeptCount} of {idsArrivedCount} kept &middot; a send is capped at {MAX_COMPOSE_RECIPIENTS}
+            </p>
+          )}
           <FormRow label="Template" htmlFor="compose-template" optional>
             <select
               id="compose-template"
