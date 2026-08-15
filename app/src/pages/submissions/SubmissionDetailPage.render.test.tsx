@@ -1577,3 +1577,347 @@ describe('SubmissionDetailPage: title/abstract edit refusal (DEC-958 wave 64)', 
     expect((titleInput as HTMLInputElement).value).toBe('A'.repeat(201));
   });
 });
+
+// DEC-958 (wave 66 amendment): the page's other six write paths -- status,
+// tracks, format, audience level, and the three participant-row actions --
+// get the SAME by-shape reading saveEdit already has. Each case below
+// asserts the server's own named-field message renders AT the control that
+// owns it (never as the generic `<verb> failed: ${err.message}` sentence),
+// and the trailing case proves a field-less refusal still falls back to
+// that sentence.
+describe('SubmissionDetailPage: the other six writers read refusals by shape (DEC-958 wave 66)', () => {
+  function twoParticipants() {
+    return [
+      {
+        id: 'p1',
+        contactId: 'c1',
+        name: 'Jamie Speaker',
+        email: 'jamie@example.com',
+        title: null,
+        company: null,
+        role: 'speaker',
+        order: 0,
+        visible: true,
+        inviteStatus: 'accepted',
+      },
+      {
+        id: 'p2',
+        contactId: 'c2',
+        name: 'Riley Moderator',
+        email: 'riley@example.com',
+        title: null,
+        company: null,
+        role: 'moderator',
+        order: 1,
+        visible: true,
+        inviteStatus: 'none',
+      },
+    ];
+  }
+
+  it('marks the decision rail (not the page-level banner) on a named-field status refusal', async () => {
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: baseDetail({ status: 'pending' }),
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`POST /api/v1/events/evt-1/submissions/status`]: {
+        status: 400,
+        body: errorEnvelope('invalid', 'status must be one of the DEC-003 submission statuses', {
+          status: 'Invalid status',
+        }),
+      },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Accept' })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Invalid status')).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Status update failed/)).not.toBeInTheDocument();
+    const rail = document.getElementById('submission-status-controls');
+    expect(rail).not.toBeNull();
+    expect(within(rail as HTMLElement).getByText('Invalid status')).toBeInTheDocument();
+  });
+
+  it('falls back to the bare sentence on a field-less status refusal', async () => {
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: baseDetail({ status: 'pending' }),
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`POST /api/v1/events/evt-1/submissions/status`]: {
+        status: 500,
+        body: errorEnvelope('internal', 'Something went wrong'),
+      },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Accept' })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Status update failed: Something went wrong')).toBeInTheDocument();
+    });
+  });
+
+  it('marks the track editor (not the bare sentence) on a named-field trackIds refusal', async () => {
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: baseDetail({ trackIds: ['t1'] }),
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: {
+        items: [{ id: 't1', name: 'Frontend' }],
+        total: 1,
+        page: 1,
+        perPage: 20,
+      },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`PATCH /api/v1/submissions/${SUB_ID}`]: {
+        status: 400,
+        body: errorEnvelope('invalid', 'trackIds must not exceed 1000 entries', { trackIds: 'Max 1000' }),
+      },
+    });
+
+    renderPage();
+    await openSessionDetails();
+    await waitFor(() => {
+      expect(screen.getAllByText('Frontend').length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit tracks' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Max 1000')).toBeInTheDocument();
+    });
+    const editor = document.getElementById('submission-track-editor');
+    expect(editor).not.toBeNull();
+    expect(within(editor as HTMLElement).getByText('Max 1000')).toBeInTheDocument();
+    expect(document.querySelector('.chq-detail-subsection > .chq-error-banner')).not.toBeInTheDocument();
+  });
+
+  it('marks the Format select (not the bare sentence) on a named-field format refusal', async () => {
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: baseDetail(),
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: {
+        id: 'form-1',
+        fields: [
+          {
+            id: 'field_session_format',
+            section: 'session',
+            kind: 'dropdown',
+            label: 'Format',
+            required: false,
+            position: 1,
+            options: ['Talk', 'Workshop'],
+          },
+        ],
+      },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`PATCH /api/v1/submissions/${SUB_ID}`]: {
+        status: 400,
+        body: errorEnvelope('invalid', 'format must be one of the field’s options', {
+          format: 'Invalid option',
+        }),
+      },
+    });
+
+    renderPage();
+    await openSessionDetails();
+    const select = await screen.findByLabelText('Format');
+    fireEvent.change(select, { target: { value: 'Workshop' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Invalid option')).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Format update failed/)).not.toBeInTheDocument();
+  });
+
+  it('labels an unrecognised field key on the Audience level writer, never dropping it', async () => {
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: baseDetail(),
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: {
+        id: 'form-1',
+        fields: [
+          {
+            id: 'field_audience_level',
+            section: 'session',
+            kind: 'dropdown',
+            label: 'Audience level',
+            required: false,
+            position: 1,
+            options: ['Beginner', 'Advanced'],
+          },
+        ],
+      },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      // Mirrors src/routes/api/submissions.ts's PATCH /submissions/:id --
+      // it names no dedicated audienceLevel key, so the shared 'Provide
+      // title, description, trackIds, or format' catch-all (keyed 'title')
+      // is exactly what the real route returns here.
+      [`PATCH /api/v1/submissions/${SUB_ID}`]: {
+        status: 400,
+        body: errorEnvelope('invalid', 'At least one of title, description, trackIds, or format is required', {
+          title: 'Provide title, description, trackIds, or format',
+        }),
+      },
+    });
+
+    renderPage();
+    await openSessionDetails();
+    const select = await screen.findByLabelText('Audience level');
+    fireEvent.change(select, { target: { value: 'Advanced' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('title: Provide title, description, trackIds, or format')).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Audience level update failed/)).not.toBeInTheDocument();
+  });
+
+  it('marks the participant row (not the bare sentence) on a named-field remove refusal, labelling an unrecognised key', async () => {
+    const detail = baseDetail({ participants: twoParticipants() });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`DELETE /api/v1/submissions/${SUB_ID}/participants/p2`]: {
+        status: 400,
+        body: errorEnvelope('invalid', 'Cannot remove this participant', {
+          participantId: 'Cannot remove this participant',
+        }),
+      },
+    });
+
+    renderPage();
+    await openSessionDetails();
+    await waitFor(() => {
+      expect(screen.getAllByText('Riley Moderator').length).toBeGreaterThan(0);
+    });
+
+    const table = document.getElementById('submission-participants-table') as HTMLElement;
+    const row = within(table).getByText('Riley Moderator').closest('tr') as HTMLElement;
+    fireEvent.click(within(row).getByRole('button', { name: 'Remove' }));
+
+    await waitFor(() => {
+      expect(within(table).getByText('participantId: Cannot remove this participant')).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/^Remove failed/)).not.toBeInTheDocument();
+  });
+
+  it('marks the participant row (not the bare sentence) on a named-field make-co-presenter refusal', async () => {
+    const detail = baseDetail({ participants: twoParticipants() });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`PATCH /api/v1/submissions/${SUB_ID}/participants/p2`]: {
+        status: 400,
+        body: errorEnvelope('invalid', 'visible or inviteStatus is required', { visible: 'Required' }),
+      },
+    });
+
+    renderPage();
+    await openSessionDetails();
+    await waitFor(() => {
+      expect(screen.getAllByText('Riley Moderator').length).toBeGreaterThan(0);
+    });
+
+    const table = document.getElementById('submission-participants-table') as HTMLElement;
+    const row = within(table).getByText('Riley Moderator').closest('tr') as HTMLElement;
+    fireEvent.click(within(row).getByRole('button', { name: 'Make co-presenter' }));
+
+    await waitFor(() => {
+      expect(within(table).getByText('Visible: Required')).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/^Make co-presenter failed/)).not.toBeInTheDocument();
+  });
+
+  it('marks the participant row (not the bare sentence) on a named-field visibility refusal', async () => {
+    const detail = baseDetail({ participants: twoParticipants() });
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`PATCH /api/v1/submissions/${SUB_ID}/participants/p2`]: {
+        status: 400,
+        body: errorEnvelope('invalid', 'visible must be a boolean', { visible: 'Required' }),
+      },
+    });
+
+    renderPage();
+    await openSessionDetails();
+    await waitFor(() => {
+      expect(screen.getAllByText('Riley Moderator').length).toBeGreaterThan(0);
+    });
+
+    const table = document.getElementById('submission-participants-table') as HTMLElement;
+    const row = within(table).getByText('Riley Moderator').closest('tr') as HTMLElement;
+    fireEvent.click(within(row).getByLabelText('Visible: Riley Moderator'));
+
+    await waitFor(() => {
+      expect(within(table).getByText('Visible: Required')).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/^Visibility update failed/)).not.toBeInTheDocument();
+  });
+
+  it('marks the add-co-presenter search field (not the bare sentence) on a named-field contactId refusal', async () => {
+    const detail = baseDetail();
+    mockApi({
+      [`GET /api/v1/submissions/${SUB_ID}`]: detail,
+      [`GET /api/v1/events/evt-1`]: { id: 'evt-1', timezone: 'UTC' },
+      [`GET /api/v1/events/evt-1/tracks`]: { items: [], total: 0, page: 1, perPage: 20 },
+      [`GET /api/v1/events/evt-1/forms`]: { id: 'form-1', fields: [] },
+      [`GET /api/v1/submissions/${SUB_ID}/evaluations`]: { items: [] },
+      [`GET /api/v1/contacts`]: {
+        items: [{ id: 'c-2', firstName: 'Riley', lastName: 'Contact', email: 'riley@example.com' }],
+        total: 1,
+        page: 1,
+        perPage: 20,
+      },
+      [`POST /api/v1/submissions/${SUB_ID}/participants`]: {
+        status: 400,
+        body: errorEnvelope('invalid', 'Validation failed', { contactId: 'Already invited' }),
+      },
+    });
+
+    renderPage();
+    await openSessionDetails();
+
+    fireEvent.change(screen.getByLabelText('Search contacts'), { target: { value: 'Riley' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Riley Contact (riley@example.com)')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Already invited')).toBeInTheDocument();
+    });
+    // The bare err.message ('Validation failed') never renders once a
+    // named-field map is present.
+    expect(screen.queryByText('Validation failed')).not.toBeInTheDocument();
+    expect(screen.queryByText('Failed to add co-presenter')).not.toBeInTheDocument();
+  });
+});

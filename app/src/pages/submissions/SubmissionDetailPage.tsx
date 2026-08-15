@@ -1,7 +1,7 @@
 // Admin submission detail page (DEC-045). SPA-only: consumes existing
 // GET /api/v1/submissions/:id, the DEC-016 forms + tracks endpoints, and
 // the existing bulk status endpoint (ids:[id]) — no new server code.
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { apiGet, apiList, apiPatch, apiPost, apiDelete, ApiError } from '../../lib/api';
 import { formatDate as formatTimestamp, formatDateTime, epochDayIndex } from '../../lib/dates';
@@ -35,7 +35,7 @@ import {
   type Track,
 } from './types';
 // DEC-761: code that depends on a decision must reference its constant.
-import { DEC_733, DEC_761, DEC_784, DEC_900, DEC_998 } from '../../../../src/decisions';
+import { DEC_733, DEC_761, DEC_784, DEC_900, DEC_958, DEC_998 } from '../../../../src/decisions';
 // DEC-784/DEC-604: role is picked from the SAME imported vocabulary
 // AddToEventModal.tsx uses -- never a hand-written list.
 import { PARTICIPANT_ROLE_OPTIONS } from '../../../../src/domain/participant-roles';
@@ -44,6 +44,7 @@ void DEC_733;
 void DEC_761;
 void DEC_784;
 void DEC_900;
+void DEC_958;
 void DEC_998;
 
 // DEC-878: the decision panel is a RAIL, not a segmented button group --
@@ -66,6 +67,88 @@ const EDIT_FIELD_ANCHORS: Record<string, { anchorId: string; label: string }> = 
   title: { anchorId: 'submission-edit-title', label: 'Title' },
   description: { anchorId: 'submission-edit-description', label: 'Abstract' },
 };
+
+// DEC-958 (wave 66 amendment): the page's other six write paths -- status,
+// tracks, format, audience level, and the three participant-row actions --
+// get the SAME by-shape reading saveEdit already has: a non-empty
+// err.fields map is read key-by-key rather than collapsed to the top-line
+// `<verb> failed: ${err.message}` sentence. Each section below owns a
+// small map from the server's own wire keys to the control that owns them;
+// a key the section doesn't recognise is never dropped -- it renders
+// LABELLED with its raw key via SectionFieldErrors' ErrorSummary/single-line
+// fallback, exactly like EDIT_FIELD_ANCHORS' own `?? { anchorId: key, label: key }`.
+const STATUS_FIELD_ANCHORS: Record<string, { anchorId: string; label: string }> = {
+  status: { anchorId: 'submission-status-controls', label: 'Status' },
+};
+const TRACKS_FIELD_ANCHORS: Record<string, { anchorId: string; label: string }> = {
+  trackIds: { anchorId: 'submission-track-editor', label: 'Tracks' },
+};
+const FORMAT_FIELD_ANCHORS: Record<string, { anchorId: string; label: string }> = {
+  format: { anchorId: 'submission-format', label: 'Format' },
+};
+const AUDIENCE_LEVEL_FIELD_ANCHORS: Record<string, { anchorId: string; label: string }> = {
+  audienceLevel: { anchorId: 'submission-audience-level', label: 'Audience level' },
+};
+// Shared by the three participant-row actions (remove/make co-presenter/
+// visibility) and the add-co-presenter form -- src/routes/api/submissions.ts
+// names exactly these four wire keys across the participant routes.
+const PARTICIPANT_FIELD_ANCHORS: Record<string, { anchorId: string; label: string }> = {
+  contactId: { anchorId: 'submission-add-copresenter-contact', label: 'Contact' },
+  role: { anchorId: 'submission-add-copresenter-role', label: 'Role' },
+  visible: { anchorId: 'submission-participants-table', label: 'Visible' },
+  inviteStatus: { anchorId: 'submission-participants-table', label: 'Invite status' },
+};
+
+// DEC-958 (wave 66 amendment): renders a section's own err.fields map --
+// an ErrorSummary (one per section, DEC-124/DEC-958) when more than one
+// problem is named, otherwise nothing (the single problem renders inline at
+// its own control, via the same `fields[key]` the caller already has) unless
+// that lone key isn't one this section recognises, in which case it still
+// renders -- labelled with its raw key -- rather than vanish.
+// DEC-958 (wave 66 amendment): a typed helper for the three per-participant
+// field-error maps below -- writing `(prev) => ({ ...prev, [id]: fields })`
+// directly at each call site loses precision under noUncheckedIndexedAccess
+// (the spread's inferred value type picks up `| undefined`); this keeps the
+// index write in exactly one place.
+function setParticipantRowFields(
+  setter: (updater: (prev: Record<string, Record<string, string>>) => Record<string, Record<string, string>>) => void,
+  participantId: string,
+  fields: Record<string, string>,
+) {
+  setter((prev) => {
+    const next: Record<string, Record<string, string>> = { ...prev };
+    next[participantId] = fields;
+    return next;
+  });
+}
+
+function SectionFieldErrors({
+  fields,
+  knownMap,
+  headingTail,
+}: {
+  fields: Record<string, string>;
+  knownMap: Record<string, { anchorId: string; label: string }>;
+  headingTail: string;
+}) {
+  const keys = Object.keys(fields);
+  if (keys.length === 0) return null;
+  if (keys.length > 1) {
+    return (
+      <ErrorSummary
+        heading={countHeading(keys.length, headingTail)}
+        problems={keys.map((key) => knownMap[key] ?? { anchorId: key, label: key })}
+      />
+    );
+  }
+  const key = keys[0]!;
+  if (knownMap[key]) return null; // rendered inline at the owning control by the caller
+  return (
+    <div className="chq-form-row-error" role="alert">
+      {key}: {fields[key]}
+    </div>
+  );
+}
 
 const DECIDABLE_STATUSES = ['accepted', 'declined', 'waitlisted'] as const;
 type DecidableStatus = (typeof DECIDABLE_STATUSES)[number];
@@ -277,6 +360,20 @@ export function SubmissionDetailPage() {
   const [audienceLevelError, setAudienceLevelError] = useState<string | null>(null);
   const [removingParticipantId, setRemovingParticipantId] = useState<string | null>(null);
   const [makingCoPresenterId, setMakingCoPresenterId] = useState<string | null>(null);
+  // DEC-958 (wave 66 amendment): the WHOLE err.fields map from each of the
+  // page's other write paths, keyed by the server's own wire keys -- same
+  // shape/contract as editFieldErrors above, one state per write path so a
+  // refusal on one control never clears another's.
+  const [statusFieldErrors, setStatusFieldErrors] = useState<Record<string, string>>({});
+  const [tracksFieldErrors, setTracksFieldErrors] = useState<Record<string, string>>({});
+  const [formatFieldErrors, setFormatFieldErrors] = useState<Record<string, string>>({});
+  const [audienceLevelFieldErrors, setAudienceLevelFieldErrors] = useState<Record<string, string>>({});
+  const [removeFieldErrors, setRemoveFieldErrors] = useState<Record<string, Record<string, string>>>({});
+  const [makeCoPresenterFieldErrors, setMakeCoPresenterFieldErrors] = useState<Record<string, Record<string, string>>>(
+    {},
+  );
+  const [visibilityFieldErrors, setVisibilityFieldErrors] = useState<Record<string, Record<string, string>>>({});
+  const [addCoPresenterFieldErrors, setAddCoPresenterFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!id) return;
@@ -383,6 +480,7 @@ export function SubmissionDetailPage() {
     const previous = detail;
     setStatusPending(true);
     setError(null);
+    setStatusFieldErrors({});
     // Optimistic update.
     setDetail({ ...detail, status });
     try {
@@ -391,9 +489,16 @@ export function SubmissionDetailPage() {
         status,
       });
     } catch (err) {
-      // Loud rollback: restore prior state and surface the failure.
+      // Loud rollback: restore prior state and surface the failure. DEC-958
+      // (wave 66 amendment): a refusal naming a field (e.g. status:'Invalid
+      // status') marks the decision rail instead of collapsing to the
+      // top-line message alone.
       setDetail(previous);
-      setError(err instanceof ApiError ? `Status update failed: ${err.message}` : 'Status update failed');
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setStatusFieldErrors(err.fields);
+      } else {
+        setError(err instanceof ApiError ? `Status update failed: ${err.message}` : 'Status update failed');
+      }
     } finally {
       setStatusPending(false);
     }
@@ -459,6 +564,7 @@ export function SubmissionDetailPage() {
   function startEditingTracks() {
     if (!detail) return;
     setTracksError(null);
+    setTracksFieldErrors({});
     setTrackSelection(detail.trackIds);
     setEditingTracks(true);
   }
@@ -476,6 +582,7 @@ export function SubmissionDetailPage() {
     const previous = detail;
     setSavingTracks(true);
     setTracksError(null);
+    setTracksFieldErrors({});
     // Optimistic update.
     setDetail({ ...detail, trackIds: nextIds });
     try {
@@ -484,9 +591,16 @@ export function SubmissionDetailPage() {
       setEditingTracks(false);
     } catch (err) {
       // Loud rollback: refetch the server's actual set rather than trusting
-      // the pre-write snapshot, which may itself be stale.
+      // the pre-write snapshot, which may itself be stale. DEC-958 (wave 66
+      // amendment): a named-field refusal (trackIds: 'Max 1000' / 'Unknown
+      // track id(s): ...') marks the track editor instead of the bare
+      // sentence alone.
       setDetail(previous);
-      setTracksError(err instanceof ApiError ? err.message : 'Track update failed');
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setTracksFieldErrors(err.fields);
+      } else {
+        setTracksError(err instanceof ApiError ? err.message : 'Track update failed');
+      }
       try {
         const refetched = await apiGet<SubmissionDetail>(`/submissions/${id}`);
         setDetail(refetched);
@@ -509,13 +623,21 @@ export function SubmissionDetailPage() {
     const previous = detail;
     setFormatPending(true);
     setFormatError(null);
+    setFormatFieldErrors({});
     setDetail({ ...detail, answers: { ...detail.answers, [SESSION_FORMAT_FIELD_ID]: value } });
     try {
       const updated = await apiPatch<SubmissionDetail>(`/submissions/${id}`, { format: value });
       setDetail(updated);
     } catch (err) {
+      // DEC-958 (wave 66 amendment): a named-field refusal (format:'Invalid
+      // format'|'Not configured'|'Invalid option') marks the Format select
+      // instead of collapsing to the bare sentence.
       setDetail(previous);
-      setFormatError(err instanceof ApiError ? `Format update failed: ${err.message}` : 'Format update failed');
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setFormatFieldErrors(err.fields);
+      } else {
+        setFormatError(err instanceof ApiError ? `Format update failed: ${err.message}` : 'Format update failed');
+      }
     } finally {
       setFormatPending(false);
     }
@@ -529,15 +651,22 @@ export function SubmissionDetailPage() {
     const previous = detail;
     setAudienceLevelPending(true);
     setAudienceLevelError(null);
+    setAudienceLevelFieldErrors({});
     setDetail({ ...detail, answers: { ...detail.answers, [AUDIENCE_LEVEL_FIELD_ID]: value } });
     try {
       const updated = await apiPatch<SubmissionDetail>(`/submissions/${id}`, { audienceLevel: value });
       setDetail(updated);
     } catch (err) {
+      // DEC-958 (wave 66 amendment): a named-field refusal marks the
+      // Audience level select instead of collapsing to the bare sentence.
       setDetail(previous);
-      setAudienceLevelError(
-        err instanceof ApiError ? `Audience level update failed: ${err.message}` : 'Audience level update failed',
-      );
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setAudienceLevelFieldErrors(err.fields);
+      } else {
+        setAudienceLevelError(
+          err instanceof ApiError ? `Audience level update failed: ${err.message}` : 'Audience level update failed',
+        );
+      }
     } finally {
       setAudienceLevelPending(false);
     }
@@ -551,13 +680,20 @@ export function SubmissionDetailPage() {
     if (!detail || !id) return;
     const previous = detail;
     setParticipantsError(null);
+    setParticipantRowFields(setRemoveFieldErrors, participant.id, {});
     setRemovingParticipantId(participant.id);
     setDetail({ ...detail, participants: detail.participants.filter((p) => p.id !== participant.id) });
     try {
       await apiDelete<{ deleted: number }>(`/submissions/${id}/participants/${participant.id}`);
     } catch (err) {
+      // DEC-958 (wave 66 amendment): a named-field refusal marks the
+      // participant's own row instead of collapsing to the bare sentence.
       setDetail(previous);
-      setParticipantsError(err instanceof ApiError ? `Remove failed: ${err.message}` : 'Remove failed');
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setParticipantRowFields(setRemoveFieldErrors, participant.id, err.fields);
+      } else {
+        setParticipantsError(err instanceof ApiError ? `Remove failed: ${err.message}` : 'Remove failed');
+      }
     } finally {
       setRemovingParticipantId(null);
     }
@@ -571,6 +707,7 @@ export function SubmissionDetailPage() {
     if (!detail || !id) return;
     const previous = detail;
     setParticipantsError(null);
+    setParticipantRowFields(setMakeCoPresenterFieldErrors, participant.id, {});
     setMakingCoPresenterId(participant.id);
     setDetail({
       ...detail,
@@ -584,10 +721,16 @@ export function SubmissionDetailPage() {
         prev ? { ...prev, participants: prev.participants.map((p) => (p.id === participant.id ? updated : p)) } : prev,
       );
     } catch (err) {
+      // DEC-958 (wave 66 amendment): a named-field refusal marks the
+      // participant's own row instead of collapsing to the bare sentence.
       setDetail(previous);
-      setParticipantsError(
-        err instanceof ApiError ? `Make co-presenter failed: ${err.message}` : 'Make co-presenter failed',
-      );
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setParticipantRowFields(setMakeCoPresenterFieldErrors, participant.id, err.fields);
+      } else {
+        setParticipantsError(
+          err instanceof ApiError ? `Make co-presenter failed: ${err.message}` : 'Make co-presenter failed',
+        );
+      }
     } finally {
       setMakingCoPresenterId(null);
     }
@@ -598,6 +741,7 @@ export function SubmissionDetailPage() {
     const nextVisible = !participant.visible;
     const previous = detail;
     setParticipantsError(null);
+    setParticipantRowFields(setVisibilityFieldErrors, participant.id, {});
     setVisiblePending(participant.id);
     // Optimistic update.
     setDetail({
@@ -609,9 +753,18 @@ export function SubmissionDetailPage() {
         visible: nextVisible,
       });
     } catch (err) {
-      // Loud rollback: restore prior state and surface the failure.
+      // Loud rollback: restore prior state and surface the failure. DEC-958
+      // (wave 66 amendment): a named-field refusal (visible:'Required')
+      // marks the participant's own row instead of collapsing to the bare
+      // sentence.
       setDetail(previous);
-      setParticipantsError(err instanceof ApiError ? `Visibility update failed: ${err.message}` : 'Visibility update failed');
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setParticipantRowFields(setVisibilityFieldErrors, participant.id, err.fields);
+      } else {
+        setParticipantsError(
+          err instanceof ApiError ? `Visibility update failed: ${err.message}` : 'Visibility update failed',
+        );
+      }
     } finally {
       setVisiblePending(null);
     }
@@ -639,6 +792,7 @@ export function SubmissionDetailPage() {
     if (!id) return;
     setAddingContactId(contact.id);
     setParticipantsError(null);
+    setAddCoPresenterFieldErrors({});
     try {
       const created = await apiPost<SubmissionDetailParticipant>(`/submissions/${id}/participants`, {
         contactId: contact.id,
@@ -648,8 +802,15 @@ export function SubmissionDetailPage() {
       setCoPresenterResults([]);
       setCoPresenterQuery('');
     } catch (err) {
-      // Surface the DEC-070 duplicate-contact 'invalid' error inline.
-      setParticipantsError(err instanceof ApiError ? err.message : 'Failed to add co-presenter');
+      // DEC-958 (wave 66 amendment): the DEC-070 duplicate-contact refusal
+      // and its siblings (contactId:'Required'|'Invalid contact'|'Already
+      // invited', role:'Invalid role') mark the search field/role select
+      // instead of collapsing to the bare sentence alone.
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setAddCoPresenterFieldErrors(err.fields);
+      } else {
+        setParticipantsError(err instanceof ApiError ? err.message : 'Failed to add co-presenter');
+      }
     } finally {
       setAddingContactId(null);
     }
@@ -1029,7 +1190,21 @@ export function SubmissionDetailPage() {
                   </button>
                 </>
               ) : (
-                <div className="chq-detail-track-editor">
+                <div className="chq-detail-track-editor" id="submission-track-editor">
+                  {/* DEC-958 (wave 66 amendment): a named-field trackIds
+                      refusal (trackIds:'Max 1000'|'Unknown track id(s): ...')
+                      marks the editor instead of collapsing to tracksError's
+                      bare sentence alone. */}
+                  <SectionFieldErrors
+                    fields={tracksFieldErrors}
+                    knownMap={TRACKS_FIELD_ANCHORS}
+                    headingTail="before these tracks can be saved"
+                  />
+                  {tracksFieldErrors.trackIds && (
+                    <div className="chq-form-row-error" role="alert">
+                      {tracksFieldErrors.trackIds}
+                    </div>
+                  )}
                   {tracks.length === 0 ? (
                     <p>No tracks configured for this event.</p>
                   ) : (
@@ -1071,6 +1246,15 @@ export function SubmissionDetailPage() {
                 <div className="chq-detail-format-audience-field">
                   <h3 className="chq-detail-subsection-title">Format</h3>
                   {formatError && <div className="chq-error-banner">{formatError}</div>}
+                  {/* DEC-958 (wave 66 amendment): a named-field refusal
+                      (format:'Invalid format'|'Not configured'|'Invalid
+                      option') marks the select instead of collapsing to
+                      formatError's bare sentence alone. */}
+                  <SectionFieldErrors
+                    fields={formatFieldErrors}
+                    knownMap={FORMAT_FIELD_ANCHORS}
+                    headingTail="before the format can be saved"
+                  />
                   {formatField ? (
                     <select
                       id="submission-format"
@@ -1090,6 +1274,11 @@ export function SubmissionDetailPage() {
                   ) : (
                     <p>This event's form has no session format field.</p>
                   )}
+                  {formatFieldErrors.format && (
+                    <div className="chq-form-row-error" role="alert">
+                      {formatFieldErrors.format}
+                    </div>
+                  )}
                 </div>
 
                 {/* DEC-900 (wave 25 amendment): resolved from the SAME
@@ -1099,6 +1288,17 @@ export function SubmissionDetailPage() {
                 <div className="chq-detail-format-audience-field">
                   <h3 className="chq-detail-subsection-title">Audience level</h3>
                   {audienceLevelError && <div className="chq-error-banner">{audienceLevelError}</div>}
+                  {/* DEC-958 (wave 66 amendment): the route currently names
+                      no dedicated audienceLevel field (it falls into the
+                      shared 'Provide title, description, trackIds, or
+                      format' catch-all keyed 'title') -- an unrecognised key
+                      is never dropped, it renders labelled with its raw key
+                      via SectionFieldErrors' own fallback. */}
+                  <SectionFieldErrors
+                    fields={audienceLevelFieldErrors}
+                    knownMap={AUDIENCE_LEVEL_FIELD_ANCHORS}
+                    headingTail="before the audience level can be saved"
+                  />
                   {audienceField ? (
                     <select
                       id="submission-audience-level"
@@ -1117,6 +1317,11 @@ export function SubmissionDetailPage() {
                     </select>
                   ) : (
                     <p>This event's form has no session audience level field.</p>
+                  )}
+                  {audienceLevelFieldErrors.audienceLevel && (
+                    <div className="chq-form-row-error" role="alert">
+                      {audienceLevelFieldErrors.audienceLevel}
+                    </div>
                   )}
                 </div>
               </div>
@@ -1141,7 +1346,7 @@ export function SubmissionDetailPage() {
                       </p>
                     ) : null;
                   })()}
-                  <table className="chq-table chq-participants-table">
+                  <table className="chq-table chq-participants-table" id="submission-participants-table">
                   <thead>
                     <tr>
                       <th>Name</th>
@@ -1160,56 +1365,85 @@ export function SubmissionDetailPage() {
                       // rail already resolves (role==='speaker', falling
                       // back to the first participant, order asc).
                       const isLead = speaker !== null && p.id === speaker.id;
+                      // DEC-958 (wave 66 amendment): the row's own three
+                      // write paths (remove/make co-presenter/visibility)
+                      // each mark THIS row instead of collapsing to
+                      // participantsError's page-level sentence.
+                      const rowFieldErrors: Record<string, string> = {
+                        ...(removeFieldErrors[p.id] ?? {}),
+                        ...(makeCoPresenterFieldErrors[p.id] ?? {}),
+                        ...(visibilityFieldErrors[p.id] ?? {}),
+                      };
                       return (
-                        <tr key={p.id}>
-                          <td>{p.name}</td>
-                          <td>{p.email}</td>
-                          <td>{isLead ? 'LEAD' : 'CO-PRESENTER'}</td>
-                          <td>
-                            <label className="chq-visible-toggle">
-                              <input
-                                type="checkbox"
-                                className="chq-check"
-                                checked={p.visible}
-                                disabled={visiblePending === p.id}
-                                onChange={() => toggleParticipantVisible(p)}
-                                aria-label={`Visible: ${p.name}`}
-                              />
-                            </label>
-                          </td>
-                          <td>
-                            <InviteStatusChip status={p.inviteStatus} />
-                          </td>
-                          <td>
-                            {!isLead && (
-                              <div className="chq-detail-participant-row-actions">
-                                {/* DEC-900 (wave 25 amendment): a
-                                    participant already stored as
-                                    'co-presenter' has nothing left to
-                                    normalize onto -- only a moderator/
-                                    panelist row offers the link. */}
-                                {p.role !== 'co-presenter' && (
+                        <Fragment key={p.id}>
+                          <tr>
+                            <td>{p.name}</td>
+                            <td>{p.email}</td>
+                            <td>{isLead ? 'LEAD' : 'CO-PRESENTER'}</td>
+                            <td>
+                              <label className="chq-visible-toggle">
+                                <input
+                                  type="checkbox"
+                                  className="chq-check"
+                                  checked={p.visible}
+                                  disabled={visiblePending === p.id}
+                                  onChange={() => toggleParticipantVisible(p)}
+                                  aria-label={`Visible: ${p.name}`}
+                                />
+                              </label>
+                            </td>
+                            <td>
+                              <InviteStatusChip status={p.inviteStatus} />
+                            </td>
+                            <td>
+                              {!isLead && (
+                                <div className="chq-detail-participant-row-actions">
+                                  {/* DEC-900 (wave 25 amendment): a
+                                      participant already stored as
+                                      'co-presenter' has nothing left to
+                                      normalize onto -- only a moderator/
+                                      panelist row offers the link. */}
+                                  {p.role !== 'co-presenter' && (
+                                    <button
+                                      type="button"
+                                      className="chq-link-button"
+                                      disabled={makingCoPresenterId === p.id}
+                                      onClick={() => makeCoPresenter(p)}
+                                    >
+                                      Make co-presenter
+                                    </button>
+                                  )}
                                   <button
                                     type="button"
                                     className="chq-link-button"
-                                    disabled={makingCoPresenterId === p.id}
-                                    onClick={() => makeCoPresenter(p)}
+                                    disabled={removingParticipantId === p.id}
+                                    onClick={() => removeParticipant(p)}
                                   >
-                                    Make co-presenter
+                                    Remove
                                   </button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                          {Object.keys(rowFieldErrors).length > 0 && (
+                            <tr>
+                              <td colSpan={6}>
+                                {Object.keys(rowFieldErrors).length > 1 && (
+                                  <SectionFieldErrors
+                                    fields={rowFieldErrors}
+                                    knownMap={PARTICIPANT_FIELD_ANCHORS}
+                                    headingTail="before this row's change can be saved"
+                                  />
                                 )}
-                                <button
-                                  type="button"
-                                  className="chq-link-button"
-                                  disabled={removingParticipantId === p.id}
-                                  onClick={() => removeParticipant(p)}
-                                >
-                                  Remove
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
+                                {Object.entries(rowFieldErrors).map(([key, message]) => (
+                                  <div key={key} className="chq-form-row-error" role="alert">
+                                    {(PARTICIPANT_FIELD_ANCHORS[key]?.label ?? key) + ': ' + message}
+                                  </div>
+                                ))}
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
                       );
                     })}
                   </tbody>
@@ -1221,6 +1455,7 @@ export function SubmissionDetailPage() {
                 <label>
                   Add co-presenter
                   <input
+                    id="submission-add-copresenter-contact"
                     type="search"
                     className="chq-input"
                     aria-label="Search contacts"
@@ -1235,9 +1470,15 @@ export function SubmissionDetailPage() {
                     }}
                   />
                 </label>
+                {addCoPresenterFieldErrors.contactId && (
+                  <div className="chq-form-row-error" role="alert">
+                    {addCoPresenterFieldErrors.contactId}
+                  </div>
+                )}
                 <label>
                   Role
                   <select
+                    id="submission-add-copresenter-role"
                     className="chq-select"
                     aria-label="Role"
                     value={coPresenterRole}
@@ -1250,6 +1491,20 @@ export function SubmissionDetailPage() {
                     ))}
                   </select>
                 </label>
+                {addCoPresenterFieldErrors.role && (
+                  <div className="chq-form-row-error" role="alert">
+                    {addCoPresenterFieldErrors.role}
+                  </div>
+                )}
+                {/* DEC-958 (wave 66 amendment): more than one named-field
+                    problem gets the shared ErrorSummary; a lone unrecognised
+                    key is never dropped (SectionFieldErrors' own raw-key
+                    fallback). */}
+                <SectionFieldErrors
+                  fields={addCoPresenterFieldErrors}
+                  knownMap={PARTICIPANT_FIELD_ANCHORS}
+                  headingTail="before this co-presenter can be added"
+                />
                 <button
                   type="button"
                   className="chq-btn chq-btn-secondary"
@@ -1294,7 +1549,20 @@ export function SubmissionDetailPage() {
           <section className="chq-detail-section chq-detail-decision">
             <h2 className="chq-detail-section-title">Decision</h2>
             <div className="chq-detail-section-body chq-detail-decision-body">
-              <div className="chq-detail-decision-rail">
+              <div className="chq-detail-decision-rail" id="submission-status-controls">
+                {/* DEC-958 (wave 66 amendment): a named-field status refusal
+                    (status:'Invalid status') marks the rail instead of
+                    collapsing to the page-level error banner alone. */}
+                <SectionFieldErrors
+                  fields={statusFieldErrors}
+                  knownMap={STATUS_FIELD_ANCHORS}
+                  headingTail="before this decision can be saved"
+                />
+                {statusFieldErrors.status && (
+                  <div className="chq-form-row-error" role="alert">
+                    {statusFieldErrors.status}
+                  </div>
+                )}
                 {decidedStatus === null ? (
                   <>
                     <p className="chq-detail-triage-label">
