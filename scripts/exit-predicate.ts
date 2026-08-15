@@ -132,22 +132,31 @@ export const REQUIRED_SCOPES: readonly RequiredScope[] = [
 /**
  * Maps a section's free-text `scope` field onto one of the five DEC-069
  * required slots. Real verification-log scopes are hand-written prose
- * ("build+test+bundle", "J1-J12 persona walkthrough", "perf:smoke",
- * "spec-audit §6/§7/§8/§9", "triage closure confirm", ...) -- this is a
+ * ("build+test+bundle", "J1-J12 persona walkthrough", "perf-smoke",
+ * "spec-audit §6/§7/§8/§9", "triage-closure confirm", ...) -- this is a
  * keyword classifier, most-specific keyword first, and returns null
- * rather than guessing when nothing matches. A scope naming more than
- * one slot (e.g. "build+test+bundle+walkthrough+render-sweep") is
- * classified to whichever slot's keyword is checked first below; this
- * is a narrowing, not a loss, because DEC-069 wants one qualifying
- * section per slot and a combined section can be re-used per slot by
- * naming it distinctly in future runs.
+ * rather than guessing when nothing matches.
+ *
+ * DEC-099 (w45 instrument repair): each canonical slot name must match as
+ * a WHOLE TOKEN, not a bare substring -- "perf" alone (e.g. "onboarding
+ * grid TIER-0 perf", "files library headshot join perf") does NOT
+ * classify to perf-smoke; only "perf-smoke"/"perf smoke" does. Likewise
+ * triage-closure/triage closure and spec-audit/spec audit require the
+ * full two-word phrase, walkthrough requires the whole word, and
+ * build-test-bundle requires "build" and "test" to each appear as whole
+ * words. A scope naming more than one slot (e.g.
+ * "build+test+bundle+walkthrough+render-sweep") is classified to
+ * whichever slot's keyword is checked first below; this is a narrowing,
+ * not a loss, because DEC-069 wants one qualifying section per slot and a
+ * combined section can be re-used per slot by naming it distinctly in
+ * future runs.
  */
 export function classifyScope(scope: string): RequiredScope | null {
   const s = scope.toLowerCase();
-  if (/triage/.test(s)) return "triage-closure";
-  if (/spec[-\s]?audit/.test(s)) return "spec-audit";
-  if (/perf/.test(s)) return "perf-smoke";
-  if (/walkthrough/.test(s)) return "walkthrough";
+  if (/\btriage[-\s]closure\b/.test(s)) return "triage-closure";
+  if (/\bspec[-\s]audit\b/.test(s)) return "spec-audit";
+  if (/\bperf[-\s]smoke\b/.test(s)) return "perf-smoke";
+  if (/\bwalkthrough\b/.test(s)) return "walkthrough";
   if (/\bbuild\b/.test(s) && /\btest\b/.test(s)) return "build-test-bundle";
   return null;
 }
@@ -197,6 +206,15 @@ export interface PredicateRow {
  * slot is ancestry-stale relative to `productSha`, the slot is VOID.
  * If no section classifies to the slot at all (or none carries a
  * verdict), the slot is MISSING.
+ *
+ * DEC-099 (w45 instrument repair): a section is a CANDIDATE for a slot
+ * only if BOTH `section.qualifying === true` (the wave-28 amendment's
+ * `QUALIFYING` label, previously parsed and discarded) AND
+ * `classifyScope` maps it onto that slot as a whole-token match. A
+ * section failing either test is skipped entirely -- it contributes
+ * neither a PASS/FAIL verdict nor a `sawStaleVerdict` VOID -- so a
+ * non-qualifying section can never decide a gate slot no matter how its
+ * scope text reads.
  */
 export function gradePredicate(
   sections: readonly LogSection[],
@@ -206,7 +224,7 @@ export function gradePredicate(
   return REQUIRED_SCOPES.map((slot) => {
     const candidates = sections
       .map((section, index) => ({ section, index }))
-      .filter(({ section }) => classifyScope(section.scope) === slot);
+      .filter(({ section }) => section.qualifying && classifyScope(section.scope) === slot);
 
     let sawStaleVerdict = false;
     const valid: { section: LogSection; index: number; outcome: "PASS" | "FAIL" }[] = [];
