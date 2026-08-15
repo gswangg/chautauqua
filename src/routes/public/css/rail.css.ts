@@ -106,7 +106,6 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 44px;
     padding: 0 14px;
     border: 1px solid var(--chq-border);
     border-radius: var(--chq-r-ctl);
@@ -130,6 +129,10 @@ export const RAIL_CSS = `  /* ===== task-w4-a (DEC-602): agenda geometry + /sche
 
   @media (max-width: 700px) {
     .chq-pub-sessions-layout { grid-template-columns: 1fr; gap: 20px; }
+    /* DEC-367 (wave 50 amendment): the phone tap floor -- the Save/Saved
+       pill above sizes to padding on desktop, per docs/design/README.md
+       §Controls. */
+    .chq-pub-save { min-height: 44px; }
   }
 
   /* ===== task-w1-i: itinerary label flip on /schedule + /agenda's list row,

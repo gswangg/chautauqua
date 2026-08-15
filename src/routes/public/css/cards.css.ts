@@ -111,7 +111,6 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 44px;
     padding: 0 16px;
     font-size: 13px;
     font-weight: 500;
@@ -208,4 +207,10 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
   .chq-pub-speaker-role { font-size: 13px; color: var(--chq-muted); line-height: 1.45; margin: 0; }
   .chq-pub-speaker-sessions { font-size: 13px; line-height: 1.45; margin: 0; padding-left: 1.1em; }
 
+  /* DEC-367 (wave 50 amendment): the phone tap floor -- the List | Grid
+     toggle sizes to padding on desktop, per docs/design/README.md
+     §Controls. */
+  @media (max-width: 700px) {
+    .chq-pub-view-toggle-option { min-height: 44px; }
+  }
 `;

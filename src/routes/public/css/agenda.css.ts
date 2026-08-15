@@ -292,7 +292,6 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
   .${ACCENT_BOUND_CLASSES[1]} {
     flex: 1 1 0;
     min-width: 0;
-    min-height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -323,12 +322,11 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
   /* Itinerary (schedule surface, DEC-022 localStorage-driven -- class name
      ".chq-itinerary-toggle" itself is behavior-critical, read by inline JS
      in agenda.tsx's ItineraryScript, and stays unchanged). */
-  .chq-pub-itinerary-row { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 13px; }
+  .chq-pub-itinerary-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
   .chq-pub-itinerary-cta {
     border: 1px solid var(--chq-border);
     border-radius: var(--chq-r-card);
     background: var(--chq-surface-sunk);
-    min-height: 44px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -372,6 +370,11 @@ export const AGENDA_CSS = `  /* Agenda day (DEC-584 wave-64 amendment): a time-r
     }
     .chq-pub-speaker-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
     .chq-pub-itinerary-cta { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+    /* DEC-367 (wave 50 amendment): the phone tap floor -- the day-switcher
+       pill and itinerary row size to padding on desktop, per
+       docs/design/README.md §Controls. */
+    .${ACCENT_BOUND_CLASSES[1]} { min-height: 44px; }
+    .chq-pub-itinerary-row { min-height: 44px; }
     .chq-pub-agenda-day-scroll { max-width: 100%; }
 
     /* DEC-584: exactly one of the two agenda markups is in the a11y tree
