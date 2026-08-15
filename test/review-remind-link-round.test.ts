@@ -165,7 +165,7 @@ describe("DEC-707 (wave-61 amendment): remind nudge link + identity + round", ()
     });
     expect(resWithClose.status).toBe(200);
     expect(sent.length).toBeGreaterThan(0);
-    for (const s of sent) expect(s.text).toContain("closes Mon, Mar 01, 2027");
+    for (const s of sent) expect(s.text).toContain("closes Mon 1 Mar 2027");
   });
 
   it("resolves laggards against a round named in the request, not always plan.currentRound", async () => {

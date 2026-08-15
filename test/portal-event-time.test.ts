@@ -11,13 +11,13 @@ describe("formatEventDate (DEC-413)", () => {
 
   it("renders the Pacific-local day (March 1) for an America/Los_Angeles event", () => {
     const formatted = formatEventDate(DUE_MS, "America/Los_Angeles");
-    expect(formatted).toContain("Mar 01, 2027");
-    expect(formatted).not.toContain("Mar 02, 2027");
+    expect(formatted).toContain("1 Mar 2027");
+    expect(formatted).not.toContain("2 Mar 2027");
   });
 
   it("renders the UTC day (March 2) for a UTC event", () => {
     const formatted = formatEventDate(DUE_MS, "UTC");
-    expect(formatted).toContain("Mar 02, 2027");
+    expect(formatted).toContain("2 Mar 2027");
   });
 
   it("throws on an empty timeZone (no UTC fallback)", () => {
