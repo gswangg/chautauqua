@@ -1,7 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import { apiList, apiPost, ApiError } from '../../lib/api';
 import { buildSubmissionsQuery } from '../submissions/filters';
 import { DEFAULT_FILTER_STATE, STATUS_LABELS, SUBMISSION_STATUSES, type SubmissionListItem, type SubmissionStatus } from '../submissions/types';
+import {
+  EMPTY_SELECTION,
+  isPageFullySelected,
+  isPagePartiallySelected,
+  selectionReducer,
+} from '../submissions/selection';
 import { PreviewPane } from './PreviewPane';
 import type { SendResult } from '../../lib/sendResult';
 import { PageSkeleton } from '../../components/PageSkeleton';
@@ -46,9 +52,10 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [q, setQ] = useState('');
-  // DEC-350: selection spans pages — never cleared on page/q/status change,
-  // exactly like ../submissions/selection.ts.
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // DEC-350: selection spans pages — never cleared on page/q/status change.
+  // Reducer + predicates are shared with ../submissions/selection.ts (the
+  // same select-all/indeterminate contract as SubmissionsTable/ContactsTable).
+  const [selection, dispatchSelection] = useReducer(selectionReducer, EMPTY_SELECTION);
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
 
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
@@ -159,15 +166,6 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     setPage(1);
   }
 
-  function toggleSubmission(id: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
   function composeBody(overrides?: {
     includeFeedback?: boolean;
     feedbackPlanId?: string;
@@ -177,7 +175,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     const effectiveIncludeFeedback = overrides?.includeFeedback ?? includeFeedback;
     const effectiveFeedbackPlanId = overrides?.feedbackPlanId ?? feedbackPlanId;
     const base: Record<string, unknown> = {
-      submissionIds: overrides?.submissionIds ?? [...selectedIds],
+      submissionIds: overrides?.submissionIds ?? [...selection.selectedIds],
       includeFeedback: effectiveIncludeFeedback,
       attachIcs: overrides?.attachIcs ?? attachIcs,
     };
@@ -335,7 +333,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
     try {
       const body =
         excludeIds && excludeIds.length > 0
-          ? composeBody({ submissionIds: [...selectedIds].filter((id) => !excludeIds.includes(id)) })
+          ? composeBody({ submissionIds: [...selection.selectedIds].filter((id) => !excludeIds.includes(id)) })
           : composeBody();
       const res = await apiPost<SendResult>(`/events/${eventId}/compose/send`, body);
       setSendResult(res);
@@ -363,7 +361,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
 
   function reset() {
     setStep('select');
-    setSelectedIds(new Set());
+    dispatchSelection({ type: 'CLEAR' });
     setPage(1);
     setQ('');
     setTemplateId('');
@@ -390,7 +388,9 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
       step: 'select',
       title: 'Recipients',
       detail:
-        selectedIds.size === 0 ? 'None selected yet' : `${countOf(selectedIds.size, 'submission')} selected`,
+        selection.selectedIds.size === 0
+          ? 'None selected yet'
+          : `${countOf(selection.selectedIds.size, 'submission')} selected`,
     },
     {
       step: 'template',
@@ -402,6 +402,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
   ];
 
   const currentIndex = STEP_ORDER.indexOf(step);
+  const pageIds = submissions.map((s) => s.id);
 
   // DEC-954: `ics` is only populated when the server actually ran the ICS
   // preflight for THIS preview call -- after a rejected attachIcs toggle the
@@ -491,14 +492,30 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               placeholder="Search submissions"
             />
           </label>
-          {/* DEC-350/DEC-967 amendment (wave 25): the selection already
-              survives filter changes (never cleared on page/q/status
-              change) -- this line just says so, so an organizer filtering
-              after selecting doesn't assume their picks were dropped. */}
-          <p className="chq-comms-panel-note">
-            Kept as you change filters &middot; {selectedIds.size} is{' '}
-            {selectedIds.size > RECIPIENT_CAP ? 'over' : 'under'} the {RECIPIENT_CAP}-recipient cap
-          </p>
+          {/* DEC-350 amendment (wave 51, ruling A1): the selection bar sits
+              below the filters and directly above the table, only when the
+              selection is non-empty. It keeps both constraints the panel
+              note used to carry alone -- selection survives filter changes,
+              and the recipient cap fact -- in chrome voice (counts and
+              nouns, no explanatory clauses). */}
+          {selection.selectedIds.size > 0 && (
+            <div className="chq-bulkbar" role="toolbar" aria-label="Selection">
+              <span className="chq-bulkbar-count">{countOf(selection.selectedIds.size, 'submission')} selected</span>
+              <span className="chq-bulkbar-note">
+                Kept as you change filters &middot; {selection.selectedIds.size} is{' '}
+                {selection.selectedIds.size > RECIPIENT_CAP ? 'over' : 'under'} the {RECIPIENT_CAP}-recipient cap
+              </span>
+              <div className="chq-bulkbar-actions">
+                <button
+                  type="button"
+                  className="chq-btn chq-btn-tertiary"
+                  onClick={() => dispatchSelection({ type: 'CLEAR' })}
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* DEC-678 (wave-3/wave-8, proven by app/src/admin-first-paint.
               render.test.tsx): the recipient table is Comms' main region on
@@ -536,7 +553,18 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
               <table className="chq-table chq-comms-compose-table">
                 <thead>
                   <tr>
-                    <th />
+                    <th>
+                      <input
+                        type="checkbox"
+                        className="chq-check"
+                        checked={isPageFullySelected(selection, pageIds)}
+                        ref={(el) => {
+                          if (el) el.indeterminate = isPagePartiallySelected(selection, pageIds);
+                        }}
+                        onChange={() => dispatchSelection({ type: 'TOGGLE_PAGE', pageIds })}
+                        aria-label="Select every submission on this page"
+                      />
+                    </th>
                     <th>Title</th>
                     <th>Speakers</th>
                     <th>Status</th>
@@ -549,8 +577,8 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                         <input
                           type="checkbox"
                           className="chq-check"
-                          checked={selectedIds.has(s.id)}
-                          onChange={() => toggleSubmission(s.id)}
+                          checked={selection.selectedIds.has(s.id)}
+                          onChange={() => dispatchSelection({ type: 'TOGGLE_ROW', id: s.id })}
                           aria-label={`Select ${s.title}`}
                         />
                       </td>
@@ -589,10 +617,10 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
           <button
             type="button"
             className="chq-btn chq-btn-primary"
-            disabled={selectedIds.size === 0}
+            disabled={selection.selectedIds.size === 0}
             onClick={() => setStep('template')}
           >
-            Next: choose template ({countOf(selectedIds.size, 'submission')} selected)
+            Next: choose template ({countOf(selection.selectedIds.size, 'submission')} selected)
           </button>
         </section>
       )}
