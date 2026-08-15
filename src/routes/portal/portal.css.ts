@@ -24,13 +24,15 @@
 // public.css.ts's PUBLIC_CSS already uses to compose CHROME_CSS/CARDS_CSS/
 // AGENDA_CSS/RAIL_CSS.
 
-import { DEC_373, DEC_374, DEC_377, DEC_657, DEC_989 } from "../../decisions";
+import { DEC_373, DEC_374, DEC_377, DEC_657, DEC_919, DEC_989 } from "../../decisions";
 import { ERROR_STATES_CSS } from "../../views/error-states.css";
+import { EMPTY_CSS } from "../public/css/empty.css";
 
 void DEC_373;
 void DEC_374;
 void DEC_377; // captions below only ever restate fields the portal repo already returns
 void DEC_657; // wave 28 amendment: the portal's own error vocabulary is the hoisted shared one, never a private copy
+void DEC_919; // amendment (wave 52): the portal's zero-states compose the same PublicEmptyState renderer/CSS as the public surfaces
 void DEC_989; // ruling B6 (wave 25 amendment): portal content column clamps to --chq-portal-measure, not the shared reading measure
 
 export const PORTAL_CSS = `
@@ -437,4 +439,5 @@ export const PORTAL_CSS = `
   .chq-portal-detail h2, .chq-portal-detail h3 { color: var(--chq-ink); margin: 0 0 6px; }
   .chq-portal-detail p, .chq-portal-detail ul { margin: 0 0 10px; }
   .chq-portal-detail ul { padding-left: 20px; }
+${EMPTY_CSS}
 ${ERROR_STATES_CSS}`;

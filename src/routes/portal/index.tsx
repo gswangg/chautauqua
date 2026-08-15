@@ -8,6 +8,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { speakerGate, PortalLayout, PortalBackLink } from "./shared";
+import { PublicEmptyState } from "../public/empty-state";
 import { formatCalendarDate, formatDayMedium, formatEventDate, formatScheduleSlotLabel } from "../../lib/event-time";
 import { effectiveAssignmentDueDate } from "../../domain/task-due";
 import { csrfForm } from "../../server/middleware";
@@ -296,7 +297,7 @@ function PortalPage(props: {
       <section aria-label="Waiting on you" class="chq-section">
         <div class="chq-section-label">Waiting on you</div>
         {n === 0 ? (
-          <p>Nothing pending right now.</p>
+          <PublicEmptyState variant="fresh" what="Nothing pending right now." />
         ) : (
           worklist.map((row) =>
             row.kind === "task" ? (
@@ -340,7 +341,7 @@ function PortalPage(props: {
       <section aria-label="Done" class="chq-section">
         <div class="chq-section-label">Done</div>
         {doneTasks.length === 0 ? (
-          <p>Nothing completed yet.</p>
+          <PublicEmptyState variant="fresh" what="Nothing completed yet." />
         ) : (
           doneTasks.map((t) => <DoneRow task={t} />)
         )}
@@ -470,7 +471,7 @@ function SubmissionDetailPage(props: {
           ) : null}
         </div>
       ) : (
-        <p>Nothing uploaded yet.</p>
+        <PublicEmptyState variant="fresh" what="Nothing uploaded yet." />
       )}
     </PortalLayout>
   );
