@@ -19,6 +19,20 @@ export function isValidContentStatus(value: unknown): value is ContentStatus {
   return typeof value === "string" && (CONTENT_STATUSES as readonly string[]).includes(value);
 }
 
+// DEC-720 wave-53 amendment: `changes_requested` gets exactly one writer —
+// POST /api/v1/submissions/:id/content-note (src/routes/content-notes.ts),
+// which posts the thread note and mails the speakers. The two bare
+// content-status routes (files.ts, api/submissions.ts) must NOT be able to
+// write `changes_requested` with no note and no email, so they validate
+// against this narrower ROUTE predicate instead of `isValidContentStatus`
+// (the DB-VALUE predicate, which legitimately still accepts all three
+// values for updateContentStatus/updateContentStatuses).
+export const ROUTE_SETTABLE_CONTENT_STATUSES = ["pending", "approved"] as const;
+
+export function isRouteSettableContentStatus(value: unknown): value is "pending" | "approved" {
+  return typeof value === "string" && (ROUTE_SETTABLE_CONTENT_STATUSES as readonly string[]).includes(value);
+}
+
 // DEC-713: the one status a speaker may still delete their own latest
 // version under — imported by the delete route rather than re-listing the
 // "pending" literal.

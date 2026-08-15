@@ -56,7 +56,7 @@ import {
   HEADSHOT_KIND,
   insertFile,
   insertFileComment,
-  isValidContentStatus,
+  isRouteSettableContentStatus,
   listEventDeliverableFiles,
   listFileComments,
   listSubmissionFiles,
@@ -281,10 +281,12 @@ fileApiRoutes.post("/submissions/:id/content-status", requireOrganizer, csrfJson
   if (scope.orgId !== auth.orgId) throw new ApiError("not_found", "Submission not found");
 
   const body = (await readOptionalJsonBody(c)) as unknown as { contentStatus?: unknown };
-  if (!isValidContentStatus(body.contentStatus)) {
-    throw new ApiError("invalid", "contentStatus must be one of pending, approved, changes_requested", {
-      contentStatus: "Invalid value",
-    });
+  if (!isRouteSettableContentStatus(body.contentStatus)) {
+    throw new ApiError(
+      "invalid",
+      "contentStatus must be 'pending' or 'approved' — changes_requested is set by POST /api/v1/submissions/:id/content-note, which also sends the note to the speakers",
+      { contentStatus: "Use the content-note endpoint" },
+    );
   }
 
   await updateContentStatus(c.var.db, submissionId, body.contentStatus);

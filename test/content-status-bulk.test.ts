@@ -241,7 +241,40 @@ describe("POST /api/v1/events/:eventId/submissions/content-status (DEC-568/DEC-8
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
     expect(body.error.code).toBe("invalid");
-    expect(body.error.fields).toEqual({ contentStatus: "Invalid value" });
+    expect(body.error.fields).toEqual({ contentStatus: "Use the content-note endpoint" });
+  });
+
+  // DEC-720 wave-53 amendment: changes_requested gets exactly one writer —
+  // POST /api/v1/submissions/:id/content-note, which posts the thread note
+  // and mails the speakers. This bare bulk route must refuse it.
+  it("400s on contentStatus 'changes_requested' — that write belongs to /content-note", async () => {
+    const { db, updates } = fakeRouteDb([[{ orgId: "org-1" }]]); // getEventOrgId only; body invalid before preflight select
+    const app = await buildApp(db, ORGANIZER_A);
+    const res = await app.request("/api/v1/events/event-1/submissions/content-status", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ ids: ["s1"], contentStatus: "changes_requested" }),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
+    expect(body.error.code).toBe("invalid");
+    expect(body.error.fields).toEqual({ contentStatus: "Use the content-note endpoint" });
+    expect(updates).toHaveLength(0);
+  });
+
+  it("still 200s on contentStatus 'pending'", async () => {
+    const { db } = fakeRouteDb([
+      [{ orgId: "org-1" }], // getEventOrgId
+      [{ id: "s1" }], // updateContentStatuses preflight select
+    ]);
+    const app = await buildApp(db, ORGANIZER_A);
+    const res = await app.request("/api/v1/events/event-1/submissions/content-status", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+      body: JSON.stringify({ ids: ["s1"], contentStatus: "pending" }),
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ updated: 1 });
   });
 
   it("400s (loud unknown-id preflight) when an id does not belong to the event, before any UPDATE", async () => {
