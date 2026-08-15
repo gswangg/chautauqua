@@ -79,6 +79,19 @@ const SLOT_ROWS = [
   { submissionId: "sub3", day: "2026-08-10", startMin: 570, endMin: 600, roomId: "room2" },
 ];
 
+// DEC-774 wave-34 amendment: dispatch.tsx's agenda case now issues its
+// reads as exactly TWO Promise.all waves -- wave 1 is
+// [getPublicTracks, getPublicScheduleDayCounts] (both single-select, so
+// they land at calls 2/3 exactly as the old serial chain did); wave 2 is
+// [getPublicAgenda(effectiveDay), getPublicBreaksByDay(effectiveDay)],
+// which now run CONCURRENTLY -- getPublicAgenda's own count(*) subquery
+// (its first counted select; the id-query feeding it uses selectDistinct,
+// which this harness never counts) fires in the same synchronous burst as
+// getPublicBreaksByDay's one-shot select, ahead of getPublicAgenda's rows
+// query/room lookup/hydrateSessions cascade (which only resume one
+// microtask later, once each of getPublicAgenda's OWN preceding awaits
+// resolves). See test/public-surface-round-trip-depth.test.ts for the
+// behavioural proof this reordering is real concurrency.
 function buildApp() {
   let selectCall = 0;
   const db = {
@@ -86,36 +99,35 @@ function buildApp() {
       selectCall += 1;
       // 1: getPublicEventBySlug
       if (selectCall === 1) return makeChain([EVENT_ROW]);
-      // 2: getPublicTracks (DEC-804 track-highlight <select>)
+      // 2: getPublicTracks (DEC-804 track-highlight <select>) -- wave 1.
       if (selectCall === 2) return makeChain([]);
-      // DEC-768 (wave 67 amendment): /agenda is single-day by default, so the
-      // dispatch layer calls getPublicScheduleDayCounts BEFORE getPublicAgenda
-      // -- this harness is positional, so that extra call shifts every row
-      // shape after it by one (leave it out and the route 500s when the break
-      // read is handed session rows).
+      // 3: getPublicScheduleDayCounts -- wave 1, alongside getPublicTracks.
       if (selectCall === 3) return makeChain([{ day: "2026-08-10", count: SLOT_ROWS.length }]);
-      const n = selectCall - 1;
-      // 3: DEC-548 getPublicAgenda's total count(*) subquery
-      if (n === 3) return makeChain([{ count: SLOT_ROWS.length }]);
-      // 4: getPublicAgenda's room lookup
-      if (n === 4) {
+      // 4: DEC-548 getPublicAgenda's total count(*) subquery -- wave 2,
+      // fires in the SAME synchronous burst as getPublicBreaksByDay's call
+      // below (both are the first counted select of their own promise).
+      if (selectCall === 4) return makeChain([{ count: SLOT_ROWS.length }]);
+      // 5: getPublicBreaksByDay (listBreaksForEvent) -- wave 2, concurrent
+      // with getPublicAgenda's count-subquery above.
+      if (selectCall === 5) return makeChain([]);
+      // 6: getPublicAgenda's room lookup (resumes after its own rows query,
+      // which uses selectDistinct and so isn't counted here).
+      if (selectCall === 6) {
         return makeChain([
           { id: "room1", name: "Main Hall", position: 1 },
           { id: "room2", name: "Overflow Room", position: 2 },
         ]);
       }
-      // 5: hydrateSessions subRows
-      if (n === 5) {
+      // 7: hydrateSessions subRows
+      if (selectCall === 7) {
         return makeChain([
           { id: "sub1", seq: 1, title: "Talk One", description: null, icsSequence: 0 },
           { id: "sub2", seq: 2, title: "Talk Two", description: null, icsSequence: 0 },
           { id: "sub3", seq: 3, title: "Talk Three", description: null, icsSequence: 0 },
         ]);
       }
-      // 6: hydrateSessions trackRows
-      if (n === 6) return makeChain([]);
-      // 7: hydrateSessions speakerRows
-      // 8+: hydrateSessions slotRows/formatRows, getPublicBreaksByDay -- all empty.
+      // 8: hydrateSessions trackRows
+      // 9+: hydrateSessions speakerRows/slotRows/formatRows -- all empty.
       return makeChain([]);
     },
     selectDistinct: () => makeChain(SLOT_ROWS),

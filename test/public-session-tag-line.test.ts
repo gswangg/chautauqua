@@ -88,9 +88,14 @@ function withDb(app: Hono<AppEnv>, db: unknown) {
   return app;
 }
 
-// Same call sequence as test/public-format.test.ts's sessions-list db(),
-// with a track and a format answer wired up so the meta line has content
-// on both sides.
+// Same call sequence as test/public-format.test.ts's sessions-list db().
+// DEC-774 wave-34 amendment: dispatch.tsx's sessions case issues its
+// independent reads as ONE Promise.all wave -- no filter is active, so
+// getPublicScheduleDayCounts/getPublicCfpWindow (single-select reads) land
+// in the initial synchronous burst (slots 5-6), ahead of getPublicSessions'
+// own multi-step hydrateSessions cascade, which only reaches its first
+// select one microtask later (after its own id-query await resolves). See
+// test/public-surface-round-trip-depth.test.ts for the behavioural proof.
 function sessionsListDb() {
   let call = 0;
   return {
@@ -100,14 +105,14 @@ function sessionsListDb() {
       if (call === 2) return makeChain([]); // getPublicTracks
       if (call === 3) return makeChain([]); // getPublicRooms (DEC-774)
       if (call === 4) return makeChain([]); // getPublicFormatOptions (DEC-774)
-      if (call === 5) return makeChain([SUB_ROW]); // hydrateSessions subRows
-      if (call === 6) return makeChain(TRACK_ROWS); // trackRows
-      if (call === 7) return makeChain([]); // speakerRows
-      if (call === 8) return makeChain([]); // slotRows
-      if (call === 9) return makeChain(FORMAT_ROWS); // formatRows
-      if (call === 10) return makeChain([{ count: 1 }]); // countVisibleSubmissions
-      if (call === 11) return makeChain([]); // getPublicScheduleDayCounts
-      return makeChain([]); // getPublicCfpWindow
+      if (call === 5) return makeChain([]); // getPublicScheduleDayCounts
+      if (call === 6) return makeChain([]); // getPublicCfpWindow
+      if (call === 7) return makeChain([SUB_ROW]); // hydrateSessions subRows
+      if (call === 8) return makeChain(TRACK_ROWS); // trackRows
+      if (call === 9) return makeChain([]); // speakerRows
+      if (call === 10) return makeChain([]); // slotRows
+      if (call === 11) return makeChain(FORMAT_ROWS); // formatRows
+      return makeChain([{ count: 1 }]); // countVisibleSubmissions
     },
     selectDistinct: () => makeChain([{ id: "sub1", title: "Fireside Chat" }]),
   };

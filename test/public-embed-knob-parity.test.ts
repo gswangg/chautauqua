@@ -248,26 +248,52 @@ function buildAgendaApp(forJson = false, surface: "agenda" | "schedule" = "agend
       // (the single-day default needs the full scheduled-day list) -- so that
       // path's sequence sits two ahead of the feed's. HTML /schedule still
       // makes only the getPublicTracks call, so it stays one ahead.
-      const dayCounts = !forJson && surface === "agenda";
-      const offset = forJson ? 0 : dayCounts ? 2 : 1;
+      const dayCountRows = AGENDA_ROWS.map((r) => ({ day: r.day, count: 1 }));
+      // DEC-774 wave-34 amendment: dispatch.tsx's agenda case runs
+      // getPublicTracks and getPublicScheduleDayCounts as wave 1 (fully
+      // resolved BEFORE wave 2 — getPublicAgenda concurrent with
+      // getPublicBreaksByDay — starts), so agenda's dayCounts call always
+      // precedes its own count(*) subquery. dispatch.tsx's schedule case
+      // instead runs tracks/agenda/dayCounts(if ?day= is set)/breaksByDay
+      // as ONE wave, so schedule's dayCounts call fires in the SAME
+      // synchronous burst as agenda's count-subquery and breaksByDay's
+      // call — AFTER the count-subquery (array order: tracks, agenda,
+      // dayCounts, breaksByDay), not before. This file's one
+      // surface="schedule" HTML case always requests ?day=. See
+      // test/public-surface-round-trip-depth.test.ts for the behavioural
+      // proof of the concurrency this reordering reflects.
       if (selectCall === 1) return makeChain([AGENDA_EVENT_ROW]); // getPublicEventBySlug
       // DEC-851 (wave 64 amendment): getPublicFormatOptions is no longer
       // called for agenda/schedule at all (format isn't an agenda facet) --
       // only getPublicTracks (feeding the track-highlight <select>) adds an
       // extra call over the .json feed's sequence now.
       if (!forJson && selectCall === 2) return makeChain([]); // DEC-804 getPublicTracks (search form's track <select>, HTML dispatch only)
-      if (dayCounts && selectCall === 3) {
-        // getPublicScheduleDayCounts: BOTH agenda days, so the switcher has
-        // its full set and the ?day= under test is a real member of it.
-        return makeChain(AGENDA_ROWS.map((r) => ({ day: r.day, count: 1 })));
+      if (forJson) {
+        if (selectCall === 2) return makeChain([{ count: matched.length }]); // DEC-548 total
+        if (selectCall === 3) return makeChain([{ id: "room1", name: "Main Hall" }]); // roomRows
+        if (selectCall === 4) return makeChain(SESSION_ROWS); // hydrateSessions subRows
+        if (selectCall === 5) return makeChain([]); // hydrateSessions trackRows
+        if (selectCall === 6) return makeChain([]); // hydrateSessions speakerRows
+        return makeChain([]); // hydrateSessions EMB-01 slotRows (unused by agenda grid)
       }
-      // DEC-548: the unwindowed count(*) over the same filtered join, read
-      // after selectDistinct's .where() has already narrowed `matched`.
-      if (selectCall === 2 + offset) return makeChain([{ count: matched.length }]);
-      if (selectCall === 3 + offset) return makeChain([{ id: "room1", name: "Main Hall" }]); // roomRows
-      if (selectCall === 4 + offset) return makeChain(SESSION_ROWS); // hydrateSessions subRows
-      if (selectCall === 5 + offset) return makeChain([]); // hydrateSessions trackRows
-      if (selectCall === 6 + offset) return makeChain([]); // hydrateSessions speakerRows
+      if (surface === "agenda") {
+        if (selectCall === 3) return makeChain(dayCountRows); // getPublicScheduleDayCounts (wave 1)
+        if (selectCall === 4) return makeChain([{ count: matched.length }]); // DEC-548 total (wave 2)
+        if (selectCall === 5) return makeChain([]); // getPublicBreaksByDay (wave 2)
+        if (selectCall === 6) return makeChain([{ id: "room1", name: "Main Hall" }]); // roomRows
+        if (selectCall === 7) return makeChain(SESSION_ROWS); // hydrateSessions subRows
+        if (selectCall === 8) return makeChain([]); // hydrateSessions trackRows
+        if (selectCall === 9) return makeChain([]); // hydrateSessions speakerRows
+        return makeChain([]); // hydrateSessions EMB-01 slotRows (unused by agenda grid)
+      }
+      // surface === "schedule" (always requested with ?day= in this file).
+      if (selectCall === 3) return makeChain([{ count: matched.length }]); // DEC-548 total
+      if (selectCall === 4) return makeChain(dayCountRows); // getPublicScheduleDayCounts (?day= set)
+      if (selectCall === 5) return makeChain([]); // getPublicBreaksByDay
+      if (selectCall === 6) return makeChain([{ id: "room1", name: "Main Hall" }]); // roomRows
+      if (selectCall === 7) return makeChain(SESSION_ROWS); // hydrateSessions subRows
+      if (selectCall === 8) return makeChain([]); // hydrateSessions trackRows
+      if (selectCall === 9) return makeChain([]); // hydrateSessions speakerRows
       return makeChain([]); // hydrateSessions EMB-01 slotRows (unused by agenda grid)
     },
     selectDistinct: () => agendaChain(),

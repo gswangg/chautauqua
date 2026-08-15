@@ -163,9 +163,21 @@ function sessionRow(id: string, title: string) {
 // if the SQL trackId/q/day predicate has already run — proving the ROUTE
 // wiring (items + total from the SAME set) is correct once the predicate has
 // done its job.
-function buildScheduleApp(rows: typeof FULL_AGENDA_ROWS) {
+// DEC-774 wave-34 amendment: dispatch.tsx's schedule case issues its reads
+// as ONE Promise.all wave: [getPublicTracks, getPublicAgenda(query.day),
+// maybe getPublicScheduleDayCounts (only when ?day= is set),
+// getPublicBreaksByDay(query.day)]. getPublicAgenda's own count(*)
+// subquery (its first counted select) fires in the same synchronous burst
+// as getPublicScheduleDayCounts/getPublicBreaksByDay's one-shot selects,
+// ahead of getPublicAgenda's rows query/room lookup/hydrateSessions
+// cascade (which only resume one microtask later). `withDay` shifts the
+// numbering by one slot to account for the extra getPublicScheduleDayCounts
+// read that only fires when the request carries `?day=`. See
+// test/public-surface-round-trip-depth.test.ts for the behavioural proof.
+function buildScheduleApp(rows: typeof FULL_AGENDA_ROWS, withDay = false) {
   let selectCall = 0;
   const sessionRows = rows.map((r) => sessionRow(r.submissionId, `Talk ${r.submissionId}`));
+  const shift = withDay ? 1 : 0;
   const db = {
     select: () => {
       selectCall += 1;
@@ -174,11 +186,18 @@ function buildScheduleApp(rows: typeof FULL_AGENDA_ROWS) {
       // called at all for agenda/schedule (format isn't an agenda facet).
       if (selectCall === 2) return makeChain([]); // DEC-804 getPublicTracks (track-highlight <select>)
       if (selectCall === 3) return makeChain([{ count: rows.length }]); // DEC-548 total
-      if (selectCall === 4) return makeChain(rows.length > 0 ? [{ id: "room1", name: "Alpha" }, { id: "room2", name: "Beta" }] : []); // roomRows
-      if (selectCall === 5) return makeChain(sessionRows); // hydrateSessions subRows
-      if (selectCall === 6) return makeChain([]); // trackRows
-      if (selectCall === 7) return makeChain([]); // speakerRows
-      if (selectCall === 8) return makeChain([]); // slotRows (unused by agenda grid)
+      // getPublicScheduleDayCounts, when ?day= is set -- its actual row
+      // content is unchecked by these tests.
+      if (withDay && selectCall === 4) return makeChain([]);
+      // getPublicBreaksByDay -- table-routed to [] regardless of the value
+      // returned here (see makeChain's `.from(schema.scheduleBreak)` check
+      // below), so whichever slot it lands in is harmless.
+      if (selectCall === 4 + shift) return makeChain([]);
+      if (selectCall === 5 + shift) return makeChain(rows.length > 0 ? [{ id: "room1", name: "Alpha" }, { id: "room2", name: "Beta" }] : []); // roomRows
+      if (selectCall === 6 + shift) return makeChain(sessionRows); // hydrateSessions subRows
+      if (selectCall === 7 + shift) return makeChain([]); // trackRows
+      if (selectCall === 8 + shift) return makeChain([]); // speakerRows
+      if (selectCall === 9 + shift) return makeChain([]); // slotRows (unused by agenda grid)
       return makeChain([]); // formatRows
     },
     selectDistinct: () => makeChain(rows),
@@ -254,7 +273,7 @@ describe("/e/:eventSlug/schedule?trackId= (task w1-d): every candidate row still
 
   it("?day= still narrows on its own (getPublicAgenda's own predicate, unrelated to the client-side saved filter)", async () => {
     installFakeCaches();
-    const app = buildScheduleApp(FILTERED_ROWS);
+    const app = buildScheduleApp(FILTERED_ROWS, true);
     const res = await app.request("/e/conf/schedule?day=2026-08-10&trackId=trk-a", {}, TEST_ENV);
     expect(res.status).toBe(200);
     const html = await res.text();
@@ -275,12 +294,24 @@ describe("/schedule row control (task w1-d): a checked row is named Remove, neve
 });
 
 // DEC-804/DEC-851 (wave 64 amendment): /agenda and /schedule render the
-// SAME search-and-track-highlight control. Built on the SAME db.select()
+// SAME search-and-track-highlight control. Built on a similar db.select()
 // call sequence as buildScheduleApp above, but with real track rows at
 // position 2 (getPublicTracks) and a `surface` switch so the same harness
 // can mount either /agenda or /embed/.../agenda. getPublicFormatOptions is
-// no longer called for these two surfaces at all.
+// no longer called for these two surfaces at all. Only the "agenda" arm is
+// exercised by this file's tests, so only that numbering is implemented.
+//
+// DEC-774 wave-34 amendment: dispatch.tsx's agenda case issues exactly TWO
+// Promise.all waves -- wave 1 is [getPublicTracks,
+// getPublicScheduleDayCounts] (both single-select, landing at slots 2/3);
+// wave 2 is [getPublicAgenda(effectiveDay), getPublicBreaksByDay
+// (effectiveDay)], concurrent, so getPublicAgenda's own count(*) subquery
+// and getPublicBreaksByDay's one-shot select land in the same synchronous
+// burst (slots 4/5), ahead of getPublicAgenda's rows query/room lookup/
+// hydrateSessions cascade. See test/public-surface-round-trip-depth.test.ts
+// for the behavioural proof.
 function buildSurfaceApp(surface: "agenda" | "schedule", rows: typeof FULL_AGENDA_ROWS, tracks: { id: string; name: string; color: string | null }[]) {
+  if (surface !== "agenda") throw new Error("buildSurfaceApp only implements the agenda numbering");
   let selectCall = 0;
   const sessionRows = rows.map((r) => sessionRow(r.submissionId, `Talk ${r.submissionId}`));
   const db = {
@@ -288,12 +319,14 @@ function buildSurfaceApp(surface: "agenda" | "schedule", rows: typeof FULL_AGEND
       selectCall += 1;
       if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
       if (selectCall === 2) return makeChain(tracks); // DEC-804 getPublicTracks
-      if (selectCall === 3) return makeChain([{ count: rows.length }]); // DEC-548 total
-      if (selectCall === 4) return makeChain(rows.length > 0 ? [{ id: "room1", name: "Alpha" }, { id: "room2", name: "Beta" }] : []); // roomRows
-      if (selectCall === 5) return makeChain(sessionRows); // hydrateSessions subRows
-      if (selectCall === 6) return makeChain([]); // trackRows
-      if (selectCall === 7) return makeChain([]); // speakerRows
-      if (selectCall === 8) return makeChain([]); // slotRows (unused by agenda grid)
+      if (selectCall === 3) return makeChain([]); // getPublicScheduleDayCounts
+      if (selectCall === 4) return makeChain([{ count: rows.length }]); // DEC-548 total
+      if (selectCall === 5) return makeChain([]); // getPublicBreaksByDay
+      if (selectCall === 6) return makeChain(rows.length > 0 ? [{ id: "room1", name: "Alpha" }, { id: "room2", name: "Beta" }] : []); // roomRows
+      if (selectCall === 7) return makeChain(sessionRows); // hydrateSessions subRows
+      if (selectCall === 8) return makeChain([]); // trackRows
+      if (selectCall === 9) return makeChain([]); // speakerRows
+      if (selectCall === 10) return makeChain([]); // slotRows (unused by agenda grid)
       return makeChain([]); // formatRows
     },
     selectDistinct: () => makeChain(rows),

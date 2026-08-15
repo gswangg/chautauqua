@@ -78,6 +78,19 @@ const TRACKS = [
   { id: "trk-b", name: "Track B", color: null },
 ];
 
+// DEC-774 wave-34 amendment: dispatch.tsx's agenda case issues exactly TWO
+// Promise.all waves (wave 1: [getPublicTracks, getPublicScheduleDayCounts];
+// wave 2: [getPublicAgenda(effectiveDay), getPublicBreaksByDay(effectiveDay)]
+// -- concurrent, so getPublicAgenda's own count(*) subquery and
+// getPublicBreaksByDay's one-shot select fire in the SAME synchronous
+// burst, ahead of getPublicAgenda's rows query/room lookup/hydrateSessions
+// cascade). The schedule case issues ONE wave
+// ([getPublicTracks, getPublicAgenda(query.day), maybe
+// getPublicScheduleDayCounts, getPublicBreaksByDay(query.day)] -- no
+// ?day= here, so the day-switcher read is skipped): getPublicAgenda's
+// count-subquery and getPublicBreaksByDay's select again land in the same
+// burst, ahead of getPublicAgenda's own rows/room/hydrate cascade. See
+// test/public-surface-round-trip-depth.test.ts for the behavioural proof.
 function buildSurfaceApp(surface: "agenda" | "schedule") {
   let selectCall = 0;
   const sessionRows = ROWS.map((r) => sessionRow(r.submissionId, `Talk ${r.submissionId}`));
@@ -89,20 +102,29 @@ function buildSurfaceApp(surface: "agenda" | "schedule") {
       // <select>) sits ahead of the standard getPublicAgenda call sequence.
       if (selectCall === 1) return makeChain([EVENT_ROW]); // getPublicEventBySlug
       if (selectCall === 2) return makeChain(TRACKS); // getPublicTracks
-      // DEC-768 (wave 67 amendment): /agenda is single-day by default, so
-      // dispatch now calls getPublicScheduleDayCounts on EVERY agenda
-      // request (it supplies both the full day-switcher set and the default
-      // day) -- one extra select() ahead of getPublicAgenda's own sequence.
-      // /schedule is untouched by the amendment and never makes this call,
-      // so the positions below shift by one on the agenda path only.
-      if (surface === "agenda" && selectCall === 3) return makeChain([{ day: "2026-08-10", count: ROWS.length }]);
-      const n = surface === "agenda" ? selectCall - 1 : selectCall;
-      if (n === 3) return makeChain([{ count: ROWS.length }]); // DEC-548 total
-      if (n === 4) return makeChain([{ id: "room1", name: "Alpha" }]); // roomRows
-      if (n === 5) return makeChain(sessionRows); // hydrateSessions subRows
-      if (n === 6) return makeChain([]); // trackRows
-      if (n === 7) return makeChain([]); // speakerRows
-      if (n === 8) return makeChain([]); // slotRows
+      if (surface === "agenda") {
+        // wave 1's second read.
+        if (selectCall === 3) return makeChain([{ day: "2026-08-10", count: ROWS.length }]); // dayCounts
+        // wave 2's burst: agenda's count-subquery, then breaksByDay.
+        if (selectCall === 4) return makeChain([{ count: ROWS.length }]); // DEC-548 total
+        if (selectCall === 5) return makeChain([]); // getPublicBreaksByDay
+        if (selectCall === 6) return makeChain([{ id: "room1", name: "Alpha" }]); // roomRows
+        if (selectCall === 7) return makeChain(sessionRows); // hydrateSessions subRows
+        if (selectCall === 8) return makeChain([]); // trackRows
+        if (selectCall === 9) return makeChain([]); // speakerRows
+        if (selectCall === 10) return makeChain([]); // slotRows
+        return makeChain([]); // formatRows
+      }
+      // schedule: ONE wave, no ?day= -- the day-switcher read is skipped,
+      // so the burst is just [tracks, agenda's count-subquery,
+      // breaksByDay].
+      if (selectCall === 3) return makeChain([{ count: ROWS.length }]); // DEC-548 total
+      if (selectCall === 4) return makeChain([]); // getPublicBreaksByDay
+      if (selectCall === 5) return makeChain([{ id: "room1", name: "Alpha" }]); // roomRows
+      if (selectCall === 6) return makeChain(sessionRows); // hydrateSessions subRows
+      if (selectCall === 7) return makeChain([]); // trackRows
+      if (selectCall === 8) return makeChain([]); // speakerRows
+      if (selectCall === 9) return makeChain([]); // slotRows
       return makeChain([]); // formatRows
     },
     selectDistinct: () => makeChain(ROWS),
@@ -185,12 +207,17 @@ describe("DEC-851 (wave 64 amendment): /agenda and /schedule highlight a track, 
             { day: "2026-08-11", count: 1 },
           ]);
         }
+        // DEC-774 wave-34 amendment: wave 2's burst -- agenda's
+        // count-subquery, then getPublicBreaksByDay -- ahead of agenda's
+        // own rows/room/hydrate cascade (see buildSurfaceApp's comment
+        // above for the full ordering rationale).
         if (selectCall === 4) return makeChain([{ count: twoDayRows.length }]);
-        if (selectCall === 5) return makeChain([{ id: "room1", name: "Alpha" }]);
-        if (selectCall === 6) return makeChain(sessionRows);
-        if (selectCall === 7) return makeChain([]);
+        if (selectCall === 5) return makeChain([]); // getPublicBreaksByDay
+        if (selectCall === 6) return makeChain([{ id: "room1", name: "Alpha" }]);
+        if (selectCall === 7) return makeChain(sessionRows);
         if (selectCall === 8) return makeChain([]);
         if (selectCall === 9) return makeChain([]);
+        if (selectCall === 10) return makeChain([]);
         return makeChain([]);
       },
       selectDistinct: () => makeChain(twoDayRows),
