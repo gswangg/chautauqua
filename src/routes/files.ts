@@ -635,10 +635,33 @@ interface ServeScope {
  * (getTaskFileScope, organizer-or-assigned-speaker; population is
  * submissionId-null + referenced by task_assignment.fileId, any kind). A
  * file row belongs to exactly one population, never more than one —
- * resource/task files have submissionId null. */
+ * resource/task files have submissionId null.
+ *
+ * DEC-170 (wave-33 amendment): the three population lookups pay their D1
+ * round trips as one Promise.all wave rather than three sequential awaits —
+ * a task-assignment upload previously paid for two guaranteed-empty lookups
+ * (getFileScope, getResourceFileScope) before ever reaching its own. The
+ * "exactly one population" invariant above was previously only ASSUMED by
+ * the sequential probe-order early-return; it is now ASSERTED — if more
+ * than one lookup resolves non-null (data corruption, never a normal state),
+ * this throws loudly instead of silently picking a winner by probe order. */
 async function authzServeFile(c: Context<AppEnv>, fileId: string): Promise<ServeScope> {
   const auth = requireAuth(c);
-  const scope = await getFileScope(c.var.db, fileId);
+  const [scope, resourceScope, taskScope] = await Promise.all([
+    getFileScope(c.var.db, fileId),
+    getResourceFileScope(c.var.db, fileId),
+    getTaskFileScope(c.var.db, fileId),
+  ]);
+  const matchedPopulations = [
+    scope ? "submission" : null,
+    resourceScope ? "resource" : null,
+    taskScope ? "task" : null,
+  ].filter((p): p is string => p !== null);
+  if (matchedPopulations.length > 1) {
+    throw new Error(
+      `authzServeFile: file ${fileId} matched more than one population (${matchedPopulations.join(", ")}) — a file row must belong to exactly one`,
+    );
+  }
   if (scope) {
     // DEC-170 (supersedes DEC-066; wave-54 amendment factors this lookup out
     // to resolveReviewerFileScope, shared with authzFileRead) — reviewers
@@ -652,12 +675,10 @@ async function authzServeFile(c: Context<AppEnv>, fileId: string): Promise<Serve
     }
     return scope;
   }
-  const resourceScope = await getResourceFileScope(c.var.db, fileId);
   if (resourceScope) {
     if (!canAccessResourceFile(auth, resourceScope)) throw new ApiError("forbidden", "Not authorized for this file");
     return resourceScope;
   }
-  const taskScope = await getTaskFileScope(c.var.db, fileId);
   if (!taskScope) throw new ApiError("not_found", "File not found");
   if (!canAccessTaskFile(auth, taskScope)) throw new ApiError("forbidden", "Not authorized for this file");
   return taskScope;
