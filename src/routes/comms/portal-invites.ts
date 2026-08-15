@@ -17,6 +17,7 @@ import {
 import { resolveBaseUrl } from "../../server/origin";
 import { newId } from "../../domain/ids";
 import { requireOwnedEvent } from "./shared";
+import { describeUnresolvedSelection } from "../../lib/refusal-copy"; // DEC-856
 
 export const portalInvitesRoutes = new Hono<AppEnv>();
 
@@ -38,8 +39,9 @@ portalInvitesRoutes.post("/api/v1/events/:eventId/portal-invites", requireOrgani
   const foundIds = new Set(participants.map((p) => p.contactId));
   const missing = contactIds.filter((id) => !foundIds.has(id));
   if (missing.length > 0) {
+    const resolvedNames = participants.map((p) => `${p.firstName} ${p.lastName}`.trim());
     throw new ApiError("invalid", "One or more contacts are not a participant on a submission in this event", {
-      contactIds: `unknown ids: ${missing.join(", ")}`,
+      contactIds: describeUnresolvedSelection(resolvedNames, missing.length, "refresh the page and reselect"), // DEC-856
     });
   }
 

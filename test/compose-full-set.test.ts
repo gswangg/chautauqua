@@ -152,7 +152,9 @@ describe("POST /api/v1/events/:eventId/compose/preview — full submission-id se
     expect(res.status).toBe(400);
     const payload = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
     expect(payload.error.code).toBe("invalid");
-    expect(payload.error.fields?.submissionIds).toContain("sub-nonexistent");
+    expect(payload.error.fields?.submissionIds).not.toContain("sub-nonexistent");
+    expect(payload.error.fields?.submissionIds).toContain("On Engines");
+    expect(payload.error.fields?.submissionIds).toMatch(/^1 selected row/);
   });
 
   it("400s with a submissionIds field error for an id belonging to a different event", async () => {
@@ -170,7 +172,50 @@ describe("POST /api/v1/events/:eventId/compose/preview — full submission-id se
     expect(res.status).toBe(400);
     const payload = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
     expect(payload.error.code).toBe("invalid");
-    expect(payload.error.fields?.submissionIds).toContain("sub-foreign-event");
+    expect(payload.error.fields?.submissionIds).not.toContain("sub-foreign-event");
+    expect(payload.error.fields?.submissionIds).toContain("On Engines");
+    expect(payload.error.fields?.submissionIds).toMatch(/^1 selected row/);
+  });
+
+  it("400s with a stale-selection sentence (no id) when nothing resolves", async () => {
+    // Override this test's repo mock to resolve nothing at all, so the
+    // full-match check has zero rows beside the missing set.
+    const commsRepo = await import("../src/server/repo/comms");
+    (commsRepo.loadComposeSubmissions as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(async () => []);
+
+    const app = await buildCommsApp();
+    const res = await app.request(
+      `${ORIGIN}/api/v1/events/evt-1/compose/preview`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+        body: composeBody(["sub-nonexistent"]),
+      },
+      withEnv(new InMemoryKV()),
+    );
+
+    expect(res.status).toBe(400);
+    const payload = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
+    expect(payload.error.fields?.submissionIds).not.toContain("sub-nonexistent");
+    expect(payload.error.fields?.submissionIds).toContain("selection is stale");
+    expect(payload.error.fields?.submissionIds).toContain("refresh");
+  });
+
+  it("never echoes a ULID-shaped id anywhere in the response body", async () => {
+    const app = await buildCommsApp();
+    const res = await app.request(
+      `${ORIGIN}/api/v1/events/evt-1/compose/preview`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-chq-csrf": "1" },
+        body: composeBody(["sub-existing", "01ARZ3NDEKTSV4RRFFQ69G5FAV"]),
+      },
+      withEnv(new InMemoryKV()),
+    );
+
+    expect(res.status).toBe(400);
+    const raw = await res.text();
+    expect(raw).not.toMatch(/\b[0-9A-Za-z]{26}\b/);
   });
 
   it("previews normally for a fully-valid set", async () => {
@@ -208,7 +253,9 @@ describe("POST /api/v1/events/:eventId/compose/send — full submission-id set m
     expect(res.status).toBe(400);
     const payload = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
     expect(payload.error.code).toBe("invalid");
-    expect(payload.error.fields?.submissionIds).toContain("sub-nonexistent");
+    expect(payload.error.fields?.submissionIds).not.toContain("sub-nonexistent");
+    expect(payload.error.fields?.submissionIds).toContain("On Engines");
+    expect(payload.error.fields?.submissionIds).toMatch(/^1 selected row/);
     expect(sentMails).toHaveLength(0);
   });
 
@@ -227,7 +274,9 @@ describe("POST /api/v1/events/:eventId/compose/send — full submission-id set m
     expect(res.status).toBe(400);
     const payload = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
     expect(payload.error.code).toBe("invalid");
-    expect(payload.error.fields?.submissionIds).toContain("sub-foreign-event");
+    expect(payload.error.fields?.submissionIds).not.toContain("sub-foreign-event");
+    expect(payload.error.fields?.submissionIds).toContain("On Engines");
+    expect(payload.error.fields?.submissionIds).toMatch(/^1 selected row/);
     expect(sentMails).toHaveLength(0);
   });
 

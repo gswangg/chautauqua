@@ -20,12 +20,12 @@ const CONTACT_A1 = "contact-a1";
 const CONTACT_A2 = "contact-a2";
 const CONTACT_B1 = "contact-b1"; // belongs to ORG_B
 
-function orgContactRow(id: string, orgId: string): ContactRow {
+function orgContactRow(id: string, orgId: string, firstName = "F", lastName = "L"): ContactRow {
   return {
     id,
     orgId,
-    firstName: "F",
-    lastName: "L",
+    firstName,
+    lastName,
     email: `${id}@example.com`,
     phone: null,
     company: null,
@@ -41,9 +41,13 @@ function orgContactRow(id: string, orgId: string): ContactRow {
 }
 
 const ORG_A_CONTACTS: Record<string, ContactRow> = {
-  [CONTACT_A1]: orgContactRow(CONTACT_A1, ORG_A),
-  [CONTACT_A2]: orgContactRow(CONTACT_A2, ORG_A),
+  [CONTACT_A1]: orgContactRow(CONTACT_A1, ORG_A, "Alice", "Anderson"),
+  [CONTACT_A2]: orgContactRow(CONTACT_A2, ORG_A, "Bob", "Brown"),
 };
+
+// DEC-856: a 26-char Crockford-base32-shaped id, standing in for a real ULID
+// -- the refusal must never echo an id shaped like this back to the caller.
+const CONTACT_B1_ULID = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 
 const assignTaskCalls: { taskId: string; contactIds: string[] }[] = [];
 
@@ -149,7 +153,11 @@ describe("DEC-120: POST /tasks/:id/assign rejects cross-org contact ids", () => 
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
     expect(body.error.code).toBe("invalid");
-    expect(body.error.fields?.contactIds).toContain(CONTACT_B1);
+    // DEC-856 amendment: the refusal must never print the raw id -- it names
+    // the resolved contact (the caller can act on) and counts the rest.
+    expect(body.error.fields?.contactIds).not.toContain(CONTACT_B1);
+    expect(body.error.fields?.contactIds).toContain("Alice Anderson");
+    expect(body.error.fields?.contactIds).toMatch(/^1 selected row/);
     expect(assignTaskCalls).toHaveLength(0);
   });
 
@@ -159,7 +167,28 @@ describe("DEC-120: POST /tasks/:id/assign rejects cross-org contact ids", () => 
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
     expect(body.error.code).toBe("invalid");
-    expect(body.error.fields?.contactIds).toContain(CONTACT_B1);
+    expect(body.error.fields?.contactIds).not.toContain(CONTACT_B1);
+    expect(body.error.fields?.contactIds).toContain("Alice Anderson");
+    expect(body.error.fields?.contactIds).toContain("Bob Brown");
+    expect(body.error.fields?.contactIds).toMatch(/^1 selected row/);
     expect(assignTaskCalls).toHaveLength(0);
+  });
+
+  it("400s with a stale-selection sentence (not an id list) when nothing resolves", async () => {
+    const app = await buildApp(ORGANIZER_A);
+    const res = await app.request(assignRequest([CONTACT_B1]));
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
+    expect(body.error.fields?.contactIds).toContain("selection is stale");
+    expect(body.error.fields?.contactIds).toContain("refresh");
+    expect(body.error.fields?.contactIds).not.toContain(CONTACT_B1);
+  });
+
+  it("never echoes a ULID-shaped id anywhere in the response body", async () => {
+    const app = await buildApp(ORGANIZER_A);
+    const res = await app.request(assignRequest([CONTACT_A1, CONTACT_B1_ULID]));
+    expect(res.status).toBe(400);
+    const raw = await res.text();
+    expect(raw).not.toMatch(/\b[0-9A-Za-z]{26}\b/);
   });
 });
