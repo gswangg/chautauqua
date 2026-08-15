@@ -2209,3 +2209,89 @@ describe('PlanEditor round meta (DEC-147 amendment, task w8-c)', () => {
     expect((screen.getByLabelText('Round 2 name') as HTMLInputElement).placeholder).toBe('Round 2');
   });
 });
+
+// DEC-745 (wave-21 amendment): the criteria, reviewer and distribute-preview
+// rows now take docs/design/Chautauqua Review.dc.html's exact tracks
+// (frame :470/:474, :526, :513) rather than `auto`-derived ones. Sheet-level
+// assertions rather than layout measurement (jsdom does not compute grid
+// track sizes), matching the existing criterion-row test's approach above.
+describe('criteria/reviewer/distribute row tracks (DEC-745 wave-21 amendment)', () => {
+  it('gives the criterion row/head-row the frame five-track grid, shared by one rule', () => {
+    const ruleMatch = REVIEW_CSS.match(
+      /\.chq-review-criterion-row,\s*\n\.chq-review-criteria-head-row\s*\{\s*\n\s*grid-template-columns:\s*([^;]+);/,
+    );
+    expect(ruleMatch).not.toBeNull();
+    expect((ruleMatch![1] as string).trim()).toBe(
+      '20px minmax(0, 1fr) 260px 150px 70px',
+    );
+  });
+
+  it('gives the reviewer row the frame four-track grid', () => {
+    const ruleMatch = REVIEW_CSS.match(
+      /\.chq-review-reviewer-row\s*\{\s*\n\s*display:\s*grid;\s*\n\s*grid-template-columns:\s*([^;]+);/,
+    );
+    expect(ruleMatch).not.toBeNull();
+    expect((ruleMatch![1] as string).trim()).toBe(
+      'minmax(0, 1fr) 190px 130px auto',
+    );
+  });
+
+  it('pins the distribute-preview table with table-layout:fixed and per-column widths matching the frame', () => {
+    expect(REVIEW_CSS).toMatch(
+      /\.chq-review-distribute-table\s*\{[^}]*table-layout:\s*fixed;/,
+    );
+    expect(REVIEW_CSS).toMatch(
+      /\.chq-review-distribute-col-track\s*\{\s*\n\s*width:\s*120px;/,
+    );
+    expect(REVIEW_CSS).toMatch(
+      /\.chq-review-distribute-col-talks\s*\{\s*\n\s*width:\s*150px;/,
+    );
+    // Name carries no width declaration -- it is the frame's remainder
+    // column (1fr), same idiom as DEC-902's submissions Title column.
+    expect(REVIEW_CSS).toMatch(/\.chq-review-distribute-col-name\s*\{\s*\n\s*text-align:\s*left;/);
+    expect(REVIEW_CSS).not.toMatch(/\.chq-review-distribute-col-name\s*\{[^}]*width:/);
+  });
+
+  it('renders the distribute-preview table th/td with the matching column classes', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}`]: plan(),
+      [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([
+        { id: 'pr-1', userId: 'user-42', email: 'reviewer@example.test', trackId: null, submissionId: null },
+      ]),
+      [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+      'GET /api/v1/users': listEnvelope([]),
+      [`GET /api/v1/plans/${PLAN_ID}/assignments/distribute/preview`]: {
+        cap: null,
+        items: [],
+        perReviewer: [
+          { userId: 'user-42', name: 'Ada Lovelace', trackName: null, before: 0, after: 3, added: 3, eligible: true, reason: null },
+        ],
+        totalAssigned: 3,
+        shortfall: [],
+      },
+    });
+
+    const { container } = render(
+      <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+        <Routes>
+          <Route path="/review/plans/:planId" element={<PlanEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByDisplayValue('Track Review')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Distribute the unassigned' }));
+
+    await waitFor(() =>
+      expect(container.querySelector('.chq-review-distribute-table')).not.toBeNull(),
+    );
+    const table = container.querySelector('.chq-review-distribute-table') as HTMLElement;
+    expect(table.querySelector('th.chq-review-distribute-col-name')).not.toBeNull();
+    expect(table.querySelector('th.chq-review-distribute-col-track')).not.toBeNull();
+    expect(table.querySelector('th.chq-review-distribute-col-talks')).not.toBeNull();
+    expect(table.querySelector('td.chq-review-distribute-col-name')).not.toBeNull();
+    expect(table.querySelector('td.chq-review-distribute-col-track')).not.toBeNull();
+    expect(table.querySelector('td.chq-review-distribute-col-talks')).not.toBeNull();
+  });
+});

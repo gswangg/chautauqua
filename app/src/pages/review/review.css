@@ -772,16 +772,19 @@
    (a "Weight" label vs. a full number input) drifted out of alignment
    between the header and the body rows even though both declared the
    same template. */
-/* w18-e/DEC-715 amendment: 1fr alone has a min-content floor, so a long
-   label/guidance value could push the row wider than its container --
-   minmax(0, 1fr) instead. Five explicit tracks (drag, label, guidance,
-   kind cell, remove) for the five non-error children this row renders;
-   the error span below (shared error-states.css .chq-field-error register,
-   w28-b/DEC-124, plus this page-local layout hook) spans all of them,
-   never a sixth track. */
+/* DEC-745 (wave-21 amendment): docs/design/Chautauqua Review.dc.html:470
+   (head) / :474 (rows) give this row the frame's exact five tracks -- drag
+   20px / Criterion (remainder) / Guidance 260px / Weight 150px / Remove
+   70px, gap 16. The drag column is a pinned 20px, not `auto`: an `auto`
+   track sizes from that row's OWN content, and a locked row's blank handle
+   cell differs in content from an unlocked row's handle button, which is
+   exactly the drift this column exists to prevent (see the paragraph
+   above). Guidance is a fixed 260px so Criterion (minmax(0,1fr)) takes the
+   remainder instead of the two splitting the measure 50/50. Head and body
+   share this one declaration so they cannot drift apart. */
 .chq-review-criterion-row,
 .chq-review-criteria-head-row {
-  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) 150px 70px;
+  grid-template-columns: 20px minmax(0, 1fr) 260px 150px 70px;
 }
 
 /* w28-b/DEC-124: layout-only hook, carrying no typography of its own (the
@@ -931,9 +934,14 @@
   padding-bottom: 14px;
 }
 
+/* DEC-745 (wave-21 amendment): docs/design/Chautauqua Review.dc.html:526
+   gives this row four tracks -- name+email (remainder) / track 190px /
+   load 130px / Remove (auto, sized to its own button content, which is
+   fine here since there is no sibling row template it must stay aligned
+   to). */
 .chq-review-reviewer-row {
   display: grid;
-  grid-template-columns: 1fr 190px auto auto;
+  grid-template-columns: minmax(0, 1fr) 190px 130px auto;
   gap: 18px;
   align-items: baseline;
   padding: 13px 0;
@@ -1051,8 +1059,33 @@
   color: var(--chq-ink-2);
 }
 
+/* DEC-745 (wave-21 amendment): docs/design/Chautauqua Review.dc.html:513
+   gives this preview three tracks -- reviewer 1fr / track 120px / talks
+   150px ('6 -> 8 talks'). This previews an irreversible bulk write, so the
+   three cells must line up down the column; renders as a real <table>
+   (shares .chq-table/.chq-review-results-table, both auto-layout), so per
+   DEC-902's idiom this is pinned with table-layout:fixed plus per-column
+   width classes on the <th>/<td> pair rather than left to fall out of the
+   content. Name carries no width -- it is the sole remainder column. */
 .chq-review-distribute-table {
   margin-top: 4px;
+  table-layout: fixed;
+}
+
+/* Name deliberately carries no width declaration -- it is the frame's
+   remainder column (1fr), same idiom as DEC-902's submissions Title
+   column; this text-align rule exists only so css-contract.scan.test.ts's
+   DEC-976 "every className has a matching rule" check has one to find. */
+.chq-review-distribute-col-name {
+  text-align: left;
+}
+
+.chq-review-distribute-col-track {
+  width: 120px;
+}
+
+.chq-review-distribute-col-talks {
+  width: 150px;
 }
 
 /* DEC-824: the shortfall this run's cap could not meet -- named, not
