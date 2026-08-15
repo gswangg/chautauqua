@@ -5,6 +5,7 @@
 // carries over the wire (never the stored JSON string) — the formatter
 // never parses anything itself.
 import type { EmbedOptions } from './embedSnippet';
+import { capitalizeFirst } from '../../lib/plural';
 
 export interface RecipeEmbed {
   surface: string;
@@ -20,7 +21,7 @@ export interface RecipeEmbed {
 export function formatEmbedRecipe(embed: RecipeEmbed): string {
   const { surface, format, options, trackName } = embed;
   const segments: string[] = [
-    surface.length > 0 ? surface[0]!.toUpperCase() + surface.slice(1) : surface,
+    capitalizeFirst(surface),
     format,
   ];
 

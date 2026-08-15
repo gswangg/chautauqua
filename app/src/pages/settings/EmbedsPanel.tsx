@@ -10,6 +10,7 @@ import { DelayedLoading } from '../../components/DelayedLoading';
 import { useCurrentEvent } from '../../lib/useCurrentEvent';
 import { apiGet, apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { copyText } from '../../lib/clipboard';
+import { capitalizeFirst } from '../../lib/plural';
 import {
   buildEmbedUrl,
   buildSnippet,
@@ -289,9 +290,9 @@ export function EmbedsPanel() {
                 value={surface}
                 onChange={(e) => setSurface(e.target.value as EmbedSurface)}
               >
-                {EMBED_SURFACES.map((s) => (
-                  <option key={s} value={s}>
-                    {s[0]!.toUpperCase() + s.slice(1)}
+                {EMBED_SURFACES.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {capitalizeFirst(opt)}
                   </option>
                 ))}
               </select>

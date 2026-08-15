@@ -36,17 +36,22 @@ function walk(dir: string): string[] {
   return out;
 }
 
-// A capitalize-first expression: `.charAt(0).toUpperCase()` co-occurring
-// with `.slice(1)` anywhere in the file. Checking the two fragments'
-// co-occurrence (rather than requiring them adjacent in one expression)
-// catches both the inline-template form (`${s.charAt(0).toUpperCase()}
-// ${s.slice(1)}`) and the concatenation form (`s.charAt(0).toUpperCase() +
-// s.slice(1)`) without over-fitting to one spelling.
+// A capitalize-first expression: either head spelling --
+// `.charAt(0).toUpperCase()` or the index form `x[0].toUpperCase()` /
+// `x[0]!.toUpperCase()` (the non-null-asserted variant TypeScript strict
+// forces on an indexed string access) -- co-occurring with `.slice(1)`
+// anywhere in the file. Checking the fragments' co-occurrence (rather than
+// requiring them adjacent in one expression) catches the inline-template
+// form (`${s.charAt(0).toUpperCase()} ${s.slice(1)}`), the concatenation
+// form (`s.charAt(0).toUpperCase() + s.slice(1)`) and the index-spelling
+// concatenation form (`s[0]!.toUpperCase() + s.slice(1)`) without
+// over-fitting to one spelling.
 const CHAR_AT_UPPER = /\.charAt\(0\)\.toUpperCase\(\)/;
+const INDEX_ZERO_UPPER = /\[0\]!?\.toUpperCase\(\)/;
 const SLICE_ONE = /\.slice\(1\)/;
 
 function hasCapitalizeFirstIdiom(contents: string): boolean {
-  return CHAR_AT_UPPER.test(contents) && SLICE_ONE.test(contents);
+  return (CHAR_AT_UPPER.test(contents) || INDEX_ZERO_UPPER.test(contents)) && SLICE_ONE.test(contents);
 }
 
 export function findCapitalizeFirstOffenders(root: string, repoRoot: string): string[] {
@@ -86,6 +91,13 @@ describe("text-vocabulary.scan (DEC-957 amendment, wave 56): one capitalize-firs
   it("negative control: a synthetic co-occurring idiom IS detected", () => {
     const synthetic = "function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }";
     expect(hasCapitalizeFirstIdiom(synthetic)).toBe(true);
+  });
+
+  it("positive control: the index-spelling co-occurring idiom (x[0]!.toUpperCase() + x.slice(1)) IS detected", () => {
+    const synthetic = "function cap(s) { return s[0]!.toUpperCase() + s.slice(1); }";
+    expect(hasCapitalizeFirstIdiom(synthetic)).toBe(true);
+    const noBang = "function cap(s) { return s[0].toUpperCase() + s.slice(1); }";
+    expect(hasCapitalizeFirstIdiom(noBang)).toBe(true);
   });
 
   it("negative control: charAt(0).toUpperCase() alone (no slice(1) anywhere) is NOT detected", () => {

@@ -5,7 +5,7 @@
 
 import type { OverviewPayload } from './types';
 import { daysUntil, daysAgo } from '../../lib/dates';
-import { spellCount, plural, countOf } from '../../lib/plural';
+import { spellCount, plural, countOf, capitalizeFirst } from '../../lib/plural';
 
 // DEC-779: every dot-joined caption on the Overview page (triage row,
 // content-approval row, §04 unplaced/conflict captions, the "no action
@@ -41,13 +41,6 @@ export function headlineCount(payload: OverviewPayload): number {
     payload.agendaWork.unplacedTotal +
     payload.agendaWork.conflictTotal
   );
-}
-
-/** Capitalizes the first letter of a word — no second word list, just a
- * sentence-case transform for spellCount's output. */
-export function capitalizeFirst(word: string): string {
-  if (word.length === 0) return word;
-  return word[0]!.toUpperCase() + word.slice(1);
 }
 
 export function headlineText(payload: OverviewPayload): string {
