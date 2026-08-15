@@ -7,6 +7,7 @@
 // and import these components.
 
 import { PortalLayout, PortalBackLink, type PortalBrandingChrome } from "../shared";
+import { PublicEmptyState } from "../../public/empty-state";
 import type { DeliverableCandidate, PortalTaskAssignment } from "../../../server/repo/portal";
 import type { getMyResources } from "../../../server/repo/portal";
 import type { FormFieldRow } from "../../../server/repo/forms";
@@ -384,7 +385,11 @@ export function TasksPage(props: {
         </div>
       ) : null}
       {assignments.length === 0 ? (
-        <p>No tasks assigned yet.</p>
+        <PublicEmptyState
+          variant="fresh"
+          what="No tasks assigned yet."
+          reason="Your organiser has not assigned anything yet."
+        />
       ) : (
         assignments.map((t) =>
           t.kind === "form" && t.status !== "complete" ? (
