@@ -183,9 +183,16 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
               >
                 {downloadPending
                   ? 'Downloading…'
-                  : `Download all ${items.length} (.zip)`}
+                  : items.length === total
+                    ? `Download all ${items.length} (.zip)`
+                    : `Download ${countOf(items.length, 'file')} (.zip)`}
               </button>
               {overCap && <span className="chq-meta chq-content-files-download-all-cap">{archiveCapMessage()}</span>}
+              {!overCap && items.length !== total && (
+                <span className="chq-meta chq-content-files-download-all-scope">
+                  {`${countOf(total - items.length, 'file')} more in this filtered set won't be included — narrow the search or type chip to change what this downloads.`}
+                </span>
+              )}
             </span>
           )}
         </div>
