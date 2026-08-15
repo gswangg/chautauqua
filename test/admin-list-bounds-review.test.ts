@@ -67,6 +67,14 @@ vi.mock("../src/server/repo/review", async () => {
       orgId === ORG_A ? (plansById.get(planId) ?? null) : null,
     ),
     getPlanById: vi.fn(async (_db: unknown, planId: string) => plansById.get(planId) ?? null),
+    // DEC-829 (wave-33 amendment): the reviewer branch of GET
+    // /api/v1/review/plans now resolves its page via one chunked batch read
+    // instead of Promise.all(ids.map(getPlanById)) -- mocked here the same
+    // way getPlanById already is, preserving input-order and omitting
+    // unknown ids.
+    listPlansByIds: vi.fn(async (_db: unknown, planIds: string[]) =>
+      planIds.map((id) => plansById.get(id)).filter((p): p is PlanRecord => p !== undefined),
+    ),
     listPlansForEvent: vi.fn(async (_db: unknown, eventId: string, page?: { limit: number; offset: number }) => {
       const rows = eventId === EVENT_ID ? ALL_PLANS : [];
       return page ? rows.slice(page.offset, page.offset + page.limit) : rows;
