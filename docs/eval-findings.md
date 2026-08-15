@@ -168,6 +168,17 @@ runtime-added co-presenter, not the seed. (~0.8 composite)
   behind it.
 - AIA-06 (~0.5) conflict-clear demo; ABS residue (~1.4) ABS-08/09/10/13.
 
+**ADDENDUM (coverage audit — four judge observations missed in the first distillation):**
+- **AIA:** stacked clash cards OVERFLOW across the coffee-break band on the day grid
+  (visual bleed when 2+ clashes stack at one slot).
+- **SPK/CRM:** the Speakers LIST page was captured stuck in its loading skeleton across
+  two separate judge captures — the DEC-678 first-paint class covered Content/Comms/
+  Contacts/speaker-detail but NOT the speakers roster; add it.
+- **CRM:** Add-to-event does not carry the contact's headshot over to the event side.
+- **COMMS:** History header said "24 sent" while the list flashed "0 total" — a
+  count-source mismatch on first paint (same family as DEC-518's count-source ledger;
+  wire the header and list to one envelope).
+
 **HOLDING UP under live judge evidence:** CFP close control (seen), CNT-S3 seed fix
 (found fast), files library (pass), SESSION DETAILS (pass), bulk-approve gate (visible
 via AIA-07's "8 held back: content not approved"), EMB-01 snippet (works).
