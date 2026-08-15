@@ -74,6 +74,9 @@ export interface ContactDetail extends ContactListItem {
     // complete.
     submissionsTotal: number;
     emails: ContactEmailHistory[];
+    // w52-f: total email-log count across ALL events, distinct from
+    // emails.length once the list is capped -- mirrors submissionsTotal.
+    emailsTotal: number;
     events: string[];
   };
 }
