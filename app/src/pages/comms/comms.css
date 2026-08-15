@@ -211,6 +211,16 @@
   font-weight: 700;
 }
 
+/* DEC-238 amendment (wave 3): under the headline, the three plain count
+   lines (sent / skipped / remaining) read as one quiet block -- body text,
+   tight leading, secondary ink so the headline keeps the emphasis. */
+.chq-comms-send-report-counts {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--chq-ink-2);
+}
+
 .chq-comms-preview-nav {
   display: flex;
   gap: 12px;

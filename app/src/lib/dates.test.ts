@@ -12,6 +12,7 @@ import {
   formatDayLabel,
   formatRelative,
   formatRelativeDays,
+  isoToMs,
   msToDateInput,
   parseDayInput,
 } from './dates';
@@ -322,5 +323,28 @@ describe('parseDayInput (DEC-146 amendment)', () => {
 
   it('still rejects an all-numeric slash form as ambiguous', () => {
     expect(parseDayInput('05/01/2028')).toBeNull();
+  });
+});
+
+// DEC-524: isoToMs is the ONE ISO-8601 -> epoch-ms conversion in the SPA
+// (added by the w3 merge train so ComposeWizard's skipped-recipient
+// `retryAtIso` stops hand-rolling `new Date(iso).getTime()`).
+describe('isoToMs', () => {
+  it('converts an ISO-8601 instant to epoch-ms', () => {
+    expect(isoToMs('2026-08-15T09:30:00.000Z')).toBe(Date.UTC(2026, 7, 15, 9, 30, 0));
+  });
+
+  it('returns null for null/undefined/empty rather than NaN', () => {
+    expect(isoToMs(null)).toBeNull();
+    expect(isoToMs(undefined)).toBeNull();
+    expect(isoToMs('')).toBeNull();
+  });
+
+  it('returns null for an unparseable string', () => {
+    expect(isoToMs('not a date')).toBeNull();
+  });
+
+  it('round-trips through formatDateTime as an em dash when unparseable', () => {
+    expect(formatDateTime(isoToMs('not a date'))).toBe('—');
   });
 });

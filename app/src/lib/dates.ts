@@ -45,6 +45,19 @@ export function dateInputToMs(value: string): number | null {
 }
 
 /**
+ * Convert an ISO-8601 instant string (e.g. an API's `retryAtIso`) to epoch-ms.
+ * DEC-524: lib/dates.ts is the ONE home for date <-> epoch conversion, so
+ * pages must call this instead of hand-rolling `new Date(iso).getTime()`.
+ * Null/undefined/unparseable input returns null, which every formatter here
+ * already renders as '—' rather than crashing on "Invalid time value".
+ */
+export function isoToMs(iso: string | null | undefined): number | null {
+  if (iso === null || iso === undefined || iso === '') return null;
+  const ms = Date.parse(iso);
+  return Number.isNaN(ms) ? null : ms;
+}
+
+/**
  * Format an epoch-ms timestamp for display as "<D> <Mon>" (no leading zero,
  * three-letter month), e.g. "19 Feb". Appends " <YYYY>" only when the date
  * falls outside the current calendar year. '—' for null/undefined/NaN/invalid.

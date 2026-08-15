@@ -16,7 +16,7 @@ import { FormRow } from '../../components/ModalFrame';
 import { COMPOSE_MERGE_FIELDS, MAX_COMPOSE_RECIPIENTS, type MergeField } from '../../lib/merge-fields';
 import { InsertFieldMenu } from './InsertFieldMenu';
 import { countOf } from '../../lib/plural';
-import { formatDateTime } from '../../lib/dates';
+import { formatDateTime, isoToMs } from '../../lib/dates';
 import { paginationSummary } from '../../lib/pagination-summary';
 import type { ComposeSendResult, EmailTemplate, RenderedRecipient } from './types';
 import type { EvaluationPlan } from '../review/types';
@@ -1093,7 +1093,7 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                 {skippedRecipients.map((r) => (
                   <li key={r.email + r.submissionId}>
                     {r.name} ({r.email}) — {submissionLabel(r.submissionId, preview)}: eligible again{' '}
-                    {formatDateTime(new Date(r.retryAtIso).getTime())}
+                    {formatDateTime(isoToMs(r.retryAtIso))}
                   </li>
                 ))}
               </ul>
