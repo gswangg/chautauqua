@@ -1,7 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
   PERF_PROFILES,
+  PERF_SPEAKER_CONTACT_ID,
+  PERF_SPEAKER_EMAIL,
+  PERF_SPEAKER_PASSWORD,
+  PERF_SPEAKER_SUBMISSION_COUNT,
+  PERF_SPEAKER_USER_ID,
+  PERF_TASK_COUNT,
   contactIndexForSubmission,
+  isPerfSpeakerTaskAssignmentComplete,
+  perfSpeakerAcceptedIndexes,
+  perfSpeakerParticipantId,
+  perfSpeakerTaskAssignmentId,
   perfSubmissionStatuses,
   totalPerfAnswerRows,
   trackIndexForSubmission,
@@ -120,5 +130,82 @@ describe("profile event ids never collide", () => {
     for (const profile of Object.values(PERF_PROFILES)) {
       expect(profile.eventId.startsWith("seed_perf_")).toBe(true);
     }
+  });
+});
+
+// DEC-338 (wave-35 amendment): the singleton perf speaker fixture that makes
+// the speaker portal (/portal/*) measurable by perf-smoke.ts.
+describe("perf speaker fixture (DEC-338 wave-35 amendment)", () => {
+  it("the speaker user/contact ids stay inside the seed_perf_ id namespace (idempotent-delete coverage)", () => {
+    expect(PERF_SPEAKER_USER_ID.startsWith("seed_perf_")).toBe(true);
+    expect(PERF_SPEAKER_CONTACT_ID.startsWith("seed_perf_")).toBe(true);
+  });
+
+  it("the speaker credentials are non-empty and distinct from the reviewer/organizer credentials", () => {
+    expect(PERF_SPEAKER_EMAIL.length).toBeGreaterThan(0);
+    expect(PERF_SPEAKER_PASSWORD.length).toBeGreaterThan(0);
+    expect(PERF_SPEAKER_EMAIL).not.toBe(PERF_PROFILES.default.reviewerEmailPrefix);
+    expect(PERF_SPEAKER_PASSWORD).not.toBe(PERF_PROFILES.default.reviewerPassword);
+  });
+
+  it("perfSpeakerAcceptedIndexes is deterministic and idempotent across repeated calls (two 'seeds')", () => {
+    const first = perfSpeakerAcceptedIndexes(300);
+    const second = perfSpeakerAcceptedIndexes(300);
+    expect(second).toEqual(first);
+  });
+
+  it("perfSpeakerAcceptedIndexes is bounded by both PERF_SPEAKER_SUBMISSION_COUNT and acceptedCount", () => {
+    expect(perfSpeakerAcceptedIndexes(300)).toHaveLength(PERF_SPEAKER_SUBMISSION_COUNT);
+    expect(perfSpeakerAcceptedIndexes(300).length).toBeLessThanOrEqual(300);
+    // A profile seeded with fewer accepted submissions than the requested
+    // count must never overrun acceptedCount.
+    expect(perfSpeakerAcceptedIndexes(2)).toEqual([0, 1]);
+    expect(perfSpeakerAcceptedIndexes(0)).toEqual([]);
+  });
+
+  it("perfSpeakerAcceptedIndexes always includes index 0 whenever acceptedCount > 0 (so GET /portal/submissions/:id has a resolvable id)", () => {
+    expect(perfSpeakerAcceptedIndexes(1)).toContain(0);
+    expect(perfSpeakerAcceptedIndexes(300)).toContain(0);
+  });
+
+  it("perfSpeakerAcceptedIndexes rejects a non-integer or negative acceptedCount/count", () => {
+    expect(() => perfSpeakerAcceptedIndexes(-1)).toThrow();
+    expect(() => perfSpeakerAcceptedIndexes(1.5)).toThrow();
+    expect(() => perfSpeakerAcceptedIndexes(300, -1)).toThrow();
+  });
+
+  it("perfSpeakerParticipantId is deterministic and idempotent across repeated calls", () => {
+    expect(perfSpeakerParticipantId(1)).toBe(perfSpeakerParticipantId(1));
+    expect(perfSpeakerParticipantId(1)).toBe("seed_perf_speaker_participant_0001");
+    expect(perfSpeakerParticipantId(5)).toBe("seed_perf_speaker_participant_0005");
+    expect(perfSpeakerParticipantId(1)).not.toBe(perfSpeakerParticipantId(2));
+  });
+
+  it("perfSpeakerParticipantId rejects a non-positive index", () => {
+    expect(() => perfSpeakerParticipantId(0)).toThrow();
+    expect(() => perfSpeakerParticipantId(-1)).toThrow();
+  });
+
+  it("perfSpeakerTaskAssignmentId is deterministic, idempotent, and bounded to PERF_TASK_COUNT rows", () => {
+    const ids = Array.from({ length: PERF_TASK_COUNT }, (_, i) => perfSpeakerTaskAssignmentId(i));
+    // Idempotent: calling again reproduces the same ids exactly.
+    const idsAgain = Array.from({ length: PERF_TASK_COUNT }, (_, i) => perfSpeakerTaskAssignmentId(i));
+    expect(idsAgain).toEqual(ids);
+    // Bounded: exactly PERF_TASK_COUNT distinct ids, one per existing task.
+    expect(new Set(ids).size).toBe(PERF_TASK_COUNT);
+  });
+
+  it("perfSpeakerTaskAssignmentId rejects a negative taskIndex", () => {
+    expect(() => perfSpeakerTaskAssignmentId(-1)).toThrow();
+  });
+
+  it("isPerfSpeakerTaskAssignmentComplete mixes pending/complete across the speaker's PERF_TASK_COUNT assignments (not every row in one bucket)", () => {
+    const statuses = Array.from({ length: PERF_TASK_COUNT }, (_, i) => isPerfSpeakerTaskAssignmentComplete(i));
+    expect(statuses).toContain(true);
+    expect(statuses).toContain(false);
+    // Deterministic across repeated calls.
+    expect(Array.from({ length: PERF_TASK_COUNT }, (_, i) => isPerfSpeakerTaskAssignmentComplete(i))).toEqual(
+      statuses,
+    );
   });
 });

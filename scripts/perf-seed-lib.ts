@@ -727,6 +727,101 @@ export function coSpeakerContactIndexesForAccepted(
   return out;
 }
 
+// --------------------------------------------------------------------------
+// DEC-338 (wave-35 amendment): a single deterministic perf speaker user so
+// the speaker portal (/portal/*) is measurable by this harness — until now
+// perf-smoke.ts's `login()` only ever authenticated the seeded ORGANIZER
+// (docs/fixtures/sample-data.json's `identities.organizer`), so DEC-777's
+// wave-33 GET /portal/submissions/:id two-wave split and wave-34's
+// GET /portal/tasks rewrite were unmeasurable by construction. Singleton ids
+// (not a numbered series, mirroring PERF_EVENT_ID above), shared across
+// every profile — perf-smoke.ts never needs a profile-specific speaker
+// identity, only a profile-specific accepted-submission id to view.
+//
+// Emitted here (this module), NOT written into docs/fixtures/sample-data.json
+// — that file is the demo seed's own fixture output (task-w28-c recorded the
+// login trap depending on it); the perf speaker's credentials live only in
+// this perf-profile module, imported directly by both scripts/perf-seed.ts
+// (to mint the row) and scripts/perf-smoke.ts (to log in), the same way the
+// PERF_PROFILES.default.reviewerEmailPrefix/reviewerPassword pair above is
+// already threaded end to end without ever touching sample-data.json.
+
+/** Fixed id for the singleton perf speaker `user` row. */
+export const PERF_SPEAKER_USER_ID = "seed_perf_speaker_user";
+/** Fixed id for the singleton perf speaker's own `contact` row. */
+export const PERF_SPEAKER_CONTACT_ID = "seed_perf_speaker_contact";
+/** Login email for the singleton perf speaker. */
+export const PERF_SPEAKER_EMAIL = "perf.speaker@example-perf.test";
+/** Login password for the singleton perf speaker, hashed the same way
+ * scripts/seed.ts hashes every seeded user's password (src/auth/password.ts's
+ * hashPassword). */
+export const PERF_SPEAKER_PASSWORD = "PerfSpeaker!2027";
+
+/** Extra visible-speaker `participant` rows attached to the perf speaker's
+ * contact, one per accepted submission in the bounded subset below — keeps
+ * /portal's session/submission reads non-empty at perf scale without
+ * growing a profile's own acceptedCount or touching every accepted
+ * submission's existing primary-speaker participant row. */
+export const PERF_SPEAKER_SUBMISSION_COUNT = 5;
+
+/** Deterministic id for the perf speaker's i-th (1-based) extra participant row. */
+export function perfSpeakerParticipantId(i: number): string {
+  if (!Number.isInteger(i) || i < 1) {
+    throw new Error(`perfSpeakerParticipantId: i must be a positive integer, got ${i}`);
+  }
+  return `seed_perf_speaker_participant_${String(i).padStart(4, "0")}`;
+}
+
+/**
+ * Deterministic, bounded 0-based indexes (into a profile's own
+ * acceptedSubmissionIds array, in seed order) of the accepted submissions
+ * the perf speaker is attached to as an extra participant: the first
+ * `count` (default PERF_SPEAKER_SUBMISSION_COUNT) accepted submissions,
+ * capped at `acceptedCount` so this never overruns a profile seeded with
+ * fewer accepted submissions than requested. Index 0 is always included
+ * whenever acceptedCount > 0, so the profile's first accepted submission id
+ * (the same id every existing "accepted submission" perf-smoke check
+ * resolves first, via fetchAcceptedSubmissionIds) is always one the perf
+ * speaker can view — no separate id resolution needed for
+ * GET /portal/submissions/:id.
+ */
+export function perfSpeakerAcceptedIndexes(
+  acceptedCount: number,
+  count: number = PERF_SPEAKER_SUBMISSION_COUNT,
+): number[] {
+  if (!Number.isInteger(acceptedCount) || acceptedCount < 0) {
+    throw new Error(`perfSpeakerAcceptedIndexes: acceptedCount must be a non-negative integer, got ${acceptedCount}`);
+  }
+  if (!Number.isInteger(count) || count < 0) {
+    throw new Error(`perfSpeakerAcceptedIndexes: count must be a non-negative integer, got ${count}`);
+  }
+  const bounded = Math.min(count, acceptedCount);
+  return Array.from({ length: bounded }, (_, i) => i);
+}
+
+/**
+ * task_assignment rows for the perf speaker's contact: one per existing
+ * PERF_TASK_COUNT onboarding task template (the same 5 tasks every profile
+ * already seeds via PERF_TASKS above — this reuses those task ids, it does
+ * not mint new ones), so GET /portal/tasks has a real, bounded, deterministic
+ * worklist for the perf speaker regardless of profile scale.
+ */
+export function perfSpeakerTaskAssignmentId(taskIndex: number): string {
+  if (!Number.isInteger(taskIndex) || taskIndex < 0) {
+    throw new Error(`perfSpeakerTaskAssignmentId: taskIndex must be a non-negative integer, got ${taskIndex}`);
+  }
+  return `seed_perf_speaker_task_assignment_${String(taskIndex + 1).padStart(4, "0")}`;
+}
+
+/** Deterministic pending/complete status for the perf speaker's taskIndex-th
+ * (0-based) task assignment — reuses isTaskAssignmentComplete's existing
+ * mod-3 split at a fixed synthetic contactIndex (0) so the perf speaker's
+ * own worklist mixes pending/complete the same way every other seeded
+ * onboarding assignment does, rather than landing every row in one bucket. */
+export function isPerfSpeakerTaskAssignmentComplete(taskIndex: number): boolean {
+  return isTaskAssignmentComplete(taskIndex, 0);
+}
+
 export function perfFileSpecs(acceptedCount: number): PerfFileRowSpec[] {
   if (!Number.isInteger(acceptedCount) || acceptedCount < 0) {
     throw new Error(`perfFileSpecs: acceptedCount must be a non-negative integer, got ${acceptedCount}`);
