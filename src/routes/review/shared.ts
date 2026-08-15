@@ -16,6 +16,8 @@ import {
   normalizeGuidance,
   MAX_CRITERION_GUIDANCE_LENGTH,
   MAX_PLAN_ROUNDS,
+  MAX_PLAN_CRITERIA,
+  MAX_CRITERION_OPTIONS,
   type EvaluationCriterion,
   type EvaluationCriterionDef,
   type DropdownCriterionDef,
@@ -83,6 +85,14 @@ export function parseCriteriaList(
     errors[errKey] = "required non-empty array";
     return undefined;
   }
+  // DEC-422 (amendment, wave 2): the plan editor's soft cap of
+  // MAX_PLAN_CRITERIA was previously enforced ONLY by the SPA disabling its
+  // Add link -- the server accepted an array of any length. Applies equally
+  // to the base `criteria` array and every `roundCriteria` override.
+  if (list.length > MAX_PLAN_CRITERIA) {
+    errors[errKey] = `must have at most ${MAX_PLAN_CRITERIA} criteria`;
+    return undefined;
+  }
   const out: EvaluationCriterionDef[] = [];
   for (const raw of list) {
     if (typeof raw !== "object" || raw === null) {
@@ -92,6 +102,12 @@ export function parseCriteriaList(
     const c = raw as Record<string, unknown>;
     if (typeof c.id !== "string" || typeof c.label !== "string") {
       errors[errKey] = "each criterion needs id and label";
+      return undefined;
+    }
+    // DEC-422 (amendment, wave 2): the criterion id string was previously
+    // unbounded.
+    if (c.id.length > MAX_NAME_LENGTH) {
+      errors[errKey] = `criterion id must be at most ${MAX_NAME_LENGTH} characters`; // DEC-417
       return undefined;
     }
     if (c.label.length > MAX_NAME_LENGTH) {
@@ -117,6 +133,17 @@ export function parseCriteriaList(
     } else if (c.kind === "dropdown") {
       if (!Array.isArray(c.options) || c.options.length === 0 || !c.options.every((o) => typeof o === "string")) {
         errors[errKey] = `criterion "${c.id}" (dropdown) requires non-empty string options`;
+        return undefined;
+      }
+      // DEC-422 (amendment, wave 2): options count and each option's length
+      // were previously unbounded here -- the CFP builder caps its own
+      // options, this one did not.
+      if (c.options.length > MAX_CRITERION_OPTIONS) {
+        errors[errKey] = `criterion "${c.id}" (dropdown) must have at most ${MAX_CRITERION_OPTIONS} options`;
+        return undefined;
+      }
+      if ((c.options as string[]).some((o) => o.length > MAX_NAME_LENGTH)) {
+        errors[errKey] = `criterion "${c.id}" (dropdown) options must be at most ${MAX_NAME_LENGTH} characters`; // DEC-417
         return undefined;
       }
       out.push({ id: c.id, label: c.label, kind: "dropdown", options: c.options as string[], guidance });
