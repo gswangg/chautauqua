@@ -396,7 +396,7 @@ export function ImportWizard({ onClose, onImported, eventId }: Props) {
         <div className="chq-error-summary" role="alert">
           <p className="chq-error-summary-heading">
             {overRowCount > 0
-              ? `${allDataRows.length.toLocaleString()} ${plural(allDataRows.length, 'row')} — ${overRowCount.toLocaleString()} over the ${MAX_IMPORT_ROWS.toLocaleString()}-row limit`
+              ? `${allDataRows.length} ${plural(allDataRows.length, 'row')} — ${overRowCount} over the ${MAX_IMPORT_ROWS}-row limit`
               : `${formatBytes(csvByteLength)} — ${formatBytes(overByteCount)} over the ${formatBytes(MAX_IMPORT_CSV_BYTES)} limit`}
           </p>
           <p className="chq-error-summary-detail">Split the file and import each part.</p>

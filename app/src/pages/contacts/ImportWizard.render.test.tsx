@@ -520,7 +520,7 @@ describe('ImportWizard: DEC-478 amendment -- import caps disclosed at choose-fil
     });
 
     const heading = await screen.findByText(
-      `${(MAX_IMPORT_ROWS + overage).toLocaleString()} rows — ${overage} over the ${MAX_IMPORT_ROWS.toLocaleString()}-row limit`,
+      `${MAX_IMPORT_ROWS + overage} rows — ${overage} over the ${MAX_IMPORT_ROWS}-row limit`,
     );
     expect(heading).toBeInTheDocument();
     expect(screen.getByText('Split the file and import each part.')).toBeInTheDocument();
