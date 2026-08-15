@@ -19,7 +19,7 @@ import { surfacePath } from "./shell";
 import { PublicSearchBox, PublicFilterSelectForm, PublicActiveFilters } from "./filters";
 import { PublicEmptyState } from "./empty-state";
 import { PUBLIC_PER_PAGE, hasMorePages } from "../../server/repo/public/bounds";
-import { countOf, plural, spellCount } from "../../domain/count-copy";
+import { capitalizeFirst, countOf, plural, spellCount } from "../../domain/count-copy";
 import { DEC_919 } from "../../decisions";
 
 void DEC_919;
@@ -31,8 +31,7 @@ void DEC_919;
 // src/domain/count-copy.ts spellCount, capitalized for a sentence head);
 // anything longer falls back to the numeral.
 function dayCountWord(n: number): string {
-  const word = spellCount(n);
-  return word.length === 0 ? word : `${word.charAt(0).toUpperCase()}${word.slice(1)}`;
+  return capitalizeFirst(spellCount(n));
 }
 
 /** Every calendar day between event.startDate and event.endDate inclusive,

@@ -24,7 +24,7 @@ import { getHubOrg, listHubEvents, HUB_CANDIDATE_LIMIT } from "../server/repo/pu
 import { groupHubEvents, hubState, type HubEvent, type HubSections, type HubState } from "../lib/home-hub";
 import { formatEventDayRange, formatEventCloseDateLabel, daysUntilCalendarDay } from "../lib/event-time";
 import { setCacheHeaders } from "./public/shell";
-import { countOf, plural, spellCount } from "../domain/count-copy";
+import { capitalizeFirst, countOf, plural, spellCount } from "../domain/count-copy";
 import { matchesAdminRoute } from "../lib/admin-routes";
 import {
   ANONYMOUS_NOT_FOUND_LINKS,
@@ -152,10 +152,6 @@ function countClause(count: number, singularNoun: string, pluralNoun: string): s
   return `${spellCount(count)} ${count === 1 ? singularNoun : pluralNoun}`;
 }
 
-function capitalizeFirst(s: string): string {
-  return s.length === 0 ? s : `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
-}
-
 /** DEC-943: the hub row's "shape" line for a live event (open CFP or
  * published) -- "Three tracks · five formats". Either clause is dropped
  * when its count is 0; "" (rendered as nothing) when both are 0. */
@@ -268,7 +264,7 @@ function heroSummary(sections: HubSections): string {
   const publishedClause = pluralClause(sections.published.length, "programme", "programmes", "is published", "are published");
   return [cfpClause, publishedClause]
     .filter((clause) => clause.length > 0)
-    .map((clause) => `${clause.charAt(0).toUpperCase()}${clause.slice(1)}.`)
+    .map((clause) => `${capitalizeFirst(clause)}.`)
     .join(" ");
 }
 

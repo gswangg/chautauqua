@@ -30,6 +30,7 @@ import { apiList, apiPatch, apiPost, ApiError } from '../../lib/api';
 import { useMe } from '../../lib/useMe';
 import { SummarySection } from './SummarySection';
 import { SettingsEditForm } from './SettingsEditForm';
+import { capitalizeFirst } from '../../lib/plural';
 
 const SECTION_KEY = 'people';
 
@@ -169,7 +170,7 @@ export function PeopleRolesPanel() {
   function roleLabel(role: string): string {
     const known = ROLE_LABELS[role];
     if (known) return known;
-    return role.charAt(0).toUpperCase() + role.slice(1);
+    return capitalizeFirst(role);
   }
 
   // w1-f, DEC-785: the read view is the real per-person rows (name + role),

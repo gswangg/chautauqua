@@ -43,3 +43,26 @@ export function spellCount(n: number): string {
   if (word === undefined) throw new Error(`spellCount: no word for count ${n}`);
   return word;
 }
+
+// DEC-957 (amendment, wave 56): capitalize-first and the error-summary
+// heading get ONE home each -- every module that needs to capitalize a
+// sentence head (a heading, a shouted date chip) or build the "N things
+// need fixing" copy imports these instead of hand-copying its own
+// `charAt(0).toUpperCase() + slice(1)` or heading-composition ternary. Five
+// private copies of the former, and a re-composed heading sentence, had
+// already drifted before this helper existed.
+
+/** Capitalizes the first character; empty string passes through unchanged. */
+export function capitalizeFirst(s: string): string {
+  return s.length === 0 ? s : `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
+}
+
+/**
+ * The top-of-form error summary heading -- 'One thing needs fixing before
+ * this can be sent', 'Three things need fixing ...', '11 things need fixing
+ * ...'. `tail` is appended after 'fixing ' (e.g. 'before this can be
+ * sent').
+ */
+export function thingsNeedFixingHeading(n: number, tail: string): string {
+  return `${capitalizeFirst(spellCount(n))} ${plural(n, "thing")} ${plural(n, "needs", "need")} fixing ${tail}`;
+}

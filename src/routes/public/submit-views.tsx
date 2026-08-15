@@ -13,7 +13,7 @@ import { makeVisibilityPredicate } from "../../forms/visibility";
 import { formatEventDateTime, formatEventDayRange } from "../../lib/event-time";
 import { dayLabelEndInstant, dayLabelStartInstant } from "../../lib/timezone";
 import { FormFieldsSection, FieldRulesScript, fieldInputName, FormField } from "../../views/form-render";
-import { countOf, plural, spellCount } from "../../domain/count-copy";
+import { countOf, thingsNeedFixingHeading } from "../../domain/count-copy";
 import { ThemeStyles } from "../../views/theme";
 import { CFP_CSS } from "./cfp.css";
 import { CfpStepsScript } from "./cfp-steps-script";
@@ -332,19 +332,13 @@ export function NameField(props: { value: string; error?: string; fieldId?: stri
 // .chq-field-error message too (the summary orients, the field repairs).
 export type ErrorSummaryProblem = { id: string; label: string; message: string };
 
-function capitalizeFirst(s: string): string {
-  return s.length === 0 ? s : `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
-}
-
 export function ErrorSummary(props: { problems: ErrorSummaryProblem[] }) {
   const { problems } = props;
   if (problems.length === 0) return null;
   const n = problems.length;
   return (
     <div class="chq-error-summary" role="alert">
-      <h2>
-        {capitalizeFirst(spellCount(n))} {plural(n, "thing")} {plural(n, "needs", "need")} fixing before this can be sent
-      </h2>
+      <h2>{thingsNeedFixingHeading(n, "before this can be sent")}</h2>
       <p>Nothing was lost. Everything you typed is still below.</p>
       <ul>
         {problems.map((p) => (

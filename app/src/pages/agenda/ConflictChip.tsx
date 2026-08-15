@@ -1,5 +1,5 @@
 import type { AgendaConflict } from './types';
-import { plural, spellCount } from '../../lib/plural';
+import { capitalizeFirst, plural, spellCount } from '../../lib/plural';
 
 interface ConflictChipProps {
   conflicts: AgendaConflict[];
@@ -29,8 +29,7 @@ export function conflictKindLabel(kind: 'room_overlap' | 'speaker_overlap' | 'br
 // capitalizes for the chip's sentence-head position -- the same
 // capitalize-the-result pattern root.tsx and ErrorSummary.tsx use.
 function numberWord(n: number): string {
-  const word = spellCount(n);
-  return word.length === 0 ? word : `${word.charAt(0).toUpperCase()}${word.slice(1)}`;
+  return capitalizeFirst(spellCount(n));
 }
 
 /** DEC-557 amendment (wave 48): the caption logic for a SET of conflicts
