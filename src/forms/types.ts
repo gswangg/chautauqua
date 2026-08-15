@@ -45,6 +45,12 @@ export interface FormFieldDef {
 // server-side via projectFieldForAnswers below.
 export const LOCKED_ABSTRACT_MAX_LENGTH = 1200;
 
+// DEC-124 (wave 61 amendment): same kind of constant as
+// LOCKED_ABSTRACT_MAX_LENGTH above -- the locked title field's character
+// budget, enforced server-side via projectFieldForAnswers below and declared
+// by every writer of a locked session title (routes + SPA inline edit form).
+export const LOCKED_TITLE_MAX_LENGTH = 200;
+
 // Answers keyed by fieldId. Values are unvalidated/untrusted input until
 // passed through validateAnswers.
 export type AnswerMap = Record<string, unknown>;
@@ -120,5 +126,6 @@ export function projectFieldForAnswers(def: FormFieldDef): FormFieldDef {
       ? { rule: { ...def.rule, fieldId: lockedFieldName(def.rule.fieldId) ?? def.rule.fieldId } }
       : {}),
     ...(name === "description" ? { maximum: def.maximum ?? LOCKED_ABSTRACT_MAX_LENGTH } : {}),
+    ...(name === "title" ? { maximum: def.maximum ?? LOCKED_TITLE_MAX_LENGTH } : {}),
   };
 }

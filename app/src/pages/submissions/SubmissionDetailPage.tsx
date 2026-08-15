@@ -6,7 +6,12 @@ import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { apiGet, apiList, apiPatch, apiPost, apiDelete, ApiError } from '../../lib/api';
 import { formatDate as formatTimestamp, formatDateTime, epochDayIndex } from '../../lib/dates';
 import { formatEventDate } from '../../../../src/lib/event-time';
-import { SESSION_FORMAT_FIELD_ID, AUDIENCE_LEVEL_FIELD_ID } from '../../../../src/forms/types';
+import {
+  SESSION_FORMAT_FIELD_ID,
+  AUDIENCE_LEVEL_FIELD_ID,
+  LOCKED_TITLE_MAX_LENGTH,
+  LOCKED_ABSTRACT_MAX_LENGTH,
+} from '../../../../src/forms/types';
 import { sessionFormatLabel } from '../../../../src/lib/session-vocabulary';
 import type { CfpForm } from '../forms/types';
 import { buildAnswerRows, resolveAnswerFields } from './detailRows';
@@ -807,6 +812,7 @@ export function SubmissionDetailPage() {
                       className="chq-input"
                       value={editTitle}
                       disabled={savingEdit}
+                      maxLength={LOCKED_TITLE_MAX_LENGTH}
                       onChange={(e) => setEditTitle(e.target.value)}
                     />
                   </label>
@@ -816,6 +822,7 @@ export function SubmissionDetailPage() {
                       className="chq-textarea"
                       value={editDescription}
                       disabled={savingEdit}
+                      maxLength={LOCKED_ABSTRACT_MAX_LENGTH}
                       onChange={(e) => setEditDescription(e.target.value)}
                     />
                   </label>

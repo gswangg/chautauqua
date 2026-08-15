@@ -8,7 +8,7 @@ import { MemoryRouter } from 'react-router-dom';
 import '@testing-library/jest-dom/vitest';
 import { FieldList } from './FieldList';
 import { MAX_LONG_TEXT_LENGTH } from '../../../../src/forms/validate';
-import { SESSION_FORMAT_FIELD_ID } from '../../../../src/forms/types';
+import { SESSION_FORMAT_FIELD_ID, LOCKED_ABSTRACT_MAX_LENGTH } from '../../../../src/forms/types';
 import type { FormField } from './types';
 
 afterEach(() => {
@@ -114,9 +114,31 @@ describe('FieldList row anatomy (DEC-715)', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(4);
   });
 
-  it('renders the Abstract caption with the imported length cap, never a hardcoded number', () => {
+  it('renders the Abstract caption with the LOCKED_ABSTRACT_MAX_LENGTH cap (DEC-124), never MAX_LONG_TEXT_LENGTH', () => {
     renderList();
     expect(screen.getByText('Abstract')).toBeInTheDocument();
+    expect(
+      screen.getByText(`Up to ${LOCKED_ABSTRACT_MAX_LENGTH.toLocaleString('en-US')} characters`),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(`Up to ${MAX_LONG_TEXT_LENGTH.toLocaleString('en-US')} characters`),
+    ).not.toBeInTheDocument();
+  });
+
+  it("gives a custom long_text field with no helpText its own caption naming MAX_LONG_TEXT_LENGTH, distinct from the locked Abstract's cap", () => {
+    renderList([
+      ...FIELDS,
+      {
+        id: 'f-notes',
+        section: 'session',
+        kind: 'long_text',
+        label: 'Notes for reviewers',
+        required: false,
+        position: 6,
+        locked: false,
+      },
+    ]);
+    expect(screen.getByText('Notes for reviewers')).toBeInTheDocument();
     expect(screen.getByText(`Up to ${MAX_LONG_TEXT_LENGTH.toLocaleString('en-US')} characters`)).toBeInTheDocument();
   });
 
