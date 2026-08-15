@@ -5147,3 +5147,60 @@ read budget), and the triage-closure count below is 5, not 0.
    this row; not itself a re-run of bundle:check).
 
 OPEN ITEMS: 5
+
+## 2026-08-15 task-w36-f — AIE scale battery @ 3b3b56c7
+
+QUALIFYING (scale-mandate battery; advisory to the DEC-069 predicate)
+
+INVALIDATED BY: src/** app/src/** migrations/** package.json
+
+DEC-644 three-sha boundary: HEAD `3b3b56c7` (docs-only merge); newest
+first-parent product-code-bearing sha `3a041507` ("merge task-w35-c");
+live `task-w36-b`/`task-w36-c`/`task-w36-e` confirmed ancestors of HEAD
+via `git merge-base --is-ancestor`; `task-w36-a`/`task-w36-d` NOT yet
+ancestors (in flight, not credited by this LOG-ONLY docs-only lane).
+
+Full detail: docs/verification-log/task-w36-f-aie-scale-3b3b56c7.md
+
+Ran `docs/mandates/scale-mandate.md`'s battery: seed (demo + `perf:seed:aie`,
+2,500 submissions / 6,000 contacts) -> `wrangler dev --port 8973` ->
+`PERF_URL=... npm run perf:smoke:aie` -> `npx tsx scripts/walkthrough/
+stress.ts --url ... ` (= `gate:scale`). Both result tables quoted verbatim
+in the full detail file.
+
+Found perf-smoke (every profile) unconditionally broken at this tip since
+`e963d388` (wave-35): that commit's own message flagged
+`scripts/perf-seed.ts` was never wired to mint the singleton perf-speaker
+fixture rows its own new `perf-smoke.ts` login step requires, and no later
+wave closed that gap. Worked around with a LOCAL, UNCOMMITTED patch
+(reverted via `git checkout --` before this commit) to produce the tables
+below; logged as its own finding, not fixed (frozen-product lane, DEC-331).
+
+PART 1 (perf:smoke:aie) re-grades the four rows this task named:
+- `onboarding grid`: task-w27-d @ ceda66f2 raw=999.8ms adj=995.7ms FAIL ->
+  now raw=21.0ms adj=18.4ms **PASS**.
+- `files library (page 1)`: task-w27-d raw=418.8ms adj=414.7ms FAIL -> now
+  raw=16.7ms adj=14.1ms **PASS**.
+- `reviewer queue`: task-w31-d raw=110.5ms adj=106.6ms FAIL -> now
+  raw=48.2ms adj=45.6ms **PASS**.
+- `plan results (page 1)`: task-w31-d raw=88.9ms adj=85.0ms FAIL -> now
+  raw=28.1ms adj=25.5ms **PASS**.
+All four hold at aie scale. Non-mandate `plan progress (page 1)` FAILs by
+0.6ms (raw=53.2ms adj=50.6ms vs 50ms budget) — unchanged in character from
+task-w35-a's prior default-profile instability reading, logged only.
+
+PART 2 (gate:scale) graded every mandate-named functional bar PASS/FAIL
+(none NOT-EXERCISED): bulkStatus500 PASS (600 selected/updated, 2 chunked
+requests); autoSchedule320 **FAIL** (unplacedTotal=298 vs
+reasons.length=237 — 61 unplaced accepted sessions with no reported
+reason, owner `src/server/repo/agenda/auto-schedule.ts`); remindersHonesty
+PASS (due=681, sent=100=MAX_REMINDER_BATCH, skipped=0, remaining=581,
+fully accounted); overviewRowCap PASS (every over-cap section capped at
+5); duplicatesLatency PASS (29ms vs 1000ms ceiling).
+
+RESULT: all four re-graded SPEC-budget rows now PASS at aie scale (fixes
+hold, not just moved the knee); 4/5 mandate functional bars PASS, 1 FAIL
+(autoSchedule320 per-item reasons); a pre-existing perf-smoke harness gap
+(e963d388) blocks the harness for every profile at this tip, worked
+around locally and logged, not fixed.
+OPEN ITEMS: 3
