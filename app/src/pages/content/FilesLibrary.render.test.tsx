@@ -255,11 +255,13 @@ describe('FilesLibrary render smoke', () => {
     if (!headerRow) throw new Error('header row not found');
     expect(within(headerRow).getByText('31 files · 412.0 MB')).toBeInTheDocument();
     expect(within(headerRow).getByRole('button', { name: /Content/ })).toBeInTheDocument();
-    // CNT-14 (DEC-160, wave-26 amendment): a scoped, dialog-free
-    // "Download all" renders on the header block, labelled from the
-    // currently-rendered set (3 rows on this page), never the envelope's
-    // whole-event total (31).
-    expect(within(headerRow).getByRole('button', { name: 'Download all 3 (.zip)' })).toBeInTheDocument();
+    // CNT-14 (DEC-160, wave-65 amendment): "all" is reserved for the whole
+    // filtered set — a page of a larger set (3 of 31) names its true scope
+    // and never claims the event's total.
+    expect(within(headerRow).getByRole('button', { name: 'Download 3 files (.zip)' })).toBeInTheDocument();
+    expect(
+      within(headerRow).getByText(/28 files more in this filtered set won't be included/),
+    ).toBeInTheDocument();
   });
 
   it('CNT-14: "Download all" posts the visible rows\' latestFileId set to the archive endpoint', async () => {
@@ -300,6 +302,70 @@ describe('FilesLibrary render smoke', () => {
 
     await waitFor(() => {
       expect(capturedBody).toEqual({ fileIds: ['file-0-latest', 'file-1-latest', 'file-2-latest'] });
+    });
+  });
+
+  it('DEC-160 (wave-65 amendment): "Download all" survives its label only when the page IS the whole filtered set', async () => {
+    const items = Array.from({ length: 3 }, (_, i) => makeItem(i));
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope(items, {
+        total: 3,
+        kindCounts: { ...ALL_ZERO_KIND_COUNTS, presentation: 3 },
+      }),
+    });
+
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
+
+    expect(await screen.findByRole('button', { name: 'Download all 3 (.zip)' })).toBeInTheDocument();
+    expect(screen.queryByText(/won't be included/)).not.toBeInTheDocument();
+  });
+
+  it('DEC-160 (wave-65 amendment): a page of a larger filtered set names its true scope, states the remainder, and still posts exactly the visible latestFileIds', async () => {
+    const items = Array.from({ length: 50 }, (_, i) => makeItem(i));
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/files`]: listEnvelope(items, {
+        total: 120,
+        page: 1,
+        perPage: 50,
+        kindCounts: { ...ALL_ZERO_KIND_COUNTS, presentation: 120 },
+      }),
+    });
+
+    render(<FilesLibrary eventId={EVENT_ID} onSelectSubmission={() => {}} onBack={() => {}} />);
+
+    const button = await screen.findByRole('button', { name: 'Download 50 files (.zip)' });
+    expect(button).not.toBeDisabled();
+    expect(button.textContent).not.toContain('all');
+    expect(screen.getByText(/70 files more in this filtered set won't be included/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/narrow the search or type chip to change what this downloads/),
+    ).toBeInTheDocument();
+
+    vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:mock'), revokeObjectURL: vi.fn() });
+
+    let capturedBody: unknown = null;
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === 'string' ? input : input.toString();
+        if (url.includes('/files/archive')) {
+          capturedBody = init?.body ? JSON.parse(init.body as string) : null;
+          return Promise.resolve(
+            new Response(new Uint8Array([1, 2, 3]), {
+              status: 200,
+              headers: { 'content-disposition': 'attachment; filename="files.zip"' },
+            }),
+          );
+        }
+        return realFetch(input, init);
+      }),
+    );
+
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(capturedBody).toEqual({ fileIds: items.map((item) => item.latestFileId) });
     });
   });
 
