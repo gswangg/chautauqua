@@ -11,6 +11,38 @@ export interface EnvelopeSite {
   file: string;
   line: number;
   body: string;
+  /** `${METHOD} ${routePath}` of the nearest preceding `.get(`/`.post(`/etc
+   * route registration -- the stable identity of the handler this site sits
+   * inside of. Used (instead of file:line) to key the allowlist, so a
+   * handler's exemption survives unrelated line shifts above it. */
+  route: string;
+}
+
+// Matches `xxxRoutes.get("/path", ...)` etc -- route registrations, as
+// opposed to unrelated `.get(...)` calls (e.g. Map#get) that happen to take
+// a string/template-literal argument.
+const ROUTE_REGISTRATION_RE = /\b\w*Routes\.(get|post|put|patch|delete)\(\s*(["'`])([^"'`]+)\2/g;
+
+/** Finds the `${METHOD} ${path}` of the nearest route registration
+ * (`someRoutes.get("/path", ...)` etc) that starts before `beforeIndex` in
+ * `source`. This is the stable identity of the handler a given site sits
+ * inside of -- unlike a line number, it does not shift when unrelated code
+ * is added above the site. */
+function nearestRoutePath(source: string, beforeIndex: number): string {
+  const re = new RegExp(ROUTE_REGISTRATION_RE.source, "g");
+  let best: { method: string; path: string } | null = null;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(source)) !== null) {
+    if (match.index >= beforeIndex) break;
+    const method = match[1];
+    const path = match[3];
+    if (!method || !path) throw new Error("route-registration regex matched without expected capture groups");
+    best = { method: method.toUpperCase(), path };
+  }
+  if (!best) {
+    throw new Error(`no preceding route registration found before source index ${beforeIndex}`);
+  }
+  return `${best.method} ${best.path}`;
 }
 
 export function findItemsEnvelopeSites(source: string, file: string): EnvelopeSite[] {
@@ -21,54 +53,41 @@ export function findItemsEnvelopeSites(source: string, file: string): EnvelopeSi
     const openParenIndex = match.index + "c.json".length;
     const callEnd = findCallEnd(source, openParenIndex);
     const body = source.slice(openParenIndex + 1, callEnd - 1);
-    sites.push({ file, line: lineNumberAt(source, match.index), body });
+    sites.push({
+      file,
+      line: lineNumberAt(source, match.index),
+      body,
+      route: nearestRoutePath(source, match.index),
+    });
   }
   return sites;
 }
 
-// DEC-480: named, individually-read exceptions to the (a) envelope-shape
-// check. Format `${relativePath}:${line}`. Adding an entry here is a
+// DEC-480 (wave-17 amendment): named, individually-read exceptions to the
+// (a) envelope-shape check. Format `${relativePath}#${METHOD} ${routePath}`
+// -- keyed on the handler's route registration rather than a line number,
+// because a line number is not a handler's identity and drifts every time
+// unrelated code is added above a site. Adding an entry here is a
 // deliberate reviewed act -- see test/list-envelope-enumeration.test.ts's
 // file-header comment above for why each one is exempt.
 export const ENVELOPE_ALLOWLIST = new Set<string>([
-  // Line numbers shifted by the wave-27 B9 email-shell sweep (DEC-037
-  // amendment), which added renderEmailHtml imports/calls above both sites.
-  // Shifted again (245 -> 247) by DEC-182's wave-32 fix, which made
-  // validateBulkEmailRequest consume parseBoundedIdArray's deduped result.
-  // Shifted again (68 -> 74) by the wave-49 DEC-037 amendment, which routes
-  // the preview's `html` through the shared composeEmailShellOptions helper
-  // and adds the comment block above the `items` map.
-  // Shifted again (74 -> 82) by DEC-317's wave-60 amendment, which names the
-  // blocked-session count in the no-eligible-recipients refusal above.
-  // The exceptions themselves are unchanged.
-  "src/routes/comms/preview.ts:82",
-  // bulk-email.ts's preview site shifted again (277 -> 278) by DEC-422's
-  // (amendment) cap-copy import line added near the top of the file.
-  // Shifted again (278 -> 321) by DEC-238's wave-14 amendment, which adds the
-  // two-stage dedupe partition (intra-batch address collapse + the shared
-  // one-hour loadRecentlySent window) to the SEND handler above this preview
-  // handler. The exception itself is unchanged: the preview still slices to
-  // BULK_EMAIL_PREVIEW_LIMIT (5) before rendering, so it is bounded by that
-  // constant rather than by a page/perPage query param.
-  "src/routes/api/contacts/bulk-email.ts:321",
-  // NOTE (DEC-840): GET .../assignments/distribute/preview used to be
-  // allowlisted here (it was previously `c.json({ items, perReviewer,
-  // total, shortfall })`, matching the scanner's `{ items` pattern). The
-  // DEC-840 wire contract reorders the envelope to `{ cap, totalAssigned,
-  // items, perReviewer, shortfall }` (cap echoed first), so the site no
-  // longer matches `c.json({ items` at all and needs no allowlist entry --
-  // removing rather than updating the stale line-numbered entry.
-  // DEC-788: GET /contacts/duplicates/check is a bounded (cap 5),
+  // POST .../compose/preview returns a compose-preview render, one row per
+  // selected submission, bounded by the 100-recipient send cap (DEC checked
+  // elsewhere in comms/) -- a preview payload, not a list GET.
+  "src/routes/comms/preview.ts#POST /api/v1/events/:eventId/compose/preview",
+  // POST /contacts/bulk-email/preview (CRM-11/DEC-150) slices to
+  // `previewContacts = contacts.slice(0, BULK_EMAIL_PREVIEW_LIMIT)` (5)
+  // before rendering, so it is bounded by that constant rather than by a
+  // page/perPage query param -- a preview payload, not a list GET.
+  "src/routes/api/contacts/bulk-email.ts#POST /contacts/bulk-email/preview",
+  // GET /contacts/duplicates/check (DEC-788) is a bounded (cap 5),
   // deterministically-ordered lookup for a not-yet-created candidate, not a
   // paginated list -- same shape-exception class as the bulk-email preview
   // above.
-  "src/routes/api/contacts/duplicates.ts:32",
-  // DEC-924: POST /plans/:id/reviewers's array form answers the set of rows
-  // it just wrote (bounded by the request's own parseBoundedIdArray cap),
-  // never a paginated read -- same shape-exception class as the compose
-  // preview above (comms/preview.ts:82).
-  // Shifted (111 -> 117) by DEC-623's wave-11 dedupe-on-resolved-id block
-  // (the `resolvedSubmissionIds` Set plus its comment) inserted directly
-  // above this return. The exception itself is unchanged.
-  "src/routes/review/plans-reviewers.ts:117",
+  "src/routes/api/contacts/duplicates.ts#GET /contacts/duplicates/check",
+  // POST /plans/:id/reviewers's array form answers the set of rows it just
+  // wrote (bounded by the request's own parseBoundedIdArray cap), never a
+  // paginated read -- same shape-exception class as the compose preview
+  // above.
+  "src/routes/review/plans-reviewers.ts#POST /api/v1/plans/:id/reviewers",
 ]);
