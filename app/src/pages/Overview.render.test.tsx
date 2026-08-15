@@ -18,10 +18,36 @@ const EVENT_SLUG = 'devflow-conf-2027';
 
 function eventsListEnvelope() {
   return {
-    items: [{ id: EVENT_ID, slug: EVENT_SLUG, timezone: 'America/Chicago' }],
+    items: [{ id: EVENT_ID, slug: EVENT_SLUG, timezone: 'America/Chicago', name: 'DevFlow Conf 2027' }],
     total: 1,
     page: 1,
     perPage: 20,
+  };
+}
+
+// DEC-370 amendment (wave 47): the brand-new-event payload -- every
+// worklist section, both aggregate flavours of triage, and the published
+// count all zero.
+function brandNewPayload(): OverviewPayload {
+  return {
+    deadlines: {
+      formCloseDate: null,
+      nextTaskDueDate: null,
+      planCloseDate: null,
+      planRound: null,
+      eventStartDate: null,
+    },
+    overdueTasks: { total: 0, rows: [] },
+    triage: { total: 0, oldestSubmittedAt: null, rows: [] },
+    contentApproval: { total: 0, reuploadedCount: 0, rows: [] },
+    agendaWork: { unplacedTotal: 0, conflictTotal: 0, conflicts: [], unplaced: [] },
+    'triage-counts': { pending: 0, accept_queue: 0, decline_queue: 0 },
+    review: { plans: 0, evaluationsSubmitted: 0, evaluationsExpected: 0 },
+    speakers: { contactsOwing: 0, overdueAssignments: 0 },
+    content: { awaitingApproval: 0 },
+    agenda: { unplaced: 0, conflicts: 0 },
+    comms: { sentLast7Days: 0, lastSentAt: null },
+    publishedSessionCount: 0,
   };
 }
 
@@ -356,6 +382,86 @@ describe('OverviewPage render smoke (DEC-370)', () => {
     expect(meta.textContent).toBe('Dana Whitmore · DFC-033 · waiting 6 days');
     expect(meta.textContent).not.toMatch(/ · · /);
     expect(document.body.textContent).not.toMatch(/ · · /);
+  });
+
+  // DEC-370 amendment (wave 47): a brand-new event (every section empty)
+  // renders ONE EmptyState block, never the deadline table or the five
+  // numbered sections.
+  it('renders the brand-new-event block for a fully empty payload, no deadline table, no sections', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/overview`]: brandNewPayload(),
+      'GET /api/v1/events': eventsListEnvelope(),
+    });
+
+    render(
+      <MemoryRouter>
+        <OverviewPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Nothing needs you yet')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('heading', { name: 'Overview' })).toBeInTheDocument();
+    expect(screen.getByText('DevFlow Conf 2027 · nothing scheduled')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'This event has no submissions, no speakers and no schedule. It starts when the call for papers opens.',
+      ),
+    ).toBeInTheDocument();
+
+    const primary = screen.getByRole('link', { name: 'Set up the call for papers' });
+    expect(primary).toHaveAttribute('href', '/settings?section=cfp');
+    const secondary = screen.getByRole('link', { name: 'Add a speaker by hand ›' });
+    expect(secondary).toHaveAttribute('href', '/speakers');
+
+    // Never the deadline table.
+    expect(document.querySelector('.chq-overview-deadlines')).toBeNull();
+    // Never any of the five numbered sections.
+    expect(screen.queryByText(/01 — Overdue speaker tasks/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/02 — Submissions awaiting triage/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/03 — Session content awaiting approval/)).not.toBeInTheDocument();
+    expect(screen.queryByText('No action needed')).not.toBeInTheDocument();
+  });
+
+  // A payload with exactly one non-empty section is NOT brand-new — today's
+  // per-section rendering (including the deadline table) stays untouched.
+  it('keeps the deadline table and section labels when one section is non-empty', async () => {
+    const p = brandNewPayload();
+    p.overdueTasks = {
+      total: 1,
+      rows: [
+        {
+          assignmentId: 'as-1',
+          contactId: 'c-1',
+          contactName: 'Marcus Okafor',
+          company: null,
+          taskId: 'task-1',
+          taskTitle: 'Upload headshot',
+          dueDate: Date.now() - 4 * 86_400_000,
+          daysLate: 4,
+        },
+      ],
+    };
+
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/overview`]: p,
+      'GET /api/v1/events': eventsListEnvelope(),
+    });
+
+    render(
+      <MemoryRouter>
+        <OverviewPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Marcus Okafor')).toBeInTheDocument());
+
+    expect(screen.queryByText('Nothing needs you yet')).not.toBeInTheDocument();
+    expect(screen.getByText(/01 — Overdue speaker tasks/)).toBeInTheDocument();
+    expect(screen.getByText(/02 — Submissions awaiting triage/)).toBeInTheDocument();
+    expect(screen.getByText('No action needed')).toBeInTheDocument();
   });
 
   it('rolls back loudly when an action fails', async () => {

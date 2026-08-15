@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCurrentEvent } from '../lib/useCurrentEvent';
 import { PageSkeleton } from '../components/PageSkeleton';
+import { EmptyState } from '../components/EmptyState';
 import { apiGet, apiList, apiPatch, apiPost, ApiError } from '../lib/api';
 import { describeSendResult, type SendResult } from '../lib/sendResult';
 import type {
@@ -31,6 +32,26 @@ interface EventListItem {
   id: string;
   slug: string;
   timezone: string;
+  name: string;
+}
+
+// DEC-370 amendment (wave 47): "brand-new event" is computed from the
+// payload the page already loaded -- every worklist section empty AND
+// every v1 aggregate the deadlines/toolbar don't already cover. A
+// partially-empty event (any one of these non-zero) keeps today's
+// per-section rendering untouched.
+function isBrandNewEvent(payload: OverviewPayload): boolean {
+  return (
+    payload.overdueTasks.total === 0 &&
+    payload.triage.total === 0 &&
+    payload.contentApproval.total === 0 &&
+    payload.agendaWork.unplacedTotal === 0 &&
+    payload.agendaWork.conflictTotal === 0 &&
+    payload['triage-counts'].pending === 0 &&
+    payload['triage-counts'].accept_queue === 0 &&
+    payload['triage-counts'].decline_queue === 0 &&
+    payload.publishedSessionCount === 0
+  );
 }
 
 // DEC-735: a dangling clause with no computed value must never render — this
@@ -58,6 +79,7 @@ export function OverviewPage() {
   const [remindToast, setRemindToast] = useState<string | null>(null);
   const [eventSlug, setEventSlug] = useState<string | null>(null);
   const [eventTimezone, setEventTimezone] = useState<string | null>(null);
+  const [eventName, setEventName] = useState<string | null>(null);
   const [slugError, setSlugError] = useState<string | null>(null);
 
   async function loadPayload() {
@@ -87,6 +109,7 @@ export function OverviewPage() {
         }
         setEventSlug(match.slug);
         setEventTimezone(match.timezone);
+        setEventName(match.name);
       })
       .catch((err) => {
         setSlugError(err instanceof ApiError ? err.message : 'Could not resolve the public link');
@@ -197,6 +220,27 @@ export function OverviewPage() {
       <div className="chq-page chq-measure">
         {error && <div className="chq-error-banner">{error}</div>}
         {!error && <PageSkeleton variant="list" label="Loading overview…" />}
+      </div>
+    );
+  }
+
+  if (isBrandNewEvent(payload)) {
+    return (
+      <div className="chq-page chq-measure">
+        {error && <div className="chq-error-banner">{error}</div>}
+        <div className="chq-overview-brand-new-headline-row">
+          <h1 className="chq-overview-headline">Overview</h1>
+          <span className="chq-overview-headline-summary">
+            {eventName ?? 'This event'} · nothing scheduled
+          </span>
+        </div>
+        <EmptyState
+          variant="fresh"
+          what="Nothing needs you yet"
+          reason="This event has no submissions, no speakers and no schedule. It starts when the call for papers opens."
+          action={{ label: 'Set up the call for papers', to: '/settings?section=cfp' }}
+          secondary={{ label: 'Add a speaker by hand ›', to: '/speakers' }}
+        />
       </div>
     );
   }

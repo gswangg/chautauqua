@@ -78,6 +78,21 @@
   color: var(--chq-ink);
 }
 
+/* DEC-370 amendment (wave 47): the brand-new-event headline row -- h1 plus
+   a muted summary clause, left-aligned with the frame's 14px gap, never
+   the toolbar row's space-between (there is no toolbar to push away). */
+.chq-overview-brand-new-headline-row {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin: 0 0 6px;
+}
+
+.chq-overview-headline-summary {
+  font-size: 13px;
+  color: var(--chq-muted);
+}
+
 .chq-overview-toolbar {
   display: flex;
   gap: 9px;

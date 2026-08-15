@@ -30,15 +30,25 @@ export interface EmptyStateEscape {
   onClick: () => void;
 }
 
+export interface EmptyStateSecondary {
+  label: string;
+  to: string;
+}
+
 export interface EmptyStateProps {
   variant: 'fresh' | 'filtered';
   what: string;
   reason?: string;
   action?: EmptyStateAction | null;
   escape?: EmptyStateEscape | null;
+  // DEC-370 amendment (wave 47): a second, lower-emphasis link beside the
+  // primary action -- permitted ONLY on 'fresh' (a 'filtered' empty state
+  // never gets a primary action either, so there is nothing for a
+  // secondary link to sit beside).
+  secondary?: EmptyStateSecondary | null;
 }
 
-export function EmptyState({ variant, what, reason, action, escape }: EmptyStateProps) {
+export function EmptyState({ variant, what, reason, action, escape, secondary }: EmptyStateProps) {
   // Fail loudly rather than silently dropping a prop the variant forbids --
   // a caller that passes `action` on a 'filtered' empty state, or `escape`
   // on a 'fresh' one, has misread B7's split, and a component that quietly
@@ -48,6 +58,9 @@ export function EmptyState({ variant, what, reason, action, escape }: EmptyState
   }
   if (variant === 'fresh' && escape) {
     throw new Error("EmptyState: variant 'fresh' must never render `escape` (there is no filter to clear).");
+  }
+  if (variant === 'filtered' && secondary) {
+    throw new Error("EmptyState: variant 'filtered' must never render `secondary` (B7: no primary button over a filter, so nothing for a secondary link to sit beside).");
   }
 
   return (
@@ -59,16 +72,25 @@ export function EmptyState({ variant, what, reason, action, escape }: EmptyState
     <div className={variant === 'fresh' ? 'chq-empty-block chq-empty-block-fresh' : 'chq-empty-block chq-empty-block-filtered'}>
       <p className="chq-empty-what">{what}</p>
       {reason && <p className="chq-empty-reason">{reason}</p>}
-      {action &&
-        (action.to ? (
-          <Link to={action.to} className="chq-btn chq-btn-primary">
-            {action.label}
-          </Link>
-        ) : (
-          <button type="button" className="chq-btn chq-btn-primary" onClick={action.onClick}>
-            {action.label}
-          </button>
-        ))}
+      {(action || secondary) && (
+        <div className="chq-empty-actions">
+          {action &&
+            (action.to ? (
+              <Link to={action.to} className="chq-btn chq-btn-primary">
+                {action.label}
+              </Link>
+            ) : (
+              <button type="button" className="chq-btn chq-btn-primary" onClick={action.onClick}>
+                {action.label}
+              </button>
+            ))}
+          {secondary && (
+            <Link to={secondary.to} className="chq-btn chq-btn-tertiary chq-empty-secondary">
+              {secondary.label}
+            </Link>
+          )}
+        </div>
+      )}
       {escape && (
         <button type="button" className="chq-link-button chq-empty-escape" onClick={escape.onClick}>
           {escape.label}

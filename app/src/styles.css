@@ -1656,3 +1656,13 @@ a:hover {
 .chq-empty-escape {
   margin-top: 4px;
 }
+
+/* DEC-370 amendment (wave 47): the primary action and the optional
+   secondary link ('fresh' only) sit side by side, not stacked. */
+.chq-empty-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-top: 6px;
+}
