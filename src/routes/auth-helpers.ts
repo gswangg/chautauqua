@@ -17,6 +17,30 @@ export const AUTH_RATE_LIMIT_WINDOW_SECONDS = 900;
 export const AUTH_RATE_LIMIT_MAX = 20;
 export const RATE_LIMIT_ERROR = "Too many attempts. Try again in a few minutes.";
 
+/** DEC-124 amendment (wave 6): the sign-in error band's headline + optional
+ * detail line -- a single shape shared by LoginPage's `error` prop rather
+ * than a bare string, so a headline never carries a detail line that was
+ * written for a DIFFERENT headline (a rate limit is not a credential
+ * mismatch, and the frame's two lines are ONLY correct under a rejected
+ * credential). */
+export interface AuthBandCopy {
+  headline: string;
+  detail?: string;
+}
+
+// Frame copy: docs/design/Chautauqua Account.dc.html:302-305 ("Sign in ·
+// rejected" / "One message for both wrong email and wrong password").
+export const LOGIN_REJECTED: AuthBandCopy = {
+  headline: "That email and password do not match",
+  detail: "Check both, or reset your password.",
+};
+
+// The rate-limit band has no second line -- RATE_LIMIT_ERROR already states
+// the whole situation, and inventing a detail line for it would be the same
+// mistake (a line written for one headline, false under another) this
+// amendment removes.
+export const RATE_LIMIT_BAND: AuthBandCopy = { headline: RATE_LIMIT_ERROR };
+
 // DEC-072 wave-66 amendment: the account-wide login budget, keyed on the
 // bare normalised email with NO ip component. This is the ONLY login
 // bucket that satisfies src/lib/rate-limit.ts:52-55's own doc-comment --

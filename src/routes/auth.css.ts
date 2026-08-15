@@ -186,6 +186,29 @@ export const AUTH_CSS = `
     color: var(--chq-muted);
   }
 
+  /* DEC-124 amendment (wave 6): the sign-in rejection band, checked against
+     docs/design/Chautauqua Account.dc.html:302-305 ("Sign in · rejected").
+     ERROR_STATES_CSS's shared .chq-error-summary (1px ink border + 3px ink
+     left edge, transparent fill, 16px/18px padding, 8px gap, a
+     --chq-font-display h2) is the CFP/Portal contract; the auth card's own
+     band differs on four properties the frame draws explicitly -- a 4px
+     (not 3px) ink left edge, 5px radius, a sunk --chq-surface-sunk fill, a
+     tighter 14px/16px padding + 6px gap, and a plain (non-display-font)
+     14px/700 headline. Scoped to .chq-auth-card so ERROR_STATES_CSS's own
+     rule, and every other surface composing it, is untouched. */
+  .chq-auth-card .chq-error-summary {
+    border-left-width: 4px;
+    border-radius: 5px;
+    background: var(--chq-surface-sunk);
+    padding: 14px 16px;
+    gap: 6px;
+  }
+  .chq-auth-card .chq-error-summary h2 {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
   .chq-auth-actions {
     display: flex;
     align-items: center;
