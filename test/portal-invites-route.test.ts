@@ -143,7 +143,7 @@ describe("POST /api/v1/events/:eventId/portal-invites (DEC-805)", () => {
     expect(inserts[0].bodyText).toMatch(/https:\/\/events\.example\.com\/claim\//);
   });
 
-  it("rejects the whole call, naming any contactId that isn't a participant in this event", async () => {
+  it("rejects the whole call, naming the resolved contact and counting the unresolved one (no raw id)", async () => {
     const { db, inserts } = fakeDbWithInsertLog();
     const app = await buildCommsApp(db);
 
@@ -151,10 +151,38 @@ describe("POST /api/v1/events/:eventId/portal-invites (DEC-805)", () => {
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
     expect(body.error.code).toBe("invalid");
-    expect(body.error.fields?.contactIds).toContain("ct-foreign");
+    // DEC-856 amendment: no raw id, names the live contact, counts the dead one.
+    expect(body.error.fields?.contactIds).not.toContain("ct-foreign");
+    expect(body.error.fields?.contactIds).toContain("Grace Hopper");
+    expect(body.error.fields?.contactIds).toMatch(/^1 selected row/);
 
     // atomic: zero log rows for the rejected batch.
     expect(inserts).toHaveLength(0);
+  });
+
+  it("400s with a stale-selection sentence (no id) when nothing resolves", async () => {
+    const { db, inserts } = fakeDbWithInsertLog();
+    const app = await buildCommsApp(db);
+
+    const res = await post(app, "/api/v1/events/evt-1/portal-invites", { contactIds: ["ct-foreign"] });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
+    expect(body.error.fields?.contactIds).not.toContain("ct-foreign");
+    expect(body.error.fields?.contactIds).toContain("selection is stale");
+    expect(body.error.fields?.contactIds).toContain("refresh");
+    expect(inserts).toHaveLength(0);
+  });
+
+  it("never echoes a ULID-shaped id anywhere in the response body", async () => {
+    const { db } = fakeDbWithInsertLog();
+    const app = await buildCommsApp(db);
+
+    const res = await post(app, "/api/v1/events/evt-1/portal-invites", {
+      contactIds: ["ct-1", "01ARZ3NDEKTSV4RRFFQ69G5FAV"],
+    });
+    expect(res.status).toBe(400);
+    const raw = await res.text();
+    expect(raw).not.toMatch(/\b[0-9A-Za-z]{26}\b/);
   });
 
   it("names a recipient with no email on file instead of silently dropping them", async () => {

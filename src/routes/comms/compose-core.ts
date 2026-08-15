@@ -24,6 +24,7 @@ import { listOutstandingForEvent } from "../../server/repo/tasks/reminders";
 import { formatCalendarDate } from "../../lib/event-time";
 import { formatRef } from "../../domain/ids";
 import { DEC_122 } from "../../decisions";
+import { describeUnresolvedSelection } from "../../lib/refusal-copy"; // DEC-856
 import { MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
 import { resolveBaseUrl } from "../../server/origin";
 import type { EmailShellOptions } from "../../mail/shell";
@@ -44,13 +45,14 @@ export interface ComposeBody {
  * server/repo/comms.ts). Shared by preview + send so a compose call against
  * a stale/foreign/deleted submission id fails loudly with a 400 naming the
  * unknown ids, instead of quietly composing to a smaller recipient set. */
-export function requireFullMatch(requestedIds: string[], submissions: { id: string }[]): void {
+export function requireFullMatch(requestedIds: string[], submissions: { id: string; title: string }[]): void {
   void DEC_122;
   const foundIds = new Set(submissions.map((s) => s.id));
   const missing = requestedIds.filter((id) => !foundIds.has(id));
   if (missing.length > 0) {
+    const resolvedNames = submissions.map((s) => s.title);
     throw new ApiError("invalid", "One or more submission ids do not belong to this event", {
-      submissionIds: `unknown ids: ${missing.join(", ")}`,
+      submissionIds: describeUnresolvedSelection(resolvedNames, missing.length, "refresh the page and reselect"), // DEC-856
     });
   }
 }

@@ -268,7 +268,7 @@ describe("DEC-754 (wave 38 amendment): POST /tasks/:id/assign ranges over the ev
     expect(row?.cells.some((cell) => cell.taskId === TASK)).toBe(true);
   });
 
-  it("(b) an org contact with NO participant row -> 400 'invalid', names the id, and writes zero assignments", async () => {
+  it("(b) an org contact with NO participant row -> 400 'invalid', a stale-selection sentence (not the id), and writes zero assignments", async () => {
     insertContact(sqlite, "c-no-roster", "Grace");
 
     const app = await buildApp(db, ORGANIZER);
@@ -276,7 +276,10 @@ describe("DEC-754 (wave 38 amendment): POST /tasks/:id/assign ranges over the ev
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
     expect(body.error.code).toBe("invalid");
-    expect(body.error.fields?.contactIds).toContain("c-no-roster");
+    // DEC-856 amendment: no raw id in the refusal -- nothing resolved, so a
+    // stale-selection sentence with the refresh action.
+    expect(body.error.fields?.contactIds).not.toContain("c-no-roster");
+    expect(body.error.fields?.contactIds).toContain("selection is stale");
     expect(countAssignments(sqlite)).toBe(0);
   });
 
@@ -305,7 +308,7 @@ describe("DEC-754 (wave 38 amendment): POST /tasks/:id/assign ranges over the ev
     expect(outstanding.some((o) => o.contactId === "c-declined")).toBe(false);
   });
 
-  it("(d) a mixed valid+invalid batch -> 400 and zero writes", async () => {
+  it("(d) a mixed valid+invalid batch -> 400, names the live contact, counts the dead one, no id, and zero writes", async () => {
     insertContact(sqlite, "c-roster", "Ada");
     insertSubmission(sqlite, "sub-1", "accepted");
     insertParticipant(sqlite, "sub-1", "c-roster", "none");
@@ -316,7 +319,12 @@ describe("DEC-754 (wave 38 amendment): POST /tasks/:id/assign ranges over the ev
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { code: string; fields?: Record<string, string> } };
     expect(body.error.code).toBe("invalid");
-    expect(body.error.fields?.contactIds).toContain("c-no-roster");
+    // DEC-856 amendment: names the live (resolved) contact, counts the dead
+    // one, and never prints either raw id.
+    expect(body.error.fields?.contactIds).not.toContain("c-no-roster");
+    expect(body.error.fields?.contactIds).not.toContain("c-roster");
+    expect(body.error.fields?.contactIds).toContain("Ada Speaker");
+    expect(body.error.fields?.contactIds).toMatch(/^1 selected row/);
     expect(countAssignments(sqlite)).toBe(0);
   });
 });

@@ -46,6 +46,7 @@ import { clampPage, clampPerPage, DEFAULT_PER_PAGE } from "../lib/pagination";
 import { resolveBaseUrl, resolveBaseUrlForCron } from "../server/origin";
 import type { KVStore } from "../auth/claim";
 import { countOf } from "../domain/count-copy";
+import { describeUnresolvedSelection } from "../lib/refusal-copy"; // DEC-856
 
 // DEC-120: task-assign contact org-scoping is referenced below so this
 // dependency is compile-checked (see decisions.ts).
@@ -422,8 +423,9 @@ taskRoutes.post("/tasks/:id/assign", requireOrganizer, csrfJson, async (c) => {
   const foundIds = new Set(orgContacts.map((r) => r.id));
   const missing = dedupedContactIds.filter((id) => !foundIds.has(id));
   if (missing.length > 0) {
+    const resolvedNames = orgContacts.map((r) => `${r.firstName} ${r.lastName}`.trim());
     throw new ApiError("invalid", "One or more contacts do not belong to this org", {
-      contactIds: `unknown ids: ${missing.join(", ")}`,
+      contactIds: describeUnresolvedSelection(resolvedNames, missing.length, "refresh the page and reselect"),
     });
   }
 
@@ -436,11 +438,18 @@ taskRoutes.post("/tasks/:id/assign", requireOrganizer, csrfJson, async (c) => {
   const rosterIds = await filterRosterContactIds(c.var.db, ownership.eventId, dedupedContactIds);
   const notOnRoster = dedupedContactIds.filter((id) => !rosterIds.has(id));
   if (notOnRoster.length > 0) {
+    const resolvedNames = orgContacts
+      .filter((r) => rosterIds.has(r.id))
+      .map((r) => `${r.firstName} ${r.lastName}`.trim());
     throw new ApiError(
       "invalid",
       "One or more contacts are not on this event's roster",
       {
-        contactIds: `not on this event's roster: ${notOnRoster.join(", ")} (the contact must be a participant on an accepted submission of this event -- accept their submission, or add them as a participant first)`,
+        contactIds: describeUnresolvedSelection(
+          resolvedNames,
+          notOnRoster.length,
+          "the contact must be a participant on an accepted submission of this event -- accept their submission, or add them as a participant first",
+        ),
       },
     );
   }
