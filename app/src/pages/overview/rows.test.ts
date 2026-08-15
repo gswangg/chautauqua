@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildDeadlineCells,
   buildNoActionRows,
+  capitalizeFirst,
   daysLateLabel,
   formatDeadlineValue,
   headlineCount,
@@ -105,16 +106,27 @@ describe('headlineCount / headlineText', () => {
       agendaWork: { unplacedTotal: 1, conflictTotal: 1, conflicts: [], unplaced: [] },
     });
     expect(headlineCount(p)).toBe(8);
-    expect(headlineText(p)).toBe('8 things need your attention');
+    expect(headlineText(p)).toBe('Eight things need your attention');
   });
 
   it('uses singular phrasing for exactly one thing', () => {
     const p = payload({ overdueTasks: { total: 1, rows: [] } });
-    expect(headlineText(p)).toBe('1 thing needs your attention');
+    expect(headlineText(p)).toBe('One thing needs your attention');
   });
 
   it('reads zero things when nothing needs attention', () => {
     expect(headlineText(payload())).toBe('0 things need your attention');
+  });
+
+  it('falls back to a bare numeral above the ten-word spelling table', () => {
+    const p = payload({
+      overdueTasks: { total: 6, rows: [] },
+      triage: { total: 3, oldestSubmittedAt: null, rows: [] },
+      contentApproval: { total: 1, reuploadedCount: 0, rows: [] },
+      agendaWork: { unplacedTotal: 1, conflictTotal: 1, conflicts: [], unplaced: [] },
+    });
+    expect(headlineCount(p)).toBe(12);
+    expect(headlineText(p)).toBe('12 things need your attention');
   });
 });
 
@@ -239,6 +251,22 @@ describe('spellSmallNumber', () => {
     expect(spellSmallNumber(3)).toBe('three');
     expect(spellSmallNumber(10)).toBe('ten');
     expect(spellSmallNumber(11)).toBe('11');
+  });
+
+  it('pins the ten/eleven word-table boundary', () => {
+    expect(spellSmallNumber(10)).toBe('ten');
+    expect(spellSmallNumber(11)).toBe('11');
+  });
+});
+
+describe('capitalizeFirst', () => {
+  it('upper-cases the first letter and leaves the rest alone', () => {
+    expect(capitalizeFirst('four')).toBe('Four');
+    expect(capitalizeFirst('one')).toBe('One');
+  });
+
+  it('is a no-op on an empty string', () => {
+    expect(capitalizeFirst('')).toBe('');
   });
 });
 
