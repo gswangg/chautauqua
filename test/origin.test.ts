@@ -118,4 +118,52 @@ describe("resolveBaseUrl (DEC-252)", () => {
     });
     expect(resolveBaseUrl(c)).toBe("http://localhost:8787");
   });
+
+  it("DEC-296 (wave 38): THE GAP CASE — a loopback Host header wins over a loopback default PUBLIC_BASE_URL when the request URL is route-shadowed to production and no Origin/Referer exist", () => {
+    const c = ctx({
+      url: "https://chautauqua.cc/claim/x",
+      devMode: "1",
+      publicBaseUrl: "http://localhost:8787",
+      headers: { Host: "127.0.0.1:8788" },
+    });
+    expect(resolveBaseUrl(c)).toBe("http://127.0.0.1:8788");
+  });
+
+  it("DEC-296 (wave 38): NEGATIVE CONTROL — a non-loopback Host header is never a candidate; falls back to the loopback default PUBLIC_BASE_URL", () => {
+    const c = ctx({
+      url: "https://chautauqua.cc/claim/x",
+      devMode: "1",
+      publicBaseUrl: "http://localhost:8787",
+      headers: { Host: "chautauqua.cc" },
+    });
+    expect(resolveBaseUrl(c)).toBe("http://localhost:8787");
+  });
+
+  it("DEC-296 (wave 38): NEGATIVE CONTROL — outside dev mode, the configured PUBLIC_BASE_URL wins outright and no header is consulted", () => {
+    const c = ctx({
+      url: "https://chautauqua.cc/claim/x",
+      publicBaseUrl: "http://localhost:8787",
+      headers: { Host: "127.0.0.1:8788" },
+    });
+    expect(resolveBaseUrl(c)).toBe("http://localhost:8787");
+  });
+
+  it("DEC-296 (wave 38): NEGATIVE CONTROL — a non-loopback PUBLIC_BASE_URL wins outright in dev mode even with a loopback Host header; production can never be poisoned by a header", () => {
+    const c = ctx({
+      url: "https://chautauqua.cc/claim/x",
+      devMode: "1",
+      publicBaseUrl: "https://events.example.com",
+      headers: { Host: "127.0.0.1:8788" },
+    });
+    expect(resolveBaseUrl(c)).toBe("https://events.example.com");
+  });
+
+  it("DEC-296 (wave 38): the no-PUBLIC_BASE_URL dev branch also honours a loopback Host header", () => {
+    const c = ctx({
+      url: "https://chautauqua.cc/claim/x",
+      devMode: "1",
+      headers: { Host: "127.0.0.1:8788" },
+    });
+    expect(resolveBaseUrl(c)).toBe("http://127.0.0.1:8788");
+  });
 });

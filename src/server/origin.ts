@@ -73,16 +73,19 @@ export type OriginRequestLike = {
  *   2. EXCEPTION (DEC-296, dev-only): when `env.DEV_MODE === "1"` AND the
  *      configured PUBLIC_BASE_URL itself parses to a LOOPBACK origin (the
  *      shipped `.dev.vars.example` default), the first LOOPBACK origin
- *      among [request URL origin, `Origin` header, `Referer` origin] wins
- *      instead — this lets a fixed `wrangler.jsonc` `routes`/`custom_domain`
- *      entry (which makes `new URL(c.req.url).origin` resolve to the
- *      production host under local `wrangler dev`) not poison emailed
- *      links when the operator is actually running on a different local
- *      port. A non-loopback PUBLIC_BASE_URL always wins outright — it can
- *      never be overridden by request/header sniffing.
+ *      among [request URL origin, `Host` header, `Origin` header, `Referer`
+ *      origin] wins instead — this lets a fixed `wrangler.jsonc`
+ *      `routes`/`custom_domain` entry (which makes `new URL(c.req.url).origin`
+ *      resolve to the production host under local `wrangler dev`) not
+ *      poison emailed links when the operator is actually running on a
+ *      different local port. The `Host` header candidate is built as
+ *      `http://<host>` (scheme by construction, never inherited from
+ *      `c.req.url`) and only accepted when it is itself loopback (DEC-296
+ *      wave 38 amendment). A non-loopback PUBLIC_BASE_URL always wins
+ *      outright — it can never be overridden by request/header sniffing.
  *   3. When `env.DEV_MODE === "1"` and no PUBLIC_BASE_URL is configured,
- *      the first LOOPBACK origin among [request URL origin, `Origin`
- *      header, `Referer` origin]. Header sniffing is gated to dev +
+ *      the first LOOPBACK origin among [request URL origin, `Host` header,
+ *      `Origin` header, `Referer` origin]. Header sniffing is gated to dev +
  *      loopback only so it can never be used to poison a production link
  *      with an attacker-supplied header.
  *   4. DEV-ONLY (`env.DEV_MODE === "1"`): the request URL origin, used as the
@@ -147,11 +150,27 @@ export function resolveBaseUrlForCron(env: { PUBLIC_BASE_URL?: string }): string
   return parseAbsoluteHttpOrigin(publicBaseUrl);
 }
 
-/** Returns the first LOOPBACK origin among [request URL origin, `Origin`
- * header, `Referer` origin], or null if none of them are loopback. */
+/** Extracts a loopback origin from the request's `Host` header, or null.
+ * Scheme is `http:` by construction — NOT inherited from `c.req.url`, whose
+ * scheme under route shadowing belongs to the shadowed production host, not
+ * to the local dev server, and a loopback dev server is http (DEC-296 wave
+ * 38 amendment). */
+function hostHeaderLoopbackOrigin(c: OriginRequestLike): string | null {
+  const host = c.req.header("Host");
+  if (!host) return null;
+  const candidate = `http://${host}`;
+  return isLoopbackOrigin(candidate) ? candidate : null;
+}
+
+/** Returns the first LOOPBACK origin among [request URL origin, `Host`
+ * header, `Origin` header, `Referer` origin], or null if none of them are
+ * loopback. */
 function firstLoopbackCandidate(c: OriginRequestLike): string | null {
   const requestOrigin = new URL(c.req.url).origin;
   if (isLoopbackOrigin(requestOrigin)) return requestOrigin;
+
+  const hostHeaderOrigin = hostHeaderLoopbackOrigin(c);
+  if (hostHeaderOrigin) return hostHeaderOrigin;
 
   const originHeader = originFromHeaderValue(c.req.header("Origin"));
   if (originHeader && isLoopbackOrigin(originHeader)) return originHeader;
