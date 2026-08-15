@@ -1664,14 +1664,17 @@ a:hover {
 
 .chq-empty-what {
   margin: 0;
-  font-size: 15px;
+  font-size: 24px;
   font-weight: 600;
+  font-family: var(--chq-font-display);
+  line-height: 1.2;
   color: var(--chq-ink);
 }
 
 .chq-empty-reason {
   margin: 0;
-  font-size: 14px;
+  font-size: 16px;
+  line-height: 1.6;
   color: var(--chq-muted);
 }
 

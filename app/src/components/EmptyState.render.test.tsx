@@ -4,11 +4,28 @@
 // to respect (variant 'filtered' never renders `action`; variant 'fresh'
 // never renders `escape`), plus that neither variant ever renders a
 // disabled control.
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { EmptyState } from './EmptyState';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const STYLES_CSS = readFileSync(join(HERE, '..', 'styles.css'), 'utf-8');
+
+/** Extracts a top-level (not inside an @media block) rule's declaration
+ * body by selector -- same helper as TracksRoomsPanel.render.test.tsx. */
+function topLevelRuleBody(css: string, selector: string): string {
+  const withoutMedia = css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\}[^{}]*)*\}/g, '');
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = withoutMedia.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
+  const body = match?.[1];
+  if (body === undefined) throw new Error(`no top-level rule found for ${selector}`);
+  return body;
+}
 
 afterEach(() => {
   cleanup();
@@ -134,5 +151,19 @@ describe('EmptyState', () => {
       </MemoryRouter>,
     );
     expect(container.querySelector('[disabled]')).toBeNull();
+  });
+
+  // DEC-370 amendment: the zero-state's `what` headline and `reason` line
+  // are a display register (~24px headline / 16px reason), not the shell's
+  // 15px/14px small-print register -- pinned here so a future edit to
+  // .chq-empty-what/.chq-empty-reason can't quietly shrink them back down.
+  it('CSS contract: .chq-empty-what is a 24px display headline, .chq-empty-reason is a 16px reason line', () => {
+    const whatBody = topLevelRuleBody(STYLES_CSS, '.chq-empty-what');
+    expect(whatBody).toMatch(/font-size:\s*24px/);
+    expect(whatBody).toMatch(/font-weight:\s*600/);
+    expect(whatBody).toMatch(/font-family:\s*var\(--chq-font-display\)/);
+
+    const reasonBody = topLevelRuleBody(STYLES_CSS, '.chq-empty-reason');
+    expect(reasonBody).toMatch(/font-size:\s*16px/);
   });
 });
