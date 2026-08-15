@@ -6,15 +6,18 @@
 import type { PublicEvent } from "../../server/repo/public";
 import { ThemeStyles } from "../../views/theme";
 import { PUBLIC_CSS } from "./public.css";
-import { DEC_374, DEC_371, DEC_593 } from "../../decisions";
+import { DEC_374, DEC_371, DEC_593, DEC_322 } from "../../decisions";
 import { formatEventDayRange } from "../../lib/event-time";
 import { normalizeHexColor } from "../../domain/color";
+import { safeImageSrc } from "../../domain/brand-url";
 
 void DEC_371;
 
 void DEC_374;
 
 void DEC_593;
+
+void DEC_322;
 
 export const SURFACES = ["sessions", "speakers", "agenda", "schedule", "gallery"] as const;
 export type Surface = (typeof SURFACES)[number];
@@ -95,7 +98,9 @@ export function setCacheHeaders(c: { header(name: string, value: string): void }
 export function branding(event: PublicEvent): { logoUrl?: string; accentColor?: string } {
   if (!event.brandingJson) return {};
   const parsed = JSON.parse(event.brandingJson) as { logoUrl?: string; accentColor?: string };
-  return { logoUrl: parsed.logoUrl, accentColor: parsed.accentColor };
+  // DEC-322 wave-30 amendment: sanitize at the read so a legacy stored value
+  // (written before this gate existed) can never reach an <img src>.
+  return { logoUrl: safeImageSrc(parsed.logoUrl) ?? undefined, accentColor: parsed.accentColor };
 }
 
 const DEFAULT_ACCENT = "#4E5C31";

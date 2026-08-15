@@ -30,7 +30,10 @@ import {
 } from "../../server/not-found";
 import { PublicEmptyState } from "../public/empty-state";
 import { ensureCsrfCookie } from "./tasks/shared";
-import { DEC_747 } from "../../decisions";
+import { DEC_747, DEC_322 } from "../../decisions";
+import { safeImageSrc } from "../../domain/brand-url";
+
+void DEC_322;
 
 void DEC_747;
 
@@ -153,7 +156,10 @@ portalPreviewRoutes.get("/preview", async (c) => {
     eventName: event.name,
     welcomeMessage: settings?.welcomeMessage ?? null,
     accentColor: settings?.accentColor ?? null,
-    logoUrl: settings?.logoUrl ?? null,
+    // DEC-322 wave-30 amendment: sanitize at the read so a legacy stored
+    // value (written before this gate existed) can never reach an <img
+    // src>.
+    logoUrl: safeImageSrc(settings?.logoUrl ?? null),
   };
 
   const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);

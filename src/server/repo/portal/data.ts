@@ -11,6 +11,10 @@ import { PORTAL_VISIBLE_INVITE_STATUSES } from "../../../domain/acceptance";
 import { answerFieldRoleCondition } from "../form-roles";
 import { isOwnedByContact, speakerStatusLabel, type SpeakerStatusLabel } from "./shared";
 import { loadTrackNamesBySubmission } from "../submission-tracks";
+import { safeImageSrc } from "../../../domain/brand-url";
+import { DEC_322 } from "../../../decisions";
+
+void DEC_322;
 
 export interface PortalSubmissionSummary {
   id: string;
@@ -157,7 +161,10 @@ export async function getPortalData(db: Db, contactId: string, orgId: string): P
           eventName,
           welcomeMessage: settings.welcomeMessage,
           accentColor: settings.accentColor,
-          logoUrl: settings.logoUrl,
+          // DEC-322 wave-30 amendment: sanitize at the read so a legacy
+          // stored value (written before this gate existed) can never
+          // reach an <img src>.
+          logoUrl: safeImageSrc(settings.logoUrl),
           showResources: settings.showResources,
         }
       : { ...DEFAULT_BRANDING, eventId: mostRecentEventId, eventName };
