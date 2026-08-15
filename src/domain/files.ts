@@ -55,19 +55,12 @@ const VIDEO_EXT_CONTENT_TYPE: Record<string, string> = {
   webm: "video/webm",
 };
 
-const DOCUMENT_MAX_BYTES = 25 * BYTES_PER_MB;
-const IMAGE_MAX_BYTES = 8 * BYTES_PER_MB;
+export const DOCUMENT_MAX_BYTES = 25 * BYTES_PER_MB;
+export const IMAGE_MAX_BYTES = 8 * BYTES_PER_MB;
 // DEC-020 doesn't state a separate cap for txt/md; narrowest reasonable
 // reading reuses the document-tier cap (25 MB) since they're just another
 // flavor of document upload.
-const TEXT_MAX_BYTES = 25 * BYTES_PER_MB;
-
-// Test-only re-exports of the module-private tier caps, so
-// test/files.test.ts can assert every tier stays under
-// WORKERS_REQUEST_BODY_MAX_BYTES without a second hand-typed copy.
-export const DOCUMENT_MAX_BYTES_FOR_TEST = DOCUMENT_MAX_BYTES;
-export const IMAGE_MAX_BYTES_FOR_TEST = IMAGE_MAX_BYTES;
-export const TEXT_MAX_BYTES_FOR_TEST = TEXT_MAX_BYTES;
+export const TEXT_MAX_BYTES = 25 * BYTES_PER_MB;
 
 // DEC-879 (wave-22 amendment): Cloudflare Workers Free/Pro incoming
 // request-body ceiling — a request larger than this 413s at the edge before
@@ -124,21 +117,22 @@ export function allowedUploadExtensions(kind?: FileKind): readonly string[] {
 }
 
 /** Human-readable summary of the upload allowlist + size caps, for form
- * field help text (DEC-020: 25 MB documents/text, 8 MB images; DEC-879:
- * VIDEO_MAX_BYTES for recordings, derived from WORKERS_REQUEST_BODY_MAX_BYTES
- * — but only for the 'recording' kind: video is not part of any other kind's
- * tier, so its hint must not advertise a video cap for a field that would
- * reject a video file). Pass `kind` when known (e.g. a field bound to a
- * specific FileKind) so the hint is per-tier honest; omitted, it describes
- * the non-video tiers only. The recording size is interpolated from
- * VIDEO_MAX_BYTES, never hand-typed, so this copy can't drift from the
- * enforced cap. */
+ * field help text (DEC-020: DOCUMENT_MAX_BYTES for documents/text,
+ * IMAGE_MAX_BYTES for images; DEC-879: VIDEO_MAX_BYTES for recordings,
+ * derived from WORKERS_REQUEST_BODY_MAX_BYTES — but only for the
+ * 'recording' kind: video is not part of any other kind's tier, so its hint
+ * must not advertise a video cap for a field that would reject a video
+ * file). Pass `kind` when known (e.g. a field bound to a specific FileKind)
+ * so the hint is per-tier honest; omitted, it describes the non-video tiers
+ * only. Every size in this string is interpolated from its owning tier
+ * constant — never hand-typed — so this copy can't drift from the enforced
+ * cap (wave-67 amendment, DEC-020). */
 export function uploadHintText(kind?: FileKind): string {
   const extensions = allowedUploadExtensions(kind);
   const sizeNote =
     kind === "recording"
-      ? `Max 25 MB (8 MB for images, ${VIDEO_MAX_BYTES / BYTES_PER_MB} MB for recordings).`
-      : "Max 25 MB (8 MB for images).";
+      ? `Max ${DOCUMENT_MAX_BYTES / BYTES_PER_MB} MB (${IMAGE_MAX_BYTES / BYTES_PER_MB} MB for images, ${VIDEO_MAX_BYTES / BYTES_PER_MB} MB for recordings).`
+      : `Max ${DOCUMENT_MAX_BYTES / BYTES_PER_MB} MB (${IMAGE_MAX_BYTES / BYTES_PER_MB} MB for images).`;
   return `Allowed types: ${extensions.map((e) => `.${e}`).join(", ")}. ${sizeNote}`;
 }
 
@@ -197,7 +191,11 @@ export function validateUpload(input: UploadInput): ValidateUploadResult {
   const documentType = allowedContentType(DOCUMENT_EXT_CONTENT_TYPE, ext);
   if (documentType !== null) {
     if (input.sizeBytes > DOCUMENT_MAX_BYTES) {
-      return { ok: false, message: "File exceeds the 25 MB limit for this type", fields: { file: "Too large" } };
+      return {
+        ok: false,
+        message: `File exceeds the ${DOCUMENT_MAX_BYTES / BYTES_PER_MB} MB limit for this type`,
+        fields: { file: "Too large" },
+      };
     }
     return { ok: true, ext, servedContentType: documentType };
   }
@@ -205,7 +203,11 @@ export function validateUpload(input: UploadInput): ValidateUploadResult {
   const imageType = allowedContentType(IMAGE_EXT_CONTENT_TYPE, ext);
   if (imageType !== null) {
     if (input.sizeBytes > IMAGE_MAX_BYTES) {
-      return { ok: false, message: "File exceeds the 8 MB limit for images", fields: { file: "Too large" } };
+      return {
+        ok: false,
+        message: `File exceeds the ${IMAGE_MAX_BYTES / BYTES_PER_MB} MB limit for images`,
+        fields: { file: "Too large" },
+      };
     }
     return { ok: true, ext, servedContentType: imageType };
   }
@@ -213,7 +215,11 @@ export function validateUpload(input: UploadInput): ValidateUploadResult {
   const textType = allowedContentType(TEXT_EXT_CONTENT_TYPE, ext);
   if (textType !== null) {
     if (input.sizeBytes > TEXT_MAX_BYTES) {
-      return { ok: false, message: "File exceeds the 25 MB limit for this type", fields: { file: "Too large" } };
+      return {
+        ok: false,
+        message: `File exceeds the ${TEXT_MAX_BYTES / BYTES_PER_MB} MB limit for this type`,
+        fields: { file: "Too large" },
+      };
     }
     return { ok: true, ext, servedContentType: textType };
   }
@@ -420,7 +426,9 @@ const HEADSHOT_EXT_CONTENT_TYPE: Record<string, string> = {
   webp: "image/webp",
 };
 
-export const HEADSHOT_MAX_BYTES = 8 * BYTES_PER_MB;
+// wave-67 amendment: the headshot tier and the image tier are one number —
+// derived, never a second hand-typed 8 MB.
+export const HEADSHOT_MAX_BYTES = IMAGE_MAX_BYTES;
 
 /** Every extension validateHeadshotUpload accepts, for UI hints (accept
  * attr, help text) — derived from HEADSHOT_EXT_CONTENT_TYPE, never a second
@@ -469,7 +477,11 @@ export function validateHeadshotUpload(input: HeadshotUploadInput): ValidateUplo
     };
   }
   if (input.sizeBytes > HEADSHOT_MAX_BYTES) {
-    return { ok: false, message: "Headshot exceeds the 8 MB limit", fields: { headshot: "Too large" } };
+    return {
+      ok: false,
+      message: `Headshot exceeds the ${HEADSHOT_MAX_BYTES / BYTES_PER_MB} MB limit`,
+      fields: { headshot: "Too large" },
+    };
   }
   return { ok: true, ext, servedContentType: headshotType };
 }

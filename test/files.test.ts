@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
   allowedUploadExtensions,
-  DOCUMENT_MAX_BYTES_FOR_TEST,
+  DOCUMENT_MAX_BYTES,
   extname,
   FILE_KINDS,
   formatBytes,
   HEADSHOT_MAX_BYTES,
-  IMAGE_MAX_BYTES_FOR_TEST,
+  IMAGE_MAX_BYTES,
   isImageContentType,
   isValidFileKind,
   isValidVersionChain,
   sanitizeFilenameForKey,
-  TEXT_MAX_BYTES_FOR_TEST,
+  TEXT_MAX_BYTES,
   uploadHintText,
   validateUpload,
   VIDEO_MAX_BYTES,
@@ -56,9 +56,9 @@ describe("VIDEO_MAX_BYTES derivation", () => {
 
   it("every upload tier constant stays strictly below the Workers request-body ceiling", () => {
     for (const tierBytes of [
-      DOCUMENT_MAX_BYTES_FOR_TEST,
-      IMAGE_MAX_BYTES_FOR_TEST,
-      TEXT_MAX_BYTES_FOR_TEST,
+      DOCUMENT_MAX_BYTES,
+      IMAGE_MAX_BYTES,
+      TEXT_MAX_BYTES,
       VIDEO_MAX_BYTES,
       HEADSHOT_MAX_BYTES,
     ]) {
