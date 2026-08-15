@@ -8,10 +8,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
+import { readFileSync, readdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { PlanList } from './PlanList';
 import { selectRemindTargets } from '../../../../src/domain/evaluation';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 import type { ProgressRow } from './types';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
 
 const EVENT_ID = 'evt-planlist-render';
 const PLAN_ID = 'plan-a';
@@ -33,6 +38,9 @@ function plan() {
     roundCriteria: null,
     maxEvaluations: null,
     createdAt: 1700000000000,
+    // DEC-522: PlanList's window read now delegates to the shared
+    // isPlanOpen domain predicate, which requires a non-empty timezone.
+    timezone: 'UTC',
   };
 }
 
@@ -237,5 +245,66 @@ describe('PlanList (DEC-706/DEC-707 render)', () => {
     // header renders over a nonexistent selection.
     expect(screen.getAllByRole('link', { name: 'New plan' }).length).toBeGreaterThan(0);
     expect(screen.queryByText(/results · ranked/)).not.toBeInTheDocument();
+  });
+
+  // DEC-674 (wave-58 amendment): planState/isWindowOpen delegate to the
+  // shared isPlanOpen domain predicate (zone-aware), so a plan whose
+  // closeDate is TODAY in a non-UTC event timezone still reads 'Open now'
+  // and stays the landing page's default selection at a wall-clock moment
+  // that is already past UTC midnight of that day.
+  it('a plan closing today in a non-UTC event timezone still reads Open now and stays the default selection', async () => {
+    // closeDate is the UTC-midnight day label for 2027-03-01. `now` is
+    // 2027-03-01T20:00:00Z -- noon in America/Los_Angeles (UTC-8 in March,
+    // before DST), still the same Pacific calendar day, but already past
+    // the bare `closeDate < now` comparison the old code used to make.
+    const closeDate = Date.UTC(2027, 2, 1);
+    const now = Date.UTC(2027, 2, 1, 20, 0, 0);
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(now);
+    try {
+      const tzPlan = { ...plan(), openDate: null, closeDate, timezone: 'America/Los_Angeles' };
+      mockApi({
+        'GET /api/v1/me': { userId: 'u-organizer', email: 'organizer@example.com', role: 'organizer', orgId: 'org-1' },
+        [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+        [`GET /api/v1/events/${EVENT_ID}/plans`]: listEnvelope([tzPlan]),
+        [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([]),
+        [`GET /api/v1/plans/${PLAN_ID}`]: tzPlan,
+        [`GET /api/v1/plans/${PLAN_ID}/results`]: listEnvelope([]),
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/']}>
+          <PlanList />
+        </MemoryRouter>,
+      );
+
+      expect(await screen.findByText('Open now')).toBeInTheDocument();
+      const row = screen.getByText('Keynote Track Review').closest('.chq-review-plan-row');
+      // The landing page's default selection is this plan (the only plan,
+      // and its window is still open) -- aria-current stays true.
+      expect(row).toHaveAttribute('aria-current', 'true');
+    } finally {
+      dateNowSpy.mockRestore();
+    }
+  });
+
+  // DEC-674 (wave-58 amendment): a drift detector -- no file under
+  // app/src/pages/review compares openDate/closeDate/openAt/closeAt
+  // directly against now/Date.now(), which is exactly the bug this task
+  // fixed. Every window read must go through the shared isPlanOpen domain
+  // predicate instead.
+  it('no file under app/src/pages/review compares a window bound directly against now', () => {
+    const reviewDir = HERE;
+    // Source files only -- test files legitimately discuss/quote the exact
+    // comparison shape in comments (this file included) while constructing
+    // the close-day-in-a-non-UTC-zone fixture the bug required.
+    const files = readdirSync(reviewDir).filter((f) => (f.endsWith('.tsx') || f.endsWith('.ts')) && !f.includes('.test.'));
+    const boundRe = /\b(openDate|closeDate|openAt|closeAt)\b\s*(<|>)\s*(now|Date\.now\(\))/;
+    const reverseBoundRe = /\b(now|Date\.now\(\))\s*(<|>)\s*\b(openDate|closeDate|openAt|closeAt)\b/;
+    const offenders: string[] = [];
+    for (const file of files) {
+      const contents = readFileSync(join(reviewDir, file), 'utf-8');
+      if (boundRe.test(contents) || reverseBoundRe.test(contents)) offenders.push(file);
+    }
+    expect(offenders).toEqual([]);
   });
 });

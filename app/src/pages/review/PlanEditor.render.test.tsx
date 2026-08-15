@@ -42,6 +42,7 @@ function plan(overrides: Record<string, unknown> = {}) {
     roundCriteria: null,
     maxEvaluations: null,
     createdAt: 1700000000000,
+    timezone: 'UTC',
     ...overrides,
   };
 }
@@ -1426,6 +1427,50 @@ describe('PlanEditor render smoke', () => {
     await waitFor(() => {
       expect(screen.getByText('Open · 3 of 10 reviews in')).toBeInTheDocument();
     });
+  });
+
+  // DEC-674 (wave-58 amendment): isPlanOpenNow now delegates to the shared
+  // zone-aware isPlanOpen domain predicate, using the LOADED plan's own
+  // timezone -- so a plan closing TODAY in a non-UTC event timezone still
+  // shows the open-plan status line at a wall-clock instant already past
+  // UTC midnight of that day.
+  it('states "Open ·" for a plan closing today in a non-UTC event timezone', async () => {
+    // closeDate is the UTC-midnight day label for 2027-03-01; `now` is
+    // 2027-03-01T20:00:00Z, noon in America/Los_Angeles (UTC-8 in March) --
+    // the same Pacific calendar day, but past a bare `closeDate < now`.
+    const closeDate = Date.UTC(2027, 2, 1);
+    const now = Date.UTC(2027, 2, 1, 20, 0, 0);
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(now);
+    try {
+      mockApi({
+        [`GET /api/v1/events/${EVENT_ID}/tracks`]: listEnvelope([]),
+        [`GET /api/v1/plans/${PLAN_ID}`]: {
+          ...plan(),
+          openDate: null,
+          closeDate,
+          timezone: 'America/Los_Angeles',
+        },
+        [`GET /api/v1/plans/${PLAN_ID}/reviewers`]: listEnvelope([]),
+        [`GET /api/v1/plans/${PLAN_ID}/progress`]: listEnvelope([
+          { userId: 'user-1', email: 'a@example.test', name: null, assigned: 2, completed: 1, recused: 0 },
+        ]),
+        'GET /api/v1/users': listEnvelope([]),
+      });
+
+      render(
+        <MemoryRouter initialEntries={[`/review/plans/${PLAN_ID}`]}>
+          <Routes>
+            <Route path="/review/plans/:planId" element={<PlanEditor />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Open · 1 of 2 reviews in')).toBeInTheDocument();
+      });
+    } finally {
+      dateNowSpy.mockRestore();
+    }
   });
 
   it('renders no open-plan status line for a plan that has not opened yet', async () => {

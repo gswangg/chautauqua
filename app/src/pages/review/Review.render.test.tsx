@@ -65,6 +65,10 @@ function planWithNullDates() {
     roundCriteria: null,
     maxEvaluations: null,
     createdAt: 1700000000000,
+    // DEC-522: PlanList/PlanEditor's window read now delegates to the
+    // shared isPlanOpen domain predicate, which requires a non-empty
+    // timezone.
+    timezone: 'UTC',
   };
 }
 
