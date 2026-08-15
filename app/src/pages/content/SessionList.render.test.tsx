@@ -51,7 +51,7 @@ function noop() {
 const SELECTION_PROPS = {
   selectedIds: new Set<string>(),
   onSelectionChange: noop,
-  onBulkApprove: noop,
+  onBulkContentStatus: noop,
   bulkPending: false,
 };
 
@@ -908,7 +908,7 @@ describe('SessionList: ONE bulk-approve primary, ruling A1 (DEC-825 amendment)',
         onPageChange={noop}
         now={1700000200000}
         counts={NO_COUNTS}
-        onBulkApprove={noop}
+        onBulkContentStatus={noop}
         bulkPending={false}
       />,
     );
@@ -939,7 +939,7 @@ describe('SessionList: ONE bulk-approve primary, ruling A1 (DEC-825 amendment)',
         onPageChange={noop}
         now={1700000200000}
         counts={NO_COUNTS}
-        onBulkApprove={noop}
+        onBulkContentStatus={noop}
         bulkPending={false}
       />,
     );
@@ -971,7 +971,7 @@ describe('SessionList: ONE bulk-approve primary, ruling A1 (DEC-825 amendment)',
         onPageChange={noop}
         now={1700000200000}
         counts={NO_COUNTS}
-        onBulkApprove={noop}
+        onBulkContentStatus={noop}
         bulkPending={false}
       />,
     );
@@ -1000,12 +1000,12 @@ describe('SessionList: ONE bulk-approve primary, ruling A1 (DEC-825 amendment)',
         onPageChange={noop}
         now={1700000200000}
         counts={NO_COUNTS}
-        onBulkApprove={noop}
+        onBulkContentStatus={noop}
         bulkPending={false}
       />,
     );
 
-    expect(screen.getByText('Approving sends nothing · the speaker sees it in their portal')).toBeInTheDocument();
+    expect(screen.getByText('Sends nothing · the speaker sees it in their portal')).toBeInTheDocument();
   });
 });
 

@@ -19,19 +19,15 @@ export function isValidContentStatus(value: unknown): value is ContentStatus {
   return typeof value === "string" && (CONTENT_STATUSES as readonly string[]).includes(value);
 }
 
-// DEC-720 wave-53 amendment: `changes_requested` gets exactly one writer —
-// POST /api/v1/submissions/:id/content-note (src/routes/content-notes.ts),
-// which posts the thread note and mails the speakers. The two bare
-// content-status routes (files.ts, api/submissions.ts) must NOT be able to
-// write `changes_requested` with no note and no email, so they validate
-// against this narrower ROUTE predicate instead of `isValidContentStatus`
-// (the DB-VALUE predicate, which legitimately still accepts all three
-// values for updateContentStatus/updateContentStatuses).
-export const ROUTE_SETTABLE_CONTENT_STATUSES = ["pending", "approved"] as const;
-
-export function isRouteSettableContentStatus(value: unknown): value is "pending" | "approved" {
-  return typeof value === "string" && (ROUTE_SETTABLE_CONTENT_STATUSES as readonly string[]).includes(value);
-}
+// DEC-720 wave-32 amendment: the prior ROUTE_SETTABLE_CONTENT_STATUSES /
+// isRouteSettableContentStatus predicate refused `changes_requested` on the
+// two bare status doors (files.ts, api/submissions.ts), forcing every
+// transition into that state through POST .../content-note, which
+// unconditionally mails. That inverted DEC-009 ("status changes never
+// auto-email") for the one status that matters most at volume. Both routes
+// now validate against `isValidContentStatus` like updateContentStatus/
+// updateContentStatuses already do — this module still MUST NEVER import a
+// mailer, and that invariant now covers all three values uniformly.
 
 // DEC-713: the one status a speaker may still delete their own latest
 // version under — imported by the delete route rather than re-listing the

@@ -268,7 +268,7 @@ describe('ContentApp worklist bulk content-status (DEC-825 amendment)', () => {
     const callsBeforeBulk = submissionsMock.mock.calls.length;
 
     const bulkbar = screen.getByRole('toolbar', { name: 'Bulk content actions' });
-    expect(within(bulkbar).getByText('Approving sends nothing · the speaker sees it in their portal')).toBeInTheDocument();
+    expect(within(bulkbar).getByText('Sends nothing · the speaker sees it in their portal')).toBeInTheDocument();
     fireEvent.click(within(bulkbar).getByRole('button', { name: 'Approve 2' }));
 
     await waitFor(() => {

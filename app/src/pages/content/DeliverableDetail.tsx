@@ -286,23 +286,37 @@ export function DeliverableDetail({
     return result;
   }
 
-  // DEC-720: approval is the one status move that stays a silent flip —
-  // it asks nothing of the speaker, so it keeps using content-status
-  // directly rather than the mailer-carrying content-note endpoint.
-  async function handleApprove() {
+  // DEC-720 wave-32 amendment: content-status is a silent flip for ALL
+  // three values, not just 'approved' — the bare content-status endpoint
+  // never mails (files-content-status.ts MUST NEVER import a mailer). A
+  // deliberate note+email still goes through handleSendNote/content-note
+  // above; this is the separate, silent status-only move.
+  async function setContentStatus(status: ContentStatus) {
     const previous = pill;
     setStatusPending(true);
     setError(null);
-    setPill('approved');
+    setPill(status);
     try {
-      await apiPost(`/submissions/${submissionId}/content-status`, { contentStatus: 'approved' });
-      onContentStatusChange(submissionId, 'approved');
+      await apiPost(`/submissions/${submissionId}/content-status`, { contentStatus: status });
+      onContentStatusChange(submissionId, status);
     } catch (err) {
       setPill(previous);
       setError(err instanceof ApiError ? `Status update failed: ${err.message}` : 'Status update failed');
     } finally {
       setStatusPending(false);
     }
+  }
+
+  function handleApprove() {
+    return setContentStatus('approved');
+  }
+
+  function handleRequestChanges() {
+    return setContentStatus('changes_requested');
+  }
+
+  function handlePending() {
+    return setContentStatus('pending');
   }
 
   // w6-e (DEC-881): the band's status reads the SAME predicate the worklist
@@ -452,6 +466,30 @@ export function DeliverableDetail({
               onClick={() => void handleApprove()}
             >
               Approve
+            </button>
+          )}
+          {/* DEC-720 wave-32 amendment: 'changes_requested' is now reachable
+              here too, silently (no note, no mail) -- the deliberate
+              note+email path stays the CommentThread "Ask for changes"
+              composer below, which is a distinct action, not this one. */}
+          {pill !== 'changes_requested' && (
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              disabled={statusPending}
+              onClick={() => void handleRequestChanges()}
+            >
+              Request changes
+            </button>
+          )}
+          {pill !== 'pending' && (
+            <button
+              type="button"
+              className="chq-btn chq-btn-secondary"
+              disabled={statusPending}
+              onClick={() => void handlePending()}
+            >
+              Pending
             </button>
           )}
         </div>
