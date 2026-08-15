@@ -24,7 +24,7 @@ import { findAccountUserId } from "../../server/repo/comms";
 import { commitSubmissionDelete } from "../../server/repo/submission-delete";
 import { validateAnswers } from "../../forms/validate";
 import { makeVisibilityPredicate } from "../../forms/visibility";
-import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, SESSION_FORMAT_FIELD_ID, lockedFieldName } from "../../forms/types";
+import { LOCKED_SESSION_FIELDS, LOCKED_SPEAKER_FIELDS, lockedFieldName } from "../../forms/types";
 import {
   formWindowState,
   validateTrackChoice,
@@ -490,10 +490,11 @@ publicSubmitPostRoutes.post("/submit/:eventSlug", async (c) => {
   // persisted, no extra query. The track clause is looked up from the
   // offered-tracks list already in scope (joined in that list's own order,
   // ' · '-separated, for the rare multi-select case); the format clause is
-  // the SESSION_FORMAT_FIELD_ID answer's label verbatim (an option's raw
+  // the session_format-role field's answer label verbatim (an option's raw
   // value already carries its own "(N min)" suffix -- see FormatChoices).
   const selectedTrackNames = tracks.filter((t) => selectedTrackIds.includes(t.id)).map((t) => t.name);
-  const formatAnswer = cleaned[SESSION_FORMAT_FIELD_ID];
+  const formatField = fields.find((f) => f.role === "session_format");
+  const formatAnswer = formatField ? cleaned[formatField.id] : undefined;
   const formatLabel = typeof formatAnswer === "string" && formatAnswer.trim() !== "" ? formatAnswer : null;
   const metaParts = [
     selectedTrackNames.length > 0 ? selectedTrackNames.join(" · ") : null,

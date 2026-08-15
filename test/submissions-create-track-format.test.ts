@@ -5,10 +5,11 @@
 // dropped a trackIds field. This closes both gaps at the POST route: it now
 // accepts trackIds (validated exactly like PATCH /submissions/:id, DEC-598)
 // and format (validated against the event's default-form
-// SESSION_FORMAT_FIELD_ID options, DEC-592), and both are written through
-// the ONE existing writer (replaceSubmissionTracks / upsertSubmissionAnswers,
-// DEC-717) — never a second create-only writer. Also covers
-// findOrCreateContact's case-insensitive email match (DEC-755 3rd clause).
+// the event's default-form session_format-role field's options, DEC-592),
+// and both are written through the ONE existing writer (replaceSubmission-
+// Tracks / upsertSubmissionAnswers, DEC-717) — never a second create-only
+// writer. Also covers findOrCreateContact's case-insensitive email match
+// (DEC-755 3rd clause).
 //
 // Fake-db pattern (select-queue + insert/delete/update capture) mirrors
 // test/submission-tracks-patch.test.ts.
@@ -19,7 +20,10 @@ import { submissionsRoutes } from "../src/routes/api/submissions";
 import { registerErrorHandler } from "../src/server/http";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import * as schema from "../src/db/schema";
-import { SESSION_FORMAT_FIELD_ID } from "../src/forms/types";
+
+// Seed-local literal (DEC-592/DEC-755, wave 10 task w10-b) -- role is the
+// ONE matcher; the id itself is never a shared constant.
+const SESSION_FORMAT_FIELD_ID = "field_session_format";
 
 function makeChain(rows: unknown[]) {
   const chain: any = {
@@ -106,32 +110,14 @@ const EVENT_TRACKS = [
   { id: "t2", name: "Track Two" },
 ];
 
-const FORM_ROW = {
-  id: "form-1",
-  eventId: "event-1",
-  title: "Call for Papers",
-  description: null,
-  isDefault: true,
-  openDate: null,
-  closeDate: null,
-  tracksJson: null,
-  createdAt: new Date(1000),
-  updatedAt: new Date(1000),
-};
+// getFieldOptionsByRole (src/server/repo/form-roles.ts) — the ONE query
+// getFormatFieldOptions now delegates to — selects just optionsJson via a
+// formField/form join filtered on role.
+const FORMAT_OPTIONS_ROW = { optionsJson: JSON.stringify(["Talk", "Workshop"]) };
 
-const FORMAT_FIELD_ROW = {
-  id: SESSION_FORMAT_FIELD_ID,
-  formId: "form-1",
-  section: "session",
-  kind: "dropdown",
-  label: "Session format",
-  helpText: null,
-  required: true,
-  position: 2,
-  optionsJson: JSON.stringify(["Talk", "Workshop"]),
-  ruleJson: null,
-  locked: false,
-};
+// getEventFieldIdByRole (form-roles.ts) — the write-time resolver that
+// turns the role into the actual form_field id to upsert/delete against.
+const FORMAT_FIELD_ID_ROW = { id: SESSION_FORMAT_FIELD_ID };
 
 function detailRow(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -160,8 +146,8 @@ describe("POST /api/v1/events/:eventId/submissions — trackIds + format (DEC-75
     const { db, deletes, inserts } = fakeDb([
       [{ orgId: ORG_A }], // assertEventOwnership -> getEventOrgId
       EVENT_TRACKS, // parseTrackIdsField -> getEventTracks
-      [FORM_ROW], // parseFormatField -> getFormatFieldOptions -> findFormForEvent
-      [FORMAT_FIELD_ROW], // getFormatFieldOptions -> listFields
+      [FORMAT_OPTIONS_ROW], // parseFormatField -> getFormatFieldOptions -> getFieldOptionsByRole
+      [FORMAT_FIELD_ID_ROW], // writeFormatAnswer -> getEventFieldIdByRole
       [detailRow()], // getSubmissionDetail: submission+event
       [], // participants
       [{ trackId: "t1" }, { trackId: "t2" }], // tracks
@@ -231,8 +217,7 @@ describe("POST /api/v1/events/:eventId/submissions — trackIds + format (DEC-75
   it("400s a format value that isn't one of the field's options, never creating the submission", async () => {
     const { db, inserts } = fakeDb([
       [{ orgId: ORG_A }], // getEventOrgId
-      [FORM_ROW], // findFormForEvent
-      [FORMAT_FIELD_ROW], // listFields — "Bogus" isn't Talk/Workshop
+      [FORMAT_OPTIONS_ROW], // getFormatFieldOptions — "Bogus" isn't Talk/Workshop
     ]);
 
     const res = await appWithDbAndAuth(db, ORGANIZER_A).request(
@@ -251,7 +236,7 @@ describe("POST /api/v1/events/:eventId/submissions — trackIds + format (DEC-75
   it("400s a supplied format when the event's form has no session-format field", async () => {
     const { db } = fakeDb([
       [{ orgId: ORG_A }], // getEventOrgId
-      [], // findFormForEvent — no default form at all
+      [], // getFormatFieldOptions -> getFieldOptionsByRole — no such role on this event
     ]);
 
     const res = await appWithDbAndAuth(db, ORGANIZER_A).request(

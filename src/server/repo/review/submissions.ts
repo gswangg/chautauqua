@@ -7,7 +7,7 @@ import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef, parseRef } from "../../../domain/ids";
 import { chunkIds } from "../../../lib/chunk";
-import { SESSION_FORMAT_FIELD_ID, AUDIENCE_LEVEL_FIELD_ID } from "../../../forms/types";
+import { answerFieldRoleCondition } from "../form-roles";
 import { SCHEDULING_PARTICIPANT_STATUSES } from "../../../domain/acceptance";
 import { ApiError } from "../../http";
 import type { PlanRecord } from "./plans";
@@ -736,7 +736,7 @@ export async function listTrackNamesForSubmissions(db: Db, submissionIds: string
   return map;
 }
 
-/** DEC-857: batched SESSION_FORMAT_FIELD_ID answer lookup for the reviewer
+/** DEC-857: batched session_format-role answer lookup for the reviewer
  * queue -- ONE query per chunkIds batch (mirrors loadDurationMinBySubmission,
  * src/server/repo/agenda.ts:316-330), keyed to the caller's own submission id
  * set. The stored answer LABEL is returned verbatim (it already carries its
@@ -755,7 +755,7 @@ export async function listFormatLabelsBySubmission(db: Db, submissionIds: string
       .where(
         and(
           inArray(schema.submissionAnswer.submissionId, batch),
-          eq(schema.submissionAnswer.formFieldId, SESSION_FORMAT_FIELD_ID),
+          answerFieldRoleCondition("session_format"),
         ),
       );
     for (const row of rows) {
@@ -766,7 +766,7 @@ export async function listFormatLabelsBySubmission(db: Db, submissionIds: string
   return map;
 }
 
-/** DEC-857/DEC-986: batched AUDIENCE_LEVEL_FIELD_ID answer lookup for the
+/** DEC-857/DEC-986: batched audience_level-role answer lookup for the
  * reviewer queue AND the scorecard head -- exact twin of
  * listFormatLabelsBySubmission above (same chunkIds batching, ONE query per
  * chunk, keyed to the caller's own submission id set, never one query per
@@ -791,7 +791,7 @@ export async function listAudienceLevelLabelsBySubmission(
       .where(
         and(
           inArray(schema.submissionAnswer.submissionId, batch),
-          eq(schema.submissionAnswer.formFieldId, AUDIENCE_LEVEL_FIELD_ID),
+          answerFieldRoleCondition("audience_level"),
         ),
       );
     for (const row of rows) {

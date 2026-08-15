@@ -9,7 +9,7 @@ import { newId } from "../../domain/ids";
 import { chunkRowsForInsert } from "../../lib/chunk";
 import { submissionSeqSubquery } from "./submissions/seq";
 import { touchSubmissions } from "./submissions/touch";
-import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, AnswerMap } from "../../forms/types";
+import type { FormFieldDef, FormFieldKind, FormFieldSection, FormFieldRule, FormFieldRole, AnswerMap } from "../../forms/types";
 import { lockedFieldName, projectFieldForAnswers } from "../../forms/types";
 import { DEC_258, DEC_718 } from "../../decisions";
 
@@ -149,6 +149,11 @@ export async function getFormFields(db: Db, formId: string): Promise<FormFieldDe
       position: row.position,
       options: row.optionsJson ? (JSON.parse(row.optionsJson) as string[]) : undefined,
       rule: row.ruleJson ? (JSON.parse(row.ruleJson) as FormFieldRule) : undefined,
+      // DEC-592/DEC-755 (wave 10, task w10-b): role is the ONE matcher for
+      // the two well-known CFP fields -- must ride along here so callers
+      // (submit-post.tsx, submit-views.tsx) can resolve them by role instead
+      // of a literal id.
+      role: (row.role as FormFieldRole | null) ?? null,
     }),
   );
 }
@@ -376,6 +381,21 @@ export async function upsertSubmissionAnswers(
         set: { valueJson: sql`excluded.value_json`, updatedAt: now },
       });
   }
+}
+
+/** DEC-755 amendment (wave 10, task w10-b): deletes a single submission_answer
+ * row by (submissionId, formFieldId) — the counterpart to upsertSubmissionAnswers
+ * for a caller that wants to CLEAR a field's answer (e.g. PATCH {format:null})
+ * rather than write a value. A no-op when no such row exists. */
+export async function deleteSubmissionAnswer(db: Db, submissionId: string, formFieldId: string): Promise<void> {
+  await db
+    .delete(schema.submissionAnswer)
+    .where(
+      and(
+        eq(schema.submissionAnswer.submissionId, submissionId),
+        eq(schema.submissionAnswer.formFieldId, formFieldId),
+      ),
+    );
 }
 
 export interface InsertAttachmentFileInput {

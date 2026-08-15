@@ -4,7 +4,7 @@
 import { and, asc, eq } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
-import { SESSION_FORMAT_FIELD_ID } from "../../../forms/types";
+import { getFieldOptionsByRole } from "../form-roles";
 
 export interface PublicEvent {
   id: string;
@@ -114,20 +114,11 @@ export async function getPublicRooms(db: Db, eventId: string): Promise<PublicRoo
   return rows;
 }
 
-/** DEC-774: the event's default-form SESSION_FORMAT_FIELD_ID dropdown
- * options, for the sessions surface's format-filter chips. Mirrors
- * getFormatFieldOptions (src/server/repo/forms.ts) but as a single joined
- * query (public repo layer avoids the two-query admin helper) — returns []
- * when the event has no default form or the form has no format field. */
+/** DEC-774: the event's default-form session_format-role dropdown options,
+ * for the sessions surface's format-filter chips. Mirrors
+ * getFormatFieldOptions (src/server/repo/forms.ts) — both delegate to
+ * getFieldOptionsByRole (src/server/repo/form-roles.ts) — returns [] when
+ * the event has no default form or the form has no format field. */
 export async function getPublicFormatOptions(db: Db, eventId: string): Promise<string[]> {
-  const rows = await db
-    .select({ optionsJson: schema.formField.optionsJson })
-    .from(schema.formField)
-    .innerJoin(schema.form, and(eq(schema.formField.formId, schema.form.id), eq(schema.form.isDefault, true)))
-    .where(and(eq(schema.form.eventId, eventId), eq(schema.formField.id, SESSION_FORMAT_FIELD_ID)))
-    .limit(1);
-  const row = rows[0];
-  if (!row || !row.optionsJson) return [];
-  const parsed: unknown = JSON.parse(row.optionsJson);
-  return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
+  return (await getFieldOptionsByRole(db, eventId, "session_format")) ?? [];
 }

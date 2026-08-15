@@ -11,7 +11,7 @@ import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
 import { chunkIds } from "../../../lib/chunk";
 import { DEC_258 } from "../../../decisions";
-import { SESSION_FORMAT_FIELD_ID } from "../../../forms/types";
+import { answerFieldRoleCondition } from "../form-roles";
 import { likeContains } from "../like";
 import { visibleParticipantConditions, visibleSessionConditions, slotWithinEventRange } from "./gates";
 import type { PublicEvent, PublicTrack } from "./event";
@@ -50,7 +50,7 @@ export interface PublicSession {
   startMin: number | null;
   endMin: number | null;
   roomName: string | null;
-  // EMB-01/EMB-08: the submission's answer to the SESSION_FORMAT_FIELD_ID
+  // EMB-01/EMB-08: the submission's answer to the session_format-role
   // dropdown, when the event's form has that field and an answer was given.
   // null when either is absent — cards/detail render nothing (never a
   // labelled blank) in that case.
@@ -75,14 +75,14 @@ export function searchCondition(q: string) {
 }
 
 /** DEC-774: format-filter predicate — an EXISTS on submission_answer for
- * the event's SESSION_FORMAT_FIELD_ID with an exact value match (valueJson
- * is the JSON-encoded answer, so the compare is against JSON.stringify of
- * the requested format — never a substring/LIKE match). Added directly to
- * baseConditions (shared by every trackId/day branch below) rather than a
- * new join, so it composes with every existing branch without multiplying
- * them. */
+ * the role-tagged session_format field (form_field.role, DEC-592/DEC-755)
+ * with an exact value match (valueJson is the JSON-encoded answer, so the
+ * compare is against JSON.stringify of the requested format — never a
+ * substring/LIKE match). Added directly to baseConditions (shared by every
+ * trackId/day branch below) rather than a new join, so it composes with
+ * every existing branch without multiplying them. */
 export function formatFilterCondition(format: string) {
-  return sql`EXISTS (SELECT 1 FROM ${schema.submissionAnswer} WHERE ${schema.submissionAnswer.submissionId} = ${schema.submission.id} AND ${schema.submissionAnswer.formFieldId} = ${SESSION_FORMAT_FIELD_ID} AND ${schema.submissionAnswer.valueJson} = ${JSON.stringify(format)})`;
+  return sql`EXISTS (SELECT 1 FROM ${schema.submissionAnswer} INNER JOIN ${schema.formField} ON ${schema.formField.id} = ${schema.submissionAnswer.formFieldId} WHERE ${schema.submissionAnswer.submissionId} = ${schema.submission.id} AND ${schema.formField.role} = ${"session_format"} AND ${schema.submissionAnswer.valueJson} = ${JSON.stringify(format)})`;
 }
 
 /** DEC-774: room-filter predicate — an EXISTS on schedule_slot for the
@@ -476,7 +476,7 @@ export async function hydrateSessions(
       .where(
         and(
           inArray(schema.submissionAnswer.submissionId, batch),
-          eq(schema.submissionAnswer.formFieldId, SESSION_FORMAT_FIELD_ID),
+          answerFieldRoleCondition("session_format"),
         ),
       );
     formatRows.push(...batchRows);

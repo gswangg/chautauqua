@@ -13,7 +13,7 @@ import * as schema from "../../../db/schema";
 import { formWindowState } from "../../../lib/submit-core";
 import { isHubVisible, type HubEvent } from "../../../lib/home-hub";
 import { visibleSessionConditions } from "./gates";
-import { SESSION_FORMAT_FIELD_ID } from "../../../forms/types";
+import { answerFieldRoleCondition } from "../form-roles";
 
 /** DEC-522: event.start_date/end_date are DAY LABELS ('YYYY-MM-DD'), not
  * instants — parsed here as UTC midnight of that calendar day, the same
@@ -138,7 +138,7 @@ export async function listHubEvents(db: Db, orgId: string, nowMs: number): Promi
           .where(
             and(
               inArray(schema.submission.eventId, visibleEventIds),
-              eq(schema.submissionAnswer.formFieldId, SESSION_FORMAT_FIELD_ID),
+              answerFieldRoleCondition("session_format"),
               visibleSessionConditions(),
             ),
           )

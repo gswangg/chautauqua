@@ -7,12 +7,7 @@ import { apiGet, apiList, apiPatch, apiPost, apiDelete, ApiError } from '../../l
 import { formatDate as formatTimestamp, formatDateTime, epochDayIndex } from '../../lib/dates';
 import { formatEventDate } from '../../../../src/lib/event-time';
 import { formatScore } from '../../../../src/domain/score-copy';
-import {
-  SESSION_FORMAT_FIELD_ID,
-  AUDIENCE_LEVEL_FIELD_ID,
-  LOCKED_TITLE_MAX_LENGTH,
-  LOCKED_ABSTRACT_MAX_LENGTH,
-} from '../../../../src/forms/types';
+import { LOCKED_TITLE_MAX_LENGTH, LOCKED_ABSTRACT_MAX_LENGTH } from '../../../../src/forms/types';
 import { sessionFormatLabel } from '../../../../src/lib/session-vocabulary';
 import type { CfpForm } from '../forms/types';
 import { buildAnswerRows, resolveAnswerFields } from './detailRows';
@@ -620,11 +615,15 @@ export function SubmissionDetailPage() {
   // validation, no second writer.
   async function changeFormat(value: string) {
     if (!detail || !id || !value) return;
+    // DEC-592/DEC-755 (wave 10, task w10-b): role, not a global-PK literal
+    // id, is the ONE matcher for the event's session-format field.
+    const fieldId = form?.fields.find((f) => f.role === 'session_format')?.id;
+    if (!fieldId) return;
     const previous = detail;
     setFormatPending(true);
     setFormatError(null);
     setFormatFieldErrors({});
-    setDetail({ ...detail, answers: { ...detail.answers, [SESSION_FORMAT_FIELD_ID]: value } });
+    setDetail({ ...detail, answers: { ...detail.answers, [fieldId]: value } });
     try {
       const updated = await apiPatch<SubmissionDetail>(`/submissions/${id}`, { format: value });
       setDetail(updated);
@@ -648,11 +647,15 @@ export function SubmissionDetailPage() {
   // uses -- no second write pattern.
   async function changeAudienceLevel(value: string) {
     if (!detail || !id || !value) return;
+    // DEC-900/DEC-592 (wave 10, task w10-b): same role-matched resolution as
+    // changeFormat above.
+    const fieldId = form?.fields.find((f) => f.role === 'audience_level')?.id;
+    if (!fieldId) return;
     const previous = detail;
     setAudienceLevelPending(true);
     setAudienceLevelError(null);
     setAudienceLevelFieldErrors({});
-    setDetail({ ...detail, answers: { ...detail.answers, [AUDIENCE_LEVEL_FIELD_ID]: value } });
+    setDetail({ ...detail, answers: { ...detail.answers, [fieldId]: value } });
     try {
       const updated = await apiPatch<SubmissionDetail>(`/submissions/${id}`, { audienceLevel: value });
       setDetail(updated);
@@ -889,12 +892,24 @@ export function SubmissionDetailPage() {
 
   const trackNames = detail.trackIds.map((trackId) => tracks.find((t) => t.id === trackId)?.name ?? trackId);
   const answerRows = buildAnswerRows(detail.answers, resolveAnswerFields(form, detail.formId), detail.answerFiles);
+  // DEC-780/DEC-592 (wave 10, task w10-b): the event default form's own
+  // session-format field, matched by role (not a global-PK literal id) --
+  // the same field the PATCH route validates format against.
+  const formatField = form?.fields.find((f) => f.role === 'session_format');
+  const currentFormat =
+    formatField && typeof detail.answers[formatField.id] === 'string' ? (detail.answers[formatField.id] as string) : '';
+  // DEC-900 (wave 25 amendment)/DEC-592: the SAME imported form-field list
+  // formatField is resolved from, matched on the event's own audience-level
+  // field via role -- never a second hand-typed field list.
+  const audienceField = form?.fields.find((f) => f.role === 'audience_level');
+  const currentAudienceLevel =
+    audienceField && typeof detail.answers[audienceField.id] === 'string'
+      ? (detail.answers[audienceField.id] as string)
+      : '';
   // DEC-908 eyebrow: track names joined ' · ' plus the session format,
   // either half omitted when absent, the whole line omitted when both are.
   const eyebrowTrackNames = trackNames.join(' · ');
-  const eyebrowFormat = typeof detail.answers[SESSION_FORMAT_FIELD_ID] === 'string'
-    ? sessionFormatLabel((detail.answers[SESSION_FORMAT_FIELD_ID] as string).trim())
-    : '';
+  const eyebrowFormat = currentFormat !== '' ? sessionFormatLabel(currentFormat.trim()) : '';
   const eyebrowParts = [eyebrowTrackNames, eyebrowFormat].filter((part) => part !== '');
   const eyebrowText = eyebrowParts.length > 0 ? eyebrowParts.join(' · ') : null;
   // Speaker card: the named 'speaker' role participant, falling back to the
@@ -912,20 +927,6 @@ export function SubmissionDetailPage() {
   // timestamp that is truthful for every decided status -- acceptedAt only
   // ever fires for the FIRST accept transition.
   const decidedLabel = decidedStatus ? decidedDateLabel(detail.updatedAt, eventTimeZone) : null;
-  // DEC-780: the event default form's own SESSION_FORMAT field, matched by
-  // its stable id (not a label heuristic) -- the same field the PATCH route
-  // validates format against.
-  const formatField = form?.fields.find((f) => f.id === SESSION_FORMAT_FIELD_ID);
-  const currentFormat = typeof detail.answers[SESSION_FORMAT_FIELD_ID] === 'string'
-    ? (detail.answers[SESSION_FORMAT_FIELD_ID] as string)
-    : '';
-  // DEC-900 (wave 25 amendment): the SAME imported form-field list
-  // formatField is resolved from, matched on the event's own audience-level
-  // field -- never a second hand-typed field list.
-  const audienceField = form?.fields.find((f) => f.id === AUDIENCE_LEVEL_FIELD_ID);
-  const currentAudienceLevel = typeof detail.answers[AUDIENCE_LEVEL_FIELD_ID] === 'string'
-    ? (detail.answers[AUDIENCE_LEVEL_FIELD_ID] as string)
-    : '';
 
   return (
     <div className="chq-page chq-detail-page chq-measure-wide">

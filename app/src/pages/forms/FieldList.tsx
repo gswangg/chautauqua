@@ -7,15 +7,17 @@ import { kindLabel, type EventTrack, type FormField } from './types';
 // builder's captions can never drift from the rule that actually enforces
 // them -- e.g. the Abstract caption below always names the REAL
 // MAX_LONG_TEXT_LENGTH, never a hand-copied number.
-import { lockedFieldName, SESSION_FORMAT_FIELD_ID, LOCKED_ABSTRACT_MAX_LENGTH } from '../../../../src/forms/types';
+import { lockedFieldName, LOCKED_ABSTRACT_MAX_LENGTH } from '../../../../src/forms/types';
 import { MAX_LONG_TEXT_LENGTH } from '../../../../src/forms/validate';
 import { countOf } from '../../lib/plural';
+import type { FormFieldRole } from './types';
 
-// DEC-592/DEC-762: the ONE id for the seeded session-format field is the
-// SAME id the API/seed use, so the builder's "Format" display label is
-// derived from that id once here rather than sprinkled per label string.
-const DISPLAY_LABEL_OVERRIDES: Record<string, string> = {
-  [SESSION_FORMAT_FIELD_ID]: 'Format',
+// DEC-592/DEC-762/DEC-755 (wave 10, task w10-b): the builder's "Format"
+// display label is keyed on the field's role (form_field.role), not its id
+// -- role is the ONE matcher for the two well-known CFP fields, an event's
+// session-format field can carry any id.
+const DISPLAY_LABEL_OVERRIDES: Partial<Record<FormFieldRole, string>> = {
+  session_format: 'Format',
 };
 
 /** Thousands-grouped integer, e.g. 20000 -> "20,000". A plain regex rather
@@ -194,7 +196,7 @@ function buildRows(fields: FormField[], tracks: EventTrack[]): DisplayRow[] {
     rows.push({
       key: field.id,
       field,
-      label: DISPLAY_LABEL_OVERRIDES[field.id] ?? field.label,
+      label: (field.role && DISPLAY_LABEL_OVERRIDES[field.role]) ?? field.label,
       caption: field.helpText || optionCountCaption(field) || longTextCapCaption(field),
       condition: field.rule ? describeCondition(field.rule, fieldsById) : undefined,
       kindText: kindLabel(field.kind),
