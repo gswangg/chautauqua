@@ -11,6 +11,7 @@ import {
 import { DateField } from '../../components/DateField';
 import { FormRow, ModalFrame } from '../../components/ModalFrame';
 import { dateInputToMs, msToDateInput } from '../../lib/dates';
+import { ApiError } from '../../lib/api';
 // The instructions textarea reads the SAME cap the server enforces
 // (src/routes/tasks.ts's parseInstructions) so the control can never drift
 // from the rule that actually validates it.
@@ -93,6 +94,12 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = nul
   const [deliverableKind, setDeliverableKind] = useState<DeliverableKind>(DELIVERABLE_KINDS[0]!);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // DEC-958: mirrors RosterPanel/EventSettingsPanel -- when the server
+  // refuses with a fields map (src/routes/tasks.ts: kind / title /
+  // description / dueDate / required / formId), each named control gets
+  // its own message via FormRow's `error` prop instead of collapsing the
+  // whole map into the single top-of-form sentence.
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Defaults to the first form in the (default-first, per DEC-398) list, and
   // re-syncs if the previously-selected id falls out of the list (e.g. the
@@ -120,6 +127,7 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = nul
     }
     setSubmitting(true);
     setError(null);
+    setFieldErrors({});
     try {
       await onSubmit({
         kind,
@@ -131,7 +139,11 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = nul
         deliverableKind: !isEdit && kind === 'file_request' ? deliverableKind : undefined,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : isEdit ? 'Failed to save task' : 'Failed to create task');
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        setFieldErrors(err.fields);
+      } else {
+        setError(err instanceof Error ? err.message : isEdit ? 'Failed to save task' : 'Failed to create task');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -169,7 +181,7 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = nul
     >
       {error && <div className="chq-error">{error}</div>}
 
-        <FormRow label="Task" htmlFor="task-title">
+        <FormRow label="Task" htmlFor="task-title" error={fieldErrors.title}>
           <input
             id="task-title"
             className="chq-input"
@@ -181,7 +193,7 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = nul
           />
         </FormRow>
 
-        <FormRow label="Instructions" htmlFor="task-instructions" optional>
+        <FormRow label="Instructions" htmlFor="task-instructions" optional error={fieldErrors.description}>
           <textarea
             id="task-instructions"
             className="chq-textarea"
@@ -193,7 +205,7 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = nul
           />
         </FormRow>
 
-        <FormRow label="Due date" htmlFor="task-due-date" optional>
+        <FormRow label="Due date" htmlFor="task-due-date" optional error={fieldErrors.dueDate}>
           <DateField id="task-due-date" value={dueDate} onChange={setDueDate} />
         </FormRow>
 
@@ -224,6 +236,11 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = nul
                 </button>
               ))}
             </div>
+            {fieldErrors.kind ? (
+              <span role="alert" className="chq-form-row-error">
+                {fieldErrors.kind}
+              </span>
+            ) : null}
           </div>
         )}
 
@@ -231,6 +248,7 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = nul
           <FormRow
             label="Form"
             htmlFor="task-form"
+            error={fieldErrors.formId}
             help={
               forms.length === 0
                 ? 'This event has no forms yet. Add a form before creating a form task.'
@@ -278,6 +296,11 @@ export function TaskModal({ onCancel, onSubmit, forms, acceptedCount, task = nul
           <input className="chq-check" type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
           Required
         </label>
+        {fieldErrors.required ? (
+          <span role="alert" className="chq-form-row-error">
+            {fieldErrors.required}
+          </span>
+        ) : null}
     </ModalFrame>
   );
 }
