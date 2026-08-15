@@ -613,11 +613,6 @@
   color: var(--chq-muted);
 }
 
-.chq-contacts-merge-footnote {
-  font-size: 13px;
-  color: var(--chq-muted);
-}
-
 /* DEC-992 amendment (wave 4): the ONE combine-rule statement, in a tinted
    box above the compare table -- replaces the loose trailing footnote
    paragraphs (two of which used to end with the same clause). */
