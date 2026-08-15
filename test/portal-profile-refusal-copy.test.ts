@@ -1,16 +1,15 @@
-// DEC-422: POST /portal/profile had no length bound on any of its
-// free-text fields — an unbounded bio/title/company/social-link write could
-// hit SQLITE_TOOBIG as a 500. Every field is now capped at MAX_TEXT_LENGTH
-// (bio at MAX_LONG_TEXT_LENGTH) and checked BEFORE updateContactProfile, so
-// an over-cap value re-renders <ProfilePage ... error=... /> at 400 naming
-// the offending field and never reaches the repo call. Mirrors the
-// vi.mock/buildApp pattern in test/portal-profile-headshot-notice.test.ts.
+// w57-e: the portal profile refusal used to print the raw request-body key
+// ("twitter is too long.") with no overage figure and no form-label
+// vocabulary. It now names the <label> text the speaker actually sees and
+// says how far over the cap they are, via countOf (src/domain/count-copy.ts)
+// -- never a hand-spelled "character(s)". Mirrors the vi.mock/buildApp
+// pattern in test/portal-profile-limits.test.ts.
 
 import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import type { AppEnv, AuthInfo } from "../src/server/env";
 import { registerErrorHandler } from "../src/server/http";
-import { MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../src/forms/validate";
+import { MAX_LONG_TEXT_LENGTH } from "../src/forms/validate";
 import type { ContactProfile } from "../src/server/repo/profile";
 
 const BASE_PROFILE: ContactProfile = {
@@ -69,60 +68,55 @@ function postProfile(app: Hono<AppEnv>, fields: Record<string, string>) {
   form.set("firstName", "Jane");
   form.set("lastName", "Doe");
   for (const [key, value] of Object.entries(fields)) form.set(key, value);
-  return app.request(
-    "/portal/profile",
-    {
-      method: "POST",
-      headers: {
-        "content-type": "application/x-www-form-urlencoded",
-        cookie: "chq_csrf=test-csrf-token",
-      },
-      body: form.toString(),
+  return app.request("/portal/profile", {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded",
+      cookie: "chq_csrf=test-csrf-token",
     },
-  );
+    body: form.toString(),
+  });
 }
 
-describe("POST /portal/profile — DEC-422 field caps", () => {
-  it("rejects an over-cap bio with 400, names the field, and never calls updateContactProfile", async () => {
+describe("POST /portal/profile refusal copy (w57-e)", () => {
+  it("a bio one character over the cap re-renders 400 with the typed name/bio prefix and 'Bio is 1 character over the limit.'", async () => {
     currentProfile = BASE_PROFILE;
     updateContactProfileMock.mockClear();
     const app = buildApp();
-    const res = await postProfile(app, { bio: "x".repeat(MAX_LONG_TEXT_LENGTH + 1) });
+    const bio = "x".repeat(MAX_LONG_TEXT_LENGTH + 1);
+    const res = await postProfile(app, { firstName: "Ada", lastName: "Lovelace", bio });
 
     expect(res.status).toBe(400);
     const html = await res.text();
-    expect(html).toContain("Bio is 1 character over the limit.");
+    expect(html).toContain("Bio is 1 character over the limit. Nothing else was saved.");
+    expect(html).toContain("Ada");
+    expect(html).toContain("Lovelace");
+    expect(html).toContain(bio.slice(0, 50));
     expect(updateContactProfileMock).not.toHaveBeenCalled();
   });
 
-  it("rejects an over-cap social link (twitter) with 400 and never calls updateContactProfile", async () => {
-    currentProfile = BASE_PROFILE;
-    updateContactProfileMock.mockClear();
-    const app = buildApp();
-    const res = await postProfile(app, { twitter: "x".repeat(MAX_TEXT_LENGTH + 1) });
-
-    expect(res.status).toBe(400);
-    const html = await res.text();
-    expect(html).toContain("Twitter is 1 character over the limit.");
-    expect(updateContactProfileMock).not.toHaveBeenCalled();
-  });
-
-  it("saves successfully when bio and social links are exactly at their caps", async () => {
+  it("a bio exactly at the cap saves and redirects 302 to /portal/profile?saved=1", async () => {
     currentProfile = BASE_PROFILE;
     updateContactProfileMock.mockClear();
     const app = buildApp();
     const bio = "x".repeat(MAX_LONG_TEXT_LENGTH);
-    const twitter = "y".repeat(MAX_TEXT_LENGTH);
-    const res = await postProfile(app, { bio, twitter });
+    const res = await postProfile(app, { bio });
 
-    // DEC-574: a successful save is a PRG redirect carrying ?saved=1, not an
-    // inline 200 — no headshot part here, so no &headshot=1.
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe("/portal/profile?saved=1");
     expect(updateContactProfileMock).toHaveBeenCalledTimes(1);
-    const callArgs = updateContactProfileMock.mock.calls[0]!;
-    const payload = callArgs[2] as { bio: string | null; socialLinks: { twitter: string } };
-    expect(payload.bio).toBe(bio);
-    expect(payload.socialLinks.twitter).toBe(twitter);
+  });
+
+  it("a 3-character overage says '3 characters over'", async () => {
+    currentProfile = BASE_PROFILE;
+    updateContactProfileMock.mockClear();
+    const app = buildApp();
+    const bio = "x".repeat(MAX_LONG_TEXT_LENGTH + 3);
+    const res = await postProfile(app, { bio });
+
+    expect(res.status).toBe(400);
+    const html = await res.text();
+    expect(html).toContain("3 characters over");
+    expect(updateContactProfileMock).not.toHaveBeenCalled();
   });
 });
