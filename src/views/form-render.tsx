@@ -98,10 +98,6 @@ function FieldControl(props: { field: FormFieldDef; value: unknown; error?: stri
         />
       );
     case "number":
-      // NOTE (w1-a): validate.ts's number branch does NOT read field.maximum
-      // (no writer stamps it for number-kind fields either) -- this `max`
-      // attribute is progressive-enhancement only, not backed by a server
-      // check. Wiring that up is out of scope for this task.
       return (
         <input
           type="number"
@@ -112,7 +108,6 @@ function FieldControl(props: { field: FormFieldDef; value: unknown; error?: stri
           value={typeof value === "number" ? String(value) : ""}
           required={field.required}
           data-required={field.required ? "true" : "false"}
-          max={field.maximum !== undefined ? field.maximum : undefined}
         />
       );
     case "file":

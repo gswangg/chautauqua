@@ -18,6 +18,7 @@ import {
 } from './types';
 import { FormRow, ModalFrame } from '../../components/ModalFrame';
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from '../../lib/text-caps';
+import { MAX_FIELD_OPTIONS } from '../../lib/batch-caps';
 
 export interface FieldModalInput {
   section: FormFieldSection;
@@ -93,6 +94,10 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
       .filter((o) => o.length > 0);
     if (kind === 'dropdown' && options.length === 0) {
       setError(`${FIELD_KIND_LABELS.dropdown} fields need at least one option.`);
+      return;
+    }
+    if (kind === 'dropdown' && options.length > MAX_FIELD_OPTIONS) {
+      setError(`Max ${MAX_FIELD_OPTIONS} options`);
       return;
     }
 
@@ -201,6 +206,9 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
               onChange={(e) => setOptionsText(e.target.value)}
               placeholder={'Beginner\nIntermediate\nAdvanced'}
             />
+            <p className="chq-meta">
+              {optionsText.split('\n').filter((o) => o.trim().length > 0).length} of {MAX_FIELD_OPTIONS} options
+            </p>
           </FormRow>
         )}
 

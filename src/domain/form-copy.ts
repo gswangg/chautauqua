@@ -10,3 +10,9 @@ export const OPTIONAL_SUFFIX = " · optional";
 // control can import and print it (a route/repo module the SPA cannot
 // import can never disclose a cap it enforces).
 export const MAX_FORM_FIELDS = 200;
+
+// w2-c: dropdown option COUNT ceiling (each option was already capped at
+// MAX_NAME_LENGTH, but the array itself was unbounded) -- also doubles as
+// the cardinality cap for a text/long_text trigger's 'in' rule.value array,
+// both of which end up rendered/serialized on the public CFP.
+export const MAX_FIELD_OPTIONS = 50;
