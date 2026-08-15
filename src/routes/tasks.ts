@@ -152,21 +152,62 @@ function asRecord(body: unknown): Record<string, unknown> {
 /** DEC-340: parses the onboarding grid's page/perPage/q/taskId/status/
  * overdueOnly query params, mirroring parseListQuery's page/perPage
  * defaults (DEC-013). Clamp rule per DEC-480 delegated to
- * clampPage/clampPerPage in src/lib/pagination.ts -- no local copy. */
-function parseOnboardingGridQuery(raw: Record<string, string | undefined>, now: number) {
+ * clampPage/clampPerPage in src/lib/pagination.ts -- no local copy.
+ *
+ * DEC-340 amendment (wave 18): absent/empty stays null/false (no filter,
+ * unchanged); a PRESENT-but-unrecognised token now fails loudly with a 400
+ * instead of silently degrading to "no filter" -- matching the sibling
+ * refusal shapes in files.ts (Unknown kind) and the submissions list
+ * (DEC-843). Every offending param is accumulated into one fields map
+ * (the accumulate-then-throw shape src/routes/api/breaks.ts uses) so a
+ * request with two bad tokens names both in a single error. */
+export function parseOnboardingGridQuery(raw: Record<string, string | undefined>, now: number) {
   const page = clampPage(raw.page);
   const perPage = clampPerPage(raw.perPage);
 
+  const fields: Record<string, string> = {};
+
   const q = raw.q && raw.q.trim().length > 0 ? raw.q.trim() : null;
   const taskId = raw.taskId && raw.taskId.trim().length > 0 ? raw.taskId.trim() : null;
-  const status: "pending" | "complete" | null =
-    raw.status === "pending" || raw.status === "complete" ? raw.status : null;
-  const overdueOnly = raw.overdueOnly === "1" || raw.overdueOnly === "true";
+
+  let status: "pending" | "complete" | null = null;
+  if (raw.status !== undefined && raw.status !== "") {
+    if (raw.status === "pending" || raw.status === "complete") {
+      status = raw.status;
+    } else {
+      fields.status = "Must be one of 'pending', 'complete'";
+    }
+  }
+
+  let overdueOnly = false;
+  if (raw.overdueOnly !== undefined && raw.overdueOnly !== "") {
+    if (raw.overdueOnly === "1" || raw.overdueOnly === "true") {
+      overdueOnly = true;
+    } else if (raw.overdueOnly === "0" || raw.overdueOnly === "false") {
+      overdueOnly = false;
+    } else {
+      fields.overdueOnly = "Must be one of '1', 'true', '0', 'false'";
+    }
+  }
+
   // DEC-789: closed set, mirroring the participant.invite_status column.
-  const inviteStatus: "none" | "invited" | "accepted" | "declined" | null =
-    raw.inviteStatus === "none" || raw.inviteStatus === "invited" || raw.inviteStatus === "accepted" || raw.inviteStatus === "declined"
-      ? raw.inviteStatus
-      : null;
+  let inviteStatus: "none" | "invited" | "accepted" | "declined" | null = null;
+  if (raw.inviteStatus !== undefined && raw.inviteStatus !== "") {
+    if (
+      raw.inviteStatus === "none" ||
+      raw.inviteStatus === "invited" ||
+      raw.inviteStatus === "accepted" ||
+      raw.inviteStatus === "declined"
+    ) {
+      inviteStatus = raw.inviteStatus;
+    } else {
+      fields.inviteStatus = "Must be one of 'none', 'invited', 'accepted', 'declined'";
+    }
+  }
+
+  if (Object.keys(fields).length > 0) {
+    throw new ApiError("invalid", "Invalid onboarding grid filter", fields);
+  }
 
   return { page, perPage, q, taskId, status, overdueOnly, inviteStatus, now };
 }
