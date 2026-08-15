@@ -506,6 +506,7 @@ export async function remindNow(
     assignments: outstanding.map(toReminderAssignment),
     now: now.getTime(),
     eventEndsAt: null,
+    timeZone: eventTimezone,
   });
   if (plan.groups.length === 0) {
     return { sent: 0, failed: [], skipped: chosen.skipped, remaining: chosen.remaining };
@@ -571,6 +572,7 @@ export async function previewRemindNow(
     assignments: outstanding.map(toReminderAssignment),
     now: now.getTime(),
     eventEndsAt: null,
+    timeZone: eventTimezone,
   });
 
   // DEC-530/DEC-397: batched account lookup, then a preview never mints a
@@ -634,6 +636,8 @@ export async function previewRemindNow(
  * contactId ascending, limited to `max` so a later tick's cap starts from
  * the next slice (DEC-535 capById convention) rather than repeating the
  * same head of the set forever. */
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
 export async function listDueReminderContactIds(
   db: Db,
   eventId: string,
@@ -641,8 +645,20 @@ export async function listDueReminderContactIds(
 ): Promise<string[]> {
   const graceMs = ASSIGNED_LATE_GRACE_DAYS * 24 * 60 * 60 * 1000;
   const effectiveDueDate = sql`(case when ${schema.task.dueDate} >= ${schema.taskAssignment.createdAt} then ${schema.task.dueDate} else ${schema.taskAssignment.createdAt} + ${graceMs} end)`;
-  const windowStart = opts.now - REMINDER_OVERDUE_TAIL_MS;
-  const windowEnd = opts.now + DUE_WINDOW_MS;
+  // wave-61 amendment (DEC-023): slack on both ends. The authoritative gate
+  // (isReminderDue, via planReminders) now expands dueDate through
+  // dayLabelEndInstant(dueDate, timeZone) before comparing. Measured against
+  // dayLabelEndInstant directly: for America/Los_Angeles (UTC-8/-7) that gap
+  // is ~31-32h, not <=24h — a single ONE_DAY_MS of slack provably fails to
+  // be a superset (verified: a dueDate ~27h before now-TAIL is still
+  // accepted by isReminderDue for an LA event, but sits outside a
+  // one-day-widened window). The true max gap across real IANA offsets
+  // (UTC-12..UTC+14) is ~36h, so TWO_DAY_MS of slack on each side is used
+  // instead, with headroom. This function's own doc above already declares
+  // it is a COARSE SUPERSET bound, not the verdict.
+  const TWO_DAY_MS = 2 * ONE_DAY_MS;
+  const windowStart = opts.now - REMINDER_OVERDUE_TAIL_MS - TWO_DAY_MS;
+  const windowEnd = opts.now + DUE_WINDOW_MS + TWO_DAY_MS;
   const dedupeCutoff = opts.now - DEDUPE_WINDOW_MS;
   const lastRemindedMax = sql`max(${schema.taskAssignment.lastRemindedAt})`;
 
@@ -702,10 +718,13 @@ export async function sendDueRemindersForEvent(
   // gets reminded past the event it belongs to.
   const eventEndsAt = zonedMinutesToUtc(eventEndDate, 24 * 60, eventTimezone).getTime();
 
+  if (!eventTimezone) throw new Error(`no event timezone resolved for eventId ${eventId}`);
+
   const plan = planReminders({
     assignments: outstanding.map(toReminderAssignment),
     now: now.getTime(),
     eventEndsAt,
+    timeZone: eventTimezone,
   });
   if (plan.groups.length === 0) return 0;
 
