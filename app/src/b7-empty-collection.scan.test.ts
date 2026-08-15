@@ -98,15 +98,10 @@ const ALLOWLIST: Record<string, { count: number; reason: string }> = {
     reason:
       "the saved-segments list's zero-row state is a genuine DEC-678 violation, outside w52-d's scope; left for a future wave.",
   },
-  'pages/content/VersionList.tsx': {
+  'pages/speakers/SpeakerDetailPage.tsx': {
     count: 1,
     reason:
-      "the file-versions list's zero-row state is a genuine DEC-678 violation, outside w52-d's scope; left for a future wave.",
-  },
-  'pages/speakers/SpeakerDetailPage.tsx': {
-    count: 5,
-    reason:
-      'sessions/tasks/files/other-events zero-row collections plus the (non-collection) notes field -- the collection cases are genuine DEC-678 violations outside w52-d\'s scope; left for a future wave.',
+      "the notes field's 'No notes.' line is the one surviving non-collection site -- a single field's absent value, not a zero-row collection; sessions/tasks/files/other-events all converted to EmptyState on w55-c.",
   },
 };
 

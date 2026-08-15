@@ -4,6 +4,7 @@ import { formatDateTime } from '../../lib/dates';
 import { orderVersionChains } from './version-chain';
 import { apiDelete, ApiError } from '../../lib/api';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { EmptyState } from '../../components/EmptyState';
 import type { ContentStatus, DeliverableFile } from './types';
 
 interface VersionListProps {
@@ -52,7 +53,10 @@ export function VersionList({ versions, onDeleted, contentStatus, statusChangedA
   const [error, setError] = useState<string | null>(null);
 
   if (versions.length === 0) {
-    return <p className="chq-empty">No versions uploaded yet.</p>;
+    // DEC-678: this list has no filter axis (it's the deliverable's whole
+    // version history, not a facet of a larger table), so it only ever
+    // ships the fresh variant.
+    return <EmptyState variant="fresh" what="No versions uploaded yet." />;
   }
 
   const chains = orderVersionChains(versions);
