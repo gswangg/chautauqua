@@ -17,7 +17,6 @@ import {
   parseBoundedOptionalText,
   readOptionalJsonBody,
 } from "../../server/http";
-import { MAX_NAME_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
 import {
   cloneSubmission,
   createSubmission,
@@ -54,7 +53,7 @@ import { clampPage, listPerPage } from "../../lib/pagination";
 import { bumpIcsSequences } from "../../server/repo/ics-sequence";
 import { getEventTracks, replaceSubmissionTracks, upsertSubmissionAnswers } from "../../server/repo/submit";
 import { getFormatFieldOptions } from "../../server/repo/forms";
-import { SESSION_FORMAT_FIELD_ID } from "../../forms/types";
+import { SESSION_FORMAT_FIELD_ID, LOCKED_TITLE_MAX_LENGTH, LOCKED_ABSTRACT_MAX_LENGTH } from "../../forms/types";
 import { commitSubmissionDelete, planSubmissionDelete } from "../../server/repo/submission-delete";
 import { makeFileStore } from "../../server/context";
 import { DEC_460, DEC_461, DEC_462, DEC_519, DEC_598, DEC_755, DEC_757, DEC_886 } from "../../decisions";
@@ -205,10 +204,10 @@ submissionsRoutes.post("/events/:eventId/submissions", requireOrganizer, csrfJso
   await assertEventOwnership(c.var.db, eventId, auth.orgId);
 
   const body = (await readOptionalJsonBody(c)) as unknown as CreateSubmissionBody;
-  const title = parseBoundedText(body.title, "title", { max: MAX_NAME_LENGTH, required: true }); // DEC-417
+  const title = parseBoundedText(body.title, "title", { max: LOCKED_TITLE_MAX_LENGTH, required: true }); // DEC-124
   const description = parseBoundedOptionalText(body.description, "description", {
-    max: MAX_LONG_TEXT_LENGTH,
-  }); // DEC-417
+    max: LOCKED_ABSTRACT_MAX_LENGTH,
+  }); // DEC-124
 
   let contact: { email: string; firstName: string; lastName: string } | null = null;
   if (body.contact) {
@@ -283,12 +282,12 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
   const fields: { title?: string; description?: string | null } = {};
 
   if (body.title !== undefined) {
-    fields.title = parseBoundedText(body.title, "title", { max: MAX_NAME_LENGTH, required: true }); // DEC-417
+    fields.title = parseBoundedText(body.title, "title", { max: LOCKED_TITLE_MAX_LENGTH, required: true }); // DEC-124
   }
   if (body.description !== undefined) {
     fields.description = parseBoundedOptionalText(body.description, "description", {
-      max: MAX_LONG_TEXT_LENGTH,
-    }); // DEC-417
+      max: LOCKED_ABSTRACT_MAX_LENGTH,
+    }); // DEC-124
   }
 
   // DEC-598: trackIds is a full-set replace, and an empty array is a valid
@@ -406,6 +405,11 @@ submissionsRoutes.post(
     const before = await getSubmissionContent(c.var.db, id);
     if (!before) throw new ApiError("not_found", "Submission not found");
 
+    // DEC-124: revision restore replays a title/description the product
+    // already accepted (either as the current row's own prior content, or a
+    // value that itself passed the create/PATCH caps when it was written) —
+    // so it is intentionally NOT re-bounded here by LOCKED_TITLE_MAX_LENGTH/
+    // LOCKED_ABSTRACT_MAX_LENGTH.
     await updateSubmissionFields(c.var.db, id, { title: revision.title, description: revision.description });
 
     if (revision.title !== before.title || revision.description !== before.description) {

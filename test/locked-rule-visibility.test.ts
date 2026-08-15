@@ -9,7 +9,12 @@
 
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
-import { LOCKED_ABSTRACT_MAX_LENGTH, projectFieldForAnswers, type FormFieldDef } from "../src/forms/types";
+import {
+  LOCKED_ABSTRACT_MAX_LENGTH,
+  LOCKED_TITLE_MAX_LENGTH,
+  projectFieldForAnswers,
+  type FormFieldDef,
+} from "../src/forms/types";
 import { isVisible, resolveHiddenFieldIds } from "../src/forms/visibility";
 import { validateAnswers } from "../src/forms/validate";
 import { publicSubmitRoutes } from "../src/routes/public/submit";
@@ -95,13 +100,30 @@ describe("projectFieldForAnswers (DEC-475/DEC-486)", () => {
     expect(projectFieldForAnswers(def).maximum).toBe(500);
   });
 
-  it("DEC-124 (wave 59): a non-description locked field is not stamped with the abstract cap", () => {
+  // DEC-124 (wave 61 amendment): the locked title field is stamped its OWN
+  // budget (LOCKED_TITLE_MAX_LENGTH), not the abstract's -- and a field
+  // that is neither locked title nor locked description is stamped
+  // nothing at all.
+  it("DEC-124 (wave 61): the locked title field is stamped LOCKED_TITLE_MAX_LENGTH, not the abstract cap", () => {
     const def: FormFieldDef = {
       id: "form-1:title",
       section: "session",
       kind: "text",
       label: "Title",
       required: true,
+      position: 0,
+    };
+    expect(projectFieldForAnswers(def).maximum).toBe(LOCKED_TITLE_MAX_LENGTH);
+    expect(projectFieldForAnswers(def).maximum).not.toBe(LOCKED_ABSTRACT_MAX_LENGTH);
+  });
+
+  it("DEC-124 (wave 61): a field that is neither locked title nor locked description is not stamped at all", () => {
+    const def: FormFieldDef = {
+      id: "form-1:job_title",
+      section: "speaker",
+      kind: "text",
+      label: "Job title",
+      required: false,
       position: 0,
     };
     expect(projectFieldForAnswers(def).maximum).toBeUndefined();

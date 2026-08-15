@@ -7,7 +7,7 @@ import { kindLabel, type EventTrack, type FormField } from './types';
 // builder's captions can never drift from the rule that actually enforces
 // them -- e.g. the Abstract caption below always names the REAL
 // MAX_LONG_TEXT_LENGTH, never a hand-copied number.
-import { lockedFieldName, SESSION_FORMAT_FIELD_ID } from '../../../../src/forms/types';
+import { lockedFieldName, SESSION_FORMAT_FIELD_ID, LOCKED_ABSTRACT_MAX_LENGTH } from '../../../../src/forms/types';
 import { MAX_LONG_TEXT_LENGTH } from '../../../../src/forms/validate';
 import { countOf } from '../../lib/plural';
 
@@ -81,6 +81,18 @@ function optionCountCaption(field: FormField): string | undefined {
   if (!OPTION_COUNT_KINDS.has(field.kind)) return undefined;
   const count = field.options?.length ?? 0;
   return countOf(count, 'option');
+}
+
+/** A custom (non-locked) long_text field with no helpText of its own still
+ * declares the budget that actually enforces it (DEC-124 amendment: "every
+ * control" names its cap) -- the SPA wire type carries no per-field
+ * `maximum` override, so this always names the shared MAX_LONG_TEXT_LENGTH
+ * validate.ts falls back to. The locked Abstract row is handled separately
+ * above with its own imported LOCKED_ABSTRACT_MAX_LENGTH, never this
+ * generic fallback. */
+function longTextCapCaption(field: FormField): string | undefined {
+  if (field.kind !== 'long_text') return undefined;
+  return `Up to ${formatThousands(MAX_LONG_TEXT_LENGTH)} characters`;
 }
 
 // DEC-008 amendment (w45-e): the public CFP renders a REQUIRED single-choice
@@ -157,7 +169,7 @@ function buildRows(fields: FormField[], tracks: EventTrack[]): DisplayRow[] {
         key: field.id,
         field,
         label: 'Abstract',
-        caption: `Up to ${formatThousands(MAX_LONG_TEXT_LENGTH)} characters`,
+        caption: `Up to ${formatThousands(LOCKED_ABSTRACT_MAX_LENGTH)} characters`,
         kindText: kindLabel(field.kind),
         builtIn: true,
       });
@@ -183,7 +195,7 @@ function buildRows(fields: FormField[], tracks: EventTrack[]): DisplayRow[] {
       key: field.id,
       field,
       label: DISPLAY_LABEL_OVERRIDES[field.id] ?? field.label,
-      caption: field.helpText || optionCountCaption(field),
+      caption: field.helpText || optionCountCaption(field) || longTextCapCaption(field),
       condition: field.rule ? describeCondition(field.rule, fieldsById) : undefined,
       kindText: kindLabel(field.kind),
       builtIn: field.locked,
