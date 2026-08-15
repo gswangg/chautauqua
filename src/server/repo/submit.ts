@@ -291,7 +291,11 @@ export async function createSubmissionTracks(
 ): Promise<void> {
   if (trackIds.length === 0) return;
   const now = new Date();
-  const rows = trackIds.map((trackId) => ({ submissionId, trackId, createdAt: now }));
+  // DEC-598 (wave-10 amendment): trackIds are a SET at every boundary,
+  // including the writer itself — a duplicate id reaching this far (any
+  // caller, including sessionboard import) must not raise SQLITE_CONSTRAINT
+  // on the [submissionId, trackId] primary key.
+  const rows = Array.from(new Set(trackIds)).map((trackId) => ({ submissionId, trackId, createdAt: now }));
   // DEC-528: chunked by bound-parameter budget (columns-per-row derived).
   for (const chunk of chunkRowsForInsert(rows)) {
     await db.insert(schema.submissionTrack).values(chunk);
@@ -319,7 +323,9 @@ export async function replaceSubmissionTracks(
   const now = new Date();
   await db.delete(schema.submissionTrack).where(eq(schema.submissionTrack.submissionId, submissionId));
   if (trackIds.length > 0) {
-    const rows = trackIds.map((trackId) => ({ submissionId, trackId, createdAt: now }));
+    // DEC-598 (wave-10 amendment): dedupe at the writer too — see
+    // createSubmissionTracks above.
+    const rows = Array.from(new Set(trackIds)).map((trackId) => ({ submissionId, trackId, createdAt: now }));
     // DEC-528: chunked by bound-parameter budget (columns-per-row derived).
     for (const chunk of chunkRowsForInsert(rows)) {
       await db.insert(schema.submissionTrack).values(chunk);
