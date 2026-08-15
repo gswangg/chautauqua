@@ -5,11 +5,12 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../server/env";
 import { requireOrganizer, csrfJson } from "../../server/middleware";
-import { ApiError, readJsonBody } from "../../server/http";
+import { ApiError, readJsonBody, collectBoundedOptionalText } from "../../server/http";
 import { makeMailer } from "../../server/context";
 import { renderEmailHtml } from "../../mail/shell";
 import { hashPassword } from "../../auth/password";
 import { MAX_PASSWORD_LENGTH } from "../../domain/auth-copy";
+import { MAX_NAME_LENGTH } from "../../forms/validate"; // DEC-417
 import { overCapFieldMessage } from "../../domain/cap-copy"; // DEC-422 amendment
 import { revokeResetTokenForUser, type KVStore } from "../../auth/password-reset";
 import * as repo from "../../server/repo/users";
@@ -72,16 +73,23 @@ usersRoutes.post("/api/v1/users", requireOrganizer, csrfJson, async (c) => {
   if (!isValidEmail(email)) errors.email = "must be a valid email address"; // DEC-454/DEC-467
   const role = typeof record.role === "string" ? record.role : "";
   if (!isOrgUserRole(role)) errors.role = "must be 'reviewer' or 'organizer'";
+  // DEC-757: firstName/lastName are OPTIONAL on the wire -- the SPA enforces
+  // presence at its own door, but existing API callers (and accounts with no
+  // name at all) must keep working. Same bounded-text/errors-map pattern as
+  // breaks.ts so an over-cap value lands alongside email/role in one refusal.
+  const firstName = collectBoundedOptionalText(record.firstName, "firstName", { max: MAX_NAME_LENGTH }, errors);
+  const lastName = collectBoundedOptionalText(record.lastName, "lastName", { max: MAX_NAME_LENGTH }, errors);
   if (Object.keys(errors).length > 0) {
     throw new ApiError("invalid", "Invalid user", errors);
   }
+  const name = [firstName, lastName].filter((part): part is string => Boolean(part)).join(" ") || null;
 
   const password = generatePassword();
   if (password.length > MAX_PASSWORD_LENGTH) {
     throw new ApiError("invalid", "Invalid user", { password: overCapFieldMessage(password.length, MAX_PASSWORD_LENGTH) });
   }
   const passwordHash = await hashPassword(password);
-  const created = await repo.createUser(c.var.db, { orgId: auth.orgId, email, role, passwordHash });
+  const created = await repo.createUser(c.var.db, { orgId: auth.orgId, email, role, passwordHash, name });
 
   // email_log.event_id is NOT NULL (DEC-006); org user accounts aren't
   // event-scoped, so the welcome email is logged against the org's first
@@ -118,7 +126,7 @@ usersRoutes.post("/api/v1/users", requireOrganizer, csrfJson, async (c) => {
     }
   }
 
-  return c.json({ id: created.id, email: created.email, role: created.role, password }, 201);
+  return c.json({ id: created.id, email: created.email, role: created.role, name: created.name, password }, 201);
 });
 
 // DEC-215: organizer-triggered password re-issue for an org user (reviewer

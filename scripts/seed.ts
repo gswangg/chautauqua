@@ -751,6 +751,7 @@ async function main(): Promise<void> {
       email: organizer.email,
       password_hash: await hashPassword(organizer.password),
       role: "organizer",
+      name: organizer.name, // DEC-757
       contact_id: organizerContactId,
       created_at: nextTs(),
       updated_at: ts,
@@ -787,6 +788,7 @@ async function main(): Promise<void> {
       email: reviewer.email,
       password_hash: await hashPassword(reviewer.password),
       role: "reviewer",
+      name: reviewer.name, // DEC-757
       contact_id: reviewerContactId,
       created_at: nextTs(),
       updated_at: ts,

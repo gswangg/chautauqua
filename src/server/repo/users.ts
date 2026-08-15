@@ -39,6 +39,7 @@ export interface OrgUserRecord {
   email: string;
   role: string;
   contactId: string | null;
+  name: string | null;
   createdAt: number;
 }
 
@@ -49,6 +50,7 @@ function toOrgUserRecord(row: typeof schema.user.$inferSelect): OrgUserRecord {
     email: row.email,
     role: row.role,
     contactId: row.contactId,
+    name: row.name,
     createdAt: row.createdAt.getTime(),
   };
 }
@@ -78,6 +80,8 @@ export interface CreateUserInput {
   email: string;
   role: string;
   passwordHash: string;
+  // DEC-757: optional display name, composed by the route from firstName/lastName.
+  name?: string | null;
 }
 
 /** Creates an org user account. Throws ApiError('conflict') on duplicate
@@ -111,6 +115,7 @@ export async function createUser(db: Db, input: CreateUserInput): Promise<OrgUse
       email: input.email,
       passwordHash: input.passwordHash,
       role: input.role,
+      name: input.name ?? null,
       contactId: null,
       createdAt: now,
       updatedAt: now,

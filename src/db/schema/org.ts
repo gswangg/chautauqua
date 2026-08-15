@@ -18,6 +18,8 @@ export const user = sqliteTable(
     id: id(),
     orgId: text("org_id").notNull(),
     email: text("email").notNull(),
+    // DEC-757: teammate display name, nullable, no backfill.
+    name: text("name"),
     passwordHash: text("password_hash").notNull(),
     // 'organizer' | 'reviewer' | 'speaker' — DEC-004
     role: text("role").notNull(),
