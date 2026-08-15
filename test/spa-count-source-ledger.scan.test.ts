@@ -142,9 +142,8 @@ const LEDGER: LedgerEntry[] = [
   { file: "app/src/pages/comms/HistoryTab.tsx", verdict: "envelope", reason: "setTotal(res.total) from the email-log apiList call backs the pagination summary." },
   {
     file: "app/src/pages/comms/RecentSends.tsx",
-    verdict: "page-scoped",
-    reason: "w41-g: the subtitle is a deliberate component-local reading computed from the `batches` prop it was given, not a fetched total, so both mounts (one of which never fetches its own aggregate) render identically.",
-    commentSnippet: "rather than a fetched total",
+    verdict: "unpaged",
+    reason: "DEC-905 (wave-59 amendment): RecentSends renders no aggregate of its own -- the subtitle is Comms.tsx's own envelope-derived `rhythm` figure, formatted (never re-derived) via the shared formatSendRhythm; the `batches` prop backs only the rendered row list.",
   },
   { file: "app/src/pages/contacts/AddToEventModal.tsx", verdict: "unpaged", reason: "the only rendered whole-set count (submissionsOnSelectedEvent.length) comes from apiGet<ContactDetail>'s embedded history.submissions array -- one contact's full submission history, returned whole, not apiList-paginated. The apiList('/events') call here renders no count." },
   { file: "app/src/pages/contacts/BulkEmailModal.tsx", verdict: "unpaged", reason: "apiList<EmailTemplate> (DEC-465 listPerPage, 200-row render-everything cap) is only used for `.length > 0`/`.filter(...)` existence checks, never a whole-set count claim; the recipient counts rendered are the caller-supplied contactIds selection, not apiList output." },
@@ -324,6 +323,21 @@ describe("spa-count-source-ledger.scan (DEC-518 wave-39 amendment)", () => {
   it("no problems at all -- the ledger is exact in both directions against the current tree", () => {
     const problems = findLedgerProblems(population, LEDGER);
     expect(problems, problems.join("\n")).toEqual([]);
+  });
+
+  // DEC-905 (wave-59 amendment): RecentSends.tsx must never grow back its own
+  // seven-day window or a re-derived aggregate over `batches` -- pinned
+  // directly (not just by the ledger row's prose) so a regression trips
+  // this scan even if the ledger row itself is edited to match.
+  it("RecentSends.tsx carries no seven-day window constant and no reduce/filter().length aggregation over its batches prop", () => {
+    const src = readFileSync(join(ROOT, "app/src/pages/comms/RecentSends.tsx"), "utf8");
+    expect(src, "RecentSends.tsx must not declare its own 7-day window constant").not.toMatch(
+      /7\s*\*\s*24\s*\*\s*60\s*\*\s*60\s*\*\s*1000/,
+    );
+    expect(src, "RecentSends.tsx must not .reduce( over anything").not.toMatch(/\.reduce\(/);
+    expect(src, "RecentSends.tsx must not derive a count via .filter(...).length").not.toMatch(
+      /\.filter\([^)]*\)\.length/,
+    );
   });
 });
 

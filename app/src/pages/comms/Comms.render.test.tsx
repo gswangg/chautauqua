@@ -201,7 +201,14 @@ describe('CommsPage head "N sent in the last 7 days" counts what it claims (DEC-
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('2 sent in the last 7 days · 3 failed', { exact: false })).toBeInTheDocument();
+    // DEC-905 (wave-59 amendment): the head and the compose-mount
+    // RecentSends subtitle now render the SAME sentence, built from the SAME
+    // rhythm figure -- so both instances are expected here, not just one.
+    const matches = await screen.findAllByText('2 sent in the last 7 days · 3 failed', { exact: false });
+    expect(matches.length).toBeGreaterThanOrEqual(1);
+    expect(document.querySelector('.chq-comms-head-subtitle')).toHaveTextContent(
+      '2 sent in the last 7 days · 3 failed',
+    );
     expect(screen.queryByText('5 sent', { exact: false })).not.toBeInTheDocument();
   });
 
@@ -214,7 +221,9 @@ describe('CommsPage head "N sent in the last 7 days" counts what it claims (DEC-
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('4 sent in the last 7 days', { exact: false })).toBeInTheDocument();
+    const matches = await screen.findAllByText('4 sent in the last 7 days', { exact: false });
+    expect(matches.length).toBeGreaterThanOrEqual(1);
+    expect(document.querySelector('.chq-comms-head-subtitle')).toHaveTextContent('4 sent in the last 7 days');
     expect(screen.queryByText(/failed/)).not.toBeInTheDocument();
   });
 });

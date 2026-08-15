@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react';
 import { apiGet, apiList, ApiError } from '../../lib/api';
-import { formatDateTime, formatDateTimeWeekday } from '../../lib/dates';
+import { formatDateTime } from '../../lib/dates';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { EmptyState } from '../../components/EmptyState';
+import { formatSendRhythm, type SendRhythm } from './sendRhythm';
 import type { EmailBatchRow, EmailLogDetail, EmailLogRow } from './types';
 
-// w41-g: seven days, matching Comms.tsx's own "N sent in the last 7 days"
-// window -- the section-head subtitle here is a second, component-local
-// reading of the same rhythm, computed from the rows the component was
-// given rather than a fetched total, so it works identically on both
-// mounts (the compose mount never fetches its own aggregate).
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+// DEC-905 (wave-59 amendment): RecentSends renders no aggregate of its own
+// -- the send-rhythm sentence ("N sent in the last 7 days …") is built ONCE
+// by Comms.tsx from its own envelope totals and handed down as `rhythm`;
+// this component only formats it (via the shared formatSendRhythm, so the
+// wording can never diverge from the head's) and withholds the subtitle
+// entirely when the caller hasn't supplied one yet.
 
 // DEC-751: "Recent sends" is ONE presentational component, mounted twice —
 // once (capped, read-only, with an "All history" link) at the bottom of the
@@ -174,6 +175,11 @@ export interface RecentSendsProps {
    * compose mount hits the second case on every first paint -- so the caller
    * states which one it is rather than this component guessing. */
   batchesLoaded: boolean;
+  /** DEC-905 (wave-59 amendment): the send-rhythm figure, built once by
+   * Comms.tsx from its own envelope totals -- this component never
+   * re-derives it from `batches`. `null` (or omitted) withholds the
+   * subtitle entirely, matching the "not loaded yet" case. */
+  rhythm?: SendRhythm | null;
 }
 
 export function RecentSends({
@@ -184,6 +190,7 @@ export function RecentSends({
   expandBatchKey,
   templatesById,
   batchesLoaded,
+  rhythm,
 }: RecentSendsProps) {
   const [expanded, setExpanded] = useState<string | null>(expandBatchKey ?? null);
   const [recipients, setRecipients] = useState<Record<string, RecipientsState>>({});
@@ -224,19 +231,11 @@ export function RecentSends({
     loadRecipients(batchKey);
   }
 
-  // w41-g: the section-head subtitle is computed from the FULL batches prop
-  // (never the limit-sliced `rows`) -- the compose mount's cap is a display
-  // cap on the list, not on what the subtitle claims. Withheld entirely
-  // when there are no batches at all, matching the "No emails sent yet."
-  // empty state below.
-  const subtitle = (() => {
-    if (batches.length === 0) return null;
-    const cutoff = Date.now() - SEVEN_DAYS_MS;
-    const sentIn7Days = batches
-      .filter((b) => b.sentAt >= cutoff)
-      .reduce((sum, b) => sum + (b.statusCounts.sent ?? 0), 0);
-    return `${sentIn7Days} sent in 7 days · last ${formatDateTimeWeekday(batches[0]!.sentAt)}`;
-  })();
+  // DEC-905 (wave-59 amendment): the subtitle is the SAME sentence the head
+  // states, formatted from the SAME figure -- never re-derived here, and
+  // withheld when the caller hasn't supplied one yet (matches the "No
+  // emails sent yet." empty state's own settled/unsettled distinction).
+  const subtitle = rhythm ? formatSendRhythm(rhythm) : null;
 
   return (
     <div className="chq-comms-recent-sends">
