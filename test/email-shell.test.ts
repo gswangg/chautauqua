@@ -97,7 +97,7 @@ describe("renderEmailHtml", () => {
   it("is a complete HTML document", () => {
     const html = renderEmailHtml("Body.", { eventName: "DevFlow Conf 2027", reason: "test" });
     expect(html).toMatch(/^<!doctype html>/i);
-    expect(html).toContain("<html>");
+    expect(html).toContain('<html lang="en">');
     expect(html).toContain("</html>");
   });
 });
