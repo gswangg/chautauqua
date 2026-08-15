@@ -4329,3 +4329,20 @@ EXEMPT-BY-RULE note). `.chq-participation-menu-caret`
 not a regression from this lane.
 
 INVALIDATED BY: app/src/**/*.css, src/**/*.css.ts, src/views/theme.ts, scripts/render-sweep*
+
+## task-w31-a: files library headshot join perf (DEC-773 w31 amendment 3b)
+
+QUALIFYING: SOLE OWNER of src/server/repo/files-library.ts; UNOWNED at main
+`dbac66d1` (w29-b produced zero commits). Rewrote HEADSHOT_JOIN off a
+`'/headshots/' || file.id` concatenation to `file.id = substr(headshot_url,
+12) and substr(headshot_url,1,11)='/headshots/'` at all 3 call sites
+(computeKindCounts, listEventDeliverableFiles, resolveHeadshotVersions).
+INVALIDATED BY: src/server/repo/files-library.ts, src/server/repo/files.ts
+RESULT: files library (page 1) BEFORE raw=485.4ms adjusted=481.1ms FAIL ->
+AFTER raw=20.3ms adjusted=17.3ms PASS (budget(read)=50ms). ~24x raw / ~28x
+adjusted improvement. Paired before/after, port 8894, sibling w31 lanes
+concurrent (absolute load-inflated, delta is the grade per DEC-347 w31).
+Full detail: docs/verification-log/task-w31-a-files-library-perf-39634fe8.md
+OPEN ITEMS: DEC-773 wave-29 clause (1) SQL-aggregate totals NOT applied —
+not needed, budget met by the join fix alone. reviewer queue / plan results
+rows still FAIL post-fix — unrelated, owned by sibling w31 lanes.
