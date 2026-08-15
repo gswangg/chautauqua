@@ -140,6 +140,34 @@ describe("addCoPresenter repo layer (DEC-604)", () => {
     expect(Object.values(result.errors).some((m) => /maximum/i.test(m))).toBe(true);
   });
 
+  // DEC-422/DEC-604 amendment (w12-b): the refusal must never present a
+  // stored count as though it were a position inside a remaining
+  // allowance (e.g. never "already has 12 of the maximum 6 participants").
+  // Exercised at both boundaries: the submission already exactly AT the
+  // cap (the organizer's door alone could never overshoot it, since it
+  // never checked before) and already ABOVE it (the gap this task closes —
+  // the organizer's invite door was previously uncapped).
+  it("names the cap grammar's own copy at count === cap, never a stored-count-as-position phrasing", async () => {
+    const { db } = fakeDb([[{ count: MAX_PARTICIPANTS_PER_SUBMISSION }]], []);
+    const result = await addCoPresenter(db, BASE_INPUT);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.errors.role).toMatch(/participant/i);
+    expect(result.errors.role).not.toMatch(
+      new RegExp(`already has ${MAX_PARTICIPANTS_PER_SUBMISSION} of the maximum`),
+    );
+  });
+
+  it("names the cap grammar's own copy at count > cap (organizer door already over), never a bare stored count", async () => {
+    const overCount = MAX_PARTICIPANTS_PER_SUBMISSION + 6;
+    const { db } = fakeDb([[{ count: overCount }]], []);
+    const result = await addCoPresenter(db, BASE_INPUT);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("unreachable");
+    expect(result.errors.role).toMatch(/participant/i);
+    expect(result.errors.role).not.toMatch(new RegExp(`already has ${overCount} of the maximum`));
+  });
+
   it("surfaces the (submission_id, contact_id) uniqueIndex conflict as a validation error, never a 500", async () => {
     // select order: [0] participant count, [1] findContactByEmail -> match
     const existingContact = { id: "contact-9", title: null, company: null };

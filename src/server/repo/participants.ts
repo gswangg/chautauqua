@@ -14,6 +14,7 @@ import { newId } from "../../domain/ids";
 import { DEC_070, DEC_258, DEC_556 } from "../../decisions";
 import { chunkRowsForInsert } from "../../lib/chunk";
 import { touchSubmissions } from "./submissions/touch";
+import { MAX_PARTICIPANTS_PER_SUBMISSION } from "../../domain/participant-roles";
 
 // Compile-checked dependency marker: this module implements DEC_070's
 // endpoint contract (invite shape, duplicate rejection, visibility toggle).
@@ -31,6 +32,15 @@ void DEC_556;
  * pair already has a participant row — callers surface this as an
  * ApiError('invalid', ..., { contactId: ... }). */
 export const DUPLICATE_PARTICIPANT = "duplicate" as const;
+
+/** Sentinel returned by inviteParticipant when the submission is already at
+ * MAX_PARTICIPANTS_PER_SUBMISSION (DEC-422/DEC-604 amendment: the cap is a
+ * property of the SUBMISSION, enforced at BOTH doors that can add a
+ * participant row — this organizer door and the speaker portal's
+ * addCoPresenter, src/server/repo/portal-edit.ts). Callers surface this as
+ * an ApiError('invalid', ...) built through
+ * src/domain/cap-copy.ts:participantCapRefusalMessage, never a bare count. */
+export const OVER_CAP = "over_cap" as const;
 
 export interface InviteParticipantInput {
   submissionId: string;
@@ -70,15 +80,21 @@ export interface ParticipantRow {
 /** Inserts a new participant row: visible=true, inviteStatus='invited',
  * order=max(order)+1 for the submission, role defaults to 'speaker'.
  * Returns DUPLICATE_PARTICIPANT (without writing) if a participant already
- * exists for this (submissionId, contactId) pair. Caller is expected to
- * have already verified the submission and contact both belong to the
- * caller's org. */
+ * exists for this (submissionId, contactId) pair, and OVER_CAP (without
+ * writing) if the submission is already at MAX_PARTICIPANTS_PER_SUBMISSION
+ * — this count is read BEFORE the insert is attempted, not derived from a
+ * failed write, so the organizer door enforces the same submission-level
+ * cap addCoPresenter does. Caller is expected to have already verified the
+ * submission and contact both belong to the caller's org. */
 export async function inviteParticipant(
   db: Db,
   input: InviteParticipantInput,
-): Promise<ParticipantRow | typeof DUPLICATE_PARTICIPANT> {
+): Promise<ParticipantRow | typeof DUPLICATE_PARTICIPANT | typeof OVER_CAP> {
   const { submissionId, contactId } = input;
   const role = input.role && input.role.trim() ? input.role : "speaker";
+
+  const count = await getParticipantCount(db, submissionId);
+  if (count >= MAX_PARTICIPANTS_PER_SUBMISSION) return OVER_CAP;
 
   const now = new Date();
   const id = newId();
@@ -239,6 +255,19 @@ export async function setParticipantInviteStatus(
     .set({ inviteStatus, updatedAt: now })
     .where(eq(schema.participant.id, participantId));
   await touchSubmissions(db, [submissionId], now);
+}
+
+/** Current participant-row count for a submission, exposed so a caller that
+ * receives OVER_CAP from inviteParticipant can compose an accurate refusal
+ * message (src/domain/cap-copy.ts:participantCapRefusalMessage) without
+ * inviteParticipant itself having to smuggle a count through its sentinel
+ * return value. */
+export async function getParticipantCount(db: Db, submissionId: string): Promise<number> {
+  const countRows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.participant)
+    .where(eq(schema.participant.submissionId, submissionId));
+  return countRows[0]?.count ?? 0;
 }
 
 /** Fetches a single participant row in the same shape inviteParticipant

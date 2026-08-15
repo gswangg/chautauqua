@@ -35,16 +35,18 @@ import {
 import { isRouteSettableContentStatus, updateContentStatuses } from "../../server/repo/files-content-status";
 import { isActiveParticipant } from "../../domain/acceptance";
 import { plural } from "../../domain/count-copy";
-import { overCapCountMessage } from "../../domain/cap-copy";
+import { overCapCountMessage, participantCapRefusalMessage } from "../../domain/cap-copy";
 import {
   DUPLICATE_PARTICIPANT,
+  OVER_CAP,
+  getParticipantCount,
   getParticipantOwnership,
   getParticipantRow,
   inviteParticipant,
   setParticipantInviteStatus,
   setParticipantVisible,
 } from "../../server/repo/participants";
-import { PARTICIPANT_ROLE_OPTIONS } from "../../domain/participant-roles";
+import { PARTICIPANT_ROLE_OPTIONS, MAX_PARTICIPANTS_PER_SUBMISSION } from "../../domain/participant-roles";
 import { findContactForOrg } from "../../server/repo/contacts";
 import { resolveActorName } from "../../server/repo/users";
 import { appendSubmissionRevision, countRevisions, getRevision, listRevisions } from "../../server/repo/revisions";
@@ -514,6 +516,18 @@ submissionsRoutes.post("/submissions/:id/participants", requireOrganizer, csrfJs
   if (result === DUPLICATE_PARTICIPANT) {
     throw new ApiError("invalid", "This contact is already a participant on this submission", {
       contactId: "Already invited",
+    });
+  }
+  if (result === OVER_CAP) {
+    // Read AFTER the refusal (not before) purely to compose an accurate
+    // message -- inviteParticipant already made the enforcement decision
+    // off its own pre-write count, this is display-only. Same shared
+    // grammar (src/domain/cap-copy.ts:participantCapRefusalMessage) the
+    // speaker portal's addCoPresenter door uses, so a stored count is never
+    // presented as a position inside a remaining allowance.
+    const count = await getParticipantCount(c.var.db, id);
+    throw new ApiError("invalid", "This submission already has the maximum number of participants allowed", {
+      contactId: participantCapRefusalMessage(count, MAX_PARTICIPANTS_PER_SUBMISSION),
     });
   }
 

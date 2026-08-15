@@ -43,3 +43,17 @@ export function overCapCountMessage(count: number, max: number, noun: string, pl
   }
   return `${countOf(count, noun, pluralForm)} — ${countOf(count - max, noun, pluralForm)} over the ${max.toLocaleString("en-US")} limit`;
 }
+
+/** Refusal sentence for a participant-cap door (DEC-422/DEC-604 amendment):
+ * `existingCount` is the number of participant rows ALREADY on the
+ * submission at refusal time (read before the write is attempted, at both
+ * the organizer's invite door and the speaker's add-co-presenter door).
+ * Refusal only ever fires when `existingCount >= max`, i.e. adding one more
+ * would land the submission at `existingCount + 1`, which is always
+ * strictly over `max` -- so this composes through overCapCountMessage on
+ * the WOULD-BE total, never the stored count alone. This is what keeps the
+ * copy from stating a stored count as though it were a position inside a
+ * remaining allowance (e.g. never "already has 12 of the maximum 6"). */
+export function participantCapRefusalMessage(existingCount: number, max: number): string {
+  return `This submission already has ${overCapCountMessage(existingCount + 1, max, "participant")} -- no more participants can be added (maximum ${max.toLocaleString("en-US")} allowed)`;
+}
