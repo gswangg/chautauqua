@@ -6,7 +6,7 @@ import { CSRF_COOKIE_NAME } from "../auth/cookies";
 import { ThemeStyles } from "../views/theme";
 import { AUTH_CSS } from "./auth.css";
 import { type DemoIdentity } from "../lib/demo-identities";
-import type { LoginFooterEvent } from "./auth-helpers";
+import type { LoginFooterEvent, AuthBandCopy } from "./auth-helpers";
 import { DEC_583 } from "../decisions";
 import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "../domain/auth-copy";
 import { MAX_TEXT_LENGTH } from "../forms/validate";
@@ -60,7 +60,7 @@ export function AuthHead(props: { title: string }) {
 
 export function LoginPage(props: {
   csrfToken: string;
-  error?: string;
+  error?: AuthBandCopy;
   email?: string;
   demoIdentities?: readonly DemoIdentity[];
   singleEvent?: LoginFooterEvent | null;
@@ -83,8 +83,8 @@ export function LoginPage(props: {
           {props.statusLine ? <p className="chq-auth-status">{props.statusLine}</p> : null}
           {props.error ? (
             <div className="chq-error-summary" role="alert">
-              <h2>{props.error}</h2>
-              <p>Check your email and password, then try again.</p>
+              <h2>{props.error.headline}</h2>
+              {props.error.detail ? <p>{props.error.detail}</p> : null}
             </div>
           ) : null}
           <form

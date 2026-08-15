@@ -33,7 +33,8 @@ import {
   AUTH_RATE_LIMIT_WINDOW_SECONDS,
   AUTH_RATE_LIMIT_MAX,
   AUTH_ACCOUNT_RATE_LIMIT_MAX,
-  RATE_LIMIT_ERROR,
+  RATE_LIMIT_BAND,
+  LOGIN_REJECTED,
 } from "./auth-helpers";
 import { DEC_004, DEC_180 } from "../decisions";
 
@@ -128,7 +129,7 @@ loginRoutes.post("/login", csrfForm, async (c) => {
     return c.html(
       <LoginPage
         csrfToken={csrfToken}
-        error={RATE_LIMIT_ERROR}
+        error={RATE_LIMIT_BAND}
         email={email}
         demoIdentities={demoIdentities}
         singleEvent={singleEvent}
@@ -150,7 +151,7 @@ loginRoutes.post("/login", csrfForm, async (c) => {
     return c.html(
       <LoginPage
         csrfToken={csrfToken}
-        error={RATE_LIMIT_ERROR}
+        error={RATE_LIMIT_BAND}
         email={email}
         demoIdentities={demoIdentities}
         singleEvent={singleEvent}
@@ -173,7 +174,7 @@ loginRoutes.post("/login", csrfForm, async (c) => {
     return c.html(
       <LoginPage
         csrfToken={csrfToken}
-        error={RATE_LIMIT_ERROR}
+        error={RATE_LIMIT_BAND}
         email={email}
         demoIdentities={demoIdentities}
         singleEvent={singleEvent}
@@ -197,7 +198,7 @@ loginRoutes.post("/login", csrfForm, async (c) => {
     return c.html(
       <LoginPage
         csrfToken={csrfToken}
-        error="Invalid email or password."
+        error={LOGIN_REJECTED}
         email={email}
         demoIdentities={demoIdentities}
         singleEvent={singleEvent}
