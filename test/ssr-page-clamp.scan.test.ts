@@ -4,11 +4,13 @@
 // that same rule to the server-rendered surfaces (every `src/**/*.css.ts`
 // module plus src/views/theme.ts). A page-level clamp of 800px or wider is
 // a hand-copy of the reading measure unless it's a named exception:
-// home.css.ts's `.chq-home-shell` (its own frame width per docs/design/
-// README.md's hub-state frames, not a stand-in for the reading column), and
 // (DEC-945 wave-1 amendment) auth.css.ts's `.chq-auth-card`/`.chq-auth-
 // card-narrow`, whose max-width is a card BOX (content column + 2x padding)
-// rather than the reading column itself.
+// rather than the reading column itself. home.css.ts's `.chq-home-shell`
+// USED to hold a standing exception here (its own 900px frame width); the
+// DEC-582 wave-48 amendment strips that clamp entirely -- "chrome is always
+// full bleed" -- so the exception is gone, not relaxed (same shape as the
+// cfp.css.ts/portal.css.ts rows below).
 //
 // Every input is ENUMERATED via readdirSync (DEC-808/DEC-937 precedent),
 // never a hand-listed manifest, so a new SSR stylesheet is scanned
@@ -109,10 +111,11 @@ function findMaxWidthDeclarations(text: string): Array<{ selector: string; px: n
  * legitimate there rather than a hand-copy of the reading measure.
  */
 const NAMED_EXCEPTIONS: ReadonlyMap<string, string> = new Map([
-  [
-    "routes/public/home.css.ts::.chq-home-shell",
-    "the home hub's own frame width; docs/design/README.md draws all three hub states at 900",
-  ],
+  // routes/public/home.css.ts::.chq-home-shell used to sit here (900px, the
+  // home hub's own frame width). DEC-582's wave-48 amendment strips that
+  // clamp entirely -- chrome is always full bleed -- so it is GONE, not
+  // relaxed. Asserted below (mirrors the .chq-auth-card precedent).
+  //
   // The two .chq-auth-card rows that used to sit here (820px and 888px, on
   // DEC-945's wave-1 box-math) are GONE, not relaxed: DEC-945's wave-25
   // amendment rebuilds the card to V8 frame 11-account--00 at 460px (520px
@@ -143,16 +146,20 @@ describe("SSR page-clamp scan (DEC-989 amendment, wave 37)", () => {
     ).toEqual([]);
   });
 
-  it("NAMED_EXCEPTIONS holds exactly the home-hub entry, and its selector still exists", () => {
-    expect([...NAMED_EXCEPTIONS.keys()]).toEqual([
-      "routes/public/home.css.ts::.chq-home-shell",
-    ]);
+  it("NAMED_EXCEPTIONS is empty: DEC-945 came down under the clamp, and DEC-582 (wave 48) removes the home-hub exception outright", () => {
+    expect([...NAMED_EXCEPTIONS.keys()]).toEqual([]);
+  });
 
+  // DEC-582 (wave-48 amendment): the home hub is full bleed now -- no
+  // standing max-width exception for .chq-home-shell (or any other selector
+  // in home.css.ts) at 800px or wider.
+  it("home.css.ts no longer clamps .chq-home-shell (or anything else) to 800px+", () => {
     const homeCss = extractCssText(HOME_CSS_FILE);
     const declarations = findMaxWidthDeclarations(homeCss);
-    const shellDecl = declarations.find((d) => d.selector === ".chq-home-shell");
-    expect(shellDecl, ".chq-home-shell must still declare a max-width in home.css.ts").toBeDefined();
-    expect(shellDecl?.px).toBe(900);
+    for (const { px } of declarations) {
+      expect(px).toBeLessThan(800);
+    }
+    expect(declarations.find((d) => d.selector === ".chq-home-shell")).toBeUndefined();
   });
 
   // DEC-945 (wave-25 amendment): the auth card came DOWN under the clamp
