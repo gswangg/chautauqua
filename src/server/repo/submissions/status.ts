@@ -482,6 +482,26 @@ export interface UpdateStatusesResult {
  * exactly-once semantics without D1 interactive transactions. Non-firing
  * rows are batched into one chunked UPDATE per batch (status + updatedAt
  * only — accepted_at is never touched, preserving it).
+ *
+ * DEC-009 wave-26 amendment: `changeStatus` computes `fireAcceptance`
+ * (re-plan onboarding) and `setsAcceptedAt` (stamp accepted_at)
+ * INDEPENDENTLY — a row already `status:'accepted'` with `accepted_at IS
+ * NULL` yields `fireAcceptance=false, setsAcceptedAt=true` (repair, no
+ * re-plan), while a genuine re-accept yields `fireAcceptance=true,
+ * setsAcceptedAt=false` (re-plan, no re-stamp). Each row is therefore
+ * routed by two independent checks into up to two of three disjoint id
+ * lists — planIds, stampIds, restIds — every requested id lands in
+ * exactly one stamp/no-stamp UPDATE regardless of which list(s) it was
+ * added to.
+ *
+ * DEC-079 wave-26 amendment: the planning call and the two chunked UPDATE
+ * phases below are NOT one transaction — D1 has no interactive
+ * transaction available here and `db.batch(` is not used anywhere in
+ * src/. This is deliberate: safety rests on idempotence, not atomicity.
+ * Planning is idempotent on (contact, task-title) pairs and the stamp
+ * write only ever sets accepted_at from null, so a retry after a partial
+ * failure converges to the same terminal state rather than double-firing
+ * or double-stamping.
  */
 export async function updateSubmissionStatuses(
   db: Db,
@@ -517,6 +537,7 @@ export async function updateSubmissionStatuses(
   const restIds: string[] = [];
   const planIds: string[] = [];
   const stampIds: string[] = [];
+  let stampedAcceptedAt: number | null = null;
 
   for (const row of rows) {
     const currentStatus = isValidStatusLiteral(row.status) ? row.status : "pending";
@@ -526,17 +547,26 @@ export async function updateSubmissionStatuses(
       now.getTime(),
     );
 
+    // DEC-009 wave-26 amendment: fireAcceptance (re-plan onboarding) and
+    // setsAcceptedAt (stamp accepted_at) are independent flags from
+    // changeStatus — check each separately rather than nesting the stamp
+    // check inside the plan check, or an already-accepted row with a null
+    // accepted_at (setsAcceptedAt=true, fireAcceptance=false) never gets
+    // repaired.
+    let routed = false;
     if (result.fireAcceptance) {
       // DEC-278 wave-58 amendment: fireAcceptance fires on EVERY entry into
       // 'accepted', not just the first — a re-accept re-plans idempotently
       // so a co-speaker added while un-accepted still gets tasks.
       planIds.push(row.id);
-      if (result.setsAcceptedAt) {
-        // setsAcceptedAt is a subset of planIds: only the transition that
-        // actually finds accepted_at null stamps it.
-        stampIds.push(row.id);
-      }
-    } else {
+      routed = true;
+    }
+    if (result.setsAcceptedAt) {
+      stampIds.push(row.id);
+      stampedAcceptedAt = result.acceptedAt;
+      routed = true;
+    }
+    if (!routed) {
       restIds.push(row.id);
     }
   }
@@ -567,14 +597,16 @@ export async function updateSubmissionStatuses(
     if (idChunk.length === 0) continue;
     await db
       .update(schema.submission)
-      .set({ status, acceptedAt: now, updatedAt: now })
+      .set({ status, acceptedAt: new Date(stampedAcceptedAt as number), updatedAt: now })
       .where(and(eq(schema.submission.eventId, eventId), inArray(schema.submission.id, idChunk)));
   }
 
-  // Every other id — including re-accepts (planIds not in stampIds) — never
-  // touches accepted_at, preserving the original stamp (DEC-278 amendment).
+  // Every other id — including re-accepts (planIds not in stampIds) and
+  // accepted_at-only repairs (stampIds not in planIds) — never touches
+  // accepted_at via this UPDATE, preserving the original stamp (DEC-278
+  // amendment) or the value just written above.
   const stampIdSet = new Set(stampIds);
-  const nonStampIds = [...planIds.filter((id) => !stampIdSet.has(id)), ...restIds];
+  const nonStampIds = [...new Set([...planIds, ...restIds])].filter((id) => !stampIdSet.has(id));
   for (const idChunk of chunkIds(nonStampIds)) {
     if (idChunk.length === 0) continue;
     await db
