@@ -84,21 +84,35 @@ export function SessionTagLine(props: { tracks: PublicTrack[]; format: string | 
   );
 }
 
-// DEC-968 (wave 7 amendment): a session-scoped speaker line is BARE NAMES —
-// title/company is an identity fact and belongs on the speaker's own page
-// (detail.tsx's SpeakerDetailContent), not repeated on every row that
-// mentions them.
+// DEC-968 amendment (wave 8, EMB-01/EMB-09): the session-scoped speaker line
+// carries the speaker's identity — job title and/or company — alongside the
+// name. EMB-01 (sessions-list card, weight 3) and EMB-09 (schedule/itinerary
+// card, weight 2) both require it; SpeakerDetailContent (detail.tsx) keeps
+// its own separate identity block untouched.
+
+/** 'Title, Company' when both are present, the single fact when only one is,
+ * null when neither — never a dangling comma or bare separator. */
+export function speakerIdentityClause(title: string | null, company: string | null): string | null {
+  const t = title?.trim() || null;
+  const c = company?.trim() || null;
+  if (t && c) return `${t}, ${c}`;
+  return t ?? c;
+}
+
 export function SpeakerNames(props: { speakers: PublicSession["speakers"] }) {
   return (
     <>
-      {props.speakers.map((s, i) => (
-        <>
-          {i > 0 ? ", " : ""}
-          <strong>
-            {s.firstName} {s.lastName}
-          </strong>
-        </>
-      ))}
+      {props.speakers.map((s) => {
+        const clause = speakerIdentityClause(s.title, s.company);
+        return (
+          <span class="chq-pub-speaker-line">
+            <strong>
+              {s.firstName} {s.lastName}
+            </strong>
+            {clause !== null ? <span class="chq-pub-speaker-identity"> · {clause}</span> : null}
+          </span>
+        );
+      })}
     </>
   );
 }

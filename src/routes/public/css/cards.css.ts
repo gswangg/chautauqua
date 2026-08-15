@@ -46,6 +46,11 @@ export const CARDS_CSS = `  /* Session rows (sessions.tsx SessionCard). */
     text-decoration: none;
   }
   .chq-pub-session-speaker { font-size: 14px; color: var(--chq-ink-2); margin: 0; }
+  /* DEC-968 (wave 8 amendment, EMB-01/EMB-09): one <span> line per speaker,
+     name plus an optional muted identity clause -- no new size/weight token,
+     the frame's 14px/ink-2 speaker-line rule above stays untouched. */
+  .chq-pub-speaker-line { display: block; }
+  .chq-pub-speaker-identity { color: var(--chq-muted); }
   /* w1-c (DEC-534): the day heading rendered before the first card of each
      scheduled day once the gutter drops the day (sessions.tsx). */
   .chq-pub-sessions-day-heading {
