@@ -55,3 +55,15 @@
   gap: 8px;
   flex-wrap: wrap;
 }
+
+/* DEC-747 amendment (w1, task-w1-g): the Markdown grammar note under the wiki
+   resource editor's content textarea, in both the add and the edit branch of
+   ResourcesPanel. Same quiet note tier as the other settings hints
+   (.chq-settings-field-hint, .chq-settings-sessionboard-size-hint); DEC-976
+   requires the class the markup names to carry a real rule. */
+.chq-settings-markdown-hint {
+  display: block;
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--chq-ink-2);
+}
