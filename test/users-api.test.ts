@@ -720,10 +720,29 @@ describe("DEC-199 email case normalization + login regression", () => {
         return {
           values(row: Record<string, unknown>) {
             if (table === schema.user) {
-              rows.push({ ...row });
-              lastInsertedId = row.id as string;
-              pendingByIdLookup = true;
-              return Promise.resolve();
+              // DEC-552 amendment (findings wave 14): createUser's INSERT is
+              // now itself the ON CONFLICT DO NOTHING authority (see
+              // src/server/repo/users.ts) -- this fake mirrors that shape by
+              // skipping the push when the email already collides
+              // case-insensitively, then chains the same well-formed thenable
+              // whether or not onConflictDoNothing() gets called.
+              const collides = rows.some(
+                (r) => (r.email as string).toLowerCase() === (row.email as string).toLowerCase(),
+              );
+              const settle = () => {
+                if (!collides) {
+                  rows.push({ ...row });
+                  lastInsertedId = row.id as string;
+                } else {
+                  lastInsertedId = row.id as string;
+                }
+                pendingByIdLookup = true;
+                return Promise.resolve();
+              };
+              return {
+                onConflictDoNothing: () => settle(),
+                then: (resolve: (v: undefined) => void, reject?: (e: unknown) => void) => settle().then(resolve, reject),
+              };
             } else if (table === schema.authSession) {
               sessions.push({ ...row });
               return Promise.resolve();
