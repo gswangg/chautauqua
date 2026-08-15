@@ -665,6 +665,51 @@ export async function listSpeakerNamesForSubmissions(db: Db, submissionIds: stri
   return map;
 }
 
+export interface SpeakerIdentity {
+  name: string;
+  email: string;
+  company: string | null;
+}
+
+/** DEC-018 (wave-57 amendment): batched speaker-identity lookup for the
+ * queue-title redaction the reviewer route runs when a plan is anonymized --
+ * ONE query per chunkIds batch (DEC-078), mirroring
+ * listSpeakerNamesForSubmissions but returning name/email/company instead of
+ * bare names. Deliberately carries NO inviteStatus filter (unlike its
+ * sibling, which is scoped to SCHEDULING_PARTICIPANT_STATUSES for a display
+ * surface): a redaction identity set must be a superset of any display
+ * predicate, never narrower, or a participant excluded from a display list
+ * could still leave their name unredacted in free text. Ordered
+ * (participant.order asc, contact.id asc -- DEC-561/DEC-562). Returns an
+ * empty map for an empty id list. */
+export async function listSpeakerIdentitiesForSubmissions(
+  db: Db,
+  submissionIds: string[],
+): Promise<Map<string, SpeakerIdentity[]>> {
+  const map = new Map<string, SpeakerIdentity[]>();
+  if (submissionIds.length === 0) return map;
+  for (const batch of chunkIds(submissionIds)) {
+    const rows = await db
+      .select({
+        submissionId: schema.participant.submissionId,
+        firstName: schema.contact.firstName,
+        lastName: schema.contact.lastName,
+        email: schema.contact.email,
+        company: schema.contact.company,
+      })
+      .from(schema.participant)
+      .innerJoin(schema.contact, eq(schema.participant.contactId, schema.contact.id))
+      .where(inArray(schema.participant.submissionId, batch))
+      .orderBy(asc(schema.participant.order), asc(schema.contact.id));
+    for (const row of rows) {
+      const list = map.get(row.submissionId) ?? [];
+      list.push({ name: `${row.firstName} ${row.lastName}`.trim(), email: row.email, company: row.company });
+      map.set(row.submissionId, list);
+    }
+  }
+  return map;
+}
+
 /** DEC-703: batched track-name lookup for a results page/export, mirroring
  * listSpeakerNamesForSubmissions -- ONE query per chunkIds batch, keyed to
  * the caller's own submission id set. Ordered (track.position asc, track.id

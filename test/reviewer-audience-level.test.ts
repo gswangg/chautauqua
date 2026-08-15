@@ -166,6 +166,7 @@ vi.mock("../src/server/repo/review", async () => {
     getSubmissionSummaryInEvent: vi.fn(async () => SUMMARY),
     listAnswersForSubmission: vi.fn(async () => []),
     listSpeakersForSubmission: vi.fn(async () => []),
+    listSpeakerIdentitiesForSubmissions: vi.fn(async () => new Map()),
     getEvaluation: vi.fn(async () => null),
   };
 });
