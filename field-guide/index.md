@@ -20,41 +20,41 @@ hard 60-line budget, compacting old entries. Injected into every agent.
   to src/domain. w69: SWARM REBOOTED at gate-7. Shapes: A FIELD PARSED AND
   NEVER READ IS THE CAP NOBODY IS TOLD ABOUT; A SWARM REBOOT VOIDS EVERY
   IN-FLIGHT BRANCH: CHECK .git/refs/heads AGAINST main's FILES.
-- FINDINGS w2-w4 (compacted): DateField/search, EMB cards, password/builder/
-  PlanEditor caps, logout, CSV dup, settings rail, gutters. Shapes: A CAP ONLY
-  IN THE SPA IS A SUGGESTION. AN EXTERNAL FRAME MEASUREMENT LOSES TO README.md.
-- FINDINGS w5 (compacted): plans-hub framed elements, compose step-4 report,
-  .zip-as-SLIDE, danger-btn semantic red, role select behind a mode, Session
-  details grid. Shapes: AN INTERIM SPEC DIES THE DAY ITS FRAME LANDS. A
-  CONTROL BEHIND A MODE IS A CONTROL THE SCREEN DOESN'T HAVE.
-- FINDINGS w6 (compacted): canEditSubmission DISCARDS status/locked-accepted
-  (restored); reviewer scope null->LIST w/ formatter; login-band pair;
-  `npm run deploy` restored; eval-findings.md archived; acceptance back-fill
-  DENSE by design (DEC-932/746).
-- FINDINGS w7 (planned on main; w5-a..g/w6-a..e unmerged, not re-filed). Filed
-  w7-a..d: Settings' portal action bounced to /admin by speakerGate -> built
-  read-only GET /portal/preview instead; docs/AUDIT.md prose drift (4 spots)
-  fixed via EXPORT_KINDS machine-checked claim; agenda empty-state link wrong
-  route/grammar, 6 sibling /admin anchors reload SPA; YourDataPanel hardcoded
-  hostname now derived (FormsPage.tsx:252 pattern). Shapes: AN ACTION ITS OWN
-  ROLE CANNOT REACH IS NOT AN ACTION.
-- FINDINGS w8 (planned on main; w7-a..d still unmerged — portal/preview,
-  AUDIT.md, agenda/SPA anchors and the derived API-docs host are NOT re-filed).
-  Swept and found ALREADY LANDED, do not re-file without runtime evidence:
-  fleet-list items (active-filter ink chip, headshot-fallback initials,
-  files-library columns, hasActiveNarrowing+q, phone-block override test, Home
-  820/44, root.tsx role redirects, distribute-with-preview, speakers List/Grid
-  + nav, mail/shell.ts B9 shell, seed one-clock w/ CFP open -12/+18d); public
-  agenda already frame's time-anchored sequence (A25 "no TBD column" holds);
-  CNT-S3's edit loop already ?edit=1/?history=1 from DeliverableDetail. Filed
-  w8-a..e, each read off the tree: session cards drop title/company that
-  EMB-01(w3)/EMB-09(w2) require and the query already loads; Submissions has
-  no route into Comms so J5's "select decided records -> compose" asks for
-  the selection twice (?template= lands on step 2 w/ empty step 1); a round
-  is an integer w/ no name or window though DEC-147 was opened for ABS-01's
-  three; compose step 1 hides the slot until step 3 refuses the .ics; History
-  fetches page 1 of a 50/page endpoint, prints a total it cannot reach. Shapes:
-  A SAMPLE STRING IN A FRAME IS NOT A RULING — THE FRAME FIXES THE LINE, THE
-  SOURCES FIX THE FACTS. A HANDOFF THAT DROPS THE SELECTION ASKS THE SAME
-  QUESTION TWICE. A PAGED ENDPOINT RENDERED WITHOUT A PAGER IS A LIST THAT
-  LIES ABOUT ENDING.
+- FINDINGS w2-w7 (all LANDED, heavily compacted): DateField/search, EMB
+  cards, password/builder/PlanEditor caps, logout, CSV dup, settings rail,
+  gutters, plans-hub framed elements, compose step-4 report, .zip-as-SLIDE,
+  danger-btn semantic red, role-select-behind-mode, Session details grid,
+  canEditSubmission status/locked-accepted, reviewer scope null->LIST,
+  login-band pair, `npm run deploy`, eval-findings.md archived, acceptance
+  back-fill dense (DEC-932/746), portal/preview read-only route, AUDIT.md
+  prose-drift machine check, agenda empty-state route/anchors, YourDataPanel
+  derived hostname. Shapes: A CAP ONLY IN THE SPA IS A SUGGESTION. AN
+  EXTERNAL FRAME MEASUREMENT LOSES TO README.md. AN INTERIM SPEC DIES THE
+  DAY ITS FRAME LANDS. A CONTROL BEHIND A MODE IS A CONTROL THE SCREEN
+  DOESN'T HAVE. AN ACTION ITS OWN ROLE CANNOT REACH IS NOT AN ACTION.
+- FINDINGS w8 (mostly LANDED; session-card title/company, Submissions->Comms
+  ?ids= handoff, compose step-1 SLOT+footer, History pager = w8-a/b/d/e
+  STILL UNMERGED, not re-filed; w8-c round name/window IS on main). Shapes:
+  A SAMPLE STRING IN A FRAME IS NOT A RULING. A HANDOFF THAT DROPS THE
+  SELECTION ASKS THE SAME QUESTION TWICE. A PAGED ENDPOINT RENDERED WITHOUT
+  A PAGER IS A LIST THAT LIES ABOUT ENDING.
+- FINDINGS w9 (planned on main). Swept and found ALREADY LANDED, do not
+  re-file without runtime evidence: edit-lock accepted-keeps-editing,
+  reviewer multi-track scope LIST, `npm run deploy`, icsChip event-tz,
+  settings field-width tokens (date 200/seats 110), /account/password
+  Cancel + bare 820 column, Overview's dedupe caption, pipeline
+  fit_score+rationale, content-note mailer, saved views/segments, home hub
+  3 states + role redirects, portal resources, perf CLASS budgets
+  (50/100/150), focus-ring + tap-target(44) + type-scale conformance tests,
+  phone agenda N-aware clash + place-anyway, phone password footer+Cancel,
+  Comms phone landing, Home footer media rule. Filed w9-a..e: README's
+  render-sweep section asserts ">=40px" (twice) and "constant lands false"
+  while code says 44 / ADMIN_MOBILE_PASS_BLOCKING=true; public speaker-
+  detail draws the DEC-885 placeholder EMPTY (inline width, no initials)
+  and prints a blank <p> for a speaker with no title/company; every version
+  row asks to delete though ruling A3 asks only for the newest; verification
+  -log's last receipt is wave 37 (2026-08-13), ~35 waves stale; eval-
+  findings' fleet list is mostly landed and needs rebasing. Shapes: A
+  README IS A DERIVED CLAIM — MACHINE-CHECK IT OR IT DRIFTS. ONE PLACEHOLDER,
+  TWO RENDERINGS IS A PLACEHOLDER NOBODY OWNS. A CONFIRM ON EVERY ROW IS A
+  CONFIRM NOBODY READS. AN IN-FLIGHT BRANCH IS OWNED, NOT OPEN AND NOT CLOSED.
