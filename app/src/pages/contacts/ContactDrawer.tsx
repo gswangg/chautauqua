@@ -17,6 +17,7 @@ import { AddToEventModal } from './AddToEventModal';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { ModalFrame } from '../../components/ModalFrame';
+import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
 
 interface Props {
   contactId: string;
@@ -36,6 +37,33 @@ const EM_DASH = '—';
 // literal) — never an em dash and never a blank cell, so "blank" reads as a
 // fact the record HAS (an empty value) rather than something missing.
 const NOTHING_RECORDED = <span className="chq-contacts-record-empty">Nothing recorded</span>;
+
+// DEC-856 (wave 65 amendment): PATCH /contacts/:id's fields map (crud.ts)
+// keys its refusals by firstName/lastName/email/phone/company/title/bio/
+// notes/socialLinks -- every one of those has exactly one row in this
+// drawer. OWNED_FIELD_LABELS is that map's mirror: the row label each key
+// resolves to, so the per-control message and the ErrorSummary anchor both
+// read the SAME word the field group already shows. `customFields.<key>`
+// (and anything a later route change adds) is deliberately absent here --
+// those render as unresolved '<key>: <message>' lines in the summary
+// instead of being silently dropped.
+const OWNED_FIELD_LABELS: Record<string, string> = {
+  firstName: 'First name',
+  lastName: 'Last name',
+  email: 'Email',
+  phone: 'Phone',
+  company: 'Company',
+  title: 'Title',
+  bio: 'Bio',
+  notes: 'Notes',
+  socialLinks: 'Links',
+};
+
+function controlIdFor(key: string): string {
+  // socialLinks has no field of its own -- it patches all four Links inputs
+  // at once, so it anchors to the one row that owns them.
+  return key === 'socialLinks' ? 'contact-field-links' : `contact-field-${key}`;
+}
 
 // A20 (w26-c): the drawer's four titled groups, each headed by the shared
 // .chq-section-head/.chq-section-label treatment (2px ink rule, 11px/700
@@ -62,15 +90,23 @@ function RecordRow({
   onEdit,
   display,
   editor,
+  rowId,
+  error,
 }: {
   label: string;
   editing: boolean;
   onEdit: () => void;
   display: ReactNode;
   editor: ReactNode;
+  // DEC-856 (wave 65): the row's own DOM id -- what the ErrorSummary's
+  // anchor points at, present in BOTH display and editing states so the
+  // anchor resolves regardless of which one the drawer was in when Save
+  // failed.
+  rowId?: string;
+  error?: string;
 }) {
   return (
-    <div className="chq-contacts-record-row">
+    <div className="chq-contacts-record-row" id={rowId} data-invalid={error ? 'true' : undefined}>
       <span className="chq-contacts-record-label">{label}</span>
       {editing ? (
         <div className="chq-contacts-record-editor">{editor}</div>
@@ -79,6 +115,11 @@ function RecordRow({
           {display}
         </button>
       )}
+      {error ? (
+        <span role="alert" className="chq-field-error">
+          {error}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -108,6 +149,14 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // DEC-856 (wave 65): PATCH /contacts/:id's own field names (firstName,
+  // lastName, email, phone, company, title, bio, notes, socialLinks) ->
+  // message, rendered beside each field's own row. Anything the drawer
+  // doesn't own (customFields.<key>, or a key a later route change adds)
+  // goes in unownedFieldErrors instead -- named, never dropped, never an
+  // unlabelled bullet.
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [unownedFieldErrors, setUnownedFieldErrors] = useState<Record<string, string>>({});
   const [editingField, setEditingField] = useState<string | null>(null);
   const [showEmail, setShowEmail] = useState(false);
   const [showAddToEvent, setShowAddToEvent] = useState(false);
@@ -181,6 +230,8 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
     const customFields = result.fields;
     setSaving(true);
     setError(null);
+    setFieldErrors({});
+    setUnownedFieldErrors({});
     try {
       await apiPatch(`/contacts/${contactId}`, {
         firstName,
@@ -196,7 +247,18 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
       });
       onSaved();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to save contact');
+      if (err instanceof ApiError && err.fields && Object.keys(err.fields).length > 0) {
+        const owned: Record<string, string> = {};
+        const unowned: Record<string, string> = {};
+        for (const [key, message] of Object.entries(err.fields)) {
+          if (key in OWNED_FIELD_LABELS) owned[key] = message;
+          else unowned[key] = message;
+        }
+        setFieldErrors(owned);
+        setUnownedFieldErrors(unowned);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Failed to save contact');
+      }
     } finally {
       setSaving(false);
     }
@@ -321,6 +383,8 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
         editing={editing}
         onEdit={() => setEditingField(key)}
         display={value || NOTHING_RECORDED}
+        rowId={controlIdFor(key)}
+        error={fieldErrors[key]}
         editor={
           opts.multiline ? (
             <textarea
@@ -444,7 +508,12 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
     i === 0 ? [<span key={v}>{v}</span>] : [' · ', <span key={v}>{v}</span>],
   );
   const linksNode = contact ? (
-    <div className="chq-contacts-record-row" key="links">
+    <div
+      className="chq-contacts-record-row"
+      id={controlIdFor('socialLinks')}
+      data-invalid={fieldErrors.socialLinks ? 'true' : undefined}
+      key="links"
+    >
       <span className="chq-contacts-record-label">Links</span>
       {linksEditing ? (
         <div className="chq-contacts-record-editor chq-contacts-links-editor">
@@ -476,8 +545,29 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
           {linksSummary.length > 0 ? linksSummary : NOTHING_RECORDED}
         </button>
       )}
+      {fieldErrors.socialLinks ? (
+        <span role="alert" className="chq-field-error">
+          {fieldErrors.socialLinks}
+        </span>
+      ) : null}
     </div>
   ) : null;
+
+  // DEC-856 (wave 65): one problem list feeding the ONE ErrorSummary above
+  // the field groups -- owned keys anchor at the row that already renders
+  // their own inline message; unowned keys (customFields.<key>, or a key a
+  // later route change adds) have no control to anchor, so they render as
+  // '<key>: <message>' instead of vanishing.
+  const summaryProblems = [
+    ...Object.entries(fieldErrors).map(([key]) => ({
+      anchorId: controlIdFor(key),
+      label: OWNED_FIELD_LABELS[key] ?? key,
+    })),
+    ...Object.entries(unownedFieldErrors).map(([key, message]) => ({
+      anchorId: `contact-unowned-field-${key}`,
+      label: `${key}: ${message}`,
+    })),
+  ];
 
   const customFieldNodes = customFieldRows.map((row, index) => {
     const key = `custom-${index}`;
@@ -535,6 +625,13 @@ export function ContactDrawer({ contactId, onClose, onSaved, onContactChanged }:
 
         {!loading && contact && (
           <>
+            {summaryProblems.length > 0 && (
+              <ErrorSummary
+                heading={countHeading(summaryProblems.length, 'before this contact can be saved')}
+                kept="Nothing else was written."
+                problems={summaryProblems}
+              />
+            )}
             <div className="chq-contacts-record">
               {/* DEC-616 amendment (wave 15): the drawer states its own save
                   mechanism in the record head, in plain words, rather than
