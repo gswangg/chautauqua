@@ -1,33 +1,40 @@
-# Eval findings — rebased 2026-08-15 (wave 41, task-w41-f)
+# Eval findings — rebased 2026-08-15 (wave 44, task-w44-i)
 
-Verified against `main` sha `b71a1358825778f0f824673794b6b626351eec33`
-("merge task-w41-c"), derived AT THIS TASK'S OWN RUNTIME by running, in
-order: `git rev-parse main` (loose ref wins — see trap note below);
-`git log -1 --format='%H %s' HEAD` on `main`; `npm run ref-state`
-(`scripts/ref-state.ts`, DEC-644) for the live-ref ancestry paragraph;
-`git for-each-ref refs/heads` (30 live branches) plus
-`git merge-base --is-ancestor <ref> main` for every one; and
-`.git/logs/refs/heads/<branch>` for each wave-40/41 lane's creation
-timestamp and commit message. **Trap reconfirmed, still live:**
+Verified against `main` sha `6edb526323f8ce3af8f8e71d791a722a7b1a69ad`
+("scribe wave 44"), derived AT THIS TASK'S OWN RUNTIME (DEC-069
+wave-17/wave-37) by running, in order: `git merge --no-edit main` (worktree
+cut directly from `main`'s tip — reported "Already up to date", so no new
+commits were pulled); `npx tsx scripts/ref-state.ts` for the live-ref
+ancestry paragraph; `git for-each-ref --format='%(objectname)
+%(refname:short)' refs/heads` (31 live branches) plus `git merge-base
+--is-ancestor <ref> main` for every one, run individually (not trusted from
+`ref-state` alone); and `.git/logs/refs/heads/<branch>` (read from the main
+checkout, `/Users/wednesdayniemeyer/Documents/gniemeyer/Projects/chautauqua/.git/logs/refs/heads/`
+— empty in this worktree's own logs) for each wave-43/44 branch's creation
+timestamp and latest commit. **Both traps reconfirmed, still live:** (1)
 `.git/packed-refs` carries a STALE `refs/heads/main` entry at
 `4207460470b672176e119ed3502d08d869489509` — the loose ref
-(`.git/refs/heads/main`, `b71a1358`) overrides it and is the one `git
+(`.git/refs/heads/main`, `6edb5263`) overrides it and is the one `git
 rev-parse main` actually returns; do not read the packed line as current.
-**Glob trap reconfirmed:** globbing `.git/refs/heads/*` on disk misses
-packed refs entirely — use `git for-each-ref refs/heads`. `ref-state`'s
-receipt, verbatim: DEC-644 three-sha boundary — HEAD
-`b71a1358825778f0f824673794b6b626351eec33`; newest first-parent
-product-code-bearing sha `ed5c679e59828c5600cb84b51208056f7e38a445`; every
-live ref (`main`, `manual-qa`, `task-custodian-w68-4`, `task-w40-e`,
-`task-w40-g`, `task-w41-c`, `task-w41-d`, `task-w41-e`, `task-w41-f`,
-`task-w68-d`, `task-w71-c`, `task-w71-d`, `task-w71-e`) confirmed an
-ancestor of HEAD via `git merge-base --is-ancestor`; NON-ancestor refs
-(unmerged or a different/later campaign): `mail-rich-shape-fallback`,
-`task-w17-i`, `task-w41-a`, `task-w41-b`, `task-w68-b`, `task-w68-c`,
-`task-w68-e`, `task-w71-a`, `task-w72-a`..`task-w72-j`.
+(2) globbing `.git/refs/heads/*` on disk misses packed refs entirely — use
+`git for-each-ref`. `ref-state`'s receipt, verbatim: DEC-644 three-sha
+boundary — HEAD `6edb526323f8ce3af8f8e71d791a722a7b1a69ad`; newest
+first-parent product-code-bearing sha
+`14da2921a5be66408057712be877bc44c19de6c4`; every live ref (`main`,
+`manual-qa`, `task-custodian-w68-4`, `task-w43-c`, `task-w44-c`,
+`task-w44-e`, `task-w44-g`, `task-w44-i`, `task-w68-d`, `task-w71-c`,
+`task-w71-d`, `task-w71-e`) confirmed an ancestor of HEAD via `git
+merge-base --is-ancestor`; NON-ancestor refs (IN FLIGHT this wave, or
+unmerged from an earlier/later campaign): `mail-rich-shape-fallback`,
+`task-w17-i`, `task-w44-a`, `task-w44-b`, `task-w44-d`, `task-w44-f`,
+`task-w68-b`, `task-w68-c`, `task-w68-e`, `task-w71-a`, `task-w72-a`
+through `task-w72-j`. Individually re-run `git merge-base --is-ancestor`
+per ref confirms the same split — see IN FLIGHT below for what each
+non-ancestor wave-44 ref actually contains at this runtime (all four were
+inspected directly via `git show <ref>:<path>`, not inferred).
 
-COMPACTION per DEC-358's rebase rule: the wave-37 header (boundary
-`494b6c01`) is REPLACED by this one, not prepended. No per-item citation
+COMPACTION per DEC-358's rebase rule: the wave-41 header (boundary
+`b71a1358`) is REPLACED by this one, not prepended. No per-item citation
 below is deleted, only re-homed/compacted — dismissals are recorded, never
 deleted. Every "file X exists / does not exist" claim carried from the
 prior header was re-globbed before being carried; none were found false
@@ -40,24 +47,26 @@ and `app/src/pages/speakers/RosterPanel.tsx` +
 `RosterPanel.render.test.tsx` (CFP 2-step wizard, roster screen)
 re-confirmed present; the two "no literal under `app/src`" /
 "no literal under `src/routes/public`" absence claims (`localhost:8799`,
-`TBD`) re-confirmed absent (zero grep matches each).
+`TBD`) re-confirmed absent (zero grep matches each); `docs/mandates/
+w41-falsifiability-batch-a.md` and `-batch-b.md` re-confirmed present
+(both landed and merged — see below, superseding the wave-41 header's
+"may land after this file" hedge).
 
-**This wave's own addition:** wave 41 landed no product code of its own
-(FROZEN per DEC-069's wave-41 amendment — every wave-41 lane writes only
-under `docs/**`, `scripts/**`, `test/**`, `decisions/**`, `field-guide/**`),
-but the tree it now sits on is far ahead of the wave-37 boundary this file
-carried until this rebase: all six of wave 40's gate lanes
-(`task-w40-a` build+test+bundle, `-b` walkthrough, `-c` perf-smoke, `-d`
-spec-audit, `-e` render-sweep, `-f` exit-predicate-corpus-test) are now
-MERGED ancestors of `main`, and four review-lens alarms plus the
-`task-w17-i`/DEC-716 scope plus the plans-progress `total` question — all
-flagged UNFALSIFIABLE or IN FLIGHT as of the wave-37 boundary — are
-CLOSED this wave with fresh file:line + test citations (see DISMISSED
-review-lens/instrument alarms below). Every closed TIER 0 CLOSED row
-below still carries the EXERCISED check that would fail if its fix were
-reverted (DEC-358 wave-37 amendment); a row whose only backing is a
-code-shape citation is still labelled `UNFALSIFIABLE` and KEPT, not
-deleted, with its owner re-pointed at the wave-41 lane now assigned it.
+**This wave's own addition (folded in from the b71a1358..6edb5263 range):**
+wave 42's six lanes (sections `0210`-`0216` in
+`docs/verification-log/index/`, including `0216`'s mechanically-graded
+five-slot stage-1 exit-ledger table, `RESULT: FAIL`, `OPEN ITEMS: 4`) are
+now MERGED ancestors of `main`. Wave 43 landed three real product fixes
+(contacts-merge atomicity, autoSchedule window-blind filter,
+deleteContact FK-nulling) closing three of wave 42's four blocking items —
+see the new "Landed since the wave-41 boundary" subsection under TIER 0.
+Two rows the wave-42 lanes themselves re-filed despite already being ruled
+VOID/FALSE are DISMISSED again here, in stronger terms (see below). Wave
+44's own gate lanes are still IN FLIGHT as this rebase writes (see IN
+FLIGHT); the standing open-items COUNT and verdict belong to task-w44-f's
+triage-closure section, `docs/verification-log/index/0225-2026-08-15-task-w44-f-triage-closure-6edb5263.md`
+— this file cites that section by name rather than restating or predicting
+its count (ownership boundary for this task).
 
 ## Standing rules (still bind)
 
@@ -99,6 +108,55 @@ deleted, with its owner re-pointed at the wave-41 lane now assigned it.
   README wins.
 
 ## TIER 0 — re-verified, already correct or already merged, do not re-file
+
+### Landed since the wave-41 boundary (`b71a1358`..`6edb5263`), verified this wave
+
+- **Wave 42's six lanes, folded in.** `docs/verification-log/index/0210`
+  (task-w42-a triage-closure, `OPEN ITEMS: 1`), `0211` (task-w42-c
+  contacts-integrity adjudication, `OPEN ITEMS: 1` — mergeContacts
+  non-atomicity CONFIRMED-DEFECT), `0212` (task-w42-d content-lifecycle
+  adjudication, `OPEN ITEMS: 0`), `0213` (task-w42-e gate-gap adjudication,
+  `OPEN ITEMS: 2` — autoSchedule window-blind filter + perf-seed wiring gap
+  both CONFIRMED-DEFECT), `0214` (task-w42-f tier-1 fidelity recheck,
+  `OPEN ITEMS: 0`), `0216` (task-w42-b stage-1 exit ledger, mechanical
+  five-slot table, `RESULT: FAIL`, `OPEN ITEMS: 4`) — all six files present
+  and re-read at this HEAD. `0216`'s ledger names four blocking items: (1)
+  the mechanically-graded triage-closure slot reading FAIL because a
+  higher-sequence stale section (`0215`) supersedes a fresher one (`0210`)
+  by append order alone; (2) mergeContacts non-atomicity; (3) autoSchedule
+  window-blind `existing` filter; (4) `scripts/perf-seed.ts` perf-speaker
+  wiring gap. Items (2) and (3) are CLOSED by named wave-43 fixes below;
+  item (4) is FALSE (see DISMISSED below); item (1) is a sequencing
+  artifact, addressed by DEC-099 w44's recency rule (newest measured tree
+  wins) rather than a product fix — see task-w44-f's `0225` for the current
+  reading.
+- **`mergeContacts` multi-id merge non-atomicity — CLOSED.**
+  `src/server/repo/contacts/merge.ts:702-716` carries the "DEC-629/DEC-026
+  wave-43 amendment: set-based, ALL-OR-NOTHING merge" comment, with a
+  whole-operation preflight (`merge.ts:388`, `:410`) that resolves every id
+  in the batch BEFORE any write, so a refusal on any single id means ZERO
+  writes for the whole call. FALSIFYING CHECK:
+  `test/contacts-merge-integrity.test.ts`,
+  `test/contacts-merge-authz-batch.test.ts` — both present; would fail if
+  the preflight were reverted to per-pair (partial-write) semantics.
+- **`autoSchedule()` window-blind `existing` filter — CLOSED.**
+  `src/server/repo/agenda/auto-schedule.ts:60-68` now shares
+  `isDayWithinEventRange` (imported `:18`) with `payload.ts`, splitting
+  `slotted` into `inRangeSlotted`/`outOfRangeSlotted` so a slot outside the
+  event's window can no longer be counted "existing" and silently suppress
+  an unplaced-reason. FALSIFYING CHECK:
+  `test/schedule-unplaced-reasons.test.ts`,
+  `test/agenda-auto-schedule-params.test.ts`,
+  `test/auto-schedule-persistence.test.ts` — all present; would fail if the
+  shared-window-predicate were reverted to the old blind filter.
+- **`deleteContact` FK-integrity (DEC-979) — CLOSED, confirmed still in
+  force.** `src/server/repo/contacts/crud.ts:306-332` NULLs
+  `email_log.contact_id`, `file.uploaded_by_contact_id`,
+  `file_comment.author_contact_id` (never deletes the audit row), and
+  deletes `pipeline_entry`/`pipeline_activity`/`task_assignment`/dismissal
+  rows ahead of the contact row itself. FALSIFYING CHECK:
+  `test/contact-delete-fk-integrity.test.ts`,
+  `test/contact-delete-refusal-rows.test.ts` — both present.
 
 ### Closed, carried (boundary `0db68e36`, re-verified present on `494b6c01`)
 
@@ -184,9 +242,35 @@ restated claim, a citation re-run at this wave's own runtime.
   one that ran it. Whether `2e99b272` constitutes the DEC-644 joint
   boundary (every credited fix an ancestor) is for that lane's own report
   to state, not this file.
+- **`plan progress (page 1)`** — NOT GRADED FROM PROSE HERE, owned by
+  task-w44-c's fresh three-run measurement (in flight as this rebase
+  writes — see IN FLIGHT below). `0195`'s prior reading (0.6ms over
+  budget) was itself only ADVISORY, not CONFIRMED-DEFECT (0213 declined to
+  adjudicate it as a defect, calling for a fresh measurement before naming
+  a fix owner); this docs-only rebase does not re-measure it either. Do
+  not carry a stale verdict for this row until `task-w44-c` reports its own
+  reading.
 
 ### DISMISSED review-lens/instrument alarms
 
+- **`0193`/`0195`/`0196`/`0213` `scripts/perf-seed.ts` perf-speaker wiring
+  gap** — DISMISSED, FALSE, re-checked this wave. `grep -c PERF_SPEAKER
+  scripts/perf-seed.ts` = 13 at `6edb5263`; perf contact/user/participant
+  inserts at `scripts/perf-seed.ts:608,627,643,659`. `0210` (wave-42
+  triage-closure) already ruled this CLOSED; `0213` (a sibling wave-42
+  lane, same wave) re-filed it as CONFIRMED-DEFECT anyway with no
+  contradicting grep of its own — re-derived directly this wave and `0210`
+  is the verdict that holds. `scripts/` is out of this task's write scope
+  (DEC-358 w44); nothing to fix here, the wiring already exists.
+- **`0197`/`0213` row 2 `resolveBaseUrl` dev-loopback footgun** —
+  NOT-A-DEFECT (standing reclassification, carried from `0213`'s own read,
+  unchanged this wave). `src/server/origin.ts:123-128`: outside `devMode`,
+  an unset `PUBLIC_BASE_URL` throws (`resolveBaseUrl: PUBLIC_BASE_URL is
+  not set...`) rather than guessing from the request `Host` header
+  (DEC-252 wave-18 amendment) — the footgun is dev-only, and stage-2
+  provisioning is the actual fix surface (analogous to the email-provider
+  framing in `docs/clarifications.md:33`). Re-read directly at `6edb5263`;
+  standing verdict, not re-litigated.
 - **Bare-email login-account budget locks the real owner out** — DISMISSED
   this wave, FIXED in-tree. `src/routes/auth-helpers.ts:69`
   (`AUTH_ACCOUNT_RATE_LIMIT_MAX`) + `src/routes/auth-login.tsx:79-135`
@@ -313,15 +397,27 @@ found" is itself a citation.
 
 ### DISMISSED-VERIFIED-CLOSED (carried, wave 24-29 boundaries, not re-checked this wave beyond ref presence)
 
-- **`task-w29-f` "speakers toolbar right-cluster"** — VOID,
-  DISMISSED-VERIFIED-CLOSED. The wave-28 gate quoted
+- **`task-w29-f` / `0174`-G / `0210` "admin Speakers `[List | Grid]`
+  toolbar missing"** — VOID, DISMISSED-VERIFIED-CLOSED, RE-FILED AND
+  RE-DISMISSED AGAIN THIS WAVE (third time this row has been closed — see
+  RESTATED DO-NOT-RE-FILE note below). The wave-28 gate quoted
   `docs/design/README.md:350` under the heading `:343` "Public filter bar —
-  one idiom, four surfaces" (PUBLIC surfaces per `:345`), then searched the
-  admin onboarding-grid toolbar — irrelevant, never named by that quote.
-  The named controls are already built PUBLIC-side: `SpeakerViewToggle`
-  (`src/routes/public/speakers.tsx:20-58`, `aria-current="page"`) and
-  `TrackFacetSelect` (`:72-103`); verified by
-  `test/public-speakers-filter-bar.render.test.ts`. Do not re-file; do not
+  one idiom, four surfaces" (`:345` names Sessions/Agenda/Speakers/Home as
+  the four PUBLIC surfaces this row governs), then searched the admin
+  onboarding-grid toolbar — irrelevant, never named by that quote. The
+  named controls are already built PUBLIC-side: `SpeakerViewToggle`
+  (`src/routes/public/speakers.tsx:20`, rendered `:235`/`:314`,
+  `aria-current` at `:45`/`:52`) and `TrackFacetSelect` (`:72-103`);
+  verified by `test/public-speakers-filter-bar.render.test.ts`. Re-verified
+  at `6edb5263` this wave (file:line re-read directly, not inherited) and
+  independently cross-checked against task-w44-f's own `0225` row for the
+  same item, same verdict. **RESTATED, STRONGER: do not re-file this row a
+  fourth time.** It was ruled VOID here at the wave-37/38 boundary, closed
+  again as DISMISSED-VERIFIED-CLOSED at wave-41, and STILL re-filed as an
+  open item by wave-42's `0210` triage-closure section — a `docs/design/
+  README.md` heading naming the PUBLIC surfaces is not evidence of an
+  ADMIN gap, and grepping for a control under `app/src/pages/speakers/**`
+  will never find it because it was never spec'd to live there. Do not
   touch `app/src/pages/speakers/**` on this basis.
 - `src/routes/tasks.ts` onboarding-grid status refuses unrecognised tokens
   — `src/routes/tasks.ts:164-213` (DEC-340 wave-18 amendment).
@@ -385,50 +481,56 @@ found" is itself a citation.
 - `isSlugTaken` has no `orgId` predicate, DELIBERATE (`/e/:slug` global
   namespace) — `src/server/repo/events.ts:141-147`. DELIBERATE-BY-DESIGN,
   not a defect; falsifiability n/a.
-- Seeded dates relative to one seed clock — `scripts/seed.ts:261-278`
-  (DEC-591). Saved embeds exist — `src/db/schema/embed.ts`,
-  `src/routes/public/saved-embed.tsx`. Per-person reminder scope on send
-  and preview — `src/routes/tasks.ts:564-613` (DEC-694). EMB session-card
-  speaker title/company — `src/routes/public/cards.tsx:102-116`. Reviewer
-  multi-track scope renders a list, never "All tracks" —
-  `src/domain/evaluation/progress.ts:39` (DEC-845). Accepted speakers keep
-  editing past close — `src/domain/edit-lock.ts:22` (DEC-041, see CFP-16
-  below). `npm run deploy` exists — `package.json:21`. Comms preview `.ics`
-  chip formats in event's own timezone —
-  `app/src/pages/comms/icsChip.ts:18-19` (DEC-494). Settings edit-view field
-  widths are tokens — `app/src/pages/settings/settings.css:17-22`
-  (DEC-896). `/account/password` has real Cancel + 820 bare-page column —
-  `src/routes/account.tsx:139-144`. Overview §01 skips-last-hour caption —
-  `app/src/pages/Overview.tsx:325`. Pipeline fit score + rationale —
-  `src/domain/pipeline-fit.ts`. Portal edit-toggles —
-  `app/src/pages/settings/PortalSettingsPanel.tsx:306`. Phone agenda
-  N-aware clash caption — `app/src/pages/agenda/PhoneAgenda.tsx:186`.
-  Phone agenda "Place here anyway" — `:167-176,199-208`. Phone-block
-  override assertion — `app/src/phone-block-visibility.test.ts:186-205`.
-  Phone password fixed footer + Cancel — `src/routes/auth.css.ts:318-336`.
-  Comms phone landing — `app/src/phone-block-visibility.test.ts:109-121`
-  (DEC-621). Home footer media rule —
-  `src/routes/public/home.css.ts:72-76`. This whole block:
-  UNFALSIFIABLE — owner: wave-41 lanes d/e — discharge evidence in docs/mandates/w41-falsifiability-batch-a.md and -batch-b.md (same wave, may land after this file) (batch of code-shape citations, no
-  per-item exercised check named; several already have adjacent test files
-  cited inline — e.g. `app/src/phone-block-visibility.test.ts` — those
-  sub-items are exempt from the UNFALSIFIABLE label, the rest are not).
-  Wave-39 (DEC-358) spot-checked and PULLED TWO items out of this batch as
-  genuinely discharged, cheapest-first, in the time available; the rest of
-  the batch is untouched and still needs the same per-item treatment:
+- **DISCHARGED — batch A, `docs/mandates/w41-falsifiability-batch-a.md`,
+  `task-w41-d`, MERGED.** Six items opened and closed with a named
+  FALSIFYING CHECK each (all test files re-confirmed present at `6edb5263`
+  this wave): per-person reminder scope on send AND preview
+  (`src/routes/tasks.ts:564-613`, DEC-694) —
+  `test/reminders-contact-scope.test.ts`; Comms preview `.ics` chip
+  formatted in the event's own timezone
+  (`app/src/pages/comms/icsChip.ts:18-19`, DEC-494) —
+  `app/src/pages/comms/icsChip.test.ts`; reviewer multi-track scope renders
+  a list, never "All tracks" (`src/domain/evaluation/progress.ts:39`,
+  DEC-845) — `test/evaluation.test.ts`; EMB session-card speaker
+  title/company (`src/routes/public/cards.tsx:102-116`) —
+  `test/public-speaker-identity-line.test.ts`; seeded dates all relative to
+  one seed clock (`scripts/seed.ts:261-278`, DEC-591) — NEW test written
+  that wave, `test/tier0-falsifiability.test.ts`; portal edit-toggles
+  (`app/src/pages/settings/PortalSettingsPanel.tsx:306`) —
+  `app/src/pages/settings/PortalSettingsPanel.render.test.tsx`. Do not
+  re-file these six as UNFALSIFIABLE.
   - **Accepted speakers keep editing past close** (`src/domain/edit-lock.ts:22`,
     DEC-041) — FALSIFYING CHECK: `test/edit-lock.test.ts` — opened and
     confirmed it directly asserts `canEditSubmission("accepted", PAST_CLOSE,
     NOW, LA)` is `true` (labelled "DEC-041 amendment, wave 6") while the
     sibling `"pending" + closed` case is `false` — the accepted-stays-open
     carve-out is exercised against its own negative control, not just
-    asserted in isolation.
+    asserted in isolation. (Discharged wave-39, carried unchanged.)
   - **Pipeline fit score + rationale** (`src/domain/pipeline-fit.ts`) —
     FALSIFYING CHECK: `test/pipeline-fit.test.ts` — opened and confirmed
     `sortByFit` (descending by score, null/unrated last, non-mutating) and
     `validateFitScore`/`validateRationale` (integer 1-5 or null; bounded
     text or null; throw a named `ApiError` field rather than coerce) are
     each exercised directly against the real functions, not a shape guess.
+    (Discharged wave-39, carried unchanged.)
+  - Phone-block override assertion —
+    `app/src/phone-block-visibility.test.ts:186-205`; Comms phone landing —
+    `app/src/phone-block-visibility.test.ts:109-121` (DEC-621). Already
+    exempt from the UNFALSIFIABLE label (cited inline in the source batch).
+
+  **STILL UNFALSIFIABLE (batch A remainder, not reached that wave) — owner:
+  a wave-45 lane, not re-pointed at wave-41 any longer (that lane closed):**
+  saved embeds exist — `src/db/schema/embed.ts`,
+  `src/routes/public/saved-embed.tsx`. `npm run deploy` exists —
+  `package.json:21`. Settings edit-view field widths are tokens —
+  `app/src/pages/settings/settings.css:17-22` (DEC-896). `/account/password`
+  has real Cancel + 820 bare-page column — `src/routes/account.tsx:139-144`.
+  Overview §01 skips-last-hour caption — `app/src/pages/Overview.tsx:325`.
+  Phone agenda N-aware clash caption —
+  `app/src/pages/agenda/PhoneAgenda.tsx:186`. Phone agenda "Place here
+  anyway" — `:167-176,199-208`. Phone password fixed footer + Cancel —
+  `src/routes/auth.css.ts:318-336`. Home footer media rule —
+  `src/routes/public/home.css.ts:72-76`.
 - **DEC-099 wave-35 Vary: Cookie population + fix** — `task-w35-c`
   (`beb58e29` at filing, MERGED as of this wave — `3a041507` on `main`'s
   first-parent line per `task-w36-a`/`task-w36-b`/`task-w36-c`/`task-w36-e`'s
@@ -442,27 +544,43 @@ found" is itself a citation.
 
 ### DO-NOT-RE-FILE (carried, waves 14-23, not re-checked this wave beyond ref presence)
 
-Bulk-email two-stage dedupe (`src/routes/api/contacts/bulk-email.ts:214-250`,
-DEC-238); `createUser` insert-then-select onConflictDoNothing
-(`src/server/repo/users.ts:106-124`, DEC-552); breaks validation
-accumulates, DEC-022 cross-check reached (`src/routes/api/breaks.ts:130-166`);
-`send.ts`'s unconditional `bumpIcsSequences` — RULED DELIBERATE
-(`src/routes/comms/send.ts:243-258`); `MAX_PARTICIPANTS_PER_SUBMISSION`
-binds all four participant-writer doors
+**DISCHARGED — batch B, `docs/mandates/w41-falsifiability-batch-b.md`,
+`task-w41-e`, MERGED.** Eight items, each with a named FALSIFYING CHECK
+(all test files re-confirmed present at `6edb5263` this wave; two were
+written new that wave and re-confirmed non-tautological): `createUser`
+insert-then-select onConflictDoNothing race guard
+(`src/server/repo/users.ts:98-129`, DEC-552) —
+`test/tier0-falsifiability-legacy.test.ts` (new that wave); `send.ts`'s
+unconditional `bumpIcsSequences` (`src/routes/comms/send.ts:243-258`) —
+`test/tier0-falsifiability-legacy.test.ts` (new that wave); bulk-email
+two-stage dedupe (`src/routes/api/contacts/bulk-email.ts:214-250`,
+DEC-238) — `test/contacts-bulk-email-dedupe.test.ts`; breaks validation
+accumulates (`src/routes/api/breaks.ts:130-166`) —
+`test/schedule-breaks.test.ts`; `MAX_PARTICIPANTS_PER_SUBMISSION` binds
+all four participant-writer doors
 (`src/routes/api/submissions.ts:598`, `src/server/repo/portal-edit.ts:487`,
 `src/routes/api/contacts/import.ts:194`,
-`src/server/repo/import/sessionboard.ts:622`,
-`src/server/repo/participants.ts:105,191`); mail envelope via
-`addressValue` (`src/mail/email-binding.ts:236-240`); `answerFieldRoleCondition`
-missing event join — DISMISSED, DEC-592 wave-18 amendment
-(`src/server/repo/form-roles.ts:16`); `countEvaluationsBySubmission`'s
-whole-plan map — DISMISSED, DEC-449; duplicate `trackIds` deduped on both
-write doors (`src/routes/api/submissions.ts:131`,
-`src/routes/public/submit-body.ts:75-79`, DEC-598); reviewer plan window on
-lone-submission read + file authz (`src/routes/review/reviewer.ts:288`,
-`src/server/repo/files-authz.ts:185-209`, DEC-018); saved-view cap
-predicate is authorship not visibility (`src/routes/api/views.ts:87`,
-`src/server/repo/views.ts:137-143`, DEC-422); `task-w14-d` AUTH_CSS
+`src/server/repo/import/sessionboard.ts:622`) —
+`test/api-participants.test.ts`, `test/portal-copresenter.test.ts`,
+`test/contacts-import-participant-cap.test.ts`,
+`test/sessionboard-participant-cap.test.ts`; mail envelope via
+`addressValue` (`src/mail/email-binding.ts:236-240`) —
+`test/mail-envelope-address.test.ts`; duplicate `trackIds` deduped on both
+write doors (DEC-598) — `test/submission-tracks-are-a-set.test.ts`;
+saved-view cap predicate is authorship not visibility
+(`src/routes/api/views.ts:87`, DEC-422) —
+`test/saved-view-cap-authorship.test.ts`. Both new-test items surfaced no
+actual defect (coverage gaps only, per the mandate's own text). Do not
+re-file these eight as UNFALSIFIABLE.
+
+**STILL UNFALSIFIABLE (batch B remainder, not reached that wave) — owner: a
+wave-45 lane, not re-pointed at wave-41 any longer (that lane closed):**
+`answerFieldRoleCondition` missing event join — DISMISSED, DEC-592 wave-18
+amendment (`src/server/repo/form-roles.ts:16`);
+`countEvaluationsBySubmission`'s whole-plan map — DISMISSED, DEC-449;
+reviewer plan window on lone-submission read + file authz
+(`src/routes/review/reviewer.ts:288`,
+`src/server/repo/files-authz.ts:185-209`, DEC-018); `task-w14-d` AUTH_CSS
 `.chq-field-invalid` cascade
 (`app/src/components/error-states.css:31`, DEC-124 wave-14 amendment);
 `task-w15-c/d` `updateEvent` slug guard (`src/server/repo/events.ts:224-259`,
@@ -482,10 +600,9 @@ MERGED; `task-w17-b` perf-seed/perf-smoke harness bugs MERGED (`956fe263`);
 files-library table-layout, templates Delete, ENVELOPE_ALLOWLIST) all
 MERGED between `956fe263` and `39ac22d0`; `task-w23-f` MERGED via
 `f519f562` (DEC-902 column contract + DEC-937 review phone label). This
-whole block: UNFALSIFIABLE — owner: wave-41 lanes d/e — discharge evidence in docs/mandates/w41-falsifiability-batch-a.md and -batch-b.md (same wave, may land after this file) (not touched this wave;
-time went to the higher-priority named rows above), except items that
-already cite a test file inline (e.g. `test/audit-claims.test.ts`-adjacent
-items elsewhere in this doc).
+remainder is still UNFALSIFIABLE (no per-item exercised check named) except
+items that already cite a test file inline elsewhere in this doc (e.g.
+`test/audit-claims.test.ts`-adjacent items).
 
 ### Verification-log walkthrough items (docs/verification-log.md:3468-3478) — all FOUR fixed, harness-side
 
@@ -542,57 +659,90 @@ fixes are live-exercised, not merely present in source.
 
 ## IN FLIGHT — owned by a branch, do not re-file
 
-Ref-measured at THIS task's own runtime against `b71a1358` (30 refs total;
-`git for-each-ref refs/heads` + `npm run ref-state` +
-`git merge-base --is-ancestor <ref> main` for every ref;
-`.git/logs/refs/heads/<branch>` for creation timestamps):
+Ref-measured at THIS task's own runtime against `6edb5263` (31 refs total;
+`git for-each-ref --format='%(objectname) %(refname:short)' refs/heads` +
+`npx tsx scripts/ref-state.ts` + `git merge-base --is-ancestor <ref> main`
+run individually for every ref; `.git/logs/refs/heads/<branch>` from the
+main checkout for creation timestamps):
 
-- **NO `task-w30-*` through `task-w39-*` refs are live** — confirmed via
-  `git for-each-ref refs/heads`; none of those waves' named branches exist
-  as refs today (all merged, branches deleted post-merge; their content is
-  on `main`'s history, not as a live named ref). Do not re-file any wave
-  30-through-39 scope on the strength of an old "OWNED BY" line (DEC-069
-  wave-17 amendment).
-- **All six wave-40 gate lanes are MERGED** — `task-w40-a` (build+test+bundle,
-  PASS, 1092 test files/12002 tests, bundle 69.20 kB gz), `task-w40-b`
-  (`73150059`, walkthrough), `task-w40-c` (`d1db93f9` @ `2e99b272`,
-  perf-smoke), `task-w40-d` (`852ef22d`, spec-audit), `task-w40-e`
-  (`3d0f61c2`, render-sweep, advisory), `task-w40-f` (exit-predicate corpus
-  test, merged via `2e99b272`) — every one confirmed an ancestor of `main`
-  by `git merge-base --is-ancestor`. Content folded into TIER 0 above where
-  applicable (perf rows, review-lens dismissals). No wave-40 triage-closure
-  section has been written yet — `docs/verification-log/index/` has no
-  `*-triage-closure-*` entry for this boundary, so DEC-069's exit predicate
-  (four gate sections + a triage-closure section with `OPEN ITEMS: 0`) is
-  NOT YET satisfiable at this boundary; this is an open item, not a grade.
-  `task-w40-e`/`task-w40-g` (`3d0f61c2`/`2e99b272`) remain as live refs
-  pointing at already-merged content — stale-but-harmless, not owned scope.
-- **`task-w41-c`** (`47d3653d`, "heavy-gate lock re-entrant-safe", DEC-644
-  wave-41) — ancestor of `main` (merged, `main`'s own HEAD is
-  "merge task-w41-c"). MERGED.
-- **`task-w41-a`** (`a52a7b0c`, "Add clarifications conformance ledger",
-  DEC-518 wave-41 amendment) — real commit, NOT an ancestor of `main`
-  (`ref-state` confirms). Owns the `docs/clarifications.md` two-directional
-  ledger the wave-41 field-guide note flagged as missing. UNMERGED, do not
-  re-file.
-- **`task-w41-b`** (`5c4c981b`, "Add machine-checked exit-verdict contract
-  test", DEC-099 wave-41) — real commit, NOT an ancestor of `main`. Owns
-  the RESULT-token/scope-literal/em-dash corpus test the wave-41 field-guide
-  note flagged as missing. UNMERGED, do not re-file.
-- **`task-w41-d`** (`d7cfe08d`) — tip equals the "scribe wave 41" commit
-  (zero commits of its own as of this reading), created at this task's own
-  runtime per `.git/logs/refs/heads/task-w41-d` (~7 minutes before this
-  reading). RUNNING, not dead (DEC-069 wave-37 amendment: a branch minutes
-  old at its base is running). Assigned by this task's own delegation to
-  own `docs/mandates/w41-falsifiability-batch-a.md`'s discharge evidence —
-  do not claim that discharge from this file.
-- **`task-w41-e`** (`b71a1358`) — tip equals `main`'s current HEAD exactly
-  (zero commits of its own as of this reading), created per
-  `.git/logs/refs/heads/task-w41-e` (~5 minutes before this reading).
-  RUNNING, not dead, same rule as `task-w41-d`. Assigned by this task's own
-  delegation to own `docs/mandates/w41-falsifiability-batch-b.md`'s
-  discharge evidence — do not claim that discharge from this file.
-- **`task-w41-f`** — this task itself (the eval-findings rebase you are
+- **NO `task-w30-*` through `task-w43-*` refs are live except
+  `task-w43-c`** — confirmed via `git for-each-ref refs/heads`; `task-w43-c`
+  (`44e99042`, "Contacts: mergeContacts becomes all-or-nothing across the
+  whole id list") IS an ancestor of `main` (merged, folded into TIER 0
+  above). No other wave-30-through-43 named branch exists as a live ref
+  today. Do not re-file any of those waves' scope on the strength of an old
+  "OWNED BY" line (DEC-069 wave-17 amendment).
+- **Wave-41 batches a and b are MERGED, not IN FLIGHT.** `task-w41-a`
+  (clarifications conformance ledger, DEC-518) and `task-w41-b`
+  (machine-checked exit-verdict contract test, DEC-099) both merged
+  (`4d6b343f`/`16e57481` on `main`'s first-parent line). `task-w41-d`
+  (`docs/mandates/w41-falsifiability-batch-a.md`) and `task-w41-e`
+  (`-batch-b.md`) both merged too (`main`'s history includes "merge
+  task-w41-e"); both mandate files re-confirmed present at `6edb5263` this
+  wave. All four wave-41 lanes' branch refs no longer exist locally
+  (deleted post-merge) — content lives on `main`'s history only.
+- **Wave-42's six lanes are MERGED** — folded into TIER 0 above
+  ("Landed since the wave-41 boundary").
+- **`task-w43-c`** — MERGED (see above), the sole wave-43 branch ref;
+  content folded into TIER 0.
+- **`task-w44-a`** (`b1b6b206`, build+test+bundle gate, section `0220`) —
+  real commit, NOT an ancestor of `main` at this HEAD. Filed a FAIL: 3/12081
+  tests failed in `test/contacts-repo.test.ts` (`mergeContacts` suite), a
+  test-mock/production call-order desync from the DEC-026 w43 preflight
+  hoist (extra `db.select()` calls now happen before `mergeOnePair`'s own
+  re-fetch, but the test's `fakeDb` select-queue wasn't updated to match).
+  Owner: wave-45 lane, fix `test/contacts-repo.test.ts`'s three
+  `fakeDb([...])` queues in the `mergeContacts` describe block. Build
+  clean; bundle 69.20 kB gz (measured standalone, outside the sanctioned
+  lock, since the `&&` chain aborted at the test failure). UNMERGED at this
+  reading, do not re-file the underlying tests as passing.
+- **`task-w44-b`** (`797765e8`, DEC-069 frozen-gate walkthrough, section
+  `0221`) — real commit, NOT an ancestor of `main` at this HEAD. RESULT:
+  PASS, all six persona-walkthrough areas (producer/review/speaker/public/
+  data/scale) green, zero FAIL lines, scale step (110 fresh
+  contacts/submissions, bulk accept 82ms, no auto-email on bulk status
+  change) included. UNMERGED at this reading.
+- **`task-w44-c`** (perf-smoke, three-run measurement) — tip equals
+  `main`'s HEAD exactly (zero commits of its own as of this reading),
+  created at this task's own runtime (`.git/logs/refs/heads/task-w44-c`).
+  RUNNING, not dead (DEC-069 wave-37 amendment). Owns the `plan progress
+  (page 1)` perf row's closing/staying-open verdict — see TIER 0 note
+  above; do not grade that row from this file.
+- **`task-w44-d`** (`8d04029f`, spec-audit, section `0223`) — real commit,
+  NOT an ancestor of `main` at this HEAD. RESULT: PASS. Cross-checked (not
+  adjudicated) wave-42's four exit-ledger open items: mergeContacts and
+  autoSchedule both show wave-43 fixes landing consistent with a close
+  (this lane did not re-run their suites itself); perf-seed matches the
+  already-filed FALSE finding; the triage-closure-sequencing item was still
+  open at that lane's own runtime (no `0217`-`0222` section existed yet).
+  UNMERGED at this reading.
+- **`task-w44-e`** — tip equals `main`'s HEAD exactly, zero commits of its
+  own as of the STEP-0 `ref-state` reading (created at this wave's runtime,
+  `.git/logs/refs/heads/task-w44-e`). RUNNING, not dead (DEC-069 wave-37
+  amendment). Not independently re-read by this task (out of this task's
+  write scope, DEC-358 w44).
+- **`task-w44-f`** (`0885a65a`, triage-closure, section `0225`) — real
+  commit, NOT an ancestor of `main` at this HEAD. **This is the section
+  that owns the wave-44 open-items COUNT and verdict — cite it by name,
+  `docs/verification-log/index/0225-2026-08-15-task-w44-f-triage-closure-6edb5263.md`,
+  do not restate or predict its count here.** As filed: RESULT FAIL, OPEN
+  ITEMS: 1 — `scripts/exit-predicate.ts:259`'s `isAncestorOfProductSha`
+  uncaught-crashes on an unresolvable ancient header sha (`6807b67`),
+  reproduced fresh at that lane's own runtime; every other item in the
+  0174-0216 population was reconciled with a file:line/exercised-test/
+  explicit VOID-FALSE-MOOT-ADVISORY ruling. Owner of the one open item:
+  task-w44-g. UNMERGED at this reading.
+- **`task-w44-g`** — AT THIS TASK'S STEP-0 `ref-state` reading, tip equaled
+  `main`'s HEAD (zero commits of its own, RUNNING per DEC-069 wave-37).
+  Since re-checked mid-task (DEC-099 w44: read refs twice — once at plan
+  end/measurement time is not enough for a still-running sibling): it has
+  now committed `aa485c78` ("exit-predicate: rank slot candidates by newest
+  measured tree, DEC-099 w44") and is NO LONGER an ancestor of `main` at
+  this file's write time — a real, unmerged fix in flight. Owns
+  `scripts/exit-predicate.ts`'s crash-on-unresolvable-sha issue per
+  task-w44-f's `0225` filing; not independently re-read for correctness by
+  this task (out of write scope, docs-only).
+- **`task-w44-i`** — this task itself (the eval-findings rebase you are
   reading).
 - **`task-w17-i`** (`7b78d8b6`) — STILL UNMERGED, unchanged across many
   waves, but its NAMED SCOPE ("Sign-in page names the event and its open
@@ -607,7 +757,7 @@ Ref-measured at THIS task's own runtime against `b71a1358` (30 refs total;
   `main` (their content already folded into history; stale live refs, not
   owned scope), while `mail-rich-shape-fallback`, `task-w68-b/c/e`,
   `task-w71-a`, `task-w72-a`-`j` are NOT ancestors — genuinely unmerged,
-  but belong to waves numbered ahead of wave 41 (68/71/72), a
+  but belong to waves numbered ahead of wave 44 (68/71/72), a
   different/later campaign. Flagged, not triaged.
 
 ### TIER-1 pointer — `task-w27-g` owns fidelity-recheck verdicts, cite as OWNED
