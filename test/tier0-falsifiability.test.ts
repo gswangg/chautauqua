@@ -10,6 +10,19 @@
 // asserts the OBSERVABLE behaviour only (the thrown ApiError + its message
 // naming the cap), never the query shape, per this task's co-ownership note
 // with task-w39-d/e which are editing this file's siblings this same wave.
+//
+// wave-41 (task-w41-d, DEC-358 amendment): adds a second, unrelated
+// falsifiability closure -- scripts/seed.ts's "the seed has ONE clock"
+// claim (DEC-591, seed.ts:261-264: SEED_NOW anchors every seeded instant as
+// an offset from itself via CHQ_SEED_NOW). No existing test ran the seed
+// script under two distinct CHQ_SEED_NOW values and compared the resulting
+// output, so a regression that hardcoded an absolute instant instead of an
+// offset from SEED_NOW would have passed every existing seed test (which
+// only ever runs the script once, under the ambient Date.now()) silently.
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { isSubmissionInReviewerScope } from "../src/server/repo/review/submissions";
 import { MAX_REVIEWER_SCOPE_ROWS } from "../src/server/repo/review/reviewers";
@@ -89,5 +102,74 @@ describe("isSubmissionInReviewerScope shares resolveReviewerSubmissions' MAX_REV
     const db = makeFakeDb(MAX_REVIEWER_SCOPE_ROWS);
     const plan = makePlan();
     await expect(isSubmissionInReviewerScope(db, plan, "user-1", "sub-0")).resolves.toBeDefined();
+  });
+});
+
+describe("scripts/seed.ts: the seed has ONE clock (DEC-591)", () => {
+  const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
+  const REPO_ROOT = join(SCRIPT_DIR, "..");
+  const OUTPUT_PATH = join(REPO_ROOT, ".seed.sql");
+
+  // Both well before EVENT_START_MS - MIN_LEAD_DAYS (2027-05-12 minus 60
+  // days = 2027-03-13), 31 days apart.
+  const CLOCK_A = "2027-01-01T00:00:00.000Z";
+  const CLOCK_B = "2027-02-01T00:00:00.000Z";
+  const DELTA_MS = Date.parse(CLOCK_B) - Date.parse(CLOCK_A);
+
+  function runSeed(seedNowIso: string): string {
+    execFileSync("npx", ["tsx", "scripts/seed.ts"], {
+      cwd: REPO_ROOT,
+      stdio: "inherit",
+      env: { ...process.env, CHQ_SEED_NOW: seedNowIso },
+    });
+    return readFileSync(OUTPUT_PATH, "utf-8");
+  }
+
+  // The event row's own created_at is a seeded instant (nextTs(), offset
+  // from BASE_TS = SEED_NOW - 120 days) -- this must shift by exactly
+  // DELTA_MS between the two runs. Its start_date/end_date/slug are fixture
+  // constants (DEC-591 scopes "one clock" to seeded instants only, not the
+  // event's own calendar dates) -- these must stay byte-identical.
+  function parseEventRow(sql: string): { createdAt: number; updatedAt: number; startDate: string; slug: string } {
+    const line = sql.split("\n").find((l) => l.startsWith("INSERT INTO event ("));
+    if (!line) throw new Error("no INSERT INTO event line found in seed output");
+    const tsMatch = line.match(/, (\d{10,}), (\d{10,})\);\s*$/);
+    if (!tsMatch) throw new Error(`could not extract created_at/updated_at from: ${line}`);
+    const startDateMatch = line.match(/'(\d{4}-\d{2}-\d{2})'/);
+    if (!startDateMatch) throw new Error(`could not extract start_date from: ${line}`);
+    const slugMatch = line.match(/'([a-z0-9-]+)', '\d{4}-\d{2}-\d{2}'/);
+    if (!slugMatch) throw new Error(`could not extract slug from: ${line}`);
+    return {
+      createdAt: Number(tsMatch[1]!),
+      updatedAt: Number(tsMatch[2]!),
+      startDate: startDateMatch[1]!,
+      slug: slugMatch[1]!,
+    };
+  }
+
+  it(
+    "shifts every seeded instant by exactly the CHQ_SEED_NOW delta, leaving the event's fixed calendar dates untouched",
+    () => {
+      const sqlA = runSeed(CLOCK_A);
+      const rowA = parseEventRow(sqlA);
+      const sqlB = runSeed(CLOCK_B);
+      const rowB = parseEventRow(sqlB);
+
+      expect(rowB.createdAt - rowA.createdAt).toBe(DELTA_MS);
+      expect(rowB.updatedAt - rowA.updatedAt).toBe(DELTA_MS);
+      expect(rowB.startDate).toBe(rowA.startDate);
+      expect(rowB.slug).toBe(rowA.slug);
+    },
+    60_000,
+  );
+
+  it("rejects an unparseable CHQ_SEED_NOW loudly instead of silently falling back to Date.now()", () => {
+    expect(() =>
+      execFileSync("npx", ["tsx", "scripts/seed.ts"], {
+        cwd: REPO_ROOT,
+        stdio: "pipe",
+        env: { ...process.env, CHQ_SEED_NOW: "not-a-date" },
+      }),
+    ).toThrow();
   });
 });
