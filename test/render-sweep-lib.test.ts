@@ -23,9 +23,12 @@ import {
   formatMobileSummary,
   formatResultsTable,
   formatSummary,
+  isGenuineClipOffender,
   isNonEmptyText,
   mobileErrorResult,
   routeErrorResult,
+  selectClipOffenders,
+  type ClipCandidate,
   type FontFloorRouteEntry,
   type MobileRouteEntry,
 } from "../scripts/render-sweep-lib";
@@ -937,6 +940,177 @@ describe("filterKnownClipExceptions (DEC-620)", () => {
     );
     expect(filtered).toEqual([]);
     expect(result.ok).toBe(true);
+  });
+});
+
+describe("isGenuineClipOffender (DEC-620 wave-25 amendment)", () => {
+  const TOLERANCE = 2;
+
+  // The reproduced offenders named in the w17-d receipt at 408af6fc.
+  const visuallyHiddenCollapse: ClipCandidate = {
+    // label/button.chq-visually-hidden — position:absolute; width:1px;
+    // height:1px; overflow:hidden; clip:rect(0,0,0,0)
+    // (src/routes/public/css/chrome.css.ts:22-32).
+    descriptor: "label.chq-visually-hidden",
+    scrollHeight: 19,
+    clientHeight: 1,
+    isSelfScrollContainer: false,
+    hasClippingContext: true, // overflow:hidden IS a real clipping context
+    isReplacedContentCrop: false,
+  };
+
+  const replacedContentCrop: ClipCandidate = {
+    // div.chq-pub-speaker-list-photo — wraps an <img> with object-fit:cover
+    // (src/routes/public/css/cards.css.ts:156-165).
+    descriptor: "div.chq-pub-speaker-list-photo",
+    scrollHeight: 84,
+    clientHeight: 80,
+    isSelfScrollContainer: false,
+    hasClippingContext: true, // the photo wrapper itself clips (overflow:hidden)
+    isReplacedContentCrop: true,
+  };
+
+  const noClippingContext: ClipCandidate = {
+    // h1.chq-auth-wordmark — font-size:28px; line-height:1, no overflow
+    // declared on it or any ancestor (src/routes/auth.css.ts:56-63).
+    descriptor: "h1.chq-auth-wordmark",
+    scrollHeight: 31,
+    clientHeight: 28,
+    isSelfScrollContainer: false,
+    hasClippingContext: false,
+    isReplacedContentCrop: false,
+  };
+
+  const selfScrollContainer: ClipCandidate = {
+    // .chq-main — flex:1; min-height:0; overflow-y:auto (app/src/styles.css:
+    // 404-409), "the ONLY [scrolling region]" per styles.css:179. Resolves
+    // its own overflow with a scrollbar; nothing is lost to the user.
+    descriptor: "main.chq-main",
+    scrollHeight: 2305,
+    clientHeight: 645,
+    isSelfScrollContainer: true,
+    hasClippingContext: true, // overflow-y:auto IS a clipping-context value
+    isReplacedContentCrop: false,
+  };
+
+  const genuineClip: ClipCandidate = {
+    // A real defect: a text box declaring overflow:hidden whose content is
+    // actually cut, not a replaced-content crop, and taller than the
+    // visually-hidden collapse floor.
+    descriptor: "div.chq-some-summary-box",
+    scrollHeight: 140,
+    clientHeight: 60,
+    isSelfScrollContainer: false,
+    hasClippingContext: true,
+    isReplacedContentCrop: false,
+  };
+
+  it("exempts the visually-hidden collapse (clientHeight <= 1px) even though it has a clipping context", () => {
+    expect(isGenuineClipOffender(visuallyHiddenCollapse, TOLERANCE)).toBe(false);
+  });
+
+  it("exempts a replaced-content crop (object-fit) even though the wrapper clips", () => {
+    expect(isGenuineClipOffender(replacedContentCrop, TOLERANCE)).toBe(false);
+  });
+
+  it("exempts an element with no real clipping context anywhere in its ancestry", () => {
+    expect(isGenuineClipOffender(noClippingContext, TOLERANCE)).toBe(false);
+  });
+
+  it("exempts a deliberate self-scroll container (own overflow-y auto|scroll) even though overflow-y:auto counts as a clipping-context value", () => {
+    expect(isGenuineClipOffender(selfScrollContainer, TOLERANCE)).toBe(false);
+  });
+
+  it("still FAILs a genuine clip: real clipping context, not the hidden collapse, not a replaced-content crop, not self-scrolling", () => {
+    expect(isGenuineClipOffender(genuineClip, TOLERANCE)).toBe(true);
+  });
+
+  it("never reports a candidate within tolerance regardless of context flags", () => {
+    const withinTolerance: ClipCandidate = { ...genuineClip, scrollHeight: 61 };
+    expect(isGenuineClipOffender(withinTolerance, TOLERANCE)).toBe(false);
+  });
+});
+
+describe("selectClipOffenders (DEC-620 wave-25 amendment)", () => {
+  it("drops the four exemption shapes and keeps only the genuine clip, formatted and sorted", () => {
+    const candidates: ClipCandidate[] = [
+      {
+        descriptor: "label.chq-visually-hidden",
+        scrollHeight: 19,
+        clientHeight: 1,
+        isSelfScrollContainer: false,
+        hasClippingContext: true,
+        isReplacedContentCrop: false,
+      },
+      {
+        descriptor: "div.chq-pub-speaker-list-photo",
+        scrollHeight: 84,
+        clientHeight: 80,
+        isSelfScrollContainer: false,
+        hasClippingContext: true,
+        isReplacedContentCrop: true,
+      },
+      {
+        descriptor: "h1.chq-auth-wordmark",
+        scrollHeight: 31,
+        clientHeight: 28,
+        isSelfScrollContainer: false,
+        hasClippingContext: false,
+        isReplacedContentCrop: false,
+      },
+      {
+        descriptor: "main.chq-main",
+        scrollHeight: 2305,
+        clientHeight: 645,
+        isSelfScrollContainer: true,
+        hasClippingContext: true,
+        isReplacedContentCrop: false,
+      },
+      {
+        descriptor: "div.chq-some-summary-box",
+        scrollHeight: 140,
+        clientHeight: 60,
+        isSelfScrollContainer: false,
+        hasClippingContext: true,
+        isReplacedContentCrop: false,
+      },
+    ];
+    const selected = selectClipOffenders(candidates, 2, 5);
+    expect(selected).toEqual(["div.chq-some-summary-box clip=80px (scrollHeight 140 > clientHeight 60)"]);
+  });
+
+  it("caps at `cap` and sorts worst-first among multiple genuine offenders", () => {
+    const candidates: ClipCandidate[] = [
+      {
+        descriptor: "div.small",
+        scrollHeight: 70,
+        clientHeight: 60,
+        isSelfScrollContainer: false,
+        hasClippingContext: true,
+        isReplacedContentCrop: false,
+      },
+      {
+        descriptor: "div.big",
+        scrollHeight: 200,
+        clientHeight: 60,
+        isSelfScrollContainer: false,
+        hasClippingContext: true,
+        isReplacedContentCrop: false,
+      },
+      {
+        descriptor: "div.mid",
+        scrollHeight: 130,
+        clientHeight: 60,
+        isSelfScrollContainer: false,
+        hasClippingContext: true,
+        isReplacedContentCrop: false,
+      },
+    ];
+    const selected = selectClipOffenders(candidates, 2, 2);
+    expect(selected).toEqual([
+      "div.big clip=140px (scrollHeight 200 > clientHeight 60)",
+      "div.mid clip=70px (scrollHeight 130 > clientHeight 60)",
+    ]);
   });
 });
 
