@@ -116,6 +116,33 @@ export function parseBoundedIdArray(
 }
 
 // DEC-417
+// Shared bounded-text check: single source of truth for the "must be a
+// string" / "is required" / over-cap message strings, consumed by both the
+// throwing (parseBoundedText) and accumulating (collectBoundedText) forms.
+// Returns either the validated (trimmed) result or a { message, fieldValue }
+// failure describing what to throw / accumulate.
+function checkBoundedText(
+  value: unknown,
+  field: string,
+  opts: { max: number; required?: boolean; trim?: boolean },
+): { ok: true; value: string } | { ok: false; message: string; fieldValue: string } {
+  if (typeof value !== "string") {
+    return { ok: false, message: `${field} must be a string`, fieldValue: "Invalid" };
+  }
+  const result = opts.trim !== false ? value.trim() : value;
+  if (opts.required && result.length === 0) {
+    return { ok: false, message: `${field} is required`, fieldValue: "Required" };
+  }
+  if (result.length > opts.max) {
+    return {
+      ok: false,
+      message: `${field} must be at most ${opts.max} characters`,
+      fieldValue: overCapFieldMessage(result.length, opts.max),
+    };
+  }
+  return { ok: true, value: result };
+}
+
 /**
  * Validates and returns a bounded, optionally-required, string field.
  * Fails loudly on non-string input, missing-when-required, or over-cap
@@ -127,22 +154,13 @@ export function parseBoundedText(
   field: string,
   opts: { max: number; required?: boolean; trim?: boolean },
 ): string {
-  if (typeof value !== "string") {
-    throw new ApiError("invalid", `${field} must be a string`, { [field]: "Invalid" });
+  const result = checkBoundedText(value, field, opts);
+  if (!result.ok) {
+    throw new ApiError("invalid", result.message, { [field]: result.fieldValue });
   }
-  const result = opts.trim !== false ? value.trim() : value;
-  if (opts.required && result.length === 0) {
-    throw new ApiError("invalid", `${field} is required`, { [field]: "Required" });
-  }
-  if (result.length > opts.max) {
-    throw new ApiError("invalid", `${field} must be at most ${opts.max} characters`, {
-      [field]: overCapFieldMessage(result.length, opts.max),
-    });
-  }
-  return result;
+  return result.value;
 }
 
-// DEC-417
 /** Like parseBoundedText, but nullable columns: undefined/null/empty -> null. */
 export function parseBoundedOptionalText(
   value: unknown,
@@ -153,6 +171,46 @@ export function parseBoundedOptionalText(
     return null;
   }
   const text = parseBoundedText(value, field, { max: opts.max, required: false, trim: true });
+  return text.length === 0 ? null : text;
+}
+
+// DEC-417 (amendment, wave 14)
+/**
+ * Like parseBoundedText, but accumulates its failure message into `fields`
+ * instead of throwing, so callers can report every invalid field on a
+ * multi-field write in one 400 rather than stopping at the first problem.
+ * Returns a safe fallback ('') on failure -- callers must check `fields`
+ * for emptiness before treating the return value as valid.
+ */
+export function collectBoundedText(
+  value: unknown,
+  field: string,
+  opts: { max: number; required?: boolean; trim?: boolean },
+  fields: Record<string, string>,
+): string {
+  const result = checkBoundedText(value, field, opts);
+  if (!result.ok) {
+    fields[field] = result.fieldValue;
+    return "";
+  }
+  return result.value;
+}
+
+// DEC-417 (amendment, wave 14)
+/** Like parseBoundedOptionalText, but accumulates into `fields` instead of throwing. */
+export function collectBoundedOptionalText(
+  value: unknown,
+  field: string,
+  opts: { max: number },
+  fields: Record<string, string>,
+): string | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  const text = collectBoundedText(value, field, { max: opts.max, required: false, trim: true }, fields);
+  if (fields[field] !== undefined) {
+    return null;
+  }
   return text.length === 0 ? null : text;
 }
 
