@@ -313,10 +313,10 @@ export interface ContactListResult {
 function tokenCondition(token: string) {
   const like = likeContains(token);
   return or(
-    sql`${schema.contact.firstName} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
-    sql`${schema.contact.lastName} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
-    sql`${schema.contact.email} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
-    sql`coalesce(${schema.contact.company}, '') LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
+    sql`${schema.contact.firstName} LIKE ${like} ESCAPE '\\'`,
+    sql`${schema.contact.lastName} LIKE ${like} ESCAPE '\\'`,
+    sql`${schema.contact.email} LIKE ${like} ESCAPE '\\'`,
+    sql`coalesce(${schema.contact.company}, '') LIKE ${like} ESCAPE '\\'`,
   )!;
 }
 

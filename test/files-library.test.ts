@@ -125,14 +125,38 @@ function renderSql(node: { queryChunks: unknown[] }): { text: string; params: un
  * text (DEC-333/335's likeContains), so after stripping the wrapper and
  * un-escaping, matching reduces to a literal substring test — this is what
  * proves the ESCAPE clause: a raw % or _ in the search term is matched as a
- * literal character, never as a SQL wildcard. */
+ * literal character, never as a SQL wildcard. Case-insensitive via JS
+ * .toLowerCase() on both sides here to emulate SQLite's own ASCII-folding
+ * LIKE (DEC-506 wave-64: production no longer folds case itself — LIKE does
+ * that on its own — so this fake DB's case-insensitivity models SQLite's
+ * behavior, not any column/needle pre-folding the repo layer performs). */
 function likeMatches(value: string, likePattern: string): boolean {
   const inner = likePattern.slice(1, -1);
   const literal = inner.replace(/\\(.)/g, "$1");
-  return value.includes(literal);
+  return value.toLowerCase().includes(literal.toLowerCase());
 }
 
-/** Evaluates the sql`` shapes this module emits: a plain `lower(#col) like ?
+/** Evaluates a LIKE operand expression — the sole shapes this module's
+ * post-DEC-506-wave-64 templates emit: a bare `#col`, `coalesce(#col, '')`,
+ * or a `(#colA || ' ' || #colB)` name concat — against a joined row. */
+function evalLikeOperand(expr: string, row: Record<string, unknown>): string {
+  const trimmed = expr.trim();
+  const concatMatch = trimmed.match(/^\(#(\w+) \|\| ' ' \|\| #(\w+)\)$/);
+  if (concatMatch) {
+    return `${String(row[concatMatch[1]!] ?? "")} ${String(row[concatMatch[2]!] ?? "")}`;
+  }
+  const coalesceMatch = trimmed.match(/^coalesce\(#(\w+), ''\)$/);
+  if (coalesceMatch) {
+    return String(row[coalesceMatch[1]!] ?? "");
+  }
+  const colMatch = trimmed.match(/^#(\w+)$/);
+  if (colMatch) {
+    return String(row[colMatch[1]!] ?? "");
+  }
+  throw new Error(`fake db: unsupported LIKE operand: ${trimmed}`);
+}
+
+/** Evaluates the sql`` shapes this module emits: a plain `<operand> like ?
  * escape '\'`, or the correlated EXISTS over participant/contact for
  * speaker-name matching, against a fully-joined row (file+submission
  * fields) plus the full participant/contact seed for the EXISTS case. */
@@ -149,14 +173,14 @@ function evalSqlNode(node: { queryChunks: unknown[] }, row: Record<string, unkno
       if (p.submissionId !== submissionId) return false;
       const contact = seed.contact.find((c) => c.id === p.contactId);
       if (!contact) return false;
-      const name = `${contact.firstName} ${contact.lastName}`.toLowerCase();
+      const name = `${contact.firstName} ${contact.lastName}`;
       return likeMatches(name, like);
     });
   }
-  const colMatch = text.match(/lower\(#(\w+)\)/);
-  if (colMatch) {
-    const key = colMatch[1]!;
-    const value = String(row[key] ?? "").toLowerCase();
+  const likeIdx = text.search(/\blike\b/i);
+  if (likeIdx !== -1) {
+    const operand = text.slice(0, likeIdx);
+    const value = evalLikeOperand(operand, row);
     const like = params[0] as string;
     return likeMatches(value, like);
   }

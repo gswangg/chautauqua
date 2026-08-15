@@ -202,6 +202,32 @@ describe("getPublicSessions ?q= search (DEC-506/DEC-511 LIKE escaping)", () => {
       SESSION_FIXTURE[1]!.title = originalTitle;
     }
   });
+
+  // DEC-506 wave-64 amendment: the ONE case-insensitive idiom is the raw
+  // (unfolded) needle compared with plain LIKE, with no SQL lower() and no
+  // JS .toLowerCase() applied anywhere before likeContains. Prove an
+  // uppercase non-ASCII needle still matches its haystack, and that
+  // lowercase-ASCII matching is unaffected by removing the lower()/
+  // COLLATE NOCASE idioms.
+  it("an uppercase non-ASCII needle matches a haystack containing the same letter", async () => {
+    const originalTitle = SESSION_FIXTURE[1]!.title;
+    SESSION_FIXTURE[1]!.title = "École Polytechnique";
+    try {
+      const db = makeSessionsFakeDb();
+      const page = await getPublicSessions(db, EVENT, { trackId: null, page: 1, perPage: 12, q: "ÉCOLE" });
+      expect(page.items.map((s) => s.id)).toEqual(["s2"]);
+      expect(page.total).toBe(1);
+    } finally {
+      SESSION_FIXTURE[1]!.title = originalTitle;
+    }
+  });
+
+  it("lowercase-ASCII matching is unchanged (case-insensitive substring match still works)", async () => {
+    const db = makeSessionsFakeDb();
+    const page = await getPublicSessions(db, EVENT, { trackId: null, page: 1, perPage: 12, q: "intro" });
+    expect(page.items.map((s) => s.id)).toEqual(["s1"]);
+    expect(page.total).toBe(1);
+  });
 });
 
 interface FixtureContact {

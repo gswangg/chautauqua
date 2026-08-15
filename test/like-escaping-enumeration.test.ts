@@ -228,20 +228,43 @@ describe("DEC-511: LIKE-escaping invariant, enumerated over src/server/repo/**/*
     expect(offenders, `drizzle-orm like/ilike import found at: ${offenders.join(", ")}`).toEqual([]);
   });
 
-  it("every LIKE-bearing template is case-consistent: COLLATE NOCASE or lower(...) present", () => {
+  it("every LIKE-bearing template uses the ONE idiom: no COLLATE NOCASE, no lower(...) (DEC-506 wave-64 amendment)", () => {
+    // SQLite's LIKE already case-folds ASCII by itself (COLLATE NOCASE
+    // beside it is inert) and its lower() is ASCII-only while a caller's
+    // JS .toLowerCase() is Unicode-aware — mixing the two idioms (or using
+    // either one) drops rows whose case differs only in a non-ASCII
+    // letter. The single sanctioned shape is the raw (unfolded) escaped
+    // needle compared with plain `LIKE ... ESCAPE '\\'`.
     const offenders: string[] = [];
     for (const f of FILES) {
       for (const t of likeBearingTemplates(f)) {
         const hasCollateNocase = /COLLATE\s+NOCASE/i.test(t.body);
         const hasLower = /\blower\s*\(/i.test(t.body);
-        if (!hasCollateNocase && !hasLower) {
+        if (hasCollateNocase || hasLower) {
           offenders.push(`${f.relPath}:${t.line}`);
         }
       }
     }
     expect(
       offenders,
-      `LIKE template with neither COLLATE NOCASE nor lower(...) at: ${offenders.join(", ")}`,
+      `LIKE template with COLLATE NOCASE or lower(...) at: ${offenders.join(", ")}`,
     ).toEqual([]);
+  });
+
+  it("no likeContains(...) call argument is itself wrapped in .toLowerCase()/.toUpperCase()", () => {
+    // Case-folding belongs nowhere near a LIKE call site now — not on the
+    // SQL side (lower()/COLLATE NOCASE, asserted above) and not on the JS
+    // side feeding likeContains its needle.
+    const offenders: string[] = [];
+    const re = /likeContains\s*\(([^)]*)\)/g;
+    for (const f of FILES) {
+      for (const m of f.text.matchAll(re)) {
+        const arg = m[1]!;
+        if (/\.toLowerCase\s*\(|\.toUpperCase\s*\(/.test(arg)) {
+          offenders.push(`${f.relPath}:${lineOfOffset(f.text, m.index!)}`);
+        }
+      }
+    }
+    expect(offenders, `likeContains() call with case-folded argument at: ${offenders.join(", ")}`).toEqual([]);
   });
 });

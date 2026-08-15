@@ -198,11 +198,11 @@ function buildDeliverableWhere(eventId: string, deliverableKinds: string[], q: s
   if (q) {
     const tokens = q.split(/\s+/).filter((t) => t.length > 0);
     const tokenConditions = tokens.map((token) => {
-      const like = likeContains(token.toLowerCase());
+      const like = likeContains(token);
       return or(
-        sql`lower(${schema.file.filename}) like ${like} escape '\\'`,
-        sql`lower(${schema.submission.title}) like ${like} escape '\\'`,
-        sql`exists (select 1 from ${schema.participant} inner join ${schema.contact} on ${schema.contact.id} = ${schema.participant.contactId} where ${schema.participant.submissionId} = ${schema.submission.id} and lower(${schema.contact.firstName} || ' ' || ${schema.contact.lastName}) like ${like} escape '\\')`,
+        sql`${schema.file.filename} like ${like} escape '\\'`,
+        sql`${schema.submission.title} like ${like} escape '\\'`,
+        sql`exists (select 1 from ${schema.participant} inner join ${schema.contact} on ${schema.contact.id} = ${schema.participant.contactId} where ${schema.participant.submissionId} = ${schema.submission.id} and (${schema.contact.firstName} || ' ' || ${schema.contact.lastName}) like ${like} escape '\\')`,
       )!;
     });
     if (tokenConditions.length > 0) {
@@ -219,11 +219,11 @@ function buildHeadshotWhere(eventId: string, q: string | null): SQL {
   if (q) {
     const tokens = q.split(/\s+/).filter((t) => t.length > 0);
     const tokenConditions = tokens.map((token) => {
-      const like = likeContains(token.toLowerCase());
+      const like = likeContains(token);
       return or(
-        sql`lower(${schema.contact.firstName} || ' ' || ${schema.contact.lastName}) like ${like} escape '\\'`,
-        sql`lower(coalesce(${schema.contact.company}, '')) like ${like} escape '\\'`,
-        sql`lower(${schema.file.filename}) like ${like} escape '\\'`,
+        sql`(${schema.contact.firstName} || ' ' || ${schema.contact.lastName}) like ${like} escape '\\'`,
+        sql`coalesce(${schema.contact.company}, '') like ${like} escape '\\'`,
+        sql`${schema.file.filename} like ${like} escape '\\'`,
       )!;
     });
     if (tokenConditions.length > 0) {
