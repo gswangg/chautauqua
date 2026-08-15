@@ -411,13 +411,16 @@ export function Scorecard() {
             {submission.speakers && (
               <span className="chq-summary">Speakers: {submission.speakers.map((s) => s.name).join(', ')}</span>
             )}
-            {/* DEC-889 (wave-72 amendment): anonymizeForReviewer already
-                stripped speakers/speakerAnswers server-side when the plan
-                is anonymised -- this is a disclosure of that fact, never a
-                re-derivation of visibility from role. */}
-            {plan.anonymized && (
+            {/* DEC-889 (wave-72 amendment); DEC-018 (wave-54 amendment):
+                anonymizeForReviewer already stripped speakers/speakerAnswers
+                and redacted every identity string out of title/description/
+                sessionAnswers server-side -- this is a disclosure of that
+                fact (gated on the wire's own `anonymized` flag, never
+                re-derived from plan), never a re-derivation of visibility
+                from role. */}
+            {submission.anonymized === true && (
               <p className="chq-review-anonymized-notice">
-                {"The speaker's name and company are hidden while this plan is anonymised"}
+                {"The speaker's name and company are hidden while this plan is anonymised."}
               </p>
             )}
           </div>

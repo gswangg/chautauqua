@@ -326,7 +326,10 @@ describe('Scorecard reading column at rest (DEC-889 wave-72 amendment)', () => {
         myEvaluation: undefined,
         criteria: [{ id: 'c1', label: 'Quality', kind: 'rating', weight: 1 }],
         // Server-side anonymizeForReviewer strips speakers/speakerAnswers
-        // entirely -- no key at all -- for an anonymised plan.
+        // entirely -- no key at all -- for an anonymised plan, and sets
+        // anonymized: true (DEC-018 wave-54 amendment) as the wire's own
+        // signal for the reading-column disclosure below.
+        anonymized: true,
       },
     });
 
@@ -340,7 +343,7 @@ describe('Scorecard reading column at rest (DEC-889 wave-72 amendment)', () => {
 
     expect(await screen.findByRole('heading', { name: 'A Deeply Nested Talk' })).toBeInTheDocument();
     expect(
-      screen.getByText("The speaker's name and company are hidden while this plan is anonymised"),
+      screen.getByText("The speaker's name and company are hidden while this plan is anonymised."),
     ).toBeInTheDocument();
   });
 

@@ -611,14 +611,83 @@ export function resolveAssignments<T extends { id: string; trackIds: string[] }>
 }
 
 /**
+ * Escapes every regex metacharacter in `s` so it can be embedded literally
+ * inside a RegExp source string (a company name like "C++ Corp" must match
+ * itself, not be read as regex syntax).
+ */
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * DEC-018 (wave-54 amendment): masks every occurrence of any of `identities`
+ * inside `value` with the literal string `[hidden]`, case-insensitively.
+ * Identities are matched as literal text (regex metacharacters escaped, so a
+ * company like "C++ Corp" matches itself rather than being read as regex
+ * syntax) and applied longest-first, so a full name is masked before a
+ * shorter identity that happens to be a substring of it gets a chance to
+ * leave a fragment behind. Blank/whitespace-only identities are ignored
+ * (they would otherwise match everything). `value` may be a string (masked
+ * directly) or an array of strings (each entry masked); any other value
+ * (number, boolean, null, object, ...) passes through untouched -- this is a
+ * text-redaction primitive, not a deep-object walker.
+ */
+export function redactIdentity(value: unknown, identities: string[]): unknown {
+  const cleaned = identities
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0)
+    .sort((a, b) => b.length - a.length);
+
+  if (cleaned.length === 0) {
+    return value;
+  }
+
+  const pattern = new RegExp(cleaned.map(escapeRegExp).join("|"), "gi");
+
+  const maskString = (s: string): string => s.replace(pattern, "[hidden]");
+
+  if (typeof value === "string") {
+    return maskString(value);
+  }
+  if (Array.isArray(value) && value.every((v) => typeof v === "string")) {
+    return (value as string[]).map(maskString);
+  }
+  return value;
+}
+
+/**
  * Strips speaker identity/answer fields from a submission for an anonymized
- * reviewer queue. This must run server-side -- anonymization is never
- * implemented as CSS-hiding on the client.
+ * reviewer queue, and masks every occurrence of a speaker's identity
+ * (name/email/company, DEC-018 wave-54 amendment) out of the free text that
+ * survives -- title, description, and every sessionAnswers[].value -- so an
+ * anonymized plan carries no speaker identity STRING anywhere in the
+ * payload, not just in the dedicated speaker fields. This must run
+ * server-side -- anonymization is never implemented as CSS-hiding on the
+ * client.
  */
 export function anonymizeForReviewer<
-  T extends { speakers?: unknown; speakerAnswers?: unknown },
->(sub: T): T {
-  return { ...sub, speakers: undefined, speakerAnswers: undefined };
+  T extends {
+    speakers?: unknown;
+    speakerAnswers?: unknown;
+    title?: unknown;
+    description?: unknown;
+    sessionAnswers?: { value: unknown }[];
+  },
+>(sub: T, identities: string[]): T & { anonymized: true } {
+  const redactedSessionAnswers = sub.sessionAnswers?.map((a) => ({
+    ...a,
+    value: redactIdentity(a.value, identities),
+  }));
+  return {
+    ...sub,
+    speakers: undefined,
+    speakerAnswers: undefined,
+    title: typeof sub.title === "string" ? redactIdentity(sub.title, identities) : sub.title,
+    description:
+      typeof sub.description === "string" ? redactIdentity(sub.description, identities) : sub.description,
+    ...(redactedSessionAnswers ? { sessionAnswers: redactedSessionAnswers } : {}),
+    anonymized: true,
+  };
 }
 
 // ---------------------------------------------------------------------------

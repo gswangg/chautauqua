@@ -1,9 +1,12 @@
 // DEC-561/DEC-562 coverage: GET /api/v1/review/submissions/:id's contract --
-// speakers carry name/company/title (never email), custom answers are
-// ordered by form_field.position, myEvaluation reflects this reviewer's own
-// stored row for the plan's current round (omitted when absent), and
-// anonymizeForReviewer still strips the speakers/speakerAnswers KEYS
-// entirely.
+// speakers carry name/company/title in the response body (never email, even
+// though the repo layer now also selects email for DEC-018's wave-54
+// identity-redaction list -- the route strips it before responding), custom
+// answers are ordered by form_field.position, myEvaluation reflects this
+// reviewer's own stored row for the plan's current round (omitted when
+// absent), and anonymizeForReviewer still strips the speakers/speakerAnswers
+// KEYS entirely plus (wave-54) redacts speaker identity strings out of
+// title/description/sessionAnswers.
 //
 // Two layers: (1) repo-level ordering proof for listAnswersForSubmission /
 // listSpeakersForSubmission, using the same drizzle-orm asc()-mocking
@@ -99,12 +102,12 @@ describe("listAnswersForSubmission (DEC-561/DEC-562)", () => {
 });
 
 describe("listSpeakersForSubmission (DEC-561/DEC-562)", () => {
-  it("issues orderBy(asc(participant.order), asc(contact.id)), derives name, and never selects email", async () => {
+  it("issues orderBy(asc(participant.order), asc(contact.id)), derives name, and selects email (DEC-018 wave-54: identity redaction, never serialized to the client -- caller must strip it)", async () => {
     const seed = [
-      { contactId: "c-zed", firstName: "Zed", lastName: "Zeta", company: "Zco", title: "CTO", order: 1 },
-      { contactId: "c-alpha", firstName: "Alan", lastName: "Alpha", company: "Aco", title: "CEO", order: 0 },
-      { contactId: "c-beta-2", firstName: "Bea", lastName: "Beta", company: "Bco", title: "VP", order: 2 },
-      { contactId: "c-beta-1", firstName: "Bob", lastName: "Beta", company: "Bco", title: "Eng", order: 2 },
+      { contactId: "c-zed", firstName: "Zed", lastName: "Zeta", company: "Zco", title: "CTO", email: "zed@z.co", order: 1 },
+      { contactId: "c-alpha", firstName: "Alan", lastName: "Alpha", company: "Aco", title: "CEO", email: "alan@a.co", order: 0 },
+      { contactId: "c-beta-2", firstName: "Bea", lastName: "Beta", company: "Bco", title: "VP", email: "bea@b.co", order: 2 },
+      { contactId: "c-beta-1", firstName: "Bob", lastName: "Beta", company: "Bco", title: "Eng", email: "bob@b.co", order: 2 },
     ];
 
     let capturedOrderByArgs: unknown[] = [];
@@ -137,15 +140,17 @@ describe("listSpeakersForSubmission (DEC-561/DEC-562)", () => {
     expect(colInfo((capturedOrderByArgs[0] as AscMarker).of)).toEqual({ tag: "participant", key: "order" });
     expect(colInfo((capturedOrderByArgs[1] as AscMarker).of)).toEqual({ tag: "contact", key: "id" });
 
-    // Never selects contact.email (DEC-561).
+    // DEC-018 (wave-54 amendment): now selects contact.email too -- purely
+    // for the caller's identity-redaction list, never for the client-facing
+    // `detail.speakers` field (the route strips it before responding).
     expect(capturedSelectShape).toBeDefined();
-    expect(Object.keys(capturedSelectShape as object)).not.toContain("email");
+    expect(Object.keys(capturedSelectShape as object)).toContain("email");
 
     expect(rows).toEqual([
-      { contactId: "c-alpha", name: "Alan Alpha", company: "Aco", title: "CEO" },
-      { contactId: "c-zed", name: "Zed Zeta", company: "Zco", title: "CTO" },
-      { contactId: "c-beta-1", name: "Bob Beta", company: "Bco", title: "Eng" },
-      { contactId: "c-beta-2", name: "Bea Beta", company: "Bco", title: "VP" },
+      { contactId: "c-alpha", name: "Alan Alpha", company: "Aco", title: "CEO", email: "alan@a.co" },
+      { contactId: "c-zed", name: "Zed Zeta", company: "Zco", title: "CTO", email: "zed@z.co" },
+      { contactId: "c-beta-1", name: "Bob Beta", company: "Bco", title: "Eng", email: "bob@b.co" },
+      { contactId: "c-beta-2", name: "Bea Beta", company: "Bco", title: "VP", email: "bea@b.co" },
     ]);
   });
 });
@@ -177,8 +182,25 @@ const anonymizedPlanRecord = { ...planRecord, id: "plan-2", anonymized: true };
 
 const SUMMARY = { id: "sub-1", ref: "S-001", title: "Talk One", description: "desc", trackIds: [] };
 const SPEAKERS = [{ contactId: "c1", name: "Ada Lovelace", company: "Acme", title: "CTO" }];
+// DEC-018 (wave-54 amendment): the stubbed repo call still returns `email`
+// (listSpeakersForSubmission's real shape) even though SPEAKERS above (used
+// by the non-anonymized-plan speakers assertion) does not carry it -- the
+// route must strip it from `detail.speakers` regardless of plan.anonymized.
+const SPEAKERS_WITH_EMAIL = [{ contactId: "c1", name: "Ada Lovelace", company: "Acme", title: "CTO", email: "ada@example.com" }];
 const ANSWERS = [
   { fieldId: "f1", section: "session" as const, label: "Q1", kind: "text", value: "a1" },
+  { fieldId: "f2", section: "speaker" as const, label: "Q2", kind: "text", value: "a2" },
+];
+const IDENTITY_SUMMARY = {
+  id: "sub-1",
+  ref: "S-001",
+  title: "A talk by Ada Lovelace",
+  description: "Presented by Ada Lovelace of Acme.",
+  trackIds: [],
+  status: "submitted",
+};
+const IDENTITY_ANSWERS = [
+  { fieldId: "f1", section: "session" as const, label: "Q1", kind: "text", value: "Written by Ada Lovelace" },
   { fieldId: "f2", section: "speaker" as const, label: "Q2", kind: "text", value: "a2" },
 ];
 
@@ -206,7 +228,7 @@ vi.mock("../src/server/repo/review", async () => {
     isSubmissionInReviewerScope: vi.fn(async () => true),
     getSubmissionSummaryInEvent: vi.fn(async () => SUMMARY),
     listAnswersForSubmission: vi.fn(async () => ANSWERS),
-    listSpeakersForSubmission: vi.fn(async () => SPEAKERS),
+    listSpeakersForSubmission: vi.fn(async () => SPEAKERS_WITH_EMAIL),
     // DEC-939 (wave-6 amendment): the detail route now reads the scorecard
     // meta line's format label through the same DEC-857 batched lookup the
     // queue uses. These fixtures carry no format answer, so the map is
@@ -245,7 +267,11 @@ async function buildApp(auth: AuthInfo) {
   return app;
 }
 
-const { hasRecusal } = await import("../src/server/repo/review");
+const {
+  hasRecusal,
+  getSubmissionSummaryInEvent,
+  listAnswersForSubmission: listAnswersForSubmissionRoute,
+} = await import("../src/server/repo/review");
 
 describe("GET /api/v1/review/submissions/:id (DEC-561 contract)", () => {
   it("speakers carry name/company/title and never an email key anywhere in the body", async () => {
@@ -338,5 +364,55 @@ describe("GET /api/v1/review/submissions/:id (DEC-561 contract)", () => {
     const res = await app.request(`/api/v1/review/submissions/sub-1?planId=${planRecord.id}`);
     const body = (await res.json()) as Record<string, unknown>;
     expect("myRecusal" in body).toBe(false);
+  });
+
+  // DEC-018 (wave-54 amendment): an anonymized plan's detail carries no
+  // speaker identity STRING anywhere in the body -- not just the dedicated
+  // speaker fields, but title/description/sessionAnswers too. A
+  // non-anonymized plan's detail is byte-identical to before this change.
+  describe("DEC-018 (wave-54 amendment): identity redaction", () => {
+    it("anonymized plan: the speaker's name is nowhere in title/description/sessionAnswers", async () => {
+      evaluationStore = new Map();
+      vi.mocked(getSubmissionSummaryInEvent).mockResolvedValueOnce(IDENTITY_SUMMARY);
+      vi.mocked(listAnswersForSubmissionRoute).mockResolvedValueOnce(IDENTITY_ANSWERS);
+
+      const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
+      const res = await app.request(`/api/v1/review/submissions/sub-1?planId=${anonymizedPlanRecord.id}`);
+      expect(res.status).toBe(200);
+      const text = await res.text();
+      expect(text).not.toContain("Ada Lovelace");
+      expect(text).not.toContain("ada@example.com");
+
+      const body = JSON.parse(text) as {
+        title: string;
+        description: string;
+        sessionAnswers: { value: unknown }[];
+        anonymized: boolean;
+      };
+      expect(body.title).toBe("A talk by [hidden]");
+      expect(body.description).toBe("Presented by [hidden] of [hidden].");
+      expect(body.sessionAnswers[0]?.value).toBe("Written by [hidden]");
+      expect(body.anonymized).toBe(true);
+    });
+
+    it("non-anonymized plan: response is byte-identical to before the wave-54 amendment (no anonymized key, speaker name intact)", async () => {
+      evaluationStore = new Map();
+      vi.mocked(getSubmissionSummaryInEvent).mockResolvedValueOnce(IDENTITY_SUMMARY);
+      vi.mocked(listAnswersForSubmissionRoute).mockResolvedValueOnce(IDENTITY_ANSWERS);
+
+      const app = await buildApp({ userId: "u1", role: "organizer", orgId: ORG_A });
+      const res = await app.request(`/api/v1/review/submissions/sub-1?planId=${planRecord.id}`);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        title: string;
+        description: string;
+        sessionAnswers: { value: unknown }[];
+        anonymized?: boolean;
+      };
+      expect(body.title).toBe("A talk by Ada Lovelace");
+      expect(body.description).toBe("Presented by Ada Lovelace of Acme.");
+      expect(body.sessionAnswers[0]?.value).toBe("Written by Ada Lovelace");
+      expect("anonymized" in body).toBe(false);
+    });
   });
 });
