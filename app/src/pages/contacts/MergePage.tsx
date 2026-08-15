@@ -17,6 +17,7 @@ import { DelayedLoading } from '../../components/DelayedLoading';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import type { DuplicateGroup } from './types';
+import { countOf } from '../../lib/plural';
 // DEC-858: names that differ only by case are the same name at a merge --
 // share the ONE name-identity rule the duplicate detector already uses.
 import { normalizedContactName } from '../../../../src/domain/contacts';
@@ -248,7 +249,7 @@ export function MergePage() {
 
           {pairPosition && (
             <p className="chq-contacts-merge-pair-count">
-              {pairPosition.index} of {pairPosition.total} {pairPosition.total === 1 ? 'pair' : 'pairs'}
+              {pairPosition.index} of {countOf(pairPosition.total, 'pair')}
             </p>
           )}
 
@@ -305,8 +306,8 @@ export function MergePage() {
 
           {impact && keepContact && (
             <p className="chq-contacts-merge-impact">
-              {impact.submissions} {impact.submissions === 1 ? 'submission' : 'submissions'} and {impact.tasks}{' '}
-              {impact.tasks === 1 ? 'task' : 'tasks'} move to {keepContact.firstName} {keepContact.lastName}.
+              {countOf(impact.submissions, 'submission')} and {countOf(impact.tasks, 'task')} move to{' '}
+              {keepContact.firstName} {keepContact.lastName}.
             </p>
           )}
 

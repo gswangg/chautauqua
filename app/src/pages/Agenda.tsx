@@ -164,7 +164,7 @@ export function AgendaPage() {
       const roomName = resolveRoomName(previous.rooms, roomId);
       const clashDelta = refreshed.summary.conflicts - previous.summary.conflicts;
       const clashClause =
-        clashDelta > 0 ? ` ${clashDelta} new clash${clashDelta === 1 ? '' : 'es'} — flagged, not blocked.` : '';
+        clashDelta > 0 ? ` ${countOf(clashDelta, 'new clash', 'new clashes')} — flagged, not blocked.` : '';
       setToast(`Placed ${ref} in ${roomName} at ${formatMinutes(startMin)}.${clashClause}`);
     } catch (err) {
       setAgenda(previous);
@@ -278,7 +278,7 @@ export function AgendaPage() {
         <h1 className="chq-page-title">Agenda</h1>
         <div className="chq-summary chq-agenda-summary">
           {`${agenda?.summary.unplaced ?? 0} unplaced · `}
-          <strong>{`${agenda?.summary.conflicts ?? 0} ${agenda?.summary.conflicts === 1 ? 'conflict' : 'conflicts'}`}</strong>
+          <strong>{countOf(agenda?.summary.conflicts ?? 0, 'conflict')}</strong>
           {` · ${placedPercent(agenda)}% placed`}
         </div>
         <div className="chq-agenda-head-actions">

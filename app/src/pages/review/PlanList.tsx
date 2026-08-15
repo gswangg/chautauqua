@@ -12,6 +12,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { PageSkeleton } from '../../components/PageSkeleton';
 import './review.css';
 import type { EvaluationPlan, ProgressRow, Track } from './types';
+import { countOf } from '../../lib/plural';
 
 /** Presentational-only window state derived from openDate/closeDate — never
  * stored server-side, so it must never be asserted as more than "now vs.
@@ -190,7 +191,7 @@ export function PlanList() {
       <div className="chq-review-title-row">
         <h1 className="chq-page-title">Review</h1>
         <span className="chq-summary">
-          {plans.length} {plans.length === 1 ? 'plan' : 'plans'}
+          {countOf(plans.length, 'plan')}
           {!progressPending && ` · ${withEvaluationsCount} with evaluations in`}
         </span>
         <div className="chq-review-title-actions">

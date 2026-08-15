@@ -68,7 +68,7 @@ function closesRelativeNote(openMs: number | null, closeMs: number | null, timez
   if (state === 'closed') return 'CLOSED';
   if (closeMs === null) return '';
   const daysLeft = daysUntil(closeMs, timezone, Date.now());
-  return `IN ${daysLeft} DAY${daysLeft === 1 ? '' : 'S'}`;
+  return `IN ${countOf(daysLeft, 'day')}`.toUpperCase();
 }
 
 interface EventTrack {

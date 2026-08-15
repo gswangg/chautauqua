@@ -227,16 +227,16 @@ export function EventSettingsPanel() {
         <p role="status" className="chq-event-unscheduled-notice">
           {unscheduledNotice.sessions ? (
             <>
-              {unscheduledNotice.sessions.count} placed {plural(unscheduledNotice.sessions.count, 'session')} now
-              fall{unscheduledNotice.sessions.count === 1 ? 's' : ''} outside these dates and{' '}
-              {unscheduledNotice.sessions.count === 1 ? 'has' : 'have'} been unscheduled:{' '}
+              {unscheduledNotice.sessions.count} placed {plural(unscheduledNotice.sessions.count, 'session')} now{' '}
+              {plural(unscheduledNotice.sessions.count, 'falls', 'fall')} outside these dates and{' '}
+              {plural(unscheduledNotice.sessions.count, 'has', 'have')} been unscheduled:{' '}
               {unscheduledNotice.sessions.sessions.map((s) => s.ref).join(', ')}.{' '}
             </>
           ) : null}
           {unscheduledNotice.breaks ? (
             <>
-              {unscheduledNotice.breaks.count} {plural(unscheduledNotice.breaks.count, 'break')} now fall
-              {unscheduledNotice.breaks.count === 1 ? 's' : ''} outside these dates:{' '}
+              {unscheduledNotice.breaks.count} {plural(unscheduledNotice.breaks.count, 'break')} now{' '}
+              {plural(unscheduledNotice.breaks.count, 'falls', 'fall')} outside these dates:{' '}
               {unscheduledNotice.breaks.breaks.map((b) => b.label).join(', ')}.{' '}
             </>
           ) : null}

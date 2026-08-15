@@ -18,6 +18,7 @@ import {
 } from './planForm';
 import { ErrorSummary, countHeading } from '../../components/ErrorSummary';
 import { OPTIONAL_SUFFIX } from '../../../../src/domain/form-copy';
+import { plural } from '../../lib/plural';
 // DEC-708: the same name-or-email resolver ProgressPanel uses -- a plan
 // reviewer row names a person by their resolved contact, never a
 // fabricated name, falling back to the bare email.
@@ -192,7 +193,7 @@ function shortfallSummaries(shortfall: DistributePreview['shortfall']): { key: s
     else groups.set(key, { reason: s.reason, trackName: s.trackName, needed: s.needed });
   }
   return [...groups.entries()].map(([key, g]) => {
-    const noun = g.needed === 1 ? 'review stays' : 'reviews stay';
+    const noun = plural(g.needed, 'review stays', 'reviews stay');
     const constraint =
       g.reason === 'cap_reached'
         ? g.trackName
@@ -2138,7 +2139,7 @@ export function PlanEditor() {
       {leaveConfirmOpen && (
         <ConfirmDialog
           title="Leave without saving?"
-          body={`${joinWithAnd(dirtyFieldLabels())} ${dirtyFieldLabels().length === 1 ? 'is' : 'are'} not saved yet.`}
+          body={`${joinWithAnd(dirtyFieldLabels())} ${plural(dirtyFieldLabels().length, 'is', 'are')} not saved yet.`}
           confirmLabel="Leave"
           cancelLabel="Keep editing"
           destructive
