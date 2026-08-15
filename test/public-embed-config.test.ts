@@ -230,15 +230,21 @@ function buildAgendaApp() {
       if (selectCall === 4) {
         // DEC-548 getPublicAgenda's total count(*) subquery — reflects
         // whatever ?day= filter the just-built sq's where() captured.
+        // DEC-774 wave-34 amendment: this fires in the SAME synchronous
+        // burst as getPublicBreaksByDay's select below (wave 2's two
+        // concurrent reads), ahead of getPublicAgenda's own rows query/
+        // room lookup/hydrateSessions cascade. See test/public-surface-
+        // round-trip-depth.test.ts for the behavioural proof.
         const filtered = dayFilter ? AGENDA_ROWS.filter((r) => r.day === dayFilter) : AGENDA_ROWS;
         return makeChain([{ count: filtered.length }]);
       }
-      if (selectCall === 5) return makeChain([{ id: "room1", name: "Main Hall" }]); // roomRows
-      if (selectCall === 6) return makeChain(SESSION_ROWS); // hydrateSessions subRows
-      if (selectCall === 7) {
+      if (selectCall === 5) return makeChain([]); // getPublicBreaksByDay
+      if (selectCall === 6) return makeChain([{ id: "room1", name: "Main Hall" }]); // roomRows
+      if (selectCall === 7) return makeChain(SESSION_ROWS); // hydrateSessions subRows
+      if (selectCall === 8) {
         return makeChain(SESSION_ROWS.map((s) => ({ submissionId: s.id, id: "trk1", name: "Track A", color: "#f00" })));
       }
-      if (selectCall === 8) {
+      if (selectCall === 9) {
         return makeChain(
           SESSION_ROWS.map((s) => ({
             submissionId: s.id,
@@ -250,7 +256,7 @@ function buildAgendaApp() {
           })),
         );
       }
-      if (selectCall === 9) return makeChain([]); // hydrateSessions EMB-01 slotRows (unused by the agenda grid itself)
+      if (selectCall === 10) return makeChain([]); // hydrateSessions EMB-01 slotRows (unused by the agenda grid itself)
       return makeChain([]); // hydrateSessions formatRows
     },
     selectDistinct: () => {

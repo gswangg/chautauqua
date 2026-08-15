@@ -256,6 +256,19 @@ function buildSessionsAppDayA() {
 // HTML dispatch inserts one extra select() (getPublicTracks) ahead of
 // hydrateSessions' own calls, matching buildSessionsAppHtml's convention in
 // test/public-feed-window.test.ts.
+//
+// DEC-774 wave-34 amendment: dispatch.tsx's sessions case now issues its
+// reads as ONE Promise.all wave instead of a serial chain. `day` is set, so
+// `anyFilter` is true and the grandTotal probe (a SECOND full
+// getPublicSessions call, hydrate cascade included) runs concurrently with
+// the main getPublicSessions call — the two hydrate cascades interleave
+// select-call-for-select-call once both reach their own hydrateSessions
+// stage. tracks/rooms/formatOptions (single-call reads) and
+// dayCounts/cfpWindow (also single-call, and NOT gated behind the
+// multi-step sessions calls) land in call slots 2-6, ahead of every
+// hydrate/count call from either getPublicSessions invocation. See
+// test/public-surface-round-trip-depth.test.ts for the behavioural proof
+// this reordering is real concurrency, not a source-level guess.
 function buildSessionsAppDayAHtml() {
   let selectCall = 0;
   const db = {
@@ -280,7 +293,21 @@ function buildSessionsAppDayAHtml() {
       if (selectCall === 2) return makeWindowChain([]); // getPublicTracks
       if (selectCall === 3) return makeWindowChain([]); // getPublicRooms (DEC-774)
       if (selectCall === 4) return makeWindowChain([]); // getPublicFormatOptions (DEC-774)
-      if (selectCall === 5) {
+      // DEC-683: dispatch.tsx's !embed sessions case also fetches these two
+      // rail queries — real row shapes here (never the count-shaped
+      // fallback) so DayIndexRailSection's formatDay(d.day) never sees an
+      // undefined day. Both land ahead of either getPublicSessions call's
+      // hydrate cascade: they're single-select reads with nothing else to
+      // await, so they finish inside the initial synchronous wave burst.
+      if (selectCall === 5) return makeWindowChain([]); // getPublicScheduleDayCounts
+      if (selectCall === 6) return makeWindowChain([]); // getPublicCfpWindow (no default form)
+      // The main getPublicSessions call and the anyFilter grandTotal probe
+      // now run concurrently, so their hydrateSessions cascades interleave
+      // one step at a time: main-subRows, grandTotal-subRows, main-
+      // trackRows, grandTotal-trackRows, ... main-count, grandTotal-count.
+      // Only the MAIN cascade's rows need to be real (grandTotal's items
+      // are discarded — only its `.total` is read) — grandTotal.
+      if (selectCall === 7) {
         return makeWindowChain(
           DAY_A_IDS.map((id, i) => ({
             id,
@@ -289,19 +316,19 @@ function buildSessionsAppDayAHtml() {
             description: null,
             icsSequence: 0,
           })),
-        );
+        ); // main hydrateSessions subRows
       }
-      if (selectCall === 6) return makeWindowChain([]); // trackRows
-      if (selectCall === 7) return makeWindowChain([]); // speakerRows
-      if (selectCall === 8) return makeWindowChain([]); // slotRows
-      if (selectCall === 9) return makeWindowChain([]); // formatRows
-      if (selectCall === 10) return makeWindowChain([{ count: DAY_A_IDS.length }]); // countVisibleSubmissions
-      // DEC-683: dispatch.tsx's !embed sessions case also fetches these two
-      // rail queries — real row shapes here (never the count-shaped
-      // fallback) so DayIndexRailSection's formatDay(d.day) never sees an
-      // undefined day.
-      if (selectCall === 11) return makeWindowChain([]); // getPublicScheduleDayCounts
-      return makeWindowChain([]); // getPublicCfpWindow (no default form)
+      if (selectCall === 8) return makeWindowChain([]); // grandTotal hydrateSessions subRows
+      if (selectCall === 9) return makeWindowChain([]); // main hydrateSessions trackRows
+      if (selectCall === 10) return makeWindowChain([]); // grandTotal hydrateSessions trackRows
+      if (selectCall === 11) return makeWindowChain([]); // main hydrateSessions speakerRows
+      if (selectCall === 12) return makeWindowChain([]); // grandTotal hydrateSessions speakerRows
+      if (selectCall === 13) return makeWindowChain([]); // main hydrateSessions slotRows
+      if (selectCall === 14) return makeWindowChain([]); // grandTotal hydrateSessions slotRows
+      if (selectCall === 15) return makeWindowChain([]); // main hydrateSessions formatRows
+      if (selectCall === 16) return makeWindowChain([]); // grandTotal hydrateSessions formatRows
+      if (selectCall === 17) return makeWindowChain([{ count: DAY_A_IDS.length }]); // main countVisibleSubmissions
+      return makeWindowChain([{ count: DAY_A_IDS.length }]); // grandTotal countVisibleSubmissions
     },
     selectDistinct: () => makeWindowChain(DAY_A_IDS.map((id, i) => ({ id, title: DAY_A_TITLES[i] }))),
   } as unknown as AppEnv["Variables"]["db"];

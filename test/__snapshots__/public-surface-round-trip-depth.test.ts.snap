@@ -1,0 +1,347 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`DEC-774 wave-34 amendment: public surfaces collapse their render waterfall > pins the agenda surface title and rendered HTML byte-identical 1`] = `
+"<div class="chq-pub-title-row chq-pub-agenda-heading-row"><h1 class="chq-pub-surface-title">Agenda</h1><nav aria-label="Jump to day" class="chq-pub-day-switcher"><a class="chq-pub-day-pill chq-pub-day-pill-active" href="/e/ev/agenda?day=2026-08-10" aria-current="page">Mon 10</a><a class="chq-pub-day-pill" href="/e/ev/agenda?day=2026-08-11">Tue 11</a></nav></div><div class="chq-pub-agenda-layout"><div class="chq-pub-agenda-col"><div class="chq-pub-filter-row"><form class="chq-pub-searchform" method="get" action="/e/ev/agenda" role="search"><label class="chq-visually-hidden" for="chq-pub-search-q">Search</label><input class="chq-pub-search" id="chq-pub-search-q" type="search" name="q" value="" placeholder="Search" maxlength="200"/><button class="chq-visually-hidden" type="submit">Search</button></form><form class="chq-pub-track-highlight" method="get" action="/e/ev/agenda"><label class="chq-visually-hidden" for="chq-pub-highlight-track">Highlight a track</label><select class="chq-pub-select" id="chq-pub-highlight-track" name="trackId" onchange="this.form.submit()"><option value="">Highlight a track</option></select><button class="chq-visually-hidden" type="submit">Highlight</button></form></div><div class="chq-pub-empty-block chq-pub-empty-block-fresh"><p class="chq-pub-empty-what">No sessions scheduled yet.</p></div></div><aside class="chq-pub-agenda-rail"><section class="chq-pub-rail-section"><h2 class="chq-pub-rail-heading">Your schedule</h2><div class="chq-pub-rail-body"><span class="chq-pub-rail-caption"><span id="chq-ics-count">0 picked</span> · saved in this browser, no account needed</span><a id="chq-ics-link" class="chq-pub-itinerary-cta" href="/e/ev/schedule.ics" aria-disabled="true">Download .ics</a></div></section><section class="chq-pub-rail-section"><h2 class="chq-pub-rail-heading">Print</h2><div class="chq-pub-rail-body"><a class="chq-pub-rail-programme-link" href="/e/ev/programme">Printable programme ›</a><span class="chq-pub-rail-caption">A one-page version of all three days.</span></div></section></aside></div><script>(function(){
+  var MAX_ITINERARY_IDS = 300;
+  var __chqMerge = (function mergeItinerarySelection(stored, renderedIds, checkedIds) {
+  const rendered = new Set(renderedIds);
+  const kept = stored.filter((id) => !rendered.has(id));
+  const seen = new Set(kept);
+  const merged = [...kept];
+  for (const id of checkedIds) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    merged.push(id);
+  };
+  return merged.slice(0, MAX_ITINERARY_IDS);
+});
+  var __chqMirror = (function mirrorItineraryCheckboxes(boxes, changedValue, changedChecked) {
+  return boxes.map((b) => b.value === changedValue && b.checked !== changedChecked ? { ...b, checked: changedChecked } : b);
+});
+  var __chqOverlaps = (function computeSavedOverlaps(items) {
+  const clashesById = {};
+  let pairCount = 0;
+  const byDay = {};
+  for (const item of items) {
+    (byDay[item.day] = byDay[item.day] || []).push(item);
+  };
+  for (const day in byDay) {
+    const dayItems = byDay[day];
+    for (let i = 0; i < dayItems.length; i += 1) {
+      for (let j = i + 1; j < dayItems.length; j += 1) {
+        const a = dayItems[i];
+        const b = dayItems[j];
+        if (a.startMin < b.endMin && b.startMin < a.endMin) {
+          pairCount += 1;
+          (clashesById[a.id] = clashesById[a.id] || []).push(b.title);
+          (clashesById[b.id] = clashesById[b.id] || []).push(a.title);
+        }
+      }
+    }
+  };
+  return { pairCount, clashesById };
+});
+  var key = "chq_itinerary_ev";
+  var slug = "ev";
+  var stored = [];
+  try { stored = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { stored = []; }
+  var boxes = document.querySelectorAll('.chq-itinerary-toggle');
+  // DEC-584: the desktop grid and the phone list both render a
+  // '.chq-itinerary-toggle' for every session (one is display:none at a
+  // time, but both stay in the DOM), so the SAME submission id appears
+  // twice in the raw NodeList -- dedupe before this list reaches
+  // __chqMerge, or the itinerary is not the set of unique rendered ids.
+  var allRenderedIds = [];
+  Array.prototype.forEach.call(boxes, function(b){
+    if (allRenderedIds.indexOf(b.value) === -1) { allRenderedIds.push(b.value); }
+  });
+  function currentIds(){
+    return Array.prototype.filter.call(boxes, function(b){ return b.checked; }).map(function(b){ return b.value; });
+  }
+  function updateLink(ids){
+    var link = document.getElementById('chq-ics-link');
+    var count = document.getElementById('chq-ics-count');
+    if (count) { count.textContent = ids.length + ' picked'; }
+    if (!link) return;
+    if (ids.length === 0) { link.setAttribute('aria-disabled', 'true'); link.removeAttribute('href'); return; }
+    link.removeAttribute('aria-disabled');
+    link.href = '/e/' + slug + '/schedule.ics?ids=' + encodeURIComponent(ids.join(','));
+  }
+  // DEC-555 amendment (wave 1, task w1-d): /schedule's main column lists
+  // ONLY the saved rows (no server round-trip, no second store -- DEC-555's
+  // merge rule still stands). No-ops harmlessly on /agenda, which never
+  // renders any '.chq-pub-schedule-row' element. Each row carries
+  // data-day/-start-min/-end-min so __chqOverlaps can name every clash
+  // purely from the DOM's own attributes.
+  var scheduleRows = Array.prototype.slice.call(document.querySelectorAll('.chq-pub-schedule-row'));
+  var dayGroups = Array.prototype.slice.call(document.querySelectorAll('.chq-pub-schedule-day-group'));
+  var subtitleEl = document.getElementById('chq-schedule-subtitle');
+  var scheduleEmptyEl = document.getElementById('chq-schedule-empty');
+  var overlapsSectionEl = document.getElementById('chq-schedule-overlaps-section');
+  var overlapsHeadingEl = document.getElementById('chq-schedule-overlaps-heading');
+  var overlapsBodyEl = document.getElementById('chq-schedule-overlaps-body');
+  function applyScheduleView(){
+    if (scheduleRows.length === 0) return;
+    var ids = currentIds();
+    var idSet = {};
+    for (var i = 0; i < ids.length; i += 1) { idSet[ids[i]] = true; }
+    var saved = [];
+    Array.prototype.forEach.call(scheduleRows, function(row){
+      var id = row.getAttribute('data-submission-id');
+      var isSaved = !!idSet[id];
+      row.style.display = isSaved ? '' : 'none';
+      var clashEl = row.querySelector('.chq-pub-schedule-row-clash');
+      if (clashEl) { clashEl.hidden = true; clashEl.textContent = ''; }
+      if (isSaved) {
+        var titleEl = row.querySelector('.chq-pub-schedule-row-title');
+        saved.push({
+          id: id,
+          title: titleEl ? titleEl.textContent : '',
+          day: row.getAttribute('data-day') || '',
+          startMin: parseInt(row.getAttribute('data-start-min') || '0', 10),
+          endMin: parseInt(row.getAttribute('data-end-min') || '0', 10),
+        });
+      }
+    });
+    var overlap = __chqOverlaps(saved);
+    Array.prototype.forEach.call(scheduleRows, function(row){
+      var id = row.getAttribute('data-submission-id');
+      var clashTitles = overlap.clashesById[id];
+      if (!clashTitles || clashTitles.length === 0) return;
+      var clashEl = row.querySelector('.chq-pub-schedule-row-clash');
+      if (!clashEl) return;
+      clashEl.hidden = false;
+      clashEl.textContent = clashTitles.length === 1 ? ('Overlaps ' + clashTitles[0]) : ('Overlaps ' + clashTitles.length + ' sessions');
+    });
+    Array.prototype.forEach.call(dayGroups, function(group){
+      var rows = group.querySelectorAll('.chq-pub-schedule-row');
+      var visibleCount = 0;
+      Array.prototype.forEach.call(rows, function(r){ if (r.style.display !== 'none') { visibleCount += 1; } });
+      group.style.display = visibleCount === 0 ? 'none' : '';
+      var countEl = group.querySelector('.chq-pub-schedule-day-count');
+      if (countEl) { countEl.textContent = String(visibleCount); }
+    });
+    if (subtitleEl) {
+      var overlapWord = overlap.pairCount === 1 ? 'overlap' : 'overlaps';
+      subtitleEl.textContent = saved.length + ' saved · ' + overlap.pairCount + ' ' + overlapWord;
+    }
+    if (scheduleEmptyEl) { scheduleEmptyEl.hidden = saved.length !== 0; }
+    if (overlapsSectionEl) { overlapsSectionEl.hidden = overlap.pairCount === 0; }
+    if (overlapsHeadingEl) {
+      overlapsHeadingEl.textContent = overlap.pairCount === 1 ? '1 overlap' : (overlap.pairCount + ' overlaps');
+    }
+    if (overlapsBodyEl) {
+      while (overlapsBodyEl.firstChild) { overlapsBodyEl.removeChild(overlapsBodyEl.firstChild); }
+      var seenPairs = {};
+      for (var s = 0; s < saved.length; s += 1) {
+        var item = saved[s];
+        var titles = overlap.clashesById[item.id];
+        if (!titles) continue;
+        for (var t = 0; t < titles.length; t += 1) {
+          var otherTitle = titles[t];
+          var pairKey = [item.title, otherTitle].sort().join('|') + '|' + item.day;
+          if (seenPairs[pairKey]) continue;
+          seenPairs[pairKey] = true;
+          var line = document.createElement('span');
+          line.className = 'chq-pub-rail-caption';
+          line.textContent = item.title + ' overlaps ' + otherTitle + '.';
+          overlapsBodyEl.appendChild(line);
+        }
+      }
+    }
+  }
+  Array.prototype.forEach.call(boxes, function(b){ b.checked = stored.indexOf(b.value) !== -1; });
+  updateLink(stored);
+  applyScheduleView();
+  document.addEventListener('change', function(e){
+    if (!e.target || !e.target.classList || !e.target.classList.contains('chq-itinerary-toggle')) return;
+    // THE TRAP (DEC-584): currentIds() below is "every checked box" across
+    // BOTH copies. Without mirroring first, unchecking only the visible
+    // copy leaves the hidden copy's box still checked, so the id never
+    // leaves currentIds() and the uncheck never persists. Mirror every box
+    // sharing the changed input's value to its new checked state first.
+    var states = Array.prototype.map.call(boxes, function(b){ return { value: b.value, checked: b.checked }; });
+    var mirrored = __chqMirror(states, e.target.value, e.target.checked);
+    Array.prototype.forEach.call(boxes, function(b, i){ b.checked = mirrored[i].checked; });
+    var latestStored = [];
+    try { latestStored = JSON.parse(localStorage.getItem(key) || '[]'); } catch (err) { latestStored = []; }
+    var ids = __chqMerge(latestStored, allRenderedIds, currentIds());
+    localStorage.setItem(key, JSON.stringify(ids));
+    updateLink(ids);
+    applyScheduleView();
+  });
+})();</script>"
+`;
+
+exports[`DEC-774 wave-34 amendment: public surfaces collapse their render waterfall > pins the sessions surface title and rendered HTML byte-identical 1`] = `
+"<h1 class="chq-pub-surface-title">Sessions</h1><div class="chq-pub-sessions-layout"><div class="chq-pub-sessions-list"><div class="chq-pub-empty-block chq-pub-empty-block-fresh"><p class="chq-pub-empty-what">The programme is not out yet.</p><p class="chq-pub-empty-reason">Sessions appear here once the schedule is published.</p></div></div><aside class="chq-pub-sessions-rail"><section class="chq-pub-rail-section"><h2 class="chq-pub-rail-heading">Your schedule</h2><div class="chq-pub-rail-body"><span class="chq-pub-rail-caption"><span id="chq-ics-count">0 picked</span> · saved in this browser, no account needed</span><a id="chq-ics-link" class="chq-pub-itinerary-cta" href="/e/ev/schedule.ics" aria-disabled="true">Download .ics</a></div></section><section class="chq-pub-rail-section"><h2 class="chq-pub-rail-heading">Two days</h2><div class="chq-pub-rail-body"><div class="chq-pub-rail-day-row"><a href="/e/ev/agenda?day=2026-08-10">Monday 10 August</a><span class="chq-pub-rail-day-count">0 sessions</span></div><div class="chq-pub-rail-day-row"><a href="/e/ev/agenda?day=2026-08-11">Tuesday 11 August</a><span class="chq-pub-rail-day-count">0 sessions</span></div></div></section></aside></div><script>(function(){
+  var MAX_ITINERARY_IDS = 300;
+  var __chqMerge = (function mergeItinerarySelection(stored, renderedIds, checkedIds) {
+  const rendered = new Set(renderedIds);
+  const kept = stored.filter((id) => !rendered.has(id));
+  const seen = new Set(kept);
+  const merged = [...kept];
+  for (const id of checkedIds) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    merged.push(id);
+  };
+  return merged.slice(0, MAX_ITINERARY_IDS);
+});
+  var __chqMirror = (function mirrorItineraryCheckboxes(boxes, changedValue, changedChecked) {
+  return boxes.map((b) => b.value === changedValue && b.checked !== changedChecked ? { ...b, checked: changedChecked } : b);
+});
+  var __chqOverlaps = (function computeSavedOverlaps(items) {
+  const clashesById = {};
+  let pairCount = 0;
+  const byDay = {};
+  for (const item of items) {
+    (byDay[item.day] = byDay[item.day] || []).push(item);
+  };
+  for (const day in byDay) {
+    const dayItems = byDay[day];
+    for (let i = 0; i < dayItems.length; i += 1) {
+      for (let j = i + 1; j < dayItems.length; j += 1) {
+        const a = dayItems[i];
+        const b = dayItems[j];
+        if (a.startMin < b.endMin && b.startMin < a.endMin) {
+          pairCount += 1;
+          (clashesById[a.id] = clashesById[a.id] || []).push(b.title);
+          (clashesById[b.id] = clashesById[b.id] || []).push(a.title);
+        }
+      }
+    }
+  };
+  return { pairCount, clashesById };
+});
+  var key = "chq_itinerary_ev";
+  var slug = "ev";
+  var stored = [];
+  try { stored = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { stored = []; }
+  var boxes = document.querySelectorAll('.chq-itinerary-toggle');
+  // DEC-584: the desktop grid and the phone list both render a
+  // '.chq-itinerary-toggle' for every session (one is display:none at a
+  // time, but both stay in the DOM), so the SAME submission id appears
+  // twice in the raw NodeList -- dedupe before this list reaches
+  // __chqMerge, or the itinerary is not the set of unique rendered ids.
+  var allRenderedIds = [];
+  Array.prototype.forEach.call(boxes, function(b){
+    if (allRenderedIds.indexOf(b.value) === -1) { allRenderedIds.push(b.value); }
+  });
+  function currentIds(){
+    return Array.prototype.filter.call(boxes, function(b){ return b.checked; }).map(function(b){ return b.value; });
+  }
+  function updateLink(ids){
+    var link = document.getElementById('chq-ics-link');
+    var count = document.getElementById('chq-ics-count');
+    if (count) { count.textContent = ids.length + ' picked'; }
+    if (!link) return;
+    if (ids.length === 0) { link.setAttribute('aria-disabled', 'true'); link.removeAttribute('href'); return; }
+    link.removeAttribute('aria-disabled');
+    link.href = '/e/' + slug + '/schedule.ics?ids=' + encodeURIComponent(ids.join(','));
+  }
+  // DEC-555 amendment (wave 1, task w1-d): /schedule's main column lists
+  // ONLY the saved rows (no server round-trip, no second store -- DEC-555's
+  // merge rule still stands). No-ops harmlessly on /agenda, which never
+  // renders any '.chq-pub-schedule-row' element. Each row carries
+  // data-day/-start-min/-end-min so __chqOverlaps can name every clash
+  // purely from the DOM's own attributes.
+  var scheduleRows = Array.prototype.slice.call(document.querySelectorAll('.chq-pub-schedule-row'));
+  var dayGroups = Array.prototype.slice.call(document.querySelectorAll('.chq-pub-schedule-day-group'));
+  var subtitleEl = document.getElementById('chq-schedule-subtitle');
+  var scheduleEmptyEl = document.getElementById('chq-schedule-empty');
+  var overlapsSectionEl = document.getElementById('chq-schedule-overlaps-section');
+  var overlapsHeadingEl = document.getElementById('chq-schedule-overlaps-heading');
+  var overlapsBodyEl = document.getElementById('chq-schedule-overlaps-body');
+  function applyScheduleView(){
+    if (scheduleRows.length === 0) return;
+    var ids = currentIds();
+    var idSet = {};
+    for (var i = 0; i < ids.length; i += 1) { idSet[ids[i]] = true; }
+    var saved = [];
+    Array.prototype.forEach.call(scheduleRows, function(row){
+      var id = row.getAttribute('data-submission-id');
+      var isSaved = !!idSet[id];
+      row.style.display = isSaved ? '' : 'none';
+      var clashEl = row.querySelector('.chq-pub-schedule-row-clash');
+      if (clashEl) { clashEl.hidden = true; clashEl.textContent = ''; }
+      if (isSaved) {
+        var titleEl = row.querySelector('.chq-pub-schedule-row-title');
+        saved.push({
+          id: id,
+          title: titleEl ? titleEl.textContent : '',
+          day: row.getAttribute('data-day') || '',
+          startMin: parseInt(row.getAttribute('data-start-min') || '0', 10),
+          endMin: parseInt(row.getAttribute('data-end-min') || '0', 10),
+        });
+      }
+    });
+    var overlap = __chqOverlaps(saved);
+    Array.prototype.forEach.call(scheduleRows, function(row){
+      var id = row.getAttribute('data-submission-id');
+      var clashTitles = overlap.clashesById[id];
+      if (!clashTitles || clashTitles.length === 0) return;
+      var clashEl = row.querySelector('.chq-pub-schedule-row-clash');
+      if (!clashEl) return;
+      clashEl.hidden = false;
+      clashEl.textContent = clashTitles.length === 1 ? ('Overlaps ' + clashTitles[0]) : ('Overlaps ' + clashTitles.length + ' sessions');
+    });
+    Array.prototype.forEach.call(dayGroups, function(group){
+      var rows = group.querySelectorAll('.chq-pub-schedule-row');
+      var visibleCount = 0;
+      Array.prototype.forEach.call(rows, function(r){ if (r.style.display !== 'none') { visibleCount += 1; } });
+      group.style.display = visibleCount === 0 ? 'none' : '';
+      var countEl = group.querySelector('.chq-pub-schedule-day-count');
+      if (countEl) { countEl.textContent = String(visibleCount); }
+    });
+    if (subtitleEl) {
+      var overlapWord = overlap.pairCount === 1 ? 'overlap' : 'overlaps';
+      subtitleEl.textContent = saved.length + ' saved · ' + overlap.pairCount + ' ' + overlapWord;
+    }
+    if (scheduleEmptyEl) { scheduleEmptyEl.hidden = saved.length !== 0; }
+    if (overlapsSectionEl) { overlapsSectionEl.hidden = overlap.pairCount === 0; }
+    if (overlapsHeadingEl) {
+      overlapsHeadingEl.textContent = overlap.pairCount === 1 ? '1 overlap' : (overlap.pairCount + ' overlaps');
+    }
+    if (overlapsBodyEl) {
+      while (overlapsBodyEl.firstChild) { overlapsBodyEl.removeChild(overlapsBodyEl.firstChild); }
+      var seenPairs = {};
+      for (var s = 0; s < saved.length; s += 1) {
+        var item = saved[s];
+        var titles = overlap.clashesById[item.id];
+        if (!titles) continue;
+        for (var t = 0; t < titles.length; t += 1) {
+          var otherTitle = titles[t];
+          var pairKey = [item.title, otherTitle].sort().join('|') + '|' + item.day;
+          if (seenPairs[pairKey]) continue;
+          seenPairs[pairKey] = true;
+          var line = document.createElement('span');
+          line.className = 'chq-pub-rail-caption';
+          line.textContent = item.title + ' overlaps ' + otherTitle + '.';
+          overlapsBodyEl.appendChild(line);
+        }
+      }
+    }
+  }
+  Array.prototype.forEach.call(boxes, function(b){ b.checked = stored.indexOf(b.value) !== -1; });
+  updateLink(stored);
+  applyScheduleView();
+  document.addEventListener('change', function(e){
+    if (!e.target || !e.target.classList || !e.target.classList.contains('chq-itinerary-toggle')) return;
+    // THE TRAP (DEC-584): currentIds() below is "every checked box" across
+    // BOTH copies. Without mirroring first, unchecking only the visible
+    // copy leaves the hidden copy's box still checked, so the id never
+    // leaves currentIds() and the uncheck never persists. Mirror every box
+    // sharing the changed input's value to its new checked state first.
+    var states = Array.prototype.map.call(boxes, function(b){ return { value: b.value, checked: b.checked }; });
+    var mirrored = __chqMirror(states, e.target.value, e.target.checked);
+    Array.prototype.forEach.call(boxes, function(b, i){ b.checked = mirrored[i].checked; });
+    var latestStored = [];
+    try { latestStored = JSON.parse(localStorage.getItem(key) || '[]'); } catch (err) { latestStored = []; }
+    var ids = __chqMerge(latestStored, allRenderedIds, currentIds());
+    localStorage.setItem(key, JSON.stringify(ids));
+    updateLink(ids);
+    applyScheduleView();
+  });
+})();</script>"
+`;

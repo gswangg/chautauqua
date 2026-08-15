@@ -137,11 +137,16 @@ function searchForm(html: string): string {
 describe("DEC-919: one filter idiom on every public surface", () => {
   it("sessions and speakers both emit the same compact-input search-box markup (DEC-919 wave 40 amendment: visually-hidden label/button, one placeholder)", async () => {
     installFakeCaches();
+    // DEC-774 wave-34 amendment: dayCounts/cfpWindow (single-select reads)
+    // land ahead of the sessions count query in the new concurrent wave —
+    // see SESSIONS_ROWS's comment below for the full ordering rationale.
     const sessionsApp = buildSimpleApp([
       [EVENT_ROW], // getPublicEventBySlug
       [], // getPublicTracks
+      [{ id: "room1", name: "Alpha" }], // getPublicRooms
       [], // getPublicFormatOptions
-      [{ id: "room1", name: "Alpha" }], // roomRows for filter chips
+      [], // dayCounts
+      [], // cfpWindow
       // total > 0 is load-bearing since the DEC-919 wave-47 amendment: an
       // unfiltered surface with a zero total is 'fresh' and the caller hides
       // the whole filter bar, search box included.
@@ -189,19 +194,29 @@ describe("DEC-919: one filter idiom on every public surface", () => {
 describe("v7 sessions filter bar: selects + active-filter line", () => {
   // select() order on /sessions (ids queries use selectDistinct, which the
   // harness feeds [] — hydrate short-circuits): event, tracks, rooms,
-  // formatOptions(optionsJson), filtered count, [grandTotal count when a
-  // filter is active], dayCounts, cfpWindow.
+  // formatOptions(optionsJson), dayCounts, cfpWindow, filtered count,
+  // [grandTotal count when a filter is active].
+  //
+  // DEC-774 wave-34 amendment: dispatch.tsx's sessions case now issues
+  // tracks/rooms/formatOptions/sessions/[grandTotal]/dayCounts/cfpWindow as
+  // ONE Promise.all wave. dayCounts and cfpWindow are single-select reads
+  // with nothing else to await, so they land inside the initial
+  // synchronous wave burst — AHEAD of getPublicSessions' (and the
+  // grandTotal probe's) own count query, which only fires one microtask
+  // later once each one's own (short-circuited, since selectDistinct
+  // always resolves []) id-query await resolves. See
+  // test/public-surface-round-trip-depth.test.ts for the behavioural proof.
   const SESSIONS_ROWS = (opts?: { withDayFilter?: boolean }) => {
     const rows: unknown[][] = [
       [EVENT_ROW], // getPublicEventBySlug
       [{ id: "trk-a", name: "Track A", color: null }], // getPublicTracks
       [{ id: "room1", name: "Alpha" }], // getPublicRooms
       [{ optionsJson: JSON.stringify(["Talk (30 min)"]) }], // getPublicFormatOptions
+      [], // dayCounts
+      [], // cfpWindow
       [{ count: 1 }], // filtered total
     ];
     if (opts?.withDayFilter) rows.push([{ count: 2 }]); // grandTotal count
-    rows.push([]); // dayCounts
-    rows.push([]); // cfpWindow
     return rows;
   };
 

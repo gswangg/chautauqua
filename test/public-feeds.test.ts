@@ -591,6 +591,14 @@ describe("GET /embed/:eventSlug/*.json single-page window (DEC-516)", () => {
     // (renderSurfaceContent) calls getPublicTracks(db, event.id) before
     // getPublicSessions, inserting one extra select() call ahead of
     // hydrateSessions' subRows/trackRows/speakerRows/slotRows.
+    // DEC-774 wave-34 amendment: dispatch.tsx's sessions case issues its
+    // independent reads as ONE Promise.all wave -- no filter is active
+    // (?page= alone), so getPublicScheduleDayCounts/getPublicCfpWindow
+    // (single-select reads) land in the initial synchronous burst (slots
+    // 5-6), ahead of getPublicSessions' own multi-step hydrateSessions
+    // cascade, which only reaches its first select one microtask later
+    // (after its own id-query await resolves). See test/public-surface-
+    // round-trip-depth.test.ts for the behavioural proof.
     let selectCall = 0;
     const db = {
       select: () => {
@@ -599,7 +607,10 @@ describe("GET /embed/:eventSlug/*.json single-page window (DEC-516)", () => {
         if (selectCall === 2) return makeChain([]); // getPublicTracks
         if (selectCall === 3) return makeChain([]); // getPublicRooms (DEC-774)
         if (selectCall === 4) return makeChain([]); // getPublicFormatOptions (DEC-774)
-        if (selectCall === 5) {
+        // DEC-683: !embed sessions rail queries — real (empty) row shapes.
+        if (selectCall === 5) return makeChain([]); // getPublicScheduleDayCounts
+        if (selectCall === 6) return makeChain([]); // getPublicCfpWindow
+        if (selectCall === 7) {
           return makeChain(
             sessionIds.map((id, i) => ({
               id,
@@ -610,14 +621,11 @@ describe("GET /embed/:eventSlug/*.json single-page window (DEC-516)", () => {
             })),
           );
         }
-        if (selectCall === 6) return makeChain([]); // trackRows (hydrate)
-        if (selectCall === 7) return makeChain([]); // speakerRows
-        if (selectCall === 8) return makeChain([]); // slotRows
-        if (selectCall === 9) return makeChain([]); // formatRows
-        if (selectCall === 10) return makeChain([{ count: N }]); // countVisibleSubmissions
-        // DEC-683: !embed sessions rail queries — real (empty) row shapes.
-        if (selectCall === 11) return makeChain([]); // getPublicScheduleDayCounts
-        return makeChain([]); // getPublicCfpWindow
+        if (selectCall === 8) return makeChain([]); // trackRows (hydrate)
+        if (selectCall === 9) return makeChain([]); // speakerRows
+        if (selectCall === 10) return makeChain([]); // slotRows
+        if (selectCall === 11) return makeChain([]); // formatRows
+        return makeChain([{ count: N }]); // countVisibleSubmissions
       },
       selectDistinct: () => makeChain(sessionIds.map((id, i) => ({ id, title: `Talk ${i}` }))),
     } as unknown as AppEnv["Variables"]["db"];

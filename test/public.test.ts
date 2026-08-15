@@ -202,24 +202,36 @@ describe("SessionCard schedule rendering (EMB-01: date/time + room)", () => {
         if (selectCall === 3) return makeChain([]);
         // 4: getPublicFormatOptions (DEC-774)
         if (selectCall === 4) return makeChain([]);
-        // 5: hydrateSessions subRows
-        if (selectCall === 5) {
+        // DEC-774 wave-34 amendment: dispatch.tsx's sessions case now
+        // issues its independent reads as ONE Promise.all wave -- no
+        // filter is active, so getPublicScheduleDayCounts/
+        // getPublicCfpWindow (single-select reads) land in the initial
+        // synchronous burst (slots 5-6), ahead of getPublicSessions' own
+        // multi-step hydrateSessions cascade, which only reaches its first
+        // select one microtask later. See test/public-surface-round-trip-
+        // depth.test.ts for the behavioural proof.
+        // 5: getPublicScheduleDayCounts
+        if (selectCall === 5) return makeChain([]);
+        // 6: getPublicCfpWindow
+        if (selectCall === 6) return makeChain([]);
+        // 7: hydrateSessions subRows
+        if (selectCall === 7) {
           return makeChain([
             { id: "sub1", seq: 1, title: "Scheduled Talk", description: null, icsSequence: 0 },
             { id: "sub2", seq: 2, title: "Unscheduled Talk", description: null, icsSequence: 0 },
           ]);
         }
-        // 6: hydrateSessions trackRows
-        if (selectCall === 6) return makeChain([]);
-        // 7: hydrateSessions speakerRows
-        if (selectCall === 7) return makeChain([]);
-        // 8: hydrateSessions slotRows (EMB-01) — only sub1 has a slot
-        if (selectCall === 8) {
+        // 8: hydrateSessions trackRows
+        if (selectCall === 8) return makeChain([]);
+        // 9: hydrateSessions speakerRows
+        if (selectCall === 9) return makeChain([]);
+        // 10: hydrateSessions slotRows (EMB-01) — only sub1 has a slot
+        if (selectCall === 10) {
           return makeChain([
             { submissionId: "sub1", day: "2026-08-10", startMin: 540, endMin: 600, roomName: "Main Hall" },
           ]);
         }
-        // 9: hydrateSessions formatRows
+        // 11: hydrateSessions formatRows
         return makeChain([]);
       },
       selectDistinct: () =>
@@ -410,23 +422,32 @@ describe("AgendaContent / ScheduleContent day switcher (EMB-07)", () => {
             { day: "2026-08-11", count: 1 },
           ]);
         }
+        // DEC-774 wave-34 amendment: dispatch.tsx's agenda case runs
+        // getPublicAgenda concurrently with getPublicBreaksByDay (the two
+        // reads of wave 2), so getPublicAgenda's own count(*) subquery and
+        // getPublicBreaksByDay's one-shot select land in the SAME
+        // synchronous burst, ahead of getPublicAgenda's room lookup/
+        // hydrateSessions cascade. See test/public-surface-round-trip-
+        // depth.test.ts for the behavioural proof.
         const n = dayCounts ? selectCall - 1 : selectCall;
         // 3: DEC-548 getPublicAgenda's total count(*) subquery
         if (n === 3) return makeChain([{ count: 2 }]);
-        // 4: getPublicAgenda's room lookup
-        if (n === 4) return makeChain([{ id: "room1", name: "Main Hall" }]);
-        // 5: hydrateSessions subRows
-        if (n === 5) {
+        // 4: getPublicBreaksByDay
+        if (n === 4) return makeChain([]);
+        // 5: getPublicAgenda's room lookup
+        if (n === 5) return makeChain([{ id: "room1", name: "Main Hall" }]);
+        // 6: hydrateSessions subRows
+        if (n === 6) {
           return makeChain([
             { id: "sub1", seq: 1, title: "Day One Talk", description: null, icsSequence: 0 },
             { id: "sub2", seq: 2, title: "Day Two Talk", description: null, icsSequence: 0 },
           ]);
         }
-        // 6: hydrateSessions trackRows
-        if (n === 6) return makeChain([]);
-        // 7: hydrateSessions speakerRows
+        // 7: hydrateSessions trackRows
         if (n === 7) return makeChain([]);
-        // 8: hydrateSessions slotRows, 9: getPublicBreaksByDay
+        // 8: hydrateSessions speakerRows
+        if (n === 8) return makeChain([]);
+        // 9: hydrateSessions slotRows, 10: formatRows
         return makeChain([]);
       },
       selectDistinct: () =>
@@ -636,35 +657,46 @@ describe("DEC-683: sessions rail + Save control", () => {
         if (selectCall === 3) return makeChain([]);
         // 4: getPublicFormatOptions (DEC-774)
         if (selectCall === 4) return makeChain([]);
-        // 5: hydrateSessions subRows
+        // DEC-774 wave-34 amendment: dispatch.tsx's sessions case now
+        // issues its independent reads as ONE Promise.all wave -- no
+        // filter is active, so getPublicScheduleDayCounts/
+        // getPublicCfpWindow (single-select reads, only when !embed) land
+        // in the initial synchronous burst (slots 5-6), ahead of
+        // getPublicSessions' own multi-step hydrateSessions cascade, which
+        // only reaches its first select one microtask later. See
+        // test/public-surface-round-trip-depth.test.ts for the
+        // behavioural proof.
+        // 5: getPublicScheduleDayCounts (only reached when !embed)
         if (selectCall === 5) {
-          return makeChain([{ id: "sub1", seq: 1, title: "Scheduled Talk", description: null, icsSequence: 0 }]);
-        }
-        // 6: hydrateSessions trackRows
-        if (selectCall === 6) return makeChain([]);
-        // 7: hydrateSessions speakerRows
-        if (selectCall === 7) return makeChain([]);
-        // 8: hydrateSessions slotRows
-        if (selectCall === 8) {
-          return makeChain([
-            { submissionId: "sub1", day: "2026-08-10", startMin: 540, endMin: 600, roomName: "Main Hall" },
-          ]);
-        }
-        // 9: hydrateSessions formatRows
-        if (selectCall === 9) return makeChain([]);
-        // 10: countVisibleSubmissions
-        if (selectCall === 10) return makeChain([{ count: 1 }]);
-        // 11: getPublicScheduleDayCounts (only reached when !embed)
-        if (selectCall === 11) {
           return makeChain([
             { day: "2026-08-10", count: 2 },
             { day: "2026-08-11", count: 1 },
           ]);
         }
-        // 12: getPublicCfpWindow (only reached when !embed) — form.open_date/
+        // 6: getPublicCfpWindow (only reached when !embed) — form.open_date/
         // close_date are timestamp_ms columns, so drizzle hands back Date
         // objects, not raw numbers.
-        return makeChain([{ openDate: null, closeDate: opts.closeDate === null ? null : new Date(opts.closeDate) }]);
+        if (selectCall === 6) {
+          return makeChain([{ openDate: null, closeDate: opts.closeDate === null ? null : new Date(opts.closeDate) }]);
+        }
+        // 7: hydrateSessions subRows
+        if (selectCall === 7) {
+          return makeChain([{ id: "sub1", seq: 1, title: "Scheduled Talk", description: null, icsSequence: 0 }]);
+        }
+        // 8: hydrateSessions trackRows
+        if (selectCall === 8) return makeChain([]);
+        // 9: hydrateSessions speakerRows
+        if (selectCall === 9) return makeChain([]);
+        // 10: hydrateSessions slotRows
+        if (selectCall === 10) {
+          return makeChain([
+            { submissionId: "sub1", day: "2026-08-10", startMin: 540, endMin: 600, roomName: "Main Hall" },
+          ]);
+        }
+        // 11: hydrateSessions formatRows
+        if (selectCall === 11) return makeChain([]);
+        // 12: countVisibleSubmissions
+        return makeChain([{ count: 1 }]);
       },
       selectDistinct: () => makeChain([{ id: "sub1", title: "Scheduled Talk" }]),
     } as unknown as AppEnv["Variables"]["db"];
