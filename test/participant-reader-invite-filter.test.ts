@@ -123,6 +123,7 @@ const ALLOWED: Record<string, string[]> = {
   ],
   "server/repo/review/submissions.ts": [
     "listSpeakersForSubmission lists every named author of a submission for the review UI, mirroring submissions/list.ts — not an eligibility read.",
+    "listSpeakerIdentitiesForSubmissions (DEC-018 wave-57) builds the REDACTION identity set the anonymized reviewer queue masks titles against. Its unfilteredness is the point, and the inverse of a leak: a redaction set must be a superset of every display predicate, never narrower, or a declined/withdrawn co-presenter — excluded from the display lists — would still leave their name unredacted in the title free text. Not an eligibility enumeration; nothing from it is ever serialized, only matched-and-masked.",
   ],
   "server/repo/profile.ts": [
     "Filters via gates.ts's visibleSubmissionConditions(), which itself ANDs visibleParticipantConditions() (DEC-274) — same predicate, different local call name than this scanner's regex.",
