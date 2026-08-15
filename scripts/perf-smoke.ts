@@ -307,8 +307,18 @@ async function main(): Promise<void> {
   // any hydration/lookup (src/routes/public.tsx:580-583), so a 301st
   // syntactically-valid-but-nonexistent id still exercises the cap
   // predicate correctly.
-  const capRealIds = await fetchAcceptedSubmissionIds(headers, 300);
-  const capIds = [...capRealIds, "sub_cap_probe_nonexistent_0001"];
+  //
+  // task-w16-d: non-`default` profiles (e.g. `aie`, 250 accepted) have
+  // fewer than 300 real accepted rows to fetch — fetch as many real ids as
+  // the profile actually has (capped at 300) and pad the remainder with
+  // syntactically-valid-but-nonexistent ids up to 301 total, relying on the
+  // same nonexistent-id-still-exercises-the-cap reasoning as the original
+  // single padding id above.
+  const capRealIdCount = Math.min(300, PERF_PROFILE.statusCounts.accepted ?? 0);
+  const capRealIds = await fetchAcceptedSubmissionIds(headers, capRealIdCount);
+  const capPadCount = 301 - capRealIds.length;
+  const capPadIds = Array.from({ length: capPadCount }, (_, i) => `sub_cap_probe_nonexistent_${String(i + 1).padStart(4, "0")}`);
+  const capIds = [...capRealIds, ...capPadIds];
   const capRes = await fetch(`${PERF_URL}/e/${PERF_EVENT_SLUG}/schedule.ics?ids=${joinIcsIds(capIds)}`);
   if (capRes.status !== 400) {
     throw new Error(
@@ -318,8 +328,17 @@ async function main(): Promise<void> {
   await capRes.arrayBuffer();
 
   // DEC-105 one-shot untimed export size probes: exercise the CSV export
-  // endpoints against the DEC-088 seed scale (2,000 submissions / 300
-  // accepted, all scheduled), independent of the timed loop below.
+  // endpoints against the seeded profile's scale (submissionCount rows /
+  // statusCounts.accepted accepted rows, all scheduled), independent of the
+  // timed loop below.
+  //
+  // task-w16-d: the min-line literals (2001 / 301) are the `default`
+  // profile's numbers (2,000 submissions + header; 300 accepted + header).
+  // Derived here from PERF_PROFILE so `--profile=aie` (2,500 submissions /
+  // 250 accepted) is graded against its own scale instead of the `default`
+  // literals.
+  const submissionsCsvMinLines = PERF_PROFILE.submissionCount + 1;
+  const showflowCsvMinLines = (PERF_PROFILE.statusCounts.accepted ?? 0) + 1;
   const submissionsCsvRes = await fetch(
     `${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/export/submissions?format=csv`,
     { headers },
@@ -327,7 +346,7 @@ async function main(): Promise<void> {
   if (submissionsCsvRes.status !== 200) {
     throw new Error(`export submissions.csv: expected 200, got ${submissionsCsvRes.status}`);
   }
-  assertMinCsvLines("export submissions.csv", await submissionsCsvRes.text(), 2001);
+  assertMinCsvLines("export submissions.csv", await submissionsCsvRes.text(), submissionsCsvMinLines);
 
   const showflowCsvRes = await fetch(`${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/exports/showflow.csv`, {
     headers,
@@ -335,7 +354,7 @@ async function main(): Promise<void> {
   if (showflowCsvRes.status !== 200) {
     throw new Error(`showflow.csv: expected 200, got ${showflowCsvRes.status}`);
   }
-  assertMinCsvLines("showflow.csv", await showflowCsvRes.text(), 301);
+  assertMinCsvLines("showflow.csv", await showflowCsvRes.text(), showflowCsvMinLines);
 
   const icsIds = await fetchAcceptedSubmissionIds(headers, 150);
   const icsQuery = joinIcsIds(icsIds);
@@ -418,6 +437,12 @@ async function main(): Promise<void> {
   // w51-c: id + current status of one seeded task_assignment row, used by
   // the "task assignment check-off" write check below to alternate
   // complete<->pending on every call.
+  //
+  // task-w16-d: scripts/perf-seed.ts now always draws task_assignment
+  // contacts from the real accepted-speaker window (acceptedContactIds)
+  // whenever it's large enough to cover contactsPerTaskCount, so the first
+  // onboarding grid row (grid is speaker-only, i.e. participant-backed
+  // contacts) is guaranteed to have assignment cells on every profile.
   const taskAssignmentRes = await fetch(
     `${PERF_URL}/api/v1/events/${PERF_EVENT_ID}/onboarding?page=1&perPage=1`,
     { headers },
