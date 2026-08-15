@@ -6317,3 +6317,67 @@ RESULT: PASS — all six walkthrough areas pass at product sha `6edb5263`
 (no product edits made; frozen wave per this task's brief, docs/**
 only).
 OPEN ITEMS: 0
+## 2026-08-15 task-w44-d — spec-audit @ 6edb5263
+
+QUALIFYING
+
+INVALIDATED BY: src/** app/src/** migrations/** package.json
+
+DEC-644 wave-44 three-sha boundary: HEAD `6edb5263` (`main`'s tip at
+worktree cut, `git merge --no-edit main` reported "Already up to date");
+newest product-bearing first-parent sha `14da2921` (`git log --first-parent
+-1 -- src/ app/src/ migrations/ package.json`). `npx tsx scripts/ref-state.ts`
+receipt (verbatim): HEAD `6edb526323f8ce3af8f8e71d791a722a7b1a69ad`; newest
+first-parent product-code-bearing sha `14da2921a5be66408057712be877bc44c19de6c4`;
+every live ref (`main`, `manual-qa`, `task-custodian-w68-4`, `task-w43-c`,
+`task-w44-a`, `task-w44-b`, `task-w44-d`, `task-w68-d`, `task-w71-c`,
+`task-w71-d`, `task-w71-e`) confirmed an ancestor of HEAD via `git
+merge-base --is-ancestor`; NON-ancestor refs (not confirmed):
+`mail-rich-shape-fallback`, `task-w17-i`, `task-w68-b`, `task-w68-c`,
+`task-w68-e`, `task-w71-a`, `task-w72-a..j`. The one live `task-w43-*` ref
+(`task-w43-c`) confirmed an ancestor on the first check — retry count 0, no
+re-sync poll needed.
+
+§8/§9 (DEC-063 wave-27): §8's local-setup recipe (SPEC.md:361) re-derived
+this wave directly from `package.json`'s scripts block (not cited from
+prose) — `db:migrate`, `seed`, `dev` all present verbatim at
+`package.json:6-31`, `deploy` matches SPEC.md:363 verbatim. SPEC §9's four
+named cheap invariants (SPEC.md:382-383) cited as the closed population
+`test/spec9-invariants.test.ts`, all four `describe(` blocks re-confirmed
+present unchanged at this HEAD. Six §6/§7 static checks (DEC-063 wave-27,
+extended): (1) FK-index cross-check — `git diff --stat 14db7b30..HEAD --
+src/db/schema migrations` EMPTY (zero schema/migrations churn across waves
+41-44); table carries forward unchanged. (2) `app/src/App.tsx` code-split
+by route — diff against `14db7b30` also empty; every page still
+`lazy(pageLoaders.X)`, no `manualChunks`. (3) `< 300 KB gz` — run FIRST-HAND
+this wave inside one `with-test-lock.sh` acquisition (`npm run build && npm
+run bundle:check`): `Entry bundle: index-DLJqKX_u.js + index-DpG2gFFa.css =
+69.20 kB gzip (budget 300.00 kB)` / `bundle:check PASSED` — own-measured,
+matches the `14db7b30` boundary reading exactly, zero drift despite the
+wave-43 contacts-merge/auto-schedule server-side churn (neither touches
+client bundle inputs). (4) parameterized queries only — zero raw-SQL
+string-concatenation hits outside the Drizzle `sql` tag, including across
+the rewritten `contacts/merge.ts`/`contacts/crud.ts`. (5) no HTML content
+type served — `assertServedContentTypeHeader` (`src/domain/files.ts:546-548`)
+unchanged, still called before every served response
+(`src/routes/files.ts:695`). (6) secrets via `wrangler secret`, `.dev.vars`
+gitignored (`.gitignore:9`) — unchanged. `docs/eval-rubric/*.yaml`
+coverage: 116 IDs total, identical per-file breakdown to every prior audit
+since `task-w25-e` (no rubric file added/removed/ID-modified). Informational
+cross-check against the wave-42 exit-ledger's four OPEN ITEMS (not
+adjudicated by this lane, DEC-453): items 2 (`mergeContacts` non-atomicity)
+and 3 (`autoSchedule()` window-blind filter) both show wave-43 code changes
+consistent with a fix landing (`src/server/repo/contacts/merge.ts` DEC-629/
+DEC-026 wave-43 amendment doc-comment; `src/server/repo/agenda/
+auto-schedule.ts` `existing`/`existingIds` block) but this static-audit
+lane does not re-run their test suites to assert retirement — flagged for
+the owning triage lane. Item 1 (stale triage-closure `0215`) remains
+unresolved (no `0217`-`0222` triage-closure file exists yet). Item 4
+(perf-seed) matches the field guide's already-filed FALSE finding (13
+`PERF_SPEAKER` hits, inserts at lines 608/627/643/659) — not re-litigated,
+`scripts/` out of this lane's write scope. None of these change this
+audit's own RESULT. Full detail:
+`docs/verification-log/task-w44-d-spec-audit-6edb5263.md`.
+
+RESULT: PASS
+OPEN ITEMS: 0
