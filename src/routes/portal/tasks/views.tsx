@@ -14,7 +14,7 @@ import type { FormFieldRow } from "../../../server/repo/forms";
 import { makeVisibilityPredicate } from "../../../forms/visibility";
 import type { AnswerMap } from "../../../forms/types";
 import { FormFieldsSection, FieldRulesScript } from "../../../views/form-render";
-import { allowedUploadExtensions, isValidFileKind, uploadHintText } from "../../../domain/files";
+import { allowedUploadExtensions, isValidFileKind, MAX_COMMENT_BODY_LENGTH, uploadHintText } from "../../../domain/files";
 import { CSRF_COOKIE_NAME } from "../../../auth/cookies";
 import { formatCalendarDate, formatEventDateTime } from "../../../lib/event-time";
 import { effectiveAssignmentDueDate } from "../../../domain/task-due";
@@ -70,8 +70,23 @@ export function VersionHistory(props: { assignmentId: string; versions: FileVers
   );
 }
 
-export function CommentThread(props: { assignmentId: string; comments: FileCommentRow[]; csrfToken: string; timezone: string }) {
-  const { assignmentId, comments, csrfToken, timezone } = props;
+// DEC-244 amendment (wave 56): a refused reply (empty body / over the
+// MAX_COMMENT_BODY_LENGTH cap) must fail the way the portal upload already
+// fails — inline, on the same page, with the speaker's typed text kept
+// (draftBody) and a visible reason (error) — never a bare thrown ApiError
+// that loses the draft. The cap itself is named in words here, derived from
+// the same MAX_COMMENT_BODY_LENGTH the textarea's maxLength and the route's
+// server-side check both read, so this copy can't drift from what's
+// enforced.
+export function CommentThread(props: {
+  assignmentId: string;
+  comments: FileCommentRow[];
+  csrfToken: string;
+  timezone: string;
+  draftBody?: string;
+  error?: string;
+}) {
+  const { assignmentId, comments, csrfToken, timezone, draftBody, error } = props;
   return (
     <section aria-label="Comments">
       <h4>Comments</h4>
@@ -95,7 +110,15 @@ export function CommentThread(props: { assignmentId: string; comments: FileComme
       )}
       <form method="post" action={`/portal/tasks/${assignmentId}/comments`}>
         <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
-        <textarea name="body" class="chq-textarea" required></textarea>
+        {error ? (
+          <p role="alert" class="chq-field-error">
+            {error}
+          </p>
+        ) : null}
+        <textarea name="body" class="chq-textarea" required maxLength={MAX_COMMENT_BODY_LENGTH}>
+          {draftBody ?? ""}
+        </textarea>
+        <p class="chq-portal-sub">Up to {MAX_COMMENT_BODY_LENGTH.toLocaleString()} characters.</p>
         <button type="submit" class="chq-btn chq-btn-secondary">Reply</button>
       </form>
     </section>
@@ -184,8 +207,14 @@ export function TaskRow(props: {
   error?: string;
   fileExtras?: FileRequestExtras;
   deliverableChoice?: DeliverableChoiceInfo;
+  // DEC-244 amendment (wave 56): a refused comment reply on THIS row's
+  // thread — kept separate from `error` (the upload-form refusal) since the
+  // two forms on a completed row are independent and must not bleed into
+  // each other's error state.
+  commentError?: string;
+  commentDraftBody?: string;
 }) {
-  const { assignment: t, csrfToken, error, fileExtras, deliverableChoice } = props;
+  const { assignment: t, csrfToken, error, fileExtras, deliverableChoice, commentError, commentDraftBody } = props;
   // DEC-826: a task cannot be late before it was assigned — print the
   // effective due date, the same one the organizer's grid and the
   // reminder email already use.
@@ -283,7 +312,14 @@ export function TaskRow(props: {
             <button type="submit" class="chq-btn chq-btn-secondary">Replace file</button>
           </form>
           <VersionHistory assignmentId={t.id} versions={fileExtras.versions} timezone={fileExtras.timezone} />
-          <CommentThread assignmentId={t.id} comments={fileExtras.comments} csrfToken={csrfToken} timezone={fileExtras.timezone} />
+          <CommentThread
+            assignmentId={t.id}
+            comments={fileExtras.comments}
+            csrfToken={csrfToken}
+            timezone={fileExtras.timezone}
+            error={commentError}
+            draftBody={commentDraftBody}
+          />
         </section>
       ) : null}
     </div>
@@ -327,6 +363,10 @@ export function TasksPage(props: {
   errorFor?: (assignmentId: string) => string | undefined;
   fileExtrasFor?: (assignmentId: string) => FileRequestExtras | undefined;
   deliverableChoiceFor?: (assignmentId: string) => DeliverableChoiceInfo | undefined;
+  // DEC-244 amendment (wave 56): mirrors errorFor/formLinkFor's per-row
+  // lookup shape for a refused comment reply.
+  commentErrorFor?: (assignmentId: string) => string | undefined;
+  commentDraftBodyFor?: (assignmentId: string) => string | undefined;
   speakerName: string;
   // DEC-020 amendment (wave 10): the assignment id the /upload handler just
   // redirected here for (submission-linked uploads only — see that route's
@@ -348,6 +388,8 @@ export function TasksPage(props: {
     errorFor,
     fileExtrasFor,
     deliverableChoiceFor,
+    commentErrorFor,
+    commentDraftBodyFor,
     speakerName,
     uploadedAssignmentId,
     newSeriesAssignmentId,
@@ -421,6 +463,8 @@ export function TasksPage(props: {
               error={errorFor?.(t.id)}
               fileExtras={fileExtrasFor?.(t.id)}
               deliverableChoice={deliverableChoiceFor?.(t.id)}
+              commentError={commentErrorFor?.(t.id)}
+              commentDraftBody={commentDraftBodyFor?.(t.id)}
             />
           ),
         )

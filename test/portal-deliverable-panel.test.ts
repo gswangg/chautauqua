@@ -46,6 +46,24 @@ vi.mock("../src/server/repo/portal", async () => {
   return {
     ...actual,
     getAssignmentScope: vi.fn(),
+    // DEC-244 amendment (wave 56): a refused comment reply now re-renders
+    // /portal/tasks inline (loadTasksPageData) instead of throwing, so this
+    // mock needs the same page-load dependencies test/portal-tasks.test.ts
+    // mocks for its own inline re-render coverage.
+    getPortalData: vi.fn(async () => ({
+      branding: {
+        eventId: "event-1",
+        eventName: "Arbitrary Con",
+        welcomeMessage: null,
+        accentColor: null,
+        logoUrl: null,
+        showResources: true,
+      },
+      submissions: [],
+      tasks: [],
+    })),
+    getMyTaskAssignments: vi.fn(async () => []),
+    listDeliverableCandidates: vi.fn(async () => []),
   };
 });
 
@@ -165,7 +183,11 @@ describe("POST /portal/tasks/:assignmentId/comments (DEC-244)", () => {
     );
   });
 
-  it("rejects an empty comment body", async () => {
+  // DEC-244 amendment (wave 56): a producer-input refusal (empty/over-cap
+  // body) re-renders /portal/tasks inline (200, draft kept) instead of
+  // throwing — see test/portal-comment-cap.test.ts for the fuller draft-body
+  // + named-cap-message coverage.
+  it("re-renders inline (200) for an empty comment body, without posting", async () => {
     const { getAssignmentScope } = await import("../src/server/repo/portal");
     const { insertFileComment } = await import("../src/server/repo/files");
     vi.mocked(getAssignmentScope).mockResolvedValue(COMPLETE_SCOPE);
@@ -182,11 +204,11 @@ describe("POST /portal/tasks/:assignmentId/comments (DEC-244)", () => {
       }),
     );
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
     expect(insertFileComment).not.toHaveBeenCalled();
   });
 
-  it("rejects an oversize comment body (>4000 chars)", async () => {
+  it("re-renders inline (200) for an oversize comment body (>4000 chars), keeping the draft", async () => {
     const { getAssignmentScope } = await import("../src/server/repo/portal");
     const { insertFileComment } = await import("../src/server/repo/files");
     vi.mocked(getAssignmentScope).mockResolvedValue(COMPLETE_SCOPE);
@@ -194,7 +216,8 @@ describe("POST /portal/tasks/:assignmentId/comments (DEC-244)", () => {
     const app = await buildPortalApp(SPEAKER_A);
     const form = new FormData();
     form.set("chq_csrf", "tok-3");
-    form.set("body", "x".repeat(4001));
+    const oversized = "x".repeat(4001);
+    form.set("body", oversized);
     const res = await app.request(
       new Request(`http://test.local/portal/tasks/${ASSIGNMENT_ID}/comments`, {
         method: "POST",
@@ -203,7 +226,7 @@ describe("POST /portal/tasks/:assignmentId/comments (DEC-244)", () => {
       }),
     );
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
     expect(insertFileComment).not.toHaveBeenCalled();
   });
 });

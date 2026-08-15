@@ -275,6 +275,14 @@ export function archiveCapMessage(): string {
   return `${ARCHIVE_MAX_FILES} files or ${formatBytes(ARCHIVE_MAX_TOTAL_BYTES)} at a time — narrow the filter`;
 }
 
+// DEC-244: comment body cap on the portal reply endpoint (matches no
+// existing forms/validate.ts constant since file comments aren't a form
+// field — long-text form answers cap at 20000, but a deliverable reply
+// thread is capped much tighter). Declared here (wave-56 amendment, DEC-244)
+// so both the route handler and the pure-render textarea/help-text share the
+// one number instead of a route-local constant the view can't reach.
+export const MAX_COMMENT_BODY_LENGTH = 4000;
+
 // DEC-020 (wave-55 amendment): the ONE human byte-size renderer in this
 // codebase. Below 1024 bytes renders as a whole-number byte count; at or
 // above 1024, one decimal place and a single space before the KB/MB/GB
