@@ -9,6 +9,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import { RecentSends } from './RecentSends';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 import { formatDateTime, formatDate } from '../../lib/dates';
@@ -16,6 +19,20 @@ import type { EmailBatchRow } from './types';
 import type { SendRhythm } from './sendRhythm';
 
 const EVENT_ID = 'evt-recent-sends';
+
+// jsdom does not lay out CSS grid tracks, so the "same grid" half of DEC-751
+// (wave-21 amendment, B8) is asserted against the stylesheet source text
+// rather than computed style, mirroring settings-field-width.test.ts.
+const cssPath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'comms.css');
+const commsCss = readFileSync(cssPath, 'utf8');
+
+function ruleBodyFor(css: string, selector: string): string {
+  const idx = css.indexOf(selector);
+  expect(idx, `selector ${selector} not found in comms.css`).toBeGreaterThanOrEqual(0);
+  const open = css.indexOf('{', idx);
+  const close = css.indexOf('}', open);
+  return css.slice(open + 1, close);
+}
 
 function batch(overrides: Partial<EmailBatchRow> = {}): EmailBatchRow {
   return {
@@ -386,10 +403,38 @@ describe('RecentSends', () => {
     const rows = document.querySelectorAll('.chq-comms-recipient-row');
     expect(rows).toHaveLength(2);
     for (const row of Array.from(rows)) {
-      expect((row.firstElementChild as HTMLElement).className).toContain('chq-comms-recipient-to');
+      // DEC-751 (wave-21 amendment, B8): the recipient row's five cells lead
+      // with an empty cell (aligning under the batch row's empty "when"-less
+      // first track's counterpart) -- the address is the SECOND cell.
+      expect((row.children[1] as HTMLElement).className).toContain('chq-comms-recipient-to');
     }
     expect(rows[0]!.querySelector('.chq-comms-recipient-to')?.textContent).toBe('ada@example.com');
     expect(rows[1]!.querySelector('.chq-comms-recipient-to')?.textContent).toBe('bo@example.com');
+  });
+
+  // DEC-751 (wave-21 amendment, B8): the expanded band's rows repeat the
+  // batch row's own five tracks -- an empty leading cell, the recipient,
+  // the result, their submission's differing subject (or nothing), and the
+  // trailing disclosure -- and the band shares that grid via the same CSS
+  // variable rather than declaring its own.
+  it('renders five cells per recipient row, matching the batch row\'s own grid, indent-free', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([
+        { id: 'log-1', eventName: 'Evt', toEmail: 'ada@example.com', subject: 'You are in!', status: 'sent', sentAt: 1700000000000 },
+      ]),
+    });
+
+    render(<RecentSends eventId={EVENT_ID} batchesLoaded batches={[batch()]} templatesById={{}} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+    await waitFor(() => {
+      expect(screen.getByText('ada@example.com')).toBeInTheDocument();
+    });
+
+    const recipientRow = document.querySelector('.chq-comms-recipient-row') as HTMLElement;
+    expect(recipientRow.children).toHaveLength(5);
+    expect(recipientRow.children[1]!.className).toContain('chq-comms-recipient-to');
+    expect(recipientRow.children[2]!.textContent).toBe('sent');
+    expect(recipientRow.children[4]!.tagName).toBe('DIV');
   });
 
   it("shows a 'Subject:' line only for the recipient row whose subject differs from the batch subject", async () => {
@@ -452,5 +497,45 @@ describe('RecentSends', () => {
 
     const body = document.querySelector('.chq-comms-send-detail-body') as HTMLElement;
     expect(within(body).getByText(formatDateTime(1700000000000))).toBeInTheDocument();
+  });
+});
+
+describe('comms.css: the expanded recipients band inherits the batch row\'s grid (DEC-751, wave-21 amendment, B8)', () => {
+  it('declares the five-track grid + gap exactly once and reuses it for both mounts', () => {
+    const batchBody = ruleBodyFor(commsCss, '.chq-comms-batch {');
+    expect(batchBody).toMatch(/--chq-comms-batch-grid:\s*150px 1fr 130px 150px auto/);
+    expect(batchBody).toMatch(/--chq-comms-batch-gap:\s*18px/);
+
+    const batchRowBody = ruleBodyFor(commsCss, '.chq-comms-batch-row {');
+    expect(batchRowBody).toMatch(/grid-template-columns:\s*var\(--chq-comms-batch-grid\)/);
+    expect(batchRowBody).toMatch(/gap:\s*var\(--chq-comms-batch-gap\)/);
+
+    const recipientRowBody = ruleBodyFor(commsCss, '.chq-comms-batch-recipients .chq-comms-recipient-row {');
+    expect(recipientRowBody).toMatch(/grid-template-columns:\s*var\(--chq-comms-batch-grid\)/);
+    expect(recipientRowBody).toMatch(/gap:\s*var\(--chq-comms-batch-gap\)/);
+
+    // No hardcoded track list left behind on the recipient-row rule that
+    // could drift from the batch row's own tracks.
+    expect(recipientRowBody).not.toMatch(/1fr\s+130px\s+auto/);
+  });
+
+  it('does not repeat .chq-comms-batch-row\'s own tracks under a different literal (ONE grid serves both mounts)', () => {
+    const batchRowBody = ruleBodyFor(commsCss, '.chq-comms-batch-row {');
+    expect(batchRowBody).toMatch(/grid-template-columns:\s*var\(--chq-comms-batch-grid\)/);
+    expect(batchRowBody).not.toMatch(/150px 1fr 130px 150px auto/);
+  });
+
+  it('drops the wrapper indent and gives the band a surface fill with top+bottom hairline rules', () => {
+    const bandBody = ruleBodyFor(commsCss, '.chq-comms-batch-recipients {');
+    expect(bandBody).not.toMatch(/padding-left/);
+    expect(bandBody).toMatch(/background:\s*var\(--chq-surface\)/);
+    expect(bandBody).toMatch(/border-top:\s*1px solid var\(--chq-hairline\)/);
+    expect(bandBody).toMatch(/border-bottom:\s*1px solid var\(--chq-hairline\)/);
+  });
+
+  it('leaves the compose step-3 .chq-comms-recipient-row (comms.css:146) untouched', () => {
+    // That rule is a plain, unscoped .chq-comms-recipient-row selector --
+    // still present, still owned by ComposeWizard.tsx's own 2-column grid.
+    expect(commsCss).toMatch(/\n\.chq-comms-recipient-row\s*\{/);
   });
 });

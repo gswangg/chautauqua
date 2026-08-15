@@ -113,23 +113,33 @@ function BatchRecipients({
       <div className="chq-meta chq-comms-batch-tally">{statusTally(statusCounts)}</div>
       {error && <div className="chq-error-banner">{error}</div>}
       {!error && !items && <DelayedLoading />}
+      {/* DEC-751 (wave-21 amendment, B8): each recipient row is FIVE cells,
+          matching the batch row's own five tracks exactly (Recipient sits
+          under Subject, Result under the count) -- an empty leading cell,
+          the recipient, the result, their submission's differing subject
+          (or nothing, when it matches the batch subject), and an empty
+          trailing cell holding the per-row disclosure. */}
       {!error && items && items.map((row) => (
         <div key={row.id} className="chq-comms-recipient-row">
+          <span className="chq-comms-recipient-lead" aria-hidden="true" />
           <span className="chq-comms-recipient-to">{row.toEmail}</span>
           <span className="chq-meta">{row.status}</span>
+          {/* A subject only differs when a merge field made it real (e.g. a
+              per-recipient token) -- that's exactly when it's worth this
+              cell; the shared batch subject is already printed once at the
+              batch-row level, and this cell is otherwise left empty rather
+              than dropped, so the row's five tracks never shift. */}
+          {row.subject !== batchSubject ? (
+            <span className="chq-comms-recipient-subject">Subject: {row.subject}</span>
+          ) : (
+            <span className="chq-comms-recipient-subject-empty" aria-hidden="true" />
+          )}
           {/* DEC-846's "history owes the WORDS" half is served by DEC-833's
-              disclosure below: the list projection stays narrow (DEC-543,
+              disclosure here: the list projection stays narrow (DEC-543,
               which DEC-833 explicitly keeps), and the stored body is fetched
               one row at a time and rendered verbatim, whitespace preserved,
               for a failed attempt exactly as for a sent one. */}
           <SendDetailDisclosure eventId={eventId} emailId={row.id} templatesById={templatesById} />
-          {/* A subject only differs when a merge field made it real (e.g. a
-              per-recipient token) -- that's exactly when it's worth the
-              second line; the shared batch subject is already printed once
-              at the batch-row level. */}
-          {row.subject !== batchSubject && (
-            <span className="chq-comms-recipient-subject">Subject: {row.subject}</span>
-          )}
         </div>
       ))}
     </div>

@@ -535,9 +535,14 @@
   color: var(--chq-muted);
 }
 
-/* DEC-603: one batch (its toggle row + expanded recipients, when open). */
+/* DEC-603: one batch (its toggle row + expanded recipients, when open).
+   DEC-751 (wave-21 amendment, B8): the five tracks below are declared ONCE
+   here and shared by both the batch row and the recipients band it
+   discloses -- neither may free-float its own measure. */
 .chq-comms-batch {
   display: block;
+  --chq-comms-batch-grid: 150px 1fr 130px 150px auto;
+  --chq-comms-batch-gap: 18px;
 }
 
 /* DEC-732 (eval-findings 59) + DEC-751 amendment (w41-g): batch rows are a
@@ -548,8 +553,8 @@
    Open. */
 .chq-comms-batch-row {
   display: grid;
-  grid-template-columns: 150px 1fr 130px 150px auto;
-  gap: 18px;
+  grid-template-columns: var(--chq-comms-batch-grid);
+  gap: var(--chq-comms-batch-gap);
   align-items: center;
   padding: 13px 0;
   border-bottom: 1px solid var(--chq-hairline);
@@ -583,8 +588,13 @@
   justify-self: end;
 }
 
+/* DEC-751 (wave-21 amendment, B8): the disclosure band gets a surface fill
+   with a hairline top AND bottom rule, not a bare bottom border -- and no
+   indent, since its rows share the batch row's own grid (below) rather
+   than free-floating across the measure. */
 .chq-comms-batch-recipients {
-  padding-left: 18px;
+  background: var(--chq-surface);
+  border-top: 1px solid var(--chq-hairline);
   border-bottom: 1px solid var(--chq-hairline);
 }
 
@@ -607,8 +617,8 @@
    overriding the other. */
 .chq-comms-batch-recipients .chq-comms-recipient-row {
   display: grid;
-  grid-template-columns: 1fr 130px auto;
-  gap: 18px;
+  grid-template-columns: var(--chq-comms-batch-grid);
+  gap: var(--chq-comms-batch-gap);
   align-items: baseline;
   padding: 9px 0;
 }
@@ -623,16 +633,14 @@
 }
 
 .chq-comms-recipient-subject {
-  grid-column: 1 / -1;
   font-size: 13px;
   color: var(--chq-muted);
 }
 
-/* DEC-833: per-recipient "Show what was sent" disclosure -- lives in the
-   recipient row's 3rd (auto) grid column, so it doesn't disturb the
-   to/status alignment above. */
+/* DEC-833: per-recipient "Show what was sent" disclosure -- it's the row's
+   5th (auto) DOM cell, matching the batch row's own trailing "Open"
+   column, so it doesn't disturb the recipient/status alignment above. */
 .chq-comms-send-detail {
-  grid-column: 3;
   justify-self: end;
 }
 
