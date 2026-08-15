@@ -253,7 +253,7 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
               <th className="chq-content-files-col-session">Session</th>
               <th className="chq-content-files-col-version">Version</th>
               <th className="chq-content-files-col-size">Size</th>
-              <th></th>
+              <th className="chq-content-files-col-actions"></th>
             </tr>
           </thead>
           <tbody>
@@ -299,7 +299,7 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
               <th className="chq-content-files-col-session">Session</th>
               <th className="chq-content-files-col-version">Version</th>
               <th className="chq-content-files-col-size">Size</th>
-              <th></th>
+              <th className="chq-content-files-col-actions"></th>
             </tr>
           </thead>
           <tbody>
@@ -342,7 +342,7 @@ export function FilesLibrary({ eventId, onSelectSubmission, onBack }: FilesLibra
                 </td>
                 <td className="chq-content-files-col-version chq-content-files-version-tag">v{item.versionNo}</td>
                 <td className="chq-meta chq-content-files-col-size">{formatBytes(item.sizeBytes)}</td>
-                <td onClick={(e) => e.stopPropagation()}>
+                <td className="chq-content-files-col-actions" onClick={(e) => e.stopPropagation()}>
                   <a
                     className="chq-link-button"
                     href={downloadHref(item)}
