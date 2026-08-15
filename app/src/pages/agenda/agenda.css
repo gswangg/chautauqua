@@ -1065,6 +1065,18 @@
   color: var(--chq-muted);
 }
 
+/* DEC-422 (wave 67): the per-event break ceiling printed beside the add
+   button. Same muted 11px hint idiom as .chq-unscheduled-tray-hint -- it
+   states a standing bound, so it is quiet micro-copy, never a banner. Sits
+   in the flex-end .chq-breaks-add-row, so a small bottom padding drops it
+   off the button's baseline rather than letting it ride the button top. */
+.chq-breaks-cap-hint {
+  font-size: 11px;
+  color: var(--chq-muted);
+  line-height: 1.5;
+  padding-bottom: 4px;
+}
+
 /* NB: .chq-field-error is owned by app/src/components/error-states.css
    (13px/600 micro-copy in --chq-ink -- DEC-383's palette has no semantic
    red, and there is no --chq-danger token). This sheet deliberately
