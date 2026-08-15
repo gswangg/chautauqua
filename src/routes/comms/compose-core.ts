@@ -26,6 +26,7 @@ import { formatRef } from "../../domain/ids";
 import { DEC_122 } from "../../decisions";
 import { MAX_TEXT_LENGTH, MAX_RICH_TEXT_LENGTH } from "../../forms/validate"; // DEC-417
 import { resolveBaseUrl } from "../../server/origin";
+import type { EmailShellOptions } from "../../mail/shell";
 
 export interface ComposeBody {
   templateId?: string;
@@ -346,6 +347,17 @@ export async function buildRenderTargets(
     });
   }
   return { targets, recipients: recipientAccounts };
+}
+
+/** DEC-037 amendment: the single source of the mail-shell options both
+ * /compose/preview and /compose/send pass to renderEmailHtml, so a preview
+ * renders exactly the shell the send call wraps every body in -- not a
+ * separately hand-typed reason string that can drift from it. */
+export function composeEmailShellOptions(event: { name: string }): EmailShellOptions {
+  return {
+    eventName: event.name,
+    reason: `you're a participant in a submission at ${event.name}`,
+  };
 }
 
 export function missingToFields(missing: { contactId: string; submissionId: string; fields: string[] }[]): Record<string, string> {

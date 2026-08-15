@@ -41,6 +41,10 @@ export interface RenderedRecipient {
   scheduled: boolean;
   subject: string;
   text: string;
+  // DEC-037 amendment: the fully rendered HTML the /compose/send call would
+  // wrap this recipient's body in (same shared shell helper). Preview-only —
+  // /compose/send never returns rendered bodies (DEC-949).
+  html?: string;
   ics?: RenderedRecipientIcs;
   // DEC-883: present only on /compose/preview responses when feedback was
   // resolved for this recipient -- identifies the merged-feedback paragraph

@@ -54,6 +54,41 @@ const WITH_FEEDBACK: RenderedRecipient = {
   vars: { feedback: 'Great energy; clear structure.' },
 };
 
+const WITH_HTML: RenderedRecipient = {
+  contactId: 'c4',
+  submissionId: 's4',
+  email: 'ada@example.com',
+  name: 'Ada Lovelace',
+  ref: 'DFC-055',
+  scheduled: false,
+  subject: 'You are in!',
+  text: 'See you there',
+  html: '<!doctype html><html><body>See you there</body></html>',
+};
+
+describe('PreviewPane: rendered HTML preview (DEC-037 amendment)', () => {
+  it('renders a sandboxed iframe carrying srcDoc when item.html is present', () => {
+    const { container } = render(<PreviewPane item={WITH_HTML} />);
+    const iframe = container.querySelector('iframe.chq-comms-preview-frame');
+    expect(iframe).not.toBeNull();
+    expect(iframe).toHaveAttribute('sandbox', '');
+    expect(iframe).toHaveAttribute('srcDoc', WITH_HTML.html);
+  });
+
+  it('still renders the plain-text path (including the feedback block) under a disclosure when html is present', () => {
+    const withHtmlAndFeedback: RenderedRecipient = { ...WITH_HTML, ...WITH_FEEDBACK, html: WITH_HTML.html };
+    render(<PreviewPane item={withHtmlAndFeedback} />);
+    expect(screen.getByText('Plain text')).toBeInTheDocument();
+    expect(screen.getByText('Reviewer feedback, merged')).toBeInTheDocument();
+  });
+
+  it('falls back to the plain-text body with no iframe when item.html is absent', () => {
+    const { container } = render(<PreviewPane item={SCHEDULED} />);
+    expect(container.querySelector('iframe.chq-comms-preview-frame')).toBeNull();
+    expect(screen.getByText('See you there')).toBeInTheDocument();
+  });
+});
+
 describe('PreviewPane: merged reviewer feedback block (DEC-883)', () => {
   it('renders the eyebrow and blockquote when vars.feedback is present and matches a paragraph', () => {
     render(<PreviewPane item={WITH_FEEDBACK} />);
