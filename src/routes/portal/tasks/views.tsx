@@ -106,20 +106,47 @@ export interface DeliverableChoiceInfo {
   linkedFilenames: Map<string, string | null>;
 }
 
+// DEC-891 amendment: pick which candidate (if any) should carry `selected`
+// on an SSR reload — an unmarked <select> always renders its first <option>
+// as chosen, so a speaker whose real session is further down the list would
+// silently re-target their next upload at the wrong session (forking the
+// DEC-573 version chain). Rules, in order:
+//   (a) exactly one candidate has a linked file for this assignment -> it wins.
+//   (b) several do -> the one whose linked filename matches the assignment's
+//       current file wins, if that match is unambiguous.
+//   (c) otherwise -> no candidate is preselected; the caller renders a
+//       disabled placeholder option instead.
+// Exactly one candidate (or none) may ever come back non-null here.
+function pickPreselected(info: DeliverableChoiceInfo, currentFilename: string | undefined): string | null {
+  const linkedCandidates = info.candidates.filter((cand) => info.linkedFilenames.get(cand.id) != null);
+  if (linkedCandidates.length === 1) return linkedCandidates[0]?.id ?? null;
+  if (linkedCandidates.length >= 2 && currentFilename != null) {
+    const matches = linkedCandidates.filter((cand) => info.linkedFilenames.get(cand.id) === currentFilename);
+    if (matches.length === 1) return matches[0]?.id ?? null;
+  }
+  return null;
+}
+
 // DEC-891: conditional-and-quiet — a lone eligible session renders no
 // control at all; the select (and its required-ness) only appears once
 // there is a real choice to make.
-export function DeliverableSelect(props: { info: DeliverableChoiceInfo }) {
-  const { info } = props;
+export function DeliverableSelect(props: { info: DeliverableChoiceInfo; currentFilename?: string }) {
+  const { info, currentFilename } = props;
   if (info.candidates.length < 2) return null;
+  const preselectedId = pickPreselected(info, currentFilename);
   return (
     <label class="chq-portal-detail">
       Which session is this for?
       <select name="submissionId" required class="chq-select">
+        {preselectedId == null ? (
+          <option value="" selected disabled>
+            Choose a session
+          </option>
+        ) : null}
         {info.candidates.map((cand) => {
           const linked = info.linkedFilenames.get(cand.id);
           return (
-            <option value={cand.id}>
+            <option value={cand.id} selected={cand.id === preselectedId ? true : undefined}>
               {cand.ref} — {cand.title}
               {linked ? ` (current: ${linked})` : ""}
             </option>
@@ -237,7 +264,7 @@ export function TaskRow(props: {
           </p>
           <form method="post" action={`/portal/tasks/${t.id}/upload`} enctype="multipart/form-data">
             <input type="hidden" name={CSRF_COOKIE_NAME} value={csrfToken} />
-            {deliverableChoice ? <DeliverableSelect info={deliverableChoice} /> : null}
+            {deliverableChoice ? <DeliverableSelect info={deliverableChoice} currentFilename={fileExtras.filename} /> : null}
             <p class="chq-portal-detail">{uploadHintText(uploadKind)}</p>
             {isValidFileKind(t.deliverableKind) ? <ReuploadReviewNotice /> : null}
             <input
