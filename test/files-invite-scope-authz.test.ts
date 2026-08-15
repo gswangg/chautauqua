@@ -87,6 +87,14 @@ vi.mock("../src/server/repo/files", async () => {
     ...actual,
     getSubmissionScope: vi.fn(async (_db: unknown, submissionId: string) => SUBMISSION_SCOPES[submissionId] ?? null),
     getFileScope: vi.fn(async (_db: unknown, fileId: string) => (fileId === "file-1" ? fileScopeFor("sub-invited") : null)),
+    // DEC-170 (wave-33 amendment): authzServeFile probes all three file
+    // populations in one Promise.all wave instead of short-circuiting on the
+    // first hit, so the serve path now reaches these two even when the
+    // submission lookup matches. file-1 is a submission deliverable, so both
+    // correctly return null — stubbed here because the un-mocked originals
+    // would issue real D1 queries against this suite's stub db.
+    getResourceFileScope: vi.fn(async () => null),
+    getTaskFileScope: vi.fn(async () => null),
     getFileDeleteScope: vi.fn(async (_db: unknown, fileId: string) => (fileId === "file-1" ? deleteScopeFor("sub-invited") : null)),
     listSubmissionFiles: vi.fn(async () => ({})),
     batchContactNames: vi.fn(async () => new Map()),
