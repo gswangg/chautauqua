@@ -44,6 +44,7 @@ import { NAME_REQUIRED_MESSAGE } from "./submit-body";
 import { requestIpFromHeaders } from "../../lib/rate-limit";
 import { checkAndIncrementScopedLimit } from "../../server/repo/rate-limit";
 import { MAX_TEXT_LENGTH, MAX_LONG_TEXT_LENGTH } from "../../forms/validate";
+import type { Db } from "../../server/context";
 import { DEC_814 } from "../../decisions";
 // implements DEC_814 (an anonymous CFP match never writes to the CRM contact row).
 void DEC_814;
@@ -90,6 +91,25 @@ import { ensureCsrfCookie, extractAnswers, extractTrackIds, applyNameSplit } fro
 void DEC_252;
 
 export const publicSubmitRoutes = new Hono<AppEnv>();
+
+// DEC-072/DEC-057/DEC-038: per-email budget shared by every write path that
+// mints a KV entry off a submitter-typed address. src/lib/rate-limit.ts's own
+// doc comment (requestIpFromHeaders) states that x-forwarded-for is client-
+// supplied and NOT a trustworthy identity, and that callers needing
+// correctness must also key by a stable identity — this is that second key,
+// factored once so save-draft and final-submit share one bucket-naming rule.
+async function emailBudgetOk(
+  db: Db,
+  scope: "submit-email" | "draft-email",
+  email: string,
+  max: number,
+): Promise<boolean> {
+  const result = await checkAndIncrementScopedLimit(db, scope, email, Date.now(), {
+    windowSeconds: 3600,
+    max,
+  });
+  return result.ok;
+}
 
 // touch DEC constants so the dependency is compile-checked (field guide convention)
 void DEC_014;
@@ -242,8 +262,15 @@ publicSubmitRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c) => 
   }
 
   // DEC-422: save-draft is an otherwise-unmetered KV write path — mirror the
-  // final-submit handler's per-IP scoped limiter (DEC-072/DEC-057/DEC-038)
-  // before touching KV.
+  // final-submit handler's TWO independent budgets (DEC-072/DEC-057/DEC-038):
+  // a per-IP scoped limiter (scope "draft", checked here, before touching
+  // KV) and a per-email scoped limiter (scope "draft-email", checked below
+  // once the submitted email is known, before saveDraft's write). The
+  // second budget exists for the same reason final-submit's does:
+  // src/lib/rate-limit.ts's own doc comment on requestIpFromHeaders states
+  // x-forwarded-for is client-supplied and not a trustworthy identity, so an
+  // attacker can rotate it to bypass the IP budget while hammering one
+  // address's draft slot.
   const kv = c.env.KV as unknown as DraftKVStore;
   const ip = requestIpFromHeaders((name) => c.req.header(name));
   const rate = await checkAndIncrementScopedLimit(db, "draft", ip, Date.now(), {
@@ -285,6 +312,32 @@ publicSubmitRoutes.post("/submit/:eventSlug/save-draft", csrfForm, async (c) => 
           errors={{ [fieldId]: `${field.label} is too long.` }}
         />,
         400,
+      );
+    }
+  }
+
+  // DEC-072 amendment: the second, per-email budget — closes the spoofed-
+  // x-forwarded-for gap for the draft path exactly as it does for
+  // final-submit (see the comment above the per-IP check). A draft posted
+  // before the submitter has typed an email skips this check entirely and
+  // behaves exactly as before.
+  const draftEmail = String(answers[LOCKED_SPEAKER_FIELDS[2]] ?? "").trim().toLowerCase();
+  if (draftEmail) {
+    const draftEmailRateOk = await emailBudgetOk(db, "draft-email", draftEmail, 30);
+    if (!draftEmailRateOk) {
+      return c.html(
+        <SubmitPage
+          event={event}
+          form={form}
+          fields={fields}
+          tracks={tracks}
+          answers={answers}
+          selectedTrackIds={selectedTrackIds}
+          hasDraft={false}
+          csrfToken={(c.req.header("cookie") && parseCookies(c.req.header("cookie") ?? null)[CSRF_COOKIE_NAME]) || newCsrfToken()}
+          banner={`Too many drafts saved from ${draftEmail}. Try again later.`}
+        />,
+        429,
       );
     }
   }
@@ -542,11 +595,8 @@ publicSubmitRoutes.post("/submit/:eventSlug", async (c) => {
   // never touches storage, but the submitter's just-typed answers survive
   // into the re-rendered page (unlike the pre-parse IP check, which
   // necessarily renders empty).
-  const emailRate = await checkAndIncrementScopedLimit(db, "submit-email", email, Date.now(), {
-    windowSeconds: 3600,
-    max: 10,
-  });
-  if (!emailRate.ok) {
+  const emailRateOk = await emailBudgetOk(db, "submit-email", email, 10);
+  if (!emailRateOk) {
     return c.html(
       <SubmitPage
         event={event}
