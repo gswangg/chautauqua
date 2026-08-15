@@ -7,6 +7,7 @@ import '@testing-library/jest-dom/vitest';
 import { ResourcesPanel } from './ResourcesPanel';
 import { listEnvelope, mockApi } from '../../test-utils/mockApi';
 import { allowedUploadExtensions, uploadHintText } from '../../../../src/domain/files';
+import { MARKDOWN_SYNTAX_HINT } from '../../lib/markdown-hint';
 
 const EVENT_ID = 'evt-resources-render';
 
@@ -174,6 +175,34 @@ describe('ResourcesPanel file upload discloses caps up front (w63-c)', () => {
     expect(
       fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'POST'),
     ).toBe(false);
+  });
+});
+
+describe('ResourcesPanel wiki-page content states the Markdown grammar it applies (w1-g, DEC-747)', () => {
+  it('shows the syntax hint under the add form content textarea', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([]),
+    });
+
+    render(<ResourcesPanel />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a resource' }));
+
+    expect(screen.getByText(MARKDOWN_SYNTAX_HINT)).toBeInTheDocument();
+  });
+
+  it('shows the syntax hint under the edit form content textarea', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/resources`]: listEnvelope([resource()]),
+    });
+
+    render(<ResourcesPanel />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Replace' }));
+
+    expect(screen.getByText(MARKDOWN_SYNTAX_HINT)).toBeInTheDocument();
   });
 });
 

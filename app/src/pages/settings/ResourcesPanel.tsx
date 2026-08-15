@@ -34,6 +34,7 @@ import { validateUpload, uploadHintText, allowedUploadExtensions } from '../../.
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { countOf } from '../../lib/plural';
 import { MAX_NAME_LENGTH, MAX_RICH_TEXT_LENGTH } from '../../../../src/forms/validate';
+import { MARKDOWN_SYNTAX_HINT } from '../../lib/markdown-hint';
 import './settings-lists.css';
 
 interface Resource {
@@ -275,6 +276,9 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
                       maxLength={MAX_RICH_TEXT_LENGTH}
                     />
                   ) : null}
+                  {resource.kind === 'wiki' ? (
+                    <span className="chq-settings-markdown-hint">{MARKDOWN_SYNTAX_HINT}</span>
+                  ) : null}
                   {fieldErrors.title ? <span role="alert">{fieldErrors.title}</span> : null}
                   {resource.kind === 'wiki' && fieldErrors.content ? <span role="alert">{fieldErrors.content}</span> : null}
                   <button type="button" className="chq-btn chq-btn-primary" onClick={() => void saveEdit(resource)}>
@@ -331,6 +335,7 @@ export function ResourcesPanel({ readOnly = false }: { readOnly?: boolean }) {
             maxLength={MAX_RICH_TEXT_LENGTH}
           />
           {fieldErrors.content ? <span role="alert">{fieldErrors.content}</span> : null}
+          <span className="chq-settings-markdown-hint">{MARKDOWN_SYNTAX_HINT}</span>
           <button type="button" className="chq-btn chq-btn-primary" onClick={() => void addResource()}>
             Add wiki page
           </button>
