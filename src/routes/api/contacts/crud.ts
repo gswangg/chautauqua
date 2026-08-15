@@ -13,7 +13,7 @@ import { overCapFieldMessage } from "../../../domain/cap-copy";
 import { isValidEmail, normalizeEmail } from "../../../domain/email"; // DEC-454
 import * as repo from "../../../server/repo/contacts";
 import { findContactByEmail } from "../../../server/repo/submit";
-import { contactLabels } from "../../../domain/contact-labels";
+import { contactLabels, MAX_CONTACT_CUSTOM_FIELDS } from "../../../domain/contact-labels"; // DEC-417
 import { plural } from "../../../domain/count-copy"; // DEC-957
 import { getEventForOrg } from "../../../server/repo/events";
 import { listAcceptedContactIds } from "../../../server/repo/tasks";
@@ -115,8 +115,22 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     if (typeof body.bio === "string") checkLen(body.bio, "bio", MAX_LONG_TEXT_LENGTH, fields); // DEC-417
     if (typeof body.notes === "string") checkLen(body.notes, "notes", MAX_LONG_TEXT_LENGTH, fields); // DEC-417
     if (isPlainObject(body.customFields)) {
-      for (const [key, value] of Object.entries(body.customFields)) {
-        if (typeof value === "string") checkLen(value, `customFields.${key}`, MAX_TEXT_LENGTH, fields); // DEC-417
+      const entries = Object.entries(body.customFields);
+      // DEC-417 amendment (wave 2): a non-string value used to silently skip
+      // validation and get cast `as Record<string,string>` -- refuse it
+      // instead. Same for a key longer than MAX_NAME_LENGTH, and for the key
+      // COUNT itself (previously unbounded).
+      if (entries.length > MAX_CONTACT_CUSTOM_FIELDS) {
+        fields.customFields = `Max ${MAX_CONTACT_CUSTOM_FIELDS} custom fields`;
+      }
+      for (const [key, value] of entries) {
+        if (typeof value !== "string") {
+          fields[`customFields.${key}`] = "must be a string";
+        } else if (key.length > MAX_NAME_LENGTH) {
+          fields[`customFields.${key}`] = `Max ${MAX_NAME_LENGTH}`;
+        } else {
+          checkLen(value, `customFields.${key}`, MAX_TEXT_LENGTH, fields); // DEC-417
+        }
       }
     }
     if (Object.keys(fields).length > 0) throw new ApiError("invalid", "Validation failed", fields);
@@ -308,8 +322,20 @@ export function registerCrudRoutes(contactsRoutes: Hono<AppEnv>): void {
     if (body.customFields !== undefined) {
       if (body.customFields === null) patch.customFields = null;
       else if (isPlainObject(body.customFields)) {
-        for (const [key, value] of Object.entries(body.customFields)) {
-          if (typeof value === "string") checkLen(value, `customFields.${key}`, MAX_TEXT_LENGTH, fields); // DEC-417
+        const entries = Object.entries(body.customFields);
+        // DEC-417 amendment (wave 2): same refuse-not-skip rules as POST
+        // /contacts above.
+        if (entries.length > MAX_CONTACT_CUSTOM_FIELDS) {
+          fields.customFields = `Max ${MAX_CONTACT_CUSTOM_FIELDS} custom fields`;
+        }
+        for (const [key, value] of entries) {
+          if (typeof value !== "string") {
+            fields[`customFields.${key}`] = "must be a string";
+          } else if (key.length > MAX_NAME_LENGTH) {
+            fields[`customFields.${key}`] = `Max ${MAX_NAME_LENGTH}`;
+          } else {
+            checkLen(value, `customFields.${key}`, MAX_TEXT_LENGTH, fields); // DEC-417
+          }
         }
         patch.customFields = body.customFields as Record<string, string>;
       } else fields.customFields = "must be an object";
