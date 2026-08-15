@@ -365,7 +365,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     const now = 1_735_999_999_999;
     const db = makeFakeDb(emptyResponses());
 
-    const payload = await getOverviewPayload(db, "event-1", now);
+    const payload = await getOverviewPayload(db, "event-1", now, "America/New_York");
 
     // v1 keys, unchanged shape/values (nav badge + app/src/pages/overview/cards.ts).
     expect(payload["triage-counts"]).toEqual({ pending: 0, accept_queue: 0, decline_queue: 0 });
@@ -398,7 +398,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
         formClose: [{ closeDate: null }],
       }),
     );
-    const payload = await getOverviewPayload(db, "event-1", now);
+    const payload = await getOverviewPayload(db, "event-1", now, "America/New_York");
     expect(payload.deadlines).toEqual({
       formCloseDate: null,
       nextTaskDueDate: null,
@@ -431,7 +431,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
         ],
       }),
     );
-    const payload = await getOverviewPayload(db, "event-1", now);
+    const payload = await getOverviewPayload(db, "event-1", now, "America/New_York");
     expect(payload.speakers.overdueAssignments).toBe(1);
     expect(payload.overdueTasks.total).toBe(1);
     expect(payload.overdueTasks.rows).toEqual([
@@ -477,7 +477,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
         ],
       }),
     );
-    const payload = await getOverviewPayload(db, "event-1", now);
+    const payload = await getOverviewPayload(db, "event-1", now, "America/New_York");
     expect(payload.overdueTasks.rows).toEqual([
       {
         assignmentId: "a1",
@@ -517,7 +517,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     // track (none do here, so the response is empty).
     responses.splice(10, 0, []);
     const db = makeFakeDb(responses);
-    const payload = await getOverviewPayload(db, "event-1", now);
+    const payload = await getOverviewPayload(db, "event-1", now, "America/New_York");
     expect(payload["triage-counts"].pending).toBe(12);
     expect(payload.triage.total).toBe(12); // total exceeds the 5 returned rows
     expect(payload.triage.rows).toHaveLength(5);
@@ -557,7 +557,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       [{ sentLast7Days: 0, lastSentAt: null }], // comms
       [{ count: 0 }], // DEC-370 amendment (wave 5): publishedSessionCount
     ]);
-    const payload = await getOverviewPayload(db, "event-1", now);
+    const payload = await getOverviewPayload(db, "event-1", now, "America/New_York");
     expect(payload.contentApproval.total).toBe(9);
     expect(payload.contentApproval.reuploadedCount).toBe(4);
     expect(payload.contentApproval.rows).toHaveLength(1);
@@ -607,7 +607,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       [{ sentLast7Days: 0, lastSentAt: null }], // comms
       [{ count: 0 }], // DEC-370 amendment (wave 5): publishedSessionCount
     ]);
-    const payload = await getOverviewPayload(db, "event-1", now);
+    const payload = await getOverviewPayload(db, "event-1", now, "America/New_York");
 
     expect(payload.agendaWork.unplaced).toHaveLength(2);
     const [row1, row2] = payload.agendaWork.unplaced;
@@ -695,7 +695,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       [{ sentLast7Days: 0, lastSentAt: null }], // comms
       [{ count: 0 }], // DEC-370 amendment (wave 5): publishedSessionCount
     ]);
-    const payload = await getOverviewPayload(db, "event-1", now);
+    const payload = await getOverviewPayload(db, "event-1", now, "America/New_York");
 
     expect(payload.agendaWork.unplaced).toHaveLength(2);
     const [row1, row2] = payload.agendaWork.unplaced;
@@ -754,7 +754,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
         [[], [], []],
       ),
     );
-    const payload = await getOverviewPayload(db, "event-1", now);
+    const payload = await getOverviewPayload(db, "event-1", now, "America/New_York");
     expect(payload.agenda.unplaced).toBe(9);
     expect(payload.agendaWork.unplacedTotal).toBe(9);
     expect(payload.agendaWork.unplaced).toHaveLength(5);
@@ -781,7 +781,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
         [[], [], []],
       ),
     );
-    const payload = await getOverviewPayload(db, "event-1", now);
+    const payload = await getOverviewPayload(db, "event-1", now, "America/New_York");
     expect(payload.agenda.unplaced).toBe(60);
     expect(payload.agendaWork.unplacedTotal).toBe(60);
     expect(payload.agendaWork.unplaced).toHaveLength(5);
@@ -807,7 +807,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
         overdueAssignmentCount: [{ count: 2 }],
       }),
     );
-    const payload = await getOverviewPayload(db, "event-1", now);
+    const payload = await getOverviewPayload(db, "event-1", now, "America/New_York");
     expect(payload.speakers).toEqual({ contactsOwing: 2, overdueAssignments: 2 });
     expect(payload.deadlines.nextTaskDueDate).toBe(soonestPendingDue);
   });
@@ -827,7 +827,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
         overdueAssignmentCount: [{ count: 1 }],
       }),
     );
-    const overview = await getOverviewPayload(overviewDb, "event-1", now);
+    const overview = await getOverviewPayload(overviewDb, "event-1", now, "America/New_York");
 
     function fakeGridDb(selectQueue: unknown[][]): Db {
       let call = 0;
@@ -852,6 +852,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
     const TASK_ROWS = [{ id: "task-1", kind: "general", title: "Sign W9", dueDate: null, required: true }];
     const gridDb = fakeGridDb([
       TASK_ROWS, // tasks
+      [{ recordPrefix: "SES", timezone: "America/New_York" }], // DEC-801: event row (recordPrefix + timezone), resolved once
       [{ count: 0 }], // total
       [], // contacts page (empty; unrelated to the counts aggregate)
       [{ count: 5 }], // DEC-754: speakers roster COUNT(*) (own query now)
@@ -908,7 +909,7 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       },
     } as any;
 
-    await getOverviewPayload(db, "event-1", now);
+    await getOverviewPayload(db, "event-1", now, "America/New_York");
 
     // Call order: 0=event, 1=statusRows, 2=planCount, 3=evaluationsAgg,
     // 4=planClose, 5=formClose, 6=speakerAgg, 7=overdueAssignmentCount
@@ -957,11 +958,11 @@ describe("getOverviewPayload: DEC-370 v2 shape, one bounded query per section", 
       },
     } as any;
 
-    await getOverviewPayload(db, "event-13", now);
+    await getOverviewPayload(db, "event-13", now, "America/New_York");
 
     // Call order (see emptyResponses' comment above): index 7 = overdue
     // count, index 8 = overdue detail rows.
-    const expected = overviewSqlTextOf(overdueAssignmentConditions("event-13", now));
+    const expected = overviewSqlTextOf(overdueAssignmentConditions("event-13", now, "America/New_York"));
     const countWhere = overviewSqlTextOf(whereBySelectIndex[7]);
     const detailWhere = overviewSqlTextOf(whereBySelectIndex[8]);
     expect(countWhere.sql).toBe(expected.sql);

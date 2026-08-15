@@ -164,12 +164,13 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
   if (participantRows.length === 0) return null;
 
   const eventRows = await db
-    .select({ recordPrefix: schema.event.recordPrefix })
+    .select({ recordPrefix: schema.event.recordPrefix, timezone: schema.event.timezone })
     .from(schema.event)
     .where(eq(schema.event.id, eventId))
     .limit(1);
   const recordPrefix = eventRows[0]?.recordPrefix;
-  if (recordPrefix === undefined) return null;
+  const timeZone = eventRows[0]?.timezone;
+  if (recordPrefix === undefined || timeZone === undefined) return null;
 
   const submissionIds = participantRows.map((p) => p.submissionId);
   const scheduledBySubmission = new Map<string, SpeakerDetailScheduled>();
@@ -259,7 +260,7 @@ export async function getSpeakerDetail(db: Db, eventId: string, contactId: strin
     .from(schema.taskAssignment)
     .innerJoin(schema.task, eq(schema.task.id, schema.taskAssignment.taskId))
     .innerJoin(schema.contact, eq(schema.contact.id, schema.taskAssignment.contactId))
-    .where(and(eq(schema.taskAssignment.contactId, contactId), overdueAssignmentConditions(eventId, Date.now())));
+    .where(and(eq(schema.taskAssignment.contactId, contactId), overdueAssignmentConditions(eventId, Date.now(), timeZone)));
 
   const primary = participantRows[0];
   if (!primary) throw new Error("speaker detail: participantRows unexpectedly empty after length check");

@@ -554,9 +554,14 @@ describe("DEC-239: GET /api/v1/events/:eventId/overview vs OverviewPayload", () 
       const actual = await vi.importActual<typeof import("../src/server/repo/overview")>("../src/server/repo/overview");
       return { ...actual, getOverviewPayload: vi.fn(async () => OVERVIEW_PAYLOAD) };
     });
-    vi.doMock("../src/server/repo/submissions", async () => {
-      const actual = await vi.importActual<typeof import("../src/server/repo/submissions")>("../src/server/repo/submissions");
-      return { ...actual, getEventOrgId: vi.fn(async (_db: unknown, eventId: string) => (eventId === "event-1" ? ORG_A : null)) };
+    vi.doMock("../src/server/repo/events", async () => {
+      const actual = await vi.importActual<typeof import("../src/server/repo/events")>("../src/server/repo/events");
+      return {
+        ...actual,
+        getEventForOrg: vi.fn(async (_db: unknown, eventId: string, orgId: string) =>
+          eventId === "event-1" && orgId === ORG_A ? { id: "event-1", orgId: ORG_A, timezone: "America/New_York" } : null,
+        ),
+      };
     });
     const { overviewRoutes } = await import("../src/routes/api/overview");
     const app = new Hono<AppEnv>();

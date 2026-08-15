@@ -21,17 +21,19 @@ function sqlTextOf(cond: unknown): { sql: string; params: unknown[] } {
 }
 
 describe("overdueAssignmentConditions (DEC-776)", () => {
-  it("ANDs event scoping, non-complete status, a past EFFECTIVE due date, and the roster EXISTS predicate", () => {
-    const { sql, params } = sqlTextOf(overdueAssignmentConditions("event-1", 1_000_000));
+  it("ANDs event scoping, non-complete status, a past day-label-aware due date, and the roster EXISTS predicate", () => {
+    const { sql, params } = sqlTextOf(overdueAssignmentConditions("event-1", 1_000_000, "America/New_York"));
 
     expect(sql).toContain('"task"."event_id" = ?');
     expect(sql).toContain("\"task_assignment\".\"status\" <> 'complete'");
-    // DEC-801: a task cannot be late before it was assigned -- the
-    // effective due date is task.dueDate, or, when the assignment was
-    // created after that date, assignment.createdAt plus the grace window
-    // (ASSIGNED_LATE_GRACE_DAYS, in ms, bound as a param below).
+    // DEC-801 (wave 58 amendment): a task cannot be late before it was
+    // assigned, AND task.dueDate is a DAY LABEL, not an instant -- when the
+    // task's own due date holds, overdue means its day label is strictly
+    // before `now`'s day label in the event's timezone (the cutoff param);
+    // otherwise (grace-window branch) the effective due date is already a
+    // real instant compared directly to `now`.
     expect(sql).toContain(
-      '"task"."due_date" is not null and (case when "task"."due_date" >= "task_assignment"."created_at" then "task"."due_date" else "task_assignment"."created_at" + ? end) < ?',
+      '"task"."due_date" is not null and (case when "task"."due_date" >= "task_assignment"."created_at" then "task"."due_date" < ? else "task_assignment"."created_at" + ? < ? end)',
     );
     // The roster predicate: acceptedSpeakerExistsForContact's correlated
     // EXISTS against schema.contact, so a task_assignment whose contact is
@@ -47,8 +49,8 @@ describe("overdueAssignmentConditions (DEC-776)", () => {
   });
 
   it("is the exact same SQL text for two independently-built calls with the same args (no per-call drift)", () => {
-    const a = sqlTextOf(overdueAssignmentConditions("event-1", 5000));
-    const b = sqlTextOf(overdueAssignmentConditions("event-1", 5000));
+    const a = sqlTextOf(overdueAssignmentConditions("event-1", 5000, "America/New_York"));
+    const b = sqlTextOf(overdueAssignmentConditions("event-1", 5000, "America/New_York"));
     expect(a.sql).toBe(b.sql);
     expect(a.params).toEqual(b.params);
   });
