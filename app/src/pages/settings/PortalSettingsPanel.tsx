@@ -209,9 +209,16 @@ export function PortalSettingsPanel() {
     {
       label: 'Open the portal',
       value: (
-        <a href="/portal" target="_blank" rel="noopener noreferrer">
-          Open as a speaker
-        </a>
+        <>
+          <a
+            href={eventId ? `/portal/preview?eventId=${eventId}` : '/portal/preview'}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Open as a speaker
+          </a>{' '}
+          <span className="chq-meta">read-only preview · not a speaker's account</span>
+        </>
       ),
     },
   ];

@@ -1,0 +1,133 @@
+// GET /portal/preview — DEC-747 (findings wave 7 amendment): the Speaker
+// portal settings section's ONE row action ("Open as a speaker") used to
+// link to /portal, which speakerGate (./shared.tsx) redirects every
+// non-speaker session away from, so the action an organizer actually had was
+// none at all. This route builds the smallest honest version of the frame's
+// intent (docs/design/Chautauqua Settings.dc.html:175): a read-only preview
+// of the producer's OWN portal configuration — branding, welcome message,
+// resources — never a person's data (no submissions, no task assignments,
+// no files scoped to a contact) and never a mutating control.
+//
+// Deliberately its own sub-app (mounted at "/portal", ahead of ./index's
+// portalRoutes per src/index.ts) rather than a route added to portalRoutes,
+// because it does NOT use speakerGate — its guard is the inverse (organizer
+// only) and every other session (anonymous, reviewer, speaker) gets the same
+// 404 the portal gate already renders for an unknown path, never a redirect,
+// so /portal/preview is invisible to roles it is not for (no IDOR, no
+// "login-as" affordance).
+
+import { Hono } from "hono";
+import type { AppEnv } from "../../server/env";
+import { PortalLayout, type PortalBrandingChrome } from "./shared";
+import { getEventForOrg } from "../../server/repo/events";
+import { getPortalSettingsForEvent, listResourcesForEvent, type ResourceRecord } from "../../server/repo/portal-config";
+import {
+  ANONYMOUS_NOT_FOUND_LINKS,
+  NotFoundDocument,
+  ORGANIZER_NOT_FOUND_LINKS,
+  resolveNotFoundEyebrow,
+} from "../../server/not-found";
+import { ensureCsrfCookie } from "./tasks/shared";
+import { DEC_747 } from "../../decisions";
+
+void DEC_747;
+
+export const portalPreviewRoutes = new Hono<AppEnv>();
+
+function resourceKindLabel(kind: string): string {
+  return kind === "file" ? "File" : "Wiki page";
+}
+
+function PreviewResourceRow(props: { resource: ResourceRecord }) {
+  const { resource } = props;
+  return (
+    <div class="chq-portal-row">
+      <span class="chq-portal-row-title">{resource.title}</span>
+      <span class="chq-portal-due">{resourceKindLabel(resource.kind)}</span>
+    </div>
+  );
+}
+
+function PreviewPage(props: { branding: PortalBrandingChrome; resources: ResourceRecord[]; csrfToken: string }) {
+  return (
+    <PortalLayout branding={props.branding} csrfToken={props.csrfToken}>
+      {/* Below this point: no form, no button, no link that mutates
+          anything, and nothing scoped to a contact. PortalLayout's own
+          footer sign-out control is standard /portal/* chrome (DEC-154,
+          every portal page carries it) and mutates only the ORGANIZER'S
+          OWN session, never portal content or a speaker's data — it is not
+          part of "the preview" this task scopes. */}
+      <p class="chq-portal-preview-banner" role="note">
+        Preview · read-only. This is the portal your speakers see — no speaker's own submissions, tasks or files
+        appear here.
+      </p>
+      {props.branding.welcomeMessage ? <p class="chq-meta">{props.branding.welcomeMessage}</p> : null}
+      <section aria-label="Resources" class="chq-section">
+        <div class="chq-section-label">Resources</div>
+        {props.resources.length === 0 ? (
+          <p class="chq-portal-detail">No resources yet.</p>
+        ) : (
+          props.resources.map((resource) => <PreviewResourceRow resource={resource} />)
+        )}
+      </section>
+    </PortalLayout>
+  );
+}
+
+async function renderNotFound(c: { var: { db: import("../../server/context").Db; auth?: { role: string } } }) {
+  const eyebrow = await resolveNotFoundEyebrow(c.var.db);
+  const links = c.var.auth?.role === "organizer" ? ORGANIZER_NOT_FOUND_LINKS : ANONYMOUS_NOT_FOUND_LINKS;
+  return { eyebrow, links };
+}
+
+portalPreviewRoutes.get("/preview", async (c) => {
+  const auth = c.var.auth;
+  // Guard: organizer only. Every other case (anonymous, reviewer, speaker)
+  // renders the SAME 404 card shared.tsx's speakerGate already builds for an
+  // unknown /portal/* path — a 404, never a redirect, so the route is
+  // invisible to roles it is not for.
+  if (!auth || auth.role !== "organizer") {
+    const { eyebrow, links } = await renderNotFound(c);
+    return c.html(
+      <NotFoundDocument
+        eyebrow={eyebrow}
+        body="The link may be old, or the event may have been switched since it was saved."
+        links={links}
+      />,
+      404,
+    );
+  }
+
+  const eventId = c.req.query("eventId");
+  const event = eventId ? await getEventForOrg(c.var.db, eventId, auth.orgId) : null;
+  if (!event) {
+    // No eventId given, or it doesn't belong to this org (object-level
+    // ownership check, SPEC §6) — same 404 card, not a redirect.
+    const { eyebrow, links } = await renderNotFound(c);
+    return c.html(
+      <NotFoundDocument
+        eyebrow={eyebrow}
+        body="The link may be old, or the event may have been switched since it was saved."
+        links={links}
+      />,
+      404,
+    );
+  }
+
+  const [settings, resources] = await Promise.all([
+    getPortalSettingsForEvent(c.var.db, event.id),
+    listResourcesForEvent(c.var.db, event.id),
+  ]);
+
+  const branding: PortalBrandingChrome = {
+    eventName: event.name,
+    welcomeMessage: settings?.welcomeMessage ?? null,
+    accentColor: settings?.accentColor ?? null,
+    logoUrl: settings?.logoUrl ?? null,
+  };
+
+  const { token: csrfToken, setCookieIfNew } = ensureCsrfCookie(c);
+  if (setCookieIfNew) c.header("Set-Cookie", setCookieIfNew, { append: true });
+
+  return c.html(<PreviewPage branding={branding} resources={resources} csrfToken={csrfToken} />);
+});
