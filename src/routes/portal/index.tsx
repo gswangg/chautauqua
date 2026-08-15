@@ -10,6 +10,7 @@ import type { AppEnv } from "../../server/env";
 import { speakerGate, PortalLayout, PortalBackLink } from "./shared";
 import { formatCalendarDate, formatDayMedium, formatEventDate, formatScheduleSlotLabel } from "../../lib/event-time";
 import { effectiveAssignmentDueDate } from "../../domain/task-due";
+import { countOf } from "../../domain/count-copy";
 import { csrfForm } from "../../server/middleware";
 import { ApiError } from "../../server/http";
 import {
@@ -289,7 +290,7 @@ function PortalPage(props: {
           the header carries on every route. */}
       {branding.welcomeMessage ? <p class="chq-meta">{branding.welcomeMessage}</p> : null}
       <h1 class="chq-portal-hero">
-        {n} {n === 1 ? "thing" : "things"} to do
+        {countOf(n, "thing")} to do
       </h1>
       <p class="chq-portal-sub">{scheduledSubline(branding.eventName, sessions)}</p>
 

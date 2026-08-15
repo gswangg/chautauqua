@@ -24,7 +24,7 @@ import { getHubOrg, listHubEvents, HUB_CANDIDATE_LIMIT } from "../server/repo/pu
 import { groupHubEvents, hubState, type HubEvent, type HubSections, type HubState } from "../lib/home-hub";
 import { formatEventDayRange, formatEventCloseDateLabel, daysUntilCalendarDay } from "../lib/event-time";
 import { setCacheHeaders } from "./public/shell";
-import { countOf } from "../domain/count-copy";
+import { countOf, plural, spellCount } from "../domain/count-copy";
 import { matchesAdminRoute } from "../lib/admin-routes";
 import {
   ANONYMOUS_NOT_FOUND_LINKS,
@@ -130,7 +130,7 @@ const GITHUB_MARK = (
 function closesLine(closeMs: number, timeZone: string, nowMs: number): string {
   const label = formatEventCloseDateLabel(closeMs, timeZone);
   const days = daysUntilCalendarDay(closeMs, timeZone, nowMs);
-  return `CLOSES ${label.toUpperCase()} · ${days} DAY${days === 1 ? "" : "S"} LEFT`;
+  return `CLOSES ${label.toUpperCase()} · ${days} ${plural(days, "DAY", "DAYS")} LEFT`;
 }
 
 function sessionsLine(count: number): string {
@@ -251,17 +251,6 @@ function ArchiveRow(props: { event: HubEvent }) {
       </a>
     </div>
   );
-}
-
-// Counts one through nine are spelled out in prose; ten and up render as
-// numerals (standard English style-guide rule for running text).
-const SPELLED_COUNTS = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
-
-function spellCount(count: number): string {
-  if (count < 1 || count > 9) return String(count);
-  const word = SPELLED_COUNTS[count - 1];
-  if (!word) throw new Error(`spellCount: no word for count ${count}`);
-  return word;
 }
 
 function pluralClause(count: number, singularNoun: string, pluralNoun: string, verbSingular: string, verbPlural: string): string {
