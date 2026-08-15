@@ -14,6 +14,7 @@ import { getEventOrgId } from "../../server/repo/submissions";
 import { clampPage, listPerPage } from "../../lib/pagination";
 import {
   countSavedViews,
+  countSavedViewsCreatedBy,
   createSavedView,
   deleteSavedView,
   getSavedViewOwnership,
@@ -78,15 +79,19 @@ viewsRoutes.post("/events/:eventId/views", requireOrganizer, csrfJson, async (c)
     });
   }
 
-  // DEC-422: refuse at the cap before creating -- the per-event saved view
-  // collection was previously unbounded and every row is read back into an
-  // unpaged tab strip (ViewTabs.tsx).
-  const existingCount = await countSavedViews(c.var.db, eventId, auth.userId);
+  // DEC-422 wave-10 amendment: refuse at the cap before creating -- the cap
+  // predicate is AUTHORSHIP, not visibility. Counting other organisers'
+  // shared views here would let a handful of shared rows permanently lock
+  // every colleague in the org out (nobody could create past the cap, and
+  // nobody can delete someone else's row).
+  const existingCount = await countSavedViewsCreatedBy(c.var.db, eventId, auth.userId);
   if (existingCount >= MAX_SAVED_VIEWS_PER_EVENT) {
     // DEC-422 amendment: the refusal copy is the ONE cap grammar from
     // cap-copy.ts, never the terse bare-number grammar -- same shape as the
-    // already-full form-fields refusal in src/routes/api/forms.ts.
-    throw new ApiError("invalid", `This event already has the maximum of ${MAX_SAVED_VIEWS_PER_EVENT} saved views.`, {
+    // already-full form-fields refusal in src/routes/api/forms.ts. The
+    // message names the author scope explicitly ("you"), matching the
+    // authorship predicate above.
+    throw new ApiError("invalid", `You already have the maximum of ${MAX_SAVED_VIEWS_PER_EVENT} saved views on this event.`, {
       name: overCapCountMessage(existingCount + 1, MAX_SAVED_VIEWS_PER_EVENT, "saved view"),
     });
   }
