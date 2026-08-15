@@ -68,7 +68,8 @@ describe('PortalSettingsPanel (Speaker portal read view)', () => {
     const section = await screen.findByRole('region', { name: 'Speaker portal' });
     expect(within(section).getByRole('heading', { name: 'Speaker portal' })).toBeInTheDocument();
     const openAsSpeaker = within(section).getByRole('link', { name: 'Open as a speaker' });
-    expect(openAsSpeaker).toHaveAttribute('href', '/portal');
+    expect(openAsSpeaker).toHaveAttribute('href', `/portal/preview?eventId=${EVENT_ID}`);
+    expect(within(section).getByText("read-only preview · not a speaker's account")).toBeInTheDocument();
 
     await waitFor(() => {
       expect(within(section).getByText('Shown above the task list · 2 paragraphs')).toBeInTheDocument();

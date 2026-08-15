@@ -20,6 +20,7 @@ import { agendaRoutes } from "./routes/agenda";
 import { breaksRoutes } from "./routes/api/breaks";
 import { publicSubmitRoutes } from "./routes/public/submit";
 import { portalRoutes } from "./routes/portal/index";
+import { portalPreviewRoutes } from "./routes/portal/preview";
 import { publicRoutes } from "./routes/public";
 import { portalTasksRoutes } from "./routes/portal/tasks";
 import { portalEditRoutes } from "./routes/portal/edit";
@@ -71,6 +72,10 @@ app.route("/", meRoutes);
 app.route("/", tokensRoutes);
 app.route("/", exportsRoutes);
 app.route("/", usersRoutes);
+// w7-a (DEC-747 amendment): mounted BEFORE portalRoutes so /portal/preview
+// matches ahead of speakerGate's gated sub-apps — its own guard is organizer-
+// only (the inverse of speakerGate), never falling through to a redirect.
+app.route("/portal", portalPreviewRoutes);
 app.route("/portal", portalRoutes);
 // w4-a/w4-b (DEC-028): parallel portal sub-apps + the public headshot route.
 app.route("/portal", portalProfileRoutes);
