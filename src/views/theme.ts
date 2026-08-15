@@ -35,12 +35,15 @@ export const THEME_CSS = `
     --chq-ink-2: #3F4237;
     --chq-ink-strong: #2E2A24;
     --chq-muted: #565A4B;
-    --chq-disabled: #8E8A7A;
-    /* B8 disabled register (w25-g/DEC-745 amendment): #8E8A7A text on this
-       #DDD8C8 fill, reserved for genuinely inert controls the reader must
-       still be able to find and understand -- never for placeholder text or
-       mere de-emphasis. DEC-372 set equality keeps the name declared in
-       both token files even though only the SPA consumes it today. */
+    --chq-disabled: #7D7869;
+    /* B8 disabled register (w25-g/DEC-745 amendment; w25-c/DEC-436 amendment
+       darkened #8E8A7A -> #7D7869 to clear 3:1 against both --chq-disabled-bg
+       below and the ordinary page grounds, per DEC-436's flip-to-blocking
+       contrast pass): text on this #DDD8C8 fill, reserved for genuinely
+       inert controls the reader must still be able to find and understand --
+       never for placeholder text or mere de-emphasis. DEC-372 set equality
+       keeps the name declared in both token files even though only the SPA
+       consumes it today. */
     --chq-disabled-bg: #DDD8C8;
     --chq-hairline: #E1DDCE;
     --chq-rule: #D3CFC0;
