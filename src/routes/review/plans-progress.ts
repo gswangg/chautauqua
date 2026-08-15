@@ -121,7 +121,15 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, as
     repo.batchUserDisplayNames(c.var.db, userIds),
   ]);
 
-  const items = users.map((user) => {
+  // DEC-829 (wave 39): `users` is already ordered (repo.getUsersByIds) and
+  // `total` is `users.length`, so slice to the page BEFORE the per-reviewer
+  // fold below -- per-request fold work is bounded by perPage instead of
+  // every reviewer on the plan. Semantics are unchanged: `total` still reads
+  // the FULL `users.length`, never the slice's.
+  const total = users.length;
+  const start = (page - 1) * perPage;
+  const pagedUsers = users.slice(start, start + perPage);
+  const pagedItems = pagedUsers.map((user) => {
     const assigned = assignedExcludingRecused(assignments.get(user.userId) ?? [], recusedByUser.get(user.userId) ?? new Set());
     // DEC-707 (wave-3 amendment): `completed` is a SUBSET of `assigned` --
     // only evaluations whose submissionId is in this reviewer's own
@@ -148,12 +156,6 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, as
       trackName: formatReviewerScopeLabel(scopeTrackNames),
     };
   });
-  // DEC-466/DEC-461(e): blessed JS-slice -- `items` is assembled from
-  // `users` (already ordered, see repo.getUsersByIds), so clamp with a
-  // slice and report the FULL array length as `total`, never the slice's.
-  const total = items.length;
-  const start = (page - 1) * perPage;
-  const pagedItems = items.slice(start, start + perPage);
   // DEC-745 (wave-72 amendment): the plan editor's cap row reads its
   // talks/reviews/reviewers summary off this ONE number -- zero extra
   // queries, since `submissions` is already loaded above for assignment
