@@ -21,19 +21,13 @@ import { eventDatesLine, validAccent } from "./shell";
 import { CSRF_COOKIE_NAME } from "../../auth/cookies";
 import type { EventRow, FormRow, TrackRow } from "../../server/repo/submit";
 
-// w5-c (frame 10--14 copy batch): the abstract counter's cap and the bio
-// field's caption are display-only overrides applied to the locked
-// description/bio FormFieldDefs at render time -- neither field's real
-// `maximum`/`label` is stored differently in the DB, so server-side
-// validation (src/forms/validate.ts, out of this task's file scope) still
-// enforces MAX_LONG_TEXT_LENGTH (20000) even though the CFP page now shows
-// a 1,200-character budget in the "x / y" counter family. A narrower
-// display-only interpretation was chosen because widening this task's file
-// scope to forms/validate.ts (or the default-form seed in
-// server/repo/forms.ts) was out of the delegated slice; flagged for a
-// follow-up decision on whether the *stored* abstract cap should also drop
-// to 1,200.
-const CFP_ABSTRACT_MAX_LENGTH = 1200;
+// w5-c (frame 10--14 copy batch): the bio field's caption is a display-only
+// override applied to the locked bio FormFieldDef at render time -- the
+// field's real `label` is stored differently in the DB. The abstract
+// field's 1,200-character budget is NOT display-only: it is stamped by
+// projectFieldForAnswers (src/forms/types.ts, DEC-124 wave 59 amendment)
+// onto the real `fields` list and enforced by src/forms/validate.ts, so the
+// "x / y" counter here reflects the real, server-enforced `maximum`.
 const CFP_ABSTRACT_HELP_TEXT = "Shown on the public sessions page if your talk is accepted";
 const CFP_BIO_LABEL = "Bio";
 const CFP_BIO_HELP_TEXT = "Shown on the public speakers page if your talk is accepted";
@@ -373,15 +367,18 @@ export function SubmitPage(props: {
   const { event, form, fields, tracks, answers, selectedTrackIds, csrfToken, errors, trackError } = props;
   const accentColor = branding(event).accentColor;
   const logoUrl = branding(event).logoUrl;
-  // w5-c: display-only overrides (abstract counter cap/helper, bio
+  // w5-c: display-only overrides (abstract counter helper text, bio
   // label/helper) applied here rather than to `fields` itself -- see the
-  // CFP_ABSTRACT_* / CFP_BIO_* constants above for why this stays display-
-  // only. Every other consumer below (isVisible, FieldRulesScript) keeps
-  // using the real `fields`/answers so rule-matching and server-shape stay
-  // exactly as validated.
+  // CFP_ABSTRACT_HELP_TEXT / CFP_BIO_* constants above. The abstract
+  // field's `maximum` is NOT overridden here: it already arrives on `f` via
+  // projectFieldForAnswers (src/forms/types.ts), so the counter and
+  // server-side validation read the same real cap. Every other consumer
+  // below (isVisible, FieldRulesScript) keeps using the real
+  // `fields`/answers so rule-matching and server-shape stay exactly as
+  // validated.
   const displayFields = fields.map((f) => {
     if (lockedFieldName(f.id) === "description") {
-      return { ...f, maximum: CFP_ABSTRACT_MAX_LENGTH, helpText: CFP_ABSTRACT_HELP_TEXT };
+      return { ...f, helpText: CFP_ABSTRACT_HELP_TEXT };
     }
     if (lockedFieldName(f.id) === "bio") {
       return { ...f, label: CFP_BIO_LABEL, helpText: CFP_BIO_HELP_TEXT };
