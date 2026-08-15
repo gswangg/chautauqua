@@ -46,10 +46,13 @@ function makePlan(overrides: Partial<FakePlan> = {}): FakePlan {
   };
 }
 
-const SUBMISSIONS = [
+const BASE_SUBMISSIONS = [
   { id: "sub-1", ref: "SES-001", title: "Talk One", trackIds: [], status: "pending" },
   { id: "sub-2", ref: "SES-002", title: "Talk Two", trackIds: [], status: "pending" },
 ];
+// w11-b: let (not const) so the over-cap tests below can swap in a large
+// submission set without disturbing every other test's fixture.
+let SUBMISSIONS: { id: string; ref: string; title: string; trackIds: string[]; status: string }[] = BASE_SUBMISSIONS;
 
 // Amendment (wave 52): an all-null (trackId AND submissionId both null,
 // i.e. 'All submissions') row now resolves as ALREADY covering every
@@ -108,6 +111,7 @@ afterEach(() => {
   ];
   recusals = [];
   addedRows = [];
+  SUBMISSIONS = BASE_SUBMISSIONS;
 });
 
 async function buildApp(auth: AuthInfo) {
@@ -245,5 +249,66 @@ describe("POST /api/v1/plans/:id/assignments/distribute (DEC-786/DEC-840)", () =
     expect(res2.status).toBe(201);
     const body2 = (await res2.json()) as { created: number };
     expect(body2.created).toBe(0);
+  });
+});
+
+describe("w11-b: pre-write cap on the plan_reviewer fan-out (MAX_DISTRIBUTE_ASSIGNMENT_WRITES)", () => {
+  function bigSubmissionSet(count: number) {
+    return Array.from({ length: count }, (_, i) => ({
+      id: `sub-big-${i}`,
+      ref: `SES-BIG-${i}`,
+      title: `Big Talk ${i}`,
+      trackIds: [] as string[],
+      status: "pending",
+    }));
+  }
+
+  it("apply refuses over-cap with NO plan_reviewer row written, naming the count/cap/forward path", async () => {
+    // reviewsPerSubmission 1, 5001 submissions, 2 reviewers with zero
+    // real coverage (their existing rows point at "sub-elsewhere") -> the
+    // distributor proposes exactly 5001 pairs, one over
+    // MAX_DISTRIBUTE_ASSIGNMENT_WRITES (5000).
+    SUBMISSIONS = bigSubmissionSet(5001);
+    const app = await buildApp(organizer);
+    const res = await app.request(`/api/v1/plans/${plan.id}/assignments/distribute`, {
+      method: "POST",
+      headers: { "x-chq-csrf": "1" },
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { message: string; fields?: Record<string, string> } };
+    expect(body.error.message).toContain("5001");
+    expect(body.error.message).toContain("5000");
+    expect(body.error.fields).toHaveProperty("cap");
+    expect(body.error.fields?.cap).toContain("5001");
+    // Pre-write: nothing landed.
+    expect(addedRows.length).toBe(0);
+    expect(reviewerRows.length).toBe(2);
+  });
+
+  it("preview reports writeCapExceeded:true for the same over-cap input, apply still refuses it", async () => {
+    SUBMISSIONS = bigSubmissionSet(5001);
+    const app = await buildApp(organizer);
+    const previewRes = await app.request(`/api/v1/plans/${plan.id}/assignments/distribute/preview`);
+    expect(previewRes.status).toBe(200);
+    const previewBody = (await previewRes.json()) as { writeCap: number; writeCapExceeded: boolean; totalAssigned: number };
+    expect(previewBody.writeCap).toBe(5000);
+    expect(previewBody.writeCapExceeded).toBe(true);
+    expect(previewBody.totalAssigned).toBe(5001);
+
+    const applyRes = await app.request(`/api/v1/plans/${plan.id}/assignments/distribute`, {
+      method: "POST",
+      headers: { "x-chq-csrf": "1" },
+    });
+    expect(applyRes.status).toBe(400);
+    expect(addedRows.length).toBe(0);
+  });
+
+  it("preview reports writeCapExceeded:false when the plan is safely under cap", async () => {
+    const app = await buildApp(organizer);
+    const res = await app.request(`/api/v1/plans/${plan.id}/assignments/distribute/preview`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { writeCap: number; writeCapExceeded: boolean };
+    expect(body.writeCap).toBe(5000);
+    expect(body.writeCapExceeded).toBe(false);
   });
 });

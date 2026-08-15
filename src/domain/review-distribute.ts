@@ -70,6 +70,26 @@ function pairKey(p: { userId: string; submissionId: string }): string {
   return `${p.userId}::${p.submissionId}`;
 }
 
+/** w11-b: the single source of both the pre-write cap on the plan_reviewer
+ * fan-out (every sibling fan-out already refuses pre-write -- DEC-079/
+ * DEC-528's MAX_TASK_ASSIGNMENT_WRITES, agenda's MAX_AUTO_SCHEDULE_PLACEMENTS
+ * -- distribute had none) and the number `maxSubmissionsForDistribute` below
+ * divides through to give the refusal a forward path, never a bare internal
+ * number. */
+export const MAX_DISTRIBUTE_ASSIGNMENT_WRITES = 5000;
+
+/** w11-b: the largest number of submissions this plan's own filters/track
+ * narrowing could resolve to and still stay under
+ * MAX_DISTRIBUTE_ASSIGNMENT_WRITES, given this plan's `reviewsPerSubmission`
+ * (an upper bound: distribute never proposes more than one row per
+ * (reviewer, submission), so `reviewsPerSubmission` rows per submission is
+ * the worst case). Quoted verbatim by the apply route's over-cap refusal so
+ * the message always names a number the organizer can actually use ("narrow
+ * the plan's track filters, or lower `cap`"). */
+export function maxSubmissionsForDistribute(reviewsPerSubmission: number): number {
+  return Math.max(1, Math.floor(MAX_DISTRIBUTE_ASSIGNMENT_WRITES / Math.max(1, reviewsPerSubmission)));
+}
+
 /**
  * For each submission (in the given order), fills up to
  * `reviewsPerSubmission` distinct reviewers by repeatedly picking the

@@ -7,7 +7,7 @@
 // their scope reaches, and a track-scoped reviewer is never eligible for a
 // submission outside their tracks.
 import { describe, expect, it } from "vitest";
-import { distributeAssignments } from "../src/domain/review-distribute";
+import { distributeAssignments, maxSubmissionsForDistribute, MAX_DISTRIBUTE_ASSIGNMENT_WRITES } from "../src/domain/review-distribute";
 
 // Test helper: every reviewer/submission below carries no track scope
 // unless a test says otherwise, so pre-existing behavior (flat pool, no
@@ -282,5 +282,30 @@ describe("distributeAssignments", () => {
     });
     expect(result.created).toEqual([{ userId: "u2", submissionId: "s1" }]);
     expect(result.shortfall).toEqual([]);
+  });
+});
+
+// w11-b: maxSubmissionsForDistribute is the single source of the number the
+// apply route's over-cap refusal quotes as a forward path -- must divide
+// the same MAX_DISTRIBUTE_ASSIGNMENT_WRITES the pre-write check enforces.
+describe("maxSubmissionsForDistribute", () => {
+  it("divides the cap by reviewsPerSubmission", () => {
+    expect(maxSubmissionsForDistribute(1)).toBe(MAX_DISTRIBUTE_ASSIGNMENT_WRITES);
+    expect(maxSubmissionsForDistribute(2)).toBe(Math.floor(MAX_DISTRIBUTE_ASSIGNMENT_WRITES / 2));
+    expect(maxSubmissionsForDistribute(3)).toBe(Math.floor(MAX_DISTRIBUTE_ASSIGNMENT_WRITES / 3));
+  });
+
+  it("floors a non-exact division", () => {
+    // 5000 / 3 = 1666.67 -> 1666, never rounded up past the real cap.
+    expect(maxSubmissionsForDistribute(3)).toBe(1666);
+  });
+
+  it("never returns less than 1, even for an absurdly large reviewsPerSubmission", () => {
+    expect(maxSubmissionsForDistribute(MAX_DISTRIBUTE_ASSIGNMENT_WRITES * 10)).toBe(1);
+  });
+
+  it("treats 0 and negative reviewsPerSubmission as 1 (no divide-by-zero, never widens the cap)", () => {
+    expect(maxSubmissionsForDistribute(0)).toBe(MAX_DISTRIBUTE_ASSIGNMENT_WRITES);
+    expect(maxSubmissionsForDistribute(-5)).toBe(MAX_DISTRIBUTE_ASSIGNMENT_WRITES);
   });
 });
