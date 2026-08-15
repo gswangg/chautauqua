@@ -145,6 +145,11 @@ export function FieldModal({ field, allFields, onCancel, onSubmit }: FieldModalP
             <option value="session">Session</option>
             <option value="speaker">Speaker</option>
           </select>
+          <p className="chq-meta">
+            {section === 'speaker'
+              ? 'Hidden from reviewers while a plan is anonymised.'
+              : 'Shown to reviewers, including on an anonymised plan.'}
+          </p>
         </FormRow>
 
         <FormRow label="Kind" htmlFor="field-kind">
