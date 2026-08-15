@@ -300,12 +300,26 @@ submissionsRoutes.post("/events/:eventId/submissions", requireOrganizer, csrfJso
 
   // DEC-755: validate BEFORE creating the submission row so a bad trackIds/
   // format value never leaves a half-created submission behind.
-  const trackIds = body.trackIds !== undefined ? await parseTrackIdsField(c.var.db, eventId, body.trackIds) : undefined;
-  const format = body.format !== undefined ? await parseFormatField(c.var.db, eventId, body.format) : undefined;
-  // DEC-900 amendment (findings wave 13): kept symmetric with format above —
-  // the create route accepts audienceLevel iff it accepts format.
-  const audienceLevel =
-    body.audienceLevel !== undefined ? await parseAudienceLevelField(c.var.db, eventId, body.audienceLevel) : undefined;
+  // DEC-598 (wave-34 amendment): the three validators below are independent
+  // reads that consume nothing from each other and sit behind the
+  // ownership check that already resolved above -- issue them as ONE wave
+  // via Promise.allSettled (never Promise.all, which would reject with
+  // whichever settles first and silently change which field error the
+  // caller sees) and re-throw the first rejection in DECLARATION order:
+  // trackIds, format, audienceLevel.
+  const [trackIdsResult, formatResult, audienceLevelResult] = await Promise.allSettled([
+    body.trackIds !== undefined ? parseTrackIdsField(c.var.db, eventId, body.trackIds) : Promise.resolve(undefined),
+    body.format !== undefined ? parseFormatField(c.var.db, eventId, body.format) : Promise.resolve(undefined),
+    body.audienceLevel !== undefined
+      ? parseAudienceLevelField(c.var.db, eventId, body.audienceLevel)
+      : Promise.resolve(undefined),
+  ]);
+  if (trackIdsResult.status === "rejected") throw trackIdsResult.reason;
+  if (formatResult.status === "rejected") throw formatResult.reason;
+  if (audienceLevelResult.status === "rejected") throw audienceLevelResult.reason;
+  const trackIds = trackIdsResult.value;
+  const format = formatResult.value;
+  const audienceLevel = audienceLevelResult.value;
 
   const id = await createSubmission(c.var.db, eventId, auth.orgId, { title, description, contact });
 
@@ -376,21 +390,40 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
     }); // DEC-124
   }
 
+  // DEC-598 (wave-34 amendment): trackIds/format/audienceLevel below (plus
+  // the DEC-158 pre-edit content snapshot) are four independent reads —
+  // none consumes another's result, and all sit behind the ownership check
+  // above that has already resolved — issued as ONE wave via
+  // Promise.allSettled (never Promise.all, which would reject with
+  // whichever settles first and silently change which field error the
+  // caller sees). Rejections are re-thrown in DECLARATION order: trackIds,
+  // format, audienceLevel, then getSubmissionContent.
   // DEC-598: trackIds is a full-set replace, and an empty array is a valid
   // "remove every track" request — unlike parseBoundedIdArray (used for the
   // bulk-status ids array), an empty trackIds array must NOT 400.
-  const trackIds =
-    body.trackIds !== undefined ? await parseTrackIdsField(c.var.db, ownership.eventId, body.trackIds) : undefined;
   // DEC-755: format is fixable after create — same field-options validation
   // as the POST create route.
-  const format =
-    body.format !== undefined ? await parseFormatField(c.var.db, ownership.eventId, body.format) : undefined;
   // DEC-900 amendment (findings wave 13): audienceLevel mirrors format
   // exactly — same field-options validation, same CLEAR-on-null semantics.
-  const audienceLevel =
+  const [trackIdsResult, formatResult, audienceLevelResult, contentResult] = await Promise.allSettled([
+    body.trackIds !== undefined
+      ? parseTrackIdsField(c.var.db, ownership.eventId, body.trackIds)
+      : Promise.resolve(undefined),
+    body.format !== undefined ? parseFormatField(c.var.db, ownership.eventId, body.format) : Promise.resolve(undefined),
     body.audienceLevel !== undefined
-      ? await parseAudienceLevelField(c.var.db, ownership.eventId, body.audienceLevel)
-      : undefined;
+      ? parseAudienceLevelField(c.var.db, ownership.eventId, body.audienceLevel)
+      : Promise.resolve(undefined),
+    // DEC-158 (CNT-11): snapshot the pre-edit content so we can tell whether
+    // this PATCH actually changed title/description before appending history.
+    getSubmissionContent(c.var.db, id),
+  ]);
+  if (trackIdsResult.status === "rejected") throw trackIdsResult.reason;
+  if (formatResult.status === "rejected") throw formatResult.reason;
+  if (audienceLevelResult.status === "rejected") throw audienceLevelResult.reason;
+  if (contentResult.status === "rejected") throw contentResult.reason;
+  const trackIds = trackIdsResult.value;
+  const format = formatResult.value;
+  const audienceLevel = audienceLevelResult.value;
 
   if (
     Object.keys(fields).length === 0 &&
@@ -407,9 +440,7 @@ submissionsRoutes.patch("/submissions/:id", requireOrganizer, csrfJson, async (c
     );
   }
 
-  // DEC-158 (CNT-11): snapshot the pre-edit content so we can tell whether
-  // this PATCH actually changed title/description before appending history.
-  const before = await getSubmissionContent(c.var.db, id);
+  const before = contentResult.value;
   if (!before) throw new ApiError("not_found", "Submission not found");
 
   if (Object.keys(fields).length > 0) {
