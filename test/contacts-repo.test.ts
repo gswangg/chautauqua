@@ -240,6 +240,16 @@ describe("mergeContacts (DEC-101 participant dedupe + six-table FK repoint)", ()
 
   it("repoints file and file_comment (and the other five tables) from mergeId to keepId", async () => {
     const { db, updates, deletes } = fakeDb([
+      // DEC-026 wave-43 amendment: mergeContacts runs a whole-operation
+      // preflight before ANY pair's fold begins -- it reads every contact in
+      // the id list (planMergeFold), then one chunked login select over
+      // [keepId, ...mergeIds] and one chunked select of the user rows owning
+      // the fold's intermediate merged emails. Four selects, ahead of the
+      // per-pair sequence below.
+      [contactRaw(KEEP_ID, "keep@example.com")], // preflight findContactById(keepId)
+      [contactRaw(MERGE_ID, "merge@example.com")], // preflight findContactById(mergeId)
+      [], // preflight: user rows whose contactId is in [keepId, mergeId]
+      [], // preflight: user rows owning an intermediate merged email
       [contactRaw(KEEP_ID, "keep@example.com")], // findContactById(keepId)
       [contactRaw(MERGE_ID, "merge@example.com")], // findContactById(mergeId)
       [], // user rows for keepId
@@ -279,6 +289,11 @@ describe("mergeContacts (DEC-101 participant dedupe + six-table FK repoint)", ()
 
   it("dedupes: deletes mergeId's participant row for a shared submission instead of repointing it, but still repoints its row on a distinct submission", async () => {
     const { db, updates, deletes } = fakeDb([
+      // Four whole-operation preflight selects (see the test above).
+      [contactRaw(KEEP_ID, "keep@example.com")], // preflight findContactById(keepId)
+      [contactRaw(MERGE_ID, "merge@example.com")], // preflight findContactById(mergeId)
+      [], // preflight: user rows whose contactId is in [keepId, mergeId]
+      [], // preflight: user rows owning an intermediate merged email
       [contactRaw(KEEP_ID, "keep@example.com")], // findContactById(keepId)
       [contactRaw(MERGE_ID, "merge@example.com")], // findContactById(mergeId)
       [], // user rows for keepId
@@ -324,6 +339,11 @@ describe("mergeContacts (DEC-101 participant dedupe + six-table FK repoint)", ()
       socialLinksJson: JSON.stringify({ twitter: "@dup", linkedin: "dup-linkedin" }),
     };
     const { db, updates } = fakeDb([
+      // Four whole-operation preflight selects (see the first merge test).
+      [keepRaw], // preflight findContactById(keepId)
+      [mergeRaw], // preflight findContactById(mergeId)
+      [], // preflight: user rows whose contactId is in [keepId, mergeId]
+      [], // preflight: user rows owning an intermediate merged email
       [keepRaw], // findContactById(keepId)
       [mergeRaw], // findContactById(mergeId)
       [], // user rows for keepId
