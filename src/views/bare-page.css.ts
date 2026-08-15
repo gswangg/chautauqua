@@ -26,6 +26,7 @@ void DEC_945;
 // (eyebrow/title/body/links stacked with the shared section gap).
 export const BARE_PAGE_CSS = `
   .chq-bare-page {
+    width: 100%;
     max-width: 820px;
     margin: 0 auto;
     padding: 48px 20px;
@@ -33,4 +34,5 @@ export const BARE_PAGE_CSS = `
     flex-direction: column;
     gap: 22px;
   }
+  .chq-bare-page .chq-auth-title { font-size: 36px; }
 `;

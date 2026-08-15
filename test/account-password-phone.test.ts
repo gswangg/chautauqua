@@ -312,7 +312,7 @@ describe("GET /account/password — phone action bar Cancel (DEC-385/DEC-200 ame
     const res = await app.request("/account/password", { headers: { cookie: sessionCookie } }, env);
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain('class="chq-btn chq-btn-secondary chq-phone-actionbar-secondary chq-auth-cancel" href="/admin"');
+    expect(html).toContain('class="chq-btn chq-btn-secondary chq-auth-cancel" href="/admin"');
     expect(html).toContain("You stay signed in on this device");
   });
 
@@ -325,7 +325,7 @@ describe("GET /account/password — phone action bar Cancel (DEC-385/DEC-200 ame
     const res = await app.request("/account/password", { headers: { cookie: sessionCookie } }, env);
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain('class="chq-btn chq-btn-secondary chq-phone-actionbar-secondary chq-auth-cancel" href="/portal"');
+    expect(html).toContain('class="chq-btn chq-btn-secondary chq-auth-cancel" href="/portal"');
     expect(html).toContain("You stay signed in on this device");
   });
 });
@@ -387,25 +387,16 @@ describe("account/password phone action bar CSS source-scan (DEC-385)", () => {
     expect(blocks.some((b) => /\.chq-auth-cancel\s*\{[^}]*display:\s*inline-flex/.test(b))).toBe(true);
   });
 
-  it(".chq-phone-actionbar is display:none at top level in theme.ts, switched on inside theme.ts's 700px block", () => {
-    const topLevel = topLevelRuleBody(THEME_TS, ".chq-phone-actionbar");
-    expect(topLevel).toMatch(/display:\s*none/);
-
-    const blocks = extract700Blocks(THEME_TS);
-    expect(blocks.some((b) => /\.chq-phone-actionbar\s*\{[^}]*display:\s*flex/.test(b))).toBe(true);
-  });
-
-  it(".chq-phone-actionbar's band rules (border-top/background/padding) live only in theme.ts, never restated in auth.css.ts", () => {
-    const themeBlocks = extract700Blocks(THEME_TS);
-    const actionbarRuleInTheme = themeBlocks
-      .map((b) => b.match(/\.chq-phone-actionbar\s*\{([^}]*)\}/))
-      .find((m) => m)?.[1];
-    expect(actionbarRuleInTheme).toBeDefined();
-    expect(actionbarRuleInTheme).toMatch(/border-top:\s*1px solid var\(--chq-ink\)/);
-    expect(actionbarRuleInTheme).toMatch(/background:\s*var\(--chq-surface-sunk\)/);
-    expect(actionbarRuleInTheme).toMatch(/padding:\s*12px 16px 16px/);
-
-    // Never restated anywhere in auth.css.ts, media or otherwise.
-    expect(AUTH_CSS_TS).not.toMatch(/\.chq-phone-actionbar\s*\{/);
+  // w3-b (DEC-945/DEC-939 amendments): .chq-phone-actionbar and its
+  // -primary/-secondary modifiers are DELETED from theme.ts -- the only
+  // markup that ever wore them (src/routes/account.tsx's desktop action
+  // row) dropped the classes because the row's visibility already came
+  // from AUTH_CSS's `.chq-auth-actions { display: flex }` cascading after
+  // theme.ts's `.chq-phone-actionbar { display: none }`, not from the
+  // phone-actionbar band itself; .chq-auth-cancel / .chq-auth-hint already
+  // own the phone-vs-desktop toggle. A rule with no markup using its class
+  // is dead CSS (test/ssr-css-contract.scan.test.ts's DEC-970 contract).
+  it("theme.ts no longer declares .chq-phone-actionbar or its modifiers", () => {
+    expect(THEME_TS).not.toMatch(/\.chq-phone-actionbar\b/);
   });
 });

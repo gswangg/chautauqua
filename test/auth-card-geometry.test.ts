@@ -55,6 +55,11 @@ describe("auth card geometry (DEC-945 V8 amendment, wave 25)", () => {
     expect(AUTH_CSS).not.toContain("chq-auth-card-narrow");
     const bareRule = extractRule(AUTH_CSS, ".chq-bare-page");
     expect(bareRule).toMatch(/max-width:\s*820px/);
+    // w3-b: .chq-bare-page is a flex item of `body` (display:flex); with
+    // only max-width and no width it shrink-wraps to its content instead of
+    // filling the 820px reading column, which is why /account/password
+    // rendered its fields at ~188px wide.
+    expect(bareRule).toMatch(/width:\s*100%/);
     expect(bareRule).not.toMatch(/border/);
     expect(bareRule).not.toMatch(/background/);
     expect(bareRule).not.toMatch(/border-radius/);
@@ -71,7 +76,14 @@ describe("auth card geometry (DEC-945 V8 amendment, wave 25)", () => {
   });
 
   it("the submit control is intrinsic-width, not a full-column bar", () => {
-    const submitRule = extractRule(AUTH_CSS, ".chq-auth-card button[type=submit]");
+    // w3-b: the auth-card and bare-page (.chq-auth-actions) submit controls
+    // now share one selector list / one box definition rather than two
+    // rules that disagreed about which container implies a control height.
+    const match = AUTH_CSS.match(
+      /\.chq-auth-card button\[type=submit\],\s*\.chq-auth-actions button\[type=submit\]\s*\{([^}]*)\}/,
+    );
+    expect(match, "expected to find the shared .chq-auth-card / .chq-auth-actions submit rule").not.toBeNull();
+    const submitRule = match![1]!;
     expect(submitRule).toMatch(/width:\s*auto/);
     expect(submitRule).toMatch(/min-height:\s*46px/);
     expect(submitRule).toMatch(/padding:\s*0 22px/);
