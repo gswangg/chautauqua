@@ -236,19 +236,20 @@ export function ApiTokensPanel({ readOnly = false }: { readOnly?: boolean }) {
         <table className="chq-table chq-settings-tokens-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Token</th>
-              <th>Created</th>
-              <th>Last used</th>
-              <th>Revoke</th>
+              <th className="chq-settings-tokens-col-name">Name and prefix</th>
+              <th className="chq-settings-tokens-col-created">Created</th>
+              <th className="chq-settings-tokens-col-last-used">Last used</th>
+              <th className="chq-settings-tokens-col-actions">Revoke</th>
             </tr>
           </thead>
           <tbody>
             {tokens.map((t) => (
               <tr key={t.id}>
-                <td>{t.name}</td>
-                <td data-label="Token">
-                  <code>{t.tokenPrefix}…</code>
+                <td data-label="Name and prefix">
+                  <div className="chq-settings-tokens-name-cell">
+                    <span>{t.name}</span>
+                    <code>{t.tokenPrefix}…</code>
+                  </div>
                 </td>
                 <td data-label="Created">{formatDateTime(t.createdAt)}</td>
                 <td data-label="Last used">
