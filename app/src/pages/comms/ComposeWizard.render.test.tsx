@@ -1045,6 +1045,52 @@ describe('ComposeWizard skipped (already-sent-recently) report (DEC-238 amendmen
     expect(screen.queryByRole('button', { name: /send anyway/i })).not.toBeInTheDocument();
   });
 
+  it('renders a duplicate_in_batch skip with the batch-specific copy and no retry line (DEC-238 wave-15 amendment)', async () => {
+    mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),
+      [`GET /api/v1/events/${EVENT_ID}/templates`]: listEnvelope([]),
+      [`POST /api/v1/events/${EVENT_ID}/compose/preview`]: { items: [] },
+      [`POST /api/v1/events/${EVENT_ID}/compose/send`]: {
+        sent: 1,
+        failed: [],
+        skipped: [
+          {
+            email: 'ada@example.com',
+            name: 'Ada Lovelace',
+            submissionId: 'sub-1',
+            reason: 'duplicate_in_batch',
+          },
+        ],
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <ComposeWizard eventId={EVENT_ID} />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('Talk number 1');
+    fireEvent.click(screen.getByLabelText('Select Talk number 1'));
+    fireEvent.click(screen.getByRole('button', { name: /Next: choose template/ }));
+
+    const subject = await screen.findByLabelText('Subject');
+    fireEvent.change(subject, { target: { value: 'Hello' } });
+    fireEvent.change(screen.getByLabelText('Body'), { target: { value: 'Body text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next: preview' }));
+
+    await screen.findByText('Attachments');
+    fireEvent.click(screen.getByRole('button', { name: 'Next: send ›' }));
+
+    const sendButton = await screen.findByRole('button', { name: /^Send \d+ emails?$/ });
+    fireEvent.click(sendButton);
+
+    await screen.findByText(/1 of 1 speakers were emailed/);
+
+    expect(screen.getByText('Same message, same address, already in this batch.')).toBeInTheDocument();
+    expect(screen.queryByText(/^Send in \d+ minutes?$/)).not.toBeInTheDocument();
+  });
+
   it('reports zero skipped and renders no skipped list when the server has not landed the field yet', async () => {
     mockApi({
       [`GET /api/v1/events/${EVENT_ID}/submissions`]: listEnvelope(page1(), { total: 340, page: 1, perPage: 50 }),

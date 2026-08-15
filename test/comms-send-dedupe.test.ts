@@ -52,6 +52,18 @@ const submissions = [
   },
 ];
 
+// w15-c: a speaker with TWO accepted talks — same contact/address, a
+// second submission. Used to exercise the intra-batch dedupe stage.
+const twoTalkSubmissions = [
+  submissions[0]!,
+  {
+    id: "sub-2",
+    title: "On Difference Engines",
+    seq: 2,
+    participants: [{ contactId: "ct-1", firstName: "Ada", lastName: "Lovelace", email: "ada@example.com" }],
+  },
+];
+
 // Stand-in email_log rows written by the mocked mailer below — the mocked
 // repo.loadRecentlySent reader below reads from this array, so a second
 // route call sees the first call's "sent" row exactly as a real D1-backed
@@ -67,11 +79,13 @@ vi.mock("../src/server/repo/events", async () => {
   return { ...actual, getEventForOrg: vi.fn(async () => event) };
 });
 
+let currentSubmissions: typeof submissions = submissions;
+
 vi.mock("../src/server/repo/comms", async () => {
   const actual = await vi.importActual<typeof import("../src/server/repo/comms")>("../src/server/repo/comms");
   return {
     ...actual,
-    loadComposeSubmissions: vi.fn(async () => submissions),
+    loadComposeSubmissions: vi.fn(async () => currentSubmissions),
     findAccountUserIds: vi.fn(async (_db: unknown, params: { contactId: string }[]) => new Map(params.map((p) => [p.contactId, null]))),
     listFeedbackCommentsForSubmissions: vi.fn(async () => new Map()),
     loadIcsScheduleData: vi.fn(async () => new Map()),
@@ -121,6 +135,7 @@ afterEach(() => {
   vi.clearAllMocks();
   sentMails.length = 0;
   loggedRows = [];
+  currentSubmissions = submissions;
   vi.useRealTimers();
 });
 
@@ -220,6 +235,87 @@ describe("POST /api/v1/events/:eventId/compose/send — dedupe (DEC-238 wave-3 a
     expect(body.sent).toBe(1);
     expect(body.skipped).toEqual([]);
     expect(sentMails).toHaveLength(2);
+  });
+});
+
+describe("POST /api/v1/events/:eventId/compose/send — intra-batch dedupe (DEC-238 wave-15 amendment)", () => {
+  it("two rendered recipients sharing an address AND an identical subject mail once, and the second reports duplicate_in_batch with no retryAtIso", async () => {
+    currentSubmissions = twoTalkSubmissions;
+    const app = await buildCommsApp();
+    const kv = new InMemoryKV();
+    vi.setSystemTime(1_700_000_000_000);
+
+    // Subject has no {talk_title} merge field, so both of Ada's submissions
+    // render the identical (email, subject) pair inside ONE call.
+    const res = await send(app, kv, {
+      submissionIds: ["sub-1", "sub-2"],
+      subject: "Reminder",
+      bodyText: "Hi {speaker_name}.",
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      sent: number;
+      skipped: { email: string; reason: string; retryAtIso?: string }[];
+      failed: unknown[];
+    };
+    expect(body.sent).toBe(1);
+    expect(body.failed).toEqual([]);
+    expect(body.skipped).toHaveLength(1);
+    expect(body.skipped[0]).toMatchObject({ email: "ada@example.com", reason: "duplicate_in_batch" });
+    expect(body.skipped[0]).not.toHaveProperty("retryAtIso");
+    expect(sentMails).toHaveLength(1);
+  });
+
+  it("the same address with two DIFFERENT rendered subjects (per-submission {talk_title}) mails both", async () => {
+    currentSubmissions = twoTalkSubmissions;
+    const app = await buildCommsApp();
+    const kv = new InMemoryKV();
+    vi.setSystemTime(1_700_000_000_000);
+
+    const res = await send(app, kv, {
+      submissionIds: ["sub-1", "sub-2"],
+      subject: "About your talk: {talk_title}",
+      bodyText: "Hi {speaker_name}.",
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { sent: number; skipped: unknown[]; failed: unknown[] };
+    expect(body.sent).toBe(2);
+    expect(body.skipped).toEqual([]);
+    expect(body.failed).toEqual([]);
+    expect(sentMails).toHaveLength(2);
+    expect(new Set(sentMails.map((m) => m.subject))).toEqual(
+      new Set(["About your talk: On Engines", "About your talk: On Difference Engines"]),
+    );
+  });
+
+  it("intra-batch dedupe runs BEFORE the cross-call window check — a within-window prior send still yields exactly one skip, not two", async () => {
+    currentSubmissions = twoTalkSubmissions;
+    const app = await buildCommsApp();
+    const kv = new InMemoryKV();
+    const t0 = 1_700_000_000_000;
+    vi.setSystemTime(t0);
+
+    await send(app, kv, { submissionIds: ["sub-1"], subject: "Reminder", bodyText: "Hi {speaker_name}." });
+    expect(sentMails).toHaveLength(1);
+
+    vi.setSystemTime(t0 + 40_000);
+    const res = await send(app, kv, {
+      submissionIds: ["sub-1", "sub-2"],
+      subject: "Reminder",
+      bodyText: "Hi {speaker_name}.",
+    });
+    const body = (await res.json()) as {
+      sent: number;
+      skipped: { reason: string }[];
+      failed: unknown[];
+    };
+    expect(body.sent).toBe(0);
+    // sub-2 collapses into sub-1's identical render (duplicate_in_batch);
+    // the SURVIVING sub-1 entry then hits the cross-call window from the
+    // first request (already_sent_recently) — one skip per stage, not a
+    // second already_sent_recently for the already-collapsed entry.
+    expect(body.skipped.map((s) => s.reason).sort()).toEqual(["already_sent_recently", "duplicate_in_batch"]);
+    expect(sentMails).toHaveLength(1);
   });
 });
 

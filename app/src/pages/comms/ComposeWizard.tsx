@@ -1280,11 +1280,15 @@ export function ComposeWizard({ eventId }: { eventId: string }) {
                     <span className="chq-comms-send-report-skipped-email">{r.email}</span>
                   </div>
                   <span className="chq-comms-send-report-skipped-reason">
-                    Already sent within the hour, for {submissionLabel(r.submissionId, preview)}.
+                    {r.reason === 'duplicate_in_batch'
+                      ? 'Same message, same address, already in this batch.'
+                      : `Already sent within the hour, for ${submissionLabel(r.submissionId, preview)}.`}
                   </span>
-                  <span className="chq-comms-send-report-skipped-retry">
-                    Send in {retryMinutes(r.retryAtIso)} minutes
-                  </span>
+                  {r.reason === 'already_sent_recently' && (
+                    <span className="chq-comms-send-report-skipped-retry">
+                      Send in {retryMinutes(r.retryAtIso!)} minutes
+                    </span>
+                  )}
                 </div>
               ))}
               <p className="chq-comms-send-report-skipped-note">
