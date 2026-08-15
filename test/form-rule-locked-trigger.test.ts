@@ -153,7 +153,7 @@ describe("loadEditableSubmission normalizes rule.fieldId (DEC-475)", () => {
 
   it("a rule referencing the raw locked PK comes back keyed by the short locked name", async () => {
     const db = makeFakePortalDb([LOCKED_DESCRIPTION_ROW, DEPENDENT_ROW]);
-    const result = await loadEditableSubmission(db, "c1", "s1");
+    const result = await loadEditableSubmission(db, "o1", "c1", "s1");
     expect(result).not.toBeNull();
     const dependent = result!.fields.find((f) => f.id === "materials");
     expect(dependent?.rule?.fieldId).toBe("description");
@@ -161,7 +161,7 @@ describe("loadEditableSubmission normalizes rule.fieldId (DEC-475)", () => {
 
   it("guard: no returned field's rule.fieldId contains ':'", async () => {
     const db = makeFakePortalDb([LOCKED_DESCRIPTION_ROW, DEPENDENT_ROW]);
-    const result = await loadEditableSubmission(db, "c1", "s1");
+    const result = await loadEditableSubmission(db, "o1", "c1", "s1");
     expect(result).not.toBeNull();
     for (const f of result!.fields) {
       if (f.rule) expect(f.rule.fieldId).not.toContain(":");

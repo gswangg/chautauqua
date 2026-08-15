@@ -565,7 +565,7 @@ portalRoutes.get("/submissions/:id", async (c) => {
   const data = await getPortalData(c.var.db, contactId, auth.orgId);
   // DEC-041: the edit link only shows when the submission is still
   // editable (accepted, or the form window is open).
-  const editData = await loadEditableSubmission(c.var.db, contactId, id);
+  const editData = await loadEditableSubmission(c.var.db, auth.orgId, contactId, id);
   const editable = editData
     ? canEditSubmission(editData.submission.status, editData.form.closeDate, Date.now(), editData.form.timezone)
     : false;

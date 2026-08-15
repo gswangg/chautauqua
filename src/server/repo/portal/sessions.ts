@@ -6,7 +6,7 @@ import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import type { Db } from "../../context";
 import * as schema from "../../../db/schema";
 import { formatRef } from "../../../domain/ids";
-import { ACTIVE_INVITE_STATUSES } from "../../../domain/acceptance";
+import { PORTAL_VISIBLE_INVITE_STATUSES } from "../../../domain/acceptance";
 import { loadTrackNamesBySubmission } from "../submission-tracks";
 import { chunkIds } from "../../../lib/chunk";
 import { findConflicts, type PlacedSession } from "../../../domain/schedule";
@@ -99,7 +99,14 @@ export async function getMySessions(db: Db, contactId: string, orgId: string): P
         eq(schema.participant.contactId, contactId),
         eq(schema.event.orgId, orgId),
         eq(schema.submission.status, "accepted"),
-        inArray(schema.participant.inviteStatus, ACTIVE_INVITE_STATUSES),
+        // DEC-317 (wave-50 amendment): read = not-declined. An 'invited'
+        // co-presenter must see the session they're being asked to accept,
+        // matching the sibling reader portal/data.ts's use of
+        // PORTAL_VISIBLE_INVITE_STATUSES. Write paths (e.g. edit-lock,
+        // deliverable upload targets in portal/tasks.ts) stay on
+        // ACTIVE_INVITE_STATUSES — this file's write population is
+        // unaffected.
+        inArray(schema.participant.inviteStatus, PORTAL_VISIBLE_INVITE_STATUSES),
       ),
     );
 

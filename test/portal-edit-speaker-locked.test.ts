@@ -123,7 +123,7 @@ describe("loadEditableSubmission (DEC-121 prefill)", () => {
       fieldRows: FIELD_ROWS,
       answerRows: [],
     });
-    const result = await loadEditableSubmission(db, "c1", "s1");
+    const result = await loadEditableSubmission(db, "o1", "c1", "s1");
     expect(result).not.toBeNull();
     expect(result!.answers.first_name).toBe("Jane");
     expect(result!.answers.last_name).toBe("Doe");

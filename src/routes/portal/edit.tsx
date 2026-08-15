@@ -314,7 +314,7 @@ portalEditRoutes.get("/submissions/:id/edit", async (c) => {
   const auth = c.var.auth!;
   const contactId = assertSpeakerContactId(auth);
   const submissionId = c.req.param("id");
-  const data = await loadEditableSubmission(c.var.db, contactId, submissionId);
+  const data = await loadEditableSubmission(c.var.db, auth.orgId, contactId, submissionId);
   if (!data) return c.text("Not found", 404);
 
   const editable = canEditSubmission(data.submission.status, data.form.closeDate, Date.now(), data.form.timezone);
@@ -344,7 +344,7 @@ portalEditRoutes.post("/submissions/:id/edit", csrfForm, async (c) => {
   const auth = c.var.auth!;
   const contactId = assertSpeakerContactId(auth);
   const submissionId = c.req.param("id");
-  const data = await loadEditableSubmission(c.var.db, contactId, submissionId);
+  const data = await loadEditableSubmission(c.var.db, auth.orgId, contactId, submissionId);
   if (!data) return c.text("Not found", 404);
 
   // Server-side re-check — never trust the hidden form (DEC-041): a client
@@ -425,7 +425,7 @@ portalEditRoutes.post("/submissions/:id/participants", csrfForm, async (c) => {
   const auth = c.var.auth!;
   const contactId = assertSpeakerContactId(auth);
   const submissionId = c.req.param("id");
-  const data = await loadEditableSubmission(c.var.db, contactId, submissionId);
+  const data = await loadEditableSubmission(c.var.db, auth.orgId, contactId, submissionId);
   if (!data) return c.text("Not found", 404);
 
   // Server-side re-check — never trust the hidden form (DEC-041/DEC-604): a

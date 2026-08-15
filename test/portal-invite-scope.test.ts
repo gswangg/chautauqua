@@ -221,7 +221,7 @@ describe("DEC-317 portal invite-state gating", () => {
     const detail = await getPortalSubmissionDetail(db, "sub-1", "contact-1", "org-1");
     expect(detail).toBeNull();
 
-    const edit = await loadEditableSubmission(db, "contact-1", "sub-1");
+    const edit = await loadEditableSubmission(db, "org-1", "contact-1", "sub-1");
     expect(edit).toBeNull();
 
     const portalData = await getPortalData(db, "contact-1", "org-1");
@@ -246,11 +246,18 @@ describe("DEC-317 portal invite-state gating", () => {
     expect(detail).not.toBeNull();
     expect(detail!.id).toBe("sub-1");
 
-    const edit = await loadEditableSubmission(db, "contact-1", "sub-1");
+    const edit = await loadEditableSubmission(db, "org-1", "contact-1", "sub-1");
     expect(edit).toBeNull();
 
     const portalData = await getPortalData(db, "contact-1", "org-1");
     expect(portalData.submissions).toHaveLength(1);
+
+    // DEC-317 (wave-50 amendment): read = not-declined, so an 'invited'
+    // co-presenter must see the session they're being asked to accept in
+    // "My sessions" too — not just in getPortalSubmissionDetail.
+    const sessions = await getMySessions(db, "contact-1", "org-1");
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]!.submissionId).toBe("sub-1");
 
     const eventIds = await getMyEventIds(db, "contact-1", "org-1");
     expect(eventIds).toEqual(["event-1"]);
@@ -260,6 +267,57 @@ describe("DEC-317 portal invite-state gating", () => {
     expect(canAccessFile({ role: "speaker", orgId: "org-1", contactId: "contact-1" }, { ...scope!, uploadedByContactId: null })).toBe(false);
   });
 
+  it("DEC-317 (wave-50 amendment) + DEC-962: a same-contactId participant row on a submission belonging to a DIFFERENT org is refused by loadEditableSubmission's org gate, not merely by the invite-status predicate", async () => {
+    // Two orgs, two events, but the participant row deliberately reuses the
+    // SAME contactId + submissionId shape the org-A caller would pass — the
+    // org gate must be the thing that stops this, not contactId scoping.
+    const now = new Date("2026-01-05T00:00:00Z");
+    const data = {
+      event: [
+        { id: "event-a", orgId: "org-a", name: "Conf A", recordPrefix: "SES" },
+        { id: "event-b", orgId: "org-b", name: "Conf B", recordPrefix: "SES" },
+      ],
+      submission: [
+        {
+          id: "sub-b",
+          eventId: "event-b",
+          seq: 14,
+          title: "Talk",
+          description: "desc",
+          status: "accepted",
+          createdAt: now,
+          formId: "form-1",
+        },
+      ],
+      participant: [
+        // explicit row: same contactId as the org-A caller, on org-B's submission
+        { id: "p-cross", submissionId: "sub-b", contactId: "contact-1", inviteStatus: "accepted", order: 0, role: "speaker" },
+      ],
+      contact: [{ id: "contact-1", firstName: "Sam", lastName: "Speaker", email: "sam@example.test" }],
+      form: [{ id: "form-1", closeDate: null, tracksJson: null }],
+      formField: [],
+      submissionAnswer: [],
+      submissionTrack: [],
+      track: [],
+      taskAssignment: [],
+      task: [],
+      portalSettings: [],
+      scheduleSlot: [],
+      room: [],
+    };
+    const db = makeDb(data);
+
+    // Requesting as org-A: the participant row exists (contact-1 on sub-b),
+    // but sub-b's event belongs to org-b — must resolve to null, not the row.
+    const edit = await loadEditableSubmission(db, "org-a", "contact-1", "sub-b");
+    expect(edit).toBeNull();
+
+    // Sanity: the SAME call scoped to the submission's real org succeeds,
+    // proving the null above is the org gate and not a broken fixture.
+    const editSameOrg = await loadEditableSubmission(db, "org-b", "contact-1", "sub-b");
+    expect(editSameOrg).not.toBeNull();
+  });
+
   for (const status of ["none", "accepted"] as const) {
     it(`'${status}' participant is unaffected: full read + write + file access`, async () => {
       const db = makeDb(seedFor(status));
@@ -267,7 +325,7 @@ describe("DEC-317 portal invite-state gating", () => {
       const detail = await getPortalSubmissionDetail(db, "sub-1", "contact-1", "org-1");
       expect(detail).not.toBeNull();
 
-      const edit = await loadEditableSubmission(db, "contact-1", "sub-1");
+      const edit = await loadEditableSubmission(db, "org-1", "contact-1", "sub-1");
       expect(edit).not.toBeNull();
 
       const portalData = await getPortalData(db, "contact-1", "org-1");
