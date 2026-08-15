@@ -1,6 +1,26 @@
 // Shared shapes for the Comms SPA (J5, DEC-019). Matches src/routes/comms.ts.
 // DEC-660: the COMPOSE_MERGE_FIELDS vocabulary lives in ../../lib/merge-fields
 // (the one module that crosses the app/ -> src/ boundary), not here.
+import type { SendResult } from '../../lib/sendResult';
+
+// DEC-238 amendment (wave 3): compose/send's per-recipient dedupe skip list.
+// The shared SendResult's `skipped` is a bare count (task/plan-remind
+// surfaces) -- compose/send instead names each skipped recipient
+// individually, since B1 requires the step-4 report to disclose WHO was
+// skipped and WHEN they become eligible again, never a fabricated field.
+// Defaults to [] on the client so a server that hasn't landed this field
+// yet renders zero skipped lines and zero fabricated copy.
+export interface ComposeSkippedRecipient {
+  email: string;
+  name: string;
+  submissionId: string;
+  reason: 'already_sent_recently';
+  retryAtIso: string;
+}
+
+export type ComposeSendResult = Omit<SendResult, 'skipped'> & {
+  skipped?: ComposeSkippedRecipient[];
+};
 
 export interface EmailTemplate {
   id: string;
