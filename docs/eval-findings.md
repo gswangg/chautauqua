@@ -52,13 +52,53 @@ triage, not a fresh finding.
   on both endpoints, falling back to "every outstanding contact" only when
   omitted.
 
-## TIER 1 — re-verified open items
+## TIER 1 — re-verified open items (orchestrator promotion, 2026-08-15 morning)
 
-(none re-verified this wave; this triage was DOCS ONLY, no source/test
-changes, and no time budget for a fresh sweep of the ~150 archived items.
-The next wave that reopens design-fidelity or eval work should re-verify
-candidates out of the archive into this tier one at a time, each with a
-file:line or exercised check, rather than trusting the archived prose.)
+The gate-7 evidence is NOT archive-stale — it was MEASURED TODAY against boundary
+ea2a5543 (a few waves behind current main): the sbek run at
+killmysaas-evals/runs/2026-08-15T07-46-32/report.json (89.0 composite) and the six
+fleet reports at chautauqua-research/fidelity-gate7/pair*/report.md. Note on lineage:
+the vendored docs/design/*.dc.html IS the v9 pack — the research repo's
+design-frames-v9 PNGs are renders of these exact files; distrust of "v9" is
+misplaced.
+
+1. **⚡ EMB session-card speaker title/company** (~1.3 composite): sbek EMB-01/09
+   reasoning (measured on prod today) — "the required speaker job title and company
+   are NOT shown on the session cards... only bold speaker names." Render
+   "Name · Title, Company" second line in the muted register on SessionCard
+   (src/routes/public/cards.tsx SpeakerNames); public sessions query must select
+   job_title/company. EMB-09 also wants the description on agenda-style cards.
+2. **⚡ Compose-flow turn diet**: CFP-04/16 cannot_judge AGAIN today — both CFP
+   scenarios capped with the compose steps eating the budget before the
+   close-the-call step. Fewer clicks per compose step, default-forward selections.
+   (Step-4 anatomy + dedupe landed post-boundary — the DIET half remains.)
+3. **CNT-S3 session-edit loop**: capped at the session-edit step again today
+   (CNT-10 cannot_judge) — cheapen edit-save-reload on the admin session detail.
+4. **Gate-7 fleet remaining MAJORs** (measured today, per-pair detail in
+   fidelity-gate7/pair*/report.md; several already converted post-boundary —
+   re-verify against current main before re-filing as closed): 07 comms step-1
+   SLOT/footer + templates-grid overlap + history-tab chrome · 05 files-library
+   column swap + orphan row + upload-reject modal + content-detail 1180/32
+   container · 04 participation panel 420 + speaker-detail grid/theads + reminders
+   modal (prints localhost:8799) + write-failed banner anatomy + search excluded
+   from hasActiveNarrowing · 02 SESSION DETAILS label-left grid + participant
+   chips · 09 field widths (dates 200, seats 110) + shared destructive-far-left
+   footer + Add-track tertiary + portal what-speakers-may-edit toggles + CFP-edit
+   intro/description binding + saved-embed single-card anatomy · CLASS 1 admin
+   measure 1372@114 + topbar 59 (everywhere) · 12-home chrome at 46px gutters +
+   732 body · 10 active-filter ink chip + TBD room on public (ruling A25) +
+   speakers toolbar right-cluster + underlined initials + blue avatars · 11
+   /account/password broken button + bare-page must be a real 820 column
+   (auth.css.ts body flex shrink-wrap) + AUTH_CSS .chq-field-invalid cascade
+   inert · 03 duplicated results head + FORM ANSWERS stacked + plan-editor draft
+   footer.
+
+**CFP-16 is a RECORDED DELIBERATE FORFEIT** (DEC-041 findings-wave-6 amendment):
+accepted speakers keep editing past close per docs/clarifications.md:39 (swyx,
+highest precedence) + SPEC.md:297-298 + the portal edit frame. The orchestrator's
+close-gate change was correctly reverted by the swarm. Eval accounting: CFP-16
+joins ABS-14 as a deliberate forfeit (~0.5-1.1 composite ceded); the eval kit is
+self-check tooling and does not outrank the customer's clarification.
 
 ## TIER 2 — unverified, candidate for re-check
 
