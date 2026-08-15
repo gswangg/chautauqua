@@ -69,6 +69,16 @@ const BANNED = ["toLocaleDateString(", "toLocaleTimeString(", "toLocaleString("]
 //     `MAX_COMMENT_BODY_LENGTH.toLocaleString("en-US")` NUMBER in the reply
 //     textarea's quiet "Up to 4,000 characters." helper line (DEC-244) --
 //     same Number.prototype.toLocaleString, nothing to do with dates.
+//   - src/routes/files.ts: POST /files/:fileId/comments calls
+//     `.toLocaleString("en-US")` on two NUMBERS (the overage and
+//     MAX_COMMENT_BODY_LENGTH) for the DEC-244 over-cap reply error copy --
+//     the organizer-side twin of portal/tasks.tsx's message, and again
+//     Number.prototype.toLocaleString, not a date.
+//   - src/routes/content-notes.ts: POST /submissions/:id/content-note calls
+//     the same two NUMBERS through `.toLocaleString("en-US")` for the
+//     DEC-244 over-cap note error copy -- it writes the very same
+//     file_comment row files.ts does, so it shares that grammar; again
+//     Number.prototype.toLocaleString, not a date.
 const NAMED_EXEMPTIONS = new Set(
   [
     join(SRC_DIR, "lib/timezone.ts"),
@@ -78,6 +88,8 @@ const NAMED_EXEMPTIONS = new Set(
     join(SRC_DIR, "routes/tasks.ts"),
     join(SRC_DIR, "routes/portal/tasks.tsx"),
     join(SRC_DIR, "routes/portal/tasks/views.tsx"),
+    join(SRC_DIR, "routes/files.ts"),
+    join(SRC_DIR, "routes/content-notes.ts"),
   ].map((p) => relative(REPO_ROOT, p)),
 );
 
