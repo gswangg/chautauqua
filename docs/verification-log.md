@@ -4550,7 +4550,6 @@ source-scan coverage assertions for the two new rows); build green. NO
 
 INVALIDATED BY: scripts/perf-smoke.ts, scripts/perf-smoke-lib.ts, test/perf-smoke.test.ts
 
-
 ## 2026-08-15 task-w32-a — plan results (page 1): rank the population, hydrate the page @ 904dd3d8
 
 INVALIDATED BY: src/routes/review/shared.ts, src/routes/review/plans-progress.ts
