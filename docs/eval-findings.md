@@ -127,12 +127,13 @@ All 13 scenarios COMPLETED (zero caps; finishes at 74-124 turns). Implied full-p
 ceiling ≈ **93.8 composite** — i.e., the 70-turn cap costs ~6 points of already-working
 product, which is exactly what the turn-diet lane recovers at the official cap.
 
-**NEW P1 DEFECT the caps were hiding — CFP-16 FAILED when finally measured:** with the
-close date in the past, a speaker's submission is NOT locked — "Edit submission" stays on
-the read view and the full edit form (title/abstract/format/level/notes/accessibility/
-profile) loads editable post-close. Build the post-close lock (read-only view + edit
-affordances gone; organizer-side editing unaffected) + runtime-verify by closing a CFP
-and loading the speaker view.
+**CFP-16 FIXED (orchestrator, d4616c8d) — pending runtime verify at the gate-7 deploy:**
+root cause was canEditSubmission's accepted-status exception (accepted talks editable
+forever past close). The close gate now binds every status; the exception moved to a new
+canUploadDeliverables predicate so accepted speakers keep uploads/comments past close
+(the content flow's obligations outlive the window). Runtime bar: close a CFP on prod,
+load the accepted speaker's view — no Edit affordance, edit route refuses; uploads still
+work.
 
 **Also learned:** CFP-11 (scorecard second-criterion commit) PASSED at 140 turns — the
 agent works around it with patience, so it costs points only via turn-burn; the defect
