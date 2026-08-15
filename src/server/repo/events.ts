@@ -6,6 +6,7 @@ import type { Db } from "../context";
 import * as schema from "../../db/schema";
 import { newId, formatRef } from "../../domain/ids";
 import { ApiError } from "../http";
+import { isUniqueViolation } from "./constraints";
 import { findFormForEvent } from "./forms";
 import { listPlansForEvent } from "./review";
 import { formatScheduleSlotLabel } from "../../lib/event-time";
@@ -212,6 +213,14 @@ export interface UpdateEventInput {
   branding?: EventBranding | null;
 }
 
+/** DEC-111 amendment (findings wave 15): routes/api/events.ts's isSlugTaken
+ * check ahead of this call is a fast-path pre-check only, not the gate — a
+ * raced or double-submitted rename can land its own UPDATE between that
+ * check and this write. The UPDATE itself is the authority: it targets
+ * event_slug_idx (migrations/0000_secret_matthew_murdock.sql), and a raw
+ * D1 "UNIQUE constraint failed: event.slug" is caught and translated into
+ * the exact same refusal the route's pre-check already raises — anything
+ * else rethrows unchanged. */
 export async function updateEvent(
   db: Db,
   eventId: string,
@@ -221,21 +230,28 @@ export async function updateEvent(
   const existing = await getEventForOrg(db, eventId, orgId);
   if (!existing) throw new ApiError("not_found", "Event not found");
 
-  await db
-    .update(schema.event)
-    .set({
-      ...(input.name !== undefined ? { name: input.name } : {}),
-      ...(input.slug !== undefined ? { slug: input.slug } : {}),
-      ...(input.startDate !== undefined ? { startDate: input.startDate } : {}),
-      ...(input.endDate !== undefined ? { endDate: input.endDate } : {}),
-      ...(input.location !== undefined ? { location: input.location } : {}),
-      ...(input.timezone !== undefined ? { timezone: input.timezone } : {}),
-      ...(input.branding !== undefined
-        ? { brandingJson: input.branding ? JSON.stringify(input.branding) : null }
-        : {}),
-      updatedAt: new Date(),
-    })
-    .where(eq(schema.event.id, eventId));
+  try {
+    await db
+      .update(schema.event)
+      .set({
+        ...(input.name !== undefined ? { name: input.name } : {}),
+        ...(input.slug !== undefined ? { slug: input.slug } : {}),
+        ...(input.startDate !== undefined ? { startDate: input.startDate } : {}),
+        ...(input.endDate !== undefined ? { endDate: input.endDate } : {}),
+        ...(input.location !== undefined ? { location: input.location } : {}),
+        ...(input.timezone !== undefined ? { timezone: input.timezone } : {}),
+        ...(input.branding !== undefined
+          ? { brandingJson: input.branding ? JSON.stringify(input.branding) : null }
+          : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.event.id, eventId));
+  } catch (err) {
+    if (isUniqueViolation(err, "event.slug")) {
+      throw new ApiError("invalid", "Slug is already in use", { slug: "Already in use" });
+    }
+    throw err;
+  }
 
   const updated = await getEventForOrg(db, eventId, orgId);
   if (!updated) throw new Error("updateEvent: row disappeared after update");
