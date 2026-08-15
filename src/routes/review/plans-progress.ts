@@ -104,20 +104,22 @@ reviewPlansProgressRoutes.get("/api/v1/plans/:id/progress", requireOrganizer, as
   }
   const allScopeTrackIds = [...new Set([...scopeTrackIdsByUser.values()].flat())];
 
-  // DEC-338 (w32 amendment): second wave -- getUsersByIds and
-  // getTrackNamesByIds both depend only on ids resolved from wave 1
-  // (userIds, allScopeTrackIds) and neither reads the other's result, so
-  // they issue as one Promise.all instead of two sequential round trips.
-  const [users, trackNameById] = await Promise.all([
-    repo.getUsersByIds(c.var.db, userIds),
-    repo.getTrackNamesByIds(c.var.db, allScopeTrackIds),
-  ]);
-
-  // DEC-338 (w32 amendment): third wave -- batchUserDisplayNames depends on
-  // `users` (wave 2's output), so it cannot join that Promise.all.
+  // DEC-338 (w33 landing of the w32 ruling): second wave -- getUsersByIds,
+  // getTrackNamesByIds AND batchUserDisplayNames all depend only on ids
+  // resolved from wave 1 (userIds, allScopeTrackIds), never on each other's
+  // result, so all three issue as one Promise.all instead of three
+  // sequential round trips. batchUserDisplayNames is fed `userIds` (the
+  // deduped set derived from reviewerRows above), NOT `users.map(u =>
+  // u.userId)`, so it no longer has to wait on `users` first -- extra keys
+  // in the returned map beyond the eventual `users` set are inert, since
+  // every lookup below is `nameByUserId.get(user.userId)` over `users`.
   // DEC-708: one batched account->contact resolution for the whole page's
   // reviewer set, never a query per row.
-  const nameByUserId = await repo.batchUserDisplayNames(c.var.db, users.map((u) => u.userId));
+  const [users, trackNameById, nameByUserId] = await Promise.all([
+    repo.getUsersByIds(c.var.db, userIds),
+    repo.getTrackNamesByIds(c.var.db, allScopeTrackIds),
+    repo.batchUserDisplayNames(c.var.db, userIds),
+  ]);
 
   const items = users.map((user) => {
     const assigned = assignedExcludingRecused(assignments.get(user.userId) ?? [], recusedByUser.get(user.userId) ?? new Set());
