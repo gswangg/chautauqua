@@ -96,12 +96,9 @@ describe('PeopleRolesPanel', () => {
       expect(screen.getByText(SELF.email)).toBeInTheDocument();
     });
     expect(screen.getByText(OTHER.email)).toBeInTheDocument();
-    // The section-level 'Change' drill action is gone once editing; the
-    // two remaining 'Change' buttons are the per-row inline role controls.
-    expect(within(section).getAllByRole('button', { name: 'Change' })).toHaveLength(2);
 
     const selfRow = screen.getByText(SELF.email).closest('li')!;
-    expect(within(selfRow).getByRole('button', { name: 'Change' })).toBeDisabled();
+    expect(within(selfRow).getByRole('combobox', { name: `Role for ${SELF.email}` })).toBeDisabled();
     expect(selfRow).toHaveTextContent('You cannot remove or demote yourself');
     expect(within(selfRow).queryByRole('button', { name: 'Reset password' })).not.toBeInTheDocument();
 
@@ -109,9 +106,9 @@ describe('PeopleRolesPanel', () => {
     expect(within(otherRow).getByRole('button', { name: 'Reset password' })).toBeInTheDocument();
   });
 
-  // DEC-896/B10: Remove is disabled (not hidden) on your own row, and the
-  // reason is readable inline, not just a title tooltip.
-  it('disables the role Change control on your own row, with the reason readable on the row', async () => {
+  // DEC-896/B10: the role control is disabled (not hidden) on your own row,
+  // and the reason is readable inline, not just a title tooltip.
+  it('disables the role select on your own row, with the reason readable on the row', async () => {
     mockPeople();
     renderPanel(['/settings?section=people&edit=1']);
 
@@ -120,12 +117,44 @@ describe('PeopleRolesPanel', () => {
     });
 
     const selfRow = screen.getByText(SELF.email).closest('li')!;
-    const changeButton = within(selfRow).getByRole('button', { name: 'Change' });
-    expect(changeButton).toBeDisabled();
+    const roleSelect = within(selfRow).getByRole('combobox', { name: `Role for ${SELF.email}` });
+    expect(roleSelect).toBeDisabled();
     expect(within(selfRow).getByText('You cannot remove or demote yourself')).toBeInTheDocument();
 
     const otherRow = screen.getByText(OTHER.email).closest('li')!;
-    expect(within(otherRow).getByRole('button', { name: 'Change' })).not.toBeDisabled();
+    expect(within(otherRow).getByRole('combobox', { name: `Role for ${OTHER.email}` })).not.toBeDisabled();
+  });
+
+  // w5-e/DEC-691 amendment: PERSON / ROLE / SCOPE header row over the row grid.
+  it('renders the PERSON / ROLE / SCOPE column header row once drilled in', async () => {
+    mockPeople();
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('columnheader', { name: 'Person' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Role' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Scope' })).toBeInTheDocument();
+  });
+
+  // w5-e/DEC-691 amendment: the role cell IS the select at rest -- no prior
+  // click needed to reach it.
+  it("renders each row's role control as a select without any prior click", async () => {
+    mockPeople();
+    renderPanel(['/settings?section=people&edit=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText(SELF.email)).toBeInTheDocument();
+    });
+
+    const otherRow = screen.getByText(OTHER.email).closest('li')!;
+    const roleSelect = within(otherRow).getByRole('combobox', { name: `Role for ${OTHER.email}` });
+    expect(roleSelect).toHaveValue('reviewer');
+    // No click required to reach the control -- the old click-to-edit
+    // 'Change' role button no longer exists on the row.
+    expect(within(otherRow).queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
   });
 
   // A22: the self-service password-change link now lives beside your own
@@ -172,9 +201,9 @@ describe('PeopleRolesPanel', () => {
     scopeCells.forEach((cell) => expect(cell).toHaveTextContent('All events in this org'));
   });
 
-  // DEC-778: Change becomes a real inline role control that PATCHes and
-  // refreshes the list.
-  it('changes a role via the inline Change control and refreshes the list', async () => {
+  // DEC-778, w5-e/DEC-691 amendment: the row's select IS the role control --
+  // changing it commits (optimistically) and PATCHes immediately.
+  it('changes a role via the row select, writing optimistically then confirming via PATCH', async () => {
     mockPeople({
       'PATCH /api/v1/users/u-other': { status: 200, body: { id: OTHER.id, email: OTHER.email, role: 'organizer' } },
     });
@@ -185,21 +214,24 @@ describe('PeopleRolesPanel', () => {
     });
 
     const otherRow = screen.getByText(OTHER.email).closest('li')!;
-    fireEvent.click(within(otherRow).getByRole('button', { name: 'Change' }));
+    const roleSelect = within(otherRow).getByRole('combobox', { name: `Role for ${OTHER.email}` });
 
-    fireEvent.change(within(otherRow).getByLabelText(`New role for ${OTHER.email}`), {
-      target: { value: 'organizer' },
-    });
-    fireEvent.click(within(otherRow).getByRole('button', { name: 'Save role' }));
+    fireEvent.change(roleSelect, { target: { value: 'organizer' } });
+
+    // Optimistic: the select reflects the new value immediately, before the
+    // PATCH resolves.
+    expect(roleSelect).toHaveValue('organizer');
 
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'Save role' })).not.toBeInTheDocument();
+      expect(roleSelect).not.toBeDisabled();
     });
+    expect(roleSelect).toHaveValue('organizer');
   });
 
-  // DEC-778: a 409 (last organizer / self-service refusal) surfaces inline
+  // DEC-778, w5-e/DEC-691 amendment: a 409 (last organizer / self-service
+  // refusal) rolls the optimistic write back and surfaces the reason inline
   // on the row rather than a panel-wide banner.
-  it('surfaces a 409 role-change refusal inline on the row', async () => {
+  it('rolls back the optimistic role write and surfaces a 409 refusal inline on the row', async () => {
     mockPeople({
       'PATCH /api/v1/users/u-other': {
         status: 409,
@@ -213,14 +245,16 @@ describe('PeopleRolesPanel', () => {
     });
 
     const otherRow = screen.getByText(OTHER.email).closest('li')!;
-    fireEvent.click(within(otherRow).getByRole('button', { name: 'Change' }));
-    fireEvent.click(within(otherRow).getByRole('button', { name: 'Save role' }));
+    const roleSelect = within(otherRow).getByRole('combobox', { name: `Role for ${OTHER.email}` });
+
+    fireEvent.change(roleSelect, { target: { value: 'organizer' } });
 
     await waitFor(() => {
       expect(within(otherRow).getByText("Cannot remove the organization's last organizer")).toBeInTheDocument();
     });
-    // The role editor stays open on failure -- Change still says "Save role".
-    expect(within(otherRow).getByRole('button', { name: 'Save role' })).toBeInTheDocument();
+    // Loud rollback: the select is back to the server-confirmed role, not
+    // left showing the rejected optimistic value.
+    expect(roleSelect).toHaveValue('reviewer');
   });
 
   it('shows the created one-time password exactly once and it is not re-fetchable', async () => {

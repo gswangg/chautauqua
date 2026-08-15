@@ -74,9 +74,7 @@ export function PeopleRolesPanel() {
   const [resetTargetId, setResetTargetId] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
 
-  const [roleEditId, setRoleEditId] = useState<string | null>(null);
-  const [roleEditValue, setRoleEditValue] = useState<Role>('reviewer');
-  const [roleSaving, setRoleSaving] = useState(false);
+  const [roleSavingId, setRoleSavingId] = useState<string | null>(null);
   const [roleErrors, setRoleErrors] = useState<Record<string, string>>({});
 
   function closeEdit() {
@@ -149,18 +147,25 @@ export function PeopleRolesPanel() {
     }
   }
 
-  async function handleRoleSave(user: OrgUser) {
-    setRoleSaving(true);
+  // DEC-691 amendment (findings wave 5): the ROLE cell IS the select at
+  // rest, so a change commits immediately -- write the row optimistically,
+  // then PATCH; a failure (409 self-demotion / last-organizer refusal, or
+  // any other server rejection) rolls the row back to its prior role and
+  // surfaces the reason inline on the row rather than silently keeping the
+  // optimistic (wrong) value on screen.
+  async function handleRoleChange(user: OrgUser, nextRole: Role) {
+    const previousRole = user.role;
+    setRoleSavingId(user.id);
     setRoleErrors((prev) => ({ ...prev, [user.id]: '' }));
+    setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, role: nextRole } : u)));
     try {
-      await apiPatch<{ id: string; email: string; role: string }>(`/users/${user.id}`, { role: roleEditValue });
-      setRoleEditId(null);
-      await load();
+      await apiPatch<{ id: string; email: string; role: string }>(`/users/${user.id}`, { role: nextRole });
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Failed to change role';
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, role: previousRole } : u)));
       setRoleErrors((prev) => ({ ...prev, [user.id]: message }));
     } finally {
-      setRoleSaving(false);
+      setRoleSavingId(null);
     }
   }
 
@@ -203,6 +208,7 @@ export function PeopleRolesPanel() {
         }}
       >
       <div className="chq-settings-section-head">
+        <h2>People &middot; {users.length}</h2>
         <button
           type="button"
           className="chq-settings-section-action chq-link-button"
@@ -306,6 +312,12 @@ export function PeopleRolesPanel() {
         <p>No people yet.</p>
       ) : (
         <>
+          <div className="chq-settings-people-header-row" role="row">
+            <span role="columnheader">Person</span>
+            <span role="columnheader">Role</span>
+            <span role="columnheader">Scope</span>
+            <span role="columnheader" aria-hidden="true" />
+          </div>
           <ul className="chq-settings-people-list">
             {users.map((user) => {
               const isSelf = me?.userId === user.id;
@@ -317,60 +329,28 @@ export function PeopleRolesPanel() {
                     <span className="chq-settings-people-name">{label}</span>
                     {hasName && <span className="chq-settings-people-email">{user.email}</span>}
                   </div>
-                  <span className="chq-settings-people-role">{user.role}</span>
+                  <span className="chq-settings-people-role-cell">
+                    <select
+                      className="chq-select chq-settings-people-role"
+                      aria-label={`Role for ${user.email}`}
+                      value={user.role === 'organizer' ? 'organizer' : 'reviewer'}
+                      disabled={isSelf || roleSavingId === user.id}
+                      title={isSelf ? 'You cannot remove or demote yourself' : undefined}
+                      onChange={(e) => void handleRoleChange(user, e.target.value as Role)}
+                    >
+                      <option value="reviewer">Reviewer</option>
+                      <option value="organizer">Organizer</option>
+                    </select>
+                    {roleErrors[user.id] ? (
+                      <span role="alert" className="chq-error">
+                        {roleErrors[user.id]}
+                      </span>
+                    ) : null}
+                  </span>
                   <span className="chq-settings-people-scope" data-testid="people-scope">
                     All events in this org
                   </span>
                   <div className="chq-settings-people-actions">
-                    {roleEditId === user.id ? (
-                      <span className="chq-settings-people-confirm">
-                        <select
-                          className="chq-select"
-                          aria-label={`New role for ${user.email}`}
-                          value={roleEditValue}
-                          onChange={(e) => setRoleEditValue(e.target.value as Role)}
-                        >
-                          <option value="reviewer">Reviewer</option>
-                          <option value="organizer">Organizer</option>
-                        </select>
-                        <button
-                          type="button"
-                          className="chq-btn chq-btn-primary"
-                          disabled={roleSaving}
-                          onClick={() => void handleRoleSave(user)}
-                        >
-                          {roleSaving ? 'Saving…' : 'Save role'}
-                        </button>
-                        <button
-                          type="button"
-                          className="chq-btn chq-btn-secondary"
-                          onClick={() => {
-                            setRoleEditId(null);
-                            setRoleErrors((prev) => ({ ...prev, [user.id]: '' }));
-                          }}
-                        >
-                          Cancel
-                        </button>
-                        {roleErrors[user.id] ? (
-                          <span role="alert" className="chq-error">
-                            {roleErrors[user.id]}
-                          </span>
-                        ) : null}
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        className="chq-link-button"
-                        onClick={() => {
-                          setRoleEditId(user.id);
-                          setRoleEditValue(user.role === 'organizer' ? 'organizer' : 'reviewer');
-                        }}
-                        disabled={isSelf}
-                        title={isSelf ? 'You cannot remove or demote yourself' : undefined}
-                      >
-                        Change
-                      </button>
-                    )}
                     {isSelf ? (
                       <>
                         <span className="chq-settings-row-hint">You cannot remove or demote yourself</span>
@@ -405,6 +385,10 @@ export function PeopleRolesPanel() {
           </ul>
           <p className="chq-settings-people-total">
             Showing {users.length} of {total}
+          </p>
+          <p className="chq-settings-people-closing-note">
+            You cannot remove or demote yourself &middot; a reviewer&apos;s scope limits which tracks they are
+            assigned
           </p>
         </>
       )}
