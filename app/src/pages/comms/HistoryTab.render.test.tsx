@@ -287,4 +287,46 @@ describe('HistoryTab', () => {
 
     void fetchMock;
   });
+
+  // DEC-603 amendment (findings wave 8): GET /email-log pages like every
+  // other list route -- History must send page/perPage and render the same
+  // pager chrome compose step 1 uses, never a bare "{total} total" line the
+  // organizer can't reach past 50.
+  it('paginates: shows the summary, Previous disabled on page 1, Next fetches page 2, and a new search returns to page 1', async () => {
+    const fetchMock = mockApi({
+      [`GET /api/v1/events/${EVENT_ID}/email-log`]: listEnvelope([batch()], { total: 120 }),
+    });
+
+    render(
+      <MemoryRouter>
+        <HistoryTab eventId={EVENT_ID} templatesById={{}} />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('You are in!');
+
+    expect(screen.getByText('Showing 1–50 of 120')).toBeInTheDocument();
+
+    const previousButton = screen.getByRole('button', { name: 'Previous' });
+    const nextButton = screen.getByRole('button', { name: 'Next' });
+    expect(previousButton).toBeDisabled();
+    expect(nextButton).not.toBeDisabled();
+
+    fireEvent.click(nextButton);
+    await waitFor(() => {
+      const calls = fetchMock.mock.calls;
+      const lastCall = calls[calls.length - 1]!;
+      expect(String(lastCall[0])).toContain('page=2');
+    });
+
+    const searchInput = screen.getByLabelText('Search email history');
+    fireEvent.change(searchInput, { target: { value: 'welcome' } });
+
+    await waitFor(() => {
+      const calls = fetchMock.mock.calls;
+      const lastCall = calls[calls.length - 1]!;
+      expect(String(lastCall[0])).toContain('page=1');
+      expect(String(lastCall[0])).toContain('q=welcome');
+    });
+  });
 });

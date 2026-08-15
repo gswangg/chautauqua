@@ -4,8 +4,15 @@ import { apiList, ApiError } from '../../lib/api';
 import { DelayedLoading } from '../../components/DelayedLoading';
 import { EmptyState } from '../../components/EmptyState';
 import { RecentSends } from './RecentSends';
+import { paginationSummary } from '../../lib/pagination-summary';
 import type { SendRhythm } from './sendRhythm';
 import type { EmailBatchRow } from './types';
+
+// DEC-603 amendment (findings wave 8): GET /email-log pages like every list
+// route (server default 50/page, src/routes/api/email-log.ts) -- History
+// must send page/perPage and render the same pager chrome compose step 1
+// uses, instead of printing a `total` it can never fully show.
+const PER_PAGE = 50;
 
 // DEC-751: the batch-row + recipients-disclosure list moved into the shared
 // RecentSends component (app/src/pages/comms/RecentSends.tsx); History
@@ -32,6 +39,7 @@ export function HistoryTab({
   rhythm?: SendRhythm | null;
 }) {
   const [q, setQ] = useState('');
+  const [page, setPage] = useState(1);
   const [items, setItems] = useState<EmailBatchRow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -58,6 +66,8 @@ export function HistoryTab({
     setError(null);
     const params = new URLSearchParams();
     params.set('groupBy', 'batch');
+    params.set('page', String(page));
+    params.set('perPage', String(PER_PAGE));
     if (q.trim()) params.set('q', q.trim());
     apiList<EmailBatchRow>(`/events/${eventId}/email-log?${params.toString()}`)
       .then((res) => {
@@ -69,7 +79,7 @@ export function HistoryTab({
         setLoading(false);
         setLoaded(true);
       });
-  }, [eventId, q]);
+  }, [eventId, q, page]);
 
   return (
     <div className="chq-comms-history-tab">
@@ -81,7 +91,10 @@ export function HistoryTab({
           type="search"
           placeholder="Search subject or recipient..."
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setPage(1);
+          }}
           aria-label="Search email history"
         />
       </div>
@@ -97,7 +110,13 @@ export function HistoryTab({
           variant="filtered"
           what="No sends match your search."
           reason={`No sends match “${q.trim()}”.`}
-          escape={{ label: 'Clear the search', onClick: () => setQ('') }}
+          escape={{
+            label: 'Clear the search',
+            onClick: () => {
+              setQ('');
+              setPage(1);
+            },
+          }}
         />
       )}
       {/* B7 (DEC-678 amendment): totally fresh (never sent anything, no
@@ -123,7 +142,27 @@ export function HistoryTab({
         />
       )}
 
-      {items.length > 0 && <p className="chq-summary">{total} total</p>}
+      {items.length > 0 && (
+        <div className="chq-pager">
+          <span>{paginationSummary(page, PER_PAGE, total)}</span>
+          <button
+            type="button"
+            className="chq-btn chq-btn-secondary"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            className="chq-btn chq-btn-secondary"
+            onClick={() => setPage((p) => p + 1)}
+            disabled={page * PER_PAGE >= total}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }
