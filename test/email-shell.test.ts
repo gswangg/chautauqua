@@ -51,7 +51,7 @@ describe("renderEmailHtml", () => {
     expect(html.match(/<a /g) ?? []).toHaveLength(0);
   });
 
-  it("renders at most ONE olive button as a bordered table cell when cta is present", () => {
+  it("renders at most ONE olive button (no border, per README Controls: a primary has no border) when cta is present", () => {
     const html = renderEmailHtml("Body.", {
       eventName: "DevFlow Conf 2027",
       reason: "test",
@@ -60,8 +60,10 @@ describe("renderEmailHtml", () => {
     const anchors = html.match(/<a /g) ?? [];
     expect(anchors).toHaveLength(1);
     expect(html).toContain("View submission");
-    expect(html).toContain("https://example.test/portal/abc");
-    expect(html).toContain("border:1px solid");
+    // The href appears twice: once as the anchor's href, once in the
+    // paste-this-URL fallback line beneath the button.
+    expect(html.match(/https:\/\/example\.test\/portal\/abc/g) ?? []).toHaveLength(2);
+    expect(html).toContain("background:#4E5C31");
   });
 
   it("escapes the cta label and href", () => {
