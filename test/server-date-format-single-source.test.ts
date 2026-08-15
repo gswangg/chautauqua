@@ -52,11 +52,13 @@ const BANNED = ["toLocaleDateString(", "toLocaleTimeString(", "toLocaleString("]
 //     Number.prototype.toLocaleString shares a name with the banned
 //     Date methods but has nothing to do with DEC-918's calendar-day
 //     grammar.
-//   - src/routes/public/submit.tsx: overLengthErrorMessage() calls
+//   - src/routes/public/submit-messages.ts: overLengthErrorMessage() calls
 //     `.toLocaleString("en-US")` on three NUMBERS (typed length, overage,
 //     and the cap) to group thousands in the DEC-124 over-length error
 //     copy -- same Number.prototype.toLocaleString as form-render.tsx's
-//     counter above, nothing to do with dates.
+//     counter above, nothing to do with dates. (Split out of
+//     src/routes/public/submit.tsx purely to reduce merge contention on
+//     that file; same function, same behavior.)
 //   - src/routes/tasks.ts: calls `MAX_INSTRUCTIONS_LENGTH.toLocaleString(
 //     "en-US")` on the NUMBER 2000 to group thousands in the DEC-124
 //     over-length field error for task instructions (CNT-01) -- again
@@ -84,7 +86,7 @@ const NAMED_EXEMPTIONS = new Set(
     join(SRC_DIR, "lib/timezone.ts"),
     join(SRC_DIR, "routes/api/validators.ts"),
     join(SRC_DIR, "views/form-render.tsx"),
-    join(SRC_DIR, "routes/public/submit.tsx"),
+    join(SRC_DIR, "routes/public/submit-messages.ts"),
     join(SRC_DIR, "routes/tasks.ts"),
     join(SRC_DIR, "routes/portal/tasks.tsx"),
     join(SRC_DIR, "routes/portal/tasks/views.tsx"),

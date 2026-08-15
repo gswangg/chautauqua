@@ -18,7 +18,11 @@ import { fileURLToPath } from "node:url";
 const ROUTES_DIR = resolve(fileURLToPath(import.meta.url), "../../src/routes");
 const LOGIN_PATH = resolve(fileURLToPath(import.meta.url), "../../src/routes/auth-login.tsx");
 const CLAIM_PATH = resolve(fileURLToPath(import.meta.url), "../../src/routes/auth-claim.tsx");
-const SUBMIT_PATH = resolve(fileURLToPath(import.meta.url), "../../src/routes/public/submit.tsx");
+// Split out of src/routes/public/submit.tsx purely to reduce merge
+// contention on that file (no behavior change) -- the final-submit and
+// save-draft handlers now live in their own per-route modules.
+const SUBMIT_POST_PATH = resolve(fileURLToPath(import.meta.url), "../../src/routes/public/submit-post.tsx");
+const SUBMIT_DRAFT_PATH = resolve(fileURLToPath(import.meta.url), "../../src/routes/public/submit-draft.tsx");
 
 const CSRF_MIDDLEWARE = ["csrfJson", "csrfForm", "csrfFormOrHeader"];
 
@@ -32,7 +36,7 @@ const CSRF_MIDDLEWARE = ["csrfJson", "csrfForm", "csrfFormOrHeader"];
  * `line` field so the old line-keyed shape cannot creep back. */
 export const CSRF_EXEMPT: Array<{ file: string; method: string; path: string; reason: string }> = [
   {
-    file: "public/submit.tsx",
+    file: "public/submit-post.tsx",
     method: "post",
     path: "/submit/:eventSlug",
     reason:
@@ -178,8 +182,8 @@ describe("SPEC §6: every mutating route registration carries CSRF middleware (D
   // so deleting the in-body check fails this test rather than passing on the
   // strength of the allowlist entry alone.
   it("the exempt public CFP post still performs an in-body double-submit CSRF check", () => {
-    expect(CSRF_EXEMPT.map((e) => e.file)).toEqual(["public/submit.tsx"]);
-    const submitSource = readFileSync(SUBMIT_PATH, "utf-8");
+    expect(CSRF_EXEMPT.map((e) => e.file)).toEqual(["public/submit-post.tsx"]);
+    const submitSource = readFileSync(SUBMIT_POST_PATH, "utf-8");
     const slice = submitSource.slice(submitSource.indexOf('.post("/submit/:eventSlug"'));
     expect(slice).toMatch(/\bcheckDoubleSubmitCsrf\b/);
     expect(slice).toMatch(/\bCSRF_COOKIE_NAME\b/);
@@ -189,7 +193,8 @@ describe("SPEC §6: every mutating route registration carries CSRF middleware (D
 describe("SPEC §6: unauthenticated write paths are rate limited (DEC-628)", () => {
   const loginSource = readFileSync(LOGIN_PATH, "utf-8");
   const claimSource = readFileSync(CLAIM_PATH, "utf-8");
-  const submitSource = readFileSync(SUBMIT_PATH, "utf-8");
+  const submitPostSource = readFileSync(SUBMIT_POST_PATH, "utf-8");
+  const submitDraftSource = readFileSync(SUBMIT_DRAFT_PATH, "utf-8");
 
   /** Extracts the source slice for a `<receiver>.post("<path>", ...)`
    * registration up to its next sibling registration (or EOF), so the slice
@@ -221,13 +226,13 @@ describe("SPEC §6: unauthenticated write paths are rate limited (DEC-628)", () 
     expect(slice).toMatch(/\bcheckAndIncrementScopedLimit\b/);
   });
 
-  it("POST /submit/:eventSlug (public/submit.tsx) uses checkAndIncrementScopedLimit", () => {
-    const slice = sliceForRoute(submitSource, "/submit/:eventSlug");
+  it("POST /submit/:eventSlug (public/submit-post.tsx) uses checkAndIncrementScopedLimit", () => {
+    const slice = sliceForRoute(submitPostSource, "/submit/:eventSlug");
     expect(slice).toMatch(/\bcheckAndIncrementScopedLimit\b/);
   });
 
-  it("POST /submit/:eventSlug/save-draft (public/submit.tsx) uses checkAndIncrementScopedLimit", () => {
-    const slice = sliceForRoute(submitSource, "/submit/:eventSlug/save-draft");
+  it("POST /submit/:eventSlug/save-draft (public/submit-draft.tsx) uses checkAndIncrementScopedLimit", () => {
+    const slice = sliceForRoute(submitDraftSource, "/submit/:eventSlug/save-draft");
     expect(slice).toMatch(/\bcheckAndIncrementScopedLimit\b/);
   });
 });

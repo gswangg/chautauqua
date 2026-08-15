@@ -482,10 +482,11 @@ const PUBLIC_BY_DESIGN: LedgerEntry[] = [
   // src/routes/public/saved-embed.tsx -- DEC-785/DEC-822/DEC-839, not in the
   // doc (file didn't exist at sha d034a9e0)
   { file: "src/routes/public/saved-embed.tsx", method: "GET", path: "/embed/e/:embedId", reason: "DEC-785/DEC-822/DEC-839: public saved-embed resolver, same no-login public embed model as public/index.tsx's /embed/* rows -- resolves by unguessable embedId, no org/session data returned" },
-  // src/routes/public/submit.tsx
-  { file: "src/routes/public/submit.tsx", method: "GET", path: "/submit/:eventSlug", reason: "public CFP form" },
-  { file: "src/routes/public/submit.tsx", method: "POST", path: "/submit/:eventSlug/save-draft", reason: "rate-limited (DEC-072/DEC-422), no session model" },
-  { file: "src/routes/public/submit.tsx", method: "POST", path: "/submit/:eventSlug", reason: "rate-limited, no session model" },
+  // src/routes/public/submit.tsx -- split (wave 64) into per-route modules
+  // purely to reduce merge contention on that file; no behavior change.
+  { file: "src/routes/public/submit-get.tsx", method: "GET", path: "/submit/:eventSlug", reason: "public CFP form" },
+  { file: "src/routes/public/submit-draft.tsx", method: "POST", path: "/submit/:eventSlug/save-draft", reason: "rate-limited (DEC-072/DEC-422), no session model" },
+  { file: "src/routes/public/submit-post.tsx", method: "POST", path: "/submit/:eventSlug", reason: "rate-limited, no session model" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -495,8 +496,8 @@ const PUBLIC_BY_DESIGN: LedgerEntry[] = [
 const CSRF_EXEMPT: LedgerEntry[] = [
   { file: "src/routes/auth-login.tsx", method: "POST", path: "/login", reason: "the auth-establishing endpoint itself -- no session/cookie exists yet to double-submit against; protected by rate limiting instead (DEC-072/DEC-180)" },
   { file: "src/routes/auth-claim.tsx", method: "POST", path: "/claim/:token", reason: "no session exists yet at account-claim time; protected by the unguessable token + per-IP rate limiting instead" },
-  { file: "src/routes/public/submit.tsx", method: "POST", path: "/submit/:eventSlug/save-draft", reason: "anonymous public CFP submitter has no session to double-submit against; protected by rate limiting instead (DEC-072/DEC-422)" },
-  { file: "src/routes/public/submit.tsx", method: "POST", path: "/submit/:eventSlug", reason: "anonymous public CFP submitter has no session to double-submit against; protected by rate limiting instead" },
+  { file: "src/routes/public/submit-draft.tsx", method: "POST", path: "/submit/:eventSlug/save-draft", reason: "anonymous public CFP submitter has no session to double-submit against; protected by rate limiting instead (DEC-072/DEC-422)" },
+  { file: "src/routes/public/submit-post.tsx", method: "POST", path: "/submit/:eventSlug", reason: "anonymous public CFP submitter has no session to double-submit against; protected by rate limiting instead" },
 ];
 
 function findLedgerMatch(ledger: LedgerEntry[], reg: RouteReg): LedgerEntry | undefined {

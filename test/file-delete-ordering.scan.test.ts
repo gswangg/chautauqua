@@ -342,9 +342,9 @@ describe("R2 delete-before-row-commit ordering scan (DEC-713 amendment, wave 19/
     // Pinned by FILE, not by line number: the wave-21 reorder (row-delete
     // first, R2 cleanup second, wrapped in its own swallowing try) moves the
     // fileStore.delete call off the old line 610.
-    const hit = hits.find((h) => h.file === "src/routes/public/submit.tsx");
-    expect(hit, "expected a hit at src/routes/public/submit.tsx (fileStore.delete) -- the receiver-aware regex regressed").toBeDefined();
-    expect(hit?.committedShape, "submit.tsx's rollback delete should be in the committed-delete shape as of DEC-713 wave 21").toBe(true);
+    const hit = hits.find((h) => h.file === "src/routes/public/submit-post.tsx");
+    expect(hit, "expected a hit at src/routes/public/submit-post.tsx (fileStore.delete) -- the receiver-aware regex regressed").toBeDefined();
+    expect(hit?.committedShape, "submit-post.tsx's rollback delete should be in the committed-delete shape as of DEC-713 wave 21").toBe(true);
   });
 
   it("every top-level entry under src/ is either scanned or listed in EXCLUDED_ROOTS with a reason", () => {

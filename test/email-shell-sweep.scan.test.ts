@@ -41,7 +41,7 @@ const SWEPT_SITES: { file: string; expectedRenderEmailHtmlCalls: number }[] = [
   { file: join(SRC_DIR, "routes", "content-notes.ts"), expectedRenderEmailHtmlCalls: 1 },
   { file: join(SRC_DIR, "server", "repo", "tasks", "reminders.ts"), expectedRenderEmailHtmlCalls: 1 },
   { file: join(SRC_DIR, "routes", "auth-reset.tsx"), expectedRenderEmailHtmlCalls: 1 },
-  { file: join(SRC_DIR, "routes", "public", "submit.tsx"), expectedRenderEmailHtmlCalls: 1 },
+  { file: join(SRC_DIR, "routes", "public", "submit-post.tsx"), expectedRenderEmailHtmlCalls: 1 },
 ];
 
 describe("every outbound HTML body renders through the B9 shell (DEC-037 amendment)", () => {
