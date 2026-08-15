@@ -165,8 +165,8 @@ export function emailLogConditions(params: Pick<EmailLogListParams, "eventId" | 
     const like = likeContains(params.q.trim());
     conditions.push(
       or(
-        sql`${schema.emailLog.subject} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
-        sql`${schema.emailLog.toEmail} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
+        sql`${schema.emailLog.subject} LIKE ${like} ESCAPE '\\'`,
+        sql`${schema.emailLog.toEmail} LIKE ${like} ESCAPE '\\'`,
       ),
     );
   }
@@ -280,8 +280,8 @@ function batchWhere(params: Pick<EmailBatchListParams, "eventId" | "q" | "since"
     const like = likeContains(params.q.trim());
     conditions.push(
       or(
-        sql`${schema.emailLog.subject} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
-        sql`${schema.emailLog.toEmail} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
+        sql`${schema.emailLog.subject} LIKE ${like} ESCAPE '\\'`,
+        sql`${schema.emailLog.toEmail} LIKE ${like} ESCAPE '\\'`,
       ),
     );
   }

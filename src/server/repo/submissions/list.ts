@@ -159,11 +159,11 @@ export function submissionListConditions(eventId: string, params: ParsedListQuer
   // JS pagination — one paginated statement, cost bound by the WHERE, not
   // by materializing every matching row.
   if (params.q) {
-    const like = likeContains(params.q.toLowerCase());
+    const like = likeContains(params.q);
     conditions.push(
       or(
-        sql`lower(${schema.submission.title}) like ${like} escape '\\'`,
-        sql`exists (select 1 from ${schema.participant} inner join ${schema.contact} on ${schema.contact.id} = ${schema.participant.contactId} where ${schema.participant.submissionId} = ${schema.submission.id} and lower(${schema.contact.firstName} || ' ' || ${schema.contact.lastName}) like ${like} escape '\\')`,
+        sql`${schema.submission.title} like ${like} escape '\\'`,
+        sql`exists (select 1 from ${schema.participant} inner join ${schema.contact} on ${schema.contact.id} = ${schema.participant.contactId} where ${schema.participant.submissionId} = ${schema.submission.id} and (${schema.contact.firstName} || ' ' || ${schema.contact.lastName}) like ${like} escape '\\')`,
       )!,
     );
   }

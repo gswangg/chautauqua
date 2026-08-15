@@ -61,16 +61,16 @@ export interface PublicSession {
  * search: submission title OR either name field of a (still
  * visibility-gated, via the caller's join) participant contact. DEC-506:
  * the search term is escaped via likeContains and paired with
- * `ESCAPE '\\' COLLATE NOCASE` so a literal `%`/`_` in the query string
+ * `ESCAPE '\\'` so a literal `%`/`_` in the query string
  * can't widen into a wildcard match (unescaped LIKE previously let
  * `?q=%` return every visible session). Always parameterized (via the
  * Drizzle `sql` tag), never string-concatenated into SQL. */
 export function searchCondition(q: string) {
   const like = likeContains(q);
   return or(
-    sql`${schema.submission.title} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
-    sql`${schema.contact.firstName} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
-    sql`${schema.contact.lastName} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
+    sql`${schema.submission.title} LIKE ${like} ESCAPE '\\'`,
+    sql`${schema.contact.firstName} LIKE ${like} ESCAPE '\\'`,
+    sql`${schema.contact.lastName} LIKE ${like} ESCAPE '\\'`,
   );
 }
 

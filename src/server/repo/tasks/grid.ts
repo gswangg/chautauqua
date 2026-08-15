@@ -230,9 +230,9 @@ export async function getOnboardingGrid(db: Db, eventId: string, params: Onboard
     );
   }
   if (params.q) {
-    const like = likeContains(params.q.toLowerCase());
+    const like = likeContains(params.q);
     conditions.push(
-      sql`(lower(${schema.contact.firstName}) like ${like} escape '\\' or lower(${schema.contact.lastName}) like ${like} escape '\\' or lower(${schema.contact.email}) like ${like} escape '\\')`,
+      sql`(${schema.contact.firstName} like ${like} escape '\\' or ${schema.contact.lastName} like ${like} escape '\\' or ${schema.contact.email} like ${like} escape '\\')`,
     );
   }
   const whereExpr = and(...conditions);

@@ -67,9 +67,9 @@ export async function getPublicSpeakers(
     const like = likeContains(q);
     conditions.push(
       or(
-        sql`${schema.contact.firstName} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
-        sql`${schema.contact.lastName} LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
-        sql`(${schema.contact.firstName} || ' ' || ${schema.contact.lastName}) LIKE ${like} ESCAPE '\\' COLLATE NOCASE`,
+        sql`${schema.contact.firstName} LIKE ${like} ESCAPE '\\'`,
+        sql`${schema.contact.lastName} LIKE ${like} ESCAPE '\\'`,
+        sql`(${schema.contact.firstName} || ' ' || ${schema.contact.lastName}) LIKE ${like} ESCAPE '\\'`,
       )!,
     );
   }
