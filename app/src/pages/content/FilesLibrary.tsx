@@ -13,7 +13,7 @@ import {
 import { formatDateTime } from '../../lib/dates';
 import { formatBytes } from './format';
 import { countOf } from '../../lib/plural';
-import { ARCHIVE_MAX_FILES, ARCHIVE_MAX_TOTAL_BYTES, archiveCapMessage } from '../../../../src/domain/files';
+import { ARCHIVE_MAX_FILES, ARCHIVE_MAX_TOTAL_BYTES, archiveCapMessage } from '../../lib/file-caps';
 
 interface FilesLibraryProps {
   eventId: string;
