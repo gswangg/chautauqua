@@ -273,6 +273,28 @@
   max-width: 200px;
 }
 
+/* DEC-958 (findings wave 13 amendment): B8 disabled register (docs/design/
+   DESIGN-RULINGS.md) applied to the two Session details selects when the
+   event's form carries no field of the matching role -- the shared tokens
+   (--chq-disabled/--chq-disabled-bg) are the SAME ones review.css's own
+   frozen-field treatment already composes, reused rather than a second
+   disabled style invented here. */
+.chq-detail-session-details-fields #submission-format:disabled,
+.chq-detail-session-details-fields #submission-audience-level:disabled {
+  color: var(--chq-disabled);
+  border-color: var(--chq-disabled-bg);
+  cursor: not-allowed;
+}
+
+/* Muted reason line beneath a disabled Format/Audience level select --
+   same quiet register as the participants/decision notes above. */
+.chq-detail-session-details-reason {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--chq-muted);
+}
+
 /* Per-row participant actions: quiet tertiary links, never a
    bordered/filled control competing with the Visible checkbox. */
 .chq-detail-participant-row-actions {
